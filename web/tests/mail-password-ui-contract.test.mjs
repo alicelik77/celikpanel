@@ -65,10 +65,12 @@ test('mailbox password action and handler both fail closed for read-only access'
         '        if (readOnly) return;',
     ),
   );
-  const actionIndex = mailSource.indexOf('onClick={() => openPasswordDialog(a)}');
-  const readOnlyGateIndex = mailSource.lastIndexOf('{!readOnly && (', actionIndex);
-  assert.notEqual(actionIndex, -1);
-  assert.ok(readOnlyGateIndex !== -1 && actionIndex - readOnlyGateIndex < 1000);
+  // alpha.135: the row's actions are words (MailboxActions); a list that only
+  // reads gets the webmail link and nothing else, before any action is built.
+  assert.ok(mailSource.includes('onPassword={() => openPasswordDialog(a)}'));
+  const actions = mailSource.slice(mailSource.indexOf('function MailboxActions('), mailSource.indexOf('function Tab('));
+  const gate = actions.indexOf('if (readOnly) return open ? <RowActions name={account.address} actions={[open]} /> : null;');
+  assert.ok(gate !== -1 && gate < actions.indexOf("id: 'password'"), 'a read-only list is offered the password action');
   assert.ok(detailSource.includes('readOnly={readOnly}'));
 });
 
@@ -153,7 +155,7 @@ test('password dialog is accessible, identifies the mailbox, and warns about liv
 test('mailbox password and deletion-pending messages stay in EN/TR parity', () => {
   const keys = [
     'err.DOMAIN_DELETION_PENDING',
-    'mail.changePasswordFor',
+    'mail.row.password',
     'mail.passwordDialog.title',
     'mail.passwordDialog.account',
     'mail.passwordDialog.new',

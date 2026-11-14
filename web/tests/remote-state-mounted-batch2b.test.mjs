@@ -124,8 +124,8 @@ const PostfixManagement = await pick(lib('components/PostfixManagement.tsx', own
 // DomainMailManager loads the webmail card with a dynamic import, which a
 // module compiled into a data: URL cannot resolve by itself.
 const mailManagerText = source('components/DomainMailManager.tsx').replace("import('./WebmailAccess')", `import('${webmailURL}')`)
-  // alpha.128: the sending-limits section reads its own address; not under test here.
-  .replace("import('./OutgoingMailboxLimits')", "import('data:text/javascript,export default () => null')")
+  // alpha.128: the sending-limits parts read their own address; not under test here.
+  .replaceAll("import('./OutgoingMailboxLimits')", "import('data:text/javascript,export const OutgoingNotice = () => null; export const OutgoingRowLine = () => null; export const OutgoingPausedRow = () => null; export const OutgoingLimitDialog = () => null;')")
   .replace("import('./MailDeliveryLookup')", "import('data:text/javascript,export default () => null')")
   .replace("import('./DomainMailOptions')", "import('data:text/javascript,export default () => null')");
 assert.ok(mailManagerText.includes(webmailURL), 'DomainMailManager no longer loads the webmail card lazily');
@@ -342,9 +342,10 @@ const table = [
     off: ['mail.catchAll.enable', 'mail.catchAll.update', 'mail.catchAll.disable'], fieldsOff: (node) => node.props.type === 'email',
   },
   {
+    // alpha.135: the card is only a problem with its fix; while it is read it draws nothing.
     screen: 'webmail card', Component: WebmailAccess, props: { domainId: 1 },
-    read: '/api/v1/domains/1/mail/setup', negative: ['mail.webmail.unavailable', 'mail.webmail.available'],
-    checking: 'mail.webmail.checking', unknown: 'mail.webmail.unknown',
+    read: '/api/v1/domains/1/mail/setup', negative: ['mail.webmail.unavailable'],
+    checking: null, unknown: 'mail.webmail.unknown',
     known: [json(setup({ webmail_available: false, webmail_url: '' })), 'mail.webmail.unavailable'],
   },
   {
@@ -395,13 +396,17 @@ for (const row of table) {
           assert.equal(buttons('dbconf.hba.add').length, 0);
         }
         const pending = failure === 'still on its way';
+        if (pending && row.checking === null) {
+          assert.equal(tree.toJSON(), null, 'something is drawn while the read is on its way');
+          return;
+        }
         assert.match(text(), new RegExp(escape(pending ? row.checking : row.unknown)), `the screen does not say "${pending ? row.checking : row.unknown}"`);
         if (pending) {
           assert.doesNotMatch(text(), new RegExp(escape(row.unknown)), 'a read that has not failed is shown as failed');
           assert.equal(buttons('common.retry').length, 0, 'Retry is offered for a read that has not failed');
         } else {
           assert.equal(buttons('common.retry').length, 1, 'a failed read offers no Retry, or more than one');
-          assert.doesNotMatch(text(), new RegExp(escape(row.checking) + '(?!Tab)'), 'a failed read is still shown as checking');
+          if (row.checking) assert.doesNotMatch(text(), new RegExp(escape(row.checking) + '(?!Tab)'), 'a failed read is still shown as checking');
         }
         assert.deepEqual(writesMade(), [], 'the screen changed something');
       } finally {

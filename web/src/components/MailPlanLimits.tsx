@@ -88,7 +88,7 @@ export function MailPlanLimits() {
     if (!plans || !draft.values) return null;
     const values = draft.values;
     return (
-        <section className="mt-5 rounded-xl border border-border bg-surface p-5" data-mail-plan-limits>
+        <section id="mail-plan-limits" className="mt-5 scroll-mt-24 rounded-xl border border-border bg-surface p-5" data-mail-plan-limits>
             <h3 className="mb-1 text-sm font-semibold text-fg">{t('mout.plans.title')}</h3>
             <p className="mb-3 max-w-[75ch] text-sm text-fg-muted">{t('mout.plans.desc')}</p>
             {plans.length === 0 ? (

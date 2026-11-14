@@ -94,11 +94,14 @@ test('an older Panel that names no reason still says who acts', async () => {
   assert.deepEqual(admin.links, ['/components/roundcube']);
 });
 
-test('available webmail shows its address and no guidance', async () => {
-  const shown = await render('admin', setup({ webmail_available: true, webmail_url: 'https://mail.example.com/' }));
-  assert.ok(shown.text.includes('mail.webmail.available'));
-  assert.ok(!shown.text.includes('adminNext.webmail.'));
-  assert.deepEqual(shown.links, ['https://mail.example.com/']);
+// alpha.135: each mailbox row opens webmail itself, so the card is only the
+// problem with its fix and is absent when webmail works.
+test('available webmail draws no card at all, for any role', async () => {
+  for (const role of ['admin', 'reseller', 'customer', 'additional_user']) {
+    const shown = await render(role, setup({ webmail_available: true, webmail_url: 'https://mail.example.com/' }));
+    assert.equal(shown.text, 'null', `${role}: ${shown.text}`);
+    assert.deepEqual(shown.links, [], role);
+  }
 });
 
 test('every new sentence is in English and Turkish; the customer sentences name the provider, the administrator ones do not ask', () => {

@@ -554,7 +554,7 @@ test('every key the address screens use exists in English and Turkish, with the 
   }
   const mailEn = read('i18n/screens/mailDatabases/en.ts');
   const mailTr = read('i18n/screens/mailDatabases/tr.ts');
-  for (const key of ['mail.webmail.signIn', 'mail.webmail.noAddressAdmin', 'mail.webmail.setAddress']) {
+  for (const key of ['mail.webmail.noAddressAdmin', 'mail.webmail.setAddress']) {
     assert.ok(mailEn.includes(`'${key}':`) && mailTr.includes(`'${key}':`), key);
   }
   assert.ok(!mailEn.includes('mail.webmail.heldBack') && !mailTr.includes('mail.webmail.heldBack'), 'the hold-back sentence is gone');

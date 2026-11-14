@@ -3,7 +3,7 @@
 // lib/remote.ts: every reader of an address shares the decoder and the
 // request). The client settings card and the webmail card both read it.
 
-import { webmailLinkOrNull } from './webmailAddress';
+import { isWebmailAddressURL, webmailLinkOrNull } from './webmailAddress';
 
 // A read that failed is unknown. It is not "webmail is not available on this
 // server", which is what the card said before 9 Oct 2026.
@@ -117,4 +117,18 @@ export function decodeMailSetup(raw: unknown): MailSetup {
             ? setup.webmail_reason as WebmailReason : null,
         autoconfig: decodeMailAutoconfig(setup.autoconfig),
     };
+}
+
+// One mailbox's way into webmail (alpha.135; owner, 13 Nov 2026: "email girili
+// açacak"): webmail's own address with the mailbox's address filled in on the
+// sign-in form. Roundcube 1.6 fills its user name field from the `_user`
+// request parameter (program/include/rcmail_output_html.php, login_form():
+// rcube_utils::get_input_string('_user', rcube_utils::INPUT_GPC)). Only the
+// address goes into the link: never a password, a token or a sign-in.
+// Anything that is not webmail's own address gives no link.
+// Bir posta kutusunun web postası bağlantısı: adres giriş formunda dolu gelir;
+// bağlantıda parola, belirteç ya da otomatik giriş yoktur.
+export function webmailSignInURL(webmail: unknown, mailbox: string): string | null {
+    if (!isWebmailAddressURL(webmail) || mailbox.trim() === '') return null;
+    return `${webmail}?_user=${encodeURIComponent(mailbox.trim())}`;
 }

@@ -2919,3 +2919,47 @@ test('Maintenance: what deletions left says its total and deletes one or all, ea
     await cleanup();
   }
 });
+
+// alpha.135: a mail folder a mailbox deleted before alpha.135 left in its
+// domain's live mail folder is in the same list, with one action, "Keep 30
+// days…": the panel's own question, one POST with the address, the list read
+// again; it is never in "Delete all now…". Held, it says it was left by an
+// earlier deletion. A list of them that could not be read is said as such.
+test('Maintenance: mail left in a live domain folder is kept 30 days only when asked', async () => {
+  const held = { id: 'mail.left-7-0123456789abcdef', kind: 'mail', domain: 'example.com', domain_id: 7, mailbox: 'old@example.com', bytes: 3072, deleted_at: '2026-11-14T10:00:00Z', remove_after: '2026-12-14T10:00:00Z', state: 'kept', left: true };
+  let moved = false;
+  const asked = [];
+  serve({
+    '/api/v1/maintenance/deletion-holding': () => Response.json(moved
+      ? { items: [held], summary: { count: 1, bytes: 3072, earliest_remove_after: held.remove_after }, left: [] }
+      : { items: [], summary: { count: 0, bytes: 0 }, left: [{ address: 'old@example.com', domain: 'example.com', domain_id: 7, bytes: 3072, path: '/var/mail/vhosts/example.com/old' }] }),
+  }, 'admin', {
+    '/api/v1/maintenance/deletion-holding/left': (options) => { moved = true; asked.push(JSON.parse(options.body)); return Response.json({ status: 'held', held: { bytes: 3072, remove_after: held.remove_after } }); },
+  });
+  globalThis.confirm = (message, request) => { asked.push(request.confirmLabel); return true; };
+  globalThis.operationEnds = [];
+  try {
+    await mount(DeletionHoldingCard);
+    assert.equal(tree.root.findAll((node) => node.type === 'li' && node.props['data-holding-left'] === 'old@example.com').length, 1);
+    assert.ok(has('holding.left.row'), 'the row does not say why it matters');
+    assert.equal(hostButtons().filter((node) => node.props['data-holding-remove-all'] !== undefined).length, 0, 'Delete all now… is offered for what is not held');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'reading the list moved something');
+    await press(rowButton('hold')[0]);
+    await act(async () => { await settled(); await settled(); });
+    assert.deepEqual(asked, ['holding.left.confirm', { address: 'old@example.com' }]);
+    assert.deepEqual(calls.filter((call) => call.method === 'POST').map((call) => call.url), ['/api/v1/maintenance/deletion-holding/left']);
+    assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done']);
+    assert.ok(tree.root.findAll((node) => node.props['data-holding-left-reason'] !== undefined).length === 1, 'the held item does not say it was left by an earlier deletion');
+    assert.equal(tree.root.findAll((node) => node.type === 'li' && node.props['data-holding-left'] !== undefined).length, 0);
+  } finally {
+    delete globalThis.operationEnds;
+    await cleanup();
+  }
+  serve({ '/api/v1/maintenance/deletion-holding': () => Response.json({ items: [], summary: { count: 0, bytes: 0 }, left: [], left_unknown: true }) });
+  try {
+    await mount(DeletionHoldingCard);
+    assert.ok(has('holding.empty') && has('holding.left.unknown'));
+  } finally {
+    await cleanup();
+  }
+});

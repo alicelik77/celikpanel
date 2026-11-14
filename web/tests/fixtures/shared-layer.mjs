@@ -144,6 +144,12 @@ export const componentRepoURL = compileSource('lib/componentRepo.ts', unexpected
 // alpha.107: the webmail update check, read by its card and the Components row.
 // alpha.110: webmail's own address, the only URL a screen may link to.
 export const webmailAddressLibURL = compileSource('lib/webmailAddress.ts', unexpected('lib/webmailAddress.ts'));
+// alpha.135: what a domain's mail screen reads of the server's mail service
+// and of its sending limits (one decoder each, shared by every reader).
+export const mailSetupLibURL = compileSource('lib/mailSetup.ts', (specifier) => (
+  specifier.endsWith('/webmailAddress') ? webmailAddressLibURL : unexpected('lib/mailSetup.ts')(specifier)
+));
+export const mailOutgoingLibURL = compileSource('lib/mailOutgoing.ts', unexpected('lib/mailOutgoing.ts'));
 export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', (specifier) => (
   specifier.endsWith('/webmailAddress') ? webmailAddressLibURL : unexpected('lib/roundcubeUpdate.ts')(specifier)
 ));
@@ -259,6 +265,8 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/componentRepo': componentRepoURL,
     '/lib/roundcubeUpdate': roundcubeUpdateURL,
     '/lib/webmailAddress': webmailAddressLibURL,
+    '/lib/mailSetup': mailSetupLibURL,
+    '/lib/mailOutgoing': mailOutgoingLibURL,
     '/lib/supportTable': supportTableURL,
     '/lib/offeredVersions': offeredVersionsURL,
     '/lib/vendorLane': vendorLaneURL,

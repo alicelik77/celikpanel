@@ -247,20 +247,25 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
 
             {address ? (
                 <div className="space-y-2" data-webmail-address-set="">
-                    <p className="text-sm text-fg">{t('life.addr.opensAt')}</p>
-                    {needsAgain ? (
-                        <p className="break-all text-sm font-medium text-fg">{address.url}</p>
-                    ) : (
-                        <a
-                            href={address.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block max-w-full break-all text-sm font-medium text-primary underline underline-offset-2"
-                            data-webmail-address-link=""
-                        >
-                            {address.url}
-                        </a>
-                    )}
+                    {/* alpha.135 (owner, 14 Nov 2026): the address is said once,
+                        with its open button; the update card no longer repeats it.
+                        Adres bir kez, açma düğmesiyle söylenir. */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <p className="min-w-0 text-sm text-fg">
+                            {t('life.addr.opensAt')} <span className="break-all font-medium">{address.url}</span>
+                        </p>
+                        {!needsAgain && (
+                            <a
+                                href={address.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex min-h-[2.75rem] items-center rounded-lg border border-border-strong px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2 sm:min-h-0"
+                                data-webmail-address-link=""
+                            >
+                                {t('life.webmail.open')}
+                            </a>
+                        )}
+                    </div>
                     <p className="text-sm text-fg-muted">{t('life.addr.signIn')}</p>
                     {value.statusUnknown || status === null ? (
                         <LifeLine tone="info" attr="webmail-address-status-unknown">{t('life.addr.statusUnknown')}</LifeLine>

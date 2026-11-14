@@ -1,291 +1,358 @@
-import { useMemo, useState } from 'react';
-import { AlertTriangle, KeyRound, Send } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { AlertTriangle, Info, KeyRound, Send } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useMailOutgoingWords } from '../i18n/mailOutgoing';
+import type { TranslationKey } from '../i18n/en';
 import { readApiError, apiErrorText } from '../lib/apiError';
-import { invalidate, lastKnown, useRemote } from '../lib/remote';
+import { confirmAction } from '../lib/confirmAction';
 import { localeTag } from '../lib/dateFormat';
+import { invalidate, lastKnown, readRemote, useRemote } from '../lib/remote';
 import { answerWasLost } from '../lib/requestIdentity';
+import { decodeDomainOutgoing, domainOutgoingURL, limitsApplied, type DomainOutgoing, type OutgoingEffective, type OutgoingMailbox } from '../lib/mailOutgoing';
 import { useNavigate } from '../router';
 import { showToast } from './Toast';
-import { Button, RemoteGate, inputClass } from './ui';
-import { useDraft } from './kit/save/draft';
-import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { Button, Dialog, inputClass } from './ui';
+import { useSaveRun } from './kit/save/saveRun';
+import { useLeaveGuard } from './kit/save/leaveGuard';
+import { ChangedMark } from './kit/save/SaveBar';
 import { useSaveWords } from './kit/save/words';
 
-// A domain's mailboxes and their hourly sending limits (alpha.128, gap G1).
-// The state of the limits comes first (off, not in force, being set up),
-// with who acts; then each mailbox: its limit, what it sent this hour, and a
-// security pause with its one way out (a new password). A reseller or
-// customer chooses within the plan's ceiling; the administrator may go above.
+// A domain's hourly sending limits on its mail screen (alpha.128, gap G1;
+// alpha.135, owner 13 Nov 2026: "bu sınırlar nedir. çok fazla mı karmaşık
+// ayar var acaba"). No card of their own any more:
 //
-// Bir alan adının posta kutuları ve saatlik gönderim sınırları: önce
-// sınırların durumu ve kimin ne yapacağı, sonra her kutu: sınırı, bu saatki
-// gönderimi ve güvenlik duraklatmasından tek çıkış (yeni parola).
+//   - while the limits are really applied on this server, each mailbox row
+//     carries one short line (its limit, or the new-mailbox limit and until
+//     when, and what it sent this hour), and "Sending limit…" in the row's
+//     menu opens the limit's dialog (explicit save, within the plan's ceiling);
+//   - while they are not applied, a customer, reseller or team member sees
+//     nothing about them; the administrator sees one line with its button,
+//     once per page;
+//   - the domain's and the hosting account's limits are named only when they
+//     matter (80% of this hour used, or something refused in 7 days), as one
+//     problem line with what to do;
+//   - a mailbox whose sending was stopped keeps its prominent state and its
+//     way out (a new password).
+//
+// Bir alan adının gönderim sınırları: ayrı kart yok. Sınırlar uygulanırken
+// her kutu satırında tek kısa satır ve satırın menüsünde "Gönderim sınırı…";
+// uygulanmazken müşteri hiçbir şey görmez, yönetici sayfada bir kez tek satır
+// ve düğmesini görür; alan adı ve hesap sınırı yalnız önemli olunca söylenir.
 
-interface Paused {
-    paused_at: string;
-    reason: 'spike' | 'refusals' | 'manual' | string;
-    detail?: string;
+type Translate = (key: TranslationKey, values?: Record<string, string | number>) => string;
+
+const useOutgoing = (domainId: number) => useRemote(domainOutgoingURL(domainId), decodeDomainOutgoing);
+const shortTime = (iso: string, locale: string) => new Date(iso).toLocaleString(localeTag(locale), { dateStyle: 'short', timeStyle: 'short' });
+
+/** A mailbox's limit as words: the limit in force now (a new mailbox's, with until when), or none. */
+function limitWords(t: Translate, effective: OutgoingEffective, locale: string): string {
+    if (effective.limit <= 0) return t('mout.row.none');
+    if (effective.new_until) return t('mout.row.new', { n: effective.limit, time: shortTime(effective.new_until, locale) });
+    return t('mout.row.limit', { n: effective.limit });
 }
 
-interface Effective {
-    limit: number;
-    mode: 'default' | 'custom' | 'unlimited';
-    custom?: number;
-    default: number;
-    ceiling: number;
-    new_until?: string;
+function rowWords(t: Translate, row: OutgoingMailbox, locale: string): string {
+    return `${limitWords(t, row.effective, locale)} · ${t('mout.row.hour', { n: row.used_hour })}`;
 }
 
-interface MailboxRow {
-    id: number;
-    address: string;
-    effective: Effective;
-    used_hour: number;
-    sent_7d: number;
-    refused_7d: number;
-    paused?: Paused;
-}
-
-interface DomainOutgoing {
-    enforced: boolean;
-    state: 'off' | 'pending' | 'not_enforced' | 'on';
-    reason?: string;
-    domain_limit: number;
-    domain_used_hour: number;
-    subscription_limit: number;
-    ceiling: number;
-    default: number;
-    may_exceed_ceiling: boolean;
-    mailboxes: MailboxRow[];
-}
-
-// A mailbox's limit as one value of the draft: 'default', 'unlimited' or
-// 'custom:<per hour>' (the number as typed while it is being typed).
-// Bir kutunun sınırı taslağın tek değeri olarak.
-type Mode = Effective['mode'];
-const limitOf = (e: Effective) => (e.mode === 'custom' ? `custom:${e.custom ?? ''}` : e.mode);
-const modeOf = (limit: string): Mode => (limit.startsWith('custom:') ? 'custom' : limit as Mode);
-const perHourOf = (limit: string) => limit.slice('custom:'.length);
-
-function decodeDomainOutgoing(raw: unknown): DomainOutgoing {
-    const value = raw as Partial<DomainOutgoing> | null;
-    if (!value || typeof value.state !== 'string' || !Array.isArray(value.mailboxes) || typeof value.ceiling !== 'number') {
-        throw new Error('outgoing');
-    }
-    return value as DomainOutgoing;
-}
-
-export function OutgoingMailboxLimits({ domainId, readOnly, onChangePassword }: {
-    domainId: number;
-    readOnly?: boolean;
-    /** Opens the mailbox's own change-password dialogue. */
-    onChangePassword: (id: number, address: string) => void;
-}) {
-    const { t, locale } = useMailOutgoingWords();
-    const { role } = useAuth();
-    const navigate = useNavigate();
-    const url = `/api/v1/domains/${domainId}/mail/outgoing`;
-    const read = useRemote(url, decodeDomainOutgoing);
-    // alpha.132: the mailboxes' limits are a draft over the list last read.
-    // "Change limit" opens a mailbox's choice; nothing is sent until Save in
-    // the bar; Discard puts the server's limits back; leaving with a change
-    // asks first. Save sends each changed mailbox once, in order.
-    // Kutuların sınırları son okunan listenin üzerinde bir taslaktır;
-    // Kaydet'e dek hiçbir şey gönderilmez.
-    const answer = lastKnown(read.remote)?.value;
-    const known = useMemo(() => answer && Object.fromEntries(answer.mailboxes.map((row) => [String(row.id), limitOf(row.effective)])), [answer]);
-    const draft = useDraft<Record<string, string>>(known);
-    const say = useSaveWords();
-    const [opened, setOpened] = useState<number[]>([]);
-    const admin = role === 'admin';
-    const limitText = (n: number) => (n > 0 ? String(n) : t('mout.dom.none'));
-    const time = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' });
-    const modeWords = (view: DomainOutgoing, limit: string) => {
-        const mode = modeOf(limit);
-        return mode === 'unlimited' ? t('mout.dom.mode.unlimited')
-            : mode === 'custom' ? `${t('mout.dom.mode.custom')}: ${perHourOf(limit)}`
-                : view.default > 0 ? t('mout.dom.mode.default', { n: view.default }) : t('mout.dom.mode.defaultNone');
-    };
-    // The first changed mailbox whose hourly number is not one the plan allows.
-    // Planın izin vermediği saatlik sayıyı taşıyan ilk değişmiş kutu.
-    const invalid = (view: DomainOutgoing) => {
-        const max = view.ceiling > 0 && !view.may_exceed_ceiling ? view.ceiling : 1000000;
-        const row = view.mailboxes.find((item) => {
-            const limit = draft.values?.[String(item.id)] ?? '';
-            if (!draft.isChanged(String(item.id)) || modeOf(limit) !== 'custom') return false;
-            const n = Number(perHourOf(limit));
-            return !/^\d+$/.test(perHourOf(limit)) || n < 1 || n > max;
-        });
-        return row ? t('mout.dom.invalid', { address: row.address, max: max.toLocaleString(localeTag(locale)) }) : undefined;
-    };
-
-    const save = (view: DomainOutgoing) => void draft.save(async (changes) => {
-        let applied = true;
-        try {
-            for (const [id, limit] of Object.entries(changes) as [string, string][]) {
-                const mode = modeOf(limit);
-                let res: Response;
-                try {
-                    res = await fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: Number(id), mode, per_hour: mode === 'custom' ? Number(perHourOf(limit)) : 0 }),
-                    });
-                } catch {
-                    return 'unknown';
-                }
-                if (answerWasLost(res)) return 'unknown';
-                if (!res.ok) {
-                    showToast('error', apiErrorText(await readApiError(res), t));
-                    return 'refused';
-                }
-                // An answer without its details is saved but not known to be in force.
-                // Ayrıntısız yanıt kaydedilmiştir ama uygulandığı bilinmez.
-                try {
-                    applied = applied && ((await res.json()) as { applied?: boolean }).applied === true;
-                } catch {
-                    applied = false;
-                }
-            }
-        } finally {
-            // What was sent before a refusal or a lost answer is read back too.
-            // Bir ret ya da yiten yanıttan önce gönderilenler de geri okunur.
-            invalidate('mail');
-        }
-        showToast('success', t(view.state === 'on' && applied ? 'mout.dom.saved' : 'mout.dom.savedPending'));
-        setOpened([]);
-        return 'saved';
-    });
-    const discard = () => {
-        draft.reset();
-        setOpened([]);
-    };
-
+function Line({ tone, attr, children, action }: { tone: 'warn' | 'info'; attr: Record<string, string>; children: ReactNode; action?: ReactNode }) {
     return (
-        <section className="mt-5 rounded-xl border border-border bg-surface p-4" data-outgoing-limits>
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-fg">
-                <Send className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
-                {t('mout.dom.title')}
-            </h3>
-            <RemoteGate remote={read.remote} checking={t('mout.dom.reading')} failed={t('mout.dom.failed')} onRetry={() => void read.retry()} busy={read.reading}>
-                {({ value: view, stale }) => (
-                    <>
-                        {view.state !== 'on' && (
-                            <div role="status" data-outgoing-state={view.state} className="mb-3 flex flex-wrap items-start gap-2 rounded-lg border border-border bg-surface-2/50 p-3 text-sm text-fg">
-                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                                <p className="min-w-0 max-w-[75ch] flex-1">
-                                    {view.state === 'off' ? t(admin ? 'mout.dom.offAdmin' : 'mout.dom.off')
-                                        : view.state === 'pending' ? t('mout.dom.pending')
-                                            : t(admin ? 'mout.dom.notEnforcedAdmin' : 'mout.dom.notEnforced')}
-                                </p>
-                                {admin && view.state !== 'pending' && (
-                                    <Button type="button" onClick={() => navigate('/components/postfix')}>{t('mout.dom.openSettings')}</Button>
-                                )}
-                            </div>
-                        )}
-                        <p className="mb-3 text-xs text-fg-muted">
-                            {t('mout.dom.domainUse', { used: view.domain_used_hour, limit: limitText(view.domain_limit) })}{' '}
-                            {t('mout.dom.subscriptionUse', { limit: limitText(view.subscription_limit) })}
-                        </p>
-                        {view.mailboxes.length === 0 ? (
-                            <p className="text-sm text-fg-muted">{t('mout.dom.empty')}</p>
-                        ) : (
-                            <ul className="divide-y divide-border">
-                                {view.mailboxes.map((row) => {
-                                    const e = row.effective;
-                                    const id = String(row.id);
-                                    const limit = draft.values?.[id] ?? limitOf(e);
-                                    const modeText = e.mode === 'unlimited' ? t('mout.dom.mode.unlimited')
-                                        : e.mode === 'custom' ? `${t('mout.dom.mode.custom')}: ${e.custom}`
-                                            : e.default > 0 ? t('mout.dom.mode.default', { n: e.default }) : t('mout.dom.mode.defaultNone');
-                                    return (
-                                        <li key={row.id} className="py-3" data-outgoing-mailbox={row.address}>
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="font-medium text-fg">{row.address}</span>
-                                                <span className="text-xs text-fg-muted">
-                                                    {t('mout.dom.used', { used: row.used_hour, sent: row.sent_7d })}
-                                                    {row.refused_7d > 0 && <> · <span className="text-warning">{t('mout.dom.refused', { n: row.refused_7d })}</span></>}
-                                                </span>
-                                            </div>
-                                            {row.paused && (
-                                                <div role="alert" className="mt-2 flex flex-wrap items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-fg">
-                                                    <p className="min-w-0 max-w-[75ch] flex-1">
-                                                        {row.paused.reason === 'manual'
-                                                            ? t(admin || role === 'reseller' ? 'mout.dom.pausedManual.manager' : 'mout.dom.pausedManual.customer')
-                                                            : t('mout.dom.paused', { reason: t(`mout.paused.reason.${row.paused.reason}` as never) })}
-                                                        {row.paused.detail && <span className="mt-1 block text-xs text-fg-muted">{row.paused.detail}</span>}
-                                                    </p>
-                                                    {!readOnly && row.paused.reason !== 'manual' && (
-                                                        <Button type="button" variant="primary" icon={KeyRound} onClick={() => onChangePassword(row.id, row.address)} data-outgoing-resume={row.address}>
-                                                            {t('mout.dom.changePassword')}
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {opened.includes(row.id) || draft.isChanged(id) ? (
-                                                <div className={`-mx-2 mt-2 rounded-r px-2 py-2 ${draft.isChanged(id) ? changedRowClass : ''}`}>
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <select className={`${inputClass} field-md`} value={modeOf(limit)} disabled={draft.saving} aria-label={t('mout.mailbox')}
-                                                            onChange={(event) => {
-                                                                const mode = event.target.value as Mode;
-                                                                draft.set(id, mode !== 'custom' ? mode : `custom:${e.custom ?? (e.default > 0 ? e.default : 100)}`);
-                                                            }}>
-                                                            <option value="default">{view.default > 0 ? t('mout.dom.mode.default', { n: view.default }) : t('mout.dom.mode.defaultNone')}</option>
-                                                            <option value="custom">{t('mout.dom.mode.custom')}</option>
-                                                            {(view.ceiling === 0 || view.may_exceed_ceiling) && <option value="unlimited">{t('mout.dom.mode.unlimited')}</option>}
-                                                        </select>
-                                                        {modeOf(limit) === 'custom' && (
-                                                            <label className="flex items-center gap-2 text-xs text-fg-muted">
-                                                                <span>
-                                                                    <input type="number" min={1} max={view.ceiling > 0 && !view.may_exceed_ceiling ? view.ceiling : 1000000} value={perHourOf(limit)}
-                                                                        disabled={draft.saving} onChange={(event) => draft.set(id, `custom:${event.target.value.trim()}`)}
-                                                                        className={`${inputClass} field-sm`} aria-label={t('mout.perHour')} />
-                                                                </span>
-                                                                {t('mout.perHour')}
-                                                            </label>
-                                                        )}
-                                                        {draft.isChanged(id) ? <ChangedMark from={modeWords(view, draft.base?.[id] ?? limit)} to={modeWords(view, limit)} />
-                                                            : <button type="button" className="rounded px-1.5 py-0.5 text-xs text-primary hover:bg-surface-2" onClick={() => setOpened((ids) => ids.filter((item) => item !== row.id))}>{t('common.close')}</button>}
-                                                    </div>
-                                                    {view.ceiling > 0 && !view.may_exceed_ceiling && <p className="mt-1 text-xs text-fg-subtle">{t('mout.dom.ceiling', { n: view.ceiling })}</p>}
-                                                    {draft.isMoved(id) && draft.base && (
-                                                        <ServerMovedNote value={modeWords(view, draft.base[id])} onTake={() => draft.take(id)} />
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-fg-muted">
-                                                    <span>{modeText}</span>
-                                                    {e.new_until && <span>· {t('mout.dom.newUntil', { n: e.limit, time: time(e.new_until) })}</span>}
-                                                    {!readOnly && !stale && (
-                                                        <button type="button" className="rounded px-1.5 py-0.5 text-primary hover:bg-surface-2" onClick={() => setOpened((ids) => [...ids, row.id])}>
-                                                            {t('mout.dom.change')}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                        {!readOnly && (
-                            <SaveBar
-                                className="-mx-4 px-4 pb-0"
-                                count={draft.count}
-                                saving={draft.saving}
-                                blockedBy={stale ? say('stale') : invalid(view)}
-                                unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: read.reading, onCheck: () => void read.retry() } : undefined}
-                                onSave={() => save(view)}
-                                onDiscard={discard}
-                            />
-                        )}
-                    </>
-                )}
-            </RemoteGate>
-        </section>
+        <div role="status" {...attr} className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-surface-2/50 p-3 text-sm text-fg">
+            <span className="flex min-w-0 max-w-[75ch] items-start gap-2">
+                {tone === 'warn'
+                    ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                    : <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />}
+                <span>{children}</span>
+            </span>
+            {action}
+        </div>
     );
 }
 
-export default OutgoingMailboxLimits;
+/**
+ * The one line above the mailbox list: for the administrator, that the
+ * limits are not applied (with the button to the mail server settings); for
+ * everyone, a domain or account limit that matters now. Nothing otherwise.
+ */
+export function OutgoingNotice({ domainId }: { domainId: number }) {
+    const { t } = useMailOutgoingWords();
+    const { role } = useAuth();
+    const navigate = useNavigate();
+    const view = lastKnown(useOutgoing(domainId).remote)?.value;
+    const admin = role === 'admin';
+    if (!view) return null;
+    const settings = <Button type="button" onClick={() => navigate('/components/postfix')}>{t('mout.dom.openSettings')}</Button>;
+    if (!limitsApplied(view)) {
+        if (!admin) return null;
+        return (
+            <Line tone="info" attr={{ 'data-outgoing-state': view.state }} action={view.state === 'pending' ? undefined : settings}>
+                {t(view.state === 'off' ? 'mout.dom.offAdmin' : view.state === 'pending' ? 'mout.dom.pending' : 'mout.dom.notEnforcedAdmin')}
+            </Line>
+        );
+    }
+    const facts = nearLimitFacts(t, view);
+    if (facts.length === 0) return null;
+    return (
+        <Line tone="warn" attr={{ 'data-outgoing-near': '' }}
+            action={admin ? <Button type="button" onClick={() => navigate('/components/postfix#mail-plan-limits')}>{t('mout.near.openPlans')}</Button> : undefined}>
+            {facts.join(' ')} {t(admin ? 'mout.near.nextAdmin' : 'mout.near.next')}
+        </Line>
+    );
+}
+
+/** What of the domain's and the account's limits matters now: 80% of this hour, or refusals in 7 days. */
+export function nearLimitFacts(t: Translate, view: DomainOutgoing): string[] {
+    const facts: string[] = [];
+    const near = (used: number, limit: number) => limit > 0 && used * 5 >= limit * 4;
+    if (near(view.domain_used_hour, view.domain_limit)) {
+        facts.push(t(view.domain_used_hour >= view.domain_limit ? 'mout.near.domainFull' : 'mout.near.domain', { used: view.domain_used_hour, limit: view.domain_limit }));
+    }
+    if (near(view.subscription_used_hour, view.subscription_limit)) {
+        facts.push(t(view.subscription_used_hour >= view.subscription_limit ? 'mout.near.accountFull' : 'mout.near.account', { used: view.subscription_used_hour, limit: view.subscription_limit }));
+    }
+    if (view.domain_refused_7d > 0) facts.push(t('mout.near.domainRefused', { n: view.domain_refused_7d }));
+    if (view.subscription_refused_7d > 0) facts.push(t('mout.near.accountRefused', { n: view.subscription_refused_7d }));
+    return facts;
+}
+
+/** A mailbox row's line while the limits are applied: its limit and this hour. Nothing otherwise. */
+export function OutgoingRowLine({ domainId, accountId }: { domainId: number; accountId: number }) {
+    const { t, locale } = useMailOutgoingWords();
+    const view = lastKnown(useOutgoing(domainId).remote)?.value;
+    const row = limitsApplied(view) ? view?.mailboxes.find((item) => item.id === accountId) : undefined;
+    if (!row) return null;
+    return (
+        <span className="mt-0.5 block text-xs text-fg-muted" data-outgoing-line={row.address}>
+            {rowWords(t, row, locale)}
+            {row.refused_7d > 0 && <> · <span className="text-warning">{t('mout.row.refused', { n: row.refused_7d })}</span></>}
+        </span>
+    );
+}
+
+/**
+ * A mailbox whose sending was stopped (while the limits are applied): a row of
+ * the list's whole width under the mailbox, with its one way out (a new
+ * password) unless it was stopped by hand.
+ */
+export function OutgoingPausedRow({ domainId, accountId, columns, readOnly, onChangePassword }: {
+    domainId: number;
+    accountId: number;
+    columns: number;
+    readOnly?: boolean;
+    /** Opens the mailbox's own change-password dialogue. */
+    onChangePassword: () => void;
+}) {
+    const { t } = useMailOutgoingWords();
+    const { role } = useAuth();
+    const view = lastKnown(useOutgoing(domainId).remote)?.value;
+    const row = limitsApplied(view) ? view?.mailboxes.find((item) => item.id === accountId) : undefined;
+    if (!row?.paused) return null;
+    const manager = role === 'admin' || role === 'reseller';
+    return (
+        <tr className="border-b border-border last:border-0">
+            <td colSpan={columns} className="px-4 pb-3 pt-0">
+                <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-fg" data-outgoing-paused={row.address}>
+                    <p className="min-w-0 max-w-[75ch]">
+                        {row.paused.reason === 'manual'
+                            ? t(manager ? 'mout.dom.pausedManual.manager' : 'mout.dom.pausedManual.customer')
+                            : t('mout.dom.paused', { reason: t(`mout.paused.reason.${row.paused.reason}` as TranslationKey) })}
+                        {row.paused.detail && <span className="mt-1 block text-xs text-fg-muted">{row.paused.detail}</span>}
+                    </p>
+                    {!readOnly && row.paused.reason !== 'manual' && (
+                        <Button type="button" variant="primary" icon={KeyRound} onClick={onChangePassword} data-outgoing-resume={row.address}>
+                            {t('mout.dom.changePassword')}
+                        </Button>
+                    )}
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+// A mailbox's limit as one value: 'default', 'unlimited' or 'custom:<per hour>'
+// (the number as typed while it is being typed).
+// Bir kutunun sınırı tek değer olarak.
+type Mode = OutgoingEffective['mode'];
+const limitOf = (e: OutgoingEffective) => (e.mode === 'custom' ? `custom:${e.custom ?? ''}` : e.mode);
+const modeOf = (limit: string): Mode => (limit.startsWith('custom:') ? 'custom' : limit as Mode);
+const perHourOf = (limit: string) => limit.slice('custom:'.length);
+
+/**
+ * "Sending limit…" of one mailbox: the choice within the plan's ceiling
+ * (the administrator may go above it). Nothing is sent before Save; Discard
+ * or closing with a change asks first; a lost answer is checked by reading
+ * the limits again, never by sending twice.
+ */
+export function OutgoingLimitDialog({ domainId, accountId, address, onClose }: {
+    domainId: number;
+    accountId: number;
+    address: string;
+    onClose: () => void;
+}) {
+    const { t, locale } = useMailOutgoingWords();
+    const say = useSaveWords();
+    const url = domainOutgoingURL(domainId);
+    const read = useOutgoing(domainId);
+    const view = lastKnown(read.remote)?.value;
+    const row = view?.mailboxes.find((item) => item.id === accountId) ?? null;
+    const base = row ? limitOf(row.effective) : null;
+    const [typed, setTyped] = useState<string | null>(null);
+    const [lost, setLost] = useState<string | null>(null);
+    const [checking, setChecking] = useState(false);
+    const runner = useSaveRun();
+    const value = typed ?? base ?? 'default';
+    const changed = base !== null && typed !== null && typed !== base;
+    useLeaveGuard(changed ? 'some' : 0);
+
+    const max = view && view.ceiling > 0 && !view.may_exceed_ceiling ? view.ceiling : 1000000;
+    const perHour = perHourOf(value);
+    const invalid = modeOf(value) === 'custom' && (!/^\d+$/.test(perHour) || Number(perHour) < 1 || Number(perHour) > max)
+        ? t('mout.dom.invalid', { max: max.toLocaleString(localeTag(locale)) }) : '';
+    const canSave = !!row && changed && !invalid && !runner.saving && !lost && !checking;
+    const modeWords = (limit: string) => {
+        const mode = modeOf(limit);
+        return mode === 'unlimited' ? t('mout.dom.mode.unlimited')
+            : mode === 'custom' ? `${t('mout.dom.mode.custom')}: ${perHourOf(limit)}`
+                : view && view.default > 0 ? t('mout.dom.mode.default', { n: view.default }) : t('mout.dom.mode.defaultNone');
+    };
+
+    const save = () => {
+        if (!canSave) return;
+        const sent = value;
+        void runner.run(async () => {
+            const mode = modeOf(sent);
+            let res: Response;
+            try {
+                res = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: accountId, mode, per_hour: mode === 'custom' ? Number(perHourOf(sent)) : 0 }),
+                });
+            } catch {
+                setLost(sent);
+                return 'unknown';
+            }
+            if (answerWasLost(res)) {
+                setLost(sent);
+                return 'unknown';
+            }
+            if (!res.ok) {
+                showToast('error', apiErrorText(await readApiError(res), t));
+                return 'refused';
+            }
+            // An answer without its details is saved but not known to be in force.
+            let applied = false;
+            try {
+                applied = ((await res.json()) as { applied?: boolean }).applied === true;
+            } catch {
+                applied = false;
+            }
+            showToast('success', t(applied ? 'mout.dom.saved' : 'mout.dom.savedPending'));
+            invalidate('mail');
+            onClose();
+            return 'saved';
+        });
+    };
+
+    // After a lost answer the limits are read again: what was sent is either
+    // there (saved) or not (the choice stays to be saved again).
+    // Yanıt yitince sınırlar yeniden okunur.
+    const check = async () => {
+        if (!lost) return;
+        setChecking(true);
+        const again = await readRemote(url, decodeDomainOutgoing);
+        setChecking(false);
+        if (again.state !== 'known') return;
+        const now = again.value.mailboxes.find((item) => item.id === accountId);
+        setLost(null);
+        runner.clear();
+        invalidate('mail');
+        if (now && limitOf(now.effective) === lost) {
+            showToast('success', t('mout.dom.savedPending'));
+            onClose();
+        }
+    };
+
+    const dismiss = async () => {
+        if (changed && !(await confirmAction({
+            title: t('domain.unsaved.title'),
+            lost: [t('domain.unsaved.lost')],
+            kept: [say('leaveKept')],
+            confirmLabel: t('domain.unsaved.close'),
+            cancelLabel: t('domain.unsaved.back'),
+            tone: 'danger',
+        }))) return;
+        onClose();
+    };
+
+    const busy = runner.saving || checking;
+    return (
+        <Dialog
+            id="mail-outgoing-limit"
+            icon={Send}
+            width="sm"
+            busy={busy}
+            onDismiss={() => void dismiss()}
+            noValidate
+            onSubmit={(event) => {
+                event.preventDefault();
+                save();
+            }}
+            title={t('mout.dlg.title')}
+            description={<>{t('mout.report.mailbox')}: <strong className="break-all font-medium text-fg">{address}</strong></>}
+            footerLead={lost ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-fg" aria-live="polite">
+                    <p className="min-w-0 max-w-[75ch] flex-1">{say('unknown')}</p>
+                    <Button type="button" onClick={() => void check()} loading={checking}>{t('common.checkAgain')}</Button>
+                </div>
+            ) : row ? (
+                <p data-form-reason="" className={`text-sm ${changed && invalid ? 'text-danger' : 'text-fg-muted'}`} aria-live="polite">
+                    {!changed ? t('domain.unsaved.none') : invalid || say('pendingSome')}
+                </p>
+            ) : undefined}
+            actions={
+                <>
+                    <Button type="button" onClick={onClose} disabled={busy} data-form-discard="">{say('discard')}</Button>
+                    <Button type="submit" variant="primary" disabled={!canSave} loading={runner.saving} data-form-save="">
+                        {runner.saving ? say('saving') : say('save')}
+                    </Button>
+                </>
+            }
+        >
+            {!view ? (
+                <p className="text-sm text-fg-muted">{read.remote.state === 'loading' ? t('mout.reading') : t('mout.failed')}</p>
+            ) : !row ? (
+                <p className="text-sm text-fg-muted">{t('mout.dlg.gone')}</p>
+            ) : (
+                <div className="space-y-3">
+                    <p className="text-sm text-fg-muted" data-outgoing-now="">{t('mout.dlg.now', { line: rowWords(t, row, locale) })}</p>
+                    <label className="block">
+                        <span className="mb-1 block text-xs text-fg-muted">{t('mout.dlg.label')}</span>
+                        <span className="flex flex-wrap items-center gap-2">
+                            <select className={`${inputClass} field-md`} value={modeOf(value)} disabled={busy}
+                                onChange={(event) => {
+                                    const mode = event.target.value as Mode;
+                                    const e = row.effective;
+                                    setTyped(mode !== 'custom' ? mode : `custom:${e.custom ?? (e.default > 0 ? e.default : 100)}`);
+                                }}>
+                                <option value="default">{view.default > 0 ? t('mout.dom.mode.default', { n: view.default }) : t('mout.dom.mode.defaultNone')}</option>
+                                <option value="custom">{t('mout.dom.mode.custom')}</option>
+                                {(view.ceiling === 0 || view.may_exceed_ceiling) && <option value="unlimited">{t('mout.dom.mode.unlimited')}</option>}
+                            </select>
+                            {modeOf(value) === 'custom' && (
+                                <span className="flex items-center gap-2 text-xs text-fg-muted">
+                                    <input type="number" min={1} max={max} value={perHour} disabled={busy}
+                                        onChange={(event) => setTyped(`custom:${event.target.value.trim()}`)}
+                                        className={`${inputClass} field-sm`} aria-label={t('mout.perHour')} />
+                                    {t('mout.perHour')}
+                                </span>
+                            )}
+                        </span>
+                    </label>
+                    {changed && base && <p><ChangedMark from={modeWords(base)} to={modeWords(value)} /></p>}
+                    {view.ceiling > 0 && !view.may_exceed_ceiling && <p className="text-xs text-fg-subtle">{t('mout.dom.ceiling', { n: view.ceiling })}</p>}
+                </div>
+            )}
+        </Dialog>
+    );
+}

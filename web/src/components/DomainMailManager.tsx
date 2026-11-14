@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser, LifeBuoy } from 'lucide-react';
+import { Fragment, lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser, LifeBuoy, ExternalLink, Send } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { formatDate, formatTime } from '../lib/dateFormat';
@@ -18,6 +18,9 @@ import { runBulk, type BulkOutcome, type BulkTarget } from '../lib/bulkMailbox';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 import { useAuth } from '../auth/AuthContext';
+import { RowActions, type RowAction } from './kit/rows/RowActions';
+import { decodeMailSetup, mailSetupURL, webmailSignInURL } from '../lib/mailSetup';
+import { decodeDomainOutgoing, domainOutgoingURL, limitsApplied } from '../lib/mailOutgoing';
 
 interface EmailAccount {
     id: number;
@@ -74,8 +77,12 @@ function decodeQuota(raw: unknown): QuotaStatus {
 // Sekmenin yanındaki sayı: liste bilinince sayı, okunurken "…", okunamayınca "–".
 const countOf = (remote: Remote<unknown[]>) => (remote.state === 'known' ? remote.value.length : remote.state === 'loading' ? '…' : '–');
 const WebmailAccess = lazy(() => import('./WebmailAccess'));
-// alpha.128: each mailbox's hourly sending limit and a security pause (own chunk).
-const OutgoingMailboxLimits = lazy(() => import('./OutgoingMailboxLimits'));
+// alpha.128: each mailbox's hourly sending limit and a security pause; since
+// alpha.135 a line on each row, one problem line and the limit's dialog (own chunk).
+const OutgoingNotice = lazy(() => import('./OutgoingMailboxLimits').then((module) => ({ default: module.OutgoingNotice })));
+const OutgoingRowLine = lazy(() => import('./OutgoingMailboxLimits').then((module) => ({ default: module.OutgoingRowLine })));
+const OutgoingPausedRow = lazy(() => import('./OutgoingMailboxLimits').then((module) => ({ default: module.OutgoingPausedRow })));
+const OutgoingLimitDialog = lazy(() => import('./OutgoingMailboxLimits').then((module) => ({ default: module.OutgoingLimitDialog })));
 // alpha.128 (G9): "did a message arrive?" for this domain (own chunk).
 const MailDeliveryLookup = lazy(() => import('./MailDeliveryLookup'));
 // alpha.128 (G25): send only, and the reply unknown addresses get (own chunk).
@@ -114,6 +121,17 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const [passwordAccount, setPasswordAccount] = useState<EmailAccount | null>(null);
     const [autoreplyAccount, setAutoreplyAccount] = useState<EmailAccount | null>(null);
     const [recoveryAccount, setRecoveryAccount] = useState<EmailAccount | null>(null);
+    const [limitAccount, setLimitAccount] = useState<EmailAccount | null>(null);
+    // alpha.135: each row opens webmail with its own address filled in, when
+    // webmail works (otherwise the card above the list says why and the row
+    // has no such action); the limit's action exists only while the sending
+    // limits are really applied on this server.
+    // Her satır web postasını kendi adresiyle açar; sınır eylemi yalnız
+    // gönderim sınırları gerçekten uygulanırken vardır.
+    const setupRead = useRemote(activeTab === 'accounts' ? mailSetupURL(domainId) : null, decodeMailSetup);
+    const webmail = setupRead.remote.state === 'known' ? setupRead.remote.value.webmail : null;
+    const outgoingRead = useRemote(activeTab === 'accounts' ? domainOutgoingURL(domainId) : null, decodeDomainOutgoing);
+    const limitsOn = limitsApplied(lastKnown(outgoingRead.remote)?.value);
     const [newPassword, setNewPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [passwordSaving, setPasswordSaving] = useState(false);
@@ -201,7 +219,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             if (!res.ok) { refuse(await readApiError(res), 'mail.createFailed'); return; }
             const data = await res.json();
             if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
-            showToast('success', t('mail.accountCreated'));
+            // alpha.135: mail an earlier deletion had left at this address was
+            // put aside first; only the administrator is told, in one line.
+            const left = data.left_held as { bytes?: number; remove_after?: string } | undefined;
+            showToast('success', left && typeof left.remove_after === 'string'
+                ? `${t('mail.accountCreated')} ${t('mail.leftHeld', { size: sizeWord(Math.max(left.bytes ?? 0, 0), locale), date: formatDate(left.remove_after, locale) })}`
+                : t('mail.accountCreated'));
             setRefusal(null);
             setShowForm(false);
             setUser('');
@@ -573,14 +596,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             {quotaRead.remote.state === 'unknown' && (
                                 <CouldNotCheck className="mb-3" text={t('mail.quota.unknown')} onRetry={() => void quotaRead.retry()} busy={quotaRead.reading} />
                             )}
+                            <Suspense fallback={null}><OutgoingNotice domainId={domainId} /></Suspense>
                         {!readOnly && selected.size > 0 && (
                             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-2/50 p-2 text-sm" data-mail-bulk={selected.size}>
                                 <span className="px-1 text-fg">{t('mail.bulk.selected', { n: selected.size })}</span>
-                                <Button type="button" disabled={stale} onClick={() => setBulkLimitOpen((open) => !open)}>{t('mail.bulk.limit')}</Button>
+                                {limitsOn && <Button type="button" disabled={stale} onClick={() => setBulkLimitOpen((open) => !open)}>{t('mail.bulk.limit')}</Button>}
                                 <Button type="button" disabled={stale} onClick={() => void bulkEmpty(accounts)}>{t('mail.bulk.empty')}</Button>
                                 <Button type="button" variant="danger" disabled={stale} onClick={() => void bulkDelete(accounts)}>{t('mail.bulk.delete')}</Button>
                                 <Button type="button" onClick={() => setSelected(new Set())}>{t('mail.cancel')}</Button>
-                                {bulkLimitOpen && (
+                                {limitsOn && bulkLimitOpen && (
                                     <span className="flex w-full flex-wrap items-center gap-2">
                                         <select className={`${inputClass} field-sm`} value={bulkMode} onChange={(event) => setBulkMode(event.target.value as typeof bulkMode)} aria-label={t('mail.bulk.limit')}>
                                             <option value="default">{t('mail.bulk.modeDefault')}</option>
@@ -618,7 +642,8 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                         const usage = quotaStatus?.usages.find((u) => u.email === a.address);
                                         const usedMB = usage?.available ? usage.used_kb / 1024 : null;
                                         return (
-                                            <tr key={a.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
+                                            <Fragment key={a.id}>
+                                            <tr className="border-b border-border last:border-0 hover:bg-surface-2/60">
                                                 {!readOnly && (
                                                     <td className="w-8 py-2.5 pl-4">
                                                         <input type="checkbox" className="h-4 w-4" checked={selected.has(a.id)} disabled={stale}
@@ -646,6 +671,9 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                             </span>
                                                         );
                                                     })()}
+                                                    <Suspense fallback={null}>
+                                                        <OutgoingRowLine domainId={domainId} accountId={a.id} />
+                                                    </Suspense>
                                                 </td>
                                                 <td className="px-4 py-2.5 text-fg-muted">
                                                     {!readOnly && !stale && editingQuota === a.id ? (
@@ -705,64 +733,22 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-2.5 text-right">
-                                                    {!readOnly && (
-                                                        <span className="inline-flex items-center justify-end gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => openPasswordDialog(a)}
-                                                                disabled={stale}
-                                                                aria-label={t('mail.changePasswordFor', { address: a.address })}
-                                                                title={t('mail.changePasswordFor', { address: a.address })}
-                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-primary"
-                                                            >
-                                                                <KeyRound className="h-4 w-4" aria-hidden="true" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setRecoveryAccount(a)}
-                                                                disabled={stale}
-                                                                aria-label={t('mail.recoveryFor', { address: a.address })}
-                                                                title={t('mail.recoveryFor', { address: a.address })}
-                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-primary"
-                                                            >
-                                                                <LifeBuoy className="h-4 w-4" aria-hidden="true" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setAutoreplyAccount(a)}
-                                                                disabled={stale}
-                                                                aria-label={t('mail.autoreply.openFor', { address: a.address })}
-                                                                title={t('mail.autoreply.openFor', { address: a.address })}
-                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-primary"
-                                                            >
-                                                                <CalendarClock className="h-4 w-4" aria-hidden="true" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => void emptyAccount(a)}
-                                                                disabled={stale}
-                                                                aria-label={t('mail.empty.title', { name: a.address })}
-                                                                title={t('mail.empty.title', { name: a.address })}
-                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-danger"
-                                                            >
-                                                                <Eraser className="h-4 w-4" aria-hidden="true" />
-                                                            </button>
-                                                            <DeleteBtn disabled={stale} label={t('mail.deleteAccountNamed', { name: a.address })} onClick={() => deleteAccount(a.id, a.address)} />
-                                                        </span>
-                                                    )}
+                                                    <MailboxActions account={a} webmail={webmail} readOnly={readOnly} stale={stale} limitsOn={limitsOn}
+                                                        onPassword={() => openPasswordDialog(a)} onRecovery={() => setRecoveryAccount(a)} onAutoreply={() => setAutoreplyAccount(a)}
+                                                        onLimit={() => setLimitAccount(a)} onEmpty={() => void emptyAccount(a)} onDelete={() => void deleteAccount(a.id, a.address)} />
                                                 </td>
                                             </tr>
+                                            {/* A mailbox whose sending was stopped: its state and its way out, the row's whole width. */}
+                                            <Suspense fallback={null}>
+                                                <OutgoingPausedRow domainId={domainId} accountId={a.id} columns={readOnly ? 4 : 5} readOnly={readOnly} onChangePassword={() => openPasswordDialog(a)} />
+                                            </Suspense>
+                                            </Fragment>
                                         );
                                     })}
                                 </tbody>
                             </table>
                         </div>
                         <Suspense fallback={null}>
-                            <OutgoingMailboxLimits
-                                domainId={domainId}
-                                readOnly={readOnly}
-                                onChangePassword={(id, address) => openPasswordDialog(accounts.find((a) => a.id === id) ?? { id, address, quota_mb: 0 })}
-                            />
                             <MailDeliveryLookup domainId={domainId} />
                         </Suspense>
                         </>
@@ -821,6 +807,11 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                         address={recoveryAccount.address}
                         onClose={() => setRecoveryAccount(null)}
                     />
+                </Suspense>
+            )}
+            {limitAccount && !readOnly && (
+                <Suspense fallback={null}>
+                    <OutgoingLimitDialog domainId={domainId} accountId={limitAccount.id} address={limitAccount.address} onClose={() => setLimitAccount(null)} />
                 </Suspense>
             )}
             {autoreplyAccount && !readOnly && (
@@ -914,6 +905,31 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             )}
         </div>
     );
+}
+
+// A mailbox row's actions in words (alpha.135; drawing D7): "Webmail" opens
+// webmail with the mailbox's address filled in, only when webmail works;
+// "Password…" next to it; the rest in the "More" menu, the destructive ones
+// last. A list that only reads keeps "Webmail" and nothing else.
+// Posta kutusu satırının işlemleri sözcükle: Web posta (çalışıyorsa) ve
+// Parola…; gerisi Diğer menüsünde, silenler en sonda.
+function MailboxActions({ account, webmail, readOnly, stale, limitsOn, onPassword, onRecovery, onAutoreply, onLimit, onEmpty, onDelete }: {
+    account: EmailAccount; webmail: string | null; readOnly: boolean; stale: boolean; limitsOn: boolean;
+    onPassword: () => void; onRecovery: () => void; onAutoreply: () => void; onLimit: () => void; onEmpty: () => void; onDelete: () => void;
+}) {
+    const { t } = useI18n();
+    const link = webmailSignInURL(webmail, account.address);
+    const open: RowAction | null = link ? { id: 'webmail', label: t('mail.row.webmail'), icon: ExternalLink, href: link } : null;
+    if (readOnly) return open ? <RowActions name={account.address} actions={[open]} /> : null;
+    const password: RowAction = { id: 'password', label: t('mail.row.password'), icon: KeyRound, onSelect: onPassword, disabled: stale };
+    const more: RowAction[] = [
+        { id: 'recovery', label: t('mail.row.recovery'), icon: LifeBuoy, onSelect: onRecovery, disabled: stale },
+        { id: 'autoreply', label: t('mail.row.autoreply'), icon: CalendarClock, onSelect: onAutoreply, disabled: stale },
+        ...(limitsOn ? [{ id: 'limit', label: t('mail.row.limit'), icon: Send, onSelect: onLimit, disabled: stale }] : []),
+        { id: 'empty', label: t('mail.row.empty'), icon: Eraser, onSelect: onEmpty, disabled: stale, danger: true },
+        { id: 'delete', label: t('mail.row.delete'), icon: Trash2, onSelect: onDelete, disabled: stale, danger: true },
+    ];
+    return <RowActions name={account.address} actions={open ? [open, password] : [password]} more={more} />;
 }
 
 function Tab({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count?: number | string }) {
