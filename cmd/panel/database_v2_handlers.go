@@ -736,6 +736,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		))
 		return
 	}
+	p.noteGrantReadBack(ctx, server, driver)
 
 	// Publish database, optional user, and grant together. No observer can see
 	// a half-created metadata graph.
@@ -1352,6 +1353,7 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
+	p.noteGrantReadBack(ctx, server, driver)
 
 	// Store grant
 	grantRepo := repositories.NewPostgresDatabaseGrantRepository(p.db.GetDB())
@@ -1468,6 +1470,7 @@ func (p *Panel) handleRevokeDatabaseAccess(w http.ResponseWriter, r *http.Reques
 				regrantErr,
 			)
 		}
+		p.noteGrantReadBack(ctx, server, driver)
 		writeServerError(w, errors.Join(
 			fmt.Errorf("delete database grant metadata: %w", err),
 			regrantErr,

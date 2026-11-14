@@ -174,6 +174,7 @@ export const enDbServer = {
     'dbgf.counts': '{narrowed} narrowed to their own database · {left} left as they are · {waiting} waiting',
     'dbgf.engine.local': 'This server’s MariaDB',
     'dbgf.engine.registered': '{name} (registered database server)',
+    'dbgf.unverifiable': 'Rights given on this server cannot be verified by CelikPanel (since {time}): the account it connects with may not read the table mysql.db, so a right is not read back after it is given. Rights are still given by the database’s exact name, and a name that would not fit is refused before anything is written. To have each right checked, give that account the right to read mysql.db (GRANT SELECT ON mysql.db TO the account); nothing else is needed.',
     'dbgf.checked': 'Last checked {time}.',
     'dbgf.unread': 'What was done could not be read.',
     'dbgf.retry': 'Try again',

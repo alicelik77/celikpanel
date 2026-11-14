@@ -2,6 +2,7 @@ package mariadbgrant
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -172,7 +173,38 @@ func TestLongNamesAreNeverGrantedCutShort(t *testing.T) {
 	if err := VerifyStored(run("n=0\n"), "u", "localhost", "a_b"); !errors.Is(err, ErrNotStored) {
 		t.Fatalf("not stored: %v", err)
 	}
-	if !strings.Contains(StoredStatement("u", "localhost", "a_b"), "Db = X'615C5F62'") {
-		t.Fatal(StoredStatement("u", "localhost", "a_b"))
+	if !strings.Contains(StoredStatement("u", "localhost", Exact("a_b")), "Db = X'615C5F62'") {
+		t.Fatal(StoredStatement("u", "localhost", Exact("a_b")))
+	}
+	// Follow-up: an account that may not read mysql.db is a verified answer
+	// (the write stands on the length rule); any other failure stays unknown.
+	denied := func(string) ([]byte, error) { return nil, fmt.Errorf("MariaDB command failed: %w", ErrReadDenied) }
+	if err := VerifyStored(denied, "u", "localhost", "a_b"); !errors.Is(err, ErrUnverifiable) {
+		t.Fatalf("read denied: %v", err)
+	}
+	down := func(string) ([]byte, error) { return nil, errors.New("connection lost") }
+	if err := VerifyStored(down, "u", "localhost", "a_b"); err == nil || errors.Is(err, ErrUnverifiable) || errors.Is(err, ErrNotStored) {
+		t.Fatalf("unknown taken for an answer: %v", err)
+	}
+	if !ReadDenied("ERROR 1142 (42000) at line 1: SELECT command denied to user 'p'@'localhost' for table `mysql`.`db`") || ReadDenied("ERROR 1045 (28000): Access denied for user") {
+		t.Fatal("ReadDenied")
+	}
+	// An existing database whose exact form does not fit keeps its pattern form.
+	if target, stored, err := GrantTarget(long); err != nil || target != "`"+long+"`" || stored != long {
+		t.Fatalf("GrantTarget(long) = %q %q %v", target, stored, err)
+	}
+	if target, stored, err := GrantTarget("a_b"); err != nil || target != "`a\\_b`" || stored != "a\\_b" {
+		t.Fatalf("GrantTarget = %q %q %v", target, stored, err)
+	}
+	// A generated base is shortened until base+suffix fits.
+	base := strings.Repeat("a_", 20)
+	if fitted := FitBase(base, "_copy_abcd"); !ExactFits(fitted+"_copy_abcd") || !strings.HasPrefix(base, fitted) || len(fitted) >= len(base) {
+		t.Fatalf("FitBase = %q", fitted)
+	}
+	if FitBase("shop_example_com", "_wp") != "shop_example_com" {
+		t.Fatal("a base that fits was changed")
+	}
+	if OverLimit(long) != len(Exact(long))-64 || OverLimit("a_b") != 0 {
+		t.Fatal("OverLimit")
 	}
 }

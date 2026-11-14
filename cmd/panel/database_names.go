@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 )
 
@@ -76,11 +78,14 @@ func writeDatabaseNameTaken(w http.ResponseWriter, what, name string) {
 // would keep it cut short - a right on another name. Nothing was changed.
 const errCodeDatabaseNameTooLong = "DATABASE_NAME_TOO_LONG"
 
-// writeDatabaseNameTooLong is that refusal.
+// writeDatabaseNameTooLong is that refusal: what to do (a shorter name) and
+// by how much, counted as the limit counts (the name's length plus one for
+// each underscore; mariadbgrant.OverLimit).
 func writeDatabaseNameTooLong(w http.ResponseWriter, name string) {
+	over := strconv.Itoa(mariadbgrant.OverLimit(name))
 	writeCodedErrorVars(w, http.StatusConflict, errCodeDatabaseNameTooLong,
-		"The name "+name+" is too long for MariaDB to keep a right on exactly this database (each underscore counts twice; 64 is the limit). For a new database choose a shorter name or fewer underscores. Nothing was changed.",
-		"", nil, map[string]string{"name": name})
+		"The database name "+name+" is too long. Choose a name at least "+over+" characters shorter, or with fewer underscores (each underscore counts as two characters). Nothing was changed.",
+		"", nil, map[string]string{"name": name, "over": over})
 }
 
 // databaseNameTakenByEngine: the driver found the name on the engine itself.

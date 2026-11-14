@@ -69,5 +69,8 @@ CREATE TABLE database_grant_form_engines (
     failures INTEGER NOT NULL DEFAULT 0 CHECK (failures >= 0),
     version TEXT NOT NULL DEFAULT '' CHECK (length(version) <= 120),
     checked_at TEXT,
+    -- Since when a right CelikPanel gave on this engine could not be read
+    -- back: its account may not read mysql.db (NULL: not so).
+    grants_unverifiable_since TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

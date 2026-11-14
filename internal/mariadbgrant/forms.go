@@ -135,20 +135,85 @@ func GrantPrefix(run Exec) (string, error) {
 	return "", nil
 }
 
+// GrantTarget is what CelikPanel writes for a right on an EXISTING database,
+// and the form the grant row then stores: the exact form when it fits a
+// grant row, otherwise the pattern form - as every right on that database
+// was written before alpha.134 - never an exact form cut short (follow-up to
+// the alpha.134 review: such a database keeps working; its pattern rows are
+// listed on the MariaDB page as name_too_long). A NEW database of such a name
+// is refused before anything is made (Target, ExactFits).
+func GrantTarget(name string) (target, stored string, err error) {
+	if !ValidName(name) {
+		return "", "", ErrName
+	}
+	if ExactFits(name) {
+		return "`" + Exact(name) + "`", Exact(name), nil
+	}
+	return "`" + name + "`", name, nil
+}
+
+// FitBase shortens a generated name's base so that base+suffix fits a grant
+// row in the exact form (each `_` counts twice): a name CelikPanel makes for
+// an installer, a copy or a clone never fails late on its length. A base
+// that already fits is returned unchanged; at least one character is kept.
+func FitBase(base, suffix string) string {
+	for len(base) > 1 && !ExactFits(base+suffix) {
+		base = base[:len(base)-1]
+	}
+	return base
+}
+
+// OverLimit is by how many characters the name's exact form is longer than a
+// grant row holds (0 when it fits).
+func OverLimit(name string) int {
+	if over := len(Exact(name)) - maxStoredLen; over > 0 {
+		return over
+	}
+	return 0
+}
+
 // StoredStatement answers "n=<count>" of grant rows of the account that
-// hold exactly the name's exact form: every GRANT is read back with it.
-func StoredStatement(user, host, name string) string {
-	return "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = " + Hex(user) + " AND Host = " + Hex(host) + " AND Db = " + Hex(Exact(name)) + ";"
+// hold exactly the stored form: every GRANT is read back with it.
+func StoredStatement(user, host, stored string) string {
+	return "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = " + Hex(user) + " AND Host = " + Hex(host) + " AND Db = " + Hex(stored) + ";"
 }
 
 // ErrNotStored: a GRANT was answered, but no grant row holds exactly the
-// intended exact form.
+// intended form.
 var ErrNotStored = errors.New("the database server did not store the right by the database's exact name")
 
-// VerifyStored reads a GRANT back: one row of the account must hold exactly
-// the name's exact form.
+// ErrReadDenied is attached by an Exec when the server answered that the
+// account may not read a table (MariaDB and MySQL ERROR 1142, "SELECT command
+// denied ... for table"): a verified answer, not an unknown one.
+var ErrReadDenied = errors.New("the account may not read the grant table")
+
+// ErrUnverifiable: the GRANT was answered, and the account may not read the
+// grant table to read it back (ErrReadDenied on the read-back). The write
+// stands on the length rule checked before it (GrantTarget never writes a
+// form that does not fit); the caller records once that rights on this server
+// cannot be verified. Not a failure.
+var ErrUnverifiable = errors.New("the right was given; this account may not read the grant table to verify it")
+
+// ReadDenied reports whether a client's answer is that refusal.
+func ReadDenied(output string) bool {
+	text := strings.ToLower(output)
+	return strings.Contains(text, "error 1142") || (strings.Contains(text, "command denied to user") && strings.Contains(text, "for table"))
+}
+
+// VerifyStored reads a GRANT on a database by its exact name back.
 func VerifyStored(run Exec, user, host, name string) error {
-	n, err := countMarker(run, StoredStatement(user, host, name), "n", "whether the right was stored by its exact name")
+	return VerifyStoredForm(run, user, host, Exact(name))
+}
+
+// VerifyStoredForm reads a GRANT back: one row of the account must hold
+// exactly the stored form. ErrUnverifiable when the account may not read the
+// grant table; any other failure to read is returned as it is (the result is
+// unknown, never taken for either answer).
+func VerifyStoredForm(run Exec, user, host, stored string) error {
+	n, err := countMarker(run, StoredStatement(user, host, stored), "n", "whether the right was stored by its exact name")
+	if errors.Is(err, ErrReadDenied) {
+		return ErrUnverifiable
+	}
 	if err != nil {
 		return err
 	}

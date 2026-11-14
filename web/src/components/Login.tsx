@@ -1,7 +1,7 @@
 import { PanelAddressHint } from './PanelAddressHint';
 import { BrandMark } from './BrandMark';
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { ShieldCheck, Users, User, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { api, type CurrentUser, type DemoAccount } from '../lib/api';
 import { useI18n } from '../i18n';
 import { useAccessGuidance } from '../lib/accessGuidance';
@@ -14,11 +14,9 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 // "Parolamı unuttum" açıldığında getirilir; açılış yolunda yalnız etiketi var.
 const ForgotPassword = lazy(() => import('./ForgotPassword').then((module) => ({ default: module.ForgotPassword })));
 
-const roleIcon: Record<string, typeof User> = {
-    admin: ShieldCheck,
-    reseller: Users,
-    customer: User,
-};
+// The demo accounts (a server started with --demo only) in their own chunk,
+// fetched only when there is one to show (alpha.134: off the boot path).
+const LoginDemoAccounts = lazy(() => import('./LoginDemoAccounts').then((module) => ({ default: module.LoginDemoAccounts })));
 
 // The front door. Theme- and language-aware, it uses the shared i18n and
 // theme systems so it looks like the rest of the panel from the first
@@ -275,37 +273,8 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                 </form>
                 )}
 
-                {demo.length > 0 && (
-                    <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface/60 p-4">
-                        <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-fg">
-                            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-warning" />
-                            {t('login.demoTitle')}
-                        </div>
-                        <p className="mb-3 text-xs text-fg-muted">{t('login.demoHint')}</p>
-                        <div className="space-y-2">
-                            {demo.map((acc) => {
-                                const Icon = roleIcon[acc.role] ?? User;
-                                return (
-                                    <button
-                                        key={acc.username}
-                                        type="button"
-                                        onClick={() => fillDemo(acc)}
-                                        className="flex w-full items-center gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-left transition-colors hover:border-primary hover:bg-surface"
-                                    >
-                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                            <Icon className="h-4 w-4" />
-                                        </span>
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block text-sm font-medium capitalize text-fg">{acc.role}</span>
-                                            <span className="block truncate font-mono text-xs text-fg-muted">
-                                                {acc.username} · {acc.password}
-                                            </span>
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                {demo.length > 0 && screensReady && (
+                    <Suspense fallback={null}><LoginDemoAccounts accounts={demo} t={t} onPick={fillDemo} /></Suspense>
                 )}
             </div>
         </div>

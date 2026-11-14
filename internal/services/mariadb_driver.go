@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,6 +20,8 @@ type MariaDBDriver struct {
 	port     int
 	username string
 	password string
+	// grantReadBack: what the last GrantPrivileges could read back.
+	grantReadBack string
 }
 
 // mariaDBSuperuser is the account a MariaDB arrives with, and the one every
@@ -153,9 +156,15 @@ func (d *MariaDBDriver) runSQL(sql string) ([]byte, error) {
 		// it means is kept - not the text, which can echo a statement.
 		// R-053. Istemci neden basarisiz oldugunu yazdi ve bu cagri onu atardi.
 		// Cikti burada okunur ve ne anlama geldigi saklanir; metin degil.
-		return nil, WrapDatabaseEngineFailure(
+		wrapped := WrapDatabaseEngineFailure(
 			fmt.Errorf(`MariaDB command failed: %w`, err), output,
 		)
+		// alpha.134 follow-up: "may not read this table" (ERROR 1142) is a
+		// verified answer the grant read-back tells apart from an unknown one.
+		if mariadbgrant.ReadDenied(string(output)) {
+			return nil, fmt.Errorf("%w (%w)", wrapped, mariadbgrant.ErrReadDenied)
+		}
+		return nil, wrapped
 	}
 	return output, nil
 }
@@ -393,7 +402,10 @@ func (d *MariaDBDriver) GrantPrivileges(database, user, privileges string) error
 	if _, err := QuoteMySQLIdentifier(database); err != nil {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
-	dbIdent, err := mariadbgrant.Target(database)
+	// The exact form where it fits a grant row; for an existing database
+	// whose exact form does not fit, the pattern form it always had (a new
+	// one of such a name was refused by CreateDatabase).
+	dbIdent, stored, err := mariadbgrant.GrantTarget(database)
 	if err != nil {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
@@ -426,8 +438,36 @@ func (d *MariaDBDriver) GrantPrivileges(database, user, privileges string) error
 	if err := d.executeSQL("FLUSH PRIVILEGES;"); err != nil {
 		return err
 	}
-	return mariadbgrant.VerifyStored(d.runSQL, user, "localhost", database)
+	// Follow-up: an account that may not read mysql.db (a registered server's
+	// restricted account) cannot read the right back. That is a verified
+	// answer, not a failure: the write stands on the length rule above, and
+	// the caller records once that rights here cannot be verified
+	// (GrantReadBack). A read that failed otherwise stays unknown.
+	switch err := mariadbgrant.VerifyStoredForm(d.runSQL, user, "localhost", stored); {
+	case errors.Is(err, mariadbgrant.ErrUnverifiable):
+		d.grantReadBack = GrantReadBackUnverifiable
+		return nil
+	case err != nil:
+		return err
+	}
+	d.grantReadBack = GrantReadBackVerified
+	return nil
 }
+
+// What the last GrantPrivileges could read back (alpha.134 follow-up).
+const (
+	GrantReadBackVerified     = "verified"
+	GrantReadBackUnverifiable = "unverifiable"
+)
+
+// GrantReadBacker is a driver that says what its last grant's read-back
+// showed: "" (none made), GrantReadBackVerified or GrantReadBackUnverifiable.
+type GrantReadBacker interface {
+	GrantReadBack() string
+}
+
+// GrantReadBack implements GrantReadBacker.
+func (d *MariaDBDriver) GrantReadBack() string { return d.grantReadBack }
 
 // RevokePrivileges revokes privileges from a user on a database. alpha.134:
 // the grant may be held in the exact form (written since alpha.134) or the

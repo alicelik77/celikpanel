@@ -256,7 +256,7 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		}
 	}
 
-	if _, err := mysqlGrantExactly("ALL PRIVILEGES", grantTarget, userLiteral, req.User, req.Name); err != nil {
+	if _, err := mysqlGrantExactly("ALL PRIVILEGES", grantTarget, mariadbgrant.Exact(req.Name), userLiteral, req.User); err != nil {
 		// A resumed operation already had a durable marker. Preserve it for
 		// retry instead of deleting resources after an ambiguous prior result.
 		if databaseCreated {

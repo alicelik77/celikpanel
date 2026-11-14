@@ -159,6 +159,7 @@ export const trDbServer: Record<DbServerKey, string> = {
     'dbgf.counts': '{narrowed} hak kendi veritabanına daraltıldı · {left} hak olduğu gibi bırakıldı · {waiting} hak bekliyor',
     'dbgf.engine.local': 'Bu sunucudaki MariaDB',
     'dbgf.engine.registered': '{name} (kayıtlı veritabanı sunucusu)',
+    'dbgf.unverifiable': 'Bu sunucuda verilen haklar CelikPanel tarafından doğrulanamıyor ({time} tarihinden beri): bağlandığı hesap mysql.db tablosunu okuyamıyor, bu yüzden bir hak verildikten sonra geri okunmuyor. Haklar yine veritabanının tam adıyla verilir; sığmayacak bir ad, hiçbir şey yazılmadan reddedilir. Her hakkın denetlenmesi için o hesaba mysql.db tablosunu okuma hakkı verin (GRANT SELECT ON mysql.db TO hesap); başka bir şey gerekmez.',
     'dbgf.checked': 'Son denetim: {time}.',
     'dbgf.unread': 'Yapılanlar okunamadı.',
     'dbgf.retry': 'Yeniden dene',

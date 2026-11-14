@@ -161,7 +161,15 @@ same rules.
     this rewrite may run, and never at the same moment as a row of it.
   - Every GRANT CelikPanel writes on MariaDB runs with NO_AUTO_CREATE_USER
     in its session and is read back: the stored row must hold exactly the
-    exact form. Measured on MariaDB 11.8.6: without the mode, a GRANT to an
+    exact form. The length rule below, checked before any statement, is what
+    prevents a cut-short right; the read-back is a second line. An account
+    that may not read mysql.db (a registered server's restricted account;
+    ERROR 1142) cannot read a right back: the right stands on the length
+    rule, nothing is refused, and the engine's state records once that rights
+    there cannot be verified (the MariaDB page says so and what the account
+    would need: SELECT on mysql.db); a later verified read-back clears it. A
+    read-back that failed in any other way is an unknown result, never taken
+    for either answer. Measured on MariaDB 11.8.6: without the mode, a GRANT to an
     account dropped meanwhile creates it again with an empty password; with
     it the GRANT is refused (ERROR 1133). MariaDB 10.11 and 11.8 have it in
     their default sql_mode; MySQL 8 removed it, so it is not sent there.
@@ -172,10 +180,15 @@ same rules.
     form is accepted, SHOW GRANTS shows it whole, but mysql.db.Db keeps it
     cut to 64 characters - after the next
     reload a right on another, shorter name. So a new database of such a
-    name is refused with a plain sentence (DATABASE_NAME_TOO_LONG), a user
-    is not given an existing one by the exact form, and existing pattern
-    rows of such a name stay as they are and are listed with that reason
-    (remote copies keep the same pattern form as the local account).
+    name is refused before anything is made (DATABASE_NAME_TOO_LONG: choose
+    a name at least N characters shorter, or with fewer underscores), and a
+    database copy checks it before the copy starts. Names CelikPanel makes
+    itself (application installs, WordPress installs and clones, site
+    copies) are shortened at their base until they fit, so they never fail
+    late. An existing database of such a name keeps working: a user given
+    to it gets the pattern form it always had, stored whole and read back
+    (never an exact form cut short); its pattern rows are listed with that
+    reason, and remote copies keep the same form as the local account.
   - Rows the rewrite cannot record (the anonymous account ''@host, a
     pattern that reaches hundreds of databases) are recorded and listed (at
     most 50 database names a row, the rest counted); a failure to record

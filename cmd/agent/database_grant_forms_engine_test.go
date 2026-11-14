@@ -110,7 +110,8 @@ func TestCrossCustomerRightsEndOnRealMariaDB(t *testing.T) {
 // mysql.db.Db keeps it cut to 64 - a right on another, shorter name. Such a
 // database is never made, and a user is never given an existing one by its
 // exact form; every GRANT is read back. (CelikPanel's own names are at most
-// 63 characters.)
+// 63 characters.) An existing database of such a name keeps working: a new
+// user gets the pattern form, stored whole.
 func TestTooLongExactNamesAreRefusedOnRealMariaDB(t *testing.T) {
 	e := requireTestEngines(t)
 	installTestEngines(t, e)
@@ -129,11 +130,17 @@ func TestTooLongExactNamesAreRefusedOnRealMariaDB(t *testing.T) {
 	mustRun(t, "outside", e.maria("", "", "CREATE DATABASE "+long+";"))
 	add := accessUser(t, true, transport.DatabaseAccessUserRequest{Engine: "mysql", Database: long, Username: "a134long_r",
 		Password: engineReadPassword, Access: transport.DatabaseAccessRead})
-	if add.Applied || !add.NameTooLong {
+	// Follow-up: such an existing database keeps working - its new user gets
+	// the pattern form every right on it had before alpha.134, stored whole,
+	// never an exact form cut short.
+	if !add.Applied || add.NameTooLong {
 		t.Fatalf("added: %+v", add)
 	}
-	if n := mustRun(t, "account", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User = 'a134long_r';")); n != "n=0" {
-		t.Fatalf("an account was made: %s", n)
+	if n := mustRun(t, "stored", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 'a134long_r' AND Db = '"+long+"';")); n != "n=1" {
+		t.Fatalf("the right is not stored whole in the pattern form: %s", n)
+	}
+	if n := mustRun(t, "cut", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 'a134long_r' AND Db <> '"+long+"';")); n != "n=0" {
+		t.Fatalf("a right on another (cut) name: %s", n)
 	}
 	// Every grant CelikPanel writes carries NO_AUTO_CREATE_USER in its
 	// session: a GRANT to an account that is gone is refused, never made

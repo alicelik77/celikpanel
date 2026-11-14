@@ -165,14 +165,12 @@ func createMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		return
 	}
 	// alpha.134: the grant names the database exactly (`shop\_a`.*), never
-	// the pattern `shop_a`.* that also covers other databases.
-	target, err := mariadbgrant.Target(req.Database)
-	if errors.Is(err, mariadbgrant.ErrExactTooLong) {
-		// Its exact form would be stored cut short - a right on another name.
-		resp.NameTooLong = true
-		resp.Error = "the name of database " + req.Database + " is too long for a right by its exact name; nothing was changed"
-		return
-	}
+	// the pattern `shop_a`.* that also covers other databases. The database
+	// exists: when its exact form does not fit a grant row (it would be
+	// stored cut short - a right on another name), the new user gets the
+	// pattern form every right on it had before alpha.134 (follow-up: such a
+	// database keeps working; the MariaDB page lists those rows).
+	target, stored, err := mariadbgrant.GrantTarget(req.Database)
 	if err != nil {
 		resp.Error = "invalid database name; nothing was changed"
 		return
@@ -211,7 +209,7 @@ func createMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	if req.Access == transport.DatabaseAccessWrite {
 		rights = "ALL PRIVILEGES"
 	}
-	if output, err := mysqlGrantExactly(rights, target, user, req.Username, req.Database); err != nil {
+	if output, err := mysqlGrantExactly(rights, target, stored, user, req.Username); err != nil {
 		failure := hostcmd.Fail("the database server did not give the new user its rights", output, err, databaseClientMeaning).Error()
 		if _, dropErr := mysqlExecStatement("DROP USER IF EXISTS " + user + "@'localhost';"); dropErr != nil {
 			resp.CleanupIncomplete = true
@@ -440,7 +438,7 @@ func droppedRightsKept(rows []mariadbgrant.DroppedRow) []transport.DroppedRightK
 // name (target from mariadbgrant.Target): NO_AUTO_CREATE_USER in the session
 // on MariaDB (a GRANT never re-creates an account dropped meanwhile), then
 // the stored row is read back - it must hold exactly the exact form.
-func mysqlGrantExactly(rights, target, userLiteral, username, database string) ([]byte, error) {
+func mysqlGrantExactly(rights, target, stored, userLiteral, username string) ([]byte, error) {
 	run := mysqlGrantExec("the database server")
 	prefix, err := mariadbgrant.GrantPrefix(run)
 	if err != nil {
@@ -449,7 +447,13 @@ func mysqlGrantExactly(rights, target, userLiteral, username, database string) (
 	if output, err := mysqlExecStatement(prefix + "GRANT " + rights + " ON " + target + ".* TO " + userLiteral + "@'localhost'; FLUSH PRIVILEGES;"); err != nil {
 		return output, err
 	}
-	return nil, mariadbgrant.VerifyStored(run, username, "localhost", database)
+	// The Agent connects as the local superuser, which reads mysql.db; were it
+	// ever refused that read, the right stands on the length rule (as on a
+	// registered server) rather than being reported as a failure.
+	if err := mariadbgrant.VerifyStoredForm(run, username, "localhost", stored); err != nil && !errors.Is(err, mariadbgrant.ErrUnverifiable) {
+		return nil, err
+	}
+	return nil, nil
 }
 
 // mysqlGrantExec runs statements for internal/mariadbgrant: a failure keeps
@@ -458,7 +462,11 @@ func mysqlGrantExec(what string) mariadbgrant.Exec {
 	return func(statement string) ([]byte, error) {
 		output, err := mysqlExecStatement(statement)
 		if err != nil {
-			return output, hostcmd.Fail(what+" did not answer", output, err, databaseClientMeaning)
+			failure := hostcmd.Fail(what+" did not answer", output, err, databaseClientMeaning)
+			if mariadbgrant.ReadDenied(string(output)) {
+				return output, fmt.Errorf("%w (%w)", failure, mariadbgrant.ErrReadDenied)
+			}
+			return output, failure
 		}
 		return output, nil
 	}

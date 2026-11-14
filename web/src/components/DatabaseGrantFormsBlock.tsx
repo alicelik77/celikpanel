@@ -31,6 +31,8 @@ export interface GrantFormsEngine {
     reason?: string;
     version?: string;
     checked_at?: string;
+    /** Since when a right CelikPanel gave here could not be read back: the account may not read mysql.db. */
+    grants_unverifiable_since?: string;
     narrowed: number;
     left: number;
     waiting: number;
@@ -192,6 +194,11 @@ function GrantForms() {
                                         {t('dbgf.counts', { narrowed: engine.narrowed, left: engine.left, waiting: engine.waiting })}
                                         {engine.checked_at ? ` · ${t('dbgf.checked', { time: formatDateTime(engine.checked_at, locale) })}` : ''}
                                     </p>
+                                    {engine.grants_unverifiable_since && (
+                                        <p className="mt-2 max-w-[75ch] text-fg-muted" data-grant-forms-unverifiable="">
+                                            {t('dbgf.unverifiable', { time: formatDateTime(engine.grants_unverifiable_since, locale) })}
+                                        </p>
+                                    )}
                                 </Guidance>
                             </div>
                         );

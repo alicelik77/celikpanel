@@ -109,4 +109,6 @@ export const trAccountAccessScreens: Record<AccountAccessScreenKey, string> = {
     'err.account_invitation_superseded': 'Bu hesabın zaten bir parolası var; davet gönderilmedi. Kişi o parolayla ya da “Parolamı unuttum” ile oturum açar.',
     'err.account_invitation_request_invalid': 'İstek okunamadı; hiçbir şey değişmedi. Sayfayı yeniden yükleyip yeniden deneyin.',
     'err.account_invitation_with_password': 'Davetle kişi kendi parolasını belirler; davetle birlikte parola verilemez. Parola alanını boş bırakın.',
+    'acct.demo.title': 'Demo hesapları',
+    'acct.demo.hint': 'Geliştirme modu — formu doldurmak için bir role tıklayın.',
 };

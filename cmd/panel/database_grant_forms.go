@@ -695,6 +695,38 @@ func (p *Panel) setGrantFormsEngine(ctx context.Context, key string, serverID in
 	}
 }
 
+// noteGrantReadBack (alpha.134 follow-up) keeps on the engine's state what
+// the last right CelikPanel gave there could read back. An account that may
+// not read mysql.db (a registered server's restricted account) cannot verify
+// a right: that is recorded once - the MariaDB page says it, with what the
+// account would need - and the right stands on the length rule checked before
+// it was written; it is never a refusal and never repeated per operation. A
+// later read-back that succeeded clears it. Nothing is recorded for a driver
+// that does not say (PostgreSQL) or a grant that was not read back.
+func (p *Panel) noteGrantReadBack(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver) {
+	reader, ok := driver.(services.GrantReadBacker)
+	if !ok || server == nil {
+		return
+	}
+	key := databaseServerEngineIdentity(server)
+	var err error
+	switch reader.GrantReadBack() {
+	case services.GrantReadBackUnverifiable:
+		_, err = p.db.GetDB().ExecContext(ctx, `
+			INSERT INTO database_grant_form_engines (engine_key, server_id, state, reason, grants_unverifiable_since, updated_at)
+			VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+			ON CONFLICT (engine_key) DO UPDATE SET
+				grants_unverifiable_since = COALESCE(database_grant_form_engines.grants_unverifiable_since, datetime('now'))`,
+			key, server.ID, grantFormsWaiting, grantFormsReasonStarting)
+	case services.GrantReadBackVerified:
+		_, err = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_form_engines SET grants_unverifiable_since = NULL
+			WHERE engine_key = ? AND grants_unverifiable_since IS NOT NULL`, key)
+	}
+	if err != nil {
+		log.Printf("database rights on %s: whether rights there can be verified could not be recorded: %v", key, err)
+	}
+}
+
 // notifyDatabasePatternRights tells the administrators once, while rows that
 // CelikPanel leaves as they are exist; never again for the same reason.
 func (p *Panel) notifyDatabasePatternRights(ctx context.Context) {
@@ -797,6 +829,10 @@ type grantFormsEngineView struct {
 	Narrowed  int    `json:"narrowed"`
 	Left      int    `json:"left"`
 	Waiting   int    `json:"waiting"`
+	// GrantsUnverifiableSince (alpha.134 follow-up): since when a right
+	// CelikPanel gave on this server could not be read back, because the
+	// account it connects with may not read mysql.db (empty: not so).
+	GrantsUnverifiableSince string `json:"grants_unverifiable_since,omitempty"`
 }
 
 type grantFormsRowView struct {
@@ -858,13 +894,13 @@ func (p *Panel) databaseGrantFormsView(ctx context.Context) (grantFormsView, err
 	db := p.db.GetDB()
 	for _, engine := range engines {
 		ev := grantFormsEngineView{Key: engine.key, Name: engine.servers[0].Name, Local: engine.local, State: grantFormsWaiting, Reason: grantFormsReasonStarting}
-		var checked sql.NullString
-		err := db.QueryRowContext(ctx, `SELECT state, reason, version, checked_at FROM database_grant_form_engines WHERE engine_key = ?`, engine.key).
-			Scan(&ev.State, &ev.Reason, &ev.Version, &checked)
+		var checked, unverifiable sql.NullString
+		err := db.QueryRowContext(ctx, `SELECT state, reason, version, checked_at, grants_unverifiable_since FROM database_grant_form_engines WHERE engine_key = ?`, engine.key).
+			Scan(&ev.State, &ev.Reason, &ev.Version, &checked, &unverifiable)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return view, err
 		}
-		ev.CheckedAt = checked.String
+		ev.CheckedAt, ev.GrantsUnverifiableSince = checked.String, unverifiable.String
 		if err := db.QueryRowContext(ctx, `SELECT
 			COALESCE(SUM(CASE WHEN state = 'done' AND reason <> 'gone' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN state = 'left' THEN 1 ELSE 0 END), 0),
