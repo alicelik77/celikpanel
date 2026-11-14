@@ -1338,6 +1338,13 @@ type outgoingDomainView struct {
 	Default           int                   `json:"default"`
 	MayExceedCeiling  bool                  `json:"may_exceed_ceiling"`
 	Mailboxes         []outgoingMailboxView `json:"mailboxes"`
+
+	// alpha.135: what the hosting account sent this hour, and what the
+	// domain's and the account's hourly limits refused in the last 7 days
+	// (the domain's mail screen names a limit only when it matters).
+	SubscriptionUsedHour  int `json:"subscription_used_hour"`
+	DomainRefused7d       int `json:"domain_refused_7d"`
+	SubscriptionRefused7d int `json:"subscription_refused_7d"`
 }
 
 func (p *Panel) handleDomainMailOutgoing(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -1409,6 +1416,18 @@ func (p *Panel) outgoingDomainView(ctx context.Context, domainID int, caller *Ca
 		}
 		view.Mailboxes = append(view.Mailboxes, item)
 	}
+	_ = db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(h.recipients), 0) FROM mail_outgoing_hourly h
+		JOIN email_accounts a ON lower(a.address) = h.address JOIN domains d ON d.id = a.domain_id
+		WHERE d.subscription_id = ? AND h.hour = ?`, subID, hour).Scan(&view.SubscriptionUsedHour)
+	_ = db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(h.limit_refusals), 0) FROM mail_outgoing_hourly h
+		JOIN email_accounts a ON lower(a.address) = h.address
+		WHERE a.domain_id = ? AND h.hour >= ? AND h.limit_kind = 'domain'`, domainID, weekAgo).Scan(&view.DomainRefused7d)
+	_ = db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(h.limit_refusals), 0) FROM mail_outgoing_hourly h
+		JOIN email_accounts a ON lower(a.address) = h.address JOIN domains d ON d.id = a.domain_id
+		WHERE d.subscription_id = ? AND h.hour >= ? AND h.limit_kind = 'subscription'`, subID, weekAgo).Scan(&view.SubscriptionRefused7d)
 	return view, nil
 }
 

@@ -75,6 +75,14 @@ func protectedBuildGateOperations() []buildGateOperation {
 			}
 			return response.Error
 		}},
+		// alpha.135: holding a mail folder an earlier deletion left in place.
+		{name: "HoldLeftMailFolderV1", run: func(expected string) string {
+			var response transport.HoldLeftMailFolderResponse
+			if err := agent.HoldLeftMailFolderV1(&transport.HoldLeftMailFolderRequest{ExpectedBuildCommit: expected, Email: "old@example.com", DomainID: 7}, &response); err != nil {
+				return err.Error()
+			}
+			return response.Error
+		}},
 		// alpha.128: site log retention.
 		{name: "SiteLogRetentionV1", run: func(expected string) string {
 			var response transport.SiteLogRetentionResponse

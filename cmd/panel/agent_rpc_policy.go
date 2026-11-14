@@ -167,7 +167,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServiceHealthV1 Agent.SSHPasswordLoginStatusV1
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
-		Agent.DeletionHoldingInventoryV1
+		Agent.DeletionHoldingInventoryV1 Agent.LeftMailFoldersV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -242,6 +242,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1 Agent.SetMailDomainOptionsV1
 		Agent.SetMailPasswordIfUnchangedV1
 		Agent.MailRelayApplyV1 Agent.MailSubaddressingV1 Agent.MailSenderListV1
+		Agent.HoldLeftMailFolderV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -387,6 +388,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
 	"Agent.DeletionHoldingInventoryV1":    agentRPCStandardReadTimeout,
 	"Agent.RemoveHeldItemV1":              agentRPCMutationTimeout,
+	"Agent.LeftMailFoldersV1":             agentRPCStandardReadTimeout,
+	"Agent.HoldLeftMailFolderV1":          agentRPCMutationTimeout,
 	"Agent.ReadBackupChunk":               agentRPCStandardReadTimeout,
 	"Agent.ReadSystemSQLiteSnapshotChunk": agentRPCStandardReadTimeout,
 	"Agent.ServiceJournal":                agentRPCStandardReadTimeout,

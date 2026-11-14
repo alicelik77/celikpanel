@@ -62,7 +62,7 @@ const (
 	holdingUnknown = "unknown"
 )
 
-var holdingIDPattern = regexp.MustCompile(`^(mail\.(domain|mailbox)-[1-9][0-9]{0,17}-[0-9a-f]{16}|backups\.s[1-9][0-9]{0,17}-d[1-9][0-9]{0,17})$`)
+var holdingIDPattern = regexp.MustCompile(`^(mail\.(domain|mailbox|left)-[1-9][0-9]{0,17}-[0-9a-f]{16}|backups\.s[1-9][0-9]{0,17}-d[1-9][0-9]{0,17})$`)
 
 // holdingMu keeps the periodic step and "Delete now" from removing at once.
 var holdingMu sync.Mutex
@@ -216,9 +216,21 @@ func (p *Panel) writeHoldingRecord(ctx context.Context, rec holdingRecord) error
 	return err
 }
 
+// holdingLeftItem: a mailbox folder an earlier release left in its live
+// domain folder, taken into the list when a mailbox was made at its address
+// or when the administrator asked (alpha.135; deletion_holding_left.go).
+func holdingLeftItem(rec holdingRecord) bool {
+	return rec.Kind == transport.HeldItemMail && strings.HasPrefix(rec.Name, "left-")
+}
+
 // holdingOwnerGone: the item's domain (or mailbox) no longer exists, so
-// nothing live can use it. Read only.
+// nothing live can use it. Read only. A folder left in place by an earlier
+// deletion has no owner: it was taken out of its domain's live folder, and
+// nothing live uses it.
 func (p *Panel) holdingOwnerGone(ctx context.Context, rec holdingRecord) (bool, error) {
+	if holdingLeftItem(rec) {
+		return true, nil
+	}
 	var n int
 	var err error
 	if rec.AccountID > 0 {
@@ -314,6 +326,10 @@ func (p *Panel) adoptHeldItems(ctx context.Context) error {
 		}
 		if rec.DomainID > 0 {
 			rec.Domain = p.holdingDeletedDomainName(ctx, rec.DomainID)
+			if holdingLeftItem(rec) {
+				// Its domain lives on.
+				_ = p.db.GetDB().QueryRowContext(ctx, `SELECT name FROM domains WHERE id = ?`, rec.DomainID).Scan(&rec.Domain)
+			}
 		}
 		if _, err := p.holdItem(ctx, rec); err != nil {
 			return err
@@ -501,6 +517,9 @@ type holdingItemView struct {
 	State     string          `json:"state"`
 	Failure   *holdingFailure `json:"failure,omitempty"`
 	NextTryAt string          `json:"next_try_at,omitempty"`
+	// Left: a mailbox folder an earlier deletion had left in its domain's
+	// live folder (alpha.135).
+	Left bool `json:"left,omitempty"`
 }
 
 // handleDeletionHolding: GET the list (administrator only). Reads only.
@@ -521,7 +540,7 @@ func (p *Panel) handleDeletionHolding(w http.ResponseWriter, r *http.Request) {
 	for _, rec := range records {
 		view := holdingItemView{ID: rec.ID, Kind: rec.Kind, Domain: rec.Domain, DomainID: rec.DomainID, Mailbox: rec.Mailbox,
 			Bytes: rec.Bytes, Files: rec.Files, DeletedAt: rec.DeletedAt, RemoveAfter: rec.RemoveAfter, Adopted: rec.Adopted,
-			Path: rec.Path, State: "kept", Failure: rec.Failure, NextTryAt: rec.NextTryAt}
+			Path: rec.Path, State: "kept", Failure: rec.Failure, NextTryAt: rec.NextTryAt, Left: holdingLeftItem(rec)}
 		if rec.Failure != nil {
 			view.State = rec.Failure.Kind
 		} else if gone, err := p.holdingOwnerGone(r.Context(), rec); err == nil && !gone {
@@ -529,8 +548,18 @@ func (p *Panel) handleDeletionHolding(w http.ResponseWriter, r *http.Request) {
 		}
 		items = append(items, view)
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"items": items, "summary": summarizeHolding(records),
-		"read_at": holdingNow().UTC().Format(time.RFC3339)})
+	answer := map[string]any{"items": items, "summary": summarizeHolding(records),
+		"read_at": holdingNow().UTC().Format(time.RFC3339)}
+	// The mail folders still left in live domain folders (alpha.135): listed
+	// beside, never moved by this read. A list the Agent could not give is
+	// said as not known.
+	left, err := p.leftMailFolders(r.Context())
+	answer["left"] = left
+	if err != nil {
+		answer["left_unknown"] = true
+		log.Printf("[holding] mail left in place: %v", err)
+	}
+	_ = json.NewEncoder(w).Encode(answer)
 }
 
 // handleDeletionHoldingItem: DELETE removes one item now; GET .../backups
@@ -540,6 +569,10 @@ func (p *Panel) handleDeletionHoldingItem(w http.ResponseWriter, r *http.Request
 		return
 	}
 	rest := strings.TrimPrefix(r.URL.Path, holdingPath+"/")
+	if rest == holdingLeftPath {
+		p.handleHoldLeftMail(w, r)
+		return
+	}
 	id, sub, _ := strings.Cut(rest, "/")
 	if !holdingIDPattern.MatchString(id) {
 		writeClientError(w, http.StatusNotFound, "invalid request")

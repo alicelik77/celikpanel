@@ -483,3 +483,42 @@ func TestDomainMailOutgoingSetStaysWithinTheCeiling(t *testing.T) {
 		t.Fatalf("postfwd was not given the mailbox value: %v", last.MailboxLimits)
 	}
 }
+
+// alpha.135: the domain's view says what the whole hosting account sent this
+// hour and what the domain's and the account's limits refused in 7 days, so
+// the mail screen names a limit only when it matters.
+func TestOutgoingDomainViewNamesTheAccountHourAndRefusals(t *testing.T) {
+	f := newOutgoingFixture(t)
+	f.enable(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	hour := now.Truncate(time.Hour)
+	at := func(d time.Duration) string { return hour.Add(d).Format(time.RFC3339) }
+	for _, row := range []struct {
+		address, hour, kind string
+		recipients, refused int
+	}{
+		{"a@example.com", at(0), "", 300, 0},
+		{"b@example.org", at(0), "", 500, 0},
+		{"a@example.com", at(-48 * time.Hour), "domain", 10, 4},
+		{"b@example.org", at(-24 * time.Hour), "subscription", 10, 3},
+		{"new@example.com", at(-2 * time.Hour), "mailbox", 10, 5},
+		{"a@example.com", at(-8 * 24 * time.Hour), "domain", 10, 9},
+	} {
+		var kind any
+		if row.kind != "" {
+			kind = row.kind
+		}
+		if _, err := f.db.Exec(`INSERT INTO mail_outgoing_hourly (address, hour, messages, recipients, limit_refusals, limit_kind, paused_refusals, mismatch_refusals)
+			VALUES (?, ?, 1, ?, ?, ?, 0, 0)`, row.address, row.hour, row.recipients, row.refused, kind); err != nil {
+			t.Fatal(err)
+		}
+	}
+	view, err := f.p.outgoingDomainView(ctx, 9801, &Caller{ID: 9602, Role: roleCustomer})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.DomainUsedHour != 300 || view.SubscriptionUsedHour != 800 || view.DomainRefused7d != 4 || view.SubscriptionRefused7d != 3 {
+		t.Fatalf("view = used %d/%d refused %d/%d", view.DomainUsedHour, view.SubscriptionUsedHour, view.DomainRefused7d, view.SubscriptionRefused7d)
+	}
+}

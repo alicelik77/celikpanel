@@ -18,6 +18,13 @@ type MailAccount struct {
 	Email    string `json:"email"`
 	Password string `json:"password,omitempty"`
 	QuotaMB  int    `json:"quota_mb"`
+	// LeftDomainID (alpha.135, additive; Agent.AddMailAccount only): the
+	// mailbox's domain record. When it is set and a mail folder for this
+	// address is still there with no account (left by a deletion before
+	// alpha.135), that folder is first moved into the mail holding folder
+	// (left-<id>-<16 hex>, kept 30 days), so the new mailbox starts empty;
+	// the answer names it (HeldName). Zero keeps the folder.
+	LeftDomainID int `json:"left_domain_id,omitempty"`
 }
 
 type MailForwarding struct {
@@ -95,8 +102,9 @@ type UpdateMailQuotaRequest struct {
 type MailMutationResponse struct {
 	Applied bool `json:"applied"`
 	// HeldName and HeldBytes (alpha.135, additive): the holding folder a
-	// deleted mailbox's stored mail was moved into, and its size (-1 when it
-	// could not be read). Empty when there was nothing to hold.
+	// deleted mailbox's stored mail was moved into (or, for a mailbox made,
+	// the folder an earlier deletion had left at its address), and its size
+	// (-1 when it could not be read). Empty when there was nothing to hold.
 	HeldName  string `json:"held_name,omitempty"`
 	HeldBytes int64  `json:"held_bytes,omitempty"`
 }
