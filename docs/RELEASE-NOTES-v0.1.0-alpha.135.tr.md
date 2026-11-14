@@ -2,12 +2,11 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.135.md)
 
-Üç işlik küçük bir sürüm. Bir alan adını silerken veritabanlarına ne
+İki işlik küçük bir sürüm. Bir alan adını silerken veritabanlarına ne
 olacağı sorulur ve siteden geride hiçbir şey kalmaz; silmeden kalan posta
 ve yedekler tek bir listede 30 gün saklanır, sonra kendiliğinden silinir.
 Her posta kutusu kendi web postasını açar, gönderim sınırları posta
-kutusunun satırında tek satırdır. Yedek DNS sunucusunda web postası adresi
-denetimi, eksik kaydı ana DNS sunucusundan eklemesini isteyebilir.
+kutusunun satırında tek satırdır.
 **Kurulu panelleri yalnız sahip, panelin kendi güncelleme ekranından
 günceller.**
 
@@ -37,10 +36,16 @@ günceller.**
    kendiliğinden taşınmaz. Kenara almak istediğiniz her biri için **30 gün
    saklamaya al…** düğmesine basın; böyle bir adreste açılan yeni posta
    kutusu da önce eski postayı kendiliğinden listeye alır.
-4. Önceki sürümlerin alan adı silmeleri, veritabanlarını veritabanı
-   sunucusunda ama panelin listelerinin dışında bıraktı. Bu sürüm onları
-   geri getirmez (bkz. Bilinen sınırlar); bundan sonra silinen bir alan adı,
-   siz silmeyi seçmedikçe veritabanlarını listede tutar.
+4. **Önceki silmelerin posta ve yedek dışında bıraktıkları yerinde kalır.**
+   Önceki bir sürümle alan adı silmiş bir sunucuda bu sürüm şunları ne
+   listeler ne de siler: silinen sitenin web sunucusu ve trafik günlükleri,
+   zamanlanmış görevler dosyası (artık var olmayan bir hesabın crontab'ı),
+   sertifika denetim klasörü ve MariaDB ile PostgreSQL'de duran ama panelin
+   hiçbir listesinde görünmeyen veritabanları ve veritabanı kullanıcıları.
+   Bunların hiçbiri hiçbir sayfada görünmez. Durdukları yerde zarar
+   vermezler; sunucu yöneticisi onları elle kaldırabilir. Bundan sonra
+   silinen bir alan adı bunların hiçbirini geride bırakmaz; veritabanları
+   da siz silmeyi seçmedikçe listede kalır.
 
 ## Sizin için ne değişiyor
 
@@ -109,27 +114,6 @@ günceller.**
 - Gönderimi durdurulan posta kutusunun uyarısı ve çıkış yolu (yeni parola)
   listenin bütün genişliğinde bir satırda durur.
 
-### Web postası adres kaydını yedek DNS sunucusundan eklemek
-
-Bu sunucu bir eşin yedek DNS sunucusuysa ve web postasının adresi
-(örneğin `webmail.secondary.example.com`) ana DNS sunucusunun bölgesindeyse,
-adres denetimi artık **Kopyala**'nın yanında **Ekle…** sunar. Onaylanan tek
-bir istek, iki sunucunun zaten sahip olduğu bağlantıyla ana DNS
-sunucusundan kaydı eklemesini ister. Panelin kendi penceresi hangi kaydın,
-hangi bölgeye, hangi sunucuda ekleneceğini ve başka hiçbir şeyin
-değişmediğini söyler; adımlar ardından gelir (ana sunucuya sormak, kaydın
-orada yazılması, genel DNS'in onu göstermesi). Eklemeden sonra sayfa
-genel DNS'i en çok 5 dakika boyunca 20 saniyede bir okur, sonra kurulum
-düğmesini gösterir ya da sürenin dolduğunu söyleyip **Denetle** sunar.
-Her son olduğu gibi söylenir: eklendi ya da zaten vardı; adı konmuş bir
-kuralla reddedildi, kimin ne yapacağıyla birlikte, **Kopyala** yerinde
-kalır; ya da bilinmiyor, sonraki adım **Denetle**, hiçbir şey yeniden
-gönderilmez. Ana sunucunun kabul etmediği IPv6 (AAAA) kaydı söylenir ve
-kendi **Kopyala**'sıyla isteğe bağlı bırakılır. Bu panelin kendi
-barındırdığı bir bölge, kendi kayıt düzenleyicisi üzerinden aynı onayı ve
-adımları alır. Başka yerde yönetilen bir ad için denetim, genel DNS
-gösteriyorsa en yakın bölgesinin ad sunucularını adıyla söyler.
-
 ## Bilinen sınırlar
 
 ### Silmelerden kalanlar
@@ -143,20 +127,16 @@ gösteriyorsa en yakın bölgesinin ad sunucularını adıyla söyler.
 - Liste yerinde kalan posta klasörlerinden bir seferde en çok 500 tanesini
   gösterir, daha fazlası varsa bunu söyler; bunlar saklamaya alındıkça
   kalanlar görünür.
-- Önceki sürümlerin alan adı silmelerinin veritabanı sunucusunda (panelin
-  listeleri dışında) bıraktığı veritabanları panele geri getirilmez.
+- Önceki sürümlerin alan adı silmelerinin posta ve yedek dışında
+  bıraktıkları (günlükler, bir crontab, sertifika denetim klasörü,
+  veritabanları ve kullanıcıları) ne listelenir ne silinir (bkz.
+  "alpha.134'ten güncelleme", 4. adım).
 
 ### Posta kutuları
 
 - Tarayıcıda başka bir posta kutusunun açık web postası oturumu varsa
   **Web posta** o oturumu açar; öteki kutuya geçmek için önce web
   postasından çıkın.
-
-### Ana DNS sunucusu üzerinden kayıt eklemek
-
-- Bu yolla yalnız adres kayıtları (A ve AAAA) eklenebilir; TXT kayıtları
-  (örneğin posta doğrulama kayıtları) iki sunucu arasındaki bağlantıyla
-  eklenemez ve **Kopyala** olarak kalır.
 
 ### alpha.136'ya taşınanlar
 
@@ -165,7 +145,28 @@ adla açılan veritabanını silmesin diye); CelikPanel'in motor hesabının
 geride kalmış kopyalarının kendiliğinden onarılması; veritabanı
 kullanıcısının adını neyin boşa çıkaracağını söyleyen ret; PostgreSQL'de
 veritabanının kendi kullanıcısına ait tablolardaki haklar; hesap kalırken
-"kullanıcı kaldırıldı" sonucu; Veritabanları listesinde boyutlar.
+"kullanıcı kaldırıldı" sonucu; Veritabanları listesinde boyutlar. Ayrıca web
+postası adres denetiminde **Kopyala**'nın yanındaki, web postası kaydını
+eklemesini eşli ana DNS sunucusundan isteyen **Ekle…** düğmesi:
+laboratuvar, gerçek bir sunucu çiftinde kaydı eklemediğini gördü; bu yüzden
+bu sürümde yok (denetim, alpha.134'teki gibi **Kopyala** sunar).
+
+### Laboratuvarda bulunan, sonraki sürüme kalan kusurlar
+
+- Başka bir sekmede açık **Alan Adları** sayfası başka yerde yapılan bir
+  silmeyi izlemez; silinen alan adı sayfa yeniden açılana dek orada durur
+  (**Veritabanları** sayfası izler).
+- Yerine bağlantı konmuş tutulan bir klasörü **Şimdi sil…** doğru biçimde
+  reddeder, ama sonraki tur onu listeden düşürür; bağlantı diskte kalır.
+- Yarıda kalan bir silme (silinemeyen bir dosya) o klasörün geri kalanını
+  silmiş olur; satır başarısız olduğunu ve nedenini söyler.
+- **30 gün saklamaya al…** sonrasında biten pencerede "Tamamlandı" altında
+  artık bir "Sunucuda çalışılıyor…" satırı kalır.
+- Ana sayfanın etkinlik akışı tutulan bir öğeyi iç anahtarıyla (örneğin
+  `backups.s5-d39`) anar, "<alan adı> yedekleri" diye değil.
+- Alan adı silmesinin sonucundaki haklar paragrafı uzun; tek satır olmalı,
+  kalanı kapalı **Ayrıntılar** altında. Silmelerden kalanlar listesindeki
+  klasör yolları açık gösterilir.
 
 ### Diğer
 
@@ -176,9 +177,43 @@ veritabanının kendi kullanıcısına ait tablolardaki haklar; hesap kalırken
 
 ## Laboratuvarda denenenler
 
-**Yer tutucu: bu sürümün laboratuvar denemesi henüz yapılmadı.** Bu bölüm
-denemeden sonra; neyin denendiği, neyin geçtiği ve hiçbir denemenin neye
-bakmadığıyla yazılır.
+İki sanal sunucuda bir laboratuvar denemesi: MariaDB 11.8.6 ve PostgreSQL
+ile Debian 13, MariaDB 10.11.14 ile Ubuntu 24.04. İkisi de alpha.134'ten
+panelin kendi güncelleme sayfasıyla güncellendi; her güncelleme
+kendiliğinden bitti, bir panel ve bir Ajan çalışıyordu. Hiçbir denemede
+ağır bir hata çıkmadı.
+
+**Denendi ve geçti:**
+- Bir alpha.134 silmesinin bıraktıkları (silinen bir alan adının postası
+  ve yedeği) güncellemede, 30 günü o andan başlayarak listeye alındı ve
+  diskte hiçbir şey değişmedi: ne güncellemede, ne yeniden başlatmadan
+  sonra, ne de sonraki iki turda.
+- Tarihi geçen bir öğe kendiliğinden silindi; silinemeyen bir öğe
+  nedeniyle başarısız olarak kaldı ve neden giderilince sonraki denemede
+  silindi. **Şimdi sil…** tam o öğeyi sildi; **Hepsini şimdi sil…**
+  listedeki on öğeyi sildi, başka hiçbir şeyi değil (canlı yedekler ve posta
+  yerinde). Tutulan bir yedek bayt bayt aynı indirildi.
+- Tutulan bir klasörün içindeki bağlantılar bağlantı olarak silindi;
+  gösterdikleri dışarıdaki şeyler kaldı. Yerine bağlantı konmuş tutulan
+  bir klasör reddedildi ve olduğu gibi bırakıldı.
+- "Veritabanlarını da sil" işaretliyken alan adını silmek, yönetici ve
+  müşteri olarak, MariaDB ve PostgreSQL'de: veritabanları ve kullanıcıları
+  iki motordan da gitti, başka bir hesaptaki haklar kaldırıldı (yalnız
+  yöneticiye adıyla söylendi), crontab, günlük ya da sertifika denetim
+  klasörü kalmadı, posta ve yedekler listede. İşaretli değilken
+  veritabanları kaldı, listede ve çalışır durumda.
+- Silinip aynı adresle yeniden açılan posta kutusu boş başladı; eski
+  postasını alpha.134'ün yerinde bıraktığı bir adreste de (o posta önce
+  listeye alındı). **30 gün saklamaya al…** kalan bir klasörü listeye
+  taşıdı.
+- Posta kutusu satırının **Parola…** ve **Diğer** menüleri, sorunun
+  İngilizcesi ve iki sunucuda ana sayfalara kısa bir bakış.
+
+**Denenmedi:** posta kutusu satırından web postasını açmak (laboratuvarın
+web postasının kendi adresi yoktu), sınırlar uygulanırken gönderim sınırı
+satırı, alpha.134'e dönüş ve süreler (laboratuvar makinesini başka bir iş
+yüklüyordu). **Ekle…** düğmesi başarısız oldu (bkz. "alpha.136'ya
+taşınanlar").
 
 ## Kanıt
 
@@ -194,12 +229,8 @@ klasörünü saklamaya almak: adresten çıkarılır, adreste posta kutusu varke
 reddedilir). Posta kutusu ve alan adı silmeleri postayı yerinde bırakmak
 yerine saklama klasörüne taşır. `/api/v1/maintenance/deletion-holding`
 altında yeni yönetici uçları (liste, şimdi sil, yedeğin dosyaları ve
-indirme, yerinde kalan klasörü saklamaya alma) ve
-`POST /api/v1/service/roundcube/address/dns-record` (yalnız yönetici, bir
-istek kimliğiyle: aynı kimlik saklanandan yanıtlanır, asla yeniden
-gönderilmez). İsteği alan ana DNS sunucusu değişmedi; alpha.133 ya da alpha.134
-üzerindeki bir ana sunucu da aynı yanıtı verir. Yeni denetim kaydı
-eylemleri `deletion_hold.*` ve `webmail.address.dns_record.*`. Alan adı
+indirme, yerinde kalan klasörü saklamaya alma). Yeni denetim kaydı
+eylemleri `deletion_hold.*`. Alan adı
 silmesiyle silinen veritabanı, alpha.134'ün hak kaldırmasıyla tek
 veritabanı silme yolundan (`deleteDatabaseRecord`) geçer; alan adı
 silmesinin sonucu da yalnız yöneticiye gösterilen aynı hak bilgilerini
@@ -207,16 +238,15 @@ taşır (`databaseDeletionAnswerFor`).
 Bileşen testleri: `cmd/panel/deletion_holding_test.go`,
 `cmd/panel/deletion_holding_left_test.go`,
 `cmd/panel/domain_delete_cleanup_test.go`,
-`cmd/panel/webmail_address_dns_record_test.go`,
 `cmd/panel/mail_outgoing_test.go`, `cmd/agent/deletion_holding_linux_test.go`,
 `cmd/agent/deletion_holding_left_linux_test.go`,
 `cmd/agent/site_delete_cleanup_test.go`; bağlı web testleri
 `web/tests/domain-delete-question-mounted.test.mjs`,
 `web/tests/remote-state-mounted.test.mjs`,
 `web/tests/mail-rows-alpha135.test.mjs`,
-`web/tests/webmail-dns-add-alpha135.test.mjs`,
 `web/tests/refusal-words-alpha135.test.mjs`
-(RESILIENCE-CONTRACT, "Branch a134/deldomain", "Branch a135/mailrow" ve
-"Branch a135/dnsadd"). Laboratuvar denemesine kadar yalnız bileşen
-testleri. **Hiçbir P0 işi kapanmadı.**
+(RESILIENCE-CONTRACT, "Branch a134/deldomain" ve "Branch a135/mailrow").
+Sürümün `90293c5c2` başında bir laboratuvar denemesi (bkz.
+"Laboratuvarda denenenler"); ondan sonra yalnız **Ekle…** işi çıkarıldı
+(birleştirmesi geri alındı). **Hiçbir P0 işi kapanmadı.**
 Sürüm sırası 134 → 135.

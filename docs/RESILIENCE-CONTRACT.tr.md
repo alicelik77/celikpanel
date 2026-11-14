@@ -7801,12 +7801,23 @@ bağlantıyı tutar.
   `cmd/agent/deletion_holding_linux_test.go`,
   `cmd/agent/site_delete_cleanup_test.go`, yapı kapısı matrisi;
   `web/tests/domain-delete-question-mounted.test.mjs`,
-  `web/tests/remote-state-mounted.test.mjs`. Laboratuvar denemesine kadar
-  yalnız bileşen testleri. Açık: tutulan öğeler için "geri ver" yok; alan
-  adı adlı klasördeki eski yedekler listelenmez; boş tutulan yedek klasörü
-  0 B görünür; önceki sürümlerin silmelerinin panel dışında bıraktığı
-  veritabanları geri getirilmez; dönemsel kaldırma güncellemenin
-  doğrulanmasına bağlı değildir (tek koruması en az 30 gündür). **Hiçbir P0
+  `web/tests/remote-state-mounted.test.mjs`. `90293c5c2` üzerinde bir
+  laboratuvar denemesi (Debian 13 ve Ubuntu 24.04, ikisi de alpha.134'ten
+  panelin kendi sayfasıyla güncellendi; ağır hata yok): listeye alma
+  güncellemede, yeniden başlatmada ve iki turda diskte hiçbir şey
+  değiştirmedi; zamanı gelen kaldırma, başarısız kaldırma ve yeniden
+  denemesi, "Şimdi sil" ve "Hepsini şimdi sil" tam listedeki öğeleri sildi;
+  tutulan klasörlerdeki bağlantılar bağlantı olarak silindi, yerine bağlantı
+  konmuş klasör reddedildi; veritabanı seçimiyle ve seçimsiz alan adı silme
+  iki motorda da siteden hiçbir şey bırakmadı. Denenmedi: alpha.134'e dönüş.
+  Açık: tutulan öğeler için "geri ver" yok; alan adı adlı klasördeki eski
+  yedekler listelenmez; boş tutulan yedek klasörü 0 B görünür; önceki
+  sürümlerin silmelerinin posta ve yedek dışında bıraktıkları (günlükler,
+  crontab, ACME klasörü, veritabanları ve kullanıcılar) ne listelenir ne
+  silinir; dönemsel kaldırma güncellemenin doğrulanmasına bağlı değildir
+  (tek koruması en az 30 gündür); yerine bağlantı konmuş tutulan klasör
+  reddedilir ama sonra gitmiş sayılıp listeden düşer, bağlantı kalır;
+  yarıda kalan bir kaldırma klasörün geri kalanını silmiş olur. **Hiçbir P0
   işi kapanmadı.**
 
 ### Dal a135/mailrow (her posta kutusu kendi web postasını açar; gönderim sınırları satırda; yerinde kalan posta, oraya kutu açılmadan önce saklamaya alınır; şema değişikliği yok; anayasa 1, 2 ve 3; D-024; 2026-11-14)
@@ -7835,31 +7846,9 @@ bağlantıyı tutar.
   `cmd/panel/mail_outgoing_test.go`, `cmd/panel/domain_mail_handlers_test.go`,
   `cmd/agent/deletion_holding_left_linux_test.go`;
   `web/tests/mail-rows-alpha135.test.mjs` ve uyarlanan posta testleri.
-  Laboratuvar denemesine kadar yalnız bileşen testleri. Açık: başka bir
-  kutunun web postası oturumu açık tarayıcı o oturumu açar. **Hiçbir P0 işi
+  `90293c5c2` üzerindeki laboratuvar denemesi: yeniden açılan kutu boş
+  başladı, alpha.134'ün yerinde bıraktığı bir klasörün üzerinde de; "30 gün
+  saklamaya al" kalan bir klasörü taşıdı. Denenmedi: satırdan web postasını
+  açmak, sınırlar uygulanırken sınır satırı. Açık: başka bir kutunun web
+  postası oturumu açık tarayıcı o oturumu açar. **Hiçbir P0 işi
   kapanmadı.**
-
-### Dal a135/dnsadd (yedek DNS sunucusu, web postası adres kaydını eklemesini ana DNS sunucusundan isteyebilir; şema değişikliği yok; anayasa 1, 3 ve 6; D-022; D-024; docs/REMOTE-DNS-AUTHORIZATION.md; 2026-11-14)
-
-- **Sözleşme.** Standart birincil/ikincil eşleme değişmedi ve buna gerek
-  duymaz. Web postası adres denetimi, eşli ana DNS sunucusunun altyapı
-  bölgesindeki bir ad için kayıt bulamazsa ve bu sunucuda ona hazır, yetkili
-  bir DNS bağlantısı varsa bunu söyler (`peer_zone`) ve kaydı o sunucunun
-  yazacağı biçimde gösterir. Onaylanan tek yönetici isteği
-  (`POST /api/v1/service/roundcube/address/dns-record`, istek kimliğiyle),
-  var olan ana makine kaydı kanalı üzerinden, eşin doğrulanmış adresiyle A
-  kaydını ve AAAA kaydını yalnız o IPv6 adresinden ister; karar alan
-  sunucunun kendi kurallarınındır ve o sunucu değişmedi (alpha.133 ya da
-  alpha.134 üzerindeki ana sunucu da aynı yanıtı verir). Denetimin kendisi
-  hiçbir şey göndermez.
-- **Doğru durum (anayasa 3, D-024).** Her kaydın sonucu ayrı tutulur:
-  eklendi, zaten var, kaydedildi ama yayımlandığı henüz doğrulanmadı,
-  adlandırılmış bir kuralla reddedildi, gönderilmedi, bilinmiyor. Aynı
-  kimlik saklanandan (tek `panel_settings` satırı) yanıtlanır, asla yeniden
-  gönderilmez; istekler ve sonuçları denetim kaydına yazılır.
-- **Kanıt.** `cmd/panel/webmail_address_dns_record_test.go`,
-  `web/tests/webmail-dns-add-alpha135.test.mjs`. Laboratuvar denemesine
-  kadar yalnız bileşen testleri. Açık: TXT kayıtları kanal üzerinden
-  eklenemez; isteğin kendisinin "sunulmuyor" dışındaki bir reddi (örneğin
-  yeniden kullanılan kimlik) bilinmiyor olarak, sonraki adım Denetle ile
-  gösterilir. **Hiçbir P0 işi kapanmadı.**

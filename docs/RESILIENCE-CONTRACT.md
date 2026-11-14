@@ -8592,13 +8592,23 @@ until the backup reports ready.
   `cmd/agent/deletion_holding_linux_test.go`,
   `cmd/agent/site_delete_cleanup_test.go`, the build-gate matrix;
   `web/tests/domain-delete-question-mounted.test.mjs`,
-  `web/tests/remote-state-mounted.test.mjs`. Component tests only until
-  the lab run. Open: no "give back" for held items; older backups under a
-  domain-name folder are not listed; a held empty backup folder shows 0 B;
-  databases that earlier releases' deletions left out of the panel are not
-  brought back; the periodic removal is not tied to the update's
-  verification (the 30-day minimum is its only guard). **No P0 item is
-  closed.**
+  `web/tests/remote-state-mounted.test.mjs`. One lab run on `90293c5c2`
+  (Debian 13 and Ubuntu 24.04, both updated from alpha.134 through the
+  panel's own page; no hard failure): adoption changed nothing on disk
+  over the update, a restart and two rounds; due removal, a failed removal
+  and its retry, "Delete now" and "Delete all now" removed exactly the
+  listed items; links inside held folders were removed as links and a
+  folder replaced by a link was refused; domain deletion with and without
+  the database choice on both engines left nothing of the site. Not run:
+  going back to alpha.134. Open: no "give back" for held items; older
+  backups under a domain-name folder are not listed; a held empty backup
+  folder shows 0 B; what earlier releases' deletions left besides mail and
+  backups (logs, crontab, ACME folder, databases and users) is neither
+  listed nor removed; the periodic removal is not tied to the update's
+  verification (the 30-day minimum is its only guard); a held folder
+  replaced by a link is refused but then dropped from the list as gone
+  while the link stays; a removal that fails part-way has already removed
+  the rest of that folder. **No P0 item is closed.**
 
 ### Branch a135/mailrow (each mailbox opens its own webmail; sending limits on the row; mail left in place is held before a mailbox is made there; no schema change; constitution 1, 2 and 3; D-024; 2026-11-14)
 
@@ -8625,31 +8635,8 @@ until the backup reports ready.
   `cmd/panel/mail_outgoing_test.go`, `cmd/panel/domain_mail_handlers_test.go`,
   `cmd/agent/deletion_holding_left_linux_test.go`;
   `web/tests/mail-rows-alpha135.test.mjs` and the adapted mail tests.
-  Component tests only until the lab run. Open: a browser with another
-  mailbox's webmail session opens that session. **No P0 item is closed.**
-
-### Branch a135/dnsadd (the backup DNS server can ask the main DNS server to add webmail's address record; no schema change; constitution 1, 3 and 6; D-022; D-024; docs/REMOTE-DNS-AUTHORIZATION.md; 2026-11-14)
-
-- **Contract.** Standard primary/secondary replication is unchanged and
-  does not need this. When the webmail address check finds no record for a
-  name inside the paired main DNS server's infrastructure zone and this
-  server holds a ready authorized DNS connection to it, the check says so
-  (`peer_zone`) and shows the record exactly as that server writes it. One
-  confirmed administrator request
-  (`POST /api/v1/service/roundcube/address/dns-record`, with a request
-  identity) asks for the A record with the pair's verified address and the
-  AAAA record only from that IPv6 address, over the existing host-record
-  channel; the receiving server's own rules decide and it is unchanged (an
-  alpha.133 or alpha.134 main server answers the same). The check itself
-  never sends anything.
-- **Truthful state (constitution 3, D-024).** Each record's outcome is kept
-  apart: added, already present, saved but not yet confirmed published,
-  refused by a named rule, not sent, not known. The same identity is
-  answered from what was stored (one `panel_settings` row) and never sent
-  again; requests and results are audited.
-- **Evidence.** `cmd/panel/webmail_address_dns_record_test.go`,
-  `web/tests/webmail-dns-add-alpha135.test.mjs`. Component tests only until
-  the lab run. Open: TXT records cannot be added through the channel; a
-  refusal of the request itself other than "not offered" (for example a
-  reused identity) is shown as not known with Check as the next step.
-  **No P0 item is closed.**
+  Lab run on `90293c5c2`: a re-created mailbox started empty, also over a
+  folder alpha.134 had left; "Keep 30 days" moved a left folder. Not run:
+  opening webmail from a row, the limit line while limits are applied.
+  Open: a browser with another mailbox's webmail session opens that
+  session. **No P0 item is closed.**
