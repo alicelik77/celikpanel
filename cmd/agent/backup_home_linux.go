@@ -528,16 +528,20 @@ func backupFreeBytes() int64 {
 }
 
 // prepareAreaRestore stages one area of a home payload beside the area's
-// folder in the site home, as public_html is staged: owner the site's
-// account, modes from the archive, links made again and never followed. A
-// missing area folder is made first (the site's account's, 0700 until the
-// staged one with the archived mode replaces it). made reports that, so a
-// restore that stops before publishing can remove the empty folder again.
-func prepareAreaRestore(archivePath, home, area string) (staged *stagedFilesRestore, made bool, err error) {
+// folder in the site home, as public_html is staged: owner and group the
+// site's account and its own group (owner, areaOwner), modes from the
+// archive (permission bits only, which the account could set itself), links
+// made again and never followed. The archive stores no owner, and the site
+// home's group (the web server's) is never taken. A missing area folder is
+// made first (the site's account's, 0700 until the staged one with the
+// archived mode replaces it). made reports that, so a restore that stops
+// before publishing can remove the empty folder again.
+func prepareAreaRestore(archivePath, home, area string, owner areaOwner) (staged *stagedFilesRestore, made bool, err error) {
 	if !restorableArea(area) {
 		return nil, false, fmt.Errorf("area %s is not restored by this release", area)
 	}
-	homeFD, uid, gid, _, ok, err := openSiteHomeForBackup(home)
+	uid, gid := owner.uid, owner.gid
+	homeFD, _, _, _, ok, err := openSiteHomeForBackup(home)
 	if err != nil {
 		return nil, false, err
 	}
@@ -553,7 +557,7 @@ func prepareAreaRestore(archivePath, home, area string) (staged *stagedFilesRest
 			return nil, false, err
 		}
 		made = true
-		if err := unix.Fchownat(homeFD, area, int(uid), int(gid), unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		if err := unix.Fchownat(homeFD, area, uid, gid, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 			removeMadeArea(home, area)
 			return nil, false, err
 		}
@@ -565,7 +569,7 @@ func prepareAreaRestore(archivePath, home, area string) (staged *stagedFilesRest
 	staged, err = prepareStagedRestore(archivePath, filepath.Join(home, filepath.FromSlash(area)), stageOptions{
 		extract:          extractOptions{prefix: area, links: true},
 		archivedRootMode: made,
-		owner:            &[2]int{int(uid), int(gid)},
+		owner:            &[2]int{uid, gid},
 	})
 	if err != nil {
 		if made {

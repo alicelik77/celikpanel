@@ -3,8 +3,10 @@
 // files, the program's files and data, a service app's data - what it leaves
 // out and why, the warning before a large backup, the backups that do not
 // hold the program, and what a restore did with the program. Key prefixes
-// kept here: bkc., and the refusals err.BACKUP_RESTORE_PROGRAM_*. Every other
-// backup. key stays in "sites".
+// kept here: bkc., and the refusals err.BACKUP_RESTORE_PROGRAM_*,
+// err.BACKUP_RESTORE_NOT_FOUND / _OTHER_SITE / _NO_SPACE / _SITE_ACCOUNT. The
+// alpha.128 restore refusals stay in "errors"; every other backup. key stays
+// in "sites".
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
@@ -73,6 +75,10 @@ export const enSiteBackupScreens = {
     'err.BACKUP_RESTORE_PROGRAM_BUSY': 'The site’s program is being deployed or removed right now, so the restore was not started and nothing changed. Wait until that ends on the Programs tab, then restore again.',
     'err.BACKUP_RESTORE_PROGRAM_UNKNOWN': 'The server did not answer about the site’s program, so the restore was not started or its result is not known. Check the site and the Programs tab; start the program there if it is stopped.',
     'err.BACKUP_RESTORE_PROGRAM_STOP_FAILED': 'The site’s program could not be stopped, so the restore was not started and nothing changed. The server’s reason is below; check the program on the Programs tab.',
+    'err.BACKUP_RESTORE_NOT_FOUND': 'This backup is not among this site’s backups on the server (it was deleted, or it is another site’s), so nothing was restored and the site is unchanged. Choose a backup from this site’s list.',
+    'err.BACKUP_RESTORE_OTHER_SITE': 'This backup was made of another site, so it is not restored on this one; nothing was restored and the site is unchanged. Choose a backup of this site, or restore this one on the site it was made of.',
+    'err.BACKUP_RESTORE_NO_SPACE': 'The server’s disk has no room to unpack this backup, so nothing was restored and the site is unchanged. The server administrator frees disk space on the server; then restore again.',
+    'err.BACKUP_RESTORE_SITE_ACCOUNT': 'The site’s own account on the server, which the program’s files belong to, could not be found, so nothing was restored and the site is unchanged. The server administrator checks the site’s hosting account; then restore again.',
 } as const;
 
 export type SiteBackupScreenKey = keyof typeof enSiteBackupScreens;

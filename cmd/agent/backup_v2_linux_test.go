@@ -12,9 +12,11 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 func installBackupTestPaths(t *testing.T) (string, string) {
@@ -42,10 +44,24 @@ func installBackupTestPaths(t *testing.T) (string, string) {
 		}
 		return filepath.Dir(docroot), nil
 	}
+	// The site's account a restored program folder is given to: by default
+	// the site home's owner with that owner's group (the test runner, or the
+	// account chownTree gave the tree to). A test of the group sets its own.
+	oldLookup := serviceAppLookupAccount
+	serviceAppLookupAccount = func(target transport.ServiceAppTarget) (serviceAppAccount, error) {
+		home := filepath.Dir(docroot)
+		st, err := os.Lstat(home)
+		if err != nil {
+			return serviceAppAccount{}, err
+		}
+		sys := st.Sys().(*syscall.Stat_t)
+		return serviceAppAccount{Name: "site", Group: "site", UID: int(sys.Uid), GID: int(sys.Gid), Home: home}, nil
+	}
 	t.Cleanup(func() {
 		backupBaseDir = oldBase
 		backupDocumentRoot = oldDocumentRoot
 		backupSiteHome = oldSiteHome
+		serviceAppLookupAccount = oldLookup
 	})
 	return backupRoot, docroot
 }

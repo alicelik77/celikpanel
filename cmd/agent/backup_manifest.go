@@ -154,6 +154,9 @@ func validPackageEntryName(name string) bool {
 	return !strings.HasPrefix(clean, "../")
 }
 
+// errManifestScopeMismatch: the package was made of another site.
+var errManifestScopeMismatch = errors.New("manifest scope mismatch")
+
 func validateManifest(m backupManifest, scope backupScope) error {
 	switch m.Version {
 	case backupspec.ManifestVersionSite:
@@ -168,7 +171,7 @@ func validateManifest(m backupManifest, scope backupScope) error {
 		return errors.New("manifest version mismatch")
 	}
 	if m.SubscriptionID != scope.SubscriptionID || m.DomainID != scope.DomainID {
-		return errors.New("manifest scope mismatch")
+		return errManifestScopeMismatch
 	}
 	if !validBackupOrigin(m.Origin) || m.CreatedAt.IsZero() {
 		return errors.New("invalid manifest metadata")

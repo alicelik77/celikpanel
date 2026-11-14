@@ -108,10 +108,14 @@ func listBackupDir(scope backupScope, dir string, legacy bool) ([]backupspec.Inf
 	return result, nil
 }
 
+// inspectBackup reads one backup of the scope. Its refusals are typed as a
+// restore's are (backupFindRefusal, backupPackageRefusal): a name that is not
+// in this site's backups, another site's package, a package that fails its
+// checks.
 func inspectBackup(scope backupScope, name string) (backupspec.Info, []backupspec.DatabaseIdentity, error) {
 	filePath, legacy, err := resolveBackup(scope, name)
 	if err != nil {
-		return backupspec.Info{}, nil, err
+		return backupspec.Info{}, nil, backupFindRefusal(err)
 	}
 	if legacy {
 		info, err := inspectLegacyBackup(filePath, name)
@@ -120,7 +124,7 @@ func inspectBackup(scope backupScope, name string) (backupspec.Info, []backupspe
 	}
 	info, manifest, err := inspectV2Backup(scope, filePath, name)
 	info.Path = filePath
-	return info, manifest.databaseIdentities(), err
+	return info, manifest.databaseIdentities(), backupPackageRefusal(err)
 }
 
 func inspectV2Backup(scope backupScope, filePath, name string) (backupspec.Info, backupManifest, error) {

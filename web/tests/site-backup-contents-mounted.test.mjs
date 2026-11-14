@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
@@ -210,6 +211,22 @@ test('a failed restore that left the program stopped says so under the refusal',
   } finally { await unmount(); }
 });
 
+// alpha.134 lab: another site's backup answered "internal error". Its refusal
+// now comes with its own code; the screen keeps it above the list, with no
+// program block (the program was never touched), and the list stays usable.
+test('restoring another site\'s backup says so above the list, and the list stays', async () => {
+  const sentence = 'This backup was made of another site, so it is not restored here; nothing was restored and the site is unchanged.';
+  serve(base({ [`POST ${D}/backups/restore`]: () => answer({ error: sentence, code: 'BACKUP_RESTORE_OTHER_SITE' }, 409) }));
+  await mount();
+  try {
+    await press(buttonNamed('backup.restore', 0));
+    const shown = text();
+    assert.ok(shown.includes(sentence), shown.slice(0, 800));
+    assert.ok(!shown.includes('bkc.result.') && !/internal/i.test(shown), shown.slice(0, 800));
+    assert.ok(buttonNamed('backup.restore', 0), 'the list is gone');
+  } finally { await unmount(); }
+});
+
 test('the restore window shows stopping and starting the program only when the server plans them', () => {
   const t = (key) => key;
   const plain = progressSteps(backupRestoreSteps(t), t, undefined, undefined, 0, 'running').map((step) => step.id);
@@ -222,8 +239,26 @@ test('the restore window shows stopping and starting the program only when the s
 test('the new words are in English and Turkish, in plain Turkish', () => {
   const english = enScreens;
   const turkish = trScreens;
-  const keys = Object.keys(english).filter((key) => key.startsWith('bkc.') || key.startsWith('err.BACKUP_RESTORE_PROGRAM_') || key.startsWith('opstep.restore.program'));
+  const refusals = ['err.BACKUP_RESTORE_NOT_FOUND', 'err.BACKUP_RESTORE_OTHER_SITE', 'err.BACKUP_RESTORE_NO_SPACE', 'err.BACKUP_RESTORE_SITE_ACCOUNT'];
+  const keys = Object.keys(english).filter((key) => key.startsWith('bkc.') || key.startsWith('err.BACKUP_RESTORE_PROGRAM_') || key.startsWith('opstep.restore.program') || refusals.includes(key));
   assert.ok(keys.length > 40, `only ${keys.length} keys`);
+  for (const key of refusals) {
+    assert.ok(keys.includes(key), `${key} is missing`);
+    // D-024: nothing was changed, and what to do (or who acts) is said.
+    assert.match(english[key], /nothing was restored/, key);
+    assert.match(turkish[key], /hiçbir şey geri yüklenmedi/i, key);
+    assert.doesNotMatch(`${english[key]} ${turkish[key]}`, /log|günlü|lstat|manifest/i, `${key} sends the reader to the server`);
+  }
+  // A catalogue sentence identical to the server's message reads as "the
+  // server's own words" (refusalParts) and the screen would show a generic
+  // sentence instead: each differs from cmd/panel's English message.
+  const go = readFileSync(new URL('../../cmd/panel/backup_restore_refusals.go', import.meta.url), 'utf8');
+  for (const [key, constant] of [['err.BACKUP_RESTORE_NOT_FOUND', 'errCodeRestoreNotFound'], ['err.BACKUP_RESTORE_OTHER_SITE', 'errCodeRestoreOtherSite'],
+    ['err.BACKUP_RESTORE_NO_SPACE', 'errCodeRestoreNoSpace'], ['err.BACKUP_RESTORE_SITE_ACCOUNT', 'errCodeRestoreSiteAccount']]) {
+    const message = go.match(new RegExp(`${constant},\\s*"([^"]+)"`))?.[1];
+    assert.ok(message, `${constant} has no message`);
+    assert.notEqual(english[key], message, `${key} equals the server's message`);
+  }
   for (const key of keys) assert.ok(typeof turkish[key] === 'string' && turkish[key].length > 0, `${key} has no Turkish`);
   assert.equal(turkish['bkc.row.noProgramOld'], 'Bu yedek programı içermiyor (eski biçim)');
   assert.equal(turkish['bkc.area.program'], 'Program dosyaları ve verisi ({size})');

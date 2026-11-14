@@ -69,6 +69,7 @@ func (a *Agent) InspectBackup(req *backupspec.InspectRequest, resp *backupspec.I
 	info, databases, err := inspectBackup(inspectScope(req), req.BackupName)
 	if err != nil {
 		resp.Error = err.Error()
+		resp.Code, _ = restoreFailureOf(err)
 		return nil
 	}
 	resp.Success = true
@@ -124,6 +125,8 @@ func (a *Agent) DeleteBackup(req *backupspec.DeleteRequest, resp *bool) error {
 	return nil
 }
 
+var errInvalidBackupName = errors.New("invalid backup name")
+
 func invalidBackupName() error {
-	return errors.New("invalid backup name")
+	return errInvalidBackupName
 }

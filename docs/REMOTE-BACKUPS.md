@@ -185,6 +185,11 @@ Paths are relative to the bucket folder (prefix) or the SFTP folder:
 You need the `.cpbak.gpg` file, its `.json` side file (optional, for checking), the passphrase,
 and `gpg` and `tar`. These come from the distribution's official packages (`gnupg`, `tar`).
 
+A local backup on the server (`/var/backups/celikpanel/subscriptions/<subscription>/domains/<domain id>/*.cpbak`,
+root only) is not encrypted: start at step 4. This is also the way back for a site that was
+deleted and created again under the same name: the new site has a new domain id, so the
+panel lists only its own backups and refuses the earlier site's package as another site's.
+
 1. **Download** both files from the bucket or SFTP folder with any tool you like: the provider's
    web console, `sftp`, `scp`, or the AWS CLI if you already use it.
 2. **Optional: check the download.** Compare the output with `encrypted_sha256` in the `.json`
@@ -227,13 +232,17 @@ and `gpg` and `tar`. These come from the distribution's official packages (`gnup
 
    **Program and app folders** (version 3 only): stop the program or app first and move its
    current folder aside, then unpack into the site home (the folder that holds
-   `public_html`) and give the files to the site home's owner, because the archive stores no
-   owners (do the same for each `apps/<app>` folder). Example path:
+   `public_html`) and give the files to the site's own account and that account's own group,
+   because the archive stores no owners (do the same for each `apps/<app>` folder). Never
+   give them the site home's group: that is the web server's group, and the web server must
+   not reach the program's folder. `chown "$owner:"` with the colon takes the account's own
+   group. Example path:
 
    ```sh
    site=/var/www/celikpanel/subscriptions/3/sites/7
    tar -xzf restore/payload/home.tar.gz -C "$site"
-   chown -hR --reference="$site" "$site/app"
+   owner=$(stat -c %U "$site")
+   chown -hR "$owner:" "$site/app"
    ```
 
    Environment files (secret values) are never in a backup: enter them again where the
