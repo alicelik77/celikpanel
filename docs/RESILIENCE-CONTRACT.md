@@ -8539,3 +8539,117 @@ until the backup reports ready.
   lab's. Open: MySQL 8 with `partial_revokes`; one-press narrowing of a
   listed row; a registered server's "no permission" still shown as
   "credential refused". **No P0 item is closed.**
+
+### Branch a134/deldomain (a domain deletion asks about its databases and leaves nothing of the site; what a deletion leaves is held 30 days, then removed; no schema change; constitution 1, 2, 3 and 6; D-022; D-024; D-025; 2026-11-14, released in alpha.135)
+
+- **Defect.** Found read-only on an owner's server and in the alpha.133
+  review: a domain deletion removed the panel's database records by cascade
+  while the databases stayed in the engine, invisible; the site's crontab,
+  logs and certificate check folder stayed; the mail of a deleted domain or
+  mailbox stayed in the quarantine (or, for a mailbox, in the live folder,
+  where a mailbox made again under the address saw it) with no list and no
+  end.
+- **Contract.** The database choice ("keep", the default, or "delete") is
+  the accepted plan, saved with the deletion marker (versioned
+  `panel_settings` record); a retry repeats it and a retry naming the other
+  choice is refused before any change (`DOMAIN_DELETION_PLAN_FIXED`).
+  "Keep" unbinds the databases; "delete" deletes each one through the one
+  database deletion (`deleteDatabaseRecord`, alpha.134's rights removal
+  included), one at a time, so a retry continues with what remains. The
+  final step unbinds any database still bound in the same transaction as
+  the row removal, so no deletion cascades a database record away. The
+  stored mail of a deleted domain or mailbox and a deleted domain's
+  backups on this server are held 30 days (owner, 14 Nov 2026) in one list
+  (`deletion_hold_v1:<id>`), then removed by the periodic step once their
+  domain or mailbox is gone; remote backup targets are never touched.
+- **Mutation and checkpoints (constitution 2).** Each deletion stage is
+  typed; a verified failure is kept with the marker and named by the status
+  read, a lost answer is unknown and keeps nothing. A held item's removal
+  is derived by the Agent from the item's kind and identifier (exactly one
+  folder under one of two holding places, through an `os.Root`, links never
+  followed, an item that is a link refused, an item already gone answered
+  as removed, build-gated); a removal that failed (the Agent answered) or
+  is unknown (no answer) is kept with its reason and retried after an
+  hour, then at most daily. A status read never removes anything.
+- **Owner data and independence (constitution 1 and 6).** The holding
+  places are plain folders under the mail root and the backup store; with
+  the panel absent nothing is removed and the owner copies or deletes them
+  natively. Items earlier releases left (the mail quarantine, backups of
+  domains that no longer exist) are adopted at the first step after the
+  update with their 30 days starting then; adoption changes nothing on
+  disk. The release notes ask the owner to look at the list after the
+  update.
+- **Schema / version transition.** No schema change (079). Going back to
+  alpha.134 needs no database restore: alpha.134 ignores the records and
+  leaves the held folders on disk untouched (it neither lists nor removes
+  them); updating again finds them by their records. New Agent RPCs
+  `DeletionHoldingInventoryV1` (read) and `RemoveHeldItemV1` (build-gated);
+  additive mail and site transport fields.
+- **Evidence.** `cmd/panel/deletion_holding_test.go`,
+  `cmd/panel/domain_delete_cleanup_test.go` (with the administrator-only
+  rights facts through `databaseDeletionAnswerFor`),
+  `cmd/panel/domain_delete_saga_test.go`,
+  `cmd/agent/deletion_holding_linux_test.go`,
+  `cmd/agent/site_delete_cleanup_test.go`, the build-gate matrix;
+  `web/tests/domain-delete-question-mounted.test.mjs`,
+  `web/tests/remote-state-mounted.test.mjs`. Component tests only until
+  the lab run. Open: no "give back" for held items; older backups under a
+  domain-name folder are not listed; a held empty backup folder shows 0 B;
+  databases that earlier releases' deletions left out of the panel are not
+  brought back; the periodic removal is not tied to the update's
+  verification (the 30-day minimum is its only guard). **No P0 item is
+  closed.**
+
+### Branch a135/mailrow (each mailbox opens its own webmail; sending limits on the row; mail left in place is held before a mailbox is made there; no schema change; constitution 1, 2 and 3; D-024; 2026-11-14)
+
+- **Defect.** Before alpha.135 deleting a mailbox left its folder in the
+  domain's live mail folder, so a mailbox made again under the address (for
+  another person) saw the old mail. Owner requests (13 Nov 2026): a webmail
+  link per mailbox; the sending-limits card was unclear.
+- **Contract.** `AddMailAccount`, given the domain's record, first moves a
+  folder no account owns at that address into the holding folder
+  (`left-<domain id>-<16 hex>`, held 30 days like other deletions) and then
+  makes the mailbox empty; a failure later in the step puts the folder
+  back. `LeftMailFoldersV1` lists, read only, such folders in live domain
+  folders (at most 500 per answer; the list says when it is cut);
+  `HoldLeftMailFolderV1` (build-gated) moves one when the administrator
+  asks, deriving the folder from the address and refusing an address with a
+  mailbox. Nothing moves at an update or by a read. The row's "Webmail"
+  opens webmail's own address with `_user` only (no password, token or
+  sign-in). Sending limits are shown only while applied; a limit change is
+  saved once, a lost answer is checked by reading again.
+- **Schema / version transition.** No schema change; additive transport
+  fields (`LeftDomainID`, the outgoing view's hour and 7-day counts). Going
+  back to alpha.134 leaves held folders where they are.
+- **Evidence.** `cmd/panel/deletion_holding_left_test.go`,
+  `cmd/panel/mail_outgoing_test.go`, `cmd/panel/domain_mail_handlers_test.go`,
+  `cmd/agent/deletion_holding_left_linux_test.go`;
+  `web/tests/mail-rows-alpha135.test.mjs` and the adapted mail tests.
+  Component tests only until the lab run. Open: a browser with another
+  mailbox's webmail session opens that session. **No P0 item is closed.**
+
+### Branch a135/dnsadd (the backup DNS server can ask the main DNS server to add webmail's address record; no schema change; constitution 1, 3 and 6; D-022; D-024; docs/REMOTE-DNS-AUTHORIZATION.md; 2026-11-14)
+
+- **Contract.** Standard primary/secondary replication is unchanged and
+  does not need this. When the webmail address check finds no record for a
+  name inside the paired main DNS server's infrastructure zone and this
+  server holds a ready authorized DNS connection to it, the check says so
+  (`peer_zone`) and shows the record exactly as that server writes it. One
+  confirmed administrator request
+  (`POST /api/v1/service/roundcube/address/dns-record`, with a request
+  identity) asks for the A record with the pair's verified address and the
+  AAAA record only from that IPv6 address, over the existing host-record
+  channel; the receiving server's own rules decide and it is unchanged (an
+  alpha.133 or alpha.134 main server answers the same). The check itself
+  never sends anything.
+- **Truthful state (constitution 3, D-024).** Each record's outcome is kept
+  apart: added, already present, saved but not yet confirmed published,
+  refused by a named rule, not sent, not known. The same identity is
+  answered from what was stored (one `panel_settings` row) and never sent
+  again; requests and results are audited.
+- **Evidence.** `cmd/panel/webmail_address_dns_record_test.go`,
+  `web/tests/webmail-dns-add-alpha135.test.mjs`. Component tests only until
+  the lab run. Open: TXT records cannot be added through the channel; a
+  refusal of the request itself other than "not offered" (for example a
+  reused identity) is shown as not known with Check as the next step.
+  **No P0 item is closed.**

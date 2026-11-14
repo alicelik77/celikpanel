@@ -7748,3 +7748,118 @@ bağlantıyı tutar.
   `partial_revokes` ile MySQL 8; listelenen satırı tek basışla daraltma;
   kayıtlı sunucunun "yetki yok" yanıtının hâlâ "kimlik bilgisi reddedildi"
   görünmesi. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a134/deldomain (alan adı silme veritabanlarını sorar ve siteden hiçbir şey bırakmaz; silmeden kalanlar 30 gün tutulur, sonra kaldırılır; şema değişikliği yok; anayasa 1, 2, 3 ve 6; D-022; D-024; D-025; 2026-11-14, alpha.135 ile yayımlanır)
+
+- **Kusur.** Sahibin sunucusunda salt-okur ve alpha.133 incelemesinde
+  bulundu: alan adı silme, panelin veritabanı kayıtlarını zincirleme
+  siliyor, veritabanları ise motorda görünmez kalıyordu; sitenin crontab'ı,
+  günlükleri ve sertifika denetim klasörü kalıyordu; silinen alan adının ya
+  da posta kutusunun postası karantinada (kutu için canlı klasörde, aynı
+  adresle yeniden açılan kutunun gördüğü yerde) listesiz ve sonsuz
+  kalıyordu.
+- **Sözleşme.** Veritabanı seçimi ("bırak", varsayılan, ya da "sil") kabul
+  edilen plandır ve silme işaretiyle saklanır (sürümlü `panel_settings`
+  kaydı); yeniden deneme onu yineler, öteki seçimi adlandıran yeniden deneme
+  hiçbir şey değişmeden reddedilir (`DOMAIN_DELETION_PLAN_FIXED`). "Bırak"
+  veritabanlarının alan adı bağını çözer; "sil" her birini tek veritabanı
+  silme yolundan (`deleteDatabaseRecord`, alpha.134'ün hak kaldırması dahil)
+  birer birer siler, yeniden deneme kalanlardan sürer. Son adım hâlâ bağlı
+  olan her veritabanının bağını satır silmeyle aynı işlemde çözer; hiçbir
+  silme bir veritabanı kaydını zincirleme silmez. Silinen alan adının ya da
+  posta kutusunun saklanan postası ve silinen alan adının bu sunucudaki
+  yedekleri tek listede (`deletion_hold_v1:<id>`) 30 gün tutulur (sahip,
+  14 Kasım 2026), sonra alan adı ya da kutu gitmişse dönemsel adım onları
+  kaldırır; uzak yedekleme hedeflerine dokunulmaz.
+- **Değişiklik ve denetim noktaları (anayasa 2).** Her silme aşaması
+  türlüdür; doğrulanmış hata işaretle saklanır ve durum okumasında adıyla
+  söylenir, kaybolan yanıt bilinmiyordur ve hiçbir şey saklamaz. Tutulan
+  öğenin kaldırılmasını Agent öğenin türünden ve kimliğinden çıkarır (iki
+  saklama yerinden birinin altında tam bir klasör, `os.Root` ile, bağlantı
+  izlenmez, kendisi bağlantı olan öğe reddedilir, zaten gitmiş öğe kaldırıldı
+  sayılır, yapı kapılı); başarısız (Agent yanıt verdi) ya da bilinmeyen
+  (yanıt yok) kaldırma nedeniyle saklanır, bir saat sonra, sonra en çok
+  günde bir yeniden denenir. Durum okuması hiçbir şey kaldırmaz.
+- **Sahip verisi ve bağımsızlık (anayasa 1 ve 6).** Saklama yerleri posta
+  kökü ve yedek deposu altında düz klasörlerdir; panel yokken hiçbir şey
+  kaldırılmaz, sahip onları sistemin kendi araçlarıyla kopyalar ya da
+  siler. Önceki sürümlerin bıraktıkları (posta karantinası, artık var
+  olmayan alan adlarının yedekleri) güncellemeden sonraki ilk adımda
+  listeye alınır ve 30 günleri o zaman başlar; listeye almak diskte hiçbir
+  şey değiştirmez. Sürüm notları sahibe güncellemeden sonra listeye
+  bakmasını söyler.
+- **Şema / sürüm geçişi.** Şema değişikliği yok (079). alpha.134'e dönüş
+  veritabanı geri yüklemesi gerektirmez: alpha.134 kayıtları yok sayar ve
+  tutulan klasörlere dokunmaz (ne listeler ne kaldırır); yeniden güncelleme
+  onları kayıtlarından bulur. Yeni Agent çağrıları
+  `DeletionHoldingInventoryV1` (okur) ve `RemoveHeldItemV1` (yapı kapılı);
+  posta ve site taşıma alanları eklemelidir.
+- **Kanıt.** `cmd/panel/deletion_holding_test.go`,
+  `cmd/panel/domain_delete_cleanup_test.go` (`databaseDeletionAnswerFor`
+  ile yalnız yöneticiye verilen hak bilgileri dahil),
+  `cmd/panel/domain_delete_saga_test.go`,
+  `cmd/agent/deletion_holding_linux_test.go`,
+  `cmd/agent/site_delete_cleanup_test.go`, yapı kapısı matrisi;
+  `web/tests/domain-delete-question-mounted.test.mjs`,
+  `web/tests/remote-state-mounted.test.mjs`. Laboratuvar denemesine kadar
+  yalnız bileşen testleri. Açık: tutulan öğeler için "geri ver" yok; alan
+  adı adlı klasördeki eski yedekler listelenmez; boş tutulan yedek klasörü
+  0 B görünür; önceki sürümlerin silmelerinin panel dışında bıraktığı
+  veritabanları geri getirilmez; dönemsel kaldırma güncellemenin
+  doğrulanmasına bağlı değildir (tek koruması en az 30 gündür). **Hiçbir P0
+  işi kapanmadı.**
+
+### Dal a135/mailrow (her posta kutusu kendi web postasını açar; gönderim sınırları satırda; yerinde kalan posta, oraya kutu açılmadan önce saklamaya alınır; şema değişikliği yok; anayasa 1, 2 ve 3; D-024; 2026-11-14)
+
+- **Kusur.** alpha.135'ten önce posta kutusunu silmek klasörünü alan
+  adının canlı posta klasöründe bırakıyordu; aynı adresle (başka biri için)
+  yeniden açılan kutu eski postayı görüyordu. Sahibin istekleri (13 Kasım
+  2026): her kutu için web postası bağlantısı; gönderim sınırları kartı
+  anlaşılmıyordu.
+- **Sözleşme.** `AddMailAccount`, alan adının kaydıyla, o adreste hiçbir
+  hesabın sahip olmadığı klasörü önce saklama klasörüne taşır
+  (`left-<alan adı kimliği>-<16 hex>`, öteki silmeler gibi 30 gün) ve sonra
+  kutuyu boş açar; adımın sonraki bir hatası klasörü geri koyar.
+  `LeftMailFoldersV1` canlı klasörlerdeki böyle klasörleri salt-okur
+  listeler (yanıt başına en çok 500; liste kısaltıldığında bunu söyler);
+  `HoldLeftMailFolderV1` (yapı kapılı) yönetici isteyince birini taşır,
+  klasörü adresten çıkarır, posta kutusu olan adresi reddeder.
+  Güncellemede ya da okumada hiçbir şey taşınmaz. Satırdaki "Web posta",
+  web postasının kendi adresini yalnız `_user` ile açar (parola, jeton ya da
+  oturum yok). Gönderim sınırları yalnız uygulanırken gösterilir; sınır
+  değişikliği bir kez kaydedilir, kaybolan yanıt yeniden okunarak denetlenir.
+- **Şema / sürüm geçişi.** Şema değişikliği yok; eklemeli taşıma alanları
+  (`LeftDomainID`, giden posta görünümünün saat ve 7 gün sayıları).
+  alpha.134'e dönüş tutulan klasörleri yerinde bırakır.
+- **Kanıt.** `cmd/panel/deletion_holding_left_test.go`,
+  `cmd/panel/mail_outgoing_test.go`, `cmd/panel/domain_mail_handlers_test.go`,
+  `cmd/agent/deletion_holding_left_linux_test.go`;
+  `web/tests/mail-rows-alpha135.test.mjs` ve uyarlanan posta testleri.
+  Laboratuvar denemesine kadar yalnız bileşen testleri. Açık: başka bir
+  kutunun web postası oturumu açık tarayıcı o oturumu açar. **Hiçbir P0 işi
+  kapanmadı.**
+
+### Dal a135/dnsadd (yedek DNS sunucusu, web postası adres kaydını eklemesini ana DNS sunucusundan isteyebilir; şema değişikliği yok; anayasa 1, 3 ve 6; D-022; D-024; docs/REMOTE-DNS-AUTHORIZATION.md; 2026-11-14)
+
+- **Sözleşme.** Standart birincil/ikincil eşleme değişmedi ve buna gerek
+  duymaz. Web postası adres denetimi, eşli ana DNS sunucusunun altyapı
+  bölgesindeki bir ad için kayıt bulamazsa ve bu sunucuda ona hazır, yetkili
+  bir DNS bağlantısı varsa bunu söyler (`peer_zone`) ve kaydı o sunucunun
+  yazacağı biçimde gösterir. Onaylanan tek yönetici isteği
+  (`POST /api/v1/service/roundcube/address/dns-record`, istek kimliğiyle),
+  var olan ana makine kaydı kanalı üzerinden, eşin doğrulanmış adresiyle A
+  kaydını ve AAAA kaydını yalnız o IPv6 adresinden ister; karar alan
+  sunucunun kendi kurallarınındır ve o sunucu değişmedi (alpha.133 ya da
+  alpha.134 üzerindeki ana sunucu da aynı yanıtı verir). Denetimin kendisi
+  hiçbir şey göndermez.
+- **Doğru durum (anayasa 3, D-024).** Her kaydın sonucu ayrı tutulur:
+  eklendi, zaten var, kaydedildi ama yayımlandığı henüz doğrulanmadı,
+  adlandırılmış bir kuralla reddedildi, gönderilmedi, bilinmiyor. Aynı
+  kimlik saklanandan (tek `panel_settings` satırı) yanıtlanır, asla yeniden
+  gönderilmez; istekler ve sonuçları denetim kaydına yazılır.
+- **Kanıt.** `cmd/panel/webmail_address_dns_record_test.go`,
+  `web/tests/webmail-dns-add-alpha135.test.mjs`. Laboratuvar denemesine
+  kadar yalnız bileşen testleri. Açık: TXT kayıtları kanal üzerinden
+  eklenemez; isteğin kendisinin "sunulmuyor" dışındaki bir reddi (örneğin
+  yeniden kullanılan kimlik) bilinmiyor olarak, sonraki adım Denetle ile
+  gösterilir. **Hiçbir P0 işi kapanmadı.**
