@@ -14,28 +14,50 @@ günceller.**
 
 ## alpha.133'ten güncellerken
 
-1. Güncellemeyi her zamanki gibi panelin kendi güncelleme ekranından
-   başlatın. Güncelleme, panelin kendi veritabanına her alan adı için yeni
-   bir ayar ekler. Güncelleme başarısız olursa ya da sonradan alpha.133'e
-   dönerseniz, panelin veritabanı güncellemeden hemen önce alınan kopyasına
-   geri döner: alpha.133 bu yeni ayarı okuyamaz.
-2. **Güncellemeden sonra program, Python uygulaması ya da hizmet uygulaması
+1. **Veritabanı hakları kendiliğinden daraltılır; basmanız gereken bir şey
+   yok.** Güncelleme doğrulandıktan sonra CelikPanel, yönettiği her MariaDB
+   sunucusunda daha önce verdiği veritabanı haklarını, her biri yalnız kendi
+   veritabanına erişecek biçimde yeniden yazar. Ardından **Bileşenler →
+   MariaDB** sayfasındaki **Veritabanı hakları tam adla** bölümü kaç hakkın
+   daraltıldığını, bunlardan hangilerinin önceden başka veritabanlarına da
+   eriştiğini (ve hangilerine), kaçının olduğu gibi bırakıldığını ve
+   nedenini, kaçının hâlâ beklediğini söyler. Olduğu gibi bırakılan bir hak
+   varsa yöneticiler ana sayfada **tek** bir bildirim görür.
+   - **"Olduğu gibi bırakıldı"**, CelikPanel'in o hakkı kendisinin verdiğini
+     kanıtlayamadığı (elle açılmış bir hesap ya da CelikPanel'in artık
+     kaydını tutmadığı bir veritabanı) ya da hakkın sunucu sahibine ait
+     olduğu (başkasına hak verme yetkisi ya da CelikPanel'in hiç vermediği
+     bir yetki taşıdığı) anlamına gelir; CelikPanel ona dokunmaz. Bölüm her
+     birini şu an eriştiği veritabanlarıyla listeler; **Ayrıntılar** altında
+     onu tek bir veritabanına daraltan ya da kaldıran komut yazar. Bir hesap
+     yalnız kendi veritabanına erişmeliyse o komutu çalıştırın; bilerek
+     birden çok veritabanına erişiyorsa olduğu gibi bırakın.
+   - **Daraltılan bir kullanıcı, adı eski hakkına rastlantıyla uyan başka
+     veritabanlarına artık erişemez.** Bir uygulama buna dayanıyorsa hakkı
+     bilerek verin (bölüm, daraltılan her hakkın önceden eriştiği
+     veritabanlarını adlarıyla gösterir).
+2. Güncellemeyi her zamanki gibi panelin kendi güncelleme ekranından
+   başlatın. Güncelleme panelin kendi veritabanına her alan adı için yeni bir
+   ayar ve daraltılmadan önce her veritabanı hakkının bir kaydını ekler.
+   Güncelleme başarısız olursa ya da sonradan alpha.133'e dönerseniz, panelin
+   veritabanı güncellemeden hemen önce alınan kopyasına geri döner: alpha.133
+   bu yeni kayıtları okuyamaz. Daraltılmış haklar veritabanı sunucusunda
+   daraltılmış olarak kalır ve çalışmayı sürdürür (bkz. Bilinen sınırlar).
+3. **Güncellemeden sonra program, Python uygulaması ya da hizmet uygulaması
    çalıştıran her sitenin yeni bir yedeğini alın** (alan adının
    **Yedekler** bölümünde dosya ya da tam yedek). Bu sürümden önce alınan
    yedekler programın klasörünü ve verisini içermez; yedek listesi bunu her
    birinin yanında söyler ("Bu yedek programı içermiyor (eski biçim)").
-3. **Her alan adının sertifikasına bir kez bakın** (alan adının **Güvenlik**
+4. **Her alan adının sertifikasına bir kez bakın** (alan adının **Güvenlik**
    bölümü). Yeni "Neler korunuyor" listesi, sertifikanın neyi koruduğunu ad
    ad söyler. Posta adı eksikse orada "Korunmuyor" ve tek bir düğme görünür:
    **Posta adını da kapsa**. Bir basış, sertifikayı bu adla yeniden ister.
    Kendiliğinden hiçbir şey yeniden istenmez.
-4. alpha.133'ten sonra yapmadıysanız: CelikPanel'in veritabanı hesabına her
+5. alpha.133'ten sonra yapmadıysanız: CelikPanel'in veritabanı hesabına her
    veritabanı sunucusunda bir kez yeni parola verin (**Bileşenler →
    MariaDB**, "CelikPanel'in bu hizmete bağlandığı hesap", **Diğer → Yeni
    parola ver…**; aynısı **Bileşenler → PostgreSQL** sayfasında). Nedeni
    alpha.133 notlarında yazıyor.
-5. *(Veritabanı hakları: bu işin güncelleme adımları, iş sürüme
-   katıldığında buraya eklenir.)*
 
 ## Sizin için ne değişiyor
 
@@ -114,10 +136,51 @@ günceller.**
 
 ### Tek bir veritabanı için veritabanı hakları
 
-*(Bu bölüm, veritabanı hakları işi incelemesinden sonra bu sürüme
-katıldığında yazılır: hakların tam olarak tek bir veritabanı adına
-verilmesi, önceki hakların kendiliğinden dönüştürülmesi ve silinen bir
-veritabanının haklarının her hesaptan ve rolden kaldırılması.)*
+- **Bu neden bir güvenlik açığıydı.** MariaDB, bir veritabanının tamamına
+  verilen haktaki veritabanı adını bir kalıp olarak okur: `_` herhangi bir
+  karakter yerine geçer. CelikPanel'in açtığı her adda `_` vardır; bu yüzden
+  bir müşterinin veritabanına verilen hak, adı yalnız o noktada ayrılan başka
+  bir müşterinin veritabanına da uyabiliyordu. alpha.133 laboratuvarında
+  MariaDB 11.8.6 ve 10.11.14 üzerinde ölçüldü: hakkı `labd_1__wp` adını
+  taşıyan bir kullanıcı `labd_12_wp` veritabanında tablo açabildi.
+- **CelikPanel'in verdiği her hak artık tam olarak tek bir veritabanı adına
+  yazılır** (veritabanı ya da kullanıcı açarken, bir kullanıcıyı başka bir
+  veritabanına verirken, dışarıdan bağlantı kopyalarında) ve yazıldıktan
+  sonra sunucudan geri okunur: saklanan hak tam olarak o veritabanını
+  anmalıdır.
+- **CelikPanel'in önceden verdiği haklar, güncelleme doğrulandıktan sonra
+  kendiliğinden daraltılır** (yukarıdaki güncelleme adımlarına bakın).
+  CelikPanel her hak için önce onu olduğu gibi kaydeder, sonra aynı
+  yetkileri tam adla verir ve denetler, ardından eski kalıp hakkını kaldırır
+  ve yeniden denetler; böylece arada erişim hiç kesilmez, yarıda kalan bir
+  tur sunucunun durumundan devam eder. Yalnız CelikPanel'in birlikte
+  kaydettiği kullanıcı ve veritabanı ele alınır; kendisine ait olduğunu
+  kanıtlayamadığı haklar listelenir, asla değiştirilmez. Panelin saatlik
+  turunda çalışır; açılıştan sonraki ilk dakikalarda ve sunucu meşgulken
+  çalışmaz; çalışabilene dek sayfa beklediğini ve nedenini söyler. Üç kez
+  başarısız olan bir hak bir gün bekler ve elle daraltma komutuyla
+  listelenir.
+- **Bir veritabanını silmek, onu anan her hakkı her hesaptan ve rolden
+  kaldırır;** herhangi bir adla elle açılmış hesaplardan da. Hesaplar ve
+  roller kalır. **alpha.133'ten farkı:** silinen bir veritabanını anan
+  haklar artık aynı adlı bir rolden de kaldırılır. Adı yalnız kalıp olarak
+  karşılayan ve var olan başka bir veritabanına da erişen bir hak, silinen
+  veritabanı için kaydı olmayan bir hesapta bırakılır ve yanıt onu
+  listeler.
+- **Veritabanı adı, tam adlı hakkı sığacak biçimde sınırlanır.** MariaDB bir
+  haktaki veritabanı adını en çok 64 karakter olarak saklar; tam biçimde
+  her `_` iki karakter sayılır. MariaDB 11.8.6 üzerinde ölçüldü: daha uzun
+  bir tam ada verilen hak kabul edilir ve tam gösterilir, ama 64 karaktere
+  kesilerek saklanır; bir sonraki yeniden yüklemeden sonra bu, başka ve
+  daha kısa bir ada verilmiş bir haktır. Bu yüzden tam adı sığmayacak yeni
+  bir veritabanı, hiçbir şey açılmadan, adın ne kadar kısalması gerektiği
+  söylenerek reddedilir. CelikPanel'in kendi verdiği adlar (uygulama ve
+  WordPress kurulumları, kopyalar) sığana dek kısaltılır. cPanel'den içe
+  aktarma böyle veritabanlarını dışarıda bırakır ve adlarını söyler. Böyle
+  bir adla zaten var olan bir veritabanı her zamanki kalıp biçimiyle
+  çalışmayı sürdürür ve listelenir.
+- Hizmet sayfaları ve giriş sayfasındaki demo hesapları artık açıldıklarında
+  yüklenir; böylece panelin ilk açılışı boyut sınırının içinde kalır.
 
 ## Bilinen sınırlar
 
@@ -171,7 +234,33 @@ veritabanının haklarının her hesaptan ve rolden kaldırılması.)*
 
 ### Veritabanı hakları
 
-*(Veritabanı hakları işi bu sürüme katıldığında doldurulur.)*
+- **MySQL 8 sunucuları dönüştürülmez, yalnız listelenir.** Oradaki yeni
+  haklar tam adlıdır, ama önceden verilen haklar yalnız daraltma komutuyla
+  listelenir: MySQL 8'in bu hakları nasıl sakladığı ve
+  gösterdiği doğrulanmadı.
+- **Listelenen bir hakkı tek basışla daraltmak henüz yok.** **Bileşenler →
+  MariaDB** sayfasında **Ayrıntılar** altındaki komutu kullanın.
+- **Hesabı hak tablolarını okuyamayan, sonradan eklenmiş bir veritabanı
+  sunucusunda haklar doğrulanamaz.** Oradaki haklar ad uzunluğu kuralına
+  dayanır, hiçbir şey reddedilmez; MariaDB sayfası oradaki hakların
+  doğrulanamadığını ve hesabın neye ihtiyacı olduğunu söyler (`mysql.db`
+  üzerinde `SELECT`). Önceki hakların kendiliğinden daraltılması için
+  hesabın, CelikPanel'in kendi hesabı gibi her hesabın haklarını okuyup
+  değiştirebilmesi gerekir (`ALL PRIVILEGES ON *.* WITH GRANT OPTION`).
+- **alpha.133'e dönüş** panelin veritabanını güncelleme öncesi hâline
+  getirir. Daraltılmış haklar veritabanı sunucusunda kalır ve çalışmayı
+  sürdürür. alpha.133 o zaman bir veritabanı silinirken iki biçimi de
+  kaldırır; ama hâlâ var olan bir veritabanından eklenmiş bir kullanıcıyı
+  çıkarmak daraltılmış hakkı yerinde bırakır (sonradan eklenmiş bir
+  sunucuda "böyle bir hak yok" yanıtı alır) ve böyle bir kullanıcının
+  dışarıdan bağlantı kopyaları yenilenmez. alpha.134'e yeniden güncellemek
+  sunucunun durumundan devam eder.
+- **Eski bir kusur sürüyor:** sonradan eklenmiş bir veritabanı sunucusu "bu
+  işlem için yetkiniz yok" yanıtı verdiğinde panel bunu hâlâ "sunucu kimlik
+  bilgisini reddetti" diye gösterir.
+- Kullanıcının hesaplarını bırakan bir silmeden sonra, o hesaplar
+  kaldırılana dek aynı adla veritabanı hâlâ açılamaz ve ret bunu henüz
+  söylemez (alpha.135).
 
 ### alpha.135'e taşınanlar
 
@@ -189,9 +278,11 @@ bilinen sınırları sürüyor.
 
 ### Diğer
 
-- Önceki sınırlar sürüyor (bkz. alpha.133); bu sürümün düzelttiği iki sınır
-  dışında: site yedekleri artık programı içeriyor ve sertifika ekranı artık
-  posta adının kapsanıp kapsanmadığını söylüyor.
+- Önceki sınırlar sürüyor (bkz. alpha.133); bu sürümün düzelttikleri
+  dışında: site yedekleri artık programı içeriyor, sertifika ekranı posta
+  adının kapsanıp kapsanmadığını söylüyor, MariaDB hakları tam adla
+  veriliyor ve silinen bir veritabanının hakları her hesaptan ve rolden
+  kaldırılıyor.
 
 ## Laboratuvarda denetlenenler
 
@@ -200,13 +291,22 @@ sonra neyin denetlendiği ve neyin denetlenmediğiyle doldurulur.
 
 ## Kanıt
 
-Panelin veritabanına 078 numaralı değişiklik eklendi (77 → 78): her alan adı
+Bu sürüm panelin veritabanına iki değişiklik ekler (77 → 79). 078: her alan adı
 için, posta programlarına alan adının kendi posta adının mı söylendiğini
 tutan yeni bir ayar. Daha önce postayı sertifikasıyla koruyan her alan
 adında bu ayar açık başlar; böylece güncellemeden sonra hiçbir programa
-başka bir ad söylenmez. Değişiklik yalnızca ekler; alpha.133 bu değişikliği
-içeren bir veritabanını okumayı reddeder, bu yüzden alpha.133'e dönüş
-güncelleme öncesi kopyanın geri yüklenmesidir. İki yeni salt-okur sorgu
+başka bir ad söylenmez. 079: daraltılmadan önce her veritabanı hakkının kaydı
+(hesap, adres, saklanan ad, yetkiler ve durumu) ve her veritabanı sunucusu
+için turun durumu (haklarının doğrulanamadığı ve beklediği zamandan beri
+bilgisi dâhil). İki değişiklik de yalnızca ekler; alpha.133 bunları içeren
+bir veritabanını okumayı reddeder, bu yüzden alpha.133'e dönüş güncelleme
+öncesi kopyanın geri yüklenmesidir. MariaDB'de verilen her hak, ortadan
+kalkmış bir hesabı parolasız yeniden açmayacak bir oturum ayarıyla yazılır
+ve geri okunur; geri okuması başarısız olan bir hak "bilinmiyor" sayılır,
+hiçbir yanıta yorulmaz. Veritabanı hakları testleri geliştirme ortamında
+gerçek bir MariaDB 11.8.6'ya karşı çalıştı (yukarıdaki ölçümler); MariaDB
+10.11, sonradan eklenmiş ikinci bir sunucu ve iki müşterinin
+veritabanlarıyla yapılan denetim laboratuvara kaldı. İki yeni salt-okur sorgu
 eklendi: bir alan adının sertifikasının neyi koruduğu ve bir sitenin
 yedeğinin neleri içereceği. Sertifika isteği eskisi gibi önce hazırlanır,
 sonra devreye alınır; posta, alan adının sertifikasını yalnızca

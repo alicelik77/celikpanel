@@ -7703,3 +7703,48 @@ bağlantıyı tutar.
   `cmd/panel/domain_backup_program_test.go`,
   `web/tests/site-backup-contents-mounted.test.mjs`. Gerçek sistemde
   çalıştırılmadı. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a134/dbrights (veritabanı hakları tam adla, önceki haklar daraltılır, silinen veritabanının hakları her yerden kaldırılır; şema 78 -> 79; anayasa 1, 2 ve 3; P0.1-P0.3 açık kalır; D-022; D-024; D-025; 2026-11-14)
+
+- **Kusur.** MariaDB veritabanı düzeyindeki bir yetkinin veritabanı adını
+  kalıp olarak okur (`_` herhangi bir karakter). CelikPanel'in her adında `_`
+  var; bu yüzden bir müşterinin hakkı başka bir müşterinin veritabanına
+  erişebiliyordu: alpha.133 laboratuvarında MariaDB 11.8.6 ve 10.11.14'te
+  ölçüldü (`labd_1__wp` üzerindeki hak `labd_12_wp`'de tablo açtı). Tasarım
+  ve her kural: [DATABASE-USERS.md](DATABASE-USERS.md).
+- **Sözleşme.** CelikPanel'in yazdığı her yetki tam (kaçışlı) adı anar,
+  oturumunda `NO_AUTO_CREATE_USER` ile çalışır ve geri okunur; başarısız geri
+  okuma bilinmeyen sonuçtur. Önceki yetkiler yalnız kayıtlı kullanıcı /
+  veritabanı çiftleri için daraltılır (anayasa 1: tam kaynak; sahibin
+  satırları komutlarıyla listelenir, asla değiştirilmez). Silinen
+  veritabanının hakları her hesaptan ve rolden gider. MariaDB'nin 64
+  karakterine sığmayan tam ad (ölçüldü: kesilerek saklanır) yeni
+  veritabanında reddedilir, üretilen adlarda kısaltılır, cPanel içe
+  aktarmasında atlanıp adlandırılır, var olanlarda kalıp biçiminde kalır ve
+  listelenir. MySQL 8 dönüştürülmez, listelenir.
+- **Değişiklik ve denetim noktaları (anayasa 2).** Daraltma bir
+  değişikliktir: her satır için önce önceki hâl `database_grant_forms`'a
+  yazılır; sonra tam yetki, denetim, kalıbı geri alma, denetim; motorun
+  kapısı altında satır satır; kesinti motordan devam eder; üç başarısızlık bir
+  gün bekler. Yalnız bu sürüme son güncelleme doğrulandıktan sonra, açılışın
+  ilk dakikalarında değil, sunucu meşgulken değil ve bu makinede yalnız aynı
+  sürümden bir Agent ile çalışır.
+- **Doğru durum (anayasa 3).** Her motor için `database_grant_form_engines`
+  bekliyor (`waiting_since` ile), engelli (nedeniyle) ve bilinmiyor (kayıtlar
+  okunamadı) durumlarını ayrı tutar; `mysql.db`'yi okuyamayan hesap için
+  `grants_unverifiable_since`; aynı nedenle 24 saatten sonra tek bildirim,
+  bırakılan satırlar varken tek bildirim.
+- **Şema geçişi.** Göç 079 `database_grant_forms` (iki tablo; eklemeli).
+  alpha.133 078 ya da 079 içeren bir kaydı reddeder; dönüş güncelleme öncesi
+  anlık görüntünün geri yüklenmesidir. Daraltılmış yetkiler motorda kalır ve
+  çalışır; alpha.133'ün onlarla davranışı DATABASE-USERS.md'de yazılı. Yeniden
+  güncelleme motordan devam eder. Release-recovery laboratuvar kanıtı 079'u
+  sabitler.
+- **Kanıt.** `internal/mariadbgrant`, `cmd/panel` ve `cmd/agent` testleri,
+  `internal/db` göç testi, `internal/recoveryobs`; bağlı web testleri
+  `database-grant-forms-mounted` ve `database-name-too-long-alpha134`. Motor
+  testleri geliştirmede gerçek bir MariaDB 11.8.6'ya karşı çalıştı; MariaDB
+  10.11, ikinci kayıtlı sunucu ve iki müşteri denetimi laboratuvarındır. Açık:
+  `partial_revokes` ile MySQL 8; listelenen satırı tek basışla daraltma;
+  kayıtlı sunucunun "yetki yok" yanıtının hâlâ "kimlik bilgisi reddedildi"
+  görünmesi. **Hiçbir P0 işi kapanmadı.**

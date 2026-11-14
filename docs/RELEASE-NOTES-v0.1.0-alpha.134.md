@@ -13,29 +13,50 @@ screen.**
 
 ## Updating from alpha.133
 
-1. Update from the panel's own update screen, as before. The update changes
-   the panel's database (one new setting per domain). If the update fails,
-   or if you go back to alpha.133 later, the panel's database is put back
-   to the copy taken just before the update: alpha.133 cannot read the new
-   setting.
-2. **After the update, take a new backup of every site that runs a program,
+1. **Database rights are narrowed by themselves; there is nothing to
+   press.** Once the update is verified, CelikPanel rewrites, on each
+   MariaDB server it manages, the database rights it gave earlier so that
+   each one reaches exactly its own database. **Components → MariaDB**, in
+   the block **Database rights by exact name**, then says how many rights
+   were narrowed, which of them also reached other databases before (and
+   which ones), how many were left as they are and why, and how many are
+   still waiting. If any right was left as it is, the administrators get
+   **one** notification on the home page.
+   - **"Left as it is"** means CelikPanel cannot prove it gave that right
+     (an account made by hand, or a database CelikPanel no longer keeps a
+     record of), or the right is the owner's own (it holds the grant option
+     or a privilege CelikPanel never gives), so it does not touch it. The
+     block lists each such right with the databases it reaches now and,
+     under **Details**, the statement that narrows it to one database or
+     removes it. If an account should reach only its own database, run that
+     statement; if it reaches several databases on purpose, leave it.
+   - **A narrowed user can no longer reach other databases whose names its
+     old right happened to match.** If an application relied on that, give
+     the right on purpose (the block names the databases each narrowed right
+     reached before).
+2. Update from the panel's own update screen, as before. The update changes
+   the panel's database (one new setting per domain, and a record of every
+   database right before it is narrowed). If the update fails, or if you go
+   back to alpha.133 later, the panel's database is put back to the copy
+   taken just before the update: alpha.133 cannot read the new records.
+   Rights already narrowed stay narrowed on the database server and keep
+   working (see Known limits).
+3. **After the update, take a new backup of every site that runs a program,
    a Python app or a service app** (the domain's **Backups** section, a
    files or full backup). Backups taken before this release do not hold the
    program's folder or its data; the backup list says so on each of them
    ("This backup does not hold the program (older format)").
-3. **Look at each domain's certificate once** (the domain's **Security**
+4. **Look at each domain's certificate once** (the domain's **Security**
    section). The new list "What is protected" says, name by name, what the
    certificate protects. Where the mail name is missing it shows "Not
    protected" with one button, **Cover the mail name too**; one press asks
    for the certificate again with that name. Nothing is requested again by
    itself.
-4. If you did not do it after alpha.133: give CelikPanel's database account
+5. If you did not do it after alpha.133: give CelikPanel's database account
    a new password once on each database server (**Components → MariaDB**,
    "The account CelikPanel connects to this service with", **More → New
    password…**; the same on **Components → PostgreSQL**). The alpha.133
    notes say why.
-5. *(Database rights: the update steps of this job are added here when it
-   joins the release.)*
 
 ## What changes for you
 
@@ -110,10 +131,49 @@ screen.**
 
 ### Database rights for exactly one database
 
-*(This part is written when the database-rights job joins this release
-after its review: rights given for exactly one database name, earlier rights
-converted automatically, and a deleted database's rights removed from every
-account and role.)*
+- **Why this was a security weakness.** MariaDB reads the database name in
+  a right given on a whole database as a pattern: `_` stands for any one
+  character. Every name CelikPanel makes holds `_`, so a right on one
+  customer's database could also match another customer's database whose
+  name differs only there. Measured in the alpha.133 lab on MariaDB 11.8.6
+  and 10.11.14: a user whose right named `labd_1__wp` could create a table
+  in `labd_12_wp`.
+- **Every right CelikPanel gives is now written for exactly one database
+  name** (creating a database or a user, giving a user to another database,
+  copies for outside connections) and read back from the server after it is
+  written: the stored right must name exactly that database.
+- **Rights CelikPanel gave earlier are narrowed by themselves** after the
+  update is verified (see the update steps above). For each right,
+  CelikPanel first records it as it was, then gives the same privileges by
+  the exact name and checks them, then takes the old pattern right away and
+  checks again, so access is never lost in between; an interrupted round
+  continues from the server's state. Only a user and a database that
+  CelikPanel records together are touched; rights it cannot prove are its
+  own are listed, never changed. It runs in the panel's own hourly round,
+  not in the first minutes after a start and not while the server is busy;
+  until it can run, the page says that it is waiting and why. A right that
+  fails three times waits a day and is listed with the statement to narrow
+  it by hand.
+- **Deleting a database takes every right naming it from every account and
+  role,** also from accounts made by hand under any name; the accounts and
+  roles themselves stay. **This differs from alpha.133:** rights naming a
+  deleted database are now removed from a role of the same name too. A
+  right that only matches the name as a pattern and also reaches another
+  existing database is kept for an account not on record for the deleted
+  database, and the answer lists it.
+- **A database name is limited so that its exact right fits.** MariaDB
+  stores the database name of a right in at most 64 characters, and in the
+  exact form every `_` counts twice. Measured on MariaDB 11.8.6: a right on
+  a longer exact name is accepted and shown whole, but stored cut to 64
+  characters, which after the next reload is a right on another, shorter
+  name. So a new database whose exact name would not fit is refused before
+  anything is made, with how much shorter the name must be. Names CelikPanel
+  makes itself (application and WordPress installs, copies) are shortened
+  until they fit. A cPanel import leaves such databases out and names them.
+  An existing database with such a name keeps working with the pattern form
+  it always had, and is listed.
+- The service pages and the login page's demo accounts now load when they
+  are opened, so the panel's first load stays within its size limit.
 
 ## Known limits
 
@@ -170,7 +230,32 @@ account and role.)*
 
 ### Database rights
 
-*(Filled in when the database-rights job joins this release.)*
+- **MySQL 8 servers are listed, not converted.** New rights there are
+  exact, but rights given earlier are only listed with the statement to
+  narrow them: how MySQL 8 stores and shows them with `partial_revokes` was
+  not verified.
+- **Narrowing a listed right with one press is not built.** Use the
+  statement under **Details** on **Components → MariaDB**.
+- **A registered database server whose account cannot read the rights
+  tables cannot be verified.** Rights there stand on the name-length rule,
+  nothing is refused, and the MariaDB page says that rights there cannot be
+  verified and what the account needs (`SELECT` on `mysql.db`). To narrow
+  earlier rights automatically, the account must read and change every
+  account's rights, as CelikPanel's own account does (`ALL PRIVILEGES ON
+  *.* WITH GRANT OPTION`).
+- **Going back to alpha.133** restores the panel's database from before the
+  update. The narrowed rights stay on the database server and keep working.
+  alpha.133 then removes both forms when a database is deleted, but removing
+  an added user from a database that still exists leaves its narrowed right
+  in place (on a registered server it answers "no such grant"), and
+  outside-connection copies of such a user are not refreshed. Updating to
+  alpha.134 again continues from the server's state.
+- **An old defect remains:** when a registered database server answers
+  "no permission for this action", the panel still shows it as "the server
+  refused the credential".
+- After a deletion that kept a user's accounts, a database of the same name
+  still cannot be created until those accounts are removed, and the refusal
+  does not say so yet (alpha.135).
 
 ### Moved to alpha.135
 
@@ -187,9 +272,10 @@ still apply.
 
 ### Other
 
-- Earlier limits still apply (see alpha.133), except the two this release
-  fixes: site backups now hold the program, and the certificate screen now
-  says whether the mail name is covered.
+- Earlier limits still apply (see alpha.133), except those this release
+  fixes: site backups now hold the program, the certificate screen says
+  whether the mail name is covered, MariaDB rights are given by exact name,
+  and a deleted database's rights are removed from every account and role.
 
 ## Checked in the lab
 
@@ -198,7 +284,7 @@ in after it, with what was checked and what was not.
 
 ## Evidence
 
-Schema 77 → 78: migration 078 `domain_mail_client_name` adds
+Schema 77 → 79 for the release as a whole. Migration 078 `domain_mail_client_name` adds
 `domains.mail_clients_use_own_name` (0/1, default 0) and sets 1 for every
 domain whose active certificate secured mail before, so no program is told
 another name after the update (additive; alpha.133 refuses a ledger with
@@ -220,6 +306,18 @@ Component tests: `cmd/panel/certificate_coverage_test.go`,
 `cmd/panel/domain_backup_program_test.go`; mounted web tests
 `web/tests/certificate-coverage-alpha134.test.mjs` (including the order of
 the list) and `web/tests/site-backup-contents-mounted.test.mjs`
-(RESILIENCE-CONTRACT, "Branch a134/certcover" and "Branch a134/progbackup").
+(RESILIENCE-CONTRACT, "Branch a134/certcover", "Branch a134/progbackup" and
+"Branch a134/dbrights").
+Migration 079 `database_grant_forms` adds `database_grant_forms` (the
+before-image of each earlier right: account, host, stored name, privileges,
+and its state) and `database_grant_form_engines` (per engine, including
+`grants_unverifiable_since` and `waiting_since`); additive; alpha.133
+refuses a ledger with 078 or 079, so going back is the pre-update snapshot
+restore (two steps). Every GRANT on MariaDB runs with `NO_AUTO_CREATE_USER`
+in its session and is read back; a read-back that failed is an unknown
+result, never taken for either answer. The database-rights tests ran in
+development against a real MariaDB 11.8.6 (the measurements above);
+MariaDB 10.11, a second registered server and the check with two customers'
+databases are left to the lab. Details: docs/DATABASE-USERS.md.
 No real certificate authority and no native run. **No P0 item is closed.**
 Release sequence 133 → 134.

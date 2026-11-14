@@ -8489,3 +8489,53 @@ until the backup reports ready.
   program record, the contents endpoint), and
   `web/tests/site-backup-contents-mounted.test.mjs`. No native run. **No P0
   item is closed.**
+
+### Branch a134/dbrights (database rights by exact name, earlier rights narrowed, a deleted database's rights removed everywhere; schema 78 -> 79; constitution 1, 2 and 3; P0.1-P0.3 stay open; D-022; D-024; D-025; 2026-11-14)
+
+- **Defect.** MariaDB reads the database name of a database-level grant as a
+  pattern (`_` is any one character). Every name CelikPanel makes holds `_`,
+  so one customer's right could reach another customer's database: measured
+  in the alpha.133 lab on MariaDB 11.8.6 and 10.11.14 (a right on
+  `labd_1__wp` created a table in `labd_12_wp`). Design and every rule:
+  [DATABASE-USERS.md](DATABASE-USERS.md).
+- **Contract.** Every grant CelikPanel writes names the exact (escaped)
+  database name, runs with `NO_AUTO_CREATE_USER` in its session and is read
+  back; a failed read-back is an unknown result. Earlier grants are narrowed
+  only for user/database pairs on record (constitution 1: the exact
+  resource; owner rows are listed with their statement, never changed). A
+  deleted database's rights go from every account and role. An exact name
+  that does not fit MariaDB's 64 characters (measured: stored cut) is
+  refused for a new database, shortened for generated names, skipped and
+  named in a cPanel import, kept in its pattern form and listed when it
+  exists. MySQL 8 is listed, not converted.
+- **Mutation and checkpoints (constitution 2).** The narrowing is a
+  mutation: per row the before-image is written to `database_grant_forms`
+  first; then grant exact, check, revoke pattern, check, under the engine's
+  gate one row at a time; an interruption continues from the engine; three
+  failures wait a day. It runs only after the latest update to this build is
+  verified, not in the first minutes after a start, not while the server is
+  busy, and on this machine only with an Agent of the same build.
+- **Truthful state (constitution 3).** Per engine `database_grant_form_engines`
+  keeps waiting (with `waiting_since`), blocked (with its reason) and unknown
+  (records unread) apart, and `grants_unverifiable_since` for an account that
+  may not read `mysql.db`; one notification after 24 hours of one cause, one
+  while rows are left.
+- **Schema transition.** Migration 079 `database_grant_forms` (two tables;
+  additive). alpha.133 refuses a ledger with 078 or 079; going back is the
+  pre-update snapshot restore. Narrowed grants stay on the engine and keep
+  working; alpha.133's behaviour with them is documented in
+  DATABASE-USERS.md. Updating again continues from the engine. The
+  release-recovery lab proof pins 079.
+- **Evidence.** `internal/mariadbgrant` (forms, migrate, dropped),
+  `cmd/panel/database_grant_forms_test.go`,
+  `database_grant_forms_review_test.go`, `database_grant_readback_engine_test.go`,
+  `database_delete_sweep_test.go`, `import_database_names_test.go`,
+  `cmd/agent/database_grant_forms_engine_test.go`,
+  `database_dropped_rights_engine_test.go`, the migration test in
+  `internal/db`, `internal/recoveryobs`; mounted web tests
+  `database-grant-forms-mounted` and `database-name-too-long-alpha134`. The
+  engine tests ran in development against a real MariaDB 11.8.6; MariaDB
+  10.11, a second registered server and the two-customer check are the
+  lab's. Open: MySQL 8 with `partial_revokes`; one-press narrowing of a
+  listed row; a registered server's "no permission" still shown as
+  "credential refused". **No P0 item is closed.**
