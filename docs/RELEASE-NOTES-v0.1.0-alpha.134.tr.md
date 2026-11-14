@@ -53,6 +53,11 @@ günceller.**
    ad söyler. Posta adı eksikse orada "Korunmuyor" ve tek bir düğme görünür:
    **Posta adını da kapsa**. Bir basış, sertifikayı bu adla yeniden ister.
    Kendiliğinden hiçbir şey yeniden istenmez.
+   - **Yerini yenisine bırakan sertifikalar kendiliğinden kalkar; basmanız
+     gereken bir şey yok.** alpha.113'ten bu yana sertifikaları yeniden
+     alınmış bir sunucu, onların yerini aldığı sertifikaları tutar;
+     güncelleme doğrulandıktan birkaç dakika sonra bunlar kaldırılır ve her
+     biri Denetim günlüğünde listelenir.
 5. alpha.133'ten sonra yapmadıysanız: CelikPanel'in veritabanı hesabına her
    veritabanı sunucusunda bir kez yeni parola verin (**Bileşenler →
    MariaDB**, "CelikPanel'in bu hizmete bağlandığı hesap", **Diğer → Yeni
@@ -103,6 +108,17 @@ günceller.**
 - Yenileme değişmedi: sertifikayı işletim sisteminin certbot'u yeniler;
   CelikPanel durdurulsa ya da kaldırılsa da. Yenilenen sertifika posta adını
   korur.
+- **Yenisiyle değiştirilen sertifika** (posta adını kapsama, yeniden alma,
+  takma ad değişikliği) artık hiçbir şey kullanmadığında certbot ile
+  kaldırılıyor; arka planda yenilenmeye devam etmiyor. Bu yalnız güncelleme
+  doğrulandıktan sonra çalışır, kullanımdaki sertifikaya dokunmaz,
+  sunucudaki bir dosyanın ya da geri dönüş kopyasının hâlâ andığı
+  sertifikayı korur ve her kaldırmayı da her korumayı da Denetim günlüğüne
+  yazar.
+- **Sertifika kuruluşunun yerine getirmediği istek artık nedenini, kimin ne
+  yapacağını söylüyor;** müşteriler sunucudaki bir dosyaya yönlendirilmiyor.
+- **Bu sunucunun güvenmediği yeni sertifika iç hata yerine adıyla
+  bildiriliyor;** şimdiki sertifika kullanılmaya devam ediyor.
 
 ### Site yedekleri programı ve verisini içeriyor
 
@@ -208,6 +224,18 @@ günceller.**
 - Sertifika isteği şu durumlarda hâlâ genel "iç hata" cümlesini gösterir:
   panel kendi kayıtlarını yazamazsa ya da sunucu isteği certbot çalışmadan
   önce reddederse (örneğin adın kanıtı için klasör hazırlanamazsa).
+- **CelikPanel'in bakmadığı bir şey hâlâ kullanıyorsa yerini yenisine
+  bırakan sertifika kaldırılmaz, korunur:** `/etc` dışındaki bir web
+  sunucusu dosyası ya da sertifika dosyalarını doğrudan okuyan bir program.
+  Kaldırma yalnız `/etc` altına, site kayıtlarına ve geri dönüş kopyalarına
+  bakar.
+- **Güncellemeden önce alınan kopyayı geri yükleyerek alpha.133'e
+  dönerseniz,** alpha.133'ün kendi açılış temizliği güncellemeden sonra
+  alınmış bir sertifikayı kaldırabilir (eski davranış, değişmedi);
+  alpha.134 yeniden çalışınca site o sertifikayı eksik olarak, yeniden alma
+  düğmesiyle gösterir.
+- `.celikpanel-backup-*` olarak sakladığınız bir site dosyası, var olduğu
+  sürece andığı sertifikayı korur.
 
 ### Site yedekleri
 
@@ -354,6 +382,10 @@ listesi, yalnızca program ya da uygulama klasörü varsa yeni biçimde (sürüm
 3) yazılır; yoksa paket eskisiyle aynıdır. Eski bir sürüm yeni biçimdeki
 paketi hiçbir şey yazmadan reddeder. Bileşen testleri ve tarayıcı
 bileşenlerinin testleri (listenin sırası dâhil) geçti; adları İngilizce
-notta yazılı. Gerçek bir sertifika kuruluşu ve gerçek bir sunucu denemesi
+notta yazılı. Laboratuvardan sonraki düzeltme turu panelin veritabanını
+değiştirmez; yerini yenisine bırakan sertifikaları kaldıran yeni bir Agent
+çağrısı ve Denetim günlüğü kayıtları ekler; D-040'ın 9. maddesi buna göre
+değişti. Bu tur ikinci laboratuvar denetimine kadar yalnız bileşen
+testleriyle denetlendi. Gerçek bir sertifika kuruluşu ve gerçek bir sunucu denemesi
 yok. **Temel dayanıklılık işlerinden hiçbiri kapanmadı.** Sürüm sırası 133 →
 134.

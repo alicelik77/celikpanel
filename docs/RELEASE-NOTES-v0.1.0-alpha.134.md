@@ -52,6 +52,10 @@ screen.**
    protected" with one button, **Cover the mail name too**; one press asks
    for the certificate again with that name. Nothing is requested again by
    itself.
+   - **Replaced certificates go away by themselves; there is nothing to
+     press.** A server that got certificates again since alpha.113 holds the
+     certificates they replaced; some minutes after the update is verified
+     these are removed and each one is listed in the audit log.
 5. If you did not do it after alpha.133: give CelikPanel's database account
    a new password once on each database server (**Components → MariaDB**,
    "The account CelikPanel connects to this service with", **More → New
@@ -100,6 +104,17 @@ screen.**
 - Renewal is unchanged: the certificate is renewed by the operating
   system's certbot, also when CelikPanel is stopped or removed, and a
   renewed certificate keeps the mail name.
+- **A certificate replaced by a new one** (covering the mail name, getting
+  it again, an alias change) is now removed with certbot once nothing uses
+  it, so it is no longer renewed in the background; this runs only after an
+  update is verified, never touches the certificate in use, keeps anything a
+  file on the server or a rollback snapshot still names, and writes each
+  removal and each kept certificate to the audit log.
+- **A request the certificate authority did not fulfil now says why, who
+  acts and what to do next;** customers are no longer sent to a server file.
+- **A newly issued certificate that this server does not trust is reported
+  as such** instead of an internal error; the current certificate keeps
+  serving.
 
 ### Site backups hold the program and its data
 
@@ -205,6 +220,17 @@ screen.**
   when the panel cannot save its own records, or when the server refuses
   the request before certbot runs (for example, the folder for the name's
   proof cannot be prepared).
+- **A replaced certificate is kept, not removed, when something CelikPanel
+  does not look at still uses it:** a web server file outside `/etc`, or a
+  program that reads the certificate files directly. The removal checks
+  `/etc`, the site records and the rollback snapshots only.
+- **If you go back to alpha.133 by restoring the snapshot taken before the
+  update,** alpha.133's own start-up clean-up can remove a certificate that
+  was issued after the update (older behaviour, unchanged); once alpha.134
+  runs again, the site shows that certificate as missing, with a button to
+  get it again.
+- A site file you kept as `.celikpanel-backup-*` keeps the certificate it
+  names for as long as that file exists.
 
 ### Site backups
 
@@ -363,6 +389,14 @@ cases, `cmd/panel/domain_database_create_fix_test.go`,
 `cmd/panel/database_create_leftover_engine_test.go`,
 `web/tests/database-name-limits.test.mjs`); restore refusals and the
 program folder's group (`cmd/agent/backup_restore_refusals_linux_test.go`,
-`cmd/panel/backup_restore_refusals_test.go`). No schema change.
+`cmd/panel/backup_restore_refusals_test.go`); replaced certificate lineages
+and the issue refusals (`cmd/agent/site_cert_retire_test.go`,
+`cmd/panel/certificate_issue_guidance_test.go`,
+`cmd/panel/site_cert_native_test.go`). No schema change. New Agent RPC
+`RetireSiteCertificateLineagesV1` (build-gated), audit actions
+`ssl.lineage.*`, D-040 point 9 amended; additive transport field `Left` and
+code `DATABASE_CREATE_LEFT_OVER`; additive `InspectResponse.Code` and
+restore codes, backup manifest still version 3. The fix round has
+component tests only until the second lab run.
 No real certificate authority and no native run. **No P0 item is closed.**
 Release sequence 133 → 134.
