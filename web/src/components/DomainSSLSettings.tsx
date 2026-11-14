@@ -1754,6 +1754,7 @@ function previousKeptSentence(answer: IssuedAnswer | null | undefined, t: (key: 
     const text = (value: unknown) => (typeof value === 'string' ? value : '');
     if (outcome === 'in_use' && text(detail)) return t('certcover.previousKept.in_use', { lineage: text(lineage), file: text(detail) });
     if (outcome === 'owner_changed' && text(lineage)) return t('certcover.previousKept.owner_changed', { lineage: text(lineage) });
+    if (outcome === 'held_by_snapshot') return t('certcover.previousKept.held_by_snapshot');
     return t('certcover.previousKept.retry');
 }
 

@@ -269,6 +269,10 @@ const (
 	// Its renewal configuration was changed outside CelikPanel: kept as the
 	// owner left it.
 	SiteLineageOwnerChanged = "owner_changed"
+	// A retained update snapshot's panel database still serves it, so going
+	// back to that update needs it: kept until the snapshot is gone. Detail
+	// is the snapshot's directory.
+	SiteLineageHeldBySnapshot = "held_by_snapshot"
 	// What names it could not be established: kept; asked again next time.
 	SiteLineageNotChecked = "not_checked"
 	// certbot could not remove it: kept; asked again next time.

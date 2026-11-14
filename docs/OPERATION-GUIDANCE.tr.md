@@ -4817,31 +4817,30 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
   TR: "Bu sunucunun internete HTTPS bağlantısı açabildiğini denetleyin: ad
   çözümleme, giden 443 numaralı port ve sistem saati."
 - `ssl.issueFailure.next.account_unknown`
-  EN: "Replace certbot's account for this authority on the server; sudo certbot
-  show_account shows the account certbot uses."
-  TR: "Sunucuda certbot’un bu kuruluştaki hesabını yenileyin; sudo certbot
-  show_account certbot’un kullandığı hesabı gösterir."
+  EN: "certbot's account at this certificate authority is closed or gone; it has
+  to be registered again on the server before a certificate can be requested
+  from this authority."
+  TR: "certbot’un bu sertifika kuruluşundaki hesabı kapanmış ya da yok; bu
+  kuruluştan sertifika istenebilmesi için hesabın sunucuda yeniden açılması
+  gerekiyor."
 - `ssl.issueFailure.next.record`
   EN: "Read certbot's record on the server (technical details below) and correct
   what it names."
   TR: "Sunucuda certbot’un kaydını okuyun (aşağıdaki teknik ayrıntılar) ve adını
   verdiği şeyi düzeltin."
 - `ssl.issueFailure.next.server_clock`
-  EN: "Correct this server's clock: timedatectl must say “System clock
-  synchronized: yes” (sudo timedatectl set-ntp true turns synchronisation
-  on)."
-  TR: "Bu sunucunun saatini düzeltin: timedatectl “System clock synchronized:
-  yes” demelidir (sudo timedatectl set-ntp true zaman eşitlemeyi açar)."
+  EN: "Correct this server's clock and turn its time synchronisation on."
+  TR: "Bu sunucunun saatini düzeltin ve zaman eşitlemesini açın."
 - `ssl.issueFailure.next.untrusted`
   EN: "Update this server's trusted certificate authorities (the ca-certificates
   package)."
   TR: "Bu sunucunun güvendiği sertifika kuruluşlarının listesini
   (ca-certificates paketi) güncelleyin."
 - `ssl.issueFailure.next.panelLog`
-  EN: "Request it again. If it fails the same way, the Panel's log (sudo journalctl
-  -u celikpanel-panel) names what did not pass."
-  TR: "Yeniden isteyin. Aynı biçimde başarısız olursa panelin günlüğü
-  (sudo journalctl -u celikpanel-panel) neyin geçmediğini söyler."
+  EN: "Request it again. If it fails the same way, the Panel's log names what
+  did not pass (technical details below)."
+  TR: "Yeniden isteyin. Aynı biçimde başarısız olursa panelin günlüğü neyin
+  geçmediğini söyler (aşağıdaki teknik ayrıntılar)."
 - `ssl.issueFailure.next.ask`
   EN: "Contact this server's administrator; nothing on this page can fix it."
   TR: "Bu sunucunun yöneticisine başvurun; bu sayfadaki hiçbir şey bunu
@@ -4877,6 +4876,13 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
   TR: "Önceki sertifika şu an kaldırılamadı. Bir şey yapmanız gerekmiyor:
   CelikPanel 12 saat içindeki sonraki denetiminde yeniden dener ve nedenini
   günlüğüne yazar."
+- `certcover.previousKept.held_by_snapshot`
+  EN: "The previous certificate is kept while a saved update snapshot still uses
+  it, so going back to that update keeps working; CelikPanel removes it once
+  that snapshot is gone."
+  TR: "Önceki sertifika, kayıtlı bir güncelleme yedeği hâlâ onu kullandığı için
+  korunuyor; böylece o güncellemeye geri dönmek çalışır. Yedek kaldırılınca
+  CelikPanel onu da kaldırır."
 
 **Her biri nerede çizilir.** Hizmet işlemi cümleleri: bir bileşenin sayfasının
 ve bileşenler listesinin bildirimi (`ServiceActionNotice`). O ekranlar Başlat,

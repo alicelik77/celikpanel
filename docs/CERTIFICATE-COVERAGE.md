@@ -135,53 +135,95 @@ same way: the renewal validates the name when the current certificate
 carries it and requires the renewed one to carry exactly the site's names and
 it, and `secure_mail` is carried over.
 
-## 5a. The certificate it replaced (lab check, 14 Nov 2026)
+## 5a. The certificate it replaced (lab check, 14 Nov 2026; review)
 
 Every request makes a new certbot lineage (D-040: a failed request never
 touches the lineage being served), so after *Posta adını da kapsa*, *Bu adla
 yeniden al*, an alias change or a detach, the lineage served before stayed in
 `/etc/letsencrypt`. Until this change the Panel only wrote `autorenew =
-False` into it at its 12-hour pass (D-040 point 9): its files, renewal file
-and deploy record stayed, and until that pass certbot could renew it.
+False` into it at its 12-hour pass (D-040 point 9), also for a lineage an
+owner-kept site file still served; its files, renewal file and deploy record
+stayed.
 
 Now the Panel asks the Agent (`RetireSiteCertificateLineagesV1`) right after
 the new certificate is served (request, alias add and remove) and again at
-every 12-hour pass, under the domain's certificate lock. Nothing is asked
-while the active certificate waits for its activation, its mail step or the
-owner's site file (it is not served yet, so the old one may be). The Agent
-runs `certbot delete --cert-name <lineage>` and removes the lineage's deploy
-record only when:
+every 12-hour pass, under the domain's certificate lock. It asks only:
 
-- the lineage is a native one of this domain (`celikpanel-site-<id>-…`), only
-  revoked or expired ledger rows name it, and it is not the active one;
+- for lineages that only revoked or expired ledger rows name, that no
+  `sites.ssl_cert_path` / `ssl_key_path` names, of a domain whose active
+  certificate is served (not waiting for its activation, its mail step or
+  the owner's site file);
+- when the gate the database-rights rewrite uses lets it
+  (`databaseGrantFormsHold`): the latest update to this build is verified
+  (`recoveryobs.LatestPhaseForTarget` succeeded or none), the start-up quiet
+  time has passed, the server is quiet (no release transaction, no service
+  mutation in flight); an Agent of another build refuses the call itself.
+
+The Agent runs `certbot delete --cert-name <lineage>` and removes the
+lineage's deploy record only when:
+
+- the lineage is a native one of this domain and not the active one;
 - its renewal file is still CelikPanel's: the same rule the certificate page
   uses for "changed outside CelikPanel" (authenticator webroot, the domain's
   own validation directory, the authority it was issued from or the one
   certbot recorded for the domain's newest certificate);
-- no file under `/etc` other than certbot's own store names it (nginx,
-  Postfix, Dovecot, another site, anything wired by hand). A lineage name
-  carries 24 random hex digits, so a file that contains it names it.
+- nothing under `/etc` other than certbot's own store names it: no file
+  contains the name (read whole, in pieces) and no link points to it, as
+  written or resolved (`/etc/ssl/private/site.pem ->
+  /etc/letsencrypt/live/<lineage>/privkey.pem`);
+- no retained update or rescue snapshot (`/var/backups/celikpanel/update-snapshots`,
+  `recovery-snapshots`; update.sh keeps five) has a panel database whose
+  certificate ledger serves it: restoring that snapshot is the way back
+  (D-025), and it must find its lineage. The database is opened read only;
+  one that predates the lineage column cannot name a native lineage.
 
-Each lineage ends as `retired`, `absent`, `in_use` (the file is named),
-`owner_changed`, `not_checked` (a file or directory could not be read, or more
-than 50 000 files) or `failed` (certbot's own error). Everything but `retired`
-and `absent` keeps the lineage, is logged and is asked again at the next pass.
-An administrator who made the request sees one warning naming what was kept
-and why (`certcover.previousKept.*`); a customer or reseller sees nothing,
-because there is nothing they can do. The active certificate and its renewal
-are never touched, so renewal with the panel and the Agent stopped (§5) is
-unchanged. The ledger rows stay as the record they are; no row is ever made
-active again after its operation ended.
+Each lineage ends as `retired`, `absent`, `in_use` (the file or link is
+named), `owner_changed`, `held_by_snapshot`, `not_checked` (a file, link,
+directory or snapshot could not be read, or more than 50 000 files) or
+`failed` (certbot's own error). Everything but `retired` and `absent` keeps
+the lineage, is logged and is asked again at the next pass. Every removal and
+every kept outcome is one row in the audit log (Denetim günlüğü:
+`ssl.lineage.removed`, `kept_in_use` with the file, `kept_owner_changed`,
+`kept_for_rollback`, `not_removed`; details: the certbot lineage), written
+once per change of outcome and read back after a restart. An administrator
+who made the request also sees one warning (`certcover.previousKept.*`); a
+customer or reseller sees nothing. The active certificate and its renewal are
+never touched, so renewal with the panel and the Agent stopped (§5) is
+unchanged.
+
+Where a lineage path can be put (back) into service, from the code:
+
+| Consumer | Where | Covered by |
+| --- | --- | --- |
+| Site nginx file, its held pending text, its `.celikpanel-backup-*` copies, the managed include dir | `/etc/nginx` (`cmd/agent/vhost_rpc.go` `validateVhostCertificatePathsFor`; `internal/services/managed_vhost.go` 50, 504-536) | `/etc` scan |
+| Postfix SNI map, Dovecot `local_name` drop-in | `/etc/postfix/celikpanel_sni`, `/etc/dovecot/conf.d/98-celikpanel-tls.conf` (`cmd/agent/mail_tls_rpc.go` 509-517) | `/etc` scan |
+| An accepted mail TLS plan not yet applied | service mutation ledger, `/var/lib/celikpanel-agent-private` | the gate (server quiet) and the outbox rule |
+| The ledger and the site row | panel database `/var/lib/celikpanel/celikpanel.db` | Panel query |
+| A pre-update panel database (rollback) | `/var/backups/celikpanel/update-snapshots`, `recovery-snapshots` (`update.sh` 16-17, 47) | snapshot check |
+| Panel listener, webmail, mail host certificates | own lineages (`celikpanel-panel-*`, `celikpanel-webmail-*`, `celikpanel-mail-*`); `/var/lib/celikpanel/tls`, `/var/lib/celikpanel-mail-renewal` | never a site lineage |
+| Release recovery material, recovery checkpoints, system SQLite snapshots | `/var/lib/celikpanel-release-state`, `/var/lib/celikpanel-recovery-checkpoints`, `/var/lib/celikpanel-agent-private/system-sqlite-snapshots` | hold no lineage path (release files, evidence, PowerDNS and Roundcube databases) |
+
+Not read: a file outside these places that names a lineage (an nginx
+`include` of a file under `/opt`, a program that reads the live files
+directly, a panel database backup the owner keeps elsewhere).
+
+Going back. alpha.133 with ledger rows naming a removed lineage: its 12-hour
+pass writes `autorenew = False` through `SetSiteCertificateAutoRenewV1`, which
+answers success for a missing lineage (`cmd/agent/site_cert_native.go`
+978-980 at the tag); `ReconcileSiteCertLineages` lists renewal files, so a
+missing one is never named; the page reads only active rows. Harmless and
+silent. Restoring the update snapshot finds every lineage its ledger serves
+(the snapshot check). An active row whose lineage is missing (a panel
+database restored from elsewhere) is the existing renewal state
+`lineage_missing`: the certificate card and the Dashboard show "certbot no
+longer has this certificate" with *Reissue the certificate here*.
 
 An owner who pressed the button on a lab build of alpha.134 (and every
 server with replaced native lineages from alpha.113 on, which carry
-`autorenew = False`) has two lineages; the first pass after the update
-removes the replaced one by itself when nothing names it.
-
-Limits: a configuration file outside `/etc` (an nginx `include` of a file
-under `/opt`, a program that reads the live files directly) is not read; such
-a lineage would be removed although that file names it. The Agent reads the
-files under `/etc` only to look for the name and keeps nothing.
+`autorenew = False`) has two lineages; the first pass after the update is
+verified removes the replaced one by itself when nothing above holds it. A
+lineage the pre-update snapshot serves (replaced after that snapshot) stays
+until update.sh prunes that snapshot.
 
 ## 5b. A request that gave no new certificate (lab check, 14 Nov 2026)
 

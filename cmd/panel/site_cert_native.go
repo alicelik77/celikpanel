@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
@@ -133,7 +135,10 @@ const replacedNativeLineagesQuery = `
 	WHERE old.status <> 'active' AND old.type = 'letsencrypt' AND old.lineage_name LIKE ?
 	  AND NOT EXISTS (
 		SELECT 1 FROM ssl_certificates cur
-		WHERE cur.status = 'active' AND cur.lineage_name = old.lineage_name)`
+		WHERE cur.status = 'active' AND cur.lineage_name = old.lineage_name)
+	  AND NOT EXISTS (
+		SELECT 1 FROM sites s
+		WHERE instr(COALESCE(s.ssl_cert_path, '') || ' ' || COALESCE(s.ssl_key_path, ''), '/' || old.lineage_name || '/') > 0)`
 
 // retireSupersededNativeLineages is the periodic pass of
 // retireReplacedNativeLineages: every domain with a replaced native lineage,
@@ -182,7 +187,8 @@ func (p *Panel) retireSupersededNativeLineages(ctx context.Context) {
 func (p *Panel) retireReplacedNativeLineages(ctx context.Context, domainID int) ([]transport.RetireSiteLineageResult, error) {
 	pool := p.db.GetDB()
 	var subscriptionID int
-	if err := pool.QueryRowContext(ctx, `SELECT subscription_id FROM domains WHERE id = ?`, domainID).Scan(&subscriptionID); err != nil {
+	var domainName string
+	if err := pool.QueryRowContext(ctx, `SELECT subscription_id, name FROM domains WHERE id = ?`, domainID).Scan(&subscriptionID, &domainName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -239,6 +245,15 @@ func (p *Panel) retireReplacedNativeLineages(ctx context.Context, domainID int) 
 	if len(request.Lineages) > 100 {
 		request.Lineages = request.Lineages[:100]
 	}
+	// Removing is a change of the server that cannot be taken back: it
+	// waits, as the database-rights rewrite does, until the latest update to
+	// this build is verified, the start-up quiet time has passed and the
+	// server is not busy (the one helper, databaseGrantFormsHold); an Agent
+	// of another build refuses it itself.
+	if hold := p.databaseGrantFormsHold(ctx, p.processStartedAt()); hold != "" {
+		log.Printf("cert renewal domain %d: replaced certificate lineages wait (%s); asked again at the next pass", domainID, hold)
+		return nil, &lineageRetireHeld{reason: hold}
+	}
 	var resp transport.RetireSiteCertificateLineagesResponse
 	if err := p.callAgentContext(ctx, "Agent.RetireSiteCertificateLineagesV1", &request, &resp); err != nil {
 		log.Printf("cert renewal domain %d: replaced certificate lineages not removed now (the Agent was not asked or did not answer: %v); asked again at the next pass", domainID, err)
@@ -249,6 +264,7 @@ func (p *Panel) retireReplacedNativeLineages(ctx context.Context, domainID int) 
 		return nil, &nativeSiteAgentRefusal{detail: resp.Error}
 	}
 	for _, result := range resp.Results {
+		p.auditLineageOutcome(ctx, domainID, domainName, result)
 		switch result.Outcome {
 		case transport.SiteLineageAbsent:
 		case transport.SiteLineageRetired:
@@ -357,6 +373,63 @@ func (p *Panel) observeNativeSiteCertificate(ctx context.Context, row nativeSite
 			log.Printf("cert renewal %s: mail TLS after the operating system's renewal failed (%v); Retry activation publishes it", row.Domain, err)
 		}
 	}
+}
+
+// lineageRetireHeld: the removal waits for a verified update, the start-up
+// quiet time or a quiet server; nothing was asked.
+type lineageRetireHeld struct{ reason string }
+
+func (e *lineageRetireHeld) Error() string { return "waiting: " + e.reason }
+
+// lineageOutcomeAudited is the last outcome written to the audit log per
+// lineage in this process, so a kept lineage is recorded once per change of
+// outcome, not at every pass.
+var lineageOutcomeAudited sync.Map
+
+// auditLineageOutcome writes one audit row (Denetim günlüğü) when a replaced
+// lineage was removed or its kept outcome changed: the lineage, the domain
+// and the reason in the action's words; the file that names it for in_use.
+// After a restart the latest row of the lineage is read back first.
+func (p *Panel) auditLineageOutcome(ctx context.Context, domainID int, domainName string, result transport.RetireSiteLineageResult) {
+	var action string
+	details := map[string]any{"lineage": result.LineageName}
+	switch result.Outcome {
+	case transport.SiteLineageRetired:
+		action = "ssl.lineage.removed:" + domainName
+	case transport.SiteLineageInUse:
+		action = "ssl.lineage.kept_in_use:" + domainName
+		details["file"] = result.Detail
+	case transport.SiteLineageOwnerChanged:
+		action = "ssl.lineage.kept_owner_changed:" + domainName
+	case transport.SiteLineageHeldBySnapshot:
+		action = "ssl.lineage.kept_for_rollback:" + domainName
+	case transport.SiteLineageFailed, transport.SiteLineageNotChecked:
+		action = "ssl.lineage.not_removed:" + domainName
+	default:
+		return
+	}
+	file, _ := details["file"].(string)
+	signature := action + "\x00" + file
+	if last, ok := lineageOutcomeAudited.Load(result.LineageName); ok && last == signature {
+		return
+	}
+	var lastAction, lastDetails string
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT action, COALESCE(details, '') FROM audit_logs
+		WHERE resource_type = 'domain' AND resource_id = ? AND action LIKE 'ssl.lineage.%'
+		  AND instr(COALESCE(details, ''), ?) > 0
+		ORDER BY id DESC LIMIT 1`, domainID, `"lineage":"`+result.LineageName+`"`).Scan(&lastAction, &lastDetails)
+	if err == nil {
+		var recorded map[string]any
+		_ = json.Unmarshal([]byte(lastDetails), &recorded)
+		recordedFile, _ := recorded["file"].(string)
+		if lastAction+"\x00"+recordedFile == signature {
+			lineageOutcomeAudited.Store(result.LineageName, signature)
+			return
+		}
+	}
+	p.recordAudit(auditRecord{Action: action, ResourceType: "domain", ResourceID: domainID, Details: auditDetailsText(details)})
+	lineageOutcomeAudited.Store(result.LineageName, signature)
 }
 
 // retireAfterIssue removes the lineages the certificate just served replaced,

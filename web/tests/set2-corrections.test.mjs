@@ -52,7 +52,7 @@ const certificateNexts = ['validation', 'rate_limited', 'authority_unreachable',
 const certificateKeys = [
   ...certificateWhys.map((kind) => `ssl.issueFailure.${kind}`), ...certificateNexts.map((kind) => `ssl.issueFailure.next.${kind}`),
   'ssl.issueFailure.title.previous', 'ssl.issueFailure.title.none', 'ssl.issueFailure.then', 'ssl.issueFailure.said', 'ssl.issueFailure.checkSaid', 'ssl.issueFailure.record',
-  'certcover.previousKept.in_use', 'certcover.previousKept.owner_changed', 'certcover.previousKept.retry',
+  'certcover.previousKept.in_use', 'certcover.previousKept.owner_changed', 'certcover.previousKept.retry', 'certcover.previousKept.held_by_snapshot',
 ];
 const reloadKeys = ['reload', 'reload_reread', 'reload_not_reread', 'not_running'].map((reason) => `err.SERVICE_ACTION_FAILED.${reason}`);
 
@@ -145,6 +145,8 @@ test('a certificate request certbot did not fulfil stays on the page with its ki
   assert.match(notice, /const who: Who = plan\.who !== 'administrator' \? plan\.who : admin \|\| next === 'ssl\.issueFailure\.next\.later' \? 'you' : 'administrator';/);
   assert.match(notice, /const detail = admin \? failure\.vars\?\.detail : undefined;/);
   assert.match(notice, /const record = admin \? failure\.vars\?\.record : undefined;/);
+  assert.match(notice, /const run = admin \? commands\[kind\] \?\? \[\] : \[\];/);
+  assert.match(notice, /\{run\.map\(\(command\) => <CopyCommand key=\{command\} command=\{command\} \/>\)\}/);
   assert.match(settings, /if \(isCertificateIssueFailure\(apiError\)\) \{\s*setIssueFailure\(apiError\);\s*return;/);
   assert.match(settings, /<CertificateIssueNotice failure=\{issueFailure\} onClose=\{\(\) => setIssueFailure\(null\)\}/);
   // The next request clears the notice of the one before.
@@ -155,6 +157,11 @@ test('a certificate request certbot did not fulfil stays on the page with its ki
       assert.doesNotMatch(sentence, /internal server error|CERTIFICATE_ISSUE/);
       // Nobody is sent to a file on the server by a sentence (alpha.134 lab).
       if (key !== 'ssl.issueFailure.record') assert.doesNotMatch(sentence, /\/var\/log|letsencrypt\.log/, `${language} ${key} names a server file`);
+      // No command and no server path in the open block: those are the
+      // closed technical details' (review of the alpha.134 lab fixes).
+      if (key.startsWith('ssl.issueFailure.') && !['ssl.issueFailure.record', 'ssl.issueFailure.said', 'ssl.issueFailure.checkSaid'].includes(key)) {
+        assert.doesNotMatch(sentence, /sudo |journalctl|timedatectl|show_account|\/etc\/|\/var\//, `${language} ${key} carries a command or a path`);
+      }
     }
     for (const key of ['ssl.issueFailure.title.previous', 'ssl.issueFailure.title.none']) assert.ok(valueOf(screens[language], key).includes('{domain}'));
     assert.match(valueOf(screens[language], 'ssl.issueFailure.then'), /othing asks again by itself|kendiliğinden yeniden istenmez/);

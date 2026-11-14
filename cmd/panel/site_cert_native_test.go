@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -151,6 +152,7 @@ func TestObserveNativeSiteCertificatesRetiresReplacedLineages(t *testing.T) {
 	insert(current, "active", sslPendingActivation)
 	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent()}
 	attachStartupVhostBatchAgent(t, panel, agent)
+	openLineageRetireGate(t, panel)
 
 	// The new certificate is not served yet: the old one may still be.
 	panel.retireSupersededNativeLineages(t.Context())
@@ -197,6 +199,7 @@ func TestRetireAfterIssueTellsOnlyAnAdministratorWhatWasKept(t *testing.T) {
 	}
 	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent(), retireOutcome: transport.SiteLineageInUse}
 	attachStartupVhostBatchAgent(t, panel, agent)
+	openLineageRetireGate(t, panel)
 	if got := panel.retireAfterIssue(t.Context(), &Caller{ID: 2, Role: roleCustomer}, domainID); got != nil {
 		t.Fatalf("customer answer = %v", got)
 	}
@@ -318,5 +321,124 @@ func TestObserveNativeSiteCertificatesRecordsWhatTheOperatingSystemDid(t *testin
 	panel.runDueCertRenewals()
 	if _, status, _ = read(); status != "os_failed" {
 		t.Fatalf("an unknown reading changed the state to %s", status)
+	}
+}
+
+// openLineageRetireGate passes the gate a removal waits behind (the one the
+// database-rights rewrite uses): the update to this build is verified, the
+// start-up quiet time has passed, the server is quiet.
+func openLineageRetireGate(t *testing.T, panel *Panel) {
+	t.Helper()
+	savedPhase, savedQuiet, savedCommit := databaseGrantFormsUpdatePhase, databaseGrantFormsHostQuiet, databaseGrantFormsCommit
+	databaseGrantFormsUpdatePhase = func(string) (string, bool) { return "succeeded", true }
+	databaseGrantFormsHostQuiet = func(*Panel, context.Context) bool { return true }
+	databaseGrantFormsCommit = func() string { return strings.Repeat("a", 40) }
+	panel.startedAt.Store(time.Now().Add(-time.Hour).UnixNano())
+	lineageOutcomeAudited.Range(func(key, _ any) bool { lineageOutcomeAudited.Delete(key); return true })
+	t.Cleanup(func() {
+		databaseGrantFormsUpdatePhase, databaseGrantFormsHostQuiet, databaseGrantFormsCommit = savedPhase, savedQuiet, savedCommit
+	})
+}
+
+// replacedLineageFixture is a domain with one replaced native lineage and a
+// fake Agent that answers retireOutcome.
+func replacedLineageFixture(t *testing.T, name string) (*Panel, int, string, *nativeRenewalAgent) {
+	t.Helper()
+	panel, subscriptionID := newStartupVhostBatchFixture(t)
+	domainID := addStartupHostedDomain(t, panel, subscriptionID, name, "static")
+	replaced := "celikpanel-site-" + strconv.Itoa(domainID) + "-cccccccccccccccccccccccc"
+	full, key, chain := transport.NativeSiteLineagePaths(replaced)
+	if _, err := panel.db.GetDB().Exec(`
+		INSERT INTO ssl_certificates (domain_id, type, cert_path, key_path, chain_path, lineage_name,
+			issued_at, expires_at, auto_renew, status)
+		VALUES (?, 'letsencrypt', ?, ?, ?, ?, '2026-09-01T00:00:00Z', '2026-12-01T00:00:00Z', true, 'revoked')`,
+		domainID, full, key, chain, replaced); err != nil {
+		t.Fatal(err)
+	}
+	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent()}
+	attachStartupVhostBatchAgent(t, panel, agent)
+	return panel, domainID, replaced, agent
+}
+
+// Removing is irreversible: it waits for a verified update, the start-up
+// quiet time and a quiet server, through the database-rights helper.
+func TestRetireReplacedNativeLineagesWaitsBehindTheUpdateGate(t *testing.T) {
+	panel, domainID, _, agent := replacedLineageFixture(t, "native-gate.example")
+	openLineageRetireGate(t, panel)
+	for name, shut := range map[string]func(){
+		"just started":           func() { panel.startedAt.Store(time.Now().UnixNano()) },
+		"update not verified":    func() { databaseGrantFormsUpdatePhase = func(string) (string, bool) { return "running", true } },
+		"update state not known": func() { databaseGrantFormsUpdatePhase = func(string) (string, bool) { return "", false } },
+		"server busy":            func() { databaseGrantFormsHostQuiet = func(*Panel, context.Context) bool { return false } },
+	} {
+		openLineageRetireGate(t, panel)
+		shut()
+		results, err := panel.retireReplacedNativeLineages(t.Context(), domainID)
+		var held *lineageRetireHeld
+		if results != nil || !errors.As(err, &held) {
+			t.Fatalf("%s: results=%v err=%v", name, results, err)
+		}
+	}
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.retire) != 0 {
+		t.Fatalf("asked although held: %+v", agent.retire)
+	}
+}
+
+// A lineage a site row still names (its file, its key) is never asked about.
+func TestRetireReplacedNativeLineagesSkipsALineageASiteStillNames(t *testing.T) {
+	panel, domainID, replaced, agent := replacedLineageFixture(t, "native-site-row.example")
+	openLineageRetireGate(t, panel)
+	_, key, _ := transport.NativeSiteLineagePaths(replaced)
+	if _, err := panel.db.GetDB().Exec(`UPDATE sites SET ssl_key_path = ? WHERE domain_id = ?`, key, domainID); err != nil {
+		t.Fatal(err)
+	}
+	if results, err := panel.retireReplacedNativeLineages(t.Context(), domainID); results != nil || err != nil {
+		t.Fatalf("results=%v err=%v", results, err)
+	}
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.retire) != 0 {
+		t.Fatalf("asked about a lineage a site names: %+v", agent.retire)
+	}
+}
+
+// The owner can read each removal and each kept outcome in the audit log,
+// once per change of outcome, not at every pass.
+func TestRetireReplacedNativeLineagesWritesTheAuditLogOncePerChange(t *testing.T) {
+	panel, domainID, replaced, agent := replacedLineageFixture(t, "native-audit.example")
+	openLineageRetireGate(t, panel)
+	rows := func() []string {
+		t.Helper()
+		list, err := panel.db.GetDB().Query(`SELECT action || ' ' || COALESCE(details, '') FROM audit_logs WHERE action LIKE 'ssl.lineage.%' AND resource_id = ? ORDER BY id`, domainID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer list.Close()
+		var out []string
+		for list.Next() {
+			var row string
+			_ = list.Scan(&row)
+			out = append(out, row)
+		}
+		return out
+	}
+	agent.retireOutcome = transport.SiteLineageInUse
+	for i := 0; i < 3; i++ {
+		if _, err := panel.retireReplacedNativeLineages(t.Context(), domainID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A restart forgets what it wrote; the audit log itself is read back.
+	lineageOutcomeAudited.Delete(replaced)
+	_, _ = panel.retireReplacedNativeLineages(t.Context(), domainID)
+	agent.retireOutcome = transport.SiteLineageRetired
+	_, _ = panel.retireReplacedNativeLineages(t.Context(), domainID)
+	got := rows()
+	if len(got) != 2 || !strings.HasPrefix(got[0], "ssl.lineage.kept_in_use:native-audit.example ") ||
+		!strings.Contains(got[0], `"lineage":"`+replaced+`"`) || !strings.Contains(got[0], `"file":"/etc/nginx/sites-enabled/own.conf"`) ||
+		!strings.HasPrefix(got[1], "ssl.lineage.removed:native-audit.example ") {
+		t.Fatalf("audit rows = %q", got)
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -19,9 +20,10 @@ func retireTestStore(t *testing.T) (etc string, calls *[][]string) {
 	root := nativeSiteTestStore(t)
 	etc = filepath.Join(root, "etc")
 	nativeSiteConfigDir = filepath.Join(etc, "letsencrypt")
-	savedRoot := nativeSiteRetireScanRoot
+	savedRoot, savedSnapshots := nativeSiteRetireScanRoot, nativeSiteRetireSnapshotRoots
 	nativeSiteRetireScanRoot = etc
-	t.Cleanup(func() { nativeSiteRetireScanRoot = savedRoot })
+	nativeSiteRetireSnapshotRoots = []string{filepath.Join(root, "backups", "update-snapshots"), filepath.Join(root, "backups", "recovery-snapshots")}
+	t.Cleanup(func() { nativeSiteRetireScanRoot, nativeSiteRetireSnapshotRoots = savedRoot, savedSnapshots })
 	var recorded [][]string
 	nativeSiteCertbotRun = func(_ context.Context, args ...string) ([]byte, error) {
 		recorded = append(recorded, append([]string(nil), args...))
@@ -198,5 +200,129 @@ func TestRetireSiteCertificateLineagesRefusesWhatIsNotAReplacedLineageOfTheDomai
 		if err := (&Agent{}).RetireSiteCertificateLineagesV1(request, &resp); err != nil || resp.Error == "" || len(resp.Results) != 0 {
 			t.Fatalf("%s: resp=%+v err=%v", name, resp, err)
 		}
+	}
+}
+
+// alpha.134 review: a link under /etc that points into certbot's store names
+// the lineage (the walk skips the store, so only the link can say so), as
+// written and as resolved; a link that cannot be followed is not concluded.
+func TestRetireSiteCertificateLineagesReadsLinks(t *testing.T) {
+	etc, calls := retireTestStore(t)
+	const (
+		written  = "celikpanel-site-42-aaaaaaaaaaaaaaaaaaaaaaaa"
+		resolved = "celikpanel-site-42-bbbbbbbbbbbbbbbbbbbbbbbb"
+		free     = "celikpanel-site-42-cccccccccccccccccccccccc"
+	)
+	for _, lineage := range []string{written, resolved, free} {
+		retireTestLineage(t, lineage, testRenewalConf)
+	}
+	private := filepath.Join(etc, "ssl", "private")
+	if err := os.MkdirAll(private, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// As written: the link's text names the lineage's live key.
+	if err := os.Symlink(filepath.Join(nativeSiteConfigDir, "live", written, "privkey.pem"), filepath.Join(private, "site.pem")); err != nil {
+		t.Fatal(err)
+	}
+	// Resolved only: a link to a neutral name that itself points into the archive.
+	neutral := filepath.Join(nativeSiteConfigDir, "current-site.pem")
+	if err := os.Symlink(filepath.Join(nativeSiteConfigDir, "archive", resolved, "fullchain1.pem"), neutral); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(neutral, filepath.Join(private, "chain.pem")); err != nil {
+		t.Fatal(err)
+	}
+	var resp transport.RetireSiteCertificateLineagesResponse
+	request := &transport.RetireSiteCertificateLineagesRequest{DomainID: 42, SubscriptionID: 7,
+		Lineages: []transport.RetireSiteLineage{{LineageName: written}, {LineageName: resolved}, {LineageName: free}}}
+	_ = (&Agent{}).RetireSiteCertificateLineagesV1(request, &resp)
+	outcomes := map[string]string{}
+	for _, result := range resp.Results {
+		outcomes[result.LineageName] = result.Outcome + " " + result.Detail
+	}
+	if outcomes[written] != transport.SiteLineageInUse+" "+filepath.Join(private, "site.pem") ||
+		outcomes[resolved] != transport.SiteLineageInUse+" "+filepath.Join(private, "chain.pem") ||
+		outcomes[free] != transport.SiteLineageRetired+" " || len(*calls) != 1 {
+		t.Fatalf("outcomes = %v calls = %v", outcomes, *calls)
+	}
+
+	// A link that cannot be followed (a loop): nothing is removed.
+	loop := filepath.Join(private, "loop.pem")
+	if err := os.Symlink(loop, loop); err != nil {
+		t.Fatal(err)
+	}
+	retireTestLineage(t, free, testRenewalConf)
+	resp = transport.RetireSiteCertificateLineagesResponse{}
+	_ = (&Agent{}).RetireSiteCertificateLineagesV1(&transport.RetireSiteCertificateLineagesRequest{DomainID: 42, SubscriptionID: 7,
+		Lineages: []transport.RetireSiteLineage{{LineageName: free}}}, &resp)
+	if len(resp.Results) != 1 || resp.Results[0].Outcome != transport.SiteLineageNotChecked || len(*calls) != 1 {
+		t.Fatalf("resp = %+v calls = %v", resp, *calls)
+	}
+}
+
+// A retained update snapshot whose panel database serves the lineage keeps
+// it: restoring that snapshot (going back) must find it. A lineage the
+// snapshot only names as replaced goes; an unreadable snapshot keeps all.
+func TestRetireSiteCertificateLineagesKeepsWhatAnUpdateSnapshotServes(t *testing.T) {
+	_, calls := retireTestStore(t)
+	const (
+		served   = "celikpanel-site-42-aaaaaaaaaaaaaaaaaaaaaaaa"
+		replaced = "celikpanel-site-42-bbbbbbbbbbbbbbbbbbbbbbbb"
+	)
+	for _, lineage := range []string{served, replaced} {
+		retireTestLineage(t, lineage, testRenewalConf)
+	}
+	snapshot := filepath.Join(nativeSiteRetireSnapshotRoots[0], "20261113T200000Z-from-133-to-134-0123")
+	writeSnapshotDatabase(t, filepath.Join(snapshot, "celikpanel.db"),
+		`CREATE TABLE ssl_certificates (id INTEGER PRIMARY KEY, lineage_name TEXT, status TEXT);
+		 INSERT INTO ssl_certificates (lineage_name, status) VALUES ('`+served+`', 'active'), ('`+replaced+`', 'revoked');`)
+	// An older snapshot without the lineage column cannot name one; a
+	// snapshot still being written is not a restore point.
+	writeSnapshotDatabase(t, filepath.Join(nativeSiteRetireSnapshotRoots[1], "20250101T000000Z-old", "celikpanel.db"),
+		`CREATE TABLE ssl_certificates (id INTEGER PRIMARY KEY, status TEXT);`)
+	if err := os.MkdirAll(filepath.Join(nativeSiteRetireSnapshotRoots[0], ".release-snapshot.incomplete.1.ab"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	request := &transport.RetireSiteCertificateLineagesRequest{DomainID: 42, SubscriptionID: 7,
+		Lineages: []transport.RetireSiteLineage{{LineageName: served}, {LineageName: replaced}}}
+	var resp transport.RetireSiteCertificateLineagesResponse
+	_ = (&Agent{}).RetireSiteCertificateLineagesV1(request, &resp)
+	outcomes := map[string]string{}
+	for _, result := range resp.Results {
+		outcomes[result.LineageName] = result.Outcome + " " + result.Detail
+	}
+	if outcomes[served] != transport.SiteLineageHeldBySnapshot+" "+snapshot || outcomes[replaced] != transport.SiteLineageRetired+" " || len(*calls) != 1 {
+		t.Fatalf("outcomes = %v calls = %v", outcomes, *calls)
+	}
+
+	// An unreadable snapshot database: nothing is removed.
+	if err := os.WriteFile(filepath.Join(snapshot, "celikpanel.db"), []byte("not a database"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	retireTestLineage(t, replaced, testRenewalConf)
+	resp = transport.RetireSiteCertificateLineagesResponse{}
+	_ = (&Agent{}).RetireSiteCertificateLineagesV1(request, &resp)
+	for _, result := range resp.Results {
+		if result.Outcome != transport.SiteLineageNotChecked {
+			t.Fatalf("resp = %+v", resp)
+		}
+	}
+	if len(*calls) != 1 {
+		t.Fatalf("calls = %v", *calls)
+	}
+}
+
+func writeSnapshotDatabase(t *testing.T, path, schema string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(schema); err != nil {
+		t.Fatal(err)
 	}
 }

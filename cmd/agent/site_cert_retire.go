@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -44,6 +45,9 @@ var (
 	nativeSiteRetireMaxFiles    = 50000
 	nativeSiteRetireChunkBytes  = 1 << 20
 	nativeSiteRetireMaxLineages = 100
+	// The update and rescue snapshots update.sh keeps (each holds the panel
+	// database of the moment before an update).
+	nativeSiteRetireSnapshotRoots = []string{"/var/backups/celikpanel/update-snapshots", "/var/backups/celikpanel/recovery-snapshots"}
 )
 
 // RetireSiteCertificateLineagesV1 removes the replaced native lineages of
@@ -152,10 +156,28 @@ func retireNativeSiteLineages(ctx context.Context, req transport.RetireSiteCerti
 		}
 		return results
 	}
+	// A retained update snapshot whose panel database still serves the
+	// lineage is a way back to it (D-025: going back is that snapshot's
+	// restore); the lineage stays until the snapshot is gone.
+	held, err := nativeSiteLineagesInSnapshots(ctx, candidates)
+	if err != nil {
+		for _, name := range candidates {
+			if _, named := references[name]; !named {
+				keep(name, transport.SiteLineageNotChecked, "the update snapshots could not be read: "+err.Error())
+			}
+		}
+	}
 	for _, name := range candidates {
 		if file, named := references[name]; named {
 			// Detail is the file alone: the page says the sentence.
 			keep(name, transport.SiteLineageInUse, file)
+			continue
+		}
+		if err != nil {
+			continue
+		}
+		if snapshot, kept := held[name]; kept {
+			keep(name, transport.SiteLineageHeldBySnapshot, snapshot)
 			continue
 		}
 		args := []string{"delete", "--config-dir", nativeSiteConfigDir, "--cert-name", name, "--non-interactive"}
@@ -192,8 +214,13 @@ func nativeSiteLineageReferences(lineages []string) (map[string]string, error) {
 			}
 			return nil
 		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			// A link names a lineage by what it points to, as written or
+			// resolved: /etc/ssl/private/site.pem -> /etc/letsencrypt/live/<l>/privkey.pem
+			// is not reached by the walk, which skips certbot's store.
+			return linkNamesLineages(path, lineages, found)
+		}
 		if !entry.Type().IsRegular() {
-			// Links are read where they point to when that is under /etc.
 			return nil
 		}
 		files++
@@ -206,6 +233,101 @@ func nativeSiteLineageReferences(lineages []string) (map[string]string, error) {
 		return nil, err
 	}
 	return found, nil
+}
+
+// linkNamesLineages records the link when its target, as written or
+// resolved, names a lineage. A link that cannot be read is an error (nothing
+// is concluded); a link whose target does not exist names only what its text
+// names.
+func linkNamesLineages(path string, lineages []string, found map[string]string) error {
+	target, err := os.Readlink(path)
+	if err != nil {
+		return err
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	for _, lineage := range lineages {
+		if _, named := found[lineage]; named {
+			continue
+		}
+		if strings.Contains(target, lineage) || strings.Contains(resolved, lineage) {
+			found[lineage] = path
+		}
+	}
+	return nil
+}
+
+// nativeSiteLineagesInSnapshots returns, for each lineage that the panel
+// database of a retained update or rescue snapshot names as an active
+// certificate, that snapshot's directory. Read only (immutable). A snapshot
+// database that predates the certificate ledger's lineage column cannot name
+// a native lineage; any other unreadable snapshot is an error.
+func nativeSiteLineagesInSnapshots(ctx context.Context, lineages []string) (map[string]string, error) {
+	held := map[string]string{}
+	for _, root := range nativeSiteRetireSnapshotRoots {
+		entries, err := os.ReadDir(root)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+				// A dot-named directory is a snapshot still being written,
+				// never a restore point.
+				continue
+			}
+			database := filepath.Join(root, entry.Name(), "celikpanel.db")
+			info, err := os.Lstat(database)
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			if err != nil {
+				return nil, err
+			}
+			if !info.Mode().IsRegular() {
+				return nil, fmt.Errorf("%s is not a regular file", database)
+			}
+			named, err := snapshotActiveLineages(ctx, database, lineages)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", database, err)
+			}
+			for _, lineage := range named {
+				if _, kept := held[lineage]; !kept {
+					held[lineage] = filepath.Join(root, entry.Name())
+				}
+			}
+		}
+	}
+	return held, nil
+}
+
+func snapshotActiveLineages(ctx context.Context, database string, lineages []string) ([]string, error) {
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(database)+"?mode=ro&immutable=1")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	var named []string
+	for _, lineage := range lineages {
+		var count int
+		err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM ssl_certificates WHERE status = 'active' AND lineage_name = ?`, lineage).Scan(&count)
+		if err != nil {
+			text := err.Error()
+			if strings.Contains(text, "no such column: lineage_name") || strings.Contains(text, "no such table: ssl_certificates") {
+				return nil, nil
+			}
+			return nil, err
+		}
+		if count > 0 {
+			named = append(named, lineage)
+		}
+	}
+	return named, nil
 }
 
 // scanFileForLineages reads one file in bounded pieces (a large file is read

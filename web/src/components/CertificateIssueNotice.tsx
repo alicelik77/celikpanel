@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import type { ApiError } from '../lib/apiError';
+import { CopyCommand } from './CopyCommand';
 import { Guidance } from './kit/rows/Guidance';
 import { whoWord } from './kit/words';
 import { Button } from './ui';
@@ -61,6 +62,16 @@ const whys: Record<string, TranslationKey> = {
     'issued_check.unusable': 'ssl.issueFailure.unusable',
 };
 
+// The commands an administrator runs for a kind: only in the closed
+// technical details, never in a sentence of the open block (review of the
+// alpha.134 lab fixes). Fixed text: nothing of the answer goes into them.
+const commands: Record<string, string[]> = {
+    account_unknown: ['sudo certbot show_account'],
+    server_clock: ['timedatectl', 'sudo timedatectl set-ntp true'],
+    'issued_check.names': ['sudo journalctl -u celikpanel-panel -n 50'],
+    'issued_check.unusable': ['sudo journalctl -u celikpanel-panel -n 50'],
+};
+
 /** The kind a failure is said as: a reason this page has no words for is the general one. */
 function issueFailureKind(failure: ApiError): string {
     const reason = failure.reason ?? '';
@@ -102,6 +113,7 @@ export function CertificateIssueNotice({
     const who: Who = plan.who !== 'administrator' ? plan.who : admin || next === 'ssl.issueFailure.next.later' ? 'you' : 'administrator';
     const detail = admin ? failure.vars?.detail : undefined;
     const record = admin ? failure.vars?.record : undefined;
+    const run = admin ? commands[kind] ?? [] : [];
     return (
         <div ref={box} data-certificate-issue={kind} className={className}>
             <Guidance
@@ -113,9 +125,10 @@ export function CertificateIssueNotice({
                 then={then ?? t('ssl.issueFailure.then')}
                 action={onClose ? <Button type="button" onClick={onClose}>{t('common.close')}</Button> : undefined}
             >
-                {(detail || record) && (
+                {(detail || record || run.length > 0) && (
                     <details className="text-xs text-fg-muted">
                         <summary className="cursor-pointer">{t('common.technicalDetails')}</summary>
+                        {run.map((command) => <CopyCommand key={command} command={command} />)}
                         {detail && <p className="mt-1 break-words">{t(kind.startsWith('issued_check') ? 'ssl.issueFailure.checkSaid' : 'ssl.issueFailure.said', { detail })}</p>}
                         {record && <p className="mt-1 break-words">{t('ssl.issueFailure.record', { record })}</p>}
                     </details>

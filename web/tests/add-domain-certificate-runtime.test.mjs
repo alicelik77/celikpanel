@@ -258,6 +258,8 @@ test('who acts is the reader: the administrator acts, everyone else is never sen
       const admin = role === 'admin';
       assert.ok(text().includes(t(admin ? 'kit.guidance.who.you' : 'kit.guidance.who.administrator')), role);
       assert.ok(text().includes(t(admin ? 'ssl.issueFailure.next.account_unknown' : 'ssl.issueFailure.next.ask')), role);
+      // The command is the administrator's, in the closed technical details only.
+      assert.equal(text().includes('sudo certbot show_account'), admin, `${role}: the command`);
     } finally { await cleanup(); }
   }
 });
