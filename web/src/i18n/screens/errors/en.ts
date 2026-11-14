@@ -223,6 +223,7 @@ export const enErrorsScreens = {
     "err.DB_IMPORT_NO_SITE_ACCOUNT": "This domain has no hosting account to load the file under, so nothing was loaded. Add hosting to the domain, then import again.",
     "err.DB_TOOLS_RESTORE_RUNNING": "A restore or import of this site is still running, so nothing was started. Wait until it ends, then try again.",
     "err.DB_COPY_FAILED": "The copy could not be made, so the new database was removed again. The original database is unchanged. The server's reason is below; try again, or ask your administrator if it repeats.",
+    "err.DB_COPY_FAILED.kept": "The copy could not be made, and the new database {name} could not be removed again: it stays in the list, half copied. Delete it there. The original database is unchanged.",
     "err.DB_CHECK_FAILED": "The database server could not check this database. Nothing was changed. The server's answer is below.",
     "err.DB_EXPORT_GONE": "This export file is no longer on the server (it is removed after one download, or after six hours). Nothing was changed. Make a new export.",
     'dbt.exportFailed': 'The export could not be made.',
@@ -231,6 +232,9 @@ export const enErrorsScreens = {
     'dbt.checkFailed': 'The check did not complete.',
     // alpha.134: a new database name MariaDB could not keep a right on exactly (cmd/panel/database_names.go); every screen that creates a database reads it here.
     'err.DATABASE_NAME_TOO_LONG': 'The database name {name} is too long. Choose a name at least {over} characters shorter, or with fewer underscores (each underscore counts as two characters). Nothing was changed.',
+    'err.DATABASE_NAME_TOO_LONG.length': 'The database name {name} is too long. Choose a name at least {over} characters shorter. Nothing was changed.',
+    'err.DATABASE_CREATE_LEFT_OVER': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. They are not in CelikPanel\'s list, and the same name is refused until they are gone. The server\'s administrator removes them on the database server; meanwhile choose another name.',
+    'err.DATABASE_CREATE_LEFT_OVER.administrator': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. They are not in CelikPanel\'s list, and the same name is refused until they are gone. Remove them on the database server, or choose another name.',
 } as const;
 
 export type ErrorsScreenKey = keyof typeof enErrorsScreens;
