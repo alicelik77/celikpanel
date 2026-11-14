@@ -393,7 +393,11 @@ func (p *Panel) removeHeldItem(ctx context.Context, r *http.Request, rec holding
 			log.Printf("[holding] %s: the failure could not be kept: %v", rec.ID, err)
 		}
 		details["outcome"], details["error"] = failure.Kind, failure.Line
-		p.holdingAudit(r, "deletion_hold.remove."+failure.Kind+":"+rec.ID, rec, details)
+		action := "deletion_hold.remove.failed:"
+		if failure.Kind == holdingUnknown {
+			action = "deletion_hold.remove.unknown:"
+		}
+		p.holdingAudit(r, action+rec.ID, rec, details)
 		return holdingRemoval{Failure: failure}, nil
 	}
 	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, holdingKeyPrefix+rec.ID); err != nil {
