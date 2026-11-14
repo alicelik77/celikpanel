@@ -469,7 +469,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.ssl.issue': 'bir web sitesi sertifikası aldı',
     'dashboard.audit.action.ssl.issue.dependents_partial': 'bir web sitesi sertifikası aldı; posta şifrelemesi henüz güncelleniyor',
     'dashboard.audit.action.ssl.issue.partial': 'bir web sitesi sertifikası aldı; sertifika tam etkinleştirilemedi',
-    'dashboard.audit.action.ssl.lineage.kept_for_rollback': '{target} alan adının değiştirilen sertifikasını, bir güncelleme yedeği hâlâ kullandığı için korudu',
+    'dashboard.audit.action.ssl.lineage.kept_for_rollback': '{target} alan adının değiştirilen sertifikasını, bir güncellemenin geri dönüş kopyası hâlâ kullandığı için korudu; sonra kendiliğinden kaldırılır',
     'dashboard.audit.action.ssl.lineage.kept_in_use': '{target} alan adının değiştirilen sertifikasını korudu: sunucudaki bir dosya hâlâ onu kullanıyor',
     'dashboard.audit.action.ssl.lineage.kept_owner_changed': '{target} alan adının değiştirilen sertifikasını korudu: yenileme ayarları CelikPanel dışında değiştirilmiş',
     'dashboard.audit.action.ssl.lineage.not_removed': '{target} alan adının değiştirilen sertifikasını henüz kaldıramadı; yeniden denenecek',

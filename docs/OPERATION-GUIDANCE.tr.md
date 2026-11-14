@@ -4876,13 +4876,6 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
   TR: "Önceki sertifika şu an kaldırılamadı. Bir şey yapmanız gerekmiyor:
   CelikPanel 12 saat içindeki sonraki denetiminde yeniden dener ve nedenini
   günlüğüne yazar."
-- `certcover.previousKept.held_by_snapshot`
-  EN: "The previous certificate is kept while a saved update snapshot still uses
-  it, so going back to that update keeps working; CelikPanel removes it once
-  that snapshot is gone."
-  TR: "Önceki sertifika, kayıtlı bir güncelleme yedeği hâlâ onu kullandığı için
-  korunuyor; böylece o güncellemeye geri dönmek çalışır. Yedek kaldırılınca
-  CelikPanel onu da kaldırır."
 
 **Her biri nerede çizilir.** Hizmet işlemi cümleleri: bir bileşenin sayfasının
 ve bileşenler listesinin bildirimi (`ServiceActionNotice`). O ekranlar Başlat,

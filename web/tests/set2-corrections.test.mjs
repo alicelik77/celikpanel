@@ -52,7 +52,7 @@ const certificateNexts = ['validation', 'rate_limited', 'authority_unreachable',
 const certificateKeys = [
   ...certificateWhys.map((kind) => `ssl.issueFailure.${kind}`), ...certificateNexts.map((kind) => `ssl.issueFailure.next.${kind}`),
   'ssl.issueFailure.title.previous', 'ssl.issueFailure.title.none', 'ssl.issueFailure.then', 'ssl.issueFailure.said', 'ssl.issueFailure.checkSaid', 'ssl.issueFailure.record',
-  'certcover.previousKept.in_use', 'certcover.previousKept.owner_changed', 'certcover.previousKept.retry', 'certcover.previousKept.held_by_snapshot',
+  'certcover.previousKept.in_use', 'certcover.previousKept.owner_changed', 'certcover.previousKept.retry',
 ];
 const reloadKeys = ['reload', 'reload_reread', 'reload_not_reread', 'not_running'].map((reason) => `err.SERVICE_ACTION_FAILED.${reason}`);
 

@@ -72,7 +72,6 @@ export const enCertCoverageScreens = {
     'certcover.previousKept.in_use': "The previous certificate (certbot's {lineage}) is kept because {file} on this server still names it, so certbot keeps renewing it. CelikPanel removes it at a later check once nothing names it.",
     'certcover.previousKept.owner_changed': "The previous certificate (certbot's {lineage}) is kept because its renewal settings were changed outside CelikPanel. If nothing uses it, remove it on the server: sudo certbot delete --cert-name {lineage}",
     'certcover.previousKept.retry': "The previous certificate could not be removed now. Nothing needs to be done: CelikPanel tries again at its next check, within 12 hours, and writes the reason to its log.",
-    'certcover.previousKept.held_by_snapshot': "The previous certificate is kept while a saved update snapshot still uses it, so going back to that update keeps working; CelikPanel removes it once that snapshot is gone.",
 } as const;
 
 export type CertCoverageScreenKey = keyof typeof enCertCoverageScreens;
