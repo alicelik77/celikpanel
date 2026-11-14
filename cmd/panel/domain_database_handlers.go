@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -407,6 +408,13 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 
+	// alpha.134 review: on MariaDB a name whose exact form does not fit a
+	// right is refused before anything is made.
+	if serverTypeNameFor(req.Type) != "postgresql" && !mariadbgrant.ExactFits(dbName) {
+		writeDatabaseNameTooLong(w, dbName)
+		return
+	}
+
 	// The subscription's database limit applies on this path too, with the
 	// same refusal as the Databases page (0 = unlimited).
 	// Abonelik veritabanı sınırı bu yolda da geçerlidir.
@@ -439,6 +447,10 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		// The Agent found the cluster unable to answer before running
 		// anything (it changed since it was read).
 		writeDatabaseClusterRefusal(w, r, agentResp.Refusal)
+		return
+	}
+	if err == nil && agentResp.NameTooLong {
+		writeDatabaseNameTooLong(w, dbName)
 		return
 	}
 	if err == nil && agentResp.NameTaken != "" {

@@ -18,7 +18,9 @@
 -- left (listed only), blocked (three failures in a row; tried again later).
 -- reached: the other databases the pattern covered when it was captured
 -- (ours: kept as history, "it could also reach ...; it no longer can") or
--- covers now (left rows). Names only; never a password or a hash.
+-- covers now (left rows), at most 50 names (reached_more counts the rest).
+-- username is empty for the anonymous account (''@host). Names only; never
+-- a password or a hash.
 --
 -- database_grant_form_engines: one row per engine (the machine's own MariaDB
 -- or a registered one): where the rewrite stands (waiting, running, done,
@@ -39,7 +41,7 @@ CREATE TABLE database_grant_forms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     engine_key TEXT NOT NULL CHECK (length(engine_key) BETWEEN 1 AND 300),
     server_id INTEGER REFERENCES database_servers(id) ON DELETE SET NULL,
-    username TEXT NOT NULL CHECK (length(username) BETWEEN 1 AND 128),
+    username TEXT NOT NULL CHECK (length(username) <= 128),
     host TEXT NOT NULL CHECK (length(host) <= 255),
     stored_name TEXT NOT NULL CHECK (length(stored_name) BETWEEN 1 AND 192),
     database_name TEXT CHECK (database_name IS NULL OR length(database_name) BETWEEN 1 AND 64),
@@ -49,6 +51,7 @@ CREATE TABLE database_grant_forms (
     kind TEXT NOT NULL CHECK (kind IN ('ours', 'owner_row', 'not_ours')),
     state TEXT NOT NULL CHECK (state IN ('captured', 'done', 'left', 'blocked')),
     reached TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(reached) AND length(reached) <= 8192),
+    reached_more INTEGER NOT NULL DEFAULT 0 CHECK (reached_more >= 0),
     reason TEXT NOT NULL DEFAULT '' CHECK (length(reason) <= 64),
     failures INTEGER NOT NULL DEFAULT 0 CHECK (failures >= 0),
     captured_at TEXT NOT NULL DEFAULT (datetime('now')),

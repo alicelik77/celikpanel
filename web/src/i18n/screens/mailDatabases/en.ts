@@ -36,7 +36,7 @@ export const enMailDatabasesScreens = {
     'databases.keptNote.unchecked': 'Its users ({users}) stay on the database server because CelikPanel could not check what else they have there. The rights given for {name} itself were removed; rights that cover several databases or the whole server stay.',
     'databases.keptNote.server': 'Its users ({users}) stay on the database server: CelikPanel reaches that server with its own account and does not remove users there.',
     'databases.keptNote.rightsFrom': 'Rights naming {name} were also taken from these accounts on the database server; the accounts stay: {accounts}.',
-    'databases.keptNote.rightsCount': 'Rights naming {name} were also taken from {count} other accounts on the database server; the accounts stay.',
+    'databases.keptNote.rightsKept': 'These rights name {name} too but also reach other databases, so they were left as they are: {rows}. Remove them on the server if they are not needed.',
     'databases.keptNote.rightsMayRemain': 'Rights naming {name} may remain on other accounts of that database server, because the account CelikPanel uses there could not remove them. The administrator of that server removes them.',
     // alpha.133: the left menu's Databases page (one visibility rule, drawings V15–V17).
     'databases.scope.admin': 'All databases on this server',

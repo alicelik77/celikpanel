@@ -130,6 +130,9 @@ func describe(columns []string, row *Row) {
 		case !known && set:
 			row.Unnamed = true
 		case !known:
+			// A privilege this code cannot name exists on this server: ALL
+			// PRIVILEGES would also give it, so the words are listed.
+			all = false
 		case set:
 			words = append(words, word)
 			named++
@@ -141,6 +144,7 @@ func describe(columns []string, row *Row) {
 	case named == 0:
 		row.Privileges = ""
 	case all && !row.Unnamed:
+		// Every privilege column of this server is set and named.
 		row.Privileges = "ALL PRIVILEGES"
 	default:
 		row.Privileges = strings.Join(words, ", ")
@@ -256,6 +260,9 @@ const (
 	// OwnerRow: the row holds the grant option or a privilege that cannot be
 	// named; nothing was changed.
 	OwnerRow = "owner_row"
+	// NameTooLong: the exact form does not fit a grant row (ErrExactTooLong);
+	// nothing was changed, the pattern form stays and is listed.
+	NameTooLong = "name_too_long"
 )
 
 // ConvertRequest names one row to rewrite and the flags captured for it.
@@ -290,6 +297,9 @@ func Convert(run Exec, req ConvertRequest, fault Fault) (string, error) {
 	exact, pattern := Exact(req.Database), req.Database
 	if exact == pattern {
 		return AlreadyExact, nil // no _ in the name: there is no pattern form
+	}
+	if !ExactFits(req.Database) {
+		return NameTooLong, nil
 	}
 	read := func() (map[string]Row, error) {
 		out, err := run("SELECT CONCAT('r=', HEX(User), ' ', HEX(Host), ' ', HEX(Db), ' ', " + flagsExpression(columns) +
@@ -331,7 +341,7 @@ func Convert(run Exec, req ConvertRequest, fault Fault) (string, error) {
 				return "", err
 			}
 		}
-		if _, err := run("GRANT " + patternRow.Privileges + " ON " + target + ".* TO " + account + ";"); err != nil {
+		if _, err := run(NoAutoCreateUser + "\nGRANT " + patternRow.Privileges + " ON " + target + ".* TO " + account + ";"); err != nil {
 			return "", fmt.Errorf("the database server did not write the exact right of %s: %w", account, err)
 		}
 		rows, err = read()
@@ -377,28 +387,37 @@ func covers(have, want string) bool {
 	return true
 }
 
-// NarrowStatements is what an administrator runs by hand to rewrite a row
-// to one database's exact name (a row that names one database), or to take
-// a wildcard row away. Shown, never run by CelikPanel for such rows.
-func NarrowStatements(row Row) string {
-	account, err := AccountLiteral(row.User, row.Host)
-	if err != nil {
-		return ""
+// What a statement shown for a listed row does.
+const (
+	// StatementNarrow: grants the same privileges by the one database's
+	// exact name, then takes the pattern form away; access to that database
+	// stays.
+	StatementNarrow = "narrow"
+	// StatementRemove: takes the right away entirely (a wildcard on purpose,
+	// or a name whose exact form does not fit): the account loses this access.
+	StatementRemove = "remove"
+)
+
+// NarrowStatements is what an administrator runs by hand for a listed row,
+// and what it does: narrow it to one database's exact name when the row
+// names one database, otherwise remove it. Shown, never run by CelikPanel for
+// such rows.
+func NarrowStatements(row Row) (statement, kind string) {
+	grantee, err := GranteeLiteral(row.User, row.Host)
+	if err != nil || strings.ContainsRune(row.Stored, '`') {
+		return "", ""
 	}
-	if strings.ContainsRune(row.Stored, '`') {
-		return ""
-	}
-	revoke := "REVOKE ALL PRIVILEGES ON `" + row.Stored + "`.* FROM " + account + ";"
+	revoke := "REVOKE ALL PRIVILEGES ON `" + row.Stored + "`.* FROM " + grantee + ";"
 	if row.GrantOption {
-		revoke += "\nREVOKE GRANT OPTION ON `" + row.Stored + "`.* FROM " + account + ";"
+		revoke += "\nREVOKE GRANT OPTION ON `" + row.Stored + "`.* FROM " + grantee + ";"
 	}
-	if name, pattern, ok := Decode(row.Stored); ok && pattern && row.Privileges != "" && !row.Unnamed {
+	if name, pattern, ok := Decode(row.Stored); ok && pattern && row.Privileges != "" && !row.Unnamed && ExactFits(name) {
 		target, _ := Target(name)
 		withOption := ""
 		if row.GrantOption {
 			withOption = " WITH GRANT OPTION"
 		}
-		return "GRANT " + row.Privileges + " ON " + target + ".* TO " + account + withOption + ";\n" + revoke
+		return "GRANT " + row.Privileges + " ON " + target + ".* TO " + grantee + withOption + ";\n" + revoke, StatementNarrow
 	}
-	return revoke
+	return revoke, StatementRemove
 }

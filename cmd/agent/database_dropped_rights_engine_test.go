@@ -18,7 +18,8 @@ const droppedRightsPassword = "Dropped-Passw0rd!12"
 func TestDroppedDatabaseRightsGoFromEveryGranteeOnRealMariaDB(t *testing.T) {
 	e := requireTestEngines(t)
 	installTestEngines(t, e)
-	cleanup := "DROP DATABASE IF EXISTS a134drop_x; DROP USER IF EXISTS 'a134hand'@'localhost'; DROP ROLE IF EXISTS a134role;"
+	cleanup := "DROP DATABASE IF EXISTS a134drop_x; DROP DATABASE IF EXISTS a134dropZx; DROP USER IF EXISTS 'a134hand'@'localhost', 'a134wide'@'localhost', ''@'%';" +
+		" DROP ROLE IF EXISTS a134role;"
 	mustRun(t, "clean", e.maria("", "", cleanup))
 	t.Cleanup(func() { _ = e.maria("", "", cleanup) })
 	mustRun(t, "setup", e.maria("", "", "CREATE DATABASE a134drop_x; CREATE TABLE a134drop_x.t (i INT);"+
@@ -26,15 +27,30 @@ func TestDroppedDatabaseRightsGoFromEveryGranteeOnRealMariaDB(t *testing.T) {
 		" GRANT SELECT ON `a134drop_x`.* TO 'a134hand'@'localhost'; GRANT SELECT ON `a134drop\\_x`.* TO a134role;"+
 		" GRANT SELECT ON a134drop_x.t TO 'a134hand'@'localhost';"+
 		" GRANT SELECT ON `a134drop\\_%`.* TO 'a134hand'@'localhost';"+
+		// review: the anonymous account's row is named ''@%, never a role
+		// named after its host; a raw-form row that also reaches the existing
+		// a134dropZx is kept and reported.
+		" CREATE USER ''@'%'; GRANT SELECT ON `a134drop\\_x`.* TO ''@'%';"+
+		" CREATE DATABASE a134dropZx; CREATE USER 'a134wide'@'localhost' IDENTIFIED BY '"+droppedRightsPassword+"';"+
+		" GRANT SELECT ON `a134drop_x`.* TO 'a134wide'@'localhost';"+
 		" DROP DATABASE a134drop_x;"))
 	var resp transport.DroppedDatabaseRightsResponse
 	if err := (&Agent{}).RemoveDroppedDatabaseRightsV1(&transport.DroppedDatabaseRightsRequest{Database: "a134drop_x"}, &resp); err != nil {
 		t.Fatal(err)
 	}
-	if !resp.Applied || strings.Join(resp.Grantees, ",") != "a134hand@localhost,a134role" {
+	// a134hand's and a134wide's raw-form rows also match a134dropZx: kept.
+	// a134hand still loses its table right.
+	if !resp.Applied || strings.Join(resp.Grantees, ",") != "''@%,a134hand@localhost,a134role" {
 		t.Fatalf("resp %+v", resp)
 	}
-	left := mustRun(t, "left", e.maria("", "", "SELECT CONCAT('n=', (SELECT COUNT(*) FROM mysql.db WHERE Db IN ('a134drop_x', CONCAT('a134drop', CHAR(92), '_x'))) + (SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = 'a134drop_x'));"))
+	kept := map[string]string{}
+	for _, row := range resp.Kept {
+		kept[row.Account] = strings.Join(row.Reaches, ",")
+	}
+	if kept["a134wide@localhost"] != "a134dropZx" || kept["a134hand@localhost"] != "a134dropZx" || len(kept) != 2 {
+		t.Fatalf("kept %+v", resp.Kept)
+	}
+	left := mustRun(t, "left", e.maria("", "", "SELECT CONCAT('n=', (SELECT COUNT(*) FROM mysql.db WHERE Db = CONCAT('a134drop', CHAR(92), '_x')) + (SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = 'a134drop_x'));"))
 	if left != "n=0" {
 		t.Fatalf("rights left: %s", left)
 	}
@@ -43,7 +59,7 @@ func TestDroppedDatabaseRightsGoFromEveryGranteeOnRealMariaDB(t *testing.T) {
 		t.Fatalf("the pattern that only matches the name was touched: %s", pattern)
 	}
 	// The accounts and the role stay.
-	if n := mustRun(t, "accounts", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User IN ('a134hand', 'a134role');")); n != "n=2" {
+	if n := mustRun(t, "accounts", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User IN ('a134hand', 'a134role', 'a134wide') OR (User = '' AND Host = '%');")); n != "n=4" {
 		t.Fatalf("accounts: %s", n)
 	}
 }

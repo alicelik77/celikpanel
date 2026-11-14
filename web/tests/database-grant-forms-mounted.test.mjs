@@ -59,7 +59,7 @@ const withoutDetails = (node) => {
 
 const engine = (state, reason = '', over = {}) => ({ key: 'mariadb@this-machine:3306', name: 'local', local: true, state, reason, version: '11.8.6-MariaDB',
   checked_at: '2026-11-13 20:42:15', narrowed: 2, left: 1, waiting: 0, ...over });
-const view = (engines, narrowed = [], left = []) => ({ engines, narrowed, left });
+const view = (engines, narrowed = [], left = [], blocked = []) => ({ engines, narrowed, left, blocked });
 
 test('the words exist in English and Turkish, the same keys, every engine state and reason has its title', () => {
   assert.deepEqual(Object.keys(trDbServer).sort(), Object.keys(enDbServer).sort());
@@ -99,8 +99,15 @@ test('an administrator reads its state only, sees the guidance, the narrowed and
   globalThis.currentRole = 'admin';
   const narrowed = [{ engine: 'mariadb@this-machine:3306', account: 's5__x_user@localhost', pattern: 's5__x', database: 's5__x', kind: 'ours', reached: ['s51_x'] }];
   const left = [{ engine: 'mariadb@this-machine:3306', account: 'hand@%', pattern: 'shop_a', kind: 'not_ours', reason: 'not_provable', reached: ['shop1a'],
-    statement: "GRANT SELECT ON `shop\\_a`.* TO 'hand'@'%';" }];
-  serve(view([engine('blocked', 'credential_refused')], narrowed, left));
+    statement_kind: 'narrow', statement: "GRANT SELECT ON `shop\\_a`.* TO 'hand'@'%';" }];
+  // review: a role is named as a role; a wildcard row's statement says it
+  // removes the right; the reason is said once above its rows; CelikPanel's
+  // blocked rows are listed with their statement.
+  left.push({ engine: 'mariadb@this-machine:3306', account: 'reporting', account_kind: 'role', pattern: 'shop\_%', kind: 'not_ours', reason: 'not_provable',
+    reached: ['shop_a', 'shop_b'], reached_more: 3, statement_kind: 'remove', statement: "REVOKE ALL PRIVILEGES ON `shop\_%`.* FROM 'reporting';" });
+  const blocked = [{ engine: 'mariadb@this-machine:3306', account: 'cust_user@localhost', pattern: 'cust_db', kind: 'ours', reason: 'convert_failed', reached: [],
+    statement_kind: 'narrow', statement: "GRANT ALL PRIVILEGES ON `cust\_db`.* TO 'cust_user'@'localhost';" }];
+  serve(view([engine('blocked', 'credential_refused')], narrowed, left, blocked));
   await mount();
   assert.deepEqual(calls.map((c) => `${c.method} ${c.url}`), [`GET ${DATABASE_GRANT_FORMS_URL}`], 'the block only reads');
   const all = text();
@@ -112,6 +119,13 @@ test('an administrator reads its state only, sees the guidance, the narrowed and
   const inline = JSON.stringify(withoutDetails(tree.toJSON()));
   assert.doesNotMatch(inline, /GRANT SELECT/, 'the statement is shown only under Details');
   assert.match(all, /GRANT SELECT/);
+  assert.equal((all.match(/dbgf\.left\.reason\.not_provable/g) ?? []).length, 1, 'the reason is said once for its rows');
+  assert.match(all, /dbgf\.account\.role/);
+  assert.match(all, /dbgf\.statement\.remove/);
+  assert.match(all, /dbgf\.statement\.narrow/);
+  assert.match(all, /dbgf\.left\.reachesMore/);
+  assert.match(all, /dbgf\.blocked\.title/);
+  assert.match(all, /cust_user@localhost/);
   await act(async () => tree.unmount());
 });
 

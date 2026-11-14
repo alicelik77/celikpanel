@@ -217,6 +217,11 @@ func (d *MariaDBDriver) CreateDatabase(name string) error {
 	if err != nil {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
+	// alpha.134 review: a name whose exact form does not fit a grant row would
+	// be granted cut short - a right on another name - so it is not made.
+	if !mariadbgrant.ExactFits(name) {
+		return fmt.Errorf("database %s: %w", name, ErrDatabaseNameTooLong)
+	}
 	// alpha.129: exclusive. "IF NOT EXISTS" took over a database of the same
 	// name that was already there (another account's, or one made outside
 	// CelikPanel) and the caller then granted its new user on it.
@@ -407,11 +412,21 @@ func (d *MariaDBDriver) GrantPrivileges(database, user, privileges string) error
 			return fmt.Errorf("invalid privileges: %w", err)
 		}
 	}
-	sql := fmt.Sprintf("GRANT %s ON %s.* TO %s@'localhost';", privClause, dbIdent, userLiteral)
+	// alpha.134 review: NO_AUTO_CREATE_USER in the session on MariaDB (a
+	// GRANT never re-creates an account dropped meanwhile), and the stored row
+	// is read back: it must hold exactly the exact form.
+	prefix, err := mariadbgrant.GrantPrefix(d.runSQL)
+	if err != nil {
+		return err
+	}
+	sql := fmt.Sprintf("%sGRANT %s ON %s.* TO %s@'localhost';", prefix, privClause, dbIdent, userLiteral)
 	if err := d.executeSQL(sql); err != nil {
 		return err
 	}
-	return d.executeSQL("FLUSH PRIVILEGES;")
+	if err := d.executeSQL("FLUSH PRIVILEGES;"); err != nil {
+		return err
+	}
+	return mariadbgrant.VerifyStored(d.runSQL, user, "localhost", database)
 }
 
 // RevokePrivileges revokes privileges from a user on a database. alpha.134:
@@ -447,9 +462,15 @@ func (d *MariaDBDriver) RevokePrivileges(database, user string) error {
 // the record's account, both forms are revoked one by one and it is enough
 // that one of them was there.
 func (d *MariaDBDriver) revokeDatabaseGrantForms(database, user, userLiteral string) error {
-	exact, _ := mariadbgrant.Target(database)
 	pattern, _ := mariadbgrant.PatternTarget(database)
-	targets := map[string]string{database: pattern, mariadbgrant.Exact(database): exact}
+	targets := map[string]string{database: pattern}
+	candidates := []string{pattern}
+	// A name whose exact form does not fit a grant row only ever has the
+	// pattern form (mariadbgrant.ErrExactTooLong).
+	if exact, err := mariadbgrant.Target(database); err == nil && exact != pattern {
+		targets[mariadbgrant.Exact(database)] = exact
+		candidates = []string{exact, pattern}
+	}
 	output, readErr := d.runSQL("SELECT CONCAT('f=', HEX(Db)) FROM mysql.db WHERE User = " + mariadbgrant.Hex(user) +
 		" AND Host = 'localhost' AND Db IN (" + mariadbgrant.HexList(mariadbgrant.Forms(database)) + ");")
 	if readErr == nil {
@@ -470,10 +491,7 @@ func (d *MariaDBDriver) revokeDatabaseGrantForms(database, user, userLiteral str
 	}
 	var firstErr error
 	revoked := false
-	for _, target := range []string{exact, pattern} {
-		if target == pattern && exact == pattern {
-			break
-		}
+	for _, target := range candidates {
 		if err := d.executeSQL(fmt.Sprintf("REVOKE ALL PRIVILEGES ON %s.* FROM %s@'localhost';", target, userLiteral)); err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -533,14 +551,6 @@ func (d *MariaDBDriver) GrantExec() mariadbgrant.Exec { return d.runSQL }
 // An account that may not read or change the grant tables gets an error;
 // the caller then says rights may remain there.
 // Silinen veritabanını adlandıran haklar, kaydın kendi hesabıyla kaldırılır.
-func (d *MariaDBDriver) RemoveRightsOnDroppedDatabase(name string) ([]string, error) {
-	grantees, err := mariadbgrant.RemoveDroppedRights(d.runSQL, name)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]string, 0, len(grantees))
-	for _, grantee := range grantees {
-		out = append(out, grantee.String())
-	}
-	return out, nil
+func (d *MariaDBDriver) RemoveRightsOnDroppedDatabase(name string) (mariadbgrant.DroppedResult, error) {
+	return mariadbgrant.RemoveDroppedRights(d.runSQL, name)
 }

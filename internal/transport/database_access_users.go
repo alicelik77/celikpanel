@@ -84,6 +84,24 @@ type DatabaseAccessUserResponse struct {
 	// DatabaseExists (with DatabaseDropped): the engine still has a database of
 	// that name, so nothing was removed. Additive.
 	DatabaseExists bool `json:"database_exists,omitempty"`
+	// RightsRemovedFrom and RightsKept (alpha.134, with DatabaseDropped): the
+	// grantees whose rights naming the dropped database this step removed
+	// (names only), and the rows it kept because they also reach another
+	// database. The panel adds them to the deletion's answer. Additive.
+	RightsRemovedFrom []string           `json:"rights_removed_from,omitempty"`
+	RightsKept        []DroppedRightKept `json:"rights_kept,omitempty"`
+	// NameTooLong (alpha.134, creation): the database name's exact form does
+	// not fit a MariaDB grant row; nothing was changed. Additive.
+	NameTooLong bool `json:"name_too_long,omitempty"`
+}
+
+// DroppedRightKept is a right in the raw (pattern) form of a deleted
+// database's name that also reaches another existing database: it is left
+// for its owner and reported. Names only.
+type DroppedRightKept struct {
+	Account string   `json:"account"`
+	Pattern string   `json:"pattern"`
+	Reaches []string `json:"reaches"`
 }
 
 // DroppedDatabaseRightsRequest (alpha.134): after a database is deleted on
@@ -102,6 +120,9 @@ type DroppedDatabaseRightsResponse struct {
 	// Grantees: user@host of each account (a role's name alone) that held a
 	// right naming the database and lost it. Names only.
 	Grantees []string `json:"grantees,omitempty"`
+	// Kept: rights in the raw form that also reach another existing database
+	// and were left (alpha.134 review).
+	Kept []DroppedRightKept `json:"kept,omitempty"`
 	// DatabaseExists: a database of that name exists (again); nothing was
 	// changed.
 	DatabaseExists bool `json:"database_exists,omitempty"`

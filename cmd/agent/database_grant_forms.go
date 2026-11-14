@@ -77,6 +77,11 @@ func (a *Agent) DatabaseGrantFormConvertV1(req *transport.DatabaseGrantFormConve
 	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
+	// One change of a remote copy's grants at a time: the remote access apply
+	// rewrites copies under the same lock (review of alpha.134). Taken after
+	// the suspension lock, the order every user removal takes them in.
+	databaseRemoteMu.Lock()
+	defer databaseRemoteMu.Unlock()
 	outcome, err := mariadbgrant.Convert(mysqlGrantExec("the database server"), req.ConvertRequest, databaseGrantFormFault)
 	if err != nil {
 		resp.Error = err.Error()

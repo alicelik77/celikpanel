@@ -29,7 +29,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'databases.keptNote.unchecked': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü CelikPanel orada başka nelere sahip olduklarını denetleyemedi. Yalnız {name} için verilmiş hakları kaldırıldı; birden çok veritabanını ya da bütün sunucuyu kapsayan hakları kalır.',
     'databases.keptNote.server': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır: CelikPanel o sunucuya kendi hesabıyla bağlanır ve orada kullanıcı kaldırmaz.',
     'databases.keptNote.rightsFrom': '{name} adını taşıyan haklar veritabanı sunucusundaki şu hesaplardan da alındı; hesaplar yerinde kalır: {accounts}.',
-    'databases.keptNote.rightsCount': '{name} adını taşıyan haklar veritabanı sunucusundaki {count} hesaptan daha alındı; hesaplar yerinde kalır.',
+    'databases.keptNote.rightsKept': 'Şu haklar {name} adını da taşıyor ama başka veritabanlarına da erişiyor; bu yüzden olduğu gibi bırakıldı: {rows}. Gerekmiyorsa sunucuda kaldırın.',
     'databases.keptNote.rightsMayRemain': '{name} adını taşıyan haklar o veritabanı sunucusundaki başka hesaplarda kalmış olabilir, çünkü CelikPanel’in orada kullandığı hesap bunları kaldıramadı. Onları o sunucunun yöneticisi kaldırır.',
     // alpha.133: the left menu's Databases page (one visibility rule, drawings V15–V17).
     'databases.scope.admin': 'Sunucudaki bütün veritabanları',

@@ -70,6 +70,19 @@ func writeDatabaseNameTaken(w http.ResponseWriter, what, name string) {
 	writeCodedError(w, http.StatusConflict, errCodeDatabaseNameTaken, message, "")
 }
 
+// errCodeDatabaseNameTooLong (alpha.134): on MariaDB a right is written by the
+// database's exact name, each `_` with a backslash before it; for this name
+// that is longer than the 64 characters MariaDB stores for a right, which
+// would keep it cut short - a right on another name. Nothing was changed.
+const errCodeDatabaseNameTooLong = "DATABASE_NAME_TOO_LONG"
+
+// writeDatabaseNameTooLong is that refusal.
+func writeDatabaseNameTooLong(w http.ResponseWriter, name string) {
+	writeCodedErrorVars(w, http.StatusConflict, errCodeDatabaseNameTooLong,
+		"The name "+name+" is too long for MariaDB to keep a right on exactly this database (each underscore counts twice; 64 is the limit). For a new database choose a shorter name or fewer underscores. Nothing was changed.",
+		"", nil, map[string]string{"name": name})
+}
+
 // databaseNameTakenByEngine: the driver found the name on the engine itself.
 func databaseNameTakenByEngine(err error) bool {
 	return errors.Is(err, services.ErrDatabaseNameTaken)

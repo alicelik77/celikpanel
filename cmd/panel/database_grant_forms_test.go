@@ -23,13 +23,14 @@ import (
 // fakeGrantEngine is one MariaDB as the loop sees it: its pattern rows and
 // what each convert did.
 type fakeGrantEngine struct {
-	scanResult  mariadbgrant.Scan
-	remote      map[string][]string
-	scanErr     error
-	convertErr  error
-	converted   []mariadbgrant.ConvertRequest
-	outcomeFor  func(mariadbgrant.ConvertRequest) string
-	afterSwitch func()
+	scanResult mariadbgrant.Scan
+	remote     map[string][]string
+	scanErr    error
+	convertErr error
+	converted  []mariadbgrant.ConvertRequest
+	outcomeFor func(mariadbgrant.ConvertRequest) string
+	// onConvert runs at the start of each convert (alpha.134 review tests).
+	onConvert func(mariadbgrant.ConvertRequest)
 }
 
 func (f *fakeGrantEngine) scan(context.Context) (mariadbgrant.Scan, map[string][]string, error) {
@@ -37,6 +38,9 @@ func (f *fakeGrantEngine) scan(context.Context) (mariadbgrant.Scan, map[string][
 }
 
 func (f *fakeGrantEngine) convert(_ context.Context, req mariadbgrant.ConvertRequest) (string, error) {
+	if f.onConvert != nil {
+		f.onConvert(req)
+	}
 	if f.convertErr != nil {
 		return "", f.convertErr
 	}

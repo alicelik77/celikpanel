@@ -144,6 +144,9 @@ type fakeDatabaseAccessNative struct {
 	created, removed []transport.DatabaseAccessUserRequest
 	exists           bool
 	failRemove       bool
+	// rightsFrom: the grantees a removal step says it took rights from
+	// (alpha.134).
+	rightsFrom []string
 }
 
 func (f *fakeDatabaseAccessNative) create(_ context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
@@ -159,7 +162,7 @@ func (f *fakeDatabaseAccessNative) remove(_ context.Context, req transport.Datab
 		return transport.DatabaseAccessUserResponse{Error: "engine said no"}, nil
 	}
 	f.removed = append(f.removed, req)
-	return transport.DatabaseAccessUserResponse{Applied: true}, nil
+	return transport.DatabaseAccessUserResponse{Applied: true, RightsRemovedFrom: f.rightsFrom}, nil
 }
 
 func TestDomainDatabaseAccessUsersAddAndRemove(t *testing.T) {

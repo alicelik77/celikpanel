@@ -11,12 +11,14 @@ import (
 )
 
 // alpha.134 deletion: every right naming the dropped database goes from
-// every grantee; an administrator is told whose, everybody else how many;
-// rights that could not all be taken keep the database listed.
+// every grantee; only an administrator is told whose and how many (review:
+// other accounts are not a customer's business) - the names the user steps
+// removed and those of the final sweep, each once; rights that could not all
+// be taken keep the database listed.
 func TestDatabaseDeleteTakesTheRightsNamingItFromEveryGrantee(t *testing.T) {
 	f := newVisibleDatabasesFixture(t)
 	drops := recordDatabaseDrops(t)
-	f.panel.databaseAccessNative = &fakeDatabaseAccessNative{}
+	f.panel.databaseAccessNative = &fakeDatabaseAccessNative{rightsFrom: []string{"wp_user@localhost", "hand@%"}}
 	drops.sweepAnswer = func(resp *transport.DroppedDatabaseRightsResponse) error {
 		resp.Applied, resp.Grantees = true, []string{"hand@%", "reporting"}
 		return nil
@@ -27,15 +29,28 @@ func TestDatabaseDeleteTakesTheRightsNamingItFromEveryGrantee(t *testing.T) {
 	}
 	var answer map[string]any
 	_ = json.Unmarshal(got.Body.Bytes(), &answer)
-	if answer["rights_removed_count"] != float64(2) || answer["rights_removed_from"] != nil {
+	if _, ok := answer["rights_removed_count"]; ok || answer["rights_removed_from"] != nil || answer["rights_kept"] != nil || answer["rights_may_remain"] != nil {
 		t.Fatalf("customer answer %s", got.Body.String())
 	}
 	if len(drops.sweeps) != 1 || drops.sweeps[0].Database != "customer_matrix_test_shop" || drops.sweeps[0].ExpectedBuildCommit != strings.TrimSpace(buildCommit) {
 		t.Fatalf("sweeps %+v", drops.sweeps)
 	}
+	drops.sweepAnswer = func(resp *transport.DroppedDatabaseRightsResponse) error {
+		resp.Applied, resp.Grantees = true, []string{"reporting"}
+		resp.Kept = []transport.DroppedRightKept{{Account: "hand@%", Pattern: "other_shop", Reaches: []string{"other1shop"}}}
+		return nil
+	}
 	got = f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9963", "")
-	_ = json.Unmarshal(got.Body.Bytes(), &answer)
-	if got.Code != http.StatusOK || answer["rights_removed_count"] != float64(2) || answer["rights_removed_from"] == nil {
+	var admin struct {
+		Count int                          `json:"rights_removed_count"`
+		From  []string                     `json:"rights_removed_from"`
+		Kept  []transport.DroppedRightKept `json:"rights_kept"`
+	}
+	_ = json.Unmarshal(got.Body.Bytes(), &admin)
+	// other_shop's own user step reported its removals; the sweep found one
+	// more and kept one; nothing is counted twice.
+	if got.Code != http.StatusOK || admin.Count != 3 || strings.Join(admin.From, ",") != "wp_user@localhost,hand@%,reporting" ||
+		len(admin.Kept) != 1 || admin.Kept[0].Pattern != "other_shop" {
 		t.Fatalf("admin answer %d %s", got.Code, got.Body.String())
 	}
 	// PostgreSQL leaves nothing that names a dropped database: no sweep.

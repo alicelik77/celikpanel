@@ -36,21 +36,27 @@ const NARROWED = [
     { engine: 'mariadb@this-machine:3306', account: 's5__x_user@localhost', pattern: 's5__x', database: 's5__x', kind: 'ours', reached: ['s51_x'], at: '2026-11-13 20:42:16' },
 ];
 const LEFT = [
-    { engine: 'mariadb@this-machine:3306', account: 'raporcu@%', pattern: 'pastane_siparis', database: '', kind: 'not_ours', reason: 'not_provable',
-        reached: ['pastane1siparis'], statement: "GRANT SELECT ON `pastane\\_siparis`.* TO 'raporcu'@'%';\nREVOKE ALL PRIVILEGES ON `pastane_siparis`.* FROM 'raporcu'@'%';" },
-    { engine: 'mariadb@this-machine:3306', account: 'yedek@localhost', pattern: 'atolye\\_%', database: '', kind: 'not_ours', reason: 'not_provable',
-        reached: ['atolye_muhasebe', 'atolye_stok'], statement: "REVOKE ALL PRIVILEGES ON `atolye\\_%`.* FROM 'yedek'@'localhost';" },
-    { engine: 'mariadb@this-machine:3306', account: 'kahve_user@localhost', pattern: 'kahve_magaza', database: 'kahve_magaza', kind: 'owner_row', reason: 'owner_row',
-        reached: [], statement: "GRANT ALL PRIVILEGES ON `kahve\\_magaza`.* TO 'kahve_user'@'localhost' WITH GRANT OPTION;\nREVOKE ALL PRIVILEGES ON `kahve_magaza`.* FROM 'kahve_user'@'localhost';\nREVOKE GRANT OPTION ON `kahve_magaza`.* FROM 'kahve_user'@'localhost';" },
+    { engine: 'mariadb@this-machine:3306', account: 'raporcu@%', account_kind: 'account', pattern: 'pastane_siparis', database: '', kind: 'not_ours', reason: 'not_provable',
+        reached: ['pastane1siparis'], statement_kind: 'narrow', statement: "GRANT SELECT ON `pastane\\_siparis`.* TO 'raporcu'@'%';\nREVOKE ALL PRIVILEGES ON `pastane_siparis`.* FROM 'raporcu'@'%';" },
+    { engine: 'mariadb@this-machine:3306', account: 'yedek@localhost', account_kind: 'account', pattern: 'atolye\\_%', database: '', kind: 'not_ours', reason: 'not_provable',
+        reached: ['atolye_muhasebe', 'atolye_stok'], reached_more: 12, statement_kind: 'remove', statement: "REVOKE ALL PRIVILEGES ON `atolye\\_%`.* FROM 'yedek'@'localhost';" },
+    { engine: 'mariadb@this-machine:3306', account: 'raporlar', account_kind: 'role', pattern: 'kahve_magaza', database: '', kind: 'not_ours', reason: 'not_provable',
+        reached: ['kahve1magaza'], statement_kind: 'narrow', statement: "GRANT SELECT ON `kahve\\_magaza`.* TO 'raporlar';\nREVOKE ALL PRIVILEGES ON `kahve_magaza`.* FROM 'raporlar';" },
+    { engine: 'mariadb@this-machine:3306', account: 'kahve_user@localhost', account_kind: 'account', pattern: 'kahve_magaza', database: 'kahve_magaza', kind: 'owner_row', reason: 'owner_row',
+        reached: [], statement_kind: 'narrow', statement: "GRANT ALL PRIVILEGES ON `kahve\\_magaza`.* TO 'kahve_user'@'localhost' WITH GRANT OPTION;\nREVOKE ALL PRIVILEGES ON `kahve_magaza`.* FROM 'kahve_user'@'localhost';\nREVOKE GRANT OPTION ON `kahve_magaza`.* FROM 'kahve_user'@'localhost';" },
+];
+const BLOCKED = [
+    { engine: 'mariadb@this-machine:3306', account: 'atolye_user@localhost', account_kind: 'account', pattern: 'atolye_stok', database: 'atolye_stok', kind: 'ours', reason: 'convert_failed',
+        reached: [], statement_kind: 'narrow', statement: "GRANT ALL PRIVILEGES ON `atolye\\_stok`.* TO 'atolye_user'@'localhost';\nREVOKE ALL PRIVILEGES ON `atolye_stok`.* FROM 'atolye_user'@'localhost';" },
 ];
 const VIEWS = {
-    done: { engines: [LOCAL('done', '', { narrowed: 7, left: 0, waiting: 0 })], narrowed: [], left: [] },
-    running: { engines: [LOCAL('running', '', { narrowed: 3, left: 0, waiting: 4 })], narrowed: NARROWED, left: [] },
-    waiting: { engines: [LOCAL('waiting', 'update_verifying', { narrowed: 0, left: 0, waiting: 7 })], narrowed: [], left: [] },
-    blocked: { engines: [LOCAL('done', '', { narrowed: 7, left: 3, waiting: 0 }), REMOTE('blocked', 'credential_refused')], narrowed: NARROWED, left: LEFT },
-    mysql: { engines: [LOCAL('done', '', { narrowed: 7, left: 0, waiting: 0 }), REMOTE('list_only', 'not_mariadb', '8.0.36')], narrowed: [], left: [
-        { engine: 'mariadb@db.example.net:3306', account: 'shop_a_user@localhost', pattern: 'shop_a', database: 'shop_a', kind: 'ours', reason: 'not_mariadb', reached: [],
-            statement: "GRANT ALL PRIVILEGES ON `shop\\_a`.* TO 'shop_a_user'@'localhost';\nREVOKE ALL PRIVILEGES ON `shop_a`.* FROM 'shop_a_user'@'localhost';" },
+    done: { engines: [LOCAL('done', '', { narrowed: 7, left: 0, waiting: 0 })], narrowed: [], left: [], blocked: [] },
+    running: { engines: [LOCAL('running', '', { narrowed: 3, left: 0, waiting: 4 })], narrowed: NARROWED, left: [], blocked: [] },
+    waiting: { engines: [LOCAL('waiting', 'update_verifying', { narrowed: 0, left: 0, waiting: 7 })], narrowed: [], left: [], blocked: [] },
+    blocked: { engines: [LOCAL('blocked', 'convert_failed', { narrowed: 7, left: 4, waiting: 1 }), REMOTE('blocked', 'credential_refused')], narrowed: NARROWED, left: LEFT, blocked: BLOCKED },
+    mysql: { engines: [LOCAL('done', '', { narrowed: 7, left: 0, waiting: 0 }), REMOTE('list_only', 'not_mariadb', '8.0.36')], blocked: [], narrowed: [], left: [
+        { engine: 'mariadb@db.example.net:3306', account: 'shop_a_user@localhost', account_kind: 'account', pattern: 'shop_a', database: 'shop_a', kind: 'ours', reason: 'not_mariadb', reached: [],
+            statement_kind: 'narrow', statement: "GRANT ALL PRIVILEGES ON `shop\\_a`.* TO 'shop_a_user'@'localhost';\nREVOKE ALL PRIVILEGES ON `shop_a`.* FROM 'shop_a_user'@'localhost';" },
     ] },
 };
 const NOTICE = {
@@ -58,9 +64,9 @@ const NOTICE = {
         id: 41, kind: 'database_pattern_rights', audience: 'administrator', needs_action: true, fix_path: '/components/mariadb', created_at: '2026-11-13 20:42:16', source: 'account',
         words: {
             title_en: 'Database rights written as a pattern',
-            text_en: 'Some MariaDB rights on this server are written as a name pattern, so an account can also use databases whose names only match it. CelikPanel did not make them, so it leaves them as they are. On Components → MariaDB they are listed with the databases they reach and what you can do.',
+            text_en: 'Some MariaDB rights on this server are written as a name pattern, so an account can also use databases whose names only match it. CelikPanel leaves these as they are: 3 that CelikPanel did not give; 1 that carry rights CelikPanel never gives (such as passing rights on). On Components → MariaDB they are listed with the databases they reach and what you can do.',
             title_tr: 'Kalıp olarak yazılmış veritabanı hakları',
-            text_tr: 'Bu sunucudaki bazı MariaDB hakları bir ad kalıbı olarak yazılmış; bu yüzden hesap, adı yalnız kalıba uyan veritabanlarını da kullanabiliyor. Bunları CelikPanel vermediği için olduğu gibi bırakıyor. Bileşenler → MariaDB sayfasında, eriştikleri veritabanları ve yapabilecekleriniz ile birlikte listelenir.',
+            text_tr: 'Bu sunucudaki bazı MariaDB hakları bir ad kalıbı olarak yazılmış; bu yüzden hesap, adı yalnız kalıba uyan veritabanlarını da kullanabiliyor. CelikPanel bunları olduğu gibi bırakıyor: CelikPanel’in vermediği 3 hak; CelikPanel’in hiç vermediği yetkiler (hak verme yetkisi gibi) taşıyan 1 hak. Bileşenler → MariaDB sayfasında, eriştikleri veritabanları ve yapabilecekleriniz ile birlikte listelenir.',
         },
     }],
 };
@@ -104,6 +110,12 @@ export default function batch34(scenarios, { base, locale, theme, out, viewport,
         for (const [name, view, details] of [['done', VIEWS.done], ['running', VIEWS.running], ['waiting', VIEWS.waiting], ['blocked-left', VIEWS.blocked, true], ['mysql', VIEWS.mysql, true]]) {
             const page = await open(view, details);
             await snap(page, `grants-${name}`);
+            if (details) {
+                // The lists below the guidance: rights left as they are, by why.
+                await page.evaluate(() => document.querySelector('[data-grant-forms-left]')?.scrollIntoView({ block: 'start' }));
+                await pause(300);
+                await snap(page, `grants-${name}-list`);
+            }
             await closePage(page);
         }
         await reset(); await clean();

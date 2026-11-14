@@ -140,6 +140,11 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 		writeCodedError(w, http.StatusConflict, errCodeDatabaseUserExists,
 			"A database user named "+username+" already exists on this database server (made outside CelikPanel). Choose another name; nothing was changed.", "")
 		return
+	case resp.NameTooLong:
+		// alpha.134: an existing database whose exact form does not fit a
+		// right keeps its old pattern-form rights; no new one is written.
+		writeDatabaseNameTooLong(w, agentReq.Database)
+		return
 	case !resp.Applied:
 		writeDatabaseUserEngineFailure(w, resp, "The database server did not make the user "+username+"; nothing was changed. Try again; if it fails again, the administrator finds the reason in the panel's log.")
 		return

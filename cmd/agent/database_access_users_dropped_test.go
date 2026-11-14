@@ -12,12 +12,12 @@ import (
 // grantee - CelikPanel's users, accounts made by hand under any name and
 // roles (their rows have the empty host); the accounts and roles stay. Only
 // while no database of that name exists; database level by its two name
-// forms, table, column and routine level by the literal name, compared as
-// hexadecimal literals; checked afterwards against what the server has
-// loaded. A right on another database or a wildcard pattern is never
-// touched. (alpha.133's lab result "a same-named role's rows are left" is
-// changed on purpose: a re-created name must not hand its tables to the
-// role's members.)
+// forms (row by row), table, column and routine level by the literal name,
+// compared as hexadecimal literals; FLUSH on its own; checked afterwards
+// against what the server has loaded and stored. A right on another
+// database or a wildcard pattern is never touched. (alpha.133's lab result
+// "a same-named role's rows are left" is changed on purpose: a re-created
+// name must not hand its tables to the role's members.)
 
 const (
 	hand5     = "pastane_dr_test_hand5"
@@ -29,21 +29,25 @@ const (
 	hand5Absent   = " AND NOT EXISTS (SELECT 1 FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + hand5Hex + ")"
 )
 
-// The exact removal: every grantee, both name forms, never while the
-// database exists.
+// hand5Read: the hand-made account (raw form), an account of another name
+// and a role (exact form) hold a database-level right naming it; the
+// hand-made account also a table right. No other database exists.
+const hand5Read = "l=0\n" +
+	"d=70617374616E655F64725F746573745F68616E64355F75736572/31302E25/70617374616E655F64725F746573745F68616E6435\n" +
+	"d=6F746865725F6F776E6572/6C6F63616C686F7374/70617374616E655C5F64725C5F746573745C5F68616E6435\n" +
+	"d=7265706F7274696E67//70617374616E655C5F64725C5F746573745C5F68616E6435\n" +
+	"g=70617374616E655F64725F746573745F68616E64355F75736572/31302E25\n"
+
+// The exact removal: row by row for the database level, every grantee, never
+// while the database exists.
 var hand5Deletes = []string{
-	"DELETE FROM mysql.db WHERE Db IN (" + hand5Hex + ", " + hand5ExactHex + ")" + hand5Absent + ";",
+	"DELETE FROM mysql.db WHERE User = X'70617374616E655F64725F746573745F68616E64355F75736572' AND Host = X'31302E25' AND Db = " + hand5Hex + hand5Absent + ";",
+	"DELETE FROM mysql.db WHERE User = X'6F746865725F6F776E6572' AND Host = X'6C6F63616C686F7374' AND Db = " + hand5ExactHex + hand5Absent + ";",
+	"DELETE FROM mysql.db WHERE User = X'7265706F7274696E67' AND Host = '' AND Db = " + hand5ExactHex + hand5Absent + ";",
 	"DELETE FROM mysql.tables_priv WHERE Db = " + hand5Hex + hand5Absent + ";",
 	"DELETE FROM mysql.columns_priv WHERE Db = " + hand5Hex + hand5Absent + ";",
 	"DELETE FROM mysql.procs_priv WHERE Db = " + hand5Hex + hand5Absent + ";",
-	"FLUSH PRIVILEGES;",
 }
-
-// hand5Grantees: the hand-made account, an account of another name and a
-// role (empty host) hold a right naming the database.
-const hand5Grantees = "g=70617374616E655F64725F746573745F68616E64355F75736572 31302E25\n" +
-	"g=6F746865725F6F776E6572 6C6F63616C686F7374\n" +
-	"g=7265706F7274696E67 \n"
 
 func droppedRemoval(t *testing.T, rightsOnly bool, answer func(string) string) (transport.DatabaseAccessUserResponse, []string) {
 	t.Helper()
@@ -56,8 +60,13 @@ func droppedRemoval(t *testing.T, rightsOnly bool, answer func(string) string) (
 				return out
 			}
 			return "n=0\n"
-		case strings.HasPrefix(statement, "SELECT CONCAT('g=', HEX(User)"):
-			return hand5Grantees
+		case strings.HasPrefix(statement, "SELECT CONCAT('l='"):
+			return hand5Read
+		case strings.HasPrefix(statement, "SELECT CONCAT('a='"):
+			if out := answer(statement); out != "" {
+				return out
+			}
+			return "a=0\nb=0\nc=0\n"
 		}
 		if out := answer(statement); out != "" {
 			return out
@@ -88,31 +97,38 @@ func TestDroppedDatabaseLeavesNoRightOnAnyGrantee(t *testing.T) {
 	if strings.Contains(strings.Join(got, "\n"), "DROP USER") {
 		t.Fatal("an account with a host its owner made was dropped")
 	}
-	// Exactly these statements: no account filter (every grantee, roles
-	// too), both name forms, never while the database exists.
+	// Exactly these statements: no account filter beyond the rows read
+	// (every grantee, roles too), never while the database exists.
 	if deletes := deleteStatements(got); strings.Join(deletes, "\n") != strings.Join(hand5Deletes, "\n") {
 		t.Fatalf("removal statements:\n%s\nwant:\n%s", strings.Join(deletes, "\n"), strings.Join(hand5Deletes, "\n"))
 	}
-	// What the server LOADED after the flush is read, for every grantee.
+	// alpha.134 review: whose rights went is the step's answer too.
+	if strings.Join(resp.RightsRemovedFrom, ",") != "other_owner@localhost,pastane_dr_test_hand5_user@10.%,reporting" {
+		t.Fatalf("rights removed from %v", resp.RightsRemovedFrom)
+	}
 	var loaded string
+	flushed := false
 	for _, statement := range got {
-		if strings.HasPrefix(statement, "SELECT CONCAT('n=', (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES") {
+		if strings.HasPrefix(statement, "SELECT CONCAT('a='") {
 			loaded = statement
 		}
+		flushed = flushed || statement == "FLUSH PRIVILEGES;"
 	}
 	for _, want := range []string{
-		"BINARY TABLE_SCHEMA IN (" + hand5Hex + ", " + hand5ExactHex + ")",
+		"BINARY TABLE_SCHEMA = " + hand5ExactHex,
+		"BINARY TABLE_SCHEMA = " + hand5Hex,
 		"information_schema.TABLE_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + hand5Hex,
 		"information_schema.COLUMN_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + hand5Hex,
 		"FROM mysql.procs_priv WHERE Db = " + hand5Hex,
+		"FROM mysql.columns_priv WHERE Db = " + hand5Hex,
 		"FROM mysql.db WHERE Db IN (" + hand5Hex + ", " + hand5ExactHex + ")",
 	} {
 		if !strings.Contains(loaded, want) {
 			t.Fatalf("the loaded-rights check lacks %q: %s", want, loaded)
 		}
 	}
-	if strings.Contains(loaded, "GRANTEE IN") || strings.Contains(loaded, "User =") {
-		t.Fatalf("the loaded-rights check is limited to some grantees: %s", loaded)
+	if !flushed {
+		t.Fatal("no FLUSH PRIVILEGES")
 	}
 }
 
@@ -127,6 +143,9 @@ func TestDroppedDatabaseSharedUserLosesOnlyItsRightsOnIt(t *testing.T) {
 	}
 	if deletes := deleteStatements(got); strings.Join(deletes, "\n") != strings.Join(hand5Deletes, "\n") {
 		t.Fatalf("removal statements %v", deletes)
+	}
+	if len(resp.RightsRemovedFrom) != 3 {
+		t.Fatalf("rights removed from %v", resp.RightsRemovedFrom)
 	}
 }
 
@@ -146,8 +165,8 @@ func TestDroppedDatabaseThatStillExistsChangesNothing(t *testing.T) {
 func TestDroppedDatabaseRightThatIsStillLoadedIsSaidAsLeft(t *testing.T) {
 	withOwnHosts(t)
 	resp, _ := droppedRemoval(t, true, func(statement string) string {
-		if strings.HasPrefix(statement, "SELECT CONCAT('n=', (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES") {
-			return "n=1\n"
+		if strings.HasPrefix(statement, "SELECT CONCAT('a='") {
+			return "a=1\nb=0\nc=0\n"
 		}
 		return ""
 	})
@@ -160,8 +179,11 @@ func TestDroppedDatabaseRightThatIsStillLoadedIsSaidAsLeft(t *testing.T) {
 // (a role by its name alone); a re-created name changes nothing.
 func TestRemoveDroppedDatabaseRightsNamesEveryGrantee(t *testing.T) {
 	got := recordMySQL(t, func(statement string) string {
-		if strings.HasPrefix(statement, "SELECT CONCAT('g=', HEX(User)") {
-			return hand5Grantees
+		switch {
+		case strings.HasPrefix(statement, "SELECT CONCAT('l='"):
+			return hand5Read
+		case strings.HasPrefix(statement, "SELECT CONCAT('a='"):
+			return "a=0\nb=0\nc=0\n"
 		}
 		return "n=0\n"
 	})

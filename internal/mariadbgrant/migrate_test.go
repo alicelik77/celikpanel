@@ -65,10 +65,20 @@ func unhex(t string) string {
 	return s
 }
 
-func hexOf(s string) string { return strings.TrimSuffix(strings.TrimPrefix(Hex(s), "X'"), "'") }
+func hexOf(s string) string {
+	if s == "" {
+		return "" // HEX('') is the empty string
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(Hex(s), "X'"), "'")
+}
 
 func (f *fakeEngine) run(statement string) ([]byte, error) {
 	f.log = append(f.log, statement)
+	if rest, ok := strings.CutPrefix(statement, NoAutoCreateUser+"\n"); ok {
+		statement = rest
+	} else if strings.HasPrefix(statement, "GRANT") {
+		return nil, errors.New("a GRANT without NO_AUTO_CREATE_USER in the session")
+	}
 	var out strings.Builder
 	row := func(k [3]string, flags string) {
 		fmt.Fprintf(&out, "r=%s %s %s %s\n", hexOf(k[0]), hexOf(k[1]), hexOf(k[2]), flags)
@@ -205,7 +215,7 @@ func TestConvertTouchesNothingThatIsNotTheCapturedRow(t *testing.T) {
 		t.Fatalf("grant option: %s %v", outcome, err)
 	}
 	for _, statement := range f.log {
-		if strings.HasPrefix(statement, "GRANT") || strings.HasPrefix(statement, "REVOKE") {
+		if (strings.Contains(statement, "GRANT ") && !strings.HasPrefix(statement, "SELECT")) || strings.HasPrefix(statement, "REVOKE") {
 			t.Fatalf("a row that was not the captured one was changed: %s", statement)
 		}
 	}
@@ -233,8 +243,8 @@ func TestConvertKeepsThePrivilegesAsTheyAre(t *testing.T) {
 	}
 	var grant string
 	for _, statement := range f.log {
-		if strings.HasPrefix(statement, "GRANT") {
-			grant = statement
+		if rest, ok := strings.CutPrefix(statement, NoAutoCreateUser+"\n"); ok {
+			grant = rest
 		}
 	}
 	if grant != "GRANT SELECT, INSERT ON `shop\\_a`.* TO 'u'@'10.0.0.0/255.255.255.0';" {
@@ -247,12 +257,30 @@ func TestNarrowStatements(t *testing.T) {
 	f := newFakeEngine()
 	row := Row{User: "hand", Host: "%", Stored: "shop_a", Flags: f.flags("SELECT")}
 	describe(f.columns, &row)
-	if got := NarrowStatements(row); got != "GRANT SELECT ON `shop\\_a`.* TO 'hand'@'%';\nREVOKE ALL PRIVILEGES ON `shop_a`.* FROM 'hand'@'%';" {
+	if got, kind := NarrowStatements(row); kind != StatementNarrow || got != "GRANT SELECT ON `shop\\_a`.* TO 'hand'@'%';\nREVOKE ALL PRIVILEGES ON `shop_a`.* FROM 'hand'@'%';" {
 		t.Fatalf("narrow = %q", got)
 	}
 	wild := Row{User: "hand", Host: "%", Stored: `shop\_%`, Flags: f.flags("SELECT")}
 	describe(f.columns, &wild)
-	if got := NarrowStatements(wild); got != "REVOKE ALL PRIVILEGES ON `shop\\_%`.* FROM 'hand'@'%';" {
+	if got, kind := NarrowStatements(wild); kind != StatementRemove || got != "REVOKE ALL PRIVILEGES ON `shop\\_%`.* FROM 'hand'@'%';" {
 		t.Fatalf("wildcard = %q", got)
+	}
+	// A role is named alone, the anonymous account as ''@host.
+	role := Row{User: "reporting", Host: "", Stored: "shop_a", Privileges: "SELECT"}
+	if got, _ := NarrowStatements(role); !strings.Contains(got, "TO 'reporting';") || strings.Contains(got, "@''") {
+		t.Fatalf("role = %q", got)
+	}
+	anon := Row{User: "", Host: "%", Stored: "shop_a", Privileges: "SELECT"}
+	if got, _ := NarrowStatements(anon); !strings.Contains(got, "FROM ''@'%';") {
+		t.Fatalf("anonymous = %q", got)
+	}
+	// A server with a privilege column this code cannot name: never ALL
+	// PRIVILEGES, which would also give it.
+	columns := append(append([]string{}, f.columns...), "Future_priv")
+	every := Row{Flags: strings.Repeat("Y", len(f.columns)) + "N"}
+	every.Flags = every.Flags[:6] + "N" + every.Flags[7:] // no grant option
+	describe(columns, &every)
+	if every.Privileges == "ALL PRIVILEGES" || every.Unnamed || !strings.Contains(every.Privileges, "SHOW CREATE ROUTINE") {
+		t.Fatalf("with an unknown column: %+v", every)
 	}
 }

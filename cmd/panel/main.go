@@ -236,6 +236,9 @@ type Panel struct {
 	updateDiscovery   *panelUpdateDiscoveryScheduler
 	updateDiscoveryMu sync.Mutex
 	updateAdmittedAt  atomic.Int64
+	// startedAt (alpha.134): when this panel process started; the rewrite of
+	// database rights waits a few minutes after it (database_grant_forms.go).
+	startedAt atomic.Int64
 	// The request id of that admitted start, read by the deferred startup
 	// mail work so it waits while the Agent reports the update queued or
 	// running (a124 lab, startup_deferred_mail.go). Nil when none.

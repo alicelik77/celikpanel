@@ -98,18 +98,27 @@ same rules.
   rights after DROP DATABASE (KB) and a later database of the same name would
   hand its tables to whoever holds them (to a role's members too). The Agent
   first asks the engine that no database of that name exists (and every
-  statement repeats that condition); then it deletes the rows of mysql.db by
-  the name's two forms (as written, and exact with `_` escaped) and of
-  tables_priv, columns_priv and procs_priv by the literal name - every value
-  as a hexadecimal literal, so the server's sql_mode does not matter -
-  flushes, and reads what the server has loaded (information_schema for
-  every grantee, and the grant tables) - anything left keeps the database
-  listed ("press Delete again"). A pattern that merely matches the name
-  (`shop\_%`, `sh_p`) is another text and is left alone; so are server-wide
-  rights. The answer names how many grantees lost a right (an administrator
-  also gets their names) and the audit row names them. On a MariaDB reached
-  with the record's own account the same removal is tried with that
-  account; when it cannot, the deletion still finishes and the answer says
+  statement repeats that condition); then it deletes the rows of mysql.db
+  of the name's two forms (as written, and exact with `_` escaped) row by
+  row, and of tables_priv, columns_priv and procs_priv by the literal name -
+  every value as a hexadecimal literal, so the server's sql_mode does not
+  matter - runs FLUSH PRIVILEGES on its own, and reads what the server has
+  loaded and stored (information_schema for every grantee, and the grant
+  tables, roles' column rights included). Whenever something is still
+  counted it flushes once more and counts again (a FLUSH that failed after
+  the DELETEs, on this press or an earlier one, is repaired this way);
+  anything still left keeps the database listed ("press Delete again"). A
+  pattern that merely matches the name (`shop\_%`, `sh_p`) is another text
+  and is left alone; so are server-wide rights. A row in the name's raw form
+  (a pattern) that ALSO reaches another existing database is kept, not
+  deleted: it is the owner's (CelikPanel's own rows are exact after the
+  rewrite below); the answer lists it with what it still reaches. The
+  user steps report whose rights they removed too, so the answer and the
+  audit row name every grantee once. Only an administrator is told whose
+  rights went, how many, which were kept and what may remain; a customer's
+  answer says nothing about other accounts. On a MariaDB reached with the
+  record's own account the same removal is tried with that account; when
+  it cannot, the deletion still finishes and an administrator is told
   rights may remain there for that server's administrator to remove.
   PostgreSQL leaves nothing that names a dropped database (dropdb removes its
   role settings and shared dependencies with the pg_database row). Open:
@@ -138,15 +147,48 @@ same rules.
     revoked and checked - access is never lost, and an interruption at any
     step is continued from the engine on the next round. A row that is not
     what was captured is captured again first; a row failing three times
-    waits a day. A row holding the grant option, or a privilege CelikPanel
-    never gives, is the owner's: listed, not changed. Every rewritten row
-    gets an audit row with the other databases its pattern reached ("it no
-    longer reaches …"), and the MariaDB page lists them.
+    waits a day (the page lists it with the statement to narrow it by
+    hand). A row holding the grant option, or a privilege CelikPanel never
+    gives, is the owner's: listed, not changed. On a server with a privilege
+    column CelikPanel cannot name, the privileges are written word by word,
+    never ALL PRIVILEGES (which would also give that one). Every rewritten
+    row gets an audit row with the other databases its pattern reached ("it
+    no longer reaches …"), and the MariaDB page lists them. The engine's gate
+    (the one a database deletion or a grant takes) is taken for one row at a
+    time. An Agent of another build, or one that does not answer, makes the
+    engine wait; it is not counted against a row. A remote copy's
+    pattern-form grant is rewritten by the remote access apply only while
+    this rewrite may run, and never at the same moment as a row of it.
+  - Every GRANT CelikPanel writes on MariaDB runs with NO_AUTO_CREATE_USER
+    in its session and is read back: the stored row must hold exactly the
+    exact form. Measured on MariaDB 11.8.6: without the mode, a GRANT to an
+    account dropped meanwhile creates it again with an empty password; with
+    it the GRANT is refused (ERROR 1133). MariaDB 10.11 and 11.8 have it in
+    their default sql_mode; MySQL 8 removed it, so it is not sent there.
+  - Names whose exact form is longer than 64 characters (each `_` counts
+    twice). Measured on MariaDB 11.8.6: for a 64-character name with eleven
+    `_` (75 characters exact) and for a 60-character one with six `_` (66;
+    CelikPanel's own names are at most 63 characters), GRANT on the exact
+    form is accepted, SHOW GRANTS shows it whole, but mysql.db.Db keeps it
+    cut to 64 characters - after the next
+    reload a right on another, shorter name. So a new database of such a
+    name is refused with a plain sentence (DATABASE_NAME_TOO_LONG), a user
+    is not given an existing one by the exact form, and existing pattern
+    rows of such a name stay as they are and are listed with that reason
+    (remote copies keep the same pattern form as the local account).
+  - Rows the rewrite cannot record (the anonymous account ''@host, a
+    pattern that reaches hundreds of databases) are recorded and listed (at
+    most 50 database names a row, the rest counted); a failure to record
+    makes the engine "blocked", never silent.
   - Rows that cannot be proven CelikPanel's (made by hand, or left by a
     database CelikPanel no longer records) are never changed. The MariaDB
-    page lists them with the databases they reach now and the exact
-    statements to narrow them (administrator only, under Details); the
-    administrators get one notification while such rows exist.
+    page lists them by why they are left (said once above the rows) with the
+    databases they reach now and, under Details, a statement and what it
+    does: narrow it to one database's exact name, or - for a wildcard on
+    purpose or a name too long for its exact form - remove the right
+    entirely. Roles are named as roles, the anonymous account as such. The
+    administrators get one notification while such rows exist, worded by
+    why they are left.
   - When it runs: in the panel's own loop (hourly), never within the first
     minutes after a start, never while the latest update attempt to this
     build is not verified (the release recovery observation says

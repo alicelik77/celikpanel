@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sort"
@@ -83,6 +84,14 @@ const (
 	grantFormsReasonNotProvable     = "not_provable"
 	grantFormsReasonOwnerRow        = "owner_row"
 	grantFormsReasonCredentialUnset = "credential_unreadable"
+	// alpha.134 review: what was found could not be recorded; the
+	// administrator reads why in the log.
+	grantFormsReasonRecordFailed = "record_failed"
+	// The name's exact form does not fit a grant row (mariadbgrant.ErrExactTooLong).
+	grantFormsReasonNameTooLong = "name_too_long"
+	// grantFormsReachedCap: at most this many names are kept per row; the
+	// rest is counted.
+	grantFormsReachedCap = 50
 
 	grantFormsRowFailuresToBlock = 3
 	grantFormsListCap            = 200
@@ -212,7 +221,7 @@ func (p *Panel) startDatabaseGrantForms(ctx context.Context) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		startedAt := databaseGrantFormsNow()
+		startedAt := p.processStartedAt()
 		timer := time.NewTimer(databaseGrantFormsStartupQuiet)
 		defer timer.Stop()
 		for {
@@ -228,6 +237,14 @@ func (p *Panel) startDatabaseGrantForms(ctx context.Context) <-chan struct{} {
 		}
 	}()
 	return done
+}
+
+// processStartedAt is when this panel process started (the first time it is
+// asked, which is its start: startDatabaseGrantForms asks at once).
+func (p *Panel) processStartedAt() time.Time {
+	now := databaseGrantFormsNow().UnixNano()
+	p.startedAt.CompareAndSwap(0, now)
+	return time.Unix(0, p.startedAt.Load())
 }
 
 // databaseGrantFormsHold names why no engine may be changed now ("" when
@@ -417,6 +434,8 @@ func (p *Panel) runDatabaseGrantFormsEngine(ctx context.Context, engine grantFor
 		return
 	}
 	if err := p.recordGrantFormsScan(ctx, engine, serverID, scan, remoteHosts, pairs); err != nil {
+		// Never silent (review): the engine says it is blocked, and why.
+		p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsBlocked, grantFormsReasonRecordFailed, scan.Version)
 		log.Printf("database rights on %s: what was found could not be recorded: %v", engine.key, err)
 		return
 	}
@@ -432,17 +451,11 @@ func (p *Panel) runDatabaseGrantFormsEngine(ctx context.Context, engine grantFor
 		}
 		return
 	}
-	// The same gate as every other step that changes an account's rights on
-	// this engine (a database deletion, a grant): one change at a time.
-	release, err := acquireDatabaseEngineGate(ctx, server, databaseEngineLinkWait)
-	if err != nil {
-		p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, grantFormsReasonBusy, scan.Version)
-		return
-	}
-	defer release()
 	p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsRunning, "", scan.Version)
-	blocked, retry := p.convertGrantFormRows(ctx, engine.key, access)
+	blocked, retry, wait := p.convertGrantFormRows(ctx, engine.key, server, access)
 	switch {
+	case wait != "":
+		p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, wait, scan.Version)
 	case blocked:
 		p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsBlocked, grantFormsReasonConvertFailed, scan.Version)
 	case retry:
@@ -475,10 +488,18 @@ func (p *Panel) recordGrantFormsScan(ctx context.Context, engine grantFormsEngin
 			kind, reason, database = "owner_row", grantFormsReasonOwnerRow, sql.NullString{String: name, Valid: true}
 		case ours && !scan.MariaDB:
 			kind, reason, database = "ours", grantFormsReasonNotMariaDB, sql.NullString{String: name, Valid: true}
+		case ours && !mariadbgrant.ExactFits(name):
+			// Measured: the exact form would be stored cut short - a right on
+			// another name. It stays in the pattern form and is listed.
+			kind, reason, database = "ours", grantFormsReasonNameTooLong, sql.NullString{String: name, Valid: true}
 		case ours:
 			kind, state, reason, database = "ours", "captured", "", sql.NullString{String: name, Valid: true}
 		}
-		reached, _ := json.Marshal(nonNilStrings(row.Reached))
+		names, more := nonNilStrings(row.Reached), 0
+		if len(names) > grantFormsReachedCap {
+			names, more = names[:grantFormsReachedCap], len(names)-grantFormsReachedCap
+		}
+		reached, _ := json.Marshal(names)
 		var id int64
 		var oldState, oldFlags string
 		err := tx.QueryRowContext(ctx, `SELECT id, state, flags FROM database_grant_forms WHERE engine_key = ? AND username = ? AND host = ? AND stored_name = ?`,
@@ -486,9 +507,9 @@ func (p *Panel) recordGrantFormsScan(ctx context.Context, engine grantFormsEngin
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			result, err := tx.ExecContext(ctx, `INSERT INTO database_grant_forms
-				(engine_key, server_id, username, host, stored_name, database_name, privileges, flags, grant_option, kind, state, reached, reason)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				engine.key, serverID, row.User, row.Host, row.Stored, database, row.Privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), reason)
+				(engine_key, server_id, username, host, stored_name, database_name, privileges, flags, grant_option, kind, state, reached, reached_more, reason)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				engine.key, serverID, row.User, row.Host, row.Stored, database, row.Privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), more, reason)
 			if err != nil {
 				return err
 			}
@@ -502,11 +523,11 @@ func (p *Panel) recordGrantFormsScan(ctx context.Context, engine grantFormsEngin
 			// A row that reappeared after it was done, changed since it was
 			// captured, or is listed: its capture or its listing is renewed.
 			if _, err := tx.ExecContext(ctx, `UPDATE database_grant_forms
-				SET server_id = ?, database_name = ?, privileges = ?, flags = ?, grant_option = ?, kind = ?, state = ?, reached = ?, reason = ?,
+				SET server_id = ?, database_name = ?, privileges = ?, flags = ?, grant_option = ?, kind = ?, state = ?, reached = ?, reached_more = ?, reason = ?,
 				    failures = 0, updated_at = datetime('now'),
 				    captured_at = CASE WHEN ? = 'captured' THEN datetime('now') ELSE captured_at END
 				WHERE id = ?`,
-				serverID, database, row.Privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), reason, state, id); err != nil {
+				serverID, database, row.Privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), more, reason, state, id); err != nil {
 				return err
 			}
 		}
@@ -560,9 +581,11 @@ func (p *Panel) grantFormsPending(ctx context.Context, key string) int {
 }
 
 // convertGrantFormRows rewrites the captured rows one at a time; it answers
-// whether a row is blocked and whether one failed and is tried again next
-// round.
-func (p *Panel) convertGrantFormRows(ctx context.Context, key string, access grantFormsEngineAccess) (blocked, retry bool) {
+// whether a row is blocked, whether one failed and is tried again next round,
+// and why the whole engine waits ("" when it does not). Each row takes the
+// engine's gate on its own (review): a deletion or a grant on the same engine
+// waits for one row at most, never for the round.
+func (p *Panel) convertGrantFormRows(ctx context.Context, key string, server *core.DatabaseServer, access grantFormsEngineAccess) (blocked, retry bool, wait string) {
 	type pending struct {
 		id                                  int64
 		user, host, stored, database, flags string
@@ -576,14 +599,14 @@ func (p *Panel) convertGrantFormRows(ctx context.Context, key string, access gra
 		FROM database_grant_forms WHERE engine_key = ? AND kind = 'ours' AND state IN ('captured', 'blocked') ORDER BY id`, key)
 	if err != nil {
 		log.Printf("database rights on %s: the captured rows could not be read: %v", key, err)
-		return false, true
+		return false, true, ""
 	}
 	var list []pending
 	for rows.Next() {
 		var r pending
 		if err := rows.Scan(&r.id, &r.user, &r.host, &r.stored, &r.database, &r.flags, &r.state, &r.failures, &r.reached, &r.updated); err != nil {
 			rows.Close()
-			return false, true
+			return false, true, ""
 		}
 		list = append(list, r)
 	}
@@ -596,7 +619,17 @@ func (p *Panel) convertGrantFormRows(ctx context.Context, key string, access gra
 				continue
 			}
 		}
+		release, err := acquireDatabaseEngineGate(ctx, server, databaseEngineLinkWait)
+		if err != nil {
+			return blocked, retry, grantFormsReasonBusy
+		}
 		outcome, err := access.convert(ctx, mariadbgrant.ConvertRequest{User: r.user, Host: r.host, Database: r.database, Flags: r.flags})
+		release()
+		if state, reason := grantFormsEngineWait(err); state != "" {
+			// The Agent is another build or does not answer: the engine
+			// waits; it is not this row's failure (review).
+			return blocked, retry, reason
+		}
 		if err != nil {
 			failures := r.failures + 1
 			state := "captured"
@@ -608,9 +641,6 @@ func (p *Panel) convertGrantFormRows(ctx context.Context, key string, access gra
 			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET failures = ?, state = ?, reason = ?, updated_at = datetime('now') WHERE id = ?`,
 				failures, state, grantFormsReasonConvertFailed, r.id)
 			log.Printf("database rights on %s: %s@%s on %s was not rewritten (attempt %d): %v", key, r.user, r.host, r.database, failures, err)
-			if errors.Is(err, errGrantFormsBuildMismatch) {
-				return blocked, retry
-			}
 			continue
 		}
 		switch outcome {
@@ -628,11 +658,23 @@ func (p *Panel) convertGrantFormRows(ctx context.Context, key string, access gra
 			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET reason = 'changed', updated_at = datetime('now') WHERE id = ?`, r.id)
 		case mariadbgrant.OwnerRow:
 			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET kind = 'owner_row', state = 'left', reason = ?, updated_at = datetime('now') WHERE id = ?`, grantFormsReasonOwnerRow, r.id)
+		case mariadbgrant.NameTooLong:
+			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET state = 'left', reason = ?, updated_at = datetime('now') WHERE id = ?`, grantFormsReasonNameTooLong, r.id)
 		default:
 			log.Printf("database rights on %s: an unknown answer %q for %s@%s", key, outcome, r.user, r.host)
 		}
 	}
-	return blocked, retry
+	return blocked, retry, ""
+}
+
+// grantFormsEngineWait: an error that makes the whole engine wait (the
+// Agent is another build or did not answer), with its reason; "" otherwise.
+func grantFormsEngineWait(err error) (state, reason string) {
+	var agentErr *grantFormsAgentError
+	if err == nil || (!errors.Is(err, errGrantFormsBuildMismatch) && !errors.As(err, &agentErr)) {
+		return "", ""
+	}
+	return grantFormsEngineReason(err)
 }
 
 // setGrantFormsEngine records where an engine stands.
@@ -656,8 +698,22 @@ func (p *Panel) setGrantFormsEngine(ctx context.Context, key string, serverID in
 // notifyDatabasePatternRights tells the administrators once, while rows that
 // CelikPanel leaves as they are exist; never again for the same reason.
 func (p *Panel) notifyDatabasePatternRights(ctx context.Context) {
-	var left int
-	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT COUNT(*) FROM database_grant_forms WHERE state = 'left'`).Scan(&left); err != nil || left == 0 {
+	counts := map[string]int{}
+	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT reason, COUNT(*) FROM database_grant_forms WHERE state = 'left' GROUP BY reason`)
+	if err != nil {
+		return
+	}
+	total := 0
+	for rows.Next() {
+		var reason string
+		var n int
+		if rows.Scan(&reason, &n) == nil {
+			counts[grantFormsLeftGroup(reason)] += n
+			total += n
+		}
+	}
+	rows.Close()
+	if total == 0 {
 		return
 	}
 	ids, err := administratorIDs(ctx, p.db.GetDB())
@@ -668,19 +724,63 @@ func (p *Panel) notifyDatabasePatternRights(ctx context.Context) {
 	for _, id := range ids {
 		recipients = append(recipients, usageRecipient{id, audienceAdministrator})
 	}
+	body := map[string]any{"rows": total}
+	for group, n := range counts {
+		body[group] = n
+	}
 	p.raiseAccountNotice(ctx, p.db.GetDB(), recipients, noticeDatabasePatternRights, true,
-		"database_grant_forms", "1", map[string]any{"rows": left}, "/components/mariadb")
+		"database_grant_forms", "1", body, "/components/mariadb")
 }
 
-// databasePatternRightsNoticeWords: the one notification.
+// grantFormsLeftGroup is why a listed row is left: CelikPanel did not give it
+// (not_provable), it carries rights CelikPanel never gives (owner_row), its
+// server is not MariaDB (not_mariadb), or its name is too long for the exact
+// form (name_too_long).
+func grantFormsLeftGroup(reason string) string {
+	switch reason {
+	case grantFormsReasonOwnerRow, grantFormsReasonNotMariaDB, grantFormsReasonNameTooLong:
+		return reason
+	}
+	return grantFormsReasonNotProvable
+}
+
+// databasePatternRightsNoticeWords: the one notification, worded by why the
+// rows are left (review: "CelikPanel did not make them" is not true of every
+// row).
 func databasePatternRightsNoticeWords(_ string, body map[string]any) accountNoticeWords {
+	count := func(key string) int {
+		n, _ := body[key].(float64)
+		if v, ok := body[key].(int); ok {
+			return v
+		}
+		return int(n)
+	}
+	var en, tr []string
+	if n := count(grantFormsReasonNotProvable); n > 0 {
+		en = append(en, fmt.Sprintf("%d that CelikPanel did not give", n))
+		tr = append(tr, fmt.Sprintf("CelikPanel’in vermediği %d hak", n))
+	}
+	if n := count(grantFormsReasonOwnerRow); n > 0 {
+		en = append(en, fmt.Sprintf("%d that carry rights CelikPanel never gives (such as passing rights on)", n))
+		tr = append(tr, fmt.Sprintf("CelikPanel’in hiç vermediği yetkiler (hak verme yetkisi gibi) taşıyan %d hak", n))
+	}
+	if n := count(grantFormsReasonNotMariaDB); n > 0 {
+		en = append(en, fmt.Sprintf("%d on a database server that is not MariaDB", n))
+		tr = append(tr, fmt.Sprintf("MariaDB olmayan bir veritabanı sunucusundaki %d hak", n))
+	}
+	if n := count(grantFormsReasonNameTooLong); n > 0 {
+		en = append(en, fmt.Sprintf("%d whose database name is too long for its exact form", n))
+		tr = append(tr, fmt.Sprintf("veritabanı adı tam biçim için fazla uzun olan %d hak", n))
+	}
 	return accountNoticeWords{
 		TitleEN: "Database rights written as a pattern",
 		TextEN: "Some MariaDB rights on this server are written as a name pattern, so an account can also use databases whose names only match it. " +
-			"CelikPanel did not make them, so it leaves them as they are. On Components → MariaDB they are listed with the databases they reach and what you can do.",
+			"CelikPanel leaves these as they are: " + strings.Join(en, "; ") + ". " +
+			"On Components → MariaDB they are listed with the databases they reach and what you can do.",
 		TitleTR: "Kalıp olarak yazılmış veritabanı hakları",
 		TextTR: "Bu sunucudaki bazı MariaDB hakları bir ad kalıbı olarak yazılmış; bu yüzden hesap, adı yalnız kalıba uyan veritabanlarını da kullanabiliyor. " +
-			"Bunları CelikPanel vermediği için olduğu gibi bırakıyor. Bileşenler → MariaDB sayfasında, eriştikleri veritabanları ve yapabilecekleriniz ile birlikte listelenir.",
+			"CelikPanel bunları olduğu gibi bırakıyor: " + strings.Join(tr, "; ") + ". " +
+			"Bileşenler → MariaDB sayfasında, eriştikleri veritabanları ve yapabilecekleriniz ile birlikte listelenir.",
 	}
 }
 
@@ -700,21 +800,31 @@ type grantFormsEngineView struct {
 }
 
 type grantFormsRowView struct {
-	Engine    string   `json:"engine"`
-	Account   string   `json:"account"`
-	Pattern   string   `json:"pattern"`
-	Database  string   `json:"database,omitempty"`
-	Kind      string   `json:"kind"`
-	Reason    string   `json:"reason,omitempty"`
-	Reached   []string `json:"reached"`
-	Statement string   `json:"statement,omitempty"`
-	At        string   `json:"at,omitempty"`
+	Engine  string `json:"engine"`
+	Account string `json:"account"`
+	// AccountKind: "account", "role" (an empty host) or "anonymous" (an empty
+	// user name).
+	AccountKind string   `json:"account_kind"`
+	Pattern     string   `json:"pattern"`
+	Database    string   `json:"database,omitempty"`
+	Kind        string   `json:"kind"`
+	Reason      string   `json:"reason,omitempty"`
+	Reached     []string `json:"reached"`
+	ReachedMore int      `json:"reached_more,omitempty"`
+	Statement   string   `json:"statement,omitempty"`
+	// StatementKind: "narrow" (the same rights by the one database's exact
+	// name) or "remove" (takes the right away entirely).
+	StatementKind string `json:"statement_kind,omitempty"`
+	At            string `json:"at,omitempty"`
 }
 
 type grantFormsView struct {
 	Engines  []grantFormsEngineView `json:"engines"`
 	Narrowed []grantFormsRowView    `json:"narrowed"`
 	Left     []grantFormsRowView    `json:"left"`
+	// Blocked (review): CelikPanel's rows that failed three times, with the
+	// statement to narrow them by hand.
+	Blocked []grantFormsRowView `json:"blocked"`
 }
 
 // handleDatabaseGrantForms answers the administrator's view. It only reads
@@ -740,7 +850,7 @@ func (p *Panel) handleDatabaseGrantForms(w http.ResponseWriter, r *http.Request)
 }
 
 func (p *Panel) databaseGrantFormsView(ctx context.Context) (grantFormsView, error) {
-	view := grantFormsView{Engines: []grantFormsEngineView{}, Narrowed: []grantFormsRowView{}, Left: []grantFormsRowView{}}
+	view := grantFormsView{Engines: []grantFormsEngineView{}, Narrowed: []grantFormsRowView{}, Left: []grantFormsRowView{}, Blocked: []grantFormsRowView{}}
 	engines, err := p.databaseGrantFormsEngines(ctx)
 	if err != nil {
 		return view, err
@@ -765,8 +875,8 @@ func (p *Panel) databaseGrantFormsView(ctx context.Context) (grantFormsView, err
 		view.Engines = append(view.Engines, ev)
 	}
 	rows, err := db.QueryContext(ctx, `SELECT engine_key, username, host, stored_name, COALESCE(database_name, ''), kind, state, reason,
-		reached, privileges, grant_option, updated_at FROM database_grant_forms
-		WHERE state = 'left' OR (state = 'done' AND reason <> 'gone' AND reached <> '[]')
+		reached, reached_more, privileges, grant_option, updated_at FROM database_grant_forms
+		WHERE state IN ('left', 'blocked') OR (state = 'done' AND reason <> 'gone' AND reached <> '[]')
 		ORDER BY state DESC, updated_at DESC, id DESC`)
 	if err != nil {
 		return view, err
@@ -776,18 +886,32 @@ func (p *Panel) databaseGrantFormsView(ctx context.Context) (grantFormsView, err
 		var row grantFormsRowView
 		var user, host, state, reached, privileges string
 		var grantOption int
-		if err := rows.Scan(&row.Engine, &user, &host, &row.Pattern, &row.Database, &row.Kind, &state, &row.Reason, &reached, &privileges, &grantOption, &row.At); err != nil {
+		if err := rows.Scan(&row.Engine, &user, &host, &row.Pattern, &row.Database, &row.Kind, &state, &row.Reason, &reached, &row.ReachedMore, &privileges, &grantOption, &row.At); err != nil {
 			return view, err
 		}
-		row.Account = user + "@" + host
+		row.Account = mariadbgrant.Grantee{User: user, Host: host}.String()
+		switch {
+		case user == "":
+			row.AccountKind = "anonymous"
+		case host == "":
+			row.AccountKind = "role"
+		default:
+			row.AccountKind = "account"
+		}
 		_ = json.Unmarshal([]byte(reached), &row.Reached)
 		row.Reached = nonNilStrings(row.Reached)
-		if state == "left" {
-			if len(view.Left) >= grantFormsListCap {
+		if state == "left" || state == "blocked" {
+			row.Statement, row.StatementKind = mariadbgrant.NarrowStatements(mariadbgrant.Row{User: user, Host: host, Stored: row.Pattern, Privileges: privileges, GrantOption: grantOption == 1})
+			if state == "blocked" {
+				if len(view.Blocked) < grantFormsListCap {
+					view.Blocked = append(view.Blocked, row)
+				}
 				continue
 			}
-			row.Statement = mariadbgrant.NarrowStatements(mariadbgrant.Row{User: user, Host: host, Stored: row.Pattern, Privileges: privileges, GrantOption: grantOption == 1})
-			view.Left = append(view.Left, row)
+			row.Reason = grantFormsLeftGroup(row.Reason)
+			if len(view.Left) < grantFormsListCap {
+				view.Left = append(view.Left, row)
+			}
 			continue
 		}
 		if len(view.Narrowed) < grantFormsListCap {

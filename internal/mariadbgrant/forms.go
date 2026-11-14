@@ -80,13 +80,82 @@ func Forms(name string) []string {
 	return []string{name}
 }
 
+// maxStoredLen is what mysql.db.Db holds (char(64)).
+const maxStoredLen = 64
+
+// ErrExactTooLong: the name's exact form (each `_` written `\_`) is longer
+// than the 64 characters a grant row stores. Measured on MariaDB 11.8.6
+// (alpha.134 review): the GRANT is accepted, SHOW GRANTS shows the whole
+// exact name, but mysql.db.Db holds it cut to 64 characters - after the next
+// reload that is a grant on ANOTHER (shorter) name. Such a name is never
+// written in the exact form: a new database of such a name is refused, an
+// existing one keeps its pattern-form grants and is listed.
+var ErrExactTooLong = errors.New("the database name is too long for a grant by its exact name")
+
+// ExactFits reports whether the exact form of the name fits a grant row.
+func ExactFits(name string) bool { return len(Exact(name)) <= maxStoredLen }
+
 // Target is the database part of `GRANT … ON <target>.*` in the exact form,
 // in backticks.
 func Target(name string) (string, error) {
 	if !ValidName(name) {
 		return "", ErrName
 	}
+	if !ExactFits(name) {
+		return "", ErrExactTooLong
+	}
 	return "`" + Exact(name) + "`", nil
+}
+
+// NoAutoCreateUser is put before every GRANT on MariaDB: without
+// NO_AUTO_CREATE_USER in the session a GRANT to an account that was dropped
+// meanwhile creates it again with an empty password (measured on MariaDB
+// 11.8.6: `GRANT SELECT ON nosuchdb.* TO ghost@localhost` under
+// sql_mode=STRICT_TRANS_TABLES created ghost@localhost with an empty
+// authentication string; with the mode it is refused, ERROR 1133). MariaDB
+// 10.11 and 11.8 have the mode in their default sql_mode; MySQL 8 removed it
+// (and never creates an account by GRANT), so it is for MariaDB only.
+const NoAutoCreateUser = "SET SESSION sql_mode = CONCAT(@@SESSION.sql_mode, ',NO_AUTO_CREATE_USER');"
+
+// GrantPrefix is what goes before a GRANT on this server: NoAutoCreateUser
+// on MariaDB, nothing on another engine (MySQL 8 refuses the mode and never
+// creates an account by GRANT).
+func GrantPrefix(run Exec) (string, error) {
+	out, err := run("SELECT CONCAT('v=', VERSION());")
+	if err != nil {
+		return "", fmt.Errorf("the database server's version could not be read: %w", err)
+	}
+	version, ok := Marker(out, "v")
+	if !ok {
+		return "", errors.New("the database server's version could not be read")
+	}
+	if strings.Contains(strings.ToLower(version), "mariadb") {
+		return NoAutoCreateUser + "\n", nil
+	}
+	return "", nil
+}
+
+// StoredStatement answers "n=<count>" of grant rows of the account that
+// hold exactly the name's exact form: every GRANT is read back with it.
+func StoredStatement(user, host, name string) string {
+	return "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = " + Hex(user) + " AND Host = " + Hex(host) + " AND Db = " + Hex(Exact(name)) + ";"
+}
+
+// ErrNotStored: a GRANT was answered, but no grant row holds exactly the
+// intended exact form.
+var ErrNotStored = errors.New("the database server did not store the right by the database's exact name")
+
+// VerifyStored reads a GRANT back: one row of the account must hold exactly
+// the name's exact form.
+func VerifyStored(run Exec, user, host, name string) error {
+	n, err := countMarker(run, StoredStatement(user, host, name), "n", "whether the right was stored by its exact name")
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return ErrNotStored
+	}
+	return nil
 }
 
 // PatternTarget is the same part in the pattern form (as CelikPanel wrote it
@@ -220,10 +289,24 @@ func AccountLiteral(user, host string) (string, error) {
 			return "", errors.New("an account name or host CelikPanel does not write")
 		}
 	}
-	if user == "" {
+	if user == "" && host == "" {
 		return "", errors.New("an empty account name")
 	}
 	return "'" + user + "'@'" + host + "'", nil
+}
+
+// GranteeLiteral is how a statement names the holder of a grant row: a role
+// (an empty host) by its name alone, the anonymous account (an empty user)
+// as ”@'host', any other account as 'user'@'host'. Only for statements
+// shown to an administrator; CelikPanel converts accounts only.
+func GranteeLiteral(user, host string) (string, error) {
+	if host == "" && user != "" {
+		if strings.ContainsAny(user, "'\\\x00\n\r") {
+			return "", errors.New("an account name or host CelikPanel does not write")
+		}
+		return "'" + user + "'", nil
+	}
+	return AccountLiteral(user, host)
 }
 
 // Markers reads every "name=value" line an answer carries for name.

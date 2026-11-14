@@ -39,12 +39,17 @@ export interface GrantFormsEngine {
 export interface GrantFormsRow {
     engine: string;
     account: string;
+    /** "account", "role" (no host) or "anonymous" (no user name). */
+    account_kind?: 'account' | 'role' | 'anonymous';
     pattern: string;
     database?: string;
     kind: 'ours' | 'owner_row' | 'not_ours';
     reason?: string;
     reached: string[];
+    reached_more?: number;
     statement?: string;
+    /** "narrow": the same rights by the one database's exact name; "remove": takes the right away entirely. */
+    statement_kind?: 'narrow' | 'remove';
     at?: string;
 }
 
@@ -52,13 +57,50 @@ export interface GrantFormsView {
     engines: GrantFormsEngine[];
     narrowed: GrantFormsRow[];
     left: GrantFormsRow[];
+    blocked: GrantFormsRow[];
 }
 
 export function decodeGrantFormsView(raw: unknown): GrantFormsView {
     if (!raw || typeof raw !== 'object') throw new Error('shape');
     const value = raw as Partial<GrantFormsView>;
     if (!Array.isArray(value.engines) || !Array.isArray(value.narrowed) || !Array.isArray(value.left)) throw new Error('shape');
-    return { engines: value.engines, narrowed: value.narrowed, left: value.left };
+    return { engines: value.engines, narrowed: value.narrowed, left: value.left, blocked: Array.isArray(value.blocked) ? value.blocked : [] };
+}
+
+/** Why a listed row is left; one paragraph per reason above its rows. */
+const LEFT_REASONS = ['not_provable', 'owner_row', 'not_mariadb', 'name_too_long'] as const;
+type LeftReason = (typeof LEFT_REASONS)[number];
+const leftReason = (row: GrantFormsRow): LeftReason => (LEFT_REASONS as readonly string[]).includes(row.reason ?? '') ? (row.reason as LeftReason) : 'not_provable';
+
+/** The holder of a row in words: a role and the anonymous account are named as such. */
+function holder(t: DbServerWords, row: GrantFormsRow): string {
+    if (row.account_kind === 'role') return t('dbgf.account.role', { name: row.account });
+    if (row.account_kind === 'anonymous') return t('dbgf.account.anonymous', { name: row.account });
+    return row.account;
+}
+
+/** What a row reaches now, with how many more there are. */
+function reaches(t: DbServerWords, row: GrantFormsRow): string {
+    if (row.reached.length === 0) return t('dbgf.left.reachesNone');
+    const list = row.reached.join(', ');
+    return t('dbgf.left.reachesNow', { list: row.reached_more ? t('dbgf.left.reachesMore', { list, more: row.reached_more }) : list });
+}
+
+/** One listed row: holder · pattern · what it reaches now; the statement and what it does under a closed Details. */
+function ListedRow({ t, row }: { t: DbServerWords; row: GrantFormsRow }) {
+    return (
+        <li className="rounded-lg border border-border p-3 text-sm">
+            <p className="break-words text-fg"><span className="font-mono">{holder(t, row)}</span> · <span className="font-mono">{row.pattern}</span></p>
+            <p className="mt-1 text-fg-muted">{reaches(t, row)}</p>
+            {row.statement && (
+                <details className="mt-1.5">
+                    <summary className="cursor-pointer text-fg-muted">{t('dbgf.details')}</summary>
+                    <p className="mt-1 text-fg-muted">{t(row.statement_kind === 'narrow' ? 'dbgf.statement.narrow' : 'dbgf.statement.remove')}</p>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 font-mono text-xs text-fg">{row.statement}</pre>
+                </details>
+            )}
+        </li>
+    );
 }
 
 /** The block; nothing for anybody but an administrator. */
@@ -94,6 +136,9 @@ export function engineGuidance(t: DbServerWords, engine: GrantFormsEngine): { to
             return { tone: 'waiting', title: t('dbgf.state.server_busy'), who: nobody, then: t('dbgf.then.auto') };
         case 'blocked':
         default:
+            if (reason === 'record_failed') {
+                return { tone: 'blocked', title: t('dbgf.state.record_failed'), who: you, next: t('dbgf.state.record_failed.next'), then: t('dbgf.then.hourly') };
+            }
             if (reason === 'convert_failed') {
                 return { tone: 'blocked', title: t('dbgf.state.convert_failed'), why: t('dbgf.state.convert_retry.why'), who: you, next: t('dbgf.state.convert_failed.next'), then: t('dbgf.then.day') };
             }
@@ -145,7 +190,7 @@ function GrantForms() {
                                 <Guidance tone={guidance.tone} title={guidance.title} why={guidance.why} who={guidance.who} next={guidance.next} then={guidance.then}>
                                     <p className="mt-2 text-fg-muted">
                                         {t('dbgf.counts', { narrowed: engine.narrowed, left: engine.left, waiting: engine.waiting })}
-                                        {engine.checked_at ? ` ${t('dbgf.checked', { time: formatDateTime(engine.checked_at, locale) })}` : ''}
+                                        {engine.checked_at ? ` · ${t('dbgf.checked', { time: formatDateTime(engine.checked_at, locale) })}` : ''}
                                     </p>
                                 </Guidance>
                             </div>
@@ -158,30 +203,37 @@ function GrantForms() {
                             <ul className="mt-1.5 space-y-1 text-sm text-fg">
                                 {known.narrowed.map((row) => (
                                     <li key={`${row.engine} ${row.account} ${row.pattern}`} className="break-words">
-                                        {t('dbgf.narrowed.row', { account: row.account, database: row.database ?? row.pattern, reached: list(row.reached) })}
+                                        {t('dbgf.narrowed.row', { account: holder(t, row), database: row.database ?? row.pattern, reached: list(row.reached) })}
                                     </li>
                                 ))}
+                            </ul>
+                        </div>
+                    )}
+                    {known.blocked.length > 0 && (
+                        <div data-grant-forms-blocked="">
+                            <h3 className="text-sm font-semibold text-fg">{t('dbgf.blocked.title')}</h3>
+                            <p className="text-sm text-fg-muted">{t('dbgf.blocked.hint')}</p>
+                            <ul className="mt-1.5 space-y-2">
+                                {known.blocked.map((row) => <ListedRow key={`${row.engine} ${row.account} ${row.pattern}`} t={t} row={row} />)}
                             </ul>
                         </div>
                     )}
                     {known.left.length > 0 && (
                         <div data-grant-forms-left="">
                             <h3 className="text-sm font-semibold text-fg">{t('dbgf.left.title')}</h3>
-                            <ul className="mt-1.5 space-y-2">
-                                {known.left.map((row) => (
-                                    <li key={`${row.engine} ${row.account} ${row.pattern}`} className="rounded-lg border border-border p-3 text-sm">
-                                        <p className="break-words font-medium text-fg"><span className="font-mono">{row.account}</span> · <span className="font-mono">{row.pattern}</span></p>
-                                        <p className="mt-1 text-fg-muted">{t('dbgf.left.why')} {row.reached.length > 0 ? t('dbgf.left.reachesNow', { list: list(row.reached) }) : t('dbgf.left.reachesNone')}</p>
-                                        <p className="mt-1 text-fg-muted">{t(`dbgf.left.reason.${row.reason === 'owner_row' || row.reason === 'not_mariadb' ? row.reason : 'not_provable'}` as DbServerKey)} {t('dbgf.left.todo')}</p>
-                                        {row.statement && (
-                                            <details className="mt-1.5">
-                                                <summary className="cursor-pointer text-fg-muted">{t('dbgf.details')}</summary>
-                                                <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 font-mono text-xs text-fg">{row.statement}</pre>
-                                            </details>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
+                            <p className="max-w-[75ch] text-sm text-fg-muted">{t('dbgf.left.why')} {t('dbgf.left.todo')}</p>
+                            {LEFT_REASONS.map((reason) => {
+                                const rows = known.left.filter((row) => leftReason(row) === reason);
+                                if (rows.length === 0) return null;
+                                return (
+                                    <div key={reason} className="mt-2" data-grant-forms-reason={reason}>
+                                        <p className="max-w-[75ch] text-sm text-fg-muted">{t(`dbgf.left.reason.${reason}` as DbServerKey)}</p>
+                                        <ul className="mt-1.5 space-y-2">
+                                            {rows.map((row) => <ListedRow key={`${row.engine} ${row.account} ${row.pattern}`} t={t} row={row} />)}
+                                        </ul>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

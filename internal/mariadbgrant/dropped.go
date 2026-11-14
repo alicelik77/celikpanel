@@ -20,8 +20,15 @@ import (
 // text and is never touched. Every statement repeats that no database of
 // that name exists, so a database made again in between is not touched.
 //
+// One exception (review of alpha.134): a row in the name's raw form (as
+// written, a pattern) that ALSO reaches another existing database is kept
+// and reported: removing it would take the account's access to that other
+// database away. CelikPanel's own rows are exact after the rewrite to exact
+// names, so such a row is the owner's.
+//
 // Silinen veritabanını adlandıran haklar her hesaptan ve rolden kaldırılır;
-// hesaplar ve roller kalır; yalnız eşleşen kalıplara dokunulmaz.
+// hesaplar ve roller kalır; yalnız eşleşen kalıplara dokunulmaz. Başka bir
+// veritabanına da erişen kalıp biçimli satır bırakılır ve bildirilir.
 
 // Exec runs statements on the engine and answers the client's output.
 type Exec func(statement string) ([]byte, error)
@@ -49,120 +56,249 @@ func DatabaseExistsStatement(name string) string {
 	return "SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + Hex(name) + ";"
 }
 
-// DroppedGranteesStatement lists every grantee with a row naming the
-// database, as "g=<hex user> <hex host>".
-func DroppedGranteesStatement(name string) string {
+// droppedReadStatement reads what the removal needs: the name case rule, the
+// database names, the database-level rows of the name's two forms
+// ("d=<user>/<host>/<db>") and the grantees of the table, column and routine
+// rows ("g=<user>/<host>"), every value in hexadecimal. "/" never occurs in
+// hexadecimal, so an empty user or host stays a field.
+func droppedReadStatement(name string) string {
 	forms, literal := HexList(Forms(name)), Hex(name)
-	part := func(table, where string) string {
-		return "SELECT CONCAT('g=', HEX(User), ' ', HEX(Host)) FROM mysql." + table + " WHERE " + where
+	part := func(table string) string {
+		return "SELECT CONCAT('g=', HEX(User), '/', HEX(Host)) FROM mysql." + table + " WHERE Db = " + literal
 	}
-	return part("db", "Db IN ("+forms+")") +
-		" UNION " + part("tables_priv", "Db = "+literal) +
-		" UNION " + part("columns_priv", "Db = "+literal) +
-		" UNION " + part("procs_priv", "Db = "+literal) + ";"
+	return "SELECT CONCAT('l=', @@lower_case_table_names); " +
+		"SELECT CONCAT('s=', HEX(SCHEMA_NAME)) FROM information_schema.SCHEMATA; " +
+		"SELECT CONCAT('d=', HEX(User), '/', HEX(Host), '/', HEX(Db)) FROM mysql.db WHERE Db IN (" + forms + "); " +
+		part("tables_priv") + " UNION " + part("columns_priv") + " UNION " + part("procs_priv") + ";"
 }
 
-// DroppedDeleteStatements removes those rows and reloads the grant tables.
-func DroppedDeleteStatements(name string) string {
-	forms, literal, absent := HexList(Forms(name)), Hex(name), absentGuard(name)
-	return strings.Join([]string{
-		"DELETE FROM mysql.db WHERE Db IN (" + forms + ")" + absent + ";",
-		"DELETE FROM mysql.tables_priv WHERE Db = " + literal + absent + ";",
-		"DELETE FROM mysql.columns_priv WHERE Db = " + literal + absent + ";",
-		"DELETE FROM mysql.procs_priv WHERE Db = " + literal + absent + ";",
-		"FLUSH PRIVILEGES;",
-	}, "\n")
+// droppedDeleteStatements removes the given database-level rows one by one
+// and every table, column and routine row of the name; never while a
+// database of that name exists. FLUSH PRIVILEGES runs on its own after it.
+func droppedDeleteStatements(name string, rows []DroppedRow) string {
+	literal, absent := Hex(name), absentGuard(name)
+	var out []string
+	for _, row := range rows {
+		out = append(out, "DELETE FROM mysql.db WHERE User = "+Hex(row.User)+" AND Host = "+Hex(row.Host)+" AND Db = "+Hex(row.Stored)+absent+";")
+	}
+	out = append(out,
+		"DELETE FROM mysql.tables_priv WHERE Db = "+literal+absent+";",
+		"DELETE FROM mysql.columns_priv WHERE Db = "+literal+absent+";",
+		"DELETE FROM mysql.procs_priv WHERE Db = "+literal+absent+";",
+	)
+	return strings.Join(out, "\n")
 }
 
-// DroppedLeftStatement counts what is still there after the flush: what the
-// server has LOADED (information_schema, every grantee) and the rows of the
-// tables information_schema does not show for roles.
-func DroppedLeftStatement(name string) string {
-	forms, literal := HexList(Forms(name)), Hex(name)
-	return "SELECT CONCAT('n=', " +
-		"(SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE BINARY TABLE_SCHEMA IN (" + forms + "))" +
+// droppedLeftStatement counts what is still there: what the server has
+// LOADED (information_schema, every grantee except the kept rows' accounts
+// for the raw form) and the rows of the grant tables (information_schema does
+// not show every role's rows). "a=" is the loaded count, "b=" the
+// database-level rows of the two forms (the kept ones among them), "c=" the
+// table, column and routine rows.
+func droppedLeftStatement(name string, kept []DroppedRow) string {
+	exact, raw, literal := Hex(Exact(name)), Hex(name), Hex(name)
+	notKept := ""
+	if len(kept) > 0 {
+		var grantees []string
+		for _, row := range kept {
+			grantees = append(grantees, "'"+row.User+"'@'"+row.Host+"'", "'"+row.User+"'")
+		}
+		notKept = " AND GRANTEE NOT IN (" + HexList(grantees) + ")"
+	}
+	rawLoaded := ""
+	if Exact(name) != name {
+		rawLoaded = " + (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + raw + notKept + ")"
+	}
+	return "SELECT CONCAT('a=', " +
+		"(SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + exact + ")" + rawLoaded +
 		" + (SELECT COUNT(*) FROM information_schema.TABLE_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + literal + ")" +
-		" + (SELECT COUNT(*) FROM information_schema.COLUMN_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + literal + ")" +
-		" + (SELECT COUNT(*) FROM mysql.db WHERE Db IN (" + forms + "))" +
-		" + (SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = " + literal + ")" +
+		" + (SELECT COUNT(*) FROM information_schema.COLUMN_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + literal + ")); " +
+		"SELECT CONCAT('b=', COUNT(*)) FROM mysql.db WHERE Db IN (" + HexList(Forms(name)) + "); " +
+		"SELECT CONCAT('c=', (SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = " + literal + ")" +
+		" + (SELECT COUNT(*) FROM mysql.columns_priv WHERE Db = " + literal + ")" +
 		" + (SELECT COUNT(*) FROM mysql.procs_priv WHERE Db = " + literal + "));"
 }
 
 // Grantee is one account or role that held a right.
 type Grantee struct{ User, Host string }
 
-// String is user@host, or the role's name alone (empty host).
+// String is user@host; a role (an empty host) is its name alone; the
+// anonymous account (an empty user) is ”@host.
 func (g Grantee) String() string {
-	if g.Host == "" {
+	switch {
+	case g.User == "":
+		return "''@" + g.Host
+	case g.Host == "":
 		return g.User
 	}
 	return g.User + "@" + g.Host
 }
 
+// DroppedRow is one database-level row naming the dropped database.
+type DroppedRow struct {
+	User, Host, Stored string
+	// Reaches: the other existing databases a kept row still covers.
+	Reaches []string
+}
+
+// DroppedResult says whose rights went and which rows were kept.
+type DroppedResult struct {
+	Removed []Grantee
+	// Kept: rows in the raw form that also reach another existing database
+	// (left for their owner; see the package comment).
+	Kept []DroppedRow
+}
+
 // RemoveDroppedRights removes every right naming the dropped database from
-// every grantee and answers whose rights went. ErrDatabaseExists: a database
-// of that name exists, nothing was changed. *RightsLeftError: something is
-// still loaded (removing again continues). Other errors: the engine could
-// not be asked or did not do it; nothing is claimed.
-func RemoveDroppedRights(run Exec, name string) ([]Grantee, error) {
+// every grantee (but the kept rows) and answers whose rights went.
+// ErrDatabaseExists: a database of that name exists, nothing was changed.
+// *RightsLeftError: something is still loaded (removing again continues).
+// Other errors: the engine could not be asked or did not do it; nothing is
+// claimed.
+func RemoveDroppedRights(run Exec, name string) (DroppedResult, error) {
 	if !ValidName(name) {
-		return nil, ErrName
+		return DroppedResult{}, ErrName
 	}
-	exists, err := countMarker(run, DatabaseExistsStatement(name), "whether the database still exists")
+	exists, err := countMarker(run, DatabaseExistsStatement(name), "n", "whether the database still exists")
 	if err != nil {
-		return nil, err
+		return DroppedResult{}, err
 	}
 	if exists != 0 {
-		return nil, ErrDatabaseExists
+		return DroppedResult{}, ErrDatabaseExists
 	}
-	out, err := run(DroppedGranteesStatement(name))
+	out, err := run(droppedReadStatement(name))
 	if err != nil {
-		return nil, fmt.Errorf("the database server could not list the rights that name the database: %w", err)
+		return DroppedResult{}, fmt.Errorf("the database server could not list the rights that name the database: %w", err)
 	}
-	var grantees []Grantee
-	for _, value := range Markers(out, "g") {
-		parts := strings.Fields(value)
-		user, host := "", ""
-		if len(parts) >= 1 {
-			if user, err = FromHex(parts[0]); err != nil {
-				return nil, err
+	foldCase := false
+	if rule, ok := Marker(out, "l"); ok && rule != "0" {
+		foldCase = true
+	}
+	var schemas []string
+	for _, value := range Markers(out, "s") {
+		schema, err := FromHex(value)
+		if err != nil {
+			return DroppedResult{}, err
+		}
+		schemas = append(schemas, schema)
+	}
+	var result DroppedResult
+	var remove []DroppedRow
+	seen := map[Grantee]bool{}
+	add := func(g Grantee) {
+		if !seen[g] {
+			seen[g] = true
+			result.Removed = append(result.Removed, g)
+		}
+	}
+	for _, value := range Markers(out, "d") {
+		fields, err := hexFields(value, 3)
+		if err != nil {
+			return DroppedResult{}, err
+		}
+		row := DroppedRow{User: fields[0], Host: fields[1], Stored: fields[2]}
+		if row.Stored == name && Exact(name) != name {
+			if reaches := reached(row.Stored, schemas, foldCase); len(reaches) > 0 {
+				row.Reaches = reaches
+				result.Kept = append(result.Kept, row)
+				continue
 			}
 		}
-		if len(parts) == 2 {
-			if host, err = FromHex(parts[1]); err != nil {
-				return nil, err
-			}
-		}
-		grantees = append(grantees, Grantee{User: user, Host: host})
+		remove = append(remove, row)
+		add(Grantee{User: row.User, Host: row.Host})
 	}
-	sort.Slice(grantees, func(i, j int) bool { return grantees[i].String() < grantees[j].String() })
-	if len(grantees) > 0 {
-		if _, err := run(DroppedDeleteStatements(name)); err != nil {
-			return nil, fmt.Errorf("the database server did not take away the rights that name the database: %w", err)
+	others := Markers(out, "g")
+	for _, value := range others {
+		fields, err := hexFields(value, 2)
+		if err != nil {
+			return DroppedResult{}, err
+		}
+		add(Grantee{User: fields[0], Host: fields[1]})
+	}
+	sort.Slice(result.Removed, func(i, j int) bool { return result.Removed[i].String() < result.Removed[j].String() })
+	if len(remove) > 0 || len(others) > 0 {
+		if _, err := run(droppedDeleteStatements(name, remove)); err != nil {
+			return DroppedResult{}, fmt.Errorf("the database server did not take away the rights that name the database: %w", err)
+		}
+		if _, err := run("FLUSH PRIVILEGES;"); err != nil {
+			return DroppedResult{}, fmt.Errorf("the database server did not reload its rights: %w", err)
 		}
 	}
-	left, err := countMarker(run, DroppedLeftStatement(name), "whether rights naming the database are left")
+	left, err := droppedLeft(run, name, result.Kept)
 	if err != nil {
-		return nil, err
+		return DroppedResult{}, err
+	}
+	if left != 0 {
+		// The rows may be gone from the tables while the server still holds
+		// them loaded (a FLUSH that failed after the DELETEs, here or on an
+		// earlier attempt): reload on its own and count again.
+		if _, err := run("FLUSH PRIVILEGES;"); err != nil {
+			return DroppedResult{}, fmt.Errorf("the database server did not reload its rights: %w", err)
+		}
+		if left, err = droppedLeft(run, name, result.Kept); err != nil {
+			return DroppedResult{}, err
+		}
 	}
 	if left != 0 {
 		// A database made again between the first check and the DELETE
 		// (whose guard then skipped every row) is not "rights left".
-		if again, err := countMarker(run, DatabaseExistsStatement(name), "whether the database exists again"); err == nil && again != 0 {
-			return nil, ErrDatabaseExists
+		if again, err := countMarker(run, DatabaseExistsStatement(name), "n", "whether the database exists again"); err == nil && again != 0 {
+			return DroppedResult{}, ErrDatabaseExists
 		}
-		return nil, &RightsLeftError{Left: left}
+		return DroppedResult{}, &RightsLeftError{Left: left}
 	}
-	return grantees, nil
+	return result, nil
 }
 
-// countMarker runs a statement answering one "n=<count>" line.
-func countMarker(run Exec, statement, what string) (int, error) {
+// droppedLeft counts what is still loaded or stored, the kept rows aside.
+func droppedLeft(run Exec, name string, kept []DroppedRow) (int, error) {
+	out, err := run(droppedLeftStatement(name, kept))
+	if err != nil {
+		return 0, fmt.Errorf("the database server could not be asked whether rights naming the database are left: %w", err)
+	}
+	total := 0
+	for _, marker := range []string{"a", "b", "c"} {
+		value, ok := Marker(out, marker)
+		n, convErr := strconv.Atoi(value)
+		if !ok || convErr != nil || n < 0 {
+			return 0, errors.New("the database server's answer about rights left on the database could not be read")
+		}
+		if marker == "b" {
+			n -= len(kept)
+		}
+		total += n
+	}
+	return total, nil
+}
+
+// hexFields splits "<hex>/<hex>[/<hex>]" into its decoded fields.
+func hexFields(value string, want int) ([]string, error) {
+	parts := strings.Split(value, "/")
+	if len(parts) != want {
+		return nil, errors.New("a grant row of the database server could not be read")
+	}
+	out := make([]string, 0, want)
+	for _, part := range parts {
+		if part == "" {
+			out = append(out, "")
+			continue
+		}
+		decoded, err := FromHex(part)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, decoded)
+	}
+	return out, nil
+}
+
+// countMarker runs a statement answering one "<marker>=<count>" line.
+func countMarker(run Exec, statement, marker, what string) (int, error) {
 	out, err := run(statement)
 	if err != nil {
 		return 0, fmt.Errorf("the database server could not be asked %s: %w", what, err)
 	}
-	value, ok := Marker(out, "n")
+	value, ok := Marker(out, marker)
 	if !ok {
 		return 0, fmt.Errorf("the database server's answer about %s could not be read", what)
 	}

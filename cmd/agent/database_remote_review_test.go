@@ -177,6 +177,11 @@ func TestMariaDBRemoteCopiesWaitForTheJail(t *testing.T) {
 	if len(result.Active) != 1 || !f.accounts["shop_u@203.0.113.7"] || result.SlowDown != "fail2ban" || result.State != transport.DatabaseRemoteStateOpen {
 		t.Fatalf("with the jail: active %v, slow %s, state %s, problems %+v", result.Active, result.SlowDown, result.State, result.Problems)
 	}
+	// alpha.134 review: the batch that made the copy and granted it ran with
+	// NO_AUTO_CREATE_USER in its session.
+	if f.noAutoCreate == 0 {
+		t.Fatal("a copy was granted without NO_AUTO_CREATE_USER")
+	}
 	// Without TLS on the running server the copies wait too.
 	f.haveSSL = "NO"
 	result = mariadbRemoteInstance{}.apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")

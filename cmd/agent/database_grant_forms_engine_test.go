@@ -104,3 +104,46 @@ func TestCrossCustomerRightsEndOnRealMariaDB(t *testing.T) {
 		t.Fatalf("remove under NO_BACKSLASH_ESCAPES: %+v", resp)
 	}
 }
+
+// Measured on MariaDB 11.8.6 (alpha.134 review): the exact form of a name of
+// 60 characters with six `_` is 66 characters; GRANT accepts it and
+// mysql.db.Db keeps it cut to 64 - a right on another, shorter name. Such a
+// database is never made, and a user is never given an existing one by its
+// exact form; every GRANT is read back. (CelikPanel's own names are at most
+// 63 characters.)
+func TestTooLongExactNamesAreRefusedOnRealMariaDB(t *testing.T) {
+	e := requireTestEngines(t)
+	installTestEngines(t, e)
+	long := "abc_efg_ijk_mno_qrs_uvw_yzabcdefghijklmnopqrstuvwxyzabcdefgh"
+	cleanup := "DROP DATABASE IF EXISTS " + long + "; DROP USER IF EXISTS 'a134long_u'@'localhost', 'a134long_r'@'localhost';"
+	mustRun(t, "clean", e.maria("", "", cleanup))
+	t.Cleanup(func() { _ = e.maria("", "", cleanup) })
+	resp := createDatabaseOn(t, CreateDatabaseRequest{Type: "mysql", Name: long, User: "a134long_u", Password: crossPassword})
+	if resp.Success || !resp.NameTooLong {
+		t.Fatalf("created: %+v", resp)
+	}
+	if n := mustRun(t, "made", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '"+long+"'; ")); n != "n=0" {
+		t.Fatalf("the database was made: %s", n)
+	}
+	// An existing database of such a name (made outside CelikPanel).
+	mustRun(t, "outside", e.maria("", "", "CREATE DATABASE "+long+";"))
+	add := accessUser(t, true, transport.DatabaseAccessUserRequest{Engine: "mysql", Database: long, Username: "a134long_r",
+		Password: engineReadPassword, Access: transport.DatabaseAccessRead})
+	if add.Applied || !add.NameTooLong {
+		t.Fatalf("added: %+v", add)
+	}
+	if n := mustRun(t, "account", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User = 'a134long_r';")); n != "n=0" {
+		t.Fatalf("an account was made: %s", n)
+	}
+	// Every grant CelikPanel writes carries NO_AUTO_CREATE_USER in its
+	// session: a GRANT to an account that is gone is refused, never made
+	// with an empty password.
+	out := e.maria("", "", "SET SESSION sql_mode = 'STRICT_TRANS_TABLES'; "+mariadbgrant.NoAutoCreateUser+" GRANT SELECT ON `nosuchdb`.* TO 'a134ghost'@'localhost';")
+	if out.err == nil {
+		t.Fatalf("a GRANT re-created a missing account: %s", out.out)
+	}
+	if n := mustRun(t, "ghost", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User = 'a134ghost';")); n != "n=0" {
+		_ = e.maria("", "", "DROP USER IF EXISTS 'a134ghost'@'localhost';")
+		t.Fatalf("the account was made: %s", n)
+	}
+}

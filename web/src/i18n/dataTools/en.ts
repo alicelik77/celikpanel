@@ -134,6 +134,7 @@ export const enDataTools = {
     'opstep.dbUserRemove.check': 'Checking {user}',
     'opstep.dbUserRemove.delete': 'Removing {user} and its access from the database server',
     'err.DATABASE_USER_EXISTS': 'A database user with this name already exists on this database server. Choose another name; nothing was changed.',
+    'err.DATABASE_NAME_TOO_LONG': 'The name {name} is too long for MariaDB to keep a right on exactly this database (each underscore counts twice; 64 is the limit). For a new database choose a shorter name or fewer underscores. Nothing was changed.',
     'err.DATABASE_USER_NAME_INVALID': 'The name must be 1 to 16 lowercase letters, digits or underscores, not "user", and at most 63 characters together with the database name. Nothing was changed.',
     'err.DATABASE_USER_ENGINE_FAILED': 'The database server did not do it; nothing in the list changed. Try again; if it fails again, the administrator finds the reason in the panel\'s log.',
     'err.DATABASE_USER_MADE_WITH_DATABASE': 'This user was made with the database and goes only with it: deleting the database removes it. Nothing was changed.',

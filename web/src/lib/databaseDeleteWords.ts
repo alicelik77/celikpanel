@@ -56,13 +56,20 @@ export async function databaseDeletedKeptWords(t: T, name: string, res: Response
         const users = list(key);
         if (users) notes.push(t(words, { name, users }));
     }
-    // alpha.134: rights naming the database were taken from other accounts
-    // (an administrator gets their names, everybody else the count), or may
-    // remain on a server CelikPanel reaches with an account that could not.
+    // alpha.134: for an administrator only (the server leaves these out for
+    // everybody else): whose rights naming the database went, which were left
+    // because they also reach other databases, and what may remain on a
+    // server CelikPanel reaches with an account that could not remove it.
     const accounts = list('rights_removed_from');
-    const count = field('rights_removed_count');
     if (accounts) notes.push(t('databases.keptNote.rightsFrom', { name, accounts }));
-    else if (typeof count === 'number' && count > 0) notes.push(t('databases.keptNote.rightsCount', { name, count }));
+    const kept = field('rights_kept');
+    if (Array.isArray(kept) && kept.length > 0) {
+        const rows = kept
+            .filter((row): row is { account: string; pattern: string; reaches?: unknown } => !!row && typeof row === 'object' && typeof (row as { account?: unknown }).account === 'string' && typeof (row as { pattern?: unknown }).pattern === 'string')
+            .map((row) => `${row.account} (${row.pattern} → ${Array.isArray(row.reaches) ? row.reaches.filter((item): item is string => typeof item === 'string').join(', ') : ''})`)
+            .join('; ');
+        if (rows) notes.push(t('databases.keptNote.rightsKept', { name, rows }));
+    }
     if (field('rights_may_remain') === true) notes.push(t('databases.keptNote.rightsMayRemain', { name }));
     return notes.length > 0 ? [t('databases.deletedNamed', { name }), ...notes].join(' ') : null;
 }

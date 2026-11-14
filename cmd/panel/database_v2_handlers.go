@@ -671,6 +671,10 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 			writeDatabaseNameTaken(w, "database", dbName)
 			return
 		}
+		if errors.Is(err, services.ErrDatabaseNameTooLong) {
+			writeDatabaseNameTooLong(w, dbName)
+			return
+		}
 		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}

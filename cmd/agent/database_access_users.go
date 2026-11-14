@@ -167,6 +167,12 @@ func createMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	// alpha.134: the grant names the database exactly (`shop\_a`.*), never
 	// the pattern `shop_a`.* that also covers other databases.
 	target, err := mariadbgrant.Target(req.Database)
+	if errors.Is(err, mariadbgrant.ErrExactTooLong) {
+		// Its exact form would be stored cut short - a right on another name.
+		resp.NameTooLong = true
+		resp.Error = "the name of database " + req.Database + " is too long for a right by its exact name; nothing was changed"
+		return
+	}
 	if err != nil {
 		resp.Error = "invalid database name; nothing was changed"
 		return
@@ -205,7 +211,7 @@ func createMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	if req.Access == transport.DatabaseAccessWrite {
 		rights = "ALL PRIVILEGES"
 	}
-	if output, err := mysqlExecStatement("GRANT " + rights + " ON " + target + ".* TO " + user + "@'localhost'; FLUSH PRIVILEGES;"); err != nil {
+	if output, err := mysqlGrantExactly(rights, target, user, req.Username, req.Database); err != nil {
 		failure := hostcmd.Fail("the database server did not give the new user its rights", output, err, databaseClientMeaning).Error()
 		if _, dropErr := mysqlExecStatement("DROP USER IF EXISTS " + user + "@'localhost';"); dropErr != nil {
 			resp.CleanupIncomplete = true
@@ -250,10 +256,14 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	if req.RightsOnly && req.DatabaseDropped {
 		// A user another database uses: it stays; only the rights that name
 		// the dropped database go.
-		if _, err := mysqlRemoveRightsOnDroppedDatabase(req.Database); err != nil {
+		result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+		if err != nil {
 			mysqlDroppedRightsAnswer(resp, req.Database, err)
 			return
 		}
+		// alpha.134 review: whose rights this step removed is the deletion's
+		// answer too (the panel's final sweep then finds them gone).
+		mysqlDroppedRightsInto(resp, result)
 		resp.Applied = true
 		return
 	}
@@ -307,10 +317,12 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 			// grantee (alpha.134: accounts of any name and roles too); the
 			// account and its other rights stay.
 			// Silinen veritabanını adlandıran her hak her hesaptan kaldırılır.
-			if _, err := mysqlRemoveRightsOnDroppedDatabase(req.Database); err != nil {
+			result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+			if err != nil {
 				mysqlDroppedRightsAnswer(resp, req.Database, err)
 				return
 			}
+			mysqlDroppedRightsInto(resp, result)
 			resp.Applied, resp.Kept, resp.KeptReason = true, true, keptReason
 			return
 		}
@@ -319,13 +331,15 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		// since alpha.134, the pattern form written before). A host whose
 		// grants could not be looked up is revoked in both forms anyway; "no
 		// such grant" (1141) then means there was none.
-		exactTarget, err := mariadbgrant.Target(req.Database)
-		if err != nil {
+		// A name whose exact form does not fit a grant row only ever has the
+		// pattern form (mariadbgrant.ErrExactTooLong).
+		targets := map[string]string{req.Database: dbIdent}
+		if exactTarget, err := mariadbgrant.Target(req.Database); err == nil {
+			targets[mariadbgrant.Exact(req.Database)] = exactTarget
+		} else if !errors.Is(err, mariadbgrant.ErrExactTooLong) {
 			resp.Error = "invalid database name; nothing was changed"
 			return
 		}
-		patternTarget := dbIdent
-		targets := map[string]string{req.Database: patternTarget, mariadbgrant.Exact(req.Database): exactTarget}
 		revoked := false
 		for _, host := range ownHosts {
 			forms, err := mysqlAccessUserGrantForms(req.Username, host, req.Database)
@@ -395,11 +409,47 @@ func mysqlDatabaseGone(database string) (bool, error) {
 // accounts made by hand under any name, and roles - only while no database
 // of that name exists, then reads what the server has loaded
 // (mariadbgrant.RemoveDroppedRights). The accounts and roles stay; a pattern
-// that merely matches the name is never touched. It answers whose rights
-// went.
+// that merely matches the name is never touched, and a raw-form row that
+// also reaches another existing database is kept and reported. It answers
+// whose rights went.
 // Silinen veritabanını adlandıran haklar her hesaptan ve rolden kaldırılır.
-func mysqlRemoveRightsOnDroppedDatabase(database string) ([]mariadbgrant.Grantee, error) {
+func mysqlRemoveRightsOnDroppedDatabase(database string) (mariadbgrant.DroppedResult, error) {
 	return mariadbgrant.RemoveDroppedRights(mysqlGrantExec("the database server"), database)
+}
+
+// mysqlDroppedRightsInto adds whose rights went, and what was kept, to a
+// user step's answer.
+func mysqlDroppedRightsInto(resp *transport.DatabaseAccessUserResponse, result mariadbgrant.DroppedResult) {
+	for _, grantee := range result.Removed {
+		resp.RightsRemovedFrom = append(resp.RightsRemovedFrom, grantee.String())
+	}
+	resp.RightsKept = droppedRightsKept(result.Kept)
+}
+
+// droppedRightsKept is the answer's form of the kept rows.
+func droppedRightsKept(rows []mariadbgrant.DroppedRow) []transport.DroppedRightKept {
+	var out []transport.DroppedRightKept
+	for _, row := range rows {
+		out = append(out, transport.DroppedRightKept{Account: mariadbgrant.Grantee{User: row.User, Host: row.Host}.String(),
+			Pattern: row.Stored, Reaches: row.Reaches})
+	}
+	return out
+}
+
+// mysqlGrantExactly gives user@localhost rights on a database by its exact
+// name (target from mariadbgrant.Target): NO_AUTO_CREATE_USER in the session
+// on MariaDB (a GRANT never re-creates an account dropped meanwhile), then
+// the stored row is read back - it must hold exactly the exact form.
+func mysqlGrantExactly(rights, target, userLiteral, username, database string) ([]byte, error) {
+	run := mysqlGrantExec("the database server")
+	prefix, err := mariadbgrant.GrantPrefix(run)
+	if err != nil {
+		return nil, err
+	}
+	if output, err := mysqlExecStatement(prefix + "GRANT " + rights + " ON " + target + ".* TO " + userLiteral + "@'localhost'; FLUSH PRIVILEGES;"); err != nil {
+		return output, err
+	}
+	return nil, mariadbgrant.VerifyStored(run, username, "localhost", database)
 }
 
 // mysqlGrantExec runs statements for internal/mariadbgrant: a failure keeps
@@ -447,7 +497,7 @@ func (a *Agent) RemoveDroppedDatabaseRightsV1(req *transport.DroppedDatabaseRigh
 	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
-	grantees, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+	result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
 	var left *mariadbgrant.RightsLeftError
 	switch {
 	case errors.Is(err, mariadbgrant.ErrDatabaseExists):
@@ -461,9 +511,10 @@ func (a *Agent) RemoveDroppedDatabaseRightsV1(req *transport.DroppedDatabaseRigh
 		resp.Error = err.Error()
 	default:
 		resp.Applied = true
-		for _, grantee := range grantees {
+		for _, grantee := range result.Removed {
 			resp.Grantees = append(resp.Grantees, grantee.String())
 		}
+		resp.Kept = droppedRightsKept(result.Kept)
 	}
 	return nil
 }

@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -85,14 +87,35 @@ var databaseDroppedRightsAgent = func(p *Panel, ctx context.Context, req transpo
 
 // databaseDroppedRightsElsewhere takes the same rights away on a MariaDB
 // reached with the record's own credential; tests replace it.
-var databaseDroppedRightsElsewhere = func(driver services.DatabaseDriver, name string) ([]string, error) {
+var databaseDroppedRightsElsewhere = func(driver services.DatabaseDriver, name string) (mariadbgrant.DroppedResult, error) {
 	sweeper, ok := driver.(interface {
-		RemoveRightsOnDroppedDatabase(string) ([]string, error)
+		RemoveRightsOnDroppedDatabase(string) (mariadbgrant.DroppedResult, error)
 	})
 	if !ok {
-		return nil, nil
+		return mariadbgrant.DroppedResult{}, nil
 	}
 	return sweeper.RemoveRightsOnDroppedDatabase(name)
+}
+
+// addRightsRemoved adds grantees whose rights naming the deleted database
+// went, each once, and the rows that were kept.
+func (d *databaseDeletion) addRightsRemoved(grantees []string, kept []transport.DroppedRightKept) {
+	for _, grantee := range grantees {
+		if !slices.Contains(d.RightsRemovedFrom, grantee) {
+			d.RightsRemovedFrom = append(d.RightsRemovedFrom, grantee)
+		}
+	}
+	d.RightsKept = append(d.RightsKept, kept...)
+}
+
+// droppedRightsKeptOf is the answer's form of a driver's kept rows.
+func droppedRightsKeptOf(rows []mariadbgrant.DroppedRow) []transport.DroppedRightKept {
+	var out []transport.DroppedRightKept
+	for _, row := range rows {
+		out = append(out, transport.DroppedRightKept{Account: mariadbgrant.Grantee{User: row.User, Host: row.Host}.String(),
+			Pattern: row.Stored, Reaches: row.Reaches})
+	}
+	return out
 }
 
 // databaseDeleteAfterClassify is a test seam: it runs between classifying
@@ -159,6 +182,9 @@ type databaseDeletion struct {
 	// credential that account could not take those rights away; the
 	// administrator of that server removes them.
 	RightsMayRemain bool
+	// RightsKept (alpha.134 review): rights in the raw form of the name that
+	// also reach another existing database; they were left (names only).
+	RightsKept []transport.DroppedRightKept
 }
 
 // databaseDeleteError says how far a deletion got (D-024: a verified failure,
@@ -717,6 +743,11 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 				kept[s.user.Username] = transport.DatabaseAccessKeptOtherRights
 			}
 		}
+		if err == nil {
+			// alpha.134 review: a user step removes rights naming the database
+			// from every grantee; whose they were is the deletion's answer.
+			deletion.addRightsRemoved(answer.RightsRemovedFrom, answer.RightsKept)
+		}
 	}
 	// alpha.134: every right that names the dropped database goes from every
 	// grantee - accounts made by hand under any name and roles, which stay -
@@ -740,7 +771,7 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 			sweepLeft = true
 			log.Printf("[409][database] %s %s: rights naming it on other accounts: %s", errCodeDatabaseDeleteUsersLeft, name, boundedAgentDiagnostic(swept.Error))
 		default:
-			deletion.RightsRemovedFrom = append([]string(nil), swept.Grantees...)
+			deletion.addRightsRemoved(swept.Grantees, swept.Kept)
 		}
 	}
 	if len(left) > 0 || sweepLeft || exists {
@@ -774,12 +805,16 @@ func (p *Panel) deleteDatabaseElsewhere(server *core.DatabaseServer, deletion *d
 		return &databaseDeleteError{engine: err, server: server, cause: fmt.Errorf("drop database %s: %w", name, err)}
 	}
 	if dbDriverTypeFor(server) == "mariadb" {
-		grantees, err := databaseDroppedRightsElsewhere(driver, name)
+		result, err := databaseDroppedRightsElsewhere(driver, name)
 		if err != nil {
 			deletion.RightsMayRemain = true
 			log.Printf("database deletion %s on server %d: rights naming it were not removed with the record's account: %v", name, server.ID, err)
 		} else {
-			deletion.RightsRemovedFrom = grantees
+			var grantees []string
+			for _, grantee := range result.Removed {
+				grantees = append(grantees, grantee.String())
+			}
+			deletion.addRightsRemoved(grantees, droppedRightsKeptOf(result.Kept))
 		}
 	}
 	return nil
@@ -792,19 +827,26 @@ func databaseDeletionAnswer(status string, deletion *databaseDeletion) map[strin
 		"users_kept":           nonNilStrings(deletion.UsersKept),
 		"users_kept_on_engine": nonNilStrings(deletion.UsersKeptOnEngine),
 		"users_kept_unchecked": nonNilStrings(deletion.UsersKeptUnchecked),
-		"users_kept_on_server": nonNilStrings(deletion.UsersKeptOnServer),
-		// alpha.134: how many grantees lost a right naming the database; the
-		// names are added for administrators only (databaseDeletionAnswerFor).
-		"rights_removed_count": len(deletion.RightsRemovedFrom),
-		"rights_may_remain":    deletion.RightsMayRemain}
+		"users_kept_on_server": nonNilStrings(deletion.UsersKeptOnServer)}
 }
 
 // databaseDeletionAnswerFor is databaseDeletionAnswer for the caller: an
 // administrator also gets the names of the grantees whose rights went.
 func databaseDeletionAnswerFor(r *http.Request, status string, deletion *databaseDeletion) map[string]any {
 	answer := databaseDeletionAnswer(status, deletion)
+	// alpha.134: whose rights naming the database went, what was kept and
+	// what may remain on a server reached with its own account are told to
+	// administrators only (review): other accounts are not a customer's
+	// business.
 	if caller := currentCaller(r); caller != nil && caller.hasAccountRole(roleAdmin) {
+		answer["rights_removed_count"] = len(deletion.RightsRemovedFrom)
 		answer["rights_removed_from"] = nonNilStrings(deletion.RightsRemovedFrom)
+		answer["rights_may_remain"] = deletion.RightsMayRemain
+		kept := deletion.RightsKept
+		if kept == nil {
+			kept = []transport.DroppedRightKept{}
+		}
+		answer["rights_kept"] = kept
 	}
 	return answer
 }
@@ -824,6 +866,9 @@ func (p *Panel) auditDatabaseDeletion(r *http.Request, deletion *databaseDeletio
 		"users_kept_on_server": nonNilStrings(deletion.UsersKeptOnServer),
 		"rights_removed_count": len(deletion.RightsRemovedFrom),
 		"rights_removed_from":  nonNilStrings(deletion.RightsRemovedFrom)}
+	if len(deletion.RightsKept) > 0 {
+		details["rights_kept"] = deletion.RightsKept
+	}
 	if deletion.RightsMayRemain {
 		details["rights_may_remain"] = true
 	}

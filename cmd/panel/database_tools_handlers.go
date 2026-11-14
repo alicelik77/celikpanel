@@ -628,6 +628,10 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 		writeDatabaseClusterRefusal(w, r, created.Refusal)
 		return
 	}
+	if err == nil && created.NameTooLong {
+		writeDatabaseNameTooLong(w, dbName)
+		return
+	}
 	if err == nil && created.NameTaken != "" {
 		// alpha.129: the copy's name is taken on the engine; nothing changed.
 		writeDatabaseNameTaken(w, created.NameTaken, map[string]string{"database": dbName, "user": dbUser}[created.NameTaken])

@@ -208,7 +208,7 @@ func GrantMariaDB(privileges, database, user, host string) (string, error) {
 	if err := validName(database); err != nil {
 		return "", err
 	}
-	target, err := mariadbgrant.Target(database)
+	target, err := copyTarget(database)
 	if err != nil {
 		return "", err
 	}
@@ -526,12 +526,12 @@ func MariaDBPrivilegeChange(current string, currentPattern bool, want, database,
 	if err := validName(database); err != nil {
 		return nil, err
 	}
-	exact, err := mariadbgrant.Target(database)
+	exact, err := copyTarget(database)
 	if err != nil {
 		return nil, err
 	}
 	out, err := mariadbExactPrivilegeChange(current, want, name, " ON "+exact+".* ")
-	if err != nil || !currentPattern {
+	if err != nil || !currentPattern || !mariadbgrant.ExactFits(database) {
 		return out, err
 	}
 	pattern, err := mariadbgrant.PatternTarget(database)
@@ -539,6 +539,19 @@ func MariaDBPrivilegeChange(current string, currentPattern bool, want, database,
 		return nil, err
 	}
 	return append(out, "REVOKE ALL PRIVILEGES ON "+pattern+".* FROM "+name+";"), nil
+}
+
+// copyTarget is the database part of a remote copy's grant: the exact form,
+// or - for a name whose exact form does not fit a grant row (measured: it
+// would be stored cut short, a right on another name) - the pattern form the
+// local account keeps too (alpha.134 review). A copy never holds more than
+// the local account.
+func copyTarget(database string) (string, error) {
+	target, err := mariadbgrant.Target(database)
+	if errors.Is(err, mariadbgrant.ErrExactTooLong) {
+		return mariadbgrant.PatternTarget(database)
+	}
+	return target, err
 }
 
 // mariadbExactPrivilegeChange is MariaDBPrivilegeChange for one form.
