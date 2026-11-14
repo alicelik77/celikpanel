@@ -132,7 +132,7 @@ export const enProblemsScreens = {
     "users.create.missing": "To create the user, fill in: {fields}.",
     "users.create.passwordRule": "Password (meeting the rule under the field)",
     "mail.create.missing": "To create, fill in: {fields}.",
-    "ssl.issue.needsEmail": "To issue the certificate, enter an email address above.",
+    "ssl.issue.needsEmail": "Enter an email address here; the certificate authority needs one to issue the certificate.",
     "domains.add.blockedTitle": "You can't add a domain yet",
     // Why the local DNS takes no new change (owner report 2026-10-31).
     "dnsstate.title.waiting": "New DNS changes are waiting",

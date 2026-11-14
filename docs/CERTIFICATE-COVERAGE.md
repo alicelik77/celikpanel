@@ -158,15 +158,35 @@ every 12-hour pass, under the domain's certificate lock. It asks only:
   (`recoveryobs.LatestPhaseForTarget` succeeded or none), the start-up quiet
   time has passed, the server is quiet (no release transaction, no service
   mutation in flight); an Agent of another build refuses the call itself.
+  The pass at start is always inside the quiet time and waits; the hourly
+  round of the database-rights rewrite, which waits behind the same gate,
+  asks the waiting pass again once the gate opens (lab run 6: it came 12
+  hours later). So the replaced certificates go in the first hourly round
+  after the update is verified: at the earliest three minutes after the
+  panel starts, at the latest about an hour after the verification. Then the
+  12-hour rhythm goes on.
 
 The Agent runs `certbot delete --cert-name <lineage>` and removes the
 lineage's deploy record only when:
 
 - the lineage is a native one of this domain and not the active one;
-- its renewal file is still CelikPanel's: the same rule the certificate page
-  uses for "changed outside CelikPanel" (authenticator webroot, the domain's
-  own validation directory, the authority it was issued from or the one
-  certbot recorded for the domain's newest certificate);
+- its renewal file holds nothing but what certbot writes for CelikPanel's
+  request (lab run 6: a replaced lineage with `renew_before_expiry = 20 days`
+  added by hand was removed under the page's narrower rule). Every line must
+  be one of: at the top `version`, `archive_dir`, `cert`, `privkey`, `chain`,
+  `fullchain` naming this lineage's own files, and certbot's two comments; in
+  `[renewalparams]` `account` (an account id), `authenticator = webroot`,
+  `webroot_path` and `[[webroot_map]]` naming the domain's own validation
+  directory, `server` (the authority it was issued from or the one certbot
+  recorded for the domain's newest certificate), `key_type` ecdsa or rsa,
+  `pref_challs = http-01`, `installer = None`, `autorenew`. A key certbot
+  stored the same in the domain's active lineage (a global certbot setting)
+  is accepted; a hook never is, nor any other key, section, comment or value.
+  `autorenew = False` is accepted because alpha.113–133's own pass wrote it
+  into every replaced lineage; an owner's `autorenew = False` cannot be told
+  apart from it, so such a lineage is kept only when something else differs.
+  The page's warning ("changed outside CelikPanel") keeps its own, narrower
+  rule;
 - nothing under `/etc` other than certbot's own store names it: no file
   contains the name (read whole, in pieces) and no link points to it, as
   written or resolved (`/etc/ssl/private/site.pem ->

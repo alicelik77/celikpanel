@@ -30,6 +30,7 @@ const stub = dataModule(`
   const t = (key, values) => (values ? key + JSON.stringify(values) : key);
   const i18n = { t, locale: 'en' };
   export const useI18n = () => i18n;
+  export const useAuth = () => ({ role: globalThis.ccRole ?? 'admin', user: { email: globalThis.ccEmail ?? '' } });
   export const useNavigate = () => (to) => { (globalThis.navigations ??= []).push(to); };
   export const showToast = (...args) => { (globalThis.toasts ??= []).push(args); };
   export const CertificateIssueNotice = () => null;
@@ -380,4 +381,54 @@ test('every word of the list exists in English and Turkish, without jargon in Tu
   }
   const turkish = readFileSync(new URL('../src/i18n/screens/certCoverage/tr.ts', import.meta.url), 'utf8');
   for (const word of ['SAN', 'SNI', 'ACME', 'http-01', 'TLS']) assert.ok(!new RegExp(`\\b${word}\\b`).test(turkish), `Turkish copy says ${word}`);
+});
+
+// alpha.134 lab run 6: a customer read /etc/letsencrypt/renewal/… in the
+// renewal box. Who acts is the reader: a customer gets what they can do on
+// this page (or to contact the administrator), the administrator the action
+// with the commands and the file in closed technical details. The request
+// form's address is the account's own.
+test('the renewal box is said for the reader, and the form starts from the account address', async () => {
+  const lineage = 'celikpanel-site-1-0123456789abcdef01234567';
+  const renewing = (state) => ({
+    ...certificate, renewal_owner: 'operating_system', renewal_status: `os_${state}`,
+    renewal: { state, lineage_name: lineage, auto_renew: state !== 'disabled', last_failed: state === 'failed' ? { at: '2026-11-14T00:00:00Z', detail: 'Some challenges have failed.' } : null },
+  });
+  const show = async (role, state, email = '') => {
+    globalThis.ccRole = role;
+    globalThis.ccEmail = email;
+    serve({
+      'GET /api/v1/domains/1/ssl': () => ({ domain_id: 1, domain_name: 'example.com', has_certificate: true, managed_names: ['example.com', 'www.example.com'], certificate: renewing(state), settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } }),
+      'GET /api/v1/domains/1/ssl/mail': () => ({ secure_mail: false }),
+      'GET /api/v1/domains/1/ssl/coverage': () => ownersCase,
+      'GET /api/v1/ssl/providers': () => ({ providers: [{ id: 'letsencrypt', name: "Let's Encrypt", note: '', needs_eab: false }] }),
+    });
+    await mount(ssl());
+    const box = tree.root.findAll((node) => node.props && node.props['data-ssl-renewal-guidance'] !== undefined)[0];
+    return box ? nodeText(box) : '';
+  };
+  try {
+    let box = await show('customer', 'disabled');
+    assert.ok(box.includes('ssl.renewalGuide.who.you') && box.includes('ssl.renewalGuide.disabled.self'), box);
+    assert.ok(!/\/etc\/|\/var\/|sudo /.test(box) && !box.includes('ssl.renewalGuide.file'), `a customer sees a path or a command: ${box}`);
+    await unmount();
+    box = await show('customer', 'scheduler_missing');
+    assert.ok(box.includes('ssl.renewalGuide.who{') || box.includes('ssl.renewalGuide.who'), box);
+    assert.ok(box.includes('ssl.issueFailure.next.ask') && !/sudo |\/etc\//.test(box), box);
+    await unmount();
+    box = await show('admin', 'disabled');
+    assert.ok(box.includes('ssl.renewalGuide.disabled.action') && box.includes(`/etc/letsencrypt/renewal/${lineage}.conf`), box);
+    await unmount();
+    box = await show('admin', 'failed');
+    assert.ok(box.includes(`sudo certbot renew --cert-name ${lineage}`) && box.includes('Some challenges have failed.'), box);
+    const details = tree.root.findAll((node) => node.type === 'details' && node.props['data-ssl-renewal-details'] !== undefined);
+    assert.equal(details.length, 1, 'the commands are not in closed details');
+    await unmount();
+    // The account's own address fills the form; nothing waits for typing.
+    await show('customer', 'scheduled', 'owner@example.com');
+    await press(button('ssl.reissueToggle') ?? button('ssl.reissue'));
+    const field = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'email')[0];
+    assert.equal(field?.props.value, 'owner@example.com');
+    assert.ok(!text().includes('ssl.issue.needsEmail'));
+  } finally { await unmount(); delete globalThis.ccRole; delete globalThis.ccEmail; }
 });

@@ -8,6 +8,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
@@ -251,7 +252,8 @@ func (p *Panel) retireReplacedNativeLineages(ctx context.Context, domainID int) 
 	// server is not busy (the one helper, databaseGrantFormsHold); an Agent
 	// of another build refuses it itself.
 	if hold := p.databaseGrantFormsHold(ctx, p.processStartedAt()); hold != "" {
-		log.Printf("cert renewal domain %d: replaced certificate lineages wait (%s); asked again at the next pass", domainID, hold)
+		log.Printf("cert renewal domain %d: replaced certificate lineages wait (%s); asked again in the hourly round once that gate opens", domainID, hold)
+		nativeLineageRetireWaiting.Store(true)
 		return nil, &lineageRetireHeld{reason: hold}
 	}
 	var resp transport.RetireSiteCertificateLineagesResponse
@@ -373,6 +375,26 @@ func (p *Panel) observeNativeSiteCertificate(ctx context.Context, row nativeSite
 			log.Printf("cert renewal %s: mail TLS after the operating system's renewal failed (%v); Retry activation publishes it", row.Domain, err)
 		}
 	}
+}
+
+// nativeLineageRetireWaiting: a removal was held by the update gate. The
+// hourly round of the database-rights rewrite, which waits behind the same
+// gate, asks the pass again once the gate opens (retireWaitingNativeLineages),
+// so the replaced certificates go within the hour after an update is
+// verified instead of at the next 12-hour pass (alpha.134 lab run 6).
+var nativeLineageRetireWaiting atomic.Bool
+
+// retireWaitingNativeLineages runs the replaced-lineage pass once when a
+// held one waits and the gate is open now. Bounded: at most once per hourly
+// round, only while something waits; a pass held again sets the flag again.
+func (p *Panel) retireWaitingNativeLineages(ctx context.Context, startedAt time.Time) {
+	if !nativeLineageRetireWaiting.Load() || p.databaseGrantFormsHold(ctx, startedAt) != "" {
+		return
+	}
+	if !nativeLineageRetireWaiting.CompareAndSwap(true, false) {
+		return
+	}
+	p.retireSupersededNativeLineages(ctx)
 }
 
 // lineageRetireHeld: the removal waits for a verified update, the start-up

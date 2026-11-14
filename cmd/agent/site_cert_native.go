@@ -1035,6 +1035,7 @@ func issueNativeSiteCertificate(req IssueLetsEncryptRequest, webroot string, res
 
 	ctx, cancel := certbotRenewContext(context.Background())
 	defer cancel()
+	started := nativeSiteNow()
 	output, err := nativeSiteCertbotRun(ctx, buildNativeSiteIssueArgs(req, webroot, lineage, configFile)...)
 	if err != nil {
 		resp.Success = false
@@ -1044,7 +1045,7 @@ func issueNativeSiteCertificate(req IssueLetsEncryptRequest, webroot string, res
 			resp.Error = fmt.Sprintf("certbot issue timed out after %s\nOutput: %s", certbotRenewTimeout, string(output))
 			return
 		}
-		resp.Failure = certbotFailureKind(string(output))
+		resp.Failure = certbotFailureKindWithLog(string(output), started)
 		resp.Error = fmt.Sprintf("certbot failed: %v\nOutput: %s", err, string(output))
 		return
 	}

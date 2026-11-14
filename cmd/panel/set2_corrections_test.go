@@ -314,7 +314,7 @@ func TestCertificateIssueFailureIsTypedAndPlain(t *testing.T) {
 		transport.CertificateFailureAuthorityUnreachable: {"could not reach the certificate authority", "nothing was asked of it", "outbound port 443"},
 		transport.CertificateFailureValidation:           {"could not confirm that one of the site's names points to this server", "domain's DNS records", "port 80"},
 		transport.CertificateFailureRateLimited:          {"one of its request limits was reached", "counts against it", "again later"},
-		transport.CertificateFailureAccountUnknown:       {"does not know the account this server uses", "certbot show_account"},
+		transport.CertificateFailureAccountUnknown:       {"account at this certificate authority cannot be used", "more than one for it"},
 		transport.CertificateFailureTimeout:              {"did not finish in time", "why is not known"},
 		transport.CertificateFailureTool:                 {"the reason could not be established", "again later"},
 	} {

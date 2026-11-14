@@ -64,13 +64,66 @@ export type RenewalTone = 'ok' | 'info' | 'warning' | 'danger';
 export interface RenewalGuidance {
     tone: RenewalTone;
     // Translation keys: the reason, then the concrete next action (absent
-    // when nothing needs doing).
+    // when nothing needs doing). The action is the server administrator's;
+    // it names no command and no server path (alpha.134 lab run 6: a
+    // customer read /etc/letsencrypt/renewal/… on the Security section).
     reasonKey: string;
     actionKey?: string;
+    // What a reader who is not the administrator can do on this page
+    // (absent: they are told to contact the server's administrator).
+    selfKey?: string;
+    // The action is on this page for every reader (an earlier release's
+    // certificate: reissue it here).
+    pageAction?: boolean;
     // How it resumes, when it is not the default line of its owner.
     resumeKey?: string;
     params: Record<string, string>;
+    // For the administrator only, in closed technical details: the commands
+    // to run on the server, the file concerned, certbot's own words.
+    commands: string[];
+    file?: string;
+    detail?: string;
 }
+
+const certbotRecord = '/var/log/letsencrypt/letsencrypt.log';
+
+// The administrator's commands and file per state (fixed text and the
+// lineage's own name; nothing of an answer is run or shown in a sentence).
+function adminDetails(state: string, lineage: string, timer: string): { commands: string[]; file?: string } {
+    const renew = `sudo certbot renew --cert-name ${lineage}`;
+    switch (state) {
+        case 'failed':
+            return { commands: [renew], file: certbotRecord };
+        case 'overdue':
+            return { commands: [`sudo systemctl status ${timer}`, renew] };
+        case 'expired':
+            return { commands: [renew] };
+        case 'scheduler_missing':
+            return { commands: ['sudo systemctl enable --now certbot.timer'] };
+        case 'disabled':
+            return { commands: [], file: `/etc/letsencrypt/renewal/${lineage}.conf` };
+        case 'deploy_incomplete':
+            return { commands: ['sudo nginx -t', 'sudo systemctl reload nginx'] };
+        case 'deploy_incomplete_mail':
+            return { commands: ['sudo postfix check', 'sudo doveconf -n', 'sudo postmap -F hash:/etc/postfix/celikpanel_sni', 'sudo systemctl reload postfix dovecot'] };
+        case 'hook_missing':
+            return { commands: ['sudo systemctl reload nginx'] };
+        case 'hook_changed':
+            return { commands: [], file: '/etc/letsencrypt/renewal-hooks/deploy/celikpanel-site-certificates' };
+        case 'panel_move_failed':
+            return { commands: ['sudo journalctl -u celikpanel-panel -n 50'], file: certbotRecord };
+        default:
+            return { commands: [] };
+    }
+}
+
+// What a reader who is not the administrator can do here for a state.
+const selfActions: Record<string, string> = {
+    disabled: 'ssl.renewalGuide.disabled.self',
+    expired: 'ssl.renewalGuide.lineage_missing.action',
+    lineage_missing: 'ssl.renewalGuide.lineage_missing.action',
+    hook_missing: 'ssl.renewalGuide.lineage_missing.action',
+};
 
 const guidance: Record<string, { tone: RenewalTone; action?: boolean }> = {
     scheduled: { tone: 'ok' },
@@ -104,6 +157,7 @@ export function renewalGuidance(cert: RenewalCertificate): RenewalGuidance | nul
                 actionKey: 'ssl.renewalGuide.panel_move_failed.action',
                 resumeKey: 'ssl.renewalGuide.panel_move.resume',
                 params: {},
+                ...adminDetails('panel_move_failed', '', ''),
             };
         }
         if (cert.legacy_move === 'automatic') {
@@ -111,11 +165,13 @@ export function renewalGuidance(cert: RenewalCertificate): RenewalGuidance | nul
                 tone: 'info',
                 reasonKey: 'ssl.renewalGuide.panel',
                 actionKey: 'ssl.renewalGuide.panel.automatic',
+                pageAction: true,
                 resumeKey: 'ssl.renewalGuide.panel_move.resume',
                 params: {},
+                commands: [],
             };
         }
-        return { tone: 'info', reasonKey: 'ssl.renewalGuide.panel', actionKey: 'ssl.renewalGuide.panel.action', params: {} };
+        return { tone: 'info', reasonKey: 'ssl.renewalGuide.panel', actionKey: 'ssl.renewalGuide.panel.action', pageAction: true, params: {}, commands: [] };
     }
     const state = nativeRenewalState(cert);
     if (state === null) return null;
@@ -124,27 +180,35 @@ export function renewalGuidance(cert: RenewalCertificate): RenewalGuidance | nul
     const renewal = cert.renewal;
     const params: Record<string, string> = {
         lineage: renewal?.lineage_name || '',
-        timer: renewal?.scheduler?.name || 'certbot.timer',
-        detail: renewal?.last_failed?.detail || renewal?.detail || '',
         nginx: renewal?.last_deploy?.nginx || '',
         date: renewal?.renew_after ? renewal.renew_after.slice(0, 10) : '',
     };
+    const lineage = renewal?.lineage_name || '';
+    const timer = renewal?.scheduler?.name || 'certbot.timer';
+    // certbot's own words: for the administrator, in the closed details.
+    const detail = known === 'failed' || known === 'expired' ? renewal?.last_failed?.detail || renewal?.detail || undefined : undefined;
     // Renewed and nginx loaded it, but mail did not: its own sentence.
     const deploy = renewal?.last_deploy;
     const mailFailed = deploy && (deploy.mail === 'postmap_failed' || deploy.mail === 'reload_failed' || deploy.dovecot === 'reload_failed');
     if (known === 'deploy_incomplete' && mailFailed && (deploy.nginx === 'reloaded' || deploy.nginx === 'not_running' || deploy.nginx === 'not_installed')) {
         params.mail = deploy.mail || '';
         params.dovecot = deploy.dovecot || '';
-        return { tone: 'warning', reasonKey: 'ssl.renewalGuide.deploy_incomplete_mail', actionKey: 'ssl.renewalGuide.deploy_incomplete_mail.action', params };
+        return {
+            tone: 'warning', reasonKey: 'ssl.renewalGuide.deploy_incomplete_mail', actionKey: 'ssl.renewalGuide.deploy_incomplete_mail.action',
+            params, ...adminDetails('deploy_incomplete_mail', lineage, timer),
+        };
     }
     if (known === 'unknown' && cert.renewal_read_error) {
-        return { tone: 'info', reasonKey: 'ssl.renewalGuide.unknown', params };
+        return { tone: 'info', reasonKey: 'ssl.renewalGuide.unknown', params, commands: [] };
     }
     return {
         tone: entry.tone,
         reasonKey: `ssl.renewalGuide.${known}`,
         actionKey: entry.action ? `ssl.renewalGuide.${known}.action` : undefined,
+        selfKey: entry.action ? selfActions[known] : undefined,
         params,
+        detail,
+        ...adminDetails(known, lineage, timer),
     };
 }
 

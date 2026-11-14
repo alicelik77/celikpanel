@@ -4686,10 +4686,11 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
   resets is refused the same way and counts against it; request the
   certificate here again later."
 - `502 CERTIFICATE_ISSUE_FAILED`, reason `account_unknown`
-  API: "No certificate was issued: the certificate authority does not know the
-  account this server uses with it. The server administrator replaces
-  certbot's account for this authority on the server (sudo certbot
-  show_account shows it), then requests the certificate here again."
+  API: "No certificate was issued: certbot's account at this certificate
+  authority cannot be used (the authority no longer knows it, or certbot holds
+  more than one for it and cannot choose). The server administrator puts
+  certbot's account for this authority right on the server, then requests the
+  certificate here again."
 - `502 CERTIFICATE_ISSUE_FAILED`, reason `timeout`
   API: "No certificate was issued: the request to the certificate authority did
   not finish in time and was stopped; why is not known. Request the
@@ -4766,9 +4767,12 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
   TR: "Bu sunucu sertifika kuruluşuna ulaşamadı; bu yüzden kuruluştan bir şey
   istenmedi."
 - `ssl.issueFailure.account_unknown`
-  EN: "The certificate authority does not know the account this server uses with
-  it."
-  TR: "Sertifika kuruluşu, bu sunucunun kendisinde kullandığı hesabı tanımıyor."
+  EN: "certbot's account at this certificate authority cannot be used: the
+  authority no longer knows it, or certbot holds more than one for it and
+  cannot choose."
+  TR: "certbot’un bu sertifika kuruluşundaki hesabı kullanılamıyor: kuruluş onu
+  artık tanımıyor ya da certbot’ta bu kuruluş için birden çok hesap var ve
+  hangisinin kullanılacağı seçilemiyor."
 - `ssl.issueFailure.timeout`
   EN: "The request to the certificate authority did not finish in time and was
   stopped; why is not known."
@@ -4817,12 +4821,11 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
   TR: "Bu sunucunun internete HTTPS bağlantısı açabildiğini denetleyin: ad
   çözümleme, giden 443 numaralı port ve sistem saati."
 - `ssl.issueFailure.next.account_unknown`
-  EN: "certbot's account at this certificate authority is closed or gone; it has
-  to be registered again on the server before a certificate can be requested
-  from this authority."
-  TR: "certbot’un bu sertifika kuruluşundaki hesabı kapanmış ya da yok; bu
-  kuruluştan sertifika istenebilmesi için hesabın sunucuda yeniden açılması
-  gerekiyor."
+  EN: "Put certbot's account for this authority right on the server: it must
+  hold exactly one account that the authority knows (technical details
+  below)."
+  TR: "Sunucuda certbot’un bu kuruluştaki hesabını düzeltin: kuruluşun tanıdığı
+  tek bir hesap olmalı (aşağıdaki teknik ayrıntılar)."
 - `ssl.issueFailure.next.record`
   EN: "Read certbot's record on the server (technical details below) and correct
   what it names."
