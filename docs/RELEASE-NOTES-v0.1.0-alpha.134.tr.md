@@ -123,11 +123,16 @@ günceller.**
 - Listedeki her yedek neleri içerdiğini ve programı içermeyen eski biçimde
   alınıp alınmadığını söyler.
 - **Programı içeren bir yedeği geri yüklemek**, çalışan programı durdurur,
-  klasörünü sitenin hesabına ait olarak yerine koyar ve programı yeniden
-  başlatır; sonuç programın başlayıp yanıt verdiğini ya da neden başlamadığını
-  ve **Programlar** sekmesinde ne yapılacağını söyler. Sizin durdurduğunuz
-  bir program durmuş kalır. Dosyaları yerine koymak başarısız olursa önceki
-  dosyalar geri konur.
+  klasörünü yerine koyar ve programı yeniden başlatır; sonuç programın
+  başlayıp yanıt verdiğini ya da neden başlamadığını ve **Programlar**
+  sekmesinde ne yapılacağını söyler. Sizin durdurduğunuz bir program durmuş
+  kalır. Dosyaları yerine koymak başarısız olursa önceki dosyalar geri konur.
+- Site yedeğinin geri yüklenmesi programın dosyalarını sitenin kendi
+  hesabına ve kendi grubuna verir; web sunucusunun grubu programın
+  klasörüne ulaşmaz.
+- Bu siteye ait olmayan, artık sunucuda bulunmayan, bozuk ya da diske
+  sığmayan bir yedek artık "iç hata" yerine nedeni ve yapılacakla söylenir.
+  Hiçbir şey geri yüklenmez ve site olduğu gibi kalır.
 - Programın gizli ayarları hiçbir zaman yedeğe yazılmaz. Aynı sunucuda geri
   yüklerken sunucudaki ayarlar olduğu gibi kalır; yeni bir sunucuda gizli
   değerleri **Programlar** sekmesinden yeniden girin.
@@ -179,6 +184,13 @@ günceller.**
   aktarma böyle veritabanlarını dışarıda bırakır ve adlarını söyler. Böyle
   bir adla zaten var olan bir veritabanı her zamanki kalıp biçimiyle
   çalışmayı sürdürür ve listelenir.
+- **Veritabanı oluştururken veritabanı ya da kullanıcı adı motor için fazla
+  uzun olacak bir ad artık hiçbir şey yapılmadan reddediliyor**
+  (PostgreSQL'de iç hata çıkıyordu); form gerçek tam adı gösteriyor ve
+  böyle bir adı yazarken durduruyor.
+- **Başarısız olan bir veritabanı oluşturma, RELOAD yetkisi olmayan bir
+  MariaDB hesabında artık kullanıcısını geride bırakmıyor;** temizlik
+  bitemezse panel geride neyin kaldığını adıyla söylüyor.
 - Hizmet sayfaları ve giriş sayfasındaki demo hesapları artık açıldıklarında
   yüklenir; böylece panelin ilk açılışı boyut sınırının içinde kalır.
 
@@ -193,6 +205,9 @@ günceller.**
   bir diğer ad ya da sonradan açılan `mail.<alan adı>`) "Korunmuyor" ve
   **Bu adla yeniden al** düğmesiyle gösterilir; kendiliğinden eklenmez.
 - Bütün alt adları kapsayan bir sertifika (joker sertifika) yok.
+- Sertifika isteği şu durumlarda hâlâ genel "iç hata" cümlesini gösterir:
+  panel kendi kayıtlarını yazamazsa ya da sunucu isteği certbot çalışmadan
+  önce reddederse (örneğin adın kanıtı için klasör hazırlanamazsa).
 
 ### Site yedekleri
 
@@ -207,8 +222,11 @@ günceller.**
   içindeki site dosyalarını yeni sitenin web klasörüne açın;
   `restore/payload/home.tar.gz` dosyasını yeni sitenin ev klasörüne
   (`public_html` klasörünü içeren klasör) açın ve dosyaları sitenin
-  hesabına verin (`chown -hR --reference=<site ev klasörü> <site ev
-  klasörü>/app`); her veritabanını `restore/payload/databases/` içinden
+  hesabına ve o hesabın kendi grubuna verin; ev klasörünün grubunu asla
+  vermeyin, o grup web sunucusunundur
+  (`chown -hR "$(stat -c %U <site ev klasörü>):" <site ev klasörü>/app`;
+  iki nokta hesabın kendi grubunu alır); her veritabanını
+  `restore/payload/databases/` içinden
   yükleyin. Örnekli adımların tamamı docs/REMOTE-BACKUPS.tr.md belgesinde,
   "CelikPanel olmadan geri yükleme" bölümünün 4–6. adımlarında. Panelden
   indirilen yedek şifreli değildir; 1–3. adımlar ona uygulanmaz.
@@ -231,6 +249,11 @@ günceller.**
 - alpha.133'e dönüldükten sonra, alpha.134'ün aldığı ve program içeren
   yedekler orada listelenmez ve geri yüklenemez; sunucuda kalırlar ve
   alpha.134'e yeniden güncellenince yeniden görünürler.
+- Geri yükleme şu durumlarda hâlâ genel "iç hata" cümlesini gösterir:
+  sunucu denetim ya da geri yükleme sırasında bir dosyayı okuyamaz ya da
+  yazamazsa (disk dolu olması dışında), program durdurulmadan yapılan bir
+  geri yüklemenin ortasında sunucu yanıt vermeyi keserse ya da panel
+  yedeğin veritabanlarıyla ilgili kendi kayıtlarını okuyamazsa.
 
 ### Veritabanı hakları
 
@@ -248,12 +271,19 @@ günceller.**
   hesabın, CelikPanel'in kendi hesabı gibi her hesabın haklarını okuyup
   değiştirebilmesi gerekir (`ALL PRIVILEGES ON *.* WITH GRANT OPTION`).
 - **alpha.133'e dönüş** panelin veritabanını güncelleme öncesi hâline
-  getirir. Daraltılmış haklar veritabanı sunucusunda kalır ve çalışmayı
-  sürdürür. alpha.133 o zaman bir veritabanı silinirken iki biçimi de
-  kaldırır; ama hâlâ var olan bir veritabanından eklenmiş bir kullanıcıyı
-  çıkarmak daraltılmış hakkı yerinde bırakır (sonradan eklenmiş bir
-  sunucuda "böyle bir hak yok" yanıtı alır) ve böyle bir kullanıcının
-  dışarıdan bağlantı kopyaları yenilenmez. alpha.134'e yeniden güncellemek
+  getirir. Daraltılmış haklar veritabanı sunucusunda kalır ve veritabanı
+  kullanıcıları çalışmayı sürdürür: bir veritabanına eklenmiş bir
+  kullanıcıyı çıkarmak orada da başarılı olur (laboratuvarda denetlendi) ve
+  bu sunucunun MariaDB'sinde bir veritabanını silmek haklarını da kaldırır.
+  alpha.133'te tam ad biçimine yalnız şunlar takılır: kullanıcısı
+  çıkarılırken alpha.133'ün bıraktığı bir hesap (başka yerde hakları olan
+  ya da CelikPanel'in açmadığı bir adresteki hesap) o veritabanındaki
+  daraltılmış hakkını korur ve yanıt hesabın bırakıldığını söyler; API'nin
+  hak kaldırma çağrısıyla (hiçbir ekran kullanmaz) bir hakkı kaldırmak
+  "böyle bir hak yok" yanıtı alır ve hak yerinde kalır; böyle bir
+  kullanıcının dışarıdan bağlantı kopyaları yenilenmez. Sonradan eklenmiş
+  bir MariaDB sunucusunda alpha.133 yalnız veritabanını siler, onu anan
+  haklar kalır (alpha.133'ün kendi davranışı). alpha.134'e yeniden güncellemek
   sunucunun durumundan devam eder.
 - **Eski bir kusur sürüyor:** sonradan eklenmiş bir veritabanı sunucusu "bu
   işlem için yetkiniz yok" yanıtı verdiğinde panel bunu hâlâ "sunucu kimlik
@@ -261,6 +291,14 @@ günceller.**
 - Kullanıcının hesaplarını bırakan bir silmeden sonra, o hesaplar
   kaldırılana dek aynı adla veritabanı hâlâ açılamaz ve ret bunu henüz
   söylemez (alpha.135).
+- **Motorun yanıt vermediği bir veritabanı oluşturma** (bağlantı koptu)
+  kendiliğinden geri alınmaz: veritabanının ya da kullanıcısının açılıp
+  açılmadığı bilinmez ve o adla yapılan sonraki deneme "ad kullanılıyor"
+  diye reddedilir. Başka bir ad seçin; açılmış olanı sunucu yöneticisi
+  veritabanı sunucusundan kaldırır.
+- **Hesabında RELOAD yetkisi olmayan, sonradan eklenmiş bir MariaDB
+  sunucusunda veritabanı oluşturma hâlâ tamamlanamıyor.** Artık geride hiçbir
+  şey bırakmıyor.
 
 ### alpha.135'e taşınanlar
 

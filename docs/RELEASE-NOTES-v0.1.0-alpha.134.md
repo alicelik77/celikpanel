@@ -119,10 +119,16 @@ screen.**
 - Each backup in the list says what it holds, and whether it was made in
   the earlier format without the program.
 - **Restoring a backup that holds the program** stops a running program,
-  puts its folder back with the site's account as owner, and starts it
-  again; the result says whether it started and answers, or why it did not
-  and what to do on the **Programs** tab. A program you had stopped stays
-  stopped. If putting the files back fails, the earlier files are put back.
+  puts its folder back, and starts it again; the result says whether it
+  started and answers, or why it did not and what to do on the **Programs**
+  tab. A program you had stopped stays stopped. If putting the files back
+  fails, the earlier files are put back.
+- Restoring a site backup gives the program's files back to the site's own
+  account and its own group; the web server's group never reaches the
+  program's folder.
+- A backup that is not this site's, is no longer on the server, is damaged,
+  or does not fit on the disk is now said as such, with what to do, instead
+  of "internal error". Nothing is restored and the site stays as it was.
 - The program's secret settings are never written into a backup. A restore
   on the same server keeps the server's current settings; on a new server
   enter the secret values again on the **Programs** tab.
@@ -172,6 +178,13 @@ screen.**
   until they fit. A cPanel import leaves such databases out and names them.
   An existing database with such a name keeps working with the pattern form
   it always had, and is listed.
+- **Creating a database now refuses, before anything is made, a name whose
+  database or user would be too long for the engine** (PostgreSQL used to
+  answer an internal error), and the form shows the real full name and
+  stops such a name as you type.
+- **A database create that fails no longer leaves its user behind** on a
+  MariaDB account without the RELOAD right, and when clean-up cannot finish
+  the panel names what is left.
 - The service pages and the login page's demo accounts now load when they
   are opened, so the panel's first load stays within its size limit.
 
@@ -188,6 +201,10 @@ screen.**
   protected" with **Get it again with this name**; it is not added by
   itself.
 - A certificate that covers every sub-name (wildcard) is not built.
+- A certificate request still shows the general "internal error" sentence
+  when the panel cannot save its own records, or when the server refuses
+  the request before certbot runs (for example, the folder for the name's
+  proof cannot be prepared).
 
 ### Site backups
 
@@ -203,8 +220,11 @@ screen.**
   the site files from `restore/payload/files.tar.gz` into the new site's
   web folder; put `restore/payload/home.tar.gz` into the new site's home
   folder (the folder that holds `public_html`) and give the files to the
-  site's account (`chown -hR --reference=<site home> <site home>/app`);
-  load each database from `restore/payload/databases/`. The full steps,
+  site's account and that account's own group, never the site home's group,
+  which is the web server's
+  (`chown -hR "$(stat -c %U <site home>):" <site home>/app`; the colon takes
+  the account's own group); load each database from
+  `restore/payload/databases/`. The full steps,
   with examples, are in docs/REMOTE-BACKUPS.md, "Restore without
   CelikPanel", steps 4 to 6; a backup downloaded from the panel is not
   encrypted, so steps 1 to 3 do not apply to it.
@@ -227,6 +247,11 @@ screen.**
 - After going back to alpha.133, backups made by alpha.134 that hold a
   program are not listed and cannot be restored there; they stay on the
   server and appear again after the next update to alpha.134.
+- A restore still shows the general "internal error" sentence when the
+  server cannot read or write a file during the check or the restore (other
+  than a full disk), when the server stops answering in the middle of a
+  restore that did not stop a program, or when the panel cannot read its
+  own records of the backup's databases.
 
 ### Database rights
 
@@ -244,18 +269,31 @@ screen.**
   account's rights, as CelikPanel's own account does (`ALL PRIVILEGES ON
   *.* WITH GRANT OPTION`).
 - **Going back to alpha.133** restores the panel's database from before the
-  update. The narrowed rights stay on the database server and keep working.
-  alpha.133 then removes both forms when a database is deleted, but removing
-  an added user from a database that still exists leaves its narrowed right
-  in place (on a registered server it answers "no such grant"), and
-  outside-connection copies of such a user are not refreshed. Updating to
-  alpha.134 again continues from the server's state.
+  update. The narrowed rights stay on the database server and database
+  users keep working: removing a user added to a database succeeds there
+  too (checked in the lab), and deleting a database on this server's
+  MariaDB removes its rights. Only these still meet the exact-name form on
+  alpha.133: an account alpha.133 keeps when its user is removed (one with
+  rights elsewhere, or on a host CelikPanel did not make) keeps its narrowed
+  right on that database, and the answer says the account was kept; taking
+  a right away through the API's grant removal (no screen uses it) answers
+  "no such grant" and the right stays; and outside-connection copies of
+  such a user are not refreshed. On a registered MariaDB server alpha.133
+  deletes only the database, and the rights naming it stay (alpha.133's own
+  behaviour). Updating to alpha.134 again continues from the server's state.
 - **An old defect remains:** when a registered database server answers
   "no permission for this action", the panel still shows it as "the server
   refused the credential".
 - After a deletion that kept a user's accounts, a database of the same name
   still cannot be created until those accounts are removed, and the refusal
   does not say so yet (alpha.135).
+- **A database create whose engine gives no answer** (the connection is
+  lost) is not taken back by itself: whether the database or its user was
+  made is not known, and the next try with that name is refused as taken.
+  Choose another name; the server's administrator removes what was made on
+  the database server.
+- **On a registered MariaDB server whose account lacks the RELOAD right, a
+  database create still cannot finish.** It now leaves nothing behind.
 
 ### Moved to alpha.135
 
@@ -319,5 +357,12 @@ result, never taken for either answer. The database-rights tests ran in
 development against a real MariaDB 11.8.6 (the measurements above);
 MariaDB 10.11, a second registered server and the check with two customers'
 databases are left to the lab. Details: docs/DATABASE-USERS.md.
+Fix round after the lab: one name-length rule for the panel, the Agent and
+the form (`internal/services/database_name_limits_test.go` and its shared
+cases, `cmd/panel/domain_database_create_fix_test.go`,
+`cmd/panel/database_create_leftover_engine_test.go`,
+`web/tests/database-name-limits.test.mjs`); restore refusals and the
+program folder's group (`cmd/agent/backup_restore_refusals_linux_test.go`,
+`cmd/panel/backup_restore_refusals_test.go`). No schema change.
 No real certificate authority and no native run. **No P0 item is closed.**
 Release sequence 133 → 134.
