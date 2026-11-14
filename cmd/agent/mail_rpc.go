@@ -280,6 +280,24 @@ func (a *Agent) AddMailAccount(req *MailAccount, resp *transport.MailMutationRes
 	users = upsertMailLine(users, email, fmt.Sprintf("%s:%s::::::%s", email, hash, dovecotQuotaFields(req.QuotaMB)))
 	vboxes = upsertMailLine(vboxes, email, fmt.Sprintf("%s %s/%s/", email, domain, local))
 	domains = upsertMailLine(domains, domain, domain+" OK")
+	// alpha.135: a folder an earlier deletion left at this address (no
+	// account owns it: checked above) is moved into the holding folder
+	// before anything else, so the new mailbox starts empty and no message
+	// for it can land in the old folder. A later failure puts it back.
+	held := ""
+	if req.LeftDomainID > 0 {
+		name, err := leftMailboxName(req.LeftDomainID, email)
+		if err != nil {
+			return err
+		}
+		moved, err := holdLeftMailbox(domain, local, name)
+		if err != nil {
+			return fmt.Errorf("put aside the mail folder an earlier deletion left at this address: %w", err)
+		}
+		if moved {
+			held = name
+		}
+	}
 	if err := applyMailFileMutation(ctx, []mailFileWrite{
 		{path: dovecotUsersPath, content: users, mode: 0o640},
 		{path: postfixVBoxPath, content: vboxes, mode: 0o644},
@@ -287,9 +305,17 @@ func (a *Agent) AddMailAccount(req *MailAccount, resp *transport.MailMutationRes
 	}, []string{postfixVBoxPath, postfixDomainsPath}, func() (func() error, error) {
 		return ensureMailboxDirectory(domain, local)
 	}); err != nil {
+		if held != "" {
+			if restoreErr := restoreHeldMailbox(domain, local, held); restoreErr != nil {
+				return fmt.Errorf("%w; the earlier mail folder stays in the holding folder as %s: %v", err, held, restoreErr)
+			}
+		}
 		return err
 	}
 	resp.Applied = true
+	if held != "" {
+		resp.HeldName, resp.HeldBytes = held, heldMailBytes(held)
+	}
 	return nil
 }
 

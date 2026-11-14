@@ -9,6 +9,12 @@
 // steps; the list reads itself again after it. Folders and the last failure's
 // details are under a closed "Details".
 //
+// alpha.135: the same list shows the mail folders an earlier release left in
+// a live domain's mail folder (a mailbox deleted before alpha.135), where a
+// mailbox made again under the address would see them. Each has one action,
+// "Keep 30 days…", which puts it into the list after the panel's own
+// question; nothing is moved by itself.
+//
 // Bakım → Silmelerden kalanlar: 30 gün saklanır, sonra kendiliğinden silinir;
 // yönetici burada görür, indirir ya da daha önce siler.
 import { useState } from 'react';
@@ -22,7 +28,7 @@ import { formatDate } from '../lib/dateFormat';
 import { sizeWord } from './kit/words';
 import { RowActions, type RowAction } from './kit/rows/RowActions';
 import {
-    DELETION_HOLDING_URL, decodeDeletionHolding, decodeHeldBackupFiles, holdingItemWhat, type HeldItem, type DeletionHolding,
+    DELETION_HOLDING_URL, HOLD_LEFT_URL, decodeDeletionHolding, decodeHeldBackupFiles, holdingItemWhat, type HeldItem, type DeletionHolding, type LeftMail,
 } from '../lib/deletionHolding';
 
 export function DeletionHoldingCard() {
@@ -94,12 +100,44 @@ function HoldingList({ value, reread }: { value: DeletionHolding; reread: () => 
         });
     };
 
-    if (value.items.length === 0) {
-        return <p className="text-sm text-fg-muted" data-holding-empty="">{t('holding.empty')}</p>;
+    // Puts a folder left in place into the list, after the panel's own question.
+    const holdLeft = async (folder: LeftMail) => {
+        const what = t('holding.what.mailbox', { mailbox: folder.address });
+        await confirmAction({
+            title: t('holding.left.confirmTitle', { what }),
+            message: t('holding.left.confirmMessage'),
+            confirmLabel: t('holding.left.confirm'),
+            progressTitle: t('holding.left.progress', { what }),
+            action: async (): Promise<OperationEnd> => {
+                try {
+                    const res = await fetch(HOLD_LEFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: folder.address }) });
+                    if (!res.ok) return { state: 'failed', reason: refusalText(await readApiError(res), t, 'holding.left.failed') };
+                    const answer = await res.json().then((body: unknown) => body as { status?: string; held?: { remove_after?: string } } | null, () => null);
+                    if (answer?.status === 'held' && typeof answer.held?.remove_after === 'string') {
+                        return { state: 'done', title: t('holding.left.done', { what, date: date(answer.held.remove_after) }) };
+                    }
+                    return { state: 'done', title: t('holding.left.absent', { what }) };
+                } catch {
+                    // No answer: whether it was moved is not known; the list is read again.
+                    return { state: 'unknown', reason: t('common.resultUnknown') };
+                } finally {
+                    reread();
+                }
+            },
+        });
+    };
+
+    if (value.items.length === 0 && value.left.length === 0) {
+        return (
+            <div className="space-y-2">
+                <p className="text-sm text-fg-muted" data-holding-empty="">{t('holding.empty')}</p>
+                {value.leftUnknown && <p className="text-sm text-fg-muted" data-holding-left-unknown="">{t('holding.left.unknown')}</p>}
+            </div>
+        );
     }
     return (
         <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            {value.items.length > 0 && <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-fg" data-holding-summary="">
                     {t('holding.summary', { n: value.summary.count, size: sizeWord(value.summary.bytes, locale), date: date(value.summary.earliest) })}
                 </p>
@@ -107,11 +145,36 @@ function HoldingList({ value, reread }: { value: DeletionHolding; reread: () => 
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                     {t('holding.removeAll')}
                 </Button>
-            </div>
+            </div>}
+            {value.leftUnknown && <p className="text-sm text-fg-muted" data-holding-left-unknown="">{t('holding.left.unknown')}</p>}
             <ul className="divide-y divide-border rounded-lg border border-border" data-holding-list="">
+                {value.left.map((folder) => <LeftRow key={folder.address} folder={folder} size={size} hold={() => void holdLeft(folder)} />)}
                 {value.items.map((item) => <HoldingRow key={item.id} item={item} what={what(item)} size={size} date={date} removeNow={() => void removeNow([item])} />)}
             </ul>
         </div>
+    );
+}
+
+// A mailbox folder still in its domain's live mail folder: what it is, why it
+// matters, and its one action. The folder is under the closed Details.
+// Canlı klasörde kalan posta: ne olduğu, neden önemli olduğu ve tek eylemi.
+function LeftRow({ folder, size, hold }: { folder: LeftMail; size: (bytes: number) => string; hold: () => void }) {
+    const { t } = useI18n();
+    const what = t('holding.what.mailbox', { mailbox: folder.address });
+    return (
+        <li className="flex flex-col gap-2 p-3 text-sm sm:flex-row sm:items-start" data-holding-left={folder.address}>
+            <div className="min-w-0 flex-1">
+                <p className="font-medium text-fg [overflow-wrap:anywhere]">{what}</p>
+                <p className="mt-0.5 text-fg-muted">{t('holding.left.row', { size: size(folder.bytes) })}</p>
+                {folder.path && (
+                    <details className="mt-1 text-fg-muted">
+                        <summary className="cursor-pointer text-xs font-semibold">{t('holding.details')}</summary>
+                        <p className="mt-1 font-mono text-xs [overflow-wrap:anywhere]">{folder.path}</p>
+                    </details>
+                )}
+            </div>
+            <RowActions name={what} actions={[{ id: 'hold', label: t('holding.left.hold'), icon: Archive, onSelect: hold }]} />
+        </li>
     );
 }
 
@@ -142,6 +205,7 @@ function HoldingRow({ item, what, size, date, removeNow }: {
             <div className="min-w-0 flex-1">
                 <p className="font-medium text-fg [overflow-wrap:anywhere]">{what}</p>
                 <p className="mt-0.5 text-fg-muted">{t('holding.row', { size: size(item.bytes), date: date(item.removeAfter) })}</p>
+                {item.left && <p className="mt-0.5 text-fg-muted" data-holding-left-reason="">{t('holding.left.reason')}</p>}
                 {state && <p className={`mt-1 ${item.state === 'failed' ? 'text-danger' : 'text-fg-muted'}`} role={item.state === 'failed' ? 'alert' : undefined}>{state}</p>}
                 {files.state === 'reading' && <p className="mt-1 text-fg-muted">{t('holding.files.reading')}</p>}
                 {files.state === 'unread' && <p className="mt-1 text-fg-muted">{t('holding.files.unread')}</p>}

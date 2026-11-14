@@ -21,7 +21,9 @@ import (
 //
 //   - mail: <mail root>/.celikpanel-quarantine/<name>, the folder a domain's
 //     or a mailbox's stored mail was moved into when it was deleted
-//     (domain-<domain id>-<16 hex>, mailbox-<account id>-<16 hex>);
+//     (domain-<domain id>-<16 hex>, mailbox-<account id>-<16 hex>), or a
+//     mailbox folder an earlier release left in its live domain folder
+//     (left-<domain id>-<16 hex>; deletion_holding_left.go);
 //   - backups: <backup root>/subscriptions/<S>/domains/<D>, a deleted
 //     domain's backups where the backup store keeps them.
 //
@@ -37,7 +39,7 @@ import (
 // kendisi çıkarır, tek klasörü siler, bağlantı izlemez, tekrarı güvenlidir.
 
 // heldMailName is a held mail folder's name.
-var heldMailName = regexp.MustCompile(`^(domain|mailbox)-([1-9][0-9]{0,17})-[0-9a-f]{16}$`)
+var heldMailName = regexp.MustCompile(`^(domain|mailbox|left)-([1-9][0-9]{0,17})-[0-9a-f]{16}$`)
 
 // heldMailboxName names the folder a deleted mailbox's mail is held in.
 func heldMailboxName(accountID int, email string) string {
@@ -104,7 +106,7 @@ func heldMailInventory() ([]transport.HeldItemInfo, error) {
 		}
 		id, _ := strconv.Atoi(match[2])
 		item := transport.HeldItemInfo{Kind: transport.HeldItemMail, Name: entry.Name(), Path: filepath.Join(root, entry.Name())}
-		if match[1] == "domain" {
+		if match[1] == "domain" || match[1] == "left" {
 			item.DomainID = id
 		} else {
 			item.AccountID = id

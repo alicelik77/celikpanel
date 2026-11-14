@@ -13,7 +13,8 @@ import { compileSource, dataModule, reactURL, sharedLayer } from './fixtures/sha
 //   - the file editor: Save only for changed text; Discard; closing asks; a
 //     file changed on the server meanwhile is never overwritten unseen; a
 //     write whose answer was lost is not sent twice;
-//   - a mailbox's sending limit: a draft with the save bar;
+//   - a mailbox's sending limit: its own window with Save and Discard
+//     (alpha.135; it was a draft with the save bar under the list);
 //   - the out-of-office reply, a site's other login and a scheduled task:
 //     Save only when something changed and the form can be saved, the reason
 //     beside it; Discard; closing with changes asks.
@@ -38,7 +39,7 @@ const stub = dataModule(`
 const shared = sharedLayer(stub);
 const currentURL = shared.compile('components/CurrentSettings.tsx');
 const { DomainFileManager } = await import(shared.compile('components/DomainFileManager.tsx'));
-const { OutgoingMailboxLimits } = await import(shared.compile('components/OutgoingMailboxLimits.tsx'));
+const { OutgoingLimitDialog } = await import(shared.compile('components/OutgoingMailboxLimits.tsx'));
 const { MailAutoresponderDialog } = await import(shared.compile('components/MailAutoresponderDialog.tsx'));
 const { FTPLogins } = await import(shared.compile('components/FTPLogins.tsx'));
 const { DomainCronManager } = await import(shared.compile('components/DomainCronManager.tsx', { '/CurrentSettings': currentURL }));
@@ -241,49 +242,69 @@ const outgoing = {
   mailboxes: [mailbox(11, 'a@site.example', { mode: 'default' }), mailbox(12, 'b@site.example', { mode: 'custom', custom: 50 })],
 };
 
-scenario('sending limit: a draft; Save sends only the changed mailbox, Discard restores, a wrong number is named', async () => {
+const limitSave = () => one('data-form-save');
+const limitReason = () => words(one('data-form-reason'));
+const submitLimit = async () => {
+  await act(async () => tree.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+  await act(settled);
+};
+
+scenario('sending limit: Save only after a change; a number over the plan is named; Save sends this mailbox once', async () => {
+  let closed = 0;
   serve([['GET', OUT, () => Response.json(outgoing)], ['PUT', OUT, () => Response.json({ applied: true })]]);
-  await mount(React.createElement(OutgoingMailboxLimits, { domainId: 3, onChangePassword() {} }));
-  assert.equal(byData('data-save-bar').length, 0);
-  await press(tree.root.findAll((node) => node.type === 'button' && words(node).includes('mout.dom.change'))[1]);
+  await mount(React.createElement(OutgoingLimitDialog, { domainId: 3, accountId: 12, address: 'b@site.example', onClose: () => { closed++; } }));
   const select = () => tree.root.findAllByType('select')[0];
   const number = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'number')[0];
   assert.equal(select().props.value, 'custom');
+  assert.equal(number().props.value, '50');
+  assert.equal(limitSave().props.disabled, true);
+  assert.equal(limitReason(), 'domain.unsaved.none');
+  assert.match(text(), /mout\.dom\.ceiling\{\\"n\\":500\}/);
   await type(number(), '900');
-  assert.equal(one('data-save').props.disabled, true, 'a number over the plan’s ceiling can be saved');
-  assert.match(text(), /mout\.dom\.invalid\{\\"address\\":\\"b@site\.example\\"/);
+  assert.equal(limitSave().props.disabled, true, 'a number over the plan’s ceiling can be saved');
+  assert.match(limitReason(), /^mout\.dom\.invalid/);
+  assert.ok(unsaved(), 'leaving with a change does not ask');
   await type(number(), '80');
-  assert.equal(writes().length, 0);
+  assert.equal(limitSave().props.disabled, false);
   assert.equal(byData('data-changed-mark').length, 1);
-  await press(one('data-save-discard'));
-  assert.equal(byData('data-save-bar').length, 0);
-  assert.equal(tree.root.findAllByType('select').length, 0, 'the opened choice stayed after Discard');
-
-  await press(tree.root.findAll((node) => node.type === 'button' && words(node).includes('mout.dom.change'))[1]);
-  await type(number(), '80');
-  await press(one('data-save'));
+  assert.equal(writes().length, 0, 'something was sent before Save');
+  await submitLimit();
   assert.deepEqual(writes().map((call) => call.body), [{ id: 12, mode: 'custom', per_hour: 80 }]);
   assert.ok(globalThis.toasts.some(([kind, key]) => kind === 'success' && key === 'mout.dom.saved'));
+  assert.equal(closed, 1);
+  // "No limit" is not offered above a plan's ceiling.
+  assert.ok(!tree.root.findAllByType('option').some((node) => node.props.value === 'unlimited'));
 });
 
-scenario('sending limit: a refusal keeps the change; a lost answer holds Save until the list is read again', async () => {
-  let reply = () => Response.json({ error: 'no', code: 'MAIL_OUTGOING_INVALID' }, { status: 400 });
-  serve([['GET', OUT, () => Response.json(outgoing)], ['PUT', OUT, () => reply()]]);
-  await mount(React.createElement(OutgoingMailboxLimits, { domainId: 3, onChangePassword() {} }));
-  await press(tree.root.findAll((node) => node.type === 'button' && words(node).includes('mout.dom.change'))[0]);
+scenario('sending limit: a refusal keeps the choice; a lost answer is not sent twice and a read that holds it closes; Discard closes unsaved', async () => {
+  let closed = 0;
+  let current = outgoing;
+  let reply = () => Response.json({ error: 'no', code: 'OUTGOING_ABOVE_CEILING' }, { status: 403 });
+  serve([['GET', OUT, () => Response.json(current)], ['PUT', OUT, () => reply()]]);
+  await mount(React.createElement(OutgoingLimitDialog, { domainId: 3, accountId: 11, address: 'a@site.example', onClose: () => { closed++; } }));
   await type(tree.root.findAllByType('select')[0], 'custom');
-  await press(one('data-save'));
+  await submitLimit();
   assert.ok(globalThis.toasts.some(([kind]) => kind === 'error'));
-  assert.equal(one('data-save').props.disabled, false);
+  assert.equal(closed, 0);
   assert.equal(tree.root.findAllByType('select')[0].props.value, 'custom');
+  assert.equal(limitSave().props.disabled, false);
+  // No answer: Save holds; pressing again sends nothing.
   reply = () => { throw new TypeError('fetch failed'); };
-  const reads = calls.filter((call) => call.method === 'GET').length;
-  await press(one('data-save'));
+  await submitLimit();
+  assert.equal(writes().length, 2);
+  assert.equal(limitSave().props.disabled, true, 'a lost save can be sent again');
+  await submitLimit();
   assert.equal(writes().length, 2, 'a lost save was sent twice');
-  // The list is read again at once; it does not hold the change, which stays.
-  assert.ok(calls.filter((call) => call.method === 'GET').length > reads, 'the list was not read again after the lost answer');
-  assert.equal(tree.root.findAllByType('select')[0].props.value, 'custom');
-  assert.match(text(), /The connection dropped before the answer arrived/);
+  // The limits read again hold it: saved, and the window closes.
+  current = { ...outgoing, mailboxes: [mailbox(11, 'a@site.example', { mode: 'custom', custom: 100 }), outgoing.mailboxes[1]] };
+  await press(buttonWith('common.checkAgain'));
+  assert.equal(closed, 1);
+  assert.equal(writes().length, 2);
+  // Discard closes without a question and sends nothing.
+  await type(tree.root.findAllByType('select')[0], 'default');
+  await press(one('data-form-discard'));
+  assert.equal(closed, 2);
+  assert.equal(writes().length, 2);
 });
 
 // --- The out-of-office reply ---

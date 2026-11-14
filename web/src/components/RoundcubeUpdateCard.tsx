@@ -5,14 +5,18 @@
 // the administrator confirms, with visible waiting and the result: updated
 // and answering, or put back exactly as it was with the reason.
 //
+// The address and its open button are on the address card above (alpha.135:
+// said once on the page).
+//
 // Web postası güncellemeleri: kurulu sürüm, hattın en yeni yayını; yalnız
-// yönetici onaylayınca güncellenir, sonuç ya da geri alma söylenir.
+// yönetici onaylayınca güncellenir, sonuç ya da geri alma söylenir. Adres
+// yukarıdaki adres kartında bir kez söylenir.
 import { Mail } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { Button, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { LifeLine, lifeDate } from './LifeLine';
-import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
+import { RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL, type RoundcubeUpdateCheck } from '../lib/roundcubeUpdate';
 
 export { decodeRoundcubeUpdate } from '../lib/roundcubeUpdate';
@@ -54,7 +58,6 @@ function WebmailFacts({ value, onChanged }: { value: RoundcubeUpdateCheck; onCha
     if (!value.installed) return <p className="text-sm text-fg-muted">{t('life.webmail.notInstalled')}</p>;
     return (
         <div className="space-y-3" data-webmail-state={value.update_available ? 'available' : value.error ? 'error' : 'current'}>
-            <OpenWebmailLink url={value.webmail_url} />
             {value.error ? (
                 <LifeLine tone="info" attr="webmail-error">{t('life.webmail.checkError', { reason: value.error })}</LifeLine>
             ) : value.update_available ? (

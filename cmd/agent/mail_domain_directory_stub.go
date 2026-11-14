@@ -19,3 +19,7 @@ func quarantineMailDomainDirectory(string, int) (func() error, bool, error) {
 func holdMailboxDirectory(string, string, string) (func() error, bool, error) {
 	return nil, false, fmt.Errorf("holding a mailbox's mail requires Linux openat2")
 }
+
+func restoreHeldMailbox(string, string, string) error {
+	return fmt.Errorf("restoring a held mailbox requires Linux openat2")
+}

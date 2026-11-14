@@ -316,13 +316,20 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		writeServerError(w, rollbackMailTx(tx, err))
 		return
 	}
-	if err := p.callMailMutation(r.Context(), "Agent.AddMailAccount", &transport.MailAccount{
-		Email: address, Password: request.Password, QuotaMB: request.QuotaMB,
-	}); err != nil {
+	// alpha.135: mail an earlier deletion left at this address is put into
+	// the holding list (30 days) first, so the new mailbox starts empty.
+	added, err := p.callMailMutationAnswer(r.Context(), "Agent.AddMailAccount", &transport.MailAccount{
+		Email: address, Password: request.Password, QuotaMB: request.QuotaMB, LeftDomainID: domainID,
+	})
+	if err != nil {
 		writeServerError(w, rollbackMailTx(tx, err))
 		return
 	}
 	if err := tx.Commit(); err != nil {
+		if added.HeldName != "" {
+			// The earlier folder was moved all the same: it stays in the list.
+			p.holdLeftMail(context.WithoutCancel(r.Context()), r, domainID, domain, address, added.HeldName, added.HeldBytes)
+		}
 		compensationCtx, cancel := mailCompensationContext(r.Context())
 		compensation := p.callMailMutation(compensationCtx, "Agent.DeleteMailAccount",
 			&transport.DeleteMailAccountRequest{Email: address})
@@ -341,7 +348,17 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 	// alpha.128: its first-day sending limit is held by postfwd right away.
 	p.requestOutgoingApply()
 	p.requestDomainMailOptionsApply(r.Context())
-	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
+	answer := map[string]any{"success": true, "id": newID}
+	if added.HeldName != "" {
+		// The administrator is told in one line where it went. Nobody else
+		// is: the address may now belong to another person, and the old
+		// mail is not theirs to ask for.
+		kept := p.holdLeftMail(r.Context(), r, domainID, domain, address, added.HeldName, added.HeldBytes)
+		if callerIsAdmin(r) {
+			answer["left_held"] = kept
+		}
+	}
+	_ = json.NewEncoder(w).Encode(answer)
 }
 
 func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request, domainID int) {

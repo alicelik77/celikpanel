@@ -170,6 +170,8 @@ test('every dialogue in the product is the shared one', () => {
     // alpha.133: CelikPanel's engine account (its password, shown once) with Security › Open to the outside.
     'DatabaseRemoteServerPanel.tsx': 1,
     'DomainMailManager.tsx': 1,
+    // alpha.135: a mailbox's sending limit in its own window (explicit save).
+    'OutgoingMailboxLimits.tsx': 1,
     // alpha.124: the sending mailbox's settings, password shown once (passwordless mail).
     'PasswordlessMailNotice.tsx': 1,
     // alpha.118: installing, changing the keys of and removing an AI or automation app.

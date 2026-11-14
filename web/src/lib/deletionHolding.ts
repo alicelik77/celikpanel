@@ -22,11 +22,26 @@ export interface HeldItem {
     state: 'kept' | 'waiting' | 'failed' | 'unknown';
     failureLine: string;
     nextTryAt: string;
+    /** A mailbox folder an earlier deletion had left in its domain's live folder (alpha.135). */
+    left: boolean;
+}
+
+/** A mailbox folder still in its domain's live mail folder, with no mailbox (alpha.135). */
+export interface LeftMail {
+    address: string;
+    domain: string;
+    /** -1: not known. */
+    bytes: number;
+    path: string;
 }
 
 export interface DeletionHolding {
     items: HeldItem[];
     summary: { count: number; bytes: number; earliest: string };
+    /** The folders still left in place; empty when none or not known. */
+    left: LeftMail[];
+    /** The Agent could not say which folders are left in place. */
+    leftUnknown: boolean;
 }
 
 const STATES = new Set(['kept', 'waiting', 'failed', 'unknown']);
@@ -47,14 +62,25 @@ export function decodeDeletionHolding(raw: unknown): DeletionHolding {
             id: text(item.id), kind, domain: text(item.domain), domainId: number(item.domain_id), mailbox: text(item.mailbox),
             bytes: number(item.bytes, -1), files: number(item.files), deletedAt: text(item.deleted_at), removeAfter: text(item.remove_after),
             adopted: item.adopted === true, path: text(item.path), state,
-            failureLine: failure ? text(failure.line) : '', nextTryAt: text(item.next_try_at),
+            failureLine: failure ? text(failure.line) : '', nextTryAt: text(item.next_try_at), left: item.left === true,
         };
+    });
+    // An older answer has no "left": none known, and not said to be unknown.
+    const rawLeft = (raw as { left?: unknown }).left;
+    const left = (Array.isArray(rawLeft) ? rawLeft : []).flatMap((value): LeftMail[] => {
+        const folder = (value ?? {}) as Record<string, unknown>;
+        if (!text(folder.address).includes('@')) return [];
+        return [{ address: text(folder.address), domain: text(folder.domain), bytes: number(folder.bytes, -1), path: text(folder.path) }];
     });
     return {
         items,
         summary: { count: number(body.summary.count), bytes: number(body.summary.bytes), earliest: text(body.summary.earliest_remove_after) },
+        left,
+        leftUnknown: (raw as { left_unknown?: unknown }).left_unknown === true,
     };
 }
+
+export const HOLD_LEFT_URL = `${DELETION_HOLDING_URL}/left`;
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
