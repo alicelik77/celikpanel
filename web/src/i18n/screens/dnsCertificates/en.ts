@@ -73,6 +73,7 @@ export const enDnsCertificatesScreens = {
     'ssl.issueConfirmWithMail': 'Issue a certificate for {name} from {authority} and include {mailName} as a mail DNS name?',
     'ssl.issueFailed': 'Could not issue certificate',
     'ssl.issueFailure.said': "certbot reported: {detail}",
+    'ssl.issueFailure.checkSaid': "The check reported: {detail}",
     'ssl.issueFailure.record': "certbot keeps its record of each run in {record} on this server.",
     'ssl.issueFailure.title.previous': "No new certificate for {domain}; the current certificate stays in use.",
     'ssl.issueFailure.title.none': "No certificate for {domain}; the site is served as before.",

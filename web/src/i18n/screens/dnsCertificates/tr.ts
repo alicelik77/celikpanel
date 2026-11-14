@@ -67,6 +67,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'ssl.issueConfirmWithMail': '{name} için {authority} üzerinden sertifika alınıp {mailName} posta DNS adı olarak dahil edilsin mi?',
     'ssl.issueFailed': 'Sertifika alınamadı',
     'ssl.issueFailure.said': "certbot’un bildirdiği: {detail}",
+    'ssl.issueFailure.checkSaid': "Denetimin bildirdiği: {detail}",
     'ssl.issueFailure.record': "certbot her çalışmasının kaydını bu sunucuda {record} dosyasında tutar.",
     'ssl.issueFailure.title.previous': "{domain} için yeni sertifika alınamadı; şimdiki sertifika kullanılmaya devam ediyor.",
     'ssl.issueFailure.title.none': "{domain} için sertifika alınamadı; site eskisi gibi sunuluyor.",

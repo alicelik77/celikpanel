@@ -116,7 +116,7 @@ export function CertificateIssueNotice({
                 {(detail || record) && (
                     <details className="text-xs text-fg-muted">
                         <summary className="cursor-pointer">{t('common.technicalDetails')}</summary>
-                        {detail && <p className="mt-1 break-words">{t('ssl.issueFailure.said', { detail })}</p>}
+                        {detail && <p className="mt-1 break-words">{t(kind.startsWith('issued_check') ? 'ssl.issueFailure.checkSaid' : 'ssl.issueFailure.said', { detail })}</p>}
                         {record && <p className="mt-1 break-words">{t('ssl.issueFailure.record', { record })}</p>}
                     </details>
                 )}

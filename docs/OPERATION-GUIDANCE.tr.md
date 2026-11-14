@@ -4737,6 +4737,9 @@ cümlesi ve API'nin `reload` gerekçesinin cümlesi ("... önceki ayarlarıyla
 - `ssl.issueFailure.said`
   EN: "certbot reported: {detail}"
   TR: "certbot’un bildirdiği: {detail}"
+- `ssl.issueFailure.checkSaid`
+  EN: "The check reported: {detail}"
+  TR: "Denetimin bildirdiği: {detail}"
 - `ssl.issueFailure.record`
   EN: "certbot keeps its record of each run in {record} on this server."
   TR: "certbot her çalışmasının kaydını bu sunucuda {record} dosyasında tutar."
