@@ -42,6 +42,8 @@ export interface DeletionHolding {
     left: LeftMail[];
     /** The Agent could not say which folders are left in place. */
     leftUnknown: boolean;
+    /** More folders are left in place than one list shows (the server cut it). */
+    leftMore: boolean;
 }
 
 const STATES = new Set(['kept', 'waiting', 'failed', 'unknown']);
@@ -77,6 +79,7 @@ export function decodeDeletionHolding(raw: unknown): DeletionHolding {
         summary: { count: number(body.summary.count), bytes: number(body.summary.bytes), earliest: text(body.summary.earliest_remove_after) },
         left,
         leftUnknown: (raw as { left_unknown?: unknown }).left_unknown === true,
+        leftMore: (raw as { left_more?: unknown }).left_more === true,
     };
 }
 

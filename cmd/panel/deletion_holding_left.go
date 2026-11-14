@@ -62,15 +62,16 @@ type leftMailView struct {
 
 // leftMailFolders is what the Agent finds left in live domain folders,
 // narrowed to domains that exist here, are not being deleted, and addresses
-// that have no mailbox. Read only.
-func (p *Panel) leftMailFolders(ctx context.Context) ([]leftMailView, error) {
-	out := []leftMailView{}
+// that have no mailbox. Read only. more: the Agent found more than one
+// answer lists (leftMailListLimit), so the list is cut and says so.
+func (p *Panel) leftMailFolders(ctx context.Context) (out []leftMailView, more bool, err error) {
+	out = []leftMailView{}
 	resp, err := holdingAgentLeft(p, ctx)
 	if err != nil {
-		return out, err
+		return out, false, err
 	}
 	if resp.Error != "" {
-		return out, errors.New(resp.Error)
+		return out, false, errors.New(resp.Error)
 	}
 	if resp.More {
 		log.Printf("[holding] more mail folders are left in place than one answer lists")
@@ -95,7 +96,7 @@ func (p *Panel) leftMailFolders(ctx context.Context) ([]leftMailView, error) {
 		}
 		out = append(out, leftMailView{Address: folder.Address, Domain: name, DomainID: domainID, Bytes: folder.Bytes, Files: folder.Files, Path: folder.Path})
 	}
-	return out, nil
+	return out, resp.More, nil
 }
 
 // holdLeftMail saves the record of a folder the Agent moved into the holding

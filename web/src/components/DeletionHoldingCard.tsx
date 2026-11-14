@@ -132,6 +132,7 @@ function HoldingList({ value, reread }: { value: DeletionHolding; reread: () => 
             <div className="space-y-2">
                 <p className="text-sm text-fg-muted" data-holding-empty="">{t('holding.empty')}</p>
                 {value.leftUnknown && <p className="text-sm text-fg-muted" data-holding-left-unknown="">{t('holding.left.unknown')}</p>}
+                {value.leftMore && <p className="text-sm text-fg-muted" data-holding-left-more="">{t('holding.left.more')}</p>}
             </div>
         );
     }
@@ -147,6 +148,7 @@ function HoldingList({ value, reread }: { value: DeletionHolding; reread: () => 
                 </Button>
             </div>}
             {value.leftUnknown && <p className="text-sm text-fg-muted" data-holding-left-unknown="">{t('holding.left.unknown')}</p>}
+            {value.leftMore && <p className="text-sm text-fg-muted" data-holding-left-more="">{t('holding.left.more')}</p>}
             <ul className="divide-y divide-border rounded-lg border border-border" data-holding-list="">
                 {value.left.map((folder) => <LeftRow key={folder.address} folder={folder} size={size} hold={() => void holdLeft(folder)} />)}
                 {value.items.map((item) => <HoldingRow key={item.id} item={item} what={what(item)} size={size} date={date} removeNow={() => void removeNow([item])} />)}

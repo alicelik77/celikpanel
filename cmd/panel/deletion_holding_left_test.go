@@ -169,9 +169,17 @@ func TestLeftMailIsListedForTheAdministratorOnly(t *testing.T) {
 		body.Left[0].Address != "old@example.com" || body.Left[0].DomainID != 6103 || body.Left[0].Domain != "example.com" || body.Left[0].Bytes != 3 {
 		t.Fatalf("list = %s", list.Body.String())
 	}
-	if len(fake.asked) != 0 {
-		t.Fatal("reading the list moved something")
+	if len(fake.asked) != 0 || strings.Contains(list.Body.String(), "left_more") {
+		t.Fatalf("reading the list moved something, or a whole list said it was cut: %s", list.Body.String())
 	}
+	// alpha.135 integration: a list the Agent cut at its limit says so.
+	fake.folders.More = true
+	list = httptest.NewRecorder()
+	panel.handleDeletionHolding(list, holdingRequestAs(t, http.MethodGet, holdingPath, roleAdmin))
+	if !strings.Contains(list.Body.String(), `"left_more":true`) {
+		t.Fatalf("cut list = %s", list.Body.String())
+	}
+	fake.folders.More = false
 	fake.listErr = errors.New("connection reset")
 	list = httptest.NewRecorder()
 	panel.handleDeletionHolding(list, holdingRequestAs(t, http.MethodGet, holdingPath, roleAdmin))

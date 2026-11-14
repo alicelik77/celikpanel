@@ -552,9 +552,12 @@ func (p *Panel) handleDeletionHolding(w http.ResponseWriter, r *http.Request) {
 		"read_at": holdingNow().UTC().Format(time.RFC3339)}
 	// The mail folders still left in live domain folders (alpha.135): listed
 	// beside, never moved by this read. A list the Agent could not give is
-	// said as not known.
-	left, err := p.leftMailFolders(r.Context())
+	// said as not known; a list cut at the Agent's limit says so (left_more).
+	left, more, err := p.leftMailFolders(r.Context())
 	answer["left"] = left
+	if more {
+		answer["left_more"] = true
+	}
 	if err != nil {
 		answer["left_unknown"] = true
 		log.Printf("[holding] mail left in place: %v", err)

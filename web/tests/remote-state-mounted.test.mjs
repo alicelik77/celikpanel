@@ -3012,4 +3012,14 @@ test('Maintenance: mail left in a live domain folder is kept 30 days only when a
   } finally {
     await cleanup();
   }
+  // alpha.135 integration: a list the server cut at the Agent's limit says so.
+  serve({ '/api/v1/maintenance/deletion-holding': () => Response.json({ items: [], summary: { count: 0, bytes: 0 },
+    left: [{ address: 'old@example.com', domain: 'example.com', domain_id: 3, bytes: 3 }], left_more: true }) });
+  try {
+    await mount(DeletionHoldingCard);
+    assert.ok(has('holding.left.more'), 'a cut list does not say so');
+    assert.equal(tree.root.findAll((node) => node.type === 'li' && node.props['data-holding-left'] !== undefined).length, 1);
+  } finally {
+    await cleanup();
+  }
 });
