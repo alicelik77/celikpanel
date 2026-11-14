@@ -16,6 +16,7 @@
 export const WEBMAIL_ADDRESS_URL = '/api/v1/service/roundcube/address';
 export const WEBMAIL_ADDRESS_CHECK_URL = `${WEBMAIL_ADDRESS_URL}/check`;
 export const WEBMAIL_ADDRESS_REMOVE_URL = `${WEBMAIL_ADDRESS_URL}/remove`;
+export const WEBMAIL_ADDRESS_DNS_RECORD_URL = `${WEBMAIL_ADDRESS_URL}/dns-record`;
 
 // A host name as the server stores it: two or more lower-case labels of
 // letters, digits and inner hyphens, each at most 63 characters, 253 in all,
@@ -176,6 +177,11 @@ export interface WebmailAddressCheck {
     ready: boolean;
     warnings: string[];
     ownerAction: { who: string; next: string } | null;
+    // alpha.135: the paired main DNS server holds the name and this server can
+    // ask it to add the records (zone '' when this server cannot know it).
+    peerZone: { server: string; zone: string } | null;
+    // Elsewhere: the name servers public DNS names for the closest zone.
+    managedBy: { zone: string; nameservers: string[] } | null;
 }
 
 // The only record endpoints the panel's own zones are edited through; the
@@ -215,6 +221,16 @@ export function decodeWebmailAddressCheck(raw: unknown): WebmailAddressCheck | n
     const peer = peerRaw && typeof peerRaw.address === 'string' ? { name: text(peerRaw.name), address: peerRaw.address } : null;
     const ownerRaw = value.owner_action as Record<string, unknown> | null | undefined;
     const ownerAction = ownerRaw && typeof ownerRaw === 'object' ? { who: text(ownerRaw.who), next: text(ownerRaw.next) } : null;
+    // A peer or a name server list the panel cannot read leaves the extra out; the record text stays.
+    const peerZoneRaw = value.peer_zone as Record<string, unknown> | null | undefined;
+    const peerZone = peerZoneRaw && isWebmailHostName(peerZoneRaw.server) && (peerZoneRaw.zone === undefined || peerZoneRaw.zone === '' || isWebmailHostName(peerZoneRaw.zone))
+        ? { server: peerZoneRaw.server, zone: text(peerZoneRaw.zone) }
+        : null;
+    const managedRaw = value.managed_by as Record<string, unknown> | null | undefined;
+    const servers = managedRaw ? textList(managedRaw.nameservers) : null;
+    const managedBy = managedRaw && isWebmailHostName(managedRaw.zone) && servers && servers.length > 0 && servers.length <= 8 && servers.every(isWebmailHostName)
+        ? { zone: managedRaw.zone, nameservers: servers }
+        : null;
     return {
         host: value.host,
         state: value.state as WebmailCheckState,
@@ -230,7 +246,38 @@ export function decodeWebmailAddressCheck(raw: unknown): WebmailAddressCheck | n
         ready: value.ready,
         warnings,
         ownerAction,
+        peerZone,
+        managedBy,
     };
+}
+
+// --- POST /api/v1/service/roundcube/address/dns-record ---
+
+// What became of one record the main DNS server was asked for (D-024): added
+// or already present; saved there but its publication not confirmed; refused
+// by its rule (code); never sent (code: unreachable, skipped); or not known.
+export type WebmailDNSRecordOutcome = 'added' | 'present' | 'saved' | 'refused' | 'not_sent' | 'unknown';
+const DNS_RECORD_OUTCOMES: readonly string[] = ['added', 'present', 'saved', 'refused', 'not_sent', 'unknown'];
+
+export interface WebmailDNSRecordAnswer {
+    host: string;
+    server: string;
+    zone: string;
+    records: { type: 'A' | 'AAAA'; text: string; outcome: WebmailDNSRecordOutcome; code: string }[];
+}
+
+// Fails closed: an answer that is not exactly the contract is null (unknown).
+export function decodeWebmailDNSRecordAnswer(raw: unknown): WebmailDNSRecordAnswer | null {
+    const body = raw as Record<string, unknown> | null;
+    const value = body && typeof body === 'object' ? (body.record as Record<string, unknown> | null | undefined) : null;
+    if (!value || typeof value !== 'object' || !isWebmailHostName(value.host) || !isWebmailHostName(value.server) || !Array.isArray(value.records) || value.records.length === 0) return null;
+    const records: WebmailDNSRecordAnswer['records'] = [];
+    for (const item of value.records as Record<string, unknown>[]) {
+        if (!item || (item.type !== 'A' && item.type !== 'AAAA') || typeof item.text !== 'string' || typeof item.outcome !== 'string' || !DNS_RECORD_OUTCOMES.includes(item.outcome)) return null;
+        records.push({ type: item.type, text: item.text, outcome: item.outcome as WebmailDNSRecordOutcome, code: text(item.code) });
+    }
+    if (records[0].type !== 'A') return null;
+    return { host: value.host, server: value.server, zone: text(value.zone), records };
 }
 
 // --- What an enable or a remove operation ended as ---

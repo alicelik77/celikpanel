@@ -90,12 +90,14 @@ export function sayCheck(check: WebmailAddressCheck, t: Translate): CheckSaid {
         ports: check.firewall.closed.join(' / '),
         peer: peerText,
         zone: check.zone?.name ?? '',
+        server: check.peerZone?.server ?? '',
     };
     const code = isCheckCode(check.code) ? check.code : null;
     const headline = kind === 'ready' ? t(MESSAGE_KEY.ready, vars) : code ? t(MESSAGE_KEY[code], vars) : check.message;
     let next = '';
     if (kind !== 'ready') {
-        if (code === 'no_record') next = t(check.zone ? 'life.addr.next.no_record.zone' : 'life.addr.next.no_record.external', vars);
+        // Where the record can be added from here: a zone hosted here, the main DNS server (alpha.135), or elsewhere.
+        if (code === 'no_record') next = t(check.zone ? 'life.addr.next.no_record.zone' : check.peerZone ? 'dnsadd.next.peer' : 'life.addr.next.no_record.external', vars);
         else if (code) next = t(NEXT_KEY[code], vars);
         else next = check.ownerAction?.next ?? '';
     }

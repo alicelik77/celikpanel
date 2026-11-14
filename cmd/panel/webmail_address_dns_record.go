@@ -341,7 +341,7 @@ func (p *Panel) handleWebmailAddressDNSRecord(w http.ResponseWriter, r *http.Req
 	for _, record := range request.Records {
 		types = append(types, record.Type)
 	}
-	p.auditDetailed(r, "webmail.address.dns_record.requested:"+host, "webmail", 0, map[string]any{"server": peer.Server, "zone": peer.Zone, "records": types})
+	p.auditDetailed(r, "webmail.address.dns_record.requested:"+host, "service", 0, map[string]any{"server": peer.Server, "zone": peer.Zone, "records": types})
 
 	// The answer is kept even when the browser has gone away.
 	sendCtx := context.WithoutCancel(ctx)
@@ -387,6 +387,6 @@ func (p *Panel) handleWebmailAddressDNSRecord(w http.ResponseWriter, r *http.Req
 		details[strings.ToLower(record.Type)] = strings.TrimSuffix(record.Outcome+":"+record.Code, ":")
 	}
 	log.Printf("[dns] webmail address record %s asked of %s: %v", host, peer.Server, details)
-	p.auditDetailed(r.WithContext(sendCtx), "webmail.address.dns_record."+result+":"+host, "webmail", 0, details)
+	p.auditDetailed(r.WithContext(sendCtx), "webmail.address.dns_record."+result+":"+host, "service", 0, details)
 	writeWebmailAddressDNSRecord(w, request)
 }

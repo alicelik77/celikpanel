@@ -3,7 +3,7 @@ import type { Locale } from './index';
 // The screen part is itself stored in several parts per locale, one directory
 // per group of screens under ./screens (setup, sites, siteConfig,
 // dnsCertificates, components, componentPages, mailDatabases, security,
-// dashboard, settings, errors, lifecycle; v0.1.0-alpha.97, componentPages since alpha.106, lifecycle since alpha.107, databaseClusters and vendorLanes since alpha.108, webmailAddress since alpha.110, setupWizard since alpha.111, setupRegistrar since alpha.113, setupJoin and setupLink since alpha.114, setupInspection with the automatic deletion check, dnsOverview since alpha.115, nginxDefaultHttps since alpha.113's nginx fixes, dnsPublication since the held-Agent reason, problems with the shared problem pattern, refusals with what refused changes say, accountAccess, siteFeatures, osUpdates (from lifecycle) and panelPort (from settings) since alpha.114, setupOwner with the owner's setup review, setupPublishing split out of setupLink, fileAccess, suspension, transfers, transferRotation and rights since alpha.117, planUsage (myPlan., usage.), appCatalog, siteTools, remoteBackup and serviceApps since alpha.118, guide and runtimeApps since alpha.119, hostName since alpha.121, removalRule since alpha.123, componentInstall since alpha.124, monitoring since alpha.126, passwords, adminNext, nodeSandbox and opsteps since alpha.127, limits, mailWork and ftpLogins since alpha.128, dbConfig and pgLeftovers since alpha.130, domainSections since alpha.132, deletionGuide since alpha.133, deletionGuidePeer split out of it in its round 5, domainDelete since alpha.134, deletionHolding since alpha.135). That is a size split only - each part has its own budget
+// dashboard, settings, errors, lifecycle; v0.1.0-alpha.97, componentPages since alpha.106, lifecycle since alpha.107, databaseClusters and vendorLanes since alpha.108, webmailAddress since alpha.110, setupWizard since alpha.111, setupRegistrar since alpha.113, setupJoin and setupLink since alpha.114, setupInspection with the automatic deletion check, dnsOverview since alpha.115, nginxDefaultHttps since alpha.113's nginx fixes, dnsPublication since the held-Agent reason, problems with the shared problem pattern, refusals with what refused changes say, accountAccess, siteFeatures, osUpdates (from lifecycle) and panelPort (from settings) since alpha.114, setupOwner with the owner's setup review, setupPublishing split out of setupLink, fileAccess, suspension, transfers, transferRotation and rights since alpha.117, planUsage (myPlan., usage.), appCatalog, siteTools, remoteBackup and serviceApps since alpha.118, guide and runtimeApps since alpha.119, hostName since alpha.121, removalRule since alpha.123, componentInstall since alpha.124, monitoring since alpha.126, passwords, adminNext, nodeSandbox and opsteps since alpha.127, limits, mailWork and ftpLogins since alpha.128, dbConfig and pgLeftovers since alpha.130, domainSections since alpha.132, deletionGuide since alpha.133, deletionGuidePeer split out of it in its round 5, domainDelete since alpha.134, deletionHolding and dnsAdd since alpha.135). That is a size split only - each part has its own budget
 // in web/scripts/check-bundle-budget.mjs - so every part is fetched in parallel
 // and merged before `screens` becomes true. No screen can render with only
 // some of them, and a part that fails fails the screen copy as a whole.
@@ -88,6 +88,7 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/deletionGuidePeer/en'),
         () => import('./screens/domainDelete/en'),
         () => import('./screens/deletionHolding/en'),
+        () => import('./screens/dnsAdd/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -152,5 +153,6 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/deletionGuidePeer/tr'),
         () => import('./screens/domainDelete/tr'),
         () => import('./screens/deletionHolding/tr'),
+        () => import('./screens/dnsAdd/tr'),
     ],
 };

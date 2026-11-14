@@ -338,6 +338,10 @@ const screenPartBudgets = {
   // alpha.135: what deletions left, kept 30 days (holding.). A new part, set
   // with at least 25% headroom from its Turkish file.
   deletionHolding: kib(4.5, 2),
+  // alpha.135: adding a DNS record where the panel can do it safely
+  // (dnsadd.), split out of "webmailAddress" (full). A new part, set with at
+  // least 25% headroom from its Turkish file.
+  dnsAdd: kib(9, 2.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

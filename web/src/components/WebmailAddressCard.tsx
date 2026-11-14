@@ -17,7 +17,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Globe } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError } from '../lib/apiError';
 import { invalidate, useRemote } from '../lib/remote';
 import { Button, Checking, Dialog, Field, inputClass, KeepWords, RemoteGate } from './ui';
 import { LifeLine, lifeDate } from './LifeLine';
@@ -35,6 +34,7 @@ import {
 } from '../lib/webmailAddress';
 import { sayCheck, sayOutcome } from '../lib/webmailAddressText';
 import { useWebmailAddressOperation } from '../lib/webmailAddressFlow';
+import { confirmAddToZone, confirmAskPeer, RECHECK_EVERY_MS, RECHECK_FOR_MS, type RecordsAdded } from '../lib/webmailAddressRecords';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const FIREWALL_PATH = '/security#firewall';
@@ -69,14 +69,18 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
     const [editing, setEditing] = useState(false);
     const [typedHost, setTypedHost] = useState<string | null>(null);
     const [checkState, setCheckState] = useState<CheckState>({ phase: 'idle' });
-    const [confirming, setConfirming] = useState<'setup' | 'remove' | 'zone' | null>(null);
+    const [confirming, setConfirming] = useState<'setup' | 'remove' | null>(null);
     const [removeCertificate, setRemoveCertificate] = useState(false);
-    const [zoneNotice, setZoneNotice] = useState<{ tone: 'ok' | 'bad' | 'info'; text: string } | null>(null);
-    const [addingToZone, setAddingToZone] = useState(false);
     const [pending, setPending] = useState<{ remove: boolean; host: string } | null>(null);
-    const [copied, setCopied] = useState(false);
+    const [copied, setCopied] = useState<'records' | 'optional' | null>(null);
+    // The record add (lib/webmailAddressRecords.ts): the check it was tried
+    // for (no second offer for that answer), what a successful one left, and
+    // the bounded wait for public DNS that follows it.
+    const [tried, setTried] = useState<WebmailAddressCheck | null>(null);
+    const [added, setAdded] = useState<RecordsAdded | null>(null);
+    const [waiting, setWaiting] = useState<{ host: string; since: number } | null>(null);
+    const [waitOver, setWaitOver] = useState(false);
     const checking = useRef(false);
-    const adding = useRef(false);
     const alive = useRef(true);
     useEffect(() => () => { alive.current = false; }, []);
 
@@ -101,11 +105,13 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
         }
     }, [flow.operation?.id, flow.operation?.status]);
 
-    const runCheck = async (name: string, keepNotice = false) => {
-        if (checking.current) return;
+    // One read-only check. Its answer, or null when it was not run (another
+    // check is running) or could not be read. A quiet one (the wait after an
+    // add) keeps the last answer on screen while it reads.
+    const runCheck = async (name: string, quiet = false): Promise<WebmailAddressCheck | null> => {
+        if (checking.current) return null;
         checking.current = true;
-        if (!keepNotice) setZoneNotice(null);
-        setCheckState({ phase: 'checking' });
+        if (!quiet) setCheckState({ phase: 'checking' });
         try {
             let res: Response | null = null;
             try {
@@ -121,8 +127,10 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
                     check = null;
                 }
             }
-            if (!alive.current) return;
-            setCheckState(check ? { phase: 'known', check, typed: name } : { phase: 'failed' });
+            if (!alive.current) return null;
+            if (check) setCheckState({ phase: 'known', check, typed: name });
+            else if (!quiet) setCheckState({ phase: 'failed' });
+            return check;
         } finally {
             checking.current = false;
         }
@@ -132,62 +140,65 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
         event.preventDefault();
         const name = host.trim();
         if (name === '' || working) return;
+        if (waiting && waiting.host !== name) setWaiting(null);
         void runCheck(name);
     };
 
-    const addRecords = async (check: WebmailAddressCheck) => {
-        const zone = check.zone;
-        if (!zone || adding.current) return;
-        adding.current = true;
-        setAddingToZone(true);
-        setZoneNotice(null);
-        let notice: { tone: 'ok' | 'bad' | 'info'; text: string } | null = null;
-        try {
-            for (const record of check.records) {
-                let res: Response | null = null;
-                try {
-                    res = await fetch(zone.recordsURL, {
-                        method: 'POST',
-                        headers: JSON_HEADERS,
-                        body: JSON.stringify({ name: record.name, type: record.type, content: record.content, ttl: record.ttl, prio: 0 }),
-                    });
-                } catch {
-                    res = null;
-                }
-                if (res === null) {
-                    // The answer was lost: the record may have been added. It
-                    // is never sent again by itself; Check reads DNS.
-                    notice = { tone: 'info', text: t('life.addr.addLost', { record: record.text }) };
-                    break;
-                }
-                if (!res.ok) {
-                    const reason = apiErrorText(await readApiError(res), t);
-                    notice = { tone: 'bad', text: t('life.addr.addFailed', { record: record.text, zone: zone.name, reason }) };
-                    break;
-                }
+    // After an add: public DNS is read again by itself every RECHECK_EVERY_MS,
+    // for at most RECHECK_FOR_MS, with visible waiting. Each pass is the same
+    // read-only check as the button; it never sends a change.
+    // Eklemeden sonra genel DNS sınırlı aralıklarla yalnız okunur.
+    useEffect(() => {
+        if (!waiting) return;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let stopped = false;
+        const pass = async () => {
+            const seen = await runCheck(waiting.host, true);
+            if (!alive.current || stopped) return;
+            if (seen && seen.state !== 'not_found') {
+                setWaiting(null);
+            } else if (Date.now() - waiting.since >= RECHECK_FOR_MS) {
+                setWaiting(null);
+                setWaitOver(true);
+            } else {
+                timer = setTimeout(() => void pass(), RECHECK_EVERY_MS);
             }
-            if (!notice) notice = { tone: 'ok', text: t('life.addr.added', { zone: zone.name }) };
-        } finally {
-            adding.current = false;
-            if (alive.current) {
-                setAddingToZone(false);
-                setConfirming(null);
-                if (notice) setZoneNotice(notice);
-            }
-        }
+        };
+        timer = setTimeout(() => void pass(), RECHECK_EVERY_MS);
+        return () => {
+            stopped = true;
+            clearTimeout(timer);
+        };
+    }, [waiting]);
+
+    const addHooks = (name: string) => ({
+        t,
+        check: () => void runCheck(name),
+        onAdded: (done: RecordsAdded) => {
+            if (!alive.current) return;
+            setAdded(done);
+            setWaitOver(false);
+            setWaiting({ host: done.host, since: Date.now() });
+        },
+    });
+    // The offer only opens the panel's own confirmation; nothing is sent before it.
+    const addToZone = async (check: WebmailAddressCheck) => {
+        if (!(await confirmAddToZone(check, addHooks(check.host)))) return;
+        if (alive.current) setTried(check);
         // Records may have been added even when a later one failed: the zone's
         // record list and the DNS overview read again wherever they are shown.
         // Kayıtlar sonraki biri başarısız olsa da eklenmiş olabilir.
         invalidate('dns');
-        // One check, as pressed by the user; never a loop.
-        if (alive.current) await runCheck(check.host, true);
+    };
+    const askPeer = async (check: WebmailAddressCheck) => {
+        if ((await confirmAskPeer(check, addHooks(check.host))) && alive.current) setTried(check);
     };
 
-    const copy = (text: string) => {
+    const copy = (text: string, which: 'records' | 'optional') => {
         try {
             void navigator.clipboard?.writeText(text).then(() => {
-                setCopied(true);
-                setTimeout(() => { if (alive.current) setCopied(false); }, 2000);
+                setCopied(which);
+                setTimeout(() => { if (alive.current) setCopied(null); }, 2000);
             }, () => undefined);
         } catch {
             /* the text is selectable */
@@ -225,6 +236,10 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
     const said = check ? sayCheck(check, t) : null;
     // DNS was asked only for a name that got as far as the lookup.
     const asked = check !== null && (check.state === 'ready' || check.state === 'not_found' || check.state === 'elsewhere');
+    // A record added for this name is never offered again from here (the
+    // wait, or Check, shows what DNS holds); a tried answer needs a new Check.
+    const addedHere = check !== null && added !== null && added.host === check.host;
+    const offerAdd = check !== null && check !== tried && !addedHere;
 
     return (
         <div className="space-y-3" data-webmail-address-state={address ? 'enabled' : 'none'}>
@@ -334,7 +349,8 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
                         <div className="space-y-2 rounded-lg border border-border p-3" data-webmail-check-result={check.state} data-webmail-check-kind={said.kind}>
                             <p className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">{said.kindText}</p>
                             <LifeLine tone={said.tone} attr="webmail-address-check-message"><KeepWords text={said.headline} /></LifeLine>
-                            {(said.who || said.next) && (
+                            {/* After an add for this name, the wait (or its end) is the next step, said below. */}
+                            {(said.who || said.next) && !addedHere && (
                                 <p className="pl-6 text-sm leading-6 text-fg">
                                     {said.who && <span className="block">{t('life.addr.who', { who: said.who })}</span>}
                                     {said.next && <span className="block"><KeepWords text={t('life.addr.next', { next: said.next })} /></span>}
@@ -350,15 +366,40 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
                                     <p className="text-sm text-fg">{t('life.addr.recordIntro')}</p>
                                     <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-surface-2 p-3 font-mono text-xs text-fg" data-webmail-records="">{check.records.map((record) => record.text).join('\n')}</pre>
                                     <div className="flex flex-wrap gap-2">
-                                        <Button type="button" onClick={() => copy(check.records.map((record) => record.text).join('\n'))} className="max-sm:min-h-11">
-                                            {copied ? t('life.addr.copied') : t('life.addr.copy')}
+                                        <Button type="button" onClick={() => copy(check.records.map((record) => record.text).join('\n'), 'records')} className="max-sm:min-h-11">
+                                            {copied === 'records' ? t('life.addr.copied') : t('life.addr.copy')}
                                         </Button>
-                                        {check.zone && (
-                                            <Button type="button" variant="primary" onClick={() => setConfirming('zone')} disabled={working || addingToZone || !fresh} className="max-sm:min-h-11" data-webmail-zone-offer="">
+                                        {offerAdd && check.zone && (
+                                            <Button type="button" variant="primary" onClick={() => void addToZone(check)} disabled={working || !fresh} className="max-sm:min-h-11" data-webmail-zone-offer="">
                                                 {t('life.addr.addToZone', { zone: check.zone.name })}
                                             </Button>
                                         )}
+                                        {offerAdd && !check.zone && check.peerZone && (
+                                            <Button type="button" variant="primary" onClick={() => void askPeer(check)} disabled={working || !fresh} className="max-sm:min-h-11" data-webmail-peer-offer="">
+                                                {t('dnsadd.addPeer')}
+                                            </Button>
+                                        )}
                                     </div>
+                                    {!check.zone && !check.peerZone && check.managedBy && (
+                                        <p className="text-sm text-fg-muted break-all" data-webmail-managed-by="">
+                                            {t('dnsadd.managedBy', { zone: check.managedBy.zone, nameservers: check.managedBy.nameservers.join(', ') })}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                            {addedHere && waiting && <Checking label={t('dnsadd.wait')} />}
+                            {addedHere && !waiting && waitOver && check.state === 'not_found' && (
+                                <LifeLine tone="info" attr="webmail-address-wait-over">
+                                    {added.server ? t('dnsadd.waitOver.peer', { server: added.server }) : t('dnsadd.waitOver.zone', { zone: added.zone })}
+                                </LifeLine>
+                            )}
+                            {addedHere && added.optional && (
+                                <div className="space-y-2 pl-6" data-webmail-optional-record="">
+                                    <p className="text-sm text-fg-muted">{added.optional.why}</p>
+                                    <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-surface-2 p-3 font-mono text-xs text-fg">{added.optional.text}</pre>
+                                    <Button type="button" onClick={() => copy(added.optional!.text, 'optional')} className="max-sm:min-h-11">
+                                        {copied === 'optional' ? t('life.addr.copied') : t('life.addr.copy')}
+                                    </Button>
                                 </div>
                             )}
                             {check.firewall.state === 'closed' && (
@@ -377,31 +418,7 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
                             )}
                         </div>
                     )}
-                    {zoneNotice && <LifeLine tone={zoneNotice.tone} attr="webmail-address-zone-notice"><KeepWords text={zoneNotice.text} /></LifeLine>}
-                    {addingToZone && check?.zone && <Checking label={t('life.addr.adding', { zone: check.zone.name })} />}
                 </form>
-            )}
-
-            {confirming === 'zone' && check?.zone && (
-                <Dialog
-                    id="webmail-address-zone"
-                    title={t('life.addr.zoneDialogTitle', { zone: check.zone.name })}
-                    busy={addingToZone}
-                    width="lg"
-                    onDismiss={() => setConfirming(null)}
-                    actions={
-                        <>
-                            <Button onClick={() => setConfirming(null)} disabled={addingToZone}>{t('common.cancel')}</Button>
-                            <Button variant="primary" onClick={() => void addRecords(check)} loading={addingToZone} disabled={addingToZone} data-webmail-zone-confirm="">
-                                {t('life.addr.zoneConfirm')}
-                            </Button>
-                        </>
-                    }
-                >
-                    <p className="text-sm leading-6 text-fg">{t('life.addr.zoneDialogBody', { zone: check.zone.name })}</p>
-                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-surface-2 p-3 font-mono text-xs text-fg">{check.records.map((record) => record.text).join('\n')}</pre>
-                    <p className="mt-2 text-sm leading-6 text-fg-muted">{t('life.addr.zoneDialogWait')}</p>
-                </Dialog>
             )}
 
             {confirming === 'setup' && check && (
