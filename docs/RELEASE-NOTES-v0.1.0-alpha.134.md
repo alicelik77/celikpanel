@@ -2,8 +2,7 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.134.tr.md)
 
-> **Candidate.** Not published yet; the lab checks are finished (three
-> runs, see "Checked in the lab").
+> **Published** on 2026-11-14 (UTC): release commit `3aed2ac05`, GitHub pre-release at 18:00:14Z, download portal at about 18:03Z (public check 27/27).
 
 A small release of three jobs. A site's certificate now says what it
 protects, and a new certificate covers the domain's mail name; site backups
@@ -208,8 +207,10 @@ screen.**
   characters, which after the next reload is a right on another, shorter
   name. So a new database whose exact name would not fit is refused before
   anything is made, with how much shorter the name must be. Names CelikPanel
-  makes itself (application and WordPress installs, copies) are shortened
-  until they fit. A cPanel import leaves such databases out and names them.
+  makes itself (a WordPress install or clone, an application install, a copy
+  of a site) are shortened until they fit; a name you type — a new database,
+  or a copy of a database — is refused before anything is made. A cPanel
+  import leaves such databases out and names them.
   An existing database with such a name keeps working with the pattern form
   it always had, and is listed.
 - **Creating a database now refuses, before anything is made, a name whose
