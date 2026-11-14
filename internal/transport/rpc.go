@@ -68,6 +68,10 @@ type CreateDatabaseResponse struct {
 	// NameTaken (alpha.129): "database" or "user" when the engine already has
 	// that name; nothing was changed and nothing was taken over. Additive.
 	NameTaken string `json:"name_taken,omitempty"`
+	// NameTooLong (alpha.134): the database name's exact form (each `_`
+	// written `\_`) does not fit the 64 characters MariaDB stores for a
+	// grant; nothing was created. Additive.
+	NameTooLong bool `json:"name_too_long,omitempty"`
 	// Refusal is set when nothing ran because the PostgreSQL cluster the
 	// statement would go to cannot take it (alpha.127): a typed, verified
 	// prerequisite, never an engine failure. Additive.

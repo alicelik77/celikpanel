@@ -91,29 +91,169 @@ same rules.
   count the membership PostgreSQL 16+ grants a role's creator by itself;
   on MariaDB a routine in the deleted database is not a right elsewhere, the
   role table is asked for only where it exists, and a check that fails keeps
-  the account ("unchecked"). A user that stays - kept for its owner's
-  rights, or shared with another database - loses every right that names the
-  deleted database, on every listed account of its name (hand-made ones too,
-  never the empty host of a MariaDB role of the same name): MariaDB keeps such
+  the account ("unchecked"). Every right that names the deleted database
+  goes from EVERY grantee (alpha.134): the database's own users that stay,
+  accounts made by hand under any name, and roles (a role's rows have the
+  empty host) - the accounts and roles themselves stay. MariaDB keeps such
   rights after DROP DATABASE (KB) and a later database of the same name would
-  inherit them. The Agent first asks the engine that no database of that name
-  exists (and every statement repeats that condition); then it deletes the
-  rows of mysql.db by the name's two pattern forms (as written, or with
-  `_`/`%` escaped) and of tables_priv, columns_priv and procs_priv by the
-  literal name, flushes, and reads what the server has loaded
-  (information_schema for those accounts, procs_priv) - anything left is a
-  partial result ("rights"). A pattern that covers several databases, a
-  server-wide right and a role are left alone. PostgreSQL leaves nothing that
-  names a dropped database (dropdb removes its role settings and shared
-  dependencies with the pg_database row). Open: an account with another name,
-  made outside CelikPanel, keeps its rights on a deleted database, and so
-  does a hand-made account under the name of a user removed from the
-  database earlier (alpha.134 removes every right naming a deleted database
-  from every account); after a deletion that kept a user's accounts, a
-  database of the same name cannot be created again until those accounts
-  are removed on the engine, and the refusal does not yet say so; database
-  rights are still given by name pattern (`_` = any one character), exact
-  names come in alpha.134.
+  hand its tables to whoever holds them (to a role's members too). The Agent
+  first asks the engine that no database of that name exists (and every
+  statement repeats that condition); then it deletes the rows of mysql.db
+  of the name's two forms (as written, and exact with `_` escaped) row by
+  row, and of tables_priv, columns_priv and procs_priv by the literal name -
+  every value as a hexadecimal literal, so the server's sql_mode does not
+  matter - runs FLUSH PRIVILEGES on its own, and reads what the server has
+  loaded and stored (information_schema for every grantee, and the grant
+  tables, roles' column rights included). Whenever something is still
+  counted it flushes once more and counts again (a FLUSH that failed after
+  the DELETEs, on this press or an earlier one, is repaired this way);
+  anything still left keeps the database listed ("press Delete again"). A
+  pattern that merely matches the name (`shop\_%`, `sh_p`) is another text
+  and is left alone; so are server-wide rights. A row in the name's raw form
+  (a pattern) that ALSO reaches another existing database is kept, not
+  deleted, when its account is not on record for the deleted database; the
+  answer lists it (once) with what it still reaches. The accounts on record
+  for the deleted database (every one, also one another database shares, on
+  this machine's MariaDB or on a registered one) lose their rows naming it
+  in both forms, from every host, even where the pattern reaches another database - as on
+  alpha.133; CelikPanel gave them (second review: before the rewrite runs,
+  such a row is CelikPanel's own pattern and must not outlive the deletion). The
+  user steps report whose rights they removed too, so the answer and the
+  audit row name every grantee once. Only an administrator is told whose
+  rights went, how many, which were kept and what may remain; a customer's
+  answer says nothing about other accounts. On a MariaDB reached with the
+  record's own account the same removal is tried with that account; when
+  it cannot, the deletion still finishes and an administrator is told
+  rights may remain there for that server's administrator to remove.
+  PostgreSQL leaves nothing that names a dropped database (dropdb removes its
+  role settings and shared dependencies with the pg_database row). Open:
+  after a deletion that kept a user's accounts, a database of the same name
+  cannot be created again until those accounts are removed on the engine,
+  and the refusal does not yet say so.
+- Rights by exact name (alpha.134). MariaDB reads the database name of a
+  database-level grant (`GRANT … ON name.*`) as a pattern: `_` is any one
+  character, `%` any run (MySQL 8.0 manual, GRANT, "Object Quoting
+  Guidelines"; the alpha.133 lab measured it on MariaDB 11.8.6 and 10.11.14:
+  a grant on `labd_1__wp`.* let its user create a table in labd_12_wp).
+  Every name CelikPanel makes holds `_`, so subscription 5's `s5__x` covered
+  subscription 51's `s51_x`. Since alpha.134 every grant is written by the
+  exact name (`s5\_\_x`.*: creating a database or a user, giving a user to
+  another database, remote copies), and every place that takes a right away
+  or counts it handles both forms. Table, column and routine grants name the
+  database literally and do not change.
+  - The grants written before are rewritten on each MariaDB the panel
+    manages (this machine's, through the Agent; a registered one, with its
+    record's account), only those the panel's records prove its own: a
+    recorded user given a recorded database, on localhost or a remote copy
+    the Agent's remote access record lists. For each such row the
+    before-image (account, host, stored name, privileges) is written to
+    `database_grant_forms` (migration 079) first; then the same privileges
+    are granted by the exact name and checked, and the pattern form is
+    revoked and checked - access is never lost, and an interruption at any
+    step is continued from the engine on the next round. A row that is not
+    what was captured is captured again first; a row failing three times
+    waits a day (the page lists it with the statement to narrow it by
+    hand). A row holding the grant option, or a privilege CelikPanel never
+    gives, is the owner's: listed, not changed. On a server with a privilege
+    column CelikPanel cannot name, the privileges are written word by word,
+    never ALL PRIVILEGES (which would also give that one). Every rewritten
+    row gets an audit row with the other databases its pattern reached ("it
+    no longer reaches …"), and the MariaDB page lists them. The engine's gate
+    (the one a database deletion or a grant takes) is taken for one row at a
+    time. An Agent of another build, or one that does not answer, makes the
+    engine wait; it is not counted against a row. Inside the gate the pair
+    is read again from the records and the Agent checks that the database
+    exists (BINARY) before it writes the exact right: a database deleted
+    since the scan leaves the round ("database_gone") and gets no right. A
+    remote copy's pattern-form grant is rewritten by the remote access apply
+    only while this rewrite may run, and never at the same moment as a row
+    of it; while it is held, a change of rules is still applied to the copy
+    in the pattern form (added, narrowed or taken away), as on alpha.133.
+    A row CelikPanel records whose database no longer exists on the engine
+    (dropped by hand) is never rewritten nor marked done: it is listed and
+    counted as left ("the database no longer exists, the record still
+    does"), with what to do - delete the record in Databases, which runs the
+    removal, or create the database again; the round deletes no engine row.
+    When CelikPanel's own records cannot be read, the engine shows that the
+    round's result is unknown (records_unread). While an engine waits (a
+    panel update not confirmed or not readable, an Agent that does not
+    answer or is another build, unread records) or is blocked, for one
+    cause, for more than 24 hours, the administrators get one notification
+    with the cause, who acts and what next; it is cleared when the wait
+    ends, and a later, separate wait is told again. A listed pattern-form
+    right goes from the list when its grant is revoked or its database is
+    deleted. A row holding a privilege
+    CelikPanel cannot name is offered only its removal, never a narrowing
+    that would drop that privilege.
+  - Every GRANT CelikPanel writes on MariaDB runs with NO_AUTO_CREATE_USER
+    in its session and is read back: the stored row must hold exactly the
+    exact form. The length rule below, checked before any statement, is what
+    prevents a cut-short right; the read-back is a second line. An account
+    that may not read mysql.db (a registered server's restricted account;
+    ERROR 1142) cannot read a right back: the right stands on the length
+    rule, nothing is refused, and the engine's state records once that rights
+    there cannot be verified (the MariaDB page says so and what the account
+    would need: SELECT on mysql.db); a later verified read-back clears it. A
+    read-back that failed in any other way is an unknown result, never taken
+    for either answer. Measured on MariaDB 11.8.6: without the mode, a GRANT to an
+    account dropped meanwhile creates it again with an empty password; with
+    it the GRANT is refused (ERROR 1133). MariaDB 10.11 and 11.8 have it in
+    their default sql_mode; MySQL 8 removed it, so it is not sent there.
+  - Names whose exact form is longer than 64 characters (each `_` counts
+    twice). Measured on MariaDB 11.8.6: for a 64-character name with eleven
+    `_` (75 characters exact) and for a 60-character one with six `_` (66;
+    CelikPanel's own names are at most 63 characters), GRANT on the exact
+    form is accepted, SHOW GRANTS shows it whole, but mysql.db.Db keeps it
+    cut to 64 characters - after the next
+    reload a right on another, shorter name. So a new database of such a
+    name is refused before anything is made (DATABASE_NAME_TOO_LONG: choose
+    a name at least N characters shorter, or with fewer underscores), and a
+    database copy checks it before the copy starts. A cPanel import names
+    such databases in its preview, with why and what to do (a shorter name
+    in cPanel, or create it here under a shorter name), and leaves them out:
+    nothing is created under such a name. Such an import is complete with
+    those databases left out: the result says so and names them, and it is
+    audited as import.cpanel.complete_with_skips with their names. Names CelikPanel makes
+    itself (application installs, WordPress installs and clones, site
+    copies) are shortened at their base until they fit, so they never fail
+    late. An existing database of such a name keeps working: a user given
+    to it gets the pattern form it always had, stored whole and read back
+    (never an exact form cut short); its pattern rows are listed with that
+    reason, and remote copies keep the same form as the local account.
+  - Rows the rewrite cannot record (the anonymous account ''@host, a
+    pattern that reaches hundreds of databases) are recorded and listed (at
+    most 50 database names a row, the rest counted); a failure to record
+    makes the engine "blocked", never silent.
+  - Rows that cannot be proven CelikPanel's (made by hand, or left by a
+    database CelikPanel no longer records) are never changed. The MariaDB
+    page lists them by why they are left (said once above the rows) with the
+    databases they reach now and, under Details, a statement and what it
+    does: narrow it to one database's exact name, or - for a wildcard on
+    purpose or a name too long for its exact form - remove the right
+    entirely. Roles are named as roles, the anonymous account as such. The
+    administrators get one notification while such rows exist, worded by
+    why they are left.
+  - When it runs: in the panel's own loop (hourly), never within the first
+    minutes after a start, never while the latest update attempt to this
+    build is not verified (the release recovery observation says
+    "succeeded", or none was recorded), never while the server is busy, on
+    this machine only while the Agent is the same build. Until then the
+    page says "waiting" and why. A refused credential, an unreachable
+    server or an account that may not read or change the grant tables is
+    "blocked" with that reason; each round asks again (read only) and
+    continues when the cause is gone. A server that is not MariaDB (MySQL)
+    gets exact new grants but no automatic rewrite: its rows are listed.
+  - Going back to alpha.133 (snapshot restore of the panel database,
+    schema 079 back to 077: two steps, this migration and 078): the
+    exact-form grants stay on the engine and keep working. alpha.133 code
+    then (documented, not built): drops both forms when a database is
+    deleted; but removing an added user from a live database looks for the
+    pattern form only, so the exact grant stays (the account is kept with
+    it) or a registered server's revoke answers "no such grant"; and remote
+    copies of such a user are not refreshed (their grant name is refused).
+    Updating to alpha.134 again continues from the engine.
+  - Open: a one-click narrowing for the listed rows; the exact behaviour of
+    `SHOW GRANTS`/`mysql.db` on MySQL 8 with `partial_revokes` (no lab).
 - Plans: there is no database-user quota in the plans
   (docs/PLANS-AND-RIGHTS.md), so none is counted; the databases permission
   and the engine offering apply, and team members need "manage".

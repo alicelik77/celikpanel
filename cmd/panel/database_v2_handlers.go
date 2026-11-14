@@ -671,6 +671,10 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 			writeDatabaseNameTaken(w, "database", dbName)
 			return
 		}
+		if errors.Is(err, services.ErrDatabaseNameTooLong) {
+			writeDatabaseNameTooLong(w, dbName)
+			return
+		}
 		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
@@ -732,6 +736,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		))
 		return
 	}
+	p.noteGrantReadBack(ctx, server, driver, dbName, selectedUser.Username)
 
 	// Publish database, optional user, and grant together. No observer can see
 	// a half-created metadata graph.
@@ -867,7 +872,7 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(databaseDeletionAnswer("deleted", deleted))
+	json.NewEncoder(w).Encode(databaseDeletionAnswerFor(r, "deleted", deleted))
 }
 
 // User Management Endpoints (per server)
@@ -1348,6 +1353,7 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
+	p.noteGrantReadBack(ctx, server, driver, database.Name, user.Username)
 
 	// Store grant
 	grantRepo := repositories.NewPostgresDatabaseGrantRepository(p.db.GetDB())
@@ -1464,11 +1470,18 @@ func (p *Panel) handleRevokeDatabaseAccess(w http.ResponseWriter, r *http.Reques
 				regrantErr,
 			)
 		}
+		p.noteGrantReadBack(ctx, server, driver, database.Name, user.Username)
 		writeServerError(w, errors.Join(
 			fmt.Errorf("delete database grant metadata: %w", err),
 			regrantErr,
 		))
 		return
+	}
+	// The revoked right is gone: a listing of it (a too long name written in
+	// the pattern form) goes too (verification of the second review).
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM database_grant_forms WHERE engine_key = ? AND kind = 'ours' AND state = 'left' AND database_name = ? AND username = ?`,
+		databaseServerEngineIdentity(server), database.Name, user.Username); err != nil {
+		log.Printf("database rights on %s: the listing of %s on %s could not be removed: %v", databaseServerEngineIdentity(server), user.Username, database.Name, err)
 	}
 
 	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)

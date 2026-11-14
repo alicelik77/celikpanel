@@ -14,6 +14,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -1012,6 +1013,10 @@ func (p *Panel) reserveAppDatabaseNames(ctx context.Context, target appInstallTa
 	if len(base) > 40 {
 		base = base[:40]
 	}
+	// alpha.134 follow-up: a generated name always fits a right by its exact
+	// name (each `_` counts twice; mariadbgrant.FitBase), so it never fails
+	// late on its length.
+	base = mariadbgrant.FitBase(base, "_"+code+"8")
 	for attempt := 0; attempt < 8; attempt++ {
 		name := base + "_" + code
 		if attempt > 0 {

@@ -48,6 +48,12 @@ var databaseRemoteMu sync.Mutex
 // ServerOffered); set and read under databaseRemoteMu.
 var databaseRemoteServerOffered bool
 
+// databaseRemoteExactCopies: the apply in progress may rewrite a remote
+// copy's pattern-form grant to the exact form (alpha.134,
+// transport.DatabaseRemoteApplyRequest ExactCopies); set and read under
+// databaseRemoteMu, which DatabaseGrantFormConvertV1 also holds.
+var databaseRemoteExactCopies bool
+
 // Swapped by tests.
 var (
 	databaseRemoteStatePath = dbremote.StatePath
@@ -251,6 +257,7 @@ func (a *Agent) ApplyDatabaseRemoteV1(req *transport.DatabaseRemoteApplyRequest,
 	defer databaseRemoteMu.Unlock()
 	databaseRemoteMariaDBSkipNameResolve = req.MariaDBSkipNameResolve
 	databaseRemoteServerOffered = req.ServerOffered
+	databaseRemoteExactCopies = req.ExactCopies
 	applyDatabaseRemote(targets, req.HostName, a.databaseRemoteReload(), resp)
 	return nil
 }

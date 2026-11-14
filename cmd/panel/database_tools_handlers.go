@@ -20,6 +20,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -599,6 +600,12 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 	}
 	dbName := fmt.Sprintf("%s_%s", sanitizeName(source.domain.Name), body.Name)
 	dbUser := dbName + "_user"
+	// alpha.134 follow-up: on MariaDB a name whose exact form does not fit a
+	// right is refused here, before anything is made or copied.
+	if source.identity.Type != "postgresql" && !mariadbgrant.ExactFits(dbName) {
+		writeDatabaseNameTooLong(w, dbName)
+		return
+	}
 	pool := p.db.GetDB()
 	var exists bool
 	if err := pool.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM databases_v2 WHERE server_id = ? AND name = ?)", source.serverID, dbName).Scan(&exists); err != nil {
@@ -626,6 +633,10 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 	err = p.callAgentContext(ctx, "Agent.CreateDatabase", createReq, &created)
 	if err == nil && created.Refusal != nil {
 		writeDatabaseClusterRefusal(w, r, created.Refusal)
+		return
+	}
+	if err == nil && created.NameTooLong {
+		writeDatabaseNameTooLong(w, dbName)
 		return
 	}
 	if err == nil && created.NameTaken != "" {

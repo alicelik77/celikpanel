@@ -6,3 +6,5 @@ func Read(id string) Status { return unavailable(id) }
 func Publish(Record) error  { return ErrUnavailable }
 
 func LastAttemptForTarget(string) (Attempt, bool) { return Attempt{}, false }
+
+func LatestPhaseForTarget(string) (string, bool) { return "", false }

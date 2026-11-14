@@ -448,7 +448,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
         with self.assertRaises(p.Refused):
             self.verify(result, 57)
 
-    def test_actual_39_through_78_migrations_add_tables_and_change_no_other_old_row(self):
+    def test_actual_39_through_79_migrations_add_tables_and_change_no_other_old_row(self):
         # alpha.118: 58 application catalog operations, 59 WordPress tools and
         # malware scans, 60 remote backups, 61 service apps; all additive.
         # alpha.119: 62 the first-login tour's state (one table, one trigger),
@@ -471,11 +471,12 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # recovery (two tables), 77 mail relay and mail server settings (three
         # tables).
         # alpha.134: 78 which name a domain's mail programs are told (one NOT
-        # NULL DEFAULT 0 column on the old domains; no table added).
-        self.assertEqual(len(self.sql), 78, 'a migration after 78 needs its own pin before a candidate carries it')
+        # NULL DEFAULT 0 column on the old domains; no table added), 79
+        # database rights by exact name (two tables).
+        self.assertEqual(len(self.sql), 79, 'a migration after 79 needs its own pin before a candidate carries it')
         counts = {58: 102, 59: 107, 60: 110, 61: 113, 62: 114, 63: 117, 64: 118, 65: 121,
                   66: 123, 67: 129, 68: 134, 69: 135, 70: 136, 71: 137, 72: 140, 73: 140, 74: 141,
-                  75: 141, 76: 143, 77: 146, 78: 146}
+                  75: 141, 76: 143, 77: 146, 78: 146, 79: 148}
         for version, tables in counts.items():
             with self.subTest(version=version):
                 self.setUp()
@@ -494,7 +495,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
                 if version >= 72:
                     expected_columns['sessions'] = expected_columns.get('sessions', ()) + ('last_seen_at', 'client_ip', 'user_agent')
                 self.assertEqual(p.added_columns(version), expected_columns)
-        for version in (79, '78', True):
+        for version in (80, '79', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 
@@ -527,6 +528,34 @@ class PopulatedDatabaseTests(unittest.TestCase):
         connection.close()
         with self.assertRaises(p.Refused):
             self.verify(result, 78)
+
+    def test_migration79_adds_two_empty_tables_and_changes_no_old_row(self):
+        # alpha.134: 79 adds database_grant_forms and database_grant_form_engines.
+        # Migrating a populated alpha.133 database leaves both empty, adds no
+        # column to an old table and changes no old row.
+        self.assertEqual(p.NEW_TABLES[79] - p.NEW_TABLES[78], {'database_grant_forms', 'database_grant_form_engines'})
+        self.assertEqual(p.added_columns(79), p.added_columns(78))
+        self.assertEqual(p.added_default_columns(79), p.added_default_columns(78))
+        result = self.migrated_to(79)
+        connection = sqlite3.connect(result['database'])
+        for table in ('database_grant_forms', 'database_grant_form_engines'):
+            with self.subTest(table=table):
+                self.assertEqual(connection.execute('SELECT count(*) FROM ' + table).fetchone(), (0,))
+        connection.close()
+        proof = self.verify(result, 79)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        # A row in a new table is not an old row; one changed old row is refused.
+        connection = sqlite3.connect(result['database'])
+        connection.execute("UPDATE domains SET name='changed.example.test' WHERE id=85")
+        connection.commit()
+        connection.close()
+        with self.assertRaises(p.Refused):
+            self.verify(result, 79)
+        # The schema before 79 is not accepted as 79.
+        self.setUp()
+        result = self.migrated_to(78)
+        with self.assertRaises(p.Refused):
+            self.verify(result, 79)
 
     def test_migration66_defaults_must_hold_in_every_old_row(self):
         # alpha.128: 66 adds NOT NULL columns with a fixed default to the old

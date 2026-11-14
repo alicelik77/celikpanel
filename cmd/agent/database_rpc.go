@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/hostcmd"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -165,6 +166,21 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		resp.Error = fmt.Sprintf("invalid database name: %v", err)
 		return nil
 	}
+	// alpha.134: the grant names the database exactly (`shop\_a`.*); written
+	// as `shop_a`.* it is a pattern that also covers shop1a, shopXa and so
+	// on (internal/mariadbgrant). A name whose exact form is longer than a
+	// grant row holds would be stored cut short - a right on another name -
+	// so such a database is not made at all.
+	grantTarget, err := mariadbgrant.Target(req.Name)
+	if errors.Is(err, mariadbgrant.ErrExactTooLong) {
+		resp.NameTooLong = true
+		resp.Error = "the database name is too long for a right by its exact name; nothing was created"
+		return nil
+	}
+	if err != nil {
+		resp.Error = fmt.Sprintf("invalid database name: %v", err)
+		return nil
+	}
 	if err := services.ValidateSQLIdentifier(req.User); err != nil {
 		resp.Error = fmt.Sprintf("invalid username: %v", err)
 		return nil
@@ -192,7 +208,7 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 	if _, err := mysqlExecStatement(fmt.Sprintf("CREATE DATABASE %s;", dbIdent)); err != nil {
 		if !hasOperation || !verifyMySQLOwnership(dbIdent, req.OperationID, req.CleanupToken) {
 			resp.Error = "database already exists or could not be created exclusively"
-			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + mysqlLiteral(req.Name) + ";") {
+			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + mysqlLiteral(req.Name) + ";") {
 				resp.NameTaken = "database"
 			}
 			return nil
@@ -240,10 +256,7 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		}
 	}
 
-	if _, err := mysqlExecStatement(fmt.Sprintf(
-		"GRANT ALL PRIVILEGES ON %s.* TO %s@'localhost'; FLUSH PRIVILEGES;",
-		dbIdent, userLiteral,
-	)); err != nil {
+	if _, err := mysqlGrantExactly("ALL PRIVILEGES", grantTarget, mariadbgrant.Exact(req.Name), userLiteral, req.User); err != nil {
 		// A resumed operation already had a durable marker. Preserve it for
 		// retry instead of deleting resources after an ambiguous prior result.
 		if databaseCreated {

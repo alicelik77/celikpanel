@@ -236,6 +236,9 @@ type Panel struct {
 	updateDiscovery   *panelUpdateDiscoveryScheduler
 	updateDiscoveryMu sync.Mutex
 	updateAdmittedAt  atomic.Int64
+	// startedAt (alpha.134): when this panel process started; the rewrite of
+	// database rights waits a few minutes after it (database_grant_forms.go).
+	startedAt atomic.Int64
 	// The request id of that admitted start, read by the deferred startup
 	// mail work so it waits while the Agent reports the update queued or
 	// running (a124 lab, startup_deferred_mail.go). Nil when none.
@@ -1961,6 +1964,9 @@ func main() {
 	// alpha.133: every database the caller may see (the left-menu Databases
 	// page); the exact path wins over the /api/v1/databases/ prefix below.
 	http.HandleFunc(databasesVisiblePath, panel.handleVisibleDatabases)
+	// alpha.134: the administrator's view of the rights rewritten to exact
+	// database names (read only).
+	http.HandleFunc(databaseGrantFormsPath, panel.handleDatabaseGrantForms)
 
 	// Database operations
 	http.HandleFunc("/api/v1/databases/", func(w http.ResponseWriter, r *http.Request) {
@@ -2047,6 +2053,8 @@ func main() {
 	// alpha.129: remote access to databases follows plans, suspensions and
 	// the server switch (database_remote.go).
 	panel.startDatabaseRemoteSync(discoveryCtx)
+	// alpha.134: database rights by exact name (database_grant_forms.go).
+	panel.startDatabaseGrantForms(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.
