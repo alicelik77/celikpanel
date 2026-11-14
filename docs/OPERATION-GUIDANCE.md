@@ -4943,13 +4943,6 @@ running with the settings it had") is no longer shown. The ones below are.
   TR: "Önceki sertifika şu an kaldırılamadı. Bir şey yapmanız gerekmiyor:
   CelikPanel 12 saat içindeki sonraki denetiminde yeniden dener ve nedenini
   günlüğüne yazar."
-- `certcover.previousKept.held_by_snapshot`
-  EN: "The previous certificate is kept while a saved update snapshot still uses
-  it, so going back to that update keeps working; CelikPanel removes it once
-  that snapshot is gone."
-  TR: "Önceki sertifika, kayıtlı bir güncelleme yedeği hâlâ onu kullandığı için
-  korunuyor; böylece o güncellemeye geri dönmek çalışır. Yedek kaldırılınca
-  CelikPanel onu da kaldırır."
 
 **Where each is drawn.** The service-action sentences: the notice of a
 component's page and of the components list (`ServiceActionNotice`). Those

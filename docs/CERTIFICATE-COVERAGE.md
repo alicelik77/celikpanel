@@ -186,8 +186,12 @@ every kept outcome is one row in the audit log (Denetim günlüğü:
 `ssl.lineage.removed`, `kept_in_use` with the file, `kept_owner_changed`,
 `kept_for_rollback`, `not_removed`; details: the certbot lineage), written
 once per change of outcome and read back after a restart. An administrator
-who made the request also sees one warning (`certcover.previousKept.*`); a
-customer or reseller sees nothing. The active certificate and its renewal are
+who made the request also sees one warning (`certcover.previousKept.*`) where
+they can act or should know: a file names it, its renewal file is the
+owner's, it could not be removed or checked. Kept for an update's rollback
+copy, or waiting behind the update gate, is ordinary operation that ends by
+itself: only the audit row and the journal say it. A customer or reseller
+sees nothing. The active certificate and its renewal are
 never touched, so renewal with the panel and the Agent stopped (§5) is
 unchanged.
 

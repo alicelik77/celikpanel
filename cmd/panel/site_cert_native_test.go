@@ -207,6 +207,23 @@ func TestRetireAfterIssueTellsOnlyAnAdministratorWhatWasKept(t *testing.T) {
 	if got["outcome"] != transport.SiteLineageInUse || got["lineage"] != replaced || got["detail"] != "/etc/nginx/sites-enabled/own.conf" {
 		t.Fatalf("administrator answer = %v", got)
 	}
+	// Kept for an update's rollback copy, or waiting behind the update gate,
+	// is ordinary operation that ends by itself: no warning.
+	agent.retireOutcome = transport.SiteLineageHeldBySnapshot
+	if got := panel.retireAfterIssue(t.Context(), &Caller{ID: 1, Role: roleAdmin}, domainID); got != nil {
+		t.Fatalf("held for a rollback copy: answer = %v", got)
+	}
+	panel.startedAt.Store(time.Now().UnixNano())
+	if got := panel.retireAfterIssue(t.Context(), &Caller{ID: 1, Role: roleAdmin}, domainID); got != nil {
+		t.Fatalf("waiting behind the gate: answer = %v", got)
+	}
+	panel.startedAt.Store(time.Now().Add(-time.Hour).UnixNano())
+	for _, outcome := range []string{transport.SiteLineageOwnerChanged, transport.SiteLineageFailed, transport.SiteLineageNotChecked} {
+		agent.retireOutcome = outcome
+		if got := panel.retireAfterIssue(t.Context(), &Caller{ID: 1, Role: roleAdmin}, domainID); got["outcome"] != outcome {
+			t.Fatalf("%s: answer = %v", outcome, got)
+		}
+	}
 	agent.retireOutcome = transport.SiteLineageRetired
 	if got := panel.retireAfterIssue(t.Context(), &Caller{ID: 1, Role: roleAdmin}, domainID); got != nil {
 		t.Fatalf("removed: answer = %v", got)

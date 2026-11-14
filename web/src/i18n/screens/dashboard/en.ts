@@ -488,7 +488,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.ssl.issue': 'got a website certificate',
     'dashboard.audit.action.ssl.issue.dependents_partial': 'got a website certificate; mail encryption is still being updated',
     'dashboard.audit.action.ssl.issue.partial': 'got a website certificate; it could not be fully activated',
-    'dashboard.audit.action.ssl.lineage.kept_for_rollback': 'kept the replaced certificate of {target} while an update snapshot still uses it',
+    'dashboard.audit.action.ssl.lineage.kept_for_rollback': 'kept the replaced certificate of {target} because an update’s rollback copy still uses it; it is removed by itself afterwards',
     'dashboard.audit.action.ssl.lineage.kept_in_use': 'kept the replaced certificate of {target}: a file on the server still uses it',
     'dashboard.audit.action.ssl.lineage.kept_owner_changed': 'kept the replaced certificate of {target}: its renewal settings were changed outside CelikPanel',
     'dashboard.audit.action.ssl.lineage.not_removed': 'could not remove the replaced certificate of {target} yet; it is tried again',

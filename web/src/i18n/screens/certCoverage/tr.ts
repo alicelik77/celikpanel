@@ -65,5 +65,4 @@ export const trCertCoverageScreens: Record<CertCoverageScreenKey, string> = {
     'certcover.previousKept.in_use': "Önceki sertifika (certbot’taki {lineage}) korundu, çünkü bu sunucudaki {file} dosyası hâlâ onu kullanıyor; certbot onu yenilemeye devam ediyor. Onu kullanan kalmayınca CelikPanel sonraki bir denetimde kaldırır.",
     'certcover.previousKept.owner_changed': "Önceki sertifika (certbot’taki {lineage}) korundu, çünkü yenileme ayarları CelikPanel dışında değiştirildi. Onu kullanan bir şey yoksa sunucuda kaldırın: sudo certbot delete --cert-name {lineage}",
     'certcover.previousKept.retry': "Önceki sertifika şu an kaldırılamadı. Bir şey yapmanız gerekmiyor: CelikPanel 12 saat içindeki sonraki denetiminde yeniden dener ve nedenini günlüğüne yazar.",
-    'certcover.previousKept.held_by_snapshot': "Önceki sertifika, kayıtlı bir güncelleme yedeği hâlâ onu kullandığı için korunuyor; böylece o güncellemeye geri dönmek çalışır. Yedek kaldırılınca CelikPanel onu da kaldırır.",
 };

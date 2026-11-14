@@ -434,12 +434,20 @@ func (p *Panel) auditLineageOutcome(ctx context.Context, domainID int, domainNam
 
 // retireAfterIssue removes the lineages the certificate just served replaced,
 // right after it is served (the periodic pass repeats what is left). The
-// answer names what was kept, for an administrator only: nobody else can act
-// on it. nil when everything went, nothing was there, or the reader is not
-// an administrator.
+// answer names what was kept where an administrator can act or should know
+// (a file names it, its renewal file is the owner's, it could not be removed
+// or checked), for an administrator only. nil when everything went, nothing
+// was there, it waits for an update's rollback copy or the update gate, or
+// the reader is not an administrator.
 func (p *Panel) retireAfterIssue(ctx context.Context, caller *Caller, domainID int) map[string]string {
 	results, err := p.retireReplacedNativeLineages(ctx, domainID)
 	if caller == nil || caller.Role != roleAdmin {
+		return nil
+	}
+	var held *lineageRetireHeld
+	if errors.As(err, &held) {
+		// Waiting for a verified update, the start-up quiet time or a quiet
+		// server is ordinary and ends by itself: nothing to say.
 		return nil
 	}
 	if err != nil {
@@ -447,7 +455,10 @@ func (p *Panel) retireAfterIssue(ctx context.Context, caller *Caller, domainID i
 	}
 	for _, result := range results {
 		switch result.Outcome {
-		case transport.SiteLineageRetired, transport.SiteLineageAbsent:
+		case transport.SiteLineageRetired, transport.SiteLineageAbsent, transport.SiteLineageHeldBySnapshot:
+			// Kept for an update's rollback copy is ordinary operation and
+			// ends by itself when the copy is pruned: the audit row and the
+			// journal say it, nobody is asked to act.
 			continue
 		}
 		return map[string]string{"outcome": result.Outcome, "lineage": result.LineageName, "detail": result.Detail}
