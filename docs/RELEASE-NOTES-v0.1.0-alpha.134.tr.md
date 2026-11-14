@@ -2,8 +2,7 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.134.md)
 
-> **Aday.** Henüz yayımlanmadı; laboratuvar denetimleri bitti (üç denetim,
-> bkz. "Laboratuvarda denetlenenler").
+> **Yayımlandı**, 14 Kasım 2026 (UTC): sürüm commit'i `3aed2ac05`, GitHub ön sürümü 18:00:14Z, indirme portalı yaklaşık 18:03Z (dış denetim 27/27).
 
 Üç işlik küçük bir sürüm. Sitenin sertifikası artık neyi koruduğunu
 söylüyor ve yeni sertifika alan adının posta adını da kapsıyor; site
@@ -212,8 +211,10 @@ günceller.**
   kesilerek saklanır; bir sonraki yeniden yüklemeden sonra bu, başka ve
   daha kısa bir ada verilmiş bir haktır. Bu yüzden tam adı sığmayacak yeni
   bir veritabanı, hiçbir şey açılmadan, adın ne kadar kısalması gerektiği
-  söylenerek reddedilir. CelikPanel'in kendi verdiği adlar (uygulama ve
-  WordPress kurulumları, kopyalar) sığana dek kısaltılır. cPanel'den içe
+  söylenerek reddedilir. CelikPanel'in kendi verdiği adlar (bir WordPress
+  kurulumu ya da kopyası, bir uygulama kurulumu, bir sitenin kopyası) sığana
+  dek kısaltılır; sizin yazdığınız bir ad — yeni bir veritabanı ya da bir
+  veritabanının kopyası — hiçbir şey açılmadan reddedilir. cPanel'den içe
   aktarma böyle veritabanlarını dışarıda bırakır ve adlarını söyler. Böyle
   bir adla zaten var olan bir veritabanı her zamanki kalıp biçimiyle
   çalışmayı sürdürür ve listelenir.
