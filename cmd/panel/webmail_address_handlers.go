@@ -40,6 +40,8 @@ const (
 	webmailAddressPath       = "/api/v1/service/roundcube/address"
 	webmailAddressCheckPath  = webmailAddressPath + "/check"
 	webmailAddressRemovePath = webmailAddressPath + "/remove"
+	// alpha.135: ask the paired primary to add the address record (webmail_address_dns_record.go).
+	webmailAddressDNSRecordPath = webmailAddressPath + "/dns-record"
 
 	settingWebmailAddress = "webmail_address"
 
@@ -160,6 +162,13 @@ type webmailAddressCheck struct {
 	Ready    bool                       `json:"ready"`
 	Warnings []string                   `json:"warnings,omitempty"`
 	Owner    *webmailAddressOwnerAction `json:"owner_action,omitempty"`
+	// alpha.135, additive: where a missing record can be added from here.
+	// PeerZone: the name's DNS is the paired main DNS server's and this
+	// server can ask it over the authorized connection (Records are then
+	// exactly what that server writes). ManagedBy: elsewhere; the name
+	// servers public DNS names for the closest zone, when they could be read.
+	PeerZone  *webmailAddressPeerZone  `json:"peer_zone,omitempty"`
+	ManagedBy *webmailAddressManagedBy `json:"managed_by,omitempty"`
 }
 
 type webmailAddressPeer struct {
@@ -270,11 +279,25 @@ func (p *Panel) checkWebmailAddress(ctx context.Context, r *http.Request, raw st
 		return check
 	}
 	zone := p.webmailAddressZone(ctx, host)
+	// Not in a zone hosted here: the paired main DNS server may hold it and
+	// add the record when asked (local knowledge only; nothing is sent).
+	var peerZone *webmailAddressPeerZone
+	if zone == nil {
+		if _, peer, ok := p.webmailAddressPeerChannel(ctx, host, ipv4); ok {
+			peerZone = peer
+			for i := range check.Records {
+				check.Records[i].TTL = remoteDNSHostRecordTTL
+			}
+		}
+	}
 	for i := range check.Records {
 		name := "@"
-		if zone != nil && host != zone.Name {
+		switch {
+		case zone != nil && host != zone.Name:
 			name = strings.TrimSuffix(host, "."+zone.Name)
-		} else if zone == nil {
+		case zone == nil && peerZone != nil && peerZone.Zone != "":
+			name = strings.TrimSuffix(host, "."+peerZone.Zone)
+		case zone == nil:
 			name = host + "."
 		}
 		check.Records[i].Name = name
@@ -290,9 +313,14 @@ func (p *Panel) checkWebmailAddress(ctx context.Context, r *http.Request, raw st
 	case lookupErr != nil && errors.As(lookupErr, &notFound) && notFound.IsNotFound:
 		check.State, check.Code = webmailAddressNotFound, "no_record"
 		check.Message = fmt.Sprintf("Public DNS has no address record for %s yet.", host)
-		if zone != nil {
+		switch {
+		case zone != nil:
 			check.Owner = &webmailAddressOwnerAction{Who: "administrator", Next: "Add the record below to the zone " + zone.Name + " hosted here (it is shown before it is added), then press Check."}
-		} else {
+		case peerZone != nil:
+			check.PeerZone = peerZone
+			check.Owner = &webmailAddressOwnerAction{Who: "administrator", Next: "Ask the other server " + peerZone.Server + " to add the record below (it is shown before anything is sent), or add it there yourself, then press Check."}
+		default:
+			check.ManagedBy = webmailAddressManagedByLookup(ctx, host)
 			check.Owner = &webmailAddressOwnerAction{Who: "whoever manages this name's DNS", Next: "Add the record below where this name's DNS is managed, then press Check. A new record can take a few minutes to be seen."}
 		}
 		return check

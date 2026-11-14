@@ -1849,6 +1849,7 @@ func main() {
 	http.HandleFunc(webmailAddressPath, panel.handleWebmailAddress)
 	http.HandleFunc(webmailAddressCheckPath, panel.handleWebmailAddressCheck)
 	http.HandleFunc(webmailAddressRemovePath, panel.handleWebmailAddressRemove)
+	http.HandleFunc(webmailAddressDNSRecordPath, panel.handleWebmailAddressDNSRecord)
 
 	// Domain Management
 	http.HandleFunc("/api/v1/domains", panel.handleDomains)
