@@ -370,8 +370,11 @@ test('only administrators reach this: the card is on the Components page and the
   const mounted = readdirSync(new URL('../src/', import.meta.url), { recursive: true })
     .filter((file) => /\.tsx$/.test(file) && read(file.replace(/\\/g, '/')).includes('<WebmailAddressCard'));
   assert.deepEqual(mounted.map((file) => file.replace(/\\/g, '/')), ['components/ComponentDetail.tsx'], 'the card is mounted nowhere else');
+  // Since alpha.134 App.tsx loads the component page lazily from
+  // ServiceManagementRoute, which mounts ComponentDetail.
   const app = read('App.tsx');
-  assert.ok(/ComponentDetail/.test(app));
+  assert.ok(/path="\/components\/:serviceId"[^\n]*ServiceManagementPage/.test(app) && /components\/ServiceManagementRoute/.test(app));
+  assert.ok(/import\('\.\/ComponentDetail'\)/.test(read('components/ServiceManagementRoute.tsx')));
 });
 
 test('the add flows send changes only from the confirmed action, and the card’s only timer is the bounded wait', () => {
