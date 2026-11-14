@@ -4737,32 +4737,53 @@ running with the settings it had") is no longer shown. The ones below are.
 
 - `502 CERTIFICATE_ISSUE_FAILED`, reason `authority_unreachable`
   API: "No certificate was issued: this server could not reach the certificate
-  authority, so no request was placed with it. The server owner checks that
-  this server can open HTTPS connections to the internet (DNS resolution,
+  authority, so nothing was asked of it. The server administrator checks that
+  this server can open HTTPS connections to the internet (name resolution,
   outbound port 443, the system clock), then requests the certificate here
   again."
 - `502 CERTIFICATE_ISSUE_FAILED`, reason `validation`
-  API: "No certificate was issued: the certificate authority could not validate
-  one of the names. Each name of the site must resolve publicly to this server
-  and answer on port 80 from the internet. The domain's owner corrects the DNS
-  records (or the firewall in front of this server), waits until public DNS
-  shows them, then requests the certificate here again."
+  API: "No certificate was issued: the certificate authority could not confirm
+  that one of the site's names points to this server. Point each name of the
+  site to this server in the domain's DNS records and wait until public DNS
+  shows it; if they already point here, the server administrator checks that
+  port 80 is open from the internet. Then request the certificate here again."
 - `502 CERTIFICATE_ISSUE_FAILED`, reason `rate_limited`
-  API: "No certificate was issued: the certificate authority refused the
-  request because one of its limits was reached. A new request before the limit
-  resets is refused the same way and counts against it. The line from certbot
-  names the limit and, when the authority says so, when it resets; request the
-  certificate here again after that time."
+  API: "No certificate was issued: the certificate authority refused for now
+  because one of its request limits was reached. A request before the limit
+  resets is refused the same way and counts against it; request the
+  certificate here again later."
+- `502 CERTIFICATE_ISSUE_FAILED`, reason `account_unknown`
+  API: "No certificate was issued: the certificate authority does not know the
+  account this server uses with it. The server administrator replaces
+  certbot's account for this authority on the server (sudo certbot
+  show_account shows it), then requests the certificate here again."
 - `502 CERTIFICATE_ISSUE_FAILED`, reason `timeout`
-  API: "No certificate was issued: certbot did not finish within the time
-  allowed and was stopped. Why it took that long is not known from this answer.
-  The server owner reads /var/log/celikpanel/certbot/letsencrypt.log on the
-  server, then requests the certificate here again."
+  API: "No certificate was issued: the request to the certificate authority did
+  not finish in time and was stopped; why is not known. Request the
+  certificate here again later; if it stops the same way, the server
+  administrator reads certbot's record on the server."
 - `502 CERTIFICATE_ISSUE_FAILED`, reason `tool`
-  API: "No certificate was issued: certbot ended with an error. Which step
-  failed is not classified here; the line from certbot says what it reported.
-  The server owner reads /var/log/celikpanel/certbot/letsencrypt.log on the
-  server, corrects what it names, then requests the certificate here again."
+  API: "No certificate was issued, and the reason could not be established from
+  certbot's answer. Request the certificate here again later; if it fails the
+  same way, the server administrator reads certbot's record on the server."
+- `409 CERTIFICATE_ISSUE_FAILED`, reason `issued_check`, check `untrusted`
+  API: "The certificate authority issued a certificate, but this server does not
+  trust the authority's certificate chain, so CelikPanel did not install it
+  and removed it again. The server administrator updates this server's trusted
+  certificate authorities (the ca-certificates package), then requests the
+  certificate here again."
+- `409 CERTIFICATE_ISSUE_FAILED`, reason `issued_check`, check `names`
+  API: "The certificate authority issued a certificate that does not carry
+  exactly the names that were asked for, so CelikPanel did not install it and
+  removed it again. Request the certificate here again; if it happens again,
+  the server administrator reads the Panel's log (sudo journalctl -u
+  celikpanel-panel), which names the difference."
+- `409 CERTIFICATE_ISSUE_FAILED`, reason `issued_check`, check `unusable`
+  API: "The certificate authority issued a certificate, but it did not pass
+  CelikPanel's check before use, so CelikPanel did not install it and removed
+  it again. Request the certificate here again; if it happens again, the
+  server administrator reads the Panel's log (sudo journalctl -u celikpanel-panel),
+  which names the check."
 - then, when the site already had a certificate
   API: "The certificate this site already had is still in place and keeps
   serving."
@@ -4770,89 +4791,156 @@ running with the settings it had") is no longer shown. The ones below are.
   API: "The site has no certificate from this request and is served as before."
 - and always last
   API: "Nothing asks again automatically."
-- `ssl.issueFailure.authority_unreachable`
-  EN: "No certificate was issued for {domain}: this server could not reach the
-  certificate authority, so no request was placed with it. The site is served
-  as before, with the certificate it already had if it had one. Check that this
-  server can open HTTPS connections to the internet (DNS resolution, outbound
-  port 443, the system clock), then request the certificate here again. Nothing
-  asks again automatically."
-  TR: "{domain} için sertifika çıkarılmadı: bu sunucu sertifika otoritesine
-  ulaşamadı; bu yüzden otoriteye bir istek iletilmedi. Site eskisi gibi
-  sunuluyor; önceden bir sertifikası varsa o yerinde duruyor. Bu sunucunun
-  internete HTTPS bağlantısı açabildiğini denetleyin (DNS çözümleme, giden 443
-  numaralı port, sistem saati), sonra sertifikayı buradan yeniden isteyin.
-  Hiçbir şey kendiliğinden yeniden istemez."
-- `ssl.issueFailure.validation`
-  EN: "No certificate was issued for {domain}: the certificate authority could
-  not validate one of the names. The site is served as before, with the
-  certificate it already had if it had one. Each name must resolve publicly to
-  this server and answer on port 80 from the internet. Correct the DNS records
-  (or the firewall in front of this server), wait until public DNS shows them,
-  then request the certificate here again. Nothing asks again automatically."
-  TR: "{domain} için sertifika çıkarılmadı: sertifika otoritesi adlardan birini
-  doğrulayamadı. Site eskisi gibi sunuluyor; önceden bir sertifikası varsa o
-  yerinde duruyor. Her ad genel DNS’te bu sunucuya çözülmeli ve internetten 80
-  numaralı portta yanıt vermelidir. DNS kayıtlarını (ya da bu sunucunun
-  önündeki güvenlik duvarını) düzeltin, genel DNS onları gösterene dek
-  bekleyin, sonra sertifikayı buradan yeniden isteyin. Hiçbir şey kendiliğinden
-  yeniden istemez."
-- `ssl.issueFailure.rate_limited`
-  EN: "No certificate was issued for {domain}: the certificate authority
-  refused the request because one of its limits was reached. The site is served
-  as before, with the certificate it already had if it had one. A new request
-  before the limit resets is refused the same way and counts against it.
-  Request the certificate here again after the limit resets; nothing asks again
-  automatically."
-  TR: "{domain} için sertifika çıkarılmadı: sertifika otoritesi, sınırlarından
-  birine ulaşıldığı için isteği reddetti. Site eskisi gibi sunuluyor; önceden
-  bir sertifikası varsa o yerinde duruyor. Sınır sıfırlanmadan yapılan yeni bir
-  istek aynı biçimde reddedilir ve sınıra sayılır. Sertifikayı sınır
-  sıfırlandıktan sonra buradan yeniden isteyin; hiçbir şey kendiliğinden
-  yeniden istemez."
-- `ssl.issueFailure.timeout`
-  EN: "No certificate was issued for {domain}: certbot did not finish within
-  the time allowed and was stopped. Why it took that long is not known here.
-  The site is served as before, with the certificate it already had if it had
-  one. On the server, read /var/log/celikpanel/certbot/letsencrypt.log, then
-  request the certificate here again. Nothing asks again automatically."
-  TR: "{domain} için sertifika çıkarılmadı: certbot tanınan sürede bitmedi ve
-  durduruldu. Neden o kadar sürdüğü burada bilinmiyor. Site eskisi gibi
-  sunuluyor; önceden bir sertifikası varsa o yerinde duruyor. Sunucuda
-  /var/log/celikpanel/certbot/letsencrypt.log dosyasını okuyun, sonra
-  sertifikayı buradan yeniden isteyin. Hiçbir şey kendiliğinden yeniden
-  istemez."
-- `ssl.issueFailure.tool`
-  EN: "No certificate was issued for {domain}: certbot ended with an error. The
-  site is served as before, with the certificate it already had if it had one.
-  On the server, read /var/log/celikpanel/certbot/letsencrypt.log, correct what
-  it names, then request the certificate here again. Nothing asks again
-  automatically."
-  TR: "{domain} için sertifika çıkarılmadı: certbot hata ile sonlandı. Site
-  eskisi gibi sunuluyor; önceden bir sertifikası varsa o yerinde duruyor.
-  Sunucuda /var/log/celikpanel/certbot/letsencrypt.log dosyasını okuyun, adını
-  verdiği şeyi düzeltin, sonra sertifikayı buradan yeniden isteyin. Hiçbir şey
-  kendiliğinden yeniden istemez."
-- `ssl.issueFailure.server_clock` (alpha.113)
-  EN: "A certificate was issued for {domain}, but this server's clock does not
-  accept it: it is valid from {valid_from} and this server's time was
-  {server_time}. It was not installed and was removed again; the site is
-  served as before, with the certificate it already had if it had one. Correct
-  this server's clock: run timedatectl on the server and check that “System
-  clock synchronized” says yes (sudo timedatectl set-ntp true turns time
-  synchronisation on), then request the certificate here again. Nothing asks
-  again automatically."
-  TR: "{domain} için sertifika çıkarıldı, ancak bu sunucunun saati onu kabul
-  etmiyor: sertifika {valid_from} itibarıyla geçerli, sunucunun saati ise
-  {server_time} idi. Sertifika kurulmadı ve yeniden kaldırıldı; site eskisi
-  gibi sunuluyor, önceden bir sertifikası varsa o yerinde duruyor. Sunucunun
-  saatini düzeltin: sunucuda timedatectl çalıştırın ve “System clock
-  synchronized” satırının yes dediğini denetleyin (sudo timedatectl set-ntp
-  true zaman eşitlemeyi açar), sonra sertifikayı buradan yeniden isteyin.
-  Hiçbir şey kendiliğinden yeniden istemez."
+- `vars`: `domain`, `kept` (`previous` or `none`), `check` (reason
+  `issued_check`); for an administrator only `detail` (certbot's or the
+  check's own line) and `record` (`/var/log/letsencrypt/letsencrypt.log`,
+  where certbot keeps its record). The page draws the guidance block
+  (alpha.134 lab): the title by `kept`, the reason, who acts for the reader's
+  role (the administrator acts on an administrator's page; a customer or
+  reseller is told what they can do, or to contact the administrator) and the
+  next step; the two administrator lines are closed technical details. After a
+  request succeeded, `previous_certificate` (administrator only) says what was
+  kept of the certificate the site used before (`certcover.previousKept.*`).
 - `ssl.issueFailure.said`
   EN: "certbot reported: {detail}"
   TR: "certbot’un bildirdiği: {detail}"
+- `ssl.issueFailure.record`
+  EN: "certbot keeps its record of each run in {record} on this server."
+  TR: "certbot her çalışmasının kaydını bu sunucuda {record} dosyasında tutar."
+- `ssl.issueFailure.title.previous`
+  EN: "No new certificate for {domain}; the current certificate stays in use."
+  TR: "{domain} için yeni sertifika alınamadı; şimdiki sertifika kullanılmaya
+  devam ediyor."
+- `ssl.issueFailure.title.none`
+  EN: "No certificate for {domain}; the site is served as before."
+  TR: "{domain} için sertifika alınamadı; site eskisi gibi sunuluyor."
+- `ssl.issueFailure.validation`
+  EN: "The certificate authority could not confirm that one of the site's names
+  points to this server."
+  TR: "Sertifika kuruluşu, sitenin adlarından birinin bu sunucuyu gösterdiğini
+  doğrulayamadı."
+- `ssl.issueFailure.rate_limited`
+  EN: "The certificate authority refused for now: one of its request limits was
+  reached."
+  TR: "Sertifika kuruluşu şimdilik reddetti: istek sınırlarından birine
+  ulaşıldı."
+- `ssl.issueFailure.authority_unreachable`
+  EN: "This server could not reach the certificate authority, so nothing was
+  asked of it."
+  TR: "Bu sunucu sertifika kuruluşuna ulaşamadı; bu yüzden kuruluştan bir şey
+  istenmedi."
+- `ssl.issueFailure.account_unknown`
+  EN: "The certificate authority does not know the account this server uses with
+  it."
+  TR: "Sertifika kuruluşu, bu sunucunun kendisinde kullandığı hesabı tanımıyor."
+- `ssl.issueFailure.timeout`
+  EN: "The request to the certificate authority did not finish in time and was
+  stopped; why is not known."
+  TR: "Sertifika kuruluşuna yapılan istek zamanında bitmedi ve durduruldu;
+  nedeni bilinmiyor."
+- `ssl.issueFailure.tool`
+  EN: "The certificate was not issued, and the reason could not be established."
+  TR: "Sertifika verilmedi ve nedeni belirlenemedi."
+- `ssl.issueFailure.server_clock`
+  EN: "The authority issued a certificate, but this server's clock does not
+  accept it: it is valid from {valid_from} and this server's time was
+  {server_time}. It was not installed."
+  TR: "Kuruluş sertifikayı verdi, ancak bu sunucunun saati onu kabul etmiyor:
+  sertifika {valid_from} itibarıyla geçerli, sunucunun saati ise {server_time}
+  idi. Sertifika kurulmadı."
+- `ssl.issueFailure.untrusted`
+  EN: "The authority issued a certificate, but this server does not trust the
+  authority's certificate chain, so it was not installed."
+  TR: "Kuruluş sertifikayı verdi, ancak bu sunucu kuruluşun sertifika zincirine
+  güvenmiyor; bu yüzden sertifika kurulmadı."
+- `ssl.issueFailure.names`
+  EN: "The issued certificate does not carry exactly the names that were asked
+  for, so it was not installed."
+  TR: "Verilen sertifika tam olarak istenen adları taşımıyor; bu yüzden
+  kurulmadı."
+- `ssl.issueFailure.unusable`
+  EN: "The issued certificate did not pass CelikPanel's check before use, so it
+  was not installed."
+  TR: "Verilen sertifika, kullanılmadan önce CelikPanel’in denetiminden
+  geçemedi; bu yüzden kurulmadı."
+- `ssl.issueFailure.next.validation`
+  EN: "Point each name of the site to this server in the domain's DNS records
+  and wait until public DNS shows it. If they already point here, the server
+  administrator checks that port 80 is open from the internet."
+  TR: "Sitenin her adını alan adının DNS kayıtlarında bu sunucuya yönlendirin ve
+  genel DNS bunu gösterene dek bekleyin. Adlar zaten buraya yönleniyorsa
+  sunucu yöneticisi 80 numaralı portun internete açık olduğunu denetler."
+- `ssl.issueFailure.next.rate_limited`
+  EN: "Wait before asking again: a request before the limit resets is refused
+  the same way and counts against it."
+  TR: "Yeniden istemeden önce bekleyin: sınır sıfırlanmadan yapılan istek aynı
+  biçimde reddedilir ve sınıra sayılır."
+- `ssl.issueFailure.next.authority_unreachable`
+  EN: "Check that this server can open HTTPS connections to the internet: name
+  resolution, outbound port 443 and the system clock."
+  TR: "Bu sunucunun internete HTTPS bağlantısı açabildiğini denetleyin: ad
+  çözümleme, giden 443 numaralı port ve sistem saati."
+- `ssl.issueFailure.next.account_unknown`
+  EN: "Replace certbot's account for this authority on the server; sudo certbot
+  show_account shows the account certbot uses."
+  TR: "Sunucuda certbot’un bu kuruluştaki hesabını yenileyin; sudo certbot
+  show_account certbot’un kullandığı hesabı gösterir."
+- `ssl.issueFailure.next.record`
+  EN: "Read certbot's record on the server (technical details below) and correct
+  what it names."
+  TR: "Sunucuda certbot’un kaydını okuyun (aşağıdaki teknik ayrıntılar) ve adını
+  verdiği şeyi düzeltin."
+- `ssl.issueFailure.next.server_clock`
+  EN: "Correct this server's clock: timedatectl must say “System clock
+  synchronized: yes” (sudo timedatectl set-ntp true turns synchronisation
+  on)."
+  TR: "Bu sunucunun saatini düzeltin: timedatectl “System clock synchronized:
+  yes” demelidir (sudo timedatectl set-ntp true zaman eşitlemeyi açar)."
+- `ssl.issueFailure.next.untrusted`
+  EN: "Update this server's trusted certificate authorities (the ca-certificates
+  package)."
+  TR: "Bu sunucunun güvendiği sertifika kuruluşlarının listesini
+  (ca-certificates paketi) güncelleyin."
+- `ssl.issueFailure.next.panelLog`
+  EN: "Request it again. If it fails the same way, the Panel's log (sudo journalctl
+  -u celikpanel-panel) names what did not pass."
+  TR: "Yeniden isteyin. Aynı biçimde başarısız olursa panelin günlüğü
+  (sudo journalctl -u celikpanel-panel) neyin geçmediğini söyler."
+- `ssl.issueFailure.next.ask`
+  EN: "Contact this server's administrator; nothing on this page can fix it."
+  TR: "Bu sunucunun yöneticisine başvurun; bu sayfadaki hiçbir şey bunu
+  düzeltemez."
+- `ssl.issueFailure.next.later`
+  EN: "Request it again later. If it fails the same way, contact this server's
+  administrator."
+  TR: "Bir süre sonra yeniden isteyin. Aynı biçimde başarısız olursa bu
+  sunucunun yöneticisine başvurun."
+- `ssl.issueFailure.then`
+  EN: "Nothing asks again by itself. When it is fixed, request the certificate
+  again on this page."
+  TR: "Hiçbir şey kendiliğinden yeniden istenmez. Sorun giderilince sertifikayı
+  bu sayfadan yeniden isteyin."
+- `certcover.previousKept.in_use`
+  EN: "The previous certificate (certbot's {lineage}) is kept because {file} on
+  this server still names it, so certbot keeps renewing it. CelikPanel removes
+  it at a later check once nothing names it."
+  TR: "Önceki sertifika (certbot’taki {lineage}) korundu, çünkü bu sunucudaki
+  {file} dosyası hâlâ onu kullanıyor; certbot onu yenilemeye devam ediyor. Onu
+  kullanan kalmayınca CelikPanel sonraki bir denetimde kaldırır."
+- `certcover.previousKept.owner_changed`
+  EN: "The previous certificate (certbot's {lineage}) is kept because its
+  renewal settings were changed outside CelikPanel. If nothing uses it, remove
+  it on the server: sudo certbot delete --cert-name {lineage}"
+  TR: "Önceki sertifika (certbot’taki {lineage}) korundu, çünkü yenileme
+  ayarları CelikPanel dışında değiştirildi. Onu kullanan bir şey yoksa
+  sunucuda kaldırın: sudo certbot delete --cert-name {lineage}"
+- `certcover.previousKept.retry`
+  EN: "The previous certificate could not be removed now. Nothing needs to be
+  done: CelikPanel tries again at its next check, within 12 hours, and writes
+  the reason to its log."
+  TR: "Önceki sertifika şu an kaldırılamadı. Bir şey yapmanız gerekmiyor:
+  CelikPanel 12 saat içindeki sonraki denetiminde yeniden dener ve nedenini
+  günlüğüne yazar."
 
 **Where each is drawn.** The service-action sentences: the notice of a
 component's page and of the components list (`ServiceActionNotice`). Those

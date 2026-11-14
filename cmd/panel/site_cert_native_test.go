@@ -89,6 +89,24 @@ type nativeRenewalAgent struct {
 	calls []transport.SiteCertificateRenewalStateRequest
 	// autoRenew records SetSiteCertificateAutoRenewV1 calls.
 	autoRenew []transport.SetSiteCertificateAutoRenewRequest
+	// retire records RetireSiteCertificateLineagesV1 calls; retireOutcome is
+	// what it answers for each lineage ("" retired).
+	retire        []transport.RetireSiteCertificateLineagesRequest
+	retireOutcome string
+}
+
+func (a *nativeRenewalAgent) RetireSiteCertificateLineagesV1(req *transport.RetireSiteCertificateLineagesRequest, resp *transport.RetireSiteCertificateLineagesResponse) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.retire = append(a.retire, *req)
+	outcome := a.retireOutcome
+	if outcome == "" {
+		outcome = transport.SiteLineageRetired
+	}
+	for _, lineage := range req.Lineages {
+		resp.Results = append(resp.Results, transport.RetireSiteLineageResult{LineageName: lineage.LineageName, Outcome: outcome, Detail: "/etc/nginx/sites-enabled/own.conf"})
+	}
+	return nil
 }
 
 func (a *nativeRenewalAgent) SiteCertificateRenewalStateV1(req *transport.SiteCertificateRenewalStateRequest, resp *transport.SiteCertificateRenewalStateResponse) error {
@@ -110,10 +128,65 @@ func (a *nativeRenewalAgent) SetSiteCertificateAutoRenewV1(req *transport.SetSit
 	return nil
 }
 
+// alpha.134 lab: a replaced native lineage is removed with certbot's own
+// means once nothing serves it, never switched off and left behind; nothing
+// is asked while the active certificate is not served yet.
 func TestObserveNativeSiteCertificatesRetiresReplacedLineages(t *testing.T) {
 	panel, subscriptionID := newStartupVhostBatchFixture(t)
 	domainID := addStartupHostedDomain(t, panel, subscriptionID, "native-retire.example", "static")
 	replaced := "celikpanel-site-" + strconv.Itoa(domainID) + "-ffffffffffffffffffffffff"
+	current := "celikpanel-site-" + strconv.Itoa(domainID) + "-eeeeeeeeeeeeeeeeeeeeeeee"
+	insert := func(lineage, status, renewal string) {
+		t.Helper()
+		full, key, chain := transport.NativeSiteLineagePaths(lineage)
+		if _, err := panel.db.GetDB().Exec(`
+			INSERT INTO ssl_certificates (domain_id, type, cert_path, key_path, chain_path, lineage_name,
+				acme_provider_id, issued_at, expires_at, auto_renew, status, renewal_status)
+			VALUES (?, 'letsencrypt', ?, ?, ?, ?, 'zerossl', '2026-09-01T00:00:00Z', '2026-12-01T00:00:00Z', true, ?, ?)`,
+			domainID, full, key, chain, lineage, status, renewal); err != nil {
+			t.Fatal(err)
+		}
+	}
+	insert(replaced, "revoked", "")
+	insert(current, "active", sslPendingActivation)
+	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent()}
+	attachStartupVhostBatchAgent(t, panel, agent)
+
+	// The new certificate is not served yet: the old one may still be.
+	panel.retireSupersededNativeLineages(t.Context())
+	agent.mu.Lock()
+	waited := len(agent.retire)
+	agent.mu.Unlock()
+	if waited != 0 {
+		t.Fatalf("asked to remove a lineage while the active certificate waits for its activation")
+	}
+
+	if _, err := panel.db.GetDB().Exec(`UPDATE ssl_certificates SET renewal_status = '' WHERE lineage_name = ?`, current); err != nil {
+		t.Fatal(err)
+	}
+	panel.runDueCertRenewals()
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+	if len(agent.retire) != 1 {
+		t.Fatalf("retire calls = %+v", agent.retire)
+	}
+	call := agent.retire[0]
+	if call.DomainID != domainID || call.SubscriptionID != subscriptionID || call.ActiveLineage != current ||
+		len(call.Lineages) != 1 || call.Lineages[0].LineageName != replaced ||
+		call.Lineages[0].ACMEServer != "https://acme.zerossl.com/v2/DV90" || strings.TrimSpace(call.ExpectedBuildCommit) != strings.TrimSpace(buildCommit) {
+		t.Fatalf("retire call = %+v", call)
+	}
+	if len(agent.autoRenew) != 0 {
+		t.Fatalf("a replaced lineage was switched off instead of removed: %+v", agent.autoRenew)
+	}
+}
+
+// What was kept is said to an administrator, and to nobody else (nobody
+// else can act on it).
+func TestRetireAfterIssueTellsOnlyAnAdministratorWhatWasKept(t *testing.T) {
+	panel, subscriptionID := newStartupVhostBatchFixture(t)
+	domainID := addStartupHostedDomain(t, panel, subscriptionID, "native-kept.example", "static")
+	replaced := "celikpanel-site-" + strconv.Itoa(domainID) + "-dddddddddddddddddddddddd"
 	full, key, chain := transport.NativeSiteLineagePaths(replaced)
 	if _, err := panel.db.GetDB().Exec(`
 		INSERT INTO ssl_certificates (domain_id, type, cert_path, key_path, chain_path, lineage_name,
@@ -122,14 +195,18 @@ func TestObserveNativeSiteCertificatesRetiresReplacedLineages(t *testing.T) {
 		domainID, full, key, chain, replaced); err != nil {
 		t.Fatal(err)
 	}
-	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent()}
+	agent := &nativeRenewalAgent{serviceOperationTestAgent: newServiceOperationTestAgent(), retireOutcome: transport.SiteLineageInUse}
 	attachStartupVhostBatchAgent(t, panel, agent)
-	panel.runDueCertRenewals()
-	agent.mu.Lock()
-	defer agent.mu.Unlock()
-	if len(agent.autoRenew) != 1 || agent.autoRenew[0].LineageName != replaced || agent.autoRenew[0].AutoRenew ||
-		agent.autoRenew[0].DomainID != domainID {
-		t.Fatalf("calls = %+v", agent.autoRenew)
+	if got := panel.retireAfterIssue(t.Context(), &Caller{ID: 2, Role: roleCustomer}, domainID); got != nil {
+		t.Fatalf("customer answer = %v", got)
+	}
+	got := panel.retireAfterIssue(t.Context(), &Caller{ID: 1, Role: roleAdmin}, domainID)
+	if got["outcome"] != transport.SiteLineageInUse || got["lineage"] != replaced || got["detail"] != "/etc/nginx/sites-enabled/own.conf" {
+		t.Fatalf("administrator answer = %v", got)
+	}
+	agent.retireOutcome = transport.SiteLineageRetired
+	if got := panel.retireAfterIssue(t.Context(), &Caller{ID: 1, Role: roleAdmin}, domainID); got != nil {
+		t.Fatalf("removed: answer = %v", got)
 	}
 }
 

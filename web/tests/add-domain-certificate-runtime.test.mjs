@@ -46,6 +46,7 @@ const stub = dataModule(`
   export const useLocation = () => ({ pathname: '/domains', search: '', hash: '' });
   export const Link = ({ to, children, ...props }) => React.createElement('a', { ...props, href: to }, children);
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
+  export const useAuth = () => ({ role: globalThis.currentTest.role });
 `);
 const shared = sharedLayer(stub, { '/lib/requestIdentity': requestIdentityURL });
 // The dialogue shell listens on `document`; this stand-in keeps its contract:
@@ -56,7 +57,9 @@ const ui = dataModule(`
   export const Dialog = (props) => React.createElement('form', { 'data-busy': props.busy ? 'yes' : 'no', 'data-dialog': props.id, onSubmit: props.onSubmit },
     React.createElement('h2', null, props.title), React.createElement('p', { 'data-description': 'yes' }, props.description), props.children, React.createElement('footer', null, props.actions));
 `);
-const { AddDomainModal } = await import(shared.compile('components/AddDomainModal.tsx', { '/ui': ui }));
+// alpha.134: the failure is the shared guidance block the Security section shows.
+const noticeURL = shared.compile('components/CertificateIssueNotice.tsx', { '/ui': ui });
+const { AddDomainModal } = await import(shared.compile('components/AddDomainModal.tsx', { '/ui': ui, '/CertificateIssueNotice': noticeURL }));
 
 const CAPABILITIES = {
   web_server: 'nginx', php_versions: [], dns_server: '', dns_identity_ready: false,
@@ -67,14 +70,14 @@ let tree;
 let calls;
 let succeeded;
 
-function serve({ create, certificate, locale = 'en' }) {
+function serve({ create, certificate, locale = 'en', role = 'customer' }) {
   calls = [];
   succeeded = [];
   const t = (key, vars = {}) => {
     const text = key in catalogue[locale] ? catalogue[locale][key] : key;
     return text.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`));
   };
-  globalThis.currentTest = { toasts: [], navigated: [], i18n: { t, locale, screensReady: true, screensFailed: false } };
+  globalThis.currentTest = { toasts: [], navigated: [], role, i18n: { t, locale, screensReady: true, screensFailed: false } };
   globalThis.window = { location: { origin: 'http://panel.test', hostname: 'panel.test' } };
   globalThis.location = globalThis.window.location;
   globalThis.fetch = (url, options = {}) => {
@@ -175,7 +178,7 @@ test('while the certificate is being requested the dialog says so, holds still, 
 
 test('a verified issuance failure keeps the site, names the cause and the next step, and sends nothing again', async () => {
   serve({
-    create: created,
+    create: created, role: 'admin',
     certificate: () => refusal(502, {
       error: 'certbot failed', code: 'CERTIFICATE_ISSUE_FAILED', reason: 'validation',
       vars: { domain: 'example.com', detail: 'Timeout during connect' },
@@ -185,9 +188,13 @@ test('a verified issuance failure keeps the site, names the cause and the next s
     await mount();
     await fillAndSubmit({ ssl: true });
     assert.equal(posts(/ssl\/letsencrypt$/).length, 1);
-    // The site exists and the dialog says the certificate is what failed.
-    assert.ok(text().includes('example.com was created, but its certificate was not issued'));
-    assert.ok(text().includes('the certificate authority could not validate one of the names'));
+    // The site exists and the dialog says the certificate is what failed
+    // (the dialog's title says the site was created; the block says it once).
+    assert.ok(text().includes(t('ssl.issueFailure.title.none').replace('{domain}', 'example.com')));
+    assert.ok(!text().includes('example.com was created, but its certificate was not issued'), 'said twice');
+    assert.ok(text().includes(t('ssl.issueFailure.validation')));
+    assert.ok(text().includes(t('ssl.issueFailure.next.validation')));
+    // certbot's own line is a closed technical detail of the administrator.
     assert.ok(text().includes('Timeout during connect'));
     assert.ok(text().includes('request the certificate again in the domain’s Security section'));
     // Nothing is closed or reported as done until the person acts.
@@ -204,7 +211,7 @@ test('a verified issuance failure keeps the site, names the cause and the next s
 
 test('every issuance failure kind has its sentence, in both languages', async () => {
   for (const locale of ['en', 'tr']) {
-    for (const reason of ['authority_unreachable', 'validation', 'rate_limited', 'timeout', 'tool', 'something_new']) {
+    for (const reason of ['authority_unreachable', 'validation', 'rate_limited', 'account_unknown', 'timeout', 'tool', 'something_new']) {
       serve({
         locale, create: created,
         certificate: () => refusal(502, { error: 'x', code: 'CERTIFICATE_ISSUE_FAILED', reason, vars: { domain: 'example.com' } }),
@@ -217,6 +224,41 @@ test('every issuance failure kind has its sentence, in both languages', async ()
         assert.ok(text().includes(JSON.stringify(sentence).slice(1, -1)), `${locale}/${reason}`);
       } finally { await cleanup(); }
     }
+  }
+});
+
+// alpha.134 lab: a customer was sent to a log file on the server. A customer
+// or reseller is told what they can do or to contact the administrator; the
+// administrator acts and gets certbot's line and record as closed details.
+test('who acts is the reader: the administrator acts, everyone else is never sent to a server file', async () => {
+  const answer = () => refusal(502, {
+    error: 'x', code: 'CERTIFICATE_ISSUE_FAILED', reason: 'tool',
+    vars: { domain: 'example.com', kept: 'none', detail: 'An unexpected error occurred', record: '/var/log/letsencrypt/letsencrypt.log' },
+  });
+  for (const role of ['customer', 'reseller', 'admin']) {
+    serve({ create: created, certificate: answer, role });
+    try {
+      await mount();
+      await fillAndSubmit({ ssl: true });
+      const admin = role === 'admin';
+      assert.ok(text().includes(t(admin ? 'ssl.issueFailure.next.record' : 'ssl.issueFailure.next.later')), role);
+      // Asking again later is the reader's own step; the administrator acts if it repeats.
+      assert.ok(text().includes(t('kit.guidance.who.you')), role);
+      assert.equal(text().includes('letsencrypt.log'), admin, `${role}: the record`);
+      assert.equal(text().includes('An unexpected error occurred'), admin, `${role}: certbot's line`);
+      assert.ok(text().includes(t('domains.add.sslFailedNext')), `${role}: how it goes on, for this window`);
+    } finally { await cleanup(); }
+  }
+  // Only the administrator can act on an account the authority does not know.
+  for (const role of ['customer', 'admin']) {
+    serve({ create: created, role, certificate: () => refusal(502, { error: 'x', code: 'CERTIFICATE_ISSUE_FAILED', reason: 'account_unknown', vars: { domain: 'example.com' } }) });
+    try {
+      await mount();
+      await fillAndSubmit({ ssl: true });
+      const admin = role === 'admin';
+      assert.ok(text().includes(t(admin ? 'kit.guidance.who.you' : 'kit.guidance.who.administrator')), role);
+      assert.ok(text().includes(t(admin ? 'ssl.issueFailure.next.account_unknown' : 'ssl.issueFailure.next.ask')), role);
+    } finally { await cleanup(); }
   }
 });
 

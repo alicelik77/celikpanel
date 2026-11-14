@@ -135,6 +135,83 @@ same way: the renewal validates the name when the current certificate
 carries it and requires the renewed one to carry exactly the site's names and
 it, and `secure_mail` is carried over.
 
+## 5a. The certificate it replaced (lab check, 14 Nov 2026)
+
+Every request makes a new certbot lineage (D-040: a failed request never
+touches the lineage being served), so after *Posta adını da kapsa*, *Bu adla
+yeniden al*, an alias change or a detach, the lineage served before stayed in
+`/etc/letsencrypt`. Until this change the Panel only wrote `autorenew =
+False` into it at its 12-hour pass (D-040 point 9): its files, renewal file
+and deploy record stayed, and until that pass certbot could renew it.
+
+Now the Panel asks the Agent (`RetireSiteCertificateLineagesV1`) right after
+the new certificate is served (request, alias add and remove) and again at
+every 12-hour pass, under the domain's certificate lock. Nothing is asked
+while the active certificate waits for its activation, its mail step or the
+owner's site file (it is not served yet, so the old one may be). The Agent
+runs `certbot delete --cert-name <lineage>` and removes the lineage's deploy
+record only when:
+
+- the lineage is a native one of this domain (`celikpanel-site-<id>-…`), only
+  revoked or expired ledger rows name it, and it is not the active one;
+- its renewal file is still CelikPanel's: the same rule the certificate page
+  uses for "changed outside CelikPanel" (authenticator webroot, the domain's
+  own validation directory, the authority it was issued from or the one
+  certbot recorded for the domain's newest certificate);
+- no file under `/etc` other than certbot's own store names it (nginx,
+  Postfix, Dovecot, another site, anything wired by hand). A lineage name
+  carries 24 random hex digits, so a file that contains it names it.
+
+Each lineage ends as `retired`, `absent`, `in_use` (the file is named),
+`owner_changed`, `not_checked` (a file or directory could not be read, or more
+than 50 000 files) or `failed` (certbot's own error). Everything but `retired`
+and `absent` keeps the lineage, is logged and is asked again at the next pass.
+An administrator who made the request sees one warning naming what was kept
+and why (`certcover.previousKept.*`); a customer or reseller sees nothing,
+because there is nothing they can do. The active certificate and its renewal
+are never touched, so renewal with the panel and the Agent stopped (§5) is
+unchanged. The ledger rows stay as the record they are; no row is ever made
+active again after its operation ended.
+
+An owner who pressed the button on a lab build of alpha.134 (and every
+server with replaced native lineages from alpha.113 on, which carry
+`autorenew = False`) has two lineages; the first pass after the update
+removes the replaced one by itself when nothing names it.
+
+Limits: a configuration file outside `/etc` (an nginx `include` of a file
+under `/opt`, a program that reads the live files directly) is not read; such
+a lineage would be removed although that file names it. The Agent reads the
+files under `/etc` only to look for the name and keeps nothing.
+
+## 5b. A request that gave no new certificate (lab check, 14 Nov 2026)
+
+The answer is `CERTIFICATE_ISSUE_FAILED` with the kind as `reason`, and the
+page draws one guidance block: what happened (the current certificate stays
+in use, or the site is served as before), why, who acts for the reader's role,
+the next step and how it goes on. Kinds read from certbot's own output:
+the authority refused the proof of a name (`validation`), one of its limits
+(`rate_limited`), it could not be reached (`authority_unreachable`), it does
+not know this server's account (`account_unknown`, RFC 8555
+`accountDoesNotExist`), certbot ran out of time (`timeout`), otherwise "not
+issued, the reason could not be established" (`tool`). An issued certificate
+that the server's clock does not accept is `server_clock`; one that does not
+pass the check before use is `issued_check` with `vars.check`: `untrusted`
+(the chain is not trusted by this server: the lab's case, formerly a bare
+500), `names` (other names than were asked for) or `unusable`. In every case
+the new certificate is removed and the previous one keeps serving.
+
+A customer or reseller is told what they can do (point the names here) or to
+contact the server's administrator; they are never sent to a file on the
+server. An administrator gets certbot's line and where certbot keeps its
+record (`/var/log/letsencrypt/letsencrypt.log`; the earlier sentence named
+`/var/log/celikpanel/certbot/`, which a native request does not use) as
+closed technical details. Nothing asks the authority again by itself.
+
+Still a bare 500 on this route: database errors, a lost pending-state write,
+and an Agent refusal that is not a certbot run (`writeAgentError` after
+`Agent.IssueLetsEncryptCertificate` without a failure kind: an invalid
+domain, the challenge directory, EAB characters, a lineage identity error).
+
 ## 6. Out of scope
 
 - **Names added later.** A name that starts to point here after the request

@@ -661,6 +661,14 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			name: "RetireSiteCertificateLineagesV1",
+			run: func(expected string) string {
+				var response transport.RetireSiteCertificateLineagesResponse
+				_ = agent.RetireSiteCertificateLineagesV1(&transport.RetireSiteCertificateLineagesRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "RestartPanelSoon",
 			run: func(expected string) string {
 				var response bool

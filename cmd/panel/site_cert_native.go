@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"strings"
@@ -124,46 +125,143 @@ func (p *Panel) observeNativeSiteCertificates(ctx context.Context) {
 	p.retireSupersededNativeLineages(ctx)
 }
 
-// retireSupersededNativeLineages switches certbot's renewal off for native
-// lineages that only replaced (revoked or expired) ledger rows name. Their
-// rows stay as rollback records, so the lineage stays too, but the
-// operating system must not keep renewing a certificate nothing serves.
-// Idempotent: an already-off or already-removed lineage changes nothing.
+// replacedNativeLineagesQuery selects the native lineages that only replaced
+// (revoked or expired) ledger rows name.
+const replacedNativeLineagesQuery = `
+	SELECT DISTINCT old.domain_id, old.lineage_name, COALESCE(old.acme_provider_id, '')
+	FROM ssl_certificates old
+	WHERE old.status <> 'active' AND old.type = 'letsencrypt' AND old.lineage_name LIKE ?
+	  AND NOT EXISTS (
+		SELECT 1 FROM ssl_certificates cur
+		WHERE cur.status = 'active' AND cur.lineage_name = old.lineage_name)`
+
+// retireSupersededNativeLineages is the periodic pass of
+// retireReplacedNativeLineages: every domain with a replaced native lineage,
+// each under its own certificate lock. What could not be removed is asked
+// again at the next pass (alpha.134).
 func (p *Panel) retireSupersededNativeLineages(ctx context.Context) {
-	rows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT DISTINCT old.domain_id, old.lineage_name
-		FROM ssl_certificates old
-		WHERE old.status <> 'active' AND old.type = 'letsencrypt' AND old.lineage_name LIKE ?
-		  AND NOT EXISTS (
-			SELECT 1 FROM ssl_certificates cur
-			WHERE cur.status = 'active' AND cur.lineage_name = old.lineage_name)`,
-		transport.NativeSiteLineagePrefix+"%")
+	rows, err := p.db.GetDB().QueryContext(ctx, replacedNativeLineagesQuery, transport.NativeSiteLineagePrefix+"%")
 	if err != nil {
 		log.Printf("cert renewal: read replaced OS-renewed certificates: %v", err)
 		return
 	}
-	type retired struct {
-		domainID int
-		lineage  string
-	}
-	var list []retired
+	var domains []int
+	seen := map[int]bool{}
 	for rows.Next() {
-		var item retired
-		if err := rows.Scan(&item.domainID, &item.lineage); err != nil {
+		var domainID int
+		var lineage, provider string
+		if err := rows.Scan(&domainID, &lineage, &provider); err != nil {
 			rows.Close()
 			log.Printf("cert renewal: read replaced OS-renewed certificates: %v", err)
 			return
 		}
-		if transport.NativeSiteLineageBelongsTo(item.lineage, item.domainID) {
-			list = append(list, item)
+		if !seen[domainID] && transport.NativeSiteLineageBelongsTo(lineage, domainID) {
+			seen[domainID] = true
+			domains = append(domains, domainID)
 		}
 	}
 	rows.Close()
-	for _, item := range list {
-		if err := p.setNativeSiteAutoRenew(ctx, item.domainID, item.lineage, false); err != nil {
-			log.Printf("cert renewal: stop certbot renewing the replaced lineage %s: %v", item.lineage, err)
+	for _, domainID := range domains {
+		unlock := lockDomainSSLOperation(domainID)
+		_, _ = p.retireReplacedNativeLineages(ctx, domainID)
+		unlock()
+	}
+}
+
+// retireReplacedNativeLineages asks the Agent to remove the native lineages
+// of one domain that a newer certificate replaced (or a detach left), with
+// certbot's own `certbot delete`, once nothing names them
+// (RetireSiteCertificateLineagesV1 checks the files on the server). The
+// caller holds the domain's certificate lock. Nothing is asked while the
+// active certificate waits for its activation, its mail step or the owner's
+// file: until it is served the previous one may still be. Their ledger rows
+// stay as the record they are; no row is ever made active again.
+//
+// It answers each lineage's outcome (nil: nothing to do). Every outcome other
+// than retired or absent is logged and asked again at the next pass.
+func (p *Panel) retireReplacedNativeLineages(ctx context.Context, domainID int) ([]transport.RetireSiteLineageResult, error) {
+	pool := p.db.GetDB()
+	var subscriptionID int
+	if err := pool.QueryRowContext(ctx, `SELECT subscription_id FROM domains WHERE id = ?`, domainID).Scan(&subscriptionID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var activeLineage, activePath, activeStatus string
+	var activeCount int
+	if err := pool.QueryRowContext(ctx, `
+		SELECT COUNT(*), COALESCE(MAX(lineage_name), ''), COALESCE(MAX(cert_path), ''), COALESCE(MAX(renewal_status), '')
+		FROM ssl_certificates WHERE domain_id = ? AND status = 'active'`, domainID).
+		Scan(&activeCount, &activeLineage, &activePath, &activeStatus); err != nil {
+		return nil, err
+	}
+	if activeCount > 1 || renewalStatusIsOutbox(activeStatus) {
+		return nil, nil
+	}
+	request := transport.RetireSiteCertificateLineagesRequest{
+		ExpectedBuildCommit: strings.TrimSpace(buildCommit),
+		DomainID:            domainID,
+		SubscriptionID:      subscriptionID,
+	}
+	if lineage, ok := nativeSiteLineageOfRow(activePath, activeLineage); ok {
+		request.ActiveLineage = lineage
+	}
+	rows, err := pool.QueryContext(ctx, replacedNativeLineagesQuery+` AND old.domain_id = ?`,
+		transport.NativeSiteLineagePrefix+"%", domainID)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	for rows.Next() {
+		var id int
+		var lineage, providerID string
+		if err := rows.Scan(&id, &lineage, &providerID); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if seen[lineage] || lineage == request.ActiveLineage || !transport.NativeSiteLineageBelongsTo(lineage, domainID) {
+			continue
+		}
+		seen[lineage] = true
+		server := ""
+		if provider := core.ACMEProviderByID(strings.TrimSpace(providerID)); provider != nil {
+			server = provider.Directory
+		}
+		request.Lineages = append(request.Lineages, transport.RetireSiteLineage{LineageName: lineage, ACMEServer: server})
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if len(request.Lineages) == 0 {
+		return nil, nil
+	}
+	if len(request.Lineages) > 100 {
+		request.Lineages = request.Lineages[:100]
+	}
+	var resp transport.RetireSiteCertificateLineagesResponse
+	if err := p.callAgentContext(ctx, "Agent.RetireSiteCertificateLineagesV1", &request, &resp); err != nil {
+		log.Printf("cert renewal domain %d: replaced certificate lineages not removed now (the Agent was not asked or did not answer: %v); asked again at the next pass", domainID, err)
+		return nil, err
+	}
+	if resp.Error != "" {
+		log.Printf("cert renewal domain %d: replaced certificate lineages not removed now (%s); asked again at the next pass", domainID, resp.Error)
+		return nil, &nativeSiteAgentRefusal{detail: resp.Error}
+	}
+	for _, result := range resp.Results {
+		switch result.Outcome {
+		case transport.SiteLineageAbsent:
+		case transport.SiteLineageRetired:
+			note := ""
+			if result.Detail != "" {
+				note = " (" + result.Detail + ")"
+			}
+			log.Printf("cert renewal domain %d: removed the replaced certificate lineage %s with certbot; nothing renews it any more%s", domainID, result.LineageName, note)
+		default:
+			log.Printf("cert renewal domain %d: kept the replaced certificate lineage %s (%s): %s; asked again at the next pass", domainID, result.LineageName, result.Outcome, result.Detail)
 		}
 	}
+	return resp.Results, nil
 }
 
 // nativeObservation is what one reading changes in the ledger.
@@ -259,6 +357,29 @@ func (p *Panel) observeNativeSiteCertificate(ctx context.Context, row nativeSite
 			log.Printf("cert renewal %s: mail TLS after the operating system's renewal failed (%v); Retry activation publishes it", row.Domain, err)
 		}
 	}
+}
+
+// retireAfterIssue removes the lineages the certificate just served replaced,
+// right after it is served (the periodic pass repeats what is left). The
+// answer names what was kept, for an administrator only: nobody else can act
+// on it. nil when everything went, nothing was there, or the reader is not
+// an administrator.
+func (p *Panel) retireAfterIssue(ctx context.Context, caller *Caller, domainID int) map[string]string {
+	results, err := p.retireReplacedNativeLineages(ctx, domainID)
+	if caller == nil || caller.Role != roleAdmin {
+		return nil
+	}
+	if err != nil {
+		return map[string]string{"outcome": transport.SiteLineageNotChecked}
+	}
+	for _, result := range results {
+		switch result.Outcome {
+		case transport.SiteLineageRetired, transport.SiteLineageAbsent:
+			continue
+		}
+		return map[string]string{"outcome": result.Outcome, "lineage": result.LineageName, "detail": result.Detail}
+	}
+	return nil
 }
 
 // setNativeSiteAutoRenew writes the page's "renew automatically" into

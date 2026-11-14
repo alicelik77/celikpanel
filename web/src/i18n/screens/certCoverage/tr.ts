@@ -61,4 +61,8 @@ export const trCertCoverageScreens: Record<CertCoverageScreenKey, string> = {
     'certcover.mailHost.protected.domain_certificate': 'Bu adı güvenilir bir sertifika koruyor (bu alan adının sertifikası, {date} tarihine kadar).',
     'certcover.mailHost.fix': 'Güvenlik bölümünü aç',
     'opstep.mailCert.site': 'Posta programlarının otomatik ayar yanıtları yeniden yazılıyor',
+    // After a request: what was kept of the certificate the site used before (administrator only).
+    'certcover.previousKept.in_use': "Önceki sertifika (certbot’taki {lineage}) korundu, çünkü bu sunucudaki {file} dosyası hâlâ onu kullanıyor; certbot onu yenilemeye devam ediyor. Onu kullanan kalmayınca CelikPanel sonraki bir denetimde kaldırır.",
+    'certcover.previousKept.owner_changed': "Önceki sertifika (certbot’taki {lineage}) korundu, çünkü yenileme ayarları CelikPanel dışında değiştirildi. Onu kullanan bir şey yoksa sunucuda kaldırın: sudo certbot delete --cert-name {lineage}",
+    'certcover.previousKept.retry': "Önceki sertifika şu an kaldırılamadı. Bir şey yapmanız gerekmiyor: CelikPanel 12 saat içindeki sonraki denetiminde yeniden dener ve nedenini günlüğüne yazar.",
 };
