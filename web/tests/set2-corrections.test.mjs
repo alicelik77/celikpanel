@@ -45,8 +45,15 @@ const importKeys = [
   'import.part.files', 'import.part.mail', 'import.part.mailbox', 'import.part.forwarders', 'import.part.forwarder', 'import.part.dns',
   'import.part.databases', 'import.part.database', 'import.part.finalize', 'import.detail.noPassword',
 ];
-const certificateKinds = ['authority_unreachable', 'validation', 'rate_limited', 'timeout', 'tool', 'server_clock'];
-const certificateKeys = [...certificateKinds.map((kind) => `ssl.issueFailure.${kind}`), 'ssl.issueFailure.said'];
+// alpha.134 lab: the notice is the one guidance block - what happened, why,
+// who acts for the reader's role, the next step, how it goes on.
+const certificateWhys = ['validation', 'rate_limited', 'authority_unreachable', 'account_unknown', 'timeout', 'tool', 'server_clock', 'untrusted', 'names', 'unusable'];
+const certificateNexts = ['validation', 'rate_limited', 'authority_unreachable', 'account_unknown', 'record', 'server_clock', 'untrusted', 'panelLog', 'ask', 'later'];
+const certificateKeys = [
+  ...certificateWhys.map((kind) => `ssl.issueFailure.${kind}`), ...certificateNexts.map((kind) => `ssl.issueFailure.next.${kind}`),
+  'ssl.issueFailure.title.previous', 'ssl.issueFailure.title.none', 'ssl.issueFailure.then', 'ssl.issueFailure.said', 'ssl.issueFailure.checkSaid', 'ssl.issueFailure.record',
+  'certcover.previousKept.in_use', 'certcover.previousKept.owner_changed', 'certcover.previousKept.retry', 'certcover.previousKept.held_by_snapshot',
+];
 const reloadKeys = ['reload', 'reload_reread', 'reload_not_reread', 'not_running'].map((reason) => `err.SERVICE_ACTION_FAILED.${reason}`);
 
 test('the import page never holds a password hash: it reads and shows one fact per mailbox', () => {
@@ -129,22 +136,36 @@ test('a certificate request certbot did not fulfil stays on the page with its ki
   const notice = read('../src/components/CertificateIssueNotice.tsx');
   const settings = read('../src/components/DomainSSLSettings.tsx');
   assert.match(notice, /return error\.code === 'CERTIFICATE_ISSUE_FAILED';/);
-  assert.match(notice, /role="alert"/);
-  for (const kind of certificateKinds) assert.match(notice, new RegExp(`${kind}: 'ssl\\.issueFailure\\.${kind}'`));
-  // A kind this page has no words for gets the general sentence, never a key.
-  // The answer's own words (alpha.113: the server clock's times) fill it.
-  assert.match(notice, /t\(sentences\[failure\.reason \?\? ''\] \?\? 'ssl\.issueFailure\.tool', \{ \.\.\.failure\.vars, domain: failure\.vars\?\.domain \?\? '' \}\)/);
+  assert.match(notice, /<Guidance\s+tone="failed"/);
+  for (const kind of certificateWhys) assert.match(notice, new RegExp(`'ssl\\.issueFailure\\.${kind}'`));
+  for (const kind of certificateNexts) assert.match(notice, new RegExp(`'ssl\\.issueFailure\\.next\\.${kind}'`));
+  // A kind this page has no words for is said as the general one, never a key.
+  assert.match(notice, /return kinds\[kind\] \? kind : reason === 'issued_check' \? 'issued_check\.unusable' : 'tool';/);
+  // Who acts is the reader's role; certbot's line and record are an administrator's only.
+  assert.match(notice, /const who: Who = plan\.who !== 'administrator' \? plan\.who : admin \|\| next === 'ssl\.issueFailure\.next\.later' \? 'you' : 'administrator';/);
+  assert.match(notice, /const detail = admin \? failure\.vars\?\.detail : undefined;/);
+  assert.match(notice, /const record = admin \? failure\.vars\?\.record : undefined;/);
+  assert.match(notice, /const run = admin \? commands\[kind\] \?\? \[\] : \[\];/);
+  assert.match(notice, /\{run\.map\(\(command\) => <CopyCommand key=\{command\} command=\{command\} \/>\)\}/);
   assert.match(settings, /if \(isCertificateIssueFailure\(apiError\)\) \{\s*setIssueFailure\(apiError\);\s*return;/);
   assert.match(settings, /<CertificateIssueNotice failure=\{issueFailure\} onClose=\{\(\) => setIssueFailure\(null\)\}/);
   // The next request clears the notice of the one before.
   assert.match(settings, /setIssuing\(true\);\s*setIssueFailure\(null\);/);
   for (const language of ['en', 'tr']) {
-    for (const kind of certificateKinds) {
-      const sentence = valueOf(screens[language], `ssl.issueFailure.${kind}`);
-      assert.ok(sentence.includes('{domain}'), `${language} ${kind} does not name the domain`);
+    for (const key of certificateKeys) {
+      const sentence = valueOf(screens[language], key);
       assert.doesNotMatch(sentence, /internal server error|CERTIFICATE_ISSUE/);
-      assert.match(sentence, /othing asks again automatically|kendiliğinden yeniden istemez/, `${language} ${kind} does not say that nothing asks again`);
+      // Nobody is sent to a file on the server by a sentence (alpha.134 lab).
+      if (key !== 'ssl.issueFailure.record') assert.doesNotMatch(sentence, /\/var\/log|letsencrypt\.log/, `${language} ${key} names a server file`);
+      // No command and no server path in the open block: those are the
+      // closed technical details' (review of the alpha.134 lab fixes).
+      if (key.startsWith('ssl.issueFailure.') && !['ssl.issueFailure.record', 'ssl.issueFailure.said', 'ssl.issueFailure.checkSaid'].includes(key)) {
+        assert.doesNotMatch(sentence, /sudo |journalctl|timedatectl|show_account|\/etc\/|\/var\//, `${language} ${key} carries a command or a path`);
+      }
     }
+    for (const key of ['ssl.issueFailure.title.previous', 'ssl.issueFailure.title.none']) assert.ok(valueOf(screens[language], key).includes('{domain}'));
+    assert.match(valueOf(screens[language], 'ssl.issueFailure.then'), /othing asks again by itself|kendiliğinden yeniden istenmez/);
     assert.ok(valueOf(screens[language], 'ssl.issueFailure.said').includes('{detail}'));
+    assert.ok(valueOf(screens[language], 'ssl.issueFailure.record').includes('{record}'));
   }
 });

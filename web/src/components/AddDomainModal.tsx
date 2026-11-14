@@ -8,11 +8,11 @@ import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
 import { isSiteWebServerRefused, siteWebServerRefusedIn } from '../lib/siteWebServerRefused';
 import { gateOn, invalidate } from '../lib/remote';
 import {
-    ISSUE_FAILURE_KEYS,
     isIssueFailure,
     requestSiteCertificate,
     type SiteCertificateOutcome,
 } from '../lib/siteCertificateRequest';
+import { CertificateIssueNotice } from './CertificateIssueNotice';
 import {
     dnsBlocker,
     dnsEngineBlockerText,
@@ -156,25 +156,20 @@ function readCreatedDomainId(value: unknown): number | null {
 function CertificateOutcome({ name, outcome }: { name: string; outcome: SiteCertificateOutcome }) {
     const { t } = useI18n();
     if (outcome.kind === 'failed') {
-        const reason = outcome.error.reason ?? '';
         return (
             <div className="space-y-3" data-certificate-outcome={isIssueFailure(outcome.error) ? 'failed' : 'refused'}>
-                <p className="max-w-[75ch] text-sm leading-relaxed text-fg">{t('domains.add.sslFailed', { name })}</p>
                 {isIssueFailure(outcome.error) ? (
-                    <div role="alert" className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm leading-relaxed text-fg">
-                        <p className="max-w-[75ch] break-words">
-                            {t(ISSUE_FAILURE_KEYS[reason as keyof typeof ISSUE_FAILURE_KEYS] ?? ISSUE_FAILURE_KEYS.tool, { ...outcome.error.vars, domain: outcome.error.vars?.domain ?? name })}
-                        </p>
-                        {outcome.error.vars?.detail && (
-                            <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">
-                                {t('ssl.issueFailure.said', { detail: outcome.error.vars.detail })}
-                            </p>
-                        )}
-                    </div>
+                    // The same block the Security section shows (its title says
+                    // the site has no certificate); how it goes on is said for
+                    // this window (the request is made there).
+                    <CertificateIssueNotice failure={outcome.error} domain={name} then={t('domains.add.sslFailedNext')} />
                 ) : (
-                    <ErrorBanner error={outcome.error} />
+                    <>
+                        <p className="max-w-[75ch] text-sm leading-relaxed text-fg">{t('domains.add.sslFailed', { name })}</p>
+                        <ErrorBanner error={outcome.error} />
+                        <p className="max-w-[75ch] text-sm leading-relaxed text-fg-muted">{t('domains.add.sslFailedNext')}</p>
+                    </>
                 )}
-                <p className="max-w-[75ch] text-sm leading-relaxed text-fg-muted">{t('domains.add.sslFailedNext')}</p>
             </div>
         );
     }

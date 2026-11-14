@@ -22,7 +22,10 @@ import (
 //     domains", "Some challenges have failed", the ACME types `unauthorized`,
 //     `dns`, `connection`, `tls`, `caa` that certbot prints as "Type: ...");
 //   - an authority that could not be reached at all (the Python connection
-//     and TLS errors certbot prints before any order exists).
+//     and TLS errors certbot prints before any order exists);
+//   - an authority that does not know the server's ACME account
+//     (`urn:ietf:params:acme:error:accountDoesNotExist`; alpha.134 lab: the
+//     authority had been reset and certbot kept its old account).
 //
 // Anything else is "certbot exited with an error" and nothing more is claimed.
 // Beside the kind goes one bounded line of certbot's own words.
@@ -50,6 +53,8 @@ func certbotFailureKind(output string) string {
 	case contains("urn:ietf:params:acme:error:ratelimited", "too many certificates", "too many failed authorizations",
 		"too many new orders", "too many registrations", "rate limit"):
 		return transport.CertificateFailureRateLimited
+	case contains("urn:ietf:params:acme:error:accountdoesnotexist"):
+		return transport.CertificateFailureAccountUnknown
 	case contains("certbot failed to authenticate some domains", "some challenges have failed", "challenge failed for domain",
 		"urn:ietf:params:acme:error:unauthorized", "urn:ietf:params:acme:error:dns", "urn:ietf:params:acme:error:connection",
 		"urn:ietf:params:acme:error:tls", "urn:ietf:params:acme:error:caa",

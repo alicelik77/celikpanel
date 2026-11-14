@@ -879,11 +879,16 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		p.cleanupUncommittedCertificate(cleanupCtx, cleanupTarget)
 	}()
 	reportOperationStep(ctx, "verify")
+	// alpha.134 lab: an issued certificate that does not pass the check before
+	// use is a refusal with its reason (the previous certificate keeps
+	// serving; the deferred cleanup removes the new one), never a bare 500.
+	issuedCheckFailed := func(check, detail string) {
+		writeIssuedCertificateCheckFailure(w, currentCaller(r), domain.Name, activeCount > 0, check, detail)
+	}
 	if strings.TrimSpace(agentResp.CertPath) == "" ||
 		strings.TrimSpace(agentResp.KeyPath) == "" ||
 		strings.TrimSpace(agentResp.ChainPath) == "" {
-		writeAgentError(w, nil,
-			"the ACME agent returned incomplete immutable certificate paths")
+		issuedCheckFailed(issuedCheckUnusable, "the ACME agent returned incomplete immutable certificate paths")
 		return
 	}
 	if err := validateIssuedCertificateLineage(
@@ -892,7 +897,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		activeCount > 0,
 		agentResp.LineageName,
 	); err != nil {
-		writeAgentError(w, nil, err.Error())
+		issuedCheckFailed(issuedCheckUnusable, err.Error())
 		return
 	}
 	info, err := p.inspectIssuedCertificate(
@@ -903,7 +908,13 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		agentResp.ChainPath,
 	)
 	if err != nil {
-		writeAgentError(w, err, "inspect issued certificate snapshot")
+		// The Agent could not be reached or refused for a reason of its own:
+		// those keep their own answers.
+		if _, stable := classifyStableAgentError(err); stable || agentUnreachableAlone(err) || hostStillStartingError(err) {
+			writeAgentError(w, err, "inspect issued certificate snapshot")
+			return
+		}
+		issuedCheckFailed(issuedCheckUnusable, "inspect issued certificate: "+err.Error())
 		return
 	}
 	if issuedCertificateClockProblem(info) {
@@ -919,7 +930,12 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		if detail == "" {
 			detail = "issued certificate trust validation failed"
 		}
-		writeAgentError(w, nil, detail)
+		check := issuedCheckUnusable
+		if info.Valid && info.TrustChecked && !info.Trusted {
+			// The lab's case: "x509: certificate signed by unknown authority".
+			check = issuedCheckUntrusted
+		}
+		issuedCheckFailed(check, detail)
 		return
 	}
 	requestedNames := append([]string(nil), managedNames...)
@@ -928,7 +944,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	}
 	requestedNames = append(requestedNames, autoconfigNames...)
 	if err := exactCertificateDNSNames(info.DNSNames, requestedNames); err != nil {
-		writeAgentError(w, nil, err.Error())
+		issuedCheckFailed(issuedCheckNames, err.Error())
 		return
 	}
 	expiresAt := info.ExpiresAt
@@ -936,7 +952,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		expiresAt = agentResp.ExpiresAt
 	}
 	if expiresAt.IsZero() {
-		writeAgentError(w, nil, "issued certificate has no expiry")
+		issuedCheckFailed(issuedCheckUnusable, "issued certificate has no expiry")
 		return
 	}
 	subject := strings.TrimSpace(info.Subject)
@@ -1098,6 +1114,11 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	answer := map[string]any{
 		"status":     "success",
 		"expires_at": expiresAt,
+	}
+	// alpha.134 lab: the lineage the site used before is removed now that the
+	// new one is served, so certbot does not keep renewing it.
+	if previous := p.retireAfterIssue(ctx, currentCaller(r), domainID); previous != nil {
+		answer["previous_certificate"] = previous
 	}
 	if httpsRedirect {
 		answer["https_redirect"] = true

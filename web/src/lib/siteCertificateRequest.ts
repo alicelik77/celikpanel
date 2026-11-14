@@ -83,13 +83,3 @@ export async function requestSiteCertificate(domainId: number): Promise<SiteCert
 
 /** certbot ran and did not fulfil the request (cmd/panel/certificate_issue_failure.go). */
 export const isIssueFailure = (error: ApiError): boolean => error.code === 'CERTIFICATE_ISSUE_FAILED';
-
-/** The sentence for each kind of failure; the same sentences the SSL page shows. */
-export const ISSUE_FAILURE_KEYS = {
-    authority_unreachable: 'ssl.issueFailure.authority_unreachable',
-    validation: 'ssl.issueFailure.validation',
-    rate_limited: 'ssl.issueFailure.rate_limited',
-    timeout: 'ssl.issueFailure.timeout',
-    tool: 'ssl.issueFailure.tool',
-    server_clock: 'ssl.issueFailure.server_clock',
-} as const;

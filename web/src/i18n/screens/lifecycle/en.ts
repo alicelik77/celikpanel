@@ -212,6 +212,8 @@ export const enLifecycleScreens = {
     'life.audit.key.from': 'from',
     'life.audit.key.to': 'to',
     'life.audit.key.site': 'site',
+    'life.audit.key.lineage': 'certbot lineage',
+    'life.audit.key.file': 'file',
     'life.audit.key.support': 'security support',
     'life.audit.key.support_until': 'fixes until',
     'life.audit.key.confirmed_unsupported': 'confirmed a version without security fixes',

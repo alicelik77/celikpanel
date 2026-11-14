@@ -534,12 +534,14 @@ export function DomainSSLSettings({
                     let notRunAddress = '';
                     let mailNote = '';
                     let mailServed = false;
+                    let previousKept = '';
                     try {
                         const issued = (await res.json()) as IssuedAnswer | null;
                         issuedStatus = String(issued?.status ?? '');
                         notRunAddress = validationNotRunAddress(issued);
                         mailNote = typeof issued?.mail_note === 'string' ? issued.mail_note : '';
                         mailServed = issued?.mail_served === true;
+                        previousKept = previousKeptSentence(issued, t);
                     } catch {
                         issuedStatus = '';
                     }
@@ -550,6 +552,7 @@ export function DomainSSLSettings({
                     if (mailNote === 'mail_not_switched' || mailNote === 'site_file_kept') {
                         showToast('warning', t(`certcover.note.${mailNote}` as TranslationKey, { mailName }));
                     }
+                    if (previousKept) showToast('warning', previousKept);
                     // The request went ahead without the probe (set11 cell A6).
                     if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
                     setShowReissue(false);
@@ -1738,7 +1741,22 @@ export function certificateCoversName(dnsNames: string[], hostname: string): boo
 // A certificate request that went ahead although the validation probe could
 // not be sent from this server: the site listens on an address that is not
 // this server's (set11 cell A6, 2026-10-11). The address, or ''.
-type IssuedAnswer = { status?: unknown; validation_probe?: unknown; validation_unknown_reason?: unknown; validation_address?: unknown; mail_note?: unknown; mail_served?: unknown };
+type IssuedAnswer = { status?: unknown; validation_probe?: unknown; validation_unknown_reason?: unknown; validation_address?: unknown; mail_note?: unknown; mail_served?: unknown; previous_certificate?: unknown };
+
+// alpha.134: the certificate the site used before is removed with certbot once
+// the new one is served. What was kept is in the answer for an administrator
+// only (the server sends it to nobody else), said once as a warning.
+// Önceki sertifikadan korunanı yalnız yönetici görür.
+function previousKeptSentence(answer: IssuedAnswer | null | undefined, t: (key: TranslationKey, vars?: Record<string, string>) => string): string {
+    const kept = answer?.previous_certificate;
+    if (!kept || typeof kept !== 'object') return '';
+    const { outcome, lineage, detail } = kept as Record<string, unknown>;
+    const text = (value: unknown) => (typeof value === 'string' ? value : '');
+    if (outcome === 'in_use' && text(detail)) return t('certcover.previousKept.in_use', { lineage: text(lineage), file: text(detail) });
+    if (outcome === 'owner_changed' && text(lineage)) return t('certcover.previousKept.owner_changed', { lineage: text(lineage) });
+    if (outcome === 'held_by_snapshot') return t('certcover.previousKept.held_by_snapshot');
+    return t('certcover.previousKept.retry');
+}
 
 function validationNotRunAddress(answer: IssuedAnswer | null | undefined): string {
     if (!answer || answer.validation_probe !== 'not_run' || answer.validation_unknown_reason !== 'address_not_local') return '';

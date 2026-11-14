@@ -199,6 +199,8 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     'life.audit.key.from': 'önceki',
     'life.audit.key.to': 'yeni',
     'life.audit.key.site': 'site',
+    'life.audit.key.lineage': 'certbot sertifika adı',
+    'life.audit.key.file': 'dosya',
     'life.audit.key.support': 'güvenlik desteği',
     'life.audit.key.support_until': 'düzeltmelerin sonu',
     'life.audit.key.confirmed_unsupported': 'güvenlik düzeltmesi almayan sürümü onayladı',
