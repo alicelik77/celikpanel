@@ -272,16 +272,40 @@ type domainDeletionKept struct {
 	Backups *holdingKeptView `json:"backups,omitempty"`
 }
 
-// domainDeletionDeletedDatabase is one deleted database. The user lists are
-// the database deletion's own answer (databaseDeletionAnswer) for a database
-// this press deleted; one an earlier press deleted carries none.
+// domainDeletionDeletedDatabase is one deleted database. Its facts are the
+// database deletion's own answer for the caller (databaseDeletionAnswerFor)
+// for a database this press deleted: the users' fates and, for an
+// administrator only, whose rights naming it went, which were kept and
+// whether some may remain (alpha.134's rights removal). One an earlier
+// press deleted carries none.
 type domainDeletionDeletedDatabase struct {
 	domainDeletionPlanDatabase
-	UsersRemoved       []string `json:"users_removed,omitempty"`
-	UsersKept          []string `json:"users_kept,omitempty"`
-	UsersKeptOnEngine  []string `json:"users_kept_on_engine,omitempty"`
-	UsersKeptUnchecked []string `json:"users_kept_unchecked,omitempty"`
-	UsersKeptOnServer  []string `json:"users_kept_on_server,omitempty"`
+	UsersRemoved       []string                     `json:"users_removed,omitempty"`
+	UsersKept          []string                     `json:"users_kept,omitempty"`
+	UsersKeptOnEngine  []string                     `json:"users_kept_on_engine,omitempty"`
+	UsersKeptUnchecked []string                     `json:"users_kept_unchecked,omitempty"`
+	UsersKeptOnServer  []string                     `json:"users_kept_on_server,omitempty"`
+	RightsRemovedCount *int                         `json:"rights_removed_count,omitempty"`
+	RightsRemovedFrom  []string                     `json:"rights_removed_from,omitempty"`
+	RightsMayRemain    bool                         `json:"rights_may_remain,omitempty"`
+	RightsKept         []transport.DroppedRightKept `json:"rights_kept,omitempty"`
+}
+
+// deletedDatabaseEntry is the entry of a database this press deleted: the
+// plan's database with the database deletion's answer for this caller, read
+// field by field from databaseDeletionAnswerFor so the domain deletion says
+// exactly what the Databases page says, and to the same readers.
+func deletedDatabaseEntry(r *http.Request, item domainDeletionPlanDatabase, deleted *databaseDeletion) domainDeletionDeletedDatabase {
+	entry := domainDeletionDeletedDatabase{domainDeletionPlanDatabase: item}
+	raw, err := json.Marshal(databaseDeletionAnswerFor(r, "deleted", deleted))
+	if err == nil {
+		err = json.Unmarshal(raw, &entry)
+	}
+	if err != nil {
+		log.Printf("domain deletion: the answer of database %s could not be carried: %v", item.Name, err)
+	}
+	entry.domainDeletionPlanDatabase = item
+	return entry
 }
 
 type domainDeletionDatabaseFailure struct {
@@ -410,12 +434,7 @@ func (p *Panel) runDomainDeletionDatabaseStage(ctx context.Context, r *http.Requ
 			return p.domainDeletionDatabaseFailed(ctx, r, domainID, domain, item, err, kept)
 		}
 		p.auditDatabaseDeletion(r, deleted, "deleted")
-		kept.Deleted = append(kept.Deleted, domainDeletionDeletedDatabase{
-			domainDeletionPlanDatabase: item,
-			UsersRemoved:               deleted.UsersRemoved, UsersKept: deleted.UsersKept,
-			UsersKeptOnEngine: deleted.UsersKeptOnEngine, UsersKeptUnchecked: deleted.UsersKeptUnchecked,
-			UsersKeptOnServer: deleted.UsersKeptOnServer,
-		})
+		kept.Deleted = append(kept.Deleted, deletedDatabaseEntry(r, item, deleted))
 	}
 	return nil
 }

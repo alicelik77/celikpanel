@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -515,5 +516,32 @@ func TestDomainDeletionSiteFailureIsNamedAndTheAnswerSaysWhatStays(t *testing.T)
 	}
 	if done.Status != "deleted" || done.Kept.Mail == nil || done.Kept.Backups == nil || done.Kept.Backups.Bytes != 4096 {
 		t.Fatalf("final answer = %s", second.Body.String())
+	}
+}
+
+// alpha.135 integration: a database a domain deletion deleted is described
+// by the database deletion's answer for the caller (databaseDeletionAnswerFor):
+// an administrator is told whose rights naming it went, which were kept and
+// whether some may remain; a customer gets the users' fates only.
+func TestDomainDeletionDeletedDatabaseCarriesTheRightsAnswerForTheCaller(t *testing.T) {
+	deleted := &databaseDeletion{Name: "shop_db", UsersRemoved: []string{"shop_user"},
+		RightsRemovedFrom: []string{"shop_user@localhost", "hand@%"}, RightsMayRemain: true,
+		RightsKept: []transport.DroppedRightKept{{Account: "hand@%", Pattern: "shop_db", Reaches: []string{"shop1db"}}}}
+	item := domainDeletionPlanDatabase{ID: 7, Name: "shop_db", Engine: "mariadb"}
+	as := func(caller *Caller) *http.Request {
+		request := httptest.NewRequest(http.MethodDelete, "/api/v1/domains/1?databases=delete", nil)
+		return request.WithContext(context.WithValue(request.Context(), callerKey, caller))
+	}
+	admin := deletedDatabaseEntry(as(&Caller{ID: 1, Role: roleAdmin, AccountType: core.AccountTypeAccount}), item, deleted)
+	if admin.domainDeletionPlanDatabase != item || strings.Join(admin.UsersRemoved, ",") != "shop_user" ||
+		admin.RightsRemovedCount == nil || *admin.RightsRemovedCount != 2 ||
+		strings.Join(admin.RightsRemovedFrom, ",") != "shop_user@localhost,hand@%" || !admin.RightsMayRemain ||
+		len(admin.RightsKept) != 1 || admin.RightsKept[0].Pattern != "shop_db" {
+		t.Fatalf("administrator entry = %+v", admin)
+	}
+	customer := deletedDatabaseEntry(as(&Caller{ID: 5, Role: roleCustomer, AccountType: core.AccountTypeAccount, CustomerID: 5}), item, deleted)
+	raw, _ := json.Marshal(customer)
+	if strings.Join(customer.UsersRemoved, ",") != "shop_user" || strings.Contains(string(raw), "rights_") {
+		t.Fatalf("customer entry = %s", raw)
 	}
 }
