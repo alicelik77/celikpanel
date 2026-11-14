@@ -620,40 +620,43 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                 )}
                             </div>
                         )}
+                        {/* On a phone each mailbox is a card: its facts, then its actions
+                            in words across the width (alpha.135; no sideways scrolling).
+                            Telefonda her kutu bir karttır; işlemleri genişlik boyunca. */}
                         <div className="overflow-x-auto rounded-lg border border-border">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border text-left text-xs font-semibold text-fg-muted">
+                            <table className="w-full text-sm max-sm:block">
+                                <thead className="max-sm:block">
+                                    <tr className="border-b border-border text-left text-xs font-semibold text-fg-muted max-sm:flex">
                                         {!readOnly && (
-                                            <th className="w-8 py-2.5 pl-4">
+                                            <th className="w-8 py-2.5 pl-4 max-sm:w-auto max-sm:px-4">
                                                 <input type="checkbox" className="h-4 w-4" aria-label={t('mail.bulk.selectAll')} disabled={stale}
                                                     checked={accounts.length > 0 && accounts.every((a) => selected.has(a.id))}
                                                     onChange={(event) => setSelected(event.target.checked ? new Set(accounts.map((a) => a.id)) : new Set())} />
                                             </th>
                                         )}
-                                        <th className="px-4 py-2.5">{t('mail.col.address')}</th>
-                                        <th className="px-4 py-2.5">{t('mail.col.quota')}</th>
-                                        <th className="w-44 px-4 py-2.5">{t('mail.col.usage')}</th>
-                                        <th className="px-4 py-2.5" />
+                                        <th className="px-4 py-2.5 max-sm:hidden">{t('mail.col.address')}</th>
+                                        <th className="px-4 py-2.5 max-sm:hidden">{t('mail.col.quota')}</th>
+                                        <th className="w-44 px-4 py-2.5 max-sm:hidden">{t('mail.col.usage')}</th>
+                                        <th className="px-4 py-2.5 max-sm:hidden" />
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="max-sm:block">
                                     {accounts.map((a) => {
                                         const usage = quotaStatus?.usages.find((u) => u.email === a.address);
                                         const usedMB = usage?.available ? usage.used_kb / 1024 : null;
                                         return (
                                             <Fragment key={a.id}>
-                                            <tr className="border-b border-border last:border-0 hover:bg-surface-2/60">
+                                            <tr className="border-b border-border last:border-0 hover:bg-surface-2/60 max-sm:flex max-sm:flex-wrap max-sm:items-start max-sm:gap-x-3 max-sm:gap-y-1.5 max-sm:p-4">
                                                 {!readOnly && (
-                                                    <td className="w-8 py-2.5 pl-4">
+                                                    <td className="w-8 py-2.5 pl-4 max-sm:w-auto max-sm:p-0">
                                                         <input type="checkbox" className="h-4 w-4" checked={selected.has(a.id)} disabled={stale}
                                                             aria-label={t('mail.bulk.select', { name: a.address })} onChange={() => toggleSelected(a.id)} />
                                                     </td>
                                                 )}
-                                                <td className="px-4 py-2.5">
-                                                    <span className="flex items-center gap-2 font-medium text-fg">
-                                                        <AtSign className="h-4 w-4 text-fg-subtle" />
-                                                        {a.address}
+                                                <td className="px-4 py-2.5 max-sm:min-w-0 max-sm:flex-1 max-sm:p-0">
+                                                    <span className="flex min-w-0 items-center gap-2 font-medium text-fg">
+                                                        <AtSign className="h-4 w-4 shrink-0 text-fg-subtle" />
+                                                        <span className="min-w-0 [overflow-wrap:anywhere]">{a.address}</span>
                                                     </span>
                                                     {/* alpha.128 (G20): the addresses that deliver here, under the mailbox. */}
                                                     {(() => {
@@ -675,7 +678,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                         <OutgoingRowLine domainId={domainId} accountId={a.id} />
                                                     </Suspense>
                                                 </td>
-                                                <td className="px-4 py-2.5 text-fg-muted">
+                                                <td className="px-4 py-2.5 text-fg-muted max-sm:basis-full max-sm:p-0">
                                                     {!readOnly && !stale && editingQuota === a.id ? (
                                                         <span className="flex items-center gap-2">
                                                             <input
@@ -693,7 +696,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                             <Button onClick={() => setEditingQuota(null)}>{t('mail.cancel')}</Button>
                                                         </span>
                                                     ) : (
-                                                        <span className="flex items-center gap-1.5">
+                                                        <span className="flex items-center gap-1.5 whitespace-nowrap">
                                                             {a.quota_mb} MB
                                                             {!readOnly && (
                                                                 <button
@@ -712,7 +715,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-2.5">
+                                                <td className="px-4 py-2.5 max-sm:basis-full max-sm:p-0">
                                                     {usedMB !== null ? (
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-20">
@@ -732,7 +735,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-2.5 text-right">
+                                                <td className="px-4 py-2.5 text-right max-sm:basis-full max-sm:p-0 max-sm:pt-2">
                                                     <MailboxActions account={a} webmail={webmail} readOnly={readOnly} stale={stale} limitsOn={limitsOn}
                                                         onPassword={() => openPasswordDialog(a)} onRecovery={() => setRecoveryAccount(a)} onAutoreply={() => setAutoreplyAccount(a)}
                                                         onLimit={() => setLimitAccount(a)} onEmpty={() => void emptyAccount(a)} onDelete={() => void deleteAccount(a.id, a.address)} />

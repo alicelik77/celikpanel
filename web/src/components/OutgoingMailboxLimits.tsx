@@ -149,8 +149,8 @@ export function OutgoingPausedRow({ domainId, accountId, columns, readOnly, onCh
     if (!row?.paused) return null;
     const manager = role === 'admin' || role === 'reseller';
     return (
-        <tr className="border-b border-border last:border-0">
-            <td colSpan={columns} className="px-4 pb-3 pt-0">
+        <tr className="border-b border-border last:border-0 max-sm:block">
+            <td colSpan={columns} className="px-4 pb-3 pt-0 max-sm:block">
                 <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-fg" data-outgoing-paused={row.address}>
                     <p className="min-w-0 max-w-[75ch]">
                         {row.paused.reason === 'manual'
