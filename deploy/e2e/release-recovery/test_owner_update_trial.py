@@ -1511,10 +1511,11 @@ class Set3PublishedBaselineTests(unittest.TestCase):
         # operations; additive); alpha.129 schemas 73 and 74 (outgoing mail
         # resume baseline, remote access to databases; additive); alpha.130
         # schemas 75-77 (timed remote access, mailbox recovery, mail relay and
-        # mail server settings; additive).
+        # mail server settings; additive); alpha.134 schema 78 (which name a
+        # domain's mail programs are told; one column on domains).
         self.assertEqual(sorted(pins["migrations"]), [38, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
                                                       57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
-                                                      75, 76, 77])
+                                                      75, 76, 77, 78])
 
         def reading(version, guarded):
             return {"schema_version": version, "ledger_rows": version, "ledger_contiguous": True,
