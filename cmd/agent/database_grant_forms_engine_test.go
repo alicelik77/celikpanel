@@ -133,7 +133,7 @@ func TestTooLongExactNamesAreRefusedOnRealMariaDB(t *testing.T) {
 	// Follow-up: such an existing database keeps working - its new user gets
 	// the pattern form every right on it had before alpha.134, stored whole,
 	// never an exact form cut short.
-	if !add.Applied || add.NameTooLong {
+	if !add.Applied {
 		t.Fatalf("added: %+v", add)
 	}
 	if n := mustRun(t, "stored", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 'a134long_r' AND Db = '"+long+"';")); n != "n=1" {

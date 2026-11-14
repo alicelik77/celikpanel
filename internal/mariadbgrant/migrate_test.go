@@ -19,6 +19,8 @@ type fakeEngine struct {
 	rows    map[[3]string]string // user, host, stored -> flags
 	schemas []string
 	log     []string
+	// dropped: databases deleted since the scan (second review).
+	dropped map[string]bool
 }
 
 var mariadb118Columns = []string{"Select_priv", "Insert_priv", "Update_priv", "Delete_priv", "Create_priv", "Drop_priv",
@@ -100,6 +102,13 @@ func (f *fakeEngine) run(statement string) ([]byte, error) {
 		}
 		for _, s := range f.schemas {
 			out.WriteString("s=" + hexOf(s) + "\n")
+		}
+	case strings.HasPrefix(statement, "SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = "):
+		name := unhex(strings.TrimSuffix(strings.TrimPrefix(statement, "SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = "), ";"))
+		if f.dropped[name] {
+			out.WriteString("n=0\n")
+		} else {
+			out.WriteString("n=1\n")
 		}
 	case strings.HasPrefix(statement, "SELECT CONCAT('r='"):
 		m := fakeWhere.FindStringSubmatch(statement)
@@ -282,5 +291,23 @@ func TestNarrowStatements(t *testing.T) {
 	describe(columns, &every)
 	if every.Privileges == "ALL PRIVILEGES" || every.Unnamed || !strings.Contains(every.Privileges, "SHOW CREATE ROUTINE") {
 		t.Fatalf("with an unknown column: %+v", every)
+	}
+}
+
+// Second review: a database deleted after the scan gets no exact right - a
+// later database of that name would inherit it. Nothing is written.
+func TestConvertWritesNothingForADatabaseDeletedSinceTheScan(t *testing.T) {
+	f := newFakeEngine()
+	f.rows[[3]string{"s5_u", "localhost", "s5__x"}] = f.flags("SELECT")
+	f.dropped = map[string]bool{"s5__x": true}
+	req := ConvertRequest{User: "s5_u", Host: "localhost", Database: "s5__x", Flags: f.flags("SELECT")}
+	outcome, err := Convert(f.run, req, nil)
+	if err != nil || outcome != DatabaseGone {
+		t.Fatalf("outcome %q %v", outcome, err)
+	}
+	for _, statement := range f.log {
+		if strings.Contains(statement, "GRANT ") || strings.HasPrefix(statement, "REVOKE") {
+			t.Fatalf("a right was written: %q", f.log)
+		}
 	}
 }

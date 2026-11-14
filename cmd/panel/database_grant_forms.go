@@ -69,12 +69,16 @@ const (
 	grantFormsBlocked  = "blocked"
 
 	// Reasons an engine waits or is blocked (the screen has words for each).
-	grantFormsReasonStarting        = "starting"
-	grantFormsReasonUpdate          = "update_verifying"
-	grantFormsReasonUpdateUnknown   = "update_unknown"
-	grantFormsReasonBusy            = "server_busy"
-	grantFormsReasonAgentVersion    = "agent_version"
-	grantFormsReasonAgentUnreached  = "agent_unreachable"
+	grantFormsReasonStarting       = "starting"
+	grantFormsReasonUpdate         = "update_verifying"
+	grantFormsReasonUpdateUnknown  = "update_unknown"
+	grantFormsReasonBusy           = "server_busy"
+	grantFormsReasonAgentVersion   = "agent_version"
+	grantFormsReasonAgentUnreached = "agent_unreachable"
+	// grantFormsReasonRecordsUnread (second review): CelikPanel's own records
+	// of which user has which database could not be read; whose rights are
+	// CelikPanel's is not known this round, so nothing was changed.
+	grantFormsReasonRecordsUnread   = "records_unread"
 	grantFormsReasonCredential      = "credential_refused"
 	grantFormsReasonUnreachable     = "engine_unreachable"
 	grantFormsReasonNoRights        = "no_grant_rights"
@@ -97,6 +101,9 @@ const (
 	grantFormsListCap            = 200
 
 	noticeDatabasePatternRights = "database_pattern_rights"
+	// noticeDatabaseRightsWaiting (second review): the rewrite has waited for
+	// a confirmed panel update longer than databaseGrantFormsWaitNotice.
+	noticeDatabaseRightsWaiting = "database_rights_waiting"
 )
 
 var (
@@ -109,6 +116,9 @@ var (
 	// databaseGrantFormsBlockedRetry: a row that failed three times is tried
 	// again after this.
 	databaseGrantFormsBlockedRetry = 24 * time.Hour
+	// databaseGrantFormsWaitNotice: after this long waiting for a confirmed
+	// panel update, the administrators are told once.
+	databaseGrantFormsWaitNotice = 24 * time.Hour
 	// databaseGrantFormsUpdatePhase reads the latest update attempt to this
 	// build (recoveryobs); tests replace it.
 	databaseGrantFormsUpdatePhase = recoveryobs.LatestPhaseForTarget
@@ -141,6 +151,10 @@ func init() {
 	registerAccountNoticeKind(noticeDatabasePatternRights, accountNoticeKind{
 		Group: notifyGroupSecurity,
 		Words: databasePatternRightsNoticeWords,
+	})
+	registerAccountNoticeKind(noticeDatabaseRightsWaiting, accountNoticeKind{
+		Group: notifyGroupSecurity,
+		Words: databaseRightsWaitingNoticeWords,
 	})
 }
 
@@ -333,6 +347,16 @@ func (p *Panel) databaseGrantFormsEngines(ctx context.Context) ([]grantFormsEngi
 	return out, nil
 }
 
+// grantFormsPairOnRecord: is user still given database on this engine in
+// CelikPanel's records (read inside the engine gate, second review)?
+func (p *Panel) grantFormsPairOnRecord(ctx context.Context, engine grantFormsEngine, user, database string) (bool, error) {
+	pairs, err := p.grantFormsPairs(ctx, engine)
+	if err != nil {
+		return false, err
+	}
+	return pairs[grantFormsPair{user, database}], nil
+}
+
 // grantFormsPairs are the recorded users and databases of an engine.
 func (p *Panel) grantFormsPairs(ctx context.Context, engine grantFormsEngine) (map[grantFormsPair]bool, error) {
 	ids := make([]any, 0, len(engine.servers))
@@ -410,7 +434,12 @@ func (p *Panel) runDatabaseGrantFormsEngine(ctx context.Context, engine grantFor
 	serverID := engine.servers[0].ID
 	if engine.local && hold != grantFormsReasonStarting {
 		if err := p.requireMatchingAgentBuild(ctx); err != nil {
-			p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, grantFormsReasonAgentVersion, "")
+			// Second review: say what is true - another build, or no answer.
+			reason := grantFormsReasonAgentUnreached
+			if strings.Contains(err.Error(), "build mismatch") {
+				reason = grantFormsReasonAgentVersion
+			}
+			p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, reason, "")
 			return
 		}
 	}
@@ -430,6 +459,8 @@ func (p *Panel) runDatabaseGrantFormsEngine(ctx context.Context, engine grantFor
 	}
 	pairs, err := p.grantFormsPairs(ctx, engine)
 	if err != nil {
+		// Second review: an unknown result, recorded and shown as such.
+		p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, grantFormsReasonRecordsUnread, scan.Version)
 		log.Printf("database rights on %s: the records could not be read: %v", engine.key, err)
 		return
 	}
@@ -446,13 +477,16 @@ func (p *Panel) runDatabaseGrantFormsEngine(ctx context.Context, engine grantFor
 	if hold != "" {
 		if pending := p.grantFormsPending(ctx, engine.key); pending > 0 {
 			p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, hold, scan.Version)
+			if hold == grantFormsReasonUpdate || hold == grantFormsReasonUpdateUnknown {
+				p.notifyGrantFormsLongWait(ctx, engine.key, hold, pending)
+			}
 		} else {
 			p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsDone, "", scan.Version)
 		}
 		return
 	}
 	p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsRunning, "", scan.Version)
-	blocked, retry, wait := p.convertGrantFormRows(ctx, engine.key, server, access)
+	blocked, retry, wait := p.convertGrantFormRows(ctx, engine, server, access)
 	switch {
 	case wait != "":
 		p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, wait, scan.Version)
@@ -500,6 +534,13 @@ func (p *Panel) recordGrantFormsScan(ctx context.Context, engine grantFormsEngin
 			names, more = names[:grantFormsReachedCap], len(names)-grantFormsReachedCap
 		}
 		reached, _ := json.Marshal(names)
+		// Second review: a row holding a privilege CelikPanel cannot name is
+		// stored without its words, so its Details never offer a "narrow"
+		// statement that would drop that privilege - only its removal.
+		privileges := row.Privileges
+		if row.Unnamed {
+			privileges = ""
+		}
 		var id int64
 		var oldState, oldFlags string
 		err := tx.QueryRowContext(ctx, `SELECT id, state, flags FROM database_grant_forms WHERE engine_key = ? AND username = ? AND host = ? AND stored_name = ?`,
@@ -509,7 +550,7 @@ func (p *Panel) recordGrantFormsScan(ctx context.Context, engine grantFormsEngin
 			result, err := tx.ExecContext(ctx, `INSERT INTO database_grant_forms
 				(engine_key, server_id, username, host, stored_name, database_name, privileges, flags, grant_option, kind, state, reached, reached_more, reason)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				engine.key, serverID, row.User, row.Host, row.Stored, database, row.Privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), more, reason)
+				engine.key, serverID, row.User, row.Host, row.Stored, database, privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), more, reason)
 			if err != nil {
 				return err
 			}
@@ -527,7 +568,7 @@ func (p *Panel) recordGrantFormsScan(ctx context.Context, engine grantFormsEngin
 				    failures = 0, updated_at = datetime('now'),
 				    captured_at = CASE WHEN ? = 'captured' THEN datetime('now') ELSE captured_at END
 				WHERE id = ?`,
-				serverID, database, row.Privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), more, reason, state, id); err != nil {
+				serverID, database, privileges, row.Flags, boolInt(row.GrantOption), kind, state, string(reached), more, reason, state, id); err != nil {
 				return err
 			}
 		}
@@ -585,7 +626,8 @@ func (p *Panel) grantFormsPending(ctx context.Context, key string) int {
 // and why the whole engine waits ("" when it does not). Each row takes the
 // engine's gate on its own (review): a deletion or a grant on the same engine
 // waits for one row at most, never for the round.
-func (p *Panel) convertGrantFormRows(ctx context.Context, key string, server *core.DatabaseServer, access grantFormsEngineAccess) (blocked, retry bool, wait string) {
+func (p *Panel) convertGrantFormRows(ctx context.Context, engine grantFormsEngine, server *core.DatabaseServer, access grantFormsEngineAccess) (blocked, retry bool, wait string) {
+	key := engine.key
 	type pending struct {
 		id                                  int64
 		user, host, stored, database, flags string
@@ -623,6 +665,21 @@ func (p *Panel) convertGrantFormRows(ctx context.Context, key string, server *co
 		if err != nil {
 			return blocked, retry, grantFormsReasonBusy
 		}
+		// Second review: inside the gate, the pair must still be on record
+		// (a deletion since the scan removes it); otherwise the row leaves
+		// this round. The Agent checks that the database exists (BINARY)
+		// before it writes the exact right.
+		onRecord, err := p.grantFormsPairOnRecord(ctx, engine, r.user, r.database)
+		if err != nil {
+			release()
+			log.Printf("database rights on %s: whether %s on %s is still on record could not be read: %v", key, r.user, r.database, err)
+			return blocked, true, ""
+		}
+		if !onRecord {
+			release()
+			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET state = 'done', reason = ?, updated_at = datetime('now') WHERE id = ?`, mariadbgrant.DatabaseGone, r.id)
+			continue
+		}
 		outcome, err := access.convert(ctx, mariadbgrant.ConvertRequest{User: r.user, Host: r.host, Database: r.database, Flags: r.flags})
 		release()
 		if state, reason := grantFormsEngineWait(err); state != "" {
@@ -644,9 +701,9 @@ func (p *Panel) convertGrantFormRows(ctx context.Context, key string, server *co
 			continue
 		}
 		switch outcome {
-		case mariadbgrant.Converted, mariadbgrant.AlreadyExact, mariadbgrant.Gone:
+		case mariadbgrant.Converted, mariadbgrant.AlreadyExact, mariadbgrant.Gone, mariadbgrant.DatabaseGone:
 			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET state = 'done', reason = ?, failures = 0, updated_at = datetime('now') WHERE id = ?`, outcome, r.id)
-			if outcome != mariadbgrant.Gone {
+			if outcome != mariadbgrant.Gone && outcome != mariadbgrant.DatabaseGone {
 				var reached []string
 				_ = json.Unmarshal([]byte(r.reached), &reached)
 				p.recordAudit(auditRecord{Action: "database.right.exact:" + r.database, ResourceType: "database_grant_form", ResourceID: int(r.id),
@@ -703,12 +760,26 @@ func (p *Panel) setGrantFormsEngine(ctx context.Context, key string, serverID in
 // it was written; it is never a refusal and never repeated per operation. A
 // later read-back that succeeded clears it. Nothing is recorded for a driver
 // that does not say (PostgreSQL) or a grant that was not read back.
-func (p *Panel) noteGrantReadBack(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver) {
+//
+// Second review: a right written in the pattern form (an existing database
+// whose exact form does not fit a grant row) is listed at once on the
+// MariaDB page, with its reason - also where the engine's own rows cannot be
+// read; a later scan renews the same row.
+func (p *Panel) noteGrantReadBack(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver, database, user string) {
 	reader, ok := driver.(services.GrantReadBacker)
 	if !ok || server == nil {
 		return
 	}
 	key := databaseServerEngineIdentity(server)
+	if reader.GrantWasPattern() {
+		if _, err := p.db.GetDB().ExecContext(ctx, `
+			INSERT INTO database_grant_forms (engine_key, server_id, username, host, stored_name, database_name, kind, state, reason)
+			VALUES (?, ?, ?, 'localhost', ?, ?, 'ours', 'left', ?)
+			ON CONFLICT (engine_key, username, host, stored_name) DO NOTHING`,
+			key, server.ID, user, database, database, grantFormsReasonNameTooLong); err != nil {
+			log.Printf("database rights on %s: the pattern-form right of %s on %s could not be listed: %v", key, user, database, err)
+		}
+	}
 	var err error
 	switch reader.GrantReadBack() {
 	case services.GrantReadBackUnverifiable:
@@ -762,6 +833,55 @@ func (p *Panel) notifyDatabasePatternRights(ctx context.Context) {
 	}
 	p.raiseAccountNotice(ctx, p.db.GetDB(), recipients, noticeDatabasePatternRights, true,
 		"database_grant_forms", "1", body, "/components/mariadb")
+}
+
+// notifyGrantFormsLongWait (second review): CelikPanel's own pattern rights
+// have waited for a confirmed panel update longer than
+// databaseGrantFormsWaitNotice (counted from the oldest capture): the
+// administrators are told once per engine - the reason, who acts and what
+// next. The MariaDB page keeps saying what it waits for.
+func (p *Panel) notifyGrantFormsLongWait(ctx context.Context, key, reason string, pending int) {
+	var oldest sql.NullString
+	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT MIN(captured_at) FROM database_grant_forms WHERE engine_key = ? AND kind = 'ours' AND state = 'captured'`, key).Scan(&oldest); err != nil || !oldest.Valid {
+		return
+	}
+	at, err := time.Parse("2006-01-02 15:04:05", oldest.String)
+	if err != nil || databaseGrantFormsNow().UTC().Sub(at) < databaseGrantFormsWaitNotice {
+		return
+	}
+	ids, err := administratorIDs(ctx, p.db.GetDB())
+	if err != nil {
+		return
+	}
+	recipients := make([]usageRecipient, 0, len(ids))
+	for _, id := range ids {
+		recipients = append(recipients, usageRecipient{id, audienceAdministrator})
+	}
+	p.raiseAccountNotice(ctx, p.db.GetDB(), recipients, noticeDatabaseRightsWaiting, true,
+		"database_grant_forms_wait:"+key, "1", map[string]any{"reason": reason, "rows": pending}, "/components/mariadb")
+}
+
+// databaseRightsWaitingNoticeWords says why the narrowing waits, who acts
+// and what next.
+func databaseRightsWaitingNoticeWords(_ string, body map[string]any) accountNoticeWords {
+	rows, _ := body["rows"].(float64)
+	if n, ok := body["rows"].(int); ok {
+		rows = float64(n)
+	}
+	why := "the result of the last CelikPanel update is not confirmed yet (it is still finishing its checks, failed, or is being rolled back)"
+	whyTR := "son CelikPanel güncellemesinin sonucu henüz doğrulanmadı (denetimlerini bitiriyor, başarısız oldu ya da geri alınıyor)"
+	if body["reason"] == grantFormsReasonUpdateUnknown {
+		why = "the record of the last CelikPanel update could not be read"
+		whyTR = "son CelikPanel güncellemesinin kaydı okunamadı"
+	}
+	return accountNoticeWords{
+		TitleEN: "Database rights wait for a confirmed update",
+		TextEN: fmt.Sprintf("For more than a day CelikPanel has been waiting to narrow %d database rights it gave to their exact database names, because %s. Nothing was changed meanwhile. "+
+			"You act: open Settings → Updates and look at the last update; finish or repeat it. The narrowing then starts by itself; Components → MariaDB shows where it stands.", int(rows), why),
+		TitleTR: "Veritabanı hakları doğrulanmış bir güncellemeyi bekliyor",
+		TextTR: fmt.Sprintf("CelikPanel bir günden uzun süredir verdiği %d veritabanı hakkını tam veritabanı adlarına daraltmak için bekliyor; çünkü %s. Bu sürede hiçbir şey değiştirilmedi. "+
+			"Siz yaparsınız: Ayarlar → Güncellemeler sayfasını açıp son güncellemeye bakın; bitirin ya da yineleyin. Daraltma ardından kendiliğinden başlar; Bileşenler → MariaDB nerede olduğunu gösterir.", int(rows), whyTR),
+	}
 }
 
 // grantFormsLeftGroup is why a listed row is left: CelikPanel did not give it
@@ -902,7 +1022,7 @@ func (p *Panel) databaseGrantFormsView(ctx context.Context) (grantFormsView, err
 		}
 		ev.CheckedAt, ev.GrantsUnverifiableSince = checked.String, unverifiable.String
 		if err := db.QueryRowContext(ctx, `SELECT
-			COALESCE(SUM(CASE WHEN state = 'done' AND reason <> 'gone' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN state = 'done' AND reason NOT IN ('gone', 'database_gone') THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN state = 'left' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN kind = 'ours' AND state IN ('captured', 'blocked') THEN 1 ELSE 0 END), 0)
 			FROM database_grant_forms WHERE engine_key = ?`, engine.key).Scan(&ev.Narrowed, &ev.Left, &ev.Waiting); err != nil {
@@ -912,7 +1032,7 @@ func (p *Panel) databaseGrantFormsView(ctx context.Context) (grantFormsView, err
 	}
 	rows, err := db.QueryContext(ctx, `SELECT engine_key, username, host, stored_name, COALESCE(database_name, ''), kind, state, reason,
 		reached, reached_more, privileges, grant_option, updated_at FROM database_grant_forms
-		WHERE state IN ('left', 'blocked') OR (state = 'done' AND reason <> 'gone' AND reached <> '[]')
+		WHERE state IN ('left', 'blocked') OR (state = 'done' AND reason NOT IN ('gone', 'database_gone') AND reached <> '[]')
 		ORDER BY state DESC, updated_at DESC, id DESC`)
 	if err != nil {
 		return view, err

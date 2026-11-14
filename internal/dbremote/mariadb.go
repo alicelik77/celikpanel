@@ -541,6 +541,26 @@ func MariaDBPrivilegeChange(current string, currentPattern bool, want, database,
 	return append(out, "REVOKE ALL PRIVILEGES ON "+pattern+".* FROM "+name+";"), nil
 }
 
+// MariaDBPatternPrivilegeChange is MariaDBPrivilegeChange in the pattern form
+// only (`shop_a`.*, as written before alpha.134): for a copy whose pattern
+// grant may not be rewritten yet (the panel's rewrite of rights is held). A
+// change of rights is still applied - added, narrowed or taken away - as
+// alpha.133 did; only the rewrite to the exact form waits (second review).
+func MariaDBPatternPrivilegeChange(current, want, database, user, host string) ([]string, error) {
+	name, err := MariaDBAccountName(user, host)
+	if err != nil {
+		return nil, err
+	}
+	if err := validName(database); err != nil {
+		return nil, err
+	}
+	pattern, err := mariadbgrant.PatternTarget(database)
+	if err != nil {
+		return nil, err
+	}
+	return mariadbExactPrivilegeChange(current, want, name, " ON "+pattern+".* ")
+}
+
 // copyTarget is the database part of a remote copy's grant: the exact form,
 // or - for a name whose exact form does not fit a grant row (measured: it
 // would be stored cut short, a right on another name) - the pattern form the

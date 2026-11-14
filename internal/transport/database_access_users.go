@@ -90,9 +90,6 @@ type DatabaseAccessUserResponse struct {
 	// database. The panel adds them to the deletion's answer. Additive.
 	RightsRemovedFrom []string           `json:"rights_removed_from,omitempty"`
 	RightsKept        []DroppedRightKept `json:"rights_kept,omitempty"`
-	// NameTooLong (alpha.134, creation): the database name's exact form does
-	// not fit a MariaDB grant row; nothing was changed. Additive.
-	NameTooLong bool `json:"name_too_long,omitempty"`
 }
 
 // DroppedRightKept is a right in the raw (pattern) form of a deleted
@@ -112,6 +109,10 @@ type DroppedRightKept struct {
 type DroppedDatabaseRightsRequest struct {
 	ExpectedBuildCommit string `json:"expected_build_commit"`
 	Database            string `json:"database"`
+	// Owners (alpha.134 second review): the account names on record for the
+	// deleted database. Their rows naming it go in both forms, never kept as
+	// "reaching another database" - CelikPanel gave them.
+	Owners []string `json:"owners,omitempty"`
 }
 
 // DroppedDatabaseRightsResponse says whose rights went.

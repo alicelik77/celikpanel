@@ -3,6 +3,7 @@ package mariadbgrant
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,8 +24,11 @@ import (
 // One exception (review of alpha.134): a row in the name's raw form (as
 // written, a pattern) that ALSO reaches another existing database is kept
 // and reported: removing it would take the account's access to that other
-// database away. CelikPanel's own rows are exact after the rewrite to exact
-// names, so such a row is the owner's.
+// database away. It never applies to the accounts on record for the deleted
+// database (owners; second review): their rows naming it go in both forms,
+// from every host, as on alpha.133 - CelikPanel gave them, and a pattern it
+// gave that reaches another customer's database must not outlive the
+// deletion.
 //
 // Silinen veritabanını adlandıran haklar her hesaptan ve rolden kaldırılır;
 // hesaplar ve roller kalır; yalnız eşleşen kalıplara dokunulmaz. Başka bir
@@ -37,12 +41,12 @@ type Exec func(statement string) ([]byte, error)
 // changed.
 var ErrDatabaseExists = errors.New("a database of that name exists on the database server; nothing was changed")
 
-// RightsLeftError: rows naming the database are still loaded after the
-// removal.
+// RightsLeftError: accounts or roles still hold a right naming the database
+// after the removal (Left: how many, each counted once).
 type RightsLeftError struct{ Left int }
 
 func (e *RightsLeftError) Error() string {
-	return fmt.Sprintf("%d right(s) naming the database are still loaded on the database server", e.Left)
+	return fmt.Sprintf("%d account(s) or role(s) still hold a right naming the database on the database server", e.Left)
 }
 
 // absentGuard is the condition every removal repeats.
@@ -89,34 +93,37 @@ func droppedDeleteStatements(name string, rows []DroppedRow) string {
 	return strings.Join(out, "\n")
 }
 
-// droppedLeftStatement counts what is still there: what the server has
-// LOADED (information_schema, every grantee except the kept rows' accounts
-// for the raw form) and the rows of the grant tables (information_schema does
-// not show every role's rows). "a=" is the loaded count, "b=" the
-// database-level rows of the two forms (the kept ones among them), "c=" the
-// table, column and routine rows.
+// droppedLeftStatement counts the accounts and roles that still hold a right
+// naming the database (second review: one thing, counted once each). "a=" is
+// what the server has LOADED (information_schema; the kept rows' accounts
+// left out for the raw form), "b=" what the grant tables STORE at every level
+// (information_schema does not show every role's rows; the kept rows left
+// out). The two are counted apart because a FLUSH that failed leaves rows
+// loaded that are gone from the tables.
 func droppedLeftStatement(name string, kept []DroppedRow) string {
 	exact, raw, literal := Hex(Exact(name)), Hex(name), Hex(name)
-	notKept := ""
+	notKept, notKeptStored := "", ""
 	if len(kept) > 0 {
-		var grantees []string
+		var grantees, pairs []string
 		for _, row := range kept {
 			grantees = append(grantees, "'"+row.User+"'@'"+row.Host+"'", "'"+row.User+"'")
+			pairs = append(pairs, "(User = "+Hex(row.User)+" AND Host = "+Hex(row.Host)+")")
 		}
 		notKept = " AND GRANTEE NOT IN (" + HexList(grantees) + ")"
+		notKeptStored = " AND NOT (Db = " + raw + " AND (" + strings.Join(pairs, " OR ") + "))"
 	}
-	rawLoaded := ""
+	loaded := "SELECT GRANTEE FROM information_schema.SCHEMA_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + exact
 	if Exact(name) != name {
-		rawLoaded = " + (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + raw + notKept + ")"
+		loaded += " UNION SELECT GRANTEE FROM information_schema.SCHEMA_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + raw + notKept
 	}
-	return "SELECT CONCAT('a=', " +
-		"(SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + exact + ")" + rawLoaded +
-		" + (SELECT COUNT(*) FROM information_schema.TABLE_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + literal + ")" +
-		" + (SELECT COUNT(*) FROM information_schema.COLUMN_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + literal + ")); " +
-		"SELECT CONCAT('b=', COUNT(*)) FROM mysql.db WHERE Db IN (" + HexList(Forms(name)) + "); " +
-		"SELECT CONCAT('c=', (SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = " + literal + ")" +
-		" + (SELECT COUNT(*) FROM mysql.columns_priv WHERE Db = " + literal + ")" +
-		" + (SELECT COUNT(*) FROM mysql.procs_priv WHERE Db = " + literal + "));"
+	loaded += " UNION SELECT GRANTEE FROM information_schema.TABLE_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + literal +
+		" UNION SELECT GRANTEE FROM information_schema.COLUMN_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + literal
+	stored := "SELECT User, Host FROM mysql.db WHERE Db IN (" + HexList(Forms(name)) + ")" + notKeptStored +
+		" UNION SELECT User, Host FROM mysql.tables_priv WHERE Db = " + literal +
+		" UNION SELECT User, Host FROM mysql.columns_priv WHERE Db = " + literal +
+		" UNION SELECT User, Host FROM mysql.procs_priv WHERE Db = " + literal
+	return "SELECT CONCAT('a=', COUNT(*)) FROM (" + loaded + ") loaded; " +
+		"SELECT CONCAT('b=', COUNT(*)) FROM (" + stored + ") stored;"
 }
 
 // Grantee is one account or role that held a right.
@@ -155,7 +162,10 @@ type DroppedResult struct {
 // *RightsLeftError: something is still loaded (removing again continues).
 // Other errors: the engine could not be asked or did not do it; nothing is
 // claimed.
-func RemoveDroppedRights(run Exec, name string) (DroppedResult, error) {
+//
+// owners are the account names on record for the deleted database: their
+// rows are always removed, never kept.
+func RemoveDroppedRights(run Exec, name string, owners ...string) (DroppedResult, error) {
 	if !ValidName(name) {
 		return DroppedResult{}, ErrName
 	}
@@ -197,7 +207,7 @@ func RemoveDroppedRights(run Exec, name string) (DroppedResult, error) {
 			return DroppedResult{}, err
 		}
 		row := DroppedRow{User: fields[0], Host: fields[1], Stored: fields[2]}
-		if row.Stored == name && Exact(name) != name {
+		if row.Stored == name && Exact(name) != name && !(row.Host != "" && slices.Contains(owners, row.User)) {
 			if reaches := reached(row.Stored, schemas, foldCase); len(reaches) > 0 {
 				row.Reaches = reaches
 				result.Kept = append(result.Kept, row)
@@ -250,25 +260,24 @@ func RemoveDroppedRights(run Exec, name string) (DroppedResult, error) {
 	return result, nil
 }
 
-// droppedLeft counts what is still loaded or stored, the kept rows aside.
+// droppedLeft answers how many accounts and roles still hold a right naming
+// the database, loaded or stored (the larger of the two counts), the kept
+// rows aside.
 func droppedLeft(run Exec, name string, kept []DroppedRow) (int, error) {
 	out, err := run(droppedLeftStatement(name, kept))
 	if err != nil {
 		return 0, fmt.Errorf("the database server could not be asked whether rights naming the database are left: %w", err)
 	}
-	total := 0
-	for _, marker := range []string{"a", "b", "c"} {
+	left := 0
+	for _, marker := range []string{"a", "b"} {
 		value, ok := Marker(out, marker)
 		n, convErr := strconv.Atoi(value)
 		if !ok || convErr != nil || n < 0 {
 			return 0, errors.New("the database server's answer about rights left on the database could not be read")
 		}
-		if marker == "b" {
-			n -= len(kept)
-		}
-		total += n
+		left = max(left, n)
 	}
-	return total, nil
+	return left, nil
 }
 
 // hexFields splits "<hex>/<hex>[/<hex>]" into its decoded fields.

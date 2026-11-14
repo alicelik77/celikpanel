@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -67,7 +68,17 @@ type importPreviewAnswer struct {
 	MailAccounts []importPreviewMailbox                 `json:"mail_accounts"`
 	Forwarders   []transport.CpmoveForwarder            `json:"forwarders"`
 	DNSZones     map[string][]transport.CpmoveDNSRecord `json:"dns_zones"`
-	Databases    []transport.CpmoveDatabase             `json:"databases"`
+	Databases    []importPreviewDatabase                `json:"databases"`
+}
+
+// importPreviewDatabase is one database of the archive. NameTooLong (alpha.134
+// second review): MariaDB cannot keep a right on exactly this name (each `_`
+// counts twice; 64 is the limit), so the import leaves it out - nothing is
+// created under it - and the page says so before the import starts.
+type importPreviewDatabase struct {
+	Name        string `json:"name"`
+	DumpBytes   int64  `json:"dump_bytes"`
+	NameTooLong bool   `json:"name_too_long,omitempty"`
 }
 
 type importPreviewMailbox struct {
@@ -82,7 +93,12 @@ func importPreviewFor(preview *cpmovePreview) importPreviewAnswer {
 		Username: preview.Username, MainDomain: preview.MainDomain,
 		Domains: preview.Domains, PublicHTML: preview.PublicHTML, SiteBytes: preview.SiteBytes,
 		MailAccounts: make([]importPreviewMailbox, 0, len(preview.MailAccounts)),
-		Forwarders:   preview.Forwarders, DNSZones: preview.DNSZones, Databases: preview.Databases,
+		Forwarders:   preview.Forwarders, DNSZones: preview.DNSZones,
+		Databases: make([]importPreviewDatabase, 0, len(preview.Databases)),
+	}
+	for _, database := range preview.Databases {
+		answer.Databases = append(answer.Databases, importPreviewDatabase{Name: database.Name, DumpBytes: database.DumpBytes,
+			NameTooLong: !mariadbgrant.ExactFits(database.Name)})
 	}
 	for _, account := range preview.MailAccounts {
 		answer.MailAccounts = append(answer.MailAccounts, importPreviewMailbox{
@@ -98,9 +114,6 @@ func importPreviewFor(preview *cpmovePreview) importPreviewAnswer {
 	}
 	if answer.DNSZones == nil {
 		answer.DNSZones = map[string][]transport.CpmoveDNSRecord{}
-	}
-	if answer.Databases == nil {
-		answer.Databases = []transport.CpmoveDatabase{}
 	}
 	return answer
 }
@@ -175,6 +188,9 @@ const (
 	importStateNotChosen     = "not_chosen"
 	importStateNoneInArchive = "none_in_archive"
 	importStateNoneImported  = "none_imported"
+	// importStateNameTooLong (alpha.134 second review): a database left out
+	// because MariaDB cannot keep a right on exactly its name.
+	importStateNameTooLong = "name_too_long"
 )
 
 // importNothingState is the state of a chosen part of which nothing was
@@ -669,47 +685,8 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 			).Scan(&serverID)
 			if err != nil {
 				fail("databases", fmt.Errorf("no active MySQL/MariaDB server registered for this subscription"))
-			}
-			for _, db := range preview.Databases {
-				if err != nil {
-					continue
-				}
-
-				// The subscription's database limit applies to imported databases too.
-				// Abonelik veritabanı sınırı içe aktarılan veritabanları için de geçerlidir.
-				if quotaErr := p.checkSubscriptionQuota(ctx, req.SubscriptionID, quotaDBs); quotaErr != nil {
-					fail("database:"+db.Name, quotaErr)
-					continue
-				}
-
-				var imp transport.CpmoveImportDBResponse
-				importErr := p.callAgent("Agent.ImportCpmoveDatabase", &transport.CpmoveImportDBRequest{
-					ExpectedBuildCommit: strings.TrimSpace(buildCommit),
-					Path:                req.Path,
-					DumpName:            db.Name,
-					TargetDB:            db.Name,
-				}, &imp)
-				switch {
-				case importErr != nil:
-					fail("database:"+db.Name, importErr)
-				case imp.Error != "":
-					fail("database:"+db.Name, fmt.Errorf("engine import failed before metadata was created: %s", imp.Error))
-				case !imp.Imported:
-					fail("database:"+db.Name, fmt.Errorf("agent did not confirm the database import"))
-				default:
-					_, metadataErr := p.db.GetDB().ExecContext(ctx, `
-						INSERT INTO databases_v2 (server_id, subscription_id, domain_id, name)
-						VALUES (?, ?, ?, ?)`,
-						serverID, req.SubscriptionID, domainID, db.Name)
-					if metadataErr != nil {
-						fail("database:"+db.Name, fmt.Errorf(
-							"database was imported physically but metadata could not be recorded; manual reconciliation is required: %w",
-							metadataErr,
-						))
-						continue
-					}
-					ok("database:"+db.Name, "created exclusively and dump imported (db USERS are not migrated; repoint app configs)")
-				}
+			} else {
+				p.importArchiveDatabases(ctx, req.Path, req.SubscriptionID, serverID, domainID, preview.Databases, fail, ok, nothing)
 			}
 		}
 	}
@@ -732,7 +709,62 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(answer)
 }
 
+// importArchiveDatabases creates and loads the archive's databases, one step
+// each. A name MariaDB cannot keep a right on exactly (alpha.134 second
+// review) is left out first: nothing is created under it.
+func (p *Panel) importArchiveDatabases(ctx context.Context, path string, subscriptionID, serverID, domainID int, databases []transport.CpmoveDatabase,
+	fail func(string, error), ok func(string, string), nothing func(string, string, string)) {
+	for _, db := range databases {
+		// alpha.134 second review: MariaDB would keep a right on exactly
+		// this name cut short (a right on another name), so it is not
+		// created at all; the preview said so before the import.
+		if !mariadbgrant.ExactFits(db.Name) {
+			nothing("database:"+db.Name, importStateNameTooLong, importDatabaseNameTooLong)
+			continue
+		}
+
+		// The subscription's database limit applies to imported databases too.
+		// Abonelik veritabanı sınırı içe aktarılan veritabanları için de geçerlidir.
+		if quotaErr := p.checkSubscriptionQuota(ctx, subscriptionID, quotaDBs); quotaErr != nil {
+			fail("database:"+db.Name, quotaErr)
+			continue
+		}
+
+		var imp transport.CpmoveImportDBResponse
+		importErr := p.callAgent("Agent.ImportCpmoveDatabase", &transport.CpmoveImportDBRequest{
+			ExpectedBuildCommit: strings.TrimSpace(buildCommit),
+			Path:                path,
+			DumpName:            db.Name,
+			TargetDB:            db.Name,
+		}, &imp)
+		switch {
+		case importErr != nil:
+			fail("database:"+db.Name, importErr)
+		case imp.Error != "":
+			fail("database:"+db.Name, fmt.Errorf("engine import failed before metadata was created: %s", imp.Error))
+		case !imp.Imported:
+			fail("database:"+db.Name, fmt.Errorf("agent did not confirm the database import"))
+		default:
+			_, metadataErr := p.db.GetDB().ExecContext(ctx, `
+				INSERT INTO databases_v2 (server_id, subscription_id, domain_id, name)
+				VALUES (?, ?, ?, ?)`,
+				serverID, subscriptionID, domainID, db.Name)
+			if metadataErr != nil {
+				fail("database:"+db.Name, fmt.Errorf(
+					"database was imported physically but metadata could not be recorded; manual reconciliation is required: %w",
+					metadataErr,
+				))
+				continue
+			}
+			ok("database:"+db.Name, "created exclusively and dump imported (db USERS are not migrated; repoint app configs)")
+		}
+	}
+}
+
 const importMailboxWithoutPassword = "not imported: the archive holds no password for this mailbox"
+
+// importDatabaseNameTooLong is the line of a database left out for its name.
+const importDatabaseNameTooLong = "not imported: this database name is too long for MariaDB to keep a right on exactly this database (each underscore counts as two characters; 64 is the limit); nothing was created under it. Rename it to a shorter name in cPanel and import it again, or create it here under a shorter name and load its dump"
 
 // What the files step left out, in the answer (12 Oct 2026).
 //

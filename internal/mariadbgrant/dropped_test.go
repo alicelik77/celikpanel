@@ -87,7 +87,7 @@ func TestRemoveDroppedRightsTakesEveryGranteeAndNamesThem(t *testing.T) {
 func TestRemoveDroppedRightsKeepsARawRowThatReachesAnotherDatabase(t *testing.T) {
 	f := &droppedFake{exists: "0", schemas: []string{"a1b", "other"}, rows: []string{
 		dRow("hand", "%", "a_b"), dRow("cust", "localhost", `a\_b`),
-	}, left: []string{"a=0\nb=1\nc=0\n"}}
+	}, left: []string{"a=0\nb=0\n"}}
 	result, err := RemoveDroppedRights(f.run, "a_b")
 	if err != nil {
 		t.Fatal(err)
@@ -109,8 +109,20 @@ func TestRemoveDroppedRightsKeepsARawRowThatReachesAnotherDatabase(t *testing.T)
 			left = statement
 		}
 	}
-	if !strings.Contains(left, "GRANTEE NOT IN") || !strings.Contains(left, "FROM mysql.columns_priv") {
+	if !strings.Contains(left, "GRANTEE NOT IN") || !strings.Contains(left, "FROM mysql.columns_priv") || !strings.Contains(left, "AND NOT (Db = X'615F62'") {
 		t.Fatalf("left check: %s", left)
+	}
+	// Second review: an account on record for the deleted database (an
+	// owner) is never kept - CelikPanel gave its pattern right.
+	f = &droppedFake{exists: "0", schemas: []string{"a1b", "other"}, rows: []string{
+		dRow("hand", "%", "a_b"), dRow("cust", "localhost", "a_b"),
+	}}
+	result, err = RemoveDroppedRights(f.run, "a_b", "cust")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Kept) != 1 || result.Kept[0].User != "hand" || len(result.Removed) != 1 || result.Removed[0].String() != "cust@localhost" {
+		t.Fatalf("owner: kept %+v removed %+v", result.Kept, result.Removed)
 	}
 }
 

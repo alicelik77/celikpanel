@@ -63,3 +63,44 @@ func TestDroppedDatabaseRightsGoFromEveryGranteeOnRealMariaDB(t *testing.T) {
 		t.Fatalf("accounts: %s", n)
 	}
 }
+
+// Second review (S1): deleting a database takes the pattern-form right
+// CelikPanel gave its own user away even where that pattern also reaches
+// another customer's database (s5__x reaches s51_x) - as alpha.133 did. Only
+// an account that is not on record for the deleted database keeps such a row
+// (it is listed).
+func TestDroppedDatabaseOwnPatternRightGoesEvenWhereItReachesAnotherOnRealMariaDB(t *testing.T) {
+	e := requireTestEngines(t)
+	installTestEngines(t, e)
+	cleanup := "DROP DATABASE IF EXISTS s5__x; DROP DATABASE IF EXISTS s51_x; DROP USER IF EXISTS 's5_u'@'localhost', 'a134hand5'@'localhost';"
+	mustRun(t, "clean", e.maria("", "", cleanup))
+	t.Cleanup(func() { _ = e.maria("", "", cleanup) })
+	mustRun(t, "setup", e.maria("", "", "CREATE DATABASE s5__x; CREATE DATABASE s51_x;"+
+		" CREATE USER 's5_u'@'localhost' IDENTIFIED BY '"+droppedRightsPassword+"'; CREATE USER 'a134hand5'@'localhost' IDENTIFIED BY '"+droppedRightsPassword+"';"+
+		// As alpha.133 wrote it (pattern form), conversion not yet run.
+		" GRANT SELECT ON `s5__x`.* TO 's5_u'@'localhost'; GRANT SELECT ON `s5__x`.* TO 'a134hand5'@'localhost';"+
+		" DROP DATABASE s5__x;"))
+	// The shared user's step (it stays; its rights on s5__x go).
+	resp := accessUser(t, false, transport.DatabaseAccessUserRequest{Engine: "mysql", Database: "s5__x", Username: "s5_u", DatabaseDropped: true, RightsOnly: true})
+	if !resp.Applied {
+		t.Fatalf("shared user step: %+v", resp)
+	}
+	own := "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 's5_u';"
+	if n := mustRun(t, "own", e.maria("", "", own)); n != "n=0" {
+		t.Fatalf("CelikPanel's own pattern right on the deleted database survived (it reaches s51_x): %s", n)
+	}
+	if len(resp.RightsKept) != 1 || resp.RightsKept[0].Account != "a134hand5@localhost" {
+		t.Fatalf("kept: %+v", resp.RightsKept)
+	}
+	// The final sweep with the owners on record keeps the hand-made row only.
+	var swept transport.DroppedDatabaseRightsResponse
+	if err := (&Agent{}).RemoveDroppedDatabaseRightsV1(&transport.DroppedDatabaseRightsRequest{Database: "s5__x", Owners: []string{"s5_u"}}, &swept); err != nil {
+		t.Fatal(err)
+	}
+	if !swept.Applied || len(swept.Kept) != 1 || swept.Kept[0].Account != "a134hand5@localhost" {
+		t.Fatalf("sweep: %+v", swept)
+	}
+	if n := mustRun(t, "hand", e.maria("", "", "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 'a134hand5' AND Db = 's5__x';")); n != "n=1" {
+		t.Fatalf("the hand-made row that reaches s51_x: %s", n)
+	}
+}

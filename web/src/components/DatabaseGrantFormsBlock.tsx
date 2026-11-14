@@ -126,7 +126,7 @@ export function engineGuidance(t: DbServerWords, engine: GrantFormsEngine): { to
         case 'list_only':
             return { tone: 'neutral', title: t('dbgf.state.not_mariadb', { version: engine.version || '?' }), who: you, next: t('dbgf.state.not_mariadb.next') };
         case 'waiting':
-            if (reason === 'update_unknown' || reason === 'agent_unreachable') {
+            if (reason === 'update_unknown' || reason === 'agent_unreachable' || reason === 'records_unread') {
                 return { tone: 'waiting', title: t(key('')), why: t(key('.why')), who: you, next: t(key('.next')), then: t('dbgf.then.hourly') };
             }
             if (reason === 'convert_retry') {

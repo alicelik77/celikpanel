@@ -263,6 +263,10 @@ const (
 	// NameTooLong: the exact form does not fit a grant row (ErrExactTooLong);
 	// nothing was changed, the pattern form stays and is listed.
 	NameTooLong = "name_too_long"
+	// DatabaseGone: no database of exactly this name exists (deleted since
+	// the scan, second review): no exact right is written for it - a later
+	// database of that name would inherit it.
+	DatabaseGone = "database_gone"
 )
 
 // ConvertRequest names one row to rewrite and the flags captured for it.
@@ -333,6 +337,13 @@ func Convert(run Exec, req ConvertRequest, fault Fault) (string, error) {
 		return Changed, nil
 	case patternRow.GrantOption || patternRow.Unnamed || patternRow.Privileges == "":
 		return OwnerRow, nil
+	}
+	// Second review: the database may have been deleted since the scan. No
+	// exact right is written for a name no database has (BINARY).
+	if n, err := countMarker(run, DatabaseExistsStatement(req.Database), "n", "whether the database exists"); err != nil {
+		return "", err
+	} else if n == 0 {
+		return DatabaseGone, nil
 	}
 	target, _ := Target(req.Database)
 	if !hasExact || !covers(exactRow.Flags, patternRow.Flags) {

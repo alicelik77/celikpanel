@@ -111,8 +111,12 @@ same rules.
   pattern that merely matches the name (`shop\_%`, `sh_p`) is another text
   and is left alone; so are server-wide rights. A row in the name's raw form
   (a pattern) that ALSO reaches another existing database is kept, not
-  deleted: it is the owner's (CelikPanel's own rows are exact after the
-  rewrite below); the answer lists it with what it still reaches. The
+  deleted, when its account is not on record for the deleted database; the
+  answer lists it (once) with what it still reaches. The accounts on record
+  for the deleted database lose their rows naming it in both forms, from
+  every host, even where the pattern reaches another database - as on
+  alpha.133; CelikPanel gave them (second review: before the rewrite runs,
+  such a row is CelikPanel's own pattern and must not outlive the deletion). The
   user steps report whose rights they removed too, so the answer and the
   audit row name every grantee once. Only an administrator is told whose
   rights went, how many, which were kept and what may remain; a customer's
@@ -156,9 +160,21 @@ same rules.
     no longer reaches …"), and the MariaDB page lists them. The engine's gate
     (the one a database deletion or a grant takes) is taken for one row at a
     time. An Agent of another build, or one that does not answer, makes the
-    engine wait; it is not counted against a row. A remote copy's
-    pattern-form grant is rewritten by the remote access apply only while
-    this rewrite may run, and never at the same moment as a row of it.
+    engine wait; it is not counted against a row. Inside the gate the pair
+    is read again from the records and the Agent checks that the database
+    exists (BINARY) before it writes the exact right: a database deleted
+    since the scan leaves the round ("database_gone") and gets no right. A
+    remote copy's pattern-form grant is rewritten by the remote access apply
+    only while this rewrite may run, and never at the same moment as a row
+    of it; while it is held, a change of rules is still applied to the copy
+    in the pattern form (added, narrowed or taken away), as on alpha.133.
+    When CelikPanel's own records cannot be read, the engine shows that the
+    round's result is unknown (records_unread). When the rewrite has waited
+    for a confirmed panel update for more than 24 hours (counted from the
+    oldest capture), the administrators get one notification with the
+    reason, who acts and what to do next. A row holding a privilege
+    CelikPanel cannot name is offered only its removal, never a narrowing
+    that would drop that privilege.
   - Every GRANT CelikPanel writes on MariaDB runs with NO_AUTO_CREATE_USER
     in its session and is read back: the stored row must hold exactly the
     exact form. The length rule below, checked before any statement, is what
@@ -182,7 +198,10 @@ same rules.
     reload a right on another, shorter name. So a new database of such a
     name is refused before anything is made (DATABASE_NAME_TOO_LONG: choose
     a name at least N characters shorter, or with fewer underscores), and a
-    database copy checks it before the copy starts. Names CelikPanel makes
+    database copy checks it before the copy starts. A cPanel import names
+    such databases in its preview, with why and what to do (a shorter name
+    in cPanel, or create it here under a shorter name), and leaves them out:
+    nothing is created under such a name. Names CelikPanel makes
     itself (application installs, WordPress installs and clones, site
     copies) are shortened at their base until they fit, so they never fail
     late. An existing database of such a name keeps working: a user given

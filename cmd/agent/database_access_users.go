@@ -254,7 +254,9 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	if req.RightsOnly && req.DatabaseDropped {
 		// A user another database uses: it stays; only the rights that name
 		// the dropped database go.
-		result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+		// Second review: this user's own rows go in both forms, from each of
+		// its hosts, even where the pattern form reaches another database.
+		result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database, req.Username)
 		if err != nil {
 			mysqlDroppedRightsAnswer(resp, req.Database, err)
 			return
@@ -315,7 +317,7 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 			// grantee (alpha.134: accounts of any name and roles too); the
 			// account and its other rights stay.
 			// Silinen veritabanını adlandıran her hak her hesaptan kaldırılır.
-			result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+			result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database, req.Username)
 			if err != nil {
 				mysqlDroppedRightsAnswer(resp, req.Database, err)
 				return
@@ -411,8 +413,8 @@ func mysqlDatabaseGone(database string) (bool, error) {
 // also reaches another existing database is kept and reported. It answers
 // whose rights went.
 // Silinen veritabanını adlandıran haklar her hesaptan ve rolden kaldırılır.
-func mysqlRemoveRightsOnDroppedDatabase(database string) (mariadbgrant.DroppedResult, error) {
-	return mariadbgrant.RemoveDroppedRights(mysqlGrantExec("the database server"), database)
+func mysqlRemoveRightsOnDroppedDatabase(database string, owners ...string) (mariadbgrant.DroppedResult, error) {
+	return mariadbgrant.RemoveDroppedRights(mysqlGrantExec("the database server"), database, owners...)
 }
 
 // mysqlDroppedRightsInto adds whose rights went, and what was kept, to a
@@ -505,7 +507,7 @@ func (a *Agent) RemoveDroppedDatabaseRightsV1(req *transport.DroppedDatabaseRigh
 	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
-	result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+	result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database, req.Owners...)
 	var left *mariadbgrant.RightsLeftError
 	switch {
 	case errors.Is(err, mariadbgrant.ErrDatabaseExists):

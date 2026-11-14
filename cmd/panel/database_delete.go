@@ -87,14 +87,14 @@ var databaseDroppedRightsAgent = func(p *Panel, ctx context.Context, req transpo
 
 // databaseDroppedRightsElsewhere takes the same rights away on a MariaDB
 // reached with the record's own credential; tests replace it.
-var databaseDroppedRightsElsewhere = func(driver services.DatabaseDriver, name string) (mariadbgrant.DroppedResult, error) {
+var databaseDroppedRightsElsewhere = func(driver services.DatabaseDriver, name string, owners []string) (mariadbgrant.DroppedResult, error) {
 	sweeper, ok := driver.(interface {
-		RemoveRightsOnDroppedDatabase(string) (mariadbgrant.DroppedResult, error)
+		RemoveRightsOnDroppedDatabase(string, ...string) (mariadbgrant.DroppedResult, error)
 	})
 	if !ok {
 		return mariadbgrant.DroppedResult{}, nil
 	}
-	return sweeper.RemoveRightsOnDroppedDatabase(name)
+	return sweeper.RemoveRightsOnDroppedDatabase(name, owners...)
 }
 
 // addRightsRemoved adds grantees whose rights naming the deleted database
@@ -105,7 +105,15 @@ func (d *databaseDeletion) addRightsRemoved(grantees []string, kept []transport.
 			d.RightsRemovedFrom = append(d.RightsRemovedFrom, grantee)
 		}
 	}
-	d.RightsKept = append(d.RightsKept, kept...)
+	// Second review: each kept row once, by account and pattern (every
+	// shared user's step and the final sweep report the same rows).
+	for _, row := range kept {
+		if !slices.ContainsFunc(d.RightsKept, func(have transport.DroppedRightKept) bool {
+			return have.Account == row.Account && have.Pattern == row.Pattern
+		}) {
+			d.RightsKept = append(d.RightsKept, row)
+		}
+	}
 }
 
 // droppedRightsKeptOf is the answer's form of a driver's kept rows.
@@ -758,8 +766,12 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 	sweepLeft, sweepUnknown := false, false
 	if engine == "mysql" && !exists {
 		var swept transport.DroppedDatabaseRightsResponse
+		owners := make([]string, 0, len(steps))
+		for _, s := range steps {
+			owners = append(owners, s.user.Username)
+		}
 		err := databaseDroppedRightsAgent(p, ctx, transport.DroppedDatabaseRightsRequest{
-			ExpectedBuildCommit: strings.TrimSpace(buildCommit), Database: name}, &swept)
+			ExpectedBuildCommit: strings.TrimSpace(buildCommit), Database: name, Owners: owners}, &swept)
 		switch {
 		case err != nil:
 			sweepLeft, sweepUnknown = true, true
@@ -805,7 +817,7 @@ func (p *Panel) deleteDatabaseElsewhere(server *core.DatabaseServer, deletion *d
 		return &databaseDeleteError{engine: err, server: server, cause: fmt.Errorf("drop database %s: %w", name, err)}
 	}
 	if dbDriverTypeFor(server) == "mariadb" {
-		result, err := databaseDroppedRightsElsewhere(driver, name)
+		result, err := databaseDroppedRightsElsewhere(driver, name, deletion.UsersKeptOnServer)
 		if err != nil {
 			deletion.RightsMayRemain = true
 			log.Printf("database deletion %s on server %d: rights naming it were not removed with the record's account: %v", name, server.ID, err)

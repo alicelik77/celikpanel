@@ -220,4 +220,5 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'dbt.importFailed': 'İçe aktarma tamamlanmadı.',
     'dbt.copyFailed': 'Kopya yapılamadı.',
     'dbt.checkFailed': 'Denetim tamamlanmadı.',
+    'err.DATABASE_NAME_TOO_LONG': '{name} veritabanı adı çok uzun. En az {over} karakter daha kısa ya da daha az alt çizgili bir ad seçin (her alt çizgi iki karakter sayılır). Hiçbir şey değiştirilmedi.',
 };

@@ -429,3 +429,42 @@ func TestMariaDBRemoteReplacesTheEarlierFilterOnly(t *testing.T) {
 		t.Fatal("an owner's filter was rewritten")
 	}
 }
+
+// Second review (S1): while the rewrite of rights is held, a remote copy's
+// pattern-form grant still follows the rules - a database whose rule was
+// removed loses its grant on the copy (in the pattern form, as alpha.133 did)
+// while another that stays is untouched; only the rewrite to the exact form
+// waits.
+func TestMariaDBRemoteCopyChangesApplyWhileTheRewriteIsHeld(t *testing.T) {
+	restoreQuery, restoreExact := databaseRemoteMySQLQuery, databaseRemoteExactCopies
+	t.Cleanup(func() { databaseRemoteMySQLQuery, databaseRemoteExactCopies = restoreQuery, restoreExact })
+	databaseRemoteExactCopies = false
+	const auth = "*0123456789ABCDEF0123456789ABCDEF01234567"
+	databaseRemoteMySQLQuery = func(statement string) (string, error) {
+		switch {
+		case strings.HasPrefix(statement, "SELECT plugin"):
+			return "mysql_native_password\t" + auth + "\t0\t0\tANY\n", nil
+		case strings.HasPrefix(statement, "SHOW GRANTS FOR"):
+			return "GRANT USAGE ON *.* TO `s5_u`@`203.0.113.7`\nGRANT SELECT ON `s5_a`.* TO `s5_u`@`203.0.113.7`\nGRANT SELECT ON `s5_b`.* TO `s5_u`@`203.0.113.7`\n", nil
+		}
+		return "", nil
+	}
+	credential := dbremote.MariaDBCredential{Plugin: "mysql_native_password", Auth: auth}
+	batch, err := mariadbCopyChanges(dbremote.MariaDBAccount{User: "s5_u", Host: "203.0.113.7"}, credential, map[string]string{"s5_b": "SELECT"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batch) != 1 || batch[0] != "REVOKE ALL PRIVILEGES ON `s5_a`.* FROM 's5_u'@'203.0.113.7';" {
+		t.Fatalf("held: %q", batch)
+	}
+	// Once the rewrite may run, the kept database moves to the exact form.
+	databaseRemoteExactCopies = true
+	batch, err = mariadbCopyChanges(dbremote.MariaDBAccount{User: "s5_u", Host: "203.0.113.7"}, credential, map[string]string{"s5_b": "SELECT"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(batch, "\n")
+	if !strings.Contains(joined, "GRANT SELECT ON `s5\\_b`.*") || !strings.Contains(joined, "REVOKE ALL PRIVILEGES ON `s5_b`.*") || !strings.Contains(joined, "REVOKE ALL PRIVILEGES ON `s5_a`.*") {
+		t.Fatalf("after the hold: %q", batch)
+	}
+}

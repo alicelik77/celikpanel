@@ -229,6 +229,8 @@ export const enErrorsScreens = {
     'dbt.importFailed': 'The import did not complete.',
     'dbt.copyFailed': 'The copy could not be made.',
     'dbt.checkFailed': 'The check did not complete.',
+    // alpha.134: a new database name MariaDB could not keep a right on exactly (cmd/panel/database_names.go); every screen that creates a database reads it here.
+    'err.DATABASE_NAME_TOO_LONG': 'The database name {name} is too long. Choose a name at least {over} characters shorter, or with fewer underscores (each underscore counts as two characters). Nothing was changed.',
 } as const;
 
 export type ErrorsScreenKey = keyof typeof enErrorsScreens;

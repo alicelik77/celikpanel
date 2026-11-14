@@ -20,8 +20,11 @@ type MariaDBDriver struct {
 	port     int
 	username string
 	password string
-	// grantReadBack: what the last GrantPrivileges could read back.
+	// grantReadBack: what the last GrantPrivileges could read back;
+	// grantPattern: it wrote the pattern form (a name whose exact form does
+	// not fit a grant row).
 	grantReadBack string
+	grantPattern  bool
 }
 
 // mariaDBSuperuser is the account a MariaDB arrives with, and the one every
@@ -443,6 +446,7 @@ func (d *MariaDBDriver) GrantPrivileges(database, user, privileges string) error
 	// answer, not a failure: the write stands on the length rule above, and
 	// the caller records once that rights here cannot be verified
 	// (GrantReadBack). A read that failed otherwise stays unknown.
+	d.grantPattern = stored == database && mariadbgrant.Exact(database) != database
 	switch err := mariadbgrant.VerifyStoredForm(d.runSQL, user, "localhost", stored); {
 	case errors.Is(err, mariadbgrant.ErrUnverifiable):
 		d.grantReadBack = GrantReadBackUnverifiable
@@ -464,10 +468,16 @@ const (
 // showed: "" (none made), GrantReadBackVerified or GrantReadBackUnverifiable.
 type GrantReadBacker interface {
 	GrantReadBack() string
+	// GrantWasPattern: the last grant was written in the pattern form (an
+	// existing database whose exact form does not fit a grant row).
+	GrantWasPattern() bool
 }
 
 // GrantReadBack implements GrantReadBacker.
 func (d *MariaDBDriver) GrantReadBack() string { return d.grantReadBack }
+
+// GrantWasPattern implements GrantReadBacker.
+func (d *MariaDBDriver) GrantWasPattern() bool { return d.grantPattern }
 
 // RevokePrivileges revokes privileges from a user on a database. alpha.134:
 // the grant may be held in the exact form (written since alpha.134) or the
@@ -591,6 +601,6 @@ func (d *MariaDBDriver) GrantExec() mariadbgrant.Exec { return d.runSQL }
 // An account that may not read or change the grant tables gets an error;
 // the caller then says rights may remain there.
 // Silinen veritabanını adlandıran haklar, kaydın kendi hesabıyla kaldırılır.
-func (d *MariaDBDriver) RemoveRightsOnDroppedDatabase(name string) (mariadbgrant.DroppedResult, error) {
-	return mariadbgrant.RemoveDroppedRights(d.runSQL, name)
+func (d *MariaDBDriver) RemoveRightsOnDroppedDatabase(name string, owners ...string) (mariadbgrant.DroppedResult, error) {
+	return mariadbgrant.RemoveDroppedRights(d.runSQL, name, owners...)
 }

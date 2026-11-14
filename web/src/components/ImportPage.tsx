@@ -39,7 +39,8 @@ interface Preview {
     mail_accounts: { domain: string; user: string; quota_mb: number; has_password: boolean }[];
     forwarders: { source: string; destination: string }[];
     dns_zones: Record<string, unknown[]>;
-    databases: { name: string; dump_bytes: number }[];
+    /** name_too_long: MariaDB cannot keep a right on exactly this name; the import leaves it out. */
+    databases: { name: string; dump_bytes: number; name_too_long: boolean }[];
 }
 
 // An answer that is not a preview is not drawn as one: no list is made up for
@@ -64,7 +65,7 @@ function readPreview(raw: unknown): Preview | null {
         })),
         forwarders: p.forwarders!,
         dns_zones: p.dns_zones as Record<string, unknown[]>,
-        databases: p.databases!.map((d) => ({ name: String(d?.name ?? ''), dump_bytes: Number(d?.dump_bytes) || 0 })),
+        databases: p.databases!.map((d) => ({ name: String(d?.name ?? ''), dump_bytes: Number(d?.dump_bytes) || 0, name_too_long: d?.name_too_long === true })),
     };
 }
 
@@ -153,7 +154,9 @@ function partLabel(step: string, t: Say): string {
 // The lines of the server's that this page has its own words for.
 const noPasswordDetail = 'not imported: the archive holds no password for this mailbox';
 const absoluteMemberDetail = "not imported: the archive names this entry with an absolute path, and an import writes only below the site's own folder; nothing was written for it";
+const dbNameTooLongDetail = 'not imported: this database name is too long for MariaDB to keep a right on exactly this database (each underscore counts as two characters; 64 is the limit); nothing was created under it. Rename it to a shorter name in cPanel and import it again, or create it here under a shorter name and load its dump';
 const detailKeys: Record<string, TranslationKey> = {
+    [dbNameTooLongDetail]: 'import.detail.dbNameTooLong',
     [noPasswordDetail]: 'import.detail.noPassword',
     [absoluteMemberDetail]: 'import.detail.absoluteMember',
 };
@@ -452,7 +455,10 @@ export function ImportPage() {
                             />
                             <PreviewStat icon={ArrowRight} label={t('import.forwarders')} value={String(preview.forwarders.length)} />
                             <PreviewStat icon={Network} label={t('import.dnsRecords')} value={String(Object.values(preview.dns_zones).reduce((n, z) => n + z.length, 0))} />
-                            <PreviewStat icon={Database} label={t('import.databases')} value={String(preview.databases.length)} detail={preview.databases.map((d) => d.name).join(', ')} />
+                            <PreviewStat icon={Database} label={t('import.databases')} value={String(preview.databases.length)} detail={preview.databases.map((d) => d.name).join(', ')}
+                                note={preview.databases.some((d) => d.name_too_long)
+                                    ? t('import.dbNameTooLong', { names: preview.databases.filter((d) => d.name_too_long).map((d) => d.name).join(', ') })
+                                    : undefined} />
                         </dl>
                     </div>
 

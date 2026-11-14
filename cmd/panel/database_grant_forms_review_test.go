@@ -185,3 +185,105 @@ func TestGrantFormsLongNamesBlockedRowsAndNoticeWords(t *testing.T) {
 		t.Fatal("the old sentence is back")
 	}
 }
+
+// Second review (S2): a database deleted after the scan, before its row's
+// turn, is not given an exact right: inside the gate the pair is read again
+// from the records, and a pair no longer there leaves the round.
+func TestGrantFormsSkipARowWhoseDatabaseWasDeletedSinceTheScan(t *testing.T) {
+	f, engine := grantFormsFixture(t)
+	calls := 0
+	engine.onConvert = func(req mariadbgrant.ConvertRequest) {
+		calls++
+		if calls == 1 {
+			// A deletion of customer_matrix_test_blog finishes between two
+			// rows: its records go.
+			if _, err := f.panel.db.GetDB().Exec(`DELETE FROM database_user_grants WHERE database_id IN (SELECT id FROM databases_v2 WHERE name = 'customer_matrix_test_blog')`); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+	f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	for _, req := range engine.converted {
+		if req.Database == "customer_matrix_test_blog" {
+			t.Fatalf("the deleted database was given an exact right: %+v", engine.converted)
+		}
+	}
+	if _, state, reason := grantFormRowState(t, f, "wp_user", "203.0.113.7", "customer_matrix_test_blog"); state != "done" || reason != mariadbgrant.DatabaseGone {
+		t.Fatalf("row %s/%s", state, reason)
+	}
+}
+
+// Second review (W): what an engine waits for is said as it is.
+func TestGrantFormsSayWhatIsTrueWhileWaiting(t *testing.T) {
+	// The Agent does not answer the build check: "waiting for the Agent",
+	// never "another build".
+	f, engine := grantFormsFixture(t)
+	saved := buildCommit
+	buildCommit = strings.Repeat("b", 40)
+	f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	buildCommit = saved
+	if state, reason := grantFormEngineState(t, f); state != grantFormsWaiting || reason != grantFormsReasonAgentUnreached {
+		t.Fatalf("no Agent: %s/%s", state, reason)
+	}
+
+	// CelikPanel's own records cannot be read: an unknown result, recorded.
+	if _, err := f.panel.db.GetDB().Exec(`ALTER TABLE database_user_grants RENAME TO database_user_grants_away`); err != nil {
+		t.Fatal(err)
+	}
+	f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	if state, reason := grantFormEngineState(t, f); state != grantFormsWaiting || reason != grantFormsReasonRecordsUnread || len(engine.converted) != 0 {
+		t.Fatalf("records unread: %s/%s, %d converted", state, reason, len(engine.converted))
+	}
+	if _, err := f.panel.db.GetDB().Exec(`ALTER TABLE database_user_grants_away RENAME TO database_user_grants`); err != nil {
+		t.Fatal(err)
+	}
+
+	// A row holding a privilege CelikPanel cannot name is never offered a
+	// "narrow" statement that would drop it.
+	engine.scanResult.Patterns = append(engine.scanResult.Patterns, mariadbgrant.Row{User: "hand2", Host: "%", Stored: "customer_matrix_test_shop",
+		Flags: allFlags, Privileges: "SELECT", Unnamed: true})
+	databaseGrantFormsUpdatePhase = func(string) (string, bool) { return "running", true }
+	f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	view, err := f.panel.databaseGrantFormsView(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, row := range view.Left {
+		if row.Account == "hand2@%" {
+			found = row.StatementKind == mariadbgrant.StatementRemove
+		}
+	}
+	if !found {
+		t.Fatalf("unnamed privilege row: %+v", view.Left)
+	}
+
+	// Waiting for a confirmed update longer than a day: one notification
+	// to the administrators, not one a round.
+	if state, reason := grantFormEngineState(t, f); state != grantFormsWaiting || reason != grantFormsReasonUpdate {
+		t.Fatalf("update: %s/%s", state, reason)
+	}
+	notices := func() int {
+		var n int
+		if err := f.panel.db.GetDB().QueryRow(`SELECT COUNT(DISTINCT subject_key) FROM account_notices WHERE kind = ?`, noticeDatabaseRightsWaiting).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if notices() != 0 {
+		t.Fatal("told before a day passed")
+	}
+	if _, err := f.panel.db.GetDB().Exec(`UPDATE database_grant_forms SET captured_at = datetime('now', '-2 days') WHERE state = 'captured'`); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	}
+	if notices() != 1 {
+		t.Fatalf("notices: %d", notices())
+	}
+	words := databaseRightsWaitingNoticeWords("", map[string]any{"reason": grantFormsReasonUpdate, "rows": float64(2)})
+	if !strings.Contains(words.TextEN, "Settings → Updates") || !strings.Contains(words.TextTR, "Ayarlar → Güncellemeler") {
+		t.Fatalf("words: %+v", words)
+	}
+}

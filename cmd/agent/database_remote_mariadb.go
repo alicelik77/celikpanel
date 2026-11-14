@@ -253,15 +253,17 @@ func mariadbCopyChanges(account dbremote.MariaDBAccount, credential dbremote.Mar
 	for db := range current.grants.Exact {
 		databases[db] = true
 	}
+	// alpha.134 review: a pattern-form grant is rewritten to the exact form
+	// only while the panel's rewrite of rights may run. Until then (held) a
+	// change of rights on it is still applied in the pattern form - added,
+	// narrowed or taken away, as alpha.133 did (second review: skipping it
+	// left removed access on the copy); only the rewrite waits.
+	held := map[string]bool{}
 	for db := range current.grants.Patterns {
-		if !databaseRemoteExactCopies && mariadbgrant.ExactFits(db) {
-			// alpha.134 review: a pattern-form grant is rewritten only while
-			// the panel's rewrite of rights may run; until then it stays as
-			// it is and this database is not changed on the copy.
-			delete(databases, db)
-			continue
-		}
 		databases[db] = true
+		if !databaseRemoteExactCopies && mariadbgrant.ExactFits(db) {
+			held[db] = true
+		}
 	}
 	names := make([]string, 0, len(databases))
 	for db := range databases {
@@ -269,6 +271,22 @@ func mariadbCopyChanges(account dbremote.MariaDBAccount, credential dbremote.Mar
 	}
 	sort.Strings(names)
 	for _, db := range names {
+		if held[db] {
+			change, err := dbremote.MariaDBPatternPrivilegeChange(current.grants.Patterns[db], wanted[db], db, account.User, account.Host)
+			if err != nil {
+				return nil, err
+			}
+			batch = append(batch, change...)
+			// An exact grant the copy may hold beside it follows too.
+			if exact := current.grants.Exact[db]; exact != "" {
+				change, err := dbremote.MariaDBPrivilegeChange(exact, false, wanted[db], db, account.User, account.Host)
+				if err != nil {
+					return nil, err
+				}
+				batch = append(batch, change...)
+			}
+			continue
+		}
 		// alpha.134: a copy holding the pattern form (`shop_a`.*, written
 		// before alpha.134) is rewritten to the exact form.
 		_, pattern := current.grants.Patterns[db]

@@ -199,6 +199,13 @@ func TestRegisteredMariaDBWithoutReadRightGrantsAndRecordsUnverifiable(t *testin
 	if n := readBackMarker(t, root, "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 's9201_long_u' AND Db <> '"+long+"';"); n != "0" {
 		t.Fatalf("a right on another (cut) name: %s", n)
 	}
+	// Second review: that pattern-form right is listed on the MariaDB page at
+	// once, with its reason.
+	var listed int
+	if err := fixture.sql.QueryRow(`SELECT COUNT(*) FROM database_grant_forms WHERE username = 's9201_long_u' AND stored_name = ? AND kind = 'ours' AND state = 'left' AND reason = ?`,
+		long, grantFormsReasonNameTooLong).Scan(&listed); err != nil || listed != 1 {
+		t.Fatalf("the pattern-form right is not listed: %d %v", listed, err)
+	}
 	// A NEW database of such a name is refused before anything is made, with
 	// what to do and by how much.
 	answer := create(strings.Repeat("n_", 28), "long_w", "Long-User-Passw0rd!4")
