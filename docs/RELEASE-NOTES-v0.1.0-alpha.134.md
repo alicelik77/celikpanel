@@ -2,7 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.134.tr.md)
 
-> **Candidate.** Not published yet; the lab checks are not finished yet.
+> **Candidate.** Not published yet; the lab checks are finished (three
+> runs, see "Checked in the lab").
 
 A small release of three jobs. A site's certificate now says what it
 protects, and a new certificate covers the domain's mail name; site backups
@@ -14,14 +15,16 @@ screen.**
 ## Updating from alpha.133
 
 1. **Database rights are narrowed by themselves; there is nothing to
-   press.** Once the update is verified, CelikPanel rewrites, on each
+   press.** About three minutes after the panel is back, and never before
+   the update is verified, CelikPanel rewrites, on each
    MariaDB server it manages, the database rights it gave earlier so that
    each one reaches exactly its own database. **Components → MariaDB**, in
    the block **Database rights by exact name**, then says how many rights
    were narrowed, which of them also reached other databases before (and
    which ones), how many were left as they are and why, and how many are
-   still waiting. If any right was left as it is, the administrators get
-   **one** notification on the home page.
+   still waiting. Only if a right was left as it is (made by hand, or on a
+   name too long for the exact form) do the administrators get **one**
+   notification on the home page.
    - **"Left as it is"** means CelikPanel cannot prove it gave that right
      (an account made by hand, or a database CelikPanel no longer keeps a
      record of), or the right is the owner's own (it holds the grant option
@@ -55,9 +58,12 @@ screen.**
    - **Replaced certificates go away by themselves; there is nothing to
      press.** A server that got certificates again since alpha.113 holds the
      certificates they replaced. A certificate replaced by a new one is
-     removed with certbot within about an hour after the update is verified
-     (at the next hourly check), once nothing uses it; one whose renewal
-     file was edited by hand is kept and noted in the audit log.
+     removed with certbot once nothing uses it: at the same round that
+     narrows the database rights (about three minutes after the panel is
+     back, once the update is verified; otherwise at the next hourly
+     round), or at that site's next certificate request. One whose renewal
+     file was edited by hand is kept. Each removal and each kept
+     certificate is listed in the audit log.
 5. If you did not do it after alpha.133: give CelikPanel's database account
    a new password once on each database server (**Components → MariaDB**,
    "The account CelikPanel connects to this service with", **More → New
@@ -111,11 +117,12 @@ screen.**
   it, so it is no longer renewed in the background; this runs only after an
   update is verified, never touches the certificate in use, keeps anything a
   file on the server or a rollback snapshot still names, and writes each
-  removal and each kept certificate to the audit log. A certificate
-  replaced by a new one is removed with certbot within about an hour after
-  the update is verified (at the next hourly check), once nothing uses it;
-  one whose renewal file was edited by hand is kept and noted in the audit
-  log.
+  removal and each kept certificate to the audit log. After the update it
+  runs at the same round that narrows the database rights (about three
+  minutes after the panel is back, once the update is verified; otherwise
+  at the next hourly round), and again at each site's next certificate
+  request. One whose renewal file was edited by hand is kept and noted in
+  the audit log.
 - **A request the certificate authority did not fulfil now says why, who
   acts and what to do next;** customers are no longer sent to a server file.
 - A certificate request that fails because certbot's account at the
@@ -366,8 +373,91 @@ still apply.
 
 ## Checked in the lab
 
-**The lab check of this release has not run yet.** This section is filled
-in after it, with what was checked and what was not.
+Three lab runs on two virtual servers: Debian 13 with MariaDB 11.8.6,
+PostgreSQL 17 and certbot 4.0, and Ubuntu 24.04 with MariaDB 10.11.14 and
+certbot 2.9. Both were updated from alpha.133 through the panel's own update
+page. Certificates were requested only from the lab's own test authority,
+never from a public one. No run had a hard failure.
+
+**Database rights: checked and passed.**
+- The weakness was real on alpha.133 on both MariaDB versions: a customer's
+  user could create a table in, and read, another customer's database with
+  a similar name. After the update it is closed: that user is refused on
+  the other database and keeps working on its own.
+- The rewrite started about three minutes after the panel started, never
+  before the update was verified, and no access was lost meanwhile: access
+  loops running once a second through the update and the rewrite saw no
+  refusal.
+- Rights made by hand were left exactly as they were and listed, with one
+  notice that did not repeat after restarts. Names too long for the exact
+  form were left and listed; new too-long names were refused before
+  anything was made (a copy to such a name too), and a WordPress install
+  shortened its own.
+- Deleting a database removed its rights from every account and role, and
+  kept the rights that also reach other databases, naming them.
+- A rewrite interrupted by restarting the Agent or MariaDB finished at the
+  next round.
+- A registered second MariaDB server, with a full account and with a
+  restricted one (the restricted one is said to be "cannot be verified").
+- Going back to alpha.133 and updating again: database users kept working,
+  removing an added user worked there, and the next update continued from
+  the server's state.
+
+**Certificates: checked and passed** (against the lab's test authority).
+- The missing mail name was listed first with one button, and after the
+  press the certificate covered it and mail used it. A new site's first
+  certificate covered its mail name.
+- A mail name pointing elsewhere was refused before anything reached the
+  authority.
+- Renewal with the panel and the Agent stopped kept every name, and the
+  mail ports (993, 465, 587) served the matching certificate.
+- Replaced certificates: nothing was removed before the update was
+  verified; the certificate in use was never removed; a replaced one was
+  kept when a file or a link under `/etc` names it, when its renewal file
+  was edited by hand, or when an update's rollback copy holds it, and was
+  removed otherwise, on both certbot versions. Each decision is in the
+  audit log.
+- The failure messages for a chain this server does not trust and for an
+  unusable certbot account, both as a customer and as the administrator:
+  the reason, who acts, and no server path or command for the customer.
+
+**Site backups: checked and passed** (with a site program).
+- A backup holds the program and its data, and says so with sizes.
+- A restore stops the program, puts the files back and starts it again; a
+  program you stopped stays stopped.
+- A backup made by alpha.133 restores as the older format, leaving the
+  program as it is.
+- After a restore the program's folder keeps the site account's own group.
+- Another site's backup, a backup no longer on the server and a damaged
+  one are refused with their own sentences; nothing is restored.
+
+**Creating a database: checked and passed.**
+- The form shows the real full name.
+- A name too long for the engine is stopped while you type and refused by
+  the server, on both engines.
+- A failed create on a restricted database account leaves nothing behind.
+
+**Not checked in any lab run:** restoring a Python (Flask) app from a
+backup; what a backup says about a service app's data; deleting a site,
+creating it again under the same name and restoring it; a cPanel import
+with a too-long database name; MySQL 8; anything against a public
+certificate authority. The timings of the second and third runs were taken
+while another job loaded the host and are not conclusive.
+
+**Small defects found in the lab, left for the next release:**
+- The "left as they are" list can mix the rows of two database servers,
+  and their **Details** offer only removing the right.
+- A right the database account lacks is still called "the server refused
+  the credential".
+- A replaced certificate whose renewal file was edited by hand is
+  mentioned to the administrator again at each later request for that
+  site.
+- On the Turkish page, one English line appears under the renewal box when
+  the chain is not trusted.
+- When certbot holds two accounts, the administrator's details quote only
+  certbot's first line.
+- Deleting a domain leaves its databases on the database server and out of
+  the panel's lists (next release).
 
 ## Evidence
 
@@ -405,7 +495,7 @@ in its session and is read back; a read-back that failed is an unknown
 result, never taken for either answer. The database-rights tests ran in
 development against a real MariaDB 11.8.6 (the measurements above);
 MariaDB 10.11, a second registered server and the check with two customers'
-databases are left to the lab. Details: docs/DATABASE-USERS.md.
+databases were done in the first lab run. Details: docs/DATABASE-USERS.md.
 Fix round after the lab: one name-length rule for the panel, the Agent and
 the form (`internal/services/database_name_limits_test.go` and its shared
 cases, `cmd/panel/domain_database_create_fix_test.go`,
@@ -425,8 +515,8 @@ nothing but what certbot writes for CelikPanel's request
 (`cmd/agent/site_cert_retire_conf_test.go`), a pass held at start is asked
 again by the hourly round, the account reasons, the renewal box per
 reader, the prefilled address (`web/tests/ssl-renewal-guidance.test.mjs`,
-`web/tests/certificate-coverage-alpha134.test.mjs`). Program backups and
-certificates ran on real lab systems (run 5: H.1–H.3, H.6, H.7, G.1–G.5
-with the lab's own test authority; run 6: B.1, B.2, C.1–C.5); no public
-certificate authority. **No P0 item is closed.**
+`web/tests/certificate-coverage-alpha134.test.mjs`). Three lab runs (see
+"Checked in the lab"): on `7c464b0a4`, `a000a7544` and `7b2936fbe`, the
+last being the release head; no public certificate authority.
+**No P0 item is closed.**
 Release sequence 133 → 134.

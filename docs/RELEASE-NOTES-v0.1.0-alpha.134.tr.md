@@ -2,7 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.134.md)
 
-> **Aday.** Henüz yayımlanmadı; laboratuvar denetimleri henüz bitmedi.
+> **Aday.** Henüz yayımlanmadı; laboratuvar denetimleri bitti (üç denetim,
+> bkz. "Laboratuvarda denetlenenler").
 
 Üç işlik küçük bir sürüm. Sitenin sertifikası artık neyi koruduğunu
 söylüyor ve yeni sertifika alan adının posta adını da kapsıyor; site
@@ -15,14 +16,16 @@ günceller.**
 ## alpha.133'ten güncellerken
 
 1. **Veritabanı hakları kendiliğinden daraltılır; basmanız gereken bir şey
-   yok.** Güncelleme doğrulandıktan sonra CelikPanel, yönettiği her MariaDB
+   yok.** Panel yeniden açıldıktan yaklaşık üç dakika sonra, güncelleme
+   doğrulanmadan hiçbir zaman değil, CelikPanel yönettiği her MariaDB
    sunucusunda daha önce verdiği veritabanı haklarını, her biri yalnız kendi
    veritabanına erişecek biçimde yeniden yazar. Ardından **Bileşenler →
    MariaDB** sayfasındaki **Veritabanı hakları tam adla** bölümü kaç hakkın
    daraltıldığını, bunlardan hangilerinin önceden başka veritabanlarına da
    eriştiğini (ve hangilerine), kaçının olduğu gibi bırakıldığını ve
-   nedenini, kaçının hâlâ beklediğini söyler. Olduğu gibi bırakılan bir hak
-   varsa yöneticiler ana sayfada **tek** bir bildirim görür.
+   nedenini, kaçının hâlâ beklediğini söyler. Yöneticiler ana sayfada
+   **tek** bir bildirimi yalnız olduğu gibi bırakılan bir hak varsa (elle
+   verilmiş ya da tam biçime sığmayacak kadar uzun bir adda) görür.
    - **"Olduğu gibi bırakıldı"**, CelikPanel'in o hakkı kendisinin verdiğini
      kanıtlayamadığı (elle açılmış bir hesap ya da CelikPanel'in artık
      kaydını tutmadığı bir veritabanı) ya da hakkın sunucu sahibine ait
@@ -56,10 +59,12 @@ günceller.**
    - **Yerini yenisine bırakan sertifikalar kendiliğinden kalkar; basmanız
      gereken bir şey yok.** alpha.113'ten bu yana sertifikaları yeniden
      alınmış bir sunucu, onların yerini aldığı sertifikaları tutar.
-     Yenisiyle değiştirilen sertifika, güncelleme doğrulandıktan sonra
-     yaklaşık bir saat içinde (bir sonraki saatlik denetimde), onu kullanan
-     bir şey yoksa certbot ile kaldırılır; yenileme dosyası elle
-     değiştirilmiş olan korunur ve denetim günlüğüne yazılır.
+     Yenisiyle değiştirilen sertifika, onu kullanan bir şey yoksa certbot
+     ile kaldırılır: veritabanı haklarını daraltan turda (panel yeniden
+     açıldıktan yaklaşık üç dakika sonra, güncelleme doğrulanmışsa; yoksa
+     bir sonraki saatlik turda) ya da o sitenin bir sonraki sertifika
+     isteğinde. Yenileme dosyası elle değiştirilmiş olan korunur. Her
+     kaldırma ve her koruma Denetim günlüğünde listelenir.
 5. alpha.133'ten sonra yapmadıysanız: CelikPanel'in veritabanı hesabına her
    veritabanı sunucusunda bir kez yeni parola verin (**Bileşenler →
    MariaDB**, "CelikPanel'in bu hizmete bağlandığı hesap", **Diğer → Yeni
@@ -116,9 +121,10 @@ günceller.**
   doğrulandıktan sonra çalışır, kullanımdaki sertifikaya dokunmaz,
   sunucudaki bir dosyanın ya da geri dönüş kopyasının hâlâ andığı
   sertifikayı korur ve her kaldırmayı da her korumayı da Denetim günlüğüne
-  yazar. Yenisiyle değiştirilen sertifika, güncelleme doğrulandıktan sonra
-  yaklaşık bir saat içinde (bir sonraki saatlik denetimde), onu kullanan bir
-  şey yoksa certbot ile kaldırılır; yenileme dosyası elle değiştirilmiş olan
+  yazar. Güncellemeden sonra veritabanı haklarını daraltan turda (panel
+  yeniden açıldıktan yaklaşık üç dakika sonra, güncelleme doğrulanmışsa;
+  yoksa bir sonraki saatlik turda) ve her sitenin bir sonraki sertifika
+  isteğinde yeniden çalışır. Yenileme dosyası elle değiştirilmiş olan
   korunur ve denetim günlüğüne yazılır.
 - **Sertifika kuruluşunun yerine getirmediği istek artık nedenini, kimin ne
   yapacağını söylüyor;** müşteriler sunucudaki bir dosyaya yönlendirilmiyor.
@@ -376,8 +382,95 @@ bilinen sınırları sürüyor.
 
 ## Laboratuvarda denetlenenler
 
-**Bu sürümün laboratuvar denetimi henüz yapılmadı.** Bu bölüm, denetimden
-sonra neyin denetlendiği ve neyin denetlenmediğiyle doldurulur.
+İki sanal sunucuda üç laboratuvar denetimi yapıldı: MariaDB 11.8.6,
+PostgreSQL 17 ve certbot 4.0 ile Debian 13; MariaDB 10.11.14 ve certbot 2.9
+ile Ubuntu 24.04. İkisi de alpha.133'ten panelin kendi güncelleme
+sayfasıyla güncellendi. Sertifikalar yalnız laboratuvarın kendi deneme
+kuruluşundan istendi, hiçbir zaman herkese açık bir kuruluştan değil.
+Hiçbir denetimde temel bir başarısızlık olmadı.
+
+**Veritabanı hakları: denetlendi, geçti.**
+- Açık alpha.133'te iki MariaDB sürümünde de gerçekti: bir müşterinin
+  kullanıcısı, adı benzeyen başka bir müşterinin veritabanında tablo
+  açabiliyor ve okuyabiliyordu. Güncellemeden sonra kapandı: o kullanıcı
+  öteki veritabanında reddediliyor, kendi veritabanında çalışmayı
+  sürdürüyor.
+- Yeniden yazma, panel açıldıktan yaklaşık üç dakika sonra başladı;
+  güncelleme doğrulanmadan hiçbir zaman başlamadı ve bu arada hiçbir
+  erişim kesilmedi: güncelleme ve yeniden yazma boyunca saniyede bir
+  çalışan erişim döngüleri hiçbir ret görmedi.
+- Elle verilmiş haklar olduğu gibi bırakıldı ve listelendi; tek bir
+  bildirim geldi ve yeniden başlatmalardan sonra tekrarlanmadı. Tam biçime
+  sığmayacak kadar uzun adlar bırakıldı ve listelendi; böyle yeni bir ad
+  hiçbir şey açılmadan reddedildi (böyle bir ada kopya da), bir WordPress
+  kurulumu kendi adını kısalttı.
+- Bir veritabanını silmek, haklarını her hesaptan ve rolden kaldırdı;
+  başka veritabanlarına da erişen hakları adlarıyla söyleyerek bıraktı.
+- Agent ya da MariaDB yeniden başlatılarak yarıda kesilen yeniden yazma,
+  bir sonraki turda tamamlandı.
+- Sonradan eklenmiş ikinci bir MariaDB sunucusu, tam yetkili bir hesapla
+  ve kısıtlı bir hesapla (kısıtlı hesap için "doğrulanamıyor" denir).
+- alpha.133'e dönüp yeniden güncellemek: veritabanı kullanıcıları
+  çalışmayı sürdürdü, eklenmiş bir kullanıcıyı çıkarmak orada çalıştı ve
+  sonraki güncelleme sunucunun durumundan devam etti.
+
+**Sertifikalar: denetlendi, geçti** (laboratuvarın deneme kuruluşuna
+karşı).
+- Eksik posta adı tek düğmeyle en başta listelendi; basıştan sonra
+  sertifika onu kapsadı ve posta onu kullandı. Yeni bir sitenin ilk
+  sertifikası posta adını kapsadı.
+- Başka yeri gösteren bir posta adı, kuruluşa hiçbir şey ulaşmadan
+  reddedildi.
+- Panel ve Agent durmuşken yenileme her adı korudu ve posta kapıları
+  (993, 465, 587) uyan sertifikayı sundu.
+- Yerini yenisine bırakan sertifikalar: güncelleme doğrulanmadan hiçbir şey
+  kaldırılmadı; kullanımdaki sertifika hiç kaldırılmadı; `/etc` altında bir
+  dosya ya da bağlantı onu anıyorsa, yenileme dosyası elle değiştirilmişse
+  ya da bir güncellemenin geri dönüş kopyası onu tutuyorsa korundu, öteki
+  durumlarda iki certbot sürümünde de kaldırıldı. Her karar Denetim
+  günlüğünde.
+- Bu sunucunun güvenmediği bir zincir ve kullanılamayan certbot hesabı için
+  hata iletileri, müşteri olarak da yönetici olarak da: neden, kimin
+  yapacağı ve müşteriye hiçbir sunucu yolu ya da komutu yok.
+
+**Site yedekleri: denetlendi, geçti** (bir site programıyla).
+- Yedek programı ve verisini içeriyor ve bunu boyutlarıyla söylüyor.
+- Geri yükleme programı durduruyor, dosyaları yerine koyuyor ve programı
+  yeniden başlatıyor; sizin durdurduğunuz program durmuş kalıyor.
+- alpha.133'ün aldığı bir yedek eski biçim olarak geri yükleniyor ve
+  programa dokunmuyor.
+- Geri yüklemeden sonra programın klasörü sitenin hesabının kendi grubunu
+  koruyor.
+- Başka bir sitenin yedeği, artık sunucuda olmayan bir yedek ve bozuk bir
+  yedek kendi cümleleriyle reddediliyor; hiçbir şey geri yüklenmiyor.
+
+**Veritabanı oluşturma: denetlendi, geçti.**
+- Form gerçek tam adı gösteriyor.
+- Motor için fazla uzun bir ad, iki motorda da yazarken durduruluyor ve
+  sunucu tarafından reddediliyor.
+- Kısıtlı bir veritabanı hesabında başarısız olan oluşturma geride hiçbir
+  şey bırakmıyor.
+
+**Hiçbir laboratuvar denetiminde denenmeyenler:** bir Python (Flask)
+uygulamasını yedekten geri yüklemek; yedeğin bir hizmet uygulamasının
+verisi hakkında söyledikleri; bir siteyi silip aynı adla yeniden açıp geri
+yüklemek; adı fazla uzun bir veritabanıyla cPanel'den içe aktarma; MySQL 8;
+herkese açık bir sertifika kuruluşuna karşı her şey. İkinci ve üçüncü
+denetimin süreleri, sunucuyu başka bir iş yüklerken ölçüldü; kesin değildir.
+
+**Laboratuvarda bulunan, sonraki sürüme bırakılan küçük kusurlar:**
+- "Olduğu gibi bırakılanlar" listesi iki veritabanı sunucusunun satırlarını
+  karıştırabiliyor ve **Ayrıntılar** yalnız hakkı kaldırmayı öneriyor.
+- Veritabanı hesabının sahip olmadığı bir yetki hâlâ "sunucu kimlik
+  bilgisini reddetti" diye adlandırılıyor.
+- Yenileme dosyası elle değiştirilmiş, yerini yenisine bırakan bir
+  sertifika, o sitenin sonraki her isteğinde yöneticiye yeniden anılıyor.
+- Zincire güvenilmediğinde Türkçe sayfada yenileme kutusunun altında bir
+  İngilizce satır görünüyor.
+- certbot iki hesap tuttuğunda yöneticinin ayrıntıları certbot'un yalnız
+  ilk satırını aktarıyor.
+- Bir alan adını silmek, veritabanlarını veritabanı sunucusunda ve
+  panelin listelerinin dışında bırakıyor (sonraki sürüm).
 
 ## Kanıt
 
@@ -396,7 +489,7 @@ ve geri okunur; geri okuması başarısız olan bir hak "bilinmiyor" sayılır,
 hiçbir yanıta yorulmaz. Veritabanı hakları testleri geliştirme ortamında
 gerçek bir MariaDB 11.8.6'ya karşı çalıştı (yukarıdaki ölçümler); MariaDB
 10.11, sonradan eklenmiş ikinci bir sunucu ve iki müşterinin
-veritabanlarıyla yapılan denetim laboratuvara kaldı. İki yeni salt-okur sorgu
+veritabanlarıyla yapılan denetim ilk laboratuvar denetiminde yapıldı. İki yeni salt-okur sorgu
 eklendi: bir alan adının sertifikasının neyi koruduğu ve bir sitenin
 yedeğinin neleri içereceği. Sertifika isteği eskisi gibi önce hazırlanır,
 sonra devreye alınır; posta, alan adının sertifikasını yalnızca
@@ -413,8 +506,7 @@ değişti. İkinci düzeltme turu (6. laboratuvar denetiminden sonra): yerini
 yenisine bırakan bir sertifika, yenileme dosyasında certbot'un CelikPanel'in
 isteği için yazdıklarından başka bir şey yoksa kaldırılır; açılışta bekletilen
 tur saatlik turda yeniden sorulur; hesap nedenleri, okuyana göre yenileme
-kutusu ve önceden yazılı adres. Program yedekleri ve sertifikalar
-laboratuvarın gerçek sistemlerinde çalıştı (5. denetim: H.1–H.3, H.6, H.7,
-laboratuvarın kendi deneme kuruluşuyla G.1–G.5; 6. denetim: B.1, B.2,
-C.1–C.5); herkese açık bir sertifika kuruluşu yok. **Temel dayanıklılık işlerinden hiçbiri kapanmadı.** Sürüm sırası 133 →
+kutusu ve önceden yazılı adres. Üç laboratuvar denetimi yapıldı (bkz.
+"Laboratuvarda denetlenenler"); sonuncusu sürümün kendi kaydında; herkese
+açık bir sertifika kuruluşu yok. **Temel dayanıklılık işlerinden hiçbiri kapanmadı.** Sürüm sırası 133 →
 134.
