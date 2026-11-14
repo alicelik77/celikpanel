@@ -55,8 +55,8 @@ var certificateIssueFailedMessages = map[string]string{
 		"Then request the certificate here again.",
 	transport.CertificateFailureRateLimited: "No certificate was issued: the certificate authority refused for now because one of its request limits was reached. " +
 		"A request before the limit resets is refused the same way and counts against it; request the certificate here again later.",
-	transport.CertificateFailureAccountUnknown: "No certificate was issued: the certificate authority does not know the account this server uses with it. " +
-		"The server administrator replaces certbot's account for this authority on the server (sudo certbot show_account shows it), then requests the certificate here again.",
+	transport.CertificateFailureAccountUnknown: "No certificate was issued: certbot's account at this certificate authority cannot be used (the authority no longer knows it, or certbot holds more than one for it and cannot choose). " +
+		"The server administrator puts certbot's account for this authority right on the server, then requests the certificate here again.",
 	transport.CertificateFailureTimeout: "No certificate was issued: the request to the certificate authority did not finish in time and was stopped; why is not known. " +
 		"Request the certificate here again later; if it stops the same way, the server administrator reads certbot's record on the server.",
 	transport.CertificateFailureTool: "No certificate was issued, and the reason could not be established from certbot's answer. " +

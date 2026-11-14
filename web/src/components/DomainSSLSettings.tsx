@@ -7,6 +7,8 @@ import { Button, Checking, CouldNotCheck, ErrorBanner, Field, FormActions, FormS
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
+import { CopyCommand } from './CopyCommand';
+import { useAuth } from '../auth/AuthContext';
 import { CertificateReachNotice } from './CertificateReachNotice';
 import { certificateReachGate, decodeCertificateReach, type CertificateReachGate } from '../lib/certificateNames';
 import { decodeListIn, invalidate, lastKnown, useRemote } from '../lib/remote';
@@ -194,6 +196,10 @@ export function DomainSSLSettings({
 }: DomainSSLSettingsProps) {
     const { t, locale } = useI18n();
     const say = useSaveWords();
+    // Who acts on the renewal box is the reader; the account's own address
+    // is the request form's contact unless another is typed.
+    const { role, user } = useAuth();
+    const isAdministrator = role === 'admin';
     // Another domain is another address: its answer never appears under this
     // one, and an answer for the domain just left is dropped.
     // Başka alan adı başka adrestir: yanıtı bunun altında görünmez.
@@ -324,6 +330,13 @@ export function DomainSSLSettings({
     // A refused issue or upload that is not certbot's own result.
     const [actionRefusal, setActionRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
     const locked = ssl.remote.state !== 'known' || ssl.reading || issueAnswer.holding;
+
+    // alpha.134 lab run 6: the form waited for an address while the one-press
+    // request used the account's own. The account's address is filled in;
+    // another can be typed over it.
+    useEffect(() => {
+        if (user?.email) setEmail((current) => current || user.email || '');
+    }, [domainId, user?.email]);
 
     useEffect(() => {
         dismissIssueAnswer();
@@ -1045,9 +1058,25 @@ export function DomainSSLSettings({
                                             <span className="break-words">{t(guide.reasonKey as TranslationKey, guide.params)}</span>
                                         </p>
                                         {guide.actionKey && (
+                                            // Who acts is the reader (alpha.134 lab run 6): the
+                                            // administrator gets the action and, closed, the
+                                            // commands and files; anyone else what they can do
+                                            // on this page, or to contact the administrator.
                                             <>
-                                                <p className="mt-2 text-fg-muted">{t('ssl.renewalGuide.who')}</p>
-                                                <p className="mt-1 break-words">{t(guide.actionKey as TranslationKey, guide.params)}</p>
+                                                <p className="mt-2 text-fg-muted">
+                                                    {t(isAdministrator || guide.pageAction || guide.selfKey ? 'ssl.renewalGuide.who.you' : 'ssl.renewalGuide.who')}
+                                                </p>
+                                                <p className="mt-1 break-words">
+                                                    {t((isAdministrator || guide.pageAction ? guide.actionKey : guide.selfKey ?? 'ssl.issueFailure.next.ask') as TranslationKey, guide.params)}
+                                                </p>
+                                                {isAdministrator && (guide.commands.length > 0 || guide.file || guide.detail) && (
+                                                    <details className="mt-2 text-xs text-fg-muted" data-ssl-renewal-details="">
+                                                        <summary className="cursor-pointer">{t('common.technicalDetails')}</summary>
+                                                        {guide.commands.map((command) => <CopyCommand key={command} command={command} />)}
+                                                        {guide.file && <p className="mt-1 break-words">{t('ssl.renewalGuide.file', { file: guide.file })}</p>}
+                                                        {guide.detail && <p className="mt-1 break-words">{t('ssl.issueFailure.said', { detail: guide.detail })}</p>}
+                                                    </details>
+                                                )}
                                             </>
                                         )}
                                         <p className="mt-2 text-xs text-fg-subtle">{t((guide.resumeKey ?? (cert.renewal_owner === 'panel' ? 'ssl.renewalGuide.panel.resume' : 'ssl.renewalGuide.resume')) as TranslationKey)}</p>
@@ -1266,8 +1295,11 @@ export function DomainSSLSettings({
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="admin@example.com"
+                                    aria-describedby={!email.trim() && !issuing ? 'ssl-issue-reason' : undefined}
                                     className={`${inputClass} field-lg`}
                                 />
+                                {/* Why Issue is off, next to the field it needs (lab run 6). */}
+                                {!email.trim() && !issuing && <p id="ssl-issue-reason" className="mt-1 text-sm text-fg" data-blocked-reason="">{t('ssl.issue.needsEmail')}</p>}
                             </Field>
                             <label className="flex cursor-pointer items-center gap-2">
                                 <input type="checkbox" checked={autoRenew} onChange={(e) => setAutoRenew(e.target.checked)} className="h-4 w-4 accent-primary" />
@@ -1338,8 +1370,6 @@ export function DomainSSLSettings({
                                     requestAnywayDisabled={issuing || !email.trim() || locked}
                                 />
                             )}
-                            {/* Why Issue is off, beside it (owner feedback 2026-10-31). */}
-                            {!email.trim() && !issuing && <p id="ssl-issue-reason" className="text-sm text-fg" data-blocked-reason="">{t('ssl.issue.needsEmail')}</p>}
                         </div>
                     ) : (
                         <form onSubmit={handleUpload} className="space-y-3">

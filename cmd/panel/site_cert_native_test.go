@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -457,5 +458,48 @@ func TestRetireReplacedNativeLineagesWritesTheAuditLogOncePerChange(t *testing.T
 		!strings.Contains(got[0], `"lineage":"`+replaced+`"`) || !strings.Contains(got[0], `"file":"/etc/nginx/sites-enabled/own.conf"`) ||
 		!strings.HasPrefix(got[1], "ssl.lineage.removed:native-audit.example ") {
 		t.Fatalf("audit rows = %q", got)
+	}
+}
+
+// alpha.134 lab run 6: the pass at start is always held (start-up quiet
+// time) and the next one came 12 hours later. A held pass is asked again by
+// the hourly round of the database-rights rewrite once the same gate opens:
+// once, and not again while nothing waits.
+func TestHeldLineagePassIsAskedAgainWhenTheGateOpens(t *testing.T) {
+	panel, domainID, _, agent := replacedLineageFixture(t, "native-waiting.example")
+	openLineageRetireGate(t, panel)
+	nativeLineageRetireWaiting.Store(false)
+	t.Cleanup(func() { nativeLineageRetireWaiting.Store(false) })
+	calls := func() int {
+		agent.mu.Lock()
+		defer agent.mu.Unlock()
+		return len(agent.retire)
+	}
+
+	started := time.Now()
+	panel.startedAt.Store(started.UnixNano())
+	if _, err := panel.retireReplacedNativeLineages(t.Context(), domainID); err == nil || !nativeLineageRetireWaiting.Load() {
+		t.Fatalf("the pass at start was not held and marked waiting: %v", err)
+	}
+	// Still inside the quiet time: the round asks nothing.
+	panel.retireWaitingNativeLineages(t.Context(), started)
+	if calls() != 0 || !nativeLineageRetireWaiting.Load() {
+		t.Fatalf("asked while the gate is closed: calls=%d", calls())
+	}
+	// The gate opens: the next round asks once.
+	opened := time.Now().Add(-time.Hour)
+	panel.startedAt.Store(opened.UnixNano())
+	panel.retireWaitingNativeLineages(t.Context(), opened)
+	if calls() != 1 || nativeLineageRetireWaiting.Load() {
+		t.Fatalf("after the gate opened: calls=%d waiting=%v", calls(), nativeLineageRetireWaiting.Load())
+	}
+	panel.retireWaitingNativeLineages(t.Context(), opened)
+	if calls() != 1 {
+		t.Fatalf("asked again although nothing waits: calls=%d", calls())
+	}
+	// The round itself asks it.
+	source, err := os.ReadFile("database_grant_forms.go")
+	if err != nil || !strings.Contains(string(source), "p.retireWaitingNativeLineages(ctx, startedAt)") {
+		t.Fatalf("the hourly round does not ask the waiting pass: %v", err)
 	}
 }

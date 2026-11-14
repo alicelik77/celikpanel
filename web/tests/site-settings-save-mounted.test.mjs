@@ -31,6 +31,7 @@ const stub = dataModule(`
   const t = (key, values) => (values ? key + JSON.stringify(values) : key);
   const i18n = { t, locale: 'en' };
   export const useI18n = () => i18n;
+  export const useAuth = () => ({ role: 'admin', user: { email: '' } });
   export const useWebWords = () => i18n;
   export const useNavigate = () => () => {};
   export const showToast = (...args) => { (globalThis.toasts ??= []).push(args); };

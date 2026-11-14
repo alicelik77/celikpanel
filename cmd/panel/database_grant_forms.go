@@ -291,6 +291,9 @@ func (p *Panel) databaseGrantFormsHold(ctx context.Context, startedAt time.Time)
 // runDatabaseGrantFormsRound reads every MariaDB, records what it found and,
 // when nothing holds it, rewrites the rows proven CelikPanel's.
 func (p *Panel) runDatabaseGrantFormsRound(ctx context.Context, startedAt time.Time) {
+	// Replaced certificate lineages held behind this same gate (the pass at
+	// start always is) are asked again here once it opens (site_cert_native.go).
+	p.retireWaitingNativeLineages(ctx, startedAt)
 	engines, err := p.databaseGrantFormsEngines(ctx)
 	if err != nil {
 		log.Printf("database rights: the database servers could not be read: %v", err)

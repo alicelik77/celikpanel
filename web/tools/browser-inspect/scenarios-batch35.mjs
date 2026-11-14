@@ -10,6 +10,8 @@
 //                technical details open.
 //   y35adddomain Add domain with SSL ticked and the certificate refused, for
 //                a customer and for an administrator.
+//   y35renewal   The renewal box of a certificate whose automatic renewal is
+//                off (customer, administrator) and the request form's address.
 //
 // Every answer comes from the mock on 127.0.0.1 through overrides (SAMPLE
 // data shaped as the Panel answers); nothing is requested or contacted.
@@ -132,6 +134,43 @@ export default function batch35(scenarios, { base, locale, theme, out, viewport,
             await pause(900);
             if (role === 'admin') await page.evaluate(() => document.querySelectorAll('[data-certificate-issue] details').forEach((d) => { d.open = true; }));
             await snap(page, name, { role });
+            await closePage(page);
+        }
+        await reset(); await ctl({ clearAll: true, domains: [], ssl: null });
+    };
+
+    // Lab run 6: the renewal box of a certificate whose automatic renewal is
+    // off, for a customer and for an administrator (details open), and the
+    // request form with the account's own address filled in.
+    scenarios.y35renewal = async () => {
+        const lineage = 'celikpanel-site-1-4e8deccd853140bbc08feece';
+        const off = { ...SSL, certificate: { ...SSL.certificate, auto_renew: false, renewal_owner: 'operating_system', renewal_status: 'os_disabled',
+            renewal: { state: 'disabled', lineage_name: lineage, auto_renew: false, scheduler: { name: 'certbot.timer', enabled: true, active: true, known: true } } } };
+        for (const role of ['customer', 'admin']) {
+            await reset();
+            await ctl({ clearAll: true, domains: [DOMAIN], capabilities: CAPABILITIES, connection: CONNECTION, ssl: off,
+                override: { [ME]: { status: 200, body: USERS[role] }, '/api/v1/domains/1/ssl/coverage': { status: 200, body: COVERAGE } } });
+            const page = await newPage({});
+            await page.goto(`${base}/domains/example.com?section=security`, { waitUntil: 'domcontentloaded' });
+            await page.waitForSelector('main', { timeout: 20000 });
+            await quiet(page);
+            await waitFor(page, () => !!document.querySelector('[data-ssl-renewal-guidance]'), 20000).catch(() => {});
+            await pause(500);
+            await page.evaluate(() => document.querySelectorAll('[data-ssl-renewal-details]').forEach((d) => { d.open = true; }));
+            await page.evaluate(() => document.querySelector('[data-ssl-renewal-guidance]')?.scrollIntoView({ block: 'start' }));
+            await pause(300);
+            const box = await page.evaluate(() => document.querySelector('[data-ssl-renewal-guidance]')?.innerText || '');
+            await shot(page, `y35-renewal-${role}`, { role, box, serverPath: /\/etc\/|\/var\/|sudo /.test(box) });
+            await mkdir(shots, { recursive: true });
+            await copyFile(join(out, `y35-renewal-${role}.png`), join(shots, `renewal-${role}-${locale}-${theme}-${viewport.width}.png`));
+            // The request form starts from the account's own address.
+            await page.evaluate(() => Array.from(document.querySelectorAll('button')).find((node) => /^(Reissue certificate|Sertifikayı yeniden al)$/.test((node.innerText || '').trim()))?.click());
+            await pause(600);
+            await page.evaluate(() => document.querySelector('main input[type="email"]')?.scrollIntoView({ block: 'center' }));
+            await pause(300);
+            const email = await page.evaluate(() => document.querySelector('main input[type="email"]')?.value || '');
+            await shot(page, `y35-form-${role}`, { role, email });
+            await copyFile(join(out, `y35-form-${role}.png`), join(shots, `form-${role}-${locale}-${theme}-${viewport.width}.png`));
             await closePage(page);
         }
         await reset(); await ctl({ clearAll: true, domains: [], ssl: null });

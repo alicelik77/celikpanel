@@ -102,8 +102,10 @@ func retireNativeSiteLineages(ctx context.Context, req transport.RetireSiteCerti
 	// The server certbot recorded for CelikPanel's latest request of this
 	// domain is CelikPanel's own (a certbot cli.ini, the lab's Pebble).
 	activeServer := ""
+	var activeConf []byte
 	if active := strings.TrimSpace(req.ActiveLineage); active != "" {
 		if content, err := readBounded(nativeSiteRenewalConfPath(active), nativeSiteMaxConfBytes); err == nil {
+			activeConf = content
 			if conf, err := parseNativeSiteRenewalConf(content); err == nil {
 				activeServer = conf.Server
 			}
@@ -127,8 +129,7 @@ func retireNativeSiteLineages(ctx context.Context, req transport.RetireSiteCerti
 			keep(name, transport.SiteLineageNotChecked, "its renewal configuration could not be read: "+err.Error())
 			continue
 		}
-		conf, err := parseNativeSiteRenewalConf(content)
-		if err != nil {
+		if _, err := parseNativeSiteRenewalConf(content); err != nil {
 			keep(name, transport.SiteLineageNotChecked, "its renewal configuration could not be read: "+err.Error())
 			continue
 		}
@@ -140,8 +141,11 @@ func retireNativeSiteLineages(ctx context.Context, req transport.RetireSiteCerti
 		if expectServer == "" {
 			expectServer = letsEncryptDefaultDirectory
 		}
-		if nativeSiteConfOwnerChanged(conf, expectWebroot, expectServer, activeServer) {
-			keep(name, transport.SiteLineageOwnerChanged, "certbot's renewal configuration of this lineage was changed outside CelikPanel; it is kept as it is")
+		// Removal is irreversible: the file must hold nothing but what
+		// certbot writes for CelikPanel's request (nativeSiteConfOnlyCertbots;
+		// narrower than the page's warning rule).
+		if differs := nativeSiteConfOnlyCertbots(content, activeConf, name, expectWebroot, expectServer, activeServer); differs != "" {
+			keep(name, transport.SiteLineageOwnerChanged, "certbot's renewal configuration of this lineage holds a line CelikPanel's request does not write ("+differs+"); it is kept as it is")
 			continue
 		}
 		candidates = append(candidates, name)
