@@ -1,0 +1,196 @@
+{
+  "lengths": [
+    {
+      "note": "the lab's name on PostgreSQL: the user is one character too long",
+      "engine": "postgresql",
+      "database": "k_1_dr_test_a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x",
+      "users": [
+        "k_1_dr_test_a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x_user"
+      ],
+      "by": 1,
+      "underscores": false
+    },
+    {
+      "note": "the lab's name on MariaDB: the exact form is 22 over",
+      "engine": "mysql",
+      "database": "k_1_dr_test_a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x",
+      "users": [
+        "k_1_dr_test_a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x_user"
+      ],
+      "by": 22,
+      "underscores": true
+    },
+    {
+      "note": "short name fits on PostgreSQL",
+      "engine": "postgresql",
+      "database": "shop_example_com_app",
+      "users": [
+        "shop_example_com_app_user"
+      ],
+      "by": 0,
+      "underscores": false
+    },
+    {
+      "note": "short name fits on MariaDB",
+      "engine": "mariadb",
+      "database": "shop_example_com_app",
+      "users": [
+        "shop_example_com_app_user"
+      ],
+      "by": 0,
+      "underscores": false
+    },
+    {
+      "note": "58 characters without underscores: the user (63) fits",
+      "engine": "postgresql",
+      "database": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "users": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_user"
+      ],
+      "by": 0,
+      "underscores": false
+    },
+    {
+      "note": "59 characters without underscores: the user is 64 on PostgreSQL",
+      "engine": "postgresql",
+      "database": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "users": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_user"
+      ],
+      "by": 1,
+      "underscores": false
+    },
+    {
+      "note": "59 characters without underscores on MariaDB: the user is 64, the exact form fits",
+      "engine": "mysql",
+      "database": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "users": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_user"
+      ],
+      "by": 1,
+      "underscores": false
+    },
+    {
+      "note": "a 60-character name with six underscores on MariaDB: both limits two over, the plain wording",
+      "engine": "mysql",
+      "database": "abcdefghi_abcdefghi_abcdefghi_abcdefghi_abcdefghi_abcdefghi_",
+      "users": [
+        "abcdefghi_abcdefghi_abcdefghi_abcdefghi_abcdefghi_abcdefghi__user"
+      ],
+      "by": 2,
+      "underscores": false
+    },
+    {
+      "note": "63 characters on PostgreSQL without users: fits",
+      "engine": "postgresql",
+      "database": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "users": [],
+      "by": 0,
+      "underscores": false
+    },
+    {
+      "note": "64 characters on PostgreSQL without users: one over",
+      "engine": "postgresql",
+      "database": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "users": [],
+      "by": 1,
+      "underscores": false
+    },
+    {
+      "note": "an added user alone: 63 fits",
+      "engine": "mysql",
+      "database": "",
+      "users": [
+        "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "by": 0,
+      "underscores": false
+    },
+    {
+      "note": "an added user alone: 66 is three over",
+      "engine": "postgresql",
+      "database": "",
+      "users": [
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "by": 3,
+      "underscores": false
+    },
+    {
+      "note": "an added user on MariaDB is not counted as a database name",
+      "engine": "mysql",
+      "database": "",
+      "users": [
+        "c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c_c"
+      ],
+      "by": 0,
+      "underscores": false
+    },
+    {
+      "note": "underscores dominate on MariaDB though the user is over too",
+      "engine": "mysql",
+      "database": "x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x",
+      "users": [
+        "x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_user"
+      ],
+      "by": 21,
+      "underscores": true
+    },
+    {
+      "note": "PostgreSQL never counts underscores twice",
+      "engine": "postgresql",
+      "database": "x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x",
+      "users": [
+        "x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_x_user"
+      ],
+      "by": 0,
+      "underscores": false
+    }
+  ],
+  "characters": [
+    {
+      "name": "myapp",
+      "valid": true
+    },
+    {
+      "name": "MyApp_2",
+      "valid": true
+    },
+    {
+      "name": "_x",
+      "valid": true
+    },
+    {
+      "name": "2026",
+      "valid": true
+    },
+    {
+      "name": "my-app",
+      "valid": false
+    },
+    {
+      "name": "my.app",
+      "valid": false
+    },
+    {
+      "name": "my app",
+      "valid": false
+    },
+    {
+      "name": "çarþý",
+      "valid": false
+    },
+    {
+      "name": "a$b",
+      "valid": false
+    },
+    {
+      "name": "x`y",
+      "valid": false
+    },
+    {
+      "name": "",
+      "valid": true
+    }
+  ]
+}

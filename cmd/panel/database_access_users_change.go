@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -88,7 +89,8 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	username := target.identity.Name + "_" + req.Name
-	if len(username) > 63 {
+	// The one length rule of the names a create makes (the Agent's too).
+	if services.DatabaseNamesOver(target.identity.Type, "", username).By > 0 {
 		writeCodedError(w, http.StatusBadRequest, errCodeDatabaseUserName,
 			"The database name and this name together are longer than 63 characters, the longest user name the database server takes. Choose a shorter name; nothing was changed.", "")
 		return
