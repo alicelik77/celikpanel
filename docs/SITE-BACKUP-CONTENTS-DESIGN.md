@@ -94,15 +94,35 @@ The existing rule stays: a subscription at its disk limit takes no new manual ba
 `public_html` and the databases restore exactly as before. An area restores like
 `public_html`: the archive is unpacked into a staging folder beside the area, owned by
 root and 0700 while it is written; then every file, folder and link gets the site's
-account as owner (the owner of the site home) and the mode stored in the archive (the
-area folder keeps its current mode, or the archived one when it did not exist), the
-setgid bit on folders where the area had it; then the staging folder replaces the area
+account as owner and that account's own group, exactly as the Programs tab's deploy makes
+the program's folders (the account is resolved and proved by the deploy's own lookup:
+its home must be the site home), and the mode stored in the archive (permission bits
+only, which the account could set itself; the area folder keeps its current mode, or the
+archived one when it did not exist), the setgid bit on folders where the area had it.
+The archive stores no owner, and the site home's group is never taken: it is the web
+server's group, and the web server has no business in the program's folder (alpha.134
+lab: a restore gave `app/` to `www-data`'s group). `public_html` keeps its own rule, its
+current owner and the web server's group with setgid folders, because the web server
+serves it. Without the site's account nothing is replaced (`site_account`). Then the staging folder replaces the area
 in one rename and the old one is removed after the rename is proven. Every open is made
 relative to a held descriptor without following a link; a name with `..`, an absolute
 name, a duplicate, a hard-link entry or a device entry stops the restore before
 anything is replaced. Several replacements (site files, `app`, databases) are published
 in order; when one fails, the ones already published are put back and the databases are
 loaded from the safety backup, as a full restore did.
+
+**Refusals before anything is replaced** (alpha.134 lab: these answered "internal
+error"). The Agent types them where the cause is certain, in its answer to the inspection
+and to the restore (`code`), and the screen says what happened, that nothing changed and
+what to do: `not_found` (the name is not in this site's backups: deleted, or another
+site's; a site deleted and created again under the same name is a new site with its own,
+empty list), `other_site` (another site's package put into this site's folder),
+`invalid_backup` (a manifest or payload that fails its checks, a damaged archive),
+`no_space` (no room on the server's disk to unpack or stage the backup; the server
+administrator acts), `site_account` (above). A read or write error of the server itself
+stays untyped. A restore that put the files back but whose program did not start is a
+verified result, not an unknown one: the answer names what was restored and why the
+program does not run, with the Programs tab as the next step.
 
 **Programs and Python apps.** The Panel orchestrates around the Agent's restore, with
 real steps in the progress window:
@@ -204,8 +224,8 @@ backed up (the `public_html` rule above), unchanged by this note.
 4. On the server delete `app/data/note.txt` and `app/bin/server` (as the site's account).
    The site fails. Restore the files backup: the progress window shows stopping the
    program, restoring, starting the program; the result says it started and listens;
-   the site shows the note again. `stat` shows the site's account as owner and the
-   original modes.
+   the site shows the note again. `stat` shows the site's account as owner, its own
+   group (never the web server's) and the original modes.
 5. Stop the program on the Programs tab, restore again: it stays stopped and the result
    says so.
 6. Restore an archive made by alpha.132 or 133 on the same site: it restores

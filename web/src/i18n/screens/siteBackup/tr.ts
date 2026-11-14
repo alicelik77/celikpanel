@@ -64,4 +64,8 @@ export const trSiteBackupScreens: Record<SiteBackupScreenKey, string> = {
     'err.BACKUP_RESTORE_PROGRAM_BUSY': 'Sitenin programı şu anda yayınlanıyor ya da kaldırılıyor; bu yüzden geri yükleme başlatılmadı ve hiçbir şey değişmedi. Programlar sekmesinde bu iş bitince yeniden geri yükleyin.',
     'err.BACKUP_RESTORE_PROGRAM_UNKNOWN': 'Sunucu sitenin programı hakkında yanıt vermedi; geri yükleme başlatılmadı ya da sonucu bilinmiyor. Siteyi ve Programlar sekmesini kontrol edin; program durmuşsa oradan başlatın.',
     'err.BACKUP_RESTORE_PROGRAM_STOP_FAILED': 'Sitenin programı durdurulamadı; bu yüzden geri yükleme başlatılmadı ve hiçbir şey değişmedi. Sunucunun gerekçesi aşağıda; programı Programlar sekmesinden kontrol edin.',
+    'err.BACKUP_RESTORE_NOT_FOUND': 'Bu yedek, sunucuda bu sitenin yedekleri arasında yok (silinmiş ya da başka bir siteye ait); hiçbir şey geri yüklenmedi ve site değişmedi. Bu sitenin listesinden bir yedek seçin.',
+    'err.BACKUP_RESTORE_OTHER_SITE': 'Bu yedek başka bir siteden alınmış; bu yüzden burada geri yüklenmez. Hiçbir şey geri yüklenmedi ve site değişmedi. Bu sitenin bir yedeğini seçin ya da bu yedeği alındığı sitede geri yükleyin.',
+    'err.BACKUP_RESTORE_NO_SPACE': 'Sunucunun diskinde bu yedeği açacak yer yok; hiçbir şey geri yüklenmedi ve site değişmedi. Sunucu yöneticisi sunucuda yer açar; ardından yeniden geri yükleyin.',
+    'err.BACKUP_RESTORE_SITE_ACCOUNT': 'Programın dosyalarının ait olduğu, sitenin sunucudaki kendi hesabı bulunamadı; hiçbir şey geri yüklenmedi ve site değişmedi. Sunucu yöneticisi sitenin barındırma hesabını denetler; ardından yeniden geri yükleyin.',
 };

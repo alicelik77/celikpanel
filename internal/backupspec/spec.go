@@ -227,6 +227,10 @@ type InspectResponse struct {
 	Backup    Info               `json:"backup,omitempty"`
 	Databases []DatabaseIdentity `json:"databases,omitempty"`
 	Error     string             `json:"error,omitempty"`
+	// Code (alpha.134, additive): a refusal the screen can name
+	// (RestoreCodeNotFound, RestoreCodeOtherSite, RestoreCodeInvalid); empty
+	// for an error of the server itself.
+	Code string `json:"code,omitempty"`
 }
 
 type RestoreRequest struct {
@@ -279,6 +283,19 @@ const (
 	// RestoreCodeFinishFailed: the restore was published but its final
 	// cleanup or durability proof did not finish.
 	RestoreCodeFinishFailed = "finish_failed"
+	// alpha.134 lab findings (D-024: a refusal says what happened, not
+	// "internal error"); also InspectResponse.Code. Nothing was replaced.
+	// RestoreCodeNotFound: the backup is not (or no longer) among this
+	// site's backups on the server.
+	RestoreCodeNotFound = "not_found"
+	// RestoreCodeOtherSite: the package was made of another site.
+	RestoreCodeOtherSite = "other_site"
+	// RestoreCodeNoSpace: the server's disk had no room to unpack or stage
+	// the backup.
+	RestoreCodeNoSpace = "no_space"
+	// RestoreCodeSiteAccount: the site's own system account, which the
+	// program's files are given to, could not be found or proved.
+	RestoreCodeSiteAccount = "site_account"
 )
 
 // RestoreInProgress is the exact RestoreResponse.Error of a restore refused

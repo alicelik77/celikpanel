@@ -357,6 +357,12 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	if !inspection.Success || inspection.Error != "" {
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, inspection.Error)
+		// alpha.134 lab: a backup that is not this site's (another site's
+		// name, or its package put in this site's folder) or fails its
+		// checks is said as such; nothing was read further or changed.
+		if inspection.Code != "" && writeRestoreFailure(w, backupspec.RestoreResponse{Code: inspection.Code}) {
+			return
+		}
 		writeAgentError(w, nil, inspection.Error)
 		return
 	}

@@ -17,7 +17,7 @@ func measureSiteBackup(string, string, time.Duration) backupspec.ContentsRespons
 		BackupFreeBytes: -1, Error: errBackupPlatformUnsupported.Error()}
 }
 
-func prepareAreaRestore(string, string, string) (*stagedFilesRestore, bool, error) {
+func prepareAreaRestore(string, string, string, areaOwner) (*stagedFilesRestore, bool, error) {
 	return nil, false, errBackupPlatformUnsupported
 }
 
