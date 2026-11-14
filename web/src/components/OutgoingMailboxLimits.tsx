@@ -51,9 +51,20 @@ function limitWords(t: Translate, effective: OutgoingEffective, locale: string):
     return t('mout.row.limit', { n: effective.limit });
 }
 
+/** The limit and this hour in one sentence (the limit dialog's "now"). */
 function rowWords(t: Translate, row: OutgoingMailbox, locale: string): string {
-    return `${limitWords(t, row.effective, locale)} · ${t('mout.row.hour', { n: row.used_hour })}`;
+    return `${limitWords(t, row.effective, locale)}, ${t('mout.row.hour', { n: row.used_hour })}`;
 }
+
+// The row line's separator, drawn: the interface font's "·" sits against the
+// word after it, so the line read "alıcı ·bu saat" (alpha.135 review).
+// Satır ayıracı çizilir; yazı tipinin "·" işareti sonraki sözcüğe yapışıyordu.
+const Dot = () => (
+    <>
+        <span className="sr-only">, </span>
+        <span aria-hidden="true" className="mx-1.5 inline-block h-[3px] w-[3px] rounded-full bg-current align-middle" data-outgoing-dot="" />
+    </>
+);
 
 function Line({ tone, attr, children, action }: { tone: 'warn' | 'info'; attr: Record<string, string>; children: ReactNode; action?: ReactNode }) {
     return (
@@ -123,8 +134,10 @@ export function OutgoingRowLine({ domainId, accountId }: { domainId: number; acc
     if (!row) return null;
     return (
         <span className="mt-0.5 block text-xs text-fg-muted" data-outgoing-line={row.address}>
-            {rowWords(t, row, locale)}
-            {row.refused_7d > 0 && <> · <span className="text-warning">{t('mout.row.refused', { n: row.refused_7d })}</span></>}
+            {limitWords(t, row.effective, locale)}
+            <Dot />
+            {t('mout.row.hour', { n: row.used_hour })}
+            {row.refused_7d > 0 && <><Dot /><span className="text-warning">{t('mout.row.refused', { n: row.refused_7d })}</span></>}
         </span>
     );
 }

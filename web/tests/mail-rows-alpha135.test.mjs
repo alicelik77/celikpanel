@@ -235,6 +235,8 @@ for (const role of ['admin', 'reseller', 'customer']) {
     const lines = attr('data-outgoing-line');
     assert.deepEqual(lines.map((node) => node.props['data-outgoing-line']), ['info@example.com', 'a+b@example.com']);
     assert.match(words(lines[0]), /mout\.row\.limit\{"n":500\}.*mout\.row\.hour\{"n":12\}/);
+    // The separator is drawn: the interface font's "·" sat against the next word.
+    assert.ok(!words(lines[0]).includes('·') && lines[0].findAll((node) => node.props['data-outgoing-dot'] !== undefined).length === 1);
     assert.match(words(lines[1]), /mout\.row\.new\{"n":50,"time":/);
     assert.equal(attr('data-outgoing-near').length + attr('data-outgoing-state').length, 0);
     assert.ok(!text().includes('mout.dom.title'), 'the old card is back');

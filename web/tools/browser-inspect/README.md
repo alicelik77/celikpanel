@@ -753,7 +753,11 @@ rolled-back update; Open webmail is held back until webmail has its own address 
 Roundcube's Manage page with the Webmail address card without an address (the
 suggestion), a check with no record yet (the record and the zone hosted here), a
 ready check and its set-up confirmation, and an enabled, proved address with its
-removal confirmation (`y33address`). Same conventions as batch 30.
+removal confirmation (`y33address`). Since alpha.135 it also draws "Add…"
+beside "Copy" on a pair's backup DNS server: the check, the confirmation, the
+steps, the end, the wait and its bound, each refusal, an unknown result and an
+optional AAAA record, with example names only (`y33dnsadd`). Same conventions
+as batch 30.
 
 `scenarios-batch34.mjs` draws alpha.134's "Database rights by exact name" block
 on the MariaDB page from overrides only: nothing to do, being rewritten, waiting
@@ -761,3 +765,13 @@ for a verified panel update, a registered server whose account is refused with
 narrowed rights and rights left as they are (Details open), a server that is not
 MariaDB, and the one home notification about rights left as they are
 (`y34grants`). Same conventions as batch 30.
+
+`scenarios-batch36.mjs` draws the alpha.135 screens its integration touched,
+from overrides only: Maintenance → What deletions left with held mail and
+backups, mail left in place and a list cut at the Agent's limit
+(`y36holding`); a domain's mailboxes while the sending limits are applied, for
+an administrator and a customer, recording any quota the browser broke over two
+lines and any "·" set against the next word (`y36mail`); and a domain deleted
+with its databases as the administrator, the question and the finished window
+with the database deletion's own lines (`y36deleted`). Same conventions as
+batch 30.
