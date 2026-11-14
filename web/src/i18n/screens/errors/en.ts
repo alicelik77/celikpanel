@@ -233,8 +233,8 @@ export const enErrorsScreens = {
     // alpha.134: a new database name MariaDB could not keep a right on exactly (cmd/panel/database_names.go); every screen that creates a database reads it here.
     'err.DATABASE_NAME_TOO_LONG': 'The database name {name} is too long by {over}. Choose a shorter name, or one with fewer underscores (each underscore counts as two characters). Nothing was changed.',
     'err.DATABASE_NAME_TOO_LONG.length': 'The database name {name} is too long by {over}. Choose a shorter name. Nothing was changed.',
-    'err.DATABASE_CREATE_LEFT_OVER': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. They are not in CelikPanel\'s list, and the same name is refused until they are gone. The server\'s administrator removes them on the database server; meanwhile choose another name.',
-    'err.DATABASE_CREATE_LEFT_OVER.administrator': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. They are not in CelikPanel\'s list, and the same name is refused until they are gone. Remove them on the database server, or choose another name.',
+    'err.DATABASE_CREATE_LEFT_OVER': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. These are not in CelikPanel\'s list, and the same name is refused until they are removed. The server\'s administrator removes them on the database server; meanwhile choose another name.',
+    'err.DATABASE_CREATE_LEFT_OVER.administrator': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. These are not in CelikPanel\'s list, and the same name is refused until they are removed. Remove them on the database server, or choose another name.',
 } as const;
 
 export type ErrorsScreenKey = keyof typeof enErrorsScreens;

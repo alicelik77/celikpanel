@@ -60,4 +60,11 @@ test('the English length sentences read right for one and for many, and differ f
   const go = read('../../cmd/panel/database_names.go');
   assert.doesNotMatch(go, /characters shorter|too long by/);
   assert.match(go, /over the engine's length limit/);
+  // The left-over refusal, both readers: the part after {left} is not the
+  // server's sentence word for word.
+  for (const key of ['err.DATABASE_CREATE_LEFT_OVER', 'err.DATABASE_CREATE_LEFT_OVER.administrator']) {
+    const tail = enScreens[key].split('{left}')[1];
+    assert.ok(tail && tail.length > 40, key);
+    assert.ok(!go.includes(tail), `${key} equals the server's message`);
+  }
 });
