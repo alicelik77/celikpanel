@@ -50,10 +50,26 @@ export async function databaseDeletedKeptWords(t: T, name: string, res: Response
         const value = answer && typeof answer === 'object' ? (answer as Record<string, unknown>)[field] : undefined;
         return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item !== '').join(', ') : '';
     };
+    const field = (key: string): unknown => (answer && typeof answer === 'object' ? (answer as Record<string, unknown>)[key] : undefined);
     const notes: string[] = [];
-    for (const [field, key] of [['users_kept_on_engine', 'databases.keptNote.otherRights'], ['users_kept_unchecked', 'databases.keptNote.unchecked'], ['users_kept_on_server', 'databases.keptNote.server']] as const) {
-        const users = list(field);
-        if (users) notes.push(t(key, { name, users }));
+    for (const [key, words] of [['users_kept_on_engine', 'databases.keptNote.otherRights'], ['users_kept_unchecked', 'databases.keptNote.unchecked'], ['users_kept_on_server', 'databases.keptNote.server']] as const) {
+        const users = list(key);
+        if (users) notes.push(t(words, { name, users }));
     }
+    // alpha.134: for an administrator only (the server leaves these out for
+    // everybody else): whose rights naming the database went, which were left
+    // because they also reach other databases, and what may remain on a
+    // server CelikPanel reaches with an account that could not remove it.
+    const accounts = list('rights_removed_from');
+    if (accounts) notes.push(t('databases.keptNote.rightsFrom', { name, accounts }));
+    const kept = field('rights_kept');
+    if (Array.isArray(kept) && kept.length > 0) {
+        const rows = kept
+            .filter((row): row is { account: string; pattern: string; reaches?: unknown } => !!row && typeof row === 'object' && typeof (row as { account?: unknown }).account === 'string' && typeof (row as { pattern?: unknown }).pattern === 'string')
+            .map((row) => `${row.account} (${row.pattern} → ${Array.isArray(row.reaches) ? row.reaches.filter((item): item is string => typeof item === 'string').join(', ') : ''})`)
+            .join('; ');
+        if (rows) notes.push(t('databases.keptNote.rightsKept', { name, rows }));
+    }
+    if (field('rights_may_remain') === true) notes.push(t('databases.keptNote.rightsMayRemain', { name }));
     return notes.length > 0 ? [t('databases.deletedNamed', { name }), ...notes].join(' ') : null;
 }

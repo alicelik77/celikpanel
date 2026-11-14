@@ -43,6 +43,9 @@ const alpha128LazyParts = {
   // its own address (its own chunk; on the Security page since alpha.133,
   // with CelikPanel's own account on the MariaDB and PostgreSQL pages).
   './DatabaseRemoteServerPanel': ['DatabaseRemoteServerPanel', 'EngineAccountBlock'],
+  // alpha.134: database rights by exact name on the MariaDB page (its own
+  // chunk and its own mounted tests).
+  './DatabaseGrantFormsBlock': ['DatabaseGrantFormsBlock'],
 };
 
 export function compileSource(path, resolve) {
@@ -86,6 +89,8 @@ export const useRefusalURL = compileSource('lib/useRefusal.ts', unexpected('lib/
 export const lostAnswerURL = compileSource('lib/lostAnswer.ts', (specifier) => (
   specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/lostAnswer.ts')(specifier)
 ));
+// alpha.134 fix round: the length rule of a database create's names (the field's half).
+export const databaseNameLimitsURL = compileSource('lib/databaseNameLimits.ts', unexpected('lib/databaseNameLimits.ts'));
 export const domainDatabasesURL = compileSource('lib/domainDatabases.ts', (specifier) => (
   specifier.endsWith('/remote') ? remoteURL : unexpected('lib/domainDatabases.ts')(specifier)
 ));
@@ -238,6 +243,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/lostAnswer': lostAnswerURL,
     '/lib/siteCertificateRequest': siteCertificateRequestURL,
     '/lib/domainDatabases': domainDatabasesURL,
+    '/lib/databaseNameLimits': databaseNameLimitsURL,
     '/lib/download': downloadURL,
     '/lib/siteWebServerRefused': siteWebServerRefusedURL,
     '/lib/serviceActionNote': serviceActionNoteURL,
@@ -320,6 +326,9 @@ export function sharedLayer(stubURL, extra = {}) {
   // alpha.114: the owner's automatic/manual choice and Arch's step-by-step guide.
   if (!extra['/OSUpdatesChoice']) table['/OSUpdatesChoice'] = compileSource('components/OSUpdatesChoice.tsx', resolve);
   if (!extra['/ArchUpdateGuide']) table['/ArchUpdateGuide'] = compileSource('components/ArchUpdateGuide.tsx', resolve);
+  // The release after alpha.133: what a site backup holds, and what a restore did with the program.
+  if (!extra['/lib/backupContents']) table['/lib/backupContents'] = compileSource('lib/backupContents.ts', resolve);
+  if (!extra['/BackupContentsNote']) table['/BackupContentsNote'] = compileSource('components/BackupContentsNote.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => quietLazyParts(compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);

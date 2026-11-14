@@ -8,6 +8,7 @@ import { invalidate, LOADING, readRemote, useRemote, type Remote } from '../lib/
 import { isStaleWrite, StaleNotice } from './CurrentSettings';
 import { Button, Checking, CouldNotCheck, RemoteGate, inputClass } from './ui';
 import { MailAutoconfigNotice } from './MailAutoconfigNotice';
+import { MailHostProtection } from './domain/MailHostProtection';
 
 interface Props {
     domainId: number;
@@ -136,6 +137,7 @@ export function MailSettingsPanel({ domainId, domainName, readOnly = false, admi
                                     <ProtoCard title="POP3" sub={t('mail.setup.incomingAlt')} proto={value.pop3} />
                                     <ProtoCard title="SMTP" sub={t('mail.setup.outgoing')} proto={value.smtp} />
                                 </div>
+                                {value.mail_host && <MailHostProtection host={value.mail_host} protection={value.host_protection} domainName={domainName} />}
                             </>
                         )}
                     </RemoteGate>

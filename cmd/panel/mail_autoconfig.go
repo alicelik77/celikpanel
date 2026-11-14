@@ -121,20 +121,37 @@ func (p *Panel) mailAutoconfigFor(ctx context.Context, domainID int) (mailAutoco
 		plan.reason = mailAutoconfigReasonNameTaken
 		return plan, nil
 	}
-	// The domain's own mail name when its certificate carries it for mail
-	// (Dovecot and Postfix then show that certificate for it); otherwise the
-	// server's mail name, which always has one.
-	var secureMail int
-	if err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM ssl_certificates WHERE domain_id = ? AND status = 'active' AND secure_mail = 1`,
-		domainID).Scan(&secureMail); err != nil {
+	told, err := p.mailClientHost(ctx, domainID, name, host)
+	if err != nil {
 		return mailAutoconfigPlan{}, err
 	}
-	if secureMail > 0 {
-		host = "mail." + name
-	}
-	plan.available, plan.mailHost = true, host
+	plan.available, plan.mailHost = true, told
 	return plan, nil
+}
+
+// mailClientHost is the mail server name a domain's mail programs are told
+// (the auto-setup answers and the mail screen's settings). It is the server's
+// mail name, which always has a certificate, unless the domain chose its own
+// mail.<domain> before alpha.134 (domains.mail_clients_use_own_name, migration
+// 078) and mail still serves the domain's certificate for it. Serving the
+// domain's certificate for mail.<domain> alone (alpha.134's default) never
+// changes this name (docs/CERTIFICATE-COVERAGE.md).
+// Posta programlarına söylenen ad: sunucunun posta adı; alan adı bunu
+// alpha.134'ten önce seçmişse ve posta hâlâ onun sertifikasını sunuyorsa mail.<alan adı>.
+func (p *Panel) mailClientHost(ctx context.Context, domainID int, domain, serverHost string) (string, error) {
+	var own int
+	if err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM domains d
+		WHERE d.id = ? AND d.mail_clients_use_own_name = 1
+		  AND EXISTS (SELECT 1 FROM ssl_certificates sc
+		              WHERE sc.domain_id = d.id AND sc.status = 'active' AND sc.secure_mail = 1)`,
+		domainID).Scan(&own); err != nil {
+		return "", err
+	}
+	if own > 0 {
+		return "mail." + strings.ToLower(strings.TrimSuffix(domain, ".")), nil
+	}
+	return serverHost, nil
 }
 
 // mailAutoconfigRequest is the render's part: nil when the domain's site

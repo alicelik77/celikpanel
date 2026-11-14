@@ -333,6 +333,10 @@ func isAdminOnlyPath(path string) bool {
 	if path == runtimeAppsAdminPath || strings.HasPrefix(path, runtimeAppsAdminPath+"/") {
 		return true
 	}
+	// alpha.134: the rewrite of database rights to exact names.
+	if path == databaseGrantFormsPath {
+		return true
+	}
 	// alpha.117 (D-043): a security emergency is the administrator's alone.
 	if path == securityEmergenciesPath || strings.HasPrefix(path, securityEmergenciesPath+"/") {
 		return true

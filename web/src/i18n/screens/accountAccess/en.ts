@@ -113,6 +113,9 @@ export const enAccountAccessScreens = {
     'err.account_invitation_superseded': 'This account already has a password, so no invitation was sent. The person signs in with it, or uses Forgot password.',
     'err.account_invitation_request_invalid': 'The request could not be read, so nothing was changed. Reload the page and try again.',
     'err.account_invitation_with_password': 'An invitation lets the person choose their own password, so a password cannot be given with it. Leave the password empty.',
+    // The sign-in page's demo accounts (a server started with --demo), off the boot path since alpha.134.
+    'acct.demo.title': 'Demo accounts',
+    'acct.demo.hint': 'Development mode — click a role to fill the form.',
 } as const;
 
 export type AccountAccessScreenKey = keyof typeof enAccountAccessScreens;

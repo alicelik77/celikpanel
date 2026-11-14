@@ -214,6 +214,10 @@ func TestMariaDBStatementsNeverUseWildcardsAndRequireTLS(t *testing.T) {
 	if err != nil || grant != "GRANT SELECT, INSERT ON `shop`.* TO 'shop_u'@'198.51.100.0/255.255.255.0';" {
 		t.Fatalf("grant = %s, %v", grant, err)
 	}
+	// alpha.134: by the exact name.
+	if grant, err := GrantMariaDB("SELECT", "shop_a", "shop_u", "203.0.113.7"); err != nil || grant != "GRANT SELECT ON `shop\\_a`.* TO 'shop_u'@'203.0.113.7';" {
+		t.Fatalf("grant = %s, %v", grant, err)
+	}
 	if _, err := GrantMariaDB("SUPER", "shop", "shop_u", "203.0.113.7"); err == nil {
 		t.Fatal("SUPER copied")
 	}
@@ -233,6 +237,17 @@ func TestParseMariaDBGrantsCopiesOnlyDatabaseGrants(t *testing.T) {
 	}
 	if grants.Global || len(grants.Databases) != 2 || grants.Databases["shop"] != "ALL PRIVILEGES" || grants.Databases["blog"] != "SELECT" {
 		t.Fatalf("grants = %+v", grants)
+	}
+	// alpha.134: the exact form and the pattern form of one name, and a
+	// wildcard on purpose, which is never copied.
+	forms, err := ParseMariaDBGrants([]string{
+		"GRANT SELECT ON `shop\\_a`.* TO `shop_u`@`localhost`",
+		"GRANT ALL PRIVILEGES ON `blog_b`.* TO `shop_u`@`localhost`",
+		"GRANT SELECT ON `shop\\_%`.* TO `shop_u`@`localhost`",
+	}, "shop_u", "localhost")
+	if err != nil || forms.Exact["shop_a"] != "SELECT" || forms.Patterns["blog_b"] != "ALL PRIVILEGES" ||
+		forms.Databases["shop_a"] != "SELECT" || forms.Databases["blog_b"] != "ALL PRIVILEGES" || len(forms.Databases) != 2 {
+		t.Fatalf("forms = %+v, %v", forms, err)
 	}
 	global, _ := ParseMariaDBGrants([]string{"GRANT ALL PRIVILEGES ON *.* TO `shop_u`@`localhost`"}, "shop_u", "localhost")
 	if !global.Global {
@@ -494,13 +509,38 @@ func TestMariaDBPrivilegeChangeTouchesOnlyWhatDiffers(t *testing.T) {
 		{"ALL PRIVILEGES", "SELECT", []string{"REVOKE ALL PRIVILEGES ON `shop`.* FROM 'shop_u'@'203.0.113.7';", "GRANT SELECT ON `shop`.* TO 'shop_u'@'203.0.113.7';"}},
 	}
 	for _, c := range cases {
-		got, err := MariaDBPrivilegeChange(c.current, c.want, "shop", "shop_u", host)
+		got, err := MariaDBPrivilegeChange(c.current, false, c.want, "shop", "shop_u", host)
 		if err != nil || strings.Join(got, "|") != strings.Join(c.statements, "|") {
 			t.Errorf("%q -> %q = %q, %v", c.current, c.want, got, err)
 		}
 	}
-	if _, err := MariaDBPrivilegeChange("SELECT", "SUPER", "shop", "shop_u", host); err == nil {
+	if _, err := MariaDBPrivilegeChange("SELECT", false, "SUPER", "shop", "shop_u", host); err == nil {
 		t.Fatal("SUPER accepted")
+	}
+}
+
+// alpha.134: a remote copy that holds the pattern form (`shop_a`.*, which
+// also covers shop1a) gets the exact form first and loses the pattern form
+// after it, so it never loses access it keeps.
+func TestMariaDBPrivilegeChangeRewritesAPatternFormCopy(t *testing.T) {
+	host := "203.0.113.7"
+	got, err := MariaDBPrivilegeChange("", true, "ALL PRIVILEGES", "shop_a", "shop_u", host)
+	want := []string{
+		"GRANT ALL PRIVILEGES ON `shop\\_a`.* TO 'shop_u'@'203.0.113.7';",
+		"REVOKE ALL PRIVILEGES ON `shop_a`.* FROM 'shop_u'@'203.0.113.7';",
+	}
+	if err != nil || strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("got %q, %v", got, err)
+	}
+	// Exact form already there: only the pattern form goes.
+	got, _ = MariaDBPrivilegeChange("SELECT", true, "SELECT", "shop_a", "shop_u", host)
+	if strings.Join(got, "|") != "REVOKE ALL PRIVILEGES ON `shop_a`.* FROM 'shop_u'@'203.0.113.7';" {
+		t.Fatalf("got %q", got)
+	}
+	// Nothing wanted any more: both forms go.
+	got, _ = MariaDBPrivilegeChange("SELECT", true, "", "shop_a", "shop_u", host)
+	if len(got) != 2 || !strings.HasPrefix(got[0], "REVOKE ALL PRIVILEGES ON `shop\\_a`.*") || !strings.HasPrefix(got[1], "REVOKE ALL PRIVILEGES ON `shop_a`.*") {
+		t.Fatalf("got %q", got)
 	}
 }
 

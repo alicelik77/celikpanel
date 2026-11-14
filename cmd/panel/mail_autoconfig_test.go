@@ -55,12 +55,27 @@ func TestMailAutoconfigOnlyWhereTheDomainsMailIsHere(t *testing.T) {
 	if err != nil || !plan.available || plan.mailHost != "mail.server.example" || strings.Join(plan.names, ",") != "autoconfig.example.com,autodiscover.example.com" {
 		t.Fatalf("plan = %+v %v", plan, err)
 	}
-	// A certificate that carries mail.<domain> for mail makes it the name.
+	// alpha.134: mail serving the domain's certificate for mail.<domain>
+	// does not change what programs are told...
 	if _, err := f.p.db.GetDB().Exec(`INSERT INTO ssl_certificates (domain_id, type, cert_path, key_path, expires_at, status, secure_mail) VALUES (9801, 'letsencrypt', '/c', '/k', '2099-01-01T00:00:00Z', 'active', 1)`); err != nil {
 		t.Fatal(err)
 	}
+	if plan, _ := f.p.mailAutoconfigFor(ctx, 9801); plan.mailHost != "mail.server.example" {
+		t.Fatalf("served-only mail host = %q", plan.mailHost)
+	}
+	// ...only a domain that chose its own name before alpha.134 is told it,
+	// and only while mail serves the domain's certificate for it.
+	if _, err := f.p.db.GetDB().Exec(`UPDATE domains SET mail_clients_use_own_name = 1 WHERE id = 9801`); err != nil {
+		t.Fatal(err)
+	}
 	if plan, _ := f.p.mailAutoconfigFor(ctx, 9801); plan.mailHost != "mail.example.com" {
-		t.Fatalf("secure mail host = %q", plan.mailHost)
+		t.Fatalf("chosen mail host = %q", plan.mailHost)
+	}
+	if _, err := f.p.db.GetDB().Exec(`UPDATE ssl_certificates SET secure_mail = 0 WHERE domain_id = 9801`); err != nil {
+		t.Fatal(err)
+	}
+	if plan, _ := f.p.mailAutoconfigFor(ctx, 9801); plan.mailHost != "mail.server.example" {
+		t.Fatalf("chosen but not served mail host = %q", plan.mailHost)
 	}
 	// A name another domain or alias holds is never taken over.
 	if _, err := f.p.db.GetDB().Exec(`INSERT INTO domain_aliases (domain_id, alias) VALUES (9803, 'autodiscover.example.com')`); err != nil {

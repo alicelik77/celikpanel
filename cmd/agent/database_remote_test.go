@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/dbremote"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -103,11 +104,13 @@ type fakeMariaDB struct {
 	accounts map[string]bool // user@host
 	grants   map[string][]string
 	executed []string
-	limit    string // the local account's max_user_connections
-	locked   string // "1" when the local account is locked
-	haveSSL  string // @@have_ssl, "YES" by default
-	noJail   bool   // Fail2ban does not run the jail
-	logError string // @@log_error, "" (the journal) by default
+	// noAutoCreate counts the batches sent with NO_AUTO_CREATE_USER.
+	noAutoCreate int
+	limit        string // the local account's max_user_connections
+	locked       string // "1" when the local account is locked
+	haveSSL      string // @@have_ssl, "YES" by default
+	noJail       bool   // Fail2ban does not run the jail
+	logError     string // @@log_error, "" (the journal) by default
 	// nameLookup: @@skip_name_resolve, "1" (lookup off: addresses logged)
 	// by default (alpha.130)
 	nameLookup string
@@ -156,6 +159,12 @@ func (f *fakeMariaDB) record(batch string) {
 }
 
 func (f *fakeMariaDB) query(statement string) (string, error) {
+	// alpha.134 review: every batch that changes copies carries
+	// NO_AUTO_CREATE_USER in its session; the batch itself follows it.
+	if rest, ok := strings.CutPrefix(statement, mariadbgrant.NoAutoCreateUser+"\n"); ok {
+		statement = rest
+		f.noAutoCreate++
+	}
 	f.executed = append(f.executed, statement)
 	f.record(statement)
 	switch {

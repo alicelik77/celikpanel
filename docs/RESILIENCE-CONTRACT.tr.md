@@ -7632,3 +7632,119 @@ bağlantıyı tutar.
     (önceki bileşik kodlarla aynı sınıf).
   - Gerçek sistemde ölçülmedi; lab w9'u yineler. **Hiçbir P0 işi kapanmadı**;
     P0.4 kısmi kalır.
+
+### Dal a134/certcover (alan adının sertifikası neyi koruduğunu söyler ve mail.<alan adı> adını varsayılan olarak kapsar; şema 77 -> 78; ilke 1, 2 ve 4; P0.5 değişmedi; D-022; D-024; D-025; 2026-11-13)
+
+- **Kusur.** Sahibin bildirimi: sitenin sertifikası `mail.<alan adı>` adını
+  kapsamıyordu; bu adla ayarlanmış programlar uyarı veriyordu ve hiçbir ekran
+  sertifikanın hangi adları koruduğunu söylemiyordu. Tasarım:
+  [CERTIFICATE-COVERAGE.md](CERTIFICATE-COVERAGE.md).
+- **Sözleşme.** Yeni sertifika isteği `mail.<alan adı>` adını yalnız posta bu
+  sunucudaysa ve genel DNS adı burada gösteriyorsa içerir; başka yeri gösteren,
+  adresi olmayan ya da denetlenemeyen ad dışarıda kalır ve istek sürer; hiçbir
+  sertifika kuruluşundan başarısız olacak bir ad istenmez. Posta sertifikayı
+  yalnız o ad için sunar; sunucunun posta adı her bağlantı noktasında kendi
+  sertifikasını korur, programlara söylenen ad değişmez. Var olan sertifikalar
+  kendiliğinden yeniden alınmaz: liste eksiği tek eylemle gösterir ("Posta adını
+  da kapsa"); bu eylem adı açıkça ister ve ad artık burayı göstermiyorsa hiçbir
+  kuruluşa sorulmadan reddedilir. Burayı göstermeyen ad karşılanmamış önkoşuldur
+  (kendi etiketi, kimin ne yapacağı, gösterilecek adres, salt-okur "Yeniden
+  denetle"); hata değildir.
+- **Şema geçişi.** 078 göçü `domains.mail_clients_use_own_name` (0/1, varsayılan 0)
+  ekler ve etkin sertifikası daha önce postayı koruyan her alan adı için 1 yazar;
+  güncellemeden sonra hiçbir programa başka ad söylenmez. Eklemelidir; önceki
+  sürüm 078 içeren kaydı reddeder; geri dönüş güncelleme öncesi anlık görüntüden
+  geri yüklemedir (D-025).
+- **Kurtarma.** İstek eskisi gibi hazırlık alanında yürür (D-029): reddedilen ya da
+  başarısız istek eski sertifikayı, dosyalarını ve postayı değiştirmez. Posta yeni
+  adı sunmaya bilinen bir hayır derse kayıt ve posta geri alınır ve yanıt bunu
+  söyler ("Postada da kullan" yeniden dener); sonucu bilinmeyen adım mevcut
+  bekleyen durumunu ve yeniden denemesini korur. Panel yokken yenileme certbot'un
+  kendi zinciri ve yerel dağıtım kancasıdır, değişmedi (P0.5); panelin hâlâ
+  kendisi yenilediği sertifika posta adını korur ve yenisinde ister.
+- **Kanıt.** WSL konuğunda bileşen testleri ve `web/tests/certificate-coverage-alpha134.test.mjs`.
+  Gerçek sertifika kuruluşu yok, gerçek sistemde çalıştırılmadı; lab adımları
+  CERTIFICATE-COVERAGE.md §8'de. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a134/progbackup (site yedeği sitenin programını, Python uygulamasını ve hizmet uygulaması verisini içerir; paket bildirimi sürüm 3; Agent yedek ve geri yükleme yolları; şema değişikliği yok; ilkeler 1, 2 ve 4; D-022; D-024; D-025; 2026-11-12)
+
+- **Kusur.** Bir sahibin sunucusunda salt-okur bulundu: dosya ve tam yedek
+  yalnız `public_html`'i arşivliyordu; program sitesinin `app/` klasörü
+  (program, yapılandırma, veri) hiçbir yedekte yoktu ve ekran bunu söylemiyordu.
+  Python uygulamaları ve hizmet uygulamaları (`apps/<uygulama>`) da yedek
+  dışındaydı. Tasarım: [SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md).
+- **Sözleşme.** Dosya ya da tam yedek `public_html`'i eskisi gibi ve Agent'ın
+  bulduğu site ev dizini alanlarını (`app`, `apps/<uygulama>`) içerir; her alan
+  yalnız adı konmuş derleme önbelleklerini, geçici derleme klasörlerini, hizmet
+  uygulamalarının yeniden kurulan program dosyalarını, özel dosyaları ve site
+  hesabına ait olmayan dosyaları dışarıda bırakır; dışarıda kalan her öğe
+  gerekçesi ve boyutuyla kaydedilir. Alan içindeki bağlantılar bağlantı olarak
+  saklanır, asla izlenmez. Ortam dosyaları hiçbir zaman arşivlenmez. Geri
+  yükleme `app`'i `public_html` gibi değiştirir (hazırlanır, sahibi site hesabı,
+  arşivdeki kipler, tek yeniden adlandırma, sonraki adım başarısız olursa önceki
+  klasör geri konur); hizmet uygulaması alanları adlandırılır ve geri
+  yüklenmez. Programı içeren yedeğin geri yüklemesi çalışan programı önce
+  durdurur, sonra Programlar sekmesinin kendi denetimi ve kapılarıyla yeniden
+  başlatır; sahibin durdurduğu program durmuş kalır; geri koyma başarısızsa
+  program durmuş bırakılır.
+- **Biçim geçişi.** Bildirim sürüm 3 (`home`, `areas`, `left_out`) yalnız bir
+  alan varsa yazılır; alanı olmayan site değişmemiş sürüm 2 paketini alır. RPC
+  protokolü 2 kalır; `Info`, `RestoreResponse` ve yeni salt-okur
+  `Agent.BackupContentsV1` eklemelidir. Eski paketler eskisi gibi geri yüklenir.
+  Eski sürüm sürüm 3 paketini listelemez, geri yüklemez, içe almaz (hiçbir şey
+  yazılmadan kapalı kalır) ve dosyayı diskte bırakır; sahip yeniden
+  güncelleyince görünür. Uzak kopyalar aynı baytlardır.
+- **Kurtarma.** Hiçbir şey kendiliğinden yeniden denenmez. Programın
+  durdurulması ile başlatılması arasında duran Panel programı durmuş ve
+  devre dışı bırakır; korunan isteğin sonucu bilinmez ve sahip programı
+  Programlar sekmesinden başlatır. Program işlem kilidi geri yüklemeyle
+  paylaşılmaz: geri yüklemenin denetiminden sonra başlayan işlem kalan açıktır.
+- **Kanıt.** Bileşen testleri: `cmd/agent/backup_home_linux_test.go`,
+  `cmd/panel/domain_backup_program_test.go`,
+  `web/tests/site-backup-contents-mounted.test.mjs`. Gerçek sistemde
+  çalıştırılmadı. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a134/dbrights (veritabanı hakları tam adla, önceki haklar daraltılır, silinen veritabanının hakları her yerden kaldırılır; şema 78 -> 79; anayasa 1, 2 ve 3; P0.1-P0.3 açık kalır; D-022; D-024; D-025; 2026-11-14)
+
+- **Kusur.** MariaDB veritabanı düzeyindeki bir yetkinin veritabanı adını
+  kalıp olarak okur (`_` herhangi bir karakter). CelikPanel'in her adında `_`
+  var; bu yüzden bir müşterinin hakkı başka bir müşterinin veritabanına
+  erişebiliyordu: alpha.133 laboratuvarında MariaDB 11.8.6 ve 10.11.14'te
+  ölçüldü (`labd_1__wp` üzerindeki hak `labd_12_wp`'de tablo açtı). Tasarım
+  ve her kural: [DATABASE-USERS.md](DATABASE-USERS.md).
+- **Sözleşme.** CelikPanel'in yazdığı her yetki tam (kaçışlı) adı anar,
+  oturumunda `NO_AUTO_CREATE_USER` ile çalışır ve geri okunur; başarısız geri
+  okuma bilinmeyen sonuçtur. Önceki yetkiler yalnız kayıtlı kullanıcı /
+  veritabanı çiftleri için daraltılır (anayasa 1: tam kaynak; sahibin
+  satırları komutlarıyla listelenir, asla değiştirilmez). Silinen
+  veritabanının hakları her hesaptan ve rolden gider. MariaDB'nin 64
+  karakterine sığmayan tam ad (ölçüldü: kesilerek saklanır) yeni
+  veritabanında reddedilir, üretilen adlarda kısaltılır, cPanel içe
+  aktarmasında atlanıp adlandırılır, var olanlarda kalıp biçiminde kalır ve
+  listelenir. MySQL 8 dönüştürülmez, listelenir.
+- **Değişiklik ve denetim noktaları (anayasa 2).** Daraltma bir
+  değişikliktir: her satır için önce önceki hâl `database_grant_forms`'a
+  yazılır; sonra tam yetki, denetim, kalıbı geri alma, denetim; motorun
+  kapısı altında satır satır; kesinti motordan devam eder; üç başarısızlık bir
+  gün bekler. Yalnız bu sürüme son güncelleme doğrulandıktan sonra, açılışın
+  ilk dakikalarında değil, sunucu meşgulken değil ve bu makinede yalnız aynı
+  sürümden bir Agent ile çalışır.
+- **Doğru durum (anayasa 3).** Her motor için `database_grant_form_engines`
+  bekliyor (`waiting_since` ile), engelli (nedeniyle) ve bilinmiyor (kayıtlar
+  okunamadı) durumlarını ayrı tutar; `mysql.db`'yi okuyamayan hesap için
+  `grants_unverifiable_since`; aynı nedenle 24 saatten sonra tek bildirim,
+  bırakılan satırlar varken tek bildirim.
+- **Şema geçişi.** Göç 079 `database_grant_forms` (iki tablo; eklemeli).
+  alpha.133 078 ya da 079 içeren bir kaydı reddeder; dönüş güncelleme öncesi
+  anlık görüntünün geri yüklenmesidir. Daraltılmış yetkiler motorda kalır ve
+  çalışır; alpha.133'ün onlarla davranışı DATABASE-USERS.md'de yazılı. Yeniden
+  güncelleme motordan devam eder. Release-recovery laboratuvar kanıtı 079'u
+  sabitler.
+- **Kanıt.** `internal/mariadbgrant`, `cmd/panel` ve `cmd/agent` testleri,
+  `internal/db` göç testi, `internal/recoveryobs`; bağlı web testleri
+  `database-grant-forms-mounted` ve `database-name-too-long-alpha134`. Motor
+  testleri geliştirmede gerçek bir MariaDB 11.8.6'ya karşı çalıştı; MariaDB
+  10.11, ikinci kayıtlı sunucu ve iki müşteri denetimi laboratuvarındır. Açık:
+  `partial_revokes` ile MySQL 8; listelenen satırı tek basışla daraltma;
+  kayıtlı sunucunun "yetki yok" yanıtının hâlâ "kimlik bilgisi reddedildi"
+  görünmesi. **Hiçbir P0 işi kapanmadı.**

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -53,6 +54,11 @@ type mailClientSetupResponse struct {
 	// Autoconfig (alpha.130): whether mail programs set themselves up for
 	// this domain, what is missing and who acts (mail_autoconfig.go).
 	Autoconfig *mailAutoconfigView `json:"autoconfig,omitempty"`
+	// HostProtection (alpha.134): whether a trusted certificate protects the
+	// mail server name above, by which certificate and until when, or why
+	// not: the certificate screen's "mail programs" line, decided by the
+	// same function (certificate_coverage.go). Absent when not known.
+	HostProtection *coverageLine `json:"host_protection,omitempty"`
 }
 
 const (
@@ -100,6 +106,10 @@ func (p *Panel) handleMailClientSetupWith(w http.ResponseWriter, r *http.Request
 	}
 	// alpha.110: webmail is offered only on its own address (never on the
 	// panel's origin), while Roundcube answers.
+	var protection *coverageLine
+	if autoconfig != nil {
+		protection = p.mailHostProtection(r.Context(), domain, host)
+	}
 	webmailURL := p.webmailLink(r.Context())
 	available := webmailURL != ""
 	reason := ""
@@ -126,7 +136,22 @@ func (p *Panel) handleMailClientSetupWith(w http.ResponseWriter, r *http.Request
 		WebmailURL:          webmailURL,
 		WebmailReason:       reason,
 		Autoconfig:          autoconfig,
+		HostProtection:      protection,
 	})
+}
+
+// mailHostProtection is the certificate screen's "mail programs" line for the
+// name this answer shows. nil when it cannot be said for that name.
+func (p *Panel) mailHostProtection(ctx context.Context, domain, host string) *coverageLine {
+	var domainID int
+	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT id FROM domains WHERE lower(name) = lower(?)`, domain).Scan(&domainID); err != nil {
+		return nil
+	}
+	line := p.mailProgramsCoverage(ctx, domainID, domain)
+	if line == nil || !strings.EqualFold(line.Name, host) {
+		return nil
+	}
+	return line
 }
 
 const settingsResourceMailCatchAll = "mail_catch_all"

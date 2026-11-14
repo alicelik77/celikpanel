@@ -509,10 +509,14 @@ certificate expired within 90 days. A failed renewal only wrote
    and the card says on each such certificate that only the running Panel renews it
    and that one Reissue moves it to the operating system. Reissuing creates the
    native lineage; the earlier lineage stays in the isolated store as the rollback
-   record its ledger row is (nothing renews a replaced row). A replaced *native*
+   record its ledger row is (nothing renews a replaced row). ~~A replaced *native*
    lineage keeps its files for the same reason, and the Panel writes
    `autorenew = False` into it, so the operating system does not keep renewing a
-   certificate nothing serves.
+   certificate nothing serves.~~ **Amended (alpha.134), superseding the struck
+   sentence:** A replaced native lineage is removed with `certbot delete` once
+   nothing names it (/etc files and links, a site row, a retained update
+   snapshot), after the update is verified; its ledger row stays as the record
+   (alpha.134).
 
 **Contracts.** No schema change (46). `ssl_certificates.renewal_status` gains the
 additive values `os_<state>`; `cert_path` of a native row is certbot's live full

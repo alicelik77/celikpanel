@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
+	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/services"
 )
@@ -68,6 +73,79 @@ func writeDatabaseNameTaken(w http.ResponseWriter, what, name string) {
 		message = "A database user named " + name + " already exists on this database server (it may belong to another account, or have been made outside CelikPanel). Choose another name; nothing was changed."
 	}
 	writeCodedError(w, http.StatusConflict, errCodeDatabaseNameTaken, message, "")
+}
+
+// errCodeDatabaseNameTooLong (alpha.134): the database or a user made with it
+// does not fit the engine (services.DatabaseNamesOver, the one rule the Agent
+// checks too): 63 characters a name, and on MariaDB a right is written by the
+// database's exact name, each `_` with a backslash before it, in the 64
+// characters MariaDB stores for a right - longer would keep it cut short, a
+// right on another name. Nothing was changed.
+const errCodeDatabaseNameTooLong = "DATABASE_NAME_TOO_LONG"
+
+// databaseNameTooLongPlain is the refusal's reason when underscores do not
+// count twice for the limit exceeded (PostgreSQL, or a user name).
+const databaseNameTooLongPlain = "length"
+
+// writeDatabaseNameTooLong is that refusal: what to do (a shorter name) and
+// by how much, counted as the rule counts. A reply from an Agent of another
+// build that refused a name this rule lets through still says "shorter".
+func writeDatabaseNameTooLong(w http.ResponseWriter, name string, over services.NameOver) {
+	by := strconv.Itoa(max(over.By, 1))
+	vars := map[string]string{"name": name, "over": by}
+	if over.Underscores {
+		writeCodedErrorVars(w, http.StatusConflict, errCodeDatabaseNameTooLong,
+			"The database name "+name+" is "+by+" over the engine's length limit (each underscore in it counts twice), so nothing was changed. Choose a shorter name, or one with fewer underscores.",
+			"", nil, vars)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{Code: errCodeDatabaseNameTooLong, Reason: databaseNameTooLongPlain, Vars: vars,
+		Error: "The database name " + name + " is " + by + " over the engine's length limit, so nothing was changed. Choose a shorter name."})
+}
+
+// errCodeDatabaseCreateLeftOver (alpha.134 fix round): a create stopped, and
+// its clean-up could not take back everything this request had made on the
+// engine (D-024: a verified failure that left something, said with what is
+// left, who acts and how to go on). What it made is never in CelikPanel's
+// records, so the same name is refused until it is removed.
+const errCodeDatabaseCreateLeftOver = "DATABASE_CREATE_LEFT_OVER"
+
+// writeDatabaseCreateLeftOver names what is left: only names this request
+// made itself, either still found on the engine or not checkable there.
+// An administrator removes them; anyone else is told the administrator does.
+func writeDatabaseCreateLeftOver(w http.ResponseWriter, r *http.Request, name string, left []string, cause error) {
+	listed := strings.Join(left, ", ")
+	log.Printf("[409][database] %s %s: left %s: %v", errCodeDatabaseCreateLeftOver, name, listed, cause)
+	body := apiErrorBody{Code: errCodeDatabaseCreateLeftOver, Vars: map[string]string{"name": name, "left": listed},
+		Error: "Creating " + name + " stopped, and CelikPanel could not take back what it had made: " + listed +
+			". They are not in CelikPanel's list, and the same name is refused until they are gone. The server's administrator removes them on the database server; meanwhile choose another name."}
+	if caller := currentCaller(r); caller != nil && caller.hasAccountRole(roleAdmin) {
+		body.Reason = "administrator"
+		body.Error = "Creating " + name + " stopped, and CelikPanel could not take back what it had made: " + listed +
+			". They are not in CelikPanel's list, and the same name is refused until they are gone. Remove them on the database server, or choose another name."
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+// databaseCreateLeftOver asks the engine which of the names a failed create
+// made are still there after its clean-up: a name found, or one the engine
+// could not be asked about, is left. user is "" when this request made no
+// user (an existing one is never counted, never removed).
+func databaseCreateLeftOver(driver services.DatabaseDriver, database, user string) []string {
+	var left []string
+	if databases, err := driver.ListDatabases(); err != nil || slices.Contains(databases, database) {
+		left = append(left, database)
+	}
+	if user != "" {
+		if users, err := driver.ListUsers(); err != nil || slices.Contains(users, user) {
+			left = append(left, user)
+		}
+	}
+	return left
 }
 
 // databaseNameTakenByEngine: the driver found the name on the engine itself.

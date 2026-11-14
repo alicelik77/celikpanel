@@ -56,8 +56,16 @@ const (
 	CertificateFailureRateLimited = "rate_limited"
 	// certbot did not finish within the Agent's limit and was stopped.
 	CertificateFailureTimeout = "timeout"
+	// The authority answered that it does not know the ACME account this
+	// server's certbot uses with it (RFC 8555 accountDoesNotExist): no
+	// certificate can be ordered with that account (alpha.134).
+	CertificateFailureAccountUnknown = "account_unknown"
 	// certbot exited with an error that is none of the above.
 	CertificateFailureTool = "tool"
+	// The authority issued a certificate that did not pass the check before
+	// it is used (its files unusable, its chain not trusted by this server,
+	// other names than were asked for). It is not installed (alpha.134).
+	CertificateFailureIssuedCheck = "issued_check"
 	// The authority issued a certificate that this server's clock does not
 	// yet (or no longer) accept: the server's clock is far from the
 	// authority's. The certificate is not installed (alpha.113).

@@ -65,9 +65,18 @@ type CreateDatabaseResponse struct {
 	OwnedByOperation  bool   `json:"owned_by_operation,omitempty"`
 	CleanupIncomplete bool   `json:"cleanup_incomplete,omitempty"`
 	Error             string `json:"error,omitempty"`
+	// Left (alpha.134 fix round), with CleanupIncomplete: the names this call
+	// made and could not remove again (the database, its user). Additive;
+	// empty from an older Agent.
+	Left []string `json:"left,omitempty"`
 	// NameTaken (alpha.129): "database" or "user" when the engine already has
 	// that name; nothing was changed and nothing was taken over. Additive.
 	NameTaken string `json:"name_taken,omitempty"`
+	// NameTooLong (alpha.134): the database or its user does not fit the
+	// engine (services.DatabaseNamesOver: 63 characters a name, and on
+	// MariaDB the database name's exact form - each `_` written `\_` - in the
+	// 64 characters stored for a grant); nothing was created. Additive.
+	NameTooLong bool `json:"name_too_long,omitempty"`
 	// Refusal is set when nothing ran because the PostgreSQL cluster the
 	// statement would go to cannot take it (alpha.127): a typed, verified
 	// prerequisite, never an engine failure. Additive.

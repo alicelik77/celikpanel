@@ -54,6 +54,8 @@ export function parseAvailableDatabaseTypes(value: unknown): DatabaseEngine[] {
 export interface DomainDatabases {
     databases: DatabaseInfo[];
     availableTypes: DatabaseEngine[];
+    /** alpha.134: what a new database's name begins with, as the server makes it ("k_1_dr_test_"). */
+    namePrefix?: string;
 }
 
 export function decodeDomainDatabases(raw: unknown): DomainDatabases {
@@ -62,6 +64,7 @@ export function decodeDomainDatabases(raw: unknown): DomainDatabases {
     return {
         databases: decodeList<DatabaseInfo>(payload.databases),
         availableTypes: parseAvailableDatabaseTypes(payload.available_types),
+        ...(typeof payload.name_prefix === 'string' && payload.name_prefix ? { namePrefix: payload.name_prefix } : {}),
     };
 }
 

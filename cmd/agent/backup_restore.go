@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // One restore per domain at a time (D-029). A restore writes a safety backup,
@@ -61,7 +63,7 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 	defer release()
 	backupPath, legacy, err := resolveBackup(scope, req.BackupName)
 	if err != nil {
-		return err
+		return backupFindRefusal(err)
 	}
 	docroot, err := backupDocumentRoot(scope.SubscriptionID, scope.DomainID)
 	if err != nil {
@@ -94,6 +96,9 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 		return &restoreFailure{code: backupspec.RestoreCodeInvalid, reason: err, err: err}
 	}
 	if err := validateManifest(manifest, scope); err != nil {
+		if errors.Is(err, errManifestScopeMismatch) {
+			return backupPackageRefusal(err)
+		}
 		return &restoreFailure{code: backupspec.RestoreCodeInvalid, reason: err, err: err}
 	}
 	var requestedDatabases []backupspec.DatabaseIdentity
@@ -144,21 +149,36 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 
 	workDir, err := newRestoreWorkDir(scope)
 	if err != nil {
-		return err
+		return backupStagingRefusal(err)
 	}
 	defer os.RemoveAll(workDir)
 	targetDir := filepath.Join(workDir, "target")
 	unpacked, err := unpackBackupPackage(backupPath, targetDir, scope)
 	if err != nil {
-		return err
+		// The payloads' checksums are proved here: a damaged archive stops
+		// here, before anything is replaced.
+		return backupPackageRefusal(err)
 	}
 	if unpacked.Type != manifest.Type {
 		return errors.New("backup changed during restore preparation")
 	}
 
+	// Site-home areas (version 3): the ones this release puts back are
+	// staged with the site's files; the others are named and left as they
+	// are on the server.
+	areas, err := a.restoreAreaPlan(scope, targetDir, unpacked, resp)
+	if err != nil {
+		return err
+	}
 	switch unpacked.Type {
 	case backupspec.TypeFiles:
-		if err := restoreFilesArchive(filepath.Join(targetDir, filepath.FromSlash(unpacked.Files.Name)), docroot); err != nil {
+		if len(areas.names) == 0 {
+			if err := restoreFilesArchive(filepath.Join(targetDir, filepath.FromSlash(unpacked.Files.Name)), docroot); err != nil {
+				return err
+			}
+			break
+		}
+		if err := restoreFilesAndAreas(filepath.Join(targetDir, filepath.FromSlash(unpacked.Files.Name)), docroot, areas); err != nil {
 			return err
 		}
 	case backupspec.TypeDatabase:
@@ -172,11 +192,167 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 		if _, err := validateFullRestoreSet(unpacked.databaseIdentities(), requestedDatabases); err != nil {
 			return err
 		}
-		if err := a.restoreFullPackage(scope, targetDir, safety.Path, docroot, unpacked, requestedDatabases); err != nil {
+		if err := a.restoreFullPackage(scope, targetDir, safety.Path, docroot, unpacked, requestedDatabases, areas); err != nil {
 			return err
 		}
 	}
+	resp.Restored = areas.names
 	resp.Success = true
+	return nil
+}
+
+// areaRestorePlan is what a restore does with a package's site-home areas:
+// the areas it puts back (staged from the home payload), the site home and
+// the site's account the restored areas are given to.
+type areaRestorePlan struct {
+	home    string
+	payload string
+	names   []string
+	owner   areaOwner
+}
+
+// areaOwner is the owner and group a restored area gets: the site's own
+// account and its own group, exactly as the Programs tab's deploy makes the
+// program's folders (runtimeAppAsUser runs mkdir as that account). Never the
+// site home's group: that is the web server's (applyHostingLayout), and the
+// web server has no business in the program's folder.
+//
+// Geri yüklenen alan sitenin kendi hesabına ve kendi grubuna verilir; site ev
+// dizininin grubu web sunucusununkidir, programın klasörüne verilmez.
+type areaOwner struct{ uid, gid int }
+
+// backupAreaOwner resolves and proves the site's account with the deploy
+// path's own helper (its home must be exactly the site home).
+func backupAreaOwner(scope backupScope) (areaOwner, error) {
+	account, err := serviceAppLookupAccount(transport.ServiceAppTarget{
+		SubscriptionID: scope.SubscriptionID, DomainID: scope.DomainID, Domain: scope.DomainName,
+	})
+	if err != nil {
+		return areaOwner{}, err
+	}
+	return areaOwner{uid: account.UID, gid: account.GID}, nil
+}
+
+// restoreAreaPlan names the areas this restore puts back and, in the
+// answer, the ones it leaves as they are (service apps; not restored by this
+// release, docs/SITE-BACKUP-CONTENTS-DESIGN.md).
+func (a *Agent) restoreAreaPlan(scope backupScope, targetDir string, manifest backupManifest, resp *backupspec.RestoreResponse) (areaRestorePlan, error) {
+	plan := areaRestorePlan{}
+	if manifest.Home == nil {
+		return plan, nil
+	}
+	home, err := backupSiteHome(scope.SubscriptionID, scope.DomainID)
+	if err != nil {
+		return plan, err
+	}
+	plan.home = home
+	plan.payload = filepath.Join(targetDir, filepath.FromSlash(manifest.Home.Name))
+	for _, area := range manifest.areaNames() {
+		if restorableArea(area) {
+			plan.names = append(plan.names, area)
+		} else {
+			resp.NotRestored = append(resp.NotRestored, area)
+		}
+	}
+	if len(plan.names) > 0 {
+		// Before anything is staged: without the account nothing is
+		// replaced (the safety copy just made stays in the list).
+		owner, err := backupAreaOwner(scope)
+		if err != nil {
+			return plan, &restoreFailure{code: backupspec.RestoreCodeSiteAccount, err: fmt.Errorf("the site's account: %w", err)}
+		}
+		plan.owner = owner
+	}
+	return plan, nil
+}
+
+// stage stages every area of the plan. On an error nothing stays staged and
+// an area folder this restore made is removed again.
+func (plan areaRestorePlan) stage() (stagedSet, func(), error) {
+	set := make(stagedSet, 0, len(plan.names))
+	made := make([]string, 0)
+	forget := func() {
+		for _, area := range made {
+			removeMadeArea(plan.home, area)
+		}
+	}
+	for _, area := range plan.names {
+		staged, wasMade, err := prepareAreaRestore(plan.payload, plan.home, area, plan.owner)
+		if wasMade {
+			made = append(made, area)
+		}
+		if err != nil {
+			set.cleanup()
+			forget()
+			return nil, func() {}, fmt.Errorf("restore %s: %w", area, err)
+		}
+		set = append(set, staged)
+	}
+	return set, forget, nil
+}
+
+// stagedSet is several staged folder replacements published together: in
+// order, and when one fails the ones already published are put back.
+type stagedSet []*stagedFilesRestore
+
+func (set stagedSet) publish() error {
+	for i, staged := range set {
+		if err := staged.Publish(); err != nil {
+			if i == 0 {
+				return err
+			}
+			var rollbackErrors []error
+			for j := i - 1; j >= 0; j-- {
+				if rollbackErr := set[j].Rollback(); rollbackErr != nil {
+					rollbackErrors = append(rollbackErrors, rollbackErr)
+				}
+			}
+			return restoreRollbackError(err, errors.Join(rollbackErrors...))
+		}
+	}
+	return nil
+}
+
+func (set stagedSet) commit() error {
+	var commitErrors []error
+	for _, staged := range set {
+		if err := staged.Commit(); err != nil {
+			commitErrors = append(commitErrors, err)
+		}
+	}
+	return errors.Join(commitErrors...)
+}
+
+func (set stagedSet) cleanup() {
+	for _, staged := range set {
+		staged.Cleanup()
+	}
+}
+
+// restoreFilesAndAreas restores public_html and the plan's areas together.
+func restoreFilesAndAreas(archivePath, docroot string, plan areaRestorePlan) error {
+	files, err := prepareFilesRestore(archivePath, docroot)
+	if err != nil {
+		return backupStagingRefusal(err)
+	}
+	set := stagedSet{files}
+	// A closure: the areas are appended after this line.
+	defer func() { set.cleanup() }()
+	areas, forget, err := plan.stage()
+	if err != nil {
+		return backupStagingRefusal(err)
+	}
+	set = append(set, areas...)
+	if err := set.publish(); err != nil {
+		forget()
+		return err
+	}
+	if err := set.commit(); err != nil {
+		return &restoreFailure{code: backupspec.RestoreCodeFinishFailed, reason: err, err: fmt.Errorf(
+			"restored files were published, but final cleanup or durability proof failed; pre-restore safety backup was retained: %w",
+			err,
+		)}
+	}
 	return nil
 }
 
@@ -213,7 +389,7 @@ func newRestoreWorkDir(scope backupScope) (string, error) {
 func restoreFilesArchive(archivePath, docroot string) error {
 	staged, err := prepareFilesRestore(archivePath, docroot)
 	if err != nil {
-		return err
+		return backupStagingRefusal(err)
 	}
 	defer staged.Cleanup()
 	if err := staged.Publish(); err != nil {
@@ -249,7 +425,7 @@ func (a *Agent) restoreDatabasePackage(scope backupScope, targetDir, safetyPath 
 	return nil
 }
 
-func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, docroot string, manifest backupManifest, databases []backupspec.DatabaseIdentity) error {
+func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, docroot string, manifest backupManifest, databases []backupspec.DatabaseIdentity, plan areaRestorePlan) error {
 	safetyDir := filepath.Join(filepath.Dir(targetDir), "safety")
 	safetyManifest, err := unpackBackupPackage(safetyPath, safetyDir, scope)
 	if err != nil {
@@ -264,9 +440,16 @@ func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, doc
 	filesPayload := filepath.Join(targetDir, filepath.FromSlash(manifest.Files.Name))
 	staged, err := prepareFilesRestore(filesPayload, docroot)
 	if err != nil {
-		return err
+		return backupStagingRefusal(err)
 	}
-	defer staged.Cleanup()
+	set := stagedSet{staged}
+	// A closure: the areas are appended after this line.
+	defer func() { set.cleanup() }()
+	areas, forget, err := plan.stage()
+	if err != nil {
+		return backupStagingRefusal(err)
+	}
+	set = append(set, areas...)
 
 	attempted := make([]backupspec.DatabaseIdentity, 0, len(databases))
 	for _, database := range databases {
@@ -274,14 +457,23 @@ func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, doc
 		targetPayload := filepath.Join(targetDir, filepath.FromSlash(databasePayloadName(database.ID)))
 		if err := restoreDatabaseFromFile(database, targetPayload); err != nil {
 			rollbackErr := rollbackDatabases(attempted, safetyDir)
+			forget()
 			return restoreRollbackError(err, rollbackErr)
 		}
 	}
-	if err := staged.Publish(); err != nil {
+	if err := set.publish(); err != nil {
+		forget()
+		var failure *restoreFailure
+		if errors.As(err, &failure) && failure.code == backupspec.RestoreCodeRollbackFailed {
+			// The folders could not all be put back: the databases are
+			// put back all the same, and the answer stays "rollback failed".
+			_ = rollbackDatabases(attempted, safetyDir)
+			return err
+		}
 		rollbackErr := rollbackDatabases(attempted, safetyDir)
 		return restoreRollbackError(err, rollbackErr)
 	}
-	if err := staged.Commit(); err != nil {
+	if err := set.commit(); err != nil {
 		return &restoreFailure{code: backupspec.RestoreCodeFinishFailed, reason: err, err: fmt.Errorf(
 			"full restore was published, but final cleanup or durability proof failed; pre-restore safety backup was retained: %w",
 			err,
@@ -340,6 +532,54 @@ func restoreEngineReason(err error) string {
 		return r
 	}, text)
 	return boundedText(strings.Join(strings.Fields(text), " "), 300)
+}
+
+// Refusals the screen names (alpha.134 lab: another site's backup answered
+// "internal error"). Each is typed only where the cause is certain; any other
+// error stays untyped.
+//
+// Ekranın adlandırdığı retler: yalnız nedeni kesin olanlar türlenir.
+
+// backupFindRefusal types an error of finding a backup by name: a name that is
+// not in this site's backup folder (or no folder at all), or is no backup
+// name at all, is not found.
+func backupFindRefusal(err error) error {
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, errInvalidBackupName) {
+		return &restoreFailure{code: backupspec.RestoreCodeNotFound, err: err}
+	}
+	return err
+}
+
+// backupPackageRefusal types an error of reading, checking or unpacking a
+// package: another site's, no room on the disk, or failed its checks. An
+// error of the server itself (a read or write that failed) stays untyped.
+func backupPackageRefusal(err error) error {
+	var pathErr *os.PathError
+	var errno syscall.Errno
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, errManifestScopeMismatch):
+		return &restoreFailure{code: backupspec.RestoreCodeOtherSite, err: err}
+	case noSpace(err):
+		return &restoreFailure{code: backupspec.RestoreCodeNoSpace, err: err}
+	case errors.As(err, &pathErr), errors.As(err, &errno):
+		return err
+	}
+	return &restoreFailure{code: backupspec.RestoreCodeInvalid, reason: err, err: err}
+}
+
+// backupStagingRefusal types a failed staging (nothing is replaced yet): no
+// room on the disk; anything else stays as it is.
+func backupStagingRefusal(err error) error {
+	if noSpace(err) {
+		return &restoreFailure{code: backupspec.RestoreCodeNoSpace, err: err}
+	}
+	return err
+}
+
+func noSpace(err error) bool {
+	return errors.Is(err, syscall.ENOSPC) || errors.Is(err, syscall.EDQUOT)
 }
 
 // restoreFailureOf types an error of restoreBackup for the response.

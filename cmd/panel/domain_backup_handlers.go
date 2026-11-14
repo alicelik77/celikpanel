@@ -357,6 +357,12 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	if !inspection.Success || inspection.Error != "" {
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, inspection.Error)
+		// alpha.134 lab: a backup that is not this site's (another site's
+		// name, or its package put in this site's folder) or fails its
+		// checks is said as such; nothing was read further or changed.
+		if inspection.Code != "" && writeRestoreFailure(w, backupspec.RestoreResponse{Code: inspection.Code}) {
+			return
+		}
 		writeAgentError(w, nil, inspection.Error)
 		return
 	}
@@ -381,10 +387,49 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	// A backup that holds the site's program replaces its folder: the
+	// program is read first, stopped if it runs, and started again after
+	// (docs/SITE-BACKUP-CONTENTS-DESIGN.md). A backup without it leaves
+	// the program as it is, as before.
+	holdsProgram := backupHoldsArea(inspection.Backup, backupspec.AreaApp)
+	var program backupProgramRestore
+	if holdsProgram {
+		var ok bool
+		if program, ok = p.prepareProgramRestore(w, r.Context(), d); !ok {
+			p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, "program not ready for a restore")
+			return
+		}
+		if program.running {
+			reportOperationPlan(r.Context(), "check", "inspect", "program_stop", "restore", "program_start", "finish")
+			reportOperationStep(r.Context(), "program_stop")
+			if !program.stop(w, r.Context(), p) {
+				p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, "program could not be stopped")
+				return
+			}
+		}
+	}
+	// finishProgram starts the program again when this restore stopped it.
+	finishProgram := func(filesUnknown bool) *backupProgramOutcome {
+		if !holdsProgram {
+			return nil
+		}
+		if program.stopped && !filesUnknown {
+			reportOperationStep(r.Context(), "program_start")
+		}
+		return program.finish(r.Context(), p, filesUnknown)
+	}
 	var resp backupspec.RestoreResponse
 	reportOperationStep(r.Context(), "restore")
 	if err := p.callAgentContext(r.Context(), "Agent.RestoreBackup", &restoreReq, &resp); err != nil {
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, err.Error())
+		if program.stopped {
+			// The Agent may still be restoring: the program is not started
+			// over files that may be changing.
+			writeCodedErrorVars(w, http.StatusBadGateway, errCodeBackupProgramUnknown,
+				"The server did not answer during the restore, so whether it finished is not known. The site's program was stopped for the restore and is left stopped: check the site and the backup list, then start the program on the Programs tab.", "", nil,
+				map[string]string{"program": backupProgramLeftStopped, "program_reason": "restore_unknown"})
+			return
+		}
 		writeServerError(w, err)
 		return
 	}
@@ -394,7 +439,9 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 		// Agent hiçbir şey okumadan ve yazmadan reddetti: bu alan adının başka
 		// bir geri yüklemesi hâlâ sürüyor (D-029).
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, resp.Error)
-		writeCodedError(w, http.StatusConflict, errCodeBackupRestoreInProgress, backupRestoreInProgressMessage, "")
+		writeWithProgramOutcome(w, finishProgram(false), func(w http.ResponseWriter) {
+			writeCodedError(w, http.StatusConflict, errCodeBackupRestoreInProgress, backupRestoreInProgressMessage, "")
+		})
 		return
 	}
 	if resp.Refusal != nil {
@@ -403,22 +450,28 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 		// PostgreSQL major than the backup's.
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, resp.Error)
 		refusal := transport.DatabaseClusterRefusal(*resp.Refusal)
-		writeDatabaseClusterRefusal(w, r, &refusal)
+		writeWithProgramOutcome(w, finishProgram(false), func(w http.ResponseWriter) {
+			writeDatabaseClusterRefusal(w, r, &refusal)
+		})
 		return
 	}
 	if !resp.Success || resp.Error != "" {
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, resp.Error)
-		// alpha.128: a stopped restore says how, with the engine's reason.
-		if writeRestoreFailure(w, resp) {
-			return
-		}
-		writeAgentError(w, nil, resp.Error)
+		outcome := finishProgram(resp.Code == backupspec.RestoreCodeRollbackFailed)
+		writeWithProgramOutcome(w, outcome, func(w http.ResponseWriter) {
+			// alpha.128: a stopped restore says how, with the engine's reason.
+			if writeRestoreFailure(w, resp) {
+				return
+			}
+			writeAgentError(w, nil, resp.Error)
+		})
 		return
 	}
+	outcome := finishProgram(false)
 	reportOperationStep(r.Context(), "finish")
 	p.audit(r, "backup.restore:"+inspection.Backup.Type, "domain", d.ID)
 	p.requestDiskMeasurement(r.Context(), d.SubscriptionID)
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(restoreAnswer{RestoreResponse: resp, Program: outcome})
 }
 
 var errUnsafeBackupMetadata = errors.New("unsafe backup metadata")

@@ -239,7 +239,9 @@ const weeklyFull = { enabled: true, frequency: 'weekly', backup_type: 'full', re
 const scheduleFields = () => [...tree.root.findAllByType('select'), ...tree.root.findAllByType('input')]
   .filter((node) => node.props.id !== 'backup-database' && node.props.type !== 'checkbox');
 const emptyLists = [['GET', '/backups/schedule', null], ['GET', '/backups', () => Response.json({ backups: [] })], ['GET', '/databases', () => Response.json({ databases: [] })]];
-const withSchedule = (answer, ...more) => [...more, ['GET', '/backups/schedule', answer], ...emptyLists.slice(1)];
+// What a backup of the site holds (docs/SITE-BACKUP-CONTENTS-DESIGN.md) is its own read; it answers here.
+const contentsRoute = ['GET', '/backups/contents', () => Response.json({ site_bytes: 0, areas: [], left_out: [], complete: true, backup_free_bytes: -1, program: null })];
+const withSchedule = (answer, ...more) => [...more, contentsRoute, ['GET', '/backups/schedule', answer], ...emptyLists.slice(1)];
 
 for (const [name, answer] of [
   ['still loading', 'pending'],

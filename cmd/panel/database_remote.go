@@ -371,7 +371,10 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 		return transport.DatabaseRemoteResponse{}, false, err
 	}
 	req := transport.DatabaseRemoteApplyRequest{Targets: targets, HostName: p.mailHostnameIdentity(ctx).Hostname, MariaDBSkipNameResolve: skipNameResolve,
-		ServerOffered: offered}
+		ServerOffered: offered,
+		// alpha.134: pattern-form copies are rewritten only when the rewrite
+		// of rights to exact names may run (database_grant_forms.go).
+		ExactCopies: p.databaseGrantFormsHold(ctx, p.processStartedAt()) == ""}
 	answer, callErr := databaseRemoteApplyThroughAgent(p, ctx, req)
 	m.mu.Lock()
 	m.callFailed = callErr != nil

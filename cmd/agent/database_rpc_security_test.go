@@ -19,6 +19,15 @@ func captureMySQLStatements(
 	previous := mysqlExecStatement
 	statements := &[]string{}
 	mysqlExecStatement = func(statement string) ([]byte, error) {
+		// alpha.134 review: a grant asks the server's version (for
+		// NO_AUTO_CREATE_USER) and reads its row back; answered here, not
+		// counted among the statements under test.
+		switch {
+		case strings.HasPrefix(statement, "SELECT CONCAT('v=', VERSION())"):
+			return []byte("v=11.8.6-MariaDB-0+deb13u1\n"), nil
+		case strings.HasPrefix(statement, "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = "):
+			return []byte("n=1\n"), nil
+		}
 		*statements = append(*statements, statement)
 		return executor(len(*statements)-1, statement)
 	}
@@ -153,7 +162,7 @@ func TestWordPressLostCreateResponseCanResumeOnlyWithMatchingMarker(t *testing.T
 	if !response.Success || !response.OwnedByOperation || len(*statements) != 3 {
 		t.Fatalf("response=%+v statements=%v", response, *statements)
 	}
-	if !strings.HasPrefix((*statements)[2], "GRANT ALL PRIVILEGES") {
+	if !strings.Contains((*statements)[2], "NO_AUTO_CREATE_USER');\nGRANT ALL PRIVILEGES ON `tenant\\_wordpress`.*") {
 		t.Fatalf("matching retry did not resume at grant: %s", (*statements)[2])
 	}
 }

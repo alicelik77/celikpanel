@@ -32,7 +32,7 @@ günceller.**
    parolasının bir kopyasını her müşteri için ayrı tutuyordu; parola değişince
    eski kopyalar çalışmaz oldu. Bu sürüm bundan sonra bütün kopyaları birlikte
    günceller, ama zaten geride kalmış kopyaları onarmaz; kendiliğinden onarım
-   sonraki sürümde gelir. Bu arada veritabanları, siteler ve kullanıcıları
+   alpha.135'te gelir. Bu arada veritabanları, siteler ve kullanıcıları
    çalışmayı sürdürür, veritabanı silmek de bu kopyalara bağlı değildir.
 
 ## Sizin için ne değişiyor
@@ -264,7 +264,7 @@ Bir test bunu istisnasız korur.
 - **Yarım kalan bir silmeden sonra Sil'e yeniden basmak, arada sunucuda aynı
   adla açılmış bir veritabanını siler** (elle, bir geri yüklemeyle ya da bir
   kurulumla açılmış olabilir). Ekran böyle bir veritabanı bulduğunda bunu
-  söyler. Veritabanının zaten silinmiş olduğunun hatırlanması alpha.134'te
+  söyler. Veritabanının zaten silinmiş olduğunun hatırlanması alpha.135'te
   gelir.
 - **PostgreSQL: başka bir veritabanına eklenen kullanıcı, yalnız orada
   CelikPanel'in kendi hesabının sonradan açtığı tablolarda hak alır;**
@@ -296,7 +296,7 @@ Bir test bunu istisnasız korur.
 - **Alan adını silmek, panelin o alan adının veritabanlarına ait kayıtlarını
   kaldırır ama veritabanlarının kendisini sunucuda bırakır.** Silme sorusu
   bunu söyler; onların da gitmesini istiyorsanız önce veritabanlarını silin.
-  Bu soruda bir seçim sonraki sürümde gelecek.
+  Bu soruda bir seçim alpha.135'te gelecek.
 - **Kapladığı yer sütunu** Veritabanları listesinde yok; bütün liste için
   boyutlar tek seferde okunabildiğinde gelecek.
 - Ekip üyesinin Veritabanları listesi boştur; veritabanları, eskisi gibi

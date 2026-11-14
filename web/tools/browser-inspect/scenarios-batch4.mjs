@@ -511,6 +511,33 @@ export default function register(scenarios, tools) {
         await done();
     };
 
+    // --- 134: what a site backup holds (docs/SITE-BACKUP-CONTENTS-DESIGN.md) -------------
+    // A program site: the contents line before a backup, the rows (one that
+    // holds the program, one older that does not), the large-backup question
+    // and the restore question. Looked at, not asserted.
+    scenarios.sitebackup = async () => {
+        await fresh();
+        const page = await openTab([T.advanced, T.backups]);
+        await waitFor(page, () => Boolean(document.querySelector('[data-backup-contents]')), 10000).catch(() => {});
+        await settle(page);
+        await record(page, '134-backup-contents', {}, '[data-backup-contents]');
+        await record(page, '134-backup-rows', {}, 'main section[aria-busy] .space-y-2');
+        await clickByText(page, ['Dosya yedeği', 'Files backup']);
+        await pause(500);
+        await shot(page, '134-large-question', await facts(page));
+        await page.keyboard.press('Escape');
+        await pause(400);
+        await page.evaluate(() => {
+            const restore = Array.from(document.querySelectorAll('main section[aria-busy] .space-y-2 button')).find((node) => /Geri yükle|Restore/.test(node.getAttribute('aria-label') || ''));
+            restore?.click();
+        });
+        await pause(500);
+        await shot(page, '134-restore-question', await facts(page));
+        await page.keyboard.press('Escape');
+        await page.close();
+        await done();
+    };
+
     // --- 97: backups ---------------------------------------------------------------------
     scenarios.domainbackups = async () => {
         await fresh();

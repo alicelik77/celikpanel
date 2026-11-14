@@ -55,8 +55,9 @@ func TestMySQLUserWithARightOnAnotherDatabaseIsKeptAndLosesOnlyThisOne(t *testin
 		case strings.Contains(statement, "TABLE_SCHEMA <> 'shop'"):
 			// The owner granted SELECT on another schema by hand.
 			return "n=1\n"
-		case strings.Contains(statement, "TABLE_SCHEMA = 'shop'"):
-			return "n=1\n"
+		case strings.HasPrefix(statement, "SELECT CONCAT('f=', HEX(Db))"):
+			// alpha.134: the host holds CelikPanel's grant on shop.
+			return "f=73686F70\n"
 		}
 		return ""
 	})
@@ -80,8 +81,9 @@ func TestMySQLUserWithAHostCelikPanelDidNotCreateIsKept(t *testing.T) {
 		switch {
 		case strings.HasPrefix(statement, "SELECT CONCAT('host=', Host)"):
 			return "host=10.0.0.%\nhost=203.0.113.7\nhost=localhost\n"
-		case strings.Contains(statement, "TABLE_SCHEMA = 'shop'"):
-			return "n=1\n"
+		case strings.HasPrefix(statement, "SELECT CONCAT('f=', HEX(Db))"):
+			// alpha.134: each of CelikPanel's hosts holds its grant on shop.
+			return "f=73686F70\n"
 		}
 		return "n=0\n"
 	})

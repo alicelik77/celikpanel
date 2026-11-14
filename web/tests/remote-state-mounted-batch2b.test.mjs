@@ -70,6 +70,7 @@ const stub = dataModule(`
   export const MailRelaySettings = () => null;
   export const MailServerOptions = () => null;
   export const MailAutoconfigNotice = () => null;
+  export const MailHostProtection = () => null;
   // alpha.128: bulk mailbox actions run only after a confirmation; not under test here.
   export const runBulk = async () => ({ done: [], refused: [], unknown: null, notStarted: [] });
   // alpha.108: the PostgreSQL clusters card has its own mounted tests.

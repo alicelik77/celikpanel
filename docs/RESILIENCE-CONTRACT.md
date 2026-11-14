@@ -8408,3 +8408,134 @@ until the backup reports ready.
     as an unreviewed code (the same class as earlier composites).
   - Not measured natively; the lab repeats w9. **No P0 item is closed**; P0.4
     stays partial.
+
+### Branch a134/certcover (a domain's certificate says what it protects and covers mail.<domain> by default; schema 77 -> 78; invariants 1, 2 and 4; P0.5 unchanged; D-022; D-024; D-025; 2026-11-13)
+
+- **Defect.** Owner report: a site's certificate did not cover `mail.<domain>`,
+  so programs set up with that name (the MX and hand-typed settings) warned, and
+  no screen said which names a certificate protects. Design:
+  [CERTIFICATE-COVERAGE.md](CERTIFICATE-COVERAGE.md).
+- **Contract.** A new certificate request includes `mail.<domain>` only when mail
+  is on this server and the public DNS shows the name here; a name that points
+  elsewhere, has no address or could not be checked is left out and the request
+  goes on, so no certificate authority is asked for a name that will fail. Mail
+  then serves the certificate for that name only (Postfix SNI entry, Dovecot
+  `local_name`); the server's mail name keeps its certificate on every port and
+  the name programs are told does not change. Existing certificates are never
+  re-issued by themselves: the list shows the gap with one action ("Cover the
+  mail name too"), which asks for the name explicitly and is refused before any
+  authority when the name no longer points here. A name that does not point here
+  is an unmet prerequisite (its own badge, who acts, the address to point to, a
+  read-only "Check again"), never a failure.
+- **Schema transition.** Migration 078 adds `domains.mail_clients_use_own_name`
+  (0/1, default 0) and sets 1 for every domain whose active certificate secured
+  mail before, so no program is told another name after the update. Additive; the
+  release before refuses a ledger with 078; going back is the pre-update snapshot
+  restore (D-025).
+- **Recovery.** A request is staged as before (D-029): a refused or failed request
+  leaves the old certificate, its files and mail unchanged. If mail says a known
+  no to serving the new name, the ledger and mail are put back and the answer says
+  so ("Use it for mail too" retries); an unknown result keeps the existing
+  dependents-pending state and its retry. Renewal with the panel absent is
+  certbot's lineage and its native deploy hook, unchanged (P0.5); a certificate
+  the panel still renews itself keeps the mail name and requires it in the renewed
+  certificate.
+- **Evidence.** Component tests in the WSL guest: `TestCertificateCoverageTable`,
+  `TestCertificateCoverageEndpointReadsOnly`, the five request tests of
+  `certificate_mail_default_test.go`, `TestARenewalKeepsTheMailNameTheCertificateCovers`,
+  the migration tests in `internal/db`, `internal/mailtlsconfig`; mounted web tests
+  `web/tests/certificate-coverage-alpha134.test.mjs`. No real authority, no native
+  run: the lab steps are in CERTIFICATE-COVERAGE.md §8. **No P0 item is closed.**
+
+### Branch a134/progbackup (a site backup holds the site's program, Python app and service-app data; package manifest version 3; Agent backup and restore paths; no schema change; invariants 1, 2 and 4; D-022; D-024; D-025; 2026-11-12)
+
+- **Defect.** Found read-only on an owner's server: files and full backups
+  archived only `public_html`; a program site's `app/` (binary, configuration,
+  data) was in no backup and the screen did not say so. Python apps and service
+  apps (`apps/<app>`) were outside every backup as well. Design:
+  [SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md).
+- **Contract.** A files or full backup holds `public_html` as before and the
+  site-home areas the Agent finds (`app`, `apps/<app>`), each leaving out only
+  the named build caches, temporary build folders, service apps' reinstalled
+  program files, special files and files not owned by the site's account; every
+  left-out item is recorded with its reason and size. Links inside an area are
+  stored as links and never followed. Environment files are never archived.
+  Restore replaces `app` like `public_html` (staged, owner the site's account,
+  archived modes, one rename, the earlier folder put back when a later step
+  fails); service-app areas are named and not restored. A restore of a backup
+  holding the program stops a running program first and starts it again after,
+  with the Programs tab's own control and gates; a program the owner stopped
+  stays stopped; after a failed put-back it is left stopped.
+- **Format transition.** Manifest version 3 (`home`, `areas`, `left_out`) is
+  written only when an area exists; a site without one gets the unchanged
+  version-2 package. The RPC protocol stays 2; `Info`, `RestoreResponse` and the
+  new read-only `Agent.BackupContentsV1` are additive. Older packages restore as
+  before. An older release does not list, restore or import a version-3 package
+  (fail closed before anything is written) and leaves it on disk; it reappears
+  after the owner updates again. Remote copies are the same bytes.
+- **Recovery.** Nothing is retried. A Panel stopped between stopping and
+  starting the program leaves it stopped and disabled; the guarded request's
+  outcome is unknown and the owner starts the program on the Programs tab. The
+  program operation lock is not shared with the restore: an operation started
+  after the restore's check is a remaining gap.
+- **Evidence.** Component tests: `cmd/agent/backup_home_linux_test.go` (file
+  set per site kind, rules, links, ownership, special files, measurement equal
+  to the archive, time limit, manifest versions both ways, restore of old and
+  new packages with owner, modes and links, a missing folder made, service apps
+  left, crafted packages never escaping, a failed full restore putting the
+  program back, remote verification), `cmd/panel/domain_backup_program_test.go`
+  (stop and start around the restore, owner-stopped, without the program,
+  operation running, failed and unanswered restores, a held offering, no
+  program record, the contents endpoint), and
+  `web/tests/site-backup-contents-mounted.test.mjs`. No native run. **No P0
+  item is closed.**
+
+### Branch a134/dbrights (database rights by exact name, earlier rights narrowed, a deleted database's rights removed everywhere; schema 78 -> 79; constitution 1, 2 and 3; P0.1-P0.3 stay open; D-022; D-024; D-025; 2026-11-14)
+
+- **Defect.** MariaDB reads the database name of a database-level grant as a
+  pattern (`_` is any one character). Every name CelikPanel makes holds `_`,
+  so one customer's right could reach another customer's database: measured
+  in the alpha.133 lab on MariaDB 11.8.6 and 10.11.14 (a right on
+  `labd_1__wp` created a table in `labd_12_wp`). Design and every rule:
+  [DATABASE-USERS.md](DATABASE-USERS.md).
+- **Contract.** Every grant CelikPanel writes names the exact (escaped)
+  database name, runs with `NO_AUTO_CREATE_USER` in its session and is read
+  back; a failed read-back is an unknown result. Earlier grants are narrowed
+  only for user/database pairs on record (constitution 1: the exact
+  resource; owner rows are listed with their statement, never changed). A
+  deleted database's rights go from every account and role. An exact name
+  that does not fit MariaDB's 64 characters (measured: stored cut) is
+  refused for a new database, shortened for generated names, skipped and
+  named in a cPanel import, kept in its pattern form and listed when it
+  exists. MySQL 8 is listed, not converted.
+- **Mutation and checkpoints (constitution 2).** The narrowing is a
+  mutation: per row the before-image is written to `database_grant_forms`
+  first; then grant exact, check, revoke pattern, check, under the engine's
+  gate one row at a time; an interruption continues from the engine; three
+  failures wait a day. It runs only after the latest update to this build is
+  verified, not in the first minutes after a start, not while the server is
+  busy, and on this machine only with an Agent of the same build.
+- **Truthful state (constitution 3).** Per engine `database_grant_form_engines`
+  keeps waiting (with `waiting_since`), blocked (with its reason) and unknown
+  (records unread) apart, and `grants_unverifiable_since` for an account that
+  may not read `mysql.db`; one notification after 24 hours of one cause, one
+  while rows are left.
+- **Schema transition.** Migration 079 `database_grant_forms` (two tables;
+  additive). alpha.133 refuses a ledger with 078 or 079; going back is the
+  pre-update snapshot restore. Narrowed grants stay on the engine and keep
+  working; alpha.133's behaviour with them is documented in
+  DATABASE-USERS.md. Updating again continues from the engine. The
+  release-recovery lab proof pins 079.
+- **Evidence.** `internal/mariadbgrant` (forms, migrate, dropped),
+  `cmd/panel/database_grant_forms_test.go`,
+  `database_grant_forms_review_test.go`, `database_grant_readback_engine_test.go`,
+  `database_delete_sweep_test.go`, `import_database_names_test.go`,
+  `cmd/agent/database_grant_forms_engine_test.go`,
+  `database_dropped_rights_engine_test.go`, the migration test in
+  `internal/db`, `internal/recoveryobs`; mounted web tests
+  `database-grant-forms-mounted` and `database-name-too-long-alpha134`. The
+  engine tests ran in development against a real MariaDB 11.8.6; MariaDB
+  10.11, a second registered server and the two-customer check are the
+  lab's. Open: MySQL 8 with `partial_revokes`; one-press narrowing of a
+  listed row; a registered server's "no permission" still shown as
+  "credential refused". **No P0 item is closed.**

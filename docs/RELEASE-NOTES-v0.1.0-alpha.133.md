@@ -30,8 +30,8 @@ screen.**
    reason: CelikPanel kept a copy of its own database account's password per
    customer, and older copies stopped working when the password changed.
    This release keeps every copy in step from now on but does not repair
-   copies that are already out of step; automatic repair comes in the next
-   release. Databases, sites and their users keep working meanwhile, and
+   copies that are already out of step; automatic repair comes in
+   alpha.135. Databases, sites and their users keep working meanwhile, and
    deleting a database does not depend on these copies.
 
 ## What changes for you
@@ -260,7 +260,7 @@ the screen. A test keeps it that way, with no exceptions.
   database of the same name that was created on the server in the meantime**
   (by hand, by a restore or by an installer). The screen says so when it
   finds one. Remembering that the database was already deleted comes in
-  alpha.134.
+  alpha.135.
 - **PostgreSQL: a user added to another database gets rights only on the
   tables that CelikPanel's own account makes there later,** not on the
   tables the database's own user owns. This was found in the lab.
@@ -290,7 +290,7 @@ the screen. A test keeps it that way, with no exceptions.
 - **Deleting a domain removes the panel's records of its databases but
   leaves the databases themselves on the server.** The delete question says
   so; delete the databases first if they should go too. A choice in that
-  question comes in the next release.
+  question comes in alpha.135.
 - **The size column is absent** from the Databases list until sizes can be
   read in one call for the whole list.
 - A team member's Databases list is empty; their databases are on the

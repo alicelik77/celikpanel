@@ -27,17 +27,25 @@ func TestCertbotFailureIsReadFromItsOwnOutput(t *testing.T) {
 		"Error creating new order :: too many certificates (5) already issued for this exact set of domains in the last 168h0m0s, retry after 2026-10-12 03:04:05 UTC: see https://letsencrypt.org/docs/rate-limits/\n"
 	other := "Saving debug log to /var/log/celikpanel/certbot/letsencrypt.log\n" +
 		"The requested webroot plugin does not appear to be installed\n"
+	// alpha.134 lab: the authority had been reset and certbot kept the
+	// account it had registered there; urllib3's warning about the lab's
+	// authority is in the same output and is not a connection failure.
+	accountUnknown := "Saving debug log to /var/log/letsencrypt/letsencrypt.log\n" +
+		"/usr/lib/python3/dist-packages/urllib3/connectionpool.py:1109: InsecureRequestWarning: Unverified HTTPS request is being made to host '192.0.2.60'.\n" +
+		"An unexpected error occurred:\n" +
+		"acme.messages.Error: urn:ietf:params:acme:error:accountDoesNotExist :: The request specified an account that does not exist :: Account https://192.0.2.60:14000/my-account/32cb2de90bc86bdb not found.\n"
 
 	for name, c := range map[string]struct {
 		output string
 		kind   string
 		line   string
 	}{
-		"the authority cannot be reached": {measured, transport.CertificateFailureAuthorityUnreachable, "Max retries exceeded"},
-		"the authority refused a name":    {validation, transport.CertificateFailureValidation, "DNS problem: NXDOMAIN looking up A for www.shop.example"},
-		"the authority's limit":           {rateLimited, transport.CertificateFailureRateLimited, "too many certificates"},
-		"anything else":                   {other, transport.CertificateFailureTool, "webroot plugin does not appear to be installed"},
-		"no output at all":                {"", transport.CertificateFailureTool, ""},
+		"the authority cannot be reached":         {measured, transport.CertificateFailureAuthorityUnreachable, "Max retries exceeded"},
+		"the authority refused a name":            {validation, transport.CertificateFailureValidation, "DNS problem: NXDOMAIN looking up A for www.shop.example"},
+		"the authority's limit":                   {rateLimited, transport.CertificateFailureRateLimited, "too many certificates"},
+		"anything else":                           {other, transport.CertificateFailureTool, "webroot plugin does not appear to be installed"},
+		"the authority does not know the account": {accountUnknown, transport.CertificateFailureAccountUnknown, "account that does not exist"},
+		"no output at all":                        {"", transport.CertificateFailureTool, ""},
 	} {
 		if kind := certbotFailureKind(c.output); kind != c.kind {
 			t.Fatalf("%s: kind %q, want %q", name, kind, c.kind)

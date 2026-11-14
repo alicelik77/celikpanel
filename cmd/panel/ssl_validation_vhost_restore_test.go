@@ -119,6 +119,10 @@ type validationRestoreAgent struct {
 	keptUnknownReason string
 	renewCalls        int
 	inspectCalls      []ValidationRestoreApplyRequest
+	// mailInCertificate: the installed certificate also carries
+	// mail.<domain>; renewedDropsMail: the renewed one does not.
+	mailInCertificate bool
+	renewedDropsMail  bool
 
 	applyCalls  []ValidationRestoreApplyRequest
 	deleteCalls []ValidationRestoreDeleteRequest
@@ -328,8 +332,12 @@ func (a *validationRestoreAgent) InspectInstalledCertificate(
 	defer a.mu.Unlock()
 
 	names := []string{a.domain, "www." + a.domain}
-	if req.CertPath == "/certs/renewed/fullchain.pem" && a.renewMode != "exact" {
+	renewed := req.CertPath == "/certs/renewed/fullchain.pem"
+	if renewed && a.renewMode != "exact" {
 		names = []string{a.domain} // Deliberately missing www.
+	}
+	if a.mailInCertificate && !(renewed && a.renewedDropsMail) {
+		names = append(names, "mail."+a.domain)
 	}
 	*resp = ValidationRestoreInspectResponse{
 		Valid:        true,

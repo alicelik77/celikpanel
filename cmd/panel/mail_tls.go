@@ -543,7 +543,11 @@ func (p *Panel) setDomainMailTLSRemovalLedger(
 }
 
 // handleDomainSSLMail toggles "secure mail with this certificate" for a
-// domain's active certificate and re-syncs the stack.
+// domain's active certificate and re-syncs the stack. Since alpha.134 the
+// switch means serving: mail serves the certificate for mail.<domain>. What
+// mail programs are told changes only for a domain that chose mail.<domain>
+// before alpha.134 (mailClientHost); for such a domain the site file, which
+// carries the auto-setup answers, is written again in the same operation.
 // handleDomainSSLMail, bir domain'in aktif sertifikası için "maili bu
 // sertifikayla koru"yu açıp kapatır ve yığını yeniden senkronlar.
 func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -607,8 +611,23 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 				return
 			}
 		}
+		// A domain that chose its own mail name tells programs mail.<domain>
+		// only while mail serves the certificate for it, so switching changes
+		// the auto-setup answers too (docs/CERTIFICATE-COVERAGE.md §3).
+		var ownName int
+		if err := p.db.GetDB().QueryRowContext(r.Context(), `
+			SELECT COALESCE(mail_clients_use_own_name, 0) FROM domains WHERE id = ?`, domainID).
+			Scan(&ownName); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		toldChanges := ownName == 1 && (previousEnabled == 1) != req.SecureMail
 		// alpha.127: the progress window follows these steps (operation_steps.go).
-		reportOperationPlan(r.Context(), "check", "mail_tls", "tlsa")
+		if toldChanges {
+			reportOperationPlan(r.Context(), "check", "mail_tls", "tlsa", "site")
+		} else {
+			reportOperationPlan(r.Context(), "check", "mail_tls", "tlsa")
+		}
 		reportOperationStep(r.Context(), "check")
 		if err := p.authorizeAgentRPCContext(r.Context(), "Agent.SyncMailTLSV2"); err != nil {
 			writeAgentError(w, err, "mail TLS V2 platform preflight")
@@ -662,7 +681,22 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 		// DANE follows the toggle: publish TLSA when securing, drop when not.
 		// DANE anahtarı izler: korurken TLSA yayımla, korumuyorken düşür.
 		reportOperationStep(r.Context(), "tlsa")
-		if err := p.refreshTLSARecords(r.Context(), domainID); err != nil {
+		dependentErr := p.refreshTLSARecords(r.Context(), domainID)
+		siteFileKept := false
+		if dependentErr == nil && toldChanges {
+			// The auto-setup answers name the mail server: write the site
+			// file again so they agree with what programs are now told. A
+			// file the owner kept is left as it is (D-031) and said.
+			reportOperationStep(r.Context(), "site")
+			if err := p.applyVhostForDomain(r.Context(), domainID); err != nil {
+				if _, kept := keptSiteFile(err); kept {
+					siteFileKept = true
+				} else {
+					dependentErr = err
+				}
+			}
+		}
+		if err := dependentErr; err != nil {
 			rollbackCtx, cancel := sslCompensationContext()
 			defer cancel()
 			_, rollbackErr := p.db.GetDB().ExecContext(rollbackCtx, `
@@ -675,6 +709,14 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 			}
 			if rollbackErr == nil {
 				rollbackErr = p.refreshTLSARecords(rollbackCtx, domainID)
+			}
+			if rollbackErr == nil && toldChanges {
+				// The site file again, as it was before the switch.
+				if siteErr := p.applyVhostForDomain(rollbackCtx, domainID); siteErr != nil {
+					if _, kept := keptSiteFile(siteErr); !kept {
+						rollbackErr = siteErr
+					}
+				}
 			}
 			if rollbackErr != nil {
 				if !mailRollbackPublished && !mutationTerminalUncertain(rollbackErr) {
@@ -692,7 +734,7 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 					}
 				}
 				writeServerError(w, fmt.Errorf(
-					"TLSA publish failed: %v; secure-mail rollback failed: %w",
+					"mail dependents failed: %v; secure-mail rollback failed: %w",
 					err, rollbackErr,
 				))
 				return
@@ -705,7 +747,11 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 			action = "ssl.mail.on"
 		}
 		p.audit(r, action, "domain", domainID)
-		json.NewEncoder(w).Encode(map[string]any{"success": true})
+		answer := map[string]any{"success": true}
+		if siteFileKept {
+			answer["site_file_kept"] = true
+		}
+		json.NewEncoder(w).Encode(answer)
 
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

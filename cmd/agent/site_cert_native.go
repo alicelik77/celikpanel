@@ -765,11 +765,33 @@ func classifyNativeSiteRenewal(facts nativeSiteFacts, now time.Time) (string, st
 	if facts.Hook == "changed" {
 		return transport.SiteRenewalHookChanged, "the deploy hook that reloads nginx after a renewal was changed outside CelikPanel"
 	}
-	if !strings.EqualFold(conf.Authenticator, "webroot") || !nativeSiteWebrootMatches(conf, facts.ExpectWebroot) ||
-		(facts.ExpectServer != "" && !strings.EqualFold(strings.TrimRight(conf.Server, "/"), strings.TrimRight(facts.ExpectServer, "/"))) {
+	if nativeSiteConfOwnerChanged(conf, facts.ExpectWebroot, facts.ExpectServer) {
 		return transport.SiteRenewalOwnerConfigured, "certbot's renewal configuration was changed outside CelikPanel; it is kept as it is"
 	}
 	return transport.SiteRenewalScheduled, ""
+}
+
+// nativeSiteConfOwnerChanged is the one rule for "certbot's renewal
+// configuration of this lineage was changed outside CelikPanel": another
+// authenticator, another validation directory, or an authority that is none
+// of the accepted ones (no non-empty accepted server: not compared). The page
+// reports such a lineage as owner_configured; it is never removed.
+func nativeSiteConfOwnerChanged(conf nativeSiteRenewalConf, expectWebroot string, servers ...string) bool {
+	if !strings.EqualFold(conf.Authenticator, "webroot") || !nativeSiteWebrootMatches(conf, expectWebroot) {
+		return true
+	}
+	have := strings.TrimRight(conf.Server, "/")
+	compared := false
+	for _, server := range servers {
+		if server == "" {
+			continue
+		}
+		compared = true
+		if strings.EqualFold(have, strings.TrimRight(server, "/")) {
+			return false
+		}
+	}
+	return compared
 }
 
 // nativeSiteRenewalWindow is when certbot starts renewing the certificate
@@ -1013,6 +1035,7 @@ func issueNativeSiteCertificate(req IssueLetsEncryptRequest, webroot string, res
 
 	ctx, cancel := certbotRenewContext(context.Background())
 	defer cancel()
+	started := nativeSiteNow()
 	output, err := nativeSiteCertbotRun(ctx, buildNativeSiteIssueArgs(req, webroot, lineage, configFile)...)
 	if err != nil {
 		resp.Success = false
@@ -1022,7 +1045,7 @@ func issueNativeSiteCertificate(req IssueLetsEncryptRequest, webroot string, res
 			resp.Error = fmt.Sprintf("certbot issue timed out after %s\nOutput: %s", certbotRenewTimeout, string(output))
 			return
 		}
-		resp.Failure = certbotFailureKind(string(output))
+		resp.Failure = certbotFailureKindWithLog(string(output), started)
 		resp.Error = fmt.Sprintf("certbot failed: %v\nOutput: %s", err, string(output))
 		return
 	}
@@ -1030,6 +1053,10 @@ func issueNativeSiteCertificate(req IssueLetsEncryptRequest, webroot string, res
 	paths, cert, _, err := readNativeSiteLineage(lineage)
 	if err != nil {
 		resp.Success = false
+		// The authority issued it; its files did not pass the check before
+		// use. The Panel removes the lineage and says so (alpha.134).
+		resp.Failure = transport.CertificateFailureIssuedCheck
+		resp.FailureDetail = boundedNativeDetail(err.Error())
 		resp.Error = fmt.Sprintf("certbot reported success, but its lineage could not be used: %v", err)
 		return
 	}

@@ -10,6 +10,56 @@ const (
 	MaxJobKeyBytes  = 128
 )
 
+// Backup package (manifest) versions. ManifestVersionSite is the package
+// every release since v2 writes and reads: public_html and databases.
+// ManifestVersionHome (docs/SITE-BACKUP-CONTENTS-DESIGN.md) adds the site-home
+// areas (a program's or Python app's "app" folder, service apps' "apps/<app>"
+// folders) in payload/home.tar.gz. It is written only when such an area
+// exists, so a site without one keeps the version-2 package byte for byte. An
+// older release refuses a version-3 manifest (fail closed): it neither lists,
+// restores nor imports it. The RPC protocol stays ProtocolVersion.
+//
+// Yedek paketi sürümleri: 3 yalnız site ev dizininde program/uygulama alanı
+// varsa yazılır; eski sürüm 3'ü reddeder (kapalı kalır).
+const (
+	ManifestVersionSite = 2
+	ManifestVersionHome = 3
+)
+
+// Site-home areas and the reasons an item was left out of one.
+const (
+	// AreaApp is a program's or Python app's folder, <site home>/app.
+	AreaApp = "app"
+	// AreaAppsPrefix starts a service app's area, "apps/<app>".
+	AreaAppsPrefix = "apps/"
+
+	LeftOutCache        = "cache"
+	LeftOutBuildTemp    = "build_temp"
+	LeftOutReinstalled  = "reinstalled"
+	LeftOutSpecial      = "special"
+	LeftOutNotSiteOwned = "not_site_owned"
+	LeftOutNotAFolder   = "not_a_folder"
+	// MaxLeftOutNamed bounds the left-out items named one by one; the rest
+	// are counted (LeftOutMore).
+	MaxLeftOutNamed = 100
+)
+
+// Area is one site-home area a backup holds (or would hold): its name and the
+// bytes and number of files kept in it, uncompressed.
+type Area struct {
+	Name  string `json:"name"`
+	Bytes int64  `json:"bytes"`
+	Files int64  `json:"files"`
+}
+
+// LeftOut is one item of an area that a backup does not hold, and why.
+// Bytes is the size of the files under it (0 for a special file).
+type LeftOut struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+	Bytes  int64  `json:"bytes,omitempty"`
+}
+
 const (
 	TypeFiles    = "files"
 	TypeDatabase = "database"
@@ -116,6 +166,33 @@ type Info struct {
 	Legacy     bool      `json:"legacy,omitempty"`
 	Restorable bool      `json:"restorable"`
 	CreatedAt  time.Time `json:"created_at"`
+	// Format is the package's manifest version (0 for a pre-v2 archive).
+	// Areas and LeftOut are what a version-3 package holds besides
+	// public_html and what it does not; LeftOutMore counts the left-out
+	// items beyond the named ones. Additive.
+	Format      int       `json:"format,omitempty"`
+	Areas       []Area    `json:"areas,omitempty"`
+	LeftOut     []LeftOut `json:"left_out,omitempty"`
+	LeftOutMore int       `json:"left_out_more,omitempty"`
+}
+
+// ContentsResponse is what a files backup of the site would hold now,
+// measured with the walk and rules that make the archive (so the sizes shown
+// are the sizes archived): public_html's files, each site-home area, what an
+// area leaves out, and the free space on the backup disk (-1 when it could not
+// be read). Complete is false when the measurement stopped at its time limit:
+// the sizes are then "at least". Error is a measurement that failed.
+// ContentsResponse, sitenin bir dosya yedeğinin şu an neleri içereceğidir.
+type ContentsResponse struct {
+	SiteBytes       int64     `json:"site_bytes"`
+	SiteFiles       int64     `json:"site_files"`
+	Areas           []Area    `json:"areas"`
+	LeftOut         []LeftOut `json:"left_out"`
+	LeftOutMore     int       `json:"left_out_more,omitempty"`
+	LeftOutBytes    int64     `json:"left_out_bytes"`
+	BackupFreeBytes int64     `json:"backup_free_bytes"`
+	Complete        bool      `json:"complete"`
+	Error           string    `json:"error,omitempty"`
 }
 
 type CreateResponse struct {
@@ -150,6 +227,10 @@ type InspectResponse struct {
 	Backup    Info               `json:"backup,omitempty"`
 	Databases []DatabaseIdentity `json:"databases,omitempty"`
 	Error     string             `json:"error,omitempty"`
+	// Code (alpha.134, additive): a refusal the screen can name
+	// (RestoreCodeNotFound, RestoreCodeOtherSite, RestoreCodeInvalid); empty
+	// for an error of the server itself.
+	Code string `json:"code,omitempty"`
 }
 
 type RestoreRequest struct {
@@ -178,6 +259,11 @@ type RestoreResponse struct {
 	// can name what happened and what to do instead of a generic error.
 	Code   string `json:"code,omitempty"`
 	Detail string `json:"detail,omitempty"`
+	// Restored names the site-home areas this restore replaced, and
+	// NotRestored the areas the backup holds that this release does not put
+	// back (service apps: left as they are on the server). Additive.
+	Restored    []string `json:"restored,omitempty"`
+	NotRestored []string `json:"not_restored,omitempty"`
 }
 
 // Restore failure codes (alpha.128). Additive.
@@ -197,6 +283,19 @@ const (
 	// RestoreCodeFinishFailed: the restore was published but its final
 	// cleanup or durability proof did not finish.
 	RestoreCodeFinishFailed = "finish_failed"
+	// alpha.134 lab findings (D-024: a refusal says what happened, not
+	// "internal error"); also InspectResponse.Code. Nothing was replaced.
+	// RestoreCodeNotFound: the backup is not (or no longer) among this
+	// site's backups on the server.
+	RestoreCodeNotFound = "not_found"
+	// RestoreCodeOtherSite: the package was made of another site.
+	RestoreCodeOtherSite = "other_site"
+	// RestoreCodeNoSpace: the server's disk had no room to unpack or stage
+	// the backup.
+	RestoreCodeNoSpace = "no_space"
+	// RestoreCodeSiteAccount: the site's own system account, which the
+	// program's files are given to, could not be found or proved.
+	RestoreCodeSiteAccount = "site_account"
 )
 
 // RestoreInProgress is the exact RestoreResponse.Error of a restore refused

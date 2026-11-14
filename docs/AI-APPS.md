@@ -167,9 +167,14 @@ changes, a running app is restarted and a stopped one stays stopped. If the old 
 or missing, nothing is taken over and the app is stopped until its keys are set again. A unit the
 owner changed is kept; the Agent log names it.
 
-**Backups.** The environment file is not in the site's folder, so a site backup does not carry
-it. Restoring a site on the same server keeps the app's values; on another server the app's keys
-(and n8n's encryption key, which its saved credentials depend on) must be set again.
+**Backups.** A files or full backup of the site holds the app's `data` and `config` folders; it
+leaves out `dist`, `app-<version>` and `.cache`, which the panel installs again, and says so
+([SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md)). This release does not put a
+service app's folder back on restore: the restore names it and leaves it as it is; the data can
+be taken from the downloaded backup by hand. The environment file is not in the site's folder,
+so a site backup does not carry it. Restoring a site on the same server keeps the app's values;
+on another server the app's keys (and n8n's encryption key, which its saved credentials depend
+on) must be set again.
 
 Since alpha.119 the app folder itself is bound into the sandbox by a root-owned mount that a
 bind unit makes before every start, without following links

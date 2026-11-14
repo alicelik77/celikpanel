@@ -125,7 +125,7 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "users.create.missing": "Kullanıcıyı oluşturmak için doldurun: {fields}.",
     "users.create.passwordRule": "Parola (alanın altındaki kurala uygun)",
     "mail.create.missing": "Oluşturmak için doldurun: {fields}.",
-    "ssl.issue.needsEmail": "Sertifikayı almak için yukarıya bir e-posta adresi girin.",
+    "ssl.issue.needsEmail": "Buraya bir e-posta adresi girin; sertifika kuruluşu sertifikayı vermek için bir adres ister.",
     "domains.add.blockedTitle": "Henüz alan adı eklenemiyor",
     "dnsstate.title.waiting": "Yeni DNS değişiklikleri bekliyor",
     "dnsstate.title.backup": "Bu, yedek DNS sunucusu",

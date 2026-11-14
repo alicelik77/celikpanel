@@ -22,6 +22,7 @@ import { DatabaseTools } from './DatabaseTools';
 import { DatabaseRemoteAccess } from './DatabaseRemoteAccess';
 import { DatabaseUsers } from './DatabaseUsers';
 import { EngineMark } from './EngineMark';
+import { databaseNameCharactersOK, databaseNamesOver } from '../lib/databaseNameLimits';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -183,6 +184,19 @@ export function DomainDatabaseManager({
     // Said once, in the banner (useRefusal): no notice repeats it.
     const { refusal, refuse, clear: clearRefusal } = useRefusal();
     const passwordOK = passwordAcceptable(dbPassword, 'database_user');
+    // alpha.134 fix round: the full name exactly as the server makes it (its
+    // own prefix from the list's answer) and, while typing, whether the
+    // server would refuse it - the same rule, the same numbers - so a name
+    // that cannot be made is stopped here, next to the field.
+    // Tam ad sunucunun yaptığı gibi; sunucunun reddedeceği ad alanın yanında durur.
+    const namePrefix = listed?.value.namePrefix;
+    const fullName = namePrefix === undefined ? null : namePrefix + dbName;
+    const nameOver = fullName !== null && dbType !== null ? databaseNamesOver(dbType, fullName, [fullName + '_user']) : { by: 0, underscores: false };
+    const nameProblem = !databaseNameCharactersOK(dbName)
+        ? t('ddb.nameCharacters')
+        : nameOver.by > 0
+          ? t(nameOver.underscores ? 'ddb.tooLongUnderscores' : 'ddb.tooLong', { over: String(nameOver.by) })
+          : '';
 
     const handleCreateDatabase = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -192,6 +206,7 @@ export function DomainDatabaseManager({
             showToast('error', t('ddb.namePasswordRequired'));
             return;
         }
+        if (nameProblem) return;
         clearRefusal();
 
         setCreating(true);
@@ -349,10 +364,17 @@ export function DomainDatabaseManager({
                                 onChange={(e) => setDbName(e.target.value)}
                                 placeholder="myapp"
                                 className="bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary field-md"
+                                aria-invalid={nameProblem ? true : undefined}
+                                aria-describedby="ddb-name-hint"
                                 required
                             />
-                            <p className="text-xs text-fg-subtle mt-1">
-                                {t('ddb.prefix', { name: `${domainName.replace(/\./g, '_')}_${dbName}` })}
+                            <p id="ddb-name-hint" className="text-xs mt-1" aria-live="polite">
+                                {/* "It will be X" only for a name the server makes. */}
+                                {nameProblem ? (
+                                    <span className="block text-danger" data-name-problem>{nameProblem}</span>
+                                ) : fullName !== null && (
+                                    <span className="block break-all text-fg-subtle">{t('ddb.prefix', { name: fullName })}</span>
+                                )}
                             </p>
                         </div>
 
@@ -384,7 +406,7 @@ export function DomainDatabaseManager({
                         <div className="flex gap-2">
                             <button
                                 type="submit"
-                                disabled={creating || dbType === null || answer.holding || !passwordOK}
+                                disabled={creating || dbType === null || answer.holding || !passwordOK || nameProblem !== ''}
                                 className="px-6 py-2 bg-success text-white rounded hover:bg-success disabled:opacity-50 flex items-center gap-2"
                             >
                                 <Database className="w-4 h-4" />

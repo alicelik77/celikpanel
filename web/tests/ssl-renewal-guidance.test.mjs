@@ -35,7 +35,8 @@ test('every OS renewal state has a label, a reason and, when it needs someone, a
       if (guide.actionKey) assert.ok(catalogue.includes(`'${guide.actionKey}':`), `${locale} ${guide.actionKey}`);
     }
   }
-  assert.equal(renewalGuidance(native('failed', { last_failed: { at: '', detail: 'connection refused' } })).params.detail, 'connection refused');
+  // certbot's own words are the administrator's, in the closed details.
+  assert.equal(renewalGuidance(native('failed', { last_failed: { at: '', detail: 'connection refused' } })).detail, 'connection refused');
   assert.equal(renewalGuidance(native('overdue', { renew_after: '2026-10-01T00:00:00Z' })).params.date, '2026-10-01');
 });
 
@@ -89,7 +90,7 @@ test('a certificate of an earlier release that the Panel moves by itself says so
   }
 });
 
-test('the next actions are concrete and name the server administrator', () => {
+test('the next actions are concrete, and commands and server paths are only the administrator\'s closed details', () => {
   const sentence = (catalogue, key) => {
     const match = catalogue.match(new RegExp(`'${key.replace(/\./g, '\\.')}': '([^']*)'`));
     assert.ok(match, key);
@@ -98,9 +99,23 @@ test('the next actions are concrete and name the server administrator', () => {
   assert.match(sentence(englishScreens, 'ssl.renewalGuide.who'), /server administrator/);
   assert.match(sentence(turkishScreens, 'ssl.renewalGuide.who'), /sunucu yöneticisi/);
   for (const catalogue of [englishScreens, turkishScreens]) {
-    assert.match(sentence(catalogue, 'ssl.renewalGuide.failed.action'), /sudo certbot renew --cert-name \{lineage\}/);
-    assert.match(sentence(catalogue, 'ssl.renewalGuide.scheduler_missing.action'), /systemctl enable --now certbot\.timer/);
-    assert.match(sentence(catalogue, 'ssl.renewalGuide.deploy_incomplete.action'), /systemctl reload nginx/);
     assert.match(sentence(catalogue, 'dashboard.certRenewalProblem'), /\{domain\}/);
+    // alpha.134 lab run 6: no open sentence of the renewal box carries a
+    // command or a server path (a customer read /etc/letsencrypt/renewal/…).
+    for (const match of catalogue.matchAll(/'(ssl\.renewalGuide\.[^']+)': '([^']*)'/g)) {
+      if (match[1] === 'ssl.renewalGuide.file') continue;
+      assert.doesNotMatch(match[2], /sudo |systemctl|journalctl|postmap|\/etc\/|\/var\//, `${match[1]} carries a command or a path`);
+    }
   }
+  const lineage = 'celikpanel-site-42-00112233445566778899aabb';
+  assert.deepEqual(renewalGuidance(native('failed')).commands, [`sudo certbot renew --cert-name ${lineage}`]);
+  assert.equal(renewalGuidance(native('failed')).file, '/var/log/letsencrypt/letsencrypt.log');
+  assert.deepEqual(renewalGuidance(native('scheduler_missing')).commands, ['sudo systemctl enable --now certbot.timer']);
+  assert.deepEqual(renewalGuidance(native('deploy_incomplete', { last_deploy: { completed_at: '', nginx: 'config_test_failed' } })).commands, ['sudo nginx -t', 'sudo systemctl reload nginx']);
+  assert.equal(renewalGuidance(native('disabled')).file, `/etc/letsencrypt/renewal/${lineage}.conf`);
+  // A reader who is not the administrator: what they can do here, if anything.
+  assert.equal(renewalGuidance(native('disabled')).selfKey, 'ssl.renewalGuide.disabled.self');
+  assert.equal(renewalGuidance(native('lineage_missing')).selfKey, 'ssl.renewalGuide.lineage_missing.action');
+  assert.equal(renewalGuidance(native('scheduler_missing')).selfKey, undefined);
+  assert.equal(renewalGuidance({ type: 'letsencrypt', renewal_status: '', renewal_owner: 'panel' }).pageAction, true);
 });

@@ -185,6 +185,11 @@ Yollar bucket klasörüne (önek) ya da SFTP klasörüne göredir:
 Gerekenler: `.cpbak.gpg` dosyası, `.json` yan dosyası (isteğe bağlı, denetim için), parola
 cümlesi ve `gpg` ile `tar`. Bu ikisi dağıtımın resmi paketlerinden gelir (`gnupg`, `tar`).
 
+Sunucudaki yerel bir yedek (`/var/backups/celikpanel/subscriptions/<abonelik>/domains/<alan adı no>/*.cpbak`,
+yalnız root) şifreli değildir: 4. adımdan başlayın. Silinip aynı adla yeniden oluşturulan bir
+sitenin yolu da budur: yeni sitenin alan adı numarası yenidir; panel yalnız onun kendi
+yedeklerini listeler ve önceki sitenin paketini başka bir sitenin yedeği olarak reddeder.
+
 1. **İki dosyayı bucket'tan ya da SFTP klasöründen indirin.** İstediğiniz aracı kullanabilirsiniz:
    sağlayıcının web konsolu, `sftp`, `scp` ya da zaten kullanıyorsanız AWS CLI.
 2. **İsteğe bağlı: indirmeyi denetleyin.** Çıktıyı `.json` dosyasındaki `encrypted_sha256` ile
@@ -216,11 +221,32 @@ cümlesi ve `gpg` ile `tar`. Bu ikisi dağıtımın resmi paketlerinden gelir (`
    - `payload/files.tar.gz`: sitenin dosyaları (dosya ve tam yedeklerde).
    - `payload/databases/<kimlik>.sql.gz`: her veritabanı için sıkıştırılmış bir döküm (veritabanı
      ve tam yedeklerde).
+   - `payload/home.tar.gz` (yalnız `manifest.json` içinde `"version": 3` yazıyorsa): site ev
+     dizinindeki program ya da Python uygulaması klasörü `app` ve her hizmet uygulamasının
+     klasörü `apps/<uygulama>`; `manifest.json` bunları `areas` altında listeler (dosya ve tam
+     yedeklerde).
 5. **Dosyaları sitenin belge köküne geri koyun** (örnek yol):
 
    ```sh
    tar -xzf restore/payload/files.tar.gz -C /var/www/example.com/public_html
    ```
+
+   **Program ve uygulama klasörleri** (yalnız sürüm 3): önce programı ya da uygulamayı
+   durdurun ve şimdiki klasörünü kenara taşıyın; sonra arşivi site ev dizinine (`public_html`
+   klasörünü içeren klasör) açın ve dosyaları sitenin kendi hesabına ve o hesabın kendi
+   grubuna verin, çünkü arşiv sahip bilgisi tutmaz (her `apps/<uygulama>` klasörü için de
+   aynısı). Ev dizininin grubunu asla vermeyin: o grup web sunucusunundur ve web sunucusu
+   programın klasörüne ulaşmamalıdır. İki noktalı `chown "$owner:"` hesabın kendi grubunu
+   alır. Örnek yol:
+
+   ```sh
+   site=/var/www/celikpanel/subscriptions/3/sites/7
+   tar -xzf restore/payload/home.tar.gz -C "$site"
+   owner=$(stat -c %U "$site")
+   chown -hR "$owner:" "$site/app"
+   ```
+
+   Ortam dosyaları (gizli değerler) hiçbir yedekte yoktur: programın okuduğu yere yeniden girin.
 
 6. **Her veritabanını yükleyin.**
    - MariaDB ya da MySQL:

@@ -407,6 +407,18 @@ someone deletes it.
 The SMTP egress block keeps working without the panel
 ([SITE-SANDBOX.md §4](SITE-SANDBOX.md)).
 
+### Backups
+
+A files or full backup of the site holds the `app` folder with `public_html`
+([SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md)). It leaves
+out a Python app's `.pip-cache`, `.build-tmp` and unfinished `venv-<n>.partial`
+folders, sockets and files of another account, and names each. Links (a
+Python environment) are kept as links. The environment file is never in a
+backup. A restore of such a backup stops a running program, puts the folder
+back with the site's account as owner, and starts the program again; a program
+that was stopped stays stopped. Backups made before this did not hold the
+program, and the Backups tab says so.
+
 ## 14. Not covered
 
 - Port 2525 and mail sent through HTTP mail APIs (only 25, 465 and 587 are
