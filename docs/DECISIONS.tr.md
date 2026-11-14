@@ -428,6 +428,11 @@ yapacağını (sunucu yöneticisi), somut sonraki adımı ve nasıl devam edilec
 söyler; Pano her sorunu gün sayısından bağımsız listeler. Önceki sürümlerin
 sertifikaları yeniden alınana kadar çalışan Panel tarafından eskisi gibi yenilenir;
 kart bunu ve bir kez yeniden almanın onları işletim sistemine taşıdığını söyler.
+~~Yenisiyle değiştirilen yerel lineage dosyalarını korur ve Panel ona
+`autorenew = False` yazar.~~ **Değişiklik (alpha.134):** Yenisiyle değiştirilen
+yerel lineage, hiçbir şey onu anmadığında (/etc altındaki dosyalar ve bağlantılar,
+bir site satırı, saklanan bir güncelleme kopyası) ve güncelleme doğrulandıktan sonra
+`certbot delete` ile kaldırılır; defter satırı kayıt olarak kalır (alpha.134).
 
 **Posta SNI.** Site sertifikası `mail.<alan>` için de kullanılıyorsa SNI girdisi
 certbot'un live dosyalarını adlandırır; kanca CelikPanel'in Postfix SNI haritasını
