@@ -61,7 +61,6 @@ export const enDeletionHoldingScreens = {
     'holding.left.absent': '{what} was already gone; nothing moved',
     'holding.left.failed': 'It was not moved.',
     'holding.left.unknown': 'The mail folders deleted mailboxes left could not be read; there may be some.',
-    'holding.left.more': 'More mail folders are left in place than one list can show, so only part of them is listed. As you keep these 30 days, the rest appear here.',
     'err.HOLDING_LEFT_FAILED': 'The folder was not moved. The server said: {line}',
     'err.HOLDING_LEFT_UNKNOWN': 'No answer came; whether it moved is not known. If it is still listed, try again.',
     'err.HOLDING_LEFT_IN_USE': 'This address has a mailbox again; nothing was moved.',

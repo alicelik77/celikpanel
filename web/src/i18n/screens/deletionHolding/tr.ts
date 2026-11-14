@@ -56,7 +56,6 @@ export const trDeletionHoldingScreens: Record<DeletionHoldingScreenKey, string> 
     'holding.left.absent': '{what} zaten yoktu; hiçbir şey taşınmadı',
     'holding.left.failed': 'Taşınmadı.',
     'holding.left.unknown': 'Silinen kutulardan kalan klasörler okunamadı; olabilirler.',
-    'holding.left.more': 'Yerinde kalan posta klasörü bir listede gösterilebilenden fazla; burada yalnız bir kısmı var. Bunları 30 gün saklamaya aldıkça kalanlar burada görünür.',
     'err.HOLDING_LEFT_FAILED': 'Klasör taşınmadı. Sunucunun yanıtı: {line}',
     'err.HOLDING_LEFT_UNKNOWN': 'Yanıt gelmedi; taşınıp taşınmadığı bilinmiyor. Listede duruyorsa yeniden deneyin.',
     'err.HOLDING_LEFT_IN_USE': 'Bu adreste yine bir posta kutusu var; hiçbir şey taşınmadı.',

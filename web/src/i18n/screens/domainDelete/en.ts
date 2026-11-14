@@ -5,7 +5,8 @@
 // own steps. Split out of "sites" and "errors", which were full. Key
 // prefixes: domains.delete., domains.deleted., domains.deletion.,
 // domains.step.done.databases*, err.DOMAIN_DELETION_ (except the mail step's
-// reason, which stays in "errors"). The database lines of the question and
+// reason, which stays in "errors"), and since alpha.135 holding.left.more
+// ("deletionHolding" is full). The database lines of the question and
 // of the result are the Databases page's own (databases., part
 // "mailDatabases"). One part of the screen copy; ../../index.tsx fetches
 // every part in parallel and no screen renders before all of them have
@@ -51,6 +52,9 @@ export const enDomainDeleteScreens = {
     'err.DOMAIN_DELETION_FAILED.site_cleanup_failed': 'Deletion stopped while removing this domain’s website from this server: a part of it (for example its scheduled tasks, its logs or its files) could not be removed. The DNS zone and the databases are unchanged. The server administrator finds the part in the panel log (sudo journalctl -u celikpanel-panel | grep "domain deletion"), checks it on this server, then uses “Retry this deletion”, which repeats the removal and continues. Nothing retries by itself.',
     'err.DOMAIN_DELETION_FAILED.database_cleanup_failed': 'The deletion stopped at the domain’s databases: the website is already removed, the DNS zone is unchanged, and a database not yet deleted is still listed. Use “Retry this deletion” (Delete on this domain): it deletes what is left and continues. If it stops here again, the server administrator makes sure the database server runs (Services page). Nothing retries by itself.',
     'err.DOMAIN_DELETION_PLAN_FIXED': 'This deletion already runs with the other choice for the domain’s databases, so nothing was changed. Use “Retry this deletion” without changing that choice; it continues as it was started.',
+    // alpha.135: the line of the list of what deletions left when its list
+    // of mail left in place is cut; here because "deletionHolding" is full.
+    'holding.left.more': 'More mail folders are left in place than one list can show, so only part of them is listed. As you keep these 30 days, the rest appear here.',
 } as const;
 
 export type DomainDeleteScreenKey = keyof typeof enDomainDeleteScreens;
