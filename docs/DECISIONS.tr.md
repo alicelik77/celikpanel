@@ -19,6 +19,121 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-047 · Ücretli yıllık lisans: sunucu başına yılda tek fiyat; süresi biten lisans sunucuyu asla durdurmaz, yalnız büyüme kapanır
+
+*2026-11-14 · Sahibin lisans, abonelik ve ödeme yönünü onayı (14 Kasım 2026) · yalnız yön ve [teknik tasarım](LICENCE-SUBSCRIPTION-DESIGN.md); hiçbir şey uygulanmadı, kurulu panel ve canlı hizmet değiştirilmedi*
+
+**Bugünkü durum.** Bugün her lisans ücretsizdir ve zaten bir yıl sürer: celikpanel.net'teki
+üyelik hizmeti (`portal-membership/`, PHP ve SQLite) `expires_at` değeri lisansın
+oluşturulmasından bir takvim yılı sonra olan bir makbuz imzalar; yenileme hesapta ücretsiz,
+kendi kendine yapılan bir işlemdir. Lisans yoksa, süresi bittiyse ya da yedi gün
+doğrulanamazsa (D-039) panel, güvenlik işlemleri dahil, her rol için neredeyse bütün
+ekranları ve API yollarını kilitler; siteler, e-posta, DNS, veritabanları ve zamanlanmış
+işler çalışmaya devam eder, çünkü sunucuda hiçbir şey lisansa bakmaz (D-022). Kendi lisansı
+etkin olmayan ana DNS sunucusu, eşindeki sunucudan gelen DNS yayınını reddeder. Fiyat,
+sipariş, ödeme, fatura ya da hatırlatma hiçbir yerde yoktur.
+
+**Karar (sahibin sekiz maddesi).**
+
+1. Sunucu başına yılda tek, sabit fiyat. Hiçbir şey sayılmaz: hesap, alan adı ve site
+   sınırsızdır. Her özelliği içeren tek sürüm. Liste fiyatı yılda 99 USD.
+2. Fiyat güvencesi: müşterinin ödediği fiyat, ara vermeden yeniledikçe artmaz.
+3. Lisans biterken: bitişten 30, 7 ve 1 gün önce panelde ve e-postayla uyarı; bitişten
+   sonra her şeyin çalıştığı, üstte bir uyarının durduğu 30 günlük ek süre; ardından koruma
+   durumu. Koruma durumunda barındırılan siteler, e-posta, DNS, veritabanları, zamanlanmış
+   yedekler, sertifika yenileme, panel güncellemeleri ve işletim sistemi güvenlik
+   güncellemeleri, güvenlik duvarı, güvenlik acil durumu ve yedek indirme kullanılabilir
+   kalır; yalnız büyüme işlemleri (alan adı, hesap, posta kutusu oluşturmak ve benzerleri)
+   kapanır.
+4. CelikPanel'in kendi lisans hizmetine ulaşılamazsa panel, son başarılı kontrole dayanarak
+   30 gün tam çalışmaya devam eder (bugün yedi gün, D-039). Bir sunucunun lisansı başka bir
+   sunucunun işini asla engellemez.
+5. Lisansı başka sunucuya taşımak: hesap sayfasından kendi kendine, ücretsiz, gerektiği kadar
+   sık; her lisans için bir etkin sunucu.
+6. Kart istemeyen 30 günlük deneme; satın aldıktan sonra 30 gün koşulsuz iade; otomatik
+   yenileme yalnız müşterinin açık seçimiyle ve 7 gün önce hatırlatmayla.
+7. Ömür boyu lisans yok.
+8. Beta boyunca ücretsiz. Ödeme sistemi beta sırasında yapılır ve denenir; ücret 1.0 ile
+   başlar. Beta katılımcıları ilk yılı ücretsiz alır ve kalıcı bir kurucu fiyatı kazanır
+   (tutarı belli değil).
+
+Lisansları CelikPanel'in kendi hizmeti vermeye ve imzalamaya devam eder; ödeme sağlayıcısı
+yalnız "ödendi", "iade edildi" ya da "iptal edildi" bildirir.
+
+**Karara bağlanmayanlar (açık).** Ödeme sağlayıcısı: yurt dışı için bir satıcı-aracı
+(merchant of record; Polar ve Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a
+sorulacak), Türkiye için ileride iyzico ya da PayTR. Bu karar sahibin mali müşavirini
+bekliyor: yurt dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir
+satıcı-aracı üzerinden satış. Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para
+birimleri. Tasarımın sahibe soruları tasarımın k bölümündedir.
+
+**Neyi değiştirir.**
+
+- **D-039.** Başlıktaki "çevrimdışı en çok yedi gün" ile karar maddelerindeki
+  "`offline_until = min(şimdi + 7 gün, yıllık bitiş)`" ve "panel
+  `min(offline_until, issued_at + 7 gün, bitiş)` sınırını uygular": çevrimdışı süre 30 gün
+  olur ve artık yıllık bitişte kesilmez, çünkü bitişin ardından ek süre gelir. Bunu
+  uygulayan bir sürüm çıkana kadar paneller ve hizmet D-039'un yedi günüyle çalışır.
+  D-039'un saatlik kontrolü, tek ortak yenilemesi, 3 saniyelik beklemesi, saat güvenliği ve
+  açık reddin hemen uygulanması kalır; açık ret artık kilide değil koruma durumuna götürür.
+- **D-039 ve docs/MEMBERSHIP_LICENSING.tr.md**, "Eksik, süresi dolmuş, reddedilmiş veya
+  doğrulanamayan yetki belgesi: Normal yönetim reddedilir" satırı: süresi biten, doğrulanamayan ya da
+  ödenmeyen lisans için kilidin yerini 3. madde alır; güvenlik işlemleri lisans nedeniyle
+  asla reddedilmez. Hiç lisansı olmamış sunucunun da aynı koruma durumuna girip girmeyeceği
+  tasarımın 4. açık sorusudur.
+- **D-037**, "Lisans kapısı değişmedi … Panel lisans nedeniyle kilitliyken e-posta
+  değiştirme diğer rotalar gibi reddedilir." maddesi: bu kararın kaldırdığı kilidi anlatır; kişinin kendi
+  hesabı her lisans durumunda kullanılabilir kalır.
+- **D-027.** Panelin "etkin lisansı yaklaşık dakikada bir lisans hizmetinden doğruladığı"
+  cümlesi D-039'dan beri zaten eskiydi (oraya bir not eklendi). Kuralları geçerlidir: deney
+  lisansı hiçbir sürüme girmez, deney koşusu canlı hizmet hakkında bir şey kanıtlamaz.
+  Tasarım, deney koşusunun panelin her lisans durumunda işlemleri nasıl ayırdığını
+  gösterebilmesini önerir; bu, D-027'deki "Deney lisansıyla yapılan koşu lisans davranışı
+  için kanıt sayılmaz" cümlesini değiştirir ve o laboratuvar aşaması hazırlanırken sahibin
+  onayını ister.
+- **D-022** değişmez. Değişen, isteğe bağlı uzak kayıt yönetiminin artık kaydı alan
+  sunucunun lisansına bağlı olmamasıdır (4. madde).
+- **ROADMAP**, "Lisans ve iş modeli: önerilen açık çekirdek": yerini 1. madde alır, her
+  özelliği içeren tek sürüm.
+- **LICENSE §1** ("ilk etkinleştirmeden itibaren bir takvim yılı ücretsiz"), koşullar
+  ("otomatik ödeme alınmaz") ve "ücretsiz" metinleri: metin aşamasında yeniden yazılır; o
+  zamana kadar beta için doğrudurlar.
+
+**Değişmeyenler.** D-022: barındırılan hizmetler lisansa asla bağlı değildir. Hiçbir lisans
+durumu, süre dolması, iade ya da ulaşılamayan hizmet; bir siteyi, DNS'i, e-postayı,
+veritabanını, zamanlanmış işi ya da sertifika yenilemeyi durdurmaz, kaldırmaz, değiştirmez.
+Kurulu panel güncelleme kuralı: kurulu paneli yalnız sahibi, panelin kendi güncelleme
+ekranından günceller; panel güncellemeleri her lisans durumunda kullanılabilir kalır. D-024:
+her lisans durumu nedenini, kimin ne yapacağını, sonraki adımı ve nasıl devam edileceğini
+söyler. OPERATION-GUIDANCE'taki "lisans alma ya da yenileme işlemi kendiliğinden satın alma
+yapmaz" kuralı: otomatik yenileme yalnız müşterinin kendi hesabındaki seçimidir, bir panel
+işleminin yan etkisi asla değildir.
+
+**Sonuçlar.**
+
+- Süresi biten, doğrulanamayan ya da ödenmeyen lisans için tam ekran kilit kalkar: panel ya
+  tam çalışır ya da yalnız büyümeyi reddeden koruma durumundadır. Tasarım her yolu tek tek
+  sınıflar.
+- İmzalı lisans dosyası, bugünkü `celikpanel-license-v1` içeriğinin yanına ikinci bir içerik
+  alır. Kurulu paneller bildikleri biçimi okumaya devam eder ve bu değişiklik yüzünden asla
+  kilitlenmez; eski bir panel sürümüne dönüldüğünde eski biçim ve eski kurallar geçerli olur.
+- Üyelik hizmeti sipariş, ödeme, iade, yenileme, hatırlatma, bir işletmeci aracı ve kayıt
+  kazanır; önce sahte bir ödeme sağlayıcısıyla.
+- Küçük sürümler, önce panelin güvenliği: (1) güvenlik işlemleri ve sunucu eşi asla
+  engellenmez, bitiş uyarıları; (2) ek süre, koruma durumu, 30 günlük çevrimdışı süre;
+  (3) sahte sağlayıcıyla hizmet tarafı; (4) seçilince gerçek sağlayıcı; (5) metinler ve
+  koşullar.
+- Daha uzun çevrimdışı süre, celikpanel.net'i engelleyen bir sunucunun lisansı başka
+  sunucuya taşındıktan sonra 30 güne kadar tam çalışmasına izin verir. Tasarım bunu 4.
+  maddenin bedeli olarak kabul eder, fark eder ve sınırlar; engellemez.
+
+**Dayanıklılık (D-025).** Etkilenen: erişim kapısı (anayasa §2, "lisans doğrulayıcısı
+çalışmasa da kurtarma kullanılabilir kalmalı"; P0.2 türlerle ayrılmış erişim), kalıcı lisans
+kanıtı (`license.json`), imzalı biçim ve üyelik veritabanı. Her aşama, PR'ında şema ya da
+biçim geçişini, kurtarmayı ve kanıtı adıyla yazar. Bu kayıt hiçbir kodu, kurulu paneli ya da
+canlı hizmeti değiştirmez. Canlı lisans hizmetine bağlanmaya, canlı portalı değiştirmeye ya
+da kurulu panelleri güncellemeye izin vermez.
+
 ## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
 
 *2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124, 2. aşama (kapatma) alpha.125; 2. aşamanın laboratuvar denetimi lab/alpha114-acceptance dalında (a125-mail)*
@@ -583,6 +698,10 @@ yeni hizmet kaydıyla denenmesi). Kalan açıklar: gerçek bir kurulumda çok g�
 kesinti denemesi yapılmadı; sunucuda root olan kişi her yerel kontrolü yine aşabilir
 (eski dosyayı geri koyup saati geri almak), önceden olduğu gibi; üyelik hizmeti
 değişikliğini sahip yayımlar.
+
+*Değişiklik (2026-11-14, D-047):* sahip 30 günlük çevrimdışı süreyi (artık yıllık
+bitişte kesilmeden) ve kilit yerine koruma durumunu onayladı. D-047'yi uygulayan bir
+sürüm çıkana kadar paneller ve hizmet yukarıdaki yedi günle çalışır.
 
 ## D-038 · Sürüm, kullanım ve güvenlik her bileşen için tek ilkeye bağlıdır: sahibi seçer, panel önerir ve uyarır, kullanımda olan kaldırılmaz, hiçbir şey sessizce taşınmaz, yamalar işletim sisteminin işidir
 
@@ -3266,6 +3385,12 @@ herhangi bir davranışını değiştirmez. Deney lisansıyla yapılan koşu lis
 davranışı için kanıt sayılmaz. Bilinen sınır: Lisans ekranı yalnız durum ve
 bitiş tarihini gösterdiği için deney lisansı ekranda ayırt edilemez; API
 yanıtı, günlükler, kanıt ve panel sürüm adı ayırt eder.
+
+*Not (2026-11-14):* yukarıdaki "yaklaşık dakikada bir" Eylül 2026'daki kuralı
+anlatır. D-039'dan beri kullanımdaki panel yaklaşık saatte bir kontrol eder ve bir
+başarılı kontrol çevrimdışı en çok yedi gün geçerlidir; D-047 otuz günü onaylar. Deney
+lisansının kendisi hâlâ dakikada bir doğrular (`acceptance_fixture.go`). Bu kararın
+kuralları değişmez.
 
 ---
 

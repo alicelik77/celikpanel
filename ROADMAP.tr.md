@@ -218,7 +218,12 @@ Aşağıdaki "v0.6 – v0.9 — Beta Programı" bölümünün bugünkü durumu:
 | API belgesi (OpenAPI) | Yok |
 | Destek politikası (hangi sürüm ne kadar desteklenir) | Yok |
 | Kişisel veri: hesap verisini dışa aktarma ve silme raporu | Yok |
-| Lisans ve iş modeli kararı, fiyat ilkesi | Sahip kararı bekliyor |
+| Lisans ve iş modeli kararı, fiyat ilkesi | Karar verildi (sahip, 14 Kasım 2026, D-047): sunucu başına yılda 99 USD, hiçbir şey sayılmaz, tek sürüm; kilit yerine ek süre ve koruma durumu; beta boyunca ücretsiz. [Tasarım](docs/LICENCE-SUBSCRIPTION-DESIGN.md) |
+| Lisans 1. aşama: güvenlik işlemleri ve sunucu eşi lisans durumu yüzünden asla engellenmez; bitişten 30, 7 ve 1 gün önce uyarı | Tasarlandı |
+| Lisans 2. aşama: 30 gün ek süre, koruma durumu, 30 günlük çevrimdışı süre (v1'in yanında imzalı lisans dosyası v2) | Tasarlandı |
+| Lisans 3. aşama: üyelik hizmetinde sipariş, yenileme, iade, hatırlatma ve işletmeci aracı, sahte ödeme sağlayıcısıyla | Tasarlandı |
+| Lisans 4. aşama: gerçek ödeme sağlayıcısı, beta boyunca deneme kipinde | Sağlayıcı seçimini bekliyor |
+| Lisans 5. aşama: lisans metinleri ve koşullar; 1.0'da beta katılımcılarına ücretsiz ilk yıl ve kurucu fiyatı | Tasarlandı; kurucu fiyatı sahibi bekliyor |
 | "Neden CelikPanel" belgesi | Yok |
 | Hafif marka ayarı (panel adı, logo, renk) | Yok |
 | Kendi kendine kayıt (varsayılan kapalı, kötüye kullanım freniyle) | Yok |
@@ -238,8 +243,10 @@ gerekçesiyle değiştirilir.
 2. **Web uygulaması güvenlik duvarı (ModSecurity):** Arch'ta resmî paketi
    yok, Ubuntu'da yalnız topluluk deposunda. Seçenekler: yalnız resmî paketi
    olan sistemlerde sunmak ya da yapmamak.
-3. **Lisans ve iş modeli:** önerilen açık çekirdek; fiyat sunucu başına,
-   hesap sayısına göre değil.
+3. **Lisanslar (model D-047 ile karara bağlandı):** açık kalanlar ödeme
+   sağlayıcısı (yurt dışı için satıcı-aracı, Türkiye için ileride iyzico ya da
+   PayTR; mali müşavirin yanıtından sonra) ve kurucu fiyatı; tasarımın sahibe
+   soruları [k bölümündedir](docs/LICENCE-SUBSCRIPTION-DESIGN.md#k-open-questions-for-the-owner).
 4. **PostgreSQL aracı:** açık kaynak mı, ayrı depo mu.
 5. **Beta:** ne zaman ve hangi işletmecilerle.
 

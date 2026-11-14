@@ -219,7 +219,12 @@ The state today of the "v0.6 – v0.9 — Beta Program" section below:
 | API documentation (OpenAPI) | Missing |
 | Support policy (which release is supported for how long) | Missing |
 | Personal data: account data export and a deletion report | Missing |
-| Licence and business model decision, pricing principle | Waiting for the owner |
+| Licence and business model decision, pricing principle | Decided (owner, 14 November 2026, D-047): 99 USD per server per year, nothing counted, one edition; grace and a protection state instead of a lock; free during the beta. [Design](docs/LICENCE-SUBSCRIPTION-DESIGN.md) |
+| Licence stage 1: security actions and the server pair never blocked by a licence state; expiry warnings 30, 7 and 1 day before | Designed |
+| Licence stage 2: 30 days of grace, the protection state, a 30-day offline window (signed licence file v2 beside v1) | Designed |
+| Licence stage 3: membership service orders, renewals, refunds, reminders and operator tool, with a fake payment provider | Designed |
+| Licence stage 4: the real payment provider, in test mode during the beta | Waits for the provider choice |
+| Licence stage 5: licence texts and terms; first year free and the founder price for beta participants at 1.0 | Designed; founder price waits for the owner |
 | "Why CelikPanel" document | Missing |
 | Light branding (panel name, logo, colour) | Missing |
 | Self sign-up (off by default, with an abuse brake) | Missing |
@@ -239,8 +244,10 @@ changes, it changes with its reason.
 2. **Web application firewall (ModSecurity):** Arch has no official package,
    Ubuntu has it only in its community repository. Options: offer it only
    where an official package exists, or not build it.
-3. **Licence and business model:** the proposal is open core; the price per
-   server, never per account.
+3. **Licences (D-047 decided the model):** still open are the payment provider
+   (a merchant of record abroad; iyzico or PayTR in Turkey later; after the
+   accountant's answer) and the founder price; the design's questions for the
+   owner are in [its section k](docs/LICENCE-SUBSCRIPTION-DESIGN.md#k-open-questions-for-the-owner).
 4. **PostgreSQL tool:** open source or not, and a separate repository or not.
 5. **Beta:** when, and with which operators.
 

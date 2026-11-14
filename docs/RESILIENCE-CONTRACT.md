@@ -188,11 +188,14 @@ A layout or overlay load failure must leave a built-in recovery view. Navigation
 availability and competing-mutation admission are different controls. Clear
 instructions and an operation ID remain reachable after reload/reconnect.
 
-The current one-minute license verification policy is not changed by this
-contract. First align the typed decision and recovery capabilities with the
-actual enforced policy; do not silently extend a lease to hide availability bugs.
-The older licensing document's daily/seven-day and maintenance claims need an
-explicit historical/current-policy reconciliation.
+The license verification policy is not changed by this contract: since D-039 a
+panel in use checks about hourly and one successful check lasts up to seven days
+offline (D-047 approves thirty days and a protection state, not yet implemented).
+First align the typed decision and recovery capabilities with the actual enforced
+policy; do not silently extend a lease to hide availability bugs. The historical
+and current policy are reconciled in [MEMBERSHIP_LICENSING.md](MEMBERSHIP_LICENSING.md)
+(30 October 2026). *(Corrected 2026-11-14: this paragraph said "one-minute", the
+policy of alpha.64 to D-039.)*
 
 ## Implementation order and exit evidence
 
