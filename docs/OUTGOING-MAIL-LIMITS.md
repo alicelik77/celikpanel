@@ -119,7 +119,7 @@ reseller's own stop) is different (alpha.130): no password change ends it,
 whichever path changes the password (the mail page of an administrator,
 reseller, customer or team member, a mail API token, or a mailbox recovery
 link). The answer says sending stays stopped and who reopens it, and the
-mailbox card offers no password change for it. No screen sets a manual
+mailbox row offers no password change for it. No screen sets a manual
 pause yet; the rule holds for the value the schema already allows.
 A password change starts a fresh window (alpha.129; alpha.128 lab round 2: a
 mailbox reopened and abused again within the same hour was never paused
@@ -139,6 +139,26 @@ say sending is open again; otherwise it says the stop is lifted and sending
 opens within minutes by itself. Notices: "limit reached" at most once per mailbox
 per hour, "paused" at once, to the customer, the reseller and administrators,
 in the panel and by mail.
+
+## On screen (alpha.135)
+
+There is no sending-limits card on a domain's mail page. While the limits
+are applied on the server, each mailbox row carries one short line: its
+limit (or a new mailbox's limit and until when) and what it sent this hour,
+plus refusals in the last 7 days when there were any. "Sending limit…" in
+the row's "More" menu opens that mailbox's limit in its own window: the
+plan's ceiling is kept, Save and Discard, a lost answer is checked by
+reading the limit again and never sent twice. While the limits are not
+applied, a customer, reseller or team member sees nothing about them and
+the administrator one line, once per page, with the button to the mail
+server settings. The domain's and the hosting account's limits are named
+only when they matter (80% of this hour, or refusals in 7 days), as one
+problem line with what to do. A paused mailbox keeps its notice and its way
+out (a new password, unless it was stopped by hand) in a row of the list's
+whole width under the mailbox. The domain's outgoing view
+(`GET /api/v1/domains/{id}/mail/outgoing`) carries what the hosting account
+sent this hour and what the domain's and the account's limits refused in 7
+days for that.
 
 ## Sender check
 

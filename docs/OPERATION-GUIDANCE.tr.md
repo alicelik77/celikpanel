@@ -3516,7 +3516,12 @@ parola atamasına benzeyen her şey silinmiş hâlde taşınır.
   bilinince sayıdır, okunurken "…", okunamayınca "–". "Adres oluştur" listeyi
   gerektirir. Okunamayan kullanım, sütununda bunu söyler ve posta kutuları
   listelenmeye devam eder. Web posta kartı "bu sunucuda kullanılamıyor" sözünü
-  yalnız sunucunun verdiği bir yanıt için söyler.
+  yalnız sunucunun verdiği bir yanıt için söyler. alpha.135'ten beri bu kart
+  yalnız sorun ve çözümüyle görünür (kurulu değil, adresi yok, yanıt
+  vermiyor); web postası çalışırken her posta kutusu satırında kendi "Web
+  posta" düğmesi vardır, sorun varken satırlarda "Web posta" sunulmaz.
+  Gönderim sınırları yalnız sunucuda uygulanırken her satırda tek satır olarak
+  görünür (docs/OUTGOING-MAIL-LIMITS.md, "On screen").
 - *Catch-all.* Önce geçerli adres okunur ve gösterilir; o zamana dek alan ve iki
   düğme kapalıdır. Bir adres ayarlıyken "Kapat" her zaman sunulur.
 - *Posta kuyruğu.* Sayılar ve "Mail kuyruğu boş" yalnız okunmuş bir kuyruk için
