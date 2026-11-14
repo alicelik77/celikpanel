@@ -60,17 +60,17 @@ const { WebmailAddressCard } = await import(shared.compile('components/WebmailAd
 const ADDRESS = '/api/v1/service/roundcube/address';
 const DNS_RECORD = ADDRESS + '/dns-record';
 const answer = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
-const none = () => ({ address: null, suggestion: 'mail.boston.example.com', expected: ['203.0.113.5'], last_operation: null });
-const A = 'mail.boston.example.com. 300 IN A 203.0.113.5';
-const AAAA = 'mail.boston.example.com. 300 IN AAAA 2001:db8::5';
+const none = () => ({ address: null, suggestion: 'mail.secondary.example.com', expected: ['203.0.113.5'], last_operation: null });
+const A = 'mail.secondary.example.com. 300 IN A 203.0.113.5';
+const AAAA = 'mail.secondary.example.com. 300 IN AAAA 2001:db8::5';
 const notFound = (extra = {}) => ({
-  host: 'mail.boston.example.com', state: 'not_found', code: 'no_record', ready: false, message: 'x', expected: ['203.0.113.5'], answered: [],
-  firewall: { state: 'open' }, records: [{ type: 'A', name: 'mail.boston', content: '203.0.113.5', ttl: 300, text: A }],
+  host: 'mail.secondary.example.com', state: 'not_found', code: 'no_record', ready: false, message: 'x', expected: ['203.0.113.5'], answered: [],
+  firewall: { state: 'open' }, records: [{ type: 'A', name: 'mail.secondary', content: '203.0.113.5', ttl: 300, text: A }],
   owner_action: { who: 'administrator', next: 'x' }, ...extra,
 });
-const peerZone = { server: 'frankfurt.example.com', zone: 'example.com' };
-const ready = () => ({ host: 'mail.boston.example.com', state: 'ready', ready: true, message: 'ok', expected: ['203.0.113.5'], answered: ['203.0.113.5'], firewall: { state: 'open' } });
-const recordAnswer = (records) => ({ record: { request_id: 'a'.repeat(32), host: 'mail.boston.example.com', server: 'frankfurt.example.com', zone: 'example.com', state: 'done', records } });
+const peerZone = { server: 'primary.example.com', zone: 'example.com' };
+const ready = () => ({ host: 'mail.secondary.example.com', state: 'ready', ready: true, message: 'ok', expected: ['203.0.113.5'], answered: ['203.0.113.5'], firewall: { state: 'open' } });
+const recordAnswer = (records) => ({ record: { request_id: 'a'.repeat(32), host: 'mail.secondary.example.com', server: 'primary.example.com', zone: 'example.com', state: 'done', records } });
 
 // Time: the card's 20-second pace and 5-minute bound run on a test clock.
 const realSetTimeout = globalThis.setTimeout;
@@ -145,8 +145,8 @@ test('the decoders fail closed for the peer, the name servers and the answer', (
   const base = { check: notFound() };
   const peer = (value) => lib.decodeWebmailAddressCheck({ check: { ...base.check, peer_zone: value } }).peerZone;
   assert.deepEqual(peer(peerZone), peerZone);
-  assert.deepEqual(peer({ server: 'frankfurt.example.com' }), { server: 'frankfurt.example.com', zone: '' });
-  for (const bad of [{ server: 'Frankfurt' }, { server: 'https://x.example.com/' }, { server: 'a.example.com', zone: 'x y' }, 'x']) assert.equal(peer(bad), null, JSON.stringify(bad));
+  assert.deepEqual(peer({ server: 'primary.example.com' }), { server: 'primary.example.com', zone: '' });
+  for (const bad of [{ server: 'Primary' }, { server: 'https://x.example.com/' }, { server: 'a.example.com', zone: 'x y' }, 'x']) assert.equal(peer(bad), null, JSON.stringify(bad));
   const managed = (value) => lib.decodeWebmailAddressCheck({ check: { ...base.check, managed_by: value } }).managedBy;
   assert.deepEqual(managed({ zone: 'example.org', nameservers: ['ns1.host.test'] }), { zone: 'example.org', nameservers: ['ns1.host.test'] });
   for (const bad of [{ zone: 'example.org', nameservers: [] }, { zone: 'example.org', nameservers: ['<b>'] }, { zone: 'x', nameservers: ['ns1.host.test'] }]) assert.equal(managed(bad), null);
@@ -166,26 +166,26 @@ test('the main DNS server holds the name: Add beside Copy, the panel’s own con
     await pressCheck();
     assert.ok(attr('data-webmail-peer-offer').length > 0, 'Add is offered');
     assert.equal(attr('data-webmail-zone-offer').length, 0);
-    assert.ok(text().includes(fill(en['dnsadd.next.peer'], { server: 'frankfurt.example.com' })), 'the next action names the other server');
+    assert.ok(text().includes(fill(en['dnsadd.next.peer'], { server: 'primary.example.com' })), 'the next action names the other server');
     assert.ok(text().includes(en['life.addr.copy']), 'Copy stays');
     // The offer only opens the confirmation; a cancelled one sends nothing.
     globalThis.confirmYes = false;
     await click('data-webmail-peer-offer');
     const question = globalThis.confirmLog[0];
-    assert.equal(question.title, fill(en['dnsadd.peer.title'], { server: 'frankfurt.example.com' }));
+    assert.equal(question.title, fill(en['dnsadd.peer.title'], { server: 'primary.example.com' }));
     assert.ok(question.message.includes(fill(en['dnsadd.peer.body'], peerZone)) && question.message.includes(A) && question.message.includes(en['dnsadd.peer.transfer']));
-    assert.deepEqual(question.kept, [en['dnsadd.peer.keptZone'], fill(en['dnsadd.peer.keptOwner'], { server: 'frankfurt.example.com' })]);
+    assert.deepEqual(question.kept, [en['dnsadd.peer.keptZone'], fill(en['dnsadd.peer.keptOwner'], { server: 'primary.example.com' })]);
     assert.equal(posts(DNS_RECORD).length, 0, 'nothing is sent before the confirmation');
     assert.ok(attr('data-webmail-peer-offer').length > 0, 'a cancelled question keeps the offer');
     globalThis.confirmYes = true;
     await click('data-webmail-peer-offer');
     assert.equal(posts(DNS_RECORD).length, 1);
     const body = JSON.parse(posts(DNS_RECORD)[0].body);
-    assert.equal(body.host, 'mail.boston.example.com');
+    assert.equal(body.host, 'mail.secondary.example.com');
     assert.match(body.request_id, /^[a-f0-9]{32}$/);
     const run = lastRun();
     assert.equal(run.end.state, 'done');
-    assert.ok(run.end.message.includes(fill(en['dnsadd.peer.added'], { server: 'frankfurt.example.com', record: A })));
+    assert.ok(run.end.message.includes(fill(en['dnsadd.peer.added'], { server: 'primary.example.com', record: A })));
     assert.deepEqual(run.steps.map((step) => `${step.id}:${step.state}`), ['ask:done', 'write:done', 'dns:waiting']);
     assert.equal(run.steps[2].note, en['dnsadd.step.dnsNote']);
     // Visible waiting, no second offer, and only reads.
@@ -210,12 +210,12 @@ test('the wait is bounded: after five minutes it says so, offers Check and never
   try {
     await pressCheck();
     await click('data-webmail-peer-offer');
-    assert.ok(lastRun().end.message.includes(fill(en['dnsadd.peer.present'], { server: 'frankfurt.example.com', record: A })));
+    assert.ok(lastRun().end.message.includes(fill(en['dnsadd.peer.present'], { server: 'primary.example.com', record: A })));
     let ticks = 0;
     while (ticks < 40 && await tick()) ticks++;
     assert.equal(ticks, 15, 'one read every 20 seconds for 5 minutes');
     assert.equal(posts(ADDRESS + '/check').length, 16, 'the check pressed, then the fifteen reads of the wait');
-    assert.ok(text().includes(fill(en['dnsadd.waitOver.peer'], { server: 'frankfurt.example.com' })));
+    assert.ok(text().includes(fill(en['dnsadd.waitOver.peer'], { server: 'primary.example.com' })));
     assert.ok(!text().includes(en['dnsadd.wait']));
     assert.equal(attr('data-webmail-peer-offer').length, 0, 'not added again from here');
     assert.ok(attr('data-webmail-check').length > 0, 'Check stays');
@@ -231,7 +231,7 @@ test('each refusal says the reason, who acts and what next; Copy stays and nothi
       await click('data-webmail-peer-offer');
       const end = lastRun().end;
       assert.equal(end.state, 'blocked', code);
-      assert.equal(end.reason, fill(en['dnsadd.refused.' + code], { server: 'frankfurt.example.com' }), code);
+      assert.equal(end.reason, fill(en['dnsadd.refused.' + code], { server: 'primary.example.com' }), code);
       assert.ok(/Next:/.test(end.reason), code + ' says the next action');
       assert.equal(attr('data-webmail-peer-offer').length, 0, 'the refused answer is not offered again until Check');
       assert.ok(text().includes(en['life.addr.copy']), 'Copy stays');
@@ -245,7 +245,7 @@ test('each refusal says the reason, who acts and what next; Copy stays and nothi
   try {
     await pressCheck();
     await click('data-webmail-peer-offer');
-    assert.equal(lastRun().end.reason, fill(en['dnsadd.refused.unreachable'], { server: 'frankfurt.example.com' }));
+    assert.equal(lastRun().end.reason, fill(en['dnsadd.refused.unreachable'], { server: 'primary.example.com' }));
   } finally { await unmount(); }
   await mount({ checks: [notFound({ peer_zone: peerZone })], dnsRecord: () => answer({ error: 'x', code: 'WEBMAIL_DNS_RECORD_NOT_OFFERED' }, 409) });
   try {
@@ -253,7 +253,7 @@ test('each refusal says the reason, who acts and what next; Copy stays and nothi
     await click('data-webmail-peer-offer');
     const end = lastRun().end;
     assert.equal(end.state, 'blocked');
-    assert.equal(end.reason, fill(en['dnsadd.peer.notOffered'], { server: 'frankfurt.example.com' }));
+    assert.equal(end.reason, fill(en['dnsadd.peer.notOffered'], { server: 'primary.example.com' }));
     assert.equal(end.fix.label, en['life.addr.check']);
   } finally { await unmount(); }
 });
@@ -266,7 +266,7 @@ test('no answer is not known: said so, never sent again, Check is the next step'
       await click('data-webmail-peer-offer');
       const end = lastRun().end;
       assert.equal(end.state, 'unknown');
-      assert.equal(end.reason, fill(en['dnsadd.peer.unknown'], { server: 'frankfurt.example.com' }));
+      assert.equal(end.reason, fill(en['dnsadd.peer.unknown'], { server: 'primary.example.com' }));
       assert.equal(lastRun().steps[0].note, en['dnsadd.step.noAnswer']);
       assert.equal(paced.length, 0, 'no wait is scheduled for an unknown result');
       assert.equal(posts(DNS_RECORD).length, 1, 'not sent again');
@@ -280,17 +280,17 @@ test('no answer is not known: said so, never sent again, Check is the next step'
 });
 
 test('an AAAA record the main server does not accept: the A record is added, the AAAA stays optional with Copy', async () => {
-  const records = [{ type: 'A', name: 'mail.boston', content: '203.0.113.5', ttl: 300, text: A }, { type: 'AAAA', name: 'mail.boston', content: '2001:db8::5', ttl: 300, text: AAAA }];
+  const records = [{ type: 'A', name: 'mail.secondary', content: '203.0.113.5', ttl: 300, text: A }, { type: 'AAAA', name: 'mail.secondary', content: '2001:db8::5', ttl: 300, text: AAAA }];
   await mount({ checks: [notFound({ peer_zone: peerZone, records })], dnsRecord: () => answer(recordAnswer([{ type: 'A', text: A, outcome: 'added' }, { type: 'AAAA', text: AAAA, outcome: 'refused', code: 'address' }])) });
   try {
     await pressCheck();
     globalThis.confirmYes = false;
     await click('data-webmail-peer-offer');
-    assert.ok(globalThis.confirmLog[0].message.includes(fill(en['dnsadd.peer.aaaa'], { server: 'frankfurt.example.com' })), 'the confirmation says when the AAAA record is added');
+    assert.ok(globalThis.confirmLog[0].message.includes(fill(en['dnsadd.peer.aaaa'], { server: 'primary.example.com' })), 'the confirmation says when the AAAA record is added');
     assert.ok(globalThis.confirmLog[0].message.includes(AAAA));
     globalThis.confirmYes = true;
     await click('data-webmail-peer-offer');
-    const why = fill(en['dnsadd.aaaa.address'], { server: 'frankfurt.example.com' });
+    const why = fill(en['dnsadd.aaaa.address'], { server: 'primary.example.com' });
     assert.equal(lastRun().end.state, 'done');
     assert.ok(lastRun().end.message.includes(why));
     const optional = attr('data-webmail-optional-record');
@@ -319,7 +319,7 @@ test('the zone is hosted here: added through its own editor after the confirmati
     assert.equal(posts(zone.records_url).length, 0);
     globalThis.confirmYes = true;
     await click('data-webmail-zone-offer');
-    assert.deepEqual(JSON.parse(posts(zone.records_url)[0].body), { name: 'mail.boston', type: 'A', content: '203.0.113.5', ttl: 300, prio: 0 });
+    assert.deepEqual(JSON.parse(posts(zone.records_url)[0].body), { name: 'mail.secondary', type: 'A', content: '203.0.113.5', ttl: 300, prio: 0 });
     assert.equal(lastRun().end.state, 'done');
     assert.deepEqual(lastRun().steps.map((step) => `${step.id}:${step.state}`), ['write:done', 'dns:waiting']);
     assert.ok(text().includes(en['dnsadd.wait']));
@@ -347,7 +347,7 @@ test('the zone is hosted here: added through its own editor after the confirmati
 });
 
 test('elsewhere: Copy only, and where the name’s DNS is managed when public DNS names it', async () => {
-  await mount({ checks: [notFound({ managed_by: { zone: 'example.org', nameservers: ['ns1.host.test', 'ns2.host.test'] }, records: [{ type: 'A', name: 'mail.boston.example.com.', content: '203.0.113.5', ttl: 3600, text: 'x' }] })], dnsRecord: () => { throw new Error('never'); } });
+  await mount({ checks: [notFound({ managed_by: { zone: 'example.org', nameservers: ['ns1.host.test', 'ns2.host.test'] }, records: [{ type: 'A', name: 'mail.secondary.example.com.', content: '203.0.113.5', ttl: 3600, text: 'x' }] })], dnsRecord: () => { throw new Error('never'); } });
   try {
     await pressCheck();
     assert.equal(attr('data-webmail-peer-offer').length + attr('data-webmail-zone-offer').length, 0);

@@ -203,7 +203,7 @@ func TestHoldingAdoptsWhatEarlierReleasesLeft(t *testing.T) {
 	if err := p.db.GetDB().QueryRow(`INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb) VALUES (?, 'a@live.example', 'x', 1) RETURNING id`, liveID).Scan(&accountID); err != nil {
 		t.Fatal(err)
 	}
-	p.recordAudit(auditRecord{Action: "domain.delete:celikbros.com", ResourceType: "domain", ResourceID: 2})
+	p.recordAudit(auditRecord{Action: "domain.delete:shop.example", ResourceType: "domain", ResourceID: 2})
 	gone := holdingRecord{ID: holdingMailID(mailItemName(9300)), Kind: transport.HeldItemMail, Name: mailItemName(9300), DomainID: 9300}
 	seedHoldingRecord(t, p, gone, now.Add(time.Hour))
 	fake.inventory = transport.DeletionHoldingInventoryResponse{Items: []transport.HeldItemInfo{
@@ -219,7 +219,7 @@ func TestHoldingAdoptsWhatEarlierReleasesLeft(t *testing.T) {
 	ids := []string{}
 	for _, rec := range records {
 		ids = append(ids, rec.ID)
-		if !rec.Adopted || rec.RemoveAfter != now.Add(holdingKeep).Format(time.RFC3339) || rec.Domain != "celikbros.com" {
+		if !rec.Adopted || rec.RemoveAfter != now.Add(holdingKeep).Format(time.RFC3339) || rec.Domain != "shop.example" {
 			t.Fatalf("adopted = %+v", rec)
 		}
 	}

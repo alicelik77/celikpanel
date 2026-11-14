@@ -2928,8 +2928,8 @@ test('Problems now: unknown is never "no problem", and the quiet copy shows only
 // each as its own step; the list reads itself again after.
 test('Maintenance: what deletions left says its total and deletes one or all, each with its own step', async () => {
   const items = [
-    { id: 'mail.domain-2-6e7ceffb7e3cb3a1', kind: 'mail', domain: 'celikbros.com', domain_id: 2, bytes: 12288, deleted_at: '2026-11-14T10:00:00Z', remove_after: '2026-12-14T10:00:00Z', adopted: true, path: '/var/mail/vhosts/.celikpanel-quarantine/domain-2-6e7ceffb7e3cb3a1', state: 'kept' },
-    { id: 'backups.s2-d2', kind: 'backups', domain: 'celikbros.com', domain_id: 2, bytes: 52428800, files: 3, deleted_at: '2026-11-14T10:00:00Z', remove_after: '2026-12-14T10:00:00Z', state: 'failed', failure: { kind: 'failed', line: 'permission denied', at: '2026-12-14T10:00:00Z' }, next_try_at: '2026-12-14T11:00:00Z' },
+    { id: 'mail.domain-2-6e7ceffb7e3cb3a1', kind: 'mail', domain: 'shop.example', domain_id: 2, bytes: 12288, deleted_at: '2026-11-14T10:00:00Z', remove_after: '2026-12-14T10:00:00Z', adopted: true, path: '/var/mail/vhosts/.celikpanel-quarantine/domain-2-6e7ceffb7e3cb3a1', state: 'kept' },
+    { id: 'backups.s2-d2', kind: 'backups', domain: 'shop.example', domain_id: 2, bytes: 52428800, files: 3, deleted_at: '2026-11-14T10:00:00Z', remove_after: '2026-12-14T10:00:00Z', state: 'failed', failure: { kind: 'failed', line: 'permission denied', at: '2026-12-14T10:00:00Z' }, next_try_at: '2026-12-14T11:00:00Z' },
   ];
   const removed = [];
   serve({

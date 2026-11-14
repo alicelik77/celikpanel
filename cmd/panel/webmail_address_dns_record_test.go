@@ -19,7 +19,7 @@ import (
 // handler of the main DNS server in-process (the host record fixture): the
 // receiver is unchanged, so a primary on an older release answers the same.
 
-const dnsAddHost = "mail.boston.example.test"
+const dnsAddHost = "mail.secondary.example.test"
 
 type dnsAddFixture struct {
 	*hostRecordFixture
@@ -156,7 +156,7 @@ func TestWebmailAddressCheckOffersTheMainDNSServerOnlyWhenThisServerCanAsk(t *te
 		t.Fatalf("case 2: %+v", check)
 	}
 	// The record shown is exactly what the main DNS server writes.
-	if len(check.Records) != 1 || check.Records[0].TTL != remoteDNSHostRecordTTL || check.Records[0].Name != "mail.boston" || check.Records[0].Text != "mail.boston.example.test. 300 IN A 192.0.2.2" {
+	if len(check.Records) != 1 || check.Records[0].TTL != remoteDNSHostRecordTTL || check.Records[0].Name != "mail.secondary" || check.Records[0].Text != "mail.secondary.example.test. 300 IN A 192.0.2.2" {
 		t.Fatalf("records: %+v", check.Records)
 	}
 	if f.exchanges != 0 || len(f.nsAsked) != 0 {
@@ -246,7 +246,7 @@ func TestWebmailAddressDNSRecordIsAskedOnceAndItsAnswerKept(t *testing.T) {
 	if answer.status != http.StatusOK || outcomes(answer.record) != "A=added" || answer.record.Server != "dns.remote.test" || answer.record.Zone != "example.test" || answer.record.State != "done" {
 		t.Fatalf("created: %+v", answer)
 	}
-	if r := answer.record.Records[0]; r.TTL != remoteDNSHostRecordTTL || r.Text != "mail.boston.example.test. 300 IN A 192.0.2.2" {
+	if r := answer.record.Records[0]; r.TTL != remoteDNSHostRecordTTL || r.Text != "mail.secondary.example.test. 300 IN A 192.0.2.2" {
 		t.Fatalf("record: %+v", r)
 	}
 	if got := f.receiverAddresses(t, dnsAddHost, "A"); len(got) != 1 || got[0] != hostRecordPeerIP {
@@ -256,7 +256,7 @@ func TestWebmailAddressDNSRecordIsAskedOnceAndItsAnswerKept(t *testing.T) {
 	if again := f.add(t, dnsAddHost, id); again.status != http.StatusOK || outcomes(again.record) != "A=added" || f.exchanges != 1 {
 		t.Fatalf("replay: %+v exchanges=%d", again, f.exchanges)
 	}
-	if conflict := f.add(t, "webmail.boston.example.test", id); conflict.status != http.StatusConflict || conflict.code != errCodeWebmailDNSRecordRequestConflict || f.exchanges != 1 {
+	if conflict := f.add(t, "webmail.secondary.example.test", id); conflict.status != http.StatusConflict || conflict.code != errCodeWebmailDNSRecordRequestConflict || f.exchanges != 1 {
 		t.Fatalf("identity reused: %+v", conflict)
 	}
 	// A new press for the same name: the record is already there.
@@ -285,7 +285,7 @@ func TestWebmailAddressDNSRecordIsAskedOnceAndItsAnswerKept(t *testing.T) {
 
 func TestWebmailAddressDNSRecordAddsTheIPv6RecordOnlyWhenTheMainServerAcceptsIt(t *testing.T) {
 	f := newDNSAddFixture(t, "2001:4860::5")
-	if check := f.check(t, dnsAddHost); len(check.Records) != 2 || check.Records[1].Text != "mail.boston.example.test. 300 IN AAAA 2001:4860::5" {
+	if check := f.check(t, dnsAddHost); len(check.Records) != 2 || check.Records[1].Text != "mail.secondary.example.test. 300 IN AAAA 2001:4860::5" {
 		t.Fatalf("check records: %+v", check.Records)
 	}
 	answer := f.add(t, dnsAddHost, strings.Repeat("a", 32))
@@ -298,8 +298,8 @@ func TestWebmailAddressDNSRecordAddsTheIPv6RecordOnlyWhenTheMainServerAcceptsIt(
 	// The request reached the main server from another address: AAAA refused, A kept.
 	g := newDNSAddFixture(t, "2001:4860::5")
 	g.fromSeen = "2001:4860::77"
-	answer = g.add(t, "webmail.boston.example.test", strings.Repeat("c", 32))
-	if outcomes(answer.record) != "A=added AAAA=refused:address" || len(g.receiverAddresses(t, "webmail.boston.example.test", "AAAA")) != 0 {
+	answer = g.add(t, "webmail.secondary.example.test", strings.Repeat("c", 32))
+	if outcomes(answer.record) != "A=added AAAA=refused:address" || len(g.receiverAddresses(t, "webmail.secondary.example.test", "AAAA")) != 0 {
 		t.Fatalf("not acceptable: %+v", answer.record)
 	}
 	// The main server cannot be reached over IPv6 from this address: not sent.
@@ -315,7 +315,7 @@ func TestWebmailAddressDNSRecordSaysEachRefusalAndWritesNothing(t *testing.T) {
 		name, host, want string
 		setup            func(*dnsAddFixture)
 	}{
-		{"outside the zone", "mail.boston.other.test", "outside_zone", func(f *dnsAddFixture) { f.secondaryDraft(t, "") }},
+		{"outside the zone", "mail.secondary.other.test", "outside_zone", func(f *dnsAddFixture) { f.secondaryDraft(t, "") }},
 		{"name taken by another record", "webmail.example.test", "taken", func(f *dnsAddFixture) {
 			f.receiver.db.GetDB().Exec(`INSERT INTO pdns_records(domain_id,name,type,content,ttl) SELECT id,'webmail.example.test','CNAME','elsewhere.test',300 FROM pdns_domains WHERE name='example.test'`)
 		}},
@@ -417,8 +417,8 @@ func TestWebmailAddressDNSRecordIsRefusedHereWhenThisServerCannotAsk(t *testing.
 	}
 	// A zone hosted here is added through its own editor, never asked of the other server.
 	g := newDNSAddFixture(t, "")
-	seedInfrastructureDNSZone(t, g.origin, "boston.example.test")
-	if _, err := g.origin.db.GetDB().Exec(`INSERT INTO panel_settings(key,value) SELECT 'server_setup_infrastructure_zone:boston.example.test', '{"zone":"boston.example.test","zone_id":' || id || '}' FROM pdns_domains WHERE name='boston.example.test'`); err != nil {
+	seedInfrastructureDNSZone(t, g.origin, "secondary.example.test")
+	if _, err := g.origin.db.GetDB().Exec(`INSERT INTO panel_settings(key,value) SELECT 'server_setup_infrastructure_zone:secondary.example.test', '{"zone":"secondary.example.test","zone_id":' || id || '}' FROM pdns_domains WHERE name='secondary.example.test'`); err != nil {
 		t.Fatal(err)
 	}
 	if check := g.check(t, dnsAddHost); check.Zone == nil || check.PeerZone != nil {

@@ -31,26 +31,26 @@ const SERVICES = [
 ];
 const SCAN = () => ({
     scanned_at: now(), scan_age_seconds: 0, dns_identity_ready: true,
-    mail_hostname: { current: 'mail.celikhost.com', hostname: 'mail.celikhost.com', source: 'saved', current_usable: true, will_set_hostname: false },
+    mail_hostname: { current: 'mail.example.com', hostname: 'mail.example.com', source: 'saved', current_usable: true, will_set_hostname: false },
     services: SERVICES, bundles: [],
     profiles: ['core-mail', 'webmail', 'protected-mail'].map((id) => ({ id, name: id, description: `${id} profile`, status: 'available', available: true, verified: false, latest_attempt_status: 'none', services: ['postfix'] })),
 });
-const HOST = 'mail.celikhost.com';
+const HOST = 'mail.example.com';
 const ROUNDCUBE = (url) => ({ state: 'read', check: { installed: true, version: '1.6.20', line: '1.6', latest_on_line: '1.6.20', update_available: false, checked_at: '2026-10-26T10:00:00Z' }, last_update: null, webmail_ready: !!url, webmail_url: url });
-const NONE = { address: null, suggestion: HOST, expected: ['72.62.38.15'], status: { present: false, managed: false }, last_operation: null };
+const NONE = { address: null, suggestion: HOST, expected: ['203.0.113.15'], status: { present: false, managed: false }, last_operation: null };
 const CHECK = (state) => ({
     check: {
-        host: HOST, state, expected: ['72.62.38.15'], firewall: { state: 'open' }, current: '',
+        host: HOST, state, expected: ['203.0.113.15'], firewall: { state: 'open' }, current: '',
         ...(state === 'not_found' ? {
             code: 'no_record', ready: false, message: `Public DNS has no address record for ${HOST} yet.`,
-            records: [{ type: 'A', name: 'mail', content: '72.62.38.15', ttl: 3600, text: `${HOST}. 3600 IN A 72.62.38.15` }],
-            zone: { name: 'celikhost.com', records_url: '/api/v1/dns/infrastructure-zones/celikhost.com/records' },
-            owner_action: { who: 'administrator', next: 'Add the record below to the zone celikhost.com hosted here (it is shown before it is added), then press Check.' },
-        } : { ready: true, answered: ['72.62.38.15'], message: `Public DNS answers 72.62.38.15 for ${HOST}: this server.` }),
+            records: [{ type: 'A', name: 'mail', content: '203.0.113.15', ttl: 3600, text: `${HOST}. 3600 IN A 203.0.113.15` }],
+            zone: { name: 'example.com', records_url: '/api/v1/dns/infrastructure-zones/example.com/records' },
+            owner_action: { who: 'administrator', next: 'Add the record below to the zone example.com hosted here (it is shown before it is added), then press Check.' },
+        } : { ready: true, answered: ['203.0.113.15'], message: `Public DNS answers 203.0.113.15 for ${HOST}: this server.` }),
     },
 });
 const ENABLED = {
-    address: { host: HOST, url: `https://${HOST}/`, enabled_at: '2026-10-26T10:05:00Z' }, suggestion: HOST, expected: ['72.62.38.15'],
+    address: { host: HOST, url: `https://${HOST}/`, enabled_at: '2026-10-26T10:05:00Z' }, suggestion: HOST, expected: ['203.0.113.15'],
     status: { present: true, managed: true, proved: true, certificate_expires: '2027-01-24T10:04:00Z', hosts: [HOST] },
     last_operation: { id: 'e'.repeat(32), request_id: 'f'.repeat(32), kind: 'webmail_address', service_id: 'roundcube', package_name: HOST, status: 'succeeded', phase: 'enabling', started_at: '2026-10-26T10:04:00Z', finished_at: '2026-10-26T10:05:00Z', result: { success: true, outcome: 'enabled', host: HOST, url: `https://${HOST}/`, certificate_expires: '2027-01-24T10:04:00Z', roundcube_settings: 'applied' }, error: null },
 };
@@ -133,21 +133,21 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
     // each refusal, an unknown result, an optional AAAA record; then a name
     // managed elsewhere (its name servers). The wait's 20-second pace runs on a
     // compressed clock inside the page so its five-minute bound can be seen.
-    const PEER = { server: 'frankfurt.celikhost.com', zone: 'celikhost.com' };
-    const WEBMAIL = 'webmail.boston.celikhost.com';
-    const RECORD_A = `${WEBMAIL}. 300 IN A 72.62.38.16`;
-    const RECORD_AAAA = `${WEBMAIL}. 300 IN AAAA 2a02:4780:41:1::16`;
+    const PEER = { server: 'primary.example.com', zone: 'example.com' };
+    const WEBMAIL = 'webmail.secondary.example.com';
+    const RECORD_A = `${WEBMAIL}. 300 IN A 203.0.113.16`;
+    const RECORD_AAAA = `${WEBMAIL}. 300 IN AAAA 2001:db8::16`;
     const PEER_CHECK = (extra = {}) => ({
         check: {
-            host: WEBMAIL, state: 'not_found', code: 'no_record', ready: false, expected: ['72.62.38.16'], answered: [], firewall: { state: 'open' }, current: '',
+            host: WEBMAIL, state: 'not_found', code: 'no_record', ready: false, expected: ['203.0.113.16'], answered: [], firewall: { state: 'open' }, current: '',
             message: `Public DNS has no address record for ${WEBMAIL} yet.`,
-            records: [{ type: 'A', name: 'webmail.boston', content: '72.62.38.16', ttl: 300, text: RECORD_A }],
+            records: [{ type: 'A', name: 'webmail.secondary', content: '203.0.113.16', ttl: 300, text: RECORD_A }],
             peer_zone: PEER, owner_action: { who: 'administrator', next: 'x' }, ...extra,
         },
     });
-    const READY = { check: { host: WEBMAIL, state: 'ready', ready: true, expected: ['72.62.38.16'], answered: ['72.62.38.16'], firewall: { state: 'open' }, current: '', message: 'ok' } };
+    const READY = { check: { host: WEBMAIL, state: 'ready', ready: true, expected: ['203.0.113.16'], answered: ['203.0.113.16'], firewall: { state: 'open' }, current: '', message: 'ok' } };
     const ANSWER = (records) => ({ record: { request_id: 'a'.repeat(32), host: WEBMAIL, server: PEER.server, zone: PEER.zone, state: 'done', records } });
-    const NONE_HERE = { ...NONE, suggestion: WEBMAIL, expected: ['72.62.38.16'] };
+    const NONE_HERE = { ...NONE, suggestion: WEBMAIL, expected: ['203.0.113.16'] };
     const openPeer = async (checkBody, dnsRecord, { fast = false } = {}) => {
         await reset(); await clean();
         await ctl({ override: {
@@ -226,7 +226,7 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
         await snap(page, 'dnsadd-peer-ready');
         await closePage(page);
 
-        const both = [{ type: 'A', name: 'webmail.boston', content: '72.62.38.16', ttl: 300, text: RECORD_A }, { type: 'AAAA', name: 'webmail.boston', content: '2a02:4780:41:1::16', ttl: 300, text: RECORD_AAAA }];
+        const both = [{ type: 'A', name: 'webmail.secondary', content: '203.0.113.16', ttl: 300, text: RECORD_A }, { type: 'AAAA', name: 'webmail.secondary', content: '2001:db8::16', ttl: 300, text: RECORD_AAAA }];
         page = await openPeer(PEER_CHECK({ records: both }), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'added' }, { type: 'AAAA', text: RECORD_AAAA, outcome: 'refused', code: 'address' }]) });
         await offer(page);
         await snap(page, 'dnsadd-peer-confirm-aaaa');
@@ -249,7 +249,7 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
         await snap(page, 'dnsadd-unknown');
         await closePage(page);
 
-        page = await openPeer(PEER_CHECK({ peer_zone: undefined, records: [{ type: 'A', name: `${WEBMAIL}.`, content: '72.62.38.16', ttl: 3600, text: `${WEBMAIL}. 3600 IN A 72.62.38.16` }], managed_by: { zone: 'celikhost.com', nameservers: ['ns1.registrar-dns.example', 'ns2.registrar-dns.example'] } }), null);
+        page = await openPeer(PEER_CHECK({ peer_zone: undefined, records: [{ type: 'A', name: `${WEBMAIL}.`, content: '203.0.113.16', ttl: 3600, text: `${WEBMAIL}. 3600 IN A 203.0.113.16` }], managed_by: { zone: 'example.com', nameservers: ['ns1.registrar-dns.example', 'ns2.registrar-dns.example'] } }), null);
         await snap(page, 'dnsadd-elsewhere');
         await closePage(page);
 
