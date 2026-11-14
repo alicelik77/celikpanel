@@ -90,3 +90,8 @@ func NewDatabaseDriver(config DriverConfig) (DatabaseDriver, error) {
 // existing one is never taken over.
 // ErrDatabaseNameTaken: motorda bu adda veritabanı ya da kullanıcı zaten var.
 var ErrDatabaseNameTaken = errors.New("the name is already taken on this database server")
+
+// ErrDatabaseNameTooLong (alpha.134): on MariaDB the database name's exact
+// form (each `_` written with a backslash before it) is longer than the 64
+// characters a grant row stores; such a database is not made.
+var ErrDatabaseNameTooLong = errors.New("the database name is too long for a right by its exact name")

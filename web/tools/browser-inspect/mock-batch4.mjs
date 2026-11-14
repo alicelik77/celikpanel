@@ -41,7 +41,14 @@ export const b4Defaults = () => ({
         '198.51.100.23 - - [09/Oct/2026:09:00:02 +0000] "GET /assets/app.css HTTP/2.0" 200 18211 "https://example.com/" "Mozilla/5.0"',
         '2001:db8:85a3::8a2e:370:7334 - - [09/Oct/2026:09:00:09 +0000] "POST /wp-login.php HTTP/2.0" 403 153 "-" "curl/8.5.0"',
     ],
+    // What a backup of this site holds (docs/SITE-BACKUP-CONTENTS-DESIGN.md): a program site.
+    backupContents: {
+        site_bytes: 12582912, site_files: 214, areas: [{ name: 'app', bytes: 1181116006, files: 6 }],
+        left_out: [{ path: 'app/.build-tmp', reason: 'build_temp', bytes: 241172480 }, { path: 'app/data/app.sock', reason: 'special' }],
+        left_out_bytes: 241172480, backup_free_bytes: 53687091200, complete: true, program: { kind: 'program', deployed: true },
+    },
     backups: [
+        { name: 'files-20261112T091500.000000000Z-0123456789abcdef.cpbak', size: 612368384, type: 'files', origin: 'manual', legacy: false, restorable: true, created_at: '2026-11-12T09:15:00Z', format: 3, areas: [{ name: 'app', bytes: 1181116006, files: 6 }], left_out: [{ path: 'app/data/app.sock', reason: 'special' }] },
         { name: 'example.com-files-20261008-020000.tar.gz', size: 48234496, type: 'files', origin: 'scheduled', legacy: false, restorable: true, created_at: '2026-10-08T02:00:00Z' },
         { name: 'example.com-database-shop-20261007-101500.sql.gz', size: 1048576, type: 'database', origin: 'manual', database_id: 3, legacy: false, restorable: true, created_at: '2026-10-07T10:15:00Z' },
     ],
@@ -83,6 +90,9 @@ export async function batch4(req, res, path, query, { state, send, coded, readBo
             backups: () => ({ backups: b4.backups }),
             databases: () => b4.databases,
             'backups/schedule': () => ({ enabled: false, version: 'bs1' }),
+            'backups/contents': () => b4.backupContents,
+            // The site's remote copies: no destination may hold them here.
+            'backups/remote': () => ({ destinations: [], policies: [], operations: [], can_add_destination: true }),
         };
         if (answers[sub]) { send(res, 200, answers[sub]()); return true; }
         if (/^logs\/(access|error|php)$/.test(sub)) {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -129,6 +130,10 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 	}
 
 	base := sanitizeDBIdent(services.SiteUsername(target.Domain))
+	// alpha.134 follow-up: a generated name always fits a right by its exact
+	// name (each `_` counts twice; mariadbgrant.FitBase), so it never fails
+	// late on its length.
+	base = mariadbgrant.FitBase(base, "_wp")
 	databaseName := base + "_wp"
 	databaseUser := base + "_wp"
 	databasePassword, err := randomDBPassword()

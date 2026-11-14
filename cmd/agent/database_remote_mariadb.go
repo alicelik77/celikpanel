@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/dbremote"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -249,8 +250,20 @@ func mariadbCopyChanges(account dbremote.MariaDBAccount, credential dbremote.Mar
 	for db := range wanted {
 		databases[db] = true
 	}
-	for db := range current.grants.Databases {
+	for db := range current.grants.Exact {
 		databases[db] = true
+	}
+	// alpha.134 review: a pattern-form grant is rewritten to the exact form
+	// only while the panel's rewrite of rights may run. Until then (held) a
+	// change of rights on it is still applied in the pattern form - added,
+	// narrowed or taken away, as alpha.133 did (second review: skipping it
+	// left removed access on the copy); only the rewrite waits.
+	held := map[string]bool{}
+	for db := range current.grants.Patterns {
+		databases[db] = true
+		if !databaseRemoteExactCopies && mariadbgrant.ExactFits(db) {
+			held[db] = true
+		}
 	}
 	names := make([]string, 0, len(databases))
 	for db := range databases {
@@ -258,7 +271,31 @@ func mariadbCopyChanges(account dbremote.MariaDBAccount, credential dbremote.Mar
 	}
 	sort.Strings(names)
 	for _, db := range names {
-		change, err := dbremote.MariaDBPrivilegeChange(current.grants.Databases[db], wanted[db], db, account.User, account.Host)
+		if held[db] {
+			change, err := dbremote.MariaDBPatternPrivilegeChange(current.grants.Patterns[db], wanted[db], db, account.User, account.Host)
+			if err != nil {
+				return nil, err
+			}
+			batch = append(batch, change...)
+			// An exact grant the copy may hold beside it follows too.
+			if exact := current.grants.Exact[db]; exact != "" {
+				change, err := dbremote.MariaDBPrivilegeChange(exact, false, wanted[db], db, account.User, account.Host)
+				if err != nil {
+					return nil, err
+				}
+				batch = append(batch, change...)
+			}
+			continue
+		}
+		// alpha.134: a copy holding the pattern form (`shop_a`.*, written
+		// before alpha.134) is rewritten to the exact form.
+		_, pattern := current.grants.Patterns[db]
+		currentGrant := current.grants.Exact[db]
+		if !mariadbgrant.ExactFits(db) {
+			// Too long for the exact form: the pattern form is the grant.
+			currentGrant, pattern = current.grants.Patterns[db], false
+		}
+		change, err := dbremote.MariaDBPrivilegeChange(currentGrant, pattern, wanted[db], db, account.User, account.Host)
 		if err != nil {
 			return nil, err
 		}
@@ -497,7 +534,9 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 		made[account.ID()] = true // from here on it may exist: it is CelikPanel's
 		if len(batch) == 0 {
 			// already right
-		} else if _, err := databaseRemoteMySQLQuery(strings.Join(batch, "\n")); err != nil {
+		} else if _, err := databaseRemoteMySQLQuery(mariadbgrant.NoAutoCreateUser + "\n" + strings.Join(batch, "\n")); err != nil {
+			// alpha.134 review: NO_AUTO_CREATE_USER in the session, so a GRANT
+			// never re-creates a copy dropped meanwhile without a password.
 			// The engine's words may quote the statement (and so the hash):
 			// never forwarded.
 			refuseAll(transport.DatabaseRemoteFailed, "MariaDB did not accept the account "+account.ID())

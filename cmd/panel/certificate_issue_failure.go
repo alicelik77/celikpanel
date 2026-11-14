@@ -20,8 +20,10 @@ import (
 // `reason`. Each sentence says only what that kind establishes, what is in
 // place now, who acts and that nothing asks again by itself.
 //
-// `vars`: `domain`; `detail`, one bounded line of certbot's own words, for an
-// administrator only (it can name paths and hosts of this server).
+// `vars`: `domain`; `kept` (`previous` or `none`); `detail`, one bounded line
+// of certbot's own words, and `record`, the file where certbot keeps its
+// record, for an administrator only (they can name paths and hosts of this
+// server); `check` for reason issued_check.
 //
 // What stays in place is the same for every kind: the request added no
 // certificate, and a certificate the site already had keeps serving. The
@@ -40,21 +42,78 @@ const (
 	certificateIssueResume = " Nothing asks again automatically."
 )
 
+// alpha.134 lab: the sentences no longer send anyone to a file on the server
+// (a customer or reseller has none). Each says what is established, who acts
+// and the next action; certbot's own line (and where certbot keeps its
+// record) is `vars.detail` for an administrator only. The page words them
+// for the reader's role.
 var certificateIssueFailedMessages = map[string]string{
-	transport.CertificateFailureAuthorityUnreachable: "No certificate was issued: this server could not reach the certificate authority, so no request was placed with it. " +
-		"The server owner checks that this server can open HTTPS connections to the internet (DNS resolution, outbound port 443, the system clock), then requests the certificate here again.",
-	transport.CertificateFailureValidation: "No certificate was issued: the certificate authority could not validate one of the names. " +
-		"Each name of the site must resolve publicly to this server and answer on port 80 from the internet. " +
-		"The domain's owner corrects the DNS records (or the firewall in front of this server), waits until public DNS shows them, then requests the certificate here again.",
-	transport.CertificateFailureRateLimited: "No certificate was issued: the certificate authority refused the request because one of its limits was reached. " +
-		"A new request before the limit resets is refused the same way and counts against it. " +
-		"The line from certbot names the limit and, when the authority says so, when it resets; request the certificate here again after that time.",
-	transport.CertificateFailureTimeout: "No certificate was issued: certbot did not finish within the time allowed and was stopped. " +
-		"Why it took that long is not known from this answer. " +
-		"The server owner reads /var/log/celikpanel/certbot/letsencrypt.log on the server, then requests the certificate here again.",
-	transport.CertificateFailureTool: "No certificate was issued: certbot ended with an error. " +
-		"Which step failed is not classified here; the line from certbot says what it reported. " +
-		"The server owner reads /var/log/celikpanel/certbot/letsencrypt.log on the server, corrects what it names, then requests the certificate here again.",
+	transport.CertificateFailureAuthorityUnreachable: "No certificate was issued: this server could not reach the certificate authority, so nothing was asked of it. " +
+		"The server administrator checks that this server can open HTTPS connections to the internet (name resolution, outbound port 443, the system clock), then requests the certificate here again.",
+	transport.CertificateFailureValidation: "No certificate was issued: the certificate authority could not confirm that one of the site's names points to this server. " +
+		"Point each name of the site to this server in the domain's DNS records and wait until public DNS shows it; if they already point here, the server administrator checks that port 80 is open from the internet. " +
+		"Then request the certificate here again.",
+	transport.CertificateFailureRateLimited: "No certificate was issued: the certificate authority refused for now because one of its request limits was reached. " +
+		"A request before the limit resets is refused the same way and counts against it; request the certificate here again later.",
+	transport.CertificateFailureAccountUnknown: "No certificate was issued: certbot's account at this certificate authority cannot be used (the authority no longer knows it, or certbot holds more than one for it and cannot choose). " +
+		"The server administrator puts certbot's account for this authority right on the server, then requests the certificate here again.",
+	transport.CertificateFailureTimeout: "No certificate was issued: the request to the certificate authority did not finish in time and was stopped; why is not known. " +
+		"Request the certificate here again later; if it stops the same way, the server administrator reads certbot's record on the server.",
+	transport.CertificateFailureTool: "No certificate was issued, and the reason could not be established from certbot's answer. " +
+		"Request the certificate here again later; if it fails the same way, the server administrator reads certbot's record on the server.",
+	transport.CertificateFailureIssuedCheck: issuedCheckMessages[issuedCheckUnusable],
+}
+
+// The checks a just-issued certificate must pass before it is installed
+// (alpha.134 lab: a chain this server does not trust answered a bare 500).
+// vars.check names which one failed.
+const (
+	issuedCheckUntrusted = "untrusted"
+	issuedCheckNames     = "names"
+	issuedCheckUnusable  = "unusable"
+)
+
+var issuedCheckMessages = map[string]string{
+	issuedCheckUntrusted: "The certificate authority issued a certificate, but this server does not trust the authority's certificate chain, so CelikPanel did not install it and removed it again. " +
+		"The server administrator updates this server's trusted certificate authorities (the ca-certificates package), then requests the certificate here again.",
+	issuedCheckNames: "The certificate authority issued a certificate that does not carry exactly the names that were asked for, so CelikPanel did not install it and removed it again. " +
+		"Request the certificate here again; if it happens again, the server administrator reads the Panel's log (sudo journalctl -u celikpanel-panel), which names the difference.",
+	issuedCheckUnusable: "The certificate authority issued a certificate, but it did not pass CelikPanel's check before use, so CelikPanel did not install it and removed it again. " +
+		"Request the certificate here again; if it happens again, the server administrator reads the Panel's log (sudo journalctl -u celikpanel-panel), which names the check.",
+}
+
+// certbotRecordPath is where certbot keeps its own record of a run into the
+// standard store (D-040): named to an administrator, never to a customer.
+const certbotRecordPath = "/var/log/letsencrypt/letsencrypt.log"
+
+// writeIssuedCertificateCheckFailure answers a certificate the authority
+// issued that did not pass the check before use: 409 CERTIFICATE_ISSUE_FAILED
+// with reason issued_check and vars.check, never a bare 500. The caller
+// removes the certificate (the deferred cleanup of the request).
+func writeIssuedCertificateCheckFailure(w http.ResponseWriter, caller *Caller, domain string, hadCertificate bool, check, detail string) {
+	sentence, known := issuedCheckMessages[check]
+	if !known {
+		check, sentence = issuedCheckUnusable, issuedCheckMessages[issuedCheckUnusable]
+	}
+	if hadCertificate {
+		sentence += certificateIssueKept
+	} else {
+		sentence += certificateIssueNone
+	}
+	sentence += certificateIssueResume
+	vars := map[string]string{"domain": domain, "kept": "none", "check": check}
+	if hadCertificate {
+		vars["kept"] = "previous"
+	}
+	if caller != nil && caller.Role == roleAdmin {
+		if line := boundedAgentDiagnostic(detail); line != "" {
+			vars["detail"] = line
+		}
+	}
+	log.Printf("[409][certificate] %s: %s %s %s: %s", domain, errCodeCertificateIssueFailed, transport.CertificateFailureIssuedCheck, check, boundedAgentDiagnostic(detail))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: sentence, Code: errCodeCertificateIssueFailed, Reason: transport.CertificateFailureIssuedCheck, Vars: vars})
 }
 
 // certificateClockFailureMessage is the sentence of a certificate the
@@ -121,14 +180,24 @@ func writeCertificateIssueFailure(w http.ResponseWriter, caller *Caller, domain 
 	if hadCertificate {
 		vars["kept"] = "previous"
 	}
+	status := http.StatusBadGateway
+	if reply.Failure == transport.CertificateFailureIssuedCheck {
+		// Issued, and its files did not pass the check: the same answer as
+		// the Panel's own check of an issued certificate.
+		status = http.StatusConflict
+		vars["check"] = issuedCheckUnusable
+	}
 	if caller != nil && caller.Role == roleAdmin {
 		if detail := boundedAgentDiagnostic(reply.FailureDetail); detail != "" {
 			vars["detail"] = detail
 		}
+		if reply.Failure != transport.CertificateFailureIssuedCheck {
+			vars["record"] = certbotRecordPath
+		}
 	}
-	log.Printf("[502][certificate] %s: %s %s: %s", domain, errCodeCertificateIssueFailed, reply.Failure, boundedAgentDiagnostic(reply.Error))
+	log.Printf("[%d][certificate] %s: %s %s: %s", status, domain, errCodeCertificateIssueFailed, reply.Failure, boundedAgentDiagnostic(reply.Error))
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadGateway)
+	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: sentence, Code: errCodeCertificateIssueFailed, Reason: reply.Failure, Vars: vars})
 	return true
 }

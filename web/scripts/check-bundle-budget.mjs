@@ -330,6 +330,16 @@ const screenPartBudgets = {
   // confirmation, split out of "deletionGuide" by size. A new part, set with
   // at least 25% headroom from its Turkish file: 7.62 / 1.90 KiB.
   deletionGuidePeer: kib(10, 2.5),
+  // v0.1.0-alpha.134: what a domain's certificate protects (certcover.):
+  // the certificate screen's list, its reasons and actions, the request
+  // form's mail name and the mail screen's sentence. A new part because
+  // "dnsCertificates" had 0.33 KiB left; set with at least 25% headroom
+  // from its Turkish file.
+  certCoverage: kib(7, 2.5),
+  // v0.1.0-alpha.134 (docs/SITE-BACKUP-CONTENTS-DESIGN.md): what a
+  // site backup holds and what a restore did with the program (bkc.). A new
+  // part, set with at least 25% headroom from its Turkish file: 5.57 / 2.04 KiB.
+  siteBackup: kib(7, 2.6),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

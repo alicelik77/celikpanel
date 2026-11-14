@@ -442,25 +442,45 @@ func safeExtractFilesArchive(source, destination string) error {
 	return extractFilesArchiveAt(stageFD, source)
 }
 
+// extractOptions widen extraction for a site-home area
+// (docs/SITE-BACKUP-CONTENTS-DESIGN.md): only the entries below prefix are
+// taken (with prefix removed; the prefix folder's own entry gives the root's
+// mode), and symbolic links are made again as links, never followed. The
+// zero value is public_html's extraction, unchanged.
+type extractOptions struct {
+	prefix string
+	links  bool
+}
+
+// maxLinkTarget bounds a link's target text (PATH_MAX).
+const maxLinkTarget = 4095
+
 // extractFilesArchiveAt extracts into the directory stageFD names. Every
 // folder and file is made and set relative to a held descriptor, never by
 // path, so a renamed or replaced staging folder cannot redirect root.
 func extractFilesArchiveAt(stageFD int, source string) error {
+	_, _, err := extractArchiveAt(stageFD, source, extractOptions{})
+	return err
+}
+
+// extractArchiveAt is extractFilesArchiveAt with options. rootMode is the
+// mode the archive gives the prefix folder (hasRoot false when it names none).
+func extractArchiveAt(stageFD int, source string, opts extractOptions) (rootMode os.FileMode, hasRoot bool, returnErr error) {
 	existing, err := directoryNamesAt(stageFD)
 	if err != nil {
-		return err
+		return 0, false, err
 	}
 	if len(existing) != 0 {
-		return errors.New("restore staging directory is not empty")
+		return 0, false, errors.New("restore staging directory is not empty")
 	}
 	file, _, err := secureOpenRegular(source)
 	if err != nil {
-		return err
+		return 0, false, err
 	}
 	defer file.Close()
 	gz, err := gzip.NewReader(file)
 	if err != nil {
-		return err
+		return 0, false, err
 	}
 	defer gz.Close()
 	tr := tar.NewReader(gz)
@@ -474,27 +494,42 @@ func extractFilesArchiveAt(stageFD int, source string) error {
 			break
 		}
 		if nextErr != nil {
-			return nextErr
+			return 0, false, nextErr
 		}
 		entryCount++
 		if entryCount > maxFilesArchiveEntries {
-			return errors.New("files archive entry limit exceeded")
+			return 0, false, errors.New("files archive entry limit exceeded")
 		}
 		name, rootEntry, err := cleanFilesArchiveName(header.Name, header.Typeflag)
 		if err != nil {
-			return err
+			return 0, false, err
 		}
 		if rootEntry {
 			continue
 		}
+		if opts.prefix != "" {
+			if name == opts.prefix {
+				if header.Typeflag != tar.TypeDir {
+					return 0, false, errors.New("the area's own entry is not a folder")
+				}
+				rootMode, hasRoot = os.FileMode(header.Mode)&os.ModePerm, true
+				continue
+			}
+			rest, under := strings.CutPrefix(name, opts.prefix+"/")
+			if !under {
+				// Another area of the same archive.
+				continue
+			}
+			name = rest
+		}
 		if seen[name] {
-			return errors.New("duplicate files archive entry")
+			return 0, false, errors.New("duplicate files archive entry")
 		}
 		seen[name] = true
 		components := strings.Split(name, "/")
 		for _, component := range components {
 			if component == "" || component == "." || component == ".." {
-				return errors.New("files archive escapes staging directory")
+				return 0, false, errors.New("files archive escapes staging directory")
 			}
 		}
 		mode := os.FileMode(header.Mode) & os.ModePerm
@@ -505,13 +540,13 @@ func extractFilesArchiveAt(stageFD int, source string) error {
 			}
 			dirFD, err := openStageDirectoryAt(stageFD, components, true)
 			if err != nil {
-				return err
+				return 0, false, err
 			}
 			_ = unix.Close(dirFD)
 			directoryModes = append(directoryModes, extractedDirectoryMode{name, mode})
 		case tar.TypeReg, tar.TypeRegA:
 			if header.Size < 0 || totalSize > maxPackagePayloadBytes-header.Size {
-				return errors.New("files archive size limit exceeded")
+				return 0, false, errors.New("files archive size limit exceeded")
 			}
 			totalSize += header.Size
 			if mode == 0 {
@@ -519,15 +554,34 @@ func extractFilesArchiveAt(stageFD int, source string) error {
 			}
 			parentFD, err := openStageDirectoryAt(stageFD, components[:len(components)-1], true)
 			if err != nil {
-				return err
+				return 0, false, err
 			}
 			err = writeStagedFileAt(parentFD, components[len(components)-1], tr, header.Size, mode)
 			_ = unix.Close(parentFD)
 			if err != nil {
-				return err
+				return 0, false, err
+			}
+		case tar.TypeSymlink:
+			if !opts.links {
+				return 0, false, errors.New("links and special files are not allowed in backups")
+			}
+			target := header.Linkname
+			if target == "" || len(target) > maxLinkTarget || strings.ContainsRune(target, 0) {
+				return 0, false, errors.New("invalid link in the backup")
+			}
+			parentFD, err := openStageDirectoryAt(stageFD, components[:len(components)-1], true)
+			if err != nil {
+				return 0, false, err
+			}
+			// symlinkat never follows the new name; it fails when the name
+			// already exists.
+			err = unix.Symlinkat(target, parentFD, components[len(components)-1])
+			_ = unix.Close(parentFD)
+			if err != nil {
+				return 0, false, fmt.Errorf("restore link %s: %w", name, err)
 			}
 		default:
-			return errors.New("links and special files are not allowed in backups")
+			return 0, false, errors.New("links and special files are not allowed in backups")
 		}
 	}
 	sort.Slice(directoryModes, func(i, j int) bool {
@@ -536,15 +590,15 @@ func extractFilesArchiveAt(stageFD int, source string) error {
 	for _, directory := range directoryModes {
 		dirFD, err := openStageDirectoryAt(stageFD, strings.Split(directory.name, "/"), false)
 		if err != nil {
-			return err
+			return 0, false, err
 		}
 		err = unix.Fchmod(dirFD, uint32(directory.mode))
 		_ = unix.Close(dirFD)
 		if err != nil {
-			return err
+			return 0, false, err
 		}
 	}
-	return nil
+	return rootMode, hasRoot, nil
 }
 
 // writeStagedFileAt creates name below parentFD (O_EXCL, no link followed),
@@ -623,6 +677,23 @@ func prepareFilesRestore(archivePath, target string) (*stagedFilesRestore, error
 // runs on that descriptor while the tree is still root's and 0700; then the
 // tree is given target's owner and mode.
 func prepareFilesRestoreEdited(archivePath, target string, edit func(stageFD int) error) (*stagedFilesRestore, error) {
+	return prepareStagedRestore(archivePath, target, stageOptions{edit: edit})
+}
+
+// stageOptions: edit as in prepareFilesRestoreEdited; extract widens the
+// extraction (a site-home area); archivedRootMode gives the staged root the
+// mode the archive names instead of the target's (an area folder that did
+// not exist and was just made).
+type stageOptions struct {
+	edit             func(stageFD int) error
+	extract          extractOptions
+	archivedRootMode bool
+	// owner gives the staged tree this uid:gid instead of the target's (an
+	// area belongs to the site home's account whoever owns its folder now).
+	owner *[2]int
+}
+
+func prepareStagedRestore(archivePath, target string, opts stageOptions) (*stagedFilesRestore, error) {
 	if err := rejectSymlinkPath(target); err != nil {
 		return nil, err
 	}
@@ -671,17 +742,22 @@ func prepareFilesRestoreEdited(archivePath, target string, edit func(stageFD int
 		result.Cleanup()
 		return nil, err
 	}
-	if err := extractFilesArchiveAt(stageFD, archivePath); err != nil {
+	archivedMode, hasArchivedMode, err := extractArchiveAt(stageFD, archivePath, opts.extract)
+	if err != nil {
 		result.Cleanup()
 		return nil, err
 	}
-	if edit != nil {
-		if err := edit(stageFD); err != nil {
+	if opts.edit != nil {
+		if err := opts.edit(stageFD); err != nil {
 			result.Cleanup()
 			return nil, err
 		}
 	}
-	if err := chownTreeAt(stageFD, int(stat.Uid), int(stat.Gid)); err != nil {
+	uid, gid := int(stat.Uid), int(stat.Gid)
+	if opts.owner != nil {
+		uid, gid = opts.owner[0], opts.owner[1]
+	}
+	if err := chownTreeLinksAt(stageFD, uid, gid, opts.extract.links); err != nil {
 		result.Cleanup()
 		return nil, err
 	}
@@ -695,6 +771,9 @@ func prepareFilesRestoreEdited(archivePath, target string, edit func(stageFD int
 		}
 	}
 	rootMode := uint32(targetInfo.Mode().Perm())
+	if opts.archivedRootMode && hasArchivedMode {
+		rootMode = uint32(archivedMode)
+	}
 	if setgid {
 		rootMode |= unix.S_ISGID
 	}
@@ -739,6 +818,12 @@ func setgidDirectoriesAt(dirFD int) error {
 // chownTreeAt gives the tree below dirFD (and dirFD) uid:gid through held
 // descriptors, never following a link.
 func chownTreeAt(dirFD int, uid, gid int) error {
+	return chownTreeLinksAt(dirFD, uid, gid, false)
+}
+
+// chownTreeLinksAt is chownTreeAt that, with links, also gives each link
+// (not what it names) uid:gid; without links a link is an error.
+func chownTreeLinksAt(dirFD int, uid, gid int, links bool) error {
 	if err := unix.Fchown(dirFD, uid, gid); err != nil {
 		return err
 	}
@@ -757,12 +842,19 @@ func chownTreeAt(dirFD int, uid, gid int) error {
 			if err != nil {
 				return err
 			}
-			err = chownTreeAt(childFD, uid, gid)
+			err = chownTreeLinksAt(childFD, uid, gid, links)
 			_ = unix.Close(childFD)
 			if err != nil {
 				return err
 			}
 		case unix.S_IFREG:
+			if err := unix.Fchownat(dirFD, name, uid, gid, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+				return err
+			}
+		case unix.S_IFLNK:
+			if !links {
+				return errors.New("symlink appeared in restore staging")
+			}
 			if err := unix.Fchownat(dirFD, name, uid, gid, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 				return err
 			}

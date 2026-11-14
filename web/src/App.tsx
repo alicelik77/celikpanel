@@ -66,17 +66,6 @@ const ImportPage = lazyNamed(() => import('./components/ImportPage'), 'ImportPag
 const AuditLogPage = lazyNamed(() => import('./components/AuditLogPage'), 'AuditLogPage');
 const AddonsPage = lazyNamed(() => import('./components/AddonsPage'), 'AddonsPage');
 const VPNPage = lazyNamed(() => import('./components/VPNPage'), 'VPNPage');
-const PHPManagement = lazyNamed(() => import('./components/PHPManagement'), 'PHPManagement');
-const NginxManagement = lazyNamed(() => import('./components/NginxManagement'), 'NginxManagement');
-const Fail2banManagement = lazyNamed(() => import('./components/Fail2banManagement'), 'Fail2banManagement');
-const PostfixManagement = lazyNamed(() => import('./components/PostfixManagement'), 'PostfixManagement');
-const DovecotManagement = lazyNamed(() => import('./components/DovecotManagement'), 'DovecotManagement');
-const PowerDNSManagement = lazyNamed(() => import('./components/PowerDNSManagement'), 'PowerDNSManagement');
-const VsftpdManagement = lazyNamed(() => import('./components/VsftpdManagement'), 'VsftpdManagement');
-const PostgreSQLManagement = lazyNamed(() => import('./components/PostgreSQLManagement'), 'PostgreSQLManagement');
-const MariaDBManagement = lazyNamed(() => import('./components/MariaDBManagement'), 'MariaDBManagement');
-const ComponentDetail = lazyNamed(() => import('./components/ComponentDetail'), 'ComponentDetail');
-const ServiceRecordLookup = lazyNamed(() => import('./components/ServiceRecordLookup'), 'ServiceRecordLookup');
 const AccountLinkPage = lazyNamed(() => import('./components/AccountLinkPage'), 'AccountLinkPage');
 // The user guide (alpha.119); its chapters are fetched by role and language.
 const GuidePage = lazyNamed(() => import('./help/guide/GuidePage'), 'GuidePage');
@@ -115,90 +104,11 @@ function InfrastructureZoneRoute() {
   );
 }
 
-// Service Management Wrapper
-interface ServiceManagementProps {
-  serviceId: string;
-  versions: string[];
-  onSelectConfig?: (path: string) => void;
-}
-
-function ServiceManagement({ serviceId, versions, onSelectConfig }: ServiceManagementProps) {
-  const navigate = useNavigate();
-  const onBack = () => navigate('/components');
-
-  switch (serviceId) {
-    case 'php-fpm':
-      return <PHPManagement versions={versions} onBack={onBack} />;
-    case 'nginx':
-      return <NginxManagement onBack={onBack} />;
-    case 'fail2ban':
-      return <Fail2banManagement onBack={onBack} />;
-    case 'postfix':
-      return <PostfixManagement onBack={onBack} />;
-    case 'dovecot':
-      return <DovecotManagement onBack={onBack} onSelectConfig={onSelectConfig} />;
-    case 'pdns':
-      return <PowerDNSManagement onBack={onBack} />;
-    case 'vsftpd':
-      return <VsftpdManagement onBack={onBack} onSelectConfig={onSelectConfig} />;
-    case 'postgresql':
-      return <PostgreSQLManagement onBack={onBack} />;
-    case 'mariadb':
-      return <MariaDBManagement onBack={onBack} />;
-    default:
-      // Every other component gets the DERIVED page — status, actions, unit,
-      // versions, packages, ports, config files and its own journal — instead
-      // of the dead end that used to sit here (operator, 25 Jul: "birçok
-      // servisin manage'i doğru düzgün çalışmıyor"). The specialised pages
-      // above stay because they do more than describe; this one needs no entry
-      // in any list, so a component added tomorrow is manageable at once.
-      // Geri kalan her bileşen, burada eskiden duran çıkmaz sokak yerine
-      // TÜRETİLMİŞ sayfayı alır: durum, eylemler, unit, sürümler, paketler,
-      // portlar, ayar dosyaları ve kendi günlüğü (operatör, 25 Tem: "birçok
-      // servisin manage'i doğru düzgün çalışmıyor"). Yukarıdaki özel sayfalar
-      // betimlemekten fazlasını yaptıkları için kalır; bunun hiçbir listeye
-      // girmesi gerekmez, yani yarın eklenen bileşen anında yönetilebilir.
-      return <ComponentDetail serviceId={serviceId} onBack={onBack} onSelectConfig={onSelectConfig} />;
-  }
-}
-
-
-
-function ServiceManagementPage() {
-  const { serviceId } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const navigationState = location.state as { versions?: string[] } | null;
-  // Config files listed on the generic page open in the same editor the
-  // Components page uses — one editor, not a second copy.
-  // Genel sayfada listelenen ayar dosyaları, Bileşenler sayfasının kullandığı
-  // editörde açılır — tek editör, ikinci bir kopya değil.
-  const [configPath, setConfigPath] = useState<string | null>(null);
-
-  // No empty-versions bailout: with the "default" sentinel dead (B3b), an
-  // installed nginx/postfix legitimately has versions: [] — bailing out here
-  // rendered a BLANK page behind every such Manage click.
-  // Boş-sürüm kaçışı yok: "default" sentinel'i öldüğünden (B3b) kurulu bir
-  // nginx/postfix meşru olarak versions: [] taşır — burada kaçmak, böyle her
-  // Yönet tıklamasının arkasında BOŞ sayfa çiziyordu.
-  //
-  // After a reload the versions are not in the navigation any more; the lookup
-  // reads them and stays on this address whatever that read says.
-  // Yeniden yüklemeden sonra sürümler gezinmede yoktur; arama onları okur ve
-  // okuma ne derse desin bu adreste kalır.
-  return (
-    <ServiceRecordLookup
-      serviceId={serviceId ?? ''}
-      carriedVersions={navigationState?.versions}
-      onBack={() => navigate('/components')}
-    >
-      {(versions) => (configPath
-        ? <ConfigEditor path={configPath} onBack={() => setConfigPath(null)} />
-        : <ServiceManagement serviceId={serviceId!} versions={versions} onSelectConfig={setConfigPath} />)}
-    </ServiceRecordLookup>
-  );
-}
-
+// One component's management page (/components/:serviceId) and the pages it
+// chooses between are their own chunk since alpha.134: the boot path carried
+// the chooser and a lazy loader for each of them.
+// Bileşen yönetim sayfası ve seçtiği sayfalar alpha.134'ten beri ayrı parça.
+const ServiceManagementPage = lazyNamed(() => import('./components/ServiceManagementRoute'), 'ServiceManagementPage');
 
 // Services Page with config editor
 function ServicesPage() {

@@ -1,7 +1,11 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -22,7 +26,10 @@ import (
 //     domains", "Some challenges have failed", the ACME types `unauthorized`,
 //     `dns`, `connection`, `tls`, `caa` that certbot prints as "Type: ...");
 //   - an authority that could not be reached at all (the Python connection
-//     and TLS errors certbot prints before any order exists).
+//     and TLS errors certbot prints before any order exists);
+//   - an authority that does not know the server's ACME account
+//     (`urn:ietf:params:acme:error:accountDoesNotExist`; alpha.134 lab: the
+//     authority had been reset and certbot kept its old account).
 //
 // Anything else is "certbot exited with an error" and nothing more is claimed.
 // Beside the kind goes one bounded line of certbot's own words.
@@ -32,6 +39,11 @@ import (
 // otoritenin sınırı, otoritenin reddettiği doğrulama, hiç ulaşılamayan otorite.
 // Bunların dışındaki her şey "certbot hata ile çıktı"dır ve fazlası ileri
 // sürülmez.
+
+// certbotAccountNotFound is the line certbot prints for the authority's
+// accountDoesNotExist answer: "Account <url> not found." (its log carries
+// the urn).
+var certbotAccountNotFound = regexp.MustCompile(`\baccount "?https?://\S+"? (?:not found|does not exist)`)
 
 // certbotFailureKind classifies certbot's combined output. It answers one of
 // the transport.CertificateFailure* kinds.
@@ -50,6 +62,14 @@ func certbotFailureKind(output string) string {
 	case contains("urn:ietf:params:acme:error:ratelimited", "too many certificates", "too many failed authorizations",
 		"too many new orders", "too many registrations", "rate limit"):
 		return transport.CertificateFailureRateLimited
+	case contains("urn:ietf:params:acme:error:accountdoesnotexist", "please choose an account", "no account exists with the provided key") ||
+		certbotAccountNotFound.MatchString(lower):
+		// The authority does not know certbot's account, or certbot holds
+		// more than one for it and cannot choose (MissingCommandlineFlag
+		// "Please choose an account"): the server administrator puts
+		// certbot's account right. (alpha.134 lab run 6: certbot printed
+		// only "Account <url> not found."; the urn is in its log.)
+		return transport.CertificateFailureAccountUnknown
 	case contains("certbot failed to authenticate some domains", "some challenges have failed", "challenge failed for domain",
 		"urn:ietf:params:acme:error:unauthorized", "urn:ietf:params:acme:error:dns", "urn:ietf:params:acme:error:connection",
 		"urn:ietf:params:acme:error:tls", "urn:ietf:params:acme:error:caa",
@@ -102,4 +122,26 @@ func certbotFailureLine(output string) string {
 		}
 	}
 	return hostcmd.Bounded(mailServiceSecret.ReplaceAllString(chosen, "${1}…"), 300)
+}
+
+// certbotFailureKindWithLog classifies a run whose printed output names no
+// kind by certbot's own record of that run too: certbot prints only the
+// authority's detail for an unexpected ACME error ("Account <url> not
+// found."), while its log keeps the error type. The log is read only when it
+// was written by this run (changed at or after since), bounded to its tail.
+func certbotFailureKindWithLog(output string, since time.Time) string {
+	kind := certbotFailureKind(output)
+	if kind != transport.CertificateFailureTool {
+		return kind
+	}
+	record := filepath.Join(nativeSiteLogDir, "letsencrypt.log")
+	info, err := os.Stat(record)
+	if err != nil || !info.Mode().IsRegular() || info.ModTime().Before(since.Add(-time.Second)) {
+		return kind
+	}
+	tail, err := readTail(record, nativeSiteMaxLogBytes)
+	if err != nil {
+		return kind
+	}
+	return certbotFailureKind(output + "\n" + string(tail))
 }

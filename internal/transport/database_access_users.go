@@ -1,5 +1,7 @@
 package transport
 
+import "github.com/alicelik/celikpanel/internal/mariadbgrant"
+
 // More users for one database (alpha.129): a user that only reads it, or
 // one that reads and writes it, made and removed on the local engine by the
 // Agent. Creation is exclusive (an account name that already exists on the
@@ -82,4 +84,83 @@ type DatabaseAccessUserResponse struct {
 	// DatabaseExists (with DatabaseDropped): the engine still has a database of
 	// that name, so nothing was removed. Additive.
 	DatabaseExists bool `json:"database_exists,omitempty"`
+	// RightsRemovedFrom and RightsKept (alpha.134, with DatabaseDropped): the
+	// grantees whose rights naming the dropped database this step removed
+	// (names only), and the rows it kept because they also reach another
+	// database. The panel adds them to the deletion's answer. Additive.
+	RightsRemovedFrom []string           `json:"rights_removed_from,omitempty"`
+	RightsKept        []DroppedRightKept `json:"rights_kept,omitempty"`
+}
+
+// DroppedRightKept is a right in the raw (pattern) form of a deleted
+// database's name that also reaches another existing database: it is left
+// for its owner and reported. Names only.
+type DroppedRightKept struct {
+	Account string   `json:"account"`
+	Pattern string   `json:"pattern"`
+	Reaches []string `json:"reaches"`
+}
+
+// DroppedDatabaseRightsRequest (alpha.134): after a database is deleted on
+// the machine's own MariaDB, every right that names it goes from every
+// grantee - accounts made by hand, accounts under any name and roles - while
+// the accounts and roles stay. Only while no database of that name exists.
+// Silinen veritabanını adlandıran haklar her hesaptan ve rolden kaldırılır.
+type DroppedDatabaseRightsRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	Database            string `json:"database"`
+	// Owners (alpha.134 second review): the account names on record for the
+	// deleted database. Their rows naming it go in both forms, never kept as
+	// "reaching another database" - CelikPanel gave them.
+	Owners []string `json:"owners,omitempty"`
+}
+
+// DroppedDatabaseRightsResponse says whose rights went.
+type DroppedDatabaseRightsResponse struct {
+	Applied bool `json:"applied"`
+	// Grantees: user@host of each account (a role's name alone) that held a
+	// right naming the database and lost it. Names only.
+	Grantees []string `json:"grantees,omitempty"`
+	// Kept: rights in the raw form that also reach another existing database
+	// and were left (alpha.134 review).
+	Kept []DroppedRightKept `json:"kept,omitempty"`
+	// DatabaseExists: a database of that name exists (again); nothing was
+	// changed.
+	DatabaseExists bool `json:"database_exists,omitempty"`
+	// RightsLeft: something naming the database is still loaded; removing
+	// again continues.
+	RightsLeft bool   `json:"rights_left,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
+// DatabaseGrantFormsScanRequest (alpha.134) reads the machine's own MariaDB
+// for the rewrite of pattern-form grants to the exact form. Read only.
+// Kalıp biçimli hakların okunması; salt okur.
+type DatabaseGrantFormsScanRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+}
+
+// DatabaseGrantFormsScanResponse is what the read found. RemoteHosts: for
+// each account name of a pattern row, the hosts of its remote copies the
+// Agent's remote access record lists (CelikPanel's own besides localhost).
+type DatabaseGrantFormsScanResponse struct {
+	Scan          mariadbgrant.Scan   `json:"scan"`
+	RemoteHosts   map[string][]string `json:"remote_hosts,omitempty"`
+	BuildMismatch bool                `json:"build_mismatch,omitempty"`
+	Error         string              `json:"error,omitempty"`
+}
+
+// DatabaseGrantFormConvertRequest rewrites one captured pattern-form row to
+// the exact form (mariadbgrant.Convert).
+type DatabaseGrantFormConvertRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	mariadbgrant.ConvertRequest
+}
+
+// DatabaseGrantFormConvertResponse: Outcome is one of mariadbgrant's
+// Converted, AlreadyExact, Gone, Changed, OwnerRow; Error when it stopped.
+type DatabaseGrantFormConvertResponse struct {
+	Outcome       string `json:"outcome,omitempty"`
+	BuildMismatch bool   `json:"build_mismatch,omitempty"`
+	Error         string `json:"error,omitempty"`
 }

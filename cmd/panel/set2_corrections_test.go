@@ -311,11 +311,12 @@ func TestCertificateIssueFailureIsTypedAndPlain(t *testing.T) {
 	logs := captureLog(t)
 	measured := "An unexpected error occurred: requests.exceptions.SSLError: HTTPSConnectionPool(host='acme-v02.api.letsencrypt.org', port=443): Max retries exceeded with url: /directory"
 	for kind, fragments := range map[string][]string{
-		transport.CertificateFailureAuthorityUnreachable: {"could not reach the certificate authority", "no request was placed", "outbound port 443"},
-		transport.CertificateFailureValidation:           {"could not validate one of the names", "resolve publicly to this server", "port 80"},
-		transport.CertificateFailureRateLimited:          {"one of its limits was reached", "counts against it", "after that time"},
-		transport.CertificateFailureTimeout:              {"did not finish within the time allowed", "not known from this answer"},
-		transport.CertificateFailureTool:                 {"certbot ended with an error", "not classified here"},
+		transport.CertificateFailureAuthorityUnreachable: {"could not reach the certificate authority", "nothing was asked of it", "outbound port 443"},
+		transport.CertificateFailureValidation:           {"could not confirm that one of the site's names points to this server", "domain's DNS records", "port 80"},
+		transport.CertificateFailureRateLimited:          {"one of its request limits was reached", "counts against it", "again later"},
+		transport.CertificateFailureAccountUnknown:       {"account at this certificate authority cannot be used", "more than one for it"},
+		transport.CertificateFailureTimeout:              {"did not finish in time", "why is not known"},
+		transport.CertificateFailureTool:                 {"the reason could not be established", "again later"},
 	} {
 		for _, hadCertificate := range []bool{false, true} {
 			recorder := httptest.NewRecorder()
@@ -342,8 +343,15 @@ func TestCertificateIssueFailureIsTypedAndPlain(t *testing.T) {
 			if strings.Contains(body.Error, "internal server error") || strings.Contains(body.Error, "HTTPSConnectionPool") {
 				t.Fatalf("%s: %s", kind, body.Error)
 			}
-			if body.Vars["domain"] != "shop.example" || !strings.Contains(body.Vars["detail"], "Max retries exceeded") {
+			if body.Vars["domain"] != "shop.example" || !strings.Contains(body.Vars["detail"], "Max retries exceeded") ||
+				body.Vars["record"] != certbotRecordPath {
 				t.Fatalf("%s: vars %v", kind, body.Vars)
+			}
+			// alpha.134 lab: nobody is sent to a file on the server by the
+			// sentence; where certbot keeps its record is a closed detail
+			// for an administrator.
+			if strings.Contains(body.Error, "/var/log") || strings.Contains(body.Error, "letsencrypt.log") {
+				t.Fatalf("%s: the sentence names a server file: %s", kind, body.Error)
 			}
 		}
 	}
@@ -357,8 +365,23 @@ func TestCertificateIssueFailureIsTypedAndPlain(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	writeCertificateIssueFailure(recorder, &Caller{ID: 2, Role: roleCustomer}, "shop.example", false,
 		&transport.IssueLetsEncryptResponse{Error: "x", Failure: transport.CertificateFailureValidation, FailureDetail: measured})
-	if strings.Contains(recorder.Body.String(), "Max retries") || !strings.Contains(recorder.Body.String(), `"reason":"validation"`) {
+	if strings.Contains(recorder.Body.String(), "Max retries") || !strings.Contains(recorder.Body.String(), `"reason":"validation"`) ||
+		strings.Contains(recorder.Body.String(), "letsencrypt.log") {
 		t.Fatalf("answer to a customer: %s", recorder.Body.String())
+	}
+
+	// An issued certificate whose files did not pass the Agent's check is
+	// the same answer as the Panel's own check: 409, check "unusable".
+	recorder = httptest.NewRecorder()
+	writeCertificateIssueFailure(recorder, &Caller{ID: 1, Role: roleAdmin}, "shop.example", true,
+		&transport.IssueLetsEncryptResponse{Error: "x", Failure: transport.CertificateFailureIssuedCheck, FailureDetail: "certbot privkey does not match"})
+	var issued apiErrorBody
+	if err := json.Unmarshal(recorder.Body.Bytes(), &issued); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusConflict || issued.Reason != transport.CertificateFailureIssuedCheck || issued.Vars["check"] != issuedCheckUnusable ||
+		issued.Vars["record"] != "" || issued.Vars["kept"] != "previous" || !strings.Contains(issued.Error, "already had is still in place") {
+		t.Fatalf("issued check: %d %+v", recorder.Code, issued)
 	}
 
 	// What the Agent did not classify is left to the caller, as before.

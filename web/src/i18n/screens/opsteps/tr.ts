@@ -27,6 +27,8 @@ export const trOpstepsScreens: Record<OpstepsScreenKey, string> = {
     'opstep.restore.inspect': 'Yedek okunuyor ve güvenle geri yüklenebildiği denetleniyor',
     'opstep.restore.restore': 'Dosyalar ve veritabanları geri konuyor',
     'opstep.restore.restoreNote': 'Büyük bir sitede birkaç dakika sürebilir. Sizin bir şey yapmanız gerekmiyor.',
+    'opstep.restore.programStop': 'Sitenin programı durduruluyor',
+    'opstep.restore.programStart': 'Program yeniden başlatılıyor ve yanıt vermesi bekleniyor',
     'opstep.restore.finish': 'Bitiriliyor',
 
     'opstep.backup.title': '{name} yedekleniyor',

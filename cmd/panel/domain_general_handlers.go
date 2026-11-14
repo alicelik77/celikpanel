@@ -726,6 +726,9 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 			return
 		}
 		p.audit(r, "domain.alias.add.reissue", "domain", domainID)
+		// alpha.134: the lineage the site used before goes once the new one is
+		// served (logged; the periodic pass repeats what is left).
+		_, _ = p.retireReplacedNativeLineages(ctx, domainID)
 		w.WriteHeader(http.StatusCreated)
 		answer := map[string]any{
 			"status":                 "success",
@@ -931,6 +934,9 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 			return
 		}
 		p.audit(r, "domain.alias.delete.reissue", "domain", domainID)
+		// alpha.134: the lineage the site used before goes once the new one is
+		// served (logged; the periodic pass repeats what is left).
+		_, _ = p.retireReplacedNativeLineages(ctx, domainID)
 		answer := map[string]any{
 			"status":               "success",
 			"certificate_reissued": true,

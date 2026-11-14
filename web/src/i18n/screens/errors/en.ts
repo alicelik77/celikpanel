@@ -212,7 +212,7 @@ export const enErrorsScreens = {
     "err.BACKUP_RESTORE_SAFETY_FAILED": "The safety copy that is taken before every restore could not be made, so nothing was restored and the site is unchanged. The server's reason is below. Fix it (for example free disk space, or start the database server), then restore again.",
     "err.BACKUP_RESTORE_LOAD_REVERTED": "The database server refused this backup's data, so the restore stopped and the site was put back as it was before. The server's reason is below. Restore another backup, or ask your administrator if the reason is not clear.",
     "err.BACKUP_RESTORE_ROLLBACK_FAILED": "The restore stopped, and putting the site back did not finish either. The safety copy taken just before is kept in this list: restore it to return to the state before. The server's reason is below.",
-    "err.BACKUP_RESTORE_INVALID": "This backup failed its checks (it is damaged or belongs to another site), so nothing was restored and the site is unchanged. Choose another backup.",
+    "err.BACKUP_RESTORE_INVALID": "This backup did not pass its checks (for example, it is damaged), so nothing was restored and the site is unchanged. Choose another backup.",
     "err.BACKUP_RESTORE_FINISH_FAILED": "The backup was restored, but its last step (cleanup and saving to disk) did not finish. The safety copy taken before is kept. Check the site, and restore again if something is missing.",
     "err.DB_IMPORT_AUTH": "The database server did not accept the password CelikPanel has stored for this database's user (it was probably changed outside the panel). Nothing was loaded. Set a new password for the user on the Databases page, then import again.",
     "err.DB_IMPORT_CLIENT_UNSAFE": "This server's MariaDB client is too old to load a file safely (it has no sandbox mode). Nothing was loaded. The administrator updates the server's MariaDB packages; then import again.",
@@ -223,12 +223,18 @@ export const enErrorsScreens = {
     "err.DB_IMPORT_NO_SITE_ACCOUNT": "This domain has no hosting account to load the file under, so nothing was loaded. Add hosting to the domain, then import again.",
     "err.DB_TOOLS_RESTORE_RUNNING": "A restore or import of this site is still running, so nothing was started. Wait until it ends, then try again.",
     "err.DB_COPY_FAILED": "The copy could not be made, so the new database was removed again. The original database is unchanged. The server's reason is below; try again, or ask your administrator if it repeats.",
+    "err.DB_COPY_FAILED.kept": "The copy could not be made, and the new database {name} could not be removed again: it stays in the list, half copied. Delete it there. The original database is unchanged.",
     "err.DB_CHECK_FAILED": "The database server could not check this database. Nothing was changed. The server's answer is below.",
     "err.DB_EXPORT_GONE": "This export file is no longer on the server (it is removed after one download, or after six hours). Nothing was changed. Make a new export.",
     'dbt.exportFailed': 'The export could not be made.',
     'dbt.importFailed': 'The import did not complete.',
     'dbt.copyFailed': 'The copy could not be made.',
     'dbt.checkFailed': 'The check did not complete.',
+    // alpha.134: a new database name MariaDB could not keep a right on exactly (cmd/panel/database_names.go); every screen that creates a database reads it here.
+    'err.DATABASE_NAME_TOO_LONG': 'The database name {name} is too long by {over}. Choose a shorter name, or one with fewer underscores (each underscore counts as two characters). Nothing was changed.',
+    'err.DATABASE_NAME_TOO_LONG.length': 'The database name {name} is too long by {over}. Choose a shorter name. Nothing was changed.',
+    'err.DATABASE_CREATE_LEFT_OVER': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. These are not in CelikPanel\'s list, and the same name is refused until they are removed. The server\'s administrator removes them on the database server; meanwhile choose another name.',
+    'err.DATABASE_CREATE_LEFT_OVER.administrator': 'Creating {name} stopped, and CelikPanel could not take back what it had made: {left}. These are not in CelikPanel\'s list, and the same name is refused until they are removed. Remove them on the database server, or choose another name.',
 } as const;
 
 export type ErrorsScreenKey = keyof typeof enErrorsScreens;

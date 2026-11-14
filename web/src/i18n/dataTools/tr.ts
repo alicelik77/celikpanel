@@ -130,6 +130,7 @@ export const trDataTools: Record<DataToolsKey, string> = {
     'opstep.dbUserRemove.check': '{user} denetleniyor',
     'opstep.dbUserRemove.delete': '{user} ve erişimi veritabanı sunucusundan kaldırılıyor',
     'err.DATABASE_USER_EXISTS': 'Bu veritabanı sunucusunda bu adda bir kullanıcı zaten var. Başka bir ad seçin; hiçbir şey değiştirilmedi.',
+    'err.DATABASE_NAME_TOO_LONG': '{name} veritabanı adı çok uzun. En az {over} karakter daha kısa ya da daha az alt çizgili bir ad seçin (her alt çizgi iki karakter sayılır). Hiçbir şey değiştirilmedi.',
     'err.DATABASE_USER_NAME_INVALID': 'Ad 1 ile 16 arası küçük harf, rakam ya da alt çizgi olmalı, "user" olmamalı ve veritabanı adıyla birlikte en çok 63 karakter tutmalı. Hiçbir şey değiştirilmedi.',
     'err.DATABASE_USER_ENGINE_FAILED': 'Veritabanı sunucusu bunu yapmadı; listede hiçbir şey değişmedi. Yeniden deneyin; yine olmazsa yönetici nedeni panelin günlüğünde bulur.',
     'err.DATABASE_USER_MADE_WITH_DATABASE': 'Bu kullanıcı veritabanıyla oluşturuldu ve yalnız onunla gider: veritabanı silinince kaldırılır. Hiçbir şey değiştirilmedi.',

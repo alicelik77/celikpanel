@@ -136,7 +136,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.GetDKIMStatus Agent.GetErrorLogs Agent.GetExtendedPHPConfig Agent.GetMailPolicy
 		Agent.GetMailQuotaStatus Agent.GetMySQLConfig Agent.GetPHPConfig Agent.GetPHPConfiguration
 		Agent.GetPHPExtensions Agent.GetPHPLogs Agent.GetPHPPoolConfig Agent.GetPHPPools
-		Agent.GetServices Agent.HostPlatform Agent.InspectBackup Agent.InspectCpmove
+		Agent.GetServices Agent.HostPlatform Agent.InspectBackup Agent.BackupContentsV1 Agent.InspectCpmove
 		Agent.InspectInstalledCertificate Agent.InstalledPackageVersionsV1 Agent.InstalledRepoPackages Agent.InstalledServiceIDs
 		Agent.InstalledServiceIDsStrict Agent.ListBackups Agent.ListCronJobs Agent.ListFiles
 		Agent.ListNodeLTS Agent.ListNodeVersions Agent.ListServiceInstances
@@ -154,7 +154,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.MailPasswordFingerprintV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
-		Agent.DatabaseRemoteStatusV1
+		Agent.DatabaseRemoteStatusV1 Agent.DatabaseGrantFormsScanV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
@@ -219,7 +219,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
 		Agent.IssuePanelCertificateV2 Agent.IssueMailHostCertificateV1 Agent.ReconcileSiteCertLineages
 		Agent.RenewLetsEncryptCertificate Agent.ValidateCertificate
-		Agent.SetSiteCertificateAutoRenewV1
+		Agent.SetSiteCertificateAutoRenewV1 Agent.RetireSiteCertificateLineagesV1
 		Agent.CertificateRequestCreateV1 Agent.CertificateRequestDiscardV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFirewall, `
@@ -269,6 +269,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
+		Agent.RemoveDroppedDatabaseRightsV1 Agent.DatabaseGrantFormConvertV1
 		Agent.ApplyDatabaseRemoteV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectAccessNarrowing, agentRPCCapabilityFirewall, `
@@ -382,6 +383,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.MailServerSettingsStatusV1":    agentRPCQuickReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
+	"Agent.BackupContentsV1":              agentRPCStandardReadTimeout, // one walk, 45 s in the Agent
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
 	"Agent.ReadBackupChunk":               agentRPCStandardReadTimeout,
 	"Agent.ReadSystemSQLiteSnapshotChunk": agentRPCStandardReadTimeout,
@@ -422,39 +424,40 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ConfigureDNSClusterV2":         agentRPCMutationTimeout,
 	// The owner tool's enrollment steps for this pair: a key, a few files,
 	// sshd -t, useradd and one OpenSSH reload, and one bounded SSH probe.
-	"Agent.DNSPeerInspectionPrimaryV1":    agentRPCMutationTimeout,
-	"Agent.DNSPeerInspectionSecondaryV1":  agentRPCMutationTimeout,
-	"Agent.DNSPeerInspectorToolStatusV1":  agentRPCStandardReadTimeout,
-	"Agent.ConfigureDKIMSigning":          agentRPCMutationTimeout,
-	"Agent.ConfigurePowerDNSSQLite":       agentRPCMutationTimeout,
-	"Agent.CreateFileOrDir":               agentRPCMutationTimeout,
-	"Agent.DeleteCertLineage":             agentRPCMutationTimeout,
-	"Agent.SetSiteCertificateAutoRenewV1": agentRPCMutationTimeout,
-	"Agent.DeleteBackup":                  agentRPCMutationTimeout,
-	"Agent.DeleteCronJob":                 agentRPCMutationTimeout,
-	"Agent.DeleteFileOrDir":               agentRPCMutationTimeout,
-	"Agent.DeleteMailAccount":             agentRPCMutationTimeout,
-	"Agent.DeleteMailDomain":              agentRPCMutationTimeout,
-	"Agent.RemoveDKIMKey":                 agentRPCMutationTimeout,
-	"Agent.DeletePHPPool":                 agentRPCMutationTimeout,
-	"Agent.Fail2banToggleJail":            agentRPCMutationTimeout,
-	"Agent.Fail2banUnban":                 agentRPCMutationTimeout,
-	"Agent.GenerateVPNKeys":               agentRPCMutationTimeout,
-	"Agent.ReleaseSystemSQLiteSnapshot":   agentRPCMutationTimeout,
-	"Agent.ResetFailedUnitMutation":       agentRPCMutationTimeout,
-	"Agent.StartServiceMutation":          agentRPCMutationTimeout,
-	"Agent.SyncVPNPeersV2":                agentRPCMutationTimeout,
-	"Agent.ValidateCertificate":           agentRPCMutationTimeout,
-	"Agent.PostfixQueueAction":            agentRPCMutationTimeout,
-	"Agent.ReconcileSiteCertLineages":     agentRPCDeploymentTimeout,
-	"Agent.RemoveAppUnit":                 agentRPCMutationTimeout,
-	"Agent.RenameFile":                    agentRPCMutationTimeout,
-	"Agent.SetMailPolicy":                 agentRPCMutationTimeout,
-	"Agent.SetMailDomainOptionsV1":        agentRPCMutationTimeout,
-	"Agent.ApplyOutgoingMailLimitsV1":     agentRPCMutationTimeout,
-	"Agent.MailRelayApplyV1":              agentRPCMutationTimeout,
-	"Agent.MailSubaddressingV1":           agentRPCMutationTimeout,
-	"Agent.MailSenderListV1":              agentRPCMutationTimeout,
+	"Agent.DNSPeerInspectionPrimaryV1":      agentRPCMutationTimeout,
+	"Agent.DNSPeerInspectionSecondaryV1":    agentRPCMutationTimeout,
+	"Agent.DNSPeerInspectorToolStatusV1":    agentRPCStandardReadTimeout,
+	"Agent.ConfigureDKIMSigning":            agentRPCMutationTimeout,
+	"Agent.ConfigurePowerDNSSQLite":         agentRPCMutationTimeout,
+	"Agent.CreateFileOrDir":                 agentRPCMutationTimeout,
+	"Agent.DeleteCertLineage":               agentRPCMutationTimeout,
+	"Agent.SetSiteCertificateAutoRenewV1":   agentRPCMutationTimeout,
+	"Agent.RetireSiteCertificateLineagesV1": agentRPCMutationTimeout,
+	"Agent.DeleteBackup":                    agentRPCMutationTimeout,
+	"Agent.DeleteCronJob":                   agentRPCMutationTimeout,
+	"Agent.DeleteFileOrDir":                 agentRPCMutationTimeout,
+	"Agent.DeleteMailAccount":               agentRPCMutationTimeout,
+	"Agent.DeleteMailDomain":                agentRPCMutationTimeout,
+	"Agent.RemoveDKIMKey":                   agentRPCMutationTimeout,
+	"Agent.DeletePHPPool":                   agentRPCMutationTimeout,
+	"Agent.Fail2banToggleJail":              agentRPCMutationTimeout,
+	"Agent.Fail2banUnban":                   agentRPCMutationTimeout,
+	"Agent.GenerateVPNKeys":                 agentRPCMutationTimeout,
+	"Agent.ReleaseSystemSQLiteSnapshot":     agentRPCMutationTimeout,
+	"Agent.ResetFailedUnitMutation":         agentRPCMutationTimeout,
+	"Agent.StartServiceMutation":            agentRPCMutationTimeout,
+	"Agent.SyncVPNPeersV2":                  agentRPCMutationTimeout,
+	"Agent.ValidateCertificate":             agentRPCMutationTimeout,
+	"Agent.PostfixQueueAction":              agentRPCMutationTimeout,
+	"Agent.ReconcileSiteCertLineages":       agentRPCDeploymentTimeout,
+	"Agent.RemoveAppUnit":                   agentRPCMutationTimeout,
+	"Agent.RenameFile":                      agentRPCMutationTimeout,
+	"Agent.SetMailPolicy":                   agentRPCMutationTimeout,
+	"Agent.SetMailDomainOptionsV1":          agentRPCMutationTimeout,
+	"Agent.ApplyOutgoingMailLimitsV1":       agentRPCMutationTimeout,
+	"Agent.MailRelayApplyV1":                agentRPCMutationTimeout,
+	"Agent.MailSubaddressingV1":             agentRPCMutationTimeout,
+	"Agent.MailSenderListV1":                agentRPCMutationTimeout,
 	// alpha.128: doveadm expunge of one mailbox (the Agent bounds it at 9 min).
 	"Agent.EmptyMailboxV1":               agentRPCDatabaseTimeout,
 	"Agent.TogglePHPExtension":           agentRPCMutationTimeout,
@@ -477,6 +480,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// alpha.129: a database's added users.
 	"Agent.CreateDatabaseAccessUserV1": agentRPCMutationTimeout,
 	"Agent.RemoveDatabaseAccessUserV1": agentRPCMutationTimeout,
+	// alpha.134: the rights naming a deleted database, from every grantee.
+	"Agent.RemoveDroppedDatabaseRightsV1": agentRPCMutationTimeout,
+	// alpha.134: rights by exact name (read, then one row at a time).
+	"Agent.DatabaseGrantFormsScanV1":   agentRPCStandardReadTimeout,
+	"Agent.DatabaseGrantFormConvertV1": agentRPCMutationTimeout,
 	"Agent.EndMailSessionsV1":          agentRPCMutationTimeout,
 	"Agent.SetAppUnitSuspensionV1":     agentRPCMutationTimeout,
 	"Agent.EmergencyUnitsInspectV1":    agentRPCStandardReadTimeout,

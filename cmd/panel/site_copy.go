@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -347,6 +348,10 @@ func (p *Panel) siteCopyCreateDatabase(ctx context.Context, target wordpressSite
 	if err != nil {
 		return nil, err
 	}
+	// alpha.134 follow-up: the copy's name always fits a right by its exact
+	// name (each `_` counts twice), so the copy never stops on its length
+	// after the safety backup was made.
+	base = mariadbgrant.FitBase(base, "_copy_"+suffix)
 	created := &siteCopyNewDatabase{ServerID: serverID, Name: base + "_copy_" + suffix, Operation: operationID}
 	created.User = created.Name
 	var exists bool

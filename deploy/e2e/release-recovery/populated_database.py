@@ -116,6 +116,15 @@ MIGRATIONS = {
     # the two single-row settings tables get their row; no old table or row
     # changed).
     77: '9bf25b1c18b8b3c48c0bc73d85625a39a9c2511a178a2acd4b76704159d899df',
+    # alpha.134: 78 which name a domain's mail programs are told (one NOT NULL
+    # DEFAULT 0 column on the old domains; set to 1 only for a domain whose
+    # active certificate secured mail, verified by _mail_client_name_78; no
+    # table added, no other old row changed).
+    78: '2d167085c0881f9fc2e838583c1cd316302f0850b5c27e4204f32696a8bd67c2',
+    # alpha.134: 79 database rights by exact name (two new tables, empty after
+    # the migration: database_grant_forms and database_grant_form_engines; no
+    # old table or row changed).
+    79: '863ff7e77e5a4b22c230e4ba25adbfe64871a450567a7a2389bac6f01b33ef29',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -157,6 +166,8 @@ SCHEMAS = {
     75: 'd556def4ac31f14d6464e09df447bad2a421ae486f66eb331d2293881393d54a',
     76: '74c13a781b3df839b414dd130d103985236246518f7820a2aa1c8e8f36d18450',
     77: '0ae2d053d88806d865572bacb0efc8d3bb65a09194ccec1543e2ccb26123208e',
+    78: 'b37c7ec8ab2efff1fedf38d1af06c2ee44188147eb0a3fbcdf46e5bdca2cb1f3',
+    79: 'e31f87ac1a3919eb50864c32987db5e374cf6aafa078a7e29ff38022cffd8168',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -210,6 +221,11 @@ NEW_TABLES_74 = NEW_TABLES_73 | {'database_remote_rules'}
 NEW_TABLES_75 = NEW_TABLES_74
 NEW_TABLES_76 = NEW_TABLES_75 | {'mailbox_recovery_addresses', 'mailbox_recovery_links'}
 NEW_TABLES_77 = NEW_TABLES_76 | {'mail_relay_settings', 'mail_server_options', 'mail_sender_rules'}
+# Migration 78 adds no table: one column on the old domains.
+NEW_TABLES_78 = NEW_TABLES_77
+# Migration 79 adds two tables, empty after the migration (the panel fills
+# them later, from what the database engine holds).
+NEW_TABLES_79 = NEW_TABLES_78 | {'database_grant_forms', 'database_grant_form_engines'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -229,7 +245,12 @@ ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
 ADDED_DEFAULT_COLUMNS = {66: {'service_plans': (('overuse_policy', 'close'), ('notify_percent_disk', 80),
                                                 ('notify_percent_traffic', 80)),
                               'subscriptions': (('overuse_policy', 'close'), ('notify_percent_disk', 80),
-                                                ('notify_percent_traffic', 80))}}
+                                                ('notify_percent_traffic', 80))},
+                         78: {'domains': (('mail_clients_use_own_name', 0),)}}
+# Migration 78 (alpha.134) sets its new domains column to 1, not to the
+# default, exactly for a domain whose active certificate secured mail before
+# (ssl_certificates.secure_mail = 1, an old table proved unchanged).
+MAIL_CLIENT_NAME_78 = ('domains', 'mail_clients_use_own_name')
 # The tables each pinned schema after the baseline adds to the 55 of schema38.
 # A schema that is not a key here is the baseline itself.
 NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46,
@@ -240,7 +261,8 @@ NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_T
               65: NEW_TABLES_65, 66: NEW_TABLES_66, 67: NEW_TABLES_67, 68: NEW_TABLES_68, 69: NEW_TABLES_69,
               70: NEW_TABLES_70, 71: NEW_TABLES_71,
               72: NEW_TABLES_72, 73: NEW_TABLES_73, 74: NEW_TABLES_74,
-              75: NEW_TABLES_75, 76: NEW_TABLES_76, 77: NEW_TABLES_77}
+              75: NEW_TABLES_75, 76: NEW_TABLES_76, 77: NEW_TABLES_77, 78: NEW_TABLES_78,
+              79: NEW_TABLES_79}
 # Migration 57 resets bandwidth_quota_mb of these old tables to 0. The old
 # value is only inside the sealed row digest, so a reset row is accepted only
 # when its digest is reproduced with one of these old values (NULL in 001's
@@ -571,6 +593,17 @@ def _bandwidth_reset_57(connection, tables):
     return expected, reset
 
 
+def _mail_client_name_78(connection, table, name, rowid, default):
+    """The value migration 78 gives an old row's added column: 1 for a domain
+    whose active certificate secured mail, the default for every other one."""
+    if (table, name) != MAIL_CLIENT_NAME_78:
+        return default
+    secured = connection.execute(
+        "SELECT EXISTS(SELECT 1 FROM ssl_certificates WHERE domain_id=(SELECT id FROM domains WHERE rowid=?)"
+        " AND status='active' AND secure_mail=1)", (rowid,)).fetchone()[0]
+    return 1 if secured else default
+
+
 def _names(nonce):
     main = 'fixture-' + nonce + '.example.test'
     return {'main': main, 'child': 'app.' + main, 'alias': 'alias-' + nonce + '.example.test',
@@ -799,7 +832,7 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
             names = tuple(name for name, _ in added)
             for rowid, _ in tables[table]['rows']:
                 row = connection.execute('SELECT ' + ','.join(map(_quote, names)) + ' FROM ' + _quote(table) + ' WHERE rowid=?', (rowid,)).fetchone()
-                if row != tuple(value for _, value in added):
+                if row != tuple(_mail_client_name_78(connection, table, name, rowid, value) for name, value in added):
                     raise Refused('old row of ' + table + ' differs from an added column default')
         connection.execute('ROLLBACK')
     finally:

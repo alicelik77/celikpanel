@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -649,6 +650,10 @@ func (p *Panel) handleWordPressClone(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 	base := sanitizeDBIdent(services.SiteUsername(target.Domain))
+	// alpha.134 follow-up: a generated name always fits a right by its exact
+	// name (each `_` counts twice; mariadbgrant.FitBase), so it never fails
+	// late on its length.
+	base = mariadbgrant.FitBase(base, "_wp")
 	databaseName, databaseUser := base+"_wp", base+"_wp"
 	serverID, err := p.preflightAppDatabase(r.Context(), source.SubscriptionID, databaseName, databaseUser)
 	if errors.Is(err, sql.ErrNoRows) {

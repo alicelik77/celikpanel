@@ -231,6 +231,66 @@ type SetSiteCertificateAutoRenewResponse struct {
 	Error   string `json:"error,omitempty"`
 }
 
+// RetireSiteCertificateLineagesRequest asks the Agent to remove, with
+// certbot's own `certbot delete`, the native lineages of one domain that a
+// newer certificate replaced (alpha.134: a lineage nothing serves must not
+// keep being renewed, and must not stay behind). The Agent checks each one
+// first and removes nothing it cannot account for.
+type RetireSiteCertificateLineagesRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	DomainID            int    `json:"domain_id"`
+	SubscriptionID      int    `json:"subscription_id"`
+	// Lineages are the replaced lineages of DomainID (ledger rows that are no
+	// longer active and that no active row names).
+	Lineages []RetireSiteLineage `json:"lineages"`
+	// ActiveLineage is the domain's active native lineage, when there is
+	// one; it is never removed, and the server its renewal configuration
+	// names (written by certbot for CelikPanel's latest request) is accepted
+	// as CelikPanel's own in the replaced lineages.
+	ActiveLineage string `json:"active_lineage,omitempty"`
+}
+
+// RetireSiteLineage is one replaced lineage and the authority it was issued
+// from ("" for Let's Encrypt's default).
+type RetireSiteLineage struct {
+	LineageName string `json:"lineage_name"`
+	ACMEServer  string `json:"acme_server,omitempty"`
+}
+
+// What became of one replaced lineage.
+const (
+	// certbot removed it: nothing renews it any more.
+	SiteLineageRetired = "retired"
+	// It was not there (already removed): nothing to do.
+	SiteLineageAbsent = "absent"
+	// A configuration file on this server names it: kept, and certbot
+	// keeps renewing it. Detail is that file's path, alone.
+	SiteLineageInUse = "in_use"
+	// Its renewal configuration was changed outside CelikPanel: kept as the
+	// owner left it.
+	SiteLineageOwnerChanged = "owner_changed"
+	// A retained update snapshot's panel database still serves it, so going
+	// back to that update needs it: kept until the snapshot is gone. Detail
+	// is the snapshot's directory.
+	SiteLineageHeldBySnapshot = "held_by_snapshot"
+	// What names it could not be established: kept; asked again next time.
+	SiteLineageNotChecked = "not_checked"
+	// certbot could not remove it: kept; asked again next time.
+	SiteLineageFailed = "failed"
+)
+
+type RetireSiteLineageResult struct {
+	LineageName string `json:"lineage_name"`
+	Outcome     string `json:"outcome"`
+	// Detail is one bounded sentence for the log and an administrator.
+	Detail string `json:"detail,omitempty"`
+}
+
+type RetireSiteCertificateLineagesResponse struct {
+	Results []RetireSiteLineageResult `json:"results"`
+	Error   string                    `json:"error,omitempty"`
+}
+
 // ErrNativeSiteRenewal is the Agent's answer when the Panel asks it to renew
 // an OS-renewed lineage: only certbot's own schedule renews it.
 const ErrNativeSiteRenewal = "this certificate is renewed by the operating system's certbot schedule, not by CelikPanel"

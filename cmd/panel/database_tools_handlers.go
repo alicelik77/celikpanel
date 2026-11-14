@@ -20,6 +20,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -53,6 +54,9 @@ const (
 	errCodeDBToolsBusy     = "DB_TOOLS_RESTORE_RUNNING"
 	errCodeDBCopyFailed    = "DB_COPY_FAILED"
 	errCodeDBCheckFailed   = "DB_CHECK_FAILED"
+	// dbCopyFailedKept: the failed copy could not be removed again and stays
+	// listed (alpha.134 fix round).
+	dbCopyFailedKept = "kept"
 )
 
 var dbToolsHexID = regexp.MustCompile(`^[0-9a-f]{32}$`)
@@ -599,6 +603,18 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 	}
 	dbName := fmt.Sprintf("%s_%s", sanitizeName(source.domain.Name), body.Name)
 	dbUser := dbName + "_user"
+	// alpha.134: a copy whose database or user does not fit the engine (the
+	// one rule, services.DatabaseNamesOver), or whose name holds another
+	// character than a letter, digit or underscore, is refused here, before
+	// anything is made or copied.
+	if over := services.DatabaseNamesOver(source.identity.Type, dbName, dbUser); over.By > 0 {
+		writeDatabaseNameTooLong(w, dbName, over)
+		return
+	}
+	if services.ValidateSQLIdentifier(dbName) != nil {
+		writeClientError(w, http.StatusBadRequest, "The database name may hold only letters, digits and underscores. Nothing was changed.")
+		return
+	}
 	pool := p.db.GetDB()
 	var exists bool
 	if err := pool.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM databases_v2 WHERE server_id = ? AND name = ?)", source.serverID, dbName).Scan(&exists); err != nil {
@@ -628,9 +644,23 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 		writeDatabaseClusterRefusal(w, r, created.Refusal)
 		return
 	}
+	if err == nil && created.NameTooLong {
+		writeDatabaseNameTooLong(w, dbName, services.DatabaseNamesOver(source.identity.Type, dbName, dbUser))
+		return
+	}
 	if err == nil && created.NameTaken != "" {
 		// alpha.129: the copy's name is taken on the engine; nothing changed.
 		writeDatabaseNameTaken(w, created.NameTaken, map[string]string{"database": dbName, "user": dbUser}[created.NameTaken])
+		return
+	}
+	if err == nil && created.CleanupIncomplete {
+		// alpha.134 fix round: the Agent could not take back all it had
+		// made; the answer names what is left.
+		left := created.Left
+		if len(left) == 0 {
+			left = []string{dbName, dbUser}
+		}
+		writeDatabaseCreateLeftOver(w, r, dbName, left, errors.New(boundedAgentDiagnostic(created.Error)))
 		return
 	}
 	if err != nil || !created.Success {
@@ -639,7 +669,10 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 	}
 	newID, err := p.insertDatabaseToolsCopyRecords(ctx, source, dbName, dbUser, sealed)
 	if err != nil {
-		p.dropDatabaseToolsCopy(source, dbName, dbUser, 0)
+		if dropErr := p.dropDatabaseToolsCopy(source, dbName, dbUser, 0); dropErr != nil {
+			writeDatabaseCreateLeftOver(w, r, dbName, []string{dbName, dbUser}, errors.Join(err, dropErr))
+			return
+		}
 		writeServerError(w, err)
 		return
 	}
@@ -649,8 +682,8 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 	err = p.callAgentContext(ctx, "Agent.DatabaseCopyV1", transport.DBToolsCopyRequest{Source: source.agentTarget(), Target: targetIdentity}, &copied)
 	if err != nil || !copied.Success {
 		// Nothing half-copied is left behind: the new database goes again.
-		p.dropDatabaseToolsCopy(source, dbName, dbUser, int(newID))
-		if err == nil && copied.Refusal != nil {
+		dropErr := p.dropDatabaseToolsCopy(source, dbName, dbUser, int(newID))
+		if err == nil && copied.Refusal != nil && dropErr == nil {
 			writeDatabaseClusterRefusal(w, r, copied.Refusal)
 			return
 		}
@@ -659,6 +692,16 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 			detail = append(detail, boundedAgentDiagnostic(copied.Error))
 		}
 		p.audit(r, "database.copy.failed:"+source.identity.Name, "domain", domainID)
+		if dropErr != nil {
+			// alpha.134 fix round: never "removed again" when it was not. Its
+			// records stay, so it is listed and Delete removes it.
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadGateway)
+			_ = json.NewEncoder(w).Encode(apiErrorBody{Code: errCodeDBCopyFailed, Reason: dbCopyFailedKept, Details: detail,
+				Vars:  map[string]string{"name": dbName},
+				Error: "The copy could not be made, and the new database " + dbName + " could not be removed again: it stays in the list, half copied. Delete it there. The original is unchanged."})
+			return
+		}
 		writeCodedErrorDetails(w, http.StatusBadGateway, errCodeDBCopyFailed,
 			"The copy could not be made, so the new database was removed again. The original is unchanged. Try again; if it fails again, the reason is below.", "", detail)
 		return
@@ -703,25 +746,29 @@ func (p *Panel) insertDatabaseToolsCopyRecords(ctx context.Context, source datab
 }
 
 // dropDatabaseToolsCopy removes a copy that did not finish (engine and records).
-func (p *Panel) dropDatabaseToolsCopy(source databaseToolsTarget, dbName, dbUser string, dbID int) {
+// alpha.134 fix round: the user goes too or the removal counts as failed
+// (RequireUserCleanup), and a failure is answered, so the caller can say what
+// is left; the records stay then, and the database with them in the list.
+func (p *Panel) dropDatabaseToolsCopy(source databaseToolsTarget, dbName, dbUser string, dbID int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), agentRPCDatabaseTimeout)
 	defer cancel()
-	req := transport.DeleteDatabaseRequest{Type: apiTypeNameFor(source.identity.Type), Name: dbName, User: dbUser}
+	req := transport.DeleteDatabaseRequest{Type: apiTypeNameFor(source.identity.Type), Name: dbName, User: dbUser, RequireUserCleanup: true}
 	if source.identity.Type == "postgresql" {
 		req.Port = source.serverPort
 	}
 	var resp transport.DeleteDatabaseResponse
 	if err := p.callAgentContext(ctx, "Agent.DeleteDatabase", req, &resp); err != nil || !resp.Success {
 		log.Printf("database copy cleanup: %s on the engine was not removed: %v %s", dbName, err, boundedAgentDiagnostic(resp.Error))
-		return
+		return errors.Join(err, errors.New("the copy was not removed from the database server"))
 	}
 	if dbID == 0 {
-		return
+		return nil
 	}
 	pool := p.db.GetDB()
 	_, _ = pool.ExecContext(ctx, "DELETE FROM databases_v2 WHERE id = ?", dbID)
 	_, _ = pool.ExecContext(ctx, `DELETE FROM database_users WHERE server_id = ? AND username = ?
 		AND NOT EXISTS (SELECT 1 FROM database_user_grants g WHERE g.user_id = database_users.id)`, source.serverID, dbUser)
+	return nil
 }
 
 // ---- check and repair ----

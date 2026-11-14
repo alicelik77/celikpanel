@@ -83,7 +83,9 @@ type requestIdentityRoutesAgent struct {
 	createDatabaseCalls int
 	provisionCalls      int
 	// nameTaken (alpha.129): the engine answers that this name is taken.
-	nameTaken      string
+	nameTaken string
+	// imported (alpha.134): the databases the import asked the Agent to make.
+	imported       []string
 	inspectEntered chan struct{}
 	inspectRelease chan struct{}
 }
@@ -146,6 +148,16 @@ func (a *requestIdentityRoutesAgent) CreateDatabase(
 		return nil
 	}
 	resp.Success = true
+	return nil
+}
+
+func (a *requestIdentityRoutesAgent) ImportCpmoveDatabase(
+	req *transport.CpmoveImportDBRequest, resp *transport.CpmoveImportDBResponse,
+) error {
+	a.mu.Lock()
+	a.imported = append(a.imported, req.TargetDB)
+	a.mu.Unlock()
+	resp.Imported = true
 	return nil
 }
 

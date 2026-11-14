@@ -177,9 +177,14 @@ durmuş olan durur. Eski dosya bir bağlantıysa ya da yoksa hiçbir değer alı
 yeniden girilene kadar uygulama durdurulur. Sahibin değiştirdiği bir birim korunur; Aracı
 günlüğü onu adıyla yazar.
 
-**Yedekler.** Ortam dosyası sitenin klasöründe olmadığından site yedeği onu taşımaz. Aynı
-sunucuda geri yükleme uygulamanın değerlerini korur; başka bir sunucuda uygulamanın anahtarları
-(ve n8n'in kayıtlı kimlik bilgilerinin bağlı olduğu şifreleme anahtarı) yeniden girilmelidir.
+**Yedekler.** Sitenin dosya ya da tam yedeği uygulamanın `data` ve `config` klasörlerini içerir;
+panelin yeniden kurduğu `dist`, `app-<sürüm>` ve `.cache` klasörlerini dışarıda bırakır ve bunu
+söyler ([SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md)). Bu sürüm geri
+yüklemede hizmet uygulamasının klasörünü geri koymaz: geri yükleme onu adlandırır ve olduğu gibi
+bırakır; veri indirilen yedekten elle alınabilir. Ortam dosyası sitenin klasöründe olmadığından
+site yedeği onu taşımaz. Aynı sunucuda geri yükleme uygulamanın değerlerini korur; başka bir
+sunucuda uygulamanın anahtarları (ve n8n'in kayıtlı kimlik bilgilerinin bağlı olduğu şifreleme
+anahtarı) yeniden girilmelidir.
 
 alpha.119'dan beri uygulama klasörünün kendisi, her başlatmadan önce bir bağlama biriminin
 bağlantı izlemeden yaptığı root'a ait bir bağlamayla korumaya bağlanır

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/hostcmd"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -160,7 +161,22 @@ func (a *Agent) DeleteDatabase(req DeleteDatabaseRequest, resp *DeleteDatabaseRe
 
 // createMySQLDatabase creates a MySQL database and user
 func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatabaseResponse) error {
+	// alpha.134 fix round: the panel's own length rule (database and user),
+	// before anything runs; a name it refuses is never a bare "invalid".
+	if refuseCreateNamesTooLong(req, resp) {
+		return nil
+	}
 	dbIdent, err := services.QuoteMySQLIdentifier(req.Name)
+	if err != nil {
+		resp.Error = fmt.Sprintf("invalid database name: %v", err)
+		return nil
+	}
+	// alpha.134: the grant names the database exactly (`shop\_a`.*); written
+	// as `shop_a`.* it is a pattern that also covers shop1a, shopXa and so
+	// on (internal/mariadbgrant). A name whose exact form is longer than a
+	// grant row holds would be stored cut short - a right on another name -
+	// so such a database is not made at all (refuseCreateNamesTooLong above).
+	grantTarget, err := mariadbgrant.Target(req.Name)
 	if err != nil {
 		resp.Error = fmt.Sprintf("invalid database name: %v", err)
 		return nil
@@ -192,7 +208,7 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 	if _, err := mysqlExecStatement(fmt.Sprintf("CREATE DATABASE %s;", dbIdent)); err != nil {
 		if !hasOperation || !verifyMySQLOwnership(dbIdent, req.OperationID, req.CleanupToken) {
 			resp.Error = "database already exists or could not be created exclusively"
-			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + mysqlLiteral(req.Name) + ";") {
+			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + mysqlLiteral(req.Name) + ";") {
 				resp.NameTaken = "database"
 			}
 			return nil
@@ -207,7 +223,8 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 			"CREATE USER %s@'localhost' IDENTIFIED BY %s;",
 			userLiteral, pwLiteral,
 		)); err != nil {
-			resp.CleanupIncomplete = !cleanupCreatedMySQLResources(dbIdent, "", false, true)
+			resp.Left = cleanupCreatedMySQLResources(req, dbIdent, "", false, true)
+			resp.CleanupIncomplete = len(resp.Left) > 0
 			resp.Error = "database user already exists or could not be created exclusively"
 			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + ";") {
 				resp.NameTaken = "user"
@@ -231,25 +248,20 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 				operationLiteral, hashLiteral,
 			)
 			if _, err := mysqlExecStatement(markerSQL); err != nil {
-				resp.CleanupIncomplete = !cleanupCreatedMySQLResources(
-					dbIdent, userLiteral, userCreated, databaseCreated,
-				)
+				resp.Left = cleanupCreatedMySQLResources(req, dbIdent, userLiteral, userCreated, databaseCreated)
+				resp.CleanupIncomplete = len(resp.Left) > 0
 				resp.Error = "failed to persist database ownership proof"
 				return nil
 			}
 		}
 	}
 
-	if _, err := mysqlExecStatement(fmt.Sprintf(
-		"GRANT ALL PRIVILEGES ON %s.* TO %s@'localhost'; FLUSH PRIVILEGES;",
-		dbIdent, userLiteral,
-	)); err != nil {
+	if _, err := mysqlGrantExactly("ALL PRIVILEGES", grantTarget, mariadbgrant.Exact(req.Name), userLiteral, req.User); err != nil {
 		// A resumed operation already had a durable marker. Preserve it for
 		// retry instead of deleting resources after an ambiguous prior result.
 		if databaseCreated {
-			resp.CleanupIncomplete = !cleanupCreatedMySQLResources(
-				dbIdent, userLiteral, userCreated, databaseCreated,
-			)
+			resp.Left = cleanupCreatedMySQLResources(req, dbIdent, userLiteral, userCreated, databaseCreated)
+			resp.CleanupIncomplete = len(resp.Left) > 0
 		} else {
 			resp.CleanupIncomplete = true
 		}
@@ -260,6 +272,18 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 	resp.Success = true
 	resp.OwnedByOperation = hasOperation
 	return nil
+}
+
+// refuseCreateNamesTooLong answers NameTooLong when the database or its user
+// does not fit the engine (services.DatabaseNamesOver, the rule the panel
+// checks first); nothing has run.
+func refuseCreateNamesTooLong(req CreateDatabaseRequest, resp *CreateDatabaseResponse) bool {
+	if services.DatabaseNamesOver(req.Type, req.Name, req.User).By == 0 {
+		return false
+	}
+	resp.NameTooLong = true
+	resp.Error = "the database name or its user's name is too long for the database server; nothing was created"
+	return true
 }
 
 // mysqlNameExists answers a "n=<count>" question; an unreadable answer is
@@ -309,26 +333,31 @@ func verifyMySQLOwnership(dbIdent, operationID, cleanupToken string) bool {
 	return err == nil && strings.TrimSpace(string(output)) == "1"
 }
 
+// cleanupCreatedMySQLResources takes back what this call made, the user
+// first (its rights go with it), then the database, and answers the names it
+// could not remove (alpha.134 fix round: the panel names them; empty when
+// everything went).
 func cleanupCreatedMySQLResources(
+	req CreateDatabaseRequest,
 	dbIdent, userLiteral string,
 	userCreated, databaseCreated bool,
-) bool {
-	complete := true
+) []string {
+	var left []string
 	if userCreated && userLiteral != "" {
 		if _, err := mysqlExecStatement(fmt.Sprintf(
 			"DROP USER IF EXISTS %s@'localhost';", userLiteral,
 		)); err != nil {
-			complete = false
+			left = append(left, req.User)
 		}
 	}
 	if databaseCreated {
 		if _, err := mysqlExecStatement(fmt.Sprintf(
 			"DROP DATABASE IF EXISTS %s;", dbIdent,
 		)); err != nil {
-			complete = false
+			left = append(left, req.Name)
 		}
 	}
-	return complete
+	return left
 }
 
 // deleteMySQLDatabase deletes a MySQL database and user
@@ -450,6 +479,9 @@ func databaseClientMeaning(text string) string {
 // PostgreSQL veritabanı ve kullanıcısı artık yalnız yeni oluşturulur; var
 // olan rol ya da veritabanı devralınmaz.
 func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *CreateDatabaseResponse) error {
+	if refuseCreateNamesTooLong(req, resp) {
+		return nil
+	}
 	userIdent, err := services.QuotePGIdentifier(req.User)
 	if err != nil {
 		resp.Error = fmt.Sprintf("invalid username: %v", err)
@@ -535,7 +567,7 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 			resp.Error = hostcmd.Fail("failed to create database", output, err, databaseClientMeaning).Error()
 			if roleCreated {
 				if _, dropErr := run("DROP ROLE IF EXISTS " + userIdent + ";"); dropErr != nil {
-					resp.CleanupIncomplete = true
+					resp.CleanupIncomplete, resp.Left = true, []string{req.User}
 				}
 			}
 			return nil

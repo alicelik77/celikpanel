@@ -45,6 +45,11 @@ type DatabaseRemoteApplyRequest struct {
 	// and the engine's own rules still close every address. Only the switch
 	// turned off undoes it. An older panel sends false: alpha.130 behaviour.
 	ServerOffered bool
+	// ExactCopies (alpha.134): a remote copy's grant held in the pattern form
+	// (written before alpha.134) may be rewritten to the exact form now - the
+	// panel's rewrite of rights to exact names is allowed to run (the update
+	// is verified, the server is quiet). False leaves such a grant as it is.
+	ExactCopies bool
 }
 
 // DatabaseRemoteNarrowRequest (alpha.130, D5) narrows the address filter to

@@ -236,6 +236,9 @@ type Panel struct {
 	updateDiscovery   *panelUpdateDiscoveryScheduler
 	updateDiscoveryMu sync.Mutex
 	updateAdmittedAt  atomic.Int64
+	// startedAt (alpha.134): when this panel process started; the rewrite of
+	// database rights waits a few minutes after it (database_grant_forms.go).
+	startedAt atomic.Int64
 	// The request id of that admitted start, read by the deferred startup
 	// mail work so it waits while the Agent reports the update queued or
 	// running (a124 lab, startup_deferred_mail.go). Nil when none.
@@ -370,6 +373,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "dnssec", getPost
 	case "ssl/mail":
 		match.kind, match.methods = "ssl-mail", []string{http.MethodGet, http.MethodPut}
+	case "ssl/coverage":
+		// alpha.134: what the domain's certificate protects (read only).
+		match.kind, match.methods = "ssl-coverage", []string{http.MethodGet}
 	case "ssl/retry":
 		match.kind, match.methods = "ssl-retry", []string{http.MethodPost}
 	case "ssl/renewal":
@@ -410,6 +416,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "backup-restore", []string{http.MethodPost, http.MethodOptions}
 	case "backups/download":
 		match.kind, match.methods = "backup-download", []string{http.MethodGet}
+	case "backups/contents":
+		// What a backup of this site holds, measured before one is made.
+		match.kind, match.methods = "backup-contents", []string{http.MethodGet}
 	case "backups":
 		match.kind, match.methods = "backups", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
 	// alpha.118: remote backups of the site.
@@ -628,6 +637,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainDNSSEC(w, r, match.domainID)
 	case "ssl-mail":
 		p.handleDomainSSLMail(w, r, match.domainID)
+	case "ssl-coverage":
+		p.handleCertificateCoverage(w, r, match.domainID)
 	case "ssl-retry":
 		p.handleRetrySSLActivation(w, r)
 	case "ssl-renewal":
@@ -660,6 +671,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleRestoreBackup(w, r)
 	case "backup-download":
 		p.handleDownloadBackup(w, r)
+	case "backup-contents":
+		p.handleBackupContents(w, r)
 	case "backups":
 		p.handleDomainBackups(w, r)
 	case "backup-remote", "backup-remote-policy", "backup-remote-objects", "backup-remote-send",
@@ -1951,6 +1964,9 @@ func main() {
 	// alpha.133: every database the caller may see (the left-menu Databases
 	// page); the exact path wins over the /api/v1/databases/ prefix below.
 	http.HandleFunc(databasesVisiblePath, panel.handleVisibleDatabases)
+	// alpha.134: the administrator's view of the rights rewritten to exact
+	// database names (read only).
+	http.HandleFunc(databaseGrantFormsPath, panel.handleDatabaseGrantForms)
 
 	// Database operations
 	http.HandleFunc("/api/v1/databases/", func(w http.ResponseWriter, r *http.Request) {
@@ -2037,6 +2053,8 @@ func main() {
 	// alpha.129: remote access to databases follows plans, suspensions and
 	// the server switch (database_remote.go).
 	panel.startDatabaseRemoteSync(discoveryCtx)
+	// alpha.134: database rights by exact name (database_grant_forms.go).
+	panel.startDatabaseGrantForms(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.

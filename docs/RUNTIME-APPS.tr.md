@@ -369,6 +369,18 @@ kalır.
 
 SMTP çıkış engeli panel olmadan da çalışır ([SITE-SANDBOX.tr.md §4](SITE-SANDBOX.tr.md)).
 
+### Yedekler
+
+Sitenin dosya ya da tam yedeği `public_html` ile birlikte `app` klasörünü de
+içerir ([SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md)).
+Python uygulamasının `.pip-cache`, `.build-tmp` ve yarım kalmış
+`venv-<n>.partial` klasörlerini, soketleri ve başka hesabın dosyalarını dışarıda
+bırakır ve her birini adlandırır. Bağlantılar (Python ortamı) bağlantı olarak
+saklanır. Ortam dosyası hiçbir zaman yedekte yer almaz. Böyle bir yedeğin geri
+yüklemesi çalışan programı durdurur, klasörü site hesabı sahibi olarak geri
+koyar ve programı yeniden başlatır; durdurulmuş program durmuş kalır. Bundan
+önce alınan yedekler programı içermiyordu; Yedekler sekmesi bunu söyler.
+
 ## 14. Kapsam dışı
 
 - 2525 numaralı port ve web posta API'leri üzerinden gönderilen e-posta (yalnız 25, 465 ve 587

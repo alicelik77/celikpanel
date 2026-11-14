@@ -57,6 +57,23 @@ func compensateCreatedDatabase(
 	return errors.Join(compensationErrors...)
 }
 
+// writeDatabaseCreateFailure answers an engine step of a create that failed
+// after the engine had made something, once compensateCreatedDatabase ran.
+// alpha.134 fix round (D-024): a clean-up that did not finish is not taken for
+// "nothing was changed": the engine is asked what is still there, and what is
+// left of this request's own work is named (writeDatabaseCreateLeftOver). A
+// clean-up whose errors left nothing (a statement after a DROP that went
+// through) answers the step's own refusal, as before.
+func writeDatabaseCreateFailure(w http.ResponseWriter, r *http.Request, server *core.DatabaseServer, driver services.DatabaseDriver, database, ownUser string, cause, compensation error) {
+	if compensation != nil {
+		if left := databaseCreateLeftOver(driver, database, ownUser); len(left) > 0 {
+			writeDatabaseCreateLeftOver(w, r, database, left, errors.Join(cause, compensation))
+			return
+		}
+	}
+	writeDatabaseEngineErrorFor(w, r, server, databaseMutationError(cause, compensation))
+}
+
 func databaseMutationError(cause error, compensation error) error {
 	if compensation == nil {
 		return cause
@@ -671,6 +688,10 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 			writeDatabaseNameTaken(w, "database", dbName)
 			return
 		}
+		if errors.Is(err, services.ErrDatabaseNameTooLong) {
+			writeDatabaseNameTooLong(w, dbName, services.DatabaseNamesOver(dbDriverTypeFor(server), dbName))
+			return
+		}
 		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
@@ -689,24 +710,24 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	var newUser *core.DatabaseUser
 	userCreated := false
 	if newUserSecret != "" {
+		// CreateUser makes no account when it answers an error (its CREATE
+		// USER is its last statement), so its clean-up leaves the name alone.
 		if err := driver.CreateUser(selectedUser.Username, newUserSecret); err != nil {
 			compensation := compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, false)
 			if databaseNameTakenByEngine(err) && compensation == nil {
 				writeDatabaseNameTaken(w, "user", selectedUser.Username)
 				return
 			}
-			writeDatabaseEngineErrorFor(w, r, server, databaseMutationError(
-				fmt.Errorf("create physical database user: %w", err), compensation,
-			))
+			writeDatabaseCreateFailure(w, r, server, driver, dbName, "",
+				fmt.Errorf("create physical database user: %w", err), compensation)
 			return
 		}
 		userCreated = true
 		// alpha.128 (G5): the new user's connection limit, from its limits.
 		if err := p.applyNewUserConnectionLimit(ctx, server, driver, subscriptionID, selectedUser.Username); err != nil {
-			writeDatabaseEngineErrorFor(w, r, server, databaseMutationError(
+			writeDatabaseCreateFailure(w, r, server, driver, dbName, selectedUser.Username,
 				fmt.Errorf("set the database user's connection limit: %w", err),
-				compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, true),
-			))
+				compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, true))
 			return
 		}
 		newUser = &core.DatabaseUser{
@@ -723,24 +744,38 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		privileges = "ALL"
 	}
 
+	// The user this request made itself, the only one its clean-up may count.
+	ownUser := ""
+	if userCreated {
+		ownUser = selectedUser.Username
+	}
 	if err := driver.GrantPrivileges(dbName, selectedUser.Username, privileges); err != nil {
 		// A driver error may represent a partially-applied grant. The database
 		// was created by this request, so revoking on it is safe.
-		writeDatabaseEngineErrorFor(w, r, server, databaseMutationError(
+		writeDatabaseCreateFailure(w, r, server, driver, dbName, ownUser,
 			fmt.Errorf("grant physical database privileges: %w", err),
-			compensateCreatedDatabase(driver, dbName, selectedUser.Username, true, userCreated),
-		))
+			compensateCreatedDatabase(driver, dbName, selectedUser.Username, true, userCreated))
 		return
 	}
+	p.noteGrantReadBack(ctx, server, driver, dbName, selectedUser.Username)
 
 	// Publish database, optional user, and grant together. No observer can see
 	// a half-created metadata graph.
+	// A failure here takes the engine's work back too; when that does not
+	// finish, the answer names what is left (writeDatabaseCreateFailure).
+	failRecords := func(cause error) {
+		compensation := compensateCreatedDatabase(driver, dbName, selectedUser.Username, true, userCreated)
+		if compensation != nil {
+			if left := databaseCreateLeftOver(driver, dbName, ownUser); len(left) > 0 {
+				writeDatabaseCreateLeftOver(w, r, dbName, left, errors.Join(cause, compensation))
+				return
+			}
+		}
+		writeServerError(w, errors.Join(cause, compensation))
+	}
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
-		writeServerError(w, databaseMutationError(
-			fmt.Errorf("begin database metadata transaction: %w", err),
-			compensateCreatedDatabase(driver, dbName, selectedUser.Username, true, userCreated),
-		))
+		failRecords(fmt.Errorf("begin database metadata transaction: %w", err))
 		return
 	}
 	failMetadata := func(cause error) {
@@ -751,13 +786,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		if rollbackErr != nil {
 			rollbackErr = fmt.Errorf("rollback database metadata transaction: %w", rollbackErr)
 		}
-		writeServerError(w, errors.Join(
-			cause,
-			rollbackErr,
-			compensateCreatedDatabase(
-				driver, dbName, selectedUser.Username, true, userCreated,
-			),
-		))
+		failRecords(errors.Join(cause, rollbackErr))
 	}
 
 	dbRepo := repositories.NewPostgresDatabaseV2Repository(tx)
@@ -867,7 +896,7 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(databaseDeletionAnswer("deleted", deleted))
+	json.NewEncoder(w).Encode(databaseDeletionAnswerFor(r, "deleted", deleted))
 }
 
 // User Management Endpoints (per server)
@@ -1348,6 +1377,7 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
+	p.noteGrantReadBack(ctx, server, driver, database.Name, user.Username)
 
 	// Store grant
 	grantRepo := repositories.NewPostgresDatabaseGrantRepository(p.db.GetDB())
@@ -1464,11 +1494,18 @@ func (p *Panel) handleRevokeDatabaseAccess(w http.ResponseWriter, r *http.Reques
 				regrantErr,
 			)
 		}
+		p.noteGrantReadBack(ctx, server, driver, database.Name, user.Username)
 		writeServerError(w, errors.Join(
 			fmt.Errorf("delete database grant metadata: %w", err),
 			regrantErr,
 		))
 		return
+	}
+	// The revoked right is gone: a listing of it (a too long name written in
+	// the pattern form) goes too (verification of the second review).
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM database_grant_forms WHERE engine_key = ? AND kind = 'ours' AND state = 'left' AND database_name = ? AND username = ?`,
+		databaseServerEngineIdentity(server), database.Name, user.Username); err != nil {
+		log.Printf("database rights on %s: the listing of %s on %s could not be removed: %v", databaseServerEngineIdentity(server), user.Username, database.Name, err)
 	}
 
 	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)

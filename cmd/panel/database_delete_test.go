@@ -27,17 +27,28 @@ import (
 type recordedDatabaseDrops struct {
 	requests []transport.DeleteDatabaseRequest
 	answer   func(*transport.DeleteDatabaseResponse) error
+	// alpha.134: the removal of the rights naming the dropped database from
+	// every grantee (Agent.RemoveDroppedDatabaseRightsV1).
+	sweeps      []transport.DroppedDatabaseRightsRequest
+	sweepAnswer func(*transport.DroppedDatabaseRightsResponse) error
 }
 
 func recordDatabaseDrops(t *testing.T) *recordedDatabaseDrops {
 	t.Helper()
-	drops := &recordedDatabaseDrops{answer: func(resp *transport.DeleteDatabaseResponse) error { resp.Success = true; return nil }}
-	saved := databaseDeleteAgent
+	drops := &recordedDatabaseDrops{
+		answer:      func(resp *transport.DeleteDatabaseResponse) error { resp.Success = true; return nil },
+		sweepAnswer: func(resp *transport.DroppedDatabaseRightsResponse) error { resp.Applied = true; return nil },
+	}
+	saved, savedSweep := databaseDeleteAgent, databaseDroppedRightsAgent
 	databaseDeleteAgent = func(_ *Panel, _ context.Context, req transport.DeleteDatabaseRequest, resp *transport.DeleteDatabaseResponse) error {
 		drops.requests = append(drops.requests, req)
 		return drops.answer(resp)
 	}
-	t.Cleanup(func() { databaseDeleteAgent = saved })
+	databaseDroppedRightsAgent = func(_ *Panel, _ context.Context, req transport.DroppedDatabaseRightsRequest, resp *transport.DroppedDatabaseRightsResponse) error {
+		drops.sweeps = append(drops.sweeps, req)
+		return drops.sweepAnswer(resp)
+	}
+	t.Cleanup(func() { databaseDeleteAgent, databaseDroppedRightsAgent = saved, savedSweep })
 	return drops
 }
 

@@ -84,6 +84,12 @@ func newVisibleDatabasesFixture(t *testing.T) visibleDatabasesFixture {
 		return nil
 	}
 	t.Cleanup(func() { databaseDeleteAgent = savedAgent })
+	savedSweep := databaseDroppedRightsAgent
+	databaseDroppedRightsAgent = func(_ *Panel, _ context.Context, _ transport.DroppedDatabaseRightsRequest, resp *transport.DroppedDatabaseRightsResponse) error {
+		resp.Applied = true
+		return nil
+	}
+	t.Cleanup(func() { databaseDroppedRightsAgent = savedSweep })
 	f.panel.databaseAccessNative = &fakeDatabaseAccessNative{}
 
 	impersonation, err := f.panel.sessions.CreateImpersonation(context.Background(), authzMatrixCustomerID, authzMatrixAdminID)

@@ -90,6 +90,8 @@ import type { PgLeftoversScreenKey } from './screens/pgLeftovers/en';
 import type { DomainSectionsScreenKey } from './screens/domainSections/en';
 import type { DeletionGuideScreenKey } from './screens/deletionGuide/en';
 import type { DeletionGuidePeerScreenKey } from './screens/deletionGuidePeer/en';
+import type { CertCoverageScreenKey } from './screens/certCoverage/en';
+import type { SiteBackupScreenKey } from './screens/siteBackup/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -330,8 +332,6 @@ export const en = {
     'login.invalid': 'Invalid username or password.',
     'login.failed': 'Sign-in failed. Please try again.',
     'login.tooMany': 'Too many attempts. Please wait a moment and try again.',
-    'login.demoTitle': 'Demo accounts',
-    'login.demoHint': 'Development mode — click a role to fill the form.',
 
     'theme.label': 'Theme',
     'theme.light': 'Light',
@@ -605,5 +605,7 @@ export type ScreenKey =
     | PgLeftoversScreenKey
     | DomainSectionsScreenKey
     | DeletionGuideScreenKey
-    | DeletionGuidePeerScreenKey;
+    | DeletionGuidePeerScreenKey
+    | CertCoverageScreenKey
+    | SiteBackupScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;
