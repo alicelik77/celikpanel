@@ -185,22 +185,44 @@ scenario('team member who only reads: the webmail link and nothing else', async 
   assert.equal(attr('data-row-more').length, 0);
 });
 
+// Every control on a mailbox row is named: by its words, or (the quota's
+// pencil) by its aria-label. Release check of 15 Nov 2026: no row may carry a
+// button without a name, in any webmail state.
+const rowControls = () => tree.root.findAll((node) => node.type === 'tr')
+  .flatMap((row) => row.findAll((node) => node.type === 'button' || node.type === 'a'));
+const unnamedRowControls = () => {
+  const controls = rowControls();
+  // The rows are there: each has at least its quota pencil and Password….
+  assert.ok(controls.filter((node) => node.props['aria-label'] === 'mail.editQuota').length === 2 && controls.length >= 4, 'the rows were not found');
+  return controls.filter((node) => !words(node).trim() && !node.props['aria-label']);
+};
+
 for (const role of ['admin', 'customer']) {
-  scenario(`${role}: webmail without an address → the card is the problem with its fix, and no row offers webmail`, async () => {
-    serve({ role, webmail: setup({ webmail_available: false, webmail_url: '', webmail_reason: 'no_address' }) });
+  scenario(`${role}: webmail with its address → each row has a named Webmail, and no control without a name`, async () => {
+    serve({ role });
     await mount();
-    assert.equal(attr('data-webmail-access').length, 1);
-    assert.equal(attr('data-row-action', 'webmail').length, 0, 'a row offers webmail that cannot open');
-    assert.deepEqual(visible('info@example.com'), ['password']);
-    const links = attr('data-webmail-action');
-    if (role === 'admin') {
-      assert.ok(text().includes('adminNext.webmail.no_address'));
-      assert.deepEqual(links.map((node) => node.props.href), ['/components/roundcube']);
-    } else {
-      assert.ok(text().includes('mail.webmail.tenant.no_address'));
-      assert.equal(links.length, 0, 'a customer is offered an administrator’s page');
-    }
+    assert.equal(attr('data-row-action', 'webmail').length, 2);
+    assert.ok(attr('data-row-action', 'webmail').every((node) => words(node).includes('mail.row.webmail')));
+    assert.deepEqual(unnamedRowControls(), []);
   });
+  for (const reason of ['no_address', 'not_installed']) {
+    scenario(`${role}: webmail ${reason} → the card is the problem with its fix, and no row offers webmail or an unnamed button`, async () => {
+      serve({ role, webmail: setup({ webmail_available: false, webmail_url: '', webmail_reason: reason }) });
+      await mount();
+      assert.equal(attr('data-webmail-access').length, 1, 'the problem is said once');
+      assert.equal(attr('data-row-action', 'webmail').length, 0, 'a row offers webmail that cannot open');
+      assert.deepEqual(visible('info@example.com'), ['password']);
+      assert.deepEqual(unnamedRowControls(), [], 'a row carries a button without a name');
+      const links = attr('data-webmail-action');
+      if (role === 'admin') {
+        assert.ok(text().includes(`adminNext.webmail.${reason}`));
+        assert.ok(links.length === 1 && String(links[0].props.href).startsWith('/components'), 'the administrator gets the one action that fixes it');
+      } else {
+        assert.ok(text().includes(`mail.webmail.tenant.${reason}`));
+        assert.equal(links.length, 0, 'a customer is offered an administrator’s page');
+      }
+    });
+  }
 }
 
 for (const role of ['customer', 'reseller', 'additional_user']) {

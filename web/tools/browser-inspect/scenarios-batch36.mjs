@@ -8,6 +8,9 @@
 //                each row's limit line (a refusal count after "·"), the
 //                quota beside it, Webmail / Password… / More (administrator
 //                and customer)
+//   y36webmail   A mailbox row in each webmail state (address set, installed
+//                without an address, not installed), administrator and
+//                customer: Webmail only with an address, no unnamed button
 //   y36deleted   Deleting a domain with its databases ticked, as the
 //                administrator: the finished window with the Databases
 //                page's own lines, alpha.134's rights facts included
@@ -129,6 +132,39 @@ export default function batch36(scenarios, { base, locale, theme, out, viewport,
             await pause(300);
             await snap(page, `mail-${role}`, '[data-outgoing-line]', { role });
             await closePage(page);
+        }
+        await reset(); await ctl({ clearAll: true, domains: [] });
+    };
+
+    // Release check (15 Nov 2026): a mailbox row in each webmail state - the
+    // address set, installed without an address, not installed - as the
+    // administrator and as a customer. Only with an address does a row offer
+    // Webmail; otherwise the card says the problem once, to who can act.
+    scenarios.y36webmail = async () => {
+        const states = [
+            ['address', SETUP],
+            ['no-address', { ...SETUP, webmail_available: false, webmail_url: '', webmail_reason: 'no_address' }],
+            ['not-installed', { ...SETUP, webmail_available: false, webmail_url: '', webmail_reason: 'not_installed' }],
+        ];
+        for (const role of ['admin', 'customer']) {
+            for (const [name, setup] of states) {
+                const page = await open('/domains/example.com?section=mail', {
+                    [ME]: { status: 200, body: USERS[role] },
+                    '/api/v1/domains/1/mail/accounts': { method: 'GET', status: 200, body: ACCOUNTS },
+                    '/api/v1/domains/1/mail/forwardings': { method: 'GET', status: 200, body: { forwardings: [] } },
+                    '/api/v1/domains/1/mail/quota': { method: 'GET', status: 200, body: QUOTA },
+                    '/api/v1/domains/1/mail/setup': { method: 'GET', status: 200, body: setup },
+                    '/api/v1/domains/1/mail/outgoing': { method: 'GET', status: 200, body: { ...OUTGOING, enforced: false, state: 'off' } },
+                });
+                await waitFor(page, () => !!document.querySelector('[data-row-actions]'), 20000).catch(() => {});
+                await pause(700);
+                const unnamed = await page.evaluate(() => Array.from(document.querySelectorAll('tr button, tr a'))
+                    .filter((node) => node.getClientRects().length > 0 && !(node.innerText || '').trim() && !node.getAttribute('aria-label')).length);
+                await page.evaluate(() => (document.querySelector('[data-webmail-access]') || document.querySelector('[data-row-actions]'))?.scrollIntoView({ block: 'start' }));
+                await pause(300);
+                await snap(page, `webmail-${name}-${role}`, '[data-row-actions]', { role, unnamed });
+                await closePage(page);
+            }
         }
         await reset(); await ctl({ clearAll: true, domains: [] });
     };
