@@ -26,9 +26,7 @@ func TestInitialServiceMutationLedgerCheckAcceptsOnlyInitializerOutput(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := checkInitialServiceMutationLedger(stateDir, lockPath); err != nil {
-			t.Fatalf("exact initial ledger rejected: %v", err)
-		}
+		requireServiceMutationIdleProof(t, checkInitialServiceMutationLedger(stateDir, lockPath), "exact initial ledger")
 		after, err := os.ReadFile(ledgerPath)
 		if err != nil {
 			t.Fatal(err)
@@ -319,9 +317,7 @@ func TestInitialServiceMutationLedgerPublishIsCrashSafeNoReplace(t *testing.T) {
 					t.Fatalf("retry after pre-rename fault: %v", err)
 				}
 			case initialLedgerPublishAfterRename:
-				if err := checkInitialServiceMutationLedger(stateDir, lockPath); err != nil {
-					t.Fatalf("post-rename fault left invalid final ledger: %v", err)
-				}
+				requireServiceMutationIdleProof(t, checkInitialServiceMutationLedger(stateDir, lockPath), "final ledger after a post-rename fault")
 				beforeInfo, err := os.Stat(ledgerPath)
 				if err != nil {
 					t.Fatal(err)
@@ -407,9 +403,7 @@ func TestInitialServiceMutationLedgerAbandonedStageContract(t *testing.T) {
 		if links := initialLedgerTestLinkCount(t, ledgerPath); links != 1 {
 			t.Fatalf("retry final ledger links=%d want 1", links)
 		}
-		if err := checkInitialServiceMutationLedger(stateDir, lockPath); err != nil {
-			t.Fatalf("retry final state rejected: %v", err)
-		}
+		requireServiceMutationIdleProof(t, checkInitialServiceMutationLedger(stateDir, lockPath), "retry final state")
 
 		writeInitialLedgerTestStage(t, stateDir, ".service-mutations-initial-987654321.json", expected)
 		if err := checkInitialServiceMutationLedger(stateDir, lockPath); !errors.Is(err, errInitialServiceMutationLedgerInvalid) {

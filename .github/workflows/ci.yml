@@ -158,6 +158,15 @@ jobs:
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./cmd/agent ./cmd/panel -run 'TestRecovery(CheckStandalone|AgentCheckerStandalone)|TestPendingRollback' -count=1
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./cmd/panel -run '^TestRecoveryDatabaseMigration' -count=1
 
+      # The host lock probe answers idle only when it can read every process's
+      # descriptors (root, as the Agent runs); the unprivileged suite above sees
+      # its "could not be established" answer. Run the probe and the idle checks
+      # that use it as root as well (alpha.136).
+      - name: Verify the host mutation lock probe as root
+        run: |
+          sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./internal/hostmutationlock -count=1
+          sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./cmd/agent -count=1 -run '^Test(InitialServiceMutationLedger|ServiceMutationReadiness|ServiceMutationIdleCheck|ServiceMutationSharedExclusion)'
+
       # These fixture contracts mock transport; they do not boot QEMU or prove native recovery.
       # Bu testler iletişimi taklit eder; QEMU başlatmaz veya gerçek kurtarmayı kanıtlamaz.
       # Full checkout history above retains the exact released Alpha75 bootstrap object.
