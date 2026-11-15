@@ -149,7 +149,7 @@ printf 'recovery runtime shell contract: ok\n'
 # Redirect only the fixed selected CLI path into this private fixture.
 eval "$(extract_function prepare_independent_recovery_runtime | sed 's@/usr/libexec/celikpanel/recovery@"$TEST_ROOT/selected-recovery"@g')"
 # a125: the compatibility check waits, bounded, for a running Agent operation.
-for name in update_agent_refusal_is_transient run_update_probe_waiting \
+for name in update_agent_refusal_is_transient update_refusal_is_package_manager run_update_probe_waiting \
     recovery_compatibility_refusal_is_transient run_recovery_compatibility_waiting; do
     eval "$(extract_function "$name")"
 done

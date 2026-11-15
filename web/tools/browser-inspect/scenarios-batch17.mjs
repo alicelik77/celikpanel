@@ -4,7 +4,8 @@
 //
 //   steps88       an update this browser started (its stored record 10 s old,
 //                 inside the navigation lock): the download with measured
-//                 bytes, then the Panel down (the restart step, time-based),
+//                 bytes, then the server check with its waiting note
+//                 (a137), then the Panel down (the restart step, time-based),
 //                 then PANEL_STARTING (still the restart), then the new
 //                 version answering ("verify the new version"), then
 //                 succeeded ("Updated to" with the build id)
@@ -97,6 +98,10 @@ export default function batch17(scenarios, { base, locale, theme, out, viewport,
         await ctl({ update: running('prepare') });
         await stepRuns(page, 'prepare');
         await pause(800);
+        // a137: the prepare step's note says what the update waits for (another
+        // server change or the host package manager), for how long at most, and
+        // that nothing needs to be done.
+        await snap(page, 'prepare');
         // The Panel stops: every API request loses its connection.
         await ctl({ mode: 'down' });
         const down = Date.now();

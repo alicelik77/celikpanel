@@ -484,6 +484,55 @@ func linuxPackageKitTransactionLockPaths() []string {
 	}
 }
 
+// linuxProcessVanished reports a /proc read that failed because the process
+// ended while it was being read: the kernel answers ENOENT for an entry that
+// is already gone and ESRCH for one that is being torn down. Such a process is
+// gone, the same rule internal/hostmutationlock's descriptor walk uses.
+// Okunurken sona eren süreç (ENOENT ya da ESRCH) gitmiş sayılır.
+func linuxProcessVanished(err error) bool {
+	return errors.Is(err, unix.ENOENT) || errors.Is(err, unix.ESRCH)
+}
+
+// linuxProcessEnded is the stricter form for a process the scan already listed
+// and now asks more about: ESRCH is the kernel saying it is ending; a missing
+// file counts only when the process directory itself is gone as well, so a
+// live process with an unreadable entry is never taken for an ended one.
+// Listelenmiş süreç için: ESRCH bitiyor demektir; eksik dosya ancak süreç
+// dizini de yoksa bitmiş sayılır.
+func linuxProcessEnded(processDir string, err error) bool {
+	if errors.Is(err, unix.ESRCH) {
+		return true
+	}
+	if !errors.Is(err, unix.ENOENT) {
+		return false
+	}
+	_, statErr := os.Lstat(processDir)
+	return linuxProcessVanished(statErr)
+}
+
+// The per-process /proc readers of the package scan; tests replace them to
+// feed the errors a real ending process produces (ESRCH cannot be made with a
+// plain file).
+var (
+	linuxProcReadFile = os.ReadFile
+	linuxProcOpen     = os.Open
+)
+
+// apt-daily.service and apt-daily-upgrade.service (Debian and Ubuntu) run
+// /usr/lib/apt/apt.systemd.daily, whose kernel-truncated process name is
+// "apt.systemd.dai"; apt-daily first runs "apt-helper wait-online". The script
+// then runs apt-get check and apt-get update, and the upgrade service runs
+// unattended-upgrade, which install packages. Counting the runner itself makes
+// a run busy from its first moment instead of only once apt-get appears: a
+// systemctl daemon-reload re-draws apt-daily.timer's random delay (systemd's
+// timer_coldplug -> timer_enter_waiting -> add_random, FixedRandomDelay=no), so
+// the updater's own reloads can start a run seconds before its checks.
+// apt-daily çalıştırıcısı ilk anından meşgul sayılır; yalnız apt-get göründüğünde değil.
+const (
+	aptDailyRunnerComm = "apt.systemd.dai"
+	aptHelperComm      = "apt-helper"
+)
+
 func linuxPackageProcessBusyWith(procRoot string, packageKitLocks []string) (bool, error) {
 	entries, err := os.ReadDir(procRoot)
 	if err != nil {
@@ -491,6 +540,7 @@ func linuxPackageProcessBusyWith(procRoot string, packageKitLocks []string) (boo
 	}
 	packageProcesses := map[string]struct{}{
 		"apt": {}, "apt-get": {}, "dpkg": {}, "dpkg-deb": {},
+		aptDailyRunnerComm: {}, aptHelperComm: {},
 		"pacman": {}, "makepkg": {},
 		"dnf": {}, "dnf5": {}, "yum": {}, "microdnf": {},
 		"rpm": {}, "rpmdb": {},
@@ -508,9 +558,9 @@ func linuxPackageProcessBusyWith(procRoot string, packageKitLocks []string) (boo
 		if name == "" || name[0] < '0' || name[0] > '9' {
 			continue
 		}
-		raw, readErr := os.ReadFile(filepath.Join(procRoot, name, "comm"))
+		raw, readErr := linuxProcReadFile(filepath.Join(procRoot, name, "comm"))
 		if readErr != nil {
-			if os.IsNotExist(readErr) {
+			if linuxProcessVanished(readErr) {
 				continue
 			}
 			return false, fmt.Errorf("read package process identity: %w", readErr)
@@ -547,7 +597,12 @@ func linuxPackageProcessBusyWith(procRoot string, packageKitLocks []string) (boo
 // APT arka ucu, alt süreç yok, apt/dpkg kilidi tutulmuyor ve beklenmiyor. Okunamayan
 // ya da beklenmeyen kanıt false döner; hizmet meşgul sayılmaya devam eder.
 func packageKitDaemonProvablyIdle(procRoot string, pid int, lockPaths []string) bool {
-	if !packageKitDaemonUsesAPTBackend(procRoot, pid) {
+	apt, gone := packageKitDaemonUsesAPTBackend(procRoot, pid)
+	if gone {
+		// The daemon ended after it was listed: it is gone, not busy.
+		return true
+	}
+	if !apt {
 		return false
 	}
 	hasChild, err := linuxProcessHasChild(procRoot, pid)
@@ -558,17 +613,24 @@ func packageKitDaemonProvablyIdle(procRoot string, pid int, lockPaths []string) 
 	return err == nil && !held
 }
 
-func packageKitDaemonUsesAPTBackend(procRoot string, pid int) bool {
-	file, err := os.Open(filepath.Join(procRoot, strconv.Itoa(pid), "maps"))
+// packageKitDaemonUsesAPTBackend answers apt only from a complete maps read;
+// gone when the daemon ended while it was being read. Any other failure is
+// neither (the daemon stays counted as busy).
+func packageKitDaemonUsesAPTBackend(procRoot string, pid int) (apt, gone bool) {
+	processDir := filepath.Join(procRoot, strconv.Itoa(pid))
+	file, err := linuxProcOpen(filepath.Join(processDir, "maps"))
 	if err != nil {
-		return false
+		return false, linuxProcessEnded(processDir, err)
 	}
 	defer file.Close()
 	raw, err := io.ReadAll(io.LimitReader(file, packageKitMapsReadLimit+1))
-	if err != nil || len(raw) > packageKitMapsReadLimit {
-		return false
+	if err != nil {
+		return false, linuxProcessEnded(processDir, err)
 	}
-	return packageKitMapsShowOnlyAPTBackend(string(raw))
+	if len(raw) > packageKitMapsReadLimit {
+		return false, false
+	}
+	return packageKitMapsShowOnlyAPTBackend(string(raw)), false
 }
 
 // packageKitMapsShowOnlyAPTBackend answers true only when the maps text maps at
@@ -626,9 +688,9 @@ func linuxProcessHasChild(procRoot string, pid int) (bool, error) {
 		if !entry.IsDir() || name == "" || name[0] < '0' || name[0] > '9' || name == want {
 			continue
 		}
-		raw, readErr := os.ReadFile(filepath.Join(procRoot, name, "status"))
+		raw, readErr := linuxProcReadFile(filepath.Join(procRoot, name, "status"))
 		if readErr != nil {
-			if os.IsNotExist(readErr) || errors.Is(readErr, unix.ESRCH) {
+			if linuxProcessVanished(readErr) {
 				continue
 			}
 			return false, readErr

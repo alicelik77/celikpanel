@@ -302,24 +302,48 @@ update_agent_refusal_is_transient() {
     return 1
 }
 
+# The refusal names the host package manager, as the Agent alone decides it
+# (cmd/agent service_mutation_lock_linux.go), rather than an Agent operation.
+# Ret, Agent işlemi yerine sunucunun paket yöneticisini adlandırıyor.
+update_refusal_is_package_manager() {
+    case "${update_failure_detail:-}" in
+        *': the host package manager is active'*) return 0 ;;
+    esac
+    return 1
+}
+
 # run_update_probe_waiting CLASSIFIER PROBE...: one read; while CLASSIFIER says
-# the refusal is transient, read again every poll until the bound.
+# the refusal is transient, read again every poll until the bound. The
+# announcement names what is waited for: the host package manager or an Agent
+# operation. Only reads repeat; nothing is started again.
+# Duyuru neyin beklendiğini söyler; yalnız okuma tekrarlanır.
 run_update_probe_waiting() {
-    local transient=$1 waited=0 status=0
+    local transient=$1 waited=0 status=0 waiting_for=agent
     shift
     run_update_idle_probe "$@" 2>/dev/null && return 0
     while "$transient" && (( waited < UPDATE_AGENT_IDLE_WAIT_SECONDS )); do
         if (( waited == 0 )); then
-            echo "==> The Agent is finishing another server operation; waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
-            echo "==> Agent başka bir sunucu işlemini bitiriyor; güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
+            if update_refusal_is_package_manager; then
+                waiting_for=package_manager
+                echo "==> The server's package manager is working (for example automatic updates); waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
+                echo "==> Sunucunun paket yöneticisi çalışıyor (örneğin otomatik güncellemeler); güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
+            else
+                echo "==> The Agent is finishing another server operation; waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
+                echo "==> Agent başka bir sunucu işlemini bitiriyor; güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
+            fi
         fi
         sleep "$UPDATE_AGENT_IDLE_POLL_SECONDS"
         waited=$((waited + UPDATE_AGENT_IDLE_POLL_SECONDS))
         status=0
         run_update_idle_probe "$@" 2>/dev/null || status=$?
         if [[ $status -eq 0 ]]; then
-            echo "==> The Agent finished its operation after about ${waited} s; the update continues"
-            echo "==> Agent işlemini yaklaşık ${waited} sn sonra bitirdi; güncelleme sürüyor"
+            if [[ $waiting_for == package_manager ]]; then
+                echo "==> The package manager finished after about ${waited} s; the update continues"
+                echo "==> Paket yöneticisi işini yaklaşık ${waited} sn sonra bitirdi; güncelleme sürüyor"
+            else
+                echo "==> The Agent finished its operation after about ${waited} s; the update continues"
+                echo "==> Agent işlemini yaklaşık ${waited} sn sonra bitirdi; güncelleme sürüyor"
+            fi
             return 0
         fi
     done
@@ -3633,12 +3657,19 @@ elif [[ $resume_quiescing_update -eq 1 ]]; then
         || die "quiesce recovery could not resume coordinators and remove the exact phase"
     die "previous quiesce phase was safely aborted and cleaned; rerun the exact trusted update"
 else
+    # The bounded wait for a finishing Agent operation or the host package
+    # manager comes first: the BIND check below repeats every idle proof under
+    # the held lock and never waits. The systemd reloads above (unit guards,
+    # recovery foundation) re-draw apt-daily.timer's random delay and can start
+    # Debian/Ubuntu's daily apt run seconds before these checks (alpha.133 and
+    # alpha.136 labs, Ubuntu 24.04: the first press stopped "package manager
+    # busy", the second worked). Bekleyen ön denetim BIND denetiminden önce gelir.
+    preflight_mutations_before_quiesce
     # Reject incompatible installed DNS while the panel is still available and
     # before a durable start barrier exists. Recheck under the final lock below.
     # Uyumsuz DNS durumunu panel erişilebilirken, kalıcı başlangıç engelinden
     # önce reddet. Aşağıda son kilit altında tekrar doğrula.
     preflight_bind_before_quiesce
-    preflight_mutations_before_quiesce
     check_mail_application_compatibility ||
         fail_update_preflight application_compatibility "application compatibility with native mail/DNS evidence is unverified before coordinator downtime"
     mkdir -m 0700 -- "$stage_root"
