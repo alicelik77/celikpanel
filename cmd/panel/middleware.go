@@ -28,10 +28,13 @@ const callerKey contextKey = "caller"
 // herkese açıktır, böylece giriş ekranının kendisi yüklenebilir.
 func (p *Panel) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A verified DNS pair machine call is authorised by its pairing
+		// credential and the receiving server's own DNS authority checks.
+		// It is never licence-checked: one server's licence never blocks
+		// another server's work (D-047; design §d).
+		// Doğrulanmış DNS eşi makine çağrısı lisansa bakılmadan geçer.
 		if remoteDNSMachineVerified(r) {
-			if p.allowLicensedPanel(w, r) {
-				next.ServeHTTP(w, r)
-			}
+			next.ServeHTTP(w, r)
 			return
 		}
 		// API preflights never need application data. Terminate them here so an

@@ -500,11 +500,12 @@ func TestPanelUpdateDiscoveryStatusIsAdminOnlyAndMakesNoAgentCall(t *testing.T) 
 	if after != before {
 		t.Fatalf("the status read called the Agent %d time(s)", after-before)
 	}
-	if !licenseRecoveryRequest(systemUpdateRequest(http.MethodGet, panelUpdateDiscoveryPath, "", roleAdmin)) {
-		t.Fatal("the stored update check is not readable while the licence is locked")
-	}
-	if licenseRecoveryRequest(systemUpdateRequest(http.MethodPut, panelUpdateDiscoveryPath, `{"auto_check":false}`, roleAdmin)) {
-		t.Fatal("the switch must not pass the licence lock")
+	// Updates are never refused for a licence reason (D-047): the stored
+	// check and the switch both pass in every licence state.
+	for _, method := range []string{http.MethodGet, http.MethodPut} {
+		if class, ok := licenceRouteClassOf(systemUpdateRequest(method, panelUpdateDiscoveryPath, `{"auto_check":false}`, roleAdmin)); !ok || class.needsFullLicence() {
+			t.Fatalf("%s update check needs a licence", method)
+		}
 	}
 }
 

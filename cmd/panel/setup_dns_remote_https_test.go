@@ -16,10 +16,25 @@ import (
 // Exercise the transport and authenticated receiver together over actual TLS.
 // Only DNS/IP routing, trust and the receiver's host authority/publication are
 // isolated fixtures; JSON, credentials, middleware and durable SQL are real.
+//
+// D-047: one server's licence never blocks another server's work. The pair is
+// run with both servers' licences in every state, the receiving main server's
+// included: enrollment, publication and revocation never consult a licence.
 func TestRemoteDNSHTTPSProtocolEnrollPublishAndRevoke(t *testing.T) {
+	for _, state := range []string{"active", "expired", "missing", "invalid", "rejected", "verification_unavailable", "unconfigured"} {
+		t.Run(state, func(t *testing.T) {
+			remoteDNSHTTPSProtocolCase(t, state)
+		})
+	}
+}
+
+func remoteDNSHTTPSProtocolCase(t *testing.T, licenceState string) {
 	ctx := context.Background()
 	origin, receiver := newDNSPanelForTest(t), newDNSPanelForTest(t)
-	origin.license, receiver.license = testPanelLicense(t, "active"), testPanelLicense(t, "active")
+	origin.license, receiver.license = nil, nil
+	if licenceState != "unconfigured" {
+		origin.license, receiver.license = testPanelLicense(t, licenceState), testPanelLicense(t, licenceState)
+	}
 	subscription := seedSetupDNSOwner(t, origin)
 	oldExchange, oldAuthority, oldPublish := remoteDNSExchange, remoteDNSReadLocalAuthority, remoteDNSPublishReceived
 	t.Cleanup(func() {

@@ -83,7 +83,7 @@ func (p *Panel) handleServerSetupMailEnrollmentHandoff(w http.ResponseWriter, r 
 		return
 	}
 	if err = p.requireServerSetupAdmission(r.Context()); err != nil {
-		writeServerSetupAdmissionError(w, err, "setup_license_required", "An active license is required to request continuation. The recorded operation is preserved.", "/activate")
+		writeServerSetupAdmissionError(w, err, "setup_license_required", "An active license is required to request continuation. The recorded operation is preserved.", "/settings?section=license")
 		return
 	}
 	if plan.BuildCommit != buildCommit {

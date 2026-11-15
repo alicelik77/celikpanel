@@ -347,6 +347,11 @@ func (p *Panel) callerMayCreateDatabase(ctx context.Context, r *http.Request, id
 		if err == nil {
 			return true, nil
 		}
+		// The server's licence closes new databases for every subscription.
+		var licence *licenceGrowthRefusal
+		if errors.As(err, &licence) {
+			return false, nil
+		}
 		var exceeded *quotaExceededError
 		var pool *resellerPoolExceededError
 		if errors.As(err, &exceeded) || errors.As(err, &pool) || errors.Is(err, errSubscriptionSuspendedCreate) ||

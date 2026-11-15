@@ -95,7 +95,9 @@ func (p *Panel) serverSetupPublisherRefusal(ctx context.Context, executionID, en
 	case "REMOTE_DNS_AUTHORITY_NOT_READY":
 		return waiting
 	case "license_required", errCodeLicenseStatusUnavailable, errCodeLicenseVerificationUnavailable:
-		return &serverSetupPeerWait{Code: "server_setup_dns_publisher_peer_license", Message: "The main DNS server " + host + " answered that its panel license is not active or could not be checked, so it takes no connection now. Its owner activates or renews the license on " + host + "; this server asks again by itself."}
+		// Only a main server on an older release still answers this way:
+		// since D-047 the pair is never licence-checked.
+		return &serverSetupPeerWait{Code: "server_setup_dns_publisher_peer_license", Message: "The main DNS server " + host + " runs an older CelikPanel that refuses connections while its own license is not active. Updating CelikPanel on " + host + " removes this wait; this server asks again by itself."}
 	}
 	if answer.StatusCode >= 500 || answer.StatusCode == http.StatusTooManyRequests || answer.StatusCode == http.StatusRequestTimeout || answer.StatusCode < 400 {
 		return &serverSetupPeerWait{Code: "server_setup_dns_publisher_peer_busy", Message: "The main DNS server " + host + " is busy, restarting or finishing its own setup, so it could not take this server's publishing connection yet. Nobody needs to act; this server asks again by itself."}

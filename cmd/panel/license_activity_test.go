@@ -76,7 +76,7 @@ func TestLicenseActivityAcrossAuthenticatedRoles(t *testing.T) {
 		if calls.Load() != before {
 			t.Fatal("unauthenticated/public activity refreshed")
 		}
-		w := requestWithToken(management, http.MethodGet, "/api/v1/domains", fixture.tokens[id])
+		w := requestWithToken(management, http.MethodPut, "/api/v1/domains/9902/hosting", fixture.tokens[id])
 		if w.Code != 204 {
 			t.Fatal(id, w.Code, w.Body.String())
 		}
@@ -84,7 +84,7 @@ func TestLicenseActivityAcrossAuthenticatedRoles(t *testing.T) {
 			t.Fatal("role did not trigger shared refresh", id, calls.Load())
 		}
 		for _, token := range fixture.tokens {
-			requestWithToken(management, http.MethodGet, "/api/v1/domains", token)
+			requestWithToken(management, http.MethodPut, "/api/v1/domains/9902/hosting", token)
 		}
 		if calls.Load() != before+1 {
 			t.Fatal("each user refreshed separately")
@@ -97,7 +97,7 @@ func TestLicenseActivityAcrossAuthenticatedRoles(t *testing.T) {
 		}
 		reject.Store(true)
 		for _, roleID := range []int{id, authzMatrixAdminID, authzMatrixResellerID, authzMatrixCustomerID, authzMatrixAdditionalUserID} {
-			w = requestWithToken(management, http.MethodGet, "/api/v1/domains", fixture.tokens[roleID])
+			w = requestWithToken(management, http.MethodPut, "/api/v1/domains/9902/hosting", fixture.tokens[roleID])
 			if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "license_required") {
 				t.Fatalf("central rejection admitted role %d: %d %s", roleID, w.Code, w.Body.String())
 			}
@@ -113,7 +113,7 @@ func TestLicenseActivityAcrossAuthenticatedRoles(t *testing.T) {
 			t.Fatal("restart restored the rejected license")
 		}
 		fixture.panel.license = restarted
-		w = requestWithToken(management, http.MethodGet, "/api/v1/domains", fixture.tokens[id])
+		w = requestWithToken(management, http.MethodPut, "/api/v1/domains/9902/hosting", fixture.tokens[id])
 		if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), "license_required") {
 			t.Fatal("restarted panel admitted management", w.Code, w.Body.String())
 		}

@@ -356,12 +356,13 @@ func TestPanelUpdateOpeningTheScreenIsAdminOnlyAndRegistered(t *testing.T) {
 	if checks, _, _ := agentCounts(fixture); checks != 0 {
 		t.Fatalf("a refused request reached the Agent: %d", checks)
 	}
-	// Readable while the licence is locked, as the plain read and the button are.
-	if !licenseRecoveryRequest(systemUpdateRequest(http.MethodGet, panelUpdateDiscoveryRefreshPath, "", roleAdmin)) {
-		t.Fatal("the opening check is not available while the licence is locked")
+	// Panel updates work in every licence state (D-047); only the
+	// administrator reaches them.
+	if class, ok := licenceRouteClassOf(systemUpdateRequest(http.MethodGet, panelUpdateDiscoveryRefreshPath, "", roleAdmin)); !ok || class.needsFullLicence() {
+		t.Fatal("the opening check needs a licence")
 	}
-	if licenseRecoveryRequest(systemUpdateRequest(http.MethodGet, panelUpdateDiscoveryRefreshPath, "", roleCustomer)) {
-		t.Fatal("a customer passed the licence lock")
+	if !isAdminOnlyPath(panelUpdateDiscoveryRefreshPath) {
+		t.Fatal("a customer reaches the opening check")
 	}
 	source, err := os.ReadFile("main.go")
 	if err != nil {

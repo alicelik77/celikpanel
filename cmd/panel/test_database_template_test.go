@@ -71,6 +71,7 @@ func openTemplatePanelDatabase(path string) (*paneldb.SQLiteDB, error) {
 
 func TestMain(m *testing.M) {
 	blockRealCertificateAuthority()
+	useTestCountCheckLicenceStatus()
 	code := m.Run()
 	if panelDatabaseTemplate.dir != "" {
 		_ = os.RemoveAll(panelDatabaseTemplate.dir)

@@ -49,7 +49,7 @@ func TestLicenseOutageInsideOfflineWindowKeepsPanelAndExplainsIt(t *testing.T) {
 	fixture.panel.license = m
 	management := fixture.panel.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	for _, id := range []int{authzMatrixAdminID, authzMatrixResellerID, authzMatrixCustomerID, authzMatrixAdditionalUserID} {
-		if w := requestWithToken(management, http.MethodGet, "/api/v1/domains", fixture.tokens[id]); w.Code != http.StatusNoContent {
+		if w := requestWithToken(management, http.MethodPut, "/api/v1/domains/9902/hosting", fixture.tokens[id]); w.Code != http.StatusNoContent {
 			t.Fatalf("outage inside the offline window closed management for %d: %d %s", id, w.Code, w.Body.String())
 		}
 	}
@@ -75,7 +75,7 @@ func TestLicenseOutageInsideOfflineWindowKeepsPanelAndExplainsIt(t *testing.T) {
 	w = requestWithToken(access, http.MethodGet, panelLicenseAccessPath, fixture.tokens[authzMatrixCustomerID])
 	var answer map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &answer)
-	if answer["can_use_panel"] != true || answer["valid_until"] != float64(c.OfflineUntil) || len(answer) != 5 {
+	if answer["can_use_panel"] != true || answer["valid_until"] != float64(c.OfflineUntil) || answer["level"] != "full" || len(answer) != 6 {
 		t.Fatal("access answer", answer)
 	}
 }

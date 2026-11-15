@@ -282,10 +282,9 @@ var remoteDNSNameserversReady = (*Panel).setupDNSNameserverReadiness
 func (p *Panel) handleRemoteDNSMachine(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
+	// No licence check: the pairing credential and this server's DNS
+	// authority decide (D-047; design §d).
 	if !remoteDNSMachineVerified(r) && !p.authenticateRemoteDNSMachine(w, r) {
-		return
-	}
-	if !p.allowLicensedPanel(w, r) {
 		return
 	}
 	claim := r.Context().Value(remoteDNSMachineClaimKey{}).(remoteDNSMachineClaim)
