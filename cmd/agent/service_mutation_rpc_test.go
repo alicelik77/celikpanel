@@ -951,9 +951,7 @@ func TestServiceMutationIdleCheckIsReadOnlyAndFailClosed(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if err := checkServiceMutationIdle(stateDir, lockPath); err != nil {
-			t.Fatalf("terminal idle state rejected: %v", err)
-		}
+		requireServiceMutationIdleProof(t, checkServiceMutationIdle(stateDir, lockPath), "terminal idle state")
 	})
 
 	t.Run("lock held without active pointer", func(t *testing.T) {
