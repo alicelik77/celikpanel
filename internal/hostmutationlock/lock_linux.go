@@ -17,6 +17,12 @@ import (
 
 var ErrBusy = errors.New("the host mutation lock is busy")
 
+// ErrUnknown means a probe could not establish whether the lock is held: the
+// lock table named nobody and not every process's descriptors could be read.
+// It is not idle; a caller must not proceed as if the lock were free.
+// Kilidin tutulup tutulmadığı belirlenemedi; boşta sayılmaz, devam edilmez.
+var ErrUnknown = errors.New("whether the lock is held could not be established")
+
 // Owner is the already established numeric lock identity. A native consumer must
 // retain this identity through an explicit enrollment, not infer permission from
 // a missing management account or an arbitrary existing file. These APIs never
@@ -41,8 +47,14 @@ func AcquireExisting(path string, owner Owner) (*os.File, error) {
 // writer refuse as busy although nothing was changing the host. Only when the
 // lock table cannot be read does it fall back to that momentary flock.
 //
+// A holder the table names is busy. The table can skip a line while other
+// locks come and go (alpha.135), so "nobody" is confirmed from every process's
+// descriptors before it is idle; when that walk cannot be completed and finds
+// nobody, the answer wraps ErrUnknown. The confirmation takes no lock either.
+//
 // ProbeIdle kilit almaz, çekirdeğin kilit tablosunu okur: bir okuma gerçek bir
-// değişikliği "meşgul" gösteremez.
+// değişikliği "meşgul" gösteremez. Tablo kimseyi göstermezse süreçlerin
+// tanımlayıcılarıyla doğrulanır; doğrulanamazsa cevap "belirlenemedi"dir.
 func ProbeIdle(path string, owner Owner) error {
 	holders, observed, err := observe(path, owner)
 	if err != nil {

@@ -144,18 +144,26 @@ var mailEnrollmentWorkerLockWait = 15 * time.Second
 // mailEnrollmentExclusionBusy is the advisory read, just before a handoff, of
 // the two locks the worker takes. It holds neither past the read; the worker's
 // own acquisition stays authoritative. A lock that cannot be read is not
-// reported as busy: that is left to the worker's own verified refusal. The read
-// takes no lock (hostmutationlock.ProbeIdle), so it cannot itself make the
-// worker or any other writer refuse as busy. When busy, holder names the lock
-// and the process holding it.
-// İşçinin alacağı iki kilidin devirden hemen önceki salt okunur denetimi.
+// reported as busy: that is left to the worker's own verified refusal. A probe
+// that could not establish whether a lock is held (hostmutationlock.ErrUnknown)
+// does not hand off either: nothing is dispatched and the same request is handed
+// off again, as for a held lock. The read takes no lock
+// (hostmutationlock.ProbeIdle), so it cannot itself make the worker or any other
+// writer refuse as busy. When busy, holder names the lock and the process
+// holding it, or says that it could not be established.
+// İşçinin alacağı iki kilidin devirden hemen önceki salt okunur denetimi;
+// "belirlenemedi" cevabında da devredilmez.
 var mailEnrollmentExclusionBusy = func() (bool, string) {
 	for _, lock := range []struct {
 		path  string
 		owner hostmutationlock.Owner
 	}{{mailEnrollmentReleaseLockPath, hostmutationlock.Owner{}}, {mailEnrollmentHostLockPath, serviceMutationLockOwner()}} {
-		if errors.Is(hostmutationlock.ProbeIdle(lock.path, lock.owner), hostmutationlock.ErrBusy) {
+		err := hostmutationlock.ProbeIdle(lock.path, lock.owner)
+		if errors.Is(err, hostmutationlock.ErrBusy) {
 			return true, (&mailEnrollmentLockHeld{lock.path, mailEnrollmentLockHolder(lock.path, lock.owner)}).Error()
+		}
+		if errors.Is(err, hostmutationlock.ErrUnknown) {
+			return true, mailEnrollmentLockName(lock.path) + " (" + lock.path + ") could not be read completely: " + err.Error()
 		}
 	}
 	return false, ""
@@ -169,17 +177,23 @@ var mailEnrollmentExclusionBusy = func() (bool, string) {
 type mailEnrollmentLockHeld struct{ lock, holder string }
 
 func (e *mailEnrollmentLockHeld) Error() string {
-	name := "the host lock"
-	if e.lock == mailEnrollmentReleaseLockPath || filepath.Base(e.lock) == filepath.Base(mailEnrollmentReleaseLockPath) {
-		name = "the release lock"
+	return mailEnrollmentLockName(e.lock) + " (" + e.lock + ") was held by " + e.holder
+}
+
+func mailEnrollmentLockName(lock string) string {
+	if lock == mailEnrollmentReleaseLockPath || filepath.Base(lock) == filepath.Base(mailEnrollmentReleaseLockPath) {
+		return "the release lock"
 	}
-	return name + " (" + e.lock + ") was held by " + e.holder
+	return "the host lock"
 }
 
 // heldBy lets the platform-neutral worker guidance name the holder.
 func (e *mailEnrollmentLockHeld) heldBy() string { return e.Error() }
 
-// mailEnrollmentLockHolder reads who holds a lock, without taking it.
+// mailEnrollmentLockHolder reads who holds a lock, without taking it. "Released
+// before it could be named" is said only when the complete read (lock table and
+// every process's descriptors) found nobody holding it; when the read could not
+// be completed, the error says so (hostmutationlock.ErrUnknown).
 func mailEnrollmentLockHolder(path string, owner hostmutationlock.Owner) string {
 	holders, err := hostmutationlock.Holders(path, owner)
 	switch {

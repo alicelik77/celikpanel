@@ -47,10 +47,12 @@ func DescribeHolders(holders []Holder) string {
 }
 
 // Holders names who holds the lock right now, read from the kernel's lock
-// table without taking the lock. It is diagnostic only: an empty answer for a
-// lock a writer just found busy means the holder released it in between, or
-// runs where this process cannot see it. A missing file in a trusted parent has
-// no holder.
+// table and, when that names nobody, from every process's descriptors, without
+// taking the lock. It is diagnostic only. An empty answer without an error
+// means nobody held the lock during the read: for a lock a writer just found
+// busy, the holder released it in between. When the holder cannot be
+// established (the descriptor walk was incomplete), the error wraps ErrUnknown.
+// A missing file in a trusted parent has no holder.
 func Holders(path string, owner Owner) ([]Holder, error) {
 	holders, observed, err := observe(path, owner)
 	if err == nil && !observed {
@@ -68,6 +70,18 @@ var procRoot = "/proc"
 
 // observe reports the flock holders of the trusted lock file. observed is false
 // when the kernel's lock table could not be read. Nothing is locked either way.
+//
+// A holder the lock table names is authoritative. The table is not a snapshot,
+// though: /proc/locks is produced one read() chunk at a time and resumes by
+// line number, so a line can be skipped when other locks are released between
+// two chunks (alpha.135: ProbeIdle answered idle in 1094 of 5000 probes while
+// a child held the lock and other processes took and dropped flocks). When the
+// table names nobody, the descriptor walk (descriptorFlockHolders) confirms
+// it; an incomplete walk that finds nobody is ErrUnknown, never idle.
+//
+// Kilit tablosunun adlandırdığı tutucu kesindir; tablo kimseyi
+// göstermezse her sürecin tanımlayıcıları okunur. Tamamlanamayan okuma
+// "belirlenemedi" demektir, asla "boşta" değil.
 func observe(path string, owner Owner) (holders []Holder, observed bool, err error) {
 	loc, err := openLocation(path, owner)
 	if err != nil {
@@ -86,7 +100,11 @@ func observe(path string, owner Owner) (holders []Holder, observed bool, err err
 	if err != nil {
 		return nil, false, err
 	}
-	pids, readErr := flockHolderPIDs(fd, before)
+	pids, major, minor, readErr := flockHolderPIDs(fd, before)
+	var walkErr error
+	if readErr == nil && len(pids) == 0 {
+		pids, walkErr = descriptorFlockHolders(before, major, minor)
+	}
 	if probeObservedHook != nil {
 		probeObservedHook()
 	}
@@ -96,6 +114,9 @@ func observe(path string, owner Owner) (holders []Holder, observed bool, err err
 	if readErr != nil {
 		return nil, false, nil
 	}
+	if len(pids) == 0 && walkErr != nil {
+		return nil, true, walkErr
+	}
 	for _, pid := range pids {
 		holders = append(holders, describeHolder(pid))
 	}
@@ -103,17 +124,18 @@ func observe(path string, owner Owner) (holders []Holder, observed bool, err err
 }
 
 // flockHolderPIDs lists the processes holding a flock (shared or exclusive;
-// either refuses an exclusive writer) on the open file. Waiters ("->") are not
-// holders. The kernel names the file by its superblock device, which differs
-// from stat's device on btrfs subvolumes, so the device comes from the mount.
-func flockHolderPIDs(fd int, st unix.Stat_t) ([]int, error) {
+// either refuses an exclusive writer) on the open file, and the device the
+// kernel names it by. Waiters ("->") are not holders. The kernel names the file
+// by its superblock device, which differs from stat's device on btrfs
+// subvolumes, so the device comes from the mount.
+func flockHolderPIDs(fd int, st unix.Stat_t) ([]int, uint32, uint32, error) {
 	major, minor, err := lockTableDevice(fd, st)
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 	raw, err := os.ReadFile(filepath.Join(procRoot, "locks"))
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 	var pids []int
 	seen := map[int]bool{}
@@ -139,7 +161,7 @@ func flockHolderPIDs(fd int, st unix.Stat_t) ([]int, error) {
 			pids = append(pids, pid)
 		}
 	}
-	return pids, nil
+	return pids, major, minor, nil
 }
 
 // lockTableDevice is the superblock device of the open file: its mount's

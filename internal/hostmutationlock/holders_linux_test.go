@@ -32,16 +32,15 @@ func TestProbeInProgressNeverRefusesAWriter(t *testing.T) {
 		file.Close()
 	}
 	t.Cleanup(func() { probeObservedHook = nil })
-	if err := ProbeIdle(path, owner); err != nil {
-		t.Fatalf("idle lock: %v", err)
-	}
+	requireIdle(t, ProbeIdle(path, owner), "idle lock")
 	if !writerRan {
 		t.Fatal("the probe did not reach its observation")
 	}
 	// The same holds for the diagnostic read.
 	writerRan = false
-	if holders, err := Holders(path, owner); err != nil || len(holders) != 0 || !writerRan {
-		t.Fatalf("idle holders: %v %v %t", holders, err, writerRan)
+	requireNoHolders(t, path, owner, "idle holders")
+	if !writerRan {
+		t.Fatal("the diagnostic read did not reach its observation")
 	}
 }
 
@@ -68,9 +67,7 @@ func TestHoldersNameTheHolderWithoutTakingTheLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	held.Close()
-	if holders, err = Holders(path, owner); err != nil || len(holders) != 0 {
-		t.Fatalf("released lock still has holders: %+v %v", holders, err)
-	}
+	requireNoHolders(t, path, owner, "released lock")
 	// Another lock file held elsewhere is not this lock's holder.
 	other, owner2 := fixture(t)
 	writeLock(t, other)
@@ -79,9 +76,7 @@ func TestHoldersNameTheHolderWithoutTakingTheLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer otherHeld.Close()
-	if err = ProbeIdle(path, owner); err != nil {
-		t.Fatalf("a different held file made this lock busy: %v", err)
-	}
+	requireIdle(t, ProbeIdle(path, owner), "a lock whose neighbour file is held")
 }
 
 // A lock held by another process names that process.
