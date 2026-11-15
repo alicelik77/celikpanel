@@ -69,11 +69,8 @@ func TestMailRenewalPreparationWithInheritedLock(t *testing.T) {
 
 func mailRenewalTestRoot(t *testing.T) (string, *os.File) {
 	t.Helper()
-	root, err := os.MkdirTemp("/run", "celikpanel-mail-publication-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(root) })
+	root := nativeFixtureRoot(t, "celikpanel-mail-publication-test-")
+	var err error
 	if err = os.Mkdir(filepath.Join(root, "transaction"), 0700); err != nil {
 		t.Fatal(err)
 	}

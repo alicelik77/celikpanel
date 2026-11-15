@@ -69,11 +69,8 @@ func TestFirewallPreparationWithInheritedLock(t *testing.T) {
 
 func firewallTestRoot(t *testing.T) (string, *os.File) {
 	t.Helper()
-	root, err := os.MkdirTemp("/run", "celikpanel-firewall-publication-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(root) })
+	root := nativeFixtureRoot(t, "celikpanel-firewall-publication-test-")
+	var err error
 	if err = os.Mkdir(filepath.Join(root, "transaction"), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -237,11 +234,8 @@ func TestFirewallUnitVerificationPreservesDamagedEvidence(t *testing.T) {
 	}
 	for _, scenario := range []string{"valid", "unit-edited", "helper-edited", "missing-helper", "extra-file", "linked-unit", "unsafe-unit", "unsafe-helper"} {
 		t.Run(scenario, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-firewall-unit-test-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-firewall-unit-test-")
+			var err error
 			source := filepath.Join(root, "firewall-runtime")
 			generation := firewallFixture(t, source, []byte("native helper"))
 			retained := filepath.Join(root, "retained")

@@ -96,11 +96,7 @@ func TestDNSApplicationCompatibilityRefusesActiveV4WithoutChangingEvidence(t *te
 	}
 	for _, contractPresent := range []bool{false, true} {
 		t.Run(map[bool]string{false: "historical-target", true: "current-target"}[contractPresent], func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-v4-compat-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-v4-compat-")
 			bin, stateDir := filepath.Join(root, "bin"), filepath.Join(root, "private")
 			for _, dir := range []string{bin, stateDir} {
 				if err := os.Mkdir(dir, 0o700); err != nil {
@@ -153,11 +149,7 @@ func TestPromotionRefusesActiveV4JournalReadOnly(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("protected root-owned fixture")
 	}
-	root, err := os.MkdirTemp("/run", "celikpanel-v4-promotion-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := nativeFixtureRoot(t, "celikpanel-v4-promotion-")
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}

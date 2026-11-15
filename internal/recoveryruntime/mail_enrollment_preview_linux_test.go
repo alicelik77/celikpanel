@@ -17,11 +17,7 @@ func TestMailEnrollmentPreviewPreservesNativeBeforeState(t *testing.T) {
 	}
 	for _, scenario := range []string{"fresh", "missing-ancestor", "legacy", "independent", "owner-disabled", "foreign-hook", "stray-service", "dangling-enable", "loaded-stray", "native-unknown", "native-busy", "native-override", "late-hook-created", "late-parent-created", "late-parent-symlink", "parent-symlink", "parent-file", "writable-parent", "foreign-parent", "cancelled"} {
 		t.Run(scenario, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "mail-enrollment-preview-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "mail-enrollment-preview-")
 			units, hooks, runtime := filepath.Join(root, "units"), filepath.Join(root, "hooks"), filepath.Join(root, "runtime")
 			for _, path := range []string{units, hooks, runtime} {
 				if err := os.Mkdir(path, 0755); err != nil {
