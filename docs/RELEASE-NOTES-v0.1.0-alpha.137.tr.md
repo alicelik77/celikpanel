@@ -19,10 +19,14 @@ günceller.**
    sürüm panelin veritabanı yapısını değiştirmez (alpha.136'daki gibi
    kalır); sonradan alpha.136'ya dönmek veritabanı geri yüklemesi
    gerektirmez.
-2. Düzeltmeler, alpha.137'yi kuran güncellemenin kendisindedir; bu
-   güncellemede de işe yarar. Güncelleme yine "sunucunun paket yöneticisi
-   meşguldü" diyerek durursa sunucu gerçekten daha uzun süre paket kuruyor ya
-   da denetliyordu: o iş bitince **Güncelle**'ye yeniden basın.
+2. Düzeltmelerin çoğu alpha.137'yi kuran güncellemenin kendisindedir; bu
+   güncellemede de işe yarar: nerede beklediği ve meşgul sunucunun yeniden
+   başlatılabilen bir duruşla bitmesi. Bir kısmı sonraki güncellemeden
+   itibaren etkilidir: günlük denetimin ilk adımını tanıyan paket denetimi
+   kurulu panelinkidir, bu güncelleme sırasında alpha.136'nın denetimi
+   cevap verir. Güncelleme yine "sunucunun paket yöneticisi meşguldü"
+   diyerek durursa sunucu gerçekten daha uzun süre paket kuruyor ya da
+   denetliyordu: o iş bitince **Güncelle**'ye yeniden basın.
 3. **Şu anki sürümünüzün güncelleme sayfası takılı kaldıysa** (güncellemenin
    başarısız olduğunu ve sunucu sahibinin güncelleme günlüğünü incelemesi
    gerektiğini söylüyor, sayfa kilitli kalıyor ve güncelleme düğmesi yok),

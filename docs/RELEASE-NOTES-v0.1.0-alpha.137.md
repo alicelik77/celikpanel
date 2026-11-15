@@ -18,10 +18,14 @@ screen.**
 1. Update from the panel's own update screen, as before. This release does
    not change the panel's database layout (it stays at the alpha.136 form),
    so going back to alpha.136 later needs no database restore.
-2. The fixes are in the update that installs alpha.137 itself, so they
-   already help this update. If it still stops with "the server's package
-   manager was busy", the server really was installing or checking packages
-   for longer: press **Update** again when it has finished.
+2. Most fixes are in the update that installs alpha.137 itself, so they
+   already help this update: where it waits, and that a busy server ends as
+   a stop you can start again. One part acts from the next update on: the
+   package check that recognises the daily check's first step is the
+   installed panel's, so during this update alpha.136's check still
+   answers. If the update still stops with "the server's package manager
+   was busy", the server really was installing or checking packages for
+   longer: press **Update** again when it has finished.
 3. **If the update page of your current version is stuck** (it says the
    update failed and the owner must inspect the update log, the page stays
    locked, and there is no update button), see "If an earlier update left the
