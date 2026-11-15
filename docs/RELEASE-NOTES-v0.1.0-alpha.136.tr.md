@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.136.md)
 
+> **Yayımlandı**, 15 Kasım 2026 (UTC): sürüm commit'i `b04c94c75`, GitHub ön sürümü 11:26:43Z, indirme portalı yaklaşık 11:32Z (dış denetim 27/27).
+
 Tek başına çıkan bir dayanıklılık düzeltmesi. Panel bazı işlere başlamadan
 önce "şu anda bu sunucuda bir şey değişiyor mu?" diye sorar. Yoğun bir
 sunucuda bu denetim, aslında bir değişiklik sürerken "hayır" diyebiliyordu.
