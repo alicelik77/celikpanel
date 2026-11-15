@@ -572,19 +572,19 @@ func TestNotifyOnlyDiskViewNamesNoSuspensionDay(t *testing.T) {
 // Disk kuralları gerçek tarihten bağımsızdır: aynı testler bir yıl önce ve sonra.
 func TestDiskRulesDoNotDependOnTheRealDate(t *testing.T) {
 	tests := map[string]func(*testing.T){
-		"over the limit for seven days":    TestDiskOverTheLimitForSevenDaysSuspendsAndResumesWithoutUndoingOtherCauses,
-		"operator resume":                  TestOperatorResumeOfADiskSuspensionGivesSevenMoreDays,
-		"measurement failure is unknown":   TestDiskMeasurementFailureIsUnknownNotEmpty,
-		"full disk closes uploads":         TestFullDiskClosesFTPSFTPAndPHPUploadsAndOpensThemAgain,
-		"notify-only names no suspension":  TestNotifyOnlyDiskViewNamesNoSuspensionDay,
+		"over the limit for seven days":   TestDiskOverTheLimitForSevenDaysSuspendsAndResumesWithoutUndoingOtherCauses,
+		"operator resume":                 TestOperatorResumeOfADiskSuspensionGivesSevenMoreDays,
+		"measurement failure is unknown":  TestDiskMeasurementFailureIsUnknownNotEmpty,
+		"full disk closes uploads":        TestFullDiskClosesFTPSFTPAndPHPUploadsAndOpensThemAgain,
+		"notify-only names no suspension": TestNotifyOnlyDiskViewNamesNoSuspensionDay,
 	}
-	real := time.Now()
+	today := time.Now()
 	for _, pin := range []struct {
 		name string
 		at   time.Time
 	}{
-		{"a year before today", real.AddDate(-1, 0, 0)},
-		{"a year after today", real.AddDate(1, 0, 0)},
+		{"a year before today", today.AddDate(-1, 0, 0)},
+		{"a year after today", today.AddDate(1, 0, 0)},
 	} {
 		for name, test := range tests {
 			t.Run(pin.name+"/"+name, func(t *testing.T) {
