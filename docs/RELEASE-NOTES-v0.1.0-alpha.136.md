@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.136.tr.md)
 
+> **Published** on 2026-11-15 (UTC): release commit `b04c94c75`, GitHub pre-release at 11:26:43Z, download portal at about 11:32Z (public check 27/27).
+
 A resilience fix that ships alone. Before the panel starts certain work, it
 asks "is something changing this server right now?". On a busy server that
 check could answer "no" while a change was in fact running. It now looks at
