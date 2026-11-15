@@ -20,31 +20,25 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// requireIdle accepts "idle" only where this process can read every process's
-// descriptors; elsewhere (an unprivileged test run) the same lock must answer
-// ErrUnknown: a probe that could not confirm that nobody holds the lock never
-// says idle.
-func requireIdle(t *testing.T, err error, what string) {
-	t.Helper()
-	if effectiveCapability(capSysPtrace) {
-		if err != nil {
-			t.Fatalf("%s: want idle, got %v", what, err)
-		}
-		return
-	}
-	if !errors.Is(err, ErrUnknown) {
-		t.Fatalf("%s without CAP_SYS_PTRACE: want ErrUnknown, got %v", what, err)
-	}
-}
-
-// requireNoHolders is requireIdle for the diagnostic read.
+// requireNoHolders accepts "nobody holds it" from the diagnostic read only
+// where this process can read every process's descriptors; elsewhere (an
+// unprivileged test run) the same free lock must answer ErrUnknown: a read
+// that could not confirm that nobody holds the lock never says so.
 func requireNoHolders(t *testing.T, path string, owner Owner, what string) {
 	t.Helper()
 	holders, err := Holders(path, owner)
 	if len(holders) != 0 {
 		t.Fatalf("%s: holders %+v", what, holders)
 	}
-	requireIdle(t, err, what)
+	if effectiveCapability(capSysPtrace) {
+		if err != nil {
+			t.Fatalf("%s: want no holder, got %v", what, err)
+		}
+		return
+	}
+	if !errors.Is(err, ErrUnknown) {
+		t.Fatalf("%s without CAP_SYS_PTRACE: want ErrUnknown, got %v", what, err)
+	}
 }
 
 // startChildHolder starts a separate process that holds the lock until the test
@@ -174,38 +168,48 @@ func TestDescriptorWalkFindsAHolderTheLockTableMissed(t *testing.T) {
 	}
 }
 
-// When nobody is found but some process could not be read, nobody is not
-// established: the probe answers ErrUnknown, never idle, and the diagnostic
-// read does not claim that the holder released the lock.
-func TestIncompleteDescriptorWalkIsUnknownNotIdle(t *testing.T) {
+// When nobody is found but some process could not be read, the holder is not
+// established: the diagnostic read says ErrUnknown and never that nobody holds
+// it. The probe then decides with the momentary flock, which answers exactly:
+// idle for a free lock, busy for a held one the walk could not see.
+func TestIncompleteDescriptorWalkDecidesWithTheMomentaryFlock(t *testing.T) {
 	path, owner := fixture(t)
 	writeLock(t, path)
 	fakeProc(t, false, []int{os.Getpid()}, "1")
-	if err := ProbeIdle(path, owner); !errors.Is(err, ErrUnknown) {
-		t.Fatalf("unreadable process: want ErrUnknown, got %v", err)
+	if err := ProbeIdle(path, owner); err != nil {
+		t.Fatalf("free lock, unreadable process: want idle, got %v", err)
 	}
 	if holders, err := Holders(path, owner); len(holders) != 0 || !errors.Is(err, ErrUnknown) {
-		t.Fatalf("unreadable process, diagnostic read: %+v %v", holders, err)
+		t.Fatalf("free lock, unreadable process, diagnostic read: %+v %v", holders, err)
 	}
-	// A walk that runs out of its budget is incomplete as well.
-	procRoot = "/proc"
+	child := startChildHolder(t, path)
+	// The lock table is empty and the walk sees neither the child nor process 1.
+	fakeProc(t, false, []int{os.Getpid()}, "1")
+	if err := ProbeIdle(path, owner); !errors.Is(err, ErrBusy) {
+		t.Fatalf("held lock, incomplete walk: want busy, got %v", err)
+	}
+	if holders, err := Holders(path, owner); len(holders) != 0 || !errors.Is(err, ErrUnknown) {
+		t.Fatalf("held lock, incomplete walk, diagnostic read: %+v %v", holders, err)
+	}
+	// A walk that runs out of its budget before it reaches the child decides
+	// the same way.
+	fakeProc(t, false, []int{child})
 	previous := descriptorWalkBudget
 	descriptorWalkBudget = -time.Second
 	t.Cleanup(func() { descriptorWalkBudget = previous })
-	if err := ProbeIdle(path, owner); !errors.Is(err, ErrUnknown) {
-		t.Fatalf("walk past its budget: want ErrUnknown, got %v", err)
+	if err := ProbeIdle(path, owner); !errors.Is(err, ErrBusy) {
+		t.Fatalf("held lock, walk past its budget: want busy, got %v", err)
 	}
-	descriptorWalkBudget = previous
-	requireIdle(t, ProbeIdle(path, owner), "complete walk")
 }
 
-// Without CAP_SYS_PTRACE another user's descriptors, and on a hidepid /proc
-// the process itself, are invisible, so nobody found is not idle.
-func TestProbeWithoutPtraceCapabilityIsUnknownNotIdle(t *testing.T) {
-	path, owner := fixture(t)
-	writeLock(t, path)
+// noPtraceProc is a procfs view for a process without CAP_SYS_PTRACE: another
+// user's descriptors, and on a hidepid /proc the process itself, are invisible,
+// so the walk can never be complete. The lock table is empty, as when it
+// skipped the holder's line.
+func noPtraceProc(t *testing.T) {
+	t.Helper()
 	root := t.TempDir()
-	if err := os.Symlink("/proc/locks", filepath.Join(root, "locks")); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "locks"), nil, 0600); err != nil {
 		t.Fatal(err)
 	}
 	self := filepath.Join(root, "self")
@@ -222,8 +226,65 @@ func TestProbeWithoutPtraceCapabilityIsUnknownNotIdle(t *testing.T) {
 	}
 	procRoot = root
 	t.Cleanup(func() { procRoot = "/proc" })
-	if err := ProbeIdle(path, owner); !errors.Is(err, ErrUnknown) {
-		t.Fatalf("no CAP_SYS_PTRACE: want ErrUnknown, got %v", err)
+}
+
+// A host where the walk can never be complete (a platform or hardening profile
+// that drops CAP_SYS_PTRACE) still gets exact answers, so its updates are not
+// stopped by an answer that can never be established.
+func TestProbeWithoutPtraceCapabilityStillAnswersExactly(t *testing.T) {
+	path, owner := fixture(t)
+	writeLock(t, path)
+	noPtraceProc(t)
+	if err := ProbeIdle(path, owner); err != nil {
+		t.Fatalf("free lock without CAP_SYS_PTRACE: want idle, got %v", err)
+	}
+	startChildHolder(t, path)
+	if err := ProbeIdle(path, owner); !errors.Is(err, ErrBusy) {
+		t.Fatalf("held lock without CAP_SYS_PTRACE: want busy, got %v", err)
+	}
+	if holders, err := Holders(path, owner); len(holders) != 0 || !errors.Is(err, ErrUnknown) {
+		t.Fatalf("held lock without CAP_SYS_PTRACE, diagnostic read: %+v %v", holders, err)
+	}
+}
+
+// The exception to "a probe never makes a writer busy", and its exact extent:
+// where the walk cannot be completed, the momentary flock holds the lock for an
+// instant, and a writer's non-blocking acquisition inside that instant is
+// refused as busy. Only inside it: the probe still answers idle and the writer
+// acquires the lock right after. Where the walk completes (CAP_SYS_PTRACE, as
+// the Agent runs), no flock is taken at all.
+func TestMomentaryFallbackRefusesAWriterOnlyInsideItsInstant(t *testing.T) {
+	path, owner := fixture(t)
+	writeLock(t, path)
+	noPtraceProc(t)
+	inside := errors.New("the momentary flock was not taken")
+	momentaryProbeHeldHook = func() {
+		file, err := AcquireExisting(path, owner)
+		if file != nil {
+			file.Close()
+		}
+		inside = err
+	}
+	t.Cleanup(func() { momentaryProbeHeldHook = nil })
+	if err := ProbeIdle(path, owner); err != nil {
+		t.Fatalf("free lock: want idle, got %v", err)
+	}
+	if !errors.Is(inside, ErrBusy) {
+		t.Fatalf("writer inside the momentary flock: want busy, got %v", inside)
+	}
+	momentaryProbeHeldHook = nil
+	file, err := AcquireExisting(path, owner)
+	if err != nil {
+		t.Fatalf("writer after the probe: %v", err)
+	}
+	file.Close()
+	procRoot = "/proc"
+	if !effectiveCapability(capSysPtrace) {
+		return
+	}
+	momentaryProbeHeldHook = func() { t.Error("a complete walk took the flock") }
+	if err := ProbeIdle(path, owner); err != nil {
+		t.Fatalf("free lock, complete walk: want idle, got %v", err)
 	}
 }
 

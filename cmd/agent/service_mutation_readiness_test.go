@@ -40,14 +40,8 @@ func TestServiceMutationReadinessSharesReadOnlyIdleProof(t *testing.T) {
 		}
 
 		response := readMutationReadinessForRoot(t, root)
-		if serviceMutationProbeCanProveIdle(t) {
-			if !response.Ready || response.Code != "" || response.Reason != "" {
-				t.Fatalf("idle readiness = %+v", response)
-			}
-		} else if response.Ready || response.Code != transport.HostMutationUnavailable ||
-			response.Reason != transport.HostMutationReasonStateUnverified {
-			// Without CAP_SYS_PTRACE the probe cannot prove the lock idle.
-			t.Fatalf("unprovable idle readiness = %+v", response)
+		if !response.Ready || response.Code != "" || response.Reason != "" {
+			t.Fatalf("idle readiness = %+v", response)
 		}
 		after, err := os.ReadFile(ledgerPath)
 		if err != nil {
@@ -92,15 +86,6 @@ func TestServiceMutationReadinessSharesReadOnlyIdleProof(t *testing.T) {
 		packageManagerMutationBusyProbe = func() (bool, error) { return true, nil }
 		t.Cleanup(func() { packageManagerMutationBusyProbe = original })
 		response := readMutationReadinessForRoot(t, root)
-		if !serviceMutationProbeCanProveIdle(t) {
-			// The lock probe answers before the package manager is read; without
-			// CAP_SYS_PTRACE its answer is "could not be established".
-			if response.Ready || response.Code != transport.HostMutationUnavailable ||
-				response.Reason != transport.HostMutationReasonStateUnverified {
-				t.Fatalf("unprovable package readiness = %+v", response)
-			}
-			return
-		}
 		if response.Ready || response.Code != transport.HostMutationBusy ||
 			response.Reason != transport.HostMutationReasonPackageManager {
 			t.Fatalf("package readiness = %+v", response)

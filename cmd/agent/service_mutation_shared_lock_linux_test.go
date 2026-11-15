@@ -48,7 +48,9 @@ func TestServiceMutationSharedExclusionInteroperatesWithActualProducer(t *testin
 	if err = consumer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	requireServiceMutationIdleProof(t, probeServiceMutationFileLockIdle(path), "released shared lock")
+	if err = probeServiceMutationFileLockIdle(path); err != nil {
+		t.Fatal(err)
+	}
 	if err = os.WriteFile(path, []byte("owner data"), 0600); err != nil {
 		t.Fatal(err)
 	}

@@ -158,10 +158,11 @@ jobs:
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./cmd/agent ./cmd/panel -run 'TestRecovery(CheckStandalone|AgentCheckerStandalone)|TestPendingRollback' -count=1
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./cmd/panel -run '^TestRecoveryDatabaseMigration' -count=1
 
-      # The host lock probe answers idle only when it can read every process's
-      # descriptors (root, as the Agent runs); the unprivileged suite above sees
-      # its "could not be established" answer. Run the probe and the idle checks
-      # that use it as root as well (alpha.136).
+      # The host lock probe confirms "nobody holds it" from every process's
+      # descriptors only with CAP_SYS_PTRACE (root, as the Agent runs); the
+      # unprivileged suite above takes its momentary-flock fallback instead.
+      # Run the probe and the idle checks that use it as root as well, so the
+      # descriptor walk is covered in CI (alpha.136).
       - name: Verify the host mutation lock probe as root
         run: |
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./internal/hostmutationlock -count=1

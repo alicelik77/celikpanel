@@ -77,7 +77,8 @@ var procRoot = "/proc"
 // two chunks (alpha.135: ProbeIdle answered idle in 1094 of 5000 probes while
 // a child held the lock and other processes took and dropped flocks). When the
 // table names nobody, the descriptor walk (descriptorFlockHolders) confirms
-// it; an incomplete walk that finds nobody is ErrUnknown, never idle.
+// it; an incomplete walk that finds nobody is ErrUnknown, never idle (ProbeIdle
+// then decides with the momentary flock).
 //
 // Kilit tablosunun adlandırdığı tutucu kesindir; tablo kimseyi
 // göstermezse her sürecin tanımlayıcıları okunur. Tamamlanamayan okuma

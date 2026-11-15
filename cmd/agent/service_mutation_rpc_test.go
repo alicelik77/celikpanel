@@ -939,7 +939,9 @@ func TestServiceMutationIdleCheckIsReadOnlyAndFailClosed(t *testing.T) {
 		manager, root := newMutationTestManager(t)
 		stateDir := filepath.Join(root, "state")
 		lockPath := filepath.Join(root, "service-mutation.lock")
-		requireServiceMutationIdleProof(t, checkServiceMutationIdle(stateDir, lockPath), "fresh idle state")
+		if err := checkServiceMutationIdle(stateDir, lockPath); err != nil {
+			t.Fatalf("fresh idle state rejected: %v", err)
+		}
 		beginMutationTestJob(t, manager)
 		if err := checkServiceMutationIdle(stateDir, lockPath); !errors.Is(err, errServiceMutationNotIdle) {
 			t.Fatalf("active state err=%v want not idle", err)
@@ -951,7 +953,9 @@ func TestServiceMutationIdleCheckIsReadOnlyAndFailClosed(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		requireServiceMutationIdleProof(t, checkServiceMutationIdle(stateDir, lockPath), "terminal idle state")
+		if err := checkServiceMutationIdle(stateDir, lockPath); err != nil {
+			t.Fatalf("terminal idle state rejected: %v", err)
+		}
 	})
 
 	t.Run("lock held without active pointer", func(t *testing.T) {

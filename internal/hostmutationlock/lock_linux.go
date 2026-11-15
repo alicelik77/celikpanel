@@ -17,10 +17,11 @@ import (
 
 var ErrBusy = errors.New("the host mutation lock is busy")
 
-// ErrUnknown means a probe could not establish whether the lock is held: the
-// lock table named nobody and not every process's descriptors could be read.
-// It is not idle; a caller must not proceed as if the lock were free.
-// Kilidin tutulup tutulmadığı belirlenemedi; boşta sayılmaz, devam edilmez.
+// ErrUnknown means the holder could not be established: the lock table named
+// nobody and not every process's descriptors could be read. Holders returns it;
+// it never means idle. ProbeIdle does not return it: it then decides with the
+// momentary flock (see ProbeIdle).
+// Tutucu belirlenemedi; asla "boşta" demek değildir.
 var ErrUnknown = errors.New("whether the lock is held could not be established")
 
 // Owner is the already established numeric lock identity. A native consumer must
@@ -36,6 +37,10 @@ func AcquireExisting(path string, owner Owner) (*os.File, error) {
 	return acquire(path, owner, false, nil)
 }
 
+// momentaryProbeHeldHook runs while the fallback probe holds the flock (tests
+// only).
+var momentaryProbeHeldHook func()
+
 // ProbeIdle only observes exclusion. A missing file in a trusted existing parent
 // is idle, preserving the historical pre-initialization probe. This result never
 // grants permission to mutate; a writer must acquire its own lease afterwards.
@@ -49,14 +54,27 @@ func AcquireExisting(path string, owner Owner) (*os.File, error) {
 //
 // A holder the table names is busy. The table can skip a line while other
 // locks come and go (alpha.135), so "nobody" is confirmed from every process's
-// descriptors before it is idle; when that walk cannot be completed and finds
-// nobody, the answer wraps ErrUnknown. The confirmation takes no lock either.
+// descriptors before it is idle; that walk takes no lock either. When the walk
+// cannot be completed and finds nobody (this process lacks CAP_SYS_PTRACE, a
+// process could not be read, or the walk ran past its bound), the answer comes
+// from the same momentary flock as for an unreadable lock table: exact, and
+// never "not established", so a host without that capability can still be
+// updated (alpha.136). The Agent and the update checkers run as root with every
+// capability, where the walk completes and no flock is taken. On a host where
+// it cannot complete, a writer whose non-blocking acquisition falls inside the
+// flock's instant is refused as busy, exactly as before 2026-10-30, and two
+// such probes at the same instant can make one of them answer busy; neither
+// can make it answer idle while the lock is held.
 //
 // ProbeIdle kilit almaz, çekirdeğin kilit tablosunu okur: bir okuma gerçek bir
 // değişikliği "meşgul" gösteremez. Tablo kimseyi göstermezse süreçlerin
-// tanımlayıcılarıyla doğrulanır; doğrulanamazsa cevap "belirlenemedi"dir.
+// tanımlayıcılarıyla doğrulanır. Bu okuma tamamlanamazsa (yetki yok, süre
+// doldu) cevap anlık flock ile verilir: kesindir, "belirlenemedi" kalmaz.
 func ProbeIdle(path string, owner Owner) error {
 	holders, observed, err := observe(path, owner)
+	if errors.Is(err, ErrUnknown) {
+		observed, err = false, nil
+	}
 	if err != nil {
 		return err
 	}
@@ -64,6 +82,9 @@ func ProbeIdle(path string, owner Owner) error {
 		file, err := acquire(path, owner, true, nil)
 		if err != nil || file == nil {
 			return err
+		}
+		if momentaryProbeHeldHook != nil {
+			momentaryProbeHeldHook()
 		}
 		return file.Close()
 	}

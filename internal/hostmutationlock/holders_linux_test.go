@@ -32,7 +32,9 @@ func TestProbeInProgressNeverRefusesAWriter(t *testing.T) {
 		file.Close()
 	}
 	t.Cleanup(func() { probeObservedHook = nil })
-	requireIdle(t, ProbeIdle(path, owner), "idle lock")
+	if err := ProbeIdle(path, owner); err != nil {
+		t.Fatalf("idle lock: %v", err)
+	}
 	if !writerRan {
 		t.Fatal("the probe did not reach its observation")
 	}
@@ -76,7 +78,9 @@ func TestHoldersNameTheHolderWithoutTakingTheLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer otherHeld.Close()
-	requireIdle(t, ProbeIdle(path, owner), "a lock whose neighbour file is held")
+	if err = ProbeIdle(path, owner); err != nil {
+		t.Fatalf("a different held file made this lock busy: %v", err)
+	}
 }
 
 // A lock held by another process names that process.

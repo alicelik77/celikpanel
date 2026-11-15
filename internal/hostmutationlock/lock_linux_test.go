@@ -72,7 +72,9 @@ func TestExclusionInheritedProofAndReuse(t *testing.T) {
 	if err = VerifyInherited(path, int(other.Fd()), owner); err == nil {
 		t.Fatal("unlocked descriptor acquired as proof")
 	}
-	requireIdle(t, ProbeIdle(path, owner), "released lock")
+	if err = ProbeIdle(path, owner); err != nil {
+		t.Fatal(err)
+	}
 	for _, fd := range []int{-1, 0, 1, 2, 999999} {
 		if VerifyInherited(path, fd, owner) == nil {
 			t.Fatalf("invalid descriptor %d accepted", fd)
@@ -257,7 +259,9 @@ func TestNativeProcessExclusionSurvivesProofAndReleasesOnDeath(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd.Wait()
-	requireIdle(t, ProbeIdle(path, owner), "lock of a killed process")
+	if err = ProbeIdle(path, owner); err != nil {
+		t.Fatalf("kernel did not release dead process lock: %v", err)
+	}
 }
 func TestNativeProcessHelper(t *testing.T) {
 	path := os.Getenv("CP_TEST_PROCESS_LOCK")
