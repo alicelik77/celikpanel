@@ -7856,3 +7856,59 @@ bağlantıyı tutar.
   açmak, sınırlar uygulanırken sınır satırı. Açık: başka bir kutunun web
   postası oturumu açık tarayıcı o oturumu açar. **Hiçbir P0 işi
   kapanmadı.**
+
+### Dal a136/idle-probe (ana makine değişiklik kilidinin salt-okur denetimi, kilit tablosunun atladığı tutucuyu bulur; tamamlanamayan okuma anlık flock ile karar verir; şema değişikliği yok; ilke 2 ve 3; P0.2/P0.3 kabul girdileri; D-024; D-025; 2026-11-15, aday alpha.136)
+
+- **Kusur.** `hostmutationlock.ProbeIdle` ve `Holders` `/proc/locks`
+  dosyasını okuyordu; çekirdek bu dosyayı her read() çağrısında bir parça
+  üretir ve satır sırasından sürdürür; iki parça arasında başka kilitler
+  bırakılınca tutucunun satırı atlanır. Konuk kanıtı (alpha.135): bir alt
+  süreç kilidi tutarken 5000 denetimden 1094'ü "boşta" dedi, her biri
+  bağımsız bir EWOULDBLOCK ile tutulduğu doğrulandı; CI'da
+  `TestHoldersNameAnotherProcess` ara sıra başarısız oldu. Denetim
+  `--check-service-mutation-idle` denetimlerini (güncelleme ön denetimi,
+  kurtarma ortamı yükseltmesi, Panel hazır olma) ve posta kurulum devrini
+  besler.
+- **Sözleşme.** Kilit tablosunun adını verdiği tutucu kesindir (meşgul).
+  Tablo kimseyi göstermezse her sürecin tanımlayıcıları okunur
+  (`descriptorFlockHolders`): her `/proc/<pid>/fd/<n>` için
+  `AT_STATX_DONT_SYNC` ile bir `statx`, `fdinfo` kilit satırı yalnız kilit
+  dosyasının kendisine ait tanımlayıcı için (aynı aygıt ve inode). `/proc`
+  ve her fd dizini artan numarayla listelenir; denetim boyunca kilidi tutan
+  süreç her zaman ziyaret edilir; devralınan tanımlayıcılar kilidi paylaşan
+  her süreçte gösterir. Bu okuma kilit almaz (salt-okur denetimin hiçbir
+  yazıcıyı meşgul göstermemesi kuralı, 2026-10-30, okumanın tamamlandığı her
+  yerde korunur; root olarak çalışan Agent ve güncelleme denetleyicileri
+  buna dahildir). Okuma tamamlanamaz ve kimseyi bulamazsa (CAP_SYS_PTRACE
+  yok, okunamayan süreç, 5 sn sınırı aşıldı) `ProbeIdle` mevcut anlık flock
+  ile karar verir: kesin, asla "belirlenemedi" değil, böylece hiçbir sunucu
+  güncellenemez kalmaz; engellemeyen alımı o ana düşen yazıcı meşgul cevabı
+  alır, aynı anda iki böyle denetim birinin meşgul demesine yol açabilir,
+  asla boşta değil. `Holders` bir tutucunun adını veremediğinde boş cevap
+  yerine `ErrUnknown` döndürür; posta günlüğündeki "adı alınamadan bıraktı"
+  sözü tam bir okuma gerektirir.
+- **Şema / sürüm geçişi.** Yok. Kalıcı kayıt ya da kablo alanı değişmez;
+  alpha.135'e dönmek eski denetimi geri getirir.
+- **Kurtarma davranışı.** Yollar değişmedi: denetim hiçbir şeyi değiştirmez;
+  meşgul cevabını aynı işlem önceki gibi bekler ya da yeniden dener
+  (güncelleme ön denetimi 60 sn, yükseltme yeniden okur, posta devrini Panel
+  yeniden gönderir).
+- **Kanıt.** `internal/hostmutationlock/descriptors_linux_test.go`: lock
+  churn altında bir gerileme testi (alpha.135'in kodunda root ve yetkisiz
+  kullanıcıyla 20 denemenin 20'si, `-race` ile 5'in 5'i başarısız; bu dalda
+  hiçbiri), tablodan eksik tutucu, tamamlanamayan okuma, tükenen süre, yetki
+  yokluğu ve anlık flock'un kapsamı; değişmemiş
+  `TestHoldersNameAnotherProcess` dış churn altında alpha.135'te 300
+  denemenin 47 ve 38'inde, burada hiçbirinde başarısız oldu. Boşta denetim
+  maliyeti: 96.908 tanımlayıcı 0,41 sn (ortanca). Bir CI adımı denetimi ve
+  Agent boşta denetimlerini root olarak çalıştırır. Henüz gerçek sistem
+  yaşam döngüsü denemesi yok.
+- **Açık.** Kurtarma ortamı yükseltmesi (`runPromotionCompatibility`) boşta
+  denetimini yapar ama başlatıcı/seçim değişimi boyunca ana makine
+  değişiklik kilidini tutmaz; arada bir Agent değişikliği başlayabilir ve
+  sonraki bir kurtarma, yeni ortamın hiç kanıtlanmadığı kayıtlarla
+  karşılaşabilir; kendi değişikliği için listelendi. Denetimin göremediği
+  tutucular: bu `/proc`'un göstermediği bir PID ad alanındaki süreç, hiçbir
+  tanımlayıcı olmadan tutulan kilit. Başlatılamayan denetleyici hâlâ
+  desteklenmeyen protokol olarak bildiriliyor. **Hiçbir P0 işi
+  kapanmadı.**

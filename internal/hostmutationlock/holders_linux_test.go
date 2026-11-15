@@ -40,8 +40,9 @@ func TestProbeInProgressNeverRefusesAWriter(t *testing.T) {
 	}
 	// The same holds for the diagnostic read.
 	writerRan = false
-	if holders, err := Holders(path, owner); err != nil || len(holders) != 0 || !writerRan {
-		t.Fatalf("idle holders: %v %v %t", holders, err, writerRan)
+	requireNoHolders(t, path, owner, "idle holders")
+	if !writerRan {
+		t.Fatal("the diagnostic read did not reach its observation")
 	}
 }
 
@@ -68,9 +69,7 @@ func TestHoldersNameTheHolderWithoutTakingTheLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	held.Close()
-	if holders, err = Holders(path, owner); err != nil || len(holders) != 0 {
-		t.Fatalf("released lock still has holders: %+v %v", holders, err)
-	}
+	requireNoHolders(t, path, owner, "released lock")
 	// Another lock file held elsewhere is not this lock's holder.
 	other, owner2 := fixture(t)
 	writeLock(t, other)

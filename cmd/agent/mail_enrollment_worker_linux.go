@@ -179,7 +179,10 @@ func (e *mailEnrollmentLockHeld) Error() string {
 // heldBy lets the platform-neutral worker guidance name the holder.
 func (e *mailEnrollmentLockHeld) heldBy() string { return e.Error() }
 
-// mailEnrollmentLockHolder reads who holds a lock, without taking it.
+// mailEnrollmentLockHolder reads who holds a lock, without taking it. "Released
+// before it could be named" is said only when the complete read (lock table and
+// every process's descriptors) found nobody holding it; when the read could not
+// be completed, the error says so (hostmutationlock.ErrUnknown).
 func mailEnrollmentLockHolder(path string, owner hostmutationlock.Owner) string {
 	holders, err := hostmutationlock.Holders(path, owner)
 	switch {
