@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.135.md)
 
+> **Yayımlandı**, 15 Kasım 2026 (UTC): sürüm commit'i `1f3e08234`, GitHub ön sürümü 06:02:00Z, indirme portalı yaklaşık 06:05Z (dış denetim 27/27).
+
 İki işlik küçük bir sürüm. Bir alan adını silerken veritabanlarına ne
 olacağı sorulur ve siteden geride hiçbir şey kalmaz; silmeden kalan posta
 ve yedekler tek bir listede 30 gün saklanır, sonra kendiliğinden silinir.
