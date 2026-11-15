@@ -15,7 +15,11 @@ günceller.**
    sürüm panelin veritabanı düzenini değiştirmez (alpha.135'teki hâlinde
    kalır); sonradan alpha.135'e dönmek veritabanı geri yüklemesi
    gerektirmez.
-2. Güncellemeden sonra basılacak ya da ayarlanacak bir şey yok. Değişiklik
+2. Ubuntu sunucusunda ilk basış, görünürde hiçbir şey çalışmazken
+   "sunucunun paket yöneticisi meşguldü" diyerek hiçbir şeyi değiştirmeden
+   durabilir ("Laboratuvarda bulunanlar"a bakın). Birkaç dakika sonra
+   **Güncelle** düğmesine yeniden basın; laboratuvarda ikinci basış çalıştı.
+3. Güncellemeden sonra basılacak ya da ayarlanacak bir şey yok. Değişiklik
    denetimin içinde; hiçbir ekran değişmez.
 
 ## Sizin için ne değişiyor
@@ -96,10 +100,44 @@ doğru olduklarında gösterilir.
 - Başlatılamayan bir kurtarma denetimi hâlâ "desteklenmeyen protokol"
   olarak bildiriliyor (alpha.137 listesinde).
 
+### Laboratuvarda bulunan, sonraki sürüme kalanlar
+
+- Ubuntu'da ilk güncelleme basışı, görünürde hiçbir şey çalışmazken "paket
+  yöneticisi meşguldü" diyerek durabilir: Ubuntu'nun kendi haber ve ESM
+  önbellek hizmetleri iki saniye önce başlamıştı. Birkaç dakika sonra ikinci
+  basış çalışır. Daha önce de görüldü; bu hizmetleri güncellemenin kendi
+  hizmet yeniden yüklemelerinin başlatıp başlatmadığı belirlenmedi.
+- Bin denetimde bir kadar, paket yöneticisi taraması okurken sona eren bir
+  süreç, denetimin cevap vermek yerine reddetmesine yol açar; güncellemenin
+  ilk denetimi bu reddi beklemez, bu yüzden güncelleme hemen durabilir.
+  Güvenli biçimde, hiçbir şeyi değiştirmeden durur; yeniden basmak çalışır.
+- Bileşen kaldırma penceresinde **Kaldır**, pencere hâlâ "…okunuyor…"
+  derken basılabiliyor ve o zaman hiçbir şey yapmıyor; pencere neyin
+  etkileneceğini gösterince aynı düğme kaldırır.
+
 ## Laboratuvarda denenenler
 
-**Laboratuvar denetiminden sonra doldurulacak.** Bu sürümde henüz
-laboratuvar denemesi yapılmadı.
+İki laboratuvar sunucusunda, Debian 13 ve Ubuntu 24.04'te bir laboratuvar
+denemesi. Deneme boyunca ilgisiz programlar her sunucuda saniyede yaklaşık
+iki bin dosya kilidi alıp bıraktı.
+
+**Denenen ve geçenler:**
+- İki sunucu da önceki sürümden panelin kendi güncelleme sayfasıyla
+  güncellendi ve kendiliğinden "güncellendi" durumuna ulaştı (Ubuntu
+  sunucusu ikinci basışta, "Laboratuvarda bulunanlar"a bakın).
+- Gerçek bir bileşen kurulumu değişiklik kilidini tutarken 300 denetimin
+  300'ü bir işlemin sürdüğünü söyledi. Bu cevaplar önce okunan işlem
+  kaydından geldi. Kayıt bir kenara konup kararı değişen kilit denetiminin
+  kendisi verdiğinde 270 denetimin 270'i meşgul dedi; tam okumanın
+  gerektirdiği hakla da onsuz da.
+- Hiçbir şey çalışmazken 300 denetimin 300'ü boşta dedi (155 süreçli bir
+  sunucuda ortada 19 ms, en çok 62 ms); o hak olmadan da 300'ün 300'ü.
+- Aynı yük altında bir posta kutusu açmak, çiftte bir alan adı açıp silmek
+  çalıştı.
+
+**Denenmeyenler:** gerçekten bir işlem sürerken Güncelle'ye basmak
+(laboratuvarın denemesinde süren bir işlem yoktu) ve süreler (başka bir iş
+laboratuvar makinesini yükledi).
 
 ## Kanıt
 
@@ -116,6 +154,7 @@ root ve yetkisiz kullanıcıyla 20 denemenin 20'sinde, yarış denetleyicisiyle
 5'in 5'inde başarısız oldu; bu sürümde her denemede geçti. CelikPanel'in
 başka bir süreci adlandırma testi, değiştirilmeden, aynı tür yük altında
 alpha.135'te 300 denemenin 47 ve 38'inde, bu sürümde hiçbirinde başarısız
-olmadı. Yeni bir CI adımı bu testleri root olarak çalıştırır. Gerçek bir
-sunucuda henüz deneme yok ("Laboratuvarda denenenler"e bakın).
+olmadı. Yeni bir CI adımı bu testleri root olarak çalıştırır. Sürüm başı
+`21b9c0d2c` üzerinde bir laboratuvar denemesi ("Laboratuvarda
+denenenler"e bakın).
 **Hiçbir P0 işi kapanmadı.**

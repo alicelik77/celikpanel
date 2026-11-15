@@ -14,7 +14,11 @@ screen.**
 1. Update from the panel's own update screen, as before. This release does
    not change the panel's database layout (it stays at the alpha.135 form),
    so going back to alpha.135 later needs no database restore.
-2. There is nothing to press or set after the update. The change is inside
+2. On an Ubuntu server the first press can stop before changing anything
+   with "the server's package manager was busy" although nothing visible
+   runs (see "Found in the lab"). Press **Update** again after a few
+   minutes; in the lab the second press worked.
+3. There is nothing to press or set after the update. The change is inside
    the check; no screen changes.
 
 ## What changes for you
@@ -101,10 +105,46 @@ true.
 - A recovery check that cannot even be started is still reported as
   "unsupported protocol" (listed for alpha.137).
 
+### Found in the lab, left for the next release
+
+- On Ubuntu the first update press can stop with "the package manager was
+  busy" although nothing visible runs: Ubuntu's own news and ESM cache
+  services had started two seconds earlier. A second press a few minutes
+  later works. This was seen before; whether the update's own service
+  reloads start those services is not established.
+- In about one check in a thousand, a process that ends while the
+  package-manager scan reads it makes the check refuse instead of answer,
+  and the update's first check does not wait on that refusal, so an update
+  can stop at once. It stops safely, before changing anything; pressing
+  again works.
+- In the component removal window, **Kaldır** can be pressed while the
+  window still says "…okunuyor…", and then does nothing; once the window
+  shows what is affected, the same button removes.
+
 ## Checked in the lab
 
-**To be filled in after the lab check.** No lab run has been made on this
-release yet.
+One lab run on two lab servers, Debian 13 and Ubuntu 24.04. While the run
+lasted, unrelated programs took and dropped about two thousand file locks
+a second on each server.
+
+**Checked and passed:**
+- Both servers were updated from the previous version through the panel's
+  own update page and reached "güncellendi" by themselves (the Ubuntu one
+  on its second press, see "Found in the lab").
+- While a real component install held the change lock, 300 of 300 checks
+  said an operation was running. Those answers came from the operation
+  record, which is read first. With the record set aside, so that the
+  changed lock check itself decided, 270 of 270 checks said busy, both
+  with and without the right the full read needs.
+- With nothing running, 300 of 300 checks said idle (19 ms in the middle,
+  62 ms at most, on a server with 155 processes), and 300 of 300 also
+  without that right.
+- Creating a mailbox, and creating and deleting a domain on the pair,
+  worked under the same load.
+
+**Not checked:** pressing Update while an operation is really running
+(the lab's attempt found no operation running), and timings (another job
+loaded the lab host).
 
 ## Evidence
 
@@ -122,5 +162,5 @@ unprivileged user, and 5 of 5 with the race detector; on this release it
 passed every run. CelikPanel's existing test of naming another process,
 unchanged, failed 47 and 38 of 300 runs under the same kind of load on
 alpha.135 and 0 on this release. A new CI step runs these tests as root.
-No run on a real server yet (see "Checked in the lab").
+One lab run on the release head `21b9c0d2c` (see "Checked in the lab").
 **No P0 item is closed.**
