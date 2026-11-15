@@ -282,9 +282,20 @@ jobs:
           - shard: C, capitals and Ca through Ch
             pattern: '^TestC([A-Z]|[a-h])'
             skip: '^TestControlPlane'
+          # Measured on the first run of this layout (race test time):
+          # TestCompletedUpdateDatabaseWALAware... alone 122 s, the TestCom
+          # tests 168 s, the TestCou (WAL-aware user count) tests 130 s; Cl
+          # through Co together took 323 s of 480, so they have shards of
+          # their own.
           - shard: C, Cl through Co
             pattern: '^TestC[l-o]'
-            skip: '^TestControlPlane'
+            skip: '^Test(ControlPlane|Com|Cou)'
+          - shard: C, Com
+            pattern: '^TestCom'
+            skip: ''
+          - shard: C, Cou
+            pattern: '^TestCou'
+            skip: ''
           # Control plane was split (alpha.130): with -race its job took
           # 371 s on alpha.129 and passed the 8-minute ceiling on the alpha.130
           # candidate (three more migrations for every database the tests
@@ -363,8 +374,15 @@ jobs:
           - shard: Startup readiness
             pattern: '^TestStartup'
             skip: '^TestStartupRe(ad|co)'
+          # One test, TestStartupReadinessFailsWithTypedReasonAndNoWrite,
+          # took 202 s of the 256 s of its first shard: alone here, it is the
+          # floor a name split cannot lower (its own subtests would have to be
+          # split or made parallel).
           - shard: Startup readiness, read
             pattern: '^TestStartupRead'
+            skip: '^TestStartupReadinessFailsWithTypedReasonAndNoWrite$'
+          - shard: Startup readiness, typed failure reasons
+            pattern: '^TestStartupReadinessFailsWithTypedReasonAndNoWrite$'
             skip: ''
           - shard: Startup readiness, recovery
             pattern: '^TestStartupReco'
@@ -405,10 +423,10 @@ jobs:
       # and cover every valid Test* suffix, including a future exact `Test`
       # name or non-uppercase suffix. Groups are split from within: the
       # complement shard keeps the broader pattern and -skips the carved-out
-      # prefixes. TestCIRaceShardsRunEveryPanelTestExactlyOnce
-      # (cmd/panel/ci_race_shards_test.go, run by the go job) reads this
-      # matrix and fails when a test of the package is run by no shard or by
-      # two. An empty -skip '' skips nothing (verified on go1.26.5).
+      # prefixes. deploy/test-go-toolchain-contract.sh (run by the go job)
+      # reads this matrix and fails when a test `go test -list` finds, or a
+      # boundary name, is run by no shard or by two. An empty -skip '' skips
+      # nothing (verified on go1.26.5).
       #
       # The -timeout measures the test binary only: the race build before it
       # (about 70 to 90 s per shard, measured 15 Nov 2026) is not counted, so
@@ -434,7 +452,7 @@ jobs:
       # goroutine dump reads as before.
       - name: Race-test panel boundaries
         run: |
-          go test -race -count=1 -timeout=8m -v ./cmd/panel \
+          go test -race -count=1 -timeout=8m ./cmd/panel -v \
             -run '${{ matrix.pattern }}' -skip '${{ matrix.skip }}' 2>&1 \
             | tee race.log | { grep -vE '^(=== (RUN|PAUSE|CONT|NAME) |\s*--- (PASS|SKIP): )' || true; }
       # Every shard says where its time goes, so the next split is measured.

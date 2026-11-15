@@ -153,17 +153,36 @@ reject_literal "$CI" 'windows-portability:'
 reject_literal "$CI" 'freebsd-compile:'
 reject_literal "$CI" 'darwin-compile:'
 require_count "$CI" 'go test -race -count=1 -timeout=8m ./cmd/panel' 1
-# Twenty-four disjoint, exhaustive shards (R-020). A letter group split from within
+# Thirty-three disjoint, exhaustive shards (R-020). A letter group split from within
 # keeps its pattern on the complement shard and -skips the carved-out prefix,
 # so the pair covers exactly what the single shard covered before. The D group
 # is carved twice, because measurement put both of its halves within seconds
 # of the 240 s exit line: TestD minus every TestDNS, then TestDNS minus the
 # engine and zone tests, then those two on their own.
-require_count "$CI" 'pattern:' 24
-require_count "$CI" 'skip:' 24
+require_count "$CI" 'pattern:' 33
+require_count "$CI" 'skip:' 33
 require_literal "$CI" "pattern: '^Test($|[A-B]|[^A-Z])'"
 require_literal "$CI" "pattern: '^TestC'"
 require_literal "$CI" "skip: '^TestControlPlane'"
+# 15 Nov 2026, measured over 12 hosted runs and then on the new layout (race
+# test time): C reached 480 s of 480 twice; Cl through Co held 323 s of it
+# (TestCom 168 s, TestCou 130 s); A and B 247 s; Startup readiness 303 s, of
+# which one test 202 s; Control plane restore 299 s. Each is carved by name.
+require_literal "$CI" "skip: '^TestA[A-Z0-9]'"
+require_literal "$CI" "pattern: '^TestA[A-Z0-9]'"
+require_literal "$CI" "skip: '^Test(ControlPlane|C([A-Z]|[a-h]|[l-o]))'"
+require_literal "$CI" "pattern: '^TestC([A-Z]|[a-h])'"
+require_literal "$CI" "pattern: '^TestC[l-o]'"
+require_literal "$CI" "skip: '^Test(ControlPlane|Com|Cou)'"
+require_literal "$CI" "pattern: '^TestCom'"
+require_literal "$CI" "pattern: '^TestCou'"
+require_literal "$CI" "skip: '^TestControlPlaneRestore[A-O]'"
+require_literal "$CI" "pattern: '^TestControlPlaneRestore[A-O]'"
+require_literal "$CI" "skip: '^TestStartupRe(ad|co)'"
+require_literal "$CI" "pattern: '^TestStartupRead'"
+require_literal "$CI" "skip: '^TestStartupReadinessFailsWithTypedReasonAndNoWrite$'"
+require_literal "$CI" "pattern: '^TestStartupReadinessFailsWithTypedReasonAndNoWrite$'"
+require_literal "$CI" "pattern: '^TestStartupReco'"
 require_literal "$CI" "pattern: '^TestControlPlane'"
 # alpha.130: the control-plane shard carves out its restore tests (with -race
 # the whole shard passed the 8-minute ceiling).
@@ -205,7 +224,7 @@ require_literal "$CI" "pattern: '^TestServerSetup'"
 require_literal "$CI" "skip: '^TestServerSetup[A-J]'"
 require_literal "$CI" "pattern: '^TestService'"
 require_literal "$CI" "pattern: '^Test[T-Z]'"
-require_count "$CI" "skip: ''" 15
+require_count "$CI" "skip: ''" 18
 require_literal "$CI" "-run '\${{ matrix.pattern }}' -skip '\${{ matrix.skip }}'"
 reject_literal "$CI" "pattern: '^Test[E-G]'"
 reject_literal "$CI" "pattern: '^Test[N-R]'"
@@ -256,8 +275,8 @@ panel_shard_output=$(awk -F "'" '
     END { if (have_pattern) exit 1 }
 ' "$CI") || die "cannot read panel race pattern/skip pairs from ci.yml"
 mapfile -t panel_shard_rows <<< "$panel_shard_output"
-((${#panel_shard_rows[@]} == 24)) ||
-    die "panel race matrix must contain exactly 24 pattern/skip pairs"
+((${#panel_shard_rows[@]} == 33)) ||
+    die "panel race matrix must contain exactly 33 pattern/skip pairs"
 
 panel_shard_membership_count() {
     local test_name=$1 count=0 row pattern skip
@@ -280,7 +299,7 @@ for boundary_name in Test TestA TestC TestControlPlane TestControlPlaneRestore T
     TestRe TestRec TestRecovery TestRecoveryDatabaseMigration TestRecoveryDatabaseMigrationA \
     TestRecoveryDatabaseMigrationL TestRecoveryDatabaseMigrationM TestRecoveryDatabaseMigrationz \
     TestRemo TestRemote TestRest TestRestore TestRequest TestRFuture \
-    TestN TestO TestP TestPa TestPan TestPanel TestPanelX TestPanelz TestPanels TestQ TestRe TestRem TestRes; do
+    TestN TestO TestP TestPa TestPan TestPanel TestPanelX TestPanelz TestPanels TestQ TestRe TestRem TestRes     TestA0 TestAZ TestAa TestAz TestB TestC0 TestC_ TestCA TestCZ TestCa TestCh TestCi TestCk TestCl TestCo TestCom TestCon TestCou TestCov TestCp TestCz     TestControlPlaneRestoreA TestControlPlaneRestoreO TestControlPlaneRestoreP TestControlPlaneRestorez     TestStartupRe TestStartupRead TestStartupReadiness TestStartupReco TestStartupRecovery TestStartupRez     TestStartupReadinessFailsWithTypedReasonAndNoWrite TestStartupReadinessFailsWithTypedReasonAndNoWriteToo; do
     [[ "$(panel_shard_membership_count "$boundary_name")" == 1 ]] ||
         die "panel race shard boundary is not disjoint and exhaustive: $boundary_name"
 done
