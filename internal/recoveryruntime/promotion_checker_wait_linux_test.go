@@ -72,6 +72,35 @@ func TestPromotionCheckerStopsWaitingAtTheBound(t *testing.T) {
 	if waited != promotionCheckerTransientWait+promotionCheckerRetryDelay {
 		t.Fatalf("waited %v, calls %d", waited, *calls)
 	}
+	// alpha.137: the refusal says the host stayed busy, and with what.
+	var busy *promotionHostBusyError
+	if !errors.As(err, &busy) || !busy.packageManager {
+		t.Fatalf("a package task past the bound = %#v, want a package-manager busy refusal", err)
+	}
+}
+
+func TestPromotionCheckerNamesAnAgentOperationPastTheBound(t *testing.T) {
+	stubPromotionSleep(t)
+	run, _ := scriptedChecker("Recovery agent check: service mutation state is not idle: privileged mutation 3f2a is active\n")
+	var busy *promotionHostBusyError
+	if err := runPromotionChecker(func() error { return nil }, run); !errors.As(err, &busy) || busy.packageManager {
+		t.Fatalf("an Agent operation past the bound = %#v, want an operation busy refusal", err)
+	}
+}
+
+func TestPromotionCheckerBusyThenOtherRefusalIsTheExistingRefusal(t *testing.T) {
+	stubPromotionSleep(t)
+	answers := make([]string, 0, 30)
+	for len(answers) < int(promotionCheckerTransientWait/promotionCheckerTransientPoll)+1 {
+		answers = append(answers, packageManagerRefusal)
+	}
+	answers = append(answers, "Recovery agent check: service mutation ledger is not canonical\n")
+	run, _ := scriptedChecker(answers...)
+	err := runPromotionChecker(func() error { return nil }, run)
+	var busy *promotionHostBusyError
+	if errors.As(err, &busy) || ReasonCode(err) != string(ReasonUnsupported) {
+		t.Fatalf("a non-transient last answer = %#v, want the existing refusal", err)
+	}
 }
 
 func TestPromotionCheckerOtherRefusalIsReadOnceMore(t *testing.T) {

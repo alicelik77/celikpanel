@@ -1,5 +1,5 @@
 import { isFinishingStep, isPreflightStop, preflightStopCodes, recoveryFailureCodes, recoveryFailureGuidanceKey, retryingCauseKey, type PausedCauseCode, type RecoveryFailureCode, type RecoveryObservation } from './recoveryObservation';
-import { systemUpdatePackageManagerBusy, systemUpdatePreflightStop, withoutInternalTokens } from './systemUpdateFailure';
+import { systemUpdatePackageManagerBusy, systemUpdatePreflightStop, systemUpdateRecoveryPreparationUnconfirmed, withoutInternalTokens } from './systemUpdateFailure';
 
 /** Preflight steps with reviewed owner wording; any other step uses the generic line. */
 export const preflightSteps = ['mode', 'owner', 'compatibility', 'panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
@@ -38,6 +38,8 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.packageManagerBusy'
     | 'panelUpdate.packageManagerBusy'
     | 'panelUpdate.outcome.packageManagerBusyNext'
+    | 'panelUpdate.outcome.preparationUnconfirmed'
+    | 'panelUpdate.outcome.preparationUnconfirmedNext'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
     | 'panelUpdate.outcome.preflightNext.application_compatibility'
@@ -107,6 +109,8 @@ export type FailedUpdateGuidance = {
 };
 
 export const RECOVERY_LOG_COMMAND = 'sudo journalctl -u celikpanel-release-recovery.service --no-pager -n 50';
+/** Read-only: says whether a recovery kit transition is left and what to do. */
+export const RECOVERY_RUNTIME_STATUS_COMMAND = 'sudo /usr/libexec/celikpanel/recovery runtime-status';
 
 type Input = {
     targetVersion: string;
@@ -193,6 +197,25 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
                 { key: 'panelUpdate.outcome.packageManagerBusy', fallback: 'panelUpdate.packageManagerBusy' },
                 { key: 'panelUpdate.outcome.packageManagerBusyNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
             ],
+        };
+    }
+    // The recovery tool could not confirm its own preparation: the update
+    // stopped before any release transaction or service stop, so no recovery
+    // follows it (alpha.137 lab: the page waited for one forever and offered
+    // no update). A stop the owner can close and start again, with the one
+    // read-only command that says whether anything of the preparation is left.
+    // Hazırlık doğrulanamadı: kurtarma gelmez; kapatılabilir duruş ve komut.
+    if (systemUpdateRecoveryPreparationUnconfirmed(input.message) && uncontradicted) {
+        return {
+            state: 'unchanged',
+            tone: 'neutral',
+            title: { key: 'panelUpdate.outcome.stoppedTitle' },
+            lines: [
+                { key: 'panelUpdate.outcome.stopped', vars: versions },
+                { key: 'panelUpdate.outcome.preparationUnconfirmed', fallback: 'panelUpdate.outcome.preflightStep.generic' },
+                { key: 'panelUpdate.outcome.preparationUnconfirmedNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
+            ],
+            command: RECOVERY_RUNTIME_STATUS_COMMAND,
         };
     }
     if (isPreflightStop(observation) || (preflight && uncontradicted)) {

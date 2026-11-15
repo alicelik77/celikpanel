@@ -7954,8 +7954,8 @@ bağlantıyı tutar.
   süreç dizini de yoksa sayılır; başka her hata yine reddedilir.
 - **Şema / sürüm geçişi.** Yok. Sürüm sırası 136 → 137; kalıcı kayıt ya da
   kablo alanı değişmez; alpha.136'ya dönmek eski sırayı ve taramayı geri
-  getirir. Duyuru hedef sürümün `update.sh`'ındadır; alpha.137 ve sonrasına
-  yapılan güncellemelerde görünür.
+  getirir. Duyuru hedef sürümün `update.sh` çıktısındadır; sahibin
+  görebileceği hiçbir günlük onu tutmaz (aşağıdaki laboratuvar düzeltmesi).
 - **Kurtarma davranışı.** Değişmedi. Ret yine mevcut cümlelerle tipli
   `package_manager_busy`, `state=unchanged` duruşuyla biter; ekrandan
   yeniden deneme döngüsü yok, durum sorgusu ikinci bir güncelleme başlatmaz
@@ -7977,3 +7977,61 @@ bağlantıyı tutar.
   duran bir not gösterir (bunun için güncelleyiciden panele yeni bir kanal
   gerekir). Ölçülmedi: alpha.136 laboratuvarında hangi denetimin reddettiği
   ve Ubuntu 24.04'teki `comm` adları. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a137/update-preflight, laboratuvar düzeltmesi (kurtarma kitinin hazırlığında meşgul sunucu tipli değişmemiş duruşla biter; o duruşun kilitli bıraktığı sayfa kapatılabilir; şema değişikliği yok; ilke 2 ve 3; P0.2/P0.3 kabul girdileri; D-024; D-025; 2026-11-15, aday alpha.137)
+
+- **Kusur (alpha.137 laboratuvarı, `cbb6e0f27`, Debian 13).** Bir `apt-get
+  install` basıştan yedi saniye sonra dpkg kilitlerini aldı. Güncellemenin
+  ilk boşta denetimi kurtarma kitinin kendi geçiş denetleyicisidir
+  (`internal/recoveryruntime` `runPromotionChecker`; `update.sh`
+  `prepare_independent_recovery_runtime` içinden `recovery prepare-runtime`
+  çalıştırır; kurtarma niyetinden, birim korumalarından ve her yeniden
+  yüklemeden önce). 60 sn bekledi, sonra `runtime_unsupported_protocol` ile
+  reddetti; `update.sh` EXIT tuzağı daha yokken tipsiz "independent recovery
+  runtime preparation is unconfirmed" ile çıktı, tipli özet de hata eki de
+  yazılmadı. Agent işçi birimini başarısız bıraktı
+  (`systemUpdateStoppedUnchanged` yalnız tipli değişmemiş satırları
+  tanıyordu); kurtarma gözlemi "failed, update_failed, terminal proof none"
+  olarak kaldı ve onu değiştirecek hiçbir şey yoktu (kurtarmanın işlemi
+  yoktu); pencere bunu hâlâ gelecek bir kurtarma sandı (`failedUpdateGuidance`:
+  ilerleme tonu, kapatma yok), sakladığı işlemi ve dolayısıyla güncelleme
+  kilidini tuttu, kart güncelleme sunmadı. Kilit sunucu durumu değil,
+  tarayıcının sakladığı işlemdir.
+- **Sözleşme.** 60 sn'lik sınırlı bekleme artık önce çalışır
+  (`preflight_host_idle_before_recovery_runtime`, kitin hazırlığından önce);
+  sınırdan sonra süren ret, EXIT tuzağı kurulu değilken `fail_update_preflight`
+  tarafından yazılan tipli değişmemiş duruştur. Sınırından sonra ve geçiş
+  niyetinden önce sunucuyu hâlâ meşgul bulan geçiş denetleyicisi
+  `runtime_package_manager_busy` ya da `runtime_operation_active` döndürür;
+  `recovery prepare-runtime` bunu `update.sh`'ın zaten tiplediği adım ve
+  cümleyle bildirir, `update.sh` `recovery_runtime_preflight_failed` /
+  `package_manager_busy` değişmemiş duruşuyla biter
+  (`recovery_runtime_preparation_attempted=0`: hiçbir şey seçilmedi; etkisiz
+  kit kopyası hiçbir şey seçmez, runtime-status "none" der). Niyetten sonra
+  aynı ret mevcut `runtime_unsupported_protocol`'dür ve geçiş bekler. Başka
+  her hazırlık hatası "unconfirmed" kalır. Agent tipsiz hazırlık duruşunun
+  birimini de temizler (kayıt kalır). Pencere bu duruşu kapatılabilir gösterir
+  ("kurulu sürümü değiştirmeden durdu"), yalnız okuyan `sudo
+  /usr/libexec/celikpanel/recovery runtime-status` ile; kapatınca kart
+  güncellemeyi yeniden sunar.
+- **Şema / sürüm geçişi.** Yok; aynı sürümün ürettiği ve okuduğu iki yeni
+  kurtarma ortamı neden kodu. Düzeltmeler hedef sürümün `update.sh`'ında ve
+  kurtarma kitindedir; alpha.137'ye güncellemede etkilidir; önceki bir
+  sürümde kilitlenmiş tarayıcı başka yerden açılır (sürüm notları).
+- **Kurtarma davranışı.** Niyetten ya da hizmetler durduktan sonraki her şey
+  için değişmedi; herhangi bir değişiklikten önceki meşgul sunucu artık
+  kurtarılacak bir şey olarak bildirilmez.
+- **Kanıt.** Kurtarma ortamı testleri (sınırını geçen denetleyici paket
+  yöneticisini ya da işlemi adlandırır; meşgul yanıttan sonra başka bir ret
+  mevcut rettir; yerel alt süreç senaryoları: niyetten önce meşgul hiçbir
+  niyet bırakmaz ve runtime-status "none" der, niyetten sonra meşgul geçiş
+  bekler); `cmd/recovery` bildirimi; kabuk sözleşmeleri (hazırlıktan önceki
+  ilk bekleme, tuzaktan önceki tipli duruşuyla; meşgul hazırlık tiplidir,
+  desteklenmeyen yine "unconfirmed"dır); laboratuvarın tam kaydıyla Agent'ın
+  temizleme kuralı; laboratuvarın tam kaydıyla pencere (iki dil). Canlı
+  bekleme satırının görünmediği bulundu (Agent bir hatanın yalnız son
+  satırını saklar); yapılmadı.
+- **Açık.** Beklemeler ile son denetimler arasında ya da geçişin iki
+  uyumluluk okuması arasında başlayan bir paket işi güncellemeyi yine
+  durdurur (değişiklik yapmadan ya da var olan bekleyen bir geçişle).
+  Pencerede canlı bekleme durumu yok. **Hiçbir P0 işi kapanmadı.**

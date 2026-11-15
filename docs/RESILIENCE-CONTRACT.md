@@ -8737,7 +8737,8 @@ until the backup reports ready.
 - **Schema / version transition.** None. Release sequence 136 → 137; no
   persisted record or wire field changes; going back to alpha.136 restores
   the old order and scan. The announcement is in the target release's
-  `update.sh`, so it appears on updates to alpha.137 and later.
+  `update.sh` output, which no owner-visible log keeps (lab correction
+  below).
 - **Recovery behaviour.** Unchanged. A refusal still ends as the typed
   `package_manager_busy`, `state=unchanged` stop with the existing
   sentences; no retry loop from the screen and no second update from
@@ -8759,3 +8760,63 @@ until the backup reports ready.
   line (that needs a new updater-to-panel channel). Not measured: which
   check refused in the alpha.136 lab, and the `comm` names on Ubuntu 24.04.
   **No P0 item is closed.**
+
+### Branch a137/update-preflight, lab correction (a host busy at the recovery kit's preparation ends as a typed unchanged stop; a page left locked by that stop can be closed; no schema change; invariants 2 and 3; P0.2/P0.3 admission inputs; D-024; D-025; 2026-11-15, candidate alpha.137)
+
+- **Defect (alpha.137 lab, `cbb6e0f27`, Debian 13).** An `apt-get install`
+  took the dpkg locks seven seconds after the press. The first idle check of
+  the update is the recovery kit's own promotion checker
+  (`internal/recoveryruntime` `runPromotionChecker`, run by `recovery
+  prepare-runtime` from `update.sh` `prepare_independent_recovery_runtime`,
+  before the release-recovery intent, the unit guards and every reload). It
+  waited its 60 s and then refused as `runtime_unsupported_protocol`;
+  `update.sh` died with the untyped "independent recovery runtime
+  preparation is unconfirmed" before its EXIT trap existed, so no typed
+  summary or failure sidecar was written. The Agent kept the worker unit
+  failed (`systemUpdateStoppedUnchanged` matched only typed unchanged
+  lines); the recovery observation stayed "failed, update_failed, terminal
+  proof none" with nothing that would ever change it (release recovery had
+  no transaction); the window read that as a recovery still to come
+  (`failedUpdateGuidance`: tone progress, no close), kept its stored
+  operation and so the update lock, and the card offered no update. The
+  lock is the browser's stored operation, not server state.
+- **Contract.** The bounded 60 s wait now runs first
+  (`preflight_host_idle_before_recovery_runtime`, before the kit's
+  preparation); a refusal still present after it is the typed unchanged stop,
+  written by `fail_update_preflight` itself when no EXIT trap is installed.
+  A promotion checker that still finds the host busy after its bound, before
+  the promotion intent, returns `runtime_package_manager_busy` or
+  `runtime_operation_active`; `recovery prepare-runtime` reports it with the
+  step and sentence `update.sh` already types, and `update.sh` ends with the
+  `recovery_runtime_preflight_failed` / `package_manager_busy` unchanged stop
+  (`recovery_runtime_preparation_attempted=0`: nothing was selected; the
+  inert kit copy selects nothing and runtime-status says "none"). After an
+  intent the same refusal is the existing `runtime_unsupported_protocol`
+  and the promotion stays pending. Every other preparation failure keeps
+  "unconfirmed". The Agent also clears the unit of the untyped preparation
+  stop (record kept). The window shows that stop as closable ("stopped
+  before changing the installed version"), with the read-only `sudo
+  /usr/libexec/celikpanel/recovery runtime-status`; closing it gives the
+  card back its update.
+- **Schema / version transition.** None; two new recovery-runtime reason
+  codes, produced and read only by the same release. The fixes are in the
+  target release's `update.sh` and recovery kit, so they act on the update
+  to alpha.137; a browser already locked by an earlier version is opened
+  elsewhere (release notes).
+- **Recovery behaviour.** Unchanged for anything after an intent or after
+  services stop; a busy host before any change is no longer reported as
+  something to recover.
+- **Evidence.** Recovery-runtime tests (checker past its bound names package
+  manager or operation; a busy answer then another refusal is the existing
+  refusal; native child scenarios: busy before intent leaves no intent and
+  runtime-status "none", busy after intent stays pending); `cmd/recovery`
+  report; shell contracts (first wait before the preparation with its typed
+  stop before the trap; a busy preparation is typed, an unsupported one is
+  still "unconfirmed"); the Agent's clearing rule on the lab's exact record;
+  the window on the lab's exact record (both languages). The live waiting
+  line was found not observable (the Agent keeps only a failure's last
+  line) and is not built.
+- **Open.** A package run starting between the waits and the final checks,
+  or between the promotion's two compatibility reads, still stops the
+  update (unchanged, or an existing pending promotion). No live waiting
+  state in the window. **No P0 item is closed.**

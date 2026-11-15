@@ -478,6 +478,17 @@ func promoteAt(request PromotionRequest, fd int, paths promotionPaths, checkpoin
 	}
 	defer target.Close()
 	if err := runPromotionCompatibility(paths, target, request.Mode, fd, check); err != nil {
+		// No intent exists yet: a host still busy after the checkers' bound
+		// is said as such, so the update ends unchanged instead of
+		// "unconfirmed". The inert kit installed above selects nothing.
+		// Niyet yokken meşgul sunucu adıyla söylenir; kurulan kit hiçbir şey seçmez.
+		var busy *promotionHostBusyError
+		if errors.As(err, &busy) {
+			if busy.packageManager {
+				return fail(ReasonPackageManagerBusy)
+			}
+			return fail(ReasonOperationActive)
+		}
 		return err
 	}
 	if err := refuseUnprovedDNSV2Promotion(promotionDNSJournalRoot); err != nil {
@@ -678,6 +689,11 @@ func resumePromotionAt(fd int, paths promotionPaths, checkpoint func(string), ch
 	}
 	defer target.Close()
 	if err := runPromotionCompatibility(paths, target, proof.record.Mode, fd, check); err != nil {
+		// A published intent stays pending: the same refusal as before.
+		var busy *promotionHostBusyError
+		if errors.As(err, &busy) {
+			return fail(ReasonUnsupported)
+		}
 		return err
 	}
 	if !launcherNew {
@@ -855,6 +871,20 @@ func (o *promotionCheckerOutput) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// promotionHostBusyError is a checker refusal that only named a busy host (a
+// running Agent operation or the host package manager) and was still there
+// after the bounded wait. Before a promotion's intent it ends the preparation
+// with a typed reason; once an intent exists it is the existing refusal.
+type promotionHostBusyError struct{ packageManager bool }
+
+func (e *promotionHostBusyError) Error() string { return string(ReasonUnsupported) }
+
+// promotionCheckerPackageManagerBusy is the Agent's package-manager sentence,
+// the one update.sh reports as package_manager_busy.
+func promotionCheckerPackageManagerBusy(output []byte) bool {
+	return strings.Contains(string(output), ": the host package manager is active")
+}
+
 // runPromotionChecker runs one read-only checker. between re-proves the target
 // and the release boundary before and after every read.
 func runPromotionChecker(between func() error, run func(context.Context) ([]byte, error)) error {
@@ -877,12 +907,16 @@ func runPromotionChecker(between func() error, run func(context.Context) ([]byte
 		if deadline != nil {
 			return fail(ReasonUnsupported)
 		}
-		if promotionCheckerRefusalTransient(output) && waited < promotionCheckerTransientWait {
+		transient := promotionCheckerRefusalTransient(output)
+		if transient && waited < promotionCheckerTransientWait {
 			promotionSleep(promotionCheckerTransientPoll)
 			waited += promotionCheckerTransientPoll
 			continue
 		}
 		if retried {
+			if transient {
+				return &promotionHostBusyError{packageManager: promotionCheckerPackageManagerBusy(output)}
+			}
 			return fail(ReasonUnsupported)
 		}
 		retried = true

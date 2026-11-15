@@ -22,6 +22,19 @@ func dispatchRuntimePreparation(args []string, uid int, prepare func(string, str
 		return exitUsage
 	}
 	if err := prepare(args[2], args[4]); err != nil {
+		// A host still busy after the checkers' bounded wait, before any
+		// transition intent: nothing to preserve. The step and sentence are
+		// the ones update.sh and the panel already read (agent_ledger_check;
+		// "the host package manager is active"); the code in brackets is what
+		// update.sh matches. Hazırlık değişiklikten önce meşgul sunucuda durdu.
+		switch recoveryruntime.ReasonCode(err) {
+		case string(recoveryruntime.ReasonPackageManagerBusy):
+			report("Recovery runtime preparation stopped before changing anything. step=agent_ledger_check: service mutation state is not idle: the host package manager is active (" + string(recoveryruntime.ReasonPackageManagerBusy) + ")")
+			return exitUnavailable
+		case string(recoveryruntime.ReasonOperationActive):
+			report("Recovery runtime preparation stopped before changing anything. step=agent_ledger_check: service mutation state is not idle: another server operation is still running (" + string(recoveryruntime.ReasonOperationActive) + ")")
+			return exitUnavailable
+		}
 		report("Recovery runtime preparation could not be verified before service downtime. Preserve its evidence. " + err.Error())
 		return exitUnavailable
 	}

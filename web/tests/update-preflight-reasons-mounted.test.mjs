@@ -236,6 +236,38 @@ for (const locale of ['en', 'tr']) {
         } finally { await act(async () => renderer.unmount()); }
     });
 
+    // alpha.137 lab (A, 15:33:06): the updater stopped because the recovery
+    // tool could not confirm its preparation, before any release transaction
+    // or service stop. The page waited for a recovery that never comes, kept
+    // the update locked and offered no button. Now it is a stop the owner
+    // closes and starts again, with the one read-only command that says
+    // whether anything of the preparation is left.
+    for (const [shape, answer] of [
+        ['as the lab recorded it', observation({})],
+        ['before the recovery record is read', null],
+    ])
+    test(`${locale}: an unconfirmed recovery tool preparation ${shape} is a stop that can be closed and started again`, async () => {
+        const message = 'reviewed updater failed: exit status 1: !! independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence';
+        const { renderer, reads } = await mountWith({ locale, message, answer });
+        try {
+            assert.ok(reads.every(([, method]) => method === 'GET'), 'reading never starts anything');
+            assert.equal(titleOf(renderer), c['panelUpdate.outcome.stoppedTitle']);
+            assert.equal(markOf(renderer).props['data-update-mark'], 'neutral');
+            const text = textOf(dialogOf(renderer));
+            assert.ok(text.includes(fill('panelUpdate.outcome.stopped', versions)), text);
+            assert.ok(text.includes(c['panelUpdate.outcome.preparationUnconfirmed']), text);
+            assert.ok(text.includes(fill('panelUpdate.outcome.preparationUnconfirmedNext', versions)), text);
+            assert.ok(text.includes('sudo /usr/libexec/celikpanel/recovery runtime-status'), 'the read-only command is shown');
+            for (const key of ['recovery.next.failed', 'recovery.phase.failed', 'panelUpdate.outcome.followsRecovery', 'panelUpdate.watch']) {
+                assert.ok(!text.includes(c[key]), `${key} must not be said: no recovery follows this stop`);
+            }
+            assert.ok(!text.includes('!! independent'), 'the raw line is not shown');
+            // The update card gets the stopped request, so Start is offered again.
+            assert.equal(globalThis.__context.stopped?.requestID, REQUEST);
+            assert.equal(globalThis.__context.stopped?.rolledBack, false);
+        } finally { await act(async () => renderer.unmount()); }
+    });
+
     test(`${locale}: a recovery tool that could not be started or verified has its words and the server's line in view`, async () => {
         const { renderer } = await mountWith({ locale, message: COMPATIBILITY, answer: observation({ failure_code: 'recovery_runtime_preflight_failed' }) });
         try {

@@ -47,6 +47,37 @@ func TestRuntimePreparationClosedOwnerTuple(t *testing.T) {
 	}
 }
 
+// alpha.137 lab: a host still busy after the kit checkers' bound, before any
+// intent, is reported with the step and sentence update.sh types as an
+// unchanged stop (package_manager_busy), never as evidence to preserve.
+func TestRuntimePreparationNamesABusyHost(t *testing.T) {
+	valid := []string{"prepare-runtime", "--source", filepath.Join(t.TempDir(), "recovery-runtime"), "--mode", "--normal", "--transaction-fd", "9"}
+	for _, tc := range []struct {
+		reason recoveryruntime.Reason
+		want   []string
+	}{
+		{recoveryruntime.ReasonPackageManagerBusy, []string{"step=agent_ledger_check: ", ": the host package manager is active", "(runtime_package_manager_busy)"}},
+		{recoveryruntime.ReasonOperationActive, []string{"step=agent_ledger_check: ", "another server operation is still running", "(runtime_operation_active)"}},
+		{recoveryruntime.ReasonUnsupported, []string{"Preserve its evidence.", "runtime_unsupported_protocol"}},
+	} {
+		var reported string
+		code := dispatchRuntimePreparation(valid, 0, func(string, string) error {
+			return &recoveryruntime.Error{Reason: tc.reason}
+		}, func(message string) { reported = message })
+		if code != exitUnavailable {
+			t.Fatalf("%s: code %d", tc.reason, code)
+		}
+		for _, part := range tc.want {
+			if !strings.Contains(reported, part) {
+				t.Fatalf("%s: report %q lacks %q", tc.reason, reported, part)
+			}
+		}
+		if tc.reason != recoveryruntime.ReasonUnsupported && strings.Contains(reported, "Preserve its evidence") {
+			t.Fatalf("%s: a busy host asks to preserve evidence: %q", tc.reason, reported)
+		}
+	}
+}
+
 func TestRuntimePreparationAbsenceIsNotCorruption(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

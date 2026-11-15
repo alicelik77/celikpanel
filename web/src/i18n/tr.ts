@@ -335,7 +335,7 @@ export const tr: Record<ShellKey, string> = {
     'panelUpdate.steps.prepare': 'Kurmadan önce sunucuyu denetleme',
     'panelUpdate.steps.restart': 'Yeni sürümü kurma ve paneli yeniden başlatma',
     'panelUpdate.steps.confirm': 'Yeni sürümü doğrulama',
-    'panelUpdate.steps.prepareWaits': 'Başka bir sunucu değişikliği ya da sunucunun paket yöneticisi (örneğin otomatik güncellemeler) hâlâ çalışıyorsa güncelleme onu bekler (en çok bir dakika), sonra kendiliğinden sürer ya da hiçbir şeyi değiştirmeden durur. Bir şey yapmanız gerekmiyor.',
+    'panelUpdate.steps.prepareWaits': 'Başka bir sunucu değişikliği ya da sunucunun paket yöneticisi (örneğin otomatik güncellemeler) hâlâ çalışıyorsa güncelleme onu bekler (her denetimde en çok bir dakika), sonra kendiliğinden sürer ya da hiçbir şeyi değiştirmeden durur. Bir şey yapmanız gerekmiyor.',
     'panelUpdate.steps.restarting': 'Panel yeniden başlıyor; bu adım birkaç dakika sürebilir. Bu sayfa kendiliğinden yeniden bağlanır.',
     'panelUpdate.steps.locked': 'Güncelleme sürerken diğer sayfalar kilitli kalır.',
     'panelUpdate.steps.updated': '{version} sürümüne güncellendi',

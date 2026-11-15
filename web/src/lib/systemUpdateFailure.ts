@@ -55,3 +55,17 @@ export function withoutInternalTokens(message: string): string {
 export function systemUpdatePackageManagerBusy(diagnostic: string): boolean {
     return /(?:^|: )!! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=/.test(diagnostic);
 }
+
+/**
+ * The updater's own untyped stop when the recovery tool could not confirm its
+ * preparation for the new version (update.sh: "independent recovery runtime
+ * preparation is unconfirmed; panel services have not been stopped"). It comes
+ * before any release transaction and before any service is stopped, so the
+ * server's recovery has nothing of it to finish. alpha.137 lab: a package
+ * install that began seven seconds after the press ended this way, and the
+ * page waited for a recovery that never comes, with no way to start again.
+ * Kurtarma aracı hazırlığını doğrulayamadı; hiçbir hizmet durdurulmadı.
+ */
+export function systemUpdateRecoveryPreparationUnconfirmed(diagnostic: string): boolean {
+    return /(?:^|: )!! independent recovery runtime preparation is unconfirmed; panel services have not been stopped(?:;|$)/.test(diagnostic);
+}

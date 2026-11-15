@@ -379,6 +379,18 @@ run_recovery_compatibility_waiting() {
     run_update_probe_waiting recovery_compatibility_refusal_is_transient "$@"
 }
 
+# The first read-only check of an update, before anything on the server is
+# prepared: the same bounded wait as below. It runs before the EXIT trap, so
+# a refusal still present after the bound reports its typed, unchanged stop
+# itself (fail_update_preflight). Hiçbir şey hazırlanmadan önceki ilk bekleme.
+preflight_host_idle_before_recovery_runtime() {
+    [[ $BOOTSTRAP_PRE_LEDGER -eq 0 ]] || return 0
+    if ! CELIKPANEL_AGENT_STATE_DIR="$AGENT_STATE_DIR" CELIKPANEL_MUTATION_LOCK="$MUTATION_LOCK" \
+        run_update_agent_idle_probe_waiting "$PREFLIGHT_AGENT" --check-service-mutation-idle; then
+        fail_update_preflight agent_idle "an existing server operation requires completion or exact recovery before update; coordinators remain available"
+    fi
+}
+
 # Reject durable reservations while the management interface is still reachable.
 # Final idle proofs under exclusion remain mandatory after this early check.
 preflight_mutations_before_quiesce() {
@@ -732,11 +744,21 @@ prepare_independent_recovery_runtime() {
         mail_runtime_preparation_verified=1
     fi
     recovery_runtime_preparation_attempted=1
-    run_update_idle_probe "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" prepare-runtime \
+    if ! run_update_idle_probe "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" prepare-runtime \
         --source "$TRUSTED_RELEASE_ROOT/recovery-runtime" \
         --mode "$recovery_compatibility_mode" \
-        --transaction-fd 9 9<&"$RELEASE_TRANSACTION_FD" \
-        || die "independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence"
+        --transaction-fd 9 9<&"$RELEASE_TRANSACTION_FD"; then
+        # The kit's checkers waited their own bound and the host was still
+        # busy, before any transition intent: nothing was selected or changed
+        # (recovery runtime-status says "no transition"). A typed, unchanged
+        # stop, not "unconfirmed". Every other failure keeps its evidence path.
+        # Geçiş niyetinden önce meşgul sunucu: hiçbir şey değişmedi, tipli duruş.
+        if recovery_runtime_refused_busy_host; then
+            recovery_runtime_preparation_attempted=0
+            fail_recovery_runtime_preflight preparation
+        fi
+        die "independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence"
+    fi
     recovery_runtime_preparation_verified=1
     run_recovery_compatibility_waiting "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" verify-compatibility \
         --mode "$recovery_compatibility_mode" 9<&"$RELEASE_TRANSACTION_FD" \
@@ -752,6 +774,17 @@ prepare_independent_recovery_runtime() {
         run_update_idle_probe /usr/libexec/celikpanel/recovery probe-update-database 9<&"$RELEASE_TRANSACTION_FD" \
             || fail_recovery_runtime_preflight database_metadata
     fi
+}
+
+# The recovery runtime's preparation names a host that stayed busy through its
+# own bounded wait, before any transition intent (internal/recoveryruntime,
+# runtime_package_manager_busy / runtime_operation_active).
+# Hazırlık, kendi beklemesinden sonra da meşgul kalan sunucuyu adlandırır.
+recovery_runtime_refused_busy_host() {
+    case "${update_failure_detail:-}" in
+        *'(runtime_package_manager_busy)'*|*'(runtime_operation_active)'*) return 0 ;;
+    esac
+    return 1
 }
 
 # The selected recovery runtime's read-only preflight runs before any durable
@@ -812,6 +845,15 @@ fail_update_preflight() {
     [[ ${update_failure_detail:-} == *': the host package manager is active'* ]] ||
         update_failure_detail=$diagnostic
     if [[ ${transaction_phase:-none} == none ]]; then
+        if [[ -z $(trap -p EXIT) ]]; then
+            # Before the EXIT trap nothing else would write the summary: the
+            # typed, unchanged stop is reported here (as the recovery runtime
+            # preflight does), so the Agent clears the attempt's unit and the
+            # panel offers the update again.
+            echo "!! $reason" >&2
+            report_update_failure 1 none
+            exit 1
+        fi
         die "$reason"
     fi
     fail_before_active "$reason"
@@ -2934,6 +2976,12 @@ if [[ $release_marker_count -eq 0 ]]; then
     # separately retained recovery runtime can change host recovery bytes.
     # The later check still re-proves the foundation immediately before intent.
     preflight_release_recovery_foundation
+    # The bounded wait for a finishing Agent operation or the host package
+    # manager comes before the recovery runtime's own preparation: its
+    # checkers refuse the same states, and a refusal there could only end as
+    # "unconfirmed" (alpha.137 lab: a package install that began seven
+    # seconds after the press). Ön bekleme, kurtarma ortamı hazırlığından önce.
+    preflight_host_idle_before_recovery_runtime
     prepare_independent_recovery_runtime
     # The candidate sequence/commit and every already-bound foundation byte
     # are proven before guard/drop-in publication can change the host.

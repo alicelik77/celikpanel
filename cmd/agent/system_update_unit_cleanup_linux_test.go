@@ -134,6 +134,27 @@ func TestSystemUpdateClearsTheUnitOfAnAttemptThatStoppedUnchanged(t *testing.T) 
 		}
 	}
 
+	// alpha.137 lab (A, 15:33:06): the updater's untyped stop when the recovery
+	// tool could not confirm its preparation came before any release
+	// transaction or service stop; its unit stayed under systemctl --failed.
+	// It is an attempt that stopped before changing anything; any other
+	// "unconfirmed" line is not.
+	unconfirmed := linuxSystemUpdateTestState(strings.Repeat("7", 32))
+	unconfirmed.Status = systemUpdateFailed
+	unconfirmed.Error = "reviewed updater failed: exit status 1: !! independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence"
+	if !systemUpdateStoppedUnchanged(unconfirmed) {
+		t.Fatal("the lab's preparation stop was not taken for a stop before any change")
+	}
+	for _, other := range []string{
+		"reviewed updater failed: exit status 1: !! independent recovery runtime preparation is unconfirmed after the services stopped",
+		"reviewed updater failed: exit status 1: !! independent firewall preparation is unconfirmed; panel services have not been stopped; preserve its files and review this preflight failure before retrying the same release",
+	} {
+		unconfirmed.Error = other
+		if systemUpdateStoppedUnchanged(unconfirmed) {
+			t.Fatalf("%q was taken for the recovery tool's preparation stop", other)
+		}
+	}
+
 	// An abandon receipt never had a worker; it is not an unchanged stop.
 	receipt := linuxSystemUpdateTestState(strings.Repeat("5", 32))
 	receipt.Status, receipt.Error = systemUpdateFailed, systemUpdateAbandonedError
