@@ -29,18 +29,23 @@ type mailMutationPanelAgent struct {
 	passwordErr       error
 	queueActionOK     bool
 	addCalls          int
+	addRequests       []transport.MailAccount
+	addHeldName       string
+	addHeldBytes      int64
 	forwardingCalls   [][]transport.MailForwarding
 	passwordCalls     []transport.UpdateMailPasswordRequest
 }
 
 func (a *mailMutationPanelAgent) AddMailAccount(
-	_ *transport.MailAccount,
+	request *transport.MailAccount,
 	response *transport.MailMutationResponse,
 ) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.addCalls++
+	a.addRequests = append(a.addRequests, transport.MailAccount{Email: request.Email, QuotaMB: request.QuotaMB, LeftDomainID: request.LeftDomainID})
 	response.Applied = a.addApplied
+	response.HeldName, response.HeldBytes = a.addHeldName, a.addHeldBytes
 	return nil
 }
 

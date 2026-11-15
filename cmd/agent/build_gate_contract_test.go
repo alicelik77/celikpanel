@@ -67,6 +67,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SitePageCacheClearV1(&transport.SitePageCacheClearRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.135: removing one item of what deletions left.
+		{name: "RemoveHeldItemV1", run: func(expected string) string {
+			var response transport.RemoveHeldItemResponse
+			if err := agent.RemoveHeldItemV1(&transport.RemoveHeldItemRequest{ExpectedBuildCommit: expected, Kind: transport.HeldItemMail, Name: "domain-7-0123456789abcdef"}, &response); err != nil {
+				return err.Error()
+			}
+			return response.Error
+		}},
+		// alpha.135: holding a mail folder an earlier deletion left in place.
+		{name: "HoldLeftMailFolderV1", run: func(expected string) string {
+			var response transport.HoldLeftMailFolderResponse
+			if err := agent.HoldLeftMailFolderV1(&transport.HoldLeftMailFolderRequest{ExpectedBuildCommit: expected, Email: "old@example.com", DomainID: 7}, &response); err != nil {
+				return err.Error()
+			}
+			return response.Error
+		}},
 		// alpha.128: site log retention.
 		{name: "SiteLogRetentionV1", run: func(expected string) string {
 			var response transport.SiteLogRetentionResponse

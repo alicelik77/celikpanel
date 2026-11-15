@@ -26,26 +26,26 @@ const SERVICES = [
 ];
 const SCAN = () => ({
     scanned_at: now(), scan_age_seconds: 0, dns_identity_ready: true,
-    mail_hostname: { current: 'mail.celikhost.com', hostname: 'mail.celikhost.com', source: 'saved', current_usable: true, will_set_hostname: false },
+    mail_hostname: { current: 'mail.example.com', hostname: 'mail.example.com', source: 'saved', current_usable: true, will_set_hostname: false },
     services: SERVICES, bundles: [],
     profiles: ['core-mail', 'webmail', 'protected-mail'].map((id) => ({ id, name: id, description: `${id} profile`, status: 'available', available: true, verified: false, latest_attempt_status: 'none', services: ['postfix'] })),
 });
-const HOST = 'mail.celikhost.com';
+const HOST = 'mail.example.com';
 const ROUNDCUBE = (url) => ({ state: 'read', check: { installed: true, version: '1.6.20', line: '1.6', latest_on_line: '1.6.20', update_available: false, checked_at: '2026-10-26T10:00:00Z' }, last_update: null, webmail_ready: !!url, webmail_url: url });
-const NONE = { address: null, suggestion: HOST, expected: ['72.62.38.15'], status: { present: false, managed: false }, last_operation: null };
+const NONE = { address: null, suggestion: HOST, expected: ['203.0.113.15'], status: { present: false, managed: false }, last_operation: null };
 const CHECK = (state) => ({
     check: {
-        host: HOST, state, expected: ['72.62.38.15'], firewall: { state: 'open' }, current: '',
+        host: HOST, state, expected: ['203.0.113.15'], firewall: { state: 'open' }, current: '',
         ...(state === 'not_found' ? {
             code: 'no_record', ready: false, message: `Public DNS has no address record for ${HOST} yet.`,
-            records: [{ type: 'A', name: 'mail', content: '72.62.38.15', ttl: 3600, text: `${HOST}. 3600 IN A 72.62.38.15` }],
-            zone: { name: 'celikhost.com', records_url: '/api/v1/dns/infrastructure-zones/celikhost.com/records' },
-            owner_action: { who: 'administrator', next: 'Add the record below to the zone celikhost.com hosted here (it is shown before it is added), then press Check.' },
-        } : { ready: true, answered: ['72.62.38.15'], message: `Public DNS answers 72.62.38.15 for ${HOST}: this server.` }),
+            records: [{ type: 'A', name: 'mail', content: '203.0.113.15', ttl: 3600, text: `${HOST}. 3600 IN A 203.0.113.15` }],
+            zone: { name: 'example.com', records_url: '/api/v1/dns/infrastructure-zones/example.com/records' },
+            owner_action: { who: 'administrator', next: 'Add the record below to the zone example.com hosted here (it is shown before it is added), then press Check.' },
+        } : { ready: true, answered: ['203.0.113.15'], message: `Public DNS answers 203.0.113.15 for ${HOST}: this server.` }),
     },
 });
 const ENABLED = {
-    address: { host: HOST, url: `https://${HOST}/`, enabled_at: '2026-10-26T10:05:00Z' }, suggestion: HOST, expected: ['72.62.38.15'],
+    address: { host: HOST, url: `https://${HOST}/`, enabled_at: '2026-10-26T10:05:00Z' }, suggestion: HOST, expected: ['203.0.113.15'],
     status: { present: true, managed: true, proved: true, certificate_expires: '2027-01-24T10:04:00Z', hosts: [HOST] },
     last_operation: { id: 'e'.repeat(32), request_id: 'f'.repeat(32), kind: 'webmail_address', service_id: 'roundcube', package_name: HOST, status: 'succeeded', phase: 'enabling', started_at: '2026-10-26T10:04:00Z', finished_at: '2026-10-26T10:05:00Z', result: { success: true, outcome: 'enabled', host: HOST, url: `https://${HOST}/`, certificate_expires: '2027-01-24T10:04:00Z', roundcube_settings: 'applied' }, error: null },
 };

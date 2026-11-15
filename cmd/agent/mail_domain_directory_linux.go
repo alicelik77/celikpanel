@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	mailDomainQuarantineDirectory = ".celikpanel-quarantine"
-	managedMailRootMode           = 0o710
+	managedMailRootMode = 0o710
 )
 
 func managedMailOwnerIDs() (int, int, error) {

@@ -199,8 +199,7 @@ func readDomainDeletionFailure(ctx context.Context, tx *sql.Tx, domainID int, do
 	if decoder.Decode(&record) != nil ||
 		record.Version != domainDeletionFailureVersion || record.DomainID != domainID ||
 		record.Domain != strings.ToLower(strings.TrimSpace(domain)) ||
-		record.Stage != domainDeletionStageMailRuntime ||
-		record.Reason != domainDeletionReasonMailCleanupFailed ||
+		domainDeletionStageFailureKinds[record.Stage].reason != record.Reason || record.Reason == "" ||
 		record.ErrorLine == "" || utf8.RuneCountInString(record.ErrorLine) > domainDeletionErrorLineMax {
 		return domainDeletionFailureRecord{}, false, nil
 	}
@@ -208,33 +207,34 @@ func readDomainDeletionFailure(ctx context.Context, tx *sql.Tx, domainID int, do
 }
 
 // runDomainDeletionMailStageLocked requires p.mailMutationMu. It returns
-// ran=false when the product has no mail runtime for the domain.
+// ran=false when the product has no mail runtime for the domain, and where
+// the domain's stored mail was moved aside when it was (alpha.134).
 func (p *Panel) runDomainDeletionMailStageLocked(
 	ctx context.Context,
 	domainID int,
 	domain string,
-) (bool, error) {
+) (bool, *domainDeletionKeptMail, error) {
 	present, err := domainHasProductMailRuntime(ctx, p.db.GetDB(), domainID)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if !present {
-		return false, p.clearDomainDeletionFailure(ctx, domainID)
+		return false, nil, p.clearDomainDeletionFailure(ctx, domainID)
 	}
-	err = p.removeDomainMailRuntimeLocked(ctx, domainID, domain)
+	kept, err := p.removeDomainMailRuntimeLocked(ctx, domainID, domain)
 	if err == nil {
-		return true, p.clearDomainDeletionFailure(ctx, domainID)
+		return true, kept, p.clearDomainDeletionFailure(ctx, domainID)
 	}
 	failure, verified := classifyDomainMailCleanupFailure(err)
 	if !verified {
 		// Unknown outcome: an older recorded failure is no longer current.
 		if clearErr := p.clearDomainDeletionFailure(ctx, domainID); clearErr != nil {
-			return true, errors.Join(err, clearErr)
+			return true, nil, errors.Join(err, clearErr)
 		}
-		return true, err
+		return true, nil, err
 	}
 	if recordErr := p.recordDomainDeletionFailure(ctx, domainID, domain, failure); recordErr != nil {
 		failure.Cause = errors.Join(err, recordErr)
 	}
-	return true, failure
+	return true, nil, failure
 }

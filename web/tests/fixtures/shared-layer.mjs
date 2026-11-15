@@ -94,6 +94,15 @@ export const databaseNameLimitsURL = compileSource('lib/databaseNameLimits.ts', 
 export const domainDatabasesURL = compileSource('lib/domainDatabases.ts', (specifier) => (
   specifier.endsWith('/remote') ? remoteURL : unexpected('lib/domainDatabases.ts')(specifier)
 ));
+// alpha.134: the domain delete question and the words of its result, with
+// the database deletion's own words and the one error reader.
+export const databaseDeleteWordsURL = compileSource('lib/databaseDeleteWords.ts', unexpected('lib/databaseDeleteWords.ts'));
+export const domainDeletionQuestionURL = compileSource('lib/domainDeletionQuestion.ts', (specifier) => (
+  specifier.endsWith('/domainDatabases') ? domainDatabasesURL
+    : specifier.endsWith('/databaseDeleteWords') ? databaseDeleteWordsURL
+      : specifier.endsWith('/apiError') ? apiErrorURL
+        : unexpected('lib/domainDeletionQuestion.ts')(specifier)
+));
 export const downloadURL = compileSource('lib/download.ts', (specifier) => (
   specifier.endsWith('/apiError') ? apiErrorURL : unexpected('lib/download.ts')(specifier)
 ));
@@ -140,6 +149,12 @@ export const componentRepoURL = compileSource('lib/componentRepo.ts', unexpected
 // alpha.107: the webmail update check, read by its card and the Components row.
 // alpha.110: webmail's own address, the only URL a screen may link to.
 export const webmailAddressLibURL = compileSource('lib/webmailAddress.ts', unexpected('lib/webmailAddress.ts'));
+// alpha.135: what a domain's mail screen reads of the server's mail service
+// and of its sending limits (one decoder each, shared by every reader).
+export const mailSetupLibURL = compileSource('lib/mailSetup.ts', (specifier) => (
+  specifier.endsWith('/webmailAddress') ? webmailAddressLibURL : unexpected('lib/mailSetup.ts')(specifier)
+));
+export const mailOutgoingLibURL = compileSource('lib/mailOutgoing.ts', unexpected('lib/mailOutgoing.ts'));
 export const roundcubeUpdateURL = compileSource('lib/roundcubeUpdate.ts', (specifier) => (
   specifier.endsWith('/webmailAddress') ? webmailAddressLibURL : unexpected('lib/roundcubeUpdate.ts')(specifier)
 ));
@@ -256,6 +271,8 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/componentRepo': componentRepoURL,
     '/lib/roundcubeUpdate': roundcubeUpdateURL,
     '/lib/webmailAddress': webmailAddressLibURL,
+    '/lib/mailSetup': mailSetupLibURL,
+    '/lib/mailOutgoing': mailOutgoingLibURL,
     '/lib/supportTable': supportTableURL,
     '/lib/offeredVersions': offeredVersionsURL,
     '/lib/vendorLane': vendorLaneURL,

@@ -29,11 +29,8 @@ func TestMailApplicationCompatibilityPreservesNativeOwnership(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			root, e := os.MkdirTemp("/run", "celikpanel-mail-app-")
-			if e != nil {
-				t.Fatal(e)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-mail-app-")
+			var e error
 			bin, units, hooks, kit := filepath.Join(root, "bin"), filepath.Join(root, "units"), filepath.Join(root, "hooks"), filepath.Join(root, "kit")
 			for _, p := range []string{bin, units, hooks, kit} {
 				if e = os.Mkdir(p, 0755); e != nil {
@@ -171,11 +168,7 @@ func TestMailCompatibilityAbsenceProofRejectsLateOwnerCreation(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("root descriptor fixture")
 	}
-	root, e := os.MkdirTemp("/run", "celikpanel-mail-absence-")
-	if e != nil {
-		t.Fatal(e)
-	}
-	defer os.RemoveAll(root)
+	root := nativeFixtureRoot(t, "celikpanel-mail-absence-")
 	state := &runtimeState{config: resolveConfig{anchor: "/", uid: 0, gid: 0, protectedDirectoryGroups: true}}
 	defer state.close()
 	p, verify, e := optionalMailHookParent(state, filepath.Join(root, "missing", "nested"))

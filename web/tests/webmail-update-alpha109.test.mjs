@@ -27,6 +27,7 @@ const stub = dataModule(`
 `);
 const shared = sharedLayer(stub);
 const { RoundcubeUpdateCard } = await import(shared.compile('components/RoundcubeUpdateCard.tsx', { '/LifeLine': shared.compile('components/LifeLine.tsx') }));
+const { OpenWebmailLink } = await import(shared.compile('components/RoundcubeUpdateFlow.tsx', { '/LifeLine': shared.compile('components/LifeLine.tsx') }));
 
 const originalFetch = globalThis.fetch;
 let tree;
@@ -127,25 +128,35 @@ test('a lost POST answer is looked up by its request id and never sent again', a
 test('the Open webmail link points only to the webmail address, https only', async () => {
   // alpha.110: webmail has its own address; the link is offered for the
   // server's webmail_url when it is exactly https://<host>/ and for nothing else
-  // (alpha.109 held it back while webmail was only on the panel's origin).
+  // (alpha.109 held it back while webmail was only on the panel's origin). The
+  // Components row draws it (ServiceList.tsx).
+  const draw = async (url) => {
+    let link;
+    await act(async () => { link = Renderer.create(React.createElement(OpenWebmailLink, { url })); });
+    const found = link.root.findAll((node) => node.type === 'a' && node.props['data-open-webmail-link'] !== undefined).map((node) => ({ props: { ...node.props } }));
+    const shown = JSON.stringify(link.toJSON());
+    await act(async () => link.unmount());
+    return { found, shown };
+  };
+  const { found, shown } = await draw('https://mail.example.com/');
+  assert.equal(found.length, 1);
+  assert.equal(found[0].props.href, 'https://mail.example.com/');
+  assert.equal(found[0].props.rel, 'noopener noreferrer');
+  assert.equal(found[0].props.target, '_blank');
+  assert.ok(shown.includes('https://mail.example.com/'), 'the full address is shown');
+  for (const url of ['/webmail/', 'http://mail.example.com/', 'https://mail.example.com:8443/', 'https://mail.example.com/x', 'https://user@mail.example.com/', 'javascript:alert(1)', '', undefined]) {
+    assert.equal((await draw(url)).found.length, 0, 'no link for ' + String(url));
+  }
+});
+
+// alpha.135 (owner, 14 Nov 2026): on the Roundcube page the address is said
+// once, by the address card with its open button; the update card does not
+// repeat it.
+test('the update card does not repeat webmail’s address or its open button', async () => {
   await mount([check({}, { webmail_ready: true, webmail_url: 'https://mail.example.com/' })]);
   try {
-    const links = attr('data-open-webmail-link');
-    assert.equal(links.length, 1);
-    assert.equal(links[0].props.href, 'https://mail.example.com/');
-    assert.equal(links[0].props.rel, 'noopener noreferrer');
-    assert.equal(links[0].props.target, '_blank');
-    assert.ok(text().includes('https://mail.example.com/'), 'the full address is shown');
-  } finally { await unmount(); }
-  for (const url of ['/webmail/', 'http://mail.example.com/', 'https://mail.example.com:8443/', 'https://mail.example.com/x', 'https://user@mail.example.com/', 'javascript:alert(1)', '', undefined]) {
-    await mount([check({}, { webmail_ready: true, ...(url === undefined ? {} : { webmail_url: url }) })]);
-    try {
-      assert.equal(attr('data-open-webmail-link').length, 0, 'no link for ' + String(url));
-    } finally { await unmount(); }
-  }
-  await mount([check({}, { webmail_ready: false })]);
-  try {
     assert.equal(attr('data-open-webmail-link').length, 0);
+    assert.ok(!text().includes('https://mail.example.com/'), 'the address is said again');
   } finally { await unmount(); }
 });
 

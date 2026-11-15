@@ -20,11 +20,7 @@ func TestEnrollWithInheritedLock(t *testing.T) {
 	}
 	for _, scenario := range []string{"fresh", "active", "corrupt-source", "retained", "corrupt-selected", "interrupted-stage", "launcher-conflict", "no-lock", "umask077", "interrupted-launcher"} {
 		t.Run(scenario, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-runtime-test-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-runtime-test-")
 			os.Chmod(root, 0700)
 			txn := filepath.Join(root, "transaction")
 			if err := os.Mkdir(txn, 0700); err != nil {
@@ -161,11 +157,7 @@ func TestEnrollAfterSIGKILLAtPublishedLauncher(t *testing.T) {
 	}
 	for _, scenario := range []string{"same-candidate", "different-candidate"} {
 		t.Run(scenario, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-enrollment-crash-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-enrollment-crash-")
 			paths := enrollmentCrashTestPaths(root)
 			if err := os.Mkdir(paths.transaction, 0700); err != nil {
 				t.Fatal(err)
@@ -297,11 +289,8 @@ func TestHeldPreflightDescriptorPreservesInheritedContract(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("root fixture")
 	}
-	root, err := os.MkdirTemp("/run", "celikpanel-held-preflight-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := nativeFixtureRoot(t, "celikpanel-held-preflight-")
+	var err error
 	if err = os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}

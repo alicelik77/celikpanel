@@ -3584,7 +3584,12 @@ and anything that looks like a password assignment blanked.
   once the list is known, "…" while it is read and "–" when it could not be
   read. "Create address" needs the list. Usage that could not be read says so in
   its column, and the mailboxes stay listed. The webmail card says "not
-  available on this server" only for an answer the server gave.
+  available on this server" only for an answer the server gave. Since
+  alpha.135 that card appears only as the problem with its fix (not
+  installed, no address, not answering); while webmail works each mailbox
+  row has its own "Webmail" instead, and a list with the problem offers no
+  row "Webmail". Sending limits are one line on each row only while they are
+  applied on the server (docs/OUTGOING-MAIL-LIMITS.md, "On screen").
 - *Catch-all.* The current address is read and shown first; the field and both
   buttons are off until then. "Disable" is offered whenever an address is set.
 - *Mail queue.* The counts and "The mail queue is empty" exist only for a queue

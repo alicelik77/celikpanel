@@ -126,11 +126,7 @@ func TestPromotionInheritedLock(t *testing.T) {
 	cases := []string{"success", "active-dns-v2", "active-dns-v2-resume", "same-target", "next-promotion", "bad-checker", "bad-source", "active", "no-lock", "pending-enroll", "foreign-target", "owner-selector", "owner-launcher", "corrupt-old-kit", "corrupt-target-kit", "corrupt-intent", "orphan-receipt", "unknown-journal", "unsafe-journal", "bad-stage", "history-isolated", "resume-rechecks", "active-handoff", "completion-handoff", "ambiguous-handoff", "foreign-fd", "launcher-xattr", "selector-xattr", "replay-xattr", "owner-acquire", "owner-foreign-fd", "owner-epoll-fd", "owner-busy-foreign-fd", "owner-active-foreign-fd", "unknown-transaction", "retired-loss"}
 	for _, scenario := range cases {
 		t.Run(scenario, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-promotion-test-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-promotion-test-")
 			os.Mkdir(filepath.Join(root, "transaction"), 0700)
 			lock, err := os.OpenFile(filepath.Join(root, "transaction/transaction.lock"), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
 			if err != nil {
@@ -569,11 +565,7 @@ func TestPromotionActualSIGKILL(t *testing.T) {
 	}
 	for _, phase := range []string{"intent_published", "launcher_exchanged", "selector_exchanged", "committed"} {
 		t.Run(phase, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-promotion-crash-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-promotion-crash-")
 			os.Mkdir(filepath.Join(root, "transaction"), 0700)
 			lock, err := os.OpenFile(filepath.Join(root, "transaction/transaction.lock"), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
 			if err != nil {
@@ -638,11 +630,7 @@ func TestPromotionFixedEntryRealExec(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("native root fixture")
 	}
-	root, err := os.MkdirTemp("/run", "celikpanel-promotion-exec-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := nativeFixtureRoot(t, "celikpanel-promotion-exec-")
 	os.Mkdir(filepath.Join(root, "transaction"), 0700)
 	lock, err := os.OpenFile(filepath.Join(root, "transaction/transaction.lock"), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
 	if err != nil {
@@ -788,11 +776,7 @@ func TestPromotionCommittedEntryIgnoresRetiredLoss(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("native root fixture")
 	}
-	root, err := os.MkdirTemp("/run", "celikpanel-promotion-retired-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := nativeFixtureRoot(t, "celikpanel-promotion-retired-")
 	os.Mkdir(filepath.Join(root, "transaction"), 0700)
 	lock, err := os.OpenFile(filepath.Join(root, "transaction/transaction.lock"), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
 	if err != nil {
