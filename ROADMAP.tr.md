@@ -134,7 +134,7 @@ Tek başına çıkan bir dayanıklılık düzeltmesi (sahip, 15 Kasım 2026). Bk
 1. Ana makine kilidinin boşta denetimi, yoğun bir sunucuda bir değişiklik kilidi tutarken "boşta"
    diyebiliyordu: `/proc/locks`'u parça parça okuyordu ve başka kilitler alınıp bırakılırken
    kilidi tutanı kaçırabiliyordu (CI'da `TestHoldersNameAnotherProcess` testinin ara sıra
-   başarısız olmasıyla görüldü; kusur şimdiye dek her sürümde var). Artık "boşta" demeden önce
+   başarısız olmasıyla görüldü; kusur alpha.113'ten beri her sürümde var). Artık "boşta" demeden önce
    süreç başına tam bir okumayla doğrular; kilitler hızla alınıp bırakılırken çalışan bir
    gerileme testi eklendi.
 

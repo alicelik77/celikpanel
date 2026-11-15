@@ -31,7 +31,8 @@ Cevap için sistemin bütün dosya kilitlerinin listesini okuyordu. Pek çok
 programın sürekli kilit alıp bıraktığı bir sunucuda (veritabanları, posta,
 başka hizmetler) bu liste, bir satırın atlandığı bir anda okunabilir.
 Atlanan satır süren değişikliğin satırıysa denetim, bir şey değişirken "hiçbir
-şey değişmiyor" diyordu. Bu kusur önceki her sürümde vardı. CelikPanel'in
+şey değişmiyor" diyordu. Bu kusur, denetimin kilidi bir an almayı bırakıp
+listeyi okumaya başladığı alpha.113'ten beri her sürümde vardı. CelikPanel'in
 kendi otomatik denetimlerinden biri bu yüzden ara sıra başarısız olduğu için
 bulundu.
 
@@ -56,7 +57,7 @@ bazı adımlar yalnız bu denetime dayanır:
   kendisi gerçek bir değişikliği bekletemez. Dört bin süreçli bir sunucuda
   yarım saniye kadar sürer ve en çok beş saniyede durur.
 - Bu tam okuma yapılamıyorsa, örneğin panele başka süreçlere bakma hakkı
-  vermeyen bir sistemde, panel 30 Ekim 2026'dan önceki gibi cevap verir:
+  vermeyen bir sistemde, panel alpha.113'ten önceki sürümler gibi cevap verir:
   kilidi bir an alır ve bırakır. Cevap yine kesindir. "Bilinen sınırlar"a
   bakın.
 - Kilidi kimin tuttuğunun kaydı "adı alınamadan bıraktı" sözünü yalnız tam

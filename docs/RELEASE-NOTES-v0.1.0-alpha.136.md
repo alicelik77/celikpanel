@@ -31,7 +31,9 @@ many programs take and drop locks all the time (databases, mail, other
 services), that list can be read in a moment when a line is skipped. If
 the skipped line was the one for the running change, the check answered
 "nothing is changing" although something was. This defect was in every
-earlier release. It was found because one of CelikPanel's own automatic
+release since alpha.113, when the check stopped taking the lock for an
+instant and began reading the list. It was found because one of
+CelikPanel's own automatic
 checks failed now and then for this reason.
 
 ### What it could cause
@@ -58,7 +60,7 @@ some steps rely on the check alone:
   five seconds at most.
 - If that full read cannot be made, for example on a system that does not
   give the panel the right to look at other processes, the panel answers
-  as it did before 30 October 2026: it takes the lock for an instant and
+  as releases before alpha.113 did: it takes the lock for an instant and
   lets it go. The answer is still exact. See "Known limits".
 - The record of who held the lock says "released it before it could be
   named" only when the full read found nobody; otherwise it says the

@@ -133,8 +133,8 @@ A small release of two jobs (owner: small releases). See row 58.
 A resilience fix that ships alone (owner, 15 November 2026). See row 59.
 1. The host-lock idle probe could answer "idle" while a change held the lock on a busy server: it
    read `/proc/locks` in pieces and could miss a holder while other locks came and went (seen as
-   CI's `TestHoldersNameAnotherProcess` failing now and then; the defect is in every release so
-   far). It now confirms with an exact per-process read before it answers idle; a regression test
+   CI's `TestHoldersNameAnotherProcess` failing now and then; the defect is in every release since
+   alpha.113). It now confirms with an exact per-process read before it answers idle; a regression test
    runs it under lock churn.
 
 **alpha.137 — carried over**
