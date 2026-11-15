@@ -8643,3 +8643,55 @@ until the backup reports ready.
   opening webmail from a row, the limit line while limits are applied.
   Open: a browser with another mailbox's webmail session opens that
   session. **No P0 item is closed.**
+
+### Branch a136/idle-probe (the host mutation lock's read-only probe finds a holder the lock table skipped; an incomplete read decides with the momentary flock; no schema change; invariants 2 and 3; P0.2/P0.3 admission inputs; D-024; D-025; 2026-11-15, candidate alpha.136)
+
+- **Defect.** `hostmutationlock.ProbeIdle` and `Holders` read `/proc/locks`,
+  which the kernel produces one read() chunk at a time and resumes by line
+  number; when other locks are released between two chunks a holder's line
+  is skipped. Guest evidence (alpha.135): 1094 of 5000 probes answered idle
+  while a child held the lock, each confirmed held by an independent
+  EWOULDBLOCK; CI's `TestHoldersNameAnotherProcess` failed now and then.
+  The probe feeds `--check-service-mutation-idle` (update preflight,
+  recovery-runtime promotion, Panel readiness) and the mail enrollment
+  handoff.
+- **Contract.** A holder the lock table names is authoritative (busy).
+  When it names nobody, every process's descriptors are read
+  (`descriptorFlockHolders`): one `statx` with `AT_STATX_DONT_SYNC` per
+  `/proc/<pid>/fd/<n>`, and the `fdinfo` lock line only for a descriptor of
+  the lock file itself (same device and inode). `/proc` and each fd
+  directory are listed by ascending number, so a process holding the lock
+  for the whole probe is always visited; inherited descriptors show the
+  lock in every sharing process. The walk takes no lock (the 2026-10-30
+  rule that a read-only probe never makes a writer busy is kept wherever it
+  completes, which includes the Agent and the update checkers running as
+  root). When it cannot complete and finds nobody (no CAP_SYS_PTRACE, an
+  unreadable process, past its 5 s bound), `ProbeIdle` decides with the
+  existing momentary flock: exact, never "not established", so no host is
+  left unable to update; a writer whose non-blocking acquisition falls in
+  that instant is refused as busy, and two such probes at one instant can
+  make one answer busy, never idle. `Holders` returns `ErrUnknown` instead
+  of an empty answer when it cannot name a holder; the mail journal's
+  "released it before it could be named" requires a complete read.
+- **Schema / version transition.** None. No persisted record or wire field
+  changes; going back to alpha.135 restores the old probe.
+- **Recovery behaviour.** Unchanged paths: the probe mutates nothing; a busy
+  answer is waited for or retried by the same operation as before (update
+  preflight 60 s, promotion re-reads, mail handoff re-sent by the Panel).
+- **Evidence.** `internal/hostmutationlock/descriptors_linux_test.go`: a
+  churn regression test (on alpha.135's code 20 of 20 runs failed as root
+  and unprivileged, 5 of 5 under `-race`; on this branch none), a holder
+  missing from the table, an incomplete walk, an exhausted budget, no
+  capability, and the momentary flock's extent; the unchanged
+  `TestHoldersNameAnotherProcess` under external churn failed 47 and 38 of
+  300 runs on alpha.135 and 0 here. Idle probe cost: 96,908 descriptors in
+  0.41 s (median). A CI step runs the probe and the Agent idle checks as
+  root. No native lifecycle run yet.
+- **Open.** Recovery-runtime promotion (`runPromotionCompatibility`) checks
+  idleness but does not hold the host mutation lock through its
+  launcher/selection exchange, so an Agent mutation can start in between
+  and a later recovery can meet evidence the new runtime was never proven
+  against; listed for its own change. Holders invisible to the probe: a
+  process in a PID namespace this `/proc` does not show, a lock kept
+  without any descriptor. A checker that cannot be started is still
+  reported as unsupported protocol. **No P0 item is closed.**
