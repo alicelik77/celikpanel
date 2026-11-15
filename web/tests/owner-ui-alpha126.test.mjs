@@ -113,5 +113,5 @@ test('while the delete request runs, the window reads the live step and stops wh
   assert.match(watcher, /if \(isDone\(\)\) return;/);
   const follow = domains.slice(end, domains.indexOf('const sendDelete ='));
   assert.match(follow, /watchRunningDeletion\(id, name, report, \(\) => answered\);/);
-  assert.match(follow, /await deleteDomain\(id, name\)\.finally\(\(\) => \{ answered = true; \}\);/);
+  assert.match(follow, /await deleteDomain\(id, name, databases\)\.finally\(\(\) => \{ answered = true; \}\);/);
 });

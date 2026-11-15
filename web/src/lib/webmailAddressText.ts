@@ -157,10 +157,10 @@ export function sayOutcome(o: WebmailAddressOutcome, t: Translate, formatDate: (
         }
     }
     switch (o.outcome) {
-        case 'enabled': {
-            const done = t('life.addr.done', vars);
-            return said('ok', o.certificateExpires ? `${done} ${t('life.addr.doneCert', vars)}` : done);
-        }
+        // The address and its certificate date are said once, below this
+        // line (alpha.135); the result says only that it was set up.
+        case 'enabled':
+            return said('ok', t('life.addr.done', vars));
         case 'rollback_failed':
             return said('bad', t(FAIL_KEY.ROLLBACK_FAILED, vars));
         case 'not_enabled': {

@@ -73,6 +73,14 @@ type siteLifecycleOps struct {
 	// forgetLogins removes the site's additional FTP logins (alpha.128)
 	// before its account: they share its uid and group. Nil skips it.
 	forgetLogins func(string) error
+	// alpha.134 (site_delete_cleanup.go): the account's crontab, the site's
+	// web server and traffic logs, its HTTP-01 challenge folder, and the
+	// measure of the backups a deletion keeps. Nil skips each (component
+	// tests that exercise other stages).
+	removeCrontab       func(string) error
+	removeSiteLogs      func(string, int) error
+	removeChallengeRoot func(int, int) error
+	measureBackups      func(int, int) *transport.KeptBackups
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -149,9 +157,13 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return err
 		},
-		removeAll:    os.RemoveAll,
-		forgetAccess: forgetFileAccessAccount,
-		forgetLogins: forgetFTPLoginsOfSite,
+		removeAll:           os.RemoveAll,
+		forgetAccess:        forgetFileAccessAccount,
+		forgetLogins:        forgetFTPLoginsOfSite,
+		removeCrontab:       removeSiteCrontab,
+		removeSiteLogs:      removeSiteLogs,
+		removeChallengeRoot: removeSiteChallengeRoot,
+		measureBackups:      measureKeptBackups,
 	}
 }
 
@@ -672,6 +684,14 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 		keepFailure("PHP-FPM pool", ops.deletePool(req.SiteID, req.PHPVersion))
 	}
 
+	// 3b. The account's scheduled tasks (alpha.134): `userdel` leaves the
+	// crontab behind. Removed before the account, and again by file when an
+	// earlier attempt already removed the account.
+	// 3b. Hesabın zamanlanmış görevleri: userdel crontab'ı bırakır.
+	if req.Username != "" && ops.removeCrontab != nil {
+		keepFailure("scheduled tasks", ops.removeCrontab(req.Username))
+	}
+
 	// 4. System user — never a system account, even if asked.
 	// 4. Sistem kullanıcısı — istense bile asla bir sistem hesabı değil.
 	if req.Username != "" {
@@ -698,6 +718,20 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 	// 5. Files — userdel -r usually removed the home already.
 	// 5. Dosyalar — userdel -r genelde home'u zaten kaldırdı.
 	keepFailure("site files", ops.removeAll(cleanHome))
+
+	// 6. The site's logs and its certificate challenge folder (alpha.134):
+	// nothing writes them once the vhost is gone.
+	// 6. Sitenin günlükleri ve sertifika doğrulama klasörü.
+	if ops.removeSiteLogs != nil {
+		keepFailure("site logs", ops.removeSiteLogs(req.Domain, req.DomainID))
+	}
+	if ops.removeChallengeRoot != nil {
+		keepFailure("certificate challenge folder", ops.removeChallengeRoot(req.SubscriptionID, req.DomainID))
+	}
+	// 7. What stays on purpose is measured, so the answer names it.
+	if ops.measureBackups != nil {
+		resp.KeptBackups = ops.measureBackups(req.SubscriptionID, req.DomainID)
+	}
 
 	if len(failures) > 0 {
 		logSiteLifecycleFailures("DeleteSite", req.Domain, failures)

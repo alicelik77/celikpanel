@@ -16,11 +16,8 @@ func TestCompatibleMailAgentPinsExactMetadataAndBytes(t *testing.T) {
 	}
 	for _, kind := range []string{"valid", "missing", "edited-agent", "edited-contract", "agent-link", "contract-link", "agent-hardlink", "contract-mode", "foreign-owner", "late-agent-replaced", "late-contract-replaced", "late-parent-replaced", "late-proof-edited", "closed"} {
 		t.Run(kind, func(t *testing.T) {
-			root, e := os.MkdirTemp("/run", "celikpanel-agent-contract-")
-			if e != nil {
-				t.Fatal(e)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-agent-contract-")
+			var e error
 			dir := filepath.Join(root, "bin")
 			if e = os.Mkdir(dir, 0755); e != nil {
 				t.Fatal(e)

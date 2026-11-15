@@ -77,6 +77,11 @@ type monitoringProblem struct {
 	Since      string                  `json:"since,omitempty"`
 	ObservedAt string                  `json:"observed_at,omitempty"`
 	Action     monitoringProblemAction `json:"action"`
+	// HoldingCount and HoldingBytes (alpha.135, disk_full only): what
+	// deletions left, kept 30 days, which the administrator can delete now
+	// (Maintenance; deletion_holding.go). Absent when there is nothing.
+	HoldingCount int   `json:"holding_count,omitempty"`
+	HoldingBytes int64 `json:"holding_bytes,omitempty"`
 }
 
 type monitoringUnknown struct {
@@ -140,7 +145,16 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 		}
 	}
 	diskUsed, diskTotal := monitoringReadDisk("/")
-	add(diskProblems(diskUsed, diskTotal, now))
+	disk, diskUnknown := diskProblems(diskUsed, diskTotal, now)
+	if len(disk) > 0 {
+		// alpha.135: past the disk-filling level, what deletions left is named
+		// as something that can be freed now, and the action opens its list.
+		if held := p.holdingForDashboard(ctx); held != nil {
+			disk[0].HoldingCount, disk[0].HoldingBytes = held.Count, held.Bytes
+			disk[0].Action = monitoringProblemAction{Kind: "open", To: "/maintenance#deletion-holding"}
+		}
+	}
+	add(disk, diskUnknown)
 	add(sustainedProblems(ctx, db, now))
 	certificates, certificateUnknown := certificateProblems(ctx, db, now)
 	add(certificates, certificateUnknown)

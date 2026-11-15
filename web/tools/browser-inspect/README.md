@@ -761,3 +761,13 @@ for a verified panel update, a registered server whose account is refused with
 narrowed rights and rights left as they are (Details open), a server that is not
 MariaDB, and the one home notification about rights left as they are
 (`y34grants`). Same conventions as batch 30.
+
+`scenarios-batch36.mjs` draws the alpha.135 screens its integration touched,
+from overrides only: Maintenance → What deletions left with held mail and
+backups, mail left in place and a list cut at the Agent's limit
+(`y36holding`); a domain's mailboxes while the sending limits are applied, for
+an administrator and a customer, recording any quota the browser broke over two
+lines and any "·" set against the next word (`y36mail`); and a domain deleted
+with its databases as the administrator, the question and the finished window
+with the database deletion's own lines (`y36deleted`). Same conventions as
+batch 30.

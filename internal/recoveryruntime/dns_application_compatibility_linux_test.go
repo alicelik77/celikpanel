@@ -36,11 +36,7 @@ func TestDNSApplicationCompatibilityPreservesNativeEvidence(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-dns-compat-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-dns-compat-")
 			bin, private := filepath.Join(root, "bin"), filepath.Join(root, "private")
 			for _, p := range []string{bin, private} {
 				if err := os.Mkdir(p, 0700); err != nil {

@@ -3,7 +3,7 @@ import { useI18n } from '../i18n';
 import { decodeMailSetup, mailSetupURL, type WebmailReason } from '../lib/mailSetup';
 import { useRemote } from '../lib/remote';
 import { Link } from '../router';
-import { Checking, CouldNotCheck } from './ui';
+import { CouldNotCheck } from './ui';
 
 // The webmail card of a domain's mail screen. Whether webmail is available is
 // read from the tenant-scoped setup endpoint and is one of three things
@@ -12,45 +12,37 @@ import { Checking, CouldNotCheck } from './ui';
 // that failed used to say it too.
 //
 // Since alpha.110 webmail opens on its own address (https://<host>/), served
-// by the server's own web server and never by the panel. Only that exact
-// address may become a link (see lib/mailSetup.ts: anything else decodes to no
-// link). When there is none, the card says why (alpha.127): the administrator
-// gets the one action that fixes it, anyone else is told that the provider acts.
+// by the server's own web server and never by the panel. Since alpha.135
+// (owner, 13 Nov 2026: "webmail her emaile özgü link olsa") each mailbox row
+// opens it with its own address filled in (DomainMailManager.tsx), so this
+// card is only a problem with its fix: it is drawn when webmail cannot be
+// opened, or when that could not be checked, and is absent when it works.
+// The administrator gets the one action that fixes it, anyone else is told
+// that the provider acts.
 //
-// Bir alan adının posta ekranındaki webmail kartı. Webmail'in kullanılabilir
-// olup olmadığı kiracıya özgü kurulum uç noktasından okunur ve üç şeyden
-// biridir: kontrol ediliyor, kontrol edilemedi ya da biliniyor. alpha.110'dan
-// beri web postası kendi adresinde (https://<ad>/) açılır; yalnız o tam adres
-// bağlantı olabilir. Adres yoksa yönetici nerede ayarlayacağını görür.
+// Bir alan adının posta ekranındaki webmail kartı. alpha.135'ten beri her
+// posta kutusu satırı web postasını kendi adresiyle açar; bu kart yalnız
+// sorun ve çözümüdür: web postası açılamıyorsa ya da bu denetlenemediyse
+// görünür, çalışıyorsa yoktur.
 export default function WebmailAccess({ domainId }: { domainId: number }) {
     const { t } = useI18n();
     const { role } = useAuth();
     const { remote, reading, retry } = useRemote(mailSetupURL(domainId), decodeMailSetup);
     const url = remote.state === 'known' ? remote.value.webmail : null;
     const isAdmin = role === 'admin';
+    // While it is read, and once it works, there is nothing to say here.
+    if (remote.state === 'loading' || url) return null;
 
     return (
-        <div className='mb-4 flex min-h-[4.25rem] flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3' data-webmail-access=''>
+        <div className='mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3' data-webmail-access=''>
             <div className='min-w-0 flex-1'>
                 <div className='text-sm font-medium text-fg'>{t('mail.webmail.title')}</div>
-                {remote.state === 'loading' ? (
-                    <Checking label={t('mail.webmail.checking')} className='mt-0.5' />
-                ) : remote.state === 'unknown' ? (
+                {remote.state === 'unknown' ? (
                     <CouldNotCheck className='mt-2' text={t('mail.webmail.unknown')} onRetry={() => void retry()} busy={reading} />
-                ) : url ? (
-                    <>
-                        <p className='text-xs text-fg-muted'>{t('mail.webmail.available')}</p>
-                        <p className='break-all text-xs text-fg-muted'>{t('mail.webmail.signIn', { url })}</p>
-                    </>
                 ) : (
                     <WebmailMissing reason={remote.value.webmail_reason} isAdmin={isAdmin} />
                 )}
             </div>
-            {url && (
-                <a href={url} target='_blank' rel='noopener noreferrer' className='inline-flex min-h-[2.75rem] items-center rounded-lg border border-border-strong px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2'>
-                    {t('mail.webmail.open')}
-                </a>
-            )}
         </div>
     );
 }

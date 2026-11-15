@@ -88,6 +88,8 @@ const plainQuestions = {
   // and opening the server's text of a file over unsaved changes.
   'components/DomainFileManager.tsx': 2,
   'components/MailAutoresponderDialog.tsx': 1,
+  // alpha.135: closing a mailbox's sending-limit window with an unsaved choice.
+  'components/OutgoingMailboxLimits.tsx': 1,
   'components/FTPLogins.tsx': 1,
   'components/DomainCronManager.tsx': 1,
   // Installing a version past its support: the install then runs under the

@@ -12,11 +12,8 @@ func TestMailEnrollmentJournalProvisioning(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("root fixture")
 	}
-	root, err := os.MkdirTemp("/run", "cp-mail-journal-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := nativeFixtureRoot(t, "cp-mail-journal-")
+	var err error
 	path := filepath.Join(root, "private", "enrollment")
 	if err = prepareMailEnrollmentJournalAt(path); err != nil {
 		t.Fatal(err)

@@ -44,13 +44,14 @@ test('webmail payload parsing fails closed and allowlists only webmail’s own h
   assert.ok(!accessSource.includes('window.open'));
 });
 
-test('webmail CTA is safe, read-only accessible, and absent when unavailable', () => {
-  assert.ok(accessSource.includes('url && ('));
+// alpha.135 (owner, 13 Nov 2026: "webmail her emaile özgü link olsa"): the
+// card no longer opens webmail; each mailbox row does, with its own address
+// filled in, and only when webmail works. The card is the problem with its fix.
+test('webmail is opened from each mailbox row, safely, and the card is only the problem', () => {
+  assert.ok(accessSource.includes("if (remote.state === 'loading' || url) return null;"), 'the card is drawn although webmail works');
   assert.ok(!accessSource.includes('WEBMAIL_LINK_OFFERED'), 'the hold-back switch is gone');
   assert.ok(!accessSource.includes('heldBack'));
-  assert.ok(accessSource.includes('href={url}'));
-  assert.ok(accessSource.includes("target='_blank'"));
-  assert.ok(accessSource.includes("rel='noopener noreferrer'"));
+  assert.ok(!accessSource.includes('href='), 'the card links to webmail again');
   assert.ok(accessSource.includes("t('mail.webmail.unavailable')"));
   assert.ok(accessSource.includes("'mail.webmail.noAddressAdmin'"), 'an administrator is told where to set the address');
   assert.ok(accessSource.includes("role === 'admin'"));
@@ -59,17 +60,18 @@ test('webmail CTA is safe, read-only accessible, and absent when unavailable', (
   assert.ok(accessSource.includes("no_address: { to: '/components/roundcube', label: 'mail.webmail.setAddress' }"));
   assert.ok(accessSource.includes("not_answering: { to: '/components/roundcube', label: 'adminNext.webmail.openRoundcube' }"));
   assert.ok(!accessSource.includes('readOnly'));
+  // The row's link: the one builder, a real link in a new tab (the kit's RowActions), absent without webmail.
+  assert.ok(mailSource.includes('const link = webmailSignInURL(webmail, account.address);'));
+  assert.ok(mailSource.includes("const open: RowAction | null = link ? { id: 'webmail', label: t('mail.row.webmail'), icon: ExternalLink, href: link } : null;"));
+  assert.ok(mailSource.includes("const webmail = setupRead.remote.state === 'known' ? setupRead.remote.value.webmail : null;"));
+  assert.ok(!mailSource.includes('window.open'));
 });
 
 test('webmail availability copy stays in EN/TR parity', () => {
   const keys = [
     'mail.webmail.title',
-    'mail.webmail.checking',
-    'mail.webmail.available',
     'mail.webmail.unavailable',
     'mail.webmail.unknown',
-    'mail.webmail.open',
-    'mail.webmail.signIn',
     'mail.webmail.noAddressAdmin',
     'mail.webmail.setAddress',
   ];

@@ -18,11 +18,13 @@ import { deletionGuideFollowUp, deletionGuideText, deletionGuideWords, type Dele
 import { Guidance } from './kit/rows/Guidance';
 import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionGuideReason, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage, type DomainDeletionFollowUp } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
+import { domainBulkDeleteLists, domainDeleteQuestion, domainDeletionDatabaseFailureText, domainDeletionDatabasesDone, domainDeletionEnd, readDomainDatabasesForDeletion, readDomainDeletionKept, type DomainDeletionKept } from '../lib/domainDeletionQuestion';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
 import { dnsBlocker, dnsEngineBlockerText, useHostingCapabilities } from '../lib/hostingCapabilities';
 import type { TranslationKey } from '../i18n/en';
 import { useAuth } from '../auth/AuthContext';
+import { formatDate } from '../lib/dateFormat';
 import {
     hasAnyDomainAccess,
     hasDomainAccess,
@@ -90,6 +92,8 @@ interface PendingDeletion {
     quiet?: boolean;
     // The reason, its detail and what happens next, for the guide (alpha.133).
     guide?: DeletionGuideInput;
+    // alpha.134: the databases choice the deletion was accepted with.
+    databases?: 'keep' | 'delete';
 }
 
 // What a pending reason means for the row and the banner.
@@ -102,6 +106,10 @@ const pendingFlags = (reason: string, followUp?: DomainDeletionFollowUp, detail 
     blocksRetry: domainDeletionBlocksRetry(reason),
     quiet: domainDeletionQuiet(reason),
 });
+
+// The stages a deletion stops at that only the server's administrator can
+// fix on the server (alpha.134).
+const SERVER_SIDE_STOPS = new Set(['mail_runtime_cleanup_failed', 'mail_lists_cleanup_failed', 'site_cleanup_failed']);
 
 const HIDDEN_INVALID_ACCESS = 'One or more domains were hidden because their access information was invalid. / Bir veya daha fazla alan adı, erişim bilgisi geçersiz olduğu için gizlendi.';
 
@@ -249,6 +257,10 @@ export function Domains() {
         const words = deletionGuideWords({ reason, detail, ...next }, isAdmin, t, locale, place);
         if (words) return deletionGuideText(words, t);
         const key = domainDeletionReasonKey(reason) as TranslationKey | null;
+        // alpha.134: a step only the server's administrator can fix (its
+        // sentence names server commands) is told to anybody else as whom
+        // to ask and how the same deletion continues.
+        if (!isAdmin && SERVER_SIDE_STOPS.has(reason)) return t('domains.deletion.stoppedAskAdmin');
         const translated = key ? t(key) : '';
         if (!key || translated === key) return t('domains.deletionPending');
         // What the secondary's inspector reported, or which check of this
@@ -289,6 +301,7 @@ export function Domains() {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail, saved.saved),
                 ...pendingFlags(saved.saved.reason, saved.saved.followUp, saved.saved.detail),
                 guide: { reason: saved.saved.reason, detail: saved.saved.detail, followUp: saved.saved.followUp, nextCheckAt: saved.saved.nextCheckAt },
+                databases: saved.saved.databases,
             };
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
@@ -345,6 +358,10 @@ export function Domains() {
     // alan adi "siliniyor"dur; ikinci silme gonderilmez.
     const [deleting, setDeleting] = useState<number[]>([]);
     const inFlight = useRef(new Set<number>());
+    // What each deletion's answer said stays (alpha.134), kept for the end of
+    // a deletion this page follows after its request answered.
+    // Keyed by the domain's name (unique), so the steps can say what happened.
+    const keptByDomain = useRef(new Map<string, DomainDeletionKept>());
     const beingDeleted = (id: number) =>
         deleting.includes(id) || pendingDeletions.some((item) => item.id === id && item.blocksRetry);
 
@@ -379,28 +396,32 @@ export function Domains() {
     // Soru alan adini ve onunla gideni soyler; onaydan sonra ayni pencere
     // silmenin adimlarini kilitli gosterir. Beklerken yalniz okur.
     // What goes and what stays is what the server's deletion does
-    // (cmd/panel/domain_handlers.go handleDeleteDomain, alpha.133): the site
-    // with its files and FTP logins, mail, CelikPanel's DNS records,
-    // certificates and backup schedules go; linked databases stay on their
-    // engine and backups stay where they are, both out of the panel's sight;
-    // stored mail is moved aside. Kinds only: the list knows no counts. The
-    // name is typed before Delete turns on (owner, alpha.132 proposal).
-    // Silmenin götürdüğü ve bıraktığı, sunucunun yaptığıdır; ad yazılır.
-    const deleteLists = () => ({
-        lost: [t('domains.delete.lost.site'), t('domains.delete.lost.mail'), t('domains.delete.lost.dns'), t('domains.delete.lost.schedule')],
-        kept: [t('domains.delete.kept.databases'), t('domains.delete.kept.backups'), t('domains.delete.kept.mail'), t('domains.delete.kept.dns')],
-    });
+    // (cmd/panel/domain_handlers.go handleDeleteDomain): the site with its
+    // files, FTP logins, scheduled tasks and logs, mail, CelikPanel's DNS
+    // records, certificates and backup schedules go; backups stay; stored
+    // mail is moved aside. alpha.134: the domain's databases are a choice,
+    // read before the question; kept (the default) they stay on the
+    // Databases page bound to no domain. The name is typed before Delete
+    // turns on (owner, alpha.132 proposal).
+    // Silmenin götürdüğü ve bıraktığı, sunucunun yaptığıdır; veritabanları
+    // bir seçimdir (varsayılan tutmak); ad yazılır.
     const handleDelete = async (id: number, name: string) => {
         if (!listCurrent || beingDeleted(id)) return;
+        // A deletion that started earlier and stopped repeats the choice it
+        // was accepted with; its question says it and offers none.
+        const accepted = pendingDeletions.find((item) => item.id === id)?.databases;
+        const databases = accepted ? null : await readDomainDatabasesForDeletion(API_BASE, id);
+        const question = domainDeleteQuestion(t, databases, accepted);
         await confirmAction({
             title: t('domains.deleteTitle', { name }),
-            message: t('domains.deleteWhat'),
-            ...deleteLists(),
+            ...question,
             typedName: { value: name, label: t('domains.delete.typeName', { name }), ignoreCase: true },
             confirmLabel: t('common.delete'),
             tone: 'danger',
             progressTitle: t('domains.deletingTitle', { name }),
-            action: (report) => deleteAndFollow(id, name, report),
+            // Offered and ticked: delete; offered and not ticked: keep; not
+            // offered: the server keeps them (or repeats an accepted plan).
+            action: (report, answer) => deleteAndFollow(id, name, report, question.option ? (answer?.option ? 'delete' : 'keep') : undefined),
         });
     };
 
@@ -417,7 +438,7 @@ export function Domains() {
         await confirmAction({
             title: t('domains.bulkDeleteTitle', { n: rows.length }),
             message: t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') }),
-            ...deleteLists(),
+            ...domainBulkDeleteLists(t),
             confirmLabel: t('common.delete'),
             tone: 'danger',
             progressTitle: t('domains.bulkDeletingTitle', { n: rows.length }),
@@ -432,7 +453,8 @@ export function Domains() {
                     show(index, { state: 'running', since: Date.now() });
                     const result = await deleteDomain(row.id, row.domain_name);
                     if (result.kind === 'done') {
-                        show(index, { state: 'done', note: result.note });
+                        const end = deletedEnd(row.domain_name, result.note);
+                        show(index, { state: 'done', note: [end.message, ...(end.kept?.rows ?? [])].join(' ') });
                     } else {
                         unfinished++;
                         show(index, result.kind === 'pending' && continuesByItself(result.reason, result.followUp)
@@ -467,7 +489,7 @@ export function Domains() {
 
     type DeleteResult =
         | { kind: 'done'; note?: string }
-        | ({ kind: 'pending'; reason: string; detail?: string; stage: string } & Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>)
+        | ({ kind: 'pending'; reason: string; detail?: string; stage: string; databaseText?: string } & Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>)
         | { kind: 'failed'; text: string }
         | { kind: 'unknown' };
 
@@ -476,14 +498,14 @@ export function Domains() {
             : result.kind === 'pending' ? pendingMessage(result.reason, result.detail, result, 'window')
                 : result.kind === 'unknown' ? t('common.resultUnknown') : '';
 
-    const deleteDomain = async (id: number, name: string): Promise<DeleteResult> => {
+    const deleteDomain = async (id: number, name: string, databases?: 'keep' | 'delete'): Promise<DeleteResult> => {
         // Never two delete requests for one domain at a time.
         if (inFlight.current.has(id)) return { kind: 'pending', reason: 'deletion_running', stage: 'running' };
         inFlight.current.add(id);
         followed.current.add(id);
         setDeleting((current) => [...current, id]);
         try {
-            return await sendDelete(id, name);
+            return await sendDelete(id, name, databases);
         } finally {
             inFlight.current.delete(id);
             setDeleting((current) => current.filter((item) => item !== id));
@@ -497,9 +519,10 @@ export function Domains() {
     // deletion-status answer with `stage`).
     // Silmenin adimlari sunucunun sirasiyla; sunucu asamayi bildirince her
     // adim kendi durumuyla gosterilir.
-    const STEP_ORDER = ['mail', 'site', 'dns', 'certificates', 'finish'] as const;
+    const STEP_ORDER = ['mail', 'site', 'databases', 'dns', 'certificates', 'finish'] as const;
     const STAGE_STEP: Record<string, (typeof STEP_ORDER)[number]> = {
-        mail_tls_cleanup: 'mail', mail_runtime_cleanup: 'mail', site_cleanup: 'site', dns_cleanup: 'dns',
+        mail_tls_cleanup: 'mail', mail_runtime_cleanup: 'mail', mail_lists_cleanup: 'mail', site_cleanup: 'site',
+        database_cleanup: 'databases', dns_cleanup: 'dns',
         certificate_cleanup: 'certificates', ledger_delete: 'finish', dns_removed: 'finish',
     };
     const requestSteps = (name: string, since: number): OperationStep[] => [
@@ -517,12 +540,15 @@ export function Domains() {
             dns_peer_journal_unknown: t('domains.step.note.verifying'),
         };
         // The joined server's DNS removal is done once the main server confirmed it.
-        const step = reason === 'remote_dns_removed_finishing' ? 'finish' : STAGE_STEP[stage];
+        // 'deleted': every step is done and says so (alpha.134: the last one
+        // read "finishing" after the deletion had finished).
+        const step = stage === 'deleted' || reason === 'remote_dns_removed_finishing' ? 'finish' : STAGE_STEP[stage];
         if (!step) return requestSteps(name, since);
-        const at = STEP_ORDER.indexOf(step);
+        const at = stage === 'deleted' ? STEP_ORDER.length : STEP_ORDER.indexOf(step);
         const labels = {
             mail: t('domains.step.mail'),
             site: t('domains.step.site'),
+            databases: t('domains.step.databases'),
             dns: t('domains.step.dns', { name }),
             certificates: t('domains.step.certificates'),
             finish: t('domains.step.finish'),
@@ -531,6 +557,7 @@ export function Domains() {
         const doneLabels = {
             mail: t('domains.step.done.mail'),
             site: t('domains.step.done.site'),
+            databases: domainDeletionDatabasesDone(t, keptByDomain.current.get(name) ?? null),
             dns: t('domains.step.done.dns', { name }),
             certificates: t('domains.step.done.certificates'),
             finish: t('domains.step.done.finish'),
@@ -594,9 +621,9 @@ export function Domains() {
             if (saved.state === 'gone') {
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => current.filter((item) => item.id !== id));
-                report.steps(deletionSteps(name, 'ledger_delete', '', 0).map((step) => ({ ...step, state: 'done' })));
+                report.steps(deletionSteps(name, 'deleted', '', 0));
                 changed();
-                return { state: 'done', message: t('domains.deleted', { name }) };
+                return deletedEnd(name);
             }
             if (saved.state === 'unknown') {
                 unknownSince ??= Date.now();
@@ -658,45 +685,65 @@ export function Domains() {
         })();
     };
 
-    const deleteAndFollow = async (id: number, name: string, report: OperationReport): Promise<OperationEnd> => {
+    // The end of a finished deletion (alpha.135): the heading says it is
+    // deleted; one sentence of what was deleted; the rows of what stayed
+    // (databases, and mail and backups with their size and the date they
+    // are removed); folders only under the administrator's closed Details.
+    const deletedEnd = (name: string, note?: string): OperationEnd & { state: 'done' } => {
+        const kept = keptByDomain.current.get(name) ?? null;
+        keptByDomain.current.delete(name);
+        const end = domainDeletionEnd(t, kept, isAdmin, (bytes) => sizeWord(bytes, locale), (iso) => formatDate(iso, locale), note);
+        return { state: 'done', title: t('domains.deleted', { name }), ...end };
+    };
+
+    const deleteAndFollow = async (id: number, name: string, report: OperationReport, databases?: 'keep' | 'delete'): Promise<OperationEnd> => {
         const startedAt = Date.now();
         report.steps(requestSteps(name, startedAt));
         let answered = false;
         watchRunningDeletion(id, name, report, () => answered);
-        const result = await deleteDomain(id, name).finally(() => { answered = true; });
+        const result = await deleteDomain(id, name, databases).finally(() => { answered = true; });
         if (result.kind === 'done') {
-            report.steps(deletionSteps(name, 'ledger_delete', '', startedAt).map((step) => ({ ...step, state: 'done' })));
-            return { state: 'done', message: result.note ?? t('domains.deleted', { name }) };
+            report.steps(deletionSteps(name, 'deleted', '', startedAt));
+            return deletedEnd(name, result.note);
         }
         if (result.kind === 'failed') return { state: 'failed', reason: result.text };
         if (result.kind === 'unknown') return { state: 'unknown', reason: t('common.resultUnknown') };
         if (!domainDeletionBlocksRetry(result.reason) ||
             (domainDeletionGuideReason(result.reason) !== null && !continuesByItself(result.reason, result.followUp))) {
-            return pendingEnd(name, report, result.stage, result.reason, result.detail, Date.now(), result);
+            const end = pendingEnd(name, report, result.stage, result.reason, result.detail, Date.now(), result);
+            return result.databaseText && end.state !== 'done' ? { ...end, reason: result.databaseText } : end;
         }
         report.steps(deletionSteps(name, result.stage, result.reason, Date.now()));
         return followDeletion(id, name, report, startedAt);
     };
 
-    const sendDelete = async (id: number, name: string): Promise<DeleteResult> => {
+    const sendDelete = async (id: number, name: string, databases?: 'keep' | 'delete'): Promise<DeleteResult> => {
         try {
-            const res = await fetch(`${API_BASE}/domains/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE}/domains/${id}${databases ? `?databases=${databases}` : ''}`, { method: 'DELETE' });
+            const kept = await readDomainDeletionKept(res);
+            if (kept) keptByDomain.current.set(name, kept);
             const stage = await readDomainDeletionStage(res);
             const outcome = await readDomainDeletionOutcome(res);
             if (outcome.state === 'pending') {
-                const message = pendingMessage(outcome.reason, outcome.detail, outcome);
+                // A database whose deletion did not finish is said instead, with the
+                // Databases page's own sentence (alpha.134).
+                const failed = domainDeletionDatabaseFailureText(t, kept);
+                const databaseText = failed ? `${t('domains.deletion.stoppedAtDatabases')} ${failed}` : '';
+                const said = pendingMessage(outcome.reason, outcome.detail, outcome);
+                const message = databaseText || said;
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
                     {
                         id, name, message, ...pendingFlags(outcome.reason, outcome.followUp),
                         guide: { reason: outcome.reason, detail: outcome.detail, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt },
+                        databases: kept?.choice ?? undefined,
                     },
                 ]);
                 // No toast: the window and the banner above the list say it.
                 setSelected((s) => s.filter((x) => x !== id));
                 changed();
-                return { kind: 'pending', reason: outcome.reason, detail: outcome.detail, stage, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt };
+                return { kind: 'pending', reason: outcome.reason, detail: outcome.detail, stage, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt, databaseText };
             }
             if (outcome.state === 'error') {
                 // The refusal and its fix stay at the top of the list until the

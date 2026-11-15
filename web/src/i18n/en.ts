@@ -92,6 +92,8 @@ import type { DeletionGuideScreenKey } from './screens/deletionGuide/en';
 import type { DeletionGuidePeerScreenKey } from './screens/deletionGuidePeer/en';
 import type { CertCoverageScreenKey } from './screens/certCoverage/en';
 import type { SiteBackupScreenKey } from './screens/siteBackup/en';
+import type { DomainDeleteScreenKey } from './screens/domainDelete/en';
+import type { DeletionHoldingScreenKey } from './screens/deletionHolding/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -607,5 +609,7 @@ export type ScreenKey =
     | DeletionGuideScreenKey
     | DeletionGuidePeerScreenKey
     | CertCoverageScreenKey
-    | SiteBackupScreenKey;
+    | SiteBackupScreenKey
+    | DomainDeleteScreenKey
+    | DeletionHoldingScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

@@ -47,11 +47,7 @@ var (
 // published release writes it, and returns the bin and private directories.
 func writeV3Fixture(t *testing.T, agent v3Agent, scenario, kind string) (string, string) {
 	t.Helper()
-	root, err := os.MkdirTemp("/run", "celikpanel-dns-v3-compat-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(root) })
+	root := nativeFixtureRoot(t, "celikpanel-dns-v3-compat-")
 	bin, private := filepath.Join(root, "bin"), filepath.Join(root, "private")
 	for _, dir := range []string{bin, private} {
 		if err := os.Mkdir(dir, 0700); err != nil {
