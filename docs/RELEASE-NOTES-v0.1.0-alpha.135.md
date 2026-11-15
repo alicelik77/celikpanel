@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.135.tr.md)
 
+> **Published** on 2026-11-15 (UTC): release commit `1f3e08234`, GitHub pre-release at 06:02:00Z, download portal at about 06:05Z (public check 27/27).
+
 A small release of two jobs. Deleting a domain asks what happens to its
 databases and leaves nothing of the site behind; the mail and backups a
 deletion leaves are kept 30 days in one list and then deleted by
