@@ -8695,3 +8695,67 @@ until the backup reports ready.
   process in a PID namespace this `/proc` does not show, a lock kept
   without any descriptor. A checker that cannot be started is still
   reported as unsupported protocol. **No P0 item is closed.**
+
+### Branch a137/update-preflight (an update waits for a short host package run before its non-waiting checks; a process that ends during the package scan is gone; no schema change; invariants 2 and 3; P0.2/P0.3 admission inputs; D-024; D-025; 2026-11-15, candidate alpha.137)
+
+- **Defect.** On Ubuntu 24.04 the first update press stopped
+  `package_manager_busy` (state unchanged) while nothing changed packages
+  (alpha.133 and alpha.136 labs). The updater's own `systemctl
+  daemon-reload`s (`update.sh` unit guards via
+  `deploy/release-transaction-guard.sh`, recovery foundation) re-draw
+  `apt-daily.timer`'s random delay: systemd v255 re-enters waiting on
+  coldplug after every reload (`timer_coldplug` → `timer_enter_waiting` →
+  `add_random`, `FixedRandomDelay=no`), and apt 2.7.14's timer has
+  `RandomizedDelaySec=12h`, so a reload can start `apt-daily.service` at
+  once. Its first steps (`apt-helper wait-online`, `apt.systemd.daily`) were
+  not package activity for the Agent; `apt-get check` and `apt-get update`
+  were, a few seconds later. Ubuntu Pro's `APT::Update::Pre-Invoke` hook
+  then starts `apt-news.service` and `esm-cache.service` (`python3`;
+  esm-cache uses its own apt root, apt-news fetches one file; neither takes
+  a system apt/dpkg lock). The bounded 60 s wait
+  (`preflight_mutations_before_quiesce`) ran after
+  `preflight_bind_before_quiesce`, which repeats every idle proof, package
+  manager included, under the held lock and never waits. Separately, the
+  package scan returned an error when a process ended between listing and
+  reading `/proc/<pid>/comm` (ESRCH), which the update does not treat as
+  transient (about one check in a thousand in the lab).
+- **Contract.** The Agent alone decides package activity
+  (`cmd/agent/service_mutation_lock_linux.go`); it now also counts
+  `apt.systemd.dai` (the kernel name of `/usr/lib/apt/apt.systemd.daily`,
+  runner of `apt-daily` and `apt-daily-upgrade`) and `apt-helper`, so a
+  daily apt run is busy from its first moment, including unattended-upgrade
+  between its own lock holds. Nothing that counted before stops counting.
+  The updater's preliminary, unlocked check waits first (at most 60 s,
+  polled every 3 s, reads only) and announces what it waits for: the host
+  package manager or an Agent operation. Every later proof (the BIND
+  preflight under the lock, the locked check before freeze, the final
+  frozen proof) still refuses package activity without waiting. A
+  per-process `/proc` read failing with ENOENT or ESRCH is a process that
+  ended (`comm`, `status`); for PackageKit's `maps` a missing file counts
+  only when the process directory is gone too; any other error still
+  refuses.
+- **Schema / version transition.** None. Release sequence 136 → 137; no
+  persisted record or wire field changes; going back to alpha.136 restores
+  the old order and scan. The announcement is in the target release's
+  `update.sh`, so it appears on updates to alpha.137 and later.
+- **Recovery behaviour.** Unchanged. A refusal still ends as the typed
+  `package_manager_busy`, `state=unchanged` stop with the existing
+  sentences; no retry loop from the screen and no second update from
+  polling (D-024).
+- **Evidence.** Agent tests with a fake `/proc`: ESRCH and ENOENT on
+  `comm`, ESRCH on `status` and `maps`, a live daemon with a missing map
+  stays busy, EACCES/EIO still refuse, `apt.systemd.dai` and `apt-helper`
+  busy, python3 readers not. Shell contract
+  `deploy/test-update-enrollment-preflight.sh`: a package refusal is waited
+  for at most 60 s with its own TR/EN lines, its end announced, the wait
+  runs before the BIND preflight. Full `./internal/... ./cmd/agent
+  ./cmd/panel` compared with alpha.136: the same failing set. Sources read:
+  systemd v255 `timer.c`, apt 2.7.14 units and `apt.systemd.daily`,
+  ubuntu-pro-client hook, units and scripts (upstream `main`, not the
+  noble package). No native lifecycle run yet.
+- **Open.** A package run that starts in the seconds between the wait and
+  the final frozen proof still stops the update unchanged without waiting.
+  The update window shows a standing note, not a live "waiting for …"
+  line (that needs a new updater-to-panel channel). Not measured: which
+  check refused in the alpha.136 lab, and the `comm` names on Ubuntu 24.04.
+  **No P0 item is closed.**

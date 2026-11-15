@@ -7912,3 +7912,68 @@ bağlantıyı tutar.
   tanımlayıcı olmadan tutulan kilit. Başlatılamayan denetleyici hâlâ
   desteklenmeyen protokol olarak bildiriliyor. **Hiçbir P0 işi
   kapanmadı.**
+
+### Dal a137/update-preflight (güncelleme, beklemeyen denetimlerinden önce sunucunun kısa bir paket işini bekler; paket taraması sırasında sona eren süreç gitmiş sayılır; şema değişikliği yok; ilke 2 ve 3; P0.2/P0.3 kabul girdileri; D-024; D-025; 2026-11-15, aday alpha.137)
+
+- **Kusur.** Ubuntu 24.04'te ilk güncelleme basışı, hiçbir şey paket
+  değiştirmezken `package_manager_busy` (durum değişmedi) ile duruyordu
+  (alpha.133 ve alpha.136 laboratuvarları). Güncelleyicinin kendi
+  `systemctl daemon-reload`'ları (`update.sh` birim korumaları,
+  `deploy/release-transaction-guard.sh` üzerinden; kurtarma temeli)
+  `apt-daily.timer`'ın rastgele gecikmesini yeniden çeker: systemd v255 her
+  yeniden yüklemeden sonra zamanlayıcıyı yeniden bekleme durumuna alır
+  (`timer_coldplug` → `timer_enter_waiting` → `add_random`,
+  `FixedRandomDelay=no`) ve apt 2.7.14'ün zamanlayıcısında
+  `RandomizedDelaySec=12h` vardır; bu yüzden bir yeniden yükleme
+  `apt-daily.service`'i hemen başlatabilir. İlk adımları (`apt-helper
+  wait-online`, `apt.systemd.daily`) Agent için paket etkinliği değildi;
+  birkaç saniye sonraki `apt-get check` ve `apt-get update` öyleydi. Ubuntu
+  Pro'nun `APT::Update::Pre-Invoke` kancası ardından `apt-news.service` ve
+  `esm-cache.service`'i başlatır (`python3`; esm-cache kendi apt kökünü
+  kullanır, apt-news tek bir dosya indirir; hiçbiri sistemin apt/dpkg
+  kilidini almaz). 60 sn'lik sınırlı bekleme
+  (`preflight_mutations_before_quiesce`), her boşta kanıtını paket
+  yöneticisi dahil tutulan kilit altında yineleyen ve hiç beklemeyen
+  `preflight_bind_before_quiesce`'ten sonra çalışıyordu. Ayrıca bir süreç
+  listelenmesiyle `/proc/<pid>/comm` okunması arasında sona erince (ESRCH)
+  paket taraması hata döndürüyordu; güncelleme bunu geçici saymaz
+  (laboratuvarda bin denetimde bir kadar).
+- **Sözleşme.** Paket etkinliğine yalnız Agent karar verir
+  (`cmd/agent/service_mutation_lock_linux.go`); artık `apt.systemd.dai`
+  (`apt-daily` ve `apt-daily-upgrade`'i çalıştıran
+  `/usr/lib/apt/apt.systemd.daily`'nin çekirdekteki adı) ve `apt-helper`'ı
+  da sayar; böylece günlük apt işi ilk anından meşguldür, unattended-upgrade
+  kendi kilit tutuşları arasında da. Önceden meşgul sayılan her şey yine
+  meşgul sayılır. Güncelleyicinin kilitsiz ön denetimi önce bekler (en çok
+  60 sn, 3 sn'de bir, yalnız okur) ve neyi beklediğini söyler: sunucunun
+  paket yöneticisi ya da bir Agent işlemi. Sonraki her kanıt (kilit
+  altındaki BIND ön denetimi, dondurmadan önceki kilitli denetim, son
+  dondurulmuş kanıt) paket etkinliğini beklemeden yine reddeder. ENOENT ya
+  da ESRCH ile başarısız olan süreç başına `/proc` okuması bitmiş bir
+  süreçtir (`comm`, `status`); PackageKit'in `maps`'inde eksik dosya ancak
+  süreç dizini de yoksa sayılır; başka her hata yine reddedilir.
+- **Şema / sürüm geçişi.** Yok. Sürüm sırası 136 → 137; kalıcı kayıt ya da
+  kablo alanı değişmez; alpha.136'ya dönmek eski sırayı ve taramayı geri
+  getirir. Duyuru hedef sürümün `update.sh`'ındadır; alpha.137 ve sonrasına
+  yapılan güncellemelerde görünür.
+- **Kurtarma davranışı.** Değişmedi. Ret yine mevcut cümlelerle tipli
+  `package_manager_busy`, `state=unchanged` duruşuyla biter; ekrandan
+  yeniden deneme döngüsü yok, durum sorgusu ikinci bir güncelleme başlatmaz
+  (D-024).
+- **Kanıt.** Sahte `/proc` ile Agent testleri: `comm`'da ESRCH ve ENOENT,
+  `status` ve `maps`'te ESRCH, haritası eksik canlı hizmet meşgul kalır,
+  EACCES/EIO yine reddeder, `apt.systemd.dai` ve `apt-helper` meşgul,
+  python3 okuyucuları değil. Kabuk sözleşmesi
+  `deploy/test-update-enrollment-preflight.sh`: paket reddi en çok 60 sn,
+  kendi TR/EN satırlarıyla beklenir, bitişi duyurulur, bekleme BIND ön
+  denetiminden önce çalışır. Tam `./internal/... ./cmd/agent ./cmd/panel`
+  alpha.136 ile karşılaştırıldı: aynı başarısız küme. Okunan kaynaklar:
+  systemd v255 `timer.c`, apt 2.7.14 birimleri ve `apt.systemd.daily`,
+  ubuntu-pro-client kancası, birimleri ve betikleri (noble paketi değil,
+  üst kaynak `main`). Henüz gerçek sistem yaşam döngüsü denemesi yok.
+- **Açık.** Bekleme ile son dondurulmuş kanıt arasındaki birkaç saniyede
+  başlayan bir paket işi güncellemeyi beklemeden, değişiklik yapmadan yine
+  durdurur. Güncelleme penceresi canlı bir "… bekleniyor" satırı değil,
+  duran bir not gösterir (bunun için güncelleyiciden panele yeni bir kanal
+  gerekir). Ölçülmedi: alpha.136 laboratuvarında hangi denetimin reddettiği
+  ve Ubuntu 24.04'teki `comm` adları. **Hiçbir P0 işi kapanmadı.**
