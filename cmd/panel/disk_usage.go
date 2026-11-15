@@ -31,6 +31,15 @@ const (
 	diskMeasureBudget  = 4 * time.Minute
 )
 
+// diskUsageStamp is how subscription_disk_usage stores a moment: UTC,
+// "2006-01-02 15:04:05", the same text SQLite's datetime('now') writes. Every
+// moment this file writes and compares comes from usageNow, one clock, so a
+// stored attempt and the cutoff it is compared with never come from two
+// different clocks (alpha.137: tests pinned usageNow to 15 Nov 12:00 while
+// the rows were stamped by SQLite's real clock).
+// Diskin yazdığı ve karşılaştırdığı her an tek saatten, usageNow'dan gelir.
+func diskUsageStamp(t time.Time) string { return t.UTC().Format("2006-01-02 15:04:05") }
+
 // diskMeasurer is what the worker asks the Agent (a test seam).
 type diskMeasurer interface {
 	measure(ctx context.Context, req transport.SubscriptionDiskUsageRequest) (transport.SubscriptionDiskUsageResponse, error)
@@ -58,8 +67,8 @@ func (p *Panel) requestDiskMeasurement(ctx context.Context, subscriptionID int) 
 		return
 	}
 	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO subscription_disk_usage (subscription_id, requested_at) VALUES (?, datetime('now'))
-		ON CONFLICT(subscription_id) DO UPDATE SET requested_at = excluded.requested_at`, subscriptionID); err != nil {
+		INSERT INTO subscription_disk_usage (subscription_id, requested_at) VALUES (?, ?)
+		ON CONFLICT(subscription_id) DO UPDATE SET requested_at = excluded.requested_at`, subscriptionID, diskUsageStamp(usageNow())); err != nil {
 		log.Printf("[disk] request a measurement of subscription %d: %v", subscriptionID, err)
 		return
 	}
@@ -121,7 +130,7 @@ func dueDiskMeasurements(ctx context.Context, q sqlQueryer, now time.Time, lowSp
 	if lowSpace {
 		interval = diskMeasureLowInterval
 	}
-	cutoff := now.Add(-interval).UTC().Format("2006-01-02 15:04:05")
+	cutoff := diskUsageStamp(now.Add(-interval))
 	rows, err := q.QueryContext(ctx, `
 		SELECT s.id FROM subscriptions s
 		LEFT JOIN subscription_disk_usage u ON u.subscription_id = s.id
@@ -149,15 +158,19 @@ func dueDiskMeasurements(ctx context.Context, q sqlQueryer, now time.Time, lowSp
 // It returns the lowest free space seen (-1 when none was read).
 func (p *Panel) measureDueDisks(ctx context.Context) (int, error) {
 	db := p.db.GetDB()
-	start := usageNow()
-	ids, err := dueDiskMeasurements(ctx, db, start, p.usageWorker.lowSpace())
+	// The budget is elapsed time, measured on the monotonic clock; the
+	// calendar moment that decides what is due is usageNow. Mixing them made
+	// every round measure nothing once usageNow lay in the past.
+	// Bütçe geçen süredir (monoton saat); neyin sırada olduğu usageNow ile belirlenir.
+	budgetStart := time.Now()
+	ids, err := dueDiskMeasurements(ctx, db, usageNow(), p.usageWorker.lowSpace())
 	if err != nil {
 		return -1, err
 	}
 	lowest := -1
 	var errs []error
 	for _, id := range ids {
-		if time.Since(start) > diskMeasureBudget {
+		if time.Since(budgetStart) > diskMeasureBudget {
 			break
 		}
 		free, err := p.measureSubscriptionDisk(ctx, id)
@@ -189,11 +202,11 @@ func (p *Panel) measureSubscriptionDisk(ctx context.Context, subscriptionID int)
 	}
 	if callErr != nil {
 		_, err := db.ExecContext(ctx, `
-			INSERT INTO subscription_disk_usage (subscription_id, state, detail, attempted_at) VALUES (?, 'unknown', ?, datetime('now'))
+			INSERT INTO subscription_disk_usage (subscription_id, state, detail, attempted_at) VALUES (?, 'unknown', ?, ?)
 			ON CONFLICT(subscription_id) DO UPDATE SET
 			  state = CASE WHEN subscription_disk_usage.measured_at IS NULL THEN 'unknown' ELSE subscription_disk_usage.state END,
 			  detail = excluded.detail, attempted_at = excluded.attempted_at`,
-			subscriptionID, boundedAgentDiagnostic("the server could not measure it: "+callErr.Error()))
+			subscriptionID, boundedAgentDiagnostic("the server could not measure it: "+callErr.Error()), diskUsageStamp(usageNow()))
 		return -1, errors.Join(callErr, err)
 	}
 	state, detail := "measured", ""
@@ -207,14 +220,15 @@ func (p *Panel) measureSubscriptionDisk(ctx context.Context, subscriptionID int)
 		}
 		detail += "the file system has project quotas; CelikPanel measures by walking the folders"
 	}
+	measured := diskUsageStamp(usageNow())
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO subscription_disk_usage (subscription_id, web_bytes, mail_bytes, db_bytes, method, state, detail, measured_at, attempted_at)
-		VALUES (?, ?, ?, ?, 'walk', ?, ?, datetime('now'), datetime('now'))
+		VALUES (?, ?, ?, ?, 'walk', ?, ?, ?, ?)
 		ON CONFLICT(subscription_id) DO UPDATE SET
 		  web_bytes = excluded.web_bytes, mail_bytes = excluded.mail_bytes, db_bytes = excluded.db_bytes,
 		  method = excluded.method, state = excluded.state, detail = excluded.detail,
 		  measured_at = excluded.measured_at, attempted_at = excluded.attempted_at`,
-		subscriptionID, maxInt64(resp.WebBytes, 0), maxInt64(resp.MailBytes, 0), maxInt64(resp.DBBytes, 0), state, nullIfEmpty(detail))
+		subscriptionID, maxInt64(resp.WebBytes, 0), maxInt64(resp.MailBytes, 0), maxInt64(resp.DBBytes, 0), state, nullIfEmpty(detail), measured, measured)
 	return resp.FreePercent, err
 }
 
@@ -230,7 +244,7 @@ func maxInt64(a, b int64) int64 {
 func restartDiskCountdown(ctx context.Context, q sqlQueryer, subscriptionID int) error {
 	_, err := q.ExecContext(ctx, `
 		UPDATE subscription_disk_usage SET over_since = CASE WHEN over_since IS NULL THEN NULL ELSE ? END
-		WHERE subscription_id = ?`, usageNow().UTC().Format("2006-01-02 15:04:05"), subscriptionID)
+		WHERE subscription_id = ?`, diskUsageStamp(usageNow()), subscriptionID)
 	return err
 }
 
