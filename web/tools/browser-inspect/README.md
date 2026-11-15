@@ -771,3 +771,12 @@ lines and any "·" set against the next word (`y36mail`); and a domain deleted
 with its databases as the administrator, the question and the finished window
 with the database deletion's own lines (`y36deleted`). Same conventions as
 batch 30.
+
+`scenarios-batch37.mjs` draws D-047 stage 1 (the mock's licence answer carries
+`level` and, with `licenseTerm` set, `term_ends_in_seconds`): the
+administrator's Dashboard 30, 7 and 1 day before the licence term ends and the
+license page 7 days before (`y37expiry`); the notice on top of every page while
+the licence does not allow full use, for the administrator (ended, none yet,
+not accepted, could not be checked), on the license page, and for a reseller
+and a customer, recording whether the notice names the licence (`y37limited`).
+Same conventions as batch 30.

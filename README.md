@@ -125,18 +125,20 @@ Each license covers one active server for one year from creation. The local
 administrator password is never shared with the website. Existing installations
 can activate in **Settings → License** after updating.
 
-An active license is required for panel management for every account role.
-Administrators can install signed CelikPanel updates from the activation page
-before activation or after expiry. Updates do not activate or renew a license. Without
-one, the administrator can activate or renew the license; other users must
-contact their administrator. Management screens and APIs are locked, including
-firewall changes, service installation, manual backups and read-only management.
-Sign-in, sign-out and own-password recovery remain available. Existing websites,
-mail, databases and scheduled jobs continue without a license check. A connection
-failure cannot extend the 60-second verification window or the annual expiry.
-Each management request checks shared license state, renewing after 45 seconds
-of authenticated use. An explicit central rejection immediately locks access
-and persists across restart. Idle servers do not contact the license service.
+Without an active license (missing, ended, rejected or not verifiable) the
+panel stays usable for every role: reading, security settings (firewall, OS
+updates, closing remote database access, the security emergency,
+certificates), backups and their download, deleting, one's own account, signed
+CelikPanel updates and the License screen keep working, and so does the other
+server of a DNS pair. Creating new things and changing settings wait until the
+license is active; a notice on top of every page says why, and only the
+administrator is told about the license. The panel warns the administrator 30,
+7 and 1 day before the license ends. Updates do not activate or renew a
+license. Existing websites, mail, databases and scheduled jobs continue without
+a license check. While the license service cannot be reached, full use continues
+for up to 7 days after the last successful check; an explicit central rejection
+applies at the next check and persists across restart. Idle servers do not
+contact the license service.
 
 Published releases are distributed from the public CelikPanel download channel
 at `https://celikpanel.net`. The public `get.sh` bootstrap is supported only

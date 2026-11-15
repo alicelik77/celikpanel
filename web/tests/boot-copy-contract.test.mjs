@@ -66,6 +66,8 @@ const eagerModules = [
   'src/components/BuildCommit.tsx',
   'src/lib/accessGuidance.ts',
   'src/lib/accessObservation.ts',
+  // D-047 stage 1: the access gate's decision for the pages below it.
+  'src/lib/licenseAccess.ts',
   'src/lib/recoveryObservation.ts',
   'src/lib/recoveryShell.ts',
   'src/lib/quietRead.ts',

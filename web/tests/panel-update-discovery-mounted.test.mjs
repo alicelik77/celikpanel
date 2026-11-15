@@ -520,14 +520,6 @@ test('every new string exists in English and Turkish, and the Turkish is not the
     assert.equal(catalogues.tr['panelUpdate.notice.sidebar'], 'Güncelleme var · {version}');
 });
 
-test('on the licence page the card offers the update but not the switch, which belongs to Settings', async () => {
-    await withMounted(React.createElement(PanelUpdateCard, { activation: true }), {}, async (renderer, fixture) => {
-        assert.equal(renderer.root.findAll(node => node.props && node.props['data-update-auto'] !== undefined).length, 0);
-        assert.equal(primaries(renderer).length, 1);
-        assert.equal(fixture.requests.filter(line => line.startsWith('PUT ')).length, 0);
-    });
-});
-
 // Batch 21's first look (2026-10-17): fixes kept by contract.
 test('a version is never broken at its hyphen in the row, the sidebar link or the Settings note', async () => {
     const whole = (node) => node.findAll(child => child.type === 'span' && child.props['data-version'] !== undefined);

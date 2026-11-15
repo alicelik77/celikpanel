@@ -46,11 +46,19 @@ function setup(me=async()=>admin,fetcher=async()=>Response.json({schema:'celikpa
  globalThis.localStorage={getItem:()=>JSON.stringify({state_version:1,phase:'active',marker:{marker_version:1,request_id:id}})};
 }
 
-test('only known typed negative access requires activation; legacy positives keep their exact deadline',()=>{
- for(const state of ['missing','expired','invalid'])assert.equal(parseAccessObservation({state,observation:'known',can_use_panel:false,valid_until:0},100).allowed,false);
- for(const result of [{can_use_panel:false,valid_until:0},{state:'missing',can_use_panel:false,valid_until:0},{state:'verification_unavailable',observation:'unavailable',can_use_panel:false,valid_until:0},{state:'status_unavailable',observation:'unavailable',can_use_panel:false,valid_until:0}])assert.equal(parseAccessObservation(result,100).allowed,null);
+test('a licence without full use is the limited level, never a lock or a verdict by default; legacy positives keep their exact deadline',()=>{
+ // D-047 stage 1: the server answers level "limited"; the pages mount without a deadline.
+ for(const state of ['missing','expired','invalid'])assert.deepEqual(parseAccessObservation({state,observation:'known',can_use_panel:false,valid_until:0,level:'limited'},100),{allowed:true,until:Infinity,state,limited:true});
+ for(const state of ['verification_unavailable','status_unavailable'])assert.deepEqual(parseAccessObservation({state,observation:'unavailable',can_use_panel:false,valid_until:0,level:'limited'},100),{allowed:true,until:Infinity,state,limited:true});
+ assert.deepEqual(parseAccessObservation({state:'verification_unavailable',observation:'unavailable',reason:'offline_ended',can_use_panel:false,valid_until:0,level:'limited'},100),{allowed:true,until:Infinity,state:'verification_unavailable',limited:true,reason:'offline_ended'});
+ // Anything else is unknown: no level, a state and observation that disagree, an unknown level.
+ for(const result of [{can_use_panel:false,valid_until:0},{state:'missing',observation:'known',can_use_panel:false,valid_until:0},{state:'missing',can_use_panel:false,valid_until:0,level:'limited'},{state:'missing',observation:'unavailable',can_use_panel:false,valid_until:0,level:'limited'},{state:'verification_unavailable',observation:'unavailable',can_use_panel:false,valid_until:0},{state:'expired',observation:'known',can_use_panel:false,valid_until:0,level:'locked'}])assert.equal(parseAccessObservation(result,100).allowed,null);
  assert.deepEqual(parseAccessObservation({can_use_panel:true,valid_until:160},100),{allowed:true,until:160,state:'active'});
- for(const result of [{can_use_panel:true,valid_until:100},{can_use_panel:true,valid_until:160,state:'expired'},{can_use_panel:true,valid_until:160,observation:'unavailable'}])assert.throws(()=>parseAccessObservation(result,100));
+ assert.deepEqual(parseAccessObservation({can_use_panel:true,valid_until:160,level:'full'},100),{allowed:true,until:160,state:'active'});
+ for(const result of [{can_use_panel:true,valid_until:100},{can_use_panel:true,valid_until:160,state:'expired'},{can_use_panel:true,valid_until:160,observation:'unavailable'},{can_use_panel:true,valid_until:160,level:'limited'}])assert.throws(()=>parseAccessObservation(result,100));
+ // The term's end (administrators): time left on the server's clock, dated from the moment of asking.
+ assert.deepEqual(parseAccessObservation({can_use_panel:true,valid_until:160,term_ends_in_seconds:86400},100,98),{allowed:true,until:160,state:'active',termEndsAt:86498});
+ for(const left of [-1,'5',null])assert.equal(parseAccessObservation({can_use_panel:true,valid_until:160,term_ends_in_seconds:left},100).termEndsAt,undefined);
 });
 
 test('the server-stated time left is added to the moment of asking; the absolute deadline is only the fallback',()=>{
@@ -61,7 +69,7 @@ test('the server-stated time left is added to the moment of asking; the absolute
  for(const left of [0,-5])assert.throws(()=>parseAccessObservation({can_use_panel:true,valid_until:1000,valid_for_seconds:left},100));
  // Not a finite number: the absolute rule.
  for(const left of [null,'55',undefined])assert.deepEqual(parseAccessObservation({can_use_panel:true,valid_until:160,valid_for_seconds:left},100),{allowed:true,until:160,state:'active'});
- assert.equal(parseAccessObservation({state:'missing',observation:'known',can_use_panel:false,valid_until:0,valid_for_seconds:0},100).allowed,false);
+ assert.equal(parseAccessObservation({state:'missing',observation:'known',can_use_panel:false,valid_until:0,valid_for_seconds:0,level:'limited'},100).limited,true);
 });
 
 test('saved operation is an exact ID hint; terminal messages cannot supply a server outcome',()=>{
@@ -570,9 +578,6 @@ test('a cold load draws nothing before the quiet time, then the waiting state; a
  assert.match(gate,/<AccessHold active=\{state !== 'ready'\} cause=\{cause === 'checking' \? 'availability' : cause\}/);
  // The interface still being fetched is a wait as well.
  assert.match(app,/<Suspense fallback=\{<StandaloneRecovery loading \/>\}>/);
- const lock=readFileSync(new URL('../src/components/LicenseLockScreen.tsx',import.meta.url),'utf8');
- // A license decision is not explained by an update: no "no update operation ID" text on the activation page.
- assert.match(lock,/role === 'admin' && !checking && <RecoveryStatus username=\{user\.username\} unfinishedOnly \/>/);
  // The quiet time is the hold layer's.
  assert.match(readFileSync(new URL('../src/lib/quietRead.ts',import.meta.url),'utf8'),/export const QUIET_READ_MS = 1500;/);
  assert.match(readFileSync(new URL('../src/components/AccessHold.tsx',import.meta.url),'utf8'),/export const ACCESS_HOLD_QUIET_MS = 1500;/);

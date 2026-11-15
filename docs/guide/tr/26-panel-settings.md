@@ -14,7 +14,7 @@ keywords: [ayarlar, port, https, lisans, güncelleme, sürüm yükseltme, geri a
 
 ## Lisans {#license}
 
-**Lisans anahtarı** alanını doldurup **Lisansı etkinleştir** düğmesine basın. Geçerli lisans yoksa panel, sayfaları yerine bir lisans ekranı gösterir; siteler, posta, veritabanları ve zamanlanmış görevler çalışmayı sürdürür. Sunucu celikpanel.net'e ulaşamazsa yönetim 7 gün açık kalır.
+**Lisans anahtarı** alanını doldurup **Lisansı etkinleştir** düğmesine basın. Geçerli lisans yoksa siteler, posta, veritabanları ve zamanlanmış görevler çalışmayı sürdürür; panel de güvenlik, yedekler, silme, güncellemeler ve kendi hesabınız için kullanılabilir kalır. Her sayfanın üstündeki bildirim nedenini söyler; yeni bir şey oluşturma ve ayar değiştirme lisans etkinleşene kadar bekler. Panel, lisans bitmeden 30, 7 ve 1 gün önce uyarır. Sunucu celikpanel.net'e ulaşamazsa tam kullanım 7 gün açık kalır.
 
 ## Paneli güncellemek {#update}
 

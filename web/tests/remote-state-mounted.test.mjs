@@ -126,6 +126,8 @@ const stub = dataModule(`
 `);
 const shared = sharedLayer(stub);
 const domainAccessURL = compileSource('auth/domainAccess.ts', () => stub);
+const licenseAccessURL = compileSource('lib/licenseAccess.ts', () => stub);
+const { LicenseAccessContext } = await import(licenseAccessURL);
 const deletionURL = compileSource('lib/domainDeletionPending.ts', () => stub);
 // The small readers beside lib/remote.ts are the real ones too.
 const besideRemote = (specifier) => (specifier.endsWith('/remote') ? remoteURL : shared.resolve(specifier));
@@ -158,6 +160,9 @@ const own = {
   '/lib/panelCertificate': compileSource('lib/panelCertificate.ts', () => stub),
   // What the license check itself says (D-039, 2026-10-30).
   '/lib/licenseOffline': compileSource('lib/licenseOffline.ts', () => stub),
+  // D-047 stage 1: the access gate's decision and the warning before the term ends.
+  '/lib/licenseAccess': licenseAccessURL,
+  '/lib/licenseTerm': compileSource('lib/licenseTerm.ts', () => stub),
   // Plans and rights (alpha.117): the shipped decoders and helpers.
   '/lib/rights': compileSource('lib/rights.ts', (specifier) => (specifier.endsWith('/apiError') ? apiErrorURL : stub)),
   // alpha.133 round 5: what deleting a database does to its users, the shipped words.
@@ -1442,7 +1447,7 @@ test('Dashboard "no website yet" card: not on a joined server, not while unread,
   }
 });
 
-test('Dashboard license notice: it speaks only about an answer, and "could not be verified" is not "a license is required"', async () => {
+test('Dashboard license notice: it speaks only about an answer, and a license without full use is left to the notice on top', async () => {
   for (const answer of Object.values(failures)) {
     serve({ '/api/v1/panel/license': answer });
     try {
@@ -1452,16 +1457,13 @@ test('Dashboard license notice: it speaks only about an answer, and "could not b
       await cleanup();
     }
   }
-  for (const [state, drawn, absent] of [
-    ['verification_unavailable', 'license.noticeUnverified', 'license.restricted'],
-    ['status_unavailable', 'license.noticeUnverified', 'license.restricted'],
-    ['missing', 'license.restricted', 'license.noticeUnverified'],
-    ['expired', 'license.restricted', 'license.noticeUnverified'],
-  ]) {
+  // D-047: the notice on top of every page (LicenseLimitedNotice) explains a
+  // license that does not allow full use; the Dashboard does not say it twice.
+  for (const state of ['verification_unavailable', 'status_unavailable', 'missing', 'expired', 'invalid']) {
     serve({ '/api/v1/panel/license': json({ state, can_provision: false }) });
     try {
       await mount(LicenseNotice);
-      assert.ok(has(drawn) && !has(absent), `${state} is drawn as ${absent}`);
+      assert.equal(tree.toJSON(), null, `${state} is drawn twice`);
     } finally {
       await cleanup();
     }
@@ -1470,6 +1472,59 @@ test('Dashboard license notice: it speaks only about an answer, and "could not b
   try {
     await mount(LicenseNotice);
     assert.equal(tree.toJSON(), null);
+  } finally {
+    await cleanup();
+  }
+});
+
+// D-047 stage 1: the administrator is warned 30, 7 and 1 day before the term
+// ends; a closed warning stays closed until the next threshold, and a renewal
+// (more than 30 days left) or the limited level takes it away.
+test('Dashboard license notice: the warning before the license ends, at 30, 7 and 1 day, once per threshold', async () => {
+  const day = 86400;
+  const now = Date.now() / 1000;
+  const withAccess = (access) => () => React.createElement(LicenseAccessContext.Provider, { value: access }, React.createElement(LicenseNotice));
+  for (const [left, drawn, role] of [
+    [40 * day, null],
+    [30 * day - 60, ['license.expiring.title', 'license.expiring.help'], 'status'],
+    [7 * day - 60, ['license.expiring.title', 'license.expiring.help'], 'alert'],
+    [day - 60, ['license.expiring.dayTitle', 'license.expiring.dayHelp'], 'alert'],
+  ]) {
+    serve();
+    try {
+      await mount(withAccess({ allowed: true, until: now + 3600, state: 'active', termEndsAt: now + left }));
+      if (!drawn) {
+        assert.equal(tree.toJSON(), null, `${left / day} days left drew a warning`);
+        continue;
+      }
+      for (const key of drawn) assert.ok(has(key), `${left / day} days left lacks ${key}`);
+      const notice = tree.root.findByProps({ 'aria-labelledby': 'license-expiry-title' });
+      assert.equal(notice.props.role, role);
+      assert.ok(has('license.noticeOpen'), 'the warning does not lead to the license page');
+      // Closing it keeps it closed for this threshold, in this browser.
+      await press(buttons('license.expiring.dismiss')[0]);
+      assert.equal(tree.toJSON(), null, 'Got it did not close the warning');
+      // A new visit in the same browser (the page mounted again).
+      await act(async () => tree.unmount());
+      await mount(withAccess({ allowed: true, until: now + 3600, state: 'active', termEndsAt: now + left }));
+      assert.equal(tree.toJSON(), null, 'a closed warning came back at the same threshold');
+    } finally {
+      await cleanup();
+    }
+  }
+  // The next threshold brings it back; the limited level never shows it.
+  serve();
+  try {
+    globalThis.localStorage.setItem('celikpanel.license-expiry-notice.v1', JSON.stringify({ threshold: 30, at: Date.now() }));
+    await mount(withAccess({ allowed: true, until: now + 3600, state: 'active', termEndsAt: now + 6 * day }));
+    assert.ok(has('license.expiring.title'), 'the 7-day warning stayed closed by the 30-day one');
+  } finally {
+    await cleanup();
+  }
+  serve();
+  try {
+    await mount(withAccess({ allowed: true, until: Infinity, state: 'expired', limited: true, termEndsAt: now }));
+    assert.equal(tree.toJSON(), null, 'the ended license is the notice on top, not a warning');
   } finally {
     await cleanup();
   }
@@ -1484,8 +1539,9 @@ test('Dashboard license notice (D-039): an unreachable license service inside th
     [{ state: 'active', can_provision: true, check: 'unreachable', offline_for_seconds: day, verified_seconds_ago: 6 * day }, ['license.offline.soonTitle', 'license.noticeOfflineSoon'], 'alert'],
     [{ state: 'active', can_provision: true, check: 'clock_behind', offline_for_seconds: 5 * day }, ['license.clock.title', 'license.clock.help'], 'alert'],
     [{ state: 'active', can_provision: true, check: 'something-new', offline_for_seconds: 5 * day }, null],
-    [{ state: 'verification_unavailable', can_provision: false, reason: 'offline_ended' }, ['license.offlineEnded.title', 'license.offlineEnded.help']],
-    [{ state: 'verification_unavailable', can_provision: false, reason: 'clock_behind' }, ['license.clockBehind.title', 'license.clockBehind.help']],
+    // A lapse is the notice on top of every page (D-047), not the Dashboard's.
+    [{ state: 'verification_unavailable', can_provision: false, reason: 'offline_ended' }, null],
+    [{ state: 'verification_unavailable', can_provision: false, reason: 'clock_behind' }, null],
   ]) {
     serve({ '/api/v1/panel/license': json(answer) });
     try {
@@ -1495,7 +1551,7 @@ test('Dashboard license notice (D-039): an unreachable license service inside th
         continue;
       }
       for (const key of drawn) assert.ok(has(key), `${JSON.stringify(answer)} lacks ${key}`);
-      assert.ok(!has('license.restricted') && !has('license.noticeUnverified'), 'a known check cause fell back to the generic copy');
+      assert.ok(!has('license.restricted'), 'a known check cause fell back to the generic copy');
       if (role) assert.equal(tree.root.findByProps({ 'aria-label': 'license.title' }).props.role, role);
     } finally {
       await cleanup();
@@ -1834,7 +1890,7 @@ test('every text of the three states exists in both languages, and the could-not
     'panelCert.reopen.body', 'panelCert.reopen.reload', 'panelCert.reopen.stay', 'panelCert.reopen.stayed', 'plans.checking',
     'files.contentUnknown', 'files.uploadUnreadable', 'ssl.rereading', 'import.checkingSubs', 'import.noSubs', 'import.inspectUnanswered',
     'import.runAgain', 'import.unknown.title', 'import.unknown.body', 'import.unknown.check', 'import.unknown.checkAgain',
-    'import.unknown.present', 'import.unknown.open', 'import.unknown.absent', 'license.noticeUnverified', 'license.noticeOpen',
+    'import.unknown.present', 'import.unknown.open', 'import.unknown.absent', 'license.noticeOpen',
     'domain.absent', 'domain.absentHint', 'domain.noAccess', 'domain.noAccessHint', 'component.absent', 'component.absentHint',
     'component.logsNoMatch', 'svc.checkingRecord', 'svc.recordUnread', 'svc.installChecking', 'services.versionUnknown',
     'services.repo.checking', 'dashboard.countUnread', 'help.loading']);
