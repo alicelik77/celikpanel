@@ -15,11 +15,8 @@ func TestMailRenewalHookObservationPreservesEvidence(t *testing.T) {
 	}
 	for _, scenario := range []string{"absent", "legacy", "independent", "foreign-hook", "hook-symlink", "hook-hardlink", "hook-mode", "unit-edited", "timer-missing", "helper-edited", "late-hook-edit", "late-helper-edit", "late-unit-edit", "late-absent-created", "late-parent-moved", "protected-parent-group", "writable-parent-group", "foreign-parent-owner", "late-parent-group", "kit-parent-group"} {
 		t.Run(scenario, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-hook-observation-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-hook-observation-")
+			var err error
 			units := filepath.Join(root, "units")
 			hooks := filepath.Join(root, "hooks")
 			runtimeRoot := filepath.Join(root, "runtime")

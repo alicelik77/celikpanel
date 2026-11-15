@@ -148,8 +148,12 @@ jobs:
       - run: sudo bash deploy/test-rollback-material-admission.sh
       - run: sudo bash deploy/test-release-recovery-observation.sh
       - run: sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./internal/recoveryobs -count=1
+      # Some hosted runners mount /run without execute permission (alpha.135:
+      # every AWS-served ubuntu-24.04 job); the native fixtures mount their own
+      # tmpfs. The line records how this runner mounted /run.
       - name: Verify independent recovery runtime and offline checker boundaries
         run: |
+          findmnt -no TARGET,FSTYPE,OPTIONS /run
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./internal/recoveryruntime ./internal/recoverycheckpoint ./internal/recoverypublication ./cmd/recovery -count=1
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./cmd/agent ./cmd/panel -run 'TestRecovery(CheckStandalone|AgentCheckerStandalone)|TestPendingRollback' -count=1
           sudo env PATH="$PATH" GOTOOLCHAIN=local go test ./cmd/panel -run '^TestRecoveryDatabaseMigration' -count=1

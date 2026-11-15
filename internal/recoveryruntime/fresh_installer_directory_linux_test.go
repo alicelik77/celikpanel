@@ -25,11 +25,7 @@ func TestFreshInstallerEnrollmentSharedDirectory(t *testing.T) {
 	repository := filepath.Clean(filepath.Join(directory, "../.."))
 	for _, scenario := range []string{"absent", "existing-755", "owner-700", "firewall", "firewall-corrupt", "firewall-unit-corrupt"} {
 		t.Run(scenario, func(t *testing.T) {
-			root, err := os.MkdirTemp("/run", "celikpanel-fresh-install-test-")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(root)
+			root := nativeFixtureRoot(t, "celikpanel-fresh-install-test-")
 			source := filepath.Join(root, "source")
 			for _, dir := range []string{source, filepath.Join(source, "deploy"), filepath.Join(root, "usr")} {
 				if err := os.Mkdir(dir, 0755); err != nil {
