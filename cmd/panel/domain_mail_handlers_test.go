@@ -143,6 +143,10 @@ func newMailMutationPanel(t *testing.T, agent *mailMutationPanelAgent) (*Panel, 
 			client,
 			connector,
 		),
+		// Creating a mailbox kicks the automatic DKIM runner; started for real
+		// it outlives the test and reopens the database in the test's
+		// temporary folder while that folder is removed (alpha.135 tag run).
+		automaticDKIMKicked: func() {},
 	}, 6103
 }
 
