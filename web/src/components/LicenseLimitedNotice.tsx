@@ -1,4 +1,4 @@
-import { BadgeCheck } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Link, useLocation } from '../router';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
@@ -37,7 +37,7 @@ export function LicenseLimitedNotice({ state, reason }: { state: LicenseState; r
         className="border-b border-warning-mark/60 bg-warning-mark/20 px-4 py-3 text-sm text-fg sm:px-6">
         <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
             <div className="flex min-w-0 flex-1 basis-80 items-start gap-3">
-                <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
                 <div className="min-w-0">
                     <h2 id="license-limited-title" className="font-semibold">{t(words.title)}</h2>
                     <p className="mt-1 max-w-[110ch]">{t(words.help)}</p>

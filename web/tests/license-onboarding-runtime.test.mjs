@@ -34,7 +34,7 @@ const stub = dataModule(`
  export const licenseExpiryThreshold = () => null, licenseExpiryVars = () => ({});
   export const Button = props => React.createElement('button', props);
   export const inputClass = '';
-  export const BadgeCheck = () => null, Eye = () => null, EyeOff = () => null;
+  export const BadgeCheck = () => null, AlertTriangle = () => null, Eye = () => null, EyeOff = () => null;
   export const readApiError = async response => { const data = await response.json(); return { message: data.error, code: data.code }; };
   export const apiErrorText = error => error.message;
   export const createPortal = node => node;

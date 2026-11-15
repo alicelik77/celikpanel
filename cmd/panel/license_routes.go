@@ -17,6 +17,16 @@ import (
 // before; stage 2 of the design opens "change" and keeps only "growth"
 // closed. The licence states and their dates are unchanged.
 //
+// Security is decided by purpose (owner, 15 November 2026): every route whose
+// purpose is to reduce exposure, restore security or finish a security update
+// is security (S) or update (U), open in every licence state: restarting a
+// service, rebooting, updating an installed component, setting a password or
+// secret of something that exists, certificate work on what exists, blocking
+// and protecting. Turning a protection off or opening access stays "change"
+// where the route can tell; where one route does both, it is open, because
+// refusing it could leave the server or a customer less safe. A route that
+// only adds or reshapes capacity stays closed.
+//
 // A route the table does not know is open: a forgotten security action can
 // never be refused for a licence reason. A forgotten creation of a domain, a
 // database or a mailbox is still refused by the count check
@@ -149,11 +159,16 @@ var licenceRouteTable = map[string]licenceRouteRule{
 			return licenceClassSecurity, true
 		case action == "" && method == http.MethodDelete:
 			return licenceClassDelete, true
+		case action == "" && method == http.MethodPut:
+			// An administrator's password reset or suspension of the
+			// account (the same form also changes its address).
+			return licenceClassSecurity, true
 		}
 		return licenceClassChange, true
 	}},
-	"/api/v1/team-members":     licenceGrowth,
-	"/api/v1/team-members/":    {write: licenceClassChange, methods: map[string]licenceRouteClass{http.MethodDelete: licenceClassDelete}},
+	"/api/v1/team-members": licenceGrowth,
+	// A team member's password, suspension and access are changed together.
+	"/api/v1/team-members/":    {write: licenceClassChange, methods: map[string]licenceRouteClass{http.MethodPut: licenceClassSecurity, http.MethodDelete: licenceClassDelete}},
 	"/api/v1/plans":            licenceChange,
 	"/api/v1/plans/":           licenceChange,
 	resellerPlansPath:          licenceChange,
@@ -250,7 +265,7 @@ var licenceRouteTable = map[string]licenceRouteRule{
 	"/api/v1/php/config":                licenceChange,
 	"/api/v1/php/extended-config":       licenceChange,
 	"/api/v1/nginx/global":              licenceChange,
-	"/api/v1/nginx/ssl":                 licenceChange,
+	"/api/v1/nginx/ssl":                 licenceSecurity, // the server's TLS protocols and ciphers
 	nginxDefaultHTTPSPath:               licenceChange,
 	"/api/v1/ssl/providers":             licenceChange,
 	"/api/v1/settings/nameservers":      licenceChange,
@@ -259,22 +274,22 @@ var licenceRouteTable = map[string]licenceRouteRule{
 	"/api/v1/nginx/ratelimits":          licenceChange,
 	nginxDirectivesOfferPath:            licenceChange,
 	serverIPAddressesPath:               licenceChange,
-	"/api/v1/postfix/queue":             licenceChange,
+	"/api/v1/postfix/queue":             licenceSecurity, // removing or holding spam in the queue
 	"/api/v1/postfix/summary":           licenceRead,
 	"/api/v1/dovecot/stats":             licenceChange,
 	"/api/v1/config":                    licenceChange,
-	"/api/v1/service/action":            licenceChange,
+	"/api/v1/service/action":            licenceSecurity, // restart, reload, stop: completes a security update, stops a compromised service
 	"/api/v1/service/logs":              licenceRead,
 	"/api/v1/service/status":            licenceChange,
-	"/api/v1/service/install":           licenceChange,
-	mailProfileInstallPath:              licenceChange,
+	"/api/v1/service/install":           licenceGrowth, // a new component
+	mailProfileInstallPath:              licenceGrowth, // a new mail component set
 	"/api/v1/service/operation":         licenceChange,
 	"/api/v1/service/candidate":         licenceChange,
-	serviceUninstallPath:                licenceChange,
-	serviceRemovalImpactPath:            licenceChange,
-	serviceInstallPreviewPath:           licenceChange,
-	serviceInstallPlanPath:              licenceChange,
-	roundcubeUpdatePath:                 licenceChange,
+	serviceUninstallPath:                {write: licenceClassDelete}, // removing a component
+	serviceRemovalImpactPath:            licenceRead,
+	serviceInstallPreviewPath:           licenceRead,
+	serviceInstallPlanPath:              licenceRead,
+	roundcubeUpdatePath:                 licenceUpdate, // updating the installed webmail
 	pgServiceAPIPrefix:                  licenceChange,
 	phpToolsPath:                        licenceChange,
 	phpToolBindPath:                     licenceChange,
@@ -286,7 +301,7 @@ var licenceRouteTable = map[string]licenceRouteRule{
 	restartNeedsPath:                    licenceChange,
 	serverClockPath:                     licenceChange,
 	serverProcessesPath:                 licenceChange,
-	serverRebootPath:                    licenceChange,
+	serverRebootPath:                    licenceSecurity, // completes a kernel or library security update
 	osReleaseAPIPath:                    licenceChange,
 	osReleaseReviewedAPIPath:            licenceChange,
 	holdingPath:                         licenceRead,
@@ -308,8 +323,8 @@ var licenceRouteTable = map[string]licenceRouteRule{
 	"/api/v1/dns/engine/switch":         licenceChange,
 	"/api/v1/mail/configure":            licenceChange,
 	"/api/v1/mail/policy":               licenceChange,
-	mailOutgoingPath:                    licenceChange,
-	mailRelayPath:                       licenceChange,
+	mailOutgoingPath:                    licenceSecurity, // sending limits: throttling a spamming mailbox
+	mailRelayPath:                       licenceSecurity, // the relay's credentials (a leaked password must be replaceable)
 	mailRelayTestPath:                   licenceChange,
 	mailServerSettingsPath:              licenceChange,
 	mailSubaddressingPath:               licenceChange,
@@ -318,11 +333,11 @@ var licenceRouteTable = map[string]licenceRouteRule{
 	mailOutgoingNoticesPath:             licenceChange,
 	mailOutgoingNoticesPath + "/":       licenceChange,
 	mailPlanLimitsPath:                  licenceChange,
-	wordpressToolsPath:                  licenceChange,
+	wordpressToolsPath:                  {write: licenceClassChange, sub: licenceWordPressClass},
 	"/api/v1/system-databases":          licenceChange,
 	"/api/v1/system-databases/":         licenceChange,
-	"/api/v1/runtimes/node":             licenceChange,
-	"/api/v1/runtimes/node/":            licenceChange,
+	"/api/v1/runtimes/node":             licenceGrowth, // installing a Node.js version
+	"/api/v1/runtimes/node/":            {write: licenceClassChange, methods: map[string]licenceRouteClass{http.MethodDelete: licenceClassDelete}},
 	"/api/v1/import/cpanel/inspect":     licenceRead,
 	"/api/v1/import/cpanel/apply":       licenceGrowth,
 	"/api/v1/database-servers":          licenceChange,
@@ -356,7 +371,15 @@ var licenceRouteTable = map[string]licenceRouteRule{
 	"/api/v1/vpn/peers":           licenceSecurity,
 	"/api/v1/vpn/peers/":          licenceSecurity,
 	malwarePath:                   licenceSecurity,
-	databaseRemotePath:            licenceSecurity, // closing remote database access must always work
+	// Closing remote database access must always work; adding a rule opens
+	// access and stays a change. The server switch opens and closes in one
+	// request, so it is open.
+	databaseRemotePath: {write: licenceClassSecurity, sub: func(rest, method string) (licenceRouteClass, bool) {
+		if segments := strings.Split(rest, "/"); len(segments) == 3 && segments[0] == "databases" && segments[2] == "rules" && method == http.MethodPost {
+			return licenceClassChange, true
+		}
+		return "", false
+	}},
 
 	// Hosting content: domains and databases.
 	"/api/v1/domains":           licenceRead,
@@ -400,6 +423,23 @@ func licenceSubscriptionClass(rest, method string) (licenceRouteClass, bool) {
 	return "", false
 }
 
+// licenceWordPressClass sorts /api/v1/wordpress/{domain}/...: updating
+// WordPress and switching its automatic updates finish security updates; a
+// clone is a new site.
+func licenceWordPressClass(rest, method string) (licenceRouteClass, bool) {
+	segments := strings.Split(strings.Trim(rest, "/"), "/")
+	if len(segments) != 2 {
+		return "", false
+	}
+	switch segments[1] {
+	case "update", "auto-update":
+		return licenceClassUpdate, true
+	case "clone":
+		return licenceClassGrowth, true
+	}
+	return "", false
+}
+
 // licenceDomainKindClasses sorts every kind matchDomainSubroute assigns, by
 // method. GET and HEAD are reads and are not repeated. "mail" and
 // "ftp-logins" are sorted by their path as well (licenceDomainClass).
@@ -407,11 +447,11 @@ var licenceDomainKindClasses = map[string]map[string]licenceRouteClass{
 	"delete":                   {http.MethodDelete: licenceClassDelete},
 	"deletion-status":          {},
 	"hosting":                  {http.MethodPut: licenceClassChange},
-	"app":                      {http.MethodPost: licenceClassChange},
+	"app":                      {http.MethodPost: licenceClassChange}, // stop and restart: licenceDomainClass
 	"app-account":              {http.MethodPost: licenceClassChange},
-	"app-node-version":         {http.MethodPost: licenceClassChange},
+	"app-node-version":         {http.MethodPost: licenceClassUpdate}, // a Node.js patch with its fixes
 	"app-packages":             {http.MethodPost: licenceClassChange},
-	"app-env":                  {http.MethodPost: licenceClassChange},
+	"app-env":                  {http.MethodPost: licenceClassSecurity}, // where the application's secrets live
 	"php":                      {http.MethodPost: licenceClassChange},
 	"php-pool":                 {http.MethodPost: licenceClassChange},
 	"php-settings":             {http.MethodPut: licenceClassChange},
@@ -425,9 +465,9 @@ var licenceDomainKindClasses = map[string]map[string]licenceRouteClass{
 	"ssl-letsencrypt":          {http.MethodPost: licenceClassSecurity},
 	"ssl-upload":               {http.MethodPost: licenceClassSecurity},
 	"ssl-settings":             {http.MethodPost: licenceClassSecurity},
-	"ssl":                      {http.MethodDelete: licenceClassSecurity},
+	"ssl":                      {http.MethodDelete: licenceClassChange}, // removing a certificate turns a protection off
 	"git":                      {http.MethodPost: licenceClassChange},
-	"git-key":                  {http.MethodPost: licenceClassChange},
+	"git-key":                  {http.MethodPost: licenceClassSecurity}, // a new deploy key
 	"git-deploy":               {http.MethodPost: licenceClassChange},
 	"site-copy":                {http.MethodPost: licenceClassGrowth},
 	"logs-retention":           {http.MethodPost: licenceClassChange},
@@ -436,7 +476,7 @@ var licenceDomainKindClasses = map[string]map[string]licenceRouteClass{
 	"database-delete":          {http.MethodDelete: licenceClassDelete},
 	"database-users":           {http.MethodPost: licenceClassGrowth},
 	"database-user":            {http.MethodDelete: licenceClassDelete},
-	"database-user-password":   {http.MethodPost: licenceClassChange},
+	"database-user-password":   {http.MethodPost: licenceClassSecurity},
 	"database-tools":           {},
 	"database-export":          {http.MethodPost: licenceClassBackup},
 	"database-check":           {http.MethodPost: licenceClassBackup},
@@ -461,34 +501,34 @@ var licenceDomainKindClasses = map[string]map[string]licenceRouteClass{
 	"mail":                     {http.MethodPost: licenceClassChange, http.MethodPut: licenceClassChange, http.MethodDelete: licenceClassChange},
 	"app-install":              {http.MethodPost: licenceClassGrowth},
 	"app-catalog":              {},
-	"app-operation":            {http.MethodPost: licenceClassChange, http.MethodDelete: licenceClassDelete},
+	"app-operation":            {http.MethodPost: licenceClassChange, http.MethodDelete: licenceClassDelete}, // credentials: licenceDomainClass
 	"service-apps":             {},
 	"service-apps-install":     {http.MethodPost: licenceClassGrowth},
-	"service-apps-update":      {http.MethodPost: licenceClassChange},
-	"service-apps-control":     {http.MethodPost: licenceClassChange},
+	"service-apps-update":      {http.MethodPost: licenceClassUpdate},
+	"service-apps-control":     {http.MethodPost: licenceClassSecurity}, // stop and restart (start rides along)
 	"service-apps-logs":        {},
-	"service-apps-secrets":     {http.MethodPut: licenceClassChange},
+	"service-apps-secrets":     {http.MethodPut: licenceClassSecurity},
 	"service-apps-uninstall":   {http.MethodPost: licenceClassDelete},
 	"runtime-apps":             {},
 	"runtime-apps-create":      {http.MethodPost: licenceClassGrowth},
 	"runtime-apps-settings":    {http.MethodPut: licenceClassChange},
 	"runtime-apps-deploy":      {http.MethodPost: licenceClassChange},
-	"runtime-apps-control":     {http.MethodPost: licenceClassChange},
-	"runtime-apps-env":         {http.MethodPut: licenceClassChange},
+	"runtime-apps-control":     {http.MethodPost: licenceClassSecurity}, // stop and restart (start rides along)
+	"runtime-apps-env":         {http.MethodPut: licenceClassSecurity},  // where the program's secrets live
 	"runtime-apps-logs":        {},
 	"runtime-apps-remove":      {http.MethodPost: licenceClassDelete},
 	"usage":                    {},
 	"visitor-stats":            {},
 	"connection":               {},
-	"file-access":              {http.MethodPut: licenceClassChange},
+	"file-access":              {http.MethodPut: licenceClassSecurity}, // the account's password and keys (switching on rides along)
 	"file-access-preview":      {http.MethodPost: licenceClassRead},
-	"ftp-logins":               {http.MethodPost: licenceClassGrowth, http.MethodPut: licenceClassChange, http.MethodDelete: licenceClassDelete},
+	"ftp-logins":               {http.MethodPost: licenceClassGrowth, http.MethodPut: licenceClassSecurity, http.MethodDelete: licenceClassDelete},
 	"site-config":              {},
 	"site-config-keep":         {http.MethodPost: licenceClassChange},
 	"site-config-take":         {http.MethodPost: licenceClassChange},
 	"site-config-recreate":     {http.MethodPost: licenceClassChange},
 	"site-config-apply":        {http.MethodPost: licenceClassChange},
-	"site-protect":             {http.MethodPost: licenceClassSecurity, http.MethodDelete: licenceClassSecurity},
+	"site-protect":             {http.MethodPost: licenceClassSecurity, http.MethodDelete: licenceClassChange}, // removing turns a protection off
 	"site-protect-users":       {http.MethodPost: licenceClassSecurity, http.MethodDelete: licenceClassSecurity},
 	"site-redirects":           {http.MethodPost: licenceClassChange, http.MethodDelete: licenceClassChange},
 	"web-settings":             {http.MethodPost: licenceClassChange},
@@ -507,7 +547,7 @@ var licenceDatabaseKindClasses = map[string]map[string]licenceRouteClass{
 	"database-delete":      {http.MethodDelete: licenceClassDelete},
 	"database-grants":      {http.MethodPost: licenceClassChange},
 	"user-delete":          {http.MethodDelete: licenceClassDelete},
-	"user-password":        {http.MethodPost: licenceClassChange},
+	"user-password":        {http.MethodPost: licenceClassSecurity},
 	// Taking a right away is a deletion (decided towards security; the
 	// design's table lists database grants as change).
 	"grant-delete": {http.MethodDelete: licenceClassDelete},
@@ -517,13 +557,26 @@ func licenceIsRead(method string) bool { return method == http.MethodGet || meth
 
 // licenceDomainClass classifies a matched domain subroute.
 func licenceDomainClass(match domainSubroute, tail, method string) (licenceRouteClass, bool) {
-	if match.kind == "mail" {
+	if match.kind == "mail" && !licenceIsRead(method) {
 		switch {
 		case tail == "mail/accounts" && method == http.MethodPost, tail == "mail/forwardings" && method == http.MethodPost:
 			return licenceClassGrowth, true
-		case tail == "mail/accounts" && method == http.MethodDelete, tail == "mail/forwardings" && method == http.MethodDelete:
+		case tail == "mail/accounts" && method == http.MethodDelete, tail == "mail/forwardings" && method == http.MethodDelete,
+			tail == "mail/accounts/empty":
 			return licenceClassDelete, true
+		case tail == "mail/accounts/password", tail == "mail/accounts/recovery", tail == "mail/outgoing",
+			tail == "mail/auth/dkim", tail == "mail/auth/apply", tail == "mail/auth/automatic":
+			// A mailbox's password and recovery address, its sending limit,
+			// and the domain's mail authentication (SPF, DKIM, DMARC).
+			return licenceClassSecurity, true
 		}
+	}
+	if match.kind == "app" && (tail == "app/stop" || tail == "app/restart") && method == http.MethodPost {
+		return licenceClassSecurity, true
+	}
+	if match.kind == "app-operation" && strings.HasSuffix(tail, "/credentials") && method == http.MethodPost {
+		// Shows the application's first credentials again; changes nothing.
+		return licenceClassRead, true
 	}
 	if licenceIsRead(method) {
 		return licenceClassRead, true

@@ -154,7 +154,7 @@ export const tr: Record<ShellKey, string> = {
     'common.goFix': 'Düzeltmeye git',
     'common.andMore': '+{n} tane daha',
     // API hata sözleşmesi (B1): kodlu retlerin yerelleştirilmiş metinleri.
-    'err.license_required': "Bu sunucuda şu an yeni bir şey oluşturma ve ayar değiştirme kapalı; hiçbir şey değiştirilmedi. Var olan her şey çalışmaya devam ediyor. Nedenini ve kimin yeniden açabileceğini sayfanın üstündeki bildirim söylüyor.",
+    'err.license_required': "Bu işlem şu an bu sunucuda kapalı; hiçbir şey değiştirilmedi. Var olan her şey çalışmaya devam ediyor, güvenlik işlemleri de kullanılabilir. Nedenini ve kimin yeniden açabileceğini sayfanın üstündeki bildirim söylüyor.",
     'err.AUTH_REQUIRED': 'Oturumunuz sona erdi — yeniden giriş yapın.',
     'err.ADMIN_ONLY': 'Bu işlem yönetici yetkisi gerektirir.',
     'err.ACCOUNT_SUSPENDED': 'Bu hesap askıya alınmış.',

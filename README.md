@@ -130,8 +130,9 @@ panel stays usable for every role: reading, security settings (firewall, OS
 updates, closing remote database access, the security emergency,
 certificates), backups and their download, deleting, one's own account, signed
 CelikPanel updates and the License screen keep working, and so does the other
-server of a DNS pair. Creating new things and changing settings wait until the
-license is active; a notice on top of every page says why, and only the
+server of a DNS pair. Security actions on what exists (passwords, certificates,
+blocking, restarts, component updates) keep working too. Creating new things
+and changing other settings wait until the license is active; a notice on top of every page says why, and only the
 administrator is told about the license. The panel warns the administrator 30,
 7 and 1 day before the license ends. Updates do not activate or renew a
 license. Existing websites, mail, databases and scheduled jobs continue without

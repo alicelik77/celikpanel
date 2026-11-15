@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgeCheck } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
 import { useRemote } from '../lib/remote';
@@ -58,7 +58,7 @@ export function LicenseNotice() {
             <section className={`${NOTICE} ${threshold === 30 ? 'border-border bg-surface' : 'border-warning-mark/60 bg-warning-mark/20'}`}
                 aria-labelledby="license-expiry-title" role={threshold === 30 ? 'status' : 'alert'} data-license-expiry={threshold}>
                 <div className="flex min-w-0 flex-1 basis-80 items-start gap-3">
-                    <BadgeCheck className="mt-1 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />
+                    <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
                     <div className="min-w-0">
                         <h2 id="license-expiry-title" className="font-semibold text-fg">{t(day ? 'license.expiring.dayTitle' : 'license.expiring.title', vars)}</h2>
                         <p className="max-w-[75ch] text-sm text-fg-muted">{t(day ? 'license.expiring.dayHelp' : 'license.expiring.help', vars)}</p>
@@ -84,7 +84,10 @@ export function LicenseNotice() {
             aria-label={t('license.title')} role={guidance.tone === 'warning' ? 'alert' : 'status'} data-license-check={license.remote.value.check}
         >
             <div className="flex min-w-0 items-start gap-3">
-                <BadgeCheck className="mt-1 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />
+                {/* Something to do soon: the attention mark; nothing to do: information. */}
+                {guidance.tone === 'warning'
+                    ? <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+                    : <Info className="mt-1 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />}
                 <div className="min-w-0">
                     <h2 className="font-semibold text-fg">{t(guidance.title, vars)}</h2>
                     <p className="max-w-[75ch] text-sm text-fg-muted">{t(guidance.notice, vars)}</p>

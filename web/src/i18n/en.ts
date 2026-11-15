@@ -357,7 +357,7 @@ export const en = {
     // The API error contract (B1): localized texts for coded refusals.
     // err.<CODE> overrides the server message; err.<CODE>.action labels the
     // fix-it button when the refusal carries an in-panel path.
-    'err.license_required': "Creating new things and changing settings are closed on this server at the moment; nothing was changed. Everything that exists keeps working. The notice at the top of the page says why and who can open them again.",
+    'err.license_required': "This action is closed on this server at the moment; nothing was changed. Everything that exists keeps working, and security actions stay available. The notice at the top of the page says why and who can open it again.",
     'err.AUTH_REQUIRED': 'Your session has expired — sign in again.',
     'err.ADMIN_ONLY': 'This action requires an administrator.',
     'err.ACCOUNT_SUSPENDED': 'This account is suspended.',

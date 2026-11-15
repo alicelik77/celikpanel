@@ -339,18 +339,18 @@ func licenceRefusal(status licensing.Status, audience string) (int, string, stri
 	}
 	switch audience {
 	case licenceAudienceReseller:
-		return httpStatus, code, "New customers, domains and mailboxes cannot be created and settings cannot be changed on this server at the moment; this request did not proceed. Your customers' sites, mail and other services keep working, and viewing, backups and deleting still work. Contact the server administrator."
+		return httpStatus, code, "New customers, domains and mailboxes cannot be created and other settings cannot be changed on this server at the moment; this request did not proceed. Your customers' sites, mail and other services keep working, and viewing, backups, deleting and security actions such as passwords and certificates still work. Contact the server administrator."
 	case licenceAudienceCustomer:
-		return httpStatus, code, "New domains, mailboxes and databases cannot be created and settings cannot be changed on this server at the moment; this request did not proceed. Everything you already have keeps working, and viewing, backups and deleting still work. Contact your provider if you need a change now."
+		return httpStatus, code, "New domains, mailboxes and databases cannot be created and other settings cannot be changed on this server at the moment; this request did not proceed. Everything you already have keeps working, and viewing, backups, deleting and security actions such as passwords and certificates still work. Contact your provider if you need a change now."
 	}
-	const works = " Sites, mail, DNS, databases and scheduled tasks keep running, and security, backups, deleting, panel updates and your own account still work."
+	const works = " Sites, mail, DNS, databases and scheduled tasks keep running, and security actions (firewall, updates, passwords, certificates), backups, deleting, panel updates and your own account still work."
 	switch code {
 	case errCodeLicenseVerificationUnavailable:
-		return httpStatus, code, "The server license could not be verified just now, so creating new things and changing settings wait; this request did not proceed. This does not mean the license is missing or ended." + works + " The server administrator can check again under Settings, License; this continues by itself after the next successful check."
+		return httpStatus, code, "The server license could not be verified just now, so creating new things and changing other settings wait; this request did not proceed. This does not mean the license is missing or ended." + works + " The server administrator can check again under Settings, License; this continues by itself after the next successful check."
 	case errCodeLicenseStatusUnavailable:
-		return httpStatus, code, "The server license status could not be read just now, so creating new things and changing settings wait; this request did not proceed. This does not mean the license is missing or ended." + works + " The panel tries again by itself; the server administrator can check again under Settings, License."
+		return httpStatus, code, "The server license status could not be read just now, so creating new things and changing other settings wait; this request did not proceed. This does not mean the license is missing or ended." + works + " The panel tries again by itself; the server administrator can check again under Settings, License."
 	}
-	return httpStatus, code, "Creating new things and changing settings need an active server license; this request did not proceed." + works + " The server administrator activates or renews the license under Settings, License (a renewal is made in the celikpanel.net account); the panel notices it by itself."
+	return httpStatus, code, "Creating new things and changing other settings need an active server license; this request did not proceed." + works + " The server administrator activates or renews the license under Settings, License (a renewal is made in the celikpanel.net account); the panel notices it by itself."
 }
 
 func writeLicenceRefusal(w http.ResponseWriter, status licensing.Status, audience string) {
