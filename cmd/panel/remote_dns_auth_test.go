@@ -62,21 +62,25 @@ func TestRemoteDNSMiddlewareAuthenticatesBeforeCSRFAndSessionException(t *testin
 			}
 		})
 	}
-	for _, licensed := range []bool{false, true} {
-		if licensed {
-			f.panel.license = testPanelLicense(t, "active")
+	// D-047: the receiving server's licence never refuses its pair; only the
+	// pairing credential does. With an ended licence a valid credential is
+	// served and a revoked one is refused.
+	f.panel.license = testPanelLicense(t, "expired")
+	for _, revoked := range []bool{false, true} {
+		if revoked {
 			_, _ = f.panel.db.GetDB().Exec(`UPDATE remote_dns_clients SET revoked=1 WHERE id=?`, id)
-		} else {
-			f.panel.license = testPanelLicense(t, "expired")
 		}
 		called := false
-		stack := f.panel.requireRemoteDNSMachineAuth(csrfProtect(f.panel.requireAuth(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))))
+		stack := f.panel.requireRemoteDNSMachineAuth(csrfProtect(f.panel.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			called = true
+			w.WriteHeader(http.StatusNoContent)
+		}))))
 		r := httptest.NewRequest(http.MethodPost, "https://panel.example"+statusPath, strings.NewReader(`{}`))
 		r.Header.Set("Authorization", "Bearer "+id+"."+credential)
 		w := httptest.NewRecorder()
 		stack.ServeHTTP(w, r)
-		if called || (licensed && w.Code != http.StatusUnauthorized) || (!licensed && w.Code != http.StatusForbidden) {
-			t.Fatalf("license/revocation was bypassed: %d", w.Code)
+		if called == revoked || (revoked && w.Code != http.StatusUnauthorized) || (!revoked && w.Code != http.StatusNoContent) {
+			t.Fatalf("revoked=%v: status=%d called=%v", revoked, w.Code, called)
 		}
 	}
 }

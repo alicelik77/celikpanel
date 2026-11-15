@@ -2343,9 +2343,10 @@ func boundedSetupHostReason(reason string) string {
 var errServerSetupBuildChanged = errors.New("setup build changed; review the remaining plan")
 
 // requireServerSetupAdmission judges the license exactly as the HTTP access
-// gate does (panelLicenseStatus: licensing.Manager.AccessStatus, which runs
-// the same synchronous refresh under the same one-minute rule before reading
-// the status). The background setup runner has no browser request to refresh
+// gate judges a request that needs full use (panelLicenseStatus:
+// licensing.Manager.AccessStatus, which joins the same shared check, D-039,
+// before reading the status). Server setup is class "change"
+// (license_routes.go), so it still needs full use in stage 1 of D-047. The background setup runner has no browser request to refresh
 // the check for it; reading Status() alone let a stale but valid check look
 // like a missing license (pair2 finding P-C). License policy is unchanged:
 // the same function, verification, interval and failure semantics apply.
@@ -2353,7 +2354,7 @@ var errServerSetupBuildChanged = errors.New("setup build changed; review the rem
 // (D-024, D-025): it is reported as unknown, not as license_required.
 //
 // Kurulum çalıştırıcısı lisansı HTTP erişim kapısıyla aynı biçimde (aynı
-// eşzamanlı yenileme ve aynı bir dakika kuralıyla) değerlendirir. Okunamayan
+// paylaşılan kontrolle, D-039) değerlendirir. Okunamayan
 // durum "lisans gerekli" değil, bilinmeyen durum olarak bildirilir.
 func (p *Panel) requireServerSetupAdmission(ctx context.Context) error {
 	status := p.panelLicenseStatus(ctx)

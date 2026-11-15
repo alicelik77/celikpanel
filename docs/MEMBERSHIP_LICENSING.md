@@ -67,7 +67,8 @@ CLI PHP availability alone does not prove the web handler.
 ## Current enforced access policy
 
 Source: [license manager](../internal/licensing/license.go),
-[panel access gate and exceptions](../cmd/panel/license.go), and
+[panel access gate](../cmd/panel/license.go) with its
+[route classes](../cmd/panel/license_routes.go), and
 [browser access gate](../web/src/components/LicenseOnboarding.tsx).
 The annual term and this access-verification window are separate:
 
@@ -77,28 +78,22 @@ The annual term and this access-verification window are separate:
 | Ordinary refresh eligibility | At the earlier of signed `refresh_after` (service: `now + 1 hour`) and `issued_at + 1 hour`, minus up to a fifth as deterministic per-server jitter (48–60 minutes). Only authenticated use triggers it; there is no server timer polling an idle installation. Concurrent requests share one refresh. |
 | Request wait for a due refresh | A receipt that no longer opens management waits for the shared refresh. A still-valid receipt waits at most 3 seconds, then the request proceeds on it while the refresh finishes in the background; a reachable service's rejection therefore applies to the discovering request. |
 | Failed refresh retry | While the receipt is valid: 1, 2, 4, 8, 16, then 30 minutes (each shortened by up to a fifth per server), and never later than the moment the receipt lapses. After it lapses: every 30 seconds on use. The administrator's "Check again" bypasses the backoff, never signature or binding verification. |
-| Explicit rejection | `invalid_license`, `invalid_activation`, `license_in_use` or `license_expired` on refresh is persisted at once (`rejected`) and closes management immediately, inside or outside the offline window. |
+| Explicit rejection | `invalid_license`, `invalid_activation`, `license_in_use` or `license_expired` on refresh is persisted at once (`rejected`) and closes creating new things and changing settings immediately, inside or outside the offline window. |
 | Clock safety | `issued_at` is the service's clock. A server clock more than 5 minutes before `issued_at`, more than 5 minutes below the highest clock reading recorded with the receipt (`seen_at`, local, unsigned), or set back while the panel runs (wall clock vs. monotonic time) gives `verification_unavailable` with reason `clock_behind` until a check succeeds; a reachable service is asked at once. A fresh answer dated more than 5 minutes after this clock is refused with check `clock_behind`. |
 | HTTP refresh budget | The license client has a 15-second timeout; the shared background refresh is bounded at 20 seconds. |
-| Missing/expired/rejected/unverifiable entitlement | Normal management is denied. The access endpoint answers `can_use_panel=false` with state, observation and, for `verification_unavailable`, the reason. The license page (`/api/v1/panel/license`, administrators) also reports `check` (last failed attempt: `unreachable`, `rate_limited`, `invalid_answer`, `clock_behind`), `offline_for_seconds` and `verified_seconds_ago`. |
-| Browser behavior | A failed access request retains only a still-valid decision for the same user, without extending its deadline. Unknown access shows connection recovery; a server denial or `license_required` response locks management. |
+| Missing/expired/rejected/unverifiable entitlement | Since D-047 stage 1 only the route classes "change" and "growth" are refused (creating new things and changing settings: 403 `license_required` for a known state, 503 `LICENSE_*_UNAVAILABLE` for an unknown one, with a sentence for the caller's role); reading, security actions (decided by purpose: passwords and secrets of what exists, certificates, blocking and protecting, service restarts, reboot, component updates), backups and their download, deleting, one's own account, panel updates, the license screen and the DNS pair work in every state. The count check refuses a new domain, database or mailbox too. The access endpoint answers `can_use_panel=false`, `level: "limited"`, state, observation and, for `verification_unavailable`, the reason; administrators also get `term_ends_in_seconds`. The license page (`/api/v1/panel/license`, administrators) also reports `check` (last failed attempt: `unreachable`, `rate_limited`, `invalid_answer`, `clock_behind`), `offline_for_seconds` and `verified_seconds_ago`. |
+| Browser behavior | A failed access request retains only a still-valid decision for the same user, without extending its deadline. Unknown access shows connection recovery. At the limited level the pages mount with a notice on top (administrators: reason, what still works, the license page; resellers and customers: one sentence without the license). Administrators are warned on the Dashboard and the license page 30, 7 and 1 day before the term ends. |
 
-The current authenticated exceptions are deliberately narrow. All role,
-ownership and method checks still apply:
-
-- Session identity and access-status reads; logout, password change and ending
-  impersonation remain available.
-- License reads, activation and refresh remain available to administrators.
-- Administrators can read panel version, update check/status and host-mutation
-  readiness, and use the signed-update start/abandon endpoints. Release trust,
-  operation identity and mutation admission remain enforced. The user must
-  initiate every installed-panel update in the panel interface; API capability
-  does not authorize assistant-side installation.
-
-These exceptions do **not** provide general panel access to backups, deletion,
-service configuration or other maintenance when the entitlement cannot authorize
-management. Existing native workloads and their independent schedules are not
-stopped by this HTTP license gate. Full operation after removal of management
+Every route is sorted into a class ([route classes](../cmd/panel/license_routes.go),
+design [§b](LICENCE-SUBSCRIPTION-DESIGN.md#b-the-protection-states-gate)); a
+route-inventory test fails when a route has none, and an unsorted request is open.
+All role, ownership and method checks still apply in every class. Release trust,
+operation identity and mutation admission remain enforced for panel updates; the
+user must initiate every installed-panel update in the panel interface; API
+capability does not authorize assistant-side installation. Changing other settings
+(service configuration, server setup, site and mail settings) and installing
+components still need full use until stage 2. Existing native workloads and their independent schedules are
+not stopped by this HTTP license gate. Full operation after removal of management
 binaries is a separate, unfinished [owner-independence requirement](OWNER-INDEPENDENCE.md).
 
 An unreachable verifier after the effective deadline produces

@@ -7,10 +7,11 @@ import { parseAccessObservation, type AccessObservation } from '../lib/accessObs
 import { readApiError } from '../lib/apiError';
 import { useQuietRead } from '../lib/quietRead';
 import { systemUpdateAccessGraceEnd, useSystemUpdateRestart } from '../lib/systemUpdateRestartSignal';
+import { LicenseAccessContext, LICENSE_CHANGED_EVENT } from '../lib/licenseAccess';
 import { RecoveryAccess } from './RecoveryAccess';
 import { AccessHold } from './AccessHold';
 
-const LicenseLockScreen = lazy(() => import('./LicenseLockScreen').then(module => ({ default: module.LicenseLockScreen })));
+const LicenseLimitedNotice = lazy(() => import('./LicenseLimitedNotice').then(module => ({ default: module.LicenseLimitedNotice })));
 
 /** While access is unknown the server's answer is read again this often in a visible tab. */
 const UNKNOWN_RECHECK_MS = 5000;
@@ -34,25 +35,26 @@ const UNKNOWN_RECHECK_MS = 5000;
 export type AccessReadCause = 'license' | 'starting' | 'availability';
 
 /**
- * Never mount management pages before a positive, server-verified decision.
+ * Never mount management pages before the server has answered.
  *
- * Once they are mounted, only a KNOWN negative decision (license missing,
- * expired or invalid) takes them away. A decision that ran out, or a read that
- * failed, leaves access unknown: the pages stay mounted and unreachable behind
- * AccessHold until the server confirms access again. The decision itself, its
- * validity and what the server refuses without it are unchanged.
+ * The answer is full use (with a deadline) or the limited level (D-047, stage
+ * 1): while the licence does not allow full use the pages mount too, a notice on
+ * top says why, who acts and what still works, and the server refuses only
+ * creating new things and changing settings. A decision that ran out, or a read
+ * that failed, leaves access unknown: mounted pages stay mounted and unreachable
+ * behind AccessHold until the server answers again.
  *
- * Yonetim sayfalari, sunucunun dogruladigi olumlu karardan once baglanmaz.
- * Baglandiktan sonra onlari yalnizca BILINEN olumsuz karar kaldirir. Suresi dolan
- * karar ya da basarisiz okuma erisimi bilinmez kilar: sayfalar bagli kalir ve
- * sunucu erisimi yeniden dogrulayana kadar AccessHold arkasinda erisilmezdir.
+ * Yonetim sayfalari sunucu yanit vermeden baglanmaz. Yanit tam kullanim (son
+ * anla) ya da sinirli duzeydir: lisans tam kullanima izin vermezken de sayfalar
+ * baglanir, ustteki bildirim nedeni ve kimin ne yapacagini soyler. Suresi dolan
+ * karar ya da basarisiz okuma erisimi bilinmez kilar.
  */
 export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, suspended = false }: {
     children?: ReactNode; onAccessChange?: (allowed: boolean) => void; onRecoveryChange?: (recovering: boolean) => void;
     /** The session or panel readiness is itself unknown and already explained by an outer hold. */
     suspended?: boolean;
 }) {
-    const { user } = useAuth();
+    const { user, role } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const { t, screensReady, screensFailed } = useI18n();
@@ -137,8 +139,8 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
                 // yalnızca sunucunun belirlediği süre (ya da izlenen güncellemenin
                 // yeniden başlama penceresi) dolana kadar korunur.
                 setAccess(previous => previous?.owner === user.username
-                    && (previous.allowed === false || (previous.allowed && (previous.until * 1000 > Date.now()
-                        || (unanswered && (graceEnd(previous.until) ?? 0) > Date.now()))))
+                    && previous.allowed && (previous.until * 1000 > Date.now()
+                        || (unanswered && (graceEnd(previous.until) ?? 0) > Date.now()))
                     ? previous : { owner: user.username, allowed: null, until: 0, state: 'status_unavailable' });
                 setFailed(true);
             }
@@ -164,10 +166,18 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
         };
         const shown = () => { if (document.visibilityState === 'visible') returned(); };
         const locked = () => {
+            // At the limited level a refusal of creating or changing is the
+            // expected answer, already explained on top: the pages stay as they
+            // are; a read (at most every few seconds) keeps the notice current.
+            // Sinirli duzeyde olusturma ya da degistirme reddi beklenen yanittir.
+            if (latest.current?.limited) {
+                if (Date.now() - lastRead.current >= UNKNOWN_RECHECK_MS) void check();
+                return;
+            }
             // The server refused a management request for want of a current
             // decision. Pages that stay mounted report this with every poll; one
             // read answers all of them, so a read that began after access became
-            // unknown is left to finish. Only typed status can require activation.
+            // unknown is left to finish.
             const known = latest.current?.allowed !== null;
             if (known) { controller.current?.abort(); controller.current = null; }
             // The read is in flight before access is marked unknown, so no render
@@ -183,20 +193,25 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
             setCause('license');
             setAccess({ owner: user.username, allowed: null, until: 0, state: 'status_unavailable' });
         };
+        // An activation or "Check again" on the license page: read at once.
+        const changed = () => { controller.current?.abort(); controller.current = null; void check(); };
         window.addEventListener('focus', returned);
         document.addEventListener('visibilitychange', shown);
         window.addEventListener('celikpanel:license-locked', locked);
+        window.addEventListener(LICENSE_CHANGED_EVENT, changed);
         return () => {
             controller.current?.abort(); controller.current = null;
             window.clearInterval(interval);
             window.removeEventListener('focus', returned);
             document.removeEventListener('visibilitychange', shown);
             window.removeEventListener('celikpanel:license-locked', locked);
+            window.removeEventListener(LICENSE_CHANGED_EVENT, changed);
         };
     }, [check, graceEnd, user.username]);
 
     useEffect(() => {
-        if (!access?.allowed) return;
+        // The limited level has no deadline; the regular reads notice a renewal.
+        if (!access?.allowed || access.limited) return;
         // Refresh shortly before the server's hard deadline so normal renewals
         // preserve the current page and form state.
         const refreshDelay = access.until * 1000 - Date.now() - 15000;
@@ -230,12 +245,11 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
 
     const known = access?.owner === user.username ? access : null;
     const allowed = known?.allowed === true;
-    const denied = known?.allowed === false;
-    // Management was mounted for this identity and no known negative has arrived since.
+    // Management was mounted for this identity.
     if (allowed) mountedFor.current = user.username;
-    else if (denied || mountedFor.current !== user.username) mountedFor.current = null;
+    else if (mountedFor.current !== user.username) mountedFor.current = null;
     const held = !allowed && mountedFor.current === user.username;
-    const unknown = !allowed && !denied && access !== null;
+    const unknown = !allowed && access !== null;
     // The first read of this identity has not answered yet (nothing is mounted).
     const quiet = useQuietRead(!failed && !known);
     // A positive decision kept through the update's restart: nothing is drawn
@@ -264,24 +278,22 @@ export function LicenseOnboarding({ children, onAccessChange, onRecoveryChange, 
         onRecoveryChange?.(!!screensFailed || (!!failed && !allowed));
         return () => onRecoveryChange?.(false);
     }, [screensFailed, failed, allowed, onRecoveryChange]);
+    // The activation page of earlier releases is the license page now.
     useEffect(() => {
-        if (!access || access.owner !== user.username) return;
-        if (access.allowed === false && location.pathname !== '/activate') navigate('/activate', { replace: true });
-        if (allowed && location.pathname === '/activate') navigate('/', { replace: true });
-    }, [access, allowed, location.pathname, navigate, user.username]);
+        if (allowed && location.pathname === '/activate') navigate(role === 'admin' ? '/settings?section=license' : '/', { replace: true });
+    }, [allowed, location.pathname, navigate, role]);
     if (allowed || held) return <AccessHold active={held} silent={suspended} cause={cause} checking={pending} user={user} onRetry={() => void check()}>
         {allowed && failed && !restartQuiet && <div role="status" className="flex flex-wrap items-center justify-center gap-3 border-b border-border bg-surface px-4 py-3 text-sm text-fg">
             <p className="max-w-prose">{t('license.connectionRetry')}</p>
             <Button variant="secondary" onClick={() => void check()}>{t('license.refresh')}</Button>
             <Button variant="secondary" onClick={() => window.location.reload()}>{t('common.reloadPage')}</Button>
         </div>}
-        {children}
+        {allowed && known?.limited && screensReady && <Suspense fallback={null}><LicenseLimitedNotice state={known.state} reason={known.reason} /></Suspense>}
+        <LicenseAccessContext.Provider value={allowed ? known : null}>{children}</LicenseAccessContext.Provider>
     </AccessHold>;
-    const loading = <div className="min-h-screen flex items-center justify-center bg-bg"><Spinner /></div>;
     if (screensFailed) return <RecoveryAccess user={user} cause="bundle" onRetry={() => void check()} />;
-    if (failed && !allowed) return <RecoveryAccess user={user} cause={cause} licenseReason={cause === 'license' && known ? known.reason : undefined} onRetry={() => void check()} />;
+    if (failed) return <RecoveryAccess user={user} cause={cause} onRetry={() => void check()} />;
     // Before the quiet time a first read that has not answered is not a page: only the background.
     if (quiet) return <div className="min-h-screen bg-bg" aria-busy="true" data-access-quiet="" />;
-    if (!screensReady) return loading;
-    return <Suspense fallback={loading}><LicenseLockScreen checking={!access || access.owner !== user.username || access.allowed === null} failed={failed} onCheck={() => void check()} /></Suspense>;
+    return <div className="min-h-screen flex items-center justify-center bg-bg"><Spinner /></div>;
 }

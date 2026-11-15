@@ -106,6 +106,14 @@ func (p *Panel) checkSubscriptionQuota(ctx context.Context, subID int, kind quot
 	var limit, used int64
 	var err error
 
+	// D-047: a new domain, database or mailbox needs full use of the
+	// server's licence, whatever route asked (license_growth.go).
+	if kind == quotaDomains || kind == quotaDBs || kind == quotaMail {
+		if err := p.licenceGrowthCheck(ctx); err != nil {
+			return err
+		}
+	}
+
 	// alpha.117: a suspended subscription takes nothing new (a new site or
 	// mailbox would serve, a new database would be open) until resumed.
 	if suspended, suspErr := p.subscriptionSuspended(ctx, subID); suspErr == nil && suspended {
@@ -186,7 +194,10 @@ func quotaReadError(err error) error {
 func writeQuotaRefusal(w http.ResponseWriter, err error) {
 	var exceeded *quotaExceededError
 	var pool *resellerPoolExceededError
+	var licence *licenceGrowthRefusal
 	switch {
+	case errors.As(err, &licence):
+		writeLicenceRefusal(w, licence.status, licence.audience)
 	case errors.As(err, &exceeded):
 		writeCodedError(w, http.StatusConflict, exceeded.code(), exceeded.Error(), myPlanPagePath)
 	case errors.As(err, &pool):

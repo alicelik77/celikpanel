@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { BadgeCheck, Eye, EyeOff } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { useNavigate, useSearchParams } from '../router';
 import { Button, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
+import { LICENSE_CHANGED_EVENT, useLicenseAccess } from '../lib/licenseAccess';
 import { decodeLicenseCheck, licenseCheckGuidance, licenseCheckVars } from '../lib/licenseOffline';
+import { licenseExpiryThreshold, licenseExpiryVars } from '../lib/licenseTerm';
 
 type LicenseStatus = { state: 'active' | 'missing' | 'invalid' | 'expired' | 'verification_unavailable' | 'status_unavailable'; can_provision: boolean; expires_at?: number; license_id?: string };
 type ShownStatus = LicenseStatus & ReturnType<typeof decodeLicenseCheck>;
@@ -20,11 +21,9 @@ class LicenseFailure extends Error {
     constructor(message: string, readonly detail: string) { super(message); }
 }
 
-export function LicensePanel({ locked = false, onContinue }: { locked?: boolean; onContinue?: () => void }) {
+export function LicensePanel() {
     const { t, locale } = useI18n();
-    const [params] = useSearchParams();
-    const navigate = useNavigate();
-    const setup = locked || params.get('setup') === '1';
+    const access = useLicenseAccess();
     const [status, setStatus] = useState<ShownStatus | null>(null);
     const [key, setKey] = useState('');
     const [showKey, setShowKey] = useState(false);
@@ -65,12 +64,9 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
             if (!contract(result)) throw new Error(t('license.loadFailed'));
             setStatus(shown(result));
             if (action === 'activate') { setKey(''); setShowKey(false); }
-            // Activation must immediately recheck the shared access gate. Only
-            // that server-verified decision can mount the management pages.
-            if (setup && result.state === 'active' && result.can_provision) {
-                if (onContinue) onContinue();
-                else navigate('/', { replace: true });
-            }
+            // An activation or a check makes the shared access gate read again
+            // at once, so the notice on top follows without a reload.
+            if (action) window.dispatchEvent(new Event(LICENSE_CHANGED_EVENT));
         } catch (cause) {
             // A re-read after a failed check keeps that check's error.
             // Only this page's own sentences are shown; anything else (a reply
@@ -86,16 +82,24 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
         } finally { if (!signal?.aborted) setBusy(false); }
     }
     useEffect(() => { const controller = new AbortController(); void request(undefined, controller.signal); return () => controller.abort(); }, []);
-    const Heading = locked ? 'h1' : 'h2';
     const unavailable = status?.state === 'verification_unavailable' || status?.state === 'status_unavailable';
     // The license check itself (D-039): an unreachable service inside the offline
     // window, its last 48 hours, a wrong clock, or a lapse with its cause.
     const guidance = status ? licenseCheckGuidance(status) : null;
     const vars = status ? licenseCheckVars(status, locale) : {};
     const lapsed = unavailable && guidance?.tone === 'blocked' ? guidance : null;
+    // The term ends within 30, 7 or 1 day (D-047): the same words as the
+    // Dashboard notice, always shown here.
+    const threshold = status?.can_provision && access && !access.limited ? licenseExpiryThreshold(access.termEndsAt) : null;
+    const expiry = threshold !== null && access?.termEndsAt !== undefined ? { day: threshold === 1, vars: licenseExpiryVars(access.termEndsAt, locale) } : null;
     return <section className="rounded-xl border border-border bg-surface p-5 sm:p-6" aria-labelledby="license-heading">
-        <Heading id="license-heading" className="mb-3 flex items-center gap-2 text-lg font-semibold text-fg"><BadgeCheck className="h-5 w-5 shrink-0" />{lapsed ? t(lapsed.title) : t(unavailable ? 'recovery.licenseTitle' : setup && status ? status.can_provision ? 'license.readyTitle' : status?.state === 'expired' ? 'license.state.expired' : 'license.setupTitle' : 'license.title')}</Heading>
-        {status && <p className="mb-5 max-w-prose text-sm text-fg-muted">{lapsed ? t(lapsed.help, vars) : t(unavailable ? 'recovery.licenseHelp' : status?.state === 'expired' ? 'license.expiredHelp' : setup && !status?.can_provision ? 'license.setupIntro' : 'license.description')}</p>}
+        <h2 id="license-heading" className="mb-3 flex items-center gap-2 text-lg font-semibold text-fg"><BadgeCheck className="h-5 w-5 shrink-0" />{lapsed ? t(lapsed.title) : t(unavailable ? 'license.limited.unreadTitle' : 'license.title')}</h2>
+        {status && <p className="mb-5 max-w-prose text-sm text-fg-muted">{lapsed ? t(lapsed.help, vars) : t(unavailable ? 'license.limited.unread' : 'license.description')}</p>}
+        {expiry && <div role={threshold === 30 ? 'status' : 'alert'} data-license-expiry={threshold}
+            className={`mb-5 max-w-prose rounded-lg border p-3 text-sm text-fg ${threshold === 30 ? 'border-border bg-bg' : 'border-warning-mark/60 bg-warning-mark/20'}`}>
+            <p className="font-semibold">{t(expiry.day ? 'license.expiring.dayTitle' : 'license.expiring.title', expiry.vars)}</p>
+            <p className="mt-1">{t(expiry.day ? 'license.expiring.dayHelp' : 'license.expiring.help', expiry.vars)}</p>
+        </div>}
         {guidance && !lapsed && <div role={guidance.tone === 'warning' ? 'alert' : 'status'} data-license-check={status?.check}
             className={`mb-5 max-w-prose rounded-lg border p-3 text-sm text-fg ${guidance.tone === 'warning' ? 'border-warning-mark/60 bg-warning-mark/20' : 'border-border bg-bg'}`}>
             <p className="font-semibold">{t(guidance.title, vars)}</p>
@@ -103,13 +107,12 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
         </div>}
         {error && <div role="alert" className="mb-4 rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger"><p>{error}</p>{errorDetail && <details className="mt-1 text-xs text-fg-muted"><summary className="cursor-pointer">{t('common.technicalDetails')}</summary><code className="break-words">{errorDetail}</code></details>}</div>}
         {status ? <div className="mb-6 space-y-2 text-sm" role="status">
-            {!unavailable && (!setup || (!status.can_provision && status.state !== 'missing' && status.state !== 'expired')) && <p className="font-semibold">{t(`license.state.${status.state as Exclude<LicenseStatus['state'], 'status_unavailable'>}`)}</p>}
+            {!unavailable && <p className="font-semibold">{t(`license.state.${status.state as Exclude<LicenseStatus['state'], 'status_unavailable'>}`)}</p>}
             {status.expires_at && <p>{t('license.expires')}: {new Date(status.expires_at * 1000).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}</p>}
             {status.state === 'active' && vars.since && <p className="text-fg-muted">{t('license.lastCheck', vars)}</p>}
             {!status.can_provision && !unavailable && <p className="max-w-prose text-fg-muted">{t('license.restricted')}</p>}
-            {setup && status.can_provision && <p>{t('license.setupSuccess')}</p>}
         </div> : <p role="status" className="mb-4 text-sm">{busy ? t('common.loading') : t('license.loadFailed')}</p>}
-        {status && !unavailable && !(setup && status.can_provision) && <form noValidate onSubmit={event => { event.preventDefault(); void request('activate'); }} className="space-y-3">
+        {status && !unavailable && <form noValidate onSubmit={event => { event.preventDefault(); void request('activate'); }} className="space-y-3">
             <label htmlFor="license-key" className="block text-sm font-medium">{t('license.key')}</label>
             <div className="flex items-stretch gap-2">
                 <input id="license-key" name="license_key" type={showKey ? 'text' : 'password'} autoComplete="off" autoCapitalize="off" spellCheck={false} value={key} onChange={event => { setKey(event.target.value); setKeyError(''); }} className={`${inputClass} min-w-0 field-lg`} aria-invalid={!!keyError} aria-describedby={keyError ? 'license-key-help license-key-error' : 'license-key-help'} disabled={busy} />
@@ -122,7 +125,7 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
                 <a href="https://celikpanel.net/account/" target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline underline-offset-4">{t(status?.state === 'missing' ? 'license.getKey' : 'license.manage')}</a>
             </div>
         </form>}
-        {!(setup && status?.can_provision) && (!status || status.state !== 'missing') && <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-border pt-5">
+        {(!status || status.state !== 'missing') && <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-border pt-5">
             {(!status || status.state !== 'missing') && <Button variant="secondary" disabled={busy} onClick={() => void request(status ? 'refresh' : undefined)}>{t('license.refresh')}</Button>}
         </div>}
     </section>;

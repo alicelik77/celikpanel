@@ -150,7 +150,7 @@ export async function fetchPanelUpdateCheck(
     }
 }
 
-export function PanelUpdateCard({ activation = false }: { activation?: boolean }) {
+export function PanelUpdateCard() {
     const { t, locale } = useI18n();
     const systemUpdate = useSystemUpdateOperation();
     const [currentBuild, setCurrentBuild] = useState<PanelBuild | null>(null);
@@ -669,7 +669,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                     </span>
                     <div>
                         <h3 id="panel-update-title" className="font-semibold text-fg">{t('panelUpdate.title')}</h3>
-                        <p className="mt-1 text-sm text-fg-muted">{t(activation ? 'license.updateHelp' : 'panelUpdate.description')}</p>
+                        <p className="mt-1 text-sm text-fg-muted">{t('panelUpdate.description')}</p>
                     </div>
                 </div>
                 {/* Outlined: the one filled button of this card is the update
@@ -932,7 +932,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             {/* The owner's switch lives in Settings; the licence page offers
                 the update only (a locked panel accepts no setting change).
                 Anahtar Ayarlar'dadir; lisans sayfasi yalniz guncellemeyi sunar. */}
-            {!activation && <Suspense fallback={null}><PanelUpdateAutoCheck stored={stored} /></Suspense>}
+            <Suspense fallback={null}><PanelUpdateAutoCheck stored={stored} /></Suspense>
         </section>
     );
 }

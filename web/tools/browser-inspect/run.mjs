@@ -1828,6 +1828,8 @@ const scenarios = {
 (await import('./scenarios-batch35.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // alpha.135: the screens the release integration touched.
 (await import('./scenarios-batch36.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// D-047 stage 1: a licence without full use, and the warning before the term ends.
+(await import('./scenarios-batch37.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 30 ---
 
 for (const [name, run] of Object.entries(scenarios)) {

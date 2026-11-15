@@ -1,8 +1,12 @@
-import { BadgeCheck } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Info } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
 import { useRemote } from '../lib/remote';
+import { useLicenseAccess } from '../lib/licenseAccess';
 import { decodeLicenseCheck, licenseCheckGuidance, licenseCheckVars } from '../lib/licenseOffline';
+import { dismissLicenseExpiry, licenseExpiryDismissed, licenseExpiryThreshold, licenseExpiryVars } from '../lib/licenseTerm';
+import { Button } from './ui';
 
 const STATES = ['active', 'missing', 'invalid', 'expired', 'verification_unavailable', 'status_unavailable'] as const;
 type LicenseState = (typeof STATES)[number];
@@ -25,75 +29,72 @@ function decodeLicenseStatus(raw: unknown): LicenseStatus {
     return { state: state as LicenseState, can_provision, ...decodeLicenseCheck(raw as Record<string, unknown>) };
 }
 
+const NOTICE = 'mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4';
+
 /**
  * Mounted only in the administrator dashboard. No tenant license request.
  *
- * It speaks only about an answer the server gave. While the license is being
- * read, and when that read failed, it draws nothing: the access gate around
- * every page reads access on its own and holds the page when access is not
- * known. And "the license could not be verified just now" is said as that, not
- * as "an active license is required" (before 9 Oct 2026 the two looked alike).
+ * While the license allows full use it says what needs the administrator: the
+ * term ends within 30, 7 or 1 day (D-047), or the license service could not be
+ * reached at the last check (D-039). A license that does not allow full use is
+ * explained by the notice on top of every page (LicenseLimitedNotice), not
+ * twice. While the license is being read, and when that read failed, it draws
+ * nothing: the access gate around every page reads access on its own.
  *
- * Yalnız sunucunun verdiği yanıt hakkında konuşur. Lisans okunurken ve okuma
- * başarısız olduğunda hiçbir şey çizmez. "Lisans şu an doğrulanamadı" da öyle
- * söylenir; "aktif lisans gerekiyor" diye değil.
+ * Lisans tam kullanıma izin verirken yöneticinin yapacağını söyler: süre 30, 7
+ * ya da 1 gün içinde bitiyor veya son kontrolde lisans hizmetine ulaşılamadı.
+ * Tam kullanıma izin vermeyen lisansı her sayfanın üstündeki bildirim anlatır.
  */
 export function LicenseNotice() {
     const { t, locale } = useI18n();
+    const access = useLicenseAccess();
     const license = useRemote(LICENSE_URL, decodeLicenseStatus, { init: NO_STORE });
-    if (license.remote.state !== 'known') return null;
-    // Management is open, but the license service could not be reached at the
-    // last check (D-039): say until when, and in the last 48 hours who acts.
-    // Yönetim açık, ama son kontrolde lisans hizmetine ulaşılamadı: ne zamana
-    // kadar açık kalacağını, son 48 saatte de kimin ne yapacağını söyler.
-    const guidance = licenseCheckGuidance(license.remote.value);
-    if (license.remote.value.can_provision) {
-        if (!guidance) return null;
-        const vars = licenseCheckVars(license.remote.value, locale);
+    const threshold = access && !access.limited ? licenseExpiryThreshold(access.termEndsAt) : null;
+    const [closed, setClosed] = useState<number | null>(null);
+    if (threshold !== null && access?.termEndsAt !== undefined && closed !== threshold && !licenseExpiryDismissed(threshold)) {
+        const vars = licenseExpiryVars(access.termEndsAt, locale);
+        const day = threshold === 1;
         return (
-            <section
-                className={`mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4 ${guidance.tone === 'warning' ? 'border-warning-mark/60 bg-warning-mark/20' : 'border-border bg-surface'}`}
-                aria-label={t('license.title')} role={guidance.tone === 'warning' ? 'alert' : 'status'} data-license-check={license.remote.value.check}
-            >
-                <div className="flex min-w-0 items-start gap-3">
-                    <BadgeCheck className="mt-1 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />
+            <section className={`${NOTICE} ${threshold === 30 ? 'border-border bg-surface' : 'border-warning-mark/60 bg-warning-mark/20'}`}
+                aria-labelledby="license-expiry-title" role={threshold === 30 ? 'status' : 'alert'} data-license-expiry={threshold}>
+                <div className="flex min-w-0 flex-1 basis-80 items-start gap-3">
+                    <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
                     <div className="min-w-0">
-                        <h2 className="font-semibold text-fg">{t(guidance.title, vars)}</h2>
-                        <p className="max-w-[75ch] text-sm text-fg-muted">{t(guidance.notice, vars)}</p>
+                        <h2 id="license-expiry-title" className="font-semibold text-fg">{t(day ? 'license.expiring.dayTitle' : 'license.expiring.title', vars)}</h2>
+                        <p className="max-w-[75ch] text-sm text-fg-muted">{t(day ? 'license.expiring.dayHelp' : 'license.expiring.help', vars)}</p>
                     </div>
                 </div>
-                <Link to="/settings?section=license" className="shrink-0 text-sm font-medium text-primary underline underline-offset-4">
-                    {t('license.noticeOpen')}
-                </Link>
+                <div className="flex shrink-0 flex-wrap items-center gap-4">
+                    <Link to="/settings?section=license" className="text-sm font-medium text-primary underline underline-offset-4">{t('license.noticeOpen')}</Link>
+                    <Button variant="secondary" onClick={() => { dismissLicenseExpiry(threshold); setClosed(threshold); }}>{t('license.expiring.dismiss')}</Button>
+                </div>
             </section>
         );
     }
-
-    const { state } = license.remote.value;
-    const unverified = state === 'verification_unavailable' || state === 'status_unavailable';
-    const title = guidance
-        ? t(guidance.title)
-        : unverified
-        ? t('recovery.licenseTitle')
-        : state === 'active'
-            ? t('license.title')
-            : t(`license.state.${state}`);
+    if (license.remote.state !== 'known' || !license.remote.value.can_provision) return null;
+    // Full use, but the license service could not be reached at the last check
+    // (D-039): say until when, and in the last 48 hours who acts.
+    // Tam kullanım, ama son kontrolde lisans hizmetine ulaşılamadı.
+    const guidance = licenseCheckGuidance(license.remote.value);
+    if (!guidance) return null;
+    const vars = licenseCheckVars(license.remote.value, locale);
     return (
         <section
-            className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4"
-            aria-label={t('license.title')}
+            className={`${NOTICE} ${guidance.tone === 'warning' ? 'border-warning-mark/60 bg-warning-mark/20' : 'border-border bg-surface'}`}
+            aria-label={t('license.title')} role={guidance.tone === 'warning' ? 'alert' : 'status'} data-license-check={license.remote.value.check}
         >
             <div className="flex min-w-0 items-start gap-3">
-                <BadgeCheck className="mt-1 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />
+                {/* Something to do soon: the attention mark; nothing to do: information. */}
+                {guidance.tone === 'warning'
+                    ? <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+                    : <Info className="mt-1 h-5 w-5 shrink-0 text-fg-muted" aria-hidden="true" />}
                 <div className="min-w-0">
-                    <h2 className="font-semibold text-fg">{title}</h2>
-                    <p className="max-w-[75ch] text-sm text-fg-muted">
-                        {guidance ? t(guidance.notice) : t(unverified ? 'license.noticeUnverified' : 'license.restricted')}
-                    </p>
+                    <h2 className="font-semibold text-fg">{t(guidance.title, vars)}</h2>
+                    <p className="max-w-[75ch] text-sm text-fg-muted">{t(guidance.notice, vars)}</p>
                 </div>
             </div>
             <Link to="/settings?section=license" className="shrink-0 text-sm font-medium text-primary underline underline-offset-4">
-                {t(unverified || state === 'expired' ? 'license.noticeOpen' : 'license.activate')}
+                {t('license.noticeOpen')}
             </Link>
         </section>
     );

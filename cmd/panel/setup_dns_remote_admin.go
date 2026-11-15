@@ -13,7 +13,8 @@ import (
 func (p *Panel) handleRemoteDNSAdmin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	if !requireServerSetupAdmin(w, r) || !p.allowLicensedPanel(w, r) {
+	// Pairing and revoking are the pair's (class P): never licence-checked.
+	if !requireServerSetupAdmin(w, r) {
 		return
 	}
 	switch r.URL.Path {

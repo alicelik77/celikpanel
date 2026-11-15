@@ -41,7 +41,9 @@ const stub = dataModule(`import React from '${reactURL}';
  export const Dialog = props => React.createElement('dialog', { id: props.id, 'aria-busy': props.busy }, props.title, React.createElement('p', null, props.description), props.children, props.actions);
  export const RecoveryStatus = props => React.createElement('section', { 'data-operation': props.username, unfinishedOnly: props.unfinishedOnly });
  export const RecoveryAccess = props => React.createElement('aside', { cause: props.cause, checking: props.checking, user: props.user, onRetry: props.onRetry }, 'recovery');
- export const LicenseLockScreen = props => React.createElement('aside', { ...props, cause: 'lock' }, 'locked');
+ export const LicenseLimitedNotice = props => React.createElement('aside', { cause: 'limited', 'data-license-limited': props.state }, 'limited');
+ export const LicenseAccessContext = React.createContext(null);
+ export const LICENSE_CHANGED_EVENT = 'celikpanel:license-changed';
  export const usePanelHandover = (username, enabled) => (enabled && fixture().handover) || null;
  export const handoverAddress = host => 'https://' + host;
  export const PanelAddressHint = () => null, BrandMark = () => null, ThemeSwitcher = () => null, SkinSwitcher = () => null, LanguageSwitcher = () => null;
@@ -449,8 +451,11 @@ test('the hold layer names the cause the read showed: an update restart, an unan
   }
 });
 
-test('a known negative decision removes management and requires activation exactly as before, also from a hold', async () => {
-  for (const state of ['missing', 'expired', 'invalid']) {
+// D-047 stage 1: a licence without full use is no lock. The page that was in
+// use stays, as the person left it, with the notice on top; a refusal of
+// creating or changing does not hold it again; a renewal takes the notice away.
+test('a licence without full use keeps the page as it was, with the notice on top, also after a hold', async () => {
+  for (const [state, observation] of [['missing', 'known'], ['expired', 'known'], ['invalid', 'known'], ['verification_unavailable', 'unavailable'], ['status_unavailable', 'unavailable']]) {
     fixture(); mounts = 0;
     let reply = () => access();
     globalThis.fetch = async () => reply();
@@ -461,20 +466,27 @@ test('a known negative decision removes management and requires activation exact
       reply = () => Response.json({}, { status: 503 });
       await act(async () => window.dispatchEvent(new Event('celikpanel:license-locked')));
       assert.equal(held().length, 1); assert.equal(tree.root.findAllByType('main').length, 1);
-      assert.equal(globalThis.holdTest.navigations.length, 0);
-      // Then the server's typed verdict: the gate, as before.
-      reply = () => Response.json({ can_use_panel: false, valid_until: 0, state, observation: 'known' });
+      // Then the server's answer: the limited level, the same page.
+      const limited = () => Response.json({ can_use_panel: false, valid_until: 0, state, observation, level: 'limited' });
+      reply = limited;
       await act(async () => button('recovery.retry').props.onClick());
-      assert.equal(tree.root.findAllByType('main').length, 0, `${state}: management is removed`);
+      await act(async () => {});
+      assert.equal(tree.root.findAllByType('main').length, 1, `${state}: the page stays`);
       assert.equal(held().length, 0); assert.equal(layers().length, 0);
-      assert.equal(tree.root.findByType('aside').props.cause, 'lock');
-      assert.equal(tree.root.findByType('aside').props.checking, false);
-      assert.deepEqual(globalThis.holdTest.navigations.at(-1), ['/activate', { replace: true }]);
-      // A later positive decision mounts management afresh; nothing of the removed page is resurrected.
+      assert.equal(tree.root.findByProps({ cause: 'limited' }).props['data-license-limited'], state);
+      assert.equal(globalThis.holdTest.navigations.length, 0, 'nothing sends the person to an activation page');
+      assertPageAsLeft(`${state}: limited`);
+      // A refused change is the expected answer at this level: no hold, the notice stays.
+      await act(async () => window.dispatchEvent(new Event('celikpanel:license-locked')));
+      assert.equal(held().length, 0); assert.equal(layers().length, 0);
+      assert.equal(tree.root.findAllByProps({ cause: 'limited' }).length, 1);
+      // Renewed: the next read is full use; the notice goes, the page stays.
       reply = () => access();
-      await act(async () => tree.root.findByType('aside').props.onCheck());
-      assert.equal(tree.root.findAllByType('main').length, 1);
-      assert.equal(tree.root.findByType('input').props.value, '');
+      await act(async () => window.dispatchEvent(new Event('celikpanel:license-changed')));
+      await act(async () => {});
+      assert.equal(tree.root.findAllByProps({ cause: 'limited' }).length, 0, 'the notice outlived the renewal');
+      assertPageAsLeft(`${state}: renewed`);
+      assert.equal(mounts, 1, 'the page was never rebuilt');
     } finally { await clean(); }
   }
 });
@@ -491,8 +503,8 @@ test('before the first positive decision nothing is mounted: a first read in fli
     assert.equal(quietSurface().length, 1); assert.equal(tree.root.findAllByType('aside').length, 0);
     assert.equal(tree.root.findAllByType('button').length, 0);
     assert.equal(await fire(ACCESS_HOLD_QUIET_MS), 1, 'the same quiet time as the hold layer');
-    const waiting = tree.root.findByType('aside');
-    assert.equal(waiting.props.cause, 'lock'); assert.equal(waiting.props.checking, true); assert.equal(waiting.props.failed, false);
+    // Then the waiting spinner: no failure is reported while nothing has answered.
+    assert.equal(quietSurface().length, 0); assert.equal(tree.root.findAllByType('aside').length, 0);
     // A status that is not the Panel's own access answer: the Panel is named, not the license.
     await act(async () => answer(Response.json({}, { status: 503 })));
     assert.equal(tree.root.findByType('aside').props.cause, 'availability', 'the application cannot start: the full recovery page');

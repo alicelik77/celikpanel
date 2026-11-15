@@ -41,6 +41,7 @@ const state = {
     revision: 3,
     execution: null,       // set by /setup/start or by ctl
     license: 'active',     // active | missing | expired | invalid | unavailable | error | drop | hang
+    licenseTerm: null,     // seconds until the licence term ends (term_ends_in_seconds), or null
     // Seconds the mock server's clock is ahead (+) of or behind (-) the
     // browser's. Only the absolute stamps move; the time left stays true, as
     // on a real server whose clock is off (D-032 clock rule).
@@ -161,19 +162,22 @@ async function api(req, res, path, query) {
         // alpha.84 licence fix replaced.
         const serverNowMs = Date.now() + Number(state.clockSkew || 0) * 1000;
         const now = Math.floor(serverNowMs / 1000);
+        // D-047 stage 1: "level" for every role; the term's end, as time
+        // left, for administrators (state.licenseTerm seconds; 0 once ended).
+        const term = state.licenseTerm === undefined || state.licenseTerm === null ? {} : { term_ends_in_seconds: Math.max(0, state.licenseTerm) };
         if (state.license === 'active') {
             const until = now + (state.validity || 60);
-            send(res, 200, { can_use_panel: true, valid_until: until, valid_for_seconds: Math.max(0, Math.round(until * 1000 - serverNowMs) / 1000), state: 'active', observation: 'known' });
+            send(res, 200, { can_use_panel: true, valid_until: until, valid_for_seconds: Math.max(0, Math.round(until * 1000 - serverNowMs) / 1000), state: 'active', observation: 'known', level: 'full', ...term });
             return;
         }
-        if (['missing', 'expired', 'invalid'].includes(state.license)) { send(res, 200, { can_use_panel: false, valid_until: 0, valid_for_seconds: 0, state: state.license, observation: 'known' }); return; }
-        if (state.license === 'unavailable') { send(res, 200, { can_use_panel: false, valid_until: 0, valid_for_seconds: 0, state: 'status_unavailable', observation: 'unknown' }); return; }
+        if (['missing', 'expired', 'invalid'].includes(state.license)) { send(res, 200, { can_use_panel: false, valid_until: 0, valid_for_seconds: 0, state: state.license, observation: 'known', level: 'limited', ...(state.license === 'expired' ? term : {}) }); return; }
+        if (state.license === 'unavailable') { send(res, 200, { can_use_panel: false, valid_until: 0, valid_for_seconds: 0, state: 'status_unavailable', observation: 'unavailable', level: 'limited' }); return; }
         if (state.license === 'drop') { req.socket.destroy(); return; }
         if (state.license === 'hang') return;
         coded(res, 503, 'LICENSE_STATUS_UNAVAILABLE', 'license status unavailable'); return;
     }
     if (key === 'GET /api/v1/panel/license' && state.noticeLicense) { send(res, 200, state.noticeLicense); return; }
-    if (key === 'GET /api/v1/panel/license') { send(res, 200, { state: ['missing', 'expired', 'invalid'].includes(state.license) ? state.license : 'active', can_provision: state.license === 'active', ...(state.license === 'expired' ? { expires_at: Math.floor(Date.now() / 1000) - 86400 * 3, license_id: 'CP-EXAMPLE-0001' } : {}) }); return; }
+    if (key === 'GET /api/v1/panel/license') { send(res, 200, { state: ['missing', 'expired', 'invalid'].includes(state.license) ? state.license : 'active', can_provision: state.license === 'active', ...(state.license === 'expired' ? { expires_at: Math.floor(Date.now() / 1000) - 86400 * 3, license_id: 'CP-EXAMPLE-0001' } : {}), ...(state.license === 'active' && typeof state.licenseTerm === 'number' ? { expires_at: Math.floor(Date.now() / 1000) + state.licenseTerm, license_id: 'CP-EXAMPLE-0001' } : {}) }); return; }
     if (key === 'GET /api/v1/panel/version') { send(res, 200, { version: 'v0.1.0-alpha.81', commit: '0000000', agent_commit: '0000000', agent_matches: true, hostname: 'server1', ipv4: '203.0.113.10' }); return; }
     if (key === 'GET /api/v1/panel/update/status') { const id = query.get('request_id') || ''; send(res, 200, state.update && state.update.request_id === id ? { found: true, ...state.update } : { found: false, request_id: id }); return; }
     if (key === 'GET /api/v1/setup') { send(res, 200, snapshot()); return; }

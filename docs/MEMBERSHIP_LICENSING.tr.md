@@ -76,7 +76,8 @@ düzeltme turu yapılır. Üretimde e-posta teslimi ve PHP web işleyicisinin
 ## Güncel uygulanan erişim politikası
 
 Kaynaklar: [lisans yöneticisi](../internal/licensing/license.go),
-[panel erişim kontrolü ve istisnaları](../cmd/panel/license.go) ve
+[rota sınıflarıyla](../cmd/panel/license_routes.go)
+[panel erişim kontrolü](../cmd/panel/license.go) ve
 [tarayıcı erişim kontrolü](../web/src/components/LicenseOnboarding.tsx).
 Yıllık lisans süresi ile bu erişim doğrulama aralığı ayrıdır:
 
@@ -86,29 +87,22 @@ Yıllık lisans süresi ile bu erişim doğrulama aralığı ayrıdır:
 | Olağan yenilemenin yapılabileceği zaman | İmzalı `refresh_after` (hizmet: `şimdi + 1 saat`) ile `issued_at + 1 saat` değerlerinin erken olanından, sunucuya özgü belirlenimci sapmayla beşte bire kadar önce (48–60 dakika). Yalnız kimliği doğrulanmış kullanım tetikler; boştaki kurulumu sorgulayan sunucu zamanlayıcısı yoktur. Eşzamanlı istekler tek yenilemeyi paylaşır. |
 | Zamanı gelen yenilemede isteğin beklemesi | Yönetimi artık açmayan kayıt ortak yenilemeyi bekler. Hâlâ geçerli kayıt en çok 3 saniye bekler, sonra istek o kayıtla devam eder ve yenileme arka planda biter; erişilebilen hizmetin reddi bu yüzden onu saptayan isteğe uygulanır. |
 | Başarısız yenilemeyi yeniden deneme | Kayıt geçerliyken 1, 2, 4, 8, 16, sonra 30 dakika (her biri sunucuya göre beşte bire kadar kısalır) ve hiçbir zaman kaydın geçersizleşeceği andan sonra değil. Geçersizleştikten sonra kullanımda 30 saniyede bir. Yöneticinin "Tekrar kontrol et" isteği beklemeyi atlar; imza veya bağ doğrulamasını atlamaz. |
-| Açık ret | Yenilemede `invalid_license`, `invalid_activation`, `license_in_use` veya `license_expired` hemen kalıcı kaydedilir (`rejected`) ve çevrimdışı süre içinde de dışında da yönetimi hemen kapatır. |
+| Açık ret | Yenilemede `invalid_license`, `invalid_activation`, `license_in_use` veya `license_expired` hemen kalıcı kaydedilir (`rejected`) ve çevrimdışı süre içinde de dışında da yeni bir şey oluşturmayı ve ayar değiştirmeyi hemen kapatır. |
 | Saat güvenliği | `issued_at` hizmetin saatidir. Sunucu saati `issued_at`'tan 5 dakikadan fazla önceyse, kayıtla saklanan en yüksek saat okumasının (`seen_at`, yerel, imzasız) 5 dakikadan fazla altındaysa ya da panel çalışırken geri alındıysa (duvar saati ile monoton zaman karşılaştırılır) bir kontrol başarılı olana kadar `clock_behind` nedeniyle `verification_unavailable` olur; erişilebilen hizmete hemen sorulur. Bu saatten 5 dakikadan fazla sonra tarihli yeni yanıt `clock_behind` kontrol sonucuyla reddedilir. |
 | HTTP yenileme süresi sınırı | Lisans istemcisinin zaman aşımı 15 saniyedir; ortak arka plan yenilemesi 20 saniyeyle sınırlıdır. |
-| Eksik, süresi dolmuş, reddedilmiş veya doğrulanamayan yetki belgesi | Normal yönetim reddedilir. Erişim uç noktası durum, gözlem ve `verification_unavailable` için neden ile `can_use_panel=false` yanıtı verir. Lisans sayfası (`/api/v1/panel/license`, yöneticiler) ayrıca `check` (son başarısız deneme: `unreachable`, `rate_limited`, `invalid_answer`, `clock_behind`), `offline_for_seconds` ve `verified_seconds_ago` bildirir. |
-| Tarayıcı davranışı | Başarısız bir erişim isteğinde yalnız aynı kullanıcı için hâlâ geçerli olan karar, son tarihi uzatılmadan korunur. Bilinmeyen erişim durumunda bağlantıyı kurtarma görünümü gösterilir; sunucunun reddi veya `license_required` yanıtı yönetimi kilitler. |
+| Eksik, süresi dolmuş, reddedilmiş veya doğrulanamayan yetki belgesi | D-047 1. aşamadan beri yalnız "değişiklik" ve "büyüme" rota sınıfları reddedilir (yeni bir şey oluşturma ve ayar değiştirme: bilinen durumda 403 `license_required`, bilinmeyen durumda 503 `LICENSE_*_UNAVAILABLE`, çağıranın rolüne göre bir cümleyle); okuma, güvenlik işlemleri (amacına göre: var olanın parolaları ve gizli bilgileri, sertifikalar, engelleme ve koruma, hizmet yeniden başlatma, sunucuyu yeniden başlatma, bileşen güncellemeleri), yedekler ve indirilmeleri, silme, kişinin kendi hesabı, panel güncellemeleri, lisans ekranı ve DNS eşi her durumda çalışır. Sayım denetimi de yeni alan adı, veritabanı ve posta kutusunu reddeder. Erişim uç noktası `can_use_panel=false`, `level: "limited"`, durum, gözlem ve `verification_unavailable` için neden ile yanıt verir; yöneticiler `term_ends_in_seconds` de alır. Lisans sayfası (`/api/v1/panel/license`, yöneticiler) ayrıca `check` (son başarısız deneme: `unreachable`, `rate_limited`, `invalid_answer`, `clock_behind`), `offline_for_seconds` ve `verified_seconds_ago` bildirir. |
+| Tarayıcı davranışı | Başarısız bir erişim isteğinde yalnız aynı kullanıcı için hâlâ geçerli olan karar, son tarihi uzatılmadan korunur. Bilinmeyen erişim durumunda bağlantıyı kurtarma görünümü gösterilir. Sınırlı düzeyde sayfalar açılır ve üstte bir bildirim görünür (yönetici: neden, neyin çalıştığı, lisans sayfası; bayi ve müşteri: lisansı anmayan tek cümle). Yönetici, süre bitmeden 30, 7 ve 1 gün önce panoda ve lisans sayfasında uyarılır. |
 
-Kimlik doğrulaması gerektiren güncel istisnalar bilinçli olarak dardır. Rol,
-sahiplik ve yöntem kontrollerinin tamamı uygulanmaya devam eder:
-
-- Oturum kimliği ve erişim durumu okumaları; çıkış yapma, parola değiştirme ve
-  başka kullanıcı adına açılan oturumu sonlandırma kullanılabilir.
-- Lisans okumaları, etkinleştirme ve yenileme yöneticiler için kullanılabilir.
-- Yöneticiler panel sürümünü, güncelleme denetimini ve durumunu, ayrıca sunucunun
-  değişiklik işlemine hazır olup olmadığını okuyabilir; imzalı güncellemenin
-  başlatma ve vazgeçme uç noktalarını kullanabilir. Sürüme güven, işlem kimliği
-  ve değişiklik işlemine kabul kontrolleri uygulanmaya devam eder. Kurulu paneldeki
-  her güncellemeyi kullanıcı panel arayüzünden başlatmalıdır; API'nin bu yeteneği
-  sunması, asistanın güncellemeyi kurmasına izin vermez.
-
-Bu istisnalar, yetki belgesi yönetime izin veremediğinde yedekleme, silme, hizmet
-yapılandırması veya diğer bakım işlemlerine **genel panel erişimi sağlamaz**.
-Mevcut yerel iş yükleri ve bağımsız zamanlamaları bu HTTP lisans kontrolüyle
-durdurulmaz. Yönetim programları kaldırıldıktan sonra tam çalışabilirlik ise
+Her rota bir sınıfa ayrılır ([rota sınıfları](../cmd/panel/license_routes.go),
+tasarım [§b](LICENCE-SUBSCRIPTION-DESIGN.md#b-the-protection-states-gate)); sınıfı
+olmayan rotada envanter testi başarısız olur, sınıflanmamış istek açıktır. Rol,
+sahiplik ve yöntem kontrollerinin tamamı her sınıfta uygulanmaya devam eder. Panel
+güncellemelerinde sürüme güven, işlem kimliği ve değişiklik işlemine kabul
+kontrolleri sürer; kurulu paneldeki her güncellemeyi kullanıcı panel arayüzünden
+başlatmalıdır; API'nin bu yeteneği sunması, asistanın güncellemeyi kurmasına izin
+vermez. Diğer ayarları değiştirme (hizmet yapılandırması, sunucu kurulumu, site ve
+posta ayarları) ve bileşen kurma 2. aşamaya kadar tam kullanım ister. Mevcut yerel iş yükleri ve bağımsız
+zamanlamaları bu HTTP lisans kontrolüyle durdurulmaz. Yönetim programları kaldırıldıktan sonra tam çalışabilirlik ise
 ayrı ve henüz tamamlanmamış bir
 [sunucu sahibinin bağımsızlığı gereksinimidir](OWNER-INDEPENDENCE.tr.md).
 

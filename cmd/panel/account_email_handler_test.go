@@ -372,13 +372,13 @@ func TestOwnEmailRouteGatesFollowThePasswordChange(t *testing.T) {
 		t.Fatal("the guard names POST on the email route")
 	}
 	// Every role with a session reaches it, additional users included, as the
-	// password change; the licence gate is unchanged (it is not an identity
-	// recovery route).
+	// password change. It is the person's own account, which works in every
+	// licence state (D-047).
 	if isAdminOnlyPath(ownEmailPath) || isAdditionalUserRestrictedPath(ownEmailPath) {
 		t.Fatal("the email route is restricted by role")
 	}
-	if licenseRecoveryRequest(put) {
-		t.Fatal("the licence gate's recovery list changed")
+	if class, ok := licenceRouteClassOf(put); !ok || class != licenceClassAccount {
+		t.Fatalf("the email route's licence class is %q", class)
 	}
 	source, err := os.ReadFile("main.go")
 	if err != nil {

@@ -14,7 +14,7 @@ keywords: [settings, port, https, license, update, upgrade, rollback, restart, r
 
 ## License {#license}
 
-Enter the **License key** and press **Activate license**. Without a valid license the panel shows a license screen instead of its pages; sites, mail, databases and scheduled tasks keep running. If the server cannot reach celikpanel.net, management stays open for 7 days.
+Enter the **License key** and press **Activate license**. Without a valid license sites, mail, databases and scheduled tasks keep running, and the panel stays usable for security actions (passwords, certificates, firewall, updates), backups, deleting and your own account; a notice on top of every page says why, and creating new things and changing other settings wait until the license is active. The panel warns 30, 7 and 1 day before the license ends. If the server cannot reach celikpanel.net, full use stays open for 7 days.
 
 ## Updating the panel {#update}
 

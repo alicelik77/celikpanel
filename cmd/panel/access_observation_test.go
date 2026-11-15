@@ -71,9 +71,17 @@ func TestLicenseObservationUnavailableIsMinimalAndRecoveryIsExact(t *testing.T) 
 	seedAdditionalUserSession(t, &f)
 	f.panel.license = nil
 	handler := f.panel.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == panelLicenseAccessPath {
+		switch r.URL.Path {
+		case panelLicenseAccessPath:
 			f.panel.handleLicenseAccess(w, r)
 			return
+		case panelAvailabilityPath, panelRecoveryStatusPath:
+			// The status routes are open in every licence state (D-047);
+			// their handlers take reads only (recovery_access.go).
+			if r.Method != http.MethodGet {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
 		}
 		w.WriteHeader(204)
 	}))
@@ -83,7 +91,7 @@ func TestLicenseObservationUnavailableIsMinimalAndRecoveryIsExact(t *testing.T) 
 		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 			t.Fatal(err)
 		}
-		if w.Code != 200 || len(body) != 5 || body["can_use_panel"] != false || body["valid_until"] != float64(0) || body["valid_for_seconds"] != float64(0) || body["state"] != "status_unavailable" || body["observation"] != "unavailable" {
+		if w.Code != 200 || len(body) != 6 || body["level"] != "limited" || body["can_use_panel"] != false || body["valid_until"] != float64(0) || body["valid_for_seconds"] != float64(0) || body["state"] != "status_unavailable" || body["observation"] != "unavailable" {
 			t.Fatalf("unexpected minimal state: %d %v", w.Code, body)
 		}
 		for _, path := range []string{panelAvailabilityPath, panelRecoveryStatusPath} {
@@ -100,11 +108,13 @@ func TestLicenseObservationUnavailableIsMinimalAndRecoveryIsExact(t *testing.T) 
 					t.Fatal("recovery opened mutation", method, path)
 				}
 			}
-			if w := requestWithToken(handler, "GET", path+"/anything", f.tokens[id]); w.Code < 400 {
-				t.Fatal("recovery prefix opened access")
+			// A longer path is no status route: only the interface's files
+			// serve it, and they answer 404 for /api (frontend.go).
+			if pattern, _ := licenceRoutePattern(path + "/anything"); pattern != "/" {
+				t.Fatal("recovery prefix opened access", pattern)
 			}
 		}
-		w = requestWithToken(handler, "POST", "/api/v1/domains", f.tokens[id])
+		w = requestWithToken(handler, "PUT", "/api/v1/domains/9902/hosting", f.tokens[id])
 		if w.Code != 503 || !strings.Contains(w.Body.String(), errCodeLicenseStatusUnavailable) {
 			t.Fatalf("unknown license not closed: %d %s", w.Code, w.Body.String())
 		}

@@ -1029,6 +1029,10 @@ function AdminDashboard() {
                 at the top, not an attention item (D-035).
                 Yeni imzali surum: ustte tek sakin satir, dikkat kalemi degil. */}
             <DashboardUpdateNotice admin />
+            {/* The license: the warning 30, 7 and 1 day before it ends (D-047),
+                or the license service not reached (D-039); near the top.
+                Lisans: bitmeden 30, 7 ve 1 gun once uyari; ustte. */}
+            <LicenseNotice />
 
             {/* Waiting operating-system updates (alpha.114): a compact read-only card.
                 Bekleyen işletim sistemi güncellemeleri: kısa, salt-okur kart. */}
@@ -1360,7 +1364,6 @@ function AdminDashboard() {
                 </div>
             </section>
 
-            <LicenseNotice />
             <ServerSetupDashboardNotice />
 
             {/* A domain whose DNS is here but which has no website: say so once, with the one

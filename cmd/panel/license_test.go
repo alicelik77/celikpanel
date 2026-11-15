@@ -46,6 +46,9 @@ func testPanelLicense(t *testing.T, state string) *licensing.Manager {
 		c.ExpiresAt = now - 1
 		c.OfflineUntil = now - 1
 	}
+	if state == "active_year" {
+		c.ExpiresAt = now + 365*86400
+	}
 	if state == "verification_unavailable" {
 		c.OfflineUntil = now - 1
 	}
@@ -70,76 +73,6 @@ func testPanelLicense(t *testing.T, state string) *licensing.Manager {
 	return m
 }
 
-func TestLicensePanelGateAcrossRolesStatesAndMethods(t *testing.T) {
-	fixture := newAuthzMatrixFixture(t)
-	seedAdditionalUserSession(t, &fixture)
-	for _, state := range []string{"missing", "expired", "invalid", "verification_unavailable", "rejected", "active", "unconfigured"} {
-		t.Run(state, func(t *testing.T) {
-			fixture.panel.license = nil
-			if state != "unconfigured" {
-				fixture.panel.license = testPanelLicense(t, state)
-			}
-			wantDenied := http.StatusForbidden
-			wantCode := "license_required"
-			if state == "verification_unavailable" || state == "unconfigured" {
-				wantDenied = http.StatusServiceUnavailable
-				wantCode = errCodeLicenseStatusUnavailable
-				if state == "verification_unavailable" {
-					wantCode = errCodeLicenseVerificationUnavailable
-				}
-			}
-			reached := 0
-			handler := fixture.panel.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { reached++; w.WriteHeader(204) }))
-			for _, id := range []int{authzMatrixAdminID, authzMatrixResellerID, authzMatrixCustomerID, authzMatrixAdditionalUserID} {
-				for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"} {
-					for _, path := range []string{"/api/v1/domains", "/api/v1/domains/9902/backups", "/api/v2/databases", "/dbtool/tool/", "/api/v1/future-management-route"} {
-						before := reached
-						w := requestWithToken(handler, method, path, fixture.tokens[id])
-						want := wantDenied
-						if id == authzMatrixAdditionalUserID && isAdditionalUserRestrictedPath(path) {
-							want = http.StatusForbidden
-						}
-						if state != "active" && (w.Code != want || reached != before) {
-							t.Fatalf("%s %s role %d: %d handler=%d", method, path, id, w.Code, reached-before)
-						}
-						if state == "active" && id == authzMatrixAdminID && w.Code != 204 {
-							t.Fatalf("active blocked: %s %s %d", method, path, w.Code)
-						}
-					}
-				}
-			}
-			for _, path := range []string{"/api/v1/firewall", "/api/v1/service/install", "/api/v1/panel/update", "/api/v1/config", "/api/v1/system/stats"} {
-				before := reached
-				w := requestWithToken(handler, "POST", path, fixture.tokens[authzMatrixAdminID])
-				if state != "active" && (w.Code != wantDenied || reached != before || !strings.Contains(w.Body.String(), wantCode)) {
-					t.Fatalf("management escaped: %s %d", path, w.Code)
-				}
-			}
-			for _, id := range []int{authzMatrixAdminID, authzMatrixResellerID, authzMatrixCustomerID, authzMatrixAdditionalUserID} {
-				for _, item := range []struct{ method, path string }{{"GET", "/api/v1/auth/me"}, {"GET", panelLicenseAccessPath}, {"POST", "/api/v1/auth/password"}, {"POST", "/api/v1/auth/logout"}} {
-					w := requestWithToken(handler, item.method, item.path, fixture.tokens[id])
-					if w.Code != 204 {
-						t.Fatalf("recovery blocked role=%d %s: %d %s", id, item.path, w.Code, w.Body.String())
-					}
-				}
-			}
-			w := requestWithToken(handler, "POST", panelLicensePath, fixture.tokens[authzMatrixAdminID])
-			if w.Code != 204 {
-				t.Fatal("admin activation blocked", w.Code)
-			}
-			w = requestWithToken(handler, "POST", panelLicensePath, fixture.tokens[authzMatrixCustomerID])
-			if w.Code != 403 {
-				t.Fatal("tenant activation allowed", w.Code)
-			}
-			for _, path := range []string{panelLicensePath + "/anything", panelLicenseAccessPath + "/anything", "/api/v1/auth/me/anything", "/api/v1/auth/password/anything"} {
-				if licenseRecoveryRequest(httptest.NewRequest("GET", path, nil)) {
-					t.Fatal("prefix recovery bypass", path)
-				}
-			}
-		})
-	}
-}
-
 func TestLicenseAccessResponseIsMinimalAndTracksState(t *testing.T) {
 	p := &Panel{}
 	for _, state := range []string{"missing", "expired", "invalid", "verification_unavailable", "rejected", "active"} {
@@ -162,16 +95,19 @@ func TestLicenseAccessResponseIsMinimalAndTracksState(t *testing.T) {
 		if left, ok := result["valid_for_seconds"].(float64); !ok || left < 0 || left > 7200 || (state == "active" && left <= 0) {
 			t.Fatal("time left does not follow the deadline", state, result)
 		}
-		wantState, wantObservation, wantFields := state, "known", 5
+		wantState, wantObservation, wantFields := state, "known", 6
 		if state == "rejected" {
 			wantState = "invalid"
 		}
 		if state == "verification_unavailable" {
 			// The lapse names its cause, so the page can say who acts.
-			wantObservation, wantFields = "unavailable", 6
+			wantObservation, wantFields = "unavailable", 7
 			if result["reason"] != licensing.ReasonOfflineEnded {
 				t.Fatal("lapse without its reason", result)
 			}
+		}
+		if wantLevel := map[bool]string{true: "full", false: "limited"}[state == "active"]; result["level"] != wantLevel {
+			t.Fatal("level", state, result)
 		}
 		if len(result) != wantFields || result["state"] != wantState || result["observation"] != wantObservation || result["can_use_panel"] != (state == "active") || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatal(state, result)
@@ -202,63 +138,51 @@ func TestLicenseAccessAnswerStatesTimeLeftOnTheServerClock(t *testing.T) {
 		{"no deadline", licensing.Status{State: "missing", Observation: "known"}, 0, 0, false, "missing", "known"},
 	} {
 		got := newLicenseAccessAnswer(tc.status, now)
-		want := licenseAccessAnswer{CanUsePanel: tc.canUsePanel, ValidUntil: tc.until, ValidForSeconds: tc.validFor, State: tc.state, Observation: tc.observ}
+		want := licenseAccessAnswer{CanUsePanel: tc.canUsePanel, ValidUntil: tc.until, ValidForSeconds: tc.validFor, State: tc.state, Observation: tc.observ,
+			Level: map[bool]string{true: licenceLevelFull, false: licenceLevelLimited}[tc.canUsePanel]}
 		if got != want {
 			t.Fatalf("%s: got %+v want %+v", tc.name, got, want)
 		}
 	}
 }
 
-func TestLicenseUpdateExceptionIsExactAndAdministratorOnly(t *testing.T) {
+// Panel updates and readiness are the administrator's in every licence state:
+// the licence gate never refuses them (D-047), the role gate does for others.
+func TestLicenseUpdateRoutesAreOpenInEveryStateAndAdministratorOnly(t *testing.T) {
 	fixture := newAuthzMatrixFixture(t)
 	seedAdditionalUserSession(t, &fixture)
-	allowed := map[string]string{
-		panelUpdateCheckPath: "GET", panelUpdateStatusPath: "GET",
-		panelUpdateStartPath: "POST", panelUpdateAbandonPath: "POST",
-		"/api/v1/panel/version": "GET", hostMutationReadinessPath: "GET",
-	}
+	paths := []string{panelUpdateCheckPath, panelUpdateStatusPath, panelUpdateStartPath, panelUpdateAbandonPath,
+		panelUpdateDiscoveryPath, panelUpdateDiscoveryRefreshPath, "/api/v1/panel/version"}
 	for _, state := range []string{"missing", "expired", "invalid", "verification_unavailable", "rejected", "unconfigured"} {
 		fixture.panel.license = nil
 		if state != "unconfigured" {
 			fixture.panel.license = testPanelLicense(t, state)
 		}
-		wantLicenseDenied := http.StatusForbidden
-		if state == "verification_unavailable" || state == "unconfigured" {
-			wantLicenseDenied = http.StatusServiceUnavailable
-		}
 		reached := 0
 		handler := fixture.panel.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { reached++; w.WriteHeader(204) }))
-		for path, permitted := range allowed {
+		for _, path := range paths {
+			if !isAdminOnlyPath(path) {
+				t.Fatalf("%s is not administrator only", path)
+			}
 			for _, id := range []int{authzMatrixAdminID, authzMatrixResellerID, authzMatrixCustomerID, authzMatrixAdditionalUserID} {
 				for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"} {
 					before := reached
 					w := requestWithToken(handler, method, path, fixture.tokens[id])
-					want := id == authzMatrixAdminID && method == permitted
-					denied := wantLicenseDenied
-					if id != authzMatrixAdminID && isAdminOnlyPath(path) {
-						denied = http.StatusForbidden
-					}
-					if (reached != before) != want || (want && w.Code != 204) || (!want && w.Code != denied) {
+					admin := id == authzMatrixAdminID
+					if (reached != before) != admin || (admin && w.Code != 204) || (!admin && w.Code != http.StatusForbidden) {
 						t.Fatalf("%s %s %s role=%d status=%d", state, method, path, id, w.Code)
 					}
 				}
 			}
 			before := reached
-			w := requestWithToken(handler, permitted, path, "")
-			if reached != before || w.Code != 401 {
+			if w := requestWithToken(handler, http.MethodPost, path, ""); reached != before || w.Code != 401 {
 				t.Fatalf("unauthenticated update: %s %d", path, w.Code)
-			}
-			for _, suffix := range []string{"/", "/anything"} {
-				w = requestWithToken(handler, permitted, path+suffix, fixture.tokens[authzMatrixAdminID])
-				if reached != before || w.Code != wantLicenseDenied {
-					t.Fatalf("update prefix bypass: %s", path+suffix)
-				}
 			}
 		}
 		w := httptest.NewRecorder()
 		fixture.panel.handleLicenseAccess(w, httptest.NewRequest("GET", panelLicenseAccessPath, nil))
-		if !strings.Contains(w.Body.String(), `"can_use_panel":false`) {
-			t.Fatal("update access unlocked license", w.Body.String())
+		if !strings.Contains(w.Body.String(), `"can_use_panel":false`) || !strings.Contains(w.Body.String(), `"level":"limited"`) {
+			t.Fatal("update access changed the licence", w.Body.String())
 		}
 	}
 }
@@ -296,9 +220,15 @@ func TestLicenseLockedSignedUpdatePreservesLicenseAndTargetChecks(t *testing.T) 
 			if after := fixture.panel.license.Status(); after != before {
 				t.Fatal("update changed license", before, after)
 			}
+			// The firewall works while the licence is not active (D-047);
+			// the update does not open growth.
 			w = httptest.NewRecorder()
-			if fixture.panel.allowLicensedPanel(w, systemUpdateRequest("POST", "/api/v1/firewall", "{}", roleAdmin)) {
-				t.Fatal("update unlocked management")
+			if !fixture.panel.allowLicensedPanel(w, systemUpdateRequest("POST", "/api/v1/firewall", "{}", roleAdmin)) {
+				t.Fatal("the firewall was refused for a licence reason", w.Body.String())
+			}
+			w = httptest.NewRecorder()
+			if fixture.panel.allowLicensedPanel(w, systemUpdateRequest("POST", "/api/v1/domains/create", "{}", roleAdmin)) || w.Code != http.StatusForbidden {
+				t.Fatal("update unlocked growth", w.Code)
 			}
 		})
 	}

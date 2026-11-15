@@ -63,8 +63,10 @@ func acceptanceLicenseRequest(t *testing.T, fixture authzMatrixFixture, method, 
 
 func acceptanceGatedPaths() []struct{ method, path string } {
 	return []struct{ method, path string }{
-		{"GET", "/api/v1/domains"}, {"POST", "/api/v1/domains"}, {"GET", "/api/v2/databases"},
-		{"POST", "/api/v1/firewall"}, {"POST", "/api/v1/service/install"}, {"GET", "/api/v1/future-management-route"},
+		// Only what needs full use is gated (D-047 stage 1): changing
+		// settings and creating new things.
+		{"POST", "/api/v1/domains/create"}, {"PUT", "/api/v1/domains/9902/hosting"},
+		{"POST", "/api/v1/service/install"}, {"POST", serverSetupPath + "/start"},
 	}
 }
 
@@ -106,7 +108,7 @@ func TestAcceptanceFixtureLicenseOpensGatedRoutesThroughTheLicenseScreen(t *test
 	access := httptest.NewRecorder()
 	fixture.panel.handleLicenseAccess(access, httptest.NewRequest("GET", panelLicenseAccessPath, nil))
 	var observed map[string]any
-	if err := json.Unmarshal(access.Body.Bytes(), &observed); err != nil || len(observed) != 5 || observed["can_use_panel"] != true || observed["state"] != "active" {
+	if err := json.Unmarshal(access.Body.Bytes(), &observed); err != nil || len(observed) != 6 || observed["level"] != "full" || observed["can_use_panel"] != true || observed["state"] != "active" {
 		t.Fatalf("access observation: %v %s", err, access.Body.String())
 	}
 	if err := fixture.panel.requireServerSetupAdmission(context.Background()); err != nil {
