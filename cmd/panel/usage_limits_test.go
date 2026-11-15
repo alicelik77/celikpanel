@@ -50,6 +50,12 @@ func (f *fakeTrafficAgent) collect(_ context.Context, req transport.TrafficColle
 	return resp, nil
 }
 
+// usageFixturePin is the moment usageNow starts at in a usage fixture. The
+// rules must not depend on how it relates to the real calendar:
+// TestDiskRulesDoNotDependOnTheRealDate runs the disk tests with it a year
+// before and a year after today.
+var usageFixturePin = time.Date(2026, 11, 15, 12, 0, 0, 0, time.Local)
+
 type usageFixture struct {
 	suspensionFixture
 	traffic  *fakeTrafficAgent
@@ -60,7 +66,7 @@ type usageFixture struct {
 func newUsageFixture(t *testing.T) *usageFixture {
 	t.Helper()
 	f := &usageFixture{suspensionFixture: newSuspensionFixture(t), traffic: &fakeTrafficAgent{epoch: "e1"}, rendered: map[int][]bool{}}
-	f.now = time.Date(2026, 11, 15, 12, 0, 0, 0, time.Local)
+	f.now = usageFixturePin
 	previous := usageNow
 	usageNow = func() time.Time { return f.now }
 	t.Cleanup(func() { usageNow = previous })
@@ -556,5 +562,37 @@ func TestNotifyOnlyDiskViewNamesNoSuspensionDay(t *testing.T) {
 	f.exec(t, `UPDATE subscriptions SET overuse_policy = 'close' WHERE id = 9802`)
 	if view, _ = loadSubscriptionDiskView(ctx, f.panel.db.GetDB(), 9802); view.SuspendOn == "" {
 		t.Fatalf("a closing plan lost its suspension day: %+v", view)
+	}
+}
+
+// alpha.137: the five disk tests failed on every machine once the real clock
+// passed their pinned 15 Nov 2026 12:00, because the disk worker compared the
+// pinned moment with SQLite's real clock and measured its budget from it. The
+// same tests, with usageNow a year before and a year after the real date.
+// Disk kuralları gerçek tarihten bağımsızdır: aynı testler bir yıl önce ve sonra.
+func TestDiskRulesDoNotDependOnTheRealDate(t *testing.T) {
+	tests := map[string]func(*testing.T){
+		"over the limit for seven days":   TestDiskOverTheLimitForSevenDaysSuspendsAndResumesWithoutUndoingOtherCauses,
+		"operator resume":                 TestOperatorResumeOfADiskSuspensionGivesSevenMoreDays,
+		"measurement failure is unknown":  TestDiskMeasurementFailureIsUnknownNotEmpty,
+		"full disk closes uploads":        TestFullDiskClosesFTPSFTPAndPHPUploadsAndOpensThemAgain,
+		"notify-only names no suspension": TestNotifyOnlyDiskViewNamesNoSuspensionDay,
+	}
+	today := time.Now()
+	for _, pin := range []struct {
+		name string
+		at   time.Time
+	}{
+		{"a year before today", today.AddDate(-1, 0, 0)},
+		{"a year after today", today.AddDate(1, 0, 0)},
+	} {
+		for name, test := range tests {
+			t.Run(pin.name+"/"+name, func(t *testing.T) {
+				previous := usageFixturePin
+				usageFixturePin = pin.at
+				t.Cleanup(func() { usageFixturePin = previous })
+				test(t)
+			})
+		}
 	}
 }
