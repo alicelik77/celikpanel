@@ -19,6 +19,118 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-047 · Paid yearly licences: one price per server per year; a licence that runs out never stops the server, only growth closes
+
+*2026-11-14 · Owner's approval of the licence, subscription and payment direction (14 November 2026) · direction and [technical design](LICENCE-SUBSCRIPTION-DESIGN.md) only; nothing implemented, no installed panel and no live service changed*
+
+**Context.** Every licence is free today and already lasts one year: the membership
+service on celikpanel.net (`portal-membership/`, PHP and SQLite) signs a receipt whose
+`expires_at` is one calendar year after the licence was created, and renewal is a free
+self-service action in the account. When a licence is missing, has ended or cannot be
+verified for seven days (D-039), the panel locks almost every screen and API route for
+every role, security actions included; sites, mail, DNS, databases and scheduled work keep
+running because nothing on the server consults the licence (D-022). A main DNS server whose
+own licence is not active refuses DNS publication from its paired server. No price, order,
+payment, invoice or reminder exists anywhere.
+
+**Decision (the owner's eight points).**
+
+1. One flat price per server per year. Nothing is counted: accounts, domains and sites are
+   unlimited. One edition with every feature. List price 99 USD per year.
+2. Price lock: the price a customer pays does not rise while they renew without
+   interruption.
+3. When a licence runs out: warnings 30, 7 and 1 day before, in the panel and by e-mail;
+   30 days of grace after expiry with everything working and a notice on top; after that a
+   protection state. In the protection state hosted sites, mail, DNS, databases, scheduled
+   backups, certificate renewal, panel updates and operating-system security updates, the
+   firewall, the security emergency and downloading backups stay available; only growth
+   actions (creating a domain, an account, a mailbox and the like) are closed.
+4. If CelikPanel's own licence service cannot be reached, the panel keeps working fully for
+   30 days on its last successful check (seven days today, D-039). One server's licence
+   never blocks another server's work.
+5. Moving a licence to another server: self-service from the account page, free, as often
+   as needed; one active server per licence.
+6. A 30-day trial without a card; a 30-day unconditional refund after buying; automatic
+   renewal only by the customer's explicit choice, with a reminder 7 days before.
+7. No lifetime licences.
+8. Free during the beta. The payment system is built and tested during the beta; charging
+   starts with 1.0. Beta participants get their first year free and a permanent founder
+   price (amount not decided).
+
+CelikPanel's own service keeps issuing and signing licences; a payment provider only
+reports "paid", "refunded" or "cancelled".
+
+**Not decided (open).** The payment provider: abroad a merchant of record (Polar and Creem
+document payouts to Turkey; Paddle is to be asked), in Turkey later iyzico or PayTR. This
+waits for the owner's accountant: VAT on exported software licences, e-arşiv invoices,
+selling through a foreign merchant of record. The founder price. Any multi-server discount.
+Currencies other than USD. The design's own questions for the owner are in its section k.
+
+**What it supersedes or amends.**
+
+- **D-039.** The title's "up to seven days offline" and the decision bullets
+  "`offline_until = min(now + 7 days, annual expiry)`" and "the panel honours
+  `min(offline_until, issued_at + 7 days, expiry)`": the offline window becomes 30 days and
+  is no longer cut at the annual expiry, because grace follows the expiry. Until a release
+  implements this, D-039's seven days remain what panels and the service do. D-039's hourly
+  check, single shared refresh, 3-second wait, clock safety and the immediate effect of an
+  explicit rejection stay; a rejection leads to the protection state instead of a lock.
+- **D-039 and docs/MEMBERSHIP_LICENSING.md**, "Missing/expired/rejected/unverifiable
+  entitlement: Normal management is denied": for a licence that ran out, could not be
+  verified or was not paid, point 3 replaces the lock; security actions are never refused
+  for a licence reason. Whether a server that never had a licence gets the same protection
+  state is the design's open question 4.
+- **D-037**, the bullet "The licence gate is unchanged … While the panel is licence-locked,
+  the email change is refused like the other routes": it describes the lock this decision
+  replaces; one's own account stays usable in every licence state.
+- **D-027.** Its context sentence that the panel "re-verifies an active license against the
+  license service about every minute" was already out of date after D-039 (a note is added
+  there). Its rules stand: the fixture never reaches a release, and a fixture run proves
+  nothing about the live service. The design proposes that a fixture run may show how the
+  panel sorts actions in each licence state; that would amend D-027's sentence "A run made
+  with the fixture never counts as evidence about license behaviour" and needs the owner's
+  yes when that lab stage is prepared.
+- **D-022** is not amended. What changes is that its optional remote record management no
+  longer depends on the receiving server's licence (point 4).
+- **ROADMAP**, "Licence and business model: the proposal is open core": replaced by point 1,
+  one edition with every feature.
+- **LICENSE §1** ("free of charge for one calendar year from first activation"), the terms
+  ("no automatic charges are made") and the "free" copy: rewritten in the texts stage; until
+  then they stay true for the beta.
+
+**What stays unchanged.** D-022: hosted services never depend on the licence. No licence
+state, lapse, refund or unreachable service stops, removes or changes a hosted workload,
+DNS, mail, database, scheduled job or certificate renewal. The installed-panel update rule:
+only the owner updates an installed panel, from the panel's own update screen; panel
+updates stay available in every licence state. D-024: every licence state names its reason,
+who acts, the next action and how it continues. OPERATION-GUIDANCE's "an action to obtain
+or renew a license must not purchase one … automatically": automatic renewal exists only as
+the customer's own choice in their account, never as a side effect of a panel action.
+
+**Consequences.**
+
+- For a licence that ran out, could not be verified or was not paid, the full-screen lock
+  goes away: the panel works at full level or at the protection level, which refuses only
+  growth. The design sorts every route.
+- The signed licence file gets a second payload beside today's `celikpanel-license-v1`.
+  Installed panels keep reading the format they know and are never locked by the change; a
+  rollback to an older panel meets the old format and its old rules.
+- The membership service gains orders, payments, refunds, renewals, reminders, an operator
+  tool and audit, first against a fake payment provider.
+- Small releases, panel safety first: (1) security actions and the pair never blocked,
+  expiry warnings; (2) grace, protection, the 30-day offline window; (3) the service with a
+  fake provider; (4) the real provider once chosen; (5) texts and terms.
+- A longer offline window lets a server that blocks celikpanel.net keep full use for up to
+  30 days after its licence was moved away. The design accepts this as the cost of point 4,
+  detects it and limits it; it does not prevent it.
+
+**Resilience (D-025).** Affected: the access gate (constitution §2, "recovery must remain
+usable when … the license verifier fails"; P0.2 typed access), persisted licence evidence
+(`license.json`), the signed format and the membership database. Each stage names its
+schema or format transition, recovery and evidence in its PR. This record changes no code,
+no installed panel and no live service. It does not authorize contacting the live licence
+service, changing the live portal or updating installed panels.
+
 ## D-046 · No mail without a password: sites send only through authenticated submission
 
 *2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · phase 1 (read-only report and sending mailboxes) for alpha.124, phase 2 (closing) for alpha.125; lab check of phase 2 recorded on lab/alpha114-acceptance (a125-mail)*
@@ -741,6 +853,10 @@ receipt). Remaining gaps: no native multi-day outage run on a real installation;
 root on the server can still defeat any local check (restore an old file and set
 the clock back), as before; the membership service change must be deployed by
 the owner.
+
+*Amendment (2026-11-14, D-047):* the owner approved a 30-day offline window, no
+longer cut at the annual expiry, and a protection state instead of the lock. Until a
+release implements D-047, the seven days above remain what panels and the service do.
 
 ## D-038 · Versions, use and security follow one principle for every component: the owner chooses, the panel recommends and warns, nothing in use is removed, nothing is moved silently, and patches are the operating system's job
 
@@ -3433,6 +3549,11 @@ evidence about license behaviour. Known limit: the License screen shows state
 and expiry only, so on screen the fixture is not distinguishable without a
 web change; the API payload, the logs, the evidence and the panel version
 are.
+
+*Note (2026-11-14):* "about every minute" above describes the policy of September
+2026. Since D-039 a panel in use checks about hourly and one successful check lasts up
+to seven days offline; D-047 approves thirty. The fixture itself still re-verifies every
+minute (`acceptance_fixture.go`). The rules of this decision are unchanged.
 
 ---
 

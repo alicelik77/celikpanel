@@ -204,11 +204,15 @@ erişilebilir bırakmalıdır. Sayfalar arasında gezinme imkânı ile çakışa
 işlemlerine izin verilmesi ayrı kontrollerdir. Yenileme/yeniden bağlantı sonrasında
 açık talimatlar ve işlem kimliği erişilebilir kalır.
 
-Mevcut bir dakikalık lisans doğrulama politikası bu sözleşmeyle değişmez. Önce
-türlerle ayrılmış kararları ve kurtarma yeteneklerini fiilen uygulanan politikayla
-uyumlu hale getir; erişim hatalarını gizlemek için lisansın geçerli sayıldığı
-süreyi sessizce uzatma. Eski lisans belgesindeki günlük/yedi günlük süre ve bakım
-iddialarının geçmişteki ve güncel politikayla ilişkisi açıkça uzlaştırılmalıdır.
+Lisans doğrulama politikası bu sözleşmeyle değişmez: D-039'dan beri kullanımdaki
+panel yaklaşık saatte bir kontrol eder ve bir başarılı kontrol çevrimdışı en çok
+yedi gün geçerlidir (D-047 otuz günü ve koruma durumunu onaylar; henüz
+uygulanmadı). Önce türlerle ayrılmış kararları ve kurtarma yeteneklerini fiilen
+uygulanan politikayla uyumlu hale getir; erişim hatalarını gizlemek için lisansın
+geçerli sayıldığı süreyi sessizce uzatma. Geçmişteki ve güncel politika
+[MEMBERSHIP_LICENSING.tr.md](MEMBERSHIP_LICENSING.tr.md) belgesinde uzlaştırıldı
+(30 Ekim 2026). *(2026-11-14 düzeltmesi: bu paragraf alpha.64'ten D-039'a kadarki
+"bir dakikalık" kuralı yazıyordu.)*
 
 ## Uygulama sırası ve tamamlanma kanıtı
 
