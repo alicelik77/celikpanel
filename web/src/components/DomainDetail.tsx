@@ -34,15 +34,17 @@ import {
 import { SectionRow, SECTION_PANEL_ID, sectionTabId } from './domain/SectionRow';
 import type { DomainSectionProps } from './domain/SectionParts';
 
-// The nine sections of the page (alpha.132), each in a file of its own and
-// fetched when it is opened: the page's own bundle stays the shell (the row,
-// the header, the facts) and the screens of a section load with it. The page
-// bundle had less than 1 KiB under its limit, and the limit is not raised.
-// Sayfanın dokuz bölümü, her biri kendi dosyasında ve açılınca getirilir;
+// The sections of the page (alpha.132; Programs since alpha.138), each in a
+// file of its own and fetched when it is opened: the page's own bundle stays
+// the shell (the row, the header, the facts) and the screens of a section
+// load with it. The page bundle had less than 1 KiB under its limit, and the
+// limit is not raised.
+// Sayfanın bölümleri, her biri kendi dosyasında ve açılınca getirilir;
 // sayfa paketi yalnız kabuktur. Sınır yükseltilmez.
 const SECTION_VIEWS: Record<SectionId, LazyExoticComponent<ComponentType<DomainSectionProps>>> = {
     overview: lazy(() => import('./domain/sections/OverviewSection').then((module) => ({ default: module.OverviewSection }))),
     site: lazy(() => import('./domain/sections/SiteSection').then((module) => ({ default: module.SiteSection }))),
+    programs: lazy(() => import('./domain/sections/ProgramsSection').then((module) => ({ default: module.ProgramsSection }))),
     files: lazy(() => import('./domain/sections/FilesSection').then((module) => ({ default: module.FilesSection }))),
     mail: lazy(() => import('./domain/sections/MailSection').then((module) => ({ default: module.MailSection }))),
     databases: lazy(() => import('./domain/sections/DatabasesSection').then((module) => ({ default: module.DatabasesSection }))),
@@ -80,6 +82,9 @@ interface Domain {
     site_config?: { state: string; kept_by_choice?: boolean; pending_reason?: string; kind?: string };
     /** The permissions the subscription's rights close (alpha.117, D-042); absent when none. */
     rights_closed?: string[];
+    /** alpha.138: a program or Python app record, an AI app record, is on the domain; absent when not. */
+    holds_program?: boolean;
+    holds_app?: boolean;
 }
 
 // The measured usage of one domain. An answer without the numbers is not
@@ -287,6 +292,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         closedRights: domain.rights_closed ?? [],
         access: isTeamMember ? domain.access : undefined,
         server: sectionCaps ? { mail: sectionCaps.mail_server, databases: sectionCaps.database_servers.length > 0 } : null,
+        holds: { program: domain.holds_program === true, app: domain.holds_app === true },
     }) : [];
     // The section the address asks for when it is drawn, otherwise the first.
     // Adresin istediği bölüm çiziliyse o, değilse ilki.

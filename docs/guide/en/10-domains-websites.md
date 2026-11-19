@@ -2,7 +2,7 @@
 id: domains-websites
 title: Domains and websites
 roles: [admin, reseller, customer]
-topics: [domains#domain-list, domain.overview#overview, domain.site#hosting, domain.security#https]
+topics: [domains#domain-list, domain.overview#overview, domain.site#hosting, domain.programs#programs, domain.security#https]
 keywords: [domain, website, subdomain, php version, certificate, https, ssl, lets encrypt, nameservers, static, node.js]
 ---
 
@@ -24,7 +24,7 @@ If you asked for a certificate, the window waits for it, up to about a minute. L
 
 ## The overview {#overview}
 
-A domain's page has one row of sections: **Overview**, **Site**, **Files**, **Mail**, **Databases**, **Domain & DNS**, **Security**, **Backups** and **Advanced**. You see only the sections that apply to the domain and to you. A section with several parts lists them under **On this page**. A section your plan does not include stays in its place, faded and with a lock; it says who can add it.
+A domain's page has one row of sections: **Overview**, **Site**, **Programs**, **Files**, **Mail**, **Databases**, **Domain & DNS**, **Security**, **Backups** and **Advanced**. You see only the sections that apply to the domain and to you. A section with several parts lists them under **On this page**. A section your plan does not include stays in its place, faded and with a lock; it says who can add it.
 
 The line under the domain's name shows its **Type**, **PHP version**, **SSL**, **Disk usage** and **Traffic** this month.
 
@@ -37,17 +37,23 @@ A change at the registrar can take from minutes to several hours to spread. The 
 
 ## Site settings {#hosting}
 
-The **Site** section holds what runs on the domain and how:
+The **Site** section holds what the site is and how visitors reach it:
 
 - **Site type**: the **Project type**: **PHP**, **Static**, **Node.js**, **Proxy** or **Forwarding**. Choose one and press **Apply**.
-- **Applications**, **AI & automation** and **Programs**, if your plan includes them.
+- **Applications**, if your plan includes them.
 - **PHP settings**, below, and **Redirects**, if your plan includes them.
+
+A program you upload and the AI and automation apps are in the **Programs** section (see [Programs](#programs)).
 
 The **Names** part of **Domain & DNS** holds the **Document root**, **Redirect to www** and **Domain aliases**, extra names that show the same site. **Protected folders** are under **Security**.
 
 ### PHP version {#php}
 
 A new website starts as a static site. To run PHP, go to **Site type** in the **Site** section, choose **PHP**, pick a version and press **Apply**. To change the version later, go to **PHP settings** in the same section, choose it under **PHP version** and press **Apply**. Only versions installed on the server are listed; if **PHP-FPM** is missing, the administrator installs it from **Components**.
+
+## Programs {#programs}
+
+The **Programs** section is there when your plan includes programs or AI apps, or when the site already runs one. It holds **Programs and Python apps**, for a program you built yourself or a Python web app, and **AI & automation** (see [AI and automation apps](guide:ai-apps#ai-apps)). The program or the app then serves the domain over HTTPS; removing it gives the site back the type it had. A domain runs one of them at a time, and a Node.js site neither, so there the section shows only what the site already runs, or is not there.
 
 ## Certificates and HTTPS {#https}
 

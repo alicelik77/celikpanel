@@ -76,7 +76,7 @@ function palettes() {
 // button stands on. The label therefore has to clear AA on every one of those
 // surfaces (before: on surface-2 only). The dashed outline that says "not
 // available" is drawn in the label's own colour (border-current), so the same
-// measurement covers it: the border token of the imitation skins is as low as
+// measurement covers it: the border token of the alternative styles is as low as
 // 1.1:1 on their dark surfaces and would have left a label with no outline.
 const standsOn = ['bg', 'surface', 'surface-2', 'surface-subtle'];
 
@@ -112,7 +112,7 @@ test('a working button label is legible on its recessed fill in every palette', 
 // in the product's own light and dark themes the fill clears the 3:1 floor for
 // a graphic that carries meaning (WCAG 1.4.11) on every surface a button
 // stands on (lowest measured 9 Oct 2026: 7.8:1, dark, on surface-2). The
-// imitation skins bring their own primary; the lowest is 2.87:1 (aapanel,
+// alternative styles bring their own primary; the lowest is 2.87:1 (forest,
 // light, on surface-2), so they are held to "no closer than today" - there the
 // dashed outline, pinned below, is what carries the difference.
 test('an enabled primary fill can be told from the unfilled disabled button, on every surface, in every palette', () => {

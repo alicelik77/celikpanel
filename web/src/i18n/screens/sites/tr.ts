@@ -706,8 +706,6 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     // --- alpha.132 ortak parçalar bloğunun sonu ---
     'domain.about.type': 'Bu alan adında ne çalıştığı: PHP sitesi, hazır dosyalar, Node.js uygulaması, başka sunucudan gösterilen site ya da yönlendirme.',
     'domain.about.apps': 'WordPress gibi tek tıkla kurulan hazır uygulamalar ve WordPress araçları.',
-    'domain.about.ai': 'n8n ya da Open WebUI gibi yapay zekâ ve otomasyon uygulamaları, bu alan adında.',
-    'domain.about.programs': 'Kendi derlediğiniz bir program ya da bir Python uygulaması, bu alan adında.',
     'domain.about.php': 'Bu sitenin PHP sürümü ve PHP sınırları.',
     'domain.about.redirects': 'Bu sitedeki bir adresin ziyaretçilerini başka bir adrese gönderin.',
     'domain.about.cron': 'Belirlediğiniz zamanlarda kendiliğinden çalışan komutlar.',

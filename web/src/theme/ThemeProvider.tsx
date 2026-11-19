@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import type { TranslationKey } from '../i18n/en';
 
 // The user picks light, dark, or "system" (follow the OS). The choice is
 // persisted; "system" also reacts live to OS changes. Default is "system",
@@ -19,14 +20,24 @@ type ResolvedTheme = 'light' | 'dark';
 // token okuduğundan bir skin yalnızca bir CSS-değişken setidir (index.css
 // [data-theme=…] blokları). İki eksen bileşir — her skin açıkta da koyuda da
 // çalışır.
-export type SkinId = 'celik' | 'plesk' | 'aapanel' | 'cpanel';
+// The four styles (owner, 20 Nov 2026: no style carries another company's
+// product name). Each name is a text of the catalogue, in both languages.
+// Dört stil (sahip, 20 Kasım 2026: hiçbir stil başka bir firmanın ürün adını
+// taşımaz); adları metin kataloğundan, iki dilde.
+export type SkinId = 'celik' | 'sky' | 'forest' | 'amber';
 
-export const SKINS: { id: SkinId; name: string; swatch: string }[] = [
-    { id: 'celik', name: 'Celik', swatch: 'rgb(37 99 235)' },
-    { id: 'plesk', name: 'Plesk', swatch: 'rgb(2 132 199)' },
-    { id: 'aapanel', name: 'aaPanel', swatch: 'rgb(32 165 58)' },
-    { id: 'cpanel', name: 'cPanel', swatch: 'rgb(234 88 12)' },
+export const SKINS: { id: SkinId; nameKey: TranslationKey; swatch: string }[] = [
+    { id: 'celik', nameKey: 'theme.skin.celik', swatch: 'rgb(37 99 235)' },
+    { id: 'sky', nameKey: 'theme.skin.sky', swatch: 'rgb(2 132 199)' },
+    { id: 'forest', nameKey: 'theme.skin.forest', swatch: 'rgb(32 165 58)' },
+    { id: 'amber', nameKey: 'theme.skin.amber', swatch: 'rgb(234 88 12)' },
 ];
+
+// The ids alpha.137 and earlier stored for the same three styles: a choice
+// made then is read as its new id and written back once, so it is kept.
+// alpha.137 ve öncesinin aynı üç stil için sakladığı kimlikler: o zamanki
+// seçim yeni kimliğiyle okunur ve bir kez geri yazılır.
+const EARLIER_SKIN_IDS: Readonly<Record<string, SkinId>> = { plesk: 'sky', aapanel: 'forest', cpanel: 'amber' };
 
 const STORAGE_KEY = 'celikpanel.theme';
 const SKIN_STORAGE_KEY = 'celikpanel.skin';
@@ -50,8 +61,22 @@ function readStoredPreference(): ThemePreference {
     return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
 }
 
-function readStoredSkin(): SkinId {
-    const stored = localStorage.getItem(SKIN_STORAGE_KEY);
+export function readStoredSkin(): SkinId {
+    let stored: string | null = null;
+    try {
+        stored = localStorage.getItem(SKIN_STORAGE_KEY);
+    } catch {
+        return 'celik';
+    }
+    if (stored && Object.prototype.hasOwnProperty.call(EARLIER_SKIN_IDS, stored)) {
+        const renamed = EARLIER_SKIN_IDS[stored];
+        try {
+            localStorage.setItem(SKIN_STORAGE_KEY, renamed);
+        } catch {
+            // Kept for this visit; asked again at the next one.
+        }
+        return renamed;
+    }
     return SKINS.some((sk) => sk.id === stored) ? (stored as SkinId) : 'celik';
 }
 
