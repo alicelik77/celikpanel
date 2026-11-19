@@ -8908,3 +8908,52 @@ until the backup reports ready.
 - **Open.** What `comm` and user ids package tools have on every supported
   distribution was established from their sources and packaging, not
   measured on each. **No P0 item is closed.**
+
+### Branch a139/programs-tab (a program and an AI app no longer take a domain from each other; what a domain holds is shown where it is removed; no schema change; invariants 1 and 3; D-022; D-024; D-025; 2026-11-19, candidate alpha.138)
+
+- **Why it is here.** The three refusals below are admission decisions of
+  lifecycle operations (an AI app's install and update, a program's deploy)
+  that publish a service at a domain: by this contract's invariant 3 they
+  stop the unsafe action at its boundary, and by invariant 1 a running
+  service is not silently replaced.
+- **Defect.** A domain is published to one of them at a time (the site's
+  type is `runtime_app` or `service_app`). An AI app could be installed on a
+  domain whose program was created (the type changes only at the program's
+  deploy) or deployed, an AI app could be updated over a deployed program
+  (the update publishes it again), and a program could be deployed while an
+  AI app served the domain. Each took the domain from the other, while that
+  one's unit kept running unreachable; the domain could then not be deleted
+  (`refuseDomainDeleteWithRuntimeApp` / `...WithServiceApp`), and the page,
+  following the plan and the type, no longer drew the card that removes it.
+- **Contract.** `handleServiceAppInstall` refuses with `program_created`
+  when the domain has a `runtime_apps` record or its type is `runtime_app`,
+  before the availability probe, the confirmation or any record; the
+  install's transaction (`createServiceAppInstall`) counts `runtime_apps`
+  again, so a program created in between is refused the same way.
+  `handleServiceAppUpdate` refuses with the same reason. `handleRuntimeAppDeploy`
+  refuses with `app_installed` while a `service_app_installs` record exists,
+  before any operation is recorded. Stop, start, logs, keys, settings and
+  removal stay allowed on both sides. The domain list carries
+  `holds_program` / `holds_app` (one query each for the whole list; absent
+  when false and for a team member), and the page draws the card of
+  anything a domain holds whatever the plan or the type say; a create or
+  install form appears only where the plan includes it and the type takes a
+  new one (`NEW_REFUSED_ON`, identical to the server's conditions), and on a
+  domain serving the other kind nothing that would publish it again.
+- **Schema / version transition.** No schema change; two additive response
+  fields. Going back to alpha.137 brings back the earlier admissions.
+- **Recovery.** A domain that already holds both (from an earlier release)
+  shows both cards; the owner removes the one not wanted through its
+  existing removal operation, after which the domain can be deleted.
+- **Evidence.** `cmd/panel/service_apps_test.go`
+  (`TestServiceAppRefusedWhereAProgramUsesTheDomain`,
+  `TestServiceAppInstallTransactionRefusesAProgram`,
+  `TestServiceAppUpdateRefusedWhereAProgramUsesTheDomain`),
+  `cmd/panel/runtime_apps_test.go`
+  (`TestRuntimeDeployRefusedWhileAnAppUsesTheDomain`),
+  `cmd/panel/domain_app_records_test.go`;
+  `web/tests/programs-section-alpha138.test.mjs` (the screen's refusal table
+  read against the server's conditions in its source, the held cards per
+  role, type and plan). Not run in the lab yet.
+- **Open.** The server's English fallback refusals still name "the Programs
+  tab". **No P0 item is closed.**

@@ -1,4 +1,4 @@
-// Route-scoped copy of one mailbox's connection settings window (alpha.139,
+// Route-scoped copy of one mailbox's connection settings window (alpha.138,
 // like ../mailboxRecovery): the window opened from a mailbox row's "More"
 // menu and from the success notice after a mailbox is made. It ships with
 // that lazy chunk, so neither the critical boot path nor the "mailDatabases"

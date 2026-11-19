@@ -1,4 +1,4 @@
-// Batch 40 (2026-11-19): alpha.139, each mailbox shows its own connection
+// Batch 40 (2026-11-19): alpha.138, each mailbox shows its own connection
 // settings.
 //
 //   y40conn   A domain's mailboxes as the administrator and as a customer:

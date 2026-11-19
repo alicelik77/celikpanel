@@ -84,13 +84,21 @@ bu bölümde öyle yazılır.
   paket denetimi okurken sona eren bir süreç de artık denetimin reddetmesine
   yol açmaz
   ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.137.tr.md)).
+- **Aday:** v0.1.0-alpha.138 (satır 61), iki işlik küçük bir sürüm: bir alan
+  adının programları ve yapay zekâ uygulamaları alan adı sayfasında kendi
+  Programlar bölümünde, bir program ile bir yapay zekâ uygulaması artık
+  birbirinin alan adını almıyor (bir alan adının tuttuğu her şey kaldırılabildiği
+  yerde gösteriliyor), her posta kutusu bir posta programının gerek duyduğu
+  ayarları bu sunucunun gerçekten sunduğu posta adıyla gösteriyor.
+  Laboratuvar denetimi henüz yapılmadı
+  ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.138.tr.md)).
 - **Sahibin sunucuları:** son salt-okur doğrulamada (13 Kasım 2026)
   Frankfurt ve Boston alpha.133'teydi; alpha.134 sahibi bekliyor. Onları
   yalnız sahip, panelin kendi güncelleme ekranından günceller.
 - **Laboratuvar kapsamı:** alpha.137 iki laboratuvar sunucusunda (Debian 13
   ve Ubuntu 24.04, 19 Kasım 2026) iki denemeden geçti: ilki bu sürümün
   sonra düzelttiği kilitli güncelleme sayfasını buldu; sürümün son ürün
-  koduyla yapılan ikincisinde ağır hata yok, üç bulgusu alpha.139'a
+  koduyla yapılan ikincisinde ağır hata yok, üç bulgusu alpha.141'e
   taşındı. Hiçbir denemenin bakmadığı işler sürüm notlarında yazılı.
 
 ### Çalışma kuralları (değişmez)
@@ -152,11 +160,30 @@ Tek başına çıkan bir dayanıklılık düzeltmesi (sahip, 15 Kasım 2026). Bk
    sayfa kapatılıp güncelleme yeniden başlatılabilir (önceki bir sürümde kilitli kalmış sayfa başka
    bir tarayıcıdan açılır).
 
-**alpha.138 — lisans 1. aşama**
-Süresi geçmiş ya da doğrulanamayan lisans hiçbir güvenlik işlemini ve başka bir sunucunun işini
-engellemez; süre bitimi uyarıları (D-047; kulvar PR #327'de, birleştirilmedi).
+**alpha.138 — Programlar kendi bölümünde, bir program asla elinden alınmaz, her posta kutusunun ayarları (Aday)**
+İki işlik küçük bir sürüm (sahip, 19 Kasım 2026). Bkz. satır 61.
+1. Bir alan adının programları ve yapay zekâ uygulamaları Site'ın hemen ardında kendi bölümünde,
+   Programlar'da; eski bağlantılar onu orada açar. İçinde yapılabilecek bir şey olduğunda
+   gösterilir; bir alan adının tuttuğu her şey (bir program ya da uygulama kaydı) plan ya da site
+   türü ne derse desin orada kaldırılabileceği yerde gösterilir.
+2. Bir program ile bir yapay zekâ uygulaması artık birbirinin alan adını almaz: sunucu, bir
+   programın kullandığı alan adında yapay zekâ uygulamasının kurulmasını ya da güncellenmesini ve
+   bir yapay zekâ uygulamasının kullandığı alan adında programın yayına alınmasını reddeder; sayfa
+   bunları sunmaz.
+3. Her posta kutusu bağlantı bilgilerini gösterir (Diğer → Bağlantı bilgileri…), Tümünü kopyala
+   ile ve parola asla olmadan; posta programlarına, alt alan adları ve web sitesi olmayan alan
+   adları için de, bu sunucunun gerçekten sunduğu posta adı verilir.
 
-**alpha.139 — taşınanlar**
+**alpha.139 — lisans 1. aşama (PR #327, sahibin laboratuvar kararını bekliyor)**
+Süresi geçmiş ya da doğrulanamayan lisans hiçbir güvenlik işlemini ve başka bir sunucunun işini
+engellemez; süre bitimi uyarıları (D-047).
+
+**alpha.140 — eşli ana DNS sunucusu ana makine kaydı isteklerine doğru yanıt verir, ve 'Ekle…' düğmesi (PR #334 ve devamı)**
+Eşli ana DNS sunucusu, bir ana makine kaydı (web postasının adresi) ekleme isteğiyle gerçekte ne
+yaptığını söyler; "Ekle…" düğmesi ondan bunu ister (alpha.135 laboratuvarı düğmenin gerçek bir
+çiftte kaydı eklemediğini görmüştü).
+
+**alpha.141 — taşınanlar**
 1. İki saati karıştıran bir yer daha: `cmd/panel/database_remote_start.go:42`, kayıtlı kabul
    zamanı değiştirilebilir güncelleme saatinden (`panelUpdateNow`) gelen
    `panelUpdateRecentlyAdmitted`'a gerçek zamanı veriyor; henüz sabit tarihli bir test oraya
@@ -189,60 +216,64 @@ engellemez; süre bitimi uyarıları (D-047; kulvar PR #327'de, birleştirilmedi
    tablolarda da hak alır.
 13. Eklenen bir kullanıcıyı kaldırmak, hesabı kalırken artık "kaldırıldı" demez.
 14. Veritabanları listesinde boyutlar, bütün liste için tek seferde okunarak.
-15. Eşli ana DNS sunucusundan web postası adres kaydını eklemesini isteyen "Ekle" düğmesi.
-   alpha.135 laboratuvarı gerçek bir çiftte kaydı eklemediğini gördü (önce bilinmeyen bir yanıt,
-   sonra var olmayan bir kayıt için ret); önce hatanın nedeni bulunur (`a135/dnsadd` dalı).
-16. Önceki sürümlerin alan adı silmelerinin posta ve yedek dışında bıraktıkları: sitenin
+15. Önceki sürümlerin alan adı silmelerinin posta ve yedek dışında bıraktıkları: sitenin
    günlükleri, sahipsiz bir crontab, sertifika denetim klasörü, motorlarda duran ve hiçbir
    listenin göstermediği veritabanları ve kullanıcılar.
-17. alpha.135 laboratuvarının kusurları: açık Alan Adları sekmesi başka yerde yapılan silmeyi
+16. alpha.135 laboratuvarının kusurları: açık Alan Adları sekmesi başka yerde yapılan silmeyi
    izler; yerine bağlantı konmuş tutulan klasör bağlantı durdukça listede kalır; yarıda kalan
    silme yarım silinmiş klasör bırakmaz; "30 gün saklamaya al" sonrasında "Tamamlandı" altında
    "Sunucuda çalışılıyor…" satırı kalmaz; ana sayfa etkinlik akışı tutulan öğeleri sözcüklerle
    anar; alan adı silme sonucundaki haklar paragrafı tek satır olur, kalanı kapalı ayrıntılarda;
    saklama listesindeki klasör yolları kapalı başlar.
-18. Önceki sürümler, kitin hazırlığı durduktan sonra aynı sürümün her yeniden denemesinde
+17. Önceki sürümler, kitin hazırlığı durduktan sonra aynı sürümün her yeniden denemesinde
    `/usr/libexec/celikpanel/recovery-runtimes/v1/` altında gizli bir `.promote-*` klasöründe
    kurtarma kitinin etkisiz bir kopyasını bırakabiliyordu (alpha.137 artık bırakmaz); zaten var
    olanları hiçbir şey silmiyor (alpha.137 incelemesi).
-19. "the host package manager or mutation lock is busy" reddi sahibe "başka bir sunucu işlemi hâlâ
+18. "the host package manager or mutation lock is busy" reddi sahibe "başka bir sunucu işlemi hâlâ
    sürüyor" olarak söyleniyor; paket yöneticisini ya da kilidi adlandırır (alpha.137 incelemesi).
-20. "Hazırlık doğrulanamadı" duruşundan sonra girişim biriminin `OnFailure=`'u sürüm kurtarmasını
+19. "Hazırlık doğrulanamadı" duruşundan sonra girişim biriminin `OnFailure=`'u sürüm kurtarmasını
    başlatıyor; o, paket kilidi boşalınca kurtarma kitinin geçişini kendisi tamamlıyor, sonra "The
    selected recovery entry could not be verified … runtime_changed" yazıyor ve sonraki zamanlayıcı
    çalışmasına dek başarısız işaretli kalıyor; oysa `runtime-status` az önce eski başlatıcının bu
    geçişi kendisi bitiremeyeceğini söylemişti; ne olduğunu söyler, başarısız olmaz (alpha.137
    laboratuvarı 2).
-21. Daha eski, durmuş bir güncellemenin kapatılmamış bildirimini hâlâ tutan bir tarayıcı, güncelleme
+20. Daha eski, durmuş bir güncellemenin kapatılmamış bildirimini hâlâ tutan bir tarayıcı, güncelleme
    kartında en yenisi yerine o eski girişimi (ve onun komutunu değil) gösteriyor; en yeni girişim
    gösterilir (alpha.137 laboratuvarı 2).
+21. Posta kutusu bağlantı penceresi, sunucu sunuyorsa, birçok posta programının bu ayarları posta
+   adresinden kendiliğinden bulduğunu söyler (kendiliğinden kurulum) (alpha.138 posta kulvarı).
+22. Site türü değişikliğinin ya da alan adı silmenin ardındaki, sunucunun kendi İngilizce retleri "the
+   Programs tab" ve "the AI & automation tab" yerine "the Programs section" der; sayfanın kendi
+   sözleri zaten öyle der (alpha.138).
+23. Kullanım kılavuzunun sayfaları ve hesap sayfaları yeni celikpanel.net sitesine uyacak biçimde
+   yeniden biçimlendirilir.
 
 Ardından gelen tasarım sürümleri, onaylanan sırayla (sahip, 12 Kasım 2026). Her biri kendi
 bölümlerinin içini onaylı çizimlere göre yeniden tasarlar; küçük sürümler, hazır olunca yayımlanır.
 
-**alpha.140 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
+**alpha.142 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
 Alan adının Genel Bakış'ı, alan adı listesi ve müşterinin ana sayfası çizildiği gibi; her birinin
 gereken özet ve sağlık bilgileri satır başına değil tek istekte okunur.
 
-**alpha.141 — E-posta**
+**alpha.143 — E-posta**
 E-posta bölümü çizildiği gibi.
 
-**alpha.142 — Veritabanları bölümü**
+**alpha.144 — Veritabanları bölümü**
 Alan adının Veritabanları bölümü çizildiği gibi; dışarıdan bağlantı, yönetici sunucu anahtarını
 açtığında orada onaylı tek bir yeniden başlatmayla hazırlanır; daha anlaşılır PostgreSQL ayarları
 (geçerli değerler, CelikPanel'in satırları işaretli).
 
-**alpha.143 — Alan adı ve DNS, Güvenlik**
+**alpha.145 — Alan adı ve DNS, Güvenlik**
 Kayıt düzenleme ve Alan adı ve DNS bölümü çizildiği gibi; Güvenlik bölümü (sertifika, korumalı
 klasörler, zararlı yazılım taraması) çizildiği gibi.
 
-**alpha.144 — Site ve Dosyalar**
+**alpha.146 — Site ve Dosyalar**
 Site ve Dosyalar bölümleri çizildiği gibi.
 
-**alpha.145 — Yedekler ve Gelişmiş**
+**alpha.147 — Yedekler ve Gelişmiş**
 Yedekler ve Gelişmiş bölümleri çizildiği gibi; gerektirdikleri sunucu ayarı taşımalarıyla.
 
-**alpha.146 — Yönetici, bayi ve hesap sayfaları**
+**alpha.148 — Yönetici, bayi ve hesap sayfaları**
 İkinci onaylı önerinin sayfaları (sahip, 12 Kasım 2026).
 
 Önceki alpha.132 planından da taşınanlar, dokundukları ekranların sürümüne yerleşir: Mağaza
@@ -2356,6 +2387,7 @@ kabul işi açık kalır.
 | 58 | `v0.1.0-alpha.135` sürüm incelemesi. **Yayımlandı, 15 Kasım 2026 (sürüm commit'i `1f3e08234`; ön sürüm 06:02:00Z; portal yaklaşık 06:05Z, dış denetim 27/27).** İki işlik küçük bir sürüm (sahip: küçük sürümler); iki kulvar yayımlanmış alpha.134 üzerine gerçek birleştirme commit'leriyle alındı; üçüncü kulvar (DNS "Ekle" düğmesi, `a135/dnsadd`) alındı, laboratuvarda başarısız oldu ve geri alındı. Alan adı silme: soruda önce veritabanı seçimi ("bırak", varsayılan, veritabanlarının bağını çözer, listede kalırlar; "sil" her birini tek veritabanı silme yolu `deleteDatabaseRecord` ile, alpha.134'ün hak kaldırması ve sonuçta yalnız yöneticiye verilen hak bilgileriyle siler), kabul edilen plan silme işaretiyle saklanır ve yeniden denemede yinelenir (öteki seçim için `DOMAIN_DELETION_PLAN_FIXED`), sitenin crontab'ı, günlükleri ve sertifika denetim klasörü kaldırılır, gönderim sınırı listeleri yeniden yazılır. Silmelerden kalanlar: silinen alan adının ya da posta kutusunun postası ve silinen alan adının bu sunucudaki yedekleri Bakım'daki tek listede 30 gün tutulur (`panel_settings` içinde `deletion_hold_v1:<id>` kayıtları, şema değişikliği yok), dönemsel adımla kaldırılır (tam bir klasör, yapı kapılı, başarısız ve bilinmeyen ayrı tutulur ve yeniden denenir), Şimdi sil / Hepsini şimdi sil / İndir, ana sayfada bir satır ve %85 disk uyarısında anılır; önceki sürümlerin posta karantinasında ve yedek deposunda bıraktıkları güncellemede listeye alınır, 30 günleri o zaman başlar. Posta kutusu satırları: Web posta (web postasının kendi adresi, yalnız `_user`), Parola…, Diğer; gönderim sınırları yalnız uygulanırken satırda tek satır; önceki bir silmenin bıraktığı klasör üzerine açılan kutu önce onu saklamaya alır; Bakım yerinde kalan postayı listeler (yanıt başına en çok 500, kısaltıldığında söylenir). Birleştirme: yeni testlerde ve ekranlarda örnek adlar; sürüm sırası 134 → 135. Laboratuvar: `90293c5c2` üzerinde bir deneme (MariaDB 11.8.6 ve PostgreSQL ile Debian 13; MariaDB 10.11.14 ile Ubuntu 24.04; ikisi de alpha.134'ten panelin kendi sayfasıyla güncellendi), ağır hata yok: listeye alma diskte hiçbir şey değiştirmedi, zamanı gelen kaldırma, başarısız kaldırma ve yeniden deneme, Şimdi sil / Hepsini şimdi sil, bağlantı güvenliği, veritabanı seçimiyle ve seçimsiz alan adı silme iki motorda, yeniden açılan kutu boş; denenmedi: satırdan web postası, uygulanırken sınır satırı, alpha.134'e dönüş, süreler. Bilinen sınırlar ve laboratuvar kusurları (alpha.136'ya taşındı): önceki silmelerin posta ve yedek dışında bıraktıkları ne listelenir ne silinir; tutulanlar için "geri ver" yok; açık Alan Adları sekmesi başka yerdeki silmeyi izlemez; yerine bağlantı konmuş tutulan klasör listeden düşer; yarıda kalan kaldırma; artık bir ilerleme satırı; etkinlik akışında iç anahtarlar; uzun haklar paragrafı ve açık klasör yolları. Sürümün denetimlerini kendi kendine başarısız olan iki test durdurdu: yerel kurtarma çalışma ortamı fikstürleri (`TestFreshInstallerEnrollmentSharedDirectory`, `TestPromotionInheritedLock`, `TestPromotionFixedEntryRealExec`, `TestPromotionCommittedEntryIgnoresRetiredLoss`) dosyalarını AWS'de çalışan CI makinelerinin çalıştırmaya kapalı bağladığı `/run` altından çalıştırıyordu, artık her biri kendi tmpfs'ini bağlıyor (yayından önce test düzeltmesi); `TestHoldersNameAnotherProcess` ise başka kilitler alınıp bırakılırken kilit tablosu okumasının ana makine değişiklik kilidini tutanı kaçırabildiğini gösterdi, bu, önceki her sürümde de bulunan bir ürün kusurudur, burada değiştirilmedi ve alpha.136'nın ilk işidir. Yayımlanan sürümün PR ve ana dal denetimleri yeniden çalıştırmadan geçti; etiket çalıştırması bir kez yeniden çalıştırıldı, çünkü yeni bir test (`TestMailboxMadeWithoutLeftMailSaysNothingMore`) geçici klasörü silinmeden önce otomatik DKIM işini durdurmuyordu (nedeni belirlendi; test bu kayıtla düzeltildi). Şema 079'da kalır. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.135.tr.md). | Yayımlandı |
 | 59 | `v0.1.0-alpha.136` sürüm incelemesi. **Yayımlandı, 15 Kasım 2026 (sürüm commit'i `b04c94c75`; ön sürüm 11:26:43Z; portal yaklaşık 11:32Z, dış denetim 27/27).** Tek başına çıkan bir dayanıklılık düzeltmesi (sahip, 15 Kasım 2026), tek kulvar (`a136/idle-probe`, PR #323). Ana makine değişiklik kilidinin salt-okur denetimi (`hostmutationlock.ProbeIdle`, `Holders`) `/proc/locks`'u okuyordu; çekirdek bu dosyayı her read() çağrısında bir parça üretir ve satır sırasından sürdürür, bu yüzden başka kilitler alınıp bırakılırken kilidi tutanın satırı atlanabiliyordu: konukta bir alt süreç kilidi tutarken 5000 denetimden 1094'ü "boşta" dedi (CI: `TestHoldersNameAnotherProcess`, "child's lock not busy"). Tablonun adını verdiği tutucu kesin kalır; "kimse yok" cevabı artık her sürecin tanımlayıcılarıyla doğrulanır (tanımlayıcı başına `AT_STATX_DONT_SYNC` ile bir `statx`, `fdinfo` yalnız kilit dosyası için; `/proc` ve fd dizinleri artan numarayla listelenir, bu yüzden denetim boyunca tutan atlanmaz; 96.908 tanımlayıcı 0,41 sn; 5 sn sınır). Bu okuma kilit almaz (alpha.114 kuralı korunur); tamamlanamadığı yerde (CAP_SYS_PTRACE yok, okunamayan süreç, sınır aşıldı) `ProbeIdle` mevcut anlık flock ile karar verir (kesin; o anın içine düşen bir yazıcı meşgul cevabı alır), böylece hiçbir sunucu güncellenemez hâlde kalmaz; `Holders` "bıraktı" yerine "belirlenemedi" der. Agent'ın boşta denetimlerini (güncelleme ön denetimi, kurtarma ortamı yükseltmesi, Panel hazır olma) ve posta devrini besler. Kanıt: lock churn altında bir gerileme testi (eski kod root ve yetkisiz kullanıcıyla 20 denemenin 20'sinde, `-race` ile 5'in 5'inde başarısız), dış churn altında değişmemiş test (eski 300'de 47 ve 38, yeni 0), yeni bir root adımıyla CI. Değiştirilmedi, kendi değişikliği için açık: kurtarma ortamı yükseltmesi boşta denetimini yapar ama başlatıcı/seçim değişimi boyunca ana makine kilidini tutmaz. Sınırlar: başka bir PID ad alanındaki tutucu, tanımlayıcısız tutulan kilit. Laboratuvar: `21b9c0d2c` üzerinde bir deneme (Debian 13 ve Ubuntu 24.04, saniyede yaklaşık iki bin ilgisiz kilit alımı), ağır hata yok: ikisi de panelin kendi sayfasıyla güncellendi (Ubuntu ikinci basışta); gerçek bir kurulum kilidi tutarken 300 denetimin 300'ü işlem sürüyor dedi (işlem kaydından), kayıt bir kenara konunca 270'in 270'i meşgul dedi, CAP_SYS_PTRACE ile de onsuz da; boştayken 300'ün 300'ü (ortanca 19 ms, en çok 62 ms, 155 süreç), yetki olmadan da 300'ün 300'ü; bir posta kutusu ile alan adı açıp silme çalıştı. Denenmedi: gerçekten bir işlem sürerken güncellemeye basmak, süreler. alpha.137'ye taşınan laboratuvar bulguları: Ubuntu'da ilk basış "paket yöneticisi meşgul" diye durdu, paket yöneticisi taraması sırasında sona eren bir süreç denetimin hemen reddetmesine yol açabilir, kaldırma penceresinin "Kaldır" düğmesi hâlâ okurken basılabiliyor. Şema 079'da kalır. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.136.tr.md). | Yayımlandı |
 | 60 | `v0.1.0-alpha.137` sürüm incelemesi. **Yayımlandı, 19 Kasım 2026 (sürüm commit'i `2b0fc4df7`; ön sürüm 13:18:03Z; portal yaklaşık 13:22Z, dış denetim 27/27).** İki işlik küçük bir sürüm (alpha.136 laboratuvarı), tek kulvar (`a137/update-preflight`, PR #326), PR #328'in saat düzeltmesiyle. (1) Ubuntu 24.04'te ilk güncelleme basışı, hiçbir şey paket değiştirmezken "paket yöneticisi meşgul" diyerek durabiliyordu: güncellemenin kendi `systemctl daemon-reload`'ları (birim korumaları, kurtarma temeli) `apt-daily.timer`'ın rastgele gecikmesini yeniden çekiyor (systemd v255 `timer_coldplug` → `timer_enter_waiting` → `add_random`, `FixedRandomDelay=no`; apt 2.7.14 `RandomizedDelaySec=12h`) ve `apt-daily.service`'i hemen başlatabiliyor (`apt-helper wait-online`, `apt.systemd.daily update`: `apt-get check`, `apt-get update`; Ubuntu Pro'nun `APT::Update::Pre-Invoke` kancası `apt-news`/`esm-cache`'i başlatır, bunlar sistemin apt/dpkg kilidini almayan python3 okuyucularıdır). Agent'ın taraması apt-daily'nin ilk adımlarını tanımıyordu ve 60 sn'lik sınırlı bekleme, her boşta kanıtını kilit altında yineleyen ve hiç beklemeyen BIND ön denetiminden sonra çalışıyordu. Artık `apt.systemd.dai` ve `apt-helper` paket etkinliği sayılır, bekleme önce çalışır ve neyi beklediğini söyler (TR/EN günlük satırları; pencerenin sunucu denetimi notu paket yöneticisini ve duruşu anar); beklemeyen her kanıt paket etkinliğini yine reddeder ve önceden meşgul sayılan her şey yine meşgul sayılır. (2) ESRCH ile başarısız olan süreç başına `/proc` okuması, ENOENT gibi bitmiş bir süreçtir (`comm`, `status`, PackageKit'in `maps`'i; eksik harita ancak süreç dizini de yoksa sayılır); bin denetimde bir kadar ret oluyordu. (3) `cbb6e0f27` üzerinde ilk laboratuvar denemesi (Debian 13): basıştan yedi saniye sonra dpkg kilitlerini alan bir `apt-get install`, kurtarma kitinin geçiş denetleyicisinin (`internal/recoveryruntime` `runPromotionChecker`) 60 sn beklemesine ve `runtime_unsupported_protocol` ile reddetmesine yol açtı; `update.sh` EXIT tuzağından önce tipsiz "independent recovery runtime preparation is unconfirmed" ile çıktı, bu yüzden Agent işçi birimini başarısız bıraktı ve pencere kurtarma kaydının yalın "failed"ini hâlâ gelecek bir kurtarma sandı: kilitli, güncelleme düğmesi yok (kod kilidi tarayıcının sakladığı işlemde tutar; 2. laboratuvar denemesi böyle takılı bir sunucuda yeni bir tarayıcı oturumunun kilitli olmadığını ve güncellemeyi sunduğunu, güncellemenin de başarılı olduğunu doğruladı; asıl profil artık olmadığından "aynı tarayıcı kilitli kalır" yeniden denenmedi). Artık ilk sınırlı bekleme hazırlıktan önce çalışır (`preflight_host_idle_before_recovery_runtime`, tuzak yokken yazılan tipli değişmemiş duruş), geçiş niyetinden önce hâlâ meşgul denetleyici `runtime_package_manager_busy` / `runtime_operation_active` ve tipli `package_manager_busy` / `recovery_runtime_preflight_failed` değişmemiş duruşudur (niyetten sonra mevcut ret kalır), Agent tipsiz hazırlık duruşunun birimini temizler, pencere bu duruşu `recovery runtime-status --lang en|tr` ve her yanıtın ne anlama geldiğiyle kapatılabilir gösterir (kurulu sürüm ve veriler değişmedi; kitin kendi hazırlığı yarım kalmış olabilir); pencere kapatıldıktan sonra kart bunun ve kaydı neden tutmayan tipli duruşların için "kurulu sürümü değiştirmeden durdu" der. Raporlanmamış iki kaydın incelemesi (19 Kas): `fail_update_preflight` kendi özetini yalnız ilk denetim için yazar ("henüz EXIT tuzağı yok" yerine testle sabitlenen açık bir yerel bayrak); ön denetim ikilileri o denetim birini çalıştırmadan önce doğrulanır; yeniden deneme artık `.promote-*` kit kopyası bırakmaz; meşgul denetleyici reddi `Error` ve `ReasonCode` ile aynı okunur; tek bir sözleşme "unconfirmed" satırını, Agent ve web okuyucularını ve kurtarma aracının tipli bildirimlerini tek metin tutar; sağlamlaştırma: Agent'ın paket taraması paket yöneticisi adını yalnız root kullanıcı kimliği olan süreç için sayar (sahibi okunamayan yine sayılır), böylece sıradan bir hesabın `apt` ya da `dpkg` adlı süreci artık her güncellemeyi bekletmez. Canlı bekleme satırının görünmediği bulundu (Agent bir hatanın yalnız son satırını saklar); yapılmadı, alpha.139 için listelendi. Ayrıca: disk kullanımı işçisi yazdığı ve karşılaştırdığı her an için tek saat (`usageNow`), bütçesi için tekdüze saat kullanır (PR #328; gerçek saat testlerin sabitlediği 15 Kasım 12:00'yi geçince beş test başarısız oluyordu; sunucuda davranış değişmez); `cmd/panel` yarış testleri ölçülen sürelere göre 33 parçada koşar (bir parça, başarısız test olmadan, yavaş çalıştırıcılarda 8 dakikalık sınırına ulaşıyordu) ve go işinin araç zinciri sözleşmesi her `cmd/panel` testini go1.26.5 ile listeler, her biri tam bir parçada değilse başarısız olur (`fix/ci-race-slices`, PR #329'da ölçüldü, buraya birleştirildi). Açık: bekleme ile son dondurulmuş denetim arasındaki birkaç saniyede başlayan bir paket işi güncellemeyi yine değişiklik yapmadan durdurur; pencerede canlı bir "… bekleniyor" satırı yok; alpha.136 laboratuvarında hangi denetimin reddettiği ve noble'daki `comm` adları ölçülmedi. Sürüm sırası 136 → 137; şema 079'da kalır. Laboratuvar: bitti, iki deneme. 1. deneme (`cbb6e0f27`): güncellemenin kendi yeniden yüklemesinin başlattığı günlük denetimle Ubuntu ilk basışı tamamlandı; sona eren süreçler arasında 2.000 denetim hiç reddetmedi; (3)'ü buldu. 2. deneme (`e83a0fc41`, 19 Kasım, ağır hata yok): Debian'da beklemesiz boşta güncelleme; basıştan 7 sn sonra başlayan gerçek kurulum yaklaşık bir dakika bekletti ve değişiklik yapmadan durdu (düğme geri geldi, birim başarısız kalmadı), sonraki basış başarılı; kit denetleyicisi meşgul sunucuyla iki kez: tipli duruş, geride hiçbir şey yok (`.promote-*` yok, runtime-status "none"); niyetten sonra oluşturulan doğrulanamayan duruş: pencere, TR ve EN runtime-status, tek yeniden deneme tamamladı; apt-daily ile çakışan Ubuntu ilk basışı; sıradan hesabın `apt`/`dpkg`'si güncellemeyi bekletmedi (50/50 boşta), root'unki bekletti; önceki derlemenin takılı bıraktığı sunucu yeni bir tarayıcı oturumundan güncellendi ve eski başarısız birim temizlendi; dpkg kilidi tutulurken güncelleme hiç ilerlemedi. Denenmeyenler: bekleme satırları (hiçbir yerde tutulmuyor), posta kutusu açma, "aynı tarayıcı kilitli kalır". Bulunan ve alpha.139'a taşınan: kit geçişini kendisi tamamladıktan sonra sürüm kurtarmasının `runtime_changed` satırı; eski kapatılmamış bildirimi olan tarayıcının kartta o girişimi göstermesi; hiçbir yerde tutulmayan bekleme satırları. "Hazırlık doğrulanamadı" penceresi 2. denemeden sonra kendi doğru açılış cümlesini aldı (yalnız metin). **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.137.tr.md). | Yayımlandı |
+| 61 | `v0.1.0-alpha.138` sürüm incelemesi. **Aday.** İki işlik küçük bir sürüm (sahip, 19 Kasım 2026); yayımlanmış alpha.137'nin üzerine gerçek birleştirme commit'leriyle iki kulvar: `a139/programs-tab` (PR #330, sürüm PR'ı) ve `a139/mailbox-settings` (PR #332). (1) Bir alan adının programları ve yapay zekâ uygulamaları Site bölümünden çıkıp Site'ın hemen ardında kendi bölümlerine, Programlar'a geçer (on bölüm; açık menünün yanında 1440 piksele tek satırda sığsın diye sekmelerin yan boşluğu 12 → 10 piksel): "Programlar ve Python uygulamaları" ile "Yapay zekâ ve otomasyon" kartları değişmeden, sitenin kendi kartı önce; Site'ta Site türü, Uygulamalar, PHP ayarları, Yönlendirmeler kalır; Genel Bakış'ta bir kutucuk; her eski adres (`?tab=programs`, `?tab=ai`, alpha.132–137'nin `?section=site&part=programs|ai` adresi) onları Programlar'da açar ve yerinde yeniden yazılır (ayrıldığı bölümle adlandırılan parça kendi bölümüne götürülür); kılavuz (konu `domain.programs`, yapay zekâ konusu `domain.programs.ai`) ve "Site bölümü" ya da "Programlar sekmesi" diyen cümleler Programlar bölümünü anar (EN, TR). Bölüm, içinde yapılabilecek bir şey olduğunda çizilir: site zaten o türdeyse, alan adı o türden bir kayıt tutuyorsa ya da plan içeriyor ve site türü yenisini alıyorsa kart çizilir (`NEW_REFUSED_ON`: program `node`/`service_app`, yapay zekâ uygulaması `node`/`service_app`/`runtime_app` üzerinde reddedilir; sunucunun koşullarıyla aynıdır ve bir test onları kaynağından okur); ekip üyesine ve yalnız DNS alan adına asla; Node.js sitesinde yoktur. (2) Bir program ile bir yapay zekâ uygulaması artık birbirinin alan adını almaz: sunucu, hiçbir şey kaydetmeden önce, program kaydı olan (yayında ya da yalnız oluşturulmuş) ya da türü `runtime_app` olan bir alan adında yapay zekâ uygulamasının kurulmasını (işleyici ve işlemi; neden `program_created`) ve güncellenmesini, bir yapay zekâ uygulaması kuruluyken de programın yayına alınmasını (`app_installed`) reddeder; önceden ikisi de alan adını ötekinden alabiliyordu, ardından alan adı silinemiyordu ve ekran, plan ve türe bakarak, kalanı kaldıran kartı artık çizmiyordu. Alan adı listesi `holds_program` / `holds_app` taşır (ek alanlar; yanlışken ve ekip üyesine yazılmaz; bütün liste için birer sorgu) ve Programlar, plan ya da tür ne derse desin, bir alan adının tuttuğu her şeyin kartını çizer; böyle bir kart onu yönetmeye ve kaldırmaya yarayanları sunar, oluşturma formunu yalnız plan içeriyor ve tür yenisini alıyorsa, öteki türe hizmet veren alan adında onu yeniden yayımlayacak hiçbir şeyi sunmaz (yayına alma, Aç, güncelleme ya da kurulumu yeniden deneme yok). (3) Her posta kutusu satırının Diğer menüsü "Bağlantı bilgileri…" ile başlar: kullanıcı adı, IMAP, POP3 seçeneği ve SMTP, bağlantı noktası ve güvenlikle, satırın web postası bağlantısı, değer başına kopyalama ve Tümünü kopyala (sayfanın dilinde düz metin, parola asla) içeren panel penceresi; sunucu söylüyorsa giden posta oturum açma satırı; posta burada kurulu değilse engel satırı ve kapalı Tümünü kopyala; gösterilen ad doğrulanmamışsa bilinmiyor satırı ve kopyalanan metinde not; posta kutusu oluşturuldu bildirimi onu önerir ve eylemli bildirimler kapatılana dek kalır; salt-okur ekip üyesi onu Web postası'nın yanından açar. (4) `mail/setup` (Ayarlar sekmesi ve pencere) her alan adı için posta programlarına verilen posta adını söyler (`mailClientHost`: sunucunun kendi posta adı ya da postayı sunan bir sertifikayla seçilmiş `mail.<alan adı>`; autoconfig'de `mail_host` olarak taşınır); alt alan adlarına, sitesi olmayan alan adlarına ve adı kullanımda olan alan adlarına, bu sunucunun ne seçtiği ne de eşleşen sertifikayla sunduğu `mail.<alan adı>` veriliyordu. Bilinen sınırlar: Node.js çalıştırma denetimleri Site → Site türü altında kalır; sunucunun İngilizce yedek retleri hâlâ "Programs tab" der; postası olmayan sunucuda alt alan adının posta adı "ulaşmayabilir" der; pencerede kendiliğinden kurulum ipucu yok. Sürüm sırası 137 → 138; şema 079 olarak kalır. Laboratuvar: henüz yapılmadı. **Hiçbir P0 maddesi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.138.tr.md). | Aday |
 
 **Açık iş (alpha.95, 17 Ekim 2026): her bileşen için kurulu paket sürümünü okumak.** Bileşen taraması bir sürümü yalnız PHP-FPM ve Node.js için doldurur (çalışma ortamı örneklerinden). Agent'ın birim başına ikili yoklaması bir paket sürümü değildir, birkaç birim için güvenilmezdir ve birimi olmayan araçları kapsamaz; bu yüzden Bileşenler satırları sürümü yalnız bilindiği yerde söyler. Gerçek yanıt yeni bir Agent RPC'si ya da genişletilmiş `dpkg`/`pacman` sorguları ister; henüz hiçbir sürümün parçası değildir ([D-034 değişikliği](docs/DECISIONS.tr.md)). **Güncelleme 2026-10-21: v0.1.0-alpha.97 adayı için kaynakta uygulandı** ([D-036](docs/DECISIONS.tr.md)): bileşen taraması başına paket veritabanının salt-okur bir Agent sorgusu, Bileşenler satırlarında ve her bileşen sayfasında gösterilir; bilinmeyen, bilinmeyen olarak kalır. **Hâlâ açık:** hiçbir kurulu sunucuda ölçülmedi; açık iş ancak sahip Boston ve Frankfurt'ta gerçek sürümleri gördüğünde kapanır. **Güncelleme 2026-10-22: Boston ölçüldü.** Sahibin ekran görüntüsü, Boston'un alpha.97'de olduğunu ve Bileşenler'de gerçek sürümlerin göründüğünü gösterir (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0): D-036'nın kurulu bir sunucudaki ilk ölçümü. **Bundan sonra hâlâ açık:** Frankfurt'un alpha.97 durumu bildirilmedi, bu yüzden açık iş kapanmaz; tek bir sunucunun tek bir ekran görüntüsü de her bileşenin, meşgul bir paket yöneticisinin ya da korunan bir okumanın denetimi değildir. **Güncelleme 22 Ekim 2026 (alpha.98):** sahip Frankfurt'un alpha.98'de olduğunu bildirdi, ama Bileşenler'deki sürümlerini bildirmedi; bu yüzden açık iş açık kalır. **Güncelleme 22 Ekim 2026 (alpha.100; alpha.101 adayıyla kaydedildi):** sahibin Frankfurt ekranı Bileşenler'de paket sürümlerini gösterdi; phpMyAdmin'in kısa biçimi "5.2.2-really…" okunuyordu, çünkü Debian'daki bir "really" sürümü gerçekte dağıtılan sürüme kısaltılmıyordu. Bu, v0.1.0-alpha.101 adayı için kaynakta düzeltildi ([D-036 notu](docs/DECISIONS.tr.md)). Açık iş açık kalır: düzeltilmiş kısa biçim henüz hiçbir kurulu sunucuda görülmedi.
 

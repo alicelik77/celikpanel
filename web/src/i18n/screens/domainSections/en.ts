@@ -1,5 +1,5 @@
 // SCREEN catalogue part "domainSections" (alpha.132): the sections of a
-// domain's page (ten since alpha.139) - the row of sections, the "On this page" index of a
+// domain's page (ten since alpha.138) - the row of sections, the "On this page" index of a
 // section's parts, the view-only note of a team member, and the page of a
 // section the plan does not include (whom to ask, what to ask for).
 // Key prefixes kept here: domain.section., domain.part., domain.notInPlan.,

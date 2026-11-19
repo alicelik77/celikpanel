@@ -10,7 +10,7 @@ import { whoWord } from './kit/words';
 import { MailHostProtection } from './domain/MailHostProtection';
 import { decodeCoverageLine } from './domain/coverageLines';
 
-// One mailbox's connection settings (alpha.139; owner, 19 Nov 2026: "her email
+// One mailbox's connection settings (alpha.138; owner, 19 Nov 2026: "her email
 // için de bir ayar bilgisi göstersek fena olmaz"). Whoever makes a mailbox
 // usually hands its settings to the person who will use it: here they are for
 // this one address, each ready to copy, and once more as one plain text for a

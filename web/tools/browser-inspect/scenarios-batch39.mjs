@@ -1,4 +1,4 @@
-// Batch 39 (2026-11-19): a domain's programs in their own section (alpha.139).
+// Batch 39 (2026-11-19): a domain's programs in their own section (alpha.138).
 //
 //   y39programs  A program site (running program) as the administrator and as
 //                a customer: the section row with Programs right after Site,
@@ -14,7 +14,7 @@
 //                Programs section with both create parts, as the
 //                administrator and as a customer; a customer whose plan has no
 //                program or app right (no Programs in the row); and the
-//                address of alpha.132-138 (?section=site&part=programs)
+//                address of alpha.132-137 (?section=site&part=programs)
 //
 // Every answer comes from the mock on 127.0.0.1 through overrides (SAMPLE
 // data shaped as the Panel answers); nothing is changed or contacted.
@@ -136,7 +136,7 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
     };
 
     // A domain that holds both (an AI app installed over a program before
-    // alpha.139 refused that): the app's site still draws the program's card,
+    // alpha.138 refused that): the app's site still draws the program's card,
     // to manage and remove it, with no form in either card.
     scenarios.y39mixed = async () => {
         for (const role of ['admin', 'customer']) {

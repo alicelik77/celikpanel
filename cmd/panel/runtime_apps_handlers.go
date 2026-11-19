@@ -790,8 +790,8 @@ func (p *Panel) handleRuntimeAppDeploy(w http.ResponseWriter, r *http.Request, d
 	if p.refuseRuntimeNewUse(w, r, a.Kind, site) {
 		return
 	}
-	// alpha.139: a deploy switches the domain to the program. An AI app on
-	// the domain (installed over a created program before alpha.139 refused
+	// alpha.138: a deploy switches the domain to the program. An AI app on
+	// the domain (installed over a created program before alpha.138 refused
 	// that) would lose its domain, so the app is removed first.
 	if in, has, err := p.serviceAppInstallForDomain(ctx, domainID); err != nil {
 		writeServerError(w, err)

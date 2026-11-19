@@ -1,4 +1,4 @@
-// Programs (alpha.139): what runs on the domain — a program or a Python app
+// Programs (alpha.138): what runs on the domain — a program or a Python app
 // the customer uploads, and the AI and automation apps — in its own place in
 // the row, right after Site (owner, 19 Nov 2026). The two cards are the ones
 // Site held.
@@ -11,7 +11,7 @@
 // a card offers what manages and removes it, never a create or install form:
 //   - offerNew: the plan includes it and the type lets a new one be added;
 //   - elsewhere: the domain serves the other kind (a domain that holds both,
-//     from before alpha.139), so nothing that would publish this one again
+//     from before alpha.138), so nothing that would publish this one again
 //     is offered.
 //
 // Programlar: alan adında çalışan program, Python uygulaması ve yapay zekâ ve

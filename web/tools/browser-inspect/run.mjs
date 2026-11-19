@@ -1822,7 +1822,7 @@ const scenarios = {
 (await import('./scenarios-batch31.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 (await import('./scenarios-batch32.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 (await import('./scenarios-batch33.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
-// alpha.139: each mailbox's own connection settings.
+// alpha.138: each mailbox's own connection settings.
 (await import('./scenarios-batch40.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // alpha.134: database rights by exact name.
 (await import('./scenarios-batch34.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
@@ -1830,7 +1830,7 @@ const scenarios = {
 (await import('./scenarios-batch35.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // alpha.135: the screens the release integration touched.
 (await import('./scenarios-batch36.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
-// alpha.139: a domain's programs in their own section.
+// alpha.138: a domain's programs in their own section.
 (await import('./scenarios-batch39.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 30 ---
 

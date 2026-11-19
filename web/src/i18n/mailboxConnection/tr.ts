@@ -1,6 +1,6 @@
 import type { MailboxConnectionKey } from './en';
 
-// Bir posta kutusunun bağlantı bilgileri penceresinin Türkçe metni (alpha.139).
+// Bir posta kutusunun bağlantı bilgileri penceresinin Türkçe metni (alpha.138).
 
 export const trMailboxConnection: Record<MailboxConnectionKey, string> = {
     'mconn.lead': 'Bu posta kutusunu bir posta programına (Outlook, Thunderbird, Apple Mail, telefon) eklemek için gerekenler.',

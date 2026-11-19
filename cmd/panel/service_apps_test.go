@@ -400,7 +400,7 @@ func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
 	}
 }
 
-// alpha.139: an app is not installed on a domain that a program or Python
+// alpha.138: an app is not installed on a domain that a program or Python
 // app uses, deployed or only created: it would take the domain from the
 // program. Refused before anything is recorded; the other site types keep
 // their answers.
@@ -465,7 +465,7 @@ func TestServiceAppRefusedWhereAProgramUsesTheDomain(t *testing.T) {
 	}
 }
 
-// A domain that already holds both (from before alpha.139): updating the app
+// A domain that already holds both (from before alpha.138): updating the app
 // would publish it over the program, so it is refused; the app can still be
 // stopped and removed.
 func TestServiceAppUpdateRefusedWhereAProgramUsesTheDomain(t *testing.T) {

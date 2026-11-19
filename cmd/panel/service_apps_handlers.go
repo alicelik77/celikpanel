@@ -450,7 +450,7 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 			"Nothing was changed: this domain runs a Node.js application or another app. Use a separate domain or subdomain for "+app.Name+".", nil)
 		return
 	}
-	// alpha.139: a program or Python app uses this domain, deployed or only
+	// alpha.138: a program or Python app uses this domain, deployed or only
 	// created. An app would take the domain from it, and the domain could not
 	// be deleted while the program's card is not shown. The mirror of the
 	// program's own refusal of a domain with an app (runtime_apps_handlers.go,
@@ -551,7 +551,7 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 }
 
 // serviceAppReasonProgramCreated: an install refused because a program or
-// Python app uses the domain (alpha.139).
+// Python app uses the domain (alpha.138).
 const serviceAppReasonProgramCreated = "program_created"
 
 func serviceAppProgramRefusal(appName string) string {
@@ -701,8 +701,8 @@ func (p *Panel) handleServiceAppUpdate(w http.ResponseWriter, r *http.Request, d
 	if p.refuseServiceAppOffer(w, r, app, in.SubscriptionID) {
 		return
 	}
-	// alpha.139: an update publishes the app at the domain again. On a domain
-	// a program uses (one that holds both, from before alpha.139) it would
+	// alpha.138: an update publishes the app at the domain again. On a domain
+	// a program uses (one that holds both, from before alpha.138) it would
 	// take the domain from the program: refused, as a new install is.
 	if _, hasProgram, err := p.runtimeAppForDomain(ctx, domainID); err != nil {
 		writeServerError(w, err)

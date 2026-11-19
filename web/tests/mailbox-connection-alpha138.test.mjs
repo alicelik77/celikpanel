@@ -1,4 +1,4 @@
-// alpha.139 (owner, 19 Nov 2026: "email için genel olarak ayarlar tabı var
+// alpha.138 (owner, 19 Nov 2026: "email için genel olarak ayarlar tabı var
 // ama her email için de bir ayar bilgisi göstersek fena olmaz"): each mailbox
 // shows its own connection settings.
 //
@@ -340,7 +340,7 @@ scenario('the read could not be made: what could not be read, Retry, no values a
 const problemCases = [
   ['mail not installed here', setup({ autoconfig: unavailable('mail_not_here') }), 'notHere', 'blocked'],
   ['the server’s mail name not set', setup({ autoconfig: unavailable('mail_host_unknown') }), 'nameUnset', 'unknown'],
-  // Since alpha.139 the server tells a subdomain, a domain without a site or an
+  // Since alpha.138 the server tells a subdomain, a domain without a site or an
   // unreadable decision its served name (mailToldHostIfServed); the stand-in
   // stays only while mail is not here or the server has no mail name, and the
   // set-up reason of such an answer can still be one of these.
@@ -449,7 +449,7 @@ test('the window’s words: every key in English and Turkish with the same value
   assert.doesNotMatch(window, /fetch\(|['"`]\/api\/v1/);
 });
 
-// alpha.139 (server side): a subdomain, a domain without a site or one whose
+// alpha.138 (server side): a subdomain, a domain without a site or one whose
 // set-up name is in use is told the server's own mail name like any other
 // domain (cmd/panel mailToldHostIfServed); autoconfig carries it, so the
 // Settings tab shows it in its three cards and the window confirms it.

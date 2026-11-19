@@ -71,7 +71,7 @@ export function ToastContainer() {
         // A failure or a warning stays until it is closed (owner feedback
         // 2026-10-31): the person has to act on it, and a sentence that is
         // gone after five seconds cannot be read twice or acted on. A
-        // confirmation leaves by itself, unless it offers a next step (alpha.139:
+        // confirmation leaves by itself, unless it offers a next step (alpha.138:
         // "Show connection settings" after a mailbox is made): a button gone
         // after five seconds cannot be pressed. At most the four newest stay.
         // Hata ve uyari kapatilana dek kalir; onay kendiliginden gider, dugmesi

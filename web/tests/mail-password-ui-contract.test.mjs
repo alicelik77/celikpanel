@@ -66,7 +66,7 @@ test('mailbox password action and handler both fail closed for read-only access'
     ),
   );
   // alpha.135: the row's actions are words (MailboxActions); a list that only
-  // reads gets the webmail link and (alpha.139) the read-only connection
+  // reads gets the webmail link and (alpha.138) the read-only connection
   // settings, before any changing action is built.
   assert.ok(mailSource.includes('onPassword={() => openPasswordDialog(a)}'));
   const actions = mailSource.slice(mailSource.indexOf('function MailboxActions('), mailSource.indexOf('function Tab('));

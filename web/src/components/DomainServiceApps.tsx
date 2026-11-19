@@ -46,7 +46,7 @@ function Notice({ tone = 'warning', children }: { tone?: 'warning' | 'danger' | 
     return <div className={`rounded-lg border px-3 py-2.5 text-sm ${palette}`}>{children}</div>;
 }
 
-// offerNew (alpha.139): false where the site's type refuses a new app
+// offerNew (alpha.138): false where the site's type refuses a new app
 // (sections.ts NEW_REFUSED_ON); the card then shows only the app the domain
 // already holds, so it can be managed and removed, and no catalogue.
 // elsewhere: the domain serves a program, not this app (a domain that holds

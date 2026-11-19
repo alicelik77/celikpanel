@@ -1,14 +1,14 @@
-// alpha.139: a domain's programs have their own section in the row, right
+// alpha.138: a domain's programs have their own section in the row, right
 // after Site (owner, 19 Nov 2026: "programs under Site did not feel right;
 // put them in the menu, easier to reach"). It holds the two cards Site held,
 // unchanged — programs and Python apps, and AI & automation — with the
 // conditions they had there; Site keeps what the site is. Every older
 // address of the cards (?tab=programs, ?tab=ai, and ?section=site&part=… of
-// alpha.132–138) opens them in the new section. A site that IS a program or
+// alpha.132–137) opens them in the new section. A site that IS a program or
 // a service app still leads with its own card (alpha.133), now in Programs,
 // and the Overview's Programs tile says what runs there.
 //
-// alpha.139: Programlar satırda Site'ın hemen ardında kendi bölümündedir;
+// alpha.138: Programlar satırda Site'ın hemen ardında kendi bölümündedir;
 // eski adresler oraya götürür; Site yalnız sitenin ne olduğunu tutar.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -96,7 +96,7 @@ test('the screen refuses a new program or AI app on exactly the site types the s
     // runtime_apps_handlers.go, create: `has` (an AI app installed) || node || service_app.
     programs: refusedTypes('runtime_apps_handlers.go', '} else if has || site.ProjectType == "node"'),
     // service_apps_handlers.go, install: node || service_app, then a program
-    // on the domain (alpha.139) || runtime_app.
+    // on the domain (alpha.138) || runtime_app.
     ai: [
       ...refusedTypes('service_apps_handlers.go', 'if site.ProjectType == "node" || site.ProjectType == "service_app" {'),
       ...refusedTypes('service_apps_handlers.go', '} else if hasProgram || site.ProjectType == "runtime_app" {'),
@@ -156,7 +156,7 @@ test('every older address of the two cards leads to them in Programs', () => {
   for (const [search, place] of [
     ['tab=programs', { section: 'programs', part: 'programs' }],
     ['tab=ai', { section: 'programs', part: 'ai' }],
-    // The canonical address of alpha.132–138, in history, bookmarks and shared links.
+    // The canonical address of alpha.132–137, in history, bookmarks and shared links.
     ['section=site&part=programs', { section: 'programs', part: 'programs' }],
     ['section=site&part=ai', { section: 'programs', part: 'ai' }],
     ['section=programs&part=ai', { section: 'programs', part: 'ai' }],

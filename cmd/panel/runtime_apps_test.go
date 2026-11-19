@@ -498,7 +498,7 @@ func TestRuntimeDeployIsOneDurableOperationAndPollingNeverMutates(t *testing.T) 
 	}
 }
 
-// alpha.139: a domain that holds a program and an AI app (the app installed
+// alpha.138: a domain that holds a program and an AI app (the app installed
 // over a created program before the install refused that). Deploying would
 // take the domain from the app, so it is refused until the app is removed;
 // what the program has stays manageable and removable.

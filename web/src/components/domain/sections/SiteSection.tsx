@@ -2,7 +2,7 @@
 // Hosting type, Applications, PHP and Redirects, one below the other. The
 // insides are unchanged; the section's own redesign (D4, D5) comes in a later
 // release. Programs and AI & automation have their own section since
-// alpha.139 (ProgramsSection.tsx).
+// alpha.138 (ProgramsSection.tsx).
 // Site: sitenin ne olduğu ve isteklerin ona nasıl ulaştığı; eski barındırma
 // tipi, uygulamalar, PHP ve yönlendirmeler alt alta.
 import { lazy } from 'react';

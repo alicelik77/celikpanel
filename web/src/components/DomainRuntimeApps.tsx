@@ -137,7 +137,7 @@ function Refusal({ error }: { error: ApiError | null }) {
     );
 }
 
-// offerNew (alpha.139): false where the site's type refuses a new program
+// offerNew (alpha.138): false where the site's type refuses a new program
 // (sections.ts NEW_REFUSED_ON); the card then shows only the program the
 // domain already holds, so it can be managed and removed, and no form.
 // elsewhere: the domain serves an AI app, not this program (a domain that

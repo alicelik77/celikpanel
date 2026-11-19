@@ -3,7 +3,7 @@ import type { TranslationKey } from './en';
 import { enMailboxConnection, type MailboxConnectionKey } from './mailboxConnection/en';
 import { trMailboxConnection } from './mailboxConnection/tr';
 
-// Route-scoped copy (alpha.139, like ./mailboxRecovery.ts): one mailbox's
+// Route-scoped copy (alpha.138, like ./mailboxRecovery.ts): one mailbox's
 // connection settings window. It is bundled with that window, never with the
 // boot.
 // Sayfaya bağlı metin: önyükleme paketine girmez.

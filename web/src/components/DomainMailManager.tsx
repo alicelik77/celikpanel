@@ -89,7 +89,7 @@ const MailDeliveryLookup = lazy(() => import('./MailDeliveryLookup'));
 const DomainMailOptions = lazy(() => import('./DomainMailOptions'));
 // alpha.130: a mailbox's recovery address (own chunk).
 const MailboxRecoveryDialog = lazy(() => import('./MailboxRecoveryDialog'));
-// alpha.139: one mailbox's connection settings, from the Settings tab's own read (own chunk).
+// alpha.138: one mailbox's connection settings, from the Settings tab's own read (own chunk).
 const MailboxConnectionDialog = lazy(() => import('./MailboxConnectionDialog'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
@@ -124,7 +124,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const [autoreplyAccount, setAutoreplyAccount] = useState<EmailAccount | null>(null);
     const [recoveryAccount, setRecoveryAccount] = useState<EmailAccount | null>(null);
     const [limitAccount, setLimitAccount] = useState<EmailAccount | null>(null);
-    // alpha.139: the address whose connection settings window is open. Seeing
+    // alpha.138: the address whose connection settings window is open. Seeing
     // the row is enough: the window only reads, nothing secret is in it.
     // Bağlantı bilgileri penceresi açık olan adres; satırı gören açabilir.
     const [connectionFor, setConnectionFor] = useState<string | null>(null);
@@ -230,7 +230,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             // alpha.135: mail an earlier deletion had left at this address was
             // put aside first; only the administrator is told, in one line.
             const left = data.left_held as { bytes?: number; remove_after?: string } | undefined;
-            // alpha.139: the result offers the new mailbox's connection settings,
+            // alpha.138: the result offers the new mailbox's connection settings,
             // the ones its maker usually hands on (one key per mailbox).
             showToast('success', left && typeof left.remove_after === 'string'
                 ? `${t('mail.accountCreated')} ${t('mail.leftHeld', { size: sizeWord(Math.max(left.bytes ?? 0, 0), locale), date: formatDate(left.remove_after, locale) })}`
@@ -929,7 +929,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 // A mailbox row's actions in words (alpha.135; drawing D7): "Webmail" opens
 // webmail with the mailbox's address filled in, only when webmail works;
 // "Password…" next to it; the rest in the "More" menu, the destructive ones
-// last. alpha.139: "Connection settings…" is the menu's first entry; it only
+// last. alpha.138: "Connection settings…" is the menu's first entry; it only
 // reads, so it is never off, and a list that only reads (no "Password…", no
 // menu) shows it beside "Webmail" instead: a menu of one entry hides it.
 // Posta kutusu satırının işlemleri sözcükle: Web posta (çalışıyorsa) ve

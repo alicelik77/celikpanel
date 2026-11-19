@@ -155,7 +155,7 @@ func (p *Panel) mailClientHost(ctx context.Context, domainID int, domain, server
 }
 
 // mailToldHostIfServed is the name a domain's mail programs are told
-// whatever its site answers (alpha.139): mailClientHost with the server's mail
+// whatever its site answers (alpha.138): mailClientHost with the server's mail
 // name. That is the name this server serves with a valid certificate: Postfix's
 // myhostname and Dovecot's default are the server's mail name with its mail
 // host certificate (cmd/agent selectedMailHostCertificate), and mail.<domain>
@@ -373,7 +373,7 @@ func (p *Panel) mailAutoconfigView(ctx context.Context, domainID int, domain str
 		return view
 	}
 	if !plan.available {
-		// alpha.139: whether the site answers the set-up requests (a
+		// alpha.138: whether the site answers the set-up requests (a
 		// subdomain, no site, a name in use) says nothing about the mail
 		// server: mail programs are told the same name as anywhere else.
 		view.Reason = plan.reason

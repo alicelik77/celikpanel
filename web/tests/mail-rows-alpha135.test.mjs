@@ -178,7 +178,7 @@ for (const role of ['admin', 'reseller', 'customer', 'additional_user']) {
   });
 }
 
-scenario('team member who only reads: the webmail link and (alpha.139) the connection settings, nothing that changes', async () => {
+scenario('team member who only reads: the webmail link and (alpha.138) the connection settings, nothing that changes', async () => {
   serve({ role: 'additional_user' });
   await mount({ readOnly: true });
   assert.deepEqual(visible('info@example.com'), ['webmail', 'connection']);

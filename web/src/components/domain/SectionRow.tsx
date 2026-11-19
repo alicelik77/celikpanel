@@ -3,7 +3,7 @@
 // include is drawn faded in its own place, with a lock, and still opens (its
 // page says whom to ask). The order of the sections never changes. On a narrow screen the row scrolls sideways inside itself and
 // keeps the active section in view; the page never scrolls sideways. The
-// tabs' side padding is sized so the ten sections (Programs since alpha.139)
+// tabs' side padding is sized so the ten sections (Programs since alpha.138)
 // fit one line at 1440 px beside the open menu, in Turkish and English.
 // Keyboard: the arrow keys, Home and End move between sections, Enter or
 // Space opens one (a section loads its own screens, so moving does not).

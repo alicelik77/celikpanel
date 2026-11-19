@@ -102,7 +102,7 @@ func (p *Panel) handleMailClientSetupWith(w http.ResponseWriter, r *http.Request
 	host := "mail." + domain
 	if autoconfig != nil && autoconfig.MailHost != "" {
 		// alpha.130: the same mail server name the mail programs are told;
-		// since alpha.139 whatever the set-up reason (mailToldHostIfServed).
+		// since alpha.138 whatever the set-up reason (mailToldHostIfServed).
 		// Only mail not on this server or no mail name of the server keep
 		// mail.<domain>, and then autoconfig carries no mail_host: the
 		// screens say the name is not confirmed.

@@ -99,10 +99,10 @@ test('the audit words cover the twelve actions and the resource', () => {
 });
 
 test('the tab, the screen part and its budget are wired', () => {
-  // alpha.132: Programs is a part of a domain's page; alpha.139: of its own Programs section.
+  // alpha.132: Programs is a part of a domain's page; alpha.138: of its own Programs section.
   const registry = read('../src/components/domain/sections.ts');
-  // alpha.139: offered only where the server would accept a new one, and
-  // drawn wherever the domain holds one (tests/programs-section-alpha139).
+  // alpha.138: offered only where the server would accept a new one, and
+  // drawn wherever the domain holds one (tests/programs-section-alpha138).
   assert.match(registry, /id: 'programs', capabilities: \[\],\s*shown: \(v\) => !v\.teamMember && site\(v\) && \(v\.type === 'runtime_app' \|\| v\.holds\.program\s*\|\| \(\(v\.open\('program_apps'\) \|\| v\.open\('python_apps'\)\) && !newRefused\('programs', v\.type\)\)\)/);
   assert.match(registry, /programs: 'runtime\.tab',/);
   const detail = read('../src/components/domain/sections/ProgramsSection.tsx');
@@ -263,11 +263,11 @@ test('the administrator offers on a reduced server only after accepting every na
   } finally { await unmount(); }
 });
 
-// alpha.139: on a domain whose type refuses a new program, the card offers no
+// alpha.138: on a domain whose type refuses a new program, the card offers no
 // form; on a domain that serves an AI app beside this program ("elsewhere"),
 // it offers nothing that would publish the program again, and keeps what
 // manages and removes it.
-test('alpha.139: no create form where the type refuses one; elsewhere, no deploy and no Open, but stop, log and removal', async () => {
+test('alpha.138: no create form where the type refuses one; elsewhere, no deploy and no Open, but stop, log and removal', async () => {
   await mount(React.createElement(DomainRuntimeApps, { domainId: 1, domainName: 'example.com', offerNew: false }), () => ({ ...view, app: null }));
   try {
     const shown = text();

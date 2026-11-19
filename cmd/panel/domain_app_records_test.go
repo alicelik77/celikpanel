@@ -9,7 +9,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/core"
 )
 
-// alpha.139: the domain list says which domains hold a program or Python app
+// alpha.138: the domain list says which domains hold a program or Python app
 // record and which an AI app record, so the domain page can draw the card
 // that removes what keeps the domain from being deleted, whatever the plan
 // or the site type say. The fields are additive (absent when false); a team

@@ -1,5 +1,5 @@
 // The sections of a domain's page (nine in alpha.132, ten since Programs got
-// its own in alpha.139) and what each holds.
+// its own in alpha.138) and what each holds.
 //
 // This file decides, from the viewer and the domain alone, which sections and
 // which parts of them are drawn; it has no React and no copy, so the decision
@@ -154,7 +154,7 @@ export interface SectionInput {
      */
     server: { mail: boolean; databases: boolean } | null;
     /**
-     * alpha.139: what the domain holds, as the domain list says
+     * alpha.138: what the domain holds, as the domain list says
      * (holds_program, holds_app): a program or Python app record, an AI app
      * record. Absent for a team member and from an older server.
      */
@@ -189,14 +189,14 @@ const site = (v: Viewer) => !v.dnsOnly;
 
 // The site types on which a NEW program or AI app is refused, so the screen
 // never offers a form whose press would fail. The server's checks stay the
-// second line of defence; tests/programs-section-alpha139.test.mjs reads them
+// second line of defence; tests/programs-section-alpha138.test.mjs reads them
 // and fails when the two disagree:
 //   - a program: cmd/panel/runtime_apps_handlers.go, the create handler,
 //     `has || site.ProjectType == "node" || site.ProjectType == "service_app"`
 //     (`has`: an AI app installed, which makes the type service_app);
 //   - an AI app: cmd/panel/service_apps_handlers.go, the install handler,
 //     `site.ProjectType == "node" || site.ProjectType == "service_app"`, and
-//     `hasProgram || site.ProjectType == "runtime_app"` (alpha.139: a
+//     `hasProgram || site.ProjectType == "runtime_app"` (alpha.138: a
 //     program, deployed or only created, uses the domain).
 // What a domain already holds is drawn whatever its type or plan says, so it
 // can be removed (holds below; ProgramsSection.tsx); only the create and
@@ -433,7 +433,7 @@ export function legacyPlace(tab: string | null | undefined, sub?: string | null)
 }
 
 // The section that holds each part. A part belongs to one section only, so
-// an address that names a part under the section it left (alpha.132–138:
+// an address that names a part under the section it left (alpha.132–137:
 // ?section=site&part=programs or …&part=ai) leads to where it is now.
 // Her parçanın bölümü; eski bölümüyle adlandırılan parça yeni yerinde açılır.
 const PART_SECTION = new Map<string, SectionId>(

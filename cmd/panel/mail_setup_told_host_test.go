@@ -13,7 +13,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// alpha.139 (each mailbox's connection settings): the mail server name of a
+// alpha.138 (each mailbox's connection settings): the mail server name of a
 // domain's setup answer is the name its mail programs are told, whatever its
 // site answers the set-up requests with. A subdomain, a domain without a site
 // and a domain whose set-up name is in use were told mail.<domain>, a name this

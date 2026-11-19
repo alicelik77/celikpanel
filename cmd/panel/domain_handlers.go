@@ -41,7 +41,7 @@ type DomainResponse struct {
 	// The server refuses them anyway; absent when nothing is closed and for
 	// the administrator, whom the gates do not narrow.
 	RightsClosed []string `json:"rights_closed,omitempty"`
-	// HoldsProgram and HoldsApp (alpha.139): a program or Python app record,
+	// HoldsProgram and HoldsApp (alpha.138): a program or Python app record,
 	// and an AI or automation app record, exist on the domain (deployed,
 	// only created or failed). Either keeps the domain from being deleted
 	// until it is removed, so the page draws its card whatever the plan or
@@ -189,7 +189,7 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// alpha.139: what holds a program or an app, for everyone but a team
+	// alpha.138: what holds a program or an app, for everyone but a team
 	// member. The list itself is still known if this read fails; the page
 	// then draws those cards by the plan and the type, as before.
 	var appRecords domainAppRecords

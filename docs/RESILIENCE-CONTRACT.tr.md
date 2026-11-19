@@ -8126,3 +8126,52 @@ bağlantıyı tutar.
 - **Açık.** Paket araçlarının her desteklenen dağıtımdaki `comm` adları
   ve kullanıcı kimlikleri kaynaklarından ve paketlemelerinden belirlendi,
   her birinde ölçülmedi. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a139/programs-tab (bir program ile bir yapay zekâ uygulaması artık birbirinin alan adını almaz; bir alan adının tuttuğu her şey kaldırıldığı yerde gösterilir; şema değişikliği yok; ilke 1 ve 3; D-022; D-024; D-025; 2026-11-19, aday alpha.138)
+
+- **Neden burada.** Aşağıdaki üç ret, bir alan adında bir hizmeti
+  yayımlayan yaşam döngüsü işlemlerinin (yapay zekâ uygulamasının kurulması
+  ve güncellenmesi, programın yayına alınması) kabul kararlarıdır: bu
+  sözleşmenin 3. ilkesine göre güvensiz işlemi kendi sınırında durdururlar,
+  1. ilkesine göre de çalışan bir hizmet sessizce değiştirilmez.
+- **Kusur.** Bir alan adı aynı anda bunlardan yalnız birine yayımlanır
+  (sitenin türü `runtime_app` ya da `service_app`). Programı oluşturulmuş
+  (tür ancak programın yayına alınmasıyla değişir) ya da yayında olan bir
+  alan adına yapay zekâ uygulaması kurulabiliyor, yayındaki bir programın
+  üzerine yapay zekâ uygulaması güncellenebiliyor (güncelleme onu yeniden
+  yayımlar), bir yapay zekâ uygulaması alan adına hizmet verirken program
+  yayına alınabiliyordu. Her biri alan adını ötekinden alıyor, ötekinin
+  birimi ulaşılamaz biçimde çalışmayı sürdürüyordu; ardından alan adı
+  silinemiyordu (`refuseDomainDeleteWithRuntimeApp` / `...WithServiceApp`),
+  sayfa da plana ve türe bakarak onu kaldıran kartı artık çizmiyordu.
+- **Sözleşme.** `handleServiceAppInstall`, alan adında bir `runtime_apps`
+  kaydı varsa ya da türü `runtime_app` ise, uygunluk yoklamasından, onaydan
+  ve her kayıttan önce `program_created` ile reddeder; kurulumun işlemi
+  (`createServiceAppInstall`) `runtime_apps`'i yeniden sayar, böylece arada
+  oluşturulan bir program da aynı biçimde reddedilir. `handleServiceAppUpdate`
+  aynı nedenle reddeder. `handleRuntimeAppDeploy`, bir `service_app_installs`
+  kaydı varken, hiçbir işlem kaydedilmeden önce `app_installed` ile reddeder.
+  Durdurma, başlatma, günlükler, anahtarlar, ayarlar ve kaldırma iki tarafta
+  da izinli kalır. Alan adı listesi `holds_program` / `holds_app` taşır
+  (bütün liste için birer sorgu; yanlışken ve ekip üyesine yazılmaz); sayfa,
+  plan ya da tür ne derse desin bir alan adının tuttuğu her şeyin kartını
+  çizer; oluşturma ya da kurma formu yalnız plan içeriyor ve tür yenisini
+  alıyorsa görünür (`NEW_REFUSED_ON`, sunucunun koşullarıyla aynı), öteki
+  türe hizmet veren alan adında onu yeniden yayımlayacak hiçbir şey görünmez.
+- **Şema / sürüm geçişi.** Şema değişikliği yok; iki ek yanıt alanı.
+  alpha.137'ye dönmek önceki kabulleri geri getirir.
+- **Kurtarma.** İkisini birden tutan bir alan adı (önceki bir sürümden) iki
+  kartı da gösterir; sahip istemediğini var olan kaldırma işlemiyle kaldırır,
+  ardından alan adı silinebilir.
+- **Kanıt.** `cmd/panel/service_apps_test.go`
+  (`TestServiceAppRefusedWhereAProgramUsesTheDomain`,
+  `TestServiceAppInstallTransactionRefusesAProgram`,
+  `TestServiceAppUpdateRefusedWhereAProgramUsesTheDomain`),
+  `cmd/panel/runtime_apps_test.go`
+  (`TestRuntimeDeployRefusedWhileAnAppUsesTheDomain`),
+  `cmd/panel/domain_app_records_test.go`;
+  `web/tests/programs-section-alpha138.test.mjs` (ekranın ret tablosu
+  sunucunun kaynağındaki koşullarla karşılaştırılır; tutulan kartlar role,
+  türe ve plana göre). Henüz laboratuvarda denenmedi.
+- **Açık.** Sunucunun İngilizce yedek retleri hâlâ "the Programs tab" der.
+  **Hiçbir P0 işi kapanmadı.**

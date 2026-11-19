@@ -274,7 +274,7 @@ test('error and warning toasts stay until closed; success leaves after five seco
     let view;
     try {
         await act(async () => { view = Renderer.create(React.createElement(ToastContainer)); });
-        // alpha.139: a confirmation that offers a next step stays until closed.
+        // alpha.138: a confirmation that offers a next step stays until closed.
         await act(async () => { showToast('error', 'failed'); showToast('warning', 'careful'); showToast('success', 'done'); showToast('success', 'made', { action: { label: 'next', run() {} } }); });
         assert.deepEqual(timers.map(timer => timer.ms), [5000], 'only the confirmation without a next step has a timer');
         await act(async () => timers[0].fn());

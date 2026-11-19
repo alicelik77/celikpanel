@@ -218,7 +218,7 @@ export const enMailDatabasesScreens = {
     'mail.row.limit': 'Sending limit…',
     'mail.row.empty': 'Empty…',
     'mail.row.delete': 'Delete…',
-    // alpha.139: one mailbox's connection settings (the window's own words ship with it: i18n/mailboxConnection).
+    // alpha.138: one mailbox's connection settings (the window's own words ship with it: i18n/mailboxConnection).
     'mail.row.connection': 'Connection settings…',
     'mail.row.connectionShow': 'Show connection settings',
     'mail.leftHeld': 'Mail an earlier deletion had left at this address ({size}) was put aside until {date} (Maintenance → What deletions left); the new mailbox starts empty.',

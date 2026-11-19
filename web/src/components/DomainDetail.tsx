@@ -34,7 +34,7 @@ import {
 import { SectionRow, SECTION_PANEL_ID, sectionTabId } from './domain/SectionRow';
 import type { DomainSectionProps } from './domain/SectionParts';
 
-// The sections of the page (alpha.132; Programs since alpha.139), each in a
+// The sections of the page (alpha.132; Programs since alpha.138), each in a
 // file of its own and fetched when it is opened: the page's own bundle stays
 // the shell (the row, the header, the facts) and the screens of a section
 // load with it. The page bundle had less than 1 KiB under its limit, and the
@@ -82,7 +82,7 @@ interface Domain {
     site_config?: { state: string; kept_by_choice?: boolean; pending_reason?: string; kind?: string };
     /** The permissions the subscription's rights close (alpha.117, D-042); absent when none. */
     rights_closed?: string[];
-    /** alpha.139: a program or Python app record, an AI app record, is on the domain; absent when not. */
+    /** alpha.138: a program or Python app record, an AI app record, is on the domain; absent when not. */
     holds_program?: boolean;
     holds_app?: boolean;
 }

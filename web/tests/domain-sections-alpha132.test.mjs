@@ -55,7 +55,7 @@ const producers = [
   // Every tab and sub-tab the page had, for links written by hand or stored.
   ['tab overview', 'overview', null, { section: 'overview' }],
   ['tab apps', 'apps', null, { section: 'site', part: 'apps' }],
-  // alpha.139: programs and AI apps have their own section (tests/programs-section-alpha139).
+  // alpha.138: programs and AI apps have their own section (tests/programs-section-alpha138).
   ['tab ai', 'ai', null, { section: 'programs', part: 'ai' }],
   ['tab programs', 'programs', null, { section: 'programs', part: 'programs' }],
   ['tab databases', 'databases', null, { section: 'databases' }],
@@ -395,9 +395,9 @@ test('mounted: each viewer gets its row, the first section open, and the tablist
     { name: 'team member, mail to view and DNS to manage', role: 'additional_user', row: { access: grants({ mail: 'view', dns: 'manage' }) }, expect: ['mail', 'dns'] },
     { name: 'DNS-only domain', role: 'customer', row: { project_type: 'dnsonly' }, expect: ['overview', 'mail', 'databases', 'dns'] },
     { name: 'server without mail or databases', role: 'admin', caps: capabilities({ mail_server: false, database_servers: [] }), expect: ['overview', 'site', 'programs', 'files', 'dns', 'security', 'backups', 'advanced'] },
-    // alpha.139: Programs is there while something in it can be acted on.
+    // alpha.138: Programs is there while something in it can be acted on.
     { name: 'customer, PHP site, no program or app right', role: 'customer', row: { rights_closed: ['program_apps', 'python_apps', 'service_apps'] }, expect: ALL.filter((id) => id !== 'programs') },
-    // alpha.139: what the list says the domain holds is shown, whatever the plan says.
+    // alpha.138: what the list says the domain holds is shown, whatever the plan says.
     { name: 'customer, PHP site holding a created program, the right closed', role: 'customer', row: { rights_closed: ['program_apps', 'python_apps', 'service_apps'], holds_program: true }, expect: ALL },
     { name: 'team member, a domain that holds a program', role: 'additional_user', row: { holds_program: true, access: grants({ mail: 'view', dns: 'manage' }) }, expect: ['mail', 'dns'] },
     { name: 'customer, Node.js site: neither can be added there', role: 'customer', row: { project_type: 'node' }, expect: ALL.filter((id) => id !== 'programs') },
@@ -443,7 +443,7 @@ test('mounted: an older ?tab= link opens its section and part, and the address i
     ['tab=config', 'advanced', 'config', 'section=advanced&part=config'],
     ['tab=dns&attention=dns-publication', 'dns', 'records', 'attention=dns-publication&section=dns&part=records'],
     ['tab=php', 'site', 'php', 'section=site&part=php'],
-    // alpha.139: the programs' older addresses, and their address under Site (alpha.132–138).
+    // alpha.138: the programs' older addresses, and their address under Site (alpha.132–137).
     ['tab=programs', 'programs', 'programs', 'section=programs&part=programs'],
     ['tab=ai', 'programs', 'ai', 'section=programs&part=ai'],
     ['section=site&part=programs', 'programs', 'programs', 'section=programs&part=programs'],
@@ -560,7 +560,7 @@ const openings = (list, id) => list.find((section) => section.id === id)?.parts.
 
 test('Site and Advanced start their parts open or closed by the site kind; the other sections keep every part open', () => {
   assert.deepEqual(openings(build({ role: 'admin' }), 'site'), ['type:true', 'apps:true', 'php:true', 'redirects:true']);
-  // alpha.139: a program or a service app is in Programs, not in Site.
+  // alpha.138: a program or a service app is in Programs, not in Site.
   assert.deepEqual(openings(build({ role: 'admin', projectType: 'service_app' }), 'site'), ['type:true', 'redirects:true']);
   assert.deepEqual(openings(build({ role: 'admin', projectType: 'runtime_app' }), 'site'), ['type:true', 'redirects:true']);
   assert.deepEqual(openings(build({ role: 'admin' }), 'advanced'), ['cron:true', 'logs:false', 'git:false', 'copy:false', 'web:false', 'config:false']);
@@ -627,7 +627,7 @@ test('mounted: a part the address names is open, also when an older link names i
       assert.ok(view.probes().includes(place.part), `${tab}: the named part stayed closed`);
     } finally { await view.done(); }
   }
-  // Site starts every part it has open on a PHP site (Programs is its own section since alpha.139).
+  // Site starts every part it has open on a PHP site (Programs is its own section since alpha.138).
   const site = await partsPage({ section: 'site' });
   try {
     assert.deepEqual(site.probes(), ['type', 'apps', 'php', 'redirects']);
