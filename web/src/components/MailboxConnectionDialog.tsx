@@ -97,31 +97,39 @@ export default function MailboxConnectionDialog({ domainId, domainName, address,
             {t('common.copy')}
         </button>
     );
-    const value = (label: string, text: string, copyable: boolean) => (
+    // A value as wide as itself, its Copy right beside it.
+    const copyable = (text: string) => (
+        <span className="flex min-w-0 max-w-full items-center gap-2">
+            <span className="min-w-0 [overflow-wrap:anywhere] font-mono text-sm text-fg">{text}</span>
+            {copyButton(text)}
+        </span>
+    );
+    const value = (label: string, text: string) => (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <dt className="w-24 shrink-0 text-sm text-fg-muted">{label}</dt>
-            <dd className="flex min-w-0 max-w-full items-center gap-2">
-                <span className="min-w-0 break-all font-mono text-sm text-fg">{text}</span>
-                {copyable && copyButton(text)}
-            </dd>
+            <dt className="w-36 shrink-0 text-sm text-fg-muted max-sm:w-full">{label}</dt>
+            <dd className="min-w-0 max-w-full">{copyable(text)}</dd>
         </div>
     );
+    // One row per protocol: what it is, its server, port and security. On a
+    // phone the row is a card with each value named (no sideways scrolling).
+    // Her protokol bir satır; telefonda her değer adıyla bir kart.
+    const muted = 'text-fg-muted sm:hidden';
     const protocol = (title: MailboxConnectionWordKey, name: string, proto: MailProtocol) => (
-        <section className="space-y-1.5" data-mailbox-protocol={name}>
-            <h4 className="text-sm font-semibold text-fg">{t(title)} <span className="font-normal text-fg-muted">· {name}</span></h4>
-            <dl className="space-y-1.5">
-                {value(t('mail.setup.server'), proto.host, true)}
-                {value(t('mail.setup.port'), String(proto.port), false)}
-                {value(t('mail.setup.security'), proto.security, false)}
-            </dl>
-        </section>
+        <tr className="border-t border-border align-middle max-sm:flex max-sm:flex-wrap max-sm:items-center max-sm:gap-x-4 max-sm:gap-y-1 max-sm:py-2" data-mailbox-protocol={name}>
+            <th scope="row" className="w-36 py-2 pr-3 text-left text-sm font-medium text-fg max-sm:w-full max-sm:py-0">
+                {t(title)} <span className="whitespace-nowrap font-normal text-fg-muted">({name})</span>
+            </th>
+            <td className="py-2 pr-3 max-sm:w-full max-sm:py-0">{copyable(proto.host)}</td>
+            <td className="whitespace-nowrap py-2 pr-3 font-mono text-sm text-fg max-sm:py-0"><span className={`${muted} mr-1.5 font-sans`}>{t('mail.setup.port')}</span>{proto.port}</td>
+            <td className="whitespace-nowrap py-2 text-sm text-fg max-sm:py-0"><span className={`${muted} mr-1.5`}>{t('mail.setup.security')}</span>{proto.security}</td>
+        </tr>
     );
 
     return (
         <Dialog
             id="mailbox-connection-dialog"
             icon={Server}
-            width="lg"
+            width="xl"
             onDismiss={onClose}
             title={<span className="break-all">{address}</span>}
             description={t('mconn.lead')}
@@ -160,11 +168,23 @@ export default function MailboxConnectionDialog({ domainId, domainName, address,
                                         : <MailHostProtection host={settings.mail_host} protection={settings.host_protection} domainName={domainName} />}
                                 </div>
                             )}
-                            <dl>{value(t('mail.setup.username'), address, true)}</dl>
-                            {protocol('mconn.incoming', 'IMAP', settings.imap)}
-                            {protocol('mconn.incomingAlt', 'POP3', settings.pop3)}
-                            {protocol('mconn.outgoing', 'SMTP', settings.smtp)}
-                            {webmail && <dl>{value(t('mail.row.webmail'), webmail, true)}</dl>}
+                            <dl>{value(t('mail.setup.username'), address)}</dl>
+                            <table className="w-full border-b border-border max-sm:block">
+                                <thead className="max-sm:hidden">
+                                    <tr className="text-left text-xs font-semibold text-fg-muted">
+                                        <td className="pb-1.5" />
+                                        <th scope="col" className="pb-1.5 pr-3">{t('mail.setup.server')}</th>
+                                        <th scope="col" className="pb-1.5 pr-3">{t('mail.setup.port')}</th>
+                                        <th scope="col" className="pb-1.5">{t('mail.setup.security')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="max-sm:block">
+                                    {protocol('mconn.incoming', 'IMAP', settings.imap)}
+                                    {protocol('mconn.incomingAlt', 'POP3', settings.pop3)}
+                                    {protocol('mconn.outgoing', 'SMTP', settings.smtp)}
+                                </tbody>
+                            </table>
+                            {webmail && <dl>{value(t('mail.row.webmail'), webmail)}</dl>}
                             <p className="flex items-start gap-2 text-sm text-fg-muted" data-mailbox-password-line="">
                                 <KeyRound className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                                 <span>{t(readOnly ? 'mconn.passwordReadOnly' : 'mconn.password')}</span>

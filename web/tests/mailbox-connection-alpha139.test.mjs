@@ -197,8 +197,9 @@ for (const role of ['admin', 'reseller', 'customer', 'additional_user']) {
     for (const [name, port, security] of [['IMAP', '993', 'SSL/TLS'], ['POP3', '995', 'SSL/TLS'], ['SMTP', '587', 'STARTTLS']]) {
       const block = attr('data-mailbox-protocol', name, window)[0];
       const said = words(block);
-      assert.ok(said.includes(port) && said.includes(security) && said.includes('mail.setup.server'), `${name}: ${said}`);
+      assert.ok(said.includes(port) && said.includes(security) && said.includes('mail.example.com') && said.includes('mail.setup.port'), `${name}: ${said}`);
     }
+    assert.match(words(window.findAll((node) => node.type === 'thead')[0]), /mail\.setup\.server.*mail\.setup\.port.*mail\.setup\.security/);
     // The password line names "Password…" as the way to a new one; no value of it anywhere.
     assert.match(words(attr('data-mailbox-password-line', undefined, window)[0]), /mconn\.password$/);
     assert.equal(window.findAll((node) => node.type === 'input' || node.type === 'textarea').length, 0, 'the window asks for or holds a value');
