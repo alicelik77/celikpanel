@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// alpha.140: "Add" for webmail's address record against the production host
+// alpha.139: "Add" for webmail's address record against the production host
 // record receiver over the real TLS transport (the alpha.135 lane replaced
 // the transport and seeded no child zone, so it never met what the lab pair
 // met: a customer zone beside the main zone, and a receiver held behind a

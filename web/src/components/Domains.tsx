@@ -139,11 +139,11 @@ function visibleDomains(items: unknown[], teamMember: boolean): { rows: Domain[]
     return { rows, hiddenInvalid };
 }
 
-// Plesk-style list page: breadcrumb + title, a toolbar (primary add +
+// List page: breadcrumb + title, a toolbar (primary add +
 // contextual remove) with search, an item count, a clean data table with
 // per-row actions, and a paging footer.
 //
-// Plesk tarzı liste sayfası: breadcrumb + başlık, araç çubuğu (birincil
+// Liste sayfası: breadcrumb + başlık, araç çubuğu (birincil
 // ekle + bağlamsal kaldır) ve arama, öğe sayısı, satır-başı aksiyonlu temiz
 // bir veri tablosu ve sayfalama alt bilgisi.
 export function Domains() {

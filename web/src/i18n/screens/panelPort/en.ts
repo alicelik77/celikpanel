@@ -12,7 +12,7 @@ export const enPanelPortScreens = {
     'panelPort.checking': 'Reading the panel port…',
     'panelPort.unknown': 'The panel port could not be read, so nothing is shown here. Nothing was changed. Try again.',
     'panelPort.current': 'The panel answers on port {port}.',
-    'panelPort.legacy': 'This server was installed before port {port} became the default, so it keeps port {legacy}. Port {legacy} is also the port cPanel uses. You can move the panel to another port here.',
+    'panelPort.legacy': 'This server was installed before port {port} became the default, so it keeps port {legacy}. Port {legacy} is also used by other hosting control panels. You can move the panel to another port here.',
     'panelPort.how': 'The panel will answer on both ports. Open the new address and confirm there. Then the old port closes. If nobody confirms within {minutes} minutes, the panel stays on the old port by itself.',
     'panelPort.input': 'New port (1024–65535)',
     'panelPort.provider': 'If your hosting provider has its own firewall, allow the new port there first. CelikPanel opens it only in this server’s firewall.',

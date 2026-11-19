@@ -28,7 +28,7 @@ import (
 //  2. The infrastructure zone of the paired main DNS server, when this server
 //     is the pair's DNS secondary and holds a ready authorized remote DNS
 //     connection: one confirmed request asks that server, over the existing
-//     host-record channel (remote_dns_host_record.go; alpha.140 made its
+//     host-record channel (remote_dns_host_record.go; alpha.139 made its
 //     answers truthful and bounded: busy, ZONE_REVIEW), to write the
 //     A record with the pair's verified address and, only when it accepts it,
 //     the AAAA record with the address the request comes from. The record
@@ -73,7 +73,7 @@ type webmailAddressManagedBy struct {
 
 // One record of a request and what became of it. Outcome: added | present |
 // saved (written there, its publication not confirmed yet) | refused (Code
-// says why) | busy (alpha.140: the other server applied nothing; ask again)
+// says why) | busy (alpha.139: the other server applied nothing; ask again)
 // | not_sent (Code: unreachable, skipped) | unknown (Code "no_answer" when
 // the request arrived and no answer came in time).
 type webmailAddressDNSRecordResult struct {
@@ -187,7 +187,7 @@ func webmailAddressManagedByLookup(ctx context.Context, host string) *webmailAdd
 
 // webmailAddressDNSRecordOutcome reads the other server's answer to one host
 // record request (D-024): a verified answer, a refusal by its typed rule, a
-// busy server that applied nothing (alpha.140: any 503), a request that never
+// busy server that applied nothing (alpha.139: any 503), a request that never
 // left this server, or a result that is not known ("no_answer": the request
 // arrived and its answer did not come within the transport's limit; the
 // other server may still be applying it, and asking again is safe because it

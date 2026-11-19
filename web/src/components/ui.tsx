@@ -130,9 +130,9 @@ export function StatusDot({ ok, tone }: { ok?: boolean; tone?: StatusDotTone }) 
 }
 
 // Button: one primary (filled blue) call to action per view; everything
-// else is secondary (outlined) or danger. Matches Plesk's toolbar buttons.
+// else is secondary (outlined) or danger. Matches the list pages' toolbar buttons.
 // Button: görünüm başına tek birincil (dolu mavi) eylem; gerisi ikincil
-// (çerçeveli) ya da tehlike. Plesk'in araç çubuğu butonlarıyla uyumlu.
+// (çerçeveli) ya da tehlike. Liste sayfalarının araç çubuğu butonlarıyla uyumlu.
 export function Button({
     variant = 'secondary',
     icon: Icon,

@@ -16,7 +16,7 @@ import (
 
 // The main domain's website at setup (alpha.114, owner decision 2026-10-31).
 //
-// Like Plesk's first site, the first server's setup ends with the main domain
+// As the usual first site of a new server, the first server's setup ends with the main domain
 // (apex and www) as a website with a Let's Encrypt certificate, unless the
 // owner answered that the website is elsewhere. The step reuses the panel's
 // own create path (handleCreateDomain: the site takes over the

@@ -190,7 +190,7 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
         // Kayıtlar sonraki biri başarısız olsa da eklenmiş olabilir.
         invalidate('dns');
     };
-    // A busy or unknown end keeps the offer: asking again is safe (alpha.140).
+    // A busy or unknown end keeps the offer: asking again is safe (alpha.139).
     const askPeer = async (check: WebmailAddressCheck): Promise<void> => {
         let retryable = false;
         const confirmed = await confirmAskPeer(check, {

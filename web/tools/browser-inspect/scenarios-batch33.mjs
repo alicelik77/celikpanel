@@ -9,7 +9,7 @@
 //   y33dnsadd    (alpha.135) "Add" beside "Copy": the name in the main DNS
 //                server's zone (check, confirmation, steps, end, wait, its
 //                bound, each refusal, unknown, an optional AAAA record; since
-//                alpha.140 also busy, the pause before the one re-ask and the
+//                alpha.139 also busy, the pause before the one re-ask and the
 //                end after it), a name managed elsewhere, and the zone hosted here
 //
 // Every answer comes from the mock on 127.0.0.1 through overrides (SAMPLE
@@ -166,7 +166,7 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
                 const realNow = Date.now;
                 let offset = 0;
                 Date.now = () => realNow() + offset;
-                // The 20-second wait and the 25-second pause before the one re-ask (alpha.140) run fast.
+                // The 20-second wait and the 25-second pause before the one re-ask (alpha.139) run fast.
                 window.setTimeout = (fn, ms, ...rest) => (ms === 20000 || ms === 25000 ? realTimeout(() => { offset += ms; fn(...rest); }, 120) : realTimeout(fn, ms, ...rest));
             });
         }
@@ -251,7 +251,7 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
         await snap(page, 'dnsadd-unknown');
         await closePage(page);
 
-        // alpha.140: a busy main server (nothing added, Ask again), the visible
+        // alpha.139: a busy main server (nothing added, Ask again), the visible
         // pause before the one automatic re-ask after "no answer in time", and
         // the end when the re-ask is not answered either.
         page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'busy' }]) });

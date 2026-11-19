@@ -953,7 +953,7 @@ func (p *Panel) buildServerSetupPlan(ctx context.Context, state serverSetupState
 				code = reviewError.Code
 			} else if infrastructureDNSZoneOverlap(infrastructureErr) {
 				// Another hosted zone inside the main domain's zone or around
-				// it: not a record clash, so not said as one (alpha.140).
+				// it: not a record clash, so not said as one (alpha.139).
 				code = "infrastructure_dns_zone_overlap"
 			}
 			addBlocker("server_setup_" + code + ":" + reviewError.Message)

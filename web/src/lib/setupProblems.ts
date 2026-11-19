@@ -80,7 +80,7 @@ const table: Record<string, { name: string; fix?: SetupProblemFix }> = {
     server_setup_mail_hostname_invalid: { name: 'mailHostname', fix: step('names') },
     server_setup_panel_dns_address_unavailable: { name: 'panelAddress', fix: step('dnshome') },
     server_setup_infrastructure_dns_conflict: { name: 'infraConflict', fix: step('records') },
-    // alpha.140: another hosted zone inside or around the main domain's zone (not a record clash).
+    // alpha.139: another hosted zone inside or around the main domain's zone (not a record clash).
     server_setup_infrastructure_dns_zone_overlap: { name: 'infraOverlap', fix: recheck },
     server_setup_infrastructure_dns_imported_clash: { name: 'importClash', fix: step('records') },
     server_setup_infrastructure_dns_peer_mail_own_name: { name: 'peerMailName' },

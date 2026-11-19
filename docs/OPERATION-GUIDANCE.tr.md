@@ -11167,7 +11167,7 @@ yeniden denetlenen bir neden, sahip bekleme sırasında bu sunucunun DNS'ini
 değiştirirse Agent'ın her değişikliği bekletmesine yine yol açabilir
 (RESILIENCE-CONTRACT, "Dal a133/proofwait").
 
-### Ana DNS sunucusunun ad kaydı isteğine yanıtı (alpha.140, 19 Kasım 2026)
+### Ana DNS sunucusunun ad kaydı isteğine yanıtı (alpha.139, 19 Kasım 2026)
 
 alpha.135 lab'ında bir yedek DNS sunucusu ana DNS sunucusundan bir ad kaydı
 istedi ve iki yanlış yanıt aldı: var olmayan bir kayıt için "bu ad zaten
@@ -11214,7 +11214,7 @@ gözden geçirir, sonra planı yeniden okur) ve katılmada
 (`server_setup_peer_zone_overlap`: katılan sunucunun adlarıyla ilgili değil;
 bölge artık çakışmadığında kurulum kendiliğinden sürer).
 
-### Yedek DNS sunucusunda web postası adres kaydı için "Ekle…" (alpha.140, 19 Kasım 2026)
+### Yedek DNS sunucusunda web postası adres kaydı için "Ekle…" (alpha.139, 19 Kasım 2026)
 
 Çiftin yedek DNS sunucusunda, web postası için denetlenen ad ana alan adının
 içindeyse ve ana sunucuya DNS bağlantısı hazırsa, "Kopyala"nın yanındaki

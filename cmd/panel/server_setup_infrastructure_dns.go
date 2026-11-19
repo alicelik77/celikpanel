@@ -179,7 +179,7 @@ func serverSetupDNSNameWithin(name, zone string) bool {
 // infrastructureDNSOverlapMessage: the setup review's zone-wide rule refused
 // because another zone hosted here lies inside the infrastructure zone or
 // around it. The review and the peer join say this cause in its own words
-// (alpha.140): it is not a clash of a record or of the second server's names.
+// (alpha.139): it is not a clash of a record or of the second server's names.
 const infrastructureDNSOverlapMessage = "the infrastructure zone overlaps another managed DNS zone; review its delegation first"
 
 func infrastructureDNSZoneOverlap(err error) bool {
@@ -197,7 +197,7 @@ func readServerSetupInfrastructureDNSSnapshot(ctx context.Context, q serverSetup
 }
 
 // readInfrastructureDNSSnapshotForHost is the snapshot for one host record
-// inside the zone (the remote DNS host record receiver, alpha.140): another
+// inside the zone (the remote DNS host record receiver, alpha.139): another
 // zone hosted on this server refuses the record only when it answers for that
 // name, i.e. the name equals or lies under a child zone of the infrastructure
 // zone. A sibling zone elsewhere under the infrastructure zone, or a zone

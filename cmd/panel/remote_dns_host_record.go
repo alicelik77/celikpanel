@@ -45,11 +45,11 @@ const (
 	errCodeRemoteDNSHostRecordInvalid     = "REMOTE_DNS_HOST_RECORD_INVALID"
 	errCodeRemoteDNSHostRecordOutsideZone = "REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE"
 	errCodeRemoteDNSHostRecordAddress     = "REMOTE_DNS_HOST_RECORD_ADDRESS"
-	// CONFLICT is a real clash at the name only (alpha.140): another record
+	// CONFLICT is a real clash at the name only (alpha.139): another record
 	// of that name with other content, a CNAME/DNAME/child NS in the way, a
 	// disabled record, or this channel's record changed or removed by hand.
 	errCodeRemoteDNSHostRecordConflict = "REMOTE_DNS_HOST_RECORD_CONFLICT"
-	// ZONE_REVIEW (alpha.140): the zone itself cannot take records from this
+	// ZONE_REVIEW (alpha.139): the zone itself cannot take records from this
 	// channel now (not this server's local primary zone, DNSSEC signed, its
 	// ownership not verified, owned by external or remote DNS, over its
 	// bounds). The owner reviews the zone on this server; nothing was written.
@@ -60,7 +60,7 @@ const (
 )
 
 // remoteDNSReceiverLockWait bounds how long a remote DNS receiver waits for
-// this server's DNS locks (alpha.140). A sending server stops waiting for the
+// this server's DNS locks (alpha.139). A sending server stops waiting for the
 // answer's headers after 10 seconds (setup_dns_remote_transport.go); a
 // request held behind a long change (a domain deletion held them ~29 s in
 // the alpha.135 lab) was read there as "unknown" while this server answered
@@ -245,7 +245,7 @@ func (p *Panel) remoteDNSHostRecordZone(ctx context.Context, name string) (strin
 func (p *Panel) handleRemoteDNSHostRecord(w http.ResponseWriter, r *http.Request, claim remoteDNSMachineClaim) {
 	var request remoteDNSHostRecordRequest
 	// Every answer that applies nothing leaves one journal line and one audit
-	// row on this server, with what was asked and why (alpha.140: a request
+	// row on this server, with what was asked and why (alpha.139: a request
 	// answered while its sender had already given up left neither).
 	// Hicbir sey uygulamayan her yanit gunluge ve denetim kaydina yazilir.
 	note := func(status int, code, why string) {
@@ -350,7 +350,7 @@ func (p *Panel) handleRemoteDNSHostRecord(w http.ResponseWriter, r *http.Request
 		// sender's behalf (publishDNSMutation keeps the same rule). A sender
 		// that stopped waiting asks again; the same record is then answered
 		// "present" without a second write, or "busy" (nothing applied) while
-		// this publication still runs (alpha.140).
+		// this publication still runs (alpha.139).
 		publishCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), dnsPublishTimeout)
 		defer cancel()
 		if err := remoteDNSPublishReceived(p, publishCtx, zone, false); err != nil {
@@ -597,7 +597,7 @@ func (p *Panel) requestServerSetupPeerHostRecord(ctx context.Context, plan serve
 		case err == nil && answer.Applied && answer.ClientID == connection.ID && answer.Name == outcome.Name && answer.Type == outcome.Type && answer.Content == outcome.Content:
 			outcome.Status, outcome.Result, outcome.Zone = "applied", answer.Result, answer.Zone
 		case errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusServiceUnavailable:
-			// The primary was busy (alpha.140: it waits for its DNS locks only
+			// The primary was busy (alpha.139: it waits for its DNS locks only
 			// briefly) or could not read its state now: nothing was applied,
 			// asked again like an unknown result. Never a refusal, whatever
 			// code a primary puts on it.

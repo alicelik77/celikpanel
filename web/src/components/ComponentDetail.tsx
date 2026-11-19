@@ -16,7 +16,7 @@ import { componentName } from '../lib/componentName';
 import { decodeListIn, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import { useManagedServices, useStoredRecordCheck, type ManagedServicesSnapshot } from '../lib/managedServices';
 
-// Webmail's address card is loaded only on Roundcube's page (alpha.140): the
+// Webmail's address card is loaded only on Roundcube's page (alpha.139): the
 // other component pages do not carry it and its record flows.
 // Web postası adres kartı yalnız Roundcube sayfasında yüklenir.
 const WebmailAddressCard = lazy(() => import('./WebmailAddressCard').then((module) => ({ default: module.WebmailAddressCard })));

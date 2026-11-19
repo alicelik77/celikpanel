@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// alpha.140: the setup review's zone-wide rule (unchanged) refuses a main
+// alpha.139: the setup review's zone-wide rule (unchanged) refuses a main
 // domain whose zone has another hosted zone inside it or around it. The
 // review and the peer join now say that cause in its own words: it is not a
 // record clash and not about the second server's names (the lab primary

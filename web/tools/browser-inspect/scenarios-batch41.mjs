@@ -1,15 +1,15 @@
-// Batch 37 (2026-11-19, alpha.140): the setup review's zone-wide rule said in
+// Batch 41 (2026-11-19, alpha.139): the setup review's zone-wide rule said in
 // its own words. When another DNS zone hosted on this server lies inside the
 // main domain's zone or around it (a customer's domain under the main domain),
 // the review and the peer join no longer say "a record clashes" or "change the
 // second server's names".
 //
-//   y37overlapplan  the plan review with that blocker
-//   y37overlapwait  the main server's run waiting at the peer join for it
+//   y41overlapplan  the plan review with that blocker
+//   y41overlapwait  the main server's run waiting at the peer join for it
 //
 // Every answer comes from the mock on 127.0.0.1 through overrides; nothing is
 // contacted or started. Example names only.
-// Otuz yedinci grup: kurulumun bolge geneli kurali kendi sozleriyle.
+// Kırk birinci grup: kurulumun bolge geneli kurali kendi sozleriyle.
 import { copyFile, mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
@@ -49,16 +49,16 @@ const facts = (page) => page.evaluate(() => {
     };
 });
 
-export default function batch37(scenarios, { base, locale, theme, out, viewport, ctl, reset, newPage, closePage, shot, into, waitFor, pause, quiet }) {
+export default function batch41(scenarios, { base, locale, theme, out, viewport, ctl, reset, newPage, closePage, shot, into, waitFor, pause, quiet }) {
     const shots = resolve(process.env.BROWSER_INSPECT_SHOTS || out);
     const snap = async (page, state) => {
-        await shot(page, `y37-${state}`, await facts(page));
+        await shot(page, `y41-${state}`, await facts(page));
         await mkdir(shots, { recursive: true });
-        await copyFile(join(out, `y37-${state}.png`), join(shots, `${state}-${locale}-${theme}-${viewport.width}.png`));
+        await copyFile(join(out, `y41-${state}.png`), join(shots, `${state}-${locale}-${theme}-${viewport.width}.png`));
     };
     const clean = () => ctl({ clearAll: true, b16: null, execution: null, setupStatus: 'ready' });
 
-    scenarios.y37overlapplan = async () => {
+    scenarios.y41overlapplan = async () => {
         await reset(); await clean();
         await ctl({ setupStatus: 'draft' });
         const page = await newPage();
@@ -86,7 +86,7 @@ export default function batch37(scenarios, { base, locale, theme, out, viewport,
         await clean();
     };
 
-    scenarios.y37overlapwait = async () => {
+    scenarios.y41overlapwait = async () => {
         await reset(); await clean();
         await ctl({ setupStatus: 'waiting', execution: WAIT });
         const marker = { 'celikpanel.setup.start.admin': JSON.stringify({ request_id: 'd'.repeat(32), plan_id: 'a'.repeat(32), panel_domain: HOST }) };

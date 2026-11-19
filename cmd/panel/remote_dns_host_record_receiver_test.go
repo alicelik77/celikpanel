@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// alpha.140: the paired main DNS server answers a host record request
+// alpha.139: the paired main DNS server answers a host record request
 // truthfully and in time. In the alpha.135 lab a secondary's request was
 // answered CONFLICT for a record that did not exist (a customer zone under
 // the infrastructure zone refused the whole zone) and, behind a domain

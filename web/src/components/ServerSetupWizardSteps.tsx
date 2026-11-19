@@ -173,7 +173,7 @@ export function setupActiveEngine(catalog: SetupComponentCatalog | null, role: '
 }
 
 // The main domain's website (alpha.114, owner decision 2026-10-31): asked on
-// the first server only; Yes is the default (Plesk's first site).
+// the first server only; Yes is the default (the usual first site of a new server).
 // Ana alan adinin web sitesi bu sunucuda mi? Yalniz ilk sunucuda; varsayilan Evet.
 export function SetupMainSiteQuestion({ domain, value, onChange }: { domain: string; value: 'here' | 'elsewhere'; onChange: (value: 'here' | 'elsewhere') => void }) {
     const { t } = useSetupWizardI18n();

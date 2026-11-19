@@ -174,7 +174,7 @@ func (p *Panel) runServerSetupPeerJoin(ctx context.Context, plan serverSetupPlan
 			var planErr *serverSetupInfrastructureDNSPlanError
 			if infrastructureDNSZoneOverlap(err) {
 				// Not the second server's names: another zone hosted here lies
-				// inside the main domain's zone or around it (alpha.140).
+				// inside the main domain's zone or around it (alpha.139).
 				return false, &serverSetupPeerWait{Code: "server_setup_peer_zone_overlap", Message: "The main domain's zone " + effective.InfrastructureDNS.Zone + " cannot take the names of the server that joined with the code now: another DNS zone hosted on this server lies inside it or around it. This is not about that server's names. Who acts: this server's administrator. Next: review that zone in Domains; setup continues by itself once the zone no longer overlaps."}
 			}
 			if errors.As(err, &planErr) {

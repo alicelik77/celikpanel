@@ -11277,7 +11277,7 @@ re-checked reason can still make the Agent hold every change if the owner
 edits this server's DNS during the wait (RESILIENCE-CONTRACT, "Branch
 a133/proofwait").
 
-### The main DNS server's answer to a host record request (alpha.140, 2026-11-19)
+### The main DNS server's answer to a host record request (alpha.139, 2026-11-19)
 
 In the alpha.135 lab a backup DNS server asked its main DNS server for one
 host record and got two wrong answers: "this name is already taken" for a
@@ -11324,7 +11324,7 @@ administrator reviews that zone in Domains, then reads the plan again) and at
 the peer join (`server_setup_peer_zone_overlap`: not about the joining
 server's names; setup continues by itself once the zone no longer overlaps).
 
-### "Add…" for webmail's address record on the backup DNS server (alpha.140, 2026-11-19)
+### "Add…" for webmail's address record on the backup DNS server (alpha.139, 2026-11-19)
 
 On the pair's backup DNS server, when the name checked for webmail lies in the
 main domain and the DNS connection to the main server is ready, "Add…" beside

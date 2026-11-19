@@ -14,7 +14,7 @@
 // refusal (who acts, what next), a busy main server (nothing applied), or a
 // result that is not known (D-024). A zone record whose answer was lost is
 // never sent again by itself. A request to the main server that arrived but
-// was not answered in time is asked again ONCE after REASK_AFTER_MS (alpha.140:
+// was not answered in time is asked again ONCE after REASK_AFTER_MS (alpha.139:
 // the main server answers "present" or "busy" and never writes twice); after
 // that, and after busy, a person decides ("Ask again" opens the confirmation
 // once more with a new request identity). After an add, the card waits for
@@ -38,7 +38,7 @@ export const RECHECK_EVERY_MS = 20_000;
 /** Five minutes: a resolver keeps a "no such name" answer for up to the zone's 300-second negative TTL. */
 export const RECHECK_FOR_MS = 5 * 60_000;
 /**
- * alpha.140: the pause before the one automatic re-ask after "no answer in
+ * alpha.139: the pause before the one automatic re-ask after "no answer in
  * time". The main server waits at most 3 s for its locks and may publish for
  * up to 30 s, while this server stops waiting for its answer after 10 s; 25 s
  * later that publication has ended, so the re-ask reads "present" (or "busy"
@@ -82,7 +82,7 @@ interface AddHooks {
     /** The fix a withdrawn offer names: one read-only check. */
     check: () => void;
     /**
-     * alpha.140: the request ended busy or not known; asking again is safe
+     * alpha.139: the request ended busy or not known; asking again is safe
      * (a new request identity: the main server answers "present" if it was
      * added and never writes twice). The card keeps the offer, and the end's
      * "Ask again" opens the confirmation once more.
@@ -160,7 +160,7 @@ export function confirmAskPeer(check: WebmailAddressCheck, hooks: AddHooks): Pro
                 { id: 'write', label: t('dnsadd.step.write', vars), state: write },
                 { id: 'dns', label: t('dnsadd.step.dns'), state: dns, note: dns === 'waiting' ? t('dnsadd.step.dnsNote') : undefined },
             ];
-            // Busy or not known: nothing to undo, asking again is safe (alpha.140).
+            // Busy or not known: nothing to undo, asking again is safe (alpha.139).
             const retryable = (end: Exclude<OperationEnd, { state: 'done' }>): OperationEnd => {
                 hooks.onRetryable?.();
                 return hooks.askAgain ? { ...end, fix: { label: t('dnsadd.askAgain'), run: hooks.askAgain } } : end;
