@@ -164,6 +164,43 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
         await reset(); await ctl({ clearAll: true, domains: [] });
     };
 
+    // alpha.138 lab: a PHP site with a created program and every right open.
+    // The server refuses an AI app there (program_created), so the AI card
+    // and its "Install" are not drawn; the program's card is.
+    scenarios.y39created = async () => {
+        const created = { ...RUNNING, state: 'created', deployed: false, status: undefined, states: [] };
+        for (const role of ['admin', 'customer']) {
+            const page = await open('/domains/example.com?section=programs', domain({ holds_program: true }), role, reads('php', created, null));
+            await settle(page, '[data-part="programs"]');
+            await snap(page, `created-${role}`, { role });
+            await closePage(page);
+        }
+        await reset(); await ctl({ clearAll: true, domains: [] });
+    };
+
+    // alpha.138 lab: the section's "?" → "Help for this page" opens the
+    // guide's domains chapter at its Programs part, not at its top.
+    scenarios.y39guide = async () => {
+        const page = await open('/domains/example.com?section=programs', domain(), 'admin', reads('php', null, null));
+        await settle(page, '[data-part="programs"]');
+        await page.evaluate(() => document.querySelector('[data-help-button]')?.click());
+        await waitFor(page, () => !!document.querySelector('[data-help-menu] button'), 10000).catch(() => {});
+        await page.evaluate(() => document.querySelector('[data-help-menu] button')?.click());
+        await waitFor(page, () => !!document.getElementById('guide-domains-websites-programs'), 15000).catch(() => {});
+        await pause(800);
+        const place = await page.evaluate(() => {
+            const heading = document.getElementById('guide-domains-websites-programs');
+            const drawer = document.querySelector('[data-guide-drawer] [role="dialog"]');
+            if (!heading || !drawer) return { found: false };
+            const box = drawer.getBoundingClientRect();
+            const top = heading.getBoundingClientRect().top - box.top;
+            return { found: true, headingTopInDrawer: Math.round(top), drawerHeight: Math.round(box.height), heading: heading.innerText.trim() };
+        });
+        await snap(page, 'guide-admin', { role: 'admin', place });
+        await closePage(page);
+        await reset(); await ctl({ clearAll: true, domains: [] });
+    };
+
     // Neither a program nor an AI app can be added to a Node.js site: no
     // Programs in the row, also when the old address asks for it.
     scenarios.y39node = async () => {

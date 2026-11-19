@@ -158,7 +158,7 @@ export interface SectionInput {
      * (holds_program, holds_app): a program or Python app record, an AI app
      * record. Absent for a team member and from an older server.
      */
-    holds?: { program: boolean; app: boolean };
+    holds?: Holds;
 }
 
 interface PartRule {
@@ -180,34 +180,46 @@ interface Viewer {
     view: (capability: DomainCapability) => boolean;
     open: (right: string) => boolean;
     server: SectionInput['server'];
-    holds: { program: boolean; app: boolean };
+    holds: Holds;
 }
 
 const php = (v: Viewer) => v.type === 'php';
 // A DNS-only domain has no website: no files, PHP, certificate or web server.
 const site = (v: Viewer) => !v.dnsOnly;
 
-// The site types on which a NEW program or AI app is refused, so the screen
-// never offers a form whose press would fail. The server's checks stay the
-// second line of defence; tests/programs-section-alpha138.test.mjs reads them
-// and fails when the two disagree:
+// When a NEW program or AI app is refused, so the screen never offers a form
+// whose press would fail. The server's checks stay the second line of
+// defence; tests/programs-section-alpha138.test.mjs reads them and fails when
+// the two disagree:
 //   - a program: cmd/panel/runtime_apps_handlers.go, the create handler,
 //     `has || site.ProjectType == "node" || site.ProjectType == "service_app"`
-//     (`has`: an AI app installed, which makes the type service_app);
+//     (`has`: an AI app record on the domain, the list's holds_app);
 //   - an AI app: cmd/panel/service_apps_handlers.go, the install handler,
 //     `site.ProjectType == "node" || site.ProjectType == "service_app"`, and
-//     `hasProgram || site.ProjectType == "runtime_app"` (alpha.138: a
-//     program, deployed or only created, uses the domain).
-// What a domain already holds is drawn whatever its type or plan says, so it
-// can be removed (holds below; ProgramsSection.tsx); only the create and
-// install parts follow this table.
-// Yeni program ya da yapay zekâ uygulamasının reddedildiği site türleri;
-// sunucunun denetimini yansıtır, sunucu ikinci savunma hattı olarak kalır.
+//     `hasProgram || site.ProjectType == "runtime_app"` (alpha.138: a program
+//     record on the domain, deployed or only created, the list's
+//     holds_program).
+// The site types are NEW_REFUSED_ON; a record of the other kind refuses too
+// (newRefused). What a domain already holds is drawn whatever its type or
+// plan says, so it can be removed (ProgramsSection.tsx); only the create and
+// install parts follow these rules.
+// Yeni program ya da yapay zekâ uygulamasının reddedildiği durumlar; sunucunun
+// denetimini yansıtır, sunucu ikinci savunma hattı olarak kalır.
 export const NEW_REFUSED_ON: Readonly<Record<'programs' | 'ai', readonly string[]>> = {
     programs: ['node', 'service_app'],
     ai: ['node', 'service_app', 'runtime_app'],
 };
-const newRefused = (kind: 'programs' | 'ai', type: string) => NEW_REFUSED_ON[kind].includes(type);
+
+/** What the domain holds, as the domain list says (holds_program, holds_app). */
+export interface Holds {
+    program: boolean;
+    app: boolean;
+}
+
+/** Whether the server refuses a new program ("programs") or AI app ("ai") on this domain. */
+export function newRefused(kind: 'programs' | 'ai', type: string, holds: Holds): boolean {
+    return NEW_REFUSED_ON[kind].includes(type) || (kind === 'programs' ? holds.app : holds.program);
+}
 
 // Every part, in the order its section draws them. Each condition is the one
 // its tab or sub-tab had before alpha.132.
@@ -248,12 +260,12 @@ const RULES: Record<SectionId, PartRule[]> = {
         {
             id: 'programs', capabilities: [],
             shown: (v) => !v.teamMember && site(v) && (v.type === 'runtime_app' || v.holds.program
-                || ((v.open('program_apps') || v.open('python_apps')) && !newRefused('programs', v.type))),
+                || ((v.open('program_apps') || v.open('python_apps')) && !newRefused('programs', v.type, v.holds))),
         },
         {
             id: 'ai', capabilities: [],
             shown: (v) => !v.teamMember && site(v)
-                && (v.type === 'service_app' || v.holds.app || (v.open('service_apps') && !newRefused('ai', v.type))),
+                && (v.type === 'service_app' || v.holds.app || (v.open('service_apps') && !newRefused('ai', v.type, v.holds))),
         },
     ],
     files: [

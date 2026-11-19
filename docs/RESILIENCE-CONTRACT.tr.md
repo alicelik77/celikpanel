@@ -8172,6 +8172,6 @@ bağlantıyı tutar.
   `cmd/panel/domain_app_records_test.go`;
   `web/tests/programs-section-alpha138.test.mjs` (ekranın ret tablosu
   sunucunun kaynağındaki koşullarla karşılaştırılır; tutulan kartlar role,
-  türe ve plana göre). Henüz laboratuvarda denenmedi.
+  türe ve plana göre; ekranın kuralı sunucunun iki reddiyle, tür ve öteki türün kaydıyla karşılaştırılır). Laboratuvar (bir deneme, alpha.138 adayı): yayındaki bir programın alan adında doğrudan yapay zekâ uygulaması kurulumu `program_created` ile reddedildi, hiçbir şey kaydedilmedi, program 45 denetimin 45'ine yanıt verdi; plan hakkı kapalı, oluşturulmuş bir program gösterildi, kaldırıldı ve alan adı silindi. Laboratuvarda üretilemedi: ikisini birden tutan alan adı (Debian 13 / Ubuntu 24.04 sunucularına yapay zekâ uygulaması kurulamıyor).
 - **Açık.** Sunucunun İngilizce yedek retleri hâlâ "the Programs tab" der.
   **Hiçbir P0 işi kapanmadı.**

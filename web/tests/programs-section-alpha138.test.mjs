@@ -126,6 +126,42 @@ test('the screen refuses a new program or AI app on exactly the site types the s
   }
 });
 
+// alpha.138 lab: on a PHP domain holding a created program the screen still
+// offered the AI app's "Install" (the type is still php), which the server
+// refuses with program_created. The server refuses on a record of the other
+// kind too, not only on the type; the screen's rule is the server's two
+// refusals as a whole, checked here for every type and every record.
+// Lab: tür hâlâ php iken bir program kaydı da reddeder; kural sunucununkiyle aynı.
+test('the screen refuses a new program or AI app exactly when the server does: the type, and a record of the other kind', () => {
+  const runtime = read('../../cmd/panel/runtime_apps_handlers.go');
+  const service = read('../../cmd/panel/service_apps_handlers.go');
+  // A program's create: `has` is an AI app record on the domain.
+  assert.match(runtime, /if _, has, err := p\.serviceAppInstallForDomain\(ctx, domainID\); err != nil \{[\s\S]{0,120}\} else if has \|\| site\.ProjectType == "node" \|\| site\.ProjectType == "service_app" \{/);
+  // An AI app's install: `hasProgram` is a program record on the domain.
+  assert.match(service, /if _, hasProgram, err := p\.runtimeAppForDomain\(ctx, domainID\); err != nil \{[\s\S]{0,120}\} else if hasProgram \|\| site\.ProjectType == "runtime_app" \{/);
+  const programTypes = refusedTypes('runtime_apps_handlers.go', '} else if has || site.ProjectType == "node"');
+  const appTypes = [
+    ...refusedTypes('service_apps_handlers.go', 'if site.ProjectType == "node" || site.ProjectType == "service_app" {'),
+    ...refusedTypes('service_apps_handlers.go', '} else if hasProgram || site.ProjectType == "runtime_app" {'),
+  ];
+  const server = {
+    programs: (type, holds) => programTypes.includes(type) || holds.app,
+    ai: (type, holds) => appTypes.includes(type) || holds.program,
+  };
+  for (const type of [...HOSTED, 'dnsonly']) {
+    for (const holds of [{ program: false, app: false }, { program: true, app: false }, { program: false, app: true }, { program: true, app: true }]) {
+      for (const kind of ['programs', 'ai']) {
+        assert.equal(sections.newRefused(kind, type, holds), server[kind](type, holds), `${kind} on ${type} holding ${JSON.stringify(holds)}`);
+      }
+    }
+  }
+  // What the section then draws on a PHP domain (the lab's case).
+  assert.deepEqual(partsOf(build({ projectType: 'php', holds: { program: true, app: false } }), 'programs'), ['programs'], 'the AI card offered an install the server refuses');
+  assert.deepEqual(partsOf(build({ projectType: 'php', holds: { program: false, app: true } }), 'programs'), ['ai'], 'the programs card offered a create the server refuses');
+  assert.deepEqual(partsOf(build({ projectType: 'php', holds: { program: true, app: true } }), 'programs'), ['programs', 'ai']);
+  assert.deepEqual(partsOf(build({ projectType: 'php' }), 'programs'), ['programs', 'ai']);
+});
+
 test('a finished type change, install or removal reads the domain list again, so the section follows without a reload', () => {
   assert.match(read('../src/components/HostingTypePanel.tsx'), /await hosting\.retry\(\);[\s\S]{0,400}invalidate\('domains'\);/);
   assert.match(read('../src/components/DomainServiceApps.tsx'), /lastOp\.current\.endsWith\(':running'\) && operation !== lastOp\.current\) invalidate\('domains'\)/);
@@ -211,7 +247,7 @@ const sectionPartsURL = shared.compile('components/domain/SectionParts.tsx', { '
 // Each card stands in as one element that names it.
 const card = (name, id) => dataModule(`
   import React from '${reactURL}';
-  export const ${name} = (props) => React.createElement('article', { 'data-card': '${id}', 'data-domain': props.domainId, 'data-offer-new': String(props.offerNew ?? true) + (props.elsewhere ? ',elsewhere' : '') });
+  export const ${name} = (props) => React.createElement('article', { 'data-card': '${id}', 'data-domain': props.domainId, 'data-offer-new': ['new:' + String(props.offerNew ?? true), props.deployRefused ? 'deploy-refused' : '', props.republishRefused ? 'republish-refused' : '', props.notServing ? 'not-serving' : ''].filter(Boolean).join(',') });
 `);
 
 let siteURL = shared.compile('components/domain/sections/SiteSection.tsx', {
@@ -247,7 +283,7 @@ async function mount(View, { role = 'admin', projectType = 'php', id, closedRigh
   let page;
   await act(async () => {
     page = Renderer.create(React.createElement(View, {
-      domain: { id: 7, domain_name: 'example.com', project_type: projectType, php_version: '8.3' },
+      domain: { id: 7, domain_name: 'example.com', project_type: projectType, php_version: '8.3', holds_program: holds?.program, holds_app: holds?.app },
       parts, part, sections: list, role, isTeamMember: false,
       open: (right) => !closedRights.includes(right), canView: () => true, mailAvailable: true,
       go: (place, options) => { went.push({ place, options }); },
@@ -297,24 +333,38 @@ test('mounted: a PHP site with a created program and the right closed shows Prog
   try {
     assert.deepEqual(view.cards(), ['programs']);
     // The plan does not include programs any more: no form; the program's own controls and its removal stay.
-    assert.deepEqual(view.offers(), { programs: 'false' });
+    assert.deepEqual(view.offers(), { programs: 'new:false,not-serving' });
     assert.deepEqual(asked, [], 'the section read on its own');
   } finally { await view.done(); }
   // The same site without the record: no section at all.
   assert.equal(build({ projectType: 'php', closedRights: RIGHTS }).find((section) => section.id === 'programs'), undefined);
 });
 
-test('mounted: a domain that holds both draws both; the card of the kind the domain does not serve is "elsewhere", with no form', async () => {
+test('mounted (alpha.138 lab): a PHP site with a created program and every right open offers no AI app install; one with an app record offers no program create', async () => {
+  const program = await mount(ProgramsSection, { id: 'programs', projectType: 'php', holds: PROGRAM_ONLY });
+  try {
+    assert.deepEqual(program.cards(), ['programs'], 'the AI card with its "Install" was drawn although the server refuses it');
+    assert.deepEqual(program.offers(), { programs: 'new:true,not-serving' });
+    assert.deepEqual(program.index(), []);
+  } finally { await program.done(); }
+  const app = await mount(ProgramsSection, { id: 'programs', projectType: 'php', holds: APP_ONLY });
+  try {
+    assert.deepEqual(app.cards(), ['ai']);
+    assert.deepEqual(app.offers(), { ai: 'new:true,not-serving' });
+  } finally { await app.done(); }
+});
+
+test('mounted: a domain that holds both draws both; neither card offers what would publish it over the other, nor a form', async () => {
   const app = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app', closedRights: RIGHTS, holds: PROGRAM_ONLY });
   try {
     assert.deepEqual(app.cards(), ['ai', 'programs']);
     assert.deepEqual(app.index(), ['#domain-part-ai', '#domain-part-programs']);
-    assert.deepEqual(app.offers(), { ai: 'false', programs: 'false,elsewhere' });
+    assert.deepEqual(app.offers(), { ai: 'new:false,republish-refused', programs: 'new:false,deploy-refused,not-serving' });
   } finally { await app.done(); }
   const program = await mount(ProgramsSection, { id: 'programs', projectType: 'runtime_app', holds: APP_ONLY });
   try {
     assert.deepEqual(program.cards(), ['programs', 'ai']);
-    assert.deepEqual(program.offers(), { programs: 'true', ai: 'false,elsewhere' });
+    assert.deepEqual(program.offers(), { programs: 'new:false,deploy-refused', ai: 'new:false,republish-refused,not-serving' });
   } finally { await program.done(); }
 });
 
@@ -323,10 +373,10 @@ test('an app card shown beside a program offers nothing that would publish the a
   // No catalogue where the type refuses a new app; no Open, update or retry beside a program.
   assert.match(source, /\) : offerNew \? \(\s*<Catalog view=\{v\} onInstall=\{setInstalling\} \/>\s*\) : null\}/);
   for (const guard of [
-    /install\.active && install\.serving && !elsewhere && \(/,
-    /install\.update_available && !busy && !elsewhere && \(/,
-    /retryKind === 'install' && !install\.version && app && !elsewhere && \(/,
-    /retryKind === 'update' && !elsewhere && \(/,
+    /install\.active && install\.serving && !notServing && \(/,
+    /install\.update_available && !busy && !republishRefused && \(/,
+    /retryKind === 'install' && !install\.version && app && !republishRefused && \(/,
+    /retryKind === 'update' && !republishRefused && \(/,
   ]) assert.match(source, guard);
   // Stop, the logs and the removal stay.
   assert.match(source, /<Button variant="danger" icon=\{Trash2\} disabled=\{busy \|\| !!acting\} onClick=\{remove\}>/);
@@ -336,13 +386,14 @@ test('mounted: a site that can take either reads nothing and offers both forms; 
   for (const projectType of ['php', 'static', 'proxy', 'forwarding']) {
     const view = await mount(ProgramsSection, { id: 'programs', projectType });
     try {
-      assert.deepEqual(view.offers(), { programs: 'true', ai: 'true' }, projectType);
+      assert.deepEqual(view.offers(), { programs: 'new:true,not-serving', ai: 'new:true,not-serving' }, projectType);
       assert.deepEqual(asked, [], `${projectType}: the section read on its own`);
     } finally { await view.done(); }
   }
   const held = await mount(ProgramsSection, { id: 'programs', projectType: 'php', closedRights: ['service_apps'], holds: APP_ONLY });
   try {
-    assert.deepEqual(held.offers(), { programs: 'true', ai: 'false' });
+    // The app record refuses a new program here: only the app's card, with no form (its right is closed).
+    assert.deepEqual(held.offers(), { ai: 'new:false,not-serving' });
   } finally { await held.done(); }
 });
 

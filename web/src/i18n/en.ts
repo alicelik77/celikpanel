@@ -340,6 +340,10 @@ export const en = {
     'theme.dark': 'Dark',
     'theme.system': 'System',
     'theme.skin': 'Style',
+    'theme.skin.celik': 'Celik',
+    'theme.skin.sky': 'Sky',
+    'theme.skin.forest': 'Forest',
+    'theme.skin.amber': 'Amber',
 
     'lang.label': 'Language',
 

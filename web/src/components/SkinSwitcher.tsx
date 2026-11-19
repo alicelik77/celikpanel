@@ -3,12 +3,12 @@ import { Palette, Check } from 'lucide-react';
 import { useTheme, SKINS } from '../theme/ThemeProvider';
 import { useI18n } from '../i18n';
 
-// Skin picker: a palette button that opens a small list of color presets
-// (Celik, Plesk, aaPanel, cPanel). Orthogonal to the light/dark switch next
-// to it — every skin has both variants.
-// Skin seçici: renk ön ayarlarının küçük listesini açan palet düğmesi
-// (Celik, Plesk, aaPanel, cPanel). Yanındaki açık/koyu anahtarından
-// bağımsızdır — her skin'in iki varyantı da vardır.
+// Style picker: a palette button that opens a small list of colour presets
+// (Celik, Sky, Forest, Amber), named in the reader's language. Orthogonal to
+// the light/dark switch next to it — every style has both variants.
+// Stil seçici: renk ön ayarlarının küçük listesini açan palet düğmesi
+// (Celik, Gök, Orman, Kehribar), okuyanın dilinde. Yanındaki açık/koyu
+// anahtarından bağımsızdır — her stilin iki varyantı da vardır.
 export function SkinSwitcher() {
     const { skin, setSkin } = useTheme();
     const { t } = useI18n();
@@ -59,7 +59,7 @@ export function SkinSwitcher() {
                                     className="h-3.5 w-3.5 rounded-full border border-border-strong"
                                     style={{ backgroundColor: sk.swatch }}
                                 />
-                                <span className="flex-1 text-left">{sk.name}</span>
+                                <span className="flex-1 text-left">{t(sk.nameKey)}</span>
                                 {active && <Check className="h-4 w-4 text-primary" />}
                             </button>
                         );

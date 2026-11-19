@@ -103,7 +103,7 @@ test('the tab, the screen part and its budget are wired', () => {
   const registry = read('../src/components/domain/sections.ts');
   // alpha.138: offered only where the server would accept a new one, and
   // drawn wherever the domain holds one (tests/programs-section-alpha138).
-  assert.match(registry, /id: 'programs', capabilities: \[\],\s*shown: \(v\) => !v\.teamMember && site\(v\) && \(v\.type === 'runtime_app' \|\| v\.holds\.program\s*\|\| \(\(v\.open\('program_apps'\) \|\| v\.open\('python_apps'\)\) && !newRefused\('programs', v\.type\)\)\)/);
+  assert.match(registry, /id: 'programs', capabilities: \[\],\s*shown: \(v\) => !v\.teamMember && site\(v\) && \(v\.type === 'runtime_app' \|\| v\.holds\.program\s*\|\| \(\(v\.open\('program_apps'\) \|\| v\.open\('python_apps'\)\) && !newRefused\('programs', v\.type, v\.holds\)\)\)/);
   assert.match(registry, /programs: 'runtime\.tab',/);
   const detail = read('../src/components/domain/sections/ProgramsSection.tsx');
   assert.match(detail, /const DomainRuntimeApps = lazy\(\(\) => import\('\.\.\/\.\.\/DomainRuntimeApps'\)/);
@@ -264,17 +264,17 @@ test('the administrator offers on a reduced server only after accepting every na
 });
 
 // alpha.138: on a domain whose type refuses a new program, the card offers no
-// form; on a domain that serves an AI app beside this program ("elsewhere"),
-// it offers nothing that would publish the program again, and keeps what
-// manages and removes it.
-test('alpha.138: no create form where the type refuses one; elsewhere, no deploy and no Open, but stop, log and removal', async () => {
+// form; beside an AI app record (deployRefused) it offers no deploy, on a
+// domain that serves the app (notServing) no Open, and keeps what manages and
+// removes the program.
+test('alpha.138: no create form where the server refuses one; beside an app, no deploy and no Open, but stop, log and removal', async () => {
   await mount(React.createElement(DomainRuntimeApps, { domainId: 1, domainName: 'example.com', offerNew: false }), () => ({ ...view, app: null }));
   try {
     const shown = text();
     assert.ok(!shown.includes('runtime.create.title') && !shown.includes('runtime.kind.choose'), shown);
     assert.equal(tree.root.findAll((n) => n.type === 'form').length, 0, 'a form was drawn');
   } finally { await unmount(); }
-  await mount(React.createElement(DomainRuntimeApps, { domainId: 1, domainName: 'example.com', offerNew: false, elsewhere: true }), () => view);
+  await mount(React.createElement(DomainRuntimeApps, { domainId: 1, domainName: 'example.com', offerNew: false, deployRefused: true, notServing: true }), () => view);
   try {
     assert.equal(button('runtime.redeploy'), undefined, 'a deploy was offered beside the app');
     assert.ok(!text().includes('runtime.app.open'), 'the site was offered as the program');

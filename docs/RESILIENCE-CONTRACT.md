@@ -8954,6 +8954,6 @@ until the backup reports ready.
   `cmd/panel/domain_app_records_test.go`;
   `web/tests/programs-section-alpha138.test.mjs` (the screen's refusal table
   read against the server's conditions in its source, the held cards per
-  role, type and plan). Not run in the lab yet.
+  role, type and plan; the screen's rule checked against both server refusals, the type and a record of the other kind). Lab (one run, alpha.138 candidate): a direct AI app install on a deployed program's domain was refused with `program_created`, nothing recorded, the program answering 45 of 45 checks; a created program with its plan right closed was shown, removed and its domain deleted. Not producible in the lab: a domain holding both (no AI app installs on its Debian 13 / Ubuntu 24.04 servers).
 - **Open.** The server's English fallback refusals still name "the Programs
   tab". **No P0 item is closed.**

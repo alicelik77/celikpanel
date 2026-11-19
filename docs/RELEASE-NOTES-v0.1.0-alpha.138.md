@@ -87,6 +87,9 @@ the plan or the site's type say, and Programs draws its card:
   plan still allows and **Remove the program**.
 - When the domain cannot be deleted because of one of them, the refusal sends
   you to the Programs section, where the card with its removal is shown.
+- A domain holding a program (even one never deployed) does not offer an AI
+  app's **Install**, and a domain holding an AI app does not offer a new
+  program: the server would refuse both.
 
 ### Each mailbox's connection settings
 
@@ -124,6 +127,13 @@ own mail name.
 the name the panel shows now.** Domains whose own `mail.<domain>` this server
 serves with a certificate keep that name.
 
+### The four styles have new names
+
+The panel's styles (the palette button beside the light and dark switch) are
+now **Celik**, **Sky**, **Forest** and **Amber**; none of them is named after
+another company's product. A style chosen before is kept and shown under its
+new name.
+
 ## Known limits
 
 - **Node.js stays under Site.** A Node.js application's start, stop, restart
@@ -141,8 +151,53 @@ serves with a certificate keep that name.
 
 ## Checked in the lab
 
-**Placeholder.** The lab check of this release has not run yet. Until it
-does, the evidence is component tests only.
+Lab check finished: one run, on a Debian 13 and an Ubuntu 24.04 test server.
+
+- Both servers updated through the panel's own update page, by themselves,
+  with nothing left failed.
+- **A running program was not taken over.** On a domain whose program was
+  deployed and running, a direct request to install an AI app was refused
+  with "Nothing was changed: a program uses this domain. Remove it in the
+  Programs section first, or use another domain or subdomain for n8n."
+  Nothing was created, and the program answered 45 of 45 checks during and
+  after the attempt.
+- **What a domain holds is shown.** A program created but never deployed,
+  on a domain whose plan no longer included programs, was still shown in
+  Programs with **Remove the program**; it was removed and the domain was
+  deleted.
+- The ten-entry section row fits one line at desktop width and scrolls
+  inside itself on a phone, without the page scrolling sideways. Old
+  addresses (`?section=site&part=programs`, `?tab=ai`) land on Programs.
+- The mailbox window in Turkish and English, at desktop and phone width: the
+  settings, the outgoing sign-in line, and **Copy all**, whose text has no
+  password. A new mailbox's notice offered **Show connection settings**,
+  which opened the window.
+- The server's mail name was shown for a subdomain and for an ordinary
+  domain; it matched the server's certificate on ports 993, 995 and 587, and
+  signing in over IMAP with it worked.
+- A domain was created and deleted on a primary and backup DNS server pair.
+
+**Not checked:** a domain that holds both a program and an AI app, and what
+installing an AI app over a program did on the earlier version: no AI or
+automation app can be installed on the lab's Debian 13 and Ubuntu 24.04
+servers at all (Node.js 24 and Python 3.11 or 3.12 are missing there), so
+that part rests on component tests. A Node.js site without the section. The
+warning for a mail name that is not confirmed.
+
+**Fixed after the lab run (screen only):** on a PHP domain with a program
+that was created but never deployed, Programs also showed the AI card with
+its **Install** entries, which the server refuses there. It no longer does,
+and a domain holding an AI app no longer offers a new program.
+
+### Found in the lab, left for the next release
+
+- The line saying n8n "cannot be installed yet" mixes languages and points
+  to a Node.js installation the server cannot do.
+- Right after a domain deletion that waits for the backup DNS server, the
+  status says the deletion stopped and to delete it again, although it
+  finishes by itself (about 51 seconds in the lab).
+- No AI or automation app can be installed on Debian 13 or Ubuntu 24.04
+  (the runtime versions they need are missing there).
 
 ## Evidence
 
@@ -161,5 +216,6 @@ its source; the three refusals on the server's own handlers (nothing
 recorded, the Agent not asked, the other site types unchanged); the domain
 list's fields per role; every older address of the cards; the mailbox window
 in each mail state, in both languages; the mail setup answer for every kind
-of domain. The `cmd/panel` tests were compared name by name with alpha.137:
-no new failure. **No P0 item is closed.**
+of domain; the four styles and a style stored under its earlier name. The
+`cmd/panel` tests were compared name by name with alpha.137: no new failure.
+One lab run (above). **No P0 item is closed.**

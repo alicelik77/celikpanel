@@ -95,6 +95,9 @@ program mı yapay zekâ uygulaması mı tuttuğunu söyler; Programlar onun kart
   izin verdikleri ve **Programı kaldır** ile.
 - Alan adı bunlardan biri yüzünden silinemediğinde ret sizi Programlar
   bölümüne gönderir; kaldırma düğmesiyle kart orada gösterilir.
+- Program tutan (hiç yayına alınmamış olsa da) bir alan adı yapay zekâ
+  uygulamasının **Kur** düğmesini, yapay zekâ uygulaması tutan bir alan adı
+  da yeni bir programı sunmaz: sunucu ikisini de reddederdi.
 
 ### Her posta kutusunun bağlantı bilgileri
 
@@ -135,6 +138,13 @@ sunduğu posta adını, çoğunlukla sunucunun kendi posta adını verir.
 panelin şimdi gösterdiği adı kullanın.** Kendi `mail.<alan adı>` adını bu
 sunucunun sertifikayla sunduğu alan adları o adı korur.
 
+### Dört stilin yeni adları
+
+Panelin stilleri (açık ve koyu anahtarının yanındaki palet düğmesi) artık
+**Celik**, **Gök**, **Orman** ve **Kehribar**; hiçbiri başka bir firmanın
+ürününün adını taşımaz. Daha önce seçilen stil korunur ve yeni adıyla
+gösterilir.
+
 ## Bilinen sınırlar
 
 - **Node.js Site altında kalır.** Bir Node.js uygulamasının başlatma,
@@ -153,8 +163,56 @@ sunucunun sertifikayla sunduğu alan adları o adı korur.
 
 ## Laboratuvarda denendi
 
-**Yer tutucu.** Bu sürümün laboratuvar denetimi henüz yapılmadı. Yapılana
-dek kanıt yalnız bileşen testleridir.
+Laboratuvar denetimi bitti: bir Debian 13 ve bir Ubuntu 24.04 deneme
+sunucusunda bir deneme.
+
+- İki sunucu da panelin kendi güncelleme sayfasından, kendiliğinden
+  güncellendi; başarısız işaretli hiçbir şey kalmadı.
+- **Çalışan bir program elinden alınmadı.** Programı yayında ve çalışır
+  durumdaki bir alan adında yapay zekâ uygulaması kurmak için gönderilen
+  doğrudan istek "Nothing was changed: a program uses this domain. Remove it
+  in the Programs section first, or use another domain or subdomain for
+  n8n." ile reddedildi (sayfa bunu Türkçe sözleriyle gösterir). Hiçbir şey
+  oluşturulmadı; program deneme sırasında ve sonrasında 45 denetimin 45'ine
+  yanıt verdi.
+- **Alan adının tuttuğu gösterilir.** Planı artık program içermeyen bir alan
+  adında oluşturulmuş ama hiç yayına alınmamış bir program, **Programı
+  kaldır** ile Programlar'da hâlâ göründü; kaldırıldı ve alan adı silindi.
+- On girişli bölüm satırı masaüstü genişliğinde tek satıra sığar, telefonda
+  sayfa yana kaymadan kendi içinde kayar. Eski adresler
+  (`?section=site&part=programs`, `?tab=ai`) Programlar'a varır.
+- Posta kutusu penceresi Türkçe ve İngilizce, masaüstü ve telefon
+  genişliğinde: ayarlar, giden posta oturum açma satırı ve metninde parola
+  olmayan **Tümünü kopyala**. Yeni posta kutusunun bildirimi **Bağlantı
+  bilgilerini göster** önerdi ve pencereyi açtı.
+- Sunucunun posta adı bir alt alan adı ve sıradan bir alan adı için
+  gösterildi; 993, 995 ve 587 numaralı bağlantı noktalarında sunucunun
+  sertifikasıyla eşleşti ve bu adla IMAP üzerinden oturum açmak çalıştı.
+- Bir birincil ve yedek DNS sunucusu çiftinde bir alan adı oluşturulup
+  silindi.
+
+**Denenmedi:** hem program hem yapay zekâ uygulaması tutan bir alan adı ve
+önceki sürümde bir programın üzerine yapay zekâ uygulaması kurmanın ne
+yaptığı: laboratuvarın Debian 13 ve Ubuntu 24.04 sunucularına hiçbir yapay
+zekâ ya da otomasyon uygulaması kurulamıyor (orada Node.js 24 ve Python 3.11
+ya da 3.12 yok); bu kısım bileşen testlerine dayanır. Bölümü olmayan bir
+Node.js sitesi. Doğrulanmamış bir posta adı için uyarı.
+
+**Laboratuvar denemesinden sonra düzeltildi (yalnız ekran):** oluşturulmuş
+ama hiç yayına alınmamış programı olan bir PHP alan adında Programlar, sunucunun
+orada reddettiği **Kur** düğmeleriyle yapay zekâ kartını da gösteriyordu.
+Artık göstermiyor; yapay zekâ uygulaması tutan bir alan adı da artık yeni bir
+program sunmuyor.
+
+### Laboratuvarda bulunan, sonraki sürüme bırakılanlar
+
+- n8n için "henüz kurulamaz" diyen satır iki dili karıştırıyor ve sunucunun
+  yapamadığı bir Node.js kurulumunu gösteriyor.
+- Yedek DNS sunucusunu bekleyen bir alan adı silmenin hemen ardından durum,
+  silmenin durduğunu ve yeniden silinmesini söylüyor; oysa kendiliğinden
+  bitiyor (laboratuvarda yaklaşık 51 saniye).
+- Debian 13 ve Ubuntu 24.04'e hiçbir yapay zekâ ya da otomasyon uygulaması
+  kurulamıyor (gerektirdikleri çalışma ortamı sürümleri orada yok).
 
 ## Kanıt
 
@@ -173,6 +231,7 @@ ekranın ret tablosunun sunucunun kaynağındaki koşullarla karşılaştırılm
 üç reddin sunucunun kendi işleyicilerinde denenmesi (hiçbir şey kaydedilmez,
 Agent'a sorulmaz, öteki site türleri değişmez); alan adı listesinin alanları
 role göre; kartların her eski adresi; posta kutusu penceresi her posta
-durumunda, iki dilde; her tür alan adı için posta kurulum yanıtı.
-`cmd/panel` testleri alpha.137 ile ad ad karşılaştırıldı: yeni hata yok.
+durumunda, iki dilde; her tür alan adı için posta kurulum yanıtı; dört stil
+ve eski adıyla saklanmış bir stil. `cmd/panel` testleri alpha.137 ile ad ad
+karşılaştırıldı: yeni hata yok. Bir laboratuvar denemesi (yukarıda).
 **Hiçbir P0 maddesi kapanmadı.**
