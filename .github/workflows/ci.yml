@@ -141,6 +141,10 @@ jobs:
       # Exercise durable recovery publication, strict final proof and crash retries.
       - run: sudo bash deploy/test-release-recovery-contract.sh
       - run: sudo env PATH="$PATH" GOTOOLCHAIN=local bash deploy/test-recovery-runtime-shell-contract.sh
+      # alpha.137: the update's first bounded wait and its typed unchanged stop;
+      # the one "preparation is unconfirmed" line and its two readers.
+      - run: bash deploy/test-update-enrollment-preflight.sh
+      - run: bash deploy/test-update-preparation-stop-contract.sh
       - run: sudo env PATH="$PATH" GOTOOLCHAIN=local bash deploy/test-rollback-ledger-preservation.sh
       - run: sudo bash deploy/test-rollback-reboot-runtime.sh
       - run: bash deploy/test-rollback-journal-commit.sh

@@ -45,8 +45,7 @@ eval "$(extract update.sh preflight_mutations_before_quiesce)"
 eval "$(extract update.sh update_probe_diagnostic)"
 eval "$(extract update.sh fail_update_preflight)"
 die() { printf 'refused: %s; detail=%s\n' "$*" "$update_failure_detail" >&2; exit 73; }
-# The checks below run where update.sh has installed its EXIT trap.
-trap 'true' EXIT
+# The checks below keep die: only the first check reports its own stop.
 PREFLIGHT_AGENT=$TEST_ROOT/probe
 AGENT_STATE_DIR=$TEST_ROOT/state
 MUTATION_LOCK=$TEST_ROOT/lock
@@ -102,7 +101,6 @@ preflight_mutations_before_quiesce
 eval "$(extract update.sh preflight_host_idle_before_recovery_runtime)"
 eval "$(extract update.sh report_update_failure)"
 eval "$(extract update.sh publish_update_failure_observation)"
-trap - EXIT
 for PROBE_STATE in package package-lasting enrollment; do
  export PROBE_STATE
  BOOTSTRAP_PRE_LEDGER=0
@@ -135,6 +133,17 @@ first=s.index('    preflight_host_idle_before_recovery_runtime\n')
 prepare=s.index('    prepare_independent_recovery_runtime\n',first)
 reloads=s.index('    release_txn_install_and_verify_unit_guards',prepare)
 assert first<prepare<reloads, 'the first wait does not precede the recovery runtime preparation'
+# Only the first check reports its own unchanged stop (fail_update_preflight
+# reads a flag no other caller sets); it is called once, before the release
+# recovery intent and the EXIT trap, and after the preflight binaries are
+# validated.
+flag='local update_preflight_reports_unchanged_stop=1\n'
+assert s.count('update_preflight_reports_unchanged_stop=1')==1, 'the unchanged-stop flag is set elsewhere'
+function=s.index('preflight_host_idle_before_recovery_runtime() {\n')
+assert function<s.index(flag)<s.index('\n}\n',function), 'the flag is not local to the first check'
+assert s.count('\n    preflight_host_idle_before_recovery_runtime\n')==1
+assert first<s.index('\n    publish_release_recovery_intent\n')<s.index('\ntrap on_exit EXIT\n')
+assert s.index('\nvalidate_preflight_binary "$PREFLIGHT_AGENT" agent\n')<first, 'the first check runs an unvalidated preflight binary'
 early=s.index('    preflight_mutations_before_quiesce\n')
 stage=s.index('    mkdir -m 0700 -- "$stage_root"',early)
 marker=s.index('    release_txn_create_quiesce_marker',stage)

@@ -380,11 +380,15 @@ run_recovery_compatibility_waiting() {
 }
 
 # The first read-only check of an update, before anything on the server is
-# prepared: the same bounded wait as below. It runs before the EXIT trap, so
-# a refusal still present after the bound reports its typed, unchanged stop
-# itself (fail_update_preflight). Hiçbir şey hazırlanmadan önceki ilk bekleme.
+# prepared: the same bounded wait as below. It runs before the recovery
+# runtime's preparation, the release-recovery intent and the EXIT trap, so a
+# refusal still present after the bound reports its typed, unchanged stop
+# itself: fail_update_preflight does so only while this function's own
+# update_preflight_reports_unchanged_stop is set (no other caller sets it).
+# Hiçbir şey hazırlanmadan önceki ilk bekleme; tipli duruşu kendisi bildirir.
 preflight_host_idle_before_recovery_runtime() {
     [[ $BOOTSTRAP_PRE_LEDGER -eq 0 ]] || return 0
+    local update_preflight_reports_unchanged_stop=1
     if ! CELIKPANEL_AGENT_STATE_DIR="$AGENT_STATE_DIR" CELIKPANEL_MUTATION_LOCK="$MUTATION_LOCK" \
         run_update_agent_idle_probe_waiting "$PREFLIGHT_AGENT" --check-service-mutation-idle; then
         fail_update_preflight agent_idle "an existing server operation requires completion or exact recovery before update; coordinators remain available"
@@ -845,11 +849,13 @@ fail_update_preflight() {
     [[ ${update_failure_detail:-} == *': the host package manager is active'* ]] ||
         update_failure_detail=$diagnostic
     if [[ ${transaction_phase:-none} == none ]]; then
-        if [[ -z $(trap -p EXIT) ]]; then
-            # Before the EXIT trap nothing else would write the summary: the
-            # typed, unchanged stop is reported here (as the recovery runtime
-            # preflight does), so the Agent clears the attempt's unit and the
-            # panel offers the update again.
+        if [[ ${update_preflight_reports_unchanged_stop:-0} -eq 1 ]]; then
+            # The first check (preflight_host_idle_before_recovery_runtime)
+            # runs before anything is prepared and before the EXIT trap, so
+            # nothing else would write the summary: the typed, unchanged stop
+            # is reported here (as the recovery runtime preflight does), so the
+            # Agent clears the attempt's unit and the panel offers the update
+            # again. Every other caller keeps die / fail_before_active.
             echo "!! $reason" >&2
             report_update_failure 1 none
             exit 1
@@ -2969,6 +2975,10 @@ publish_release_recovery_intent() {
 release_txn_verify_inherited_lock "$RELEASE_TRANSACTION_ROOT" "$RELEASE_TRANSACTION_FD" || die "persistent release transaction lock verification failed"
 classify_release_transaction_entries
 preflight_completion_material_admission
+# The preflight binaries are proven before the first check below runs one.
+# İlk denetim bir ön denetim ikilisini çalıştırmadan önce ikililer doğrulanır.
+validate_preflight_binary "$PREFLIGHT_PANEL" panel
+validate_preflight_binary "$PREFLIGHT_AGENT" agent
 if [[ $release_marker_count -eq 0 ]]; then
     [[ -z $RECOVERY_RUNTIME_ROOT ]] \
         || die "independent recovery cannot initiate a new update"
@@ -3000,8 +3010,6 @@ target_release_commit=$trusted_release_commit
 target_release_tree=$trusted_release_tree
 [[ "$target_release_commit" =~ ^[0-9a-f]{40}$ ]] \
     || die "trusted target commit must be a full 40-character object id"
-validate_preflight_binary "$PREFLIGHT_PANEL" panel
-validate_preflight_binary "$PREFLIGHT_AGENT" agent
 
 # Runtime has one durable phase. The only permitted two-marker topology is an
 # exact completion.pending plus scheduler-restore.pending pair.
