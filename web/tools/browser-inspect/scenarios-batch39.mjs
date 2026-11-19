@@ -201,6 +201,27 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
         await reset(); await ctl({ clearAll: true, domains: [] });
     };
 
+    // Owner, 20 Nov 2026: the four styles' new names; a style stored under
+    // its earlier id (here the one alpha.137 stored for Sky) is kept.
+    scenarios.y39styles = async () => {
+        await reset();
+        await ctl({ clearAll: true, domains: [domain()], capabilities: CAPABILITIES, override: { [ME]: { status: 200, body: USERS.admin } } });
+        const page = await newPage({ 'celikpanel.skin': 'plesk' });
+        await page.goto(`${base}/domains`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('main', { timeout: 20000 });
+        await quiet(page);
+        await page.evaluate(() => document.querySelector('button[aria-label="Stil"], button[aria-label="Style"]')?.click());
+        await pause(500);
+        const styles = await page.evaluate(() => ({
+            theme: document.documentElement.dataset.theme ?? null,
+            stored: localStorage.getItem('celikpanel.skin'),
+            names: Array.from(document.querySelectorAll('button')).filter((b) => b.querySelector('span[aria-hidden]') && b.closest('.w-44')).map((b) => b.innerText.trim()),
+        }));
+        await snap(page, 'styles-admin', { role: 'admin', styles });
+        await closePage(page);
+        await reset(); await ctl({ clearAll: true, domains: [] });
+    };
+
     // Neither a program nor an AI app can be added to a Node.js site: no
     // Programs in the row, also when the old address asks for it.
     scenarios.y39node = async () => {
