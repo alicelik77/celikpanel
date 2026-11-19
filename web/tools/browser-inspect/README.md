@@ -773,6 +773,24 @@ with its databases as the administrator, the question and the finished window
 with the database deletion's own lines (`y36deleted`). Same conventions as
 batch 30.
 
+## Scenarios of the thirty-seventh batch (the public website's screens, 2026-11-19)
+
+`sitescreens` takes the product screens the public website shows (`site/`,
+published under `download-portal/assets/shots/`): Domains, one domain's
+Overview and Databases (and the Dashboard) of batch 20's sample "everything
+installed" server, with six example domains, five example databases of
+example owners, a connected domain with a valid certificate, complete mail
+authentication and today's backup, and the version of the build being
+photographed. A desktop run takes them at 1280×800 CSS pixels at twice the
+density; a phone run at 390×844, also at twice the density. They are written
+beside the record as PNG into `BROWSER_INSPECT_SITE` (default
+`<out>/site`) as `product-<page>-<locale>-<theme>.png`. Every name, address
+and number is sample data (example.com, example.net, example.org,
+192.0.2.10). For the site each desktop shot becomes
+`<page>-<locale>-<theme>-2x.webp` (2560×1600) and a half-size
+`<page>-<locale>-<theme>.webp`, each phone shot `<page>-<locale>-<theme>-phone.webp`;
+look at every one, then run `go test ./site`.
+
 `scenarios-batch39.mjs` draws alpha.138's Programs section from overrides
 only: a program site as the administrator and as a customer (the row with
 Programs after Site, the Programs section, the Site section that is left, the

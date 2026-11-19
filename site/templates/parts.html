@@ -1,0 +1,158 @@
+{{define "navlinks" -}}
+<a href="{{link "pricing"}}"{{if current "pricing"}} aria-current="page"{{end}}>{{t "nav.pricing"}}</a>
+<a href="{{link "download"}}"{{if current "download"}} aria-current="page"{{end}}>{{t "nav.download"}}</a>
+<a href="{{link "systems"}}"{{if current "systems"}} aria-current="page"{{end}}>{{t "nav.systems"}}</a>
+<a href="{{guide ""}}">{{t "nav.guide"}}</a>
+{{- end}}
+
+{{define "masthead" -}}
+<header class="masthead">
+<div class="wrap bar">
+<a class="brand" href="{{link "home"}}"{{if current "home"}} aria-current="page"{{end}}>{{icon "logo"}}<span>CelikPanel</span><span class="sr-only"> {{t "nav.home"}}</span></a>
+<nav class="primary" aria-label="{{t "nav.label"}}">
+{{template "navlinks" .}}
+</nav>
+<div class="tools">
+{{- range langs}}{{if ne . $.Lang}}
+<a class="tool lang" href="{{in .}}" hreflang="{{.}}" lang="{{.}}" data-set-lang="{{.}}" aria-label="{{if eq . "en"}}English{{else}}Türkçe{{end}}">{{icon "globe"}}<span{{if eq $.Lang "tr"}} class="cur"{{end}}>TR</span><span class="sep" aria-hidden="true">·</span><span{{if eq $.Lang "en"}} class="cur"{{end}}>EN</span></a>
+{{- end}}{{end}}
+<button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="{{t "nav.theme.dark"}}" data-label-light="{{t "nav.theme.light"}}" aria-label="{{t "nav.theme.dark"}}">{{icon "moon"}}{{icon "sun"}}</button>
+<a class="signin" href="{{account "login"}}">{{t "nav.signin"}}</a>
+<a class="btn btn-primary btn-sm register" href="{{account "register"}}">{{t "nav.register"}}</a>
+<details class="menu">
+<summary aria-label="{{t "nav.menu"}}">{{icon "menu"}}{{icon "x"}}</summary>
+<nav class="sheet" aria-label="{{t "nav.label"}}">
+{{template "navlinks" .}}
+<a href="{{link "releases"}}">{{t "nav.releases"}}</a>
+<a href="{{account "login"}}">{{t "nav.signin"}}</a>
+<a class="btn btn-primary" href="{{account "register"}}">{{t "nav.register"}}</a>
+</nav>
+</details>
+</div>
+</div>
+</header>
+{{- end}}
+
+{{define "pill" -}}
+<p class="pill"><span class="live" aria-hidden="true"></span>{{dots (t "common.alpha.tag")}}</p>
+{{- end}}
+
+{{define "alpha" -}}
+<div class="note">{{template "pill" .}} <span>{{t "common.alpha.text"}}</span></div>
+{{- end}}
+
+{{define "command" -}}
+<div class="terminal">
+<div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="cmd-title-{{.ID}}">{{t "install.command.title"}}</h3><button class="copy" type="button" hidden data-copy="cmd-{{.ID}}" data-copied="{{t "install.command.copied"}}" data-failed="{{t "install.command.failed"}}">{{icon "copy"}}<span>{{t "install.command.copy"}}</span></button></div>
+<pre tabindex="0" aria-labelledby="cmd-title-{{.ID}}"><code id="cmd-{{.ID}}"><span class="ln">timedatectl set-ntp true
+</span><span class="ln">curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+</span><span class="ln">sh celikpanel-install.sh</span></code></pre>
+<p class="terminal-foot">{{t "install.command.note"}}</p>
+<p class="sr-only" role="status" data-copy-status></p>
+</div>
+{{- end}}
+
+{{define "footer" -}}
+<footer class="site-footer">
+<div class="wrap">
+<div class="footer-grid">
+<div class="footer-brand"><a class="brand" href="{{link "home"}}">{{icon "logo"}}<span>CelikPanel</span></a><p>{{t "footer.tagline"}}</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">{{t "footer.product"}}</h2><ul>
+<li><a href="{{link "pricing"}}">{{t "nav.pricing"}}</a></li>
+<li><a href="{{link "download"}}">{{t "footer.download"}}</a></li>
+<li><a href="{{link "systems"}}">{{t "nav.systems"}}</a></li>
+<li><a href="{{link "releases"}}">{{t "nav.releases"}}</a></li>
+<li><a href="{{guide ""}}">{{t "footer.guide"}}</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">{{t "footer.account"}}</h2><ul>
+<li><a href="{{account "login"}}">{{t "nav.signin"}}</a></li>
+<li><a href="{{account "register"}}">{{t "footer.register"}}</a></li>
+<li><a href="{{account "terms"}}">{{t "footer.terms"}}</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">{{t "footer.help"}}</h2><ul>
+<li><a href="{{feedback "bug"}}">{{t "footer.bug"}}</a></li>
+<li><a href="{{feedback "feature"}}">{{t "footer.feature"}}</a></li>
+<li><a href="{{feedback "security"}}">{{t "footer.security"}}</a></li>
+</ul></nav>
+</div>
+<div class="footer-bottom"><span>© 2026 CelikPanel</span><span>{{dots (t "footer.state")}}</span></div>
+</div>
+</footer>
+{{- end}}
+
+{{define "systems-table" -}}
+<div class="table-wrap" role="region" aria-labelledby="systems-caption" tabindex="0">
+<table class="data systems">
+<caption id="systems-caption" class="sr-only">{{t "systems.table.caption"}}</caption>
+<thead><tr><th scope="col">{{t "systems.table.system"}}</th><th scope="col">{{t "systems.table.status"}}</th><th scope="col">{{t "systems.table.until"}}</th><th scope="col">{{t "systems.table.updates"}}</th></tr></thead>
+<tbody>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-label="{{t "systems.table.status"}}"><span class="state tested">{{t "systems.tested"}}</span></td><td data-label="{{t "systems.table.until"}}">{{t "systems.debian13.until"}}</td><td data-label="{{t "systems.table.updates"}}">{{t "systems.updates.choice"}}</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-label="{{t "systems.table.status"}}"><span class="state tested">{{t "systems.tested"}}</span></td><td data-label="{{t "systems.table.until"}}">{{t "systems.ubuntu2404.until"}}</td><td data-label="{{t "systems.table.updates"}}">{{t "systems.updates.choice"}}</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-label="{{t "systems.table.status"}}"><span class="state">{{t "systems.supported"}}</span></td><td data-label="{{t "systems.table.until"}}">{{t "systems.debian12.until"}}</td><td data-label="{{t "systems.table.updates"}}">{{t "systems.updates.choice"}}</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-label="{{t "systems.table.status"}}"><span class="state">{{t "systems.supported"}}</span></td><td data-label="{{t "systems.table.until"}}">{{t "systems.ubuntu2204.until"}}</td><td data-label="{{t "systems.table.updates"}}">{{t "systems.updates.choice"}}</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">{{t "systems.rolling"}}</span></th><td data-label="{{t "systems.table.status"}}"><span class="state">{{t "systems.supported"}}</span></td><td data-label="{{t "systems.table.until"}}">{{t "systems.arch.until"}}</td><td data-label="{{t "systems.table.updates"}}">{{t "systems.arch.how"}}</td></tr>
+</tbody>
+</table>
+</div>
+{{- end}}
+
+{{define "price-pair" -}}
+<div class="price-pair">
+<div class="price-card">
+<p class="tag-from">{{t "price.from"}}</p>
+<p class="amount"><b>99</b><span>{{t "price.unit"}}</span></p>
+<ul class="checks">
+<li>{{icon "check"}}{{t "price.check.count"}}</li>
+<li>{{icon "check"}}{{t "price.check.edition"}}</li>
+<li>{{icon "check"}}{{t "price.check.lock"}}</li>
+<li>{{icon "check"}}{{t "price.check.move"}}</li>
+</ul>
+</div>
+<div class="today-card">
+<p class="pill"><span class="live" aria-hidden="true"></span>{{t "price.today.tag"}}</p>
+<h3>{{t "price.today.title"}}</h3>
+<p>{{t "price.today.text"}}</p>
+<ul class="checks quiet">
+<li>{{icon "check"}}{{t "price.today.card"}}</li>
+<li>{{icon "check"}}{{t "price.today.server"}}</li>
+<li>{{icon "check"}}{{t "price.today.beta"}}</li>
+</ul>
+<a class="btn btn-primary" href="{{account "register"}}">{{t "common.register.free"}}{{icon "arrow-right"}}</a>
+</div>
+</div>
+{{- end}}
+
+{{define "lapse-track" -}}
+<div class="track">
+<p class="track-head"><b>{{t "lapse.title"}}</b><span>{{t "lapse.terms"}}</span></p>
+<ol class="stops">
+<li class="st-warn"><i aria-hidden="true"></i><b>{{t "lapse.s1"}}</b><span>{{dots (t "lapse.s1.text")}}</span></li>
+<li class="st-end"><i aria-hidden="true"></i><b>{{t "lapse.s2"}}</b><span>{{t "lapse.s2.text"}}</span></li>
+<li class="st-grace"><i aria-hidden="true"></i><b>{{t "lapse.s3"}}</b><span>{{t "lapse.s3.text"}}</span></li>
+<li class="st-protect"><i aria-hidden="true"></i><b>{{t "lapse.s4"}}</b><span>{{t "lapse.s4.text"}}</span></li>
+</ol>
+<p class="track-always">{{icon "shield-check"}}{{t "lapse.always"}}</p>
+</div>
+{{- end}}
+
+{{define "badges" -}}
+<div class="badges">
+<span class="badge tested">Debian 13</span><span class="badge tested">Ubuntu 24.04 LTS</span><span class="badge">Debian 12</span><span class="badge">Ubuntu 22.04 LTS</span><span class="badge">Arch Linux</span>
+<a class="link small" href="{{link "systems"}}">{{t "badges.more"}}{{icon "arrow-right"}}</a>
+</div>
+{{- end}}
+
+{{define "closing" -}}
+<section class="closing" aria-labelledby="close-title">
+<div class="wrap">
+<div class="closing-card">
+<h2 id="close-title">{{sentences (t "close.title")}}</h2>
+<p>{{t "close.text"}}</p>
+<div class="actions">
+<a class="btn btn-primary btn-lg" href="{{account "register"}}">{{t "common.register.free"}}{{icon "arrow-right"}}</a>
+<a class="btn btn-ghost btn-lg" href="{{link "download"}}">{{t "close.install"}}</a>
+</div>
+</div>
+</div>
+</section>
+{{- end}}

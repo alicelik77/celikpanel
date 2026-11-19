@@ -1,0 +1,89 @@
+{{define "hero" -}}
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="wrap">
+<p class="eyebrow">{{t "nav.pricing"}}</p>
+<h1 id="hero-title">{{sentences (t "pricing.hero.title")}}</h1>
+<p class="lede">{{t "pricing.hero.lede"}}</p>
+</div>
+<div class="wrap">{{template "price-pair" .}}</div>
+</section>
+{{- end}}
+
+{{define "main" -}}
+<section class="block" aria-labelledby="included-title">
+<div class="wrap">
+<div class="block-head center">
+<p class="eyebrow">{{t "pricing.included.eyebrow"}}</p>
+<h2 id="included-title">{{sentences (t "pricing.included.title")}}</h2>
+<p class="lede">{{t "pricing.included.lede"}}</p>
+</div>
+<ul class="tiles">
+{{- range $k := (list "sites" "mail" "dns" "databases" "security" "backups" "people" "pair" "updates")}}
+<li class="tile">{{icon (index (dict "sites" "globe" "mail" "mail" "dns" "network" "databases" "database" "security" "shield-check" "backups" "archive" "people" "users" "pair" "server" "updates" "rotate-ccw") $k)}}<div><h3>{{t (print "pricing.included." $k ".name")}}</h3><p>{{t (print "pricing.included." $k ".text")}}</p></div></li>
+{{- end}}
+</ul>
+</div>
+</section>
+
+<section class="block" aria-labelledby="lapse-title" id="{{t "pricing.lapse.id"}}">
+<div class="wrap">
+<div class="block-head center">
+<p class="eyebrow">{{t "pricing.lapse.eyebrow"}}</p>
+<h2 id="lapse-title">{{sentences (t "pricing.lapse.title")}}</h2>
+<p class="lede">{{t "pricing.lapse.lede"}}</p>
+</div>
+{{template "lapse-track" .}}
+</div>
+</section>
+
+<section class="block" aria-labelledby="terms-title">
+<div class="wrap">
+<div class="block-head center">
+<p class="eyebrow">{{t "pricing.terms.eyebrow"}}</p>
+<h2 id="terms-title">{{sentences (t "pricing.terms.title")}}</h2>
+<p class="lede">{{t "pricing.terms.lede"}}</p>
+</div>
+<div class="stat-cards">
+<div class="stat"><p class="num">30<small>{{t "pricing.terms.days"}}</small></p><h3>{{t "pricing.terms.trial"}}</h3><p>{{t "pricing.terms.trial.text"}}</p></div>
+<div class="stat"><p class="num">30<small>{{t "pricing.terms.days"}}</small></p><h3>{{t "pricing.terms.refund"}}</h3><p>{{t "pricing.terms.refund.text"}}</p></div>
+<div class="stat"><p class="num">0<small>USD</small></p><h3>{{t "pricing.terms.move"}}</h3><p>{{t "pricing.terms.move.text"}}</p></div>
+</div>
+<ul class="notes">
+{{- range $k := (list "auto" "offline" "lifetime")}}
+<li><b>{{t (print "pricing.terms." $k)}}</b><span>{{t (print "pricing.terms." $k ".text")}}</span></li>
+{{- end}}
+</ul>
+</div>
+</section>
+
+<section class="block" aria-labelledby="today-title" id="{{t "pricing.today.id"}}">
+<div class="wrap narrow">
+<div class="block-head center">
+<p class="eyebrow">{{t "pricing.today.eyebrow"}}</p>
+<h2 id="today-title">{{sentences (t "pricing.today.title")}}</h2>
+</div>
+<dl class="facts">
+{{- range $k := (list "free" "renew" "check" "lock" "founder")}}
+<div><dt>{{t (print "pricing.today." $k)}}</dt><dd>{{t (print "pricing.today." $k ".text")}}</dd></div>
+{{- end}}
+</dl>
+</div>
+</section>
+
+<section class="block" aria-labelledby="faq-title">
+<div class="wrap narrow">
+<div class="block-head center">
+<p class="eyebrow">{{t "pricing.faq.eyebrow"}}</p>
+<h2 id="faq-title">{{sentences (t "pricing.faq.title")}}</h2>
+</div>
+<div class="faq">
+{{- range $i, $k := (list "stop" "server" "count" "rise" "move" "card" "service" "pay")}}
+<details{{if eq $i 0}} open{{end}}><summary>{{t (print "pricing.faq." $k ".q")}}</summary><p>{{t (print "pricing.faq." $k ".a")}}</p></details>
+{{- end}}
+</div>
+</div>
+</section>
+
+{{template "closing" .}}
+{{- end}}

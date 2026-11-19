@@ -1,0 +1,85 @@
+{{define "hero" -}}
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="wrap">
+<p class="eyebrow">{{t "nav.releases"}}</p>
+<h1 id="hero-title">{{sentences (t "releases.hero.title")}}</h1>
+<p class="lede">{{t "releases.hero.lede"}}</p>
+</div>
+</section>
+{{- end}}
+
+{{define "main" -}}
+<section class="block tight" aria-labelledby="current-title">
+<div class="wrap release-grid">
+<div class="release-card">
+<p class="pill"><span class="live" aria-hidden="true"></span><span id="current-title">{{t "releases.current"}}</span></p>
+<p class="version">@@CP_RELEASE_VERSION@@</p>
+<p class="published">{{t "releases.published"}} <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time> <span class="dot">·</span> Linux amd64</p>
+<div class="actions start">
+<a class="btn btn-primary" href="@@CP_RELEASE_ARCHIVE_URL@@">{{t "releases.package"}}</a>
+<a class="btn btn-ghost" href="{{repo (print "docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@" (t "releases.notes.ext"))}}">{{t "releases.notes"}}{{icon "arrow-up-right"}}</a>
+</div>
+</div>
+<div class="table-card identity-card">
+<div class="table-card-head"><h2>{{t "releases.identity"}}</h2></div>
+<dl class="identity">
+<div><dt>{{t "releases.commit"}}</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
+<div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
+<div><dt>{{t "releases.archive"}}</dt><dd><code>@@CP_RELEASE_ARCHIVE_NAME@@</code></dd></div>
+</dl>
+<ul class="files">
+<li><a href="@@CP_RELEASE_ARCHIVE_URL@@">{{t "releases.files.package"}}</a></li>
+<li><a href="@@CP_RELEASE_CHECKSUM_URL@@">{{t "releases.files.checksum"}}</a></li>
+{{marker "start"}}
+<li><a href="@@CP_RELEASE_MANIFEST_URL@@">{{t "releases.files.manifest"}}</a></li>
+<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">{{t "releases.files.signature"}}</a></li>
+{{marker "end"}}
+<li><a href="{{root}}release-signing-ed25519.pem">{{t "releases.files.key"}}</a></li>
+</ul>
+</div>
+</div>
+</section>
+
+<section class="block" aria-labelledby="check-title">
+<div class="wrap split install">
+<div class="block-head">
+<p class="eyebrow">{{t "releases.check.eyebrow"}}</p>
+<h2 id="check-title">{{sentences (t "releases.check.title")}}</h2>
+<p class="lede">{{t "releases.check.lede"}}</p>
+<ol class="num-steps">
+<li>{{t "releases.check.step1"}}</li>
+<li>{{t "releases.check.step2"}}</li>
+<li>{{t "releases.check.step3"}}</li>
+</ol>
+</div>
+<div>
+<div class="terminal">
+<div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="verify-title">{{t "releases.check.commands"}}</h3></div>
+<pre tabindex="0" aria-labelledby="verify-title"><code>sha256sum release-signing-ed25519.pem
+sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
+openssl pkeyutl -verify -rawin -pubin \
+  -inkey release-signing-ed25519.pem \
+  -in release-manifest-v2 -sigfile release-manifest-v2.sig</code></pre>
+<p class="terminal-foot">{{t "releases.check.note"}}</p>
+</div>
+<p class="fine key">{{t "releases.check.key"}} <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
+</div>
+</div>
+</section>
+
+<section class="block" aria-labelledby="update-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">{{t "releases.update.eyebrow"}}</p>
+<h2 id="update-title">{{sentences (t "releases.update.title")}}</h2>
+<p class="lede">{{t "releases.update.lede"}}</p>
+</div>
+<ul class="link-list">
+<li><a href="{{guide "panel-settings"}}">{{t "releases.update.guide"}}{{icon "arrow-right"}}</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel/releases">{{t "releases.update.all"}}{{icon "arrow-up-right"}}</a></li>
+<li><a href="{{link "download"}}">{{t "releases.update.new"}}{{icon "arrow-right"}}</a></li>
+</ul>
+</div>
+</section>
+{{- end}}

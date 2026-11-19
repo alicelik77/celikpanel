@@ -1,28 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-index=$repo_root/download-portal/index.html
-site_js=$repo_root/download-portal/assets/site.js
+portal=$repo_root/download-portal
 fail() { printf 'download command contract failed: %s\n' "$1" >&2; exit 1; }
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT
-awk '/\/\/ BEGIN DOWNLOAD COMMAND POLICY/ { capture=1; next } /\/\/ END DOWNLOAD COMMAND POLICY/ { capture=0; next } capture { print }' "$site_js" > "$tmp/policy.js"
-printf '\nprocess.stdout.write(buildInstallCommand() + "\\n");\n' >> "$tmp/policy.js"
-node "$tmp/policy.js" > "$tmp/command"
+# The public site shows one install command, generated from site/templates
+# (the home page shows it twice: a short chip in the hero, the full terminal
+# further down). Every copy of it is the same three lines, with its own Copy
+# button that copies exactly that text.
+python3 - "$portal" > "$tmp/command" <<'PY'
+import html, pathlib, re, sys
+portal = pathlib.Path(sys.argv[1])
+commands = set()
+for name, words in (("index.html", "root terminal"), ("download.html", "root terminal"),
+                    ("tr/index.html", "root terminalinde"), ("tr/indir.html", "root terminalinde")):
+    text = (portal / name).read_text(encoding="utf-8")
+    found = re.findall(r'<code id="(cmd-[a-z]+)">(.*?)</code>', text, re.S)
+    assert found, (name, "no install command")
+    assert len({ident for ident, _ in found}) == len(found), (name, "repeated command id")
+    for ident, body in found:
+        assert text.count(f'data-copy="{ident}"') == 1, (name, ident)
+        commands.add(html.unescape(re.sub(r'<[^>]+>', '', body)))
+    assert 'exact-command' not in text and 'command-disclosure' not in text, name
+    assert words in text, name
+assert len(commands) == 1, "pages show different install commands"
+print(commands.pop())
+PY
 dash -n "$tmp/command"
 [[ $(wc -l < "$tmp/command") == 3 ]] || fail 'public command is not three lines'
 [[ $(head -1 "$tmp/command") == 'timedatectl set-ntp true' ]] || fail 'public command does not start with the clock line'
-python3 - "$index" > "$tmp/html-command" <<'PY'
-import sys,html,re
-text=open(sys.argv[1],encoding='utf-8').read()
-matches=re.findall(r'<code id="latest-command">(.*?)</code>',text,re.S)
-assert len(matches)==1
-assert 'exact-command' not in text and 'command-disclosure' not in text
-assert text.count('data-copy="latest-command"')==1
-assert 'root terminalinde' in text and 'root terminal.' in text
-print(html.unescape(matches[0]))
-PY
-cmp "$tmp/command" "$tmp/html-command" || fail 'copied and visible commands differ'
+grep -Fq 'navigator.clipboard.writeText(source.textContent' "$portal/assets/public.js" \
+  || fail 'Copy does not copy the visible command text'
 mkdir "$tmp/bin"
 cat > "$tmp/bin/curl" <<'SH'
 #!/bin/sh

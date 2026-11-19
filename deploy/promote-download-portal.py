@@ -53,7 +53,18 @@ AT_FDCWD = -100
 RENAME_NOREPLACE = 1
 RENAME_EXCHANGE = 2
 SUCCESS_MARKER = "CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED"
-SITE_CONTENT_FILES = frozenset({"index.html", "assets/site.js", "assets/site.css", "account/index.php"})
+# What a site-content-only update may change: the generated public site
+# (`go run ./site`, listed in download-portal/site.sha256), the stylesheet the
+# guide and account pages share, the product screens and the membership
+# selector. Paths are never added or removed by such an update; release
+# files, the bootstrap, the key and security.txt stay protected.
+SITE_CONTENT_FILES = frozenset({
+    "index.html", "pricing.html", "download.html", "systems.html", "releases.html", "technical.html",
+    "tr/index.html", "tr/fiyat.html", "tr/indir.html", "tr/sistemler.html", "tr/surumler.html",
+    "assets/public.css", "assets/home.css", "assets/pages.css", "assets/public.js", "assets/boot.js", "assets/site.css",
+    "account/index.php",
+})
+SITE_CONTENT_SCREENS = re.compile(r"^assets/shots/[a-z]+-(en|tr)-(light|dark)(-2x|-phone)?\.webp$")
 TRANSACTION_SIGNALS = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
 
 
@@ -587,7 +598,8 @@ def verify_site_content_update(live: Path, stage: Path) -> None:
     if before.keys() != after.keys():
         fail("site content update cannot add or remove portal paths")
     for relative, entry in before.items():
-        if relative in SITE_CONTENT_FILES and entry[0] == after[relative][0] == "f":
+        if (relative in SITE_CONTENT_FILES or SITE_CONTENT_SCREENS.fullmatch(relative)) \
+                and entry[0] == after[relative][0] == "f":
             if relative == "account/index.php":
                 with (stage / relative).open("rb") as selector:
                     raw = selector.read(4097)
