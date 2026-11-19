@@ -771,3 +771,14 @@ lines and any "·" set against the next word (`y36mail`); and a domain deleted
 with its databases as the administrator, the question and the finished window
 with the database deletion's own lines (`y36deleted`). Same conventions as
 batch 30.
+
+`scenarios-batch39.mjs` draws alpha.139's Programs section from overrides
+only: a program site as the administrator and as a customer (the row with
+Programs after Site, the Programs section, the Site section that is left, the
+Overview's tiles; `y39programs`), an AI app site led by AI & automation
+(`y39service`), and a PHP site's Site section, a customer whose plan has no
+program or app right (no Programs in the row) and the alpha.132–138 address
+`?section=site&part=programs` (`y39php`). Each state records the row, whether
+it wraps or scrolls and its spare width. The mock does not answer a site's
+hosting settings, applications or redirects, so those cards say they could not
+be read; that is the mock, not the screen. Same conventions as batch 30.
