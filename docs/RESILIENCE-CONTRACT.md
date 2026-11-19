@@ -8695,3 +8695,216 @@ until the backup reports ready.
   process in a PID namespace this `/proc` does not show, a lock kept
   without any descriptor. A checker that cannot be started is still
   reported as unsupported protocol. **No P0 item is closed.**
+
+### Branch a137/update-preflight (an update waits for a short host package run before its non-waiting checks; a process that ends during the package scan is gone; no schema change; invariants 2 and 3; P0.2/P0.3 admission inputs; D-024; D-025; 2026-11-15, candidate alpha.137)
+
+- **Defect.** On Ubuntu 24.04 the first update press stopped
+  `package_manager_busy` (state unchanged) while nothing changed packages
+  (alpha.133 and alpha.136 labs). The updater's own `systemctl
+  daemon-reload`s (`update.sh` unit guards via
+  `deploy/release-transaction-guard.sh`, recovery foundation) re-draw
+  `apt-daily.timer`'s random delay: systemd v255 re-enters waiting on
+  coldplug after every reload (`timer_coldplug` → `timer_enter_waiting` →
+  `add_random`, `FixedRandomDelay=no`), and apt 2.7.14's timer has
+  `RandomizedDelaySec=12h`, so a reload can start `apt-daily.service` at
+  once. Its first steps (`apt-helper wait-online`, `apt.systemd.daily`) were
+  not package activity for the Agent; `apt-get check` and `apt-get update`
+  were, a few seconds later. Ubuntu Pro's `APT::Update::Pre-Invoke` hook
+  then starts `apt-news.service` and `esm-cache.service` (`python3`;
+  esm-cache uses its own apt root, apt-news fetches one file; neither takes
+  a system apt/dpkg lock). The bounded 60 s wait
+  (`preflight_mutations_before_quiesce`) ran after
+  `preflight_bind_before_quiesce`, which repeats every idle proof, package
+  manager included, under the held lock and never waits. Separately, the
+  package scan returned an error when a process ended between listing and
+  reading `/proc/<pid>/comm` (ESRCH), which the update does not treat as
+  transient (about one check in a thousand in the lab).
+- **Contract.** The Agent alone decides package activity
+  (`cmd/agent/service_mutation_lock_linux.go`); it now also counts
+  `apt.systemd.dai` (the kernel name of `/usr/lib/apt/apt.systemd.daily`,
+  runner of `apt-daily` and `apt-daily-upgrade`) and `apt-helper`, so a
+  daily apt run is busy from its first moment, including unattended-upgrade
+  between its own lock holds. Nothing that counted before stops counting.
+  The updater's preliminary, unlocked check waits first (at most 60 s,
+  polled every 3 s, reads only) and announces what it waits for: the host
+  package manager or an Agent operation. Every later proof (the BIND
+  preflight under the lock, the locked check before freeze, the final
+  frozen proof) still refuses package activity without waiting. A
+  per-process `/proc` read failing with ENOENT or ESRCH is a process that
+  ended (`comm`, `status`); for PackageKit's `maps` a missing file counts
+  only when the process directory is gone too; any other error still
+  refuses.
+- **Schema / version transition.** None. Release sequence 136 → 137; no
+  persisted record or wire field changes; going back to alpha.136 restores
+  the old order and scan. The announcement is in the target release's
+  `update.sh` output, which no owner-visible log keeps (lab correction
+  below).
+- **Recovery behaviour.** Unchanged. A refusal still ends as the typed
+  `package_manager_busy`, `state=unchanged` stop with the existing
+  sentences; no retry loop from the screen and no second update from
+  polling (D-024).
+- **Evidence.** Agent tests with a fake `/proc`: ESRCH and ENOENT on
+  `comm`, ESRCH on `status` and `maps`, a live daemon with a missing map
+  stays busy, EACCES/EIO still refuse, `apt.systemd.dai` and `apt-helper`
+  busy, python3 readers not. Shell contract
+  `deploy/test-update-enrollment-preflight.sh`: a package refusal is waited
+  for at most 60 s with its own TR/EN lines, its end announced, the wait
+  runs before the BIND preflight. Full `./internal/... ./cmd/agent
+  ./cmd/panel` compared with alpha.136: the same failing set. Sources read:
+  systemd v255 `timer.c`, apt 2.7.14 units and `apt.systemd.daily`,
+  ubuntu-pro-client hook, units and scripts (upstream `main`, not the
+  noble package). No native lifecycle run yet.
+- **Open.** A package run that starts in the seconds between the wait and
+  the final frozen proof still stops the update unchanged without waiting.
+  The update window shows a standing note, not a live "waiting for …"
+  line (that needs a new updater-to-panel channel). Not measured: which
+  check refused in the alpha.136 lab, and the `comm` names on Ubuntu 24.04.
+  **No P0 item is closed.**
+
+### Branch a137/update-preflight, lab correction (a host busy at the recovery kit's preparation ends as a typed unchanged stop; a page left locked by that stop can be closed; no schema change; invariants 2 and 3; P0.2/P0.3 admission inputs; D-024; D-025; 2026-11-15, candidate alpha.137)
+
+- **Defect (alpha.137 lab, `cbb6e0f27`, Debian 13).** An `apt-get install`
+  took the dpkg locks seven seconds after the press. The first idle check of
+  the update is the recovery kit's own promotion checker
+  (`internal/recoveryruntime` `runPromotionChecker`, run by `recovery
+  prepare-runtime` from `update.sh` `prepare_independent_recovery_runtime`,
+  before the release-recovery intent, the unit guards and every reload). It
+  waited its 60 s and then refused as `runtime_unsupported_protocol`;
+  `update.sh` died with the untyped "independent recovery runtime
+  preparation is unconfirmed" before its EXIT trap existed, so no typed
+  summary or failure sidecar was written. The Agent kept the worker unit
+  failed (`systemUpdateStoppedUnchanged` matched only typed unchanged
+  lines); the recovery observation stayed "failed, update_failed, terminal
+  proof none" with nothing that would ever change it (release recovery had
+  no transaction); the window read that as a recovery still to come
+  (`failedUpdateGuidance`: tone progress, no close), kept its stored
+  operation and so the update lock, and the card offered no update. The
+  code keeps the lock in the browser's stored operation, not in server
+  state. Lab run 2 (19 Nov 2026) confirmed on a server left stuck by the
+  earlier build that a fresh browser session is not locked and offers the
+  update, which then succeeded; the original profile no longer existed, so
+  "the same browser stays locked" was not re-checked.
+- **Contract.** The bounded 60 s wait now runs first
+  (`preflight_host_idle_before_recovery_runtime`, before the kit's
+  preparation); a refusal still present after it is the typed unchanged stop,
+  written by `fail_update_preflight` itself for that check only (review
+  correction below).
+  A promotion checker that still finds the host busy after its bound, before
+  the promotion intent, returns `runtime_package_manager_busy` or
+  `runtime_operation_active`; `recovery prepare-runtime` reports it with the
+  step and sentence `update.sh` already types, and `update.sh` ends with the
+  `recovery_runtime_preflight_failed` / `package_manager_busy` unchanged stop
+  (`recovery_runtime_preparation_attempted=0`: nothing was selected; the
+  inert kit copy selects nothing and runtime-status says "none"). After an
+  intent the same refusal is the existing `runtime_unsupported_protocol`
+  and the promotion stays pending. Every other preparation failure keeps
+  "unconfirmed". The Agent also clears the unit of the untyped preparation
+  stop (record kept). The window shows that stop as closable ("stopped
+  before changing the installed version"), with the read-only `sudo
+  /usr/libexec/celikpanel/recovery runtime-status --lang en|tr` and what
+  each answer means (review correction below); closing it gives the card
+  back its update.
+- **Schema / version transition.** None; two new recovery-runtime reason
+  codes, produced and read only by the same release. The fixes are in the
+  target release's `update.sh` and recovery kit, so they act on the update
+  to alpha.137; a browser already locked by an earlier version is to be
+  opened elsewhere, as lab run 2 confirmed (release notes).
+- **Recovery behaviour.** Unchanged for anything after an intent or after
+  services stop; a busy host before any change is no longer reported as
+  something to recover.
+- **Evidence.** Recovery-runtime tests (checker past its bound names package
+  manager or operation; a busy answer then another refusal is the existing
+  refusal; native child scenarios: busy before intent leaves no intent and
+  runtime-status "none", busy after intent stays pending); `cmd/recovery`
+  report; shell contracts (first wait before the preparation with its typed
+  stop before the trap; a busy preparation is typed, an unsupported one is
+  still "unconfirmed"); the Agent's clearing rule on the lab's exact record;
+  the window on the lab's exact record (both languages). The live waiting
+  line was found not observable (the Agent keeps only a failure's last
+  line) and is not built.
+- **Open.** A package run starting between the waits and the final checks,
+  or between the promotion's two compatibility reads, still stops the
+  update (unchanged, or an existing pending promotion). No live waiting
+  state in the window. **No P0 item is closed.**
+
+### Branch a137/update-preflight, review correction (what the owner is told about the untyped preparation stop; one first-check flag; no kit copy per retry; package scan counts only root-owned processes; no schema change; invariants 2 and 3; P0.2/P0.3 admission inputs; D-024; D-025; 2026-11-19, candidate alpha.137)
+
+- **Defects (independent review of `ca652f6f9`, `b79309eac`).** The window
+  said "Nothing was changed" for the untyped "preparation is unconfirmed"
+  stop, which also covers failures after the kit's transition intent
+  (prepared, launcher or selection published); its command had no
+  `--lang`, while the notes quoted Turkish answers; the notes' manual
+  `systemctl reset-failed 'celikpanel-self-update-*'` would also clear
+  unresolved real failures the Agent keeps on purpose; the closed window
+  left the card saying "did not complete"; "the lock is the browser's"
+  was stated as fact unverified; `fail_update_preflight` took "no EXIT trap
+  yet" for "nothing changed"; the early probe ran the preflight Agent
+  before `validate_preflight_binary`; each retry after a busy stop left a
+  `.promote-*` kit copy (`installPromotionBundle`: the rename met EEXIST
+  and the stage stayed); `promotionHostBusyError` said
+  `runtime_unsupported_protocol` by `Error` and `runtime_read_failed` by
+  `ReasonCode`; the package scan counted any process by its `comm`, so an
+  ordinary hosting account could hold every update, security releases
+  included, with a process named `apt` or `dpkg`.
+- **Contract.** The window and the card say what is verified: the
+  installed version and its data were not changed; the recovery tool's own
+  preparation may be partly done; the server owner runs
+  `sudo /usr/libexec/celikpanel/recovery runtime-status --lang en|tr` (the
+  page's language; the tool has had `--lang` since alpha.81), which only
+  reads, and does what its answer says: no transition, prepared or verified
+  complete -> start again; launcher installed or kit selected -> `recover`
+  first; evidence unverifiable -> keep files and log, do not start. The
+  notes, this contract and the page quote the same sentences. The notes'
+  manual reset step is removed (the Agent clears the attempt's unit after
+  the successful update). Typed preflight summaries
+  (`package_manager_busy`, `update_preflight_refused`,
+  `recovery_runtime_preflight_failed`, each `state=unchanged`) and the
+  unconfirmed-preparation line read as "stopped before changing the
+  installed version" on the card; any other summary keeps its words.
+  `fail_update_preflight` writes its own summary only when the first
+  check's local `update_preflight_reports_unchanged_stop` is set; every
+  other caller keeps `die` / `fail_before_active`. The preflight binaries
+  are validated before the first check. The promotion stage is removed
+  unless it became the digest directory. `promotionHostBusyError` unwraps
+  to `runtime_unsupported_protocol`. The package scan counts a
+  package-manager name only for a process with a root real, effective,
+  saved or filesystem user id; a process whose status cannot be read or
+  has no well-formed `Uid:` line counts as before; one that ended while
+  read is gone. PackageKit's daemon name gets the same owner rule before
+  its idle proof.
+- **Schema / version transition.** None. The update's own idle checks run
+  the target release's Agent (`update.sh` requires `PREFLIGHT_AGENT` to be
+  the trusted release's `bin/agent`; lab run 2 saw it) and the new kit's
+  checker, so the scan rule acts during the update to alpha.137 already;
+  only the panel's readiness gate before the press (the installed Agent)
+  keeps the old rule until that update finishes.
+- **Recovery behaviour.** Unchanged. A retry never had a safety problem; it
+  no longer accumulates kit copies. Copies left by earlier releases stay
+  (inert; removal listed for alpha.139).
+- **Evidence.** Native child scenario "busy twice": no `.promote-*` left;
+  checker test: `Error` and `ReasonCode` agree; Agent scan tests: an
+  ordinary account's same-named process is not counted, root's and any
+  root id is, an unreadable or malformed owner is, an ending one is gone;
+  mounted window test (both languages: command with `--lang`, the note
+  that it only reads, then the answers; never "nothing was changed");
+  mounted card test (unconfirmed preparation and two typed stops with no
+  recorded cause read as stopped, with the command only for the first);
+  `deploy/test-update-preparation-stop-contract.sh` (the die line occurs
+  once, both readers match it as recorded and nothing else, its only call
+  precedes the release-recovery intent and the EXIT trap, the typed busy
+  reports are the recovery tool's own text); the enrollment preflight test
+  pins the flag and the validation order. Both shell tests now run in CI.
+- **Lab (run 2, 19 Nov 2026, `e83a0fc41`).** A fresh browser session on a
+  server left stuck by the earlier build: no lock, "check for updates"
+  enabled, server ready, update offered; it succeeded and the new Agent
+  cleared the old attempt's failed unit. No previous-attempt notice was
+  shown in that session; "the same browser stays locked" was not re-checked
+  (the original profile no longer existed). An ordinary account's processes
+  named `apt` and `dpkg`: readiness ready and 50 of 50 checks idle; the same
+  under root: busy. Found: after the unconfirmed stop the attempt unit's
+  `OnFailure=` release recovery completed the kit transition once the lock
+  was free, then logged "selected recovery entry could not be verified …
+  runtime_changed" and exited failed until its next timer run (alpha.139).
+- **Open.** What `comm` and user ids package tools have on every supported
+  distribution was established from their sources and packaging, not
+  measured on each. **No P0 item is closed.**

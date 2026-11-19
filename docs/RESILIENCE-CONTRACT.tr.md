@@ -7912,3 +7912,217 @@ bağlantıyı tutar.
   tanımlayıcı olmadan tutulan kilit. Başlatılamayan denetleyici hâlâ
   desteklenmeyen protokol olarak bildiriliyor. **Hiçbir P0 işi
   kapanmadı.**
+
+### Dal a137/update-preflight (güncelleme, beklemeyen denetimlerinden önce sunucunun kısa bir paket işini bekler; paket taraması sırasında sona eren süreç gitmiş sayılır; şema değişikliği yok; ilke 2 ve 3; P0.2/P0.3 kabul girdileri; D-024; D-025; 2026-11-15, aday alpha.137)
+
+- **Kusur.** Ubuntu 24.04'te ilk güncelleme basışı, hiçbir şey paket
+  değiştirmezken `package_manager_busy` (durum değişmedi) ile duruyordu
+  (alpha.133 ve alpha.136 laboratuvarları). Güncelleyicinin kendi
+  `systemctl daemon-reload`'ları (`update.sh` birim korumaları,
+  `deploy/release-transaction-guard.sh` üzerinden; kurtarma temeli)
+  `apt-daily.timer`'ın rastgele gecikmesini yeniden çeker: systemd v255 her
+  yeniden yüklemeden sonra zamanlayıcıyı yeniden bekleme durumuna alır
+  (`timer_coldplug` → `timer_enter_waiting` → `add_random`,
+  `FixedRandomDelay=no`) ve apt 2.7.14'ün zamanlayıcısında
+  `RandomizedDelaySec=12h` vardır; bu yüzden bir yeniden yükleme
+  `apt-daily.service`'i hemen başlatabilir. İlk adımları (`apt-helper
+  wait-online`, `apt.systemd.daily`) Agent için paket etkinliği değildi;
+  birkaç saniye sonraki `apt-get check` ve `apt-get update` öyleydi. Ubuntu
+  Pro'nun `APT::Update::Pre-Invoke` kancası ardından `apt-news.service` ve
+  `esm-cache.service`'i başlatır (`python3`; esm-cache kendi apt kökünü
+  kullanır, apt-news tek bir dosya indirir; hiçbiri sistemin apt/dpkg
+  kilidini almaz). 60 sn'lik sınırlı bekleme
+  (`preflight_mutations_before_quiesce`), her boşta kanıtını paket
+  yöneticisi dahil tutulan kilit altında yineleyen ve hiç beklemeyen
+  `preflight_bind_before_quiesce`'ten sonra çalışıyordu. Ayrıca bir süreç
+  listelenmesiyle `/proc/<pid>/comm` okunması arasında sona erince (ESRCH)
+  paket taraması hata döndürüyordu; güncelleme bunu geçici saymaz
+  (laboratuvarda bin denetimde bir kadar).
+- **Sözleşme.** Paket etkinliğine yalnız Agent karar verir
+  (`cmd/agent/service_mutation_lock_linux.go`); artık `apt.systemd.dai`
+  (`apt-daily` ve `apt-daily-upgrade`'i çalıştıran
+  `/usr/lib/apt/apt.systemd.daily`'nin çekirdekteki adı) ve `apt-helper`'ı
+  da sayar; böylece günlük apt işi ilk anından meşguldür, unattended-upgrade
+  kendi kilit tutuşları arasında da. Önceden meşgul sayılan her şey yine
+  meşgul sayılır. Güncelleyicinin kilitsiz ön denetimi önce bekler (en çok
+  60 sn, 3 sn'de bir, yalnız okur) ve neyi beklediğini söyler: sunucunun
+  paket yöneticisi ya da bir Agent işlemi. Sonraki her kanıt (kilit
+  altındaki BIND ön denetimi, dondurmadan önceki kilitli denetim, son
+  dondurulmuş kanıt) paket etkinliğini beklemeden yine reddeder. ENOENT ya
+  da ESRCH ile başarısız olan süreç başına `/proc` okuması bitmiş bir
+  süreçtir (`comm`, `status`); PackageKit'in `maps`'inde eksik dosya ancak
+  süreç dizini de yoksa sayılır; başka her hata yine reddedilir.
+- **Şema / sürüm geçişi.** Yok. Sürüm sırası 136 → 137; kalıcı kayıt ya da
+  kablo alanı değişmez; alpha.136'ya dönmek eski sırayı ve taramayı geri
+  getirir. Duyuru hedef sürümün `update.sh` çıktısındadır; sahibin
+  görebileceği hiçbir günlük onu tutmaz (aşağıdaki laboratuvar düzeltmesi).
+- **Kurtarma davranışı.** Değişmedi. Ret yine mevcut cümlelerle tipli
+  `package_manager_busy`, `state=unchanged` duruşuyla biter; ekrandan
+  yeniden deneme döngüsü yok, durum sorgusu ikinci bir güncelleme başlatmaz
+  (D-024).
+- **Kanıt.** Sahte `/proc` ile Agent testleri: `comm`'da ESRCH ve ENOENT,
+  `status` ve `maps`'te ESRCH, haritası eksik canlı hizmet meşgul kalır,
+  EACCES/EIO yine reddeder, `apt.systemd.dai` ve `apt-helper` meşgul,
+  python3 okuyucuları değil. Kabuk sözleşmesi
+  `deploy/test-update-enrollment-preflight.sh`: paket reddi en çok 60 sn,
+  kendi TR/EN satırlarıyla beklenir, bitişi duyurulur, bekleme BIND ön
+  denetiminden önce çalışır. Tam `./internal/... ./cmd/agent ./cmd/panel`
+  alpha.136 ile karşılaştırıldı: aynı başarısız küme. Okunan kaynaklar:
+  systemd v255 `timer.c`, apt 2.7.14 birimleri ve `apt.systemd.daily`,
+  ubuntu-pro-client kancası, birimleri ve betikleri (noble paketi değil,
+  üst kaynak `main`). Henüz gerçek sistem yaşam döngüsü denemesi yok.
+- **Açık.** Bekleme ile son dondurulmuş kanıt arasındaki birkaç saniyede
+  başlayan bir paket işi güncellemeyi beklemeden, değişiklik yapmadan yine
+  durdurur. Güncelleme penceresi canlı bir "… bekleniyor" satırı değil,
+  duran bir not gösterir (bunun için güncelleyiciden panele yeni bir kanal
+  gerekir). Ölçülmedi: alpha.136 laboratuvarında hangi denetimin reddettiği
+  ve Ubuntu 24.04'teki `comm` adları. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a137/update-preflight, laboratuvar düzeltmesi (kurtarma kitinin hazırlığında meşgul sunucu tipli değişmemiş duruşla biter; o duruşun kilitli bıraktığı sayfa kapatılabilir; şema değişikliği yok; ilke 2 ve 3; P0.2/P0.3 kabul girdileri; D-024; D-025; 2026-11-15, aday alpha.137)
+
+- **Kusur (alpha.137 laboratuvarı, `cbb6e0f27`, Debian 13).** Bir `apt-get
+  install` basıştan yedi saniye sonra dpkg kilitlerini aldı. Güncellemenin
+  ilk boşta denetimi kurtarma kitinin kendi geçiş denetleyicisidir
+  (`internal/recoveryruntime` `runPromotionChecker`; `update.sh`
+  `prepare_independent_recovery_runtime` içinden `recovery prepare-runtime`
+  çalıştırır; kurtarma niyetinden, birim korumalarından ve her yeniden
+  yüklemeden önce). 60 sn bekledi, sonra `runtime_unsupported_protocol` ile
+  reddetti; `update.sh` EXIT tuzağı daha yokken tipsiz "independent recovery
+  runtime preparation is unconfirmed" ile çıktı, tipli özet de hata eki de
+  yazılmadı. Agent işçi birimini başarısız bıraktı
+  (`systemUpdateStoppedUnchanged` yalnız tipli değişmemiş satırları
+  tanıyordu); kurtarma gözlemi "failed, update_failed, terminal proof none"
+  olarak kaldı ve onu değiştirecek hiçbir şey yoktu (kurtarmanın işlemi
+  yoktu); pencere bunu hâlâ gelecek bir kurtarma sandı (`failedUpdateGuidance`:
+  ilerleme tonu, kapatma yok), sakladığı işlemi ve dolayısıyla güncelleme
+  kilidini tuttu, kart güncelleme sunmadı. Kod kilidi sunucu durumunda
+  değil, tarayıcının sakladığı işlemde tutar. 2. laboratuvar denemesi (19
+  Kasım 2026), önceki derlemenin takılı bıraktığı bir sunucuda yeni bir
+  tarayıcı oturumunun kilitli olmadığını ve güncellemeyi sunduğunu, güncellemenin
+  de başarılı olduğunu doğruladı; asıl profil artık olmadığından "aynı tarayıcı
+  kilitli kalır" yeniden denenmedi.
+- **Sözleşme.** 60 sn'lik sınırlı bekleme artık önce çalışır
+  (`preflight_host_idle_before_recovery_runtime`, kitin hazırlığından önce);
+  sınırdan sonra süren ret, yalnız o denetim için `fail_update_preflight`
+  tarafından yazılan tipli değişmemiş duruştur (aşağıdaki inceleme
+  düzeltmesi). Sınırından sonra ve geçiş
+  niyetinden önce sunucuyu hâlâ meşgul bulan geçiş denetleyicisi
+  `runtime_package_manager_busy` ya da `runtime_operation_active` döndürür;
+  `recovery prepare-runtime` bunu `update.sh`'ın zaten tiplediği adım ve
+  cümleyle bildirir, `update.sh` `recovery_runtime_preflight_failed` /
+  `package_manager_busy` değişmemiş duruşuyla biter
+  (`recovery_runtime_preparation_attempted=0`: hiçbir şey seçilmedi; etkisiz
+  kit kopyası hiçbir şey seçmez, runtime-status "none" der). Niyetten sonra
+  aynı ret mevcut `runtime_unsupported_protocol`'dür ve geçiş bekler. Başka
+  her hazırlık hatası "unconfirmed" kalır. Agent tipsiz hazırlık duruşunun
+  birimini de temizler (kayıt kalır). Pencere bu duruşu kapatılabilir gösterir
+  ("kurulu sürümü değiştirmeden durdu"), yalnız okuyan `sudo
+  /usr/libexec/celikpanel/recovery runtime-status --lang en|tr` ve her
+  yanıtın anlamıyla (aşağıdaki inceleme düzeltmesi); kapatınca kart
+  güncellemeyi yeniden sunar.
+- **Şema / sürüm geçişi.** Yok; aynı sürümün ürettiği ve okuduğu iki yeni
+  kurtarma ortamı neden kodu. Düzeltmeler hedef sürümün `update.sh`'ında ve
+  kurtarma kitindedir; alpha.137'ye güncellemede etkilidir; önceki bir
+  sürümde kilitlenmiş sayfa, 2. laboratuvar denemesinin doğruladığı gibi
+  başka bir tarayıcıdan açılır (sürüm notları).
+- **Kurtarma davranışı.** Niyetten ya da hizmetler durduktan sonraki her şey
+  için değişmedi; herhangi bir değişiklikten önceki meşgul sunucu artık
+  kurtarılacak bir şey olarak bildirilmez.
+- **Kanıt.** Kurtarma ortamı testleri (sınırını geçen denetleyici paket
+  yöneticisini ya da işlemi adlandırır; meşgul yanıttan sonra başka bir ret
+  mevcut rettir; yerel alt süreç senaryoları: niyetten önce meşgul hiçbir
+  niyet bırakmaz ve runtime-status "none" der, niyetten sonra meşgul geçiş
+  bekler); `cmd/recovery` bildirimi; kabuk sözleşmeleri (hazırlıktan önceki
+  ilk bekleme, tuzaktan önceki tipli duruşuyla; meşgul hazırlık tiplidir,
+  desteklenmeyen yine "unconfirmed"dır); laboratuvarın tam kaydıyla Agent'ın
+  temizleme kuralı; laboratuvarın tam kaydıyla pencere (iki dil). Canlı
+  bekleme satırının görünmediği bulundu (Agent bir hatanın yalnız son
+  satırını saklar); yapılmadı.
+- **Açık.** Beklemeler ile son denetimler arasında ya da geçişin iki
+  uyumluluk okuması arasında başlayan bir paket işi güncellemeyi yine
+  durdurur (değişiklik yapmadan ya da var olan bekleyen bir geçişle).
+  Pencerede canlı bekleme durumu yok. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a137/update-preflight, inceleme düzeltmesi (tipsiz hazırlık duruşunda sahibe söylenen; tek ilk denetim bayrağı; yeniden denemede kit kopyası yok; paket taraması yalnız root'a ait süreçleri sayar; şema değişikliği yok; ilke 2 ve 3; P0.2/P0.3 kabul girdileri; D-024; D-025; 2026-11-19, aday alpha.137)
+
+- **Kusurlar (`ca652f6f9`, `b79309eac` için bağımsız inceleme).** Pencere,
+  kitin geçiş niyetinden sonraki hataları da (hazır, başlatıcı ya da seçim
+  yayımlanmış) kapsayan tipsiz "preparation is unconfirmed" duruşu için
+  "Hiçbir şey değiştirilmedi" diyordu; komutunda `--lang` yoktu, notlar ise
+  Türkçe yanıtları alıntılıyordu; notlardaki elle
+  `systemctl reset-failed 'celikpanel-self-update-*'` adımı Agent'ın bilerek
+  tuttuğu çözülmemiş gerçek hataları da temizlerdi; kapatılan pencereden
+  sonra kart "tamamlanmadı" diyordu; "kilit tarayıcınındır" doğrulanmadan
+  kesin bilgi olarak yazılmıştı; `fail_update_preflight` "henüz EXIT tuzağı
+  yok"u "hiçbir şey değişmedi" sayıyordu; erken denetim ön denetim Agent'ını
+  `validate_preflight_binary`'den önce çalıştırıyordu; meşgul duruştan
+  sonraki her yeniden deneme bir `.promote-*` kit kopyası bırakıyordu
+  (`installPromotionBundle`: yeniden adlandırma EEXIST ile karşılaşıyor,
+  aşama dizini kalıyordu); `promotionHostBusyError` `Error` ile
+  `runtime_unsupported_protocol`, `ReasonCode` ile `runtime_read_failed`
+  diyordu; paket taraması her süreci `comm` adıyla sayıyordu, bu yüzden
+  sıradan bir barındırma hesabı `apt` ya da `dpkg` adlı bir süreçle güvenlik
+  sürümleri dahil her güncellemeyi bekletebiliyordu.
+- **Sözleşme.** Pencere ve kart doğrulananı söyler: kurulu sürüm ve verileri
+  değiştirilmedi; kurtarma aracının kendi hazırlığı yarım kalmış olabilir;
+  sunucu sahibi yalnız okuyan
+  `sudo /usr/libexec/celikpanel/recovery runtime-status --lang en|tr`
+  komutunu (sayfanın dilinde; araçta `--lang` alpha.81'den beri var)
+  çalıştırır ve yanıtının söylediğini yapar: geçiş yok, hazır ya da
+  tamamlandığı doğrulandı -> yeniden başlat; başlatıcı kuruldu ya da kit
+  seçildi -> önce `recover`; kanıt doğrulanamadı -> dosyaları ve günlüğü
+  koru, başlatma. Notlar, bu sözleşme ve sayfa aynı cümleleri alıntılar.
+  Notlardaki elle sıfırlama adımı kaldırıldı (Agent girişimin birimini
+  başarılı güncellemeden sonra temizler). Tipli ön denetim özetleri
+  (`package_manager_busy`, `update_preflight_refused`,
+  `recovery_runtime_preflight_failed`, her biri `state=unchanged`) ve
+  doğrulanamayan hazırlık satırı kartta "kurulu sürümü değiştirmeden durdu"
+  olarak okunur; başka her özet kendi sözlerini korur.
+  `fail_update_preflight` kendi özetini yalnız ilk denetimin yerel
+  `update_preflight_reports_unchanged_stop` bayrağı varken yazar; diğer her
+  çağıran `die` / `fail_before_active` ile kalır. Ön denetim ikilileri ilk
+  denetimden önce doğrulanır. Geçiş aşama dizini özet dizinine dönüşmediyse
+  silinir. `promotionHostBusyError` `runtime_unsupported_protocol`'e açılır.
+  Paket taraması paket yöneticisi adını yalnız gerçek, etkin, saklı ya da
+  dosya sistemi kullanıcı kimliklerinden biri root olan süreç için sayar;
+  durumu okunamayan ya da düzgün bir `Uid:` satırı olmayan süreç eskisi
+  gibi sayılır; okunurken sona eren gitmiştir. PackageKit hizmetinin adı da
+  boşta kanıtından önce aynı sahip kuralından geçer.
+- **Şema / sürüm geçişi.** Yok. Güncellemenin kendi boşta denetimleri hedef
+  sürümün Agent'ını (`update.sh`, `PREFLIGHT_AGENT`'ın güvenilir sürümün
+  `bin/agent`'ı olmasını şart koşar; 2. laboratuvar denemesi bunu gördü) ve
+  yeni kitin denetleyicisini çalıştırır; tarama kuralı alpha.137'ye
+  güncelleme sırasında zaten etkilidir; yalnız basmadan önceki panel hazırlık
+  kapısı (kurulu Agent) o güncelleme bitene dek eski kuralı korur.
+- **Kurtarma davranışı.** Değişmedi. Yeniden denemenin güvenlik sorunu hiç
+  yoktu; artık kit kopyası biriktirmez. Önceki sürümlerin bıraktığı kopyalar
+  kalır (etkisiz; silinmesi alpha.139 için listelendi).
+- **Kanıt.** Yerel alt süreç senaryosu "iki kez meşgul": `.promote-*`
+  kalmaz; denetleyici testi: `Error` ve `ReasonCode` aynı; Agent tarama
+  testleri: sıradan hesabın aynı adlı süreci sayılmaz, root'unki ve herhangi
+  bir root kimliği sayılır, okunamayan ya da bozuk sahip sayılır, sona eren
+  gitmiştir; bağlı pencere testi (iki dil: `--lang`'li komut, yalnız
+  okuduğunu söyleyen not, ardından yanıtlar; asla "hiçbir şey
+  değiştirilmedi"); bağlı kart testi (doğrulanamayan hazırlık ve kaydı neden
+  tutmayan iki tipli duruş durmuş okunur, komut yalnız ilkinde);
+  `deploy/test-update-preparation-stop-contract.sh` (die satırı bir kez
+  geçer, iki okuyucu onu kaydedildiği gibi ve başka hiçbir şeyi eşlemez, tek
+  çağrısı kurtarma niyetinden ve EXIT tuzağından önce gelir, tipli meşgul
+  bildirimleri kurtarma aracının kendi metnidir); kayıt ön denetimi testi
+  bayrağı ve doğrulama sırasını sabitler. İki kabuk testi de artık CI'da
+  koşar.
+- **Laboratuvar (2. deneme, 19 Kasım 2026, `e83a0fc41`).** Önceki derlemenin
+  takılı bıraktığı sunucuda yeni bir tarayıcı oturumu: kilit yok,
+  "güncellemeleri denetle" etkin, sunucu hazır, güncelleme sunuldu; başarılı
+  oldu ve yeni Agent eski girişimin başarısız birimini temizledi. O oturumda
+  önceki girişim bildirimi gösterilmedi; "aynı tarayıcı kilitli kalır"
+  yeniden denenmedi (asıl profil artık yoktu). Sıradan bir hesabın `apt` ve
+  `dpkg` adlı süreçleri: hazırlık hazır, 50 denetimin 50'si boşta; root
+  altında aynısı: meşgul. Bulunan: doğrulanamayan duruştan sonra girişim
+  biriminin `OnFailure=` sürüm kurtarması kilit boşalınca kit geçişini
+  tamamladı, sonra "selected recovery entry could not be verified …
+  runtime_changed" yazdı ve sonraki zamanlayıcı çalışmasına dek başarısız
+  çıktı (alpha.139).
+- **Açık.** Paket araçlarının her desteklenen dağıtımdaki `comm` adları
+  ve kullanıcı kimlikleri kaynaklarından ve paketlemelerinden belirlendi,
+  her birinde ölçülmedi. **Hiçbir P0 işi kapanmadı.**

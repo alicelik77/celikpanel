@@ -4,7 +4,8 @@
 //
 //   steps88       an update this browser started (its stored record 10 s old,
 //                 inside the navigation lock): the download with measured
-//                 bytes, then the Panel down (the restart step, time-based),
+//                 bytes, then the server check with its waiting note
+//                 (a137), then the Panel down (the restart step, time-based),
 //                 then PANEL_STARTING (still the restart), then the new
 //                 version answering ("verify the new version"), then
 //                 succeeded ("Updated to" with the build id)
@@ -14,6 +15,8 @@
 //                 ahead (the honest overdue wording)
 //   steps88corner another page (Domains) during the restart: the compact
 //                 corner notice
+//   stuck137      a137 lab: the recovery tool could not confirm its
+//                 preparation; a stop the owner closes, with the command
 //
 // The plan is the one cmd/panel system_update_plan.go writes, given to the
 // mock as the status answer. The windows are not shortened in the product;
@@ -97,6 +100,10 @@ export default function batch17(scenarios, { base, locale, theme, out, viewport,
         await ctl({ update: running('prepare') });
         await stepRuns(page, 'prepare');
         await pause(800);
+        // a137: the prepare step's note says what the update waits for (another
+        // server change or the host package manager), for how long at most, and
+        // that nothing needs to be done.
+        await snap(page, 'prepare');
         // The Panel stops: every API request loses its connection.
         await ctl({ mode: 'down' });
         const down = Date.now();
@@ -116,6 +123,28 @@ export default function batch17(scenarios, { base, locale, theme, out, viewport,
         await ctl({ update: { ...running('confirm'), status: 'succeeded', plan: { ...plan('confirm'), steps: IDS.map(id => ({ id, state: 'done' })) } } });
         await waitFor(page, () => !!document.querySelector('[data-update-build]'), 15000).catch(() => {});
         await snap(page, 'updated');
+        await closePage(page);
+        await ctl({ clearAll: true });
+    };
+
+    // a137 lab (A, 15:33:06): the updater stopped because the recovery tool
+    // could not confirm its preparation (a package install began seven
+    // seconds after the press). Recorded as the lab recorded it: the request
+    // failed with that line, the recovery record says only "failed". The
+    // window is a stop the owner closes, with the read-only command.
+    scenarios.stuck137 = async () => {
+        await reset();
+        await ctl({ clearAll: true });
+        const line = 'reviewed updater failed: exit status 1: !! independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence';
+        await ctl({
+            update: { request_id: UPDATE_ID, status: 'failed', target: TARGET, created_at: '2026-11-15T15:31:49Z', updated_at: '2026-11-15T15:33:06Z', summary: line },
+            override: { '/api/v1/recovery/status': { status: 200, body: { schema: 'celikpanel-recovery-status/v1', request_id: UPDATE_ID, panel_state: 'ready', observation: 'known', observed_at: '2026-11-15T15:33:06Z', phase: 'failed', reason: 'update_failed', terminal_proof: 'none', previous_failure: 'update_failed' } } },
+        });
+        const page = await newPage(followed(80_000));
+        await page.goto(`${base}/settings?section=updates`, { waitUntil: 'domcontentloaded' });
+        await waitFor(page, () => !!document.querySelector('[data-update-mark]'), 25000).catch(() => {});
+        await pause(2500);
+        await snap(page, 'stuck');
         await closePage(page);
         await ctl({ clearAll: true });
     };

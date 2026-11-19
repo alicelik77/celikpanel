@@ -486,6 +486,60 @@ test('an earlier stop because the package manager was busy is named calmly, and 
     }
 });
 
+// alpha.137 review: once the stopped update's window was closed, the card said
+// "This version already failed on this server ... did not complete" for the
+// recovery tool's unconfirmed preparation and for typed stops whose record kept
+// no cause. Each is an earlier stop before any change; the unconfirmed
+// preparation also gives the read-only command and what its answers mean.
+test('an earlier unconfirmed preparation or typed stop is named as stopped unchanged after the window is closed', async () => {
+    const originalFetch = globalThis.fetch;
+    const id = 'a'.repeat(32);
+    const attempt = { request_id: id, phase: 'failed', finished_at: '2026-11-15T15:33:06Z' };
+    let summary = '';
+    globalThis.__panelUpdateAttemptSummary = (requestID) => (requestID === id ? summary : null);
+    let renderer;
+    let starts = 0;
+    try {
+        for (const [shape, line, preparation] of [
+            ['unconfirmed preparation', 'reviewed updater failed: exit status 1: !! independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence', true],
+            ['refused check before any change', 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_preflight_refused state=unchanged reason=update preflight step=agent_idle class=check_failed: an existing server operation requires completion detail=x', false],
+            ['recovery tool preflight', 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=recovery_runtime_preflight_failed state=unchanged reason=recovery runtime preflight step=agent_ledger_check: another server operation is still running (runtime_operation_active) detail=', false],
+        ]) {
+            summary = line;
+            renderer = await mountCheckedCard(async () => ({ ready: true }), async () => { starts += 1; return { kind: 'accepted' }; },
+                { ...updateCheck, previous_attempt: attempt });
+            await act(async () => { await flushMicrotasks(); await flushMicrotasks(); });
+            const notice = renderer.root.find((node) => node.type === 'div' && node.props.role === 'note');
+            const text = textOf(notice);
+            assert.equal(notice.props['data-previous-attempt'], 'stopped', `${shape}: calm, not the attention mark`);
+            assert.match(text, /panelUpdate\.previousAttempt\.stoppedTitle/, shape);
+            assert.doesNotMatch(text, /previousAttempt\.title|previousAttempt\.failed|previousAttempt\.noCause|previousAttempt\.cause/, shape);
+            const commands = renderer.root.findAll((node) => node.props?.['data-previous-attempt-command'] !== undefined);
+            if (preparation) {
+                assert.match(text, /panelUpdate\.previousAttempt\.preparationUnconfirmed/);
+                assert.equal(commands.length, 1, 'the read-only command is shown once');
+                assert.match(textOf(commands[0]), /sudo \/usr\/libexec\/celikpanel\/recovery runtime-status --lang en/);
+                assert.match(textOf(commands[0]), /preparationUnconfirmedCommandNote/);
+                assert.match(textOf(commands[0]), /preparationUnconfirmedAnswers/);
+            } else {
+                assert.match(text, /panelUpdate\.previousAttempt\.stopped/, shape);
+                assert.doesNotMatch(text, /preparationUnconfirmed/, shape);
+                assert.equal(commands.length, 0, shape);
+            }
+            assert.equal(renderer.root.findByProps({ id: 'panel-update-start-button' }).props.disabled, false, `${shape}: Start stays with the owner`);
+            assert.equal(starts, 0, 'nothing starts by itself');
+            act(() => renderer.unmount());
+            renderer = null;
+        }
+    } finally {
+        if (renderer) act(() => renderer.unmount());
+        globalThis.fetch = originalFetch;
+        delete globalThis.__panelUpdateAttemptSummary;
+        delete globalThis.__nextPanelReadiness;
+        delete globalThis.__panelUpdateOperation;
+    }
+});
+
 // alpha.121 (Frankfurt, 4 Nov): after an update stopped on a busy package
 // manager, the owner no longer closes the notice first. The one explicit
 // press runs the read-only check again, then closes that notice, then starts.

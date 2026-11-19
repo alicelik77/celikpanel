@@ -1,5 +1,5 @@
 import { prepareRecoveryShell } from '../lib/recoveryShell';
-import { systemUpdateFailureMessage, systemUpdatePackageManagerBusy } from '../lib/systemUpdateFailure';
+import { systemUpdateFailureMessage, systemUpdatePackageManagerBusy, systemUpdateRecoveryPreparationUnconfirmed } from '../lib/systemUpdateFailure';
 import { failedUpdateGuidance, SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS, type OutcomeText, type SystemUpdateOutcomeTone } from '../lib/systemUpdateOutcome';
 import { isPreflightStop, parseRecoveryObservation, reconcileRecoveryObservation, UPDATE_MARKER_KEY, type RecoveryFailureCode, type RecoveryObservation } from '../lib/recoveryObservation';
 import {
@@ -228,6 +228,8 @@ export type SystemUpdateStopped = {
     at: number;
     /** The updater's own summary says the package manager was busy. */
     packageManagerBusy: boolean;
+    /** The updater's own line says the recovery tool could not confirm its preparation. */
+    preparationUnconfirmed?: boolean;
     /** A verified return to the previous version rather than a stop before any change. */
     rolledBack: boolean;
     /** The recovery record's typed cause for this request, when it gives one. */
@@ -2129,6 +2131,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 // unreadable outcome becomes the owner's to look at after its limit.
                 withinLimit: displayedTerminal.completedAt !== undefined
                     && Date.now() - displayedTerminal.completedAt < SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS,
+                locale,
             });
         })()
         : null;
@@ -2162,6 +2165,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             commit: displayedTerminal.marker.target.commit,
             at: displayedTerminal.completedAt ?? displayedTerminal.marker.created_at,
             packageManagerBusy: systemUpdatePackageManagerBusy(displayedTerminal.message),
+            preparationUnconfirmed: systemUpdateRecoveryPreparationUnconfirmed(displayedTerminal.message),
             rolledBack: failureGuidance.state === 'rolled_back',
             ...(stoppedCause ? { failureCode: stoppedCause } : {}),
         }
@@ -2290,7 +2294,13 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                     {failureGuidance.command}
                 </code>
             )}
+            {failureGuidance.command && failureGuidance.commandNote && (
+                <p className="mt-1 text-left text-xs text-fg-muted" data-command-note="">{outcomeText(failureGuidance.commandNote)}</p>
+            )}
             {failureGuidance.command && /\bsudo\b/.test(failureGuidance.command) && <p className="mt-1 text-left text-xs text-fg-muted" data-sudo-note="">{t('common.sudoNote')}</p>}
+            {failureGuidance.afterCommand?.map((line, index) => (
+                <p key={`after-${index}`} className="mt-2 text-sm text-fg-muted" data-command-answers="">{outcomeText(line)}</p>
+            ))}
             {failureGuidance.serverMessage && (
                 <details className="mt-3 text-left text-xs text-fg-subtle" data-update-details="">
                     <summary className="cursor-pointer select-none font-medium text-fg-muted">{t('panelUpdate.details')}</summary>

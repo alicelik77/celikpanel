@@ -1061,8 +1061,19 @@ var systemUpdateUnchangedLineRE = regexp.MustCompile(`(?:^|: )!! CELIKPANEL_UPDA
 // sondur; yalniz kendi biriminin hata isareti temizlenebilir.
 func systemUpdateStoppedUnchanged(state *systemUpdateState) bool {
 	return state != nil && state.Status == systemUpdateFailed && !systemUpdateStateIsAbandonReceipt(state) &&
-		systemUpdateRequestRE.MatchString(state.RequestID) && systemUpdateUnchangedLineRE.MatchString(state.Error)
+		systemUpdateRequestRE.MatchString(state.RequestID) &&
+		(systemUpdateUnchangedLineRE.MatchString(state.Error) || systemUpdatePreparationUnconfirmedLineRE.MatchString(state.Error))
 }
+
+// systemUpdatePreparationUnconfirmedLineRE is the updater's own untyped stop
+// when the recovery tool could not confirm its preparation (update.sh). It
+// comes before any release transaction and any service stop, so release
+// recovery has nothing of it either; what is left of the kit's preparation is
+// the recovery tool's own (recovery runtime-status), not this unit's. Only the
+// unit's failed mark is cleared; the record keeps the line (alpha.137 lab:
+// the refused press's unit stayed under systemctl --failed).
+// Hazırlığı doğrulanamayan duruş da işlemden önce gelir; yalnız birim işareti temizlenir.
+var systemUpdatePreparationUnconfirmedLineRE = regexp.MustCompile(`(?:^|: )!! independent recovery runtime preparation is unconfirmed; panel services have not been stopped(?:;|$)`)
 
 // systemUpdateClearableAttempts is the request ids whose units may be cleared
 // when no attempt is active: those a later success resolved and those that

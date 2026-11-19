@@ -209,6 +209,15 @@ end = source.index('release_txn_clear_stale_start_authorization', start)
 Path(sys.argv[2]).write_text(source[start:end])
 PY
 eval "$(extract_function_source "$REPO_ROOT/update.sh" preflight_release_recovery_foundation)"
+# alpha.137: the update's first bounded host-idle check is the real one, with
+# its real typed unchanged stop; only the Agent probe it runs is a fixture.
+for early_function in preflight_host_idle_before_recovery_runtime fail_update_preflight \
+    update_probe_diagnostic report_update_failure publish_update_failure_observation; do
+    early_source=$(extract_function_source "$REPO_ROOT/update.sh" "$early_function")
+    [[ -n $early_source ]] || fail "update.sh no longer defines $early_function"
+    eval "$early_source"
+done
+EARLY_ORDER=$TEST_ROOT/early-order
 run_early_candidate_branch() (
     set -Eeuo pipefail
     TRUSTED_RELEASE_ROOT=$SOURCE_ROOT
@@ -226,28 +235,56 @@ run_early_candidate_branch() (
     RELEASE_TRANSACTION_FD=9
     UNIT_DIR=$TEST_ROOT/etc/systemd/system
     RECOVERY_RUNTIME_ROOT=
-    prepare_independent_recovery_runtime() { : >"$TEST_ROOT/early-runtime-promoted"; }
-    publish_release_recovery_intent() { : >"$TEST_ROOT/early-intent-published"; }
-    release_txn_install_and_verify_unit_guards() { : >"$TEST_ROOT/early-guards-installed"; }
-    publish_release_recovery_foundation() { : >"$TEST_ROOT/early-foundation-published"; }
+    BOOTSTRAP_PRE_LEDGER=0
+    PREFLIGHT_AGENT=$TEST_ROOT/early-preflight-agent
+    AGENT_STATE_DIR=$TEST_ROOT/early-agent-state
+    MUTATION_LOCK=$TEST_ROOT/early-mutation-lock
+    # The bounded wait itself is test-update-enrollment-preflight.sh's; here the
+    # probe answers idle, or still busy after the bound (EARLY_HOST_BUSY).
+    run_update_agent_idle_probe_waiting() {
+        printf 'host-idle-check\n' >>"$EARLY_ORDER"
+        [[ $1 == "$PREFLIGHT_AGENT" && $2 == --check-service-mutation-idle ]] ||
+            { printf 'unexpected first check: %s\n' "$*" >&2; return 1; }
+        [[ ${EARLY_HOST_BUSY:-0} -eq 1 ]] || return 0
+        update_failure_detail='Recovery agent check: service mutation state is not idle: the host package manager is active'
+        return 1
+    }
+    prepare_independent_recovery_runtime() { printf 'runtime-prepared\n' >>"$EARLY_ORDER"; }
+    publish_release_recovery_intent() { printf 'intent-published\n' >>"$EARLY_ORDER"; }
+    release_txn_install_and_verify_unit_guards() { printf 'guards-installed\n' >>"$EARLY_ORDER"; }
+    publish_release_recovery_foundation() { printf 'foundation-published\n' >>"$EARLY_ORDER"; }
     die() { printf 'early candidate rejected: %s\n' "$*" >&2; exit 93; }
     source "$TEST_ROOT/update-early-preflight.sh"
 )
 cp -- "$SOURCE_ROOT/deploy/release-sequence-policy" "$TEST_ROOT/original-sequence-policy"
 sed -i -e 's/^current=51$/current=50/' -e 's/^previous=50$/previous=49/' \
     "$SOURCE_ROOT/deploy/release-sequence-policy"
+: >"$EARLY_ORDER"
 expect_failure stale-early-candidate run_early_candidate_branch
 grep -F 'foundation downgrade is refused' "$TEST_ROOT/stale-early-candidate.stderr" >/dev/null ||
     fail 'stale update candidate was rejected for the wrong reason'
-for effect in early-runtime-promoted early-intent-published early-guards-installed early-foundation-published; do
-    [[ ! -e $TEST_ROOT/$effect ]] || fail "stale candidate reached $effect"
-done
+# A stale sequence is refused before even the first host check runs.
+[[ ! -s $EARLY_ORDER ]] || fail "stale candidate reached: $(tr '\n' ' ' <"$EARLY_ORDER")"
 cp -- "$TEST_ROOT/original-sequence-policy" "$SOURCE_ROOT/deploy/release-sequence-policy"
+# A host still busy after the first check's bound: the typed unchanged stop,
+# written by the check itself, before the recovery runtime is prepared and
+# before any intent, guard or foundation is published.
+: >"$EARLY_ORDER"
+status=0
+EARLY_HOST_BUSY=1 run_early_candidate_branch >"$TEST_ROOT/busy-early.stdout" 2>"$TEST_ROOT/busy-early.stderr" || status=$?
+[[ $status -eq 1 ]] || fail "a busy first check ended with status $status, not the typed stop"
+[[ $(<"$EARLY_ORDER") == host-idle-check ]] ||
+    fail "a busy first check went on to: $(tr '\n' ' ' <"$EARLY_ORDER")"
+[[ $(tail -n 1 "$TEST_ROOT/busy-early.stderr") == '!! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the host package manager is active detail=' ]] ||
+    fail "a busy first check lost its typed unchanged stop: $(tail -n 1 "$TEST_ROOT/busy-early.stderr")"
+! grep -F 'early candidate rejected' "$TEST_ROOT/busy-early.stderr" >/dev/null ||
+    fail 'a busy first check ended through die instead of its typed stop'
+# A valid candidate: the first check, then the preparation, then publication.
+: >"$EARLY_ORDER"
 run_early_candidate_branch
-for effect in early-runtime-promoted early-intent-published early-guards-installed early-foundation-published; do
-    [[ -e $TEST_ROOT/$effect ]] || fail "valid candidate did not reach $effect"
-done
-printf 'PASS: stale source sequence stops before recovery runtime promotion\n'
+[[ $(tr '\n' ' ' <"$EARLY_ORDER") == 'host-idle-check runtime-prepared intent-published guards-installed foundation-published ' ]] ||
+    fail "valid candidate ran: $(tr '\n' ' ' <"$EARLY_ORDER")"
+printf 'PASS: stale source sequence stops before the first host check and recovery runtime promotion; a busy first check is the typed unchanged stop before any of them\n'
 # Exercise both production commit callers, not only the post-publication
 # verifier.  Effective service or timer overrides must abort immediately after
 # daemon-reload and before any recovery enable/start/status action.

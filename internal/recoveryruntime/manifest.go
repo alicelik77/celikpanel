@@ -46,6 +46,11 @@ const (
 	ReasonChanged             Reason = "runtime_changed"
 	ReasonReadFailed          Reason = "runtime_read_failed"
 	ReasonPlatformUnsupported Reason = "runtime_platform_unsupported"
+	// A preparation whose read-only checkers still found the host busy after
+	// their bounded wait, before any transition intent was published: nothing
+	// was selected or changed (alpha.137). The update reports a typed stop.
+	ReasonPackageManagerBusy Reason = "runtime_package_manager_busy"
+	ReasonOperationActive    Reason = "runtime_operation_active"
 )
 
 // Error deliberately exposes only a bounded code, never an OS error or path.

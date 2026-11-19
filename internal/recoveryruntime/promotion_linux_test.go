@@ -123,7 +123,7 @@ func TestPromotionInheritedLock(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("native root fixture")
 	}
-	cases := []string{"success", "active-dns-v2", "active-dns-v2-resume", "same-target", "next-promotion", "bad-checker", "bad-source", "active", "no-lock", "pending-enroll", "foreign-target", "owner-selector", "owner-launcher", "corrupt-old-kit", "corrupt-target-kit", "corrupt-intent", "orphan-receipt", "unknown-journal", "unsafe-journal", "bad-stage", "history-isolated", "resume-rechecks", "active-handoff", "completion-handoff", "ambiguous-handoff", "foreign-fd", "launcher-xattr", "selector-xattr", "replay-xattr", "owner-acquire", "owner-foreign-fd", "owner-epoll-fd", "owner-busy-foreign-fd", "owner-active-foreign-fd", "unknown-transaction", "retired-loss"}
+	cases := []string{"success", "active-dns-v2", "active-dns-v2-resume", "same-target", "next-promotion", "bad-checker", "bad-source", "active", "no-lock", "pending-enroll", "foreign-target", "owner-selector", "owner-launcher", "corrupt-old-kit", "corrupt-target-kit", "corrupt-intent", "orphan-receipt", "unknown-journal", "unsafe-journal", "bad-stage", "history-isolated", "resume-rechecks", "active-handoff", "completion-handoff", "ambiguous-handoff", "foreign-fd", "launcher-xattr", "selector-xattr", "replay-xattr", "owner-acquire", "owner-foreign-fd", "owner-epoll-fd", "owner-busy-foreign-fd", "owner-active-foreign-fd", "unknown-transaction", "retired-loss", "busy-package-manager", "busy-operation", "busy-after-intent"}
 	for _, scenario := range cases {
 		t.Run(scenario, func(t *testing.T) {
 			root := nativeFixtureRoot(t, "celikpanel-promotion-test-")
@@ -195,6 +195,55 @@ func TestPromotionChild(t *testing.T) {
 	checker := acceptPromotionCheck
 	if scenario == "bad-checker" {
 		checker = func(string, string) error { return fail(ReasonUnsupported) }
+	}
+	// alpha.137 lab: a host still busy after the checkers' bound, before any
+	// intent, is named (the update ends unchanged); nothing is selected, no
+	// intent is left. Once an intent exists the same refusal stays pending.
+	if scenario == "busy-package-manager" || scenario == "busy-operation" {
+		want := ReasonPackageManagerBusy
+		if scenario == "busy-operation" {
+			want = ReasonOperationActive
+		}
+		// Pressed twice: the second attempt meets the kit the first one
+		// installed (alpha.137 review: each retry left a .promote-* copy).
+		for attempt := 1; attempt <= 2; attempt++ {
+			err := promoteAt(request, 9, paths, nil, func(string, string) error {
+				return &promotionHostBusyError{packageManager: scenario == "busy-package-manager"}
+			})
+			if ReasonCode(err) != string(want) {
+				t.Fatalf("attempt %d: busy host before intent = %v, want %s", attempt, err, want)
+			}
+		}
+		if stages, err := filepath.Glob(filepath.Join(paths.runtimeRoot, ".promote-*")); err != nil || len(stages) != 0 {
+			t.Fatal("a busy host left kit copies behind", stages, err)
+		}
+		if !bytes.Equal(oldSelection, readFixture(t, paths.selection)) || !sameFile(oldLauncher, fixtureIdentity(t, paths.launcher)) {
+			t.Fatal("entry changed on a busy host")
+		}
+		if _, err := os.Lstat(filepath.Join(paths.promotions, "current")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("intent left on a busy host", err)
+		}
+		if status, err := inspectPromotionAt(paths); err != nil || status.Phase != "none" {
+			t.Fatal("runtime-status after a busy host", status, err)
+		}
+		return
+	}
+	if scenario == "busy-after-intent" {
+		checks := 0
+		err := promoteAt(request, 9, paths, nil, func(string, string) error {
+			checks++
+			if checks == 2 {
+				return &promotionHostBusyError{packageManager: true}
+			}
+			return nil
+		})
+		if ReasonCode(err) != string(ReasonUnsupported) {
+			t.Fatalf("busy host after intent = %v, want the existing refusal", err)
+		}
+		if pending, err := promotionPendingAt(paths); err != nil || !pending {
+			t.Fatal("a busy host after intent must leave the promotion pending", pending, err)
+		}
+		return
 	}
 	oldLauncher = fixtureIdentity(t, paths.launcher)
 	if scenario == "active-dns-v2-resume" {

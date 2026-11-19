@@ -434,9 +434,10 @@ is also copied to `BROWSER_INSPECT_SHOTS` as `<state>-<lang>-<theme>-<width>.png
 
 | Name | States |
 | --- | --- |
-| `steps88` | an update this browser started (its stored record 10 s old, inside the navigation lock): the download with 42 % measured (`download`); the Panel down for 25 s, the restart step time-based (`restart`); 9 s of `PANEL_STARTING` (`starting`); the new version answering, "verify the new version" (`confirm`); succeeded, "Updated to" with the build id before the page's own reload (`updated`) |
+| `steps88` | an update this browser started (its stored record 10 s old, inside the navigation lock): the download with 42 % measured (`download`); the server check with its note on what the update waits for, another server change or the host package manager, at most a minute (`prepare`, a137); the Panel down for 25 s, the restart step time-based (`restart`); 9 s of `PANEL_STARTING` (`starting`); the new version answering, "verify the new version" (`confirm`); succeeded, "Updated to" with the build id before the page's own reload (`updated`) |
 | `steps88card` | past the lock (record 170 s old): the update card with the steps (`card`); the status read dropped, the restart on the card (`card-restart`); the same page with `Date.now` moved 7 minutes ahead, the overdue wording under the restart step, whose bar and sentence are no longer drawn (`overdue`) |
 | `steps88corner` | Domains during the restart: the compact corner notice with the restart step (`corner`) |
+| `stuck137` | a137 lab: an update that stopped because the recovery tool could not confirm its preparation, recorded as the lab recorded it (request failed with that line, recovery record "failed" only): the window is a stop the owner closes, with the read-only `recovery runtime-status` command (`stuck`) |
 
 Each record adds the running step and every bar (its kind: measured, time,
 indeterminate; its fill), whether the restart sentence is shown, the dialog,

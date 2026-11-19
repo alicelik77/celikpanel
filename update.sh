@@ -302,24 +302,48 @@ update_agent_refusal_is_transient() {
     return 1
 }
 
+# The refusal names the host package manager, as the Agent alone decides it
+# (cmd/agent service_mutation_lock_linux.go), rather than an Agent operation.
+# Ret, Agent işlemi yerine sunucunun paket yöneticisini adlandırıyor.
+update_refusal_is_package_manager() {
+    case "${update_failure_detail:-}" in
+        *': the host package manager is active'*) return 0 ;;
+    esac
+    return 1
+}
+
 # run_update_probe_waiting CLASSIFIER PROBE...: one read; while CLASSIFIER says
-# the refusal is transient, read again every poll until the bound.
+# the refusal is transient, read again every poll until the bound. The
+# announcement names what is waited for: the host package manager or an Agent
+# operation. Only reads repeat; nothing is started again.
+# Duyuru neyin beklendiğini söyler; yalnız okuma tekrarlanır.
 run_update_probe_waiting() {
-    local transient=$1 waited=0 status=0
+    local transient=$1 waited=0 status=0 waiting_for=agent
     shift
     run_update_idle_probe "$@" 2>/dev/null && return 0
     while "$transient" && (( waited < UPDATE_AGENT_IDLE_WAIT_SECONDS )); do
         if (( waited == 0 )); then
-            echo "==> The Agent is finishing another server operation; waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
-            echo "==> Agent başka bir sunucu işlemini bitiriyor; güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
+            if update_refusal_is_package_manager; then
+                waiting_for=package_manager
+                echo "==> The server's package manager is working (for example automatic updates); waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
+                echo "==> Sunucunun paket yöneticisi çalışıyor (örneğin otomatik güncellemeler); güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
+            else
+                echo "==> The Agent is finishing another server operation; waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
+                echo "==> Agent başka bir sunucu işlemini bitiriyor; güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
+            fi
         fi
         sleep "$UPDATE_AGENT_IDLE_POLL_SECONDS"
         waited=$((waited + UPDATE_AGENT_IDLE_POLL_SECONDS))
         status=0
         run_update_idle_probe "$@" 2>/dev/null || status=$?
         if [[ $status -eq 0 ]]; then
-            echo "==> The Agent finished its operation after about ${waited} s; the update continues"
-            echo "==> Agent işlemini yaklaşık ${waited} sn sonra bitirdi; güncelleme sürüyor"
+            if [[ $waiting_for == package_manager ]]; then
+                echo "==> The package manager finished after about ${waited} s; the update continues"
+                echo "==> Paket yöneticisi işini yaklaşık ${waited} sn sonra bitirdi; güncelleme sürüyor"
+            else
+                echo "==> The Agent finished its operation after about ${waited} s; the update continues"
+                echo "==> Agent işlemini yaklaşık ${waited} sn sonra bitirdi; güncelleme sürüyor"
+            fi
             return 0
         fi
     done
@@ -353,6 +377,22 @@ recovery_compatibility_refusal_is_transient() {
 
 run_recovery_compatibility_waiting() {
     run_update_probe_waiting recovery_compatibility_refusal_is_transient "$@"
+}
+
+# The first read-only check of an update, before anything on the server is
+# prepared: the same bounded wait as below. It runs before the recovery
+# runtime's preparation, the release-recovery intent and the EXIT trap, so a
+# refusal still present after the bound reports its typed, unchanged stop
+# itself: fail_update_preflight does so only while this function's own
+# update_preflight_reports_unchanged_stop is set (no other caller sets it).
+# Hiçbir şey hazırlanmadan önceki ilk bekleme; tipli duruşu kendisi bildirir.
+preflight_host_idle_before_recovery_runtime() {
+    [[ $BOOTSTRAP_PRE_LEDGER -eq 0 ]] || return 0
+    local update_preflight_reports_unchanged_stop=1
+    if ! CELIKPANEL_AGENT_STATE_DIR="$AGENT_STATE_DIR" CELIKPANEL_MUTATION_LOCK="$MUTATION_LOCK" \
+        run_update_agent_idle_probe_waiting "$PREFLIGHT_AGENT" --check-service-mutation-idle; then
+        fail_update_preflight agent_idle "an existing server operation requires completion or exact recovery before update; coordinators remain available"
+    fi
 }
 
 # Reject durable reservations while the management interface is still reachable.
@@ -708,11 +748,21 @@ prepare_independent_recovery_runtime() {
         mail_runtime_preparation_verified=1
     fi
     recovery_runtime_preparation_attempted=1
-    run_update_idle_probe "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" prepare-runtime \
+    if ! run_update_idle_probe "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" prepare-runtime \
         --source "$TRUSTED_RELEASE_ROOT/recovery-runtime" \
         --mode "$recovery_compatibility_mode" \
-        --transaction-fd 9 9<&"$RELEASE_TRANSACTION_FD" \
-        || die "independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence"
+        --transaction-fd 9 9<&"$RELEASE_TRANSACTION_FD"; then
+        # The kit's checkers waited their own bound and the host was still
+        # busy, before any transition intent: nothing was selected or changed
+        # (recovery runtime-status says "no transition"). A typed, unchanged
+        # stop, not "unconfirmed". Every other failure keeps its evidence path.
+        # Geçiş niyetinden önce meşgul sunucu: hiçbir şey değişmedi, tipli duruş.
+        if recovery_runtime_refused_busy_host; then
+            recovery_runtime_preparation_attempted=0
+            fail_recovery_runtime_preflight preparation
+        fi
+        die "independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence"
+    fi
     recovery_runtime_preparation_verified=1
     run_recovery_compatibility_waiting "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" verify-compatibility \
         --mode "$recovery_compatibility_mode" 9<&"$RELEASE_TRANSACTION_FD" \
@@ -728,6 +778,17 @@ prepare_independent_recovery_runtime() {
         run_update_idle_probe /usr/libexec/celikpanel/recovery probe-update-database 9<&"$RELEASE_TRANSACTION_FD" \
             || fail_recovery_runtime_preflight database_metadata
     fi
+}
+
+# The recovery runtime's preparation names a host that stayed busy through its
+# own bounded wait, before any transition intent (internal/recoveryruntime,
+# runtime_package_manager_busy / runtime_operation_active).
+# Hazırlık, kendi beklemesinden sonra da meşgul kalan sunucuyu adlandırır.
+recovery_runtime_refused_busy_host() {
+    case "${update_failure_detail:-}" in
+        *'(runtime_package_manager_busy)'*|*'(runtime_operation_active)'*) return 0 ;;
+    esac
+    return 1
 }
 
 # The selected recovery runtime's read-only preflight runs before any durable
@@ -788,6 +849,17 @@ fail_update_preflight() {
     [[ ${update_failure_detail:-} == *': the host package manager is active'* ]] ||
         update_failure_detail=$diagnostic
     if [[ ${transaction_phase:-none} == none ]]; then
+        if [[ ${update_preflight_reports_unchanged_stop:-0} -eq 1 ]]; then
+            # The first check (preflight_host_idle_before_recovery_runtime)
+            # runs before anything is prepared and before the EXIT trap, so
+            # nothing else would write the summary: the typed, unchanged stop
+            # is reported here (as the recovery runtime preflight does), so the
+            # Agent clears the attempt's unit and the panel offers the update
+            # again. Every other caller keeps die / fail_before_active.
+            echo "!! $reason" >&2
+            report_update_failure 1 none
+            exit 1
+        fi
         die "$reason"
     fi
     fail_before_active "$reason"
@@ -2903,6 +2975,10 @@ publish_release_recovery_intent() {
 release_txn_verify_inherited_lock "$RELEASE_TRANSACTION_ROOT" "$RELEASE_TRANSACTION_FD" || die "persistent release transaction lock verification failed"
 classify_release_transaction_entries
 preflight_completion_material_admission
+# The preflight binaries are proven before the first check below runs one.
+# İlk denetim bir ön denetim ikilisini çalıştırmadan önce ikililer doğrulanır.
+validate_preflight_binary "$PREFLIGHT_PANEL" panel
+validate_preflight_binary "$PREFLIGHT_AGENT" agent
 if [[ $release_marker_count -eq 0 ]]; then
     [[ -z $RECOVERY_RUNTIME_ROOT ]] \
         || die "independent recovery cannot initiate a new update"
@@ -2910,6 +2986,12 @@ if [[ $release_marker_count -eq 0 ]]; then
     # separately retained recovery runtime can change host recovery bytes.
     # The later check still re-proves the foundation immediately before intent.
     preflight_release_recovery_foundation
+    # The bounded wait for a finishing Agent operation or the host package
+    # manager comes before the recovery runtime's own preparation: its
+    # checkers refuse the same states, and a refusal there could only end as
+    # "unconfirmed" (alpha.137 lab: a package install that began seven
+    # seconds after the press). Ön bekleme, kurtarma ortamı hazırlığından önce.
+    preflight_host_idle_before_recovery_runtime
     prepare_independent_recovery_runtime
     # The candidate sequence/commit and every already-bound foundation byte
     # are proven before guard/drop-in publication can change the host.
@@ -2928,8 +3010,6 @@ target_release_commit=$trusted_release_commit
 target_release_tree=$trusted_release_tree
 [[ "$target_release_commit" =~ ^[0-9a-f]{40}$ ]] \
     || die "trusted target commit must be a full 40-character object id"
-validate_preflight_binary "$PREFLIGHT_PANEL" panel
-validate_preflight_binary "$PREFLIGHT_AGENT" agent
 
 # Runtime has one durable phase. The only permitted two-marker topology is an
 # exact completion.pending plus scheduler-restore.pending pair.
@@ -3633,12 +3713,19 @@ elif [[ $resume_quiescing_update -eq 1 ]]; then
         || die "quiesce recovery could not resume coordinators and remove the exact phase"
     die "previous quiesce phase was safely aborted and cleaned; rerun the exact trusted update"
 else
+    # The bounded wait for a finishing Agent operation or the host package
+    # manager comes first: the BIND check below repeats every idle proof under
+    # the held lock and never waits. The systemd reloads above (unit guards,
+    # recovery foundation) re-draw apt-daily.timer's random delay and can start
+    # Debian/Ubuntu's daily apt run seconds before these checks (alpha.133 and
+    # alpha.136 labs, Ubuntu 24.04: the first press stopped "package manager
+    # busy", the second worked). Bekleyen ön denetim BIND denetiminden önce gelir.
+    preflight_mutations_before_quiesce
     # Reject incompatible installed DNS while the panel is still available and
     # before a durable start barrier exists. Recheck under the final lock below.
     # Uyumsuz DNS durumunu panel erişilebilirken, kalıcı başlangıç engelinden
     # önce reddet. Aşağıda son kilit altında tekrar doğrula.
     preflight_bind_before_quiesce
-    preflight_mutations_before_quiesce
     check_mail_application_compatibility ||
         fail_update_preflight application_compatibility "application compatibility with native mail/DNS evidence is unverified before coordinator downtime"
     mkdir -m 0700 -- "$stage_root"

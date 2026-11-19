@@ -149,7 +149,7 @@ printf 'recovery runtime shell contract: ok\n'
 # Redirect only the fixed selected CLI path into this private fixture.
 eval "$(extract_function prepare_independent_recovery_runtime | sed 's@/usr/libexec/celikpanel/recovery@"$TEST_ROOT/selected-recovery"@g')"
 # a125: the compatibility check waits, bounded, for a running Agent operation.
-for name in update_agent_refusal_is_transient run_update_probe_waiting \
+for name in update_agent_refusal_is_transient update_refusal_is_package_manager run_update_probe_waiting \
     recovery_compatibility_refusal_is_transient run_recovery_compatibility_waiting; do
     eval "$(extract_function "$name")"
 done
@@ -157,6 +157,7 @@ eval "$(grep -E '^UPDATE_AGENT_IDLE_(WAIT|POLL)_SECONDS=' "$ROOT/update.sh")"
 # upd3 F1: selected-runtime preflight refusals report their typed, unchanged
 # outcome through the real reporter (exit 1, summary last), not the fixture die.
 eval "$(extract_function fail_recovery_runtime_preflight)"
+eval "$(extract_function recovery_runtime_refused_busy_host)"
 eval "$(extract_function report_update_failure)"
 eval "$(extract_function publish_update_failure_observation)"
 expect_preflight_stop() {
@@ -230,6 +231,14 @@ if args[0]=='verify-compatibility' and os.environ.get('FIXTURE_COMPAT_BUSY'):
         sys.stderr.write('The selected recovery runtime cannot verify this installation. The update has not stopped the panel. step=agent_ledger_check: Recovery agent check: service mutation state is not idle: privileged mutation 0ff22f3864a0988121833f5ed483fc72 is active\n'); sys.exit(3)
 if args[0]=='prepare-mail-renewal-runtime' and os.environ.get('FIXTURE_MAIL_REJECT')=='1': sys.exit(81)
 if args[0]=='prepare-runtime' and os.environ.get('FIXTURE_REJECT_PREPARATION')=='1': sys.exit(78)
+# alpha.137 lab: the kit's checkers still found the host busy after their own
+# bounded wait, before any intent (cmd/recovery/promotion_entry.go's words).
+if args[0]=='prepare-runtime' and os.environ.get('FIXTURE_PREPARATION_BUSY')=='package':
+    sys.stderr.write('Recovery runtime preparation stopped before changing anything. step=agent_ledger_check: service mutation state is not idle: the host package manager is active (runtime_package_manager_busy)\n'); sys.exit(3)
+if args[0]=='prepare-runtime' and os.environ.get('FIXTURE_PREPARATION_BUSY')=='operation':
+    sys.stderr.write('Recovery runtime preparation stopped before changing anything. step=agent_ledger_check: service mutation state is not idle: another server operation is still running (runtime_operation_active)\n'); sys.exit(3)
+if args[0]=='prepare-runtime' and os.environ.get('FIXTURE_PREPARATION_BUSY')=='unsupported':
+    sys.stderr.write('Recovery runtime preparation could not be verified before service downtime. Preserve its evidence. recovery runtime unavailable: runtime_unsupported_protocol\n'); sys.exit(3)
 if args[0]=='prepare-firewall-runtime' and os.environ.get('FIXTURE_FIREWALL_REJECT')=='1': sys.exit(79)
 if args[0]=='verify-firewall-unit' and os.environ.get('FIXTURE_FIREWALL_UNIT_REJECT')=='1': sys.exit(80)
 PY
@@ -306,6 +315,37 @@ chmod 0755 "$TEST_ROOT/fresh/recovery-runtime/bin/recovery"
     [[ $status == 41 && $(wc -l < "$FIXTURE_CALLS") -eq $((before_calls + 1)) ]] || fail 'rejected preparation continued'
     [[ $(tail -n 1 "$FIXTURE_CALLS") == prepare-runtime ]] || fail 'unexpected call after rejected preparation'
     unset FIXTURE_REJECT_PREPARATION
+    # alpha.137 lab: a busy host that outlasted the kit checkers' own wait,
+    # before any intent, is the typed unchanged stop (the panel offers the
+    # update again and the Agent clears the attempt's unit), never
+    # "unconfirmed". Any other preparation failure keeps its evidence path.
+    for busy in package operation unsupported; do
+        export FIXTURE_PREPARATION_BUSY=$busy
+        before_calls=$(wc -l < "$FIXTURE_CALLS")
+        status=0
+        (prepare_independent_recovery_runtime) >"$TEST_ROOT/preparation-$busy.log" 2>&1 || status=$?
+        [[ $(wc -l < "$FIXTURE_CALLS") -eq $((before_calls + 1)) && $(tail -n 1 "$FIXTURE_CALLS") == prepare-runtime ]] ||
+            fail "a $busy preparation refusal continued past the kit"
+        last=$(tail -n 1 "$TEST_ROOT/preparation-$busy.log")
+        case $busy in
+            package)
+                [[ $status == 1 ]] || fail "busy package manager: status $status"
+                [[ $last == '!! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the host package manager is active detail=' ]] ||
+                    fail "busy package manager lost its typed unchanged stop: $last" ;;
+            operation)
+                [[ $status == 1 ]] || fail "running operation: status $status"
+                expect_preflight_stop "$TEST_ROOT/preparation-$busy.log" agent_ledger_check ;;
+            unsupported)
+                [[ $status == 41 ]] || fail "unsupported preparation: status $status"
+                grep -F 'independent recovery runtime preparation is unconfirmed' "$TEST_ROOT/preparation-$busy.log" >/dev/null ||
+                    fail 'an unverified preparation no longer keeps its evidence path'
+                ! grep -F 'CELIKPANEL_UPDATE_FAILURE' "$TEST_ROOT/preparation-$busy.log" >/dev/null ||
+                    fail 'an unverified preparation was typed as unchanged' ;;
+        esac
+        [[ $busy == unsupported ]] || ! grep -F 'unconfirmed' "$TEST_ROOT/preparation-$busy.log" >/dev/null ||
+            fail "a $busy preparation refusal was said as unconfirmed"
+    done
+    unset FIXTURE_PREPARATION_BUSY
     export FIXTURE_COMPAT_REJECT=1
     status=0
     (prepare_independent_recovery_runtime) >"$TEST_ROOT/compat-rejected.log" 2>&1 || status=$?
