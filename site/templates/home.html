@@ -59,7 +59,7 @@ sh celikpanel-install.sh</span></code>
 <div class="wrap">
 <div class="block-head center">
 <p class="eyebrow">{{t "home.free.eyebrow"}}</p>
-<h2 id="free-title">{{t "home.free.title"}}</h2>
+<h2 id="free-title">{{sentences (t "home.free.title")}}</h2>
 <p class="lede">{{t "home.free.lede"}}</p>
 </div>
 <figure class="diagram" aria-labelledby="free-caption">
@@ -91,7 +91,7 @@ sh celikpanel-install.sh</span></code>
 <div class="wrap">
 <div class="block-head center">
 <p class="eyebrow">{{t "home.features.eyebrow"}}</p>
-<h2 id="features-title">{{t "home.features.title"}}</h2>
+<h2 id="features-title">{{sentences (t "home.features.title")}}</h2>
 <p class="lede">{{t "home.features.lede"}}</p>
 </div>
 <div class="bento">
@@ -118,6 +118,8 @@ sh celikpanel-install.sh</span></code>
 <div class="art" aria-hidden="true">
 <div class="records">
 <div class="rec"><span class="type">A</span><span class="name">@</span><code>192.0.2.10</code></div>
+<div class="rec"><span class="type">AAAA</span><span class="name">@</span><code>2001:db8::10</code></div>
+<div class="rec"><span class="type">CNAME</span><span class="name">www</span><code>example.com</code></div>
 <div class="rec"><span class="type">MX</span><span class="name">@</span><code>mail.example.com</code></div>
 <div class="rec"><span class="type">TXT</span><span class="name">@</span><code>v=spf1 mx -all</code></div>
 </div>
@@ -186,7 +188,7 @@ sh celikpanel-install.sh</span></code>
 <div class="wrap">
 <div class="block-head center">
 <p class="eyebrow">{{t "nav.pricing"}}</p>
-<h2 id="price-title">{{t "home.price.title"}}</h2>
+<h2 id="price-title">{{sentences (t "home.price.title")}}</h2>
 <p class="lede">{{t "home.price.lede"}}</p>
 </div>
 {{template "price-pair" .}}
@@ -199,7 +201,7 @@ sh celikpanel-install.sh</span></code>
 <div class="wrap split install">
 <div class="block-head">
 <p class="eyebrow">{{t "home.install.eyebrow"}}</p>
-<h2 id="install-title">{{t "home.install.title"}}</h2>
+<h2 id="install-title">{{sentences (t "home.install.title")}}</h2>
 <p class="lede">{{t "home.install.lede"}}</p>
 <ol class="num-steps">
 <li>{{t "home.install.step1"}}</li>

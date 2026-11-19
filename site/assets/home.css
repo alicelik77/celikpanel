@@ -124,10 +124,10 @@
 .up::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 /* dns */
 .records { display: grid; gap: .4rem; }
-.rec { display: grid; grid-template-columns: 3.2rem 1.4rem minmax(0, 1fr); align-items: center; gap: .6rem; padding: .5rem .65rem; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); font-size: .8rem; }
+.rec { display: grid; grid-template-columns: 3.2rem 1.8rem minmax(0, 1fr); align-items: center; gap: .6rem; padding: .5rem .65rem; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); font-size: .8rem; }
 .rec .type { justify-self: start; padding: .08rem .4rem; border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-text); font-family: var(--mono); font-size: .7rem; font-weight: 700; }
-.rec:nth-child(2) .type { background: color-mix(in srgb, var(--violet) 18%, transparent); color: var(--violet); }
-.rec:nth-child(3) .type { background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: var(--accent-2); }
+.rec:nth-child(4) .type { background: color-mix(in srgb, var(--violet) 18%, transparent); color: var(--violet); }
+.rec:nth-child(5) .type { background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: var(--accent-2); }
 .rec .name { color: var(--text-3); font-family: var(--mono); }
 .rec code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-size: .76rem; }
 .seen { display: inline-flex; align-items: center; gap: .4rem; margin-top: .8rem; color: var(--green); font-size: .8rem; font-weight: 560; }

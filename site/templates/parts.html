@@ -112,6 +112,11 @@
 <p class="pill"><span class="live" aria-hidden="true"></span>{{t "price.today.tag"}}</p>
 <h3>{{t "price.today.title"}}</h3>
 <p>{{t "price.today.text"}}</p>
+<ul class="checks quiet">
+<li>{{icon "check"}}{{t "price.today.card"}}</li>
+<li>{{icon "check"}}{{t "price.today.server"}}</li>
+<li>{{icon "check"}}{{t "price.today.beta"}}</li>
+</ul>
 <a class="btn btn-primary" href="{{account "register"}}">{{t "common.register.free"}}{{icon "arrow-right"}}</a>
 </div>
 </div>
@@ -141,7 +146,7 @@
 <section class="closing" aria-labelledby="close-title">
 <div class="wrap">
 <div class="closing-card">
-<h2 id="close-title">{{t "close.title"}}</h2>
+<h2 id="close-title">{{sentences (t "close.title")}}</h2>
 <p>{{t "close.text"}}</p>
 <div class="actions">
 <a class="btn btn-primary btn-lg" href="{{account "register"}}">{{t "common.register.free"}}{{icon "arrow-right"}}</a>

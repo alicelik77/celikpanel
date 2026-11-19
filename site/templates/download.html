@@ -4,20 +4,20 @@
 <div class="wrap split install">
 <div class="block-head">
 <p class="eyebrow">{{t "nav.download"}}</p>
-<h1 id="hero-title">{{t "download.hero.title"}}</h1>
+<h1 id="hero-title">{{sentences (t "download.hero.title")}}</h1>
 <p class="lede">{{t "download.hero.lede"}}</p>
 <p class="current">{{t "download.current"}} <a href="{{link "releases"}}"><code>@@CP_RELEASE_VERSION@@</code></a> <span class="dot">·</span> <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time> <span class="dot">·</span> Linux amd64</p>
+{{template "alpha" .}}
+</div>
+<div class="install-side">
 <ol class="num-steps">
 <li>{{t "install.step.account"}}</li>
 <li>{{t "download.step.server"}}</li>
 <li>{{t "install.step.run"}}</li>
 <li>{{t "install.step.wizard"}}</li>
 </ol>
-</div>
-<div>
 {{template "command" (dict "ID" "download")}}
 {{template "badges" .}}
-{{template "alpha" .}}
 </div>
 </div>
 </section>
@@ -28,7 +28,7 @@
 <div class="wrap">
 <div class="block-head center">
 <p class="eyebrow">{{t "nav.systems"}}</p>
-<h2 id="systems-title">{{t "download.systems.title"}}</h2>
+<h2 id="systems-title">{{sentences (t "download.systems.title")}}</h2>
 <p class="lede">{{t "download.systems.lede"}}</p>
 </div>
 <div class="table-card">{{template "systems-table" .}}</div>
@@ -40,7 +40,7 @@
 <div class="wrap">
 <div class="block-head center">
 <p class="eyebrow">{{t "download.wizard.eyebrow"}}</p>
-<h2 id="wizard-title">{{t "download.wizard.title"}}</h2>
+<h2 id="wizard-title">{{sentences (t "download.wizard.title")}}</h2>
 <p class="lede">{{t "download.wizard.lede"}}</p>
 </div>
 <div class="choice-cards">
@@ -63,7 +63,7 @@
 <div class="wrap">
 <div class="block-head center">
 <p class="eyebrow">{{t "download.how.eyebrow"}}</p>
-<h2 id="how-title">{{t "download.how.title"}}</h2>
+<h2 id="how-title">{{sentences (t "download.how.title")}}</h2>
 <p class="lede">{{t "download.how.lede"}}</p>
 </div>
 <ol class="model">
@@ -92,7 +92,7 @@
 <div class="wrap split">
 <div class="block-head">
 <p class="eyebrow">{{t "download.trust.eyebrow"}}</p>
-<h2 id="trust-title">{{t "download.trust.title"}}</h2>
+<h2 id="trust-title">{{sentences (t "download.trust.title")}}</h2>
 <p class="lede">{{t "download.trust.lede"}}</p>
 </div>
 <ul class="check-list">
@@ -106,7 +106,7 @@
 <section class="block tight" aria-labelledby="installed-title">
 <div class="wrap narrow">
 <div class="note-card">
-<h2 id="installed-title">{{t "download.installed.title"}}</h2>
+<h2 id="installed-title">{{sentences (t "download.installed.title")}}</h2>
 <p>{{t "download.installed.text"}}</p>
 <p class="links"><a class="link" href="{{link "releases"}}">{{t "download.installed.releases"}}{{icon "arrow-right"}}</a><a class="link" href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}{{icon "arrow-right"}}</a></p>
 </div>

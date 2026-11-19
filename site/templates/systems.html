@@ -3,7 +3,7 @@
 <div class="hero-glow soft" aria-hidden="true"></div>
 <div class="wrap">
 <p class="eyebrow">{{t "nav.systems"}}</p>
-<h1 id="hero-title">{{t "systems.hero.title"}}</h1>
+<h1 id="hero-title">{{sentences (t "systems.hero.title")}}</h1>
 <p class="lede">{{t "systems.hero.lede"}}</p>
 <nav class="jump" aria-label="{{t "systems.jump"}}">
 <a href="#{{t "systems.list.id"}}">{{t "systems.list.title"}}</a>
@@ -19,7 +19,7 @@
 <section class="block tight" aria-labelledby="list-title" id="{{t "systems.list.id"}}">
 <div class="wrap">
 <div class="block-head center">
-<h2 id="list-title">{{t "systems.list.title"}}</h2>
+<h2 id="list-title">{{sentences (t "systems.list.title")}}</h2>
 <p class="lede">{{t "systems.list.lede"}}</p>
 </div>
 <div class="table-card">{{template "systems-table" .}}<p class="table-card-foot">{{t "systems.list.other"}}</p></div>
@@ -28,7 +28,7 @@
 
 <section class="block" aria-labelledby="deb-title" id="debian-ubuntu">
 <div class="wrap">
-<div class="block-head center"><h2 id="deb-title">{{t "systems.deb.title"}}</h2></div>
+<div class="block-head center"><h2 id="deb-title">{{sentences (t "systems.deb.title")}}</h2></div>
 <div class="text-cards">
 {{- range $k := (list "offered" "notoffered" "updates" "major")}}
 <div class="text-card"><h3>{{t (print "systems.deb." $k)}}</h3><p>{{t (print "systems.deb." $k ".text")}}</p></div>
@@ -57,7 +57,7 @@
 <div class="wrap split">
 <div class="block-head">
 <p class="eyebrow">{{t "home.free.eyebrow"}}</p>
-<h2 id="yours-title">{{t "systems.yours.title"}}</h2>
+<h2 id="yours-title">{{sentences (t "systems.yours.title")}}</h2>
 <p class="lede">{{t "systems.yours.text"}}</p>
 </div>
 <ul class="link-list">

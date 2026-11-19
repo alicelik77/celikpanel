@@ -249,8 +249,9 @@ func (r *renderer) funcs(v view) template.FuncMap {
 			}
 			return result, nil
 		},
-		"list":  func(items ...string) []string { return items },
-		"words": strings.Fields,
+		"list":      func(items ...string) []string { return items },
+		"words":     strings.Fields,
+		"sentences": sentences,
 		// dots sets the separating middle dots of a short line in their own
 		// span: Overpass draws the dot against the following word.
 		"dots": func(text string) template.HTML {
@@ -376,6 +377,32 @@ var (
 	// a media or support feature, "(max-width: 640px)"
 	cssMediaFeature = regexp.MustCompile(`\(([a-z-]+): `)
 )
+
+// sentences sets each sentence of a headline in its own unbreakable-looking
+// box (".sent" is inline-block), so a two-sentence headline breaks between
+// its sentences ("One price." / "Nothing counted.") and never leaves half a
+// sentence on a line; a single sentence comes back as plain escaped text.
+func sentences(text string) template.HTML {
+	var parts []string
+	var current []string
+	for _, word := range strings.Fields(text) {
+		current = append(current, word)
+		if strings.HasSuffix(word, ".") || strings.HasSuffix(word, "?") || strings.HasSuffix(word, "!") {
+			parts = append(parts, strings.Join(current, " "))
+			current = nil
+		}
+	}
+	if len(current) > 0 {
+		parts = append(parts, strings.Join(current, " "))
+	}
+	if len(parts) < 2 {
+		return template.HTML(template.HTMLEscapeString(text))
+	}
+	for i, part := range parts {
+		parts[i] = `<span class="sent">` + template.HTMLEscapeString(part) + `</span>`
+	}
+	return template.HTML(strings.Join(parts, " "))
+}
 
 // minifyCSS drops comments and the whitespace that carries no meaning: runs
 // collapse to one space, and none is kept around braces, semicolons, commas
