@@ -310,7 +310,7 @@ export const trRuntimeAppsScreens: Record<RuntimeAppsScreenKey, string> = {
     'err.RUNTIME_APP.env_values': 'Hiçbir şey değişmedi: bir ortam değeri geçerli değil. Anahtarlar büyük harf, rakam ve _ içerir; değerler 1 ile 4096 karakterlik tek satırdır; yeni bir gizli değerin en az 8 karakterlik bir değeri olmalı; en çok 64 değer.',
     'err.RUNTIME_APP.logs_unavailable': 'Günlük şu anda sunucudan okunamadı. Yeniden deneyin.',
     'err.RUNTIME_APP.confirm_files': 'Uygulama klasörünü de silmek için {domain} alan adını yazın. Yazmazsanız klasör korunur.',
-    'err.RUNTIME_APP.app_created': 'Hiçbir şey değişmedi: bu alan adını bir program kullanıyor. Önce onu Site bölümünde, Programlar kısmından kaldırın.',
+    'err.RUNTIME_APP.app_created': 'Hiçbir şey değişmedi: bu alan adını bir program kullanıyor. Önce onu Programlar bölümünden kaldırın.',
     'err.RUNTIME_APP.unit_missing': 'Programın hizmeti sunucuda yok. Yeniden yayına alın.',
     'err.RUNTIME_APP.systemctl': 'Sistemin hizmet yöneticisi işlemi reddetti. Nedenini görmek için günlüğü açın, sonra yeniden deneyin.',
     'err.RUNTIME_APP.env_file': 'Ortam dosyası sunucuda yazılamadı, bu yüzden değerlerin kaydedilip kaydedilmediği bilinmiyor. Onları yeniden girin.',

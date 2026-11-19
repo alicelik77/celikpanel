@@ -1,4 +1,5 @@
-// The nine sections of a domain's page (alpha.132) and what each holds.
+// The sections of a domain's page (nine in alpha.132, ten since Programs got
+// its own in alpha.139) and what each holds.
 //
 // This file decides, from the viewer and the domain alone, which sections and
 // which parts of them are drawn; it has no React and no copy, so the decision
@@ -11,20 +12,23 @@
 // The place on the page is in the address (?section=…&part=…). Every older
 // link (?tab=…, and the health checks' {tab, sub}) keeps working through
 // legacyPlace below; stored notices and server-built links still carry them.
+// A part that moved to another section is found there from its old address.
 //
-// Alan adı sayfasının dokuz bölümü ve her birinin içeriği. Hangi bölümün ve
+// Alan adı sayfasının bölümleri ve her birinin içeriği. Hangi bölümün ve
 // parçanın çizileceği yalnız izleyiciye ve alan adına göre burada belirlenir;
 // koşullar eski on bir sekmenin koşullarıdır. Sayfadaki yer adreste durur;
-// eski ?tab= bağlantıları legacyPlace ile çalışmayı sürdürür.
+// eski ?tab= bağlantıları legacyPlace ile, taşınan parçanın eski adresi de
+// yeni bölümüyle çalışmayı sürdürür.
 import type { TranslationKey } from '../../i18n/en';
 import type { DomainAccessMode, DomainCapability } from '../../auth/domainAccess';
 
 export type SectionId =
-    | 'overview' | 'site' | 'files' | 'mail' | 'databases' | 'dns' | 'security' | 'backups' | 'advanced';
+    | 'overview' | 'site' | 'programs' | 'files' | 'mail' | 'databases' | 'dns' | 'security' | 'backups' | 'advanced';
 
 export type PartId =
     | 'overview'
-    | 'type' | 'apps' | 'ai' | 'programs' | 'php' | 'redirects'
+    | 'type' | 'apps' | 'php' | 'redirects'
+    | 'programs' | 'ai'
     | 'manager' | 'access'
     | 'mail'
     | 'databases'
@@ -34,12 +38,13 @@ export type PartId =
     | 'cron' | 'logs' | 'git' | 'copy' | 'web' | 'config';
 
 export const SECTION_ORDER: readonly SectionId[] = [
-    'overview', 'site', 'files', 'mail', 'databases', 'dns', 'security', 'backups', 'advanced',
+    'overview', 'site', 'programs', 'files', 'mail', 'databases', 'dns', 'security', 'backups', 'advanced',
 ];
 
 export const SECTION_LABELS: Record<SectionId, TranslationKey> = {
     overview: 'domain.section.overview',
     site: 'domain.section.site',
+    programs: 'domain.section.programs',
     files: 'domain.section.files',
     mail: 'domain.section.mail',
     databases: 'domain.section.databases',
@@ -84,6 +89,7 @@ export const PART_LABELS: Record<PartId, TranslationKey> = {
 export const SECTION_TOPICS: Record<SectionId, string> = {
     overview: 'domain.overview',
     site: 'domain.site',
+    programs: 'domain.programs',
     files: 'domain.files',
     mail: 'domain.mail',
     databases: 'domain.databases',
@@ -94,7 +100,7 @@ export const SECTION_TOPICS: Record<SectionId, string> = {
 };
 export const PART_TOPICS: Partial<Record<PartId, string>> = {
     apps: 'domain.site.apps',
-    ai: 'domain.site.ai',
+    ai: 'domain.programs.ai',
     access: 'domain.files.access',
     malware: 'domain.security.malware',
 };
@@ -190,23 +196,25 @@ const RULES: Record<SectionId, PartRule[]> = {
             // Ready apps and WordPress tools are for PHP sites, the only kind this part is shown for.
             startsOpen: php,
         },
-        // An app or a program that runs stays manageable after its right
-        // closed (D-042 P5).
-        {
-            id: 'ai', capabilities: [], shown: (v) => !v.teamMember && site(v) && (v.open('service_apps') || v.type === 'service_app'),
-            startsOpen: (v) => v.type === 'service_app',
-        },
-        {
-            id: 'programs', capabilities: [],
-            shown: (v) => !v.teamMember && site(v) && (v.open('program_apps') || v.open('python_apps') || v.type === 'runtime_app'),
-            startsOpen: (v) => v.type === 'runtime_app',
-        },
         { id: 'php', capabilities: ['php'], shown: (v) => site(v) && php(v) && v.view('php'), startsOpen: () => true },
         {
             id: 'redirects', capabilities: ['files'],
             shown: (v) => site(v) && v.view('files') && v.open('site_protect_redirects') && v.type !== 'forwarding',
             startsOpen: () => true,
         },
+    ],
+    // What runs on the domain (owner, 19 Nov 2026: "programs under Site did
+    // not feel right; put them in the menu"), with the conditions they had
+    // as parts of Site, unchanged. Either is offered on every site with
+    // hosting when the plan includes it: the card itself creates the program
+    // or installs the app, and the site's type follows. An app or a program
+    // that runs stays manageable after its right closed (D-042 P5). With
+    // neither, the section is absent: nothing in it could be acted on.
+    // Alan adında çalışanlar; koşullar Site'tayken neyse odur. İkisi de yoksa
+    // bölüm çizilmez.
+    programs: [
+        { id: 'programs', capabilities: [], shown: (v) => !v.teamMember && site(v) && (v.open('program_apps') || v.open('python_apps') || v.type === 'runtime_app') },
+        { id: 'ai', capabilities: [], shown: (v) => !v.teamMember && site(v) && (v.open('service_apps') || v.type === 'service_app') },
     ],
     files: [
         { id: 'manager', capabilities: ['files'], shown: (v) => site(v) && v.view('files') && v.open('file_manager') },
@@ -281,15 +289,15 @@ function notInPlan(id: SectionId, v: Viewer): string[] | undefined {
 
 const ORDER: Record<DomainAccessMode, number> = { none: 0, view: 1, manage: 2 };
 
-// The part of Site that IS the site for a program or a service app: it comes
-// first in Site, before "Site type" (owner, 12 Nov 2026: after alpha.132 he
-// could not find his running Go program in the Site section).
-// Program ya da hizmet uygulaması olan sitede Site bölümünün ilk parçası.
-const SITE_LEAD: Partial<Record<string, PartId>> = { runtime_app: 'programs', service_app: 'ai' };
+// The part that IS the site for a program or a service app: it comes first
+// in Programs (owner, 12 Nov 2026: he could not find his running Go program;
+// 19 Nov 2026: Programs has its own place in the row).
+// Program ya da hizmet uygulaması olan sitede Programlar bölümünün ilk parçası.
+const PROGRAMS_LEAD: Partial<Record<string, PartId>> = { runtime_app: 'programs', service_app: 'ai' };
 
-/** The Site part that holds what runs on a site of this kind, if the kind has one. */
-export function siteLeadPart(projectType: string | null | undefined): PartId | null {
-    return SITE_LEAD[projectType || 'php'] ?? null;
+/** The Programs part that holds what runs on a site of this kind, if the kind has one. */
+export function programsLeadPart(projectType: string | null | undefined): PartId | null {
+    return PROGRAMS_LEAD[projectType || 'php'] ?? null;
 }
 
 /**
@@ -325,7 +333,7 @@ export function buildSections(input: SectionInput): SectionView[] {
             if (rule.startsOpen) view.startsOpen = rule.startsOpen(viewer);
             return view;
         });
-        const lead = id === 'site' ? siteLeadPart(type) : null;
+        const lead = id === 'programs' ? programsLeadPart(type) : null;
         const at = lead ? parts.findIndex((part) => part.id === lead) : -1;
         if (at > 0) parts.unshift(...parts.splice(at, 1));
         if (parts.length > 0) {
@@ -353,8 +361,8 @@ const LEGACY: Record<string, Place> = {
     hosting: { section: 'site' },
     type: { section: 'site', part: 'type' },
     apps: { section: 'site', part: 'apps' },
-    ai: { section: 'site', part: 'ai' },
-    programs: { section: 'site', part: 'programs' },
+    ai: { section: 'programs', part: 'ai' },
+    programs: { section: 'programs', part: 'programs' },
     php: { section: 'site', part: 'php' },
     redirects: { section: 'site', part: 'redirects' },
     files: { section: 'files', part: 'manager' },
@@ -383,12 +391,21 @@ export function legacyPlace(tab: string | null | undefined, sub?: string | null)
     return null;
 }
 
+// The section that holds each part. A part belongs to one section only, so
+// an address that names a part under the section it left (alpha.132–138:
+// ?section=site&part=programs or …&part=ai) leads to where it is now.
+// Her parçanın bölümü; eski bölümüyle adlandırılan parça yeni yerinde açılır.
+const PART_SECTION = new Map<string, SectionId>(
+    SECTION_ORDER.flatMap((section) => RULES[section].map((rule) => [rule.id, section] as const)),
+);
+
 /** The place the address asks for: ?section=…&part=…, else an older ?tab=. */
 export function requestedPlace(params: URLSearchParams): Place | null {
     const section = params.get('section');
     if (section && SECTION_IDS.has(section)) {
         const part = params.get('part');
-        return part && PART_IDS.has(part) ? { section: section as SectionId, part: part as PartId } : { section: section as SectionId };
+        if (!part || !PART_IDS.has(part)) return { section: section as SectionId };
+        return { section: PART_SECTION.get(part) ?? (section as SectionId), part: part as PartId };
     }
     return legacyPlace(params.get('tab'));
 }

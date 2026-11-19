@@ -34,15 +34,17 @@ import {
 import { SectionRow, SECTION_PANEL_ID, sectionTabId } from './domain/SectionRow';
 import type { DomainSectionProps } from './domain/SectionParts';
 
-// The nine sections of the page (alpha.132), each in a file of its own and
-// fetched when it is opened: the page's own bundle stays the shell (the row,
-// the header, the facts) and the screens of a section load with it. The page
-// bundle had less than 1 KiB under its limit, and the limit is not raised.
-// Sayfanın dokuz bölümü, her biri kendi dosyasında ve açılınca getirilir;
+// The sections of the page (alpha.132; Programs since alpha.139), each in a
+// file of its own and fetched when it is opened: the page's own bundle stays
+// the shell (the row, the header, the facts) and the screens of a section
+// load with it. The page bundle had less than 1 KiB under its limit, and the
+// limit is not raised.
+// Sayfanın bölümleri, her biri kendi dosyasında ve açılınca getirilir;
 // sayfa paketi yalnız kabuktur. Sınır yükseltilmez.
 const SECTION_VIEWS: Record<SectionId, LazyExoticComponent<ComponentType<DomainSectionProps>>> = {
     overview: lazy(() => import('./domain/sections/OverviewSection').then((module) => ({ default: module.OverviewSection }))),
     site: lazy(() => import('./domain/sections/SiteSection').then((module) => ({ default: module.SiteSection }))),
+    programs: lazy(() => import('./domain/sections/ProgramsSection').then((module) => ({ default: module.ProgramsSection }))),
     files: lazy(() => import('./domain/sections/FilesSection').then((module) => ({ default: module.FilesSection }))),
     mail: lazy(() => import('./domain/sections/MailSection').then((module) => ({ default: module.MailSection }))),
     databases: lazy(() => import('./domain/sections/DatabasesSection').then((module) => ({ default: module.DatabasesSection }))),

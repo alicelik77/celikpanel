@@ -32,7 +32,7 @@ const guide: GuideIndex = {
     { id: "without-panel", title: "Sunucuyu CelikPanel olmadan işletmek", load: () => import('./chapters/without-panel.tr') },
     { id: "recovery", title: "Yönetici için kurtarmanın temelleri", load: () => import('./chapters/recovery.tr') },
   ],
-  topics: {"account":["getting-started","your-account"],"audit":["monitoring-audit",""],"components":["components",""],"dashboard":["getting-started",""],"databases":["databases","databases-page"],"dns.infrastructure":["dns-servers","infrastructure-zone"],"dns.servers":["dns-servers",""],"domain.advanced":["backups","cron-logs"],"domain.backups":["backups","backups"],"domain.databases":["databases","domain-databases"],"domain.dns":["dns","records"],"domain.files":["files-access","file-manager"],"domain.files.access":["files-access","ftp-sftp"],"domain.mail":["mail","mailboxes"],"domain.overview":["domains-websites","overview"],"domain.security":["domains-websites","https"],"domain.security.malware":["apps-wordpress","malware"],"domain.site":["domains-websites","hosting"],"domain.site.ai":["ai-apps","ai-apps"],"domain.site.apps":["apps-wordpress","catalogue"],"domains":["domains-websites","domain-list"],"help":["getting-started","help"],"import":["import",""],"maintenance":["panel-settings",""],"monitoring":["monitoring-audit",""],"security":["security",""],"server-setup":["server-setup",""],"settings":["panel-settings",""],"states":["reading-states",""],"store":["plans-rights",""],"users":["customers",""],"vpn":["vpn",""]},
+  topics: {"account":["getting-started","your-account"],"audit":["monitoring-audit",""],"components":["components",""],"dashboard":["getting-started",""],"databases":["databases","databases-page"],"dns.infrastructure":["dns-servers","infrastructure-zone"],"dns.servers":["dns-servers",""],"domain.advanced":["backups","cron-logs"],"domain.backups":["backups","backups"],"domain.databases":["databases","domain-databases"],"domain.dns":["dns","records"],"domain.files":["files-access","file-manager"],"domain.files.access":["files-access","ftp-sftp"],"domain.mail":["mail","mailboxes"],"domain.overview":["domains-websites","overview"],"domain.programs":["domains-websites","programs"],"domain.programs.ai":["ai-apps","ai-apps"],"domain.security":["domains-websites","https"],"domain.security.malware":["apps-wordpress","malware"],"domain.site":["domains-websites","hosting"],"domain.site.apps":["apps-wordpress","catalogue"],"domains":["domains-websites","domain-list"],"help":["getting-started","help"],"import":["import",""],"maintenance":["panel-settings",""],"monitoring":["monitoring-audit",""],"security":["security",""],"server-setup":["server-setup",""],"settings":["panel-settings",""],"states":["reading-states",""],"store":["plans-rights",""],"users":["customers",""],"vpn":["vpn",""]},
   search: [
     [0,"","Başlarken","giris oturum acma menu ilk adimlar dil tema parola iki faktorlu"],
     [0,"signing-in","Giriş yapmak",""],
@@ -62,6 +62,7 @@ const guide: GuideIndex = {
     [3,"overview","Genel bakış",""],
     [3,"hosting","Site ayarları",""],
     [3,"php","PHP sürümü",""],
+    [3,"programs","Programlar",""],
     [3,"https","Sertifika ve HTTPS",""],
     [4,"","Alan adınızın DNS'i","dns bolge zone kayit kaydi txt cname sunucusu firmasi dnssec"],
     [4,"where","DNS'iniz nereden sunuluyor",""],

@@ -7,7 +7,7 @@ const chapter = {
   id: "ai-apps",
   title: "AI and automation apps",
   blocks: [
-    ["p",[["b","AI & automation"],", in a domain's ",["b","Site"]," section, runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS."]],
+    ["p",[["b","AI & automation"],", in a domain's ",["b","Programs"]," section, runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS."]],
     ["h",2,"ai-apps","Before you install"],
     ["p","The page says what is still needed, and who provides it:"],
     ["ul",[[["b","A website and a certificate."]," Apps open only over HTTPS. If the domain has no certificate yet, get one first in the ",["b","Security"]," section."],[["b","A separate subdomain"],", such as ",["c","n8n.example.com"],", is best: the domain shows the app instead of its website. The website's files stay and come back when the app is removed."],[["b","The offer."]," Nothing can be installed until the administrator offers the app, and your plan must include it. Otherwise the row says whom to ask."],[["b","The server."]," n8n needs Node.js 24, which the administrator installs. Open WebUI runs only on some systems; the row says so when it cannot run here."]]],

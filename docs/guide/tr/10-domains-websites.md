@@ -2,7 +2,7 @@
 id: domains-websites
 title: Alan adları ve web siteleri
 roles: [admin, reseller, customer]
-topics: [domains#domain-list, domain.overview#overview, domain.site#hosting, domain.security#https]
+topics: [domains#domain-list, domain.overview#overview, domain.site#hosting, domain.programs#programs, domain.security#https]
 keywords: [alan adı, domain, web sitesi, alt alan adı, php sürümü, sertifika, https, ssl, lets encrypt, ad sunucusu, statik, node.js]
 ---
 
@@ -24,7 +24,7 @@ Sertifika istediyseniz pencere bir dakikaya kadar onu bekler. Pencereyi açık b
 
 ## Genel bakış {#overview}
 
-Alan adının sayfasında tek satırda bölümler vardır: **Genel Bakış**, **Site**, **Dosyalar**, **E-posta**, **Veritabanları**, **Alan adı ve DNS**, **Güvenlik**, **Yedekler** ve **Gelişmiş**. Yalnız alan adına ve size uyan bölümleri görürsünüz. Birkaç parçası olan bölüm onları **Bu sayfada** satırında listeler. Planınızda olmayan bölüm kendi yerinde soluk ve kilitli görünür; onu kimin ekleyebileceğini söyler.
+Alan adının sayfasında tek satırda bölümler vardır: **Genel Bakış**, **Site**, **Programlar**, **Dosyalar**, **E-posta**, **Veritabanları**, **Alan adı ve DNS**, **Güvenlik**, **Yedekler** ve **Gelişmiş**. Yalnız alan adına ve size uyan bölümleri görürsünüz. Birkaç parçası olan bölüm onları **Bu sayfada** satırında listeler. Planınızda olmayan bölüm kendi yerinde soluk ve kilitli görünür; onu kimin ekleyebileceğini söyler.
 
 Alan adının altındaki satır **Tür**, **PHP sürümü**, **SSL**, **Disk kullanımı** ve bu ayki **Trafik** bilgisini gösterir.
 
@@ -37,17 +37,23 @@ Kayıt firmasındaki bir değişikliğin yayılması birkaç dakikadan birkaç s
 
 ## Site ayarları {#hosting}
 
-**Site** bölümü alan adında neyin, nasıl çalıştığını toplar:
+**Site** bölümü sitenin ne olduğunu ve ziyaretçilerin ona nasıl ulaştığını toplar:
 
 - **Site türü**: **Proje tipi** olarak **PHP**, **Statik**, **Node.js**, **Vekil** ya da **Yönlendirme** seçip **Uygula** düğmesine basın.
-- Planınızda varsa **Uygulamalar**, **Yapay zekâ ve otomasyon** ve **Programlar**.
+- Planınızda varsa **Uygulamalar**.
 - Aşağıda anlatılan **PHP ayarları** ve planınızda varsa **Yönlendirmeler**.
+
+Yüklediğiniz program ve yapay zekâ ve otomasyon uygulamaları **Programlar** bölümündedir (bkz. [Programlar](#programs)).
 
 **Alan adı ve DNS** bölümünün **Adlar** parçası **Belge kök dizini**, **www'ye yönlendir** ve aynı siteyi gösteren ek adlar için **Alan adı takma adları** ayarlarını tutar. **Korumalı klasörler** **Güvenlik** bölümündedir.
 
 ### PHP sürümü {#php}
 
 Yeni web sitesi statik başlar. PHP çalıştırmak için **Site** bölümünün **Site türü** parçasında **PHP** seçin, bir sürüm belirleyin ve **Uygula** düğmesine basın. Sürümü sonra değiştirmek için aynı bölümdeki **PHP ayarları** parçasına gidin, **PHP sürümü** listesinden seçin ve **Uygula** düğmesine basın. Listede yalnız sunucuda kurulu sürümler görünür; **PHP-FPM** yoksa yönetici onu **Bileşenler** sayfasından kurar.
+
+## Programlar {#programs}
+
+**Programlar** bölümü, planınız program ya da yapay zekâ uygulaması içeriyorsa veya sitede zaten biri çalışıyorsa görünür. Kendi derlediğiniz bir program ya da bir Python web uygulaması için **Programlar ve Python uygulamaları** ile **Yapay zekâ ve otomasyon** parçalarını tutar (bkz. [Yapay zekâ ve otomasyon uygulamaları](guide:ai-apps#ai-apps)). Program ya da uygulama alan adına HTTPS ile hizmet verir; kaldırıldığında site önceki türüne döner.
 
 ## Sertifika ve HTTPS {#https}
 

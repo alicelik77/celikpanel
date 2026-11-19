@@ -49,7 +49,7 @@ claims the page's topic, at its anchor. These topics exist today (from
 chapter of the reader's guide and says that the page has no chapter yet:
 
 `dashboard`, `domains`, `domain.overview`, `domain.site`, `domain.site.apps`,
-`domain.site.ai`, `domain.files`, `domain.files.access`, `domain.mail`,
+`domain.programs`, `domain.programs.ai`, `domain.files`, `domain.files.access`, `domain.mail`,
 `domain.databases`, `domain.dns`, `domain.security`, `domain.security.malware`,
 `domain.backups`, `domain.advanced`, `dns.infrastructure`, `databases`, `users`,
 `team`, `store`, `vpn`, `components`, `server-setup`, `dns.servers`, `monitoring`,

@@ -1,5 +1,5 @@
-// SCREEN catalogue part "domainSections" (alpha.132): the nine sections of a
-// domain's page - the row of sections, the "On this page" index of a
+// SCREEN catalogue part "domainSections" (alpha.132): the sections of a
+// domain's page (ten since alpha.139) - the row of sections, the "On this page" index of a
 // section's parts, the view-only note of a team member, and the page of a
 // section the plan does not include (whom to ask, what to ask for).
 // Key prefixes kept here: domain.section., domain.part., domain.notInPlan.,
@@ -8,12 +8,13 @@
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
-// EKRAN katalogu parçası "domainSections": alan adı sayfasının dokuz bölümü.
+// EKRAN katalogu parçası "domainSections": alan adı sayfasının bölümleri.
 
 export const enDomainSectionsScreens = {
     'domain.sections': 'Sections of this domain',
     'domain.section.overview': 'Overview',
     'domain.section.site': 'Site',
+    'domain.section.programs': 'Programs',
     'domain.section.files': 'Files',
     'domain.section.mail': 'Mail',
     'domain.section.databases': 'Databases',

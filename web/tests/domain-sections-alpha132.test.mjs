@@ -55,8 +55,9 @@ const producers = [
   // Every tab and sub-tab the page had, for links written by hand or stored.
   ['tab overview', 'overview', null, { section: 'overview' }],
   ['tab apps', 'apps', null, { section: 'site', part: 'apps' }],
-  ['tab ai', 'ai', null, { section: 'site', part: 'ai' }],
-  ['tab programs', 'programs', null, { section: 'site', part: 'programs' }],
+  // alpha.139: programs and AI apps have their own section (tests/programs-section-alpha139).
+  ['tab ai', 'ai', null, { section: 'programs', part: 'ai' }],
+  ['tab programs', 'programs', null, { section: 'programs', part: 'programs' }],
   ['tab databases', 'databases', null, { section: 'databases' }],
   ['tab access', 'access', null, { section: 'files', part: 'access' }],
   ['hosting/general', 'hosting', 'general', { section: 'dns', part: 'names' }],
@@ -125,12 +126,13 @@ const server = { mail: true, databases: true };
 const build = (overrides) => sections.buildSections({ role: 'customer', projectType: 'php', closedRights: [], server, ...overrides });
 const ids = (list) => list.map((section) => (section.notInPlan ? `${section.id}*` : section.id));
 const partsOf = (list, id) => list.find((section) => section.id === id)?.parts.map((part) => (part.readOnly ? `${part.id}:view` : part.id));
-const ALL = ['overview', 'site', 'files', 'mail', 'databases', 'dns', 'security', 'backups', 'advanced'];
+const ALL = ['overview', 'site', 'programs', 'files', 'mail', 'databases', 'dns', 'security', 'backups', 'advanced'];
 
-test('administrator, reseller and customer of a PHP site see the nine sections and every part the tabs had', () => {
+test('administrator, reseller and customer of a PHP site see the ten sections and every part the tabs had', () => {
   const admin = build({ role: 'admin' });
   assert.deepEqual(ids(admin), ALL);
-  assert.deepEqual(partsOf(admin, 'site'), ['type', 'apps', 'ai', 'programs', 'php', 'redirects']);
+  assert.deepEqual(partsOf(admin, 'site'), ['type', 'apps', 'php', 'redirects']);
+  assert.deepEqual(partsOf(admin, 'programs'), ['programs', 'ai']);
   assert.deepEqual(partsOf(admin, 'files'), ['manager', 'access']);
   assert.deepEqual(partsOf(admin, 'dns'), ['connection', 'names', 'records']);
   assert.deepEqual(partsOf(admin, 'security'), ['certificate', 'protect', 'malware']);
@@ -144,26 +146,26 @@ test('administrator, reseller and customer of a PHP site see the nine sections a
 
 test('a section the plan closes is faded in its own place, with the right that opens it', () => {
   const list = build({ closedRights: ['backups', 'databases'] });
-  assert.deepEqual(ids(list), ['overview', 'site', 'files', 'mail', 'databases*', 'dns', 'security', 'backups*', 'advanced']);
+  assert.deepEqual(ids(list), ['overview', 'site', 'programs', 'files', 'mail', 'databases*', 'dns', 'security', 'backups*', 'advanced']);
   assert.deepEqual(list.find((section) => section.id === 'backups').notInPlan, ['backups']);
   assert.deepEqual(list.find((section) => section.id === 'databases').parts, []);
   // Mail, and Files when the manager and every outside access are closed.
   const more = build({ role: 'reseller', closedRights: ['mail', 'file_manager', 'file_access', 'ssh'] });
-  assert.deepEqual(ids(more), ['overview', 'site', 'files*', 'mail*', 'databases', 'dns', 'security', 'backups', 'advanced']);
+  assert.deepEqual(ids(more), ['overview', 'site', 'programs', 'files*', 'mail*', 'databases', 'dns', 'security', 'backups', 'advanced']);
   // Files with outside access still open is open, with that part only.
   const access = build({ closedRights: ['file_manager'] });
   assert.deepEqual(partsOf(access, 'files'), ['access']);
   // A closed part of an open section is left out, as its sub-tab was.
   const cron = build({ closedRights: ['cron', 'app_installer', 'wordpress_tools', 'service_apps'] });
   assert.ok(!partsOf(cron, 'advanced').includes('cron'));
-  assert.ok(!partsOf(cron, 'site').includes('apps') && !partsOf(cron, 'site').includes('ai'));
+  assert.ok(!partsOf(cron, 'site').includes('apps') && !partsOf(cron, 'programs').includes('ai'));
   // The administrator's WordPress tools keep Applications open (as the tab did).
   assert.ok(partsOf(sections.buildSections({ role: 'admin', projectType: 'php', closedRights: ['app_installer', 'wordpress_tools'], server }), 'site').includes('apps'));
 });
 
 test('a section the server cannot offer is absent, not faded, and stays while the server is not known', () => {
   const none = { mail: false, databases: false };
-  assert.deepEqual(ids(build({ role: 'admin', server: none })), ['overview', 'site', 'files', 'dns', 'security', 'backups', 'advanced']);
+  assert.deepEqual(ids(build({ role: 'admin', server: none })), ['overview', 'site', 'programs', 'files', 'dns', 'security', 'backups', 'advanced']);
   // Closed by the plan AND not on the server: absent (nothing to ask for).
   assert.ok(!ids(build({ server: none, closedRights: ['mail', 'databases'] })).some((id) => id.startsWith('mail') || id.startsWith('databases')));
   // Not known yet: nothing hidden on a guess.
@@ -224,11 +226,13 @@ test('the guide topic of every section and part is claimed by an English and a T
     for (const topic of [...Object.values(sections.SECTION_TOPICS), ...Object.values(sections.PART_TOPICS)]) {
       assert.ok(claimed.has(topic), `${locale}: ${topic} is claimed by no chapter`);
     }
-    for (const old of ['domain.hosting', 'domain.apps', 'domain.ai', 'domain.access']) assert.ok(!claimed.has(old), `${locale}: ${old} is still a topic`);
+    for (const old of ['domain.hosting', 'domain.apps', 'domain.ai', 'domain.access', 'domain.site.ai']) assert.ok(!claimed.has(old), `${locale}: ${old} is still a topic`);
   }
   assert.equal(sections.guideTopic('site', 'apps'), 'domain.site.apps');
   assert.equal(sections.guideTopic('site', 'php'), 'domain.site');
   assert.equal(sections.guideTopic('backups', null), 'domain.backups');
+  assert.equal(sections.guideTopic('programs', null), 'domain.programs');
+  assert.equal(sections.guideTopic('programs', 'ai'), 'domain.programs.ai');
 });
 
 test('every section and part has its words in both languages', () => {
@@ -325,7 +329,7 @@ const sectionStub = (name, id) => dataModule(`
   export const ${name} = (props) => { globalThis.a132Go = props.go; return React.createElement('main', { 'data-stub-section': '${id}', 'data-parts': props.parts.map((p) => p.id + (p.readOnly ? ':view' : '')).join(','), 'data-part': props.part ?? '' }); };
 `);
 let detailURL = shared.compile('components/DomainDetail.tsx', own);
-for (const [name, id] of [['OverviewSection', 'overview'], ['SiteSection', 'site'], ['FilesSection', 'files'], ['MailSection', 'mail'], ['DatabasesSection', 'databases'], ['DnsSection', 'dns'], ['SecuritySection', 'security'], ['BackupsSection', 'backups'], ['AdvancedSection', 'advanced']]) {
+for (const [name, id] of [['OverviewSection', 'overview'], ['SiteSection', 'site'], ['ProgramsSection', 'programs'], ['FilesSection', 'files'], ['MailSection', 'mail'], ['DatabasesSection', 'databases'], ['DnsSection', 'dns'], ['SecuritySection', 'security'], ['BackupsSection', 'backups'], ['AdvancedSection', 'advanced']]) {
   detailURL = replaceLazyImport(detailURL, `./domain/sections/${name}`, sectionStub(name, id));
 }
 detailURL = replaceLazyImport(detailURL, './domain/sections/NotInPlanSection', dataModule(`
@@ -386,11 +390,14 @@ const press = async (section) => {
 test('mounted: each viewer gets its row, the first section open, and the tablist wired to the panel', async () => {
   const cases = [
     { name: 'administrator', role: 'admin', expect: ALL },
-    { name: 'reseller, mail closed', role: 'reseller', row: { rights_closed: ['mail'] }, expect: ['overview', 'site', 'files', 'mail*', 'databases', 'dns', 'security', 'backups', 'advanced'] },
-    { name: 'customer, backups and databases closed', role: 'customer', row: { rights_closed: ['backups', 'databases'] }, expect: ['overview', 'site', 'files', 'mail', 'databases*', 'dns', 'security', 'backups*', 'advanced'] },
+    { name: 'reseller, mail closed', role: 'reseller', row: { rights_closed: ['mail'] }, expect: ['overview', 'site', 'programs', 'files', 'mail*', 'databases', 'dns', 'security', 'backups', 'advanced'] },
+    { name: 'customer, backups and databases closed', role: 'customer', row: { rights_closed: ['backups', 'databases'] }, expect: ['overview', 'site', 'programs', 'files', 'mail', 'databases*', 'dns', 'security', 'backups*', 'advanced'] },
     { name: 'team member, mail to view and DNS to manage', role: 'additional_user', row: { access: grants({ mail: 'view', dns: 'manage' }) }, expect: ['mail', 'dns'] },
     { name: 'DNS-only domain', role: 'customer', row: { project_type: 'dnsonly' }, expect: ['overview', 'mail', 'databases', 'dns'] },
-    { name: 'server without mail or databases', role: 'admin', caps: capabilities({ mail_server: false, database_servers: [] }), expect: ['overview', 'site', 'files', 'dns', 'security', 'backups', 'advanced'] },
+    { name: 'server without mail or databases', role: 'admin', caps: capabilities({ mail_server: false, database_servers: [] }), expect: ['overview', 'site', 'programs', 'files', 'dns', 'security', 'backups', 'advanced'] },
+    // alpha.139: Programs is there while something in it can be acted on.
+    { name: 'customer, PHP site, no program or app right', role: 'customer', row: { rights_closed: ['program_apps', 'python_apps', 'service_apps'] }, expect: ALL.filter((id) => id !== 'programs') },
+    { name: 'customer, program site, its rights closed since', role: 'customer', row: { project_type: 'runtime_app', rights_closed: ['program_apps', 'python_apps', 'service_apps'] }, expect: ['overview', 'site', 'programs', 'files', 'mail', 'databases', 'dns', 'security', 'backups', 'advanced'] },
   ];
   for (const item of cases) {
     await open(item);
@@ -432,6 +439,11 @@ test('mounted: an older ?tab= link opens its section and part, and the address i
     ['tab=config', 'advanced', 'config', 'section=advanced&part=config'],
     ['tab=dns&attention=dns-publication', 'dns', 'records', 'attention=dns-publication&section=dns&part=records'],
     ['tab=php', 'site', 'php', 'section=site&part=php'],
+    // alpha.139: the programs' older addresses, and their address under Site (alpha.132–138).
+    ['tab=programs', 'programs', 'programs', 'section=programs&part=programs'],
+    ['tab=ai', 'programs', 'ai', 'section=programs&part=ai'],
+    ['section=site&part=programs', 'programs', 'programs', 'section=programs&part=programs'],
+    ['section=site&part=ai', 'programs', 'ai', 'section=programs&part=ai'],
   ]) {
     await open({ role: 'admin', search });
     try {
@@ -543,10 +555,10 @@ test('mounted: another part of the open section asks nothing, even with unsaved 
 const openings = (list, id) => list.find((section) => section.id === id)?.parts.map((part) => `${part.id}:${part.startsOpen}`);
 
 test('Site and Advanced start their parts open or closed by the site kind; the other sections keep every part open', () => {
-  assert.deepEqual(openings(build({ role: 'admin' }), 'site'), ['type:true', 'apps:true', 'ai:false', 'programs:false', 'php:true', 'redirects:true']);
-  // alpha.133: the part that is the site leads (tests/site-lead-alpha133.test.mjs).
-  assert.deepEqual(openings(build({ role: 'admin', projectType: 'service_app' }), 'site'), ['ai:true', 'type:true', 'programs:false', 'redirects:true']);
-  assert.deepEqual(openings(build({ role: 'admin', projectType: 'runtime_app' }), 'site'), ['programs:true', 'type:true', 'ai:false', 'redirects:true']);
+  assert.deepEqual(openings(build({ role: 'admin' }), 'site'), ['type:true', 'apps:true', 'php:true', 'redirects:true']);
+  // alpha.139: a program or a service app is in Programs, not in Site.
+  assert.deepEqual(openings(build({ role: 'admin', projectType: 'service_app' }), 'site'), ['type:true', 'redirects:true']);
+  assert.deepEqual(openings(build({ role: 'admin', projectType: 'runtime_app' }), 'site'), ['type:true', 'redirects:true']);
   assert.deepEqual(openings(build({ role: 'admin' }), 'advanced'), ['cron:true', 'logs:false', 'git:false', 'copy:false', 'web:false', 'config:false']);
   for (const section of build({ role: 'admin' }).filter((item) => item.id !== 'site' && item.id !== 'advanced')) {
     for (const part of section.parts) assert.equal(part.startsOpen, undefined, `${section.id}/${part.id} is not a closable card`);
@@ -611,7 +623,7 @@ test('mounted: a part the address names is open, also when an older link names i
       assert.ok(view.probes().includes(place.part), `${tab}: the named part stayed closed`);
     } finally { await view.done(); }
   }
-  // In Site the AI and program parts stay closed on a PHP site.
+  // Site starts every part it has open on a PHP site (Programs is its own section since alpha.139).
   const site = await partsPage({ section: 'site' });
   try {
     assert.deepEqual(site.probes(), ['type', 'apps', 'php', 'redirects']);
