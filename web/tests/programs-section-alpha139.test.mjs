@@ -227,36 +227,21 @@ const { SiteSection } = await import(siteURL);
 let programsURL = shared.compile('components/domain/sections/ProgramsSection.tsx', {
   '/SectionParts': sectionPartsURL,
   '/sections': sectionsURL,
-  '/lib/runtimeApps': shared.compile('lib/runtimeApps.ts'),
-  '/lib/serviceApps': shared.compile('lib/serviceApps.ts'),
 });
 programsURL = replaceLazyImport(programsURL, '../../DomainRuntimeApps', card('DomainRuntimeApps', 'programs'));
 programsURL = replaceLazyImport(programsURL, '../../DomainServiceApps', card('DomainServiceApps', 'ai'));
 const { ProgramsSection } = await import(programsURL);
 
 const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
-// What the domain holds, as its two cards' addresses answer (SAMPLE shapes).
-const runtimeView = (app) => ({ domain: 'example.com', suspended: false, has_site: true, project_type: 'service_app', certificate: true, disk_full: false,
-  sandbox: { known: true, level: 'full', gaps: [] }, kinds: [], app, operation: null, port_range: [30000, 34999] });
-const PROGRAM = { id: 61, kind: 'program', entry: 'server', args: [], health_path: '/', port: 30000, state: 'running', deployed: true, url: 'https://example.com/',
-  folder: '/var/www/vhosts/example.com/app', upload_dir: 'app/bin', unit: 'celikrt-61.service', env: [], states: [], created_at: '2026-11-03 10:00:00' };
-const serviceView = (install) => ({ domain: 'example.com', suspended: false, has_site: true, project_type: 'runtime_app', certificate: true,
-  permission_granted: true, availability_known: true, apps: [], install, operation: null });
-const INSTALL = { id: 3, app_id: 'n8n', name: 'n8n', version: '', target_version: '1.70.0', state: 'failed', url: 'https://example.com/', held: false,
-  active: false, enabled: false, serving: false, unit: 'celiksvc-3.service', folder: '/var/www/vhosts/example.com/n8n' };
-let answers = {};
 const asked = [];
-async function mount(View, { role = 'admin', projectType = 'php', id, closedRights = [], part = null }) {
+async function mount(View, { role = 'admin', projectType = 'php', id, closedRights = [], part = null, holds }) {
   globalThis.document = { addEventListener() {}, removeEventListener() {}, visibilityState: 'visible', getElementById: () => null };
   asked.length = 0;
   globalThis.fetch = async (url) => {
-    const path = String(url).split('?')[0];
-    asked.push(path);
-    const answer = path.endsWith('/runtime-apps') ? answers.runtime ?? runtimeView(null) : path.endsWith('/service-apps') ? answers.service ?? serviceView(null) : undefined;
-    if (answer === 'fail' || answer === undefined) return Response.json({ error: 'not answered' }, { status: 500 });
-    return Response.json(answer);
+    asked.push(String(url).split('?')[0]);
+    return Response.json({ error: 'not answered' }, { status: 500 });
   };
-  const list = build({ role, projectType, closedRights });
+  const list = build({ role, projectType, closedRights, holds });
   const parts = list.find((section) => section.id === id)?.parts ?? [];
   const went = [];
   let page;
@@ -277,46 +262,60 @@ async function mount(View, { role = 'admin', projectType = 'php', id, closedRigh
   return { page, cards, index, offers, went, done: () => act(async () => page.unmount()) };
 }
 
-// --- A domain that already holds both (installed servers before alpha.139) ----------
+// --- What the domain holds: drawn where it is removed, whatever the plan or type -----
 
-const { invalidate } = await import(shared.resolve('/lib/remote'));
+const PROGRAM_ONLY = { program: true, app: false };
+const APP_ONLY = { program: false, app: true };
+const BOTH_HELD = { program: true, app: true };
 
-test('mounted: an AI app site that still holds a program draws the program too, to manage and remove it, with no form', async () => {
-  answers = { runtime: runtimeView(PROGRAM) };
-  const view = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app', closedRights: RIGHTS });
-  try {
-    assert.deepEqual(view.cards(), ['ai', 'programs']);
-    assert.deepEqual(view.index(), ['#domain-part-ai', '#domain-part-programs']);
-    // Only the create and install parts follow the refusal rule.
-    assert.deepEqual(view.offers(), { ai: 'false', programs: 'false,elsewhere' });
-    assert.ok(asked.includes('/api/v1/domains/7/runtime-apps'), 'the program was not looked for');
-    assert.ok(!asked.includes('/api/v1/domains/7/service-apps'), 'the drawn card was read twice by the section');
-    // The program is removed: the domain list is read again, and so is this; the card goes.
-    answers = { runtime: runtimeView(null) };
-    await act(async () => { invalidate('domains'); await settled(); });
-    for (let i = 0; i < 3; i += 1) await act(async () => { await settled(); });
-    assert.deepEqual(view.cards(), ['ai']);
-  } finally { await view.done(); answers = {}; }
-
-  // Nothing left over: the app's card only, and one read to know it.
-  const clean = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app' });
-  try {
-    assert.deepEqual(clean.cards(), ['ai']);
-  } finally { await clean.done(); }
+test('anything a domain holds has its card, whatever the plan or the site type say; team members never get it', () => {
+  for (const role of ROLES) {
+    for (const projectType of HOSTED) {
+      for (const [plan, closedRights] of Object.entries(PLANS)) {
+        const where = `${role}, ${projectType}, ${plan}`;
+        assert.ok(partsOf(build({ role, projectType, closedRights, holds: PROGRAM_ONLY }), 'programs')?.includes('programs'), `${where}: a held program`);
+        assert.ok(partsOf(build({ role, projectType, closedRights, holds: APP_ONLY }), 'programs')?.includes('ai'), `${where}: a held app`);
+        assert.deepEqual([...partsOf(build({ role, projectType, closedRights, holds: BOTH_HELD }), 'programs')].sort(), ['ai', 'programs'], `${where}: both held`);
+      }
+    }
+  }
+  // The card that is the site leads; what the domain also holds follows.
+  assert.deepEqual(partsOf(build({ projectType: 'service_app', closedRights: RIGHTS, holds: BOTH_HELD }), 'programs'), ['ai', 'programs']);
+  assert.deepEqual(partsOf(build({ projectType: 'runtime_app', closedRights: RIGHTS, holds: BOTH_HELD }), 'programs'), ['programs', 'ai']);
+  // A team member: never, whatever is held.
+  const every = { files: 'manage', php: 'manage', ssl: 'manage', dns: 'manage', mail: 'manage', databases: 'manage', backups: 'manage', cron: 'manage', statistics: 'manage' };
+  for (const projectType of HOSTED) {
+    const list = sections.buildSections({ role: 'additional_user', projectType, closedRights: [], access: every, server: null, holds: BOTH_HELD });
+    assert.ok(!list.some((section) => section.id === 'programs'), projectType);
+  }
+  // A DNS-only domain has no site to hold one.
+  assert.equal(build({ projectType: 'dnsonly', holds: BOTH_HELD }).find((section) => section.id === 'programs'), undefined);
 });
 
-test('mounted: a program site that still holds an app record draws that card too; a read that fails draws it rather than hide it', async () => {
-  answers = { service: serviceView(INSTALL) };
-  const view = await mount(ProgramsSection, { id: 'programs', projectType: 'runtime_app' });
+test('mounted: a PHP site with a created program and the right closed shows Programs and the program, with no form', async () => {
+  const view = await mount(ProgramsSection, { id: 'programs', projectType: 'php', closedRights: RIGHTS, holds: PROGRAM_ONLY });
   try {
-    assert.deepEqual(view.cards(), ['programs', 'ai']);
-    assert.deepEqual(view.offers(), { programs: 'true', ai: 'false,elsewhere' });
-  } finally { await view.done(); answers = {}; }
-  answers = { runtime: 'fail' };
-  const failed = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app' });
+    assert.deepEqual(view.cards(), ['programs']);
+    // The plan does not include programs any more: no form; the program's own controls and its removal stay.
+    assert.deepEqual(view.offers(), { programs: 'false' });
+    assert.deepEqual(asked, [], 'the section read on its own');
+  } finally { await view.done(); }
+  // The same site without the record: no section at all.
+  assert.equal(build({ projectType: 'php', closedRights: RIGHTS }).find((section) => section.id === 'programs'), undefined);
+});
+
+test('mounted: a domain that holds both draws both; the card of the kind the domain does not serve is "elsewhere", with no form', async () => {
+  const app = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app', closedRights: RIGHTS, holds: PROGRAM_ONLY });
   try {
-    assert.deepEqual(failed.cards(), ['ai', 'programs'], 'a program that could not be looked for was hidden');
-  } finally { await failed.done(); answers = {}; }
+    assert.deepEqual(app.cards(), ['ai', 'programs']);
+    assert.deepEqual(app.index(), ['#domain-part-ai', '#domain-part-programs']);
+    assert.deepEqual(app.offers(), { ai: 'false', programs: 'false,elsewhere' });
+  } finally { await app.done(); }
+  const program = await mount(ProgramsSection, { id: 'programs', projectType: 'runtime_app', holds: APP_ONLY });
+  try {
+    assert.deepEqual(program.cards(), ['programs', 'ai']);
+    assert.deepEqual(program.offers(), { programs: 'true', ai: 'false,elsewhere' });
+  } finally { await program.done(); }
 });
 
 test('an app card shown beside a program offers nothing that would publish the app again', () => {
@@ -333,7 +332,7 @@ test('an app card shown beside a program offers nothing that would publish the a
   assert.match(source, /<Button variant="danger" icon=\{Trash2\} disabled=\{busy \|\| !!acting\} onClick=\{remove\}>/);
 });
 
-test('mounted: a site that can take either reads nothing extra and offers both forms', async () => {
+test('mounted: a site that can take either reads nothing and offers both forms; a closed right closes its form', async () => {
   for (const projectType of ['php', 'static', 'proxy', 'forwarding']) {
     const view = await mount(ProgramsSection, { id: 'programs', projectType });
     try {
@@ -341,24 +340,34 @@ test('mounted: a site that can take either reads nothing extra and offers both f
       assert.deepEqual(asked, [], `${projectType}: the section read on its own`);
     } finally { await view.done(); }
   }
+  const held = await mount(ProgramsSection, { id: 'programs', projectType: 'php', closedRights: ['service_apps'], holds: APP_ONLY });
+  try {
+    assert.deepEqual(held.offers(), { programs: 'true', ai: 'false' });
+  } finally { await held.done(); }
 });
 
-test('the domain\'s delete refusal sends the reader to where the program is removed, and that place is drawn for it', () => {
-  // The server refuses a delete while a program is on the domain (runtime_apps_handlers.go,
-  // refuseDomainDeleteWithRuntimeApp, reason app_created); the screen words that reason.
-  const go = read('../../cmd/panel/runtime_apps_handlers.go');
-  assert.match(go, /func \(p \*Panel\) refuseDomainDeleteWithRuntimeApp[\s\S]{0,400}writeRuntimeAppRefusal\(w, http\.StatusConflict, "app_created"/);
+test('the domain\'s delete refusal sends the reader to where the program or app is removed, and that place is drawn for it', () => {
+  // The server refuses a delete while a program or an app is on the domain
+  // (refuseDomainDeleteWithRuntimeApp, app_created; refuseDomainDeleteWithServiceApp,
+  // app_installed); the screen words those reasons.
+  const runtime = read('../../cmd/panel/runtime_apps_handlers.go');
+  const service = read('../../cmd/panel/service_apps_handlers.go');
+  assert.match(runtime, /func \(p \*Panel\) refuseDomainDeleteWithRuntimeApp[\s\S]{0,400}writeRuntimeAppRefusal\(w, http\.StatusConflict, "app_created"/);
+  assert.match(service, /func \(p \*Panel\) refuseDomainDeleteWithServiceApp[\s\S]{0,400}writeServiceAppRefusal\(w, http\.StatusConflict, "app_installed"/);
   assert.match(enScreens['err.RUNTIME_APP.app_created'], /Programs section/);
   assert.match(trScreens['err.RUNTIME_APP.app_created'], /Programlar bölümünden/);
-  // Every site type a program can be on has the Programs section: where the
-  // program runs or an app took its place, whatever the plan; elsewhere while
-  // the plan includes programs.
-  for (const projectType of ['runtime_app', 'service_app']) {
-    assert.ok(build({ projectType, closedRights: RIGHTS }).some((section) => section.id === 'programs'), projectType);
+  assert.match(enScreens['err.SERVICE_APP.app_installed'], /Programs section/);
+  assert.match(trScreens['err.SERVICE_APP.app_installed'], /Programlar bölümünde/);
+  // Whatever the site type and plan, a domain that holds one has the
+  // Programs section with that card (the list says what it holds).
+  for (const role of ROLES) {
+    for (const projectType of HOSTED) {
+      assert.ok(partsOf(build({ role, projectType, closedRights: RIGHTS, holds: PROGRAM_ONLY }), 'programs')?.includes('programs'), `${role} ${projectType} program`);
+      assert.ok(partsOf(build({ role, projectType, closedRights: RIGHTS, holds: APP_ONLY }), 'programs')?.includes('ai'), `${role} ${projectType} app`);
+    }
   }
-  for (const projectType of ['php', 'static', 'proxy', 'forwarding']) {
-    assert.ok(build({ projectType, closedRights: ['service_apps'] }).some((section) => section.id === 'programs'), projectType);
-  }
+  // The page passes the list's answer to the rule.
+  assert.match(read('../src/components/DomainDetail.tsx'), /holds: \{ program: domain\.holds_program === true, app: domain\.holds_app === true \}/);
 });
 
 test('mounted: Site no longer draws the programs or the AI card, for any site kind; its index lists what stays', async () => {

@@ -82,6 +82,9 @@ interface Domain {
     site_config?: { state: string; kept_by_choice?: boolean; pending_reason?: string; kind?: string };
     /** The permissions the subscription's rights close (alpha.117, D-042); absent when none. */
     rights_closed?: string[];
+    /** alpha.139: a program or Python app record, an AI app record, is on the domain; absent when not. */
+    holds_program?: boolean;
+    holds_app?: boolean;
 }
 
 // The measured usage of one domain. An answer without the numbers is not
@@ -289,6 +292,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         closedRights: domain.rights_closed ?? [],
         access: isTeamMember ? domain.access : undefined,
         server: sectionCaps ? { mail: sectionCaps.mail_server, databases: sectionCaps.database_servers.length > 0 } : null,
+        holds: { program: domain.holds_program === true, app: domain.holds_app === true },
     }) : [];
     // The section the address asks for when it is drawn, otherwise the first.
     // Adresin istediği bölüm çiziliyse o, değilse ilki.

@@ -153,6 +153,12 @@ export interface SectionInput {
      * Never asked for a team member.
      */
     server: { mail: boolean; databases: boolean } | null;
+    /**
+     * alpha.139: what the domain holds, as the domain list says
+     * (holds_program, holds_app): a program or Python app record, an AI app
+     * record. Absent for a team member and from an older server.
+     */
+    holds?: { program: boolean; app: boolean };
 }
 
 interface PartRule {
@@ -174,6 +180,7 @@ interface Viewer {
     view: (capability: DomainCapability) => boolean;
     open: (right: string) => boolean;
     server: SectionInput['server'];
+    holds: { program: boolean; app: boolean };
 }
 
 const php = (v: Viewer) => v.type === 'php';
@@ -191,9 +198,9 @@ const site = (v: Viewer) => !v.dnsOnly;
 //     `site.ProjectType == "node" || site.ProjectType == "service_app"`, and
 //     `hasProgram || site.ProjectType == "runtime_app"` (alpha.139: a
 //     program, deployed or only created, uses the domain).
-// What a domain already holds is drawn whatever its type says, so it can be
-// removed (ProgramsSection.tsx); only the create and install parts follow
-// this table.
+// What a domain already holds is drawn whatever its type or plan says, so it
+// can be removed (holds below; ProgramsSection.tsx); only the create and
+// install parts follow this table.
 // Yeni program ya da yapay zekâ uygulamasının reddedildiği site türleri;
 // sunucunun denetimini yansıtır, sunucu ikinci savunma hattı olarak kalır.
 export const NEW_REFUSED_ON: Readonly<Record<'programs' | 'ai', readonly string[]>> = {
@@ -226,22 +233,27 @@ const RULES: Record<SectionId, PartRule[]> = {
         },
     ],
     // What runs on the domain (owner, 19 Nov 2026: "programs under Site did
-    // not feel right; put them in the menu"). A card is drawn when the site
-    // already is of its kind (it stays manageable after its right closed,
-    // D-042 P5), or when the plan includes it AND the site's type lets one be
-    // added (newRefused below). With neither card, the section is absent:
-    // nothing in it could be acted on.
-    // Alan adında çalışanlar. Kart, site zaten o türdeyse ya da plan içeriyor
-    // ve sitenin türü eklemeye izin veriyorsa çizilir; ikisi de yoksa bölüm yok.
+    // not feel right; put them in the menu"). A card is drawn when the domain
+    // already has one of its kind (the site is of that kind, or the list says
+    // a record is there: it keeps the domain from being deleted, so it is
+    // shown where it is removed, whatever the plan or the type say; D-042 P5),
+    // or when the plan includes it AND the site's type lets one be added
+    // (newRefused below). Team members never had these cards and do not get
+    // them. With neither card, the section is absent: nothing in it could be
+    // acted on.
+    // Alan adında çalışanlar. Kart, alan adında o türden bir şey varsa ya da
+    // plan içeriyor ve tür eklemeye izin veriyorsa çizilir; ikisi de yoksa
+    // bölüm yok.
     programs: [
         {
             id: 'programs', capabilities: [],
-            shown: (v) => !v.teamMember && site(v)
-                && (v.type === 'runtime_app' || ((v.open('program_apps') || v.open('python_apps')) && !newRefused('programs', v.type))),
+            shown: (v) => !v.teamMember && site(v) && (v.type === 'runtime_app' || v.holds.program
+                || ((v.open('program_apps') || v.open('python_apps')) && !newRefused('programs', v.type))),
         },
         {
             id: 'ai', capabilities: [],
-            shown: (v) => !v.teamMember && site(v) && (v.type === 'service_app' || (v.open('service_apps') && !newRefused('ai', v.type))),
+            shown: (v) => !v.teamMember && site(v)
+                && (v.type === 'service_app' || v.holds.app || (v.open('service_apps') && !newRefused('ai', v.type))),
         },
     ],
     files: [
@@ -348,6 +360,7 @@ export function buildSections(input: SectionInput): SectionView[] {
         view: (capability) => mode(capability) !== 'none',
         open: (right) => !closed.has(right),
         server: teamMember ? null : input.server,
+        holds: teamMember ? { program: false, app: false } : input.holds ?? { program: false, app: false },
     };
     const sections: SectionView[] = [];
     for (const id of SECTION_ORDER) {

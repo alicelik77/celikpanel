@@ -778,7 +778,8 @@ only: a program site as the administrator and as a customer (the row with
 Programs after Site, the Programs section, the Site section that is left, the
 Overview's tiles; `y39programs`), an AI app site with its own card only
 (`y39service`), a Node.js site without Programs (`y39node`), a domain that
-holds both a program and an app (`y39mixed`), and a PHP site's
+holds both a program and an app (`y39mixed`), a PHP site holding a created
+program with its right closed (`y39held`), and a PHP site's
 Site section and Programs section with both create parts, a customer whose plan has no
 program or app right (no Programs in the row) and the alpha.132–138 address
 `?section=site&part=programs` (`y39php`). Each state records the row, whether

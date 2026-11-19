@@ -8,6 +8,8 @@
 //   y39node      A Node.js site: no Programs in the row (neither can be added)
 //   y39mixed     A domain that holds both: the AI app's site still shows the
 //                program's card, to manage and remove it, and no form
+//   y39held      A PHP site holding a created program, its right closed: the
+//                section and the program's card with its removal
 //   y39php       A PHP site: the Site section without the moved cards and the
 //                Programs section with both create parts, as the
 //                administrator and as a customer; a customer whose plan has no
@@ -138,7 +140,7 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
     // to manage and remove it, with no form in either card.
     scenarios.y39mixed = async () => {
         for (const role of ['admin', 'customer']) {
-            const page = await open('/domains/example.com?section=programs', domain({ project_type: 'service_app' }), role, reads('service_app', RUNNING, INSTALLED));
+            const page = await open('/domains/example.com?section=programs', domain({ project_type: 'service_app', holds_program: true, holds_app: true }), role, reads('service_app', RUNNING, INSTALLED));
             await settle(page, '[data-part="programs"]');
             await snap(page, `mixed-${role}`, { role });
             await page.evaluate(() => document.querySelector('[data-part="programs"]')?.scrollIntoView({ block: 'start' }));
@@ -146,6 +148,19 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
             await snap(page, `mixed-program-${role}`, { role });
             await closePage(page);
         }
+        await reset(); await ctl({ clearAll: true, domains: [] });
+    };
+
+    // A PHP site holding a program that was created and never deployed, and
+    // the plan's program rights closed since: the section and the program's
+    // card are there, so the program can be removed (and the domain deleted).
+    scenarios.y39held = async () => {
+        const created = { ...RUNNING, state: 'created', deployed: false, status: undefined, states: ['not_offered'] };
+        const page = await open('/domains/example.com?section=programs',
+            domain({ rights_closed: ['program_apps', 'python_apps', 'service_apps'], holds_program: true }), 'customer', reads('php', created, null));
+        await settle(page, '[data-part="programs"]');
+        await snap(page, 'held-customer', { role: 'customer' });
+        await closePage(page);
         await reset(); await ctl({ clearAll: true, domains: [] });
     };
 
