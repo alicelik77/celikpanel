@@ -4,8 +4,10 @@
 //                a customer: the section row with Programs right after Site,
 //                the Programs section, the Site section that is left, and the
 //                Overview's tiles
-//   y39service   An AI app site: the Programs section led by AI & automation
-//   y39php       A PHP site: the Site section without the moved cards, as the
+//   y39service   An AI app site: the Programs section with its own card only
+//   y39node      A Node.js site: no Programs in the row (neither can be added)
+//   y39php       A PHP site: the Site section without the moved cards and the
+//                Programs section with both create parts, as the
 //                administrator and as a customer; a customer whose plan has no
 //                program or app right (no Programs in the row); and the
 //                address of alpha.132-138 (?section=site&part=programs)
@@ -106,7 +108,7 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
         for (const role of ['admin', 'customer']) {
             const row = domain({ project_type: 'runtime_app' });
             const page = await open('/domains/example.com?section=programs', row, role, reads('runtime_app', RUNNING, null));
-            await settle(page, '[data-part="ai"]');
+            await settle(page, '[data-part="programs"]');
             await snap(page, `programs-${role}`, { role });
             await page.evaluate(() => document.querySelector('[data-section="site"]')?.click());
             await settle(page, '[data-part="type"]');
@@ -123,8 +125,18 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
 
     scenarios.y39service = async () => {
         const page = await open('/domains/example.com?section=programs', domain({ project_type: 'service_app' }), 'admin', reads('service_app', null, INSTALLED));
-        await settle(page, '[data-part="programs"]');
+        await settle(page, '[data-part="ai"]');
         await snap(page, 'service-admin', { role: 'admin' });
+        await closePage(page);
+        await reset(); await ctl({ clearAll: true, domains: [] });
+    };
+
+    // Neither a program nor an AI app can be added to a Node.js site: no
+    // Programs in the row, also when the old address asks for it.
+    scenarios.y39node = async () => {
+        const page = await open('/domains/example.com?section=programs', domain({ project_type: 'node', php_version: '' }), 'admin', reads('node', null, null));
+        await settle(page, '[data-section-body]');
+        await snap(page, 'node-admin', { role: 'admin' });
         await closePage(page);
         await reset(); await ctl({ clearAll: true, domains: [] });
     };
@@ -134,6 +146,16 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
             const page = await open('/domains/example.com?section=site', domain(), role, reads('php', null, null));
             await settle(page, '[data-part="type"]');
             await snap(page, `php-site-${role}`, { role });
+            await closePage(page);
+        }
+        // Both cards, each with its create part: a PHP site can take either.
+        for (const role of ['admin', 'customer']) {
+            const page = await open('/domains/example.com?section=programs', domain(), role, reads('php', null, null));
+            await settle(page, '[data-part="ai"]');
+            await snap(page, `php-programs-${role}`, { role });
+            await page.evaluate(() => document.querySelector('[data-part="ai"]')?.scrollIntoView({ block: 'start' }));
+            await pause(300);
+            await snap(page, `php-programs-ai-${role}`, { role });
             await closePage(page);
         }
         const closed = await open('/domains/example.com?section=site', domain({ rights_closed: ['program_apps', 'python_apps', 'service_apps'] }), 'customer', {});

@@ -53,7 +53,7 @@ A new website starts as a static site. To run PHP, go to **Site type** in the **
 
 ## Programs {#programs}
 
-The **Programs** section is there when your plan includes programs or AI apps, or when the site already runs one. It holds **Programs and Python apps**, for a program you built yourself or a Python web app, and **AI & automation** (see [AI and automation apps](guide:ai-apps#ai-apps)). The program or the app then serves the domain over HTTPS; removing it gives the site back the type it had.
+The **Programs** section is there when your plan includes programs or AI apps, or when the site already runs one. It holds **Programs and Python apps**, for a program you built yourself or a Python web app, and **AI & automation** (see [AI and automation apps](guide:ai-apps#ai-apps)). The program or the app then serves the domain over HTTPS; removing it gives the site back the type it had. A domain runs one of them at a time, and a Node.js site neither, so there the section shows only what the site already runs, or is not there.
 
 ## Certificates and HTTPS {#https}
 

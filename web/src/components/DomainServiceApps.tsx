@@ -1,11 +1,11 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowUpCircle, Bot, ExternalLink, KeyRound, Loader2, Play, RotateCw, ScrollText, Square, Trash2 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, ErrorBanner, Field, RemoteGate, inputClass } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
-import { readRemote, useRefreshEvery, useRemote } from '../lib/remote';
+import { invalidate, readRemote, useRefreshEvery, useRemote } from '../lib/remote';
 import {
     decodeDomainServiceApps,
     newOperationID,
@@ -52,6 +52,17 @@ export function DomainServiceApps({ domainId }: { domainId: number; domainName: 
     const view = useRemote(url, decodeDomainServiceApps);
     const running = view.remote.state === 'known' && view.remote.value.operation?.state === 'running';
     useRefreshEvery(view, 4000, running);
+    // An install or a removal that finished changed the site's type, which
+    // decides the domain page's cards: the domain list reads again (as the
+    // programs card does).
+    // Biten kurulum ya da kaldırma sitenin türünü değiştirdi; liste yeniden okunur.
+    const operation = view.remote.state === 'known' && view.remote.value.operation
+        ? `${view.remote.value.operation.id}:${view.remote.value.operation.state}` : undefined;
+    const lastOp = useRef<string | undefined>(undefined);
+    useEffect(() => {
+        if (lastOp.current && lastOp.current.endsWith(':running') && operation !== lastOp.current) invalidate('domains');
+        lastOp.current = operation;
+    }, [operation]);
     const [failure, setFailure] = useState<ApiError | null>(null);
     const [lost, setLost] = useState(false);
     const [installing, setInstalling] = useState<DomainServiceAppEntry | null>(null);

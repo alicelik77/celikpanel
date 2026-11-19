@@ -37,30 +37,83 @@ test('Programs stands right after Site in the one order, with its words and icon
   assert.match(read('../src/lib/domainSectionIcons.ts'), /^ {4}programs: Cpu,$/m);
 });
 
-test('the section holds the programs card and the AI card under the rights the cards had in Site, for every role and site kind', () => {
+// What the section draws, per site type (a program site and an AI app site
+// are the ones that already run one) and per plan. A card that could only
+// offer a create or install the server refuses on this type is not drawn; a
+// section left without cards is absent, not faded. Written out by hand, not
+// derived from the rule it checks.
+// Site türü ve plana göre bölümün çizdikleri; elle yazılmıştır.
+const PLANS = {
+  'all rights': [],
+  'no AI apps': ['service_apps'],
+  'no programs': ['program_apps', 'python_apps'],
+  'Python apps only': ['program_apps', 'service_apps'],
+  'no rights': RIGHTS,
+};
+const BOTH = { 'all rights': ['programs', 'ai'], 'no AI apps': ['programs'], 'no programs': ['ai'], 'Python apps only': ['programs'], 'no rights': undefined };
+const EXPECTED = {
+  php: BOTH, static: BOTH, proxy: BOTH, forwarding: BOTH,
+  // Neither can be added to a Node.js site (the server refuses both).
+  node: { 'all rights': undefined, 'no AI apps': undefined, 'no programs': undefined, 'Python apps only': undefined, 'no rights': undefined },
+  // The site runs a program: its card only, also after its right closed (D-042 P5).
+  runtime_app: { 'all rights': ['programs'], 'no AI apps': ['programs'], 'no programs': ['programs'], 'Python apps only': ['programs'], 'no rights': ['programs'] },
+  // The site runs an AI app: its card only.
+  service_app: { 'all rights': ['ai'], 'no AI apps': ['ai'], 'no programs': ['ai'], 'Python apps only': ['ai'], 'no rights': ['ai'] },
+};
+
+test('what Programs draws, per site type x what already runs x plan x role: nothing whose press the server would refuse', () => {
   for (const role of ROLES) {
     for (const projectType of HOSTED) {
-      const list = build({ role, projectType });
-      const leads = { runtime_app: ['programs', 'ai'], service_app: ['ai', 'programs'] }[projectType] ?? ['programs', 'ai'];
-      assert.deepEqual(partsOf(list, 'programs'), leads, `${role} ${projectType}`);
-      // Site never draws them again.
-      const site = partsOf(list, 'site') ?? [];
-      assert.ok(!site.includes('programs') && !site.includes('ai'), `${role} ${projectType}: Site still holds a moved card`);
-      // Not a long section: its cards do not open and close.
-      for (const part of list.find((section) => section.id === 'programs').parts) assert.equal(part.startsOpen, undefined);
+      for (const [plan, closedRights] of Object.entries(PLANS)) {
+        const list = build({ role, projectType, closedRights });
+        const where = `${role}, ${projectType}, ${plan}`;
+        assert.deepEqual(partsOf(list, 'programs'), EXPECTED[projectType][plan], where);
+        // Absent, never faded.
+        assert.ok(!list.some((section) => section.id === 'programs' && section.notInPlan), where);
+        // Site never draws them again.
+        const site = partsOf(list, 'site') ?? [];
+        assert.ok(!site.includes('programs') && !site.includes('ai'), `${where}: Site still holds a moved card`);
+        // Not a long section: its cards do not open and close.
+        for (const part of list.find((section) => section.id === 'programs')?.parts ?? []) assert.equal(part.startsOpen, undefined, where);
+      }
     }
-    // One right each, as the cards had.
-    assert.deepEqual(partsOf(build({ role, closedRights: ['service_apps'] }), 'programs'), ['programs']);
-    assert.deepEqual(partsOf(build({ role, closedRights: ['program_apps', 'python_apps'] }), 'programs'), ['ai']);
-    assert.deepEqual(partsOf(build({ role, closedRights: ['program_apps'] }), 'programs'), ['programs', 'ai'], 'Python apps alone keep the programs card');
-    // Nothing to act on: no section, not a faded one.
-    for (const projectType of ['php', 'static', 'node', 'proxy', 'forwarding']) {
-      assert.equal(build({ role, projectType, closedRights: RIGHTS }).find((section) => section.id === 'programs'), undefined, `${role} ${projectType}`);
-    }
-    // What runs stays manageable after its right closed (D-042 P5), and leads.
-    assert.deepEqual(partsOf(build({ role, projectType: 'runtime_app', closedRights: RIGHTS }), 'programs'), ['programs']);
-    assert.deepEqual(partsOf(build({ role, projectType: 'service_app', closedRights: RIGHTS }), 'programs'), ['ai']);
   }
+});
+
+// The screen's rule and the server's refusal come from one table each side;
+// this reads the server's conditions from its source and fails when they
+// part. The server stays the second line of defence (unchanged).
+// Ekranın kuralı ile sunucunun reddi ayrışırsa bu test düşer.
+const refusedTypes = (file, anchor) => {
+  const source = read(`../../cmd/panel/${file}`);
+  const at = source.indexOf(anchor);
+  assert.ok(at >= 0, `${file}: ${anchor} not found`);
+  const line = source.slice(at, source.indexOf('\n', at));
+  return [...line.matchAll(/site\.ProjectType == "([a-z_]+)"/g)].map((match) => match[1]).sort();
+};
+// An AI app on a program's site: refused on the screen, not yet by the server.
+const SCREEN_ONLY = { programs: [], ai: ['runtime_app'] };
+
+test('the screen refuses a new program or AI app on exactly the site types the server refuses (one known stricter case)', () => {
+  const server = {
+    // runtime_apps_handlers.go, create: `has` (an AI app installed) || node || service_app.
+    programs: refusedTypes('runtime_apps_handlers.go', '} else if has || site.ProjectType == "node"'),
+    // service_apps_handlers.go, install: node || service_app.
+    ai: refusedTypes('service_apps_handlers.go', 'if site.ProjectType == "node" || site.ProjectType == "service_app" {'),
+  };
+  assert.deepEqual(server.programs, ['node', 'service_app']);
+  for (const kind of ['programs', 'ai']) {
+    const screen = [...sections.NEW_REFUSED_ON[kind]].sort();
+    assert.deepEqual(screen.filter((type) => !SCREEN_ONLY[kind].includes(type)), server[kind], `${kind}: the screen and the server refuse different site types`);
+    // When the server starts refusing it too, the exception goes.
+    for (const type of SCREEN_ONLY[kind]) assert.ok(!server[kind].includes(type), `${kind}: the server now refuses ${type}; drop it from SCREEN_ONLY`);
+  }
+});
+
+test('a finished type change, install or removal reads the domain list again, so the section follows without a reload', () => {
+  assert.match(read('../src/components/HostingTypePanel.tsx'), /await hosting\.retry\(\);[\s\S]{0,400}invalidate\('domains'\);/);
+  assert.match(read('../src/components/DomainServiceApps.tsx'), /lastOp\.current\.endsWith\(':running'\) && operation !== lastOp\.current\) invalidate\('domains'\)/);
+  assert.match(read('../src/components/DomainRuntimeApps.tsx'), /endsWith\(':running'\) && now !== lastOp\.current\) invalidate\('domains'\)/);
 });
 
 test('a DNS-only domain and a team member never get the section, whatever they were granted', () => {
@@ -201,12 +254,13 @@ test('mounted: Site no longer draws the programs or the AI card, for any site ki
   assert.doesNotMatch(source, /DomainRuntimeApps|DomainServiceApps/);
 });
 
-test('mounted: Programs draws both cards at once, the site\'s own first, with the index between them', async () => {
-  for (const [projectType, order] of [['php', ['programs', 'ai']], ['runtime_app', ['programs', 'ai']], ['service_app', ['ai', 'programs']]]) {
+test('mounted: Programs draws both cards at once on a site that can take either; a site that runs one shows its own card only', async () => {
+  for (const [projectType, order] of [['php', ['programs', 'ai']], ['static', ['programs', 'ai']], ['runtime_app', ['programs']], ['service_app', ['ai']]]) {
     const view = await mount(ProgramsSection, { id: 'programs', projectType });
     try {
       assert.deepEqual(view.cards(), order, projectType);
-      assert.deepEqual(view.index(), order.map((id) => `#domain-part-${id}`), projectType);
+      // One card: no index.
+      assert.deepEqual(view.index(), order.length > 1 ? order.map((id) => `#domain-part-${id}`) : [], projectType);
       // Not closable: no open/close button on either card.
       assert.equal(view.page.root.findAll((node) => node.type === 'button' && node.props['data-part-toggle']).length, 0);
       for (const id of order) assert.equal(view.page.root.find((node) => node.type === 'article' && node.props['data-card'] === id).props['data-domain'], 7);

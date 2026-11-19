@@ -101,7 +101,8 @@ test('the audit words cover the twelve actions and the resource', () => {
 test('the tab, the screen part and its budget are wired', () => {
   // alpha.132: Programs is a part of a domain's page; alpha.139: of its own Programs section.
   const registry = read('../src/components/domain/sections.ts');
-  assert.match(registry, /id: 'programs', capabilities: \[\],\s*shown: \(v\) => !v\.teamMember && site\(v\) && \(v\.open\('program_apps'\) \|\| v\.open\('python_apps'\) \|\| v\.type === 'runtime_app'\)/);
+  // alpha.139: and only where the server would accept a new one (tests/programs-section-alpha139).
+  assert.match(registry, /id: 'programs', capabilities: \[\],\s*shown: \(v\) => !v\.teamMember && site\(v\)\s*&& \(v\.type === 'runtime_app' \|\| \(\(v\.open\('program_apps'\) \|\| v\.open\('python_apps'\)\) && !newRefused\('programs', v\.type\)\)\)/);
   assert.match(registry, /programs: 'runtime\.tab',/);
   const detail = read('../src/components/domain/sections/ProgramsSection.tsx');
   assert.match(detail, /const DomainRuntimeApps = lazy\(\(\) => import\('\.\.\/\.\.\/DomainRuntimeApps'\)/);

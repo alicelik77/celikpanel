@@ -397,6 +397,7 @@ test('mounted: each viewer gets its row, the first section open, and the tablist
     { name: 'server without mail or databases', role: 'admin', caps: capabilities({ mail_server: false, database_servers: [] }), expect: ['overview', 'site', 'programs', 'files', 'dns', 'security', 'backups', 'advanced'] },
     // alpha.139: Programs is there while something in it can be acted on.
     { name: 'customer, PHP site, no program or app right', role: 'customer', row: { rights_closed: ['program_apps', 'python_apps', 'service_apps'] }, expect: ALL.filter((id) => id !== 'programs') },
+    { name: 'customer, Node.js site: neither can be added there', role: 'customer', row: { project_type: 'node' }, expect: ALL.filter((id) => id !== 'programs') },
     { name: 'customer, program site, its rights closed since', role: 'customer', row: { project_type: 'runtime_app', rights_closed: ['program_apps', 'python_apps', 'service_apps'] }, expect: ['overview', 'site', 'programs', 'files', 'mail', 'databases', 'dns', 'security', 'backups', 'advanced'] },
   ];
   for (const item of cases) {

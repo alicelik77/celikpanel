@@ -53,7 +53,7 @@ Yeni web sitesi statik başlar. PHP çalıştırmak için **Site** bölümünün
 
 ## Programlar {#programs}
 
-**Programlar** bölümü, planınız program ya da yapay zekâ uygulaması içeriyorsa veya sitede zaten biri çalışıyorsa görünür. Kendi derlediğiniz bir program ya da bir Python web uygulaması için **Programlar ve Python uygulamaları** ile **Yapay zekâ ve otomasyon** parçalarını tutar (bkz. [Yapay zekâ ve otomasyon uygulamaları](guide:ai-apps#ai-apps)). Program ya da uygulama alan adına HTTPS ile hizmet verir; kaldırıldığında site önceki türüne döner.
+**Programlar** bölümü, planınız program ya da yapay zekâ uygulaması içeriyorsa veya sitede zaten biri çalışıyorsa görünür. Kendi derlediğiniz bir program ya da bir Python web uygulaması için **Programlar ve Python uygulamaları** ile **Yapay zekâ ve otomasyon** parçalarını tutar (bkz. [Yapay zekâ ve otomasyon uygulamaları](guide:ai-apps#ai-apps)). Program ya da uygulama alan adına HTTPS ile hizmet verir; kaldırıldığında site önceki türüne döner. Bir alan adında aynı anda bunlardan yalnız biri çalışır, Node.js sitesinde hiçbiri çalışmaz; bu yüzden bölüm orada yalnız sitenin zaten çalıştırdığını gösterir ya da hiç görünmez.
 
 ## Sertifika ve HTTPS {#https}
 

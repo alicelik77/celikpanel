@@ -180,6 +180,26 @@ const php = (v: Viewer) => v.type === 'php';
 // A DNS-only domain has no website: no files, PHP, certificate or web server.
 const site = (v: Viewer) => !v.dnsOnly;
 
+// The site types on which a NEW program or AI app is refused, so the screen
+// never offers a form whose press would fail. The server's checks stay the
+// second line of defence; tests/programs-section-alpha139.test.mjs reads them
+// and fails when the two disagree:
+//   - a program: cmd/panel/runtime_apps_handlers.go, the create handler,
+//     `has || site.ProjectType == "node" || site.ProjectType == "service_app"`
+//     (`has`: an AI app installed, which makes the type service_app);
+//   - an AI app: cmd/panel/service_apps_handlers.go, the install handler,
+//     `site.ProjectType == "node" || site.ProjectType == "service_app"`.
+// One type more on the screen than on the server: an AI app on a program's
+// site (runtime_app). The server does not refuse it yet, but it would take
+// the domain from the running program; the screen does not offer it.
+// Yeni program ya da yapay zekâ uygulamasının reddedildiği site türleri;
+// sunucunun denetimini yansıtır, sunucu ikinci savunma hattı olarak kalır.
+export const NEW_REFUSED_ON: Readonly<Record<'programs' | 'ai', readonly string[]>> = {
+    programs: ['node', 'service_app'],
+    ai: ['node', 'service_app', 'runtime_app'],
+};
+const newRefused = (kind: 'programs' | 'ai', type: string) => NEW_REFUSED_ON[kind].includes(type);
+
 // Every part, in the order its section draws them. Each condition is the one
 // its tab or sub-tab had before alpha.132.
 // Her parça, bölümünün çizdiği sırayla; koşul eski sekmesininkidir.
@@ -204,17 +224,23 @@ const RULES: Record<SectionId, PartRule[]> = {
         },
     ],
     // What runs on the domain (owner, 19 Nov 2026: "programs under Site did
-    // not feel right; put them in the menu"), with the conditions they had
-    // as parts of Site, unchanged. Either is offered on every site with
-    // hosting when the plan includes it: the card itself creates the program
-    // or installs the app, and the site's type follows. An app or a program
-    // that runs stays manageable after its right closed (D-042 P5). With
-    // neither, the section is absent: nothing in it could be acted on.
-    // Alan adında çalışanlar; koşullar Site'tayken neyse odur. İkisi de yoksa
-    // bölüm çizilmez.
+    // not feel right; put them in the menu"). A card is drawn when the site
+    // already is of its kind (it stays manageable after its right closed,
+    // D-042 P5), or when the plan includes it AND the site's type lets one be
+    // added (newRefused below). With neither card, the section is absent:
+    // nothing in it could be acted on.
+    // Alan adında çalışanlar. Kart, site zaten o türdeyse ya da plan içeriyor
+    // ve sitenin türü eklemeye izin veriyorsa çizilir; ikisi de yoksa bölüm yok.
     programs: [
-        { id: 'programs', capabilities: [], shown: (v) => !v.teamMember && site(v) && (v.open('program_apps') || v.open('python_apps') || v.type === 'runtime_app') },
-        { id: 'ai', capabilities: [], shown: (v) => !v.teamMember && site(v) && (v.open('service_apps') || v.type === 'service_app') },
+        {
+            id: 'programs', capabilities: [],
+            shown: (v) => !v.teamMember && site(v)
+                && (v.type === 'runtime_app' || ((v.open('program_apps') || v.open('python_apps')) && !newRefused('programs', v.type))),
+        },
+        {
+            id: 'ai', capabilities: [],
+            shown: (v) => !v.teamMember && site(v) && (v.type === 'service_app' || (v.open('service_apps') && !newRefused('ai', v.type))),
+        },
     ],
     files: [
         { id: 'manager', capabilities: ['files'], shown: (v) => site(v) && v.view('files') && v.open('file_manager') },
