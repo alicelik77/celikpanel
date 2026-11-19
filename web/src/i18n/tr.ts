@@ -138,6 +138,10 @@ export const tr: Record<ShellKey, string> = {
     'theme.dark': 'Koyu',
     'theme.system': 'Sistem',
     'theme.skin': 'Stil',
+    'theme.skin.celik': 'Celik',
+    'theme.skin.sky': 'Gök',
+    'theme.skin.forest': 'Orman',
+    'theme.skin.amber': 'Kehribar',
 
     'lang.label': 'Dil',
 

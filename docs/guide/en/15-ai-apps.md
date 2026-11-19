@@ -2,11 +2,11 @@
 id: ai-apps
 title: AI and automation apps
 roles: [admin, reseller, customer]
-topics: [domain.site.ai#ai-apps]
+topics: [domain.programs.ai#ai-apps]
 keywords: [ai, n8n, open webui, automation, workflow, chat, openai, api key, security hold]
 ---
 
-**AI & automation**, in a domain's **Site** section, runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS.
+**AI & automation**, in a domain's **Programs** section, runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS.
 
 ## Before you install {#ai-apps}
 

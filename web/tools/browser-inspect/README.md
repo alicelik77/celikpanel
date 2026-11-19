@@ -783,10 +783,27 @@ example owners, a connected domain with a valid certificate, complete mail
 authentication and today's backup, and the version of the build being
 photographed. A desktop run takes them at 1280×800 CSS pixels at twice the
 density; a phone run at 390×844, also at twice the density. They are written
-beside the PNG record as WebP into `BROWSER_INSPECT_SITE` (default
-`<out>/site`) as `product-<page>-<locale>-<theme>.webp`. Every name, address
+beside the record as PNG into `BROWSER_INSPECT_SITE` (default
+`<out>/site`) as `product-<page>-<locale>-<theme>.png`. Every name, address
 and number is sample data (example.com, example.net, example.org,
 192.0.2.10). For the site each desktop shot becomes
 `<page>-<locale>-<theme>-2x.webp` (2560×1600) and a half-size
 `<page>-<locale>-<theme>.webp`, each phone shot `<page>-<locale>-<theme>-phone.webp`;
 look at every one, then run `go test ./site`.
+
+`scenarios-batch39.mjs` draws alpha.138's Programs section from overrides
+only: a program site as the administrator and as a customer (the row with
+Programs after Site, the Programs section, the Site section that is left, the
+Overview's tiles; `y39programs`), an AI app site with its own card only
+(`y39service`), a Node.js site without Programs (`y39node`), a domain that
+holds both a program and an app (`y39mixed`), a PHP site holding a created
+program with its right closed (`y39held`), the same with every right open and
+no AI card (`y39created`), where the section's "?" opens the guide
+(`y39guide`, the Programs heading's place in the drawer), the four styles'
+names with a style stored under its earlier id (`y39styles`), and a PHP site's
+Site section and Programs section with both create parts, a customer whose plan has no
+program or app right (no Programs in the row) and the alpha.132–137 address
+`?section=site&part=programs` (`y39php`). Each state records the row, whether
+it wraps or scrolls and its spare width. The mock does not answer a site's
+hosting settings, applications or redirects, so those cards say they could not
+be read; that is the mock, not the screen. Same conventions as batch 30.

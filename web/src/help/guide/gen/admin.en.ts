@@ -32,7 +32,7 @@ const guide: GuideIndex = {
     { id: "without-panel", title: "Running the server without CelikPanel", load: () => import('./chapters/without-panel.en') },
     { id: "recovery", title: "Recovery basics for the administrator", load: () => import('./chapters/recovery.en') },
   ],
-  topics: {"account":["getting-started","your-account"],"audit":["monitoring-audit",""],"components":["components",""],"dashboard":["getting-started",""],"databases":["databases","databases-page"],"dns.infrastructure":["dns-servers","infrastructure-zone"],"dns.servers":["dns-servers",""],"domain.advanced":["backups","cron-logs"],"domain.backups":["backups","backups"],"domain.databases":["databases","domain-databases"],"domain.dns":["dns","records"],"domain.files":["files-access","file-manager"],"domain.files.access":["files-access","ftp-sftp"],"domain.mail":["mail","mailboxes"],"domain.overview":["domains-websites","overview"],"domain.security":["domains-websites","https"],"domain.security.malware":["apps-wordpress","malware"],"domain.site":["domains-websites","hosting"],"domain.site.ai":["ai-apps","ai-apps"],"domain.site.apps":["apps-wordpress","catalogue"],"domains":["domains-websites","domain-list"],"help":["getting-started","help"],"import":["import",""],"maintenance":["panel-settings",""],"monitoring":["monitoring-audit",""],"security":["security",""],"server-setup":["server-setup",""],"settings":["panel-settings",""],"states":["reading-states",""],"store":["plans-rights",""],"users":["customers",""],"vpn":["vpn",""]},
+  topics: {"account":["getting-started","your-account"],"audit":["monitoring-audit",""],"components":["components",""],"dashboard":["getting-started",""],"databases":["databases","databases-page"],"dns.infrastructure":["dns-servers","infrastructure-zone"],"dns.servers":["dns-servers",""],"domain.advanced":["backups","cron-logs"],"domain.backups":["backups","backups"],"domain.databases":["databases","domain-databases"],"domain.dns":["dns","records"],"domain.files":["files-access","file-manager"],"domain.files.access":["files-access","ftp-sftp"],"domain.mail":["mail","mailboxes"],"domain.overview":["domains-websites","overview"],"domain.programs":["domains-websites","programs"],"domain.programs.ai":["ai-apps","ai-apps"],"domain.security":["domains-websites","https"],"domain.security.malware":["apps-wordpress","malware"],"domain.site":["domains-websites","hosting"],"domain.site.apps":["apps-wordpress","catalogue"],"domains":["domains-websites","domain-list"],"help":["getting-started","help"],"import":["import",""],"maintenance":["panel-settings",""],"monitoring":["monitoring-audit",""],"security":["security",""],"server-setup":["server-setup",""],"settings":["panel-settings",""],"states":["reading-states",""],"store":["plans-rights",""],"users":["customers",""],"vpn":["vpn",""]},
   search: [
     [0,"","Getting started","sign login menu first steps language theme password two factor"],
     [0,"signing-in","Signing in",""],
@@ -62,6 +62,7 @@ const guide: GuideIndex = {
     [3,"overview","The overview",""],
     [3,"hosting","Site settings",""],
     [3,"php","PHP version",""],
+    [3,"programs","Programs",""],
     [3,"https","Certificates and HTTPS",""],
     [4,"","DNS for your domain","dns zone record txt cname nameserver registrar dnssec"],
     [4,"where","Where your DNS is served",""],

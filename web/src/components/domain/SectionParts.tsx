@@ -33,6 +33,9 @@ export interface DomainFacts {
     domain_name: string;
     php_version?: string;
     project_type?: string;
+    /** alpha.138: a program or Python app record, an AI app record, is on the domain (the domain list). */
+    holds_program?: boolean;
+    holds_app?: boolean;
 }
 
 /** What the shell gives every section's lazy file. */

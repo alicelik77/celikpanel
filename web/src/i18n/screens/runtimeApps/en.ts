@@ -330,7 +330,7 @@ export const enRuntimeAppsScreens = {
     'err.RUNTIME_APP.env_values': 'Nothing was changed: an environment value is not valid. Keys are capital letters, digits and _; values are one line of 1 to 4096 characters; a new secret needs a value of at least 8 characters; at most 64 values.',
     'err.RUNTIME_APP.logs_unavailable': 'The log could not be read from the server just now. Try again.',
     'err.RUNTIME_APP.confirm_files': 'To delete the app folder too, type the domain name {domain}. Without it, the folder is kept.',
-    'err.RUNTIME_APP.app_created': 'Nothing was changed: a program uses this domain. Remove it in the Site section, under Programs, first.',
+    'err.RUNTIME_APP.app_created': 'Nothing was changed: a program uses this domain. Remove it in the Programs section first.',
     'err.RUNTIME_APP.unit_missing': 'The program’s service is not on the server. Deploy it again.',
     'err.RUNTIME_APP.systemctl': 'The system’s service manager refused the action. Open the log to see why, then try again.',
     'err.RUNTIME_APP.env_file': 'The environment file could not be written on the server, so it is not known whether the values were saved. Enter them again.',

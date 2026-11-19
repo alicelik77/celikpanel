@@ -5,7 +5,7 @@
 //   sitescreens  dashboard, domains, databases: one viewport each, written as
 //                WebP (quality 82) beside the PNG record, into
 //                BROWSER_INSPECT_SITE (default: <out>/site) as
-//                product-<page>-<locale>-<theme>.webp
+//                product-<page>-<locale>-<theme>.png
 //
 // Every name, address and number is SAMPLE data (example.com, example.net,
 // example.org, 192.0.2.0/24); the server is batch 20's sample "everything

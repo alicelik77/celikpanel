@@ -284,7 +284,7 @@ The retained identity is navy on white, legible Overpass type, precise rules and
 
 The public site now leads with the actual product interface and a stronger monochrome mark. This accepted implementation supersedes the former illustrated route-board homepage. Its page strategy, selected screens and technical-page split are scoped in `.impeccable/surfaces/celikpanel-net.md`. The shared visual system remains applicable to the operating panel without making the public site's spacing or storytelling mandatory there.
 
-**Source authority.** The frontmatter is normative. Public-site primitives are extracted from `download-portal/assets/site.css`; its later homepage rules override earlier base declarations. Panel primitives retain their scoped `panel-` names, with semantic RGB-triplet source tokens in `web/src/index.css` and bindings in `web/tailwind.config.js`. `web/gallery/` is a capture harness, not a shipping product route. The `plesk`, `aapanel` and `cpanel` imitation skins remain outside this identity; their existence and removal are separate product decisions.
+**Source authority.** The frontmatter is normative. Public-site primitives are extracted from `download-portal/assets/site.css`; its later homepage rules override earlier base declarations. Panel primitives retain their scoped `panel-` names, with semantic RGB-triplet source tokens in `web/src/index.css` and bindings in `web/tailwind.config.js`. `web/gallery/` is a capture harness, not a shipping product route. The `sky`, `forest` and `amber` alternative styles remain outside this identity; their existence and removal are separate product decisions.
 
 **Key Characteristics:**
 - Navy and white dominate; signal colours report state.
@@ -328,7 +328,7 @@ The `panel-` primitives apply only to the application: tinted page ground, white
 
 **Label / Mono Font:** Overpass Mono, with SFMono-Regular, Consolas, Liberation Mono and monospace fallbacks.
 
-Both families are self-hosted with Latin and Latin Extended subsets and `font-display: swap`. Keep Turkish glyph support and the adjacent licence files. Competitor-skin Inter and Open Sans are not part of this identity.
+Both families are self-hosted with Latin and Latin Extended subsets and `font-display: swap`. Keep Turkish glyph support and the adjacent licence files. The alternative styles' Inter and Open Sans are not part of this identity.
 
 ### Hierarchy
 
@@ -454,7 +454,7 @@ Since the fourth batch that notice is one component, `ResultUnknown`, driven by 
 - **Do** preserve visible navigation, keyboard controls, focus indication and bilingual labels.
 - **Do** keep source conditions and dates beside technical measurements.
 - **Do** pair status colours and usage meters with readable words or numbers.
-- **Do** keep panel tokens and competitor-skin exceptions scoped to the application.
+- **Do** keep panel tokens and alternative-style exceptions scoped to the application.
 - **Do** self-host fonts and keep their licences and Turkish glyph coverage.
 - **Do** draw "checking", "could not check" and "known" as three different things for anything a panel screen reads from the server.
 - **Do** draw a panel button that cannot be used with no fill and a dashed outline in the colour of its own label, in both themes; the recessed fill is kept for a button that is working, with its spinner. A filled block with a legible label reads as a call to action, whatever its colour.
@@ -468,7 +468,7 @@ Since the fourth batch that notice is one component, `ResultUnknown`, driven by 
 - **Don't** turn the homepage into the technical evidence tables; use the technical route.
 - **Don't** invent testimonials, customers, metrics or a production-readiness claim.
 - **Don't** add shadows to the current homepage's command or release surfaces.
-- **Don't** import competitor-skin fonts or colours into CelikPanel's own identity.
+- **Don't** import alternative-style fonts or colours into CelikPanel's own identity.
 - **Don't** draw an empty state, a blocker, "off", "none" or a zero before the server has answered or after a read failed, and don't colour a failed read as a failure of the thing it read.
 
 

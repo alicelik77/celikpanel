@@ -1,11 +1,11 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowUpCircle, Bot, ExternalLink, KeyRound, Loader2, Play, RotateCw, ScrollText, Square, Trash2 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, ErrorBanner, Field, RemoteGate, inputClass } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
-import { readRemote, useRefreshEvery, useRemote } from '../lib/remote';
+import { invalidate, readRemote, useRefreshEvery, useRemote } from '../lib/remote';
 import {
     decodeDomainServiceApps,
     newOperationID,
@@ -46,12 +46,34 @@ function Notice({ tone = 'warning', children }: { tone?: 'warning' | 'danger' | 
     return <div className={`rounded-lg border px-3 py-2.5 text-sm ${palette}`}>{children}</div>;
 }
 
-export function DomainServiceApps({ domainId }: { domainId: number; domainName: string }) {
+// offerNew (alpha.138): false where the site's type refuses a new app
+// (sections.ts NEW_REFUSED_ON); the card then shows only the app the domain
+// already holds, so it can be managed and removed, and no catalogue.
+// republishRefused: a program record is on the domain (or the domain is a
+// program's), so the server refuses installing again and updating (either
+// would take the domain from the program): neither is offered.
+// notServing: the domain does not serve this app (its type is another kind),
+// so the app is not opened at the domain's address.
+// Each comes from the domain's type and records (ProgramsSection.tsx).
+export function DomainServiceApps({ domainId, offerNew = true, republishRefused = false, notServing = false }: {
+    domainId: number; domainName: string; offerNew?: boolean; republishRefused?: boolean; notServing?: boolean;
+}) {
     const { t } = useI18n();
     const url = `/api/v1/domains/${domainId}/service-apps`;
     const view = useRemote(url, decodeDomainServiceApps);
     const running = view.remote.state === 'known' && view.remote.value.operation?.state === 'running';
     useRefreshEvery(view, 4000, running);
+    // An install or a removal that finished changed the site's type, which
+    // decides the domain page's cards: the domain list reads again (as the
+    // programs card does).
+    // Biten kurulum ya da kaldırma sitenin türünü değiştirdi; liste yeniden okunur.
+    const operation = view.remote.state === 'known' && view.remote.value.operation
+        ? `${view.remote.value.operation.id}:${view.remote.value.operation.state}` : undefined;
+    const lastOp = useRef<string | undefined>(undefined);
+    useEffect(() => {
+        if (lastOp.current && lastOp.current.endsWith(':running') && operation !== lastOp.current) invalidate('domains');
+        lastOp.current = operation;
+    }, [operation]);
     const [failure, setFailure] = useState<ApiError | null>(null);
     const [lost, setLost] = useState(false);
     const [installing, setInstalling] = useState<DomainServiceAppEntry | null>(null);
@@ -88,13 +110,13 @@ export function DomainServiceApps({ domainId }: { domainId: number; domainName: 
                         <ErrorBanner error={failure} />
                         {/* alpha.127: a refusal for a hold sends the administrator to where it is lifted. */}
                         {failure?.code === 'SERVICE_APP' && failure.reason === 'held' && <AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} />}
-                        <Blockers view={v} />
+                        {(v.install || offerNew) && <Blockers view={v} />}
                         {v.operation && <OperationLine op={v.operation} />}
                         {v.install ? (
-                            <InstalledApp view={v} install={v.install} base={url} after={after} onReinstall={setInstalling} />
-                        ) : (
+                            <InstalledApp view={v} install={v.install} base={url} after={after} onReinstall={setInstalling} republishRefused={republishRefused} notServing={notServing} />
+                        ) : offerNew ? (
                             <Catalog view={v} onInstall={setInstalling} />
-                        )}
+                        ) : null}
                         {installing && (
                             <InstallDialog
                                 app={installing}
@@ -318,12 +340,14 @@ function InstallDialog({ app, domain, url, onClose, after }: { app: DomainServic
     );
 }
 
-function InstalledApp({ view, install, base, after, onReinstall }: {
+function InstalledApp({ view, install, base, after, onReinstall, republishRefused, notServing }: {
     view: DomainServiceAppsView;
     install: ServiceAppInstall;
     base: string;
     after: After;
     onReinstall: (app: DomainServiceAppEntry) => void;
+    republishRefused: boolean;
+    notServing: boolean;
 }) {
     const { t } = useI18n();
     const busy = view.operation?.state === 'running';
@@ -385,7 +409,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                         {stateText}{install.memory_mb ? ' · ' + t('svcapps.memory', { mb: install.memory_mb }) : ''}
                     </div>
                 </div>
-                {install.version && install.active && install.serving && (
+                {install.version && install.active && install.serving && !notServing && (
                     <a href={install.url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2">
                         <ExternalLink className="h-4 w-4" />{t('svcapps.open')}
@@ -394,7 +418,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
             </div>
             {install.held && <Notice><AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} admin={t('adminNext.svcapps.held')} fallback={t('svcapps.heldNote')} /></Notice>}
             {install.needs_sandbox && <Notice tone="info">{t('svcapps.needsSandbox')}</Notice>}
-            {install.update_available && !busy && (
+            {install.update_available && !busy && !republishRefused && (
                 <Notice tone="info">
                     <span className="flex flex-wrap items-center justify-between gap-2">
                         <span>{t('svcapps.updateNote')}</span>
@@ -420,10 +444,10 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                 {install.version && app && ((app.secrets ?? []).length > 0 || app.id === 'n8n') && (
                     <Button icon={KeyRound} disabled={busy || !!acting} onClick={() => setKeysOpen(true)}>{t('svcapps.keys')}</Button>
                 )}
-                {retryKind === 'install' && !install.version && app && (
+                {retryKind === 'install' && !install.version && app && !republishRefused && (
                     <Button icon={RotateCw} disabled={!!acting || closedReason(app, t) !== '' || !view.certificate} onClick={() => onReinstall(app)}>{t('svcapps.op.retry')}</Button>
                 )}
-                {retryKind === 'update' && (
+                {retryKind === 'update' && !republishRefused && (
                     <Button icon={RotateCw} loading={acting === 'update'} disabled={!!acting} onClick={() => void act('/update', { operation_id: opID }, 'update', () => setOpID(newOperationID()))}>{t('svcapps.op.retry')}</Button>
                 )}
                 <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('svcapps.uninstall')}</Button>

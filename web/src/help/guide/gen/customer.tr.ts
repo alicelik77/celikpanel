@@ -22,7 +22,7 @@ const guide: GuideIndex = {
     { id: "team-members", title: "Ekip üyeleri", load: () => import('./chapters/team-members.tr') },
     { id: "vpn", title: "VPN: sunucuya güvenli erişim", load: () => import('./chapters/vpn.tr') },
   ],
-  topics: {"account":["getting-started","your-account"],"dashboard":["getting-started",""],"databases":["databases","databases-page"],"domain.advanced":["backups","cron-logs"],"domain.backups":["backups","backups"],"domain.databases":["databases","domain-databases"],"domain.dns":["dns","records"],"domain.files":["files-access","file-manager"],"domain.files.access":["files-access","ftp-sftp"],"domain.mail":["mail","mailboxes"],"domain.overview":["domains-websites","overview"],"domain.security":["domains-websites","https"],"domain.security.malware":["apps-wordpress","malware"],"domain.site":["domains-websites","hosting"],"domain.site.ai":["ai-apps","ai-apps"],"domain.site.apps":["apps-wordpress","catalogue"],"domains":["domains-websites","domain-list"],"help":["getting-started","help"],"states":["reading-states",""],"team":["team-members",""],"vpn":["vpn",""]},
+  topics: {"account":["getting-started","your-account"],"dashboard":["getting-started",""],"databases":["databases","databases-page"],"domain.advanced":["backups","cron-logs"],"domain.backups":["backups","backups"],"domain.databases":["databases","domain-databases"],"domain.dns":["dns","records"],"domain.files":["files-access","file-manager"],"domain.files.access":["files-access","ftp-sftp"],"domain.mail":["mail","mailboxes"],"domain.overview":["domains-websites","overview"],"domain.programs":["domains-websites","programs"],"domain.programs.ai":["ai-apps","ai-apps"],"domain.security":["domains-websites","https"],"domain.security.malware":["apps-wordpress","malware"],"domain.site":["domains-websites","hosting"],"domain.site.apps":["apps-wordpress","catalogue"],"domains":["domains-websites","domain-list"],"help":["getting-started","help"],"states":["reading-states",""],"team":["team-members",""],"vpn":["vpn",""]},
   search: [
     [0,"","Başlarken","giris oturum acma menu ilk adimlar dil tema parola iki faktorlu"],
     [0,"signing-in","Giriş yapmak",""],
@@ -52,6 +52,7 @@ const guide: GuideIndex = {
     [3,"overview","Genel bakış",""],
     [3,"hosting","Site ayarları",""],
     [3,"php","PHP sürümü",""],
+    [3,"programs","Programlar",""],
     [3,"https","Sertifika ve HTTPS",""],
     [4,"","Alan adınızın DNS'i","dns bolge zone kayit kaydi txt cname sunucusu firmasi dnssec"],
     [4,"where","DNS'iniz nereden sunuluyor",""],

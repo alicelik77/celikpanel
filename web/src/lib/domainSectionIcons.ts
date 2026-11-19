@@ -3,13 +3,15 @@
 // tiles and the drawings agree. A section closed by the plan is drawn with
 // its own icon, faded, and the lock after its name.
 // Alan adı sayfasındaki her bölümün ikonu; tek yerde tutulur.
-import { AppWindow, Archive, Database, Folder, LayoutGrid, Mail, Network, ShieldCheck, Wrench } from 'lucide-react';
+import { AppWindow, Archive, Cpu, Database, Folder, LayoutGrid, Mail, Network, ShieldCheck, Wrench } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { SectionId } from '../components/domain/sections';
 
 export const domainSectionIcons: Record<SectionId, LucideIcon> = {
     overview: LayoutGrid,
     site: AppWindow,
+    // The icon the Programs card carries in its title.
+    programs: Cpu,
     files: Folder,
     mail: Mail,
     databases: Database,

@@ -101,7 +101,11 @@ func (p *Panel) handleMailClientSetupWith(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Cache-Control", "no-store")
 	host := "mail." + domain
 	if autoconfig != nil && autoconfig.MailHost != "" {
-		// alpha.130: the same mail server name the mail programs are told.
+		// alpha.130: the same mail server name the mail programs are told;
+		// since alpha.138 whatever the set-up reason (mailToldHostIfServed).
+		// Only mail not on this server or no mail name of the server keep
+		// mail.<domain>, and then autoconfig carries no mail_host: the
+		// screens say the name is not confirmed.
 		host = autoconfig.MailHost
 	}
 	// alpha.110: webmail is offered only on its own address (never on the

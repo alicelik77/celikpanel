@@ -274,11 +274,12 @@ test('error and warning toasts stay until closed; success leaves after five seco
     let view;
     try {
         await act(async () => { view = Renderer.create(React.createElement(ToastContainer)); });
-        await act(async () => { showToast('error', 'failed'); showToast('warning', 'careful'); showToast('success', 'done'); });
-        assert.deepEqual(timers.map(timer => timer.ms), [5000], 'only the confirmation has a timer');
+        // alpha.138: a confirmation that offers a next step stays until closed.
+        await act(async () => { showToast('error', 'failed'); showToast('warning', 'careful'); showToast('success', 'done'); showToast('success', 'made', { action: { label: 'next', run() {} } }); });
+        assert.deepEqual(timers.map(timer => timer.ms), [5000], 'only the confirmation without a next step has a timer');
         await act(async () => timers[0].fn());
         const text = textOf(view.toJSON());
-        assert.ok(text.includes('failed') && text.includes('careful') && !text.includes('done'));
+        assert.ok(text.includes('failed') && text.includes('careful') && !text.includes('done') && text.includes('made') && text.includes('next'));
         await act(async () => view.unmount());
     } finally { globalThis.setTimeout = previous; }
 });
