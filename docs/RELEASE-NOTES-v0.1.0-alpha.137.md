@@ -171,6 +171,11 @@ update, not by the server:
   started failing on every machine from 15 November 2026 12:00 because of
   it (PR #328). Its tests no longer depend on the calendar date. Nothing
   changes on a server: there both clocks are the same.
+- **CelikPanel's own race tests have room again.** One group of them
+  reached its eight-minute limit on slower test machines although no test
+  failed; the groups are split further by measured time, and a check lists
+  every panel test and fails unless each runs in exactly one group (PR
+  #329, measured, merged here). Nothing changes on a server.
 
 ## Checked in the lab
 

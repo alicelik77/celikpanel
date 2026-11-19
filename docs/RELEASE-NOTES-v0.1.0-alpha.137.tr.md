@@ -176,6 +176,12 @@ Kilidi sunucu değil, güncellemeyi izleyen tarayıcı tutar:
   testlerinden beşi 15 Kasım 2026 12:00'den itibaren her makinede başarısız
   olmaya başladı (PR #328). Testleri artık takvim tarihine bağlı değil.
   Sunucuda hiçbir şey değişmez: orada iki saat aynıdır.
+- **CelikPanel'in kendi yarış testlerinin yine payı var.** Bu testlerin bir
+  grubu, hiçbir test başarısız olmadan, yavaş test makinelerinde sekiz
+  dakikalık sınırına ulaşıyordu; gruplar ölçülen sürelere göre yeniden
+  bölündü ve bir denetim her panel testini listeleyip her birinin tam bir
+  grupta çalıştığını doğrulamazsa başarısız olur (PR #329'da ölçüldü,
+  buraya birleştirildi). Sunucuda hiçbir şey değişmez.
 
 ## Laboratuvarda denendi
 
