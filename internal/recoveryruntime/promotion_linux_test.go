@@ -204,11 +204,18 @@ func TestPromotionChild(t *testing.T) {
 		if scenario == "busy-operation" {
 			want = ReasonOperationActive
 		}
-		err := promoteAt(request, 9, paths, nil, func(string, string) error {
-			return &promotionHostBusyError{packageManager: scenario == "busy-package-manager"}
-		})
-		if ReasonCode(err) != string(want) {
-			t.Fatalf("busy host before intent = %v, want %s", err, want)
+		// Pressed twice: the second attempt meets the kit the first one
+		// installed (alpha.137 review: each retry left a .promote-* copy).
+		for attempt := 1; attempt <= 2; attempt++ {
+			err := promoteAt(request, 9, paths, nil, func(string, string) error {
+				return &promotionHostBusyError{packageManager: scenario == "busy-package-manager"}
+			})
+			if ReasonCode(err) != string(want) {
+				t.Fatalf("attempt %d: busy host before intent = %v, want %s", attempt, err, want)
+			}
+		}
+		if stages, err := filepath.Glob(filepath.Join(paths.runtimeRoot, ".promote-*")); err != nil || len(stages) != 0 {
+			t.Fatal("a busy host left kit copies behind", stages, err)
 		}
 		if !bytes.Equal(oldSelection, readFixture(t, paths.selection)) || !sameFile(oldLauncher, fixtureIdentity(t, paths.launcher)) {
 			t.Fatal("entry changed on a busy host")

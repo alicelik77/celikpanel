@@ -77,6 +77,10 @@ func TestPromotionCheckerStopsWaitingAtTheBound(t *testing.T) {
 	if !errors.As(err, &busy) || !busy.packageManager {
 		t.Fatalf("a package task past the bound = %#v, want a package-manager busy refusal", err)
 	}
+	// Where it is not named, it is the existing refusal, by Error and by code.
+	if ReasonCode(err) != string(ReasonUnsupported) || err.Error() != string(ReasonUnsupported) {
+		t.Fatalf("the busy refusal reads %q / %q, want %s for both", ReasonCode(err), err.Error(), ReasonUnsupported)
+	}
 }
 
 func TestPromotionCheckerNamesAnAgentOperationPastTheBound(t *testing.T) {

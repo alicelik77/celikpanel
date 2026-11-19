@@ -593,6 +593,18 @@ func installPromotionBundle(source *Runtime, paths promotionPaths) (*Runtime, er
 	if err != nil {
 		return nil, fail(ReasonReadFailed)
 	}
+	// The stage is this call's own copy of the source kit. It leaves only by
+	// becoming the digest directory; otherwise it is removed, including when
+	// that directory already exists from an earlier attempt (alpha.137: every
+	// retry after a busy stop left one full kit copy behind). Best effort: a
+	// copy that cannot be removed changes no outcome.
+	// Aşama dizini yalnız yeniden adlandırılarak kalır; aksi hâlde silinir.
+	renamed := false
+	defer func() {
+		if !renamed {
+			_ = os.RemoveAll(stage)
+		}
+	}()
 	for _, dir := range []string{"bin", "deploy", "deploy/recovery"} {
 		if err := os.Mkdir(filepath.Join(stage, dir), 0700); err != nil {
 			return nil, fail(ReasonReadFailed)
@@ -638,7 +650,9 @@ func installPromotionBundle(source *Runtime, paths promotionPaths) (*Runtime, er
 		return nil, err
 	}
 	final := filepath.Join(paths.runtimeRoot, source.Digest)
-	if err := unix.Renameat2(unix.AT_FDCWD, stage, unix.AT_FDCWD, final, unix.RENAME_NOREPLACE); err != nil && !errors.Is(err, unix.EEXIST) {
+	if err := unix.Renameat2(unix.AT_FDCWD, stage, unix.AT_FDCWD, final, unix.RENAME_NOREPLACE); err == nil {
+		renamed = true
+	} else if !errors.Is(err, unix.EEXIST) {
 		return nil, fail(ReasonReadFailed)
 	}
 	if err := syncDirectory(paths.runtimeRoot); err != nil {
@@ -878,6 +892,11 @@ func (o *promotionCheckerOutput) Write(p []byte) (int, error) {
 type promotionHostBusyError struct{ packageManager bool }
 
 func (e *promotionHostBusyError) Error() string { return string(ReasonUnsupported) }
+
+// Unwrap makes ReasonCode agree with Error: where the busy refusal is not
+// named (any caller that does not look for it), it is the existing refusal.
+// ReasonCode ile Error aynı nedeni söyler.
+func (e *promotionHostBusyError) Unwrap() error { return fail(ReasonUnsupported) }
 
 // promotionCheckerPackageManagerBusy is the Agent's package-manager sentence,
 // the one update.sh reports as package_manager_busy.
