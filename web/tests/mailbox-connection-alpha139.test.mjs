@@ -340,9 +340,13 @@ scenario('the read could not be made: what could not be read, Retry, no values a
 const problemCases = [
   ['mail not installed here', setup({ autoconfig: unavailable('mail_not_here') }), 'notHere', 'blocked'],
   ['the server’s mail name not set', setup({ autoconfig: unavailable('mail_host_unknown') }), 'nameUnset', 'unknown'],
-  ['a subdomain (no told name)', setup({ autoconfig: unavailable('subdomain') }), 'unconfirmed', 'unknown'],
-  ['a domain without a site (no told name)', setup({ autoconfig: unavailable('no_site') }), 'unconfirmed', 'unknown'],
-  ['the auto-setup decision could not be read', setup({ autoconfig: unavailable('unknown') }), 'unconfirmed', 'unknown'],
+  // Since alpha.139 the server tells a subdomain, a domain without a site or an
+  // unreadable decision its served name (mailToldHostIfServed); the stand-in
+  // stays only while mail is not here or the server has no mail name, and the
+  // set-up reason of such an answer can still be one of these.
+  ['a subdomain while mail has no told name', setup({ autoconfig: unavailable('subdomain') }), 'unconfirmed', 'unknown'],
+  ['a domain without a site while mail has no told name', setup({ autoconfig: unavailable('no_site') }), 'unconfirmed', 'unknown'],
+  ['an unreadable decision while mail has no told name', setup({ autoconfig: unavailable('unknown') }), 'unconfirmed', 'unknown'],
 ];
 for (const role of ['admin', 'customer']) {
   for (const [name, answer, kind, tone] of problemCases) {
