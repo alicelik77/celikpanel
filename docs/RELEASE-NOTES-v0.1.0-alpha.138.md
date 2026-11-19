@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.138.tr.md)
 
+> **Published** on 2026-11-19 (UTC): release commit `edf77685a`, GitHub pre-release at 21:27:56Z, download portal at about 22:11Z (public check 27/27).
+
 A small release of two jobs. A domain's programs and AI apps get their own
 place on the domain page, and a program and an AI app no longer take a domain
 from each other. Each mailbox shows the settings a mail program needs, and
