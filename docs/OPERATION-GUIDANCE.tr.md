@@ -11207,3 +11207,31 @@ ekleyin"). Şema: yok. Kod: `cmd/panel/remote_dns_host_record.go`,
 denemesi henüz yok; daha eski (alpha.137) bir ana sunucu bölge geneli bir
 neden için hâlâ CONFLICT döner ve kurulum incelemesi, altında müşteri bölgeleri
 olan bir ana alan adını hâlâ reddeder.
+
+### Yedek DNS sunucusunda web postası adres kaydı için "Ekle…" (alpha.140, 19 Kasım 2026)
+
+Çiftin yedek DNS sunucusunda, web postası için denetlenen ad ana alan adının
+içindeyse ve ana sunucuya DNS bağlantısı hazırsa, "Kopyala"nın yanındaki
+"Ekle…" ana DNS sunucusundan A kaydını (ve bu sunucunun genel bir IPv6 adresi
+varsa AAAA kaydını; isteğe bağlı) eklemesini ister. Başka her yerde yalnız
+"Kopyala" sunulur. İstek gönderilmeden önce gösterilir, adımlarıyla kilitli
+ilerleme penceresinde çalışır ve şunlardan biriyle biter:
+
+| Son | Kim yapar | Sonraki adım |
+|---|---|---|
+| eklendi / zaten var / yeniden sorunca doğrulandı | kimse | sayfa genel DNS'i 20 saniyede bir, en çok 5 dakika okur |
+| meşgul (ana sunucu hiçbir şey uygulamadı) | sahip, istediğinde | "Yeniden sor…" (yeni istek; asla iki kez eklemez) |
+| 10 saniye içinde yanıt yok | kimse | 25 saniye sonra kendiliğinden bir kez yeniden sorulur; sonra "bilinmiyor", "Yeniden sor…" ya da Denetle |
+| reddedildi: orada başka kayıt ya da elle değişiklik, ya da (eski ana sunucu) bölgenin kendisi | sahip, ana sunucuda | onun DNS düzenleyicisinde karar verir ya da Kopyala |
+| reddedildi: oradaki bölgenin gözden geçirilmesi gerekiyor (ZONE_REVIEW) | ana sunucunun yöneticisi | o bölgeyi denetler, sonra yeniden Ekle ya da Kopyala |
+| reddedildi: ad ana sunucunun tuttuğu bir bölgede değil ya da oradaki başka bir bölge adı tutuyor | sahip | kaydı adın DNS'inin yönetildiği yere ekler (Kopyala) |
+
+Denetim kaydı: bu sunucuda `webmail.address.dns_record.*` (meşgul yeni), ana
+sunucuda `dns.remote.host_record.*`. Kod:
+`cmd/panel/webmail_address_dns_record.go`, `web/src/lib/webmailAddressRecords.ts`,
+`web/src/components/WebmailAddressCard.tsx` (artık yalnız Roundcube sayfasında
+yüklenir). Testler: `cmd/panel/webmail_address_dns_record_test.go`,
+`webmail_address_dns_record_tls_test.go` (üretim alıcısına karşı gerçek TLS
+üzerinden), `web/tests/webmail-dns-add-alpha135.test.mjs`. Açık: gerçek bir
+çiftte lab denemesi henüz yok; kartın görünmesi için yedek sunucuda Roundcube
+kurulu olmalıdır.

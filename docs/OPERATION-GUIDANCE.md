@@ -11318,3 +11318,31 @@ by hand"). Schema: none. Code: `cmd/panel/remote_dns_host_record.go`,
 yet; an older (alpha.137) main server still answers CONFLICT for a zone-wide
 reason, and the setup review still refuses a main domain with customer zones
 under it.
+
+### "Add…" for webmail's address record on the backup DNS server (alpha.140, 2026-11-19)
+
+On the pair's backup DNS server, when the name checked for webmail lies in the
+main domain and the DNS connection to the main server is ready, "Add…" beside
+"Copy" asks the main DNS server to add the A record (and the AAAA record when
+this server has a global IPv6 address; optional). Elsewhere only "Copy" is
+offered. The request is shown before anything is sent, runs in the locked
+progress window with its steps, and ends as one of:
+
+| End | Who acts | Next |
+|---|---|---|
+| added / already there / confirmed after the re-ask | nobody | the page reads public DNS every 20 s for at most 5 minutes |
+| busy (the main server applied nothing) | the owner, when they choose | "Ask again…" (a new request; never adds twice) |
+| no answer within 10 s | nobody | asked again once by itself after 25 s; then "not known" with "Ask again…" or Check |
+| refused: another record or a hand change there, or (older main server) the zone itself | the owner, on the main server | decide in its DNS editor, or Copy |
+| refused: the zone there needs review (ZONE_REVIEW) | the main server's administrator | check that zone, then Add again or Copy |
+| refused: not in a zone the main server keeps, or another zone there holds the name | the owner | add it where the name's DNS is managed (Copy) |
+
+Audit: `webmail.address.dns_record.*` on this server (busy is new),
+`dns.remote.host_record.*` on the main server. Code:
+`cmd/panel/webmail_address_dns_record.go`, `web/src/lib/webmailAddressRecords.ts`,
+`web/src/components/WebmailAddressCard.tsx` (now loaded only on Roundcube's
+page). Tests: `cmd/panel/webmail_address_dns_record_test.go`,
+`webmail_address_dns_record_tls_test.go` (over real TLS against the production
+receiver), `web/tests/webmail-dns-add-alpha135.test.mjs`. Open: no lab run on a
+real pair yet; Roundcube must be installed on the backup server for the card
+to show.

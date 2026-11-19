@@ -461,8 +461,10 @@ const flowSource = read('lib/webmailAddressFlow.ts');
 
 test('the card is mounted on the Roundcube Manage page, above the update card, for an installed Roundcube', () => {
   const detail = read('components/ComponentDetail.tsx');
-  assert.ok(detail.includes("import { WebmailAddressCard } from './WebmailAddressCard';"));
-  const condition = "{serviceId === 'roundcube' && record?.is_installed === true && (\n                <div className=\"mb-6\"><WebmailAddressCard /></div>";
+  // alpha.140: loaded only on Roundcube's page (the other component pages stay within their route budget).
+  assert.ok(detail.includes("const WebmailAddressCard = lazy(() => import('./WebmailAddressCard').then((module) => ({ default: module.WebmailAddressCard })));"));
+  assert.ok(!detail.includes("import { WebmailAddressCard } from './WebmailAddressCard';"));
+  const condition = "{serviceId === 'roundcube' && record?.is_installed === true && (\n                <div className=\"mb-6\"><Suspense fallback={null}><WebmailAddressCard /></Suspense></div>";
   assert.ok(detail.includes(condition));
   assert.ok(detail.indexOf('<WebmailAddressCard />') < detail.indexOf('<RoundcubeUpdateCard />'));
 });
