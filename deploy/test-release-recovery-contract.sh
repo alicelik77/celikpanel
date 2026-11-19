@@ -226,6 +226,8 @@ run_early_candidate_branch() (
     RELEASE_TRANSACTION_FD=9
     UNIT_DIR=$TEST_ROOT/etc/systemd/system
     RECOVERY_RUNTIME_ROOT=
+    # alpha.137: the first bounded host-idle check precedes the preparation.
+    preflight_host_idle_before_recovery_runtime() { : >"$TEST_ROOT/early-host-idle-checked"; }
     prepare_independent_recovery_runtime() { : >"$TEST_ROOT/early-runtime-promoted"; }
     publish_release_recovery_intent() { : >"$TEST_ROOT/early-intent-published"; }
     release_txn_install_and_verify_unit_guards() { : >"$TEST_ROOT/early-guards-installed"; }
@@ -239,12 +241,12 @@ sed -i -e 's/^current=51$/current=50/' -e 's/^previous=50$/previous=49/' \
 expect_failure stale-early-candidate run_early_candidate_branch
 grep -F 'foundation downgrade is refused' "$TEST_ROOT/stale-early-candidate.stderr" >/dev/null ||
     fail 'stale update candidate was rejected for the wrong reason'
-for effect in early-runtime-promoted early-intent-published early-guards-installed early-foundation-published; do
+for effect in early-host-idle-checked early-runtime-promoted early-intent-published early-guards-installed early-foundation-published; do
     [[ ! -e $TEST_ROOT/$effect ]] || fail "stale candidate reached $effect"
 done
 cp -- "$TEST_ROOT/original-sequence-policy" "$SOURCE_ROOT/deploy/release-sequence-policy"
 run_early_candidate_branch
-for effect in early-runtime-promoted early-intent-published early-guards-installed early-foundation-published; do
+for effect in early-host-idle-checked early-runtime-promoted early-intent-published early-guards-installed early-foundation-published; do
     [[ -e $TEST_ROOT/$effect ]] || fail "valid candidate did not reach $effect"
 done
 printf 'PASS: stale source sequence stops before recovery runtime promotion\n'
