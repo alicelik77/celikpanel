@@ -479,6 +479,8 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     // alpha.97: güncelleme neden durdu (açılış katalogundan taşındı; bu parça gelene dek pencere açılış yedeğini gösterir).
     'panelUpdate.outcome.preflightStep.compatibility': "Neden: sunucunun kurtarma aracı başlatılamadı ya da kurulumu doğrulanamadı. Sunucu yöneticisi aşağıdaki sunucu iletisine bakarak bunu denetlemeli; düzeltildikten sonra güncellemeyi yeniden başlatmak güvenlidir.",
     'panelUpdate.outcome.packageManagerBusy': "Neden: sunucunun paket yöneticisi meşguldü, örneğin otomatik güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi.",
+    // a137 laboratuvar 2: kendi açılış cümlesi; bu duruş kitin niyetinden sonra da gelebilir.
+    'panelUpdate.outcome.preparationUnconfirmedStopped': "{target} sürümüne güncelleme, kurulu sürüm değiştirilmeden ve hiçbir hizmet durdurulmadan durdu. Sunucu {previous} sürümünü eskisi gibi çalıştırıyor.",
     'panelUpdate.outcome.preparationUnconfirmed': "Neden: sunucunun kurtarma aracı yeni sürüm için kendi hazırlığını doğrulayamadı; bu yüzden güncelleme hiçbir hizmeti durdurmadan durdu. Kurulu sürüm ve verileri değiştirilmedi; kurtarma aracının yeni sürüm için kendi hazırlığı yarım kalmış olabilir.",
     'panelUpdate.outcome.preparationUnconfirmedNext': "Sunucu sahibi aşağıdaki komutu sunucuda bir kez çalıştırır ve yanıtının söylediğini yapar. Hiçbir işlem kendiliğinden başlamaz.",
     'panelUpdate.outcome.preparationUnconfirmedCommandNote': "Bu komut yalnız okur; hiçbir şeyi değiştirmez.",

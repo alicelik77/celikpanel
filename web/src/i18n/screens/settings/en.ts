@@ -500,6 +500,8 @@ export const enSettingsScreens = {
     // alpha.97: why an update stopped (moved out of the boot catalogue; the dialog shows its boot fallback until this part arrives).
     'panelUpdate.outcome.preflightStep.compatibility': "Reason: the server's recovery tool could not be started or its installation could not be verified. The server administrator checks it, using the server's line below; starting the update again is safe once it is corrected.",
     'panelUpdate.outcome.packageManagerBusy': "Reason: the server's package manager was busy, for example with automatic security updates. Nothing was changed.",
+    // a137 lab 2: its own opening; this stop can follow the kit's intent, so not "in its read-only check".
+    'panelUpdate.outcome.preparationUnconfirmedStopped': "The update to {target} stopped before the installed version was changed or any service was stopped. The server is running {previous} as before.",
     'panelUpdate.outcome.preparationUnconfirmed': "Reason: the server's recovery tool could not confirm its own preparation for the new version, so the update stopped before stopping any service. The installed version and its data were not changed; the recovery tool's own preparation for the new version may be partly done.",
     'panelUpdate.outcome.preparationUnconfirmedNext': "The server owner runs the command below once on the server and does what its answer says. Nothing starts by itself.",
     'panelUpdate.outcome.preparationUnconfirmedCommandNote': "This command only reads; it changes nothing.",

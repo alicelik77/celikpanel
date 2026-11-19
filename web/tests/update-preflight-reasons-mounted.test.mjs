@@ -254,7 +254,10 @@ for (const locale of ['en', 'tr']) {
             assert.equal(titleOf(renderer), c['panelUpdate.outcome.stoppedTitle']);
             assert.equal(markOf(renderer).props['data-update-mark'], 'neutral');
             const text = textOf(dialogOf(renderer));
-            assert.ok(text.includes(fill('panelUpdate.outcome.stopped', versions)), text);
+            assert.ok(text.includes(fill('panelUpdate.outcome.preparationUnconfirmedStopped', versions)), text);
+            // Not "stopped in its read-only check": the kit may have written its intent (a137 lab 2).
+            assert.ok(!text.includes(fill('panelUpdate.outcome.stopped', versions)), text);
+            assert.ok(!/read-only check|salt-okur denetimde/.test(text), text);
             assert.ok(text.includes(c['panelUpdate.outcome.preparationUnconfirmed']), text);
             assert.ok(text.includes(fill('panelUpdate.outcome.preparationUnconfirmedNext', versions)), text);
             assert.ok(text.includes(`sudo /usr/libexec/celikpanel/recovery runtime-status --lang ${locale}`), 'the read-only command is shown, answering in the page language');

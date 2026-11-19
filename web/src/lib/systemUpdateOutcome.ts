@@ -38,6 +38,7 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.packageManagerBusy'
     | 'panelUpdate.packageManagerBusy'
     | 'panelUpdate.outcome.packageManagerBusyNext'
+    | 'panelUpdate.outcome.preparationUnconfirmedStopped'
     | 'panelUpdate.outcome.preparationUnconfirmed'
     | 'panelUpdate.outcome.preparationUnconfirmedNext'
     | 'panelUpdate.outcome.preparationUnconfirmedCommandNote'
@@ -226,8 +227,10 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
             // D-024: what happened and what is known, who acts and the
             // next action, the command, then how work resumes for each of
             // its answers (the recovery tool's own runtime-status wording).
+            // Its own opening: true also when the kit's preparation had
+            // written its intent (a137 lab 2), unlike "in its read-only check".
             lines: [
-                { key: 'panelUpdate.outcome.stopped', vars: versions },
+                { key: 'panelUpdate.outcome.preparationUnconfirmedStopped', vars: versions, fallback: 'panelUpdate.outcome.stoppedTitle' },
                 { key: 'panelUpdate.outcome.preparationUnconfirmed', fallback: 'panelUpdate.outcome.preflightStep.generic' },
                 { key: 'panelUpdate.outcome.preparationUnconfirmedNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
             ],
