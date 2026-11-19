@@ -70,9 +70,8 @@ const stub = dataModule(`
 const shared = sharedLayer(stub);
 const coverageURL = compileSource('components/domain/coverageLines.ts', (specifier) => (specifier.endsWith('/dateFormat') ? dateFormatURL : stub));
 const hostLineURL = shared.compile('components/domain/MailHostProtection.tsx', { '/coverageLines': coverageURL });
-const autoconfigURL = shared.compile('components/MailAutoconfigNotice.tsx');
 const windowURL = shared.compile('components/MailboxConnectionDialog.tsx', {
-  '/MailAutoconfigNotice': autoconfigURL, '/MailHostProtection': hostLineURL, '/coverageLines': coverageURL,
+  '/MailHostProtection': hostLineURL, '/coverageLines': coverageURL,
 });
 const none = 'data:text/javascript,export default () => null';
 const managerText = source('components/DomainMailManager.tsx')
@@ -88,16 +87,20 @@ const compiled = ts.transpileModule(managerText, {
 }).outputText.replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : shared.resolve(specifier)}'`);
 const Inner = (await import(dataModule(`import React from '${reactURL}';\n${compiled}`))).DomainMailManager;
 const DomainMailManager = (props) => React.createElement(React.Suspense, { fallback: null }, React.createElement(Inner, props));
-const { connectionText, notReadyLine } = await import(windowURL);
+const { connectionText, connectionProblem } = await import(windowURL);
 const { decodeMailSetup } = await import(shared.resolve('../lib/mailSetup'));
 
 // --- The server's answers ---------------------------------------------------
 const protocol = (port, security) => ({ host: 'mail.example.com', port, security });
+// The server's answer as cmd/panel handleMailClientSetupWith writes it: the
+// told name (autoconfig.mail_host) is the host of all three protocols.
+const told = { state: 'on', reason: '', names: ['autoconfig.example.com', 'autodiscover.example.com'], mail_host: 'mail.example.com', served: 'yes', secure: 'yes', dns: 'local', records: [], can_fix: false };
 const setup = (overrides = {}) => ({
-  mail_host: 'mail.example.com', imap: protocol(993, 'SSL/TLS'), pop3: protocol(995, 'SSL/TLS'), smtp: protocol(587, 'STARTTLS'),
-  username_is_full_email: true, webmail_available: true, webmail_url: 'https://mail.example.com/', ...overrides,
+  mail_host: 'mail.example.com', imap: protocol(993, 'SSL/TLS'), pop3: protocol(995, 'SSL/TLS'), smtp: { ...protocol(587, 'STARTTLS'), auth_required: true },
+  username_is_full_email: true, webmail_available: true, webmail_url: 'https://mail.example.com/', autoconfig: told, ...overrides,
 });
-const notHere = { state: 'unavailable', reason: 'mail_not_here', names: ['autoconfig.example.com', 'autodiscover.example.com'], records: [] };
+// Without the told name the server falls back to mail.<domain> and sends no mail_host in autoconfig.
+const unavailable = (reason) => ({ state: 'unavailable', reason, names: ['autoconfig.example.com', 'autodiscover.example.com'], served: 'unknown', secure: 'unknown', records: [] });
 const hostLine = (state, reason) => ({ kind: 'mail_programs', name: 'mail.example.com', state, ips: ['203.0.113.9'],
   ...(reason ? { reason } : { by: 'server_mail_certificate', until: '2027-02-01T00:00:00Z' }) });
 const accounts = [{ id: 5, address: 'info@example.com', quota_mb: 1024 }];
@@ -256,6 +259,7 @@ const expected = {
     '  Server: mail.example.com',
     '  Port: 587',
     '  Security: STARTTLS',
+    '  Sign-in: required, with the same user name and password',
     '',
     'Webmail: https://mail.example.com/?_user=info%40example.com',
   ].join('\n'),
@@ -279,6 +283,7 @@ const expected = {
     '  Sunucu: mail.example.com',
     '  Port: 587',
     '  Güvenlik: STARTTLS',
+    '  Oturum açma: gerekli, aynı kullanıcı adı ve parolayla',
     '',
     'Web posta: https://mail.example.com/?_user=info%40example.com',
   ].join('\n'),
@@ -327,31 +332,88 @@ scenario('the read could not be made: what could not be read, Retry, no values a
   assert.equal(attr('data-mailbox-copy-all')[0].props.disabled, false);
 });
 
-scenario('mail not ready: the tab’s own line, once, above the values', async () => {
-  const cases = [
-    [setup({ autoconfig: notHere }), 'mail', /mcfg\.auto\.reason\.mail_not_here/],
-    [setup({ autoconfig: { ...notHere, reason: 'mail_host_unknown' } }), 'mail', /mcfg\.auto\.reason\.mail_host_unknownCustomer/],
-    [setup({ host_protection: hostLine('not_protected', 'points_elsewhere') }), 'host', /certcover\.reason\.points_elsewhere/],
-    [setup({ host_protection: hostLine('not_protected', 'not_in_certificate') }), 'host', /certcover\.reason\.not_in_certificate/],
-    // Both: the more basic one, once.
-    [setup({ autoconfig: notHere, host_protection: hostLine('not_protected', 'no_address') }), 'mail', /mcfg\.auto\.reason\.mail_not_here/],
-  ];
-  for (const [answer, kind, sentence] of cases) {
-    serve({ role: 'customer', webmail: answer });
+// What the read can say (cmd/panel domain_mail_extra_handlers.go,
+// mail_autoconfig.go, certificate_coverage.go): the host of all three
+// protocols is the told name when the auto-setup decision has one, else the
+// bare mail.<domain>; the certificate line is about the told name only and
+// never carries the public DNS. So "points elsewhere" cannot be said here.
+const problemCases = [
+  ['mail not installed here', setup({ autoconfig: unavailable('mail_not_here') }), 'notHere', 'blocked'],
+  ['the server’s mail name not set', setup({ autoconfig: unavailable('mail_host_unknown') }), 'nameUnset', 'unknown'],
+  ['a subdomain (no told name)', setup({ autoconfig: unavailable('subdomain') }), 'unconfirmed', 'unknown'],
+  ['a domain without a site (no told name)', setup({ autoconfig: unavailable('no_site') }), 'unconfirmed', 'unknown'],
+  ['the auto-setup decision could not be read', setup({ autoconfig: unavailable('unknown') }), 'unconfirmed', 'unknown'],
+];
+for (const role of ['admin', 'customer']) {
+  for (const [name, answer, kind, tone] of problemCases) {
+    scenario(`${role}: ${name} → one D-024 line above the values; Copy all ${kind === 'notHere' ? 'off' : 'with the warning first'}`, async () => {
+      serve({ role, webmail: answer });
+      await mount();
+      await openWindow();
+      const lines = attr('data-mailbox-connection-problem');
+      assert.equal(lines.length, 1);
+      assert.equal(lines[0].props['data-mailbox-connection-problem'], kind);
+      assert.equal(lines[0].props['data-guidance'], tone);
+      const said = words(lines[0]);
+      assert.match(said, new RegExp(`mconn\\.reach\\.${kind}\\.why\\{"name":"mail\\.example\\.com"\\}`));
+      assert.match(said, new RegExp(`mconn\\.reach\\.${kind}\\.next\\.${role === 'admin' ? 'admin' : 'other'}`));
+      assert.match(said, new RegExp(`kit\\.guidance\\.who\\.${role === 'admin' ? 'you' : 'administrator'}`));
+      assert.deepEqual(shownValues().slice(0, 2), ['info@example.com', 'mail.example.com'], 'the values are still shown');
+      const copyAll = attr('data-mailbox-copy-all')[0];
+      if (kind === 'notHere') {
+        assert.equal(copyAll.props.disabled, true, 'settings that cannot work are handed on');
+        assert.equal(copyAll.props['aria-describedby'], 'mailbox-connection-problem');
+        assert.equal(attr('id', 'mailbox-connection-problem').length, 1);
+      } else {
+        assert.equal(copyAll.props.disabled, false);
+        await press(copyAll);
+        assert.match(copied[0], /^mconn\.text\.unconfirmed\n\nmconn\.text\.title/, 'an unconfirmed name is handed on as ready');
+      }
+    });
+  }
+}
+
+scenario('the told name without a trusted certificate: the Settings tab’s certificate line, once; Copy all as ready', async () => {
+  for (const reason of ['server_certificate_not_ready', 'certificate_not_usable']) {
+    serve({ role: 'customer', webmail: setup({ host_protection: hostLine('not_protected', reason) }) });
     await mount();
     await openWindow();
     const lines = attr('data-mailbox-connection-problem');
-    assert.equal(lines.length, 1, kind);
-    assert.equal(lines[0].props['data-mailbox-connection-problem'], kind);
-    assert.match(words(lines[0]), sentence);
-    assert.deepEqual(shownValues().slice(0, 2), ['info@example.com', 'mail.example.com'], 'the values are still shown');
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].props['data-mailbox-connection-problem'], 'certificate');
+    assert.match(words(lines[0]), new RegExp(`certcover\\.reason\\.${reason}`));
+    await press(attr('data-mailbox-copy-all')[0]);
+    assert.match(copied[0], /^mconn\.text\.title/);
     await cleanup();
   }
-  // Ready, protected, a subdomain or a partial set-up: no line (not a new check).
-  for (const answer of [setup(), setup({ host_protection: hostLine('protected') }), setup({ autoconfig: { ...notHere, reason: 'subdomain' } }),
-    setup({ autoconfig: { state: 'partial', reason: '', served: 'no', records: [] } }), setup({ host_protection: hostLine('unknown', 'not_checked') })]) {
-    assert.equal(notReadyLine(decodeMailSetup(answer)), null, JSON.stringify(answer));
+});
+
+test('ready, protected, or a line about another name: no problem line (no new check)', () => {
+  for (const answer of [setup(), setup({ host_protection: hostLine('protected') }), setup({ host_protection: hostLine('unknown', 'not_checked') }),
+    setup({ autoconfig: { ...told, state: 'partial', served: 'no' } }), setup({ autoconfig: { ...told, state: 'off', served: 'no' } }),
+    setup({ host_protection: { ...hostLine('not_protected', 'server_certificate_not_ready'), name: 'other.example.net' } })]) {
+    assert.equal(connectionProblem(decodeMailSetup(answer)), null, JSON.stringify(answer));
   }
+  // An answer whose told name is not the host shown, or that has none: not confirmed.
+  assert.equal(connectionProblem(decodeMailSetup(setup({ autoconfig: { ...told, mail_host: 'mx.example.net' } }))), 'unconfirmed');
+  assert.equal(connectionProblem(decodeMailSetup(setup({ autoconfig: undefined }))), 'unconfirmed');
+});
+
+scenario('outgoing sign-in: one line under SMTP and in the copied text only when the read says it is required', async () => {
+  serve({ role: 'customer' });
+  await mount();
+  await openWindow();
+  assert.equal(attr('data-mailbox-smtp-auth').length, 1);
+  assert.match(words(attr('data-mailbox-smtp-auth')[0]), /mconn\.smtpAuth/);
+  await press(attr('data-mailbox-copy-all')[0]);
+  assert.match(copied[0], /mconn\.text\.smtpAuth/);
+  await cleanup();
+  serve({ role: 'customer', webmail: setup({ smtp: protocol(587, 'STARTTLS') }) });
+  await mount();
+  await openWindow();
+  assert.equal(attr('data-mailbox-smtp-auth').length, 0);
+  await press(attr('data-mailbox-copy-all')[0]);
+  assert.doesNotMatch(copied[0], /mconn\.text\.smtpAuth/);
 });
 
 test('the copy-all text holds every value of the read and no password field', () => {
@@ -360,7 +422,10 @@ test('the copy-all text holds every value of the read and no password field', ()
   assert.match(text, /Username: a\+b@example\.com/);
   assert.match(text, /_user=a%2Bb%40example\.com/);
   // The only password line says where the password comes from, never one.
-  assert.deepEqual(text.split('\n').filter((line) => /password/i.test(line)), ['Password: the one you were given separately (not in this message)']);
+  assert.deepEqual(text.split('\n').filter((line) => /password/i.test(line)), [
+    'Password: the one you were given separately (not in this message)',
+    '  Sign-in: required, with the same user name and password',
+  ]);
 });
 
 test('the window’s words: every key in English and Turkish with the same values, and the window loads lazily', () => {

@@ -4,8 +4,8 @@
 //   y40conn   A domain's mailboxes as the administrator and as a customer:
 //             the first mailbox's "More" menu open (Connection settings…
 //             first), the window with that mailbox's values, and the window
-//             when the domain's mail name points elsewhere (the Settings
-//             tab's own line above the values)
+//             in each state the read can carry: the told name without a
+//             trusted certificate, mail not installed here, and no told name
 //
 // Every answer comes from the mock on 127.0.0.1 through overrides (SAMPLE
 // data shaped as the Panel answers); nothing is changed or contacted.
@@ -28,8 +28,17 @@ const READY = {
     mail_host: HOST, imap: protocol(993, 'SSL/TLS'), pop3: protocol(995, 'SSL/TLS'), smtp: { ...protocol(587, 'STARTTLS'), auth_required: true },
     username_is_full_email: true, webmail_available: true, webmail_url: `https://${HOST}/`,
     host_protection: { kind: 'mail_programs', name: HOST, state: 'protected', by: 'server_mail_certificate', until: '2027-02-01T00:00:00Z', ips: [] },
+    autoconfig: { state: 'on', reason: '', names: ['autoconfig.kahvedukkani.com.tr', 'autodiscover.kahvedukkani.com.tr'], mail_host: HOST, served: 'yes', secure: 'yes', dns: 'local', records: [], can_fix: false },
 };
-const POINTS_ELSEWHERE = { ...READY, host_protection: { kind: 'mail_programs', name: HOST, state: 'not_protected', reason: 'points_elsewhere', ips: ['198.51.100.20'], action: 'dns' } };
+// The states the read can carry (cmd/panel handleMailClientSetupWith): the
+// told name without a trusted certificate; mail not installed here; and an
+// answer without a told name, whose host is the bare mail.<domain>.
+const unavailable = (reason) => ({ ...READY, host_protection: undefined, autoconfig: { state: 'unavailable', reason, names: READY.autoconfig.names, served: 'unknown', secure: 'unknown', records: [] } });
+const PROBLEMS = {
+    certificate: { ...READY, host_protection: { kind: 'mail_programs', name: HOST, state: 'not_protected', reason: 'server_certificate_not_ready', ips: [] } },
+    'not-here': unavailable('mail_not_here'),
+    unconfirmed: unavailable('no_site'),
+};
 const ACCOUNTS = { accounts: [{ id: 5, address: 'siparis@kahvedukkani.com.tr', quota_mb: 2048 }, { id: 6, address: 'ayse.yilmaz@kahvedukkani.com.tr', quota_mb: 1024 }] };
 const QUOTA = { plugin_enabled: true, usages: [
     { email: 'siparis@kahvedukkani.com.tr', used_kb: 350208, limit_kb: 2097152, available: true },
@@ -39,7 +48,7 @@ const QUOTA = { plugin_enabled: true, usages: [
 const facts = (page) => page.evaluate(() => {
     const dialog = document.querySelector('[role="dialog"]');
     const node = dialog || document.querySelector('[role="menu"]') || document.querySelector('main');
-    const raw = /\b(mail|mconn|mcfg|certcover|kit)\.[a-zA-Z][a-zA-Z0-9_.]*\b|\{[a-z_]+\}/;
+    const raw = /\b(mail\.(setup|row)|mconn|mcfg|certcover|kit)\.[a-zA-Z][a-zA-Z0-9_.]*\b|\{[a-z_]+\}/;
     const text = node ? node.innerText : '';
     const box = dialog?.getBoundingClientRect();
     return {
@@ -98,10 +107,12 @@ export default function batch40(scenarios, { base, locale, theme, out, viewport,
             await page.evaluate(() => document.querySelector('[data-mailbox-copy-all]')?.click());
             await pause(300);
             await closePage(page);
-            page = await open(role, POINTS_ELSEWHERE);
-            await openWindow(page);
-            await snap(page, `window-problem-${role}`, { role });
-            await closePage(page);
+            for (const [name, setup] of Object.entries(PROBLEMS)) {
+                page = await open(role, setup);
+                await openWindow(page);
+                await snap(page, `window-${name}-${role}`, { role });
+                await closePage(page);
+            }
         }
         await reset(); await ctl({ clearAll: true, domains: [] });
     };

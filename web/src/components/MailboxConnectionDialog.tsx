@@ -3,8 +3,10 @@ import { KeyRound, Server } from 'lucide-react';
 import { useMailboxConnectionWords, type MailboxConnectionWordKey } from '../i18n/mailboxConnection';
 import { decodeMailSetup, mailSetupURL, webmailSignInURL, type MailProtocol, type MailSetup } from '../lib/mailSetup';
 import { useRemote } from '../lib/remote';
+import { useAuth } from '../auth/AuthContext';
 import { Button, Dialog, RemoteGate } from './ui';
-import { MailAutoconfigNotice } from './MailAutoconfigNotice';
+import { Guidance } from './kit/rows/Guidance';
+import { whoWord } from './kit/words';
 import { MailHostProtection } from './domain/MailHostProtection';
 import { decodeCoverageLine } from './domain/coverageLines';
 
@@ -23,17 +25,35 @@ import { decodeCoverageLine } from './domain/coverageLines';
 type Say = (key: MailboxConnectionWordKey, values?: Record<string, string | number>) => string;
 
 /**
- * The one "not ready" line the Settings tab already shows, if the domain's
- * mail is not ready: no mail service on this server or no mail name set
- * (the tab's autoconfig line), else the mail name not protected by a
- * trusted certificate or not pointing here (the tab's certificate line).
- * No new check: both come in the same answer.
+ * Whether these settings lead to this mailbox, from the read alone (no new
+ * check). The server names one host for IMAP, POP3 and SMTP
+ * (cmd/panel/domain_mail_extra_handlers.go handleMailClientSetupWith):
+ * the name mail programs are told (mail_autoconfig.go mailClientHost: the
+ * server's own mail name, or mail.<domain> for a domain that chose it with a
+ * certificate serving mail) whenever the auto-setup decision has one; in
+ * every other case the bare convention mail.<domain>, which the server did
+ * not choose and never looked up. The read says nothing about the public DNS
+ * of the name (certificate_coverage.go mailProgramsCoverage reads without
+ * it), so a name "pointing elsewhere" can never be stated here.
+ *
+ *   notHere      mail is not installed on this server: verified, nothing reaches it
+ *   nameUnset    the server's mail name is not set: the name is a stand-in
+ *   unconfirmed  any other answer without the told name: a stand-in too
+ *   certificate  the told name, without a trusted certificate (the tab's line,
+ *                only when it is about the name shown)
+ *
+ * Ayarların bu posta kutusuna ulaşıp ulaşmadığı, yalnız okunan yanıttan.
  */
-export function notReadyLine(setup: MailSetup): 'mail' | 'host' | null {
-    const reason = setup.autoconfig?.state === 'unavailable' ? setup.autoconfig.reason : '';
-    if (reason === 'mail_not_here' || reason === 'mail_host_unknown') return 'mail';
-    if (setup.mail_host && decodeCoverageLine(setup.host_protection)?.state === 'not_protected') return 'host';
-    return null;
+export type ConnectionProblem = 'notHere' | 'nameUnset' | 'unconfirmed' | 'certificate' | null;
+const sameName = (a: string, b: string) => a.trim().toLowerCase().replace(/\.$/, '') === b.trim().toLowerCase().replace(/\.$/, '');
+export function connectionProblem(setup: MailSetup): ConnectionProblem {
+    const auto = setup.autoconfig;
+    if (auto?.state === 'unavailable' && auto.reason === 'mail_not_here') return 'notHere';
+    if (!auto || !auto.mail_host || !sameName(auto.mail_host, setup.mail_host)) {
+        return auto?.state === 'unavailable' && auto.reason === 'mail_host_unknown' ? 'nameUnset' : 'unconfirmed';
+    }
+    const line = decodeCoverageLine(setup.host_protection);
+    return line?.state === 'not_protected' && sameName(line.name, setup.mail_host) ? 'certificate' : null;
 }
 
 /** The plain text "Copy all" gives, in the page's language, without the password. */
@@ -45,7 +65,10 @@ export function connectionText(t: Say, address: string, setup: MailSetup): strin
         `  ${t('mail.setup.security')}: ${proto.security}`,
     ];
     const webmail = webmailSignInURL(setup.webmail, address);
+    const problem = connectionProblem(setup);
     return [
+        // A name this server did not confirm is never handed on as ready.
+        ...(problem === 'nameUnset' || problem === 'unconfirmed' ? [t('mconn.text.unconfirmed'), ''] : []),
         t('mconn.text.title', { address }),
         '',
         `${t('mail.setup.username')}: ${address}`,
@@ -56,6 +79,7 @@ export function connectionText(t: Say, address: string, setup: MailSetup): strin
         ...block('mconn.incomingAlt', 'POP3', setup.pop3),
         '',
         ...block('mconn.outgoing', 'SMTP', setup.smtp),
+        ...(setup.smtp.auth_required === true ? [t('mconn.text.smtpAuth')] : []),
         ...(webmail ? ['', `${t('mail.row.webmail')}: ${webmail}`] : []),
     ].join('\n');
 }
@@ -71,6 +95,7 @@ export default function MailboxConnectionDialog({ domainId, domainName, address,
     onClose: () => void;
 }) {
     const { t } = useMailboxConnectionWords();
+    const { role } = useAuth();
     const setup = useRemote(mailSetupURL(domainId), decodeMailSetup);
     const [said, setSaid] = useState<Said>(null);
     const timer = useRef<number | undefined>(undefined);
@@ -91,6 +116,8 @@ export default function MailboxConnectionDialog({ domainId, domainName, address,
     };
 
     const known = setup.remote.state === 'known' ? setup.remote.value : null;
+    const notHere = !!known && connectionProblem(known) === 'notHere';
+    const admin = role === 'admin';
     const copyButton = (value: string) => (
         <button type="button" onClick={() => void copy(value, 'copied')} data-mailbox-copy={value}
             className="shrink-0 rounded-md border border-border-strong px-2.5 py-1 text-xs font-medium text-fg hover:bg-surface-2 max-sm:min-h-11">
@@ -141,8 +168,10 @@ export default function MailboxConnectionDialog({ domainId, domainName, address,
             actions={
                 <>
                     <Button type="button" onClick={onClose}>{t('common.close')}</Button>
-                    <Button type="button" variant="primary" disabled={!known} onClick={() => known && void copy(connectionText(t, address, known), 'copiedAll')}
-                        data-mailbox-copy-all="">
+                    {/* Mail not on this server: nothing in the text would work, so
+                        there is nothing to hand on; the line above says why. */}
+                    <Button type="button" variant="primary" disabled={!known || notHere} onClick={() => known && !notHere && void copy(connectionText(t, address, known), 'copiedAll')}
+                        aria-describedby={notHere ? 'mailbox-connection-problem' : undefined} data-mailbox-copy-all="">
                         {t('mconn.copyAll')}
                     </Button>
                 </>
@@ -156,16 +185,27 @@ export default function MailboxConnectionDialog({ domainId, domainName, address,
                 busy={setup.reading}
             >
                 {({ value: settings }) => {
-                    const problem = notReadyLine(settings);
+                    const problem = connectionProblem(settings);
                     const webmail = webmailSignInURL(settings.webmail, address);
+                    const reach = problem === 'notHere' || problem === 'nameUnset' || problem === 'unconfirmed' ? problem : null;
                     return (
                         <div className="space-y-4" data-mailbox-connection={address}>
-                            {/* The Settings tab's own line, once, above the values. */}
-                            {problem && (
-                                <div className="rounded-lg border border-warning-mark/50 bg-warning-mark/15 px-3 py-2 [&>p]:my-0" data-mailbox-connection-problem={problem}>
-                                    {problem === 'mail' && settings.autoconfig
-                                        ? <MailAutoconfigNotice domainId={domainId} autoconfig={settings.autoconfig} readOnly />
-                                        : <MailHostProtection host={settings.mail_host} protection={settings.host_protection} domainName={domainName} />}
+                            {/* Whether these settings reach this mailbox, once, above the values (D-024). */}
+                            {reach && (
+                                <div id="mailbox-connection-problem"><Guidance
+                                    tone={reach === 'notHere' ? 'blocked' : 'unknown'}
+                                    data-mailbox-connection-problem={reach}
+                                    title={t(reach === 'notHere' ? 'mconn.reach.notHere.title' : 'mconn.reach.maybe.title')}
+                                    why={t(`mconn.reach.${reach}.why` as MailboxConnectionWordKey, { name: settings.mail_host })}
+                                    who={whoWord(t, admin ? 'you' : 'administrator')}
+                                    next={t(`mconn.reach.${reach}.next.${admin ? 'admin' : 'other'}` as MailboxConnectionWordKey)}
+                                    then={reach === 'unconfirmed' ? undefined : t(`mconn.reach.${reach}.then` as MailboxConnectionWordKey)}
+                                /></div>
+                            )}
+                            {/* The Settings tab's certificate line, only about the name shown. */}
+                            {problem === 'certificate' && (
+                                <div className="rounded-lg border border-warning-mark/50 bg-warning-mark/15 px-3 py-2 [&>p]:my-0" data-mailbox-connection-problem="certificate">
+                                    <MailHostProtection host={settings.mail_host} protection={settings.host_protection} domainName={domainName} />
                                 </div>
                             )}
                             <dl>{value(t('mail.setup.username'), address)}</dl>
@@ -182,6 +222,12 @@ export default function MailboxConnectionDialog({ domainId, domainName, address,
                                     {protocol('mconn.incoming', 'IMAP', settings.imap)}
                                     {protocol('mconn.incomingAlt', 'POP3', settings.pop3)}
                                     {protocol('mconn.outgoing', 'SMTP', settings.smtp)}
+                                    {settings.smtp.auth_required === true && (
+                                        <tr className="max-sm:block" data-mailbox-smtp-auth="">
+                                            <td className="max-sm:hidden" />
+                                            <td colSpan={3} className="pb-2 text-sm text-fg-muted max-sm:block">{t('mconn.smtpAuth')}</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                             {webmail && <dl>{value(t('mail.row.webmail'), webmail)}</dl>}
