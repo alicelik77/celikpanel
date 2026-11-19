@@ -154,6 +154,33 @@ func (p *Panel) mailClientHost(ctx context.Context, domainID int, domain, server
 	return serverHost, nil
 }
 
+// mailToldHostIfServed is the name a domain's mail programs are told
+// whatever its site answers (alpha.139): mailClientHost with the server's mail
+// name. That is the name this server serves with a valid certificate: Postfix's
+// myhostname and Dovecot's default are the server's mail name with its mail
+// host certificate (cmd/agent selectedMailHostCertificate), and mail.<domain>
+// is told only when the domain chose it and its certificate serves mail, the
+// name the mail TLS snapshot's SNI map carries (mail_tls.go
+// loadMailTLSSnapshotLocked). "" when mail is not on this server or the
+// server's mail name is not known: the mail screen then shows mail.<domain>,
+// which no one confirmed, and says so.
+// Posta programlarına söylenen ad, sitenin yanıtından bağımsız; bilinmiyorsa "".
+func (p *Panel) mailToldHostIfServed(ctx context.Context, domainID int, domain string) string {
+	if !mailAutoconfigMailHere(p, ctx) {
+		return ""
+	}
+	server, err := p.mailTLSHostname(ctx)
+	if err != nil {
+		return ""
+	}
+	told, err := p.mailClientHost(ctx, domainID, domain, server)
+	if err != nil {
+		log.Printf("[mail-autoconfig] domain %d: the name mail programs are told: %v", domainID, err)
+		return ""
+	}
+	return told
+}
+
 // mailAutoconfigRequest is the render's part: nil when the domain's site
 // file does not answer mail programs. A failure to decide is logged and
 // leaves the answers out; it never stops the site's render.
@@ -342,10 +369,15 @@ func (p *Panel) mailAutoconfigView(ctx context.Context, domainID int, domain str
 	if err != nil {
 		log.Printf("[mail-autoconfig] domain %d: %v", domainID, err)
 		view.Reason = "unknown"
+		view.MailHost = p.mailToldHostIfServed(ctx, domainID, domain)
 		return view
 	}
 	if !plan.available {
+		// alpha.139: whether the site answers the set-up requests (a
+		// subdomain, no site, a name in use) says nothing about the mail
+		// server: mail programs are told the same name as anywhere else.
 		view.Reason = plan.reason
+		view.MailHost = p.mailToldHostIfServed(ctx, domainID, domain)
 		return view
 	}
 	view.MailHost = plan.mailHost

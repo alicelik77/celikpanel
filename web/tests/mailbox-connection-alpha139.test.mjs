@@ -33,7 +33,7 @@ import { trMailboxConnection } from '../src/i18n/mailboxConnection/tr.ts';
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const icons = new Set(['AlertTriangle']);
-for (const file of ['DomainMailManager', 'OutgoingMailboxLimits', 'WebmailAccess', 'MailboxConnectionDialog', 'MailAutoconfigNotice', 'domain/MailHostProtection']) {
+for (const file of ['DomainMailManager', 'OutgoingMailboxLimits', 'WebmailAccess', 'MailboxConnectionDialog', 'MailAutoconfigNotice', 'domain/MailHostProtection', 'MailSettingsPanel']) {
   for (const match of source(`components/${file}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) if (item.trim()) icons.add(item.trim());
   }
@@ -444,3 +444,44 @@ test('the window’s words: every key in English and Turkish with the same value
   assert.match(window, /useRemote\(mailSetupURL\(domainId\), decodeMailSetup\)/);
   assert.doesNotMatch(window, /fetch\(|['"`]\/api\/v1/);
 });
+
+// alpha.139 (server side): a subdomain, a domain without a site or one whose
+// set-up name is in use is told the server's own mail name like any other
+// domain (cmd/panel mailToldHostIfServed); autoconfig carries it, so the
+// Settings tab shows it in its three cards and the window confirms it.
+// Bir alt alan adı da sunucunun kendi posta adını gösterir; pencere uyarmaz.
+const realMailSettingsPanel = (await import(shared.compile('components/MailSettingsPanel.tsx', {
+  '/CurrentSettings': shared.compile('components/CurrentSettings.tsx'),
+  '/MailAutoconfigNotice': shared.compile('components/MailAutoconfigNotice.tsx'),
+  '/MailHostProtection': hostLineURL,
+}))).MailSettingsPanel;
+const serverName = 'mail.server.example';
+const toldAnswer = (reason) => setup({
+  mail_host: serverName,
+  imap: { host: serverName, port: 993, security: 'SSL/TLS' },
+  pop3: { host: serverName, port: 995, security: 'SSL/TLS' },
+  smtp: { host: serverName, port: 587, security: 'STARTTLS', auth_required: true },
+  autoconfig: { ...unavailable(reason), mail_host: serverName },
+});
+for (const reason of ['subdomain', 'no_site', 'name_taken']) {
+  scenario(`${reason}: the Settings tab shows the server's mail name, and the window has nothing to warn about`, async () => {
+    serve({ role: 'customer', webmail: toldAnswer(reason) });
+    await act(async () => {
+      tree = Renderer.create(React.createElement(realMailSettingsPanel, { domainId: 1, domainName: 'shop.example.com' }));
+      for (let i = 0; i < 5; i++) await settled();
+    });
+    const said = JSON.stringify(tree.toJSON());
+    assert.equal(said.split(serverName).length - 1 >= 3, true, 'the three cards do not name the server’s mail name');
+    assert.ok(!said.includes('mail.shop.example.com') && !said.includes('mail.example.com'), 'a stand-in name is shown');
+    assert.ok(said.includes(`mcfg.auto.reason.${reason}`), 'the set-up line of the tab is gone');
+    await act(async () => tree.unmount());
+    tree = undefined;
+    assert.equal(connectionProblem(decodeMailSetup(toldAnswer(reason))), null);
+    await mount();
+    await openWindow();
+    assert.equal(attr('data-mailbox-connection-problem').length, 0);
+    assert.deepEqual(shownValues().slice(1, 4), [serverName, serverName, serverName]);
+    await press(attr('data-mailbox-copy-all')[0]);
+    assert.match(copied[0], /^mconn\.text\.title/);
+  });
+}
