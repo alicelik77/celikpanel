@@ -31,7 +31,7 @@ günceller.**
    başarısız olduğunu ve sunucu sahibinin güncelleme günlüğünü incelemesi
    gerektiğini söylüyor, sayfa kilitli kalıyor ve güncelleme düğmesi yok),
    güncellemeden önce aşağıdaki "Önceki bir güncelleme sayfayı kilitli
-   bıraktıysa" bölümüne bakın.
+   bıraktıysa" bölümüne bakın (bir kısmı laboratuvarda doğrulanacak).
 4. Güncellemeden sonra basılacak ya da ayarlanacak bir şey yok.
 
 ## Sizin için ne değişiyor
@@ -86,6 +86,14 @@ günceller.**
   sayılmaz.
 - Ubuntu Pro'nun haber ve ESM önbellek hizmetleri paket etkinliği sayılmaz:
   sistemin paket kilitlerinden hiçbirini almazlar.
+- **Sağlamlaştırma:** yalnız paket yöneticisinin adını taşıyan ve sıradan
+  bir hesabın çalıştırdığı bir süreç artık güncellemeyi bekletmez. Bir
+  barındırma sunucusunda her hesap `apt` ya da `dpkg` adlı bir program
+  başlatabilir; artık yalnız root olarak çalışan süreç (sistemin paketlerini
+  değiştirebilen tek kullanıcı) sayılır. Sahibi okunamayan süreç yine
+  sayılır.
+- Böyle bir duruştan sonraki yeniden deneme artık kurtarma kitinin bir
+  kopyasını geride bırakmaz.
 
 ### Ne görürsünüz
 
@@ -111,40 +119,65 @@ güvenlik güncellemeleri çalışıyordu. Hiçbir şey değiştirilmedi."), sü
 değişmez, güncelleme düğmesi yeniden görünür; o iş bitince güncellemeyi
 yeniden başlatırsınız.
 
-Kurtarma aracının hazırlığı başka bir nedenle durursa pencere bunu artık
-kapatılabilir bir duruş olarak söyler: "sunucunun kurtarma aracı yeni sürüm
-için kendi hazırlığını doğrulayamadı; bu yüzden güncelleme hiçbir hizmeti
-durdurmadan durdu. Kurulu sürüm ve verileri değiştirilmedi.", yanında
-yalnız okuyan tek bir komutla:
-`sudo /usr/libexec/celikpanel/recovery runtime-status --lang tr`; komut o
-hazırlıktan geriye bir şey kalıp kalmadığını ve ne yapılacağını Türkçe
-söyler.
-Önceden bu sayfa kilitli kalıyordu.
+Kurtarma aracının hazırlığı başka bir nedenle durursa pencere artık kilitli
+kalmaz; bunu kapatılabilir bir duruş olarak gösterir ve şunu söyler:
+
+> "Neden: sunucunun kurtarma aracı yeni sürüm için kendi hazırlığını
+> doğrulayamadı; bu yüzden güncelleme hiçbir hizmeti durdurmadan durdu.
+> Kurulu sürüm ve verileri değiştirilmedi; kurtarma aracının yeni sürüm
+> için kendi hazırlığı yarım kalmış olabilir. Sunucu sahibi aşağıdaki
+> komutu sunucuda bir kez çalıştırır ve yanıtının söylediğini yapar. Hiçbir
+> işlem kendiliğinden başlamaz."
+>
+> `sudo /usr/libexec/celikpanel/recovery runtime-status --lang tr`
+>
+> "Bu komut yalnız okur; hiçbir şeyi değiştirmez."
+>
+> "Kaydedilmiş kurtarma kiti geçişi olmadığını, yeni kitin hazır olduğunu
+> ya da geçişin tamamlandığının doğrulandığını söylüyorsa v0.1.0-alpha.137
+> güncellemesini yeniden başlatın; güncelleme önce aynı denetimi yineler.
+> Yeni başlatıcının kurulduğunu ya da yeni kitin seçildiğini söylüyorsa
+> söylediği gibi sudo /usr/libexec/celikpanel/recovery recover komutunu
+> çalıştırın, sonra güncellemeyi yeniden başlatın. Geçiş kanıtlarının
+> doğrulanamadığını söylüyorsa kurtarma dosyalarını ve bu güncellemenin
+> günlüğünü değiştirmeyin ve güncellemeyi başlatmayın; önce yanıtın sonunda
+> parantez içinde adı geçen kanıt sorunu giderilir. O zamana dek sunucu
+> eskisi gibi şu anki sürümünü çalıştırır."
+
+İngilizce sayfada komut `--lang en` ile aynıdır ve araç İngilizce yanıt
+verir. Pencere kapatıldıktan sonra güncelleme kartı da o girişim için aynı
+şeyi söyler ("kurulu sürümü ya da verilerini değiştirmeden durdu", aynı
+komutla); "tamamlanmadı" demez.
 
 ## Önceki bir güncelleme sayfayı kilitli bıraktıysa
 
 Bu, alpha.136 ve öncesinde, güncellemeye basıldıktan hemen sonra bir paket
-kurulumu başladığında olabilir. Kurulu sürüm ve veriler değiştirilmedi.
-Kilidi sunucu değil, güncellemeyi izleyen tarayıcı tutar:
+kurulumu başladığında olabilir. Kurulu sürüm ve verileri değiştirilmedi;
+kurtarma aracının kendi hazırlığı yarım kalmış olabilir (2. adım geriye ne
+kaldığını söyler).
+
+<!-- LAB-CONFIRM a137-second-browser: replace after the alpha.137 lab run -->
+**Laboratuvarda doğrulanacak.** Panelin kodu bu kilidi sunucuda değil,
+güncellemeyi izleyen tarayıcıda (işlemin orada saklanan kaydında) tutar.
+Laboratuvar bunu doğrularsa:
 
 1. Paneli başka bir tarayıcıda ya da gizli pencerede açıp oturum açın.
-   Güncelleme kartı önceki girişimi başarısız olarak gösterir ve
-   güncellemeyi yeniden sunar. (Aynı tarayıcıda panel sitesinin saklanan
-   verilerini silmek de aynı işi görür.)
-2. Önce emin olmak isterseniz sunucuda
+   Güncelleme kartı önceki girişimi gösterir ve güncellemeyi yeniden sunar.
+   (Aynı tarayıcıda panel sitesinin saklanan verilerini silmek de aynı işi
+   görmelidir.)
+<!-- /LAB-CONFIRM a137-second-browser -->
+
+2. Güncellemeden önce sunucuda
    `sudo /usr/libexec/celikpanel/recovery runtime-status --lang tr`
-   komutunu çalıştırın; komut yalnız okur ve Türkçe yanıt verir.
-   "Kaydedilmiş kurtarma kiti geçişi yok" derse geriye bir şey
-   kalmamıştır: panelden güncelleyin. "Yeni kit hazır" derse panelden
-   yeniden güncellemek o denetimi bitirir; geçişin tamamlandığının
-   doğrulandığını söylerse de panelden güncelleyin. Yeni başlatıcının
-   kurulduğunu ya da yeni kitin seçildiğini söylerse önce, söylediği gibi,
-   `sudo /usr/libexec/celikpanel/recovery recover` komutunu çalıştırın.
-   Kanıtların doğrulanamadığını söylerse dosyalara dokunmayın ve henüz
-   güncellemeyin: o durum kurtarma aracının kendi raporunun konusudur.
-3. İsteğe bağlı: `sudo systemctl reset-failed 'celikpanel-self-update-*'`
-   o girişimin hizmetindeki "başarısız" işaretini kaldırır. Başka hiçbir
-   şeyi değiştirmez; alpha.137 bunu böyle girişimler için kendisi yapar.
+   komutunu bir kez çalıştırın ve yukarıda pencere için anlatıldığı gibi
+   yanıtının söylediğini yapın: kaydedilmiş geçiş yok, yeni kit hazır ya da
+   geçişin tamamlandığı doğrulandı: panelden güncelleyin; yeni başlatıcı
+   kuruldu ya da yeni kit seçildi: önce
+   `sudo /usr/libexec/celikpanel/recovery recover` komutunu çalıştırın;
+   kanıtlar doğrulanamadı: dosyaları ve güncelleme günlüğünü değiştirmeyin,
+   henüz güncellemeyin.
+3. Başka bir şey gerekmez. alpha.137'ye güncelleme başarılı olunca panel o
+   önceki girişimin hizmetindeki "başarısız" işaretini kendisi kaldırır.
 
 ## Bilinen sınırlar
 
@@ -164,9 +197,16 @@ Kilidi sunucu değil, güncellemeyi izleyen tarayıcı tutar:
   kaynaklarından belirlendi (laboratuvarın gördükleri "Laboratuvarda
   denendi" bölümündedir). alpha.136 laboratuvarındaki ilk basışı
   güncellemenin hangi denetiminin durdurduğu bilinmiyor.
-- **Önceki bir sürümde zaten kilitli kalmış sayfalar** yukarıda anlatıldığı
-  gibi başka bir tarayıcıdan açılır; sunucu bir tarayıcının kilidini
-  kaldıramaz.
+- **Önceki bir sürümde zaten kilitli kalmış sayfalar.** <!-- LAB-CONFIRM a137-second-browser -->
+  Yukarıda anlatıldığı gibi başka bir tarayıcıdan açıldıkları laboratuvarda
+  doğrulanacak; sunucu bir tarayıcının kilidini kaldıramaz.
+- **Önceki yeniden denemelerin bıraktığı kopyalar.** Kurtarma aracının
+  hazırlığı durduktan sonra aynı sürümün önceki her yeniden denemesi,
+  `/usr/libexec/celikpanel/recovery-runtimes/v1/` altında gizli bir
+  `.promote-…` klasöründe kurtarma kitinin bir kopyasını bırakabiliyordu.
+  alpha.137 artık bırakmaz; zaten var olanları henüz hiçbir şey silmez
+  (alpha.139 için listelendi). Etkisizdirler: onları hiçbir şey seçmez ya da
+  çalıştırmaz.
 
 ## Bu sürümde ayrıca
 
@@ -203,6 +243,13 @@ sunucuyla; güncellemenin ilk denetimleri (paket işi beklenir, süren iş tipli
 satırıyla değişiklik yapmadan durur; hazırlıktan ve BIND denetiminden
 önce); kurtarma ortamı kabuk sözleşmesi (meşgul hazırlık tipli duruştur,
 başka her hata bildirimini korur); laboratuvarın tam kaydıyla Agent'ın
-temizleme kuralı; laboratuvarın tam kaydıyla iki dilde güncelleme penceresi.
+temizleme kuralı; laboratuvarın tam kaydıyla iki dilde güncelleme penceresi
+ve pencere kapatıldıktan sonraki güncelleme kartı; yalnız root'a ait paket
+süreçlerini sayan paket taraması (sıradan bir hesabın aynı adlı süreci
+sayılmaz, sahibi okunamayan sayılır); iki kez meşgul sunucuyla karşılaşan
+hazırlık kit kopyası bırakmaz; tek bir sözleşme "preparation is unconfirmed"
+satırını, Agent'ın ve pencerenin onu okuyan kurallarını ve kurtarma aracının
+tipli bildirimlerini tek metin olarak tutar
+(`deploy/test-update-preparation-stop-contract.sh`).
 Tam Go test paketleri alpha.136 ile karşılaştırıldı: yeni hata yok.
 **Hiçbir P0 işi kapanmadı.**

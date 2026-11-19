@@ -258,6 +258,12 @@ for (const locale of ['en', 'tr']) {
             assert.ok(text.includes(c['panelUpdate.outcome.preparationUnconfirmed']), text);
             assert.ok(text.includes(fill('panelUpdate.outcome.preparationUnconfirmedNext', versions)), text);
             assert.ok(text.includes(`sudo /usr/libexec/celikpanel/recovery runtime-status --lang ${locale}`), 'the read-only command is shown, answering in the page language');
+            // Under the command: that it only reads, then what each answer means.
+            const note = text.indexOf(c['panelUpdate.outcome.preparationUnconfirmedCommandNote']);
+            const answers = text.indexOf(fill('panelUpdate.outcome.preparationUnconfirmedAnswers', versions));
+            assert.ok(text.indexOf('runtime-status --lang') < note && note < answers, text);
+            // Never "nothing was changed": the kit's own preparation may be partly done.
+            assert.ok(!/Nothing was changed|Hiçbir şey değiştirilmedi/.test(text), text);
             for (const key of ['recovery.next.failed', 'recovery.phase.failed', 'panelUpdate.outcome.followsRecovery', 'panelUpdate.watch']) {
                 assert.ok(!text.includes(c[key]), `${key} must not be said: no recovery follows this stop`);
             }

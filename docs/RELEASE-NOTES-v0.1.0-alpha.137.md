@@ -29,7 +29,8 @@ screen.**
 3. **If the update page of your current version is stuck** (it says the
    update failed and the owner must inspect the update log, the page stays
    locked, and there is no update button), see "If an earlier update left the
-   page locked" below before you update.
+   page locked" below before you update (part of it is still to be confirmed
+   in the lab).
 4. There is nothing to press or set after the update.
 
 ## What changes for you
@@ -83,6 +84,14 @@ screen.**
   not as a reason to refuse.
 - Ubuntu Pro's news and ESM cache services are not counted as package
   activity: they take none of the system's package locks.
+- **Hardening:** a process that only carries the package manager's name,
+  run by an ordinary account, no longer holds an update back. On a hosting
+  server any account can start a program called `apt` or `dpkg`; only a
+  process that runs as root (the only user that can change the system's
+  packages) is counted now. A process whose owner cannot be read is still
+  counted.
+- A retry after such a stop no longer leaves a copy of the recovery kit
+  behind.
 
 ### What you see
 
@@ -110,38 +119,64 @@ version is unchanged, the update button is there again, and you start the
 update again when it has finished.
 
 If the recovery tool's preparation stops for another reason, the window now
-says so as a stop you can close: "the server's recovery tool could not
-confirm its own preparation for the new version, so the update stopped
-before stopping any service. The installed version and its data were not
-changed.", with one command that only reads,
-`sudo /usr/libexec/celikpanel/recovery runtime-status --lang en` (`--lang tr`
-in Turkish), which says whether anything of that preparation is left and
-what to do. Before, this page stayed locked.
+shows it as a stop you can close, instead of staying locked. It says:
+
+> "Reason: the server's recovery tool could not confirm its own preparation
+> for the new version, so the update stopped before stopping any service.
+> The installed version and its data were not changed; the recovery tool's
+> own preparation for the new version may be partly done. The server owner
+> runs the command below once on the server and does what its answer says.
+> Nothing starts by itself."
+>
+> `sudo /usr/libexec/celikpanel/recovery runtime-status --lang en`
+>
+> "This command only reads; it changes nothing."
+>
+> "If it says no recovery kit transition is recorded, that the replacement
+> kit is prepared, or that the transition is verified complete: start the
+> update to v0.1.0-alpha.137 again; it repeats the same check first. If it
+> says the replacement launcher is installed or the replacement kit is
+> selected: run sudo /usr/libexec/celikpanel/recovery recover, as it says,
+> then start the update again. If it says the transition evidence could not
+> be verified: keep the recovery files and this update's log unchanged and
+> do not start the update; the evidence problem named in brackets at the
+> end of its answer is resolved first. Until then the server runs the current
+> version as before."
+
+On a Turkish page the command is the same with `--lang tr`, and the tool
+answers in Turkish. After the window is closed, the update card says the
+same of that attempt ("stopped before changing the installed version or
+its data", with the same command), not "did not complete".
 
 ## If an earlier update left the page locked
 
 This can happen on alpha.136 and earlier when a package installation
-started right after the update was pressed. The installed version and the
-data were not changed. The lock is kept by the browser that followed the
-update, not by the server:
+started right after the update was pressed. The installed version and its
+data were not changed; the recovery tool's own preparation may be partly
+done (step 2 says what is left).
+
+<!-- LAB-CONFIRM a137-second-browser: replace after the alpha.137 lab run -->
+**To be confirmed in the lab.** The panel's code keeps that lock in the
+browser that followed the update (its stored record of the operation), not
+on the server. If the lab confirms it:
 
 1. Open the panel in another browser or a private window and sign in. The
-   update card shows the earlier attempt as failed and offers the update
-   again. (In the same browser, removing the panel site's stored data does
-   the same.)
-2. If you want to be sure first, run on the server
-   `sudo /usr/libexec/celikpanel/recovery runtime-status`. It only reads.
-   "No recovery kit transition is recorded" means nothing is left: update
-   from the panel. If it says the replacement kit is prepared, updating from
-   the panel again finishes that check; if it says the transition is
-   verified complete, update from the panel too. If it names an installed
-   launcher or a selected kit, run
-   `sudo /usr/libexec/celikpanel/recovery recover` first, as it says. If it
-   says the evidence could not be verified, keep the files and do not
-   update yet: that is the case the recovery tool's own report is for.
-3. Optional: `sudo systemctl reset-failed 'celikpanel-self-update-*'`
-   removes the "failed" mark of that attempt's service. It changes nothing
-   else; alpha.137 does this by itself for such attempts.
+   update card shows the earlier attempt and offers the update again. (In
+   the same browser, removing the panel site's stored data should do the
+   same.)
+<!-- /LAB-CONFIRM a137-second-browser -->
+
+2. Before you update, run on the server
+   `sudo /usr/libexec/celikpanel/recovery runtime-status --lang en` once and
+   do what its answer says, as described for the window above: no
+   transition recorded, the replacement kit prepared, or the transition
+   verified complete: update from the panel; the replacement launcher
+   installed or the replacement kit selected: run
+   `sudo /usr/libexec/celikpanel/recovery recover` first; the evidence could
+   not be verified: keep the files and the update log and do not update yet.
+3. Nothing else is needed. When the update to alpha.137 succeeds, the
+   panel removes the "failed" mark of that earlier attempt's service by
+   itself.
 
 ## Known limits
 
@@ -160,8 +195,15 @@ update, not by the server:
   services) is established from systemd's, apt's and Ubuntu Pro's sources
   (what the lab saw is in "Checked in the lab"). Which of the update's
   checks stopped the alpha.136 lab's first press is not known.
-- **Pages already locked on an earlier version** are unlocked from another
-  browser, as described above; the server cannot unlock a browser.
+- **Pages already locked on an earlier version.** <!-- LAB-CONFIRM a137-second-browser -->
+  That another browser opens them, as described above, is to be confirmed
+  in the lab; the server cannot unlock a browser.
+- **Copies left by earlier retries.** Each earlier retry of the same
+  version after a stop of the recovery tool's preparation could leave one
+  copy of the recovery kit in a hidden `.promote-…` folder under
+  `/usr/libexec/celikpanel/recovery-runtimes/v1/`. alpha.137 no longer leaves
+  them; nothing removes the ones already there yet (listed for alpha.139).
+  They are inert: nothing selects or runs them.
 
 ## Also in this release
 
@@ -198,5 +240,11 @@ its typed line, before the preparation and before the BIND check); the
 recovery runtime shell contract (a busy preparation is a typed stop, any
 other failure keeps its report); the Agent's clearing rule on the lab's
 exact record; the update window on the lab's exact record in both
-languages. The full Go test packages were compared with alpha.136: no new
+languages, and the update card after it is
+closed; the package scan counting only root-owned package processes (an
+ordinary account's same-named process is not counted, an unreadable owner
+is); a busy host met twice leaves no kit copy; one contract keeps the
+"preparation is unconfirmed" line, the Agent's and the window's readers of
+it and the recovery tool's typed reports one text
+(`deploy/test-update-preparation-stop-contract.sh`). The full Go test packages were compared with alpha.136: no new
 failure. **No P0 item is closed.**

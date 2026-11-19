@@ -8779,11 +8779,14 @@ until the backup reports ready.
   no transaction); the window read that as a recovery still to come
   (`failedUpdateGuidance`: tone progress, no close), kept its stored
   operation and so the update lock, and the card offered no update. The
-  lock is the browser's stored operation, not server state.
+  code keeps the lock in the browser's stored operation, not in server
+  state; that another browser then offers the update is to be confirmed in
+  the lab <!-- LAB-CONFIRM a137-second-browser -->.
 - **Contract.** The bounded 60 s wait now runs first
   (`preflight_host_idle_before_recovery_runtime`, before the kit's
   preparation); a refusal still present after it is the typed unchanged stop,
-  written by `fail_update_preflight` itself when no EXIT trap is installed.
+  written by `fail_update_preflight` itself for that check only (review
+  correction below).
   A promotion checker that still finds the host busy after its bound, before
   the promotion intent, returns `runtime_package_manager_busy` or
   `runtime_operation_active`; `recovery prepare-runtime` reports it with the
@@ -8796,13 +8799,14 @@ until the backup reports ready.
   "unconfirmed". The Agent also clears the unit of the untyped preparation
   stop (record kept). The window shows that stop as closable ("stopped
   before changing the installed version"), with the read-only `sudo
-  /usr/libexec/celikpanel/recovery runtime-status`; closing it gives the
-  card back its update.
+  /usr/libexec/celikpanel/recovery runtime-status --lang en|tr` and what
+  each answer means (review correction below); closing it gives the card
+  back its update.
 - **Schema / version transition.** None; two new recovery-runtime reason
   codes, produced and read only by the same release. The fixes are in the
   target release's `update.sh` and recovery kit, so they act on the update
-  to alpha.137; a browser already locked by an earlier version is opened
-  elsewhere (release notes).
+  to alpha.137; a browser already locked by an earlier version is to be
+  opened elsewhere, to be confirmed in the lab (release notes).
 - **Recovery behaviour.** Unchanged for anything after an intent or after
   services stop; a busy host before any change is no longer reported as
   something to recover.
@@ -8820,3 +8824,74 @@ until the backup reports ready.
   or between the promotion's two compatibility reads, still stops the
   update (unchanged, or an existing pending promotion). No live waiting
   state in the window. **No P0 item is closed.**
+
+### Branch a137/update-preflight, review correction (what the owner is told about the untyped preparation stop; one first-check flag; no kit copy per retry; package scan counts only root-owned processes; no schema change; invariants 2 and 3; P0.2/P0.3 admission inputs; D-024; D-025; 2026-11-19, candidate alpha.137)
+
+- **Defects (independent review of `ca652f6f9`, `b79309eac`).** The window
+  said "Nothing was changed" for the untyped "preparation is unconfirmed"
+  stop, which also covers failures after the kit's transition intent
+  (prepared, launcher or selection published); its command had no
+  `--lang`, while the notes quoted Turkish answers; the notes' manual
+  `systemctl reset-failed 'celikpanel-self-update-*'` would also clear
+  unresolved real failures the Agent keeps on purpose; the closed window
+  left the card saying "did not complete"; "the lock is the browser's"
+  was stated as fact unverified; `fail_update_preflight` took "no EXIT trap
+  yet" for "nothing changed"; the early probe ran the preflight Agent
+  before `validate_preflight_binary`; each retry after a busy stop left a
+  `.promote-*` kit copy (`installPromotionBundle`: the rename met EEXIST
+  and the stage stayed); `promotionHostBusyError` said
+  `runtime_unsupported_protocol` by `Error` and `runtime_read_failed` by
+  `ReasonCode`; the package scan counted any process by its `comm`, so an
+  ordinary hosting account could hold every update, security releases
+  included, with a process named `apt` or `dpkg`.
+- **Contract.** The window and the card say what is verified: the
+  installed version and its data were not changed; the recovery tool's own
+  preparation may be partly done; the server owner runs
+  `sudo /usr/libexec/celikpanel/recovery runtime-status --lang en|tr` (the
+  page's language; the tool has had `--lang` since alpha.81), which only
+  reads, and does what its answer says: no transition, prepared or verified
+  complete -> start again; launcher installed or kit selected -> `recover`
+  first; evidence unverifiable -> keep files and log, do not start. The
+  notes, this contract and the page quote the same sentences. The notes'
+  manual reset step is removed (the Agent clears the attempt's unit after
+  the successful update). Typed preflight summaries
+  (`package_manager_busy`, `update_preflight_refused`,
+  `recovery_runtime_preflight_failed`, each `state=unchanged`) and the
+  unconfirmed-preparation line read as "stopped before changing the
+  installed version" on the card; any other summary keeps its words.
+  `fail_update_preflight` writes its own summary only when the first
+  check's local `update_preflight_reports_unchanged_stop` is set; every
+  other caller keeps `die` / `fail_before_active`. The preflight binaries
+  are validated before the first check. The promotion stage is removed
+  unless it became the digest directory. `promotionHostBusyError` unwraps
+  to `runtime_unsupported_protocol`. The package scan counts a
+  package-manager name only for a process with a root real, effective,
+  saved or filesystem user id; a process whose status cannot be read or
+  has no well-formed `Uid:` line counts as before; one that ended while
+  read is gone. PackageKit's daemon name gets the same owner rule before
+  its idle proof.
+- **Schema / version transition.** None. The scan rule acts where the
+  installed Agent answers (from the update after alpha.137 on; during the
+  update to alpha.137 the installed Agent's and the new kit's checkers
+  answer for their own checks).
+- **Recovery behaviour.** Unchanged. A retry never had a safety problem; it
+  no longer accumulates kit copies. Copies left by earlier releases stay
+  (inert; removal listed for alpha.139).
+- **Evidence.** Native child scenario "busy twice": no `.promote-*` left;
+  checker test: `Error` and `ReasonCode` agree; Agent scan tests: an
+  ordinary account's same-named process is not counted, root's and any
+  root id is, an unreadable or malformed owner is, an ending one is gone;
+  mounted window test (both languages: command with `--lang`, the note
+  that it only reads, then the answers; never "nothing was changed");
+  mounted card test (unconfirmed preparation and two typed stops with no
+  recorded cause read as stopped, with the command only for the first);
+  `deploy/test-update-preparation-stop-contract.sh` (the die line occurs
+  once, both readers match it as recorded and nothing else, its only call
+  precedes the release-recovery intent and the EXIT trap, the typed busy
+  reports are the recovery tool's own text); the enrollment preflight test
+  pins the flag and the validation order. Both shell tests now run in CI.
+- **Open.** <!-- LAB-CONFIRM a137-second-browser --> That a page locked on
+  an earlier version is opened from another browser is to be confirmed in
+  the lab. What `comm` and user ids package tools have on every supported
+  distribution was established from their sources and packaging, not
+  measured on each. **No P0 item is closed.**

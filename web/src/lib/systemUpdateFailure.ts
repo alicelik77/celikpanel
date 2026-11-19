@@ -69,3 +69,13 @@ export function systemUpdatePackageManagerBusy(diagnostic: string): boolean {
 export function systemUpdateRecoveryPreparationUnconfirmed(diagnostic: string): boolean {
     return /(?:^|: )!! independent recovery runtime preparation is unconfirmed; panel services have not been stopped(?:;|$)/.test(diagnostic);
 }
+
+/**
+ * The reviewed updater's typed summary of a stop before any change: the busy
+ * package manager, a refused read-only check or the recovery tool's preflight,
+ * each with state=unchanged. Any other code keeps its general words, even
+ * when unchanged. Güncelleyicinin tipli ön denetim duruşu özeti.
+ */
+export function systemUpdateStoppedUnchangedSummary(diagnostic: string): boolean {
+    return /(?:^|: )!! CELIKPANEL_UPDATE_FAILURE code=(?:package_manager_busy|update_preflight_refused|recovery_runtime_preflight_failed) state=unchanged reason=/.test(diagnostic);
+}

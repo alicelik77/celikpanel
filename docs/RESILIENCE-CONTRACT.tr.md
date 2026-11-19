@@ -7995,12 +7995,15 @@ bağlantıyı tutar.
   olarak kaldı ve onu değiştirecek hiçbir şey yoktu (kurtarmanın işlemi
   yoktu); pencere bunu hâlâ gelecek bir kurtarma sandı (`failedUpdateGuidance`:
   ilerleme tonu, kapatma yok), sakladığı işlemi ve dolayısıyla güncelleme
-  kilidini tuttu, kart güncelleme sunmadı. Kilit sunucu durumu değil,
-  tarayıcının sakladığı işlemdir.
+  kilidini tuttu, kart güncelleme sunmadı. Kod kilidi sunucu durumunda
+  değil, tarayıcının sakladığı işlemde tutar; o zaman başka bir tarayıcının
+  güncellemeyi sunduğu laboratuvarda doğrulanacak
+  <!-- LAB-CONFIRM a137-second-browser -->.
 - **Sözleşme.** 60 sn'lik sınırlı bekleme artık önce çalışır
   (`preflight_host_idle_before_recovery_runtime`, kitin hazırlığından önce);
-  sınırdan sonra süren ret, EXIT tuzağı kurulu değilken `fail_update_preflight`
-  tarafından yazılan tipli değişmemiş duruştur. Sınırından sonra ve geçiş
+  sınırdan sonra süren ret, yalnız o denetim için `fail_update_preflight`
+  tarafından yazılan tipli değişmemiş duruştur (aşağıdaki inceleme
+  düzeltmesi). Sınırından sonra ve geçiş
   niyetinden önce sunucuyu hâlâ meşgul bulan geçiş denetleyicisi
   `runtime_package_manager_busy` ya da `runtime_operation_active` döndürür;
   `recovery prepare-runtime` bunu `update.sh`'ın zaten tiplediği adım ve
@@ -8012,12 +8015,14 @@ bağlantıyı tutar.
   her hazırlık hatası "unconfirmed" kalır. Agent tipsiz hazırlık duruşunun
   birimini de temizler (kayıt kalır). Pencere bu duruşu kapatılabilir gösterir
   ("kurulu sürümü değiştirmeden durdu"), yalnız okuyan `sudo
-  /usr/libexec/celikpanel/recovery runtime-status` ile; kapatınca kart
+  /usr/libexec/celikpanel/recovery runtime-status --lang en|tr` ve her
+  yanıtın anlamıyla (aşağıdaki inceleme düzeltmesi); kapatınca kart
   güncellemeyi yeniden sunar.
 - **Şema / sürüm geçişi.** Yok; aynı sürümün ürettiği ve okuduğu iki yeni
   kurtarma ortamı neden kodu. Düzeltmeler hedef sürümün `update.sh`'ında ve
   kurtarma kitindedir; alpha.137'ye güncellemede etkilidir; önceki bir
-  sürümde kilitlenmiş tarayıcı başka yerden açılır (sürüm notları).
+  sürümde kilitlenmiş tarayıcının başka yerden açılması laboratuvarda
+  doğrulanacak (sürüm notları).
 - **Kurtarma davranışı.** Niyetten ya da hizmetler durduktan sonraki her şey
   için değişmedi; herhangi bir değişiklikten önceki meşgul sunucu artık
   kurtarılacak bir şey olarak bildirilmez.
@@ -8035,3 +8040,75 @@ bağlantıyı tutar.
   uyumluluk okuması arasında başlayan bir paket işi güncellemeyi yine
   durdurur (değişiklik yapmadan ya da var olan bekleyen bir geçişle).
   Pencerede canlı bekleme durumu yok. **Hiçbir P0 işi kapanmadı.**
+
+### Dal a137/update-preflight, inceleme düzeltmesi (tipsiz hazırlık duruşunda sahibe söylenen; tek ilk denetim bayrağı; yeniden denemede kit kopyası yok; paket taraması yalnız root'a ait süreçleri sayar; şema değişikliği yok; ilke 2 ve 3; P0.2/P0.3 kabul girdileri; D-024; D-025; 2026-11-19, aday alpha.137)
+
+- **Kusurlar (`ca652f6f9`, `b79309eac` için bağımsız inceleme).** Pencere,
+  kitin geçiş niyetinden sonraki hataları da (hazır, başlatıcı ya da seçim
+  yayımlanmış) kapsayan tipsiz "preparation is unconfirmed" duruşu için
+  "Hiçbir şey değiştirilmedi" diyordu; komutunda `--lang` yoktu, notlar ise
+  Türkçe yanıtları alıntılıyordu; notlardaki elle
+  `systemctl reset-failed 'celikpanel-self-update-*'` adımı Agent'ın bilerek
+  tuttuğu çözülmemiş gerçek hataları da temizlerdi; kapatılan pencereden
+  sonra kart "tamamlanmadı" diyordu; "kilit tarayıcınındır" doğrulanmadan
+  kesin bilgi olarak yazılmıştı; `fail_update_preflight` "henüz EXIT tuzağı
+  yok"u "hiçbir şey değişmedi" sayıyordu; erken denetim ön denetim Agent'ını
+  `validate_preflight_binary`'den önce çalıştırıyordu; meşgul duruştan
+  sonraki her yeniden deneme bir `.promote-*` kit kopyası bırakıyordu
+  (`installPromotionBundle`: yeniden adlandırma EEXIST ile karşılaşıyor,
+  aşama dizini kalıyordu); `promotionHostBusyError` `Error` ile
+  `runtime_unsupported_protocol`, `ReasonCode` ile `runtime_read_failed`
+  diyordu; paket taraması her süreci `comm` adıyla sayıyordu, bu yüzden
+  sıradan bir barındırma hesabı `apt` ya da `dpkg` adlı bir süreçle güvenlik
+  sürümleri dahil her güncellemeyi bekletebiliyordu.
+- **Sözleşme.** Pencere ve kart doğrulananı söyler: kurulu sürüm ve verileri
+  değiştirilmedi; kurtarma aracının kendi hazırlığı yarım kalmış olabilir;
+  sunucu sahibi yalnız okuyan
+  `sudo /usr/libexec/celikpanel/recovery runtime-status --lang en|tr`
+  komutunu (sayfanın dilinde; araçta `--lang` alpha.81'den beri var)
+  çalıştırır ve yanıtının söylediğini yapar: geçiş yok, hazır ya da
+  tamamlandığı doğrulandı -> yeniden başlat; başlatıcı kuruldu ya da kit
+  seçildi -> önce `recover`; kanıt doğrulanamadı -> dosyaları ve günlüğü
+  koru, başlatma. Notlar, bu sözleşme ve sayfa aynı cümleleri alıntılar.
+  Notlardaki elle sıfırlama adımı kaldırıldı (Agent girişimin birimini
+  başarılı güncellemeden sonra temizler). Tipli ön denetim özetleri
+  (`package_manager_busy`, `update_preflight_refused`,
+  `recovery_runtime_preflight_failed`, her biri `state=unchanged`) ve
+  doğrulanamayan hazırlık satırı kartta "kurulu sürümü değiştirmeden durdu"
+  olarak okunur; başka her özet kendi sözlerini korur.
+  `fail_update_preflight` kendi özetini yalnız ilk denetimin yerel
+  `update_preflight_reports_unchanged_stop` bayrağı varken yazar; diğer her
+  çağıran `die` / `fail_before_active` ile kalır. Ön denetim ikilileri ilk
+  denetimden önce doğrulanır. Geçiş aşama dizini özet dizinine dönüşmediyse
+  silinir. `promotionHostBusyError` `runtime_unsupported_protocol`'e açılır.
+  Paket taraması paket yöneticisi adını yalnız gerçek, etkin, saklı ya da
+  dosya sistemi kullanıcı kimliklerinden biri root olan süreç için sayar;
+  durumu okunamayan ya da düzgün bir `Uid:` satırı olmayan süreç eskisi
+  gibi sayılır; okunurken sona eren gitmiştir. PackageKit hizmetinin adı da
+  boşta kanıtından önce aynı sahip kuralından geçer.
+- **Şema / sürüm geçişi.** Yok. Tarama kuralı kurulu Agent'ın yanıt verdiği
+  yerde etkilidir (alpha.137'den sonraki güncellemeden itibaren;
+  alpha.137'ye güncelleme sırasında kendi denetimleri için kurulu Agent'ın
+  ve yeni kitin denetleyicileri yanıt verir).
+- **Kurtarma davranışı.** Değişmedi. Yeniden denemenin güvenlik sorunu hiç
+  yoktu; artık kit kopyası biriktirmez. Önceki sürümlerin bıraktığı kopyalar
+  kalır (etkisiz; silinmesi alpha.139 için listelendi).
+- **Kanıt.** Yerel alt süreç senaryosu "iki kez meşgul": `.promote-*`
+  kalmaz; denetleyici testi: `Error` ve `ReasonCode` aynı; Agent tarama
+  testleri: sıradan hesabın aynı adlı süreci sayılmaz, root'unki ve herhangi
+  bir root kimliği sayılır, okunamayan ya da bozuk sahip sayılır, sona eren
+  gitmiştir; bağlı pencere testi (iki dil: `--lang`'li komut, yalnız
+  okuduğunu söyleyen not, ardından yanıtlar; asla "hiçbir şey
+  değiştirilmedi"); bağlı kart testi (doğrulanamayan hazırlık ve kaydı neden
+  tutmayan iki tipli duruş durmuş okunur, komut yalnız ilkinde);
+  `deploy/test-update-preparation-stop-contract.sh` (die satırı bir kez
+  geçer, iki okuyucu onu kaydedildiği gibi ve başka hiçbir şeyi eşlemez, tek
+  çağrısı kurtarma niyetinden ve EXIT tuzağından önce gelir, tipli meşgul
+  bildirimleri kurtarma aracının kendi metnidir); kayıt ön denetimi testi
+  bayrağı ve doğrulama sırasını sabitler. İki kabuk testi de artık CI'da
+  koşar.
+- **Açık.** <!-- LAB-CONFIRM a137-second-browser --> Önceki bir sürümde
+  kilitlenmiş sayfanın başka bir tarayıcıdan açıldığı laboratuvarda
+  doğrulanacak. Paket araçlarının her desteklenen dağıtımdaki `comm` adları
+  ve kullanıcı kimlikleri kaynaklarından ve paketlemelerinden belirlendi,
+  her birinde ölçülmedi. **Hiçbir P0 işi kapanmadı.**
