@@ -103,11 +103,11 @@ sh celikpanel-install.sh</code></pre>
 <caption id="systems-caption" class="sr-only">Operating systems CelikPanel supports</caption>
 <thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">Updates</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td><span class="state tested">Tested</span></td><td>30 June 2030</td><td>Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td><span class="state tested">Tested</span></td><td>May 2029</td><td>Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td><span class="state">Supported</span></td><td>30 June 2028</td><td>Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td><span class="state">Supported</span></td><td>May 2027</td><td>Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td><span class="state">Supported</span></td><td>No end date</td><td>By hand, after reading the Arch news</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-label="Status"><span class="state tested">Tested</span></td><td data-label="Patched by the distribution until">30 June 2030</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-label="Status"><span class="state tested">Tested</span></td><td data-label="Patched by the distribution until">May 2029</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">30 June 2028</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">May 2027</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">No end date</td><td data-label="Updates">By hand, after reading the Arch news</td></tr>
 </tbody>
 </table>
 </div>
@@ -161,12 +161,12 @@ sh celikpanel-install.sh</code></pre>
 <table class="data ledger">
 <thead><tr><th scope="col">Measurement</th><th scope="col" class="num">Value</th><th scope="col">Condition</th><th scope="col">Date</th></tr></thead>
 <tbody>
-<tr><th scope="row">From disaster back into service</th><td class="num">105 s</td><td>The first server died in a power cut; the second was built from one sealed archive</td><td class="when">6 Sep 2026</td></tr>
-<tr><th scope="row">Archive age, nothing lost</th><td class="num">40.9 s</td><td>The archive’s real age at the moment of the cut; no record was lost</td><td class="when">6 Sep 2026</td></tr>
-<tr><th scope="row">Queries unanswered while adopting a running BIND</th><td class="num">0 / 2508</td><td>The server never stopped answering during the adoption</td><td class="when">5 Sep 2026</td></tr>
-<tr><th scope="row">Adopting a hand-configured BIND</th><td class="num">0 / 1137</td><td>Differences shown first, then adopted; again no query unanswered</td><td class="when">5 Sep 2026</td></tr>
-<tr><th scope="row">Time to decide after a power cut</th><td class="num">≤ 7 s</td><td>Four cuts; each time the panel resolved the unfinished work with nobody touching the machine</td><td class="when">5 Sep 2026</td></tr>
-<tr><th scope="row">Acceptance run</th><td class="num">3 systems</td><td>Debian 13, Ubuntu 24.04 and Arch Linux: install, the database chain, restart</td><td class="when">6 Sep 2026</td></tr>
+<tr><th scope="row">From disaster back into service</th><td class="num" data-label="Value">105 s</td><td data-label="Condition">The first server died in a power cut; the second was built from one sealed archive</td><td class="when" data-label="Date">6 Sep 2026</td></tr>
+<tr><th scope="row">Archive age, nothing lost</th><td class="num" data-label="Value">40.9 s</td><td data-label="Condition">The archive’s real age at the moment of the cut; no record was lost</td><td class="when" data-label="Date">6 Sep 2026</td></tr>
+<tr><th scope="row">Queries unanswered while adopting a running BIND</th><td class="num" data-label="Value">0 / 2508</td><td data-label="Condition">The server never stopped answering during the adoption</td><td class="when" data-label="Date">5 Sep 2026</td></tr>
+<tr><th scope="row">Adopting a hand-configured BIND</th><td class="num" data-label="Value">0 / 1137</td><td data-label="Condition">Differences shown first, then adopted; again no query unanswered</td><td class="when" data-label="Date">5 Sep 2026</td></tr>
+<tr><th scope="row">Time to decide after a power cut</th><td class="num" data-label="Value">≤ 7 s</td><td data-label="Condition">Four cuts; each time the panel resolved the unfinished work with nobody touching the machine</td><td class="when" data-label="Date">5 Sep 2026</td></tr>
+<tr><th scope="row">Acceptance run</th><td class="num" data-label="Value">3 systems</td><td data-label="Condition">Debian 13, Ubuntu 24.04 and Arch Linux: install, the database chain, restart</td><td class="when" data-label="Date">6 Sep 2026</td></tr>
 </tbody>
 </table>
 </div>

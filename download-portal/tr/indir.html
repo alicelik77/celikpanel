@@ -103,11 +103,11 @@ sh celikpanel-install.sh</code></pre>
 <caption id="systems-caption" class="sr-only">CelikPanel’in desteklediği işletim sistemleri</caption>
 <thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın yama yaptığı son tarih</th><th scope="col">Güncellemeler</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td><span class="state tested">Denenen</span></td><td>30 Haziran 2030</td><td>Otomatik ya da elle, seçim sizin</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td><span class="state tested">Denenen</span></td><td>Mayıs 2029</td><td>Otomatik ya da elle, seçim sizin</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td><span class="state">Desteklenen</span></td><td>30 Haziran 2028</td><td>Otomatik ya da elle, seçim sizin</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td><span class="state">Desteklenen</span></td><td>Mayıs 2027</td><td>Otomatik ya da elle, seçim sizin</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">sürekli yenilenen</span></th><td><span class="state">Desteklenen</span></td><td>Bitiş tarihi yok</td><td>Elle, Arch haberlerini okuduktan sonra</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-label="Durum"><span class="state tested">Denenen</span></td><td data-label="Dağıtımın yama yaptığı son tarih">30 Haziran 2030</td><td data-label="Güncellemeler">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-label="Durum"><span class="state tested">Denenen</span></td><td data-label="Dağıtımın yama yaptığı son tarih">Mayıs 2029</td><td data-label="Güncellemeler">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-label="Durum"><span class="state">Desteklenen</span></td><td data-label="Dağıtımın yama yaptığı son tarih">30 Haziran 2028</td><td data-label="Güncellemeler">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-label="Durum"><span class="state">Desteklenen</span></td><td data-label="Dağıtımın yama yaptığı son tarih">Mayıs 2027</td><td data-label="Güncellemeler">Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli yenilenen</span></th><td data-label="Durum"><span class="state">Desteklenen</span></td><td data-label="Dağıtımın yama yaptığı son tarih">Bitiş tarihi yok</td><td data-label="Güncellemeler">Elle, Arch haberlerini okuduktan sonra</td></tr>
 </tbody>
 </table>
 </div>
@@ -161,12 +161,12 @@ sh celikpanel-install.sh</code></pre>
 <table class="data ledger">
 <thead><tr><th scope="col">Ölçüm</th><th scope="col" class="num">Değer</th><th scope="col">Koşul</th><th scope="col">Tarih</th></tr></thead>
 <tbody>
-<tr><th scope="row">Felaketten hizmete dönüş</th><td class="num">105 sn</td><td>Birinci sunucu elektrik kesintisiyle öldü; ikincisi tek mühürlü arşivden kuruldu</td><td class="when">6 Eyl 2026</td></tr>
-<tr><th scope="row">Arşiv yaşı, kayıp yok</th><td class="num">40,9 sn</td><td>Kesinti anında arşivin gerçek yaşı; hiçbir kayıt kaybolmadı</td><td class="when">6 Eyl 2026</td></tr>
-<tr><th scope="row">Çalışan BIND devralınırken cevapsız sorgu</th><td class="num">0 / 2508</td><td>Sunucu devralma boyunca cevap vermeyi hiç kesmedi</td><td class="when">5 Eyl 2026</td></tr>
-<tr><th scope="row">Elle kurulmuş BIND devralınırken</th><td class="num">0 / 1137</td><td>Önce farklar gösterildi, sonra devralındı; yine cevapsız sorgu yok</td><td class="when">5 Eyl 2026</td></tr>
-<tr><th scope="row">Elektrik kesintisinden sonra karar süresi</th><td class="num">≤ 7 sn</td><td>Dört kesinti; her defasında panel yarım işi kimse dokunmadan çözdü</td><td class="when">5 Eyl 2026</td></tr>
-<tr><th scope="row">Kabul turu</th><td class="num">3 sistem</td><td>Debian 13, Ubuntu 24.04 ve Arch Linux: kurulum, veritabanı zinciri, yeniden başlatma</td><td class="when">6 Eyl 2026</td></tr>
+<tr><th scope="row">Felaketten hizmete dönüş</th><td class="num" data-label="Değer">105 sn</td><td data-label="Koşul">Birinci sunucu elektrik kesintisiyle öldü; ikincisi tek mühürlü arşivden kuruldu</td><td class="when" data-label="Tarih">6 Eyl 2026</td></tr>
+<tr><th scope="row">Arşiv yaşı, kayıp yok</th><td class="num" data-label="Değer">40,9 sn</td><td data-label="Koşul">Kesinti anında arşivin gerçek yaşı; hiçbir kayıt kaybolmadı</td><td class="when" data-label="Tarih">6 Eyl 2026</td></tr>
+<tr><th scope="row">Çalışan BIND devralınırken cevapsız sorgu</th><td class="num" data-label="Değer">0 / 2508</td><td data-label="Koşul">Sunucu devralma boyunca cevap vermeyi hiç kesmedi</td><td class="when" data-label="Tarih">5 Eyl 2026</td></tr>
+<tr><th scope="row">Elle kurulmuş BIND devralınırken</th><td class="num" data-label="Değer">0 / 1137</td><td data-label="Koşul">Önce farklar gösterildi, sonra devralındı; yine cevapsız sorgu yok</td><td class="when" data-label="Tarih">5 Eyl 2026</td></tr>
+<tr><th scope="row">Elektrik kesintisinden sonra karar süresi</th><td class="num" data-label="Değer">≤ 7 sn</td><td data-label="Koşul">Dört kesinti; her defasında panel yarım işi kimse dokunmadan çözdü</td><td class="when" data-label="Tarih">5 Eyl 2026</td></tr>
+<tr><th scope="row">Kabul turu</th><td class="num" data-label="Değer">3 sistem</td><td data-label="Koşul">Debian 13, Ubuntu 24.04 ve Arch Linux: kurulum, veritabanı zinciri, yeniden başlatma</td><td class="when" data-label="Tarih">6 Eyl 2026</td></tr>
 </tbody>
 </table>
 </div>

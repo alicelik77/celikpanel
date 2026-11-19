@@ -79,7 +79,7 @@
 <thead><tr><th scope="col">{{t "download.ledger.what"}}</th><th scope="col" class="num">{{t "download.ledger.value"}}</th><th scope="col">{{t "download.ledger.condition"}}</th><th scope="col">{{t "download.ledger.date"}}</th></tr></thead>
 <tbody>
 {{- range $k := (list "restore" "age" "bind" "handbind" "power" "accept")}}
-<tr><th scope="row">{{t (print "download.ledger." $k)}}</th><td class="num">{{t (print "download.ledger." $k ".value")}}</td><td>{{t (print "download.ledger." $k ".condition")}}</td><td class="when">{{t (print "download.ledger." $k ".date")}}</td></tr>
+<tr><th scope="row">{{t (print "download.ledger." $k)}}</th><td class="num" data-label="{{t "download.ledger.value"}}">{{t (print "download.ledger." $k ".value")}}</td><td data-label="{{t "download.ledger.condition"}}">{{t (print "download.ledger." $k ".condition")}}</td><td class="when" data-label="{{t "download.ledger.date"}}">{{t (print "download.ledger." $k ".date")}}</td></tr>
 {{- end}}
 </tbody>
 </table>

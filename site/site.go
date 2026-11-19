@@ -374,8 +374,25 @@ func minifyCSS(source []byte) []byte {
 	out := cssComment.ReplaceAll(source, nil)
 	out = cssSpace.ReplaceAll(out, []byte(" "))
 	out = cssPunctSpace.ReplaceAll(out, []byte("$1"))
-	return append(bytes.TrimSpace(out), '\n')
+	// In a declaration ("{color: x;" or ";color: x}") the space after the
+	// property's colon goes too. A selector is told apart by the "{" that
+	// follows it before any ";" or "}".
+	var result []byte
+	last := 0
+	for _, match := range cssDeclaration.FindAllIndex(out, -1) {
+		end := bytes.IndexAny(out[match[1]:], "{;}")
+		if end < 0 || out[match[1]+end] == '{' {
+			continue
+		}
+		result = append(result, out[last:match[1]-1]...)
+		last = match[1]
+	}
+	result = append(result, out[last:]...)
+	result = bytes.ReplaceAll(result, []byte(";}"), []byte("}"))
+	return append(bytes.TrimSpace(result), '\n')
 }
+
+var cssDeclaration = regexp.MustCompile(`[{;]-{0,2}[a-z][-a-z]*: `)
 
 // movedPage is a small bilingual pointer for an old address. Without
 // JavaScript it moves to the English section after a moment; boot.js moves a
