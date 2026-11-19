@@ -2129,6 +2129,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 // unreadable outcome becomes the owner's to look at after its limit.
                 withinLimit: displayedTerminal.completedAt !== undefined
                     && Date.now() - displayedTerminal.completedAt < SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS,
+                locale,
             });
         })()
         : null;

@@ -109,8 +109,14 @@ export type FailedUpdateGuidance = {
 };
 
 export const RECOVERY_LOG_COMMAND = 'sudo journalctl -u celikpanel-release-recovery.service --no-pager -n 50';
-/** Read-only: says whether a recovery kit transition is left and what to do. */
-export const RECOVERY_RUNTIME_STATUS_COMMAND = 'sudo /usr/libexec/celikpanel/recovery runtime-status';
+/**
+ * Read-only: says whether a recovery kit transition is left and what to do,
+ * in the page's language (the tool answers in English without --lang; it has
+ * had --lang since alpha.81). Sayfanın dilinde yanıt verir.
+ */
+export function recoveryRuntimeStatusCommand(locale: 'en' | 'tr' = 'en'): string {
+    return `sudo /usr/libexec/celikpanel/recovery runtime-status --lang ${locale}`;
+}
 
 type Input = {
     targetVersion: string;
@@ -129,6 +135,8 @@ type Input = {
      * failure the owner looks at.
      */
     withinLimit?: boolean;
+    /** The page's language, for an owner command that answers in it. */
+    locale?: 'en' | 'tr';
 };
 
 /** How long an unreadable outcome is still said as "being checked". */
@@ -215,7 +223,7 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
                 { key: 'panelUpdate.outcome.preparationUnconfirmed', fallback: 'panelUpdate.outcome.preflightStep.generic' },
                 { key: 'panelUpdate.outcome.preparationUnconfirmedNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
             ],
-            command: RECOVERY_RUNTIME_STATUS_COMMAND,
+            command: recoveryRuntimeStatusCommand(input.locale),
         };
     }
     if (isPreflightStop(observation) || (preflight && uncontradicted)) {

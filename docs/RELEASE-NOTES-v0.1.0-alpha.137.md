@@ -112,10 +112,11 @@ update again when it has finished.
 If the recovery tool's preparation stops for another reason, the window now
 says so as a stop you can close: "the server's recovery tool could not
 confirm its own preparation for the new version, so the update stopped
-before stopping any service. Nothing was changed.", with one command that
-only reads, `sudo /usr/libexec/celikpanel/recovery runtime-status`, which
-says whether anything of that preparation is left and what to do. Before,
-this page stayed locked.
+before stopping any service. The installed version and its data were not
+changed.", with one command that only reads,
+`sudo /usr/libexec/celikpanel/recovery runtime-status --lang en` (`--lang tr`
+in Turkish), which says whether anything of that preparation is left and
+what to do. Before, this page stayed locked.
 
 ## If an earlier update left the page locked
 
@@ -132,9 +133,12 @@ update, not by the server:
    `sudo /usr/libexec/celikpanel/recovery runtime-status`. It only reads.
    "No recovery kit transition is recorded" means nothing is left: update
    from the panel. If it says the replacement kit is prepared, updating from
-   the panel again finishes that check. If it names an installed launcher or
-   a selected kit, run `sudo /usr/libexec/celikpanel/recovery recover`
-   first, as it says.
+   the panel again finishes that check; if it says the transition is
+   verified complete, update from the panel too. If it names an installed
+   launcher or a selected kit, run
+   `sudo /usr/libexec/celikpanel/recovery recover` first, as it says. If it
+   says the evidence could not be verified, keep the files and do not
+   update yet: that is the case the recovery tool's own report is for.
 3. Optional: `sudo systemctl reset-failed 'celikpanel-self-update-*'`
    removes the "failed" mark of that attempt's service. It changes nothing
    else; alpha.137 does this by itself for such attempts.

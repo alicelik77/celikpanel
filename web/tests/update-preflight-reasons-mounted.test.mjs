@@ -257,7 +257,7 @@ for (const locale of ['en', 'tr']) {
             assert.ok(text.includes(fill('panelUpdate.outcome.stopped', versions)), text);
             assert.ok(text.includes(c['panelUpdate.outcome.preparationUnconfirmed']), text);
             assert.ok(text.includes(fill('panelUpdate.outcome.preparationUnconfirmedNext', versions)), text);
-            assert.ok(text.includes('sudo /usr/libexec/celikpanel/recovery runtime-status'), 'the read-only command is shown');
+            assert.ok(text.includes(`sudo /usr/libexec/celikpanel/recovery runtime-status --lang ${locale}`), 'the read-only command is shown, answering in the page language');
             for (const key of ['recovery.next.failed', 'recovery.phase.failed', 'panelUpdate.outcome.followsRecovery', 'panelUpdate.watch']) {
                 assert.ok(!text.includes(c[key]), `${key} must not be said: no recovery follows this stop`);
             }

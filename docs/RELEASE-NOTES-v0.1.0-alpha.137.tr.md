@@ -114,9 +114,11 @@ yeniden başlatırsınız.
 Kurtarma aracının hazırlığı başka bir nedenle durursa pencere bunu artık
 kapatılabilir bir duruş olarak söyler: "sunucunun kurtarma aracı yeni sürüm
 için kendi hazırlığını doğrulayamadı; bu yüzden güncelleme hiçbir hizmeti
-durdurmadan durdu. Hiçbir şey değiştirilmedi.", yanında yalnız okuyan tek
-bir komutla: `sudo /usr/libexec/celikpanel/recovery runtime-status`; komut o
-hazırlıktan geriye bir şey kalıp kalmadığını ve ne yapılacağını söyler.
+durdurmadan durdu. Kurulu sürüm ve verileri değiştirilmedi.", yanında
+yalnız okuyan tek bir komutla:
+`sudo /usr/libexec/celikpanel/recovery runtime-status --lang tr`; komut o
+hazırlıktan geriye bir şey kalıp kalmadığını ve ne yapılacağını Türkçe
+söyler.
 Önceden bu sayfa kilitli kalıyordu.
 
 ## Önceki bir güncelleme sayfayı kilitli bıraktıysa
@@ -130,13 +132,16 @@ Kilidi sunucu değil, güncellemeyi izleyen tarayıcı tutar:
    güncellemeyi yeniden sunar. (Aynı tarayıcıda panel sitesinin saklanan
    verilerini silmek de aynı işi görür.)
 2. Önce emin olmak isterseniz sunucuda
-   `sudo /usr/libexec/celikpanel/recovery runtime-status` komutunu
-   çalıştırın; komut yalnız okur. "Kaydedilmiş kurtarma kiti geçişi yok"
-   derse geriye bir şey kalmamıştır: panelden güncelleyin. Yeni kitin hazır
-   olduğunu söylerse panelden yeniden güncellemek o denetimi bitirir.
-   Kurulmuş bir başlatıcıdan ya da seçilmiş bir kitten söz ederse önce,
-   söylediği gibi, `sudo /usr/libexec/celikpanel/recovery recover`
-   komutunu çalıştırın.
+   `sudo /usr/libexec/celikpanel/recovery runtime-status --lang tr`
+   komutunu çalıştırın; komut yalnız okur ve Türkçe yanıt verir.
+   "Kaydedilmiş kurtarma kiti geçişi yok" derse geriye bir şey
+   kalmamıştır: panelden güncelleyin. "Yeni kit hazır" derse panelden
+   yeniden güncellemek o denetimi bitirir; geçişin tamamlandığının
+   doğrulandığını söylerse de panelden güncelleyin. Yeni başlatıcının
+   kurulduğunu ya da yeni kitin seçildiğini söylerse önce, söylediği gibi,
+   `sudo /usr/libexec/celikpanel/recovery recover` komutunu çalıştırın.
+   Kanıtların doğrulanamadığını söylerse dosyalara dokunmayın ve henüz
+   güncellemeyin: o durum kurtarma aracının kendi raporunun konusudur.
 3. İsteğe bağlı: `sudo systemctl reset-failed 'celikpanel-self-update-*'`
    o girişimin hizmetindeki "başarısız" işaretini kaldırır. Başka hiçbir
    şeyi değiştirmez; alpha.137 bunu böyle girişimler için kendisi yapar.
