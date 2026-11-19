@@ -1,5 +1,5 @@
 import { isFinishingStep, isPreflightStop, preflightStopCodes, recoveryFailureCodes, recoveryFailureGuidanceKey, retryingCauseKey, type PausedCauseCode, type RecoveryFailureCode, type RecoveryObservation } from './recoveryObservation';
-import { systemUpdatePackageManagerBusy, systemUpdatePreflightStop, withoutInternalTokens } from './systemUpdateFailure';
+import { systemUpdatePackageManagerBusy, systemUpdatePreflightStop, systemUpdateRecoveryPreparationUnconfirmed, systemUpdateStoppedUnchangedSummary, withoutInternalTokens } from './systemUpdateFailure';
 
 /** Preflight steps with reviewed owner wording; any other step uses the generic line. */
 export const preflightSteps = ['mode', 'owner', 'compatibility', 'panel_database_check', 'agent_ledger_check', 'owner_metadata_probe', 'runtime_selection',
@@ -38,6 +38,11 @@ export type OutcomeKey =
     | 'panelUpdate.outcome.packageManagerBusy'
     | 'panelUpdate.packageManagerBusy'
     | 'panelUpdate.outcome.packageManagerBusyNext'
+    | 'panelUpdate.outcome.preparationUnconfirmedStopped'
+    | 'panelUpdate.outcome.preparationUnconfirmed'
+    | 'panelUpdate.outcome.preparationUnconfirmedNext'
+    | 'panelUpdate.outcome.preparationUnconfirmedCommandNote'
+    | 'panelUpdate.outcome.preparationUnconfirmedAnswers'
     | 'panelUpdate.outcome.stoppedNext'
     | 'panelUpdate.outcome.stoppedResume'
     | 'panelUpdate.outcome.preflightNext.application_compatibility'
@@ -99,6 +104,9 @@ export type FailedUpdateGuidance = {
     lines: OutcomeText[];
     /** A fixed owner command to show as code, never server-supplied text. */
     command?: string;
+    /** One sentence under the command (what it does), then what each answer means. */
+    commandNote?: OutcomeText;
+    afterCommand?: OutcomeText[];
     /**
      * The worker's summary without internal tokens, shown only as a secondary
      * line and only when no translated product summary says the same.
@@ -107,6 +115,14 @@ export type FailedUpdateGuidance = {
 };
 
 export const RECOVERY_LOG_COMMAND = 'sudo journalctl -u celikpanel-release-recovery.service --no-pager -n 50';
+/**
+ * Read-only: says whether a recovery kit transition is left and what to do,
+ * in the page's language (the tool answers in English without --lang; it has
+ * had --lang since alpha.81). Sayfanın dilinde yanıt verir.
+ */
+export function recoveryRuntimeStatusCommand(locale: 'en' | 'tr' = 'en'): string {
+    return `sudo /usr/libexec/celikpanel/recovery runtime-status --lang ${locale}`;
+}
 
 type Input = {
     targetVersion: string;
@@ -125,6 +141,8 @@ type Input = {
      * failure the owner looks at.
      */
     withinLimit?: boolean;
+    /** The page's language, for an owner command that answers in it. */
+    locale?: 'en' | 'tr';
 };
 
 /** How long an unreadable outcome is still said as "being checked". */
@@ -192,6 +210,34 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
                 // catalogue's own busy and resume sentences.
                 { key: 'panelUpdate.outcome.packageManagerBusy', fallback: 'panelUpdate.packageManagerBusy' },
                 { key: 'panelUpdate.outcome.packageManagerBusyNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
+            ],
+        };
+    }
+    // The recovery tool could not confirm its own preparation: the update
+    // stopped before any release transaction or service stop, so no recovery
+    // follows it (alpha.137 lab: the page waited for one forever and offered
+    // no update). A stop the owner can close and start again, with the one
+    // read-only command that says whether anything of the preparation is left.
+    // Hazırlık doğrulanamadı: kurtarma gelmez; kapatılabilir duruş ve komut.
+    if (systemUpdateRecoveryPreparationUnconfirmed(input.message) && uncontradicted) {
+        return {
+            state: 'unchanged',
+            tone: 'neutral',
+            title: { key: 'panelUpdate.outcome.stoppedTitle' },
+            // D-024: what happened and what is known, who acts and the
+            // next action, the command, then how work resumes for each of
+            // its answers (the recovery tool's own runtime-status wording).
+            // Its own opening: true also when the kit's preparation had
+            // written its intent (a137 lab 2), unlike "in its read-only check".
+            lines: [
+                { key: 'panelUpdate.outcome.preparationUnconfirmedStopped', vars: versions, fallback: 'panelUpdate.outcome.stoppedTitle' },
+                { key: 'panelUpdate.outcome.preparationUnconfirmed', fallback: 'panelUpdate.outcome.preflightStep.generic' },
+                { key: 'panelUpdate.outcome.preparationUnconfirmedNext', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
+            ],
+            command: recoveryRuntimeStatusCommand(input.locale),
+            commandNote: { key: 'panelUpdate.outcome.preparationUnconfirmedCommandNote', fallback: 'panelUpdate.outcome.stoppedResume' },
+            afterCommand: [
+                { key: 'panelUpdate.outcome.preparationUnconfirmedAnswers', vars: versions, fallback: 'panelUpdate.outcome.stoppedResume' },
             ],
         };
     }
@@ -347,6 +393,21 @@ export type PreviousUpdateAttempt = {
  */
 export function previousAttemptPackageManagerBusy(summary: string): boolean {
     return systemUpdatePackageManagerBusy(summary);
+}
+
+/**
+ * The attempt's own stored summary says it stopped before changing the
+ * installed version: a typed unchanged stop, or the recovery tool's
+ * unconfirmed preparation (alpha.137 review: the card said "did not
+ * complete" for both once the window was closed).
+ */
+export function previousAttemptSummaryStopped(summary: string): boolean {
+    return systemUpdateStoppedUnchangedSummary(summary) || systemUpdateRecoveryPreparationUnconfirmed(summary);
+}
+
+/** The attempt's own summary says the recovery tool could not confirm its preparation. */
+export function previousAttemptPreparationUnconfirmed(summary: string): boolean {
+    return systemUpdateRecoveryPreparationUnconfirmed(summary);
 }
 
 /** The attempt stopped before changing anything installed (either typed preflight stop). */

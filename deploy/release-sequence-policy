@@ -1,6 +1,6 @@
 format=celikpanel-release-sequence-policy-v1
-version=v0.1.0-alpha.136
-current=136
-previous=135
-previous_version=v0.1.0-alpha.135
-previous_commit=1f3e082345329b2eed441c998aca5c56144c7b5c
+version=v0.1.0-alpha.137
+current=137
+previous=136
+previous_version=v0.1.0-alpha.136
+previous_commit=b04c94c75bb885660b3981b31fd32ba2b6384095

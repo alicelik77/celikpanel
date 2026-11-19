@@ -18,7 +18,7 @@ import {
     type UpdateMarker,
     type UpdateTarget,
 } from './SystemUpdateOperation';
-import { decodePreviousUpdateAttempt, previousAttemptPackageManagerBusy, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
+import { decodePreviousUpdateAttempt, previousAttemptPackageManagerBusy, previousAttemptPreparationUnconfirmed, previousAttemptStopped, previousAttemptSummaryStopped, recoveryRuntimeStatusCommand, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
 import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
 import { BuildCommit } from './BuildCommit';
 import {
@@ -406,7 +406,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     // so; it is read once per attempt, a GET that never starts anything.
     // Nedeni kaydedilmemis onceki deneme paket yoneticisi mesgul oldugu icin
     // durmus olabilir; kendi ozeti deneme basina bir kez okunur.
-    const [previousSummary, setPreviousSummary] = useState<{ requestID: string; busy: boolean } | null>(null);
+    const [previousSummary, setPreviousSummary] = useState<{ requestID: string; busy: boolean; stopped: boolean; preparationUnconfirmed: boolean } | null>(null);
     // Read for an attempt with no recorded cause and for a preflight stop: the
     // updater records a busy package manager that its recovery tool's check
     // reported as a recovery runtime preflight stop (Frankfurt's case).
@@ -433,7 +433,13 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         void readPanelUpdateAttemptSummary(uncausedAttempt, controller.signal).then((result) => {
             // Unread: the notice keeps its general words.
             if (controller.signal.aborted || !result.read) return;
-            setPreviousSummary({ requestID: uncausedAttempt, busy: result.summary !== null && previousAttemptPackageManagerBusy(result.summary) });
+            const summary = result.summary;
+            setPreviousSummary({
+                requestID: uncausedAttempt,
+                busy: summary !== null && previousAttemptPackageManagerBusy(summary),
+                stopped: summary !== null && previousAttemptSummaryStopped(summary),
+                preparationUnconfirmed: summary !== null && previousAttemptPreparationUnconfirmed(summary),
+            });
         });
         return () => controller.abort();
     }, [uncausedAttempt]);
@@ -559,7 +565,12 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const openNoticeAttempt = !!previousAttempt && !!stoppedHere && previousAttempt.request_id === stoppedHere.requestID;
     const previousBusy = !!previousAttempt && ((previousSummary?.requestID === previousAttempt.request_id && previousSummary.busy)
         || (openNoticeAttempt && stoppedHere.packageManagerBusy));
-    const previousStopped = previousAttemptStopped(previousAttempt) || previousBusy || (openNoticeAttempt && !stoppedHere.rolledBack);
+    // Its own summary says it stopped unchanged, or that the recovery tool
+    // could not confirm its preparation (then the read-only command follows).
+    const previousSummaryRead = !!previousAttempt && previousSummary?.requestID === previousAttempt.request_id ? previousSummary : null;
+    const previousPreparation = !!previousSummaryRead?.preparationUnconfirmed || (openNoticeAttempt && !!stoppedHere.preparationUnconfirmed);
+    const previousStopped = previousAttemptStopped(previousAttempt) || previousBusy || !!previousSummaryRead?.stopped || previousPreparation
+        || (openNoticeAttempt && !stoppedHere.rolledBack);
     const readinessTitle = readinessChecking
         ? t('services.mutationReadiness.checking')
         : readiness?.ready === true
@@ -805,6 +816,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                     <p className="mt-1 text-fg-muted" data-previous-attempt-cause={previousBusy ? 'package_manager_busy' : undefined}>
                                         {t(previousAttempt.phase === 'recovered' ? 'panelUpdate.previousAttempt.recovered'
                                             : previousBusy ? 'panelUpdate.previousAttempt.packageManagerBusy'
+                                                : previousPreparation ? 'panelUpdate.previousAttempt.preparationUnconfirmed'
                                                 : previousStopped ? 'panelUpdate.previousAttempt.stopped'
                                                     : 'panelUpdate.previousAttempt.failed', {
                                             version: target.version,
@@ -821,6 +833,17 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
                                     )}
                                     {previousAttempt.phase === 'recovered' && (
                                         <p className="mt-1 text-fg-muted">{t('panelUpdate.previousAttempt.again', { version: target.version })}</p>
+                                    )}
+                                    {/* The same read-only command and answers as the stopped update's window. */}
+                                    {previousPreparation && !previousBusy && (
+                                        <div data-previous-attempt-command="">
+                                            <code className="mt-2 block break-words rounded-lg border border-border bg-surface-2 px-3 py-2 text-left font-mono text-xs text-fg">
+                                                {recoveryRuntimeStatusCommand(locale)}
+                                            </code>
+                                            <p className="mt-1 text-xs text-fg-muted">{t('panelUpdate.outcome.preparationUnconfirmedCommandNote')}</p>
+                                            <p className="mt-1 text-xs text-fg-muted">{t('common.sudoNote')}</p>
+                                            <p className="mt-1 text-fg-muted">{t('panelUpdate.outcome.preparationUnconfirmedAnswers', { target: target.version, previous: currentVersion ?? '' })}</p>
+                                        </div>
                                     )}
                                     {/* The card's own readiness read (and its quiet
                                         re-read while the server is busy) says when the
