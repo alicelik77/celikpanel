@@ -41,6 +41,49 @@ type DomainResponse struct {
 	// The server refuses them anyway; absent when nothing is closed and for
 	// the administrator, whom the gates do not narrow.
 	RightsClosed []string `json:"rights_closed,omitempty"`
+	// HoldsProgram and HoldsApp (alpha.138): a program or Python app record,
+	// and an AI or automation app record, exist on the domain (deployed,
+	// only created or failed). Either keeps the domain from being deleted
+	// until it is removed, so the page draws its card whatever the plan or
+	// the site type say. Absent when false, and for a team member, who is
+	// never shown those cards.
+	HoldsProgram bool `json:"holds_program,omitempty"`
+	HoldsApp     bool `json:"holds_app,omitempty"`
+}
+
+// domainAppRecords is which domains hold a program record and which an AI
+// app record: one query each for the whole list, never one per row.
+type domainAppRecords struct{ programs, apps map[int]bool }
+
+func (p *Panel) domainAppRecords(ctx context.Context) (domainAppRecords, error) {
+	records := domainAppRecords{programs: map[int]bool{}, apps: map[int]bool{}}
+	for _, read := range []struct {
+		query string
+		into  map[int]bool
+	}{
+		{`SELECT domain_id FROM runtime_apps`, records.programs},
+		{`SELECT domain_id FROM service_app_installs`, records.apps},
+	} {
+		rows, err := p.db.GetDB().QueryContext(ctx, read.query)
+		if err != nil {
+			return records, err
+		}
+		for rows.Next() {
+			var id int
+			if err := rows.Scan(&id); err != nil {
+				_ = rows.Close()
+				return records, err
+			}
+			read.into[id] = true
+		}
+		if err := rows.Close(); err != nil {
+			return records, err
+		}
+		if err := rows.Err(); err != nil {
+			return records, err
+		}
+	}
+	return records, nil
 }
 
 const (
@@ -146,6 +189,16 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// alpha.138: what holds a program or an app, for everyone but a team
+	// member. The list itself is still known if this read fails; the page
+	// then draws those cards by the plan and the type, as before.
+	var appRecords domainAppRecords
+	if !additionalUser {
+		if appRecords, err = p.domainAppRecords(r.Context()); err != nil {
+			log.Printf("domains list: read program and app records: %v", err)
+		}
+	}
+
 	// The closed rights of each subscription, read once per subscription.
 	var closedRights *closedPermissionsCache
 	if caller != nil && !caller.hasAccountRole(roleAdmin) {
@@ -241,6 +294,8 @@ func (p *Panel) handleDomains(w http.ResponseWriter, r *http.Request) {
 			Access:       access,
 			SiteConfig:   siteConfigFor(siteConfigs, domain.ID),
 			RightsClosed: domainRightsClosed(r.Context(), closedRights, domain.SubscriptionID),
+			HoldsProgram: appRecords.programs[domain.ID],
+			HoldsApp:     appRecords.apps[domain.ID],
 		})
 	}
 

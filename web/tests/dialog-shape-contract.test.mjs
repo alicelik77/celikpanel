@@ -211,6 +211,8 @@ test('every dialogue in the product is the shared one', () => {
     'MailAutoresponderDialog.tsx': 1,
     'MailSetupDialog.tsx': 1,
     'MailboxRecoveryDialog.tsx': 1,
+    // alpha.138: one mailbox's connection settings, each ready to copy.
+    'MailboxConnectionDialog.tsx': 1,
     // 2 Nov 2026: suspending or resuming the services of an account or a subscription.
     'SuspensionDialog.tsx': 1,
     // alpha.117 (D-043): the serious confirmation of a security emergency step.

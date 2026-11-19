@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"sync"
@@ -396,6 +397,125 @@ func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
 	rec = f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/install", n8nInstallBody)
 	if !strings.Contains(rec.Body.String(), `"reason":"certificate_missing"`) {
 		t.Fatalf("certificate: %s", rec.Body.String())
+	}
+}
+
+// alpha.138: an app is not installed on a domain that a program or Python
+// app uses, deployed or only created: it would take the domain from the
+// program. Refused before anything is recorded; the other site types keep
+// their answers.
+func TestServiceAppRefusedWhereAProgramUsesTheDomain(t *testing.T) {
+	f := newServiceAppFixture(t)
+	f.offer(t, "n8n")
+	path := "/api/v1/domains/9903/service-apps/install"
+	refused := func(state string) {
+		t.Helper()
+		rec := f.as(t, 9704, http.MethodPost, path, n8nInstallBody)
+		wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+		if !strings.Contains(rec.Body.String(), `"reason":"program_created"`) || !strings.Contains(rec.Body.String(), "Programs section") {
+			t.Fatalf("%s: %s", state, rec.Body.String())
+		}
+		if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs`); n != 0 {
+			t.Fatalf("%s: a refused install left %d install records", state, n)
+		}
+		if n := f.count(t, `SELECT COUNT(*) FROM service_app_operations`); n != 0 {
+			t.Fatalf("%s: a refused install left %d operations", state, n)
+		}
+		f.native.mu.Lock()
+		prepares := len(f.native.prepares)
+		f.native.mu.Unlock()
+		if prepares != 0 {
+			t.Fatalf("%s: the Agent was asked to prepare", state)
+		}
+	}
+
+	// A program created but not deployed yet: the site is still PHP.
+	f.exec(t, `INSERT INTO runtime_apps (id, subscription_id, domain_id, site_id, kind, offering_id, entry, port, state, deployed)
+		VALUES (61, 9803, 9903, 9941, 'program', 'runtime:program', 'server', 30000, 'created', 0)`)
+	refused("created program on a PHP site")
+
+	// A deployed program: the site is the program's.
+	f.exec(t, `UPDATE runtime_apps SET state = 'running', deployed = 1 WHERE id = 61`)
+	f.exec(t, `UPDATE sites SET project_type = 'runtime_app', app_port = 30000 WHERE id = 9941`)
+	refused("deployed program")
+
+	// The site type alone says so too (a record the type outlived).
+	f.exec(t, `DELETE FROM runtime_apps WHERE id = 61`)
+	refused("program site without its record")
+
+	// The refusals that were there keep their own reasons.
+	for _, kind := range []string{"node", "service_app"} {
+		f.exec(t, `UPDATE sites SET project_type = '`+kind+`' WHERE id = 9941`)
+		rec := f.as(t, 9704, http.MethodPost, path, n8nInstallBody)
+		wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+		if !strings.Contains(rec.Body.String(), `"reason":"site_type"`) {
+			t.Fatalf("%s: %s", kind, rec.Body.String())
+		}
+	}
+
+	// The other site types install as before.
+	for i, kind := range []string{"static", "proxy", "forwarding", "php"} {
+		f.exec(t, `UPDATE sites SET project_type = '`+kind+`', app_port = NULL WHERE id = 9941`)
+		f.exec(t, `DELETE FROM service_app_operations`)
+		f.exec(t, `DELETE FROM service_app_installs`)
+		body := strings.Replace(n8nInstallBody, "op-n8n-0001", "op-n8n-type-"+string(rune('a'+i)), 1)
+		rec := f.as(t, 9704, http.MethodPost, path, body)
+		wantStatus(t, rec, http.StatusAccepted, "")
+		f.waitOperation(t, "op-n8n-type-"+string(rune('a'+i)))
+	}
+}
+
+// A domain that already holds both (from before alpha.138): updating the app
+// would publish it over the program, so it is refused; the app can still be
+// stopped and removed.
+func TestServiceAppUpdateRefusedWhereAProgramUsesTheDomain(t *testing.T) {
+	f := newServiceAppFixture(t)
+	f.offer(t, "n8n")
+	f.exec(t, `INSERT INTO service_app_installs (id, subscription_id, domain_id, site_id, app_id, version, target_version, port, aux_port, state, previous_project_type)
+		VALUES (79, 9803, 9903, 9941, 'n8n', '0.0.1', '0.0.1', 21000, 21001, 'running', 'php')`)
+	f.exec(t, `INSERT INTO runtime_apps (id, subscription_id, domain_id, site_id, kind, offering_id, entry, port, state, deployed)
+		VALUES (63, 9803, 9903, 9941, 'program', 'runtime:program', 'server', 30002, 'running', 1)`)
+	f.exec(t, `UPDATE sites SET project_type = 'runtime_app', app_port = 30002 WHERE id = 9941`)
+	f.native.units[79] = transport.AppUnitState{Present: true, Active: true, Enabled: true}
+	rec := f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/update", `{"operation_id":"op-n8n-upd-0001"}`)
+	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+	if !strings.Contains(rec.Body.String(), `"reason":"program_created"`) {
+		t.Fatalf("update beside a program: %s", rec.Body.String())
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM service_app_operations`); n != 0 {
+		t.Fatalf("a refused update left %d operations", n)
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs WHERE id = 79 AND target_version = '0.0.1'`); n != 1 {
+		t.Fatal("a refused update changed the install")
+	}
+	if rec := f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/control", `{"action":"stop"}`); rec.Code >= 400 {
+		t.Fatalf("stop beside a program: %d %s", rec.Code, rec.Body.String())
+	}
+	wantStatus(t, f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/uninstall", `{"operation_id":"op-n8n-mixed-rm"}`), http.StatusAccepted, "")
+	if op := f.waitOperation(t, "op-n8n-mixed-rm"); op.State != "succeeded" {
+		t.Fatalf("uninstall: %+v", op)
+	}
+	var projectType string
+	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9941`).Scan(&projectType); err != nil || projectType != "runtime_app" {
+		t.Fatalf("removing the app changed the program's site: %s %v", projectType, err)
+	}
+}
+
+// The install's own transaction refuses a program that appeared after the
+// handler looked (the same reason and words).
+func TestServiceAppInstallTransactionRefusesAProgram(t *testing.T) {
+	f := newServiceAppFixture(t)
+	f.exec(t, `INSERT INTO runtime_apps (id, subscription_id, domain_id, site_id, kind, offering_id, entry, port, state, deployed)
+		VALUES (62, 9803, 9903, 9941, 'program', 'runtime:program', 'server', 30001, 'created', 0)`)
+	app, _ := serviceapps.Lookup("n8n")
+	site := serviceAppSite{SubscriptionID: 9803, SiteID: 9941, Domain: "outsider.matrix.test", ProjectType: "php"}
+	_, err := f.panel.createServiceAppInstall(context.Background(), nil, site, 9903, app, "op-race-0001")
+	var refusal *serviceAppConflict
+	if !errors.As(err, &refusal) || refusal.reason != serviceAppReasonProgramCreated || refusal.message != serviceAppProgramRefusal("n8n") {
+		t.Fatalf("transaction: %v", err)
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs`); n != 0 {
+		t.Fatalf("the refused transaction left %d install records", n)
 	}
 }
 

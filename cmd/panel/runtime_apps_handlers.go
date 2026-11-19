@@ -790,6 +790,17 @@ func (p *Panel) handleRuntimeAppDeploy(w http.ResponseWriter, r *http.Request, d
 	if p.refuseRuntimeNewUse(w, r, a.Kind, site) {
 		return
 	}
+	// alpha.138: a deploy switches the domain to the program. An AI app on
+	// the domain (installed over a created program before alpha.138 refused
+	// that) would lose its domain, so the app is removed first.
+	if in, has, err := p.serviceAppInstallForDomain(ctx, domainID); err != nil {
+		writeServerError(w, err)
+		return
+	} else if has {
+		writeServiceAppRefusal(w, http.StatusConflict, "app_installed",
+			"Nothing was changed: "+serviceAppLabel(in)+" uses this domain. Remove the app in the Programs section first, then deploy the program.", nil)
+		return
+	}
 	if a.Kind == siteruntime.KindPython {
 		if current, _ := p.runtimeKindOffering(ctx, a.Kind); current != a.OfferingID {
 			writeRuntimeAppRefusal(w, http.StatusConflict, "python_moved",

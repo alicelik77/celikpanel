@@ -137,7 +137,17 @@ function Refusal({ error }: { error: ApiError | null }) {
     );
 }
 
-export function DomainRuntimeApps({ domainId }: { domainId: number; domainName: string }) {
+// offerNew (alpha.138): false where the site's type refuses a new program
+// (sections.ts NEW_REFUSED_ON); the card then shows only the program the
+// domain already holds, so it can be managed and removed, and no form.
+// deployRefused: an AI app record is on the domain, so the server refuses a
+// deploy (it would take the domain from the app): no deploy is offered.
+// notServing: the domain does not serve this program (its type is another
+// kind), so the site is not opened as the program's.
+// Each comes from the domain's type and records (ProgramsSection.tsx).
+export function DomainRuntimeApps({ domainId, offerNew = true, deployRefused = false, notServing = false }: {
+    domainId: number; domainName: string; offerNew?: boolean; deployRefused?: boolean; notServing?: boolean;
+}) {
     const { t } = useI18n();
     const base = `/api/v1/domains/${domainId}/runtime-apps`;
     const [remote, setRemote] = useState<Remote<RuntimeAppsView>>(LOADING);
@@ -216,7 +226,7 @@ export function DomainRuntimeApps({ domainId }: { domainId: number; domainName: 
             {lost && <Notice tone="info">{t('runtime.lost')}</Notice>}
             <Refusal error={failure} />
             <RemoteGate remote={remote} checking={t('runtime.checking')} failed={t('runtime.unknown')} onRetry={() => void load(true)} busy={reading}>
-                {(view) => <Body view={view.value} base={base} after={after} />}
+                {(view) => <Body view={view.value} base={base} after={after} offerNew={offerNew} deployRefused={deployRefused} notServing={notServing} />}
             </RemoteGate>
         </div>
     );
@@ -269,13 +279,17 @@ function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): 
     return null;
 }
 
-function Body({ view, base, after }: { view: RuntimeAppsView; base: string; after: After }) {
+function Body({ view, base, after, offerNew, deployRefused, notServing }: {
+    view: RuntimeAppsView; base: string; after: After; offerNew: boolean; deployRefused: boolean; notServing: boolean;
+}) {
     const { t } = useI18n();
     const kinds = view.kinds.filter((k) => k.implemented);
     const app = view.app;
     // Before an app exists the person chooses what runs here; an offered
     // kind is chosen first.
     const [choice, setChoice] = useState(() => (kinds.find((k) => k.offered) ?? kinds[0])?.kind ?? 'program');
+    // Nothing to manage here and nothing may be created: no form whose press would fail.
+    if (!app && !offerNew) return null;
     const kind = kinds.find((k) => k.kind === (app ? app.kind : choice)) ?? kinds[0];
     if (!kind) return <Notice tone="info">{t('runtime.kindUnavailable')}</Notice>;
     const blocker = app ? null : blockerOf(view, kind, t);
@@ -316,7 +330,7 @@ function Body({ view, base, after }: { view: RuntimeAppsView; base: string; afte
                 </p>
             )}
             {app ? (
-                <AppCard view={view} app={app} kind={kind} base={base} after={after} />
+                <AppCard view={view} app={app} kind={kind} base={base} after={after} deployRefused={deployRefused} notServing={notServing} />
             ) : !blocker ? (
                 <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
                     <div className="font-semibold text-fg">{t(python ? 'runtime.python.create' : 'runtime.create.title')}</div>
@@ -387,7 +401,9 @@ function OperationLine({ op, vars }: { op: RuntimeOperation; vars: Record<string
 // States that keep a deploy, a start or a restart from being accepted.
 const BLOCKS_NEW_USE = ['suspended', 'held', 'not_offered', 'sandbox_reduced', 'disk_full'];
 
-function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app: RuntimeApp; kind: RuntimeKindView; base: string; after: After }) {
+function AppCard({ view, app, kind, base, after, deployRefused, notServing }: {
+    view: RuntimeAppsView; app: RuntimeApp; kind: RuntimeKindView; base: string; after: After; deployRefused: boolean; notServing: boolean;
+}) {
     const { t } = useI18n();
     const busy = view.operation?.state === 'running';
     const [acting, setActing] = useState('');
@@ -466,7 +482,7 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
                         {status?.restarts ? ' · ' + t('runtime.app.restarts', { count: status.restarts }) : ''}
                     </div>
                 </div>
-                {app.deployed && active && status?.serving && (
+                {app.deployed && active && status?.serving && !notServing && (
                     <a href={app.url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2">
                         <ExternalLink className="h-4 w-4" />{t('runtime.app.open')}
@@ -495,11 +511,13 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
                         : ' · ' + t('runtime.app.healthBad', { status: status.health.status ?? '—' }))}
                 </dd>
             </dl>
-            {!app.deployed && <Notice tone="info">{t(app.python ? 'runtime.python.notDeployed' : 'runtime.app.notDeployed')}</Notice>}
+            {!app.deployed && !deployRefused && <Notice tone="info">{t(app.python ? 'runtime.python.notDeployed' : 'runtime.app.notDeployed')}</Notice>}
             <div className="flex flex-wrap gap-2">
-                <Button variant="primary" icon={Rocket} loading={acting === 'deploy'} disabled={busy || !!acting || deployBlocked} onClick={() => void deploy()}>
-                    {t(app.deployed ? 'runtime.redeploy' : 'runtime.deploy')}
-                </Button>
+                {!deployRefused && (
+                    <Button variant="primary" icon={Rocket} loading={acting === 'deploy'} disabled={busy || !!acting || deployBlocked} onClick={() => void deploy()}>
+                        {t(app.deployed ? 'runtime.redeploy' : 'runtime.deploy')}
+                    </Button>
+                )}
                 {app.deployed && active !== true && (
                     <Button icon={Play} loading={acting === 'start'} disabled={busy || !!acting || startBlocked} onClick={() => void control('start')}>{t('runtime.start')}</Button>
                 )}
@@ -514,7 +532,7 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
                 <Button icon={Settings2} disabled={busy || !!acting} onClick={() => (editing ? void confirmLeaveIfDirty().then((close) => close && setEditing(false)) : setEditing(true))}>{t('runtime.settings.edit')}</Button>
                 <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('runtime.remove')}</Button>
             </div>
-            {deployBlocked && !busy && <p className="text-xs text-fg-subtle">{t('runtime.deployBlocked')}</p>}
+            {deployBlocked && !busy && !deployRefused && <p className="text-xs text-fg-subtle">{t('runtime.deployBlocked')}</p>}
             {editing && (
                 <div className="rounded-lg border border-border bg-surface-2 p-3">
                     <SettingsForm base={base} mode="edit" kind={kind} app={app} after={after} onDone={() => setEditing(false)} />

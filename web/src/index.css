@@ -53,7 +53,7 @@
     font-display: swap;
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-/* Open Sans (cPanel skin): Google'ın latin + latin-ext alt kümeleri —
+/* Open Sans (Amber style): Google'ın latin + latin-ext alt kümeleri —
    latin-ext Türkçe karakterleri (ğ, ş, İ…) kapsar. */
 @font-face {
     font-family: 'Open Sans';
@@ -197,18 +197,17 @@
 */
 
 /*
-  The three imitation skins exist so an operator arriving from another panel
-  can keep their bearings, and they were written as deltas on the old
-  slate-and-blue base. That base now lives here, under them, instead of being
-  the product's own identity.
+  The three alternative styles (Sky, Forest, Amber) were written as deltas on
+  the old slate-and-blue base. That base now lives here, under them, instead
+  of being the product's own identity.
 
-  Üç taklit skin, başka bir panelden gelen operatör yönünü kaybetmesin diye
-  var ve eski slate-mavi tabanın üzerine fark olarak yazılmıştı. O taban artık
-  ürünün kendi kimliği değil; burada, onların altında yaşıyor.
+  Üç seçenek stil (Gök, Orman, Kehribar) eski slate-mavi tabanın üzerine fark
+  olarak yazılmıştı. O taban artık ürünün kendi kimliği değil; burada,
+  onların altında yaşıyor.
 */
-[data-theme='plesk'],
-[data-theme='aapanel'],
-[data-theme='cpanel'] {
+[data-theme='sky'],
+[data-theme='forest'],
+[data-theme='amber'] {
     --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     --radius-md: 0.375rem;
     --radius-lg: 0.5rem;
@@ -244,9 +243,9 @@
     --sidebar-active-fg: 255 255 255;
     --sidebar-border: 51 65 85;
 }
-.dark[data-theme='plesk'],
-.dark[data-theme='aapanel'],
-.dark[data-theme='cpanel'] {
+.dark[data-theme='sky'],
+.dark[data-theme='forest'],
+.dark[data-theme='amber'] {
     --scrim: 2 6 23;
     --bg: 2 6 23;
     --surface: 15 23 42;
@@ -281,16 +280,16 @@
    stroke weight are its identity in both modes. / Skin başına biçim ve yazı —
    açık/koyudan bağımsız: bir skin'in köşeleri ve çizgi kalınlığı iki modda da
    kimliğidir. */
-[data-theme='plesk'] {
+[data-theme='sky'] {
     --icon-stroke: 1.75;
 }
-[data-theme='aapanel'] {
+[data-theme='forest'] {
     --radius-md: 0.25rem;
     --radius-lg: 0.3rem;
     --radius-xl: 0.375rem;
     --radius-2xl: 0.5rem;
 }
-[data-theme='cpanel'] {
+[data-theme='amber'] {
     --radius-md: 0.2rem;
     --radius-lg: 0.25rem;
     --radius-xl: 0.3rem;
@@ -299,9 +298,9 @@
     --font-sans: 'Open Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Plesk-style: sky blue actions, deep navy rail. / Plesk tarzı: gök mavisi
-   eylemler, koyu lacivert kenar çubuğu. */
-[data-theme='plesk']:not(.dark) {
+/* Sky: sky blue actions, deep navy rail. / Gök: gök mavisi eylemler, koyu
+   lacivert kenar çubuğu. */
+[data-theme='sky']:not(.dark) {
     --bg: 245 247 250;
     --primary: 2 132 199;        /* sky-600 */
     --primary-hover: 3 105 161;  /* sky-700 */
@@ -310,7 +309,7 @@
     --sidebar-border: 38 48 68;
     --sidebar-active: 2 132 199;
 }
-.dark[data-theme='plesk'] {
+.dark[data-theme='sky'] {
     --bg: 8 13 22;
     --surface: 17 24 38;
     --surface-2: 28 37 56;
@@ -325,9 +324,9 @@
     --sidebar-active: 2 132 199;
 }
 
-/* aaPanel-style: green actions, blue-grey rail. / aaPanel tarzı: yeşil
-   eylemler, mavi-gri kenar çubuğu. */
-[data-theme='aapanel']:not(.dark) {
+/* Forest: green actions, blue-grey rail. / Orman: yeşil eylemler, mavi-gri
+   kenar çubuğu. */
+[data-theme='forest']:not(.dark) {
     --bg: 244 246 244;
     --primary: 32 165 58;
     --primary-hover: 22 130 44;
@@ -337,7 +336,7 @@
     --sidebar-border: 58 78 98;
     --sidebar-active: 32 165 58;
 }
-.dark[data-theme='aapanel'] {
+.dark[data-theme='forest'] {
     --bg: 8 14 10;
     --surface: 16 24 18;
     --surface-2: 26 36 28;
@@ -352,9 +351,9 @@
     --sidebar-active: 32 165 58;
 }
 
-/* cPanel-style: orange actions, near-black blue rail. / cPanel tarzı:
-   turuncu eylemler, siyaha yakın mavi kenar çubuğu. */
-[data-theme='cpanel']:not(.dark) {
+/* Amber: orange actions, near-black blue rail. / Kehribar: turuncu
+   eylemler, siyaha yakın mavi kenar çubuğu. */
+[data-theme='amber']:not(.dark) {
     --bg: 247 246 244;
     --primary: 234 88 12;        /* orange-600 */
     --primary-hover: 194 65 12;  /* orange-700 */
@@ -363,7 +362,7 @@
     --sidebar-border: 36 50 64;
     --sidebar-active: 234 88 12;
 }
-.dark[data-theme='cpanel'] {
+.dark[data-theme='amber'] {
     --bg: 15 12 8;
     --surface: 26 21 15;
     --surface-2: 39 32 24;

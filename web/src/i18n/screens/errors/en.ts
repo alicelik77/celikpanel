@@ -11,6 +11,8 @@
 // sözleri. Kabuğun ekranlardan önce gösterebileceği kodlar ../../en.ts içinde kalır.
 
 export const enErrorsScreens = {
+    // ---- alpha.138: an AI app refused on a domain a program uses (the "serviceApps" part is full) ----
+    'err.SERVICE_APP.program_created': 'Nothing was changed: a program or Python app uses this domain, and the app would take its place. Remove the program in the Programs section first, or install the app on another domain or subdomain.',
     // ---- alpha.130: a change sent while the server is still booting ----
     'err.HOST_STARTING': 'This server is still starting: its system manager (systemd) does not report it ready yet, so CelikPanel did not send this change and nothing was changed. Nobody needs to act now: wait a minute and try again. If the server is still starting after 10 minutes, the server owner runs systemctl is-system-running and systemctl --failed on the server and fixes what keeps the boot from finishing.',
     // ---- alpha.108 slice d ----

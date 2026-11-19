@@ -7,7 +7,7 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
 import { readApiError, apiErrorText } from '../lib/apiError';
-import { decodeListIn, lastKnown, useRefreshEvery, useRemote } from '../lib/remote';
+import { decodeListIn, invalidate, lastKnown, useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
 import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
@@ -187,6 +187,10 @@ export function HostingTypePanel({ domainId, domainName }: { domainId: number; d
             showToast('success', t('hosting.saved'));
             answer.settle();
             await hosting.retry();
+            // The type decides which of the domain page's sections there are
+            // (Programs is absent on a Node.js site): the list is read again.
+            // Tür, alan adı sayfasının bölümlerini belirler; liste yeniden okunur.
+            invalidate('domains');
         };
         const progressTitle = t('opstep.hosting.title', { name: domainName });
         if (!(unsupported)) await followOperation({ progressTitle, action: proceed });

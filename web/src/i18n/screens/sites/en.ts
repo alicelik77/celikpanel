@@ -719,8 +719,6 @@ export const enSitesScreens = {
     // alpha.132: the one sentence of each closable part of Site and Advanced (SectionParts).
     'domain.about.type': 'What runs on this domain: a PHP site, static files, a Node.js app, a site from another server or a redirect.',
     'domain.about.apps': 'Ready-made applications such as WordPress, installed with one press, and the WordPress tools.',
-    'domain.about.ai': 'AI and automation applications such as n8n or Open WebUI, on this domain.',
-    'domain.about.programs': 'A program you built yourself, or a Python app, served on this domain.',
     'domain.about.php': 'The PHP version and the PHP limits of this site.',
     'domain.about.redirects': 'Send visitors of one address on this site to another.',
     'domain.about.cron': 'Commands that run by themselves at set times.',
