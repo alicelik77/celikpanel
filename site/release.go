@@ -106,7 +106,13 @@ func currentRelease(portal string) (release, error) {
 	}
 	line := publishedLine.FindSubmatch(notes)
 	if line == nil {
-		return release{}, fmt.Errorf("the notes of %s have no Published line", version)
+		// Between a release's merge and the record of its publication the
+		// notes have no Published line yet; the preview still renders.
+		return release{
+			Version: version, Commit: "(not yet published)", CommitShort: "unpublished",
+			SHA256:    "(filled in when the portal package is built)",
+			Published: time.Now().UTC(),
+		}, nil
 	}
 	published, err := time.Parse("2006-01-02", string(line[1]))
 	if err != nil {
