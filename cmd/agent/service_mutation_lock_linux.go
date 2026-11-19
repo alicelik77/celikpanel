@@ -570,9 +570,15 @@ func linuxPackageProcessBusyWith(procRoot string, packageKitLocks []string) (boo
 			process = process[:len(process)-1]
 		}
 		if _, found := packageProcesses[process]; found {
+			if linuxPackageProcessNotRoot(procRoot, name) {
+				continue
+			}
 			return true, nil
 		}
 		if process == packageKitDaemonComm {
+			if linuxPackageProcessNotRoot(procRoot, name) {
+				continue
+			}
 			pid, parseErr := strconv.Atoi(name)
 			if parseErr != nil || pid <= 0 || strconv.Itoa(pid) != name {
 				return true, nil
@@ -586,6 +592,47 @@ func linuxPackageProcessBusyWith(procRoot string, packageKitLocks []string) (boo
 		}
 	}
 	return false, nil
+}
+
+// linuxPackageProcessNotRoot reports a process that only carries a package
+// manager's name: its status names real, effective, saved and filesystem user
+// ids and none is root. The host's package database and its locks belong to
+// root: the tools in the list change the host's packages only as root (apt,
+// apt-get and dpkg take the root-owned dpkg and apt locks; apt-daily's
+// apt.systemd.daily and apt-helper, PackageKit's daemon and dnfdaemon run as
+// root system services; dnf, yum, rpm and pacman write their root-owned
+// databases). apt's "_apt" user runs only its download methods, children of a
+// root apt-get, whose names are not in the list. A process
+// that ended while it was read is gone. Any other answer (unreadable status,
+// no or malformed Uid line, any root id) counts the process as before: it
+// never hides package activity, it only stops an ordinary account's
+// same-named process from holding every update back (alpha.137 review).
+// Yalnız paket yöneticisinin adını taşıyan, kök olmayan süreç sayılmaz;
+// okunamayan sahip eskisi gibi sayılır.
+func linuxPackageProcessNotRoot(procRoot, name string) bool {
+	processDir := filepath.Join(procRoot, name)
+	raw, err := linuxProcReadFile(filepath.Join(processDir, "status"))
+	if err != nil {
+		return linuxProcessEnded(processDir, err)
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		value, ok := strings.CutPrefix(line, "Uid:")
+		if !ok {
+			continue
+		}
+		ids := strings.Fields(value)
+		if len(ids) != 4 {
+			return false
+		}
+		for _, id := range ids {
+			uid, parseErr := strconv.ParseUint(id, 10, 32)
+			if parseErr != nil || uid == 0 {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // packageKitDaemonProvablyIdle answers true only when every question has a

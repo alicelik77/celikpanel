@@ -149,3 +149,77 @@ func TestPackageScanCountsTheAptDailyRunFromItsStart(t *testing.T) {
 		}
 	})
 }
+
+// alpha.137 review: on a hosting server any account can run a process named
+// apt or dpkg (a copy of sleep is enough). Only a process with a root user id
+// can be the host's package manager; one whose owner cannot be read counts as
+// before (fail safe), and one that ended while its owner was read is gone.
+func TestPackageScanCountsOnlyRootOwnedPackageProcesses(t *testing.T) {
+	withOwner := func(t *testing.T, fixture *packageKitFixture, pid, comm, uids string) {
+		t.Helper()
+		fixture.file(t, pid+"/comm", comm+"\n")
+		fixture.file(t, pid+"/status", "Name:\t"+comm+"\nState:\tS (sleeping)\nPid:\t"+pid+"\nPPid:\t1\nUid:\t"+uids+"\nGid:\t0\t0\t0\t0\n")
+	}
+	for _, comm := range []string{"apt", "apt-get", "dpkg", "apt.systemd.dai", "apt-helper", "rpm", "pacman"} {
+		t.Run(comm+" of an ordinary account", func(t *testing.T) {
+			fixture := newPackageKitFixture(t)
+			withOwner(t, fixture, "6100", comm, "1001\t1001\t1001\t1001")
+			if fixture.busy(t) {
+				t.Fatalf("an ordinary account's %s held the update back", comm)
+			}
+		})
+		t.Run(comm+" of root", func(t *testing.T) {
+			fixture := newPackageKitFixture(t)
+			withOwner(t, fixture, "6100", comm, "0\t0\t0\t0")
+			if !fixture.busy(t) {
+				t.Fatalf("root's %s was not counted", comm)
+			}
+		})
+	}
+	// Any root id counts (a set-user-id or a process changing its ids).
+	for _, uids := range []string{"1001\t0\t0\t0", "0\t1001\t1001\t1001", "1001\t1001\t0\t1001", "1001\t1001\t1001\t0"} {
+		fixture := newPackageKitFixture(t)
+		withOwner(t, fixture, "6100", "dpkg", uids)
+		if !fixture.busy(t) {
+			t.Fatalf("dpkg with ids %q was not counted", uids)
+		}
+	}
+	t.Run("an owner that cannot be read counts", func(t *testing.T) {
+		for _, status := range []string{
+			"Name:\tdpkg\nPid:\t6100\nPPid:\t1\n",                   // no Uid line
+			"Name:\tdpkg\nPid:\t6100\nPPid:\t1\nUid:\t1001\n",       // malformed
+			"Name:\tdpkg\nPid:\t6100\nPPid:\t1\nUid:\tx\tx\tx\tx\n", // unparsable
+		} {
+			fixture := newPackageKitFixture(t)
+			fixture.file(t, "6100/comm", "dpkg\n")
+			fixture.file(t, "6100/status", status)
+			if !fixture.busy(t) {
+				t.Fatalf("dpkg with status %q was not counted", status)
+			}
+		}
+		for _, errno := range []syscall.Errno{syscall.EACCES, syscall.EIO} {
+			fixture := newPackageKitFixture(t)
+			withOwner(t, fixture, "6100", "dpkg", "1001\t1001\t1001\t1001")
+			withProcReaders(t, map[string]error{"/6100/status": errno})
+			if !fixture.busy(t) {
+				t.Fatalf("dpkg whose status answers %v was not counted", errno)
+			}
+		}
+	})
+	t.Run("a process that ended while its owner was read is gone", func(t *testing.T) {
+		fixture := newPackageKitFixture(t)
+		withOwner(t, fixture, "6100", "dpkg", "0\t0\t0\t0")
+		withProcReaders(t, map[string]error{"/6100/status": syscall.ESRCH})
+		if fixture.busy(t) {
+			t.Fatal("a dpkg that ended during the scan was counted")
+		}
+	})
+	t.Run("a PackageKit daemon name of an ordinary account", func(t *testing.T) {
+		fixture := newPackageKitFixture(t)
+		withOwner(t, fixture, "6200", "packagekitd", "1001\t1001\t1001\t1001")
+		fixture.file(t, "6200/maps", "")
+		if fixture.busy(t) {
+			t.Fatal("an ordinary account's packagekitd held the update back")
+		}
+	})
+}
