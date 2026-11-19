@@ -11,6 +11,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
 <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/pricing.html">
 <link rel="alternate" hreflang="en" href="pricing.html">
 <link rel="alternate" hreflang="tr" href="tr/fiyat.html">
@@ -55,7 +56,7 @@
 <a href="guide/en/">Guide</a>
 </nav>
 <div class="tools">
-<a class="tool lang" href="tr/fiyat.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span></a>
+<a class="tool lang" href="tr/fiyat.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span><span class="sep" aria-hidden="true">·</span><span class="cur">EN</span></a>
 <button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Switch to the dark theme" data-label-light="Switch to the light theme" aria-label="Switch to the dark theme"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
 <a class="signin" href="account/?action=login&amp;lang=en">Sign in</a>
 <a class="btn btn-primary btn-sm register" href="account/?action=register&amp;lang=en">Create account</a>
@@ -75,94 +76,95 @@
 </div>
 </header>
 <main id="main">
-<section class="page-hero" aria-labelledby="hero-title">
-<div class="wrap price-grid">
-<div>
-<h1 class="display" id="hero-title">One price per server, per year.</h1>
-<p class="lede">Nothing is counted: accounts, domains, sites and mailboxes are unlimited. One edition, with every feature. If a licence runs out, your server keeps working.</p>
-<div class="sign sign-temp now-sign">
-<h2>Today: free.</h2>
-<p>During the alpha every licence is free, for one year, and renewing it is free. Paid licences begin with version 1.0. Beta participants get their first paid year free and a lasting founder price; its amount is not decided yet.</p>
-<a class="btn btn-temp" href="account/?action=register&amp;lang=en">Create a free account<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="wrap">
+<p class="eyebrow">Pricing</p>
+<h1 id="hero-title">One price per server, per year.</h1>
+<p class="lede">Nothing counted, one edition. Free until 1.0.</p>
 </div>
-</div>
-<div class="sign price-plate">
-<p class="amount"><b>99</b><span>USD</span></p>
-<p class="per">per server, per year</p>
-<p class="from">from version 1.0</p>
-<ul>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Unlimited accounts, domains, sites and mailboxes</span></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Every feature, one edition</span></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Your price does not rise while you renew without a break</span></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Move it to another server for free, yourself</span></li>
+<div class="wrap"><div class="price-pair">
+<div class="price-card">
+<p class="tag-from">from version 1.0</p>
+<p class="amount"><b>99</b><span>USD · per server · per year</span></p>
+<ul class="checks">
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Nothing counted: accounts, domains, sites unlimited</li>
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>One edition, every feature</li>
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Price locked while you renew without a break</li>
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Moving to another server is free</li>
 </ul>
-<p class="plate-note">Nothing can be bought today. Prices are in US dollars.</p>
 </div>
+<div class="today-card">
+<p class="pill"><span class="live" aria-hidden="true"></span>Today</p>
+<h3>Free during the alpha.</h3>
+<p>Every licence is free for a year and renews for free.</p>
+<a class="btn btn-primary" href="account/?action=register&amp;lang=en">Create a free account<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+</div>
+</div></div>
+</section>
+<section class="block" aria-labelledby="included-title">
+<div class="wrap">
+<div class="block-head center">
+<p class="eyebrow">One edition</p>
+<h2 id="included-title">Everything is included.</h2>
+<p class="lede">No tiers, no add-ons. What the panel does, every licence does.</p>
+</div>
+<ul class="tiles">
+<li class="tile"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><div><h3>Websites and applications</h3><p>PHP, Node.js and static sites, with the versions you choose, files and logs.</p></div></li>
+<li class="tile"><svg class="i i-mail" aria-hidden="true" focusable="false"><use href="#i-mail"></use></svg><div><h3>Mail</h3><p>Mailboxes, forwarding, spam filtering, sending limits and webmail.</p></div></li>
+<li class="tile"><svg class="i i-network" aria-hidden="true" focusable="false"><use href="#i-network"></use></svg><div><h3>DNS</h3><p>Your own name servers with BIND or PowerDNS, or an outside provider.</p></div></li>
+<li class="tile"><svg class="i i-database" aria-hidden="true" focusable="false"><use href="#i-database"></use></svg><div><h3>Databases</h3><p>MariaDB and PostgreSQL, with users and exact rights.</p></div></li>
+<li class="tile"><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg><div><h3>Certificates and security</h3><p>Free certificates, the firewall, security updates and the security emergency.</p></div></li>
+<li class="tile"><svg class="i i-archive" aria-hidden="true" focusable="false"><use href="#i-archive"></use></svg><div><h3>Backups</h3><p>Scheduled site and server backups, restore and download.</p></div></li>
+<li class="tile"><svg class="i i-users" aria-hidden="true" focusable="false"><use href="#i-users"></use></svg><div><h3>Resellers and customers</h3><p>Plans, rights and roles for everyone who works on the server.</p></div></li>
+<li class="tile"><svg class="i i-server" aria-hidden="true" focusable="false"><use href="#i-server"></use></svg><div><h3>A second server, if you want</h3><p>Backup DNS on a second server. Each server has its own licence.</p></div></li>
+<li class="tile"><svg class="i i-rotate-ccw" aria-hidden="true" focusable="false"><use href="#i-rotate-ccw"></use></svg><div><h3>Signed updates</h3><p>Started by you, with an automatic return to the previous version.</p></div></li>
+</ul>
 </div>
 </section>
-<section class="section" aria-labelledby="included-title">
+<section class="block" aria-labelledby="lapse-title" id="licence-ends">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="included-title">Everything is in the one edition.</h2>
-<p class="lede">There are no tiers to compare and no add-ons to buy. What the panel does, every licence does.</p>
+<div class="block-head center">
+<p class="eyebrow">If a licence runs out</p>
+<h2 id="lapse-title">Nothing goes dark.</h2>
+<p class="lede">Reminders, then thirty days with everything working. After that only new things wait.</p>
 </div>
-<div class="included">
-<div class="inc"><h3>Websites and applications</h3><p>PHP, Node.js and static sites, with the versions you choose, files and logs.</p></div>
-<div class="inc"><h3>Mail</h3><p>Mailboxes, forwarding, spam filtering, sending limits and webmail.</p></div>
-<div class="inc"><h3>DNS</h3><p>Your own name servers with BIND or PowerDNS, or an outside provider.</p></div>
-<div class="inc"><h3>Databases</h3><p>MariaDB and PostgreSQL, with users and exact rights.</p></div>
-<div class="inc"><h3>Certificates and security</h3><p>Free certificates, the firewall, security updates and the security emergency.</p></div>
-<div class="inc"><h3>Backups</h3><p>Scheduled site and server backups, restore and download.</p></div>
-<div class="inc"><h3>Resellers and customers</h3><p>Plans, rights and roles for everyone who works on the server.</p></div>
-<div class="inc"><h3>A second server as a pair</h3><p>Main and backup DNS across two servers. Each server has its own licence.</p></div>
-<div class="inc"><h3>Signed updates</h3><p>Started by you, with an automatic return to the previous version.</p></div>
-</div>
-</div>
-</section>
-<section class="section band" aria-labelledby="lapse-title" id="licence-ends">
-<div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="lapse-title">If a licence runs out.</h2>
-<p class="lede">Nothing on your server stops. You get time, reminders and plain words; only creating new things waits for a renewal. These are the terms from version 1.0.</p>
-</div>
-<ol class="timeline">
-<li class="tl-seg tl-active"><b>Active</b><span>Everything works</span></li>
-<li class="tl-seg tl-warn"><b>Reminders</b><span>30, 7 and 1 days before</span><em>End date</em></li>
-<li class="tl-seg tl-grace"><b>Grace, 30 days</b><span>Everything works, with a notice on top</span><em>&#43;30 days</em></li>
-<li class="tl-seg tl-protect"><b>Protection</b><span>Only new domains, accounts and mailboxes wait</span></li>
+<div class="track">
+<p class="track-head"><b>If a licence runs out</b><span>terms from version 1.0</span></p>
+<ol class="stops">
+<li class="st-warn"><i aria-hidden="true"></i><b>Reminders</b><span>30 <span class="dot">·</span> 7 <span class="dot">·</span> 1 days before</span></li>
+<li class="st-end"><i aria-hidden="true"></i><b>End date</b><span>everything still works</span></li>
+<li class="st-grace"><i aria-hidden="true"></i><b>30 days of grace</b><span>a notice on top</span></li>
+<li class="st-protect"><i aria-hidden="true"></i><b>Then</b><span>only new things wait</span></li>
 </ol>
-<p class="keep-line"><span class="lamp" aria-hidden="true"></span><span><strong>At every step</strong> sites, mail, DNS, databases, scheduled backups, certificate renewal, panel updates, operating-system security updates, the firewall, the security emergency and downloading backups keep working.</span></p>
-<div class="tl-detail">
-<div><h3>Reminders</h3><p>In the panel and by e-mail, 30, 7 and 1 day before the end date.</p></div>
-<div><h3>Grace</h3><p>For 30 days after the end date everything works as before, with a notice at the top of the panel.</p></div>
-<div><h3>Protection</h3><p>After that only growth closes: new domains, accounts, mailboxes and the like. Nothing you already have changes.</p></div>
-<div><h3>Renew any time</h3><p>Renewing brings back full use at the panel’s next check, about once an hour, or at once with Check again.</p></div>
+<p class="track-always"><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg>At every step, sites, mail, DNS, updates and security keep working.</p>
 </div>
 </div>
 </section>
-<section class="section" aria-labelledby="terms-title">
+<section class="block" aria-labelledby="terms-title">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="terms-title">Try it, keep it, move it.</h2>
-<p class="lede">The terms people who run hosting ask for, written down before the first licence is sold. They apply from version 1.0.</p>
+<div class="block-head center">
+<p class="eyebrow">From version 1.0</p>
+<h2 id="terms-title">Try it, keep it, move it.</h2>
+<p class="lede">Written down before the first licence is sold.</p>
 </div>
-<div class="terms">
-<div class="sign term"><p class="big">30<small>days</small></p><h3>Trial without a card</h3><p>Every feature for 30 days, without a card. Buying later keeps the same key.</p></div>
-<div class="sign term"><p class="big">30<small>days</small></p><h3>Refund, no questions</h3><p>Changed your mind within 30 days of buying? You get your money back.</p></div>
-<div class="sign term"><p class="big">0<small>USD</small></p><h3>Moving is free</h3><p>Move a licence to another server from your account, as often as you need. One active server per licence.</p></div>
+<div class="stat-cards">
+<div class="stat"><p class="num">30<small>days</small></p><h3>Trial without a card</h3><p>Every feature for 30 days, without a card. Buying later keeps the same key.</p></div>
+<div class="stat"><p class="num">30<small>days</small></p><h3>Refund, no questions</h3><p>Changed your mind within 30 days of buying? You get your money back.</p></div>
+<div class="stat"><p class="num">0<small>USD</small></p><h3>Moving is free</h3><p>Move a licence to another server from your account, as often as you need. One active server per licence.</p></div>
 </div>
-<div class="more-terms">
-<div><h3>Automatic renewal only if you turn it on</h3><p>With a reminder 7 days before every charge. It is never a side effect of something else.</p></div>
-<div><h3>If celikpanel.net cannot be reached</h3><p>Your panel keeps working fully for 30 days on its last successful check. One server’s licence never blocks another server.</p></div>
-<div><h3>No lifetime licences</h3><p>Every licence is yearly, at the price you locked in when you bought it.</p></div>
-</div>
+<ul class="notes">
+<li><b>Automatic renewal only if you turn it on</b><span>With a reminder 7 days before every charge. It is never a side effect of something else.</span></li>
+<li><b>If celikpanel.net cannot be reached</b><span>Your panel keeps working fully for 30 days on its last successful check. One server’s licence never blocks another server.</span></li>
+<li><b>No lifetime licences</b><span>Every licence is yearly, at the price you locked in when you bought it.</span></li>
+</ul>
 </div>
 </section>
-<section class="section band" aria-labelledby="today-title" id="today">
-<div class="wrap today">
-<div>
-<h2 class="h2" id="today-title">And today, during the alpha?</h2>
-<p class="lede">The terms above arrive with version 1.0, in small releases before it. This is how licences work now.</p>
+<section class="block" aria-labelledby="today-title" id="today">
+<div class="wrap narrow">
+<div class="block-head center">
+<p class="eyebrow">Today</p>
+<h2 id="today-title">During the alpha.</h2>
 </div>
 <dl class="facts">
 <div><dt>Free</dt><dd>Every licence is free and covers one server for one year from when you create it.</dd></div>
@@ -173,15 +175,15 @@
 </dl>
 </div>
 </section>
-<section class="section" aria-labelledby="faq-title">
-<div class="wrap faq-grid">
-<div>
-<h2 class="h2" id="faq-title">Questions before you buy.</h2>
-<p class="lede">Short answers. The full terms are written into the product’s decision record.</p>
+<section class="block" aria-labelledby="faq-title">
+<div class="wrap narrow">
+<div class="block-head center">
+<p class="eyebrow">Questions</p>
+<h2 id="faq-title">Before you buy.</h2>
 </div>
 <div class="faq">
 <details open><summary>Does anything on my server stop when a licence ends?</summary><p>No. Sites, mail, DNS, databases, backups, certificate renewal, updates and security keep working at every step. From version 1.0, after 30 days of grace only creating new domains, accounts and mailboxes waits for a renewal.</p></details>
-<details><summary>What counts as a server?</summary><p>One machine running the panel. A licence belongs to one active server at a time; a pair of two servers takes two licences.</p></details>
+<details><summary>What counts as a server?</summary><p>One machine running the panel. A licence covers one active server at a time; if you add a second server, it has its own licence.</p></details>
 <details><summary>Do I pay per account, domain or site?</summary><p>No. Nothing is counted. One licence per server covers everything on it.</p></details>
 <details><summary>Will my price go up?</summary><p>Not while you renew without a break. The price you pay stays the price you pay.</p></details>
 <details><summary>I am moving to a new server. What happens?</summary><p>From version 1.0 you move the licence to the new server yourself, from your account, for free, as often as you need.</p></details>
@@ -193,14 +195,12 @@
 </section>
 <section class="closing" aria-labelledby="close-title">
 <div class="wrap">
-<div class="sign">
-<div>
-<h2 class="h2" id="close-title">Free today. Install it on a test server.</h2>
-<p>Create an account, take a free one-year licence for each server, and run one command.</p>
-</div>
+<div class="closing-card">
+<h2 id="close-title">Free until 1.0.</h2>
+<p>Create an account and install it on a test server today.</p>
 <div class="actions">
-<a class="btn btn-sign" href="account/?action=register&amp;lang=en">Create a free account</a>
-<a class="btn btn-line" href="download.html">Download</a>
+<a class="btn btn-primary btn-lg" href="account/?action=register&amp;lang=en">Create a free account<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+<a class="btn btn-ghost btn-lg" href="download.html">Install</a>
 </div>
 </div>
 </div>

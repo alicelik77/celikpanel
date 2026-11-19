@@ -1,7 +1,9 @@
 {{define "hero" -}}
-<section class="page-hero compact" aria-labelledby="hero-title">
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
 <div class="wrap">
-<h1 class="display" id="hero-title">{{t "systems.hero.title"}}</h1>
+<p class="eyebrow">{{t "nav.systems"}}</p>
+<h1 id="hero-title">{{t "systems.hero.title"}}</h1>
 <p class="lede">{{t "systems.hero.lede"}}</p>
 <nav class="jump" aria-label="{{t "systems.jump"}}">
 <a href="#{{t "systems.list.id"}}">{{t "systems.list.title"}}</a>
@@ -14,58 +16,54 @@
 {{- end}}
 
 {{define "main" -}}
-<section class="section" aria-labelledby="list-title" id="{{t "systems.list.id"}}">
+<section class="block tight" aria-labelledby="list-title" id="{{t "systems.list.id"}}">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="list-title">{{t "systems.list.title"}}</h2>
+<div class="block-head center">
+<h2 id="list-title">{{t "systems.list.title"}}</h2>
 <p class="lede">{{t "systems.list.lede"}}</p>
 </div>
-{{template "systems-table" .}}
-<p class="fine-print">{{t "systems.list.other"}}</p>
+<div class="table-card">{{template "systems-table" .}}<p class="table-card-foot">{{t "systems.list.other"}}</p></div>
 </div>
 </section>
 
-<section class="section band" aria-labelledby="deb-title" id="debian-ubuntu">
+<section class="block" aria-labelledby="deb-title" id="debian-ubuntu">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="deb-title">{{t "systems.deb.title"}}</h2>
-</div>
-<div class="columns">
+<div class="block-head center"><h2 id="deb-title">{{t "systems.deb.title"}}</h2></div>
+<div class="text-cards">
 {{- range $k := (list "offered" "notoffered" "updates" "major")}}
-<div><h3 class="h3">{{t (print "systems.deb." $k)}}</h3><p>{{t (print "systems.deb." $k ".text")}}</p></div>
+<div class="text-card"><h3>{{t (print "systems.deb." $k)}}</h3><p>{{t (print "systems.deb." $k ".text")}}</p></div>
 {{- end}}
 </div>
 </div>
 </section>
 
-<section class="section" aria-labelledby="arch-title" id="arch">
+<section class="block" aria-labelledby="arch-title" id="arch">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="arch-title">Arch Linux</h2>
-</div>
-<div class="columns">
-<div><h3 class="h3">{{t "systems.arch.offered"}}</h3><p>{{t "systems.arch.offered.text"}}</p></div>
-<div><h3 class="h3">{{t "systems.arch.notoffered"}}</h3><ul class="plain">
+<div class="block-head center"><h2 id="arch-title">Arch Linux</h2></div>
+<div class="text-cards">
+<div class="text-card"><h3>{{t "systems.arch.offered"}}</h3><p>{{t "systems.arch.offered.text"}}</p></div>
+<div class="text-card"><h3>{{t "systems.arch.notoffered"}}</h3><ul>
 {{- range $k := (list "1" "2" "3" "4" "5")}}
 <li>{{t (print "systems.arch.notoffered." $k)}}</li>
 {{- end}}
 </ul></div>
-<div><h3 class="h3">{{t "systems.arch.updates"}}</h3><p>{{th "systems.arch.updates.text_html"}}</p></div>
-<div><h3 class="h3">{{t "systems.arch.big"}}</h3><p>{{t "systems.arch.big.text"}}</p></div>
+<div class="text-card"><h3>{{t "systems.arch.updates"}}</h3><p>{{th "systems.arch.updates.text_html"}}</p></div>
+<div class="text-card"><h3>{{t "systems.arch.big"}}</h3><p>{{t "systems.arch.big.text"}}</p></div>
 </div>
 </div>
 </section>
 
-<section class="section field-band" aria-labelledby="yours-title">
-<div class="wrap trust">
-<div>
-<h2 class="h2" id="yours-title">{{t "systems.yours.title"}}</h2>
+<section class="block" aria-labelledby="yours-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">{{t "home.free.eyebrow"}}</p>
+<h2 id="yours-title">{{t "systems.yours.title"}}</h2>
 <p class="lede">{{t "systems.yours.text"}}</p>
 </div>
-<ul class="trust-list">
-<li>{{icon "arrow-right"}}<a href="{{repo (t "systems.yours.detail.file")}}">{{t "systems.yours.detail"}}</a></li>
-<li>{{icon "arrow-right"}}<a href="{{guide "without-panel"}}">{{t "systems.yours.guide"}}</a></li>
-<li>{{icon "arrow-right"}}<a href="{{link "download"}}">{{t "systems.install"}}</a></li>
+<ul class="link-list">
+<li><a href="{{repo (t "systems.yours.detail.file")}}">{{t "systems.yours.detail"}}{{icon "arrow-up-right"}}</a></li>
+<li><a href="{{guide "without-panel"}}">{{t "systems.yours.guide"}}{{icon "arrow-right"}}</a></li>
+<li><a href="{{link "download"}}">{{t "systems.install"}}{{icon "arrow-right"}}</a></li>
 </ul>
 </div>
 </section>

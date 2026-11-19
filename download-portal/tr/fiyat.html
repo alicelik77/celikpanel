@@ -11,6 +11,7 @@
 <link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
 <link rel="preload" href="../assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/public.css">
+<link rel="stylesheet" href="../assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/tr/fiyat.html">
 <link rel="alternate" hreflang="en" href="../pricing.html">
 <link rel="alternate" hreflang="tr" href="fiyat.html">
@@ -55,7 +56,7 @@
 <a href="../guide/tr/">Kılavuz</a>
 </nav>
 <div class="tools">
-<a class="tool lang" href="../pricing.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>EN</span></a>
+<a class="tool lang" href="../pricing.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span class="cur">TR</span><span class="sep" aria-hidden="true">·</span><span>EN</span></a>
 <button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Koyu temaya geç" data-label-light="Açık temaya geç" aria-label="Koyu temaya geç"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
 <a class="signin" href="../account/?action=login&amp;lang=tr">Giriş yap</a>
 <a class="btn btn-primary btn-sm register" href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
@@ -75,94 +76,95 @@
 </div>
 </header>
 <main id="main">
-<section class="page-hero" aria-labelledby="hero-title">
-<div class="wrap price-grid">
-<div>
-<h1 class="display" id="hero-title">Sunucu başına, yıllık tek fiyat.</h1>
-<p class="lede">Hiçbir şey sayılmaz: hesap, alan adı, site ve posta kutusu sınırsız. Her özelliği içeren tek sürüm. Lisans biterse sunucunuz çalışmaya devam eder.</p>
-<div class="sign sign-temp now-sign">
-<h2>Bugün: ücretsiz.</h2>
-<p>Alfa boyunca her lisans bir yıllığına ücretsizdir ve yenilemek de ücretsizdir. Ücretli lisanslar 1.0 sürümüyle başlar. Beta katılımcılarının ilk ücretli yılı ücretsizdir ve kalıcı bir kurucu fiyatı olur; tutarı henüz belirlenmedi.</p>
-<a class="btn btn-temp" href="../account/?action=register&amp;lang=tr">Ücretsiz hesap oluştur<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="wrap">
+<p class="eyebrow">Fiyat</p>
+<h1 id="hero-title">Sunucu başına, yıllık tek fiyat.</h1>
+<p class="lede">Hiçbir şey sayılmaz, tek sürüm. 1.0’a kadar ücretsiz.</p>
 </div>
-</div>
-<div class="sign price-plate">
-<p class="amount"><b>99</b><span>USD</span></p>
-<p class="per">sunucu başına, yıllık</p>
-<p class="from">1.0 sürümünden itibaren</p>
-<ul>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Sınırsız hesap, alan adı, site ve posta kutusu</span></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Her özellik, tek sürüm</span></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Ara vermeden yenilediğiniz sürece fiyatınız artmaz</span></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><span>Başka bir sunucuya ücretsiz, kendiniz taşıyın</span></li>
+<div class="wrap"><div class="price-pair">
+<div class="price-card">
+<p class="tag-from">1.0 sürümünden itibaren</p>
+<p class="amount"><b>99</b><span>USD · sunucu başına · yıllık</span></p>
+<ul class="checks">
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Hiçbir şey sayılmaz: hesap, alan adı, site sınırsız</li>
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Tek sürüm, her özellik</li>
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Ara vermeden yeniledikçe fiyatınız sabit</li>
+<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Başka sunucuya taşımak ücretsiz</li>
 </ul>
-<p class="plate-note">Bugün satın alınabilecek bir şey yok. Fiyatlar ABD doları cinsindendir.</p>
 </div>
+<div class="today-card">
+<p class="pill"><span class="live" aria-hidden="true"></span>Bugün</p>
+<h3>Alfa boyunca ücretsiz.</h3>
+<p>Her lisans bir yıl ücretsizdir ve ücretsiz yenilenir.</p>
+<a class="btn btn-primary" href="../account/?action=register&amp;lang=tr">Ücretsiz hesap oluştur<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+</div>
+</div></div>
+</section>
+<section class="block" aria-labelledby="included-title">
+<div class="wrap">
+<div class="block-head center">
+<p class="eyebrow">Tek sürüm</p>
+<h2 id="included-title">Her şey dahil.</h2>
+<p class="lede">Paket yok, eklenti yok. Panel ne yapıyorsa her lisans onu yapar.</p>
+</div>
+<ul class="tiles">
+<li class="tile"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><div><h3>Web siteleri ve uygulamalar</h3><p>PHP, Node.js ve statik siteler; seçtiğiniz sürümler, dosyalar ve günlükler.</p></div></li>
+<li class="tile"><svg class="i i-mail" aria-hidden="true" focusable="false"><use href="#i-mail"></use></svg><div><h3>E-posta</h3><p>Posta kutuları, yönlendirmeler, spam süzgeci, gönderim sınırları ve web posta.</p></div></li>
+<li class="tile"><svg class="i i-network" aria-hidden="true" focusable="false"><use href="#i-network"></use></svg><div><h3>DNS</h3><p>BIND ya da PowerDNS ile kendi ad sunucularınız ya da dış bir sağlayıcı.</p></div></li>
+<li class="tile"><svg class="i i-database" aria-hidden="true" focusable="false"><use href="#i-database"></use></svg><div><h3>Veritabanları</h3><p>MariaDB ve PostgreSQL; kullanıcılar ve tam yetkiler.</p></div></li>
+<li class="tile"><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg><div><h3>Sertifikalar ve güvenlik</h3><p>Ücretsiz sertifikalar, güvenlik duvarı, güvenlik güncellemeleri ve güvenlik acil durumu.</p></div></li>
+<li class="tile"><svg class="i i-archive" aria-hidden="true" focusable="false"><use href="#i-archive"></use></svg><div><h3>Yedekler</h3><p>Zamanlanmış site ve sunucu yedekleri, geri yükleme ve indirme.</p></div></li>
+<li class="tile"><svg class="i i-users" aria-hidden="true" focusable="false"><use href="#i-users"></use></svg><div><h3>Bayiler ve müşteriler</h3><p>Sunucuda çalışan herkes için planlar, haklar ve roller.</p></div></li>
+<li class="tile"><svg class="i i-server" aria-hidden="true" focusable="false"><use href="#i-server"></use></svg><div><h3>İsterseniz ikinci sunucu</h3><p>İkinci bir sunucuda yedek DNS. Her sunucunun kendi lisansı olur.</p></div></li>
+<li class="tile"><svg class="i i-rotate-ccw" aria-hidden="true" focusable="false"><use href="#i-rotate-ccw"></use></svg><div><h3>İmzalı güncellemeler</h3><p>Sizin başlattığınız, önceki sürüme kendiliğinden dönüşü olan güncellemeler.</p></div></li>
+</ul>
 </div>
 </section>
-<section class="section" aria-labelledby="included-title">
+<section class="block" aria-labelledby="lapse-title" id="lisans-bitince">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="included-title">Her şey tek sürümün içinde.</h2>
-<p class="lede">Karşılaştırılacak paket ya da satın alınacak eklenti yok. Panel ne yapıyorsa her lisans onu yapar.</p>
+<div class="block-head center">
+<p class="eyebrow">Lisans biterse</p>
+<h2 id="lapse-title">Hiçbir şey kararmaz.</h2>
+<p class="lede">Önce hatırlatmalar, sonra her şeyin çalıştığı otuz gün. Ondan sonra yalnız yeni şeyler bekler.</p>
 </div>
-<div class="included">
-<div class="inc"><h3>Web siteleri ve uygulamalar</h3><p>PHP, Node.js ve statik siteler; seçtiğiniz sürümler, dosyalar ve günlükler.</p></div>
-<div class="inc"><h3>E-posta</h3><p>Posta kutuları, yönlendirmeler, spam süzgeci, gönderim sınırları ve web posta.</p></div>
-<div class="inc"><h3>DNS</h3><p>BIND ya da PowerDNS ile kendi ad sunucularınız ya da dış bir sağlayıcı.</p></div>
-<div class="inc"><h3>Veritabanları</h3><p>MariaDB ve PostgreSQL; kullanıcılar ve tam yetkiler.</p></div>
-<div class="inc"><h3>Sertifikalar ve güvenlik</h3><p>Ücretsiz sertifikalar, güvenlik duvarı, güvenlik güncellemeleri ve güvenlik acil durumu.</p></div>
-<div class="inc"><h3>Yedekler</h3><p>Zamanlanmış site ve sunucu yedekleri, geri yükleme ve indirme.</p></div>
-<div class="inc"><h3>Bayiler ve müşteriler</h3><p>Sunucuda çalışan herkes için planlar, haklar ve roller.</p></div>
-<div class="inc"><h3>Çift olarak ikinci sunucu</h3><p>İki sunucuda ana ve yedek DNS. Her sunucunun kendi lisansı olur.</p></div>
-<div class="inc"><h3>İmzalı güncellemeler</h3><p>Sizin başlattığınız, önceki sürüme kendiliğinden dönüşü olan güncellemeler.</p></div>
-</div>
-</div>
-</section>
-<section class="section band" aria-labelledby="lapse-title" id="lisans-bitince">
-<div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="lapse-title">Lisans biterse.</h2>
-<p class="lede">Sunucunuzda hiçbir şey durmaz. Size zaman, hatırlatma ve açık bir dil kalır; yalnız yeni şeyler oluşturmak yenilemeyi bekler. Bunlar 1.0 sürümünden itibaren geçerli koşullardır.</p>
-</div>
-<ol class="timeline">
-<li class="tl-seg tl-active"><b>Etkin</b><span>Her şey çalışır</span></li>
-<li class="tl-seg tl-warn"><b>Hatırlatmalar</b><span>30, 7 ve 1 gün önce</span><em>Bitiş tarihi</em></li>
-<li class="tl-seg tl-grace"><b>Ek süre, 30 gün</b><span>Her şey çalışır, üstte bir uyarı durur</span><em>&#43;30 gün</em></li>
-<li class="tl-seg tl-protect"><b>Koruma</b><span>Yalnız yeni alan adı, hesap ve posta kutusu bekler</span></li>
+<div class="track">
+<p class="track-head"><b>Lisans biterse</b><span>1.0 sürümünden itibaren geçerli koşullar</span></p>
+<ol class="stops">
+<li class="st-warn"><i aria-hidden="true"></i><b>Hatırlatma</b><span>30 <span class="dot">·</span> 7 <span class="dot">·</span> 1 gün önce</span></li>
+<li class="st-end"><i aria-hidden="true"></i><b>Bitiş tarihi</b><span>her şey çalışmaya devam eder</span></li>
+<li class="st-grace"><i aria-hidden="true"></i><b>30 gün ek süre</b><span>üstte bir uyarı</span></li>
+<li class="st-protect"><i aria-hidden="true"></i><b>Sonra</b><span>yalnız yeni şeyler bekler</span></li>
 </ol>
-<p class="keep-line"><span class="lamp" aria-hidden="true"></span><span><strong>Her adımda</strong> siteler, e-posta, DNS, veritabanları, zamanlanmış yedekler, sertifika yenileme, panel güncellemeleri, işletim sistemi güvenlik güncellemeleri, güvenlik duvarı, güvenlik acil durumu ve yedek indirme çalışmaya devam eder.</span></p>
-<div class="tl-detail">
-<div><h3>Hatırlatmalar</h3><p>Panelde ve e-postayla, bitiş tarihinden 30, 7 ve 1 gün önce.</p></div>
-<div><h3>Ek süre</h3><p>Bitiş tarihinden sonraki 30 gün boyunca her şey eskisi gibi çalışır; panelin üstünde bir uyarı durur.</p></div>
-<div><h3>Koruma</h3><p>Ondan sonra yalnız büyüme kapanır: yeni alan adı, hesap, posta kutusu ve benzerleri. Elinizdeki hiçbir şey değişmez.</p></div>
-<div><h3>İstediğiniz an yenileyin</h3><p>Yenileme, panelin bir sonraki denetiminde, yaklaşık saatte bir, ya da “Yeniden denetle” ile hemen tam kullanımı geri getirir.</p></div>
+<p class="track-always"><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg>Her adımda siteler, posta, DNS, güncellemeler ve güvenlik çalışır.</p>
 </div>
 </div>
 </section>
-<section class="section" aria-labelledby="terms-title">
+<section class="block" aria-labelledby="terms-title">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="terms-title">Deneyin, kullanın, taşıyın.</h2>
-<p class="lede">Hosting işletenlerin istediği koşullar, ilk lisans satılmadan önce yazıya geçirildi. 1.0 sürümünden itibaren geçerlidir.</p>
+<div class="block-head center">
+<p class="eyebrow">1.0 sürümünden itibaren</p>
+<h2 id="terms-title">Deneyin, kullanın, taşıyın.</h2>
+<p class="lede">İlk lisans satılmadan önce yazıya geçirildi.</p>
 </div>
-<div class="terms">
-<div class="sign term"><p class="big">30<small>gün</small></p><h3>Kartsız deneme</h3><p>30 gün boyunca her özellik, kart olmadan. Sonradan satın alınca aynı anahtar kalır.</p></div>
-<div class="sign term"><p class="big">30<small>gün</small></p><h3>Sorgusuz iade</h3><p>Satın aldıktan sonraki 30 gün içinde vazgeçerseniz paranız geri ödenir.</p></div>
-<div class="sign term"><p class="big">0<small>USD</small></p><h3>Taşımak ücretsiz</h3><p>Lisansı hesabınızdan başka bir sunucuya, gerektiği kadar sık taşıyın. Her lisans aynı anda bir sunucuda çalışır.</p></div>
+<div class="stat-cards">
+<div class="stat"><p class="num">30<small>gün</small></p><h3>Kartsız deneme</h3><p>30 gün boyunca her özellik, kart olmadan. Sonradan satın alınca aynı anahtar kalır.</p></div>
+<div class="stat"><p class="num">30<small>gün</small></p><h3>Sorgusuz iade</h3><p>Satın aldıktan sonraki 30 gün içinde vazgeçerseniz paranız geri ödenir.</p></div>
+<div class="stat"><p class="num">0<small>USD</small></p><h3>Taşımak ücretsiz</h3><p>Lisansı hesabınızdan başka bir sunucuya, gerektiği kadar sık taşıyın. Her lisans aynı anda bir sunucuda çalışır.</p></div>
 </div>
-<div class="more-terms">
-<div><h3>Otomatik yenileme yalnız siz açarsanız</h3><p>Her ödemeden 7 gün önce bir hatırlatmayla. Hiçbir zaman başka bir işlemin yan etkisi değildir.</p></div>
-<div><h3>celikpanel.net’e ulaşılamazsa</h3><p>Paneliniz son başarılı denetimine dayanarak 30 gün boyunca tam çalışır. Bir sunucunun lisansı başka bir sunucuyu asla engellemez.</p></div>
-<div><h3>Ömür boyu lisans yok</h3><p>Her lisans yıllıktır; satın aldığınızda sabitlenen fiyatla.</p></div>
-</div>
+<ul class="notes">
+<li><b>Otomatik yenileme yalnız siz açarsanız</b><span>Her ödemeden 7 gün önce bir hatırlatmayla. Hiçbir zaman başka bir işlemin yan etkisi değildir.</span></li>
+<li><b>celikpanel.net’e ulaşılamazsa</b><span>Paneliniz son başarılı denetimine dayanarak 30 gün boyunca tam çalışır. Bir sunucunun lisansı başka bir sunucuyu asla engellemez.</span></li>
+<li><b>Ömür boyu lisans yok</b><span>Her lisans yıllıktır; satın aldığınızda sabitlenen fiyatla.</span></li>
+</ul>
 </div>
 </section>
-<section class="section band" aria-labelledby="today-title" id="bugun">
-<div class="wrap today">
-<div>
-<h2 class="h2" id="today-title">Peki bugün, alfa boyunca?</h2>
-<p class="lede">Yukarıdaki koşullar 1.0 sürümüyle, ondan önceki küçük sürümlerle gelir. Lisanslar bugün şöyle işler.</p>
+<section class="block" aria-labelledby="today-title" id="bugun">
+<div class="wrap narrow">
+<div class="block-head center">
+<p class="eyebrow">Bugün</p>
+<h2 id="today-title">Alfa boyunca.</h2>
 </div>
 <dl class="facts">
 <div><dt>Ücretsiz</dt><dd>Her lisans ücretsizdir ve oluşturulduğu günden başlayarak bir yıl boyunca bir sunucuyu kapsar.</dd></div>
@@ -173,15 +175,15 @@
 </dl>
 </div>
 </section>
-<section class="section" aria-labelledby="faq-title">
-<div class="wrap faq-grid">
-<div>
-<h2 class="h2" id="faq-title">Satın almadan önce sorular.</h2>
-<p class="lede">Kısa cevaplar. Koşulların tamamı ürünün karar kaydında yazılıdır.</p>
+<section class="block" aria-labelledby="faq-title">
+<div class="wrap narrow">
+<div class="block-head center">
+<p class="eyebrow">Sorular</p>
+<h2 id="faq-title">Satın almadan önce.</h2>
 </div>
 <div class="faq">
 <details open><summary>Lisans bitince sunucumda bir şey durur mu?</summary><p>Hayır. Siteler, e-posta, DNS, veritabanları, yedekler, sertifika yenileme, güncellemeler ve güvenlik her adımda çalışmaya devam eder. 1.0 sürümünden itibaren 30 günlük ek süreden sonra yalnız yeni alan adı, hesap ve posta kutusu oluşturmak yenilemeyi bekler.</p></details>
-<details><summary>Sunucu ne sayılır?</summary><p>Paneli çalıştıran bir makine. Bir lisans aynı anda bir sunucuya aittir; iki sunuculu bir çift iki lisans ister.</p></details>
+<details><summary>Sunucu ne sayılır?</summary><p>Paneli çalıştıran bir makine. Bir lisans aynı anda tek bir sunucuyu kapsar; ikinci bir sunucu eklerseniz onun da kendi lisansı olur.</p></details>
 <details><summary>Hesap, alan adı ya da site başına mı ödüyorum?</summary><p>Hayır. Hiçbir şey sayılmaz. Sunucu başına bir lisans, sunucudaki her şeyi kapsar.</p></details>
 <details><summary>Fiyatım artar mı?</summary><p>Ara vermeden yenilediğiniz sürece artmaz. Ödediğiniz fiyat, ödediğiniz fiyat olarak kalır.</p></details>
 <details><summary>Yeni bir sunucuya geçiyorum. Ne olur?</summary><p>1.0 sürümünden itibaren lisansı yeni sunucuya hesabınızdan, ücretsiz ve gerektiği kadar sık kendiniz taşırsınız.</p></details>
@@ -193,14 +195,12 @@
 </section>
 <section class="closing" aria-labelledby="close-title">
 <div class="wrap">
-<div class="sign">
-<div>
-<h2 class="h2" id="close-title">Bugün ücretsiz. Bir deneme sunucusuna kurun.</h2>
-<p>Bir hesap oluşturun, her sunucu için ücretsiz bir yıllık lisans alın ve tek komutu çalıştırın.</p>
-</div>
+<div class="closing-card">
+<h2 id="close-title">1.0’a kadar ücretsiz.</h2>
+<p>Bir hesap oluşturun ve bugün bir deneme sunucusuna kurun.</p>
 <div class="actions">
-<a class="btn btn-sign" href="../account/?action=register&amp;lang=tr">Ücretsiz hesap oluştur</a>
-<a class="btn btn-line" href="indir.html">İndir</a>
+<a class="btn btn-primary btn-lg" href="../account/?action=register&amp;lang=tr">Ücretsiz hesap oluştur<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+<a class="btn btn-ghost btn-lg" href="indir.html">Kur</a>
 </div>
 </div>
 </div>

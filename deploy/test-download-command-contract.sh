@@ -5,9 +5,10 @@ portal=$repo_root/download-portal
 fail() { printf 'download command contract failed: %s\n' "$1" >&2; exit 1; }
 tmp=$(mktemp -d)
 trap 'rm -rf -- "$tmp"' EXIT
-# The public site shows one install command, generated from one template
-# (site/templates/parts.html). Every page that shows it shows the same three
-# lines, with its own Copy button that copies exactly that text.
+# The public site shows one install command, generated from site/templates
+# (the home page shows it twice: a short chip in the hero, the full terminal
+# further down). Every copy of it is the same three lines, with its own Copy
+# button that copies exactly that text.
 python3 - "$portal" > "$tmp/command" <<'PY'
 import html, pathlib, re, sys
 portal = pathlib.Path(sys.argv[1])
@@ -16,12 +17,13 @@ for name, words in (("index.html", "root terminal"), ("download.html", "root ter
                     ("tr/index.html", "root terminalinde"), ("tr/indir.html", "root terminalinde")):
     text = (portal / name).read_text(encoding="utf-8")
     found = re.findall(r'<code id="(cmd-[a-z]+)">(.*?)</code>', text, re.S)
-    assert len(found) == 1, (name, len(found))
-    ident, body = found[0]
-    assert text.count(f'data-copy="{ident}"') == 1, name
+    assert found, (name, "no install command")
+    assert len({ident for ident, _ in found}) == len(found), (name, "repeated command id")
+    for ident, body in found:
+        assert text.count(f'data-copy="{ident}"') == 1, (name, ident)
+        commands.add(html.unescape(re.sub(r'<[^>]+>', '', body)))
     assert 'exact-command' not in text and 'command-disclosure' not in text, name
     assert words in text, name
-    commands.add(html.unescape(re.sub(r'<[^>]+>', '', body)))
 assert len(commands) == 1, "pages show different install commands"
 print(commands.pop())
 PY

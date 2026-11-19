@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -121,7 +122,10 @@ var (
 var voidElements = map[string]bool{"area": true, "base": true, "br": true, "col": true, "embed": true, "hr": true, "img": true, "input": true, "link": true, "meta": true, "source": true, "track": true, "wbr": true}
 
 // The SVG elements the sprite writes self-closed.
-var selfClosing = map[string]bool{"path": true, "circle": true, "line": true, "polyline": true, "polygon": true, "rect": true, "ellipse": true}
+var selfClosing = map[string]bool{"animate": true, "mpath": true, "path": true, "circle": true, "line": true, "polyline": true, "polygon": true, "rect": true, "ellipse": true}
+
+// Elements a browser does not let a paragraph contain.
+var blockElements = map[string]bool{"p": true, "div": true, "ul": true, "ol": true, "dl": true, "h1": true, "h2": true, "h3": true, "h4": true, "section": true, "article": true, "figure": true, "table": true, "pre": true, "details": true, "nav": true, "header": true, "footer": true, "form": true, "blockquote": true}
 
 // Structure: every element closes in order, attributes are quoted, ids are
 // unique, every image has a text alternative and its size, and the document
@@ -148,6 +152,9 @@ func TestPagesAreWellFormed(t *testing.T) {
 			case selfClose:
 				t.Errorf("%s: <%s/> is not a void element", name, tag)
 			default:
+				if blockElements[tag] && slices.Contains(stack, "p") {
+					t.Errorf("%s: <%s> inside <p> (the browser ends the paragraph early): %v", name, tag, stack)
+				}
 				stack = append(stack, tag)
 			}
 		}
@@ -375,8 +382,11 @@ func TestRequiredFilesArePresent(t *testing.T) {
 		}
 	}
 	files, _ := rendered(t)
-	if size := len(files["assets/public.css"]); size > 40*1024 {
-		t.Errorf("assets/public.css is %d bytes; the budget is 40 KiB", size)
+	// The styles a page loads: the shared sheet plus its own.
+	for _, own := range []string{"home.css", "pages.css"} {
+		if size := len(files["assets/public.css"]) + len(files["assets/"+own]); size > 40*1024 {
+			t.Errorf("public.css with %s is %d bytes; the budget is 40 KiB", own, size)
+		}
 	}
 }
 

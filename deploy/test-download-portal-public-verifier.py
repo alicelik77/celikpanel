@@ -61,7 +61,7 @@ def build_site(root: Path) -> tuple[int, set[str], int]:
         "assets/favicon-v2.svg": b'<svg xmlns="http://www.w3.org/2000/svg"/>\n',
         "assets/site.css": b"body { color: #10213a; }\n",
         "assets/public.css": b"body { color: #0e1f3d; }\n",
-        "assets/boot.js": b"document.documentElement.dataset.ready = 'true';\n",
+        "assets/home.css": b".hero { color: #0b1530; }\n",
         "get.sh": b"#!/bin/sh\nprintf 'download\\n'\n",
         "release-signing-ed25519.pem": (
             b"-----BEGIN PUBLIC KEY-----\ntest-key\n-----END PUBLIC KEY-----\n"
@@ -330,7 +330,7 @@ class PublicPortalVerifierTests(unittest.TestCase):
         self.assertEqual(summary["requests"], 24)
         self.assertEqual(summary["request_limit"], VERIFIER.HARD_REQUEST_LIMIT)
         expected_visual_paths = {"/" + relative for relative in ("index.html", "tr/index.html", "download.html", "tr/indir.html", "systems.html",
-             "technical.html", "assets/public.css", "assets/boot.js", "assets/site.css",
+             "technical.html", "assets/public.css", "assets/home.css", "assets/site.css",
              "assets/favicon-v2.svg", "assets/shots/domains-en-light.webp",
              "assets/shots/domains-tr-light.webp")}
         self.assertTrue(expected_visual_paths.issubset(self.server.request_paths))
@@ -362,7 +362,7 @@ class PublicPortalVerifierTests(unittest.TestCase):
 
     def test_visual_asset_tampering_fails_before_archive(self):
         for relative in ("index.html", "tr/index.html", "download.html", "tr/indir.html", "systems.html",
-             "technical.html", "assets/public.css", "assets/boot.js", "assets/site.css",
+             "technical.html", "assets/public.css", "assets/home.css", "assets/site.css",
              "assets/favicon-v2.svg", "assets/shots/domains-en-light.webp",
              "assets/shots/domains-tr-light.webp"):
             with self.subTest(relative=relative):

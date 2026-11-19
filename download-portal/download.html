@@ -11,6 +11,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
 <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/download.html">
 <link rel="alternate" hreflang="en" href="download.html">
 <link rel="alternate" hreflang="tr" href="tr/indir.html">
@@ -55,7 +56,7 @@
 <a href="guide/en/">Guide</a>
 </nav>
 <div class="tools">
-<a class="tool lang" href="tr/indir.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span></a>
+<a class="tool lang" href="tr/indir.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span><span class="sep" aria-hidden="true">·</span><span class="cur">EN</span></a>
 <button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Switch to the dark theme" data-label-light="Switch to the light theme" aria-label="Switch to the dark theme"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
 <a class="signin" href="account/?action=login&amp;lang=en">Sign in</a>
 <a class="btn btn-primary btn-sm register" href="account/?action=register&amp;lang=en">Create account</a>
@@ -76,38 +77,45 @@
 </header>
 <main id="main">
 <section class="page-hero" aria-labelledby="hero-title">
-<div class="wrap dl-grid">
-<div>
-<h1 class="display" id="hero-title">Install CelikPanel.</h1>
-<p class="lede">One command on a clean server. It downloads the latest signed release, checks it, and installs the panel and its agent. The server needs no Go, Node.js or Git.</p>
-<p class="current">Current release <a href="releases.html"><b>@@CP_RELEASE_VERSION@@</b></a> <span class="dot">·</span> <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time> <span class="dot">·</span> Linux amd64</p>
-</div>
-<ol class="steps on-field-steps">
+<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="wrap split install">
+<div class="block-head">
+<p class="eyebrow">Download</p>
+<h1 id="hero-title">Install CelikPanel.</h1>
+<p class="lede">One command on a clean server. It downloads the signed release, checks it and installs the panel. No Go, Node.js or Git needed.</p>
+<p class="current">Current release <a href="releases.html"><code>@@CP_RELEASE_VERSION@@</code></a> <span class="dot">·</span> <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time> <span class="dot">·</span> Linux amd64</p>
+<ol class="num-steps">
 <li>Create a free account and take a licence for the server. Each server has its own.</li>
 <li>Prepare a clean server with one of the supported systems.</li>
 <li>Run the command in the server’s root terminal.</li>
-<li>Sign in at the address the installer shows. The setup wizard asks for your domain, one or two servers, their roles and where DNS lives.</li>
+<li>Sign in at the address the installer shows. The setup wizard asks for your domain and where DNS lives. A second server is optional.</li>
 </ol>
 </div>
-<div class="wrap dl-cmd">
+<div>
 <div class="terminal">
 <div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="cmd-title-download">Install command</h3><button class="copy" type="button" hidden data-copy="cmd-download" data-copied="Copied" data-failed="Select the text to copy it"><svg class="i i-copy" aria-hidden="true" focusable="false"><use href="#i-copy"></use></svg><span>Copy</span></button></div>
-<pre tabindex="0" aria-labelledby="cmd-title-download"><code id="cmd-download">timedatectl set-ntp true
-curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
-sh celikpanel-install.sh</code></pre>
+<pre tabindex="0" aria-labelledby="cmd-title-download"><code id="cmd-download"><span class="ln">timedatectl set-ntp true
+</span><span class="ln">curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+</span><span class="ln">sh celikpanel-install.sh</span></code></pre>
 <p class="terminal-foot">Run the three lines together in the server’s root terminal. The first turns on clock synchronisation, because certificates need the right time. If the installation stops, run the same command again.</p>
 <p class="sr-only" role="status" data-copy-status></p>
 </div>
-<p class="note"><p class="pill"><span class="live" aria-hidden="true"></span>Alpha <span class="dot">·</span> free until 1.0</p> <span>Not ready for production yet. Start on a clean test server you can reinstall.</span></p>
+<div class="badges">
+<span class="badge tested">Debian 13</span><span class="badge tested">Ubuntu 24.04 LTS</span><span class="badge">Debian 12</span><span class="badge">Ubuntu 22.04 LTS</span><span class="badge">Arch Linux</span>
+<a class="link small" href="systems.html">What each system offers<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+</div>
+<div class="note"><p class="pill"><span class="live" aria-hidden="true"></span>Alpha <span class="dot">·</span> free until 1.0</p> <span>Not ready for production yet. Start on a clean test server you can reinstall.</span></div>
+</div>
 </div>
 </section>
-<section class="section" aria-labelledby="systems-title">
+<section class="block" aria-labelledby="systems-title">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="systems-title">Supported systems.</h2>
-<p class="lede">Tested means every release candidate runs on that system before it is published. Supported means CelikPanel installs and runs on it.</p>
+<div class="block-head center">
+<p class="eyebrow">Systems</p>
+<h2 id="systems-title">Supported systems.</h2>
+<p class="lede">Tested: every release candidate runs on it first. Supported: it installs and runs.</p>
 </div>
-<div class="table-wrap" role="region" aria-labelledby="systems-caption" tabindex="0">
+<div class="table-card"><div class="table-wrap" role="region" aria-labelledby="systems-caption" tabindex="0">
 <table class="data systems">
 <caption id="systems-caption" class="sr-only">Operating systems CelikPanel supports</caption>
 <thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">Updates</th></tr></thead>
@@ -119,53 +127,48 @@ sh celikpanel-install.sh</code></pre>
 <tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">No end date</td><td data-label="Updates">By hand, after reading the Arch news</td></tr>
 </tbody>
 </table>
-</div>
-<p class="more"><a class="link-arrow" href="systems.html">What each system offers, and how its updates work<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></p>
+</div></div>
+<p class="center-link"><a class="link" href="systems.html">What each system offers, and how its updates work<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></p>
 </div>
 </section>
-<section class="section band" aria-labelledby="wizard-title">
+<section class="block" aria-labelledby="wizard-title">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="wizard-title">The setup wizard finishes the job.</h2>
-<p class="lede">On your first sign-in the wizard asks for your main domain, one or two servers, their roles and where DNS lives. Every step says what it installs; if something has to wait, the screen says why and what to do next.</p>
+<div class="block-head center">
+<p class="eyebrow">Setup</p>
+<h2 id="wizard-title">The setup wizard finishes the job.</h2>
+<p class="lede">On first sign-in it asks for your domain and where DNS lives. Each step says what it installs.</p>
 </div>
-<div class="wizard">
-<div>
-<h3 class="h3">Where DNS lives</h3>
-<dl class="choices">
-<div><dt>Your own pair</dt><dd>Two servers keep your domain’s DNS together: one is the main DNS server, the other the backup. You choose which one is the main.</dd></div>
-<div><dt>An outside DNS provider</dt><dd>If you use an outside DNS provider, no DNS software is installed. The panel lists the records to add and shows what the internet answers for each.</dd></div>
-<div><dt>One server</dt><dd>One server keeps its own DNS, with both name server names on it.</dd></div>
-</dl>
+<div class="choice-cards">
+<div class="choice"><h3>One server</h3><p>The usual start. The server keeps its own DNS, with both name server names on it.</p></div>
+<div class="choice"><h3>An outside DNS provider</h3><p>No DNS software is installed. The panel lists the records to add and checks what the internet answers.</p></div>
+<div class="choice is-optional"><p class="optional">Optional</p><h3>A second server as backup DNS</h3><p>If you want one: a second server answers for your domains too, one main and one backup. You choose which is the main.</p></div>
 </div>
-<div>
-<h3 class="h3">Setting up two servers</h3>
-<ol class="steps">
+<details class="more-card">
+<summary>Adding a second server, step by step</summary>
+<ol class="num-steps">
 <li>Install the panel on both servers, each with its own licence.</li>
 <li>Go through the wizard on the first server. Choose mail on one server only.</li>
 <li>When its setup starts, choose “Create a join code”. The code is shown once and is valid for 24 hours.</li>
 <li>In the second server’s panel choose “Join the first server with a code” and enter the first server’s IP address and the code. The shared answers come from the first server.</li>
 <li>With your own DNS, when the registrar card says so, set the name servers (NS) and their IP records (glue) at your domain registrar. The card checks them by itself.</li>
 </ol>
-</div>
-</div>
+</details>
 </div>
 </section>
-<section class="section" aria-labelledby="how-title" id="how">
+<section class="block" aria-labelledby="how-title" id="how">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="how-title">How CelikPanel changes your server.</h2>
-<p class="lede">With one rule taken from railway signalling: once a route is set, every route that conflicts with it is locked, so the wrong lever cannot be pulled.</p>
+<div class="block-head center">
+<p class="eyebrow">Under the hood</p>
+<h2 id="how-title">How CelikPanel changes your server.</h2>
+<p class="lede">One rule from railway signalling: once a route is set, every route that conflicts with it is locked.</p>
 </div>
 <ol class="model">
-<li class="sign"><h3>Preview</h3><p>Before changing anything, the panel asks the server whether the change can be made. The answer is either a list of blockers or a single-use approval. If something blocks it, nothing changes.</p></li>
-<li class="sign"><h3>Commit</h3><p>Only that approval makes the change. While it runs, the server holds one right to change; a second change waits its turn instead of stacking on top.</p></li>
-<li class="sign"><h3>Record</h3><p>Every privileged change is written to a durable record with its outcome. If the power fails, the panel finds the unfinished work and finishes or reverses it; it never shows a half-done change as a success.</p></li>
+<li><h3>Preview</h3><p>Before changing anything, the panel asks the server whether the change can be made. The answer is either a list of blockers or a single-use approval. If something blocks it, nothing changes.</p></li>
+<li><h3>Commit</h3><p>Only that approval makes the change. While it runs, the server holds one right to change; a second change waits its turn instead of stacking on top.</p></li>
+<li><h3>Record</h3><p>Every privileged change is written to a durable record with its outcome. If the power fails, the panel finds the unfinished work and finishes or reverses it; it never shows a half-done change as a success.</p></li>
 </ol>
-<div class="ledger-head">
-<h3 class="h3" id="ledger-title">Measured, recorded, dated.</h3>
-<p>Each value was measured on a real machine under the condition shown. They describe those tests, not a guarantee for every server.</p>
-</div>
+<div class="table-card ledger-card">
+<div class="table-card-head"><h3 id="ledger-title">Measured, recorded, dated.</h3><p>Each value was measured on a real machine under the condition shown. They describe those tests, not a guarantee for every server.</p></div>
 <div class="table-wrap" role="region" aria-labelledby="ledger-title" tabindex="0">
 <table class="data ledger">
 <thead><tr><th scope="col">Measurement</th><th scope="col" class="num">Value</th><th scope="col">Condition</th><th scope="col">Date</th></tr></thead>
@@ -179,16 +182,18 @@ sh celikpanel-install.sh</code></pre>
 </tbody>
 </table>
 </div>
-<p class="fine-print">Test conditions, open risks and how each was closed are recorded in the repository. <a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RISK-REGISTER.md">Risk register and test details</a></p>
+<p class="table-card-foot">Test conditions, open risks and how each was closed are recorded in the repository. <a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RISK-REGISTER.md">Risk register and test details</a></p>
+</div>
 </div>
 </section>
-<section class="section field-band" aria-labelledby="trust-title">
-<div class="wrap trust">
-<div>
-<h2 class="h2" id="trust-title">Signed, checked, and yours to inspect.</h2>
-<p class="lede">You do not have to take the download on trust. Each step can be checked.</p>
+<section class="block" aria-labelledby="trust-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">Trust</p>
+<h2 id="trust-title">Signed, checked, yours to inspect.</h2>
+<p class="lede">You do not have to take the download on trust.</p>
 </div>
-<ul class="trust-list">
+<ul class="check-list">
 <li><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg><span>Every release package is signed. The installer checks the signature and the package checksum before it installs anything.</span></li>
 <li><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg><span>Every release’s notes name its commit and say what was tried in the lab, and what was not.</span></li>
 <li><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg><span>The panel and its agent are two separate services. The web-facing panel runs without root; only the local agent may change the system.</span></li>
@@ -196,12 +201,12 @@ sh celikpanel-install.sh</code></pre>
 </ul>
 </div>
 </section>
-<section class="section" aria-labelledby="installed-title">
-<div class="wrap installed">
-<div class="sign sign-white">
-<h2 class="h3" id="installed-title">Already installed?</h2>
+<section class="block tight" aria-labelledby="installed-title">
+<div class="wrap narrow">
+<div class="note-card">
+<h2 id="installed-title">Already installed?</h2>
 <p>Update from inside your panel, under Settings, CelikPanel updates. Only you start it; nothing installs by itself.</p>
-<p class="links"><a class="link-arrow" href="releases.html">Release notes and files<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a> <a class="link-arrow" href="guide/en/panel-settings.html">How updates work<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></p>
+<p class="links"><a class="link" href="releases.html">Release notes and files<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a><a class="link" href="guide/en/panel-settings.html">How updates work<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></p>
 </div>
 </div>
 </section>

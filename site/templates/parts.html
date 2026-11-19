@@ -14,7 +14,7 @@
 </nav>
 <div class="tools">
 {{- range langs}}{{if ne . $.Lang}}
-<a class="tool lang" href="{{in .}}" hreflang="{{.}}" lang="{{.}}" data-set-lang="{{.}}" aria-label="{{if eq . "en"}}English{{else}}Türkçe{{end}}">{{icon "globe"}}<span>{{if eq . "en"}}EN{{else}}TR{{end}}</span></a>
+<a class="tool lang" href="{{in .}}" hreflang="{{.}}" lang="{{.}}" data-set-lang="{{.}}" aria-label="{{if eq . "en"}}English{{else}}Türkçe{{end}}">{{icon "globe"}}<span{{if eq $.Lang "tr"}} class="cur"{{end}}>TR</span><span class="sep" aria-hidden="true">·</span><span{{if eq $.Lang "en"}} class="cur"{{end}}>EN</span></a>
 {{- end}}{{end}}
 <button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="{{t "nav.theme.dark"}}" data-label-light="{{t "nav.theme.light"}}" aria-label="{{t "nav.theme.dark"}}">{{icon "moon"}}{{icon "sun"}}</button>
 <a class="signin" href="{{account "login"}}">{{t "nav.signin"}}</a>
@@ -38,15 +38,15 @@
 {{- end}}
 
 {{define "alpha" -}}
-<p class="note">{{template "pill" .}} <span>{{t "common.alpha.text"}}</span></p>
+<div class="note">{{template "pill" .}} <span>{{t "common.alpha.text"}}</span></div>
 {{- end}}
 
 {{define "command" -}}
 <div class="terminal">
 <div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="cmd-title-{{.ID}}">{{t "install.command.title"}}</h3><button class="copy" type="button" hidden data-copy="cmd-{{.ID}}" data-copied="{{t "install.command.copied"}}" data-failed="{{t "install.command.failed"}}">{{icon "copy"}}<span>{{t "install.command.copy"}}</span></button></div>
-<pre tabindex="0" aria-labelledby="cmd-title-{{.ID}}"><code id="cmd-{{.ID}}">timedatectl set-ntp true
-curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
-sh celikpanel-install.sh</code></pre>
+<pre tabindex="0" aria-labelledby="cmd-title-{{.ID}}"><code id="cmd-{{.ID}}"><span class="ln">timedatectl set-ntp true
+</span><span class="ln">curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+</span><span class="ln">sh celikpanel-install.sh</span></code></pre>
 <p class="terminal-foot">{{t "install.command.note"}}</p>
 <p class="sr-only" role="status" data-copy-status></p>
 </div>
@@ -94,4 +94,60 @@ sh celikpanel-install.sh</code></pre>
 </tbody>
 </table>
 </div>
+{{- end}}
+
+{{define "price-pair" -}}
+<div class="price-pair">
+<div class="price-card">
+<p class="tag-from">{{t "price.from"}}</p>
+<p class="amount"><b>99</b><span>{{t "price.unit"}}</span></p>
+<ul class="checks">
+<li>{{icon "check"}}{{t "price.check.count"}}</li>
+<li>{{icon "check"}}{{t "price.check.edition"}}</li>
+<li>{{icon "check"}}{{t "price.check.lock"}}</li>
+<li>{{icon "check"}}{{t "price.check.move"}}</li>
+</ul>
+</div>
+<div class="today-card">
+<p class="pill"><span class="live" aria-hidden="true"></span>{{t "price.today.tag"}}</p>
+<h3>{{t "price.today.title"}}</h3>
+<p>{{t "price.today.text"}}</p>
+<a class="btn btn-primary" href="{{account "register"}}">{{t "common.register.free"}}{{icon "arrow-right"}}</a>
+</div>
+</div>
+{{- end}}
+
+{{define "lapse-track" -}}
+<div class="track">
+<p class="track-head"><b>{{t "lapse.title"}}</b><span>{{t "lapse.terms"}}</span></p>
+<ol class="stops">
+<li class="st-warn"><i aria-hidden="true"></i><b>{{t "lapse.s1"}}</b><span>{{dots (t "lapse.s1.text")}}</span></li>
+<li class="st-end"><i aria-hidden="true"></i><b>{{t "lapse.s2"}}</b><span>{{t "lapse.s2.text"}}</span></li>
+<li class="st-grace"><i aria-hidden="true"></i><b>{{t "lapse.s3"}}</b><span>{{t "lapse.s3.text"}}</span></li>
+<li class="st-protect"><i aria-hidden="true"></i><b>{{t "lapse.s4"}}</b><span>{{t "lapse.s4.text"}}</span></li>
+</ol>
+<p class="track-always">{{icon "shield-check"}}{{t "lapse.always"}}</p>
+</div>
+{{- end}}
+
+{{define "badges" -}}
+<div class="badges">
+<span class="badge tested">Debian 13</span><span class="badge tested">Ubuntu 24.04 LTS</span><span class="badge">Debian 12</span><span class="badge">Ubuntu 22.04 LTS</span><span class="badge">Arch Linux</span>
+<a class="link small" href="{{link "systems"}}">{{t "badges.more"}}{{icon "arrow-right"}}</a>
+</div>
+{{- end}}
+
+{{define "closing" -}}
+<section class="closing" aria-labelledby="close-title">
+<div class="wrap">
+<div class="closing-card">
+<h2 id="close-title">{{t "close.title"}}</h2>
+<p>{{t "close.text"}}</p>
+<div class="actions">
+<a class="btn btn-primary btn-lg" href="{{account "register"}}">{{t "common.register.free"}}{{icon "arrow-right"}}</a>
+<a class="btn btn-ghost btn-lg" href="{{link "download"}}">{{t "close.install"}}</a>
+</div>
+</div>
+</div>
+</section>
 {{- end}}

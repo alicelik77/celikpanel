@@ -54,7 +54,8 @@
     if (!source || !navigator.clipboard) return;
     var label = button.querySelector("span");
     var original = label ? label.textContent : "";
-    var status = button.closest(".cmd") && button.closest(".cmd").querySelector("[data-copy-status]");
+    var box = button.closest(".chip, .terminal");
+    var status = box && box.querySelector("[data-copy-status]");
     var timer = 0;
     button.hidden = false;
     button.addEventListener("click", function () {

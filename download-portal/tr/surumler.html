@@ -11,6 +11,7 @@
 <link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
 <link rel="preload" href="../assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/public.css">
+<link rel="stylesheet" href="../assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/tr/surumler.html">
 <link rel="alternate" hreflang="en" href="../releases.html">
 <link rel="alternate" hreflang="tr" href="surumler.html">
@@ -55,7 +56,7 @@
 <a href="../guide/tr/">Kılavuz</a>
 </nav>
 <div class="tools">
-<a class="tool lang" href="../releases.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>EN</span></a>
+<a class="tool lang" href="../releases.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span class="cur">TR</span><span class="sep" aria-hidden="true">·</span><span>EN</span></a>
 <button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Koyu temaya geç" data-label-light="Açık temaya geç" aria-label="Koyu temaya geç"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
 <a class="signin" href="../account/?action=login&amp;lang=tr">Giriş yap</a>
 <a class="btn btn-primary btn-sm register" href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
@@ -75,25 +76,27 @@
 </div>
 </header>
 <main id="main">
-<section class="page-hero compact" aria-labelledby="hero-title">
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
 <div class="wrap">
-<h1 class="display" id="hero-title">Sürümler.</h1>
-<p class="lede">Her sürüm imzalıdır ve commit’iyle adlandırılır. Kurulu paneller yalnız sahibi panelin kendi güncelleme ekranından başlattığında güncellenir.</p>
+<p class="eyebrow">Sürümler</p>
+<h1 id="hero-title">Sürümler.</h1>
+<p class="lede">Her sürüm imzalıdır ve commit’iyle adlandırılır. Kurulu paneller yalnız sahibi başlattığında güncellenir.</p>
 </div>
 </section>
-<section class="section" aria-labelledby="current-title">
+<section class="block tight" aria-labelledby="current-title">
 <div class="wrap release-grid">
-<div class="sign release-plate">
-<h2 id="current-title">Güncel sürüm</h2>
+<div class="release-card">
+<p class="pill"><span class="live" aria-hidden="true"></span><span id="current-title">Güncel sürüm</span></p>
 <p class="version">@@CP_RELEASE_VERSION@@</p>
 <p class="published">Yayımlandı <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time> <span class="dot">·</span> Linux amd64</p>
-<div class="notes-links">
-<a class="btn btn-sign" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.tr.md">Sürüm notları<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a>
-<a class="btn btn-line" href="@@CP_RELEASE_ARCHIVE_URL@@">Paketi indir</a>
+<div class="actions start">
+<a class="btn btn-primary" href="@@CP_RELEASE_ARCHIVE_URL@@">Paketi indir</a>
+<a class="btn btn-ghost" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.tr.md">Sürüm notları<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a>
 </div>
 </div>
-<div>
-<h3 class="h3">Sürüm kimliği</h3>
+<div class="table-card identity-card">
+<div class="table-card-head"><h2>Sürüm kimliği</h2></div>
 <dl class="identity">
 <div><dt>Commit</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
 <div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
@@ -111,43 +114,43 @@
 </div>
 </div>
 </section>
-<section class="section band" aria-labelledby="check-title">
-<div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="check-title">İndirdiğinizi kendiniz denetleyin.</h2>
-<p class="lede">Kurucu, bir şey kurmadan önce bunların hepsini yapar. Siz de standart araçlarla elle tekrarlayabilirsiniz.</p>
-</div>
-<div class="check-grid">
-<div>
-<ol class="steps">
+<section class="block" aria-labelledby="check-title">
+<div class="wrap split install">
+<div class="block-head">
+<p class="eyebrow">Doğrulama</p>
+<h2 id="check-title">İndirdiğinizi kendiniz denetleyin.</h2>
+<p class="lede">Kurucu bunu bir şey kurmadan önce yapar. Siz de elle tekrarlayabilirsiniz.</p>
+<ol class="num-steps">
 <li>Paketi, SHA-256 dosyasını, imzalı bildirimi, imzasını ve açık anahtarı aynı klasöre indirin.</li>
 <li>Anahtarın SHA-256 özetini aşağıdakiyle karşılaştırın, sonra paketi SHA-256 dosyasıyla denetleyin.</li>
 <li>Bildirimin imzasını anahtarla doğrulayın. Bildirim, paketin SHA-256 özetini ve boyutunu adıyla verir.</li>
 </ol>
-<p class="fine-print">Sürüm imzalama açık anahtarının SHA-256 özeti: <code class="wrap-code">7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
 </div>
-<div class="cmd">
-<div class="cmd-head"><h3 id="verify-title">Komutlar</h3></div>
+<div>
+<div class="terminal">
+<div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="verify-title">Komutlar</h3></div>
 <pre tabindex="0" aria-labelledby="verify-title"><code>sha256sum release-signing-ed25519.pem
 sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
 openssl pkeyutl -verify -rawin -pubin \
   -inkey release-signing-ed25519.pem \
   -in release-manifest-v2 -sigfile release-manifest-v2.sig</code></pre>
-<p class="cmd-foot">Her satır hatasız bitmelidir: sağlama toplamı için “OK”, imza için “Signature Verified Successfully”.</p>
+<p class="terminal-foot">Her satır hatasız bitmelidir: sağlama toplamı için “OK”, imza için “Signature Verified Successfully”.</p>
 </div>
+<p class="fine key">Sürüm imzalama açık anahtarının SHA-256 özeti: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
 </div>
 </div>
 </section>
-<section class="section" aria-labelledby="update-title">
-<div class="wrap trust plain-trust">
-<div>
-<h2 class="h2" id="update-title">Kurulu paneli güncellemek.</h2>
-<p class="lede">Panelinizde Ayarlar, CelikPanel güncellemeleri’ni açın ve Güncellemeleri denetle’ye basın. Güncellemeyi yalnız sahibi başlatır; yeni sürüm ayağa kalkmazsa öncekine kendiliğinden döner.</p>
+<section class="block" aria-labelledby="update-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">Zaten kurulu</p>
+<h2 id="update-title">Kurulu paneli güncellemek.</h2>
+<p class="lede">Ayarlar, CelikPanel güncellemeleri’ni açın ve Güncellemeleri denetle’ye basın. Yeni sürüm ayağa kalkmazsa öncekine döner.</p>
 </div>
-<ul class="trust-list">
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler, kullanım kılavuzunda</a></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="https://github.com/alicelik77/celikpanel/releases">Bütün sürümler ve notları</a></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="indir.html">Yeni bir sunucuya kur</a></li>
+<ul class="link-list">
+<li><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler, kullanım kılavuzunda<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
+<li><a href="https://github.com/alicelik77/celikpanel/releases">Bütün sürümler ve notları<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a></li>
+<li><a href="indir.html">Yeni bir sunucuya kur<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
 </ul>
 </div>
 </section>

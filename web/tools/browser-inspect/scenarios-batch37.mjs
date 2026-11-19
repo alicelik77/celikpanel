@@ -84,7 +84,7 @@ export default function batch37(scenarios, { base, locale, theme, out, viewport,
     const capture = async (page, name) => {
         await shot(page, `y37-${name}`);
         await mkdir(site, { recursive: true });
-        await page.screenshot({ path: join(site, `product-${name}-${locale}-${theme}.webp`), type: 'webp', quality: 82 });
+        await page.screenshot({ path: join(site, `product-${name}-${locale}-${theme}.png`) });
     };
     scenarios.sitescreens = async () => {
         await reset(); await clean();

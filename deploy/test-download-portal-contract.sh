@@ -113,7 +113,7 @@ for page in index.html pricing.html download.html systems.html releases.html; do
   grep -Fq 'href="guide/en/"' "$tmp/site/$page" || fail "portal page does not link to the guide: $page"
 done
 grep -Fq 'href="../guide/tr/"' "$tmp/site/tr/index.html" || fail "Turkish home does not link to the Turkish guide"
-for asset in public.css public.js boot.js site.css guide.css favicon-v2.svg \
+for asset in public.css home.css pages.css public.js boot.js site.css guide.css favicon-v2.svg \
   fonts/inter-latin.woff2 fonts/inter-latin-ext.woff2 fonts/jetbrains-mono-latin.woff2 fonts/OFL-Inter.txt LICENSE-Lucide.txt \
   shots/domains-en-light-2x.webp shots/domain-en-dark-phone.webp shots/domain-tr-light.webp shots/databases-tr-dark-2x.webp \
   shots/domains-en-light.webp shots/domains-tr-dark.webp shots/databases-en-light.webp shots/databases-tr-dark.webp; do
@@ -226,7 +226,7 @@ grep -Fq 'Canonical: https://celikpanel.net/.well-known/security.txt' "$tmp/site
   || fail "security.txt canonical URL is missing"
 grep -Fq 'Preferred-Languages: tr, en' "$tmp/site/.well-known/security.txt" \
   || fail "security.txt language preference is missing"
-if grep -Eq '<button[^>]*>(+ Yeni site|×|Devam et)' "$tmp/site/index.html"; then
+if grep -Eq '<button[^>]*>(\+ Yeni site|×|Devam et)' "$tmp/site/index.html"; then
   fail "illustrative product controls must not enter the keyboard tab order"
 fi
 grep -Fq -- "--proto '=https'" "$bootstrap" || fail "HTTPS protocol restriction is missing"

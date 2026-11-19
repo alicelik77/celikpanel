@@ -464,7 +464,7 @@ membership_release=$(python3 "$repo_root/deploy/build-membership.py" --identity-
 sed -i "s/@MEMBERSHIP_RELEASE@/$membership_release/g" "$output/account/index.php"
 # site.css stays for the guide and the account pages; the product screens
 # are the ones the site's pages show (assets/shots/<screen>-<lang>-<theme>[-2x|-phone]).
-required_assets="public.css public.js boot.js site.css guide.css favicon-v2.svg
+required_assets="public.css home.css pages.css public.js boot.js site.css guide.css favicon-v2.svg
   fonts/overpass-latin.woff2 fonts/overpass-latin-ext.woff2
   fonts/overpass-mono-latin.woff2 fonts/overpass-mono-latin-ext.woff2"
 for screen in domains domain databases; do

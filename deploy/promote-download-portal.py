@@ -61,7 +61,7 @@ SUCCESS_MARKER = "CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED"
 SITE_CONTENT_FILES = frozenset({
     "index.html", "pricing.html", "download.html", "systems.html", "releases.html", "technical.html",
     "tr/index.html", "tr/fiyat.html", "tr/indir.html", "tr/sistemler.html", "tr/surumler.html",
-    "assets/public.css", "assets/public.js", "assets/boot.js", "assets/site.css",
+    "assets/public.css", "assets/home.css", "assets/pages.css", "assets/public.js", "assets/boot.js", "assets/site.css",
     "account/index.php",
 })
 SITE_CONTENT_SCREENS = re.compile(r"^assets/shots/[a-z]+-(en|tr)-(light|dark)(-2x|-phone)?\.webp$")

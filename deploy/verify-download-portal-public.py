@@ -29,8 +29,8 @@ SMALL_RESPONSE_BUDGET = 1024 * 1024
 # and exactly one authoritative archive body, plus three membership checks
 # when that surface exists. No historical paths are fetched. The root files
 # are the generated site's entry pages in both languages (including the kept
-# /systems.html and /technical.html addresses), its stylesheet and early
-# script, the stylesheet the guide and account pages share, the first product
+# /systems.html and /technical.html addresses), its shared and home
+# stylesheets, the stylesheet the guide and account pages share, the first product
 # screen in both languages, and the trust files; the other site files ship in
 # the same verified package.
 HARD_REQUEST_LIMIT = 27
@@ -48,7 +48,7 @@ ROOT_CRITICAL = (
     "systems.html",
     "technical.html",
     "assets/public.css",
-    "assets/boot.js",
+    "assets/home.css",
     "assets/site.css",
     "assets/favicon-v2.svg",
     "assets/shots/domains-en-light.webp",

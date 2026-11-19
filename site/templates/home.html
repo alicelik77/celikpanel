@@ -30,20 +30,20 @@ sh celikpanel-install.sh</span></code>
 <p class="chip-note"><a href="{{link "download"}}">{{t "home.hero.cmd.where"}}{{icon "arrow-right"}}</a></p>
 </div>
 <div class="product">
-<input class="sr-only" type="radio" name="screen" id="screen-domains" checked>
-<input class="sr-only" type="radio" name="screen" id="screen-domain">
+<input class="sr-only" type="radio" name="screen" id="screen-domain" checked>
+<input class="sr-only" type="radio" name="screen" id="screen-domains">
 <input class="sr-only" type="radio" name="screen" id="screen-databases">
 <div class="tabs" aria-hidden="true">
-<label for="screen-domains">{{icon "globe"}}{{t "home.screen.domains"}}</label>
 <label for="screen-domain">{{icon "layout-dashboard"}}{{t "home.screen.domain"}}</label>
+<label for="screen-domains">{{icon "globe"}}{{t "home.screen.domains"}}</label>
 <label for="screen-databases">{{icon "database"}}{{t "home.screen.databases"}}</label>
 </div>
 <div class="stage">
 <figure class="frame">
 <div class="frame-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="address">{{icon "lock"}}panel.example.com:1923</span></div>
 <div class="screens">
-<div class="screen s-domains">{{template "picture" (dict "Name" "domains" "Alt" (t "home.screen.domains.alt"))}}</div>
 <div class="screen s-domain">{{template "picture" (dict "Name" "domain" "Alt" (t "home.screen.domain.alt"))}}</div>
+<div class="screen s-domains">{{template "picture" (dict "Name" "domains" "Alt" (t "home.screen.domains.alt"))}}</div>
 <div class="screen s-databases">{{template "picture" (dict "Name" "databases" "Alt" (t "home.screen.databases.alt"))}}</div>
 </div>
 <figcaption class="sr-only">{{t "home.screen.caption"}}</figcaption>
@@ -56,18 +56,22 @@ sh celikpanel-install.sh</span></code>
 
 {{define "main" -}}
 <section class="block independent" aria-labelledby="free-title">
-<div class="wrap split">
-<div class="block-head">
+<div class="wrap">
+<div class="block-head center">
 <p class="eyebrow">{{t "home.free.eyebrow"}}</p>
 <h2 id="free-title">{{t "home.free.title"}}</h2>
 <p class="lede">{{t "home.free.lede"}}</p>
-<p class="fine">{{t "home.free.fine"}} <a href="{{guide "without-panel"}}">{{t "home.free.link"}}{{icon "arrow-right"}}</a></p>
 </div>
 <figure class="diagram" aria-labelledby="free-caption">
 <figcaption id="free-caption" class="sr-only">{{t "home.free.diagram"}}</figcaption>
-<svg class="wires" viewBox="0 0 600 380" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-<path d="M300 92 C300 140 100 130 100 186"/><path d="M300 92 L300 186"/><path d="M300 92 C300 140 500 130 500 186"/>
-<path d="M300 92 C300 200 100 230 100 296"/><path d="M300 92 C300 200 300 230 300 296"/><path d="M300 92 C300 200 500 230 500 296"/>
+<svg class="wires" viewBox="0 0 600 380" aria-hidden="true" focusable="false">
+<path id="w1" d="M300 92 C300 140 100 130 100 186"/><path id="w2" d="M300 92 L300 186"/><path id="w3" d="M300 92 C300 140 500 130 500 186"/>
+<path id="w4" d="M300 92 C300 200 100 230 100 296"/><path id="w5" d="M300 92 C300 200 300 230 300 296"/><path id="w6" d="M300 92 C300 200 500 230 500 296"/>
+<g class="sparks">
+{{- range $i, $w := (list "w1" "w2" "w3" "w4" "w5" "w6")}}
+<circle r="3.2"><animateMotion dur="2.2s" begin="{{index (list "0s" ".35s" ".7s" "1.05s" "1.4s" "1.75s") $i}}" repeatCount="indefinite"><mpath href="#{{$w}}"/></animateMotion><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.42;.48;.94;1"/></circle>
+{{- end}}
+</g>
 </svg>
 <div class="node panel-node" aria-hidden="true">{{icon "logo"}}<span class="node-name">CelikPanel</span><span class="state"><span class="on">{{t "home.free.running"}}</span><span class="off">{{t "home.free.stopped"}}</span></span></div>
 <ul class="services">
@@ -79,6 +83,7 @@ sh celikpanel-install.sh</span></code>
 <li class="node">{{icon "shield-check"}}<span>{{t "home.free.certs"}}</span><i class="ok" aria-hidden="true"></i></li>
 </ul>
 </figure>
+<p class="fine center-fine">{{t "home.free.fine"}} <a href="{{guide "without-panel"}}">{{t "home.free.link"}}{{icon "arrow-right"}}</a></p>
 </div>
 </section>
 
@@ -90,13 +95,20 @@ sh celikpanel-install.sh</span></code>
 <p class="lede">{{t "home.features.lede"}}</p>
 </div>
 <div class="bento">
-<article class="card c-sites">
+<article class="card c-sites lead">
 <div class="art" aria-hidden="true">
+<div class="window">
+<div class="window-bar"><span class="dots"><i></i><i></i><i></i></span><b>{{t "home.screen.domains"}}</b><span class="add">+ {{t "home.art.add"}}</span></div>
+<div class="window-body">
+<div class="side"><i></i><i class="on"></i><i></i><i></i><i></i></div>
 <div class="rows">
-<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>example.com</b><span class="tag">PHP 8.4</span><span class="up">{{t "home.art.active"}}</span></div>
-<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>shop.example.com</b><span class="tag">PHP 8.4</span><span class="up">{{t "home.art.active"}}</span></div>
-<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>app.example.net</b><span class="tag">Node.js</span><span class="up">{{t "home.art.active"}}</span></div>
-<div class="row dim"><span class="lockdot">{{icon "lock"}}</span><b>docs.example.org</b><span class="tag">{{t "home.art.static"}}</span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>example.com</b><span class="tag">PHP 8.4</span><span class="use"><i></i></span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>shop.example.com</b><span class="tag">PHP 8.4</span><span class="use b2"><i></i></span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>app.example.net</b><span class="tag">Node.js</span><span class="use b3"><i></i></span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>docs.example.org</b><span class="tag">{{t "home.art.static"}}</span><span class="use b4"><i></i></span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row dim"><span class="lockdot">{{icon "lock"}}</span><b>blog.example.net</b><span class="tag">PHP 8.3</span><span class="use b5"><i></i></span><span class="up">{{t "home.art.active"}}</span></div>
+</div>
+</div>
 </div>
 </div>
 <h3>{{icon "globe"}}{{t "home.card.sites"}}</h3>
@@ -138,7 +150,7 @@ sh celikpanel-install.sh</span></code>
 </article>
 <article class="card c-backups">
 <div class="art" aria-hidden="true">
-<ol class="days"><li></li><li></li><li></li><li></li><li></li><li></li><li class="last"></li></ol>
+<ol class="days">{{range $i, $d := (words (t "home.art.weekdays"))}}<li{{if eq $i 6}} class="last"{{end}}><span>{{$d}}</span></li>{{end}}</ol>
 <p class="latest">{{icon "archive"}}<span>{{t "home.art.backup"}}</span><b>03:00</b></p>
 </div>
 <h3>{{icon "archive"}}{{t "home.card.backups"}}</h3>
@@ -150,7 +162,7 @@ sh celikpanel-install.sh</span></code>
 <li>{{t "home.art.step.download"}}</li><li>{{t "home.art.step.signature"}}</li><li>{{t "home.art.step.check"}}</li><li>{{t "home.art.step.install"}}</li><li>{{t "home.art.step.verify"}}</li>
 </ol>
 <svg class="back" viewBox="0 0 400 60" preserveAspectRatio="none" focusable="false"><path d="M372 6 C372 54 28 54 28 10"/><path class="head" d="M20 18 L28 6 L36 18"/></svg>
-<p class="back-label">{{icon "rotate-ccw"}}{{t "home.art.rollback"}}</p>
+<p class="back-label">{{t "home.art.rollback"}}</p>
 </div>
 <h3>{{icon "rotate-ccw"}}{{t "home.card.updates"}}</h3>
 <p>{{t "home.card.updates.text"}}</p>
@@ -158,15 +170,49 @@ sh celikpanel-install.sh</span></code>
 <article class="card c-pair">
 <div class="art" aria-hidden="true">
 <div class="pair">
-<div class="srv">{{icon "server"}}<b>{{t "home.art.main"}}</b><small>ns1.example.net</small></div>
+<div class="srv">{{icon "server"}}<b>{{t "home.art.main"}}</b><small>{{t "home.art.main.does"}}</small></div>
 <div class="sync"><span></span><small>{{t "home.art.zone"}}</small></div>
-<div class="srv">{{icon "server"}}<b>{{t "home.art.backup.dns"}}</b><small>ns2.example.net</small></div>
+<div class="srv extra"><span class="plus">+</span><b>{{t "home.art.backup.dns"}}</b><small>{{t "home.art.backup.when"}}</small></div>
 </div>
 </div>
-<h3>{{icon "server"}}{{t "home.card.pair"}}</h3>
+<h3>{{icon "server"}}{{t "home.card.pair"}} <span class="optional">{{t "common.optional"}}</span></h3>
 <p>{{t "home.card.pair.text"}}</p>
 </article>
 </div>
 </div>
 </section>
+
+<section class="block pricing-block" aria-labelledby="price-title">
+<div class="wrap">
+<div class="block-head center">
+<p class="eyebrow">{{t "nav.pricing"}}</p>
+<h2 id="price-title">{{t "home.price.title"}}</h2>
+<p class="lede">{{t "home.price.lede"}}</p>
+</div>
+{{template "price-pair" .}}
+{{template "lapse-track" .}}
+<p class="center-link"><a class="link" href="{{link "pricing"}}">{{t "home.price.more"}}{{icon "arrow-right"}}</a></p>
+</div>
+</section>
+
+<section class="block install-block" aria-labelledby="install-title" id="{{t "home.install.id"}}">
+<div class="wrap split install">
+<div class="block-head">
+<p class="eyebrow">{{t "home.install.eyebrow"}}</p>
+<h2 id="install-title">{{t "home.install.title"}}</h2>
+<p class="lede">{{t "home.install.lede"}}</p>
+<ol class="num-steps">
+<li>{{t "home.install.step1"}}</li>
+<li>{{t "home.install.step2"}}</li>
+<li>{{t "home.install.step3"}}</li>
+</ol>
+</div>
+<div>
+{{template "command" (dict "ID" "install")}}
+{{template "badges" .}}
+</div>
+</div>
+</section>
+
+{{template "closing" .}}
 {{- end}}

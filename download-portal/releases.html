@@ -11,6 +11,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
 <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/releases.html">
 <link rel="alternate" hreflang="en" href="releases.html">
 <link rel="alternate" hreflang="tr" href="tr/surumler.html">
@@ -55,7 +56,7 @@
 <a href="guide/en/">Guide</a>
 </nav>
 <div class="tools">
-<a class="tool lang" href="tr/surumler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span></a>
+<a class="tool lang" href="tr/surumler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span><span class="sep" aria-hidden="true">·</span><span class="cur">EN</span></a>
 <button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Switch to the dark theme" data-label-light="Switch to the light theme" aria-label="Switch to the dark theme"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
 <a class="signin" href="account/?action=login&amp;lang=en">Sign in</a>
 <a class="btn btn-primary btn-sm register" href="account/?action=register&amp;lang=en">Create account</a>
@@ -75,25 +76,27 @@
 </div>
 </header>
 <main id="main">
-<section class="page-hero compact" aria-labelledby="hero-title">
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
 <div class="wrap">
-<h1 class="display" id="hero-title">Releases.</h1>
-<p class="lede">Every release is signed and named by its commit. Installed panels update only when their owner starts it, from the panel’s own update screen.</p>
+<p class="eyebrow">Releases</p>
+<h1 id="hero-title">Releases.</h1>
+<p class="lede">Every release is signed and named by its commit. Installed panels update only when their owner starts it.</p>
 </div>
 </section>
-<section class="section" aria-labelledby="current-title">
+<section class="block tight" aria-labelledby="current-title">
 <div class="wrap release-grid">
-<div class="sign release-plate">
-<h2 id="current-title">Current release</h2>
+<div class="release-card">
+<p class="pill"><span class="live" aria-hidden="true"></span><span id="current-title">Current release</span></p>
 <p class="version">@@CP_RELEASE_VERSION@@</p>
 <p class="published">Published <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time> <span class="dot">·</span> Linux amd64</p>
-<div class="notes-links">
-<a class="btn btn-sign" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.md">Release notes<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a>
-<a class="btn btn-line" href="@@CP_RELEASE_ARCHIVE_URL@@">Download the package</a>
+<div class="actions start">
+<a class="btn btn-primary" href="@@CP_RELEASE_ARCHIVE_URL@@">Download the package</a>
+<a class="btn btn-ghost" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.md">Release notes<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a>
 </div>
 </div>
-<div>
-<h3 class="h3">Release identity</h3>
+<div class="table-card identity-card">
+<div class="table-card-head"><h2>Release identity</h2></div>
 <dl class="identity">
 <div><dt>Commit</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
 <div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
@@ -111,43 +114,43 @@
 </div>
 </div>
 </section>
-<section class="section band" aria-labelledby="check-title">
-<div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="check-title">Check a download yourself.</h2>
-<p class="lede">The installer does all of this before it installs anything. You can repeat it by hand with standard tools.</p>
-</div>
-<div class="check-grid">
-<div>
-<ol class="steps">
+<section class="block" aria-labelledby="check-title">
+<div class="wrap split install">
+<div class="block-head">
+<p class="eyebrow">Verify</p>
+<h2 id="check-title">Check a download yourself.</h2>
+<p class="lede">The installer does this before it installs anything. You can repeat it by hand.</p>
+<ol class="num-steps">
 <li>Download the package, its SHA-256 file, the signed manifest, its signature and the public key into one folder.</li>
 <li>Compare the key’s SHA-256 with the one printed below, then check the package against its SHA-256 file.</li>
 <li>Verify the manifest’s signature with the key. The manifest names the package’s SHA-256 and size.</li>
 </ol>
-<p class="fine-print">SHA-256 of the release signing public key: <code class="wrap-code">7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
 </div>
-<div class="cmd">
-<div class="cmd-head"><h3 id="verify-title">Commands</h3></div>
+<div>
+<div class="terminal">
+<div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="verify-title">Commands</h3></div>
 <pre tabindex="0" aria-labelledby="verify-title"><code>sha256sum release-signing-ed25519.pem
 sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
 openssl pkeyutl -verify -rawin -pubin \
   -inkey release-signing-ed25519.pem \
   -in release-manifest-v2 -sigfile release-manifest-v2.sig</code></pre>
-<p class="cmd-foot">Each line must end without an error: “OK” for the checksum, “Signature Verified Successfully” for the signature.</p>
+<p class="terminal-foot">Each line must end without an error: “OK” for the checksum, “Signature Verified Successfully” for the signature.</p>
 </div>
+<p class="fine key">SHA-256 of the release signing public key: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
 </div>
 </div>
 </section>
-<section class="section" aria-labelledby="update-title">
-<div class="wrap trust plain-trust">
-<div>
-<h2 class="h2" id="update-title">Updating an installed panel.</h2>
-<p class="lede">Open Settings, CelikPanel updates in your panel and press Check for updates. Only the owner starts an update; if the new version does not come up, the previous one returns by itself.</p>
+<section class="block" aria-labelledby="update-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">Already installed</p>
+<h2 id="update-title">Updating an installed panel.</h2>
+<p class="lede">Open Settings, CelikPanel updates, and press Check for updates. If the new version does not come up, the previous one returns.</p>
 </div>
-<ul class="trust-list">
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="guide/en/panel-settings.html">How updates work, in the user guide</a></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="https://github.com/alicelik77/celikpanel/releases">Every release and its notes</a></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="download.html">Install on a new server</a></li>
+<ul class="link-list">
+<li><a href="guide/en/panel-settings.html">How updates work, in the user guide<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
+<li><a href="https://github.com/alicelik77/celikpanel/releases">Every release and its notes<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a></li>
+<li><a href="download.html">Install on a new server<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
 </ul>
 </div>
 </section>

@@ -11,6 +11,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
 <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/systems.html">
 <link rel="alternate" hreflang="en" href="systems.html">
 <link rel="alternate" hreflang="tr" href="tr/sistemler.html">
@@ -55,7 +56,7 @@
 <a href="guide/en/">Guide</a>
 </nav>
 <div class="tools">
-<a class="tool lang" href="tr/sistemler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span></a>
+<a class="tool lang" href="tr/sistemler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span><span class="sep" aria-hidden="true">·</span><span class="cur">EN</span></a>
 <button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Switch to the dark theme" data-label-light="Switch to the light theme" aria-label="Switch to the dark theme"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
 <a class="signin" href="account/?action=login&amp;lang=en">Sign in</a>
 <a class="btn btn-primary btn-sm register" href="account/?action=register&amp;lang=en">Create account</a>
@@ -75,10 +76,12 @@
 </div>
 </header>
 <main id="main">
-<section class="page-hero compact" aria-labelledby="hero-title">
+<section class="page-hero center" aria-labelledby="hero-title">
+<div class="hero-glow soft" aria-hidden="true"></div>
 <div class="wrap">
-<h1 class="display" id="hero-title">Supported operating systems.</h1>
-<p class="lede">CelikPanel installs on Debian, Ubuntu and Arch Linux. This page says what is offered on each, what is not and why, and how updates work, so you can choose before you install.</p>
+<p class="eyebrow">Systems</p>
+<h1 id="hero-title">Supported operating systems.</h1>
+<p class="lede">What is offered on each system, what is not and why, and how updates work.</p>
 <nav class="jump" aria-label="On this page">
 <a href="#list">The list</a>
 <a href="#debian-ubuntu">Debian and Ubuntu</a>
@@ -87,13 +90,13 @@
 </nav>
 </div>
 </section>
-<section class="section" aria-labelledby="list-title" id="list">
+<section class="block tight" aria-labelledby="list-title" id="list">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="list-title">The list</h2>
+<div class="block-head center">
+<h2 id="list-title">The list</h2>
 <p class="lede">Tested means every release candidate of CelikPanel runs on that system before it is published. Supported means CelikPanel installs and runs on it, but release candidates are not run on it. Dates are the distributions’ own support dates, checked on 24 October 2026.</p>
 </div>
-<div class="table-wrap" role="region" aria-labelledby="systems-caption" tabindex="0">
+<div class="table-card"><div class="table-wrap" role="region" aria-labelledby="systems-caption" tabindex="0">
 <table class="data systems">
 <caption id="systems-caption" class="sr-only">Operating systems CelikPanel supports</caption>
 <thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">Updates</th></tr></thead>
@@ -105,52 +108,48 @@
 <tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">No end date</td><td data-label="Updates">By hand, after reading the Arch news</td></tr>
 </tbody>
 </table>
-</div>
-<p class="fine-print">Other systems are not supported yet. Red Hat family systems (RHEL, AlmaLinux, Rocky Linux 9) are recognised, and the installer refuses them for now instead of half-installing. A system that is not on this list has not been checked. Linux amd64.</p>
+</div><p class="table-card-foot">Other systems are not supported yet. Red Hat family systems (RHEL, AlmaLinux, Rocky Linux 9) are recognised, and the installer refuses them for now instead of half-installing. A system that is not on this list has not been checked. Linux amd64.</p></div>
 </div>
 </section>
-<section class="section band" aria-labelledby="deb-title" id="debian-ubuntu">
+<section class="block" aria-labelledby="deb-title" id="debian-ubuntu">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="deb-title">Debian and Ubuntu</h2>
-</div>
-<div class="columns">
-<div><h3 class="h3">What is offered</h3><p>All of CelikPanel’s components: web server and PHP, MariaDB and PostgreSQL, mail with Rspamd, DNS with BIND or PowerDNS, certificates, the firewall, backups and the security tools. Packages come from the distribution. Where a newer version is wanted, the panel offers a vendor repository only as a deliberate, confined, tracked choice.</p></div>
-<div><h3 class="h3">What is not offered</h3><p>Apache, Exim and FTP (vsftpd) are not offered yet, on any system: their integration is not finished, so use Nginx and Postfix. Everything else in the catalogue is offered. Versions differ by release: for example Debian 13 ships PHP 8.4 and PostgreSQL 17, Ubuntu 24.04 ships PHP 8.3 and PostgreSQL 16. The panel shows what your release offers.</p></div>
-<div><h3 class="h3">How updates work</h3><p>Fixes come from the distribution’s security and update archives. The system’s own tool, unattended-upgrades, can install them every day by itself, or you install them by hand. You choose in the panel under Security, Security updates. The choice is one apt file on your server, so it keeps working while CelikPanel is stopped. If you edit that file yourself, the panel notices and asks before it replaces your text. The panel never restarts the server by itself.</p></div>
-<div><h3 class="h3">New major versions</h3><p>A new major version of a program, such as PostgreSQL 17 after 16 or PHP 8.5 after 8.4, is a separate program and not an update. Updates fix the version you have. You move to a new major version yourself, when you decide.</p></div>
+<div class="block-head center"><h2 id="deb-title">Debian and Ubuntu</h2></div>
+<div class="text-cards">
+<div class="text-card"><h3>What is offered</h3><p>All of CelikPanel’s components: web server and PHP, MariaDB and PostgreSQL, mail with Rspamd, DNS with BIND or PowerDNS, certificates, the firewall, backups and the security tools. Packages come from the distribution. Where a newer version is wanted, the panel offers a vendor repository only as a deliberate, confined, tracked choice.</p></div>
+<div class="text-card"><h3>What is not offered</h3><p>Apache, Exim and FTP (vsftpd) are not offered yet, on any system: their integration is not finished, so use Nginx and Postfix. Everything else in the catalogue is offered. Versions differ by release: for example Debian 13 ships PHP 8.4 and PostgreSQL 17, Ubuntu 24.04 ships PHP 8.3 and PostgreSQL 16. The panel shows what your release offers.</p></div>
+<div class="text-card"><h3>How updates work</h3><p>Fixes come from the distribution’s security and update archives. The system’s own tool, unattended-upgrades, can install them every day by itself, or you install them by hand. You choose in the panel under Security, Security updates. The choice is one apt file on your server, so it keeps working while CelikPanel is stopped. If you edit that file yourself, the panel notices and asks before it replaces your text. The panel never restarts the server by itself.</p></div>
+<div class="text-card"><h3>New major versions</h3><p>A new major version of a program, such as PostgreSQL 17 after 16 or PHP 8.5 after 8.4, is a separate program and not an update. Updates fix the version you have. You move to a new major version yourself, when you decide.</p></div>
 </div>
 </div>
 </section>
-<section class="section" aria-labelledby="arch-title" id="arch">
+<section class="block" aria-labelledby="arch-title" id="arch">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="arch-title">Arch Linux</h2>
-</div>
-<div class="columns">
-<div><h3 class="h3">What is offered</h3><p>The server roles work with official Arch packages only: web, PHP, MariaDB, PostgreSQL, mail, certificates, the firewall and backups. PowerDNS comes from Arch’s extra repository as a first install. Valkey is offered where other systems offer Redis.</p></div>
-<div><h3 class="h3">What is not offered, and why</h3><ul class="plain">
+<div class="block-head center"><h2 id="arch-title">Arch Linux</h2></div>
+<div class="text-cards">
+<div class="text-card"><h3>What is offered</h3><p>The server roles work with official Arch packages only: web, PHP, MariaDB, PostgreSQL, mail, certificates, the firewall and backups. PowerDNS comes from Arch’s extra repository as a first install. Valkey is offered where other systems offer Redis.</p></div>
+<div class="text-card"><h3>What is not offered, and why</h3><ul>
 <li>phpPgAdmin and SpamAssassin: Arch’s official repositories carry no working package (only the AUR does, and CelikPanel does not use it). Manage PostgreSQL with psql, and use Rspamd as the spam filter.</li>
 <li>Redis: Arch ships the compatible Valkey instead, so Valkey is offered.</li>
 <li>Apache, Exim and FTP (vsftpd): not offered yet on any system. Use Nginx and Postfix.</li>
 <li>Switching an existing BIND server to PowerDNS: PowerDNS is offered as a first install only.</li>
 <li>Automatic upgrades: Arch has no security-only updates, and an unattended full upgrade can stop your services.</li>
 </ul></div>
-<div><h3 class="h3">How updates work</h3><p>Arch is a rolling release. An update is always a full upgrade that you run on the server: read archlinux.org/news first, then run <code>sudo pacman -Syu</code>, then check failed units, <code>nginx -t</code>, PHP-FPM and the mail services, and restart the server if the kernel changed. The panel counts what is waiting and shows these steps; it never runs the upgrade for you.</p></div>
-<div><h3 class="h3">Before a big upgrade</h3><p>A full upgrade can move Arch’s php package to a new major version, and PostgreSQL to a new major version whose data directory must then be upgraded before the server starts again. Test your sites after the upgrade, or on a copy of the server first.</p></div>
+<div class="text-card"><h3>How updates work</h3><p>Arch is a rolling release. An update is always a full upgrade that you run on the server: read archlinux.org/news first, then run <code>sudo pacman -Syu</code>, then check failed units, <code>nginx -t</code>, PHP-FPM and the mail services, and restart the server if the kernel changed. The panel counts what is waiting and shows these steps; it never runs the upgrade for you.</p></div>
+<div class="text-card"><h3>Before a big upgrade</h3><p>A full upgrade can move Arch’s php package to a new major version, and PostgreSQL to a new major version whose data directory must then be upgraded before the server starts again. Test your sites after the upgrade, or on a copy of the server first.</p></div>
 </div>
 </div>
 </section>
-<section class="section field-band" aria-labelledby="yours-title">
-<div class="wrap trust">
-<div>
-<h2 class="h2" id="yours-title">Your server stays yours.</h2>
+<section class="block" aria-labelledby="yours-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">Independent</p>
+<h2 id="yours-title">Your server stays yours.</h2>
 <p class="lede">CelikPanel operates your server; it does not own it. Sites, mail, DNS, databases, scheduled jobs and site certificate renewal keep running while the panel is stopped, on every system above.</p>
 </div>
-<ul class="trust-list">
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">What is offered on which system, in detail</a></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="guide/en/without-panel.html">Running the server without CelikPanel</a></li>
-<li><svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg><a href="download.html">Install CelikPanel</a></li>
+<ul class="link-list">
+<li><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">What is offered on which system, in detail<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a></li>
+<li><a href="guide/en/without-panel.html">Running the server without CelikPanel<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
+<li><a href="download.html">Install CelikPanel<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
 </ul>
 </div>
 </section>

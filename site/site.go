@@ -49,17 +49,17 @@ var moved = []struct {
 }
 
 // Files copied verbatim from assets/ into <out>/assets/.
-var assetFiles = []string{"public.css", "public.js", "boot.js"}
+var assetFiles = []string{"public.css", "home.css", "pages.css", "public.js", "boot.js"}
 
 // Product screens: assets/shots/<name>-<lang>-<theme>.webp, taken from the
 // current panel build with sample data (web/tools/browser-inspect, batch 37).
 // Each screen exists per language and theme as <name>-<lang>-<theme>.webp
-// (1280x800), -2x.webp (2560x1600) and -phone.webp (780x1688, a 390-wide
+// (1280x680, cropped to the content), -2x.webp (2560x1360) and -phone.webp (780x1688, a 390-wide
 // phone at twice the density).
 var shots = map[string][2]int{
-	"domains":   {1280, 800},
-	"domain":    {1280, 800},
-	"databases": {1280, 800},
+	"domains":   {1280, 680},
+	"domain":    {1280, 680},
+	"databases": {1280, 680},
 }
 
 // The phone screens' size in pixels.
@@ -249,7 +249,8 @@ func (r *renderer) funcs(v view) template.FuncMap {
 			}
 			return result, nil
 		},
-		"list": func(items ...string) []string { return items },
+		"list":  func(items ...string) []string { return items },
+		"words": strings.Fields,
 		// dots sets the separating middle dots of a short line in their own
 		// span: Overpass draws the dot against the following word.
 		"dots": func(text string) template.HTML {
@@ -372,6 +373,8 @@ var (
 	cssComment    = regexp.MustCompile(`(?s)/\*.*?\*/`)
 	cssSpace      = regexp.MustCompile(`\s+`)
 	cssPunctSpace = regexp.MustCompile(`\s*([{};,>])\s*`)
+	// a media or support feature, "(max-width: 640px)"
+	cssMediaFeature = regexp.MustCompile(`\(([a-z-]+): `)
 )
 
 // minifyCSS drops comments and the whitespace that carries no meaning: runs
@@ -383,6 +386,7 @@ func minifyCSS(source []byte) []byte {
 	out := cssComment.ReplaceAll(source, nil)
 	out = cssSpace.ReplaceAll(out, []byte(" "))
 	out = cssPunctSpace.ReplaceAll(out, []byte("$1"))
+	out = cssMediaFeature.ReplaceAll(out, []byte("($1:"))
 	// In a declaration ("{color: x;" or ";color: x}") the space after the
 	// property's colon goes too. A selector is told apart by the "{" that
 	// follows it before any ";" or "}".
@@ -439,7 +443,7 @@ func (r *renderer) movedPage(out, target string, fragment map[string]string) ([]
 		"TitleEN": en["moved.title"], "TitleTR": tr["moved.title"],
 		"TextEN": en["moved.text"], "TextTR": tr["moved.text"],
 		"LinkEN": en["moved.link"], "LinkTR": tr["moved.link"],
-		"CSS": v.root() + "assets/public.css", "Boot": v.root() + "assets/boot.js",
+		"CSS": v.root() + "assets/public.css", "Pages": v.root() + "assets/pages.css", "Boot": v.root() + "assets/boot.js",
 		"Icon": v.root() + "assets/favicon-v2.svg",
 	}
 	var buffer bytes.Buffer

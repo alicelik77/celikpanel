@@ -1,79 +1,78 @@
 {{define "hero" -}}
 <section class="page-hero" aria-labelledby="hero-title">
-<div class="wrap dl-grid">
-<div>
-<h1 class="display" id="hero-title">{{t "download.hero.title"}}</h1>
+<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="wrap split install">
+<div class="block-head">
+<p class="eyebrow">{{t "nav.download"}}</p>
+<h1 id="hero-title">{{t "download.hero.title"}}</h1>
 <p class="lede">{{t "download.hero.lede"}}</p>
-<p class="current">{{t "download.current"}} <a href="{{link "releases"}}"><b>@@CP_RELEASE_VERSION@@</b></a> <span class="dot">·</span> <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time> <span class="dot">·</span> Linux amd64</p>
-</div>
-<ol class="steps on-field-steps">
+<p class="current">{{t "download.current"}} <a href="{{link "releases"}}"><code>@@CP_RELEASE_VERSION@@</code></a> <span class="dot">·</span> <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time> <span class="dot">·</span> Linux amd64</p>
+<ol class="num-steps">
 <li>{{t "install.step.account"}}</li>
 <li>{{t "download.step.server"}}</li>
 <li>{{t "install.step.run"}}</li>
 <li>{{t "install.step.wizard"}}</li>
 </ol>
 </div>
-<div class="wrap dl-cmd">
+<div>
 {{template "command" (dict "ID" "download")}}
+{{template "badges" .}}
 {{template "alpha" .}}
+</div>
 </div>
 </section>
 {{- end}}
 
 {{define "main" -}}
-<section class="section" aria-labelledby="systems-title">
+<section class="block" aria-labelledby="systems-title">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="systems-title">{{t "download.systems.title"}}</h2>
+<div class="block-head center">
+<p class="eyebrow">{{t "nav.systems"}}</p>
+<h2 id="systems-title">{{t "download.systems.title"}}</h2>
 <p class="lede">{{t "download.systems.lede"}}</p>
 </div>
-{{template "systems-table" .}}
-<p class="more"><a class="link-arrow" href="{{link "systems"}}">{{t "download.systems.more"}}{{icon "arrow-right"}}</a></p>
+<div class="table-card">{{template "systems-table" .}}</div>
+<p class="center-link"><a class="link" href="{{link "systems"}}">{{t "download.systems.more"}}{{icon "arrow-right"}}</a></p>
 </div>
 </section>
 
-<section class="section band" aria-labelledby="wizard-title">
+<section class="block" aria-labelledby="wizard-title">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="wizard-title">{{t "download.wizard.title"}}</h2>
+<div class="block-head center">
+<p class="eyebrow">{{t "download.wizard.eyebrow"}}</p>
+<h2 id="wizard-title">{{t "download.wizard.title"}}</h2>
 <p class="lede">{{t "download.wizard.lede"}}</p>
 </div>
-<div class="wizard">
-<div>
-<h3 class="h3">{{t "download.wizard.dns"}}</h3>
-<dl class="choices">
-{{- range $k := (list "pair" "outside" "one")}}
-<div><dt>{{t (print "download.wizard." $k)}}</dt><dd>{{t (print "download.wizard." $k ".text")}}</dd></div>
+<div class="choice-cards">
+{{- range $k := (list "one" "outside" "pair")}}
+<div class="choice{{if eq $k "pair"}} is-optional{{end}}">{{if eq $k "pair"}}<p class="optional">{{t "common.optional"}}</p>{{end}}<h3>{{t (print "download.wizard." $k)}}</h3><p>{{t (print "download.wizard." $k ".text")}}</p></div>
 {{- end}}
-</dl>
 </div>
-<div>
-<h3 class="h3">{{t "download.wizard.two"}}</h3>
-<ol class="steps">
+<details class="more-card">
+<summary>{{t "download.wizard.two"}}</summary>
+<ol class="num-steps">
 {{- range $k := (list "1" "2" "3" "4" "5")}}
 <li>{{t (print "download.wizard.two." $k)}}</li>
 {{- end}}
 </ol>
-</div>
-</div>
+</details>
 </div>
 </section>
 
-<section class="section" aria-labelledby="how-title" id="{{t "download.how.id"}}">
+<section class="block" aria-labelledby="how-title" id="{{t "download.how.id"}}">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="how-title">{{t "download.how.title"}}</h2>
+<div class="block-head center">
+<p class="eyebrow">{{t "download.how.eyebrow"}}</p>
+<h2 id="how-title">{{t "download.how.title"}}</h2>
 <p class="lede">{{t "download.how.lede"}}</p>
 </div>
 <ol class="model">
 {{- range $k := (list "preview" "commit" "record")}}
-<li class="sign"><h3>{{t (print "download.how." $k)}}</h3><p>{{t (print "download.how." $k ".text")}}</p></li>
+<li><h3>{{t (print "download.how." $k)}}</h3><p>{{t (print "download.how." $k ".text")}}</p></li>
 {{- end}}
 </ol>
-<div class="ledger-head">
-<h3 class="h3" id="ledger-title">{{t "download.ledger.title"}}</h3>
-<p>{{t "download.ledger.lede"}}</p>
-</div>
+<div class="table-card ledger-card">
+<div class="table-card-head"><h3 id="ledger-title">{{t "download.ledger.title"}}</h3><p>{{t "download.ledger.lede"}}</p></div>
 <div class="table-wrap" role="region" aria-labelledby="ledger-title" tabindex="0">
 <table class="data ledger">
 <thead><tr><th scope="col">{{t "download.ledger.what"}}</th><th scope="col" class="num">{{t "download.ledger.value"}}</th><th scope="col">{{t "download.ledger.condition"}}</th><th scope="col">{{t "download.ledger.date"}}</th></tr></thead>
@@ -84,17 +83,19 @@
 </tbody>
 </table>
 </div>
-<p class="fine-print">{{t "download.ledger.note"}} <a href="{{repo (t "download.ledger.register.file")}}">{{t "download.ledger.register"}}</a></p>
+<p class="table-card-foot">{{t "download.ledger.note"}} <a href="{{repo (t "download.ledger.register.file")}}">{{t "download.ledger.register"}}</a></p>
+</div>
 </div>
 </section>
 
-<section class="section field-band" aria-labelledby="trust-title">
-<div class="wrap trust">
-<div>
-<h2 class="h2" id="trust-title">{{t "download.trust.title"}}</h2>
+<section class="block" aria-labelledby="trust-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">{{t "download.trust.eyebrow"}}</p>
+<h2 id="trust-title">{{t "download.trust.title"}}</h2>
 <p class="lede">{{t "download.trust.lede"}}</p>
 </div>
-<ul class="trust-list">
+<ul class="check-list">
 {{- range $k := (list "signed" "notes" "split" "password")}}
 <li>{{icon "shield-check"}}<span>{{t (print "download.trust." $k)}}</span></li>
 {{- end}}
@@ -102,12 +103,12 @@
 </div>
 </section>
 
-<section class="section" aria-labelledby="installed-title">
-<div class="wrap installed">
-<div class="sign sign-white">
-<h2 class="h3" id="installed-title">{{t "download.installed.title"}}</h2>
+<section class="block tight" aria-labelledby="installed-title">
+<div class="wrap narrow">
+<div class="note-card">
+<h2 id="installed-title">{{t "download.installed.title"}}</h2>
 <p>{{t "download.installed.text"}}</p>
-<p class="links"><a class="link-arrow" href="{{link "releases"}}">{{t "download.installed.releases"}}{{icon "arrow-right"}}</a> <a class="link-arrow" href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}{{icon "arrow-right"}}</a></p>
+<p class="links"><a class="link" href="{{link "releases"}}">{{t "download.installed.releases"}}{{icon "arrow-right"}}</a><a class="link" href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}{{icon "arrow-right"}}</a></p>
 </div>
 </div>
 </section>
