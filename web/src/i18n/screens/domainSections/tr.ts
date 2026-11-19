@@ -6,6 +6,7 @@ export const trDomainSectionsScreens: Record<DomainSectionsScreenKey, string> = 
     'domain.sections': 'Bu alan adının bölümleri',
     'domain.section.overview': 'Genel Bakış',
     'domain.section.site': 'Site',
+    'domain.section.programs': 'Programlar',
     'domain.section.files': 'Dosyalar',
     'domain.section.mail': 'E-posta',
     'domain.section.databases': 'Veritabanları',

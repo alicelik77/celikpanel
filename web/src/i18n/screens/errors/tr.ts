@@ -3,6 +3,8 @@
 import type { ErrorsScreenKey } from './en';
 
 export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
+    // ---- alpha.138: an AI app refused on a domain a program uses ----
+    'err.SERVICE_APP.program_created': 'Hiçbir şey değişmedi: bu alan adını bir program ya da Python uygulaması kullanıyor ve uygulama onun yerini alırdı. Önce programı Programlar bölümünden kaldırın ya da uygulamayı başka bir alan adına veya alt alan adına kurun.',
     // ---- alpha.130: a change sent while the server is still booting ----
     'err.HOST_STARTING': 'Bu sunucu hâlâ açılıyor: sistem yöneticisi (systemd) onu henüz hazır bildirmiyor, bu yüzden CelikPanel bu değişikliği göndermedi ve hiçbir şey değişmedi. Şu an kimsenin bir şey yapması gerekmiyor: bir dakika bekleyip yeniden deneyin. Sunucu 10 dakika sonra hâlâ açılıyorsa sunucu sahibi sunucuda systemctl is-system-running ve systemctl --failed komutlarını çalıştırıp açılışı bitirmeyen sorunu giderir.',
     // ---- alpha.108 slice d ----

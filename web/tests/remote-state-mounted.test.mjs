@@ -38,7 +38,7 @@ const screenFiles = [
   'ProblemsNow',
 ];
 // alpha.132: the domain page's row of sections and its parts draw these.
-const icons = new Set(['AlertTriangle', 'XCircle', 'Lock', 'Eye', 'ChevronDown', 'LayoutGrid', 'AppWindow', 'Folder', 'Mail', 'Database', 'Network', 'ShieldCheck', 'Archive', 'Wrench']);
+const icons = new Set(['AlertTriangle', 'XCircle', 'Lock', 'Eye', 'ChevronDown', 'LayoutGrid', 'AppWindow', 'Cpu', 'Folder', 'Mail', 'Database', 'Network', 'ShieldCheck', 'Archive', 'Wrench']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
   'Link', 'PHPToolVersion', 'PanelPortCard', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'WebmailAddressCard', 'RestartsCard', 'AppAccountLine', 'IsolationFact', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
@@ -247,7 +247,7 @@ let securitySectionURL = shared.compile('components/domain/sections/SecuritySect
 securitySectionURL = replaceLazyImport(securitySectionURL, '../../DomainSiteFeatures', dataModule('export const DomainSiteProtect = () => null;'));
 securitySectionURL = replaceLazyImport(securitySectionURL, '../../DomainMalwareScan', dataModule('export const DomainMalwareScan = () => null;'));
 let domainDetailURL = shared.compile('components/DomainDetail.tsx', domainOwn);
-for (const name of ['OverviewSection', 'SiteSection', 'FilesSection', 'MailSection', 'DatabasesSection', 'DnsSection', 'BackupsSection', 'AdvancedSection']) {
+for (const name of ['OverviewSection', 'SiteSection', 'ProgramsSection', 'FilesSection', 'MailSection', 'DatabasesSection', 'DnsSection', 'BackupsSection', 'AdvancedSection']) {
   domainDetailURL = replaceLazyImport(domainDetailURL, `./domain/sections/${name}`, quietSection(name));
 }
 domainDetailURL = replaceLazyImport(domainDetailURL, './domain/sections/SecuritySection', securitySectionURL);

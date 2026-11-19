@@ -1,9 +1,10 @@
-// Site (alpha.132): what runs on the domain and how — the old Hosting type,
-// Applications, AI & automation, Programs, PHP and Redirects, one below the
-// other. The insides are unchanged; the section's own redesign (D4, D5) comes
-// in a later release.
-// Site: alan adında ne çalıştığı; eski barındırma tipi, uygulamalar, yapay
-// zekâ, programlar, PHP ve yönlendirmeler alt alta.
+// Site (alpha.132): what the site is and how requests reach it — the old
+// Hosting type, Applications, PHP and Redirects, one below the other. The
+// insides are unchanged; the section's own redesign (D4, D5) comes in a later
+// release. Programs and AI & automation have their own section since
+// alpha.138 (ProgramsSection.tsx).
+// Site: sitenin ne olduğu ve isteklerin ona nasıl ulaştığı; eski barındırma
+// tipi, uygulamalar, PHP ve yönlendirmeler alt alta.
 import { lazy } from 'react';
 import { HostingTypePanel } from '../../HostingTypePanel';
 import { DomainPHPSettings } from '../../DomainPHPSettings';
@@ -13,8 +14,6 @@ import { SectionParts, type DomainSectionProps } from '../SectionParts';
 // Her biri bölüm açılınca getirilir.
 const DomainAppsPanel = lazy(() => import('../../DomainAppsPanel').then((module) => ({ default: module.DomainAppsPanel })));
 const WordPressToolsPanel = lazy(() => import('../../WordPressToolsPanel').then((module) => ({ default: module.WordPressToolsPanel })));
-const DomainServiceApps = lazy(() => import('../../DomainServiceApps').then((module) => ({ default: module.DomainServiceApps })));
-const DomainRuntimeApps = lazy(() => import('../../DomainRuntimeApps').then((module) => ({ default: module.DomainRuntimeApps })));
 const DomainSiteRedirects = lazy(() => import('../../DomainSiteFeatures').then((module) => ({ default: module.DomainSiteRedirects })));
 
 export function SiteSection({ domain, parts, part, role, isTeamMember, open, go, onPhpVersionChange }: DomainSectionProps) {
@@ -32,10 +31,6 @@ export function SiteSection({ domain, parts, part, role, isTeamMember, open, go,
                             {(role === 'admin' || open('wordpress_tools')) && <WordPressToolsPanel domainId={id} />}
                         </>
                     );
-                case 'ai':
-                    return <DomainServiceApps domainId={id} domainName={name} />;
-                case 'programs':
-                    return <DomainRuntimeApps domainId={id} domainName={name} />;
                 case 'php':
                     return (
                         <DomainPHPSettings

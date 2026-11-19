@@ -2,11 +2,11 @@
 id: ai-apps
 title: Yapay zekâ ve otomasyon uygulamaları
 roles: [admin, reseller, customer]
-topics: [domain.site.ai#ai-apps]
+topics: [domain.programs.ai#ai-apps]
 keywords: [yapay zekâ, yapay zeka, n8n, open webui, otomasyon, iş akışı, sohbet, openai, api anahtarı, güvenlik beklemesi]
 ---
 
-Alan adının **Site** bölümündeki **Yapay zekâ ve otomasyon** parçası n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır.
+Alan adının **Programlar** bölümündeki **Yapay zekâ ve otomasyon** parçası n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır.
 
 ## Kurmadan önce {#ai-apps}
 

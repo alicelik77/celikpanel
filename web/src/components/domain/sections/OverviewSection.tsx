@@ -6,18 +6,18 @@ import { useI18n } from '../../../i18n';
 import { domainSectionIcons } from '../../../lib/domainSectionIcons';
 import { DomainSSLOverviewCard } from '../../DomainSSLOverviewCard';
 import { siteKindWord } from '../../kit/words';
-import { SECTION_LABELS, siteLeadPart } from '../sections';
+import { SECTION_LABELS, programsLeadPart } from '../sections';
 import { SectionParts, type DomainSectionProps } from '../SectionParts';
 
 export function OverviewSection({ domain, parts, part, sections, go, onCertificateChange }: DomainSectionProps) {
     const { t } = useI18n();
     const tiles = sections.filter((section) => section.id !== 'overview' && !section.notInPlan);
     const certificate = sections.some((section) => section.id === 'security' && section.parts.some((item) => item.id === 'certificate'));
-    // A program or a service app: the Site tile says what runs there and goes
-    // straight to it (the part leads the Site section). From the domain's
-    // own facts; nothing more is read.
-    const lead = siteLeadPart(domain.project_type);
-    const leadShown = lead !== null && sections.some((section) => section.id === 'site' && section.parts.some((item) => item.id === lead));
+    // A program or a service app: the Programs tile says what runs there (the
+    // part leads the Programs section). From the domain's own facts; nothing
+    // more is read.
+    const lead = programsLeadPart(domain.project_type);
+    const leadShown = lead !== null && sections.some((section) => section.id === 'programs' && section.parts.some((item) => item.id === lead));
     return (
         <SectionParts section="overview" parts={parts} part={part} go={go} render={() => (
             <div>
@@ -32,12 +32,12 @@ export function OverviewSection({ domain, parts, part, sections, go, onCertifica
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {tiles.map((section) => {
                         const Icon = domainSectionIcons[section.id];
-                        const runs = section.id === 'site' && leadShown;
+                        const runs = section.id === 'programs' && leadShown;
                         return (
                             <button
                                 key={section.id}
                                 type="button"
-                                onClick={() => go(runs && lead ? { section: 'site', part: lead } : { section: section.id })}
+                                onClick={() => go({ section: section.id })}
                                 className="group flex items-center gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-primary/40 hover:bg-surface-2"
                                 data-overview-tile={section.id}
                             >

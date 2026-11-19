@@ -84,6 +84,14 @@ back, it moves to the next one and is written down here.
   button, and a process that ends while the package check reads it no longer
   makes the check refuse
   ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.137.md)).
+- **Candidate:** v0.1.0-alpha.138 (row 61), a small release of two jobs:
+  a domain's programs and AI apps have their own Programs section on the
+  domain page, a program and an AI app no longer take a domain from each
+  other (and whatever a domain holds is shown where it can be removed), and
+  each mailbox shows the settings a mail program needs, with the mail name
+  this server really serves; the four styles have new names. Lab check
+  finished (one run, no hard failure)
+  ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.138.md)).
 - **The owner's servers:** Frankfurt and Boston ran alpha.133 at the last
   read-only check (13 November 2026); alpha.134 waits for the owner. Only
   the owner updates them, from the panel's own update screen.
@@ -91,7 +99,7 @@ back, it moves to the next one and is written down here.
   and Ubuntu 24.04, 19 November 2026): the first found the locked update
   page this release then fixed; the second, on the release's final product
   code, had no hard failure, and its three findings are carried to
-  alpha.139. What no run checked is listed in the release notes.
+  alpha.141. What no run checked is listed in the release notes.
 
 ### Working rules (unchanged)
 
@@ -151,96 +159,128 @@ A small release of two jobs (alpha.136 lab). See row 60.
    unchanged "package manager busy" stop, and a page already showing that stop can be closed and
    the update started again (a page locked on an earlier version is opened from another browser).
 
-**alpha.138 — licence stage 1**
-A lapsed or unverifiable licence never blocks a security action or another server's work, with
-expiry warnings (D-047; lane in PR #327, not merged).
+**alpha.138 — Programs in their own section, a program is never taken over, each mailbox's settings (Candidate)**
+A small release of two jobs (owner, 19 November 2026). See row 61.
+1. A domain's programs and AI apps have their own section, Programs, right after Site; older links
+   open it there. It is shown where something in it can be done, and whatever a domain holds (a
+   program or an app record) is shown there where it can be removed, whatever the plan or the
+   site type say.
+2. A program and an AI app no longer take a domain from each other: the server refuses an AI app's
+   install or update on a domain a program uses, and a program's deploy on a domain an AI app
+   uses; the page does not offer them.
+3. Each mailbox shows its connection settings (More → Connection settings…), with Copy all and
+   never the password; mail programs are told the mail name this server really serves, also for
+   subdomains and domains without a website.
+4. The four styles are Celik, Sky, Forest and Amber (owner, 20 November 2026: no style carries
+   another company's product name); a style chosen before is kept.
 
-**alpha.139 — carried over**
-1. One more place mixes two clocks: `cmd/panel/database_remote_start.go:42` passes the real time
+**alpha.139 — licence stage 1 (PR #327, waits for the owner's lab decision)**
+A lapsed or unverifiable licence never blocks a security action or another server's work, with
+expiry warnings (D-047).
+
+**alpha.140 — the paired main DNS server answers host-record requests truthfully, and the 'Ekle…' button (PR #334 and its follow-up)**
+The paired main DNS server says what it really did with a request to add a host record
+(webmail's address), and the "Add…" button asks it (the alpha.135 lab found the button not adding
+the record on a real pair).
+
+**alpha.141 — carried over**
+1. AI and automation apps cannot be installed on Debian 13 or Ubuntu 24.04: the runtime versions
+   they need are missing there (Node.js 24; Python 3.11 or 3.12; on Ubuntu the venv module) (alpha.138
+   lab).
+2. n8n's "cannot be installed yet" line mixes languages and points to a Node.js installation the
+   server cannot do; it says what is missing and what can be done, in the reader's language (alpha.138
+   lab).
+3. Right after a domain deletion that waits for the backup DNS server, the status says the deletion
+   stopped and to delete again, although it finishes by itself (about 51 s in the lab); it says that
+   it waits (alpha.138 lab).
+4. One more place mixes two clocks: `cmd/panel/database_remote_start.go:42` passes the real time
    to `panelUpdateRecentlyAdmitted`, whose stored admission time comes from the injectable
    update clock (`panelUpdateNow`); no test reaches it with a pinned date yet (found while fixing
    the disk-usage clock, PR #328).
-2. The test of PostgreSQL leftovers pins its clock to 8 November 2026 and compares it with a
+5. The test of PostgreSQL leftovers pins its clock to 8 November 2026 and compares it with a
    just-written file's real time (`cmd/agent/pg_leftovers_test.go:51`); harmless while the
    machine's clock is later than 9 October 2026, but it should not depend on the date.
-3. A live "waiting for …" state of the update's server-check step while the update waits for the
+6. A live "waiting for …" state of the update's server-check step while the update waits for the
    package manager or another operation. Today the updater's own lines are not kept anywhere the
    owner can read (the Agent keeps only a failure's last line); it needs a way for the updater to
    tell the panel what it waits for (alpha.137 lab; seen again in lab run 2).
-4. The component removal window's "Kaldır" can be pressed while it still says "…okunuyor…" and
+7. The component removal window's "Kaldır" can be pressed while it still says "…okunuyor…" and
    then does nothing.
-5. A recovery checker that cannot be started (for example, its file cannot be executed) is
+8. A recovery checker that cannot be started (for example, its file cannot be executed) is
    reported as "unsupported protocol"; the report names what really happened.
-6. The panel's background workers (automatic DKIM, the holding loop) are stopped and waited for
+9. The panel's background workers (automatic DKIM, the holding loop) are stopped and waited for
    before the database is closed at shutdown (today they leave harmless "database is closed"
    log lines).
-7. An automatic DKIM record left "unknown" by a stop is resumed at the next start (today only the
+10. An automatic DKIM record left "unknown" by a stop is resumed at the next start (today only the
    card's "Try again" does it).
-8. If the panel dies between removing a held item's record and writing its audit row, that one
+11. If the panel dies between removing a held item's record and writing its audit row, that one
    audit row can be missing; it is written in the same step.
-9. A database deletion remembers that the engine already dropped the database, so a same-named
+12. A database deletion remembers that the engine already dropped the database, so a same-named
    database created meanwhile is not deleted by a second press.
-10. Out-of-step copies of CelikPanel's engine account repaired automatically.
-11. After a deletion that kept a user's accounts, the refusal to create a same-named database
+13. Out-of-step copies of CelikPanel's engine account repaired automatically.
+14. After a deletion that kept a user's accounts, the refusal to create a same-named database
    says what frees the name, in the reader's language.
-12. PostgreSQL: a user added to another database also gets rights on the tables the database's
+15. PostgreSQL: a user added to another database also gets rights on the tables the database's
    own user owns.
-13. Removing an added user no longer says "removed" while its account stays.
-14. Database sizes in the Databases list, read in one call for the whole list.
-15. An "Add" button that asks the paired main DNS server to add webmail's address record. The
-   alpha.135 lab found it not adding the record on a real pair (an unknown answer, then a
-   refusal for a record that does not exist); the fault is found first (branch `a135/dnsadd`).
-16. What earlier releases' domain deletions left besides mail and backups: the site's logs, an
+16. Removing an added user no longer says "removed" while its account stays.
+17. Database sizes in the Databases list, read in one call for the whole list.
+18. What earlier releases' domain deletions left besides mail and backups: the site's logs, an
    orphaned crontab, the certificate check folder, and databases and users on the engines that
    no list shows.
-17. The alpha.135 lab's defects: an open Domains tab follows a deletion made elsewhere; a held
+19. The alpha.135 lab's defects: an open Domains tab follows a deletion made elsewhere; a held
    folder replaced by a link stays listed while the link is there; a removal that fails part-way
    does not leave a half-removed folder; no "Working on the server…" line under "Completed"
    after "Keep 30 days"; the home activity feed names held items in words; the rights paragraph
    of a domain deletion's result becomes one line with the rest under closed details, and the
    holding list's folder paths start closed.
-18. Earlier releases could leave one inert copy of the recovery kit in a hidden
+20. Earlier releases could leave one inert copy of the recovery kit in a hidden
    `.promote-*` folder under `/usr/libexec/celikpanel/recovery-runtimes/v1/` at each retry of
    the same version after a stop of the kit's preparation (alpha.137 no longer does); nothing
    removes those already there (alpha.137 review).
-19. The refusal "the host package manager or mutation lock is busy" is said to the owner as
+21. The refusal "the host package manager or mutation lock is busy" is said to the owner as
    "another server operation is still running"; it names the package manager or the lock
    (alpha.137 review).
-20. After the "preparation unconfirmed" stop, the attempt unit's `OnFailure=` starts release
+22. After the "preparation unconfirmed" stop, the attempt unit's `OnFailure=` starts release
    recovery, which completes the recovery kit's switch by itself once the package lock is free
    and then logs "The selected recovery entry could not be verified … runtime_changed" and is
    marked failed until its next timer run, while `runtime-status` had just said the old launcher
    cannot finish this transition by itself; say what happened and do not fail (alpha.137 lab 2).
-21. A browser that still holds an unclosed notice of an older stopped update shows that older
+23. A browser that still holds an unclosed notice of an older stopped update shows that older
    attempt on the update card instead of the newest one (and not its command); the newest
    attempt is shown (alpha.137 lab 2).
+24. The mailbox connection window says, where the server offers it, that many mail programs find
+   these settings by themselves from the mail address (automatic setup) (alpha.138 mail lane).
+25. The server's own English refusals behind a site type change or a domain deletion name "the
+   Programs section" instead of "the Programs tab" and "the AI & automation tab"; the page's own
+   words already do (alpha.138).
+26. The user guide's pages and the account pages restyled to match the new celikpanel.net site.
 
 The design releases that follow, in the approved order (owner, 12 November 2026). Each redesigns
 the insides of its sections from the approved drawings; small releases, published when ready.
 
-**alpha.140 — Overview, the domain list and the customer's home**
+**alpha.142 — Overview, the domain list and the customer's home**
 The domain's Overview, the domain list and the customer's home page as drawn, with the summary
 and health facts each needs read in one request rather than one per row.
 
-**alpha.141 — Mail**
+**alpha.143 — Mail**
 The Mail section as drawn.
 
-**alpha.142 — Databases section**
+**alpha.144 — Databases section**
 A domain's Databases section as drawn; connections from outside are prepared when the
 administrator turns them on at the server switch, with one confirmed restart there; the clearer
 PostgreSQL settings (effective values, CelikPanel's lines marked).
 
-**alpha.143 — Domain & DNS, Security**
+**alpha.145 — Domain & DNS, Security**
 Record editing and the Domain & DNS section as drawn; the Security section (certificate,
 protected folders, malware scan) as drawn.
 
-**alpha.144 — Site and Files**
+**alpha.146 — Site and Files**
 The Site and Files sections as drawn.
 
-**alpha.145 — Backups and Advanced**
+**alpha.147 — Backups and Advanced**
 The Backups and Advanced sections as drawn, with the server-settings moves they need.
 
-**alpha.146 — Administrator, reseller and account pages**
+**alpha.148 — Administrator, reseller and account pages**
 The pages of the second approved proposal (owner, 12 November 2026).
 
 Also carried from the earlier alpha.132 plan, placed in the release whose screens they touch:
@@ -2393,6 +2433,7 @@ above and below stays open.
 | 58 | Release review of `v0.1.0-alpha.135`. **Published 2026-11-15 (release commit `1f3e08234`; pre-release at 06:02:00Z; portal at about 06:05Z, public check 27/27).** A small release of two jobs (owner: small releases), two lanes merged with real merge commits onto the published alpha.134; a third lane (the DNS "Add" button, `a135/dnsadd`) was merged, failed in the lab and was reverted. Deleting a domain: the database choice first in the question ("keep", the default, unbinds the databases, which stay listed; "delete" deletes each through the one database deletion, `deleteDatabaseRecord`, with alpha.134's rights removal and its administrator-only rights facts in the result), the accepted plan saved with the deletion marker and repeated by a retry (`DOMAIN_DELETION_PLAN_FIXED` for the other choice), the site's crontab, logs and certificate check folder removed, the sender-limit lists written again. What deletions leave: the mail of a deleted domain or mailbox and a deleted domain's backups on this server held 30 days in one list on Maintenance (`deletion_hold_v1:<id>` records in `panel_settings`, no schema change), removed by the periodic step (exactly one folder, build-gated, failed and not-known kept apart and retried), Delete now / Delete all now / Download, a home-page line and the 85% disk warning naming it; what earlier releases left in the mail quarantine and backup store is adopted at the update with its 30 days starting then. Mailbox rows: Webmail (webmail's own address, `_user` only), Password…, More; sending limits one row line only while applied; a mailbox made over a folder an earlier deletion left holds it first; Maintenance lists mail left in place (at most 500 per answer, said when cut). Integration: example names in the new tests and screens; release sequence 134 → 135. Lab: one run on `90293c5c2` (Debian 13 with MariaDB 11.8.6 and PostgreSQL; Ubuntu 24.04 with MariaDB 10.11.14; both updated from alpha.134 through the panel's own page), no hard failure: adoption changed nothing on disk, due removal, failed removal and retry, Delete now / Delete all now, link safety, domain deletion with and without the database choice on both engines, a re-created mailbox empty; not checked: webmail from a row, the limit line while applied, going back to alpha.134, timings. Known limits and lab defects (carried to alpha.136): what older deletions left besides mail and backups is neither listed nor removed; no "give back" for held items; an open Domains tab does not follow a deletion elsewhere; a link-replaced held folder drops from the list; a part-way failed removal; a stray progress line; internal keys in the activity feed; a long rights paragraph and open folder paths. The release's checks were held up by two tests failing by themselves: the native recovery-runtime fixtures (`TestFreshInstallerEnrollmentSharedDirectory`, `TestPromotionInheritedLock`, `TestPromotionFixedEntryRealExec`, `TestPromotionCommittedEntryIgnoresRetiredLoss`) executed their files from `/run`, which the AWS-served CI runners mount without execute permission, and each now mounts its own tmpfs (a test fix before publication); `TestHoldersNameAnotherProcess` showed that the lock-table read can miss a holder of the host mutation lock while other locks come and go, a product defect present in every earlier release, not changed here and the first item of alpha.136. The PR and main checks of the published head passed without a re-run; the tag run needed one re-run because a new test (`TestMailboxMadeWithoutLeftMailSaysNothingMore`) did not stop the automatic DKIM runner before its temporary folder was removed (cause established; the test is fixed with this record). Schema stays 079. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.135.md). | Published |
 | 59 | Release review of `v0.1.0-alpha.136`. **Published 2026-11-15 (release commit `b04c94c75`; pre-release at 11:26:43Z; portal at about 11:32Z, public check 27/27).** A resilience fix that ships alone (owner, 15 Nov 2026), one lane (`a136/idle-probe`, PR #323). The host mutation lock's read-only probe (`hostmutationlock.ProbeIdle`, `Holders`) read `/proc/locks`, which the kernel produces one read() chunk at a time and resumes by line number, so a holder's line could be skipped while other locks came and went: in the guest 1094 of 5000 probes answered idle while a child held the lock (CI: `TestHoldersNameAnotherProcess`, "child's lock not busy"). A holder the table names stays authoritative; "nobody" is now confirmed from every process's descriptors (one `statx` with `AT_STATX_DONT_SYNC` per descriptor, `fdinfo` only for the lock file; `/proc` and fd directories are listed by ascending number, so a holder for the whole probe is never skipped; 96,908 descriptors in 0.41 s; 5 s bound). The walk takes no lock (alpha.114 rule kept); where it cannot complete (no CAP_SYS_PTRACE, an unreadable process, past the bound) `ProbeIdle` decides with the existing momentary flock (exact; a writer inside its instant is refused as busy), so no host is left unable to update; `Holders` says "could not be established" instead of "released". Gates the Agent's idle checks (update preflight, recovery-runtime promotion, Panel readiness) and the mail handoff. Evidence: a churn regression test (old code failed 20 of 20 runs, root and unprivileged; 5 of 5 under `-race`), the unchanged test under external churn (old 47 and 38 of 300, new 0), CI with a new root step. Not changed, open for its own change: recovery-runtime promotion checks idleness without holding the host lock through its launcher/selection exchange. Limits: a holder in another PID namespace, a lock kept without a descriptor. Lab: one run on `21b9c0d2c` (Debian 13 and Ubuntu 24.04, about two thousand unrelated lock takes a second), no hard failure: both updated through the panel's own page (Ubuntu on its second press); with a real install holding the lock 300 of 300 checks said running (answered by the operation record), and with the record set aside 270 of 270 said busy, with and without CAP_SYS_PTRACE; idle 300 of 300 (median 19 ms, at most 62 ms, 155 processes) and 300 of 300 without the capability; a mailbox and a domain create-and-delete worked. Not checked: pressing update while an operation really runs, timings. Lab findings carried to alpha.137: Ubuntu's first press stopped as "package manager busy", a process ending during the package-manager scan can make the check refuse at once, and the removal window's "Kaldır" is live while it still reads. Schema stays 079. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.136.md). | Published |
 | 60 | Release review of `v0.1.0-alpha.137`. **Published 2026-11-19 (release commit `2b0fc4df7`; pre-release at 13:18:03Z; portal at about 13:22Z, public check 27/27).** A small release of two jobs (alpha.136 lab), one lane (`a137/update-preflight`, PR #326), with the clock fix of PR #328. (1) On Ubuntu 24.04 the first update press could stop as "package manager busy" while nothing changed packages: the update's own `systemctl daemon-reload`s (unit guards, recovery foundation) re-draw `apt-daily.timer`'s random delay (systemd v255 `timer_coldplug` → `timer_enter_waiting` → `add_random`, `FixedRandomDelay=no`; apt 2.7.14 `RandomizedDelaySec=12h`) and can start `apt-daily.service` (`apt-helper wait-online`, `apt.systemd.daily update`: `apt-get check`, `apt-get update`, whose Ubuntu Pro `APT::Update::Pre-Invoke` hook starts `apt-news`/`esm-cache`, python3 readers that take no system apt/dpkg lock). The Agent's scan did not know apt-daily's first steps, and the bounded 60 s wait ran after the BIND preflight, which repeats every idle proof under the lock and never waits. Now `apt.systemd.dai` and `apt-helper` count as package activity, the wait runs first and names what it waits for (TR/EN log lines; the window's server-check note names the package manager and the stop); every non-waiting proof still refuses package activity and nothing that counted before stops counting. (2) A per-process `/proc` read failing with ESRCH is a process that ended, like ENOENT (`comm`, `status`, PackageKit's `maps`, where a missing map counts only with its process directory gone); about one check in a thousand had refused. (3) First lab run on `cbb6e0f27` (Debian 13): an `apt-get install` that took the dpkg locks seven seconds after the press made the recovery kit's promotion checker (`internal/recoveryruntime` `runPromotionChecker`) wait its 60 s and refuse as `runtime_unsupported_protocol`; `update.sh` died before its EXIT trap with the untyped "independent recovery runtime preparation is unconfirmed", so the Agent kept the worker unit failed and the window took the recovery record's bare "failed" for a recovery still to come: locked, no update button (the code keeps the lock in the browser's stored operation; lab run 2 confirmed that a fresh browser session on a server stuck this way is not locked and offers the update, which succeeded; "the same browser stays locked" was not re-checked, the original profile no longer existed). Now the first bounded wait runs before the preparation (`preflight_host_idle_before_recovery_runtime`, typed unchanged stop written before the trap exists), a checker still busy before the promotion intent is `runtime_package_manager_busy` / `runtime_operation_active` and the typed `package_manager_busy` / `recovery_runtime_preflight_failed` unchanged stop (after an intent the existing refusal stays), the Agent clears the unit of the untyped preparation stop, and the window shows that stop as closable with `recovery runtime-status --lang en|tr` and what each of its answers means (the installed version and data unchanged; the kit's own preparation may be partly done); after the window is closed the card says "stopped before changing the installed version" for it and for typed stops whose record kept no cause. Review of the two unreported commits (19 Nov): `fail_update_preflight` writes its own summary only for the first check (an explicit local flag, pinned by a test, instead of "no EXIT trap yet"); the preflight binaries are validated before that check runs one; a retry no longer leaves a `.promote-*` kit copy; the busy checker refusal reads the same by `Error` and `ReasonCode`; one contract keeps the "unconfirmed" line, its Agent and web readers and the recovery tool's typed reports one text; hardening: the Agent's package scan counts a package-manager name only for a process with a root user id (an unreadable owner still counts), so an ordinary account's process named `apt` or `dpkg` no longer holds every update back. The live waiting line was found not observable (the Agent keeps only a failure's last line); not built, listed for alpha.139. Also: the disk-usage worker uses one clock (`usageNow`) for what it stamps and compares and the monotonic clock for its budget (PR #328; five tests failed since the real clock passed their pinned 15 Nov 12:00; no behaviour change on a server); the `cmd/panel` race tests run in 33 shards split by measured time (one shard had reached its 8-minute limit on slow runners with no failing test), and the go job's toolchain contract lists every `cmd/panel` test with go1.26.5 and fails unless each is in exactly one shard (`fix/ci-race-slices`, measured on PR #329, merged here). Open: a package run that starts in the seconds between the wait and the final frozen check still stops the update unchanged; no live "waiting for…" line in the window; which check refused in the alpha.136 lab and the `comm` names on noble not measured. Release sequence 136 → 137; schema stays 079. Lab: finished, two runs. Run 1 (`cbb6e0f27`): Ubuntu first press completed with the daily check started by the update's own reload; 2,000 checks among ending processes never refused; found (3). Run 2 (`e83a0fc41`, 19 Nov, no hard failure): Debian idle update without a wait; a real install 7 s after the press waited about a minute and stopped unchanged (button back, unit not failed), the next press succeeded; the kit checker meeting a busy server, twice: typed stop, nothing left (no `.promote-*`, runtime-status "none"); the unconfirmed stop produced after an intent: window, runtime-status in TR and EN, one retry completed; Ubuntu first press with apt-daily coinciding; an ordinary account's `apt`/`dpkg` did not hold the update (50/50 idle), root's did; a server stuck by the earlier build updated from a fresh browser session and the old failed unit was cleared; the update never proceeded while the dpkg lock was held. Not checked: the waiting lines (kept nowhere), a mailbox create, "the same browser stays locked". Found and carried to alpha.139: release recovery's `runtime_changed` line after it completes the kit switch itself; a browser with an older unclosed notice shows that attempt on the card; the waiting lines kept nowhere. The "preparation unconfirmed" window got its own true opening sentence after run 2 (text only). **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.137.md). | Published |
+| 61 | Release review of `v0.1.0-alpha.138`. **Candidate.** A small release of two jobs (owner, 19 November 2026), two lanes merged with real merge commits onto the published alpha.137: `a139/programs-tab` (PR #330, the release PR) and `a139/mailbox-settings` (PR #332). (1) A domain's programs and AI apps leave the Site section for their own section, Programs, right after Site (ten sections; the tabs' side padding 12 → 10 px so the row fits one line at 1440 px beside the open menu): the "Programs and Python apps" and "AI & automation" cards unchanged, the site's own card first; Site keeps Site type, Applications, PHP settings, Redirects; an Overview tile; every older address (`?tab=programs`, `?tab=ai`, alpha.132–137's `?section=site&part=programs|ai`) opens them in Programs and is rewritten in place (a part named under the section it left is led to its section); the guide (topic `domain.programs`, the AI topic `domain.programs.ai`) and the sentences that named "the Site section" or "the Programs tab" name the Programs section (EN, TR). The section is drawn where something in it can be done: a card when the site already is of its kind, when the domain holds a record of its kind, or when the plan includes it and the site type takes a new one (`NEW_REFUSED_ON`: a program on `node`/`service_app`, an AI app on `node`/`service_app`/`runtime_app`, identical to the server's conditions and read from its source by a test); never for a team member or a DNS-only domain; a Node.js site has none. (2) A program and an AI app no longer take a domain from each other: the server refuses, before anything is recorded, an AI app's install (handler and its transaction; reason `program_created`) and update on a domain with a program record (deployed or only created) or of type `runtime_app`, and a program's deploy while an AI app is installed (`app_installed`); before, either could take the domain from the other and the domain could then not be deleted while the screen, following plan and type, no longer drew the card that removes the rest. The domain list carries `holds_program` / `holds_app` (additive, absent when false and for a team member, one query each for the whole list), and Programs draws the card of anything a domain holds whatever the plan or type say; such a card offers what manages and removes it, a create form only where the plan includes it and the type takes a new one, and on a domain serving the other kind nothing that would publish it again (no deploy, Open, update or install retry). (3) Each mailbox row's More menu starts with "Connection settings…": the panel's window with the user name, IMAP, the POP3 alternative and SMTP with port and security, the row's webmail link, per-value copy and Copy all (plain text in the page's language, never the password), the outgoing sign-in line when the server says so, a blocked line with Copy all off when mail is not installed here, an unknown line and a note in the copied text when the shown name is not confirmed; the mailbox-created notice offers it and notices with an action stay until closed; a read-only team member opens it beside Webmail. (4) `mail/setup` (the Settings tab and the window) names for every domain the mail name its mail programs are told (`mailClientHost`: the server's own mail name, or `mail.<domain>` chosen with a certificate serving mail; carried as `mail_host` in autoconfig); subdomains, domains without a site and domains whose name is in use were told `mail.<domain>`, which this server neither chose nor serves with a matching certificate. Known limits: Node.js run controls stay under Site → Site type; the server's English fallback refusals still say "Programs tab"; a subdomain's mail name on a server without mail says "may not reach"; no automatic-setup hint in the window. Release sequence 137 → 138; schema stays 079. Lab: finished, one run on `7f92ef233` (Debian 13 and Ubuntu 24.04, label build 145), no hard failure: both updated through the panel's own page by themselves; on a deployed program's domain a direct n8n install was refused with `program_created` and its sentence, nothing recorded, the program answering 45 of 45 checks; a created, never-deployed program with the plan's `program_apps` closed was shown with its removal, removed, and its domain deleted; the ten-entry row at 1440 (one line) and 390 (scrolls inside itself, no page scroll); old addresses land on Programs; the mailbox window TR/EN at both widths, Copy all without a password, the new-mailbox button; `mail/setup` names `mail.dr.test` for a subdomain and an ordinary domain, matching the certificate on 993, 995 and 587, IMAP login OK; a domain created and deleted on the pair. Not checked: a domain holding both (no AI app installable on the lab's Debian 13 / Ubuntu 24.04: Node.js 24, Python 3.11–3.12 missing), a Node.js site, the unconfirmed mail-name warning. Fixed after the lab (screen only): a PHP domain holding a created program offered the AI card's Install (refused by `program_created`); the screen's rule now refuses on a record of the other kind as the server does (`newRefused(kind, type, holds)`, checked against the server's two refusals for every type and record), so that card is not drawn, nor a program create beside an app record. The guide's "?" on Programs was seen opening at the chapter's top in a full-page capture; at a normal window height it scrolls to the Programs part (measured, batch 39 `y39guide`). The four styles renamed (owner, 20 Nov 2026): `celik`, `sky` (Sky / Gök), `forest` (Forest / Orman), `amber` (Amber / Kehribar), names from the text catalogue, a stored earlier id read as its new one and written back. Found in the lab, carried to alpha.141: n8n's "cannot be installed yet" line mixes languages and points to an impossible Node.js install; a domain deletion that waits for the backup DNS server first says it stopped; no AI app installable on Debian 13 / Ubuntu 24.04. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.138.md). | Candidate |
 
 **Open item (alpha.95, 2026-10-17): read installed package versions for every component.** The component scan fills a version only for PHP-FPM and Node.js (from runtime instances). The Agent's per-unit binary probe is not a package version, is unreliable for several units and does not cover tools without a unit, so the Components rows say a version only where it is known. A real answer needs a new Agent RPC or extended `dpkg`/`pacman` queries; it is not part of any release yet ([D-034 amendment](docs/DECISIONS.md)). **Update 2026-10-21: implemented in source for the v0.1.0-alpha.97 candidate** ([D-036](docs/DECISIONS.md)): a read-only Agent query of the package database per component scan, shown on the Components rows and every component page; unknown stays unknown. **Still open:** measured on no installed server; the item is closed only when the owner sees real versions on Boston and Frankfurt. **Update 2026-10-22: Boston measured.** The owner's screenshot shows Boston on alpha.97 with real versions on Components (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0): the first measurement of D-036 on an installed server. **Still open after that:** Frankfurt's alpha.97 state was not reported, so the item is not closed; one screenshot of one server is also not a check of every component, of a busy package manager or of a kept reading. **Update 2026-10-22 (alpha.98):** the owner reported Frankfurt on alpha.98, but not its Components versions, so the item stays open. **Update 2026-10-22 (alpha.100, recorded with the alpha.101 candidate):** the owner's Frankfurt screen showed package versions on Components; phpMyAdmin's short form read "5.2.2-really…", because a Debian "really" version was not shortened to the version actually shipped. That is corrected in source for the v0.1.0-alpha.101 candidate ([D-036 note](docs/DECISIONS.md)). The item stays open: the corrected short form is seen on no installed server yet.
 

@@ -7,7 +7,7 @@ const chapter = {
   id: "ai-apps",
   title: "Yapay zekâ ve otomasyon uygulamaları",
   blocks: [
-    ["p",["Alan adının ",["b","Site"]," bölümündeki ",["b","Yapay zekâ ve otomasyon"]," parçası n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır."]],
+    ["p",["Alan adının ",["b","Programlar"]," bölümündeki ",["b","Yapay zekâ ve otomasyon"]," parçası n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır."]],
     ["h",2,"ai-apps","Kurmadan önce"],
     ["p","Sayfa hâlâ neyin gerektiğini ve onu kimin sağlayacağını yazar:"],
     ["ul",[[["b","Web sitesi ve sertifika."]," Uygulamalar yalnız HTTPS ile açılır. Alan adının sertifikası yoksa önce ",["b","Güvenlik"]," bölümünden alın."],[["b","Ayrı bir alt alan adı"],", örneğin ",["c","n8n.example.com"],", en iyisidir: alan adı web sitesi yerine uygulamayı gösterir. Sitenin dosyaları yerinde kalır ve uygulama kaldırılınca geri gelir."],[["b","Sunulmuş olması."]," Yönetici uygulamayı sunmadan hiçbir şey kurulamaz; planınız da onu kapsamalıdır. Kapsamıyorsa satır kime başvuracağınızı yazar."],[["b","Sunucu."]," n8n, yöneticinin kuracağı Node.js 24'ü ister. Open WebUI yalnız bazı sistemlerde çalışır; burada çalışamıyorsa satır bunu söyler."]]],

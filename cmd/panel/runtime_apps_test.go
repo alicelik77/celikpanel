@@ -498,6 +498,46 @@ func TestRuntimeDeployIsOneDurableOperationAndPollingNeverMutates(t *testing.T) 
 	}
 }
 
+// alpha.138: a domain that holds a program and an AI app (the app installed
+// over a created program before the install refused that). Deploying would
+// take the domain from the app, so it is refused until the app is removed;
+// what the program has stays manageable and removable.
+func TestRuntimeDeployRefusedWhileAnAppUsesTheDomain(t *testing.T) {
+	f := newRuntimeFixture(t)
+	f.offerRuntime(t, "")
+	f.create(t)
+	f.exec(t, `INSERT INTO service_app_installs (id, subscription_id, domain_id, site_id, app_id, version, target_version, port, aux_port, state, previous_project_type)
+		VALUES (78, 9802, 9902, 9940, 'n8n', '2.46.4', '2.46.4', 21000, 21001, 'running', 'php')`)
+	f.exec(t, `UPDATE sites SET project_type = 'service_app', app_port = 21000 WHERE id = 9940`)
+	before := f.rt.mutations()
+	rec := f.as(t, 9703, http.MethodPost, runtimePath+"/deploy", `{"operation_id":"op-runtime-mixed"}`)
+	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+	if !strings.Contains(rec.Body.String(), `"reason":"app_installed"`) || !strings.Contains(rec.Body.String(), "Programs section") {
+		t.Fatalf("deploy beside an app: %s", rec.Body.String())
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM runtime_app_operations`); n != 0 {
+		t.Fatalf("a refused deploy left %d operations", n)
+	}
+	var projectType string
+	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9940`).Scan(&projectType); err != nil || projectType != "service_app" {
+		t.Fatalf("the app lost its domain: %s %v", projectType, err)
+	}
+	if f.rt.mutations() != before {
+		t.Fatalf("the Agent was asked to change something: %v", f.rt.calls)
+	}
+	// The program is still readable and removable.
+	if v := f.view(t, 9703); v.App == nil {
+		t.Fatal("the program is not shown")
+	}
+	wantStatus(t, f.as(t, 9703, http.MethodPost, runtimePath+"/remove", `{"operation_id":"op-runtime-mixed-rm"}`), http.StatusAccepted, "")
+	if op := f.waitRuntimeOperation(t, "op-runtime-mixed-rm"); op.State != "succeeded" {
+		t.Fatalf("remove: %+v", op)
+	}
+	if _, has, _ := f.panel.runtimeAppForDomain(context.Background(), 9902); has {
+		t.Fatal("the program was not removed")
+	}
+}
+
 func TestRuntimeDeployFailuresStopTheProgramAndSayWhy(t *testing.T) {
 	cases := []struct {
 		name    string

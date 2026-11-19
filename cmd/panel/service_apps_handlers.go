@@ -450,6 +450,18 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 			"Nothing was changed: this domain runs a Node.js application or another app. Use a separate domain or subdomain for "+app.Name+".", nil)
 		return
 	}
+	// alpha.138: a program or Python app uses this domain, deployed or only
+	// created. An app would take the domain from it, and the domain could not
+	// be deleted while the program's card is not shown. The mirror of the
+	// program's own refusal of a domain with an app (runtime_apps_handlers.go,
+	// create); checked again in the install's transaction.
+	if _, hasProgram, err := p.runtimeAppForDomain(ctx, domainID); err != nil {
+		writeServerError(w, err)
+		return
+	} else if hasProgram || site.ProjectType == "runtime_app" {
+		writeServiceAppRefusal(w, http.StatusConflict, serviceAppReasonProgramCreated, serviceAppProgramRefusal(app.Name), nil)
+		return
+	}
 	if message, err := p.refuseProjectTypeWithSiteFeatures(ctx, domainID, "service_app"); err != nil {
 		writeServerError(w, err)
 		return
@@ -538,6 +550,14 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 	writeServiceAppAccepted(w, http.StatusAccepted, op)
 }
 
+// serviceAppReasonProgramCreated: an install refused because a program or
+// Python app uses the domain (alpha.138).
+const serviceAppReasonProgramCreated = "program_created"
+
+func serviceAppProgramRefusal(appName string) string {
+	return "Nothing was changed: a program uses this domain. Remove it in the Programs section first, or use another domain or subdomain for " + appName + "."
+}
+
 type serviceAppConflict struct{ reason, message string }
 
 func (c *serviceAppConflict) Error() string { return c.message }
@@ -550,6 +570,14 @@ func (p *Panel) createServiceAppInstall(ctx context.Context, caller *Caller, sit
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// A program created since the handler looked is refused here too.
+	var programs int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM runtime_apps WHERE domain_id = ?`, domainID).Scan(&programs); err != nil {
+		return 0, err
+	}
+	if programs > 0 {
+		return 0, &serviceAppConflict{serviceAppReasonProgramCreated, serviceAppProgramRefusal(app.Name)}
+	}
 	var installID int
 	var existingApp, existingState, existingVersion string
 	err = tx.QueryRowContext(ctx, `SELECT id, app_id, state, version FROM service_app_installs WHERE domain_id = ?`, domainID).
@@ -671,6 +699,16 @@ func (p *Panel) handleServiceAppUpdate(w http.ResponseWriter, r *http.Request, d
 		return
 	}
 	if p.refuseServiceAppOffer(w, r, app, in.SubscriptionID) {
+		return
+	}
+	// alpha.138: an update publishes the app at the domain again. On a domain
+	// a program uses (one that holds both, from before alpha.138) it would
+	// take the domain from the program: refused, as a new install is.
+	if _, hasProgram, err := p.runtimeAppForDomain(ctx, domainID); err != nil {
+		writeServerError(w, err)
+		return
+	} else if hasProgram || site.ProjectType == "runtime_app" {
+		writeServiceAppRefusal(w, http.StatusConflict, serviceAppReasonProgramCreated, serviceAppProgramRefusal(app.Name), nil)
 		return
 	}
 	opID := req.OperationID

@@ -2,7 +2,9 @@
 // Words with icons, the active one underlined; a section the plan does not
 // include is drawn faded in its own place, with a lock, and still opens (its
 // page says whom to ask). The order of the sections never changes. On a narrow screen the row scrolls sideways inside itself and
-// keeps the active section in view; the page never scrolls sideways.
+// keeps the active section in view; the page never scrolls sideways. The
+// tabs' side padding is sized so the ten sections (Programs since alpha.138)
+// fit one line at 1440 px beside the open menu, in Turkish and English.
 // Keyboard: the arrow keys, Home and End move between sections, Enter or
 // Space opens one (a section loads its own screens, so moving does not).
 //
@@ -63,7 +65,7 @@ export function SectionRow({ sections, active, onSelect }: {
                         onKeyDown={(event) => { if (move(event.key, index)) event.preventDefault(); }}
                         data-section={section.id}
                         data-not-in-plan={faded ? '' : undefined}
-                        className={`relative -mb-px flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+                        className={`relative -mb-px flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
                             selected
                                 ? 'border-primary text-primary'
                                 : faded
