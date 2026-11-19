@@ -18,20 +18,33 @@ screen.**
 1. Update from the panel's own update screen, as before. This release does
    not change the panel's database layout (it stays at the alpha.136 form),
    so going back to alpha.136 later needs no database restore.
-2. Most fixes are in the update that installs alpha.137 itself, so they
-   already help this update: where it waits, and that a busy server ends as
-   a stop you can start again. One part acts from the next update on: the
-   package check that recognises the daily check's first step is the
-   installed panel's, so during this update alpha.136's check still
-   answers. If the update still stops with "the server's package manager
-   was busy", the server really was installing or checking packages for
-   longer: press **Update** again when it has finished.
+2. The fixes are in the update that installs alpha.137 itself, so they
+   already help this update: where it waits, the package check (the update
+   runs the new version's own checks from the downloaded release, as the lab
+   saw), and that a busy server ends as a stop you can start again. Only the
+   panel's readiness check before you press (the update card that keeps the
+   button off while packages are being installed) is still the installed
+   version's until the update finishes. If the update still stops with "the
+   server's package manager was busy", the server really was installing or
+   checking packages for longer: press **Update** again when it has
+   finished.
 3. **If the update page of your current version is stuck** (it says the
    update failed and the owner must inspect the update log, the page stays
    locked, and there is no update button), see "If an earlier update left the
-   page locked" below before you update (part of it is still to be confirmed
-   in the lab).
-4. There is nothing to press or set after the update.
+   page locked" below before you update.
+4. There is nothing to press or set after the update. The card shows the new
+   version; an earlier attempt's "failed" service mark is cleared by itself.
+   From now on the card's readiness check before the press follows the new
+   package check too (step 2), including the hardening below.
+5. **If an update ever stops with "the server's recovery tool could not
+   confirm its own preparation"** (rare): run the read-only command the
+   window shows and do what its answer says, usually start the update again.
+   The server's own recovery service may finish the recovery tool's switch
+   by itself as soon as the package manager is free; it then logs one
+   alarming line ("the selected recovery entry could not be verified …
+   runtime_changed") and is marked failed for about half a minute until its
+   next run succeeds. If the command then says the transition is verified
+   complete, that line needs nothing from you.
 
 ## What changes for you
 
@@ -121,6 +134,10 @@ update again when it has finished.
 If the recovery tool's preparation stops for another reason, the window now
 shows it as a stop you can close, instead of staying locked. It says:
 
+> "The update to v0.1.0-alpha.137 stopped before the installed version was
+> changed or any service was stopped. The server is running the current
+> version as before."
+>
 > "Reason: the server's recovery tool could not confirm its own preparation
 > for the new version, so the update stopped before stopping any service.
 > The installed version and its data were not changed; the recovery tool's
@@ -155,16 +172,18 @@ started right after the update was pressed. The installed version and its
 data were not changed; the recovery tool's own preparation may be partly
 done (step 2 says what is left).
 
-<!-- LAB-CONFIRM a137-second-browser: replace after the alpha.137 lab run -->
-**To be confirmed in the lab.** The panel's code keeps that lock in the
-browser that followed the update (its stored record of the operation), not
-on the server. If the lab confirms it:
+The lock is kept by the browser that followed the update (its stored record
+of the operation), not by the server. The lab confirmed the way out on a
+server left stuck this way by an earlier build:
 
-1. Open the panel in another browser or a private window and sign in. The
-   update card shows the earlier attempt and offers the update again. (In
-   the same browser, removing the panel site's stored data should do the
-   same.)
-<!-- /LAB-CONFIRM a137-second-browser -->
+1. Open the panel in another browser or a private window and sign in. In
+   that fresh session the page was not locked, "Check for updates" worked,
+   the server was "ready for the update" and the update was offered;
+   pressing it updated the server, and the new version cleared the "failed"
+   mark of the earlier attempt by itself. The fresh session did not show a
+   notice about the earlier attempt. That the original browser stays locked
+   was not checked again (its profile no longer existed); in that browser,
+   removing the panel site's stored data should have the same effect.
 
 2. Before you update, run on the server
    `sudo /usr/libexec/celikpanel/recovery runtime-status --lang en` once and
@@ -195,9 +214,9 @@ on the server. If the lab confirms it:
   services) is established from systemd's, apt's and Ubuntu Pro's sources
   (what the lab saw is in "Checked in the lab"). Which of the update's
   checks stopped the alpha.136 lab's first press is not known.
-- **Pages already locked on an earlier version.** <!-- LAB-CONFIRM a137-second-browser -->
-  That another browser opens them, as described above, is to be confirmed
-  in the lab; the server cannot unlock a browser.
+- **Pages already locked on an earlier version** are opened from another
+  browser or a private window, as described above (confirmed in the lab);
+  the server cannot unlock a browser.
 - **Copies left by earlier retries.** Each earlier retry of the same
   version after a stop of the recovery tool's preparation could leave one
   copy of the recovery kit in a hidden `.promote-…` folder under
@@ -221,7 +240,54 @@ on the server. If the lab confirms it:
 
 ## Checked in the lab
 
-*To be filled in after the lab check of the release candidate.*
+Lab checks finished: two runs, on Debian 13 and Ubuntu 24.04 test servers.
+
+**Run 1 (first build of this release).** On Ubuntu the update's own reload
+of the service definitions started the daily package check, and the first
+press completed the update. 2,000 package checks while programs kept ending
+never refused. It also found the defect this release then fixed: a real
+package installation that started seven seconds after the press left the
+update page locked with no update button.
+
+**Run 2 (the release's final product code).**
+- Debian: an update with nothing running completed without waiting.
+- Debian: a real package installation that started seven seconds after the
+  press. The update waited about a minute, stopped without changing
+  anything, the update button came back, the attempt's service was not left
+  marked as failed, and the next press with nothing running succeeded.
+- The same when the recovery tool's own check met the busy server, pressed
+  twice: each time a typed "package manager was busy" stop, nothing left
+  behind (no kit copy, no recorded transition).
+- The "preparation unconfirmed" stop produced on purpose: the window, the
+  read-only command's answer in Turkish and in English, and one retry
+  completed the update.
+- Ubuntu: the first press completed while the daily package check ran at the
+  same time.
+- A program merely named like the package manager (`apt`, `dpkg`), run by an
+  ordinary account, did not hold the update back (50 of 50 checks idle);
+  the same under root did.
+- A server left stuck by the earlier build: a fresh browser session offered
+  the update, and it succeeded (see "If an earlier update left the page
+  locked").
+- In every busy case the update never proceeded while the package lock was
+  held.
+
+**Not checked:** the update's waiting lines themselves (they are kept
+nowhere; the waits were seen by their timing); creating a mailbox in the
+final smoke check; that the same browser stays locked on a server stuck by
+an earlier version.
+
+### Found in the lab, left for the next release
+
+- After the "preparation unconfirmed" stop, the server's recovery service
+  finished the recovery tool's switch by itself once the package lock was
+  free, but first logged one alarming line ("the selected recovery entry
+  could not be verified … runtime_changed") and was marked failed until its
+  next run half a minute later, while the read-only command had just said
+  the old launcher cannot finish this by itself.
+- A browser that still holds an unclosed notice of an older stopped update
+  shows that older attempt on the update card instead of the newer one.
+- The update's own waiting lines are kept nowhere the owner can read them.
 
 ## Evidence
 

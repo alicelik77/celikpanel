@@ -7996,9 +7996,11 @@ bağlantıyı tutar.
   yoktu); pencere bunu hâlâ gelecek bir kurtarma sandı (`failedUpdateGuidance`:
   ilerleme tonu, kapatma yok), sakladığı işlemi ve dolayısıyla güncelleme
   kilidini tuttu, kart güncelleme sunmadı. Kod kilidi sunucu durumunda
-  değil, tarayıcının sakladığı işlemde tutar; o zaman başka bir tarayıcının
-  güncellemeyi sunduğu laboratuvarda doğrulanacak
-  <!-- LAB-CONFIRM a137-second-browser -->.
+  değil, tarayıcının sakladığı işlemde tutar. 2. laboratuvar denemesi (19
+  Kasım 2026), önceki derlemenin takılı bıraktığı bir sunucuda yeni bir
+  tarayıcı oturumunun kilitli olmadığını ve güncellemeyi sunduğunu, güncellemenin
+  de başarılı olduğunu doğruladı; asıl profil artık olmadığından "aynı tarayıcı
+  kilitli kalır" yeniden denenmedi.
 - **Sözleşme.** 60 sn'lik sınırlı bekleme artık önce çalışır
   (`preflight_host_idle_before_recovery_runtime`, kitin hazırlığından önce);
   sınırdan sonra süren ret, yalnız o denetim için `fail_update_preflight`
@@ -8021,8 +8023,8 @@ bağlantıyı tutar.
 - **Şema / sürüm geçişi.** Yok; aynı sürümün ürettiği ve okuduğu iki yeni
   kurtarma ortamı neden kodu. Düzeltmeler hedef sürümün `update.sh`'ında ve
   kurtarma kitindedir; alpha.137'ye güncellemede etkilidir; önceki bir
-  sürümde kilitlenmiş tarayıcının başka yerden açılması laboratuvarda
-  doğrulanacak (sürüm notları).
+  sürümde kilitlenmiş sayfa, 2. laboratuvar denemesinin doğruladığı gibi
+  başka bir tarayıcıdan açılır (sürüm notları).
 - **Kurtarma davranışı.** Niyetten ya da hizmetler durduktan sonraki her şey
   için değişmedi; herhangi bir değişiklikten önceki meşgul sunucu artık
   kurtarılacak bir şey olarak bildirilmez.
@@ -8086,10 +8088,12 @@ bağlantıyı tutar.
   durumu okunamayan ya da düzgün bir `Uid:` satırı olmayan süreç eskisi
   gibi sayılır; okunurken sona eren gitmiştir. PackageKit hizmetinin adı da
   boşta kanıtından önce aynı sahip kuralından geçer.
-- **Şema / sürüm geçişi.** Yok. Tarama kuralı kurulu Agent'ın yanıt verdiği
-  yerde etkilidir (alpha.137'den sonraki güncellemeden itibaren;
-  alpha.137'ye güncelleme sırasında kendi denetimleri için kurulu Agent'ın
-  ve yeni kitin denetleyicileri yanıt verir).
+- **Şema / sürüm geçişi.** Yok. Güncellemenin kendi boşta denetimleri hedef
+  sürümün Agent'ını (`update.sh`, `PREFLIGHT_AGENT`'ın güvenilir sürümün
+  `bin/agent`'ı olmasını şart koşar; 2. laboratuvar denemesi bunu gördü) ve
+  yeni kitin denetleyicisini çalıştırır; tarama kuralı alpha.137'ye
+  güncelleme sırasında zaten etkilidir; yalnız basmadan önceki panel hazırlık
+  kapısı (kurulu Agent) o güncelleme bitene dek eski kuralı korur.
 - **Kurtarma davranışı.** Değişmedi. Yeniden denemenin güvenlik sorunu hiç
   yoktu; artık kit kopyası biriktirmez. Önceki sürümlerin bıraktığı kopyalar
   kalır (etkisiz; silinmesi alpha.139 için listelendi).
@@ -8107,8 +8111,18 @@ bağlantıyı tutar.
   bildirimleri kurtarma aracının kendi metnidir); kayıt ön denetimi testi
   bayrağı ve doğrulama sırasını sabitler. İki kabuk testi de artık CI'da
   koşar.
-- **Açık.** <!-- LAB-CONFIRM a137-second-browser --> Önceki bir sürümde
-  kilitlenmiş sayfanın başka bir tarayıcıdan açıldığı laboratuvarda
-  doğrulanacak. Paket araçlarının her desteklenen dağıtımdaki `comm` adları
+- **Laboratuvar (2. deneme, 19 Kasım 2026, `e83a0fc41`).** Önceki derlemenin
+  takılı bıraktığı sunucuda yeni bir tarayıcı oturumu: kilit yok,
+  "güncellemeleri denetle" etkin, sunucu hazır, güncelleme sunuldu; başarılı
+  oldu ve yeni Agent eski girişimin başarısız birimini temizledi. O oturumda
+  önceki girişim bildirimi gösterilmedi; "aynı tarayıcı kilitli kalır"
+  yeniden denenmedi (asıl profil artık yoktu). Sıradan bir hesabın `apt` ve
+  `dpkg` adlı süreçleri: hazırlık hazır, 50 denetimin 50'si boşta; root
+  altında aynısı: meşgul. Bulunan: doğrulanamayan duruştan sonra girişim
+  biriminin `OnFailure=` sürüm kurtarması kilit boşalınca kit geçişini
+  tamamladı, sonra "selected recovery entry could not be verified …
+  runtime_changed" yazdı ve sonraki zamanlayıcı çalışmasına dek başarısız
+  çıktı (alpha.139).
+- **Açık.** Paket araçlarının her desteklenen dağıtımdaki `comm` adları
   ve kullanıcı kimlikleri kaynaklarından ve paketlemelerinden belirlendi,
   her birinde ölçülmedi. **Hiçbir P0 işi kapanmadı.**

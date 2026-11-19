@@ -8780,8 +8780,10 @@ until the backup reports ready.
   (`failedUpdateGuidance`: tone progress, no close), kept its stored
   operation and so the update lock, and the card offered no update. The
   code keeps the lock in the browser's stored operation, not in server
-  state; that another browser then offers the update is to be confirmed in
-  the lab <!-- LAB-CONFIRM a137-second-browser -->.
+  state. Lab run 2 (19 Nov 2026) confirmed on a server left stuck by the
+  earlier build that a fresh browser session is not locked and offers the
+  update, which then succeeded; the original profile no longer existed, so
+  "the same browser stays locked" was not re-checked.
 - **Contract.** The bounded 60 s wait now runs first
   (`preflight_host_idle_before_recovery_runtime`, before the kit's
   preparation); a refusal still present after it is the typed unchanged stop,
@@ -8806,7 +8808,7 @@ until the backup reports ready.
   codes, produced and read only by the same release. The fixes are in the
   target release's `update.sh` and recovery kit, so they act on the update
   to alpha.137; a browser already locked by an earlier version is to be
-  opened elsewhere, to be confirmed in the lab (release notes).
+  opened elsewhere, as lab run 2 confirmed (release notes).
 - **Recovery behaviour.** Unchanged for anything after an intent or after
   services stop; a busy host before any change is no longer reported as
   something to recover.
@@ -8870,10 +8872,12 @@ until the backup reports ready.
   has no well-formed `Uid:` line counts as before; one that ended while
   read is gone. PackageKit's daemon name gets the same owner rule before
   its idle proof.
-- **Schema / version transition.** None. The scan rule acts where the
-  installed Agent answers (from the update after alpha.137 on; during the
-  update to alpha.137 the installed Agent's and the new kit's checkers
-  answer for their own checks).
+- **Schema / version transition.** None. The update's own idle checks run
+  the target release's Agent (`update.sh` requires `PREFLIGHT_AGENT` to be
+  the trusted release's `bin/agent`; lab run 2 saw it) and the new kit's
+  checker, so the scan rule acts during the update to alpha.137 already;
+  only the panel's readiness gate before the press (the installed Agent)
+  keeps the old rule until that update finishes.
 - **Recovery behaviour.** Unchanged. A retry never had a safety problem; it
   no longer accumulates kit copies. Copies left by earlier releases stay
   (inert; removal listed for alpha.139).
@@ -8890,8 +8894,17 @@ until the backup reports ready.
   precedes the release-recovery intent and the EXIT trap, the typed busy
   reports are the recovery tool's own text); the enrollment preflight test
   pins the flag and the validation order. Both shell tests now run in CI.
-- **Open.** <!-- LAB-CONFIRM a137-second-browser --> That a page locked on
-  an earlier version is opened from another browser is to be confirmed in
-  the lab. What `comm` and user ids package tools have on every supported
+- **Lab (run 2, 19 Nov 2026, `e83a0fc41`).** A fresh browser session on a
+  server left stuck by the earlier build: no lock, "check for updates"
+  enabled, server ready, update offered; it succeeded and the new Agent
+  cleared the old attempt's failed unit. No previous-attempt notice was
+  shown in that session; "the same browser stays locked" was not re-checked
+  (the original profile no longer existed). An ordinary account's processes
+  named `apt` and `dpkg`: readiness ready and 50 of 50 checks idle; the same
+  under root: busy. Found: after the unconfirmed stop the attempt unit's
+  `OnFailure=` release recovery completed the kit transition once the lock
+  was free, then logged "selected recovery entry could not be verified …
+  runtime_changed" and exited failed until its next timer run (alpha.139).
+- **Open.** What `comm` and user ids package tools have on every supported
   distribution was established from their sources and packaging, not
   measured on each. **No P0 item is closed.**

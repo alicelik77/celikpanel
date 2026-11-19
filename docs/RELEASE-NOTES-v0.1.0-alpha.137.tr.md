@@ -19,20 +19,35 @@ günceller.**
    sürüm panelin veritabanı yapısını değiştirmez (alpha.136'daki gibi
    kalır); sonradan alpha.136'ya dönmek veritabanı geri yüklemesi
    gerektirmez.
-2. Düzeltmelerin çoğu alpha.137'yi kuran güncellemenin kendisindedir; bu
-   güncellemede de işe yarar: nerede beklediği ve meşgul sunucunun yeniden
-   başlatılabilen bir duruşla bitmesi. Bir kısmı sonraki güncellemeden
-   itibaren etkilidir: günlük denetimin ilk adımını tanıyan paket denetimi
-   kurulu panelinkidir, bu güncelleme sırasında alpha.136'nın denetimi
-   cevap verir. Güncelleme yine "sunucunun paket yöneticisi meşguldü"
+2. Düzeltmeler alpha.137'yi kuran güncellemenin kendisindedir; bu
+   güncellemede de işe yarar: nerede beklediği, paket denetimi (güncelleme,
+   laboratuvarın gördüğü gibi, indirilen sürümden yeni sürümün kendi
+   denetimlerini çalıştırır) ve meşgul sunucunun yeniden başlatılabilen bir
+   duruşla bitmesi. Yalnız basmadan önceki hazırlık denetimi (paketler
+   kurulurken düğmeyi kapalı tutan güncelleme kartı) güncelleme bitene dek
+   kurulu sürümündür. Güncelleme yine "sunucunun paket yöneticisi meşguldü"
    diyerek durursa sunucu gerçekten daha uzun süre paket kuruyor ya da
    denetliyordu: o iş bitince **Güncelle**'ye yeniden basın.
 3. **Şu anki sürümünüzün güncelleme sayfası takılı kaldıysa** (güncellemenin
    başarısız olduğunu ve sunucu sahibinin güncelleme günlüğünü incelemesi
    gerektiğini söylüyor, sayfa kilitli kalıyor ve güncelleme düğmesi yok),
    güncellemeden önce aşağıdaki "Önceki bir güncelleme sayfayı kilitli
-   bıraktıysa" bölümüne bakın (bir kısmı laboratuvarda doğrulanacak).
-4. Güncellemeden sonra basılacak ya da ayarlanacak bir şey yok.
+   bıraktıysa" bölümüne bakın.
+4. Güncellemeden sonra basılacak ya da ayarlanacak bir şey yok. Kart yeni
+   sürümü gösterir; önceki bir girişimin hizmetindeki "başarısız" işareti
+   kendiliğinden kalkar. Bundan sonra kartın basmadan önceki hazırlık
+   denetimi de yeni paket denetimini izler (2. madde), aşağıdaki
+   sağlamlaştırma da dahil.
+5. **Bir güncelleme "sunucunun kurtarma aracı yeni sürüm için kendi
+   hazırlığını doğrulayamadı" diyerek durursa** (seyrek): pencerenin
+   gösterdiği yalnız okuyan komutu çalıştırın ve yanıtının söylediğini
+   yapın; çoğunlukla güncellemeyi yeniden başlatmak. Sunucunun kendi kurtarma
+   hizmeti, paket yöneticisi boşalır boşalmaz kurtarma aracının geçişini
+   kendisi bitirebilir; o zaman günlüğe ürkütücü bir satır yazar ("the
+   selected recovery entry could not be verified … runtime_changed") ve bir
+   sonraki çalışması başarılı olana dek yarım dakika kadar başarısız olarak
+   işaretli kalır. Komut ardından geçişin tamamlandığının doğrulandığını
+   söylüyorsa o satır sizden bir şey istemez.
 
 ## Sizin için ne değişiyor
 
@@ -122,6 +137,10 @@ yeniden başlatırsınız.
 Kurtarma aracının hazırlığı başka bir nedenle durursa pencere artık kilitli
 kalmaz; bunu kapatılabilir bir duruş olarak gösterir ve şunu söyler:
 
+> "v0.1.0-alpha.137 sürümüne güncelleme, kurulu sürüm değiştirilmeden ve
+> hiçbir hizmet durdurulmadan durdu. Sunucu şu anki sürümünü eskisi gibi
+> çalıştırıyor."
+>
 > "Neden: sunucunun kurtarma aracı yeni sürüm için kendi hazırlığını
 > doğrulayamadı; bu yüzden güncelleme hiçbir hizmeti durdurmadan durdu.
 > Kurulu sürüm ve verileri değiştirilmedi; kurtarma aracının yeni sürüm
@@ -156,16 +175,17 @@ kurulumu başladığında olabilir. Kurulu sürüm ve verileri değiştirilmedi;
 kurtarma aracının kendi hazırlığı yarım kalmış olabilir (2. adım geriye ne
 kaldığını söyler).
 
-<!-- LAB-CONFIRM a137-second-browser: replace after the alpha.137 lab run -->
-**Laboratuvarda doğrulanacak.** Panelin kodu bu kilidi sunucuda değil,
-güncellemeyi izleyen tarayıcıda (işlemin orada saklanan kaydında) tutar.
-Laboratuvar bunu doğrularsa:
+Kilidi sunucu değil, güncellemeyi izleyen tarayıcı (işlemin orada saklanan
+kaydı) tutar. Laboratuvar bu çıkış yolunu, önceki bir derlemenin bu şekilde
+takılı bıraktığı bir sunucuda doğruladı:
 
-1. Paneli başka bir tarayıcıda ya da gizli pencerede açıp oturum açın.
-   Güncelleme kartı önceki girişimi gösterir ve güncellemeyi yeniden sunar.
-   (Aynı tarayıcıda panel sitesinin saklanan verilerini silmek de aynı işi
-   görmelidir.)
-<!-- /LAB-CONFIRM a137-second-browser -->
+1. Paneli başka bir tarayıcıda ya da gizli pencerede açıp oturum açın. O
+   yeni oturumda sayfa kilitli değildi, "Güncellemeleri denetle" çalıştı,
+   sunucu "güncellemeye hazır"dı ve güncelleme sunuldu; basınca sunucu
+   güncellendi ve yeni sürüm önceki girişimin "başarısız" işaretini kendisi
+   kaldırdı. Yeni oturum önceki girişimle ilgili bir bildirim göstermedi.
+   Asıl tarayıcının kilitli kaldığı yeniden denenmedi (profili artık yoktu);
+   o tarayıcıda panel sitesinin saklanan verilerini silmek aynı işi görmeli.
 
 2. Güncellemeden önce sunucuda
    `sudo /usr/libexec/celikpanel/recovery runtime-status --lang tr`
@@ -197,9 +217,9 @@ Laboratuvar bunu doğrularsa:
   kaynaklarından belirlendi (laboratuvarın gördükleri "Laboratuvarda
   denendi" bölümündedir). alpha.136 laboratuvarındaki ilk basışı
   güncellemenin hangi denetiminin durdurduğu bilinmiyor.
-- **Önceki bir sürümde zaten kilitli kalmış sayfalar.** <!-- LAB-CONFIRM a137-second-browser -->
-  Yukarıda anlatıldığı gibi başka bir tarayıcıdan açıldıkları laboratuvarda
-  doğrulanacak; sunucu bir tarayıcının kilidini kaldıramaz.
+- **Önceki bir sürümde zaten kilitli kalmış sayfalar** yukarıda anlatıldığı
+  gibi başka bir tarayıcıdan ya da gizli pencereden açılır (laboratuvarda
+  doğrulandı); sunucu bir tarayıcının kilidini kaldıramaz.
 - **Önceki yeniden denemelerin bıraktığı kopyalar.** Kurtarma aracının
   hazırlığı durduktan sonra aynı sürümün önceki her yeniden denemesi,
   `/usr/libexec/celikpanel/recovery-runtimes/v1/` altında gizli bir
@@ -225,7 +245,54 @@ Laboratuvar bunu doğrularsa:
 
 ## Laboratuvarda denendi
 
-*Sürüm adayının laboratuvar denetiminden sonra doldurulacak.*
+Laboratuvar denetimleri bitti: Debian 13 ve Ubuntu 24.04 deneme
+sunucularında iki deneme.
+
+**1. deneme (bu sürümün ilk derlemesi).** Ubuntu'da güncellemenin hizmet
+tanımlarını kendi yeniden yüklemesi günlük paket denetimini başlattı ve ilk
+basış güncellemeyi tamamladı. Programlar sürekli sona ererken yapılan 2.000
+paket denetimi hiç reddetmedi. Bu deneme, sürümün sonra düzelttiği kusuru da
+buldu: basıştan yedi saniye sonra başlayan gerçek bir paket kurulumu
+güncelleme sayfasını güncelleme düğmesi olmadan kilitli bırakıyordu.
+
+**2. deneme (sürümün son ürün kodu).**
+- Debian: hiçbir şey çalışmazken güncelleme beklemeden tamamlandı.
+- Debian: basıştan yedi saniye sonra başlayan gerçek bir paket kurulumu.
+  Güncelleme yaklaşık bir dakika bekledi, hiçbir şeyi değiştirmeden durdu,
+  güncelleme düğmesi geri geldi, girişimin hizmeti başarısız olarak işaretli
+  kalmadı ve hiçbir şey çalışmazken yapılan sonraki basış başarılı oldu.
+- Kurtarma aracının kendi denetimi meşgul sunucuyla karşılaştığında da aynısı,
+  iki kez basılarak: her seferinde tipli "paket yöneticisi meşguldü" duruşu,
+  geride hiçbir şey kalmadı (kit kopyası yok, kaydedilmiş geçiş yok).
+- Bilerek oluşturulan "hazırlık doğrulanamadı" duruşu: pencere, yalnız okuyan
+  komutun Türkçe ve İngilizce yanıtı ve tek bir yeniden deneme güncellemeyi
+  tamamladı.
+- Ubuntu: günlük paket denetimi aynı anda çalışırken ilk basış tamamlandı.
+- Sıradan bir hesabın çalıştırdığı, yalnız adı paket yöneticisine benzeyen
+  bir program (`apt`, `dpkg`) güncellemeyi bekletmedi (50 denetimin 50'si
+  boşta); root altında aynısı bekletti.
+- Önceki derlemenin takılı bıraktığı bir sunucu: yeni bir tarayıcı oturumu
+  güncellemeyi sundu ve güncelleme başarılı oldu (bkz. "Önceki bir
+  güncelleme sayfayı kilitli bıraktıysa").
+- Her meşgul durumda güncelleme, paket kilidi tutulurken hiç ilerlemedi.
+
+**Denenmeyenler:** güncellemenin bekleme satırlarının kendisi (hiçbir yerde
+tutulmuyor; beklemeler zamanlamalarından görüldü); son kısa denemede posta
+kutusu açma; önceki bir sürümün takılı bıraktığı sunucuda aynı tarayıcının
+kilitli kaldığı.
+
+### Laboratuvarda bulunan, sonraki sürüme bırakılanlar
+
+- "Hazırlık doğrulanamadı" duruşundan sonra sunucunun kurtarma hizmeti,
+  paket kilidi boşalınca kurtarma aracının geçişini kendisi bitirdi; ama
+  önce ürkütücü bir satır yazdı ("the selected recovery entry could not be
+  verified … runtime_changed") ve yarım dakika sonraki çalışmasına dek
+  başarısız olarak işaretli kaldı; oysa yalnız okuyan komut az önce eski
+  başlatıcının bunu kendisi bitiremeyeceğini söylemişti.
+- Daha eski, durmuş bir güncellemenin kapatılmamış bildirimini hâlâ tutan bir
+  tarayıcı, güncelleme kartında yenisi yerine o eski girişimi gösterir.
+- Güncellemenin kendi bekleme satırları sahibin okuyabileceği hiçbir yerde
+  tutulmuyor.
 
 ## Kanıt
 
