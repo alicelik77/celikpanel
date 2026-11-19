@@ -215,6 +215,7 @@ export const trServiceAppsScreens: Record<ServiceAppsScreenKey, string> = {
     'err.SERVICE_APP.confirm_replace': 'Alan adının, şimdiki web sitesi yerine uygulamayı göstereceğini onaylayın.',
     'err.SERVICE_APP.owner_login': 'Uygulama yöneticisi için geçerli bir e-posta adresi girin.',
     'err.SERVICE_APP.secret_value': 'Anahtarlardan biri bu uygulamanın bir ayarı değil veya tek satırlık metin değil.',
+    'err.SERVICE_APP.program_created': 'Hiçbir şey değişmedi: bu alan adını bir program ya da Python uygulaması kullanıyor ve uygulama onun yerini alırdı. Önce programı Programlar bölümünden kaldırın ya da uygulamayı başka bir alan adına veya alt alan adına kurun.',
     'err.SERVICE_APP.already_installed': 'Hiçbir şey değişmedi: bu alan adında zaten bir uygulama var. Önce onu kaldırın veya başka bir alan adı ya da alt alan adı kullanın.',
     'err.SERVICE_APP.busy': 'Hiçbir şey değişmedi: bu uygulamanın başka bir işlemi hâlâ çalışıyor. Kendiliğinden sürer; bitmesini bekleyin.',
     'err.SERVICE_APP.not_installed': 'Bu alan adında kurulu bir uygulama yok.',

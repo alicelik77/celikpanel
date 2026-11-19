@@ -222,6 +222,7 @@ export const enServiceAppsScreens = {
     'err.SERVICE_APP.confirm_replace': 'Confirm that the domain will show the app instead of its current website.',
     'err.SERVICE_APP.owner_login': 'Enter a valid e-mail address for the app administrator.',
     'err.SERVICE_APP.secret_value': 'One of the keys is not a setting of this app or is not one line of text.',
+    'err.SERVICE_APP.program_created': 'Nothing was changed: a program or Python app uses this domain, and the app would take its place. Remove the program in the Programs section first, or install the app on another domain or subdomain.',
     'err.SERVICE_APP.already_installed': 'Nothing was changed: this domain already has an app. Remove it first, or use another domain or subdomain.',
     'err.SERVICE_APP.busy': 'Nothing was changed: another operation of this app is still running. It continues by itself; wait for it to finish.',
     'err.SERVICE_APP.not_installed': 'This domain has no app installed.',

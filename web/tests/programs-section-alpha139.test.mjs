@@ -91,22 +91,38 @@ const refusedTypes = (file, anchor) => {
   const line = source.slice(at, source.indexOf('\n', at));
   return [...line.matchAll(/site\.ProjectType == "([a-z_]+)"/g)].map((match) => match[1]).sort();
 };
-// An AI app on a program's site: refused on the screen, not yet by the server.
-const SCREEN_ONLY = { programs: [], ai: ['runtime_app'] };
-
-test('the screen refuses a new program or AI app on exactly the site types the server refuses (one known stricter case)', () => {
+test('the screen refuses a new program or AI app on exactly the site types the server refuses', () => {
   const server = {
     // runtime_apps_handlers.go, create: `has` (an AI app installed) || node || service_app.
     programs: refusedTypes('runtime_apps_handlers.go', '} else if has || site.ProjectType == "node"'),
-    // service_apps_handlers.go, install: node || service_app.
-    ai: refusedTypes('service_apps_handlers.go', 'if site.ProjectType == "node" || site.ProjectType == "service_app" {'),
+    // service_apps_handlers.go, install: node || service_app, then a program
+    // on the domain (alpha.139) || runtime_app.
+    ai: [
+      ...refusedTypes('service_apps_handlers.go', 'if site.ProjectType == "node" || site.ProjectType == "service_app" {'),
+      ...refusedTypes('service_apps_handlers.go', '} else if hasProgram || site.ProjectType == "runtime_app" {'),
+    ].sort(),
   };
   assert.deepEqual(server.programs, ['node', 'service_app']);
+  assert.deepEqual(server.ai, ['node', 'runtime_app', 'service_app']);
   for (const kind of ['programs', 'ai']) {
-    const screen = [...sections.NEW_REFUSED_ON[kind]].sort();
-    assert.deepEqual(screen.filter((type) => !SCREEN_ONLY[kind].includes(type)), server[kind], `${kind}: the screen and the server refuse different site types`);
-    // When the server starts refusing it too, the exception goes.
-    for (const type of SCREEN_ONLY[kind]) assert.ok(!server[kind].includes(type), `${kind}: the server now refuses ${type}; drop it from SCREEN_ONLY`);
+    assert.deepEqual([...sections.NEW_REFUSED_ON[kind]].sort(), server[kind], `${kind}: the screen and the server refuse different site types`);
+  }
+  // The refusal of an app on a program's domain has its own words in both
+  // languages, not the server's sentence, and says where the program is removed.
+  const go = read('../../cmd/panel/service_apps_handlers.go');
+  const said = /func serviceAppProgramRefusal\(appName string\) string \{\s*return "([^"]+)"/.exec(go)[1];
+  for (const catalogue of [enScreens, trScreens]) {
+    const words = catalogue['err.SERVICE_APP.program_created'];
+    assert.ok(words && !words.startsWith(said), 'program_created');
+  }
+  assert.match(enScreens['err.SERVICE_APP.program_created'], /Programs section/);
+  assert.match(trScreens['err.SERVICE_APP.program_created'], /Programlar bölümünden/);
+  // Every reason the install, update and removal write has words in both languages.
+  for (const m of go.matchAll(/writeServiceAppRefusal\(w,\s*http\.Status\w+,\s*"([a-z_]+)"/g)) {
+    assert.ok(enScreens[`err.SERVICE_APP.${m[1]}`] && trScreens[`err.SERVICE_APP.${m[1]}`], m[1]);
+  }
+  for (const m of go.matchAll(/&serviceAppConflict\{"([a-z_]+)"/g)) {
+    assert.ok(enScreens[`err.SERVICE_APP.${m[1]}`] && trScreens[`err.SERVICE_APP.${m[1]}`], m[1]);
   }
 });
 
@@ -195,7 +211,7 @@ const sectionPartsURL = shared.compile('components/domain/SectionParts.tsx', { '
 // Each card stands in as one element that names it.
 const card = (name, id) => dataModule(`
   import React from '${reactURL}';
-  export const ${name} = (props) => React.createElement('article', { 'data-card': '${id}', 'data-domain': props.domainId });
+  export const ${name} = (props) => React.createElement('article', { 'data-card': '${id}', 'data-domain': props.domainId, 'data-offer-new': String(props.offerNew ?? true) });
 `);
 
 let siteURL = shared.compile('components/domain/sections/SiteSection.tsx', {
@@ -208,14 +224,38 @@ siteURL = replaceLazyImport(siteURL, '../../WordPressToolsPanel', card('WordPres
 siteURL = replaceLazyImport(siteURL, '../../DomainSiteFeatures', card('DomainSiteRedirects', 'redirects'));
 const { SiteSection } = await import(siteURL);
 
-let programsURL = shared.compile('components/domain/sections/ProgramsSection.tsx', { '/SectionParts': sectionPartsURL });
+let programsURL = shared.compile('components/domain/sections/ProgramsSection.tsx', {
+  '/SectionParts': sectionPartsURL,
+  '/sections': sectionsURL,
+  '/lib/runtimeApps': shared.compile('lib/runtimeApps.ts'),
+  '/lib/serviceApps': shared.compile('lib/serviceApps.ts'),
+});
 programsURL = replaceLazyImport(programsURL, '../../DomainRuntimeApps', card('DomainRuntimeApps', 'programs'));
 programsURL = replaceLazyImport(programsURL, '../../DomainServiceApps', card('DomainServiceApps', 'ai'));
 const { ProgramsSection } = await import(programsURL);
 
 const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+// What the domain holds, as its two cards' addresses answer (SAMPLE shapes).
+const runtimeView = (app) => ({ domain: 'example.com', suspended: false, has_site: true, project_type: 'service_app', certificate: true, disk_full: false,
+  sandbox: { known: true, level: 'full', gaps: [] }, kinds: [], app, operation: null, port_range: [30000, 34999] });
+const PROGRAM = { id: 61, kind: 'program', entry: 'server', args: [], health_path: '/', port: 30000, state: 'running', deployed: true, url: 'https://example.com/',
+  folder: '/var/www/vhosts/example.com/app', upload_dir: 'app/bin', unit: 'celikrt-61.service', env: [], states: [], created_at: '2026-11-03 10:00:00' };
+const serviceView = (install) => ({ domain: 'example.com', suspended: false, has_site: true, project_type: 'runtime_app', certificate: true,
+  permission_granted: true, availability_known: true, apps: [], install, operation: null });
+const INSTALL = { id: 3, app_id: 'n8n', name: 'n8n', version: '', target_version: '1.70.0', state: 'failed', url: 'https://example.com/', held: false,
+  active: false, enabled: false, serving: false, unit: 'celiksvc-3.service', folder: '/var/www/vhosts/example.com/n8n' };
+let answers = {};
+const asked = [];
 async function mount(View, { role = 'admin', projectType = 'php', id, closedRights = [], part = null }) {
   globalThis.document = { addEventListener() {}, removeEventListener() {}, visibilityState: 'visible', getElementById: () => null };
+  asked.length = 0;
+  globalThis.fetch = async (url) => {
+    const path = String(url).split('?')[0];
+    asked.push(path);
+    const answer = path.endsWith('/runtime-apps') ? answers.runtime ?? runtimeView(null) : path.endsWith('/service-apps') ? answers.service ?? serviceView(null) : undefined;
+    if (answer === 'fail' || answer === undefined) return Response.json({ error: 'not answered' }, { status: 500 });
+    return Response.json(answer);
+  };
   const list = build({ role, projectType, closedRights });
   const parts = list.find((section) => section.id === id)?.parts ?? [];
   const went = [];
@@ -233,8 +273,79 @@ async function mount(View, { role = 'admin', projectType = 'php', id, closedRigh
   const cards = () => page.root.findAll((node) => node.type === 'article').map((node) => node.props['data-card']);
   const index = () => page.root.findAll((node) => node.type === 'nav' && node.props['data-section-index'] === '')
     .flatMap((nav) => nav.findAll((node) => node.type === 'a').map((link) => link.props.href));
-  return { page, cards, index, went, done: () => act(async () => page.unmount()) };
+  const offers = () => Object.fromEntries(page.root.findAll((node) => node.type === 'article').map((node) => [node.props['data-card'], node.props['data-offer-new']]));
+  return { page, cards, index, offers, went, done: () => act(async () => page.unmount()) };
 }
+
+// --- A domain that already holds both (installed servers before alpha.139) ----------
+
+const { invalidate } = await import(shared.resolve('/lib/remote'));
+
+test('mounted: an AI app site that still holds a program draws the program too, to manage and remove it, with no form', async () => {
+  answers = { runtime: runtimeView(PROGRAM) };
+  const view = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app', closedRights: RIGHTS });
+  try {
+    assert.deepEqual(view.cards(), ['ai', 'programs']);
+    assert.deepEqual(view.index(), ['#domain-part-ai', '#domain-part-programs']);
+    // Only the create and install parts follow the refusal rule.
+    assert.deepEqual(view.offers(), { ai: 'false', programs: 'false' });
+    assert.ok(asked.includes('/api/v1/domains/7/runtime-apps'), 'the program was not looked for');
+    assert.ok(!asked.includes('/api/v1/domains/7/service-apps'), 'the drawn card was read twice by the section');
+    // The program is removed: the domain list is read again, and so is this; the card goes.
+    answers = { runtime: runtimeView(null) };
+    await act(async () => { invalidate('domains'); await settled(); });
+    for (let i = 0; i < 3; i += 1) await act(async () => { await settled(); });
+    assert.deepEqual(view.cards(), ['ai']);
+  } finally { await view.done(); answers = {}; }
+
+  // Nothing left over: the app's card only, and one read to know it.
+  const clean = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app' });
+  try {
+    assert.deepEqual(clean.cards(), ['ai']);
+  } finally { await clean.done(); }
+});
+
+test('mounted: a program site that still holds an app record draws that card too; a read that fails draws it rather than hide it', async () => {
+  answers = { service: serviceView(INSTALL) };
+  const view = await mount(ProgramsSection, { id: 'programs', projectType: 'runtime_app' });
+  try {
+    assert.deepEqual(view.cards(), ['programs', 'ai']);
+    assert.deepEqual(view.offers(), { programs: 'true', ai: 'false' });
+  } finally { await view.done(); answers = {}; }
+  answers = { runtime: 'fail' };
+  const failed = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app' });
+  try {
+    assert.deepEqual(failed.cards(), ['ai', 'programs'], 'a program that could not be looked for was hidden');
+  } finally { await failed.done(); answers = {}; }
+});
+
+test('mounted: a site that can take either reads nothing extra and offers both forms', async () => {
+  for (const projectType of ['php', 'static', 'proxy', 'forwarding']) {
+    const view = await mount(ProgramsSection, { id: 'programs', projectType });
+    try {
+      assert.deepEqual(view.offers(), { programs: 'true', ai: 'true' }, projectType);
+      assert.deepEqual(asked, [], `${projectType}: the section read on its own`);
+    } finally { await view.done(); }
+  }
+});
+
+test('the domain\'s delete refusal sends the reader to where the program is removed, and that place is drawn for it', () => {
+  // The server refuses a delete while a program is on the domain (runtime_apps_handlers.go,
+  // refuseDomainDeleteWithRuntimeApp, reason app_created); the screen words that reason.
+  const go = read('../../cmd/panel/runtime_apps_handlers.go');
+  assert.match(go, /func \(p \*Panel\) refuseDomainDeleteWithRuntimeApp[\s\S]{0,400}writeRuntimeAppRefusal\(w, http\.StatusConflict, "app_created"/);
+  assert.match(enScreens['err.RUNTIME_APP.app_created'], /Programs section/);
+  assert.match(trScreens['err.RUNTIME_APP.app_created'], /Programlar bölümünden/);
+  // Every site type a program can be on has the Programs section: where the
+  // program runs or an app took its place, whatever the plan; elsewhere while
+  // the plan includes programs.
+  for (const projectType of ['runtime_app', 'service_app']) {
+    assert.ok(build({ projectType, closedRights: RIGHTS }).some((section) => section.id === 'programs'), projectType);
+  }
+  for (const projectType of ['php', 'static', 'proxy', 'forwarding']) {
+    assert.ok(build({ projectType, closedRights: ['service_apps'] }).some((section) => section.id === 'programs'), projectType);
+  }
+});
 
 test('mounted: Site no longer draws the programs or the AI card, for any site kind; its index lists what stays', async () => {
   const php = await mount(SiteSection, { id: 'site' });

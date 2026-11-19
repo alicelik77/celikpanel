@@ -188,10 +188,12 @@ const site = (v: Viewer) => !v.dnsOnly;
 //     `has || site.ProjectType == "node" || site.ProjectType == "service_app"`
 //     (`has`: an AI app installed, which makes the type service_app);
 //   - an AI app: cmd/panel/service_apps_handlers.go, the install handler,
-//     `site.ProjectType == "node" || site.ProjectType == "service_app"`.
-// One type more on the screen than on the server: an AI app on a program's
-// site (runtime_app). The server does not refuse it yet, but it would take
-// the domain from the running program; the screen does not offer it.
+//     `site.ProjectType == "node" || site.ProjectType == "service_app"`, and
+//     `hasProgram || site.ProjectType == "runtime_app"` (alpha.139: a
+//     program, deployed or only created, uses the domain).
+// What a domain already holds is drawn whatever its type says, so it can be
+// removed (ProgramsSection.tsx); only the create and install parts follow
+// this table.
 // Yeni program ya da yapay zekâ uygulamasının reddedildiği site türleri;
 // sunucunun denetimini yansıtır, sunucu ikinci savunma hattı olarak kalır.
 export const NEW_REFUSED_ON: Readonly<Record<'programs' | 'ai', readonly string[]>> = {

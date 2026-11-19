@@ -46,7 +46,10 @@ function Notice({ tone = 'warning', children }: { tone?: 'warning' | 'danger' | 
     return <div className={`rounded-lg border px-3 py-2.5 text-sm ${palette}`}>{children}</div>;
 }
 
-export function DomainServiceApps({ domainId }: { domainId: number; domainName: string }) {
+// offerNew (alpha.139): false where the site's type refuses a new app
+// (sections.ts NEW_REFUSED_ON); the card then shows only the app the domain
+// already holds, so it can be managed and removed, and no catalogue.
+export function DomainServiceApps({ domainId, offerNew = true }: { domainId: number; domainName: string; offerNew?: boolean }) {
     const { t } = useI18n();
     const url = `/api/v1/domains/${domainId}/service-apps`;
     const view = useRemote(url, decodeDomainServiceApps);
@@ -99,13 +102,13 @@ export function DomainServiceApps({ domainId }: { domainId: number; domainName: 
                         <ErrorBanner error={failure} />
                         {/* alpha.127: a refusal for a hold sends the administrator to where it is lifted. */}
                         {failure?.code === 'SERVICE_APP' && failure.reason === 'held' && <AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} />}
-                        <Blockers view={v} />
+                        {(v.install || offerNew) && <Blockers view={v} />}
                         {v.operation && <OperationLine op={v.operation} />}
                         {v.install ? (
                             <InstalledApp view={v} install={v.install} base={url} after={after} onReinstall={setInstalling} />
-                        ) : (
+                        ) : offerNew ? (
                             <Catalog view={v} onInstall={setInstalling} />
-                        )}
+                        ) : null}
                         {installing && (
                             <InstallDialog
                                 app={installing}

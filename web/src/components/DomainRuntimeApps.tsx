@@ -137,7 +137,10 @@ function Refusal({ error }: { error: ApiError | null }) {
     );
 }
 
-export function DomainRuntimeApps({ domainId }: { domainId: number; domainName: string }) {
+// offerNew (alpha.139): false where the site's type refuses a new program
+// (sections.ts NEW_REFUSED_ON); the card then shows only the program the
+// domain already holds, so it can be managed and removed, and no form.
+export function DomainRuntimeApps({ domainId, offerNew = true }: { domainId: number; domainName: string; offerNew?: boolean }) {
     const { t } = useI18n();
     const base = `/api/v1/domains/${domainId}/runtime-apps`;
     const [remote, setRemote] = useState<Remote<RuntimeAppsView>>(LOADING);
@@ -216,7 +219,7 @@ export function DomainRuntimeApps({ domainId }: { domainId: number; domainName: 
             {lost && <Notice tone="info">{t('runtime.lost')}</Notice>}
             <Refusal error={failure} />
             <RemoteGate remote={remote} checking={t('runtime.checking')} failed={t('runtime.unknown')} onRetry={() => void load(true)} busy={reading}>
-                {(view) => <Body view={view.value} base={base} after={after} />}
+                {(view) => <Body view={view.value} base={base} after={after} offerNew={offerNew} />}
             </RemoteGate>
         </div>
     );
@@ -269,13 +272,15 @@ function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): 
     return null;
 }
 
-function Body({ view, base, after }: { view: RuntimeAppsView; base: string; after: After }) {
+function Body({ view, base, after, offerNew }: { view: RuntimeAppsView; base: string; after: After; offerNew: boolean }) {
     const { t } = useI18n();
     const kinds = view.kinds.filter((k) => k.implemented);
     const app = view.app;
     // Before an app exists the person chooses what runs here; an offered
     // kind is chosen first.
     const [choice, setChoice] = useState(() => (kinds.find((k) => k.offered) ?? kinds[0])?.kind ?? 'program');
+    // Nothing to manage here and nothing may be created: no form whose press would fail.
+    if (!app && !offerNew) return null;
     const kind = kinds.find((k) => k.kind === (app ? app.kind : choice)) ?? kinds[0];
     if (!kind) return <Notice tone="info">{t('runtime.kindUnavailable')}</Notice>;
     const blocker = app ? null : blockerOf(view, kind, t);
