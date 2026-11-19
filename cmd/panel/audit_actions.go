@@ -468,6 +468,7 @@ var auditActionNames = []string{
 	"vpn.sync",
 	"webmail.address",
 	"webmail.address.dns_record.added",
+	"webmail.address.dns_record.busy",
 	"webmail.address.dns_record.not_sent",
 	"webmail.address.dns_record.refused",
 	"webmail.address.dns_record.requested",

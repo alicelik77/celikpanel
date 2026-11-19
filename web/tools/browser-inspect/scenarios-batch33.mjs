@@ -8,8 +8,9 @@
 //
 //   y33dnsadd    (alpha.135) "Add" beside "Copy": the name in the main DNS
 //                server's zone (check, confirmation, steps, end, wait, its
-//                bound, each refusal, unknown, an optional AAAA record), a
-//                name managed elsewhere, and the zone hosted here
+//                bound, each refusal, unknown, an optional AAAA record; since
+//                alpha.140 also busy, the pause before the one re-ask and the
+//                end after it), a name managed elsewhere, and the zone hosted here
 //
 // Every answer comes from the mock on 127.0.0.1 through overrides (SAMPLE
 // data shaped as the Panel answers); nothing is installed, moved or contacted.
@@ -165,7 +166,8 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
                 const realNow = Date.now;
                 let offset = 0;
                 Date.now = () => realNow() + offset;
-                window.setTimeout = (fn, ms, ...rest) => (ms === 20000 ? realTimeout(() => { offset += 20000; fn(...rest); }, 120) : realTimeout(fn, ms, ...rest));
+                // The 20-second wait and the 25-second pause before the one re-ask (alpha.140) run fast.
+                window.setTimeout = (fn, ms, ...rest) => (ms === 20000 || ms === 25000 ? realTimeout(() => { offset += ms; fn(...rest); }, 120) : realTimeout(fn, ms, ...rest));
             });
         }
         await page.goto(`${base}/services/roundcube`, { waitUntil: 'domcontentloaded' });
@@ -236,7 +238,7 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
         await snap(page, 'dnsadd-peer-optional-aaaa');
         await closePage(page);
 
-        for (const code of ['outside_zone', 'taken', 'address', 'not_ready', 'unauthorized', 'unsupported', 'license', 'unreachable']) {
+        for (const code of ['outside_zone', 'zone_review', 'taken', 'address', 'not_ready', 'unauthorized', 'unsupported', 'license', 'unreachable']) {
             page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: code === 'unreachable' ? 'not_sent' : 'refused', code }]) });
             await offer(page);
             await confirmIt(page);
@@ -247,6 +249,25 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
         await offer(page);
         await confirmIt(page);
         await snap(page, 'dnsadd-unknown');
+        await closePage(page);
+
+        // alpha.140: a busy main server (nothing added, Ask again), the visible
+        // pause before the one automatic re-ask after "no answer in time", and
+        // the end when the re-ask is not answered either.
+        page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'busy' }]) });
+        await offer(page);
+        await confirmIt(page);
+        await snap(page, 'dnsadd-busy');
+        await closePage(page);
+        page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'unknown', code: 'no_answer' }]) });
+        await offer(page);
+        await confirmIt(page);
+        await snap(page, 'dnsadd-reask');
+        await closePage(page);
+        page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'unknown', code: 'no_answer' }]) }, { fast: true });
+        await offer(page);
+        await confirmIt(page, 2000);
+        await snap(page, 'dnsadd-unknown-after-reask');
         await closePage(page);
 
         page = await openPeer(PEER_CHECK({ peer_zone: undefined, records: [{ type: 'A', name: `${WEBMAIL}.`, content: '203.0.113.16', ttl: 3600, text: `${WEBMAIL}. 3600 IN A 203.0.113.16` }], managed_by: { zone: 'example.com', nameservers: ['ns1.registrar-dns.example', 'ns2.registrar-dns.example'] } }), null);

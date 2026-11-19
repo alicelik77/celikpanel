@@ -78,6 +78,7 @@ const realClearTimeout = globalThis.clearTimeout;
 const realNow = Date.now;
 let clock = 0;
 let paced = [];
+let reasks = [];
 
 let tree;
 let requests = [];
@@ -90,9 +91,12 @@ async function mount({ checks, dnsRecord, records }) {
   globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
   clock = 0;
   paced = [];
+  reasks = [];
   Date.now = () => realNow() + clock;
-  // The wait's 20-second timers are held and released one by one (tick).
+  // The wait's 20-second timers are held and released one by one (tick);
+  // the 25-second pause before the one automatic re-ask too (reask).
   globalThis.setTimeout = (fn, ms, ...rest) => {
+    if (ms === 25_000) { reasks.push(fn); return { reask: true }; }
     if (ms !== 20_000) return realSetTimeout(fn, ms, ...rest);
     const id = { paced: true };
     paced.push({ id, fn });
@@ -224,7 +228,7 @@ test('the wait is bounded: after five minutes it says so, offers Check and never
 });
 
 test('each refusal says the reason, who acts and what next; Copy stays and nothing is read in a loop', async () => {
-  for (const code of ['outside_zone', 'taken', 'address', 'not_ready', 'unauthorized', 'unsupported', 'license']) {
+  for (const code of ['outside_zone', 'zone_review', 'taken', 'address', 'not_ready', 'unauthorized', 'unsupported', 'license']) {
     await mount({ checks: [notFound({ peer_zone: peerZone })], dnsRecord: () => answer(recordAnswer([{ type: 'A', text: A, outcome: 'refused', code }])) });
     try {
       await pressCheck();
@@ -258,7 +262,7 @@ test('each refusal says the reason, who acts and what next; Copy stays and nothi
   } finally { await unmount(); }
 });
 
-test('no answer is not known: said so, never sent again, Check is the next step', async () => {
+test('no answer is not known: said so, not sent again by itself, the offer stays and Ask again opens the confirmation with a new identity', async () => {
   for (const dnsRecord of [() => { throw new TypeError('network'); }, () => answer(recordAnswer([{ type: 'A', text: A, outcome: 'unknown' }])), () => answer({ nonsense: true })]) {
     await mount({ checks: [notFound({ peer_zone: peerZone }), notFound({ peer_zone: peerZone })], dnsRecord });
     try {
@@ -267,16 +271,96 @@ test('no answer is not known: said so, never sent again, Check is the next step'
       const end = lastRun().end;
       assert.equal(end.state, 'unknown');
       assert.equal(end.reason, fill(en['dnsadd.peer.unknown'], { server: 'primary.example.com' }));
+      assert.match(end.reason, /Who acts: you\. Next:/);
       assert.equal(lastRun().steps[0].note, en['dnsadd.step.noAnswer']);
-      assert.equal(paced.length, 0, 'no wait is scheduled for an unknown result');
-      assert.equal(posts(DNS_RECORD).length, 1, 'not sent again');
-      assert.equal(posts(ADDRESS + '/check').length, 1, 'no wait for an unknown result');
+      assert.equal(paced.length + reasks.length, 0, 'no wait and no re-ask for an unknown without "no answer in time"');
+      assert.equal(posts(DNS_RECORD).length, 1, 'not sent again by itself');
+      assert.ok(attr('data-webmail-peer-offer').length > 0, 'the offer stays: asking again is safe');
+      assert.equal(end.fix.label, en['dnsadd.askAgain']);
+      globalThis.confirmYes = false;
       await act(async () => { end.fix.run(); });
-      await settle();
-      assert.equal(posts(ADDRESS + '/check').length, 2, 'Check reads DNS');
+      await settle(30);
+      assert.equal(globalThis.confirmLog.length, 2, 'Ask again asks the question again before anything is sent');
       assert.equal(posts(DNS_RECORD).length, 1);
     } finally { await unmount(); }
   }
+});
+
+test('no answer in time: ONE automatic re-ask after a visible pause, with a new identity; "present" then ends it as added', async () => {
+  const answers = [recordAnswer([{ type: 'A', text: A, outcome: 'unknown', code: 'no_answer' }]), recordAnswer([{ type: 'A', text: A, outcome: 'present' }])];
+  await mount({ checks: [notFound({ peer_zone: peerZone })], dnsRecord: () => answer(answers.shift()) });
+  try {
+    await pressCheck();
+    await click('data-webmail-peer-offer');
+    assert.equal(lastRun().end, undefined, 'still running: the pause before the re-ask');
+    assert.equal(reasks.length, 1, 'one pause of 25 seconds');
+    assert.deepEqual(lastRun().steps.map((step) => `${step.id}:${step.state}`), ['ask:waiting', 'write:pending', 'dns:pending']);
+    assert.equal(lastRun().steps[0].note, fill(en['dnsadd.step.reask'], { server: 'primary.example.com' }));
+    assert.equal(posts(DNS_RECORD).length, 1);
+    await act(async () => { reasks.shift()(); });
+    await settle(30);
+    const [first, second] = posts(DNS_RECORD).map((request) => JSON.parse(request.body));
+    assert.ok(second, 'asked once more');
+    assert.equal(second.host, first.host);
+    assert.notEqual(second.request_id, first.request_id, 'a new request identity');
+    const end = lastRun().end;
+    assert.equal(end.state, 'done');
+    assert.ok(end.message.includes(fill(en['dnsadd.peer.confirmed'], { server: 'primary.example.com', record: A })));
+    assert.ok(text().includes(en['dnsadd.wait']), 'the bounded wait for public DNS follows');
+    assert.equal(reasks.length, 0);
+  } finally { await unmount(); }
+  // Still no answer after the re-ask: not known, and a person decides.
+  await mount({ checks: [notFound({ peer_zone: peerZone })], dnsRecord: () => answer(recordAnswer([{ type: 'A', text: A, outcome: 'unknown', code: 'no_answer' }])) });
+  try {
+    await pressCheck();
+    await click('data-webmail-peer-offer');
+    await act(async () => { reasks.shift()(); });
+    await settle(30);
+    assert.equal(posts(DNS_RECORD).length, 2, 'the automatic re-ask happens once only');
+    assert.equal(reasks.length, 0);
+    assert.equal(lastRun().end.state, 'unknown');
+    assert.equal(lastRun().end.fix.label, en['dnsadd.askAgain']);
+    assert.ok(attr('data-webmail-peer-offer').length > 0);
+  } finally { await unmount(); }
+});
+
+test('a busy main server: nothing added, said with who acts and next, Ask again is safe and adds it', async () => {
+  const answers = [recordAnswer([{ type: 'A', text: A, outcome: 'busy' }]), recordAnswer([{ type: 'A', text: A, outcome: 'added' }])];
+  await mount({ checks: [notFound({ peer_zone: peerZone })], dnsRecord: () => answer(answers.shift()) });
+  try {
+    await pressCheck();
+    await click('data-webmail-peer-offer');
+    const end = lastRun().end;
+    assert.equal(end.state, 'blocked');
+    assert.equal(end.title, en['dnsadd.busyTitle']);
+    assert.equal(end.subtitle, en['dnsadd.busySubtitle']);
+    assert.equal(end.reason, fill(en['dnsadd.peer.busy'], { server: 'primary.example.com' }));
+    assert.match(end.reason, /Who acts: .*Next:/);
+    assert.equal(lastRun().steps[0].note, undefined, 'said once, in the end, not again under the step');
+    assert.equal(paced.length + reasks.length, 0, 'busy is not re-asked by itself');
+    assert.ok(attr('data-webmail-peer-offer').length > 0, 'the offer stays');
+    await act(async () => { end.fix.run(); });
+    await settle(30);
+    assert.equal(globalThis.confirmLog.length, 2, 'the confirmation is asked again');
+    const bodies = posts(DNS_RECORD).map((request) => JSON.parse(request.body));
+    assert.equal(bodies.length, 2);
+    assert.notEqual(bodies[0].request_id, bodies[1].request_id);
+    assert.equal(lastRun().end.state, 'done');
+    assert.equal(attr('data-webmail-peer-offer').length, 0, 'added: not offered again');
+  } finally { await unmount(); }
+});
+
+test('the refusal sentences: CONFLICT is true for a clash and for an older main server’s zone-wide reason; ZONE_REVIEW names the main server’s administrator', () => {
+  const taken = fill(en['dnsadd.refused.taken'], { server: 'primary.example.com' });
+  assert.match(taken, /another record/);
+  assert.match(taken, /changed or removed by hand/);
+  assert.match(taken, /the zone itself/);
+  assert.doesNotMatch(taken, /already uses this name there/, 'never claims a record that may not exist');
+  const review = fill(en['dnsadd.refused.zone_review'], { server: 'primary.example.com' });
+  assert.match(review, /Who acts: the administrator of primary\.example\.com\. Next:/);
+  assert.match(fill(en['dnsadd.refused.outside_zone'], { server: 'primary.example.com' }), /another zone there/);
+  assert.match(trDnsAddScreens['dnsadd.refused.taken'], /bölgenin kendisi/);
+  assert.match(trDnsAddScreens['dnsadd.refused.zone_review'], /yöneticisi/);
 });
 
 test('an AAAA record the main server does not accept: the A record is added, the AAAA stays optional with Copy', async () => {

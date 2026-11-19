@@ -190,8 +190,15 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
         // Kayıtlar sonraki biri başarısız olsa da eklenmiş olabilir.
         invalidate('dns');
     };
-    const askPeer = async (check: WebmailAddressCheck) => {
-        if ((await confirmAskPeer(check, addHooks(check.host))) && alive.current) setTried(check);
+    // A busy or unknown end keeps the offer: asking again is safe (alpha.140).
+    const askPeer = async (check: WebmailAddressCheck): Promise<void> => {
+        let retryable = false;
+        const confirmed = await confirmAskPeer(check, {
+            ...addHooks(check.host),
+            onRetryable: () => { retryable = true; },
+            askAgain: () => void askPeer(check),
+        });
+        if (confirmed && !retryable && alive.current) setTried(check);
     };
 
     const copy = (text: string, which: 'records' | 'optional') => {

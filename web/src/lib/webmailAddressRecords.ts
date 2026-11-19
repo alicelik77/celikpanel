@@ -11,14 +11,20 @@
 //
 // Both adds run inside the panel's own confirmation, which turns into the
 // locked progress window with real steps, and end as done, a verified
-// refusal (who acts, what next), or a result that is not known (D-024). A lost
-// answer is never sent again by itself. After an add, the card waits for public
-// DNS with read-only checks at a slow, bounded pace (RECHECK_*).
+// refusal (who acts, what next), a busy main server (nothing applied), or a
+// result that is not known (D-024). A zone record whose answer was lost is
+// never sent again by itself. A request to the main server that arrived but
+// was not answered in time is asked again ONCE after REASK_AFTER_MS (alpha.140:
+// the main server answers "present" or "busy" and never writes twice); after
+// that, and after busy, a person decides ("Ask again" opens the confirmation
+// once more with a new request identity). After an add, the card waits for
+// public DNS with read-only checks at a slow, bounded pace (RECHECK_*).
 //
 // Kayıt, adın DNS'inin yaşadığı yere eklenir: bu paneldeki bölge ya da eşli ana
 // DNS sunucusu (yetkili bağlantıyla). Onay penceresi adımları gösterir; sonuç
-// tamam, gerekçeli ret ya da bilinmeyen sonuçtur. Kaybolan yanıt yeniden
-// gönderilmez; ardından genel DNS yalnız okunarak, sınırlı aralıklarla beklenir.
+// tamam, gerekçeli ret, meşgul ya da bilinmeyen sonuçtur. Zamanında yanıt
+// gelmeyen istek bir kez, beklemeden sonra yeniden sorulur; sonra karar kişinindir.
+// Ardından genel DNS yalnız okunarak, sınırlı aralıklarla beklenir.
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError } from './apiError';
 import { confirmAction, type OperationEnd, type OperationReport, type OperationStep } from './confirmAction';
@@ -31,6 +37,14 @@ type Translate = (key: TranslationKey, vars?: Record<string, string | number>) =
 export const RECHECK_EVERY_MS = 20_000;
 /** Five minutes: a resolver keeps a "no such name" answer for up to the zone's 300-second negative TTL. */
 export const RECHECK_FOR_MS = 5 * 60_000;
+/**
+ * alpha.140: the pause before the one automatic re-ask after "no answer in
+ * time". The main server waits at most 3 s for its locks and may publish for
+ * up to 30 s, while this server stops waiting for its answer after 10 s; 25 s
+ * later that publication has ended, so the re-ask reads "present" (or "busy"
+ * if it still runs). It never writes the record twice.
+ */
+export const REASK_AFTER_MS = 25_000;
 
 /** What a finished add leaves for the card: where it went and an optional record that was not added. */
 export interface RecordsAdded {
@@ -45,11 +59,12 @@ export interface RecordsAdded {
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const recordsText = (check: WebmailAddressCheck) => check.records.map((record) => record.text).join('\n');
 
-const REFUSALS = ['outside_zone', 'taken', 'address', 'invalid', 'not_ready', 'unauthorized', 'unsupported', 'license', 'unreachable'] as const;
+const REFUSALS = ['outside_zone', 'zone_review', 'taken', 'address', 'invalid', 'not_ready', 'unauthorized', 'unsupported', 'license', 'unreachable'] as const;
 type Refusal = (typeof REFUSALS)[number];
 const isRefusal = (code: string): code is Refusal => (REFUSALS as readonly string[]).includes(code);
 const REFUSAL_KEY: Record<Refusal, TranslationKey> = {
     outside_zone: 'dnsadd.refused.outside_zone',
+    zone_review: 'dnsadd.refused.zone_review',
     taken: 'dnsadd.refused.taken',
     address: 'dnsadd.refused.address',
     invalid: 'dnsadd.refused.invalid',
@@ -64,8 +79,16 @@ interface AddHooks {
     t: Translate;
     /** The add succeeded: the card starts waiting for public DNS (before the window is closed). */
     onAdded: (added: RecordsAdded) => void;
-    /** The fix an unknown or a withdrawn offer names: one read-only check. */
+    /** The fix a withdrawn offer names: one read-only check. */
     check: () => void;
+    /**
+     * alpha.140: the request ended busy or not known; asking again is safe
+     * (a new request identity: the main server answers "present" if it was
+     * added and never writes twice). The card keeps the offer, and the end's
+     * "Ask again" opens the confirmation once more.
+     */
+    askAgain?: () => void;
+    onRetryable?: () => void;
 }
 
 /** Case 1: the zone is hosted here; its own record editor takes the records after a confirmation. */
@@ -131,46 +154,77 @@ export function confirmAskPeer(check: WebmailAddressCheck, hooks: AddHooks): Pro
         confirmLabel: t('dnsadd.peer.confirm'),
         progressTitle: t('dnsadd.peer.progress', vars),
         action: async (report: OperationReport): Promise<OperationEnd> => {
-            const since = Date.now();
+            let since = Date.now();
             const steps = (ask: OperationStep['state'], write: OperationStep['state'], dns: OperationStep['state'], note?: string): OperationStep[] => [
                 { id: 'ask', label: t('dnsadd.step.ask', vars), state: ask, since, note },
                 { id: 'write', label: t('dnsadd.step.write', vars), state: write },
                 { id: 'dns', label: t('dnsadd.step.dns'), state: dns, note: dns === 'waiting' ? t('dnsadd.step.dnsNote') : undefined },
             ];
+            // Busy or not known: nothing to undo, asking again is safe (alpha.140).
+            const retryable = (end: Exclude<OperationEnd, { state: 'done' }>): OperationEnd => {
+                hooks.onRetryable?.();
+                return hooks.askAgain ? { ...end, fix: { label: t('dnsadd.askAgain'), run: hooks.askAgain } } : end;
+            };
             const unknown = (): OperationEnd => {
                 report.steps(steps('waiting', 'pending', 'pending', t('dnsadd.step.noAnswer')));
-                return { state: 'unknown', title: t('dnsadd.unknownTitle'), reason: t('dnsadd.peer.unknown', vars), fix: { label: t('life.addr.check'), run: hooks.check } };
+                return retryable({ state: 'unknown', title: t('dnsadd.unknownTitle'), reason: t('dnsadd.peer.unknown', vars) });
+            };
+            const busy = (): OperationEnd => {
+                // Said once, in the end below (no note under the step).
+                report.steps(steps('waiting', 'pending', 'pending'));
+                return retryable({ state: 'blocked', title: t('dnsadd.busyTitle'), subtitle: t('dnsadd.busySubtitle'), reason: t('dnsadd.peer.busy', vars) });
+            };
+            // One request with a new identity: the decoded answer, or how it ended.
+            const ask = async (): Promise<WebmailDNSRecordAnswer | OperationEnd> => {
+                let requestID: string;
+                try {
+                    requestID = newRequestId();
+                } catch {
+                    return unknown();
+                }
+                let res: Response | null = null;
+                try {
+                    res = await fetch(WEBMAIL_ADDRESS_DNS_RECORD_URL, { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ host: check.host, request_id: requestID }) });
+                } catch {
+                    res = null;
+                }
+                if (res === null) return unknown();
+                if (!res.ok) {
+                    const error = await readApiError(res);
+                    if (error.code === 'WEBMAIL_DNS_RECORD_NOT_OFFERED') {
+                        report.steps(steps('failed', 'pending', 'pending'));
+                        return { state: 'blocked', title: t('dnsadd.notAddedTitle'), reason: t('dnsadd.peer.notOffered', vars), fix: { label: t('life.addr.check'), run: hooks.check } };
+                    }
+                    return unknown();
+                }
+                let answer: WebmailDNSRecordAnswer | null = null;
+                try {
+                    answer = decodeWebmailDNSRecordAnswer(await res.json());
+                } catch {
+                    answer = null;
+                }
+                return answer ?? unknown();
             };
             report.steps(steps('running', 'pending', 'pending'));
-            let requestID: string;
-            try {
-                requestID = newRequestId();
-            } catch {
-                return unknown();
+            let answer = await ask();
+            let again = false;
+            if ('records' in answer && answer.records[0].outcome === 'unknown' && answer.records[0].code === 'no_answer') {
+                // The request arrived and its answer did not come in time: the
+                // main server may still be publishing. Once, after a visible
+                // pause, the same record is asked for again with a new identity.
+                since = Date.now();
+                report.steps(steps('waiting', 'pending', 'pending', t('dnsadd.step.reask', vars)));
+                await new Promise<void>((resolve) => { setTimeout(resolve, REASK_AFTER_MS); });
+                since = Date.now();
+                report.steps(steps('running', 'pending', 'pending'));
+                answer = await ask();
+                again = true;
             }
-            let res: Response | null = null;
-            try {
-                res = await fetch(WEBMAIL_ADDRESS_DNS_RECORD_URL, { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ host: check.host, request_id: requestID }) });
-            } catch {
-                res = null;
-            }
-            if (res === null) return unknown();
-            if (!res.ok) {
-                const error = await readApiError(res);
-                if (error.code === 'WEBMAIL_DNS_RECORD_NOT_OFFERED') {
-                    report.steps(steps('failed', 'pending', 'pending'));
-                    return { state: 'blocked', title: t('dnsadd.notAddedTitle'), reason: t('dnsadd.peer.notOffered', vars), fix: { label: t('life.addr.check'), run: hooks.check } };
-                }
-                return unknown();
-            }
-            let answer: WebmailDNSRecordAnswer | null = null;
-            try {
-                answer = decodeWebmailDNSRecordAnswer(await res.json());
-            } catch {
-                answer = null;
-            }
-            if (!answer) return unknown();
-            return peerEnd(answer, check, report, steps, unknown, hooks);
+            if (!('records' in answer)) return answer;
+            const a = answer.records[0];
+            if (a.outcome === 'unknown') return unknown();
+            if (a.outcome === 'busy') return busy();
+            return peerEnd(answer, check, report, steps, again, hooks);
         },
     });
 }
@@ -180,19 +234,20 @@ function peerEnd(
     check: WebmailAddressCheck,
     report: OperationReport,
     steps: (ask: OperationStep['state'], write: OperationStep['state'], dns: OperationStep['state'], note?: string) => OperationStep[],
-    unknown: () => OperationEnd,
+    again: boolean,
     { t, onAdded }: AddHooks,
 ): OperationEnd {
     const vars = { server: answer.server };
     const [a, aaaa] = answer.records;
-    if (a.outcome === 'unknown') return unknown();
     if (a.outcome === 'refused' || a.outcome === 'not_sent') {
         report.steps(steps('done', 'failed', 'pending'));
         const code = isRefusal(a.code) ? a.code : 'invalid';
         return { state: 'blocked', title: t('dnsadd.notAddedTitle'), reason: t(REFUSAL_KEY[code], vars) };
     }
     // added, present or saved: the A record is there.
-    const lines = [t(a.outcome === 'present' ? 'dnsadd.peer.present' : a.outcome === 'saved' ? 'dnsadd.peer.saved' : 'dnsadd.peer.added', { ...vars, record: a.text })];
+    // After the re-ask, "present" is the first request's record, now confirmed.
+    const said: TranslationKey = a.outcome === 'present' ? (again ? 'dnsadd.peer.confirmed' : 'dnsadd.peer.present') : a.outcome === 'saved' ? 'dnsadd.peer.saved' : 'dnsadd.peer.added';
+    const lines = [t(said, { ...vars, record: a.text })];
     let optional: RecordsAdded['optional'] = null;
     if (aaaa) {
         if (aaaa.outcome === 'added' || aaaa.outcome === 'present' || aaaa.outcome === 'saved') lines.push(t('dnsadd.peer.alsoAAAA'));

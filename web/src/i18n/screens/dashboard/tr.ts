@@ -8,6 +8,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.webmail.address.failed': 'web postasının kendi adresini kuramadı ({target})',
     'dashboard.audit.action.webmail.address.dns_record.requested': 'ana DNS sunucusundan {target} adres kaydını eklemesini istedi',
     'dashboard.audit.action.webmail.address.dns_record.added': 'ana DNS sunucusu {target} adres kaydını ekledi',
+    'dashboard.audit.action.webmail.address.dns_record.busy': 'ana DNS sunucusu meşguldü; {target} adres kaydı için hiçbir şey eklemedi',
     'dashboard.audit.action.webmail.address.dns_record.refused': 'ana DNS sunucusu {target} adres kaydını eklemeyi reddetti',
     'dashboard.audit.action.webmail.address.dns_record.not_sent': '{target} adres kaydı için ana DNS sunucusuna ulaşılamadı',
     'dashboard.audit.action.webmail.address.dns_record.unknown': 'ana DNS sunucusundan {target} adres kaydı için yanıt gelmedi',

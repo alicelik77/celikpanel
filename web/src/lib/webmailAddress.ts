@@ -255,9 +255,11 @@ export function decodeWebmailAddressCheck(raw: unknown): WebmailAddressCheck | n
 
 // What became of one record the main DNS server was asked for (D-024): added
 // or already present; saved there but its publication not confirmed; refused
-// by its rule (code); never sent (code: unreachable, skipped); or not known.
-export type WebmailDNSRecordOutcome = 'added' | 'present' | 'saved' | 'refused' | 'not_sent' | 'unknown';
-const DNS_RECORD_OUTCOMES: readonly string[] = ['added', 'present', 'saved', 'refused', 'not_sent', 'unknown'];
+// by its rule (code); busy, nothing applied (alpha.140); never sent (code:
+// unreachable, skipped); or not known (code no_answer: it arrived and no
+// answer came in time).
+export type WebmailDNSRecordOutcome = 'added' | 'present' | 'saved' | 'refused' | 'busy' | 'not_sent' | 'unknown';
+const DNS_RECORD_OUTCOMES: readonly string[] = ['added', 'present', 'saved', 'refused', 'busy', 'not_sent', 'unknown'];
 
 export interface WebmailDNSRecordAnswer {
     host: string;

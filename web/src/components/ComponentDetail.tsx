@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Boxes, FileText, RefreshCw, ScrollText, Search } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { PHPToolVersion } from './PHPToolVersion';
 import { RepoCard } from './RepoCard';
 import { OfferedVersionsCard } from './OfferedVersionsCard';
 import { RoundcubeUpdateCard } from './RoundcubeUpdateCard';
-import { WebmailAddressCard } from './WebmailAddressCard';
 import { IsolationFact } from './AppAccountLine';
 import { phpToolForService } from '../lib/phpTools';
 import { SecurityEmergencySection } from './SecurityEmergency';
@@ -16,6 +15,11 @@ import { apiErrorText } from '../lib/apiError';
 import { componentName } from '../lib/componentName';
 import { decodeListIn, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import { useManagedServices, useStoredRecordCheck, type ManagedServicesSnapshot } from '../lib/managedServices';
+
+// Webmail's address card is loaded only on Roundcube's page (alpha.140): the
+// other component pages do not carry it and its record flows.
+// Web postası adres kartı yalnız Roundcube sayfasında yüklenir.
+const WebmailAddressCard = lazy(() => import('./WebmailAddressCard').then((module) => ({ default: module.WebmailAddressCard })));
 
 interface Instance {
     version: string;
@@ -132,7 +136,7 @@ export function ComponentDetail({ serviceId, onBack, onSelectConfig }: { service
             )}
             {/* alpha.110: webmail's own address, above its updates (webmail never runs on the panel's origin). */}
             {serviceId === 'roundcube' && record?.is_installed === true && (
-                <div className="mb-6"><WebmailAddressCard /></div>
+                <div className="mb-6"><Suspense fallback={null}><WebmailAddressCard /></Suspense></div>
             )}
             {/* alpha.107: webmail's own updates (D-038 §9). */}
             {serviceId === 'roundcube' && record?.is_installed === true && (

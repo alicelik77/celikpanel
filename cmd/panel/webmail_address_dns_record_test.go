@@ -451,7 +451,11 @@ func TestWebmailAddressDNSRecordOutcomeReadsEveryTypedAnswer(t *testing.T) {
 		"licence unknown": {&remoteDNSHTTPError{StatusCode: 503, Code: errCodeLicenseStatusUnavailable}, remoteDNSHostRecordAnswer{}, "refused", "license"},
 		"older primary":   {&remoteDNSHTTPError{StatusCode: 404}, remoteDNSHostRecordAnswer{}, "refused", "unsupported"},
 		"server error":    {&remoteDNSHTTPError{StatusCode: 502}, remoteDNSHostRecordAnswer{}, "unknown", ""},
-		"delivered":       {&remoteDNSExchangeError{Delivered: true}, remoteDNSHostRecordAnswer{}, "unknown", ""},
+		"delivered":       {&remoteDNSExchangeError{Delivered: true}, remoteDNSHostRecordAnswer{}, "unknown", "no_answer"},
+		"busy":            {&remoteDNSHTTPError{StatusCode: 503}, remoteDNSHostRecordAnswer{}, "busy", ""},
+		"busy coded":      {&remoteDNSHTTPError{StatusCode: 503, Code: errCodeRemoteDNSBusy}, remoteDNSHostRecordAnswer{}, "busy", ""},
+		"zone review":     {&remoteDNSHTTPError{StatusCode: 409, Code: errCodeRemoteDNSHostRecordZoneReview}, remoteDNSHostRecordAnswer{}, "refused", "zone_review"},
+		"older conflict":  {&remoteDNSHTTPError{StatusCode: 409, Code: errCodeRemoteDNSHostRecordConflict}, remoteDNSHostRecordAnswer{}, "refused", "taken"},
 		"not delivered":   {&remoteDNSExchangeError{Delivered: false}, remoteDNSHostRecordAnswer{}, "not_sent", "unreachable"},
 		"after answer":    {errors.New("remote DNS response does not match its contract"), remoteDNSHostRecordAnswer{}, "unknown", ""},
 	} {

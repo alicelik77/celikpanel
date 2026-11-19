@@ -28,7 +28,8 @@ import (
 //  2. The infrastructure zone of the paired main DNS server, when this server
 //     is the pair's DNS secondary and holds a ready authorized remote DNS
 //     connection: one confirmed request asks that server, over the existing
-//     host-record channel (remote_dns_host_record.go, unchanged), to write the
+//     host-record channel (remote_dns_host_record.go; alpha.140 made its
+//     answers truthful and bounded: busy, ZONE_REVIEW), to write the
 //     A record with the pair's verified address and, only when it accepts it,
 //     the AAAA record with the address the request comes from. The record
 //     reaches this server by the ordinary zone transfer; replication never
@@ -72,7 +73,9 @@ type webmailAddressManagedBy struct {
 
 // One record of a request and what became of it. Outcome: added | present |
 // saved (written there, its publication not confirmed yet) | refused (Code
-// says why) | not_sent (Code: unreachable, skipped) | unknown.
+// says why) | busy (alpha.140: the other server applied nothing; ask again)
+// | not_sent (Code: unreachable, skipped) | unknown (Code "no_answer" when
+// the request arrived and no answer came in time).
 type webmailAddressDNSRecordResult struct {
 	webmailAddressDNSRecord
 	Outcome string `json:"outcome"`
@@ -184,7 +187,11 @@ func webmailAddressManagedByLookup(ctx context.Context, host string) *webmailAdd
 
 // webmailAddressDNSRecordOutcome reads the other server's answer to one host
 // record request (D-024): a verified answer, a refusal by its typed rule, a
-// request that never left this server, or a result that is not known.
+// busy server that applied nothing (alpha.140: any 503), a request that never
+// left this server, or a result that is not known ("no_answer": the request
+// arrived and its answer did not come within the transport's limit; the
+// other server may still be applying it, and asking again is safe because it
+// answers "present" or "busy" and never writes twice).
 func webmailAddressDNSRecordOutcome(err error, answer remoteDNSHostRecordAnswer, connectionID string, want remoteDNSHostRecordRequest) (outcome, code string) {
 	var httpErr *remoteDNSHTTPError
 	var exchangeErr *remoteDNSExchangeError
@@ -201,9 +208,23 @@ func webmailAddressDNSRecordOutcome(err error, answer remoteDNSHostRecordAnswer,
 		return "unknown", ""
 	case errors.As(err, &httpErr):
 		switch httpErr.Code {
+		case "license_required", errCodeLicenseStatusUnavailable, errCodeLicenseVerificationUnavailable:
+			// Named before "busy": an older main server's licence state is its
+			// own reason with its own next step.
+			return "refused", "license"
+		}
+		if httpErr.StatusCode == http.StatusServiceUnavailable {
+			return "busy", ""
+		}
+		switch httpErr.Code {
 		case errCodeRemoteDNSHostRecordOutsideZone:
 			return "refused", "outside_zone"
+		case errCodeRemoteDNSHostRecordZoneReview:
+			return "refused", "zone_review"
 		case errCodeRemoteDNSHostRecordConflict:
+			// A clash at the name on a current main server; an older one
+			// (alpha.137) also answers it for a reason in the zone itself, so
+			// the screen's sentence is true for both.
 			return "refused", "taken"
 		case errCodeRemoteDNSHostRecordAddress:
 			return "refused", "address"
@@ -215,8 +236,6 @@ func webmailAddressDNSRecordOutcome(err error, answer remoteDNSHostRecordAnswer,
 			return "refused", "not_ready"
 		case "REMOTE_DNS_UNAUTHORIZED":
 			return "refused", "unauthorized"
-		case "license_required", errCodeLicenseStatusUnavailable, errCodeLicenseVerificationUnavailable:
-			return "refused", "license"
 		case "":
 			switch httpErr.StatusCode {
 			case http.StatusUnauthorized, http.StatusForbidden:
@@ -229,6 +248,8 @@ func webmailAddressDNSRecordOutcome(err error, answer remoteDNSHostRecordAnswer,
 	case errors.As(err, &exchangeErr) && !exchangeErr.Delivered:
 		// The request did not go out whole: it could not be applied.
 		return "not_sent", "unreachable"
+	case errors.As(err, &exchangeErr):
+		return "unknown", "no_answer"
 	default:
 		return "unknown", ""
 	}
