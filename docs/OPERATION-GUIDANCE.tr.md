@@ -11206,7 +11206,13 @@ ekleyin"). Şema: yok. Kod: `cmd/panel/remote_dns_host_record.go`,
 `web/tests/server-setup-guidance.test.mjs`. Açık: gerçek bir çiftte lab
 denemesi henüz yok; daha eski (alpha.137) bir ana sunucu bölge geneli bir
 neden için hâlâ CONFLICT döner ve kurulum incelemesi, altında müşteri bölgeleri
-olan bir ana alan adını hâlâ reddeder.
+olan bir ana alan adını hâlâ reddeder. Bu ret artık kendi nedeniyle söylenir:
+plan incelemesinde (`server_setup_infrastructure_dns_zone_overlap`: burada
+barındırılan başka bir bölge ana alan adının bölgesinin içinde ya da
+çevresinde; bir kayıt çakışması değil; yönetici o bölgeyi Alan adları'nda
+gözden geçirir, sonra planı yeniden okur) ve katılmada
+(`server_setup_peer_zone_overlap`: katılan sunucunun adlarıyla ilgili değil;
+bölge artık çakışmadığında kurulum kendiliğinden sürer).
 
 ### Yedek DNS sunucusunda web postası adres kaydı için "Ekle…" (alpha.140, 19 Kasım 2026)
 

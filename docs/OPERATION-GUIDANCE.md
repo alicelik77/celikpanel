@@ -11317,7 +11317,12 @@ by hand"). Schema: none. Code: `cmd/panel/remote_dns_host_record.go`,
 `web/tests/server-setup-guidance.test.mjs`. Open: no lab run on a real pair
 yet; an older (alpha.137) main server still answers CONFLICT for a zone-wide
 reason, and the setup review still refuses a main domain with customer zones
-under it.
+under it. That refusal is now said as its own cause, in the plan review
+(`server_setup_infrastructure_dns_zone_overlap`: another zone hosted here lies
+inside the main domain's zone or around it; not a record clash; the
+administrator reviews that zone in Domains, then reads the plan again) and at
+the peer join (`server_setup_peer_zone_overlap`: not about the joining
+server's names; setup continues by itself once the zone no longer overlaps).
 
 ### "Add…" for webmail's address record on the backup DNS server (alpha.140, 2026-11-19)
 
