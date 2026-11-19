@@ -25,9 +25,14 @@ from typing import BinaryIO, Iterable
 
 
 SMALL_RESPONSE_BUDGET = 1024 * 1024
-# Fixed plan: 15 root files (systems.html since alpha.114), three selectors, five release metadata files,
+# Fixed plan: 15 root files, three selectors, five release metadata files,
 # and exactly one authoritative archive body, plus three membership checks
-# when that surface exists. No historical paths are fetched.
+# when that surface exists. No historical paths are fetched. The root files
+# are the generated site's entry pages in both languages (including the kept
+# /systems.html and /technical.html addresses), its stylesheet and early
+# script, the stylesheet the guide and account pages share, the first product
+# screen in both languages, and the trust files; the other site files ship in
+# the same verified package.
 HARD_REQUEST_LIMIT = 27
 MAX_ARCHIVE_SIZE = 2_147_483_648
 CHUNK_SIZE = 128 * 1024
@@ -37,17 +42,17 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 
 ROOT_CRITICAL = (
     "index.html",
-    "technical.html",
+    "tr/index.html",
+    "download.html",
+    "tr/indir.html",
     "systems.html",
+    "technical.html",
+    "assets/public.css",
+    "assets/boot.js",
     "assets/site.css",
-    "assets/site.js",
     "assets/favicon-v2.svg",
-    "assets/product-overview-tr.webp",
-    "assets/product-overview-en.webp",
-    "assets/product-domains-tr.webp",
-    "assets/product-domains-en.webp",
-    "assets/product-databases-tr.webp",
-    "assets/product-databases-en.webp",
+    "assets/shots/dashboard-en-light.webp",
+    "assets/shots/dashboard-tr-light.webp",
     "get.sh",
     "release-signing-ed25519.pem",
     ".well-known/security.txt",

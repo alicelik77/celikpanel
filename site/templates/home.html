@@ -1,0 +1,174 @@
+{{define "hero" -}}
+<section class="hero" aria-labelledby="hero-title">
+<div class="wrap hero-grid">
+<div class="hero-copy">
+<h1 class="display" id="hero-title">{{t "home.hero.title"}}</h1>
+<p class="lede">{{t "home.hero.lede"}}</p>
+<div class="actions">
+<a class="btn btn-sign" href="{{link "download"}}">{{t "home.hero.install"}}{{icon "arrow"}}</a>
+<a class="btn btn-line" href="{{link "pricing"}}">{{t "home.hero.price"}}</a>
+</div>
+{{template "alpha" .}}
+</div>
+<div class="gantry-sign">
+<div class="sign keeps-sign">
+<h2>{{t "home.keeps.title"}}</h2>
+<ul class="keeps">
+<li>{{icon "arrow"}}<span>{{t "home.keeps.sites"}}</span></li>
+<li>{{icon "arrow"}}<span>{{t "home.keeps.mail"}}</span></li>
+<li>{{icon "arrow"}}<span>{{t "home.keeps.dns"}}<small>{{t "home.keeps.dns.note"}}</small></span></li>
+<li>{{icon "arrow"}}<span>{{t "home.keeps.databases"}}</span></li>
+<li>{{icon "arrow"}}<span>{{t "home.keeps.jobs"}}</span></li>
+<li>{{icon "arrow"}}<span>{{t "home.keeps.certs"}}</span></li>
+</ul>
+</div>
+<div class="posts" aria-hidden="true"><span></span><span></span></div>
+</div>
+</div>
+</section>
+{{- end}}
+
+{{define "main" -}}
+<div class="wrap proof">
+{{template "screen" (dict "Name" "dashboard" "Alt" (t "home.proof.alt") "Address" "")}}
+<p class="proof-caption"><span>{{t "home.proof.caption"}}</span><a class="link-arrow" href="{{guide ""}}">{{t "home.proof.guide"}}{{icon "arrow"}}</a></p>
+</div>
+
+<section class="section" aria-labelledby="runs-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="runs-title">{{t "home.runs.title"}}</h2>
+<p class="lede">{{t "home.runs.lede"}}</p>
+</div>
+<div class="directory">
+{{- range $k := (list "sites" "mail" "dns" "databases" "certs" "backups" "people")}}
+<div class="dir-row"><h3>{{icon "arrow"}}{{t (print "home.runs." $k ".name")}}</h3><p>{{t (print "home.runs." $k ".text")}}</p><p class="parts">{{t (print "home.runs." $k ".parts")}}</p></div>
+{{- end}}
+</div>
+<div class="tour">
+{{template "screen" (dict "Name" "domains" "Alt" (t "home.tour.domains.alt") "Address" "/domains" "Lazy" true "Caption" (t "home.tour.domains"))}}
+{{template "screen" (dict "Name" "databases" "Alt" (t "home.tour.databases.alt") "Address" "/databases" "Lazy" true "Caption" (t "home.tour.databases"))}}
+</div>
+</div>
+</section>
+
+<section class="section band" aria-labelledby="pair-title">
+<div class="wrap pair-grid">
+<div class="pair-copy">
+<h2 class="h2" id="pair-title">{{t "home.pair.title"}}</h2>
+<p class="lede">{{t "home.pair.lede"}}</p>
+<ol class="steps">
+<li>{{t "home.pair.step1"}}</li>
+<li>{{t "home.pair.step2"}}</li>
+<li>{{t "home.pair.step3"}}</li>
+</ol>
+</div>
+<div class="pair-diagram" role="img" aria-label="{{t "home.pair.diagram"}}">
+<div class="sign">
+<h3>{{t "home.pair.first"}}</h3>
+<p class="role">{{t "home.pair.first.role"}}</p>
+<ul><li>{{t "home.pair.sites"}}</li><li>{{t "home.pair.mail"}}</li><li>{{t "home.pair.dns.main"}}</li></ul>
+</div>
+<div class="pair-link"><span class="wire"></span><span>{{t "home.pair.link"}}</span></div>
+<div class="sign">
+<h3>{{t "home.pair.second"}}</h3>
+<p class="role">{{t "home.pair.second.role"}}</p>
+<ul><li>{{t "home.pair.sites"}}</li><li>{{t "home.pair.dns.backup"}}</li></ul>
+</div>
+</div>
+</div>
+</section>
+
+<section class="section field-band" aria-labelledby="promise-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="promise-title">{{t "home.promise.title"}}</h2>
+<p class="lede">{{t "home.promise.lede"}}</p>
+</div>
+<div class="promises">
+<article class="sign promise wide">
+<h3>{{t "home.promise.yours.title"}}</h3>
+<div>
+<p>{{t "home.promise.yours.text"}}</p>
+<p class="fine">{{t "home.promise.yours.fine"}} <a href="{{guide "without-panel"}}">{{t "home.promise.yours.link"}}</a></p>
+</div>
+</article>
+<article class="sign promise">
+<p class="figure">99<small>{{t "home.promise.price.unit"}}</small></p>
+<p class="from">{{t "pricing.plate.from"}}</p>
+<h3>{{t "home.promise.price.title"}}</h3>
+<p>{{t "home.promise.price.text"}}</p>
+</article>
+<article class="sign promise">
+<h3>{{t "home.promise.lock.title"}}</h3>
+<p>{{t "home.promise.lock.text"}}</p>
+<a class="link-arrow" href="{{link "pricing"}}">{{t "home.promise.lock.link"}}{{icon "arrow"}}</a>
+</article>
+</div>
+</div>
+</section>
+
+<section class="section" aria-labelledby="update-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="update-title">{{t "home.update.title"}}</h2>
+<p class="lede">{{t "home.update.lede"}}</p>
+</div>
+<ol class="route">
+{{- range $k := (list "press" "signature" "check" "install" "verify")}}
+<li class="stop"><h3>{{t (print "home.update." $k ".name")}}</h3><p>{{t (print "home.update." $k ".text")}}</p></li>
+{{- end}}
+</ol>
+<div class="sign sign-temp exit">
+{{icon "uturn"}}
+<div><h3>{{t "home.update.exit.title"}}</h3><p>{{t "home.update.exit.text"}}</p></div>
+</div>
+<p class="route-note">{{t "home.update.note"}}</p>
+</div>
+</section>
+
+<section class="section band" aria-labelledby="lapse-title">
+<div class="wrap distance">
+<div>
+<h2 class="h2" id="lapse-title">{{t "home.lapse.title"}}</h2>
+<p class="lede">{{t "home.lapse.lede"}}</p>
+<a class="link-arrow" href="{{link "pricing" (t "pricing.lapse.id")}}">{{t "home.lapse.link"}}{{icon "arrow"}}</a>
+</div>
+{{template "distance-sign" .}}
+</div>
+</section>
+
+<section class="section" aria-labelledby="install-title" id="{{t "home.install.id"}}">
+<div class="wrap install-grid">
+<div>
+<h2 class="h2" id="install-title">{{t "home.install.title"}}</h2>
+<p class="lede">{{t "home.install.lede"}}</p>
+<ol class="steps">
+<li>{{t "install.step.account"}}</li>
+<li>{{t "install.step.run"}}</li>
+<li>{{t "install.step.wizard"}}</li>
+</ol>
+</div>
+<div>
+{{template "command" (dict "ID" "home")}}
+{{template "systems-line" .}}
+<p class="more"><a class="link-arrow" href="{{link "systems"}}">{{t "home.install.systems"}}{{icon "arrow"}}</a></p>
+</div>
+</div>
+</section>
+
+<section class="closing" aria-labelledby="close-title">
+<div class="wrap">
+<div class="sign">
+<div>
+<h2 class="h2" id="close-title">{{t "home.close.title"}}</h2>
+<p>{{t "home.close.text"}}</p>
+</div>
+<div class="actions">
+<a class="btn btn-sign" href="{{account "register"}}">{{t "common.register.free"}}</a>
+<a class="btn btn-line" href="{{link "download"}}">{{t "home.close.install"}}</a>
+</div>
+</div>
+</div>
+</section>
+{{- end}}

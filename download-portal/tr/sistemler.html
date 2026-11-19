@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="tr" data-page="systems">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desteklenen sistemler · CelikPanel</title>
+<meta name="description" content="CelikPanel’in kurulduğu Debian, Ubuntu ve Arch Linux sürümleri: her birinde nelerin sunulduğu, nelerin sunulmadığı ve nedeni, güncellemelerin nasıl işlediği.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#091a36">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/public.css">
+<link rel="canonical" href="https://celikpanel.net/tr/sistemler.html">
+<link rel="alternate" hreflang="en" href="../systems.html">
+<link rel="alternate" hreflang="tr" href="sistemler.html">
+<link rel="alternate" hreflang="x-default" href="../systems.html">
+<script src="../assets/boot.js"></script>
+<script src="../assets/public.js" defer></script>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+<symbol id="i-logo" viewBox="0 0 32 32"><path fill="currentColor" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5 22.5 12.2h-6.6V22.5H8.1V12.2H1.5Z"/></symbol>
+<symbol id="i-uturn" viewBox="0 0 24 24"><path fill="currentColor" d="M9.5 2.5 2 9.25 9.5 16v-4.5h6a3.25 3.25 0 0 1 0 6.5H12v4h3.5a7.25 7.25 0 0 0 0-14.5h-6Z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M8 8h12v12H8z M16 8V4H4v12h4"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.5 4.8 4.8L19.5 7"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 14.6A8.5 8.5 0 0 1 9.4 4a8.5 8.5 0 1 0 10.6 10.6Z"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M12 2.5 20 5.5v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6Z M8.5 12l2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></symbol>
+</svg>
+<a class="skip" href="#main">İçeriğe geç</a>
+<div class="gantry">
+<header class="masthead">
+<div class="wrap bar">
+<a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>Celik<b>Panel</b></span><span class="sr-only"> ana sayfa</span></a>
+<nav class="primary" aria-label="Ana menü">
+<a href="fiyat.html">Fiyat</a>
+<a href="indir.html">İndir</a>
+<a href="sistemler.html" aria-current="page">Sistemler</a>
+<a href="surumler.html">Sürümler</a>
+<a href="../guide/tr/">Kılavuz</a>
+</nav>
+<div class="tools">
+<div class="lang" role="group" aria-label="Dil"><a href="../systems.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a><span lang="tr" aria-current="true">TR</span></div>
+<button class="theme" type="button" hidden data-theme-toggle data-label-dark="Koyu temaya geç" data-label-light="Açık temaya geç" aria-label="Koyu temaya geç"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
+<a class="signin" href="../account/?action=login&amp;lang=tr">Giriş yap</a>
+<a class="btn btn-sign btn-sm register" href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
+<details class="menu">
+<summary><span class="bars" aria-hidden="true"></span><span class="menu-word">Menü</span></summary>
+<nav aria-label="Ana menü">
+<a href="fiyat.html">Fiyat</a>
+<a href="indir.html">İndir</a>
+<a href="sistemler.html" aria-current="page">Sistemler</a>
+<a href="surumler.html">Sürümler</a>
+<a href="../guide/tr/">Kılavuz</a>
+<a href="../account/?action=login&amp;lang=tr">Giriş yap</a>
+<a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
+</nav>
+</details>
+</div>
+</div>
+</header>
+<section class="page-hero compact" aria-labelledby="hero-title">
+<div class="wrap">
+<h1 class="display" id="hero-title">Desteklenen işletim sistemleri.</h1>
+<p class="lede">CelikPanel Debian, Ubuntu ve Arch Linux üzerine kurulur. Bu sayfa her birinde nelerin sunulduğunu, nelerin sunulmadığını ve nedenini, güncellemelerin nasıl işlediğini söyler; böylece kurmadan önce seçebilirsiniz.</p>
+<nav class="jump" aria-label="Bu sayfada">
+<a href="#liste">Liste</a>
+<a href="#debian-ubuntu">Debian ve Ubuntu</a>
+<a href="#arch">Arch Linux</a>
+<a href="indir.html">CelikPanel’i kur</a>
+</nav>
+</div>
+</section>
+</div>
+<main id="main">
+<section class="section" aria-labelledby="list-title" id="liste">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="list-title">Liste</h2>
+<p class="lede">Denenen, CelikPanel’in her sürüm adayının yayımlanmadan önce o sistemde çalıştırıldığı anlamına gelir. Desteklenen, CelikPanel’in orada kurulup çalıştığı ama sürüm adaylarının orada çalıştırılmadığı anlamına gelir. Tarihler dağıtımların kendi destek tarihleridir; 24 Ekim 2026’da kontrol edilmiştir.</p>
+</div>
+<div class="table-wrap" role="region" aria-labelledby="systems-caption" tabindex="0">
+<table class="data systems">
+<caption id="systems-caption" class="sr-only">CelikPanel’in desteklediği işletim sistemleri</caption>
+<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın yama yaptığı son tarih</th><th scope="col">Güncellemeler</th></tr></thead>
+<tbody>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td><span class="state tested">Denenen</span></td><td>30 Haziran 2030</td><td>Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td><span class="state tested">Denenen</span></td><td>Mayıs 2029</td><td>Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td><span class="state">Desteklenen</span></td><td>30 Haziran 2028</td><td>Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td><span class="state">Desteklenen</span></td><td>Mayıs 2027</td><td>Otomatik ya da elle, seçim sizin</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli yenilenen</span></th><td><span class="state">Desteklenen</span></td><td>Bitiş tarihi yok</td><td>Elle, Arch haberlerini okuduktan sonra</td></tr>
+</tbody>
+</table>
+</div>
+<p class="fine-print">Başka sistemler henüz desteklenmiyor. Red Hat ailesi sistemler (RHEL, AlmaLinux, Rocky Linux 9) tanınır; kurucu şimdilik yarım kurmak yerine onları reddeder. Bu listede olmayan bir sistem denetlenmemiştir. Linux amd64.</p>
+</div>
+</section>
+<section class="section band" aria-labelledby="deb-title" id="debian-ubuntu">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="deb-title">Debian ve Ubuntu</h2>
+</div>
+<div class="columns">
+<div><h3 class="h3">Neler sunulur</h3><p>CelikPanel’in tüm bileşenleri: web sunucusu ve PHP, MariaDB ve PostgreSQL, Rspamd ile posta, BIND ya da PowerDNS ile DNS, sertifikalar, güvenlik duvarı, yedekler ve güvenlik araçları. Paketler dağıtımdan gelir. Daha yeni bir sürüm istenirse panel dış depoyu yalnız bilerek yapılan, sınırlı ve izlenen bir seçenek olarak sunar.</p></div>
+<div><h3 class="h3">Neler sunulmaz</h3><p>Apache, Exim ve FTP (vsftpd) henüz hiçbir sistemde sunulmuyor: bütünleşmeleri bitmedi; Nginx ve Postfix kullanın. Katalogdaki diğer her şey sunulur. Sürümler yayına göre değişir: örneğin Debian 13 PHP 8.4 ve PostgreSQL 17, Ubuntu 24.04 PHP 8.3 ve PostgreSQL 16 ile gelir. Panel, sürümünüzün neler sunduğunu gösterir.</p></div>
+<div><h3 class="h3">Güncellemeler nasıl işler</h3><p>Düzeltmeler dağıtımın güvenlik ve güncelleme arşivlerinden gelir. Sistemin kendi aracı unattended-upgrades bunları her gün kendiliğinden kurabilir ya da siz elle kurarsınız. Seçimi panelde Güvenlik, Güvenlik güncellemeleri altında yaparsınız. Seçim sunucunuzdaki tek bir apt dosyasıdır; bu yüzden CelikPanel dururken de çalışmaya devam eder. Dosyayı kendiniz düzenlerseniz panel bunu fark eder ve metninizin üzerine yazmadan önce sorar. Panel sunucuyu kendiliğinden yeniden başlatmaz.</p></div>
+<div><h3 class="h3">Yeni ana sürümler</h3><p>Bir programın yeni ana sürümü (16’dan sonra PostgreSQL 17, 8.4’ten sonra PHP 8.5 gibi) ayrı bir programdır, güncelleme değildir. Güncellemeler elinizdeki sürümü düzeltir. Yeni ana sürüme ne zaman geçeceğinize siz karar verirsiniz.</p></div>
+</div>
+</div>
+</section>
+<section class="section" aria-labelledby="arch-title" id="arch">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="arch-title">Arch Linux</h2>
+</div>
+<div class="columns">
+<div><h3 class="h3">Neler sunulur</h3><p>Sunucu rolleri yalnız resmî Arch paketleriyle çalışır: web, PHP, MariaDB, PostgreSQL, posta, sertifikalar, güvenlik duvarı ve yedekler. PowerDNS, Arch’ın extra deposundan ilk kurulum olarak gelir. Diğer sistemlerde Redis’in sunulduğu yerde Valkey sunulur.</p></div>
+<div><h3 class="h3">Neler sunulmaz ve neden</h3><ul class="plain">
+<li>phpPgAdmin ve SpamAssassin: Arch’ın resmî depolarında çalışan bir paket yok (yalnız AUR’da var ve CelikPanel onu kullanmaz). PostgreSQL’i psql ile yönetin, spam süzgeci olarak Rspamd’yi kullanın.</li>
+<li>Redis: Arch bunun yerine uyumlu Valkey’i sunar; bu yüzden Valkey sunulur.</li>
+<li>Apache, Exim ve FTP (vsftpd): henüz hiçbir sistemde sunulmuyor. Nginx ve Postfix kullanın.</li>
+<li>Var olan bir BIND sunucusunu PowerDNS’e geçirmek: PowerDNS yalnız ilk kurulum olarak sunulur.</li>
+<li>Otomatik yükseltme: Arch’ta yalnız güvenlik güncellemesi yoktur ve gözetimsiz tam yükseltme hizmetlerinizi durdurabilir.</li>
+</ul></div>
+<div><h3 class="h3">Güncellemeler nasıl işler</h3><p>Arch sürekli yenilenen bir sürümdür. Güncelleme her zaman sunucuda sizin çalıştırdığınız tam yükseltmedir: önce archlinux.org/news sayfasını okuyun, sonra <code>sudo pacman -Syu</code> çalıştırın, sonra başarısız birimlere, <code>nginx -t</code> sonucuna, PHP-FPM’e ve posta hizmetlerine bakın; çekirdek değiştiyse sunucuyu yeniden başlatın. Panel bekleyenleri sayar ve bu adımları gösterir; yükseltmeyi sizin yerinize hiçbir zaman çalıştırmaz.</p></div>
+<div><h3 class="h3">Büyük bir yükseltmeden önce</h3><p>Tam yükseltme Arch’ın php paketini yeni bir ana sürüme, PostgreSQL’i de veri dizini yükseltilmeden sunucunun yeniden başlamayacağı yeni bir ana sürüme taşıyabilir. Yükseltmeden sonra sitelerinizi deneyin ya da önce sunucunun bir kopyasında deneyin.</p></div>
+</div>
+</div>
+</section>
+<section class="section field-band" aria-labelledby="yours-title">
+<div class="wrap trust">
+<div>
+<h2 class="h2" id="yours-title">Sunucunuz sizin kalır.</h2>
+<p class="lede">CelikPanel sunucunuzu yönetir; sahibi olmaz. Siteler, e-posta, DNS, veritabanları, zamanlanmış işler ve site sertifikası yenileme, yukarıdaki her sistemde panel dururken de çalışmaya devam eder.</p>
+</div>
+<ul class="trust-list">
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.tr.md">Hangi sistemde neler sunulur, ayrıntılı</a></li>
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><a href="../guide/tr/without-panel.html">Sunucuyu CelikPanel olmadan yönetmek</a></li>
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><a href="indir.html">CelikPanel’i kur</a></li>
+</ul>
+</div>
+</section>
+</main>
+<footer class="gantry site-footer">
+<div class="wrap">
+<div class="footer-grid">
+<div class="footer-brand"><a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>Celik<b>Panel</b></span></a><p>Debian ve Ubuntu sunucular için hosting kontrol paneli. Sunucunuz sizin kalır.</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
+<li><a href="fiyat.html">Fiyat</a></li>
+<li><a href="indir.html">İndir ve kur</a></li>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Kullanım koşulları ve veri açıklaması</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">Yardım</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Öneri gönder</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+</ul></nav>
+</div>
+<div class="footer-bottom"><span>© 2026 CelikPanel</span><span>Alfa <span class="dot">·</span> 1.0’a kadar ücretsiz <span class="dot">·</span> Linux amd64</span></div>
+</div>
+</footer>
+</body>
+</html>

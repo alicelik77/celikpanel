@@ -265,6 +265,33 @@ class DownloadPortalPromotionTests(unittest.TestCase):
         self.assertEqual(backup.stat().st_ino, self.fixture.old_live_inode)
         self.assertEqual((backup / "index.html").read_text(), "old root\n")
 
+    def test_site_content_update_may_change_generated_pages_and_screens_only(self):
+        # The public site's Turkish pages and product screens are site
+        # content; a typeface is not, so changing one refuses the update.
+        for relative, data in (("tr/fiyat.html", b"old price page\n"),
+                               ("assets/shots/dashboard-tr-dark.webp", b"old screen"),
+                               ("assets/fonts/overpass-latin.woff2", b"font")):
+            target = self.fixture.live / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        self.fixture.old_live_inode = self.fixture.live.stat().st_ino
+        source = self.prepare_site_content_update()
+        (source / "tr" / "fiyat.html").write_bytes(b"new price page\n")
+        (source / "assets" / "shots" / "dashboard-tr-dark.webp").write_bytes(b"new screen")
+        result = self.run_site_content_update(source)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.fixture.live / "tr" / "fiyat.html").read_bytes(), b"new price page\n")
+        self.assertEqual((self.fixture.live / "assets" / "shots" / "dashboard-tr-dark.webp").read_bytes(), b"new screen")
+
+        source = self.fixture.base / "site-content-font" / "portal"
+        shutil.copytree(self.fixture.live, source)
+        (source / "assets" / "fonts" / "overpass-latin.woff2").write_bytes(b"other font")
+        before = self.fixture.live.stat().st_ino
+        result = self.run_site_content_update(source)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("protected content: assets/fonts/overpass-latin.woff2", result.stderr)
+        self.assertEqual(self.fixture.live.stat().st_ino, before)
+
     def test_same_version_still_requires_explicit_content_mode(self):
         result = self.run_site_content_update(self.prepare_site_content_update(), enabled=False)
         self.assertNotEqual(result.returncode, 0)

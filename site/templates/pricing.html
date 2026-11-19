@@ -1,0 +1,126 @@
+{{define "hero" -}}
+<section class="page-hero" aria-labelledby="hero-title">
+<div class="wrap price-grid">
+<div>
+<h1 class="display" id="hero-title">{{t "pricing.hero.title"}}</h1>
+<p class="lede">{{t "pricing.hero.lede"}}</p>
+<div class="sign sign-temp now-sign">
+<h2>{{t "pricing.now.title"}}</h2>
+<p>{{t "pricing.now.text"}}</p>
+<a class="btn btn-temp" href="{{account "register"}}">{{t "common.register.free"}}{{icon "arrow"}}</a>
+</div>
+</div>
+<div class="sign price-plate">
+<p class="amount"><b>99</b><span>USD</span></p>
+<p class="per">{{t "pricing.plate.per"}}</p>
+<p class="from">{{t "pricing.plate.from"}}</p>
+<ul>
+<li>{{icon "arrow"}}<span>{{t "pricing.plate.unlimited"}}</span></li>
+<li>{{icon "arrow"}}<span>{{t "pricing.plate.edition"}}</span></li>
+<li>{{icon "arrow"}}<span>{{t "pricing.plate.lock"}}</span></li>
+<li>{{icon "arrow"}}<span>{{t "pricing.plate.move"}}</span></li>
+</ul>
+<p class="plate-note">{{t "pricing.plate.note"}}</p>
+</div>
+</div>
+</section>
+{{- end}}
+
+{{define "main" -}}
+<section class="section" aria-labelledby="included-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="included-title">{{t "pricing.included.title"}}</h2>
+<p class="lede">{{t "pricing.included.lede"}}</p>
+</div>
+<div class="included">
+{{- range $k := (list "sites" "mail" "dns" "databases" "security" "backups" "people" "pair" "updates")}}
+<div class="inc"><h3>{{t (print "pricing.included." $k ".name")}}</h3><p>{{t (print "pricing.included." $k ".text")}}</p></div>
+{{- end}}
+</div>
+</div>
+</section>
+
+<section class="section band" aria-labelledby="lapse-title" id="{{t "pricing.lapse.id"}}">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="lapse-title">{{t "pricing.lapse.title"}}</h2>
+<p class="lede">{{t "pricing.lapse.lede"}}</p>
+</div>
+<ol class="timeline">
+<li class="tl-seg tl-active"><b>{{t "pricing.lapse.active"}}</b><span>{{t "pricing.lapse.active.text"}}</span></li>
+<li class="tl-seg tl-warn"><b>{{t "pricing.lapse.remind"}}</b><span>{{t "pricing.lapse.remind.text"}}</span><em>{{t "pricing.lapse.end"}}</em></li>
+<li class="tl-seg tl-grace"><b>{{t "pricing.lapse.grace"}}</b><span>{{t "pricing.lapse.grace.text"}}</span><em>{{t "pricing.lapse.plus30"}}</em></li>
+<li class="tl-seg tl-protect"><b>{{t "pricing.lapse.protect"}}</b><span>{{t "pricing.lapse.protect.text"}}</span></li>
+</ol>
+<p class="keep-line"><span class="lamp" aria-hidden="true"></span><span>{{th "pricing.lapse.always_html"}}</span></p>
+<div class="tl-detail">
+{{- range $k := (list "remind" "grace" "protect" "renew")}}
+<div><h3>{{t (print "pricing.detail." $k ".name")}}</h3><p>{{t (print "pricing.detail." $k ".text")}}</p></div>
+{{- end}}
+</div>
+</div>
+</section>
+
+<section class="section" aria-labelledby="terms-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="terms-title">{{t "pricing.terms.title"}}</h2>
+<p class="lede">{{t "pricing.terms.lede"}}</p>
+</div>
+<div class="terms">
+<div class="sign term"><p class="big">30<small>{{t "pricing.terms.days"}}</small></p><h3>{{t "pricing.terms.trial"}}</h3><p>{{t "pricing.terms.trial.text"}}</p></div>
+<div class="sign term"><p class="big">30<small>{{t "pricing.terms.days"}}</small></p><h3>{{t "pricing.terms.refund"}}</h3><p>{{t "pricing.terms.refund.text"}}</p></div>
+<div class="sign term"><p class="big">0<small>USD</small></p><h3>{{t "pricing.terms.move"}}</h3><p>{{t "pricing.terms.move.text"}}</p></div>
+</div>
+<div class="more-terms">
+{{- range $k := (list "auto" "offline" "lifetime")}}
+<div><h3>{{t (print "pricing.terms." $k)}}</h3><p>{{t (print "pricing.terms." $k ".text")}}</p></div>
+{{- end}}
+</div>
+</div>
+</section>
+
+<section class="section band" aria-labelledby="today-title" id="{{t "pricing.today.id"}}">
+<div class="wrap today">
+<div>
+<h2 class="h2" id="today-title">{{t "pricing.today.title"}}</h2>
+<p class="lede">{{t "pricing.today.lede"}}</p>
+</div>
+<dl class="facts">
+{{- range $k := (list "free" "renew" "check" "lock" "founder")}}
+<div><dt>{{t (print "pricing.today." $k)}}</dt><dd>{{t (print "pricing.today." $k ".text")}}</dd></div>
+{{- end}}
+</dl>
+</div>
+</section>
+
+<section class="section" aria-labelledby="faq-title">
+<div class="wrap faq-grid">
+<div>
+<h2 class="h2" id="faq-title">{{t "pricing.faq.title"}}</h2>
+<p class="lede">{{t "pricing.faq.lede"}}</p>
+</div>
+<div class="faq">
+{{- range $i, $k := (list "stop" "server" "count" "rise" "move" "card" "service" "pay")}}
+<details{{if eq $i 0}} open{{end}}><summary>{{t (print "pricing.faq." $k ".q")}}</summary><p>{{t (print "pricing.faq." $k ".a")}}</p></details>
+{{- end}}
+</div>
+</div>
+</section>
+
+<section class="closing" aria-labelledby="close-title">
+<div class="wrap">
+<div class="sign">
+<div>
+<h2 class="h2" id="close-title">{{t "pricing.close.title"}}</h2>
+<p>{{t "pricing.close.text"}}</p>
+</div>
+<div class="actions">
+<a class="btn btn-sign" href="{{account "register"}}">{{t "common.register.free"}}</a>
+<a class="btn btn-line" href="{{link "download"}}">{{t "home.close.install"}}</a>
+</div>
+</div>
+</div>
+</section>
+{{- end}}

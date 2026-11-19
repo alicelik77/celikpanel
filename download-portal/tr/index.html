@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="tr" data-page="home">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CelikPanel · Debian ve Ubuntu için hosting kontrol paneli</title>
+<meta name="description" content="Debian ve Ubuntu sunucular için hosting kontrol paneli: web siteleri, e-posta, DNS, veritabanları, sertifikalar ve yedekler. Siteleriniz panelle de panelsiz de çalışır.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#091a36">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/public.css">
+<link rel="canonical" href="https://celikpanel.net/tr/">
+<link rel="alternate" hreflang="en" href="../">
+<link rel="alternate" hreflang="tr" href="./">
+<link rel="alternate" hreflang="x-default" href="../">
+<script src="../assets/boot.js"></script>
+<script src="../assets/public.js" defer></script>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+<symbol id="i-logo" viewBox="0 0 32 32"><path fill="currentColor" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5 22.5 12.2h-6.6V22.5H8.1V12.2H1.5Z"/></symbol>
+<symbol id="i-uturn" viewBox="0 0 24 24"><path fill="currentColor" d="M9.5 2.5 2 9.25 9.5 16v-4.5h6a3.25 3.25 0 0 1 0 6.5H12v4h3.5a7.25 7.25 0 0 0 0-14.5h-6Z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M8 8h12v12H8z M16 8V4H4v12h4"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.5 4.8 4.8L19.5 7"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 14.6A8.5 8.5 0 0 1 9.4 4a8.5 8.5 0 1 0 10.6 10.6Z"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M12 2.5 20 5.5v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6Z M8.5 12l2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></symbol>
+</svg>
+<a class="skip" href="#main">İçeriğe geç</a>
+<div class="gantry">
+<header class="masthead">
+<div class="wrap bar">
+<a class="brand" href="./" aria-current="page"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>Celik<b>Panel</b></span><span class="sr-only"> ana sayfa</span></a>
+<nav class="primary" aria-label="Ana menü">
+<a href="fiyat.html">Fiyat</a>
+<a href="indir.html">İndir</a>
+<a href="sistemler.html">Sistemler</a>
+<a href="surumler.html">Sürümler</a>
+<a href="../guide/tr/">Kılavuz</a>
+</nav>
+<div class="tools">
+<div class="lang" role="group" aria-label="Dil"><a href="../" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a><span lang="tr" aria-current="true">TR</span></div>
+<button class="theme" type="button" hidden data-theme-toggle data-label-dark="Koyu temaya geç" data-label-light="Açık temaya geç" aria-label="Koyu temaya geç"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
+<a class="signin" href="../account/?action=login&amp;lang=tr">Giriş yap</a>
+<a class="btn btn-sign btn-sm register" href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
+<details class="menu">
+<summary><span class="bars" aria-hidden="true"></span><span class="menu-word">Menü</span></summary>
+<nav aria-label="Ana menü">
+<a href="fiyat.html">Fiyat</a>
+<a href="indir.html">İndir</a>
+<a href="sistemler.html">Sistemler</a>
+<a href="surumler.html">Sürümler</a>
+<a href="../guide/tr/">Kılavuz</a>
+<a href="../account/?action=login&amp;lang=tr">Giriş yap</a>
+<a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
+</nav>
+</details>
+</div>
+</div>
+</header>
+<section class="hero" aria-labelledby="hero-title">
+<div class="wrap hero-grid">
+<div class="hero-copy">
+<h1 class="display" id="hero-title">Siteleriniz çalışır. Panelle de, panelsiz de.</h1>
+<p class="lede">CelikPanel, Debian ve Ubuntu sunucular için bir hosting kontrol panelidir: web siteleri, e-posta, DNS, veritabanları, sertifikalar ve yedekler; tek sunucuda ya da çift olarak iki sunucuda. Sunucunuzun kendi standart hizmetlerini kurar; bu yüzden panel çalışsa da, dursa da, lisansını beklese de onlar çalışmaya devam eder.</p>
+<div class="actions">
+<a class="btn btn-sign" href="indir.html">Deneme sunucusuna kur<svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg></a>
+<a class="btn btn-line" href="fiyat.html">Fiyatı gör</a>
+</div>
+<div class="sign sign-temp alpha">
+<strong>Alfa <span class="dot">·</span> 1.0’a kadar ücretsiz</strong>
+<p>Henüz canlı kullanıma hazır değil. Yeniden kurabileceğiniz temiz bir deneme sunucusuyla başlayın.</p>
+</div>
+</div>
+<div class="gantry-sign">
+<div class="sign keeps-sign">
+<h2>Panel olmadan da çalışır</h2>
+<ul class="keeps">
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><span>Web siteleri</span></li>
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><span>E-posta ve web posta</span></li>
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><span>DNS<small>ve yedek DNS sunucunuzdaki kopyası</small></span></li>
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><span>Veritabanları</span></li>
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><span>Zamanlanmış işler</span></li>
+<li><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg><span>Site sertifikası yenileme</span></li>
+</ul>
+</div>
+<div class="posts" aria-hidden="true"><span></span><span></span></div>
+</div>
+</div>
+</section>
+</div>
+<main id="main">
+<div class="wrap proof">
+<figure class="screen">
+<div class="screen-bar" aria-hidden="true"><i></i><i></i><i></i><span>https://panel.example.com:1923</span></div>
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../assets/shots/dashboard-tr-dark.webp" data-theme-dark>
+<img src="../assets/shots/dashboard-tr-light.webp" data-theme-light="../assets/shots/dashboard-tr-light.webp" data-theme-darksrc="../assets/shots/dashboard-tr-dark.webp" width="1440" height="900" alt="Örnek verilerle CelikPanel ana ekranı: işletim sistemi güncellemeleri, işlemci, bellek, disk ve hizmetler, hazır paketler ve ilgi isteyen işler." fetchpriority="high" decoding="async">
+</picture>
+</figure>
+<p class="proof-caption"><span>Gerçek panel, örnek verilerle.</span><a class="link-arrow" href="../guide/tr/">Kullanım kılavuzunu okuyun<svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg></a></p>
+</div>
+<section class="section" aria-labelledby="runs-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="runs-title">Bir hosting sunucusunun yaptığı her şey, tek panelde.</h2>
+<p class="lede">Her parça işletim sisteminizin kendi hizmetidir ve alışılmış ayar dosyalarıyla çalışır. CelikPanel seçtiğiniz parçayı dağıtımınızın paketlerinden kurar.</p>
+</div>
+<div class="directory">
+<div class="dir-row"><h3><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>Web siteleri</h3><p>PHP, Node.js ve statik siteler; her biri kendi sistem kullanıcısıyla, seçtiğiniz PHP sürümüyle.</p><p class="parts">nginx · PHP-FPM · Node.js</p></div>
+<div class="dir-row"><h3><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>E-posta</h3><p>Her alan adı için posta kutuları, yönlendirmeler, kotalar, spam süzgeci, gönderim sınırları ve web posta.</p><p class="parts">Postfix · Dovecot · Rspamd</p></div>
+<div class="dir-row"><h3><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>DNS</h3><p>Kendi ad sunucularınız ya da dış bir DNS sağlayıcısına girilecek kayıtların tam listesi; internetin verdiği cevapla karşılaştırılarak.</p><p class="parts">BIND ya da PowerDNS</p></div>
+<div class="dir-row"><h3><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>Veritabanları</h3><p>Veritabanları ve kullanıcıları; yetkiler tam olarak verdiğiniz veritabanları için.</p><p class="parts">MariaDB · PostgreSQL</p></div>
+<div class="dir-row"><h3><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>Sertifikalar</h3><p>Her site için ücretsiz sertifika. Ekran her birinin hangi adları, ne zamana kadar koruduğunu söyler.</p><p class="parts">Let’s Encrypt</p></div>
+<div class="dir-row"><h3><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>Yedekler</h3><p>Site ve sunucu yedekleri zamanlanır, sunucuda tutulur ya da başka yere gönderilir, gerektiğinde geri yüklenir.</p><p class="parts">yerel · uzak</p></div>
+<div class="dir-row"><h3><svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg>Kişiler</h3><p>Yöneticiler, bayiler ve müşteriler; her biri işinin gerektirdiği kadar erişimle, fazlasıyla değil.</p><p class="parts">planlar · haklar</p></div>
+</div>
+<div class="tour">
+<figure class="screen">
+<div class="screen-bar" aria-hidden="true"><i></i><i></i><i></i><span>https://panel.example.com:1923/domains</span></div>
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../assets/shots/domains-tr-dark.webp" data-theme-dark>
+<img src="../assets/shots/domains-tr-light.webp" data-theme-light="../assets/shots/domains-tr-light.webp" data-theme-darksrc="../assets/shots/domains-tr-dark.webp" width="1440" height="900" alt="Altı örnek alan adıyla Alan adları sayfası: site türü, PHP sürümü, disk kullanımı, trafik ve durum." loading="lazy" decoding="async">
+</picture>
+<figcaption>Alan adları: her site türüyle, PHP sürümüyle, boyutuyla ve durumuyla.</figcaption>
+</figure>
+<figure class="screen">
+<div class="screen-bar" aria-hidden="true"><i></i><i></i><i></i><span>https://panel.example.com:1923/databases</span></div>
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="../assets/shots/databases-tr-dark.webp" data-theme-dark>
+<img src="../assets/shots/databases-tr-light.webp" data-theme-light="../assets/shots/databases-tr-light.webp" data-theme-darksrc="../assets/shots/databases-tr-dark.webp" width="1440" height="900" alt="Beş örnek MariaDB ve PostgreSQL veritabanıyla Veritabanları sayfası: sahipleri, alan adları ve boyutları." loading="lazy" decoding="async">
+</picture>
+<figcaption>Veritabanları: her veritabanı sahibiyle, alan adıyla ve motoruyla.</figcaption>
+</figure>
+</div>
+</div>
+</section>
+<section class="section band" aria-labelledby="pair-title">
+<div class="wrap pair-grid">
+<div class="pair-copy">
+<h2 class="h2" id="pair-title">İki sunucu, bir çift.</h2>
+<p class="lede">İkinci bir sunucu ekleyin; ikisi alan adlarınızın DNS’ini birlikte tutar: biri ana DNS sunucusu, öteki yedeği. Bölgeler iki sunucunuz arasında standart DNS aktarımıyla gider.</p>
+<ol class="steps">
+<li>Paneli iki sunucuya da kurun; her birinin kendi lisansı olsun.</li>
+<li>İlk sunucuda bir katılma kodu oluşturun. Kod bir kez gösterilir ve 24 saat geçerlidir.</li>
+<li>İkinci sunucuda ilk sunucunun IP adresi ve bu kodla katılın.</li>
+</ol>
+</div>
+<div class="pair-diagram" role="img" aria-label="Şema: ilk sunucu ana DNS sunucusudur ve e-postayı tutar; bölge kopyalarını standart DNS aktarımıyla ikinci sunucuya, yedek DNS sunucusuna gönderir.">
+<div class="sign">
+<h3>İlk sunucu</h3>
+<p class="role">Ana DNS sunucusu</p>
+<ul><li>Web siteleri</li><li>E-posta</li><li>DNS, ana</li></ul>
+</div>
+<div class="pair-link"><span class="wire"></span><span>standart DNS aktarımıyla bölge kopyaları</span></div>
+<div class="sign">
+<h3>İkinci sunucu</h3>
+<p class="role">Yedek DNS sunucusu</p>
+<ul><li>Web siteleri</li><li>DNS, yedek</li></ul>
+</div>
+</div>
+</div>
+</section>
+<section class="section field-band" aria-labelledby="promise-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="promise-title">Ürünün içine yazılmış sözler.</h2>
+<p class="lede">Hosting işletenlerin en çok yakındığı şeyler: insanı panelin dışında bırakan lisans denetimi, her yıl artan fiyat ve hesap başına ödeme. CelikPanel’in cevabı şu.</p>
+</div>
+<div class="promises">
+<article class="sign promise wide">
+<h3>Sunucunuz sizin kalır.</h3>
+<div>
+<p>Siteler, e-posta, DNS, veritabanları, zamanlanmış işler ve site sertifikası yenileme sisteminizin kendi hizmetleridir. Panel dursa, lisans bitse ya da celikpanel.net’e ulaşılamasa da çalışmaya devam ederler; onlara alışılmış araçlarla kendiniz de bakabilirsiniz.</p>
+<p class="fine">Bugün hâlâ panele ihtiyaç duyanlar: panelin ve posta sunucusunun kendi sertifikalarını yenilemek, açılışta güvenlik duvarını geri yüklemek ve zamanlanmış uzak yedekleri göndermek. <a href="../guide/tr/without-panel.html">Kılavuz bunları sayar.</a></p>
+</div>
+</article>
+<article class="sign promise">
+<p class="figure">99<small>USD, sunucu başına, yıllık</small></p>
+<p class="from">1.0 sürümünden itibaren</p>
+<h3>Tek fiyat. Hiçbir şey sayılmaz.</h3>
+<p>Hesap, alan adı, site ve posta kutusu sınırsız; her özelliği içeren tek sürüm. Ücretli lisanslar 1.0 sürümüyle başlar; o zamana kadar her şey ücretsiz.</p>
+</article>
+<article class="sign promise">
+<h3>Fiyatınız sizin fiyatınız kalır.</h3>
+<p>Ara vermeden yenilediğiniz sürece ödediğiniz fiyat artmaz. Sonradan geri çekilecek ömür boyu lisans yoktur: her lisans yıllıktır ve bunu açıkça söyler.</p>
+<a class="link-arrow" href="fiyat.html">Lisanslar nasıl işler<svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg></a>
+</article>
+</div>
+</div>
+</section>
+<section class="section" aria-labelledby="update-title">
+<div class="wrap">
+<div class="section-head">
+<h2 class="h2" id="update-title">Güncellemeyi siz başlatırsınız, dönüş yolu hazırdır.</h2>
+<p class="lede">Hiçbir şey kendiliğinden kurulmaz. Güncellemeyi başlattığınızda panel her adımı gösterir; yeni sürüm ayağa kalkmazsa elinizdeki sürüme geri döner.</p>
+</div>
+<ol class="route">
+<li class="stop"><h3>Siz başlatırsınız</h3><p>Ana yönetici olarak giriş yapmışken, panelin kendi güncelleme ekranından.</p></li>
+<li class="stop"><h3>İmza denetlenir</h3><p>Paket sürüm imzasını ve doğru sağlama toplamını taşımalıdır.</p></li>
+<li class="stop"><h3>Salt okunur kontrol</h3><p>Hiçbir şey değişmeden önce sunucu kontrol edilir.</p></li>
+<li class="stop"><h3>Kurulum</h3><p>Panel bir kez yeniden başlar. Sayfa kendiliğinden yeniden bağlanır.</p></li>
+<li class="stop"><h3>Doğrulama</h3><p>Yeni sürüm ayağa kalkmalı ve cevap vermelidir.</p></li>
+</ol>
+<div class="sign sign-temp exit">
+<svg class="i i-uturn" aria-hidden="true" focusable="false"><use href="#i-uturn"></use></svg>
+<div><h3>Yeni sürüm ayağa kalkmazsa</h3><p>Önceki sürüm, panel veritabanının güncellemeden hemen önceki hâliyle kendiliğinden geri gelir.</p></div>
+</div>
+<p class="route-note">Güncelleme boyunca web siteleri, e-posta, DNS ve veritabanları çalışmaya devam eder.</p>
+</div>
+</section>
+<section class="section band" aria-labelledby="lapse-title">
+<div class="wrap distance">
+<div>
+<h2 class="h2" id="lapse-title">Lisans biterse hiçbir şey kararmaz.</h2>
+<p class="lede">Önce hatırlatmalar gelir, sonra her şeyin çalıştığı otuz gün. Ondan sonra yalnız yeni şeyler oluşturmak yenilemeyi bekler. Bunlar 1.0 sürümüyle başlayan ücretli lisansların koşullarıdır.</p>
+<a class="link-arrow" href="fiyat.html#lisans-bitince">Bütün takvim<svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg></a>
+</div>
+<div class="sign distance-sign">
+<p class="sign-head">1.0 sürümünden itibaren</p>
+<div class="dist-row"><p class="what">Hatırlatma, panelde ve e-postayla<small>bitiş tarihinden önce</small></p><p class="how temp">30 <span class="dot">·</span> 7 <span class="dot">·</span> 1 gün</p></div>
+<div class="dist-row"><p class="what">Her şey çalışmaya devam eder<small>bitiş tarihinden sonra, üstte bir uyarıyla</small></p><p class="how">30 gün</p></div>
+<div class="dist-row"><p class="what">Sonra yeni alan adı, hesap ve posta kutusu bekler<small>yenileyene kadar; elinizdeki hiçbir şey değişmez</small></p><p class="how">31. gün</p></div>
+<div class="dist-row"><p class="what">Siteler, e-posta, DNS, yedekler, güncellemeler, güvenlik<small>her adımda</small></p><p class="how go">hep çalışır</p></div>
+</div>
+</div>
+</section>
+<section class="section" aria-labelledby="install-title" id="kurulum">
+<div class="wrap install-grid">
+<div>
+<h2 class="h2" id="install-title">Temiz bir deneme sunucusunda deneyin.</h2>
+<p class="lede">Tek komut, imzalı ve hazır derlenmiş bir paketi kurar. Sunucunuzda Go, Node.js ya da Git gerekmez.</p>
+<ol class="steps">
+<li>Ücretsiz bir hesap oluşturun ve sunucu için lisans alın. Her sunucunun kendi lisansı olur.</li>
+<li>Komutu sunucunun root terminalinde çalıştırın.</li>
+<li>Kurucunun gösterdiği adresten giriş yapın. Kurulum sihirbazı alan adınızı, bir ya da iki sunucuyu, rollerini ve DNS’in nerede duracağını sorar.</li>
+</ol>
+</div>
+<div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="cmd-title-home">Kurulum komutu</h3><button class="copy" type="button" hidden data-copy="cmd-home" data-copied="Kopyalandı" data-failed="Kopyalamak için metni seçin"><svg class="i i-copy" aria-hidden="true" focusable="false"><use href="#i-copy"></use></svg><span>Kopyala</span></button></div>
+<pre tabindex="0" aria-labelledby="cmd-title-home"><code id="cmd-home">timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+sh celikpanel-install.sh</code></pre>
+<p class="cmd-foot">Üç satırı birlikte sunucunun root terminalinde çalıştırın. İlk satır saat eşitlemesini açar; sertifika alabilmek için saatin doğru olması gerekir. Kurulum yarıda kalırsa aynı komutu yeniden çalıştırın.</p>
+<p class="sr-only" role="status" data-copy-status></p>
+</div>
+<div class="systems-line">
+<div class="sys"><span class="label">Her sürümde denenir</span><span class="chip tested">Debian 13</span><span class="chip tested">Ubuntu 24.04 LTS</span></div>
+<div class="sys"><span class="label">Ayrıca desteklenir</span><span class="chip">Debian 12</span><span class="chip">Ubuntu 22.04 LTS</span><span class="chip">Arch Linux</span></div>
+</div>
+<p class="more"><a class="link-arrow" href="sistemler.html">Her sistemde neler sunulur<svg class="i i-arrow" aria-hidden="true" focusable="false"><use href="#i-arrow"></use></svg></a></p>
+</div>
+</div>
+</section>
+<section class="closing" aria-labelledby="close-title">
+<div class="wrap">
+<div class="sign">
+<div>
+<h2 class="h2" id="close-title">1.0’a kadar ücretsiz. Sonra tek fiyat, sayaç yok.</h2>
+<p>Bir hesap oluşturun, ücretsiz lisansınızı alın ve gözden çıkarabileceğiniz bir sunucuya kurun.</p>
+</div>
+<div class="actions">
+<a class="btn btn-sign" href="../account/?action=register&amp;lang=tr">Ücretsiz hesap oluştur</a>
+<a class="btn btn-line" href="indir.html">İndir</a>
+</div>
+</div>
+</div>
+</section>
+</main>
+<footer class="gantry site-footer">
+<div class="wrap">
+<div class="footer-grid">
+<div class="footer-brand"><a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>Celik<b>Panel</b></span></a><p>Debian ve Ubuntu sunucular için hosting kontrol paneli. Sunucunuz sizin kalır.</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
+<li><a href="fiyat.html">Fiyat</a></li>
+<li><a href="indir.html">İndir ve kur</a></li>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Kullanım koşulları ve veri açıklaması</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">Yardım</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Öneri gönder</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+</ul></nav>
+</div>
+<div class="footer-bottom"><span>© 2026 CelikPanel</span><span>Alfa <span class="dot">·</span> 1.0’a kadar ücretsiz <span class="dot">·</span> Linux amd64</span></div>
+</div>
+</footer>
+</body>
+</html>

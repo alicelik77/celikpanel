@@ -772,3 +772,18 @@ lines and any "·" set against the next word (`y36mail`); and a domain deleted
 with its databases as the administrator, the question and the finished window
 with the database deletion's own lines (`y36deleted`). Same conventions as
 batch 30.
+
+## Scenarios of the thirty-seventh batch (the public website's screens, 2026-11-19)
+
+`sitescreens` takes the three product screens the public website shows
+(`site/`, published under `download-portal/assets/shots/`): the Dashboard,
+Domains and Databases of batch 20's sample "everything installed" server, with
+six example domains, five example databases of example owners, nothing waiting
+in operating-system updates and the version of the build being photographed.
+Each is one desktop viewport (1440×900), written beside the PNG record as WebP
+(quality 82) into `BROWSER_INSPECT_SITE` (default `<out>/site`) as
+`product-<page>-<locale>-<theme>.webp`. Every name, address and number is
+sample data (example.com, example.net, example.org, 192.0.2.10). To retake
+them for the site, run it for `en`/`tr` × `light`/`dark`, rename each file to
+`<page>-<locale>-<theme>.webp` in `download-portal/assets/shots/`, look at
+every one, and run `go test ./site`.
