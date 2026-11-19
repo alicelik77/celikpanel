@@ -337,7 +337,7 @@ export function setupExecutionGuidance(execution: ServerSetupExecution, componen
             if (outcome?.status === 'applied') {
                 result.messages.push(text(outcome.result === 'present' ? 'setup.guide.peerRecordPresent' : 'setup.guide.peerRecordApplied', { primary, zone: outcome.zone || '' }));
             } else if (outcome?.status === 'refused') {
-                const reason = ['REMOTE_DNS_HOST_RECORD_CONFLICT', 'REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE', 'REMOTE_DNS_HOST_RECORD_ADDRESS'].includes(outcome.code || '') ? outcome.code! : 'other';
+                const reason = ['REMOTE_DNS_HOST_RECORD_CONFLICT', 'REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE', 'REMOTE_DNS_HOST_RECORD_ADDRESS', 'REMOTE_DNS_HOST_RECORD_ZONE_REVIEW'].includes(outcome.code || '') ? outcome.code! : 'other';
                 result.messages.push(text(`setup.guide.peerRecordRefused.${reason}` as TranslationKey, { primary }));
             } else if (outcome?.status === 'unsupported') {
                 result.messages.push(text('setup.guide.peerRecordUnsupported', { primary }));

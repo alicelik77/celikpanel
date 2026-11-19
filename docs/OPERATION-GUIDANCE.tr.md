@@ -11166,3 +11166,44 @@ doğrulamasıyla ilgili olmayanlar) şimdilik tek cümlelerini korur. Açık:
 yeniden denetlenen bir neden, sahip bekleme sırasında bu sunucunun DNS'ini
 değiştirirse Agent'ın her değişikliği bekletmesine yine yol açabilir
 (RESILIENCE-CONTRACT, "Dal a133/proofwait").
+
+### Ana DNS sunucusunun ad kaydı isteğine yanıtı (alpha.140, 19 Kasım 2026)
+
+alpha.135 lab'ında bir yedek DNS sunucusu ana DNS sunucusundan bir ad kaydı
+istedi ve iki yanlış yanıt aldı: var olmayan bir kayıt için "bu ad zaten
+kullanılıyor" (altyapı bölgesinin altındaki bir müşteri bölgesi bütün bölgeyi
+reddettirdi) ve ana sunucunun günlüğünde hiçbir iz bırakmayan "bilinmiyor"
+(bir alan adı silmesi DNS kilitlerini yaklaşık 29 saniye tuttu; isteyen
+sunucunun sınırı 10 saniye). Ana sunucunun şimdiki yanıtları:
+
+| Yanıt | Anlamı | Kim yapar | Nasıl sürer |
+|---|---|---|---|
+| oluşturuldu / güncellendi / zaten var | kayıt bölgede ve yayımlandı | kimse | genel DNS aktarım ve önbelleklerden sonra gösterir |
+| `REMOTE_DNS_HOST_RECORD_CONFLICT` (409) | tam o adda çakışma: başka içerikli bir kayıt, araya giren CNAME/DNAME/yetki devri, kapalı bir kayıt ya da bu kanalın kaydı elle değiştirilmiş veya silinmiş | ana sunucunun yöneticisi | o kaydı Alan adları'nda düzeltir ya da kaydı elle ekler |
+| `REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE` (409) | adı oradaki bir altyapı bölgesi yanıtlamıyor; orada barındırılan başka bir bölge (altyapı bölgesinin altındaki bir müşteri bölgesi) o adı yanıtladığında da | yönetici | kaydı o adın yönetildiği yerde ekler |
+| `REMOTE_DNS_HOST_RECORD_ZONE_REVIEW` (409, yeni) | bölgenin kendisi şu anda bu bağlantıdan kayıt alamıyor: yerel birincil bölge değil, DNSSEC ile imzalı, sahipliği doğrulanmamış, dış ya da uzak DNS, sınırının üstünde; hiçbir şey yazılmadı | ana sunucunun yöneticisi | bölgeyi orada gözden geçirir ya da kaydı elle ekler |
+| meşgul (503, `Retry-After`, kodsuz, yeni) | kilitleri başka bir DNS değişikliği tutuyor; ana sunucu en çok 3 saniye bekledi ve hiçbir şey uygulamadı | kimse | isteyen sunucu aynı isteği yeniden gönderir (kurulum: iki dakika sonra, en çok beş kez) |
+| `REMOTE_DNS_HOST_RECORD_PENDING` (409) | kaydedildi, yayımı doğrulanmadı | kimse | aynı istek yayımdan sonra "zaten var" yanıtını alır |
+
+Altyapı bölgesinin altında başka bir yerdeki müşteri bölgesi ya da üstündeki
+bir bölge artık ad kaydını reddettirmez; kurulum incelemesinin kendi bölge
+geneli kuralı bu sürümde değişmedi. Hiçbir şey uygulamayan her yanıt günlüğe
+bir satır ve denetim kaydına bir satır bırakır (`dns.remote.host_record.refused`,
+kodu ayrıntılarda); isteyen sunucu kilitler boşalmadan beklemeyi bıraktığında
+da (önceden hiçbirini bırakmadan 401 dönüyordu). Yayımın kendisi isteyen
+sunucunun 10 saniyesine sığsın diye kesilmez: daha uzun sürerse isteyen sunucu
+"bilinmiyor" okur ve yeniden sorar; yineleme ilk yayım sürerken "meşgul",
+sonra "zaten var" olur, asla ikinci bir yazma olmaz. Uzak DNS yayım alıcısı
+aynı kilitleri aynı sınırla bekler ve 503 `REMOTE_DNS_BUSY` döner; gönderen
+her sürüm kayıtlı yayımını saklar ve yeniden gönderir. Meşgul ad kaydı
+yanıtının bilerek kodu yoktur: alpha.137 bir ikincil, kodlu her yanıtı kalıcı
+ret, kodsuz bir 503'ü ise yeniden sorduğu "bilinmiyor" olarak kaydeder. Yeni
+ZONE_REVIEW kodunu genel reddi olarak okur ("bu kaydı oluşturmadı; elle
+ekleyin"). Şema: yok. Kod: `cmd/panel/remote_dns_host_record.go`,
+`setup_dns_remote_receiver.go`, `server_setup_infrastructure_dns.go`;
+`web/src/lib/serverSetupGuidance.ts`, `web/src/i18n/setupDNS/*.ts`. Testler:
+`cmd/panel/remote_dns_host_record_receiver_test.go`,
+`web/tests/server-setup-guidance.test.mjs`. Açık: gerçek bir çiftte lab
+denemesi henüz yok; daha eski (alpha.137) bir ana sunucu bölge geneli bir
+neden için hâlâ CONFLICT döner ve kurulum incelemesi, altında müşteri bölgeleri
+olan bir ana alan adını hâlâ reddeder.

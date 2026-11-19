@@ -176,24 +176,67 @@ func serverSetupDNSNameWithin(name, zone string) bool {
 	return name == zone || strings.HasSuffix(name, "."+zone)
 }
 
+// infrastructureDNSNameDelegatedCode: the host record's name belongs to
+// another zone hosted on this server (a child zone of the infrastructure
+// zone), which answers for it instead. Only the host record read returns it.
+const infrastructureDNSNameDelegatedCode = "infrastructure_dns_name_delegated"
+
 func readServerSetupInfrastructureDNSSnapshot(ctx context.Context, q serverSetupInfrastructureDNSQuery, zone string) (serverSetupInfrastructureDNSSnapshot, error) {
+	return readInfrastructureDNSSnapshot(ctx, q, zone, "")
+}
+
+// readInfrastructureDNSSnapshotForHost is the snapshot for one host record
+// inside the zone (the remote DNS host record receiver, alpha.140): another
+// zone hosted on this server refuses the record only when it answers for that
+// name, i.e. the name equals or lies under a child zone of the infrastructure
+// zone. A sibling zone elsewhere under the infrastructure zone, or a zone
+// above it, does not answer for the name and is no reason to refuse. The
+// setup review keeps its zone-wide rule (readServerSetupInfrastructureDNSSnapshot).
+// Ad kaydi icin: yalniz adi kapsayan alt bolge reddeder; kurulum incelemesi
+// kendi bolge geneli kuralini korur.
+func readInfrastructureDNSSnapshotForHost(ctx context.Context, q serverSetupInfrastructureDNSQuery, zone, host string) (serverSetupInfrastructureDNSSnapshot, error) {
+	if host == "" || host == zone || !serverSetupDNSNameWithin(host, zone) {
+		return serverSetupInfrastructureDNSSnapshot{Zone: zone}, errors.New("the host record name must lie strictly inside its infrastructure zone")
+	}
+	return readInfrastructureDNSSnapshot(ctx, q, zone, host)
+}
+
+func readInfrastructureDNSSnapshot(ctx context.Context, q serverSetupInfrastructureDNSQuery, zone, host string) (serverSetupInfrastructureDNSSnapshot, error) {
 	s := serverSetupInfrastructureDNSSnapshot{Zone: zone, Records: []serverSetupInfrastructureDNSStoredRecord{}}
-	// Creating an ancestor/child authority is a separate delegation change. This
-	// bounded bootstrap helper must not infer permission to shadow another zone.
-	rows, err := q.QueryContext(ctx, `SELECT name FROM pdns_domains WHERE name<>? AND (? LIKE '%.'||name OR name LIKE '%.'||?) LIMIT 1`, zone, zone, zone)
-	if err != nil {
-		return s, err
+	if host == "" {
+		// Creating an ancestor/child authority is a separate delegation change. This
+		// bounded bootstrap helper must not infer permission to shadow another zone.
+		rows, err := q.QueryContext(ctx, `SELECT name FROM pdns_domains WHERE name<>? AND (? LIKE '%.'||name OR name LIKE '%.'||?) LIMIT 1`, zone, zone, zone)
+		if err != nil {
+			return s, err
+		}
+		overlap := rows.Next()
+		rowErr := rows.Err()
+		rows.Close()
+		if rowErr != nil {
+			return s, rowErr
+		}
+		if overlap {
+			return s, infrastructureDNSReviewError("the infrastructure zone overlaps another managed DNS zone; review its delegation first")
+		}
+	} else {
+		// The zones that would answer for host instead of the infrastructure
+		// zone: host itself and each name between it and the zone (exact
+		// names, no pattern).
+		candidates := []any{}
+		for name := host; name != zone; name = name[strings.Index(name, ".")+1:] {
+			candidates = append(candidates, name)
+		}
+		var child string
+		err := q.QueryRowContext(ctx, `SELECT name FROM pdns_domains WHERE name IN (?`+strings.Repeat(",?", len(candidates)-1)+`) ORDER BY length(name) DESC LIMIT 1`, candidates...).Scan(&child)
+		if err == nil {
+			return s, &serverSetupInfrastructureDNSPlanError{Code: infrastructureDNSNameDelegatedCode, Message: "the name belongs to the DNS zone " + child + " on this server"}
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return s, err
+		}
 	}
-	overlap := rows.Next()
-	rowErr := rows.Err()
-	rows.Close()
-	if rowErr != nil {
-		return s, rowErr
-	}
-	if overlap {
-		return s, infrastructureDNSReviewError("the infrastructure zone overlaps another managed DNS zone; review its delegation first")
-	}
-	rows, err = q.QueryContext(ctx, `SELECT id,subscription_id,name,dns_management FROM domains WHERE name=? OR ? LIKE '%.'||name LIMIT 129`, zone, zone)
+	rows, err := q.QueryContext(ctx, `SELECT id,subscription_id,name,dns_management FROM domains WHERE name=? OR ? LIKE '%.'||name LIMIT 129`, zone, zone)
 	if err != nil {
 		return s, err
 	}
@@ -214,7 +257,7 @@ func readServerSetupInfrastructureDNSSnapshot(ctx context.Context, q serverSetup
 			s.Ownership = fmt.Sprintf("local-domain:%d:%d", domainID, subscriptionID)
 		}
 	}
-	rowErr = rows.Err()
+	rowErr := rows.Err()
 	rows.Close()
 	if rowErr != nil {
 		return s, rowErr
