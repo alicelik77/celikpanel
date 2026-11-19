@@ -263,12 +263,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # A and B and C were split again (15 Nov 2026): over 12 hosted
+          # runs (test time, the -timeout's measure) A-and-B reached 247 s of
+          # 480 and C 480 twice, timing out under a test 0 s old. C has 143
+          # tests at about 2.7 s each under -race; the split is by name with
+          # the complement keeping the broad pattern. The first runs of this
+          # layout print every shard's slowest tests (below); move a boundary
+          # by those numbers, not by a guess.
           - shard: A and B, exact and non-uppercase
             pattern: '^Test($|[A-B]|[^A-Z])'
+            skip: '^TestA[A-Z0-9]'
+          - shard: A, capital or digit second
+            pattern: '^TestA[A-Z0-9]'
             skip: ''
           - shard: C, except the control-plane tests
             pattern: '^TestC'
+            skip: '^Test(ControlPlane|C([A-Z]|[a-h]|[l-o]))'
+          - shard: C, capitals and Ca through Ch
+            pattern: '^TestC([A-Z]|[a-h])'
             skip: '^TestControlPlane'
+          # Measured on the first run of this layout (race test time):
+          # TestCompletedUpdateDatabaseWALAware... alone 122 s, the TestCom
+          # tests 168 s, the TestCou (WAL-aware user count) tests 130 s; Cl
+          # through Co together took 323 s of 480, so they have shards of
+          # their own.
+          - shard: C, Cl through Co
+            pattern: '^TestC[l-o]'
+            skip: '^Test(ControlPlane|Com|Cou)'
+          - shard: C, Com
+            pattern: '^TestCom'
+            skip: ''
+          - shard: C, Cou
+            pattern: '^TestCou'
+            skip: ''
           # Control plane was split (alpha.130): with -race its job took
           # 371 s on alpha.129 and passed the 8-minute ceiling on the alpha.130
           # candidate (three more migrations for every database the tests
@@ -279,8 +306,13 @@ jobs:
           - shard: Control plane
             pattern: '^TestControlPlane'
             skip: '^TestControlPlaneRestore'
+          # Restore reached 299 s of 480 (12 tests, about 18 s each under
+          # -race); split in two by name (15 Nov 2026).
           - shard: Control plane, restore
             pattern: '^TestControlPlaneRestore'
+            skip: '^TestControlPlaneRestore[A-O]'
+          - shard: Control plane, restore (A to O)
+            pattern: '^TestControlPlaneRestore[A-O]'
             skip: ''
           - shard: D, except every DNS test
             pattern: '^TestD'
@@ -337,8 +369,23 @@ jobs:
           - shard: S, except the service, setup, site and startup tests
             pattern: '^TestS'
             skip: '^Test(Service|ServerSetup|Site|Startup)'
+          # Startup readiness reached 303 s of 480: the readiness and the
+          # recovery tests have their own shards (15 Nov 2026).
           - shard: Startup readiness
             pattern: '^TestStartup'
+            skip: '^TestStartupRe(ad|co)'
+          # One test, TestStartupReadinessFailsWithTypedReasonAndNoWrite,
+          # took 202 s of the 256 s of its first shard: alone here, it is the
+          # floor a name split cannot lower (its own subtests would have to be
+          # split or made parallel).
+          - shard: Startup readiness, read
+            pattern: '^TestStartupRead'
+            skip: '^TestStartupReadinessFailsWithTypedReasonAndNoWrite$'
+          - shard: Startup readiness, typed failure reasons
+            pattern: '^TestStartupReadinessFailsWithTypedReasonAndNoWrite$'
+            skip: ''
+          - shard: Startup readiness, recovery
+            pattern: '^TestStartupReco'
             skip: ''
           - shard: Site configuration
             pattern: '^TestSite'
@@ -372,12 +419,18 @@ jobs:
       - name: Verify exact Go toolchain
         run: test "$(go env GOVERSION)" = go1.26.5
       # cmd/panel has hundreds of SQLite-backed tests that run serially under
-      # the race detector. These twenty-three matrix entries run concurrently, are
-      # disjoint and cover every valid Test* suffix, including a future exact
-      # `Test` name or non-uppercase suffix. Six groups are split from
-      # within: the complement shard keeps the broader pattern and -skips the
-      # carved-out prefix, so each set is exhaustive by construction. An
-      # empty -skip '' skips nothing (verified on go1.26.5).
+      # the race detector. These matrix entries run concurrently, are disjoint
+      # and cover every valid Test* suffix, including a future exact `Test`
+      # name or non-uppercase suffix. Groups are split from within: the
+      # complement shard keeps the broader pattern and -skips the carved-out
+      # prefixes. deploy/test-go-toolchain-contract.sh (run by the go job)
+      # reads this matrix and fails when a test `go test -list` finds, or a
+      # boundary name, is run by no shard or by two. An empty -skip '' skips
+      # nothing (verified on go1.26.5).
+      #
+      # The -timeout measures the test binary only: the race build before it
+      # (about 70 to 90 s per shard, measured 15 Nov 2026) is not counted, so
+      # a shard's headroom is won by splitting, never by a longer timeout.
       #
       # Balance rule (R-020): the "Race-test panel boundaries" step of every
       # shard stays under half of the 8-minute ceiling as measured on the
@@ -394,10 +447,23 @@ jobs:
       # non-race time) have another.
       # Each split is a measurement, not a guess, and the next run measures
       # it again.
+      # Verbose output goes to a file; the log shows everything but the
+      # passing tests' own lines, so a failure, a race report or a timeout's
+      # goroutine dump reads as before.
       - name: Race-test panel boundaries
-        run: >-
-          go test -race -count=1 -timeout=8m ./cmd/panel
-          -run '${{ matrix.pattern }}' -skip '${{ matrix.skip }}'
+        run: |
+          go test -race -count=1 -timeout=8m ./cmd/panel -v \
+            -run '${{ matrix.pattern }}' -skip '${{ matrix.skip }}' 2>&1 \
+            | tee race.log | { grep -vE '^(=== (RUN|PAUSE|CONT|NAME) |\s*--- (PASS|SKIP): )' || true; }
+      # Every shard says where its time goes, so the next split is measured.
+      - name: Slowest tests of this shard
+        if: always()
+        run: |
+          test -f race.log || exit 0
+          grep -E '^--- (PASS|FAIL|SKIP): ' race.log \
+            | sed -E 's/^--- [A-Z]+: ([^ ]+) \(([0-9.]+)s\)$/\2 \1/' \
+            | sort -rn | head -20
+          grep -cE '^--- (PASS|FAIL|SKIP): ' race.log | sed 's/$/ tests/'
 
   linux-arm64-compile:
     name: Platform portability - Linux arm64 compile only
