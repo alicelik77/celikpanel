@@ -209,6 +209,8 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.row.limit': 'Gönderim sınırı…',
     'mail.row.empty': 'Boşalt…',
     'mail.row.delete': 'Sil…',
+    'mail.row.connection': 'Bağlantı bilgileri…',
+    'mail.row.connectionShow': 'Bağlantı bilgilerini göster',
     'mail.leftHeld': 'Bu adreste önceki bir silmeden kalan posta ({size}) {date} tarihine kadar kenara alındı (Bakım → Silmelerden kalanlar); yeni posta kutusu boş başlıyor.',
     'mail.accountCreated': 'E-posta hesabı oluşturuldu',
     'mail.accountDeleted': 'Hesap silindi',

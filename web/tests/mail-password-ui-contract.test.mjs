@@ -66,10 +66,11 @@ test('mailbox password action and handler both fail closed for read-only access'
     ),
   );
   // alpha.135: the row's actions are words (MailboxActions); a list that only
-  // reads gets the webmail link and nothing else, before any action is built.
+  // reads gets the webmail link and (alpha.139) the read-only connection
+  // settings, before any changing action is built.
   assert.ok(mailSource.includes('onPassword={() => openPasswordDialog(a)}'));
   const actions = mailSource.slice(mailSource.indexOf('function MailboxActions('), mailSource.indexOf('function Tab('));
-  const gate = actions.indexOf('if (readOnly) return open ? <RowActions name={account.address} actions={[open]} /> : null;');
+  const gate = actions.indexOf('if (readOnly) return <RowActions name={account.address} actions={open ? [open, connection] : [connection]} />;');
   assert.ok(gate !== -1 && gate < actions.indexOf("id: 'password'"), 'a read-only list is offered the password action');
   assert.ok(detailSource.includes('readOnly={readOnly}'));
 });

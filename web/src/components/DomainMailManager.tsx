@@ -1,5 +1,5 @@
 import { Fragment, lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser, LifeBuoy, ExternalLink, Send } from 'lucide-react';
+import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser, LifeBuoy, ExternalLink, Send, Server } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { formatDate, formatTime } from '../lib/dateFormat';
@@ -89,6 +89,8 @@ const MailDeliveryLookup = lazy(() => import('./MailDeliveryLookup'));
 const DomainMailOptions = lazy(() => import('./DomainMailOptions'));
 // alpha.130: a mailbox's recovery address (own chunk).
 const MailboxRecoveryDialog = lazy(() => import('./MailboxRecoveryDialog'));
+// alpha.139: one mailbox's connection settings, from the Settings tab's own read (own chunk).
+const MailboxConnectionDialog = lazy(() => import('./MailboxConnectionDialog'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
     const { t, locale } = useI18n();
@@ -122,6 +124,11 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const [autoreplyAccount, setAutoreplyAccount] = useState<EmailAccount | null>(null);
     const [recoveryAccount, setRecoveryAccount] = useState<EmailAccount | null>(null);
     const [limitAccount, setLimitAccount] = useState<EmailAccount | null>(null);
+    // alpha.139: the address whose connection settings window is open. Seeing
+    // the row is enough: the window only reads, nothing secret is in it.
+    // Bağlantı bilgileri penceresi açık olan adres; satırı gören açabilir.
+    const [connectionFor, setConnectionFor] = useState<string | null>(null);
+    useEffect(() => setConnectionFor(null), [domainId]);
     // alpha.135: each row opens webmail with its own address filled in, when
     // webmail works (otherwise the card above the list says why and the row
     // has no such action); the limit's action exists only while the sending
@@ -208,11 +215,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 
     const createAccount = async () => {
         if (readOnly || !user || !pass || !passwordAcceptable(pass, 'mailbox')) return;
+        const address = `${user}@${domainName}`;
         try {
             const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ address: `${user}@${domainName}`, password: pass, quota_mb: quota }),
+                body: JSON.stringify({ address, password: pass, quota_mb: quota }),
             });
             // A coded refusal (the mailbox already exists, a plan limit) keeps
             // its own words and stays above the list with its fix.
@@ -222,9 +230,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             // alpha.135: mail an earlier deletion had left at this address was
             // put aside first; only the administrator is told, in one line.
             const left = data.left_held as { bytes?: number; remove_after?: string } | undefined;
+            // alpha.139: the result offers the new mailbox's connection settings,
+            // the ones its maker usually hands on (one key per mailbox).
             showToast('success', left && typeof left.remove_after === 'string'
                 ? `${t('mail.accountCreated')} ${t('mail.leftHeld', { size: sizeWord(Math.max(left.bytes ?? 0, 0), locale), date: formatDate(left.remove_after, locale) })}`
-                : t('mail.accountCreated'));
+                : t('mail.accountCreated'),
+            { key: `mail-created:${address}`, action: { label: t('mail.row.connectionShow'), run: () => setConnectionFor(address) } });
             setRefusal(null);
             setShowForm(false);
             setUser('');
@@ -737,7 +748,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                 </td>
                                                 <td className="px-4 py-2.5 text-right max-sm:basis-full max-sm:p-0 max-sm:pt-2">
                                                     <MailboxActions account={a} webmail={webmail} readOnly={readOnly} stale={stale} limitsOn={limitsOn}
-                                                        onPassword={() => openPasswordDialog(a)} onRecovery={() => setRecoveryAccount(a)} onAutoreply={() => setAutoreplyAccount(a)}
+                                                        onConnection={() => setConnectionFor(a.address)} onPassword={() => openPasswordDialog(a)} onRecovery={() => setRecoveryAccount(a)} onAutoreply={() => setAutoreplyAccount(a)}
                                                         onLimit={() => setLimitAccount(a)} onEmpty={() => void emptyAccount(a)} onDelete={() => void deleteAccount(a.id, a.address)} />
                                                 </td>
                                             </tr>
@@ -802,6 +813,11 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 </>
             )}
 
+            {connectionFor && (
+                <Suspense fallback={null}>
+                    <MailboxConnectionDialog domainId={domainId} domainName={domainName} address={connectionFor} readOnly={readOnly} onClose={() => setConnectionFor(null)} />
+                </Suspense>
+            )}
             {recoveryAccount && !readOnly && (
                 <Suspense fallback={null}>
                     <MailboxRecoveryDialog
@@ -913,19 +929,23 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 // A mailbox row's actions in words (alpha.135; drawing D7): "Webmail" opens
 // webmail with the mailbox's address filled in, only when webmail works;
 // "Password…" next to it; the rest in the "More" menu, the destructive ones
-// last. A list that only reads keeps "Webmail" and nothing else.
+// last. alpha.139: "Connection settings…" is the menu's first entry; it only
+// reads, so it is never off, and a list that only reads (no "Password…", no
+// menu) shows it beside "Webmail" instead: a menu of one entry hides it.
 // Posta kutusu satırının işlemleri sözcükle: Web posta (çalışıyorsa) ve
-// Parola…; gerisi Diğer menüsünde, silenler en sonda.
-function MailboxActions({ account, webmail, readOnly, stale, limitsOn, onPassword, onRecovery, onAutoreply, onLimit, onEmpty, onDelete }: {
-    account: EmailAccount; webmail: string | null; readOnly: boolean; stale: boolean; limitsOn: boolean;
+// Parola…; gerisi Diğer menüsünde, ilki Bağlantı bilgileri…, silenler en sonda.
+function MailboxActions({ account, webmail, readOnly, stale, limitsOn, onConnection, onPassword, onRecovery, onAutoreply, onLimit, onEmpty, onDelete }: {
+    account: EmailAccount; webmail: string | null; readOnly: boolean; stale: boolean; limitsOn: boolean; onConnection: () => void;
     onPassword: () => void; onRecovery: () => void; onAutoreply: () => void; onLimit: () => void; onEmpty: () => void; onDelete: () => void;
 }) {
     const { t } = useI18n();
     const link = webmailSignInURL(webmail, account.address);
     const open: RowAction | null = link ? { id: 'webmail', label: t('mail.row.webmail'), icon: ExternalLink, href: link } : null;
-    if (readOnly) return open ? <RowActions name={account.address} actions={[open]} /> : null;
+    const connection: RowAction = { id: 'connection', label: t('mail.row.connection'), icon: Server, onSelect: onConnection };
+    if (readOnly) return <RowActions name={account.address} actions={open ? [open, connection] : [connection]} />;
     const password: RowAction = { id: 'password', label: t('mail.row.password'), icon: KeyRound, onSelect: onPassword, disabled: stale };
     const more: RowAction[] = [
+        connection,
         { id: 'recovery', label: t('mail.row.recovery'), icon: LifeBuoy, onSelect: onRecovery, disabled: stale },
         { id: 'autoreply', label: t('mail.row.autoreply'), icon: CalendarClock, onSelect: onAutoreply, disabled: stale },
         ...(limitsOn ? [{ id: 'limit', label: t('mail.row.limit'), icon: Send, onSelect: onLimit, disabled: stale }] : []),

@@ -173,15 +173,15 @@ for (const role of ['admin', 'reseller', 'customer', 'additional_user']) {
       assert.equal(link[0].props.target, '_blank');
       assert.equal(link[0].props.rel, 'noopener noreferrer');
       assert.deepEqual(visible(address), ['webmail', 'password'], address);
-      assert.deepEqual(await menu(address), ['recovery', 'autoreply', 'empty', 'delete'], `${address}: no limit action while limits are off`);
+      assert.deepEqual(await menu(address), ['connection', 'recovery', 'autoreply', 'empty', 'delete'], `${address}: no limit action while limits are off`);
     }
   });
 }
 
-scenario('team member who only reads: the webmail link and nothing else', async () => {
+scenario('team member who only reads: the webmail link and (alpha.139) the connection settings, nothing that changes', async () => {
   serve({ role: 'additional_user' });
   await mount({ readOnly: true });
-  assert.deepEqual(visible('info@example.com'), ['webmail']);
+  assert.deepEqual(visible('info@example.com'), ['webmail', 'connection']);
   assert.equal(attr('data-row-more').length, 0);
 });
 
@@ -262,7 +262,7 @@ for (const role of ['admin', 'reseller', 'customer']) {
     assert.match(words(lines[1]), /mout\.row\.new\{"n":50,"time":/);
     assert.equal(attr('data-outgoing-near').length + attr('data-outgoing-state').length, 0);
     assert.ok(!text().includes('mout.dom.title'), 'the old card is back');
-    assert.deepEqual(await menu('info@example.com'), ['recovery', 'autoreply', 'limit', 'empty', 'delete']);
+    assert.deepEqual(await menu('info@example.com'), ['connection', 'recovery', 'autoreply', 'limit', 'empty', 'delete']);
     // Sending limit… opens the limit's own window.
     await press(attr('data-row-more', 'info@example.com')[0]);
     await press(attr('data-row-menu', 'info@example.com')[0].findAll((node) => node.props['data-row-action'] === 'limit')[0]);

@@ -71,14 +71,17 @@ export function ToastContainer() {
         // A failure or a warning stays until it is closed (owner feedback
         // 2026-10-31): the person has to act on it, and a sentence that is
         // gone after five seconds cannot be read twice or acted on. A
-        // confirmation leaves by itself. At most the four newest stay.
-        // Hata ve uyari kapatilana dek kalir; onay kendiliginden gider.
+        // confirmation leaves by itself, unless it offers a next step (alpha.139:
+        // "Show connection settings" after a mailbox is made): a button gone
+        // after five seconds cannot be pressed. At most the four newest stay.
+        // Hata ve uyari kapatilana dek kalir; onay kendiliginden gider, dugmesi
+        // varsa kalir.
         const listener = (toast: Toast) => {
             const id = toastKey(toast);
             if (onScreen.has(id)) return;
             onScreen.add(id);
             setToasts(prev => [...prev, toast].slice(-toastLimit));
-            if (toastStays(toast.type)) return;
+            if (toastStays(toast.type) || toast.action) return;
             setTimeout(() => removeToast(toast.id), 5000);
         };
         toastListeners.push(listener);
