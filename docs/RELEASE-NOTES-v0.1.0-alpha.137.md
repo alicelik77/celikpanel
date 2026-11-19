@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.137.tr.md)
 
+> **Published** on 2026-11-19 (UTC): release commit `2b0fc4df7`, GitHub pre-release at 13:18:03Z, download portal at about 13:22Z (public check 27/27).
+
 A small release about one thing: an update that meets the server's package
 manager at work. On Ubuntu the first press of the panel's update could stop
 with "the server's package manager was busy" although nothing was really

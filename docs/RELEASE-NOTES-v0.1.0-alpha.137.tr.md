@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.137.md)
 
+> **Yayımlandı**, 19 Kasım 2026 (UTC): sürüm commit'i `2b0fc4df7`, GitHub ön sürümü 13:18:03Z, indirme portalı yaklaşık 13:22Z (dış denetim 27/27).
+
 Tek konulu küçük bir sürüm: sunucunun paket yöneticisi çalışırken yapılan
 güncelleme. Ubuntu'da panel güncellemesinin ilk basışı, hiçbir şey gerçekte
 paket değiştirmezken "sunucunun paket yöneticisi meşguldü" diyerek
