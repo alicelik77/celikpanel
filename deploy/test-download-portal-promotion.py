@@ -269,7 +269,7 @@ class DownloadPortalPromotionTests(unittest.TestCase):
         # The public site's Turkish pages and product screens are site
         # content; a typeface is not, so changing one refuses the update.
         for relative, data in (("tr/fiyat.html", b"old price page\n"),
-                               ("assets/shots/dashboard-tr-dark.webp", b"old screen"),
+                               ("assets/shots/domain-tr-dark-phone.webp", b"old screen"),
                                ("assets/fonts/overpass-latin.woff2", b"font")):
             target = self.fixture.live / relative
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -277,11 +277,11 @@ class DownloadPortalPromotionTests(unittest.TestCase):
         self.fixture.old_live_inode = self.fixture.live.stat().st_ino
         source = self.prepare_site_content_update()
         (source / "tr" / "fiyat.html").write_bytes(b"new price page\n")
-        (source / "assets" / "shots" / "dashboard-tr-dark.webp").write_bytes(b"new screen")
+        (source / "assets" / "shots" / "domain-tr-dark-phone.webp").write_bytes(b"new screen")
         result = self.run_site_content_update(source)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.fixture.live / "tr" / "fiyat.html").read_bytes(), b"new price page\n")
-        self.assertEqual((self.fixture.live / "assets" / "shots" / "dashboard-tr-dark.webp").read_bytes(), b"new screen")
+        self.assertEqual((self.fixture.live / "assets" / "shots" / "domain-tr-dark-phone.webp").read_bytes(), b"new screen")
 
         source = self.fixture.base / "site-content-font" / "portal"
         shutil.copytree(self.fixture.live, source)

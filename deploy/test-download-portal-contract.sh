@@ -114,7 +114,8 @@ for page in index.html pricing.html download.html systems.html releases.html; do
 done
 grep -Fq 'href="../guide/tr/"' "$tmp/site/tr/index.html" || fail "Turkish home does not link to the Turkish guide"
 for asset in public.css public.js boot.js site.css guide.css favicon-v2.svg \
-  shots/dashboard-en-light.webp shots/dashboard-en-dark.webp shots/dashboard-tr-light.webp shots/dashboard-tr-dark.webp \
+  fonts/inter-latin.woff2 fonts/inter-latin-ext.woff2 fonts/jetbrains-mono-latin.woff2 fonts/OFL-Inter.txt LICENSE-Lucide.txt \
+  shots/domains-en-light-2x.webp shots/domain-en-dark-phone.webp shots/domain-tr-light.webp shots/databases-tr-dark-2x.webp \
   shots/domains-en-light.webp shots/domains-tr-dark.webp shots/databases-en-light.webp shots/databases-tr-dark.webp; do
   [[ -s "$tmp/site/assets/$asset" ]] || fail "required asset was not shipped: $asset"
   cmp -s -- "$repo_root/download-portal/assets/$asset" "$tmp/site/assets/$asset" \

@@ -64,7 +64,7 @@ SITE_CONTENT_FILES = frozenset({
     "assets/public.css", "assets/public.js", "assets/boot.js", "assets/site.css",
     "account/index.php",
 })
-SITE_CONTENT_SCREENS = re.compile(r"^assets/shots/[a-z]+-(en|tr)-(light|dark)\.webp$")
+SITE_CONTENT_SCREENS = re.compile(r"^assets/shots/[a-z]+-(en|tr)-(light|dark)(-2x|-phone)?\.webp$")
 TRANSACTION_SIGNALS = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
 
 

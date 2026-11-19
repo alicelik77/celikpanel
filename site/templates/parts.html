@@ -1,45 +1,31 @@
-{{define "sprite" -}}
-<svg class="sprite" aria-hidden="true" focusable="false">
-<symbol id="i-logo" viewBox="0 0 32 32"><path fill="currentColor" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></symbol>
-<symbol id="i-arrow" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5 22.5 12.2h-6.6V22.5H8.1V12.2H1.5Z"/></symbol>
-<symbol id="i-uturn" viewBox="0 0 24 24"><path fill="currentColor" d="M9.5 2.5 2 9.25 9.5 16v-4.5h6a3.25 3.25 0 0 1 0 6.5H12v4h3.5a7.25 7.25 0 0 0 0-14.5h-6Z"/></symbol>
-<symbol id="i-copy" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M8 8h12v12H8z M16 8V4H4v12h4"/></symbol>
-<symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.5 4.8 4.8L19.5 7"/></symbol>
-<symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g></symbol>
-<symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 14.6A8.5 8.5 0 0 1 9.4 4a8.5 8.5 0 1 0 10.6 10.6Z"/></symbol>
-<symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" d="M12 2.5 20 5.5v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6Z M8.5 12l2.5 2.5 4.5-5"/></symbol>
-<symbol id="i-out" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></symbol>
-</svg>
-{{- end}}
-
 {{define "navlinks" -}}
 <a href="{{link "pricing"}}"{{if current "pricing"}} aria-current="page"{{end}}>{{t "nav.pricing"}}</a>
 <a href="{{link "download"}}"{{if current "download"}} aria-current="page"{{end}}>{{t "nav.download"}}</a>
 <a href="{{link "systems"}}"{{if current "systems"}} aria-current="page"{{end}}>{{t "nav.systems"}}</a>
-<a href="{{link "releases"}}"{{if current "releases"}} aria-current="page"{{end}}>{{t "nav.releases"}}</a>
 <a href="{{guide ""}}">{{t "nav.guide"}}</a>
 {{- end}}
 
 {{define "masthead" -}}
 <header class="masthead">
 <div class="wrap bar">
-<a class="brand" href="{{link "home"}}"{{if current "home"}} aria-current="page"{{end}}>{{icon "logo"}}<span>Celik<b>Panel</b></span><span class="sr-only"> {{t "nav.home"}}</span></a>
+<a class="brand" href="{{link "home"}}"{{if current "home"}} aria-current="page"{{end}}>{{icon "logo"}}<span>CelikPanel</span><span class="sr-only"> {{t "nav.home"}}</span></a>
 <nav class="primary" aria-label="{{t "nav.label"}}">
 {{template "navlinks" .}}
 </nav>
 <div class="tools">
-<div class="lang" role="group" aria-label="{{t "nav.language"}}">
-{{- range langs}}{{if eq . $.Lang}}<span lang="{{.}}" aria-current="true">{{if eq . "en"}}EN{{else}}TR{{end}}</span>{{else}}<a href="{{in .}}" hreflang="{{.}}" lang="{{.}}" data-set-lang="{{.}}" aria-label="{{if eq . "en"}}English{{else}}Türkçe{{end}}">{{if eq . "en"}}EN{{else}}TR{{end}}</a>{{end}}{{end -}}
-</div>
-<button class="theme" type="button" hidden data-theme-toggle data-label-dark="{{t "nav.theme.dark"}}" data-label-light="{{t "nav.theme.light"}}" aria-label="{{t "nav.theme.dark"}}">{{icon "moon"}}{{icon "sun"}}</button>
+{{- range langs}}{{if ne . $.Lang}}
+<a class="tool lang" href="{{in .}}" hreflang="{{.}}" lang="{{.}}" data-set-lang="{{.}}" aria-label="{{if eq . "en"}}English{{else}}Türkçe{{end}}">{{icon "globe"}}<span>{{if eq . "en"}}EN{{else}}TR{{end}}</span></a>
+{{- end}}{{end}}
+<button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="{{t "nav.theme.dark"}}" data-label-light="{{t "nav.theme.light"}}" aria-label="{{t "nav.theme.dark"}}">{{icon "moon"}}{{icon "sun"}}</button>
 <a class="signin" href="{{account "login"}}">{{t "nav.signin"}}</a>
-<a class="btn btn-sign btn-sm register" href="{{account "register"}}">{{t "nav.register"}}</a>
+<a class="btn btn-primary btn-sm register" href="{{account "register"}}">{{t "nav.register"}}</a>
 <details class="menu">
-<summary><span class="bars" aria-hidden="true"></span><span class="menu-word">{{t "nav.menu"}}</span></summary>
-<nav aria-label="{{t "nav.label"}}">
+<summary aria-label="{{t "nav.menu"}}">{{icon "menu"}}{{icon "x"}}</summary>
+<nav class="sheet" aria-label="{{t "nav.label"}}">
 {{template "navlinks" .}}
+<a href="{{link "releases"}}">{{t "nav.releases"}}</a>
 <a href="{{account "login"}}">{{t "nav.signin"}}</a>
-<a href="{{account "register"}}">{{t "nav.register"}}</a>
+<a class="btn btn-primary" href="{{account "register"}}">{{t "nav.register"}}</a>
 </nav>
 </details>
 </div>
@@ -47,50 +33,30 @@
 </header>
 {{- end}}
 
-{{define "alpha" -}}
-<div class="sign sign-temp alpha">
-<strong>{{dots (t "common.alpha.tag")}}</strong>
-<p>{{t "common.alpha.text"}}</p>
-</div>
+{{define "pill" -}}
+<p class="pill"><span class="live" aria-hidden="true"></span>{{dots (t "common.alpha.tag")}}</p>
 {{- end}}
 
-{{define "screen" -}}
-{{$s := shot .Name}}
-<figure class="screen{{if .Class}} {{.Class}}{{end}}">
-<div class="screen-bar" aria-hidden="true"><i></i><i></i><i></i><span>https://panel.example.com:1923{{.Address}}</span></div>
-<picture>
-<source media="(prefers-color-scheme: dark)" srcset="{{$s.Dark}}" data-theme-dark>
-<img src="{{$s.Light}}" data-theme-light="{{$s.Light}}" data-theme-darksrc="{{$s.Dark}}" width="{{$s.Width}}" height="{{$s.Height}}" alt="{{.Alt}}"{{if .Lazy}} loading="lazy"{{else}} fetchpriority="high"{{end}} decoding="async">
-</picture>
-{{- if .Caption}}
-<figcaption>{{.Caption}}</figcaption>
-{{- end}}
-</figure>
+{{define "alpha" -}}
+<p class="note">{{template "pill" .}} <span>{{t "common.alpha.text"}}</span></p>
 {{- end}}
 
 {{define "command" -}}
-<div class="cmd">
-<div class="cmd-head"><h3 id="cmd-title-{{.ID}}">{{t "install.command.title"}}</h3><button class="copy" type="button" hidden data-copy="cmd-{{.ID}}" data-copied="{{t "install.command.copied"}}" data-failed="{{t "install.command.failed"}}">{{icon "copy"}}<span>{{t "install.command.copy"}}</span></button></div>
+<div class="terminal">
+<div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="cmd-title-{{.ID}}">{{t "install.command.title"}}</h3><button class="copy" type="button" hidden data-copy="cmd-{{.ID}}" data-copied="{{t "install.command.copied"}}" data-failed="{{t "install.command.failed"}}">{{icon "copy"}}<span>{{t "install.command.copy"}}</span></button></div>
 <pre tabindex="0" aria-labelledby="cmd-title-{{.ID}}"><code id="cmd-{{.ID}}">timedatectl set-ntp true
 curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
 sh celikpanel-install.sh</code></pre>
-<p class="cmd-foot">{{t "install.command.note"}}</p>
+<p class="terminal-foot">{{t "install.command.note"}}</p>
 <p class="sr-only" role="status" data-copy-status></p>
 </div>
 {{- end}}
 
-{{define "systems-line" -}}
-<div class="systems-line">
-<div class="sys"><span class="label">{{t "install.systems.tested"}}</span><span class="chip tested">Debian 13</span><span class="chip tested">Ubuntu 24.04 LTS</span></div>
-<div class="sys"><span class="label">{{t "install.systems.supported"}}</span><span class="chip">Debian 12</span><span class="chip">Ubuntu 22.04 LTS</span><span class="chip">Arch Linux</span></div>
-</div>
-{{- end}}
-
 {{define "footer" -}}
-<footer class="gantry site-footer">
+<footer class="site-footer">
 <div class="wrap">
 <div class="footer-grid">
-<div class="footer-brand"><a class="brand" href="{{link "home"}}">{{icon "logo"}}<span>Celik<b>Panel</b></span></a><p>{{t "footer.tagline"}}</p></div>
+<div class="footer-brand"><a class="brand" href="{{link "home"}}">{{icon "logo"}}<span>CelikPanel</span></a><p>{{t "footer.tagline"}}</p></div>
 <nav aria-labelledby="f-product"><h2 id="f-product">{{t "footer.product"}}</h2><ul>
 <li><a href="{{link "pricing"}}">{{t "nav.pricing"}}</a></li>
 <li><a href="{{link "download"}}">{{t "footer.download"}}</a></li>
@@ -127,15 +93,5 @@ sh celikpanel-install.sh</code></pre>
 <tr><th scope="row">Arch Linux <span class="code-name">{{t "systems.rolling"}}</span></th><td data-label="{{t "systems.table.status"}}"><span class="state">{{t "systems.supported"}}</span></td><td data-label="{{t "systems.table.until"}}">{{t "systems.arch.until"}}</td><td data-label="{{t "systems.table.updates"}}">{{t "systems.arch.how"}}</td></tr>
 </tbody>
 </table>
-</div>
-{{- end}}
-
-{{define "distance-sign" -}}
-<div class="sign distance-sign">
-<p class="sign-head">{{t "lapse.head"}}</p>
-<div class="dist-row"><p class="what">{{t "lapse.remind"}}<small>{{t "lapse.remind.note"}}</small></p><p class="how temp">{{dots (t "lapse.remind.how")}}</p></div>
-<div class="dist-row"><p class="what">{{t "lapse.grace"}}<small>{{t "lapse.grace.note"}}</small></p><p class="how">{{t "lapse.grace.how"}}</p></div>
-<div class="dist-row"><p class="what">{{t "lapse.protect"}}<small>{{t "lapse.protect.note"}}</small></p><p class="how">{{t "lapse.protect.how"}}</p></div>
-<div class="dist-row"><p class="what">{{t "lapse.always"}}<small>{{t "lapse.always.note"}}</small></p><p class="how go">{{t "lapse.always.how"}}</p></div>
 </div>
 {{- end}}

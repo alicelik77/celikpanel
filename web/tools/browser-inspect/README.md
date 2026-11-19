@@ -775,15 +775,18 @@ batch 30.
 
 ## Scenarios of the thirty-seventh batch (the public website's screens, 2026-11-19)
 
-`sitescreens` takes the three product screens the public website shows
-(`site/`, published under `download-portal/assets/shots/`): the Dashboard,
-Domains and Databases of batch 20's sample "everything installed" server, with
-six example domains, five example databases of example owners, nothing waiting
-in operating-system updates and the version of the build being photographed.
-Each is one desktop viewport (1440×900), written beside the PNG record as WebP
-(quality 82) into `BROWSER_INSPECT_SITE` (default `<out>/site`) as
-`product-<page>-<locale>-<theme>.webp`. Every name, address and number is
-sample data (example.com, example.net, example.org, 192.0.2.10). To retake
-them for the site, run it for `en`/`tr` × `light`/`dark`, rename each file to
-`<page>-<locale>-<theme>.webp` in `download-portal/assets/shots/`, look at
-every one, and run `go test ./site`.
+`sitescreens` takes the product screens the public website shows (`site/`,
+published under `download-portal/assets/shots/`): Domains, one domain's
+Overview and Databases (and the Dashboard) of batch 20's sample "everything
+installed" server, with six example domains, five example databases of
+example owners, a connected domain with a valid certificate, complete mail
+authentication and today's backup, and the version of the build being
+photographed. A desktop run takes them at 1280×800 CSS pixels at twice the
+density; a phone run at 390×844, also at twice the density. They are written
+beside the PNG record as WebP into `BROWSER_INSPECT_SITE` (default
+`<out>/site`) as `product-<page>-<locale>-<theme>.webp`. Every name, address
+and number is sample data (example.com, example.net, example.org,
+192.0.2.10). For the site each desktop shot becomes
+`<page>-<locale>-<theme>-2x.webp` (2560×1600) and a half-size
+`<page>-<locale>-<theme>.webp`, each phone shot `<page>-<locale>-<theme>-phone.webp`;
+look at every one, then run `go test ./site`.

@@ -47,13 +47,35 @@ const DATABASES = {
     may_create: true,
 };
 const OS_UPDATES = { state: 'ready', checked_at: day(0), package_family: 'apt', pending: { state: 'known', total: 0, security: 0, lists_at: day(0) }, automatic: { state: 'on', tool: 'unattended-upgrades' } };
+// One domain's overview: delegated here, a valid certificate, mail
+// authentication complete, a recent backup, disk within its limit.
+const CONNECTION = { domain: 'example.com', server_ip: '192.0.2.10', nameservers: ['ns1.example.net', 'ns2.example.net'], live_nameservers: ['ns1.example.net', 'ns2.example.net'], live_ips: ['192.0.2.10'], status: 'delegated', ssl_ready: true, glue_needed: false, nameservers_usable: true, propagation_pending: false, checked_at: day(0), dns_management_mode: 'local' };
+const CERTIFICATE = {
+    domain_id: 1, domain_name: 'example.com', has_certificate: true, managed_names: ['example.com', 'www.example.com'],
+    settings: { force_https: true, hsts_enabled: false, hsts_max_age: 300 },
+    certificate: {
+        id: 4, type: 'letsencrypt', provider_id: 'letsencrypt', issuer: 'R11', subject: 'example.com', issued_at: day(12), expires_at: day(-78),
+        days_until_expiry: 78, auto_renew: true, renewal_status: 'ok', status: 'active', dns_names: ['example.com', 'www.example.com'],
+        activated: true, usable: true, trust_status: 'trusted', activation_pending: false, dependents_pending: false,
+    },
+};
+const HEALTH = { contact: 'administrator', checks: [
+    { id: 'certificate', state: 'ok', code: 'valid', days: 78, at: day(0) },
+    { id: 'mail', state: 'ok', code: 'complete', at: day(0) },
+    { id: 'backup', state: 'ok', code: 'recent', at: day(1) },
+    { id: 'disk', state: 'ok', code: 'no_limit', used_bytes: 1843 * MB, at: day(0) },
+] };
 const VERSION = { version: 'v0.1.0-alpha.137', commit: '2b0fc4d', agent_commit: '2b0fc4d', agent_matches: true, hostname: 'server1', ipv4: '192.0.2.10' };
 
 export default function batch37(scenarios, { base, locale, theme, out, viewport, ctl, reset, newPage, closePage, shot, waitFor, pause, quiet }) {
     const site = resolve(process.env.BROWSER_INSPECT_SITE || join(out, 'site'));
     const clean = () => ctl({ clearAll: true, b19: null, b20: null, b12: null, b16: null, managedScan: null, componentOperation: null, domains: [], infrastructureZones: [] });
+    // The site shows the screens crisp: desktop at 1280×800 CSS pixels and
+    // twice the density; the phone run keeps its own 390×844 at 2×.
+    const sharp = viewport.width > 600 ? { width: 1280, height: 800, deviceScaleFactor: 2 } : viewport;
     const open = async (path) => {
         const page = await newPage();
+        await page.setViewport(sharp);
         await page.goto(`${base}${path}`, { waitUntil: 'domcontentloaded' });
         await page.waitForSelector('main', { timeout: 20000 });
         await quiet(page); await pause(1200);
@@ -75,11 +97,16 @@ export default function batch37(scenarios, { base, locale, theme, out, viewport,
                 '/api/v1/security/os-updates/summary': { status: 200, body: OS_UPDATES },
                 '/api/v1/databases/visible': { status: 200, body: DATABASES },
                 '/api/v1/panel/version': { status: 200, body: VERSION },
+                '/api/v1/domains/1/usage': { status: 200, body: { disk_usage: 1843 * MB, bandwidth: 412 * MB, traffic_state: 'measured' } },
+                '/api/v1/domains/1/health': { status: 200, body: HEALTH },
             },
+            connection: CONNECTION,
+            ssl: CERTIFICATE,
         });
         for (const [name, path, ready] of [
             ['dashboard', '/', () => !!document.querySelector('main h1')],
             ['domains', '/domains', () => /example\.com/.test(document.querySelector('main')?.innerText || '')],
+            ['domain', '/domains/example.com', () => /example\.com/.test(document.querySelector('main')?.innerText || '')],
             ['databases', '/databases', () => /shop_main/.test(document.querySelector('main')?.innerText || '')],
         ]) {
             const page = await open(path);

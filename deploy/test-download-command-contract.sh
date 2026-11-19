@@ -21,7 +21,7 @@ for name, words in (("index.html", "root terminal"), ("download.html", "root ter
     assert text.count(f'data-copy="{ident}"') == 1, name
     assert 'exact-command' not in text and 'command-disclosure' not in text, name
     assert words in text, name
-    commands.add(html.unescape(body))
+    commands.add(html.unescape(re.sub(r'<[^>]+>', '', body)))
 assert len(commands) == 1, "pages show different install commands"
 print(commands.pop())
 PY

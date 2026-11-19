@@ -463,14 +463,14 @@ membership_release=$(python3 "$repo_root/deploy/build-membership.py" --identity-
 [[ "$membership_release" =~ ^[a-f0-9]{64}$ ]] || fail "invalid membership application identity"
 sed -i "s/@MEMBERSHIP_RELEASE@/$membership_release/g" "$output/account/index.php"
 # site.css stays for the guide and the account pages; the product screens
-# are the ones the site's pages show (assets/shots/<screen>-<lang>-<theme>).
+# are the ones the site's pages show (assets/shots/<screen>-<lang>-<theme>[-2x|-phone]).
 required_assets="public.css public.js boot.js site.css guide.css favicon-v2.svg
   fonts/overpass-latin.woff2 fonts/overpass-latin-ext.woff2
   fonts/overpass-mono-latin.woff2 fonts/overpass-mono-latin-ext.woff2"
-for screen in dashboard domains databases; do
+for screen in domains domain databases; do
   for language in en tr; do
     for theme in light dark; do
-      required_assets="$required_assets shots/$screen-$language-$theme.webp"
+      required_assets="$required_assets shots/$screen-$language-$theme.webp shots/$screen-$language-$theme-2x.webp shots/$screen-$language-$theme-phone.webp"
     done
   done
 done

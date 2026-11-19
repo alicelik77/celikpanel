@@ -53,11 +53,17 @@ var assetFiles = []string{"public.css", "public.js", "boot.js"}
 
 // Product screens: assets/shots/<name>-<lang>-<theme>.webp, taken from the
 // current panel build with sample data (web/tools/browser-inspect, batch 37).
+// Each screen exists per language and theme as <name>-<lang>-<theme>.webp
+// (1280x800), -2x.webp (2560x1600) and -phone.webp (780x1688, a 390-wide
+// phone at twice the density).
 var shots = map[string][2]int{
-	"dashboard": {1440, 900},
-	"domains":   {1440, 900},
-	"databases": {1440, 900},
+	"domains":   {1280, 800},
+	"domain":    {1280, 800},
+	"databases": {1280, 800},
 }
+
+// The phone screens' size in pixels.
+var phoneShot = [2]int{780, 1688}
 
 const manifestName = "site.sha256"
 
@@ -216,10 +222,13 @@ func (r *renderer) funcs(v view) template.FuncMap {
 				return nil, fmt.Errorf("no product screen %q", name)
 			}
 			prefix := v.root() + "assets/shots/" + name + "-" + v.Lang
-			return map[string]any{
-				"Light": prefix + "-light.webp", "Dark": prefix + "-dark.webp",
-				"Width": size[0], "Height": size[1],
-			}, nil
+			result := map[string]any{"Width": size[0], "Height": size[1]}
+			for _, theme := range []string{"light", "dark"} {
+				result[theme] = map[string]string{
+					"One": prefix + "-" + theme + ".webp", "Two": prefix + "-" + theme + "-2x.webp", "Phone": prefix + "-" + theme + "-phone.webp",
+				}
+			}
+			return result, nil
 		},
 		"icon": func(name string) template.HTML {
 			return template.HTML(`<svg class="i i-` + name + `" aria-hidden="true" focusable="false"><use href="#i-` + name + `"></use></svg>`)
@@ -271,7 +280,7 @@ func (r *renderer) funcs(v view) template.FuncMap {
 }
 
 func (r *renderer) base() (*template.Template, error) {
-	return template.New("site").Funcs(r.funcs(view{})).ParseFS(sources, "templates/layout.html", "templates/parts.html")
+	return template.New("site").Funcs(r.funcs(view{})).ParseFS(sources, "templates/layout.html", "templates/parts.html", "templates/icons.html")
 }
 
 func (r *renderer) page(key, lang, out string) ([]byte, error) {

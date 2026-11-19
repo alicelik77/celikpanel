@@ -113,7 +113,7 @@ func TestCataloguesMatchAndAreUsed(t *testing.T) {
 }
 
 var (
-	reference = regexp.MustCompile(`(?:href|src|srcset)="([^"]*)"`)
+	reference = regexp.MustCompile(`(href|src|srcset)="([^"]*)"`)
 	idAttr    = regexp.MustCompile(` id="([^"]+)"`)
 	tagToken  = regexp.MustCompile(`<(/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[a-zA-Z_:][-a-zA-Z0-9_:.]*(?:="[^"]*")?)*)\s*(/?)>`)
 )
@@ -121,7 +121,7 @@ var (
 var voidElements = map[string]bool{"area": true, "base": true, "br": true, "col": true, "embed": true, "hr": true, "img": true, "input": true, "link": true, "meta": true, "source": true, "track": true, "wbr": true}
 
 // The SVG elements the sprite writes self-closed.
-var selfClosing = map[string]bool{"path": true, "circle": true}
+var selfClosing = map[string]bool{"path": true, "circle": true, "line": true, "polyline": true, "polygon": true, "rect": true, "ellipse": true}
 
 // Structure: every element closes in order, attributes are quoted, ids are
 // unique, every image has a text alternative and its size, and the document
@@ -205,7 +205,7 @@ func TestPagesKeepToTheContentSecurityPolicy(t *testing.T) {
 				t.Errorf("%s: script without src: %s", name, script)
 			}
 		}
-		for _, ref := range reference.FindAllStringSubmatch(page, -1) {
+		for _, ref := range references(page) {
 			target, err := url.Parse(ref[1])
 			if err != nil {
 				t.Errorf("%s: unparsable address %q", name, ref[1])
@@ -248,7 +248,7 @@ func TestLinksResolve(t *testing.T) {
 	}
 	for _, name := range pageNames(files) {
 		page := string(files[name])
-		for _, ref := range reference.FindAllStringSubmatch(page, -1) {
+		for _, ref := range references(page) {
 			raw := ref[1]
 			if strings.Contains(raw, "@@CP_") {
 				if !strings.HasPrefix(raw, "/releases/") && !strings.HasPrefix(raw, "@@CP_") && !strings.HasPrefix(raw, "https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-") {
@@ -351,18 +351,20 @@ func TestRequiredFilesArePresent(t *testing.T) {
 	for name, size := range shots {
 		for _, lang := range languages {
 			for _, theme := range []string{"light", "dark"} {
-				file := filepath.Join(portal, "assets", "shots", fmt.Sprintf("%s-%s-%s.webp", name, lang, theme))
-				raw, err := os.ReadFile(file)
-				if err != nil {
-					t.Errorf("product screen missing: %v", err)
-					continue
-				}
-				width, height, err := webpSize(raw)
-				if err != nil || width != size[0] || height != size[1] {
-					t.Errorf("%s: %dx%d (%v), the pages declare %dx%d", file, width, height, err, size[0], size[1])
-				}
-				if len(raw) > 120*1024 {
-					t.Errorf("%s weighs %d bytes; keep a screen under 120 KiB", file, len(raw))
+				for suffix, want := range map[string][2]int{"": size, "-2x": {size[0] * 2, size[1] * 2}, "-phone": phoneShot} {
+					file := filepath.Join(portal, "assets", "shots", fmt.Sprintf("%s-%s-%s%s.webp", name, lang, theme, suffix))
+					raw, err := os.ReadFile(file)
+					if err != nil {
+						t.Errorf("product screen missing: %v", err)
+						continue
+					}
+					width, height, err := webpSize(raw)
+					if err != nil || width != want[0] || height != want[1] {
+						t.Errorf("%s: %dx%d (%v), the pages declare %dx%d", file, width, height, err, want[0], want[1])
+					}
+					if len(raw) > 120*1024 {
+						t.Errorf("%s weighs %d bytes; keep a screen under 120 KiB", file, len(raw))
+					}
 				}
 			}
 		}
@@ -410,4 +412,23 @@ func webpSize(raw []byte) (int, int, error) {
 		return width + 1, height + 1, nil
 	}
 	return 0, 0, fmt.Errorf("unknown WebP chunk %q", raw[12:16])
+}
+
+// references lists every address a page names, as [attribute value, address]
+// pairs; each candidate of a srcset is its own address.
+func references(page string) [][]string {
+	var result [][]string
+	for _, match := range reference.FindAllStringSubmatch(page, -1) {
+		if match[1] != "srcset" {
+			result = append(result, []string{match[2], match[2]})
+			continue
+		}
+		for _, candidate := range strings.Split(match[2], ",") {
+			fields := strings.Fields(candidate)
+			if len(fields) > 0 {
+				result = append(result, []string{fields[0], fields[0]})
+			}
+		}
+	}
+	return result
 }

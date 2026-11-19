@@ -73,7 +73,7 @@ def build_site(root: Path) -> tuple[int, set[str], int]:
         "524946461e000000574542505650384c110000002f0000000007508c3a94a4ff8188e87f0000"
     )
     for language in ("tr", "en"):
-        root_files[f"assets/shots/dashboard-{language}-light.webp"] = webp
+        root_files[f"assets/shots/domains-{language}-light.webp"] = webp
     for relative, data in root_files.items():
         write_bytes(root, relative, data)
 
@@ -331,8 +331,8 @@ class PublicPortalVerifierTests(unittest.TestCase):
         self.assertEqual(summary["request_limit"], VERIFIER.HARD_REQUEST_LIMIT)
         expected_visual_paths = {"/" + relative for relative in ("index.html", "tr/index.html", "download.html", "tr/indir.html", "systems.html",
              "technical.html", "assets/public.css", "assets/boot.js", "assets/site.css",
-             "assets/favicon-v2.svg", "assets/shots/dashboard-en-light.webp",
-             "assets/shots/dashboard-tr-light.webp")}
+             "assets/favicon-v2.svg", "assets/shots/domains-en-light.webp",
+             "assets/shots/domains-tr-light.webp")}
         self.assertTrue(expected_visual_paths.issubset(self.server.request_paths))
         self.assertEqual(len(set(self.server.request_paths)), 24)
         self.assertEqual(summary["requests"], len(self.server.request_paths))
@@ -363,8 +363,8 @@ class PublicPortalVerifierTests(unittest.TestCase):
     def test_visual_asset_tampering_fails_before_archive(self):
         for relative in ("index.html", "tr/index.html", "download.html", "tr/indir.html", "systems.html",
              "technical.html", "assets/public.css", "assets/boot.js", "assets/site.css",
-             "assets/favicon-v2.svg", "assets/shots/dashboard-en-light.webp",
-             "assets/shots/dashboard-tr-light.webp"):
+             "assets/favicon-v2.svg", "assets/shots/domains-en-light.webp",
+             "assets/shots/domains-tr-light.webp"):
             with self.subTest(relative=relative):
                 self.server.request_paths.clear()
                 self.server.tamper_path = "/" + relative
@@ -373,7 +373,7 @@ class PublicPortalVerifierTests(unittest.TestCase):
                 self.assertNotIn(ARCHIVE_PUBLIC_PATH, self.server.request_paths)
 
     def test_missing_screenshot_fails_before_network(self):
-        target = self.site / "assets/shots/dashboard-tr-light.webp"
+        target = self.site / "assets/shots/domains-tr-light.webp"
         original = target.read_bytes()
         try:
             target.unlink()
@@ -384,7 +384,7 @@ class PublicPortalVerifierTests(unittest.TestCase):
             target.write_bytes(original)
 
     def test_static_budget_overrun_fails_before_network(self):
-        target = self.site / "assets/shots/dashboard-en-light.webp"
+        target = self.site / "assets/shots/domains-en-light.webp"
         original = target.read_bytes()
         try:
             target.write_bytes(b"x" * VERIFIER.SMALL_RESPONSE_BUDGET)

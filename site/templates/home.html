@@ -1,173 +1,171 @@
+{{define "picture" -}}
+{{$s := shot .Name}}
+{{- range $theme := (list "light" "dark")}}{{$f := index $s $theme}}
+<picture class="v-{{$theme}}">
+<source media="(max-width: 640px)" srcset="{{$f.Phone}}" width="780" height="1688">
+<img src="{{$f.One}}" srcset="{{$f.One}} 1280w, {{$f.Two}} 2560w" sizes="(max-width: 1240px) 94vw, 1180px" width="{{$s.Width}}" height="{{$s.Height}}" alt="{{$.Alt}}" loading="lazy" decoding="async">
+</picture>
+{{- end}}
+{{- end}}
+
 {{define "hero" -}}
 <section class="hero" aria-labelledby="hero-title">
-<div class="wrap hero-grid">
-<div class="hero-copy">
-<h1 class="display" id="hero-title">{{t "home.hero.title"}}</h1>
+<div class="hero-glow" aria-hidden="true"></div>
+<div class="wrap hero-copy">
+{{template "pill" .}}
+<h1 id="hero-title">{{t "home.hero.title"}} <span class="soft">{{t "home.hero.title.soft"}}</span></h1>
 <p class="lede">{{t "home.hero.lede"}}</p>
 <div class="actions">
-<a class="btn btn-sign" href="{{link "download"}}">{{t "home.hero.install"}}{{icon "arrow"}}</a>
-<a class="btn btn-line" href="{{link "pricing"}}">{{t "home.hero.price"}}</a>
+<a class="btn btn-primary btn-lg" href="{{link "download"}}">{{t "home.hero.install"}}{{icon "arrow-right"}}</a>
+<a class="btn btn-ghost btn-lg" href="{{link "pricing"}}">{{t "home.hero.price"}}</a>
 </div>
-{{template "alpha" .}}
+<div class="chip" title="{{t "home.hero.cmd.where"}}">
+<span class="prompt" aria-hidden="true">$</span>
+<code id="cmd-home"><span class="c-skip">timedatectl set-ntp true
+</span>curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;<span class="c-skip">
+sh celikpanel-install.sh</span></code>
+<button class="copy" type="button" hidden data-copy="cmd-home" data-copied="{{t "install.command.copied"}}" data-failed="{{t "install.command.failed"}}" aria-label="{{t "home.hero.cmd.copy"}}">{{icon "copy"}}<span class="sr-only">{{t "install.command.copy"}}</span></button>
+<p class="sr-only" role="status" data-copy-status></p>
 </div>
-<div class="gantry-sign">
-<div class="sign keeps-sign">
-<h2>{{t "home.keeps.title"}}</h2>
-<ul class="keeps">
-<li>{{icon "arrow"}}<span>{{t "home.keeps.sites"}}</span></li>
-<li>{{icon "arrow"}}<span>{{t "home.keeps.mail"}}</span></li>
-<li>{{icon "arrow"}}<span>{{t "home.keeps.dns"}}<small>{{t "home.keeps.dns.note"}}</small></span></li>
-<li>{{icon "arrow"}}<span>{{t "home.keeps.databases"}}</span></li>
-<li>{{icon "arrow"}}<span>{{t "home.keeps.jobs"}}</span></li>
-<li>{{icon "arrow"}}<span>{{t "home.keeps.certs"}}</span></li>
-</ul>
+<p class="chip-note"><a href="{{link "download"}}">{{t "home.hero.cmd.where"}}{{icon "arrow-right"}}</a></p>
 </div>
-<div class="posts" aria-hidden="true"><span></span><span></span></div>
+<div class="product">
+<input class="sr-only" type="radio" name="screen" id="screen-domains" checked>
+<input class="sr-only" type="radio" name="screen" id="screen-domain">
+<input class="sr-only" type="radio" name="screen" id="screen-databases">
+<div class="tabs" aria-hidden="true">
+<label for="screen-domains">{{icon "globe"}}{{t "home.screen.domains"}}</label>
+<label for="screen-domain">{{icon "layout-dashboard"}}{{t "home.screen.domain"}}</label>
+<label for="screen-databases">{{icon "database"}}{{t "home.screen.databases"}}</label>
 </div>
+<div class="stage">
+<figure class="frame">
+<div class="frame-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="address">{{icon "lock"}}panel.example.com:1923</span></div>
+<div class="screens">
+<div class="screen s-domains">{{template "picture" (dict "Name" "domains" "Alt" (t "home.screen.domains.alt"))}}</div>
+<div class="screen s-domain">{{template "picture" (dict "Name" "domain" "Alt" (t "home.screen.domain.alt"))}}</div>
+<div class="screen s-databases">{{template "picture" (dict "Name" "databases" "Alt" (t "home.screen.databases.alt"))}}</div>
+</div>
+<figcaption class="sr-only">{{t "home.screen.caption"}}</figcaption>
+</figure>
+</div>
+<p class="wrap screen-note">{{t "home.screen.caption"}}</p>
 </div>
 </section>
 {{- end}}
 
 {{define "main" -}}
-<div class="wrap proof">
-{{template "screen" (dict "Name" "dashboard" "Alt" (t "home.proof.alt") "Address" "")}}
-<p class="proof-caption"><span>{{t "home.proof.caption"}}</span><a class="link-arrow" href="{{guide ""}}">{{t "home.proof.guide"}}{{icon "arrow"}}</a></p>
+<section class="block independent" aria-labelledby="free-title">
+<div class="wrap split">
+<div class="block-head">
+<p class="eyebrow">{{t "home.free.eyebrow"}}</p>
+<h2 id="free-title">{{t "home.free.title"}}</h2>
+<p class="lede">{{t "home.free.lede"}}</p>
+<p class="fine">{{t "home.free.fine"}} <a href="{{guide "without-panel"}}">{{t "home.free.link"}}{{icon "arrow-right"}}</a></p>
 </div>
-
-<section class="section" aria-labelledby="runs-title">
-<div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="runs-title">{{t "home.runs.title"}}</h2>
-<p class="lede">{{t "home.runs.lede"}}</p>
-</div>
-<div class="directory">
-{{- range $k := (list "sites" "mail" "dns" "databases" "certs" "backups" "people")}}
-<div class="dir-row"><h3>{{icon "arrow"}}{{t (print "home.runs." $k ".name")}}</h3><p>{{t (print "home.runs." $k ".text")}}</p><p class="parts">{{t (print "home.runs." $k ".parts")}}</p></div>
-{{- end}}
-</div>
-<div class="tour">
-{{template "screen" (dict "Name" "domains" "Alt" (t "home.tour.domains.alt") "Address" "/domains" "Lazy" true "Caption" (t "home.tour.domains"))}}
-{{template "screen" (dict "Name" "databases" "Alt" (t "home.tour.databases.alt") "Address" "/databases" "Lazy" true "Caption" (t "home.tour.databases"))}}
-</div>
-</div>
-</section>
-
-<section class="section band" aria-labelledby="pair-title">
-<div class="wrap pair-grid">
-<div class="pair-copy">
-<h2 class="h2" id="pair-title">{{t "home.pair.title"}}</h2>
-<p class="lede">{{t "home.pair.lede"}}</p>
-<ol class="steps">
-<li>{{t "home.pair.step1"}}</li>
-<li>{{t "home.pair.step2"}}</li>
-<li>{{t "home.pair.step3"}}</li>
-</ol>
-</div>
-<div class="pair-diagram" role="img" aria-label="{{t "home.pair.diagram"}}">
-<div class="sign">
-<h3>{{t "home.pair.first"}}</h3>
-<p class="role">{{t "home.pair.first.role"}}</p>
-<ul><li>{{t "home.pair.sites"}}</li><li>{{t "home.pair.mail"}}</li><li>{{t "home.pair.dns.main"}}</li></ul>
-</div>
-<div class="pair-link"><span class="wire"></span><span>{{t "home.pair.link"}}</span></div>
-<div class="sign">
-<h3>{{t "home.pair.second"}}</h3>
-<p class="role">{{t "home.pair.second.role"}}</p>
-<ul><li>{{t "home.pair.sites"}}</li><li>{{t "home.pair.dns.backup"}}</li></ul>
-</div>
-</div>
+<figure class="diagram" aria-labelledby="free-caption">
+<figcaption id="free-caption" class="sr-only">{{t "home.free.diagram"}}</figcaption>
+<svg class="wires" viewBox="0 0 600 380" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+<path d="M300 92 C300 140 100 130 100 186"/><path d="M300 92 L300 186"/><path d="M300 92 C300 140 500 130 500 186"/>
+<path d="M300 92 C300 200 100 230 100 296"/><path d="M300 92 C300 200 300 230 300 296"/><path d="M300 92 C300 200 500 230 500 296"/>
+</svg>
+<div class="node panel-node" aria-hidden="true">{{icon "logo"}}<span class="node-name">CelikPanel</span><span class="state"><span class="on">{{t "home.free.running"}}</span><span class="off">{{t "home.free.stopped"}}</span></span></div>
+<ul class="services">
+<li class="node">{{icon "globe"}}<span>{{t "home.free.sites"}}</span><i class="ok" aria-hidden="true"></i></li>
+<li class="node">{{icon "mail"}}<span>{{t "home.free.mail"}}</span><i class="ok" aria-hidden="true"></i></li>
+<li class="node">{{icon "network"}}<span>DNS</span><i class="ok" aria-hidden="true"></i></li>
+<li class="node">{{icon "database"}}<span>{{t "home.free.databases"}}</span><i class="ok" aria-hidden="true"></i></li>
+<li class="node">{{icon "calendar-clock"}}<span>{{t "home.free.jobs"}}</span><i class="ok" aria-hidden="true"></i></li>
+<li class="node">{{icon "shield-check"}}<span>{{t "home.free.certs"}}</span><i class="ok" aria-hidden="true"></i></li>
+</ul>
+</figure>
 </div>
 </section>
 
-<section class="section field-band" aria-labelledby="promise-title">
+<section class="block features" aria-labelledby="features-title">
 <div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="promise-title">{{t "home.promise.title"}}</h2>
-<p class="lede">{{t "home.promise.lede"}}</p>
+<div class="block-head center">
+<p class="eyebrow">{{t "home.features.eyebrow"}}</p>
+<h2 id="features-title">{{t "home.features.title"}}</h2>
+<p class="lede">{{t "home.features.lede"}}</p>
 </div>
-<div class="promises">
-<article class="sign promise wide">
-<h3>{{t "home.promise.yours.title"}}</h3>
-<div>
-<p>{{t "home.promise.yours.text"}}</p>
-<p class="fine">{{t "home.promise.yours.fine"}} <a href="{{guide "without-panel"}}">{{t "home.promise.yours.link"}}</a></p>
+<div class="bento">
+<article class="card c-sites">
+<div class="art" aria-hidden="true">
+<div class="rows">
+<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>example.com</b><span class="tag">PHP 8.4</span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>shop.example.com</b><span class="tag">PHP 8.4</span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row"><span class="lockdot">{{icon "lock"}}</span><b>app.example.net</b><span class="tag">Node.js</span><span class="up">{{t "home.art.active"}}</span></div>
+<div class="row dim"><span class="lockdot">{{icon "lock"}}</span><b>docs.example.org</b><span class="tag">{{t "home.art.static"}}</span><span class="up">{{t "home.art.active"}}</span></div>
 </div>
+</div>
+<h3>{{icon "globe"}}{{t "home.card.sites"}}</h3>
+<p>{{t "home.card.sites.text"}}</p>
 </article>
-<article class="sign promise">
-<p class="figure">99<small>{{t "home.promise.price.unit"}}</small></p>
-<p class="from">{{t "pricing.plate.from"}}</p>
-<h3>{{t "home.promise.price.title"}}</h3>
-<p>{{t "home.promise.price.text"}}</p>
+<article class="card c-dns">
+<div class="art" aria-hidden="true">
+<div class="records">
+<div class="rec"><span class="type">A</span><span class="name">@</span><code>192.0.2.10</code></div>
+<div class="rec"><span class="type">MX</span><span class="name">@</span><code>mail.example.com</code></div>
+<div class="rec"><span class="type">TXT</span><span class="name">@</span><code>v=spf1 mx -all</code></div>
+</div>
+<p class="seen">{{icon "check"}}{{t "home.art.seen"}}</p>
+</div>
+<h3>{{icon "network"}}DNS</h3>
+<p>{{t "home.card.dns.text"}}</p>
 </article>
-<article class="sign promise">
-<h3>{{t "home.promise.lock.title"}}</h3>
-<p>{{t "home.promise.lock.text"}}</p>
-<a class="link-arrow" href="{{link "pricing"}}">{{t "home.promise.lock.link"}}{{icon "arrow"}}</a>
+<article class="card c-certs">
+<div class="art" aria-hidden="true">
+<div class="cert">
+<div class="ring"><b>78</b><small>{{t "home.art.days"}}</small></div>
+<div class="names"><span>example.com</span><span>www.example.com</span><span>mail.example.com</span></div>
+</div>
+</div>
+<h3>{{icon "shield-check"}}{{t "home.card.certs"}}</h3>
+<p>{{t "home.card.certs.text"}}</p>
 </article>
+<article class="card c-mail">
+<div class="art" aria-hidden="true">
+<div class="mailbox">
+<p class="addr">{{icon "mail"}}info@example.com</p>
+<div class="quota"><i></i></div>
+<p class="quota-text">{{t "home.art.quota"}}</p>
+<div class="mail-actions"><span>Webmail</span><span>{{t "home.art.password"}}</span></div>
 </div>
 </div>
-</section>
-
-<section class="section" aria-labelledby="update-title">
-<div class="wrap">
-<div class="section-head">
-<h2 class="h2" id="update-title">{{t "home.update.title"}}</h2>
-<p class="lede">{{t "home.update.lede"}}</p>
+<h3>{{icon "mail"}}{{t "home.card.mail"}}</h3>
+<p>{{t "home.card.mail.text"}}</p>
+</article>
+<article class="card c-backups">
+<div class="art" aria-hidden="true">
+<ol class="days"><li></li><li></li><li></li><li></li><li></li><li></li><li class="last"></li></ol>
+<p class="latest">{{icon "archive"}}<span>{{t "home.art.backup"}}</span><b>03:00</b></p>
 </div>
-<ol class="route">
-{{- range $k := (list "press" "signature" "check" "install" "verify")}}
-<li class="stop"><h3>{{t (print "home.update." $k ".name")}}</h3><p>{{t (print "home.update." $k ".text")}}</p></li>
-{{- end}}
+<h3>{{icon "archive"}}{{t "home.card.backups"}}</h3>
+<p>{{t "home.card.backups.text"}}</p>
+</article>
+<article class="card c-updates">
+<div class="art" aria-hidden="true">
+<ol class="steps-line">
+<li>{{t "home.art.step.download"}}</li><li>{{t "home.art.step.signature"}}</li><li>{{t "home.art.step.check"}}</li><li>{{t "home.art.step.install"}}</li><li>{{t "home.art.step.verify"}}</li>
 </ol>
-<div class="sign sign-temp exit">
-{{icon "uturn"}}
-<div><h3>{{t "home.update.exit.title"}}</h3><p>{{t "home.update.exit.text"}}</p></div>
+<svg class="back" viewBox="0 0 400 60" preserveAspectRatio="none" focusable="false"><path d="M372 6 C372 54 28 54 28 10"/><path class="head" d="M20 18 L28 6 L36 18"/></svg>
+<p class="back-label">{{icon "rotate-ccw"}}{{t "home.art.rollback"}}</p>
 </div>
-<p class="route-note">{{t "home.update.note"}}</p>
-</div>
-</section>
-
-<section class="section band" aria-labelledby="lapse-title">
-<div class="wrap distance">
-<div>
-<h2 class="h2" id="lapse-title">{{t "home.lapse.title"}}</h2>
-<p class="lede">{{t "home.lapse.lede"}}</p>
-<a class="link-arrow" href="{{link "pricing" (t "pricing.lapse.id")}}">{{t "home.lapse.link"}}{{icon "arrow"}}</a>
-</div>
-{{template "distance-sign" .}}
-</div>
-</section>
-
-<section class="section" aria-labelledby="install-title" id="{{t "home.install.id"}}">
-<div class="wrap install-grid">
-<div>
-<h2 class="h2" id="install-title">{{t "home.install.title"}}</h2>
-<p class="lede">{{t "home.install.lede"}}</p>
-<ol class="steps">
-<li>{{t "install.step.account"}}</li>
-<li>{{t "install.step.run"}}</li>
-<li>{{t "install.step.wizard"}}</li>
-</ol>
-</div>
-<div>
-{{template "command" (dict "ID" "home")}}
-{{template "systems-line" .}}
-<p class="more"><a class="link-arrow" href="{{link "systems"}}">{{t "home.install.systems"}}{{icon "arrow"}}</a></p>
+<h3>{{icon "rotate-ccw"}}{{t "home.card.updates"}}</h3>
+<p>{{t "home.card.updates.text"}}</p>
+</article>
+<article class="card c-pair">
+<div class="art" aria-hidden="true">
+<div class="pair">
+<div class="srv">{{icon "server"}}<b>{{t "home.art.main"}}</b><small>ns1.example.net</small></div>
+<div class="sync"><span></span><small>{{t "home.art.zone"}}</small></div>
+<div class="srv">{{icon "server"}}<b>{{t "home.art.backup.dns"}}</b><small>ns2.example.net</small></div>
 </div>
 </div>
-</section>
-
-<section class="closing" aria-labelledby="close-title">
-<div class="wrap">
-<div class="sign">
-<div>
-<h2 class="h2" id="close-title">{{t "home.close.title"}}</h2>
-<p>{{t "home.close.text"}}</p>
-</div>
-<div class="actions">
-<a class="btn btn-sign" href="{{account "register"}}">{{t "common.register.free"}}</a>
-<a class="btn btn-line" href="{{link "download"}}">{{t "home.close.install"}}</a>
-</div>
+<h3>{{icon "server"}}{{t "home.card.pair"}}</h3>
+<p>{{t "home.card.pair.text"}}</p>
+</article>
 </div>
 </div>
 </section>

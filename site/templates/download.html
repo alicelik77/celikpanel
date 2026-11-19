@@ -28,7 +28,7 @@
 <p class="lede">{{t "download.systems.lede"}}</p>
 </div>
 {{template "systems-table" .}}
-<p class="more"><a class="link-arrow" href="{{link "systems"}}">{{t "download.systems.more"}}{{icon "arrow"}}</a></p>
+<p class="more"><a class="link-arrow" href="{{link "systems"}}">{{t "download.systems.more"}}{{icon "arrow-right"}}</a></p>
 </div>
 </section>
 
@@ -96,7 +96,7 @@
 </div>
 <ul class="trust-list">
 {{- range $k := (list "signed" "notes" "split" "password")}}
-<li>{{icon "shield"}}<span>{{t (print "download.trust." $k)}}</span></li>
+<li>{{icon "shield-check"}}<span>{{t (print "download.trust." $k)}}</span></li>
 {{- end}}
 </ul>
 </div>
@@ -107,7 +107,7 @@
 <div class="sign sign-white">
 <h2 class="h3" id="installed-title">{{t "download.installed.title"}}</h2>
 <p>{{t "download.installed.text"}}</p>
-<p class="links"><a class="link-arrow" href="{{link "releases"}}">{{t "download.installed.releases"}}{{icon "arrow"}}</a> <a class="link-arrow" href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}{{icon "arrow"}}</a></p>
+<p class="links"><a class="link-arrow" href="{{link "releases"}}">{{t "download.installed.releases"}}{{icon "arrow-right"}}</a> <a class="link-arrow" href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}{{icon "arrow-right"}}</a></p>
 </div>
 </div>
 </section>
