@@ -61,10 +61,13 @@ export function ProgramsSection({ domain, parts, part, go }: DomainSectionProps)
     return (
         <SectionParts section="programs" parts={shown} part={part} go={go} render={({ id: partId }) => {
             switch (partId) {
+                // A card drawn only because the domain still holds it is
+                // "elsewhere": the domain serves the other kind, so nothing
+                // that would publish this one again is offered.
                 case 'programs':
-                    return <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} offerNew={!refusesProgram} />;
+                    return <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} offerNew={!refusesProgram} elsewhere={probeProgram} />;
                 case 'ai':
-                    return <DomainServiceApps domainId={domain.id} domainName={domain.domain_name} offerNew={!refusesApp} />;
+                    return <DomainServiceApps domainId={domain.id} domainName={domain.domain_name} offerNew={!refusesApp} elsewhere={probeApp} />;
                 default:
                     return null;
             }

@@ -6,6 +6,8 @@
 //                Overview's tiles
 //   y39service   An AI app site: the Programs section with its own card only
 //   y39node      A Node.js site: no Programs in the row (neither can be added)
+//   y39mixed     A domain that holds both: the AI app's site still shows the
+//                program's card, to manage and remove it, and no form
 //   y39php       A PHP site: the Site section without the moved cards and the
 //                Programs section with both create parts, as the
 //                administrator and as a customer; a customer whose plan has no
@@ -128,6 +130,22 @@ export default function batch39(scenarios, { base, locale, theme, out, viewport,
         await settle(page, '[data-part="ai"]');
         await snap(page, 'service-admin', { role: 'admin' });
         await closePage(page);
+        await reset(); await ctl({ clearAll: true, domains: [] });
+    };
+
+    // A domain that holds both (an AI app installed over a program before
+    // alpha.139 refused that): the app's site still draws the program's card,
+    // to manage and remove it, with no form in either card.
+    scenarios.y39mixed = async () => {
+        for (const role of ['admin', 'customer']) {
+            const page = await open('/domains/example.com?section=programs', domain({ project_type: 'service_app' }), role, reads('service_app', RUNNING, INSTALLED));
+            await settle(page, '[data-part="programs"]');
+            await snap(page, `mixed-${role}`, { role });
+            await page.evaluate(() => document.querySelector('[data-part="programs"]')?.scrollIntoView({ block: 'start' }));
+            await pause(300);
+            await snap(page, `mixed-program-${role}`, { role });
+            await closePage(page);
+        }
         await reset(); await ctl({ clearAll: true, domains: [] });
     };
 

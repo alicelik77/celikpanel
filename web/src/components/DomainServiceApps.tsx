@@ -49,7 +49,10 @@ function Notice({ tone = 'warning', children }: { tone?: 'warning' | 'danger' | 
 // offerNew (alpha.139): false where the site's type refuses a new app
 // (sections.ts NEW_REFUSED_ON); the card then shows only the app the domain
 // already holds, so it can be managed and removed, and no catalogue.
-export function DomainServiceApps({ domainId, offerNew = true }: { domainId: number; domainName: string; offerNew?: boolean }) {
+// elsewhere: the domain serves a program, not this app (a domain that holds
+// both); installing again or updating would take the domain from the
+// program and is refused, so neither is offered, nor is opening the app.
+export function DomainServiceApps({ domainId, offerNew = true, elsewhere = false }: { domainId: number; domainName: string; offerNew?: boolean; elsewhere?: boolean }) {
     const { t } = useI18n();
     const url = `/api/v1/domains/${domainId}/service-apps`;
     const view = useRemote(url, decodeDomainServiceApps);
@@ -105,7 +108,7 @@ export function DomainServiceApps({ domainId, offerNew = true }: { domainId: num
                         {(v.install || offerNew) && <Blockers view={v} />}
                         {v.operation && <OperationLine op={v.operation} />}
                         {v.install ? (
-                            <InstalledApp view={v} install={v.install} base={url} after={after} onReinstall={setInstalling} />
+                            <InstalledApp view={v} install={v.install} base={url} after={after} onReinstall={setInstalling} elsewhere={elsewhere} />
                         ) : offerNew ? (
                             <Catalog view={v} onInstall={setInstalling} />
                         ) : null}
@@ -332,12 +335,13 @@ function InstallDialog({ app, domain, url, onClose, after }: { app: DomainServic
     );
 }
 
-function InstalledApp({ view, install, base, after, onReinstall }: {
+function InstalledApp({ view, install, base, after, onReinstall, elsewhere }: {
     view: DomainServiceAppsView;
     install: ServiceAppInstall;
     base: string;
     after: After;
     onReinstall: (app: DomainServiceAppEntry) => void;
+    elsewhere: boolean;
 }) {
     const { t } = useI18n();
     const busy = view.operation?.state === 'running';
@@ -399,7 +403,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                         {stateText}{install.memory_mb ? ' · ' + t('svcapps.memory', { mb: install.memory_mb }) : ''}
                     </div>
                 </div>
-                {install.version && install.active && install.serving && (
+                {install.version && install.active && install.serving && !elsewhere && (
                     <a href={install.url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-surface-2">
                         <ExternalLink className="h-4 w-4" />{t('svcapps.open')}
@@ -408,7 +412,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
             </div>
             {install.held && <Notice><AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} admin={t('adminNext.svcapps.held')} fallback={t('svcapps.heldNote')} /></Notice>}
             {install.needs_sandbox && <Notice tone="info">{t('svcapps.needsSandbox')}</Notice>}
-            {install.update_available && !busy && (
+            {install.update_available && !busy && !elsewhere && (
                 <Notice tone="info">
                     <span className="flex flex-wrap items-center justify-between gap-2">
                         <span>{t('svcapps.updateNote')}</span>
@@ -434,10 +438,10 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                 {install.version && app && ((app.secrets ?? []).length > 0 || app.id === 'n8n') && (
                     <Button icon={KeyRound} disabled={busy || !!acting} onClick={() => setKeysOpen(true)}>{t('svcapps.keys')}</Button>
                 )}
-                {retryKind === 'install' && !install.version && app && (
+                {retryKind === 'install' && !install.version && app && !elsewhere && (
                     <Button icon={RotateCw} disabled={!!acting || closedReason(app, t) !== '' || !view.certificate} onClick={() => onReinstall(app)}>{t('svcapps.op.retry')}</Button>
                 )}
-                {retryKind === 'update' && (
+                {retryKind === 'update' && !elsewhere && (
                     <Button icon={RotateCw} loading={acting === 'update'} disabled={!!acting} onClick={() => void act('/update', { operation_id: opID }, 'update', () => setOpID(newOperationID()))}>{t('svcapps.op.retry')}</Button>
                 )}
                 <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('svcapps.uninstall')}</Button>

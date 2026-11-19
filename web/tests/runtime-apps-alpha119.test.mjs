@@ -261,3 +261,27 @@ test('the administrator offers on a reduced server only after accepting every na
     assert.deepEqual(post.body, { risk_digest: 'd1', memory_mb: 512, cpu_percent: 100, tasks_max: 256, accepted_gaps: ['bpf_missing', 'nft_cgroup_missing'] });
   } finally { await unmount(); }
 });
+
+// alpha.139: on a domain whose type refuses a new program, the card offers no
+// form; on a domain that serves an AI app beside this program ("elsewhere"),
+// it offers nothing that would publish the program again, and keeps what
+// manages and removes it.
+test('alpha.139: no create form where the type refuses one; elsewhere, no deploy and no Open, but stop, log and removal', async () => {
+  await mount(React.createElement(DomainRuntimeApps, { domainId: 1, domainName: 'example.com', offerNew: false }), () => ({ ...view, app: null }));
+  try {
+    const shown = text();
+    assert.ok(!shown.includes('runtime.create.title') && !shown.includes('runtime.kind.choose'), shown);
+    assert.equal(tree.root.findAll((n) => n.type === 'form').length, 0, 'a form was drawn');
+  } finally { await unmount(); }
+  await mount(React.createElement(DomainRuntimeApps, { domainId: 1, domainName: 'example.com', offerNew: false, elsewhere: true }), () => view);
+  try {
+    assert.equal(button('runtime.redeploy'), undefined, 'a deploy was offered beside the app');
+    assert.ok(!text().includes('runtime.app.open'), 'the site was offered as the program');
+    for (const key of ['runtime.stop', 'runtime.logs', 'runtime.remove']) assert.ok(button(key), key);
+  } finally { await unmount(); }
+  // The same program on its own site keeps its deploy.
+  await mount(React.createElement(DomainRuntimeApps, { domainId: 1, domainName: 'example.com' }), () => view);
+  try {
+    assert.ok(button('runtime.redeploy'));
+  } finally { await unmount(); }
+});

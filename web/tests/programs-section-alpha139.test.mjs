@@ -211,7 +211,7 @@ const sectionPartsURL = shared.compile('components/domain/SectionParts.tsx', { '
 // Each card stands in as one element that names it.
 const card = (name, id) => dataModule(`
   import React from '${reactURL}';
-  export const ${name} = (props) => React.createElement('article', { 'data-card': '${id}', 'data-domain': props.domainId, 'data-offer-new': String(props.offerNew ?? true) });
+  export const ${name} = (props) => React.createElement('article', { 'data-card': '${id}', 'data-domain': props.domainId, 'data-offer-new': String(props.offerNew ?? true) + (props.elsewhere ? ',elsewhere' : '') });
 `);
 
 let siteURL = shared.compile('components/domain/sections/SiteSection.tsx', {
@@ -288,7 +288,7 @@ test('mounted: an AI app site that still holds a program draws the program too, 
     assert.deepEqual(view.cards(), ['ai', 'programs']);
     assert.deepEqual(view.index(), ['#domain-part-ai', '#domain-part-programs']);
     // Only the create and install parts follow the refusal rule.
-    assert.deepEqual(view.offers(), { ai: 'false', programs: 'false' });
+    assert.deepEqual(view.offers(), { ai: 'false', programs: 'false,elsewhere' });
     assert.ok(asked.includes('/api/v1/domains/7/runtime-apps'), 'the program was not looked for');
     assert.ok(!asked.includes('/api/v1/domains/7/service-apps'), 'the drawn card was read twice by the section');
     // The program is removed: the domain list is read again, and so is this; the card goes.
@@ -310,13 +310,27 @@ test('mounted: a program site that still holds an app record draws that card too
   const view = await mount(ProgramsSection, { id: 'programs', projectType: 'runtime_app' });
   try {
     assert.deepEqual(view.cards(), ['programs', 'ai']);
-    assert.deepEqual(view.offers(), { programs: 'true', ai: 'false' });
+    assert.deepEqual(view.offers(), { programs: 'true', ai: 'false,elsewhere' });
   } finally { await view.done(); answers = {}; }
   answers = { runtime: 'fail' };
   const failed = await mount(ProgramsSection, { id: 'programs', projectType: 'service_app' });
   try {
     assert.deepEqual(failed.cards(), ['ai', 'programs'], 'a program that could not be looked for was hidden');
   } finally { await failed.done(); answers = {}; }
+});
+
+test('an app card shown beside a program offers nothing that would publish the app again', () => {
+  const source = read('../src/components/DomainServiceApps.tsx');
+  // No catalogue where the type refuses a new app; no Open, update or retry beside a program.
+  assert.match(source, /\) : offerNew \? \(\s*<Catalog view=\{v\} onInstall=\{setInstalling\} \/>\s*\) : null\}/);
+  for (const guard of [
+    /install\.active && install\.serving && !elsewhere && \(/,
+    /install\.update_available && !busy && !elsewhere && \(/,
+    /retryKind === 'install' && !install\.version && app && !elsewhere && \(/,
+    /retryKind === 'update' && !elsewhere && \(/,
+  ]) assert.match(source, guard);
+  // Stop, the logs and the removal stay.
+  assert.match(source, /<Button variant="danger" icon=\{Trash2\} disabled=\{busy \|\| !!acting\} onClick=\{remove\}>/);
 });
 
 test('mounted: a site that can take either reads nothing extra and offers both forms', async () => {

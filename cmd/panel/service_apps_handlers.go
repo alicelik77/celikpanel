@@ -701,6 +701,16 @@ func (p *Panel) handleServiceAppUpdate(w http.ResponseWriter, r *http.Request, d
 	if p.refuseServiceAppOffer(w, r, app, in.SubscriptionID) {
 		return
 	}
+	// alpha.139: an update publishes the app at the domain again. On a domain
+	// a program uses (one that holds both, from before alpha.139) it would
+	// take the domain from the program: refused, as a new install is.
+	if _, hasProgram, err := p.runtimeAppForDomain(ctx, domainID); err != nil {
+		writeServerError(w, err)
+		return
+	} else if hasProgram || site.ProjectType == "runtime_app" {
+		writeServiceAppRefusal(w, http.StatusConflict, serviceAppReasonProgramCreated, serviceAppProgramRefusal(app.Name), nil)
+		return
+	}
 	opID := req.OperationID
 	if opID == "" {
 		if opID, err = newServiceOperationID(); err != nil {

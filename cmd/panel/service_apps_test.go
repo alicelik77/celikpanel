@@ -465,6 +465,42 @@ func TestServiceAppRefusedWhereAProgramUsesTheDomain(t *testing.T) {
 	}
 }
 
+// A domain that already holds both (from before alpha.139): updating the app
+// would publish it over the program, so it is refused; the app can still be
+// stopped and removed.
+func TestServiceAppUpdateRefusedWhereAProgramUsesTheDomain(t *testing.T) {
+	f := newServiceAppFixture(t)
+	f.offer(t, "n8n")
+	f.exec(t, `INSERT INTO service_app_installs (id, subscription_id, domain_id, site_id, app_id, version, target_version, port, aux_port, state, previous_project_type)
+		VALUES (79, 9803, 9903, 9941, 'n8n', '0.0.1', '0.0.1', 21000, 21001, 'running', 'php')`)
+	f.exec(t, `INSERT INTO runtime_apps (id, subscription_id, domain_id, site_id, kind, offering_id, entry, port, state, deployed)
+		VALUES (63, 9803, 9903, 9941, 'program', 'runtime:program', 'server', 30002, 'running', 1)`)
+	f.exec(t, `UPDATE sites SET project_type = 'runtime_app', app_port = 30002 WHERE id = 9941`)
+	f.native.units[79] = transport.AppUnitState{Present: true, Active: true, Enabled: true}
+	rec := f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/update", `{"operation_id":"op-n8n-upd-0001"}`)
+	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+	if !strings.Contains(rec.Body.String(), `"reason":"program_created"`) {
+		t.Fatalf("update beside a program: %s", rec.Body.String())
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM service_app_operations`); n != 0 {
+		t.Fatalf("a refused update left %d operations", n)
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs WHERE id = 79 AND target_version = '0.0.1'`); n != 1 {
+		t.Fatal("a refused update changed the install")
+	}
+	if rec := f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/control", `{"action":"stop"}`); rec.Code >= 400 {
+		t.Fatalf("stop beside a program: %d %s", rec.Code, rec.Body.String())
+	}
+	wantStatus(t, f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/uninstall", `{"operation_id":"op-n8n-mixed-rm"}`), http.StatusAccepted, "")
+	if op := f.waitOperation(t, "op-n8n-mixed-rm"); op.State != "succeeded" {
+		t.Fatalf("uninstall: %+v", op)
+	}
+	var projectType string
+	if err := f.panel.db.GetDB().QueryRow(`SELECT project_type FROM sites WHERE id = 9941`).Scan(&projectType); err != nil || projectType != "runtime_app" {
+		t.Fatalf("removing the app changed the program's site: %s %v", projectType, err)
+	}
+}
+
 // The install's own transaction refuses a program that appeared after the
 // handler looked (the same reason and words).
 func TestServiceAppInstallTransactionRefusesAProgram(t *testing.T) {
