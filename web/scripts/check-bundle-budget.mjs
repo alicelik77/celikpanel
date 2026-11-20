@@ -368,6 +368,11 @@ const screenPartBudgets = {
   // installation held before the one name rule filled it. A new part, set
   // with at least 25% headroom from its Turkish file: 7.50 / 2.48 KiB.
   problemsNow: kib(10.5, 3.4),
+  // The same release: the one name rule's and the Node.js port rule's
+  // refusals (err.HOSTNAME_NOT_AVAILABLE, err.APP_PORT_NOT_ALLOWED), a new part
+  // as "errors" is full; set with at least 25% headroom from its Turkish
+  // file: 1.78 / 0.75 KiB.
+  nameRule: kib(2.5, 1.1),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

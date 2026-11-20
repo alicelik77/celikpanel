@@ -6,8 +6,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { enErrorsScreens } from '../src/i18n/screens/errors/en.ts';
-import { trErrorsScreens } from '../src/i18n/screens/errors/tr.ts';
+import { enNameRuleScreens as enErrorsScreens } from '../src/i18n/screens/nameRule/en.ts';
+import { trNameRuleScreens as trErrorsScreens } from '../src/i18n/screens/nameRule/tr.ts';
 import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
 import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import { enTransfersScreens } from '../src/i18n/screens/transfers/en.ts';
