@@ -545,6 +545,16 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "security_updates":
 		return fmt.Sprintf("%s security updates are waiting. Install them under System updates.", n),
 			fmt.Sprintf("%s güvenlik güncellemesi bekliyor. Sistem güncellemeleri'nden kurun.", n)
+	// S4 R1 (side_doors.go).
+	case "tool_account_failed":
+		return fmt.Sprintf("%s still runs under the web server's account, which can read every site. Open it under Components and choose its PHP version again to move it to its own account.", name),
+			fmt.Sprintf("%s hâlâ her siteyi okuyabilen web sunucusu hesabıyla çalışıyor. Bileşenler'de açıp PHP sürümünü yeniden seçerek kendi hesabına taşıyın.", name)
+	case "tool_account_owner_config":
+		return fmt.Sprintf("%s still runs under the web server's account because %s was changed on the server; CelikPanel keeps it.", name, subject),
+			fmt.Sprintf("%s, %s sunucuda değiştirildiği için hâlâ web sunucusu hesabıyla çalışıyor; CelikPanel dosyayı korur.", name, subject)
+	case "stock_pool_in_use", "stock_pool_owner_changed":
+		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is kept on: Monitoring says why.", name),
+			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu açık bırakıldı; nedeni İzleme'de.", name)
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

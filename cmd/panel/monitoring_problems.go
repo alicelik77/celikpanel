@@ -111,6 +111,11 @@ var problemKindOrder = map[string]int{
 	"cpu_sustained":              9,
 	"mail_queue_deferred":        10,
 	"security_updates":           11,
+	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
+	"tool_account_failed":       12,
+	"tool_account_owner_config": 13,
+	"stock_pool_in_use":         14,
+	"stock_pool_owner_changed":  15,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -166,6 +171,8 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	}
 	// alpha.127: the sites as the server itself reaches them.
 	add(siteProblems(ctx, db, now, certificates))
+	// S4 R1: what the side doors step left for someone (side_doors.go).
+	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

@@ -1586,6 +1586,9 @@ func main() {
 	// alpha.130: a removed PostgreSQL major's cluster that holds only what
 	// initdb made is removed once after the start (postgresql_leftovers.go).
 	panel.startPGLeftoverCleanup()
+	// S4 R1: the tools to their own accounts and the untouched stock PHP-FPM
+	// pool off, once after the start (side_doors.go).
+	panel.startSideDoorsClose()
 
 	// Purge expired sessions on startup and then hourly.
 	// Başlangıçta ve sonra saatlik olarak süresi dolmuş oturumları temizle.

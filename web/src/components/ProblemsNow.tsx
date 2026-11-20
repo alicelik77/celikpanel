@@ -44,13 +44,19 @@ export type ProblemKind =
     | 'security_updates'
     | 'site_down'
     | 'site_certificate'
-    | 'service_restarting';
+    | 'service_restarting'
+    | 'tool_account_failed'
+    | 'tool_account_owner_config'
+    | 'stock_pool_in_use'
+    | 'stock_pool_owner_changed';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
     'memory_sustained', 'cpu_sustained', 'mail_queue_deferred', 'security_updates',
     // alpha.127: website checks and a service that keeps restarting.
     'site_down', 'site_certificate', 'service_restarting',
+    // S4 R1: the tools' own accounts and the distribution's PHP-FPM pool.
+    'tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
 

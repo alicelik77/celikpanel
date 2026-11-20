@@ -1,0 +1,54 @@
+// S4 R1 (20 Nov 2026): the Problems now lines of the side doors step - a
+// database tool or webmail still under the web server's account, the
+// distribution's PHP-FPM pool kept on - are kinds the list shows, with words
+// in both languages in their own catalogue part, saying who acts and what to
+// do.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import { enMonitoringScreens } from '../src/i18n/screens/monitoring/en.ts';
+import { trMonitoringScreens } from '../src/i18n/screens/monitoring/tr.ts';
+import { enSideDoorsScreens } from '../src/i18n/screens/sideDoors/en.ts';
+import { trSideDoorsScreens } from '../src/i18n/screens/sideDoors/tr.ts';
+
+const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
+
+test('every kind the list shows has a title, body and action in English and Turkish', () => {
+  const source = readFileSync(new URL('../src/components/ProblemsNow.tsx', import.meta.url), 'utf8');
+  const list = source.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
+  assert.ok(list, 'the KINDS list');
+  const shown = [...list[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
+  const en = { ...enMonitoringScreens, ...enSideDoorsScreens };
+  const tr = { ...trMonitoringScreens, ...trSideDoorsScreens };
+  for (const kind of shown) {
+    for (const part of ['title', 'body', 'action']) {
+      assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);
+      assert.ok(tr[`pnow.${kind}.${part}`], `Turkish pnow.${kind}.${part}`);
+    }
+  }
+});
+
+test('the side doors lines name the thing, say who acts and stay in their own part', () => {
+  for (const kind of kinds) {
+    for (const words of [enSideDoorsScreens, trSideDoorsScreens]) {
+      assert.match(words[`pnow.${kind}.title`], /\{name\}/, `${kind} title names it`);
+      const body = words[`pnow.${kind}.body`];
+      assert.ok(!/journalctl|systemctl/.test(body), `${kind} body sends nobody to a terminal command`);
+    }
+    assert.match(enSideDoorsScreens[`pnow.${kind}.body`], /server administrator|choose its PHP version/, `${kind} says who acts`);
+    assert.equal(enMonitoringScreens[`pnow.${kind}.title`], undefined, `${kind} is not added to the full monitoring part`);
+  }
+  assert.deepEqual(Object.keys(trSideDoorsScreens).sort(), Object.keys(enSideDoorsScreens).sort());
+});
+
+test('a move that could not give the tool its own account is said in the reader’s language with the server’s words', () => {
+  const source = readFileSync(new URL('../src/lib/phpTools.ts', import.meta.url), 'utf8');
+  const kinds = source.match(/const CAUSE_KINDS: ReadonlySet<string> = new Set\(\[([\s\S]*?)\]\);/);
+  const said = source.match(/const SAID_KINDS: ReadonlySet<string> = new Set\(\[([\s\S]*?)\]\);/);
+  assert.ok(kinds && kinds[1].includes("'own_account_failed'"), 'a cause the screen translates');
+  assert.ok(said && said[1].includes("'own_account_failed'"), 'the server’s words follow it');
+  for (const words of [enSideDoorsScreens, trSideDoorsScreens]) {
+    assert.match(words['component.phpTool.cause.own_account_failed'], /\{version\}/);
+  }
+});

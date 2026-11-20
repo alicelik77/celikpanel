@@ -363,6 +363,11 @@ const screenPartBudgets = {
   // the database parts are full; set with at least 25% headroom from its
   // Turkish file.
   dbEncoding: kib(2.5, 1.2),
+  // 20 Nov 2026 (S4 R1): the Problems now lines of the side doors step
+  // (pnow.tool_account_*, pnow.stock_pool_*). A new part, as the monitoring
+  // part is nearly full; set with at least 25% headroom from its Turkish
+  // file.
+  sideDoors: kib(2.6, 1.05),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
