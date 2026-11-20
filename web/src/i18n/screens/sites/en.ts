@@ -507,6 +507,7 @@ export const enSitesScreens = {
     'logs.timeUnparsed': '{n} lines had no supported timestamp and were omitted.',
     'logs.timeAssumedZone': 'Timezone assumed for timezone-free timestamps: {zone}',
     'logs.resultLimited': 'The log result is limited.',
+    'logs.refusedLink': 'Some lines below say "Too many levels of symbolic links": a link in this site points to a file that belongs to another account or to the server, so the web server does not serve it. Put a copy of the file in the site instead of the link. A link to a file of this site keeps working.',
     'logs.resultTruncated': 'Only part of the matching log could be returned; older matches may be absent.',
     'logs.serverWarning': 'Server detail: {warning}',
     'logs.refresh': 'Refresh',

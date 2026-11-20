@@ -251,6 +251,31 @@ type siteWebDirectivesView struct {
 	Text    string `json:"text,omitempty"`
 	ByAdmin bool   `json:"by_admin,omitempty"`
 	MaxSize int    `json:"max_size"`
+	// NotApplied (20 Nov 2026): a reseller's or customer's saved text that
+	// the rules of this release refuse; the Agent does not use it (no part
+	// of it is in force) until it is changed. Only for a caller who may
+	// change it.
+	NotApplied *directivesNotApplied `json:"not_applied,omitempty"`
+}
+
+// directivesNotApplied names the first line of a saved text the rules refuse.
+type directivesNotApplied struct {
+	Line      int    `json:"line"`
+	Directive string `json:"directive"`
+}
+
+// savedDirectivesNotApplied checks a reseller's or customer's saved text
+// against the rules of this release (nil when it passes or is the
+// administrator's).
+func savedDirectivesNotApplied(row siteWebSettingsRow, home string) *directivesNotApplied {
+	if row.DirectivesByAdmin || strings.TrimSpace(row.Directives) == "" {
+		return nil
+	}
+	var refusal *services.SiteDirectiveRefusal
+	if err := services.ValidateSiteDirectives(row.Directives, false, home); errors.As(err, &refusal) {
+		return &directivesNotApplied{Line: refusal.Line, Directive: refusal.Directive}
+	}
+	return nil
 }
 
 func (p *Panel) siteWebSettingsViewOf(ctx context.Context, r *http.Request, domainID int, site siteFeatureSite, row siteWebSettingsRow) (siteWebSettingsView, error) {
@@ -276,6 +301,13 @@ func (p *Panel) siteWebSettingsViewOf(ctx context.Context, r *http.Request, doma
 	}
 	if access.MayEdit {
 		view.Directives.Text = row.Directives
+		if !row.DirectivesByAdmin && strings.TrimSpace(row.Directives) != "" {
+			home, err := p.siteHomeOf(ctx, domainID)
+			if err != nil {
+				return view, err
+			}
+			view.Directives.NotApplied = savedDirectivesNotApplied(row, home)
+		}
 	}
 	return view, nil
 }
@@ -455,6 +487,10 @@ type errWebSettingsApply struct {
 	code    string
 	message string
 	cause   error
+	// rerender: the refused render changed a file (the Agent removed its
+	// copy of refused directives), so the previous settings are rendered
+	// again after the saved row is put back.
+	rerender bool
 }
 
 func (e *errWebSettingsApply) Error() string { return e.message }
@@ -492,7 +528,7 @@ func (p *Panel) changeSiteWebSettings(ctx, stepCtx context.Context, domainID int
 	// the previous settings.
 	var held *siteFileHeldError
 	var refused *errWebSettingsApply
-	if !errors.As(applyErr, &held) && !errors.As(applyErr, &refused) {
+	if !errors.As(applyErr, &held) && (!errors.As(applyErr, &refused) || refused.rerender) {
 		_, _ = siteWebSettingsApplyRender(p, rollbackCtx, domainID, false)
 	}
 	return classifyWebSettingsApply(applyErr)
@@ -509,6 +545,12 @@ func siteWebPartsRefusal(domain string, result *transport.SiteFileResult) error 
 			return &errWebSettingsApply{status: http.StatusConflict, code: errCodeWebSettingsKept,
 				message: "The file " + services.SitePartPath(domain, name) + " was changed on the server outside CelikPanel, so CelikPanel kept it and did not apply this change. " +
 					"The server administrator can compare it in Hosting → Configuration, or move the file aside; then save again."}
+		case transport.SitePartRefused:
+			// The Panel checked the same rules; what only the server can see
+			// is a file the text names that is a link, not a file of the site.
+			return &errWebSettingsApply{status: http.StatusBadRequest, code: errCodeWebDirectivesInvalid, rerender: true,
+				message: "Nothing was changed: the server did not take these directives. " + strings.TrimSpace(result.Detail) +
+					". Name a regular file inside this site's folder (not a link), or use Protected folders; then save again."}
 		case transport.SitePartNotRead:
 			return &errWebSettingsApply{status: http.StatusConflict, code: errCodeWebSettingsNotRead,
 				message: "The site's nginx file was changed by the server owner and does not have the line " + services.SiteIncludeLine(domain) +

@@ -497,6 +497,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'logs.timeUnparsed': 'Desteklenen zaman damgası olmayan {n} satır atlandı.',
     'logs.timeAssumedZone': 'Saat dilimi olmayan zaman damgalarında varsayılan saat dilimi: {zone}',
     'logs.resultLimited': 'Günlük sonucu sınırlandı.',
+    'logs.refusedLink': 'Aşağıdaki bazı satırlarda "Too many levels of symbolic links" yazıyor: bu sitedeki bir bağlantı, başka bir hesaba ya da sunucuya ait bir dosyayı gösteriyor; web sunucusu bu dosyayı sunmaz. Bağlantı yerine dosyanın bir kopyasını siteye koyun. Bu sitenin kendi dosyasına giden bağlantı çalışmaya devam eder.',
     'logs.resultTruncated': 'Eşleşen günlüğün yalnız bir bölümü döndürülebildi; daha eski eşleşmeler bulunmayabilir.',
     'logs.serverWarning': 'Sunucu ayrıntısı: {warning}',
     'logs.refresh': 'Yenile',

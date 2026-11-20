@@ -2152,6 +2152,9 @@ func (p *Panel) wireMailFiltersOnce() (transport.WireMailFiltersResponse, error)
 			); err != nil {
 				return err
 			}
+			// 20 Nov 2026: whether mail is signed only for the sender's own
+			// domain, for Monitoring → Problems now (mail_signing_problem.go).
+			p.recordMailSigningState(ctx, response.Signing)
 			if response.Error != "" {
 				// R-056. The ledger's own words for a failed host mutation say
 				// that one did not complete, which is true of every one of

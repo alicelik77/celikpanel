@@ -308,7 +308,7 @@ func ApplyManagedSiteFile(f ManagedSiteFile, validate, activate func() error) (t
 	// Whether the service ran before this write decides what follows a
 	// put-back (a service that was not running is not reloaded or started).
 	before := f.serviceActive()
-	if err := writeManagedSiteFile(f.Path, sealed, inspected); err != nil {
+	if err := writeManagedSiteFileWithMode(f.Path, sealed, inspected, f.newFileMode()); err != nil {
 		result.Outcome = transport.SiteFileOutcomeRefused
 		if errors.Is(err, errSiteFileChanged) {
 			result.Reason = transport.SiteFileReasonChanged
@@ -490,4 +490,15 @@ func HeldPendingBody(path, headerPrefix string) (string, bool) {
 		return "", false
 	}
 	return string(body), true
+}
+
+// newFileMode is the mode of the file when CelikPanel creates it: a PHP-FPM
+// pool is 0640 (20 Nov 2026: site accounts do not read other sites' pools;
+// PHP-FPM's master reads it as root); a systemd unit and the sandbox's files
+// stay 0644 (systemd tells every local user a unit's settings anyway).
+func (f ManagedSiteFile) newFileMode() os.FileMode {
+	if f.Kind == transport.SiteFileKindPHPPool {
+		return managedSiteFileNewMode
+	}
+	return 0o644
 }

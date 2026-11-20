@@ -81,6 +81,9 @@ export const trMonitoringScreens: Record<MonitoringScreenKey, string> = {
     'pnow.service_restarting.title': '{name} sürekli yeniden başlıyor',
     'pnow.service_restarting.body': 'systemd onu son bir saatte {value} kez yeniden başlattı: durup yeniden açılıyor. Bileşenler’deki sayfası nedeniyle birlikte günlüğünü gösterir. Açık kalınca bu satır kalkar.',
     'pnow.service_restarting.action': 'Sayfasını aç',
+    'pnow.mail_signing.title': 'Posta hâlâ başka bir müşterinin alan adıyla imzalanabilir',
+    'pnow.mail_signing.body': 'Elle değiştirilmiş bir posta imzası ayarı korundu, bir değişiklik reddedildi ya da bu sunucunun OpenDKIM’i bunu yapamıyor. Posta teslim ediliyor. Panelin son açılıştaki günlüğü ayarı ve sunucu sahibinin ne yapacağını söyler. Panelin bir sonraki açılışı ayarı yerinde bulunca bu satır kalkar.',
+    'pnow.mail_signing.action': 'Posta sunucusunu aç',
     'dashboard.audit.action.monitoring.alerts.settings': 'izleme uyarı ayarlarını değiştirdi',
     // alpha.128 ops (G18): alıcıya göre bildirimler.
     'dashboard.audit.action.notifications.preferences': 'hangi bildirimleri e-postayla alacağını değiştirdi',

@@ -86,6 +86,9 @@ export const enMonitoringScreens = {
     'pnow.service_restarting.title': '{name} keeps restarting',
     'pnow.service_restarting.body': 'systemd restarted it {value} times in the last hour: it fails and comes back. Its page on Components shows its log with the reason. This line goes away once it stays up.',
     'pnow.service_restarting.action': 'Open its page',
+    'pnow.mail_signing.title': 'Mail may still be signed for another customer’s domain',
+    'pnow.mail_signing.body': 'A mail signing setting changed by hand was kept, a change was refused, or this server’s OpenDKIM cannot do it. Mail is delivered. The panel’s log from its last start names the setting and what the server owner does. This line goes away when the next panel start finds it in place.',
+    'pnow.mail_signing.action': 'Open the mail server',
     'dashboard.audit.action.monitoring.alerts.settings': 'changed the monitoring alert settings',
     // alpha.128 ops (G18): notifications by recipient.
     'dashboard.audit.action.notifications.preferences': 'changed which notices they receive by email',
