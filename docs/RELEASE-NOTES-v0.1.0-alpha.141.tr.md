@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.141.md)
 
+> **Yayımlandı**, 20 Kasım 2026 (UTC): sürüm commit'i `cccb08fab`, GitHub ön sürümü 19:46:26Z, indirme portalı yaklaşık 19:49Z (dış denetim 27/27).
+
 **Bir güvenlik sürümü: lütfen yakında güncelleyin.** Bir müşterinin
 veritabanı sunucusunun yönetici haklarına, onlarla da diğer bütün
 müşterilerin verisine ve sunucunun kendisine ulaşabildiği yolları kapatır.
