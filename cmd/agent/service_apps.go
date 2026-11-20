@@ -240,10 +240,18 @@ func (a *Agent) ServiceAppProbeV1(_ *transport.Empty, resp *transport.ServiceApp
 	resp.Apps = []transport.ServiceAppAvailability{}
 	for _, app := range serviceapps.Catalog() {
 		choice := serviceapps.ChooseRuntime(app, nodes, pythons)
-		resp.Apps = append(resp.Apps, transport.ServiceAppAvailability{
+		availability := transport.ServiceAppAvailability{
 			AppID: app.ID, Available: choice.Available, Reason: choice.Reason, Detail: choice.Detail,
 			RuntimeVersion: choice.Version, RuntimeSource: choice.Source,
-		})
+		}
+		if app.Deferred == "" {
+			availability.FoundKnown = true
+			availability.Found = []transport.ServiceAppRuntimeFound{}
+			for _, found := range choice.Found {
+				availability.Found = append(availability.Found, transport.ServiceAppRuntimeFound{Version: found.Version, Source: found.Source, Venv: found.Venv})
+			}
+		}
+		resp.Apps = append(resp.Apps, availability)
 	}
 	return nil
 }

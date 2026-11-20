@@ -202,6 +202,25 @@ const (
 	KindTool ServiceKind = "tool"
 )
 
+// InstalledByVersion: a runtime with no distribution package in any family is
+// installed one version at a time through its own path (Node.js: the
+// version list under Components, an official release checked against its
+// checksums), never through the generic package install. The Components page
+// draws the same rule (a runtime without packages opens its version list).
+// InstalledByVersion: hiçbir ailede dağıtım paketi olmayan çalışma ortamı
+// sürüm sürüm kendi yolundan kurulur, genel paket kurulumundan asla.
+func (s *ManagedService) InstalledByVersion() bool {
+	if s == nil || s.Kind != KindRuntime {
+		return false
+	}
+	for _, packages := range s.Packages {
+		if len(packages) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // ManagedService represents a service that CelikPanel can manage
 type ManagedService struct {
 	ID          string      // Unique identifier (e.g., "php-fpm", "nginx")
