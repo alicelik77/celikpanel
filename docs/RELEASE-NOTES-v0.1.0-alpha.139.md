@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.139.tr.md)
 
+> **Published** on 2026-11-20 (UTC): release commit `f1e35edf3`, GitHub pre-release at 02:33:00Z, download portal at about 02:36Z (public check 27/27).
+
 A small release of two jobs, both from the alpha.135 lab. When the backup DNS
 server of a pair asks its main DNS server to add one of its own host records,
 the main server now says truthfully, and in time, what it did. On top of
@@ -173,7 +175,8 @@ the alpha.138 state. The release ran under a lab-only label
 needs a server to join, which would have changed the lab pair). The new
 port sentence on screen: both lab servers use port 1923, so the sentence
 appears on neither; it was found in the interface files both servers serve,
-in English and Turkish, with no file naming cPanel. The automatic second ask
+in English and Turkish, and the earlier sentence that named another product
+is in none of those files. The automatic second ask
 after 25 seconds without an answer: no request went unanswered in this run.
 
 ### Found in the lab, left for the next release
