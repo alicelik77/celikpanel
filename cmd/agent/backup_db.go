@@ -235,7 +235,13 @@ func restoreDatabase(database backupspec.DatabaseIdentity, source string) error 
 	defer gz.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), backupDatabaseTimeout)
 	defer cancel()
-	return runBackupCommand(ctx, command, gz, io.Discard)
+	var dump io.Reader = gz
+	if normalized, err := validateDatabaseIdentity(database); err == nil && normalized.Type == "postgresql" {
+		// 20 Nov 2026: a SQL_ASCII dump loaded into a UTF8 database has its
+		// bytes checked (pg_client_encoding.go); elsewhere nothing changes.
+		dump = newPGDumpEncodingFilter(gz)
+	}
+	return runBackupCommand(ctx, command, dump, io.Discard)
 }
 
 func validateRestoreDatabase(expected, requested backupspec.DatabaseIdentity) (backupspec.DatabaseIdentity, error) {

@@ -101,7 +101,19 @@ func (d *PostgreSQLDriver) CreateDatabase(name string) error {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s WITH ENCODING='UTF8';", ident))
+	// 20 Nov 2026: the shared statement (postgresql_create.go). The old
+	// "WITH ENCODING='UTF8'" copied template1, so on a cluster whose
+	// template1 is SQL_ASCII it was refused ("new encoding (UTF8) is
+	// incompatible with the encoding of the template database").
+	var versionText string
+	if err := db.QueryRow("SELECT current_setting('server_version_num')").Scan(&versionText); err != nil {
+		return fmt.Errorf("read PostgreSQL version for create: %w", err)
+	}
+	versionNum := ParsePostgreSQLVersionNum(versionText)
+	_, err = db.Exec(PostgreSQLCreateDatabaseStatement(ident, "", versionNum, false))
+	if PostgreSQLCreateDatabaseNeedsFallback(versionNum, err) {
+		_, err = db.Exec(PostgreSQLCreateDatabaseStatement(ident, "", versionNum, true))
+	}
 	if err != nil {
 		// 42P04 duplicate_database: the name is somebody's already.
 		if strings.Contains(err.Error(), "42P04") {
