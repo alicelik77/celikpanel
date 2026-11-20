@@ -79,6 +79,9 @@ export const enSiteBackupScreens = {
     'err.BACKUP_RESTORE_OTHER_SITE': 'This backup was made of another site, so it is not restored on this one; nothing was restored and the site is unchanged. Choose a backup of this site, or restore this one on the site it was made of.',
     'err.BACKUP_RESTORE_NO_SPACE': 'The server’s disk has no room to unpack this backup, so nothing was restored and the site is unchanged. The server administrator frees disk space on the server; then restore again.',
     'err.BACKUP_RESTORE_SITE_ACCOUNT': 'The site’s own account on the server, which the program’s files belong to, could not be found, so nothing was restored and the site is unchanged. The server administrator checks the site’s hosting account; then restore again.',
+    'err.BACKUP_RESTORE_DATABASE_ACCOUNT': 'A backup’s database is restored only with that database’s own user, and that user has no stored password here or the database server did not accept it (it was probably changed outside the panel). Nothing was restored and the site is unchanged. Set a new password for the database’s user on the Databases page, then restore again.',
+    'err.BACKUP_RESTORE_CLIENT_UNSAFE': 'This server’s MariaDB client is too old to load a backup safely (it has no sandbox mode), so nothing was restored and the site is unchanged. The server administrator updates the server’s MariaDB packages; then restore again.',
+    'err.BACKUP_RESTORE_NEEDS_ADMINISTRATOR': 'This backup holds something only the database server’s administrator may create here (the reason is below), and a database is restored only with its own rights. Nothing was restored and the site is unchanged. Ask the server administrator: they can allow it on the database server or restore this backup by hand.',
 } as const;
 
 export type SiteBackupScreenKey = keyof typeof enSiteBackupScreens;

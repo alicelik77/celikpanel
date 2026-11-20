@@ -70,6 +70,9 @@ func pgCommandAs(ctx context.Context, owner string, binary string, args ...strin
 	cmd.Env = []string{
 		"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", "LANG=C",
 		"HOME=" + account.HomeDir, "USER=" + owner, "PGCONNECT_TIMEOUT=10",
+		// S1: the fixed search path of every administrator session
+		// (pg_admin_session.go).
+		pgAdminSessionEnv,
 	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid:    true,

@@ -80,11 +80,13 @@ func newPostgreSQLStatementCommand(statement string) *exec.Cmd {
 // port (alpha.108: every PostgreSQL major runs as its own cluster on its own
 // port). Port 0 is psql's own choice, as before.
 func newPostgreSQLStatementCommandOn(port int, statement string) *exec.Cmd {
-	args := []string{"-u", "postgres", "psql", "--no-psqlrc", "--set", "ON_ERROR_STOP=on"}
+	var extra []string
 	if port > 0 {
-		args = append(args, "--port", strconv.Itoa(port))
+		extra = append(extra, "--port", strconv.Itoa(port))
 	}
-	command := exec.Command("sudo", args...)
+	// S1: the fixed search path of every administrator session
+	// (pg_admin_session.go).
+	command := exec.Command("sudo", pgAdminPSQLArgs("", extra...)...)
 	command.Stdin = strings.NewReader(statement + "\n")
 	return command
 }

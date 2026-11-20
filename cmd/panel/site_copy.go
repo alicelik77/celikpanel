@@ -247,6 +247,8 @@ func (p *Panel) handleDomainSiteCopy(w http.ResponseWriter, r *http.Request, dom
 	}
 	if created != nil {
 		request.TargetDatabase = created.Name
+		// S1: the copy is loaded with the new database's own account.
+		request.TargetDBUser, request.TargetDBPass = created.User, created.Password
 	}
 	var answer transport.SiteCopyResponse
 	if err := siteCopyAgent(p, opCtx, "Agent.SiteCopyV1", &request, &answer); err != nil {

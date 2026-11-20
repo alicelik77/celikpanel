@@ -178,9 +178,9 @@ func TestAPostgreSQLBackupGoesToTheRunningCluster(t *testing.T) {
 	if err != nil || !strings.HasSuffix(strings.Join(dump.Args, " "), "--dbname shop --port 5433") {
 		t.Fatalf("dump = %v %v", dump.Args, err)
 	}
-	restore, err := databaseRestoreCommand(identity)
-	if err != nil || !strings.Contains(strings.Join(restore.Args, " "), "--dbname shop --port 5433 --single-transaction --command ") {
-		t.Fatalf("restore = %v %v", restore.Args, err)
+	// S1: the restore signs in on the running cluster's port.
+	if port := pgLoadPort(identity); port != 5433 {
+		t.Fatalf("restore port = %d", port)
 	}
 	usePGStatementClusters(t, bostonLsclusters[:strings.Index(bostonLsclusters, "\n18")+1])
 	if _, err := databaseDumpCommand(identity); pgClusterRefusalOf(err) == nil {

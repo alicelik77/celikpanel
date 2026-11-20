@@ -883,6 +883,15 @@ func (p *Panel) restoreLocalBackup(ctx context.Context, d backupDomain, name str
 		refusal := transport.DatabaseClusterRefusal(*resp.Refusal)
 		return remotePrerequisite(pgClusterRefusalCodeSuffix(refusal.Reason), pgClusterRefusalMessage(&refusal))
 	}
+	// S1: refused before anything was written; the code says who acts.
+	switch resp.Code {
+	case backupspec.RestoreCodeDatabaseAccount:
+		return remotePrerequisite("DATABASE_ACCOUNT", auditReason(resp.Detail))
+	case backupspec.RestoreCodeClientUnsafe:
+		return remotePrerequisite("DATABASE_CLIENT_UNSAFE", auditReason(resp.Detail))
+	case backupspec.RestoreCodeNeedsAdministrator:
+		return remotePrerequisite("DATABASE_NEEDS_ADMINISTRATOR", auditReason(resp.Detail))
+	}
 	if !resp.Success || resp.Error != "" {
 		return remoteVerifiedFailure("RESTORE_FAILED", auditReason(resp.Error))
 	}

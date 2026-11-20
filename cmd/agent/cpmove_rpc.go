@@ -5,6 +5,8 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -12,11 +14,15 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/backupspec"
+	"github.com/alicelik/celikpanel/internal/hostcmd"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -476,11 +482,95 @@ func cpmoveDatabaseCommandError(stage string, timedOut bool, err error) string {
 	if timedOut {
 		return "mysql " + stage + " timed out"
 	}
+	var refusal *databaseLoadRefusal
+	if errors.As(err, &refusal) {
+		return "mysql " + stage + " failed: " + refusal.Reason
+	}
+	var load *cpmoveLoadError
+	if errors.As(err, &load) && load.where != "" {
+		// Only the engine's code and the line: the message may quote the
+		// dump's text.
+		return "mysql " + stage + " failed (" + load.where + ")"
+	}
 	var execErr *exec.Error
 	if errors.As(err, &execErr) {
 		return "mysql client is unavailable"
 	}
 	return "mysql " + stage + " failed"
+}
+
+// cpmoveLoadError is a load the server refused; where is "ERROR <code> at
+// line <n>", never the server's message (it can quote the dump).
+type cpmoveLoadError struct {
+	where string
+	err   error
+}
+
+func (e *cpmoveLoadError) Error() string { return "load failed" }
+func (e *cpmoveLoadError) Unwrap() error { return e.err }
+
+var cpmoveClientErrorRe = regexp.MustCompile(`ERROR (\d+) \([0-9A-Z]+\) at line (\d+)`)
+
+// cpmoveLoadDump loads the staged dump into the database just created: a
+// temporary account is given every right on that database alone, the
+// sandboxed client signs in as it under the imported site's own account,
+// and the account is removed again. (A seam for tests.)
+var cpmoveLoadDump = func(req *CpmoveImportDBRequest, dump io.Reader) (bool, error) {
+	account, drop, err := cpmoveCreateLoadAccount(req.TargetDB)
+	if err != nil {
+		return false, err
+	}
+	defer drop()
+	ctx, cancel := context.WithTimeout(context.Background(), cpmoveMySQLImportTimeout)
+	defer cancel()
+	identity := backupspec.DatabaseIdentity{ID: 1, Name: req.TargetDB, Type: "mysql"}
+	siteUser := databaseLoadSiteUser(req.SubscriptionID, req.DomainID, req.Domain)
+	output, err := mariadbLoadAsAccount(ctx, siteUser, identity, account, dump)
+	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
+	if err == nil {
+		return false, nil
+	}
+	var refusal *databaseLoadRefusal
+	if errors.As(err, &refusal) {
+		return timedOut, err
+	}
+	where := ""
+	if match := cpmoveClientErrorRe.FindStringSubmatch(output); match != nil {
+		where = "ERROR " + match[1] + " at line " + match[2]
+	}
+	return timedOut, &cpmoveLoadError{where: where, err: err}
+}
+
+// cpmoveCreateLoadAccount makes the temporary account a dump is loaded as:
+// a random name and password, ALL PRIVILEGES on exactly this database (no
+// GRANT OPTION), and nothing else. drop removes it again.
+var cpmoveCreateLoadAccount = func(database string) (databaseLoadAccount, func(), error) {
+	random := make([]byte, 24)
+	if _, err := rand.Read(random); err != nil {
+		return databaseLoadAccount{}, nil, err
+	}
+	encoded := hex.EncodeToString(random)
+	account := databaseLoadAccount{User: "celikpanel_load_" + encoded[:12], Password: encoded[12:]}
+	userLiteral := mysqlLiteral(account.User)
+	grantTarget, err := mariadbgrant.Target(database)
+	if err != nil {
+		return databaseLoadAccount{}, nil, err
+	}
+	if out, err := mysqlExecStatement("CREATE USER " + userLiteral + "@'localhost' IDENTIFIED BY " + mysqlLiteral(account.Password) + ";"); err != nil {
+		return databaseLoadAccount{}, nil, hostcmd.Fail("a database account to load the dump as could not be made", out, err, databaseClientMeaning)
+	}
+	drop := func() {
+		for attempt := 0; attempt < 2; attempt++ {
+			if _, err := mysqlExecStatement("DROP USER IF EXISTS " + userLiteral + "@'localhost';"); err == nil {
+				return
+			}
+		}
+	}
+	if _, err := mysqlGrantExactly("ALL PRIVILEGES", grantTarget, mariadbgrant.Exact(database), userLiteral, account.User); err != nil {
+		drop()
+		return databaseLoadAccount{}, nil, errors.New("a database account to load the dump as could not be given its rights")
+	}
+	return account, drop, nil
 }
 
 func createSecureCpmoveSQLFile() (*os.File, func(), error) {
@@ -599,6 +689,30 @@ func importCpmoveDatabase(req *CpmoveImportDBRequest, resp *CpmoveImportDBRespon
 		return nil
 	}
 
+	// S1 (20 Nov 2026): the dump is the archive's, so it is loaded only by
+	// the sandboxed client with rights on the new database alone. A client
+	// without sandbox mode creates nothing.
+	if _, err := mariadbSafeClient(); err != nil {
+		resp.Error = "the database was not imported: " + err.Error()
+		return nil
+	}
+	if found, err := sqlReaderCreatesRoutines(tmp); err != nil {
+		resp.Error = "database dump could not be staged"
+		return nil
+	} else if found {
+		if gated, gateErr := mariadbBinlogGate(); gateErr != nil || gated {
+			resp.Error = "the database was not imported: it holds stored functions or triggers, and this MariaDB server writes a binary log and lets only its administrator create them (log_bin_trust_function_creators is off)"
+			if gateErr != nil {
+				resp.Error = "the database was not imported: " + gateErr.Error()
+			}
+			return nil
+		}
+	}
+	if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+		resp.Error = "database dump could not be staged"
+		return nil
+	}
+
 	// Create a new database exclusively, then feed the dump. IF NOT EXISTS
 	// would silently import an untrusted archive into an unrelated database
 	// that happened to have the same name.
@@ -620,8 +734,8 @@ func importCpmoveDatabase(req *CpmoveImportDBRequest, resp *CpmoveImportDBRespon
 		return nil
 	}
 
-	importArgs := []string{"--database", req.TargetDB}
-	if timedOut, err := runCpmoveDatabaseCommand(runner, cpmoveMySQLImportTimeout, importArgs, tmp); err != nil {
+	timedOut, err := cpmoveLoadDump(req, tmp)
+	if err != nil {
 		primaryError := cpmoveDatabaseCommandError("import", timedOut, err)
 		// CREATE above is deliberately exclusive, so this handler owns the
 		// database it just created. Compensate a failed import immediately.

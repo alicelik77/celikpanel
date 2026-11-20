@@ -31,11 +31,52 @@ func (e pgconnLoadExecutor) CopyFrom(ctx context.Context, sql string, data io.Re
 	return err
 }
 
+// pgLoadConn is one session a file is loaded through (a seam for tests).
+type pgLoadConn interface {
+	pgLoadExecutor
+	// ParameterStatus is what the server reported at sign-in
+	// (is_superuser: "on" or "off").
+	ParameterStatus(key string) string
+	// QueryValues runs one fixed statement and returns its rows as text.
+	QueryValues(ctx context.Context, sql string) ([][]string, error)
+	Close(ctx context.Context) error
+}
+
+// pgconnLoadSession is a pgLoadConn over a real connection.
+type pgconnLoadSession struct {
+	pgconnLoadExecutor
+}
+
+func (s pgconnLoadSession) ParameterStatus(key string) string { return s.conn.ParameterStatus(key) }
+
+func (s pgconnLoadSession) Close(ctx context.Context) error { return s.conn.Close(ctx) }
+
+func (s pgconnLoadSession) QueryValues(ctx context.Context, sql string) ([][]string, error) {
+	results, err := s.conn.Exec(ctx, sql).ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	var rows [][]string
+	for _, result := range results {
+		if result.Err != nil {
+			return nil, result.Err
+		}
+		for _, row := range result.Rows {
+			values := make([]string, len(row))
+			for i, value := range row {
+				values[i] = string(value)
+			}
+			rows = append(rows, values)
+		}
+	}
+	return rows, nil
+}
+
 // connectPGAsDatabaseUser signs in to the cluster on port as the database's
 // own role, with its password, over loopback TCP (the distributions' default
 // pg_hba.conf accepts a password there; peer authentication on the socket
 // would need the role's operating-system account).
-func connectPGAsDatabaseUser(ctx context.Context, port int, database, user, password string) (*pgconn.PgConn, error) {
+func connectPGAsDatabaseUser(ctx context.Context, port int, database, user, password string) (pgLoadConn, error) {
 	if port <= 0 {
 		port = 5432
 	}
@@ -46,8 +87,12 @@ func connectPGAsDatabaseUser(ctx context.Context, port int, database, user, pass
 	cfg.User, cfg.Password, cfg.Database = user, password, database
 	cfg.ConnectTimeout = 15 * time.Second
 	cfg.Fallbacks = nil
-	cfg.RuntimeParams = map[string]string{"application_name": "celikpanel-import"}
-	return pgconn.ConnectConfig(ctx, cfg)
+	cfg.RuntimeParams = map[string]string{"application_name": "celikpanel-load"}
+	conn, err := pgconn.ConnectConfig(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return pgconnLoadSession{pgconnLoadExecutor{conn: conn}}, nil
 }
 
 // pgAuthRefusal tells a refused sign-in apart from other failures.

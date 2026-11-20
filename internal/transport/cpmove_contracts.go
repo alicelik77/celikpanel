@@ -120,11 +120,19 @@ type CpmoveMemberGroup struct {
 	Count int    `json:"count"`
 }
 
+// CpmoveImportDBRequest loads one dump of the archive into a new database.
+// SubscriptionID, DomainID and Domain (20 Nov 2026, additive) name the
+// imported site: the dump is loaded under that site's own account by a
+// sandboxed client signed in with an account that has rights on the new
+// database only, never as the engine's administrator.
 type CpmoveImportDBRequest struct {
 	ExpectedBuildCommit string `json:"expected_build_commit"`
 	Path                string `json:"path"`
 	DumpName            string `json:"dump_name"`
 	TargetDB            string `json:"target_db"`
+	SubscriptionID      int    `json:"subscription_id,omitempty"`
+	DomainID            int    `json:"domain_id,omitempty"`
+	Domain              string `json:"domain,omitempty"`
 }
 
 type CpmoveImportDBResponse struct {
