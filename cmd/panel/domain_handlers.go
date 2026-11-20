@@ -364,6 +364,17 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	parentDNSDomain := ""
 	remoteConnectionID := ""
 	prospectiveSubscription := req.SubscriptionID
+	// A subscription named in the request is read only once the caller may
+	// use it (security release, 20 November 2026): the parent lookup below
+	// must not answer about another account's domains.
+	if prospectiveSubscription != 0 {
+		if early := currentCaller(r); early == nil || early.Role != roleAdmin {
+			if err := p.canAccessSubscription(r.Context(), early, prospectiveSubscription); err != nil {
+				writeClientError(w, http.StatusForbidden, "subscription not found or not permitted")
+				return
+			}
+		}
+	}
 	if prospectiveSubscription == 0 {
 		if caller := currentCaller(r); caller != nil {
 			err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT id FROM subscriptions WHERE owner_id = ? ORDER BY id LIMIT 1`, caller.ID).Scan(&prospectiveSubscription)
