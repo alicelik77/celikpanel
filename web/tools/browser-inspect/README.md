@@ -754,7 +754,12 @@ rolled-back update; Open webmail is held back until webmail has its own address 
 Roundcube's Manage page with the Webmail address card without an address (the
 suggestion), a check with no record yet (the record and the zone hosted here), a
 ready check and its set-up confirmation, and an enabled, proved address with its
-removal confirmation (`y33address`). Same conventions as batch 30.
+removal confirmation (`y33address`). Since alpha.135 it also draws "Add…"
+beside "Copy" on a pair's backup DNS server: the check, the confirmation, the
+steps, the end, the wait and its bound, each refusal, an unknown result and an
+optional AAAA record, with example names only (`y33dnsadd`); since alpha.139
+also a busy main server, the pause before the one automatic re-ask and the end
+after it. Same conventions as batch 30.
 
 `scenarios-batch34.mjs` draws alpha.134's "Database rights by exact name" block
 on the MariaDB page from overrides only: nothing to do, being rewritten, waiting
@@ -789,3 +794,12 @@ program or app right (no Programs in the row) and the alpha.132–137 address
 it wraps or scrolls and its spare width. The mock does not answer a site's
 hosting settings, applications or redirects, so those cards say they could not
 be read; that is the mock, not the screen. Same conventions as batch 30.
+
+`scenarios-batch41.mjs` draws alpha.139's wording of the setup review's
+zone-wide rule from overrides only: the plan review's blocker when another DNS
+zone hosted on this server lies inside the main domain's zone or around it
+(`y41overlapplan`, opened at the Summary from the wizard's own session
+checkpoint) and the main server's run waiting at the peer join for the same
+cause (`y41overlapwait`). The mock has no join state, so the join card above
+the sentence shows its generic text; that is the mock, not the screen. Same
+conventions as batch 30.

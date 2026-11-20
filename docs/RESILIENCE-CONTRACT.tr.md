@@ -8175,3 +8175,54 @@ bağlantıyı tutar.
   türe ve plana göre; ekranın kuralı sunucunun iki reddiyle, tür ve öteki türün kaydıyla karşılaştırılır). Laboratuvar (bir deneme, alpha.138 adayı): yayındaki bir programın alan adında doğrudan yapay zekâ uygulaması kurulumu `program_created` ile reddedildi, hiçbir şey kaydedilmedi, program 45 denetimin 45'ine yanıt verdi; plan hakkı kapalı, oluşturulmuş bir program gösterildi, kaldırıldı ve alan adı silindi. Laboratuvarda üretilemedi: ikisini birden tutan alan adı (Debian 13 / Ubuntu 24.04 sunucularına yapay zekâ uygulaması kurulamıyor).
 - **Açık.** Sunucunun İngilizce yedek retleri hâlâ "the Programs tab" der.
   **Hiçbir P0 işi kapanmadı.**
+
+### Dallar a140/host-record-receiver ve a140/dnsadd (ana makine kaydı alıcısı doğru ve zamanında yanıt verir; web postasının kaydı için "Ekle…"; şema değişikliği yok; ilke 2 ve 3; D-022; D-024; D-025; 2026-11-20, aday alpha.139)
+
+- **Neden burada.** Ana makine kaydı alıcısı ve uzak DNS yayım alıcısı DNS
+  değişikliklerinin kabul noktalarıdır: yanıtlarını ilke 3 (sınırda durur,
+  hiçbir şey yarım uygulanmaz) ve ilke 2 (bilinmeyen asla hata ya da başarı
+  olarak söylenmez) yönetir.
+- **Kusur (alpha.135 laboratuvarı).** Bir yedeğin isteği var olmayan bir kayıt
+  için CONFLICT aldı: `applyRemoteDNSHostRecord` kurulum anlık görüntüsünü
+  okuyordu; bu, altında ya da üstünde barındırılan herhangi bir bölge varsa
+  bütün altyapı bölgesini reddeder, her inceleme hatası da CONFLICT oluyordu.
+  `serviceMutationMu` / `dnsPublicationMu`'yu ~29 sn tutan bir alan adı
+  silmesinin arkasında bir istek sınırsız `Lock()` ile gönderenin 10 sn başlık
+  sınırını aşarak bekledi; iptal edilen istek iptal edilmiş bağlamda yeniden
+  yetkilendirmede düştü ve ne günlüğe ne denetime yazan bir yoldan 401 aldı.
+- **Sözleşme.** Başka bir barındırılan bölge yüzünden ana makine kaydı yalnız o
+  bölge adı yanıtlıyorsa reddedilir (`readInfrastructureDNSSnapshotForHost`,
+  tam aday adlar; `OUTSIDE_ZONE`); bölge durumuna dayanan retler
+  `REMOTE_DNS_HOST_RECORD_ZONE_REVIEW`; CONFLICT addaki çakışmadır. İki alıcı da
+  iki kilidi 3 sn içinde `TryLock` ile alır (`lockRemoteDNSReceiver`), alamazsa
+  hiçbir şey uygulamadan `Retry-After` ile 503 döner (ana makine kaydı:
+  kodsuz, eski ikinciller bilinmiyor okusun diye; yayım: `REMOTE_DNS_BUSY`);
+  kilitlerden sonra kimlik bilgisi okunamazsa 503, kesin iptal 401. Hiçbir şey
+  uygulamayan her ana makine kaydı yanıtı koduyla bir günlük satırı ve denetim
+  kaydı yazar. Yazmadan sonraki yayım kısa kesilmez; yineleme o sürerken
+  meşgul, sonra `present`. Kurulum incelemesinin bölge geneli kuralı değişmedi;
+  çakışma nedeninin kendi engeli (`server_setup_infrastructure_dns_zone_overlap`)
+  ve katılma beklemesi (`server_setup_peer_zone_overlap`) var.
+- **"Ekle…".** Yedek sunucunun isteği (`webmail_address_dns_record.go`) her
+  503'ü `busy` (lisans kodları kendi nedenini korur), yanıtsız kalan teslim
+  edilmiş isteği `unknown/no_answer` sayar; sayfa 25 sn sonra yeni bir istek
+  kimliğiyle bir kez yeniden sorar, sonra kararı kişiye bırakır ("Yeniden
+  sor", aynı onay). Hiçbir yoklama değişiklik göndermez.
+- **Şema / sürüm geçişi.** Yok; eklemeli yanıtlar ve bu sunucunun kendi
+  yanıtında bir sonuç daha. Eski bir ikincil ZONE_REVIEW'u genel reddi, meşgul
+  503'ü bilinmiyor olarak okur; eski bir birincille eşleşen yeni bir ikincil o
+  birincilin CONFLICT'ini ve sınırsız beklemesini görür.
+- **Kurtarma.** Meşgul ya da bilinmeyen bir son, bir yinelemenin çoğaltacağı
+  hiçbir şey uygulamaz: alıcı içeriğe göre idempotenttir.
+- **Kanıt.** `cmd/panel/remote_dns_host_record_receiver_test.go` (gerçek TLS
+  üzerinden sınır içinde meşgul, ana bölgenin yanında alt bölge, bölge durumu
+  kodları, ayrılan gönderen, yavaş bir yayım sırasında ve sonrasında yineleme,
+  kurulum ikincilinin davranışı); `webmail_address_dns_record_tls_test.go`
+  (gerçek TLS üzerinden üretim alıcısına karşı istek: laboratuvar durumu
+  eklendi ile biter, meşgul, yanıt yok sonra zaten var, eski bir birincilin
+  CONFLICT'i); `server_setup_zone_overlap_test.go`; web
+  `webmail-dns-add-alpha135.test.mjs`, `setup-zone-overlap-alpha139.test.mjs`.
+- **Açık.** Gerçek bir çiftte laboratuvar denemesi. Kimlik doğrulama katmanının
+  kendi 401'leri günlük satırı yazmaz. Kurulum incelemesinin bölge geneli
+  kuralının kendisi (daha dar bir kural ayrı bir kulvar). **Hiçbir P0 maddesi
+  kapanmadı.**

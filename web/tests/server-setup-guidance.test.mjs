@@ -188,9 +188,12 @@ test('a secondary waiting for its host record says what the primary answered, an
     for(const [outcome,key] of [
         [{status:'refused',code:'REMOTE_DNS_HOST_RECORD_CONFLICT'},'setup.guide.peerRecordRefused.REMOTE_DNS_HOST_RECORD_CONFLICT'],
         [{status:'refused',code:'REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE'},'setup.guide.peerRecordRefused.REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE'],
+        [{status:'refused',code:'REMOTE_DNS_HOST_RECORD_ZONE_REVIEW'},'setup.guide.peerRecordRefused.REMOTE_DNS_HOST_RECORD_ZONE_REVIEW'],
         [{status:'refused',code:'SOMETHING_NEW'},'setup.guide.peerRecordRefused.other'],
         [{status:'unsupported'},'setup.guide.peerRecordUnsupported'],
         [{status:'unknown'},'setup.guide.peerRecordUnknown'],
+        // A busy primary applied nothing and is asked again: an unknown result.
+        [{status:'unknown',code:'REMOTE_DNS_BUSY'},'setup.guide.peerRecordUnknown'],
     ]){
         const guide=setupExecutionGuidance(peerWait({channel:true,outcome:{name:'n',content:'c',...outcome}}));
         assert.ok(keys(guide).includes(key),key);
@@ -208,7 +211,7 @@ test('a secondary waiting for its host record says what the primary answered, an
 });
 test('every sentence about the record requested from the primary exists in both languages and names the primary',()=>{
     const peerKeys=Object.keys(enSetupDNS).filter(key=>key.startsWith('setup.guide.peerRecord'));
-    assert.equal(peerKeys.length,10);
+    assert.equal(peerKeys.length,11);
     for(const key of peerKeys){
         assert.ok(trScreens[key]&&trScreens[key]!==enScreens[key],`${key} has no Turkish text`);
         for(const table of [enScreens,trScreens]) assert.ok(table[key].includes('{primary}'),`${key} does not name the primary`);

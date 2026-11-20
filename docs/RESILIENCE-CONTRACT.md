@@ -8957,3 +8957,55 @@ until the backup reports ready.
   role, type and plan; the screen's rule checked against both server refusals, the type and a record of the other kind). Lab (one run, alpha.138 candidate): a direct AI app install on a deployed program's domain was refused with `program_created`, nothing recorded, the program answering 45 of 45 checks; a created program with its plan right closed was shown, removed and its domain deleted. Not producible in the lab: a domain holding both (no AI app installs on its Debian 13 / Ubuntu 24.04 servers).
 - **Open.** The server's English fallback refusals still name "the Programs
   tab". **No P0 item is closed.**
+
+### Branches a140/host-record-receiver and a140/dnsadd (the host-record receiver answers truthfully and in time; "Add…" for webmail's record; no schema change; invariants 2 and 3; D-022; D-024; D-025; 2026-11-20, candidate alpha.139)
+
+- **Why it is here.** The host-record receiver and the remote DNS
+  publication receiver are admission points of DNS mutations: invariant 3
+  (stop at the boundary, nothing half applied) and invariant 2 (unknown is
+  never said as a failure or a success) govern their answers.
+- **Defect (alpha.135 lab).** A backup's request was answered CONFLICT for a
+  record that did not exist: `applyRemoteDNSHostRecord` read the setup
+  snapshot, which refuses the whole infrastructure zone when any hosted zone
+  lies under or above it, and turned every review error into CONFLICT. Behind
+  a domain deletion holding `serviceMutationMu` / `dnsPublicationMu` ~29 s, a
+  request waited with an unbounded `Lock()` past the sender's 10 s header
+  limit; the cancelled request then failed its re-authorization on the
+  cancelled context and was answered 401 through a path that neither logged
+  nor audited.
+- **Contract.** A host record is refused because of another hosted zone only
+  when that zone answers for the name (`readInfrastructureDNSSnapshotForHost`,
+  exact candidate names; `OUTSIDE_ZONE`); zone-state refusals have
+  `REMOTE_DNS_HOST_RECORD_ZONE_REVIEW`; CONFLICT is a clash at the name. Both
+  receivers take the two locks by `TryLock` within 3 s
+  (`lockRemoteDNSReceiver`) and otherwise answer 503 with `Retry-After`,
+  nothing applied (host record: uncoded, so older secondaries read unknown;
+  publication: `REMOTE_DNS_BUSY`); a credential read error after the locks is
+  503, a definite revocation 401. Every host-record answer that applies
+  nothing writes a journal line and an audit row with its code. The publish
+  after a write is not cut short; a repeat is busy while it runs and `present`
+  after. The setup review's zone-wide rule is unchanged; its overlap cause has
+  its own blocker (`server_setup_infrastructure_dns_zone_overlap`) and peer
+  join wait (`server_setup_peer_zone_overlap`).
+- **"Add…".** The backup server's request (`webmail_address_dns_record.go`)
+  maps any 503 to `busy` (licence codes keep their reason) and a delivered
+  request without an answer to `unknown/no_answer`; the page re-asks once
+  after 25 s with a new request identity and then leaves the decision to a
+  person ("Ask again", the same confirmation). No polling sends a change.
+- **Schema / version transition.** None; additive wire answers and one more
+  outcome in this server's own answer. An older secondary reads ZONE_REVIEW as
+  its generic refusal and the busy 503 as unknown; a newer secondary paired
+  with an older primary keeps that primary's CONFLICT and unbounded wait.
+- **Recovery.** A busy or unknown end applies nothing that a repeat could
+  duplicate: the receiver is idempotent by content.
+- **Evidence.** `cmd/panel/remote_dns_host_record_receiver_test.go` (busy over
+  real TLS within the bound, child zone beside the main zone, zone-state
+  codes, a sender that left, a repeat during and after a slow publication,
+  the setup secondary's handling); `webmail_address_dns_record_tls_test.go`
+  (the request over real TLS against the production receiver: the lab's
+  situation ends added, busy, no answer then present, an older primary's
+  CONFLICT); `server_setup_zone_overlap_test.go`; web
+  `webmail-dns-add-alpha135.test.mjs`, `setup-zone-overlap-alpha139.test.mjs`.
+- **Open.** The lab run on a real pair. The authentication layer's own 401s
+  write no journal line. The setup review's zone-wide rule itself (a narrower
+  rule is a separate lane). **No P0 item is closed.**

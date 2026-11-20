@@ -11276,3 +11276,78 @@ DNS server's confirmation) keep their single sentence for now. Open: a
 re-checked reason can still make the Agent hold every change if the owner
 edits this server's DNS during the wait (RESILIENCE-CONTRACT, "Branch
 a133/proofwait").
+
+### The main DNS server's answer to a host record request (alpha.139, 2026-11-19)
+
+In the alpha.135 lab a backup DNS server asked its main DNS server for one
+host record and got two wrong answers: "this name is already taken" for a
+record that did not exist (a customer zone under the infrastructure zone
+refused the whole zone), and "unknown" with nothing in the main server's
+journal (a domain deletion held the DNS locks for about 29 seconds, past the
+asking server's 10-second limit). What the main server answers now:
+
+| Answer | Meaning | Who acts | How it continues |
+|---|---|---|---|
+| created / updated / present | the record is in the zone and published | nobody | public DNS shows it after the transfer and caches |
+| `REMOTE_DNS_HOST_RECORD_CONFLICT` (409) | a clash at that very name: another record with other content, a CNAME/DNAME/delegation in the way, a disabled record, or this channel's record changed or removed by hand | the main server's administrator | correct that record in Domains, or add the record by hand |
+| `REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE` (409) | the name is not answered by an infrastructure zone there; also when another zone hosted there (a customer zone under the infrastructure zone) answers for that name | the administrator | add the record where that name is managed |
+| `REMOTE_DNS_HOST_RECORD_ZONE_REVIEW` (409, new) | the zone itself cannot take records from this connection now: not a local primary zone, DNSSEC-signed, ownership not verified, external or remote DNS, over its bounds; nothing was written | the main server's administrator | review the zone there, or add the record by hand |
+| busy (503 with `Retry-After`, no code, new) | another DNS change holds the locks; the main server waited at most 3 seconds and applied nothing | nobody | the asking server sends the same request again (setup: after two minutes, five times at most) |
+| `REMOTE_DNS_HOST_RECORD_PENDING` (409) | saved, publication not verified | nobody | the same request again is answered "present" once published |
+
+A customer zone elsewhere under the infrastructure zone, or a zone above it,
+no longer refuses a host record; the setup review's own zone-wide rule is
+unchanged in this release. Every answer that applies nothing leaves a journal
+line and an audit row (`dns.remote.host_record.refused`, its code in the
+details), also when the asking server stopped waiting before the locks were
+free (it was answered 401 without either before). The publication itself is
+not cut to fit the asking server's 10 seconds: if it takes longer, the asking
+server reads "unknown" and asks again; the repeat is "busy" while the first
+still publishes and "present" afterwards, never a second write. The remote
+DNS publication receiver waits for the same locks within the same bound and
+answers 503 `REMOTE_DNS_BUSY`; every sending version keeps its saved
+publication and sends it again. The busy host record answer has no code on
+purpose: an alpha.137 secondary records any coded answer as a refusal for
+good, and an uncoded 503 as "unknown", which it asks again. It reads the new
+ZONE_REVIEW code as its generic refusal ("did not create this record; add it
+by hand"). Schema: none. Code: `cmd/panel/remote_dns_host_record.go`,
+`setup_dns_remote_receiver.go`, `server_setup_infrastructure_dns.go`;
+`web/src/lib/serverSetupGuidance.ts`, `web/src/i18n/setupDNS/*.ts`. Tests:
+`cmd/panel/remote_dns_host_record_receiver_test.go`,
+`web/tests/server-setup-guidance.test.mjs`. Open: no lab run on a real pair
+yet; an older (alpha.137) main server still answers CONFLICT for a zone-wide
+reason, and the setup review still refuses a main domain with customer zones
+under it. That refusal is now said as its own cause, in the plan review
+(`server_setup_infrastructure_dns_zone_overlap`: another zone hosted here lies
+inside the main domain's zone or around it; not a record clash; the
+administrator reviews that zone in Domains, then reads the plan again) and at
+the peer join (`server_setup_peer_zone_overlap`: not about the joining
+server's names; setup continues by itself once the zone no longer overlaps).
+
+### "Add…" for webmail's address record on the backup DNS server (alpha.139, 2026-11-19)
+
+On the pair's backup DNS server, when the name checked for webmail lies in the
+main domain and the DNS connection to the main server is ready, "Add…" beside
+"Copy" asks the main DNS server to add the A record (and the AAAA record when
+this server has a global IPv6 address; optional). Elsewhere only "Copy" is
+offered. The request is shown before anything is sent, runs in the locked
+progress window with its steps, and ends as one of:
+
+| End | Who acts | Next |
+|---|---|---|
+| added / already there / confirmed after the re-ask | nobody | the page reads public DNS every 20 s for at most 5 minutes |
+| busy (the main server applied nothing) | the owner, when they choose | "Ask again…" (a new request; never adds twice) |
+| no answer within 10 s | nobody | asked again once by itself after 25 s; then "not known" with "Ask again…" or Check |
+| refused: another record or a hand change there, or (older main server) the zone itself | the owner, on the main server | decide in its DNS editor, or Copy |
+| refused: the zone there needs review (ZONE_REVIEW) | the main server's administrator | check that zone, then Add again or Copy |
+| refused: not in a zone the main server keeps, or another zone there holds the name | the owner | add it where the name's DNS is managed (Copy) |
+
+Audit: `webmail.address.dns_record.*` on this server (busy is new),
+`dns.remote.host_record.*` on the main server. Code:
+`cmd/panel/webmail_address_dns_record.go`, `web/src/lib/webmailAddressRecords.ts`,
+`web/src/components/WebmailAddressCard.tsx` (now loaded only on Roundcube's
+page). Tests: `cmd/panel/webmail_address_dns_record_test.go`,
+`webmail_address_dns_record_tls_test.go` (over real TLS against the production
+receiver), `web/tests/webmail-dns-add-alpha135.test.mjs`. Open: no lab run on a
+real pair yet; Roundcube must be installed on the backup server for the card
+to show.
