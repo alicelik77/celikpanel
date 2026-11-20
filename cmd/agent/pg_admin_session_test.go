@@ -22,7 +22,7 @@ func TestEveryPostgreSQLAdministratorSessionHasTheFixedSearchPath(t *testing.T) 
 	root := filepath.Join(filepath.Dir(self), "..", "..")
 	client := regexp.MustCompile(`"(psql|pg_dump|pg_dumpall|pg_restore)"`)
 	asPostgres := regexp.MustCompile(`"-u",\s*"postgres"`)
-	allowed := []string{"pgAdminSudoArgs(", "pgAdminPSQLArgs(", "pgClientBinary(", "host.stream(", `exec.LookPath("psql")`, `exec.Command("which", "psql")`}
+	allowed := []string{"pgAdminSudoArgs(", "pgAdminPSQLArgs(", "pgClientBinary(", "host.stream(", "host.streamLogin(", `exec.LookPath("psql")`, `exec.Command("which", "psql")`}
 	for _, dir := range []string{"cmd/agent", "cmd/panel", "cmd/recovery", "internal"} {
 		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, entry os.DirEntry, err error) error {
 			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
