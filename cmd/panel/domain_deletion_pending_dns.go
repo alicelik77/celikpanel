@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // A deletion whose DNS step waits on this server (alpha.129).
@@ -106,16 +108,41 @@ var domainDeletionStatusPublisher = func(p *Panel, ctx context.Context) (dnsPubl
 // reconciler (for example after a panel restart) nothing publishes it by
 // itself and the answer stays "incomplete" (delete again). Read only: memory
 // and the cached display check of the DNS publisher.
-func (p *Panel) domainDeletionPairWaitStatus(ctx context.Context) (domainDeletionStatusResponse, bool) {
+//
+// alpha.141 (alpha.138 lab, carried item 3): right after such a deletion the
+// backup DNS server often confirms the zone list within seconds, so the
+// publisher reads ready while the saved removal still waits for the armed
+// reconciler's next check (republishHeldDNSZones), which publishes it by
+// itself; the deletion then finishes by itself (51 s in the lab). The status
+// said "stopped … delete again" for that whole time. A ready publisher with
+// the reconciler armed is that same wait, unless the reconciler set this
+// exact removal aside after a failure it does not repeat (republishSkipped):
+// then nothing publishes it by itself and the answer stays "incomplete".
+func (p *Panel) domainDeletionPairWaitStatus(ctx context.Context, state dnsZoneSyncState) (domainDeletionStatusResponse, bool) {
 	scheduler := p.dnsPendingPublications()
 	scheduler.mu.Lock()
 	armed := scheduler.republishArmed
+	skippedGeneration, skipped := scheduler.republishSkipped[state.ZoneName]
 	scheduler.mu.Unlock()
-	if !armed {
+	if !armed || (skipped && skippedGeneration == state.DesiredGeneration) {
 		return domainDeletionStatusResponse{}, false
 	}
 	publisher, ready, err := domainDeletionStatusPublisher(p, ctx)
-	if err != nil || !dnsHeldStatusIsPairWait(publisher, ready) {
+	if err != nil {
+		return domainDeletionStatusResponse{}, false
+	}
+	switch {
+	case dnsHeldStatusIsPairWait(publisher, ready), ready && publisher.PairRole == transport.DNSPairRolePrimary:
+		// Held for the backup's confirmation, or confirmed just now and
+		// published at the reconciler's next check.
+	case ready:
+		// Held behind another publication that completed since: published at
+		// the reconciler's next check.
+		return domainDeletionStatusResponse{
+			Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+			Reason: domainDeletionDNSRemovalWaitingReason, Message: domainDeletionDNSRemovalWaitingEnglish,
+		}, true
+	default:
 		return domainDeletionStatusResponse{}, false
 	}
 	held := &dnsPublicationHeldError{Automatic: true}
@@ -186,7 +213,7 @@ func (p *Panel) localDomainDeletionContinuesByItself(ctx context.Context, domain
 	case snapshot.dnsWaiting:
 		return p.dnsPendingPublicationsAutomatic(), nil
 	case snapshot.dnsHeldAlone:
-		_, waiting := p.domainDeletionPairWaitStatus(ctx)
+		_, waiting := p.domainDeletionPairWaitStatus(ctx, snapshot.state)
 		return waiting, nil
 	case snapshot.candidate || snapshot.ahead:
 		code, pending, active, err := p.readPendingDNSPublicationStatus(ctx, snapshot.lease)
