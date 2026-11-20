@@ -1598,6 +1598,20 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         const version = /^php([0-9]+\.[0-9]+)-fpm$/.exec(pkg)?.[1];
         if (target && target.id === 'php-fpm' && version) {
             requestComponentAction({ kind: 'install-package', service: target, pkg, version });
+        } else if (target && pkg === '' && target.is_installed === true && target.kind === 'runtime' && !target.requires_missing?.length) {
+            // alpha.141: an installed runtime still opens what the link asks
+            // for. Installed by version (Node.js): its version list, where
+            // another version is installed (an app may need 24 while 22 is
+            // here). The distribution's own single copy (Python, no copy the
+            // panel installed): its repair, which shows what it adds first
+            // and installs a missing part of the component (the venv module)
+            // after confirmation. Any other runtime keeps the notice.
+            // Kurulu çalışma ortamında bağlantı sürüm listesini ya da onarımı açar.
+            const distributionOwn = !isTarballRuntime(target) && (target.instances ?? []).every((copy) => !copy.managed);
+            if (mutationControlsDisabled) showToast('warning', stateUnverified ? t('services.stateUnverifiedHint') : readinessMessage);
+            else if (isTarballRuntime(target)) setOpenDrawers((prev) => new Set(prev).add(target.id));
+            else if (distributionOwn && target.repair_available) requestComponentAction({ kind: 'repair', service: target });
+            else showToast('info', t('services.installLinkInstalled', { name: componentName(target, t) }));
         } else if (target && pkg === '' && target.is_installed === false && !target.conflict_with && !target.not_offered && !(target.requires_missing?.length && isTarballRuntime(target))
             && !(target.category === 'email' && mailSetupParts.has(target.id)) && target.id !== 'pdns' && target.id !== 'bind') {
             if (mutationControlsDisabled) showToast('warning', stateUnverified ? t('services.stateUnverifiedHint') : readinessMessage);

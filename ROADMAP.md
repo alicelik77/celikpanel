@@ -182,12 +182,20 @@ A lapsed or unverifiable licence never blocks a security action or another serve
 expiry warnings (D-047).
 
 **alpha.141 — carried over**
-1. AI and automation apps cannot be installed on Debian 13 or Ubuntu 24.04: the runtime versions
-   they need are missing there (Node.js 24; Python 3.11 or 3.12; on Ubuntu the venv module) (alpha.138
-   lab).
-2. n8n's "cannot be installed yet" line mixes languages and points to a Node.js installation the
-   server cannot do; it says what is missing and what can be done, in the reader's language (alpha.138
-   lab).
+1. AI and automation apps on Debian 13 and Ubuntu 24.04, as they are (corrected 20 November 2026;
+   the alpha.138 lab note said none can be installed). n8n installs after the administrator chooses
+   Node.js 24 under Components → Node.js (the official release, checked against its checksums); it
+   was last shown in the alpha.118 and alpha.119 labs. The alpha.138 lab sent the generic install
+   request for Node.js, which the screen never sends; that request is now refused before anything
+   is queued (fix lane `fix/ai-apps-truthful`). Open WebUI: Ubuntu 24.04 needs Components → Python
+   first (Ubuntu's own python3-venv), and Open WebUI has never been installed in a lab; Debian 13
+   cannot run it on distribution packages (Python 3.13, while Open WebUI supports 3.11 and 3.12), so
+   it is not offered there. Still open: a lab run along the screen's path (Node.js version list →
+   n8n on Debian 13; Components → Python → Open WebUI on Ubuntu 24.04, with its disk use).
+2. The "cannot be installed yet" line of an AI app says what the app needs, what this server has and
+   the next step, built in the reader's language from the server's facts; the administrator's action
+   opens the Node.js version list also when another version is installed, or Components → Python for
+   the missing venv module (fix lane `fix/ai-apps-truthful`; ships with the next release).
 3. Right after a domain deletion that waits for the backup DNS server, the status says the deletion
    stopped and to delete again, although it finishes by itself (about 51 s in the lab); it says that
    it waits (alpha.138 lab).
@@ -263,6 +271,10 @@ expiry warnings (D-047).
 31. Going through server setup's steps with unchanged answers writes one `server.setup.draft` row in
    the activity list per step (15 on the way to one summary); an unchanged answer writes none
    (alpha.139 lab).
+32. A Node.js release installed from Components is checked against the official SHASUMS256.txt,
+   fetched over HTTPS, but the PGP signature of that file (SHASUMS256.txt.asc) is not checked. Check
+   it against the Node.js release keys kept in CelikPanel, with a plan for when those keys change
+   (runtime proposal of 20 November 2026).
 
 The design releases that follow, in the approved order (owner, 12 November 2026). Each redesigns
 the insides of its sections from the approved drawings; small releases, published when ready.

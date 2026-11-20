@@ -2618,6 +2618,9 @@ func (p *Panel) runNodeInstall(
 	advance func(string) error,
 ) (serviceOperationResult, *serviceOperationFailure) {
 	result := serviceOperationResult{"success": false, "installed": false, "version": version}
+	// alpha.141: a new Node.js version may let an AI app run here; the
+	// apps' next read asks the Agent again instead of the minute-old answer.
+	defer resetServiceAppProbeCache()
 	binding, err := panelMutationBinding(ctx)
 	if err != nil {
 		return result, nodeInstallFailure(err)

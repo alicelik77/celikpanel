@@ -186,12 +186,21 @@ Süresi geçmiş ya da doğrulanamayan lisans hiçbir güvenlik işlemini ve ba�
 engellemez; süre bitimi uyarıları (D-047).
 
 **alpha.141 — taşınanlar**
-1. Debian 13 ve Ubuntu 24.04'e yapay zekâ ve otomasyon uygulamaları kurulamıyor: gerektirdikleri
-   çalışma ortamı sürümleri orada yok (Node.js 24; Python 3.11 ya da 3.12; Ubuntu'da venv modülü)
-   (alpha.138 laboratuvarı).
-2. n8n'in "henüz kurulamaz" satırı iki dili karıştırıyor ve sunucunun yapamadığı bir Node.js
-   kurulumunu gösteriyor; neyin eksik olduğunu ve ne yapılabileceğini okuyanın dilinde söyler
-   (alpha.138 laboratuvarı).
+1. Debian 13 ve Ubuntu 24.04'te yapay zekâ ve otomasyon uygulamalarının gerçek durumu (20 Kasım
+   2026'da düzeltildi; alpha.138 laboratuvar notu hiçbirinin kurulamadığını söylüyordu). n8n,
+   yönetici Bileşenler → Node.js bölümünden Node.js 24'ü seçtikten sonra kurulur (sağlama
+   toplamlarıyla doğrulanan resmî sürüm); bu en son alpha.118 ve alpha.119 laboratuvarlarında
+   gösterildi. alpha.138 laboratuvarı Node.js için ekranın hiç göndermediği genel kurulum isteğini
+   gönderdi; o istek artık hiçbir şey sıraya girmeden reddedilir (düzeltme dalı
+   `fix/ai-apps-truthful`). Open WebUI: Ubuntu 24.04'te önce Bileşenler → Python gerekir
+   (Ubuntu'nun kendi python3-venv paketi) ve Open WebUI hiçbir laboratuvarda kurulmadı; Debian 13
+   onu dağıtım paketleriyle çalıştıramaz (Python 3.13; Open WebUI 3.11 ve 3.12'yi destekler), bu
+   yüzden orada sunulmaz. Açık kalan: ekranın yolundan bir laboratuvar denemesi (Node.js sürüm
+   listesi → Debian 13'te n8n; Bileşenler → Python → Ubuntu 24.04'te Open WebUI, disk kullanımıyla).
+2. Bir yapay zekâ uygulamasının "henüz kurulamaz" satırı, uygulamanın neye ihtiyaç duyduğunu, bu
+   sunucuda ne olduğunu ve sonraki adımı sunucunun olgularından okuyanın dilinde söyler; yöneticinin
+   eylemi başka bir sürüm kuruluyken de Node.js sürüm listesini, eksik venv modülü için Bileşenler →
+   Python'u açar (düzeltme dalı `fix/ai-apps-truthful`; sonraki sürümle çıkar).
 3. Yedek DNS sunucusunu bekleyen bir alan adı silmenin hemen ardından durum, silmenin durduğunu ve
    yeniden silinmesini söylüyor; oysa kendiliğinden bitiyor (laboratuvarda yaklaşık 51 sn); beklediğini
    söyler (alpha.138 laboratuvarı).
@@ -270,6 +279,10 @@ engellemez; süre bitimi uyarıları (D-047).
 31. Sunucu kurulumunun adımlarından yanıtlar değişmeden geçmek, adım başına etkinlik listesine bir
    `server.setup.draft` satırı yazıyor (bir özete giden yolda 15); değişmeyen bir yanıt hiçbir şey
    yazmaz (alpha.139 laboratuvarı).
+32. Bileşenler'den kurulan bir Node.js sürümü, HTTPS ile indirilen resmî SHASUMS256.txt dosyasına
+   göre denetleniyor, ama o dosyanın PGP imzası (SHASUMS256.txt.asc) denetlenmiyor. İmza,
+   CelikPanel'de tutulan Node.js sürüm anahtarlarıyla denetlenir; o anahtarlar değiştiğinde ne
+   yapılacağının planıyla birlikte (20 Kasım 2026 çalışma ortamı önerisi).
 
 Ardından gelen tasarım sürümleri, onaylanan sırayla (sahip, 12 Kasım 2026). Her biri kendi
 bölümlerinin içini onaylı çizimlere göre yeniden tasarlar; küçük sürümler, hazır olunca yayımlanır.

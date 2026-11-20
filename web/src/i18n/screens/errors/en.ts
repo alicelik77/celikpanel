@@ -58,6 +58,8 @@ export const enErrorsScreens = {
     'err.DNS_PUBLICATION_HELD.action': 'Open DNS and peer servers',
     'err.DNS_ENGINE_WORKFLOW_REQUIRED': 'BIND and PowerDNS changes must use the reviewed DNS infrastructure workflow so port 53, every zone and rollback remain protected.',
     'err.DNS_ENGINE_WORKFLOW_REQUIRED.action': 'Open DNS and peer servers',
+    'err.COMPONENT_INSTALLED_BY_VERSION': '{name} is not installed as a package: choose a version under Components → {name}. Nothing was queued and nothing was changed.',
+    'err.COMPONENT_INSTALLED_BY_VERSION.action': 'Choose a version',
     'err.DNSSEC_ENGINE_UNSUPPORTED': 'DNSSEC management currently requires PowerDNS as the active DNS engine. BIND activation is limited to unsigned zones in this release.',
     'err.DNSSEC_ENGINE_UNSUPPORTED.action': 'Open DNS and peer servers',
     'err.DNS_RECORD_CHANGED': 'The record changed since it was read, so nothing was changed. Read the records again and decide.',

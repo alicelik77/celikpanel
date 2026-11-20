@@ -9,6 +9,7 @@ import { readApiError, type ApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
 import { decodeAdminServiceApps, newOperationID, type AdminSandboxView, type AdminServiceAppEntry, type SandboxRefreshResult } from '../lib/serviceApps';
 import { ServiceAppRisk } from './ServiceAppRisk';
+import { runtimeLine } from '../lib/serviceAppRuntime';
 
 // The administrator's offering of AI and automation apps (alpha.118, D-042:
 // third-party software is gated at the "offer" step). Installed is not
@@ -95,9 +96,16 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
         }
     };
 
+    // alpha.141: a missing runtime is said from the server's facts, with the
+    // action that fixes it on Components (the Node.js version list, or
+    // Python's missing module); an app that cannot run on this operating
+    // system cannot be offered here, so its offer form is not shown.
+    const say = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
+    const line = runtimeLine(app, 'admin', say);
     const unavailable = !app.available
-        ? t(('svcapps.unavailable.' + (app.reason ?? 'probe_failed')) as TranslationKey, { detail: app.detail ?? '' })
+        ? line ? line.text : t(('svcapps.unavailable.' + (app.reason ?? 'probe_failed')) as TranslationKey)
         : '';
+    const cannotRunHere = !app.available && app.reason === 'os_unsupported';
     return (
         <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -113,10 +121,10 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
             {unavailable && (
                 <p className="text-sm text-warning">
                     {unavailable}
-                    {/* alpha.122: Node.js's own install in Components. / Node.js'in Bileşenler'deki kurulumu. */}
-                    {app.reason === 'runtime_missing' && (
-                        <>{' '}<button type="button" onClick={() => navigate('/components?component=node&install=')} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-install-link="node">
-                            {t('services.installTitle', { name: t('services.component.name.node') })}
+                    {/* The action on Components: Node.js's version list or Python's missing module. / Bileşenler'deki eylem. */}
+                    {line?.action && (
+                        <>{' '}<button type="button" onClick={() => navigate(line.action!.to)} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-install-link={app.runtime}>
+                            {line.action.label}
                         </button></>
                     )}
                 </p>
@@ -125,7 +133,7 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
                 <p className="text-xs text-fg-subtle">{t(('svcapps.admin.runtime.' + app.runtime_source) as TranslationKey)}</p>
             )}
             <ServiceAppRisk app={app} />
-            {(!app.offered || app.offer_stale) && (
+            {(!app.offered || app.offer_stale) && !cannotRunHere && (
                 <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
                     <div className="text-sm font-medium text-fg">{t('svcapps.admin.limits')}</div>
                     <div className="grid gap-3 sm:grid-cols-3">
