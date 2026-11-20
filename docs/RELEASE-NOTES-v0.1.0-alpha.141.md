@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.141.tr.md)
 
+> **Published** on 2026-11-20 (UTC): release commit `cccb08fab`, GitHub pre-release at 19:46:26Z, download portal at about 19:49Z (public check 27/27).
+
 **A security release: please update soon.** It closes ways in which a
 customer could reach the database server's administrator rights, and with
 them every other customer's data and the server itself. It also makes every
