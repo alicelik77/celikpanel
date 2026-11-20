@@ -99,6 +99,12 @@ func (p *Panel) runServiceAppOperation(ctx context.Context, opID string, input *
 		return p.runServiceAppUninstall(ctx, native, op, in)
 	}
 	app, ok := serviceapps.Lookup(in.AppID)
+	if ok && app.Withdrawn != "" {
+		// alpha.141: an install or update queued before the app was withdrawn.
+		p.failServiceAppOperation(ctx, op, transport.ServiceAppVerifiedFailure, serviceapps.ReasonWithdrawn,
+			app.Name+" was withdrawn from CelikPanel's catalogue on "+app.Withdrawn+"; it is not installed or updated any more")
+		return nil
+	}
 	if !ok || !app.Installable() {
 		p.failServiceAppOperation(ctx, op, transport.ServiceAppVerifiedFailure, "not_installable", "this release cannot install "+in.AppID)
 		return nil

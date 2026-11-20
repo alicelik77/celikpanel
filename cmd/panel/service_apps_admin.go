@@ -108,6 +108,10 @@ func (p *Panel) writeServiceAppsAdmin(w http.ResponseWriter, r *http.Request) {
 	rows.Close()
 	entries := []serviceAppAdminEntry{}
 	for _, app := range serviceapps.Catalog() {
+		// alpha.141: a withdrawn app is not in the catalogue anyone chooses from.
+		if !app.Listed() {
+			continue
+		}
 		o := offerings[app.ID]
 		entry := serviceAppAdminEntry{App: app, RiskDigest: app.RiskDigest(), Offered: o.Offered, Held: o.Held,
 			HeldReason: o.HeldReason, Limits: serviceAppLimitsFor(app, offerings),
@@ -137,6 +141,9 @@ func (p *Panel) offerServiceApp(w http.ResponseWriter, r *http.Request, app serv
 		TasksMax   int    `json:"tasks_max"`
 	}
 	if !decodeServiceAppBody(w, r, &req) {
+		return
+	}
+	if writeServiceAppWithdrawn(w, app) {
 		return
 	}
 	if !app.Installable() {

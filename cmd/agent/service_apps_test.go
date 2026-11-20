@@ -215,8 +215,9 @@ func TestServiceAppPrepareRefusesAnUnpinnedVersionAndOldRuntimes(t *testing.T) {
 	owui.Target.AppID, owui.Version, owui.AuxPort = "open-webui", "0.12.5", 0
 	resp = transport.ServiceAppStepResponse{}
 	_ = (&Agent{}).ServiceAppPrepareV1(owui, &resp)
-	if resp.Done || resp.Class != transport.ServiceAppVerifiedFailure || resp.Reason != serviceapps.ReasonOSUnsupported {
-		t.Fatalf("python 3.13: %+v", resp)
+	// alpha.141: Open WebUI was withdrawn; the Agent refuses it as the second line.
+	if resp.Done || resp.Class != transport.ServiceAppVerifiedFailure || resp.Reason != serviceapps.ReasonWithdrawn {
+		t.Fatalf("withdrawn app: %+v", resp)
 	}
 	// alpha.140: the probe reports what it found, as facts, beside the
 	// English detail; a deferred app reports nothing.
@@ -231,8 +232,8 @@ func TestServiceAppPrepareRefusesAnUnpinnedVersionAndOldRuntimes(t *testing.T) {
 				t.Fatalf("n8n probe: %+v", app)
 			}
 		case "open-webui":
-			if !app.FoundKnown || len(app.Found) != 1 || app.Found[0] != (transport.ServiceAppRuntimeFound{Version: "3.13", Source: "distribution", Venv: true}) {
-				t.Fatalf("open-webui probe: %+v", app)
+			if app.Available || app.Reason != serviceapps.ReasonWithdrawn || app.FoundKnown || app.Found != nil {
+				t.Fatalf("withdrawn probe: %+v", app)
 			}
 		case "openclaw":
 			if app.FoundKnown || app.Found != nil {

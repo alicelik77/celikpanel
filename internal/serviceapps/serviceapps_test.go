@@ -174,6 +174,7 @@ func TestRuntimeChoiceRefusesUnsupportedSystems(t *testing.T) {
 	}
 
 	ow, _ := Lookup("open-webui")
+	ow.Withdrawn = "" // alpha.141: withdrawn; the Python path it used is still code
 	for _, version := range []string{"3.13", "3.10", "3.14"} {
 		choice = ChooseRuntime(ow, nil, []PythonCandidate{{Path: "/usr/bin/python3", Version: version, Venv: true}})
 		if choice.Available || choice.Reason != ReasonOSUnsupported {
@@ -213,6 +214,7 @@ func TestRuntimeChoiceCarriesTheFacts(t *testing.T) {
 		t.Fatalf("nothing found is an empty list, not unknown: %+v", none)
 	}
 	ow, _ := Lookup("open-webui")
+	ow.Withdrawn = "" // alpha.141: withdrawn; the Python path it used is still code
 	if kind, needs := RuntimeNeeds(ow); kind != RuntimePython || strings.Join(needs, ",") != "3.11,3.12" {
 		t.Fatalf("open-webui needs %s %v", kind, needs)
 	}

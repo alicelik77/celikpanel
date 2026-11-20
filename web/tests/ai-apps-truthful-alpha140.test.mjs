@@ -30,9 +30,9 @@ const say = (locale) => (key, vars) => {
 
 const n8n = { name: 'n8n', runtime: 'node', available: false, reason: 'runtime_missing', needs: ['24'], found: [], found_known: true,
   detail: 'needs Node.js 24; found none' };
-const webuiUbuntu = { name: 'Open WebUI', runtime: 'python', available: false, reason: 'venv_missing', needs: ['3.11', '3.12'],
+const webuiUbuntu = { name: 'PyApp', runtime: 'python', available: false, reason: 'venv_missing', needs: ['3.11', '3.12'],
   found: [{ version: '3.12', source: 'distribution' }], found_known: true, detail: "the distribution's Python venv module is not installed" };
-const webuiDebian = { name: 'Open WebUI', runtime: 'python', available: false, reason: 'os_unsupported', needs: ['3.11', '3.12'],
+const webuiDebian = { name: 'PyApp', runtime: 'python', available: false, reason: 'os_unsupported', needs: ['3.11', '3.12'],
   found: [{ version: '3.13', source: 'distribution', venv: true }], found_known: true, detail: 'needs Python 3.11 or 3.12; this system has Python 3.13' };
 
 const noUnfilled = (text) => assert.doesNotMatch(text, /\{\w+\}/, text);
@@ -84,12 +84,12 @@ test('Ubuntu 24.04: Python 3.12 without its venv module; the action is Component
   for (const line of [en, tr]) { noUnfilled(line.text); noServerWords(line.text, webuiUbuntu); }
 });
 
-test('Debian 13: Open WebUI cannot run on Python 3.13; the administrator reads why and what would change it, with no action', () => {
+test('Debian 13: a Python app (PyApp, alpha.141: Open WebUI was withdrawn) cannot run on Python 3.13; the administrator reads why and what would change it, with no action', () => {
   const en = runtimeLine(webuiDebian, 'admin', say('en'));
   assert.equal(en.action, null);
-  assert.equal(en.text, 'Needs Python 3.11 or 3.12. This server’s operating system has Python 3.13. Nothing can be installed for this: the operating system’s own packages do not provide that Python, and CelikPanel does not add outside package sources. It can be used here once Open WebUI supports Python 3.13, or on a server whose system ships Python 3.11 or 3.12. Until then customers and resellers do not see it on this server and it cannot be offered.');
+  assert.equal(en.text, 'Needs Python 3.11 or 3.12. This server’s operating system has Python 3.13. Nothing can be installed for this: the operating system’s own packages do not provide that Python, and CelikPanel does not add outside package sources. It can be used here once PyApp supports Python 3.13, or on a server whose system ships Python 3.11 or 3.12. Until then customers and resellers do not see it on this server and it cannot be offered.');
   const tr = runtimeLine(webuiDebian, 'admin', say('tr'));
-  assert.match(tr.text, /Open WebUI, Python 3\.13 ile çalışmaya başladığında/);
+  assert.match(tr.text, /PyApp, Python 3\.13 ile çalışmaya başladığında/);
   for (const line of [en, tr]) { noUnfilled(line.text); noServerWords(line.text, webuiDebian); }
   assert.equal(hasRuntimeLine({ available: false, reason: 'probe_failed' }), false);
   assert.equal(hasRuntimeLine({ available: true, reason: 'runtime_missing' }), false);
