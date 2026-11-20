@@ -10,7 +10,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// alpha.141: the facts behind "cannot be installed yet" and an app that
+// alpha.140: the facts behind "cannot be installed yet" and an app that
 // cannot run on this operating system (service_apps_os.go).
 
 // An Agent of an earlier release reports no facts: the screen still gets

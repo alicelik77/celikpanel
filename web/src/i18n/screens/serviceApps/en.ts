@@ -2,7 +2,7 @@
 // run as a site's own service (docs/AI-APPS.md) - the domain's "AI & automation"
 // tab, the administrator's offering with its risk summary, and the refusal
 // codes. Key prefixes kept here: svcapps., err.SERVICE_APP. (svcapps.admin.
-// and svcapps.sandbox. are in "serviceAppsAdmin" since alpha.141).
+// and svcapps.sandbox. are in "serviceAppsAdmin" since alpha.140).
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
@@ -30,7 +30,7 @@ export const enServiceAppsScreens = {
     'svcapps.closed.subscription': 'Not in this subscription’s rights. Ask {grantor} to include it.',
     'svcapps.closed.licence': 'Not available through a reseller. This app’s licence restricts offering it to others as a hosted service, so it is closed to resellers and their customers. The administrator decides whether that changes; until then there is nothing to do here.',
     'svcapps.heldNote': 'The administrator has put this app on a security hold. It cannot be installed or started until the hold is lifted.',
-    // alpha.141: the line of an app whose runtime is missing, built from the
+    // alpha.140: the line of an app whose runtime is missing, built from the
     // server's facts (lib/serviceAppRuntime.ts); no server words inside.
     'svcapps.line.or': ' or ',
     'svcapps.line.need.node': 'Needs Node.js {versions}.',

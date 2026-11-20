@@ -109,7 +109,7 @@ var domainDeletionStatusPublisher = func(p *Panel, ctx context.Context) (dnsPubl
 // itself and the answer stays "incomplete" (delete again). Read only: memory
 // and the cached display check of the DNS publisher.
 //
-// alpha.141 (alpha.138 lab, carried item 3): right after such a deletion the
+// alpha.140 (alpha.138 lab, carried item 3): right after such a deletion the
 // backup DNS server often confirms the zone list within seconds, so the
 // publisher reads ready while the saved removal still waits for the armed
 // reconciler's next check (republishHeldDNSZones), which publishes it by

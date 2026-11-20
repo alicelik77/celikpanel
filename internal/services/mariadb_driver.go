@@ -274,7 +274,7 @@ func (d *MariaDBDriver) DeleteDatabase(name string) error {
 
 // DatabaseIdentity answers whether the database exists (compared exactly).
 // MariaDB tells a client no identity of a database, so the identity is
-// always "" over a connection (alpha.141: a deletion reached this way never
+// always "" over a connection (alpha.140: a deletion reached this way never
 // drops a database of that name it cannot tell from the one asked for).
 // Read only.
 func (d *MariaDBDriver) DatabaseIdentity(name string) (bool, string, error) {

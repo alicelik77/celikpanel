@@ -12,7 +12,7 @@ import (
 )
 
 // A database deletion bound to the database it was asked to delete
-// (alpha.141 carried item 12; internal/transport/database_drop_once.go).
+// (alpha.140, carried item 12; internal/transport/database_drop_once.go).
 // The panel reads the identity first and keeps it with the deletion; the
 // drop takes the database only while the engine still shows that identity,
 // so pressing Delete again after a lost answer, a stop or a step that did

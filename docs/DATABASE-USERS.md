@@ -72,7 +72,7 @@ same rules.
   it that nothing else uses, with the removal above; the records are removed
   last, in one transaction, so an interrupted deletion keeps the database
   listed and the same Delete finishes it. The drop happens at most once
-  (alpha.141): before it, the deletion reads the database's identity on the
+  (alpha.140): before it, the deletion reads the database's identity on the
   engine (PostgreSQL: its oid; this machine's MariaDB: the database
   directory's device, inode, inode generation and birth time) and keeps it
   in a marker of the record (panel_settings `database_delete_v1:<id>`); the

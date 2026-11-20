@@ -36,7 +36,7 @@ type PythonCandidate struct {
 }
 
 // RuntimeFound is one runtime the probe found, as a fact a screen words in
-// its reader's language (alpha.141): the version, where it comes from
+// its reader's language (alpha.140): the version, where it comes from
 // ("panel": installed by CelikPanel under Components; "distribution": the
 // operating system's), and for Python whether its venv module is there.
 // RuntimeFound, yoklamanın bulduğu bir çalışma ortamıdır; ekran onu okurun

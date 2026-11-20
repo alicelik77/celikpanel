@@ -365,7 +365,7 @@ const (
 	// COMPONENT_INSTALLED_BY_VERSION: the generic package install was asked
 	// for a runtime that is installed one version at a time through its own
 	// path (Node.js: Components → Node.js → a version). Refused before
-	// anything is queued; vars name the component (alpha.141).
+	// anything is queued; vars name the component (alpha.140).
 	// Sürüm sürüm kendi yolundan kurulan çalışma ortamı için genel paket
 	// kurulumu istendi; hiçbir şey kuyruğa girmeden reddedilir.
 	errCodeComponentInstalledByVersion = "COMPONENT_INSTALLED_BY_VERSION"

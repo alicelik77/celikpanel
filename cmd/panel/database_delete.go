@@ -76,13 +76,13 @@ const (
 )
 
 // databaseIdentityAgent reads a database's identity on this machine's engine
-// (alpha.141, database_delete_once.go); tests replace it.
+// (alpha.140, database_delete_once.go); tests replace it.
 var databaseIdentityAgent = func(p *Panel, ctx context.Context, req transport.DatabaseIdentityRequest, resp *transport.DatabaseIdentityResponse) error {
 	return p.callAgentContext(ctx, "Agent.DatabaseIdentityV1", &req, resp)
 }
 
 // databaseDropOnceAgent drops a database on this machine's engine only while
-// it is the identified one (alpha.141); tests replace it.
+// it is the identified one (alpha.140); tests replace it.
 var databaseDropOnceAgent = func(p *Panel, ctx context.Context, req transport.DropDatabaseOnceRequest, resp *transport.DropDatabaseOnceResponse) error {
 	return p.callAgentContext(ctx, "Agent.DropDatabaseOnceV1", &req, resp)
 }
@@ -227,7 +227,7 @@ type databaseDeleteError struct {
 	sweepLeft, sweepUnknown bool
 	// recordsLeft: the engine is done; the records were not removed.
 	recordsLeft bool
-	// unverified (alpha.141): an earlier press of this deletion got no
+	// unverified (alpha.140): an earlier press of this deletion got no
 	// answer, the database's identity is not known, and a database of that
 	// name is on the engine now: whether it is the one asked for cannot be
 	// told, so nothing was dropped.
@@ -629,7 +629,7 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	// Agent's door; a record an administrator registered with their own
 	// credential (127.0.0.1:3307, a container) is reached with it. Either way
 	// the drop is bound to the database this deletion was asked for
-	// (alpha.141, database_delete_once.go): a press after a lost answer, a
+	// (alpha.140, database_delete_once.go): a press after a lost answer, a
 	// stop or a step that did not finish never drops a database of the same
 	// name made in the meantime.
 	var reach databaseDropReach
@@ -715,7 +715,7 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 			return nil, recordsLeft(fmt.Errorf("remove the record of user %s: %w", user.Username, err))
 		}
 	}
-	// The deletion's own marker goes with the records (alpha.141), and so
+	// The deletion's own marker goes with the records (alpha.140), and so
 	// does any marker whose database record went another way (a cascade):
 	// record ids are never used again, so such a marker means nothing more.
 	if _, err := tx.ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ? OR (key LIKE ? AND
@@ -955,7 +955,7 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 	case failed.refusal != nil:
 		writeDatabaseClusterRefusal(w, r, failed.refusal)
 	case failed.unverified:
-		// alpha.141: nothing was changed by this press (like a refused drop,
+		// alpha.140: nothing was changed by this press (like a refused drop,
 		// no audit row); who acts is the administrator, on the database
 		// server (D-024: the reason, who acts, what next).
 		log.Printf("[409][database] %s: %v", errCodeDatabaseDeleteUnverified, failed.cause)
@@ -996,7 +996,7 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 		}
 		switch {
 		case failed.databaseExists:
-			// alpha.141: a later press never drops it (database_delete_once.go).
+			// alpha.140: a later press never drops it (database_delete_once.go).
 			body.Reason = "exists"
 			body.Error = "The database " + name + " was deleted, but a database with this name is on the database server again, made after the deletion. " +
 				"CelikPanel does not delete it, and its users (" + strings.Join(failed.usersLeft, ", ") + ") were left as they are, because that database may use them. " +

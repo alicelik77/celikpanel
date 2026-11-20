@@ -335,7 +335,7 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 }
 
 // refuseComponentInstalledByVersion answers the generic package install for a
-// runtime that is installed by version through its own path (alpha.141: the
+// runtime that is installed by version through its own path (alpha.140: the
 // alpha.138 lab sent it for Node.js; it was queued and then failed at the
 // package step with "cannot be installed automatically on this system yet",
 // although Components → Node.js installs it). Nothing is queued: the answer
@@ -2618,7 +2618,7 @@ func (p *Panel) runNodeInstall(
 	advance func(string) error,
 ) (serviceOperationResult, *serviceOperationFailure) {
 	result := serviceOperationResult{"success": false, "installed": false, "version": version}
-	// alpha.141: a new Node.js version may let an AI app run here; the
+	// alpha.140: a new Node.js version may let an AI app run here; the
 	// apps' next read asks the Agent again instead of the minute-old answer.
 	defer resetServiceAppProbeCache()
 	binding, err := panelMutationBinding(ctx)

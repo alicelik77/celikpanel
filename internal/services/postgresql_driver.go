@@ -150,7 +150,7 @@ func (d *PostgreSQLDriver) DeleteDatabase(name string) error {
 }
 
 // DatabaseIdentity answers whether the database exists and its oid
-// ("postgresql-oid:<oid>"), the identity a deletion is bound to (alpha.141,
+// ("postgresql-oid:<oid>"), the identity a deletion is bound to (alpha.140,
 // internal/transport/database_drop_once.go). Read only.
 func (d *PostgreSQLDriver) DatabaseIdentity(name string) (bool, string, error) {
 	db, err := d.getDB("postgres")

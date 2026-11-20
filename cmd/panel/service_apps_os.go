@@ -7,7 +7,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/serviceapps"
 )
 
-// An app that cannot run on this server's operating system (alpha.141):
+// An app that cannot run on this server's operating system (alpha.140):
 // Open WebUI on Debian 13, whose Python 3.13 is outside the versions the app
 // supports and which no component install changes. The administrator sees it
 // in Catalog management with the reason and what would change it; it cannot

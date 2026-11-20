@@ -218,7 +218,7 @@ func TestServiceAppPrepareRefusesAnUnpinnedVersionAndOldRuntimes(t *testing.T) {
 	if resp.Done || resp.Class != transport.ServiceAppVerifiedFailure || resp.Reason != serviceapps.ReasonOSUnsupported {
 		t.Fatalf("python 3.13: %+v", resp)
 	}
-	// alpha.141: the probe reports what it found, as facts, beside the
+	// alpha.140: the probe reports what it found, as facts, beside the
 	// English detail; a deferred app reports nothing.
 	var probe transport.ServiceAppProbeResponse
 	if err := (&Agent{}).ServiceAppProbeV1(&transport.Empty{}, &probe); err != nil {

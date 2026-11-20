@@ -34,12 +34,12 @@ export interface ServiceAppCatalogEntry {
     owner_login: boolean;
     available: boolean;
     reason?: string;
-    /** The server's English line, for logs; never shown in a sentence (alpha.141). */
+    /** The server's English line, for logs; never shown in a sentence (alpha.140). */
     detail?: string;
     held: boolean;
-    /** alpha.141: the catalogue's versions the app needs (Node.js majors, Python minors). */
+    /** alpha.140: the catalogue's versions the app needs (Node.js majors, Python minors). */
     needs?: string[];
-    /** alpha.141: what this server has; read only when found_known (an earlier Agent does not say). */
+    /** alpha.140: what this server has; read only when found_known (an earlier Agent does not say). */
     found?: ServiceAppRuntimeFound[] | null;
     found_known?: boolean;
 }

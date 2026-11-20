@@ -1,4 +1,4 @@
-// SCREEN catalogue part "serviceAppsAdmin" (alpha.141): the administrator's
+// SCREEN catalogue part "serviceAppsAdmin" (alpha.140): the administrator's
 // Catalog management of AI and automation apps (offering, limits, security
 // hold) and the site sandbox panel, split out of "serviceApps" when the
 // sentences built from the server's runtime facts filled it

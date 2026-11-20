@@ -371,7 +371,7 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("service apps offered to customers: %w", err)
 	}
-	// alpha.141: an app that cannot run on this operating system is not
+	// alpha.140: an app that cannot run on this operating system is not
 	// given, whatever an earlier offer says (service_apps_os.go).
 	serviceApps = p.withoutServiceAppsUnsupportedHere(ctx, serviceApps)
 	runtimes, err := p.loadOfferedRuntimes(ctx)

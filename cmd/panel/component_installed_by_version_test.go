@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// alpha.141 (alpha.138 lab): the generic package install for Node.js was
+// alpha.140 (alpha.138 lab): the generic package install for Node.js was
 // queued and then failed at the package step, although Components → Node.js
 // installs it by version. It is now refused before anything is queued, with
 // the place where the version is chosen; no operation row, no Agent call.

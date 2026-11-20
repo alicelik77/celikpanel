@@ -144,7 +144,7 @@ func (p *Panel) offerServiceApp(w http.ResponseWriter, r *http.Request, app serv
 			"Nothing was changed: "+app.Name+" cannot be offered in this release; docs/AI-APPS.md says what blocks it.", map[string]string{"app": app.Name})
 		return
 	}
-	// alpha.141: an app that cannot run on this server's operating system is
+	// alpha.140: an app that cannot run on this server's operating system is
 	// not offered here; offering it would put on customers' screens what
 	// nobody can install (service_apps_os.go). Unknown does not refuse.
 	if p.serviceAppsUnsupportedHere(r.Context())[app.ID] {

@@ -1599,7 +1599,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         if (target && target.id === 'php-fpm' && version) {
             requestComponentAction({ kind: 'install-package', service: target, pkg, version });
         } else if (target && pkg === '' && target.is_installed === true && target.kind === 'runtime' && !target.requires_missing?.length) {
-            // alpha.141: an installed runtime still opens what the link asks
+            // alpha.140: an installed runtime still opens what the link asks
             // for. Installed by version (Node.js): its version list, where
             // another version is installed (an app may need 24 while 22 is
             // here). The distribution's own single copy (Python, no copy the

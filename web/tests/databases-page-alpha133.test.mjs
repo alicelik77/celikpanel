@@ -300,7 +300,7 @@ test('a database made again on the server is said as never deleted by another pr
     const [request] = globalThis.page.asked;
     assert.ok(request.kept.includes('databases.delete.keptServerShared{"users":"kahve_app","name":"kahvedukkani_dr_test_magaza"}'), JSON.stringify(request.kept));
     assert.ok(has('err.DATABASE_DELETE_USERS_LEFT.exists{"name":"kahvedukkani_dr_test_magaza","users":"kahve_app","pending":"","rights":""}'), text());
-    // alpha.141: another press never deletes the database made meanwhile
+    // alpha.140: another press never deletes the database made meanwhile
     // (the server binds the deletion to the database it was asked for); the
     // sentence says so and who decides about that database.
     assert.match(enScreens['err.DATABASE_DELETE_USERS_LEFT.exists'], /CelikPanel does not delete it/);

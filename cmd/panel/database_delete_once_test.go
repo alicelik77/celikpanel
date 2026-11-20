@@ -11,7 +11,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/services"
 )
 
-// alpha.141 carried item 12: a database deletion remembers that the engine
+// alpha.140, carried item 12: a database deletion remembers that the engine
 // already dropped the database, so a database of the same name made in the
 // meantime is not deleted by a second press.
 //

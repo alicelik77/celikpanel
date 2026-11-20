@@ -194,7 +194,7 @@ func TestRuntimeChoiceRefusesUnsupportedSystems(t *testing.T) {
 	}
 }
 
-// alpha.141: the facts a screen words in its reader's language: what the app
+// alpha.140: the facts a screen words in its reader's language: what the app
 // needs (from the catalogue) and every runtime the probe saw.
 func TestRuntimeChoiceCarriesTheFacts(t *testing.T) {
 	n8n, _ := Lookup("n8n")

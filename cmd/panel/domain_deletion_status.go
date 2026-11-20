@@ -154,7 +154,7 @@ func (p *Panel) readDomainDeletionStatusSnapshot(ctx context.Context, domainID i
 	}
 	lease, err := readDNSZoneEngineLease(ctx, tx, snapshot.domain)
 	if errors.Is(err, sql.ErrNoRows) {
-		// The saved removal's state (alpha.141): which exact generation the
+		// The saved removal's state (alpha.140): which exact generation the
 		// held-zone reconciler would publish.
 		snapshot.state = state
 		snapshot.dnsWaiting, snapshot.dnsHeldAlone, snapshot.dnsFailed, err = domainDeletionDNSWithoutLease(ctx, tx, state)

@@ -297,7 +297,7 @@ func TestDomainDeletionDatabasePartialResultStopsAndTheRetryContinues(t *testing
 	if second.Code != http.StatusOK {
 		t.Fatalf("retry = %d %s", second.Code, second.Body.String())
 	}
-	// alpha.141: blog_db was already dropped; the retry finishes its users and
+	// alpha.140: blog_db was already dropped; the retry finishes its users and
 	// records without dropping it again.
 	if got := droppedNames(drops); got != "blog_db,shop_db" {
 		t.Fatalf("drops after the retry = %s", got)

@@ -172,7 +172,7 @@ function OperationLine({ op }: { op: ServiceAppOperation }) {
     return null;
 }
 
-// alpha.141: an offered app whose runtime is missing here gets the line built
+// alpha.140: an offered app whose runtime is missing here gets the line built
 // from the server's facts (lib/serviceAppRuntime.ts): what it needs, what this
 // server has, and the next step: the administrator gets the action on
 // Components (the Node.js version list, or Python's missing module), anyone

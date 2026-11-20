@@ -96,7 +96,7 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
         }
     };
 
-    // alpha.141: a missing runtime is said from the server's facts, with the
+    // alpha.140: a missing runtime is said from the server's facts, with the
     // action that fixes it on Components (the Node.js version list, or
     // Python's missing module); an app that cannot run on this operating
     // system cannot be offered here, so its offer form is not shown.

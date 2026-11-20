@@ -353,7 +353,7 @@ func TestDeletionHeldForTheBackupsZoneListSaysItFinishesByItself(t *testing.T) {
 	}
 	scheduler.armRepublish()
 
-	// alpha.141 (alpha.138 lab, carried item 3): the backup confirmed the zone
+	// alpha.140 (alpha.138 lab, carried item 3): the backup confirmed the zone
 	// list seconds after the press, so the publisher reads ready while the
 	// saved removal waits for the armed reconciler's next check, which
 	// publishes it by itself (the lab: finished 51 s later; the status said

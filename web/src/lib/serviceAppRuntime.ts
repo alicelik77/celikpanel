@@ -1,5 +1,5 @@
 // Why an AI or automation app cannot be installed on this server yet, said in
-// the reader's language (alpha.141). The server sends facts, never a sentence:
+// the reader's language (alpha.140). The server sends facts, never a sentence:
 // the app's runtime ("node" or "python") and the catalogue's versions
 // (`needs`), and what this server has (`found`, with `found_known` false
 // when the Agent did not report it). This module builds the whole sentence

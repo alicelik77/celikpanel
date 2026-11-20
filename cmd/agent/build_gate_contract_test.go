@@ -293,7 +293,7 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
-			// alpha.141: a deletion bound to the database it was asked for.
+			// alpha.140: a deletion bound to the database it was asked for.
 			name: "DatabaseIdentityV1",
 			run: func(expected string) string {
 				var response transport.DatabaseIdentityResponse

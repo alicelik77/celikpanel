@@ -17,7 +17,7 @@ import (
 )
 
 // A database deletion drops the database it was asked to delete, once
-// (alpha.141 carried item 12).
+// (alpha.140, carried item 12).
 //
 // Before: every press of Delete sent DROP DATABASE IF EXISTS <name>. The
 // engine's drop and CelikPanel's records are two steps, and the record stays

@@ -1,7 +1,7 @@
 package transport
 
 // A database deletion is bound to the database it was asked to delete, not to
-// its name (alpha.141 carried item 12). Before the first drop the panel reads
+// its name (alpha.140, carried item 12). Before the first drop the panel reads
 // the database's identity on the engine (DatabaseIdentityV1) and keeps it
 // with the deletion; the drop then takes the database only while the engine
 // still shows that identity (DropDatabaseOnceV1). A later press of the same

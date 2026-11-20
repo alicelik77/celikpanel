@@ -1,5 +1,5 @@
 // AI and automation apps say truthfully why they cannot be installed yet
-// (alpha.141; alpha.138 lab: n8n's line mixed languages and named a Node.js
+// (alpha.140; alpha.138 lab: n8n's line mixed languages and named a Node.js
 // installation "the server cannot do"). The server sends facts: what the app
 // needs (the catalogue's versions) and what this server has; the screen
 // builds the whole sentence in the reader's language, with who acts, the next

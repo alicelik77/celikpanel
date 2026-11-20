@@ -528,7 +528,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ServerIPAddressesV1": agentRPCQuickReadTimeout,
 	"Agent.CreateSite":          agentRPCDatabaseTimeout,
 	"Agent.DeleteDatabase":      agentRPCDatabaseTimeout,
-	// alpha.141: a deletion bound to the database it was asked for: one
+	// alpha.140: a deletion bound to the database it was asked for: one
 	// identity read, then the drop (database_delete_once.go).
 	"Agent.DatabaseIdentityV1":            agentRPCQuickReadTimeout,
 	"Agent.DropDatabaseOnceV1":            agentRPCDatabaseTimeout,

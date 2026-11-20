@@ -130,7 +130,7 @@ type serviceAppAppView struct {
 	serviceAppRuntimeFacts
 }
 
-// serviceAppRuntimeFacts (alpha.141) are the facts behind "cannot be
+// serviceAppRuntimeFacts (alpha.140) are the facts behind "cannot be
 // installed yet", for the screen to word in its reader's language: what the
 // app needs (the catalogue's versions: Node.js majors "24", Python minors
 // "3.11"), and what this server has (the Agent's probe). FoundKnown is false
@@ -305,7 +305,7 @@ func (p *Panel) writeServiceAppsView(w http.ResponseWriter, r *http.Request, dom
 		writeServerError(w, err)
 		return
 	}
-	// alpha.141: an app that cannot run on this server's operating system
+	// alpha.140: an app that cannot run on this server's operating system
 	// (no installable runtime fixes it) is not shown to customers and
 	// resellers: they cannot act on it. The administrator sees it with the
 	// reason. The app a domain already holds stays, so it can be managed and
@@ -533,7 +533,7 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	if a := availability[app.ID]; !a.Available {
-		// alpha.141: the screen's sentence names the runtime and the
+		// alpha.140: the screen's sentence names the runtime and the
 		// catalogue's versions itself (runtime, needs); detail stays for
 		// older screens and API readers.
 		_, needs := serviceapps.RuntimeNeeds(app)

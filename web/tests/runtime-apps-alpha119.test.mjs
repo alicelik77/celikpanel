@@ -7,7 +7,7 @@ import ts from 'typescript';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { enRuntimeAppsScreens as en } from '../src/i18n/screens/runtimeApps/en.ts';
 import { trRuntimeAppsScreens as tr } from '../src/i18n/screens/runtimeApps/tr.ts';
-// The sandbox words live in the AI apps' administrator part since alpha.141.
+// The sandbox words live in the AI apps' administrator part since alpha.140.
 import { enServiceAppsAdminScreens as enServiceAppsScreens } from '../src/i18n/screens/serviceAppsAdmin/en.ts';
 import { trServiceAppsAdminScreens as trServiceAppsScreens } from '../src/i18n/screens/serviceAppsAdmin/tr.ts';
 

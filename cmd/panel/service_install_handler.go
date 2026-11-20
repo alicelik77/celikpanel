@@ -37,7 +37,7 @@ func (p *Panel) runServiceInstall(
 	advance func(string) error,
 ) (serviceOperationResult, *serviceOperationFailure) {
 	result := serviceOperationResult{"success": false, "installed": false}
-	// alpha.141: an install (Python's venv module among them) may change
+	// alpha.140: an install (Python's venv module among them) may change
 	// which AI apps can run here; their next read asks the Agent again.
 	defer resetServiceAppProbeCache()
 	binding, err := panelMutationBinding(ctx)

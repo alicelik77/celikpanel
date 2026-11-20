@@ -25,7 +25,7 @@ import (
 // Agent faked; the WSL test guest has no MariaDB or PostgreSQL to run.
 
 type recordedDatabaseDrops struct {
-	// requests: every drop sent to the Agent (alpha.141: Agent.DropDatabaseOnceV1,
+	// requests: every drop sent to the Agent (alpha.140: Agent.DropDatabaseOnceV1,
 	// recorded in the older request's shape the assertions read).
 	requests []transport.DeleteDatabaseRequest
 	// once: the same drops as sent, with the identity they were bound to.
@@ -192,7 +192,7 @@ func TestDatabaseDeleteInterruptedAfterTheDropIsFinishedByDeletingAgain(t *testi
 	}
 
 	// Pressing Delete again runs the same steps over what is left - and, since
-	// alpha.141, never the drop again: the engine already dropped it.
+	// alpha.140, never the drop again: the engine already dropped it.
 	native.failRemove = false
 	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
 		t.Fatalf("again: %d %s", got.Code, got.Body.String())

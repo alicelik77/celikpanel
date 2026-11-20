@@ -11,7 +11,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// alpha.141 carried item 12: the Agent drops a database only while it is the
+// alpha.140, carried item 12: the Agent drops a database only while it is the
 // one the deletion identified before its first drop.
 
 // fakeOnceMariaDB answers the identity read and records the drop.

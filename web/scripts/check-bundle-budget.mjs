@@ -352,7 +352,7 @@ const screenPartBudgets = {
   // (dnsadd.), split out of "webmailAddress" (full). A new part, set with at
   // least 25% headroom from its Turkish file.
   dnsAdd: kib(9, 2.5),
-  // alpha.141: the administrator's Catalog management of AI and automation
+  // alpha.140: the administrator's Catalog management of AI and automation
   // apps and the site sandbox panel (svcapps.admin., svcapps.sandbox.), split
   // out of "serviceApps" when the sentences built from the server's runtime
   // facts filled it. A new part, set with at least 25% headroom from its
