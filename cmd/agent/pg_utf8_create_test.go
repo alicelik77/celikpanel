@@ -62,14 +62,14 @@ func createdDatabaseStatements(got []string) []string {
 
 func TestPostgreSQLDatabaseIsCreatedUTF8FromTemplate0OnEveryMajor(t *testing.T) {
 	for _, c := range []struct{ version, want string }{
-		{"180001", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';`},
-		{"170006", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';`},
-		{"160010", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
-		{"150014", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
-		{"140019", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
+		{"180001", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;`},
+		{"170006", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;`},
+		{"160010", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
+		{"150014", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
+		{"140019", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
 		// A server that does not answer the version question: the form every
 		// major since 8.4 takes.
-		{"", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
+		{"", `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
 	} {
 		got := pgCreateAnswers(t, c.version, nil)
 		var resp CreateDatabaseResponse
@@ -97,7 +97,7 @@ func TestPostgreSQLDatabaseCreateFallsBackToLibcCOnlyForAMissingLocale(t *testin
 		t.Fatalf("resp=%+v err=%v", resp, err)
 	}
 	creates := createdDatabaseStatements(*got)
-	if len(creates) != 2 || creates[1] != `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C';` {
+	if len(creates) != 2 || creates[1] != `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;` {
 		t.Fatalf("statements = %q", creates)
 	}
 

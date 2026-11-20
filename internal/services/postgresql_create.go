@@ -89,7 +89,10 @@ func PostgreSQLCreateDatabaseStatement(ident, ownerIdent string, versionNum int,
 		}
 		b.WriteString(" LC_COLLATE '" + locale + "' LC_CTYPE '" + locale + "'")
 	}
-	b.WriteString(";")
+	// Made shut: nobody signs in before PUBLIC's rights are revoked
+	// (PostgreSQLClosePublicStatement opens it). CONNECT is checked only at
+	// sign-in, so a session opened in between would outlive the revoke.
+	b.WriteString(" ALLOW_CONNECTIONS false;")
 	return b.String()
 }
 
@@ -125,15 +128,21 @@ func PostgreSQLCreateDatabaseNeedsFallback(versionNum int, err error) bool {
 // TEMPORARY hakları oluşturmanın hemen ardından geri alınır ve okunarak
 // doğrulanır.
 
-// PostgreSQLClosePublicStatement revokes PUBLIC's rights on the database
-// (ident: a quoted identifier).
+// The database is created with ALLOW_CONNECTIONS false and opened only after
+// the revoke, so there is no moment in which another role can sign in
+// (PostgreSQL advises the revoke "in the same transaction that creates the
+// object", which CREATE DATABASE cannot be part of).
+
+// PostgreSQLClosePublicStatement revokes PUBLIC's rights on the database and
+// then lets connections in (ident: a quoted identifier).
 func PostgreSQLClosePublicStatement(ident string) string {
-	return "REVOKE ALL ON DATABASE " + ident + " FROM PUBLIC;"
+	return "REVOKE ALL ON DATABASE " + ident + " FROM PUBLIC;\nALTER DATABASE " + ident + " ALLOW_CONNECTIONS true;"
 }
 
-// PostgreSQLPublicReachQuery answers whether PUBLIC still has CONNECT or
-// TEMPORARY on the database named $1.
-const PostgreSQLPublicReachQuery = "SELECT pg_catalog.has_database_privilege('public', $1, 'CONNECT') OR pg_catalog.has_database_privilege('public', $1, 'TEMPORARY')"
+// PostgreSQLPublicReachQuery is true while the database named $1 is not
+// finished: PUBLIC still has CONNECT or TEMPORARY, or it does not take
+// connections yet.
+const PostgreSQLPublicReachQuery = "SELECT pg_catalog.has_database_privilege('public', $1, 'CONNECT') OR pg_catalog.has_database_privilege('public', $1, 'TEMPORARY') OR NOT COALESCE((SELECT datallowconn FROM pg_catalog.pg_database WHERE datname = $1), false)"
 
 // PostgreSQLEncodingIsUTF8 reports whether pg_encoding_to_char's name is
 // UTF8, the only server encoding whose text PostgreSQL checks as Unicode.

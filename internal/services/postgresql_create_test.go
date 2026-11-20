@@ -20,13 +20,13 @@ func TestPostgreSQLCreateDatabaseStatementPerMajor(t *testing.T) {
 		version int
 		want    string
 	}{
-		{"18", 180001, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';`},
-		{"17", 170006, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';`},
-		{"16", 160010, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
-		{"15", 150014, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
-		{"14", 140019, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
-		{"13", 130022, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
-		{"unknown", 0, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8';`},
+		{"18", 180001, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;`},
+		{"17", 170006, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;`},
+		{"16", 160010, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
+		{"15", 150014, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
+		{"14", 140019, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
+		{"13", 130022, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
+		{"unknown", 0, `CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C.UTF-8' LC_CTYPE 'C.UTF-8' ALLOW_CONNECTIONS false;`},
 	}
 	for _, c := range cases {
 		if got := PostgreSQLCreateDatabaseStatement(`"shop"`, `"shop_user"`, c.version, false); got != c.want {
@@ -40,11 +40,11 @@ func TestPostgreSQLCreateDatabaseStatementPerMajor(t *testing.T) {
 // builtin locale needs nothing from the system, so there is no fallback.
 func TestPostgreSQLCreateDatabaseStatementFallbackIsLibcCWithUTF8(t *testing.T) {
 	if got, want := PostgreSQLCreateDatabaseStatement(`"shop"`, `"shop_user"`, 160010, true),
-		`CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C';`; got != want {
+		`CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;`; got != want {
 		t.Fatalf("16 fallback:\n got %s\nwant %s", got, want)
 	}
 	if got, want := PostgreSQLCreateDatabaseStatement(`"shop"`, `"shop_user"`, 140019, true),
-		`CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C';`; got != want {
+		`CREATE DATABASE "shop" OWNER "shop_user" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;`; got != want {
 		t.Fatalf("14 fallback:\n got %s\nwant %s", got, want)
 	}
 	if got := PostgreSQLCreateDatabaseStatement(`"shop"`, `"shop_user"`, 170006, true); !strings.Contains(got, "BUILTIN_LOCALE 'C.UTF-8'") {
@@ -59,7 +59,7 @@ func TestPostgreSQLCreateDatabaseStatementFallbackIsLibcCWithUTF8(t *testing.T) 
 // owns it, as before).
 func TestPostgreSQLCreateDatabaseStatementWithoutOwner(t *testing.T) {
 	if got, want := PostgreSQLCreateDatabaseStatement(`"shop"`, "", 170006, false),
-		`CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';`; got != want {
+		`CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;`; got != want {
 		t.Fatalf("got %s", got)
 	}
 }
@@ -91,7 +91,7 @@ func TestPostgreSQLDriverCreatesUTF8FromTemplate0(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, execs, _, _, _ := state.snapshot()
-	if len(execs) != 2 || execs[0] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';` {
+	if len(execs) != 2 || execs[0] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;` {
 		t.Fatalf("execs = %q", execs)
 	}
 
@@ -100,7 +100,7 @@ func TestPostgreSQLDriverCreatesUTF8FromTemplate0(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, execs, _, _, _ = state.snapshot()
-	if len(execs) != 3 || execs[1] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C';` {
+	if len(execs) != 3 || execs[1] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C' ALLOW_CONNECTIONS false;` {
 		t.Fatalf("fallback execs = %q", execs)
 	}
 }
@@ -113,7 +113,8 @@ func TestPostgreSQLDriverClosesTheNewDatabaseToPublic(t *testing.T) {
 		t.Fatal(err)
 	}
 	queries, execs, _, _, _ := state.snapshot()
-	if len(execs) != 2 || execs[1] != `REVOKE ALL ON DATABASE "shop" FROM PUBLIC;` || queries[len(queries)-1] != PostgreSQLPublicReachQuery {
+	if len(execs) != 2 || !strings.HasSuffix(execs[0], " ALLOW_CONNECTIONS false;") ||
+		execs[1] != "REVOKE ALL ON DATABASE \"shop\" FROM PUBLIC;\nALTER DATABASE \"shop\" ALLOW_CONNECTIONS true;" || queries[len(queries)-1] != PostgreSQLPublicReachQuery {
 		t.Fatalf("execs = %q queries = %q", execs, queries)
 	}
 
