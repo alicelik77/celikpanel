@@ -111,6 +111,9 @@ var problemKindOrder = map[string]int{
 	"cpu_sustained":              9,
 	"mail_queue_deferred":        10,
 	"security_updates":           11,
+	"name_server_reserved":       12,
+	"name_overlap":               13,
+	"node_port_reserved":         14,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -166,6 +169,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	}
 	// alpha.127: the sites as the server itself reaches them.
 	add(siteProblems(ctx, db, now, certificates))
+	// Security release (20 November 2026): names and Node.js ports an
+	// existing installation holds that the one name rule refuses today.
+	add(p.namespaceProblems(ctx))
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

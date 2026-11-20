@@ -42,6 +42,7 @@ export const enMonitoringScreens = {
     'pnow.source.mail_queue': 'mail queue',
     'pnow.source.security_updates': 'security updates',
     'pnow.source.sites': 'website checks',
+    'pnow.source.names': 'domain names and Node.js ports',
     'pnow.reason.checking': 'being read',
     'pnow.reason.unreadable': 'could not be read',
     'pnow.reason.not_scanned': 'not checked yet',
@@ -86,6 +87,17 @@ export const enMonitoringScreens = {
     'pnow.service_restarting.title': '{name} keeps restarting',
     'pnow.service_restarting.body': 'systemd restarted it {value} times in the last hour: it fails and comes back. Its page on Components shows its log with the reason. This line goes away once it stays up.',
     'pnow.service_restarting.action': 'Open its page',
+    // Security release (20 November 2026): names and ports an installation
+    // already held before the one name rule. Nothing is changed by itself.
+    'pnow.name_overlap.title': '{domain} meets a name of another account',
+    'pnow.name_overlap.body': '{domain} belongs to a customer or reseller and lies under, above or on {other}, a name of another account. Whoever holds {domain} can take over names, certificates and mail of {other}. Nothing was changed. Remove {domain}, or move it to the account that holds {other}; this line goes away by itself.',
+    'pnow.name_overlap.action': 'Open the domain',
+    'pnow.name_server_reserved.title': '{domain} meets one of this server’s own names',
+    'pnow.name_server_reserved.body': '{domain} belongs to a customer or reseller and lies under, above or on {other}, a name of this server. Whoever holds it can point that name elsewhere or get its certificate. Nothing was changed. Remove {domain} or move it to your own subscription; this line goes away by itself.',
+    'pnow.name_server_reserved.action': 'Open the domain',
+    'pnow.node_port_reserved.title': 'The Node.js site {domain} uses port {value} of a server service',
+    'pnow.node_port_reserved.body': 'Its visitors are passed to port {value}, which a service of this server uses, so that service may be reachable from the internet. Nothing was changed. Save the site’s Node.js settings again: it gets a free port, and its program must listen on that port.',
+    'pnow.node_port_reserved.action': 'Open the domain',
     'dashboard.audit.action.monitoring.alerts.settings': 'changed the monitoring alert settings',
     // alpha.128 ops (G18): notifications by recipient.
     'dashboard.audit.action.notifications.preferences': 'changed which notices they receive by email',

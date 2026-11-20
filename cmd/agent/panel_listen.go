@@ -61,6 +61,14 @@ func panelListenSHA256(raw []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// agentPanelPort is the configured panel port (a seam for tests).
+var agentPanelPort = func() int {
+	if port, err := panellisten.Port(configuredPanelListen()); err == nil {
+		return port
+	}
+	return panellisten.DefaultPort
+}
+
 // configuredPanelListen is the address the panel is configured to listen on:
 // panel.env, else the vendor unit's Environment= line, else the default.
 func configuredPanelListen() string {

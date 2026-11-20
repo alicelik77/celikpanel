@@ -40,6 +40,11 @@ func runAsSiteUser(ctx context.Context, username, dir string, argv []string, std
 	if err != nil || gid < 1 {
 		return "", errors.New("the site user's group is not valid")
 	}
+	// The account must be the site's whose folder dir is: two domain names
+	// can derive the same account name (security release, 20 November 2026).
+	if home := strings.TrimSuffix(account.HomeDir, "/"); home == "" || (dir != home && !strings.HasPrefix(dir, home+"/")) {
+		return "", errors.New("the site user does not belong to this site")
+	}
 	cmd := exec.CommandContext(ctx, "/bin/sh", append([]string{"-c", `umask 027; exec "$@"`, "sh"}, argv...)...)
 	cmd.Dir = dir
 	cmd.Env = []string{

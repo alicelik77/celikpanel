@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/panellisten"
 )
 
 // Generation is the sandbox text this release renders. A unit written by an
@@ -145,6 +146,39 @@ const (
 	NodePortMax = 65535
 )
 
+// NodeAssignMin and NodeAssignMax bound the port a Node.js site is given or
+// may choose (security release, 20 November 2026): the range the panel has
+// always allocated from. A site that kept an older port outside it keeps it,
+// as long as NodePortRefusal accepts it.
+const (
+	NodeAssignMin = 3001
+	NodeAssignMax = 3999
+)
+
+// NodePortRefusal says why port cannot be a Node.js site's port, or "" when
+// it can: outside NodePortMin–NodePortMax, a port of this server's own
+// services (panellisten.ServerPort), the range the service apps and the
+// programs are given (PortMin–PortMax), or one of extra (the configured
+// panel port). nginx passes the public to this port, so the Panel and the
+// Agent both apply this rule; neither trusts the other's value.
+func NodePortRefusal(port int, extra ...int) string {
+	if port < NodePortMin || port > NodePortMax {
+		return fmt.Sprintf("port %d is outside %d-%d", port, NodePortMin, NodePortMax)
+	}
+	if name, ok := panellisten.ServerPort(port); ok {
+		return fmt.Sprintf("port %d belongs to %s", port, name)
+	}
+	if port >= PortMin && port <= PortMax {
+		return fmt.Sprintf("port %d is in the range of the service apps and programs", port)
+	}
+	for _, other := range extra {
+		if port == other {
+			return fmt.Sprintf("port %d belongs to the panel", port)
+		}
+	}
+	return ""
+}
+
 // PortRange is the range a kind's ports must lie in.
 func PortRange(k Kind) (int, int) {
 	if k == KindNode {
@@ -198,6 +232,9 @@ func (p Profile) Validate() error {
 		}
 		if port < low || port > high || seen[port] {
 			return errors.New("a sandbox port is outside the sandbox range or repeated")
+		}
+		if p.Kind == KindNode && NodePortRefusal(port) != "" {
+			return errors.New("a Node.js site's port belongs to another service of this server")
 		}
 		seen[port] = true
 	}

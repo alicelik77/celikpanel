@@ -109,6 +109,7 @@ export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'err.TRANSFER_ADMIN_WORKSPACE': 'Yöneticinin kendi çalışma alanı yöneticide kalır. Bunun yerine alan adlarını başka bir aboneliğe taşıyın.',
     'err.TRANSFER_RIGHTS_OUTSIDE_RECEIVER': 'Aboneliğin, alacak bayide olmayan hakları var; bu yüzden oraya taşınamaz. Çıkış yolları: yönetici listelenen öğeleri o bayinin haklarına ekler; ya da önce aboneliği daraltın (yalnız kullandıkları sığıyorsa); ya da yerinde bırakın.',
     'err.TRANSFER_POOL_EXCEEDED': 'Aboneliğin gerçek kullanımı alacak bayinin havuzundaki boş yere sığmıyor. Çıkış yolları: yönetici o bayiye daha büyük havuz verir; ya da aboneliğin artık gerekmeyenlerini kaldırın; ya da yerinde bırakın.',
+    'err.TRANSFER_NAME_OVERLAP': 'Bu aboneliğin bir adı, başka bir hesabın tuttuğu ya da bu sunucunun kendine ayırdığı bir ada eşit, onun üstünde ya da altında; bu yüzden alacak hesap onu tutamaz. Hiçbir şey değiştirilmedi. Çıkış yolları: listelenen adları taşıyın ya da kaldırın; ya da aboneliği yerinde bırakın. Hangi adlar olduğunu yönetici görür.',
     'err.TRANSFER_CONFIRM': 'Neyin değişeceğini inceleyin, sonra devri onaylayın.',
     'err.TRANSFER_STALE': 'Abonelik incelemeden sonra sahip değiştirdi. Hiçbir şey değişmedi. Devri yeniden gözden geçirin.',
     'err.TRANSFER_REQUEST_ID_REUSED': 'Bu istek başka bir değişiklik için kullanılmıştı. Hiçbir şey değişmedi. Devri yeniden açın.',

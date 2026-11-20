@@ -18,6 +18,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/serviceapps"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/siteruntime"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -693,6 +694,13 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 	case "node":
 		if req.AppPort < 1024 || req.AppPort > 65535 {
 			return services.VhostData{}, fmt.Errorf("node application port is outside the supported range")
+		}
+		// The second line (security release, 20 November 2026): the Panel's
+		// value is not trusted. nginx passes the public to this port, so it
+		// is never a port of this server's own services, the range of the
+		// service apps and programs, or the configured panel port.
+		if refusal := sitesandbox.NodePortRefusal(req.AppPort, agentPanelPort()); refusal != "" {
+			return services.VhostData{}, fmt.Errorf("node application port refused: %s", refusal)
 		}
 		data.AppPort = req.AppPort
 	case "service_app":

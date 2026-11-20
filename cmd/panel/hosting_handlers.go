@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -121,12 +124,40 @@ func (p *Panel) allocateAppPort(ctx context.Context) (int, error) {
 	if err := rows.Err(); err != nil {
 		return 0, err
 	}
-	for port := 3001; port < 4000; port++ {
-		if !used[port] {
+	for port := sitesandbox.NodeAssignMin; port <= sitesandbox.NodeAssignMax; port++ {
+		if !used[port] && nodeSitePortChoiceRefusal(port) == "" {
 			return port, nil
 		}
 	}
 	return 0, context.DeadlineExceeded
+}
+
+// errCodeAppPortNotAllowed: a Node.js site's port that was named is not one
+// a site may use (security release, 20 November 2026).
+const errCodeAppPortNotAllowed = "APP_PORT_NOT_ALLOWED"
+
+// nodeSitePortChoiceRefusal: "" when port may be given to a Node.js site:
+// inside the range the panel gives Node.js sites and not a port of this
+// server's own services or of the panel (sitesandbox.NodePortRefusal, the
+// rule the Agent applies again). Another site's port is refused separately.
+func nodeSitePortChoiceRefusal(port int) string {
+	if port < sitesandbox.NodeAssignMin || port > sitesandbox.NodeAssignMax {
+		return fmt.Sprintf("port %d is outside %d-%d", port, sitesandbox.NodeAssignMin, sitesandbox.NodeAssignMax)
+	}
+	return sitesandbox.NodePortRefusal(port, panelPort())
+}
+
+// writeAppPortRefusal answers 409 APP_PORT_NOT_ALLOWED with one sentence
+// whatever uses the port, so the answer names no other site or service.
+func writeAppPortRefusal(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{
+		Error: fmt.Sprintf("This port cannot be the site's application port. A Node.js site gets a free port from %d to %d that no other site or service of this server uses. "+
+			"Nothing was changed. Leave the port empty and the panel picks a free one.", sitesandbox.NodeAssignMin, sitesandbox.NodeAssignMax),
+		Code: errCodeAppPortNotAllowed,
+		Vars: map[string]string{"min": strconv.Itoa(sitesandbox.NodeAssignMin), "max": strconv.Itoa(sitesandbox.NodeAssignMax)},
+	})
 }
 
 // handleDomainApp serves the supervised-app surface of a domain:
