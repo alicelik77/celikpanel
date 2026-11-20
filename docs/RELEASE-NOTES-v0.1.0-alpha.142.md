@@ -179,6 +179,16 @@ through a link refused, the site's own file through a link served.
 Tests, each package's full suite in the test machine, before (alpha.141)
 and after:
 
-COUNTS
+| Package | Before | After |
+|---|---|---|
+| `internal/transport` | 62 | 62 |
+| `internal/panellisten` | 4 | 4 |
+| `internal/sitesandbox` | 18 | 19 |
+| `internal/db` | 180 | 182 |
+| `internal/services` | 364 | 371 |
+| `cmd/agent` | 5937 | 5948 |
+| `cmd/panel` | 4713 | 4726 |
 
-No new failure. Web: COUNTS_WEB.
+(Passed tests and subtests.)
+
+No new failure. Web: `npm test` 3079 → 3090 passed, 0 failed; the type check is clean and the build meets every size budget (first-load path 109.37 KiB of 110.00 KiB compressed; alpha.141: 109.36).

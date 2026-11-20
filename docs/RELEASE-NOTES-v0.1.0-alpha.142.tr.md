@@ -184,6 +184,16 @@ başka bir hesabın dosyası reddedildi, sitenin kendi dosyası sunuldu.
 Testler, test makinesinde her paketin tam takımı, önce (alpha.141) ve
 sonra:
 
-COUNTS
+| Paket | Önce | Sonra |
+|---|---|---|
+| `internal/transport` | 62 | 62 |
+| `internal/panellisten` | 4 | 4 |
+| `internal/sitesandbox` | 18 | 19 |
+| `internal/db` | 180 | 182 |
+| `internal/services` | 364 | 371 |
+| `cmd/agent` | 5937 | 5948 |
+| `cmd/panel` | 4713 | 4726 |
 
-Yeni başarısızlık yok. Web: COUNTS_WEB.
+(Geçen testler ve alt testler.)
+
+Yeni başarısızlık yok. Web: `npm test` 3079 → 3090 geçti, 0 başarısız; tür denetimi temiz ve derleme her boyut bütçesini karşılıyor (ilk yükleme yolu sıkıştırılmış 110,00 KiB'nin 109,37 KiB'i; alpha.141: 109,36).
