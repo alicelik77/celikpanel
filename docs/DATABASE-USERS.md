@@ -288,6 +288,67 @@ same rules.
   (docs/PLANS-AND-RIGHTS.md), so none is counted; the databases permission
   and the engine offering apply, and team members need "manage".
 
+## SQL from a file (20 November 2026)
+
+SQL that comes from a file runs with the rights of the target database's own
+account and nothing more: a backup's dump (made on this server or brought back
+from a remote destination), the safety copy put back after a failed restore,
+the dump of a database, site or WordPress copy, a cPanel archive's dump and a
+file a customer imports. Its text is the customer's even when CelikPanel made
+the dump. Before, a restore and a copy ran it through `mysql` as root without
+sandbox mode or through `psql` as the postgres account, so a line of the file
+could reach a shell or the database server's administrator rights.
+
+- One mechanism (`cmd/agent/database_owner_load.go`) loads every such file.
+  - MariaDB: the client with `--no-defaults --sandbox` (no shell, no local
+    files), signed in as the database's own user, under the site's own system
+    account (`nobody` for a domain without hosting), never root. DEFINER
+    clauses of views, triggers and routines are written as `CURRENT_USER`: the
+    object belongs to the database's own user (a view an added user made comes
+    back as the database user's). The cPanel import, whose database has no user
+    of its own yet, loads through a temporary account with every right on the
+    new database only (`celikpanel_load_…`), removed afterwards.
+  - PostgreSQL: no psql. The Agent signs in as the database's owner role over
+    127.0.0.1 and sends the statements itself (the import's loader), in one
+    transaction after `DROP OWNED BY CURRENT_USER`; psql commands are refused,
+    `SET ROLE`/`RESET ROLE`, `ALTER … OWNER TO` and `COMMENT ON EXTENSION` are
+    left out.
+- The account is the user recorded first for the database, with its stored
+  password (as the import). It is proved before the safety backup and before
+  anything is written. A restore is refused with what to do when:
+  - the database has no user with a stored password, or the server refuses it
+    (it was changed outside the panel), or on PostgreSQL that user is not the
+    database's owner: set a new password for the user on the Databases page,
+    then restore again (`BACKUP_RESTORE_DATABASE_ACCOUNT`);
+  - the server's MariaDB client has no sandbox mode (older than 10.5.25,
+    10.6.18, 10.11.8): the administrator updates the MariaDB packages
+    (`BACKUP_RESTORE_CLIENT_UNSAFE`); a client without it is never replaced by
+    one that would obey the file's client commands;
+  - something only the server's administrator may create here:
+    MariaDB with binary logging and `log_bin_trust_function_creators` off and a
+    dump holding stored functions or triggers (the dump and the safety copy
+    are read first), or a PostgreSQL user that is an administrator role
+    (`BACKUP_RESTORE_NEEDS_ADMINISTRATOR`).
+- What the database's own rights cannot replay (measured on MariaDB 11.8.6 and
+  PostgreSQL 17.12 with dumps made by the panel's own backup code): a
+  PostgreSQL extension only the administrator may create, when the target does
+  not have it yet (a copy into a new database, a database the extension was
+  removed from): the load stops, the transaction leaves the database as it
+  was, the engine's reason names the extension. An extension the
+  administrator made in the database before is kept and the restore goes on.
+- Not changed by this, still open: on PostgreSQL a restore drops and
+  recreates the owner's objects, so the rights the panel gave to the
+  database's added users on them (and their default privileges) do not come
+  back with the restore (also before; measured on 17.12). MariaDB events are
+  not in the backup's dump (no `--events`).
+- Every session the engine's administrator opens on PostgreSQL (psql,
+  pg_dump, pg_restore, as postgres or as a cluster's owner) starts with
+  `search_path = pg_catalog, pg_temp` given as a connection option
+  (`cmd/agent/pg_admin_session.go`), and psql never reads a start-up file: a
+  database's owner can no longer place functions or operators that such a
+  session would run with the administrator's rights. A test fails when a
+  PostgreSQL client is started another way.
+
 ## Connecting
 
 Databases listen on the server only. "Connection details" gives the site's
