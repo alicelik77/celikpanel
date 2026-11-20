@@ -67,6 +67,8 @@ const stubbedComponents = [
   'DatabaseUsers', 'DatabaseUserPassword', 'EngineMark',
   // alpha.129: connections from outside read their own address when opened.
   'DatabaseRemoteAccess',
+  // 20 Nov 2026: a database's encoding warning (tests/database-encoding-pg-utf8.test.mjs).
+  'DatabaseEncodingWarning',
   // alpha.128: the visitor statistics above the logs read their own address.
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.
