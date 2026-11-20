@@ -84,6 +84,58 @@ func TestPGDatabaseIsUTF8OnAClusterWithSQLASCIITemplatesOnRealPostgreSQL(t *test
 	}
 }
 
+// 20 Nov 2026 (security), on the same real engine, with the distribution's
+// pg_hba (scram-sha-256 on 127.0.0.1): a database the Agent makes is closed
+// to every other role. Another customer's user is refused at the door; the
+// owner, a read-only user (CONNECT) and a read-and-write user (CONNECT,
+// TEMPORARY) the panel adds still connect; the export (as the engine's
+// superuser) still reads it.
+func TestANewDatabaseIsClosedToOtherCustomersOnRealPostgreSQL(t *testing.T) {
+	e := requireTestEngines(t)
+	installTestEngines(t, e)
+	useEngineClients(t, e)
+	cleanup := "DROP DATABASE IF EXISTS a140a; DROP DATABASE IF EXISTS a140b; DROP ROLE IF EXISTS a140a_user; DROP ROLE IF EXISTS a140b_user;" +
+		" DROP ROLE IF EXISTS a140a_reader; DROP ROLE IF EXISTS a140a_editor;"
+	mustRun(t, "clean", e.pg("", "", "", cleanup))
+	t.Cleanup(func() { _ = e.pg("", "", "", cleanup) })
+	for _, name := range []string{"a140a", "a140b"} {
+		if resp := createDatabaseOn(t, CreateDatabaseRequest{Type: "postgresql", Name: name, User: name + "_user", Password: engineOwnerPassword, Port: 5432}); !resp.Success {
+			t.Fatalf("create %s: %+v", name, resp)
+		}
+	}
+	if got := mustRun(t, "public", e.pg("", "", "", "SELECT has_database_privilege('public', 'a140a', 'CONNECT') || ' ' || has_database_privilege('public', 'a140a', 'TEMPORARY') || ' ' || has_database_privilege('a140b_user', 'a140a', 'CONNECT');")); got != "false false false" {
+		t.Fatalf("public/other = %q", got)
+	}
+	res := e.pg("a140b_user", engineOwnerPassword, "a140a", "SELECT 1;")
+	if res.err == nil || !strings.Contains(string(res.out), "User does not have CONNECT privilege") {
+		t.Fatalf("another customer's user got in: %v %s", res.err, res.out)
+	}
+	t.Logf("another customer's user at the door: %s", strings.TrimSpace(string(res.out)))
+	mustRun(t, "owner", e.pg("a140a_user", engineOwnerPassword, "a140a", "CREATE TABLE notes (s text); CREATE TEMP TABLE scratch (s text);"))
+
+	base := transport.DatabaseAccessUserRequest{Engine: "postgresql", Port: 5432, Database: "a140a"}
+	read, write := base, base
+	read.Username, read.Password, read.Access = "a140a_reader", engineReadPassword, transport.DatabaseAccessRead
+	write.Username, write.Password, write.Access = "a140a_editor", engineWritePassword, transport.DatabaseAccessWrite
+	for _, req := range []transport.DatabaseAccessUserRequest{read, write} {
+		if resp := accessUser(t, true, req); !resp.Applied {
+			t.Fatalf("%s: %+v", req.Username, resp)
+		}
+	}
+	mustRun(t, "reader connects and reads", e.pg("a140a_reader", engineReadPassword, "a140a", "SELECT count(*) FROM notes;"))
+	mustFail(t, "reader makes a temporary table", e.pg("a140a_reader", engineReadPassword, "a140a", "CREATE TEMP TABLE r (s text);"))
+	mustRun(t, "editor writes and makes a temporary table", e.pg("a140a_editor", engineWritePassword, "a140a", "INSERT INTO notes VALUES ('x'); CREATE TEMP TABLE w (s text);"))
+	mustFail(t, "the reader is still a stranger to a140b", e.pg("a140a_reader", engineReadPassword, "a140b", "SELECT 1;"))
+	if err := dumpDatabaseToFile(backupspec.DatabaseIdentity{ID: 1, Name: "a140a", Type: "postgresql", ClusterPort: atoiOrZero(e.pgPort)}, filepath.Join(t.TempDir(), "a140a.sql.gz")); err != nil {
+		t.Fatalf("export of a closed database: %v", err)
+	}
+}
+
+func atoiOrZero(text string) int {
+	n, _ := strconv.Atoi(text)
+	return n
+}
+
 // useEngineClients points the backup commands (sudo -u postgres pg_dump/psql)
 // at the private engine's own clients.
 func useEngineClients(t *testing.T, e testEngines) {

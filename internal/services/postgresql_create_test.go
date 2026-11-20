@@ -91,7 +91,7 @@ func TestPostgreSQLDriverCreatesUTF8FromTemplate0(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, execs, _, _, _ := state.snapshot()
-	if len(execs) != 1 || execs[0] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';` {
+	if len(execs) != 2 || execs[0] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'C.UTF-8' LC_COLLATE 'C' LC_CTYPE 'C';` {
 		t.Fatalf("execs = %q", execs)
 	}
 
@@ -100,8 +100,28 @@ func TestPostgreSQLDriverCreatesUTF8FromTemplate0(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, execs, _, _, _ = state.snapshot()
-	if len(execs) != 2 || execs[1] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C';` {
+	if len(execs) != 3 || execs[1] != `CREATE DATABASE "shop" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER libc LC_COLLATE 'C' LC_CTYPE 'C';` {
 		t.Fatalf("fallback execs = %q", execs)
+	}
+}
+
+// The driver closes the new database to PUBLIC and reads it back; a database
+// still open is removed again and the create fails.
+func TestPostgreSQLDriverClosesTheNewDatabaseToPublic(t *testing.T) {
+	state := &postgreSQLScript{versionNum: "180001"}
+	if err := newScriptedPostgreSQLDriver(state).CreateDatabase("shop"); err != nil {
+		t.Fatal(err)
+	}
+	queries, execs, _, _, _ := state.snapshot()
+	if len(execs) != 2 || execs[1] != `REVOKE ALL ON DATABASE "shop" FROM PUBLIC;` || queries[len(queries)-1] != PostgreSQLPublicReachQuery {
+		t.Fatalf("execs = %q queries = %q", execs, queries)
+	}
+
+	state = &postgreSQLScript{versionNum: "180001", terminationOK: true} // the read-back answers "open"
+	err := newScriptedPostgreSQLDriver(state).CreateDatabase("shop")
+	_, execs, _, _, _ = state.snapshot()
+	if err == nil || !strings.Contains(err.Error(), "removed again") || execs[len(execs)-1] != `DROP DATABASE IF EXISTS "shop";` {
+		t.Fatalf("err = %v execs = %q", err, execs)
 	}
 }
 

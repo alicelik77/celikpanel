@@ -41,6 +41,8 @@ func pgCreateAnswers(t *testing.T, version string, failCreate func(statement str
 			if out := failCreate(statement); out != nil {
 				return out, errors.New("exit status 3")
 			}
+		case strings.HasPrefix(statement, "REVOKE ALL ON DATABASE"):
+			return []byte("public=false\nowner=true\n"), nil
 		}
 		return nil, nil
 	}

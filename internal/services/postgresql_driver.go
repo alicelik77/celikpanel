@@ -121,6 +121,22 @@ func (d *PostgreSQLDriver) CreateDatabase(name string) error {
 		}
 		return fmt.Errorf("failed to create database: %w", err)
 	}
+	// Closed to every other role, read back; a database that could not be
+	// closed is removed again (postgresql_create.go).
+	var open bool
+	_, err = db.Exec(PostgreSQLClosePublicStatement(ident))
+	if err == nil {
+		err = db.QueryRow(PostgreSQLPublicReachQuery, name).Scan(&open)
+	}
+	if err == nil && open {
+		err = fmt.Errorf("PUBLIC still has CONNECT or TEMPORARY on it")
+	}
+	if err != nil {
+		if _, dropErr := db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s;", ident)); dropErr != nil {
+			return fmt.Errorf("database %s was created but could not be closed to other database users (%v), and removing it again failed: %w", name, err, dropErr)
+		}
+		return fmt.Errorf("database %s could not be closed to other database users, so it was removed again: %w", name, err)
+	}
 	return nil
 }
 

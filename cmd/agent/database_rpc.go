@@ -565,6 +565,7 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		roleCreated = true
 	}
 
+	createdHere := false
 	if owner == "" {
 		// 20 Nov 2026: UTF8 from template0 with its locale named, whatever
 		// the cluster's template1 is (a cluster initialised under locale C
@@ -588,6 +589,43 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 			}
 			return nil
 		}
+		createdHere = true
+	}
+
+	// 20 Nov 2026 (security): closed to every other role on the cluster -
+	// PUBLIC's CONNECT and TEMPORARY revoked - and read back; the owner keeps
+	// its own rights. A database this call made that cannot be closed is
+	// removed again, with the role it made (services.PostgreSQLClose-
+	// PublicStatement). A resumed operation's database is closed too.
+	// Veritabanı diğer rollere kapatılır ve okunarak doğrulanır.
+	reach := strings.ReplaceAll(services.PostgreSQLPublicReachQuery, "$1", dbLiteral)
+	output, err = run(services.PostgreSQLClosePublicStatement(dbIdent) + "\n" +
+		"SELECT 'public=' || (" + strings.TrimPrefix(reach, "SELECT ") + ");\n" +
+		"SELECT 'owner=' || pg_catalog.has_database_privilege(" + userLiteral + ", " + dbLiteral + ", 'CONNECT');")
+	public, okPublic := markerValue(output, "public")
+	ownerConnects, okOwner := markerValue(output, "owner")
+	if err != nil || !okPublic || !okOwner || public != "false" || ownerConnects != "true" {
+		var left []string
+		if createdHere {
+			if _, dropErr := run(postgreSQLDropDatabaseScript(dbLiteral, dbIdent)); dropErr != nil {
+				left = append(left, req.Name)
+			}
+			if roleCreated {
+				if _, dropErr := run("DROP ROLE IF EXISTS " + userIdent + ";"); dropErr != nil {
+					left = append(left, req.User)
+				}
+			}
+		}
+		resp.Left, resp.CleanupIncomplete = left, len(left) > 0
+		if createdHere && len(left) == 0 {
+			resp.Error = "the database server made the database but did not close it to its other database users, so it was removed again; nothing was changed"
+		} else {
+			resp.Error = "the database " + req.Name + " could not be closed to the server's other database users"
+		}
+		if err != nil {
+			resp.Error += ": " + hostcmd.Fail("closing it", output, err, databaseClientMeaning).Error()
+		}
+		return nil
 	}
 
 	resp.Success = true

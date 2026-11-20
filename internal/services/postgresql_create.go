@@ -109,6 +109,32 @@ func PostgreSQLCreateDatabaseNeedsFallback(versionNum int, err error) bool {
 	return false
 }
 
+// A new database is closed to every other role (20 Nov 2026, security). A
+// database is created with PostgreSQL's PUBLIC defaults - CONNECT and
+// TEMPORARY for every role on the cluster - so one customer's database user
+// could sign in to another customer's database over localhost, read its
+// catalogue (table and column names, function bodies), call functions open
+// to PUBLIC and make temporary tables there (seen read-only on a production
+// server). Right after CREATE DATABASE those defaults are revoked; the owner
+// keeps its own rights, and every user CelikPanel adds to the database is
+// granted CONNECT (read and write: CONNECT, TEMPORARY) explicitly, as it
+// always was. The creation is complete only when the read-back says PUBLIC
+// has neither right; otherwise the new database is removed again.
+//
+// Yeni veritabanı başka hiçbir role açık değildir: PUBLIC'in CONNECT ve
+// TEMPORARY hakları oluşturmanın hemen ardından geri alınır ve okunarak
+// doğrulanır.
+
+// PostgreSQLClosePublicStatement revokes PUBLIC's rights on the database
+// (ident: a quoted identifier).
+func PostgreSQLClosePublicStatement(ident string) string {
+	return "REVOKE ALL ON DATABASE " + ident + " FROM PUBLIC;"
+}
+
+// PostgreSQLPublicReachQuery answers whether PUBLIC still has CONNECT or
+// TEMPORARY on the database named $1.
+const PostgreSQLPublicReachQuery = "SELECT pg_catalog.has_database_privilege('public', $1, 'CONNECT') OR pg_catalog.has_database_privilege('public', $1, 'TEMPORARY')"
+
 // PostgreSQLEncodingIsUTF8 reports whether pg_encoding_to_char's name is
 // UTF8, the only server encoding whose text PostgreSQL checks as Unicode.
 func PostgreSQLEncodingIsUTF8(name string) bool {
