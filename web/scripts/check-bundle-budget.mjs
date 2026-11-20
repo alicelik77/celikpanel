@@ -363,6 +363,10 @@ const screenPartBudgets = {
   // the database parts are full; set with at least 25% headroom from its
   // Turkish file.
   dbEncoding: kib(2.5, 1.2),
+  // 20 Nov 2026 (security lane S1b): the PostgreSQL databases every account
+  // of the server can enter, closing them and the undo (pgpub.). A new part;
+  // set with at least 25% headroom from its Turkish file.
+  pgPublic: kib(6, 2.6),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

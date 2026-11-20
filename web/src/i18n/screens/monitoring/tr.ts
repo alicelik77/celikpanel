@@ -81,6 +81,9 @@ export const trMonitoringScreens: Record<MonitoringScreenKey, string> = {
     'pnow.service_restarting.title': '{name} sürekli yeniden başlıyor',
     'pnow.service_restarting.body': 'systemd onu son bir saatte {value} kez yeniden başlattı: durup yeniden açılıyor. Bileşenler’deki sayfası nedeniyle birlikte günlüğünü gösterir. Açık kalınca bu satır kalkar.',
     'pnow.service_restarting.action': 'Sayfasını aç',
+    'pnow.postgresql_databases_open.title': 'Bu sunucudaki her hesap {value} PostgreSQL veritabanına girebiliyor',
+    'pnow.postgresql_databases_open.body': 'alpha.141’den önce açılanlar: {name}. CelikPanel orada kendi başına karar vermediği bir şey buldu. PostgreSQL sayfasında neyin bulunduğunu ve kapatmanın neyi değiştireceğini okuyun, sonra her birini kapatın; geri alınabilir.',
+    'pnow.postgresql_databases_open.action': 'İncele ve kapat',
     'dashboard.audit.action.monitoring.alerts.settings': 'izleme uyarı ayarlarını değiştirdi',
     // alpha.128 ops (G18): alıcıya göre bildirimler.
     'dashboard.audit.action.notifications.preferences': 'hangi bildirimleri e-postayla alacağını değiştirdi',

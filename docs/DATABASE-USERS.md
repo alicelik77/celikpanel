@@ -349,6 +349,83 @@ could reach a shell or the database server's administrator rights.
   session would run with the administrator's rights. A test fails when a
   PostgreSQL client is started another way.
 
+## Moving a PostgreSQL database to another cluster (20 November 2026)
+
+A move (PostgreSQL page → a cluster's Move) copies the database with
+`pg_dump` and loads it with `pg_restore` into the other version's cluster. The
+load ran entirely as the cluster's administrator, and loading the rows of a
+table evaluates the customer's own code: CHECK constraints (of the table and
+of its domains) and stored generated columns run as the session's user during
+`COPY`. A customer's function there ran with the administrator's rights.
+
+- The load is split (`cmd/agent/pg_move_owner_load.go`): the structure
+  before and after the rows (tables, functions, indexes, constraints,
+  triggers, rights) as the administrator, as before; each table's rows as
+  that table's owner, through a temporary sign-in role
+  (`celikpanel_move_<random>`, member of the owner only, `CONNECT` on the
+  database only, removed afterwards whatever happened); the large objects,
+  sequence values and the rows of an extension's own tables as the
+  administrator (no customer code runs for them). Index expressions,
+  materialized views and foreign key checks already run as the object's
+  owner in PostgreSQL itself (13.7 and later).
+- Refused before anything is written, the source untouched, with the reason:
+  a table, partitioned table or materialized view owned by an administrator
+  role that is not an extension's (`ADMINISTRATOR_OBJECTS`: its rows would
+  load with the administrator's rights); a `pg_dump` older than the August
+  2025 minor releases (`CLIENT_OUTDATED`, `CLIENT_UNKNOWN`); a target cluster
+  older than 13.8 or 14.5, or 12 and older (`TARGET_OUTDATED`: extension
+  scripts); the temporary role refused by the target's `pg_hba.conf`
+  (`LOGIN_REFUSED`).
+- What a move keeps is unchanged: owners, rights, comments, extensions,
+  settings, large objects. The source is removed only after the copy is
+  verified, as before.
+
+## Old PostgreSQL databases closed to other accounts (20 November 2026)
+
+alpha.141 makes every new PostgreSQL database closed to the server's other
+roles. A database made before keeps PostgreSQL's default rights: every role
+of the server may connect to it and make temporary tables in it, so one
+customer's database user can sign in to another customer's database and see
+how it is built (`cmd/panel/postgresql_public_access.go`,
+`cmd/agent/pg_public_access.go`). MariaDB has no such default: nothing to do
+there.
+
+- What CelikPanel closes by itself: a database it records on this machine's
+  clusters whose own rights are still PostgreSQL's untouched default
+  (`datacl` empty), in which nothing belongs to or is granted to a role
+  outside its records for that database, to which no such role is connected,
+  on a cluster with no monitoring login role (`pg_monitor` and the like).
+  The close is one transaction inside the database: it changes nothing unless
+  the database is still as read; it gives `CONNECT` to the recorded users
+  (and `TEMPORARY` to a read-and-write user; the owner keeps its rights as
+  owner), takes `CONNECT` and `TEMPORARY` from `PUBLIC`, and reads back that
+  `PUBLIC` holds neither and every recorded user and the owner may connect,
+  before `COMMIT`.
+- Everything else is left exactly as it is and listed (Problems now, and the
+  PostgreSQL page under "Databases other accounts can enter") with what was
+  found (rights changed by hand, other roles inside, other roles connected,
+  monitoring roles, undone before) and what closing changes; the
+  administrator closes it there after reading that.
+- Undo: on the PostgreSQL page beside each closed database (when, by whom),
+  and as the plain statements for an owner without the panel (run as the
+  postgres account). It gives `PUBLIC` back what it held and takes away
+  exactly the rights the close gave; it is refused, changing nothing, when the
+  database's rights changed since. An undone database is never closed again by
+  itself.
+- When: after the panel has been up a few minutes, an update of it is
+  verified, the server is not busy and the Agent is the same build (the
+  database-rights loop's admission), then hourly. A cluster that does not
+  answer is read again at the next round; a close whose answer was lost is
+  finished from what the engine shows. Opening the PostgreSQL page reads the
+  rights again and changes nothing.
+- Kept in `panel_settings` (no schema change):
+  `postgresql_public_v1:<database id>` per database CelikPanel closed or is
+  closing (state, by whom, when, the rights before and after, what `PUBLIC`
+  held, what the close gave), and `postgresql_public_list_v1` for the list
+  Problems now shows.
+- Not covered: registered PostgreSQL servers on other machines (their own
+  administrator's), and the `postgres`/`template1` databases.
+
 ## Connecting
 
 Databases listen on the server only. "Connection details" gives the site's

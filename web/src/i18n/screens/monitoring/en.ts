@@ -86,6 +86,9 @@ export const enMonitoringScreens = {
     'pnow.service_restarting.title': '{name} keeps restarting',
     'pnow.service_restarting.body': 'systemd restarted it {value} times in the last hour: it fails and comes back. Its page on Components shows its log with the reason. This line goes away once it stays up.',
     'pnow.service_restarting.action': 'Open its page',
+    'pnow.postgresql_databases_open.title': 'Every account of this server can enter {value} PostgreSQL databases',
+    'pnow.postgresql_databases_open.body': 'Made before alpha.141: {name}. CelikPanel found something there it does not decide by itself. On the PostgreSQL page, read what was found and what closing changes, then close each one; it can be undone.',
+    'pnow.postgresql_databases_open.action': 'Review and close',
     'dashboard.audit.action.monitoring.alerts.settings': 'changed the monitoring alert settings',
     // alpha.128 ops (G18): notifications by recipient.
     'dashboard.audit.action.notifications.preferences': 'changed which notices they receive by email',

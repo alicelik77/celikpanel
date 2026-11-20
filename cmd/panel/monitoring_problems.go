@@ -111,6 +111,8 @@ var problemKindOrder = map[string]int{
 	"cpu_sustained":              9,
 	"mail_queue_deferred":        10,
 	"security_updates":           11,
+	// S1b: PostgreSQL databases left open to other accounts.
+	"postgresql_databases_open": 12,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -166,6 +168,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	}
 	// alpha.127: the sites as the server itself reaches them.
 	add(siteProblems(ctx, db, now, certificates))
+	// S1b: PostgreSQL databases made before alpha.141 still open to other
+	// accounts, from the last round (postgresql_public_access.go).
+	add(pgPublicProblems(ctx, db), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

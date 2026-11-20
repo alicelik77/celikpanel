@@ -545,6 +545,9 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "security_updates":
 		return fmt.Sprintf("%s security updates are waiting. Install them under System updates.", n),
 			fmt.Sprintf("%s güvenlik güncellemesi bekliyor. Sistem güncellemeleri'nden kurun.", n)
+	case "postgresql_databases_open":
+		return fmt.Sprintf("Every account of this server can enter %s PostgreSQL databases made before alpha.141 (%s). Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
+			fmt.Sprintf("Bu sunucudaki her hesap alpha.141'den önce açılan %s PostgreSQL veritabanına girebiliyor (%s). PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

@@ -337,6 +337,10 @@ func isAdminOnlyPath(path string) bool {
 	if path == databaseGrantFormsPath {
 		return true
 	}
+	// 20 Nov 2026 (S1b): closing old PostgreSQL databases to other accounts.
+	if path == pgPublicPath {
+		return true
+	}
 	// alpha.117 (D-043): a security emergency is the administrator's alone.
 	if path == securityEmergenciesPath || strings.HasPrefix(path, securityEmergenciesPath+"/") {
 		return true
