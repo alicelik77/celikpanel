@@ -74,7 +74,6 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/removalRule/en'),
         () => import('./screens/componentInstall/en'),
         () => import('./screens/monitoring/en'),
-        () => import('./screens/problemsNow/en'),
         () => import('./screens/passwords/en'),
         () => import('./screens/adminNext/en'),
         () => import('./screens/nodeSandbox/en'),
@@ -93,6 +92,7 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/deletionHolding/en'),
         () => import('./screens/dnsAdd/en'),
         () => import('./screens/serviceAppsAdmin/en'),
+        () => import('./screens/problemsNow/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -143,7 +143,6 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/removalRule/tr'),
         () => import('./screens/componentInstall/tr'),
         () => import('./screens/monitoring/tr'),
-        () => import('./screens/problemsNow/tr'),
         () => import('./screens/passwords/tr'),
         () => import('./screens/adminNext/tr'),
         () => import('./screens/nodeSandbox/tr'),
@@ -162,5 +161,6 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/deletionHolding/tr'),
         () => import('./screens/dnsAdd/tr'),
         () => import('./screens/serviceAppsAdmin/tr'),
+        () => import('./screens/problemsNow/tr'),
     ],
 };

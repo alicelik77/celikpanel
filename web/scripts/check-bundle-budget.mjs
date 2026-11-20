@@ -361,8 +361,8 @@ const screenPartBudgets = {
   // The security release of 20 November 2026: the "Problems now" list
   // (pnow.), split out of "monitoring" when the names and ports an
   // installation held before the one name rule filled it. A new part, set
-  // with at least 25% headroom from its Turkish file: 7.40 / 2.43 KiB.
-  problemsNow: kib(10, 3.3),
+  // with at least 25% headroom from its Turkish file: 7.50 / 2.48 KiB.
+  problemsNow: kib(10.5, 3.4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

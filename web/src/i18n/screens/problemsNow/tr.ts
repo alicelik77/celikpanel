@@ -65,10 +65,10 @@ export const trProblemsNowScreens: Record<ProblemsNowScreenKey, string> = {
     'pnow.service_restarting.action': 'Sayfasını aç',
     // Güvenlik sürümü (20 Kasım 2026): kuraldan önce kalmış adlar ve portlar.
     'pnow.name_overlap.title': '{domain}, başka bir hesabın adıyla çakışıyor',
-    'pnow.name_overlap.body': '{domain} bir müşteriye ya da bayiye ait ve başka bir hesabın adı olan {other} adının altında, üstünde ya da ona eşit. {domain} adını tutan, {other} adının adlarını, sertifikalarını ve postasını ele geçirebilir. Hiçbir şey değiştirilmedi. {domain} adını kaldırın ya da {other} adını tutan hesaba taşıyın; bu satır kendiliğinden kalkar.',
+    'pnow.name_overlap.body': '{domain} bir müşteriye ya da bayiye ait ve başka bir hesabın adı olan {other} adının altında, üstünde ya da ona eşit. {domain} adını tutan, {other} adının adlarını, sertifikalarını ve postasını ele geçirebilir. Hiçbir şey değiştirilmedi. {domain} adını kaldırın ya da onu tutan aboneliği {other} adını tutan hesaba devredin; bu satır kendiliğinden kalkar.',
     'pnow.name_overlap.action': 'Alan adını aç',
     'pnow.name_server_reserved.title': '{domain}, bu sunucunun kendi adlarından biriyle çakışıyor',
-    'pnow.name_server_reserved.body': '{domain} bir müşteriye ya da bayiye ait ve bu sunucunun adı olan {other} adının altında, üstünde ya da ona eşit. Onu tutan, bu adı başka yere yönlendirebilir ya da sertifikasını alabilir. Hiçbir şey değiştirilmedi. {domain} adını kaldırın ya da kendi aboneliğinize taşıyın; bu satır kendiliğinden kalkar.',
+    'pnow.name_server_reserved.body': '{domain} bir müşteriye ya da bayiye ait ve bu sunucunun adı olan {other} adının altında, üstünde ya da ona eşit. Onu tutan, bu adı başka yere yönlendirebilir ya da sertifikasını alabilir. Hiçbir şey değiştirilmedi. O hesabın sunucunun adını tutması gerçekten gerekmiyorsa {domain} adını kaldırın: bu adı yalnız bir yöneticinin kendi aboneliği tutar. Bu satır kendiliğinden kalkar.',
     'pnow.name_server_reserved.action': 'Alan adını aç',
     'pnow.node_port_reserved.title': '{domain} Node.js sitesi bir sunucu hizmetinin {value} numaralı portunu kullanıyor',
     'pnow.node_port_reserved.body': 'Ziyaretçileri, bu sunucunun bir hizmetinin kullandığı {value} numaralı porta aktarılıyor; o hizmet internetten erişilebilir olabilir. Hiçbir şey değiştirilmedi. Sitenin Node.js ayarlarını yeniden kaydedin: site boş bir port alır; programı o portu dinlemelidir.',
