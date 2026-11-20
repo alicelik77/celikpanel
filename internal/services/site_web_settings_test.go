@@ -369,8 +369,7 @@ func TestACMEChallengeAllowsEverybodyOnlyWithAnAccessRule(t *testing.T) {
 // 2026) from a render, for comparisons with the text of earlier releases.
 func withoutLinkRule(vhost string) string {
 	var kept []string
-	for _, line := range strings.Split(vhost, "
-") {
+	for _, line := range strings.Split(vhost, "\n") {
 		switch line {
 		case "    # A link is followed only to a file of the link's own owner / Bağlantı yalnız aynı sahibin dosyasına izlenir",
 			"    disable_symlinks if_not_owner;":
@@ -378,6 +377,5 @@ func withoutLinkRule(vhost string) string {
 		}
 		kept = append(kept, line)
 	}
-	return strings.Join(kept, "
-")
+	return strings.Join(kept, "\n")
 }

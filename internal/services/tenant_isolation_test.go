@@ -57,8 +57,7 @@ func TestTenantIsolationOwnerSymlinkRuleIsKept(t *testing.T) {
 	if OwnerSetsSymlinks("ornek.com", "") {
 		t.Fatal("CelikPanel's copy of a customer's text was taken for the owner's rule")
 	}
-	if err := os.WriteFile(part, []byte(ours+"# edited by the owner
-"), 0o640); err != nil {
+	if err := os.WriteFile(part, []byte(ours+"# edited by the owner\n"), 0o640); err != nil {
 		t.Fatal(err)
 	}
 	if !OwnerSetsSymlinks("ornek.com", "") {
