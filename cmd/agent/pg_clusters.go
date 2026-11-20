@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/supportdata"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -879,6 +881,58 @@ func pgDistributionOffers(pkg string) bool {
 // pgCreateClusterPath is postgresql-common's own cluster creator.
 var pgCreateClusterPath = "/usr/bin/pg_createcluster"
 
+// pgCreateClusterArgs is pg_createcluster's argument list for NN/main
+// (20 Nov 2026). pg_createcluster takes its locale from the environment when
+// none is named, and the Agent's command environment is LC_ALL=C (for output
+// it parses): 18/main on an Ubuntu 24.04 server came out with locale C and
+// SQL_ASCII templates. The locale and encoding are therefore named: C.UTF-8
+// and UTF8, and from 17 the builtin provider (initdb's --locale-provider and
+// --builtin-locale, after "--"), the same locale every new database gets
+// (services.PostgreSQLCreateDatabaseStatement). Options from postgresql-
+// common's pg_createcluster(1), 278 on Debian 13 and 257 on Ubuntu 24.04:
+// --locale, -e, and initdb options after "--".
+//
+// ownerChoosesLocale: the owner's createcluster.conf passes initdb a locale,
+// encoding or provider of its own (initdb_options). pg_createcluster puts
+// those before its command-line options, so naming ours would silently
+// override the owner's; the owner's choice is kept instead (D-022).
+//
+// Agent'ın oluşturduğu küme C.UTF-8 ve UTF8 olur; sahibin createcluster.conf
+// dosyası kendi yerel ayarını veriyorsa onunki geçerlidir.
+func pgCreateClusterArgs(version string, port int, ownerChoosesLocale bool) []string {
+	args := []string{version, "main", "-p", strconv.Itoa(port)}
+	if ownerChoosesLocale {
+		return args
+	}
+	args = append(args, "--locale", services.PostgreSQLDatabaseLocale, "-e", "UTF8")
+	if major, err := strconv.Atoi(version); err == nil && major >= services.PostgreSQLBuiltinLocaleMajor {
+		args = append(args, "--", "--locale-provider=builtin", "--builtin-locale="+services.PostgreSQLDatabaseLocale)
+	}
+	return args
+}
+
+// pgInitdbLocaleOptionRe finds an initdb option that chooses a locale,
+// encoding or locale provider.
+var pgInitdbLocaleOptionRe = regexp.MustCompile(`(^|\s)(--locale|--lc-[a-z]+|--no-locale|--encoding|-E|--locale-provider|--icu-locale|--builtin-locale)(=|\s|$)`)
+
+// pgInitdbOptionsRe reads createcluster.conf's initdb_options line.
+var pgInitdbOptionsRe = regexp.MustCompile(`^\s*initdb_options\s*=\s*(.*)$`)
+
+// pgOwnerInitdbLocaleOptions is the owner's initdb_options value when it
+// chooses a locale, encoding or provider; "" otherwise.
+func pgOwnerInitdbLocaleOptions(conf string) string {
+	value := ""
+	for _, line := range strings.Split(conf, "\n") {
+		if m := pgInitdbOptionsRe.FindStringSubmatch(line); m != nil {
+			value = strings.Trim(strings.TrimSpace(m[1]), `'"`)
+		}
+	}
+	if pgInitdbLocaleOptionRe.MatchString(value) {
+		return value
+	}
+	return ""
+}
+
 // pgCreateMainCluster creates NN/main on port with postgresql-common's
 // pg_createcluster, without starting it (the install starts its unit).
 var pgCreateMainCluster = func(ctx context.Context, version string, port int) error {
@@ -890,7 +944,14 @@ var pgCreateMainCluster = func(ctx context.Context, version string, port int) er
 	}
 	callCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
-	cmd := serviceMutationCommand(callCtx, pgCreateClusterPath, version, "main", "-p", strconv.Itoa(port))
+	ownerOptions := ""
+	if data, err := os.ReadFile(pgCommonConfPath); err == nil {
+		ownerOptions = pgOwnerInitdbLocaleOptions(string(data))
+	}
+	if ownerOptions != "" {
+		log.Printf("PostgreSQL %s/main: %s sets initdb_options with its own locale or encoding (%s); the cluster is created as it says", version, pgCommonConfPath, boundedText(ownerOptions, 120))
+	}
+	cmd := serviceMutationCommand(callCtx, pgCreateClusterPath, pgCreateClusterArgs(version, port, ownerOptions != "")...)
 	cmd.Env = packageCommandEnv()
 	out, err := cmd.CombinedOutput()
 	if err != nil {

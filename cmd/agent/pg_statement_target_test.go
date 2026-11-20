@@ -33,6 +33,10 @@ func freshPGNames(statement string) []byte {
 	if strings.HasPrefix(statement, "SELECT 'roles='") {
 		return []byte("roles=0\nmark=\nowner=\n")
 	}
+	// 20 Nov 2026: the new database closed to PUBLIC, read back.
+	if strings.HasPrefix(statement, "REVOKE ALL ON DATABASE") {
+		return []byte("public=false\nowner=true\n")
+	}
 	return nil
 }
 
@@ -88,8 +92,8 @@ func TestAStatementGoesToTheRunningClusterItNames(t *testing.T) {
 	if err := (&Agent{}).CreateDatabase(CreateDatabaseRequest{Type: "postgresql", Name: "shop", User: "shop_user", Password: "pw", Port: 5433}, &resp); err != nil || !resp.Success {
 		t.Fatalf("resp=%+v err=%v", resp, err)
 	}
-	if len(*got) != 3 || !strings.HasPrefix((*got)[0], "5433 SELECT 'roles='") || !strings.Contains((*got)[1], "CREATE ROLE") ||
-		!strings.HasPrefix((*got)[1], "5433 ") || !strings.HasPrefix((*got)[2], "5433 CREATE DATABASE") {
+	if len(*got) != 4 || !strings.HasPrefix((*got)[0], "5433 SELECT 'roles='") || !strings.Contains((*got)[1], "CREATE ROLE") ||
+		!strings.HasPrefix((*got)[1], "5433 ") || !strings.HasPrefix((*got)[2], "5433 CREATE DATABASE") || !strings.HasPrefix((*got)[3], "5433 REVOKE ALL ON DATABASE") {
 		t.Fatalf("statements = %v", *got)
 	}
 }

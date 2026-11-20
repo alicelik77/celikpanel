@@ -519,9 +519,13 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		return nil
 	}
 
+	// The same read names the server's version (20 Nov 2026): the CREATE
+	// DATABASE below is written for its major (services.PostgreSQLCreate-
+	// DatabaseStatement).
 	output, err := run("SELECT 'roles=' || count(*) FROM pg_catalog.pg_roles WHERE rolname = " + userLiteral + ";\n" +
 		"SELECT 'mark=' || COALESCE((SELECT pg_catalog.shobj_description(oid, 'pg_authid') FROM pg_catalog.pg_roles WHERE rolname = " + userLiteral + "), '');\n" +
-		"SELECT 'owner=' || COALESCE((SELECT pg_catalog.pg_get_userbyid(datdba) FROM pg_catalog.pg_database WHERE datname = " + dbLiteral + "), '');")
+		"SELECT 'owner=' || COALESCE((SELECT pg_catalog.pg_get_userbyid(datdba) FROM pg_catalog.pg_database WHERE datname = " + dbLiteral + "), '');\n" +
+		"SELECT 'ver=' || current_setting('server_version_num');")
 	if err != nil {
 		resp.Error = hostcmd.Fail("the database server could not be asked about the names; nothing was changed", output, err, databaseClientMeaning).Error()
 		return nil
@@ -563,8 +567,21 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		roleCreated = true
 	}
 
+	createdHere := false
 	if owner == "" {
-		output, err = run(fmt.Sprintf("CREATE DATABASE %s OWNER %s;", dbIdent, userIdent))
+		// 20 Nov 2026: UTF8 from template0 with its locale named, whatever
+		// the cluster's template1 is (a cluster initialised under locale C
+		// has SQL_ASCII templates). A server without the C.UTF-8 libc locale
+		// (before 17) refuses only the locale's name and creates nothing, so
+		// the statement is sent once more with libc C, still UTF8.
+		// Kümenin şablonu ne olursa olsun veritabanı UTF8 oluşturulur.
+		version, _ := markerValue(output, "ver")
+		versionNum := services.ParsePostgreSQLVersionNum(version)
+		output, err = run(services.PostgreSQLCreateDatabaseStatement(dbIdent, userIdent, versionNum, false))
+		if err != nil && services.PostgreSQLCreateDatabaseNeedsFallback(versionNum, errors.New(string(output))) {
+			log.Printf("PostgreSQL %s has no C.UTF-8 locale; database %s is created UTF8 with locale C", version, req.Name)
+			output, err = run(services.PostgreSQLCreateDatabaseStatement(dbIdent, userIdent, versionNum, true))
+		}
 		if err != nil {
 			resp.Error = hostcmd.Fail("failed to create database", output, err, databaseClientMeaning).Error()
 			if roleCreated {
@@ -574,6 +591,43 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 			}
 			return nil
 		}
+		createdHere = true
+	}
+
+	// 20 Nov 2026 (security): closed to every other role on the cluster -
+	// PUBLIC's CONNECT and TEMPORARY revoked - and read back; the owner keeps
+	// its own rights. A database this call made that cannot be closed is
+	// removed again, with the role it made (services.PostgreSQLClose-
+	// PublicStatement). A resumed operation's database is closed too.
+	// Veritabanı diğer rollere kapatılır ve okunarak doğrulanır.
+	reach := strings.ReplaceAll(services.PostgreSQLPublicReachQuery, "$1", dbLiteral)
+	output, err = run(services.PostgreSQLClosePublicStatement(dbIdent) + "\n" +
+		"SELECT 'public=' || (" + strings.TrimPrefix(reach, "SELECT ") + ");\n" +
+		"SELECT 'owner=' || pg_catalog.has_database_privilege(" + userLiteral + ", " + dbLiteral + ", 'CONNECT');")
+	public, okPublic := markerValue(output, "public")
+	ownerConnects, okOwner := markerValue(output, "owner")
+	if err != nil || !okPublic || !okOwner || public != "false" || ownerConnects != "true" {
+		var left []string
+		if createdHere {
+			if _, dropErr := run(postgreSQLDropDatabaseScript(dbLiteral, dbIdent)); dropErr != nil {
+				left = append(left, req.Name)
+			}
+			if roleCreated {
+				if _, dropErr := run("DROP ROLE IF EXISTS " + userIdent + ";"); dropErr != nil {
+					left = append(left, req.User)
+				}
+			}
+		}
+		resp.Left, resp.CleanupIncomplete = left, len(left) > 0
+		if createdHere && len(left) == 0 {
+			resp.Error = "the database server made the database but did not close it to its other database users, so it was removed again; nothing was changed"
+		} else {
+			resp.Error = "the database " + req.Name + " could not be closed to the server's other database users"
+		}
+		if err != nil {
+			resp.Error += ": " + hostcmd.Fail("closing it", output, err, databaseClientMeaning).Error()
+		}
+		return nil
 	}
 
 	resp.Success = true

@@ -454,6 +454,9 @@ func loadPGStatements(ctx context.Context, exec pgLoadExecutor, r io.Reader) err
 				return &pgLoadStatementError{Line: line, Err: copyErr}
 			}
 		default:
+			// 20 Nov 2026: a SQL_ASCII dump's client encoding is checked
+			// UTF-8 in a UTF8 database (pg_client_encoding.go).
+			text, _ = pgCheckedClientEncoding(text)
 			if batchLine == 0 {
 				batchLine = line
 			}
