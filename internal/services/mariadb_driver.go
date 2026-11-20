@@ -272,6 +272,20 @@ func (d *MariaDBDriver) DeleteDatabase(name string) error {
 	return d.executeSQL(sql)
 }
 
+// DatabaseIdentity answers whether the database exists (compared exactly).
+// MariaDB tells a client no identity of a database, so the identity is
+// always "" over a connection (alpha.141: a deletion reached this way never
+// drops a database of that name it cannot tell from the one asked for).
+// Read only.
+func (d *MariaDBDriver) DatabaseIdentity(name string) (bool, string, error) {
+	literal, err := QuoteMySQLStringLiteral(name)
+	if err != nil {
+		return false, "", fmt.Errorf("invalid database name: %w", err)
+	}
+	exists, err := d.countIsNonZero("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + literal + ";")
+	return exists, "", err
+}
+
 // ListDatabases lists all MariaDB databases
 func (d *MariaDBDriver) ListDatabases() ([]string, error) {
 	output, err := d.runSQL(`SHOW DATABASES;`)

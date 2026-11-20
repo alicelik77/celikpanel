@@ -20,7 +20,7 @@ import (
 // (deleteDatabaseRecord): the same users' fates, the same audit rows, the
 // same partial result, and pressing the deletion again continues. The Agent
 // is faked at the same seams the database deletion's own tests use
-// (databaseDeleteAgent, databaseAccessNative).
+// (databaseIdentityAgent, databaseDropOnceAgent, databaseAccessNative).
 
 type deletionDatabaseFixture struct {
 	domainID       int
@@ -297,7 +297,9 @@ func TestDomainDeletionDatabasePartialResultStopsAndTheRetryContinues(t *testing
 	if second.Code != http.StatusOK {
 		t.Fatalf("retry = %d %s", second.Code, second.Body.String())
 	}
-	if got := droppedNames(drops); got != "blog_db,blog_db,shop_db" {
+	// alpha.141: blog_db was already dropped; the retry finishes its users and
+	// records without dropping it again.
+	if got := droppedNames(drops); got != "blog_db,shop_db" {
 		t.Fatalf("drops after the retry = %s", got)
 	}
 	for _, id := range []int{f.keepOne, f.keepTwo} {
