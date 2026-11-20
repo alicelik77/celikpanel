@@ -560,7 +560,7 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "postgresql_databases_open":
 		return fmt.Sprintf("Every account of this server can enter %s PostgreSQL databases made before alpha.141 (%s). Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
 			fmt.Sprintf("Bu sunucudaki her hesap alpha.141'den önce açılan %s PostgreSQL veritabanına girebiliyor (%s). PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
-	case "mail_signing_conf_kept", "mail_signing_port25_kept", "mail_signing_failed", "mail_signing_unsupported":
+	case "mail_signing":
 		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
 			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
 	default:

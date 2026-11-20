@@ -14,14 +14,10 @@ func TestMailSigningStateBecomesAProblem(t *testing.T) {
 		b, _ := json.Marshal(transport.MailSigningState{State: state, Detail: "x"})
 		return string(b)
 	}
-	for state, kind := range map[string]string{
-		"conf_kept":   "mail_signing_conf_kept",
-		"port25_kept": "mail_signing_port25_kept",
-		"failed":      "mail_signing_failed",
-		"unsupported": "mail_signing_unsupported",
-	} {
+	kind := "mail_signing"
+	for _, state := range []string{"conf_kept", "port25_kept", "failed", "unsupported"} {
 		problems := mailSigningProblems(raw(state))
-		if len(problems) != 1 || problems[0].Kind != kind || problems[0].Actor != "server_owner" ||
+		if len(problems) != 1 || problems[0].Kind != kind || problems[0].Name != state || problems[0].Actor != "server_owner" ||
 			problems[0].Action.Kind != "open" || problems[0].Action.To == "" {
 			t.Errorf("%s: %+v", state, problems)
 		}

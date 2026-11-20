@@ -116,10 +116,7 @@ var problemKindOrder = map[string]int{
 	"node_port_reserved":         14,
 	// S1b: PostgreSQL databases left open to other accounts.
 	"postgresql_databases_open": 15,
-	"mail_signing_conf_kept":    16,
-	"mail_signing_port25_kept":  16,
-	"mail_signing_failed":       16,
-	"mail_signing_unsupported":  16,
+	"mail_signing":              16,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
