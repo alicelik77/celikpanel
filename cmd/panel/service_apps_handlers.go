@@ -146,7 +146,7 @@ type serviceAppRuntimeFacts struct {
 }
 
 func serviceAppRuntimeFactsFor(app serviceapps.App, availability transport.ServiceAppAvailability) serviceAppRuntimeFacts {
-	if app.Deferred != "" {
+	if app.Deferred != "" || app.Withdrawn != "" {
 		return serviceAppRuntimeFacts{}
 	}
 	_, needs := serviceapps.RuntimeNeeds(app)
@@ -298,6 +298,9 @@ func (p *Panel) writeServiceAppsView(w http.ResponseWriter, r *http.Request, dom
 		if app.Deferred != "" {
 			item.Available, item.Reason, item.Detail = false, serviceapps.ReasonDeferred, app.Deferred
 		}
+		if app.Withdrawn != "" {
+			item.Offered, item.Available, item.Reason, item.Detail = false, false, serviceapps.ReasonWithdrawn, app.Withdrawn
+		}
 		view.Apps = append(view.Apps, item)
 	}
 	in, has, err := p.serviceAppInstallForDomain(ctx, domainID)
@@ -305,6 +308,9 @@ func (p *Panel) writeServiceAppsView(w http.ResponseWriter, r *http.Request, dom
 		writeServerError(w, err)
 		return
 	}
+	// alpha.141: a withdrawn app is listed for nobody; the one this domain
+	// holds stays, so it can be managed and removed.
+	view.Apps = serviceAppsListedFor(view.Apps, in.AppID)
 	// alpha.140: an app that cannot run on this server's operating system
 	// (no installable runtime fixes it) is not shown to customers and
 	// resellers: they cannot act on it. The administrator sees it with the
@@ -443,6 +449,9 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 	app, ok := serviceapps.Lookup(req.App)
 	if !ok {
 		writeClientError(w, http.StatusBadRequest, "unknown application")
+		return
+	}
+	if writeServiceAppWithdrawn(w, app) {
 		return
 	}
 	if !app.Installable() {
@@ -742,6 +751,9 @@ func (p *Panel) handleServiceAppUpdate(w http.ResponseWriter, r *http.Request, d
 		return
 	}
 	app, known := serviceapps.Lookup(in.AppID)
+	if known && writeServiceAppWithdrawn(w, app) {
+		return
+	}
 	if !known || !app.Installable() || in.Version == "" || in.Version == app.Version {
 		writeServiceAppRefusal(w, http.StatusConflict, "no_update", "There is no newer pinned version of this app in this release.", nil)
 		return
