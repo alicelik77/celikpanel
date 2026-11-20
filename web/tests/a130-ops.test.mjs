@@ -86,7 +86,7 @@ test('the SSH card is its own chunk on the Security page', () => {
 test('Problems now says an old reading as such', () => {
   const problems = read('../src/components/ProblemsNow.tsx');
   assert.match(problems, /'stale'/);
-  for (const lang of ['en', 'tr']) assert.match(read(`../src/i18n/screens/monitoring/${lang}.ts`), /'pnow\.reason\.stale'/);
+  for (const lang of ['en', 'tr']) assert.match(read(`../src/i18n/screens/problemsNow/${lang}.ts`), /'pnow\.reason\.stale'/);
 });
 
 test('the security audit shows the certificate names and the address check', () => {

@@ -358,6 +358,11 @@ const screenPartBudgets = {
   // facts filled it. A new part, set with at least 25% headroom from its
   // Turkish file: 4.41 / 1.77 KiB.
   serviceAppsAdmin: kib(6, 2.4),
+  // The security release of 20 November 2026: the "Problems now" list
+  // (pnow.), split out of "monitoring" when the names and ports an
+  // installation held before the one name rule filled it. A new part, set
+  // with at least 25% headroom from its Turkish file: 7.40 / 2.43 KiB.
+  problemsNow: kib(10, 3.3),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
