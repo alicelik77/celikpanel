@@ -18,7 +18,8 @@ test('each screen that says "install X from Components" links to X\'s own instal
   const links = [
     ['components/DomainFileAccess.tsx', ['vsftpd', 'fail2ban']],
     ['components/DomainMalwareScan.tsx', ['clamav']],
-    ['components/AdminServiceApps.tsx', ['node']],
+    // alpha.141: the AI apps' lines build their action in one place.
+    ['lib/serviceAppRuntime.ts', ['node', 'python']],
     ['components/AdminRuntimeApps.tsx', ['python']],
     ['components/VPNPage.tsx', ['wireguard']],
     ['components/SecurityPage.tsx', ['fail2ban']],

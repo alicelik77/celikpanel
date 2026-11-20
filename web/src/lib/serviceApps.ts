@@ -5,6 +5,8 @@
 // Hizmet uygulamaları: alan adının "Yapay zekâ ve otomasyon" sekmesinin ve
 // yöneticinin sunma ekranının okuduğu biçimler.
 
+import type { ServiceAppRuntimeFound } from './serviceAppRuntime';
+
 export interface ServiceAppRisk {
     can_do: string[];
     disabled: string[];
@@ -32,8 +34,14 @@ export interface ServiceAppCatalogEntry {
     owner_login: boolean;
     available: boolean;
     reason?: string;
+    /** The server's English line, for logs; never shown in a sentence (alpha.141). */
     detail?: string;
     held: boolean;
+    /** alpha.141: the catalogue's versions the app needs (Node.js majors, Python minors). */
+    needs?: string[];
+    /** alpha.141: what this server has; read only when found_known (an earlier Agent does not say). */
+    found?: ServiceAppRuntimeFound[] | null;
+    found_known?: boolean;
 }
 
 export interface DomainServiceAppEntry extends ServiceAppCatalogEntry {

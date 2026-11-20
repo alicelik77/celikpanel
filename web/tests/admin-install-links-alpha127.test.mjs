@@ -57,8 +57,9 @@ test('the screens that name a missing component offer it to the administrator', 
   assert.match(read('components/DomainRuntimeApps.tsx'), /install: 'python' \}/);
   assert.match(read('components/DomainRuntimeApps.tsx'), /<AdminInstallLink component=\{blocker\.install\} \/>/);
   const serviceApps = read('components/DomainServiceApps.tsx');
-  assert.match(serviceApps, /app\.reason === 'runtime_missing' \? 'node' : app\.reason === 'venv_missing' \? 'python' : null/);
-  assert.match(serviceApps, /<AdminInstallLink component=\{missingComponent\(app\)!\} \/>/);
+  // alpha.141: the AI apps' line carries its own action (the Node.js version
+  // list or Python's missing module), the administrator's alone.
+  assert.match(serviceApps, /<AdminInstallLink to=\{admin\.action\?\.to\} label=\{admin\.action\?\.label\} admin=\{admin\.text\} fallback=\{account\.text\} \/>/);
   const scan = read('components/DomainMalwareScan.tsx');
   assert.match(scan, /isAdmin && code === 'MALWARE_SIGNATURES_MISSING' && <ClamAVPageLink \/>/);
   assert.match(scan, /navigate\('\/components\/clamav'\)/);

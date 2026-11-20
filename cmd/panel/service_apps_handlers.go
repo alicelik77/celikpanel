@@ -39,9 +39,17 @@ var serviceAppProbeCache struct {
 }
 
 func (p *Panel) serviceAppAvailability(ctx context.Context) (map[string]transport.ServiceAppAvailability, error) {
+	return p.serviceAppAvailabilityRetrying(ctx, true)
+}
+
+// serviceAppAvailabilityRetrying: retryFailed asks the Agent again at once
+// after a failed probe (the screens' read); false keeps a failure for the
+// minute too, for callers on every request's path (the offer layer), which
+// must not ask a stopped Agent on each request.
+func (p *Panel) serviceAppAvailabilityRetrying(ctx context.Context, retryFailed bool) (map[string]transport.ServiceAppAvailability, error) {
 	serviceAppProbeCache.Lock()
 	defer serviceAppProbeCache.Unlock()
-	if time.Since(serviceAppProbeCache.at) > time.Minute || serviceAppProbeCache.err != nil {
+	if time.Since(serviceAppProbeCache.at) > time.Minute || (retryFailed && serviceAppProbeCache.err != nil) {
 		resp, err := p.serviceAppNativeOps().probe(ctx)
 		if err == nil && resp.Error != "" {
 			err = errors.New(resp.Error)
@@ -119,6 +127,38 @@ type serviceAppAppView struct {
 	Available bool   `json:"available"`
 	Reason    string `json:"reason,omitempty"`
 	Detail    string `json:"detail,omitempty"`
+	serviceAppRuntimeFacts
+}
+
+// serviceAppRuntimeFacts (alpha.141) are the facts behind "cannot be
+// installed yet", for the screen to word in its reader's language: what the
+// app needs (the catalogue's versions: Node.js majors "24", Python minors
+// "3.11"), and what this server has (the Agent's probe). FoundKnown is false
+// when the Agent did not report it (an older Agent during an update); the
+// screen then says only what is needed. Detail stays the English line for
+// logs and older readers; no screen puts it into a sentence.
+// Ekranın okurun dilinde söyleyeceği olgular: uygulamanın ihtiyacı ve
+// sunucuda bulunan.
+type serviceAppRuntimeFacts struct {
+	Needs      []string                           `json:"needs,omitempty"`
+	Found      []transport.ServiceAppRuntimeFound `json:"found,omitempty"`
+	FoundKnown bool                               `json:"found_known,omitempty"`
+}
+
+func serviceAppRuntimeFactsFor(app serviceapps.App, availability transport.ServiceAppAvailability) serviceAppRuntimeFacts {
+	if app.Deferred != "" {
+		return serviceAppRuntimeFacts{}
+	}
+	_, needs := serviceapps.RuntimeNeeds(app)
+	return serviceAppRuntimeFacts{Needs: needs, Found: availability.Found, FoundKnown: availability.FoundKnown}
+}
+
+// serviceAppRuntimeName is the runtime's product name ("Node.js", "Python").
+func serviceAppRuntimeName(app serviceapps.App) string {
+	if app.Runtime == serviceapps.RuntimeNode {
+		return "Node.js"
+	}
+	return "Python"
 }
 
 type serviceAppInstallView struct {
@@ -248,11 +288,13 @@ func (p *Panel) writeServiceAppsView(w http.ResponseWriter, r *http.Request, dom
 				item.Offered = true
 			}
 		}
-		if a, ok := availability[app.ID]; ok {
+		a, ok := availability[app.ID]
+		if ok {
 			item.Available, item.Reason, item.Detail = a.Available, a.Reason, a.Detail
 		} else if probeErr != nil {
 			item.Reason = serviceapps.ReasonProbeFailed
 		}
+		item.serviceAppRuntimeFacts = serviceAppRuntimeFactsFor(app, a)
 		if app.Deferred != "" {
 			item.Available, item.Reason, item.Detail = false, serviceapps.ReasonDeferred, app.Deferred
 		}
@@ -262,6 +304,16 @@ func (p *Panel) writeServiceAppsView(w http.ResponseWriter, r *http.Request, dom
 	if err != nil {
 		writeServerError(w, err)
 		return
+	}
+	// alpha.141: an app that cannot run on this server's operating system
+	// (no installable runtime fixes it) is not shown to customers and
+	// resellers: they cannot act on it. The administrator sees it with the
+	// reason. The app a domain already holds stays, so it can be managed and
+	// removed (alpha.138: whatever exists is removable).
+	// İşletim sisteminde çalışamayan uygulama müşteriye ve bayiye gösterilmez;
+	// alan adında var olan kalır.
+	if !callerIsAdministrator(r) {
+		view.Apps = serviceAppsShownToAccount(view.Apps, in.AppID)
 	}
 	if has {
 		iv := &serviceAppInstallView{ID: in.ID, AppID: in.AppID, Name: in.AppID, Version: in.Version,
@@ -481,8 +533,13 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	if a := availability[app.ID]; !a.Available {
+		// alpha.141: the screen's sentence names the runtime and the
+		// catalogue's versions itself (runtime, needs); detail stays for
+		// older screens and API readers.
+		_, needs := serviceapps.RuntimeNeeds(app)
 		writeServiceAppRefusal(w, http.StatusConflict, a.Reason,
-			"Nothing was changed: "+app.Name+" cannot run on this server now ("+a.Detail+").", map[string]string{"detail": a.Detail, "app": app.Name})
+			"Nothing was changed: "+app.Name+" cannot run on this server now ("+a.Detail+").",
+			map[string]string{"detail": a.Detail, "app": app.Name, "runtime": serviceAppRuntimeName(app), "needs": strings.Join(needs, " / ")})
 		return
 	}
 	req.OwnerEmail = strings.TrimSpace(req.OwnerEmail)

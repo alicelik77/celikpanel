@@ -218,6 +218,28 @@ func TestServiceAppPrepareRefusesAnUnpinnedVersionAndOldRuntimes(t *testing.T) {
 	if resp.Done || resp.Class != transport.ServiceAppVerifiedFailure || resp.Reason != serviceapps.ReasonOSUnsupported {
 		t.Fatalf("python 3.13: %+v", resp)
 	}
+	// alpha.141: the probe reports what it found, as facts, beside the
+	// English detail; a deferred app reports nothing.
+	var probe transport.ServiceAppProbeResponse
+	if err := (&Agent{}).ServiceAppProbeV1(&transport.Empty{}, &probe); err != nil {
+		t.Fatal(err)
+	}
+	for _, app := range probe.Apps {
+		switch app.AppID {
+		case "n8n":
+			if !app.FoundKnown || len(app.Found) != 1 || app.Found[0] != (transport.ServiceAppRuntimeFound{Version: "20.19.2", Source: "distribution"}) {
+				t.Fatalf("n8n probe: %+v", app)
+			}
+		case "open-webui":
+			if !app.FoundKnown || len(app.Found) != 1 || app.Found[0] != (transport.ServiceAppRuntimeFound{Version: "3.13", Source: "distribution", Venv: true}) {
+				t.Fatalf("open-webui probe: %+v", app)
+			}
+		case "openclaw":
+			if app.FoundKnown || app.Found != nil {
+				t.Fatalf("deferred probe: %+v", app)
+			}
+		}
+	}
 }
 
 func TestServiceAppLogsHideSecrets(t *testing.T) {

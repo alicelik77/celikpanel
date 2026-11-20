@@ -282,6 +282,9 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 		writeDNSEngineWorkflowRequired(w)
 		return
 	}
+	if refuseComponentInstalledByVersion(w, req.ServiceID) {
+		return
+	}
 	// D-043: a withdrawn version or engine is refused before anything queues.
 	if p.refuseWithdrawnInstall(w, r, req.ServiceID, req.Package, req.PHPVersion) {
 		return
@@ -329,6 +332,36 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 	)
 	releaseInHandler = false
 	writeAcceptedServiceOperation(w, op)
+}
+
+// refuseComponentInstalledByVersion answers the generic package install for a
+// runtime that is installed by version through its own path (alpha.141: the
+// alpha.138 lab sent it for Node.js; it was queued and then failed at the
+// package step with "cannot be installed automatically on this system yet",
+// although Components → Node.js installs it). Nothing is queued: the answer
+// says where the version is chosen. The Agent keeps its own refusal
+// (install_rpc.go) as the second line.
+// Kendi yolundan sürüm sürüm kurulan çalışma ortamının genel paket kurulumunu
+// kuyruğa almadan reddeder ve sürümün nerede seçildiğini söyler.
+func refuseComponentInstalledByVersion(w http.ResponseWriter, ids ...string) bool {
+	for _, id := range ids {
+		svc := core.GetManagedServiceByID(id)
+		if !svc.InstalledByVersion() {
+			continue
+		}
+		log.Printf("[409] generic install refused for %s: it is installed by version from Components", svc.ID)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(apiErrorBody{
+			Error: svc.Name + " is not installed as a package: open Components → " + svc.Name +
+				" and choose a version there. Nothing was queued and nothing was changed.",
+			Code:   errCodeComponentInstalledByVersion,
+			Action: "/components?component=" + svc.ID + "&install=",
+			Vars:   map[string]string{"component": svc.ID, "name": svc.Name},
+		})
+		return true
+	}
+	return false
 }
 
 func writeAcceptedServiceOperation(w http.ResponseWriter, op serviceOperation) {
@@ -2585,6 +2618,9 @@ func (p *Panel) runNodeInstall(
 	advance func(string) error,
 ) (serviceOperationResult, *serviceOperationFailure) {
 	result := serviceOperationResult{"success": false, "installed": false, "version": version}
+	// alpha.141: a new Node.js version may let an AI app run here; the
+	// apps' next read asks the Agent again instead of the minute-old answer.
+	defer resetServiceAppProbeCache()
 	binding, err := panelMutationBinding(ctx)
 	if err != nil {
 		return result, nodeInstallFailure(err)

@@ -20,6 +20,21 @@ type ServiceAppAvailability struct {
 	Detail         string `json:"detail,omitempty"`
 	RuntimeVersion string `json:"runtime_version,omitempty"`
 	RuntimeSource  string `json:"runtime_source,omitempty"`
+	// Found (alpha.141): every runtime of the app's kind the probe saw, so a
+	// screen can say what this server has in its reader's language. FoundKnown
+	// tells an Agent that reported it (possibly nothing found) from an older
+	// Agent that did not; Detail stays for logs and older readers.
+	// Found: yoklamanın gördüğü çalışma ortamları; FoundKnown eski Agent'ı ayırır.
+	Found      []ServiceAppRuntimeFound `json:"found,omitempty"`
+	FoundKnown bool                     `json:"found_known,omitempty"`
+}
+
+// ServiceAppRuntimeFound is one runtime on the server: its version, where it
+// comes from ("panel" or "distribution") and, for Python, its venv module.
+type ServiceAppRuntimeFound struct {
+	Version string `json:"version"`
+	Source  string `json:"source"`
+	Venv    bool   `json:"venv,omitempty"`
 }
 
 // ServiceAppProbeResponse lists every catalog app.

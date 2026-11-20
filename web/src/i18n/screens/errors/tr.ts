@@ -49,6 +49,8 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.DNS_PUBLICATION_HELD.action': 'DNS ve eş sunucuları aç',
     'err.DNS_ENGINE_WORKFLOW_REQUIRED': '53 numaralı portun, tüm zoneların ve geri dönüşün korunması için BIND ve PowerDNS değişiklikleri denetimli DNS altyapısı akışından yapılmalıdır.',
     'err.DNS_ENGINE_WORKFLOW_REQUIRED.action': 'DNS ve eş sunucuları aç',
+    'err.COMPONENT_INSTALLED_BY_VERSION': '{name} paket olarak kurulmaz: Bileşenler → {name} bölümünden bir sürüm seçin. Hiçbir şey sıraya alınmadı ve hiçbir şey değişmedi.',
+    'err.COMPONENT_INSTALLED_BY_VERSION.action': 'Sürüm seç',
     'err.DNSSEC_ENGINE_UNSUPPORTED': 'DNSSEC yönetimi şu anda etkin DNS motoru olarak PowerDNS gerektirir. Bu sürümde BIND yalnız imzasız zonelarla etkinleştirilebilir.',
     'err.DNSSEC_ENGINE_UNSUPPORTED.action': 'DNS ve eş sunucuları aç',
     'err.DNS_RECORD_CHANGED': 'Kayıt okunduktan sonra değişti; bu yüzden hiçbir şey değiştirilmedi. Kayıtları yeniden okuyup karar verin.',
