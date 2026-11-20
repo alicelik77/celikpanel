@@ -29,7 +29,11 @@ var backupCommandContext = exec.CommandContext
 var backupDatabaseTimeout = 2 * time.Hour
 
 var dumpDatabaseToFile = dumpDatabase
-var restoreDatabaseFromFile = restoreDatabase
+
+// restoreDatabaseFromFile loads a gzip'd dump into a database with the
+// rights of the database's own account (database_owner_load.go): never as
+// the engine's administrator, never through psql.
+var restoreDatabaseFromFile = loadDatabaseFile
 
 func validateDatabaseIdentity(database backupspec.DatabaseIdentity) (backupspec.DatabaseIdentity, error) {
 	if database.ID < 1 {
@@ -82,7 +86,7 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 		return backupCommand{}, err
 	}
 	if database.Type == "postgresql" {
-		args := []string{"-u", "postgres", "pg_dump", "--no-owner", "--no-privileges", "--dbname", database.Name}
+		args := []string{"--no-owner", "--no-privileges", "--dbname", database.Name}
 		port, err := pgBackupPortFor(database)
 		if err != nil {
 			return backupCommand{}, err
@@ -90,7 +94,7 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 		if port > 0 {
 			args = append(args, "--port", strconv.Itoa(port))
 		}
-		return backupCommand{Name: "sudo", Args: args}, nil
+		return backupCommand{Name: "sudo", Args: pgAdminSudoArgs("pg_dump", args...)}, nil
 	}
 	return backupCommand{
 		Name: "mysqldump",
@@ -98,58 +102,6 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 			"--protocol=socket", "--user=root", "--single-transaction",
 			"--routines", "--triggers", "--skip-lock-tables", database.Name,
 		},
-	}, nil
-}
-
-// pgRestorePrelude makes a PostgreSQL restore work on a database that still
-// holds its tables (alpha.127 lab: every restore of a non-empty database
-// stopped at "relation already exists", and so did the safety rollback). A
-// dump is plain SQL made with --no-owner and without DROP statements, so the
-// restore session first becomes the database's owner and drops what that
-// owner owns in this database; the dump then recreates it, owned by the
-// owner as before. A database owned by a superuser is left as it was (DROP
-// OWNED BY postgres is refused by the server). Objects of other roles are
-// not touched. Everything runs in one transaction, so a restore that stops
-// (for example at an object another role owns) leaves the database as it was;
-// the caller then reapplies the safety dump the same way.
-//
-// pgRestorePrelude, tabloları duran bir veritabanına geri yüklemeyi çalıştırır:
-// oturum önce veritabanının sahibi olur ve sahibin bu veritabanındaki
-// nesnelerini düşürür; döküm onları yine sahibine ait olarak yeniden kurar.
-const pgRestorePrelude = `DO $celikpanel_restore$
-DECLARE
-  owner_name name := (SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = current_database());
-BEGIN
-  IF NOT (SELECT rolsuper FROM pg_roles WHERE rolname = owner_name) THEN
-    EXECUTE format('SET ROLE %I', owner_name);
-    EXECUTE 'DROP OWNED BY CURRENT_USER';
-  END IF;
-END
-$celikpanel_restore$`
-
-func databaseRestoreCommand(database backupspec.DatabaseIdentity) (backupCommand, error) {
-	database, err := validateDatabaseIdentity(database)
-	if err != nil {
-		return backupCommand{}, err
-	}
-	if database.Type == "postgresql" {
-		args := []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", database.Name}
-		port, err := pgBackupPortFor(database)
-		if err != nil {
-			return backupCommand{}, err
-		}
-		if port > 0 {
-			args = append(args, "--port", strconv.Itoa(port))
-		}
-		// The prelude runs first, then the dump from stdin, all in one
-		// transaction: a restore that stops anywhere (an object of another
-		// role, a broken dump) changes nothing, the dropped objects included.
-		args = append(args, "--single-transaction", "--command", pgRestorePrelude, "--file", "-")
-		return backupCommand{Name: "sudo", Args: args}, nil
-	}
-	return backupCommand{
-		Name: "mysql",
-		Args: []string{"--protocol=socket", "--user=root", "--database", database.Name},
 	}, nil
 }
 
@@ -216,26 +168,6 @@ func dumpDatabase(database backupspec.DatabaseIdentity, destination string) (ret
 		return err
 	}
 	return out.Close()
-}
-
-func restoreDatabase(database backupspec.DatabaseIdentity, source string) error {
-	command, err := databaseRestoreCommand(database)
-	if err != nil {
-		return err
-	}
-	file, _, err := secureOpenRegular(source)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	gz, err := gzip.NewReader(file)
-	if err != nil {
-		return err
-	}
-	defer gz.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), backupDatabaseTimeout)
-	defer cancel()
-	return runBackupCommand(ctx, command, gz, io.Discard)
 }
 
 func validateRestoreDatabase(expected, requested backupspec.DatabaseIdentity) (backupspec.DatabaseIdentity, error) {

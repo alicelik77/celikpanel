@@ -22,37 +22,37 @@ pinned to one exact version; an update is a new CelikPanel release with a new pi
 | App | What it is | Source | Licence | Pinned version | Runtime |
 |---|---|---|---|---|---|
 | **n8n** | Workflow automation (connect services, AI steps, webhooks) | npm `n8n`, github.com/n8n-io/n8n | Sustainable Use License 1.0 | 2.46.4, integrity `sha512-Ek/AlWCx…Xr1Wg==` | Node.js 24 |
-| **Open WebUI** | A chat interface for AI models (OpenAI-compatible providers) | PyPI `open-webui`, github.com/open-webui/open-webui | Open WebUI License (BSD-3 with a branding clause) | 0.12.5, wheel sha256 `74fafb4e…19d3fd` | Python 3.11 or 3.12 |
+| Open WebUI | A chat interface for AI models | PyPI `open-webui` | — | **withdrawn on 20 Nov 2026** (below) | Python 3.11 or 3.12 |
 | OpenClaw | AI agent gateway | npm `openclaw`, MIT | — | not offered (see §6) | Node.js 24/26 |
 | Hermes Agent | AI agent by Nous Research | PyPI `hermes-agent`, MIT | — | not offered (see §6) | Python |
 | Paperclip | AI agent company platform | npm `paperclipai`, MIT | — | not offered (see §6) | Node.js 24 + PostgreSQL |
+
+**Open WebUI was withdrawn on 20 November 2026** (owner's decision, alpha.140 lab: about 9 GB of disk and 2 GB of memory while installing, an install that cannot be stopped part-way, no Python it supports on Debian 13). It is listed for nobody and cannot be offered, given, installed or updated; the server answers `SERVICE_APP` / `withdrawn`. An install that exists keeps running, keeps its card on its domain with stop, start, log, keys and removal, and gets no updates from CelikPanel. The passages below that name it describe such existing installs.
 
 **Licences the administrator reads before offering:**
 - n8n's Sustainable Use License allows use "only for your own internal business purposes or for
   non-commercial or personal use"; offering n8n itself to others as a paid service is restricted.
   The admin entry shows this note. **n8n is closed to resellers** (owner's decision, 3 Nov 2026,
   until the licence question is answered): see §3.
-- Open WebUI's licence keeps its branding in place unless the deployment has at most 50 end users
-  in 30 days, written permission or an enterprise licence.
 
 ## 2. Where it can run
 
 CelikPanel adds no package source (no NodeSource, no deadsnakes, no Docker, no `curl | sh`).
 
-| System | Node.js (distribution) | Python 3 | n8n | Open WebUI |
-|---|---|---|---|---|
-| Debian 12 | 18 | 3.11 | with the panel's Node.js 24 | yes (needs `python3-venv`) |
-| Debian 13 | 20 | 3.13 | with the panel's Node.js 24 | **no** (needs 3.11/3.12) |
-| Ubuntu 22.04 | 12 | 3.10 | with the panel's Node.js 24 | **no** |
-| Ubuntu 24.04 | 18 | 3.12 | with the panel's Node.js 24 | yes (needs `python3-venv`) |
-| Arch | 26 / lts 24 | 3.14 | yes | **no** |
+| System | Node.js (distribution) | n8n |
+|---|---|---|
+| Debian 12 | 18 | with the panel's Node.js 24 |
+| Debian 13 | 20 | with the panel's Node.js 24 |
+| Ubuntu 22.04 | 12 | with the panel's Node.js 24 |
+| Ubuntu 24.04 | 18 | with the panel's Node.js 24 |
+| Arch | 26 / lts 24 | yes |
 
 n8n needs Node.js 24 (`engines: >=24.0.0`; its isolated-vm dependency too). No supported
 distribution except Arch ships it, so n8n uses the Node.js runtime the administrator installs
 under Components → Node.js: the official nodejs.org tarball, checked against the official
 SHASUMS256.txt before it is unpacked (the same runtime Node.js sites use). If no Node.js 24 is
-installed, the screen says so and who installs it. Where the system's Python is outside 3.11-3.12
-Open WebUI is shown as not available on that system, with the found version.
+installed, the screen says so and who installs it. An app that cannot run on the system's own
+packages at all is not shown to customers and resellers and cannot be offered there.
 
 ## 3. Rights and offering
 
@@ -73,7 +73,7 @@ Open WebUI is shown as not available on that system, with the found version.
   asks (an administrator acting for that account too). Taking an item out of "everything
   offered" never adds it for a reseller. Stopping, the log and removal are never refused. The
   reseller and their customers read why on the app's row (the licence; the administrator
-  decides). Open WebUI is not affected.
+  decides).
 - **Security hold** (admin): stops every install now, keeps them from starting at boot, refuses
   installs, updates and starts. Lifting the hold starts nothing. Data is never removed.
 - Additional users (team members) do not see the tab.
@@ -83,8 +83,7 @@ Open WebUI is shown as not available on that system, with the found version.
 The customer picks a domain that has a website and an active certificate (a separate subdomain is
 recommended: the domain then shows the app instead of its website; the website's files stay and
 come back when the app is removed). They enter the app's first administrator (e-mail and a
-password of 12-128 characters, so no visitor can claim the app first) and, for Open WebUI,
-optionally an OpenAI-compatible key and address.
+password of 12-128 characters, so no visitor can claim the app first).
 
 | Step | Who | What |
 |---|---|---|

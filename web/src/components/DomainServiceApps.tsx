@@ -425,6 +425,8 @@ function InstalledApp({ view, install, base, after, onReinstall, republishRefuse
                 )}
             </div>
             {install.held && <Notice><AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} admin={t('adminNext.svcapps.held')} fallback={t('svcapps.heldNote')} /></Notice>}
+            {/* alpha.141: an app withdrawn from the catalogue keeps running here and stays removable. / Katalogdan çıkarılan uygulama burada çalışır ve kaldırılabilir. */}
+            {app?.withdrawn && <Notice tone="info">{t('svcapps.withdrawnInstalled', { name: install.name })}</Notice>}
             {install.needs_sandbox && <Notice tone="info">{t('svcapps.needsSandbox')}</Notice>}
             {install.update_available && !busy && !republishRefused && (
                 <Notice tone="info">
@@ -455,7 +457,7 @@ function InstalledApp({ view, install, base, after, onReinstall, republishRefuse
                 {retryKind === 'install' && !install.version && app && !republishRefused && (
                     <Button icon={RotateCw} disabled={!!acting || closedReason(app, t) !== '' || !view.certificate} onClick={() => onReinstall(app)}>{t('svcapps.op.retry')}</Button>
                 )}
-                {retryKind === 'update' && !republishRefused && (
+                {retryKind === 'update' && !republishRefused && !app?.withdrawn && (
                     <Button icon={RotateCw} loading={acting === 'update'} disabled={!!acting} onClick={() => void act('/update', { operation_id: opID }, 'update', () => setOpID(newOperationID()))}>{t('svcapps.op.retry')}</Button>
                 )}
                 <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('svcapps.uninstall')}</Button>

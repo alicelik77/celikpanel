@@ -244,7 +244,7 @@ func (a *Agent) ServiceAppProbeV1(_ *transport.Empty, resp *transport.ServiceApp
 			AppID: app.ID, Available: choice.Available, Reason: choice.Reason, Detail: choice.Detail,
 			RuntimeVersion: choice.Version, RuntimeSource: choice.Source,
 		}
-		if app.Deferred == "" {
+		if app.Deferred == "" && app.Withdrawn == "" {
 			availability.FoundKnown = true
 			availability.Found = []transport.ServiceAppRuntimeFound{}
 			for _, found := range choice.Found {
@@ -655,6 +655,13 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 	defer unlock()
 	sc, ok := resolveServiceApp(req.Target, resp)
 	if !ok {
+		return nil
+	}
+	// alpha.141: a withdrawn app is never installed or updated again; the
+	// Panel refuses first, this is the second line.
+	if sc.app.Withdrawn != "" {
+		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, serviceapps.ReasonWithdrawn,
+			fmt.Sprintf("%s was withdrawn from CelikPanel's catalogue on %s; it is not installed or updated any more", sc.app.Name, sc.app.Withdrawn))
 		return nil
 	}
 	if !sc.app.Installable() || req.Version != sc.app.Version {

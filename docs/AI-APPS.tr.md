@@ -24,39 +24,39 @@ güncellenmez.
 | Uygulama | Ne olduğu | Kaynak | Lisans | Sabitlenmiş sürüm | Çalışma ortamı |
 |---|---|---|---|---|---|
 | **n8n** | İş akışı otomasyonu (hizmetleri bağlar, yapay zekâ adımları, web kancaları) | npm `n8n`, github.com/n8n-io/n8n | Sustainable Use License 1.0 | 2.46.4, bütünlük değeri `sha512-Ek/AlWCx…Xr1Wg==` | Node.js 24 |
-| **Open WebUI** | Yapay zekâ modelleri için bir sohbet arayüzü (OpenAI uyumlu sağlayıcılar) | PyPI `open-webui`, github.com/open-webui/open-webui | Open WebUI License (marka ibaresi maddeli BSD-3) | 0.12.5, wheel sha256 `74fafb4e…19d3fd` | Python 3.11 ya da 3.12 |
+| Open WebUI | Yapay zekâ modelleri için bir sohbet arayüzü | PyPI `open-webui` | — | **20 Kasım 2026'da geri çekildi** (aşağıda) | Python 3.11 ya da 3.12 |
 | OpenClaw | Yapay zekâ ajanı ağ geçidi | npm `openclaw`, MIT | — | sunulmuyor (bkz. §6) | Node.js 24/26 |
 | Hermes Agent | Nous Research'ün yapay zekâ ajanı | PyPI `hermes-agent`, MIT | — | sunulmuyor (bkz. §6) | Python |
 | Paperclip | Yapay zekâ ajanı şirket platformu | npm `paperclipai`, MIT | — | sunulmuyor (bkz. §6) | Node.js 24 + PostgreSQL |
+
+**Open WebUI 20 Kasım 2026'da geri çekildi** (sahibin kararı, alpha.140 laboratuvarı: kurulurken yaklaşık 9 GB disk ve 2 GB bellek, yarıda durdurulamayan bir kurulum, Debian 13'te desteklediği bir Python yok). Hiç kimseye listelenmez; sunulamaz, verilemez, kurulamaz ve güncellenemez; sunucu `SERVICE_APP` / `withdrawn` yanıtını verir. Var olan bir kurulum çalışmaya devam eder, alan adındaki kartını durdurma, başlatma, günlük, anahtarlar ve kaldırmayla korur ve CelikPanel'den güncelleme almaz. Aşağıda onu anan bölümler bu var olan kurulumları anlatır.
 
 **Yöneticinin sunmadan önce okuması gereken lisanslar:**
 - n8n'in Sustainable Use License'ı kullanıma "yalnızca kendi iç ticari amaçlarınız ya da ticari
   olmayan ya da kişisel kullanım için" izin verir; n8n'in kendisini başkalarına ücretli hizmet
   olarak sunmak kısıtlıdır. Yönetici kaydı bu notu gösterir. **n8n bayilere kapalıdır** (sahibin
   3 Kasım 2026 kararı, lisans sorusu yanıtlanana dek): bkz. §3.
-- Open WebUI'ın lisansı, kurulumda 30 günde en çok 50 son kullanıcı bulunmadıkça, yazılı izin
-  ya da kurumsal lisans olmadıkça markasını yerinde tutmayı şart koşar.
 
 ## 2. Nerede çalışabilir
 
 CelikPanel hiçbir paket kaynağı eklemez (NodeSource yok, deadsnakes yok, Docker yok,
 `curl | sh` yok).
 
-| Sistem | Node.js (dağıtımın) | Python 3 | n8n | Open WebUI |
-|---|---|---|---|---|
-| Debian 12 | 18 | 3.11 | panelin Node.js 24'üyle | evet (`python3-venv` gerekir) |
-| Debian 13 | 20 | 3.13 | panelin Node.js 24'üyle | **hayır** (3.11/3.12 gerekir) |
-| Ubuntu 22.04 | 12 | 3.10 | panelin Node.js 24'üyle | **hayır** |
-| Ubuntu 24.04 | 18 | 3.12 | panelin Node.js 24'üyle | evet (`python3-venv` gerekir) |
-| Arch | 26 / lts 24 | 3.14 | evet | **hayır** |
+| Sistem | Node.js (dağıtımın) | n8n |
+|---|---|---|
+| Debian 12 | 18 | panelin Node.js 24'üyle |
+| Debian 13 | 20 | panelin Node.js 24'üyle |
+| Ubuntu 22.04 | 12 | panelin Node.js 24'üyle |
+| Ubuntu 24.04 | 18 | panelin Node.js 24'üyle |
+| Arch | 26 / lts 24 | evet |
 
 n8n, Node.js 24 ister (`engines: >=24.0.0`; bağımlılığı isolated-vm de öyle). Arch dışında
 desteklenen hiçbir dağıtım bunu sunmaz; bu yüzden n8n, yöneticinin Bileşenler → Node.js
 altından kurduğu Node.js çalışma ortamını kullanır: resmî nodejs.org arşivi, açılmadan önce
 resmî SHASUMS256.txt ile denetlenir (Node.js sitelerinin kullandığı çalışma ortamının
-aynısı). Node.js 24 kurulu değilse ekran bunu ve kimin kuracağını söyler. Sistemin Python'u
-3.11-3.12 dışındaysa Open WebUI, bulunan sürümle birlikte o sistemde kullanılamıyor olarak
-gösterilir.
+aynısı). Node.js 24 kurulu değilse ekran bunu ve kimin kuracağını söyler. Sistemin kendi
+paketleriyle hiç çalışamayan bir uygulama müşterilere ve bayilere gösterilmez ve orada
+sunulamaz.
 
 ## 3. Haklar ve sunum
 
@@ -78,7 +78,7 @@ gösterilir.
   işlem yapan yönetici de) lisansı neden göstererek reddeder (`SERVICE_APP` / `licence_reseller`,
   HTTP 409). "Sunulan her şey"den bir öğe çıkarmak onu bayi için hiçbir zaman eklemez. Durdurma,
   günlük ve kaldırma hiçbir zaman reddedilmez. Bayi ve müşterileri nedeni uygulamanın satırında
-  okur (lisans; karar yöneticinin). Open WebUI etkilenmez.
+  okur (lisans; karar yöneticinin).
 - **Güvenlik beklemesi** (yönetici): her kurulumu hemen durdurur, açılışta başlamalarını
   engeller, kurulumları, güncellemeleri ve başlatmaları reddeder. Beklemeyi kaldırmak hiçbir
   şey başlatmaz. Veri asla silinmez.
@@ -89,8 +89,7 @@ gösterilir.
 Müşteri, web sitesi olan ve etkin sertifikası bulunan bir alan adı seçer (ayrı bir alt alan
 adı önerilir: bu durumda alan adı web sitesi yerine uygulamayı gösterir; sitenin dosyaları
 kalır ve uygulama kaldırılınca geri gelir). Uygulamanın ilk yöneticisini girer (e-posta ve
-12-128 karakterlik bir parola; böylece hiçbir ziyaretçi uygulamayı önce ele geçiremez) ve Open
-WebUI için isteğe bağlı olarak OpenAI uyumlu bir anahtar ve adres girer.
+12-128 karakterlik bir parola; böylece hiçbir ziyaretçi uygulamayı önce ele geçiremez).
 
 | Adım | Kim | Ne yapılır |
 |---|---|---|

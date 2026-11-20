@@ -11,6 +11,33 @@ package transport
 // PostgreSQL ana sürümleri yan yana: her ana sürüm kendi portunda kendi
 // kümesidir; veri yerinde dönüştürülmez.
 
+// PostgreSQLEncodingsResponse (20 Nov 2026) answers, read only, the encoding
+// of every database on this server's running PostgreSQL clusters, in one
+// call: a database list shows each database's encoding without one request
+// per row. Single is set where PostgreSQL is one server without
+// postgresql-common (Arch): one entry then, Port its own. A cluster that is
+// down or did not answer has Known false and Error says why; its databases
+// are "not known", never "fine".
+//
+// Sunucudaki her PostgreSQL veritabanının kodlaması tek çağrıda okunur.
+type PostgreSQLEncodingsResponse struct {
+	Single   bool                         `json:"single"`
+	Clusters []PostgreSQLClusterEncodings `json:"clusters"`
+	Error    string                       `json:"error,omitempty"`
+}
+
+// PostgreSQLClusterEncodings is one cluster's databases and their encodings
+// (pg_encoding_to_char: "UTF8", "SQL_ASCII", "LATIN1"...).
+type PostgreSQLClusterEncodings struct {
+	Version   string            `json:"version"`
+	Name      string            `json:"name"`
+	Port      int               `json:"port"`
+	Online    bool              `json:"online"`
+	Known     bool              `json:"known"`
+	Error     string            `json:"error,omitempty"`
+	Encodings map[string]string `json:"encodings"`
+}
+
 // PostgreSQLCluster is one cluster as pg_lsclusters and its configuration
 // say it is. Port is pg_lsclusters' answer; ConfiguredPort is the port line
 // of its postgresql.conf (0 when the file names none, which means 5432).

@@ -686,7 +686,7 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fail("databases", fmt.Errorf("no active MySQL/MariaDB server registered for this subscription"))
 			} else {
-				p.importArchiveDatabases(ctx, req.Path, req.SubscriptionID, serverID, domainID, preview.Databases, fail, ok, nothing)
+				p.importArchiveDatabases(ctx, req.Path, req.SubscriptionID, serverID, domainID, req.Domain, preview.Databases, fail, ok, nothing)
 			}
 		}
 	}
@@ -717,7 +717,7 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 // importArchiveDatabases creates and loads the archive's databases, one step
 // each. A name MariaDB cannot keep a right on exactly (alpha.134 second
 // review) is left out first: nothing is created under it.
-func (p *Panel) importArchiveDatabases(ctx context.Context, path string, subscriptionID, serverID, domainID int, databases []transport.CpmoveDatabase,
+func (p *Panel) importArchiveDatabases(ctx context.Context, path string, subscriptionID, serverID, domainID int, domainName string, databases []transport.CpmoveDatabase,
 	fail func(string, error), ok func(string, string), nothing func(string, string, string)) {
 	for _, db := range databases {
 		// alpha.134 second review: MariaDB would keep a right on exactly
@@ -741,6 +741,10 @@ func (p *Panel) importArchiveDatabases(ctx context.Context, path string, subscri
 			Path:                path,
 			DumpName:            db.Name,
 			TargetDB:            db.Name,
+			// S1: the dump is loaded under the imported site's account.
+			SubscriptionID: subscriptionID,
+			DomainID:       domainID,
+			Domain:         domainName,
 		}, &imp)
 		switch {
 		case importErr != nil:

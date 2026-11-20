@@ -59,8 +59,9 @@ func TestARestoreGoesOnlyToARunningClusterOfTheBackupsMajor(t *testing.T) {
 	if target, err := restoreDatabaseTarget(same, request); err != nil || target.ClusterPort != 5433 || target.ClusterVersion != "18" {
 		t.Fatalf("same major, its port moved: %+v %v", target, err)
 	}
-	if command, _ := databaseRestoreCommand(backupspec.DatabaseIdentity{ID: 7, Name: "shop", Type: "postgresql", ClusterVersion: "18", ClusterPort: 5433}); !strings.Contains(strings.Join(command.Args, " "), "--port 5433 --single-transaction --command ") {
-		t.Fatalf("restore command = %v", command.Args)
+	// S1: the load signs in on the identity's cluster (no psql any more).
+	if port := pgLoadPort(backupspec.DatabaseIdentity{ID: 7, Name: "shop", Type: "postgresql", ClusterVersion: "18", ClusterPort: 5433}); port != 5433 {
+		t.Fatalf("restore port = %d", port)
 	}
 
 	older := backupspec.DatabaseIdentity{ID: 7, Name: "shop", Type: "postgresql", ClusterVersion: "16", ClusterPort: 5432}

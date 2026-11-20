@@ -679,7 +679,10 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 	reportOperationStep(ctx, "copy")
 	targetIdentity := withBackupCluster(backupspec.DatabaseIdentity{ID: int(newID), Name: dbName, Type: source.identity.Type}, source.serverPort)
 	var copied transport.DBToolsCopyResponse
-	err = p.callAgentContext(ctx, "Agent.DatabaseCopyV1", transport.DBToolsCopyRequest{Source: source.agentTarget(), Target: targetIdentity}, &copied)
+	// S1: the copy is loaded with the new database's own account.
+	err = p.callAgentContext(ctx, "Agent.DatabaseCopyV1", transport.DBToolsCopyRequest{
+		Source: source.agentTarget(), Target: targetIdentity, TargetUser: dbUser, TargetPassword: body.Password,
+	}, &copied)
 	if err != nil || !copied.Success {
 		// Nothing half-copied is left behind: the new database goes again.
 		dropErr := p.dropDatabaseToolsCopy(source, dbName, dbUser, int(newID))

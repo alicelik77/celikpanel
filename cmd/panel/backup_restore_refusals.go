@@ -20,6 +20,11 @@ const (
 	errCodeRestoreOtherSite   = "BACKUP_RESTORE_OTHER_SITE"
 	errCodeRestoreNoSpace     = "BACKUP_RESTORE_NO_SPACE"
 	errCodeRestoreSiteAccount = "BACKUP_RESTORE_SITE_ACCOUNT"
+	// S1 (20 Nov 2026): a backup's SQL is loaded only with the database's
+	// own rights; each is said before anything is written.
+	errCodeRestoreDatabaseAccount = "BACKUP_RESTORE_DATABASE_ACCOUNT"
+	errCodeRestoreClientUnsafe    = "BACKUP_RESTORE_CLIENT_UNSAFE"
+	errCodeRestoreNeedsAdmin      = "BACKUP_RESTORE_NEEDS_ADMINISTRATOR"
 )
 
 // writeRestoreFailure answers a restore the Agent typed: what happened,
@@ -62,6 +67,15 @@ func writeRestoreFailure(w http.ResponseWriter, resp backupspec.RestoreResponse)
 	case backupspec.RestoreCodeSiteAccount:
 		writeCodedError(w, http.StatusConflict, errCodeRestoreSiteAccount,
 			"The site's own system account, which the program's files belong to, could not be found on the server, so nothing was restored and the site is unchanged. The server administrator checks the site's hosting account; then restore again.", "")
+	case backupspec.RestoreCodeDatabaseAccount:
+		writeCodedErrorDetails(w, http.StatusConflict, errCodeRestoreDatabaseAccount,
+			"CelikPanel restores a backup's database only with that database's own user, and that user has no stored password here or the database server did not accept it (it was probably changed outside the panel). Nothing was restored and the site is unchanged. Set a new password for the database's user on the Databases page, then restore again.", "/databases", detail)
+	case backupspec.RestoreCodeClientUnsafe:
+		writeCodedErrorDetails(w, http.StatusConflict, errCodeRestoreClientUnsafe,
+			"This server's MariaDB client is too old to load a backup safely (it lacks sandbox mode), so nothing was restored and the site is unchanged. The server administrator updates the server's MariaDB packages; then restore again.", "", detail)
+	case backupspec.RestoreCodeNeedsAdministrator:
+		writeCodedErrorDetails(w, http.StatusConflict, errCodeRestoreNeedsAdmin,
+			"This backup holds something only the database server's administrator may create here (the reason is below), and CelikPanel restores a database only with the database's own rights. Nothing was restored and the site is unchanged. Ask the server administrator: they can allow it on the database server or restore this backup by hand.", "", detail)
 	default:
 		return false
 	}

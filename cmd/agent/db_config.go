@@ -206,8 +206,7 @@ var (
 	dbConfigPostgreSQLQuery = func(statement string) (string, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "sudo", "-u", "postgres", "psql",
-			"--no-psqlrc", "--set", "ON_ERROR_STOP=on", "--no-align", "--tuples-only", "--quiet")
+		cmd := exec.CommandContext(ctx, "sudo", pgAdminPSQLArgs("", "--no-align", "--tuples-only", "--quiet")...)
 		cmd.Stdin = strings.NewReader(statement + "\n")
 		cmd.Env = append(dbConfigCleanEnv(os.Environ()), "LC_ALL=C", "LANGUAGE=C")
 		out, err := cmd.Output()
@@ -221,8 +220,7 @@ var (
 	dbConfigPostgreSQLClusterQuery = func(cluster, statement string) (string, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "sudo", "-u", "postgres", "psql", "--cluster", cluster,
-			"--no-psqlrc", "--set", "ON_ERROR_STOP=on", "--no-align", "--tuples-only", "--quiet")
+		cmd := exec.CommandContext(ctx, "sudo", pgAdminPSQLArgs(cluster, "--no-align", "--tuples-only", "--quiet")...)
 		cmd.Stdin = strings.NewReader(statement + "\n")
 		cmd.Env = append(dbConfigCleanEnv(os.Environ()), "LC_ALL=C", "LANGUAGE=C")
 		out, err := cmd.Output()

@@ -89,10 +89,11 @@ func remoteFailureWho(code string, serverWide bool) string {
 		return "destination_owner"
 	case "SERVER_CLOCK", "LOCAL_BACKUP_FAILED", "LOCAL_READ_FAILED", "LOCAL_IMPORT_FAILED", "LOCAL_BACKUP_UNREADABLE",
 		"PANEL_RESTARTED", "REMOTE_UNREACHABLE", "REMOTE_TIMED_OUT", "REMOTE_INTEGRITY",
-		"PG_CLUSTER_REMOVED", "PG_CLUSTER_STOPPED", "PG_CLUSTER_NONE", "PG_MAJOR_MISMATCH", "PG_CLUSTER_UNPLACED":
+		"PG_CLUSTER_REMOVED", "PG_CLUSTER_STOPPED", "PG_CLUSTER_NONE", "PG_MAJOR_MISMATCH", "PG_CLUSTER_UNPLACED",
+		"DATABASE_CLIENT_UNSAFE", "DATABASE_NEEDS_ADMINISTRATOR":
 		return "administrator"
 	case "DISK_QUOTA", "DATABASE_GONE", "LOCAL_BACKUP_MISSING", "DESTINATION_NOT_AVAILABLE", "LEGACY_BACKUP",
-		"SUBSCRIPTION_SUSPENDED", "RESTORE_IN_PROGRESS":
+		"SUBSCRIPTION_SUSPENDED", "RESTORE_IN_PROGRESS", "DATABASE_ACCOUNT":
 		return "account_owner"
 	}
 	return "administrator"
@@ -124,6 +125,12 @@ func remoteNextAction(code string) string {
 		return "Free space in the subscription or ask your provider for a larger plan, then restore again."
 	case "DATABASE_GONE":
 		return "Create the database again for this site, then restore again."
+	case "DATABASE_ACCOUNT":
+		return "Set a new password for the database's user on the Databases page, then restore again. Nothing was restored; the backup is kept."
+	case "DATABASE_CLIENT_UNSAFE":
+		return "The server administrator updates the server's MariaDB packages, then restore again. Nothing was restored; the backup is kept."
+	case "DATABASE_NEEDS_ADMINISTRATOR":
+		return "Ask the server administrator: they can allow it on the database server or restore this backup by hand. Nothing was restored; the backup is kept."
 	case "PG_CLUSTER_REMOVED":
 		return "The server administrator installs that PostgreSQL version again from Components (its data was kept), then restore again. The backup is kept."
 	case "PG_CLUSTER_STOPPED":

@@ -26,6 +26,8 @@ export interface ServiceAppCatalogEntry {
     version: string;
     deferred?: string;
     customer_offerable: boolean;
+    /** alpha.141: the date the app left the catalogue; only an install of it is shown. */
+    withdrawn?: string;
     /** alpha.118: closed to resellers and their customers by its licence (a code). */
     reseller_closed?: string;
     defaults: { memory_mb: number; cpu_percent: number; tasks_max: number; disk_mb: number };

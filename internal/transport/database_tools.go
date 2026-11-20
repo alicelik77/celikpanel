@@ -124,10 +124,14 @@ type DBToolsImportResponse struct {
 }
 
 // DBToolsCopyRequest copies Source into a database the Panel has just
-// created (Target, same engine and cluster).
+// created (Target, same engine and cluster). TargetUser and TargetPassword
+// (20 Nov 2026, additive) are the new database's own account: the source's
+// dump is loaded with its rights, never as the engine's administrator.
 type DBToolsCopyRequest struct {
-	Source DBToolsTarget               `json:"source"`
-	Target backupspec.DatabaseIdentity `json:"target"`
+	Source         DBToolsTarget               `json:"source"`
+	Target         backupspec.DatabaseIdentity `json:"target"`
+	TargetUser     string                      `json:"target_user,omitempty"`
+	TargetPassword string                      `json:"target_password,omitempty"`
 }
 
 type DBToolsCopyResponse struct {

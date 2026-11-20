@@ -15,6 +15,9 @@ const (
 	ReasonOSUnsupported = "os_unsupported"
 	ReasonVenvMissing   = "venv_missing"
 	ReasonProbeFailed   = "probe_failed"
+	// ReasonWithdrawn (alpha.141): the app left the catalogue; nothing new is
+	// installed, and an install that exists keeps running.
+	ReasonWithdrawn = "withdrawn"
 )
 
 // NodeCandidate is one Node.js found on the server: the Panel's verified
@@ -149,6 +152,9 @@ func compareVersions(a, b string) int {
 // The Panel's own Node.js runtime is preferred to the distribution's because
 // it is the one the administrator installs and offers for Node.js sites.
 func ChooseRuntime(app App, nodes []NodeCandidate, pythons []PythonCandidate) RuntimeChoice {
+	if app.Withdrawn != "" {
+		return RuntimeChoice{Reason: ReasonWithdrawn, Detail: "withdrawn from the catalogue on " + app.Withdrawn}
+	}
 	if app.Deferred != "" {
 		return RuntimeChoice{Reason: ReasonDeferred, Detail: app.Deferred}
 	}

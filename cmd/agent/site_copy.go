@@ -103,12 +103,26 @@ func (a *Agent) SiteCopyV1(req *transport.SiteCopyRequest, resp *transport.SiteC
 	}
 	defer staged.Cleanup()
 	if withDatabase {
+		// S1: the copy is loaded with the new database's own account.
+		load := databaseLoadTarget{
+			DatabaseIdentity: copyDatabaseIdentity(req.TargetDatabase),
+			Account:          databaseLoadAccount{User: req.TargetDBUser, Password: req.TargetDBPass},
+			SiteUser:         databaseLoadSiteUser(req.Target.SubscriptionID, req.Target.DomainID, req.Target.Domain),
+		}
+		if err := prepareDatabaseLoadFor(load); err != nil {
+			resp.Error = "load the database copy: " + boundedText(err.Error(), 300) + "; nothing was copied"
+			return nil
+		}
 		dump := filepath.Join(work, "database.sql.gz")
 		if err := dumpDatabaseToFile(copyDatabaseIdentity(req.SourceDatabase), dump); err != nil {
 			resp.Error = "read the source database: " + boundedText(err.Error(), 300)
 			return nil
 		}
-		if err := restoreDatabaseFromFile(copyDatabaseIdentity(req.TargetDatabase), dump); err != nil {
+		if err := checkLoadableByAccount(load.DatabaseIdentity, dump); err != nil {
+			resp.Error = "load the database copy: " + boundedText(err.Error(), 300) + "; nothing was copied"
+			return nil
+		}
+		if err := restoreDatabaseFromFile(load, dump); err != nil {
 			resp.Error = "load the database copy: " + boundedText(err.Error(), 300)
 			return nil
 		}
