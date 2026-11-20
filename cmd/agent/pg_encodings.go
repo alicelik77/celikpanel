@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -66,16 +65,15 @@ func parsePositiveInt(text string) int {
 
 // pgSingleServerEncodings is the read where PostgreSQL is one server without
 // postgresql-common (a variable for tests).
-var pgSingleServerEncodings = func(ctx context.Context) (string, error) {
-	port, err := resolvePGStatementPort(0)
+// It is the Agent's own statement runner, the one every other PostgreSQL
+// statement on such a server goes through (no deadline of its own, as for
+// them; the Panel bounds its wait for the answer).
+var pgSingleServerEncodings = func(context.Context) (string, error) {
+	run, err := postgreSQLStatementFor(0)
 	if err != nil {
 		return "", err
 	}
-	// The statement command, bounded: killed at the deadline.
-	plain := newPostgreSQLStatementCommandOn(port, pgEncodingsStatement)
-	cmd := exec.CommandContext(ctx, plain.Path, plain.Args[1:]...)
-	cmd.Stdin = plain.Stdin
-	out, err := cmd.CombinedOutput()
+	out, err := run(pgEncodingsStatement)
 	if err != nil {
 		if text := strings.TrimSpace(string(out)); text != "" {
 			return "", errors.New(boundedText(text, 200))
