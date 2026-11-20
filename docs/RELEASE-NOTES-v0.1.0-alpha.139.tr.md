@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.139.md)
 
+> **Yayımlandı**, 20 Kasım 2026 (UTC): sürüm commit'i `f1e35edf3`, GitHub ön sürümü 02:33:00Z, indirme portalı yaklaşık 02:36Z (dış denetim 27/27).
+
 İki işlik küçük bir sürüm; ikisi de alpha.135 laboratuvarından. Bir çiftin
 yedek DNS sunucusu ana DNS sunucusundan kendi ana makine kayıtlarından birini
 eklemesini istediğinde, ana sunucu artık ne yaptığını zamanında ve doğru
@@ -180,9 +182,9 @@ laboratuvara ait bir etiketle (v0.1.0-alpha.146) çalıştı; denetimler denemen
 (katılacak bir sunucu gerekir, bu da laboratuvar çiftini değiştirirdi).
 Ekrandaki yeni port cümlesi: iki laboratuvar sunucusu da 1923 portunu
 kullanıyor, bu yüzden cümle hiçbirinde görünmez; iki sunucunun da sunduğu
-arayüz dosyalarında İngilizce ve Türkçe olarak bulundu, hiçbir dosya cPanel'i
-anmıyor. Yanıtsız 25 saniyeden sonraki kendiliğinden ikinci soru: bu denemede
-yanıtsız kalan istek olmadı.
+arayüz dosyalarında İngilizce ve Türkçe olarak bulundu; başka bir ürünü
+adıyla anan eski cümle bu dosyaların hiçbirinde yok. Yanıtsız 25 saniyeden
+sonraki kendiliğinden ikinci soru: bu denemede yanıtsız kalan istek olmadı.
 
 ### Laboratuvarda bulunan, sonraki sürüme bırakılanlar
 
