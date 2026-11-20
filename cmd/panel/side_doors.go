@@ -89,35 +89,21 @@ func (p *Panel) closeSideDoorsOnce(ctx context.Context) bool {
 	p.recordSideDoorsState(ctx, response.State)
 	if response.State != nil {
 		for _, tool := range response.State.Tools {
-			action := ""
+			details := auditDetailsText(map[string]any{"tool": tool.Tool, "php": tool.Version, "account": tool.Account, "detail": tool.Detail, "automatic": true})
 			switch tool.State {
 			case transport.SideDoorsToolMoved:
-				action = "php_tool.account.moved:"
+				p.recordAudit(auditRecord{Action: "php_tool.account.moved:" + tool.Tool, ResourceType: "service", Details: details})
 			case transport.SideDoorsToolFailed:
-				action = "php_tool.account.failed:"
-			}
-			if action != "" {
-				p.recordAudit(auditRecord{
-					Action:       action + tool.Tool,
-					ResourceType: "service",
-					Details:      auditDetailsText(map[string]any{"tool": tool.Tool, "php": tool.Version, "account": tool.Account, "detail": tool.Detail, "automatic": true}),
-				})
+				p.recordAudit(auditRecord{Action: "php_tool.account.failed:" + tool.Tool, ResourceType: "service", Details: details})
 			}
 		}
 		for _, pool := range response.State.StockPools {
-			action := ""
+			details := auditDetailsText(map[string]any{"path": pool.Path, "detail": pool.Detail, "automatic": true})
 			switch pool.State {
 			case transport.SideDoorsStockTurnedOff:
-				action = "php_fpm.stock_pool.turned_off:"
+				p.recordAudit(auditRecord{Action: "php_fpm.stock_pool.turned_off:" + pool.Version, ResourceType: "service", Details: details})
 			case transport.SideDoorsStockFailed:
-				action = "php_fpm.stock_pool.failed:"
-			}
-			if action != "" {
-				p.recordAudit(auditRecord{
-					Action:       action + pool.Version,
-					ResourceType: "service",
-					Details:      auditDetailsText(map[string]any{"path": pool.Path, "detail": pool.Detail, "automatic": true}),
-				})
+				p.recordAudit(auditRecord{Action: "php_fpm.stock_pool.failed:" + pool.Version, ResourceType: "service", Details: details})
 			}
 		}
 	}
