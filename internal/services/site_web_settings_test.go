@@ -63,7 +63,10 @@ func TestWebSettingsTemplateChangeKeepsEveryExistingVhostByteForByte(t *testing.
 			if err := old.Execute(&before, prepared); err != nil {
 				t.Fatal(err)
 			}
-			if now != before.String() {
+			// The one change since alpha.127 is the link rule of 20 Nov
+			// 2026 (tenant isolation): its comment and directive lines in the
+			// blocks that serve the site's files. Everything else is the same.
+			if withoutLinkRule(now) != before.String() {
 				t.Fatalf("%s tls=%d: the render changed for a site without web settings", shape.ProjectType, tls)
 			}
 		}
@@ -360,4 +363,21 @@ func TestACMEChallengeAllowsEverybodyOnlyWithAnAccessRule(t *testing.T) {
 	if !strings.Contains(RenderACMEChallengeFileFor("ornek.com", testACMEChallengeRoot, true), "    allow all;\n") {
 		t.Fatal("the challenge location does not allow everybody")
 	}
+}
+
+// withoutLinkRule removes the link rule's two lines (tenant isolation, 20 Nov
+// 2026) from a render, for comparisons with the text of earlier releases.
+func withoutLinkRule(vhost string) string {
+	var kept []string
+	for _, line := range strings.Split(vhost, "
+") {
+		switch line {
+		case "    # A link is followed only to a file of the link's own owner / Bağlantı yalnız aynı sahibin dosyasına izlenir",
+			"    disable_symlinks if_not_owner;":
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "
+")
 }

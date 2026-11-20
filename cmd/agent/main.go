@@ -788,6 +788,10 @@ func main() {
 			len(removed), strings.Join(removed, ", "),
 		)
 	}
+	// 20 Nov 2026 (tenant isolation): once after the update, CelikPanel's own
+	// per-site files at the earlier 0644 become 0640 and the hosting base
+	// 0711, before any site write races it (tenant_file_modes.go).
+	tightenTenantVisibleModesOnce()
 
 	// Initialize PHP-FPM Manager
 	phpMgr, err := services.NewPHPFPMManager()
