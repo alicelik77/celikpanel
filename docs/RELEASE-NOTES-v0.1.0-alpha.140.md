@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.140.tr.md)
 
+> **Published** on 2026-11-20 (UTC): release commit `feef6da42`, GitHub pre-release at 12:56:56Z, download portal at about 13:00Z (public check 27/27).
+
 A small fix release of four jobs carried over from the alpha.138 and
 alpha.139 labs. The most important one closes a data-loss risk: pressing
 **Delete** again on a database could delete a different database that had
