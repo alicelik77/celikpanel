@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.140.md)
 
+> **Yayımlandı**, 20 Kasım 2026 (UTC): sürüm commit'i `feef6da42`, GitHub ön sürümü 12:56:56Z, indirme portalı yaklaşık 13:00Z (dış denetim 27/27).
+
 alpha.138 ve alpha.139 laboratuvarlarından taşınan dört işin küçük bir
 düzeltme sürümü. En önemlisi bir veri kaybı riskini kapatıyor: bir
 veritabanında **Sil**'e yeniden basmak, arada aynı adla açılmış başka bir
