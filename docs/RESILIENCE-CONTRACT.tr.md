@@ -8282,3 +8282,51 @@ bağlantıyı tutar.
   Oluşturmanın geri alma adımları kendi isteklerinin yaptığını hâlâ adıyla
   siliyor; "başka bir veritabanı bu adı taşıyor" sonunun kaydı panelden
   kapatma yolu yok. **Hiçbir P0 maddesi kapanmadı.**
+
+### security/s1-sql-rights, fix/pg-utf8 ve fix/withdraw-open-webui dalları (dosyadan gelen SQL veritabanı sahibinin haklarıyla çalışır; yöneticinin PostgreSQL oturumları sabit arama yoluyla; yeni PostgreSQL veritabanları UTF-8 ve başka hesaplara kapalı; Open WebUI geri çekildi; şema değişikliği yok; anayasa 1; ilke 4; D-022; D-024; D-025; 2026-11-20, aday alpha.141)
+
+- **Neden burada.** Veritabanı geri yükleme sahibin kurtarma yoludur ve
+  yüklemesi motorun yöneticisinden veritabanının kendi hesabına geçer: ilke 4
+  (her ret güvenlik yedeğinden ve bir şey yazılmadan önce verilir) ve
+  anayasa 1 (yetkili Agent müşteri içeriğini root ya da motor yöneticisi
+  haklarıyla asla çalıştırmaz).
+- **Kusur (20 Kasım 2026 kiracı yalıtımı denetimi; düzeltmeden önce özel
+  motorlarda gösterildi).** Geri yükleme (yerel ya da müşterinin yönettiği
+  uzak bir hedeften), başarısız bir geri yüklemeden sonra geri konan
+  güvenlik kopyası, veritabanı, site ve WordPress kopyaları ve cPanel içe
+  aktarması dosyayı korumalı kip olmadan root olarak `mysql` ya da postgres
+  olarak `psql` ile yüklüyordu; yöneticinin bir müşteri veritabanındaki
+  PostgreSQL oturumları o veritabanının arama yolunu kullanıyordu.
+- **Sözleşme.** Tek bir yükleyici (`cmd/agent/database_owner_load.go`):
+  MariaDB'de `--no-defaults --sandbox` istemcisi, veritabanının kendi
+  kullanıcısı olarak, sitenin hesabı altında (korumalı kipi olmayan istemci
+  reddedilir, yerine başkası konmaz; DEFINER yükleyen kullanıcı olarak
+  yazılır; hiçbir şey yüklenmeden ikili günlük kapısı okunur); PostgreSQL'de
+  protokol üzerinden sahip rolüyle tek işlemde (yönetici rolü ya da sahip
+  olmayan reddedilir). Panel her veritabanının kayıtlı hesabını gönderir.
+  Yöneticinin her PostgreSQL istemcisi `search_path=pg_catalog,pg_temp` ile
+  başlar (`cmd/agent/pg_admin_session.go`, bir testle korunur). Yeni
+  PostgreSQL veritabanları: template0, UTF-8, `ALLOW_CONNECTIONS false`,
+  `REVOKE ALL … FROM PUBLIC`, açılır, geri okunur; kapatılamayan veritabanı
+  bu çağrının yaptığı rolle birlikte kaldırılır.
+- **Şema / sürüm geçişi.** Yok (şema 079). Eklenen istek alanları, ret
+  kodları, salt-okur `PostgreSQLDatabaseEncodingsV1` ve katalogdaki
+  `withdrawn`. Eski bir Panel'le yeni bir Agent, hesap olmadığı için geri
+  yükleme ve kopyaları hiçbir şey yazmadan reddeder; alpha.140'a dönmek
+  önceki yükleme yolunu geri getirir.
+- **Kurtarma.** Reddedilen geri yükleme hiçbir şeyi değiştirmedi (güvenlik
+  yedeği alınmadı); PostgreSQL tek işlemini korur; MariaDB güvenlik kopyasını
+  aynı hesabın haklarıyla geri koyar. Panelsiz durumda paket biçimi aynıdır
+  ve belgelenen elle geri yükleme her dökümü veritabanının kendi kullanıcısı
+  olarak yükler.
+- **Kanıt.** `cmd/agent/sql_rights_engine_test.go` (dört saldırı alpha.140'ta
+  düşer, burada gerçek MariaDB 11.8.6 ve PostgreSQL 17.12'de geçer),
+  `sql_rights_replay_engine_test.go`, `pg_admin_session_test.go`,
+  `database_owner_load_test.go`, `sql_rights_linux_test.go`,
+  `pg_utf8_engine_test.go`, `service_apps_withdrawn_test.go`.
+- **Açık.** Henüz laboratuvar denemesi yok. Bir veritabanını başka bir
+  PostgreSQL kümesine taşımak onu hâlâ kümenin sahibinin haklarıyla geri
+  yükler; alpha.141'den önce açılan veritabanları başka hesapların oturum
+  açmasına açık kalır; eklenen PostgreSQL kullanıcıları, geri yüklemenin
+  yeniden kurduğu nesnelerdeki haklarını yitirir. **Hiçbir P0 maddesi
+  kapanmadı.**

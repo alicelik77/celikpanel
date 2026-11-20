@@ -9065,3 +9065,49 @@ until the backup reports ready.
   compensations still drop by name what their own request made; the
   "another database has the name" end has no in-panel way to close the
   record. **No P0 item is closed.**
+
+### Branches security/s1-sql-rights, fix/pg-utf8 and fix/withdraw-open-webui (SQL from a file runs with the database owner's rights; administrator PostgreSQL sessions with a fixed search path; new PostgreSQL databases UTF-8 and closed to other accounts; Open WebUI withdrawn; no schema change; constitution 1; invariant 4; D-022; D-024; D-025; 2026-11-20, candidate alpha.141)
+
+- **Why it is here.** A database restore is the owner's recovery path, and
+  its load changes from the engine's administrator to the database's own
+  account: invariant 4 (every refusal decided before the safety backup and
+  before anything is written) and constitution 1 (the privileged Agent never
+  runs customer content with root or engine-administrator rights).
+- **Defect (tenant-isolation audit of 20 November 2026, shown before the
+  fix on private engines).** A restore (local or from a remote destination
+  the customer controls), the safety copy put back after a failed one,
+  database, site and WordPress copies and the cPanel import loaded the file
+  through `mysql` as root without sandbox mode or `psql` as postgres; the
+  administrator's PostgreSQL sessions inside a customer database used that
+  database's search path.
+- **Contract.** One loader (`cmd/agent/database_owner_load.go`): MariaDB by
+  the client with `--no-defaults --sandbox` as the database's own user under
+  the site's account (a client without sandbox mode is refused, never
+  replaced; DEFINER written as the loading user; a binary-log gate read
+  before anything is loaded); PostgreSQL over the protocol as the owner role
+  in one transaction (an administrator role or a non-owner refused). The
+  panel sends each database's stored account. Every administrator
+  PostgreSQL client starts with `search_path=pg_catalog,pg_temp`
+  (`cmd/agent/pg_admin_session.go`, guarded by a test). New PostgreSQL
+  databases: template0, UTF-8, `ALLOW_CONNECTIONS false`, `REVOKE ALL … FROM
+  PUBLIC`, open, read back; a database that cannot be closed is removed with
+  the role this call made.
+- **Schema / version transition.** None (schema 079). Additive request
+  fields, refusal codes, the read-only `PostgreSQLDatabaseEncodingsV1` and
+  the catalogue's `withdrawn`. A new Agent with an older Panel refuses
+  restores and copies for lack of an account, before anything is written;
+  going back to alpha.140 restores the earlier load path.
+- **Recovery.** A refused restore changed nothing (no safety backup made);
+  PostgreSQL keeps its single transaction; MariaDB puts the safety copy back
+  with the same account's rights. Without the panel the package format is
+  unchanged and the documented manual restore loads each dump as the
+  database's own user.
+- **Evidence.** `cmd/agent/sql_rights_engine_test.go` (four attacks fail on
+  alpha.140 and pass here on real MariaDB 11.8.6 and PostgreSQL 17.12),
+  `sql_rights_replay_engine_test.go`, `pg_admin_session_test.go`,
+  `database_owner_load_test.go`, `sql_rights_linux_test.go`,
+  `pg_utf8_engine_test.go`, `service_apps_withdrawn_test.go`.
+- **Open.** No lab run yet. Moving a database to another PostgreSQL cluster
+  still restores it with the cluster owner's rights; databases made before
+  alpha.141 stay open to other accounts' sign-in; added PostgreSQL users
+  lose their rights on what a restore makes again. **No P0 item is closed.**
