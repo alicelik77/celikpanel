@@ -100,7 +100,9 @@ what the answer means is said once, below.
 - The administrator's button opens the place where it is done: Components →
   Node.js at the version list (also when another version is installed), or
   Components → Python to add Python's venv module on Ubuntu 24.04, which
-  shows what it adds and installs it after you confirm.
+  installs the operating system's python3-venv and python3.12-venv after you
+  confirm. Its confirmation window does not name those packages yet (see
+  "Found in the lab").
 - An app this server's operating system cannot run (Open WebUI on Debian 13)
   is shown to the administrator with the reason, is not shown to customers
   and resellers, and cannot be offered to them. An app a domain already holds
@@ -117,7 +119,8 @@ request the screen never sends. What is true:
 - **n8n** installs after the administrator chooses Node.js 24 under
   Components → Node.js.
 - **Open WebUI on Ubuntu 24.04** needs Components → Python first (Python's
-  venv module); it had not been installed in a lab yet.
+  venv module); this release's lab installed it that way, the first time
+  anywhere.
 - **Open WebUI on Debian 13** cannot run on the distribution's Python
   (3.13; Open WebUI supports 3.11 and 3.12), so it is not offered there.
 
@@ -135,8 +138,14 @@ correction.
   drops by name what that same request had just made.
 - **A database on another machine with MariaDB** has no identity, so after a
   lost answer there the "cannot be told apart" answer is the only safe one.
-- **Open WebUI has never been installed in a lab**, and n8n was last
-  installed in the alpha.118 and alpha.119 labs.
+- **Open WebUI needs a lot of room, and the page does not check it.** In
+  the lab its install took 6 minutes; the root file system's use rose by
+  about 15 GB at the peak of the install (a 23 GB disk reached 96 %) and
+  about 9 GB stayed (its folder 8.3 GB); running, it used about 2 GB of
+  memory. The page does not check free disk or memory first, and a running
+  install cannot be stopped from the page. Before offering or installing it,
+  an administrator should look at the free disk (at least 15 GB) and
+  memory. n8n took about 3 GB and nine minutes.
 - **A Node.js release** is checked against the official checksum file, but
   that file's signature is not checked yet.
 - **While the Agent cannot answer**, nothing is hidden because of the
@@ -144,9 +153,93 @@ correction.
 
 ## Checked in the lab
 
-**Open: the lab has not run yet.** This section is written after the lab run
-on a pair of test servers. Until then, nothing in this release has run on a
-real server.
+Lab check finished: one run on 20 November 2026 (UTC 09:00 to about 10:25,
+85 minutes of a 100-minute slot), on a pair of test servers: a Debian 13
+main DNS server with PowerDNS and an Ubuntu 24.04 backup DNS server with
+BIND, started from the alpha.139 state. The release ran under a lab-only
+label (v0.1.0-alpha.147) built from this release's code. Everything was done
+through the page's own buttons except where it says otherwise. No hard
+failure.
+
+- **Both servers updated through the panel's own update page**, by
+  themselves, in about two and three minutes. Both waited for the operating
+  system's daily package run, which started right after the press; the page
+  says beforehand that an update waits for it. No service was left failed, and both servers answered the
+  same DNS questions the same way before and after.
+- **Deleting a database** through the Databases page, on MariaDB and on
+  PostgreSQL: the progress window, then "Completed"; the row left the list
+  by itself and the database was gone from the server.
+- **A database is never deleted twice.** On MariaDB (Debian 13 and Ubuntu
+  24.04) and on PostgreSQL (Debian 13), the answer of a deletion was cut on
+  purpose (the lab stopped the Agent at the press). Each time the database
+  had been dropped and its users or rights were not done yet, and the page
+  said to press **Delete** again. Then a database of the same name was made
+  again with new rows: on Ubuntu 24.04 by the customer's own database user,
+  the very case this release is about; on Debian 13 by hand. **Delete**
+  pressed again, once on a Turkish and once on an English page each time,
+  left the new database and its rows in place, and the page said that
+  CelikPanel does not delete it and that the administrator decides. After
+  the lab dropped that database by hand, **Delete** finished. The identity
+  was read every time: MariaDB gave the new folder the same inode number,
+  and the inode generation and the time the folder was made told them
+  apart; PostgreSQL by its internal number.
+- **A domain deletion with its databases** (one MariaDB, one PostgreSQL):
+  "2 databases deleted" with their names, in 14 seconds; the domain left the
+  list by itself; no database or database user of it stayed on the servers.
+- **AI and automation apps on Debian 13**, as administrator: n8n's line said,
+  in Turkish, that it needs Node.js 24, that none is installed, and what to
+  do, with **Install Node.js 24**, which opened Components → Node.js at the
+  version list. Open WebUI showed its reason (Python 3.13), could not be
+  offered, and customers did not see it. The generic Node.js install request,
+  sent directly, was refused and nothing was queued.
+- **n8n installed through the page on Debian 13**: Node.js 24 from Components
+  (seconds), n8n offered and installed on a customer's domain (9 minutes
+  24 seconds, about 3 GB); it answered over HTTPS and again after the card's
+  own restart.
+- **Open WebUI installed through the page on Ubuntu 24.04**, the first time
+  anywhere: Components → Python's repair added python3-venv and
+  python3.12-venv, then Open WebUI was offered and installed (6 minutes
+  18 seconds); it answered over HTTPS and used about 2 GB of memory at rest.
+  See "Known limits" for its disk use.
+- **The busy end of "Add…"** at phone width, Turkish and English: the first
+  step done with "… answered", the busy sentence once, and **Ask again…**
+  then added the record.
+- The usual pages on both servers loaded without an error.
+
+**Not checked:** the "waits for the backup DNS server" sentence of a domain
+deletion. Both domain deletions on the pair finished in 12 to 14 seconds
+because the backup server confirmed during the deletion itself, so the
+waiting state did not arise; "stopped … delete the domain again" did not
+appear either. The customer's line "the administrator installs Node.js"
+(n8n was not offered to customers at that moment). A domain that holds both
+a program and an AI app (not run for time).
+
+### Found in the lab, left for the next release
+
+None of these is a security or data-loss problem.
+
+- An AI app's install cannot be stopped from the page, and nothing checks
+  the free disk first: Open WebUI's install took the lab's 23 GB disk to
+  96 %.
+- On Debian 13 the administrator's view of a domain's Programs section says
+  Open WebUI is not offered on this server and to offer it in Catalog
+  management, although it cannot be offered there.
+- The Python repair's confirmation window says nothing else needs
+  confirming and does not name python3-venv and python3.12-venv, which it
+  then installs.
+- After a deletion whose answer was lost, the sentence about a database of
+  the same name says its users "were left as they are", although on MariaDB
+  the user had already been removed by the first press while the panel
+  still listed it.
+- During a domain deletion the database step read "there was no database to
+  process" for about 9 seconds while two were being deleted (the end result
+  was right).
+- The "a database of this name was made after the deletion" state is shown
+  in the red error colour, although it is a decision for the administrator.
+- The service operation status still returns an older, failed generic
+  Node.js install as the latest operation.
+- The certificate confirmation names "Let's Encrypt" whatever certificate
+  authority the server is set to use.
 
 ## Evidence
 
