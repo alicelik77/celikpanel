@@ -499,6 +499,21 @@ type WireMailFiltersResponse struct {
 	Wired  bool   `json:"wired"`
 	Detail string `json:"detail,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// Signing (20 Nov 2026, additive) says whether outgoing mail is signed
+	// only for the sender's own domain on this server. Nil from an older
+	// Agent.
+	Signing *MailSigningState `json:"signing,omitempty"`
+}
+
+// MailSigningState is the outcome of binding DKIM signing to the sender
+// (cmd/agent/mail_signing_bind.go). State: bound (in place), no_dkim (DKIM
+// signing is not set up here), conf_kept (the server owner's opendkim.conf
+// was kept), port25_kept (the owner's milter setting for port 25 was kept),
+// failed (a change was refused or undone; Detail says which and what runs).
+// Detail is the Agent's English sentence for the log and the administrator.
+type MailSigningState struct {
+	State  string `json:"state"`
+	Detail string `json:"detail,omitempty"`
 }
 
 // MailFilterWiringStateResponse answers, read-only, whether this host has the

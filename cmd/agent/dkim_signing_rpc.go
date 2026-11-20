@@ -97,16 +97,40 @@ func opendkimConfPath() string {
 	return opendkimAPTConfPath
 }
 
+// openDKIMSenderMacro binds the signing domain to the sender's login (20 Nov
+// 2026, tenant isolation). OpenDKIM chooses the signing table entry, and so
+// the d= domain, from the From: header unless SenderMacro names an MTA macro
+// whose value is used instead (opendkim.conf(5) "SenderMacro"; opendkim.c
+// mlfi_eoh: a non-empty macro value replaces the From: header as the address
+// looked up in the signing table, an empty or missing one falls back to it).
+// Postfix sends {auth_authen}, the SASL login name, at the MAIL stage
+// (milter_mail_macros); on this server a login is the mailbox's full address.
+// So mail sent over submission (587/465, where a login is required) is signed
+// only for the login's own domain, whatever its From: says, and mail made on
+// the server without SMTP (sendmail of root and vmail: the panel's notices,
+// out-of-office replies) has no login and keeps being signed by its From:.
+// {mail_addr} (the envelope sender) was not taken: Postfix does not run
+// reject_sender_login_mismatch for the null sender, and an empty macro falls
+// back to the From: header.
+// İmza alanı göndericinin girişine bağlanır: submission'da imza, From: ne
+// derse desin, girişin kendi alan adıyla atılır.
+const openDKIMSenderMacro = "{auth_authen}"
+
 // renderOpenDKIMConf renders CelikPanel's OpenDKIM configuration.
 func renderOpenDKIMConf(layout opendkimLayout) string {
-	return renderOpenDKIMConfWithSocket(layout, opendkimSocket)
+	return renderOpenDKIMConfText(layout, opendkimSocket, true)
 }
 
-// renderOpenDKIMConfWithSocket renders the file around one listening socket,
-// so the startup repair can recognise the exact text an earlier release wrote.
-// renderOpenDKIMConfWithSocket dosyayı tek bir dinleme soketiyle üretir;
-// başlangıç onarımı önceki sürümün yazdığı metni böylece birebir tanır.
+// renderOpenDKIMConfWithSocket renders the text releases before 20 Nov 2026
+// wrote around one listening socket (no SenderMacro), so the startup
+// reconciliation can recognise the exact text an earlier release wrote.
+// renderOpenDKIMConfWithSocket önceki sürümlerin yazdığı metni üretir;
+// başlangıçta bu metin birebir tanınır.
 func renderOpenDKIMConfWithSocket(layout opendkimLayout, socket string) string {
+	return renderOpenDKIMConfText(layout, socket, false)
+}
+
+func renderOpenDKIMConfText(layout opendkimLayout, socket string, senderMacro bool) string {
 	conf := fmt.Sprintf(`# Managed by CelikPanel — DKIM signing for hosted domains. Do not edit by hand.
 Syslog			yes
 UMask			007
@@ -120,6 +144,9 @@ KeyTable		%s/keytable
 SigningTable		refile:%s/signingtable
 InternalHosts		%s/trustedhosts
 `, socket, opendkimTablesDir, opendkimTablesDir, opendkimTablesDir)
+	if senderMacro {
+		conf += "SenderMacro\t\t" + openDKIMSenderMacro + "\n"
+	}
 	if layout.trustAnchor != "" {
 		conf += "TrustAnchorFile\t\t" + layout.trustAnchor + "\n"
 	}
@@ -179,7 +206,39 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 		resp.Error = err.Error()
 		return nil
 	}
-	if err := writeDKIMTables(ctx, domains, layout.confPath, renderOpenDKIMConf(layout)); err != nil {
+	// 20 Nov 2026 (D-022): an opendkim.conf the server owner changed is kept
+	// as he wrote it, with CelikPanel's text beside it; before, it was
+	// replaced. Only an absent file or CelikPanel's own text is written.
+	// Sahibin değiştirdiği opendkim.conf korunur; yalnız yok olan ya da
+	// CelikPanel'in metni olan dosya yazılır.
+	run := func(name string, args ...string) ([]byte, error) {
+		return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+	}
+	confNote := ""
+	var conf []byte
+	current, exists, err := readOpenDKIMConf(layout.confPath)
+	if err != nil {
+		resp.Error = fmt.Sprintf("read %s: %v", layout.confPath, err)
+		return nil
+	}
+	// SenderMacro only where the installed OpenDKIM knows it (a build without
+	// it refuses to start with the line); the probe is run after the install
+	// above, so it asks the OpenDKIM that will run.
+	supported, known := openDKIMSupportsSenderMacro(run)
+	if !known {
+		resp.Error = "whether the installed OpenDKIM knows SenderMacro could not be checked (opendkim -n did not run); nothing was changed"
+		return nil
+	}
+	want := desiredOpenDKIMConf(layout, supported)
+	if openDKIMConfKind(current, exists, layout, want) == "owner" {
+		confNote = holdOpenDKIMPending(layout.confPath, layout)
+	} else {
+		conf = want
+		if !supported {
+			confNote = unsupportedNote()
+		}
+	}
+	if err := writeDKIMTables(ctx, domains, layout.confPath, conf); err != nil {
 		resp.Error = err.Error()
 		return nil
 	}
@@ -207,7 +266,7 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 
 	resp.Configured = true
 	resp.Domains = len(domains)
-	resp.Detail = joinNotes(fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains)), milterNote)
+	resp.Detail = joinNotes(fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains)), confNote, milterNote)
 	return nil
 }
 
@@ -250,7 +309,7 @@ func dkimSignedDomains() ([]string, error) {
 // the private keys readable by the opendkim group (root keeps ownership).
 // writeDKIMTables, OpenDKIM anahtar/imzalama/güven tablolarını üretir ve
 // özel anahtarları opendkim grubunca okunur yapar (sahiplik root'ta kalır).
-func writeDKIMTables(ctx context.Context, domains []string, confPath, conf string) error {
+func writeDKIMTables(ctx context.Context, domains []string, confPath string, conf []byte) error {
 	if err := ensureDKIMStorageMigrated(); err != nil {
 		return err
 	}
@@ -350,10 +409,14 @@ func writeDKIMTables(ctx context.Context, domains []string, confPath, conf strin
 		}
 		return nil, nil
 	}
-	return applyMailFileMutation(ctx, []mailFileWrite{
+	writes := []mailFileWrite{
 		{path: tables[0], content: kt, mode: 0o640},
 		{path: tables[1], content: st, mode: 0o640},
 		{path: tables[2], content: []byte(trusted), mode: 0o640},
-		{path: confPath, content: []byte(conf), mode: 0o644},
-	}, nil, tablesToGroup)
+	}
+	// conf nil: the owner's opendkim.conf, kept as it is.
+	if conf != nil {
+		writes = append(writes, mailFileWrite{path: confPath, content: conf, mode: 0o644})
+	}
+	return applyMailFileMutation(ctx, writes, nil, tablesToGroup)
 }

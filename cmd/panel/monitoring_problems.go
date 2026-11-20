@@ -111,6 +111,10 @@ var problemKindOrder = map[string]int{
 	"cpu_sustained":              9,
 	"mail_queue_deferred":        10,
 	"security_updates":           11,
+	"mail_signing_conf_kept":     12,
+	"mail_signing_port25_kept":   12,
+	"mail_signing_failed":        12,
+	"mail_signing_unsupported":   12,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -166,6 +170,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	}
 	// alpha.127: the sites as the server itself reaches them.
 	add(siteProblems(ctx, db, now, certificates))
+	// 20 Nov 2026: mail signed only for the sender's own domain, as the
+	// Agent said at the Panel's last start (mail_signing_problem.go).
+	add(mailSigningProblems(p.setting(ctx, settingMailSigningState)), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

@@ -44,13 +44,19 @@ export type ProblemKind =
     | 'security_updates'
     | 'site_down'
     | 'site_certificate'
-    | 'service_restarting';
+    | 'service_restarting'
+    | 'mail_signing_conf_kept'
+    | 'mail_signing_port25_kept'
+    | 'mail_signing_failed'
+    | 'mail_signing_unsupported';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
     'memory_sustained', 'cpu_sustained', 'mail_queue_deferred', 'security_updates',
     // alpha.127: website checks and a service that keeps restarting.
     'site_down', 'site_certificate', 'service_restarting',
+    // 20 Nov 2026: mail signed only for the sender's own domain.
+    'mail_signing_conf_kept', 'mail_signing_port25_kept', 'mail_signing_failed', 'mail_signing_unsupported',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
 
