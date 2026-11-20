@@ -55,10 +55,13 @@ const pgInsideRoleNames = `SELECT r.rolname::pg_catalog.text FROM pg_catalog.pg_
 const pgSessionsNames = `SELECT r.rolname::pg_catalog.text FROM pg_catalog.pg_stat_activity s JOIN pg_catalog.pg_roles r ON r.oid OPERATOR(pg_catalog.=) s.usesysid ` +
 	`WHERE s.datname OPERATOR(pg_catalog.=) pg_catalog.current_database() AND s.pid OPERATOR(pg_catalog.<>) pg_catalog.pg_backend_pid() AND NOT r.rolsuper`
 
-const pgDatabaseFactsStatement = `SELECT 'owner=' OPERATOR(pg_catalog.||) pg_catalog.pg_get_userbyid(d.datdba)::pg_catalog.text, ` +
-	`'acl=' OPERATOR(pg_catalog.||) coalesce(d.datacl::pg_catalog.text, ''), ` +
-	`'public=' OPERATOR(pg_catalog.||) pg_catalog.has_database_privilege('public', d.oid, 'CONNECT')::pg_catalog.text OPERATOR(pg_catalog.||) ',' OPERATOR(pg_catalog.||) pg_catalog.has_database_privilege('public', d.oid, 'TEMPORARY')::pg_catalog.text ` +
-	`FROM pg_catalog.pg_database d WHERE d.datname OPERATOR(pg_catalog.=) pg_catalog.current_database();`
+// pgDatabaseFactsStatement answers one marker per row (psql -At joins the
+// columns of one row with "|").
+const pgDatabaseFactsStatement = `SELECT x FROM pg_catalog.pg_database d CROSS JOIN LATERAL (VALUES ` +
+	`(1, 'owner=' OPERATOR(pg_catalog.||) pg_catalog.pg_get_userbyid(d.datdba)::pg_catalog.text), ` +
+	`(2, 'acl=' OPERATOR(pg_catalog.||) coalesce(d.datacl::pg_catalog.text, '')), ` +
+	`(3, 'public=' OPERATOR(pg_catalog.||) pg_catalog.has_database_privilege('public', d.oid, 'CONNECT')::pg_catalog.text OPERATOR(pg_catalog.||) ',' OPERATOR(pg_catalog.||) pg_catalog.has_database_privilege('public', d.oid, 'TEMPORARY')::pg_catalog.text)` +
+	`) v(n, x) WHERE d.datname OPERATOR(pg_catalog.=) pg_catalog.current_database() ORDER BY v.n;`
 
 const pgMonitoringStatement = `SELECT DISTINCT 'monitor=' OPERATOR(pg_catalog.||) m.rolname FROM pg_catalog.pg_auth_members am ` +
 	`JOIN pg_catalog.pg_roles g ON g.oid OPERATOR(pg_catalog.=) am.roleid JOIN pg_catalog.pg_roles m ON m.oid OPERATOR(pg_catalog.=) am.member ` +

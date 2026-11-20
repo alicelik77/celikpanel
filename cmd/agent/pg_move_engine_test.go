@@ -27,7 +27,9 @@ import (
 func s1bEngineClient(ctx context.Context, e testEngines, client, password string, stdin io.Reader, stdout io.Writer, args ...string) error {
 	binary := filepath.Join(e.dir, "root/usr/lib/postgresql/17/bin", client)
 	all := args
-	if !strings.Contains(strings.Join(args, " "), "--host") {
+	// As the host: no connection options where the arguments name a host or
+	// only ask the client's version.
+	if !strings.Contains(strings.Join(args, " "), "--host") && !(len(args) == 1 && args[0] == "--version") {
 		all = append([]string{"-h", filepath.Join(e.dir, "run"), "-U", "postgres"}, args...)
 	}
 	cmd := exec.CommandContext(ctx, binary, all...)
