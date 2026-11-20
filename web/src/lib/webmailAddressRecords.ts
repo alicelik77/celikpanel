@@ -170,8 +170,12 @@ export function confirmAskPeer(check: WebmailAddressCheck, hooks: AddHooks): Pro
                 return retryable({ state: 'unknown', title: t('dnsadd.unknownTitle'), reason: t('dnsadd.peer.unknown', vars) });
             };
             const busy = (): OperationEnd => {
-                // Said once, in the end below (no note under the step).
-                report.steps(steps('waiting', 'pending', 'pending'));
+                // The answer came (busy): the first step is done and says it
+                // answered, with no clock left running (alpha.139 lab). What
+                // the answer means is said once, in the end below (no note).
+                const answered = steps('done', 'pending', 'pending');
+                answered[0] = { ...answered[0], label: t('dnsadd.step.answered', vars) };
+                report.steps(answered);
                 return retryable({ state: 'blocked', title: t('dnsadd.busyTitle'), subtitle: t('dnsadd.busySubtitle'), reason: t('dnsadd.peer.busy', vars) });
             };
             // One request with a new identity: the decoded answer, or how it ended.

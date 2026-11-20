@@ -16,6 +16,7 @@ export const trDnsAddScreens: Record<DnsAddScreenKey, string> = {
     'dnsadd.peer.confirm': 'Ekle',
     'dnsadd.peer.progress': 'Kayıt {server} sunucusunda ekleniyor',
     'dnsadd.step.ask': '{server} sunucusuna soruluyor',
+    'dnsadd.step.answered': '{server} sunucusu yanıt verdi',
     'dnsadd.step.write': 'Kayıt {server} sunucusunda yazılıyor',
     'dnsadd.step.writeZone': 'Kayıt {zone} bölgesine yazılıyor',
     'dnsadd.step.dns': 'Genel DNS’in kaydı göstermesi',
