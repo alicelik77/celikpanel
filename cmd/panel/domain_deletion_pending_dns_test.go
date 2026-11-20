@@ -290,7 +290,8 @@ func TestAPITokenReachesTheDeletionStatus(t *testing.T) {
 // answered. The status now says the same as the 202 while the hold is the
 // backup's zone-list wait and the reconciler is armed to publish it, and a
 // second press starts nothing. Without the armed reconciler (after a panel
-// restart) or without the pair wait, it stays "incomplete" (delete again).
+// restart), with the removal set aside by the reconciler, or with no ready
+// publisher and no pair wait, it stays "incomplete" (delete again).
 func TestDeletionHeldForTheBackupsZoneListSaysItFinishesByItself(t *testing.T) {
 	f := newPendingDeletionFixture(t, "held-alone.example")
 	if err := f.panel.syncZoneToDNS(context.Background(), f.domain, false); err != nil {
@@ -351,8 +352,53 @@ func TestDeletionHeldForTheBackupsZoneListSaysItFinishesByItself(t *testing.T) {
 		t.Fatalf("status without the armed reconciler = %+v", body)
 	}
 	scheduler.armRepublish()
+
+	// alpha.140 (alpha.138 lab, carried item 3): the backup confirmed the zone
+	// list seconds after the press, so the publisher reads ready while the
+	// saved removal waits for the armed reconciler's next check, which
+	// publishes it by itself (the lab: finished 51 s later; the status said
+	// "stopped … delete again" meanwhile). It is the same wait, said the same
+	// way, and a second press still starts nothing.
 	pairWait = false
+	readyPrimary := func(*Panel, context.Context) (dnsPublisherIdentity, bool, error) {
+		return dnsPublisherIdentity{Engine: transport.DNSEngineBIND, Epoch: 1, PairRole: transport.DNSPairRolePrimary}, true, nil
+	}
+	domainDeletionStatusPublisher = readyPrimary
+	if body := f.pollStatusChangesNothing(t); body.Reason != transport.DNSPeerPendingCatchingUp ||
+		!strings.Contains(body.Message, "finishes the deletion by itself") || strings.Contains(body.Message, "Delete the domain again") {
+		t.Fatalf("status once the backup caught up = %+v", body)
+	}
+	if code, again := f.delete(t); code != http.StatusAccepted || again.Reason != domainDeletionAlreadyRunningReason {
+		t.Fatalf("second press once the backup caught up = %d %+v", code, again)
+	}
+	if s, r := f.calls(); s != syncs || r != recoveries {
+		t.Fatalf("a second press started Agent work: syncs %d->%d recoveries %d->%d", syncs, s, recoveries, r)
+	}
+	// Without a pair (held behind a publication that completed since), the
+	// reconciler publishes it at its next check too.
+	domainDeletionStatusPublisher = func(*Panel, context.Context) (dnsPublisherIdentity, bool, error) {
+		return dnsPublisherIdentity{Engine: transport.DNSEngineBIND, Epoch: 1}, true, nil
+	}
+	if body := f.pollStatusChangesNothing(t); body.Reason != domainDeletionDNSRemovalWaitingReason {
+		t.Fatalf("status held alone without a pair = %+v", body)
+	}
+	// The reconciler set this exact removal aside after a failure it does
+	// not repeat: nothing publishes it by itself, "delete again" is true.
+	domainDeletionStatusPublisher = readyPrimary
+	scheduler.mu.Lock()
+	scheduler.republishSkipped[snapshot.state.ZoneName] = snapshot.state.DesiredGeneration
+	scheduler.mu.Unlock()
 	if body := f.pollStatusChangesNothing(t); body.Reason != domainDeletionIncompleteReason {
-		t.Fatalf("status without the pair wait = %+v", body)
+		t.Fatalf("status of a removal set aside = %+v", body)
+	}
+	// Not ready for another reason (no engine running): incomplete as before.
+	scheduler.mu.Lock()
+	delete(scheduler.republishSkipped, snapshot.state.ZoneName)
+	scheduler.mu.Unlock()
+	domainDeletionStatusPublisher = func(*Panel, context.Context) (dnsPublisherIdentity, bool, error) {
+		return dnsPublisherIdentity{}, false, nil
+	}
+	if body := f.pollStatusChangesNothing(t); body.Reason != domainDeletionIncompleteReason {
+		t.Fatalf("status with no ready engine = %+v", body)
 	}
 }

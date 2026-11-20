@@ -149,6 +149,26 @@ func (d *PostgreSQLDriver) DeleteDatabase(name string) error {
 	return nil
 }
 
+// DatabaseIdentity answers whether the database exists and its oid
+// ("postgresql-oid:<oid>"), the identity a deletion is bound to (alpha.140,
+// internal/transport/database_drop_once.go). Read only.
+func (d *PostgreSQLDriver) DatabaseIdentity(name string) (bool, string, error) {
+	db, err := d.getDB("postgres")
+	if err != nil {
+		return false, "", fmt.Errorf("open PostgreSQL control database to read a database: %w", err)
+	}
+	defer db.Close()
+	var oid string
+	err = db.QueryRow(`SELECT oid::text FROM pg_catalog.pg_database WHERE datname = $1`, name).Scan(&oid)
+	if err == sql.ErrNoRows {
+		return false, "", nil
+	}
+	if err != nil {
+		return false, "", fmt.Errorf("read database %s: %w", name, err)
+	}
+	return true, "postgresql-oid:" + oid, nil
+}
+
 // ListDatabases lists all PostgreSQL databases
 func (d *PostgreSQLDriver) ListDatabases() ([]string, error) {
 	db, err := d.getDB("postgres")

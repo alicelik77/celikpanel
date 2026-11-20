@@ -35,17 +35,70 @@ type PythonCandidate struct {
 	Venv    bool   `json:"venv"`    // the venv and ensurepip modules import
 }
 
+// RuntimeFound is one runtime the probe found, as a fact a screen words in
+// its reader's language (alpha.140): the version, where it comes from
+// ("panel": installed by CelikPanel under Components; "distribution": the
+// operating system's), and for Python whether its venv module is there.
+// RuntimeFound, yoklamanın bulduğu bir çalışma ortamıdır; ekran onu okurun
+// dilinde söyler.
+type RuntimeFound struct {
+	Version string `json:"version"`
+	Source  string `json:"source"`
+	Venv    bool   `json:"venv,omitempty"`
+}
+
 // RuntimeChoice is the runtime an install uses, or why there is none.
 type RuntimeChoice struct {
 	Available bool   `json:"available"`
 	Reason    string `json:"reason,omitempty"`
 	// Detail names what was found ("Python 3.13", "Node.js 20.19.2"), so
-	// the reason is concrete.
+	// the reason is concrete. It is English, for logs and API readers; a
+	// screen builds its sentence from Found and the catalogue's versions.
 	Detail  string `json:"detail,omitempty"`
 	Path    string `json:"path,omitempty"`
 	Version string `json:"version,omitempty"`
 	NPMCLI  string `json:"npm_cli,omitempty"`
 	Source  string `json:"source,omitempty"`
+	// Found: every runtime of the app's kind the probe saw (empty: none).
+	Found []RuntimeFound `json:"found"`
+}
+
+// RuntimeNeeds is what the app needs from this server, from the catalogue:
+// "node" with its Node.js majors ("24"), or "python" with its Python 3
+// minors ("3.11", "3.12"); empty for an unknown runtime.
+// RuntimeNeeds, uygulamanın bu sunucudan istediğidir; katalogdan gelir.
+func RuntimeNeeds(app App) (string, []string) {
+	switch app.Runtime {
+	case RuntimeNode:
+		out := make([]string, 0, len(app.NodeMajors))
+		for _, major := range app.NodeMajors {
+			out = append(out, strconv.Itoa(major))
+		}
+		return RuntimeNode, out
+	case RuntimePython:
+		out := make([]string, 0, len(app.PythonMinors))
+		for _, minor := range app.PythonMinors {
+			out = append(out, fmt.Sprintf("3.%d", minor))
+		}
+		return RuntimePython, out
+	}
+	return "", nil
+}
+
+// FoundRuntimes lists what the probe saw for the app's kind of runtime.
+func FoundRuntimes(app App, nodes []NodeCandidate, pythons []PythonCandidate) []RuntimeFound {
+	out := []RuntimeFound{}
+	switch app.Runtime {
+	case RuntimeNode:
+		for _, candidate := range nodes {
+			out = append(out, RuntimeFound{Version: candidate.Version, Source: candidate.Source})
+		}
+	case RuntimePython:
+		for _, candidate := range pythons {
+			out = append(out, RuntimeFound{Version: candidate.Version, Source: "distribution", Venv: candidate.Venv})
+		}
+	}
+	return out
 }
 
 func majorOf(version string) int {
@@ -99,6 +152,12 @@ func ChooseRuntime(app App, nodes []NodeCandidate, pythons []PythonCandidate) Ru
 	if app.Deferred != "" {
 		return RuntimeChoice{Reason: ReasonDeferred, Detail: app.Deferred}
 	}
+	choice := chooseRuntime(app, nodes, pythons)
+	choice.Found = FoundRuntimes(app, nodes, pythons)
+	return choice
+}
+
+func chooseRuntime(app App, nodes []NodeCandidate, pythons []PythonCandidate) RuntimeChoice {
 	switch app.Runtime {
 	case RuntimeNode:
 		var best *NodeCandidate

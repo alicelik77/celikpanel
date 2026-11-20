@@ -287,7 +287,7 @@ test('a deletion that left something says per group what is still to do, in the 
   }
 });
 
-test('a database made again on the server is said with what pressing Delete again would do; a shared user on its own server stays untouched', async () => {
+test('a database made again on the server is said as never deleted by another press; a shared user on its own server stays untouched', async () => {
   try {
     const list = ADMIN_LIST.map((item) => (item.id === 3 ? { ...item, users: [{ id: 31, username: 'kahve_app', stays: 'server_shared' }] } : item));
     await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(list)) }, {
@@ -300,9 +300,39 @@ test('a database made again on the server is said with what pressing Delete agai
     const [request] = globalThis.page.asked;
     assert.ok(request.kept.includes('databases.delete.keptServerShared{"users":"kahve_app","name":"kahvedukkani_dr_test_magaza"}'), JSON.stringify(request.kept));
     assert.ok(has('err.DATABASE_DELETE_USERS_LEFT.exists{"name":"kahvedukkani_dr_test_magaza","users":"kahve_app","pending":"","rights":""}'), text());
-    // The real sentence says what another press would delete.
-    assert.match(enScreens['err.DATABASE_DELETE_USERS_LEFT.exists'], /Pressing Delete again deletes the database that is there now/);
-    assert.match(trScreens['err.DATABASE_DELETE_USERS_LEFT.exists'], /Sil’e yeniden basmak, şu an orada olan veritabanını/);
+    // alpha.140: another press never deletes the database made meanwhile
+    // (the server binds the deletion to the database it was asked for); the
+    // sentence says so and who decides about that database.
+    assert.match(enScreens['err.DATABASE_DELETE_USERS_LEFT.exists'], /CelikPanel does not delete it/);
+    assert.match(trScreens['err.DATABASE_DELETE_USERS_LEFT.exists'], /CelikPanel onu silmez/);
+    assert.doesNotMatch(enScreens['err.DATABASE_DELETE_USERS_LEFT.exists'], /deletes the database that is there now/);
+    assert.doesNotMatch(trScreens['err.DATABASE_DELETE_USERS_LEFT.exists'], /orada olan veritabanını içindeki her şeyle birlikte siler/);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('a database whose earlier deletion got no answer and whose identity is not known is never deleted on a guess: the administrator is told what to check, a customer whom to ask', async () => {
+  const unverified = (extra) => () => Response.json({ error: 'raw english', code: 'DATABASE_DELETE_UNVERIFIED', vars: { name: 'kahvedukkani_dr_test_magaza' }, ...extra }, { status: 409 });
+  try {
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST)) }, { '/api/v1/databases/3': unverified({ reason: 'administrator' }) });
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    assert.ok(has('err.DATABASE_DELETE_UNVERIFIED.administrator{"name":"kahvedukkani_dr_test_magaza"}'), text());
+    assert.ok(!has('raw english'), 'the server’s English sentence is drawn');
+    assert.ok(rows().includes('kahvedukkani_dr_test_magaza'), 'a refused delete removed the row');
+    await cleanup();
+
+    await mount('customer', { [VISIBLE_DATABASES_URL]: json(answer([db(3, 'kahvedukkani_dr_test_magaza', owner('musteri1', { self: true }), 'kahvedukkani.dr.test')])) },
+      { '/api/v1/databases/3': unverified({}) });
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    assert.ok(has('err.DATABASE_DELETE_UNVERIFIED{"name":"kahvedukkani_dr_test_magaza"}'), text());
+    assert.match(enScreens['err.DATABASE_DELETE_UNVERIFIED'], /Ask the server administrator/);
+    assert.match(enScreens['err.DATABASE_DELETE_UNVERIFIED.administrator'], /Check it on the database server/);
+    assert.match(trScreens['err.DATABASE_DELETE_UNVERIFIED'], /Sunucu yöneticisinden/);
   } finally {
     await cleanup();
   }
@@ -372,7 +402,7 @@ test('a refused delete says the reason in the reader’s words: the administrato
     // Both languages carry both sentences, with the same placeholders.
     for (const key of ['err.DATABASE_ENGINE_CREDENTIAL_REFUSED', 'err.DATABASE_ENGINE_CREDENTIAL_REFUSED.administrator', 'err.DATABASE_ENGINE_UNREACHABLE', 'err.DATABASE_ENGINE_UNREACHABLE.administrator',
       'err.DATABASE_DELETE_FAILED', 'err.DATABASE_DELETE_UNCONFIRMED', 'err.DATABASE_DELETE_USERS_LEFT', 'err.DATABASE_DELETE_USERS_LEFT.unknown', 'err.DATABASE_DELETE_USERS_LEFT.rights', 'err.DATABASE_DELETE_USERS_LEFT.mixed', 'err.DATABASE_DELETE_USERS_LEFT.exists', 'err.DATABASE_DELETE_USERS_LEFT.unknown_rights', 'err.DATABASE_DELETE_USERS_LEFT.unknown_mixed', 'databases.delete.keptServerShared',
-      'err.DATABASE_DELETE_RECORDS_LEFT', 'err.DATABASE_ENGINE_BUSY', 'databases.delete.lostUsers', 'databases.delete.keptShared', 'databases.delete.keptAccount', 'databases.delete.keptServer',
+      'err.DATABASE_DELETE_RECORDS_LEFT', 'err.DATABASE_DELETE_UNVERIFIED', 'err.DATABASE_DELETE_UNVERIFIED.administrator', 'err.DATABASE_ENGINE_BUSY', 'databases.delete.lostUsers', 'databases.delete.keptShared', 'databases.delete.keptAccount', 'databases.delete.keptServer',
       'databases.delete.usersUnknown', 'databases.deletedNamed', 'databases.keptNote.otherRights', 'databases.keptNote.unchecked', 'databases.keptNote.server']) {
       assert.ok(enScreens[key] && trScreens[key], key);
       const holes = (value) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',');

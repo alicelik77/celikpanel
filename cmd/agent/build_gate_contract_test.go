@@ -293,6 +293,23 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.140: a deletion bound to the database it was asked for.
+			name: "DatabaseIdentityV1",
+			run: func(expected string) string {
+				var response transport.DatabaseIdentityResponse
+				_ = agent.DatabaseIdentityV1(&transport.DatabaseIdentityRequest{ExpectedBuildCommit: expected, Type: "mysql", Name: "shop"}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "DropDatabaseOnceV1",
+			run: func(expected string) string {
+				var response transport.DropDatabaseOnceResponse
+				_ = agent.DropDatabaseOnceV1(&transport.DropDatabaseOnceRequest{ExpectedBuildCommit: expected, Type: "mysql", Name: "shop", Identity: "x"}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.134: rights by exact name.
 			name: "DatabaseGrantFormsScanV1",
 			run: func(expected string) string {

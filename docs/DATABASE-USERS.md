@@ -71,7 +71,20 @@ same rules.
   PostgreSQL its open sessions are ended first), then every user recorded for
   it that nothing else uses, with the removal above; the records are removed
   last, in one transaction, so an interrupted deletion keeps the database
-  listed and the same Delete finishes it. A user stays when another database
+  listed and the same Delete finishes it. The drop happens at most once
+  (alpha.140): before it, the deletion reads the database's identity on the
+  engine (PostgreSQL: its oid; this machine's MariaDB: the database
+  directory's device, inode, inode generation and birth time) and keeps it
+  in a marker of the record (panel_settings `database_delete_v1:<id>`); the
+  Agent drops only while the engine shows that identity. A later press
+  after a lost answer, a stop or a step that did not finish never drops a
+  database of the same name made in the meantime: it finishes the users and
+  records, and while such a database is there it leaves it and its users
+  alone ("exists": the server administrator decides about it, then Delete
+  finishes). Without an identity (no birth times on the filesystem; a
+  MariaDB reached with a record's own account) a later press drops nothing
+  it cannot tell apart (DATABASE_DELETE_UNVERIFIED). The marker goes with
+  the records. A user stays when another database
   uses the same engine account (the engine and the name, across every server
   record of that engine), when it is recorded for another server record or
   subscription, and when it is an engine's or CelikPanel's own account

@@ -9009,3 +9009,59 @@ until the backup reports ready.
 - **Open.** The lab run on a real pair. The authentication layer's own 401s
   write no journal line. The setup review's zone-wide rule itself (a narrower
   rule is a separate lane). **No P0 item is closed.**
+
+### Branches fix/db-delete-once and fix/ai-apps-truthful (a database is dropped once, bound to its identity; a held domain deletion says it waits; AI apps say what is missing; no schema change; invariants 2 and 4; D-024; D-025; 2026-11-20, candidate alpha.140)
+
+- **Why it is here.** A database deletion is a two-step mutation (the
+  engine's drop, then the panel's records) whose retry is the owner's
+  recovery path: invariant 4 (durable checkpoint before the engine step,
+  bounded idempotent continuation, never a second unknown mutation) and
+  invariant 2 (unknown is not absent or failed).
+- **Defect (carried item 12, shown before the fix).** Every press
+  sent `DROP DATABASE IF EXISTS <name>`. After a lost answer, users or rights
+  not all removed, or records not written, the record stayed listed; a
+  database of the same name made meanwhile (the customer's own user keeps its
+  exact-name rights until the deletion finishes; by hand; by a restore or an
+  installer) was dropped by the next press with its content; the same on a
+  domain deletion's retry.
+- **Contract.** Before the first drop the panel reads the database's identity
+  (`Agent.DatabaseIdentityV1`: PostgreSQL oid; this machine's MariaDB: the
+  database directory's device, inode, inode generation and birth time;
+  through a record's own credential: PostgreSQL oid, MariaDB none) and writes
+  it to `panel_settings` `database_delete_v1:<id>` (state `sent`) before
+  anything is dropped. `Agent.DropDatabaseOnceV1` drops only while the engine
+  shows that identity (dropped / absent / replaced; a drop statement whose
+  client failed is read again). After any of the three the marker is
+  `dropped` and later presses only finish users and records; a database of
+  the name made meanwhile is left with its users. A later press without an
+  identity drops nothing (`DATABASE_DELETE_UNVERIFIED`). A verified refusal
+  or failure clears the marker this press wrote; an unknown result keeps it;
+  the records' transaction removes it (and markers orphaned by a cascade).
+- **Held domain deletion (alpha.138 lab).** A removal held for the backup's
+  zone-list confirmation with the reconciler armed reads as the same wait when
+  the publisher is ready (the backup confirmed; the next check publishes it);
+  "incomplete" only when the reconciler is not armed, set the removal aside,
+  or no engine is ready. Read only.
+- **AI apps (PR #338).** The generic install request for a component
+  installed by version is refused before anything is queued
+  (`COMPONENT_INSTALLED_BY_VERSION`); the AI apps' facts are additive; no
+  lifecycle mutation is added.
+- **Schema / version transition.** None. Additive panel setting rows, Agent
+  RPCs and refusal codes. An older Agent has neither RPC, so a mixed pair
+  drops nothing; alpha.139 ignores the marker rows (its deletion behaves as
+  before).
+- **Recovery.** A deletion interrupted anywhere is continued by the same
+  Delete: before the marker nothing happened; with `sent` the next press is
+  bound to the stored identity; with `dropped` it finishes without a drop.
+  Nothing is retried automatically.
+- **Evidence.** `cmd/panel/database_delete_once_test.go` (failed on
+  alpha.139: lost answer on MariaDB and PostgreSQL, users left, no identity,
+  the domain retry, a record's own credential), `database_delete_test.go`,
+  `domain_deletion_pending_dns_test.go`; `cmd/agent/database_drop_once_test.go`
+  (directory identity on real ext4); `component_installed_by_version_test.go`,
+  `service_apps_os_test.go`; web `databases-page-alpha133.test.mjs`,
+  `ai-apps-truthful-alpha140.test.mjs`.
+- **Open.** No real MariaDB or PostgreSQL ran (lab). The create
+  compensations still drop by name what their own request made; the
+  "another database has the name" end has no in-panel way to close the
+  record. **No P0 item is closed.**

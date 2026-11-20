@@ -39,6 +39,8 @@ type fakeServiceAppNative struct {
 	proof        *transport.SandboxProof
 	generations  map[int]int
 	sandboxReads int
+	// probeErr makes the probe fail (the Agent cannot say).
+	probeErr error
 }
 
 func newFakeServiceAppNative() *fakeServiceAppNative {
@@ -52,6 +54,9 @@ func newFakeServiceAppNative() *fakeServiceAppNative {
 func (f *fakeServiceAppNative) probe(context.Context) (transport.ServiceAppProbeResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.probeErr != nil {
+		return transport.ServiceAppProbeResponse{}, f.probeErr
+	}
 	return transport.ServiceAppProbeResponse{Apps: append([]transport.ServiceAppAvailability(nil), f.probeApps...)}, nil
 }
 
@@ -372,24 +377,96 @@ func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
 	}
 }
 
-func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
-	f := newServiceAppFixture(t)
+// setOpenWebUIOnPython313 makes the probe say what Debian 13 says.
+func (f serviceAppFixture) setOpenWebUIOnPython313() {
 	f.native.mu.Lock()
 	for i := range f.native.probeApps {
 		if f.native.probeApps[i].AppID == "open-webui" {
-			f.native.probeApps[i] = transport.ServiceAppAvailability{AppID: "open-webui", Reason: serviceapps.ReasonOSUnsupported, Detail: "needs Python 3.11 or 3.12; this system has Python 3.13"}
+			f.native.probeApps[i] = transport.ServiceAppAvailability{AppID: "open-webui", Reason: serviceapps.ReasonOSUnsupported,
+				Detail: "needs Python 3.11 or 3.12; this system has Python 3.13", FoundKnown: true,
+				Found: []transport.ServiceAppRuntimeFound{{Version: "3.13", Source: "distribution", Venv: true}}}
 		}
 	}
 	f.native.mu.Unlock()
+	resetServiceAppProbeCache()
+}
+
+func (f serviceAppFixture) domainApps(t *testing.T, userID int, domainID string) map[string]serviceAppAppView {
+	t.Helper()
+	rec := f.as(t, userID, http.MethodGet, "/api/v1/domains/"+domainID+"/service-apps", "")
+	wantStatus(t, rec, http.StatusOK, "")
+	var view serviceAppsDomainView
+	if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]serviceAppAppView{}
+	for _, app := range view.Apps {
+		out[app.ID] = app
+	}
+	return out
+}
+
+func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
+	f := newServiceAppFixture(t)
+	// An offer made while the app could run (or before this release) stays
+	// recorded; it no longer gives the app on a system that cannot run it.
 	f.offer(t, "open-webui")
+	f.setOpenWebUIOnPython313()
+
+	// The customer neither sees it nor can install it; nothing is recorded.
+	if _, shown := f.domainApps(t, 9703, "9902")["open-webui"]; shown {
+		t.Fatal("an app that cannot run on this operating system was shown to the customer")
+	}
 	rec := f.as(t, 9703, http.MethodPost, "/api/v1/domains/9902/service-apps/install",
 		`{"app":"open-webui","owner_email":"owner@customer.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`)
-	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
-	if !strings.Contains(rec.Body.String(), `"reason":"os_unsupported"`) || !strings.Contains(rec.Body.String(), "Python 3.13") {
-		t.Fatalf("refusal: %s", rec.Body.String())
-	}
+	wantStatus(t, rec, http.StatusConflict, errCodeNotOffered)
 	if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs`); n != 0 {
 		t.Fatal("a refused install left a record")
+	}
+
+	// The administrator sees it with the facts behind the reason: what the
+	// catalogue needs and what this server has.
+	adminView := f.domainApps(t, 9701, "9902")["open-webui"]
+	if adminView.Reason != serviceapps.ReasonOSUnsupported || strings.Join(adminView.Needs, ",") != "3.11,3.12" ||
+		!adminView.FoundKnown || len(adminView.Found) != 1 || adminView.Found[0].Version != "3.13" {
+		t.Fatalf("administrator's entry: %+v", adminView)
+	}
+	// Acting for the account the administrator gets the true reason, with
+	// the runtime and the catalogue's versions for the screen's sentence.
+	rec = f.as(t, 9701, http.MethodPost, "/api/v1/domains/9902/service-apps/install",
+		`{"app":"open-webui","owner_email":"owner@customer.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`)
+	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+	var refusal apiErrorBody
+	if err := json.Unmarshal(rec.Body.Bytes(), &refusal); err != nil {
+		t.Fatal(err)
+	}
+	if refusal.Reason != serviceapps.ReasonOSUnsupported || refusal.Vars["runtime"] != "Python" || refusal.Vars["needs"] != "3.11 / 3.12" {
+		t.Fatalf("refusal: %s", rec.Body.String())
+	}
+	// It cannot be offered again here.
+	app, _ := serviceapps.Lookup("open-webui")
+	rec = f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/open-webui/offer", `{"risk_digest":"`+app.RiskDigest()+`"}`)
+	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+	if !strings.Contains(rec.Body.String(), `"reason":"os_unsupported"`) {
+		t.Fatalf("offer: %s", rec.Body.String())
+	}
+	// Catalog management keeps the entry with the reason and the facts.
+	rec = f.as(t, 9701, http.MethodGet, serviceAppsAdminPath, "")
+	wantStatus(t, rec, http.StatusOK, "")
+	var page struct {
+		Apps []serviceAppAdminEntry `json:"apps"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, entry := range page.Apps {
+		if entry.ID == "open-webui" {
+			found = entry.Reason == serviceapps.ReasonOSUnsupported && strings.Join(entry.Needs, ",") == "3.11,3.12" && entry.FoundKnown
+		}
+	}
+	if !found {
+		t.Fatalf("Catalog management: %s", rec.Body.String())
 	}
 	// A site without a certificate is an unmet prerequisite.
 	f.exec(t, `UPDATE sites SET ssl_enabled = 0 WHERE id = 9941`)

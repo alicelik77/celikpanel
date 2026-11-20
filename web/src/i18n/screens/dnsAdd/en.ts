@@ -24,6 +24,7 @@ export const enDnsAddScreens = {
     'dnsadd.peer.confirm': 'Add',
     'dnsadd.peer.progress': 'Adding the record on {server}',
     'dnsadd.step.ask': 'Asking {server}',
+    'dnsadd.step.answered': '{server} answered',
     'dnsadd.step.write': 'The record is written on {server}',
     'dnsadd.step.writeZone': 'The record is written to the zone {zone}',
     'dnsadd.step.dns': 'Public DNS shows the record',

@@ -337,6 +337,11 @@ test('a busy main server: nothing added, said with who acts and next, Ask again 
     assert.equal(end.reason, fill(en['dnsadd.peer.busy'], { server: 'primary.example.com' }));
     assert.match(end.reason, /Who acts: .*Next:/);
     assert.equal(lastRun().steps[0].note, undefined, 'said once, in the end, not again under the step');
+    // alpha.139 lab: the answer came, so the first step no longer waits (no
+    // clock running) and says that the main server answered.
+    assert.equal(lastRun().steps[0].state, 'done');
+    assert.equal(lastRun().steps[0].label, fill(en['dnsadd.step.answered'], { server: 'primary.example.com' }));
+    assert.match(trDnsAddScreens['dnsadd.step.answered'], /yanıt verdi/);
     assert.equal(paced.length + reasks.length, 0, 'busy is not re-asked by itself');
     assert.ok(attr('data-webmail-peer-offer').length > 0, 'the offer stays');
     await act(async () => { end.fix.run(); });
