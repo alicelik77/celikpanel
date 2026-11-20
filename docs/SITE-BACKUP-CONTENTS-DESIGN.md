@@ -15,7 +15,7 @@ keeps in its home was outside every backup, and the backup screen did not say so
 | Hosting (PHP, static, WordPress, Node.js) | `public_html` (Node.js keeps its app and `node_modules` there too) | yes |
 | Program (`runtime_app`, kind `program`) | `app/bin`, `app/config`, `app/data` (`internal/siteruntime/siteruntime.go` `Layout`, docs/RUNTIME-APPS.md §2) | **no** |
 | Python app (`runtime_app`, kind `python`) | `app/src`, `app/data`, `app/config`, `app/venv-<n>` (docs/RUNTIME-APPS.md §18.3) | **no** |
-| Service apps (n8n, Open WebUI) | `apps/<app>/data`, `apps/<app>/config`, `apps/<app>/dist`, `apps/<app>/app-<version>` (`internal/serviceapps/render.go` `Layout`) | **no** |
+| Service apps (n8n) | `apps/<app>/data`, `apps/<app>/config`, `apps/<app>/dist`, `apps/<app>/app-<version>` (`internal/serviceapps/render.go` `Layout`) | **no** |
 | Environment of a program | `/etc/celikpanel-runtime/celikrt-<id>.service.env`, root 0600; public values also in the Panel's `runtime_apps.env_public`, secret values only in the file | no (and stays out, see below) |
 | Environment of a service app | `/etc/celikpanel-svcapps/celiksvc-<id>.env`, root 0600; secrets only in the file | no (stays out) |
 
