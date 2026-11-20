@@ -291,7 +291,7 @@ Uygulama kataloğunun (4.5) yanında, 4.4'ün üzerine kurulan üçüncü taraf
 yazılımlardan biri de yapay zekâ ve otomasyon uygulamaları kataloğudur
 ([AI-APPS.tr.md](AI-APPS.tr.md)). İki katalog aynı `app:<id>` sunum adlarını
 paylaşır (kimlikleri çakışmaz); her biri aşağıdaki kendi sunma kuralını korur. Her uygulama bir
-sunumdur, `app:<id>` (örneğin `app:n8n`, `app:open-webui`); birini kullanmak
+sunumdur, `app:<id>` (örneğin `app:n8n`); birini kullanmak
 ayrıca **Yapay zekâ ve otomasyon uygulamaları** iznini (`service_apps`) ister.
 
 - **Sunulana kadar kapalı.** PHP ve Node.js sürümlerinin aksine bir uygulama

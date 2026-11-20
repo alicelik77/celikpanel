@@ -149,6 +149,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
+		Agent.PostgreSQLDatabaseEncodingsV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.MailRelayStatusV1 Agent.MailServerSettingsStatusV1 Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
 		Agent.MailPasswordFingerprintV1
@@ -541,6 +542,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetPostgreSQLClusterPortV1":     agentRPCDatabaseTimeout,
 	"Agent.CopyPostgreSQLDatabaseV1":       agentRPCDeploymentTimeout,
 	"Agent.DropPostgreSQLDatabaseV1":       agentRPCDatabaseTimeout,
+	// 20 Nov 2026: every PostgreSQL database's encoding, one read for a list.
+	"Agent.PostgreSQLDatabaseEncodingsV1": agentRPCStandardReadTimeout,
 	// alpha.130: leftover clusters of removed majors (archive may be large).
 	"Agent.PostgreSQLLeftoverCleanupV1":  agentRPCDatabaseTimeout,
 	"Agent.RemovePostgreSQLLeftoverV1":   agentRPCDeploymentTimeout,

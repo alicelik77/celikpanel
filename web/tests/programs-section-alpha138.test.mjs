@@ -376,7 +376,8 @@ test('an app card shown beside a program offers nothing that would publish the a
     /install\.active && install\.serving && !notServing && \(/,
     /install\.update_available && !busy && !republishRefused && \(/,
     /retryKind === 'install' && !install\.version && app && !republishRefused && \(/,
-    /retryKind === 'update' && !republishRefused && \(/,
+    // alpha.141: and none for a withdrawn app.
+    /retryKind === 'update' && !republishRefused && !app\?\.withdrawn && \(/,
   ]) assert.match(source, guard);
   // Stop, the logs and the removal stay.
   assert.match(source, /<Button variant="danger" icon=\{Trash2\} disabled=\{busy \|\| !!acting\} onClick=\{remove\}>/);

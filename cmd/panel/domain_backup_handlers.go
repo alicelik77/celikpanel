@@ -491,10 +491,11 @@ func (p *Panel) authorizeRestoreDatabases(ctx context.Context, d backupDomain, i
 			return errUnsafeBackupMetadata
 		}
 		identity, err := p.databaseIdentity(ctx, d, ids[0])
-		if err == nil {
-			req.Database = identity
+		if err != nil {
+			return err
 		}
-		return err
+		req.Database = identity
+		return p.addRestoreCredentials(ctx, req, identity)
 	case backupspec.TypeFull:
 		ids, err := inspectedDatabaseIDs(inspection)
 		if err != nil {
@@ -507,11 +508,51 @@ func (p *Panel) authorizeRestoreDatabases(ctx context.Context, d backupDomain, i
 				return err
 			}
 			req.Databases = append(req.Databases, identity)
+			if err := p.addRestoreCredentials(ctx, req, identity); err != nil {
+				return err
+			}
 		}
 		return nil
 	default:
 		return errUnsafeBackupMetadata
 	}
+}
+
+// addRestoreCredentials adds the database's own account to a restore (S1,
+// 20 Nov 2026): the user recorded first for it and its stored password, as
+// the import uses. The Agent loads the backup's SQL with that account's
+// rights only; a database without one is refused there, before anything is
+// written, with what to do.
+func (p *Panel) addRestoreCredentials(ctx context.Context, req *backupspec.RestoreRequest, identity backupspec.DatabaseIdentity) error {
+	user, password, err := p.databaseLoadCredential(ctx, identity.ID)
+	if err != nil || user == "" || password == "" {
+		return err
+	}
+	req.Credentials = append(req.Credentials, backupspec.DatabaseCredential{ID: identity.ID, User: user, Password: password})
+	return nil
+}
+
+// databaseLoadCredential is a database's own account: the user recorded
+// first for it and its stored password ("" when there is none).
+func (p *Panel) databaseLoadCredential(ctx context.Context, databaseID int) (string, string, error) {
+	var user, sealed string
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT COALESCE((SELECT u.username FROM database_user_grants g JOIN database_users u ON u.id = g.user_id
+		                 WHERE g.database_id = d.id ORDER BY g.id LIMIT 1), ''),
+		       COALESCE((SELECT u.password FROM database_user_grants g JOIN database_users u ON u.id = g.user_id
+		                 WHERE g.database_id = d.id ORDER BY g.id LIMIT 1), '')
+		FROM databases_v2 d WHERE d.id = ?`, databaseID).Scan(&user, &sealed)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", nil
+	}
+	if err != nil || user == "" || sealed == "" || p.secrets == nil {
+		return "", "", err
+	}
+	password, err := p.secrets.Decrypt(sealed)
+	if err != nil {
+		return "", "", err
+	}
+	return user, password, nil
 }
 
 func inspectedDatabaseIDs(inspection backupspec.InspectResponse) ([]int, error) {

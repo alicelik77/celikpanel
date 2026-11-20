@@ -3,10 +3,10 @@ id: ai-apps
 title: AI and automation apps
 roles: [admin, reseller, customer]
 topics: [domain.programs.ai#ai-apps]
-keywords: [ai, n8n, open webui, automation, workflow, chat, openai, api key, security hold]
+keywords: [ai, n8n, automation, workflow, open webui, withdrawn, security hold]
 ---
 
-**AI & automation**, in a domain's **Programs** section, runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS.
+**AI & automation**, in a domain's **Programs** section, runs an app such as n8n (workflow automation) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS.
 
 ## Before you install {#ai-apps}
 
@@ -15,20 +15,19 @@ The page says what is still needed, and who provides it:
 - **A website and a certificate.** Apps open only over HTTPS. If the domain has no certificate yet, get one first in the **Security** section.
 - **A separate subdomain**, such as `n8n.example.com`, is best: the domain shows the app instead of its website. The website's files stay and come back when the app is removed.
 - **The offer.** Nothing can be installed until the administrator offers the app, and your plan must include it. Otherwise the row says whom to ask.
-- **The server.** n8n needs Node.js 24, which the administrator installs. Open WebUI runs only on some systems; the row says so when it cannot run here.
+- **The server.** n8n needs Node.js 24, which the administrator installs under Components → Node.js; the row says so when it is missing.
 
 ## Installing {#installing}
 
 1. Press **Install** beside the app.
 2. Enter the **App administrator’s e-mail** and **App administrator’s password** (12 to 128 characters). You sign in to the app with these, so nobody else can claim it first. CelikPanel does not keep the password.
-3. For Open WebUI you may add **AI provider keys (optional)**. They are kept only in the app's own settings file and are never shown again.
-4. Tick that you have read what the app can do and what remains a risk, and confirm.
+3. Tick that you have read what the app can do and what remains a risk, and confirm.
 
-The install runs on the server and may take several minutes; Open WebUI is several GB. You can close the page; the page shows each step when you come back. If a step fails, the message says why and who acts; the install log shows details.
+The install runs on the server and may take several minutes. You can close the page; the page shows each step when you come back. If a step fails, the message says why and who acts; the install log shows details.
 
 ## Using the app {#running}
 
-**Open the app** opens it in a new tab. The row shows whether it is **Running**, **Stopped** or **Running, but not answering yet**, and how much memory it uses. You can **Start**, **Stop**, **Restart** it and read its **Log**. **Change keys** replaces the provider keys or sets a new administrator password.
+**Open the app** opens it in a new tab. The row shows whether it is **Running**, **Stopped** or **Running, but not answering yet**, and how much memory it uses. You can **Start**, **Stop**, **Restart** it and read its **Log**. **Change keys** sets a new administrator password, or replaces an app's provider keys where it has them.
 
 Memory, processor and process limits are set by the administrator for every install. When a newer version comes with a panel release, **Update to …** installs it beside the running one and switches over only when it is ready.
 
@@ -38,7 +37,11 @@ The administrator can put an app on a security hold, for example when a security
 
 ## Why n8n is not available through a reseller {#n8n-resellers}
 
-n8n's licence restricts offering it to others as a hosted service. It is therefore closed to resellers and their customers, and only the administrator's own customers can use it. The row says so; there is nothing for you to do. Open WebUI is not affected.
+n8n's licence restricts offering it to others as a hosted service. It is therefore closed to resellers and their customers, and only the administrator's own customers can use it. The row says so; there is nothing for you to do.
+
+## Open WebUI was withdrawn {#withdrawn}
+
+Open WebUI was withdrawn from the catalogue on 20 November 2026: it needed too much disk and memory to install and cannot run on every supported system. It can no longer be offered, installed or updated. An install that already exists keeps running, says so on its domain, and can be stopped, started or removed there.
 
 ## Removing the app {#removing}
 

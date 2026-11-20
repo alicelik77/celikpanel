@@ -358,6 +358,11 @@ const screenPartBudgets = {
   // facts filled it. A new part, set with at least 25% headroom from its
   // Turkish file: 4.41 / 1.77 KiB.
   serviceAppsAdmin: kib(6, 2.4),
+  // 20 Nov 2026: a PostgreSQL database's text encoding on its card and the
+  // one warning for a database that is not UTF-8 (dbenc.). A new part, as
+  // the database parts are full; set with at least 25% headroom from its
+  // Turkish file.
+  dbEncoding: kib(2.5, 1.2),
   // The security release of 20 November 2026: the "Problems now" list
   // (pnow.), split out of "monitoring" when the names and ports an
   // installation held before the one name rule filled it. A new part, set

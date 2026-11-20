@@ -141,6 +141,12 @@ Yollar bucket klasörüne (önek) ya da SFTP klasörüne göredir:
   yükleme sonra yerel geri yüklemeyle aynı yoldan gider: önce o anki durumun güvenlik yedeği
   alınır ve disk kotası uygulanır.
 
+  Bu denetimler dosyanın bozulmadığını gösterir, onu kimin yazdığını değil: hedefe ve parolasına
+  sahip olan herkes bir paketi değiştirebilir. Bu yüzden bir paket hiçbir zaman sitesinin kendi
+  haklarından fazlasını almaz (20 Kasım 2026): veritabanı dökümleri her veritabanının kendi
+  kullanıcısıyla yüklenir, veritabanı sunucusunun yöneticisi olarak asla (ayrıntısı
+  [DATABASE-USERS.md](DATABASE-USERS.md) içindeki "SQL from a file" bölümünde).
+
 ## İşlemler ve size söyledikleri
 
 - **Bir seferde tek işlem.** Her gönderme ve geri yükleme kalıcı kimliği (`rb-…`) olan bir
@@ -248,17 +254,23 @@ yedeklerini listeler ve önceki sitenin paketini başka bir sitenin yedeği olar
 
    Ortam dosyaları (gizli değerler) hiçbir yedekte yoktur: programın okuduğu yere yeniden girin.
 
-6. **Her veritabanını yükleyin.**
-   - MariaDB ya da MySQL:
+6. **Her veritabanını yükleyin**, root ya da postgres olarak değil, veritabanının kendi
+   kullanıcısıyla: başkasının yazabildiği bir yerde duran paket veriden fazlasını taşıyabilir.
+   - MariaDB ya da MySQL (`--sandbox` istemcinin kabuk ve dosya komutlarını reddeder; MariaDB
+     10.5.25, 10.6.18, 10.11.8 ya da sonrası):
 
      ```sh
-     gunzip -c restore/payload/databases/12.sql.gz | mariadb veritabani_adi
+     gunzip -c restore/payload/databases/12.sql.gz | mariadb --sandbox -u veritabani_kullanicisi -p veritabani_adi
      ```
 
-   - PostgreSQL:
+   - PostgreSQL: önce ters bölüyle başlayan satırların yalnız `\restrict`,
+     `\unrestrict` ve bir tablonun verisini bitiren `\.` olduğuna bakın (başka her biri bir psql komutudur); sonra dökümü tek işlemde,
+     kullanıcının kendi nesneleri önce düşürülerek yükleyin:
 
      ```sh
-     gunzip -c restore/payload/databases/12.sql.gz | psql veritabani_adi
+     gunzip -c restore/payload/databases/12.sql.gz | grep -n '^\\' | grep -v -e 'restrict ' -e ':\\\.$'
+     gunzip -c restore/payload/databases/12.sql.gz | psql -X -v ON_ERROR_STOP=1 --single-transaction \
+         -h 127.0.0.1 -U veritabani_kullanicisi -c 'DROP OWNED BY CURRENT_USER' -f - veritabani_adi
      ```
 
    Her kimliğin veritabanı adı `manifest.json` dosyasında yazar.

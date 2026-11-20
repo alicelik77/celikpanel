@@ -138,6 +138,14 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 		return errors.New("unsupported backup type")
 	}
 
+	// S1 (20 Nov 2026): every database is loaded with its own account's
+	// rights. The account is proved before the safety backup and before
+	// anything is written; without one the restore is refused here.
+	loads, err := prepareRestoreLoads(scope, requestedDatabases, req.Credentials)
+	if err != nil {
+		return err
+	}
+
 	safety, err := a.createSafetyBackup(scope, manifest.Type, singleDatabase, requestedDatabases)
 	if err != nil {
 		if refusal := backupClusterRefusalOf(err); refusal != nil {
@@ -185,14 +193,14 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 		if _, err := validateRestoreDatabase(unpacked.Databases[0].Identity, singleDatabase); err != nil {
 			return err
 		}
-		if err := a.restoreDatabasePackage(scope, targetDir, safety.Path, singleDatabase); err != nil {
+		if err := a.restoreDatabasePackage(scope, targetDir, safety.Path, loads[singleDatabase.ID]); err != nil {
 			return err
 		}
 	case backupspec.TypeFull:
 		if _, err := validateFullRestoreSet(unpacked.databaseIdentities(), requestedDatabases); err != nil {
 			return err
 		}
-		if err := a.restoreFullPackage(scope, targetDir, safety.Path, docroot, unpacked, requestedDatabases, areas); err != nil {
+		if err := a.restoreFullPackage(scope, targetDir, safety.Path, docroot, unpacked, loadsInOrder(requestedDatabases, loads), areas); err != nil {
 			return err
 		}
 	}
@@ -404,7 +412,35 @@ func restoreFilesArchive(archivePath, docroot string) error {
 	return nil
 }
 
-func (a *Agent) restoreDatabasePackage(scope backupScope, targetDir, safetyPath string, database backupspec.DatabaseIdentity) error {
+// prepareRestoreLoads pairs every database of a restore with its own
+// account and proves each (database_owner_load.go) before anything is
+// written.
+func prepareRestoreLoads(scope backupScope, databases []backupspec.DatabaseIdentity, credentials []backupspec.DatabaseCredential) (map[int]databaseLoadTarget, error) {
+	accounts := databaseLoadAccounts(credentials)
+	siteUser := ""
+	if len(databases) > 0 {
+		siteUser = databaseLoadSiteUser(scope.SubscriptionID, scope.DomainID, scope.DomainName)
+	}
+	loads := make(map[int]databaseLoadTarget, len(databases))
+	for _, database := range databases {
+		target := databaseLoadTarget{DatabaseIdentity: database, Account: accounts[database.ID], SiteUser: siteUser}
+		if err := prepareDatabaseLoadFor(target); err != nil {
+			return nil, databaseLoadFailure(err)
+		}
+		loads[database.ID] = target
+	}
+	return loads, nil
+}
+
+func loadsInOrder(databases []backupspec.DatabaseIdentity, loads map[int]databaseLoadTarget) []databaseLoadTarget {
+	ordered := make([]databaseLoadTarget, 0, len(databases))
+	for _, database := range databases {
+		ordered = append(ordered, loads[database.ID])
+	}
+	return ordered
+}
+
+func (a *Agent) restoreDatabasePackage(scope backupScope, targetDir, safetyPath string, database databaseLoadTarget) error {
 	safetyDir := filepath.Join(filepath.Dir(targetDir), "safety")
 	safetyManifest, err := unpackBackupPackage(safetyPath, safetyDir, scope)
 	if err != nil {
@@ -413,11 +449,15 @@ func (a *Agent) restoreDatabasePackage(scope backupScope, targetDir, safetyPath 
 	if safetyManifest.Type != backupspec.TypeDatabase || len(safetyManifest.Databases) != 1 {
 		return errors.New("safety database backup is invalid")
 	}
-	if _, err := validateRestoreDatabase(safetyManifest.Databases[0].Identity, database); err != nil {
+	if _, err := validateRestoreDatabase(safetyManifest.Databases[0].Identity, database.DatabaseIdentity); err != nil {
 		return err
 	}
 	targetPayload := filepath.Join(targetDir, filepath.FromSlash(databasePayloadName(database.ID)))
 	safetyPayload := filepath.Join(safetyDir, filepath.FromSlash(databasePayloadName(database.ID)))
+	// Nothing is loaded when the account could not load all of it back.
+	if err := checkLoadableByAccount(database.DatabaseIdentity, targetPayload, safetyPayload); err != nil {
+		return databaseLoadFailure(err)
+	}
 	if err := restoreDatabaseFromFile(database, targetPayload); err != nil {
 		rollbackErr := restoreDatabaseFromFile(database, safetyPayload)
 		return restoreRollbackError(err, rollbackErr)
@@ -425,7 +465,7 @@ func (a *Agent) restoreDatabasePackage(scope backupScope, targetDir, safetyPath 
 	return nil
 }
 
-func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, docroot string, manifest backupManifest, databases []backupspec.DatabaseIdentity, plan areaRestorePlan) error {
+func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, docroot string, manifest backupManifest, databases []databaseLoadTarget, plan areaRestorePlan) error {
 	safetyDir := filepath.Join(filepath.Dir(targetDir), "safety")
 	safetyManifest, err := unpackBackupPackage(safetyPath, safetyDir, scope)
 	if err != nil {
@@ -434,8 +474,19 @@ func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, doc
 	if safetyManifest.Type != backupspec.TypeFull {
 		return errors.New("safety full backup is invalid")
 	}
-	if _, err := validateFullRestoreSet(safetyManifest.databaseIdentities(), databases); err != nil {
+	identities := make([]backupspec.DatabaseIdentity, 0, len(databases))
+	for _, database := range databases {
+		identities = append(identities, database.DatabaseIdentity)
+	}
+	if _, err := validateFullRestoreSet(safetyManifest.databaseIdentities(), identities); err != nil {
 		return err
+	}
+	for _, database := range databases {
+		if err := checkLoadableByAccount(database.DatabaseIdentity,
+			filepath.Join(targetDir, filepath.FromSlash(databasePayloadName(database.ID))),
+			filepath.Join(safetyDir, filepath.FromSlash(databasePayloadName(database.ID)))); err != nil {
+			return databaseLoadFailure(err)
+		}
 	}
 	filesPayload := filepath.Join(targetDir, filepath.FromSlash(manifest.Files.Name))
 	staged, err := prepareFilesRestore(filesPayload, docroot)
@@ -451,7 +502,7 @@ func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, doc
 	}
 	set = append(set, areas...)
 
-	attempted := make([]backupspec.DatabaseIdentity, 0, len(databases))
+	attempted := make([]databaseLoadTarget, 0, len(databases))
 	for _, database := range databases {
 		attempted = append(attempted, database)
 		targetPayload := filepath.Join(targetDir, filepath.FromSlash(databasePayloadName(database.ID)))
@@ -482,7 +533,7 @@ func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, doc
 	return nil
 }
 
-func rollbackDatabases(databases []backupspec.DatabaseIdentity, safetyDir string) error {
+func rollbackDatabases(databases []databaseLoadTarget, safetyDir string) error {
 	errorsFound := make([]error, 0)
 	for i := len(databases) - 1; i >= 0; i-- {
 		database := databases[i]

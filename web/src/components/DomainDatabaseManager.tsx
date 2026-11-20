@@ -11,7 +11,8 @@ import { passwordAcceptable } from '../lib/passwordPolicy';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
 import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
-import { decodeDomainDatabases, databaseEngine, engineLabel, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
+import { decodeDomainDatabases, databaseEncodingWarning, databaseEngine, encodingLabel, engineLabel, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
+import { DatabaseEncodingWarning } from './DatabaseEncodingWarning';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
 import { databaseDeleteDescribable, databaseDeleteUserLines, databaseDeletedKeptWords } from '../lib/databaseDeleteWords';
@@ -481,6 +482,14 @@ export function DomainDatabaseManager({
                                                 <span className="font-medium text-fg">{engineLabel(engine, db.engine_version)}</span>
                                                 <span aria-hidden="true"> · </span>
                                                 {t('ddb.createdAt')} {formatDate(new Date(db.created_at), locale)}
+                                                {/* 20 Nov 2026: a PostgreSQL database's text
+                                                    encoding, when the server said it. */}
+                                                {engine === 'postgresql' && db.encoding && (
+                                                    <>
+                                                        <span aria-hidden="true"> · </span>
+                                                        <span data-database-encoding={db.encoding}>{t('dbenc.fact', { encoding: encodingLabel(db.encoding) })}</span>
+                                                    </>
+                                                )}
                                             </p>
                                         </div>
                                         {!readOnly && (
@@ -495,6 +504,14 @@ export function DomainDatabaseManager({
                                             </button>
                                         )}
                                     </div>
+                                    {/* 20 Nov 2026: a database that is not UTF-8
+                                        says so once, with its way out. */}
+                                    {(() => {
+                                        const warning = databaseEncodingWarning(engine, db.encoding);
+                                        return warning && db.encoding
+                                            ? <DatabaseEncodingWarning kind={warning} encoding={db.encoding} canAct={!readOnly} />
+                                            : null;
+                                    })()}
                                     {/* alpha.128 (G7): the tools of this database;
                                         alpha.129: its users, each with a new
                                         password, right under its numbers. */}

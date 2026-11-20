@@ -58,7 +58,7 @@ Python apps and uploaded programs. Node.js sites render theirs through
   `ld.so /usr/bin/python3` fail.
 - **Service apps** keep alpha.118's full `/proc` view. Node.js reads
   `/proc/cpuinfo` and `/proc/meminfo`, and this has not been measured with
-  n8n and Open WebUI yet.
+  n8n yet.
 - **Node.js sites** (alpha.127) get the base set with the full `/proc` view
   (as the service apps: `os.cpus()` would see no processor, and code that
   sizes a worker pool from it would start none; `ProtectProc=invisible`

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"net/http"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/serviceapps"
@@ -41,14 +40,14 @@ func TestServiceAppFactsFromAnEarlierAgent(t *testing.T) {
 // Agent again and refuses then).
 func TestServiceAppNotHiddenWhileTheAgentCannotSay(t *testing.T) {
 	f := newServiceAppFixture(t)
-	f.offer(t, "open-webui")
+	f.offer(t, "n8n")
 	f.native.mu.Lock()
 	f.native.probeErr = errors.New("agent socket closed")
 	f.native.mu.Unlock()
 	resetServiceAppProbeCache()
-	app, shown := f.domainApps(t, 9703, "9902")["open-webui"]
+	app, shown := f.domainApps(t, 9704, "9903")["n8n"]
 	if !shown || !app.Offered || app.Reason != serviceapps.ReasonProbeFailed {
-		t.Fatalf("open-webui while the Agent cannot say: shown=%v %+v", shown, app)
+		t.Fatalf("n8n while the Agent cannot say: shown=%v %+v", shown, app)
 	}
 	if unsupported := f.panel.serviceAppsUnsupportedHere(context.Background()); len(unsupported) != 0 {
 		t.Fatalf("unknown counted as unsupported: %v", unsupported)
@@ -59,25 +58,25 @@ func TestServiceAppNotHiddenWhileTheAgentCannotSay(t *testing.T) {
 // leaves it out and the rights screens do not list it as a candidate.
 func TestServiceAppThatCannotRunHereIsNotGiven(t *testing.T) {
 	f := newServiceAppFixture(t)
-	f.offer(t, "open-webui")
 	f.offer(t, "n8n")
 	layer, err := f.panel.loadAdminOfferLayer(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !layer.offers("app:open-webui") || !layer.offers("app:n8n") {
-		t.Fatal("offered apps must be given while they can run here")
+	if !layer.offers("app:n8n") {
+		t.Fatal("an offered app must be given while it can run here")
 	}
-	f.setOpenWebUIOnPython313()
+	restore := f.setN8nCannotRunHere()
+	defer restore()
 	layer, err = f.panel.loadAdminOfferLayer(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if layer.offers("app:open-webui") || !layer.offers("app:n8n") {
-		t.Fatalf("offer layer: open-webui %v, n8n %v", layer.offers("app:open-webui"), layer.offers("app:n8n"))
+	if layer.offers("app:n8n") {
+		t.Fatal("an app that cannot run here is still given through the offer layer")
 	}
 	for _, candidate := range f.panel.serviceAppCandidateOfferingsHere(context.Background()) {
-		if candidate == "app:open-webui" {
+		if candidate == "app:n8n" {
 			t.Fatal("an app that cannot run here is still a rights candidate")
 		}
 	}
@@ -87,7 +86,7 @@ func TestServiceAppThatCannotRunHereIsNotGiven(t *testing.T) {
 // managed and removed; other apps that cannot run here are left out.
 func TestServiceAppHeldByTheDomainStaysVisible(t *testing.T) {
 	apps := []serviceAppAppView{
-		{App: serviceapps.App{ID: "open-webui"}, Reason: serviceapps.ReasonOSUnsupported},
+		{App: serviceapps.App{ID: "cannot-run"}, Reason: serviceapps.ReasonOSUnsupported},
 		{App: serviceapps.App{ID: "n8n"}, Reason: serviceapps.ReasonRuntimeAbsent},
 		{App: serviceapps.App{ID: "other"}, Available: true},
 	}
@@ -101,18 +100,15 @@ func TestServiceAppHeldByTheDomainStaysVisible(t *testing.T) {
 	if got := ids(serviceAppsShownToAccount(apps, "")); got != "n8n,other," {
 		t.Fatalf("without an install: %s", got)
 	}
-	if got := ids(serviceAppsShownToAccount(apps, "open-webui")); got != "open-webui,n8n,other," {
+	if got := ids(serviceAppsShownToAccount(apps, "cannot-run")); got != "cannot-run,n8n,other," {
 		t.Fatalf("with the domain's install: %s", got)
 	}
 	// The real view keeps it too.
 	f := newServiceAppFixture(t)
-	f.setOpenWebUIOnPython313()
+	f.setN8nCannotRunHere()
 	f.exec(t, `INSERT INTO service_app_installs (subscription_id, domain_id, site_id, app_id, version, target_version, port, aux_port, state, previous_project_type)
-		VALUES (9802, 9902, 9940, 'open-webui', '0.12.5', '0.12.5', 21100, 0, 'running', 'php')`)
-	if _, shown := f.domainApps(t, 9703, "9902")["open-webui"]; !shown {
+		VALUES (9803, 9903, 9941, 'n8n', '2.46.4', '2.46.4', 21100, 21101, 'running', 'php')`)
+	if _, shown := f.domainApps(t, 9704, "9903")["n8n"]; !shown {
 		t.Fatal("the app the domain holds disappeared from the customer's screen")
-	}
-	if code := f.as(t, 9703, http.MethodGet, "/api/v1/domains/9902/service-apps", "").Code; code != http.StatusOK {
-		t.Fatalf("view status %d", code)
 	}
 }

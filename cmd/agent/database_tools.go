@@ -126,13 +126,16 @@ const dbToolsQueryTimeout = 60 * time.Second
 
 var dbToolsQuery = func(database backupspec.DatabaseIdentity, onDatabase bool, statement string) (string, error) {
 	if database.Type == "postgresql" {
-		args := []string{"-u", "postgres", "psql", "--no-psqlrc", "--set", "ON_ERROR_STOP=on", "--tuples-only", "--no-align"}
+		extra := []string{"--tuples-only", "--no-align"}
 		if database.ClusterPort > 0 {
-			args = append(args, "--port", strconv.Itoa(database.ClusterPort))
+			extra = append(extra, "--port", strconv.Itoa(database.ClusterPort))
 		}
 		if onDatabase {
-			args = append(args, "--dbname", database.Name)
+			extra = append(extra, "--dbname", database.Name)
 		}
+		// S1: inside the customer's database, with the fixed search path
+		// (pg_admin_session.go).
+		args := pgAdminPSQLArgs("", extra...)
 		// Integration (alpha.128): a deadline, as every other database read.
 		ctx, cancel := context.WithTimeout(context.Background(), dbToolsQueryTimeout)
 		defer cancel()
@@ -453,14 +456,13 @@ func (a *Agent) DatabaseImportV1(req transport.DBToolsImportRequest, resp *trans
 }
 
 func importPostgreSQL(ctx context.Context, database backupspec.DatabaseIdentity, req transport.DBToolsImportRequest, path string, resp *transport.DBToolsImportResponse) {
-	port := database.ClusterPort
-	if port == 0 {
-		if resolved, err := resolvePGStatementPort(0); err == nil {
-			port = resolved
-		}
-	}
-	conn, err := connectPGAsDatabaseUser(ctx, port, database.Name, req.User, req.Password)
+	account := databaseLoadAccount{User: req.User, Password: req.Password}
+	conn, err := pgOpenLoadSession(ctx, database, account)
 	if err != nil {
+		if errors.Is(err, errLoadAdministratorRole) {
+			resp.Error = "the database's user is an administrator role, so CelikPanel does not load a file as it; nothing was changed"
+			return
+		}
 		if text, ok := pgAuthRefusal(err); ok {
 			resp.Code, resp.Error = transport.DBImportCodeAuth, text
 			return
@@ -469,36 +471,17 @@ func importPostgreSQL(ctx context.Context, database backupspec.DatabaseIdentity,
 		return
 	}
 	defer conn.Close(context.Background())
-	exec := pgconnLoadExecutor{conn: conn}
-	if err := exec.Exec(ctx, "DO $celikpanel$ BEGIN IF (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) THEN RAISE EXCEPTION 'administrator role'; END IF; END $celikpanel$"); err != nil {
-		resp.Error = "the database's user is an administrator role, so CelikPanel does not load a file as it; nothing was changed"
-		return
-	}
 	reader, closeReader, err := dbImportReader(path)
 	if err != nil {
 		resp.Code, resp.Error = transport.DBImportCodeLoadFailed, err.Error()
 		return
 	}
 	defer closeReader()
-	if err := exec.Exec(ctx, "BEGIN"); err != nil {
-		resp.Error = boundedText(pgErrorText(err), 300)
+	loadErr := pgLoadTransaction(ctx, conn, reader, req.EmptyFirst)
+	if loadErr == nil {
+		resp.Success = true
 		return
 	}
-	loadErr := error(nil)
-	if req.EmptyFirst {
-		loadErr = exec.Exec(ctx, "DROP OWNED BY CURRENT_USER")
-	}
-	if loadErr == nil {
-		loadErr = loadPGStatements(ctx, exec, reader)
-	}
-	if loadErr == nil {
-		loadErr = exec.Exec(ctx, "COMMIT")
-		if loadErr == nil {
-			resp.Success = true
-			return
-		}
-	}
-	_ = exec.Exec(context.Background(), "ROLLBACK")
 	resp.RolledBack = true
 	var refusal *pgLoadRefusal
 	if errors.As(loadErr, &refusal) {
@@ -591,31 +574,30 @@ func importMariaDB(ctx context.Context, scope backupScope, database backupspec.D
 		resp.Code, resp.Error = transport.DBImportCodeNoSiteAccount, "this domain has no hosting account to load the file under; nothing was changed"
 		return
 	}
-	argv := []string{client, "--no-defaults", "--sandbox", "--batch", "--protocol=socket",
-		"--user=" + req.User, "--database=" + database.Name, "--default-character-set=utf8mb4"}
-	env := []string{"MYSQL_PWD=" + req.Password}
+	target := databaseLoadTarget{DatabaseIdentity: database, Account: databaseLoadAccount{User: req.User, Password: req.Password}, SiteUser: username}
 	// The sign-in is tried first, so a stale password changes nothing.
-	if output, err := runDatabaseClientAsSiteUser(ctx, username, argv, env, strings.NewReader("SELECT 1;\n")); err != nil {
-		if mariadbAccessDeniedRe.MatchString(output) {
+	if err := mariadbSignIn(ctx, username, database, target.Account); err != nil {
+		var refusal *databaseLoadRefusal
+		if errors.As(err, &refusal) && refusal.Code == backupspec.RestoreCodeDatabaseAccount {
 			resp.Code, resp.Error = transport.DBImportCodeAuth, "MariaDB refused the password CelikPanel has stored for this database's user; it was probably changed outside the panel"
 			return
 		}
-		resp.Error = "could not connect to MariaDB as the database's user: " + boundedText(strings.TrimSpace(output+" "+err.Error()), 300)
+		resp.Error = boundedText(err.Error(), 400)
 		return
 	}
 	if req.EmptyFirst {
 		if err := mariadbEmptyDatabase(database.Name); err != nil {
-			rollbackMariaDBImport(scope, database, safetyPath, err, resp)
+			rollbackMariaDBImport(scope, target, safetyPath, err, resp)
 			return
 		}
 	}
 	reader, closeReader, err := dbImportReader(path)
 	if err != nil {
-		rollbackMariaDBImport(scope, database, safetyPath, err, resp)
+		rollbackMariaDBImport(scope, target, safetyPath, err, resp)
 		return
 	}
 	defer closeReader()
-	output, err := runDatabaseClientAsSiteUser(ctx, username, argv, env, reader)
+	output, err := mariadbLoadAsAccount(ctx, username, database, target.Account, reader)
 	if err == nil {
 		resp.Success = true
 		return
@@ -624,12 +606,14 @@ func importMariaDB(ctx context.Context, scope backupScope, database backupspec.D
 	if strings.TrimSpace(output) == "" {
 		loadErr = err
 	}
-	rollbackMariaDBImport(scope, database, safetyPath, loadErr, resp)
+	rollbackMariaDBImport(scope, target, safetyPath, loadErr, resp)
 }
 
 // rollbackMariaDBImport puts the database back as the safety copy was:
-// everything is dropped and the copy is restored.
-func rollbackMariaDBImport(scope backupScope, database backupspec.DatabaseIdentity, safetyPath string, loadErr error, resp *transport.DBToolsImportResponse) {
+// everything is dropped and the copy is restored, with the same account's
+// rights as the import.
+func rollbackMariaDBImport(scope backupScope, target databaseLoadTarget, safetyPath string, loadErr error, resp *transport.DBToolsImportResponse) {
+	database := target.DatabaseIdentity
 	resp.Code = transport.DBImportCodeLoadFailed
 	resp.Error = boundedText(loadErr.Error(), 400)
 	work, err := newRestoreWorkDir(scope)
@@ -644,7 +628,7 @@ func rollbackMariaDBImport(scope backupScope, database backupspec.DatabaseIdenti
 			err = mariadbEmptyDatabase(database.Name)
 		}
 		if err == nil {
-			err = restoreDatabaseFromFile(database, filepath.Join(work, "safety", filepath.FromSlash(databasePayloadName(database.ID))))
+			err = restoreDatabaseFromFile(target, filepath.Join(work, "safety", filepath.FromSlash(databasePayloadName(database.ID))))
 		}
 	}
 	if err != nil {
@@ -657,7 +641,8 @@ func rollbackMariaDBImport(scope backupScope, database backupspec.DatabaseIdenti
 
 // ---- copy ----
 
-// DatabaseCopyV1 copies a database into one the Panel has just created.
+// DatabaseCopyV1 copies a database into one the Panel has just created. The
+// source's dump is loaded with the new database's own account (S1).
 func (a *Agent) DatabaseCopyV1(req transport.DBToolsCopyRequest, resp *transport.DBToolsCopyResponse) error {
 	*resp = transport.DBToolsCopyResponse{}
 	scope, source, err := dbToolsTarget(req.Source)
@@ -690,12 +675,25 @@ func (a *Agent) DatabaseCopyV1(req transport.DBToolsCopyRequest, resp *transport
 		return nil
 	}
 	defer os.RemoveAll(work)
+	load := databaseLoadTarget{
+		DatabaseIdentity: target,
+		Account:          databaseLoadAccount{User: req.TargetUser, Password: req.TargetPassword},
+		SiteUser:         databaseLoadSiteUser(scope.SubscriptionID, scope.DomainID, scope.DomainName),
+	}
+	if err := prepareDatabaseLoadFor(load); err != nil {
+		resp.Error = "load the copy: " + boundedText(err.Error(), 300) + "; nothing was copied"
+		return nil
+	}
 	dump := filepath.Join(work, "source.sql.gz")
 	if err := dumpDatabaseToFile(source, dump); err != nil {
 		resp.Error, resp.Refusal = dbToolsFailure(fmt.Errorf("copy the source database: %w", err))
 		return nil
 	}
-	if err := restoreDatabaseFromFile(target, dump); err != nil {
+	if err := checkLoadableByAccount(target, dump); err != nil {
+		resp.Error = "load the copy: " + boundedText(err.Error(), 300) + "; nothing was copied"
+		return nil
+	}
+	if err := restoreDatabaseFromFile(load, dump); err != nil {
 		resp.Error = "load the copy: " + boundedText(err.Error(), 300)
 		return nil
 	}

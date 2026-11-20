@@ -48,7 +48,7 @@ func TestImportLeavesOutADatabaseWhoseNameIsTooLongAndSaysSoFirst(t *testing.T) 
 		t.Fatal(err)
 	}
 	var steps []importStep
-	panel.importArchiveDatabases(context.Background(), set2ImportedPath, subscriptionID, serverID, domainID, preview.Databases,
+	panel.importArchiveDatabases(context.Background(), set2ImportedPath, subscriptionID, serverID, domainID, "imported.example", preview.Databases,
 		func(step string, err error) { steps = append(steps, importStep{Step: step, Detail: err.Error()}) },
 		func(step, detail string) { steps = append(steps, importStep{Step: step, OK: true, Detail: detail}) },
 		func(step, state, detail string) {
