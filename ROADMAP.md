@@ -215,185 +215,206 @@ A security release (owner, 20 November 2026). See row 64.
 3. Open WebUI is withdrawn from the catalogue; an install a domain already holds keeps running and
    can be removed.
 
-**alpha.142 — licence stage 1 (PR #327, waits for the owner's lab decision)**
+**alpha.142 — Nobody takes another account's names, ports or files (Candidate)**
+A security release (owner, 20 November 2026). See row 65.
+1. A customer's or reseller's subscription never receives a name equal to, under or above another
+   account's name or one of the server's own names; the panel and its database refuse it, with one
+   answer whoever holds the name; names an installation already holds are listed in Problems now.
+2. A domain whose system account another site or the system has is refused before anything is
+   made; the Agent proves an account's home before anything keyed by its name.
+3. A Node.js site's port comes from 3001-3999 and is never a port of another site or of the
+   server's own services.
+4. The web server follows a link only to a file of the link's own owner; per-site configuration
+   files are not readable by every account; customer directives cannot lift these rules or PHP
+   limits.
+
+**alpha.143 — Mail signed only for the sender's own domain; the cluster move and older PostgreSQL databases**
+1. Outgoing mail is signed only for the sending account's own domain (`security/s3b-mail-signing`,
+   in progress).
+2. Moving a database to another PostgreSQL cluster loads it with the database's own rights, and
+   PostgreSQL databases made before alpha.141 are closed to other accounts
+   (`security/s1b-pg-leftovers`, in progress).
+
+**alpha.144 — licence stage 1 (PR #327, waits for the owner's lab decision)**
 A lapsed or unverifiable licence never blocks a security action or another server's work, with
 expiry warnings (D-047).
 
-**alpha.143 — carried over**
-1. Moving a database to another PostgreSQL cluster (an administrator action) restores it with the
-   cluster owner's rights, so functions the customer made in it can run with the administrator's
-   rights during the move; the move loads the data with the database's own rights (alpha.141
-   review).
-2. A lab run on a server whose PostgreSQL templates are SQL_ASCII (initialised with the C
+**alpha.145 — carried over**
+1. A lab run on a server whose PostgreSQL templates are SQL_ASCII (initialised with the C
    locale, as the owner's Ubuntu 24.04 server): a UTF-8 database created through the page, the
    warning on a SQL_ASCII database's card, and Copy to UTF-8 with its stop on a byte that is not
    UTF-8. The alpha.141 lab's servers had UTF-8 clusters only, so these ran only on private
    database servers in the tests (alpha.141 lab).
-3. PostgreSQL databases made before alpha.141 still let other accounts' users sign in; close them,
-   with the owner's view first of what each would lose, then one confirmed action (alpha.141).
-4. A sign of where a remote backup came from: the panel marks the packages it made, and a restore
+2. A sign of where a remote backup came from: the panel marks the packages it made, and a restore
    says when a package was not made by this panel; never a gate, a package must stay restorable
    without the panel (alpha.141 review).
-5. The Python service-app path that no catalogue app uses since Open WebUI's withdrawal is removed
+3. The Python service-app path that no catalogue app uses since Open WebUI's withdrawal is removed
    in a later cleanup (owner, 20 November 2026).
-6. PostgreSQL: an optional sorting language when a database is created, and an in-place "convert
+4. PostgreSQL: an optional sorting language when a database is created, and an in-place "convert
    to UTF-8" for a database that is not (alpha.141).
-7. Database and database-user names that do not carry the domain's name (alpha.141 review).
-8. PostgreSQL: after a restore, the users the panel added to the database get their rights back on
+5. Database and database-user names that do not carry the domain's name (alpha.141 review).
+6. PostgreSQL: after a restore, the users the panel added to the database get their rights back on
    the objects the restore made again; today they are left without them, as before alpha.141
    (alpha.141 review).
-9. MariaDB events are included in a backup's database dump (alpha.141 review).
-10. What the alpha.140 lab did not reach on the AI apps: a domain that holds both a program and an
+7. MariaDB events are included in a backup's database dump (alpha.141 review).
+8. What the alpha.140 lab did not reach on the AI apps: a domain that holds both a program and an
    AI app (both cards; deploy refused while the app is installed; removing one of the two), and the
    customer's line "the administrator installs Node.js" while n8n is offered but Node.js 24 is
    missing. n8n (Debian 13) installed along the screen's path in that lab.
-11. One more place mixes two clocks: `cmd/panel/database_remote_start.go:42` passes the real time
+9. One more place mixes two clocks: `cmd/panel/database_remote_start.go:42` passes the real time
    to `panelUpdateRecentlyAdmitted`, whose stored admission time comes from the injectable
    update clock (`panelUpdateNow`); no test reaches it with a pinned date yet (found while fixing
    the disk-usage clock, PR #328).
-12. The test of PostgreSQL leftovers pins its clock to 8 November 2026 and compares it with a
+10. The test of PostgreSQL leftovers pins its clock to 8 November 2026 and compares it with a
    just-written file's real time (`cmd/agent/pg_leftovers_test.go:51`); harmless while the
    machine's clock is later than 9 October 2026, but it should not depend on the date.
-13. A live "waiting for …" state of the update's server-check step while the update waits for the
+11. A live "waiting for …" state of the update's server-check step while the update waits for the
    package manager or another operation. Today the updater's own lines are not kept anywhere the
    owner can read (the Agent keeps only a failure's last line); it needs a way for the updater to
    tell the panel what it waits for (alpha.137 lab; seen again in lab run 2).
-14. The component removal window's "Kaldır" can be pressed while it still says "…okunuyor…" and
+12. The component removal window's "Kaldır" can be pressed while it still says "…okunuyor…" and
    then does nothing.
-15. A recovery checker that cannot be started (for example, its file cannot be executed) is
+13. A recovery checker that cannot be started (for example, its file cannot be executed) is
    reported as "unsupported protocol"; the report names what really happened.
-16. The panel's background workers (automatic DKIM, the holding loop) are stopped and waited for
+14. The panel's background workers (automatic DKIM, the holding loop) are stopped and waited for
    before the database is closed at shutdown (today they leave harmless "database is closed"
    log lines).
-17. An automatic DKIM record left "unknown" by a stop is resumed at the next start (today only the
+15. An automatic DKIM record left "unknown" by a stop is resumed at the next start (today only the
    card's "Try again" does it).
-18. If the panel dies between removing a held item's record and writing its audit row, that one
+16. If the panel dies between removing a held item's record and writing its audit row, that one
    audit row can be missing; it is written in the same step.
-19. Out-of-step copies of CelikPanel's engine account repaired automatically.
-20. After a deletion that kept a user's accounts, the refusal to create a same-named database
+17. Out-of-step copies of CelikPanel's engine account repaired automatically.
+18. After a deletion that kept a user's accounts, the refusal to create a same-named database
    says what frees the name, in the reader's language.
-21. PostgreSQL: a user added to another database also gets rights on the tables the database's
+19. PostgreSQL: a user added to another database also gets rights on the tables the database's
    own user owns.
-22. Removing an added user no longer says "removed" while its account stays.
-23. Database sizes in the Databases list, read in one call for the whole list.
-24. What earlier releases' domain deletions left besides mail and backups: the site's logs, an
+20. Removing an added user no longer says "removed" while its account stays.
+21. Database sizes in the Databases list, read in one call for the whole list.
+22. What earlier releases' domain deletions left besides mail and backups: the site's logs, an
    orphaned crontab, the certificate check folder, and databases and users on the engines that
    no list shows.
-25. The alpha.135 lab's defects: an open Domains tab follows a deletion made elsewhere; a held
+23. The alpha.135 lab's defects: an open Domains tab follows a deletion made elsewhere; a held
    folder replaced by a link stays listed while the link is there; a removal that fails part-way
    does not leave a half-removed folder; no "Working on the server…" line under "Completed"
    after "Keep 30 days"; the home activity feed names held items in words; the rights paragraph
    of a domain deletion's result becomes one line with the rest under closed details, and the
    holding list's folder paths start closed.
-26. Earlier releases could leave one inert copy of the recovery kit in a hidden
+24. Earlier releases could leave one inert copy of the recovery kit in a hidden
    `.promote-*` folder under `/usr/libexec/celikpanel/recovery-runtimes/v1/` at each retry of
    the same version after a stop of the kit's preparation (alpha.137 no longer does); nothing
    removes those already there (alpha.137 review).
-27. The refusal "the host package manager or mutation lock is busy" is said to the owner as
+25. The refusal "the host package manager or mutation lock is busy" is said to the owner as
    "another server operation is still running"; it names the package manager or the lock
    (alpha.137 review).
-28. After the "preparation unconfirmed" stop, the attempt unit's `OnFailure=` starts release
+26. After the "preparation unconfirmed" stop, the attempt unit's `OnFailure=` starts release
    recovery, which completes the recovery kit's switch by itself once the package lock is free
    and then logs "The selected recovery entry could not be verified … runtime_changed" and is
    marked failed until its next timer run, while `runtime-status` had just said the old launcher
    cannot finish this transition by itself; say what happened and do not fail (alpha.137 lab 2).
-29. A browser that still holds an unclosed notice of an older stopped update shows that older
+27. A browser that still holds an unclosed notice of an older stopped update shows that older
    attempt on the update card instead of the newest one (and not its command); the newest
    attempt is shown (alpha.137 lab 2).
-30. The mailbox connection window says, where the server offers it, that many mail programs find
+28. The mailbox connection window says, where the server offers it, that many mail programs find
    these settings by themselves from the mail address (automatic setup) (alpha.138 mail lane).
-31. The server's own English refusals behind a site type change or a domain deletion name "the
+29. The server's own English refusals behind a site type change or a domain deletion name "the
    Programs section" instead of "the Programs tab" and "the AI & automation tab"; the page's own
    words already do (alpha.138).
-32. The user guide's pages and the account pages restyled to match the new celikpanel.net site.
-33. Roundcube's page shows the English line "-- No entries --" under the log on a Turkish page; it is
+30. The user guide's pages and the account pages restyled to match the new celikpanel.net site.
+31. Roundcube's page shows the English line "-- No entries --" under the log on a Turkish page; it is
    said in the reader's language (alpha.139 lab).
-34. Installing Roundcube where mail is missing is refused with internal role names ("smtp-server,
+32. Installing Roundcube where mail is missing is refused with internal role names ("smtp-server,
    imap-server"); it names Postfix and Dovecot and offers to install them (alpha.139 lab).
-35. Server setup's summary on a server whose pair is already joined lists "the joining server has not
+33. Server setup's summary on a server whose pair is already joined lists "the joining server has not
    connected yet" among what will not be touched; find out why and say what is true (alpha.139 lab).
-36. Going through server setup's steps with unchanged answers writes one `server.setup.draft` row in
+34. Going through server setup's steps with unchanged answers writes one `server.setup.draft` row in
    the activity list per step (15 on the way to one summary); an unchanged answer writes none
    (alpha.139 lab).
-37. A Node.js release installed from Components is checked against the official SHASUMS256.txt,
+35. A Node.js release installed from Components is checked against the official SHASUMS256.txt,
    fetched over HTTPS, but the PGP signature of that file (SHASUMS256.txt.asc) is not checked. Check
    it against the Node.js release keys kept in CelikPanel, with a plan for when those keys change
    (runtime proposal of 20 November 2026).
-38. The undo steps of a create that did not finish still drop by name what that request had just
+36. The undo steps of a create that did not finish still drop by name what that request had just
    made (the domain database's record step, site copy, the application catalogue, WordPress, the
    database tools' copy); bind them to the identity as the deletion is (alpha.140 review).
-39. When a database deletion meets a database of the same name made meanwhile, or one it cannot tell
+37. When a database deletion meets a database of the same name made meanwhile, or one it cannot tell
    apart from the one asked for, the panel has no way of its own to finish the entry: the
    administrator removes or renames that database on the server, then Delete finishes. Offer a
    way to keep that database and close the entry (alpha.140 review).
-40. An AI or automation app's install checks the free disk (and memory) it needs before it starts,
+38. An AI or automation app's install checks the free disk (and memory) it needs before it starts,
    and a running install can be stopped from the page (for the apps that remain). In the alpha.140
    lab Open WebUI's install took a 23 GB disk to 96 % (about 15 GB at the peak), and the card
    offered no way to stop it (alpha.140 lab).
-41. The Python repair's confirmation names the packages it adds (python3-venv, python3.12-venv);
+39. The Python repair's confirmation names the packages it adds (python3-venv, python3.12-venv);
    today it says nothing else needs confirming (alpha.140 lab).
-42. After a deletion whose answer was lost, the "a database of this name was made after the
+40. After a deletion whose answer was lost, the "a database of this name was made after the
    deletion" sentence says its users "were left as they are", although on MariaDB the user had
    already been removed by the first press while the panel still listed it; say what is true per
    user (alpha.140 lab).
-43. During a domain deletion the database step reads "there was no database to process" for about 9 seconds
+41. During a domain deletion the database step reads "there was no database to process" for about 9 seconds
    while the databases are being deleted (the end result is right) (alpha.140 lab; seen again in the
    alpha.141 lab).
-44. The "a database of this name was made after the deletion" state is a decision for the
+42. The "a database of this name was made after the deletion" state is a decision for the
    administrator, not an error; it is not shown in the red error colour (alpha.140 lab).
-45. `GET /api/v1/service/operation` still returns an older, failed generic Node.js install as the
+43. `GET /api/v1/service/operation` still returns an older, failed generic Node.js install as the
    latest operation (alpha.140 lab).
-46. The certificate confirmation names "Let's Encrypt" whatever certificate authority the server is
+44. The certificate confirmation names "Let's Encrypt" whatever certificate authority the server is
    set to use; it names the configured one (alpha.140 lab).
-47. A restore refused because the file held a client command or a statement beyond the database
+45. A restore refused because the file held a client command or a statement beyond the database
    owner's rights reads on the page as a general failure ("the restore did not succeed, the safety
    backup is in the local list"); the page says why, as the operation's stored detail does
    (alpha.141 lab).
-48. Every restore from a remote destination leaves the downloaded package in the site's local backup
+46. Every restore from a remote destination leaves the downloaded package in the site's local backup
    list, and a later restore of a package with the same name is refused ("a different backup with
    this name already exists") until that local copy is deleted; the downloaded copy is not left
    behind, or the restore uses it (alpha.141 lab).
-49. The refusal for a database password the server does not accept shows a technical line in English
+47. The refusal for a database password the server does not accept shows a technical line in English
    under the Turkish sentence; it is said in the reader's language (alpha.141 lab).
-50. A site's Backups section says "what this site's backup will contain could not be read" (before and
+48. A site's Backups section says "what this site's backup will contain could not be read" (before and
    after the alpha.141 update); find out why and say what is true (alpha.141 lab).
-51. Removing PostgreSQL from Components on Ubuntu 24.04 took a second press: after the first press of
+49. Removing PostgreSQL from Components on Ubuntu 24.04 took a second press: after the first press of
    Remove the window stayed open and PostgreSQL stayed installed (alpha.141 lab).
+50. The web server's group still reads every site's folder; one group per site (alpha.142 lane S3).
+51. Site accounts named by id rather than by the domain name (alpha.142 lanes S2 and S3).
+52. PHP and scheduled tasks inside the site sandbox, with per-account limits (S4).
+53. Postfix's address maps readable only by the mail services (alpha.142 lane S3).
 
 **Security series (owner, 20 November 2026: only the administrator has root; every account in its own sandbox)**
 1. SQL from a file runs with the database owner's rights; the administrator's PostgreSQL sessions
    start with a fixed search path (S1, alpha.141).
-2. Account names and the ports of sites and services: what one account can see and reach of
-   another's (S2, in progress).
-3. Files, web and mail: each account's web server, files and mail kept to that account (S3).
-4. Limits: per-account limits on processes, memory, disk and database use (S4).
+2. Names, system accounts and ports: no account takes another account's or the server's names,
+   account or ports (S2, alpha.142).
+3. Files and web: links, per-site file modes and customer directives keep each account's files to
+   that account (S3 parts 1-2, alpha.142).
+4. Mail: each account's mail kept to that account; signing only for the sender's own domain comes
+   in alpha.143 (S3, open).
+5. Limits: per-account limits on processes, memory, disk and database use (S4, open).
 
 The design releases that follow, in the approved order (owner, 12 November 2026). Each redesigns
 the insides of its sections from the approved drawings; small releases, published when ready.
 
-**alpha.144 — Overview, the domain list and the customer's home**
+**alpha.146 — Overview, the domain list and the customer's home**
 The domain's Overview, the domain list and the customer's home page as drawn, with the summary
 and health facts each needs read in one request rather than one per row.
 
-**alpha.145 — Mail**
+**alpha.147 — Mail**
 The Mail section as drawn.
 
-**alpha.146 — Databases section**
+**alpha.148 — Databases section**
 A domain's Databases section as drawn; connections from outside are prepared when the
 administrator turns them on at the server switch, with one confirmed restart there; the clearer
 PostgreSQL settings (effective values, CelikPanel's lines marked).
 
-**alpha.147 — Domain & DNS, Security**
+**alpha.149 — Domain & DNS, Security**
 Record editing and the Domain & DNS section as drawn; the Security section (certificate,
 protected folders, malware scan) as drawn.
 
-**alpha.148 — Site and Files**
+**alpha.150 — Site and Files**
 The Site and Files sections as drawn.
 
-**alpha.149 — Backups and Advanced**
+**alpha.151 — Backups and Advanced**
 The Backups and Advanced sections as drawn, with the server-settings moves they need.
 
-**alpha.150 — Administrator, reseller and account pages**
+**alpha.152 — Administrator, reseller and account pages**
 The pages of the second approved proposal (owner, 12 November 2026).
 
 Also carried from the earlier alpha.132 plan, placed in the release whose screens they touch:

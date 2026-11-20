@@ -221,189 +221,210 @@ Bir güvenlik sürümü (sahip, 20 Kasım 2026). Bkz. satır 64.
 3. Open WebUI katalogdan çıkarıldı; bir alan adının zaten tuttuğu kurulum çalışmayı sürdürür ve
    kaldırılabilir.
 
-**alpha.142 — lisans 1. aşama (PR #327, sahibin laboratuvar kararını bekliyor)**
+**alpha.142 — Kimse başka bir hesabın adlarını, portlarını ya da dosyalarını alamaz (Aday)**
+Bir güvenlik sürümü (sahip, 20 Kasım 2026). Bkz. satır 65.
+1. Bir müşterinin ya da bayinin aboneliği, başka bir hesabın adına ya da sunucunun kendi adlarından
+   birine eşit, onun altında ya da üstünde bir ad hiçbir zaman almaz; panel ve veritabanı bunu,
+   adı kim tutarsa tutsun tek bir yanıtla reddeder; bir kurulumun zaten tuttuğu adlar "Şu anki
+   sorunlar"da listelenir.
+2. Sistem hesabı başka bir sitede ya da sistemde olan bir alan adı hiçbir şey yapılmadan
+   reddedilir; Agent, bir hesabın adıyla yapılan her şeyden önce ev dizinini kanıtlar.
+3. Bir Node.js sitesinin portu 3001-3999 arasından gelir ve hiçbir zaman başka bir sitenin ya da
+   sunucunun kendi hizmetlerinin portu olmaz.
+4. Web sunucusu bir bağlantıyı yalnız bağlantının sahibinin dosyasına izler; siteye özel
+   yapılandırma dosyalarını her hesap okuyamaz; müşteri yönergeleri bu kuralları ya da PHP
+   sınırlarını kaldıramaz.
+
+**alpha.143 — Posta yalnız gönderenin kendi alan adı için imzalanır; küme taşıma ve eski PostgreSQL veritabanları**
+1. Giden posta yalnız gönderen hesabın kendi alan adı için imzalanır (`security/s3b-mail-signing`,
+   sürüyor).
+2. Bir veritabanını başka bir PostgreSQL kümesine taşımak onu veritabanının kendi haklarıyla
+   yükler; alpha.141'den önce açılan PostgreSQL veritabanları başka hesaplara kapatılır
+   (`security/s1b-pg-leftovers`, sürüyor).
+
+**alpha.144 — lisans 1. aşama (PR #327, sahibin laboratuvar kararını bekliyor)**
 Süresi geçmiş ya da doğrulanamayan lisans hiçbir güvenlik işlemini ve başka bir sunucunun işini
 engellemez; süre bitimi uyarıları (D-047).
 
-**alpha.143 — taşınanlar**
-1. Bir veritabanını başka bir PostgreSQL kümesine taşımak (yönetici işlemi) onu kümenin sahibinin
-   haklarıyla geri yükler; bu yüzden müşterinin orada yaptığı işlevler taşıma sırasında yöneticinin
-   haklarıyla çalışabilir; taşıma veriyi veritabanının kendi haklarıyla yükler (alpha.141
-   incelemesi).
-2. PostgreSQL şablonları SQL_ASCII olan (sahibin Ubuntu 24.04 sunucusu gibi C yerel ayarıyla
+**alpha.145 — taşınanlar**
+1. PostgreSQL şablonları SQL_ASCII olan (sahibin Ubuntu 24.04 sunucusu gibi C yerel ayarıyla
    kurulmuş) bir sunucuda laboratuvar denemesi: sayfadan oluşturulan UTF-8 veritabanı, bir
    SQL_ASCII veritabanının kartındaki uyarı ve UTF-8 olmayan bir baytta durmasıyla UTF-8'e
    Kopyala. alpha.141 laboratuvarının sunucularında yalnız UTF-8 kümeler vardı; bunlar yalnız
    testlerde, özel veritabanı sunucularında çalıştı (alpha.141 laboratuvarı).
-3. alpha.141'den önce açılan PostgreSQL veritabanları başka hesapların kullanıcılarının oturum
-   açmasına hâlâ izin veriyor; bunlar kapatılır, önce her birinin neyi yitireceği sahibe gösterilir,
-   sonra tek bir onaylı işlemle (alpha.141).
-4. Uzak bir yedeğin nereden geldiğinin işareti: panel kendi yaptığı paketleri işaretler, geri
+2. Uzak bir yedeğin nereden geldiğinin işareti: panel kendi yaptığı paketleri işaretler, geri
    yükleme bir paketin bu panelden gelmediğini söyler; asla bir kapı değil, paket panelsiz de geri
    yüklenebilir kalmalı (alpha.141 incelemesi).
-5. Open WebUI geri çekildiğinden beri hiçbir katalog uygulamasının kullanmadığı Python hizmet
+3. Open WebUI geri çekildiğinden beri hiçbir katalog uygulamasının kullanmadığı Python hizmet
    uygulaması yolu sonraki bir temizlikte kaldırılır (sahip, 20 Kasım 2026).
-6. PostgreSQL: veritabanı oluşturulurken isteğe bağlı bir sıralama dili ve UTF-8 olmayan bir
+4. PostgreSQL: veritabanı oluşturulurken isteğe bağlı bir sıralama dili ve UTF-8 olmayan bir
    veritabanı için yerinde "UTF-8'e dönüştür" (alpha.141).
-7. Alan adının adını taşımayan veritabanı ve veritabanı kullanıcısı adları (alpha.141 incelemesi).
-8. PostgreSQL: bir geri yüklemeden sonra panelin veritabanına eklediği kullanıcılar, geri yüklemenin
+5. Alan adının adını taşımayan veritabanı ve veritabanı kullanıcısı adları (alpha.141 incelemesi).
+6. PostgreSQL: bir geri yüklemeden sonra panelin veritabanına eklediği kullanıcılar, geri yüklemenin
    yeniden kurduğu nesnelerdeki haklarını geri alır; bugün alpha.141'den önce olduğu gibi onlarsız
    kalırlar (alpha.141 incelemesi).
-9. MariaDB olayları (event) bir yedeğin veritabanı dökümüne girer (alpha.141 incelemesi).
-10. alpha.140 laboratuvarının yapay zekâ uygulamalarında ulaşamadıkları: hem bir program hem bir
+7. MariaDB olayları (event) bir yedeğin veritabanı dökümüne girer (alpha.141 incelemesi).
+8. alpha.140 laboratuvarının yapay zekâ uygulamalarında ulaşamadıkları: hem bir program hem bir
    yapay zekâ uygulaması tutan bir alan adı (iki kart; uygulama kuruluyken yayına alma reddi;
    ikisinden birini kaldırma) ve n8n sunulduğu halde Node.js 24 eksikken müşterinin "Node.js'i
    yönetici kurar" satırı. n8n (Debian 13) o laboratuvarda ekranın yolundan kuruldu.
-11. İki saati karıştıran bir yer daha: `cmd/panel/database_remote_start.go:42`, kayıtlı kabul
+9. İki saati karıştıran bir yer daha: `cmd/panel/database_remote_start.go:42`, kayıtlı kabul
    zamanı değiştirilebilir güncelleme saatinden (`panelUpdateNow`) gelen
    `panelUpdateRecentlyAdmitted`'a gerçek zamanı veriyor; henüz sabit tarihli bir test oraya
    ulaşmıyor (disk kullanımı saatini düzeltirken bulundu, PR #328).
-12. PostgreSQL artıkları testi saatini 8 Kasım 2026'ya sabitliyor ve yeni yazılmış bir dosyanın
+10. PostgreSQL artıkları testi saatini 8 Kasım 2026'ya sabitliyor ve yeni yazılmış bir dosyanın
    gerçek zamanıyla karşılaştırıyor (`cmd/agent/pg_leftovers_test.go:51`); makinenin saati
    9 Ekim 2026'dan sonra olduğu sürece zararsız, ama tarihe bağlı olmamalı.
-13. Güncelleme paket yöneticisini ya da başka bir işlemi beklerken güncellemenin sunucu denetimi
+11. Güncelleme paket yöneticisini ya da başka bir işlemi beklerken güncellemenin sunucu denetimi
    adımında canlı bir "… bekleniyor" durumu. Bugün güncelleyicinin kendi satırları sahibin
    okuyabileceği hiçbir yerde tutulmuyor (Agent bir hatanın yalnız son satırını saklar);
    güncelleyicinin neyi beklediğini panele söylemesinin bir yolu gerekir (alpha.137 laboratuvarı;
    2. denemede yine görüldü).
-14. Bileşen kaldırma penceresinin "Kaldır" düğmesi pencere hâlâ "…okunuyor…" derken basılabiliyor
+12. Bileşen kaldırma penceresinin "Kaldır" düğmesi pencere hâlâ "…okunuyor…" derken basılabiliyor
    ve o zaman hiçbir şey yapmıyor.
-15. Başlatılamayan bir kurtarma denetleyicisi (örneğin dosyası çalıştırılamıyorsa) "desteklenmeyen
+13. Başlatılamayan bir kurtarma denetleyicisi (örneğin dosyası çalıştırılamıyorsa) "desteklenmeyen
    protokol" olarak bildiriliyor; bildirim gerçekte ne olduğunu söyler.
-16. Panelin arka plan işleri (otomatik DKIM, saklama döngüsü) kapanışta veritabanı kapanmadan önce
+14. Panelin arka plan işleri (otomatik DKIM, saklama döngüsü) kapanışta veritabanı kapanmadan önce
    durdurulur ve bitmeleri beklenir (bugün zararsız "database is closed" günlük satırları
    bırakıyorlar).
-17. Bir durdurmanın "bilinmiyor" bıraktığı otomatik DKIM kaydı sonraki açılışta sürdürülür (bugün
+15. Bir durdurmanın "bilinmiyor" bıraktığı otomatik DKIM kaydı sonraki açılışta sürdürülür (bugün
    bunu yalnız kartın "Tekrar dene" düğmesi yapıyor).
-18. Panel, saklanan bir öğenin kaydını kaldırmakla denetim satırını yazmak arasında kapanırsa o tek
+16. Panel, saklanan bir öğenin kaydını kaldırmakla denetim satırını yazmak arasında kapanırsa o tek
    denetim satırı eksik kalabiliyor; ikisi aynı adımda yazılır.
-19. CelikPanel'in motor hesabının geride kalmış kopyaları kendiliğinden onarılır.
-20. Kullanıcının hesaplarını bırakan bir silmeden sonra aynı adla veritabanı açma reddi, adı
+17. CelikPanel'in motor hesabının geride kalmış kopyaları kendiliğinden onarılır.
+18. Kullanıcının hesaplarını bırakan bir silmeden sonra aynı adla veritabanı açma reddi, adı
    neyin boşa çıkaracağını okuyanın dilinde söyler.
-21. PostgreSQL: başka bir veritabanına eklenen kullanıcı, veritabanının kendi kullanıcısına ait
+19. PostgreSQL: başka bir veritabanına eklenen kullanıcı, veritabanının kendi kullanıcısına ait
    tablolarda da hak alır.
-22. Eklenen bir kullanıcıyı kaldırmak, hesabı kalırken artık "kaldırıldı" demez.
-23. Veritabanları listesinde boyutlar, bütün liste için tek seferde okunarak.
-24. Önceki sürümlerin alan adı silmelerinin posta ve yedek dışında bıraktıkları: sitenin
+20. Eklenen bir kullanıcıyı kaldırmak, hesabı kalırken artık "kaldırıldı" demez.
+21. Veritabanları listesinde boyutlar, bütün liste için tek seferde okunarak.
+22. Önceki sürümlerin alan adı silmelerinin posta ve yedek dışında bıraktıkları: sitenin
    günlükleri, sahipsiz bir crontab, sertifika denetim klasörü, motorlarda duran ve hiçbir
    listenin göstermediği veritabanları ve kullanıcılar.
-25. alpha.135 laboratuvarının kusurları: açık Alan Adları sekmesi başka yerde yapılan silmeyi
+23. alpha.135 laboratuvarının kusurları: açık Alan Adları sekmesi başka yerde yapılan silmeyi
    izler; yerine bağlantı konmuş tutulan klasör bağlantı durdukça listede kalır; yarıda kalan
    silme yarım silinmiş klasör bırakmaz; "30 gün saklamaya al" sonrasında "Tamamlandı" altında
    "Sunucuda çalışılıyor…" satırı kalmaz; ana sayfa etkinlik akışı tutulan öğeleri sözcüklerle
    anar; alan adı silme sonucundaki haklar paragrafı tek satır olur, kalanı kapalı ayrıntılarda;
    saklama listesindeki klasör yolları kapalı başlar.
-26. Önceki sürümler, kitin hazırlığı durduktan sonra aynı sürümün her yeniden denemesinde
+24. Önceki sürümler, kitin hazırlığı durduktan sonra aynı sürümün her yeniden denemesinde
    `/usr/libexec/celikpanel/recovery-runtimes/v1/` altında gizli bir `.promote-*` klasöründe
    kurtarma kitinin etkisiz bir kopyasını bırakabiliyordu (alpha.137 artık bırakmaz); zaten var
    olanları hiçbir şey silmiyor (alpha.137 incelemesi).
-27. "the host package manager or mutation lock is busy" reddi sahibe "başka bir sunucu işlemi hâlâ
+25. "the host package manager or mutation lock is busy" reddi sahibe "başka bir sunucu işlemi hâlâ
    sürüyor" olarak söyleniyor; paket yöneticisini ya da kilidi adlandırır (alpha.137 incelemesi).
-28. "Hazırlık doğrulanamadı" duruşundan sonra girişim biriminin `OnFailure=`'u sürüm kurtarmasını
+26. "Hazırlık doğrulanamadı" duruşundan sonra girişim biriminin `OnFailure=`'u sürüm kurtarmasını
    başlatıyor; o, paket kilidi boşalınca kurtarma kitinin geçişini kendisi tamamlıyor, sonra "The
    selected recovery entry could not be verified … runtime_changed" yazıyor ve sonraki zamanlayıcı
    çalışmasına dek başarısız işaretli kalıyor; oysa `runtime-status` az önce eski başlatıcının bu
    geçişi kendisi bitiremeyeceğini söylemişti; ne olduğunu söyler, başarısız olmaz (alpha.137
    laboratuvarı 2).
-29. Daha eski, durmuş bir güncellemenin kapatılmamış bildirimini hâlâ tutan bir tarayıcı, güncelleme
+27. Daha eski, durmuş bir güncellemenin kapatılmamış bildirimini hâlâ tutan bir tarayıcı, güncelleme
    kartında en yenisi yerine o eski girişimi (ve onun komutunu değil) gösteriyor; en yeni girişim
    gösterilir (alpha.137 laboratuvarı 2).
-30. Posta kutusu bağlantı penceresi, sunucu sunuyorsa, birçok posta programının bu ayarları posta
+28. Posta kutusu bağlantı penceresi, sunucu sunuyorsa, birçok posta programının bu ayarları posta
    adresinden kendiliğinden bulduğunu söyler (kendiliğinden kurulum) (alpha.138 posta kulvarı).
-31. Site türü değişikliğinin ya da alan adı silmenin ardındaki, sunucunun kendi İngilizce retleri "the
+29. Site türü değişikliğinin ya da alan adı silmenin ardındaki, sunucunun kendi İngilizce retleri "the
    Programs tab" ve "the AI & automation tab" yerine "the Programs section" der; sayfanın kendi
    sözleri zaten öyle der (alpha.138).
-32. Kullanım kılavuzunun sayfaları ve hesap sayfaları yeni celikpanel.net sitesine uyacak biçimde
+30. Kullanım kılavuzunun sayfaları ve hesap sayfaları yeni celikpanel.net sitesine uyacak biçimde
    yeniden biçimlendirilir.
-33. Roundcube sayfası Türkçe bir sayfada günlüğün altında İngilizce "-- No entries --" satırını
+31. Roundcube sayfası Türkçe bir sayfada günlüğün altında İngilizce "-- No entries --" satırını
    gösteriyor; okuyanın dilinde söylenir (alpha.139 laboratuvarı).
-34. Postanın eksik olduğu yerde Roundcube kurulumu iç rol adlarıyla ("smtp-server, imap-server")
+32. Postanın eksik olduğu yerde Roundcube kurulumu iç rol adlarıyla ("smtp-server, imap-server")
    reddediliyor; Postfix ve Dovecot adlandırılır ve kurulmaları önerilir (alpha.139 laboratuvarı).
-35. Çifti zaten katılmış bir sunucuda sunucu kurulumunun özeti, dokunulmayacaklar arasında "katılacak
+33. Çifti zaten katılmış bir sunucuda sunucu kurulumunun özeti, dokunulmayacaklar arasında "katılacak
    sunucu henüz bağlanmadı" satırını listeliyor; nedeni bulunur ve doğrusu söylenir (alpha.139
    laboratuvarı).
-36. Sunucu kurulumunun adımlarından yanıtlar değişmeden geçmek, adım başına etkinlik listesine bir
+34. Sunucu kurulumunun adımlarından yanıtlar değişmeden geçmek, adım başına etkinlik listesine bir
    `server.setup.draft` satırı yazıyor (bir özete giden yolda 15); değişmeyen bir yanıt hiçbir şey
    yazmaz (alpha.139 laboratuvarı).
-37. Bileşenler'den kurulan bir Node.js sürümü, HTTPS ile indirilen resmî SHASUMS256.txt dosyasına
+35. Bileşenler'den kurulan bir Node.js sürümü, HTTPS ile indirilen resmî SHASUMS256.txt dosyasına
    göre denetleniyor, ama o dosyanın PGP imzası (SHASUMS256.txt.asc) denetlenmiyor. İmza,
    CelikPanel'de tutulan Node.js sürüm anahtarlarıyla denetlenir; o anahtarlar değiştiğinde ne
    yapılacağının planıyla birlikte (20 Kasım 2026 çalışma ortamı önerisi).
-38. Bitmeyen bir oluşturmanın geri alma adımları, o isteğin az önce yaptığını hâlâ adıyla siliyor
+36. Bitmeyen bir oluşturmanın geri alma adımları, o isteğin az önce yaptığını hâlâ adıyla siliyor
    (alan adı veritabanının kayıt adımı, site kopyası, uygulama kataloğu, WordPress, veritabanı
    araçlarının kopyası); bunlar da silme gibi kimliğe bağlanır (alpha.140 incelemesi).
-39. Veritabanı silme, arada aynı adla açılmış ya da istenenden ayırt edemediği bir veritabanıyla
+37. Veritabanı silme, arada aynı adla açılmış ya da istenenden ayırt edemediği bir veritabanıyla
    karşılaşınca panelde girişi bitirmenin kendi yolu yok: yönetici o veritabanını sunucuda kaldırır
    ya da yeniden adlandırır, ardından Sil silmeyi tamamlar. O veritabanını tutup girişi kapatmanın
    bir yolu sunulur (alpha.140 incelemesi).
-40. Bir yapay zekâ ya da otomasyon uygulamasının kurulumu, başlamadan önce gereken boş diski (ve
+38. Bir yapay zekâ ya da otomasyon uygulamasının kurulumu, başlamadan önce gereken boş diski (ve
    belleği) denetler ve süren bir kurulum sayfadan durdurulabilir (kalan uygulamalar için).
    alpha.140 laboratuvarında Open WebUI'ın kurulumu 23 GB'lık bir diski %96'ya çıkardı (en yoğun
    anda yaklaşık 15 GB) ve kart onu durdurmanın hiçbir yolunu sunmadı (alpha.140 laboratuvarı).
-41. Python onarımının onayı eklediği paketleri (python3-venv, python3.12-venv) adlandırır; bugün
+39. Python onarımının onayı eklediği paketleri (python3-venv, python3.12-venv) adlandırır; bugün
    onay gerektiren başka bir şey olmadığını söylüyor (alpha.140 laboratuvarı).
-42. Yanıtı kaybolan bir silmeden sonra "silmeden sonra bu adla bir veritabanı açılmış" cümlesi
+40. Yanıtı kaybolan bir silmeden sonra "silmeden sonra bu adla bir veritabanı açılmış" cümlesi
    kullanıcılarına dokunulmadığını söylüyor; oysa MariaDB'de kullanıcı ilk basışla zaten
    kaldırılmıştı ve panel onu hâlâ listeliyordu; her kullanıcı için doğrusu söylenir (alpha.140
    laboratuvarı).
-43. Bir alan adı silme sırasında veritabanı adımı, veritabanları silinirken yaklaşık 9 sn "İşlenecek
+41. Bir alan adı silme sırasında veritabanı adımı, veritabanları silinirken yaklaşık 9 sn "İşlenecek
    veritabanı yoktu" diyor (sonuç doğru) (alpha.140 laboratuvarı; alpha.141 laboratuvarında yine
    görüldü).
-44. "Silmeden sonra bu adla bir veritabanı açılmış" durumu yöneticinin vereceği bir karardır, hata
+42. "Silmeden sonra bu adla bir veritabanı açılmış" durumu yöneticinin vereceği bir karardır, hata
    değil; kırmızı hata rengiyle gösterilmez (alpha.140 laboratuvarı).
-45. `GET /api/v1/service/operation` en son işlem olarak hâlâ daha eski, başarısız bir genel Node.js
+43. `GET /api/v1/service/operation` en son işlem olarak hâlâ daha eski, başarısız bir genel Node.js
    kurulumunu döndürüyor (alpha.140 laboratuvarı).
-46. Sertifika onayı, sunucu hangi sertifika kuruluşuna ayarlanmış olursa olsun "Let's Encrypt"
+44. Sertifika onayı, sunucu hangi sertifika kuruluşuna ayarlanmış olursa olsun "Let's Encrypt"
    diyor; ayarlı olanı adlandırır (alpha.140 laboratuvarı).
-47. Dosyada bir istemci komutu ya da veritabanı sahibinin haklarını aşan bir komut bulunduğu için
+45. Dosyada bir istemci komutu ya da veritabanı sahibinin haklarını aşan bir komut bulunduğu için
    reddedilen geri yükleme sayfada genel bir hata gibi okunuyor ("geri yükleme başarılı olmadı,
    güvenlik yedeği yerel listede"); sayfa, işlemin saklanan ayrıntısı gibi nedenini söyler
    (alpha.141 laboratuvarı).
-48. Uzak bir hedeften her geri yükleme indirilen paketi sitenin yerel yedek listesinde bırakıyor ve
+46. Uzak bir hedeften her geri yükleme indirilen paketi sitenin yerel yedek listesinde bırakıyor ve
    aynı adlı bir paketin sonraki geri yüklemesi o yerel kopya silinene dek reddediliyor ("a
    different backup with this name already exists"); indirilen kopya geride kalmaz ya da geri
    yükleme onu kullanır (alpha.141 laboratuvarı).
-49. Sunucunun kabul etmediği veritabanı parolası reddi, Türkçe cümlenin altında İngilizce teknik bir
+47. Sunucunun kabul etmediği veritabanı parolası reddi, Türkçe cümlenin altında İngilizce teknik bir
    satır gösteriyor; okuyucunun dilinde söylenir (alpha.141 laboratuvarı).
-50. Bir sitenin Yedekler bölümü "bu sitenin yedeğinin neleri içereceği okunamadı" diyor (alpha.141
+48. Bir sitenin Yedekler bölümü "bu sitenin yedeğinin neleri içereceği okunamadı" diyor (alpha.141
    güncellemesinden önce ve sonra); nedeni bulunur ve doğrusu söylenir (alpha.141 laboratuvarı).
-51. Ubuntu 24.04'te Bileşenler'den PostgreSQL'i kaldırmak ikinci bir basış istedi: Kaldır'a ilk
+49. Ubuntu 24.04'te Bileşenler'den PostgreSQL'i kaldırmak ikinci bir basış istedi: Kaldır'a ilk
    basıştan sonra pencere açık kaldı ve PostgreSQL kurulu kaldı (alpha.141 laboratuvarı).
+50. Web sunucusunun grubu hâlâ her sitenin klasörünü okuyor; site başına bir grup (alpha.142, S3 hattı).
+51. Site hesapları alan adıyla değil numarayla adlandırılır (alpha.142, S2 ve S3 hatları).
+52. PHP ve zamanlanmış görevler site korumalı alanının içinde, hesap başına sınırlarla (S4).
+53. Postfix'in adres eşlemelerini yalnız posta hizmetleri okur (alpha.142, S3 hattı).
 
 **Güvenlik dizisi (sahip, 20 Kasım 2026: root yalnız yöneticidedir; her hesap kendi korumalı alanında)**
 1. Bir dosyadan gelen SQL veritabanı sahibinin haklarıyla çalışır; yöneticinin PostgreSQL oturumları
    sabit bir arama yoluyla başlar (S1, alpha.141).
-2. Hesap adları ve sitelerin ve hizmetlerin portları: bir hesabın başka bir hesaba ait neyi görüp
-   neye ulaşabildiği (S2, sürüyor).
-3. Dosyalar, web ve e-posta: her hesabın web sunucusu, dosyaları ve e-postası o hesapta kalır (S3).
-4. Sınırlar: hesap başına işlem, bellek, disk ve veritabanı kullanımı sınırları (S4).
+2. Adlar, sistem hesapları ve portlar: hiçbir hesap başka bir hesabın ya da sunucunun adlarını,
+   hesabını ya da portlarını alamaz (S2, alpha.142).
+3. Dosyalar ve web: bağlantılar, siteye özel dosya kipleri ve müşteri yönergeleri her hesabın
+   dosyalarını o hesapta tutar (S3 1-2. bölümler, alpha.142).
+4. E-posta: her hesabın postası o hesapta kalır; yalnız gönderenin kendi alan adı için imzalama
+   alpha.143'te gelir (S3, açık).
+5. Sınırlar: hesap başına işlem, bellek, disk ve veritabanı kullanımı sınırları (S4, açık).
 
 Ardından gelen tasarım sürümleri, onaylanan sırayla (sahip, 12 Kasım 2026). Her biri kendi
 bölümlerinin içini onaylı çizimlere göre yeniden tasarlar; küçük sürümler, hazır olunca yayımlanır.
 
-**alpha.144 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
+**alpha.146 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
 Alan adının Genel Bakış'ı, alan adı listesi ve müşterinin ana sayfası çizildiği gibi; her birinin
 gereken özet ve sağlık bilgileri satır başına değil tek istekte okunur.
 
-**alpha.145 — E-posta**
+**alpha.147 — E-posta**
 E-posta bölümü çizildiği gibi.
 
-**alpha.146 — Veritabanları bölümü**
+**alpha.148 — Veritabanları bölümü**
 Alan adının Veritabanları bölümü çizildiği gibi; dışarıdan bağlantı, yönetici sunucu anahtarını
 açtığında orada onaylı tek bir yeniden başlatmayla hazırlanır; daha anlaşılır PostgreSQL ayarları
 (geçerli değerler, CelikPanel'in satırları işaretli).
 
-**alpha.147 — Alan adı ve DNS, Güvenlik**
+**alpha.149 — Alan adı ve DNS, Güvenlik**
 Kayıt düzenleme ve Alan adı ve DNS bölümü çizildiği gibi; Güvenlik bölümü (sertifika, korumalı
 klasörler, zararlı yazılım taraması) çizildiği gibi.
 
-**alpha.148 — Site ve Dosyalar**
+**alpha.150 — Site ve Dosyalar**
 Site ve Dosyalar bölümleri çizildiği gibi.
 
-**alpha.149 — Yedekler ve Gelişmiş**
+**alpha.151 — Yedekler ve Gelişmiş**
 Yedekler ve Gelişmiş bölümleri çizildiği gibi; gerektirdikleri sunucu ayarı taşımalarıyla.
 
-**alpha.150 — Yönetici, bayi ve hesap sayfaları**
+**alpha.152 — Yönetici, bayi ve hesap sayfaları**
 İkinci onaylı önerinin sayfaları (sahip, 12 Kasım 2026).
 
 Önceki alpha.132 planından da taşınanlar, dokundukları ekranların sürümüne yerleşir: Mağaza
