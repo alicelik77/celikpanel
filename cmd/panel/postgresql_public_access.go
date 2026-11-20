@@ -483,7 +483,7 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 	}
 	if by == pgPublicByPanel {
 		// An administrator's close is audited with the request.
-		p.recordAudit(auditRecord{Action: "database.postgresql.closed_to_other_accounts:" + by, ResourceType: "database", ResourceID: record.id})
+		p.recordAudit(auditRecord{Action: "database.postgresql.closed_to_other_accounts:" + record.name, ResourceType: "database", ResourceID: record.id})
 	}
 	return marker
 }
@@ -767,7 +767,7 @@ func (p *Panel) handlePostgreSQLPublicAccessAction(w http.ResponseWriter, r *htt
 			writeServerErrorFor(w, r, err)
 			return
 		}
-		p.audit(r, "database.postgresql.reopened_to_other_accounts", "database", record.id)
+		p.audit(r, "database.postgresql.reopened_to_other_accounts:"+record.name, "database", record.id)
 		p.refreshPGPublicList(ctx)
 		_ = json.NewEncoder(w).Encode(map[string]any{"status": "undone"})
 		return
@@ -799,7 +799,7 @@ func (p *Panel) handlePostgreSQLPublicAccessAction(w http.ResponseWriter, r *htt
 		writeCodedError(w, http.StatusConflict, errCodePGPublicChanged, "The database was not closed: it is no longer as the list showed it (its rights or the roles inside it changed), or the server refused. Nothing was changed. Read the list again, then decide.", "")
 		return
 	}
-	p.audit(r, "database.postgresql.closed_to_other_accounts:administrator", "database", record.id)
+	p.audit(r, "database.postgresql.closed_to_other_accounts:"+record.name, "database", record.id)
 	p.refreshPGPublicList(ctx)
 	_ = json.NewEncoder(w).Encode(map[string]any{"status": "closed"})
 }

@@ -266,6 +266,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.database.export': '{target} veritabanını dışa aktardı',
     'dashboard.audit.action.database.import': '{target} veritabanına dosya içe aktardı',
     'dashboard.audit.action.database.import.failed': '{target} veritabanına dosya içe aktaramadı',
+    'dashboard.audit.action.database.postgresql.closed_to_other_accounts': '{target} PostgreSQL veritabanını sunucunun diğer hesaplarına kapattı',
+    'dashboard.audit.action.database.postgresql.reopened_to_other_accounts': '{target} PostgreSQL veritabanını yeniden sunucunun her hesabına açtı',
     'dashboard.audit.action.database.repair': '{target} veritabanının tablolarını onardı',
     'dashboard.audit.action.database.remote.add': '{target} veritabanına bağlanmak için bir adrese izin verdi',
     'dashboard.audit.action.database.remote.offer': 'bu sunucuda veritabanlarına dışarıdan bağlantıları değiştirdi',

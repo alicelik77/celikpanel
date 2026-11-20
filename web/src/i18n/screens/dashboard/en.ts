@@ -285,6 +285,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.database.export': 'exported the database {target}',
     'dashboard.audit.action.database.import': 'imported a file into the database {target}',
     'dashboard.audit.action.database.import.failed': 'could not import a file into the database {target}',
+    'dashboard.audit.action.database.postgresql.closed_to_other_accounts': 'closed the PostgreSQL database {target} to the server’s other accounts',
+    'dashboard.audit.action.database.postgresql.reopened_to_other_accounts': 'opened the PostgreSQL database {target} to every account of the server again',
     'dashboard.audit.action.database.repair': 'repaired the tables of the database {target}',
     'dashboard.audit.action.database.remote.add': 'allowed an address to connect to the database {target}',
     'dashboard.audit.action.database.remote.offer': 'changed connections from outside to databases on this server',
