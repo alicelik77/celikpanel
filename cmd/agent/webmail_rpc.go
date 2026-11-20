@@ -322,10 +322,11 @@ func (a *Agent) installRoundcubeWith(ctx context.Context, resp *InstallRoundcube
 		return
 	}
 
-	// The FPM pool that serves /webmail/ (the default www pool) must READ the
-	// tree and WRITE the db dir (sqlite + its journal), temp and logs. Give the
-	// tree to the web group; make exactly those three dirs group-writable —
-	// never world.
+	// The FPM pool that serves /webmail/ must READ the tree and WRITE the db
+	// dir (sqlite + its journal), temp and logs. The staging tree is given to
+	// the web group, exactly those three dirs group-writable — never world;
+	// since S4 R1 ConfigureWebmail then gives it to webmail's own account
+	// (php_tool_pool.go), whose pool serves it.
 	// /webmail/'i sunan FPM havuzu (varsayılan www havuzu) ağacı OKUMALI ve db
 	// dizinine (sqlite + journal'ı), temp'e ve logs'a YAZMALIDIR. Ağacı web
 	// grubuna ver; tam o üç dizini grup-yazılabilir yap — asla herkese değil.
@@ -1086,6 +1087,10 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 			resp.Error = err.Error()
 			return
 		}
+		// Its own account and pools go with it (S4 R1).
+		if err := retireUninstalledPHPTool(ctx, phpToolWebmail); err != nil {
+			log.Printf("retire webmail account: %v", err)
+		}
 		resp.Configured = true
 		resp.Present = false
 		return
@@ -1111,10 +1116,17 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 	// while that version is installed; nothing bound yet → the default PHP.
 	// A bound version that is gone leaves the configuration unchanged.
 	// Web postası, yapılandırmasının adını verdiği PHP sürümünde kalır.
-	socket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
+	webmailState := phpToolStateFor(phpToolWebmail)
+	socket, err := phpToolSocket(phpToolWebmail, webmailState.Socket)
 	if err != nil {
 		resp.Error = err.Error()
 		return
+	}
+	// S4 R1: webmail with nothing bound yet runs under its own account.
+	if own, warning := ownSocketForUnboundTool(ctx, webmailState, socket); warning != "" {
+		log.Printf("configure webmail: %s", warning)
+	} else {
+		socket = own
 	}
 	webmailSocket, err := webmailSocketPathForNginx()
 	if err != nil {

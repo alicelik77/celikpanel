@@ -213,7 +213,19 @@ func setRoundcubeUpdatePermissions(ctx context.Context, stage string) error {
 	if group == "" {
 		return fmt.Errorf("web server group could not be detected")
 	}
-	return applyRoundcubePermissions(ctx, stage, filepath.Join(stage, "db", "roundcube.sqlite3"), group, runServiceMutationCombinedOutput)
+	if err := applyRoundcubePermissions(ctx, stage, filepath.Join(stage, "db", "roundcube.sqlite3"), group, runServiceMutationCombinedOutput); err != nil {
+		return err
+	}
+	// Webmail under its own account (S4 R1): the new tree is the account's
+	// the same way, or its pool could not read it after the swap.
+	if _, own := phpToolOwnSocket(phpToolStateFor(phpToolWebmail).Socket); own {
+		uid, gid, found, err := lookupSystemAccount(phpToolAccount(phpToolWebmail))
+		if err != nil || !found {
+			return fmt.Errorf("webmail runs under its own account %s, which could not be read (%v)", phpToolAccount(phpToolWebmail), err)
+		}
+		return applyRoundcubeOwnAccountPermissions(ctx, stage, uid, gid, runServiceMutationCombinedOutput)
+	}
+	return nil
 }
 
 // backupRoundcubeTree archives the tree (code, configuration and database)

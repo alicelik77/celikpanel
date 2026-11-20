@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -63,24 +64,28 @@ func (a *Agent) BindPHPToolV1(req *transport.BindPHPToolRequest, resp *transport
 		return nil
 	}
 	resp.Bound = true
+	resp.Warning = joinWarning(resp.Warning, afterPHPToolBound(ctx, tool))
+	return nil
+}
+
+// afterPHPToolBound is what follows a tool's verified move (the Manage
+// window's and, since S4 R1, the side doors step's); it returns a warning.
+func afterPHPToolBound(ctx context.Context, tool string) string {
+	warning := ""
 	// A proof passed: a failed proof after the install no longer stands.
-	if err := writePHPToolProof(tool, nil, false); err != nil && resp.Warning == "" {
-		resp.Warning = err.Error()
+	if err := writePHPToolProof(tool, nil, false); err != nil {
+		warning = err.Error()
 	}
 	// alpha.127: phpPgAdmin's server list names the running PostgreSQL
 	// clusters (never over the owner's edit).
 	if tool == phpToolPHPPgAdmin {
-		if warning := alignPHPPgAdminServers(); warning != "" {
-			resp.Warning = joinWarning(resp.Warning, warning)
-		}
+		warning = joinWarning(warning, alignPHPPgAdminServers())
 	}
 	// alpha.110: webmail's own address follows webmail's new PHP-FPM socket.
 	if tool == phpToolWebmail {
 		if socket := parseWebmailFPMSocket(readFileString(phpToolWebmailConfPath)); socket != "" {
-			if warning := refreshWebmailAddresses(ctx, runServiceMutationCombinedOutput, socket); warning != "" {
-				resp.Warning = joinWarning(resp.Warning, warning)
-			}
+			warning = joinWarning(warning, refreshWebmailAddresses(ctx, runServiceMutationCombinedOutput, socket))
 		}
 	}
-	return nil
+	return warning
 }

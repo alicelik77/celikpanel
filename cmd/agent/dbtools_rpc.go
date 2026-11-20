@@ -81,6 +81,15 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 	}
 
 	tools, installedRoots := installedDBToolRoots()
+	// A database tool that is gone takes its own account and pools with it
+	// (S4 R1).
+	for _, tool := range []string{phpToolPHPMyAdmin, phpToolPHPPgAdmin} {
+		if installedRoots[tool] == "" {
+			if err := retireUninstalledPHPTool(ctx, tool); err != nil {
+				log.Printf("retire %s account: %v", tool, err)
+			}
+		}
+	}
 
 	// A configuration changed outside CelikPanel is not overwritten or
 	// removed (D-022): the owner's file stays and the answer says so.
@@ -125,6 +134,12 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 			problems = append(problems, err.Error())
 			resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: gone.Version, Kind: "version_gone"})
 		} else if version := resolvedSocketVersion(socket); version != "" {
+			// S4 R1: a tool with nothing bound yet runs under its own
+			// account from the start.
+			var warning string
+			if socket, warning = ownSocketForUnboundTool(ctx, state, socket); warning != "" {
+				problems = append(problems, warning)
+			}
 			if err := ensurePHPToolExtensions(ctx, state.Tool, version); err != nil {
 				problems = append(problems, err.Error())
 				resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: version, Kind: "extensions_failed"})

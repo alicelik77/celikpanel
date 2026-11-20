@@ -133,6 +133,7 @@ func TestRenderDistroConfigMatrix(t *testing.T) {
 	h := newMatrixHost(t)
 	t.Run("nginx", func(t *testing.T) { renderMatrixNginx(t, h) })
 	t.Run("roundcube", func(t *testing.T) { renderMatrixRoundcube(t, h) })
+	t.Run("phptools", func(t *testing.T) { renderMatrixPHPToolPools(t, h) })
 	t.Run("postfix", func(t *testing.T) { renderMatrixPostfix(t, h) })
 	t.Run("dovecot", func(t *testing.T) { renderMatrixDovecot(t, h) })
 	t.Run("bind", func(t *testing.T) { renderMatrixBIND(t, h) })
@@ -579,6 +580,37 @@ func renderMatrixRoundcube(t *testing.T, h *matrixHost) {
 		Validator: "php-lint", Source: src, Target: target}
 	c2.File(target, []byte(strings.ReplaceAll(string(with), webmailBaseDir, old)), 0o640)
 	h.write(t, c2)
+}
+
+// ------------------------------------------------------------- phptools ---
+
+// renderMatrixPHPToolPools: the database tools' and webmail's own pools (S4
+// R1, php_tool_pool.go), sealed as ApplyManagedSiteFile writes them, all
+// three at once on the release's PHP-FPM; and phpMyAdmin's conf.d file.
+func renderMatrixPHPToolPools(t *testing.T, h *matrixHost) {
+	source := "cmd/agent/php_tool_pool.go phpToolPoolBody"
+	if h.family != "apt" || h.phpVersion == "" {
+		h.notApplicable(t, "php-fpm.tool-pools", "php-fpm", "database tools and webmail pools under their own accounts", source,
+			"this release runs one unversioned PHP-FPM; the tools stay in its stock pool")
+		return
+	}
+	webServer := webServerGroup()
+	if webServer == "" {
+		webServer = "www-data"
+	}
+	c := &configmatrix.Case{ID: "php-fpm.tool-pools", Program: "php-fpm",
+		Variant: "webmail, phpMyAdmin and phpPgAdmin pools under their own accounts", Validator: "php-fpm",
+		Source: source, Target: phpToolPoolPath(phpToolWebmail, h.phpVersion),
+		Extra: map[string]string{"PHP_VERSION": h.phpVersion,
+			"USERS": strings.Join([]string{phpToolAccount(phpToolWebmail), phpToolAccount(phpToolPHPMyAdmin), phpToolAccount(phpToolPHPPgAdmin)}, " ")}}
+	for _, tool := range []string{phpToolWebmail, phpToolPHPMyAdmin, phpToolPHPPgAdmin} {
+		c.File(phpToolPoolPath(tool, h.phpVersion), []byte(services.SealManagedTextWith(services.ManagedHeaderPrefixINI, phpToolPoolBody(tool, h.phpVersion, webServer))), 0o644)
+	}
+	h.write(t, c)
+	conf := &configmatrix.Case{ID: "phpmyadmin.own-account", Program: "phpmyadmin", Variant: "conf.d file of its own account",
+		Validator: "php-lint", Source: "cmd/agent/php_tool_pool.go renderPHPMyAdminOwnAccountConf", Target: phpMyAdminOwnAccountConf}
+	conf.File(phpMyAdminOwnAccountConf, []byte(renderPHPMyAdminOwnAccountConf(strings.Repeat("aB3", 10)+"xy")), 0o640)
+	h.write(t, conf)
 }
 
 // -------------------------------------------------------------- postfix ---
