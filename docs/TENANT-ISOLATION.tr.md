@@ -1,4 +1,4 @@
-# Müşteriler arası ayrım: dosyalar, bağlantılar ve adlar
+# Müşteriler arası ayrım: dosyalar, bağlantılar, adlar ve posta imzası
 
 *20 Kasım 2026 · Kaynakta var, bileşen testlerinden geçti. Bağlantı kuralı Debian 13'ün kendi
 nginx 1.26.3 programıyla, ayrı bir deneme klasöründe de denendi. Debian 13 ve Ubuntu 24.04
@@ -153,3 +153,91 @@ satırıyla görünür. Bunlar 4. bölümdeki değişiklikleri gerektirir.
    `fastcgi_param PHP_ADMIN_VALUE "memory_limit=-1";` ve bağlantı olan bir
    `auth_basic_user_file` her biri düz bir nedenle reddedilir.
 8. A, B'ninkiyle aynı adlı bir ek giriş ekler: cevap bu adın kimde olduğunu söylemez.
+
+## 6. Posta yalnız göndericinin kendi alan adıyla imzalanır
+
+*20 Kasım 2026 · Kaynakta var, bileşen testlerinden geçti; dağıtım yapılandırma matrisi
+CelikPanel'in `opendkim.conf` dosyasını her sürümün kendi OpenDKIM'iyle denetler ve `miltertest`
+kurulu olan sürümlerde (Debian ve Ubuntu) o OpenDKIM'e her deneme iletisini hangi alan adıyla
+imzaladığını sorar. Laboratuvar turu açık (adımlar aşağıda).*
+
+**Sorun.** OpenDKIM, istemci kimliğini doğrulamışsa ya da sunucunun kendisinden bağlanmışsa,
+`From:` satırında barındırılan bir alan adı geçen her iletiyi imzalıyordu ve 25. kapı dahil her
+smtpd üzerindeydi. Bir posta kutusu `From:` satırına başka bir müşterinin adresini yazarak posta
+gönderebiliyor, bir web sitesinin kodu da iletiyi geri döngü üzerinden 25. kapıya verebiliyordu;
+ikisi de bu sunucudan o müşterinin DKIM imzasıyla çıkıyor, alıcılar onu gerçek sanıyordu.
+
+**CelikPanel'in artık koyduğu.**
+
+- `opendkim.conf` içinde `SenderMacro {auth_authen}`: OpenDKIM imza anahtarını `From:` satırına
+  göre değil, SASL girişine göre seçer. Kaynaklar: opendkim.conf(5) "SenderMacro"; `opendkim.c`
+  (2.11.0, `mlfi_eoh`): boş olmayan makro değeri imzalama tablosunda aranan adrestir, boş değer
+  `From:` satırına döner; Postfix `{auth_authen}`'i MAIL FROM ile gönderir (`postconf -d
+  milter_mail_macros`). Submission (587/465) giriş ister ve bu sunucuda giriş posta kutusunun tam
+  adresidir; gönderilen posta girişin kendi alan adıyla imzalanır ya da hiç imzalanmaz. Zarf
+  göndericisi (`{mail_addr}`) kullanılmadı: Postfix boş gönderici için
+  `reject_sender_login_mismatch` denetimini atlar (`smtpd_check.c`) ve boş değer `From:`'a döner.
+- 25. kapıdan posta alan smtpd (`smtp/inet`, ya da postscreen arkasında `smtpd/pass`) yalnız
+  spam süzgecini içeren kendi `-o smtpd_milters=` ayarını alır. 25. kapıya gelen hiçbir şey,
+  dışarıdan ya da bir siteden geri döngüyle, bu sunucuca imzalanmaz. `main.cf` OpenDKIM'i
+  tutar; submission, smtps ve sahibin eklediği smtpd'ler onu korur.
+
+**İmzalanmaya devam edenler.**
+
+| Posta | Kim gönderir | Hangi alan adıyla imzalanır |
+|---|---|---|
+| 587/465 üzerinden posta programı ya da web postası; posta kutusu girişiyle gönderen site kodu ya da eklentisi | SASL girişi | girişin kendi alan adı |
+| Ofis dışında yanıtları | Dovecot, `vmail` olarak, `sendmail` ile | posta kutusunun kendi alan adı (`From:` satırı) |
+| Panelin bildirimleri, cron ve sistem postası | `root`, `sendmail` ile | eskisi gibi `From:` alan adı |
+| Yönlendirilen posta | 25. kapıdan gelir | yeniden imzalanmaz; özgün imza dokunulmadan geçer |
+| Bir sitenin girişsiz 25. kapıya verdiği posta | — | imzalanmaz |
+
+`sendmail` yalnız `root` ve `vmail` için açıktır (`authorized_submit_users`, alpha.125); bu
+postanın girişi yoktur, OpenDKIM onu eskisi gibi `From:` satırına göre imzalar. Bir posta kutusu
+bugün takma alan adı adına gönderemez (zarf göndericisi kendi adresi olmalıdır); bu yüzden orada
+bir şey değişmez.
+
+**Seçeneği olmayan OpenDKIM.** `SenderMacro` yalnız dağıtım açtığında derlenir. 20 Kasım 2026'da
+paketlerde ölçüldü: Debian 11, 12, 13 ve Ubuntu'nun 2.11.0 paketlerinde (24.04:
+`2.11.0~beta2-9build4`) var; Arch Linux'un `opendkim 2.11.0beta2-2` paketinde ne bu seçenek ne Lua
+var. Agent önce kurulu OpenDKIM'e sorar (yalnız o satırı içeren bir dosyayla `opendkim -n`);
+bilmiyorsa CelikPanel önceki yapılandırmayı korur, 25. kapı yine imzaya kapalıdır ve İzleme bunu
+söyler.
+
+**Var olan sunucular.** Panelin her açılışında (Dovecot eki ve submission chroot'u ile aynı posta
+onarımı adımında), şu sırayla:
+
+1. `opendkim.conf`: dosya önceki bir sürümün yazdığıyla birebir aynıysa CelikPanel'in yeni metni
+   yanına yazılır ve `opendkim -n` ile denetlenir; ancak sonra dosyanın yerine konur ve OpenDKIM
+   yeniden başlatılır. OpenDKIM onunla çalışmazsa önceki dosya geri konur ve OpenDKIM onunla
+   başlatılır. OpenDKIM yeniden başlarken Postfix postayı imzasız geçirir
+   (`milter_default_action = accept`): asla geri çevirmez ya da bekletmez.
+2. Süzgeç listeleri: önce `main.cf`, sonra 25. kapı girdisi (`postconf -P`), ardından
+   `postfix check` ve Postfix'in doğrulanmış biçimde alması gereken bir yeniden yükleme. Almazsa
+   yazılan her ayar geri konur ve Postfix öncekilerle yeniden yüklenir.
+
+**Sahibin kendi ayarları (D-022).** Sahibin değiştirdiği `opendkim.conf` yazdığı gibi korunur;
+CelikPanel'in metni yanına `opendkim.conf.celikpanel-pending` olarak konur. Sahibin `main.cf`'te
+yazdığı süzgeç listesi ya da 25. kapı girdisindeki kendi `-o smtpd_milters` ayarı korunur. Bu
+durumların her birinde ve bir değişiklik reddedildiğinde İzleme → Şu anki sorunlar ayarı ve
+sunucu sahibinin ne yapacağını söyler; panelin bir sonraki açılışı her şeyi yerinde bulunca satır
+kalkar.
+
+**Laboratuvar adımları** (ikilinin ana sunucusu postayı barındırır; laboratuvardaki bir alıcı her
+iletinin `DKIM-Signature: d=` değerini gösterir):
+
+1. Güncellemeden önce, a yolu: `anna@a.test` posta kutusuyla
+   `swaks --server <ana>:587 --tls --auth-user anna@a.test --from anna@a.test --header 'From: ceo@b.test' --to <alıcı>`:
+   alıcı `d=b.test` gösterir. b yolu: `a.test`'in bir sitesinden 127.0.0.1:25'e bağlanıp
+   `MAIL FROM:<x@b.test>`, `From: x@b.test` ile `a.test`'in alıcıya yönlendiren bir adresine
+   gönderin: `d=b.test`.
+2. Sahip paneli kendi güncelleme ekranından günceller.
+3. `/etc/opendkim.conf` SenderMacro satırını içerir; `postconf -P smtp/inet/smtpd_milters` yalnız
+   spam süzgecini gösterir (ya da hiçbir şeyi).
+4. a yolu yeniden: `d=a.test`. b yolu yeniden: DKIM imzası yok.
+5. Posta programından (587 ve 465) ve web postasından giden posta: `d=` posta kutusunun alan adı.
+   Ofis dışında yanıtı ve panel bildirimi (davet ya da parola postası): `From:` alan adıyla
+   imzalı. Dışarıdan yönlendirilen ileti özgün imzasını korur ve teslim edilir.
+6. Ana sunucunun bir kopyasında: `/etc/opendkim.conf` elle değiştirilir, panel yeniden
+   başlatılır: dosya değişmez, yanında `opendkim.conf.celikpanel-pending` vardır, İzleme sorunu
+   gösterir, posta akar.

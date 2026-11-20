@@ -22,6 +22,9 @@ apt)
         postfix
         # OpenDKIM: the real milter the postfix cases connect to (D3).
         opendkim
+        # miltertest: the opendkim case asks OpenDKIM which domain it signs
+        # for (the panel installs opendkim-tools with OpenDKIM on apt).
+        opendkim-tools
         dovecot-core dovecot-imapd dovecot-pop3d dovecot-lmtpd
         # Sieve: the out-of-office reply (cmd/agent/mail_autoresponder.go).
         dovecot-sieve

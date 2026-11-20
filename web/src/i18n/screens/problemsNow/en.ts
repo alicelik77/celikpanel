@@ -84,6 +84,19 @@ export const enProblemsNowScreens = {
     'pnow.postgresql_databases_open.title': 'Every account of this server can enter {value} PostgreSQL databases',
     'pnow.postgresql_databases_open.body': 'Made before alpha.141: {name}. CelikPanel found something there it does not decide by itself. On the PostgreSQL page, read what was found and what closing changes, then close each one; it can be undone.',
     'pnow.postgresql_databases_open.action': 'Review and close',
+    // alpha.143 (lane S3b): mail signed only for the sender's own domain.
+    'pnow.mail_signing_conf_kept.title': 'Mail can still be signed for another customer’s domain',
+    'pnow.mail_signing_conf_kept.body': 'The OpenDKIM settings file was changed by hand, so CelikPanel kept it as it is. With it, a mailbox can send mail that carries another customer’s address and that customer’s signature. CelikPanel’s file is beside yours, ending in .celikpanel-pending: the server owner adds its SenderMacro line to his file, or uses CelikPanel’s file, and restarts OpenDKIM. This line goes away at the panel’s next start.',
+    'pnow.mail_signing_conf_kept.action': 'Open the mail server',
+    'pnow.mail_signing_port25_kept.title': 'Mail arriving on port 25 can still be signed',
+    'pnow.mail_signing_port25_kept.body': 'A filter setting of the mail server was changed by hand, so CelikPanel kept it as it is. With it, a website on this server can hand over mail with another customer’s address and have it signed for that customer. The server owner removes OpenDKIM from the port 25 filter list, or removes the setting so CelikPanel writes it. This line goes away at the panel’s next start.',
+    'pnow.mail_signing_port25_kept.action': 'Open the mail server',
+    'pnow.mail_signing_failed.title': 'Signing mail only for the sender’s own domain could not be set up',
+    'pnow.mail_signing_failed.body': 'The mail server did not take the new setting, so the earlier one was put back and mail is delivered as before. The server owner reads the reason in the panel’s log or with journalctl -u opendkim. The panel tries again at its next start.',
+    'pnow.mail_signing_failed.action': 'Open the mail server',
+    'pnow.mail_signing_unsupported.title': 'This server’s OpenDKIM cannot tie signing to the sender',
+    'pnow.mail_signing_unsupported.body': 'Its OpenDKIM package was built without the option that signs mail only for the sender’s own domain (Arch Linux’s package lacks it). Mail arriving on port 25 is no longer signed, but a mailbox can still send mail with another customer’s address that carries that customer’s signature. Mail is delivered as before; there is nothing to do on the server for it.',
+    'pnow.mail_signing_unsupported.action': 'Open the mail server',
 } as const;
 
 export type ProblemsNowScreenKey = keyof typeof enProblemsNowScreens;

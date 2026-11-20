@@ -48,7 +48,11 @@ export type ProblemKind =
     | 'name_overlap'
     | 'name_server_reserved'
     | 'node_port_reserved'
-    | 'postgresql_databases_open';
+    | 'postgresql_databases_open'
+    | 'mail_signing_conf_kept'
+    | 'mail_signing_port25_kept'
+    | 'mail_signing_failed'
+    | 'mail_signing_unsupported';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -60,6 +64,8 @@ const KINDS: readonly ProblemKind[] = [
     'name_overlap', 'name_server_reserved', 'node_port_reserved',
     // 20 Nov 2026 (S1b): PostgreSQL databases every account can enter.
     'postgresql_databases_open',
+    // 20 Nov 2026: mail signed only for the sender's own domain.
+    'mail_signing_conf_kept', 'mail_signing_port25_kept', 'mail_signing_failed', 'mail_signing_unsupported',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 

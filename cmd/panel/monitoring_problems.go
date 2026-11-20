@@ -116,6 +116,10 @@ var problemKindOrder = map[string]int{
 	"node_port_reserved":         14,
 	// S1b: PostgreSQL databases left open to other accounts.
 	"postgresql_databases_open": 15,
+	"mail_signing_conf_kept":    16,
+	"mail_signing_port25_kept":  16,
+	"mail_signing_failed":       16,
+	"mail_signing_unsupported":  16,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -177,6 +181,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// S1b: PostgreSQL databases made before alpha.141 still open to other
 	// accounts, from the last round (postgresql_public_access.go).
 	add(pgPublicProblems(ctx, db), nil)
+	// 20 Nov 2026: mail signed only for the sender's own domain, as the
+	// Agent said at the Panel's last start (mail_signing_problem.go).
+	add(mailSigningProblems(p.setting(ctx, settingMailSigningState)), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {
