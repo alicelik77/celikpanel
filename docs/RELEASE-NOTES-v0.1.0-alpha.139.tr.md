@@ -133,8 +133,73 @@ söylüyor. cPanel yedeklerinin içe aktarılması adını korur.
 
 ## Laboratuvarda denetlenenler
 
-Birincil ve yedek DNS sunucusu çiftindeki laboratuvar denetimi **açık**; çalışınca
-buraya yazılır.
+Laboratuvar denetimi bitti: 20 Kasım 2026'da bir deneme (UTC 19 Kasım 23:49 ile
+20 Kasım 00:43 arası), iki deneme sunucusundan oluşan bir çiftte: PowerDNS'li
+bir Debian 13 ana DNS sunucusu ve BIND'li bir Ubuntu 24.04 yedek DNS sunucusu,
+alpha.138 durumundan başlatıldı. Sürüm, bu sürümün kodundan derlenen yalnız
+laboratuvara ait bir etiketle (v0.1.0-alpha.146) çalıştı; denetimler denemenin
+90 dakikasının ilk 39 dakikasını aldı. Ağır hata yok.
+
+- **İki sunucu da panelin kendi güncelleme sayfasından güncellendi**, kendi
+  kendine, her biri yaklaşık bir buçuk dakikada; sayfa elle yenilenmeden
+  "güncellendi" dedi, hiçbir hizmet hatalı kalmadı, iki sunucu da aynı DNS
+  sorularını öncesinde ve sonrasında aynı yanıtladı.
+- **alpha.135 hatası yok.** Yedek sunucuda, ana sunucuda ana alan adının
+  altında müşteri alan adları barındırılırken, ana alan adının altındaki yeni
+  bir ad için **Ekle…** kaydı ekledi. Kart yenilemeden hazır oldu; kayıt ana
+  sunucunun bölgesindeydi, iki sunucu da onu yanıtladı, ana sunucunun günlüğü
+  ve etkinlik listesi oluşturulduğunu gösteriyor.
+- **Meşgul.** Ana sunucuda bir alan adı silinmesinin yaklaşık üçüncü
+  saniyesinde basılan **Ekle…** yaklaşık iki saniyede "Ana DNS sunucusu
+  meşgul … hiçbir şey eklenmedi" ile bitti; hiçbir şey yazılmadı, iki
+  sunucuda da böyle bir ad yoktu, ana sunucunun günlüğü ve etkinlik listesi
+  meşgul yanıtını adlandırıyor. Silmeden sonra **Yeniden sor…** aynı soruyu
+  açtı ve kaydı ekledi. Başka bir silmenin yaklaşık altıncı saniyesinde
+  yapılan daha önceki bir basış, silmenin kilitleri için üç saniyeden az
+  bekledi ve sonra uygulandı: tasarlandığı gibi.
+- **Retler.** Bir müşteri bölgesinin içindeki bir ad, adın ana sunucunun
+  tuttuğu bir bölgede olmadığı ya da oradaki başka bir bölgenin onu tuttuğu
+  cümlesiyle bitti; hiçbir şey yazılmadı. Ana sunucuda zaten başka bir yeri
+  gösteren bir ad: kartın kendisi adın başka bir adresi gösterdiğini söyledi
+  ve **Ekle…** sunmadı (doğrudan gönderilen istek çakışma olarak reddedildi ve
+  kayıt olduğu gibi kaldı). Araya bir takma ad (CNAME) giren bir ad: ret
+  cümlesi, takma ad olduğu gibi kaldı. Her ret ana sunucuda bir günlük satırı
+  ve bir etkinlik satırı bıraktı.
+- **Ana alan adının dışındaki bir ad** yalnız **Kopyala** sundu.
+- Yedek sunucudaki **bir müşteri** ne denetimi ne de **Ekle…**'yi gördü;
+  kartın istekleri o müşteri olarak doğrudan gönderildiğinde reddedildi (yalnız
+  yönetici) ve ana sunucuya hiçbir şey ulaşmadı.
+- Ana alan adının altında müşteri bölgeleri olan ana sunucuda **sunucu
+  kurulumu**: planın özeti yeni bölge çakışması cümlesini Türkçe ve İngilizce
+  gösterdi, başlatma kapalı kaldı, hiçbir şey uygulanmadı ve genişletmeden
+  çıkmak sayfayı önceki hâline döndürdü.
+- İki sunucuda da olağan sayfalar hatasız açıldı, çiftte bir alan adı
+  oluşturulup silindi.
+
+**Denetlenmedi:** ikinci bir sunucu katılırken gösterilen kurulum cümlesi
+(katılacak bir sunucu gerekir, bu da laboratuvar çiftini değiştirirdi).
+Ekrandaki yeni port cümlesi: iki laboratuvar sunucusu da 1923 portunu
+kullanıyor, bu yüzden cümle hiçbirinde görünmez; iki sunucunun da sunduğu
+arayüz dosyalarında İngilizce ve Türkçe olarak bulundu, hiçbir dosya cPanel'i
+anmıyor. Yanıtsız 25 saniyeden sonraki kendiliğinden ikinci soru: bu denemede
+yanıtsız kalan istek olmadı.
+
+### Laboratuvarda bulunan, sonraki sürüme bırakılanlar
+
+Hiçbiri bir güvenlik ya da veri kaybı sorunu değil.
+
+- Roundcube sayfası Türkçe bir sayfada "Günlük" altında İngilizce
+  "-- No entries --" satırını gösteriyor.
+- Postanın eksik olduğu yerde Roundcube kurulumu, Postfix ve Dovecot yerine iç
+  rol adlarıyla ("smtp-server, imap-server") reddediliyor; laboratuvarda bunlar
+  önce Bileşenler'den kuruldu.
+- Çifti zaten katılmış bir sunucuda sunucu kurulumunun özeti, dokunulmayacaklar
+  arasında "katılacak sunucu henüz bağlanmadı" satırını listeliyor; incelenmedi.
+- **Ekle…**'nin meşgul sonunda ilk adım, yanıt geldikten sonra da bekleme
+  saatini koruyor.
+- Sunucu kurulumunun adımlarından yanıtlar değişmeden geçmek, adım başına
+  etkinlik listesine bir "kurulum seçimlerini kaydetti" satırı yazıyor (bir
+  özete giden yolda 15 satır).
 
 ## Kanıt
 

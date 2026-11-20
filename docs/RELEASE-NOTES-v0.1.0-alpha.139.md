@@ -126,8 +126,73 @@ The import of cPanel backups keeps its name.
 
 ## Checked in the lab
 
-The lab check on a primary and backup DNS server pair is **open**; it is
-written here when it has run.
+Lab check finished: one run on 20 November 2026 (UTC 19 November 23:49 to
+20 November 00:43), on a pair of test servers: a Debian 13 main DNS server
+with PowerDNS and an Ubuntu 24.04 backup DNS server with BIND, started from
+the alpha.138 state. The release ran under a lab-only label
+(v0.1.0-alpha.146) built from this release's code; the checks took the first
+39 minutes of the run's 90. No hard failure.
+
+- **Both servers updated through the panel's own update page**, by
+  themselves, in about a minute and a half each; the page said "updated"
+  without being reloaded by hand, no service was left failed, and both
+  servers answered the same DNS questions the same way before and after.
+- **The alpha.135 failure is gone.** On the backup server, with customer
+  domains hosted under the main domain on the main server, **Add…** for a
+  new name under the main domain added the record. The card turned to ready
+  without a refresh; the record was in the main server's zone, both servers
+  answered it, and the main server's log and activity list show it created.
+- **Busy.** Pressed about three seconds into a domain deletion on the main
+  server, **Add…** ended within about two seconds with "The main DNS server
+  is busy … nothing was added"; nothing was written and both servers had no
+  such name, and the main server's log and activity list name the busy
+  answer. After the deletion, **Ask again…** opened the same question and
+  added the record. An earlier press, about six seconds into another
+  deletion, waited under three seconds for the deletion's locks and was then
+  applied: that is how it is meant to work.
+- **Refusals.** A name inside a customer's zone ended with the sentence
+  that the name is not in a zone the main server keeps, or another zone
+  there holds it; nothing was written. A name that already pointed elsewhere
+  on the main server: the card itself said the name points to another
+  address and offered no **Add…** (the request, sent directly, was refused
+  as a clash and the record stayed as it was). A name with an alias (CNAME)
+  in the way: the refusal sentence, and the alias stayed as it was. Each
+  refusal left a log line and an activity row on the main server.
+- **A name outside the main domain** offered only **Copy**.
+- **A customer** on the backup server saw neither the check nor **Add…**;
+  the card's requests, sent directly as that customer, were refused
+  (administrator only) and nothing reached the main server.
+- **Server setup** on the main server, with customer zones under the main
+  domain: the plan's summary showed the new zone-overlap sentence in Turkish
+  and English, the start stayed off, nothing was applied, and leaving the
+  extension returned the page to its earlier state.
+- The usual pages on both servers loaded without an error, and a domain was
+  created and deleted on the pair.
+
+**Not checked:** the setup sentence shown while a second server joins (it
+needs a server to join, which would have changed the lab pair). The new
+port sentence on screen: both lab servers use port 1923, so the sentence
+appears on neither; it was found in the interface files both servers serve,
+in English and Turkish, with no file naming cPanel. The automatic second ask
+after 25 seconds without an answer: no request went unanswered in this run.
+
+### Found in the lab, left for the next release
+
+None of these is a security or data-loss problem.
+
+- Roundcube's page shows the English line "-- No entries --" under the
+  log ("Günlük") on a Turkish page.
+- Installing Roundcube where mail is missing is refused with internal role
+  names ("smtp-server, imap-server") instead of Postfix and Dovecot; in the
+  lab they were installed first from Components.
+- Server setup's summary on a server whose pair is already joined lists
+  "the joining server has not connected yet" among what will not be
+  touched; not investigated.
+- In the busy end of **Add…**, the first step keeps its waiting clock after
+  the answer came.
+- Going through server setup's steps with unchanged answers writes one
+  "saved the setup choices" row in the activity list per step (15 rows on the
+  way to one summary).
 
 ## Evidence
 
