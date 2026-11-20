@@ -101,13 +101,14 @@ söylenir.
   kendi İngilizce sözleri artık Türkçe bir cümlenin içinde görünmez.
 - Yöneticinin düğmesi işin yapıldığı yeri açar: sürüm listesinde
   Bileşenler → Node.js (başka bir sürüm kuruluyken de) ya da Ubuntu 24.04'te
-  Python'un venv modülünü eklemek için Bileşenler → Python; o da siz
+  bir Python uygulaması için Python'un venv modülünü eklemek üzere
+  Bileşenler → Python; o da siz
   onaylayınca işletim sisteminin python3-venv ve python3.12-venv paketlerini
   kurar. Onay penceresi bu paketlerin adını henüz söylemiyor (bkz.
   "Laboratuvarda bulunan, sonraki sürüme bırakılanlar").
-- Bu sunucunun işletim sisteminin çalıştıramadığı bir uygulama (Debian 13'te
-  Open WebUI) yöneticiye nedeniyle gösterilir, müşterilere ve bayilere
-  gösterilmez ve onlara sunulamaz. Bir alan adının zaten tuttuğu uygulama,
+- Bu sunucunun işletim sisteminin çalıştıramadığı bir uygulama yöneticiye
+  nedeniyle gösterilir, müşterilere ve bayilere gösterilmez ve onlara
+  sunulamaz. Bir alan adının zaten tuttuğu uygulama,
   yönetilebilsin ve kaldırılabilsin diye kartında kalır.
 - Ekranın hiç göndermediği, Node.js için genel paket kurulumu hiçbir şey
   sıraya girmeden, sürüm listesine giden yolla birlikte reddedilir.
@@ -120,10 +121,9 @@ ekranın hiç göndermediği bir kurulum isteği gönderdi. Doğrusu şu:
 
 - **n8n**, yönetici Bileşenler → Node.js bölümünden Node.js 24'ü seçtikten
   sonra kurulur.
-- **Ubuntu 24.04'te Open WebUI** önce Bileşenler → Python'u (Python'un venv
-  modülü) gerektirir; bu sürümün laboratuvarı onu bu yolla, ilk kez kurdu.
-- **Debian 13'te Open WebUI** dağıtımın Python'uyla çalışamaz (3.13; Open
-  WebUI 3.11 ve 3.12'yi destekler); bu yüzden orada sunulmaz.
+- **Open WebUI** bu sürümün laboratuvarında Ubuntu 24.04'te, Bileşenler →
+  Python'dan sonra bir kez kuruldu; Debian 13'te çalışamaz (Python 3.13).
+  Üründen çıkarılıyor ("Bilinen sınırlar"a bakın).
 
 Yayımlanmış alpha.138 notları olduğu gibi bırakıldı; düzeltme bu
 paragraftır.
@@ -139,14 +139,15 @@ paragraftır.
   aynı isteğin az önce yaptığını hâlâ adıyla siler.
 - **Başka bir makinedeki MariaDB'de** kimlik yoktur; orada yanıtı kaybolan
   bir silmeden sonra güvenli tek yanıt "ayırt edilemiyor"dur.
-- **Open WebUI çok yer ister ve sayfa bunu denetlemez.** Laboratuvarda
-  kurulumu 6 dakika sürdü; kök dosya sisteminin kullanımı kurulumun en yoğun
-  anında yaklaşık 15 GB arttı (23 GB'lık disk %96'ya çıktı), yaklaşık 9 GB'ı
-  kaldı (klasörü 8,3 GB); çalışırken yaklaşık 2 GB bellek kullandı. Sayfa
-  önceden boş diski ya da belleği denetlemiyor ve süren bir kurulum sayfadan
-  durdurulamıyor. Yönetici onu sunmadan ya da kurmadan önce boş diske (en az
-  15 GB) ve belleğe bakmalı. n8n yaklaşık 3 GB yer kapladı ve dokuz dakika
-  sürdü.
+- **Open WebUI üründen çıkarılıyor.** Sahip, Open WebUI'ı üründen çıkarmaya
+  karar verdi; alpha.141 onu katalogdan kaldırır, bu yüzden şimdi onu
+  sunmayın ve kurmayın. Bir alan adında zaten kurulu olan görünür kalır ve
+  kaldırılabilir. Laboratuvarda kurulumunun en yoğun anında yaklaşık 15 GB
+  boş disk (yaklaşık 9 GB'ı kalır) ve yaklaşık 2 GB bellek gerekti.
+- **Sayfa bir yapay zekâ uygulamasının disk ve bellek ihtiyacını önceden
+  denetlemiyor ve süren bir kurulum sayfadan durdurulamıyor.** Kurmadan önce
+  boş diske bakın; laboratuvarda n8n yaklaşık 3 GB yer kapladı ve dokuz
+  dakika sürdü.
 - **Bir Node.js sürümü** resmî sağlama dosyasına göre denetlenir, ama o
   dosyanın imzası henüz denetlenmiyor.
 - **Agent yanıt veremezken** işletim sistemi yüzünden hiçbir şey
@@ -198,11 +199,10 @@ hata yok.
   (saniyeler), n8n bir müşterinin alan adına sunuldu ve kuruldu (9 dakika
   24 saniye, yaklaşık 3 GB); HTTPS üzerinden yanıt verdi, kartın kendi
   yeniden başlatmasından sonra da.
-- **Ubuntu 24.04'te sayfadan Open WebUI kuruldu**, her yerde ilk kez:
+- **Open WebUI** Ubuntu 24.04'te sayfadan bir kez kuruldu; öncesinde
   Bileşenler → Python onarımı python3-venv ve python3.12-venv paketlerini
-  ekledi, ardından Open WebUI sunuldu ve kuruldu (6 dakika 18 saniye); HTTPS
-  üzerinden yanıt verdi ve dururken yaklaşık 2 GB bellek kullandı. Disk
-  kullanımı için "Bilinen sınırlar"a bakın.
+  ekledi; HTTPS üzerinden yanıt verdi. Üründen çıkarılıyor ("Bilinen
+  sınırlar"a bakın).
 - **"Ekle…"nin meşgul sonu** telefon genişliğinde, Türkçe ve İngilizce: ilk
   adım "… sunucusu yanıt verdi" ile tamamlanmış, meşgul cümlesi bir kez,
   ardından **Yeniden sor…** kaydı ekledi.
@@ -220,11 +220,11 @@ hem yapay zekâ uygulaması tutan bir alan adı (süre yüzünden yapılmadı).
 Hiçbiri bir güvenlik ya da veri kaybı sorunu değil.
 
 - Bir yapay zekâ uygulamasının kurulumu sayfadan durdurulamıyor ve önceden
-  boş diski hiçbir şey denetlemiyor: Open WebUI'ın kurulumu laboratuvarın
-  23 GB'lık diskini %96'ya çıkardı.
+  boş diski hiçbir şey denetlemiyor (Open WebUI'ın kurulumu laboratuvarın
+  23 GB'lık diskini %96'ya çıkardı).
 - Debian 13'te yöneticinin bir alan adının Programlar bölümündeki görünümü,
-  Open WebUI'ın bu sunucuda sunulmadığını ve Katalog yönetiminde sunulmasını
-  söylüyor; oysa orada sunulamıyor.
+  Open WebUI'ı Katalog yönetiminde sunmasını söylüyordu; oysa orada
+  sunulamıyor. Open WebUI katalogdan çıkarılınca bu da ortadan kalkar.
 - Python onarımının onay penceresi onay gerektiren başka bir şey olmadığını
   söylüyor ve ardından kurduğu python3-venv ile python3.12-venv paketlerini
   adlandırmıyor.

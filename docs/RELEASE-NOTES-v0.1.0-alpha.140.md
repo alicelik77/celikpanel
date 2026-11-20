@@ -99,13 +99,14 @@ what the answer means is said once, below.
   longer appear inside a Turkish sentence.
 - The administrator's button opens the place where it is done: Components →
   Node.js at the version list (also when another version is installed), or
-  Components → Python to add Python's venv module on Ubuntu 24.04, which
+  Components → Python to add Python's venv module on Ubuntu 24.04 (for a
+  Python app), which
   installs the operating system's python3-venv and python3.12-venv after you
   confirm. Its confirmation window does not name those packages yet (see
   "Found in the lab").
-- An app this server's operating system cannot run (Open WebUI on Debian 13)
-  is shown to the administrator with the reason, is not shown to customers
-  and resellers, and cannot be offered to them. An app a domain already holds
+- An app this server's operating system cannot run is shown to the
+  administrator with the reason, is not shown to customers and resellers,
+  and cannot be offered to them. An app a domain already holds
   stays on its card so it can be managed and removed.
 - The generic package install for Node.js, which the screen never sends, is
   refused before anything is queued, with the way to the version list.
@@ -118,11 +119,9 @@ request the screen never sends. What is true:
 
 - **n8n** installs after the administrator chooses Node.js 24 under
   Components → Node.js.
-- **Open WebUI on Ubuntu 24.04** needs Components → Python first (Python's
-  venv module); this release's lab installed it that way, the first time
-  anywhere.
-- **Open WebUI on Debian 13** cannot run on the distribution's Python
-  (3.13; Open WebUI supports 3.11 and 3.12), so it is not offered there.
+- **Open WebUI** installed once in this release's lab, on Ubuntu 24.04
+  after Components → Python; it cannot run on Debian 13 (Python 3.13). It is
+  being withdrawn (see "Known limits").
 
 The published alpha.138 notes are left as they were; this paragraph is the
 correction.
@@ -138,14 +137,14 @@ correction.
   drops by name what that same request had just made.
 - **A database on another machine with MariaDB** has no identity, so after a
   lost answer there the "cannot be told apart" answer is the only safe one.
-- **Open WebUI needs a lot of room, and the page does not check it.** In
-  the lab its install took 6 minutes; the root file system's use rose by
-  about 15 GB at the peak of the install (a 23 GB disk reached 96 %) and
-  about 9 GB stayed (its folder 8.3 GB); running, it used about 2 GB of
-  memory. The page does not check free disk or memory first, and a running
-  install cannot be stopped from the page. Before offering or installing it,
-  an administrator should look at the free disk (at least 15 GB) and
-  memory. n8n took about 3 GB and nine minutes.
+- **Open WebUI is being withdrawn.** The owner has decided to take Open
+  WebUI out of the product; alpha.141 removes it from the catalogue, so do
+  not offer or install it now. An install already on a domain stays visible
+  and can be removed. In the lab it needed about 15 GB of free disk at the
+  peak of its install (about 9 GB stays) and about 2 GB of memory.
+- **The page does not check an AI app's disk and memory need first, and a
+  running install cannot be stopped from the page.** Look at the free disk
+  before installing; n8n took about 3 GB and nine minutes in the lab.
 - **A Node.js release** is checked against the official checksum file, but
   that file's signature is not checked yet.
 - **While the Agent cannot answer**, nothing is hidden because of the
@@ -196,11 +195,9 @@ failure.
   (seconds), n8n offered and installed on a customer's domain (9 minutes
   24 seconds, about 3 GB); it answered over HTTPS and again after the card's
   own restart.
-- **Open WebUI installed through the page on Ubuntu 24.04**, the first time
-  anywhere: Components → Python's repair added python3-venv and
-  python3.12-venv, then Open WebUI was offered and installed (6 minutes
-  18 seconds); it answered over HTTPS and used about 2 GB of memory at rest.
-  See "Known limits" for its disk use.
+- **Open WebUI** installed once through the page on Ubuntu 24.04, after
+  Components → Python's repair added python3-venv and python3.12-venv; it
+  answered over HTTPS. It is being withdrawn (see "Known limits").
 - **The busy end of "Add…"** at phone width, Turkish and English: the first
   step done with "… answered", the busy sentence once, and **Ask again…**
   then added the record.
@@ -219,11 +216,12 @@ a program and an AI app (not run for time).
 None of these is a security or data-loss problem.
 
 - An AI app's install cannot be stopped from the page, and nothing checks
-  the free disk first: Open WebUI's install took the lab's 23 GB disk to
-  96 %.
-- On Debian 13 the administrator's view of a domain's Programs section says
-  Open WebUI is not offered on this server and to offer it in Catalog
-  management, although it cannot be offered there.
+  the free disk first (Open WebUI's install took the lab's 23 GB disk to
+  96 %).
+- On Debian 13 the administrator's view of a domain's Programs section told
+  the administrator to offer Open WebUI in Catalog management, although it
+  cannot be offered there; this goes away when Open WebUI is taken out of
+  the catalogue.
 - The Python repair's confirmation window says nothing else needs
   confirming and does not name python3-venv and python3.12-venv, which it
   then installs.
