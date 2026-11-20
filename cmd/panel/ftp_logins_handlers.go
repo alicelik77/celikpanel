@@ -352,7 +352,9 @@ func (p *Panel) handleAddFTPLogin(w http.ResponseWriter, r *http.Request, site f
 		return
 	}
 	if taken > 0 {
-		writeCodedError(w, http.StatusConflict, errCodeFTPLoginNameTaken, "the login "+request.Login+" exists already; choose another name", "")
+		// The Agent's one answer for a name in use: it never says which
+		// subscription, site or account has it (20 Nov 2026).
+		writeCodedError(w, http.StatusConflict, errCodeFTPLoginNameTaken, "the name "+request.Login+" cannot be used on this server; choose another name", "")
 		return
 	}
 	caller := currentCaller(r)

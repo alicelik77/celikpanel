@@ -102,6 +102,11 @@ const (
 	// SitePartNginxFailingBefore: `nginx -t` already failed before the change;
 	// nothing was written.
 	SitePartNginxFailingBefore = "nginx_failing_before"
+	// SitePartRefused (20 Nov 2026, additive): a reseller's or customer's
+	// directives that the Agent's rules refuse; they were not written, and
+	// CelikPanel's earlier copy of them was removed so no part stays in force
+	// (an owner-edited file is kept). The result's Detail says why.
+	SitePartRefused = "refused"
 )
 
 // SitePageCacheClearRequest empties one site's page cache folder (G28).

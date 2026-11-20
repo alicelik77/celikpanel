@@ -82,6 +82,9 @@ func applySiteWebSettingsToVhost(req *ApplyVhostRequest, data *services.VhostDat
 // nodePublicLstat is a test seam.
 var nodePublicLstat = os.Lstat
 
+// ownerSetsSymlinks is a test seam (services.OwnerSetsSymlinks).
+var ownerSetsSymlinks = services.OwnerSetsSymlinks
+
 // siteWebPartsFor is the generator's list of the site's files for a render;
 // nil when the site never saved a web server setting.
 func siteWebPartsFor(req *ApplyVhostRequest, data services.VhostData) []services.SitePart {
@@ -95,20 +98,38 @@ func siteWebPartsFor(req *ApplyVhostRequest, data services.VhostData) []services
 	directives := req.WebSettings.Directives
 	parts := services.SitePartsForSite(data.Domain, data.SiteID, data.ProjectType, settings, directives)
 	if !req.WebSettings.DirectivesTrusted && strings.TrimSpace(directives) != "" {
-		if err := services.ValidateSiteDirectives(directives, false, services.SiteHomeOf(data.DocumentRoot)); err != nil {
-			// The Panel checked the same rules; a text that fails here is
-			// left as it is on disk and never written.
+		if err := customerDirectivesRefusal(directives, data.DocumentRoot); err != nil {
+			// The Panel checked the same rules when the text was saved; a
+			// text that fails here (a rule of a later release, or a file it
+			// names that became a link) is not written, and CelikPanel's
+			// earlier copy of it is removed so that no part of it stays in
+			// force (20 Nov 2026; before, the copy on disk was left in force).
 			log.Printf("site %s: additional nginx directives not written: %v", data.Domain, err)
-			kept := parts[:0]
-			for _, part := range parts {
-				if part.Name != services.SiteDirectivesPartName {
-					kept = append(kept, part)
+			for index := range parts {
+				if parts[index].Name == services.SiteDirectivesPartName {
+					parts[index].Refused = err.Error()
 				}
 			}
-			parts = kept
 		}
 	}
 	return parts
+}
+
+// customerDirectivesRefusal applies the forbidden list and the path rule to a
+// reseller's or customer's text, then proves that every file it names is a
+// regular file reached from "/" without a link (directive_files_linux.go):
+// nginx's worker reads such a file with the web server's rights at every
+// request, so a link would let it read another account's file.
+func customerDirectivesRefusal(directives, documentRoot string) error {
+	if err := services.ValidateSiteDirectives(directives, false, services.SiteHomeOf(documentRoot)); err != nil {
+		return err
+	}
+	for _, file := range services.SiteDirectiveFiles(directives) {
+		if err := directiveFileIsReal(file); err != nil {
+			return fmt.Errorf("%s is not a regular file of this site reached without a link (%v)", file, err)
+		}
+	}
+	return nil
 }
 
 // nginxFailingBeforeMarker starts the error of a save whose server already

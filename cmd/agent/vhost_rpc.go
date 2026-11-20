@@ -676,6 +676,13 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 	if err := applySiteWebSettingsToVhost(req, &data); err != nil {
 		return services.VhostData{}, err
 	}
+	// 20 Nov 2026: links are followed only to the link owner's own files,
+	// unless the owner set disable_symlinks for this site himself.
+	adminDirectives := ""
+	if req.WebSettings != nil && req.WebSettings.DirectivesTrusted {
+		adminDirectives = req.WebSettings.Directives
+	}
+	data.OwnerSymlinks = ownerSetsSymlinks(domain, adminDirectives)
 	// alpha.130: mail programs set themselves up; the names are derived
 	// from the domain and the answers are checked by the generator.
 	if req.MailAutoconfig != nil {
