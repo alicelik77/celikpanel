@@ -8226,3 +8226,59 @@ bağlantıyı tutar.
   kendi 401'leri günlük satırı yazmaz. Kurulum incelemesinin bölge geneli
   kuralının kendisi (daha dar bir kural ayrı bir kulvar). **Hiçbir P0 maddesi
   kapanmadı.**
+
+### fix/db-delete-once ve fix/ai-apps-truthful dalları (veritabanı kimliğine bağlı olarak bir kez silinir; bekletilen alan adı silme beklediğini söyler; yapay zekâ uygulamaları neyin eksik olduğunu söyler; şema değişikliği yok; ilke 2 ve 4; D-024; D-025; 2026-11-20, aday alpha.140)
+
+- **Neden burada.** Veritabanı silme iki adımlı bir değişikliktir (motorun
+  silmesi, sonra panelin kayıtları) ve yeniden denemesi sahibin kurtarma
+  yoludur: ilke 4 (motor adımından önce kalıcı denetim noktası, sınırlı ve
+  yinelenebilir devam, asla ikinci bir bilinmeyen değişiklik) ve ilke 2
+  (bilinmeyen, yok ya da başarısız değildir).
+- **Kusur (taşınan 12. madde, düzeltmeden önce gösterildi).** Her basış
+  `DROP DATABASE IF EXISTS <ad>` gönderiyordu. Kaybolan yanıt, kaldırılamayan
+  kullanıcı ya da haklar veya yazılamayan kayıtlardan sonra kayıt listede
+  kalıyordu; arada aynı adla açılan veritabanı (müşterinin kendi kullanıcısı
+  silme bitene dek o ada tam adlı haklarını korur; elle; geri yüklemeyle ya da
+  bir kurulumla) sonraki basışla içindekilerle birlikte siliniyordu; alan adı
+  silmenin yeniden denemesinde de aynısı.
+- **Sözleşme.** Panel ilk silmeden önce veritabanının kimliğini okur
+  (`Agent.DatabaseIdentityV1`: PostgreSQL oid'i; bu makinenin MariaDB'sinde
+  veritabanı dizininin aygıtı, düğüm numarası, düğüm kuşağı ve doğum zamanı;
+  kaydın kendi hesabıyla: PostgreSQL oid'i, MariaDB'de yok) ve hiçbir şey
+  silinmeden önce `panel_settings` `database_delete_v1:<id>` (durum `sent`)
+  olarak yazar. `Agent.DropDatabaseOnceV1` yalnız motor o kimliği gösterirken
+  siler (silindi / yok / başkası; istemcisi hata veren silme ifadesi yeniden
+  okunur). Üçünden sonra işaret `dropped` olur ve sonraki basışlar yalnız
+  kullanıcıları ve kayıtları bitirir; arada aynı adla açılan veritabanı
+  kullanıcılarıyla bırakılır. Kimliksiz sonraki basış hiçbir şey silmez
+  (`DATABASE_DELETE_UNVERIFIED`). Doğrulanmış ret ya da hata bu basışın
+  yazdığı işareti siler; bilinmeyen sonuç onu tutar; kayıtların işlemi onu
+  (ve bir zincirleme silmenin sahipsiz bıraktıklarını) kaldırır.
+- **Bekletilen alan adı silme (alpha.138 laboratuvarı).** Yedeğin bölge
+  listesi onayı için bekletilen bir kaldırma, uzlaştırıcı kuruluyken
+  yayımlayıcı hazır olduğunda da aynı bekleme olarak okunur (yedek onayladı;
+  sonraki denetim onu yayımlar); "incomplete" yalnız uzlaştırıcı kurulu
+  değilse, kaldırmayı bir kenara koyduysa ya da hazır motor yoksa. Salt okur.
+- **Yapay zekâ uygulamaları (PR #338).** Sürümle kurulan bir bileşen için
+  genel kurulum isteği hiçbir şey sıraya girmeden reddedilir
+  (`COMPONENT_INSTALLED_BY_VERSION`); uygulamaların olguları eklemedir; yeni
+  bir yaşam döngüsü değişikliği yok.
+- **Şema / sürüm geçişi.** Yok. Eklenen panel ayarı satırları, Agent
+  çağrıları ve ret kodları. Eski bir Agent'ta iki çağrı da yok, bu yüzden
+  karışık bir çift hiçbir şey silmez; alpha.139 işaret satırlarını görmezden
+  gelir (silmesi eskisi gibi davranır).
+- **Kurtarma.** Herhangi bir yerde kesilen silme aynı Sil ile sürer:
+  işaretten önce hiçbir şey olmadı; `sent` ile sonraki basış saklanan kimliğe
+  bağlıdır; `dropped` ile silmeden biter. Hiçbir şey kendiliğinden yeniden
+  denenmez.
+- **Kanıt.** `cmd/panel/database_delete_once_test.go` (alpha.139'da başarısız
+  oldu: MariaDB ve PostgreSQL'de kaybolan yanıt, kalan kullanıcılar, kimlik
+  yok, alan adı yeniden denemesi, kaydın kendi hesabı),
+  `database_delete_test.go`, `domain_deletion_pending_dns_test.go`;
+  `cmd/agent/database_drop_once_test.go` (gerçek ext4'te dizin kimliği);
+  `component_installed_by_version_test.go`, `service_apps_os_test.go`; web
+  `databases-page-alpha133.test.mjs`, `ai-apps-truthful-alpha140.test.mjs`.
+- **Açık.** Gerçek MariaDB ya da PostgreSQL çalışmadı (laboratuvar).
+  Oluşturmanın geri alma adımları kendi isteklerinin yaptığını hâlâ adıyla
+  siliyor; "başka bir veritabanı bu adı taşıyor" sonunun kaydı panelden
+  kapatma yolu yok. **Hiçbir P0 maddesi kapanmadı.**
