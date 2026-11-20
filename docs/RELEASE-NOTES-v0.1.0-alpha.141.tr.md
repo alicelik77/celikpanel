@@ -136,6 +136,11 @@ kullanıcısı olarak yükler: MariaDB için `mariadb --sandbox`, PostgreSQL iç
   kopyayı ya da içe aktarmayı veritabanı sunucusunun gerekçesiyle durdurur
   ve hiçbir şey değişmez. Bir SQL_ASCII veritabanının kendi yedeği ona yine
   olduğu gibi geri yüklenir.
+- **Sunucunuzda zaten bir SQL_ASCII veritabanı varsa**, Kopyala aslına
+  dokunmaz: aslını silmeden önce kopyayı denetleyin (harfleri, tablolarındaki
+  satır sayısı, sitenin onunla çalışması). Bu yol test veritabanı
+  sunucularında kanıtlandı, laboratuvarın sunucularında henüz değil
+  ("Laboratuvarda denenenler"e bakın).
 
 ### Open WebUI geri çekildi
 
@@ -168,20 +173,111 @@ diğer uygulamalar değişmedi.
   işaretlenmiyor; her durumda yalnız kendi sitesinin haklarıyla iş görebilir.
 - Bir cPanel içe aktarmasının görünümleri ve tetikleyicileri, önceden olduğu
   gibi buraya taşınmayan bir veritabanı hesabını adlandırır.
+- Uzak bir hedeften geri yükleme, indirilen paketi sitenin yerel yedek
+  listesinde bırakır. Hedeften aynı adlı, değiştirilmiş bir paketi geri
+  yüklemeden önce o yerel kopyayı Yedekler bölümünde silin; yoksa geri
+  yükleme "Bu sunucu indirilen yedeği reddetti" diye reddedilir (işlemin
+  ayrıntısı: bu adla farklı bir yedek zaten var).
 
 ## Laboratuvarda denenenler
 
-**AÇIK: laboratuvar denetimi henüz yapılmadı.** Kapsamı iki laboratuvar
-sunucusu (Debian 13 ve Ubuntu 24.04) ve iki veritabanı sunucusu: müşterinin
-kendi uzak hedefinde değiştirilmiş bir paketin geri yüklenmesi (reddedilir,
-veritabanının dışında hiçbir şey değişmez); sahibinin kendi işlevlerini
-koyduğu bir veritabanında yöneticinin veritabanı araçları ve kullanıcı
-ekleme; olağan bir yedek ve geri yükleme, veritabanı kopyası, site kopyası,
-WordPress kopyası ve cPanel içe aktarması ve bu sürümden önce alınmış bir
-yedek; üç ret; C yerel ayarıyla kurulmuş bir sunucuda UTF-8 oluşturma ve
-kartın çıkış yolu; yeni bir veritabanında başka bir hesabın kullanıcısının
-reddedilmesi; Open WebUI'ın geri çekilmesi, var olan kurulumun çalışmayı
-sürdürmesi ve kaldırılabilmesi.
+Laboratuvar denemesi bitti: 20 Kasım 2026'da tek deneme (UTC 15:25'ten
+yaklaşık 16:55'e: denetimler 120 dakikalık sürenin 70 dakikasını aldı,
+ardından toparlama), bir test sunucusu çiftinde: PowerDNS'li Debian 13 ana
+DNS sunucusu ve BIND'li Ubuntu 24.04 yedek DNS sunucusu, alpha.140
+durumundan başlatıldı. Sürüm, bu sürümün kodundan derlenen, yalnız
+laboratuvara ait bir etiketle (v0.1.0-alpha.148) çalıştı. Laboratuvarın
+yaptığı yazılanlar dışında her şey sayfanın kendi düğmeleriyle yapıldı.
+Ağır hata yok.
+
+- **İki sunucu da panelin kendi güncelleme sayfasından**, kendiliğinden,
+  yaklaşık iki ve iki buçuk dakikada güncellendi. Hiçbir hizmet hatalı
+  kalmadı; iki sunucu da aynı DNS sorularını önce ve sonra aynı yanıtladı.
+- **Müşterinin kendi uzak hedefinde değiştirilmiş bir yedek paketi**,
+  Debian 13'te, MariaDB ve PostgreSQL'de. Laboratuvar, müşterinin
+  güncellemeden önce gönderdiği bir paketi, sonra yeni bir paketi değiştirdi:
+  kabuk komutu çalıştıracak istemci komutları, veritabanı kullanıcısına
+  sunucudaki her hakkı verecek ya da onu PostgreSQL yöneticisi yapacak
+  komutlar ve dosyayı hangi hesabın çalıştırdığını kaydeden bir satır; sonra
+  bir kez yalnız SQL komutlarıyla. Sayfadan yapılan her geri yükleme
+  reddedildi: veritabanının dışında hiçbir şey çalışmadı (komutların
+  oluşturacağı dosyaların hiçbiri yoktu), veritabanı kullanıcıları hiçbir hak
+  kazanmadı, öbür müşterinin veritabanları değişmedi ve müşterinin kendi
+  veritabanı her seferinde güvenlik yedeğinden geri kondu.
+- **Yöneticinin oturumları, veritabanı sahibinin koyduğu işlevleri
+  çalıştırmadı** (PostgreSQL, Debian 13). Laboratuvar, sahip olarak,
+  PostgreSQL'in kendi adlarını taşıyan işlevler ve işleçler koydu ve
+  veritabanının arama yolunu onlara çevirdi. Kartın Denetle'si, Dışa aktar'ı
+  ve kart bilgisi çalıştı; hiçbiri yöneticinin oturumlarından çağrılmadı;
+  aynı işlevler sahibin yeni bir oturumunda çalıştı. O veritabanında
+  kullanıcı ekleme açıldı ama tamamlanmadı.
+- **Güncellemeden önce alınmış yerel bir yedek**, iki veritabanı sunucusunda
+  da Türkçe harfleri bozulmadan geri yüklendi; bir değişiklikten sonra
+  alınan yeni bir yedek de öyle.
+- Bir MariaDB ve bir PostgreSQL veritabanının **Kopyala**'sı: dört satırın
+  hepsi, harfler bozulmadan; PostgreSQL kopyası UTF-8 ve ona yalnız kendi
+  kullanıcısı bağlanabiliyor. (İlk PostgreSQL kopyası, olması gerektiği
+  gibi, planın veritabanı sınırında reddedildi; bir veritabanı silinince
+  yapıldı.)
+- **Veritabanı kullanıcısının parolası panelin dışında değiştirildikten
+  sonra** (laboratuvar tarafından) geri yükleme, hiçbir şey yazılmadan ve
+  çıkış yoluyla reddedildi; Veritabanları sayfasında **Yeni parola ver…**
+  ile geri yükleme çalıştı.
+- **Yeni bir PostgreSQL veritabanı başka bir hesabın kullanıcısını
+  reddediyor** ("User does not have CONNECT privilege"): öbür müşterinin
+  yeni kullanıcısını da güncellemeden önceki kullanıcısını da; sahibi
+  bağlanıyor ve geçici tablo açabiliyor. Güncellemeden önce açılmış bir
+  veritabanı, "Bilinen sınırlar"da yazdığı gibi, öbür hesabın kullanıcısını
+  hâlâ içeri alıyor.
+- **Yeni PostgreSQL veritabanları UTF-8**: Türkçe harfler girip doğru
+  büyük harfle geri geldi; kart Türkçe ve İngilizce "Metin: UTF-8" diyor,
+  uyarı yok.
+- **Open WebUI** katalogdan ve Programlar bölümünden kalktı (yönetici ve
+  müşteri); doğrudan gönderilen sunma ve kurma istekleri reddedildi (geri
+  çekildi; bilinmeyen uygulama) ve hiçbir şey kuyruğa girmedi.
+- İki sunucuda da olağan sayfalar hatasız açıldı.
+
+**Denetlenmedi, ve sahibin kendi sunucusu bu durumda: şablonları SQL_ASCII
+olan bir PostgreSQL sunucusu** (C yerel ayarıyla kurulmuş). İki
+laboratuvar sunucusunda da yoktu: Debian 13'ün PostgreSQL 17'si ve Ubuntu
+24.04'ün PostgreSQL 16'sı UTF-8 idi. Ubuntu'nun PostgreSQL 16'sı bu
+denemede, güncellemeden önce, alpha.140'ın koduyla Bileşenler'den PostgreSQL
+projesinin deposundan kuruldu ve şablonları UTF-8 (C.UTF-8) geldi. Yani böyle
+bir sunucuda sayfadan UTF-8 veritabanı oluşturma, bir SQL_ASCII
+veritabanının kartındaki uyarı ve SQL_ASCII'den UTF-8'e Kopyala (UTF-8
+olmayan bir baytta durması dahil) laboratuvarda değil, yalnız özel
+veritabanı sunucularındaki testlerde çalıştı.
+
+Ayrıca denetlenmeyenler: Ubuntu 24.04'te değiştirilmiş paketle MariaDB
+(zaman; MariaDB istemcisi 10.11.14, sandbox kipi var); site kopyası,
+müşterinin İçe aktar'ı, WordPress kopyası ve cPanel içe aktarması; bir
+veritabanına eklenen kullanıcıların (salt okunur, okur-yazar) kapalı bir
+veritabanına bağlanması; bir alan adının zaten tuttuğu Open WebUI.
+
+### Laboratuvarda bulunan, sonraki sürüme bırakılanlar
+
+Hiçbiri bir güvenlik ya da veri kaybı sorunu değil.
+
+- Dosyada bir istemci komutu ya da veritabanı sahibinin haklarını aşan bir
+  komut bulunduğu için reddedilen geri yükleme, sayfada genel bir hata gibi
+  okunuyor ("Geri yükleme başarılı olmadı. Önceki durumun güvenlik yedeği
+  yerel listede."); gerekçe yalnız işlemin saklanan ayrıntısında.
+- Uzak bir hedeften her geri yükleme, indirilen paketi sitenin yerel yedek
+  listesinde bırakıyor ve aynı adlı bir paketin sonraki geri yüklemesi o
+  yerel kopya silinene dek reddediliyor ("Bu sunucu indirilen yedeği
+  reddetti"; işlemin ayrıntısı: bu adla farklı bir yedek zaten var).
+  Güncellemeden önce gönderilen paketin ilk geri yüklemesi de,
+  gönderildiği yerel yedek listede dururken aynı biçimde reddedildi.
+- Veritabanı sunucusunun kabul etmediği parola reddi, Türkçe cümlenin
+  altında İngilizce teknik bir satır gösteriyor.
+- Alan adı silinirken veritabanı adımı, veritabanları silinirken "işlenecek
+  veritabanı yoktu" dedi (alpha.140 laboratuvarından zaten listede; sonuç
+  doğruydu).
+- Sitenin Yedekler bölümü güncellemeden önce de sonra da "bu sitenin
+  yedeğinin neleri içereceği okunamadı" diyor.
+- Ubuntu 24.04'te Bileşenler'den PostgreSQL'i kaldırmak ikinci bir basış
+  istedi: Kaldır'a ilk basıştan sonra pencere açık kaldı ve PostgreSQL kurulu
+  kaldı; ikinci basış kaldırdı.
 
 ## Kanıt
 

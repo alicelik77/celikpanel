@@ -129,6 +129,11 @@ check for client commands first, then `psql` as the database's user.
   UTF-8 database. Now such text stops the copy or import with the
   database server's reason, and nothing changes. A SQL_ASCII database's own
   backup still restores into it exactly as it was.
+- **If your server already has a SQL_ASCII database**, Copy leaves the
+  original untouched: check the copy (its letters, the number of rows in its
+  tables, the site working on it) before you delete the original. This way
+  was proven on test database servers, not yet on the lab's servers (see
+  "Checked in the lab").
 
 ### Open WebUI is withdrawn
 
@@ -158,19 +163,111 @@ other apps are unchanged.
   this panel; it can only ever act with its own site's rights.
 - Views and triggers of a cPanel import name a database account that is not
   moved here, as before.
+- A restore from a remote destination leaves the downloaded package in the
+  site's local backup list. Before restoring a changed package of the same
+  name from the destination, delete that local copy in the Backups section;
+  otherwise the restore is refused with "a different backup with this name
+  already exists".
 
 ## Checked in the lab
 
-**OPEN: the lab check has not run yet.** It covers both lab servers (Debian
-13 and Ubuntu 24.04) and both database servers: a restore of a package
-changed at a customer's own remote destination (refused, nothing outside
-the database changed); the administrator's database tools and adding a
-user on a database whose owner placed functions of its own; an ordinary
-backup and restore, database copy, site copy, WordPress copy and cPanel
-import, and a backup made before this release; the three refusals; UTF-8
-creation and the card's way out on a server initialised with the C locale;
-another account's user refused at a new database; Open WebUI withdrawn with
-an existing install still running and removable.
+Lab check finished: one run on 20 November 2026 (UTC 15:25 to about 16:55:
+the checks took 70 minutes of a 120-minute slot, then the clean-up), on a
+pair of test servers: a Debian 13 main DNS server with PowerDNS and an
+Ubuntu 24.04 backup DNS server with BIND, started from the alpha.140 state.
+The release ran under a lab-only label (v0.1.0-alpha.148) built from this
+release's code. Everything was done through the page's own buttons except
+where it says the lab did it. No hard failure.
+
+- **Both servers updated through the panel's own update page**, by
+  themselves, in about two and two and a half minutes. No service was left
+  failed, and both servers answered the same DNS questions the same way
+  before and after.
+- **A backup package changed at the customer's own remote destination**,
+  on Debian 13, MariaDB and PostgreSQL. The lab changed a package the
+  customer had sent before the update, and then a fresh one: client
+  commands that would run a shell command, statements that would give the
+  database user every right on the server or make it a PostgreSQL
+  administrator, and a line recording which account ran the file; then
+  once with SQL statements only. Every restore through the page was
+  refused: nothing ran outside the database (none of the files the commands
+  would have made existed), the database users gained no right, the other
+  customer's databases were unchanged, and the customer's own database was
+  put back from the safety copy each time.
+- **The administrator's sessions did not run functions the database's
+  owner planted** (PostgreSQL, Debian 13). The lab, as the owner, placed
+  functions and operators named like PostgreSQL's own and pointed the
+  database's search path at them. The card's Check and Export and the
+  card's information ran, and none of them was called by the
+  administrator's sessions; the same functions did run in a new session of
+  the owner. Adding a user on that database was opened but not completed.
+- **A local backup made before the update** restored on both database
+  servers with the Turkish letters intact; so did a fresh backup after a
+  change.
+- **Copy** of a MariaDB and of a PostgreSQL database: all four rows,
+  letters intact; the PostgreSQL copy is UTF-8 and only its own user may connect.
+  (The first PostgreSQL copy was refused at the plan's database limit, as
+  it should be, until a database was deleted.)
+- **A restore after the database user's password was changed outside the
+  panel** (by the lab) was refused before anything was written, with the
+  way out; after **New password…** on the Databases page the restore
+  worked.
+- **A new PostgreSQL database refuses another account's user** ("User does
+  not have CONNECT privilege"), both the other customer's new user and its
+  user from before the update; its owner connects and makes a temporary
+  table. A database made before the update still lets the other account's
+  user in, as "Known limits" says.
+- **New PostgreSQL databases are UTF-8**: Turkish letters went in and came
+  back, upper case correct; the card says "Text: UTF-8" in Turkish and
+  English, without a warning.
+- **Open WebUI** is gone from the catalogue and from the Programs section
+  (administrator and customer); offering it and installing it, sent
+  directly, were refused (withdrawn; unknown application) and nothing was
+  queued.
+- The usual pages on both servers loaded without an error.
+
+**Not checked, and the owner's own server is in this state: a PostgreSQL
+server whose templates are SQL_ASCII** (initialised with the C locale).
+Neither lab server had one: Debian 13's PostgreSQL 17 and Ubuntu 24.04's
+PostgreSQL 16 were UTF-8. Ubuntu's PostgreSQL 16 was installed in this run
+through Components before the update, on alpha.140's code, from the
+PostgreSQL project's repository, and its templates came up UTF-8
+(C.UTF-8). So creating a UTF-8 database on such a server through the page,
+the warning on a SQL_ASCII database's card, and Copy from SQL_ASCII to
+UTF-8 (with its stop on a byte that is not UTF-8) ran only in the tests on
+private database servers, not in the lab.
+
+Also not checked: MariaDB on Ubuntu 24.04 with a changed package (time; its
+MariaDB client, 10.11.14, has sandbox mode); site copy, the customer's
+Import, WordPress copy and the cPanel import; users added to a database
+(read-only, read-and-write) connecting to a closed database; an Open WebUI
+that a domain already has.
+
+### Found in the lab, left for the next release
+
+None of these is a security or data-loss problem.
+
+- A restore refused because the file held a client command or a statement
+  beyond the database owner's rights reads on the page as a general
+  failure ("The restore did not succeed. The safety backup of the earlier
+  state is in the local list."); the reason is kept only in the
+  operation's stored detail.
+- Every restore from a remote destination leaves the downloaded package in
+  the site's local backup list, and a later restore of a package with the
+  same name is refused ("a different backup with this name already
+  exists") until that local copy is deleted. The first restore of the
+  package sent before the update was refused the same way, while the local
+  backup it had been sent from was still in the list.
+- The refusal for a password the database server does not accept shows a
+  technical line in English under the Turkish sentence.
+- During a domain deletion the database step read "there was no database
+  to process" while the databases were being deleted (already listed from
+  the alpha.140 lab; the end result was right).
+- The site's Backups section says "what this site's backup will contain
+  could not be read", before and after the update.
+- Removing PostgreSQL from Components on Ubuntu 24.04 took a second press:
+  after the first press of Remove the window stayed open and PostgreSQL
+  stayed installed; the second press removed it.
 
 ## Evidence
 
