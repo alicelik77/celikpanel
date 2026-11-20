@@ -545,7 +545,7 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "security_updates":
 		return fmt.Sprintf("%s security updates are waiting. Install them under System updates.", n),
 			fmt.Sprintf("%s güvenlik güncellemesi bekliyor. Sistem güncellemeleri'nden kurun.", n)
-	case "mail_signing_conf_kept", "mail_signing_port25_kept", "mail_signing_failed", "mail_signing_unsupported":
+	case "mail_signing":
 		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
 			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
 	default:

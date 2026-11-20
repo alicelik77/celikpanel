@@ -35,12 +35,11 @@ func (p *Panel) recordMailSigningState(ctx context.Context, state *transport.Mai
 	}
 }
 
-// mailSigningProblemKinds maps a state to its problem kind.
-var mailSigningProblemKinds = map[string]string{
-	"conf_kept":   "mail_signing_conf_kept",
-	"port25_kept": "mail_signing_port25_kept",
-	"failed":      "mail_signing_failed",
-	"unsupported": "mail_signing_unsupported",
+// mailSigningProblemStates are the states shown as the one problem kind
+// mail_signing; which one it is, and what the server owner does, is the
+// Agent's sentence in the Panel's log of that start.
+var mailSigningProblemStates = map[string]bool{
+	"conf_kept": true, "port25_kept": true, "failed": true, "unsupported": true,
 }
 
 // mailSigningProblems turns the recorded state into Problems now.
@@ -52,12 +51,11 @@ func mailSigningProblems(raw string) []monitoringProblem {
 	if err := json.Unmarshal([]byte(raw), &state); err != nil {
 		return nil
 	}
-	kind, ok := mailSigningProblemKinds[state.State]
-	if !ok {
+	if !mailSigningProblemStates[state.State] {
 		return nil
 	}
 	return []monitoringProblem{{
-		Key: "mail_signing", Kind: kind, Severity: "warning", Actor: "server_owner",
+		Key: "mail_signing", Kind: "mail_signing", Severity: "warning", Actor: "server_owner", Name: state.State,
 		Action: monitoringProblemAction{Kind: "open", To: "/components/postfix"},
 	}}
 }

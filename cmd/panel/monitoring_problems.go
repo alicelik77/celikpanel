@@ -111,10 +111,7 @@ var problemKindOrder = map[string]int{
 	"cpu_sustained":              9,
 	"mail_queue_deferred":        10,
 	"security_updates":           11,
-	"mail_signing_conf_kept":     12,
-	"mail_signing_port25_kept":   12,
-	"mail_signing_failed":        12,
-	"mail_signing_unsupported":   12,
+	"mail_signing":               12,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
