@@ -48,6 +48,8 @@ type InstallParams struct {
 	// scripts (the Agent reads package.json) and a plain name.
 	Script string
 	Caps   sitesandbox.Caps
+	// InSlice runs the step in the site's slice (S4 R2a).
+	InSlice bool
 }
 
 // scriptNamePattern is a package.json script name the step may run: no
@@ -79,7 +81,9 @@ func PackageScripts(text []byte) []string {
 // Profile is the install step's sandbox profile: the application's,
 // without a port, with the install limits.
 func (p InstallParams) Profile() sitesandbox.Profile {
-	return profile(sitesandbox.KindNode, InstallUnitName(p.SiteID), p.User, p.Group, p.AppDir, p.NodeVersion, 0, InstallLimits, p.Caps)
+	prof := profile(sitesandbox.KindNode, InstallUnitName(p.SiteID), p.User, p.Group, p.AppDir, p.NodeVersion, 0, InstallLimits, p.Caps)
+	prof.SiteID, prof.InSlice = p.SiteID, p.InSlice
+	return prof
 }
 
 // InstallSteps are the step's command lines in order: the first is the

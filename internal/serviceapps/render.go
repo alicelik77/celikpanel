@@ -101,6 +101,10 @@ type UnitParams struct {
 	// DropInDir is the owner's place (<unit>.service.d); CelikPanel never
 	// writes or removes it.
 	DropInDir string
+	// SiteID and InSlice place the unit in its site's slice (S4 R2a,
+	// sitesandbox.Profile).
+	SiteID  int
+	InSlice bool
 }
 
 var (
@@ -176,7 +180,14 @@ func SandboxDirectives(profile sitesandbox.Profile, caps sitesandbox.Caps) ([]st
 // unit: the sandbox, its bind unit (Requires=, After=) and, where the host
 // can hold it, the SMTP block (npm and pip run third-party install scripts).
 func InstallUnitProperties(installID int, layout Layout, user, group string, limits Resources, memoryMB int, caps sitesandbox.Caps) ([]string, error) {
+	return InstallUnitPropertiesIn(installID, layout, user, group, limits, memoryMB, caps, 0, false)
+}
+
+// InstallUnitPropertiesIn is InstallUnitProperties with the install unit
+// placed in its site's slice when inSlice is set (S4 R2a).
+func InstallUnitPropertiesIn(installID int, layout Layout, user, group string, limits Resources, memoryMB int, caps sitesandbox.Caps, siteID int, inSlice bool) ([]string, error) {
 	profile := SandboxProfile(InstallUnitName(installID)+".service", layout, user, group, limits, memoryMB, 0, 0, caps)
+	profile.SiteID, profile.InSlice = siteID, inSlice
 	// systemd-run's form of the sandbox: systemd 257's systemd-run refuses
 	// ProtectControlGroups=strict (alpha.119 lab round 2).
 	directives, err := sitesandbox.TransientDirectives(profile, caps)
@@ -226,6 +237,7 @@ func RenderUnit(p UnitParams) (string, error) {
 	}
 	name := UnitName(p.InstallID)
 	profile := SandboxProfile(name+".service", p.Layout, p.User, p.Group, p.Limits, p.Limits.MemoryMB, p.Port, p.AuxPort, p.Caps)
+	profile.SiteID, profile.InSlice = p.SiteID, p.InSlice
 	sandbox, err := SandboxDirectives(profile, p.Caps)
 	if err != nil {
 		return "", err

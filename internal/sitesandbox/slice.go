@@ -1,0 +1,211 @@
+package sitesandbox
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// The site's slice (S4 R2a, docs/SITE-SANDBOX.md §8). Every program
+// CelikPanel starts for one site as a systemd unit - its uploaded programs
+// and Python apps, its Node.js application, its service apps, and their
+// install, build and deploy steps - runs in one slice whose MemoryMax=,
+// TasksMax= and CPUQuota= bound them together. A slice nests: systemd applies
+// the most stringent limit of a unit and its parent slices
+// ("EffectiveMemoryMax= ... is the most stringent limit of the unit and parent
+// slices", systemd.resource-control(5) of systemd 257 and 255).
+//
+// The name has no "-": systemd reads a dash in a slice's name as nesting
+// (celiksite-7.slice would be a child of celiksite.slice), so the slice sits
+// directly below the root and a unit in it is /celiksite_<id>.slice/<unit>.
+// That is depth two, as /system.slice/<unit> is, so the SMTP block's set
+// (typeof socket cgroupv2 level 2) matches a unit in either place without any
+// change to the table.
+//
+// The slice is a native unit file under the D-031 rule: an owner can read
+// it, override it with a drop-in (<slice>.d/*.conf), or edit it (an edit is
+// kept). It keeps working without CelikPanel (D-022).
+//
+// Sitenin dilimi: CelikPanel'in bir site için başlattığı her program tek bir
+// systemd diliminde çalışır; dilimin bellek, işlem ve işlemci sınırları
+// hepsini birlikte sınırlar. Dosya sahibin okuyup değiştirebileceği yerel bir
+// birimdir.
+
+// SystemSlice is where a unit not moved into its site's slice runs.
+const SystemSlice = "system.slice"
+
+// maxSiteID bounds a site identity in a unit name.
+const maxSiteID = 1<<31 - 1
+
+var slicePattern = regexp.MustCompile(`^celiksite_([1-9][0-9]{0,9})\.slice$`)
+
+// SliceName is a site's slice: celiksite_<site id>.slice.
+func SliceName(siteID int) string { return "celiksite_" + strconv.Itoa(siteID) + ".slice" }
+
+// ParseSliceName reads a site's slice name back to its site identity.
+func ParseSliceName(name string) (int, bool) {
+	m := slicePattern.FindStringSubmatch(name)
+	if m == nil {
+		return 0, false
+	}
+	id, err := strconv.Atoi(m[1])
+	if err != nil || id <= 0 || id > maxSiteID {
+		return 0, false
+	}
+	return id, true
+}
+
+// SliceLimits are a site's limits: what all of its programs may use
+// together. MemoryMB becomes MemoryMax=, Tasks TasksMax= (processes and
+// threads), CPUPercent CPUQuota= (100 is one processor core).
+type SliceLimits struct {
+	MemoryMB   int `json:"memory_mb"`
+	Tasks      int `json:"tasks"`
+	CPUPercent int `json:"cpu_percent"`
+}
+
+// Validate keeps the limits in the sandbox's range (the same bounds a unit's
+// own limits have).
+func (l SliceLimits) Validate() error {
+	if l.MemoryMB < 64 || l.MemoryMB > 65536 || l.CPUPercent < 10 || l.CPUPercent > 1600 || l.Tasks < 16 || l.Tasks > 8192 {
+		return errors.New("the site's limits must be 64 to 65536 MB of memory, 16 to 8192 processes and 10 to 1600 percent of a processor")
+	}
+	return nil
+}
+
+var sliceDomain = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$`)
+
+// SliceDropInDir is the owner's place for drop-ins of a site's slice.
+func SliceDropInDir(unitDir string, siteID int) string {
+	return strings.TrimSuffix(unitDir, "/") + "/" + SliceName(siteID) + ".d"
+}
+
+// SliceUnitText is the slice's unit text (CelikPanel's header is added when
+// the file is written). The domain names the site for a person reading the
+// file; it is left out when it is not a plain host name.
+func SliceUnitText(siteID int, domain, unitDir string, l SliceLimits) (string, error) {
+	if siteID <= 0 || siteID > maxSiteID {
+		return "", errors.New("a site identity is required")
+	}
+	if err := l.Validate(); err != nil {
+		return "", err
+	}
+	name := SliceName(siteID)
+	label := fmt.Sprintf("site %d", siteID)
+	if sliceDomain.MatchString(domain) && strings.Contains(domain, ".") {
+		label = fmt.Sprintf("%s (site %d)", domain, siteID)
+	}
+	dropIns := SliceDropInDir(unitDir, siteID)
+	var b strings.Builder
+	fmt.Fprintf(&b, "# The limits of %s, written by CelikPanel (docs/SITE-SANDBOX.md section 8).\n", label)
+	b.WriteString("# Every program CelikPanel starts for this site runs in this slice: its programs, Python apps,\n")
+	b.WriteString("# Node.js application, service apps and their install, build and deploy steps. Together they\n")
+	b.WriteString("# may use no more than the limits below; when they reach the memory limit the kernel stops one\n")
+	b.WriteString("# of them, when they reach the process limit no new process starts, and the processor limit slows\n")
+	b.WriteString("# them down. Other sites and the server keep what is theirs.\n")
+	fmt.Fprintf(&b, "# It works without CelikPanel: systemctl status %s ; systemd-cgls /%s\n", name, name)
+	fmt.Fprintf(&b, "# Your own settings go in %s/*.conf (systemd drop-ins); CelikPanel never writes or removes them.\n", dropIns)
+	b.WriteString("# An edit to this file is kept: CelikPanel then reports it and does not write the file again.\n")
+	b.WriteString("# Bu sitenin bütün programları bu dilimde çalışır ve aşağıdaki sınırları birlikte aşamaz.\n")
+	fmt.Fprintf(&b, "# Kendi ayarlarınız %s/*.conf içine; CelikPanel onlara dokunmaz.\n", dropIns)
+	b.WriteString("[Unit]\n")
+	fmt.Fprintf(&b, "Description=CelikPanel site limits: %s\n", label)
+	b.WriteString("Before=slices.target\n")
+	b.WriteString("\n[Slice]\n")
+	fmt.Fprintf(&b, "MemoryMax=%dM\n", l.MemoryMB)
+	b.WriteString("MemorySwapMax=0\n")
+	fmt.Fprintf(&b, "TasksMax=%d\n", l.Tasks)
+	fmt.Fprintf(&b, "CPUQuota=%d%%\n", l.CPUPercent)
+	return b.String(), nil
+}
+
+// AllowedControlGroups are the cgroups a unit of the site may run in: its
+// site's slice, or the system slice where it ran before it was moved. Both
+// are depth two.
+func AllowedControlGroups(siteID int, unit string) []string {
+	out := []string{"/" + SystemSlice + "/" + unit}
+	if siteID > 0 && siteID <= maxSiteID {
+		out = append(out, "/"+SliceName(siteID)+"/"+unit)
+	}
+	return out
+}
+
+// UnitControlGroupAllowed reports whether cgroup is /system.slice/<unit> or
+// /celiksite_<id>.slice/<unit> for a sandboxed unit name, and returns the
+// site identity of the slice (0 for the system slice).
+func UnitControlGroupAllowed(cgroup, unit string) (int, bool) {
+	if !ValidUnitName(unit) {
+		return 0, false
+	}
+	if cgroup == "/"+SystemSlice+"/"+unit {
+		return 0, true
+	}
+	rest, ok := strings.CutPrefix(cgroup, "/")
+	if !ok {
+		return 0, false
+	}
+	slice, leaf, ok := strings.Cut(rest, "/")
+	if !ok || leaf != unit {
+		return 0, false
+	}
+	return ParseSliceName(slice)
+}
+
+// CgroupElementFor is the SMTP set's element for a unit running in cgroup
+// (the unit's ControlGroup= as systemd shows it): '{ "<slice>/<unit>" }'. A
+// cgroup that is not the system slice or a site's slice is refused: the set
+// matches depth two only, so a unit anywhere else would not be blocked.
+func CgroupElementFor(cgroup, unit string) (string, error) {
+	if _, ok := UnitControlGroupAllowed(cgroup, unit); !ok {
+		return "", fmt.Errorf("%s runs in %q, not in the system slice or a site's slice", unit, cgroup)
+	}
+	return `{ "` + strings.TrimPrefix(cgroup, "/") + `" }`, nil
+}
+
+// SliceCounters are the slice cgroup's own event counters since the slice's
+// cgroup was made (they start at zero again after every program of the site
+// stopped and the slice was removed).
+type SliceCounters struct {
+	// OOMKills: memory.events oom_kill, processes the kernel stopped because
+	// the site used all its memory.
+	OOMKills int64 `json:"oom_kills"`
+	// MemoryMaxHits: memory.events max, times the site's memory reached the
+	// limit and had to be reclaimed.
+	MemoryMaxHits int64 `json:"memory_max_hits"`
+	// TasksMaxHits: pids.events max, new processes refused at the limit.
+	TasksMaxHits int64 `json:"tasks_max_hits"`
+	// CPUThrottled: cpu.stat nr_throttled, periods the site was slowed down;
+	// CPUThrottledUSec the time it waited; CPUPeriods the periods counted.
+	CPUThrottled     int64 `json:"cpu_throttled"`
+	CPUThrottledUSec int64 `json:"cpu_throttled_usec"`
+	CPUPeriods       int64 `json:"cpu_periods"`
+}
+
+// cgroupValue reads "key value" lines (memory.events, pids.events, cpu.stat).
+func cgroupValue(text, key string) (int64, bool) {
+	for _, line := range strings.Split(text, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 && fields[0] == key {
+			n, err := strconv.ParseInt(fields[1], 10, 64)
+			if err == nil && n >= 0 {
+				return n, true
+			}
+		}
+	}
+	return 0, false
+}
+
+// ParseSliceCounters reads the slice cgroup's memory.events, pids.events and
+// cpu.stat texts ("" for a file that could not be read).
+func ParseSliceCounters(memoryEvents, pidsEvents, cpuStat string) SliceCounters {
+	var c SliceCounters
+	c.OOMKills, _ = cgroupValue(memoryEvents, "oom_kill")
+	c.MemoryMaxHits, _ = cgroupValue(memoryEvents, "max")
+	c.TasksMaxHits, _ = cgroupValue(pidsEvents, "max")
+	c.CPUThrottled, _ = cgroupValue(cpuStat, "nr_throttled")
+	c.CPUThrottledUSec, _ = cgroupValue(cpuStat, "throttled_usec")
+	c.CPUPeriods, _ = cgroupValue(cpuStat, "nr_periods")
+	return c
+}

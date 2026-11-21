@@ -106,6 +106,23 @@ type Profile struct {
 	// Level is the level the administrator accepted for this unit. A host
 	// that assesses below it is refused (Permit).
 	Level Level
+	// SiteID is the site the unit belongs to (sites.id; 0: the caller did
+	// not say). InSlice places the unit in that site's slice (SliceName),
+	// whose limits bound everything of the site together; false keeps
+	// Slice=system.slice, where every unit ran before S4 R2a. The unit's own
+	// Limits are not lowered to the slice's: systemd applies the most
+	// stringent of the unit and its slice (EffectiveMemoryMax=,
+	// systemd.resource-control(5)), docs/SITE-SANDBOX.md §8.
+	SiteID  int
+	InSlice bool
+}
+
+// SliceUnit is the slice the unit is placed in.
+func (p Profile) SliceUnit() string {
+	if p.InSlice && p.SiteID > 0 {
+		return SliceName(p.SiteID)
+	}
+	return SystemSlice
 }
 
 var (
@@ -215,6 +232,9 @@ func (p Profile) Validate() error {
 	case LevelFull, LevelReduced:
 	default:
 		return errors.New("the accepted sandbox level is missing")
+	}
+	if p.SiteID < 0 || p.SiteID > maxSiteID || (p.InSlice && p.SiteID == 0) {
+		return errors.New("the site's slice needs the site's identity")
 	}
 	return nil
 }

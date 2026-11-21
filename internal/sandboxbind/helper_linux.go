@@ -40,6 +40,9 @@ type Helper struct {
 	LookupUser func(name string) (Account, error)
 	// UnitInfo reads the sandboxed unit's settings from systemd.
 	UnitInfo func(unit string) (UnitInfo, error)
+	// ControlGroup reads the cgroup the unit runs in (S4 R2a: the system
+	// slice or its site's slice).
+	ControlGroup func(unit string) (string, error)
 	// NFT runs nft with the given arguments (an empty environment).
 	NFT func(args ...string) error
 	Log io.Writer
@@ -150,10 +153,41 @@ func (h Helper) Stop(unit string) error {
 	return nil
 }
 
+// ParseControlGroup reads `systemctl show <unit> --property=ControlGroup,Slice`:
+// the unit's cgroup, or "/<slice>/<unit>" when systemd shows no cgroup (a unit
+// whose processes have all gone).
+func ParseControlGroup(unit, show string) string {
+	props := sitesandbox.ParseShow(show)
+	if cgroup := props["ControlGroup"]; cgroup != "" {
+		return cgroup
+	}
+	if slice := props["Slice"]; slice != "" {
+		return "/" + slice + "/" + unit
+	}
+	return ""
+}
+
+// egressElement is the SMTP set's element of the unit: the cgroup it runs in,
+// which must be the system slice or its site's slice (depth two, where the
+// set matches). Anything else is refused, so the unit does not start.
+func (h Helper) egressElement(unit string) (string, error) {
+	if !sitesandbox.ValidUnitName(unit) {
+		return "", errors.New("not a sandboxed unit name")
+	}
+	if h.ControlGroup == nil {
+		return sitesandbox.CgroupElement(unit)
+	}
+	cgroup, err := h.ControlGroup(unit)
+	if err != nil {
+		return "", fmt.Errorf("the cgroup of %s could not be read: %v", unit, err)
+	}
+	return sitesandbox.CgroupElementFor(cgroup, unit)
+}
+
 // EgressAdd loads the SMTP block and adds the unit's cgroup (the sandboxed
 // unit's ExecStartPre=+, run inside the unit's cgroup).
 func (h Helper) EgressAdd(unit string) error {
-	element, err := sitesandbox.CgroupElement(unit)
+	element, err := h.egressElement(unit)
 	if err != nil {
 		return err
 	}
@@ -168,7 +202,7 @@ func (h Helper) EgressAdd(unit string) error {
 
 // EgressRemove removes the unit's cgroup from the SMTP block.
 func (h Helper) EgressRemove(unit string) error {
-	element, err := sitesandbox.CgroupElement(unit)
+	element, err := h.egressElement(unit)
 	if err != nil {
 		return err
 	}

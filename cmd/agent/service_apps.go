@@ -268,6 +268,9 @@ type serviceAppContext struct {
 	app       serviceapps.App
 	account   serviceAppAccount
 	layout    serviceapps.Layout
+	// siteID and slice: the site's slice (S4 R2a; nil from an older Panel).
+	siteID int
+	slice  *transport.SiteSlice
 }
 
 func resolveServiceApp(target transport.ServiceAppTarget, resp *transport.ServiceAppStepResponse) (serviceAppContext, bool) {
@@ -286,7 +289,9 @@ func resolveServiceApp(target transport.ServiceAppTarget, resp *transport.Servic
 		serviceAppStep(resp, transport.ServiceAppPrerequisite, "site_account", err.Error())
 		return serviceAppContext{}, false
 	}
-	return serviceAppContext{installID: target.InstallID, app: app, account: account, layout: layout}, true
+	sc := serviceAppContext{installID: target.InstallID, app: app, account: account, layout: layout}
+	sc.siteID, sc.slice = target.SiteID, siteSliceFor(target.Slice, target.SiteID)
+	return sc, true
 }
 
 func validServiceAppPorts(app serviceapps.App, port, aux int) bool {
@@ -385,7 +390,9 @@ func serviceAppInstallRunArgs(sc serviceAppContext, version string, runtime serv
 		"--uid=" + sc.account.Name, "--gid=" + sc.account.Group, "--working-directory=" + sc.layout.Root,
 		"--setenv=HOME=" + sc.layout.DataDir(), "--setenv=PATH=" + pathEnv,
 		"--property=RemainAfterExit=yes", "--property=RuntimeMaxSec=7200", "--no-block", "--quiet"}
-	properties, err := serviceapps.InstallUnitProperties(sc.installID, sc.layout, sc.account.Name, sc.account.Group, limits, sc.app.Defaults.InstallMemoryMB, caps)
+	// S4 R2a: the install unit is new every time; it runs in the site's slice.
+	properties, err := serviceapps.InstallUnitPropertiesIn(sc.installID, sc.layout, sc.account.Name, sc.account.Group, limits,
+		sc.app.Defaults.InstallMemoryMB, caps, sc.siteID, sc.slice != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -781,6 +788,7 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "sandbox_render", err.Error())
 		return nil
 	}
+	ensureSiteSlice(sc.slice)
 	if out, err := serviceAppRun(ctx, "systemd-run", run...); err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "install_unit",
 			"the install step could not be started: "+strings.TrimSpace(string(out)))
@@ -960,14 +968,21 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 	if !serviceAppSandboxReady(sc, caps, resp) {
 		return nil
 	}
+	// S4 R2a: into the site's slice when the app does not run now (or
+	// already runs there); a running app moves with its site.
+	inSlice := siteUnitEntersSlice(serviceapps.UnitName(req.Target.InstallID)+".service", sc.slice, false)
 	text, err := serviceapps.RenderUnit(serviceapps.UnitParams{
 		InstallID: req.Target.InstallID, App: sc.app, Version: req.Version, Domain: req.Target.Domain,
 		User: sc.account.Name, Group: sc.account.Group, Layout: sc.layout, Port: req.Port, AuxPort: req.AuxPort,
 		Runtime: runtime, Limits: serviceAppLimits(sc.app, req.Limits), Caps: caps, DropInDir: path + ".d",
+		SiteID: sc.siteID, InSlice: inSlice,
 	})
 	if err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "unit_render", err.Error())
 		return nil
+	}
+	if inSlice {
+		ensureSiteSlice(sc.slice)
 	}
 	current, readErr := os.ReadFile(path)
 	switch {
