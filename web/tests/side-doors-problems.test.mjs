@@ -10,7 +10,6 @@ import { enMonitoringScreens } from '../src/i18n/screens/monitoring/en.ts';
 import { trMonitoringScreens } from '../src/i18n/screens/monitoring/tr.ts';
 import { enSideDoorsScreens } from '../src/i18n/screens/sideDoors/en.ts';
 import { trSideDoorsScreens } from '../src/i18n/screens/sideDoors/tr.ts';
-// S4 R1's site jobs and S4 R2a's site limits have their own parts.
 import { enSiteJobsScreens } from '../src/i18n/screens/siteJobs/en.ts';
 import { trSiteJobsScreens } from '../src/i18n/screens/siteJobs/tr.ts';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
@@ -24,6 +23,8 @@ test('every kind the list shows has a title, body and action in English and Turk
   assert.ok(list, 'the KINDS list');
   const shown = [...list[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
+  // 21 Nov 2026: the site jobs lines have their words in the siteJobs part,
+  // the site limits lines (S4 R2a) in the siteLimits part.
   const en = { ...enMonitoringScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSiteLimitsScreens };
   const tr = { ...trMonitoringScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSiteLimitsScreens };
   for (const kind of shown) {
