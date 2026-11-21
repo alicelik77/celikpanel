@@ -557,6 +557,9 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "node_port_reserved":
 		return fmt.Sprintf("The Node.js site %s sends its visitors to port %s, which a service of this server uses. Open the domain and save its Node.js settings again: the site gets a free port, and its program must listen on that port.", subject, n),
 			fmt.Sprintf("%s Node.js sitesi ziyaretçilerini bu sunucunun bir hizmetinin kullandığı %s numaralı porta gönderiyor. Alan adını açıp Node.js ayarlarını yeniden kaydedin: site boş bir port alır; programı o portu dinlemelidir.", subject, n)
+	case "postgresql_databases_open":
+		return fmt.Sprintf("Every account of this server can enter %s PostgreSQL databases made before alpha.141 (%s). Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
+			fmt.Sprintf("Bu sunucudaki her hesap alpha.141'den önce açılan %s PostgreSQL veritabanına girebiliyor (%s). PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

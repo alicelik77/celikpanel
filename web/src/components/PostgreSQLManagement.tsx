@@ -13,6 +13,8 @@ import { Checking, CouldNotCheck } from './ui';
 import { editorCardHeight } from './ConfigFileNotices';
 // alpha.133: the account CelikPanel connects with (drawing B19), in its own chunk.
 const EngineAccountBlock = lazy(() => import('./DatabaseRemoteServerPanel').then((module) => ({ default: module.EngineAccountBlock })));
+// 20 Nov 2026 (S1b): the databases every account of the server can enter.
+const PostgreSQLPublicAccessBlock = lazy(() => import('./PostgreSQLPublicAccessBlock').then((module) => ({ default: module.PostgreSQLPublicAccessBlock })));
 
 interface PostgreSQLManagementProps {
     onBack: () => void;
@@ -160,6 +162,8 @@ export function PostgreSQLManagement({ onBack }: PostgreSQLManagementProps) {
                 sürerken ya da başarısız olduğunda bunu üstteki kart bir kez,
                 tek bir Tekrar dene ile söyler. */}
             <div className="mt-6 empty:hidden"><Suspense fallback={null}><EngineAccountBlock engine="postgresql" /></Suspense></div>
+            {/* 20 Nov 2026 (S1b): databases every account can enter, their close and undo. */}
+            <div className="mt-6 empty:hidden"><Suspense fallback={null}><PostgreSQLPublicAccessBlock /></Suspense></div>
             {/* alpha.108: every major as its own cluster on its own port. */}
             <div className="mt-6"><PostgreSQLClustersCard /></div>
             {/* alpha.107: the PGDG repository's card (D-038 §12). */}

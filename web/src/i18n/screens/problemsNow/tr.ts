@@ -73,4 +73,7 @@ export const trProblemsNowScreens: Record<ProblemsNowScreenKey, string> = {
     'pnow.node_port_reserved.title': '{domain} Node.js sitesi bir sunucu hizmetinin {value} numaralı portunu kullanıyor',
     'pnow.node_port_reserved.body': 'Ziyaretçileri, bu sunucunun bir hizmetinin kullandığı {value} numaralı porta aktarılıyor; o hizmet internetten erişilebilir olabilir. Hiçbir şey değiştirilmedi. Sitenin Node.js ayarlarını yeniden kaydedin: site boş bir port alır; programı o portu dinlemelidir.',
     'pnow.node_port_reserved.action': 'Alan adını aç',
+    'pnow.postgresql_databases_open.title': 'Bu sunucudaki her hesap {value} PostgreSQL veritabanına girebiliyor',
+    'pnow.postgresql_databases_open.body': 'alpha.141’den önce açılanlar: {name}. CelikPanel orada kendi başına karar vermediği bir şey buldu. PostgreSQL sayfasında neyin bulunduğunu ve kapatmanın neyi değiştireceğini okuyun, sonra her birini kapatın; geri alınabilir.',
+    'pnow.postgresql_databases_open.action': 'İncele ve kapat',
 };

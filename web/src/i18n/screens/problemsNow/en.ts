@@ -79,6 +79,11 @@ export const enProblemsNowScreens = {
     'pnow.node_port_reserved.title': 'The Node.js site {domain} uses port {value} of a server service',
     'pnow.node_port_reserved.body': 'Its visitors are passed to port {value}, which a service of this server uses, so that service may be reachable from the internet. Nothing was changed. Save the site’s Node.js settings again: it gets a free port, and its program must listen on that port.',
     'pnow.node_port_reserved.action': 'Open the domain',
+    // alpha.143 (lane S1b): PostgreSQL databases made before alpha.141 that
+    // every account of the server can still enter.
+    'pnow.postgresql_databases_open.title': 'Every account of this server can enter {value} PostgreSQL databases',
+    'pnow.postgresql_databases_open.body': 'Made before alpha.141: {name}. CelikPanel found something there it does not decide by itself. On the PostgreSQL page, read what was found and what closing changes, then close each one; it can be undone.',
+    'pnow.postgresql_databases_open.action': 'Review and close',
 } as const;
 
 export type ProblemsNowScreenKey = keyof typeof enProblemsNowScreens;

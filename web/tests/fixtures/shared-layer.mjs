@@ -46,6 +46,9 @@ const alpha128LazyParts = {
   // alpha.134: database rights by exact name on the MariaDB page (its own
   // chunk and its own mounted tests).
   './DatabaseGrantFormsBlock': ['DatabaseGrantFormsBlock'],
+  // 20 Nov 2026 (S1b): the PostgreSQL databases every account can enter, on
+  // the PostgreSQL page (its own chunk and its own tests).
+  './PostgreSQLPublicAccessBlock': ['PostgreSQLPublicAccessBlock'],
 };
 
 export function compileSource(path, resolve) {

@@ -1971,6 +1971,8 @@ func main() {
 	// alpha.134: the administrator's view of the rights rewritten to exact
 	// database names (read only).
 	http.HandleFunc(databaseGrantFormsPath, panel.handleDatabaseGrantForms)
+	// S1b: PostgreSQL databases closed to other accounts (postgresql_public_access.go).
+	http.HandleFunc(pgPublicPath, panel.handlePostgreSQLPublicAccess)
 
 	// Database operations
 	http.HandleFunc("/api/v1/databases/", func(w http.ResponseWriter, r *http.Request) {
@@ -2060,6 +2062,9 @@ func main() {
 	panel.startDatabaseRemoteSync(discoveryCtx)
 	// alpha.134: database rights by exact name (database_grant_forms.go).
 	panel.startDatabaseGrantForms(discoveryCtx)
+	// S1b: PostgreSQL databases made before alpha.141 closed to other
+	// accounts, behind the same admission (postgresql_public_access.go).
+	panel.startPostgreSQLPublicAccess(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.

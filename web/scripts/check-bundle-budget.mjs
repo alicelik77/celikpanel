@@ -373,6 +373,10 @@ const screenPartBudgets = {
   // as "errors" is full; set with at least 25% headroom from its Turkish
   // file: 1.78 / 0.75 KiB.
   nameRule: kib(2.5, 1.1),
+  // 20 Nov 2026 (security lane S1b): the PostgreSQL databases every account
+  // of the server can enter, closing them and the undo (pgpub.). A new part;
+  // set with at least 25% headroom from its Turkish file.
+  pgPublic: kib(6, 2.6),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

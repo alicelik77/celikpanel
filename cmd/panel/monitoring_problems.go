@@ -114,6 +114,8 @@ var problemKindOrder = map[string]int{
 	"name_server_reserved":       12,
 	"name_overlap":               13,
 	"node_port_reserved":         14,
+	// S1b: PostgreSQL databases left open to other accounts.
+	"postgresql_databases_open": 15,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -172,6 +174,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// Security release (20 November 2026): names and Node.js ports an
 	// existing installation holds that the one name rule refuses today.
 	add(p.namespaceProblems(ctx))
+	// S1b: PostgreSQL databases made before alpha.141 still open to other
+	// accounts, from the last round (postgresql_public_access.go).
+	add(pgPublicProblems(ctx, db), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

@@ -47,7 +47,8 @@ export type ProblemKind =
     | 'service_restarting'
     | 'name_overlap'
     | 'name_server_reserved'
-    | 'node_port_reserved';
+    | 'node_port_reserved'
+    | 'postgresql_databases_open';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -57,6 +58,8 @@ const KINDS: readonly ProblemKind[] = [
     // Security release (20 November 2026): names and Node.js ports held
     // before the one name rule.
     'name_overlap', 'name_server_reserved', 'node_port_reserved',
+    // 20 Nov 2026 (S1b): PostgreSQL databases every account can enter.
+    'postgresql_databases_open',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
