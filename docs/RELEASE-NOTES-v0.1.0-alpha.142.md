@@ -113,8 +113,8 @@ Once, at the first start after the update, CelikPanel's own unchanged
 per-site files that were readable by everyone become readable only by
 their services (0640), and the hosting folder and its subscriptions folder
 become passable but not listable (0711). A mode the owner changed before is
-kept and named in the agent's log; a mode the owner sets later is never
-changed back.
+kept (the agent's log does not name it yet: see "Checked in the lab"); a
+mode the owner sets later is never changed back.
 
 ### Node.js ports
 
@@ -142,10 +142,124 @@ port is kept as long as it is not a port of the server's services.
   server's network.
 - The name and port checks run inside the panel's database and the panel;
   a name or port set by hand on the server is not checked.
+- The lab found four more limits, each with its way out until alpha.143:
+  see "Found in the lab, planned for alpha.143" below.
 
 ## Checked in the lab
 
-OPEN.
+Lab check finished: one run on 21 November 2026 (UTC 09:07 to about 10:57:
+the checks took 81 minutes of a 120-minute slot, then the clean-up), on a
+pair of test servers: a Debian 13 main DNS server with PowerDNS and an
+Ubuntu 24.04 backup DNS server with BIND, started from the alpha.141 state.
+The release ran under a lab-only label (v0.1.0-alpha.149) built from this
+release's code. Two customers of one reseller, in separate accounts, played
+the two sides: alice with PHP sites, scheduled tasks and extra FTP logins,
+and bob, who tried to reach her things. Everything was done through the
+page's own buttons except where it says the lab did it. No hard failure:
+after the update nothing of another account was reached.
+
+- **Before the update the ways were open** (alpha.141's code): bob added a
+  name under alice's domain, and it answered in DNS on both servers; links
+  that bob's scheduled task put in his site, to a file beside alice's site,
+  to her site's PHP configuration file and to a server file the web server
+  can read, were served with their content (the PHP file as its source).
+- **Both servers updated through the panel's own update page**, by
+  themselves, in about 1.5 and 3 minutes. Schema 79 → 80 was applied while
+  bob's overlapping name was still there; the panel started and listed it.
+  No new failed service. Web, mail, DNS and databases answered as before:
+  the same DNS answers from both servers, the sites' pages, MariaDB and
+  PostgreSQL, the mail ports; a certificate renewal dry run succeeded on
+  both.
+- **No file through a link.** After the update each of bob's links to
+  alice's files and to the server's file gave bob's own page, "not found"
+  or "forbidden", never the file. So did a link inside a password-protected
+  folder and a site folder replaced by a link to alice's site folder; a
+  custom error page pointing at her file was refused when saved. A link to
+  bob's own file was still served. The site's **Logs** screen explains the
+  refused lines in one sentence (Turkish and English).
+- **No name.** bob tried names under, equal to and above alice's domains
+  and the server's own names (the main zone, the servers' and panel's
+  names, nameservers, mail, webmail), as domains and as an alias. Each was
+  refused with the same sentence, in Turkish and English, which names
+  nobody; nothing was created and no DNS answer changed. The overlap from
+  before the update was listed in **Problems now** with what to do; bob
+  deleted it through the page and the line went away by itself.
+- **No scheduled task or FTP login through a shared system account.** bob's
+  domain whose system account alice's domain already had was refused with
+  the same sentence before anything was made; alice's accounts, scheduled
+  tasks and FTP logins were unchanged, and her logins still signed in. The
+  same for two long names that lead to one account. An FTP login name
+  already in use got one sentence that does not say who has it. When bob
+  deleted his own domain whose site folder he had replaced by a link to
+  alice's, nothing of hers was touched.
+- **No server port.** A new Node.js site made through the page got port
+  3001. Asking for the database web tools' port, the mail filter's control
+  port, the database server's port, a program's port, another port of the
+  range kept for programs and service apps, and another site's port was
+  refused each time with one sentence; nothing changed.
+- **Configuration files**: on both servers every per-site web server and
+  PHP file became readable only by its services (0640) and the hosting
+  folder passable but not listable (0711); a file whose mode the lab had
+  changed as the owner kept its mode. bob's site account could not list the
+  hosting folder or read alice's web server and PHP files.
+- Unrelated work after the update: the administrator created a domain,
+  added an alias and deleted the domain; it answered in DNS on both servers
+  and stopped answering after the deletion. The usual pages on both
+  servers loaded without an error.
+
+**Where the lab left the page's path.** The port refusals and the
+administrator's placing of a name into another account were sent to the
+panel's API directly. As root on the lab servers, the lab planted alice's
+made-up secret files and a server file, changed one site's web server
+file's mode as an owner would, registered the certificate tool with the
+lab's own certificate authority, and ran `systemctl reset-failed` twice
+(the way out of the third limit below).
+
+**Not checked:**
+
+- An existing Node.js site on a server port after the update, and a link in
+  a Node.js site's public folder: alpha.141 itself already refused to make
+  such a site in the lab, so the state could not be prepared.
+- The on-screen refusal of a customer's web server directive: the lab's
+  customers were not offered the directives box; this is covered by the
+  tests only.
+- Webmail and the database web tool after the update: not opened.
+- Names tried by a customer on the second server: the lab's customer has no
+  account there (the second server's names were tried on the first).
+
+### Found in the lab, planned for alpha.143
+
+None of these is a security problem or data loss.
+
+1. A customer whose domain lies under one of the server's own names (for
+   example on a server that gives customers names under its own main
+   domain) cannot add a subdomain of that domain; the answer is the neutral
+   refusal. **Problems now** lists such a customer domain as meeting one of
+   the server's names, although nothing is wrong with it and nothing has to
+   be done. Until alpha.143 the administrator can add the subdomain in the
+   administrator's own account. A server whose customers use their own
+   domains is not affected.
+2. When the administrator is refused placing a name into another account,
+   the sentence names the server's name the request meets instead of the
+   nearer name of the account that holds it.
+3. A Node.js site whose application is in the failed state is not deleted:
+   the page says the deletion was not completed and the row stays "waiting
+   for deletion". The way out today, as root on the server:
+   `systemctl reset-failed celikapp-<id>.service` (`systemctl --failed`
+   lists it), then Delete again. Whether releases before alpha.142 behave
+   the same was not established.
+4. The agent's journal reports "0 kept" although a file mode the owner had
+   changed was kept (the mode itself was kept correctly).
+
+### What to expect after updating
+
+- The update takes a few minutes and says by itself when it has finished.
+- The layout is schema 80: going back to alpha.141 means restoring the
+  snapshot or backup taken before the update.
+- Links that pointed to another account's files stop being served.
+- Per-site web server and PHP files become unreadable for other accounts.
+- Names and ports that already overlap are listed for the administrator in
+  **Problems now**; nothing is changed or removed.
 
 ## Evidence
 
