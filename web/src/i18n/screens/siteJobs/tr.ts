@@ -4,7 +4,7 @@ import type { SiteJobsScreenKey } from './en';
 
 export const trSiteJobsScreens: Record<SiteJobsScreenKey, string> = {
     'pnow.site_crontab_outside.title': 'CelikPanel dışında zamanlanmış görev eklendi',
-    'pnow.site_crontab_outside.body': 'Bu sitelerin crontab dosyalarındaki {value} satır CelikPanel’de yapılmadı: {domain}. Bunları sitenin bir programı ya da sunucuda çalışan biri ekledi; sitenin görev sınırları onlar için denetlenmedi. Her sitenin Zamanlanmış görevler bölümünü açın: satırlar orada işaretlidir; yönetici ya da site sahibi kimsenin istemediklerini kaldırır. Birini tutmak için onu orada görev olarak yeniden ekleyin ve işaretli satırı kaldırın.',
+    'pnow.site_crontab_outside.body': 'Bu sitelerin crontab dosyalarındaki {value} satır CelikPanel’de yapılmadı: {domain}. Bunları sitenin bir programı ya da sunucuda çalışan biri ekledi; sitenin görev sınırları onlar için denetlenmedi. Her sitenin Zamanlanmış görevler bölümünü açın: satırlar orada işaretlidir. Yönetici ya da site sahibi kimsenin istemediklerini kaldırır; sunucu sahibinin bilerek koyduğu bir satırı (@reboot, MAILTO= ya da PATH= gibi) yönetici Kalsın ile tutar ve satır artık listelenmez.',
     'pnow.site_crontab_outside.action': 'Zamanlanmış görevleri aç',
     'pnow.site_at_jobs.title': 'Web sitesi hesaplarının bekleyen at işleri var',
     'pnow.site_at_jobs.body': '{value} at işi web sitesi hesaplarına ait: {domain}. CelikPanel dışında kuruldular; CelikPanel onları göstermez ve sınırlamaz, zamanı gelince yine çalışırlar. CelikPanel bunları silmez. Sunucu yöneticisi her birine sudo at -c <numara> ile bakar ve site sahibinin istemediklerini sudo atrm <numara> ile kaldırır. Bu liste her panel başlangıcında okunur.',
@@ -19,7 +19,7 @@ export const trSiteJobsScreens: Record<SiteJobsScreenKey, string> = {
     'pnow.at_not_closed.body': 'CelikPanel {domain} dosyasını yazamadı; bu yüzden bir web sitesi, CelikPanel’in göstermediği ve sınırlamadığı at işleri kurabilir. Hiçbir şey değişmedi; CelikPanel panelin bir sonraki başlangıcından sonra yeniden dener. Sürekli başarısız olursa sunucu yöneticisi /etc dizinine yazılabildiğini ve /etc/at.deny dosyasının okunabildiğini denetler.',
     'pnow.at_not_closed.action': 'İzleme’yi aç',
     'cron.outside.badge': 'CelikPanel’de yapılmadı',
-    'cron.outside.notice': 'Bu sitenin crontab dosyasındaki bazı satırlar CelikPanel’de yapılmadı: bunları sitenin bir programı ya da sunucuda çalışan biri ekledi. Diğer görevler gibi çalışırlar, ama sitenin görev sınırları onlar için denetlenmedi. Kimsenin istemediği satırı kaldırın. Birini tutmak için onu burada görev olarak yeniden ekleyin ve işaretli satırı kaldırın.',
+    'cron.outside.notice': 'Bu sitenin crontab dosyasındaki bazı satırlar CelikPanel’de yapılmadı: bunları sitenin bir programı ya da sunucuda çalışan biri ekledi. Diğer görevler gibi çalışırlar, ama sitenin görev sınırları onlar için denetlenmedi. Kimsenin istemediği satırı kaldırın. Sunucu sahibinin bilerek koyduğu bir satırı yönetici Kalsın ile tutabilir; satır artık işaretlenmez.',
     'cron.outside.otherTitle': 'CelikPanel’de yapılmamış diğer satırlar',
     'cron.outside.otherHint': 'Bu satırlar CelikPanel’in yazdığı türden görevler değil; örneğin sunucunun her açılışında çalışan bir görev ya da bütün görevler için bir ayar.',
     'cron.outside.deleteConfirm': 'Bu satır crontab’dan kaldırılsın mı?',

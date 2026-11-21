@@ -14,6 +14,8 @@ import { enSideDoorsScreens } from '../src/i18n/screens/sideDoors/en.ts';
 import { trSideDoorsScreens } from '../src/i18n/screens/sideDoors/tr.ts';
 import { enSiteJobsScreens } from '../src/i18n/screens/siteJobs/en.ts';
 import { trSiteJobsScreens } from '../src/i18n/screens/siteJobs/tr.ts';
+import { enSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/en.ts';
+import { trSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/tr.ts';
 
 const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
 
@@ -25,8 +27,8 @@ test('every kind the list shows has a title, body and action in English and Turk
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part.
   // Since alpha.142 the shared lines' words are in the problemsNow part.
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens };
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens };
   for (const kind of shown) {
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);

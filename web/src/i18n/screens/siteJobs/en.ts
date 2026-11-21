@@ -11,7 +11,7 @@
 
 export const enSiteJobsScreens = {
     'pnow.site_crontab_outside.title': 'Scheduled tasks were added outside CelikPanel',
-    'pnow.site_crontab_outside.body': '{value} lines in these sites’ crontabs were not made in CelikPanel: {domain}. A program of the site or someone working on the server added them, and the site’s limits on tasks were not checked for them. Open each site’s Scheduled tasks: the lines are marked there, and the administrator or the site’s owner removes the ones nobody asked for. To keep one, add it again there as a task and remove the marked line.',
+    'pnow.site_crontab_outside.body': '{value} lines in these sites’ crontabs were not made in CelikPanel: {domain}. A program of the site or someone working on the server added them, and the site’s limits on tasks were not checked for them. Open each site’s Scheduled tasks: the lines are marked there. The administrator or the site’s owner removes the ones nobody asked for; a line the server owner put there on purpose (such as @reboot, MAILTO= or PATH=) the administrator keeps with Keep, and it is no longer listed.',
     'pnow.site_crontab_outside.action': 'Open Scheduled tasks',
     'pnow.site_at_jobs.title': 'Website accounts have at jobs waiting',
     'pnow.site_at_jobs.body': '{value} at jobs belong to website accounts: {domain}. They were made outside CelikPanel, which neither shows nor limits them, and they still run at their time. CelikPanel does not remove them. The server administrator looks at each with sudo at -c <number> and removes the ones the site’s owner did not ask for with sudo atrm <number>. This list is read at each panel start.',
@@ -26,7 +26,7 @@ export const enSiteJobsScreens = {
     'pnow.at_not_closed.body': 'CelikPanel could not write {domain}, so a website can plant at jobs that CelikPanel neither shows nor limits. Nothing was changed; CelikPanel tries again after the panel’s next start. If it keeps failing, the server administrator checks that /etc can be written and that /etc/at.deny can be read.',
     'pnow.at_not_closed.action': 'Open Monitoring',
     'cron.outside.badge': 'Not made in CelikPanel',
-    'cron.outside.notice': 'Some lines of this site’s crontab were not made in CelikPanel: a program of the site or someone working on the server added them. They run like the other tasks, but the site’s limits on tasks were not checked for them. Remove any line nobody asked for. To keep one, add it again here as a task and remove the marked line.',
+    'cron.outside.notice': 'Some lines of this site’s crontab were not made in CelikPanel: a program of the site or someone working on the server added them. They run like the other tasks, but the site’s limits on tasks were not checked for them. Remove any line nobody asked for. A line the server owner put there on purpose can be kept by the administrator with Keep; it is then no longer marked.',
     'cron.outside.otherTitle': 'Other lines not made in CelikPanel',
     'cron.outside.otherHint': 'These lines are not tasks of the kind CelikPanel writes, for example a task that runs at every start of the server, or a setting for every task.',
     'cron.outside.deleteConfirm': 'Remove this line from the crontab?',

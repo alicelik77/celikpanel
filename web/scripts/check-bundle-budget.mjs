@@ -383,6 +383,14 @@ const screenPartBudgets = {
   // the at.allow audit words). A new part beside sideDoors, which has no
   // room; set with at least 25% headroom from its Turkish file.
   siteJobs: kib(5.2, 1.85),
+  // 21 Nov 2026 (S4 R1 fix round): the side doors step's further lines (a
+  // tool that does not answer, the stock pool not put back, failed or
+  // unreadable, the server owner's undo and its "close it again", a crontab
+  // that cannot be read), the administrator's Keep and a tool without its
+  // own account at its install. A new part beside sideDoors and siteJobs,
+  // which have no room; set with at least 25% headroom from its Turkish
+  // file: 5.21 / 1.77 KiB.
+  sideDoorsUndo: kib(6.6, 2.25),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
