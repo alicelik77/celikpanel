@@ -389,8 +389,8 @@ const screenPartBudgets = {
   // that cannot be read), the administrator's Keep and a tool without its
   // own account at its install. A new part beside sideDoors and siteJobs,
   // which have no room; set with at least 25% headroom from its Turkish
-  // file: 5.21 / 1.77 KiB.
-  sideDoorsUndo: kib(6.6, 2.25),
+  // file: 5.23 / 1.78 KiB.
+  sideDoorsUndo: kib(7, 2.4),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
