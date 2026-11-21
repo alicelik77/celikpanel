@@ -44,7 +44,8 @@ import (
 // subscription never. Names of zones this server publishes for a connected
 // server (remote DNS) are refused for everyone, as migration 042 already
 // does. A name under one's own domain stays an ordinary subdomain, also when
-// a server name lies above that domain (insideOwnDomainUnder, alpha.143).
+// a server name or an administrator's name lies above that domain
+// (insideOwnDomainUnder, alpha.143).
 //
 // The same rule is enforced a second time by the database (migrations 080
 // and 081)
@@ -313,20 +314,23 @@ func hostnameNearness(name, other string) int {
 	}
 }
 
-// insideOwnDomainUnder: a server name does not refuse name when the
-// receiving account already holds a name (own: its domains and aliases, not
-// the implicit www and mail names) that lies under the server name and
-// above name. The server name then lies above a domain the account already
-// has, and the new name stays inside that domain: a subdomain of one's own
-// domain stays an ordinary subdomain (alpha.142 lab: customers' domains
-// under the server's zone). Everything else stays refused: name equal to the
-// server name, the server name under name, name under the server name
-// without such a domain, and the server name between the account's domain
-// and name (the server's mail host name inside the customer's domain).
-// Migration 081 applies the same exemption in the database.
-func insideOwnDomainUnder(name, server string, own []string) bool {
+// insideOwnDomainUnder: a server name, or a name an administrator account
+// holds (any kind: a domain, an alias or their implicit www and mail names),
+// does not refuse name when the receiving account already holds a name
+// (own: its domains and aliases, not the implicit www and mail names) that
+// lies under it and above name. That name then lies above a domain the
+// account already has, and the new name stays inside that domain: a
+// subdomain of one's own domain stays an ordinary subdomain (alpha.142 lab:
+// customers' domains under the server's zone dr.test, which the
+// administrator's own subscription holds as the main domain). Everything
+// else stays refused: name equal to it, it under name, name under it
+// without such a domain, it between the account's domain and name (the
+// server's mail host name or an administrator's name inside the customer's
+// domain), and every name of another ordinary account. Migration 081
+// applies the same exemption in the database.
+func insideOwnDomainUnder(name, above string, own []string) bool {
 	for _, held := range own {
-		if strings.HasSuffix(name, "."+held) && strings.HasSuffix(held, "."+server) {
+		if strings.HasSuffix(name, "."+held) && strings.HasSuffix(held, "."+above) {
 			return true
 		}
 	}
@@ -391,31 +395,54 @@ func (p *Panel) checkHostnameClaim(ctx context.Context, claim hostnameClaim) (*h
 			return &hostnameClaimRefusal{Reason: hostnameClaimOwnName, Name: name, Other: r.hostname}, nil
 		}
 	}
+	// The receiving account's own domains and aliases, read once when a
+	// server name or an administrator's name meets the requested name.
+	var own []string
+	ownRead := false
+	inside := func(above string) (bool, error) {
+		if !ownRead {
+			var err error
+			if own, err = accountGivenNames(ctx, db, claim.OwnerID); err != nil {
+				return false, err
+			}
+			ownRead = true
+		}
+		return insideOwnDomainUnder(name, above, own), nil
+	}
 	for _, r := range held {
 		// An exact name is one name whoever asks; a name around another
 		// account's name only an administrator's subscription may hold.
-		if r.ownerID != claim.OwnerID && (r.hostname == name || !claim.OwnerIsAdmin) {
-			return &hostnameClaimRefusal{Reason: hostnameClaimOtherAccount, Name: name, Other: r.hostname, Holder: r.ownerName}, nil
+		if r.ownerID == claim.OwnerID || (r.hostname != name && claim.OwnerIsAdmin) {
+			continue
 		}
+		// An administrator's name above a domain the account already holds
+		// is treated like a server name: a name inside that domain passes.
+		// An ordinary account's name is never passed this way.
+		if r.ownerAdmin && !claim.OwnerIsAdmin {
+			ok, err := inside(r.hostname)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				continue
+			}
+		}
+		return &hostnameClaimRefusal{Reason: hostnameClaimOtherAccount, Name: name, Other: r.hostname, Holder: r.ownerName}, nil
 	}
 	if !claim.OwnerIsAdmin {
 		server, err := p.serverOwnHostnames(ctx)
 		if err != nil {
 			return nil, err
 		}
-		var own []string
-		ownRead := false
 		for _, s := range server {
 			if !hostnamesOverlap(name, s.Name) {
 				continue
 			}
-			if !ownRead {
-				if own, err = accountGivenNames(ctx, db, claim.OwnerID); err != nil {
-					return nil, err
-				}
-				ownRead = true
+			ok, err := inside(s.Name)
+			if err != nil {
+				return nil, err
 			}
-			if !insideOwnDomainUnder(name, s.Name, own) {
+			if !ok {
 				return &hostnameClaimRefusal{Reason: hostnameClaimServerName, Name: name, Other: s.Name}, nil
 			}
 		}
@@ -670,7 +697,8 @@ func (p *Panel) transferNameOverlaps(ctx context.Context, q rowQueryer, subID, r
 		return nil, err
 	}
 	// The receiver's own domains and aliases: a name of the subscription
-	// inside one of them is not refused by a server name above it.
+	// inside one of them is not refused by a server name or an
+	// administrator's name above it.
 	receiverNames, err := accountGivenNames(ctx, q, receiverID)
 	if err != nil {
 		return nil, err
@@ -683,7 +711,8 @@ func (p *Panel) transferNameOverlaps(ctx context.Context, q rowQueryer, subID, r
 		}
 		other := ""
 		for _, r := range held {
-			if r.subscription != subID && r.ownerID != receiverID {
+			if r.subscription != subID && r.ownerID != receiverID &&
+				!(r.ownerAdmin && insideOwnDomainUnder(name, r.hostname, receiverNames)) {
 				other = r.hostname
 				break
 			}

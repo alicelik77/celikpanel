@@ -130,9 +130,10 @@ MIGRATIONS = {
     # column or row added or changed).
     80: '23da9e62270719c0aa8654b113f8ef3290508af097aca1201cdd5ecc740a85e4',
     # Fix round after the alpha.142 lab (21 November 2026): 81 the six
-    # triggers of 80 again, with one's own subdomain under a server name let
-    # through (no table, column or row added or changed).
-    81: 'e559043234155ebe73c713781059ab443e1a530e9d555eb20bb22a8a9d6d768c',
+    # triggers of 80 again, with one's own subdomain under a server name or an
+    # administrator's name let through (no table, column or row added or
+    # changed).
+    81: 'cb26749769585736fc7a37382a9d091fd98d579a460474ae074b68af78f1a984',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -177,7 +178,7 @@ SCHEMAS = {
     78: 'b37c7ec8ab2efff1fedf38d1af06c2ee44188147eb0a3fbcdf46e5bdca2cb1f3',
     79: 'e31f87ac1a3919eb50864c32987db5e374cf6aafa078a7e29ff38022cffd8168',
     80: 'b802ecd673e5ebb7352c569d8c1bf8a49677403239c13d930ae832171170a66c',
-    81: 'c6c575d2a59c389ede61af66a8fc97aae42f00b4688a74644587f1286af3b358',
+    81: '49075dff80f3cfd6bdaac60c998d65a9e497a80e3c77691f66b0eeb480d0b16d',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'

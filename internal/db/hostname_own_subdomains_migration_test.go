@@ -40,10 +40,12 @@ func TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry(t *testing.T) {
 }
 
 // A schema-80 database shaped like the alpha.142 lab (customers' domains
-// under the server's zone dr.test, made before the rule; the server's mail
+// under the server's zone dr.test, made before the rule, and the
+// administrator's own subscription holding dr.test as the main domain and
+// adm.kahvedukkani.dr.test inside a customer's domain; the server's mail
 // host name inside a customer's domain) upgrades with every row intact.
 // Afterwards a customer may add a name inside a domain it already holds under
-// the server's zone, and every other server-name case stays refused.
+// the server's zone, and every other case stays refused.
 func TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn(t *testing.T) {
 	embedded, err := loadEmbeddedMigrations()
 	if err != nil {
@@ -83,6 +85,9 @@ func TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn(t 
 			(11, 3, 'pastane.dr.test'),
 			(12, 2, 'example.com');
 		INSERT INTO domain_aliases (id, domain_id, alias) VALUES (30, 12, 'al.dr.test');
+		INSERT INTO domains (id, subscription_id, name) VALUES
+			(13, 1, 'dr.test'),
+			(14, 1, 'adm.kahvedukkani.dr.test');
 		INSERT INTO pdns_domains (name, type) VALUES ('dr.test', 'NATIVE');
 		INSERT INTO panel_settings (key, value) VALUES
 			('server_setup_infrastructure_zone:dr.test', '{}'),
@@ -149,6 +154,8 @@ func TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn(t 
 	// covered, and a subscription whose names meet only the old owner's.
 	for _, stmt := range []string{
 		`INSERT INTO domains (subscription_id, name) VALUES (2, 'dr.test')`,
+		`INSERT INTO domains (subscription_id, name) VALUES (2, 'adm.kahvedukkani.dr.test')`,
+		`INSERT INTO domains (subscription_id, name) VALUES (2, 'x.adm.kahvedukkani.dr.test')`,
 		`INSERT INTO domains (subscription_id, name) VALUES (2, 'other.dr.test')`,
 		`INSERT INTO domains (subscription_id, name) VALUES (2, 'zone.example.com')`,
 		`INSERT INTO domains (subscription_id, name) VALUES (2, 'mail.example.com')`,
