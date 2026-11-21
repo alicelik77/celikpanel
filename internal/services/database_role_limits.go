@@ -2,6 +2,9 @@ package services
 
 import (
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 )
 
 // Time and temporary-file limits of a database user (S4 R2a,
@@ -22,14 +25,15 @@ import (
 //	            Only superusers and roles granted SET on it can change it
 //	            (runtime-config-resource): a real limit.
 //
-// The panel's own work is never cut by them: dumps run as the engine's
-// administrator, whose sessions do not read a customer role's settings; a
-// load of a file as the database's owner (restore, copy, import) sets the
-// two session values to 0 for itself, and lifts temp_file_limit for that
-// database only while it runs (cmd/agent/database_owner_load.go).
+// The panel never resets what it did not set (review finding 2): it reads a
+// user's current values (ReadUserRoleSettings), writes ONE key at a time
+// (SetUserRoleSetting) and only where the value is still the one it wrote
+// itself; the Panel keeps that record (cmd/panel/database_role_limits.go).
+// Role settings for one database are never written or reset by the panel.
 //
 // Veritabanı kullanıcısının süre ve geçici dosya sınırları; motorun kendi rol
-// ayarlarıdır. Panelin kendi yedek, geri yükleme ve kopyaları kesilmez.
+// ayarlarıdır. Panel yalnız kendi yazdığı değeri değiştirir; sahibin elle
+// koyduğu değere dokunmaz.
 
 // RoleLimits are one user's limits; 0 is "none".
 type RoleLimits struct {
@@ -38,10 +42,41 @@ type RoleLimits struct {
 	TempFileMB               int
 }
 
-// RoleLimiter is a driver that writes a user's time and temporary-file
-// limits. Every call writes all three (a 0 removes an earlier one).
+// The role-limit keys (the Panel's setting keys without "db.").
+const (
+	RoleKeyStatementSeconds         = "statement_seconds"
+	RoleKeyIdleInTransactionSeconds = "idle_in_transaction_seconds"
+	RoleKeyTempFileMB               = "temp_file_mb"
+)
+
+// RoleKeys are the keys in their order.
+var RoleKeys = []string{RoleKeyStatementSeconds, RoleKeyIdleInTransactionSeconds, RoleKeyTempFileMB}
+
+// Value is one key's value.
+func (l RoleLimits) Value(key string) int {
+	switch key {
+	case RoleKeyStatementSeconds:
+		return l.StatementSeconds
+	case RoleKeyIdleInTransactionSeconds:
+		return l.IdleInTransactionSeconds
+	case RoleKeyTempFileMB:
+		return l.TempFileMB
+	}
+	return 0
+}
+
+// RoleSettings are a user's current values as the engine stores them, per
+// key ("" or absent: not set). Only the keys the engine has are present.
+type RoleSettings map[string]string
+
+// RoleLimiter is a driver that reads and writes a user's time and
+// temporary-file limits, one key at a time.
 type RoleLimiter interface {
-	SetUserRoleLimits(username string, limits RoleLimits) error
+	// RoleKeysSupported are the keys this engine has.
+	RoleKeysSupported() []string
+	ReadUserRoleSettings(username string) (RoleSettings, error)
+	// SetUserRoleSetting writes one key (0 removes it).
+	SetUserRoleSetting(username, key string, value int) error
 }
 
 // Bounds of the values the panel writes.
@@ -50,27 +85,79 @@ const (
 	MaxRoleTempFileMB   = 1048576
 )
 
-func (l RoleLimits) validate() error {
-	if l.StatementSeconds < 0 || l.StatementSeconds > MaxRoleLimitSeconds ||
-		l.IdleInTransactionSeconds < 0 || l.IdleInTransactionSeconds > MaxRoleLimitSeconds ||
-		l.TempFileMB < 0 || l.TempFileMB > MaxRoleTempFileMB {
-		return fmt.Errorf("time limits must be 0 to %d seconds and the temporary-file limit 0 to %d MB", MaxRoleLimitSeconds, MaxRoleTempFileMB)
+func validRoleValue(key string, value int) error {
+	switch key {
+	case RoleKeyStatementSeconds, RoleKeyIdleInTransactionSeconds:
+		if value < 0 || value > MaxRoleLimitSeconds {
+			return fmt.Errorf("time limits must be 0 to %d seconds", MaxRoleLimitSeconds)
+		}
+	case RoleKeyTempFileMB:
+		if value < 0 || value > MaxRoleTempFileMB {
+			return fmt.Errorf("the temporary-file limit must be 0 to %d MB", MaxRoleTempFileMB)
+		}
+	default:
+		return fmt.Errorf("unknown limit %q", key)
 	}
 	return nil
 }
 
-// mariaDBRoleLimitSQL is the statement for one user (MariaDB has the
-// statement time only; the other two are PostgreSQL's).
-func mariaDBRoleLimitSQL(account string, limits RoleLimits) (string, error) {
-	if err := limits.validate(); err != nil {
+// --- MariaDB ------------------------------------------------------------------
+
+// mariaDBStatementTimeSQL is the statement for one account.
+func mariaDBStatementTimeSQL(account string, seconds int) (string, error) {
+	if err := validRoleValue(RoleKeyStatementSeconds, seconds); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("ALTER USER %s WITH MAX_STATEMENT_TIME %d;", account, limits.StatementSeconds), nil
+	return fmt.Sprintf("ALTER USER %s WITH MAX_STATEMENT_TIME %d;", account, seconds), nil
 }
 
-// SetUserRoleLimits sets a MariaDB user's MAX_STATEMENT_TIME, and its
-// remote copies'.
-func (d *MariaDBDriver) SetUserRoleLimits(username string, limits RoleLimits) error {
+// RoleKeysSupported: MariaDB has the statement time only.
+func (d *MariaDBDriver) RoleKeysSupported() []string { return []string{RoleKeyStatementSeconds} }
+
+// mariaDBStatementTimeValue reads the client's batch output of
+// SELECT max_statement_time (a header line, then the value): "" for none (0).
+func mariaDBStatementTimeValue(output string) (string, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) < 2 {
+		return "", fmt.Errorf("the account was not found")
+	}
+	raw := strings.TrimSpace(lines[1])
+	f, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return "", fmt.Errorf("max_statement_time %q could not be read", raw)
+	}
+	if f == 0 {
+		return "", nil
+	}
+	return strconv.FormatFloat(math.Round(f*1000)/1000, 'f', -1, 64) + "s", nil
+}
+
+// ReadUserRoleSettings reads the account's MAX_STATEMENT_TIME.
+func (d *MariaDBDriver) ReadUserRoleSettings(username string) (RoleSettings, error) {
+	if err := ValidateSQLIdentifier(username); err != nil {
+		return nil, fmt.Errorf("invalid username: %w", err)
+	}
+	userLiteral, err := QuoteMySQLStringLiteral(username)
+	if err != nil {
+		return nil, fmt.Errorf("invalid username: %w", err)
+	}
+	out, err := d.runSQL("SELECT max_statement_time FROM mysql.user WHERE User = " + userLiteral + " AND Host = 'localhost';")
+	if err != nil {
+		return nil, fmt.Errorf("read the statement time of %s: %w", username, err)
+	}
+	value, err := mariaDBStatementTimeValue(string(out))
+	if err != nil {
+		return nil, fmt.Errorf("read the statement time of %s: %w", username, err)
+	}
+	return RoleSettings{RoleKeyStatementSeconds: value}, nil
+}
+
+// SetUserRoleSetting sets a MariaDB user's MAX_STATEMENT_TIME, and its
+// remote copies'. Other keys do not exist on MariaDB: nothing is written.
+func (d *MariaDBDriver) SetUserRoleSetting(username, key string, value int) error {
+	if key != RoleKeyStatementSeconds {
+		return nil
+	}
 	if err := ValidateSQLIdentifier(username); err != nil {
 		return fmt.Errorf("invalid username: %w", err)
 	}
@@ -78,7 +165,7 @@ func (d *MariaDBDriver) SetUserRoleLimits(username string, limits RoleLimits) er
 	if err != nil {
 		return fmt.Errorf("invalid username: %w", err)
 	}
-	statement, err := mariaDBRoleLimitSQL(userLiteral+"@'localhost'", limits)
+	statement, err := mariaDBStatementTimeSQL(userLiteral+"@'localhost'", value)
 	if err != nil {
 		return err
 	}
@@ -86,7 +173,7 @@ func (d *MariaDBDriver) SetUserRoleLimits(username string, limits RoleLimits) er
 		return fmt.Errorf("set the statement time limit of %s: %w", username, err)
 	}
 	if err := d.forEachRemoteCopy(userLiteral, func(account string) string {
-		text, _ := mariaDBRoleLimitSQL(account, limits)
+		text, _ := mariaDBStatementTimeSQL(account, value)
 		return text
 	}); err != nil {
 		return fmt.Errorf("set the statement time limit of %s's remote copies: %w", username, err)
@@ -94,54 +181,85 @@ func (d *MariaDBDriver) SetUserRoleLimits(username string, limits RoleLimits) er
 	return nil
 }
 
-// postgreSQLRoleLimitSQL is the statements for one role, in order. The
-// role-in-database overrides of temp_file_limit a load leaves only while it
-// runs (a crashed load could leave one) are removed too, so the role's own
-// value holds everywhere after every write.
-func postgreSQLRoleLimitSQL(username string, limits RoleLimits) ([]string, error) {
-	if err := limits.validate(); err != nil {
-		return nil, err
+// --- PostgreSQL ---------------------------------------------------------------
+
+// postgreSQLRoleParameter is the role parameter of a key and its unit.
+func postgreSQLRoleParameter(key string) (string, string) {
+	switch key {
+	case RoleKeyStatementSeconds:
+		return "statement_timeout", "s"
+	case RoleKeyIdleInTransactionSeconds:
+		return "idle_in_transaction_session_timeout", "s"
+	case RoleKeyTempFileMB:
+		return "temp_file_limit", "MB"
+	}
+	return "", ""
+}
+
+// postgreSQLRoleSettingSQL is the statement for one key of one role.
+func postgreSQLRoleSettingSQL(username, key string, value int) (string, error) {
+	if err := validRoleValue(key, value); err != nil {
+		return "", err
 	}
 	ident, err := QuotePGIdentifier(username)
 	if err != nil {
-		return nil, fmt.Errorf("invalid username: %w", err)
+		return "", fmt.Errorf("invalid username: %w", err)
 	}
-	literal, err := QuotePGStringLiteral(username)
-	if err != nil {
-		return nil, fmt.Errorf("invalid username: %w", err)
+	name, unit := postgreSQLRoleParameter(key)
+	if value == 0 {
+		return fmt.Sprintf("ALTER ROLE %s RESET %s", ident, name), nil
 	}
-	set := func(name string, value int, unit string) string {
-		if value == 0 {
-			return fmt.Sprintf("ALTER ROLE %s RESET %s", ident, name)
+	return fmt.Sprintf("ALTER ROLE %s SET %s = '%d%s'", ident, name, value, unit), nil
+}
+
+// postgreSQLRoleSettingsFrom reads the role-wide setconfig entries
+// ("name=value") into the keys.
+func postgreSQLRoleSettingsFrom(entries []string) RoleSettings {
+	out := RoleSettings{}
+	for _, key := range RoleKeys {
+		out[key] = ""
+	}
+	for _, entry := range entries {
+		name, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
 		}
-		return fmt.Sprintf("ALTER ROLE %s SET %s = '%d%s'", ident, name, value, unit)
+		for _, key := range RoleKeys {
+			if parameter, _ := postgreSQLRoleParameter(key); parameter == name {
+				out[key] = value
+			}
+		}
 	}
-	return []string{
-		set("statement_timeout", limits.StatementSeconds, "s"),
-		set("idle_in_transaction_session_timeout", limits.IdleInTransactionSeconds, "s"),
-		set("temp_file_limit", limits.TempFileMB, "MB"),
-		PostgreSQLResetLoadOverridesSQL(literal),
-	}, nil
+	return out
 }
 
-// PostgreSQLResetLoadOverridesSQL removes every role-in-database
-// temp_file_limit of the role named by the quoted literal (what a load lifts
-// while it runs).
-func PostgreSQLResetLoadOverridesSQL(roleLiteral string) string {
-	return "DO $celikpanel$ DECLARE d pg_catalog.text; BEGIN " +
-		"FOR d IN SELECT db.datname::pg_catalog.text FROM pg_catalog.pg_db_role_setting s " +
-		"JOIN pg_catalog.pg_roles r ON r.oid OPERATOR(pg_catalog.=) s.setrole " +
-		"JOIN pg_catalog.pg_database db ON db.oid OPERATOR(pg_catalog.=) s.setdatabase " +
-		"WHERE r.rolname OPERATOR(pg_catalog.=) " + roleLiteral +
-		" AND pg_catalog.array_to_string(s.setconfig, ',') OPERATOR(pg_catalog.~~) '%temp_file_limit=%' " +
-		"LOOP EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I RESET temp_file_limit', " + roleLiteral + ", d); END LOOP; " +
-		"END $celikpanel$"
+// RoleKeysSupported: PostgreSQL has all three.
+func (d *PostgreSQLDriver) RoleKeysSupported() []string { return RoleKeys }
+
+// ReadUserRoleSettings reads the role's own settings (for every database,
+// setdatabase 0); a role's settings for one database are not read or written.
+func (d *PostgreSQLDriver) ReadUserRoleSettings(username string) (RoleSettings, error) {
+	if _, err := QuotePGIdentifier(username); err != nil {
+		return nil, fmt.Errorf("invalid username: %w", err)
+	}
+	db, err := d.getDB("postgres")
+	if err != nil {
+		return nil, fmt.Errorf("open PostgreSQL control database for the time limits: %w", err)
+	}
+	defer db.Close()
+	var config string
+	err = db.QueryRow(`SELECT COALESCE(pg_catalog.array_to_string(s.setconfig, E'\n'), '') FROM pg_catalog.pg_roles r `+
+		`LEFT JOIN pg_catalog.pg_db_role_setting s ON s.setrole OPERATOR(pg_catalog.=) r.oid AND s.setdatabase OPERATOR(pg_catalog.=) 0 `+
+		`WHERE r.rolname OPERATOR(pg_catalog.=) $1`, username).Scan(&config)
+	if err != nil {
+		return nil, fmt.Errorf("read the time and temporary-file limits of %s: %w", username, err)
+	}
+	return postgreSQLRoleSettingsFrom(strings.Split(config, "\n")), nil
 }
 
-// SetUserRoleLimits sets a PostgreSQL role's time and temporary-file
-// limits.
-func (d *PostgreSQLDriver) SetUserRoleLimits(username string, limits RoleLimits) error {
-	statements, err := postgreSQLRoleLimitSQL(username, limits)
+// SetUserRoleSetting writes one key of a PostgreSQL role.
+func (d *PostgreSQLDriver) SetUserRoleSetting(username, key string, value int) error {
+	statement, err := postgreSQLRoleSettingSQL(username, key, value)
 	if err != nil {
 		return err
 	}
@@ -150,10 +268,8 @@ func (d *PostgreSQLDriver) SetUserRoleLimits(username string, limits RoleLimits)
 		return fmt.Errorf("open PostgreSQL control database for the time limits: %w", err)
 	}
 	defer db.Close()
-	for _, statement := range statements {
-		if _, err := db.Exec(statement); err != nil {
-			return fmt.Errorf("set the time and temporary-file limits of %s: %w", username, err)
-		}
+	if _, err := db.Exec(statement); err != nil {
+		return fmt.Errorf("set the %s of %s: %w", key, username, err)
 	}
 	return nil
 }

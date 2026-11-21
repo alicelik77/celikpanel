@@ -477,12 +477,23 @@ func importPostgreSQL(ctx context.Context, database backupspec.DatabaseIdentity,
 		return
 	}
 	defer closeReader()
+	// S4 R2a: the same rule as every other load (database_load_limits.go):
+	// the user's time defaults do not cut it, its temporary-file limit holds.
+	if err := pgLoadLiftSessionLimits(ctx, conn); err != nil {
+		resp.Code, resp.Error = transport.DBImportCodeLoadFailed, boundedText(pgLoadSessionDefaultsError(err).Error()+"; nothing was changed", 400)
+		return
+	}
+	limit := pgLoadTempFileLimit(ctx, conn)
 	loadErr := pgLoadTransaction(ctx, conn, reader, req.EmptyFirst)
 	if loadErr == nil {
 		resp.Success = true
 		return
 	}
 	resp.RolledBack = true
+	if pgTempFileLimitReached(loadErr) {
+		resp.Code, resp.Error = transport.DBImportCodeLoadFailed, boundedText(pgLoadTempFileLimitText(req.User, limit), 400)
+		return
+	}
 	var refusal *pgLoadRefusal
 	if errors.As(loadErr, &refusal) {
 		resp.Code, resp.Error = refusal.Code, boundedText(refusal.Error(), 400)

@@ -21,6 +21,10 @@ type DeleteSiteResponse struct {
 	// deletion keeps on purpose: where, how many files, how many bytes. Nil
 	// when there are none.
 	KeptBackups *KeptBackups `json:"kept_backups,omitempty"`
+	// SliceFilesAside (S4 R2a, additive): the site's limits file or drop-in
+	// folder the server owner had changed, moved aside under names systemd
+	// does not load (the Panel names them in the audit log).
+	SliceFilesAside []string `json:"slice_files_aside,omitempty"`
 }
 
 // KeptBackups describes backup files a deletion left in place.

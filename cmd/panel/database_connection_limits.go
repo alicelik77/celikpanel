@@ -64,7 +64,9 @@ func (p *Panel) applyNewUserConnectionLimit(ctx context.Context, server *core.Da
 		}
 	}
 	if roleLimiter, ok := limiter.(services.RoleLimiter); ok && roleLimits != (services.RoleLimits{}) {
-		return roleLimiter.SetUserRoleLimits(username, roleLimits)
+		// S4 R2a: a new user; only the keys the plan sets are written and
+		// recorded as the panel's (database_role_limits.go).
+		return p.applyDBRoleLimits(ctx, roleLimiter, server.ID, username, roleLimits, true)
 	}
 	return nil
 }
@@ -214,9 +216,11 @@ func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionID
 			if err := limiter.SetUserConnectionLimit(u.username, limit); err != nil {
 				log.Printf("database connection limit of %s stays as it was until the next change: %v", u.username, err)
 			}
-			// S4 R2a: no limit removes an earlier one, as for connections.
+			// S4 R2a: only a value the panel wrote itself is changed, and only
+			// when the plan's value differs; the owner's are kept
+			// (database_role_limits.go).
 			if roleLimiter, ok := limiter.(services.RoleLimiter); ok {
-				if err := roleLimiter.SetUserRoleLimits(u.username, roleLimits); err != nil {
+				if err := p.applyDBRoleLimits(ctx, roleLimiter, server.ID, u.username, roleLimits, false); err != nil {
 					log.Printf("database time limits of %s stay as they were until the next change: %v", u.username, err)
 				}
 			}

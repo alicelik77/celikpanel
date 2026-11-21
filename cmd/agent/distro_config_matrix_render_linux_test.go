@@ -1498,7 +1498,7 @@ func renderMatrixSystemd(t *testing.T, h *matrixHost) {
 // accepts).
 func renderMatrixSiteSlice(t *testing.T, h *matrixHost, dir string) {
 	slice := &transport.SiteSlice{SiteID: 42, Domain: "example.test", MemoryMB: 1024, Tasks: 256, CPUPercent: 150}
-	managed, err := siteSliceManaged(slice, transport.SiteFileTriggerCreate)
+	managed, err := siteSliceManaged(slice, transport.SiteFileTriggerCreate, "")
 	if err != nil {
 		h.renderFailure(t, "systemd.site-slice", "systemd", "a site's slice", "internal/sitesandbox/slice.go SliceUnitText via cmd/agent/site_slices.go siteSliceManaged", err)
 		return

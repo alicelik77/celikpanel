@@ -18,12 +18,23 @@ import (
 // S4 R2a: the site's slice on this server (site_slices.go,
 // docs/SITE-SANDBOX.md section 8).
 
+// realSiteSliceHostSupport is the reader of the host's cgroup hierarchy; the
+// package's tests run as on a host that holds site limits unless a test
+// says otherwise (TestNothingIsWrittenOnAHostWithoutLimits).
+var realSiteSliceHostSupport = siteSliceHostSupport
+
+func init() { siteSliceHostSupport = func() string { return "" } }
+
 // sliceTestUnit is one unit as the fake systemd sees it.
 type sliceTestUnit struct {
 	active string
 	cgroup string
 	// failStart: a restart in the slice leaves it failed.
 	failStart bool
+	// dropIns: the unit's DropInPaths.
+	dropIns string
+	// slowShows: how many reads after a restart it still shows "activating".
+	slowShows int
 }
 
 type sliceTestHost struct {
@@ -34,6 +45,10 @@ type sliceTestHost struct {
 	slices  map[string]string // slice name -> show block
 	ports   map[string]map[int]bool
 	reloads int
+	// onRestart runs (without the host's lock) at each restart.
+	onRestart func(unit string)
+	// setProperty applies a set-property call (nil: recorded only).
+	setProperty func(args []string)
 }
 
 func useSliceTestHost(t *testing.T) *sliceTestHost {
@@ -41,14 +56,24 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 	useSandboxHost(t, true)
 	dir, _ := sandboxUnitDir()
 	host := &sliceTestHost{dir: dir, units: map[string]*sliceTestUnit{}, slices: map[string]string{}, ports: map[string]map[int]bool{}}
-	oldCtl, oldVerify, oldRoot, oldListen, oldSettle, oldPoll, oldPrepare := appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSliceSettle, siteSlicePoll, siteMovePrepare
+	oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare := appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare
+	oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport := siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport
+	oldJournal, oldOutcomes, oldRuntime, oldControl := siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir
 	t.Cleanup(func() {
-		appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSliceSettle, siteSlicePoll, siteMovePrepare = oldCtl, oldVerify, oldRoot, oldListen, oldSettle, oldPoll, oldPrepare
+		appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare = oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare
+		siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport = oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport
+		siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir = oldJournal, oldOutcomes, oldRuntime, oldControl
 	})
+	private := t.TempDir()
+	siteMoveJournalPath, siteMoveOutcomesPath = filepath.Join(private, "move.json"), filepath.Join(private, "outcomes.json")
+	siteSliceRuntimeJournalPath, siteSliceControlDir = filepath.Join(private, "runtime.json"), filepath.Join(t.TempDir(), "system.control")
+	siteSliceHostSupport = func() string { return "" }
+	siteMoveKilled = func(string, string) bool { return false }
 	siteMovePrepare = func() error { return nil }
 	appUnitVerify = func(string) error { return nil }
 	siteSliceCgroupRoot = t.TempDir()
-	siteSliceSettle, siteSlicePoll = 50*time.Millisecond, time.Millisecond
+	siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteSlicePoll = 50*time.Millisecond, 50*time.Millisecond, 50*time.Millisecond, time.Millisecond
+	siteMoveBudget = time.Minute
 	siteSliceListening = func(unit string) map[int]bool {
 		host.mu.Lock()
 		defer host.mu.Unlock()
@@ -61,6 +86,12 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 		return out
 	}
 	appUnitSystemctl = func(args ...string) ([]byte, error) {
+		if args[0] == "restart" && host.onRestart != nil {
+			host.onRestart(args[1])
+		}
+		if args[0] == "set-property" && host.setProperty != nil {
+			host.setProperty(args)
+		}
 		host.mu.Lock()
 		defer host.mu.Unlock()
 		host.calls = append(host.calls, strings.Join(args, " "))
@@ -81,15 +112,23 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 			}
 			u.cgroup = "/" + slice + "/" + args[1]
 			u.active = "active"
+			if u.slowShows > 0 {
+				u.active = "activating"
+			}
 			if u.failStart && slice != sitesandbox.SystemSlice {
 				u.active, u.cgroup = "failed", ""
 			}
-		case args[0] == "show" && len(args) == 3 && args[2] == "--property=ActiveState,ControlGroup":
+		case args[0] == "show" && len(args) == 3 && strings.HasPrefix(args[2], "--property=ActiveState,ControlGroup"):
 			u := host.units[args[1]]
 			if u == nil {
 				return []byte("ActiveState=inactive\nControlGroup=\n"), nil
 			}
-			return []byte("ActiveState=" + u.active + "\nControlGroup=" + u.cgroup + "\n"), nil
+			if u.active == "activating" {
+				if u.slowShows--; u.slowShows <= 0 {
+					u.active = "active"
+				}
+			}
+			return []byte("ActiveState=" + u.active + "\nControlGroup=" + u.cgroup + "\nDropInPaths=" + u.dropIns + "\n"), nil
 		case args[0] == "show" && strings.HasPrefix(args[1], "--property=Id,"):
 			var blocks []string
 			for _, name := range args[2:] {
@@ -173,7 +212,7 @@ func TestSiteSliceFileFollowsTheOwnerRule(t *testing.T) {
 	if resp.Sites[0].Outcome != transport.SiteFileOutcomeKept || string(after) != edited || resp.Sites[0].PendingPath == "" {
 		t.Fatalf("owner's edit: %+v", resp.Sites[0])
 	}
-	if state, _ := siteSliceFileState(7); state != transport.SiteFileOwnerEdited {
+	if state, _ := siteSliceFileState(7, readSandboxLedger()); state != transport.SiteFileOwnerEdited {
 		t.Fatalf("state = %s", state)
 	}
 	// Out of range limits never reach a file.
@@ -383,7 +422,8 @@ func TestSiteSlicesStatusReadsCountersAndPlacement(t *testing.T) {
 	dir := filepath.Join(siteSliceCgroupRoot, "celiksite_7.slice")
 	_ = os.MkdirAll(dir, 0o755)
 	_ = os.WriteFile(filepath.Join(dir, "memory.events"), []byte("low 0\nhigh 0\nmax 9\noom 1\noom_kill 1\n"), 0o644)
-	_ = os.WriteFile(filepath.Join(dir, "pids.events"), []byte("max 4\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "memory.events.local"), []byte("low 0\nhigh 0\nmax 9\noom 1\noom_kill 0\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "pids.events.local"), []byte("max 4\n"), 0o644)
 	_ = os.WriteFile(filepath.Join(dir, "cpu.stat"), []byte("nr_periods 50\nnr_throttled 5\nthrottled_usec 7000\n"), 0o644)
 	in, out := "celikrt-5.service", "celiksvc-6.service"
 	writeTestUnit(t, host, in, sealedTestUnit(in, sliceTestHome+"/app"))
@@ -402,7 +442,8 @@ func TestSiteSlicesStatusReadsCountersAndPlacement(t *testing.T) {
 	site := resp.Sites[0]
 	if site.File != transport.SiteFileManagedUnchanged || !site.Active || site.Live != (transport.SiteSliceLimitsRead{MemoryMB: 1024, Tasks: 256, CPUPercent: 150}) ||
 		site.MemoryCurrentMB != 300 || site.TasksCurrent != 40 || !site.CountersRead ||
-		site.Counters != (transport.SiteSliceCounters{OOMKills: 1, MemoryMaxHits: 9, TasksMaxHits: 4, CPUThrottled: 5, CPUThrottledUSec: 7000, CPUPeriods: 50}) {
+		site.Counters != (transport.SiteSliceCounters{MemoryLimitHits: 1, MemoryOOMAll: 1, OOMKills: 1, MemoryMaxHits: 9, TasksLimitHits: 4, TasksRule: "local",
+			CPUThrottled: 5, CPUThrottledUSec: 7000, CPUPeriods: 50}) {
 		t.Fatalf("site 7: %+v", site)
 	}
 	placements := map[string]string{}

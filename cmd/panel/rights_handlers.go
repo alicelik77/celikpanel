@@ -108,7 +108,12 @@ type rightsPreview struct {
 	SitesAbove      []string `json:"sites_above,omitempty"`
 	SitesAboveCount int      `json:"sites_above_count,omitempty"`
 	SitesUnread     bool     `json:"sites_unread,omitempty"`
-	Message         string   `json:"message"`
+	// S4 R2a (site_limits.go): sites whose programs use more now than a
+	// lowered site memory or process limit; the system stops their programs
+	// at once when the change is saved.
+	SitesStopped      []string `json:"sites_stopped,omitempty"`
+	SitesStoppedCount int      `json:"sites_stopped_count,omitempty"`
+	Message           string   `json:"message"`
 	// clamped (alpha.128): the sites above a lowered limit, for their notices.
 	clamped         []clampedSite
 	planned         *plannedRights
@@ -308,6 +313,13 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 	plan, ok := p.planSubscriptionChange(w, r, c, owner, subID, req)
 	if !ok {
 		return
+	}
+	// S4 R2a: a lowered site limit below what a site's programs use now is
+	// shown before the change is confirmed.
+	if req.Ceilings != nil && (preview || !req.Confirm) {
+		if before, err := loadSettingCeilings(ctx, p.db.GetDB(), rightsOwnerSubscription, subID); err == nil {
+			p.previewSiteLimitsLowered(ctx, &plan, []int{subID}, before, map[string]int(*req.Ceilings))
+		}
 	}
 	if preview {
 		writeRightsJSON(w, http.StatusOK, map[string]any{"preview": plan})
@@ -647,6 +659,14 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 	plan, ok := p.planResellerChange(w, r, target.ID, req)
 	if !ok {
 		return
+	}
+	// S4 R2a: as for a subscription, over the reseller's whole tree.
+	if req.Ceilings != nil && (preview || !req.Confirm) {
+		before, err := loadSettingCeilings(ctx, p.db.GetDB(), rightsOwnerReseller, target.ID)
+		tree, treeErr := treeSubscriptionIDs(ctx, p.db.GetDB(), target.ID)
+		if err == nil && treeErr == nil {
+			p.previewSiteLimitsLowered(ctx, &plan, tree, before, map[string]int(*req.Ceilings))
+		}
 	}
 	if preview {
 		writeRightsJSON(w, http.StatusOK, map[string]any{"preview": plan})

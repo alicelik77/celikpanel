@@ -408,6 +408,7 @@ var auditActionNames = []string{
 	"site.node_sandbox_refresh",
 	"site.node_install",
 	"site.limits_move",
+	"site.limits_file_aside",
 	"site.node_version.failed",
 	"site.php_version",
 	"site.php_settings",

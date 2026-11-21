@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
+	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
@@ -48,8 +53,43 @@ const (
 )
 
 // siteSliceCodeDefaults apply when no level sets a ceiling and the server
-// has no default of its own.
+// has no default of its own. The memory default is bound to the host
+// (review finding 11): siteMemoryCodeDefault.
 var siteSliceCodeDefaults = map[string]int{settingSiteMemoryMB: 3072, settingSiteTasks: 512, settingSiteCPUPercent: 200}
+
+// hostMemoryMB is the host's memory (MemTotal in /proc/meminfo, whole MB; 0
+// when it cannot be read). A seam for tests.
+var hostMemoryMB = func() int {
+	raw, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[0] == "MemTotal:" {
+			kb, err := strconv.Atoi(fields[1])
+			if err == nil && kb > 0 {
+				return kb / 1024
+			}
+		}
+	}
+	return 0
+}
+
+// siteMemoryCodeDefault is a site's memory limit when no level sets one: the
+// smaller of 3072 MB and 75 % of the host's memory (rounded down to a whole
+// MB), never under 64 MB. One site can then never take the whole host by
+// default; a plan sets more where wanted.
+func siteMemoryCodeDefault() int {
+	value := siteSliceCodeDefaults[settingSiteMemoryMB]
+	if host := hostMemoryMB(); host > 0 && host*3/4 < value {
+		value = host * 3 / 4
+	}
+	if value < 64 {
+		value = 64
+	}
+	return value
+}
 
 func init() {
 	registerSettingKey(settingKeyDef{Key: settingSiteMemoryMB, Group: "site", Unit: "mb", Min: 64, Max: 65536, Presets: []int{512, 1024, 2048, 3072, 4096}})
@@ -77,6 +117,9 @@ type siteLimitValue struct {
 func siteLimitValueOf(limits settingLimits, key string) siteLimitValue {
 	def := settingKeyDefs[key]
 	out := siteLimitValue{Key: key, Value: siteSliceCodeDefaults[key], SetBy: "default"}
+	if key == settingSiteMemoryMB {
+		out.Value = siteMemoryCodeDefault()
+	}
 	if limit, ok := limits[key]; ok {
 		switch {
 		case limit.Ceiling != nil:
@@ -179,7 +222,35 @@ func (p *Panel) reapplySiteSlices(subscriptionIDs []int) {
 	})
 }
 
-// reapplySiteSlicesNow is the work of reapplySiteSlices.
+// siteSliceApplyBatch is the number of sites per Agent call (the Agent's
+// own bound): each call holds the Agent's slice lock, which a customer's
+// program write waits for, for one batch only.
+const siteSliceApplyBatch = 100
+
+// siteLimitApplyProgress is the running write of changed limits (shown on
+// the administrator's site card while it runs; review finding 12).
+type siteLimitApplyProgress struct {
+	mu    sync.Mutex
+	Done  int
+	Total int
+}
+
+var siteLimitApplying siteLimitApplyProgress
+
+func (a *siteLimitApplyProgress) set(done, total int) {
+	a.mu.Lock()
+	a.Done, a.Total = done, total
+	a.mu.Unlock()
+}
+
+func (a *siteLimitApplyProgress) read() (int, int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.Done, a.Total
+}
+
+// reapplySiteSlicesNow is the work of reapplySiteSlices: the sites in
+// batches, with the progress recorded and logged.
 func (p *Panel) reapplySiteSlicesNow(ctx context.Context, subscriptionIDs []int) error {
 	if p.db == nil {
 		return nil
@@ -212,22 +283,126 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, subscriptionIDs []int)
 	if len(req.Sites) == 0 {
 		return nil
 	}
-	resp, err := applySiteSlicesCall(p, ctx, req)
-	if err != nil {
-		return err
-	}
-	for _, s := range resp.Sites {
-		switch s.Outcome {
-		case transport.SiteFileOutcomeKept:
-			log.Printf("site limits: the slice of site %d was changed on the server and is kept; CelikPanel's text is in %s", s.SiteID, s.PendingPath)
-		case transport.SiteFileOutcomeFailed, transport.SiteFileOutcomeRefused:
-			log.Printf("site limits: the slice of site %d stays as it was until the next change: %s", s.SiteID, s.Detail)
+	all := req.Sites
+	defer siteLimitApplying.set(0, 0)
+	for start := 0; start < len(all); start += siteSliceApplyBatch {
+		end := start + siteSliceApplyBatch
+		if end > len(all) {
+			end = len(all)
+		}
+		siteLimitApplying.set(start, len(all))
+		batch := &transport.ApplySiteSlicesRequest{ExpectedBuildCommit: req.ExpectedBuildCommit, Sites: all[start:end]}
+		resp, err := applySiteSlicesCall(p, ctx, batch)
+		if err != nil {
+			return fmt.Errorf("after %d of %d sites: %w", start, len(all), err)
+		}
+		if resp.Unsupported != "" {
+			log.Printf("site limits: nothing was written: %s", resp.Unsupported)
+			return nil
+		}
+		for _, s := range resp.Sites {
+			switch s.Outcome {
+			case transport.SiteFileOutcomeKept:
+				log.Printf("site limits: the slice of site %d was changed on the server and is kept; CelikPanel's text is in %s", s.SiteID, s.PendingPath)
+			case transport.SiteFileOutcomeFailed, transport.SiteFileOutcomeRefused:
+				log.Printf("site limits: the slice of site %d stays as it was until the next change: %s", s.SiteID, s.Detail)
+			}
+			if s.MovedAside != "" {
+				log.Printf("site limits: an earlier site's changed limits file of site id %d was moved aside as %s", s.SiteID, s.MovedAside)
+			}
+		}
+		if resp.Error != "" {
+			log.Printf("site limits: %s", resp.Error)
+		}
+		if len(all) > siteSliceApplyBatch {
+			log.Printf("site limits: %d of %d sites written", end, len(all))
 		}
 	}
-	if resp.Error != "" {
-		log.Printf("site limits: %s", resp.Error)
-	}
 	return nil
+}
+
+// --- A lowered limit below what a site uses now asks first ----------------------
+
+// siteLimitsLoweredKeys are the site keys an edit lowers that stop programs
+// at once when they are below what they use (memory) or hold (processes).
+func siteLimitsLoweredKeys(before, after map[string]int) map[string]int {
+	out := map[string]int{}
+	for _, key := range []string{settingSiteMemoryMB, settingSiteTasks} {
+		value, set := after[key]
+		if !set {
+			continue
+		}
+		if old, had := before[key]; !had || value < old {
+			out[key] = value
+		}
+	}
+	return out
+}
+
+// previewSiteLimitsLowered adds to a change's preview the sites of these
+// subscriptions whose programs use more now than a lowered site memory limit
+// (or hold more processes than a lowered process limit): the system stops
+// their programs at once when the change is saved, so the change asks
+// first, in the panel's own confirmation (review finding 9). The reading is
+// the Agent's now; when it fails the preview says the count is not known.
+func (p *Panel) previewSiteLimitsLowered(ctx context.Context, preview *rightsPreview, subscriptionIDs []int, before, after map[string]int) {
+	lowered := siteLimitsLoweredKeys(before, after)
+	if len(lowered) == 0 || len(subscriptionIDs) == 0 || (siteLimitReadNeedsAgent && p.agentClient == nil) {
+		return
+	}
+	in := map[int]bool{}
+	for _, id := range subscriptionIDs {
+		in[id] = true
+	}
+	all, err := p.siteLimitSites(ctx, 0)
+	if err != nil {
+		preview.SitesUnread = true
+		return
+	}
+	var sites []siteLimitSite
+	for _, s := range all {
+		if in[s.SubscriptionID] && len(s.Units) > 0 {
+			sites = append(sites, s)
+		}
+	}
+	if len(sites) == 0 {
+		return
+	}
+	statuses, err := p.readSiteSlicesPaged(ctx, sites)
+	if err != nil {
+		preview.SitesUnread = true
+		preview.Message += " What the sites' programs use now could not be read, so it is not known whether a lowered site limit stops some of them; confirm to save anyway."
+		return
+	}
+	names := map[int]string{}
+	for _, s := range sites {
+		names[s.SiteID] = s.Domain
+	}
+	var lines []string
+	for _, status := range statuses {
+		if !status.Active {
+			continue
+		}
+		var parts []string
+		if limit, ok := lowered[settingSiteMemoryMB]; ok && status.MemoryCurrentMB > int64(limit) {
+			parts = append(parts, fmt.Sprintf("memory %d MB in use, new limit %d MB", status.MemoryCurrentMB, limit))
+		}
+		if limit, ok := lowered[settingSiteTasks]; ok && status.TasksCurrent > int64(limit) {
+			parts = append(parts, fmt.Sprintf("%d processes, new limit %d", status.TasksCurrent, limit))
+		}
+		if len(parts) > 0 {
+			lines = append(lines, names[status.SiteID]+": "+strings.Join(parts, "; "))
+		}
+	}
+	sort.Strings(lines)
+	preview.SitesStoppedCount = len(lines)
+	if len(lines) > 40 {
+		lines = append(lines[:40], fmt.Sprintf("+%d more", len(lines)-40))
+	}
+	preview.SitesStopped = lines
+	if preview.SitesStoppedCount > 0 {
+		preview.Message += fmt.Sprintf(" The programs of %d site(s) use more now than a lowered site limit; when this is saved the system stops them at once.", preview.SitesStoppedCount)
+	}
 }
 
 // --- Database role limits -------------------------------------------------------

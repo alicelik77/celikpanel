@@ -57,15 +57,20 @@ type SiteSliceLimitsRead struct {
 	CPUPercent int `json:"cpu_percent"`
 }
 
-// SiteSliceCounters are the slice cgroup's own counters since its cgroup
-// was made (sitesandbox.SliceCounters).
+// SiteSliceCounters are the slice cgroup's counters since its cgroup was
+// made (sitesandbox.SliceCounters: which counter proves the site's own limit
+// was measured on Debian 13 and Ubuntu 24.04 kernels).
 type SiteSliceCounters struct {
-	OOMKills         int64 `json:"oom_kills"`
-	MemoryMaxHits    int64 `json:"memory_max_hits"`
-	TasksMaxHits     int64 `json:"tasks_max_hits"`
-	CPUThrottled     int64 `json:"cpu_throttled"`
-	CPUThrottledUSec int64 `json:"cpu_throttled_usec"`
-	CPUPeriods       int64 `json:"cpu_periods"`
+	MemoryLimitHits  int64  `json:"memory_limit_hits"`
+	MemoryOOMAll     int64  `json:"memory_oom_all"`
+	OOMKills         int64  `json:"oom_kills"`
+	MemoryMaxHits    int64  `json:"memory_max_hits"`
+	TasksLimitHits   int64  `json:"tasks_limit_hits"`
+	TasksOtherHits   int64  `json:"tasks_other_hits"`
+	TasksRule        string `json:"tasks_rule,omitempty"`
+	CPUThrottled     int64  `json:"cpu_throttled"`
+	CPUThrottledUSec int64  `json:"cpu_throttled_usec"`
+	CPUPeriods       int64  `json:"cpu_periods"`
 }
 
 // SiteSliceUnit is one unit of a site.
@@ -80,6 +85,21 @@ type SiteSliceUnit struct {
 	// Own is the unit's own limits (systemd's MemoryMax=, TasksMax=,
 	// CPUQuota= of the unit itself).
 	Own SiteSliceLimitsRead `json:"own"`
+	// DropInSlice is the slice an owner's drop-in of the unit names ("":
+	// none). Such a unit is the owner's to place: the move does not restart
+	// it and it is not counted as outside.
+	DropInSlice string `json:"drop_in_slice,omitempty"`
+}
+
+// SiteSliceMoveRecovery is what the Agent did at its start with a move of
+// the site that an Agent stop interrupted (site_slices_move.go): per unit
+// "moved" (it had come up in the slice and stays), "put_back" (its pre-move
+// bytes are back and it runs where it ran), "rewritten" (stopped; its file
+// names the slice), "not_tried", or "changed" (its file was changed meanwhile
+// and is left as it is).
+type SiteSliceMoveRecovery struct {
+	At    string            `json:"at"`
+	Units map[string]string `json:"units"`
 }
 
 // SiteSliceStatus is one site's slice.
@@ -101,35 +121,50 @@ type SiteSliceStatus struct {
 	CountersRead bool              `json:"counters_read"`
 	Counters     SiteSliceCounters `json:"counters"`
 	Units        []SiteSliceUnit   `json:"units"`
+	// MoveInterrupted: an Agent stop interrupted the last move of this site
+	// and the Agent finished or put it back at its start.
+	MoveInterrupted *SiteSliceMoveRecovery `json:"move_interrupted,omitempty"`
 }
 
-// SiteSlicesStatusResponse answers SiteSlicesStatusV1.
+// SiteSlicesStatusResponse answers SiteSlicesStatusV1. Unsupported says why
+// this host cannot hold a site's limits at all ("": it can); no slice is
+// written then. Partial says the request was larger than one read takes
+// and only its first part was read.
 type SiteSlicesStatusResponse struct {
-	Sites []SiteSliceStatus `json:"sites"`
-	Error string            `json:"error,omitempty"`
+	Sites       []SiteSliceStatus `json:"sites"`
+	Unsupported string            `json:"unsupported,omitempty"`
+	Partial     string            `json:"partial,omitempty"`
+	Error       string            `json:"error,omitempty"`
 }
 
-// ApplySiteSlicesRequest writes changed limits into the slices that exist
-// (a plan, a reseller's limits or the server's changed). A site without a
-// slice file gets one when its first unit goes into it.
+// ApplySiteSlicesRequest writes changed limits into the slices (a plan, a
+// reseller's limits or the server's changed), at most 100 sites per request
+// (the Panel sends a large change in batches). A site without a slice file
+// gets one when one of its units names the slice or runs in it, or when its
+// first unit goes into it.
 type ApplySiteSlicesRequest struct {
 	ExpectedBuildCommit string      `json:"expected_build_commit"`
 	Sites               []SiteSlice `json:"sites"`
 }
 
 // SiteSliceApplied is what happened to one slice: written, unchanged,
-// absent (nothing to change yet), kept (an owner's edit), failed.
+// absent (nothing uses it yet), kept (an owner's edit), failed. MovedAside
+// names an earlier site's changed file of the same id that was moved aside
+// before the new one was written.
 type SiteSliceApplied struct {
 	SiteID      int    `json:"site_id"`
 	Outcome     string `json:"outcome"`
 	PendingPath string `json:"pending_path,omitempty"`
+	MovedAside  string `json:"moved_aside,omitempty"`
 	Detail      string `json:"detail,omitempty"`
 }
 
-// ApplySiteSlicesResponse answers ApplySiteSlicesV1.
+// ApplySiteSlicesResponse answers ApplySiteSlicesV1 (Unsupported: as in
+// SiteSlicesStatusResponse; nothing was written).
 type ApplySiteSlicesResponse struct {
-	Sites []SiteSliceApplied `json:"sites"`
-	Error string             `json:"error,omitempty"`
+	Sites       []SiteSliceApplied `json:"sites"`
+	Unsupported string             `json:"unsupported,omitempty"`
+	Error       string             `json:"error,omitempty"`
 }
 
 // MoveSiteSliceRequest moves a site's running units into its slice: the
@@ -171,9 +206,15 @@ const (
 	// SiteMovePutBack: it had moved, a later unit of the site failed, so
 	// it was put back where it ran before.
 	SiteMovePutBack = "put_back"
-	// SiteMoveNotTried: an earlier unit of the site failed, so this one was
-	// not touched.
+	// SiteMoveNotTried: an earlier unit of the site failed, or the move's
+	// time ran out, so this one was not touched.
 	SiteMoveNotTried = "not_tried"
+	// SiteMoveChanged: its file was changed while the move ran (a customer's
+	// change, a deletion): that change is kept and nothing is put over it.
+	SiteMoveChanged = "changed"
+	// SiteMoveOwnerSlice: an owner's drop-in places it in a slice; it is the
+	// owner's choice, not moved and not restarted.
+	SiteMoveOwnerSlice = "owner_slice"
 )
 
 // SiteSliceMoved is one unit's outcome.
@@ -190,9 +231,13 @@ type SiteSliceMoved struct {
 // site that could move is in its slice; RolledBack: a failure put the site
 // back as it was before.
 type MoveSiteSliceResponse struct {
-	Done       bool             `json:"done"`
-	RolledBack bool             `json:"rolled_back,omitempty"`
-	SliceFile  string           `json:"slice_file,omitempty"`
-	Units      []SiteSliceMoved `json:"units"`
-	Error      string           `json:"error,omitempty"`
+	Done       bool `json:"done"`
+	RolledBack bool `json:"rolled_back,omitempty"`
+	// WaitSeconds is how long the move waited at most for each program to
+	// run and answer again (the unit's own start timeout, at least 20 and
+	// at most 300 seconds; systemd's default of 90 for these units).
+	WaitSeconds int              `json:"wait_seconds,omitempty"`
+	SliceFile   string           `json:"slice_file,omitempty"`
+	Units       []SiteSliceMoved `json:"units"`
+	Error       string           `json:"error,omitempty"`
 }

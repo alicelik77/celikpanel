@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/alicelik/celikpanel/internal/sandboxbind"
 	"github.com/alicelik/celikpanel/internal/services"
@@ -88,8 +87,7 @@ func ensureSandboxBindTemplate() error {
 	}
 	switch result.Outcome {
 	case transport.SiteFileOutcomeWritten, transport.SiteFileOutcomeRecreated, transport.SiteFileOutcomeTaken:
-		ledger[file.Path] = sandboxLedgerEntry{Kind: file.Kind, RenderSHA256: result.RenderSHA256, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
-		if err := writeSandboxLedger(ledger); err != nil {
+		if err := setSandboxLedgerEntry(file.Path, file.Kind, result.RenderSHA256); err != nil {
 			log.Printf("site sandbox: record the bind unit: %v", err)
 		}
 		if err := sandboxDaemonReload(); err != nil {
@@ -97,8 +95,7 @@ func ensureSandboxBindTemplate() error {
 		}
 	case transport.SiteFileOutcomeUnchanged:
 		if ledger[file.Path].RenderSHA256 != result.RenderSHA256 {
-			ledger[file.Path] = sandboxLedgerEntry{Kind: file.Kind, RenderSHA256: result.RenderSHA256, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
-			if err := writeSandboxLedger(ledger); err != nil {
+			if err := setSandboxLedgerEntry(file.Path, file.Kind, result.RenderSHA256); err != nil {
 				log.Printf("site sandbox: record the bind unit: %v", err)
 			}
 		}
@@ -143,8 +140,7 @@ func ensureSandboxHelperBinary() error {
 				}
 			}
 			if ledger[dst].RenderSHA256 != current {
-				ledger[dst] = sandboxLedgerEntry{Kind: "sandbox_helper", RenderSHA256: current, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
-				if err := writeSandboxLedger(ledger); err != nil {
+				if err := setSandboxLedgerEntry(dst, "sandbox_helper", current); err != nil {
 					log.Printf("site sandbox: record the helper: %v", err)
 				}
 			}
@@ -159,8 +155,7 @@ func ensureSandboxHelperBinary() error {
 	if err := copySandboxHelper(dst); err != nil {
 		return fmt.Errorf("install %s: %v", dst, err)
 	}
-	ledger[dst] = sandboxLedgerEntry{Kind: "sandbox_helper", RenderSHA256: sandboxHelperSelfSum, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
-	if err := writeSandboxLedger(ledger); err != nil {
+	if err := setSandboxLedgerEntry(dst, "sandbox_helper", sandboxHelperSelfSum); err != nil {
 		log.Printf("site sandbox: record the helper: %v", err)
 	}
 	return nil

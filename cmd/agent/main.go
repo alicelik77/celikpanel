@@ -757,6 +757,11 @@ func main() {
 	// service starts, so a deletion re-checked after the update already
 	// meets the new tool.
 	reconcileDNSPeerInspectorToolsAtStartup()
+	// S4 R2a: a move of a site's programs into its limits, or a limit
+	// pushed to running slices, that an Agent stop interrupted is finished
+	// or put back from its record before any request is served
+	// (site_slices_move.go, site_slices_runtime.go).
+	recoverSiteSlicesAtStartup()
 	// alpha.130: the automatic removal's archives of leftover PostgreSQL
 	// clusters expire after 30 days (pg_leftovers.go).
 	if pruned := pruneExpiredPGAutoArchives(); len(pruned) > 0 {

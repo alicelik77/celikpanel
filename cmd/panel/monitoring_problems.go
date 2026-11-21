@@ -129,6 +129,8 @@ var problemKindOrder = map[string]int{
 	"disk_limits_counted":  23,
 	// S4 R2a: sites whose programs still run outside their limits (a to-do).
 	"site_programs_outside": 24,
+	// S4 R2a review: this host cannot enforce a site's limits at all.
+	"site_limits_unsupported": 25,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

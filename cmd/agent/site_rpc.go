@@ -81,6 +81,9 @@ type siteLifecycleOps struct {
 	removeSiteLogs      func(string, int) error
 	removeChallengeRoot func(int, int) error
 	measureBackups      func(int, int) *transport.KeptBackups
+	// S4 R2a: the site's slice file (CelikPanel's unchanged one removed, an
+	// owner's edit and drop-ins moved aside and returned). Nil skips it.
+	removeSiteSlice func(int) ([]string, error)
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -125,9 +128,10 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return file.Close()
 		},
-		applyLayout:    applyHostingLayout,
-		applyVhost:     a.nginxGen.ApplyVhost,
-		applySiteVhost: a.nginxGen.ApplyManagedVhost,
+		removeSiteSlice: removeSiteSlice,
+		applyLayout:     applyHostingLayout,
+		applyVhost:      a.nginxGen.ApplyVhost,
+		applySiteVhost:  a.nginxGen.ApplyManagedVhost,
 		removeVhost: func(domain string) error {
 			backup, err := a.nginxGen.RemoveSiteVhost(domain)
 			if backup != "" {
@@ -678,6 +682,14 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 
 	// 2. Supervised app unit (node projects) — harmless when absent.
 	keepFailure("application unit", ops.removeAppUnit(req.SiteID))
+
+	// 2b. S4 R2a: the site's slice goes with it (a later site with the same
+	// id never inherits it); an owner's edit is moved aside, not lost.
+	if ops.removeSiteSlice != nil {
+		aside, err := ops.removeSiteSlice(req.SiteID)
+		keepFailure("site limits file", err)
+		resp.SliceFilesAside = aside
+	}
 
 	// 3. PHP-FPM pool for this site.
 	if req.PHPVersion != "" {

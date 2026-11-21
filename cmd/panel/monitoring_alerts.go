@@ -581,6 +581,9 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "site_programs_outside":
 		return fmt.Sprintf("The programs of %s sites still run outside their limits (%s). \"Move into the limits\" on each site's Overview restarts them once inside.", n, subject),
 			fmt.Sprintf("%s sitenin programları hâlâ sınırlarının dışında çalışıyor (%s). Her sitenin Genel Bakış sayfasındaki \"Sınırların içine taşı\" onları bir kez yeniden başlatıp içeri alır.", n, subject)
+	case "site_limits_unsupported":
+		return "This server cannot enforce the limits of sites' programs (missing: " + subject + "). Monitoring says what that means.",
+			"Bu sunucu sitelerin programlarının sınırlarını uygulayamıyor (eksik: " + subject + "). Ne anlama geldiği İzleme'de."
 	case "disk_limits_counted":
 		return "Disk limits are counted, not enforced: the hosting file system has no project quotas. Monitoring says what that means.",
 			"Disk sınırları sayılıyor ama dosya sistemi tarafından uygulanmıyor: barındırma dosya sisteminde proje kotası yok. Ne anlama geldiği İzleme'de."

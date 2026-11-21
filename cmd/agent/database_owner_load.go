@@ -169,18 +169,21 @@ func loadDatabaseSQL(ctx context.Context, target databaseLoadTarget, r io.Reader
 			"database %s has no user with a stored password to load the file as", database.Name)
 	}
 	if database.Type == "postgresql" {
-		// S4 R2a: the user's own limits do not cut the load
-		// (database_load_limits.go).
-		defer pgLiftLoadTempFileLimit(pgLoadPort(database), target.Account.User, database.Name)()
 		conn, err := pgOpenLoadSession(ctx, database, target.Account)
 		if err != nil {
 			return pgLoadSessionRefusal(database, target.Account, err)
 		}
 		defer conn.Close(context.Background())
+		// S4 R2a: the user's time defaults do not cut the load; its
+		// temporary-file limit stays (database_load_limits.go).
 		if err := pgLoadLiftSessionLimits(ctx, conn); err != nil {
 			return pgLoadSessionDefaultsError(err)
 		}
+		limit := pgLoadTempFileLimit(ctx, conn)
 		if err := pgLoadTransaction(ctx, conn, r, pgEmptyFirst); err != nil {
+			if pgTempFileLimitReached(err) {
+				return fmt.Errorf("ERROR: %s", pgLoadTempFileLimitText(target.Account.User, limit))
+			}
 			return pgLoadErrorText(err)
 		}
 		return nil

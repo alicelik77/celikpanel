@@ -43,6 +43,7 @@ func siteLimitsCall(t *testing.T, f rightsFixture, handler http.Handler, userID 
 // ceiling is the value and names the plan; the database keys are off until
 // a level sets them.
 func TestSiteLimitKeysJoinTheChain(t *testing.T) {
+	useHostMemory(t, 8192)
 	f := newRightsFixture(t)
 	ctx := context.Background()
 	db := f.panel.db.GetDB()
@@ -95,10 +96,14 @@ func TestSiteLimitKeysJoinTheChain(t *testing.T) {
 func TestChangedSiteLimitsReachTheSlices(t *testing.T) {
 	f := newRightsFixture(t)
 	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
-	oldCall, oldStart, oldNeeds := applySiteSlicesCall, startSiteSliceApply, siteLimitReadNeedsAgent
+	oldCall, oldStart, oldNeeds, oldRead := applySiteSlicesCall, startSiteSliceApply, siteLimitReadNeedsAgent, readSiteSlicesCall
 	t.Cleanup(func() {
-		applySiteSlicesCall, startSiteSliceApply, siteLimitReadNeedsAgent = oldCall, oldStart, oldNeeds
+		applySiteSlicesCall, startSiteSliceApply, siteLimitReadNeedsAgent, readSiteSlicesCall = oldCall, oldStart, oldNeeds, oldRead
 	})
+	// The lowered limit is above what the site uses now: nothing to confirm.
+	readSiteSlicesCall = func(p *Panel, ctx context.Context, req *transport.SiteSlicesStatusRequest) (transport.SiteSlicesStatusResponse, error) {
+		return siteLimitsStatus(req.Sites[0].SiteID, 0, 0), nil
+	}
 	var sent []transport.ApplySiteSlicesRequest
 	applySiteSlicesCall = func(p *Panel, ctx context.Context, req *transport.ApplySiteSlicesRequest) (transport.ApplySiteSlicesResponse, error) {
 		sent = append(sent, *req)
@@ -124,12 +129,22 @@ func TestChangedSiteLimitsReachTheSlices(t *testing.T) {
 	}
 }
 
-// siteLimitsStatus is the Agent's reading of the fixture's site.
-func siteLimitsStatus(siteID int, oomKills, tasksMax int64) transport.SiteSlicesStatusResponse {
+// useHostMemory sets the host's memory the defaults are bound to.
+func useHostMemory(t *testing.T, mb int) {
+	t.Helper()
+	old := hostMemoryMB
+	hostMemoryMB = func() int { return mb }
+	t.Cleanup(func() { hostMemoryMB = old })
+}
+
+// siteLimitsStatus is the Agent's reading of the fixture's site: memoryLimit
+// times the site's own memory limit was reached (each with one kill),
+// tasksLimit processes refused at the site's own process limit.
+func siteLimitsStatus(siteID int, memoryLimit, tasksLimit int64) transport.SiteSlicesStatusResponse {
 	return transport.SiteSlicesStatusResponse{Sites: []transport.SiteSliceStatus{{
 		SiteID: siteID, Slice: "celiksite_" + itoa(siteID) + ".slice", File: transport.SiteFileManagedUnchanged, Active: true,
 		Live: transport.SiteSliceLimitsRead{MemoryMB: 3072, Tasks: 512, CPUPercent: 200}, MemoryCurrentMB: 300, TasksCurrent: 20,
-		CountersRead: true, Counters: transport.SiteSliceCounters{OOMKills: oomKills, TasksMaxHits: tasksMax},
+		CountersRead: true, Counters: transport.SiteSliceCounters{MemoryLimitHits: memoryLimit, MemoryOOMAll: memoryLimit, OOMKills: memoryLimit, TasksLimitHits: tasksLimit},
 		Units: []transport.SiteSliceUnit{{Unit: "celikapp-" + itoa(siteID) + ".service", Placement: transport.SiteUnitOutside,
 			Own: transport.SiteSliceLimitsRead{MemoryMB: 1536, Tasks: 512, CPUPercent: 200}}},
 	}}}
@@ -203,6 +218,7 @@ func TestSiteLimitsCardSaysWhatHappened(t *testing.T) {
 // administrator's move asks the Agent once and a repeated request id gets
 // the first answer.
 func TestSiteLimitsMoveIsTheAdministratorsOneAction(t *testing.T) {
+	useHostMemory(t, 8192)
 	f := newRightsFixture(t)
 	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
 	old := moveSiteSliceCall
@@ -239,7 +255,7 @@ func TestSiteLimitReachedTwiceIsAProblem(t *testing.T) {
 	ledger := siteLimitLedger{}
 	read := func(at time.Time, oom, tasks int64, throttled int64) {
 		observeSiteSlices(ledger, []transport.SiteSliceStatus{{SiteID: 4, CountersRead: true,
-			Counters: transport.SiteSliceCounters{OOMKills: oom, TasksMaxHits: tasks, CPUThrottledUSec: throttled}}}, at)
+			Counters: transport.SiteSliceCounters{MemoryLimitHits: oom, OOMKills: oom, TasksLimitHits: tasks, CPUThrottledUSec: throttled}}}, false, at)
 	}
 	read(now, 5, 0, 0) // the baseline: earlier kills are not given a time
 	if ledger["4"].Events != nil {
@@ -253,10 +269,16 @@ func TestSiteLimitReachedTwiceIsAProblem(t *testing.T) {
 		events["tasks"] == nil || events["tasks"].Count != 3 || events["cpu"] == nil || events["cpu"].Count != 1 {
 		t.Fatalf("events: %+v %+v %+v", events["memory"], events["tasks"], events["cpu"])
 	}
-	// A day later the old hits are gone.
-	read(now.Add(25*time.Hour), 1, 3, 40_000_000)
-	if hits := ledger["4"].Events["memory"].Hits; len(hits) != 0 {
-		t.Fatalf("old hits kept: %v", hits)
+	// A day later the old hits no longer count as repeated (nothing new was
+	// reached, so nothing was written either).
+	if changed := observeSiteSlices(ledger, []transport.SiteSliceStatus{{SiteID: 4, CountersRead: true,
+		Counters: transport.SiteSliceCounters{MemoryLimitHits: 1, OOMKills: 1, TasksLimitHits: 3, CPUThrottledUSec: 40_000_000}}}, false, now.Add(25*time.Hour)); changed {
+		t.Fatal("a reading that reached nothing changed the ledger")
+	}
+	for _, view := range siteLimitEventViews(ledger["4"], now.Add(25*time.Hour)) {
+		if view.Repeated {
+			t.Fatalf("old hits counted as repeated: %+v", view)
+		}
 	}
 }
 

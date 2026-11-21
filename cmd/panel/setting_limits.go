@@ -293,7 +293,11 @@ func serverSettingLimits(ctx context.Context, q rowQueryer) (settingLimits, erro
 			limit.Default = &d
 		} else if d, ok := siteSliceCodeDefaults[key]; ok {
 			// S4 R2a: a site's slice always has limits; without the
-			// server's own default, CelikPanel's applies (site_limits.go).
+			// server's own default, CelikPanel's applies (site_limits.go;
+			// memory bound to the host).
+			if key == settingSiteMemoryMB {
+				d = siteMemoryCodeDefault()
+			}
 			limit.Default = &d
 		}
 		out[key] = limit

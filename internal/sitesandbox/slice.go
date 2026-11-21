@@ -164,23 +164,76 @@ func CgroupElementFor(cgroup, unit string) (string, error) {
 	return `{ "` + strings.TrimPrefix(cgroup, "/") + `" }`, nil
 }
 
-// SliceCounters are the slice cgroup's own event counters since the slice's
+// SliceCounters are the slice cgroup's event counters since the slice's
 // cgroup was made (they start at zero again after every program of the site
-// stopped and the slice was removed).
+// stopped and the slice was removed). Which counter proves which limit was
+// measured on real kernels (21 Nov 2026, Debian 13 kernel 6.12.105 with
+// systemd 257 and Ubuntu 24.04 kernel 6.8.0 with systemd 255; the raw outputs
+// are quoted in docs/SITE-SANDBOX.md section 8):
+//
+//   - The slice's OWN memory limit: the slice's memory.events.local "oom"
+//     rises (both kernels). A program's own smaller MemoryMax= raises only the
+//     slice's hierarchical memory.events "oom", not the local one; a host-wide
+//     shortage raises only the hierarchical "oom_kill" (no "oom" anywhere).
+//   - The slice's OWN process limit: where the slice has pids.events.local
+//     (Debian's 6.12), its "max" rises only for the slice's limit. Where it
+//     has none (6.8), the kernel counts the refusal in the forking unit's own
+//     pids.events whichever level refused it; the slice's limit is then the
+//     one reached when that unit's pids.peak stayed below its own pids.max
+//     (the slice is the only other level with a limit).
+//
+// Anything else is counted as "other": a program of the site was stopped or
+// refused, but not proved to be at the site's limit; the screens then never
+// blame the plan.
 type SliceCounters struct {
-	// OOMKills: memory.events oom_kill, processes the kernel stopped because
-	// the site used all its memory.
+	// MemoryLimitHits: the slice's memory.events.local oom, times the site's
+	// programs together reached the site's memory limit.
+	MemoryLimitHits int64 `json:"memory_limit_hits"`
+	// MemoryOOMAll: the slice's memory.events oom (hierarchical): a limit was
+	// reached in the slice or in one of its programs.
+	MemoryOOMAll int64 `json:"memory_oom_all"`
+	// OOMKills: the slice's memory.events oom_kill (hierarchical), programs of
+	// the site the kernel stopped for any lack of memory.
 	OOMKills int64 `json:"oom_kills"`
-	// MemoryMaxHits: memory.events max, times the site's memory reached the
-	// limit and had to be reclaimed.
+	// MemoryMaxHits: the slice's memory.events.local max, times the site's
+	// memory reached the limit and had to be reclaimed.
 	MemoryMaxHits int64 `json:"memory_max_hits"`
-	// TasksMaxHits: pids.events max, new processes refused at the limit.
-	TasksMaxHits int64 `json:"tasks_max_hits"`
+	// TasksLimitHits: new processes refused at the site's own process limit.
+	TasksLimitHits int64 `json:"tasks_limit_hits"`
+	// TasksOtherHits: new processes refused at a program's own limit (or where
+	// the kernel does not say which level refused them).
+	TasksOtherHits int64 `json:"tasks_other_hits"`
+	// TasksRule names how the process counters were read: "local" (the
+	// slice's pids.events.local) or "units" (each unit's pids.events and
+	// pids.peak).
+	TasksRule string `json:"tasks_rule,omitempty"`
 	// CPUThrottled: cpu.stat nr_throttled, periods the site was slowed down;
 	// CPUThrottledUSec the time it waited; CPUPeriods the periods counted.
+	// cpu.stat throttling is the slice's own quota (non-hierarchical).
 	CPUThrottled     int64 `json:"cpu_throttled"`
 	CPUThrottledUSec int64 `json:"cpu_throttled_usec"`
 	CPUPeriods       int64 `json:"cpu_periods"`
+}
+
+// SliceCgroupFiles are the texts of the slice cgroup's files ("" for a file
+// that could not be read) and of each unit cgroup in it.
+type SliceCgroupFiles struct {
+	MemoryEvents      string
+	MemoryEventsLocal string
+	PidsEventsLocal   string
+	// HasPidsEventsLocal: the kernel has pids.events.local (6.12 on Debian 13,
+	// 6.13 and later; not 6.8).
+	HasPidsEventsLocal bool
+	CPUStat            string
+	Units              []UnitPidsFiles
+}
+
+// UnitPidsFiles are one unit cgroup's process files.
+type UnitPidsFiles struct {
+	Events      string
+	EventsLocal string
+	Peak        string
+	Max         string
 }
 
 // cgroupValue reads "key value" lines (memory.events, pids.events, cpu.stat).
@@ -197,15 +250,52 @@ func cgroupValue(text, key string) (int64, bool) {
 	return 0, false
 }
 
-// ParseSliceCounters reads the slice cgroup's memory.events, pids.events and
-// cpu.stat texts ("" for a file that could not be read).
-func ParseSliceCounters(memoryEvents, pidsEvents, cpuStat string) SliceCounters {
+// cgroupLimit reads a one-number file (pids.max, pids.peak; "max" or
+// unreadable: -1).
+func cgroupLimit(text string) int64 {
+	text = strings.TrimSpace(text)
+	if text == "" || text == "max" {
+		return -1
+	}
+	n, err := strconv.ParseInt(text, 10, 64)
+	if err != nil || n < 0 {
+		return -1
+	}
+	return n
+}
+
+// ParseSliceCounters reads the slice's counters from its files (the rules
+// above SliceCounters).
+func ParseSliceCounters(f SliceCgroupFiles) SliceCounters {
 	var c SliceCounters
-	c.OOMKills, _ = cgroupValue(memoryEvents, "oom_kill")
-	c.MemoryMaxHits, _ = cgroupValue(memoryEvents, "max")
-	c.TasksMaxHits, _ = cgroupValue(pidsEvents, "max")
-	c.CPUThrottled, _ = cgroupValue(cpuStat, "nr_throttled")
-	c.CPUThrottledUSec, _ = cgroupValue(cpuStat, "throttled_usec")
-	c.CPUPeriods, _ = cgroupValue(cpuStat, "nr_periods")
+	c.MemoryLimitHits, _ = cgroupValue(f.MemoryEventsLocal, "oom")
+	c.MemoryMaxHits, _ = cgroupValue(f.MemoryEventsLocal, "max")
+	c.MemoryOOMAll, _ = cgroupValue(f.MemoryEvents, "oom")
+	c.OOMKills, _ = cgroupValue(f.MemoryEvents, "oom_kill")
+	if f.HasPidsEventsLocal {
+		c.TasksRule = "local"
+		c.TasksLimitHits, _ = cgroupValue(f.PidsEventsLocal, "max")
+		for _, u := range f.Units {
+			n, _ := cgroupValue(u.EventsLocal, "max")
+			c.TasksOtherHits += n
+		}
+	} else {
+		c.TasksRule = "units"
+		for _, u := range f.Units {
+			n, _ := cgroupValue(u.Events, "max")
+			if n == 0 {
+				continue
+			}
+			peak := cgroupLimit(u.Peak)
+			if limit := cgroupLimit(u.Max); peak >= 0 && (limit < 0 || peak < limit) {
+				c.TasksLimitHits += n
+			} else {
+				c.TasksOtherHits += n
+			}
+		}
+	}
+	c.CPUThrottled, _ = cgroupValue(f.CPUStat, "nr_throttled")
+	c.CPUThrottledUSec, _ = cgroupValue(f.CPUStat, "throttled_usec")
+	c.CPUPeriods, _ = cgroupValue(f.CPUStat, "nr_periods")
 	return c
 }

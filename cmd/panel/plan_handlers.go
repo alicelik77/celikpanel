@@ -483,13 +483,20 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
+		// S4 R2a: and a lowered site limit below what a site's programs use
+		// now (the system stops them at once).
+		if action == "preview" || !pl.ConfirmNarrowing {
+			if subs, err := subscriptionsOnPlan(r.Context(), p.db.GetDB(), id); err == nil {
+				p.previewSiteLimitsLowered(r.Context(), &preview, subs, ceilingsBefore, ceilingsAfter)
+			}
+		}
 		if action == "preview" {
 			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
 			return
 		}
 		// Taking items away is shown first (6.4, P7); so is a lowered
 		// ceiling that sites of the plan are above (alpha.128).
-		if (len(preview.Removed) > 0 || preview.SitesAboveCount > 0 || preview.SitesUnread) && !pl.ConfirmNarrowing {
+		if (len(preview.Removed) > 0 || preview.SitesAboveCount > 0 || preview.SitesUnread || preview.SitesStoppedCount > 0) && !pl.ConfirmNarrowing {
 			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
 			return
 		}

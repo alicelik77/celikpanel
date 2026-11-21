@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -18,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alicelik/celikpanel/internal/hostingpath"
 	"github.com/alicelik/celikpanel/internal/serviceapps"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/sitesandbox"
@@ -33,37 +31,70 @@ import (
 //     written into the slice. It runs only inside a mutation.
 //   - siteUnitEntersSlice decides, read-only, where a unit written now goes:
 //     a unit that does not run goes into its site's slice; a running unit
-//     stays in the slice it runs in. systemd does not move a running unit:
-//     unit_set_slice() refuses a unit that is not inactive (-EBUSY,
-//     src/core/unit.c of systemd 255 and 257), and a file naming another
-//     slice than the one the unit runs in would leave systemd's view and the
-//     cgroup apart after a daemon-reload. A running unit therefore moves only
-//     by the administrator's action (MoveSiteSliceV1), which restarts it once.
-//   - ApplySiteSlicesV1 writes changed limits into existing slices; systemd
-//     applies a changed slice to its running cgroup at the daemon-reload
-//     (unit_deserialize_state() invalidates every realized cgroup "so that
-//     new cgroup settings get applied", src/core/unit-serialize.c of 255 and
-//     257): nothing is restarted.
+//     stays in the slice it runs in. A changed Slice= reaches a running unit
+//     only at its next start (measured 21 Nov 2026 on systemd 257 and 255:
+//     after daemon-reload the unit shows the new Slice= but its process stays
+//     in /system.slice until it restarts). A running unit therefore moves
+//     only by the administrator's action (MoveSiteSliceV1,
+//     site_slices_move.go), which restarts it once.
+//   - ApplySiteSlicesV1 writes changed limits into the slices, and makes the
+//     running slices take them at once (site_slices_runtime.go: systemd 257
+//     does not apply a changed slice file to a running slice at
+//     daemon-reload; systemd 255 does).
 //   - SiteSlicesStatusV1 reads the slices, their counters and where each unit
-//     runs, with one systemctl call for all of them. It changes nothing.
+//     runs. It changes nothing.
+//   - A host without the unified cgroup hierarchy and its memory, pids and
+//     cpu controllers gets no slice at all: nothing is written that would
+//     pretend to limit (siteSliceHostSupport).
 //
 // Sitenin dilimi: dilim dosyası D-031 kuralıyla yazılır; çalışan bir birim
 // yalnız yöneticinin taşıma işlemiyle (bir kez yeniden başlatılarak) dilime
-// girer; durum okuması hiçbir şey değiştirmez.
+// girer; durum okuması hiçbir şey değiştirmez; sınır uygulayamayan bir
+// sunucuya dilim yazılmaz.
 
 // siteSliceCgroupRoot is the cgroup v2 hierarchy (tests replace it).
 var siteSliceCgroupRoot = "/sys/fs/cgroup"
 
 var siteSliceMu sync.Mutex
 
+// siteSliceControllers are the controllers a site's slice needs.
+var siteSliceControllers = []string{"memory", "pids", "cpu"}
+
+// siteSliceHostSupport says what this host lacks to hold a site's limits
+// ("": nothing): the unified cgroup hierarchy ("cgroup v2":
+// cgroup.controllers at the root of /sys/fs/cgroup; a cgroup v1 or hybrid
+// host has none there) and its memory, pids and cpu controllers (their
+// names). A seam for tests.
+var siteSliceHostSupport = func() string {
+	raw, err := os.ReadFile(filepath.Join(siteSliceCgroupRoot, "cgroup.controllers"))
+	if err != nil {
+		return "cgroup v2"
+	}
+	have := map[string]bool{}
+	for _, c := range strings.Fields(string(raw)) {
+		have[c] = true
+	}
+	var missing []string
+	for _, c := range siteSliceControllers {
+		if !have[c] {
+			missing = append(missing, c)
+		}
+	}
+	return strings.Join(missing, ", ")
+}
+
 // siteSliceFor accepts a request's slice for the site it names: nil when the
-// request carries none (an older Panel), names another site or limits out
-// of range. A unit then stays where it runs.
+// request carries none (an older Panel), names another site, has limits out
+// of range, or this host cannot hold a site's limits. A unit then stays
+// where it runs.
 func siteSliceFor(s *transport.SiteSlice, siteID int) *transport.SiteSlice {
 	if s == nil || siteID <= 0 || s.SiteID != siteID {
 		return nil
 	}
 	if siteSliceLimits(s).Validate() != nil {
+		return nil
+	}
+	if siteSliceHostSupport() != "" {
 		return nil
 	}
 	return s
@@ -73,8 +104,17 @@ func siteSliceLimits(s *transport.SiteSlice) sitesandbox.SliceLimits {
 	return sitesandbox.SliceLimits{MemoryMB: s.MemoryMB, Tasks: s.Tasks, CPUPercent: s.CPUPercent}
 }
 
+// siteSliceFile is a site's slice file.
+func siteSliceFile(siteID int) (string, error) {
+	dir, err := sandboxUnitDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, sitesandbox.SliceName(siteID)), nil
+}
+
 // siteSliceManaged is the slice's native file under the D-031 rule.
-func siteSliceManaged(s *transport.SiteSlice, trigger string) (services.ManagedSiteFile, error) {
+func siteSliceManaged(s *transport.SiteSlice, trigger, recorded string) (services.ManagedSiteFile, error) {
 	dir, err := sandboxUnitDir()
 	if err != nil {
 		return services.ManagedSiteFile{}, err
@@ -86,7 +126,7 @@ func siteSliceManaged(s *transport.SiteSlice, trigger string) (services.ManagedS
 	file := filepath.Join(dir, sitesandbox.SliceName(s.SiteID))
 	return services.ManagedSiteFile{
 		Kind: "site_slice", Path: file, HeaderPrefix: services.ManagedHeaderPrefixHash, Body: body,
-		Trigger: trigger, RecordedSHA256: readSandboxLedger()[file].RenderSHA256, IncludeDir: file + ".d",
+		Trigger: trigger, RecordedSHA256: recorded, IncludeDir: file + ".d",
 	}, nil
 }
 
@@ -99,16 +139,58 @@ var siteSliceVerify = func(path string) error {
 	return nil
 }
 
+// siteSliceAsideSuffix names a slice file or drop-in folder CelikPanel moved
+// aside: systemd loads neither "<name>.slice.<suffix>" nor
+// "<name>.slice.d.<suffix>".
+func siteSliceAsideName(path string, now time.Time) string {
+	return path + ".celikpanel-aside-" + now.UTC().Format("20060102T150405Z")
+}
+
+// moveSliceFileAside renames an owner's slice file (or drop-in folder) to a
+// name systemd does not load. It returns the new name.
+func moveSliceFileAside(path string) (string, error) {
+	base := siteSliceAsideName(path, time.Now())
+	aside := base
+	for n := 2; ; n++ {
+		if _, err := os.Lstat(aside); errors.Is(err, os.ErrNotExist) {
+			break
+		}
+		aside = base + "-" + strconv.Itoa(n) // never over an earlier copy
+	}
+	if err := os.Rename(path, aside); err != nil {
+		return "", err
+	}
+	return aside, nil
+}
+
 // writeSiteSlice applies the slice file and records CelikPanel's digest. The
-// caller holds siteSliceMu and reloads systemd when written is true.
-func writeSiteSlice(s *transport.SiteSlice, trigger string) (transport.SiteFileResult, bool, error) {
-	f, err := siteSliceManaged(s, trigger)
+// caller holds siteSliceMu and reloads systemd when written is true. A slice
+// file the ledger does not know (a site deleted under an earlier
+// installation, whose id is used again) is treated as a leftover first: an
+// owner's edit of it is moved aside (named in the answer and the log),
+// CelikPanel's unchanged text is replaced as usual.
+func writeSiteSlice(s *transport.SiteSlice, trigger string, ledger map[string]sandboxLedgerEntry) (transport.SiteFileResult, bool, string, error) {
+	f, err := siteSliceManaged(s, trigger, "")
 	if err != nil {
-		return transport.SiteFileResult{}, false, err
+		return transport.SiteFileResult{}, false, "", err
+	}
+	f.RecordedSHA256 = ledger[f.Path].RenderSHA256
+	aside := ""
+	if _, known := ledger[f.Path]; !known {
+		inspected, _, _ := services.InspectManagedSiteFile(f)
+		switch inspected.State {
+		case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
+			moved, err := moveSliceFileAside(f.Path)
+			if err != nil {
+				return inspected, false, "", fmt.Errorf("an earlier site's limits file %s could not be moved aside: %v", f.Path, err)
+			}
+			aside = moved
+			log.Printf("site slice: %s belonged to an earlier site with the same id and was changed on this server; it is kept as %s (systemd does not load it)", f.Path, moved)
+		}
 	}
 	result, err := services.ApplyManagedSiteFile(f, func() error { return siteSliceVerify(f.Path) }, nil)
 	if err != nil {
-		return result, false, err
+		return result, false, aside, err
 	}
 	written := false
 	switch result.Outcome {
@@ -116,17 +198,16 @@ func writeSiteSlice(s *transport.SiteSlice, trigger string) (transport.SiteFileR
 		written = true
 		fallthrough
 	case transport.SiteFileOutcomeUnchanged:
-		ledger := readSandboxLedger()
 		if ledger[f.Path].RenderSHA256 != result.RenderSHA256 {
-			ledger[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
-			if err := writeSandboxLedger(ledger); err != nil {
+			ledger[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256}
+			if err := setSandboxLedgerEntry(f.Path, f.Kind, result.RenderSHA256); err != nil {
 				log.Printf("site slice: record %s: %v", f.Path, err)
 			}
 		}
 	case transport.SiteFileOutcomeKept:
 		log.Printf("site slice: %s was changed on this server and is kept (%s); CelikPanel's text is in %s", f.Path, result.State, result.PendingPath)
 	}
-	return result, written, nil
+	return result, written, aside, nil
 }
 
 func siteSliceDaemonReload() error {
@@ -139,15 +220,16 @@ func siteSliceDaemonReload() error {
 // ensureSiteSlice puts the site's slice in place before a unit is written
 // into it. An owner's edited slice is kept and used. A slice that could not
 // be written does not stop the operation: systemd makes a slice that has no
-// file without limits, the unit still runs, and the site's card shows the
-// slice file as missing (logged here).
+// file without limits and the unit still runs; the site's card then shows
+// the slice file as absent and that no limit applies, and the next change of
+// limits (or the move) writes it again (logged here).
 func ensureSiteSlice(s *transport.SiteSlice) {
 	if s == nil {
 		return
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
-	result, written, err := writeSiteSlice(s, transport.SiteFileTriggerCreate)
+	result, written, _, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, readSandboxLedger())
 	if err != nil || result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused {
 		log.Printf("site slice: %s could not be written (%s %s %s): %v", sitesandbox.SliceName(s.SiteID), result.Outcome, result.Reason, result.Detail, err)
 		return
@@ -155,7 +237,9 @@ func ensureSiteSlice(s *transport.SiteSlice) {
 	if written {
 		if err := siteSliceDaemonReload(); err != nil {
 			log.Printf("site slice: %v", err)
+			return
 		}
+		pushSiteSlicesToKernel([]int{s.SiteID})
 	}
 }
 
@@ -187,6 +271,37 @@ func siteUnitEntersSlice(unit string, s *transport.SiteSlice, move bool) bool {
 	return props["ControlGroup"] == "/"+sitesandbox.SliceName(s.SiteID)+"/"+unit
 }
 
+// siteSlicesNamed reads the unit folder once: the sites whose slice a unit
+// file names (Slice=celiksite_<id>.slice) or whose slice cgroup exists (a
+// unit runs in it).
+func siteSlicesNamed() map[int]bool {
+	out := map[int]bool{}
+	if dir, err := sandboxUnitDir(); err == nil {
+		if entries, err := os.ReadDir(dir); err == nil {
+			for _, e := range entries {
+				if !siteSliceUnitPattern.MatchString(e.Name()) || !e.Type().IsRegular() {
+					continue
+				}
+				for _, line := range strings.Split(readSmallFile(filepath.Join(dir, e.Name())), "\n") {
+					if rest, ok := strings.CutPrefix(line, "Slice="); ok {
+						if id, ok := sitesandbox.ParseSliceName(strings.TrimSpace(rest)); ok {
+							out[id] = true
+						}
+					}
+				}
+			}
+		}
+	}
+	if entries, err := os.ReadDir(siteSliceCgroupRoot); err == nil {
+		for _, e := range entries {
+			if id, ok := sitesandbox.ParseSliceName(e.Name()); ok && e.IsDir() {
+				out[id] = true
+			}
+		}
+	}
+	return out
+}
+
 // --- Status -----------------------------------------------------------------
 
 // siteSliceUnitPattern: the long-running units a site's slice holds and the
@@ -194,13 +309,16 @@ func siteUnitEntersSlice(unit string, s *transport.SiteSlice, move bool) bool {
 var siteSliceUnitPattern = regexp.MustCompile(`^(celikapp|celikrt|celiksvc)-[1-9][0-9]{0,9}\.service$`)
 
 const (
+	// siteSliceMaxSites bounds one request. The Panel asks in pages well
+	// below it; a larger request is read up to the bound and says so
+	// (Partial), never refused as a whole.
 	siteSliceMaxSites = 5000
 	siteSliceMaxUnits = 64
 	siteSliceShowList = 400
 )
 
 var siteSliceShowProperties = []string{"Id", "LoadState", "ActiveState", "ControlGroup", "Slice", "MemoryMax", "TasksMax",
-	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent"}
+	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent", "DropInPaths"}
 
 // showUnits asks systemd about many units in as few calls as possible
 // (systemctl show prints one block per unit, separated by a blank line).
@@ -245,18 +363,18 @@ func systemdCount(value string) int {
 
 var timespanPart = regexp.MustCompile(`^([0-9]+(?:\.[0-9]+)?)(us|ms|s|min|h)$`)
 
-// systemdCPUPercent reads CPUQuotaPerSecUSec ("2s" is 200 %, "infinity" no
-// quota: 0).
-func systemdCPUPercent(value string) int {
+// systemdTimespanUSec reads a systemd time span ("1min 30s"); ok false for
+// "infinity" or text that is not one.
+func systemdTimespanUSec(value string) (float64, bool) {
 	value = strings.TrimSpace(value)
 	if value == "" || value == "infinity" {
-		return 0
+		return 0, false
 	}
 	var usec float64
 	for _, part := range strings.Fields(value) {
 		m := timespanPart.FindStringSubmatch(part)
 		if m == nil {
-			return 0
+			return 0, false
 		}
 		n, _ := strconv.ParseFloat(m[1], 64)
 		switch m[2] {
@@ -272,6 +390,16 @@ func systemdCPUPercent(value string) int {
 			usec += n * 3600e6
 		}
 	}
+	return usec, true
+}
+
+// systemdCPUPercent reads CPUQuotaPerSecUSec ("2s" is 200 %, "infinity" no
+// quota: 0).
+func systemdCPUPercent(value string) int {
+	usec, ok := systemdTimespanUSec(value)
+	if !ok {
+		return 0
+	}
 	return int(math.Round(usec / 1e4))
 }
 
@@ -286,15 +414,15 @@ func readSmallFile(p string) string {
 	return string(buf[:n])
 }
 
-// siteSliceFileState reads the slice file's D-031 state (read-only).
-func siteSliceFileState(siteID int) (string, []string) {
-	dir, err := sandboxUnitDir()
+// siteSliceFileState reads the slice file's D-031 state (read-only) with the
+// ledger the caller read once for the whole request.
+func siteSliceFileState(siteID int, ledger map[string]sandboxLedgerEntry) (string, []string) {
+	file, err := siteSliceFile(siteID)
 	if err != nil {
 		return transport.SiteFileUnreadable, nil
 	}
-	file := filepath.Join(dir, sitesandbox.SliceName(siteID))
 	result, _, _ := services.InspectManagedSiteFile(services.ManagedSiteFile{Kind: "site_slice", Path: file,
-		HeaderPrefix: services.ManagedHeaderPrefixHash, RecordedSHA256: readSandboxLedger()[file].RenderSHA256})
+		HeaderPrefix: services.ManagedHeaderPrefixHash, RecordedSHA256: ledger[file].RenderSHA256})
 	var dropIns []string
 	if entries, err := os.ReadDir(file + ".d"); err == nil {
 		for _, e := range entries {
@@ -326,16 +454,41 @@ func siteUnitFileState(unit string) string {
 	return "ours"
 }
 
+// siteUnitDropInSlice reads the unit's drop-ins (systemd's DropInPaths) for a
+// Slice= line: the slice an owner's drop-in places the unit in ("": none).
+// The move never restarts such a unit; it is the owner's choice.
+func siteUnitDropInSlice(dropInPaths string) string {
+	slice := ""
+	for _, p := range strings.Fields(dropInPaths) {
+		if !strings.HasSuffix(p, ".conf") {
+			continue
+		}
+		for _, line := range strings.Split(readSmallFile(p), "\n") {
+			if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "Slice="); ok {
+				slice = strings.TrimSpace(rest)
+			}
+		}
+	}
+	return slice
+}
+
 // SiteSlicesStatusV1 reads the slices of the asked sites: the file, what
-// systemd applies, the slice cgroup's counters and where each unit runs.
+// systemd applies, the slice cgroup's counters and where each unit runs. The
+// ledger is read once for the whole request.
 func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp *transport.SiteSlicesStatusResponse) error {
 	resp.Sites = []transport.SiteSliceStatus{}
-	if req == nil || len(req.Sites) > siteSliceMaxSites {
-		resp.Error = "between 0 and 5000 sites can be read at once"
+	if req == nil {
+		resp.Error = "a request is required"
 		return nil
 	}
+	resp.Unsupported = siteSliceHostSupport()
+	sites := req.Sites
+	if len(sites) > siteSliceMaxSites {
+		sites = sites[:siteSliceMaxSites]
+		resp.Partial = fmt.Sprintf("only the first %d of %d sites were read in this request", siteSliceMaxSites, len(req.Sites))
+	}
 	var names []string
-	for _, q := range req.Sites {
+	for _, q := range sites {
 		if q.SiteID <= 0 || len(q.Units) > siteSliceMaxUnits {
 			resp.Error = "a site identity and at most 64 units per site are required"
 			return nil
@@ -357,11 +510,13 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			return nil
 		}
 	}
-	for _, q := range req.Sites {
+	ledger := readSandboxLedger()
+	moves := readSiteMoveOutcomes()
+	for _, q := range sites {
 		slice := sitesandbox.SliceName(q.SiteID)
 		props := show[slice]
 		status := transport.SiteSliceStatus{SiteID: q.SiteID, Slice: slice, Units: []transport.SiteSliceUnit{}}
-		status.File, status.DropIns = siteSliceFileState(q.SiteID)
+		status.File, status.DropIns = siteSliceFileState(q.SiteID, ledger)
 		status.Active = siteUnitRunningStates[props["ActiveState"]]
 		status.Live = transport.SiteSliceLimitsRead{MemoryMB: systemdBytesMB(props["MemoryMax"]), Tasks: systemdCount(props["TasksMax"]),
 			CPUPercent: systemdCPUPercent(props["CPUQuotaPerSecUSec"])}
@@ -371,25 +526,48 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 		if tasks, err := strconv.ParseInt(props["TasksCurrent"], 10, 64); err == nil && tasks > 0 {
 			status.TasksCurrent = tasks
 		}
-		dir := filepath.Join(siteSliceCgroupRoot, slice)
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			c := sitesandbox.ParseSliceCounters(readSmallFile(filepath.Join(dir, "memory.events")),
-				readSmallFile(filepath.Join(dir, "pids.events")), readSmallFile(filepath.Join(dir, "cpu.stat")))
-			status.CountersRead = true
-			status.Counters = transport.SiteSliceCounters{OOMKills: c.OOMKills, MemoryMaxHits: c.MemoryMaxHits, TasksMaxHits: c.TasksMaxHits,
-				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods}
+		if outcome, ok := moves[strconv.Itoa(q.SiteID)]; ok {
+			o := outcome
+			status.MoveInterrupted = &o
 		}
 		for _, u := range q.Units {
 			status.Units = append(status.Units, siteSliceUnitStatus(q.SiteID, u, show[u]))
+		}
+		dir := filepath.Join(siteSliceCgroupRoot, slice)
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			files := sitesandbox.SliceCgroupFiles{
+				MemoryEvents: readSmallFile(filepath.Join(dir, "memory.events")), MemoryEventsLocal: readSmallFile(filepath.Join(dir, "memory.events.local")),
+				CPUStat: readSmallFile(filepath.Join(dir, "cpu.stat")),
+			}
+			if _, err := os.Stat(filepath.Join(dir, "pids.events.local")); err == nil {
+				files.HasPidsEventsLocal, files.PidsEventsLocal = true, readSmallFile(filepath.Join(dir, "pids.events.local"))
+			}
+			for _, u := range status.Units {
+				if u.Placement != transport.SiteUnitInSlice {
+					continue
+				}
+				ud := filepath.Join(dir, u.Unit)
+				files.Units = append(files.Units, sitesandbox.UnitPidsFiles{Events: readSmallFile(filepath.Join(ud, "pids.events")),
+					EventsLocal: readSmallFile(filepath.Join(ud, "pids.events.local")), Peak: readSmallFile(filepath.Join(ud, "pids.peak")),
+					Max: readSmallFile(filepath.Join(ud, "pids.max"))})
+			}
+			c := sitesandbox.ParseSliceCounters(files)
+			status.CountersRead = true
+			status.Counters = transport.SiteSliceCounters{MemoryLimitHits: c.MemoryLimitHits, MemoryOOMAll: c.MemoryOOMAll, OOMKills: c.OOMKills,
+				MemoryMaxHits: c.MemoryMaxHits, TasksLimitHits: c.TasksLimitHits, TasksOtherHits: c.TasksOtherHits, TasksRule: c.TasksRule,
+				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods}
 		}
 		resp.Sites = append(resp.Sites, status)
 	}
 	return nil
 }
 
-// siteSliceUnitStatus says where one unit runs.
+// siteSliceUnitStatus says where one unit runs, and what the move can do for
+// it: its file's state (edited and older units are not moved) and a slice an
+// owner's drop-in names.
 func siteSliceUnitStatus(siteID int, unit string, props map[string]string) transport.SiteSliceUnit {
 	out := transport.SiteSliceUnit{Unit: unit, File: siteUnitFileState(unit), Slice: props["Slice"],
+		DropInSlice: siteUnitDropInSlice(props["DropInPaths"]),
 		Own: transport.SiteSliceLimitsRead{MemoryMB: systemdBytesMB(props["MemoryMax"]), Tasks: systemdCount(props["TasksMax"]),
 			CPUPercent: systemdCPUPercent(props["CPUQuotaPerSecUSec"])}}
 	switch {
@@ -409,10 +587,17 @@ func siteSliceUnitStatus(siteID int, unit string, props map[string]string) trans
 
 // --- Changed limits ---------------------------------------------------------
 
-// ApplySiteSlicesV1 writes changed limits into the slices that exist. A
-// site without a slice file gets one when its first unit goes into it. The
-// running slices take the new limits at the one daemon-reload; nothing is
-// restarted.
+// siteSliceApplyBatch bounds one ApplySiteSlicesV1 request: the Panel sends a
+// large change in batches of this size, so siteSliceMu (which a customer's
+// unit write waits for) is held for one batch only.
+const siteSliceApplyBatch = 100
+
+// ApplySiteSlicesV1 writes changed limits into the slices. A site without a
+// slice file gets one when one of its units names the slice or runs in it
+// (the owner deleted the file: no limit would apply otherwise); a site
+// nothing of which uses the slice gets one when its first unit goes into
+// it. The running slices take the new limits at once (one daemon-reload per
+// request, then pushSiteSlicesToKernel); nothing is restarted.
 func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *transport.ApplySiteSlicesResponse) error {
 	resp.Sites = []transport.SiteSliceApplied{}
 	if req == nil {
@@ -423,13 +608,19 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 		resp.Error = err.Error()
 		return nil
 	}
-	if len(req.Sites) > siteSliceMaxSites {
-		resp.Error = "at most 5000 sites can be changed at once"
+	if len(req.Sites) > siteSliceApplyBatch {
+		resp.Error = fmt.Sprintf("at most %d sites can be changed in one request; send the rest in the next one", siteSliceApplyBatch)
+		return nil
+	}
+	if reason := siteSliceHostSupport(); reason != "" {
+		resp.Unsupported = reason
 		return nil
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
-	reload := false
+	ledger := readSandboxLedger()
+	named := siteSlicesNamed()
+	var written []int
 	for i := range req.Sites {
 		s := &req.Sites[i]
 		applied := transport.SiteSliceApplied{SiteID: s.SiteID}
@@ -438,8 +629,14 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 			resp.Sites = append(resp.Sites, applied)
 			continue
 		}
-		result, written, err := writeSiteSlice(s, transport.SiteFileTriggerChange)
-		applied.Outcome, applied.PendingPath = result.Outcome, result.PendingPath
+		trigger := transport.SiteFileTriggerChange
+		if named[s.SiteID] {
+			// A unit names the slice or runs in it: an absent file is written
+			// again (systemd would otherwise run the slice without limits).
+			trigger = transport.SiteFileTriggerCreate
+		}
+		result, didWrite, aside, err := writeSiteSlice(s, trigger, ledger)
+		applied.Outcome, applied.PendingPath, applied.MovedAside = result.Outcome, result.PendingPath, aside
 		switch {
 		case err != nil:
 			applied.Outcome, applied.Detail = transport.SiteFileOutcomeFailed, err.Error()
@@ -448,18 +645,81 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 		case result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused:
 			applied.Detail = strings.TrimSpace(result.Reason + " " + result.Detail)
 		}
-		reload = reload || written
+		if didWrite {
+			written = append(written, s.SiteID)
+		}
 		resp.Sites = append(resp.Sites, applied)
 	}
-	if reload {
+	if len(written) > 0 {
 		if err := siteSliceDaemonReload(); err != nil {
 			resp.Error = err.Error()
+			return nil
 		}
+		pushSiteSlicesToKernel(written)
 	}
 	return nil
 }
 
-// --- The administrator's move -----------------------------------------------
+// --- A deleted site's slice --------------------------------------------------
+
+// removeSiteSlice removes a deleted site's slice: CelikPanel's unchanged file
+// goes; a file the owner changed, and the owner's drop-in folder, are moved
+// aside under names systemd does not load and returned (the Panel names them
+// in the audit log). The ledger forgets the file. Missing files are fine.
+func removeSiteSlice(siteID int) ([]string, error) {
+	file, err := siteSliceFile(siteID)
+	if err != nil {
+		return nil, err
+	}
+	siteSliceMu.Lock()
+	defer siteSliceMu.Unlock()
+	var aside []string
+	state, _ := siteSliceFileState(siteID, readSandboxLedger())
+	switch state {
+	case transport.SiteFileAbsent:
+	case transport.SiteFileManagedUnchanged:
+		if err := os.Remove(file); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return aside, err
+		}
+	case transport.SiteFileUnreadable:
+		return aside, fmt.Errorf("%s could not be read; it is left as it is", file)
+	default:
+		moved, err := moveSliceFileAside(file)
+		if err != nil {
+			return aside, err
+		}
+		aside = append(aside, moved)
+	}
+	_ = os.Remove(file + ".celikpanel-pending")
+	if info, err := os.Lstat(file + ".d"); err == nil && info.IsDir() {
+		moved, err := moveSliceFileAside(file + ".d")
+		if err != nil {
+			return aside, err
+		}
+		aside = append(aside, moved)
+	}
+	if err := updateSandboxLedger(func(l map[string]sandboxLedgerEntry) bool {
+		if _, ok := l[file]; !ok {
+			return false
+		}
+		delete(l, file)
+		return true
+	}); err != nil {
+		log.Printf("site slice: forget %s: %v", file, err)
+	}
+	forgetSiteMoveOutcome(siteID)
+	if state != transport.SiteFileAbsent || len(aside) > 0 {
+		if err := siteSliceDaemonReload(); err != nil {
+			log.Printf("site slice: %v", err)
+		}
+	}
+	for _, name := range aside {
+		log.Printf("site slice: the deleted site %d's %s was changed on this server; it is kept as %s (systemd does not load it)", siteID, filepath.Base(file), name)
+	}
+	return aside, nil
+}
+
+// --- Unit files ----------------------------------------------------------------
 
 // siteUnitText reads a unit's file (no link followed).
 func siteUnitText(unit string) (text, file string, mode os.FileMode, err error) {
@@ -573,282 +833,6 @@ func writeUnitBytes(file, text string, mode os.FileMode) error {
 	if err := os.Rename(tmp, file); err != nil {
 		_ = os.Remove(tmp)
 		return err
-	}
-	return nil
-}
-
-// Seams of the move (tests replace them).
-var (
-	siteSliceSettle    = 20 * time.Second
-	siteSlicePoll      = 500 * time.Millisecond
-	siteSliceListening = func(unit string) map[int]bool {
-		listeners, pids, err := nodeSiteListeners(unit)
-		if err != nil {
-			return nil
-		}
-		ports := map[int]bool{}
-		for _, l := range listeners {
-			for _, pid := range l.PIDs {
-				if pids[pid] {
-					ports[l.Port] = true
-				}
-			}
-		}
-		return ports
-	}
-)
-
-// siteMovePrepare puts this release's sandbox helper and SMTP block files in
-// place before a move (a seam for tests).
-var siteMovePrepare = func() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	if err := ensureSandboxHelper(); err != nil {
-		return err
-	}
-	return ensureSandboxEgress(sandboxCaps(ctx))
-}
-
-// siteMoveUnit is one unit the move changes.
-type siteMoveUnit struct {
-	unit    string
-	file    string
-	mode    os.FileMode
-	before  string
-	after   string
-	running bool
-	ports   map[int]bool
-	already bool
-}
-
-var siteMoveRunning sync.Mutex
-
-// MoveSiteSliceV1 moves a site's units into its slice: the slice is written,
-// then each unit in turn: its file is rewritten to name the slice and, if it
-// was running, it restarts once and must run in the slice (and listen again
-// on every port it listened on before) within siteSliceSettle. A failure
-// puts that unit and every unit of the site moved before it back as they
-// were (the earlier text, a restart where it ran); other sites are never
-// touched. A unit an owner changed is kept and listed.
-func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *transport.MoveSiteSliceResponse) error {
-	resp.Units = []transport.SiteSliceMoved{}
-	if req == nil {
-		resp.Error = "a request is required"
-		return nil
-	}
-	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "moving a site into its limits"); err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-	s := siteSliceFor(&req.Site, req.Site.SiteID)
-	home, homeErr := hostingpath.SiteHome(req.SubscriptionID, req.DomainID)
-	if s == nil || homeErr != nil || len(req.Units) == 0 || len(req.Units) > siteSliceMaxUnits {
-		resp.Error = "the site, its home and up to 64 of its units are required"
-		return nil
-	}
-	for _, u := range req.Units {
-		if !siteSliceUnitPattern.MatchString(u) {
-			resp.Error = "not a site's unit: " + u
-			return nil
-		}
-	}
-	if !siteMoveRunning.TryLock() {
-		resp.Error = "another move into a site's limits is running; nothing was changed"
-		return nil
-	}
-	defer siteMoveRunning.Unlock()
-	// The units restart with this release's helper and guard: an earlier
-	// release's copy adds only system-slice cgroups to the SMTP block, so a
-	// unit in its site's slice would not start with it.
-	if err := siteMovePrepare(); err != nil {
-		resp.Error = "the site sandbox's helper and SMTP block could not be put in place: " + err.Error() + "; nothing was moved"
-		return nil
-	}
-
-	siteSliceMu.Lock()
-	result, written, err := writeSiteSlice(s, transport.SiteFileTriggerCreate)
-	siteSliceMu.Unlock()
-	resp.SliceFile = result.Outcome
-	if err != nil || result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused {
-		resp.Error = fmt.Sprintf("the site's limits could not be written (%s %s): nothing was moved", result.Outcome, strings.TrimSpace(result.Reason+" "+result.Detail))
-		if err != nil {
-			resp.Error = "the site's limits could not be written: " + err.Error() + "; nothing was moved"
-		}
-		return nil
-	}
-	if written {
-		if err := siteSliceDaemonReload(); err != nil {
-			resp.Error = err.Error() + "; nothing was moved"
-			return nil
-		}
-	}
-
-	// Classify every unit before anything changes.
-	var plan []siteMoveUnit
-	for _, u := range req.Units {
-		text, file, mode, err := siteUnitText(u)
-		if errors.Is(err, os.ErrNotExist) {
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveAbsent})
-			continue
-		}
-		if err != nil {
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveKept, Detail: err.Error()})
-			continue
-		}
-		body, ours := siteUnitSealedBody(u, text)
-		switch {
-		case !ours:
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveKept,
-				Detail: file + " was changed on this server; it is kept and runs where it runs. Your own settings belong in " + file + ".d/*.conf"})
-			continue
-		case serviceapps.UnitGeneration(text) < sitesandbox.Generation:
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveOlder})
-			continue
-		case !siteUnitInHome(u, body, home):
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveRefused, Detail: "its app folder is not in this site's home"})
-			continue
-		}
-		moved, already, err := siteUnitMovedBody(body, s.SiteID)
-		if err != nil {
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveKept, Detail: err.Error()})
-			continue
-		}
-		props := map[string]string{}
-		if out, err := appUnitSystemctl(systemctlArgs("show", u, "--property=ActiveState,ControlGroup")...); err == nil {
-			props = parseShow(string(out))
-		} else {
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveKept, Detail: "systemd could not be read: " + strings.TrimSpace(string(out))})
-			continue
-		}
-		running := siteUnitRunningStates[props["ActiveState"]]
-		if already && (!running || props["ControlGroup"] == "/"+sitesandbox.SliceName(s.SiteID)+"/"+u) {
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveAlready})
-			continue
-		}
-		m := siteMoveUnit{unit: u, file: file, mode: mode, before: text, after: siteUnitSeal(u, moved), running: running, already: already}
-		if running {
-			m.ports = siteSliceListening(u)
-		}
-		plan = append(plan, m)
-	}
-
-	var done []siteMoveUnit
-	for i, m := range plan {
-		step, err := moveOneSiteUnit(m, s.SiteID)
-		if err == nil {
-			done = append(done, m)
-			outcome := transport.SiteMoveRewritten
-			if m.running {
-				outcome = transport.SiteMoveMoved
-			}
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: m.unit, Outcome: outcome})
-			continue
-		}
-		// Put this unit back, then every unit of the site moved before it.
-		failed := transport.SiteSliceMoved{Unit: m.unit, Outcome: transport.SiteMoveFailed, Step: step, Detail: err.Error()}
-		if backErr := putBackSiteUnit(m); backErr != nil {
-			failed.Detail += "; putting it back did not complete: " + backErr.Error()
-		} else {
-			failed.PutBack = true
-		}
-		resp.Units = append(resp.Units, failed)
-		for j := len(done) - 1; j >= 0; j-- {
-			back := transport.SiteSliceMoved{Unit: done[j].unit, Outcome: transport.SiteMovePutBack, PutBack: true}
-			if backErr := putBackSiteUnit(done[j]); backErr != nil {
-				back.PutBack, back.Detail = false, "putting it back did not complete: "+backErr.Error()
-			}
-			for k := range resp.Units {
-				if resp.Units[k].Unit == back.Unit {
-					resp.Units[k] = back
-				}
-			}
-		}
-		for _, rest := range plan[i+1:] {
-			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: rest.unit, Outcome: transport.SiteMoveNotTried})
-		}
-		resp.RolledBack = true
-		resp.Error = fmt.Sprintf("%s could not be moved into the site's limits (%s): %s; the site was put back as it was", m.unit, step, err.Error())
-		return nil
-	}
-	resp.Done = true
-	return nil
-}
-
-// moveOneSiteUnit rewrites one unit and, if it ran, restarts it in the slice
-// and waits for it to run there and listen again. It returns the failed step.
-func moveOneSiteUnit(m siteMoveUnit, siteID int) (string, error) {
-	if err := writeUnitBytes(m.file, m.after, m.mode); err != nil {
-		return "write", err
-	}
-	if err := siteSliceDaemonReload(); err != nil {
-		return "write", err
-	}
-	if !m.running {
-		return "", nil
-	}
-	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", m.unit)...)
-	if out, err := appUnitSystemctl(systemctlArgs("restart", m.unit)...); err != nil {
-		return "restart", fmt.Errorf("systemctl restart: %v: %s", err, strings.TrimSpace(string(out)))
-	}
-	want := "/" + sitesandbox.SliceName(siteID) + "/" + m.unit
-	deadline := time.Now().Add(siteSliceSettle)
-	for {
-		props := map[string]string{}
-		if out, err := appUnitSystemctl(systemctlArgs("show", m.unit, "--property=ActiveState,ControlGroup")...); err == nil {
-			props = parseShow(string(out))
-		}
-		inSlice := props["ActiveState"] == "active" && props["ControlGroup"] == want
-		listening := true
-		if inSlice && len(m.ports) > 0 {
-			now := siteSliceListening(m.unit)
-			for port := range m.ports {
-				listening = listening && now[port]
-			}
-		}
-		if inSlice && listening {
-			return "", nil
-		}
-		if time.Now().After(deadline) {
-			switch {
-			case props["ActiveState"] != "active":
-				return "restart", fmt.Errorf("it is %s after the restart (journalctl -u %s says why)", strings.TrimSpace(props["ActiveState"]+" "), m.unit)
-			case props["ControlGroup"] != want:
-				return "cgroup", fmt.Errorf("it runs in %s, not %s", props["ControlGroup"], want)
-			}
-			return "answer", fmt.Errorf("it no longer listens on every port it listened on before (%s)", siteSlicePorts(m.ports))
-		}
-		time.Sleep(siteSlicePoll)
-	}
-}
-
-func siteSlicePorts(ports map[int]bool) string {
-	list := make([]int, 0, len(ports))
-	for p := range ports {
-		list = append(list, p)
-	}
-	sort.Ints(list)
-	words := make([]string, len(list))
-	for i, p := range list {
-		words[i] = strconv.Itoa(p)
-	}
-	return strings.Join(words, ", ")
-}
-
-// putBackSiteUnit writes the unit's earlier text and, if it ran, restarts it
-// where it ran before.
-func putBackSiteUnit(m siteMoveUnit) error {
-	if err := writeUnitBytes(m.file, m.before, m.mode); err != nil {
-		return err
-	}
-	if err := siteSliceDaemonReload(); err != nil {
-		return err
-	}
-	if !m.running {
-		return nil
-	}
-	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", m.unit)...)
-	if out, err := appUnitSystemctl(systemctlArgs("restart", m.unit)...); err != nil {
-		return fmt.Errorf("systemctl restart: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

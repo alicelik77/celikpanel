@@ -313,11 +313,15 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 		if len(preview.CeilingsLowered) > 0 {
 			preview.Message += " Lowered limits of site settings reach every site of these resellers at its next write; a site above one runs at the new limit."
 		}
+		// S4 R2a: a lowered site limit below what a site's programs use now.
+		if action == "preview" || !pl.ConfirmNarrowing {
+			p.previewSiteLimitsLowered(ctx, &preview, tree, ceilingsBefore, ceilingsAfter)
+		}
 		if action == "preview" {
 			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
 			return
 		}
-		if len(preview.Removed) > 0 && !pl.ConfirmNarrowing {
+		if (len(preview.Removed) > 0 || preview.SitesStoppedCount > 0 || preview.SitesUnread) && !pl.ConfirmNarrowing {
 			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
 			return
 		}

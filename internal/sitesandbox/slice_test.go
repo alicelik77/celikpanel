@@ -1,6 +1,7 @@
 package sitesandbox
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
@@ -200,15 +201,64 @@ func TestProofAcceptsTheSitesSlice(t *testing.T) {
 	}
 }
 
-// TestSliceCountersAreRead: the slice cgroup's own counters, as the kernel
+// TestSliceCountersAreRead: the slice cgroup's counters, as the kernel
 // writes them.
 func TestSliceCountersAreRead(t *testing.T) {
-	c := ParseSliceCounters("low 0\nhigh 0\nmax 41\noom 3\noom_kill 2\noom_group_kill 0\n", "max 17\n",
-		"usage_usec 900\nuser_usec 600\nsystem_usec 300\nnr_periods 100\nnr_throttled 12\nthrottled_usec 345000\n")
-	if c.OOMKills != 2 || c.MemoryMaxHits != 41 || c.TasksMaxHits != 17 || c.CPUThrottled != 12 || c.CPUThrottledUSec != 345000 || c.CPUPeriods != 100 {
+	c := ParseSliceCounters(SliceCgroupFiles{
+		MemoryEvents:      "low 0\nhigh 0\nmax 41\noom 3\noom_kill 2\noom_group_kill 0\n",
+		MemoryEventsLocal: "low 0\nhigh 0\nmax 41\noom 3\noom_kill 0\noom_group_kill 0\n",
+		PidsEventsLocal:   "max 17\n", HasPidsEventsLocal: true,
+		CPUStat: "usage_usec 900\nuser_usec 600\nsystem_usec 300\nnr_periods 100\nnr_throttled 12\nthrottled_usec 345000\n"})
+	if c.OOMKills != 2 || c.MemoryLimitHits != 3 || c.MemoryMaxHits != 41 || c.TasksLimitHits != 17 || c.CPUThrottled != 12 ||
+		c.CPUThrottledUSec != 345000 || c.CPUPeriods != 100 {
 		t.Fatalf("counters = %+v", c)
 	}
-	if z := ParseSliceCounters("", "", ""); z != (SliceCounters{}) {
+	if z := ParseSliceCounters(SliceCgroupFiles{}); z != (SliceCounters{TasksRule: "units"}) {
 		t.Fatalf("unreadable files = %+v", z)
+	}
+}
+
+// TestSliceCountersTellTheSitesLimitApart: the files a real kernel wrote
+// (21 Nov 2026, Debian 13 kernel 6.12.105 and Ubuntu 24.04 kernel 6.8.0;
+// scratch facts F2 and F3, quoted in docs/SITE-SANDBOX.md section 8). Only
+// the site's own limit counts as the site's limit; a program's own smaller
+// limit and a host-wide shortage never do.
+func TestSliceCountersTellTheSitesLimitApart(t *testing.T) {
+	mem := func(max, oom, kill int) string {
+		return fmt.Sprintf("low 0\nhigh 0\nmax %d\noom %d\noom_kill %d\noom_group_kill 0\n", max, oom, kill)
+	}
+	cases := []struct {
+		name               string
+		files              SliceCgroupFiles
+		memLimit, memAll   int64
+		kills, tasks, othr int64
+	}{
+		// F3a, both kernels: slice MemoryMax=128M reached.
+		{"slice memory limit", SliceCgroupFiles{MemoryEvents: mem(25, 1, 1), MemoryEventsLocal: mem(25, 1, 0)}, 1, 1, 1, 0, 0},
+		// F3b: the unit's own MemoryMax=96M inside a 512M slice.
+		{"program's own memory limit", SliceCgroupFiles{MemoryEvents: mem(36, 1, 1), MemoryEventsLocal: mem(0, 0, 0)}, 0, 1, 1, 0, 0},
+		// F3d: global OOM (slice limit 8G on a 2G VM).
+		{"host-wide shortage", SliceCgroupFiles{MemoryEvents: mem(0, 0, 1), MemoryEventsLocal: mem(0, 0, 0)}, 0, 0, 1, 0, 0},
+		// F2a, Debian 6.12: slice TasksMax=30 reached; the slice's local file counts it.
+		{"6.12 slice process limit", SliceCgroupFiles{HasPidsEventsLocal: true, PidsEventsLocal: "max 1\n",
+			Units: []UnitPidsFiles{{Events: "max 0\n", EventsLocal: "max 0\n", Peak: "31\n", Max: "2338\n"}}}, 0, 0, 0, 1, 0},
+		// F2b, Debian 6.12: the unit's own TasksMax=10.
+		{"6.12 program's own process limit", SliceCgroupFiles{HasPidsEventsLocal: true, PidsEventsLocal: "max 0\n",
+			Units: []UnitPidsFiles{{Events: "max 1\n", EventsLocal: "max 1\n", Peak: "10\n", Max: "10\n"}}}, 0, 0, 0, 0, 1},
+		// F2a, Ubuntu 6.8: no local file; the forking unit counts it, its peak below its own max.
+		{"6.8 slice process limit", SliceCgroupFiles{
+			Units: []UnitPidsFiles{{Events: "max 1\n", Peak: "31\n", Max: "2314\n"}}}, 0, 0, 0, 1, 0},
+		// F2c, Ubuntu 6.8: two units share the slice; the second one forks into its limit.
+		{"6.8 slice limit shared by two units", SliceCgroupFiles{Units: []UnitPidsFiles{
+			{Events: "max 0\n", Peak: "20\n", Max: "2314\n"}, {Events: "max 1\n", Peak: "11\n", Max: "2314\n"}}}, 0, 0, 0, 1, 0},
+		// F2b, Ubuntu 6.8: the unit's own TasksMax=10 (peak equals its own max).
+		{"6.8 program's own process limit", SliceCgroupFiles{
+			Units: []UnitPidsFiles{{Events: "max 1\n", Peak: "10\n", Max: "10\n"}}}, 0, 0, 0, 0, 1},
+	}
+	for _, tc := range cases {
+		c := ParseSliceCounters(tc.files)
+		if c.MemoryLimitHits != tc.memLimit || c.MemoryOOMAll != tc.memAll || c.OOMKills != tc.kills || c.TasksLimitHits != tc.tasks || c.TasksOtherHits != tc.othr {
+			t.Errorf("%s: %+v", tc.name, c)
+		}
 	}
 }

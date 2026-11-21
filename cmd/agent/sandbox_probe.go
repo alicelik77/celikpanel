@@ -109,6 +109,11 @@ type sandboxLedgerEntry struct {
 	WrittenAt    string `json:"written_at"`
 }
 
+// sandboxLedgerMu is the ONE lock of the ledger file (S4 R2a review 12):
+// every change is a read-modify-write of the file under it, so a writer never
+// drops another writer's entry.
+var sandboxLedgerMu sync.Mutex
+
 func readSandboxLedger() map[string]sandboxLedgerEntry {
 	ledger := map[string]sandboxLedgerEntry{}
 	if raw, err := os.ReadFile(sandboxLedgerPath); err == nil {
@@ -117,6 +122,31 @@ func readSandboxLedger() map[string]sandboxLedgerEntry {
 	return ledger
 }
 
+// updateSandboxLedger changes the ledger file under its lock: change gets
+// the file's current entries and reports whether it changed them.
+func updateSandboxLedger(change func(map[string]sandboxLedgerEntry) bool) error {
+	sandboxLedgerMu.Lock()
+	defer sandboxLedgerMu.Unlock()
+	ledger := readSandboxLedger()
+	if !change(ledger) {
+		return nil
+	}
+	return writeSandboxLedger(ledger)
+}
+
+// setSandboxLedgerEntry records one file's digest.
+func setSandboxLedgerEntry(path, kind, digest string) error {
+	return updateSandboxLedger(func(l map[string]sandboxLedgerEntry) bool {
+		if l[path].RenderSHA256 == digest && l[path].Kind == kind {
+			return false
+		}
+		l[path] = sandboxLedgerEntry{Kind: kind, RenderSHA256: digest, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
+		return true
+	})
+}
+
+// writeSandboxLedger writes the whole file; only updateSandboxLedger calls
+// it, under sandboxLedgerMu.
 func writeSandboxLedger(ledger map[string]sandboxLedgerEntry) error {
 	if err := os.MkdirAll(filepath.Dir(sandboxLedgerPath), 0o700); err != nil {
 		return err
@@ -153,6 +183,7 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 	}
 	ledger := readSandboxLedger()
 	changed := false
+	record := map[string]sandboxLedgerEntry{}
 	for _, f := range files {
 		result, err := services.ApplyManagedSiteFile(f.managed(ledger[f.Path].RenderSHA256), nil, nil)
 		if err != nil {
@@ -161,10 +192,10 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		switch result.Outcome {
 		case transport.SiteFileOutcomeWritten, transport.SiteFileOutcomeRecreated, transport.SiteFileOutcomeTaken:
 			changed = true
-			ledger[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
+			record[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256}
 		case transport.SiteFileOutcomeUnchanged:
 			if ledger[f.Path].RenderSHA256 != result.RenderSHA256 {
-				ledger[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
+				record[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256}
 				changed = true
 			}
 		case transport.SiteFileOutcomeKept:
@@ -174,8 +205,10 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		}
 	}
 	if changed {
-		if err := writeSandboxLedger(ledger); err != nil {
-			log.Printf("site sandbox: record the native files: %v", err)
+		for path, entry := range record {
+			if err := setSandboxLedgerEntry(path, entry.Kind, entry.RenderSHA256); err != nil {
+				log.Printf("site sandbox: record the native files: %v", err)
+			}
 		}
 		if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 			return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
