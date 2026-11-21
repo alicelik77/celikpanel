@@ -206,6 +206,57 @@ func TestAppUnitOwnerEditIsKeptAndTheDropInIsNeverTouched(t *testing.T) {
 	}
 }
 
+// alpha.142 lab: a Node.js site whose application had failed could not be
+// deleted. systemd keeps a failed unit as "failed" after its file is removed
+// and systemd reloaded; only reset-failed forgets it. Before the correction
+// the removal never asked for that, its proof saw load=not-found
+// active=failed and the deletion stopped as incomplete.
+func TestAppUnitRemovalForgetsAFailedUnit(t *testing.T) {
+	for _, withFile := range []bool{true, false} {
+		host := newUnitTestHost(t)
+		if withFile {
+			applyUnit(t, unitTestRequest(transport.SiteFileTriggerCreate))
+		}
+		failed := true
+		appUnitSystemctl = func(args ...string) ([]byte, error) {
+			call := strings.Join(args, " ")
+			host.calls = append(host.calls, call)
+			switch {
+			case args[0] == "show" && failed:
+				return []byte("LoadState=not-found\nActiveState=failed\n"), nil
+			case args[0] == "show":
+				return []byte("LoadState=not-found\nActiveState=inactive\n"), nil
+			case call == "reset-failed celikapp-7":
+				failed = false
+			case args[0] == "stop" || args[0] == "disable":
+				// What systemd answers for a unit whose file is gone.
+				return []byte("Unit celikapp-7.service not loaded."), errors.New("exit status 5")
+			}
+			return nil, nil
+		}
+		host.calls = nil
+		var removed AppApplyResponse
+		if err := (&Agent{}).RemoveAppUnit(&AppControlRequest{SiteID: 7}, &removed); err != nil || removed.Error != "" {
+			t.Fatalf("file %v: a failed unit was not removed: %+v %v (calls %v)", withFile, removed, err, host.calls)
+		}
+		if _, err := os.Lstat(host.path()); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("file %v: unit file remains: %v", withFile, err)
+		}
+		// reset-failed comes after the file is gone and systemd reloaded, so
+		// nothing can make the unit failed again before the proof.
+		joined := strings.Join(host.calls, "|")
+		if !strings.Contains(joined, "daemon-reload|reset-failed celikapp-7|show celikapp-7") {
+			t.Fatalf("file %v: systemctl calls = %v", withFile, host.calls)
+		}
+		// A unit systemd holds nothing for is still done without a call.
+		host.calls = nil
+		var again AppApplyResponse
+		if err := (&Agent{}).RemoveAppUnit(&AppControlRequest{SiteID: 7}, &again); err != nil || again.Error != "" || len(host.calls) != 1 {
+			t.Fatalf("file %v: a second removal: %+v %v (calls %v)", withFile, again, err, host.calls)
+		}
+	}
+}
+
 func TestAppUnitSymlinkAndMissingFileAreNotWritten(t *testing.T) {
 	host := newUnitTestHost(t)
 	missing := applyUnit(t, unitTestRequest(""))
