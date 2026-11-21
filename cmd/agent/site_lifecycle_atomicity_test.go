@@ -330,13 +330,16 @@ func TestDeleteSiteStopsBeforeTenantDestructionWhenVhostRemovalFails(t *testing.
 	}
 }
 
+// An account of the name whose home is outside the hosting tree is refused
+// and the deletion stays incomplete. (An account whose home is ANOTHER
+// site's is that site's and is left alone: site_account_proof_test.go.)
 func TestDeleteSiteRefusesMismatchedUserHome(t *testing.T) {
 	withLifecycleTestBuild(t)
 	req := validLifecycleDeleteRequest(t)
 	fake := &fakeSiteLifecycle{
 		home:       req.SiteHome,
 		userExists: true,
-		userHome:   "/var/www/celikpanel/subscriptions/999/sites/999",
+		userHome:   "/home/someone",
 		failures:   map[string]error{},
 	}
 	resp := &DeleteSiteResponse{}

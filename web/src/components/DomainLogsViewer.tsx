@@ -180,6 +180,10 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
     const timeFilter = result?.time_filter;
     const resultHasWarning = Boolean(result?.truncated || result?.warning || (timeFilter?.applied && !timeFilter.exact));
     const showResultNotice = Boolean(result && (resultHasWarning || timeFilter?.applied));
+    // 20 Nov 2026: nginx follows a link in the site's folder only to a file of
+    // the link's own owner; a refused one is logged with this error. Said once,
+    // above the lines, in plain words.
+    const refusedLink = logType === 'error' && logs.some((line) => line.includes('(40: Too many levels of symbolic links)'));
 
     return (
         <div className="space-y-4">
@@ -410,6 +414,13 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                         </div>
                     </div>
                 </section>
+            )}
+
+            {refusedLink && (
+                <p role="status" className="flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-xs text-fg-muted">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <span>{t('logs.refusedLink')}</span>
+                </p>
             )}
 
             {/* Log output */}

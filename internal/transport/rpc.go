@@ -210,6 +210,17 @@ const WebServerRefusedConfig = "web_server_refused_config"
 // ve o dizini asla değiştirmez; karar sunucu sahibinindir.
 const HostingRootNotTraversable = "hosting_root_not_traversable"
 
+// SiteIdentityExists: the site's system account or its home already exists,
+// so the Agent refused the site before it created anything. The account may
+// be another site's (two domain names can derive the same account), so the
+// Panel removes only its own records and never asks for a deletion keyed by
+// that account's name (security release, 20 November 2026). An older Agent
+// answers without the code; the Panel's own check before creation refuses
+// such a name first.
+// SiteIdentityExists: hesap ya da ev dizini zaten var; Agent hicbir sey
+// olusturmadan reddetti. Panel yalniz kendi kayitlarini kaldirir.
+const SiteIdentityExists = "site_identity_exists"
+
 // HostingRootBlock is the observed blocking directory: its path, octal mode
 // ("0750") and "owner:group".
 // HostingRootBlock, gözlenen engelleyici dizindir.

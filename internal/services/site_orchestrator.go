@@ -296,6 +296,12 @@ func (so *SiteOrchestrator) CreateSite(ctx context.Context, req *CreateSiteReque
 	}
 
 	if !agentReply.Success {
+		if agentReply.ErrorCode == transport.SiteIdentityExists {
+			// Refused before anything was made: the account or the home
+			// exists, possibly another site's. Only this site's records go;
+			// a deletion keyed by that account's name is never asked for.
+			return nil, errors.Join(ErrSiteAccountTaken, so.rollbackCreatedSiteMetadata(domain.ID, siteID))
+		}
 		var cause error = fmt.Errorf("site creation failed: %s", agentReply.ErrorMessage)
 		if agentReply.ErrorCode == transport.HostingRootNotTraversable && agentReply.HostingRoot != nil {
 			cause = &HostingRootNotTraversableError{Block: *agentReply.HostingRoot}
@@ -474,6 +480,10 @@ func (so *SiteOrchestrator) createSiteRecord(ctx context.Context, site *core.Sit
 	id, err := result.LastInsertId()
 	return int(id), err
 }
+
+// ErrSiteAccountTaken: the Agent refused a new site because its system
+// account or its home already exists (transport.SiteIdentityExists).
+var ErrSiteAccountTaken = errors.New("the site's system account already exists")
 
 func (so *SiteOrchestrator) generateUsername(domain string) string {
 	return SiteUsername(domain)

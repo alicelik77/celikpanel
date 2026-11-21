@@ -21,6 +21,11 @@ func TestUbuntu2204SandboxIsTheSameAsUbuntu2404(t *testing.T) {
 	for _, kind := range []Kind{KindProgram, KindPython, KindServiceApp, KindNode} {
 		p := programProfile()
 		p.Kind, p.Level = kind, LevelReduced
+		if kind == KindNode {
+			// A Node.js site's port is one the panel gives Node.js sites,
+			// never one of the programs' range (NodePortRefusal).
+			p.Port, p.ExtraPorts = NodeAssignMin, nil
+		}
 		for _, render := range []func(Profile, Caps) ([]string, error){Directives, TransientDirectives} {
 			old, err := render(p, ubuntu2204)
 			if err != nil {

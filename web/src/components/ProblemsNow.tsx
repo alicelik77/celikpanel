@@ -44,15 +44,21 @@ export type ProblemKind =
     | 'security_updates'
     | 'site_down'
     | 'site_certificate'
-    | 'service_restarting';
+    | 'service_restarting'
+    | 'name_overlap'
+    | 'name_server_reserved'
+    | 'node_port_reserved';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
     'memory_sustained', 'cpu_sustained', 'mail_queue_deferred', 'security_updates',
     // alpha.127: website checks and a service that keeps restarting.
     'site_down', 'site_certificate', 'service_restarting',
+    // Security release (20 November 2026): names and Node.js ports held
+    // before the one name rule.
+    'name_overlap', 'name_server_reserved', 'node_port_reserved',
 ];
-const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
+const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
 /** The words of a problem's title and body; alerts use the same (alpha.127). */
 export function problemVars(
@@ -62,6 +68,7 @@ export function problemVars(
     return {
         name: componentName({ id: problem.subject ?? '', name: problem.name }, t),
         domain: problem.subject ?? '',
+        other: problem.name ?? '',
         days: Math.max(problem.value, 0),
         value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? t('monitoring.pct', { n: Math.round(problem.value) }) : problem.value,
     };

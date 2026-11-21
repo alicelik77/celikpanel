@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -24,6 +25,42 @@ import (
 // üretilince mail-auth akışıyla eklenir; içe aktarılan domain'ler bu şablonu
 // hiç kullanmaz çünkü kayıtları arşivden gelir.
 
+// errExistingZoneNotAdopted: the zone exists and is the server's (an
+// infrastructure zone, or one published here for a connected server); a
+// domain of an ordinary account never takes it over.
+var errExistingZoneNotAdopted = errors.New("the DNS zone of this name already exists on this server and is not this domain's; only an administrator's own subscription takes it over")
+
+// existingZoneMayBeReturned (security release, 20 November 2026): an
+// existing zone is returned for a domain only when the domain's own earlier
+// attempt made it, or when the domain is in an administrator's subscription
+// (the administrator's deliberate takeover, such as the main domain's
+// website in the infrastructure zone). A zone without a domain cannot meet a
+// new domain of an ordinary account at all (migration 080).
+func (p *Panel) existingZoneMayBeReturned(ctx context.Context, zone string) error {
+	var role string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT COALESCE(u.role, '') FROM domains d
+		JOIN subscriptions s ON s.id = d.subscription_id LEFT JOIN users u ON u.id = s.owner_id
+		WHERE d.name = ?`, zone).Scan(&role)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && role == roleAdmin) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	infrastructure, err := p.isInfrastructureDNSZone(ctx, zone)
+	if err != nil {
+		return err
+	}
+	var remote bool
+	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM remote_dns_zone_ownership WHERE zone_name = ?)`, zone).Scan(&remote); err != nil {
+		return err
+	}
+	if infrastructure || remote {
+		return errExistingZoneNotAdopted
+	}
+	return nil
+}
+
 // createZoneWithTemplate creates the pdns zone for a domain with the full
 // default record set. Idempotent: an existing zone is returned untouched
 // (created=false) so re-runs never duplicate or overwrite records.
@@ -36,6 +73,9 @@ func (p *Panel) createZoneWithTemplate(ctx context.Context, domain string) (int,
 	var zoneID int
 	err := pool.QueryRowContext(ctx, `SELECT id FROM pdns_domains WHERE name = ?`, domain).Scan(&zoneID)
 	if err == nil {
+		if err := p.existingZoneMayBeReturned(ctx, domain); err != nil {
+			return 0, false, err
+		}
 		return zoneID, false, nil
 	}
 	if err != sql.ErrNoRows {

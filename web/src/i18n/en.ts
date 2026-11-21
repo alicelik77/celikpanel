@@ -78,6 +78,8 @@ import type { HostNameScreenKey } from './screens/hostName/en';
 import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
 import type { MonitoringScreenKey } from './screens/monitoring/en';
+import type { ProblemsNowScreenKey } from './screens/problemsNow/en';
+import type { NameRuleScreenKey } from './screens/nameRule/en';
 import type { PasswordsScreenKey } from './screens/passwords/en';
 import type { AdminNextScreenKey } from './screens/adminNext/en';
 import type { NodeSandboxScreenKey } from './screens/nodeSandbox/en';
@@ -603,6 +605,8 @@ export type ScreenKey =
     | RemovalRuleScreenKey
     | ComponentInstallScreenKey
     | MonitoringScreenKey
+    | ProblemsNowScreenKey
+    | NameRuleScreenKey
     | PasswordsScreenKey
     | AdminNextScreenKey
     | NodeSandboxScreenKey

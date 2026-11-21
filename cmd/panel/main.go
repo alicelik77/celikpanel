@@ -2073,6 +2073,10 @@ func main() {
 	// does not wait for it. Changes keep using the live proofs.
 	displayChecksEnabled.Store(true)
 	go panel.warmDisplayChecks()
+	// Security release (20 November 2026): names and Node.js ports held
+	// before the one name rule are read once at start (log) and shown in
+	// Problems now; nothing is changed.
+	go panel.logNamespaceProblemsAtStart(context.Background())
 	if err := waitPanelHTTP(runningServer); err != nil {
 		log.Fatal(err)
 	}

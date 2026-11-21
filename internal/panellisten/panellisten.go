@@ -171,6 +171,30 @@ var reservedChoices = map[int]string{
 	51820: "WireGuard VPN",
 }
 
+// serverPorts are ports at or above 1024 on which CelikPanel and the
+// services it sets up listen themselves, on loopback or everywhere (security
+// release, 20 November 2026). Nothing a customer configures may be pointed at
+// them: a Node.js site's nginx would otherwise pass the public to them.
+var serverPorts = map[int]string{
+	DefaultPort: "the panel",
+	LegacyPort:  "the panel",
+	2084:        "the panel's recovery view",
+	8306:        "the database web tools",
+	8891:        "mail signing (OpenDKIM)",
+	10040:       "the outgoing mail limits",
+}
+
+// ServerPort names the service of this server that uses port, if any: the
+// ports the owner may not choose for the panel (other than the panel's own)
+// and the panel's and its services' own listeners.
+func ServerPort(port int) (string, bool) {
+	if name, ok := reservedChoices[port]; ok {
+		return name, true
+	}
+	name, ok := serverPorts[port]
+	return name, ok
+}
+
 // ChoiceRefusal says why port cannot be the panel port, or "" when it can.
 // extraReserved adds ports other parts of the panel know are taken.
 func ChoiceRefusal(port int, extraReserved map[int]string) (code, reason string) {

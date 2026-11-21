@@ -130,28 +130,20 @@ func (p *Panel) ensureActiveCertificateCoversAlias(
 	return nil
 }
 
+// aliasConflicts applies the one name rule (hostname_claim.go) to an alias
+// of domainID: a *hostnameClaimRefusal when the alias is refused.
 func (p *Panel) aliasConflicts(ctx context.Context, domainID int, alias string) error {
-	var domainExists bool
-	if err := p.db.GetDB().QueryRowContext(ctx,
-		`SELECT EXISTS(SELECT 1 FROM domains WHERE id = ?)`, domainID,
-	).Scan(&domainExists); err != nil {
+	var subscriptionID int
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT subscription_id FROM domains WHERE id = ?`, domainID).Scan(&subscriptionID)
+	if err != nil {
 		return err
 	}
-	if !domainExists {
-		return sql.ErrNoRows
-	}
-
-	var conflict bool
-	if err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT EXISTS(
-			SELECT 1 FROM hostname_reservations
-			WHERE hostname = ? COLLATE NOCASE
-		)`, alias,
-	).Scan(&conflict); err != nil {
+	refusal, err := p.claimForSubscription(ctx, subscriptionID, alias, false)
+	if err != nil {
 		return err
 	}
-	if conflict {
-		return errDomainAliasConflict
+	if refusal != nil {
+		return refusal
 	}
 	return nil
 }
@@ -180,7 +172,7 @@ func (p *Panel) addDomainAlias(
 		domainID, alias,
 	); err != nil {
 		if hostname.IsNamespaceConflict(err) {
-			return "", errDomainAliasConflict
+			return "", genericHostnameClaimRefusal(alias)
 		}
 		return "", err
 	}
@@ -581,8 +573,9 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 	defer cancel()
 
 	if err := p.aliasConflicts(ctx, domainID, alias); err != nil {
-		if errors.Is(err, errDomainAliasConflict) {
-			writeClientError(w, http.StatusConflict, err.Error())
+		var refusal *hostnameClaimRefusal
+		if errors.As(err, &refusal) {
+			writeHostnameClaimRefusal(w, currentCaller(r), refusal)
 		} else if errors.Is(err, sql.ErrNoRows) {
 			writeClientError(w, http.StatusNotFound, "domain not found")
 		} else {
@@ -754,7 +747,10 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 		p.applyVhostForDomain,
 	)
 	if err != nil {
+		var refusal *hostnameClaimRefusal
 		switch {
+		case errors.As(err, &refusal):
+			writeHostnameClaimRefusal(w, currentCaller(r), refusal)
 		case errors.Is(err, errInvalidDomainAlias):
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		case errors.Is(err, errDomainAliasConflict),
