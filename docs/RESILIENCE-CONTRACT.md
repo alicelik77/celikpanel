@@ -9169,3 +9169,75 @@ until the backup reports ready.
   site folder (the link rule is the barrier until one group per site);
   account names are derived from domain names; mail is signed for any
   hosted domain (the next release). **No P0 item is closed.**
+
+### Branches security/s3b-mail-signing, security/s1b-pg-leftovers and fix/a143-lab-corrections (mail signed only for the sender's own domain; the PostgreSQL cluster move and databases made before alpha.141; the alpha.142 lab's four corrections; schema 80 -> 81, triggers only; constitution 1; invariants 1, 2, 3 and 4; D-022; D-024; D-025; 2026-11-21, candidate alpha.143)
+
+- **Why it is here.** The mail repair step at the panel's start writes
+  native OpenDKIM and Postfix settings; the PostgreSQL loop and the move
+  change native database rights; a database trigger is a schema
+  transition; a site deletion's application-unit cleanup and the one-time
+  mode correction are lifecycle steps: constitution 1 (authorize each action
+  for its exact resources) and invariants 1 (owner authority: owner-edited
+  `opendkim.conf`, milter settings and file modes are kept), 2 (verified
+  state before claims: every close and undo reads its result back), 3 (no
+  duplicate mutation from polling: reading the PostgreSQL page or Problems
+  now changes nothing) and 4 (refusals decided before anything is made).
+- **Defects (each shown before the fix by a test).** OpenDKIM signed any
+  message whose `From:` named a hosted domain, for authenticated and local
+  clients and on port 25, so mail with another customer's address left with
+  that customer's signature; a cluster move restored the archive as the
+  cluster's owner, running a database owner's constraint code with the
+  administrator's rights; PostgreSQL databases made before alpha.141 kept
+  PUBLIC's CONNECT and TEMPORARY; from the alpha.142 lab: a customer's
+  subdomain inside its own domain under a server or administrator name was
+  refused, the administrator was told a far holder, a failed Node.js unit
+  blocked its site's deletion, and kept owner modes were not named.
+- **Contract.** `SenderMacro {auth_authen}` ties the signing key to the
+  login; the port-25 smtpd gets its own `smtpd_milters` without OpenDKIM; a
+  build without `SenderMacro` keeps the earlier configuration and says so.
+  Each table's rows of a moved database load through a role holding only
+  that table owner's rights; a move that cannot be done so is refused before
+  anything is written. An older database is closed by itself only with
+  untouched default rights, no unrecorded role inside or connected and no
+  monitoring role on its cluster; otherwise listed with one confirmed close;
+  every close has an exact undo (panel and plain SQL), and an undone database
+  is never closed by itself again. The name rule exempts N when the receiving
+  account holds R with N under R and R under a server name or an
+  administrator-held name; everything else stays refused, in the panel and
+  in migration 081. `RemoveAppUnit` runs `systemctl reset-failed` for the
+  exact unit before its unchanged proof; the mode correction names every
+  kept mode.
+- **Schema / version transition.** 80 -> 81: migration 081 drops and
+  recreates the six triggers of 080 under the same names; no table, column
+  or row, so it applies on a database that holds overlaps; an older release
+  refuses the ledger and going back to alpha.142 is the pre-update snapshot
+  restore. Additive: `WireMailFiltersResponse.signing`, the Problems-now
+  kinds `mail_signing` and `postgresql_databases_open`, the build-gated Agent
+  calls `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`, panel_settings rows
+  `postgresql_public_v1:<id>` and `postgresql_public_list_v1`.
+- **Recovery.** A new `opendkim.conf` is checked with `opendkim -n` before
+  the rename and put back if OpenDKIM does not run with it; Postfix writes
+  are undone in reverse order on any failure and Postfix reloaded; mail
+  passes unsigned during a restart (`milter_default_action = accept`). A
+  refused or failed move leaves the source untouched and removes its
+  temporary role; a close interrupted anywhere leaves the database untouched
+  or closed with its grants; an undo whose database changed since is refused
+  and changes nothing. Everything is native configuration and rights that
+  work without the panel; the owner undoes them with the plain settings or
+  statements named in `docs/TENANT-ISOLATION.md` and `docs/DATABASE-USERS.md`.
+- **Evidence.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` and the
+  distribution matrix's real OpenDKIM on Debian 12/13 and Ubuntu 22.04/24.04;
+  `TestS1bMovingADatabaseNeverRunsItsCodeWithAdministratorRights`,
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` on private
+  PostgreSQL 17; `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
+  `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
+  `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
+  `TestAppUnitRemovalForgetsAFailedUnit`,
+  `TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner`; the
+  release-recovery lab pins schema 81.
+- **Open.** No lab run yet. Arch Linux's OpenDKIM has no `SenderMacro`:
+  mail sent with a login is still signed for any hosted domain its `From:`
+  names there; databases the panel does not record are not touched; a
+  subdomain made under the exemption is still listed in Problems now; a
+  SQL_ASCII PostgreSQL server is still unchecked in a lab. **No P0 item is
+  closed.**

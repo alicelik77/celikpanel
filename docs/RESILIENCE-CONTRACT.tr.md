@@ -8391,3 +8391,82 @@ bağlantıyı tutar.
   kuralıdır); hesap adları alan adlarından türetilir; posta, barındırılan
   her alan adı için imzalanır (sonraki sürüm). **Hiçbir P0 maddesi
   kapanmadı.**
+
+### security/s3b-mail-signing, security/s1b-pg-leftovers ve fix/a143-lab-corrections dalları (posta yalnız göndericinin kendi alan adı için imzalanır; PostgreSQL küme taşıma ve alpha.141'den önce açılan veritabanları; alpha.142 laboratuvarının dört düzeltmesi; şema 80 -> 81, yalnız tetikleyiciler; anayasa 1; ilke 1, 2, 3 ve 4; D-022; D-024; D-025; 2026-11-21, aday alpha.143)
+
+- **Neden burada.** Panelin açılışındaki posta onarım adımı doğal OpenDKIM
+  ve Postfix ayarlarını yazar; PostgreSQL döngüsü ve taşıma doğal veritabanı
+  haklarını değiştirir; veritabanı tetikleyicisi bir şema geçişidir; site
+  silmenin uygulama birimi temizliği ve tek seferlik kip düzeltmesi yaşam
+  döngüsü adımlarıdır: anayasa 1 (her işlem tam kendi kaynakları için
+  yetkilendirilir), ilke 1 (sahibin düzenlediği `opendkim.conf`, süzgeç
+  ayarları ve dosya kipleri korunur), ilke 2 (iddiadan önce doğrulanmış
+  durum: her kapatma ve geri alma sonucunu geri okur), ilke 3 (durum
+  sorgusu ikinci bir değişiklik başlatmaz: PostgreSQL sayfasını ya da "Şu
+  anki sorunlar"ı okumak hiçbir şeyi değiştirmez) ve ilke 4 (retler hiçbir
+  şey yapılmadan verilir).
+- **Kusurlar (her biri düzeltmeden önce bir testle gösterildi).** OpenDKIM,
+  `From:` satırında barındırılan bir alan adı geçen her iletiyi, kimliği
+  doğrulanmış ve yerel istemciler için ve 25. portta imzalıyordu; böylece
+  başka bir müşterinin adresini taşıyan posta o müşterinin imzasıyla
+  çıkıyordu; küme taşıma arşivi kümenin sahibi olarak geri yüklüyor,
+  veritabanı sahibinin kısıt kodunu yöneticinin haklarıyla çalıştırıyordu;
+  alpha.141'den önce açılan PostgreSQL veritabanları PUBLIC'in CONNECT ve
+  TEMPORARY haklarını koruyordu; alpha.142 laboratuvarından: bir müşterinin
+  sunucu ya da yönetici adının altındaki kendi alan adının içinde alt alan
+  adı reddediliyordu, yöneticiye uzak bir sahip söyleniyordu, hata veren bir
+  Node.js birimi sitesinin silinmesini engelliyordu ve korunan sahip
+  kipleri adlandırılmıyordu.
+- **Sözleşme.** `SenderMacro {auth_authen}` imza anahtarını girişe bağlar;
+  25. port smtpd'si OpenDKIM'siz kendi `smtpd_milters` ayarını alır;
+  `SenderMacro`'suz bir derleme önceki yapılandırmayı korur ve bunu söyler.
+  Taşınan veritabanında her tablonun satırları yalnız o tablonun sahibinin
+  haklarını taşıyan bir rolle yüklenir; böyle yapılamayan taşıma hiçbir şey
+  yazılmadan reddedilir. Eski bir veritabanı kendiliğinden yalnız
+  dokunulmamış varsayılan haklarda, içinde ya da bağlı kayıt dışı rol
+  yokken ve kümesinde izleme rolü yokken kapatılır; aksi hâlde onaylı tek
+  kapatmayla listelenir; her kapatmanın tam bir geri alması vardır (panel
+  ve düz SQL) ve geri alınan veritabanı bir daha kendiliğinden kapatılmaz.
+  Ad kuralı, alan hesap N'nin altında olduğu bir R tutuyorsa ve R bir sunucu
+  adının ya da yöneticinin tuttuğu bir adın altındaysa N'yi muaf tutar;
+  diğer her şey panelde ve göç 081'de reddedilmeye devam eder.
+  `RemoveAppUnit`, değişmeyen kanıtından önce tam o birim için `systemctl
+  reset-failed` çalıştırır; kip düzeltmesi korunan her kipi adlandırır.
+- **Şema / sürüm geçişi.** 80 -> 81: göç 081, 080'in altı tetikleyicisini
+  aynı adlarla kaldırıp yeniden oluşturur; tablo, sütun ya da satır yok,
+  bu yüzden çakışma tutan bir veritabanında da uygulanır; eski sürüm kaydı
+  reddeder, alpha.142'ye dönüş güncellemeden önceki anlık görüntünün geri
+  yüklenmesidir. Eklemeli: `WireMailFiltersResponse.signing`, "Şu anki
+  sorunlar" türleri `mail_signing` ve `postgresql_databases_open`, sürüme
+  bağlı Agent çağrıları `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`,
+  panel_settings satırları `postgresql_public_v1:<kimlik>` ve
+  `postgresql_public_list_v1`.
+- **Kurtarma.** Yeni bir `opendkim.conf`, yeniden adlandırmadan önce
+  `opendkim -n` ile denetlenir ve OpenDKIM onunla çalışmazsa geri konur;
+  Postfix yazmaları herhangi bir hatada ters sırayla geri alınır ve Postfix
+  yeniden yüklenir; yeniden başlatma sırasında posta imzasız geçer
+  (`milter_default_action = accept`). Reddedilen ya da başarısız taşıma
+  kaynağı olduğu gibi bırakır ve geçici rolünü kaldırır; herhangi bir yerde
+  kesilen kapatma veritabanını dokunulmamış ya da haklarıyla kapatılmış
+  bırakır; veritabanı o zamandan beri değişmişse geri alma reddedilir ve
+  hiçbir şey değiştirmez. Hepsi panel olmadan da çalışan doğal yapılandırma
+  ve haklardır; sahip bunları `docs/TENANT-ISOLATION.tr.md` ve
+  `docs/DATABASE-USERS.md` içinde adı geçen düz ayar ya da komutlarla geri
+  alır.
+- **Kanıt.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` ve dağıtım
+  matrisinde Debian 12/13 ve Ubuntu 22.04/24.04'ün gerçek OpenDKIM'i;
+  özel PostgreSQL 17'de
+  `TestS1bMovingADatabaseNeverRunsItsCodeWithAdministratorRights`,
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers`;
+  `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
+  `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
+  `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
+  `TestAppUnitRemovalForgetsAFailedUnit`,
+  `TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner`; sürüm
+  kurtarma laboratuvarı şema 81'i sabitler.
+- **Açık.** Henüz laboratuvar çalışması yok. Arch Linux'un OpenDKIM'inde
+  `SenderMacro` yok: orada girişle gönderilen posta, `From:` satırında
+  geçen barındırılan her alan adı için hâlâ imzalanır; panelin kaydetmediği
+  veritabanlarına dokunulmaz; istisnayla açılan alt alan adı "Şu anki
+  sorunlar"da hâlâ listelenir; SQL_ASCII bir PostgreSQL sunucusu hâlâ
+  laboratuvarda denenmedi. **Hiçbir P0 maddesi kapanmadı.**
