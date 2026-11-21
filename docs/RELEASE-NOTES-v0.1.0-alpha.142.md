@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.142.tr.md)
 
+> **Published** on 2026-11-21 (UTC): release commit `7e51e951a`, GitHub pre-release at 12:51:06Z, download portal at about 12:54Z (public check 27/27).
+
 **A security release: please update soon.** It closes ways in which a
 customer or a reseller could take names, ports and files that belong to
 another account or to the server itself: a domain name inside or above
