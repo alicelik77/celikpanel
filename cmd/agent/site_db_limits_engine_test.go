@@ -82,7 +82,8 @@ func TestR2aMariaDBStatementTimeDoesNotCutARestore(t *testing.T) {
 		" GRANT ALL PRIVILEGES ON `r2am`.* TO 'r2am_user'@'localhost';"))
 	// The statement the panel's driver writes (services.mariaDBRoleLimitSQL).
 	mustRun(t, "limit", e.maria("", "", "ALTER USER 'r2am_user'@'localhost' WITH MAX_STATEMENT_TIME 1;"))
-	slow := "SELECT BENCHMARK(40000000, MD5('celikpanel'));"
+	// SLEEP, not a CPU loop: its length does not depend on the machine.
+	slow := "SELECT SLEEP(2);"
 	mustFail(t, "a statement longer than the user's statement time", e.maria("r2am_user", engineOwnerPassword, "USE r2am; "+slow))
 	mustRun(t, "the session lifts its statement time", e.maria("r2am_user", engineOwnerPassword, "USE r2am; SET SESSION max_statement_time = 0; "+slow))
 
