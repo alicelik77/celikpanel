@@ -30,6 +30,11 @@ const stub = dataModule(`
   export const useNavigate = () => () => true;
   // S4 R1 fix round: the Scheduled tasks list asks the role for Keep.
   export const useAuth = () => ({ role: 'customer' });
+  // S4 R2b: the Scheduled tasks list's timer facts (a site in cron here).
+  export const TASK_STATES = [];
+  export const decodeTaskRun = () => undefined;
+  export const decodeTaskLines = () => [];
+  export const formatDateTime = (value) => String(value);
   // alpha.127: the administrator's install link; others see the sentence it carries.
   export const AdminInstallLink = (props) => props.fallback ?? null;
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);

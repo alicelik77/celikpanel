@@ -54,6 +54,11 @@ const stub = dataModule(`
   export const useNavigate = () => () => true;
   // alpha.127: the mail card asks who reads it (the administrator gets the mail setup).
   export const useAuth = () => ({ role: globalThis.mailAuthRole ?? 'customer' });
+  // S4 R2b: the Scheduled tasks list's timer facts (a site in cron here).
+  export const TASK_STATES = [];
+  export const decodeTaskRun = () => undefined;
+  export const decodeTaskLines = () => [];
+  export const formatDateTime = (value) => String(value);
   // alpha.127: the administrator's install link; others see the sentence it carries.
   export const AdminInstallLink = (props) => props.fallback ?? null;
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
