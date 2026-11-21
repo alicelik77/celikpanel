@@ -816,7 +816,8 @@ translated.
 | limits, outgoing mail | none; mail to every port | the site's slice; §3's rule |
 
 **What people read.** The Scheduled tasks screen says, for a moved site, the two halves of
-a long run in one sentence, and for each task its last run (when, how long, exit status
+a long run in one sentence and the differences from cron a site may notice (output kept,
+not mailed; no login session; `$0`), and for each task its last run (when, how long, exit status
 and systemd's word for it, the last ten lines it wrote, from its own journal entries), when
 it runs next, and a task whose timer the server owner turned off, whose unit was changed on
 the server, that is not scheduled yet ("save it again"), or whose line does not run (with

@@ -70,6 +70,12 @@ func TestSiteTasksMoveIsPartOfTheMoveAndUndoIsTheAdministrators(t *testing.T) {
 	if len(calls) != 0 {
 		t.Fatalf("a customer reached the Agent: %v", calls)
 	}
+	// The "Move all" list is the administrator's alone.
+	outside := http.NewServeMux()
+	outside.HandleFunc("/api/v1/site-limits/outside", f.panel.handleSiteLimitsOutside)
+	outsideHandler := f.panel.requireAuth(outside)
+	wantStatus(t, siteLimitsCall(t, f, outsideHandler, authzMatrixCustomerID, http.MethodGet, "/api/v1/site-limits/outside", ""), http.StatusForbidden, "")
+	wantStatus(t, siteLimitsCall(t, f, outsideHandler, authzMatrixAdminID, http.MethodGet, "/api/v1/site-limits/outside", ""), http.StatusOK, "")
 	preview := siteLimitsCall(t, f, handler, authzMatrixAdminID, http.MethodGet, "/api/v1/domains/9902/site-limits/preview", "")
 	wantStatus(t, preview, http.StatusOK, "")
 	if !strings.Contains(preview.Body.String(), `"celikcron-1-1"`) {

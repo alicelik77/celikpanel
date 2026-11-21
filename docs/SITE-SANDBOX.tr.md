@@ -690,7 +690,8 @@ bir satır (`L`, `W`, `#`, `?`, aralık dışında bir değer, geriye giden bir 
 | sınırlar, giden posta | yok; her porta posta | sitenin dilimi; §3'ün kuralı |
 
 **İnsanların okuduğu.** Zamanlanmış görevler ekranı taşınmış bir site için uzun süren bir
-çalışmanın iki yarısını tek cümlede söyler; her görev için son çalışmasını (ne zaman, ne kadar,
+çalışmanın iki yarısını tek cümlede ve bir sitenin fark edebileceği cron farklarını (çıktı
+saklanır, e-postayla gönderilmez; giriş oturumu yok; `$0`) söyler; her görev için son çalışmasını (ne zaman, ne kadar,
 çıkış durumu ve systemd'nin onun için sözcüğü, kendi günlük kayıtlarından yazdığı son on satır),
 ne zaman yeniden çalışacağını; sunucu sahibinin zamanlayıcısını kapattığı, birimi sunucuda
 değiştirilen, henüz zamanlanmamış ("yeniden kaydedin") ya da satırı çalışmayan (nedeniyle)

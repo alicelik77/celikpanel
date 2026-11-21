@@ -12,6 +12,7 @@
 
 export const enSiteTasksScreens = {
     'stasks.timers': 'These tasks run inside this site’s own limits. A task still running when its next time comes is not started a second time; if its time came while it ran, it starts once more right after it ends.',
+    'stasks.differences': 'Each task runs as cron ran it: the same account, folder, shell and settings. What differs: its output is kept with each run instead of being mailed, it starts without a login session, and the shell’s $0 is the task’s own file.',
     'stasks.source.owner': 'The server owner changed this site’s task file by hand. Their file is kept and its tasks run as it says; changes made here wait beside it until the server owner takes them in.',
     'stasks.source.missing': 'This site’s task file is missing on the server while timers of the site remain; they run as they are. The server owner puts the file back or removes the timers.',
     'stasks.reappeared': 'A crontab was made again for this site’s account ({n} lines). It is the server owner’s and runs outside the site’s limits:',

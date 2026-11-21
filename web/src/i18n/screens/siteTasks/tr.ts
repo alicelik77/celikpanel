@@ -4,6 +4,7 @@ import type { SiteTasksScreenKey } from './en';
 
 export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
     'stasks.timers': 'Bu görevler sitenin kendi sınırları içinde çalışır. Bir görev, bir sonraki saati geldiğinde hâlâ çalışıyorsa ikinci kez başlatılmaz; çalışırken saati geldiyse bittikten hemen sonra bir kez daha başlar.',
+    'stasks.differences': 'Her görev cron’un çalıştırdığı gibi çalışır: aynı hesap, klasör, kabuk ve ayarlarla. Farklı olan: çıktısı e-postayla gönderilmek yerine her çalışmayla birlikte saklanır, bir giriş oturumu olmadan başlar ve kabuğun $0 değeri görevin kendi dosyasıdır.',
     'stasks.source.owner': 'Sunucu sahibi bu sitenin görev dosyasını elle değiştirdi. Onun dosyası korunur ve görevler dosyada yazdığı gibi çalışır; burada yapılan değişiklikler, sunucu sahibi alana kadar dosyanın yanında bekler.',
     'stasks.source.missing': 'Bu sitenin görev dosyası sunucuda yok, ama sitenin zamanlayıcıları duruyor; oldukları gibi çalışırlar. Sunucu sahibi dosyayı geri koyar ya da zamanlayıcıları kaldırır.',
     'stasks.reappeared': 'Bu sitenin hesabı için yeniden bir crontab yapılmış ({n} satır). Sunucu sahibinindir ve sitenin sınırlarının dışında çalışır:',

@@ -110,6 +110,9 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/managed-services/scan":      gateAdmin,
 	"/api/v1/metrics/history":            gateAdmin,
 	"/api/v1/metrics/problems":           gateAdmin,
+	// S4 R2b: the sites outside their limits for "Move all"; the handler
+	// answers the administrator only (403 for anyone else).
+	"/api/v1/site-limits/outside": gateTenant,
 
 	// alpha.128: offering additional nginx directives (admin through /api/v1/nginx/).
 	"/api/v1/nginx/directives-offer": gateAdmin,

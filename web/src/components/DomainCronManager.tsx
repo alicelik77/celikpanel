@@ -478,7 +478,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                     <div className="mb-3 space-y-2" data-cron-timers={timers.source}>
                         <p className="flex items-start gap-2 text-sm text-fg-muted">
                             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                            <span className="min-w-0 max-w-[75ch]">{t('stasks.timers')}</span>
+                            <span className="min-w-0 max-w-[75ch]">{t('stasks.timers')} {t('stasks.differences')}</span>
                         </p>
                         {timers.source !== 'ours' && (
                             <p className="flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg" data-cron-source={timers.source}>
