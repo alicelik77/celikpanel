@@ -152,6 +152,13 @@ type VhostData struct {
 	// up from this site's file (mail_autoconfig.go). Nil renders the file
 	// exactly as before.
 	MailAutoconfig *MailAutoconfig
+	// OwnerSymlinks (20 Nov 2026): the owner set disable_symlinks for this
+	// site himself (his include directory, or the administrator's
+	// directives), so the template leaves its own line out: his rule is kept
+	// and nginx refuses the directive twice in one server block. False writes
+	// `disable_symlinks if_not_owner;` in every block that serves the site's
+	// files.
+	OwnerSymlinks bool
 }
 
 // Render executes the vhost template over prepared data, deriving the

@@ -1122,9 +1122,18 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 		resp.Error = err.Error()
 		return
 	}
-	// S4 R1: webmail with nothing bound yet runs under its own account.
+	// S4 R1: webmail with nothing bound yet runs under its own account. One
+	// that could not get it says so (D-024); when the socket it would be
+	// handed to does not exist (that version's stock pool is off), nothing is
+	// pointed at it and the answer is a refusal, never a success.
 	if own, warning := ownSocketForUnboundTool(ctx, webmailState, socket); warning != "" {
 		log.Printf("configure webmail: %s", warning)
+		stop, problem := webmailOwnAccountOutcome(socket, warning, pathExists)
+		if stop != "" {
+			resp.Error = stop
+			return
+		}
+		resp.ToolProblems = append(resp.ToolProblems, problem)
 	} else {
 		socket = own
 	}
@@ -1166,4 +1175,16 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 	if warning := refreshWebmailAddresses(ctx, runServiceMutationCombinedOutput, socket); warning != "" {
 		log.Printf("configure webmail: %s", warning)
 	}
+}
+
+// webmailOwnAccountOutcome: webmail could not be given its own account
+// (warning). With the socket it would be handed to missing (that version's
+// stock pool is off) the configuration stops with the warning as its
+// refusal; otherwise it goes on and the answer carries the problem for the
+// screen (S4 R1 fix round, D-024).
+func webmailOwnAccountOutcome(socket, warning string, exists func(string) bool) (string, transport.PHPToolProblem) {
+	if !exists(socket) {
+		return warning, transport.PHPToolProblem{}
+	}
+	return "", transport.PHPToolProblem{Tool: phpToolWebmail, Version: fpmSocketVersion(socket), Kind: "own_account_failed"}
 }

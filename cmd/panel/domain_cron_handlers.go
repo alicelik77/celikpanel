@@ -77,6 +77,10 @@ func (p *Panel) handleDomainCronJobs(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		p.handleListCronJobs(w, tenant)
 	case "POST":
+		if r.URL.Query().Get("keep") != "" {
+			p.handleKeepCronLine(w, r, tenant)
+			return
+		}
 		p.handleAddCronJob(w, r, tenant)
 	case "PUT":
 		p.handleUpdateCronJob(w, r, tenant)
@@ -235,5 +239,42 @@ func (p *Panel) handleDeleteCronJob(w http.ResponseWriter, r *http.Request, tena
 		return
 	}
 
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+// handleKeepCronLine is the administrator's Keep on a line not made in
+// CelikPanel (S4 R1 fix round): POST ?keep=<id>&version=<version>. The
+// server owner's own lines (@reboot, MAILTO=, PATH= and the like) then stop
+// being a warning. A customer may only delete such a line: the site's own
+// code may have planted it. Audited.
+// Yöneticinin "Kalsın"ı; müşteri yalnız silebilir.
+func (p *Panel) handleKeepCronLine(w http.ResponseWriter, r *http.Request, tenant transport.CronTenant) {
+	caller := currentCaller(r)
+	if caller == nil || !caller.hasAccountRole(roleAdmin) {
+		writeClientError(w, http.StatusForbidden, "only the administrator keeps a line not made in CelikPanel")
+		return
+	}
+	id := r.URL.Query().Get("keep")
+	version := r.URL.Query().Get("version")
+	if !requireCronVersion(w, version) {
+		return
+	}
+	var success bool
+	err := p.callAgentContext(r.Context(), "Agent.KeepCronLineV1", &transport.KeepCronLineRequest{
+		CronTenant: tenant,
+		ID:         id,
+		Version:    version,
+	}, &success)
+	details := map[string]any{"domain": tenant.Domain, "line": id}
+	if err != nil {
+		p.auditDetailed(r, "cron.line.keep.failed", "domain", tenant.DomainID, details)
+		writeCronAgentError(w, err, cronReasonWrite)
+		return
+	}
+	if !success {
+		writeAgentError(w, nil, "keeping the line was not completed")
+		return
+	}
+	p.auditDetailed(r, "cron.line.keep", "domain", tenant.DomainID, details)
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }

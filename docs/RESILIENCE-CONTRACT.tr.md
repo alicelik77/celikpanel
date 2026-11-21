@@ -8330,3 +8330,64 @@ bağlantıyı tutar.
   açmasına açık kalır; eklenen PostgreSQL kullanıcıları, geri yüklemenin
   yeniden kurduğu nesnelerdeki haklarını yitirir. **Hiçbir P0 maddesi
   kapanmadı.**
+
+### security/s2-names ve security/s3-files-mail dalları (başka bir hesabın ya da sunucunun adları, portları ve dosyaları müşterinin erişimi dışında; şema 79 -> 80, yalnız tetikleyiciler; anayasa 1; ilke 1 ve 4; D-022; D-024; D-025; 2026-11-20, aday alpha.142)
+
+- **Neden burada.** Alan adı oluşturma ve silme yaşam döngüsü yollarıdır,
+  veritabanı tetikleyicisi bir şema geçişidir; site silmenin hesap adımları
+  ve tek seferlik dosya kipi düzeltmesi sunucudaki durumu değiştirir:
+  anayasa 1 (her işlem tam kendi kaynakları için yetkilendirilir), ilke 1
+  (sahibin değiştirdiği kipler ve kendi `disable_symlinks` satırı korunur)
+  ve ilke 4 (retler hiçbir şey yapılmadan verilir; telafi yalnız kendi
+  işleminin yaptığını kaldırır).
+- **Kusurlar (20 Kasım 2026 kiracı yalıtımı denetimi; her biri düzeltmeden
+  önce bir testle gösterildi).** Bir müşterinin aboneliği başka bir hesabın
+  ya da sunucunun kendi adlarına eşit, altında ya da üstünde bir ad
+  alabiliyordu (var olan altyapı bölgesi yeni alan adına veriliyordu); iki
+  alan adı aynı sistem hesabını türetiyor, reddedilen oluşturmanın telafisi
+  öbür sitenin zamanlanmış görevlerini ve FTP girişlerini siliyordu; bir
+  Node.js sitesinin portu sunucunun kendi hizmetlerinin portu olabiliyordu;
+  nginx başka bir hesabın dosyasına giden bağlantıyı izliyordu; siteye özel
+  yapılandırma dosyaları herkesçe okunabiliyordu; müşteri yönergeleri PHP
+  sınırlarını kaldırabiliyor ya da nginx'e root olarak dosya okutabiliyordu;
+  Alan adı ekle, istekte adı geçen aboneliği erişim denetiminden önce
+  okuyordu.
+- **Sözleşme.** Panelde tek ad kuralı (`cmd/panel/hostname_claim.go`),
+  aboneliğe ad veren her yolda (oluşturma, takma ad, içe aktarma, devir) ve
+  yeniden veritabanında (göç 080: alan adı ekleme, yeniden adlandırma ve
+  taşıma; takma ad ekleme ve güncelleme; aboneliğin sahip değişikliği).
+  Yöneticinin kendi aboneliği böyle bir adı bilerek tutabilir; sıradan bir
+  hesaba adı kim tutarsa tutsun aynı yanıt verilir. Adın alacağı hesap
+  oluşturmadan önce denetlenir; Agent, adıyla yapılan her adımdan önce
+  hesabın ev dizinini kanıtlar. Node.js portları 3001-3999 arasından,
+  hiçbir zaman bir sunucu hizmetininki değil; Agent yeniden reddeder. Dosya
+  sunan her blokta `disable_symlinks if_not_owner`; siteye özel dosyalar
+  0640, barındırma kökü 0711, bir kez düzeltilir, sahibin değiştirdiği
+  kipler korunur.
+- **Şema / sürüm geçişi.** 79 -> 80: altı tetikleyici; tablo, sütun ya da
+  satır değişmez. Çakışma tutan bir veritabanı da geçer ve çalışmayı
+  sürdürür (yalnız yeni verilen ya da el değiştiren ad karşılaştırılır);
+  eski sürüm bu kaydı reddeder, alpha.141'e dönüş güncellemeden önceki
+  anlık görüntünün geri yüklenmesidir. Eklemeli: `HOSTNAME_NOT_AVAILABLE`,
+  `APP_PORT_NOT_ALLOWED`, `TRANSFER_NAME_OVERLAP` ret kodları, Agent'ın
+  `site_identity_exists` yanıtı, site parçasının `refused` sonucu, "Şu anki
+  sorunlar"da üç tür, bir Agent makbuz dosyası (`tenant-file-modes-v1.done`).
+- **Kurtarma.** Güncelleme hiçbir şeyi silmez ya da yeniden adlandırmaz: bir
+  kurulumun zaten tuttuğu adlar ve portlar kalır ve yapılacakla birlikte
+  "Şu anki sorunlar"da listelenir; başka bir sitenin hesabına rastlayan
+  silme kendi parçaları için tamamlanır. Dosyalardaki her değişiklik panel
+  olmadan da çalışan doğal nginx yapılandırması ya da dosya kipidir; sahip
+  `chmod` ya da kendi `disable_symlinks` satırıyla geri alır, CelikPanel
+  onun seçimini korur.
+- **Kanıt.** alpha.141'de başarısız olup burada geçen kanıt testleri:
+  `TestNameRuleProof*`, `TestNameRuleParentLookupWaitsForTheAccessCheck`
+  (cmd/panel), `TestDeleteSiteLeavesAnotherSitesAccountCrontabAndLoginsAlone`,
+  `TestNodeVhostRefusesAPortOfTheServersOwnServices`, `TestTenantIsolation*`
+  (cmd/agent, internal/services); `TestSchema79DatabaseWithOverlapsUpgradesAndKeepsWorking`;
+  bağlantı kuralı Debian 13'ün nginx 1.26.3'ünde; sürüm kurtarma
+  laboratuvarı şema 80'i sabitler.
+- **Açık.** Henüz laboratuvar çalışması yok. Web sunucusunun grubu hâlâ her
+  site klasörünü okuyabilir (site başına grup gelene kadar engel bağlantı
+  kuralıdır); hesap adları alan adlarından türetilir; posta, barındırılan
+  her alan adı için imzalanır (sonraki sürüm). **Hiçbir P0 maddesi
+  kapanmadı.**

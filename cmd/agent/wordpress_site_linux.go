@@ -43,6 +43,11 @@ var wordpressRunAsSite = func(ctx context.Context, site transport.WordPressSite,
 	if !hostingpath.IsSiteHome(account.HomeDir) {
 		return nil, errors.New("the site account is not a hosting account")
 	}
+	// This site's account, not merely a hosting account: two domain names
+	// can derive the same account name (security release, 20 November 2026).
+	if home, err := hostingpath.SiteHome(site.SubscriptionID, site.DomainID); err != nil || filepath.Clean(account.HomeDir) != home {
+		return nil, errors.New("the site account does not belong to this site")
+	}
 	uid, err := strconv.Atoi(account.Uid)
 	if err != nil || uid < 1000 {
 		return nil, errors.New("the site account is a system account")

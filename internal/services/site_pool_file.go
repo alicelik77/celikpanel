@@ -421,10 +421,20 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 		return result, err
 	}
 	result.AdoptedFrom = sourceInspected.adoptedFrom
-	removeErr := removeInspectedSiteFile(source.Path, sourceInspected)
+	// S4 R1 fix round: the last site leaving a version whose stock pool
+	// CelikPanel turned off puts that pool back first (stock_pool_keep.go).
+	undoKeep, removeErr := KeepAPoolBeside(source.Path)
+	if removeErr == nil {
+		removeErr = removeInspectedSiteFile(source.Path, sourceInspected)
+	}
 	// sourceRestoreErr: the source pool was removed, its version's PHP-FPM
 	// did not take that, and putting it back (or reloading after) failed.
 	var sourceRestoreErr error
+	if removeErr != nil && undoKeep != nil {
+		// Nothing was removed: the stock pool goes off again.
+		removeErr = errors.Join(removeErr, undoKeep())
+		undoKeep = nil
+	}
 	if removeErr == nil {
 		removeErr = phpFPMConfigTest(oldVersion)
 		if removeErr == nil {
@@ -433,7 +443,11 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 			removeErr = reloadPHPFPMIfRunning(oldVersion)
 		}
 		if removeErr != nil {
-			sourceRestoreErr = errors.Join(restoreManagedSiteFile(source.Path, sourceInspected), reloadPHPFPMIfRunning(oldVersion))
+			var keepErr error
+			if undoKeep != nil {
+				keepErr = undoKeep()
+			}
+			sourceRestoreErr = errors.Join(restoreManagedSiteFile(source.Path, sourceInspected), keepErr, reloadPHPFPMIfRunning(oldVersion))
 			removeErr = errors.Join(removeErr, sourceRestoreErr)
 		}
 	}

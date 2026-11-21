@@ -8,10 +8,14 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { enMonitoringScreens } from '../src/i18n/screens/monitoring/en.ts';
 import { trMonitoringScreens } from '../src/i18n/screens/monitoring/tr.ts';
+import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
+import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import { enSideDoorsScreens } from '../src/i18n/screens/sideDoors/en.ts';
 import { trSideDoorsScreens } from '../src/i18n/screens/sideDoors/tr.ts';
 import { enSiteJobsScreens } from '../src/i18n/screens/siteJobs/en.ts';
 import { trSiteJobsScreens } from '../src/i18n/screens/siteJobs/tr.ts';
+import { enSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/en.ts';
+import { trSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/tr.ts';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
 
@@ -25,8 +29,9 @@ test('every kind the list shows has a title, body and action in English and Turk
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part,
   // the site limits lines (S4 R2a) in the siteLimits part.
-  const en = { ...enMonitoringScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSiteLimitsScreens };
-  const tr = { ...trMonitoringScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSiteLimitsScreens };
+  // Since alpha.142 the shared lines' words are in the problemsNow part.
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enSiteLimitsScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trSiteLimitsScreens };
   for (const kind of shown) {
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);
@@ -44,6 +49,7 @@ test('the side doors lines name the thing, say who acts and stay in their own pa
     }
     assert.match(enSideDoorsScreens[`pnow.${kind}.body`], /server administrator|choose its PHP version/, `${kind} says who acts`);
     assert.equal(enMonitoringScreens[`pnow.${kind}.title`], undefined, `${kind} is not added to the full monitoring part`);
+    assert.equal(enProblemsNowScreens[`pnow.${kind}.title`], undefined, `${kind} is not added to the problemsNow part`);
   }
   assert.deepEqual(Object.keys(trSideDoorsScreens).sort(), Object.keys(enSideDoorsScreens).sort());
 });

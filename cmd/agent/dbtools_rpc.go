@@ -139,6 +139,7 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 			var warning string
 			if socket, warning = ownSocketForUnboundTool(ctx, state, socket); warning != "" {
 				problems = append(problems, warning)
+				resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: version, Kind: "own_account_failed"})
 			}
 			if err := ensurePHPToolExtensions(ctx, state.Tool, version); err != nil {
 				problems = append(problems, err.Error())

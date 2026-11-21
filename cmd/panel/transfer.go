@@ -325,6 +325,14 @@ func (p *Panel) planTransfer(ctx context.Context, q rowQueryer, c *Caller, subID
 	if refusal := validateReceiver(owner, receiver); refusal != nil {
 		return nil, refusal, nil
 	}
+	// The one name rule (hostname_claim.go): every name of the subscription
+	// goes to the receiving account, so none may meet another account's name
+	// or a name of the server (migration 080 refuses it again).
+	if refusal, err := p.transferNameRefusal(ctx, q, c, subID, receiver.ID); err != nil {
+		return nil, nil, err
+	} else if refusal != nil {
+		return nil, refusal, nil
+	}
 	current, err := p.transferLayers(ctx, q, subID)
 	if err != nil {
 		return nil, nil, err

@@ -132,14 +132,20 @@ type phpToolPoolOps struct {
 	removeAccount func(ctx context.Context, name string) error
 	groupMembers  func(group string) []string
 	prepareDirs   func(tool string, uid, gid int) error
-	prepareFiles  func(ctx context.Context, tool string, uid, gid int) (func(context.Context) error, error)
-	applyPool     func(file services.ManagedSiteFile, validate, activate func() error) (transport.SiteFileResult, error)
-	readFile      func(path string) ([]byte, error)
-	removeFile    func(path string) error
-	fpmTest       func(ctx context.Context, version string) error
-	fpmReload     func(ctx context.Context, version string) error
-	socketReady   func(path string) bool
-	wait          func(ctx context.Context, d time.Duration) bool
+	removeDirs    func(tool string) error
+	// prepareFiles gives the tool's files to its account. servedOwn: the web
+	// server already hands the tool to its own pool (a move between PHP
+	// versions), so nothing of the files is put back on a later failure.
+	prepareFiles func(ctx context.Context, tool string, uid, gid int, servedOwn bool) (func(context.Context) error, error)
+	applyPool    func(file services.ManagedSiteFile, validate, activate func() error) (transport.SiteFileResult, error)
+	snapshotFile func(path string) (mailFileSnapshot, error)
+	restoreFile  func(mailFileSnapshot) error
+	readFile     func(path string) ([]byte, error)
+	removeFile   func(path string) error
+	fpmTest      func(ctx context.Context, version string) error
+	fpmReload    func(ctx context.Context, version string) error
+	socketReady  func(path string) bool
+	wait         func(ctx context.Context, d time.Duration) bool
 }
 
 // ownPHPToolPoolWith gives a tool its own account and pool on one PHP
@@ -149,7 +155,7 @@ type phpToolPoolOps struct {
 // error, what it changed has already been put back.
 // Bir araca kendi hesabını ve havuzunu verir; değiştirdiğinin geri alınışını
 // döndürür. Hata durumunda değiştirdiği zaten geri konmuştur.
-func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version string) (string, func(context.Context) error, error) {
+func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version string, servedOwn bool) (string, func(context.Context) error, error) {
 	if !validPHPTool(tool) || !phpVersionText.MatchString(version) {
 		return "", nil, fmt.Errorf("invalid PHP tool or version %q %q", tool, version)
 	}
@@ -179,6 +185,7 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 	if err != nil {
 		return "", nil, fmt.Errorf("read the account %s: %w", account, err)
 	}
+	created := !found
 	if !found {
 		if err := ops.createAccount(ctx, account); err != nil {
 			return "", nil, fmt.Errorf("create the account %s: %w", account, err)
@@ -200,10 +207,15 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 	if webUID, webGID, webFound, _ := ops.lookupAccount(webServer); webFound && (webUID == uid || webGID == gid) {
 		return fail(fmt.Errorf("the account %s shares its id with the web server's account %s", account, webServer))
 	}
+	if created {
+		// An account made by this call goes on an undo, and its data folder
+		// with it, before it: no folder is left owned by an id userdel freed.
+		undos = append(undos, func(context.Context) error { return ops.removeDirs(tool) })
+	}
 	if err := ops.prepareDirs(tool, uid, gid); err != nil {
 		return fail(fmt.Errorf("prepare the directories of %s: %w", account, err))
 	}
-	undoFiles, err := ops.prepareFiles(ctx, tool, uid, gid)
+	undoFiles, err := ops.prepareFiles(ctx, tool, uid, gid, servedOwn)
 	if err != nil {
 		return fail(fmt.Errorf("give %s's files to %s: %w", phpToolDisplayName(tool), account, err))
 	}
@@ -221,6 +233,13 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 	}
 	validate := func() error { return ops.fpmTest(ctx, version) }
 	activate := func() error { return ops.fpmReload(ctx, version) }
+	// The bytes before the write: a CelikPanel pool the write replaced (a new
+	// web server account, a later release's text) comes back as it was, so
+	// the socket the restored web server configuration names still answers.
+	previous, err := ops.snapshotFile(path)
+	if err != nil {
+		return fail(fmt.Errorf("read the pool %s: %w", path, err))
+	}
 	result, err := ops.applyPool(file, validate, activate)
 	if err != nil {
 		return fail(fmt.Errorf("write the pool %s: %w", path, err))
@@ -229,10 +248,17 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 	switch result.Outcome {
 	case transport.SiteFileOutcomeWritten, transport.SiteFileOutcomeRecreated:
 		undos = append(undos, func(ctx context.Context) error {
-			if err := ops.removeFile(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			if previous.exists {
+				if err := ops.restoreFile(previous); err != nil {
+					return fmt.Errorf("put %s back: %w", path, err)
+				}
+			} else if err := ops.removeFile(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("remove %s: %w", path, err)
 			}
 			services.RemoveSiteFilePending(path)
+			if err := ops.fpmTest(ctx, version); err != nil {
+				return fmt.Errorf("%s was put back, but PHP-FPM %s refuses its configuration, so it was not reloaded: %w", path, version, err)
+			}
 			return ops.fpmReload(ctx, version)
 		})
 	case transport.SiteFileOutcomeUnchanged:
@@ -268,7 +294,12 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 // retirePHPToolPoolsWith removes a tool's own pools on every PHP version but
 // keep ("" removes all of them), reloading each version whose pool went. A
 // pool the owner changed is copied beside it first (as a site's pool is when
-// the site goes). It returns what it could not remove.
+// the site goes). A version is never left without a pool (S4 R1 fix round):
+// when the tool's pool is its last one, the distribution's pool CelikPanel
+// turned off is put back first (services.KeepAPoolBeside); the version's own
+// configuration test runs before every reload, and a refusal puts the pool
+// (and the stock pool's state) back and says so. It returns what it could not
+// remove.
 func retirePHPToolPoolsWith(ctx context.Context, ops phpToolPoolOps, tool, keep string) error {
 	var errs []error
 	for _, version := range installedPHPFPMVersions() {
@@ -280,12 +311,37 @@ func retirePHPToolPoolsWith(ctx context.Context, ops phpToolPoolOps, tool, keep 
 			services.RemoveSiteFilePending(path)
 			continue
 		}
+		previous, err := ops.snapshotFile(path)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("read %s: %w", path, err))
+			continue
+		}
 		if _, err := services.BackupUnlessManaged(path, services.ManagedHeaderPrefixINI, nil); err != nil {
 			errs = append(errs, fmt.Errorf("keep a copy of %s: %w", path, err))
 			continue
 		}
+		undoKeep, err := services.KeepAPoolBeside(path)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s is kept: %w", path, err))
+			continue
+		}
 		if err := ops.removeFile(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			if undoKeep != nil {
+				err = errors.Join(err, undoKeep())
+			}
 			errs = append(errs, fmt.Errorf("remove %s: %w", path, err))
+			continue
+		}
+		if err := ops.fpmTest(ctx, version); err != nil {
+			putBack := ops.restoreFile(previous)
+			if putBack == nil && undoKeep != nil {
+				putBack = undoKeep()
+			}
+			if putBack != nil {
+				errs = append(errs, fmt.Errorf("PHP-FPM %s refuses its configuration without %s's pool (%v), and putting the pool back failed: %v; PHP-FPM %s was not reloaded, the server administrator checks %s", version, phpToolDisplayName(tool), err, putBack, version, filepath.Dir(path)))
+			} else {
+				errs = append(errs, fmt.Errorf("PHP-FPM %s refuses its configuration without %s's pool (%v); the pool was put back and PHP-FPM %s was not reloaded", version, phpToolDisplayName(tool), err, version))
+			}
 			continue
 		}
 		services.RemoveSiteFilePending(path)
@@ -309,7 +365,10 @@ func retireUninstalledPHPToolWith(ctx context.Context, ops phpToolPoolOps, tool 
 			errs = append(errs, err)
 		}
 	}
-	if err := os.RemoveAll(phpToolDataDir(tool)); err != nil {
+	if err := ops.removeDirs(tool); err != nil {
+		errs = append(errs, err)
+	}
+	if err := clearPHPToolFileJournal(tool); err != nil {
 		errs = append(errs, err)
 	}
 	if _, _, found, _ := ops.lookupAccount(phpToolAccount(tool)); found && len(errs) == 0 {
@@ -339,15 +398,21 @@ func ownSocketForUnboundTool(ctx context.Context, state phpToolState, socket str
 	if version == "" || !phpVersionInstalled(version) {
 		return socket, ""
 	}
-	own, _, err := ownPHPToolPoolWith(ctx, hostPHPToolPoolOps(), state.Tool, version)
+	own, _, err := ownPHPToolPoolWith(ctx, hostPHPToolPoolOps(), state.Tool, version, false)
+	if err == nil {
+		// The new configuration names the own pool from now on.
+		if clearErr := clearPHPToolFileJournal(state.Tool); clearErr != nil {
+			log.Printf("clear %s's file record: %v", state.Tool, clearErr)
+		}
+	}
 	if err != nil {
 		if recordErr := writePHPToolAccountFailure(state.Tool, version, err.Error()); recordErr != nil {
 			log.Printf("record %s account failure: %v", state.Tool, recordErr)
 		}
 		if !pathExists(socket) {
-			return socket, fmt.Sprintf("%s could not be given its own account on PHP %s (%v), and that version's stock pool is off, so it does not answer until this is fixed", phpToolDisplayName(state.Tool), version, err)
+			return socket, fmt.Sprintf("%s could not be given its own account on PHP %s (%v), and that version's stock pool is off, so nothing would answer for it; it was not pointed there. The administrator opens it under Components and chooses its PHP version, which tries its own account again", phpToolDisplayName(state.Tool), version, err)
 		}
-		return socket, fmt.Sprintf("%s runs under the web server's account on PHP %s: %v", phpToolDisplayName(state.Tool), version, err)
+		return socket, fmt.Sprintf("%s runs under the web server's account on PHP %s, which can read every site, because it could not be given its own account (%v). The administrator opens it under Components and chooses its PHP version to try again", phpToolDisplayName(state.Tool), version, err)
 	}
 	if err := writePHPToolAccountFailure(state.Tool, "", ""); err != nil {
 		log.Printf("clear %s account failure: %v", state.Tool, err)
@@ -400,8 +465,11 @@ func hostPHPToolPoolOps() phpToolPoolOps {
 		},
 		groupMembers: etcGroupMembers,
 		prepareDirs:  preparePHPToolDataDirs,
+		removeDirs:   func(tool string) error { return os.RemoveAll(phpToolDataDir(tool)) },
 		prepareFiles: preparePHPToolFiles,
 		applyPool:    services.ApplyManagedSiteFile,
+		snapshotFile: snapshotMailFile,
+		restoreFile:  restoreMailFile,
 		readFile:     os.ReadFile,
 		removeFile:   os.Remove,
 		fpmTest: func(ctx context.Context, version string) error {
@@ -490,123 +558,60 @@ func preparePHPToolDataDirs(tool string, uid, gid int) error {
 }
 
 // preparePHPToolFiles gives a tool's own files to its account and returns
-// the undo (nil when nothing was changed).
-func preparePHPToolFiles(ctx context.Context, tool string, uid, gid int) (func(context.Context) error, error) {
+// the undo (nil when nothing is to be put back). servedOwn: the web server
+// already hands the tool to its own pool, so the files stay the account's
+// whatever happens later in this move (php_tool_files.go).
+func preparePHPToolFiles(_ context.Context, tool string, uid, gid int, servedOwn bool) (func(context.Context) error, error) {
+	var undo func() error
+	var err error
 	switch tool {
 	case phpToolWebmail:
-		return prepareRoundcubeOwnAccount(ctx, uid, gid)
+		undo, err = prepareRoundcubeOwnAccountWith(webmailBaseDir, uid, gid, servedOwn)
 	case phpToolPHPMyAdmin:
-		return preparePHPMyAdminOwnAccount(uid, gid)
+		undo, err = preparePHPMyAdminOwnAccount(uid, gid, servedOwn)
 	}
-	return nil, nil
-}
-
-// prepareRoundcubeOwnAccount gives Roundcube's private directories to the
-// account. Its undo puts the web server's group back on the whole tree, as
-// InstallRoundcube leaves it.
-func prepareRoundcubeOwnAccount(ctx context.Context, uid, gid int) (func(context.Context) error, error) {
-	configPath := filepath.Join(webmailBaseDir, "config", "config.inc.php")
-	if snapshot, err := snapshotMailFile(configPath); err == nil && snapshot.exists && snapshot.gid == gid {
-		// Already the account's (a move between PHP versions): nothing to undo.
-		return nil, applyRoundcubeOwnAccountPermissions(ctx, webmailBaseDir, uid, gid, runServiceMutationCombinedOutput)
-	}
-	if err := applyRoundcubeOwnAccountPermissions(ctx, webmailBaseDir, uid, gid, runServiceMutationCombinedOutput); err != nil {
-		if undoErr := restoreRoundcubeWebGroup(ctx); undoErr != nil {
-			return nil, fmt.Errorf("%w; the web server's group could not be put back: %v", err, undoErr)
-		}
+	if err != nil || undo == nil {
 		return nil, err
 	}
-	return restoreRoundcubeWebGroup, nil
+	return func(context.Context) error { return undo() }, nil
 }
-
-func restoreRoundcubeWebGroup(ctx context.Context) error {
-	group := webServerGroup()
-	if group == "" {
-		return fmt.Errorf("web server group could not be detected")
-	}
-	if err := applyRoundcubePermissions(ctx, webmailBaseDir, filepath.Join(webmailBaseDir, "db", "roundcube.sqlite3"), group, runServiceMutationCombinedOutput); err != nil {
-		return err
-	}
-	// What the account wrote in the meantime is the group's again.
-	for _, name := range []string{"db", "temp", "logs"} {
-		if out, err := runServiceMutationCombinedOutput(ctx, "chmod", "-R", "g+rwX", "--", filepath.Join(webmailBaseDir, name)); err != nil {
-			return errors.New(commandFailureDetail("chmod", out, err))
-		}
-	}
-	return nil
-}
-
-// roundcubePrivateDirs are the parts of the tree only the account opens.
-var roundcubePrivateDirs = []string{"db", "temp", "logs"}
-
-// applyRoundcubeOwnAccountPermissions: the private parts are closed first,
-// then the rest of the tree (the published code) is opened for reading, so
-// the configuration is never readable to others on the way.
-func applyRoundcubeOwnAccountPermissions(ctx context.Context, baseDir string, uid, gid int, run webmailCommandRunner) error {
-	baseDir, err := validateRoundcubeTreePath(baseDir)
-	if err != nil {
-		return err
-	}
-	info, err := os.Lstat(baseDir)
-	if err != nil {
-		return fmt.Errorf("inspect Roundcube tree: %w", err)
-	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-		return fmt.Errorf("Roundcube tree is not a real directory: %s", baseDir)
-	}
-	owner := strconv.Itoa(uid) + ":" + strconv.Itoa(gid)
-	for _, name := range roundcubePrivateDirs {
-		path := filepath.Join(baseDir, name)
-		if err := os.MkdirAll(path, 0o700); err != nil {
-			return err
-		}
-		if out, err := run(ctx, "chown", "-R", owner, "--", path); err != nil {
-			return fmt.Errorf("give Roundcube %s to its account: %s", name, commandFailureDetail("chown", out, err))
-		}
-		if out, err := run(ctx, "chmod", "-R", "u=rwX,go=", "--", path); err != nil {
-			return fmt.Errorf("close Roundcube %s: %s", name, commandFailureDetail("chmod", out, err))
-		}
-	}
-	configDir := filepath.Join(baseDir, "config")
-	if out, err := run(ctx, "chown", "-R", "0:"+strconv.Itoa(gid), "--", configDir); err != nil {
-		return fmt.Errorf("give Roundcube's configuration to its account's group: %s", commandFailureDetail("chown", out, err))
-	}
-	if out, err := run(ctx, "chmod", "-R", "u=rwX,g=rX,o=", "--", configDir); err != nil {
-		return fmt.Errorf("close Roundcube's configuration: %s", commandFailureDetail("chmod", out, err))
-	}
-	entries, err := os.ReadDir(baseDir)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if name == "config" || name == "db" || name == "temp" || name == "logs" {
-			continue
-		}
-		path := filepath.Join(baseDir, name)
-		if out, err := run(ctx, "chown", "-R", "0:0", "--", path); err != nil {
-			return fmt.Errorf("set Roundcube's code ownership: %s", commandFailureDetail("chown", out, err))
-		}
-		if out, err := run(ctx, "chmod", "-R", "u=rwX,go=rX", "--", path); err != nil {
-			return fmt.Errorf("open Roundcube's code for reading: %s", commandFailureDetail("chmod", out, err))
-		}
-	}
-	return setRoundcubeTreeRoot(baseDir, 0o755, 0, 0)
-}
-
-// setRoundcubeTreeRoot sets the tree's own directory; a variable for tests.
-var setRoundcubeTreeRoot = secureSetMailDirectoryMetadata
 
 // preparePHPMyAdminOwnAccount writes CelikPanel's conf.d file (the cookie
-// secret and a temp directory of the account's own) and gives the control
-// user's file the account's group while it has the package's owner and mode.
-func preparePHPMyAdminOwnAccount(uid, gid int) (func(context.Context) error, error) {
+// secret and a temp directory of the account's own) and gives the package's
+// secret and the control user's file the account's group while they have the
+// package's owner and mode. Every change is recorded first (unless servedOwn)
+// so its undo is exact. Also run at each start for phpMyAdmin already on its
+// own account: a package upgrade (dbconfig-common) that gave config-db.php
+// back to the web group is put right there.
+func preparePHPMyAdminOwnAccount(uid, gid int, servedOwn bool) (func() error, error) {
 	main, err := os.ReadFile(phpMyAdminMainConfig)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", phpMyAdminMainConfig, err)
 	}
 	if !strings.Contains(string(main), phpMyAdminConfDir+"/") {
 		return nil, fmt.Errorf("%s does not read %s, so phpMyAdmin cannot be given a secret and a temp directory of its own account", phpMyAdminMainConfig, phpMyAdminConfDir)
+	}
+	var journal *phpToolFileJournal
+	if servedOwn {
+		if err := clearPHPToolFileJournal(phpToolPHPMyAdmin); err != nil {
+			return nil, err
+		}
+	} else if journal, err = loadPHPToolFileJournal(phpToolPHPMyAdmin); err != nil {
+		return nil, err
+	}
+	note := func(path string, content bool) error {
+		if journal == nil {
+			return nil
+		}
+		return journal.note([]string{path}, map[string]bool{path: content})
+	}
+	fail := func(err error) (func() error, error) {
+		if journal != nil && len(journal.before) > 0 {
+			if undoErr := journal.undo(); undoErr != nil {
+				return nil, fmt.Errorf("%w; putting back what was changed also failed: %v", err, undoErr)
+			}
+		}
+		return nil, err
 	}
 	if err := os.MkdirAll(phpMyAdminConfDir, 0o755); err != nil {
 		return nil, err
@@ -621,63 +626,46 @@ func preparePHPMyAdminOwnAccount(uid, gid int) (func(context.Context) error, err
 			secret = string(match[1])
 		}
 	}
-	if previous.exists && (secret == "" || string(previous.content) != renderPHPMyAdminOwnAccountConf(secret)) {
-		// The owner's own file under CelikPanel's name: kept as it is.
-		return nil, nil
-	}
-	if secret == "" {
-		secret, err = randomAlphanumeric(32)
-		if err != nil {
-			return nil, err
-		}
-	}
-	content := []byte(renderPHPMyAdminOwnAccountConf(secret))
-	if !previous.exists || string(previous.content) != string(content) || previous.uid != 0 || previous.gid != gid || previous.mode.Perm() != 0o640 {
-		if err := secureWriteConfigOwnedBy(phpMyAdminOwnAccountConf, content, 0o640, 0, uint32(gid)); err != nil {
-			return nil, err
-		}
-	}
-	webGID := -1
-	if group, err := user.LookupGroup(webServerGroup()); err == nil {
-		webGID, _ = strconv.Atoi(group.Gid)
-	}
-	var regrouped []string
-	undo := func(context.Context) error {
-		var errs []error
-		if !previous.exists {
-			if err := os.Remove(phpMyAdminOwnAccountConf); err != nil && !errors.Is(err, os.ErrNotExist) {
-				errs = append(errs, err)
-			}
-		} else if err := restoreMailFile(previous); err != nil {
-			errs = append(errs, err)
-		}
-		for _, path := range regrouped {
-			if err := secureSetMailFileMetadata(path, 0o640, 0, webGID); err != nil {
-				errs = append(errs, err)
+	// The owner's own file under CelikPanel's name is kept as it is.
+	ownerFile := previous.exists && (secret == "" || string(previous.content) != renderPHPMyAdminOwnAccountConf(secret))
+	if !ownerFile {
+		if secret == "" {
+			if secret, err = randomAlphanumeric(32); err != nil {
+				return nil, err
 			}
 		}
-		return errors.Join(errs...)
+		content := []byte(renderPHPMyAdminOwnAccountConf(secret))
+		if !previous.exists || string(previous.content) != string(content) || previous.uid != 0 || previous.gid != gid || previous.mode.Perm() != 0o640 {
+			if err := note(phpMyAdminOwnAccountConf, true); err != nil {
+				return nil, fmt.Errorf("record phpMyAdmin's files before changing them: %w", err)
+			}
+			if err := secureWriteConfigOwnedBy(phpMyAdminOwnAccountConf, content, 0o640, 0, uint32(gid)); err != nil {
+				return fail(err)
+			}
+		}
 	}
+	webGID := webServerGID()
 	// The package's own secret and the control user's file, while they have
 	// the package's owner and mode (root:<web group> 0640), are given the
 	// account's group: Debian's config.inc.php then reads them as before and
-	// logs no "Failed to load" line on every request. A package upgrade that
-	// writes config-db.php again gives it back to the web group; the next
-	// Panel start gives it to the account again.
+	// logs no "Failed to load" line on every request. Any other owner, group
+	// or mode is the owner's and is kept.
 	for _, path := range []string{phpMyAdminBlowfishSecret, phpMyAdminDBConfig} {
 		file, err := snapshotMailFile(path)
 		if err != nil || !file.exists || file.uid != 0 || file.gid != webGID || file.mode.Perm() != 0o640 {
 			continue
 		}
-		if err := secureSetMailFileMetadata(path, 0o640, 0, gid); err != nil {
-			if undoErr := undo(context.Background()); undoErr != nil {
-				return nil, fmt.Errorf("%w; putting back what was changed also failed: %v", err, undoErr)
-			}
-			return nil, err
+		if err := note(path, false); err != nil {
+			return fail(fmt.Errorf("record phpMyAdmin's files before changing them: %w", err))
 		}
-		regrouped = append(regrouped, path)
+		if err := secureSetMailFileMetadata(path, 0o640, 0, gid); err != nil {
+			return fail(err)
+		}
 	}
-	return undo, nil
+	if journal == nil || len(journal.before) == 0 {
+		return nil, nil
+	}
+	return journal.undo, nil
 }
 
 // renderPHPMyAdminOwnAccountConf is CelikPanel's conf.d file for phpMyAdmin.

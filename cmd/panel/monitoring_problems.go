@@ -111,26 +111,37 @@ var problemKindOrder = map[string]int{
 	"cpu_sustained":              9,
 	"mail_queue_deferred":        10,
 	"security_updates":           11,
+	"name_server_reserved":       12,
+	"name_overlap":               13,
+	"node_port_reserved":         14,
 	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
-	"tool_account_failed":       12,
-	"tool_account_owner_config": 13,
-	"stock_pool_in_use":         14,
-	"stock_pool_owner_changed":  15,
+	"tool_account_failed":       15,
+	"tool_account_owner_config": 16,
+	"stock_pool_in_use":         17,
+	"stock_pool_owner_changed":  18,
 	// S4 R1: jobs a site's own code can make.
-	"site_crontab_outside":  16,
-	"site_at_jobs":          17,
-	"at_allow_lists_sites":  18,
-	"at_directory_accounts": 19,
-	"at_not_closed":         20,
+	"site_crontab_outside":  19,
+	"site_at_jobs":          20,
+	"at_allow_lists_sites":  21,
+	"at_directory_accounts": 22,
+	"at_not_closed":         23,
+	// S4 R1 fix round.
+	"tool_down":                 24,
+	"stock_pool_not_put_back":   25,
+	"stock_pool_failed":         26,
+	"stock_pool_unknown":        27,
+	"stock_pool_owner_restored": 28,
+	"at_owner_removed":          29,
+	"site_crontab_unreadable":   30,
 	// S4 R2a: a site that keeps reaching its limits; disk limits counted
 	// but not enforced (site_limits_view.go).
-	"site_memory_repeated": 21,
-	"site_tasks_repeated":  22,
-	"disk_limits_counted":  23,
+	"site_memory_repeated": 31,
+	"site_tasks_repeated":  32,
+	"disk_limits_counted":  33,
 	// S4 R2a: sites whose programs still run outside their limits (a to-do).
-	"site_programs_outside": 24,
+	"site_programs_outside": 34,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
-	"site_limits_unsupported": 25,
+	"site_limits_unsupported": 35,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -186,6 +197,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	}
 	// alpha.127: the sites as the server itself reaches them.
 	add(siteProblems(ctx, db, now, certificates))
+	// Security release (20 November 2026): names and Node.js ports an
+	// existing installation holds that the one name rule refuses today.
+	add(p.namespaceProblems(ctx))
 	// S4 R1: what the side doors step left for someone (side_doors.go).
 	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
 	// S4 R1: site crontab lines not made in CelikPanel and at (side_doors_jobs.go).

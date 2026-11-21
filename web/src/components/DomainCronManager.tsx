@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Clock, Plus, Trash2, Edit2, RefreshCw,
-    Play, Pause, Save, X, Info, AlertTriangle,
+    Play, Pause, Save, X, Info, AlertTriangle, Check,
 } from 'lucide-react';
 import { showToast } from './Toast';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
@@ -14,6 +14,7 @@ import { confirmAction } from '../lib/confirmAction';
 import { AdminInstallLink } from './AdminInstallLink';
 import { useLeaveGuard } from './kit/save/leaveGuard';
 import { useSaveWords } from './kit/save/words';
+import { useAuth } from '../auth/AuthContext';
 
 interface CronJob {
     id: string;
@@ -69,6 +70,10 @@ const unreadableCauses: Record<string, TranslationKey> = {
 export function DomainCronManager({ domainId, readOnly = false }: DomainCronManagerProps) {
     const { t } = useI18n();
     const say = useSaveWords();
+    // S4 R1 fix round: only the administrator keeps a line not made in
+    // CelikPanel; a customer may only delete it.
+    const { role } = useAuth();
+    const canKeep = role === 'admin' && !readOnly;
     const [jobs, setJobs] = useState<CronJob[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -265,6 +270,35 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         });
     };
 
+    // The administrator's Keep (S4 R1 fix round): the line stays in the
+    // crontab and is added to CelikPanel's record, so it is no longer marked.
+    // Asked in the panel's own window; the list reads itself again after.
+    // Yöneticinin "Kalsın"ı; satır kayda eklenir, liste kendiliğinden yenilenir.
+    const keepLine = async (id: string, text: string) => {
+        if (!canKeep) return;
+        await confirmAction({ message: `${t('cron.outside.keepConfirm')}\n${text}`, confirmLabel: t('cron.outside.keep'),
+            action: async () => {
+                try {
+                    const res = await fetch(
+                        `/api/v1/domains/${domainId}/cron?keep=${encodeURIComponent(id)}&version=${encodeURIComponent(version)}`,
+                        { method: 'POST' },
+                    );
+                    if (!res.ok) {
+                        await refused(res);
+                        return;
+                    }
+                    const data = await res.json();
+                    if (!data.success) throw new Error();
+                    showToast('success', t('cron.outside.kept'));
+                } catch {
+                    showToast('error', t('common.error'));
+                } finally {
+                    loadJobs();
+                }
+            },
+        });
+    };
+
     const startEdit = async (job: CronJob) => {
         if (readOnly || !(await leaveForm())) return;
         setEditingJob(job);
@@ -430,9 +464,9 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                     <KnownEmpty of={listed} icon={Clock} title={t('cron.empty')} hint={t('cron.emptyHint')} />
                 ) : (
                     <div className="space-y-2">
-                        {jobs.map((job) => (
+                        {jobs.map((job, index) => (
                             <div
-                                key={job.id}
+                                key={`${job.id}:${index}`}
                                 className={`rounded-xl border border-border bg-surface p-4 ${job.enabled ? '' : 'opacity-60'}`}
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -458,18 +492,31 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                         </div>
                                     </div>
 
-                                    {/* A task not made in CelikPanel is only removed here;
-                                        kept, it is added again as a task of CelikPanel.
-                                        CelikPanel'de yapılmamış görev burada yalnız kaldırılır. */}
+                                    {/* A task not made in CelikPanel, enabled or paused, is
+                                        only removed here; the administrator may keep it.
+                                        CelikPanel'de yapılmamış görev yalnız kaldırılır; yönetici tutabilir. */}
                                     {!readOnly && job.outside_panel && (
-                                        <button
-                                            onClick={() => deleteJob(job)}
-                                            title={t('cron.delete')}
-                                            aria-label={t('cron.delete')}
-                                            className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-danger"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <div className="flex items-center gap-0.5">
+                                            {canKeep && (
+                                                <button
+                                                    onClick={() => void keepLine(job.id, job.command)}
+                                                    title={t('cron.outside.keep')}
+                                                    aria-label={t('cron.outside.keep')}
+                                                    data-cron-keep=""
+                                                    className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-fg"
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => deleteJob(job)}
+                                                title={t('cron.delete')}
+                                                aria-label={t('cron.delete')}
+                                                className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-danger"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     )}
                                     {!readOnly && !job.outside_panel && (
                                         <div className="flex items-center gap-0.5">
@@ -507,8 +554,8 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                         <h4 className="text-sm font-semibold text-fg">{t('cron.outside.otherTitle')}</h4>
                         <p className="mb-2 mt-1 text-xs text-fg-muted">{t('cron.outside.otherHint')}</p>
                         <div className="space-y-2">
-                            {otherLines.map((other) => (
-                                <div key={other.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                            {otherLines.map((other, index) => (
+                                <div key={`${other.id}:${index}`} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
                                     <div className="min-w-0 flex-1">
                                         <p className="break-all font-mono text-sm text-fg">{other.line}</p>
                                         <span className="mt-2 inline-block rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">
@@ -516,14 +563,27 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                         </span>
                                     </div>
                                     {!readOnly && (
-                                        <button
-                                            onClick={() => void removeLine(other.id, other.line, 'cron.outside.deleteConfirm', 'cron.outside.deleted')}
-                                            title={t('cron.delete')}
-                                            aria-label={t('cron.delete')}
-                                            className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-danger"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <div className="flex items-center gap-0.5">
+                                            {canKeep && (
+                                                <button
+                                                    onClick={() => void keepLine(other.id, other.line)}
+                                                    title={t('cron.outside.keep')}
+                                                    aria-label={t('cron.outside.keep')}
+                                                    data-cron-keep=""
+                                                    className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-fg"
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => void removeLine(other.id, other.line, 'cron.outside.deleteConfirm', 'cron.outside.deleted')}
+                                                title={t('cron.delete')}
+                                                aria-label={t('cron.delete')}
+                                                className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-danger"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             ))}

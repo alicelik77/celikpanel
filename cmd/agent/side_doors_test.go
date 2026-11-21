@@ -32,6 +32,7 @@ type fakeStockHost struct {
 	testErr  error
 	active   bool
 	steps    []string
+	off      map[string]bool
 }
 
 func newStockHost(t *testing.T, withSitePool bool) (*fakeStockHost, string) {
@@ -58,6 +59,20 @@ func newStockHost(t *testing.T, withSitePool bool) (*fakeStockHost, string) {
 func (h *fakeStockHost) ops() stockPoolOps {
 	return stockPoolOps{
 		versions: func() []string { return []string{"8.4"} },
+		turnedOff: func() (map[string]bool, error) {
+			out := map[string]bool{}
+			for version, off := range h.off {
+				out[version] = off
+			}
+			return out, nil
+		},
+		record: func(version string, off bool) error {
+			if h.off == nil {
+				h.off = map[string]bool{}
+			}
+			h.off[version] = off
+			return nil
+		},
 		readFile: os.ReadFile,
 		conffileMD5: func(context.Context, string, string) (string, bool) {
 			return h.packaged, h.known
@@ -239,31 +254,41 @@ func TestCloseSideDoorsMovesAToolOnceAndRecordsAFailure(t *testing.T) {
 
 	bind := newFakeBindHost()
 	bind.packages["php8.4-pgsql"], bind.packages["php8.4-mbstring"], bind.packages["php8.4-xml"] = true, true, true
-	bind.probeErr = &phpToolProbeError{Kind: "no_answer", Message: "phpPgAdmin did not answer"}
+	// The proof on the tool's own pool fails; put back, it answers on the
+	// stock pool again (S4 R1 fix round: a tool that does not answer after a
+	// failed move is reported as down instead).
+	proofFails := true
 	ops := bind.ops()
-	ops.ownPool = func(context.Context, string, string) (string, func(context.Context) error, error) {
+	ops.httpProbe = func(context.Context, string, string) error {
+		bind.steps = append(bind.steps, "probe")
+		if proofFails {
+			proofFails = false
+			return &phpToolProbeError{Kind: "no_answer", Message: "phpPgAdmin did not answer"}
+		}
+		return nil
+	}
+	ops.ownPool = func(context.Context, string, string, string) (string, func(context.Context) error, error) {
 		bind.steps = append(bind.steps, "own")
 		return phpToolPoolSocket(phpToolPHPPgAdmin, "8.4"), nil, nil
 	}
-	tools := closeSideDoorsTools(context.Background(), ops, nil)
+	tools := closeSideDoorsTools(context.Background(), ops, testSideDoorsHooks(), nil)
 	if len(tools) != 1 || tools[0].State != transport.SideDoorsToolFailed || tools[0].Version != "8.4" {
 		t.Fatalf("tools = %+v", tools)
 	}
 	if row := readPHPToolAccountFailures()[phpToolPHPPgAdmin]; row.PHPVersion != "8.4" {
 		t.Fatalf("the failure was not recorded: %+v", row)
 	}
-	// The next start does not try again on its own.
+	// The next start does not try again on its own while the tool answers.
 	bind.steps = nil
-	tools = closeSideDoorsTools(context.Background(), ops, nil)
-	if len(tools) != 1 || tools[0].State != transport.SideDoorsToolFailed || len(bind.steps) != 0 {
+	tools = closeSideDoorsTools(context.Background(), ops, testSideDoorsHooks(), nil)
+	if len(tools) != 1 || tools[0].State != transport.SideDoorsToolFailed || strings.Join(bind.steps, " ") != "probe" {
 		t.Fatalf("second start: %+v steps=%v", tools, bind.steps)
 	}
 	// Once the record is cleared (the Manage window's move), it is moved.
 	if err := writePHPToolAccountFailure(phpToolPHPPgAdmin, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	bind.probeErr = nil
-	tools = closeSideDoorsTools(context.Background(), ops, nil)
+	tools = closeSideDoorsTools(context.Background(), ops, testSideDoorsHooks(), nil)
 	if len(tools) != 1 || tools[0].State != transport.SideDoorsToolMoved || tools[0].Account != "celikpanel-phppgadmin" {
 		t.Fatalf("third start: %+v steps=%v", tools, bind.steps)
 	}
@@ -274,8 +299,8 @@ func TestCloseSideDoorsMovesAToolOnceAndRecordsAFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	bind.steps = nil
-	tools = closeSideDoorsTools(context.Background(), ops, nil)
-	if len(tools) != 1 || tools[0].State != transport.SideDoorsToolOwnAccount || len(bind.steps) != 0 {
+	tools = closeSideDoorsTools(context.Background(), ops, testSideDoorsHooks(), nil)
+	if len(tools) != 1 || tools[0].State != transport.SideDoorsToolOwnAccount || strings.Join(bind.steps, " ") != "probe" {
 		t.Fatalf("own pool: %+v steps=%v", tools, bind.steps)
 	}
 }
@@ -293,8 +318,17 @@ func TestCloseSideDoorsLeavesAnOwnerEditedToolConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	bind := newFakeBindHost()
-	tools := closeSideDoorsTools(context.Background(), bind.ops(), nil)
+	tools := closeSideDoorsTools(context.Background(), bind.ops(), testSideDoorsHooks(), nil)
 	if len(tools) != 1 || tools[0].State != transport.SideDoorsToolOwnerConfig || len(bind.steps) != 0 {
 		t.Fatalf("tools = %+v steps=%v", tools, bind.steps)
+	}
+}
+
+// testSideDoorsHooks: a tool already on its own pool is only checked.
+func testSideDoorsHooks() sideDoorsToolHooks {
+	return sideDoorsToolHooks{
+		poolUser:   func(string, string) string { return "" },
+		webAccount: func() string { return "www-data" },
+		recheck:    func(context.Context, string, string) error { return nil },
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -25,8 +26,11 @@ var (
 	errHostingSiteNotFound     = errors.New("hosting site not found")
 	errHostingConcurrentChange = errors.New("hosting configuration changed concurrently")
 	errHostingPortInUse        = errors.New("application port is already assigned")
-	errHostingActivation       = errors.New("hosting activation failed and the previous configuration was restored")
-	errHostingRestore          = errors.New("hosting activation failed and runtime restoration is incomplete")
+	// errHostingPortNotAllowed: a named port outside the Node.js range or of
+	// one of this server's own services (nodeSitePortChoiceRefusal).
+	errHostingPortNotAllowed = errors.New("application port is not one a site may use")
+	errHostingActivation     = errors.New("hosting activation failed and the previous configuration was restored")
+	errHostingRestore        = errors.New("hosting activation failed and runtime restoration is incomplete")
 	// errHostingPHPMissing: the site becomes a PHP site and this server runs
 	// no PHP-FPM the panel manages. Nothing was changed.
 	errHostingPHPMissing = errors.New("no PHP-FPM is installed on this server")
@@ -275,8 +279,10 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		writeClientError(w, http.StatusNotFound, "site not found")
 	case errors.Is(err, errHostingConcurrentChange):
 		writeClientError(w, http.StatusConflict, "hosting settings changed; reload and try again")
-	case errors.Is(err, errHostingPortInUse):
-		writeClientError(w, http.StatusConflict, "the selected application port is already assigned")
+	case errors.Is(err, errHostingPortInUse), errors.Is(err, errHostingPortNotAllowed):
+		// One answer whatever the port is used by: the person learns no
+		// other site's or service's port.
+		writeAppPortRefusal(w)
 	case errors.Is(err, errHostingPHPMissing):
 		writeHostingPHPRefusal(w, errCodePHPRequired, adminInstallAction(r, "php-fpm"),
 			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
@@ -360,14 +366,33 @@ func (p *Panel) transitionHostingWithPolicy(
 		if previous.ProjectType != "node" {
 			target.AppRunAs = sql.NullString{String: "site", Valid: true}
 		}
-		port := req.AppPort
-		if port == 0 && previous.ProjectType == "node" && previous.AppPort.Valid {
-			port = int(previous.AppPort.Int64)
+		port, kept := req.AppPort, 0
+		if previous.ProjectType == "node" && previous.AppPort.Valid {
+			kept = int(previous.AppPort.Int64)
+			// A kept port of one of this server's own services (set before
+			// this rule) is not kept: the save gives the site a free port.
+			if sitesandbox.NodePortRefusal(kept, panelPort()) != "" {
+				if port == kept {
+					port = 0
+				}
+				kept = 0
+			}
+		}
+		if port == 0 {
+			port = kept
 		}
 		if port == 0 {
 			port, err = p.allocateAppPort(ctx)
 			if err != nil {
 				return 0, err
+			}
+		} else if port != kept {
+			// A port the person names (security release, 20 November 2026):
+			// only from the range the panel gives Node.js sites, and never a
+			// port of this server's own services. A site's existing port is
+			// kept as it is; the Agent still refuses a server port.
+			if nodeSitePortChoiceRefusal(port) != "" {
+				return 0, errHostingPortNotAllowed
 			}
 		}
 		var conflicts int

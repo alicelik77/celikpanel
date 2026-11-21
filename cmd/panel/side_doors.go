@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -54,10 +57,12 @@ func (p *Panel) startSideDoorsClose() {
 	}()
 }
 
-var closeSideDoorsThroughAgent = func(p *Panel, ctx context.Context) (transport.SideDoorsResponse, error) {
+// closeSideDoorsThroughAgent runs the step; reclose/version is the
+// administrator's explicit "close it again" (empty at each start).
+var closeSideDoorsThroughAgent = func(p *Panel, ctx context.Context, reclose, version string) (transport.SideDoorsResponse, error) {
 	var response transport.SideDoorsResponse
 	err := p.withStandaloneAgentMutation(ctx, sideDoorsJobKind, sideDoorsJobTarget, "", func(callCtx context.Context, binding agentMutationBinding) error {
-		request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
+		request := transport.SideDoorsRequest{ServiceMutationBinding: binding, ReClose: reclose, Version: version}
 		if err := p.callAgentContext(callCtx, "Agent.CloseSideDoorsV1", &request, &response); err != nil {
 			return err
 		}
@@ -76,7 +81,7 @@ func (p *Panel) closeSideDoorsOnce(ctx context.Context) bool {
 		return false
 	}
 	defer release()
-	response, err := closeSideDoorsThroughAgent(p, ctx)
+	response, err := closeSideDoorsThroughAgent(p, ctx, "", "")
 	if err != nil {
 		if strings.Contains(err.Error(), "can't find method") {
 			// An Agent older than this Panel: nothing to do until it is updated.
@@ -86,6 +91,13 @@ func (p *Panel) closeSideDoorsOnce(ctx context.Context) bool {
 		log.Printf("side doors: %v", err)
 		return false
 	}
+	p.applySideDoorsAnswer(ctx, response.State)
+	return true
+}
+
+// applySideDoorsAnswer keeps the step's answer and audits what it did.
+func (p *Panel) applySideDoorsAnswer(ctx context.Context, state *transport.SideDoorsState) {
+	response := transport.SideDoorsResponse{State: state}
 	p.recordSideDoorsState(ctx, response.State)
 	if response.State != nil {
 		for _, tool := range response.State.Tools {
@@ -102,7 +114,7 @@ func (p *Panel) closeSideDoorsOnce(ctx context.Context) bool {
 			switch pool.State {
 			case transport.SideDoorsStockTurnedOff:
 				p.recordAudit(auditRecord{Action: "php_fpm.stock_pool.turned_off:" + pool.Version, ResourceType: "service", Details: details})
-			case transport.SideDoorsStockFailed:
+			case transport.SideDoorsStockFailed, transport.SideDoorsStockNotPutBack:
 				p.recordAudit(auditRecord{Action: "php_fpm.stock_pool.failed:" + pool.Version, ResourceType: "service", Details: details})
 			}
 		}
@@ -110,7 +122,6 @@ func (p *Panel) closeSideDoorsOnce(ctx context.Context) bool {
 		p.auditSiteAt(response.State.At)
 		p.recordSiteCrontabsOutside(ctx, siteJobsCheckedAt(response.State), response.State.SiteCrontabs)
 	}
-	return true
 }
 
 // recordSideDoorsState keeps the Agent's latest answer.
@@ -164,9 +175,21 @@ func sideDoorsProblems(raw string) []monitoringProblem {
 				Actor: "administrator", Name: name, Subject: tool.Version, ObservedAt: state.CheckedAt, Action: action,
 			})
 		case transport.SideDoorsToolOwnerConfig:
+			// S4 R1 fix round: an owner's own pool that runs as the web
+			// server's account names that pool.
+			subject := sideDoorsToolConfPath(tool.Tool)
+			if tool.Path != "" {
+				subject = tool.Path
+			}
 			problems = append(problems, monitoringProblem{
 				Key: "tool_account_owner_config:" + tool.Tool, Kind: "tool_account_owner_config", Severity: "warning",
-				Actor: "server_owner", Name: name, Subject: sideDoorsToolConfPath(tool.Tool), ObservedAt: state.CheckedAt, Action: action,
+				Actor: "server_owner", Name: name, Subject: subject, ObservedAt: state.CheckedAt, Action: action,
+			})
+		case transport.SideDoorsToolDown:
+			// S4 R1 fix round: the tool does not answer as it is configured.
+			problems = append(problems, monitoringProblem{
+				Key: "tool_down:" + tool.Tool, Kind: "tool_down", Severity: "critical",
+				Actor: "administrator", Name: name, Subject: tool.Version, ObservedAt: state.CheckedAt, Action: action,
 			})
 		}
 	}
@@ -183,6 +206,29 @@ func sideDoorsProblems(raw string) []monitoringProblem {
 				Key: "stock_pool_in_use:" + pool.Version, Kind: "stock_pool_in_use", Severity: "warning",
 				Actor: "server_owner", Name: pool.Version, Subject: strings.Join(pool.UsedBy, ", "), ObservedAt: state.CheckedAt, Action: action,
 			})
+		// S4 R1 fix round: a turn-off that failed, one whose put-back failed
+		// too, a pool whose state could not be read, and the owner's undo.
+		case transport.SideDoorsStockFailed:
+			problems = append(problems, monitoringProblem{
+				Key: "stock_pool_failed:" + pool.Version, Kind: "stock_pool_failed", Severity: "warning",
+				Actor: "server_owner", Name: pool.Version, Subject: pool.Path, ObservedAt: state.CheckedAt, Action: action,
+			})
+		case transport.SideDoorsStockNotPutBack:
+			problems = append(problems, monitoringProblem{
+				Key: "stock_pool_not_put_back:" + pool.Version, Kind: "stock_pool_not_put_back", Severity: "critical",
+				Actor: "server_owner", Name: pool.Version, Subject: pool.Path, ObservedAt: state.CheckedAt, Action: action,
+			})
+		case transport.SideDoorsStockUnknown:
+			problems = append(problems, monitoringProblem{
+				Key: "stock_pool_unknown:" + pool.Version, Kind: "stock_pool_unknown", Severity: "warning",
+				Actor: "server_owner", Name: pool.Version, Subject: pool.Path, ObservedAt: state.CheckedAt, Action: action,
+			})
+		case transport.SideDoorsStockOwnerRestored:
+			problems = append(problems, monitoringProblem{
+				Key: "stock_pool_owner_restored:" + pool.Version, Kind: "stock_pool_owner_restored", Severity: "warning",
+				Actor: "administrator", Name: pool.Version, Subject: pool.Path, ObservedAt: state.CheckedAt,
+				Action: monitoringProblemAction{Kind: "reclose", To: transport.SideDoorsReCloseStockPool},
+			})
 		}
 	}
 	return problems
@@ -195,4 +241,91 @@ func sideDoorsToolConfPath(tool string) string {
 		return "/etc/nginx/conf.d/celikpanel-webmail.conf"
 	}
 	return "/etc/nginx/conf.d/celikpanel-dbtools.conf"
+}
+
+// handleSideDoorsReClose is the administrator's explicit "close it again"
+// for what the server owner undid (S4 R1 fix round, 21 Nov 2026): POST
+// {"target":"at"} or {"target":"stock_pool","version":"8.4"}, administrator
+// only (the /api/v1/metrics/ prefix). It runs the side doors step once with
+// the owner's undo forgotten for that target, keeps the answer, audits it and
+// says whether the door is closed now. The screen asks first in the panel's
+// own window and shows the work while it runs.
+// Sahibin geri aldığını yönetici açıkça yeniden kapatır.
+func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var request struct {
+		Target  string `json:"target"`
+		Version string `json:"version"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&request); err != nil {
+		writeClientError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	switch request.Target {
+	case transport.SideDoorsReCloseAt:
+		request.Version = ""
+	case transport.SideDoorsReCloseStockPool:
+		if !sideDoorsPHPVersion.MatchString(request.Version) {
+			writeClientError(w, http.StatusBadRequest, "invalid PHP version")
+			return
+		}
+	default:
+		writeClientError(w, http.StatusBadRequest, "unknown side door")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), agentRPCDeploymentTimeout+time.Minute)
+	defer cancel()
+	details := map[string]any{"target": request.Target, "php": request.Version}
+	response, err := closeSideDoorsThroughAgent(p, ctx, request.Target, request.Version)
+	if err != nil {
+		p.auditDetailed(r, "side_doors.reclose.failed:"+request.Target, "service", 0, details)
+		writeClientError(w, http.StatusConflict, "the side doors step could not run now: "+auditReason(err.Error()))
+		return
+	}
+	p.applySideDoorsAnswer(ctx, response.State)
+	closed := sideDoorClosed(response.State, request.Target, request.Version)
+	action := "side_doors.reclose:" + request.Target
+	if !closed {
+		action = "side_doors.reclose.failed:" + request.Target
+	}
+	p.auditDetailed(r, action, "service", 0, details)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"closed": closed, "state": sideDoorState(response.State, request.Target, request.Version)})
+}
+
+var sideDoorsPHPVersion = regexp.MustCompile(`^[0-9]{1,2}\.[0-9]{1,2}$`)
+
+// sideDoorState is the target's state in the step's answer ("" when absent).
+func sideDoorState(state *transport.SideDoorsState, target, version string) string {
+	if state == nil {
+		return ""
+	}
+	if target == transport.SideDoorsReCloseAt {
+		if state.At == nil {
+			return ""
+		}
+		return state.At.State
+	}
+	for _, pool := range state.StockPools {
+		if pool.Version == version {
+			return pool.State
+		}
+	}
+	return ""
+}
+
+// sideDoorClosed: the target is closed after the step.
+func sideDoorClosed(state *transport.SideDoorsState, target, version string) bool {
+	switch sideDoorState(state, target, version) {
+	case transport.SideDoorsAtWritten, transport.SideDoorsAtCurrent:
+		return target == transport.SideDoorsReCloseAt
+	case transport.SideDoorsStockTurnedOff, transport.SideDoorsStockOff:
+		return target == transport.SideDoorsReCloseStockPool
+	}
+	return false
 }

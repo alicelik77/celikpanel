@@ -24,30 +24,40 @@ import (
 // both are made visible:
 //
 //   - Whenever the Agent writes a site's crontab it records, in its private
-//     state, a digest of every line of it that makes cron do something (cron
-//     ignores blank lines and lines that start with `#`, crontab(5)) and that
+//     state, a digest of the exact bytes of every recorded line of it that
 //     CelikPanel accounts for: the lines this write made, and the lines it
-//     kept that were already accounted for. A line that was there but not
-//     accounted for stays not accounted for: rewriting a crontab never makes
-//     an unknown line CelikPanel's.
-//   - A line of the live crontab that the record does not account for is
-//     "not made in CelikPanel": the site's Scheduled tasks list marks it, and
-//     the side doors step counts it for the administrator's Problems now.
+//     kept that were already accounted for. A recorded line is one cron acts
+//     on (not blank, not a comment; crontab(5)) or a task CelikPanel paused
+//     ("# DISABLED: <task>"), which a later Enable would make one. A line
+//     that was there but not accounted for stays not accounted for:
+//     rewriting a crontab never makes an unknown line CelikPanel's.
+//   - A recorded line of the live crontab that the record does not account
+//     for is "not made in CelikPanel": the site's Scheduled tasks list marks
+//     it (delete only), and the side doors step counts it for the
+//     administrator's Problems now. Two identical lines are counted one by
+//     one: the first ones the record accounts for stay CelikPanel's.
+//   - The administrator may keep such a line ("Keep", KeepCronLineV1): it is
+//     added to the record and is no longer listed. A customer may only
+//     delete it (a site's own code may have planted it).
 //   - Existing installs: CelikPanel kept no record of a site's tasks before
 //     this (the Scheduled tasks screen always read the crontab itself). The
 //     first side doors step that runs this code takes each existing crontab
 //     as it is and accounts for the lines CelikPanel's own writer can make:
-//     MAILTO="" and a task with a five-field schedule of the form the panel
-//     accepts. Any other line (an @reboot or @daily line, an environment
-//     setting such as SHELL= or PATH=, an owner's MAILTO, a schedule written
-//     with names or steps the panel does not write) is listed. After that
-//     first step, a crontab of a site account CelikPanel never wrote is
-//     listed whole.
+//     MAILTO="" and a task (or a paused task) with a five-field schedule of
+//     the form the panel accepts, byte for byte as the panel writes them. Any
+//     other line (an @reboot or @daily line, an environment setting such as
+//     SHELL= or PATH=, an owner's MAILTO, a schedule written with names or
+//     steps the panel does not write, a line ending in a carriage return) is
+//     listed. Every readable crontab gets a record then, an empty one too, so
+//     a line planted later in it is listed. A crontab that cannot be read
+//     does not hold the others: it gets no record, is named in Problems now,
+//     and once readable its lines are listed until kept or deleted.
 //
 // Bir sitenin crontab'ı CelikPanel dışında değiştirilirse görülür: Agent her
-// yazışında hesapladığı satırların özetini saklar; kaydın açıklamadığı satır
-// "CelikPanel'de yapılmadı" diye işaretlenir. Hiçbir şey kendiliğinden
-// engellenmez ya da silinmez.
+// yazışında hesapladığı satırların tam baytlarının özetini saklar; kaydın
+// açıklamadığı satır "CelikPanel'de yapılmadı" diye işaretlenir. Yönetici
+// böyle bir satırı "Kalsın" ile tutabilir; müşteri yalnız silebilir. Hiçbir
+// şey kendiliğinden engellenmez ya da silinmez.
 
 // Paths are variables so tests can point them at a temporary tree.
 var (
@@ -67,30 +77,52 @@ type siteCrontabRecord struct {
 	Baseline bool `json:"baseline,omitempty"`
 }
 
-// cronEffectiveLines are the lines cron acts on: not blank, not a comment.
+// cronRecordedLine: a line cron acts on, or a task CelikPanel paused. The
+// test looks past leading blanks (cron does); the line's bytes are kept as
+// they are.
+func cronRecordedLine(raw string) bool {
+	trimmed := strings.TrimLeft(raw, " \t")
+	if strings.TrimSpace(trimmed) == "" {
+		return false
+	}
+	if strings.HasPrefix(trimmed, "#") {
+		_, disabled, ok := cronJobText(raw)
+		return ok && disabled
+	}
+	return true
+}
+
+// cronEffectiveLines are the recorded lines of a crontab, exact bytes.
 func cronEffectiveLines(content string) []string {
 	var lines []string
 	for _, raw := range strings.Split(content, "\n") {
-		line := strings.TrimSpace(raw)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
+		if cronRecordedLine(raw) {
+			lines = append(lines, raw)
 		}
-		lines = append(lines, line)
 	}
 	return lines
 }
 
+// cronLineDigest is the digest of a line's exact bytes: a trailing carriage
+// return or blank is a different line.
 func cronLineDigest(line string) string {
-	sum := sha256.Sum256([]byte(strings.TrimSpace(line)))
+	sum := sha256.Sum256([]byte(line))
 	return hex.EncodeToString(sum[:16])
 }
 
-// cronPanelShaped: a line CelikPanel's own writer can make.
+// cronPanelShaped: a line CelikPanel's own writer makes, byte for byte.
 func cronPanelShaped(line string) bool {
 	if line == `MAILTO=""` {
 		return true
 	}
-	parts := parseCronLine(line)
+	if strings.ContainsAny(line, "\r\t\v\f") || line != strings.TrimSpace(line) {
+		return false
+	}
+	text := strings.TrimPrefix(line, "# DISABLED: ")
+	if strings.HasPrefix(text, "#") {
+		return false
+	}
+	parts := parseCronLine(text)
 	return parts != nil && isValidCronSchedule(parts[0])
 }
 
@@ -149,59 +181,71 @@ func siteCrontabBaselineTaken() bool {
 	return err == nil
 }
 
-// cronOutsideLines returns the lines of content that CelikPanel does not
-// account for, in order (a line standing twice where the record knows it
-// once is listed once).
-func cronOutsideLines(username, content string) []string {
+// cronLineClass is one recorded line, in order, and whether CelikPanel
+// accounts for it.
+type cronLineClass struct {
+	Line    string
+	Outside bool
+}
+
+// cronClassifyLines walks the recorded lines in order: the record accounts
+// for the first occurrences of each line it knows, the rest are outside.
+func cronClassifyLines(username, content string) []cronLineClass {
 	lines := cronEffectiveLines(content)
 	if len(lines) == 0 {
 		return nil
 	}
+	out := make([]cronLineClass, 0, len(lines))
 	record, found := readSiteCrontabRecord(username)
 	if !found {
-		if siteCrontabBaselineTaken() {
-			// A crontab of an account CelikPanel never wrote.
-			return lines
-		}
-		var outside []string
+		baseline := siteCrontabBaselineTaken()
 		for _, line := range lines {
-			if !cronPanelShaped(line) {
-				outside = append(outside, line)
-			}
+			// After the baseline, a crontab CelikPanel never wrote is listed
+			// whole; before it, only what the panel's writer cannot make.
+			out = append(out, cronLineClass{Line: line, Outside: baseline || !cronPanelShaped(line)})
 		}
-		return outside
+		return out
 	}
 	left := map[string]int{}
 	for digest, count := range record.Known {
 		left[digest] = count
 	}
-	var outside []string
 	for _, line := range lines {
 		digest := cronLineDigest(line)
 		if left[digest] > 0 {
 			left[digest]--
+			out = append(out, cronLineClass{Line: line})
 			continue
 		}
-		outside = append(outside, line)
+		out = append(out, cronLineClass{Line: line, Outside: true})
+	}
+	return out
+}
+
+// cronOutsideLines returns the lines of content that CelikPanel does not
+// account for, in order.
+func cronOutsideLines(username, content string) []string {
+	var outside []string
+	for _, class := range cronClassifyLines(username, content) {
+		if class.Outside {
+			outside = append(outside, class.Line)
+		}
 	}
 	return outside
 }
 
 // siteCrontabRecordAfter is the record of a write: the lines of after that
-// were accounted for in before, or that this write made (authored).
+// were accounted for in before, or that this write made (authored, exact
+// lines as written).
 func siteCrontabRecordAfter(username, before, after string, authored []string) siteCrontabRecord {
 	known := map[string]int{}
-	for _, line := range cronEffectiveLines(before) {
-		known[cronLineDigest(line)]++
-	}
-	for _, line := range cronOutsideLines(username, before) {
-		digest := cronLineDigest(line)
-		if known[digest]--; known[digest] <= 0 {
-			delete(known, digest)
+	for _, class := range cronClassifyLines(username, before) {
+		if !class.Outside {
+			known[cronLineDigest(class.Line)]++
 		}
 	}
 	for _, line := range authored {
-		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") {
+		if cronRecordedLine(line) {
 			known[cronLineDigest(line)]++
 		}
 	}
@@ -216,11 +260,17 @@ func siteCrontabRecordAfter(username, before, after string, authored []string) s
 	return record
 }
 
-// setSiteCrontab writes a site's crontab and its record. The record is
-// written first, so a crontab CelikPanel wrote is never seen without it; when
-// the crontab write fails the earlier record comes back. A record that cannot
-// be written does not stop the write: the new lines are then listed as not
-// made in CelikPanel, which is said, not hidden.
+// setSiteCrontab writes a site's crontab, then its record.
+//
+// The order fails in the safe direction. A power loss (or a failed record
+// write) between the two leaves the new crontab with the earlier record: a
+// line this write made is then listed as not made in CelikPanel, and the
+// administrator's Keep, or adding it again, resolves it. The other order
+// would leave a record that accounts for a line the crontab does not have,
+// and site code that then added exactly that text would be taken as
+// CelikPanel's.
+// Önce crontab, sonra kaydı yazılır; arada kesinti olursa yeni satır
+// "CelikPanel'de yapılmadı" görünür, tersi asla olmaz.
 func setSiteCrontab(username, before, content string, authored []string) error {
 	if !validSiteCrontabRecordName(username) {
 		return setCrontab(username, content)
@@ -228,21 +278,12 @@ func setSiteCrontab(username, before, content string, authored []string) error {
 	if content != "" && !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-	previous, hadPrevious := readSiteCrontabRecord(username)
-	recorded := true
-	if err := writeSiteCrontabRecord(username, siteCrontabRecordAfter(username, before, content, authored)); err != nil {
-		recorded = false
-		log.Printf("cron: the record of %s's crontab could not be written; its new lines will be listed as not made in CelikPanel: %v", username, err)
-	}
+	record := siteCrontabRecordAfter(username, before, content, authored)
 	if err := setCrontab(username, content); err != nil {
-		if recorded {
-			if hadPrevious {
-				_ = writeSiteCrontabRecord(username, previous)
-			} else {
-				removeSiteCrontabRecord(username)
-			}
-		}
 		return err
+	}
+	if err := writeSiteCrontabRecord(username, record); err != nil {
+		log.Printf("cron: the record of %s's crontab could not be written; its new lines will be listed as not made in CelikPanel: %v", username, err)
 	}
 	return nil
 }

@@ -38,9 +38,19 @@ import (
 //     accounts it names are listed. CelikPanel's own file is brought up to
 //     date at each start while it is as CelikPanel wrote it, so an account
 //     made later may use at as before; once changed it is the owner's.
-//     Undo: delete the file. Accounts that come from a directory service
-//     (LDAP, SSSD, NIS) cannot be listed safely, so nothing is written then.
-//     Pending at jobs of site accounts are listed (what, whose, when) and
+//     Every account that shares a website account's id is left out too: an
+//     extra FTP login is made with the site's uid (useradd -o), and at and
+//     crontab decide by the name getpwuid() returns for the caller's uid,
+//     which is the FIRST /etc/passwd entry with that uid (at 3.2 perm.c
+//     check_permission; cron 3.0pl1 crontab.c main), so such a login could
+//     stand for the site.
+//     Undo: delete the file. The owner's undo stands (S4 R1 fix round): a
+//     file CelikPanel wrote and the owner deleted is never written again by
+//     itself; Problems now says at is open, and the administrator's explicit
+//     "close it again" writes it anew. Accounts that come from a directory
+//     service (LDAP, SSSD, NIS) cannot be listed safely, so nothing is
+//     written then. Pending at jobs of site accounts are listed (number,
+//     account, time; never their commands, which are the site's own text) and
 //     never removed.
 //  2. Site crontabs with lines not made in CelikPanel are counted
 //     (site_crontab_record.go).
@@ -71,7 +81,9 @@ const atAllowHeader = atAllowMark + `
 # While this file is as CelikPanel wrote it, CelikPanel adds accounts made
 # later at its next start. Once you change it, it is yours and CelikPanel
 # leaves it as it is.
-# To undo: delete this file. /etc/at.deny then applies again, as before.
+# To undo: delete this file. /etc/at.deny then applies again, as before, and
+# CelikPanel does not write it again by itself: its Problems now list says at
+# is open to website accounts, and closing it again there writes it anew.
 `
 
 // passwdEntry is one line of /etc/passwd.
@@ -175,19 +187,34 @@ func nameLines(content string) []string {
 	return names
 }
 
+// atWebsiteUIDs are the ids of the website accounts (never root's): an
+// account that shares one (an extra FTP login, useradd -o) is treated as
+// the website account.
+func atWebsiteUIDs(entries []passwdEntry) map[int]bool {
+	uids := map[int]bool{}
+	for _, entry := range entries {
+		if atWebsiteAccount(entry) && entry.UID != 0 {
+			uids[entry.UID] = true
+		}
+	}
+	return uids
+}
+
 // renderAtAllow is the at.allow that keeps today's rule minus the website
-// accounts: root, then every account at.deny does not name, in passwd order.
+// accounts: root, then every account at.deny does not name, in passwd order;
+// an account sharing a website account's id is left out with it.
 func renderAtAllow(entries []passwdEntry, deny string) string {
 	denied := map[string]bool{}
 	for _, name := range nameLines(deny) {
 		denied[name] = true
 	}
+	websiteUIDs := atWebsiteUIDs(entries)
 	seen := map[string]bool{"root": true}
 	var b strings.Builder
 	b.WriteString(atAllowHeader)
 	b.WriteString("root\n")
 	for _, entry := range entries {
-		if seen[entry.Name] || denied[entry.Name] || atWebsiteAccount(entry) || len(entry.Name) > 255 {
+		if seen[entry.Name] || denied[entry.Name] || atWebsiteAccount(entry) || websiteUIDs[entry.UID] || len(entry.Name) > 255 {
 			continue
 		}
 		seen[entry.Name] = true
@@ -202,7 +229,6 @@ type siteAtOps struct {
 	// writeLike writes path atomically with the owner and mode of like.
 	writeLike func(path, like string, data []byte) error
 	atq       func(ctx context.Context) (string, error)
-	atJob     func(ctx context.Context, id string) (string, error)
 }
 
 func atDigest(data []byte) string {
@@ -220,12 +246,21 @@ func closeSiteAtWith(ctx context.Context, ops siteAtOps) *transport.SideDoorsAt 
 	entries, nisLines, passwdErr := readPasswd(sideDoorsPasswd)
 	sites := map[string]bool{}
 	website := map[string]bool{}
+	websiteUIDs := atWebsiteUIDs(entries)
+	siteUIDs := map[int]bool{}
 	for _, entry := range entries {
-		if atWebsiteAccount(entry) {
+		if hostingpath.IsSiteHome(entry.Home) && entry.UID != 0 {
+			siteUIDs[entry.UID] = true
+		}
+	}
+	for _, entry := range entries {
+		// An account sharing a website account's id stands for it (at and
+		// crontab resolve the caller's uid to the first passwd name).
+		if atWebsiteAccount(entry) || websiteUIDs[entry.UID] {
 			website[entry.Name] = true
-			if hostingpath.IsSiteHome(entry.Home) {
-				sites[entry.Name] = true
-			}
+		}
+		if hostingpath.IsSiteHome(entry.Home) || siteUIDs[entry.UID] {
+			sites[entry.Name] = true
 		}
 	}
 	at.Jobs = pendingSiteAtJobs(ctx, ops, sites)
@@ -263,6 +298,12 @@ func closeSiteAtWith(ctx context.Context, ops siteAtOps) *transport.SideDoorsAt 
 		at.State, at.Detail = transport.SideDoorsAtFailed, err.Error()
 		return at
 	}
+	// The owner's undo stands (D-022): CelikPanel's record without its file
+	// means the owner deleted the file. It is not written again by itself.
+	if _, recordErr := ops.readFile(atAllowRecordPath); recordErr == nil {
+		at.State = transport.SideDoorsAtOwnerRemoved
+		return at
+	}
 	deny, err := ops.readFile(atDenyPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		// Neither file: only root may use at (at.allow(5)).
@@ -297,7 +338,8 @@ func writeAtAllow(ops siteAtOps, at *transport.SideDoorsAt, content string) *tra
 // atqLine: "<id>\t<date> <queue> <user>" (atq(1), at 3.2.5).
 var atqLine = regexp.MustCompile(`^([0-9]+)\s+(.+?)\s+(\S)\s+(\S+)$`)
 
-const sideDoorsAtJobsShown = 20
+// sideDoorsAtJobsShown bounds the jobs kept (number, account, time).
+const sideDoorsAtJobsShown = 200
 
 // pendingSiteAtJobs lists the pending at jobs of site accounts.
 func pendingSiteAtJobs(ctx context.Context, ops siteAtOps, sites map[string]bool) []transport.SideDoorsAtJob {
@@ -311,50 +353,14 @@ func pendingSiteAtJobs(ctx context.Context, ops siteAtOps, sites map[string]bool
 		if match == nil || !sites[match[4]] {
 			continue
 		}
-		job := transport.SideDoorsAtJob{ID: match[1], Account: match[4], When: match[2]}
+		// Number, account and time only: the job's commands are the site's
+		// own text (it may hold secrets, and its first line is the site's
+		// choice); the administrator reads them with "at -c <number>".
 		if len(jobs) < sideDoorsAtJobsShown {
-			if script, scriptErr := ops.atJob(ctx, match[1]); scriptErr == nil {
-				job.Command = atJobCommand(script)
-			}
+			jobs = append(jobs, transport.SideDoorsAtJob{ID: match[1], Account: match[4], When: match[2]})
 		}
-		jobs = append(jobs, job)
 	}
 	return jobs
-}
-
-// atJobCommand is the first line of a job's own commands in `at -c` output:
-// after the environment and the `cd … || { … }` block, inside the shell
-// here-document when there is one.
-func atJobCommand(script string) string {
-	lines := strings.Split(script, "\n")
-	i := 0
-	for ; i < len(lines); i++ {
-		trimmed := strings.TrimSpace(lines[i])
-		if strings.HasPrefix(trimmed, "cd ") && strings.HasSuffix(trimmed, "|| {") {
-			break
-		}
-	}
-	for ; i < len(lines) && strings.TrimSpace(lines[i]) != "}"; i++ {
-	}
-	if i >= len(lines) {
-		return ""
-	}
-	delimiter := ""
-	for i++; i < len(lines); i++ {
-		trimmed := strings.TrimSpace(lines[i])
-		if trimmed == "" {
-			continue
-		}
-		if rest, ok := strings.CutPrefix(trimmed, "${SHELL:-/bin/sh} << '"); ok && delimiter == "" {
-			delimiter = strings.TrimSuffix(rest, "'")
-			continue
-		}
-		if delimiter != "" && trimmed == delimiter {
-			return ""
-		}
-		return boundedNativeDetail(trimmed)
-	}
-	return ""
 }
 
 func hostSiteAtOps() siteAtOps {
@@ -373,15 +379,6 @@ func hostSiteAtOps() siteAtOps {
 			cmd := serviceMutationCommand(ctx, "atq")
 			cmd.Env = append(os.Environ(), "LC_ALL=C", "LANGUAGE=C")
 			out, err := cmd.Output()
-			return string(out), err
-		},
-		atJob: func(ctx context.Context, id string) (string, error) {
-			cmd := serviceMutationCommand(ctx, "at", "-c", id)
-			cmd.Env = append(os.Environ(), "LC_ALL=C", "LANGUAGE=C")
-			out, err := cmd.Output()
-			if len(out) > 256*1024 {
-				out = out[:256*1024]
-			}
 			return string(out), err
 		},
 	}
@@ -443,8 +440,11 @@ var siteCrontabAccounts = func() ([]passwdEntry, error) {
 
 // checkSiteCrontabs counts each site crontab's lines not made in CelikPanel.
 // The first run of this code takes the existing crontabs as the baseline
-// (site_crontab_record.go); a crontab that cannot be read is left for the
-// next start and the screen says it cannot be read.
+// (site_crontab_record.go): every readable crontab gets a record, an empty
+// one too, so a line planted later is listed. A crontab that cannot be read
+// does not hold the baseline open for the others: it is named, with why, for
+// Problems now, and gets no record (once readable its lines are listed until
+// the administrator keeps or someone deletes them).
 func checkSiteCrontabs() []transport.SideDoorsSiteCrontab {
 	if requireCronInstalled() != nil {
 		return nil
@@ -456,29 +456,29 @@ func checkSiteCrontabs() []transport.SideDoorsSiteCrontab {
 	cronMu.Lock()
 	defer cronMu.Unlock()
 	baseline := !siteCrontabBaselineTaken()
-	complete := true
+	recorded := true
 	var rows []transport.SideDoorsSiteCrontab
 	for _, account := range accounts {
+		sub, dom, _ := siteAccountTenant(account.Home)
 		content, err := readCrontab(account.Name)
 		if err != nil {
-			complete = false
+			rows = append(rows, transport.SideDoorsSiteCrontab{Account: account.Name, SubscriptionID: sub, DomainID: dom, Unreadable: boundedNativeDetail(err.Error())})
 			continue
 		}
 		if baseline {
-			if _, found := readSiteCrontabRecord(account.Name); !found && len(cronEffectiveLines(content)) > 0 {
+			if _, found := readSiteCrontabRecord(account.Name); !found {
 				record := siteCrontabRecordAfter(account.Name, content, content, nil)
 				record.Baseline = true
 				if writeSiteCrontabRecord(account.Name, record) != nil {
-					complete = false
+					recorded = false
 				}
 			}
 		}
 		if outside := cronOutsideLines(account.Name, content); len(outside) > 0 {
-			sub, dom, _ := siteAccountTenant(account.Home)
 			rows = append(rows, transport.SideDoorsSiteCrontab{Account: account.Name, SubscriptionID: sub, DomainID: dom, Outside: len(outside)})
 		}
 	}
-	if baseline && complete {
+	if baseline && recorded {
 		if err := os.MkdirAll(siteCrontabRecordDir, 0o700); err == nil {
 			_ = writePrivateFileAtomic(filepath.Join(siteCrontabRecordDir, siteCrontabBaselineName), []byte("taken\n"), ".baseline-*")
 		}

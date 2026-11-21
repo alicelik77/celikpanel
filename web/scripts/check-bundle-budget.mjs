@@ -363,6 +363,16 @@ const screenPartBudgets = {
   // the database parts are full; set with at least 25% headroom from its
   // Turkish file.
   dbEncoding: kib(2.5, 1.2),
+  // The security release of 20 November 2026: the "Problems now" list
+  // (pnow.), split out of "monitoring" when the names and ports an
+  // installation held before the one name rule filled it. A new part, set
+  // with at least 25% headroom from its Turkish file: 7.50 / 2.48 KiB.
+  problemsNow: kib(10.5, 3.4),
+  // The same release: the one name rule's and the Node.js port rule's
+  // refusals (err.HOSTNAME_NOT_AVAILABLE, err.APP_PORT_NOT_ALLOWED), a new part
+  // as "errors" is full; set with at least 25% headroom from its Turkish
+  // file: 1.78 / 0.75 KiB.
+  nameRule: kib(2.5, 1.1),
   // 20 Nov 2026 (S4 R1): the Problems now lines of the side doors step
   // (pnow.tool_account_*, pnow.stock_pool_*). A new part, as the monitoring
   // part is nearly full; set with at least 25% headroom from its Turkish
@@ -373,6 +383,14 @@ const screenPartBudgets = {
   // the at.allow audit words). A new part beside sideDoors, which has no
   // room; set with at least 25% headroom from its Turkish file.
   siteJobs: kib(5.2, 1.85),
+  // 21 Nov 2026 (S4 R1 fix round): the side doors step's further lines (a
+  // tool that does not answer, the stock pool not put back, failed or
+  // unreadable, the server owner's undo and its "close it again", a crontab
+  // that cannot be read), the administrator's Keep and a tool without its
+  // own account at its install. A new part beside sideDoors and siteJobs,
+  // which have no room; set with at least 25% headroom from its Turkish
+  // file: 5.23 / 1.78 KiB.
+  sideDoorsUndo: kib(7, 2.4),
   // 21 Nov 2026 (S4 R2a): the limits of a site's programs together on the
   // domain's Overview, the plan keys of those limits and of the database
   // users' time limits, the administrator's move into the limits and the

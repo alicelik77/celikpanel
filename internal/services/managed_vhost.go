@@ -418,12 +418,29 @@ func atomicWriteSiteFile(path string, content []byte, mode os.FileMode, ownershi
 	return syncDirectory(directory)
 }
 
+// managedSiteFileNewMode is the mode of an nginx or PHP-FPM site file
+// CelikPanel creates, and of every pending file (20 Nov 2026, tenant
+// isolation; 0644 before): 0640, so root and the Agent's group (celikpanel,
+// the panel's own account) read it and a site account does not learn another
+// site's names, folders, ports or proxy targets from it. nginx's and
+// PHP-FPM's master processes read their configuration as root. A systemd unit
+// stays 0644 (ManagedSiteFile.newFileMode): systemd tells every local user a
+// unit's settings over D-Bus anyway (systemctl show).
+const managedSiteFileNewMode os.FileMode = 0o640
+
 // writeManagedSiteFile writes only if the file still is the one inspected:
 // same absence, or same bytes as a regular file. A symlink is refused. A file
 // that was there keeps its mode, owner and group (a kept or taken file, set10
-// j and take); a new or recreated file is 0644 (set explicitly, whatever the
-// umask) with the Agent's own owner and group, root:celikpanel (set10 e).
+// j and take); a new or recreated file gets managedSiteFileNewMode (set
+// explicitly, whatever the umask) with the Agent's own owner and group,
+// root:celikpanel (set10 e).
 func writeManagedSiteFile(path string, content []byte, inspected siteFileInspection) error {
+	return writeManagedSiteFileWithMode(path, content, inspected, managedSiteFileNewMode)
+}
+
+// writeManagedSiteFileWithMode is writeManagedSiteFile with the mode of a new
+// file given (a file that was there keeps its own).
+func writeManagedSiteFileWithMode(path string, content []byte, inspected siteFileInspection, newMode os.FileMode) error {
 	info, err := os.Lstat(path)
 	switch {
 	case err == nil:
@@ -447,7 +464,7 @@ func writeManagedSiteFile(path string, content []byte, inspected siteFileInspect
 	default:
 		return err
 	}
-	mode := os.FileMode(0o644)
+	mode := newMode
 	var ownership managedFileOwnership
 	if inspected.exists {
 		mode = inspected.mode
@@ -516,7 +533,7 @@ func writePendingSiteFile(path string, sealed []byte) (string, string, error) {
 	case !errors.Is(err, os.ErrNotExist):
 		return "", "", err
 	}
-	if err := atomicWriteSiteFile(pending, sealed, 0o644, managedFileOwnership{}); err != nil {
+	if err := atomicWriteSiteFile(pending, sealed, managedSiteFileNewMode, managedFileOwnership{}); err != nil {
 		return "", "", err
 	}
 	return pending, sha256Hex(sealed), nil
@@ -1045,7 +1062,8 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		}
 		for _, index := range siteIndexes {
 			for name, outcome := range results[index].SiteParts {
-				if outcome == transport.SiteFileChallengeWritten || outcome == transport.SitePartRemoved || outcome == transport.SitePartHTTPKept {
+				if outcome == transport.SiteFileChallengeWritten || outcome == transport.SitePartRemoved || outcome == transport.SitePartHTTPKept ||
+					outcome == transport.SitePartRefused {
 					results[index].SiteParts[name] = transport.SiteFileChallengeFailed
 				}
 			}

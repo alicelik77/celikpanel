@@ -507,6 +507,11 @@ type SitePart struct {
 	// is written: the page cache's parent folder, which nginx -t needs to
 	// exist and nginx's worker account must be able to pass through.
 	EnsureDir string
+	// Refused (20 Nov 2026): why the Agent refuses this part's text (a
+	// customer's directives). The part is then planned as "no text":
+	// CelikPanel's unchanged file is removed, an owner-edited one kept, and
+	// the outcome is SitePartRefused.
+	Refused string
 }
 
 // SitePartsFor renders the site's files for prepared settings (no page
@@ -634,7 +639,17 @@ func planSitePartsOf(item ManagedVhostItem, outcomes map[string]string, webHTTP 
 				body = part.FallbackBody
 			}
 		}
+		if part.Refused != "" {
+			body = ""
+		}
 		file, outcome, err := planSitePart(item.Domain, part, body)
+		if part.Refused != "" {
+			// Said in the result's Detail whatever happened to the file.
+			errs = append(errs, errors.New(part.Name+" not written: "+part.Refused))
+			if outcome != transport.SiteFileChallengeFailed && outcome != transport.SiteFileChallengeKept {
+				outcome = transport.SitePartRefused
+			}
+		}
 		if part.NeedsWebHTTP && !webHTTP.ok && outcome != transport.SiteFileChallengeFailed && outcome != transport.SiteFileChallengeKept {
 			outcome = transport.SitePartHTTPKept
 		}

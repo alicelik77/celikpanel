@@ -327,6 +327,9 @@ func ftpLoginFolderRefusal(folder string, err error) *ftpLoginRefusal {
 // ---------------------------------------------------------------------------
 // Add
 
+// ftpLoginNameTakenText is the one refusal of a name that is in use.
+const ftpLoginNameTakenText = "the name %s cannot be used on this server; choose another name"
+
 func (r *ftpLoginRun) add() *ftpLoginRefusal {
 	req := r.req
 	if err := fileaccess.ValidateLoginName(req.Login); err != nil {
@@ -348,14 +351,18 @@ func (r *ftpLoginRun) add() *ftpLoginRefusal {
 	}
 	login := fileaccess.Login{Login: req.Login, Site: r.site.Username, SubscriptionID: r.site.SubscriptionID,
 		DomainID: r.site.DomainID, Folder: folder, ReadOnly: req.ReadOnly}
+	// One answer whatever holds the name (another subscription's login, a
+	// site's account, a system account or group): the person learns that
+	// the name cannot be used, never what on the server has it (20 Nov
+	// 2026, tenant isolation).
 	if _, has := fileaccess.FindLogin(logins, login.Login); has {
-		return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, "the login %s exists already; choose another name", login.Login)
+		return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, ftpLoginNameTakenText, login.Login)
 	}
 	if _, has := fileaccess.FindEntry(entries, login.Login); has {
-		return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, "%s is the name of a site's account; choose another name", login.Login)
+		return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, ftpLoginNameTakenText, login.Login)
 	}
 	if _, err := fileAccessLookupAccount(login.Login); err == nil {
-		return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, "an account named %s exists on this server already; choose another name", login.Login)
+		return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, ftpLoginNameTakenText, login.Login)
 	} else if !errors.Is(err, errFileAccessNoAccount) {
 		return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, "read the accounts: %v; nothing was changed", err)
 	}
@@ -364,7 +371,7 @@ func (r *ftpLoginRun) add() *ftpLoginRefusal {
 	} else {
 		for _, name := range groups {
 			if name == login.Login {
-				return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, "a group named %s exists on this server already; choose another name", login.Login)
+				return refuseFTPLogin(transport.FTPLoginRefusedNameTaken, ftpLoginNameTakenText, login.Login)
 			}
 		}
 	}

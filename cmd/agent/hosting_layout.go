@@ -20,7 +20,8 @@ import (
 // kullanıcıları dışarıda kalır. Chmod'lar açıktır — agent UMask=0027 ile
 // çalışır; MkdirAll kipleri diske olduğu gibi yansımaz.
 //
-//   …/subscriptions, base   0755 root      — sabit kökler, herkes geçer
+//   …/subscriptions, base   0711 root      — herkes geçer, yalnız root listeler
+//                                           (20 Nov 2026; 0755 before)
 //   subscriptions/N, sites  0751 root      — geçiş var, listeleme yok
 //   site home               0750 user:web  — web sunucusu okur, başkası giremez
 //   public_html             2750 user:web  — setgid: yeni dosya web grubunu alır
@@ -61,8 +62,13 @@ func applyHostingLayout(documentRoot, username string) error {
 		}
 	}
 
-	keep(os.Chmod(baseDir, 0o755))
-	keep(os.Chmod(subscriptionsRoot, 0o755))
+	// The hosting base and the subscriptions root: passable by everyone,
+	// listed only by root (20 Nov 2026). A mode that already lets others
+	// pass is left as it is (the owner's, or set at the Agent's start by
+	// tightenTenantVisibleModesOnce); one that does not, such as the 0750 the
+	// Agent's umask gives a new directory, becomes 0711.
+	keep(ensurePassableNotListable(baseDir))
+	keep(ensurePassableNotListable(subscriptionsRoot))
 	keep(os.Chmod(subscriptionDir, 0o751))
 	keep(os.Chmod(sitesDir, 0o751))
 
@@ -99,4 +105,25 @@ func applyHostingLayout(documentRoot, username string) error {
 		}
 	}
 	return firstErr
+}
+
+// hostingBaseMode is the hosting base's and the subscriptions root's mode:
+// every account passes through, only root lists the subscriptions (a site
+// account cannot learn which subscriptions exist).
+const hostingBaseMode os.FileMode = 0o711
+
+// ensurePassableNotListable sets hostingBaseMode on a directory others cannot
+// pass through; any other mode is left as it is.
+func ensurePassableNotListable(dir string) error {
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", dir)
+	}
+	if info.Mode().Perm()&0o001 != 0 {
+		return nil
+	}
+	return os.Chmod(dir, hostingBaseMode)
 }

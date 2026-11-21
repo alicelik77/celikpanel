@@ -12,6 +12,7 @@ import { startVisibleReads } from '../lib/visibleReads';
 import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
 import { showToast } from './Toast';
+import { confirmAction } from '../lib/confirmAction';
 
 // "Problems now" (alpha.126, Monitoring stage 1; D-024). One list at the top
 // of Monitoring and on the Dashboard, computed on the server only from what
@@ -45,6 +46,9 @@ export type ProblemKind =
     | 'site_down'
     | 'site_certificate'
     | 'service_restarting'
+    | 'name_overlap'
+    | 'name_server_reserved'
+    | 'node_port_reserved'
     | 'tool_account_failed'
     | 'tool_account_owner_config'
     | 'stock_pool_in_use'
@@ -54,6 +58,13 @@ export type ProblemKind =
     | 'at_allow_lists_sites'
     | 'at_directory_accounts'
     | 'at_not_closed'
+    | 'tool_down'
+    | 'stock_pool_not_put_back'
+    | 'stock_pool_failed'
+    | 'stock_pool_unknown'
+    | 'stock_pool_owner_restored'
+    | 'at_owner_removed'
+    | 'site_crontab_unreadable'
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
     | 'disk_limits_counted'
@@ -65,10 +76,17 @@ const KINDS: readonly ProblemKind[] = [
     'memory_sustained', 'cpu_sustained', 'mail_queue_deferred', 'security_updates',
     // alpha.127: website checks and a service that keeps restarting.
     'site_down', 'site_certificate', 'service_restarting',
+    // Security release (20 November 2026): names and Node.js ports held
+    // before the one name rule.
+    'name_overlap', 'name_server_reserved', 'node_port_reserved',
     // S4 R1: the tools' own accounts and the distribution's PHP-FPM pool.
     'tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed',
     // S4 R1: jobs a site's own code can make outside CelikPanel.
     'site_crontab_outside', 'site_at_jobs', 'at_allow_lists_sites', 'at_directory_accounts', 'at_not_closed',
+    // S4 R1 fix round: a tool that does not answer, the stock pool's other
+    // states, the server owner's undo and an unreadable crontab.
+    'tool_down', 'stock_pool_not_put_back', 'stock_pool_failed', 'stock_pool_unknown', 'stock_pool_owner_restored',
+    'at_owner_removed', 'site_crontab_unreadable',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
     // S4 R2a: sites whose programs still run outside their limits (a to-do).
@@ -76,7 +94,9 @@ const KINDS: readonly ProblemKind[] = [
     // S4 R2a: this server cannot enforce a site's limits at all.
     'site_limits_unsupported',
 ];
-const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
+// The doors the administrator may close again after the server owner undid them.
+const RECLOSE = ['at', 'stock_pool'];
+const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
 /** The words of a problem's title and body; alerts use the same (alpha.127). */
 export function problemVars(
@@ -86,6 +106,7 @@ export function problemVars(
     return {
         name: componentName({ id: problem.subject ?? '', name: problem.name }, t),
         domain: problem.subject ?? '',
+        other: problem.name ?? '',
         days: Math.max(problem.value, 0),
         value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? t('monitoring.pct', { n: Math.round(problem.value) }) : problem.value,
     };
@@ -108,7 +129,7 @@ export interface Problem {
     value: number;
     since?: string;
     observed_at?: string;
-    action: { kind: 'start_service' | 'open'; to?: string };
+    action: { kind: 'start_service' | 'open' | 'reclose'; to?: string };
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
     holding_count?: number;
     holding_bytes?: number;
@@ -128,7 +149,8 @@ export function decodeProblems(raw: unknown): ProblemsReport {
     const problems = body.problems.filter((p): p is Problem => (
         !!p && typeof p === 'object' && KINDS.includes(p.kind) && typeof p.key === 'string'
         && (p.severity === 'warning' || p.severity === 'critical') && typeof p.value === 'number'
-        && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/') : p.action.kind === 'start_service' && typeof p.unit === 'string')
+        && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
+            : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'start_service' && typeof p.unit === 'string')
     ));
     const unknown = body.unknown.filter((u): u is ProblemsReport['unknown'][number] => (
         !!u && SOURCES.includes(u.source) && REASONS.includes(u.reason)
@@ -215,6 +237,44 @@ export function ProblemsNow({
         }
     };
 
+    // S4 R1 fix round: close again what the server owner undid, after the
+    // panel's own question; the window shows the work, then the list reads
+    // itself again. Nothing is sent twice.
+    const reclose = async (problem: Problem) => {
+        const vars = problemVars(problem, t);
+        await confirmAction({
+            title: t(`pnow.${problem.kind}.title` as TranslationKey, vars),
+            message: t(`pnow.${problem.kind}.confirm` as TranslationKey, vars),
+            confirmLabel: t(`pnow.${problem.kind}.action` as TranslationKey),
+            progressTitle: t('pnow.reclose.progress'),
+            action: async (report) => {
+                report.steps([{ id: 'reclose', label: t('pnow.reclose.step'), state: 'running', since: Date.now() }]);
+                try {
+                    const response = await fetch('/api/v1/metrics/side-doors/reclose', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ target: problem.action.to, version: problem.action.to === 'stock_pool' ? problem.name : '' }),
+                    });
+                    if (!response.ok) {
+                        return { state: 'failed', title: t('pnow.reclose.failed'), reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
+                    }
+                    let answer: { closed?: boolean };
+                    try {
+                        answer = await response.json() as { closed?: boolean };
+                    } catch {
+                        // The answer could not be read: what it came to is not known.
+                        return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                    }
+                    return answer?.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
+                } catch {
+                    return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                } finally {
+                    void handle.retry();
+                }
+            },
+        });
+    };
+
     const remote = handle.remote;
     if (remote.state === 'loading') {
         return quiet ? null : <p className="mb-4 text-sm text-fg-muted" data-problems-now="checking">{t('pnow.checking')}</p>;
@@ -280,6 +340,10 @@ export function ProblemsNow({
                                             onClick={() => void start(problem)}
                                         >
                                             {t('pnow.service_stopped.action')}
+                                        </Button>
+                                    ) : problem.action.kind === 'reclose' ? (
+                                        <Button className="shrink-0 self-start" onClick={() => void reclose(problem)} data-problem-reclose="">
+                                            {t(`pnow.${problem.kind}.action` as TranslationKey)}
                                         </Button>
                                     ) : showLink ? (
                                         <Link to={problem.action.to as string} className="shrink-0 self-start text-sm font-semibold text-primary max-sm:min-h-11" data-problem-link="">

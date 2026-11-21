@@ -1762,6 +1762,9 @@ func main() {
 	http.HandleFunc("/api/v1/metrics/alerts", panel.handleMonitoringAlerts)
 	http.HandleFunc("/api/v1/metrics/alerts/settings", panel.handleMonitoringAlertSettings)
 	http.HandleFunc("/api/v1/metrics/alerts/seen", panel.handleMonitoringAlertsSeen)
+	// S4 R1 fix round: the administrator closes again what the server owner
+	// undid (side_doors.go); administrator only through the prefix.
+	http.HandleFunc("/api/v1/metrics/side-doors/reclose", panel.handleSideDoorsReClose)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()
@@ -2086,6 +2089,10 @@ func main() {
 	// does not wait for it. Changes keep using the live proofs.
 	displayChecksEnabled.Store(true)
 	go panel.warmDisplayChecks()
+	// Security release (20 November 2026): names and Node.js ports held
+	// before the one name rule are read once at start (log) and shown in
+	// Problems now; nothing is changed.
+	go panel.logNamespaceProblemsAtStart(context.Background())
 	if err := waitPanelHTTP(runningServer); err != nil {
 		log.Fatal(err)
 	}
