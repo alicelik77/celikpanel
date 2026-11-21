@@ -141,7 +141,9 @@ func TestPGPublicUndoGivesBackExactlyWhatWasRecorded(t *testing.T) {
 	if _, err := pgPublicUndoScript(&transport.PostgreSQLPublicAccessUndoRequest{Name: "shop", Added: []string{"reader:SUPERUSER"}}); err == nil {
 		t.Fatal("an undo took away a right a close never gives")
 	}
-	pgPublicRunner(t, func(string) ([]byte, error) { return []byte("began=1\nserver closed the connection unexpectedly\n"), errors.New("exit status 2") })
+	pgPublicRunner(t, func(string) ([]byte, error) {
+		return []byte("began=1\nserver closed the connection unexpectedly\n"), errors.New("exit status 2")
+	})
 	var resp transport.PostgreSQLPublicAccessUndoResponse
 	_ = (&Agent{}).PostgreSQLPublicAccessUndoV1(&transport.PostgreSQLPublicAccessUndoRequest{Name: "shop", PublicConnect: true}, &resp)
 	if resp.Undone || !resp.Unknown {
