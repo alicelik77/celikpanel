@@ -42,9 +42,9 @@ func TestRenderedSliceAndUnitPassSystemdAnalyze(t *testing.T) {
 		strings.Join(pre, "\n") + "\nExecStart=/bin/true\n" + strings.Join(post, "\n") + "\n" + strings.Join(lines, "\n") + "\n"
 	// The bind unit's template, so Requires= resolves.
 	files := map[string]string{
-		SliceName(12):     slice,
-		p.Unit:            unit,
-		BindTemplate:      strings.ReplaceAll(BindTemplateText(), HelperPath, "/bin/true"),
+		SliceName(12): slice,
+		p.Unit:        unit,
+		BindTemplate:  strings.ReplaceAll(BindTemplateText(), HelperPath, "/bin/true"),
 		"celikpanel-sandbox@" + strings.TrimSuffix(p.Unit, ".service") + ".service": strings.ReplaceAll(strings.ReplaceAll(BindTemplateText(), HelperPath, "/bin/true"), "%i", strings.TrimSuffix(p.Unit, ".service")),
 	}
 	var paths []string

@@ -26,7 +26,7 @@ export interface SiteLimitUnit {
     unit: string;
     kind: string;
     label: string;
-    placement: 'in_slice' | 'outside' | 'stopped' | 'elsewhere' | 'absent';
+    placement: 'in_slice' | 'outside' | 'stopped' | 'stopped_outside' | 'elsewhere' | 'absent';
     own_memory_mb?: number;
     lower?: boolean;
 }
@@ -50,7 +50,7 @@ export interface SiteLimitsView {
 
 const KEYS: readonly string[] = ['site.memory_mb', 'site.tasks', 'site.cpu_percent'];
 const EVENTS: readonly string[] = ['memory', 'tasks', 'cpu'];
-const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'elsewhere', 'absent'];
+const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_outside', 'elsewhere', 'absent'];
 
 /** Reads the answer; an answer of another shape is not a card. */
 export function decodeSiteLimits(raw: unknown): SiteLimitsView {

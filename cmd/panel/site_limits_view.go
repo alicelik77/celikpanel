@@ -283,6 +283,9 @@ type siteLimitEventView struct {
 	Repeated bool   `json:"repeated,omitempty"`
 }
 
+// siteUnitStoppedOutside: a stopped unit whose file names the system slice.
+const siteUnitStoppedOutside = "stopped_outside"
+
 type siteLimitUnitView struct {
 	siteLimitUnit
 	Placement string `json:"placement"`
@@ -376,7 +379,12 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 				unit.Placement = transport.SiteUnitAbsent
 			}
 			unit.Lower = found.Own.MemoryMB > memory || (found.Own.MemoryMB == 0 && unit.Placement != transport.SiteUnitAbsent && unit.Placement != transport.SiteUnitInSlice)
-			if unit.Placement == transport.SiteUnitOutside {
+			// A stopped unit whose file still names the system slice would
+			// start outside the limits: the move rewrites it.
+			if unit.Placement == transport.SiteUnitStopped && found.Slice != "" && found.Slice != status.Slice {
+				unit.Placement = siteUnitStoppedOutside
+			}
+			if unit.Placement == transport.SiteUnitOutside || unit.Placement == siteUnitStoppedOutside {
 				view.NeedsMove++
 			}
 			view.Units = append(view.Units, unit)
