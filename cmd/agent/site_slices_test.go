@@ -41,10 +41,11 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 	useSandboxHost(t, true)
 	dir, _ := sandboxUnitDir()
 	host := &sliceTestHost{dir: dir, units: map[string]*sliceTestUnit{}, slices: map[string]string{}, ports: map[string]map[int]bool{}}
-	oldCtl, oldVerify, oldRoot, oldListen, oldSettle, oldPoll := appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSliceSettle, siteSlicePoll
+	oldCtl, oldVerify, oldRoot, oldListen, oldSettle, oldPoll, oldPrepare := appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSliceSettle, siteSlicePoll, siteMovePrepare
 	t.Cleanup(func() {
-		appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSliceSettle, siteSlicePoll = oldCtl, oldVerify, oldRoot, oldListen, oldSettle, oldPoll
+		appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSliceSettle, siteSlicePoll, siteMovePrepare = oldCtl, oldVerify, oldRoot, oldListen, oldSettle, oldPoll, oldPrepare
 	})
+	siteMovePrepare = func() error { return nil }
 	appUnitVerify = func(string) error { return nil }
 	siteSliceCgroupRoot = t.TempDir()
 	siteSliceSettle, siteSlicePoll = 50*time.Millisecond, time.Millisecond

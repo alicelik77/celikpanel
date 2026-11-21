@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -597,6 +598,17 @@ var (
 	}
 )
 
+// siteMovePrepare puts this release's sandbox helper and SMTP block files in
+// place before a move (a seam for tests).
+var siteMovePrepare = func() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := ensureSandboxHelper(); err != nil {
+		return err
+	}
+	return ensureSandboxEgress(sandboxCaps(ctx))
+}
+
 // siteMoveUnit is one unit the move changes.
 type siteMoveUnit struct {
 	unit    string
@@ -645,6 +657,13 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		return nil
 	}
 	defer siteMoveRunning.Unlock()
+	// The units restart with this release's helper and guard: an earlier
+	// release's copy adds only system-slice cgroups to the SMTP block, so a
+	// unit in its site's slice would not start with it.
+	if err := siteMovePrepare(); err != nil {
+		resp.Error = "the site sandbox's helper and SMTP block could not be put in place: " + err.Error() + "; nothing was moved"
+		return nil
+	}
 
 	siteSliceMu.Lock()
 	result, written, err := writeSiteSlice(s, transport.SiteFileTriggerCreate)
