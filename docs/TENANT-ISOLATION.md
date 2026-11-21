@@ -175,11 +175,13 @@ need the changes in section 4.
 
 ## 6. Mail is signed only for the sender's own domain
 
-*20 November 2026 · In source and component-tested; the distribution
+*20 November 2026, corrected 21 November 2026 after the independent review of
+the release candidate · In source and component-tested; the distribution
 configuration matrix checks CelikPanel's `opendkim.conf` with each release's
-own OpenDKIM and, where `miltertest` is installed (Debian and Ubuntu), asks
-that OpenDKIM which domain it signs each test message for. The lab round is
-open (steps below).*
+own OpenDKIM, asks it (with `miltertest`, Debian and Ubuntu) which domain it
+signs each test message for, and runs CelikPanel's own decisions against each
+release's real `postconf` and `opendkim -n`. The lab round is open (steps
+below).*
 
 **The problem.** OpenDKIM signed every message whose `From:` named a hosted
 domain, when the client was authenticated or connected from the server
@@ -203,25 +205,66 @@ customer's DKIM signature, so receivers took it as genuine.
   for the null sender (`smtpd_check.c`), and an empty value would fall back
   to `From:`.
 - The smtpd that receives mail on port 25 (`smtp/inet`, or `smtpd/pass`
-  behind postscreen) gets its own `-o smtpd_milters=` with the spam filter
-  only. Nothing that arrives on port 25, from outside or from a site over
-  loopback, is signed by this server. `main.cf` keeps OpenDKIM, so
-  submission, smtps and any smtpd the owner added keep it.
+  behind postscreen) gets its own `-o smtpd_milters=`: `main.cf`'s list as it
+  is at every Panel start, the server owner's own filters included, with only
+  OpenDKIM left out (joined by commas: `master.cf` takes no spaces there).
+  Nothing that arrives on port 25, from outside or from a site over loopback,
+  is signed by this server. The setting is removed again when OpenDKIM is
+  removed or `main.cf`'s list names no OpenDKIM; CelikPanel recognises its
+  own value by a record of what it wrote
+  (`/var/lib/celikpanel-agent-private/mail-port25-milters.json`). `main.cf`
+  keeps OpenDKIM, so submission, smtps and any smtpd the owner added keep it.
 
-**What keeps being signed.**
+**What keeps being signed, and by which identity.**
 
-| Mail | Who sends it | Signed for |
+| Mail | Who hands it over | Signed for |
 |---|---|---|
 | A mail program or webmail over 587/465; a site's code or plugin with a mailbox login | the SASL login | the login's own domain |
-| Out-of-office replies | Dovecot, as `vmail`, through `sendmail` | the mailbox's own domain (its `From:`) |
-| The panel's notices, cron and system mail | `root`, through `sendmail` | their `From:` domain, as before |
-| Forwarded mail | arrives on port 25 | not signed again; the original signature passes through untouched |
+| Out-of-office replies | Dovecot's Sieve, as `vmail`, through `sendmail` | its `From:`: the mailbox's own address, or an additional address forwarded to the mailbox from a domain of the same account |
+| The panel's notices (invitations, password mail) | the Agent, as `root`, through `sendmail` | `no-reply@` of the owner's main domain |
+| Cron and system mail of the server | `root`, through `sendmail` | their `From:` domain (the server's own name) |
+| Forwarders, catch-alls, "keep a copy and forward" | Postfix's virtual aliases, inside the queue of the message that arrived on port 25 | not signed; the original signature passes through untouched |
+| A site's `mail()` or `sendmail` | refused (`authorized_submit_users = root, vmail`, alpha.125) | — |
 | Mail a site hands to port 25 without a login | — | not signed |
 
-`sendmail` is open only to `root` and `vmail` (`authorized_submit_users`,
-alpha.125), and that mail has no login, so OpenDKIM signs it by its `From:`
-as before. A mailbox cannot send as an alias domain today (its envelope sender
-must be its own address), so nothing of that changes.
+Mail handed over on the server without a login has no login, so OpenDKIM
+signs it by its `From:`. Who can make the server do that (21 November 2026):
+
+- Customers cannot supply a Sieve script of their own: no ManageSieve listener
+  is installed (Debian's and Ubuntu's `dovecot-managesieved` is not one of the
+  packages CelikPanel installs), webmail has no filter plugin, the maildirs
+  belong to `vmail`, and the reply's settings are fields the Agent renders,
+  never script text. The only script CelikPanel writes is the out-of-office
+  reply (Sieve `vacation`, `date`, `relational`).
+- The reply's `From:` is the mailbox's address or the additional address the
+  incoming message named (Pigeonhole's `vacation :addresses`). Since this
+  correction an additional address must be forwarded to the mailbox from a
+  domain of the same account; the Panel checks it from its records and the
+  Agent again from the server's own alias map, and the refusal says only that
+  the address is not one of the mailbox's own. Pigeonhole's
+  `sieve_vacation_use_original_recipient` stays off, so the original
+  recipient of a forwarded copy never becomes the `From:`. Replies saved
+  before are rendered again without other addresses at the first start after
+  the update; the reply's window says once which addresses were removed, and
+  it is audited.
+- Forwarders never pass `sendmail` or OpenDKIM again: an outside message with
+  a forged `From:` sent to a forwarding address is not signed here.
+- Where `authorized_submit_users` is not limited to `root` and `vmail` (the
+  owner's own value, or the change put back), programs of sites can send mail
+  signed for any hosted domain. Signing is then not reported as in place:
+  Problems now says so with the line to set, and nothing is changed in the
+  owner's file.
+
+A mailbox cannot send as an alias domain today (its envelope sender must be
+its own address), so nothing of that changes.
+
+**Arriving mail.** OpenDKIM still runs in sign-and-verify mode, but it is no
+longer on port 25, so it no longer checks the signatures of arriving mail or
+adds its `Authentication-Results` line to it. Rspamd, where installed, keeps
+checking DKIM (and DMARC) of arriving mail for its spam score; spamass-milter
+scores signatures only where SpamAssassin's DKIM plugin runs; with no spam
+filter nothing on this server checks them. Nothing of CelikPanel reads the
+`Authentication-Results` line.
 
 **OpenDKIM without the option.** `SenderMacro` is compiled in only when a
 distribution enables it. Measured in the packages on 20 November 2026:
@@ -229,47 +272,90 @@ Debian 11, 12 and 13 and Ubuntu's 2.11.0 builds (24.04: `2.11.0~beta2-9build4`)
 have it; Arch Linux's `opendkim 2.11.0beta2-2` has neither it nor Lua. The
 Agent asks the installed OpenDKIM first (`opendkim -n` on a file with only that
 line); where it does not know it, CelikPanel keeps the earlier configuration,
-port 25 is still closed to signing, and Monitoring says so.
+port 25 is still closed to signing, and Problems now says that mail sent with
+a mailbox's password is still signed by its `From:` there (a known limit).
+An owner's `opendkim.conf` on such a system is kept and nothing is put beside
+it: the server owner is never told to add a line his OpenDKIM refuses.
 
 **Existing servers.** At every Panel start (the same mail repair step as the
 Dovecot drop-in and the submission chroot), in this order:
 
-1. `opendkim.conf`: when it is exactly what an earlier release wrote,
+1. The milter lists: `main.cf` first (where the lists are CelikPanel's,
+   `milter_default_action = accept` with them), then the port-25 entries
+   (`postconf -P`, or `-PX` to remove), then `postfix check` and a reload
+   Postfix must verifiably take. If it does not, every setting written is put
+   back exactly (a setting that was at Postfix's default is removed again, not
+   written out) and Postfix reloaded with the earlier ones.
+2. `opendkim.conf`: when it is exactly what an earlier release wrote,
    CelikPanel's new text is written beside it and checked with
-   `opendkim -n`; only then is it renamed over the file and OpenDKIM
-   restarted. If OpenDKIM does not run with it, the earlier file is put back
-   and OpenDKIM restarted with that. While OpenDKIM restarts, Postfix passes
-   mail on unsigned (`milter_default_action = accept`): it never bounces or
-   holds it.
-2. The milter lists: `main.cf` first, then the port-25 entry (`postconf -P`),
-   then `postfix check` and a reload Postfix must verifiably take. If it does
-   not, every setting written is put back and Postfix reloaded with the
-   earlier ones.
+   `opendkim -n`; the restart is recorded as owed; only then is the text
+   renamed over the file and OpenDKIM restarted and verified. If OpenDKIM
+   does not run with it, the earlier file is put back and OpenDKIM restarted
+   with that. A restart recorded as owed by a start that was interrupted is
+   made at the next start, even when the file is already CelikPanel's, and
+   signing is not reported as in place until OpenDKIM is verified running.
+   While OpenDKIM restarts, Postfix passes mail on unsigned where the lists
+   are CelikPanel's (`milter_default_action = accept`, step 1); where the
+   owner keeps his own list, his `milter_default_action` applies and the
+   panel's note says what it does (Postfix's default `tempfail`: senders get
+   a temporary error and send again).
 
 **The owner's own settings (D-022).** An `opendkim.conf` the owner changed is
 kept as he wrote it; CelikPanel's text is put beside it as
-`opendkim.conf.celikpanel-pending`. A milter list the owner wrote in `main.cf`,
-or his own `-o smtpd_milters` on the port-25 entry, is kept. In each case, and
-when a change was refused, Monitoring → Problems now names the setting and
-what the server owner does; the line goes away when the next Panel start finds
-everything in place.
+`opendkim.conf.celikpanel-pending`. A milter list the owner wrote in `main.cf`
+is kept, and port 25 follows it without OpenDKIM. His own `-o smtpd_milters`
+on a port-25 entry is kept and, when it names OpenDKIM, reported. Every step
+that can change OpenDKIM or the milters (the start, a component's install or
+removal, the mail setup, DKIM signing) records the signing state, and an
+answer that did not arrive is recorded as unknown. Problems now names the
+file or setting and the server owner's concrete step; the line goes away when
+a later step finds everything in place.
 
-**Lab steps** (the pair's main server hosts mail; a receiver inside the lab
-shows the `DKIM-Signature: d=` of each message):
+**Lab steps** (the pair's main server hosts mail, on Debian 13 and on Ubuntu
+24.04; a receiver inside the lab shows the `From:` and `DKIM-Signature: d=` of
+each message):
 
 1. Before the update, path a: with mailbox `anna@a.test`,
    `swaks --server <main>:587 --tls --auth-user anna@a.test --from anna@a.test --header 'From: ceo@b.test' --to <receiver>`:
    the receiver shows `d=b.test`. Path b: from a site of `a.test`, connect to
    127.0.0.1:25 and send `MAIL FROM:<x@b.test>`, `From: x@b.test` to a
-   forwarder of `a.test` that points to the receiver: `d=b.test`.
+   forwarder of `a.test` that points to the receiver: `d=b.test`. Out-of-office
+   reply on `anna@a.test` with additional address `ceo@b.test` (customer B's
+   domain): send in from outside with `To: ceo@b.test`: the reply shows
+   `From: ceo@b.test`, `d=b.test`.
 2. The owner updates the panel from its own update screen.
 3. `/etc/opendkim.conf` has the SenderMacro line; `postconf -P smtp/inet/smtpd_milters`
-   names only the spam filter (or nothing).
-4. Path a again: `d=a.test`. Path b again: no DKIM signature.
-5. Mail from a mail program (587 and 465) and from webmail: `d=` is the
-   mailbox's domain. An out-of-office reply and a panel notice (an invitation
-   or a password mail): signed for their `From:` domain. A message forwarded
-   from outside keeps its original signature and is delivered.
-6. On a copy of the main server: edit `/etc/opendkim.conf` by hand, restart
-   the panel: the file is unchanged, `opendkim.conf.celikpanel-pending` is
-   beside it, Monitoring shows the problem, mail flows.
+   names only the spam filter (or nothing); `ls /var/lib/celikpanel-agent-private/opendkim-restart-owed`
+   finds nothing.
+4. Path a again: `d=a.test`. A login of a domain with no DKIM key: no
+   signature (not the `From:` domain). The null sender with a login: `d=a.test`.
+   Path b again, to 127.0.0.1:25 and to the public address: no signature.
+5. Webmail with an identity of another domain: `d=` of the login's domain. A
+   panel notice: `d=` of the owner's main domain. A message forwarded from
+   outside with a forged `From:` of a hosted domain: delivered, no signature
+   added.
+6. The reply of step 1: the reply's window says once that `ceo@b.test` was
+   removed; the audit log has the row; the same message again gets a reply
+   from `anna@a.test` (or none, when it does not name the mailbox). Saving
+   `ceo@b.test` again is refused with the neutral sentence.
+7. `postconf -e 'authorized_submit_users = static:anyone'`, restart the panel:
+   Problems now shows the line to set; `mail()` from a site with
+   `From: ceo@b.test` leaves with `d=b.test` (what the line says). Set it back
+   to `root, vmail`, restart: the line is gone.
+8. The owner adds a filter to `main.cf` `smtpd_milters` (for example
+   `inet:127.0.0.1:7777`), restart the panel: `postconf -P
+   smtp/inet/smtpd_milters` names the spam filter and that filter, not
+   OpenDKIM; Problems now shows no port-25 line. Remove OpenDKIM from
+   Components: no CelikPanel `-o smtpd_milters` remains.
+9. Kill test: stop the Agent between the `opendkim.conf` rename and the
+   restart (for example `systemctl kill -s KILL celikpanel-agent` while the
+   start runs, with `strace` or a breakpoint), restart the panel: OpenDKIM is
+   restarted, runs with SenderMacro (`/proc/<pid>` start time after the file's
+   modification time), the record is gone.
+10. With an owner-kept milter list and no `milter_default_action`, send mail
+    over 587 during the reconcile restart: the client gets a temporary error
+    and sends again; the panel's log of that start says so.
+11. On a copy of the main server: edit `/etc/opendkim.conf` by hand, restart
+    the panel: the file is unchanged, `opendkim.conf.celikpanel-pending` is
+    beside it and starts under `opendkim -n -x`, Problems now names the file
+    and the line, mail flows.

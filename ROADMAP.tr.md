@@ -424,7 +424,8 @@ engellemez; süre bitimi uyarıları (D-047).
 53. Postfix'in adres eşlemelerini yalnız posta hizmetleri okur (alpha.142, S3 hattı).
 54. Arch Linux'ta posta kutusu girişiyle gönderilen posta, OpenDKIM paketinde `SenderMacro`
     olmadığından, "Kimden" satırında geçen barındırılan her alan adı için hâlâ imzalanıyor; orada
-    imzayı girişe bağlayan başka bir yol (alpha.143, S3b hattı).
+    imzayı girişe bağlayan başka bir yol (alpha.143, S3b hattı). Şu anki sorunlar bunu orada söyler ve
+    seçeneği asla önermez (alpha.143 incelemesi).
 55. Bir sunucu adının ya da yöneticinin bir adının altındaki müşteri alan adının ve içinde açılan
     alt alan adlarının "Şu anki sorunlar"da sunucunun adlarıyla çakışıyor diye listelenmeye devam
     edip etmeyeceği: sahibin kararı (alpha.143 laboratuvar düzeltmeleri).
