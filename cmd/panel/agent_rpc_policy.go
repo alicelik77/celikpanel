@@ -182,6 +182,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
 		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.SetOSUpdatesModeV1 Agent.EnableVendorLaneV1 Agent.InstallJailToolsV1
 		Agent.UpdateRoundcubeV1 Agent.MoveAppFilesOwnerV1 Agent.EnableWebmailAddressV1 Agent.RemoveWebmailAddressV1
+		Agent.CloseSideDoorsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
@@ -588,6 +589,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetupVPN":                    agentRPCDeploymentTimeout,
 	"Agent.UninstallService":            agentRPCDeploymentTimeout,
 	"Agent.BindPHPToolV1":               agentRPCDeploymentTimeout,
+	"Agent.CloseSideDoorsV1":            agentRPCDeploymentTimeout,
 	"Agent.ProvePHPToolV1":              agentRPCDeploymentTimeout,
 	"Agent.ConfineRepoV1":               agentRPCDeploymentTimeout,
 	"Agent.WriteVendorUpdateOriginsV1":  agentRPCDeploymentTimeout,

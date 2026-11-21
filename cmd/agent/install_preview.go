@@ -926,7 +926,7 @@ func phpToolProofCandidates(tool, current string) []string {
 			return
 		}
 		seen[version] = true
-		if pathExists(versionedFPMSocketPath(version)) && phpToolHasExtensionPackages(tool, version) {
+		if phpFPMRunning(version) && phpToolHasExtensionPackages(tool, version) {
 			out = append(out, version)
 		}
 	}

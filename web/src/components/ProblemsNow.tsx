@@ -47,7 +47,16 @@ export type ProblemKind =
     | 'service_restarting'
     | 'name_overlap'
     | 'name_server_reserved'
-    | 'node_port_reserved';
+    | 'node_port_reserved'
+    | 'tool_account_failed'
+    | 'tool_account_owner_config'
+    | 'stock_pool_in_use'
+    | 'stock_pool_owner_changed'
+    | 'site_crontab_outside'
+    | 'site_at_jobs'
+    | 'at_allow_lists_sites'
+    | 'at_directory_accounts'
+    | 'at_not_closed';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -57,6 +66,10 @@ const KINDS: readonly ProblemKind[] = [
     // Security release (20 November 2026): names and Node.js ports held
     // before the one name rule.
     'name_overlap', 'name_server_reserved', 'node_port_reserved',
+    // S4 R1: the tools' own accounts and the distribution's PHP-FPM pool.
+    'tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed',
+    // S4 R1: jobs a site's own code can make outside CelikPanel.
+    'site_crontab_outside', 'site_at_jobs', 'at_allow_lists_sites', 'at_directory_accounts', 'at_not_closed',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 

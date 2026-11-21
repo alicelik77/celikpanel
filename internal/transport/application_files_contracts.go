@@ -245,6 +245,18 @@ type CronJob struct {
 	Command  string `json:"command"`
 	Enabled  bool   `json:"enabled"`
 	Comment  string `json:"comment,omitempty"`
+	// OutsidePanel: the line was not made in CelikPanel (S4 R1, 21 Nov 2026):
+	// a program of the site or someone on the server added it to the crontab.
+	// Additive on the wire.
+	OutsidePanel bool `json:"outside_panel,omitempty"`
+}
+
+// CronOtherLine is a crontab line not made in CelikPanel that is not a task
+// (an @reboot or @daily line, an environment setting). It is removed by its
+// ID like a task.
+type CronOtherLine struct {
+	ID   string `json:"id"`
+	Line string `json:"line"`
 }
 
 type ListCronJobsRequest struct {
@@ -258,6 +270,10 @@ type ListCronJobsResponse struct {
 	// Version, Jobs'un okunduğu crontab baytlarını tanımlar. Her değişiklik
 	// onu geri taşır. Tel üzerinde eklemelidir.
 	Version string `json:"version,omitempty"`
+	// OtherLines and OutsideLines (S4 R1): the lines not made in CelikPanel
+	// that are not tasks, and how many lines in all were not made in it.
+	OtherLines   []CronOtherLine `json:"other_lines,omitempty"`
+	OutsideLines int             `json:"outside_lines,omitempty"`
 }
 
 // CronTenant identifies WHOSE crontab an operation targets. It carries the

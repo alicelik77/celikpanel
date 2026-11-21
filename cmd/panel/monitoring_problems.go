@@ -114,6 +114,17 @@ var problemKindOrder = map[string]int{
 	"name_server_reserved":       12,
 	"name_overlap":               13,
 	"node_port_reserved":         14,
+	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
+	"tool_account_failed":       15,
+	"tool_account_owner_config": 16,
+	"stock_pool_in_use":         17,
+	"stock_pool_owner_changed":  18,
+	// S4 R1: jobs a site's own code can make.
+	"site_crontab_outside":  19,
+	"site_at_jobs":          20,
+	"at_allow_lists_sites":  21,
+	"at_directory_accounts": 22,
+	"at_not_closed":         23,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -172,6 +183,10 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// Security release (20 November 2026): names and Node.js ports an
 	// existing installation holds that the one name rule refuses today.
 	add(p.namespaceProblems(ctx))
+	// S4 R1: what the side doors step left for someone (side_doors.go).
+	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
+	// S4 R1: site crontab lines not made in CelikPanel and at (side_doors_jobs.go).
+	add(p.siteJobsProblems(ctx, db), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

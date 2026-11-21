@@ -31,8 +31,15 @@ func cronSetsMailto(content string) bool {
 
 // withSiteCronMailto returns the crontab a Panel write stores for username.
 func withSiteCronMailto(username, content string) string {
+	written, _ := withSiteCronMailtoLines(username, content)
+	return written
+}
+
+// withSiteCronMailtoLines also returns the lines it added (for the record of
+// what CelikPanel wrote, site_crontab_record.go).
+func withSiteCronMailtoLines(username, content string) (string, []string) {
 	if username == "root" || cronSetsMailto(content) {
-		return content
+		return content, nil
 	}
-	return cronMailtoComment + "\nMAILTO=\"\"\n" + content
+	return cronMailtoComment + "\nMAILTO=\"\"\n" + content, []string{cronMailtoComment, `MAILTO=""`}
 }
