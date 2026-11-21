@@ -138,10 +138,20 @@ var problemKindOrder = map[string]int{
 	"site_memory_repeated": 31,
 	"site_tasks_repeated":  32,
 	"disk_limits_counted":  33,
-	// S4 R2a: sites whose programs still run outside their limits (a to-do).
+	// S4 R2a: sites whose programs still run outside their limits (a to-do);
+	// S4 R2b: their programs or scheduled tasks (site_limits_outside).
 	"site_programs_outside": 34,
+	"site_limits_outside":   34,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
 	"site_limits_unsupported": 35,
+	// S4 R2b: cron.allow, crontabs that came back, lingering (site_tasks.go).
+	"cron_allow_lists_sites": 36,
+	"cron_not_closed":        37,
+	"cron_owner_removed":     38,
+	"site_crontab_returned":  39,
+	"site_lingering":         40,
+	"linger_owner_removed":   41,
+	"linger_not_closed":      42,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

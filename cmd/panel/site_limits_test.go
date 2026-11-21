@@ -348,7 +348,7 @@ func TestSitesWithProgramsOutsideTheirLimitsAreOneLine(t *testing.T) {
 		siteLimitProblemReading = siteLimitReading{}
 		var out []monitoringProblem
 		for _, problem := range f.panel.siteLimitProblems(context.Background(), time.Now()) {
-			if problem.Kind == "site_programs_outside" {
+			if problem.Kind == "site_limits_outside" {
 				out = append(out, problem)
 			}
 		}
@@ -357,7 +357,7 @@ func TestSitesWithProgramsOutsideTheirLimitsAreOneLine(t *testing.T) {
 	// The background reading finds the running program outside the limits.
 	_ = lines()
 	got := lines()
-	if len(got) != 1 || got[0].Key != "site_programs_outside" || got[0].Subject != domain || got[0].Value != 1 ||
+	if len(got) != 1 || got[0].Key != "site_limits_outside" || got[0].Subject != domain || got[0].Value != 1 ||
 		got[0].Severity != "warning" || got[0].Actor != "administrator" || got[0].Action.To != "/domains/"+domain {
 		t.Fatalf("lines = %+v", got)
 	}
@@ -401,11 +401,11 @@ func TestSitesOutsideLineNamesTheFirstSites(t *testing.T) {
 	}
 	state.Sites["99"] = 2 // a site that is gone
 	raw, _ := json.Marshal(state)
-	got := siteLimitOutsideProblem(string(raw), names)
+	got := siteLimitsOutsideProblem(string(raw), names)
 	if len(got) != 1 || got[0].Value != 7 || got[0].Subject != "a.test, b.test, c.test, d.test, e.test, …" || got[0].Action.To != "/domains/a.test" {
 		t.Fatalf("line = %+v", got)
 	}
-	if siteLimitOutsideProblem(`{"checked_at":"x"}`, names) != nil || siteLimitOutsideProblem("", names) != nil {
+	if siteLimitsOutsideProblem(`{"checked_at":"x"}`, names) != nil || siteLimitsOutsideProblem("", names) != nil {
 		t.Fatal("a line without sites")
 	}
 }

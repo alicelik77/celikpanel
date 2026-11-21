@@ -371,6 +371,12 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "site-limits/move":
 		// S4 R2a: the administrator's move of the site's programs into its limits.
 		match.kind, match.methods = "site-limits-move", []string{http.MethodPost}
+	case "site-limits/preview":
+		// S4 R2b: what the move would make of the site's crontab (read only).
+		match.kind, match.methods = "site-limits-preview", []string{http.MethodGet}
+	case "site-limits/tasks-undo":
+		// S4 R2b: the administrator's "Put the tasks back into cron".
+		match.kind, match.methods = "site-limits-tasks-undo", []string{http.MethodPost}
 	case "general":
 		match.kind, match.methods = "general", getPost
 	case "aliases":
@@ -639,6 +645,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainSiteLimits(w, r, match.domainID)
 	case "site-limits-move":
 		p.handleDomainSiteLimitsMove(w, r, match.domainID)
+	case "site-limits-preview":
+		p.handleDomainSiteLimitsPreview(w, r, match.domainID)
+	case "site-limits-tasks-undo":
+		p.handleDomainSiteTasksUndo(w, r, match.domainID)
 	case "general":
 		p.handleDomainGeneralSettings(w, r)
 	case "aliases":
@@ -1755,6 +1765,8 @@ func main() {
 	http.HandleFunc("/api/v1/metrics/history", panel.handleMetricsHistory)
 	// alpha.126: "Problems now" (Monitoring and Dashboard), a read only.
 	http.HandleFunc("/api/v1/metrics/problems", panel.handleMonitoringProblems)
+	// S4 R2b: the sites still outside their limits, for "Move all".
+	http.HandleFunc("/api/v1/site-limits/outside", panel.handleSiteLimitsOutside)
 	// alpha.127: per-service health, site checks and alerts (administrator,
 	// through the /api/v1/metrics/ prefix). The reads serve stored results.
 	http.HandleFunc("/api/v1/metrics/services", panel.handleMonitoringServices)

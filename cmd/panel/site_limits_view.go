@@ -423,6 +423,9 @@ type siteLimitsView struct {
 	DBOwner         []dbOwnerSetting                 `json:"db_owner,omitempty"`
 	ApplyDone       int                              `json:"apply_done,omitempty"`
 	ApplyTotal      int                              `json:"apply_total,omitempty"`
+	// Tasks (S4 R2b, administrator only): whether the site's scheduled tasks
+	// run as timers in its limits.
+	Tasks *siteTasksView `json:"tasks,omitempty"`
 }
 
 func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -504,6 +507,18 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 			view.Units = append(view.Units, unit)
 		}
 		view.Busy = siteMoveBusy()
+		if resp.Unsupported == "" {
+			view.Tasks = p.siteTasksViewOf(ctx, site.SiteID)
+			if !view.Tasks.Unknown {
+				outside, inside := map[int]bool{}, map[int]bool{}
+				if view.Tasks.Moved {
+					inside[site.SiteID] = true
+				} else {
+					outside[site.SiteID] = true
+				}
+				p.noteSiteTasksOutside(ctx, outside, inside, time.Now())
+			}
+		}
 	}
 	// A reader's reading keeps the administrator's Problems now line current
 	// (written only when the list changed).
@@ -665,25 +680,42 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 	}
 	site := sites[0]
 	slice := p.siteSliceForSubscription(ctx, site.SiteID, site.SubscriptionID, site.Domain)
-	if slice == nil || len(site.Units) == 0 {
+	if slice == nil {
 		writeServiceAppRefusal(w, http.StatusConflict, "site_limits_nothing",
-			"Nothing was changed: this site runs no program, or its limits could not be read.", nil)
+			"Nothing was changed: this site's limits could not be read.", nil)
 		return
 	}
-	move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID,
-		Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID}
-	for _, u := range site.Units {
-		move.Units = append(move.Units, u.Unit)
+	// S4 R2b: the site's scheduled tasks first (no restart; nothing
+	// half-moved), then its programs. A site without programs moves its
+	// tasks only.
+	tasks, tasksErr := p.moveSiteTasks(ctx, site, req.RequestID, false)
+	if tasksErr != nil {
+		tasks = &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "the server did not answer about the scheduled tasks; read this page again"}
 	}
-	resp, err := moveSiteSliceCall(p, ctx, move)
-	if err != nil {
-		writeServiceAppRefusal(w, http.StatusServiceUnavailable, "agent_unreachable",
-			"The server did not answer, so the result is unknown. Read this page again before you try again.", nil)
-		return
+	resp := transport.MoveSiteSliceResponse{Units: []transport.SiteSliceMoved{}, Done: true}
+	if len(site.Units) > 0 {
+		move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID,
+			Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID}
+		for _, u := range site.Units {
+			move.Units = append(move.Units, u.Unit)
+		}
+		var err error
+		resp, err = moveSiteSliceCall(p, ctx, move)
+		if err != nil {
+			writeServiceAppRefusal(w, http.StatusServiceUnavailable, "agent_unreachable",
+				"The server did not answer, so the result is unknown. Read this page again before you try again.", nil)
+			return
+		}
+	}
+	resp.Tasks = tasks
+	switch tasks.Outcome {
+	case transport.SiteTasksMoved, transport.SiteTasksAlready:
+		p.noteSiteTasksOutside(ctx, nil, map[int]bool{site.SiteID: true}, time.Now())
 	}
 	p.auditDetailed(r, "site.limits_move", "domain", domainID, map[string]any{
 		"request_id": req.RequestID, "site": site.Domain, "done": resp.Done, "rolled_back": resp.RolledBack,
 		"units": resp.Units, "error": resp.Error, "wait_seconds": resp.WaitSeconds,
+		"tasks": tasks.Outcome, "tasks_error": tasks.Error, "tasks_blocking": len(tasks.Blocking),
 	})
 	siteMoveMu.Lock()
 	siteMoveAnswers[req.RequestID] = resp
@@ -795,7 +827,7 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
 	problems = append(problems, siteLimitHostProblem(host)...)
-	return append(problems, siteLimitOutsideProblem(outside, names)...)
+	return append(problems, siteLimitsOutsideProblem(outside, names)...)
 }
 
 // --- A host that cannot enforce a site's limits -------------------------------------
@@ -859,6 +891,8 @@ const settingSiteLimitOutside = "site_limit_outside_v1"
 type siteLimitOutside struct {
 	CheckedAt string         `json:"checked_at"`
 	Sites     map[string]int `json:"sites,omitempty"`
+	// Tasks (S4 R2b): sites whose scheduled tasks still run in cron.
+	Tasks map[string]bool `json:"tasks,omitempty"`
 }
 
 var siteLimitOutsideMu sync.Mutex
@@ -873,7 +907,7 @@ func (p *Panel) noteSiteLimitOutside(ctx context.Context, statuses []transport.S
 	if raw != "" {
 		_ = json.Unmarshal([]byte(raw), &previous)
 	}
-	state := siteLimitOutside{Sites: map[string]int{}}
+	state := siteLimitOutside{Sites: map[string]int{}, Tasks: previous.Tasks}
 	if !whole {
 		for k, v := range previous.Sites {
 			state.Sites[k] = v
@@ -903,40 +937,6 @@ func (p *Panel) noteSiteLimitOutside(ctx context.Context, statuses []transport.S
 	}
 }
 
-// siteLimitOutsideProblem is ONE line, for the administrator, naming the
-// sites (count and the first five) whose own programs run outside their
-// limits, opening the first. A to-do, not a fault: warning. Sites that are
-// gone are left out; no site left, no line.
-func siteLimitOutsideProblem(raw string, names map[string]string) []monitoringProblem {
-	if raw == "" {
-		return nil
-	}
-	var state siteLimitOutside
-	if err := json.Unmarshal([]byte(raw), &state); err != nil {
-		return nil
-	}
-	var sites []string
-	for key, n := range state.Sites {
-		if name := names[key]; name != "" && n > 0 {
-			sites = append(sites, name)
-		}
-	}
-	if len(sites) == 0 {
-		return nil
-	}
-	sort.Strings(sites)
-	listed := sites
-	if len(listed) > 5 {
-		listed = append(append([]string{}, sites[:5]...), "…")
-	}
-	subject := strings.Join(listed, ", ")
-	return []monitoringProblem{{
-		Key: "site_programs_outside", Kind: "site_programs_outside", Severity: "warning", Actor: "administrator",
-		Name: subject, Subject: subject, Value: float64(len(sites)), ObservedAt: state.CheckedAt,
-		Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(sites[0])},
-	}}
-}
-
 // readAllSiteSlices reads the slice of every site that has programs, in
 // pages, and records it.
 func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
@@ -955,6 +955,7 @@ func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
 	if len(sites) == 0 {
 		p.noteSiteSlices(ctx, nil, true, now)
 		p.noteSiteLimitOutside(ctx, nil, true, now)
+		p.readAllSiteTasks(ctx, all, "", now)
 		return true
 	}
 	resp, err := p.readSiteSlicesAll(ctx, sites)
@@ -968,6 +969,7 @@ func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
 	p.noteSiteLimitHost(ctx, resp.Unsupported, now)
 	p.noteSiteSlices(ctx, resp.Sites, true, now)
 	p.noteSiteLimitOutside(ctx, resp.Sites, true, now)
+	p.readAllSiteTasks(ctx, all, resp.Unsupported, now)
 	return true
 }
 

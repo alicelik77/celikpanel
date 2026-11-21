@@ -239,6 +239,9 @@ func (p *Panel) siteJobsProblems(ctx context.Context, db *sql.DB) []monitoringPr
 		var state transport.SideDoorsState
 		if json.Unmarshal([]byte(raw), &state) == nil {
 			problems = append(problems, siteAtProblems(state)...)
+			// S4 R2b: cron.allow, crontabs that came back, lingering.
+			problems = append(problems, siteCronProblems(state)...)
+			problems = append(problems, siteLingerProblems(state)...)
 		}
 	}
 	outside := p.readSiteCrontabsOutside(ctx)

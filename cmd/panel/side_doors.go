@@ -267,7 +267,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch request.Target {
-	case transport.SideDoorsReCloseAt:
+	case transport.SideDoorsReCloseAt, transport.SideDoorsReCloseCron, transport.SideDoorsReCloseLinger:
 		request.Version = ""
 	case transport.SideDoorsReCloseStockPool:
 		if !sideDoorsPHPVersion.MatchString(request.Version) {
@@ -305,11 +305,22 @@ func sideDoorState(state *transport.SideDoorsState, target, version string) stri
 	if state == nil {
 		return ""
 	}
-	if target == transport.SideDoorsReCloseAt {
+	switch target {
+	case transport.SideDoorsReCloseAt:
 		if state.At == nil {
 			return ""
 		}
 		return state.At.State
+	case transport.SideDoorsReCloseCron:
+		if state.Cron == nil {
+			return ""
+		}
+		return state.Cron.State
+	case transport.SideDoorsReCloseLinger:
+		if state.Linger == nil {
+			return ""
+		}
+		return state.Linger.State
 	}
 	for _, pool := range state.StockPools {
 		if pool.Version == version {
@@ -323,7 +334,7 @@ func sideDoorState(state *transport.SideDoorsState, target, version string) stri
 func sideDoorClosed(state *transport.SideDoorsState, target, version string) bool {
 	switch sideDoorState(state, target, version) {
 	case transport.SideDoorsAtWritten, transport.SideDoorsAtCurrent:
-		return target == transport.SideDoorsReCloseAt
+		return target == transport.SideDoorsReCloseAt || target == transport.SideDoorsReCloseCron || target == transport.SideDoorsReCloseLinger
 	case transport.SideDoorsStockTurnedOff, transport.SideDoorsStockOff:
 		return target == transport.SideDoorsReCloseStockPool
 	}

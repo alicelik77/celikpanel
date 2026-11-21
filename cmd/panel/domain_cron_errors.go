@@ -119,6 +119,12 @@ func writeCronAgentError(w http.ResponseWriter, err error, reason string) {
 		log.Printf("[409][cron] duplicate task refused")
 		writeCodedError(w, http.StatusConflict, errCodeCronJobDuplicate, cronJobDuplicateMessage, "")
 		return
+	case agentAnsweredExactly(err, transport.SiteTasksSourceHeld):
+		// S4 R2b: the server owner changed the site's task file by hand; it
+		// is kept and used, and this change waits beside it.
+		log.Printf("[409][cron] the task file was changed on the server; the change waits beside it")
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksSourceHeld, siteTasksSourceHeldMessage, "")
+		return
 	case agentAnsweredExactly(err, transport.CronJobAmbiguous):
 		log.Printf("[409][cron] a task that stands twice in the crontab was not changed")
 		writeCodedError(w, http.StatusConflict, errCodeCronJobAmbiguous, cronJobAmbiguousMessage, "")
@@ -145,3 +151,10 @@ func writeNativeCronRemovalRefused(w http.ResponseWriter) {
 	log.Printf("[409][services] native cron removal refused")
 	writeCodedError(w, http.StatusConflict, errCodeNativeCronRemovalRefused, core.NativeCronRemovalRefusal, "")
 }
+
+// errCodeSiteTasksSourceHeld and its message (S4 R2b): a change of a moved
+// site's tasks when the server owner changed its task file by hand.
+const (
+	errCodeSiteTasksSourceHeld = "SITE_TASKS_SOURCE_HELD"
+	siteTasksSourceHeldMessage = "The server owner changed this site's task file by hand. Their file is kept and its tasks run as it says; your change was saved beside it and does not apply until the server owner takes it in."
+)
