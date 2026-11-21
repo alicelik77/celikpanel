@@ -380,7 +380,7 @@ const screenPartBudgets = {
   // that are counted, not enforced (slim., limits.key.site.*, pnow.). A new
   // part, so no existing part's budget is raised; set with at least 25%
   // headroom from its Turkish file.
-  siteLimits: kib(12, 4.2),
+  siteLimits: kib(9, 3.1),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
