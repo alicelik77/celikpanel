@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { enMonitoringScreens } from '../src/i18n/screens/monitoring/en.ts';
 import { trMonitoringScreens } from '../src/i18n/screens/monitoring/tr.ts';
+import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
+import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import { enSideDoorsScreens } from '../src/i18n/screens/sideDoors/en.ts';
 import { trSideDoorsScreens } from '../src/i18n/screens/sideDoors/tr.ts';
 import { enSiteJobsScreens } from '../src/i18n/screens/siteJobs/en.ts';
@@ -22,8 +24,9 @@ test('every kind the list shows has a title, body and action in English and Turk
   const shown = [...list[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part.
-  const en = { ...enMonitoringScreens, ...enSideDoorsScreens, ...enSiteJobsScreens };
-  const tr = { ...trMonitoringScreens, ...trSideDoorsScreens, ...trSiteJobsScreens };
+  // Since alpha.142 the shared lines' words are in the problemsNow part.
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens };
   for (const kind of shown) {
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);
@@ -41,6 +44,7 @@ test('the side doors lines name the thing, say who acts and stay in their own pa
     }
     assert.match(enSideDoorsScreens[`pnow.${kind}.body`], /server administrator|choose its PHP version/, `${kind} says who acts`);
     assert.equal(enMonitoringScreens[`pnow.${kind}.title`], undefined, `${kind} is not added to the full monitoring part`);
+    assert.equal(enProblemsNowScreens[`pnow.${kind}.title`], undefined, `${kind} is not added to the problemsNow part`);
   }
   assert.deepEqual(Object.keys(trSideDoorsScreens).sort(), Object.keys(enSideDoorsScreens).sort());
 });

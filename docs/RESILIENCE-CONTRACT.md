@@ -9111,3 +9111,61 @@ until the backup reports ready.
   still restores it with the cluster owner's rights; databases made before
   alpha.141 stay open to other accounts' sign-in; added PostgreSQL users
   lose their rights on what a restore makes again. **No P0 item is closed.**
+
+### Branches security/s2-names and security/s3-files-mail (names, ports and files of another account or of the server are out of a customer's reach; schema 79 -> 80, triggers only; constitution 1; invariants 1 and 4; D-022; D-024; D-025; 2026-11-20, candidate alpha.142)
+
+- **Why it is here.** Domain creation and deletion are lifecycle paths, a
+  database trigger is a schema transition, and a site deletion's account
+  steps and the one-time file-mode correction change native state:
+  constitution 1 (authorize each action for its exact resources) and
+  invariants 1 (the owner keeps authority: owner-changed modes and the
+  owner's own `disable_symlinks` are kept) and 4 (refusals decided before
+  anything is made; a compensation removes only what its operation made).
+- **Defects (tenant-isolation audit of 20 November 2026, each shown before
+  the fix by a test).** A customer's subscription could receive a name
+  equal to, under or above another account's name or one of the server's
+  own names (an existing infrastructure zone was handed to the new domain);
+  two domain names derive one system account, and the compensation of a
+  refused creation removed the other site's scheduled tasks and FTP logins;
+  a Node.js site's port could be a port of the server's own services; nginx
+  followed a link to another account's file; per-site configuration files
+  were world-readable; customer directives could lift PHP limits or make
+  nginx read files as root; Add domain read a subscription named in the
+  request before the access check.
+- **Contract.** One name rule in the panel (`cmd/panel/hostname_claim.go`)
+  for every path that gives a subscription a name (create, alias, import,
+  transfer) and again in the database (migration 080: domain insert, rename
+  and move; alias insert and update; subscription owner change). An
+  administrator's own subscription may hold such a name on purpose; an
+  ordinary account is told the same whoever holds it. The account a name
+  would get is checked before creation; the Agent proves an account's home
+  before every step keyed by its name. Node.js ports from 3001-3999, never a
+  server service's, refused again by the Agent. `disable_symlinks
+  if_not_owner` in every block that serves files; per-site files 0640, the
+  hosting base 0711, corrected once with owner-changed modes kept.
+- **Schema / version transition.** 79 -> 80: six triggers, no table,
+  column or row changed. A database that already holds an overlap migrates
+  and keeps working (only a newly given or moving name is compared); an
+  older release refuses the ledger, and going back to alpha.141 is the
+  pre-update snapshot restore. Additive: the refusal codes
+  `HOSTNAME_NOT_AVAILABLE`, `APP_PORT_NOT_ALLOWED`, `TRANSFER_NAME_OVERLAP`,
+  the Agent answer `site_identity_exists`, the site-part outcome `refused`,
+  three kinds in Problems now, one Agent receipt file
+  (`tenant-file-modes-v1.done`).
+- **Recovery.** The update deletes and renames nothing: names and ports an
+  installation already holds stay and are listed in Problems now with what
+  to do; a deletion that meets another site's account completes for its own
+  parts. Every file change is native nginx configuration or a file mode
+  that keeps working without the panel; the owner undoes it with `chmod` or
+  his own `disable_symlinks`, and CelikPanel keeps his choice.
+- **Evidence.** Proof tests that fail on alpha.141 and pass here:
+  `TestNameRuleProof*`, `TestNameRuleParentLookupWaitsForTheAccessCheck`
+  (cmd/panel), `TestDeleteSiteLeavesAnotherSitesAccountCrontabAndLoginsAlone`,
+  `TestNodeVhostRefusesAPortOfTheServersOwnServices`, `TestTenantIsolation*`
+  (cmd/agent, internal/services); `TestSchema79DatabaseWithOverlapsUpgradesAndKeepsWorking`;
+  the link rule against Debian 13's nginx 1.26.3; the release-recovery lab
+  pins schema 80.
+- **Open.** No lab run yet. The web server's group can still read every
+  site folder (the link rule is the barrier until one group per site);
+  account names are derived from domain names; mail is signed for any
+  hosted domain (the next release). **No P0 item is closed.**

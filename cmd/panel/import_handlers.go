@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -281,6 +282,20 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The one name rule (hostname_claim.go): an import gives a subscription
+	// a name like Add domain does.
+	if refusal, err := p.claimForSubscription(ctx, req.SubscriptionID, req.Domain, true); err != nil {
+		if errors.Is(err, errHostnameClaimNoOwner) {
+			writeClientError(w, http.StatusNotFound, "subscription not found")
+			return
+		}
+		writeServerError(w, err)
+		return
+	} else if refusal != nil {
+		writeHostnameClaimRefusal(w, currentCaller(r), refusal)
+		return
+	}
+
 	var importParentID *int
 	remoteConnectionID := ""
 	parentID, parentName, isSubdomain, err := p.resolveParentDomain(ctx, req.SubscriptionID, req.Domain)
@@ -382,6 +397,10 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 	})
 	cancelCreate()
 	if err != nil {
+		if hostname.IsNamespaceConflict(err) || errors.Is(err, services.ErrSiteAccountTaken) {
+			writeHostnameClaimRefusal(w, currentCaller(r), genericHostnameClaimRefusal(req.Domain))
+			return
+		}
 		if strings.Contains(err.Error(), "UNIQUE") {
 			writeClientError(w, http.StatusConflict, "domain already exists on this server")
 			return

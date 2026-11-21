@@ -86,7 +86,31 @@
 {{end}}
 {{- end}}
 
-{{- define "locations"}}{{template "site-features" .}}
+{{- /* Links (20 Nov 2026, tenant isolation). nginx's workers can read every
+    site's files through the web server's group, so a link in this site's
+    folder to another account's file (another site's configuration with its
+    database password, webmail's or a database tool's secrets) was served as
+    this site's file. With if_not_owner a link is followed only when the link
+    and what it points to have the same owner: a link to the site's own file
+    or folder still works; one to another account's or to root's file is
+    refused (403, or the next try_files choice) and the site's error log says
+    "Too many levels of symbolic links". No from=: the whole path is checked,
+    because the site's account can replace its own document root with a link
+    and from=<document root> would skip exactly that part. Left out when the
+    owner set disable_symlinks for this site himself (his include, or the
+    administrator's directives): his rule is kept and nginx would refuse a
+    second one.
+    Bağlantılar: bir bağlantı yalnız kendisiyle aynı sahibe ait dosyaya ya da
+    klasöre izlenir; başka hesabın ya da root'un dosyasına giden bağlantı
+    sunulmaz. Sahip kendi kuralını koyduysa onunki kalır. */}}
+{{- define "symlinks"}}
+{{- if not .OwnerSymlinks}}
+    # A link is followed only to a file of the link's own owner / Bağlantı yalnız aynı sahibin dosyasına izlenir
+    disable_symlinks if_not_owner;
+{{- end}}
+{{- end}}
+
+{{- define "locations"}}{{template "symlinks" .}}{{template "site-features" .}}
 {{- if eq .ProjectType "php"}}
     root {{.DocumentRoot}};
     index {{.IndexFiles}};

@@ -303,6 +303,14 @@ func downgradeHostnameNamespaceMigration(t *testing.T, database *paneldb.SQLiteD
 		"trg_domain_aliases_hostname_reserve_delete",
 		"trg_hostname_reservations_reject_invalid",
 		"trg_hostname_reservations_reject_conflict",
+		// Migration 080 reads hostname_reservations; a database before 018
+		// had neither.
+		"trg_domains_namespace_tenant_insert",
+		"trg_domains_namespace_tenant_rename",
+		"trg_domains_namespace_tenant_move",
+		"trg_domain_aliases_namespace_tenant_insert",
+		"trg_domain_aliases_namespace_tenant_update",
+		"trg_subscriptions_namespace_tenant_owner",
 	} {
 		if _, err := raw.Exec(`DROP TRIGGER IF EXISTS ` + trigger); err != nil {
 			t.Fatalf("drop trigger %s: %v", trigger, err)

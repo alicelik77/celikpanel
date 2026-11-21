@@ -51,6 +51,9 @@ interface Directives {
     text?: string;
     by_admin?: boolean;
     max_size: number;
+    // The saved text breaks a rule of this release, so the server does not use
+    // it: the first line it refuses (20 Nov 2026).
+    not_applied?: { line: number; directive: string };
 }
 interface WebView {
     project_type: string;
@@ -497,6 +500,11 @@ function DirectivesCard({ domainId, directives, disabled, readOnly, t, onSave, o
             <h4 className="text-sm font-semibold text-fg">{t('web.directives.title')}</h4>
             <p className="mt-0.5 text-xs text-fg-muted">{t('web.directives.desc')}</p>
             <p className="mt-0.5 text-xs text-fg-subtle">{directives.offered !== undefined ? t('web.directives.adminDesc') : t('web.directives.customerDesc')}</p>
+            {directives.not_applied && (
+                <p role="status" className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+                    {t('web.directives.notApplied', { line: directives.not_applied.line, directive: directives.not_applied.directive })}
+                </p>
+            )}
             <div className={`-mx-3 mt-3 rounded-r px-3 py-1 ${draft.isChanged('text') ? changedRowClass : ''}`}>
                 {draft.isChanged('text') && <p className="mb-1"><ChangedMark /></p>}
                 <textarea value={text} onChange={(e) => draft.set('text', e.target.value)} disabled={disabled || readOnly || draft.saving} rows={8} spellCheck={false}

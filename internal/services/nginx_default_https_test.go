@@ -128,7 +128,8 @@ func TestReconcileDefaultHTTPSServerWritesOnceAndKeepsItsText(t *testing.T) {
 	if !strings.HasPrefix(string(content), managedRenderHeaderPrefix) || !strings.Contains(string(content), "ssl_reject_handshake on;") {
 		t.Fatalf("written file:\n%s", content)
 	}
-	if info, err := os.Stat(h.path); err != nil || info.Mode().Perm() != 0o644 {
+	// 0640 since 20 Nov 2026 (nginx's master reads it as root).
+	if info, err := os.Stat(h.path); err != nil || info.Mode().Perm() != 0o640 {
 		t.Fatalf("mode %v (%v)", info.Mode().Perm(), err)
 	}
 	// Our own file in the dump does not count as "serves 443".

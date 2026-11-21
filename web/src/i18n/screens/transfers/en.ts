@@ -115,6 +115,7 @@ export const enTransfersScreens = {
     'err.TRANSFER_ADMIN_WORKSPACE': 'The administrator’s own workspace stays with the administrator. Move its domains to another subscription instead.',
     'err.TRANSFER_RIGHTS_OUTSIDE_RECEIVER': 'The subscription has rights the receiving reseller does not have, so it cannot move there. Ways out: the administrator adds the listed items to that reseller’s rights; or narrow the subscription first (possible only if what it uses fits); or keep it where it is.',
     'err.TRANSFER_POOL_EXCEEDED': 'What the subscription really uses does not fit the free room in the receiving reseller’s pool. Ways out: the administrator gives that reseller a larger pool; or remove what the subscription no longer needs; or keep it where it is.',
+    'err.TRANSFER_NAME_OVERLAP': 'A name of this subscription equals, lies above or lies under a name that another account holds or that this server keeps for itself, so the receiving account may not hold it. Nothing was changed. Ways out: move or remove the names listed; or keep the subscription where it is. The administrator sees which names they are.',
     'err.TRANSFER_CONFIRM': 'Review what changes, then confirm the transfer.',
     'err.TRANSFER_STALE': 'The subscription changed owner after the review. Nothing was changed. Review the transfer again.',
     'err.TRANSFER_REQUEST_ID_REUSED': 'This request was already used for another change. Nothing was changed. Open the transfer again.',

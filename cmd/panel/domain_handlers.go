@@ -364,6 +364,17 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	parentDNSDomain := ""
 	remoteConnectionID := ""
 	prospectiveSubscription := req.SubscriptionID
+	// A subscription named in the request is read only once the caller may
+	// use it (security release, 20 November 2026): the parent lookup below
+	// must not answer about another account's domains.
+	if prospectiveSubscription != 0 {
+		if early := currentCaller(r); early == nil || early.Role != roleAdmin {
+			if err := p.canAccessSubscription(r.Context(), early, prospectiveSubscription); err != nil {
+				writeClientError(w, http.StatusForbidden, "subscription not found or not permitted")
+				return
+			}
+		}
+	}
 	if prospectiveSubscription == 0 {
 		if caller := currentCaller(r); caller != nil {
 			err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT id FROM subscriptions WHERE owner_id = ? ORDER BY id LIMIT 1`, caller.ID).Scan(&prospectiveSubscription)
@@ -434,6 +445,22 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	// oluşturduğu aboneliğin sahibi olmalıdır.
 	caller := currentCaller(r)
 	isAdmin := caller != nil && caller.Role == roleAdmin
+	// One name rule (hostname_claim.go), before anything is created. The
+	// administrator's default subscription is its own, made on first use
+	// below, so its name is checked before that bootstrap.
+	claimChecked := false
+	if req.SubscriptionID == 0 && isAdmin {
+		refusal, err := p.checkHostnameClaim(r.Context(), hostnameClaim{Name: req.Domain, OwnerID: caller.ID, OwnerIsAdmin: true, SiteAccount: true})
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if refusal != nil {
+			writeHostnameClaimRefusal(w, caller, refusal)
+			return
+		}
+		claimChecked = true
+	}
 	if req.SubscriptionID == 0 {
 		if isAdmin {
 			// Admin default: the admin's own subscription — created on first
@@ -481,6 +508,17 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	if !isAdmin {
 		if err := p.canAccessSubscription(r.Context(), caller, req.SubscriptionID); err != nil {
 			writeClientError(w, http.StatusForbidden, "subscription not found or not permitted")
+			return
+		}
+	}
+	if !claimChecked {
+		refusal, err := p.claimForSubscription(r.Context(), req.SubscriptionID, req.Domain, true)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if refusal != nil {
+			writeHostnameClaimRefusal(w, caller, refusal)
 			return
 		}
 	}
@@ -643,7 +681,13 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 	cancelCreate()
 	if err != nil {
 		if hostname.IsNamespaceConflict(err) {
-			writeClientError(w, http.StatusConflict, "this hostname is already used by a domain, its www name, or an alias")
+			// The database refused the name (migrations 018, 042, 080)
+			// although the check above passed: the same answer.
+			writeHostnameClaimRefusal(w, caller, genericHostnameClaimRefusal(req.Domain))
+			return
+		}
+		if errors.Is(err, services.ErrSiteAccountTaken) {
+			writeHostnameClaimRefusal(w, caller, &hostnameClaimRefusal{Reason: hostnameClaimAccountTaken, Name: req.Domain, Other: services.SiteUsername(req.Domain)})
 			return
 		}
 		if refusal, ok := hostingRootNotTraversable(err); ok {

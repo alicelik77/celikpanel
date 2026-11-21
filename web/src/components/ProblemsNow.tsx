@@ -45,6 +45,9 @@ export type ProblemKind =
     | 'site_down'
     | 'site_certificate'
     | 'service_restarting'
+    | 'name_overlap'
+    | 'name_server_reserved'
+    | 'node_port_reserved'
     | 'tool_account_failed'
     | 'tool_account_owner_config'
     | 'stock_pool_in_use'
@@ -60,12 +63,15 @@ const KINDS: readonly ProblemKind[] = [
     'memory_sustained', 'cpu_sustained', 'mail_queue_deferred', 'security_updates',
     // alpha.127: website checks and a service that keeps restarting.
     'site_down', 'site_certificate', 'service_restarting',
+    // Security release (20 November 2026): names and Node.js ports held
+    // before the one name rule.
+    'name_overlap', 'name_server_reserved', 'node_port_reserved',
     // S4 R1: the tools' own accounts and the distribution's PHP-FPM pool.
     'tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed',
     // S4 R1: jobs a site's own code can make outside CelikPanel.
     'site_crontab_outside', 'site_at_jobs', 'at_allow_lists_sites', 'at_directory_accounts', 'at_not_closed',
 ];
-const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
+const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
 /** The words of a problem's title and body; alerts use the same (alpha.127). */
 export function problemVars(
@@ -75,6 +81,7 @@ export function problemVars(
     return {
         name: componentName({ id: problem.subject ?? '', name: problem.name }, t),
         domain: problem.subject ?? '',
+        other: problem.name ?? '',
         days: Math.max(problem.value, 0),
         value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? t('monitoring.pct', { n: Math.round(problem.value) }) : problem.value,
     };

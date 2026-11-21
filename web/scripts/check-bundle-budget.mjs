@@ -363,6 +363,16 @@ const screenPartBudgets = {
   // the database parts are full; set with at least 25% headroom from its
   // Turkish file.
   dbEncoding: kib(2.5, 1.2),
+  // The security release of 20 November 2026: the "Problems now" list
+  // (pnow.), split out of "monitoring" when the names and ports an
+  // installation held before the one name rule filled it. A new part, set
+  // with at least 25% headroom from its Turkish file: 7.50 / 2.48 KiB.
+  problemsNow: kib(10.5, 3.4),
+  // The same release: the one name rule's and the Node.js port rule's
+  // refusals (err.HOSTNAME_NOT_AVAILABLE, err.APP_PORT_NOT_ALLOWED), a new part
+  // as "errors" is full; set with at least 25% headroom from its Turkish
+  // file: 1.78 / 0.75 KiB.
+  nameRule: kib(2.5, 1.1),
   // 20 Nov 2026 (S4 R1): the Problems now lines of the side doors step
   // (pnow.tool_account_*, pnow.stock_pool_*). A new part, as the monitoring
   // part is nearly full; set with at least 25% headroom from its Turkish

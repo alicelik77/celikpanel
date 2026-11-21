@@ -25,9 +25,14 @@ import (
 //  3. directives a field owns, refused for everybody: index, expires, types,
 //     client_max_body_size, fastcgi_read_timeout, the page cache and the
 //     HSTS header — "use the field" instead;
-//  4. a path argument must lie inside the site's home;
+//  4. a path argument must lie inside the site's home, and the Agent proves
+//     it is a regular file reached without a link (20 Nov 2026);
 //  5. add_header only at the top level (inside a location it would drop
-//     the site's security headers, an nginx inheritance rule).
+//     the site's security headers, an nginx inheritance rule);
+//  6. (20 Nov 2026) the link rule, folder listings and files nginx reads as
+//     root are the administrator's (disable_symlinks, autoindex,
+//     random_index, xslt_stylesheet), and no FastCGI parameter may change
+//     the pool's PHP settings (PHP_VALUE, PHP_ADMIN_VALUE).
 //
 // Then the Agent writes the file, runs nginx -t and reloads; when nginx
 // refuses, the previous file is put back.
@@ -223,12 +228,35 @@ var siteDirectiveForbidden = map[string]string{
 	"set_real_ip_from": "realip", "real_ip_header": "realip", "real_ip_recursive": "realip",
 	"create_full_put_path": "path", "min_delete_depth": "path",
 	"uwsgi_cache": "field", "scgi_cache": "field",
+	// 20 Nov 2026 (tenant isolation). disable_symlinks: the vhost's link rule
+	// keeps another account's files from being served through a link; a
+	// customer's `disable_symlinks off;` in a location would lift it there.
+	// autoindex and random_index list a folder without that rule (nginx's
+	// documentation: they ignore disable_symlinks), so through a link they
+	// would list another site's folder. xslt_stylesheet's file is read by
+	// nginx's master process as root whenever nginx loads its configuration,
+	// and the error nginx -t prints for it is shown on the screen.
+	"disable_symlinks": "links", "autoindex": "listing", "random_index": "listing",
+	"xslt_stylesheet": "rootfile",
 }
 
-// Directives whose arguments name files on the server.
+// Directives whose arguments name files on the server. A customer's path must
+// lie inside the site's home here, and the Agent proves it is a regular file
+// reached without a link before it writes the text (directive_files_linux.go).
 var siteDirectivePathArgs = map[string]bool{
-	"auth_basic_user_file": true, "xslt_stylesheet": true, "disable_symlinks": true,
+	"auth_basic_user_file": true,
 }
+
+// phpLimitParams are the FastCGI parameters through which a request changes
+// the settings of the PHP-FPM pool that serves it: php-fpm applies PHP_VALUE
+// as user-level and PHP_ADMIN_VALUE as system-level php.ini settings for that
+// request (php-src sapi/fpm/fpm/fpm_main.c; php.net "FPM configuration").
+// A customer's text cannot set them, so the plan's PHP limits stay what the
+// pool says. Compared without regard to case.
+var phpLimitParams = map[string]bool{"PHP_VALUE": true, "PHP_ADMIN_VALUE": true}
+
+// phpParamDirectives pass a named parameter to a FastCGI-family backend.
+var phpParamDirectives = map[string]bool{"fastcgi_param": true, "scgi_param": true, "uwsgi_param": true}
 
 // fieldOwnedDirectives are refused for everybody at the top level: a second
 // one would append to, replace or duplicate what the field writes.
@@ -288,12 +316,12 @@ func ValidateSiteDirectives(text string, trusted bool, siteHome string) error {
 					return &SiteDirectiveRefusal{Kind: "header", Directive: d.name, Line: d.line,
 						Message: fmt.Sprintf("line %d: add_header inside a block would drop the site's security headers there; use the Headers field, or put it at the top level", d.line)}
 				}
+				if phpParamDirectives[name] && len(d.args) > 0 && phpLimitParams[strings.ToUpper(d.args[0])] {
+					return &SiteDirectiveRefusal{Kind: "php", Directive: d.name, Line: d.line,
+						Message: fmt.Sprintf("line %d: %s %s would change the PHP settings and limits of the site's plan; use the PHP settings of this site, or ask the server administrator", d.line, d.name, d.args[0])}
+				}
 				if siteDirectivePathArgs[name] {
-					for _, arg := range d.args {
-						value := arg
-						if rest, ok := strings.CutPrefix(arg, "from="); ok {
-							value = rest
-						}
+					for _, value := range d.args {
 						if !strings.HasPrefix(value, "/") {
 							continue
 						}
@@ -313,6 +341,32 @@ func ValidateSiteDirectives(text string, trusted bool, siteHome string) error {
 	return walk(directives, 0)
 }
 
+// SiteDirectiveFiles lists the absolute file paths a text names through a
+// directive that takes a file (siteDirectivePathArgs), at any depth; nil when
+// the text does not parse (validation refuses it first).
+func SiteDirectiveFiles(text string) []string {
+	directives, err := parseSiteDirectives(text)
+	if err != nil {
+		return nil
+	}
+	var files []string
+	var walk func(list []siteDirective)
+	walk = func(list []siteDirective) {
+		for _, d := range list {
+			if siteDirectivePathArgs[strings.ToLower(d.name)] {
+				for _, arg := range d.args {
+					if strings.HasPrefix(arg, "/") {
+						files = append(files, path.Clean(arg))
+					}
+				}
+			}
+			walk(d.block)
+		}
+	}
+	walk(directives)
+	return files
+}
+
 // forbiddenSiteDirective says why a name is refused for a reseller's or
 // customer's text ("" when it is allowed).
 func forbiddenSiteDirective(name string) string {
@@ -330,6 +384,12 @@ func forbiddenSiteDirective(name string) string {
 			return "it changes the visitor address other sites and security rules see"
 		case "field":
 			return "a field on this screen sets it"
+		case "links":
+			return "the server's link rule keeps other accounts' files from being served through a link"
+		case "listing":
+			return "it lists folders without the server's link rule"
+		case "rootfile":
+			return "nginx reads its file with the server's own rights"
 		}
 	}
 	switch {

@@ -111,6 +111,9 @@ var problemSource = map[string]string{
 	"site_certificate":           "sites",
 	"mail_queue_deferred":        "mail_queue",
 	"security_updates":           "security_updates",
+	"name_overlap":               "names",
+	"name_server_reserved":       "names",
+	"node_port_reserved":         "names",
 }
 
 type activeAlert struct {
@@ -545,6 +548,15 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "security_updates":
 		return fmt.Sprintf("%s security updates are waiting. Install them under System updates.", n),
 			fmt.Sprintf("%s güvenlik güncellemesi bekliyor. Sistem güncellemeleri'nden kurun.", n)
+	case "name_overlap":
+		return fmt.Sprintf("The domain %s meets %s, a name of another account: remove one of them, or transfer the subscription that holds %s to the account that holds %s. Open the domain in Domains.", subject, name, subject, name),
+			fmt.Sprintf("%s alan adı, başka bir hesabın adı olan %s ile çakışıyor: birini kaldırın ya da %s adını tutan aboneliği %s adını tutan hesaba devredin. Alan adını Alan adları'nda açın.", subject, name, subject, name)
+	case "name_server_reserved":
+		return fmt.Sprintf("The domain %s meets %s, one of this server's own names, and belongs to a customer or reseller: only an administrator's own subscription holds it. Unless that account truly may, remove it. Open the domain in Domains.", subject, name),
+			fmt.Sprintf("%s alan adı, bu sunucunun kendi adlarından %s ile çakışıyor ve bir müşteriye ya da bayiye ait: bu adı yalnız bir yöneticinin kendi aboneliği tutar. O hesabın tutması gerçekten gerekmiyorsa kaldırın. Alan adını Alan adları'nda açın.", subject, name)
+	case "node_port_reserved":
+		return fmt.Sprintf("The Node.js site %s sends its visitors to port %s, which a service of this server uses. Open the domain and save its Node.js settings again: the site gets a free port, and its program must listen on that port.", subject, n),
+			fmt.Sprintf("%s Node.js sitesi ziyaretçilerini bu sunucunun bir hizmetinin kullandığı %s numaralı porta gönderiyor. Alan adını açıp Node.js ayarlarını yeniden kaydedin: site boş bir port alır; programı o portu dinlemelidir.", subject, n)
 	// S4 R1 (side_doors.go).
 	case "tool_account_failed":
 		return fmt.Sprintf("%s still runs under the web server's account, which can read every site. Open it under Components and choose its PHP version again to move it to its own account.", name),
