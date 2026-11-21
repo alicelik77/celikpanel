@@ -56,7 +56,8 @@ export type ProblemKind =
     | 'at_not_closed'
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
-    | 'disk_limits_counted';
+    | 'disk_limits_counted'
+    | 'site_programs_outside';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -69,6 +70,8 @@ const KINDS: readonly ProblemKind[] = [
     'site_crontab_outside', 'site_at_jobs', 'at_allow_lists_sites', 'at_directory_accounts', 'at_not_closed',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
+    // S4 R2a: sites whose programs still run outside their limits (a to-do).
+    'site_programs_outside',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
 

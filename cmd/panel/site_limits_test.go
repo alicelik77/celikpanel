@@ -296,6 +296,98 @@ func TestSiteLimitProblemsNameTheSite(t *testing.T) {
 	}
 }
 
+// TestSitesWithProgramsOutsideTheirLimitsAreOneLine: after an update nothing
+// moves by itself, so the administrator reads ONE line naming the sites whose
+// own programs still run (or would start) outside their limits, opening the
+// first; a site whose programs are all inside, stopped inside or gone is not
+// named; the line goes away by itself when the site's card reads it moved.
+func TestSitesWithProgramsOutsideTheirLimitsAreOneLine(t *testing.T) {
+	f := newRightsFixture(t)
+	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
+	var siteID int
+	if err := f.panel.db.GetDB().QueryRow(`SELECT id FROM sites WHERE domain_id = 9902`).Scan(&siteID); err != nil {
+		t.Fatal(err)
+	}
+	var domain string
+	_ = f.panel.db.GetDB().QueryRow(`SELECT name FROM domains WHERE id = 9902`).Scan(&domain)
+	oldRead, oldStart, oldNeeds := readSiteSlicesCall, startSiteLimitRead, siteLimitReadNeedsAgent
+	t.Cleanup(func() { readSiteSlicesCall, startSiteLimitRead, siteLimitReadNeedsAgent = oldRead, oldStart, oldNeeds })
+	startSiteLimitRead, siteLimitReadNeedsAgent = func(run func()) { run() }, false
+	unit := "celikapp-" + itoa(siteID) + ".service"
+	slice := "celiksite_" + itoa(siteID) + ".slice"
+	status := func(units ...transport.SiteSliceUnit) transport.SiteSlicesStatusResponse {
+		return transport.SiteSlicesStatusResponse{Sites: []transport.SiteSliceStatus{{SiteID: siteID, Slice: slice, Units: units}}}
+	}
+	reading := status(transport.SiteSliceUnit{Unit: unit, Placement: transport.SiteUnitOutside, Slice: "system.slice"})
+	readSiteSlicesCall = func(p *Panel, ctx context.Context, req *transport.SiteSlicesStatusRequest) (transport.SiteSlicesStatusResponse, error) {
+		return reading, nil
+	}
+	lines := func() []monitoringProblem {
+		siteLimitProblemReading = siteLimitReading{}
+		var out []monitoringProblem
+		for _, problem := range f.panel.siteLimitProblems(context.Background(), time.Now()) {
+			if problem.Kind == "site_programs_outside" {
+				out = append(out, problem)
+			}
+		}
+		return out
+	}
+	// The background reading finds the running program outside the limits.
+	_ = lines()
+	got := lines()
+	if len(got) != 1 || got[0].Key != "site_programs_outside" || got[0].Subject != domain || got[0].Value != 1 ||
+		got[0].Severity != "warning" || got[0].Actor != "administrator" || got[0].Action.To != "/domains/"+domain {
+		t.Fatalf("lines = %+v", got)
+	}
+	// A stopped program whose file still names the system slice would start
+	// outside: still named.
+	reading = status(transport.SiteSliceUnit{Unit: unit, Placement: transport.SiteUnitStopped, Slice: "system.slice"})
+	_ = lines()
+	if got := lines(); len(got) != 1 {
+		t.Fatalf("stopped outside: %+v", got)
+	}
+	// The administrator moved the site: its card's reading takes the line away.
+	reading = status(transport.SiteSliceUnit{Unit: unit, Placement: transport.SiteUnitInSlice, Slice: slice})
+	wantStatus(t, siteLimitsCall(t, f, siteLimitsMux(f), authzMatrixAdminID, http.MethodGet, "/api/v1/domains/9902/site-limits", ""), http.StatusOK, "")
+	siteLimitReadNeedsAgent = true // no background reading: the card's alone
+	if got := lines(); len(got) != 0 {
+		t.Fatalf("after the move: %+v", got)
+	}
+	// Stopped inside and gone are not named either.
+	siteLimitReadNeedsAgent = false
+	reading = status(transport.SiteSliceUnit{Unit: unit, Placement: transport.SiteUnitStopped, Slice: slice})
+	_ = lines()
+	if got := lines(); len(got) != 0 {
+		t.Fatalf("stopped inside: %+v", got)
+	}
+	if _, ordered := problemKindOrder["site_programs_outside"]; !ordered {
+		t.Error("site_programs_outside has no place in the problem order")
+	}
+	if en, _ := alertLine(pendingAlertMail{kind: "site_programs_outside", subject: domain, value: 1}); strings.HasPrefix(en, "A monitored problem") {
+		t.Error("site_programs_outside has no alert line")
+	}
+}
+
+// TestSitesOutsideLineNamesTheFirstSites: count and the first names, sorted,
+// "…" after five.
+func TestSitesOutsideLineNamesTheFirstSites(t *testing.T) {
+	names := map[string]string{}
+	state := siteLimitOutside{CheckedAt: "2026-11-21T10:00:00Z", Sites: map[string]int{}}
+	for i, name := range []string{"g.test", "b.test", "f.test", "a.test", "e.test", "d.test", "c.test"} {
+		names[itoa(i+1)] = name
+		state.Sites[itoa(i+1)] = 1
+	}
+	state.Sites["99"] = 2 // a site that is gone
+	raw, _ := json.Marshal(state)
+	got := siteLimitOutsideProblem(string(raw), names)
+	if len(got) != 1 || got[0].Value != 7 || got[0].Subject != "a.test, b.test, c.test, d.test, e.test, …" || got[0].Action.To != "/domains/a.test" {
+		t.Fatalf("line = %+v", got)
+	}
+	if siteLimitOutsideProblem(`{"checked_at":"x"}`, names) != nil || siteLimitOutsideProblem("", names) != nil {
+		t.Fatal("a line without sites")
+	}
+}
+
 // TestDiskLimitsCountedLine: one line for the server where the hosting file
 // system has no project quota; nothing before a measurement said so, and
 // nothing where it has one.

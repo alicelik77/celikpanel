@@ -95,3 +95,18 @@ test('the card shows the move only to the administrator, in the panel’s own wi
   const overview = read('../src/components/domain/sections/OverviewSection.tsx');
   assert.match(overview, /lazy\(\(\) => import\('\.\.\/\.\.\/SiteLimitsCard'\)/, 'the card is fetched only when it is drawn');
 });
+
+test('sites whose programs run outside their limits are one administrator line with words in both languages', () => {
+  const problems = read('../src/components/ProblemsNow.tsx');
+  const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
+  assert.ok(list && list[1].includes("'site_programs_outside'"), 'the list shows the kind');
+  for (const part of ['title', 'body', 'action']) {
+    assert.ok(enSiteLimitsScreens[`pnow.site_programs_outside.${part}`], `English ${part}`);
+    assert.ok(trSiteLimitsScreens[`pnow.site_programs_outside.${part}`], `Turkish ${part}`);
+  }
+  // It names the sites and the one action on the site's page, in that action's own words.
+  assert.match(enSiteLimitsScreens['pnow.site_programs_outside.body'], /\{domain\}/);
+  assert.match(trSiteLimitsScreens['pnow.site_programs_outside.body'], /\{domain\}/);
+  assert.ok(enSiteLimitsScreens['pnow.site_programs_outside.body'].includes(`“${enSiteLimitsScreens['slim.move.button']}”`));
+  assert.ok(trSiteLimitsScreens['pnow.site_programs_outside.body'].includes(`“${trSiteLimitsScreens['slim.move.button']}”`));
+});

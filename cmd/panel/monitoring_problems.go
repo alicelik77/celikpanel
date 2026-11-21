@@ -127,6 +127,8 @@ var problemKindOrder = map[string]int{
 	"site_memory_repeated": 21,
 	"site_tasks_repeated":  22,
 	"disk_limits_counted":  23,
+	// S4 R2a: sites whose programs still run outside their limits (a to-do).
+	"site_programs_outside": 24,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

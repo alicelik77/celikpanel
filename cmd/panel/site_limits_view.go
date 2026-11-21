@@ -32,9 +32,11 @@ import (
 //     One move at a time across the Panel; a repeated request id answers the
 //     first answer.
 //   - Problems now: a site that reached its memory or process limit at two or
-//     more readings in the last day; and, once for the server, that disk
-//     limits are counted but not enforced where the hosting file system has
-//     no project quota.
+//     more readings in the last day; one line, for the administrator, naming
+//     the sites whose programs still run outside their limits (nothing moves
+//     by itself after an update or a restart); and, once for the server, that
+//     disk limits are counted but not enforced where the hosting file system
+//     has no project quota.
 //
 // Sitenin sınırları: herkes sınırları ve ne zaman aşıldığını okur; yönetici
 // hangi programların sınır içinde olduğunu da görür ve kalanları tek işlemle
@@ -373,25 +375,53 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 			placements[u.Unit] = u
 		}
 		for _, u := range site.Units {
-			found := placements[u.Unit]
-			unit := siteLimitUnitView{siteLimitUnit: u, Placement: found.Placement, OwnMB: found.Own.MemoryMB}
-			if unit.Placement == "" {
-				unit.Placement = transport.SiteUnitAbsent
+			found, ok := placements[u.Unit]
+			unit := siteLimitUnitView{siteLimitUnit: u, Placement: transport.SiteUnitAbsent, OwnMB: found.Own.MemoryMB}
+			if ok {
+				unit.Placement = siteUnitPlacement(found, status.Slice)
 			}
 			unit.Lower = found.Own.MemoryMB > memory || (found.Own.MemoryMB == 0 && unit.Placement != transport.SiteUnitAbsent && unit.Placement != transport.SiteUnitInSlice)
-			// A stopped unit whose file still names the system slice would
-			// start outside the limits: the move rewrites it.
-			if unit.Placement == transport.SiteUnitStopped && found.Slice != "" && found.Slice != status.Slice {
-				unit.Placement = siteUnitStoppedOutside
-			}
-			if unit.Placement == transport.SiteUnitOutside || unit.Placement == siteUnitStoppedOutside {
+			if siteUnitNeedsMove(unit.Placement) {
 				view.NeedsMove++
 			}
 			view.Units = append(view.Units, unit)
 		}
 		view.Busy = siteMoveBusy()
 	}
+	// Every reader's reading keeps the administrator's Problems now line
+	// current: a moved site leaves it at once.
+	p.noteSiteLimitOutside(ctx, resp.Sites, false, time.Now())
 	writeRightsJSON(w, http.StatusOK, view)
+}
+
+// siteUnitPlacement is where a unit runs as the card says it; a stopped unit
+// whose file still names the system slice would start outside the limits
+// (stopped_outside).
+func siteUnitPlacement(u transport.SiteSliceUnit, slice string) string {
+	if u.Placement == "" {
+		return transport.SiteUnitAbsent
+	}
+	if u.Placement == transport.SiteUnitStopped && u.Slice != "" && u.Slice != slice {
+		return siteUnitStoppedOutside
+	}
+	return u.Placement
+}
+
+// siteUnitNeedsMove: the administrator's move brings this unit into the
+// site's limits (it runs, or would start, in the system slice).
+func siteUnitNeedsMove(placement string) bool {
+	return placement == transport.SiteUnitOutside || placement == siteUnitStoppedOutside
+}
+
+// siteUnitsOutside counts a site's programs the move would bring in.
+func siteUnitsOutside(status transport.SiteSliceStatus) int {
+	n := 0
+	for _, u := range status.Units {
+		if siteUnitNeedsMove(siteUnitPlacement(u, status.Slice)) {
+			n++
+		}
+	}
+	return n
 }
 
 type errorString string
@@ -556,7 +586,8 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	siteLimitLedgerMu.Lock()
 	ledger := p.loadSiteLimitLedger(ctx)
 	siteLimitLedgerMu.Unlock()
-	if len(ledger) == 0 {
+	outside := p.setting(ctx, settingSiteLimitOutside)
+	if len(ledger) == 0 && outside == "" {
 		return nil
 	}
 	names := map[string]string{}
@@ -593,7 +624,93 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 		}
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
-	return problems
+	return append(problems, siteLimitOutsideProblem(outside, names)...)
+}
+
+// --- Sites whose programs still run outside their limits ---------------------
+
+// settingSiteLimitOutside keeps, per site, how many of its programs run (or
+// would start) outside its limits, as the last reading said (panel_settings;
+// no schema change). Nothing moves by itself after an update, so this is the
+// administrator's to-do list.
+const settingSiteLimitOutside = "site_limit_outside_v1"
+
+type siteLimitOutside struct {
+	CheckedAt string         `json:"checked_at"`
+	Sites     map[string]int `json:"sites,omitempty"`
+}
+
+var siteLimitOutsideMu sync.Mutex
+
+// noteSiteLimitOutside records a reading: whole (the background reading of
+// every site) replaces the list; one site's card changes that site only.
+func (p *Panel) noteSiteLimitOutside(ctx context.Context, statuses []transport.SiteSliceStatus, whole bool, now time.Time) {
+	siteLimitOutsideMu.Lock()
+	defer siteLimitOutsideMu.Unlock()
+	raw := p.setting(ctx, settingSiteLimitOutside)
+	state := siteLimitOutside{}
+	if raw != "" && !whole {
+		_ = json.Unmarshal([]byte(raw), &state)
+	}
+	if state.Sites == nil {
+		state.Sites = map[string]int{}
+	}
+	for _, status := range statuses {
+		key := strconv.Itoa(status.SiteID)
+		if n := siteUnitsOutside(status); n > 0 {
+			state.Sites[key] = n
+		} else {
+			delete(state.Sites, key)
+		}
+	}
+	state.CheckedAt = metricsTime(now)
+	if len(state.Sites) == 0 {
+		state.Sites = nil
+	}
+	next, err := json.Marshal(state)
+	if err != nil {
+		return
+	}
+	if raw == "" && state.Sites == nil {
+		return // nothing was outside and nothing is
+	}
+	if err := p.setSetting(ctx, settingSiteLimitOutside, string(next)); err != nil {
+		log.Printf("site limits: the programs outside their limits were not recorded: %v", err)
+	}
+}
+
+// siteLimitOutsideProblem is ONE line, for the administrator, naming the
+// sites (count and the first five) whose own programs run outside their
+// limits, opening the first. A to-do, not a fault: warning. Sites that are
+// gone are left out; no site left, no line.
+func siteLimitOutsideProblem(raw string, names map[string]string) []monitoringProblem {
+	if raw == "" {
+		return nil
+	}
+	var state siteLimitOutside
+	if err := json.Unmarshal([]byte(raw), &state); err != nil {
+		return nil
+	}
+	var sites []string
+	for key, n := range state.Sites {
+		if name := names[key]; name != "" && n > 0 {
+			sites = append(sites, name)
+		}
+	}
+	if len(sites) == 0 {
+		return nil
+	}
+	sort.Strings(sites)
+	listed := sites
+	if len(listed) > 5 {
+		listed = append(append([]string{}, sites[:5]...), "…")
+	}
+	subject := strings.Join(listed, ", ")
+	return []monitoringProblem{{
+		Key: "site_programs_outside", Kind: "site_programs_outside", Severity: "warning", Actor: "administrator",
+		Name: subject, Subject: subject, Value: float64(len(sites)), ObservedAt: state.CheckedAt,
+		Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(sites[0])},
+	}}
 }
 
 // readAllSiteSlices reads every site's slice once and records it.
@@ -614,7 +731,9 @@ func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
 		log.Printf("site limits: the slices could not be read: %v %s", err, resp.Error)
 		return false
 	}
-	p.noteSiteSlices(ctx, resp.Sites, time.Now())
+	now := time.Now()
+	p.noteSiteSlices(ctx, resp.Sites, now)
+	p.noteSiteLimitOutside(ctx, resp.Sites, true, now)
 	return true
 }
 

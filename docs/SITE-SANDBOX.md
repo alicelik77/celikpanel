@@ -539,6 +539,18 @@ in would leave systemd's view and the cgroup apart after a daemon-reload. So:
 - the administrator's sandbox move of a Node.js site (§6a) restarts it anyway and
   puts it into the slice, with its proof and put-back.
 
+**After a server restart.** systemd starts every unit at boot from its own file,
+before CelikPanel writes anything, and puts it in the slice its `Slice=` line names
+("Slice= … The name of the slice unit to place the unit in. Defaults to
+system.slice for all non-instantiated units of all unit types",
+systemd.resource-control(5), systemd 257; unchanged in 255). The file of every
+program written before this release, and of every program written while it ran,
+says `Slice=system.slice`. **So a site's existing program starts outside its
+site's limits again after a restart, as before, and stays outside until the
+administrator's move.** A program whose file was written while it did not run, or
+that was moved, names its site's slice and starts inside it. Nothing moves by
+itself; the administrator's Problems now line below names the sites still to move.
+
 **The administrator's move.** The site's Overview shows the administrator where
 each program runs (inside the limits, outside as before, stopped, in another slice
 an owner chose) and one action, `POST /api/v1/domains/{id}/site-limits/move
@@ -566,6 +578,15 @@ reading of a site is its baseline). The site's card says what happened and when
 who can raise it: "your provider" for a customer, the plan or reseller by name for
 the administrator. A site that reached its memory or process limit at two or more
 readings in a day is a line in Problems now.
+
+**Sites still to move.** Problems now has one more line, for the administrator
+only: the sites whose own programs run, or would start, outside their limits (their
+number and the first five names), what that means, and that "Move into the limits"
+on a site's Overview restarts that site's programs once. It opens the first site,
+is a warning (a to-do, not a fault), and goes away by itself when no site is left.
+The list comes from the background reading and from every reading of a site's
+card, so a moved site leaves it at once (`panel_settings` key
+`site_limit_outside_v1`; no schema change).
 
 **Owner independence (D-022).** The slices are native units. With the panel
 stopped, removed or unlicensed, they and their limits keep working. To lift or
