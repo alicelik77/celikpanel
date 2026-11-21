@@ -301,17 +301,19 @@ sonra:
 
 | Paket | Önce | Sonra |
 |---|---|---|
-| `internal/transport` | 62 | 62 |
+| `internal/transport` | 62 | 63 |
 | `internal/db` | 182 | 184 |
 | `internal/services` | 371 | 371 |
-| `cmd/agent` | 5854 | 5878 |
-| `cmd/panel` | 4726 | 4737 |
+| `cmd/agent` | 5854 | 5884 |
+| `cmd/panel` | 4726 | 4749 |
 
-(Geçen testler ve alt testler; Go modülünün tamamı 15838 → 15875. Bu test
-makinesinde `cmd/agent` paketinin 19 testi önce ve sonra aynı biçimde,
-makinenin kendisi yüzünden başarısız: DNS motoru durumu PowerDNS'e yetki
-vermiyor ve geçici klasörleri root grubuna ait değil.)
+(Geçen testler ve alt testler; Go modülünün tamamı 15838 → 15894, birleşmiş
+sürümde ölçüldü. Bu test makinesinde `cmd/agent` paketinin 19 testi önce ve
+sonra aynı biçimde, makinenin kendisi yüzünden başarısız: DNS motoru durumu
+PowerDNS'e yetki vermiyor ve geçici klasörleri root grubuna ait değil. Özel
+PostgreSQL 17.12 ve MariaDB 11.8 sunucularında veritabanı testleri: 22'si
+geçer, şablonları SQL_ASCII olan bir sunucu isteyen ikisi orada atlanır.)
 
-Yeni başarısızlık yok. Web: `npm test` 3090 → 3098 geçti, 0 başarısız; tür
+Yeni başarısızlık yok. Web: `npm test` 3090 → 3102 geçti, 0 başarısız; tür
 denetimi temiz ve derleme her boyut bütçesini karşılıyor (ilk yükleme yolu
 sıkıştırılmış 110,00 KiB'nin 109,38 KiB'i; alpha.142: 109,37).

@@ -295,17 +295,20 @@ and after:
 
 | Package | Before | After |
 |---|---|---|
-| `internal/transport` | 62 | 62 |
+| `internal/transport` | 62 | 63 |
 | `internal/db` | 182 | 184 |
 | `internal/services` | 371 | 371 |
-| `cmd/agent` | 5854 | 5878 |
-| `cmd/panel` | 4726 | 4737 |
+| `cmd/agent` | 5854 | 5884 |
+| `cmd/panel` | 4726 | 4749 |
 
-(Passed tests and subtests; the whole Go module 15838 → 15875. In this test
-machine 19 tests of `cmd/agent` fail identically before and after, because
-of the machine itself: its DNS engine state does not authorize PowerDNS, and
-its temporary folders are not owned by the root group.)
+(Passed tests and subtests; the whole Go module 15838 → 15894, measured on
+the merged release. In this test machine 19 tests of `cmd/agent` fail
+identically before and after, because of the machine itself: its DNS engine
+state does not authorize PowerDNS, and its temporary folders are not owned by
+the root group. The database tests on private PostgreSQL 17.12 and MariaDB
+11.8 servers: 22 pass, and the two that need a server whose templates are
+SQL_ASCII are skipped there.)
 
-No new failure. Web: `npm test` 3090 → 3098 passed, 0 failed; the type
+No new failure. Web: `npm test` 3090 → 3102 passed, 0 failed; the type
 check is clean and the build meets every size budget (first-load path
 109.38 KiB of 110.00 KiB compressed; alpha.142: 109.37).
