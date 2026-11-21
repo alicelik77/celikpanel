@@ -21,8 +21,9 @@ günceller.**
    geri yüklemek demektir.
 3. Panel güncellemeden sonraki ilk açılışında posta imzası ayarlarını yapar
    (aşağıda "Giden posta ve imzası"). Sahibin elle değiştirdiği bir ayar
-   korunur ve **Şu anki sorunlar**da adlandırılır. Basmanız gereken bir şey
-   yok.
+   korunur ve **Şu anki sorunlar**da adlandırılır. Kendisinin olmayan bir
+   adresten yanıt veren otomatik yanıt o adres olmadan yeniden ayarlanır ve
+   penceresi bunu bir kez söyler. Basmanız gereken bir şey yok.
 4. Açılıştan birkaç dakika sonra, güncelleme doğrulanmış ve sunucu sakinken
    panel, alpha.141'den önce açılan ve kendi başına kapatabileceği
    PostgreSQL veritabanlarını izlemeye başlar; her birini, başka kimsenin
@@ -34,12 +35,14 @@ günceller.**
 
 - **Başka bir müşterinin alan adıyla imzalanan posta.** Posta sunucusu,
   "Kimden" satırında burada barındırılan bir alan adı geçen her iletiyi
-  imzalıyordu; hem girişini kullanarak gönderen bir posta kutusu için hem
-  de sunucuya girişsiz posta bırakan bir web sitesi için. Böylece başka bir
-  müşterinin adresini taşıyan posta, o müşterinin geçerli imzasıyla bu
-  sunucudan çıkabiliyordu. Artık posta kutusu girişiyle gönderilen posta
-  yalnız o posta kutusunun kendi alan adı için imzalanır; 25. porta gelen
-  posta hiç imzalanmaz.
+  imzalıyordu: hem girişini kullanarak gönderen bir posta kutusu için hem
+  de sunucuya girişsiz posta bırakan bir web sitesi için. Ayrıca bir
+  otomatik yanıt, başka bir müşterinin adresinden yanıt verecek biçimde
+  ayarlanabiliyordu. Böylece başka bir müşterinin adresini taşıyan posta, o
+  müşterinin geçerli imzasıyla bu sunucudan çıkabiliyordu. Artık posta
+  kutusu girişiyle gönderilen posta yalnız o posta kutusunun kendi alan adı
+  için imzalanır, 25. porta gelen posta hiç imzalanmaz ve otomatik yanıt
+  yalnız kutunun kendi adreslerinden verilir.
 - **Her hesaba açık eski PostgreSQL veritabanları.** alpha.141'den önce
   açılan veritabanları PostgreSQL'in varsayılanını koruyordu: sunucudaki
   her veritabanı kullanıcısı her veritabanına bağlanabilir ve içinde geçici
@@ -61,20 +64,46 @@ günceller.**
 - **Postayı 25. porta girişsiz bırakan bir web sitesi** artık imzalanmaz.
   Postasının imzalı kalması için sitenin postasını, kendi posta
   kutularından biriyle 587 numaralı portta giriş yapacak biçimde ayarlayın.
-- **Sunucunun kendisinde oluşan posta** (panelin bildirimleri, zamanlanmış
-  görevlerin postası, otomatik yanıtlar) eskisi gibi "Kimden" alan adı için
-  imzalanır.
-- Web postası, posta programları, otomatik yanıtlar ve yönlendirmeler
-  bunun dışında eskisi gibi çalışır; gelen posta değişmez.
-- **Sahip için:** değişiklik, panel durdurulsa ya da kaldırılsa da çalışan
-  olağan posta sunucusu ayarlarıdır. CelikPanel yeni bir imza ayarını
-  kullanmadan önce posta imzalayıcısı onu denetler; posta sunucusu onunla
-  çalışmazsa önceki ayar geri konur. Sahibin elle değiştirdiği bir imza
-  ayar dosyası ya da süzgeç ayarı olduğu gibi kalır: CelikPanel'in kendi
-  metni yanına `opendkim.conf.celikpanel-pending` olarak konur ve **Şu anki
-  sorunlar** postanın hâlâ başka bir müşterinin alan adıyla
-  imzalanabileceğini söyler; panelin günlüğü ayarı ve sahibin adımını
-  adlandırır.
+- **Otomatik yanıtlar** kutunun kendi adresinden ya da aynı hesabın bir
+  alan adından kutuya yönlendirilmiş bir ek adresten verilir. Başka bir
+  adres, yanıt kaydedilirken reddedilir. Önceden kaydedilmiş ve başka bir
+  adresi adlandıran yanıt, güncellemeden sonraki ilk açılışta o adres
+  olmadan yeniden ayarlanır. Penceresi hangi adreslerin çıkarıldığını bir
+  kez söyler; denetim kaydında satırı vardır.
+- **Sunucunun kendisinde oluşan posta** eskisi gibi "Kimden" alan adı için
+  imzalanır: panelin bildirimleri (sahibin ana alan adı), sistemin kendi
+  zamanlanmış işleri (root'unkiler) ve otomatik yanıtlar. Postayı bu yolla
+  yalnız sistemin root ve posta hesapları teslim edebilir.
+- **Gelen posta:** posta imzalayıcısı 25. porta gelen postanın imzalarını
+  artık denetlemez ve ona "Authentication-Results" satırını eklemez. Rspamd
+  kuruluysa onları spam puanı için yine denetler. SpamAssassin'de yalnız
+  DKIM denetimi çalışıyorsa sayılır. Spam süzgeci yoksa onları hiçbir şey
+  denetlemez. CelikPanel'de bu satırı kullanan hiçbir şey yoktu.
+- Web postası, posta programları ve yönlendirmeler bunun dışında eskisi
+  gibi çalışır.
+- **Sahip için:**
+  - Değişiklik, panel durdurulsa ya da kaldırılsa da çalışan olağan posta
+    sunucusu ayarlarıdır.
+  - CelikPanel yeni bir imza ayarını kullanmadan önce posta imzalayıcısı
+    onu denetler. Posta sunucusu onunla çalışmazsa önceki ayarlar birebir
+    geri konur.
+  - Bir kesintinin yarım bıraktığı imzalayıcı yeniden başlatması sonraki
+    açılışta yapılır.
+  - Sahibin posta sunucusunun listesine eklediği süzgeç 25. portta da
+    kalır. CelikPanel'in kendi 25. port ayarı, imzalayıcı kaldırılınca
+    silinir.
+  - Sahibin elle değiştirdiği imza dosyası ya da 25. port süzgeç ayarı
+    olduğu gibi kalır (CelikPanel'in metni yanında
+    `opendkim.conf.celikpanel-pending` olarak durur). **Şu anki sorunlar**
+    dosyayı ya da ayarı ve sahibin somut adımını söyler.
+  - **Şu anki sorunlar** bunu, girişsiz posta teslim edebilecek hesapları
+    belirleyen ayar panelinki (`authorized_submit_users = root, vmail`)
+    olmadığında da söyler; çünkü o zaman sitelerin programları buradaki her
+    alan adı adına imzalı posta gönderebilir.
+  - İmzalayıcı yeniden başlarken posta imzasız geçer. Sahip kendi süzgeç
+    listesini ve kendi `milter_default_action` değerini tutuyorsa onun
+    yerine o ayar geçerlidir: Postfix'in varsayılanı gönderenlere geçici
+    hata verir, onlar da yeniden gönderir.
 
 ### alpha.141'den önce açılan PostgreSQL veritabanları
 
@@ -145,10 +174,15 @@ günceller.**
 
 ## Bilinen sınırlar
 
-- Arch Linux'un OpenDKIM paketi imzayı girişe bağlayamaz: orada girişle
+- Arch Linux'un OpenDKIM paketi imzayı girişe bağlayamaz. Orada girişle
   gönderilen posta, "Kimden" satırında geçen barındırılan her alan adı için
-  hâlâ imzalanır. Orada da 25. port imzaya kapalıdır ve **Şu anki
-  sorunlar** bunu söyler.
+  hâlâ imzalanır. 25. port orada da imzaya kapalıdır. **Şu anki sorunlar**
+  bunu söyler ve oradaki OpenDKIM'in reddettiği bir ayarı asla önermez.
+- Otomatik yanıtın ek adresi, panelin bildiği bir yönlendirme olmalıdır.
+  Sunucu sahibinin posta sunucusunun tablolarına elle yazdığı takma ad
+  reddedilir.
+- Yanıtlar panelin kayıtlarından düzeltilir. Panel kaydı olmayan bir
+  CelikPanel yanıt betiği yeniden yazılmaz.
 - **Bir veritabanını başka bir PostgreSQL sürümüne taşımak** (yönetici
   işlemi: yalnız yönetici başlatabilir), alpha.141'de olduğu gibi, taşıma
   sırasında içindeki müşterilerin veritabanı kodunu hâlâ yöneticinin
@@ -185,13 +219,16 @@ günceller.**
 - Yapı şema 81'dir: alpha.142'ye dönmek, güncellemeden önce alınan anlık
   görüntüyü ya da yedeği geri yüklemek demektir.
 - Posta kutusu girişiyle gönderilen posta yalnız kendi alan adı için
-  imzalanır; postayı 25. porta girişsiz bırakan bir web sitesi artık
-  imzalanmaz.
-- Güncellemeden bir gün sonra, alpha.141'den önce açılan PostgreSQL
-  veritabanları başka kimsenin kullandığının görülmediği yerde başka
-  hesaplara kapatılır; o zamana dek PostgreSQL sayfası her birinin ne zaman
+  imzalanır; 25. porta girişsiz bırakılan posta (örneğin bir web sitesinin)
+  artık imzalanmaz.
+- Kendisinin olmayan bir adresi adlandıran otomatik yanıt, ilk açılışta o
+  adresi kaybeder ve penceresi hangi adresin çıkarıldığını bir kez söyler.
+- alpha.141'den önce açılan ve başka kimsenin kullandığı görülmeyen bir
+  PostgreSQL veritabanı, izlemesi başladıktan en az 24 saat sonraki ilk
+  saatlik denetimde, en az 24 saatlik denetim onu okumuşsa kendiliğinden
+  başka hesaplara kapatılır; o zamana dek PostgreSQL sayfası ne zaman
   kapanacağını gösterir. Diğerleri yöneticiye **Şu anki sorunlar**da ve
-  PostgreSQL sayfasında listelenir.
+  PostgreSQL sayfasında, her biri onu kapatan tek düğmeyle listelenir.
 - Alan adı bir sunucu adının ya da yöneticinin bir adının altında olan bir
   müşteri yeniden onun alt alan adlarını ekleyebilir.
 
@@ -222,7 +259,21 @@ geçen testler:
   `a` girişli ve `b` "Kimden"li postayı `a` olarak, `a` girişli boş
   göndericiyi `a` olarak, girişsiz yerel postayı "Kimden" alan adıyla
   imzaladı ve kimliği doğrulanmamış dış istemciye imza vermedi; Arch'ta
-  önceki yapılandırma kabul edilir.
+  önceki yapılandırma kabul edilir. Bağımsız incelemenin durumları:
+  `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestAutoresponderAgentRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningPort25SettingGoesWithOpenDKIM`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart`,
+  `TestMailSigningUnknownReplacesAnEarlierInPlace`,
+  `TestMailSigningUnsupportedOwnerIsNeverAdvisedTheLine`,
+  `TestMailSigningRestartWindowIsSaid` ve
+  `TestMailSigningChainIsWrittenBeforeOpenDKIMRestarts`; matriste, sürümün
+  gerçek Postfix araçlarıyla, sahibin sonradan eklediği 25. port süzgeci,
+  birebir geri alma ve sahibin `authorized_submit_users` ayarı; her imza
+  durumunun sözleri `web/tests/mail-signing-a143-fix.test.mjs` içinde.
 - PostgreSQL, özel bir PostgreSQL 17.12 sunucusunda:
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve bağımsız
   incelemenin durumları

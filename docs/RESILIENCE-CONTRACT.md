@@ -9170,7 +9170,7 @@ until the backup reports ready.
   account names are derived from domain names; mail is signed for any
   hosted domain (the next release). **No P0 item is closed.**
 
-### Branches security/s3b-mail-signing, security/s1b-pg-leftovers and fix/a143-lab-corrections (mail signed only for the sender's own domain; PostgreSQL databases made before alpha.141, corrected after the independent review in fix/a143-pg, the cluster move taken out; the alpha.142 lab's four corrections; schema 80 -> 81, triggers only; constitution 1; invariants 1, 2, 3 and 4; D-022; D-024; D-025; 2026-11-21, candidate alpha.143)
+### Branches security/s3b-mail-signing, security/s1b-pg-leftovers and fix/a143-lab-corrections (mail signed only for the sender's own domain, corrected after the independent review in fix/a143-mail; PostgreSQL databases made before alpha.141, corrected after the independent review in fix/a143-pg, the cluster move taken out; the alpha.142 lab's four corrections; schema 80 -> 81, triggers only; constitution 1; invariants 1, 2, 3 and 4; D-022; D-024; D-025; 2026-11-21, candidate alpha.143)
 
 - **Why it is here.** The mail repair step at the panel's start writes
   native OpenDKIM and Postfix settings; the PostgreSQL loop changes native
@@ -9188,7 +9188,14 @@ until the backup reports ready.
 - **Defects (each shown before the fix by a test).** OpenDKIM signed any
   message whose `From:` named a hosted domain, for authenticated and local
   clients and on port 25, so mail with another customer's address left with
-  that customer's signature; PostgreSQL databases made before alpha.141 kept
+  that customer's signature (the independent review of the first version
+  found: an out-of-office reply could answer, signed, from another account's
+  address; site mail was signed by its `From:` while `authorized_submit_users`
+  was not the panel's, yet shown as in place; the port-25 list overrode the
+  owner's later filters and outlived OpenDKIM; a restart missed after the
+  rename was never made; the state was recorded only at the start; Arch was
+  advised a line its OpenDKIM refuses; rollback wrote defaults out);
+  PostgreSQL databases made before alpha.141 kept
   PUBLIC's CONNECT and TEMPORARY (the independent review of the first
   version found: an answer lost after COMMIT deleted the undo's record, a
   failing close was retried hourly and hidden, roles using a database
@@ -9199,8 +9206,15 @@ until the backup reports ready.
   refused, the administrator was told a far holder, a failed Node.js unit
   blocked its site's deletion, and kept owner modes were not named.
 - **Contract.** `SenderMacro {auth_authen}` ties the signing key to the
-  login; the port-25 smtpd gets its own `smtpd_milters` without OpenDKIM; a
-  build without `SenderMacro` keeps the earlier configuration and says so.
+  login; the port-25 smtpd gets `main.cf`'s milter list without OpenDKIM,
+  recomputed at every start and removed with OpenDKIM; an out-of-office reply
+  answers only from the mailbox's own address or a forwarder to it from the
+  same account's domains (panel and Agent; earlier replies are rendered again
+  without a foreign address, said once and audited); signing is shown as in
+  place only when `authorized_submit_users` is `root, vmail`, and every path
+  that changes signing records its state (an early return is unknown); a
+  build without `SenderMacro` keeps the earlier configuration, says so and is
+  never advised the option.
   An older database is closed by itself only with untouched default rights,
   no unrecorded role with any footprint inside it, every recorded user's role
   present, no monitoring or replication role on its cluster, and after a
@@ -9232,15 +9246,24 @@ until the backup reports ready.
   `postgresql_public_v1:<id>` and `postgresql_public_list_v1`.
 - **Recovery.** A new `opendkim.conf` is checked with `opendkim -n` before
   the rename and put back if OpenDKIM does not run with it; Postfix writes
-  are undone in reverse order on any failure and Postfix reloaded; mail
-  passes unsigned during a restart (`milter_default_action = accept`). A
-  close interrupted anywhere leaves the database untouched or closed with
+  are undone in reverse order on any failure (a setting that was at its
+  default is removed again) and Postfix reloaded; an OpenDKIM restart is
+  recorded as owed before the rename and made at the next start after an
+  interruption; mail passes unsigned during a restart
+  (`milter_default_action = accept`, or the owner's own value where he keeps
+  the lists). A close interrupted anywhere leaves the database untouched or closed with
   its grants, and the panel's record of it until the engine shows which; an undo whose database changed since is refused
   and changes nothing. Everything is native configuration and rights that
   work without the panel; the owner undoes them with the plain settings or
   statements named in `docs/TENANT-ISOLATION.md` and `docs/DATABASE-USERS.md`.
 - **Evidence.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` and the
   distribution matrix's real OpenDKIM on Debian 12/13 and Ubuntu 22.04/24.04;
+  the mail fix round's `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart` and the matrix's real
+  `postconf` cases;
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the fix
   round's `TestS1bFix*` on a private PostgreSQL 17.12 (an answer lost after
   COMMIT, column rights, settings, policies and user mappings, a role named

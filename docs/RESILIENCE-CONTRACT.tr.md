@@ -8392,7 +8392,7 @@ bağlantıyı tutar.
   her alan adı için imzalanır (sonraki sürüm). **Hiçbir P0 maddesi
   kapanmadı.**
 
-### security/s3b-mail-signing, security/s1b-pg-leftovers ve fix/a143-lab-corrections dalları (posta yalnız göndericinin kendi alan adı için imzalanır; alpha.141'den önce açılan PostgreSQL veritabanları, bağımsız incelemeden sonra fix/a143-pg'de düzeltildi, küme taşıması çıkarıldı; alpha.142 laboratuvarının dört düzeltmesi; şema 80 -> 81, yalnız tetikleyiciler; anayasa 1; ilke 1, 2, 3 ve 4; D-022; D-024; D-025; 2026-11-21, aday alpha.143)
+### security/s3b-mail-signing, security/s1b-pg-leftovers ve fix/a143-lab-corrections dalları (posta yalnız göndericinin kendi alan adı için imzalanır, bağımsız incelemeden sonra fix/a143-mail'de düzeltildi; alpha.141'den önce açılan PostgreSQL veritabanları, bağımsız incelemeden sonra fix/a143-pg'de düzeltildi, küme taşıması çıkarıldı; alpha.142 laboratuvarının dört düzeltmesi; şema 80 -> 81, yalnız tetikleyiciler; anayasa 1; ilke 1, 2, 3 ve 4; D-022; D-024; D-025; 2026-11-21, aday alpha.143)
 
 - **Neden burada.** Panelin açılışındaki posta onarım adımı doğal OpenDKIM
   ve Postfix ayarlarını yazar; PostgreSQL döngüsü doğal veritabanı haklarını
@@ -8412,7 +8412,15 @@ bağlantıyı tutar.
   `From:` satırında barındırılan bir alan adı geçen her iletiyi, kimliği
   doğrulanmış ve yerel istemciler için ve 25. portta imzalıyordu; böylece
   başka bir müşterinin adresini taşıyan posta o müşterinin imzasıyla
-  çıkıyordu; alpha.141'den önce açılan PostgreSQL veritabanları PUBLIC'in
+  çıkıyordu (ilk sürümün bağımsız incelemesi şunları buldu: otomatik yanıt
+  başka bir hesabın adresinden imzalı yanıt verebiliyordu; site postası,
+  `authorized_submit_users` panelinki değilken `From:` satırına göre
+  imzalanıyor, yine de yerinde gösteriliyordu; 25. port listesi sahibin
+  sonradan eklediği süzgeçlerin önüne geçiyor ve OpenDKIM'den sonra da
+  kalıyordu; yeniden adlandırmadan sonra kaçırılan yeniden başlatma hiç
+  yapılmıyordu; durum yalnız açılışta kaydediliyordu; Arch'a OpenDKIM'inin
+  reddettiği bir satır öneriliyordu; geri alma varsayılanları dosyaya
+  yazıyordu); alpha.141'den önce açılan PostgreSQL veritabanları PUBLIC'in
   CONNECT ve TEMPORARY haklarını koruyordu (ilk sürümün bağımsız incelemesi
   şunları buldu: COMMIT'ten sonra kaybolan yanıt geri almanın kaydını
   siliyordu, başarısız kapatma saatte bir yeniden deneniyor ve gizleniyordu,
@@ -8425,8 +8433,15 @@ bağlantıyı tutar.
   Node.js birimi sitesinin silinmesini engelliyordu ve korunan sahip
   kipleri adlandırılmıyordu.
 - **Sözleşme.** `SenderMacro {auth_authen}` imza anahtarını girişe bağlar;
-  25. port smtpd'si OpenDKIM'siz kendi `smtpd_milters` ayarını alır;
-  `SenderMacro`'suz bir derleme önceki yapılandırmayı korur ve bunu söyler.
+  25. port smtpd'si `main.cf` süzgeç listesini OpenDKIM'siz alır, liste her
+  açılışta yeniden hesaplanır ve OpenDKIM ile birlikte silinir; otomatik
+  yanıt yalnız kutunun kendi adresinden ya da aynı hesabın alan adlarından
+  ona yönlendirilmiş bir adresten verilir (panel ve Agent; önceki yanıtlar
+  yabancı adres olmadan yeniden yazılır, bir kez söylenir ve denetim
+  kaydına geçer); imza yalnız `authorized_submit_users` `root, vmail`
+  olduğunda yerinde gösterilir ve imzayı değiştiren her yol durumunu
+  kaydeder (erken dönüş bilinmeyendir); `SenderMacro`'suz bir derleme önceki
+  yapılandırmayı korur, bunu söyler ve ona seçenek asla önerilmez.
   Eski bir veritabanı kendiliğinden yalnız dokunulmamış varsayılan
   haklarda, içinde hiçbir izi olan kayıt dışı rol yokken, kayıtlı her
   kullanıcının rolü varken, kümesinde izleme ya da çoğaltma rolü yokken ve
@@ -8460,9 +8475,12 @@ bağlantıyı tutar.
   `postgresql_public_list_v1`.
 - **Kurtarma.** Yeni bir `opendkim.conf`, yeniden adlandırmadan önce
   `opendkim -n` ile denetlenir ve OpenDKIM onunla çalışmazsa geri konur;
-  Postfix yazmaları herhangi bir hatada ters sırayla geri alınır ve Postfix
-  yeniden yüklenir; yeniden başlatma sırasında posta imzasız geçer
-  (`milter_default_action = accept`). Herhangi bir yerde kesilen kapatma
+  Postfix yazmaları herhangi bir hatada ters sırayla geri alınır (varsayılanında
+  olan ayar yeniden silinir) ve Postfix yeniden yüklenir; OpenDKIM'in yeniden
+  başlatılması yeniden adlandırmadan önce borç olarak kaydedilir ve bir
+  kesintiden sonraki açılışta yapılır; yeniden başlatma sırasında posta
+  imzasız geçer (`milter_default_action = accept` ya da listeleri sahip
+  tutuyorsa sahibin kendi değeri). Herhangi bir yerde kesilen kapatma
   veritabanını dokunulmamış ya da haklarıyla kapatılmış bırakır, panelin
   kaydını da motor hangisi olduğunu gösterene dek korur; veritabanı o zamandan beri değişmişse geri alma reddedilir ve
   hiçbir şey değiştirmez. Hepsi panel olmadan da çalışan doğal yapılandırma
@@ -8471,6 +8489,12 @@ bağlantıyı tutar.
   alır.
 - **Kanıt.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` ve dağıtım
   matrisinde Debian 12/13 ve Ubuntu 22.04/24.04'ün gerçek OpenDKIM'i;
+  posta düzeltme turunun `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart` testleri ve matrisin
+  gerçek `postconf` durumları;
   özel PostgreSQL 17.12'de
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve düzeltme
   turunun `TestS1bFix*` testleri (COMMIT'ten sonra kaybolan yanıt, sütun

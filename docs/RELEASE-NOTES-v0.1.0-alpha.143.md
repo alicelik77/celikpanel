@@ -20,8 +20,9 @@ screen.**
    update takes, as for every release that changes the layout.
 3. At its first start after the update, the panel sets the mail signing
    settings (see "Outgoing mail and its signature"). A setting the owner
-   changed by hand is kept and named in **Problems now**. There is nothing
-   to press.
+   changed by hand is kept and named in **Problems now**. An out-of-office
+   reply that answered from an address not its own is set again without
+   that address, and its window says so once. There is nothing to press.
 4. A few minutes after the start, once the update is verified and the
    server is quiet, the panel starts watching the PostgreSQL databases made
    before alpha.141 that it may close by itself, and closes each one after a
@@ -34,10 +35,12 @@ screen.**
 - **Mail signed with another customer's domain.** The mail server signed
   any message whose "From" line named a domain hosted here, both for a
   mailbox sending with its login and for a website handing mail to the
-  server without one. So mail carrying another customer's address could
-  leave this server with that customer's valid signature. Now mail sent
-  with a mailbox login is signed only for that mailbox's own domain, and
-  mail arriving on port 25 is never signed.
+  server without one, and an out-of-office reply could be set to answer
+  from another customer's address. So mail carrying another customer's
+  address could leave this server with that customer's valid signature.
+  Now mail sent with a mailbox login is signed only for that mailbox's own
+  domain, mail arriving on port 25 is never signed, and an out-of-office
+  reply answers only from the mailbox's own addresses.
 - **Older PostgreSQL databases open to every account.** Databases made
   before alpha.141 kept PostgreSQL's default, under which every database
   user of the server may connect to every database and make temporary
@@ -58,18 +61,45 @@ screen.**
 - **A website that hands mail to port 25 without a login** is no longer
   signed. To keep its mail signed, set the site's mail to sign in with one
   of its own mailboxes on port 587.
-- **Mail made on the server itself** (the panel's notices, scheduled tasks'
-  mail, out-of-office replies) is signed for its "From" domain as before.
-- Webmail, mail programs, out-of-office replies and forwards otherwise
-  behave as before; incoming mail is not changed.
-- **For the owner:** the change is ordinary mail server settings that work
-  with the panel stopped or removed. Before CelikPanel uses a new signing
-  setting, the mail signer checks it; if the mail server does not run with
-  it, the earlier setting is put back. A signing settings file or filter
-  setting the owner changed by hand stays as it is: CelikPanel's own text
-  is placed beside it as `opendkim.conf.celikpanel-pending`, and **Problems
-  now** says that mail may still be signed for another customer's domain,
-  with the panel's log naming the setting and the owner's step.
+- **Out-of-office replies** answer from the mailbox's own address, or from
+  an additional address forwarded to the mailbox from a domain of the same
+  account. Another address is refused when the reply is saved. A reply
+  saved earlier that named another address is set again without it at the
+  first start after the update. Its window says once which addresses were
+  removed, and the audit log has a row.
+- **Mail made on the server itself** is signed for its "From" domain as
+  before: the panel's notices (the owner's main domain), the system's own
+  scheduled jobs (root's) and out-of-office replies. Only the system's root
+  and mail accounts may hand mail over this way.
+- **Incoming mail:** the mail signer no longer checks the signatures of
+  mail arriving on port 25, and no longer adds its "Authentication-Results"
+  line. Rspamd, where installed, still checks them for its spam score. With
+  SpamAssassin they count only where its DKIM check runs. Without a spam
+  filter nothing checks them. Nothing in CelikPanel used that line.
+- Webmail, mail programs and forwards otherwise behave as before.
+- **For the owner:**
+  - The change consists of ordinary mail server settings that work with
+    the panel stopped or removed.
+  - Before CelikPanel uses a new signing setting, the mail signer checks
+    it. If the mail server does not run with it, the earlier settings are
+    put back exactly.
+  - A restart of the mail signer that an interruption left undone is made
+    at the next start.
+  - A filter the owner adds to the mail server's list also stays on port
+    25. CelikPanel's own port-25 setting is removed when the mail signer is
+    removed.
+  - A signing file or port-25 filter setting the owner changed by hand
+    stays as it is (CelikPanel's text is beside it as
+    `opendkim.conf.celikpanel-pending`). **Problems now** names the file or
+    setting and the owner's concrete step.
+  - **Problems now** also does this when the setting that decides which
+    accounts may hand mail over without a login is not the panel's
+    (`authorized_submit_users = root, vmail`), because sites' programs
+    could then send mail signed for any domain here.
+  - While the mail signer restarts, mail passes unsigned. Where the owner
+    keeps his own filter list and his own `milter_default_action`, that
+    setting applies instead: Postfix's default gives senders a temporary
+    error, and they send again.
 
 ### PostgreSQL databases made before alpha.141
 
@@ -137,10 +167,15 @@ screen.**
 
 ## Known limits
 
-- Arch Linux's OpenDKIM package cannot tie signing to the login: there, mail
-  sent with a login is still signed for any hosted domain its "From" line
-  names. Port 25 is closed to signing there too, and **Problems now** says
-  so.
+- Arch Linux's OpenDKIM package cannot tie signing to the login. There,
+  mail sent with a login is still signed for any hosted domain its "From"
+  line names. Port 25 is closed to signing there too. **Problems now** says
+  so, and never advises a setting that OpenDKIM there refuses.
+- An additional out-of-office address must be a forwarder the panel knows.
+  An alias the server owner wrote by hand into the mail server's tables is
+  refused.
+- Replies are corrected from the panel's records. A CelikPanel reply script
+  on a server whose panel record is missing is not rewritten.
 - **Moving a database to another PostgreSQL server version** (an
   administrator action: only the administrator can start one) still runs
   the customers' database code in it with the administrator's rights during
@@ -177,12 +212,18 @@ screen.**
 - The update takes a few minutes and says by itself when it has finished.
 - The layout is schema 81: going back to alpha.142 means restoring the
   snapshot or backup taken before the update.
-- Mail sent with a mailbox login is signed only for its own domain; a
-  website handing mail to port 25 without a login is no longer signed.
-- From a day after the update, PostgreSQL databases made before alpha.141
-  are closed to other accounts where nobody else was seen using them; until
-  then the PostgreSQL page shows when each one closes. The others are listed
-  for the administrator in **Problems now** and on the PostgreSQL page.
+- Mail sent with a mailbox login is signed only for its own domain; mail
+  handed to port 25 without a login (for example by a website) is no
+  longer signed.
+- An out-of-office reply that named an address not its own loses that
+  address at the first start, and its window says once which address was
+  removed.
+- A PostgreSQL database made before alpha.141 that nobody else is seen
+  using is closed to other accounts by itself at the first hourly check at
+  least 24 hours after its watch began, once at least 24 hourly checks have
+  read it; until then the PostgreSQL page shows when it closes. The others
+  are listed for the administrator in **Problems now** and on the
+  PostgreSQL page, each with one button to close it.
 - A customer whose domain lies under a server name or an administrator's
   name can add subdomains of it again.
 
@@ -212,7 +253,21 @@ this release's:
   22.04 and Ubuntu 24.04 signed a login of `a` with a "From" of `b` as `a`,
   a null sender with a login of `a` as `a`, local mail without a login by
   its "From" domain, and gave an unauthenticated outside client no
-  signature; on Arch the earlier configuration is accepted.
+  signature; on Arch the earlier configuration is accepted. The
+  independent review's cases: `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestAutoresponderAgentRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningPort25SettingGoesWithOpenDKIM`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart`,
+  `TestMailSigningUnknownReplacesAnEarlierInPlace`,
+  `TestMailSigningUnsupportedOwnerIsNeverAdvisedTheLine`,
+  `TestMailSigningRestartWindowIsSaid` and
+  `TestMailSigningChainIsWrittenBeforeOpenDKIMRestarts`; in the matrix, with
+  the release's real Postfix tools, an owner's later port-25 filter, exact
+  rollback and an owner's `authorized_submit_users`; the words of each
+  signing state in `web/tests/mail-signing-a143-fix.test.mjs`.
 - PostgreSQL, on a private PostgreSQL 17.12 server:
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the
   independent review's cases
