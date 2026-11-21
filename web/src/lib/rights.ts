@@ -320,6 +320,9 @@ export interface RightsPreview {
     sites_above?: string[];
     sites_above_count?: number;
     sites_unread?: boolean;
+    /** S4 R2a: sites whose programs use more now than a lowered site limit (stopped at once when saved). */
+    sites_stopped?: string[];
+    sites_stopped_count?: number;
     message: string;
 }
 
@@ -477,6 +480,8 @@ export function decodePreview(raw: unknown): RightsPreview {
         ceilings_lowered: Array.isArray(raw.ceilings_lowered) ? strings(raw.ceilings_lowered) : undefined,
         sites_above: Array.isArray(raw.sites_above) ? strings(raw.sites_above) : undefined,
         sites_above_count: typeof raw.sites_above_count === 'number' ? raw.sites_above_count : undefined,
+        sites_stopped: Array.isArray(raw.sites_stopped) ? strings(raw.sites_stopped) : undefined,
+        sites_stopped_count: typeof raw.sites_stopped_count === 'number' ? raw.sites_stopped_count : undefined,
         sites_unread: raw.sites_unread === true || undefined,
         message: typeof raw.message === 'string' ? raw.message : '',
     };

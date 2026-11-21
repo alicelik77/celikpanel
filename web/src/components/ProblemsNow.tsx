@@ -57,7 +57,8 @@ export type ProblemKind =
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
     | 'disk_limits_counted'
-    | 'site_programs_outside';
+    | 'site_programs_outside'
+    | 'site_limits_unsupported';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -72,6 +73,8 @@ const KINDS: readonly ProblemKind[] = [
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
     // S4 R2a: sites whose programs still run outside their limits (a to-do).
     'site_programs_outside',
+    // S4 R2a: this server cannot enforce a site's limits at all.
+    'site_limits_unsupported',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
 

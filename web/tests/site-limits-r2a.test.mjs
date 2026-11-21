@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
-import { decodeMoveAnswer, decodeSiteLimits, eventKey, lowerUnits, moveSteps, newMoveRequestID } from '../src/lib/siteLimits.ts';
+import { decodeMoveAnswer, decodeSiteLimits, eventKey, lowerUnits, moveSteps, newMoveRequestID, notMovedReason } from '../src/lib/siteLimits.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -94,6 +94,50 @@ test('the card shows the move only to the administrator, in the panel’s own wi
   assert.equal(steps[2].note, 'it is failed after the restart');
   const overview = read('../src/components/domain/sections/OverviewSection.tsx');
   assert.match(overview, /lazy\(\(\) => import\('\.\.\/\.\.\/SiteLimitsCard'\)/, 'the card is fetched only when it is drawn');
+});
+
+test('the card never promises limits that do not apply, never blames the plan for what is not its limit, and speaks to a reseller as the provider', () => {
+  const card = read('../src/components/SiteLimitsCard.tsx');
+  // "stayed within their limits" only where the limits apply.
+  assert.match(card, /applies === 'yes' && \(\s*<p[^>]*data-site-limits-events="none"/, 'no "stayed within" where nothing applies');
+  for (const state of ['outside', 'no_file', 'unsupported']) {
+    for (const words of [enSiteLimitsScreens, trSiteLimitsScreens]) assert.ok(words[`slim.applies.${state}`], `${state} has words`);
+  }
+  // Events not proved at the site's limit name neither the plan nor a fix.
+  for (const kind of ['memory_other', 'tasks_other']) {
+    for (const words of [enSiteLimitsScreens, trSiteLimitsScreens]) assert.ok(!/\{limit\}/.test(words[`slim.event.${kind}`]), `${kind} names no plan`);
+  }
+  assert.match(card, /\{atLimit && <p/, 'the fix is shown only for the site’s own limit');
+  const view = decodeSiteLimits({ known: true, admin: false, reseller: true, limits: [], applies: 'no_file',
+    events: [{ kind: 'memory_other', count: 1, last_at: '2026-11-21T10:00:00Z' }, { kind: 'tasks_other', count: 2, last_at: '2026-11-21T10:00:00Z' }] });
+  assert.equal(view.events.length, 2, 'the other events are read');
+  assert.equal(view.reseller, true);
+  assert.match(card, /view\.reseller \? 'slim\.who\.reseller'/, 'a reseller reads the provider’s words');
+  assert.match(card, /view\.reseller \? 'slim\.fix\.reseller'/, 'and the provider’s fix');
+  assert.match(enSiteLimitsScreens['slim.who.reseller'], /within your own/);
+  // The owner's drop-ins by name, the units the move cannot take with who acts.
+  assert.match(card, /slim\.dropIns/);
+  for (const reason of ['edited', 'older', 'owner_slice']) assert.ok(enSiteLimitsScreens[`slim.blocked.${reason}`] && trSiteLimitsScreens[`slim.blocked.${reason}`], `${reason} has words`);
+  assert.equal(notMovedReason('kept'), 'edited');
+  assert.equal(notMovedReason('changed'), 'changed');
+  assert.equal(notMovedReason('moved'), undefined);
+  // The move's wait is stated, not "20 seconds".
+  assert.ok(!/20 (seconds|saniye)/.test(enSiteLimitsScreens['slim.move.body'] + trSiteLimitsScreens['slim.move.body']));
+  assert.match(enSiteLimitsScreens['slim.move.body'], /\{seconds\}/);
+  // The database keys say which is a default and which a firm limit.
+  assert.match(enSiteLimitsScreens['limits.key.db.statement_seconds'], /Default/);
+  assert.match(enSiteLimitsScreens['limits.key.db.temp_file_mb'], /firm limit/);
+});
+
+test('a lowered limit lists the sites whose programs would be stopped, in the change preview', () => {
+  const box = read('../src/components/RightsSetEditor.tsx');
+  assert.match(box, /preview\.sites_stopped_count/);
+  assert.match(box, /limits\.preview\.sitesStopped/);
+  assert.match(read('../src/lib/rights.ts'), /sites_stopped: Array\.isArray\(raw\.sites_stopped\)/);
+  assert.match(enSiteLimitsScreens['limits.preview.sitesStopped'], /stops them at once/);
+  const problems = read('../src/components/ProblemsNow.tsx');
+  assert.ok(problems.includes("'site_limits_unsupported'"), 'the host line is a known kind');
+  for (const part of ['title', 'body', 'action']) assert.ok(trSiteLimitsScreens[`pnow.site_limits_unsupported.${part}`]);
 });
 
 test('sites whose programs run outside their limits are one administrator line with words in both languages', () => {

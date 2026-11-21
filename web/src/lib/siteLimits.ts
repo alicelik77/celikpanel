@@ -15,7 +15,8 @@ export interface SiteLimitValue {
 }
 
 export interface SiteLimitEvent {
-    kind: 'memory' | 'tasks' | 'cpu';
+    /** memory, tasks: the site's own limit; *_other: a program of the site, not proved at the site's limit. */
+    kind: 'memory' | 'tasks' | 'cpu' | 'memory_other' | 'tasks_other';
     count: number;
     first_at: string;
     last_at: string;
@@ -29,6 +30,8 @@ export interface SiteLimitUnit {
     placement: 'in_slice' | 'outside' | 'stopped' | 'stopped_outside' | 'elsewhere' | 'absent';
     own_memory_mb?: number;
     lower?: boolean;
+    /** Why the move cannot take it: edited, older, owner_slice. */
+    blocked?: 'edited' | 'older' | 'owner_slice';
 }
 
 export interface SiteLimitsView {
@@ -36,7 +39,16 @@ export interface SiteLimitsView {
     read_error?: string;
     domain: string;
     admin: boolean;
+    reseller?: boolean;
     limits: SiteLimitValue[];
+    /** yes, outside, no_file, unsupported (unsupported names what the server lacks). */
+    applies?: 'yes' | 'outside' | 'no_file' | 'unsupported';
+    unsupported?: string;
+    drop_ins?: string[];
+    move_interrupted?: { at: string; units: Record<string, string> };
+    db_owner?: { user: string; key: string; value: string }[];
+    apply_done?: number;
+    apply_total?: number;
     live?: { memory_mb: number; tasks: number; cpu_percent: number };
     memory_current_mb?: number;
     tasks_current?: number;
@@ -49,7 +61,7 @@ export interface SiteLimitsView {
 }
 
 const KEYS: readonly string[] = ['site.memory_mb', 'site.tasks', 'site.cpu_percent'];
-const EVENTS: readonly string[] = ['memory', 'tasks', 'cpu'];
+const EVENTS: readonly string[] = ['memory', 'tasks', 'cpu', 'memory_other', 'tasks_other'];
 const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_outside', 'elsewhere', 'absent'];
 
 /** Reads the answer; an answer of another shape is not a card. */
@@ -76,7 +88,19 @@ export function limitOf(view: SiteLimitsView, key: SiteLimitKey): SiteLimitValue
 
 /** The limit an event is about. */
 export function eventKey(kind: SiteLimitEvent['kind']): SiteLimitKey {
-    return kind === 'memory' ? 'site.memory_mb' : kind === 'tasks' ? 'site.tasks' : 'site.cpu_percent';
+    return kind.startsWith('memory') ? 'site.memory_mb' : kind.startsWith('tasks') ? 'site.tasks' : 'site.cpu_percent';
+}
+
+/** Whether an event is at the site's own limit (only then the plan is named and who can raise it). */
+export function eventAtSiteLimit(kind: SiteLimitEvent['kind']): boolean {
+    return !kind.endsWith('_other');
+}
+
+/** Why the move did not take a unit, as a blocked reason (kept: edited). */
+export function notMovedReason(outcome: string): 'edited' | 'older' | 'owner_slice' | 'changed' | undefined {
+    if (outcome === 'kept') return 'edited';
+    if (outcome === 'older' || outcome === 'owner_slice' || outcome === 'changed') return outcome;
+    return undefined;
 }
 
 /** The running programs a move would restart that may get less memory than now. */
@@ -106,6 +130,9 @@ export function decodeMoveAnswer(raw: unknown): MoveAnswer {
     return { done: body.done, rolled_back: body.rolled_back === true, units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error };
 }
 
+/** How long the move waits for each program at most (systemd's start timeout of these units). */
+export const MOVE_WAIT_SECONDS = 90;
+
 /** One step of the move's progress window, before it is worded. */
 export interface MoveStep {
     id: string;
@@ -128,7 +155,7 @@ export function moveSteps(answer: MoveAnswer, units: SiteLimitUnit[], words: { w
         let state: MoveStep['state'] = 'done';
         if (u.outcome === 'failed' || u.outcome === 'put_back') state = 'failed';
         else if (u.outcome === 'not_tried') state = 'pending';
-        else if (u.outcome === 'kept' || u.outcome === 'older') state = 'waiting';
+        else if (notMovedReason(u.outcome)) state = 'waiting';
         steps.push({ id: u.unit, label: `${words.restart}: ${label(u.unit)}`, state, note: state === 'failed' ? u.detail : undefined });
     }
     steps.push({ id: 'check', label: words.check, state: answer.done ? 'done' : 'failed' });
