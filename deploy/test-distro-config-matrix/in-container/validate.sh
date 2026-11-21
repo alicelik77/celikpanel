@@ -639,7 +639,10 @@ v_polkit_rules() {
         sleep 0.25
     done
     kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
-    out=$(grep -iE 'error|exception' "$log" | head -5)
+    # polkitd says "Error opening rules directory" for each of its optional
+    # rules folders that does not exist (/run, /usr/local); that is not this
+    # file. A rules file it cannot compile or run is named with the error.
+    out=$(grep -E "Error compiling|Error evaluating|SyntaxError|ReferenceError|TypeError|$(basename "$TARGET")" "$log" | grep -v 'Error opening rules directory' | head -5)
     if [[ -n "$out" ]]; then printf '%s\n' "$out"; rm -f "$log"; return 1; fi
     if ! grep -q 'Finished loading' "$log"; then
         printf 'polkitd did not report loading its rules: %s\n' "$(tail -3 "$log" | tr '\n' ' ')"; rm -f "$log"; return 2
