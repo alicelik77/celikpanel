@@ -8,17 +8,19 @@ import { apiErrorText, readApiError } from '../lib/apiError';
 import { confirmAction, type OperationEnd } from '../lib/confirmAction';
 
 // PostgreSQL databases made before alpha.141 that every account of the
-// server can enter (security lane S1b, 20 November 2026;
-// cmd/panel/postgresql_public_access.go). Administrators only: the
-// PostgreSQL page is theirs. What CelikPanel left open is listed with what it
-// found and what closing changes, beside the one button that closes it; what
-// it closed (by itself or by an administrator) is listed with when, by whom,
-// the panel's undo and the plain statements of the undo. Reading changes
-// nothing; the list reads again by itself after every action and every
-// five minutes.
+// server can enter (security lane S1b, 20 November 2026; corrected in the
+// alpha.143 fix round; cmd/panel/postgresql_public_access.go).
+// Administrators only: the PostgreSQL page is theirs. What CelikPanel left
+// open is listed with what it found and what closing changes, beside the one
+// button that closes it; a database it watches says until when; a close that
+// failed says why; what it closed is listed with when, by whom, the panel's
+// undo and the plain statements of the undo; a database an administrator
+// opened again is listed as that choice. The list is the last scan, with its
+// time; Read again starts a scan. Nothing here changes a database without a
+// press.
 //
 // alpha.141'den önce açılan, sunucudaki her hesabın girebildiği PostgreSQL
-// veritabanları: bulunan, kapatma ve geri alma bir arada.
+// veritabanları: bulunan, izleme, kapatma ve geri alma bir arada.
 
 export const PG_PUBLIC_URL = '/api/v1/admin/postgresql/public-access';
 const REFRESH_MS = 5 * 60_000;
@@ -34,12 +36,21 @@ export interface PGPublicEntry {
     at?: string;
     owner?: string;
     acl?: string;
+    public_connect?: boolean;
+    public_temporary?: boolean;
     found?: string[];
     other_roles?: string[];
     sessions?: string[];
+    sessions_now?: string[];
+    missing?: string[];
     monitoring?: string[];
+    replication?: string[];
     roles?: string[];
     grants?: Grant[];
+    watch_since?: string;
+    closes_at?: string;
+    failed_at?: string;
+    failure?: string;
     undo_statements?: string[];
     reason?: string;
 }
@@ -48,10 +59,11 @@ export interface PGPublicView {
     checked_at?: string;
     open: PGPublicEntry[];
     closed: PGPublicEntry[];
+    reopened: PGPublicEntry[];
     unknown: PGPublicEntry[];
 }
 
-const FOUND = ['waiting', 'undone', 'changed_rights', 'other_roles', 'other_sessions', 'monitoring_roles'] as const;
+const FOUND = ['observing', 'close_failed', 'unknown_result', 'changed_rights', 'other_roles', 'other_sessions', 'missing_users', 'monitoring_roles', 'replication_roles'] as const;
 
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []);
 
@@ -66,7 +78,10 @@ export function decodePGPublic(raw: unknown): PGPublicView {
         found: strings(item.found).filter((reason) => (FOUND as readonly string[]).includes(reason)),
         other_roles: strings(item.other_roles),
         sessions: strings(item.sessions),
+        sessions_now: strings(item.sessions_now),
+        missing: strings(item.missing),
         monitoring: strings(item.monitoring),
+        replication: strings(item.replication),
         roles: strings(item.roles),
         undo_statements: strings(item.undo_statements),
         grants: Array.isArray(item.grants) ? item.grants.filter((grant): grant is Grant => !!grant && typeof grant.role === 'string') : [],
@@ -75,6 +90,7 @@ export function decodePGPublic(raw: unknown): PGPublicView {
         checked_at: typeof body.checked_at === 'string' ? body.checked_at : undefined,
         open: entries(body.open),
         closed: entries(body.closed),
+        reopened: entries(Array.isArray(body.reopened) ? body.reopened : []),
         unknown: entries(body.unknown),
     };
 }
@@ -85,19 +101,38 @@ export function PostgreSQLPublicAccessBlock() {
     useRefreshEvery(handle, REFRESH_MS);
     useInvalidation(['databases'], () => void handle.retry());
     const [busy, setBusy] = useState<number | null>(null);
+    const [reading, setReading] = useState(false);
+    const [readFailed, setReadFailed] = useState(false);
     const [said, setSaid] = useState<{ id: number; tone: 'ok' | 'bad'; text: string } | null>(null);
 
     const remote = handle.remote;
     // Nothing to show while the first read is on its way (most servers have
     // nothing here), or when no database of this server is open to other
-    // accounts, none was closed by CelikPanel and every one was read.
+    // accounts, none was closed or opened again and every one was read.
     if (remote.state === 'loading') return null;
-    if (remote.state === 'known' && remote.value.open.length === 0 && remote.value.closed.length === 0 && remote.value.unknown.length === 0) return null;
+    if (remote.state === 'known' && remote.value.open.length === 0 && remote.value.closed.length === 0 && remote.value.reopened.length === 0 && remote.value.unknown.length === 0) return null;
 
     const when = (iso?: string) => {
         if (!iso) return '';
         const at = new Date(iso);
         return Number.isNaN(at.getTime()) ? '' : at.toLocaleString(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
+    // Read again: one scan on the server (a press while one runs joins it);
+    // a scan that could not be made is said, and the list stays the last one.
+    const readAgain = async () => {
+        if (reading) return;
+        setReading(true);
+        setReadFailed(false);
+        try {
+            const res = await fetch(PG_PUBLIC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'read' }) });
+            if (!res.ok) setReadFailed(true);
+        } catch {
+            setReadFailed(true);
+        } finally {
+            setReading(false);
+            void handle.retry();
+        }
     };
 
     const send = async (entry: PGPublicEntry, action: 'close' | 'undo'): Promise<OperationEnd> => {
@@ -115,7 +150,8 @@ export function PostgreSQLPublicAccessBlock() {
                 end = { state: 'done', message: t(action === 'close' ? 'pgpub.done' : 'pgpub.undo.done', vars) };
             } else {
                 const problem = await readApiError(res);
-                end = { state: res.status === 502 ? 'unknown' : res.status < 500 ? 'blocked' : 'failed', reason: apiErrorText(problem, t, 'pgpub.unknown') };
+                const state = problem.code === 'POSTGRESQL_PUBLIC_UNKNOWN' ? 'unknown' : res.status < 500 ? 'blocked' : 'failed';
+                end = { state, reason: apiErrorText(problem, t, 'pgpub.unknown') };
                 if (problem.details?.length) end.reason += ' ' + problem.details.join(' ');
             }
         } catch {
@@ -133,9 +169,10 @@ export function PostgreSQLPublicAccessBlock() {
         setSaid(null);
         const vars = { name: entry.name, owner: entry.owner ?? '' };
         const lost = [t('pgpub.confirm.lost')];
-        const outside = [...new Set([...(entry.other_roles ?? []), ...(entry.monitoring ?? [])])]
+        const outside = [...new Set([...(entry.other_roles ?? []), ...(entry.monitoring ?? []), ...(entry.replication ?? [])])]
             .filter((role) => !(entry.grants ?? []).some((grant) => grant.role === role));
         if (outside.length > 0) lost.push(t('pgpub.confirm.lostRoles', { roles: outside.join(', ') }));
+        if ((entry.sessions_now ?? []).length > 0) lost.push(t('pgpub.confirm.sessions', { roles: (entry.sessions_now ?? []).join(', ') }));
         try {
             await confirmAction({
                 title: t('pgpub.confirm.title', vars),
@@ -177,15 +214,47 @@ export function PostgreSQLPublicAccessBlock() {
     );
 
     const foundLine = (entry: PGPublicEntry, reason: string) => {
+        const roles = (list?: string[]) => ({ roles: (list ?? []).join(', ') });
         switch (reason) {
+            case 'observing': return t('pgpub.found.observing', { since: when(entry.watch_since), until: when(entry.closes_at) });
+            case 'close_failed': return t('pgpub.found.close_failed', { time: when(entry.failed_at), reason: entry.failure ?? '' });
+            case 'unknown_result': return t('pgpub.found.unknown_result');
             case 'changed_rights': return t('pgpub.found.changed_rights', { acl: entry.acl ?? '' });
-            case 'other_roles': return t('pgpub.found.other_roles', { roles: (entry.other_roles ?? []).join(', ') });
-            case 'other_sessions': return t('pgpub.found.other_sessions', { roles: (entry.sessions ?? []).join(', ') });
-            case 'monitoring_roles': return t('pgpub.found.monitoring_roles', { roles: (entry.monitoring ?? []).join(', ') });
-            case 'undone': return t('pgpub.found.undone');
-            default: return t('pgpub.found.waiting');
+            case 'other_roles': return t('pgpub.found.other_roles', roles(entry.other_roles));
+            case 'other_sessions': return t('pgpub.found.other_sessions', roles(entry.sessions));
+            case 'missing_users': return t('pgpub.found.missing_users', roles(entry.missing));
+            case 'monitoring_roles': return t('pgpub.found.monitoring_roles', roles(entry.monitoring));
+            default: return t('pgpub.found.replication_roles', roles(entry.replication));
         }
     };
+
+    // What every account of the server can do in it now.
+    const reach = (entry: PGPublicEntry) => t(entry.public_connect
+        ? (entry.public_temporary ? 'pgpub.reach.both' : 'pgpub.reach.connect')
+        : 'pgpub.reach.temporary');
+
+    const openItem = (entry: PGPublicEntry, extra?: string) => (
+        <li key={entry.database_id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start" data-pgpub-database={entry.name}>
+            <div className="min-w-0 flex-1 text-sm leading-6">
+                <p className="break-words font-mono font-semibold text-fg">{entry.name} <span className="font-sans text-xs font-normal text-fg-subtle">· {entry.port}</span></p>
+                {extra && <p className="text-fg-muted">{extra}</p>}
+                {entry.owner && <p className="text-fg-muted">{t('pgpub.owner', { owner: entry.owner })}</p>}
+                <p className="text-fg">{reach(entry)}</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
+                    {(entry.found ?? []).map((reason) => <li key={reason} className="break-words" data-pgpub-found={reason}>{foundLine(entry, reason)}</li>)}
+                </ul>
+                <p className="mt-1 break-words text-fg-muted">
+                    {(entry.grants ?? []).length > 0
+                        ? t('pgpub.gives', { users: (entry.grants ?? []).map((grant) => (grant.temporary ? t('pgpub.user.write', { user: grant.role }) : grant.role)).join(', ') })
+                        : t('pgpub.gives.none')}
+                </p>
+                {note(entry)}
+            </div>
+            <Button variant="primary" className="shrink-0 self-start max-sm:min-h-11" loading={busy === entry.database_id} disabled={busy !== null} onClick={() => void close(entry)}>
+                {t('pgpub.close')}
+            </Button>
+        </li>
+    );
 
     return (
         <Card title={t('pgpub.title')} icon={ShieldCheck}>
@@ -193,6 +262,11 @@ export function PostgreSQLPublicAccessBlock() {
                 <RemoteGate remote={remote} checking={t('pgpub.checking')} failed={t('pgpub.failed')} onRetry={() => void handle.retry()} busy={handle.reading}>
                     {({ value: view }) => (
                         <div className="space-y-6">
+                            <div className="flex flex-wrap items-center gap-3 text-sm text-fg-muted" data-pgpub-read="">
+                                <span>{t('pgpub.readAt', { time: when(view.checked_at) })}</span>
+                                <Button onClick={() => void readAgain()} loading={reading || handle.reading} disabled={reading}>{t('pgpub.reread')}</Button>
+                                {readFailed && <span className="text-danger" role="alert" data-pgpub-read-failed="">{t('pgpub.failed')}</span>}
+                            </div>
                             {view.open.length > 0 && (
                                 <section data-pgpub-open="">
                                     <Guidance
@@ -205,35 +279,23 @@ export function PostgreSQLPublicAccessBlock() {
                                         then={t('pgpub.open.then')}
                                     />
                                     <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-                                        {view.open.map((entry) => (
-                                            <li key={entry.database_id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start" data-pgpub-database={entry.name}>
-                                                <div className="min-w-0 flex-1 text-sm leading-6">
-                                                    <p className="break-words font-mono font-semibold text-fg">{entry.name} <span className="font-sans text-xs font-normal text-fg-subtle">· {entry.port}</span></p>
-                                                    {entry.owner && <p className="text-fg-muted">{t('pgpub.owner', { owner: entry.owner })}</p>}
-                                                    <ul className="mt-1 list-disc space-y-1 pl-5 text-fg">
-                                                        {(entry.found ?? []).map((reason) => <li key={reason} className="break-words" data-pgpub-found={reason}>{foundLine(entry, reason)}</li>)}
-                                                    </ul>
-                                                    <p className="mt-1 break-words text-fg-muted">
-                                                        {(entry.grants ?? []).length > 0
-                                                            ? t('pgpub.gives', { users: (entry.grants ?? []).map((grant) => (grant.temporary ? t('pgpub.user.write', { user: grant.role }) : grant.role)).join(', ') })
-                                                            : t('pgpub.gives.none')}
-                                                    </p>
-                                                    {note(entry)}
-                                                </div>
-                                                <Button variant="primary" className="shrink-0 self-start max-sm:min-h-11" loading={busy === entry.database_id} disabled={busy !== null} onClick={() => void close(entry)}>
-                                                    {t('pgpub.close')}
-                                                </Button>
-                                            </li>
-                                        ))}
+                                        {view.open.map((entry) => openItem(entry))}
                                     </ul>
                                 </section>
                             )}
                             {view.unknown.length > 0 && (
                                 <section className="space-y-2" data-pgpub-unread="">
                                     {view.unknown.map((entry) => (
-                                        <Guidance key={entry.database_id} tone="unknown" title={t('pgpub.unread.title', { name: entry.name })} why={entry.reason} next={t('pgpub.unread.next')}
-                                            action={<Button onClick={() => void handle.retry()} loading={handle.reading}>{t('pgpub.reread')}</Button>} />
+                                        <Guidance key={entry.database_id} tone="unknown" title={t('pgpub.unread.title', { name: entry.name })} why={entry.reason} next={t('pgpub.unread.next')} />
                                     ))}
+                                </section>
+                            )}
+                            {view.reopened.length > 0 && (
+                                <section data-pgpub-reopened="">
+                                    <h3 className="mb-2 text-sm font-semibold text-fg">{t('pgpub.reopened.title')}</h3>
+                                    <ul className="divide-y divide-border rounded-lg border border-border">
+                                        {view.reopened.map((entry) => openItem(entry, t('pgpub.reopened.at', { time: when(entry.at) })))}
+                                    </ul>
                                 </section>
                             )}
                             {view.closed.length > 0 && (

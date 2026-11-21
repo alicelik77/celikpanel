@@ -3,10 +3,9 @@
 [English](RELEASE-NOTES-v0.1.0-alpha.143.md)
 
 **Bir güvenlik sürümü: lütfen yakında güncelleyin.** Bir müşterinin başka
-bir müşteri gibi davranabildiği üç yolu kapatır: başka bir müşterinin alan
-adıyla imzalanan giden posta, bir müşterinin kodunu yöneticinin haklarıyla
-çalıştıran PostgreSQL veritabanı taşıma ve alpha.141'den önce açılan,
-sunucudaki her hesabın hâlâ girebildiği PostgreSQL veritabanları. Ayrıca
+bir müşteri gibi davranabildiği iki yolu kapatır: başka bir müşterinin alan
+adıyla imzalanan giden posta ve alpha.141'den önce açılan, sunucudaki her
+hesabın hâlâ girebildiği PostgreSQL veritabanları. Ayrıca
 alpha.142 laboratuvarının istediği dört düzeltmeyi getirir.
 **Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
 günceller.**
@@ -26,8 +25,9 @@ günceller.**
    yok.
 4. Açılıştan birkaç dakika sonra, güncelleme doğrulanmış ve sunucu sakinken
    panel, alpha.141'den önce açılan ve kendi başına kapatabileceği
-   PostgreSQL veritabanlarını kapatmaya başlar; sonra her saat yeniden
-   bakar (aşağıda "alpha.141'den önce açılan PostgreSQL veritabanları").
+   PostgreSQL veritabanlarını izlemeye başlar; her birini, başka kimsenin
+   kullandığının görülmediği tam bir günden sonra kapatır ve her saat bakar
+   (aşağıda "alpha.141'den önce açılan PostgreSQL veritabanları").
 5. **alpha.142'ye dönmek kapatılan yolları yeniden açar.**
 
 ## Güvenlik: kapanan yollar
@@ -40,19 +40,14 @@ günceller.**
   sunucudan çıkabiliyordu. Artık posta kutusu girişiyle gönderilen posta
   yalnız o posta kutusunun kendi alan adı için imzalanır; 25. porta gelen
   posta hiç imzalanmaz.
-- **Bir müşterinin kodunu yönetici olarak çalıştıran veritabanı taşıma.**
-  Bir PostgreSQL veritabanını bu makinedeki başka bir veritabanı sunucusuna
-  taşımak, satırlarını yöneticinin haklarıyla yüklüyordu; böylece
-  veritabanının sahibinin bir tabloya koyduğu kod bu haklarla çalışıyordu.
-  Artık her tablonun satırları yalnız o tablonun sahibinin haklarıyla
-  yüklenir.
 - **Her hesaba açık eski PostgreSQL veritabanları.** alpha.141'den önce
   açılan veritabanları PostgreSQL'in varsayılanını koruyordu: sunucudaki
   her veritabanı kullanıcısı her veritabanına bağlanabilir ve içinde geçici
   tablo açabilir. Bir müşterinin veritabanı kullanıcısı başka bir müşterinin
   veritabanına girip yapısını görebiliyordu. Artık bu veritabanları başka
-  hesaplara kapatılır: güvenli olduğu yerde panelin kendisi, yöneticinin
-  karar vermesi gereken yerde tek düğmeyle.
+  hesaplara kapatılır: başka kimsenin kullandığının görülmediği bir günden
+  sonra panelin kendisi, yöneticinin karar vermesi gereken yerde tek
+  düğmeyle.
 
 ## Sizin için ne değişiyor
 
@@ -83,34 +78,45 @@ günceller.**
 
 ### alpha.141'den önce açılan PostgreSQL veritabanları
 
-- Panel böyle bir veritabanını kendi başına yalnız şunların hepsi
-  geçerliyse kapatır: hakları hâlâ PostgreSQL'in dokunulmamış varsayılanı,
-  içinde panelin onun için kaydetmediği bir hesaba ait hiçbir şey yok, böyle
-  bir hesap ona bağlı değil ve veritabanı sunucusunda izleme hesabı yok.
-  Sahibi ve panelin onun için kaydettiği kullanıcılar girmeye devam eder;
-  diğer her hesap artık ona bağlanamaz ve içinde geçici tablo açamaz.
+- Panel böyle bir veritabanını kendi başına yalnız onu başka kimsenin
+  kullandığı görülmüyorsa kapatır: hakları hâlâ PostgreSQL'in dokunulmamış
+  varsayılanıdır; panelin onun için kaydetmediği hiçbir hesabın içinde bir
+  nesnesi, bir hakkı (tek bir sütun üzerinde bile), bir ayarı, bir ilkesi ya
+  da bir kullanıcı eşlemesi yoktur; panelin onun için kaydettiği her
+  kullanıcının hesabı vardır; veritabanı sunucusunda izleme ya da çoğaltma
+  hesabı yoktur. Sahibi ve panelin onun için kaydettiği kullanıcılar girmeye
+  devam eder; diğer her hesap artık ona bağlanamaz ve içinde geçici tablo
+  açamaz.
+- Böyle bir veritabanı önce izlenir: izleme başladıktan en az 24 saat
+  sonraki ilk saatlik denetimde, en az 24 saatlik denetim onu okumuşsa
+  kapatılır. Haklarının, içindeki hesapların, sahibinin ya da kayıtlı
+  kullanıcılarının değişmesi izlemeyi yeniden başlatır. Panelin onun için
+  kaydetmediği bir hesabın ona bir kez bile bağlı görülmesi izlemeyi bitirir:
+  karar yöneticinindir ve hesap adıyla söylenir. **PostgreSQL** sayfası her
+  veritabanının ne zamandan beri izlendiğini ve başka kimse bağlanmazsa ne
+  zaman kendiliğinden kapanacağını gösterir; yönetici onu istediği an
+  kapatabilir.
 - Diğer her böyle veritabanı olduğu gibi bırakılır ve **Şu anki sorunlar**da
-  ve **PostgreSQL** sayfasında, neyin bulunduğu, kapatmanın neyi
-  değiştireceği ve onaydan sonra kapatan tek düğmeyle listelenir.
+  ve **PostgreSQL** sayfasında, neyin bulunduğu, her hesabın orada şu an ne
+  yapabildiği (bağlanmak ya da yalnız geçici tablo açmak), kapatmanın neyi
+  değiştireceği ve son okumada bağlı olan hesapları adlandıran bir onaydan
+  sonra kapatan tek düğmeyle listelenir.
+- Yanıtı kaybolan bir kapatma hiçbir zaman "hiçbir şey değişmedi" sayılmaz:
+  panel kaydını korur ve başka bir şey yapmadan önce veritabanını yeniden
+  okur. Başarısız bir kapatma nedeni, zamanı ve atılacak adımla gösterilir;
+  her saat yeniden denenmez, yalnız veritabanında bir şey değişince ya da
+  yönetici Kapat'a basınca denenir. Aynı veritabanının iki kapatması asla
+  aynı anda çalışmaz.
 - Her kapatma ne zaman ve kim tarafından yapıldığını, **Geri al** düğmesini
   (ve panel olmadan geri almak için düz komutları) gösterir; geri alma,
   kapatmanın değiştirdiğini tam olarak geri verir. Yöneticinin yeniden
-  açtığı bir veritabanı bir daha kendiliğinden kapatılmaz.
+  açtığı bir veritabanı sayfada yöneticinin tercihi olarak kalır, **Şu anki
+  sorunlar**dan ve uyarı postasından çıkar ve bir daha kendiliğinden
+  kapatılmaz.
+- Sayfa son okumayı zamanıyla gösterir; **Yeniden oku** bir veritabanı
+  sunucusunun bütün veritabanlarını tek bağlantıda okur.
 - MariaDB'de böyle bir varsayılan yok: orada hiçbir şey değişmez. Başka
   makinelerde kayıtlı PostgreSQL sunucularına dokunulmaz.
-
-### Bir PostgreSQL veritabanını başka bir veritabanı sunucusuna taşımak
-
-Yapı eskisi gibi yüklenir; her tablonun satırları, sonradan kaldırılan geçici
-bir hesap üzerinden, yalnız o tablonun sahibinin haklarıyla yüklenir.
-Taşımanın koruduğu şeyler değişmez (sahipler, haklar, açıklamalar,
-eklentiler, ayarlar, büyük nesneler) ve kaynak, eskisi gibi, yalnız kopya
-doğrulandıktan sonra kaldırılır. Bu yolla yapılamayan bir taşıma, hiçbir şey
-yazılmadan, nedeni ve yapılacakla birlikte reddedilir ve kaynak olduğu gibi
-kalır: bir yönetici hesabının sahibi olduğu bir tablo, Ağustos 2025
-güncellemelerinden eski veritabanı istemci programları, 13.8 ya da 14.5'ten
-eski bir hedef veritabanı sunucusu ya da erişim kuralları geçici hesabın
-girişini reddeden bir hedef.
 
 ### alpha.142 laboratuvarından düzeltmeler
 
@@ -143,10 +149,16 @@ girişini reddeden bir hedef.
   gönderilen posta, "Kimden" satırında geçen barındırılan her alan adı için
   hâlâ imzalanır. Orada da 25. port imzaya kapalıdır ve **Şu anki
   sorunlar** bunu söyler.
+- **Bir veritabanını başka bir PostgreSQL sürümüne taşımak** (yönetici
+  işlemi: yalnız yönetici başlatabilir), alpha.141'de olduğu gibi, taşıma
+  sırasında içindeki müşterilerin veritabanı kodunu hâlâ yöneticinin
+  haklarıyla çalıştırır. Sonraki bir sürüm bunu düzeltene dek sahibine
+  güvenmediğiniz bir veritabanını taşımayın.
 - Panelin içinde kendi başına karar vermediği bir şey bulduğu bir PostgreSQL
   veritabanı, yönetici onu PostgreSQL sayfasında kapatana kadar başka
-  hesaplara açık kalır. Panelin kaydetmediği veritabanlarına (örneğin elle
-  açılanlar) dokunulmaz.
+  hesaplara açık kalır; kendi başına kapatabileceği bir veritabanı izlendiği
+  gün boyunca açık kalır. Panelin kaydetmediği veritabanlarına (örneğin elle
+  açılanlar) dokunulmaz. Kapatma yalnız PostgreSQL 17'de denendi.
 - Bir müşterinin kendi alan adının içinde, bir sunucu adının altında açılan
   alt alan adı, üst alan adı gibi **Şu anki sorunlar**da listelenir
   (yukarıda). Yöneticinin bir müşteriye sunucu adının altında yeni bir ad
@@ -175,9 +187,11 @@ girişini reddeden bir hedef.
 - Posta kutusu girişiyle gönderilen posta yalnız kendi alan adı için
   imzalanır; postayı 25. porta girişsiz bırakan bir web sitesi artık
   imzalanmaz.
-- İlk saatler içinde, alpha.141'den önce açılan PostgreSQL veritabanları
-  güvenli olduğu yerde başka hesaplara kapatılır; diğerleri yöneticiye
-  **Şu anki sorunlar**da ve PostgreSQL sayfasında listelenir.
+- Güncellemeden bir gün sonra, alpha.141'den önce açılan PostgreSQL
+  veritabanları başka kimsenin kullandığının görülmediği yerde başka
+  hesaplara kapatılır; o zamana dek PostgreSQL sayfası her birinin ne zaman
+  kapanacağını gösterir. Diğerleri yöneticiye **Şu anki sorunlar**da ve
+  PostgreSQL sayfasında listelenir.
 - Alan adı bir sunucu adının ya da yöneticinin bir adının altında olan bir
   müşteri yeniden onun alt alan adlarını ekleyebilir.
 
@@ -192,7 +206,8 @@ eski bir sürüm 081'i taşıyan kaydı reddeder
 laboratuvarı şema 81'i sabitler. Yeni ve hepsi eklemeli: posta süzgeci
 yanıtının `signing` alanı, "Şu anki sorunlar"da iki tür (`mail_signing`,
 `postgresql_databases_open`), sürüme bağlı aracı çağrıları
-`PostgreSQLPublicAccessScanV1`, `CloseV1` ve `UndoV1`, panel ayar satırları
+`PostgreSQLPublicAccessScanV1`, `CloseV1` ve `UndoV1` (`unknown`, `missing`
+ve `replication` yanıtlarıyla), panel ayar satırları
 `postgresql_public_v1:<veritabanı kimliği>` ve `postgresql_public_list_v1`.
 
 Kapanan her yolu deneyen, önceki kodda başarısız olup bu sürümün kodunda
@@ -208,10 +223,19 @@ geçen testler:
   göndericiyi `a` olarak, girişsiz yerel postayı "Kimden" alan adıyla
   imzaladı ve kimliği doğrulanmamış dış istemciye imza vermedi; Arch'ta
   önceki yapılandırma kabul edilir.
-- PostgreSQL: özel PostgreSQL 17 sunucularında
-  `TestS1bMovingADatabaseNeverRunsItsCodeWithAdministratorRights` ve
-  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers`; panelin
-  kararları ve sayfa `cmd/panel/postgresql_public_access_test.go` ve
+- PostgreSQL, özel bir PostgreSQL 17.12 sunucusunda:
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve bağımsız
+  incelemenin durumları
+  `TestS1bFixACloseWhoseAnswerIsLostAfterCommitIsUnknown`,
+  `TestS1bFixColumnRightsSettingsPoliciesAndMappingsCountAsInside` ve
+  `TestS1bFixARoleNamedToBreakOutIsCarriedSafely` (bu üçü değişikliğin ilk
+  sürümünde de başarısız olur),
+  `TestS1bFixARecordedUserWithoutItsRoleIsSeenAndItsGrantIsNotNothingChanged`,
+  `TestS1bFixAReplicationSubscriberIsSeen` ve
+  `TestS1bFixAScanOf300DatabasesIsOneSession` (tek bağlantı, yaklaşık 5 sn);
+  panelin kararları (bir günlük izleme, bilinmeyen yanıt, aynı anda iki
+  kapatma, başarısız kapatma, yeniden açılan veritabanı, son okuma)
+  `cmd/panel/postgresql_public_access_test.go` içinde; sayfa
   `web/tests/pg-public-access-s1b.test.mjs` içinde.
 - Düzeltmeler: `TestOwnSubdomainUnderAServerNameRuleAndTriggersAgree`,
   `TestOwnSubdomainUnderAnAdministratorsNameRuleAndTriggersAgree`,

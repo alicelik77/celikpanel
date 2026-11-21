@@ -81,8 +81,8 @@ export const enProblemsNowScreens = {
     'pnow.node_port_reserved.action': 'Open the domain',
     // alpha.143 (lane S1b): PostgreSQL databases made before alpha.141 that
     // every account of the server can still enter.
-    'pnow.postgresql_databases_open.title': 'Every account of this server can enter {value} PostgreSQL databases',
-    'pnow.postgresql_databases_open.body': 'Made before alpha.141: {name}. CelikPanel found something there it does not decide by itself. On the PostgreSQL page, read what was found and what closing changes, then close each one; it can be undone.',
+    'pnow.postgresql_databases_open.title': '{value} PostgreSQL databases are still open to the server’s other accounts',
+    'pnow.postgresql_databases_open.body': 'Made before alpha.141: {name}. Every account of the server may connect to them, or make temporary tables where it may already connect. CelikPanel found something there it does not decide by itself, or its close failed. On the PostgreSQL page, read what was found, then close each one; it can be undone.',
     'pnow.postgresql_databases_open.action': 'Review and close',
     // alpha.143 (lane S3b): mail signed only for the sender's own domain.
     'pnow.mail_signing.title': 'Mail may still be signed for another customer’s domain',

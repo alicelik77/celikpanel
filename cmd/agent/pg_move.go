@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,9 +25,7 @@ import (
 // changed. A copy that fails or whose counts differ is removed from the
 // target again, with the roles it created. Switching the panel's record to
 // the copy and dropping the source are the administrator's own later steps
-// (the Panel; DropPostgreSQLDatabaseV1 here). Since S1b (20 November 2026)
-// the copy's rows are loaded with each table owner's rights, never the
-// cluster owner's (pg_move_owner_load.go).
+// (the Panel; DropPostgreSQLDatabaseV1 here).
 //
 // Bir veritabanını başka bir PostgreSQL kümesine taşımak bir kopyadır: döküm,
 // roller, geri yükleme ve her tablonun satır sayısı iki tarafta; kaynak
@@ -400,12 +397,6 @@ func copyPGDatabase(parent context.Context, host pgClusterHost, req *transport.P
 		fail("TARGET_EXISTS", "cluster %s already has a database named %s; CelikPanel never copies over a database. Remove or rename that one first, or choose another cluster; nothing was changed", pgClusterRef(target.Version, target.Name), req.Database)
 		return
 	}
-	// S1b: refused here, before anything is changed, when the rows cannot be
-	// loaded with their owners' rights (pg_move_owner_load.go).
-	if refusal := pgMoveSafety(ctx, host, source, target, req.Database); refusal != nil {
-		fail(refusal.code, "%s", refusal.message)
-		return
-	}
 	literal, _ := services.QuotePGStringLiteral(req.Database)
 	if out, err := host.query(ctx, source.Owner, source.Port, "postgres", "SELECT pg_get_userbyid(datdba) || chr(31) || pg_database_size(datname) FROM pg_database WHERE datname = "+literal+";"); err == nil {
 		if rows := pgRows(out); len(rows) == 1 {
@@ -529,22 +520,9 @@ func copyPGDatabase(parent context.Context, host pgClusterHost, req *transport.P
 		fail("DUMP_FAILED", "the copy's file could not be read back; nothing was copied")
 		return
 	}
-	// S1b: definitions as the cluster's owner, every table's rows with its
-	// owner's rights (pg_move_owner_load.go).
-	administrators, err := pgAdministratorRoles(ctx, host, target)
-	if err != nil {
-		cleanup(false)
-		fail("TARGET_UNREADABLE", "cluster %s did not answer (%s); nothing was copied", pgClusterRef(target.Version, target.Name), boundedText(err.Error(), 160))
-		return
-	}
-	if err := pgOwnerRestore(ctx, host, target, req.Database, file, administrators); err != nil {
+	if err := host.stream(ctx, target.Owner, "pg_restore", file, io.Discard, "--port", strconv.Itoa(target.Port), "--create", "--exit-on-error", "--no-password", "--dbname", "postgres"); err != nil {
 		cleanup(true)
-		var login *pgMoveLoginError
-		if errors.As(err, &login) {
-			fail("LOGIN_REFUSED", "%s", login.Error())
-			return
-		}
-		fail("RESTORE_FAILED", "the copy into cluster %s stopped (%s); the partial copy was removed from the target and the source is unchanged", pgClusterRef(target.Version, target.Name), boundedText(err.Error(), 300))
+		fail("RESTORE_FAILED", "pg_restore into cluster %s stopped (%s); the partial copy was removed from the target and the source is unchanged", pgClusterRef(target.Version, target.Name), boundedText(err.Error(), 240))
 		return
 	}
 	targetCounts, _, err := pgTableCounts(ctx, host, target.Owner, target.Port, req.Database)

@@ -5,7 +5,8 @@
 // when, by whom, the undo and the plain statements of the undo. Problems now
 // has the line and its words in both languages.
 // Her hesabın girebildiği eski PostgreSQL veritabanları: bulunan, kapatma ve
-// geri alma bir arada; Sorunlar listesinde satırı.
+// geri alma bir arada; Sorunlar listesinde satırı. Düzeltme turu: izleme,
+// başarısız kapatma, yeniden açılanlar, Yeniden oku.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -46,7 +47,7 @@ const stub = dataModule(`
   export const useRemote = (url, decode) => ({ remote: { state: 'known', value: decode(s.view) }, reading: false, retry: async () => { s.reread = (s.reread || 0) + 1; } });
   export const useRefreshEvery = () => {};
   export const useInvalidation = () => {};
-  export const readApiError = async () => ({ message: 'refused' });
+  export const readApiError = async (res) => ({ message: 'refused', code: res.headers.get('x-code') || undefined });
   export const apiErrorText = (e) => e.message;
   export async function confirmAction(request) { s.asked.push(request); s.end = await request.action(); return true; }
 `);
@@ -86,8 +87,65 @@ test('an open database: what was found, what closing gives, the one confirmed cl
     await act(async () => tree.unmount());
 });
 
-test('nothing open, closed or unread: the block is not drawn', async () => {
-    globalThis.__pgpub.view = { open: [], closed: [], unknown: [] };
+// alpha.143 fix round: the watch with its dates, a failed close with its
+// reason, a result not known, what every account can do, the sessions named
+// before a close, a database an administrator opened again, Read again.
+test('watched, failed, unknown and opened-again databases say what holds and who acts', async () => {
+    globalThis.__pgpub.view = {
+        checked_at: '2026-11-22T10:00:00Z',
+        open: [
+            { database_id: 1, name: 'watched', port: 5432, public_connect: true, public_temporary: true, found: ['observing'], watch_since: '2026-11-22T01:00:00Z', closes_at: '2026-11-23T01:00:00Z' },
+            { database_id: 2, name: 'failed', port: 5432, public_connect: true, found: ['close_failed', 'missing_users'], failed_at: '2026-11-22T02:00:00Z', failure: 'role gone does not exist', missing: ['gone'] },
+            { database_id: 3, name: 'used', port: 5432, public_temporary: true, found: ['unknown_result', 'other_sessions', 'replication_roles'], sessions: ['reporting', 'subscriber'], sessions_now: ['reporting'], replication: ['subscriber'], roles: [] },
+        ],
+        closed: [],
+        reopened: [{ database_id: 4, name: 'again', port: 5432, state: 'reopened', by: 'administrator', at: '2026-11-21T12:00:00Z', public_connect: true, public_temporary: true }],
+        unknown: [],
+    };
+    const calls = [];
+    globalThis.fetch = async (url, init) => {
+        calls.push(init?.body ?? url);
+        if (init?.method === 'POST' && JSON.parse(init.body).action === 'read') return new Response('{}', { status: 200 });
+        if (init?.method === 'POST') return new Response('{}', { status: 502, headers: { 'x-code': 'POSTGRESQL_PUBLIC_UNKNOWN' } });
+        return new Response('{}', { status: 200 });
+    };
+    let tree;
+    await act(async () => { tree = Renderer.create(React.createElement(PostgreSQLPublicAccessBlock)); });
+    const text = JSON.stringify(tree.toJSON());
+    assert.match(text, /pgpub\.found\.observing\{\\"since\\":\\"[^\\"]+\\",\\"until\\":\\"[^\\"]+\\"\}/, 'a watched database says since when and until when');
+    assert.match(text, /pgpub\.found\.close_failed\{[^}]*role gone does not exist/);
+    assert.match(text, /pgpub\.found\.missing_users\{\\"roles\\":\\"gone\\"\}/);
+    assert.match(text, /pgpub\.found\.unknown_result/);
+    assert.match(text, /pgpub\.found\.replication_roles\{\\"roles\\":\\"subscriber\\"\}/);
+    assert.match(text, /pgpub\.reach\.both/);
+    assert.match(text, /pgpub\.reach\.connect/);
+    assert.match(text, /pgpub\.reach\.temporary/);
+    assert.match(text, /pgpub\.reopened\.title/);
+    assert.match(text, /pgpub\.reopened\.at/);
+    assert.match(text, /pgpub\.readAt/);
+    // The sessions at the last reading are named in the confirmation; an
+    // unknown answer is said as unknown.
+    const closes = tree.root.findAll((node) => node.type === 'button' && JSON.stringify(node.props.children) === '"pgpub.close"');
+    assert.equal(closes.length, 4, 'every open and opened-again database has its Close');
+    await act(async () => {
+        closes[2].props.onClick();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    const asked = globalThis.__pgpub.asked.at(-1);
+    assert.ok(asked.lost.some((line) => line.startsWith('pgpub.confirm.sessions') && line.includes('reporting')), 'the sessions now are named before the close');
+    assert.equal(globalThis.__pgpub.end.state, 'unknown');
+    // Read again asks for one scan.
+    const reread = tree.root.findAll((node) => node.type === 'button' && JSON.stringify(node.props.children) === '"pgpub.reread"');
+    await act(async () => {
+        reread[0].props.onClick();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    assert.ok(calls.includes(JSON.stringify({ action: 'read' })), 'Read again asks the server for one scan');
+    await act(async () => tree.unmount());
+});
+
+test('nothing open, closed, opened again or unread: the block is not drawn', async () => {
+    globalThis.__pgpub.view = { open: [], closed: [], reopened: [], unknown: [] };
     let tree;
     await act(async () => { tree = Renderer.create(React.createElement(PostgreSQLPublicAccessBlock)); });
     assert.equal(tree.toJSON(), null);

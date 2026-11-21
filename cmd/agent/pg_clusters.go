@@ -100,14 +100,6 @@ type pgClusterHost struct {
 	// stream runs one PostgreSQL client (pg_dump, pg_restore, pg_dumpall)
 	// as owner with the given standard input and output.
 	stream func(ctx context.Context, owner, client string, stdin io.Reader, stdout io.Writer, args ...string) error
-	// streamLogin runs one client as owner like stream, signing in with the
-	// given password (PGPASSWORD, never on the command line): a move loads
-	// each owner's data through a role that holds only that owner's rights
-	// (pg_move_owner_load.go).
-	streamLogin func(ctx context.Context, owner, client, password string, stdin io.Reader, stdout io.Writer, args ...string) error
-	// privateDir makes a directory only owner can use, for the lists a
-	// move's restore reads; remove it when done.
-	privateDir func(owner string) (string, error)
 	// freeBytes is the space left on the file system of a directory.
 	freeBytes func(path string) (int64, error)
 }

@@ -35,11 +35,7 @@ func defaultPGClusterHost() pgClusterHost {
 		stream: func(context.Context, string, string, io.Reader, io.Writer, ...string) error {
 			return errPGClustersLinuxOnly
 		},
-		streamLogin: func(context.Context, string, string, string, io.Reader, io.Writer, ...string) error {
-			return errPGClustersLinuxOnly
-		},
-		privateDir: func(string) (string, error) { return "", errPGClustersLinuxOnly },
-		freeBytes:  func(string) (int64, error) { return 0, errPGClustersLinuxOnly },
+		freeBytes: func(string) (int64, error) { return 0, errPGClustersLinuxOnly },
 	}
 }
 

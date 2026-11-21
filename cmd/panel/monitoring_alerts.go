@@ -558,8 +558,8 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("The Node.js site %s sends its visitors to port %s, which a service of this server uses. Open the domain and save its Node.js settings again: the site gets a free port, and its program must listen on that port.", subject, n),
 			fmt.Sprintf("%s Node.js sitesi ziyaretçilerini bu sunucunun bir hizmetinin kullandığı %s numaralı porta gönderiyor. Alan adını açıp Node.js ayarlarını yeniden kaydedin: site boş bir port alır; programı o portu dinlemelidir.", subject, n)
 	case "postgresql_databases_open":
-		return fmt.Sprintf("Every account of this server can enter %s PostgreSQL databases made before alpha.141 (%s). Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
-			fmt.Sprintf("Bu sunucudaki her hesap alpha.141'den önce açılan %s PostgreSQL veritabanına girebiliyor (%s). PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
+		return fmt.Sprintf("%s PostgreSQL databases made before alpha.141 are still open to this server's other accounts (%s): every account may connect to them, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
+			fmt.Sprintf("alpha.141'den önce açılan %s PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap bunlara bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
 	case "mail_signing":
 		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
 			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
