@@ -43,9 +43,11 @@ import (
 // domain's website that takes over the infrastructure zone); every other
 // subscription never. Names of zones this server publishes for a connected
 // server (remote DNS) are refused for everyone, as migration 042 already
-// does. A name under one's own domain stays an ordinary subdomain.
+// does. A name under one's own domain stays an ordinary subdomain, also when
+// a server name lies above that domain (insideOwnDomainUnder, alpha.143).
 //
-// The same rule is enforced a second time by the database (migration 080)
+// The same rule is enforced a second time by the database (migrations 080
+// and 081)
 // for the names it can see itself: other accounts' names, zones without a
 // domain, the infrastructure zones and the stored nameserver and mail host
 // names.
@@ -255,7 +257,13 @@ type claimReservation struct {
 }
 
 // reservationsOverlapping reads the names of every account that equal, lie
-// under or lie above name.
+// under or lie above name, nearest first: the name itself, then the names
+// above it from the closest up, then the names under it from the closest
+// down. A refusal names the first one it meets, so an administrator is told
+// the other account's name the request actually touches (alpha.142 lab: a
+// name under a customer's kahvedukkani.dr.test was answered with the
+// administrator's dr.test far above it, because the list ran shortest
+// first).
 func reservationsOverlapping(ctx context.Context, q rowQueryer, name string) ([]claimReservation, error) {
 	rows, err := q.QueryContext(ctx, `
 		SELECT r.hostname, d.subscription_id, d.name, s.owner_id, COALESCE(u.role, ''), COALESCE(u.username, '')
@@ -282,7 +290,69 @@ func reservationsOverlapping(ctx context.Context, q rowQueryer, name string) ([]
 		r.ownerAdmin = role == roleAdmin
 		out = append(out, r)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return hostnameNearness(name, out[i].hostname) < hostnameNearness(name, out[j].hostname)
+	})
+	return out, nil
+}
+
+// hostnameNearness orders the names that overlap name: 0 for name itself,
+// then the names above it (the closest, i.e. longest, first), then the names
+// under it (the closest, i.e. shortest, first).
+func hostnameNearness(name, other string) int {
+	switch {
+	case other == name:
+		return 0
+	case strings.HasSuffix(name, "."+other):
+		return 1 + (len(name) - len(other))
+	default:
+		return 1 + len(name) + (len(other) - len(name))
+	}
+}
+
+// insideOwnDomainUnder: a server name does not refuse name when the
+// receiving account already holds a name (own: its domains and aliases, not
+// the implicit www and mail names) that lies under the server name and
+// above name. The server name then lies above a domain the account already
+// has, and the new name stays inside that domain: a subdomain of one's own
+// domain stays an ordinary subdomain (alpha.142 lab: customers' domains
+// under the server's zone). Everything else stays refused: name equal to the
+// server name, the server name under name, name under the server name
+// without such a domain, and the server name between the account's domain
+// and name (the server's mail host name inside the customer's domain).
+// Migration 081 applies the same exemption in the database.
+func insideOwnDomainUnder(name, server string, own []string) bool {
+	for _, held := range own {
+		if strings.HasSuffix(name, "."+held) && strings.HasSuffix(held, "."+server) {
+			return true
+		}
+	}
+	return false
+}
+
+// accountGivenNames: the domains and aliases (hostname_reservations of kind
+// primary or alias) of every subscription ownerID owns.
+func accountGivenNames(ctx context.Context, q rowQueryer, ownerID int) ([]string, error) {
+	rows, err := q.QueryContext(ctx, `SELECT r.hostname FROM hostname_reservations r
+		JOIN domains d ON d.id = r.domain_id
+		JOIN subscriptions s ON s.id = d.subscription_id
+		WHERE s.owner_id = ? AND r.source_kind IN ('primary', 'alias')`, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		names = append(names, strings.ToLower(name))
+	}
+	return names, rows.Err()
 }
 
 // remoteZonesOverlapping: zones this server publishes for a connected
@@ -333,8 +403,19 @@ func (p *Panel) checkHostnameClaim(ctx context.Context, claim hostnameClaim) (*h
 		if err != nil {
 			return nil, err
 		}
+		var own []string
+		ownRead := false
 		for _, s := range server {
-			if hostnamesOverlap(name, s.Name) {
+			if !hostnamesOverlap(name, s.Name) {
+				continue
+			}
+			if !ownRead {
+				if own, err = accountGivenNames(ctx, db, claim.OwnerID); err != nil {
+					return nil, err
+				}
+				ownRead = true
+			}
+			if !insideOwnDomainUnder(name, s.Name, own) {
 				return &hostnameClaimRefusal{Reason: hostnameClaimServerName, Name: name, Other: s.Name}, nil
 			}
 		}
@@ -588,6 +669,12 @@ func (p *Panel) transferNameOverlaps(ctx context.Context, q rowQueryer, subID, r
 	if err != nil {
 		return nil, err
 	}
+	// The receiver's own domains and aliases: a name of the subscription
+	// inside one of them is not refused by a server name above it.
+	receiverNames, err := accountGivenNames(ctx, q, receiverID)
+	if err != nil {
+		return nil, err
+	}
 	var lines []string
 	for _, name := range names {
 		held, err := reservationsOverlapping(ctx, q, name)
@@ -603,7 +690,7 @@ func (p *Panel) transferNameOverlaps(ctx context.Context, q rowQueryer, subID, r
 		}
 		if other == "" {
 			for _, s := range server {
-				if hostnamesOverlap(name, s.Name) {
+				if hostnamesOverlap(name, s.Name) && !insideOwnDomainUnder(name, s.Name, receiverNames) {
 					other = s.Name
 					break
 				}
