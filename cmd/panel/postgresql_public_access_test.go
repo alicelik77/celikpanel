@@ -667,16 +667,32 @@ func TestPGPublicThePageReadsTheLastScan(t *testing.T) {
 	// Read again: one scan for the presses that come while it runs.
 	f.agent.scanGate = make(chan struct{})
 	var wg sync.WaitGroup
-	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if rec := pgPublicPost(t, f.visibleDatabasesFixture, "admin", map[string]any{"action": "read"}); rec.Code != http.StatusOK {
-				t.Errorf("read again: %d %s", rec.Code, rec.Body.String())
-			}
-		}()
+	press := func() {
+		defer wg.Done()
+		if rec := pgPublicPost(t, f.visibleDatabasesFixture, "admin", map[string]any{"action": "read"}); rec.Code != http.StatusOK {
+			t.Errorf("read again: %d %s", rec.Code, rec.Body.String())
+		}
 	}
-	time.Sleep(100 * time.Millisecond)
+	waiters := func() int {
+		pgPublicScans.Lock()
+		defer pgPublicScans.Unlock()
+		if flight := pgPublicScans.running[f.panel]; flight != nil {
+			return flight.waiters
+		}
+		return -1
+	}
+	wg.Add(1)
+	go press()
+	deadline := time.Now().Add(10 * time.Second)
+	for waiters() < 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	wg.Add(2)
+	go press()
+	go press()
+	for waiters() < 2 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
 	close(f.agent.scanGate)
 	wg.Wait()
 	if f.agent.scans != 2 {

@@ -402,6 +402,8 @@ type pgPublicFlight struct {
 	done    chan struct{}
 	result  *pgPublicScanResult
 	err     error
+	// waiters: the callers waiting for this scan (read under the lock).
+	waiters int
 }
 
 // pgPublicCachedScan is the last scan, nil before the first.
@@ -421,6 +423,7 @@ func (p *Panel) pgPublicFreshScan(ctx context.Context, notBefore time.Time) (*pg
 			return last, nil
 		}
 		if flight := pgPublicScans.running[p]; flight != nil {
+			flight.waiters++
 			pgPublicScans.Unlock()
 			select {
 			case <-flight.done:
@@ -495,7 +498,10 @@ func pgPublicDecide(record pgPublicRecord, f transport.PostgreSQLPublicAccessFac
 	seen := map[string]bool{}
 	if marker != nil {
 		for _, role := range marker.SeenRoles {
-			seen[role] = true
+			// A role seen then and recorded for it since is its own user.
+			if !containsString(record.userIn, role) {
+				seen[role] = true
+			}
 		}
 	}
 	for _, role := range f.Sessions {
@@ -697,10 +703,13 @@ func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, recor
 	}
 	before, _ := json.Marshal(watch)
 	now := pgPublicNow().UTC()
-	if len(entry.Sessions) > len(watch.SeenRoles) {
-		watch.SeenRoles = append([]string{}, entry.Sessions...)
-		if watch.SeenAt == "" {
-			watch.SeenAt = now.Format(time.RFC3339)
+	for _, role := range entry.SessionsNow {
+		if !containsString(watch.SeenRoles, role) {
+			watch.SeenRoles = append(watch.SeenRoles, role)
+			sort.Strings(watch.SeenRoles)
+			if watch.SeenAt == "" {
+				watch.SeenAt = now.Format(time.RFC3339)
+			}
 		}
 	}
 	fingerprint := pgPublicFingerprint(record, f)
