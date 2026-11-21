@@ -252,7 +252,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.MalwareQuarantineV1 Agent.MalwareRestoreV1 Agent.MalwareDeleteQuarantinedV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCron, `
-		Agent.AddCronJob Agent.DeleteCronJob Agent.UpdateCronJob
+		Agent.AddCronJob Agent.DeleteCronJob Agent.UpdateCronJob Agent.KeepCronLineV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityBackup, `
 		Agent.CreateBackup Agent.DeleteBackup Agent.ExtractCpmoveFiles Agent.RestoreBackup
@@ -444,6 +444,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RetireSiteCertificateLineagesV1": agentRPCMutationTimeout,
 	"Agent.DeleteBackup":                    agentRPCMutationTimeout,
 	"Agent.DeleteCronJob":                   agentRPCMutationTimeout,
+	"Agent.KeepCronLineV1":                  agentRPCMutationTimeout,
 	"Agent.DeleteFileOrDir":                 agentRPCMutationTimeout,
 	"Agent.DeleteMailAccount":               agentRPCMutationTimeout,
 	"Agent.DeleteMailDomain":                agentRPCMutationTimeout,

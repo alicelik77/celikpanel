@@ -110,7 +110,11 @@ func (h *fakePoolHost) ops() phpToolPoolOps {
 			h.steps = append(h.steps, "dirs:"+tool)
 			return nil
 		},
-		prepareFiles: func(_ context.Context, tool string, uid, gid int) (func(context.Context) error, error) {
+		removeDirs: func(tool string) error {
+			h.steps = append(h.steps, "rmdirs:"+tool)
+			return nil
+		},
+		prepareFiles: func(_ context.Context, tool string, uid, gid int, _ bool) (func(context.Context) error, error) {
 			h.steps = append(h.steps, "files:"+tool)
 			if h.prepareErr != nil {
 				return nil, h.prepareErr
@@ -120,7 +124,20 @@ func (h *fakePoolHost) ops() phpToolPoolOps {
 				return nil
 			}, nil
 		},
-		applyPool:  services.ApplyManagedSiteFile,
+		applyPool: services.ApplyManagedSiteFile,
+		snapshotFile: func(path string) (mailFileSnapshot, error) {
+			content, err := os.ReadFile(path)
+			if errors.Is(err, os.ErrNotExist) {
+				return mailFileSnapshot{path: path}, nil
+			}
+			return mailFileSnapshot{path: path, exists: err == nil, content: content, mode: 0o644}, err
+		},
+		restoreFile: func(snapshot mailFileSnapshot) error {
+			if !snapshot.exists {
+				return os.Remove(snapshot.path)
+			}
+			return os.WriteFile(snapshot.path, snapshot.content, 0o644)
+		},
 		readFile:   os.ReadFile,
 		removeFile: os.Remove,
 		fpmTest: func(_ context.Context, version string) error {
@@ -144,7 +161,7 @@ func TestOwnPHPToolPoolCreatesTheAccountAndPoolAndUndoesThem(t *testing.T) {
 	}
 	fake := newFakePoolHost()
 	fake.sockets[phpToolPoolSocket(phpToolPHPMyAdmin, "8.4")] = true
-	socket, undo, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolPHPMyAdmin, "8.4")
+	socket, undo, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolPHPMyAdmin, "8.4", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +180,7 @@ func TestOwnPHPToolPoolCreatesTheAccountAndPoolAndUndoesThem(t *testing.T) {
 	}
 	// Called again: the same text, nothing reloaded, nothing to undo.
 	fake.steps = nil
-	again, undoAgain, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolPHPMyAdmin, "8.4")
+	again, undoAgain, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolPHPMyAdmin, "8.4", false)
 	if err != nil || again != socket {
 		t.Fatalf("second call = %q, %v", again, err)
 	}
@@ -175,7 +192,7 @@ func TestOwnPHPToolPoolCreatesTheAccountAndPoolAndUndoesThem(t *testing.T) {
 	if err := undo(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(fake.steps, " "); got != "fpm-reload:8.4 files-undo:phpmyadmin userdel:celikpanel-phpmyadmin" {
+	if got := strings.Join(fake.steps, " "); got != "fpm-t:8.4 fpm-reload:8.4 files-undo:phpmyadmin rmdirs:phpmyadmin userdel:celikpanel-phpmyadmin" {
 		t.Fatalf("undo steps = %s", got)
 	}
 	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
@@ -189,7 +206,7 @@ func TestOwnPHPToolPoolRefusesAnAccountInTheWebServersGroup(t *testing.T) {
 	fake := newFakePoolHost()
 	fake.accounts["celikpanel-webmail"] = [2]int{991, 991}
 	fake.members["www-data"] = []string{"celikpanel-webmail"}
-	_, _, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolWebmail, "8.4")
+	_, _, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolWebmail, "8.4", false)
 	if err == nil || !strings.Contains(err.Error(), "gpasswd -d celikpanel-webmail www-data") {
 		t.Fatalf("err = %v", err)
 	}
@@ -206,7 +223,7 @@ func TestOwnPHPToolPoolPutsEverythingBackWhenPHPFPMRefusesIt(t *testing.T) {
 	}
 	fake := newFakePoolHost()
 	fake.testErr = errors.New("ERROR: [pool celikpanel-phppgadmin] invalid")
-	_, _, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolPHPPgAdmin, "8.4")
+	_, _, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolPHPPgAdmin, "8.4", false)
 	if err == nil {
 		t.Fatal("a refused pool was accepted")
 	}
@@ -214,7 +231,7 @@ func TestOwnPHPToolPoolPutsEverythingBackWhenPHPFPMRefusesIt(t *testing.T) {
 		t.Fatalf("the refused pool stayed: %v", statErr)
 	}
 	got := strings.Join(fake.steps, " ")
-	if !strings.HasSuffix(got, "files-undo:phppgadmin userdel:celikpanel-phppgadmin") {
+	if !strings.HasSuffix(got, "files-undo:phppgadmin rmdirs:phppgadmin userdel:celikpanel-phppgadmin") {
 		t.Fatalf("steps = %s", got)
 	}
 }
@@ -237,7 +254,7 @@ func TestOwnPHPToolPoolKeepsAnOwnerEditedPoolAndUsesItsSocket(t *testing.T) {
 		t.Fatal(err)
 	}
 	fake.sockets[ownerSocket] = true
-	socket, _, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolWebmail, "8.4")
+	socket, _, err := ownPHPToolPoolWith(context.Background(), fake.ops(), phpToolWebmail, "8.4", false)
 	if err != nil || socket != ownerSocket {
 		t.Fatalf("socket = %q, %v", socket, err)
 	}
@@ -276,7 +293,7 @@ func TestRetirePHPToolPoolsKeepsTheBoundVersion(t *testing.T) {
 	if _, err := os.Stat(phpToolPoolPath(phpToolPHPPgAdmin, "8.4")); err != nil {
 		t.Fatal("the bound version's pool went")
 	}
-	if got := strings.Join(fake.steps, " "); got != "fpm-reload:8.3" {
+	if got := strings.Join(fake.steps, " "); got != "fpm-t:8.3 fpm-reload:8.3" {
 		t.Fatalf("steps = %s", got)
 	}
 }
@@ -289,7 +306,7 @@ func TestBindPHPToolMovesToItsOwnPoolAndPutsItBackWhenTheProofFails(t *testing.T
 			host.packages["php8.6-"+s] = true
 		}
 		ops := host.ops()
-		ops.ownPool = func(_ context.Context, tool, version string) (string, func(context.Context) error, error) {
+		ops.ownPool = func(_ context.Context, tool, version, _ string) (string, func(context.Context) error, error) {
 			host.steps = append(host.steps, "own:"+tool+"@"+version)
 			return own, func(context.Context) error {
 				host.steps = append(host.steps, "own-undo")
@@ -331,7 +348,7 @@ func TestBindPHPToolChangesNothingWhenTheOwnAccountCannotBeMade(t *testing.T) {
 		host.packages["php8.6-"+s] = true
 	}
 	ops := host.ops()
-	ops.ownPool = func(context.Context, string, string) (string, func(context.Context) error, error) {
+	ops.ownPool = func(context.Context, string, string, string) (string, func(context.Context) error, error) {
 		return "", nil, errors.New("the account celikpanel-phpmyadmin is a member of the web server's group www-data")
 	}
 	_, err := bindPHPToolWith(context.Background(), ops, phpToolPHPMyAdmin, "8.6")
@@ -370,7 +387,7 @@ func TestPHPMyAdminOwnAccountConfiguration(t *testing.T) {
 	if err := os.WriteFile(phpMyAdminMainConfig, []byte("<?php\n$cfg['Servers'][1]['host'] = 'localhost';\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := preparePHPMyAdminOwnAccount(990, 990); err == nil || !strings.Contains(err.Error(), "does not read") {
+	if _, err := preparePHPMyAdminOwnAccount(990, 990, false); err == nil || !strings.Contains(err.Error(), "does not read") {
 		t.Fatalf("err = %v", err)
 	}
 	if _, err := os.Stat(phpMyAdminConfDir); !errors.Is(err, os.ErrNotExist) {

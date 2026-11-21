@@ -555,6 +555,10 @@ type ConfigureWebmailResponse struct {
 	Configured bool   `json:"configured"`
 	Present    bool   `json:"present"`
 	Error      string `json:"error,omitempty"`
+	// ToolProblems (S4 R1 fix round): webmail could not be given its own
+	// account and runs under the web server's account (kind
+	// "own_account_failed"); said as a warning by the screen.
+	ToolProblems []PHPToolProblem `json:"tool_problems,omitempty"`
 }
 
 type InstalledRepoPackagesRequest struct {

@@ -331,6 +331,15 @@ type DeleteCronJobRequest struct {
 	Version string `json:"version,omitempty"`
 }
 
+// KeepCronLineRequest (S4 R1 fix round): the administrator keeps a line not
+// made in CelikPanel (ID as the list shows it, of the crontab read at
+// Version); it is added to CelikPanel's record and no longer listed.
+type KeepCronLineRequest struct {
+	CronTenant
+	ID      string `json:"id"`
+	Version string `json:"version"`
+}
+
 // File manager RPC contracts.
 type FileInfo struct {
 	Name        string    `json:"name"`

@@ -43,6 +43,9 @@ const settingSiteCrontabsOutside = "site_crontabs_outside_v1"
 type siteCrontabsOutside struct {
 	CheckedAt string         `json:"checked_at"`
 	Sites     map[string]int `json:"sites"`
+	// Unreadable (S4 R1 fix round): account -> why its crontab could not be
+	// read at the last step.
+	Unreadable map[string]string `json:"unreadable,omitempty"`
 }
 
 var siteCrontabsOutsideMu sync.Mutex
@@ -79,6 +82,12 @@ func (p *Panel) recordSiteCrontabsOutside(ctx context.Context, checkedAt string,
 	for _, row := range rows {
 		if row.DomainID > 0 && row.Outside > 0 {
 			state.Sites[strconv.Itoa(row.DomainID)] = row.Outside
+		}
+		if row.Unreadable != "" && row.Account != "" && len(state.Unreadable) < 50 {
+			if state.Unreadable == nil {
+				state.Unreadable = map[string]string{}
+			}
+			state.Unreadable[row.Account] = row.Unreadable
 		}
 	}
 	p.writeSiteCrontabsOutside(ctx, state)
@@ -144,6 +153,29 @@ func siteCrontabOutsideProblem(state siteCrontabsOutside, names map[int]string) 
 	}}
 }
 
+// siteCrontabUnreadableProblem is ONE line naming the site accounts whose
+// crontab could not be read, and why (S4 R1 fix round).
+func siteCrontabUnreadableProblem(state siteCrontabsOutside) []monitoringProblem {
+	if len(state.Unreadable) == 0 {
+		return nil
+	}
+	accounts := make([]string, 0, len(state.Unreadable))
+	for account := range state.Unreadable {
+		accounts = append(accounts, account)
+	}
+	sort.Strings(accounts)
+	why := state.Unreadable[accounts[0]]
+	if len(accounts) > 5 {
+		accounts = append(accounts[:5], "…")
+	}
+	subject := strings.Join(accounts, ", ")
+	return []monitoringProblem{{
+		Key: "site_crontab_unreadable", Kind: "site_crontab_unreadable", Severity: "warning", Actor: "server_owner",
+		Name: why, Subject: subject, Value: float64(len(state.Unreadable)), ObservedAt: state.CheckedAt,
+		Action: monitoringProblemAction{Kind: "open", To: "/monitoring"},
+	}}
+}
+
 // siteAtProblems turns the step's answer about at into Problems now.
 func siteAtProblems(state transport.SideDoorsState) []monitoringProblem {
 	at := state.At
@@ -159,11 +191,9 @@ func siteAtProblems(state transport.SideDoorsState) []monitoringProblem {
 				listed = append(listed, "…")
 				break
 			}
-			line := "#" + job.ID + " " + job.Account + ", " + job.When
-			if job.Command != "" {
-				line += ": " + job.Command
-			}
-			listed = append(listed, line)
+			// Number, account and time: the commands are the site's own
+			// text and are never copied here (S4 R1 fix round).
+			listed = append(listed, "#"+job.ID+" "+job.Account+", "+job.When)
 		}
 		subject := strings.Join(listed, "; ")
 		problems = append(problems, monitoringProblem{
@@ -190,6 +220,14 @@ func siteAtProblems(state transport.SideDoorsState) []monitoringProblem {
 			Key: "at_not_closed", Kind: "at_not_closed", Severity: "warning", Actor: "server_owner",
 			Name: at.Path, Subject: at.Path, ObservedAt: state.CheckedAt, Action: action,
 		})
+	case transport.SideDoorsAtOwnerRemoved:
+		// S4 R1 fix round: the owner deleted CelikPanel's file; it is not
+		// written again by itself, and closing it again is explicit.
+		problems = append(problems, monitoringProblem{
+			Key: "at_owner_removed", Kind: "at_owner_removed", Severity: "warning", Actor: "administrator",
+			Name: at.Path, Subject: at.Path, ObservedAt: state.CheckedAt,
+			Action: monitoringProblemAction{Kind: "reclose", To: transport.SideDoorsReCloseAt},
+		})
 	}
 	return problems
 }
@@ -204,6 +242,7 @@ func (p *Panel) siteJobsProblems(ctx context.Context, db *sql.DB) []monitoringPr
 		}
 	}
 	outside := p.readSiteCrontabsOutside(ctx)
+	problems = append(problems, siteCrontabUnreadableProblem(outside)...)
 	if len(outside.Sites) == 0 || db == nil {
 		return problems
 	}

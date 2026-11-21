@@ -580,6 +580,25 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "at_directory_accounts":
 		return "Website accounts can still use at on this server: its accounts come from a directory service, so CelikPanel did not write /etc/at.allow.",
 			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: hesaplar bir dizin hizmetinden geldiği için CelikPanel /etc/at.allow dosyasını yazmadı."
+	// S4 R1 fix round (side_doors.go, side_doors_jobs.go).
+	case "tool_down":
+		return fmt.Sprintf("%s does not answer on PHP %s. Open it under Components and choose its PHP version again; Monitoring says what was tried.", name, subject),
+			fmt.Sprintf("%s PHP %s üzerinde yanıt vermiyor. Bileşenler'de açıp PHP sürümünü yeniden seçin; nelerin denendiği İzleme'de.", name, subject)
+	case "stock_pool_not_put_back":
+		return fmt.Sprintf("The distribution's PHP %s pool could not be put back after turning it off failed. Monitoring says how to put it back.", name),
+			fmt.Sprintf("Dağıtımın PHP %s havuzu kapatılamadı ve geri de konamadı. Nasıl geri konacağı İzleme'de.", name)
+	case "stock_pool_failed", "stock_pool_unknown":
+		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is still on: Monitoring says why.", name),
+			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu hâlâ açık; nedeni İzleme'de.", name)
+	case "stock_pool_owner_restored":
+		return fmt.Sprintf("The distribution's PHP %s pool was put back on the server and runs as the web server's account. Monitoring offers to turn it off again.", name),
+			fmt.Sprintf("Dağıtımın PHP %s havuzu sunucuda geri açıldı ve web sunucusu hesabıyla çalışıyor. İzleme yeniden kapatmayı önerir.", name)
+	case "at_owner_removed":
+		return "/etc/at.allow was deleted on this server, so website accounts can use at again. Monitoring offers to close it again.",
+			"Bu sunucuda /etc/at.allow silindi; web sitesi hesapları yeniden at kullanabiliyor. İzleme yeniden kapatmayı önerir."
+	case "site_crontab_unreadable":
+		return fmt.Sprintf("The crontab of %s could not be read, so lines added to it outside CelikPanel cannot be seen. Monitoring says why.", subject),
+			fmt.Sprintf("%s crontab'ı okunamadı; CelikPanel dışında eklenen satırları görülemiyor. Nedeni İzleme'de.", subject)
 	case "at_not_closed":
 		return "Website accounts can still use at on this server: CelikPanel could not write /etc/at.allow. It tries again at the panel's next start.",
 			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: CelikPanel /etc/at.allow dosyasını yazamadı. Panelin bir sonraki başlangıcında yeniden dener."

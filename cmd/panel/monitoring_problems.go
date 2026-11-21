@@ -125,6 +125,14 @@ var problemKindOrder = map[string]int{
 	"at_allow_lists_sites":  21,
 	"at_directory_accounts": 22,
 	"at_not_closed":         23,
+	// S4 R1 fix round.
+	"tool_down":                 24,
+	"stock_pool_not_put_back":   25,
+	"stock_pool_failed":         26,
+	"stock_pool_unknown":        27,
+	"stock_pool_owner_restored": 28,
+	"at_owner_removed":          29,
+	"site_crontab_unreadable":   30,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

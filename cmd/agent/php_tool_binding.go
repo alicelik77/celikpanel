@@ -1165,7 +1165,10 @@ type phpToolBindOps struct {
 	// ownPool gives the tool its own account and pool on the version (S4 R1)
 	// and returns their socket and the undo of what it changed; nil keeps
 	// the version's stock socket (tests of the move alone).
-	ownPool func(ctx context.Context, tool, version string) (string, func(context.Context) error, error)
+	// served is the socket the tool's web server configuration names now:
+	// a tool already served by its own pool keeps its files with the account
+	// whatever the move does (php_tool_files.go).
+	ownPool func(ctx context.Context, tool, version, served string) (string, func(context.Context) error, error)
 	// afterBound runs once the tool answers on the version: its pools on
 	// other versions go. Its error is a warning.
 	afterBound func(ctx context.Context, tool, version string) error
@@ -1263,7 +1266,7 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 	// a later step fails.
 	// Kendi hesabı ve havuzu; sonraki adım başarısız olursa geri alınır.
 	if ops.ownPool != nil {
-		own, undo, err := ops.ownPool(ctx, tool, version)
+		own, undo, err := ops.ownPool(ctx, tool, version, ops.state(tool).Socket)
 		if err != nil {
 			return fail(errCodePHPToolAccountFailed, kind("own_account_failed"),
 				"%s could not be given its own account on PHP %s (%v); it still runs as before", name, version, err)
@@ -1629,8 +1632,9 @@ func hostPHPToolBindOps() phpToolBindOps {
 			return retryPHPToolProbe(ctx, tool, version, probePHPToolHTTP, phpToolProbeSettle, time.Second)
 		},
 		writeRecord: writePHPToolBinding,
-		ownPool: func(ctx context.Context, tool, version string) (string, func(context.Context) error, error) {
-			return ownPHPToolPoolWith(ctx, hostPHPToolPoolOps(), tool, version)
+		ownPool: func(ctx context.Context, tool, version, served string) (string, func(context.Context) error, error) {
+			_, servedOwn := phpToolOwnSocket(served)
+			return ownPHPToolPoolWith(ctx, hostPHPToolPoolOps(), tool, version, servedOwn)
 		},
 		afterBound: func(ctx context.Context, tool, version string) error {
 			var errs []error
@@ -1638,6 +1642,11 @@ func hostPHPToolBindOps() phpToolBindOps {
 				errs = append(errs, err)
 			}
 			if err := writePHPToolAccountFailure(tool, version, ""); err != nil {
+				errs = append(errs, err)
+			}
+			// The tool answers on its own pool: its files are the account's
+			// for good, and the record of how they were goes.
+			if err := clearPHPToolFileJournal(tool); err != nil {
 				errs = append(errs, err)
 			}
 			return errors.Join(errs...)
