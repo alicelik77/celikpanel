@@ -754,3 +754,29 @@ func TestOwnersHandEditReachesTheTimersAtTheNextStart(t *testing.T) {
 		t.Fatalf("polkit 0.105: %+v", out)
 	}
 }
+
+// TestDeletingAMovedSiteRemovesItsCrontabDespiteCronAllow: crontab refuses
+// -r for an account /etc/cron.allow leaves out, even as root (Stage 1 F1);
+// a site's deletion then removes the spool file itself instead of failing.
+func TestDeletingAMovedSiteRemovesItsCrontabDespiteCronAllow(t *testing.T) {
+	useTaskTestHost(t)
+	spool := filepath.Join(t.TempDir(), "root")
+	writeTaskFile(t, spool, "* * * * * planted\n")
+	oldPaths := siteCronSpoolPaths
+	t.Cleanup(func() { siteCronSpoolPaths = oldPaths })
+	siteCronSpoolPaths = func(string) []string { return []string{spool} }
+	cronRemoveCrontab = func(username string) error {
+		return errors.New("crontab -r: The user " + username + " cannot use this program (crontab)")
+	}
+	if err := removeSiteCrontab("root"); err != nil {
+		t.Fatalf("the deletion failed on cron.allow's refusal: %v", err)
+	}
+	if _, err := os.Stat(spool); !os.IsNotExist(err) {
+		t.Fatal("the spool file stayed")
+	}
+	cronRemoveCrontab = func(string) error { return errors.New("crontab -r: something else broke") }
+	writeTaskFile(t, spool, "x\n")
+	if err := removeSiteCrontab("root"); err == nil {
+		t.Fatal("another failure was hidden")
+	}
+}
