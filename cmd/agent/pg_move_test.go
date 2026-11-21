@@ -82,11 +82,6 @@ func TestPGProofListsMismatchesFirstAndNeedsTheSameTables(t *testing.T) {
 // changes it to simulate writes.
 var sourceWrites = "100\x1f20\x1f3\x1f2026-10-01 00:00:00+00\n"
 
-// moveArchiveList is what pg_restore --list says of the fake archive.
-const moveArchiveList = ";\n; Archive created\n215; 1259 16390 TABLE public orders shop_user\n" +
-	"3310; 0 16390 TABLE DATA public orders shop_user\n3311; 0 16395 TABLE DATA public users shop_user\n" +
-	"3320; 0 0 SEQUENCE SET public orders_id_seq shop_user\n"
-
 func copyHost(t *testing.T, restoreRows string) (*fakePGHost, *bool) {
 	f := newFakePGHost(t)
 	dumpDir := t.TempDir()
@@ -122,19 +117,6 @@ func copyHost(t *testing.T, restoreRows string) (*fakePGHost, *bool) {
 				t.Fatalf("role script on %d: %q", port, statement)
 			}
 			return "", nil
-		// S1b: the safety reads and the move role's life.
-		case statement == "SHOW server_version_num;":
-			return "170012\n", nil
-		case statement == pgAdministratorObjectsStatement:
-			return "", nil
-		case strings.HasPrefix(statement, "SELECT rolname FROM pg_catalog.pg_roles WHERE rolsuper"):
-			return "postgres\n", nil
-		case strings.Contains(statement, `CREATE ROLE "celikpanel_move_`), strings.HasPrefix(statement, "GRANT CONNECT ON DATABASE"),
-			strings.HasPrefix(statement, "REVOKE ALL ON DATABASE"), strings.HasPrefix(statement, `DROP OWNED BY "celikpanel_move_`):
-			if port != 5433 {
-				t.Fatalf("the move role reached the source: %q", statement)
-			}
-			return "", nil
 		case strings.HasPrefix(statement, "DROP DATABASE IF EXISTS"), strings.HasPrefix(statement, "DROP ROLE IF EXISTS"):
 			if port != 5433 {
 				t.Fatalf("a cleanup reached the source: %q", statement)
@@ -150,22 +132,12 @@ func copyHost(t *testing.T, restoreRows string) (*fakePGHost, *bool) {
 			_, err := io.WriteString(stdout, fakeRolesDump)
 			return err
 		case "pg_dump":
-			if len(args) == 1 && args[0] == "--version" {
-				_, err := io.WriteString(stdout, "pg_dump (PostgreSQL) 17.12 (Debian 17.12-0+deb13u1)\n")
-				return err
-			}
 			_, err := io.WriteString(stdout, "PGDMP-custom")
 			return err
-		case "psql":
-			return nil
 		case "pg_restore":
 			data, _ := io.ReadAll(stdin)
 			if string(data) != "PGDMP-custom" {
 				t.Fatalf("restore read %q", data)
-			}
-			if len(args) == 1 && args[0] == "--list" {
-				_, err := io.WriteString(stdout, moveArchiveList)
-				return err
 			}
 			restored = true
 			return nil
@@ -189,9 +161,7 @@ func TestPGCopyIsProvedByEveryTablesRows(t *testing.T) {
 		t.Fatalf("proof = %+v", resp.Proof)
 	}
 	if !strings.Contains(strings.Join(f.streams, "\n"), "pg_dump --port 5432 --format custom --no-password --dbname shop") ||
-		!strings.Contains(strings.Join(f.streams, "\n"), "pg_restore --port 5433 --section pre-data --create --exit-on-error --no-password --dbname postgres") ||
-		!strings.Contains(strings.Join(f.streams, "\n"), "--role shop_user --section data") ||
-		!strings.Contains(strings.Join(f.streams, "\n"), "pg_restore --port 5433 --section post-data") {
+		!strings.Contains(strings.Join(f.streams, "\n"), "pg_restore --port 5433 --create --exit-on-error --no-password --dbname postgres") {
 		t.Fatalf("streams = %v", f.streams)
 	}
 	// The dump file is gone and nothing that holds password hashes is returned.

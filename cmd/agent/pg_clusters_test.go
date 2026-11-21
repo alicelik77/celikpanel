@@ -103,18 +103,7 @@ func (f *fakePGHost) host() pgClusterHost {
 			}
 			return nil
 		},
-		streamLogin: func(_ context.Context, owner, client, password string, stdin io.Reader, stdout io.Writer, args ...string) error {
-			f.streams = append(f.streams, "login "+client+" "+strings.Join(args, " "))
-			if password == "" {
-				f.t.Fatalf("a sign-in without a password")
-			}
-			if f.streamFn != nil {
-				return f.streamFn(client, stdin, stdout, args)
-			}
-			return nil
-		},
-		privateDir: func(string) (string, error) { return os.MkdirTemp(f.root, "list-") },
-		freeBytes:  func(string) (int64, error) { return 1 << 40, nil },
+		freeBytes: func(string) (int64, error) { return 1 << 40, nil },
 	}
 }
 

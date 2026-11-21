@@ -150,52 +150,6 @@ func hostPGStream(ctx context.Context, owner, client string, stdin io.Reader, st
 	return nil
 }
 
-// hostPGStreamLogin is hostPGStream signing in with password (PGPASSWORD in
-// the client's own environment, which only its account and root can read).
-func hostPGStreamLogin(ctx context.Context, owner, client, password string, stdin io.Reader, stdout io.Writer, args ...string) error {
-	binary, err := pgClientBinary(client)
-	if err != nil {
-		return err
-	}
-	cmd, err := pgCommandAs(ctx, owner, binary, args...)
-	if err != nil {
-		return err
-	}
-	cmd.Env = append(cmd.Env, "PGPASSWORD="+password)
-	stderr := &pgBuffer{limit: 16 << 10}
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, stdout, stderr
-	if err := cmd.Run(); err != nil {
-		if ctx.Err() != nil {
-			return fmt.Errorf("%s did not finish within its time: %w", client, ctx.Err())
-		}
-		return pgCommandError(err, stderr.String())
-	}
-	return nil
-}
-
-// hostPGPrivateDir makes a directory under the system's temporary directory
-// that only owner can use (0700, owned by owner).
-func hostPGPrivateDir(owner string) (string, error) {
-	account, err := user.Lookup(owner)
-	if err != nil {
-		return "", err
-	}
-	uid, err1 := strconv.Atoi(account.Uid)
-	gid, err2 := strconv.Atoi(account.Gid)
-	if err1 != nil || err2 != nil || uid == 0 {
-		return "", fmt.Errorf("the cluster owner %s cannot be given a directory", owner)
-	}
-	dir, err := os.MkdirTemp("", "celikpanel-pg-move-")
-	if err != nil {
-		return "", err
-	}
-	if err := os.Chown(dir, uid, gid); err != nil {
-		_ = os.RemoveAll(dir)
-		return "", err
-	}
-	return dir, nil
-}
-
 func hostPGLsclusters(ctx context.Context) (string, error) {
 	if info, err := os.Stat(pgLsclustersPath); err != nil || !info.Mode().IsRegular() {
 		return "", fmt.Errorf("%s: %w", pgLsclustersPath, errPGLsclustersMissing)
@@ -276,11 +230,9 @@ func defaultPGClusterHost() pgClusterHost {
 			installed, _ := readDpkgStatusVersions(dpkgStatusPath)
 			return installed
 		},
-		now:         time.Now,
-		stream:      hostPGStream,
-		streamLogin: hostPGStreamLogin,
-		privateDir:  hostPGPrivateDir,
-		freeBytes:   hostFreeBytes,
+		now:       time.Now,
+		stream:    hostPGStream,
+		freeBytes: hostFreeBytes,
 	}
 }
 

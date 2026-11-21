@@ -349,36 +349,15 @@ could reach a shell or the database server's administrator rights.
   session would run with the administrator's rights. A test fails when a
   PostgreSQL client is started another way.
 
-## Moving a PostgreSQL database to another cluster (20 November 2026)
+## Moving a PostgreSQL database to another cluster
 
-A move (PostgreSQL page → a cluster's Move) copies the database with
-`pg_dump` and loads it with `pg_restore` into the other version's cluster. The
-load ran entirely as the cluster's administrator, and loading the rows of a
-table evaluates the customer's own code: CHECK constraints (of the table and
-of its domains) and stored generated columns run as the session's user during
-`COPY`. A customer's function there ran with the administrator's rights.
-
-- The load is split (`cmd/agent/pg_move_owner_load.go`): the structure
-  before and after the rows (tables, functions, indexes, constraints,
-  triggers, rights) as the administrator, as before; each table's rows as
-  that table's owner, through a temporary sign-in role
-  (`celikpanel_move_<random>`, member of the owner only, `CONNECT` on the
-  database only, removed afterwards whatever happened); the large objects,
-  sequence values and the rows of an extension's own tables as the
-  administrator (no customer code runs for them). Index expressions,
-  materialized views and foreign key checks already run as the object's
-  owner in PostgreSQL itself (13.7 and later).
-- Refused before anything is written, the source untouched, with the reason:
-  a table, partitioned table or materialized view owned by an administrator
-  role that is not an extension's (`ADMINISTRATOR_OBJECTS`: its rows would
-  load with the administrator's rights); a `pg_dump` older than the August
-  2025 minor releases (`CLIENT_OUTDATED`, `CLIENT_UNKNOWN`); a target cluster
-  older than 13.8 or 14.5, or 12 and older (`TARGET_OUTDATED`: extension
-  scripts); the temporary role refused by the target's `pg_hba.conf`
-  (`LOGIN_REFUSED`).
-- What a move keeps is unchanged: owners, rights, comments, extensions,
-  settings, large objects. The source is removed only after the copy is
-  verified, as before.
+A move (PostgreSQL page → a cluster's Move) still loads the copy with
+`pg_restore` as the cluster's administrator, as in alpha.141: code a
+database's user placed in a table (a CHECK constraint, a domain's constraint,
+a stored generated column) runs with the administrator's rights while the
+rows are loaded. Only the administrator can start a move; do not move a
+database whose owner you do not trust. Loading the copy with its owners'
+rights is an open item of the security series (ROADMAP).
 
 ## Old PostgreSQL databases closed to other accounts (20 November 2026)
 
