@@ -2,11 +2,10 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.143.tr.md)
 
-**A security release: please update soon.** It closes three ways in which
+**A security release: please update soon.** It closes two ways in which
 one customer could act as another: outgoing mail signed with another
-customer's domain, a PostgreSQL database move that ran a customer's code
-with the administrator's rights, and PostgreSQL databases made before
-alpha.141 that every account of the server could still enter. It also
+customer's domain, and PostgreSQL databases made before alpha.141 that
+every account of the server could still enter. It also
 brings the four corrections the alpha.142 lab asked for.
 **Only the owner updates installed panels, from the panel's own update
 screen.**
@@ -24,9 +23,10 @@ screen.**
    changed by hand is kept and named in **Problems now**. There is nothing
    to press.
 4. A few minutes after the start, once the update is verified and the
-   server is quiet, the panel begins closing the PostgreSQL databases made
-   before alpha.141 that it may close by itself, then checks again every
-   hour (see "PostgreSQL databases made before alpha.141").
+   server is quiet, the panel starts watching the PostgreSQL databases made
+   before alpha.141 that it may close by itself, and closes each one after a
+   full day in which nobody else was seen using it, checking every hour (see
+   "PostgreSQL databases made before alpha.141").
 5. **Going back to alpha.142 opens the closed ways again.**
 
 ## Security: what is closed
@@ -38,18 +38,14 @@ screen.**
   leave this server with that customer's valid signature. Now mail sent
   with a mailbox login is signed only for that mailbox's own domain, and
   mail arriving on port 25 is never signed.
-- **A database move that ran a customer's code as the administrator.**
-  Moving a PostgreSQL database to another database server on this machine
-  loaded its rows with the administrator's rights, so code the database's
-  owner had placed in a table ran with those rights. Now each table's rows
-  are loaded with that table owner's rights only.
 - **Older PostgreSQL databases open to every account.** Databases made
   before alpha.141 kept PostgreSQL's default, under which every database
   user of the server may connect to every database and make temporary
   tables in it: one customer's database user could sign in to another
   customer's database and see how it is built. Now these databases are
-  closed to other accounts, by the panel itself where that is safe, and
-  with one button where the administrator must decide.
+  closed to other accounts: by the panel itself after a day in which nobody
+  else was seen using them, and with one button where the administrator must
+  decide.
 
 ## What changes for you
 
@@ -77,34 +73,42 @@ screen.**
 
 ### PostgreSQL databases made before alpha.141
 
-- The panel closes such a database by itself only when its rights are
-  still PostgreSQL's untouched default, nothing inside it belongs to an
-  account the panel does not record for it, no such account is connected
-  to it, and its database server has no monitoring account. Its owner and
-  the users the panel records for it keep their way in; every other account
-  can no longer connect to it or make temporary tables in it.
+- The panel closes such a database by itself only when nobody else can be
+  seen using it: its rights are still PostgreSQL's untouched default; no
+  account the panel does not record for it owns anything in it, holds a
+  right in it (also on a single column), or has a setting, a policy or a
+  user mapping there; every user the panel records for it has its account;
+  and its database server has no monitoring or replication account. Its
+  owner and the users the panel records for it keep their way in; every
+  other account can no longer connect to it or make temporary tables in it.
+- Such a database is watched first: it is closed at the first hourly check
+  at least 24 hours after its watch began, once at least 24 hourly checks
+  have read it. A change of its rights, of the accounts inside it, of its
+  owner or of its recorded users starts the watch again. An account the
+  panel does not record for it seen connected even once ends the watch: the
+  administrator decides, and the account is named. The **PostgreSQL** page
+  shows since when each database is watched and when it closes by itself if
+  nobody else connects; the administrator can close it at any time.
 - Every other such database is left exactly as it is and listed in
   **Problems now** and on the **PostgreSQL** page with what was found, what
-  closing changes, and one button to close it after a confirmation.
+  every account can do there now (connect, or only make temporary tables),
+  what closing changes, and one button to close it after a confirmation
+  that names the accounts connected at the last reading.
+- A close whose answer is lost is never taken as "nothing changed": the
+  panel keeps its record and reads the database again before doing anything
+  else. A close that fails is shown with its reason, its time and the step
+  to take; it is not retried every hour, only when something about the
+  database changes or the administrator presses Close. Two closes of the
+  same database never run at once.
 - Every close shows when and by whom it was made, with **Undo** (and the
   plain statements to undo it without the panel); undo gives back exactly
-  what the close changed. A database the administrator opened again is
-  never closed again by itself.
+  what the close changed. A database the administrator opened again stays
+  on the page as the administrator's choice, leaves **Problems now** and the
+  alert mail, and is never closed again by itself.
+- The page shows the last reading with its time; **Read again** reads every
+  database of a database server in one connection.
 - MariaDB has no such default: nothing changes there. PostgreSQL servers
   registered on other machines are not touched.
-
-### Moving a PostgreSQL database to another database server
-
-The structure is loaded as before; each table's rows are loaded with that
-table owner's rights only, through a temporary account removed afterwards.
-What a move keeps is unchanged (owners, rights, comments, extensions,
-settings, large objects), and the source is removed only after the copy is
-verified, as before. A move that cannot be done this way is refused before
-anything is written, with the reason and what to do, and the source stays
-untouched: a table owned by an administrator account, database client
-programs older than the August 2025 updates, a target database server older
-than 13.8 or 14.5, or a target whose access rules refuse the temporary
-account's sign-in.
 
 ### Corrections from the alpha.142 lab
 
@@ -137,10 +141,17 @@ account's sign-in.
   sent with a login is still signed for any hosted domain its "From" line
   names. Port 25 is closed to signing there too, and **Problems now** says
   so.
+- **Moving a database to another PostgreSQL server version** (an
+  administrator action: only the administrator can start one) still runs
+  the customers' database code in it with the administrator's rights during
+  the move, as in alpha.141. Until a later release fixes this, do not move a
+  database whose owner you do not trust.
 - A PostgreSQL database in which the panel found something it does not
   decide by itself stays open to other accounts until the administrator
-  closes it on the PostgreSQL page. Databases the panel does not record (for
-  example made by hand) are not touched.
+  closes it on the PostgreSQL page; one it may close by itself stays open
+  for the day it is watched. Databases the panel does not record (for
+  example made by hand) are not touched. The closing was tested on
+  PostgreSQL 17 only.
 - A subdomain made inside a customer's own domain under a server name is
   listed in **Problems now** like its parent domain (above). The
   administrator giving a customer a new name under a server name is not
@@ -168,9 +179,10 @@ account's sign-in.
   snapshot or backup taken before the update.
 - Mail sent with a mailbox login is signed only for its own domain; a
   website handing mail to port 25 without a login is no longer signed.
-- Within the first hours, PostgreSQL databases made before alpha.141 are
-  closed to other accounts where that is safe; the others are listed for
-  the administrator in **Problems now** and on the PostgreSQL page.
+- From a day after the update, PostgreSQL databases made before alpha.141
+  are closed to other accounts where nobody else was seen using them; until
+  then the PostgreSQL page shows when each one closes. The others are listed
+  for the administrator in **Problems now** and on the PostgreSQL page.
 - A customer whose domain lies under a server name or an administrator's
   name can add subdomains of it again.
 
@@ -185,7 +197,8 @@ an older release refuses a ledger with 081
 release-recovery lab pins schema 81. New, all additive: the mail filter
 answer's `signing` field, two kinds in Problems now (`mail_signing`,
 `postgresql_databases_open`), the build-gated agent calls
-`PostgreSQLPublicAccessScanV1`, `CloseV1` and `UndoV1`, and panel setting
+`PostgreSQLPublicAccessScanV1`, `CloseV1` and `UndoV1` (with the answers
+`unknown`, `missing` and `replication`), and panel setting
 rows `postgresql_public_v1:<database id>` and `postgresql_public_list_v1`.
 
 Tests that perform each closed way and fail on the code before, passing on
@@ -200,10 +213,19 @@ this release's:
   a null sender with a login of `a` as `a`, local mail without a login by
   its "From" domain, and gave an unauthenticated outside client no
   signature; on Arch the earlier configuration is accepted.
-- PostgreSQL: `TestS1bMovingADatabaseNeverRunsItsCodeWithAdministratorRights`
-  and `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` on private
-  PostgreSQL 17 servers; the panel's decisions and the page in
-  `cmd/panel/postgresql_public_access_test.go` and
+- PostgreSQL, on a private PostgreSQL 17.12 server:
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the
+  independent review's cases
+  `TestS1bFixACloseWhoseAnswerIsLostAfterCommitIsUnknown`,
+  `TestS1bFixColumnRightsSettingsPoliciesAndMappingsCountAsInside` and
+  `TestS1bFixARoleNamedToBreakOutIsCarriedSafely` (these three also fail on
+  the first version of the change),
+  `TestS1bFixARecordedUserWithoutItsRoleIsSeenAndItsGrantIsNotNothingChanged`,
+  `TestS1bFixAReplicationSubscriberIsSeen` and
+  `TestS1bFixAScanOf300DatabasesIsOneSession` (one connection, about 5 s);
+  the panel's decisions (the day's watch, an unknown answer, two closes at
+  once, a failed close, a database opened again, the last reading) in
+  `cmd/panel/postgresql_public_access_test.go`; the page in
   `web/tests/pg-public-access-s1b.test.mjs`.
 - Corrections: `TestOwnSubdomainUnderAServerNameRuleAndTriggersAgree`,
   `TestOwnSubdomainUnderAnAdministratorsNameRuleAndTriggersAgree`,

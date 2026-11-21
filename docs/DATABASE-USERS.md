@@ -370,38 +370,86 @@ how it is built (`cmd/panel/postgresql_public_access.go`,
 there.
 
 - What CelikPanel closes by itself: a database it records on this machine's
-  clusters whose own rights are still PostgreSQL's untouched default
-  (`datacl` empty), in which nothing belongs to or is granted to a role
-  outside its records for that database, to which no such role is connected,
-  on a cluster with no monitoring login role (`pg_monitor` and the like).
-  The close is one transaction inside the database: it changes nothing unless
+  clusters, only when nobody else can be seen using it: its own rights are
+  still PostgreSQL's untouched default (`datacl` empty); no role outside its
+  records for that database has any footprint inside it (owners and rights
+  of relations, columns, schemas, functions, types, large objects,
+  extensions, languages, operators and their classes and families,
+  collations, conversions, text search objects, extended statistics,
+  foreign data wrappers and servers, publications and subscriptions; default
+  rights; user mappings; row security policy roles; per-database role
+  settings); every recorded user has its role; and its cluster has no
+  monitoring login role (`pg_monitor` and the like) and no role with the
+  `REPLICATION` attribute.
+- The watch (the exact rule). Such a database is watched first. It is closed
+  by itself at the first hourly round that comes at least 24 hours after its
+  watch began and after at least 24 rounds have read it, each finding all of
+  the above. The watch begins at the first reading that finds it so (a
+  round, or the page's reading of a new scan). A round that cannot read it
+  does not count. A change of its rights, of the roles inside it, of its
+  owner or of its recorded users (and their read or read-and-write right)
+  starts the count again. A session of a role outside its records seen
+  connected to it in any reading (`pg_stat_activity`) ends the watch: the
+  database is listed for the administrator with that role's name, also after
+  the session has ended. The page says, for a watched database, since when
+  and the time after which it closes by itself if nobody else connects; the
+  administrator can close it at any time.
+- The close is one transaction inside the database: it changes nothing unless
   the database is still as read; it gives `CONNECT` to the recorded users
   (and `TEMPORARY` to a read-and-write user; the owner keeps its rights as
   owner), takes `CONNECT` and `TEMPORARY` from `PUBLIC`, and reads back that
   `PUBLIC` holds neither and every recorded user and the owner may connect,
-  before `COMMIT`.
+  before `COMMIT`. Role names and rights reach its checks as transaction
+  settings, never inside a dollar-quoted body.
+- Its answers are three (D-024): closed; verified not closed (the database
+  was no longer as read, its read-back refused, or it could not be entered),
+  with the reason; and unknown (the script got past `BEGIN` and then failed
+  or gave no read-back: rolled back, or committed with its answer lost). On
+  an unknown answer the panel keeps its record and reads the database's real
+  state before anything else: closed (the record is finished, with who
+  closed it); unchanged (a failure with the reason; for CelikPanel's own
+  close whose answer was simply lost, the same conditions as a first close
+  apply again; an administrator's close is never redone by itself); or still
+  unknown (listed as such, never closed by itself).
+- A close that failed is kept with its reason and time, listed on the page
+  and in Problems now with who acts and what to do; it is not tried every
+  hour, only when the database's facts change or when the administrator
+  presses Close. Closes, undos and the panel's records for these databases
+  are done one at a time: the hourly round and an administrator never both
+  act, and the second reads the first's result.
 - Everything else is left exactly as it is and listed (Problems now, and the
   PostgreSQL page under "Databases other accounts can enter") with what was
-  found (rights changed by hand, other roles inside, other roles connected,
-  monitoring roles, undone before) and what closing changes; the
-  administrator closes it there after reading that.
+  found (rights changed by hand, other roles inside, other roles seen
+  connected, recorded users without a role, monitoring or replication roles,
+  a failed close, an unknown result), what every account can do there now
+  (connect, or only make temporary tables) and what closing changes; the
+  administrator closes it there after reading that. The confirmation names
+  the roles outside the records connected at the last reading.
 - Undo: on the PostgreSQL page beside each closed database (when, by whom),
   and as the plain statements for an owner without the panel (run as the
   postgres account). It gives `PUBLIC` back what it held and takes away
   exactly the rights the close gave; it is refused, changing nothing, when the
-  database's rights changed since. An undone database is never closed again by
-  itself.
+  database's rights changed since. Its unknown answer is settled from the
+  database the same way; the record of a close is never deleted while the
+  database may be closed. A database an administrator opened again stays on
+  the page as the administrator's choice ("Opened again by an
+  administrator"), out of Problems now and the alert mail, and is never
+  closed again by itself.
 - When: after the panel has been up a few minutes, an update of it is
   verified, the server is not busy and the Agent is the same build (the
-  database-rights loop's admission), then hourly. A cluster that does not
-  answer is read again at the next round; a close whose answer was lost is
-  finished from what the engine shows. Opening the PostgreSQL page reads the
-  rights again and changes nothing.
+  database-rights loop's admission), then hourly. A scan reads every recorded
+  database of a cluster in one session; the page shows the last scan with its
+  time and changes nothing; "Read again" starts one scan (a press while one
+  runs waits for it). A database or cluster that cannot be read is shown as
+  not read, never as safe. Measured on a private PostgreSQL 17.12: 300
+  databases in one session in about 5 seconds (the panel's bound for the
+  read is 60 seconds).
 - Kept in `panel_settings` (no schema change):
-  `postgresql_public_v1:<database id>` per database CelikPanel closed or is
-  closing (state, by whom, when, the rights before and after, what `PUBLIC`
-  held, what the close gave), and `postgresql_public_list_v1` for the list
-  Problems now shows.
+  `postgresql_public_v1:<database id>` per database CelikPanel watches,
+  closed or is closing (state, by whom, when, the rights before and after,
+  what `PUBLIC` held, what the close gave; the watch's start, rounds and
+  facts; the roles seen connected; the last failed close), and
+  `postgresql_public_list_v1` for the list Problems now shows.
 - Not covered: registered PostgreSQL servers on other machines (their own
   administrator's), and the `postgres`/`template1` databases.
 

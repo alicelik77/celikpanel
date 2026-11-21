@@ -8392,27 +8392,34 @@ bağlantıyı tutar.
   her alan adı için imzalanır (sonraki sürüm). **Hiçbir P0 maddesi
   kapanmadı.**
 
-### security/s3b-mail-signing, security/s1b-pg-leftovers ve fix/a143-lab-corrections dalları (posta yalnız göndericinin kendi alan adı için imzalanır; PostgreSQL küme taşıma ve alpha.141'den önce açılan veritabanları; alpha.142 laboratuvarının dört düzeltmesi; şema 80 -> 81, yalnız tetikleyiciler; anayasa 1; ilke 1, 2, 3 ve 4; D-022; D-024; D-025; 2026-11-21, aday alpha.143)
+### security/s3b-mail-signing, security/s1b-pg-leftovers ve fix/a143-lab-corrections dalları (posta yalnız göndericinin kendi alan adı için imzalanır; alpha.141'den önce açılan PostgreSQL veritabanları, bağımsız incelemeden sonra fix/a143-pg'de düzeltildi, küme taşıması çıkarıldı; alpha.142 laboratuvarının dört düzeltmesi; şema 80 -> 81, yalnız tetikleyiciler; anayasa 1; ilke 1, 2, 3 ve 4; D-022; D-024; D-025; 2026-11-21, aday alpha.143)
 
 - **Neden burada.** Panelin açılışındaki posta onarım adımı doğal OpenDKIM
-  ve Postfix ayarlarını yazar; PostgreSQL döngüsü ve taşıma doğal veritabanı
-  haklarını değiştirir; veritabanı tetikleyicisi bir şema geçişidir; site
+  ve Postfix ayarlarını yazar; PostgreSQL döngüsü doğal veritabanı haklarını
+  değiştirir; veritabanı tetikleyicisi bir şema geçişidir; site
   silmenin uygulama birimi temizliği ve tek seferlik kip düzeltmesi yaşam
   döngüsü adımlarıdır: anayasa 1 (her işlem tam kendi kaynakları için
   yetkilendirilir), ilke 1 (sahibin düzenlediği `opendkim.conf`, süzgeç
   ayarları ve dosya kipleri korunur), ilke 2 (iddiadan önce doğrulanmış
-  durum: her kapatma ve geri alma sonucunu geri okur), ilke 3 (durum
-  sorgusu ikinci bir değişiklik başlatmaz: PostgreSQL sayfasını ya da "Şu
-  anki sorunlar"ı okumak hiçbir şeyi değiştirmez) ve ilke 4 (retler hiçbir
+  durum: her kapatma ve geri alma sonucunu geri okur; işlem başladıktan sonra
+  kaybolan yanıt bilinmeyendir ve motordan uzlaştırılır, hiçbir zaman
+  "değişmedi" sayılmaz), ilke 3 (durum sorgusu ikinci bir değişiklik
+  başlatmaz: PostgreSQL sayfasını ya da "Şu anki sorunlar"ı okumak hiçbir
+  şeyi değiştirmez; kapatmalar sıraya konur, başarısız olan her saat yeniden
+  denenmez) ve ilke 4 (retler hiçbir
   şey yapılmadan verilir).
 - **Kusurlar (her biri düzeltmeden önce bir testle gösterildi).** OpenDKIM,
   `From:` satırında barındırılan bir alan adı geçen her iletiyi, kimliği
   doğrulanmış ve yerel istemciler için ve 25. portta imzalıyordu; böylece
   başka bir müşterinin adresini taşıyan posta o müşterinin imzasıyla
-  çıkıyordu; küme taşıma arşivi kümenin sahibi olarak geri yüklüyor,
-  veritabanı sahibinin kısıt kodunu yöneticinin haklarıyla çalıştırıyordu;
-  alpha.141'den önce açılan PostgreSQL veritabanları PUBLIC'in CONNECT ve
-  TEMPORARY haklarını koruyordu; alpha.142 laboratuvarından: bir müşterinin
+  çıkıyordu; alpha.141'den önce açılan PostgreSQL veritabanları PUBLIC'in
+  CONNECT ve TEMPORARY haklarını koruyordu (ilk sürümün bağımsız incelemesi
+  şunları buldu: COMMIT'ten sonra kaybolan yanıt geri almanın kaydını
+  siliyordu, başarısız kapatma saatte bir yeniden deneniyor ve gizleniyordu,
+  hiçbir şeyin sahibi olmadan veritabanını kullanan roller görülmüyordu, bir
+  rol adı koruma bloğunun dolar tırnaklı gövdesini bitirebiliyordu, tarama
+  sayfayla büyüyordu ve yöneticinin yeniden açtığı veritabanı sonsuza dek
+  uyarıyordu); alpha.142 laboratuvarından: bir müşterinin
   sunucu ya da yönetici adının altındaki kendi alan adının içinde alt alan
   adı reddediliyordu, yöneticiye uzak bir sahip söyleniyordu, hata veren bir
   Node.js birimi sitesinin silinmesini engelliyordu ve korunan sahip
@@ -8420,13 +8427,22 @@ bağlantıyı tutar.
 - **Sözleşme.** `SenderMacro {auth_authen}` imza anahtarını girişe bağlar;
   25. port smtpd'si OpenDKIM'siz kendi `smtpd_milters` ayarını alır;
   `SenderMacro`'suz bir derleme önceki yapılandırmayı korur ve bunu söyler.
-  Taşınan veritabanında her tablonun satırları yalnız o tablonun sahibinin
-  haklarını taşıyan bir rolle yüklenir; böyle yapılamayan taşıma hiçbir şey
-  yazılmadan reddedilir. Eski bir veritabanı kendiliğinden yalnız
-  dokunulmamış varsayılan haklarda, içinde ya da bağlı kayıt dışı rol
-  yokken ve kümesinde izleme rolü yokken kapatılır; aksi hâlde onaylı tek
-  kapatmayla listelenir; her kapatmanın tam bir geri alması vardır (panel
-  ve düz SQL) ve geri alınan veritabanı bir daha kendiliğinden kapatılmaz.
+  Eski bir veritabanı kendiliğinden yalnız dokunulmamış varsayılan
+  haklarda, içinde hiçbir izi olan kayıt dışı rol yokken, kayıtlı her
+  kullanıcının rolü varken, kümesinde izleme ya da çoğaltma rolü yokken ve
+  bir günlük izlemeden sonra kapatılır (izleme başladıktan en az 24 saat ve
+  en az 24 denetim sonraki ilk denetim; haklarının, içindeki rollerin,
+  sahibinin ya da kayıtlı kullanıcılarının değişmesi onu yeniden başlatır;
+  kayıt dışı bir rolün bir kez bağlı görülmesi onu bitirir); aksi hâlde
+  onaylı tek kapatmayla listelenir. Kapatma "kapatıldı", "doğrulanmış olarak
+  kapatılmadı" ya da "bilinmiyor" diye yanıtlanır; bilinmeyen kaydı korur ve
+  her şeyden önce motorun durumundan uzlaştırılır; başarısız kapatma
+  nedenini korur ve yalnız olgular değişince ya da yönetici basınca yeniden
+  denenir; kapatmalar sıraya konur. Her kapatmanın tam bir geri alması
+  vardır (panel ve düz SQL); yöneticinin yeniden açtığı veritabanı sayfada o
+  tercih olarak kalır, "Şu anki sorunlar"dan çıkar, bir daha kendiliğinden
+  kapatılmaz. Küme taşıması alpha.142'deki gibidir (sahip haklarıyla
+  yüklemesi çıkarıldı; ROADMAP güvenlik dizisi 6. madde).
   Ad kuralı, alan hesap N'nin altında olduğu bir R tutuyorsa ve R bir sunucu
   adının ya da yöneticinin tuttuğu bir adın altındaysa N'yi muaf tutar;
   diğer her şey panelde ve göç 081'de reddedilmeye devam eder.
@@ -8438,26 +8454,30 @@ bağlantıyı tutar.
   reddeder, alpha.142'ye dönüş güncellemeden önceki anlık görüntünün geri
   yüklenmesidir. Eklemeli: `WireMailFiltersResponse.signing`, "Şu anki
   sorunlar" türleri `mail_signing` ve `postgresql_databases_open`, sürüme
-  bağlı Agent çağrıları `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`,
+  bağlı Agent çağrıları `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`
+  (`unknown`, `missing`, `replication` yanıtları),
   panel_settings satırları `postgresql_public_v1:<kimlik>` ve
   `postgresql_public_list_v1`.
 - **Kurtarma.** Yeni bir `opendkim.conf`, yeniden adlandırmadan önce
   `opendkim -n` ile denetlenir ve OpenDKIM onunla çalışmazsa geri konur;
   Postfix yazmaları herhangi bir hatada ters sırayla geri alınır ve Postfix
   yeniden yüklenir; yeniden başlatma sırasında posta imzasız geçer
-  (`milter_default_action = accept`). Reddedilen ya da başarısız taşıma
-  kaynağı olduğu gibi bırakır ve geçici rolünü kaldırır; herhangi bir yerde
-  kesilen kapatma veritabanını dokunulmamış ya da haklarıyla kapatılmış
-  bırakır; veritabanı o zamandan beri değişmişse geri alma reddedilir ve
+  (`milter_default_action = accept`). Herhangi bir yerde kesilen kapatma
+  veritabanını dokunulmamış ya da haklarıyla kapatılmış bırakır, panelin
+  kaydını da motor hangisi olduğunu gösterene dek korur; veritabanı o zamandan beri değişmişse geri alma reddedilir ve
   hiçbir şey değiştirmez. Hepsi panel olmadan da çalışan doğal yapılandırma
   ve haklardır; sahip bunları `docs/TENANT-ISOLATION.tr.md` ve
   `docs/DATABASE-USERS.md` içinde adı geçen düz ayar ya da komutlarla geri
   alır.
 - **Kanıt.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` ve dağıtım
   matrisinde Debian 12/13 ve Ubuntu 22.04/24.04'ün gerçek OpenDKIM'i;
-  özel PostgreSQL 17'de
-  `TestS1bMovingADatabaseNeverRunsItsCodeWithAdministratorRights`,
-  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers`;
+  özel PostgreSQL 17.12'de
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve düzeltme
+  turunun `TestS1bFix*` testleri (COMMIT'ten sonra kaybolan yanıt, sütun
+  hakları, ayarlar, ilkeler ve kullanıcı eşlemeleri, dolar tırnaklı gövdeyi
+  bitirecek adlı bir rol, rolü olmayan kayıtlı kullanıcı, mantıksal
+  çoğaltma abonesi, tek tarama oturumunda 300 veritabanı), panelin
+  `TestPGPublic*` testleri;
   `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
   `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
   `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
@@ -8469,4 +8489,6 @@ bağlantıyı tutar.
   geçen barındırılan her alan adı için hâlâ imzalanır; panelin kaydetmediği
   veritabanlarına dokunulmaz; istisnayla açılan alt alan adı "Şu anki
   sorunlar"da hâlâ listelenir; SQL_ASCII bir PostgreSQL sunucusu hâlâ
-  laboratuvarda denenmedi. **Hiçbir P0 maddesi kapanmadı.**
+  laboratuvarda denenmedi; kapatma yalnız PostgreSQL 17'de çalıştırıldı;
+  taşıma müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla
+  çalıştırır. **Hiçbir P0 maddesi kapanmadı.**
