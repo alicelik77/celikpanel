@@ -103,6 +103,7 @@ func TestTenantIsolationEarlierFilesAreTightenedOnce(t *testing.T) {
 	edited := write(filepath.Join(nginxDir, "sites-available", "c.test.conf"), sealed+"# my change\n", 0o644)
 	ownerMode := write(filepath.Join(nginxDir, "sites-available", "d.test.conf"), sealed, 0o664)
 	private := write(filepath.Join(nginxDir, "sites-available", "e.test.conf"), sealed, 0o600)
+	current := write(filepath.Join(nginxDir, "sites-available", "g.test.conf"), sealed, 0o640)
 	notOurs := write(filepath.Join(nginxDir, "sites-available", "default.conf"), "server {}\n", 0o644)
 	if err := os.Symlink(ours, filepath.Join(nginxDir, "sites-available", "f.test.conf")); err != nil {
 		t.Fatal(err)
@@ -121,21 +122,23 @@ func TestTenantIsolationEarlierFilesAreTightenedOnce(t *testing.T) {
 			t.Errorf("%s is %04o, want 0640", path, mode(path))
 		}
 	}
-	for path, want := range map[string]os.FileMode{edited: 0o644, ownerMode: 0o664, private: 0o600, notOurs: 0o644} {
+	for path, want := range map[string]os.FileMode{edited: 0o644, ownerMode: 0o664, private: 0o600, current: 0o640, notOurs: 0o644} {
 		if mode(path) != want {
 			t.Errorf("%s is %04o, the owner's %04o was not kept", path, mode(path), want)
 		}
 	}
-	kept := 0
+	// Every mode the owner chose is kept AND named for the journal, also
+	// one that already keeps other accounts out (alpha.142 lab: an owner's
+	// 0600 was kept, but the summary said "0 kept" and named nothing). A
+	// file already at the new 0640 has nothing to say.
+	kept := map[string]string{}
 	for _, change := range changes {
 		if change.Kept {
-			kept++
-			if change.Path != ownerMode {
-				t.Errorf("unexpected kept entry %+v", change)
-			}
+			kept[change.Path] = change.Why
 		}
 	}
-	if kept != 1 || len(changes) != 5 {
+	if len(kept) != 2 || !strings.Contains(kept[ownerMode], "0664") || !strings.Contains(kept[private], "0600") ||
+		!strings.Contains(kept[private], "owner's choice") || len(changes) != 6 {
 		t.Fatalf("changes: %+v", changes)
 	}
 }
