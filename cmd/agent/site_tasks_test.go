@@ -82,6 +82,9 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 		taskTestAccount+":x:1500:1500::"+taskTestHome()+":/usr/sbin/nologin\n")
 	siteSliceHostSupport = func() string { return "" }
 	siteTasksMoveKilled = func(string) bool { return false }
+	oldPrepare := siteMovePrepare
+	t.Cleanup(func() { siteMovePrepare = oldPrepare })
+	siteMovePrepare = func() error { host.mu.Lock(); host.calls = append(host.calls, "prepare"); host.mu.Unlock(); return nil }
 	siteTaskVerify = func(string) error { return nil }
 	siteTaskChown = func(string, int, os.FileMode) error { return nil }
 	siteTaskCaps = func() (bool, bool) { return true, true }
@@ -232,6 +235,9 @@ func TestSiteTimersRenderOnlyWhatChangedAndKeepNumbers(t *testing.T) {
 	}
 	if input := readTaskFile(t, sitecron.InputPath(7, 2)); input != "secret input\n" {
 		t.Fatalf("input %q", input)
+	}
+	if host.count("prepare") == 0 {
+		t.Fatal("the helper and the SMTP block were not put in place before the units named them")
 	}
 	if !host.enabled["celikcron-7-1.timer"] || !host.active["celikcron-7-1.timer"] || !host.enabled["celikcron-7-3.timer"] || host.active["celikcron-7-3.timer"] {
 		t.Fatalf("enable: %v / %v (an @reboot timer is enabled, not started)", host.enabled, host.active)

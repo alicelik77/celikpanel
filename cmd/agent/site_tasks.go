@@ -509,6 +509,14 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 		}
 	}
 	egress, bpf := siteTaskCaps()
+	// A task's ExecStartPre runs the sandbox helper, which loads the SMTP
+	// block's file: both must be in place before a unit names them, or the
+	// task would never start (a server where no program ran yet).
+	if egress && len(jobs) > 0 {
+		if err := siteMovePrepare(); err != nil {
+			return result, fmt.Errorf("the site sandbox's helper and SMTP block could not be put in place: %w", err)
+		}
+	}
 	dir, err := sandboxUnitDir()
 	if err != nil {
 		return result, err
