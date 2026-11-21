@@ -413,7 +413,8 @@ expiry warnings (D-047).
 53. Postfix's address maps readable only by the mail services (alpha.142 lane S3).
 54. On Arch Linux, mail sent with a mailbox login is still signed for any hosted domain its "From"
     line names, as its OpenDKIM package has no `SenderMacro`; another way to tie signing to the
-    login there (alpha.143 lane S3b).
+    login there (alpha.143 lane S3b). Problems now says so there and never advises the option
+    (alpha.143 review).
 55. Whether a customer's domain under a server name or an administrator's name, and the subdomains
     made inside it, stay listed in Problems now as meeting the server's names: the owner's decision
     (alpha.143 lab corrections).

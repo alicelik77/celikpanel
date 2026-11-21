@@ -9,19 +9,28 @@ import (
 )
 
 // DKIM signing bound to the sender (20 Nov 2026, tenant isolation; the Agent's
-// cmd/agent/mail_signing_bind.go). Agent.WireMailFilters, at every Panel
-// start, says whether outgoing mail is signed only for the sender's own
-// domain. When it is not (the server owner's opendkim.conf or port-25 milter
-// setting was kept, or a change was refused and undone), the state is kept in
-// panel_settings and shown in Monitoring → Problems now with who acts and
-// what to do (D-024). Reading it never starts a change.
+// cmd/agent/mail_signing_bind.go). Every Agent step that can change it (the
+// start's Agent.WireMailFilters, the wiring after a component install or
+// removal, Agent.ConfigureDKIMSigning and Agent.ConfigureMailStack) says
+// whether outgoing mail is signed only for the sender's own domain; since 21
+// Nov 2026 (independent review of alpha.143, finding 5) every one of them is
+// recorded, and an answer that was not received is recorded as unknown, so an
+// earlier "in place" never stands for a result nobody knows. When it is not in
+// place the state is kept in panel_settings and shown in Monitoring → Problems
+// now with who acts and the concrete step (D-024, finding 10). Reading it
+// never starts a change.
 //
-// İmzanın göndericiye bağlanmadığı durum İzleme → Şu anki sorunlar'da gösterilir.
+// İmzanın göndericiye bağlanmadığı durum İzleme → Şu anki sorunlar'da somut
+// adımıyla gösterilir; onu değiştirebilen her adım durumu kaydeder.
 
 const settingMailSigningState = "mail_signing_state_v1"
 
-// recordMailSigningState keeps the Agent's latest state; nil (an older Agent)
-// leaves the record as it was.
+// mailSigningUnknownState is what the Panel records when a step's answer did
+// not arrive.
+const mailSigningUnknownState = "unknown"
+
+// recordMailSigningState keeps the Agent's latest state; nil (the Agent
+// refused the step before it changed anything) leaves the record as it was.
 func (p *Panel) recordMailSigningState(ctx context.Context, state *transport.MailSigningState) {
 	if state == nil {
 		return
@@ -35,14 +44,27 @@ func (p *Panel) recordMailSigningState(ctx context.Context, state *transport.Mai
 	}
 }
 
-// mailSigningProblemStates are the states shown as the one problem kind
-// mail_signing; which one it is, and what the server owner does, is the
-// Agent's sentence in the Panel's log of that start.
-var mailSigningProblemStates = map[string]bool{
-	"conf_kept": true, "port25_kept": true, "failed": true, "unsupported": true,
+// recordMailSigningCall records the outcome of one Agent call that can change
+// signing: the state it answered, or unknown when the answer did not arrive
+// (the step may or may not have run).
+func (p *Panel) recordMailSigningCall(ctx context.Context, state *transport.MailSigningState, callErr error) {
+	if callErr != nil && state == nil {
+		state = &transport.MailSigningState{State: mailSigningUnknownState,
+			Detail: "the Agent's answer to a mail signing step did not arrive: " + callErr.Error()}
+	}
+	p.recordMailSigningState(ctx, state)
 }
 
-// mailSigningProblems turns the recorded state into Problems now.
+// mailSigningProblemStates are the states shown as the problem kind
+// mail_signing; the screen words each one with its own concrete step.
+var mailSigningProblemStates = map[string]bool{
+	"conf_kept": true, "port25_kept": true, "failed": true, "unsupported": true,
+	"submit_open": true, mailSigningUnknownState: true,
+}
+
+// mailSigningProblems turns the recorded state into Problems now. Name is the
+// state (the screen's words for it), Subject the file or master.cf entry its
+// step names.
 func mailSigningProblems(raw string) []monitoringProblem {
 	if raw == "" {
 		return nil
@@ -56,6 +78,22 @@ func mailSigningProblems(raw string) []monitoringProblem {
 	}
 	return []monitoringProblem{{
 		Key: "mail_signing", Kind: "mail_signing", Severity: "warning", Actor: "server_owner", Name: state.State,
-		Action: monitoringProblemAction{Kind: "open", To: "/components/postfix"},
+		Subject: mailSigningSubject(state),
+		Action:  monitoringProblemAction{Kind: "open", To: "/components/postfix"},
 	}}
+}
+
+// mailSigningSubject is the path or entry the step names; fixed defaults when
+// an older record has none.
+func mailSigningSubject(state transport.MailSigningState) string {
+	if state.Subject != "" {
+		return state.Subject
+	}
+	switch state.State {
+	case "conf_kept":
+		return "/etc/opendkim.conf"
+	case "port25_kept":
+		return "smtp/inet"
+	}
+	return ""
 }

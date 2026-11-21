@@ -86,7 +86,13 @@ export const enProblemsNowScreens = {
     'pnow.postgresql_databases_open.action': 'Review and close',
     // alpha.143 (lane S3b): mail signed only for the sender's own domain.
     'pnow.mail_signing.title': 'Mail may still be signed for another customer’s domain',
-    'pnow.mail_signing.body': 'A mail signing setting changed by hand was kept, a change was refused, or this server’s OpenDKIM cannot do it. Mail is delivered. The panel’s log from its last start names the setting and what the server owner does. This line goes away when the next panel start finds it in place.',
+    // 21 Nov 2026: one body per state, each with the server owner's concrete step.
+    'pnow.mail_signing.conf_kept': '{domain} was changed by hand and kept. The server owner adds the line SenderMacro {auth_authen} to it (the panel’s full text is in {domain}.celikpanel-pending) and restarts OpenDKIM.',
+    'pnow.mail_signing.port25_kept': 'The port 25 milter setting ({domain}) was changed by hand and can still sign arriving mail. The server owner takes OpenDKIM out of it, or removes it so the panel writes it, and restarts the panel.',
+    'pnow.mail_signing.submit_open': 'Programs of sites can send mail signed for any domain on this server. The server owner sets authorized_submit_users = root, vmail in /etc/postfix/main.cf and reloads Postfix.',
+    'pnow.mail_signing.unsupported': 'This server’s OpenDKIM cannot sign by the mailbox login, so mail sent with a mailbox password is signed by its From: line. No setting here changes that.',
+    'pnow.mail_signing.failed': 'A signing change was put back, or OpenDKIM did not start again. Mail is delivered. Check that OpenDKIM runs on its component page, then restart the panel.',
+    'pnow.mail_signing.unknown': 'The last mail change could not confirm how mail is signed. Restart the panel to check again.',
     'pnow.mail_signing.action': 'Open the mail server',
 } as const;
 

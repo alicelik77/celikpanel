@@ -134,12 +134,43 @@ func renderMatrixOpenDKIM(t *testing.T, h *matrixHost) {
 	c.Extra["RESTORE_DIRS"] = dkimStoreRoot
 	login := []string{"{auth_type}", "PLAIN", "{auth_authen}", "anna@a.matrix.test", "{mail_addr}", "anna@a.matrix.test"}
 	nullLogin := []string{"{auth_type}", "PLAIN", "{auth_authen}", "anna@a.matrix.test", "{mail_addr}", ""}
+	// 21 Nov 2026 (review of alpha.143): the decisions run with this
+	// release's real `opendkim -n` (interrupted restart, owner's file on an
+	// OpenDKIM that refuses the login setting), and the out-of-office reply's
+	// From: comes from the product's own address rule.
+	if err := renderMatrixOpenDKIMDecisions(t, h, layout, supported); err != nil {
+		h.renderFailure(t, "opendkim.conf", "opendkim", "configuration", "cmd/agent/mail_signing_bind.go reconcileOpenDKIMConf", err)
+		return
+	}
+	replyFrom, err := matrixAutoresponderReplyFrom()
+	if err != nil {
+		h.renderFailure(t, "opendkim.conf", "opendkim", "configuration", "internal/transport ForeignAutoresponderAddresses", err)
+		return
+	}
 	c.File(matrixDKIMScript, []byte(matrixDKIMLua([]matrixDKIMMessage{
 		{"login, own From", "203.0.113.9", login, "<anna@a.matrix.test>", "Anna <anna@a.matrix.test>", "a.matrix.test"},
 		{"login, another customer's From", "203.0.113.9", login, "<anna@a.matrix.test>", "CEO <ceo@b.matrix.test>", "a.matrix.test"},
 		{"login, null sender, another customer's From", "203.0.113.9", nullLogin, "<>", "CEO <ceo@b.matrix.test>", "a.matrix.test"},
 		{"made on the server (sendmail of root or vmail)", "127.0.0.1", nil, "<notices@b.matrix.test>", "Notices <notices@b.matrix.test>", "b.matrix.test"},
 		{"no login, not this server", "203.0.113.9", nil, "<x@b.matrix.test>", "X <x@b.matrix.test>", "-"},
+		// Local mail under each mechanism that hands mail over on the
+		// server (Stage 1 of the fix round). Out-of-office reply (vmail's
+		// sendmail): its From: is an address the mailbox's account holds,
+		// because another account's address was refused above.
+		{"out-of-office reply, another account's address refused", "127.0.0.1", nil, "<anna@a.matrix.test>", replyFrom, "a.matrix.test"},
+		// The panel's notices (root's sendmail): no-reply@ of the owner's
+		// main domain.
+		{"panel notice (root's sendmail)", "127.0.0.1", nil, "<no-reply@a.matrix.test>", "no-reply@a.matrix.test", "a.matrix.test"},
+		// A forwarder re-sends outside mail inside Postfix (virtual alias),
+		// never through sendmail: the copy passes only the port-25 smtpd,
+		// whose list has no OpenDKIM; were OpenDKIM asked, an outside
+		// client with a forged From: is not signed.
+		{"forwarded outside mail, forged From:", "203.0.113.9", nil, "<x@outside.test>", "CEO <ceo@b.matrix.test>", "-"},
+		// A site's sendmail with a forged From: is signed for that domain:
+		// what Problems now reports as submit_open where
+		// authorized_submit_users lets sites hand mail over (review finding
+		// 2); CelikPanel's own setting refuses the site before this point.
+		{"site's sendmail, forged From: (only where authorized_submit_users allows sites)", "127.0.0.1", nil, "<site@a.matrix.test>", "CEO <ceo@b.matrix.test>", "b.matrix.test"},
 	})), 0o644)
 	h.write(t, c)
 }

@@ -42,6 +42,8 @@ interface View {
     stored: boolean;
     state?: ServerState;
     state_error?: string;
+    /** 21 Nov 2026: addresses CelikPanel took out (not the mailbox's own); shown until the next save. */
+    removed_addresses?: string[];
 }
 
 type Load = { state: 'loading' } | { state: 'failed' } | { state: 'known'; view: View };
@@ -307,6 +309,11 @@ export function MailAutoresponderDialog({
                     {ownerScript && (
                         <p role="status" className="rounded-md border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-sm text-fg">
                             {t('mail.autoreply.ownerScript')}
+                        </p>
+                    )}
+                    {(load.view.removed_addresses?.length ?? 0) > 0 && (
+                        <p role="status" data-autoreply-removed="" className="rounded-md border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-sm text-fg">
+                            {t('mail.autoreply.removed', { addresses: (load.view.removed_addresses ?? []).join(', ') })}
                         </p>
                     )}
                     {load.view.state_error && <p className="text-xs text-fg-muted">{t('mail.autoreply.stateUnknown')}</p>}

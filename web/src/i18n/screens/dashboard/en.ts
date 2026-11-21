@@ -384,6 +384,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.mail.account.recovery.reset_requested': 'a mailbox reset link was sent to its recovery address',
     'dashboard.audit.action.mail.account.recovery.reset_unknown': 'a mailbox reset by recovery link ended with an unknown result',
     'dashboard.audit.action.mail.account.recovery.set': 'set a mailbox’s recovery address',
+    'dashboard.audit.action.mail.autoresponder.addresses_removed': 'removed addresses that are not the mailbox’s own from an automatic reply',
     'dashboard.audit.action.mail.autoresponder.disable': 'turned off a mailbox’s automatic reply',
     'dashboard.audit.action.mail.autoresponder.enable': 'turned on a mailbox’s automatic reply',
     'dashboard.audit.action.mail.configure': 'changed the mail settings',

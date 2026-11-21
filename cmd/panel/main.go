@@ -1582,6 +1582,9 @@ func main() {
 		activationCancel()
 		milterWiringDeferred = panel.wireMailFiltersSynchronouslyAtStartup()
 	}
+	// 21 Nov 2026: out-of-office replies saved before name only the
+	// mailbox's own addresses after this start (mail_autoresponder_own.go).
+	panel.startAutoresponderAddressReconcile()
 
 	// alpha.130: a removed PostgreSQL major's cluster that holds only what
 	// initdb made is removed once after the start (postgresql_leftovers.go).
@@ -2153,17 +2156,19 @@ func (p *Panel) wireMailFiltersOnce() (transport.WireMailFiltersResponse, error)
 			request := transport.ServiceMutationRequest{
 				ServiceMutationBinding: binding,
 			}
-			if err := p.callAgentContext(
+			callErr := p.callAgentContext(
 				callCtx,
 				"Agent.WireMailFilters",
 				&request,
 				&response,
-			); err != nil {
-				return err
-			}
+			)
 			// 20 Nov 2026: whether mail is signed only for the sender's own
-			// domain, for Monitoring → Problems now (mail_signing_problem.go).
-			p.recordMailSigningState(ctx, response.Signing)
+			// domain, for Monitoring → Problems now (mail_signing_problem.go);
+			// an answer that did not arrive is recorded as unknown.
+			p.recordMailSigningCall(ctx, response.Signing, callErr)
+			if callErr != nil {
+				return callErr
+			}
 			if response.Error != "" {
 				// R-056. The ledger's own words for a failed host mutation say
 				// that one did not complete, which is true of every one of
@@ -2194,6 +2199,9 @@ func (p *Panel) mailFilterWiringHasSubject() bool {
 	present, detail := p.mailFilterWiringSubject()
 	if !present {
 		log.Printf("milter chain: nothing to wire at startup: %s", detail)
+		// No mail server here: nothing signs mail, and an earlier state does
+		// not stand (review of alpha.143, finding 5).
+		p.recordMailSigningState(context.Background(), &transport.MailSigningState{State: "no_dkim"})
 	}
 	return present
 }

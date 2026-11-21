@@ -48,6 +48,11 @@ type SetMailAutoresponderRequest struct {
 	ExpectedBuildCommit string            `json:"expected_build_commit"`
 	Email               string            `json:"email"`
 	Autoresponder       MailAutoresponder `json:"autoresponder"`
+	// AccountDomains (21 Nov 2026, additive) are the domains of the
+	// mailbox's own account. The Agent accepts an additional address only in
+	// one of them (or the mailbox's own domain) and only when the server's
+	// alias map delivers it to this mailbox (ForeignAutoresponderAddresses).
+	AccountDomains []string `json:"account_domains,omitempty"`
 }
 
 // MailAutoresponderStateRequest reads one mailbox's Sieve state (read only).
@@ -88,7 +93,81 @@ const (
 	// Dovecot's LMTP did not accept the mailbox; the mailbox keeps (or got
 	// back) Postfix's own delivery, so its mail never bounces.
 	AutoresponderRefusedLMTPRejected = "lmtp_rejected"
+	// An additional address is not one of the mailbox's own (21 Nov 2026):
+	// nothing was changed.
+	AutoresponderRefusedForeignAddress = "foreign_address"
 )
+
+// ForeignAutoresponderAddresses returns the additional addresses that are not
+// the mailbox's own (21 Nov 2026, alpha.143 review finding 1). The reply's
+// From: header is the additional address the incoming message named
+// (Pigeonhole's vacation :addresses), and mail handed over on the server is
+// signed by its From:, so an address of another account's domain would have
+// the reply signed for that domain. An address is the mailbox's own when its
+// domain is the mailbox's domain or one of accountDomains, and the alias map
+// delivers it to this mailbox: an exact forwarding (followed through further
+// forwardings), or, for an address that is neither a mailbox nor an exact
+// forwarding, its domain's catch-all. forwardings are the alias map's lines
+// (source "@domain" is a catch-all); isMailbox reports a mailbox address. The
+// same rule runs in the Panel (from its records) and in the Agent (from the
+// server's files).
+func ForeignAutoresponderAddresses(mailbox string, addresses, accountDomains []string, forwardings []MailForwarding, isMailbox func(string) bool) []string {
+	mailbox = strings.ToLower(strings.TrimSpace(mailbox))
+	own := map[string]bool{}
+	if at := strings.LastIndexByte(mailbox, '@'); at >= 0 {
+		own[mailbox[at+1:]] = true
+	}
+	for _, domain := range accountDomains {
+		own[strings.ToLower(strings.TrimSpace(domain))] = true
+	}
+	targets := map[string][]string{}
+	for _, forwarding := range forwardings {
+		source := strings.ToLower(strings.TrimSpace(forwarding.Source))
+		for _, destination := range strings.Split(forwarding.Destination, ",") {
+			if destination = strings.ToLower(strings.TrimSpace(destination)); destination != "" {
+				targets[source] = append(targets[source], destination)
+			}
+		}
+	}
+	var deliversHere func(address string, depth int) bool
+	deliversHere = func(address string, depth int) bool {
+		if address == mailbox {
+			return true
+		}
+		if depth > 8 {
+			return false
+		}
+		destinations, exact := targets[address]
+		if !exact {
+			if isMailbox != nil && isMailbox(address) {
+				return false
+			}
+			at := strings.LastIndexByte(address, '@')
+			if at < 0 {
+				return false
+			}
+			destinations = targets[address[at:]]
+		}
+		for _, destination := range destinations {
+			if deliversHere(destination, depth+1) {
+				return true
+			}
+		}
+		return false
+	}
+	var foreign []string
+	for _, raw := range addresses {
+		address := strings.ToLower(strings.TrimSpace(raw))
+		if address == "" || address == mailbox {
+			continue
+		}
+		at := strings.LastIndexByte(address, '@')
+		if at < 0 || !own[address[at+1:]] || !deliversHere(address, 0) {
+			foreign = append(foreign, address)
+		}
+	}
+	return foreign
+}
 
 // MailAutoresponderResponse is both the Set answer and the State answer.
 // Applied is true only when the complete change is in place. In a State

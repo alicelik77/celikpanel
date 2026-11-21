@@ -365,6 +365,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.mail.account.recovery.reset_requested': 'bir posta kutusunun sıfırlama bağlantısı kurtarma adresine gönderildi',
     'dashboard.audit.action.mail.account.recovery.reset_unknown': 'kurtarma bağlantısıyla posta kutusu sıfırlamanın sonucu bilinmiyor',
     'dashboard.audit.action.mail.account.recovery.set': 'bir posta kutusunun kurtarma adresini girdi',
+    'dashboard.audit.action.mail.autoresponder.addresses_removed': 'bir otomatik yanıttan kutunun kendisine ait olmayan adresleri çıkardı',
     'dashboard.audit.action.mail.autoresponder.disable': 'bir posta kutusunun otomatik yanıtını kapattı',
     'dashboard.audit.action.mail.autoresponder.enable': 'bir posta kutusunun otomatik yanıtını açtı',
     'dashboard.audit.action.mail.configure': 'posta ayarlarını değiştirdi',

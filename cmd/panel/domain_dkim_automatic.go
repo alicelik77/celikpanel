@@ -680,7 +680,9 @@ func (p *Panel) automaticDKIMSigning(ctx context.Context) (state, reason, line s
 	var sign transport.ConfigureDKIMSigningResponse
 	err := p.withStandaloneAgentMutation(ctx, "dkim_signing_configure", "opendkim", "", func(callCtx context.Context, binding agentMutationBinding) error {
 		request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
-		if err := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign); err != nil {
+		callErr := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign)
+		p.recordMailSigningCall(callCtx, sign.Signing, callErr)
+		if err := callErr; err != nil {
 			return err
 		}
 		if sign.Error != "" {
