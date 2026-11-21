@@ -45,7 +45,10 @@ type PostgreSQLPublicAccessFacts struct {
 	// (not an administrator) connected to it now.
 	Roles    []string `json:"roles"`
 	Sessions []string `json:"sessions"`
-	Error    string   `json:"error,omitempty"`
+	// Missing (alpha.143 fix round): recorded users of this database that
+	// have no role on the cluster.
+	Missing []string `json:"missing,omitempty"`
+	Error   string   `json:"error,omitempty"`
 }
 
 type PostgreSQLPublicAccessScanResponse struct {
@@ -55,8 +58,12 @@ type PostgreSQLPublicAccessScanResponse struct {
 	// Monitoring: login roles of the cluster (not an administrator) that are
 	// members of PostgreSQL's monitoring roles; they may sign in to any
 	// database through the default rights.
-	Monitoring []string                      `json:"monitoring"`
-	Databases  []PostgreSQLPublicAccessFacts `json:"databases"`
+	Monitoring []string `json:"monitoring"`
+	// Replication (alpha.143 fix round): roles of the cluster (not an
+	// administrator) with the REPLICATION attribute; a logical replication
+	// connection of such a role reads a database through its CONNECT right.
+	Replication []string                      `json:"replication,omitempty"`
+	Databases   []PostgreSQLPublicAccessFacts `json:"databases"`
 }
 
 // PostgreSQLPublicAccessGrant gives one recorded role CONNECT (and
@@ -98,7 +105,13 @@ type PostgreSQLPublicAccessChange struct {
 type PostgreSQLPublicAccessCloseResponse struct {
 	BuildMismatch bool `json:"build_mismatch,omitempty"`
 	// Changed: the database is no longer as it was read; nothing was done.
-	Changed bool                          `json:"changed,omitempty"`
+	Changed bool `json:"changed,omitempty"`
+	// Unknown (alpha.143 fix round): the script got past its BEGIN and then
+	// failed or gave no read-back, so whether the change was committed is
+	// not known; the Panel reads the database's state before anything else.
+	// Without Changed, Closed or Unknown, Error is a verified failure:
+	// nothing was changed.
+	Unknown bool                          `json:"unknown,omitempty"`
 	Closed  bool                          `json:"closed,omitempty"`
 	Change  *PostgreSQLPublicAccessChange `json:"change,omitempty"`
 	Error   string                        `json:"error,omitempty"`
@@ -121,6 +134,7 @@ type PostgreSQLPublicAccessUndoRequest struct {
 type PostgreSQLPublicAccessUndoResponse struct {
 	BuildMismatch bool                    `json:"build_mismatch,omitempty"`
 	Changed       bool                    `json:"changed,omitempty"`
+	Unknown       bool                    `json:"unknown,omitempty"`
 	Undone        bool                    `json:"undone,omitempty"`
 	AfterACL      string                  `json:"after_acl,omitempty"`
 	Error         string                  `json:"error,omitempty"`

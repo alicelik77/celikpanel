@@ -1,7 +1,9 @@
 // SCREEN catalogue part "pgPublic" (20 Nov 2026, security lane S1b):
 // PostgreSQL databases made before alpha.141 that every account of the server
 // can enter, on the PostgreSQL page: what was found, what closing changes,
-// what CelikPanel closed by itself and how to undo it. Key prefix: pgpub.
+// what CelikPanel watches, closed or failed to close, and how to undo it
+// (alpha.143 fix round: the watch, failures, databases opened again). Key
+// prefix: pgpub.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
@@ -17,12 +19,18 @@ export const enPgPublicScreens = {
     'pgpub.open.who': 'The administrator',
     'pgpub.open.next': 'Read under each database what was found and what closing changes, then press Close to other accounts.',
     'pgpub.open.then': 'Each database closes in one step that changes nothing unless it is still as read here. You can undo it here at any time.',
-    'pgpub.found.waiting': 'Nothing stands in the way: CelikPanel closes it by itself at its next hourly check. You can close it now.',
-    'pgpub.found.undone': 'An administrator opened it again after it was closed, so CelikPanel does not close it by itself.',
+    'pgpub.found.observing': 'Watched since {since}: if no account it does not record for it connects meanwhile, CelikPanel closes it by itself at the first hourly check after {until}. You can close it now.',
+    'pgpub.found.close_failed': 'Closing it failed ({time}): {reason}. Correct what this names, then press Close to other accounts. It is not tried every hour, only when something about it changes.',
+    'pgpub.found.unknown_result': 'A close was sent but its result is not known: it is neither as before nor closed. It is not closed by itself.',
     'pgpub.found.changed_rights': 'Its rights were changed outside CelikPanel: {acl}',
     'pgpub.found.other_roles': 'Accounts CelikPanel does not record for it own something or hold rights inside it: {roles}.',
-    'pgpub.found.other_sessions': 'Connected now with accounts CelikPanel does not record for it: {roles}.',
+    'pgpub.found.other_sessions': 'Accounts CelikPanel does not record for it were seen connected to it: {roles}.',
+    'pgpub.found.missing_users': 'Users CelikPanel records for it have no PostgreSQL account: {roles}. Add them again or remove them from the database, then close it.',
     'pgpub.found.monitoring_roles': 'Monitoring accounts exist on this server: {roles}.',
+    'pgpub.found.replication_roles': 'Replication accounts exist on this server and may read it through a connection: {roles}.',
+    'pgpub.reach.both': 'Every account of this server can connect to it and make temporary tables in it.',
+    'pgpub.reach.connect': 'Every account of this server can connect to it.',
+    'pgpub.reach.temporary': 'Accounts that may connect by another right can make temporary tables in it.',
     'pgpub.owner': 'Owner: {owner}',
     'pgpub.gives': 'After closing, these may connect besides its owner: {users}',
     'pgpub.gives.none': 'After closing, only its owner may connect.',
@@ -32,6 +40,7 @@ export const enPgPublicScreens = {
     'pgpub.confirm.body': 'PostgreSQL stops letting every account of this server connect to {name} and make temporary tables in it. Its owner and the users CelikPanel records for it keep their way in.',
     'pgpub.confirm.lost': 'Every other account of this server can no longer connect to it or make temporary tables in it.',
     'pgpub.confirm.lostRoles': 'These accounts can no longer connect to it: {roles}. Connections open now stay until they end.',
+    'pgpub.confirm.sessions': 'Connected at the last reading: {roles}. Their connections stay until they end; they cannot connect again.',
     'pgpub.confirm.kept': 'Its data, its owner {owner} and everything inside it stay as they are.',
     'pgpub.confirm.keptUndo': 'You can undo it here, or with the statements shown under it.',
     'pgpub.progress': 'Closing {name} to other accounts',
@@ -42,7 +51,7 @@ export const enPgPublicScreens = {
     'pgpub.closed.administrator': 'Closed by an administrator, {time}',
     'pgpub.undo': 'Undo',
     'pgpub.undo.title': 'Open {name} to every account again?',
-    'pgpub.undo.body': 'This gives back exactly what the close changed. CelikPanel then does not close it by itself again; it lists it here instead.',
+    'pgpub.undo.body': 'This gives back exactly what the close changed. CelikPanel then does not close it by itself again; it lists it as opened again by an administrator.',
     'pgpub.undo.lost': 'Every account of this server can connect to {name} again.',
     'pgpub.undo.kept': 'Its data, its owner and the rights inside it stay as they are.',
     'pgpub.undo.progress': 'Opening {name} again',
@@ -52,6 +61,9 @@ export const enPgPublicScreens = {
     'pgpub.unread.title': 'Could not be read now: {name}',
     'pgpub.unread.next': 'It is read again at the next hourly check, or when you press Read again. Nothing was changed.',
     'pgpub.reread': 'Read again',
+    'pgpub.readAt': 'Read {time}.',
+    'pgpub.reopened.title': 'Opened again by an administrator',
+    'pgpub.reopened.at': 'Opened again {time}: the administrator’s choice. CelikPanel does not close it by itself.',
     'err.POSTGRESQL_PUBLIC_WAITING': 'The panel and its Agent are different builds while an update finishes. Nothing was changed; try again in a minute.',
     'err.POSTGRESQL_PUBLIC_CHANGED': 'The database is no longer as the list showed it, so nothing was changed. The list is read again; read it, then decide.',
     'err.POSTGRESQL_PUBLIC_FAILED': 'The database server did not do it. Nothing was changed.',
