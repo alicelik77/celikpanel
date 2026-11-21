@@ -1,6 +1,7 @@
 package sitesandbox
 
 import (
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -137,6 +138,31 @@ func TestGuardReaddsUnitsInTheirSitesSlice(t *testing.T) {
 		`[ "$cgroup" = "/celiksite_$site.slice/$unit" ] && allowed=yes`, `"{ \"${cgroup#/}\" }"`} {
 		if !strings.Contains(guard, want) {
 			t.Errorf("guard lacks %q:\n%s", want, guard)
+		}
+	}
+	// The guard's place check, run by the shell itself on sample cgroups.
+	sh, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("no sh here")
+	}
+	start := strings.Index(guard, "\tallowed=no\n")
+	end := strings.Index(guard, "\tif [ \"$allowed\" != yes ]")
+	if start < 0 || end < start {
+		t.Fatalf("the place check is not where it was:\n%s", guard)
+	}
+	check := "unit=$1; cgroup=$2\n" + guard[start:end] + "echo $allowed\n"
+	for cgroup, want := range map[string]string{
+		"/system.slice/celikrt-5.service":                      "yes",
+		"/celiksite_7.slice/celikrt-5.service":                 "yes",
+		"/celiksite_07.slice/celikrt-5.service":                "no",
+		"/celiksite_7x.slice/celikrt-5.service":                "no",
+		"/celiksite_1/../x.slice/celikrt-5.service":            "no",
+		"/celiksite.slice/celiksite-7.slice/celikrt-5.service": "no",
+		"/owner.slice/celikrt-5.service":                       "no",
+	} {
+		out, err := exec.Command(sh, "-c", check, "guard", "celikrt-5.service", cgroup).CombinedOutput()
+		if err != nil || strings.TrimSpace(string(out)) != want {
+			t.Errorf("%s: %q %v, want %s", cgroup, out, err, want)
 		}
 	}
 }
