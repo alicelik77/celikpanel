@@ -11,6 +11,7 @@ export function unitText(t: Say, unit: string, n: number): string {
     if (unit === 'mb') return n >= 1024 && n % 1024 === 0 ? `${n / 1024} GB` : t('limits.unit.mb', { n });
     if (unit === 's') return t('limits.unit.s', { n });
     if (unit === 'min') return t('limits.unit.min', { n });
+    if (unit === 'percent') return t('limits.unit.percent', { n });
     return t('limits.unit.count', { n });
 }
 

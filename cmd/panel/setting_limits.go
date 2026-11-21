@@ -291,6 +291,10 @@ func serverSettingLimits(ctx context.Context, q rowQueryer) (settingLimits, erro
 		if row.ServerDefault != nil {
 			d := *row.ServerDefault
 			limit.Default = &d
+		} else if d, ok := siteSliceCodeDefaults[key]; ok {
+			// S4 R2a: a site's slice always has limits; without the
+			// server's own default, CelikPanel's applies (site_limits.go).
+			limit.Default = &d
 		}
 		out[key] = limit
 	}

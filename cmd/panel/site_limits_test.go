@@ -51,7 +51,7 @@ func TestSiteLimitKeysJoinTheChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	for key, want := range map[string]int{settingSiteMemoryMB: 3072, settingSiteTasks: 512, settingSiteCPUPercent: 200} {
-		if got := siteLimitValueOf(limits, key); got.Value != want || got.SetBy != "default" {
+		if got := siteLimitValueOf(limits, key); got.Value != want || got.SetBy != "server_default" || limits[key].Default == nil || *limits[key].Default != want {
 			t.Errorf("%s = %+v, want %d from the default", key, got, want)
 		}
 	}
@@ -260,6 +260,42 @@ func TestSiteLimitReachedTwiceIsAProblem(t *testing.T) {
 	}
 }
 
+// TestSiteLimitProblemsNameTheSite: the recorded readings make one line per
+// site and limit, naming the domain and opening its page; a single hit makes
+// none; a Panel without its Agent starts no background reading.
+func TestSiteLimitProblemsNameTheSite(t *testing.T) {
+	f := newRightsFixture(t)
+	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
+	var siteID int
+	if err := f.panel.db.GetDB().QueryRow(`SELECT id FROM sites WHERE domain_id = 9902`).Scan(&siteID); err != nil {
+		t.Fatal(err)
+	}
+	var domain string
+	_ = f.panel.db.GetDB().QueryRow(`SELECT name FROM domains WHERE id = 9902`).Scan(&domain)
+	now := time.Now().UTC()
+	at := func(d time.Duration) string { return metricsTime(now.Add(-d)) }
+	ledger := siteLimitLedger{itoa(siteID): &siteLimitRecord{ReadAt: at(0), Events: map[string]*siteLimitEvent{
+		"memory": {Count: 3, FirstAt: at(2 * time.Hour), LastAt: at(time.Minute), Hits: []string{at(2 * time.Hour), at(time.Minute)}},
+		"tasks":  {Count: 1, FirstAt: at(time.Hour), LastAt: at(time.Hour), Hits: []string{at(time.Hour)}},
+	}}}
+	raw, _ := json.Marshal(ledger)
+	if err := f.panel.setSetting(context.Background(), settingSiteLimitEvents, string(raw)); err != nil {
+		t.Fatal(err)
+	}
+	started := false
+	oldStart := startSiteLimitRead
+	t.Cleanup(func() { startSiteLimitRead = oldStart })
+	startSiteLimitRead = func(func()) { started = true }
+	problems := f.panel.siteLimitProblems(context.Background(), now)
+	if started {
+		t.Fatal("a Panel without its Agent started a reading")
+	}
+	if len(problems) != 1 || problems[0].Kind != "site_memory_repeated" || problems[0].Subject != domain || problems[0].Value != 2 ||
+		problems[0].Action.To != "/domains/"+domain || problems[0].Actor != "administrator" {
+		t.Fatalf("problems = %+v", problems)
+	}
+}
+
 // TestDiskLimitsCountedLine: one line for the server where the hosting file
 // system has no project quota; nothing before a measurement said so, and
 // nothing where it has one.
@@ -274,7 +310,7 @@ func TestDiskLimitsCountedLine(t *testing.T) {
 	if len(lines) != 1 || lines[0].Kind != "disk_limits_counted" || lines[0].Actor != "server_owner" || lines[0].Key != "disk_limits_counted" {
 		t.Fatalf("lines = %+v", lines)
 	}
-	for _, kind := range []string{"site_limit_repeated", "disk_limits_counted"} {
+	for _, kind := range []string{"site_memory_repeated", "site_tasks_repeated", "disk_limits_counted"} {
 		if _, ordered := problemKindOrder[kind]; !ordered {
 			t.Errorf("%s has no place in the problem order", kind)
 		}

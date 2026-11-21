@@ -12,7 +12,7 @@ import (
 )
 
 // The site's limits (S4 R2a, docs/SITE-SANDBOX.md section 8,
-// docs/SITE-LIMITS.md section 8). Three keys join the rights chain of D-042
+// docs/SITE-LIMITS.md section 4a). Three keys join the rights chain of D-042
 // (server ⊇ reseller ⊇ plan or Custom ⊇ site) as additive registered keys:
 //
 //	site.memory_mb    MemoryMax= of the site's slice

@@ -2,12 +2,19 @@
 // the row, as the Overview was before (one tile per tab). The real Overview
 // with facts (D2, D3) needs a summary read and comes in a later release.
 // Genel Bakış: sertifika kartı ve satırdaki her bölüm için bir kutucuk.
+import { lazy, Suspense } from 'react';
 import { useI18n } from '../../../i18n';
 import { domainSectionIcons } from '../../../lib/domainSectionIcons';
 import { DomainSSLOverviewCard } from '../../DomainSSLOverviewCard';
 import { siteKindWord } from '../../kit/words';
 import { SECTION_LABELS, programsLeadPart } from '../sections';
 import { SectionParts, type DomainSectionProps } from '../SectionParts';
+
+// S4 R2a: the limits of the site's programs, fetched only for a site that
+// runs one (a Node.js application, a program or an AI app).
+// Sitenin programlarının sınırları; yalnız program çalıştıran sitede getirilir.
+const SiteLimitsCard = lazy(() => import('../../SiteLimitsCard').then((module) => ({ default: module.SiteLimitsCard })));
+const PROGRAM_TYPES: readonly string[] = ['node', 'runtime_app', 'service_app'];
 
 export function OverviewSection({ domain, parts, part, sections, go, onCertificateChange }: DomainSectionProps) {
     const { t } = useI18n();
@@ -18,6 +25,7 @@ export function OverviewSection({ domain, parts, part, sections, go, onCertifica
     // more is read.
     const lead = programsLeadPart(domain.project_type);
     const leadShown = lead !== null && sections.some((section) => section.id === 'programs' && section.parts.some((item) => item.id === lead));
+    const runsPrograms = PROGRAM_TYPES.includes(domain.project_type || 'php') || domain.holds_program === true || domain.holds_app === true;
     return (
         <SectionParts section="overview" parts={parts} part={part} go={go} render={() => (
             <div>
@@ -27,6 +35,11 @@ export function OverviewSection({ domain, parts, part, sections, go, onCertifica
                         onOpen={() => go({ section: 'security', part: 'certificate' })}
                         onCertificateChange={onCertificateChange}
                     />
+                )}
+                {runsPrograms && (
+                    <Suspense fallback={null}>
+                        <SiteLimitsCard domainId={domain.id} />
+                    </Suspense>
                 )}
                 <p className="mb-4 text-sm text-fg-muted">{t('domain.overview.hint')}</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

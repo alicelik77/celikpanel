@@ -48,7 +48,10 @@ export type ProblemKind =
     | 'tool_account_failed'
     | 'tool_account_owner_config'
     | 'stock_pool_in_use'
-    | 'stock_pool_owner_changed';
+    | 'stock_pool_owner_changed'
+    | 'site_memory_repeated'
+    | 'site_tasks_repeated'
+    | 'disk_limits_counted';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -57,6 +60,8 @@ const KINDS: readonly ProblemKind[] = [
     'site_down', 'site_certificate', 'service_restarting',
     // S4 R1: the tools' own accounts and the distribution's PHP-FPM pool.
     'tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed',
+    // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
+    'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
 

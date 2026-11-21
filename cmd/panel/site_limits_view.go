@@ -578,7 +578,7 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 				continue
 			}
 			problems = append(problems, monitoringProblem{
-				Key: "site_limit:" + site + ":" + kind, Kind: "site_limit_repeated", Severity: "warning", Actor: "administrator",
+				Key: "site_limit:" + site + ":" + kind, Kind: "site_" + kind + "_repeated", Severity: "warning", Actor: "administrator",
 				Subject: name, Name: kind, Value: float64(len(event.Hits)), Since: event.Hits[0], ObservedAt: event.LastAt,
 				Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(name)},
 			})

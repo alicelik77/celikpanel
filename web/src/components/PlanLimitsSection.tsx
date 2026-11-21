@@ -22,6 +22,8 @@ export interface GrantorLimit {
     unit: string;
     floor?: boolean;
     ceiling: number | null;
+    /** S4 R2a: what applies without a ceiling (a site's limits always have one). */
+    default?: number | null;
     min: number;
     max: number;
 }
@@ -95,7 +97,10 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {grantor.remote.value.limits.map((limit) => {
                             const id = ceilingId(limit.key);
-                            const above = limit.ceiling !== null ? unitText(t, limit.unit, limit.ceiling) : t('limits.plan.none');
+                            // A site's limits (S4 R2a) always hold: without a ceiling the default applies, never "no limit".
+                            const above = limit.ceiling !== null ? unitText(t, limit.unit, limit.ceiling)
+                                : limit.key.startsWith('site.') && typeof limit.default === 'number' ? t('slim.plan.default', { value: unitText(t, limit.unit, limit.default) })
+                                    : t('limits.plan.none');
                             const value = ceilings[limit.key];
                             const outside = ceilingOutside(limit, value);
                             return (

@@ -118,8 +118,9 @@ var problemKindOrder = map[string]int{
 	"stock_pool_owner_changed":  15,
 	// S4 R2a: a site that keeps reaching its limits; disk limits counted
 	// but not enforced (site_limits_view.go).
-	"site_limit_repeated": 16,
-	"disk_limits_counted": 17,
+	"site_memory_repeated": 16,
+	"site_tasks_repeated":  17,
+	"disk_limits_counted":  18,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
