@@ -291,11 +291,13 @@ ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=<
 ```
 
 The helper runs `nft -f /usr/lib/celikpanel-sandbox/egress.nft` and
-`nft add element inet celikpanel_egress smtp_blocked '{ "system.slice/<unit>" }'`
-(with an empty environment), and `nft delete element …` after the stop. This
-fails closed. If nft cannot load the table, or the unit's cgroup
-is not `/system.slice/<unit>` (for example, an owner's drop-in moved it to
-another slice), the unit does not start.
+`nft add element inet celikpanel_egress smtp_blocked '{ "<slice>/<unit>" }'`
+for the cgroup the unit runs in, read from systemd (with an empty
+environment), and `nft delete element …` after the stop. This fails closed. If
+nft cannot load the table, or the unit's cgroup is neither
+`/system.slice/<unit>` nor its site's `/celiksite_<id>.slice/<unit>` (§8; for
+example, an owner's drop-in moved it to another slice), the unit does not
+start.
 
 `celikpanel-egress-guard.timer` runs every 30 seconds. If someone ran
 `nft flush ruleset` or restarted `nftables.service`, the guard loads the table

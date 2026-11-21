@@ -254,7 +254,9 @@ func TestCpmoveLoadDumpUsesATemporaryDatabaseScopedAccount(t *testing.T) {
 		t.Fatalf("error = %q", text)
 	}
 	want := []string{"/usr/bin/mariadb", "--no-defaults", "--sandbox", "--batch", "--protocol=socket",
-		"--user=celikpanel_load_0123456789ab", "--database=target_db", "--default-character-set=utf8mb4", "--max-allowed-packet=1073741824"}
+		"--user=celikpanel_load_0123456789ab", "--database=target_db", "--default-character-set=utf8mb4", "--max-allowed-packet=1073741824",
+		// S4 R2a: the user's statement time does not cut the import.
+		mariadbLoadInitCommand}
 	if gotUser != "imported_test" || !reflect.DeepEqual(gotArgv, want) || !reflect.DeepEqual(gotEnv, []string{"MYSQL_PWD=secret-pw"}) {
 		t.Fatalf("client = %q %v %v", gotUser, gotArgv, gotEnv)
 	}
