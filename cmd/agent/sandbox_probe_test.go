@@ -53,11 +53,12 @@ func (f *fakeSandboxRunner) Exists(path string) bool {
 func useSandboxHost(t *testing.T, nftOK bool) *fakeSandboxRunner {
 	t.Helper()
 	runner := &fakeSandboxRunner{nftOK: nftOK}
-	oldRunner, oldDir, oldUnitDir, oldLedger := sandboxRunner, sandboxEgressDir, sandboxUnitDir, sandboxLedgerPath
+	oldRunner, oldDir, oldUnitDir, oldLedger, oldReload := sandboxRunner, sandboxEgressDir, sandboxUnitDir, sandboxLedgerPath, sandboxReloadEgress
 	t.Cleanup(func() {
-		sandboxRunner, sandboxEgressDir, sandboxUnitDir, sandboxLedgerPath = oldRunner, oldDir, oldUnitDir, oldLedger
+		sandboxRunner, sandboxEgressDir, sandboxUnitDir, sandboxLedgerPath, sandboxReloadEgress = oldRunner, oldDir, oldUnitDir, oldLedger, oldReload
 		resetSandboxCapsCache()
 	})
+	sandboxReloadEgress = func() error { return nil }
 	units := t.TempDir()
 	sandboxRunner = runner
 	sandboxEgressDir = filepath.Join(t.TempDir(), "celikpanel-sandbox")

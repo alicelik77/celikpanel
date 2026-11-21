@@ -453,12 +453,19 @@ func checkSiteCrontabs() []transport.SideDoorsSiteCrontab {
 	if err != nil {
 		return nil
 	}
+	// S4 R2b: a moved site's account has no crontab of CelikPanel's; one that
+	// came back is read from the spool by the cron.allow step instead
+	// (crontab -u is refused for an account cron.allow leaves out).
+	moved := movedSiteAccounts(0)
 	cronMu.Lock()
 	defer cronMu.Unlock()
 	baseline := !siteCrontabBaselineTaken()
 	recorded := true
 	var rows []transport.SideDoorsSiteCrontab
 	for _, account := range accounts {
+		if moved[account.Name] {
+			continue
+		}
 		sub, dom, _ := siteAccountTenant(account.Home)
 		content, err := readCrontab(account.Name)
 		if err != nil {

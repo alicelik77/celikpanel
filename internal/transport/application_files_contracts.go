@@ -255,6 +255,13 @@ type CronJob struct {
 	// a program of the site or someone on the server added it to the crontab.
 	// Additive on the wire.
 	OutsidePanel bool `json:"outside_panel,omitempty"`
+	// S4 R2b: for a site whose tasks run as timers, the task's unit, its
+	// state (SiteTask*), why it does not run (Reason, a sitecron code), when
+	// it runs next and its last run.
+	Unit      string       `json:"unit,omitempty"`
+	TaskState string       `json:"task_state,omitempty"`
+	Reason    string       `json:"reason,omitempty"`
+	Run       *SiteTaskRun `json:"run,omitempty"`
 }
 
 // CronOtherLine is a crontab line not made in CelikPanel that is not a task
@@ -280,6 +287,16 @@ type ListCronJobsResponse struct {
 	// that are not tasks, and how many lines in all were not made in it.
 	OtherLines   []CronOtherLine `json:"other_lines,omitempty"`
 	OutsideLines int             `json:"outside_lines,omitempty"`
+	// S4 R2b: Timers - the site's tasks run as systemd timers in its own
+	// limits (its task file is the source, cron is not used). Source says
+	// whose text the task file holds (SiteTasksSource*); NotRun are its lines
+	// that do not run; Reappeared (the administrator's only) are the lines of
+	// a crontab that came back for the site's account (the server owner's,
+	// running outside the site's limits).
+	Timers     bool           `json:"timers,omitempty"`
+	Source     string         `json:"source,omitempty"`
+	NotRun     []SiteTaskLine `json:"not_run,omitempty"`
+	Reappeared []string       `json:"reappeared,omitempty"`
 }
 
 // CronTenant identifies WHOSE crontab an operation targets. It carries the
@@ -311,6 +328,14 @@ type CronTenant struct {
 	SubscriptionID int    `json:"subscription_id"`
 	DomainID       int    `json:"domain_id"`
 	Domain         string `json:"domain"`
+	// SiteID (S4 R2b) names the site's task file and timers
+	// (celikcron-<site id>-<n>); the account is still proved from Domain and
+	// the home. 0 from an older Panel: the crontab is used.
+	SiteID int `json:"site_id,omitempty"`
+	// Site is the site's slice with its limits, put in place before the
+	// first timer of the site is written (nil: left to the next limits
+	// change).
+	Site *SiteSlice `json:"site,omitempty"`
 }
 
 type AddCronJobRequest struct {

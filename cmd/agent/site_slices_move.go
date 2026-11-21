@@ -98,6 +98,9 @@ type siteMoveJournal struct {
 	SliceFile    string                `json:"slice_file"`
 	SliceExisted bool                  `json:"slice_existed"`
 	Units        []siteMoveJournalUnit `json:"units"`
+	// Tasks (version 2, S4 R2b): the move of the site's crontab into timers
+	// or its undo (site_tasks_move.go); a journal holds either units or tasks.
+	Tasks *siteTasksJournal `json:"tasks,omitempty"`
 }
 
 // writePrivateFile writes a file of the Agent's private folder durably: a
@@ -684,6 +687,13 @@ func recoverSiteSliceMove() {
 	if err != nil {
 		log.Printf("site slice: the record of an interrupted move could not be read (%v); it is kept as %s.unreadable for the administrator", err, siteMoveJournalPath)
 		_ = os.Rename(siteMoveJournalPath, siteMoveJournalPath+".unreadable")
+		return
+	}
+	if journal.Tasks != nil {
+		recoverSiteTasksJournal(journal)
+		if err := os.Remove(siteMoveJournalPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Printf("site tasks: remove the move's record: %v", err)
+		}
 		return
 	}
 	outcomes := map[string]string{}

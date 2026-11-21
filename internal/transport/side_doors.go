@@ -43,6 +43,10 @@ type SideDoorsState struct {
 	// with lines not made in CelikPanel. Absent from an older Agent.
 	At           *SideDoorsAt           `json:"at,omitempty"`
 	SiteCrontabs []SideDoorsSiteCrontab `json:"site_crontabs,omitempty"`
+	// S4 R2b (22 Nov 2026): /etc/cron.allow for the sites whose tasks run as
+	// timers, crontabs that came back for them, and lingering.
+	Cron   *SideDoorsCron   `json:"cron,omitempty"`
+	Linger *SideDoorsLinger `json:"linger,omitempty"`
 }
 
 // `at` states.

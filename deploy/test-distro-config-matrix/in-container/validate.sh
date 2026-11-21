@@ -613,6 +613,40 @@ v_systemd_unit() {
     [[ -n "$out" ]] && return 2
     return 0
 }
+# S4 R2b: a polkit rules file, loaded by the release's own polkitd on a
+# private system bus. polkitd compiles and runs every rules file when it
+# starts: a syntax error is "Error compiling script <file>". Where polkitd or
+# a bus cannot be started in the container, the case warns (it says why)
+# instead of passing.
+v_polkit_rules() {
+    local pd="" log pid i user=root out
+    for p in /usr/lib/polkit-1/polkitd /usr/libexec/polkitd /usr/lib/polkit/polkitd; do
+        [[ -x "$p" ]] && { pd=$p; break; }
+    done
+    [[ -n "$pd" ]] || { printf 'polkitd is not installed on this release\n'; return 2; }
+    command -v dbus-daemon >/dev/null 2>&1 || { printf 'no dbus-daemon to run polkitd on\n'; return 2; }
+    mkdir -p /run/dbus
+    if [[ ! -S /run/dbus/system_bus_socket ]]; then
+        dbus-daemon --system --fork >/dev/null 2>&1 || { printf 'the system bus could not be started\n'; return 2; }
+    fi
+    id polkitd >/dev/null 2>&1 && user=polkitd
+    log=$(mktemp)
+    runuser -u "$user" -- "$pd" >"$log" 2>&1 &
+    pid=$!
+    for i in $(seq 1 60); do
+        grep -q 'Finished loading' "$log" && break
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.25
+    done
+    kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+    out=$(grep -iE 'error|exception' "$log" | head -5)
+    if [[ -n "$out" ]]; then printf '%s\n' "$out"; rm -f "$log"; return 1; fi
+    if ! grep -q 'Finished loading' "$log"; then
+        printf 'polkitd did not report loading its rules: %s\n' "$(tail -3 "$log" | tr '\n' ' ')"; rm -f "$log"; return 2
+    fi
+    rm -f "$log"
+    return 0
+}
 v_shell() {
     local out interp
     interp=$(head -1 "$TARGET" | sed -nE 's/^#! *([^ ]+).*/\1/p')

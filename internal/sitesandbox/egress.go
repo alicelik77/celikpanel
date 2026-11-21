@@ -8,10 +8,15 @@ import (
 )
 
 // The SMTP egress block. A program in the sandbox may not open a mail
-// connection (ports 25, 465, 587) to any address, the server's own mail
-// server on 127.0.0.1 included: Postfix relays from 127.0.0.1 without a
-// password (permit_mynetworks), so without this block every sandboxed
-// program could send mail as the server.
+// connection (ports 25, 465, 587) to any address, with one exception (S4
+// R2b, 22 Nov 2026): submission to this server's own mail service on
+// loopback (127.0.0.0/8 and ::1, ports 465 and 587), which needs a mailbox's
+// password (CelikPanel's submission services take only SASL-authenticated
+// clients: smtpd_client_restrictions=permit_sasl_authenticated,reject,
+// mail_submission_rpc.go) and is the supported way for a site to send mail.
+// Port 25 stays refused on every address, loopback included (Postfix
+// relayed from 127.0.0.1 without a password before alpha.125's
+// permit_mynetworks change), and so do 465 and 587 to any other address.
 //
 // It is a separate nftables table (inet celikpanel_egress), never the
 // firewall's own inet celikpanel_fw: the firewall policy (V2) is input-only
@@ -46,6 +51,11 @@ const (
 // SMTPPorts are the mail ports the block refuses.
 var SMTPPorts = []int{25, 465, 587}
 
+// SubmissionPorts are the mail ports a member may still reach on loopback:
+// this server's own submission services, which take only clients that log
+// in with a mailbox's password (S4 R2b).
+var SubmissionPorts = []int{465, 587}
+
 // EgressRuleset is the text of EgressFile (without CelikPanel's header).
 // Loading it again is harmless and atomic: the table, set, counter and
 // chains are declared (an existing one is kept with its elements and its
@@ -57,17 +67,25 @@ func EgressRuleset() string {
 		ports[i] = strconv.Itoa(p)
 	}
 	portSet := "{ " + strings.Join(ports, ", ") + " }"
+	submission := make([]string, len(SubmissionPorts))
+	for i, p := range SubmissionPorts {
+		submission[i] = strconv.Itoa(p)
+	}
+	submissionSet := "{ " + strings.Join(submission, ", ") + " }"
 	return `# CelikPanel site sandbox: SMTP egress block (docs/SITE-SANDBOX.md).
 # Members of @smtp_blocked are the cgroups of sandboxed programs (celiksvc-*,
-# celiksvcinst-*, celikrt-*, celikrtbuild-*, celikapp-*, celikappinst-*, celikgit-*). They cannot connect to ports 25, 465 and 587 on
-# any address, 127.0.0.1 included, and nothing outside reaches a port they
-# opened on another address than loopback. Each unit adds its own cgroup
+# celiksvcinst-*, celikrt-*, celikrtbuild-*, celikapp-*, celikappinst-*, celikgit-*) and of
+# sites' scheduled tasks (celikcron-*). They cannot connect to port 25 on any address,
+# 127.0.0.1 included, nor to ports 465 and 587 anywhere but this server's own mail
+# service on loopback (submission with a mailbox's password), and nothing outside
+# reaches a port they opened on another address than loopback. Each unit adds its own cgroup
 # before it starts and removes it after it stops; celikpanel-egress-guard.timer
 # loads this file again and re-adds running units every 30 seconds.
 # It works without CelikPanel. Removing it: nft delete table inet celikpanel_egress
 #
-# CelikPanel site korumasi: korumadaki programlar 25, 465 ve 587 numarali
-# posta baglantilarini hicbir adrese (127.0.0.1 dahil) acamaz.
+# CelikPanel site korumasi: korumadaki programlar 25 numarali porta hicbir adrese
+# (127.0.0.1 dahil) baglanamaz; 465 ve 587'ye yalniz bu sunucunun kendi posta
+# hizmetine (127.0.0.1, posta kutusu parolasiyla) baglanabilir.
 table inet ` + EgressTable + ` {
 	set ` + EgressSet + ` {
 		typeof socket cgroupv2 level 2
@@ -85,6 +103,8 @@ flush chain inet ` + EgressTable + ` output
 flush chain inet ` + EgressTable + ` input
 table inet ` + EgressTable + ` {
 	chain output {
+		ip daddr 127.0.0.0/8 tcp dport ` + submissionSet + ` accept
+		ip6 daddr ::1 tcp dport ` + submissionSet + ` accept
 		meta l4proto tcp tcp dport ` + portSet + ` socket cgroupv2 level 2 @` + EgressSet + ` counter name "` + EgressCounter + `" reject with tcp reset
 	}
 	chain input {
@@ -115,9 +135,9 @@ if ! "$nft" list chain inet ` + EgressTable + ` output 2>/dev/null | grep -q '@`
 	"$nft" -f ` + EgressFile + ` || { echo "celikpanel-egress: nft could not load the SMTP block"; exit 1; }
 fi
 status=0
-for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' 'celikapp-*.service' 'celikappinst-*.service' 'celikgit-*.service' | awk '{print $1}'); do
+for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' 'celikapp-*.service' 'celikappinst-*.service' 'celikgit-*.service' 'celikcron-*.service' | awk '{print $1}'); do
 	case "$unit" in
-		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service|celikapp-[0-9]*.service|celikappinst-[0-9]*.service|celikgit-[0-9]*.service) ;;
+		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service|celikapp-[0-9]*.service|celikappinst-[0-9]*.service|celikgit-[0-9]*.service|celikcron-[0-9]*-[0-9]*.service) ;;
 		*) continue ;;
 	esac
 	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue

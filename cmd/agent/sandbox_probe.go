@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -182,7 +183,7 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		return fmt.Errorf("the sandbox folder %s: %v", sandboxEgressDir, err)
 	}
 	ledger := readSandboxLedger()
-	changed := false
+	changed, rules := false, false
 	record := map[string]sandboxLedgerEntry{}
 	for _, f := range files {
 		result, err := services.ApplyManagedSiteFile(f.managed(ledger[f.Path].RenderSHA256), nil, nil)
@@ -192,6 +193,7 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		switch result.Outcome {
 		case transport.SiteFileOutcomeWritten, transport.SiteFileOutcomeRecreated, transport.SiteFileOutcomeTaken:
 			changed = true
+			rules = rules || f.Kind == "sandbox_egress"
 			record[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256}
 		case transport.SiteFileOutcomeUnchanged:
 			if ledger[f.Path].RenderSHA256 != result.RenderSHA256 {
@@ -214,8 +216,27 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 			return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
 		}
 	}
+	// A changed rule set (S4 R2b: loopback submission allowed) reaches the
+	// running table at once; loading the file again is atomic and keeps the
+	// set's members (EgressRuleset).
+	if rules {
+		if err := sandboxReloadEgress(); err != nil {
+			return err
+		}
+	}
 	if out, err := appUnitSystemctl(systemctlArgs("enable", "--now", sitesandbox.EgressGuardTimer)...); err != nil {
 		return fmt.Errorf("start %s: %v: %s", sitesandbox.EgressGuardTimer, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// sandboxReloadEgress loads the SMTP block's file again (a test seam).
+var sandboxReloadEgress = func() error {
+	path := filepath.Join(sandboxEgressDir, filepath.Base(sitesandbox.EgressFile))
+	cmd := exec.Command(sitesandbox.NFT, "-f", path)
+	cmd.Env = []string{}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("nft -f %s: %v: %s", path, err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

@@ -84,6 +84,10 @@ type siteLifecycleOps struct {
 	// S4 R2a: the site's slice file (CelikPanel's unchanged one removed, an
 	// owner's edit and drop-ins moved aside and returned). Nil skips it.
 	removeSiteSlice func(int) ([]string, error)
+	// S4 R2b: a new site's task file (its tasks run as timers from the
+	// start) and a deleted site's timers and task files. Nil skips each.
+	createSiteTasks func(siteID int, domain, username string) error
+	removeSiteTasks func(int) ([]string, error)
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -129,6 +133,8 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			return file.Close()
 		},
 		removeSiteSlice: removeSiteSlice,
+		createSiteTasks: createSiteTasks,
+		removeSiteTasks: removeSiteTasks,
 		applyLayout:     applyHostingLayout,
 		applyVhost:      a.nginxGen.ApplyVhost,
 		applySiteVhost:  a.nginxGen.ApplyManagedVhost,
@@ -631,6 +637,14 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 
 	reply.PHPSocket = socket
 	reply.Success = true
+	// S4 R2b: a new site runs its tasks as timers in its limits from the
+	// start (its empty task file). A failure here leaves it in cron, as
+	// before; it is logged and the administrator's move takes it later.
+	if ops.createSiteTasks != nil {
+		if err := ops.createSiteTasks(req.SiteID, req.Domain, req.Username); err != nil {
+			log.Printf("CreateSite %s: the task file was not written (the site keeps cron until it is moved): %v", req.Domain, err)
+		}
+	}
 	return nil
 }
 
@@ -734,6 +748,12 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 		aside, err := ops.removeSiteSlice(req.SiteID)
 		keepFailure("site limits file", err)
 		resp.SliceFilesAside = aside
+	}
+	// 2c. S4 R2b: the site's timers and task files.
+	if ops.removeSiteTasks != nil {
+		aside, err := ops.removeSiteTasks(req.SiteID)
+		keepFailure("scheduled tasks", err)
+		resp.SliceFilesAside = append(resp.SliceFilesAside, aside...)
 	}
 
 	// 3. PHP-FPM pool for this site.

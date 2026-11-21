@@ -76,6 +76,12 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 	// site crontabs with lines not made in CelikPanel counted.
 	state.At = closeSiteAtWith(ctx, hostSiteAtOps())
 	state.SiteCrontabs = checkSiteCrontabs()
+	// 5 and 6 (S4 R2b, side_doors_cron.go): cron.allow for the moved sites
+	// and the crontabs that came back for them; lingering.
+	cronAllowMu.Lock()
+	state.Cron = closeSiteCronWith(hostSiteCronOps(), 0)
+	cronAllowMu.Unlock()
+	state.Linger = closeSiteLingerWith(hostSiteLingerOps())
 	resp.State = &state
 	return nil
 }
@@ -92,6 +98,16 @@ func forgetOwnerUndo(target, version string) error {
 	case transport.SideDoorsReCloseAt:
 		if err := os.Remove(atAllowRecordPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("forget the record of /etc/at.allow: %w", err)
+		}
+		return nil
+	case transport.SideDoorsReCloseCron:
+		if err := os.Remove(cronAllowRecordPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("forget the record of /etc/cron.allow: %w", err)
+		}
+		return nil
+	case transport.SideDoorsReCloseLinger:
+		if err := forgetLingerRule(); err != nil {
+			return fmt.Errorf("forget the record of the lingering rule: %w", err)
 		}
 		return nil
 	case transport.SideDoorsReCloseStockPool:

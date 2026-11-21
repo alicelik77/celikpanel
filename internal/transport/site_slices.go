@@ -240,4 +240,7 @@ type MoveSiteSliceResponse struct {
 	SliceFile   string           `json:"slice_file,omitempty"`
 	Units       []SiteSliceMoved `json:"units"`
 	Error       string           `json:"error,omitempty"`
+	// Tasks (S4 R2b) is the Panel's answer for the site's scheduled tasks,
+	// moved by the same action (the Agent's MoveSiteTasksV1).
+	Tasks *SiteTasksMoveResponse `json:"tasks,omitempty"`
 }

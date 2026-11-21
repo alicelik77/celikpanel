@@ -40,6 +40,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/nodesite"
 	"github.com/alicelik/celikpanel/internal/pdnsmanagedconf"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitecron"
 	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -1524,6 +1525,63 @@ func renderMatrixSiteSlice(t *testing.T, h *matrixHost, dir string) {
 	c.File(target, []byte(services.SealManagedTextWith(services.ManagedHeaderPrefixHash, unit)), 0o644)
 	c.File(sliceTarget, sliceText, 0o644)
 	c.File(filepath.Join(dir, sitesandbox.BindTemplate), []byte(sitesandbox.BindTemplateText()), 0o644)
+	h.write(t, c)
+	renderMatrixSiteTasks(t, h, dir, sliceTarget, sliceText)
+}
+
+// renderMatrixSiteTasks (S4 R2b): a site's scheduled task as the Agent
+// writes it (its service in the site's slice, with the SMTP block's helper
+// and the address rule, and its timer with cron's OR of the two day fields),
+// checked by systemd-analyze verify; the SMTP block's rule set by nft -c;
+// the lingering rule by the release's own polkitd.
+func renderMatrixSiteTasks(t *testing.T, h *matrixHost, dir, sliceTarget string, sliceText []byte) {
+	spec, err := sitecron.Translate("0 12 1 * 1")
+	source := "internal/sitecron/render.go ServiceText/TimerText via cmd/agent/site_tasks.go applySiteTimers"
+	if err != nil {
+		h.renderFailure(t, "systemd.site-task", "systemd", "a site's scheduled task", source, err)
+		return
+	}
+	u := sitecron.Unit{SiteID: 42, N: 1, TaskID: "0123456789abcdef", Domain: "example.test", Account: "example_test", Group: "example_test",
+		Home: "/var/www/celikpanel/subscriptions/7/sites/19", Shell: "/bin/sh", HasEnv: true, HasInput: true, Spec: spec, Line: 3, Egress: true, BPF: true}
+	service, err := sitecron.ServiceText(u)
+	if err == nil {
+		var timer string
+		if timer, err = sitecron.TimerText(u); err == nil {
+			serviceTarget := filepath.Join(dir, sitecron.UnitBase(42, 1)+".service")
+			timerTarget := filepath.Join(dir, sitecron.UnitBase(42, 1)+".timer")
+			serviceText := []byte(services.SealManagedTextWith(services.ManagedHeaderPrefixHash, service))
+			timerText := []byte(services.SealManagedTextWith(services.ManagedHeaderPrefixHash, timer))
+			c := &configmatrix.Case{ID: "systemd.site-task-service", Program: "systemd", Variant: "a site's scheduled task in its slice",
+				Validator: "systemd-unit", Source: source, Target: serviceTarget}
+			c.File(serviceTarget, serviceText, 0o644)
+			c.File(sliceTarget, sliceText, 0o644)
+			h.write(t, c)
+			c = &configmatrix.Case{ID: "systemd.site-task-timer", Program: "systemd", Variant: "a site's scheduled task's timer (cron's OR of the day fields)",
+				Validator: "systemd-unit", Source: source, Target: timerTarget}
+			c.File(timerTarget, timerText, 0o644)
+			c.File(serviceTarget, serviceText, 0o644)
+			c.File(sliceTarget, sliceText, 0o644)
+			h.write(t, c)
+		}
+	}
+	if err != nil {
+		h.renderFailure(t, "systemd.site-task", "systemd", "a site's scheduled task", source, err)
+	}
+
+	c := &configmatrix.Case{ID: "nftables.sandbox-egress", Program: "nftables", Variant: "the site sandbox's SMTP block (loopback submission allowed)",
+		Validator: "nftables", Source: "internal/sitesandbox/egress.go EgressRuleset", Target: "/run/celikpanel-matrix/egress.nft"}
+	c.File(c.Target, []byte(sitesandbox.EgressRuleset()), 0o600)
+	h.write(t, c)
+
+	ruleSource := "cmd/agent/side_doors_cron.go lingerRuleText"
+	if h.release == "ubuntu-22.04" {
+		h.notApplicable(t, "polkit.linger-rule", "polkit", "the lingering rule", ruleSource, "polkit 0.105 on this release reads no rules files (it uses .pkla files); the Agent reports lingering as open there")
+		return
+	}
+	target := filepath.Join("/etc/polkit-1/rules.d", lingerRuleName)
+	c = &configmatrix.Case{ID: "polkit.linger-rule", Program: "polkit", Variant: "the lingering rule (administrator groups sudo, admin)",
+		Validator: "polkit-rules", Source: ruleSource, Target: target}
+	c.File(target, []byte(services.SealManagedTextWith(polkitRulesHead, lingerRuleText([]string{"sudo", "admin"}))), 0o644)
 	h.write(t, c)
 }
 

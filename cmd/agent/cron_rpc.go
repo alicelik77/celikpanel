@@ -50,10 +50,65 @@ func (a *Agent) ListCronJobs(req *ListCronJobsRequest, resp *ListCronJobsRespons
 	if err != nil {
 		return err
 	}
+	// S4 R2b: a site whose tasks run as timers is read from its task file.
+	if target, moved, err := movedSiteTaskTarget(req.CronTenant, username); err != nil {
+		return err
+	} else if moved {
+		return listSiteTasks(target, resp)
+	}
 	if err := requireCronInstalled(); err != nil {
 		return err
 	}
 	return listCronJobsFor(username, resp)
+}
+
+// cronStore is where a site's tasks are read from and written to: the
+// account's crontab, or (S4 R2b) a moved site's task file, whose write also
+// renders its timers. Only the crontab gets MAILTO="" and the marking of
+// lines not made in CelikPanel: a task file is root's own.
+type cronStore struct {
+	read    func() (string, error)
+	write   func(before, after string, authored []string) error
+	crontab bool
+}
+
+func crontabStore(username string) cronStore {
+	return cronStore{
+		read: func() (string, error) { return readCrontab(username) },
+		write: func(before, after string, authored []string) error {
+			return setSiteCrontab(username, before, after, authored)
+		},
+		crontab: true,
+	}
+}
+
+// movedSiteTaskTarget: the tenant's site runs its tasks as timers; its
+// target then.
+func movedSiteTaskTarget(tenant transport.CronTenant, username string) (siteTaskTarget, bool, error) {
+	if tenant.SiteID < 1 || !siteTasksMoved(tenant.SiteID) {
+		return siteTaskTarget{}, false, nil
+	}
+	target, err := siteTaskTargetFor(tenant, username)
+	if err != nil {
+		return siteTaskTarget{}, false, err
+	}
+	return target, true, nil
+}
+
+// cronStoreFor is the tenant's store: a moved site's task file, or the
+// account's crontab (cron must then be installed).
+func cronStoreFor(tenant transport.CronTenant, username string) (cronStore, error) {
+	target, moved, err := movedSiteTaskTarget(tenant, username)
+	if err != nil {
+		return cronStore{}, err
+	}
+	if moved {
+		return siteTaskStore(target), nil
+	}
+	if err := requireCronInstalled(); err != nil {
+		return cronStore{}, err
+	}
+	return crontabStore(username), nil
 }
 
 // listCronJobsFor reads the proven user's crontab into resp.
@@ -153,10 +208,11 @@ func (a *Agent) AddCronJob(req *AddCronJobRequest, resp *bool) error {
 	if err != nil {
 		return err
 	}
-	if err := requireCronInstalled(); err != nil {
+	store, err := cronStoreFor(req.CronTenant, username)
+	if err != nil {
 		return err
 	}
-	if err := addCronJobFor(username, req); err != nil {
+	if err := addCronJobIn(store, username, req); err != nil {
 		return err
 	}
 	*resp = true
@@ -166,6 +222,10 @@ func (a *Agent) AddCronJob(req *AddCronJobRequest, resp *bool) error {
 // addCronJobFor appends one job to the proven user's crontab.
 // addCronJobFor, kanıtlanmış kullanıcının crontab'ına bir görev ekler.
 func addCronJobFor(username string, req *AddCronJobRequest) error {
+	return addCronJobIn(crontabStore(username), username, req)
+}
+
+func addCronJobIn(store cronStore, username string, req *AddCronJobRequest) error {
 	if err := rejectCrontabInjection(map[string]string{
 		"schedule": req.Schedule,
 		"command":  req.Command,
@@ -184,7 +244,7 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 
 	// The pre-image: never append to a crontab that was not read.
 	// Ön görüntü: okunmamış bir crontab'a asla ekleme yapılmaz.
-	existing, err := readCrontabForChange(username, req.Version)
+	existing, err := readForChange(store, req.Version)
 	if err != nil {
 		return err
 	}
@@ -216,8 +276,11 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 	}
 	newCrontab += newEntry + "\n"
 
-	written, header := withSiteCronMailtoLines(username, newCrontab)
-	return setSiteCrontab(username, existing, written, append(header, cronSplitLines(newEntry)...))
+	written, header := newCrontab, []string(nil)
+	if store.crontab {
+		written, header = withSiteCronMailtoLines(username, newCrontab)
+	}
+	return store.write(existing, written, append(header, cronSplitLines(newEntry)...))
 }
 
 // UpdateCronJob updates an existing cron job
@@ -226,10 +289,11 @@ func (a *Agent) UpdateCronJob(req *UpdateCronJobRequest, resp *bool) error {
 	if err != nil {
 		return err
 	}
-	if err := requireCronInstalled(); err != nil {
+	store, err := cronStoreFor(req.CronTenant, username)
+	if err != nil {
 		return err
 	}
-	if err := updateCronJobFor(username, req); err != nil {
+	if err := updateCronJobIn(store, username, req); err != nil {
 		return err
 	}
 	*resp = true
@@ -239,6 +303,10 @@ func (a *Agent) UpdateCronJob(req *UpdateCronJobRequest, resp *bool) error {
 // updateCronJobFor rewrites one job in the proven user's crontab.
 // updateCronJobFor, kanıtlanmış kullanıcının crontab'ında bir görevi yeniden yazar.
 func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
+	return updateCronJobIn(crontabStore(username), username, req)
+}
+
+func updateCronJobIn(store cronStore, username string, req *UpdateCronJobRequest) error {
 	if err := rejectCrontabInjection(map[string]string{
 		"schedule": req.Schedule,
 		"command":  req.Command,
@@ -255,7 +323,7 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 	cronMu.Lock()
 	defer cronMu.Unlock()
 
-	existing, err := readCrontabForChange(username, req.Version)
+	existing, err := readForChange(store, req.Version)
 	if err != nil {
 		return err
 	}
@@ -296,8 +364,11 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 		lines = append(lines[:index], append([]string{"# " + req.Comment}, lines[index:]...)...)
 	}
 
-	written, header := withSiteCronMailtoLines(username, strings.Join(lines, "\n"))
-	return setSiteCrontab(username, existing, written, append(header, newLine))
+	written, header := strings.Join(lines, "\n"), []string(nil)
+	if store.crontab {
+		written, header = withSiteCronMailtoLines(username, written)
+	}
+	return store.write(existing, written, append(header, newLine))
 }
 
 // DeleteCronJob deletes a cron job
@@ -306,10 +377,11 @@ func (a *Agent) DeleteCronJob(req *DeleteCronJobRequest, resp *bool) error {
 	if err != nil {
 		return err
 	}
-	if err := requireCronInstalled(); err != nil {
+	store, err := cronStoreFor(req.CronTenant, username)
+	if err != nil {
 		return err
 	}
-	if err := deleteCronJobFor(username, req); err != nil {
+	if err := deleteCronJobIn(store, username, req); err != nil {
 		return err
 	}
 	*resp = true
@@ -319,10 +391,14 @@ func (a *Agent) DeleteCronJob(req *DeleteCronJobRequest, resp *bool) error {
 // deleteCronJobFor removes one job from the proven user's crontab.
 // deleteCronJobFor, kanıtlanmış kullanıcının crontab'ından bir görevi çıkarır.
 func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
+	return deleteCronJobIn(crontabStore(username), username, req)
+}
+
+func deleteCronJobIn(store cronStore, username string, req *DeleteCronJobRequest) error {
 	cronMu.Lock()
 	defer cronMu.Unlock()
 
-	existing, err := readCrontabForChange(username, req.Version)
+	existing, err := readForChange(store, req.Version)
 	if err != nil {
 		return err
 	}
@@ -344,6 +420,9 @@ func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
 			index, err = last, nil
 		}
 	}
+	if err != nil && !store.crontab {
+		return err
+	}
 	if err != nil {
 		// A line not made in CelikPanel that is not a task (an @reboot line,
 		// an environment setting) is removed by its own ID, the way a task is.
@@ -355,7 +434,7 @@ func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
 	}
 	lines = append(lines[:index], lines[index+1:]...)
 
-	return setSiteCrontab(username, existing, strings.Join(lines, "\n"), nil)
+	return store.write(existing, strings.Join(lines, "\n"), nil)
 }
 
 // cronJobText returns the job a crontab line holds: the line itself, or for a
@@ -771,7 +850,12 @@ func cronVersion(content string) string {
 // istek hangi crontab'dan kurulduğunu söylemezse ya da o artık sunucudaki
 // crontab değilse reddeder.
 func readCrontabForChange(username, version string) (string, error) {
-	existing, err := readCrontab(username)
+	return readForChange(crontabStore(username), version)
+}
+
+// readForChange is readCrontabForChange for any store.
+func readForChange(store cronStore, version string) (string, error) {
+	existing, err := store.read()
 	if err != nil {
 		return "", err
 	}
@@ -849,6 +933,12 @@ func (a *Agent) KeepCronLineV1(req *transport.KeepCronLineRequest, resp *bool) e
 	username, err := cronTenantUser(req.CronTenant)
 	if err != nil {
 		return err
+	}
+	// A moved site's task file is root's own: it has no line to keep.
+	if _, moved, err := movedSiteTaskTarget(req.CronTenant, username); err != nil {
+		return err
+	} else if moved {
+		return fmt.Errorf("cron line not found: %s", req.ID)
 	}
 	if err := requireCronInstalled(); err != nil {
 		return err
