@@ -671,11 +671,9 @@ func TestPGPublicThePageReadsTheLastScan(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			request := httptest.NewRequest(http.MethodGet, pgPublicPath+"?fresh=1", nil)
-			request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: f.tokens["admin"]})
-			mux := http.NewServeMux()
-			mux.HandleFunc(pgPublicPath, f.panel.handlePostgreSQLPublicAccess)
-			f.panel.requireAuth(mux).ServeHTTP(httptest.NewRecorder(), request)
+			if rec := pgPublicPost(t, f.visibleDatabasesFixture, "admin", map[string]any{"action": "read"}); rec.Code != http.StatusOK {
+				t.Errorf("read again: %d %s", rec.Code, rec.Body.String())
+			}
 		}()
 	}
 	time.Sleep(100 * time.Millisecond)

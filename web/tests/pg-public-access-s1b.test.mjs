@@ -104,7 +104,8 @@ test('watched, failed, unknown and opened-again databases say what holds and who
     };
     const calls = [];
     globalThis.fetch = async (url, init) => {
-        calls.push(url);
+        calls.push(init?.body ?? url);
+        if (init?.method === 'POST' && JSON.parse(init.body).action === 'read') return new Response('{}', { status: 200 });
         if (init?.method === 'POST') return new Response('{}', { status: 502, headers: { 'x-code': 'POSTGRESQL_PUBLIC_UNKNOWN' } });
         return new Response('{}', { status: 200 });
     };
@@ -139,7 +140,7 @@ test('watched, failed, unknown and opened-again databases say what holds and who
         reread[0].props.onClick();
         await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    assert.ok(calls.includes('/api/v1/admin/postgresql/public-access?fresh=1'));
+    assert.ok(calls.includes(JSON.stringify({ action: 'read' })), 'Read again asks the server for one scan');
     await act(async () => tree.unmount());
 });
 

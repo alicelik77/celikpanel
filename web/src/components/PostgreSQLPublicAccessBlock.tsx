@@ -102,6 +102,7 @@ export function PostgreSQLPublicAccessBlock() {
     useInvalidation(['databases'], () => void handle.retry());
     const [busy, setBusy] = useState<number | null>(null);
     const [reading, setReading] = useState(false);
+    const [readFailed, setReadFailed] = useState(false);
     const [said, setSaid] = useState<{ id: number; tone: 'ok' | 'bad'; text: string } | null>(null);
 
     const remote = handle.remote;
@@ -117,14 +118,17 @@ export function PostgreSQLPublicAccessBlock() {
         return Number.isNaN(at.getTime()) ? '' : at.toLocaleString(locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
 
-    // Read again: one scan on the server (a press while one runs joins it).
+    // Read again: one scan on the server (a press while one runs joins it);
+    // a scan that could not be made is said, and the list stays the last one.
     const readAgain = async () => {
         if (reading) return;
         setReading(true);
+        setReadFailed(false);
         try {
-            await fetch(`${PG_PUBLIC_URL}?fresh=1`);
+            const res = await fetch(PG_PUBLIC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'read' }) });
+            if (!res.ok) setReadFailed(true);
         } catch {
-            // The list below says what it could read.
+            setReadFailed(true);
         } finally {
             setReading(false);
             void handle.retry();
@@ -261,6 +265,7 @@ export function PostgreSQLPublicAccessBlock() {
                             <div className="flex flex-wrap items-center gap-3 text-sm text-fg-muted" data-pgpub-read="">
                                 <span>{t('pgpub.readAt', { time: when(view.checked_at) })}</span>
                                 <Button onClick={() => void readAgain()} loading={reading || handle.reading} disabled={reading}>{t('pgpub.reread')}</Button>
+                                {readFailed && <span className="text-danger" role="alert" data-pgpub-read-failed="">{t('pgpub.failed')}</span>}
                             </div>
                             {view.open.length > 0 && (
                                 <section data-pgpub-open="">

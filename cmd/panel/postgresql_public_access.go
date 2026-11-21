@@ -1061,6 +1061,20 @@ func (p *Panel) storePGPublicList(ctx context.Context, view pgPublicView) {
 	}
 }
 
+// pgPublicReadAgain is a scan newer than the last one (joining one that
+// runs), kept for the page and Problems now; it closes nothing.
+func (p *Panel) pgPublicReadAgain(ctx context.Context) (pgPublicView, error) {
+	notBefore := time.Time{}
+	if last := p.pgPublicCachedScan(); last != nil {
+		notBefore = last.started.Add(time.Nanosecond)
+	}
+	view, err := p.pgPublicRead(ctx, notBefore, pgPublicPass{write: true})
+	if err == nil {
+		p.storePGPublicList(ctx, view)
+	}
+	return view, err
+}
+
 // refreshPGPublicList scans again after an administrator's action (no
 // close), so the page and Problems now say what holds after it.
 func (p *Panel) refreshPGPublicList(ctx context.Context) {
@@ -1103,9 +1117,10 @@ func pgPublicProblems(ctx context.Context, db *sql.DB) []monitoringProblem {
 }
 
 // handlePostgreSQLPublicAccess: GET the view of the last scan (it changes
-// nothing on the engine; ?fresh=1, or no scan yet, starts one, joining one
-// that runs); POST {action: close|undo, database_id, acl, roles} for one
-// database, administrator only.
+// nothing on the engine; with no scan yet it starts one, joining one that
+// runs); POST {action: read} scans again (one at a time), POST {action:
+// close|undo, database_id, acl, roles} acts on one database; administrator
+// only.
 func (p *Panel) handlePostgreSQLPublicAccess(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	c := currentCaller(r)
@@ -1117,16 +1132,8 @@ func (p *Panel) handlePostgreSQLPublicAccess(w http.ResponseWriter, r *http.Requ
 	case http.MethodGet:
 		var view pgPublicView
 		var err error
-		last := p.pgPublicCachedScan()
-		if last == nil || r.URL.Query().Get("fresh") == "1" {
-			notBefore := time.Time{}
-			if last != nil {
-				notBefore = last.started.Add(time.Nanosecond)
-			}
-			view, err = p.pgPublicRead(r.Context(), notBefore, pgPublicPass{write: true})
-			if err == nil {
-				p.storePGPublicList(r.Context(), view)
-			}
+		if last := p.pgPublicCachedScan(); last == nil {
+			view, err = p.pgPublicReadAgain(r.Context())
 		} else {
 			view, err = p.pgPublicBuild(r.Context(), last, pgPublicPass{})
 		}
@@ -1161,11 +1168,27 @@ func (p *Panel) handlePostgreSQLPublicAccessAction(w http.ResponseWriter, r *htt
 		ACL        string   `json:"acl"`
 		Roles      []string `json:"roles"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&body); err != nil || body.DatabaseID < 1 || (body.Action != "close" && body.Action != "undo") {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&body); err != nil || (body.Action != "read" && body.DatabaseID < 1) || (body.Action != "close" && body.Action != "undo" && body.Action != "read") {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	ctx := r.Context()
+	if body.Action == "read" {
+		// Read again: one scan (a press while one runs waits for it); it
+		// changes nothing on the engine.
+		_, err := p.pgPublicReadAgain(ctx)
+		if errors.Is(err, errGrantFormsBuildMismatch) {
+			writeCodedError(w, http.StatusServiceUnavailable, errCodePGPublicWaiting, "The panel and its Agent are different builds while an update finishes; read again in a minute. Nothing was changed.", "")
+			return
+		}
+		if err != nil {
+			writeServerErrorFor(w, r, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "read"})
+		return
+	}
 	records, err := p.pgPublicRecords(ctx)
 	if err != nil {
 		writeServerErrorFor(w, r, err)
