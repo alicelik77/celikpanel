@@ -187,6 +187,7 @@ export const enMailDatabasesScreens = {
     'mail.autoreply.messageRequired': 'Write the message to turn the reply on.',
     'mail.autoreply.intervalInvalid': 'The number of days between replies must be a whole number from 1 to 30.',
     'mail.autoreply.help': 'The mail server sends the reply itself, also when the panel is stopped. Days follow the server’s date. Mailing lists and automatic messages get no reply.',
+    'mail.autoreply.removed': 'CelikPanel removed {addresses} from this reply: not this mailbox’s own addresses, so a reply from them would have been signed for a domain this account does not hold. This note goes when you save the reply.',
     'mail.autoreply.savedOn': 'The out-of-office reply is on.',
     'mail.autoreply.savedOff': 'The out-of-office reply is off.',
     'mail.autoreply.saveFailed': 'The reply could not be saved.',

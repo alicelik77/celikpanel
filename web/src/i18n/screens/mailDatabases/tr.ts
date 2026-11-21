@@ -178,6 +178,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.autoreply.messageRequired': 'Yanıtı açmak için iletiyi yazın.',
     'mail.autoreply.intervalInvalid': 'Yanıtlar arasındaki gün sayısı 1 ile 30 arasında bir tam sayı olmalı.',
     'mail.autoreply.help': 'Yanıtı posta sunucusu kendisi gönderir; panel durduğunda da. Günler sunucunun tarihine göredir. Posta listelerine ve otomatik iletilere yanıt gitmez.',
+    'mail.autoreply.removed': 'CelikPanel bu yanıttan {addresses} adreslerini çıkardı: bu kutunun kendi adresleri değil; onlardan giden yanıt, bu hesabın sahip olmadığı bir alan adı adına imzalanırdı. Yanıtı kaydettiğinizde bu not kalkar.',
     'mail.autoreply.savedOn': 'Otomatik yanıt açık.',
     'mail.autoreply.savedOff': 'Otomatik yanıt kapalı.',
     'mail.autoreply.saveFailed': 'Yanıt kaydedilemedi.',

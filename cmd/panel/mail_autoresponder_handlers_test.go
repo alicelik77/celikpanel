@@ -59,6 +59,16 @@ func newAutoresponderPanel(t *testing.T, agent *autoresponderPanelAgent) (*Panel
 		VALUES (6103, 6102, 'example.com', 'active'), (6104, 6102, 'other.test', 'active');
 		INSERT INTO email_accounts (id, domain_id, address, password_hash, quota_mb)
 		VALUES (6201, 6103, 'me@example.com', 'x', 100), (6202, 6104, 'you@other.test', 'x', 100);
+		INSERT INTO email_forwardings (domain_id, source, destination)
+		VALUES (6103, 'info@example.com', 'me@example.com');
+		INSERT INTO users (id, username, password_hash, email, role)
+		VALUES (6105, 'another-customer', 'x', 'another@example.test', 'customer');
+		INSERT INTO subscriptions (id, owner_id, name, max_email_accounts, status)
+		VALUES (6106, 6105, 'Another subscription', 50, 'active');
+		INSERT INTO domains (id, subscription_id, name, status)
+		VALUES (6107, 6106, 'b-customer.test', 'active');
+		INSERT INTO email_forwardings (domain_id, source, destination)
+		VALUES (6107, 'ceo@b-customer.test', 'me@example.com');
 	`); err != nil {
 		t.Fatalf("seed fixture: %v", err)
 	}

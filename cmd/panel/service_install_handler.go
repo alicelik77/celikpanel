@@ -270,7 +270,10 @@ func (p *Panel) runServiceInstall(
 	if req.ServiceID == "postfix" || req.ServiceID == "dovecot" {
 		var mailResp transport.ConfigureMailStackResponse
 		mailRequest := p.configureMailStackRequest(ctx, binding)
-		if err := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailRequest, &mailResp); err != nil {
+		mailErr := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailRequest, &mailResp)
+		// The mail signing state after this step (mail_signing_problem.go).
+		p.recordMailSigningCall(ctx, mailResp.Signing, mailErr)
+		if err := mailErr; err != nil {
 			return result, serviceInstallFailure(fmt.Errorf("mail stack configuration: %w", err))
 		}
 		if mailResp.Error != "" {
@@ -337,7 +340,9 @@ func (p *Panel) runServiceInstall(
 	// bağlanır.
 	if svc := core.GetManagedServiceByID(req.ServiceID); svc != nil && svc.ConflictGroup == "spam-filter" {
 		var wireResp transport.WireMailFiltersResponse
-		if err := p.callAgentContext(ctx, "Agent.WireMailFilters", &mutationRequest, &wireResp); err != nil {
+		wireErr := p.callAgentContext(ctx, "Agent.WireMailFilters", &mutationRequest, &wireResp)
+		p.recordMailSigningCall(ctx, wireResp.Signing, wireErr)
+		if err := wireErr; err != nil {
 			return result, serviceInstallFailure(fmt.Errorf("mail filter wiring: %w", err))
 		}
 		if wireResp.Error != "" {
@@ -956,7 +961,9 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		var wireResp transport.WireMailFiltersResponse
 		err := p.withStandaloneAgentMutation(r.Context(), "mail_filter_wire", req.ServiceID, "", func(callCtx context.Context, binding agentMutationBinding) error {
 			request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
-			if err := p.callAgentContext(callCtx, "Agent.WireMailFilters", &request, &wireResp); err != nil {
+			wireErr := p.callAgentContext(callCtx, "Agent.WireMailFilters", &request, &wireResp)
+			p.recordMailSigningCall(callCtx, wireResp.Signing, wireErr)
+			if err := wireErr; err != nil {
 				return err
 			}
 			if wireResp.Error != "" {
@@ -1179,7 +1186,9 @@ func (p *Panel) wireMailFiltersAtStartup() {
 		defer cancel()
 		err := p.withStandaloneAgentMutation(ctx, "mail_filter_wire", "startup", "", func(callCtx context.Context, binding agentMutationBinding) error {
 			request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
-			if err := p.callAgentContext(callCtx, "Agent.WireMailFilters", &request, &resp); err != nil {
+			wireErr := p.callAgentContext(callCtx, "Agent.WireMailFilters", &request, &resp)
+			p.recordMailSigningCall(callCtx, resp.Signing, wireErr)
+			if err := wireErr; err != nil {
 				return err
 			}
 			if resp.Error != "" {

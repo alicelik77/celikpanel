@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -186,8 +189,16 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 	}
 	if _, err := exec.LookPath("postconf"); err != nil {
 		resp.Error = "postfix is not installed"
+		resp.Signing = &transport.MailSigningState{State: mailSigningNoDKIM}
 		return nil
 	}
+	// Every later return records the signing state (review finding 5): a
+	// step that stopped part-way is unknown, never an earlier "in place".
+	defer func() {
+		if resp.Signing == nil && resp.Error != "" {
+			resp.Signing = mailSigningNotRun(errors.New(resp.Error))
+		}
+	}()
 	family := detectPkgFamily()
 	layout, supported := opendkimLayoutFor(family)
 	if !supported {
@@ -231,11 +242,20 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 	}
 	want := desiredOpenDKIMConf(layout, supported)
 	if openDKIMConfKind(current, exists, layout, want) == "owner" {
-		confNote = holdOpenDKIMPending(layout.confPath, layout)
+		_, confNote = holdOpenDKIMPending(layout.confPath, layout, supported)
 	} else {
 		conf = want
 		if !supported {
 			confNote = unsupportedNote()
+		}
+	}
+	// A configuration that changes is a restart owed until OpenDKIM is
+	// verified running with it (review finding 4): recorded before the file
+	// is put in place, so an interruption is finished at the next start.
+	if conf != nil && !bytes.Equal(conf, current) {
+		if err := markOpenDKIMRestartOwed(layout.confPath); err != nil {
+			resp.Error = fmt.Sprintf("CelikPanel could not record the OpenDKIM restart it owes (%v); %s was not changed", err, layout.confPath)
+			return nil
 		}
 	}
 	if err := writeDKIMTables(ctx, domains, layout.confPath, conf); err != nil {
@@ -247,10 +267,18 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 		resp.Error = fmt.Sprintf("opendkim enable: %s", firstLine(string(out)))
 		return nil
 	}
+	// The restart window (review finding 7): said when the server owner's
+	// milter_default_action is not accept.
+	windowNote := milterDefaultActionNote(run)
 	if out, err := serviceMutationCommand(ctx, "systemctl", "restart", "opendkim").CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("opendkim restart: %s", firstLine(string(out)))
 		return nil
 	}
+	if state := strings.TrimSpace(string(firstOutput(run("systemctl", "is-active", "opendkim")))); state != "active" {
+		resp.Error = fmt.Sprintf("OpenDKIM is %q after its restart, so mail is delivered unsigned until it runs; the next panel start restarts it again", state)
+		return nil
+	}
+	clearOpenDKIMRestartOwed()
 
 	// Wire the milters through the ONE composer: writing smtpd_milters here
 	// directly used to erase any spam filter already wired (last writer wins,
@@ -258,7 +286,8 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 	// Milter'ları TEK besteciden bağla: burada doğrudan smtpd_milters yazmak,
 	// önceden bağlanmış bir spam filtresini siliyordu (son yazan kazanır,
 	// sessizce). applyMilterChain bunun yerine kurulu her filtreyi birleştirir.
-	milterNote, err := applyMilterChain(ctx)
+	milterNote, chain, err := applyMilterChainDetailed(ctx)
+	resp.Signing = observedMailSigning(run, chain, err)
 	if err != nil {
 		resp.Error = err.Error()
 		return nil
@@ -266,7 +295,7 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 
 	resp.Configured = true
 	resp.Domains = len(domains)
-	resp.Detail = joinNotes(fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains)), confNote, milterNote)
+	resp.Detail = joinNotes(fmt.Sprintf("DKIM signing active for %d domain(s)", len(domains)), confNote, windowNote, milterNote)
 	return nil
 }
 

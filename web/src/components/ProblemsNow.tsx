@@ -80,6 +80,19 @@ export function problemVars(
     };
 }
 
+// 21 Nov 2026: mail signing is worded per state, each with its concrete step
+// (cmd/panel/mail_signing_problem.go); a state this screen does not know reads
+// as "unknown", never as fine.
+const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'submit_open', 'unsupported', 'failed', 'unknown'];
+
+/** The catalogue key of a problem's body. */
+export function problemBodyKey(problem: { kind: string; name?: string }): TranslationKey {
+    if (problem.kind === 'mail_signing') {
+        return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
+    }
+    return `pnow.${problem.kind}.body` as TranslationKey;
+}
+
 /** Whether a kind is one this screen has words for. */
 export function isProblemKind(kind: unknown): kind is ProblemKind {
     return typeof kind === 'string' && (KINDS as readonly string[]).includes(kind);
@@ -254,7 +267,7 @@ export function ProblemsNow({
                                             {t(`pnow.${problem.kind}.title` as TranslationKey, vars)}
                                             {when && <span className="ml-2 text-xs font-normal text-fg-subtle">{when}</span>}
                                         </p>
-                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{t(`pnow.${problem.kind}.body` as TranslationKey, vars)}</p>
+                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{t(problemBodyKey(problem), vars)}</p>
                                         {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 && (
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}

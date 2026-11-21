@@ -204,6 +204,7 @@ var auditActionNames = []string{
 	"mail.account.recovery.set",
 	"mail.autoconfig.dns",
 	"mail.autoconfig.site",
+	"mail.autoresponder.addresses_removed",
 	"mail.autoresponder.disable",
 	"mail.autoresponder.enable",
 	"mail.configure",

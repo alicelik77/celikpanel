@@ -77,6 +77,11 @@ export const trProblemsNowScreens: Record<ProblemsNowScreenKey, string> = {
     'pnow.postgresql_databases_open.body': 'alpha.141’den önce açılanlar: {name}. CelikPanel orada kendi başına karar vermediği bir şey buldu. PostgreSQL sayfasında neyin bulunduğunu ve kapatmanın neyi değiştireceğini okuyun, sonra her birini kapatın; geri alınabilir.',
     'pnow.postgresql_databases_open.action': 'İncele ve kapat',
     'pnow.mail_signing.title': 'Posta hâlâ başka bir müşterinin alan adıyla imzalanabilir',
-    'pnow.mail_signing.body': 'Elle değiştirilmiş bir posta imzası ayarı korundu, bir değişiklik reddedildi ya da bu sunucunun OpenDKIM’i bunu yapamıyor. Posta teslim ediliyor. Panelin son açılıştaki günlüğü ayarı ve sunucu sahibinin ne yapacağını söyler. Panelin bir sonraki açılışı ayarı yerinde bulunca bu satır kalkar.',
+    'pnow.mail_signing.conf_kept': '{domain} elle değiştirildi ve korundu. Sunucu sahibi dosyaya SenderMacro {auth_authen} satırını ekler (panelin tam metni {domain}.celikpanel-pending dosyasında) ve OpenDKIM’i yeniden başlatır.',
+    'pnow.mail_signing.port25_kept': '25. kapının milter ayarı ({domain}) elle değiştirildi; gelen posta hâlâ imzalanabilir. Sunucu sahibi OpenDKIM’i bu ayardan çıkarır ya da ayarı siler ki panel yazsın, sonra paneli yeniden başlatır.',
+    'pnow.mail_signing.submit_open': 'Sitelerin programları bu sunucudaki her alan adı adına imzalı posta gönderebilir. Sunucu sahibi /etc/postfix/main.cf içinde authorized_submit_users = root, vmail yazar ve Postfix’i yeniden yükler.',
+    'pnow.mail_signing.unsupported': 'Bu sunucunun OpenDKIM’i kutunun girişine göre imzalayamıyor; kutu parolasıyla gönderilen posta From: satırına göre imzalanır. Buradaki hiçbir ayar bunu değiştirmez.',
+    'pnow.mail_signing.failed': 'Bir imza değişikliği geri alındı ya da OpenDKIM yeniden başlamadı. Posta teslim ediliyor. OpenDKIM’in çalıştığını bileşen sayfasında denetleyin, sonra paneli yeniden başlatın.',
+    'pnow.mail_signing.unknown': 'Son posta değişikliği postanın nasıl imzalandığını doğrulayamadı. Yeniden denetlemek için paneli yeniden başlatın.',
     'pnow.mail_signing.action': 'Posta sunucusunu aç',
 };

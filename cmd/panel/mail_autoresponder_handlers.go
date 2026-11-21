@@ -31,6 +31,10 @@ type mailAutoresponderView struct {
 	// (unknown, not "no reply").
 	State      *transport.MailAutoresponderResponse `json:"state,omitempty"`
 	StateError string                               `json:"state_error,omitempty"`
+	// RemovedAddresses (21 Nov 2026): additional addresses CelikPanel took
+	// out of this reply because they are not the mailbox's own; shown until
+	// the reply is saved again (mail_autoresponder_own.go).
+	RemovedAddresses []string `json:"removed_addresses,omitempty"`
 }
 
 func (p *Panel) mailAutoresponderAccount(ctx context.Context, domainID, accountID int) (string, error) {
@@ -105,6 +109,9 @@ func (p *Panel) handleGetMailAutoresponder(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	view := mailAutoresponderView{AccountID: accountID, Address: address, Setting: setting, Stored: stored}
+	if notice := p.autoresponderRemovedNoticeFor(r.Context(), accountID); notice != nil {
+		view.RemovedAddresses = notice.Addresses
+	}
 	var state transport.MailAutoresponderResponse
 	if err := p.callAgentContext(r.Context(), "Agent.MailAutoresponderState",
 		&transport.MailAutoresponderStateRequest{Email: address}, &state); err != nil {
@@ -146,11 +153,29 @@ func (p *Panel) handlePutMailAutoresponder(w http.ResponseWriter, r *http.Reques
 		writeMailDomainMutationError(w, err)
 		return
 	}
+	// Only the mailbox's own addresses (review finding 1): checked here from
+	// the Panel's records and again by the Agent from the server's files.
+	// Turning a reply off is never refused for its addresses.
+	accountDomains, foreign, err := p.foreignAutoresponderAddresses(r.Context(), domainID, address, setting.Addresses)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if setting.Enabled && len(foreign) > 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(apiErrorBody{
+			Error: autoresponderForeignError(foreign), Code: errCodeMailAutoresponderRefused, Reason: transport.AutoresponderRefusedForeignAddress,
+			Vars: map[string]string{"addresses": strings.Join(foreign, ", ")},
+		})
+		return
+	}
 	var response transport.MailAutoresponderResponse
 	if err := p.callAgentContext(r.Context(), "Agent.SetMailAutoresponder", &transport.SetMailAutoresponderRequest{
 		ExpectedBuildCommit: strings.TrimSpace(buildCommit),
 		Email:               address,
 		Autoresponder:       setting,
+		AccountDomains:      accountDomains,
 	}, &response); err != nil {
 		writeServerErrorFor(w, r, err)
 		return
@@ -216,6 +241,7 @@ func (p *Panel) handlePutMailAutoresponder(w http.ResponseWriter, r *http.Reques
 		action = "mail.autoresponder.enable"
 	}
 	p.audit(r, action, "email_account", request.ID)
+	p.clearAutoresponderRemovedNotice(r.Context(), request.ID)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"success":       true,
 		"autoresponder": setting,
