@@ -72,7 +72,66 @@ func listCronJobsFor(username string, resp *ListCronJobsResponse) error {
 		resp.Jobs = []CronJob{}
 	}
 	resp.Version = cronVersion(content)
+	markCronOutside(username, content, resp)
 	return nil
+}
+
+// markCronOutside marks the tasks CelikPanel did not make and lists the other
+// lines it did not make (site_crontab_record.go).
+func markCronOutside(username, content string, resp *ListCronJobsResponse) {
+	outside := cronOutsideLines(username, content)
+	if len(outside) == 0 {
+		return
+	}
+	jobIDs := map[string]bool{}
+	for _, line := range outside {
+		if _, _, isJob := cronJobText(line); isJob {
+			jobIDs[generateCronID(line)] = true
+			continue
+		}
+		resp.OtherLines = append(resp.OtherLines, transport.CronOtherLine{ID: cronOtherLineID(line), Line: line})
+	}
+	for i := range resp.Jobs {
+		if resp.Jobs[i].Enabled && jobIDs[resp.Jobs[i].ID] {
+			resp.Jobs[i].OutsidePanel = true
+		}
+	}
+	resp.OutsideLines = len(outside)
+}
+
+// cronOtherLineID names a line that is not a task; it cannot equal a task's
+// ID for the same text.
+func cronOtherLineID(line string) string {
+	return generateCronID("other:" + strings.TrimSpace(line))
+}
+
+// cronOutsideOtherLine finds the one line with this ID among the lines not
+// made in CelikPanel that are not tasks.
+func cronOutsideOtherLine(username, content string, lines []string, id string) (int, error) {
+	allowed := false
+	for _, line := range cronOutsideLines(username, content) {
+		if _, _, isJob := cronJobText(line); !isJob && cronOtherLineID(line) == id {
+			allowed = true
+		}
+	}
+	if !allowed {
+		return -1, fmt.Errorf("cron line not found: %s", id)
+	}
+	found := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") || cronOtherLineID(trimmed) != id {
+			continue
+		}
+		if found >= 0 {
+			return -1, errors.New(transport.CronJobAmbiguous)
+		}
+		found = i
+	}
+	if found < 0 {
+		return -1, fmt.Errorf("cron line not found: %s", id)
+	}
+	return found, nil
 }
 
 // AddCronJob adds a new cron job
@@ -144,7 +203,8 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 	}
 	newCrontab += newEntry + "\n"
 
-	return setCrontab(username, withSiteCronMailto(username, newCrontab))
+	written, header := withSiteCronMailtoLines(username, newCrontab)
+	return setSiteCrontab(username, existing, written, append(header, cronSplitLines(newEntry)...))
 }
 
 // UpdateCronJob updates an existing cron job
@@ -223,7 +283,8 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 		lines = append(lines[:index], append([]string{"# " + req.Comment}, lines[index:]...)...)
 	}
 
-	return setCrontab(username, withSiteCronMailto(username, strings.Join(lines, "\n")))
+	written, header := withSiteCronMailtoLines(username, strings.Join(lines, "\n"))
+	return setSiteCrontab(username, existing, written, append(header, newLine))
 }
 
 // DeleteCronJob deletes a cron job
@@ -263,11 +324,17 @@ func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
 	// yorumu ya da başka, devre dışı bir görev olabilir.
 	index, err := cronJobLine(lines, req.ID)
 	if err != nil {
-		return err
+		// A line not made in CelikPanel that is not a task (an @reboot line,
+		// an environment setting) is removed by its own ID, the way a task is.
+		other, otherErr := cronOutsideOtherLine(username, existing, lines, req.ID)
+		if otherErr != nil {
+			return err
+		}
+		index = other
 	}
 	lines = append(lines[:index], lines[index+1:]...)
 
-	return setCrontab(username, strings.Join(lines, "\n"))
+	return setSiteCrontab(username, existing, strings.Join(lines, "\n"), nil)
 }
 
 // cronJobText returns the job a crontab line holds: the line itself, or for a

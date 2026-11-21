@@ -49,6 +49,11 @@ export type ProblemKind =
     | 'tool_account_owner_config'
     | 'stock_pool_in_use'
     | 'stock_pool_owner_changed'
+    | 'site_crontab_outside'
+    | 'site_at_jobs'
+    | 'at_allow_lists_sites'
+    | 'at_directory_accounts'
+    | 'at_not_closed'
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
     | 'disk_limits_counted';
@@ -60,6 +65,8 @@ const KINDS: readonly ProblemKind[] = [
     'site_down', 'site_certificate', 'service_restarting',
     // S4 R1: the tools' own accounts and the distribution's PHP-FPM pool.
     'tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed',
+    // S4 R1: jobs a site's own code can make outside CelikPanel.
+    'site_crontab_outside', 'site_at_jobs', 'at_allow_lists_sites', 'at_directory_accounts', 'at_not_closed',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
 ];

@@ -36,6 +36,9 @@ import (
 //     removed on upgrades), checked with php-fpm -t and a reload, and put
 //     back when either refuses. An owner-changed or used pool is kept and
 //     listed.
+//  3. `at` is closed to site accounts and their pending at jobs are listed;
+//     site crontabs with lines not made in CelikPanel are counted
+//     (side_doors_jobs.go, 21 Nov 2026).
 //
 // Panel her başlangıçtan sonra bir kez çalıştırır: araçları kendi hesaplarına
 // doğrulanan adımla taşır, varsayılan havuzu dokunulmamış ve kullanılmıyorsa
@@ -62,6 +65,10 @@ func (a *Agent) CloseSideDoorsV1(req *transport.ServiceMutationRequest, resp *tr
 	state := transport.SideDoorsState{CheckedAt: time.Now().UTC().Format(time.RFC3339)}
 	state.Tools = closeSideDoorsTools(ctx, hostPHPToolBindOps(), afterPHPToolBound)
 	state.StockPools = closeStockFPMPoolsWith(ctx, hostStockPoolOps())
+	// 3 and 4 (21 Nov 2026, side_doors_jobs.go): at closed to site accounts;
+	// site crontabs with lines not made in CelikPanel counted.
+	state.At = closeSiteAtWith(ctx, hostSiteAtOps())
+	state.SiteCrontabs = checkSiteCrontabs()
 	resp.State = &state
 	return nil
 }

@@ -40,6 +40,8 @@ var auditActionNames = []string{
 	"app.install_started",
 	"app.remove",
 	"app.setup_retry",
+	"at.allow.failed",
+	"at.allow.written",
 	"auth.login",
 	"auth.login.2fa",
 	"auth.login.2fa.recovery",

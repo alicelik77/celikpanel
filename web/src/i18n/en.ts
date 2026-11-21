@@ -98,6 +98,7 @@ import type { DnsAddScreenKey } from './screens/dnsAdd/en';
 import type { ServiceAppsAdminScreenKey } from './screens/serviceAppsAdmin/en';
 import type { DbEncodingScreenKey } from './screens/dbEncoding/en';
 import type { SideDoorsScreenKey } from './screens/sideDoors/en';
+import type { SiteJobsScreenKey } from './screens/siteJobs/en';
 import type { SiteLimitsScreenKey } from './screens/siteLimits/en';
 
 export const en = {
@@ -625,5 +626,6 @@ export type ScreenKey =
     | ServiceAppsAdminScreenKey
     | DbEncodingScreenKey
     | SideDoorsScreenKey
+    | SiteJobsScreenKey
     | SiteLimitsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

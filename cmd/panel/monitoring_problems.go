@@ -116,11 +116,17 @@ var problemKindOrder = map[string]int{
 	"tool_account_owner_config": 13,
 	"stock_pool_in_use":         14,
 	"stock_pool_owner_changed":  15,
+	// S4 R1: jobs a site's own code can make.
+	"site_crontab_outside":  16,
+	"site_at_jobs":          17,
+	"at_allow_lists_sites":  18,
+	"at_directory_accounts": 19,
+	"at_not_closed":         20,
 	// S4 R2a: a site that keeps reaching its limits; disk limits counted
 	// but not enforced (site_limits_view.go).
-	"site_memory_repeated": 16,
-	"site_tasks_repeated":  17,
-	"disk_limits_counted":  18,
+	"site_memory_repeated": 21,
+	"site_tasks_repeated":  22,
+	"disk_limits_counted":  23,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -178,6 +184,8 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	add(siteProblems(ctx, db, now, certificates))
 	// S4 R1: what the side doors step left for someone (side_doors.go).
 	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
+	// S4 R1: site crontab lines not made in CelikPanel and at (side_doors_jobs.go).
+	add(p.siteJobsProblems(ctx, db), nil)
 	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
 	add(p.siteLimitProblems(ctx, now), nil)
 	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)

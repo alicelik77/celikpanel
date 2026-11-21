@@ -33,10 +33,12 @@ func (f *fakeCrontab) install(_ string, content string) error {
 
 func installFakeCrontab(t *testing.T, fake *fakeCrontab) *fakeCrontab {
 	t.Helper()
-	oldList, oldInstall, oldLook, oldAccess := cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile
+	oldList, oldInstall, oldLook, oldAccess, oldRecords := cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile, siteCrontabRecordDir
 	t.Cleanup(func() {
-		cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile = oldList, oldInstall, oldLook, oldAccess
+		cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile, siteCrontabRecordDir = oldList, oldInstall, oldLook, oldAccess, oldRecords
 	})
+	// CelikPanel's record of what it wrote (site_crontab_record.go).
+	siteCrontabRecordDir = t.TempDir()
 	// The test host's own /etc/cron.allow and cron.deny are not part of a test.
 	cronAccessFile = func(string) ([]byte, error) { return nil, errors.New("no such file") }
 	cronListCrontab = fake.list
