@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.142.md)
 
+> **Yayımlandı**, 21 Kasım 2026 (UTC): sürüm commit'i `7e51e951a`, GitHub ön sürümü 12:51:06Z, indirme portalı yaklaşık 12:54Z (dış denetim 27/27).
+
 **Bir güvenlik sürümü: lütfen yakında güncelleyin.** Bir müşterinin ya da
 bayinin başka bir hesaba ya da sunucunun kendisine ait adları, portları ve
 dosyaları alabildiği yolları kapatır: başka bir müşterinin alan adının ya
