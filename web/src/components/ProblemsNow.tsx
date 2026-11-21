@@ -247,9 +247,14 @@ export function ProblemsNow({
                     if (!response.ok) {
                         return { state: 'failed', title: t('pnow.reclose.failed'), reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
                     }
-                    const answer = await response.json().catch(() => null) as { closed?: boolean } | null;
-                    if (!answer) return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
-                    return answer.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
+                    let answer: { closed?: boolean };
+                    try {
+                        answer = await response.json() as { closed?: boolean };
+                    } catch {
+                        // The answer could not be read: what it came to is not known.
+                        return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                    }
+                    return answer?.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
                 } catch {
                     return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
                 } finally {

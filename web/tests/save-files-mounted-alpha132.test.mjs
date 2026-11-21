@@ -24,7 +24,7 @@ import { compileSource, dataModule, reactURL, sharedLayer } from './fixtures/sha
 
 const icons = ['Folder', 'File', 'ChevronRight', 'ChevronUp', 'RefreshCw', 'Trash2', 'Edit', 'Download', 'Upload', 'X',
   'FolderPlus', 'FilePlus', 'AlertTriangle', 'KeyRound', 'Send', 'CalendarClock', 'FolderLock', 'Plus', 'UserRound',
-  'Clock', 'Edit2', 'Play', 'Pause', 'Save', 'Info'];
+  'Clock', 'Edit2', 'Play', 'Pause', 'Save', 'Info', 'Check'];
 const stub = dataModule(`
   import React from '${reactURL}';
   ${icons.map((name) => `export const ${name} = () => null;`).join('\n')}

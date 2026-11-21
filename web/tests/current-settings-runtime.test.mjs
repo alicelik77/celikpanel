@@ -22,12 +22,14 @@ const compilerOptions = { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, t
 const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 const icons = ['Mail', 'Activity', 'Trash2', 'RefreshCw', 'RotateCw', 'Archive', 'Download', 'RotateCcw', 'HardDrive',
-  'Database', 'Clock', 'Info', 'Plus', 'Edit2', 'Play', 'Pause', 'Save', 'X', 'AlertTriangle', 'UploadCloud'];
+  'Database', 'Clock', 'Info', 'Plus', 'Edit2', 'Play', 'Pause', 'Save', 'X', 'AlertTriangle', 'UploadCloud', 'Check'];
 const stub = dataModule(`
   import React from '${reactURL}';
   ${icons.map((name) => `export const ${name} = () => null;`).join('\n')}
   export const useI18n = () => ({ t: (key) => key });
   export const useNavigate = () => () => true;
+  // S4 R1 fix round: the Scheduled tasks list asks the role for Keep.
+  export const useAuth = () => ({ role: 'customer' });
   // alpha.127: the administrator's install link; others see the sentence it carries.
   export const AdminInstallLink = (props) => props.fallback ?? null;
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
