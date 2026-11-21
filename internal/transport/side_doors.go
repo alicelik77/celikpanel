@@ -21,6 +21,58 @@ type SideDoorsState struct {
 	CheckedAt  string               `json:"checked_at"`
 	Tools      []SideDoorsTool      `json:"tools"`
 	StockPools []SideDoorsStockPool `json:"stock_pools"`
+	// S4 R1 (21 Nov 2026): `at` closed to site accounts, and site crontabs
+	// with lines not made in CelikPanel. Absent from an older Agent.
+	At           *SideDoorsAt           `json:"at,omitempty"`
+	SiteCrontabs []SideDoorsSiteCrontab `json:"site_crontabs,omitempty"`
+}
+
+// `at` states.
+const (
+	// The at package is not installed: nothing is written.
+	SideDoorsAtNotInstalled = "not_installed"
+	// /etc/at.allow was written now (or brought up to date: an account made
+	// since may use at, as before).
+	SideDoorsAtWritten = "written"
+	// CelikPanel's /etc/at.allow is there and current.
+	SideDoorsAtCurrent = "current"
+	// Neither at.allow nor at.deny exists: only root may use at already.
+	SideDoorsAtOnlyRoot = "only_root"
+	// /etc/at.allow is the owner's: kept as it is (SiteAccounts: the site
+	// accounts it lets use at).
+	SideDoorsAtOwnerFile = "owner_file"
+	// Not written: the accounts come from a directory service (LDAP, SSSD,
+	// NIS…), so who may use at today cannot be listed safely.
+	SideDoorsAtDirectory = "directory_accounts"
+	// Writing failed; nothing changed. Tried again at the next start.
+	SideDoorsAtFailed = "failed"
+)
+
+// SideDoorsAt is what the step found and did about `at`.
+type SideDoorsAt struct {
+	State        string   `json:"state"`
+	Path         string   `json:"path,omitempty"`
+	SiteAccounts []string `json:"site_accounts,omitempty"`
+	Detail       string   `json:"detail,omitempty"`
+	// Jobs: pending at jobs of site accounts, never removed by CelikPanel.
+	Jobs []SideDoorsAtJob `json:"jobs,omitempty"`
+}
+
+// SideDoorsAtJob is one pending at job of a site account.
+type SideDoorsAtJob struct {
+	ID      string `json:"id"`
+	Account string `json:"account"`
+	When    string `json:"when"`
+	Command string `json:"command,omitempty"`
+}
+
+// SideDoorsSiteCrontab is a site account whose crontab has lines not made in
+// CelikPanel.
+type SideDoorsSiteCrontab struct {
+	Account        string `json:"account"`
+	SubscriptionID int    `json:"subscription_id"`
+	DomainID       int    `json:"domain_id"`
+	Outside        int    `json:"outside"`
 }
 
 // Tool states.

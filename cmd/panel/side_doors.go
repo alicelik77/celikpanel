@@ -106,6 +106,9 @@ func (p *Panel) closeSideDoorsOnce(ctx context.Context) bool {
 				p.recordAudit(auditRecord{Action: "php_fpm.stock_pool.failed:" + pool.Version, ResourceType: "service", Details: details})
 			}
 		}
+		// 21 Nov 2026 (side_doors_jobs.go): at and the site crontabs.
+		p.auditSiteAt(response.State.At)
+		p.recordSiteCrontabsOutside(ctx, siteJobsCheckedAt(response.State), response.State.SiteCrontabs)
 	}
 	return true
 }

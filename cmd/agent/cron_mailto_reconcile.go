@@ -88,8 +88,8 @@ func reconcileSiteCronMailto() (changed []passwordlessCronChange, kept, failed [
 			kept = append(kept, username)
 			continue
 		}
-		next := withSiteCronMailto(username, content)
-		if err := setCrontab(username, next); err != nil {
+		next, header := withSiteCronMailtoLines(username, content)
+		if err := setSiteCrontab(username, content, next, header); err != nil {
 			failed = append(failed, username)
 			continue
 		}

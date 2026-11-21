@@ -101,6 +101,9 @@ func (p *Panel) handleListCronJobs(w http.ResponseWriter, tenant transport.CronT
 	if resp.Jobs == nil {
 		resp.Jobs = []transport.CronJob{}
 	}
+	// S4 R1: this site's lines not made in CelikPanel, for the
+	// administrator's Problems now; a removal clears it here.
+	p.noteSiteCrontabOutside(context.Background(), tenant.DomainID, resp.OutsideLines)
 
 	json.NewEncoder(w).Encode(resp)
 }

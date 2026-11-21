@@ -1,0 +1,487 @@
+package main
+
+import (
+	"bufio"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"path"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"syscall"
+
+	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/transport"
+)
+
+// Scheduled jobs a site's own code can make (S4 R1, 21 Nov 2026), the interim
+// until site jobs become timers in the site's own slice:
+//
+//  1. `at` is closed to site accounts. Where the at package is installed and
+//     no /etc/at.allow exists, the step writes one that lists exactly the
+//     accounts that may use at today (every account of /etc/passwd that
+//     /etc/at.deny does not name) minus CelikPanel's website accounts (every
+//     account whose home is under the hosting root, and the database tools'
+//     and webmail's own accounts). root may always use at (at's
+//     check_permission returns at once for uid 0). With at.allow present at
+//     reads at.deny no more, so every account keeps exactly what it had.
+//     The file is given /etc/at.deny's owner and mode (Debian and Ubuntu:
+//     root:daemon 0640; at reads both files with the daemon group). An
+//     existing at.allow is the owner's and is left as it is; the site
+//     accounts it names are listed. CelikPanel's own file is brought up to
+//     date at each start while it is as CelikPanel wrote it, so an account
+//     made later may use at as before; once changed it is the owner's.
+//     Undo: delete the file. Accounts that come from a directory service
+//     (LDAP, SSSD, NIS) cannot be listed safely, so nothing is written then.
+//     Pending at jobs of site accounts are listed (what, whose, when) and
+//     never removed.
+//  2. Site crontabs with lines not made in CelikPanel are counted
+//     (site_crontab_record.go).
+//
+// Bir sitenin kendi kodunun kurabileceği zamanlanmış işler: at, site
+// hesaplarına kapatılır (at.allow, bugün at kullanabilen herkes eksi site
+// hesapları); CelikPanel'de yapılmamış crontab satırları sayılır. Hiçbir
+// şey kendiliğinden silinmez.
+
+// Paths are variables so tests can point them at a temporary tree.
+var (
+	atAllowPath       = "/etc/at.allow"
+	atDenyPath        = "/etc/at.deny"
+	atCommandPaths    = []string{"/usr/bin/at", "/bin/at"}
+	sideDoorsPasswd   = "/etc/passwd"
+	sideDoorsNSSwitch = "/etc/nsswitch.conf"
+	atAllowRecordPath = filepath.Join(hostingpath.ServiceMutationStateRoot(), "at-allow.sha256")
+)
+
+// atAllowMark is the first line of CelikPanel's at.allow.
+const atAllowMark = "# Written by CelikPanel to keep its website accounts from using at."
+
+const atAllowHeader = atAllowMark + `
+# Only the accounts listed below may use at and batch; root always may.
+# They are every account that could use at before (not named in
+# /etc/at.deny), except CelikPanel's website accounts, so a website cannot
+# plant jobs that run outside its limits.
+# While this file is as CelikPanel wrote it, CelikPanel adds accounts made
+# later at its next start. Once you change it, it is yours and CelikPanel
+# leaves it as it is.
+# To undo: delete this file. /etc/at.deny then applies again, as before.
+`
+
+// passwdEntry is one line of /etc/passwd.
+type passwdEntry struct {
+	Name string
+	UID  int
+	Home string
+}
+
+// readPasswd reads the local account list; directory reports a line that
+// pulls accounts from NIS (+name, -name, +).
+func readPasswd(file string) (entries []passwdEntry, directory bool, err error) {
+	handle, err := os.Open(file)
+	if err != nil {
+		return nil, false, err
+	}
+	defer handle.Close()
+	scanner := bufio.NewScanner(handle)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+			directory = true
+			continue
+		}
+		fields := strings.Split(line, ":")
+		if len(fields) < 7 || fields[0] == "" {
+			continue
+		}
+		uid, convErr := strconv.Atoi(fields[2])
+		if convErr != nil {
+			continue
+		}
+		entries = append(entries, passwdEntry{Name: fields[0], UID: uid, Home: path.Clean(fields[5])})
+	}
+	return entries, directory, scanner.Err()
+}
+
+// nssDirectoryAccounts: the passwd line of nsswitch.conf names a source
+// other than the local files (or systemd's own dynamic users).
+func nssDirectoryAccounts(content string) bool {
+	for _, raw := range strings.Split(content, "\n") {
+		line := strings.TrimSpace(raw)
+		if hash := strings.Index(line, "#"); hash >= 0 {
+			line = strings.TrimSpace(line[:hash])
+		}
+		name, sources, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(name) != "passwd" {
+			continue
+		}
+		for _, source := range strings.Fields(sources) {
+			if strings.HasPrefix(source, "[") {
+				continue
+			}
+			switch source {
+			case "files", "compat", "systemd":
+			default:
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// atWebsiteAccount: an account CelikPanel runs website code as.
+func atWebsiteAccount(entry passwdEntry) bool {
+	if hostingpath.IsSiteHome(entry.Home) {
+		return true
+	}
+	for _, tool := range []string{"webmail", "phpmyadmin", "phppgadmin"} {
+		if entry.Name == phpToolAccount(tool) {
+			return true
+		}
+	}
+	return false
+}
+
+// siteAccountTenant: a site account's subscription and domain from its home.
+var siteHomeIDs = regexp.MustCompile(`^/([0-9]{1,9})/sites/([0-9]{1,9})$`)
+
+func siteAccountTenant(home string) (int, int, bool) {
+	if !hostingpath.IsSiteHome(home) {
+		return 0, 0, false
+	}
+	match := siteHomeIDs.FindStringSubmatch(strings.TrimPrefix(home, hostingpath.SubscriptionsRoot()))
+	if match == nil {
+		return 0, 0, false
+	}
+	sub, _ := strconv.Atoi(match[1])
+	dom, _ := strconv.Atoi(match[2])
+	return sub, dom, sub > 0 && dom > 0
+}
+
+func nameLines(content string) []string {
+	var names []string
+	for _, line := range strings.Split(content, "\n") {
+		if line != "" && !strings.HasPrefix(line, "#") {
+			names = append(names, line)
+		}
+	}
+	return names
+}
+
+// renderAtAllow is the at.allow that keeps today's rule minus the website
+// accounts: root, then every account at.deny does not name, in passwd order.
+func renderAtAllow(entries []passwdEntry, deny string) string {
+	denied := map[string]bool{}
+	for _, name := range nameLines(deny) {
+		denied[name] = true
+	}
+	seen := map[string]bool{"root": true}
+	var b strings.Builder
+	b.WriteString(atAllowHeader)
+	b.WriteString("root\n")
+	for _, entry := range entries {
+		if seen[entry.Name] || denied[entry.Name] || atWebsiteAccount(entry) || len(entry.Name) > 255 {
+			continue
+		}
+		seen[entry.Name] = true
+		b.WriteString(entry.Name + "\n")
+	}
+	return b.String()
+}
+
+type siteAtOps struct {
+	installed func() bool
+	readFile  func(string) ([]byte, error)
+	// writeLike writes path atomically with the owner and mode of like.
+	writeLike func(path, like string, data []byte) error
+	atq       func(ctx context.Context) (string, error)
+	atJob     func(ctx context.Context, id string) (string, error)
+}
+
+func atDigest(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// closeSiteAtWith decides and, where allowed, writes /etc/at.allow, and lists
+// the site accounts' pending jobs.
+func closeSiteAtWith(ctx context.Context, ops siteAtOps) *transport.SideDoorsAt {
+	if !ops.installed() {
+		return &transport.SideDoorsAt{State: transport.SideDoorsAtNotInstalled}
+	}
+	at := &transport.SideDoorsAt{Path: atAllowPath}
+	entries, nisLines, passwdErr := readPasswd(sideDoorsPasswd)
+	sites := map[string]bool{}
+	website := map[string]bool{}
+	for _, entry := range entries {
+		if atWebsiteAccount(entry) {
+			website[entry.Name] = true
+			if hostingpath.IsSiteHome(entry.Home) {
+				sites[entry.Name] = true
+			}
+		}
+	}
+	at.Jobs = pendingSiteAtJobs(ctx, ops, sites)
+	if passwdErr != nil {
+		at.State, at.Detail = transport.SideDoorsAtFailed, "the account list could not be read: "+passwdErr.Error()
+		return at
+	}
+	current, err := ops.readFile(atAllowPath)
+	switch {
+	case err == nil:
+		desired := ""
+		if strings.HasPrefix(string(current), atAllowMark+"\n") {
+			recorded, recordErr := ops.readFile(atAllowRecordPath)
+			deny, denyErr := ops.readFile(atDenyPath)
+			if recordErr == nil && strings.TrimSpace(string(recorded)) == atDigest(current) && denyErr == nil && !nisLines {
+				desired = renderAtAllow(entries, string(deny))
+			}
+		}
+		if desired == "" {
+			at.State = transport.SideDoorsAtOwnerFile
+			for _, name := range nameLines(string(current)) {
+				if website[name] {
+					at.SiteAccounts = append(at.SiteAccounts, name)
+				}
+			}
+			sort.Strings(at.SiteAccounts)
+			return at
+		}
+		if desired == string(current) {
+			at.State = transport.SideDoorsAtCurrent
+			return at
+		}
+		return writeAtAllow(ops, at, desired)
+	case !errors.Is(err, fs.ErrNotExist):
+		at.State, at.Detail = transport.SideDoorsAtFailed, err.Error()
+		return at
+	}
+	deny, err := ops.readFile(atDenyPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		// Neither file: only root may use at (at.allow(5)).
+		at.State = transport.SideDoorsAtOnlyRoot
+		return at
+	}
+	if err != nil {
+		at.State, at.Detail = transport.SideDoorsAtFailed, err.Error()
+		return at
+	}
+	nss, nssErr := ops.readFile(sideDoorsNSSwitch)
+	if nisLines || (nssErr == nil && nssDirectoryAccounts(string(nss))) {
+		at.State = transport.SideDoorsAtDirectory
+		at.Detail = "accounts come from a directory service (" + sideDoorsNSSwitch + " or + lines in " + sideDoorsPasswd + "), so who may use at today cannot be listed; nothing was written"
+		return at
+	}
+	return writeAtAllow(ops, at, renderAtAllow(entries, string(deny)))
+}
+
+func writeAtAllow(ops siteAtOps, at *transport.SideDoorsAt, content string) *transport.SideDoorsAt {
+	if err := ops.writeLike(atAllowPath, atDenyPath, []byte(content)); err != nil {
+		at.State, at.Detail = transport.SideDoorsAtFailed, err.Error()
+		return at
+	}
+	at.State = transport.SideDoorsAtWritten
+	if err := writePrivateFileAtomic(atAllowRecordPath, []byte(atDigest([]byte(content))+"\n"), ".at-allow-*"); err != nil {
+		at.Detail = "CelikPanel's record of the file could not be written, so it will not bring it up to date: " + err.Error()
+	}
+	return at
+}
+
+// atqLine: "<id>\t<date> <queue> <user>" (atq(1), at 3.2.5).
+var atqLine = regexp.MustCompile(`^([0-9]+)\s+(.+?)\s+(\S)\s+(\S+)$`)
+
+const sideDoorsAtJobsShown = 20
+
+// pendingSiteAtJobs lists the pending at jobs of site accounts.
+func pendingSiteAtJobs(ctx context.Context, ops siteAtOps, sites map[string]bool) []transport.SideDoorsAtJob {
+	out, err := ops.atq(ctx)
+	if err != nil {
+		return nil
+	}
+	var jobs []transport.SideDoorsAtJob
+	for _, line := range strings.Split(out, "\n") {
+		match := atqLine.FindStringSubmatch(strings.TrimSpace(line))
+		if match == nil || !sites[match[4]] {
+			continue
+		}
+		job := transport.SideDoorsAtJob{ID: match[1], Account: match[4], When: match[2]}
+		if len(jobs) < sideDoorsAtJobsShown {
+			if script, scriptErr := ops.atJob(ctx, match[1]); scriptErr == nil {
+				job.Command = atJobCommand(script)
+			}
+		}
+		jobs = append(jobs, job)
+	}
+	return jobs
+}
+
+// atJobCommand is the first line of a job's own commands in `at -c` output:
+// after the environment and the `cd … || { … }` block, inside the shell
+// here-document when there is one.
+func atJobCommand(script string) string {
+	lines := strings.Split(script, "\n")
+	i := 0
+	for ; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(trimmed, "cd ") && strings.HasSuffix(trimmed, "|| {") {
+			break
+		}
+	}
+	for ; i < len(lines) && strings.TrimSpace(lines[i]) != "}"; i++ {
+	}
+	if i >= len(lines) {
+		return ""
+	}
+	delimiter := ""
+	for i++; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if trimmed == "" {
+			continue
+		}
+		if rest, ok := strings.CutPrefix(trimmed, "${SHELL:-/bin/sh} << '"); ok && delimiter == "" {
+			delimiter = strings.TrimSuffix(rest, "'")
+			continue
+		}
+		if delimiter != "" && trimmed == delimiter {
+			return ""
+		}
+		return boundedNativeDetail(trimmed)
+	}
+	return ""
+}
+
+func hostSiteAtOps() siteAtOps {
+	return siteAtOps{
+		installed: func() bool {
+			for _, candidate := range atCommandPaths {
+				if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
+					return true
+				}
+			}
+			return false
+		},
+		readFile:  os.ReadFile,
+		writeLike: writeFileLike,
+		atq: func(ctx context.Context) (string, error) {
+			cmd := serviceMutationCommand(ctx, "atq")
+			cmd.Env = append(os.Environ(), "LC_ALL=C", "LANGUAGE=C")
+			out, err := cmd.Output()
+			return string(out), err
+		},
+		atJob: func(ctx context.Context, id string) (string, error) {
+			cmd := serviceMutationCommand(ctx, "at", "-c", id)
+			cmd.Env = append(os.Environ(), "LC_ALL=C", "LANGUAGE=C")
+			out, err := cmd.Output()
+			if len(out) > 256*1024 {
+				out = out[:256*1024]
+			}
+			return string(out), err
+		},
+	}
+}
+
+// writeFileLike writes path atomically with like's owner and permission bits.
+func writeFileLike(target, like string, data []byte) error {
+	info, err := os.Stat(like)
+	if err != nil {
+		return err
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return fmt.Errorf("the owner of %s could not be read", like)
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(target), ".celikpanel-"+filepath.Base(target)+"-*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer os.Remove(name)
+	_, err = tmp.Write(data)
+	if err == nil {
+		err = tmp.Chown(int(stat.Uid), int(stat.Gid))
+	}
+	if err == nil {
+		err = tmp.Chmod(info.Mode().Perm())
+	}
+	if err == nil {
+		err = tmp.Sync()
+	}
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(name, target)
+	}
+	return err
+}
+
+// --- site crontabs ---
+
+// siteCrontabAccounts lists the site accounts with their tenant identities.
+// Replaced by tests.
+var siteCrontabAccounts = func() ([]passwdEntry, error) {
+	entries, _, err := readPasswd(sideDoorsPasswd)
+	if err != nil {
+		return nil, err
+	}
+	var sites []passwdEntry
+	for _, entry := range entries {
+		if _, _, ok := siteAccountTenant(entry.Home); ok && entry.UID >= 1000 && entry.Name != "root" && cronUsernameRe.MatchString(entry.Name) {
+			sites = append(sites, entry)
+		}
+	}
+	sort.Slice(sites, func(i, j int) bool { return sites[i].Name < sites[j].Name })
+	return sites, nil
+}
+
+// checkSiteCrontabs counts each site crontab's lines not made in CelikPanel.
+// The first run of this code takes the existing crontabs as the baseline
+// (site_crontab_record.go); a crontab that cannot be read is left for the
+// next start and the screen says it cannot be read.
+func checkSiteCrontabs() []transport.SideDoorsSiteCrontab {
+	if requireCronInstalled() != nil {
+		return nil
+	}
+	accounts, err := siteCrontabAccounts()
+	if err != nil {
+		return nil
+	}
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	baseline := !siteCrontabBaselineTaken()
+	complete := true
+	var rows []transport.SideDoorsSiteCrontab
+	for _, account := range accounts {
+		content, err := readCrontab(account.Name)
+		if err != nil {
+			complete = false
+			continue
+		}
+		if baseline {
+			if _, found := readSiteCrontabRecord(account.Name); !found && len(cronEffectiveLines(content)) > 0 {
+				record := siteCrontabRecordAfter(account.Name, content, content, nil)
+				record.Baseline = true
+				if writeSiteCrontabRecord(account.Name, record) != nil {
+					complete = false
+				}
+			}
+		}
+		if outside := cronOutsideLines(account.Name, content); len(outside) > 0 {
+			sub, dom, _ := siteAccountTenant(account.Home)
+			rows = append(rows, transport.SideDoorsSiteCrontab{Account: account.Name, SubscriptionID: sub, DomainID: dom, Outside: len(outside)})
+		}
+	}
+	if baseline && complete {
+		if err := os.MkdirAll(siteCrontabRecordDir, 0o700); err == nil {
+			_ = writePrivateFileAtomic(filepath.Join(siteCrontabRecordDir, siteCrontabBaselineName), []byte("taken\n"), ".baseline-*")
+		}
+	}
+	return rows
+}

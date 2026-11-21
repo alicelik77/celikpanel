@@ -555,6 +555,22 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "stock_pool_in_use", "stock_pool_owner_changed":
 		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is kept on: Monitoring says why.", name),
 			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu açık bırakıldı; nedeni İzleme'de.", name)
+	// S4 R1 (side_doors_jobs.go).
+	case "site_crontab_outside":
+		return fmt.Sprintf("%s scheduled task lines were added outside CelikPanel (%s); the sites' task limits were not checked for them. Each site's Scheduled tasks list marks them.", n, subject),
+			fmt.Sprintf("CelikPanel dışında %s zamanlanmış görev satırı eklendi (%s); sitelerin görev sınırları onlar için denetlenmedi. Her sitenin Zamanlanmış görevler listesi onları işaretler.", n, subject)
+	case "site_at_jobs":
+		return fmt.Sprintf("%s at jobs of website accounts, made outside CelikPanel, are waiting to run: %s. Monitoring says how to remove them.", n, subject),
+			fmt.Sprintf("Web sitesi hesaplarının CelikPanel dışında kurulmuş %s at işi çalışmayı bekliyor: %s. Nasıl kaldırılacağı İzleme'de.", n, subject)
+	case "at_allow_lists_sites":
+		return fmt.Sprintf("/etc/at.allow on this server lets website accounts use at: %s.", subject),
+			fmt.Sprintf("Bu sunucudaki /etc/at.allow web sitesi hesaplarının at kullanmasına izin veriyor: %s.", subject)
+	case "at_directory_accounts":
+		return "Website accounts can still use at on this server: its accounts come from a directory service, so CelikPanel did not write /etc/at.allow.",
+			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: hesaplar bir dizin hizmetinden geldiği için CelikPanel /etc/at.allow dosyasını yazmadı."
+	case "at_not_closed":
+		return "Website accounts can still use at on this server: CelikPanel could not write /etc/at.allow. It tries again at the panel's next start.",
+			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: CelikPanel /etc/at.allow dosyasını yazamadı. Panelin bir sonraki başlangıcında yeniden dener."
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

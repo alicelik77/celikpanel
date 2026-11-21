@@ -109,6 +109,9 @@ func removeCrontabSpoolFiles(username string) error {
 	if len(failures) > 0 {
 		return errors.New(strings.Join(failures, "; "))
 	}
+	// CelikPanel's record of what it wrote there goes with it, so a later
+	// account of the same name starts without it (site_crontab_record.go).
+	removeSiteCrontabRecord(username)
 	return nil
 }
 
