@@ -1219,7 +1219,11 @@ func (p *Panel) handlePostgreSQLPublicAccessAction(w http.ResponseWriter, r *htt
 	status, answer := p.pgPublicAct(ctx, *record, body.Action, body.ACL, body.Roles)
 	pgPublicActMu.Unlock()
 	if status == http.StatusOK && answer.did {
-		p.audit(r, map[string]string{"close": "database.postgresql.closed_to_other_accounts:", "undo": "database.postgresql.reopened_to_other_accounts:"}[body.Action]+record.name, "database", record.id)
+		if body.Action == "undo" {
+			p.audit(r, "database.postgresql.reopened_to_other_accounts:"+record.name, "database", record.id)
+		} else {
+			p.audit(r, "database.postgresql.closed_to_other_accounts:"+record.name, "database", record.id)
+		}
 	}
 	// Whatever came of it, the list is read again (it says what holds now).
 	p.refreshPGPublicList(ctx)
