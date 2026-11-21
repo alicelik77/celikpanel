@@ -74,11 +74,21 @@ func readUnitInfo(unit string) (UnitInfo, error) {
 	return ParseUnitInfo(unit, string(out))
 }
 
+// readControlGroup asks systemd for the cgroup the unit runs in (its
+// ControlGroup=, or "/<Slice=>/<unit>" when systemd shows none yet).
+func readControlGroup(unit string) (string, error) {
+	out, err := runClean(systemctlPath, "show", unit, "--property=ControlGroup,Slice")
+	if err != nil {
+		return "", fmt.Errorf("systemctl show: %v", err)
+	}
+	return ParseControlGroup(unit, string(out)), nil
+}
+
 // ProductionHelper is the helper as the units run it.
 func ProductionHelper(log io.Writer) Helper {
 	return Helper{
 		Plan: PlanFor, MountRoot: sitesandbox.MountRoot, RootUID: 0, Mounter: KernelMounter{},
-		LookupUser: lookupAccount, UnitInfo: readUnitInfo, NFT: runNFT, Log: log,
+		LookupUser: lookupAccount, UnitInfo: readUnitInfo, ControlGroup: readControlGroup, NFT: runNFT, Log: log,
 	}
 }
 

@@ -122,6 +122,13 @@ var problemKindOrder = map[string]int{
 	"at_allow_lists_sites":  18,
 	"at_directory_accounts": 19,
 	"at_not_closed":         20,
+	// S4 R2a: a site that keeps reaching its limits; disk limits counted
+	// but not enforced (site_limits_view.go).
+	"site_memory_repeated": 21,
+	"site_tasks_repeated":  22,
+	"disk_limits_counted":  23,
+	// S4 R2a: sites whose programs still run outside their limits (a to-do).
+	"site_programs_outside": 24,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -181,6 +188,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
 	// S4 R1: site crontab lines not made in CelikPanel and at (side_doors_jobs.go).
 	add(p.siteJobsProblems(ctx, db), nil)
+	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
+	add(p.siteLimitProblems(ctx, now), nil)
+	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

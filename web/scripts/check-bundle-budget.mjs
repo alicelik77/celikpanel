@@ -373,6 +373,14 @@ const screenPartBudgets = {
   // the at.allow audit words). A new part beside sideDoors, which has no
   // room; set with at least 25% headroom from its Turkish file.
   siteJobs: kib(5.2, 1.85),
+  // 21 Nov 2026 (S4 R2a): the limits of a site's programs together on the
+  // domain's Overview, the plan keys of those limits and of the database
+  // users' time limits, the administrator's move into the limits and the
+  // Problems now lines of a site that keeps reaching them and of disk limits
+  // that are counted, not enforced (slim., limits.key.site.*, pnow.). A new
+  // part, so no existing part's budget is raised; set with at least 25%
+  // headroom from its Turkish file.
+  siteLimits: kib(9, 3.1),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

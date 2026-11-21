@@ -51,6 +51,8 @@ type ServiceAppTarget struct {
 	DomainID       int    `json:"domain_id"`
 	Domain         string `json:"domain"`
 	AppID          string `json:"app_id"`
+	// Slice (S4 R2a, additive): the site's slice and its limits.
+	Slice *SiteSlice `json:"slice,omitempty"`
 }
 
 // ServiceAppLimits are the resource limits written into the unit.

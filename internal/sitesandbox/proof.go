@@ -69,7 +69,7 @@ func Expected(p Profile, c Caps, unit string) map[string]Expectation {
 	e := map[string]Expectation{
 		"User":                  {Value: p.User},
 		"Group":                 {Value: p.Group},
-		"ControlGroup":          {Value: "/system.slice/" + unit},
+		"ControlGroup":          {Value: "/" + p.SliceUnit() + "/" + unit},
 		"NoNewPrivileges":       {Value: "yes"},
 		"ProtectSystem":         {Value: "strict"},
 		"ProtectHome":           {Value: "yes"},
@@ -205,10 +205,22 @@ func Prove(in ProofInput) ProofResult {
 	if paths := sitePathsOnHost(props); len(paths) > 0 {
 		return refuse(ProofSitePath, "%s: systemd reads %s on the host; a link there would be followed as root", in.Unit, strings.Join(paths, ", "))
 	}
-	if got, ok := props["ControlGroup"]; !ok || got != expected["ControlGroup"].Value {
-		return refuse(ProofCgroup, "%s runs in %q, not %s", in.Unit, got, expected["ControlGroup"].Value)
+	// The unit runs in its site's slice or, not moved yet, in the system
+	// slice (S4 R2a): both are depth two, where the SMTP set matches. Which
+	// one the caller rendered does not decide; the set element below is
+	// read from the cgroup the unit really runs in.
+	cgroup, ok := props["ControlGroup"]
+	allowed := false
+	for _, candidate := range AllowedControlGroups(in.Profile.SiteID, in.Unit) {
+		allowed = allowed || (ok && cgroup == candidate)
+	}
+	if !allowed {
+		return refuse(ProofCgroup, "%s runs in %q, not %s", in.Unit, cgroup, strings.Join(AllowedControlGroups(in.Profile.SiteID, in.Unit), " or "))
 	}
 	for _, name := range names {
+		if name == "ControlGroup" {
+			continue
+		}
 		want := expected[name]
 		got, ok := props[name]
 		if !ok {
@@ -231,7 +243,7 @@ func Prove(in ProofInput) ProofResult {
 		if in.SetElements == nil {
 			return refuse(ProofUnreadable, "the SMTP block set could not be read")
 		}
-		if !InSet(in.SetElements, in.Unit) {
+		if !InSetCgroup(in.SetElements, cgroup) {
 			return refuse(ProofNotInSet, "%s is not in the SMTP block set", in.Unit)
 		}
 	}

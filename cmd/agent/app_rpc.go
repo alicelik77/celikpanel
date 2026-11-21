@@ -320,6 +320,10 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 			return nil
 		}
 		file.Body = plan.body
+		if plan.params.InSlice {
+			// S4 R2a: the site's slice is in place before the unit names it.
+			ensureSiteSlice(siteSliceFor(req.Slice, req.SiteID))
+		}
 		if plan.move {
 			wasServing = nodeSiteServing(name+".service", req.Port)
 		}

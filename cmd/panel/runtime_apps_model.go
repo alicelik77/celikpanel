@@ -387,6 +387,8 @@ func (n panelRuntimeAppNative) check(ctx context.Context, req transport.RuntimeA
 
 func (n panelRuntimeAppNative) render(ctx context.Context, req transport.RuntimeAppRenderRequest) (transport.RuntimeAppRenderResponse, error) {
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	// S4 R2a: the site's slice and its limits.
+	req.Target.Slice = n.p.siteSliceForSubscription(ctx, req.Target.SiteID, req.Target.SubscriptionID, req.Target.Domain)
 	var resp transport.RuntimeAppRenderResponse
 	return resp, n.call(ctx, "Agent.RuntimeAppRenderV1", &req, &resp)
 }
@@ -446,6 +448,8 @@ func (n panelRuntimeAppNative) python(ctx context.Context) (transport.RuntimePyt
 
 func (n panelRuntimeAppNative) build(ctx context.Context, req transport.RuntimeAppBuildRequest) (transport.RuntimeAppBuildResponse, error) {
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	// S4 R2a: the build runs in the site's slice.
+	req.Target.Slice = n.p.siteSliceForSubscription(ctx, req.Target.SiteID, req.Target.SubscriptionID, req.Target.Domain)
 	var resp transport.RuntimeAppBuildResponse
 	return resp, n.call(ctx, "Agent.RuntimeAppBuildV1", &req, &resp)
 }

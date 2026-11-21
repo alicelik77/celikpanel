@@ -404,6 +404,9 @@ func (a *Agent) RuntimeAppBuildV1(req *transport.RuntimeAppBuildRequest, resp *t
 		Minor: py.Minor, Venv: next, Limits: siteruntime.Limits{MemoryMB: req.Spec.Limits.MemoryMB, CPUPercent: req.Spec.Limits.CPUPercent, Tasks: req.Spec.Limits.TasksMax},
 		Level: sitesandbox.LevelFull, Caps: caps, SourceBuilds: settingsSpec.SourceBuilds,
 	}
+	// S4 R2a: a build is a new unit every time; it runs in the site's slice.
+	buildSlice := siteSliceFor(req.Target.Slice, req.Target.SiteID)
+	params.SiteID, params.InSlice = req.Target.SiteID, buildSlice != nil
 	if req.Spec.Level == string(sitesandbox.LevelReduced) {
 		params.Level = sitesandbox.LevelReduced
 	}
@@ -435,6 +438,7 @@ func (a *Agent) RuntimeAppBuildV1(req *transport.RuntimeAppBuildRequest, resp *t
 		runtimeStep(step, transport.RuntimeAppUnknown, "sandbox_egress", err.Error())
 		return nil
 	}
+	ensureSiteSlice(buildSlice)
 	if code, detail := sandboxFolderRefusal(rc.layout.Root, rc.account.UID); code != "" {
 		class := transport.RuntimeAppPrerequisite
 		if code == sandboxbind.CodeUnreadable {

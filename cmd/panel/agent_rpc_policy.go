@@ -169,6 +169,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 		Agent.DeletionHoldingInventoryV1 Agent.LeftMailFoldersV1
+		Agent.SiteSlicesStatusV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -217,6 +218,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SetRuntimeAppSuspensionV1
 		Agent.NodeSiteInstallV1 Agent.NodeSiteEnvV1 Agent.SitePageCacheClearV1 Agent.SiteLogRetentionV1
 		Agent.GitDeployKeyV1 Agent.GitDeployV1
+		Agent.ApplySiteSlicesV1 Agent.MoveSiteSliceV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -693,6 +695,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.GitDeployStatusV1":        agentRPCStandardReadTimeout,
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
+	// S4 R2a: the site's slice (a move restarts each of up to 64 units once
+	// and waits up to 20 seconds for each, with its put-back).
+	"Agent.SiteSlicesStatusV1": agentRPCStandardReadTimeout,
+	"Agent.ApplySiteSlicesV1":  agentRPCMutationTimeout,
+	"Agent.MoveSiteSliceV1":    agentRPCDeploymentTimeout,
 
 	// alpha.128 ops: server maintenance (G29 reboot, G31 certificate requests;
 	// an RSA 4096 key can take a few seconds to make).

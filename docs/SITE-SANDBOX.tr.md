@@ -223,10 +223,12 @@ tablosuna asla girmez.
   ağ ad alanında ölçüldü.
 
 Engeli tutabilen sunucuda her korumalı birim yardımcıyı (§1a) çalıştırır:
-`ExecStartPre=+… sandbox-helper egress-add --unit=<birim>` tabloyu yükler ve birimin cgroup'unu
-kümeye ekler; `ExecStopPost=-+… egress-remove` durduktan sonra çıkarır. nft boş bir ortamla
-çalışır. nft tabloyu yükleyemezse ya da birimin cgroup'u
-`/system.slice/<birim>` değilse birim başlamaz; engel kapalı kalacağına program hiç çalışmaz.
+`ExecStartPre=+… sandbox-helper egress-add --unit=<birim>` tabloyu yükler ve birimin systemd'den
+okunan gerçek cgroup'unu (`'{ "<dilim>/<birim>" }'`) kümeye ekler; `ExecStopPost=-+… egress-remove`
+durduktan sonra çıkarır. nft boş bir ortamla çalışır. nft tabloyu yükleyemezse ya da birimin
+cgroup'u ne `/system.slice/<birim>` ne de sitesinin `/celiksite_<id>.slice/<birim>` dilimiyse
+(§8; örneğin sahibin bir ek ayar dosyası birimi başka bir dilime taşıdıysa) birim başlamaz; engel
+kapalı kalacağına program hiç çalışmaz.
 
 `celikpanel-egress-guard.timer` 30 saniyede bir çalışır. Biri `nft flush ruleset`
 çalıştırdıysa ya da `nftables.service` yeniden başlatıldıysa tabloyu yeniden yükler ve çalışan
@@ -366,3 +368,113 @@ eksiğin söylediği gibi başarısız oldu (o sunucuda posta engeli yok). Labor
 kalanlar: beş sistem, çıkış tablosu yüklüyken joker Node.js dinleyicisine dışarıdan ulaşılamadığı
 (10. madde) ve her sistemde yöneticinin işlemiyle taşınan gerçek bir Node.js uygulaması (Express,
 Next.js).
+
+## 8. Sitenin dilimi: bir sitenin bütün programları için tek sınır takımı
+
+*21 Kasım 2026 · Kaynakta var ve bileşen testleriyle denendi; Debian 13 ve Ubuntu 24.04
+laboratuvar turu açık (adımlar çekme isteğinde).*
+
+CelikPanel'in bir site için systemd birimi olarak başlattığı her program o sitenin dilimi
+`celiksite_<site kimliği>.slice` içinde çalışır. Dilimin `MemoryMax=`, `TasksMax=` ve `CPUQuota=`
+değerleri bu programların **hepsini birlikte** sınırlar:
+
+| Birim | Ne | Dilimde mi |
+|---|---|---|
+| `celikapp-<site kimliği>` | Node.js uygulaması | evet |
+| `celikrt-<uygulama kimliği>` | yüklenmiş bir program ya da Python uygulaması | evet |
+| `celiksvc-<kurulum kimliği>` | bir hizmet uygulaması (n8n) | evet |
+| `celikappinst-`, `celikgit-<site kimliği>` | Node.js kurulum adımı, Git ile dağıtım | evet (her seferinde yeni birim) |
+| `celikrtbuild-`, `celiksvcinst-<kimlik>` | Python derlemesi, bir hizmet uygulamasının kurulumu | evet (her seferinde yeni birim) |
+| sitenin PHP-FPM havuzu, zamanlanmış görevleri | | henüz değil: PHP ve görevler sonraki adımlarda dilime girer |
+| `celikpanel-sandbox@…`, `celikpanel-ftp@…` | root'un bağlama birimleri | hayır: müşteri kodu çalıştırmazlar |
+
+**Ad.** systemd için dilim adındaki tire iç içe geçme demektir (`celiksite-7.slice`,
+`celiksite.slice`'ın alt dilimi olurdu). Tire olmayınca dilim kökün hemen altındadır ve içindeki
+birim `/celiksite_7.slice/<birim>` olur: `/system.slice/<birim>` gibi ikinci düzey. Bu yüzden SMTP
+engelinin kümesi (`typeof socket cgroupv2 level 2`, §3) birimi iki yerde de tabloda hiçbir
+değişiklik olmadan yakalar. Yardımcının `egress-add` komutu birimin gerçekten çalıştığı cgroup'u
+(`ControlGroup=`) ekler, yalnız sistem dilimini ya da sitenin dilimini kabul eder, başka her yeri
+reddeder; sahibin ek ayar dosyasının başka yere taşıdığı birim eskisi gibi başlamaz. Koruyucu
+zamanlayıcı birimleri iki yerde de yeniden ekler.
+
+**Sınırlar.** Dilim sitenin geçerli `site.memory_mb`, `site.tasks` ve `site.cpu_percent`
+değerlerini alır (docs/SITE-LIMITS.md §4a). systemd bir birimle üst dilimlerinin sınırlarından en
+sıkı olanı uygular ("EffectiveMemoryMax= … is the most stringent limit of the unit and parent
+slices", systemd.resource-control(5), systemd 257 ve 255). Birim kendi dosyasındaki sınırları korur
+(Node.js uygulaması 1536 MB, n8n 1536 MB); dilim dış sınırdır, yani bir birim hiçbir zaman sitesinin
+sınırından fazlasını alamaz ve ekranlar ikisini de gösterir. Hiçbir düzey bir değer koymazsa dilim,
+bir sitenin kendi programlarının bu sürümden önce sahip olduğu en büyük sınırları alır (3072 MB,
+512 işlem, %200); böylece bir sitenin bugün çalıştırdığı hiçbir şey kesilmez.
+
+**Dosya.** `/etc/systemd/system/celiksite_<id>.slice`, CelikPanel başlığıyla D-031 kuralına göre
+yazılır: olmayan dosya yazılır, CelikPanel'in değişmemiş metni yenilenir, sahibin değiştirdiği
+dosya korunur ve CelikPanel'in metni yanına `<dosya>.celikpanel-pending` olarak konur (sahibin
+değerleri geçerli kalır). Sahibin ek ayar dosyaları `celiksite_<id>.slice.d/*.conf` içindedir.
+Dosya yalnız bir değişiklik işlemi içinde yazılır; değişen bir sınır var olan dilimlere yazılır
+(`Agent.ApplySiteSlicesV1`) ve çalışan dilim bunu hiçbir şeyi yeniden başlatmadan, systemd yeniden
+yüklenirken alır: `unit_deserialize_state()` gerçekleşmiş her cgroup'u "so that new cgroup
+settings get applied" diye geçersiz sayar (src/core/unit-serialize.c, systemd 255 ve 257). Dosyası
+yazılamayan dilimi systemd sınırsız oluşturur; birim yine çalışır ve sitenin kartı dosyayı eksik
+gösterir.
+
+**Birim yazılırken nereye gider.** systemd çalışan bir birimi taşımaz: `unit_set_slice()` durmuş
+olmayan birimi reddeder (`-EBUSY`, src/core/unit.c, systemd 255 ve 257); birimin çalıştığı dilimden
+başkasını yazan bir dosya da systemd yeniden yüklendikten sonra systemd'nin bildiğiyle cgroup'u
+birbirinden ayırırdı. Bu yüzden:
+
+- çalışmayan bir birim (yeni, durdurulmuş ya da her kurulum veya derleme adımı) sitesinin dilimine
+  yazılır;
+- çalışan bir birim her olağan yazmada (ayar değişikliği, güncelleme, müşterinin yeniden
+  başlatması) çalıştığı dilimde kalır;
+- yöneticinin bir Node.js sitesini korumaya taşıması (§6a) onu zaten yeniden başlatır ve kanıtı ve
+  geri koyma adımıyla birlikte dilime alır.
+
+**Sunucu yeniden başladıktan sonra.** systemd açılışta, CelikPanel hiçbir şey yazmadan önce, her
+birimi kendi dosyasından başlatır ve `Slice=` satırının adını verdiği dilime koyar ("Slice= … The
+name of the slice unit to place the unit in. Defaults to system.slice for all non-instantiated
+units of all unit types", systemd.resource-control(5), systemd 257; 255'te aynı). Bu sürümden önce
+yazılmış her programın ve çalışırken yazılmış her programın dosyası `Slice=system.slice` der.
+**Yani bir sitenin var olan programı yeniden başlatmadan sonra da eskisi gibi sitesinin sınırlarının
+dışında başlar ve yönetici taşıyana kadar dışarıda kalır.** Dosyası çalışmıyorken yazılmış ya da
+taşınmış bir program sitesinin dilimini adlandırır ve onun içinde başlar. Hiçbir şey kendiliğinden
+taşınmaz; aşağıdaki "Şu anki sorunlar" satırı yöneticiye taşınacak siteleri söyler.
+
+**Yöneticinin taşıma işlemi.** Sitenin Genel Bakış sayfası yöneticiye her programın nerede
+çalıştığını (sınırların içinde, eskisi gibi dışında, durdurulmuş, sahibin seçtiği başka bir
+dilimde) ve tek bir işlemi gösterir: `POST /api/v1/domains/{id}/site-limits/move {request_id}`
+(`Agent.MoveSiteSliceV1`). Panel genelinde aynı anda tek taşıma çalışır; aynı `request_id` ilk
+yanıtı alır; denetim kaydına `site.limits_move` olarak yazılır. Ajan önce dilimi yazar, sonra
+sitenin birimlerini sırayla ele alır: CelikPanel'in değişmemiş metninde `Slice=system.slice`
+yerine `Slice=celiksite_<id>.slice` yazılır (başlığıyla yeniden mühürlenir), systemd yeniden
+yüklenir ve çalışan birim bir kez yeniden başlar; 20 saniye içinde dilimde çalışıyor olmalı ve
+önceden dinlediği her portu yeniden dinlemelidir. Durdurulmuş birim yalnız yeniden yazılır. Sahibin
+dosyasını değiştirdiği birim korunur ve listelenir; önceki bir korumadaki birim bir sonraki adımıyla
+listelenir. Bir birim başarısız olursa o ve sitenin ondan önce taşınan her birimi bayt bayt eski
+hâline döndürülür ve çalıştıkları yerde yeniden başlatılır; ondan sonrakilere dokunulmaz; başka
+sitelere hiç dokunulmaz. Taşımadan önce pencere, dilimde kendi başına olduğundan daha az belleği
+olacak her programı adıyla söyler.
+
+**Bir sınıra ulaşıldığında ne okunur (D-024).** Ajan dilim cgroup'unun kendi sayaçlarını
+(`memory.events oom_kill`, `pids.events max`, `cpu.stat throttled_usec`) sitenin durumu okunurken
+ve bütün siteler için en çok beş dakikada bir arka planda (tek bir `systemctl show` çağrısıyla)
+okur. Panel bir sayacın ne zaman arttığını tutar (`panel_settings` anahtarı
+`site_limit_events_v1`; bir sitenin ilk okuması başlangıç noktasıdır). Sitenin kartı ne olduğunu
+ve ne zaman olduğunu ("Programlar belleğin tamamını kullandı (14:05'te görüldü) … Plan 1 GB'a izin
+veriyor") ve sınırı kimin yükseltebileceğini söyler: müşteriye "hizmet sağlayıcınız", yöneticiye
+planın ya da bayinin adı. Bir günde iki ya da daha fazla okumada bellek ya da işlem sınırına ulaşan
+site "Şu anki sorunlar"da bir satırdır.
+
+**Taşınacak siteler.** "Şu anki sorunlar"da yalnız yöneticiye görünen bir satır daha vardır:
+kendi programları sınırlarının dışında çalışan ya da orada başlayacak olan siteler (sayıları ve
+ilk beş adı), bunun ne anlama geldiği ve bir sitenin Genel Bakış sayfasındaki "Sınırların içine
+taşı" düğmesinin o sitenin programlarını bir kez yeniden başlattığı. İlk siteyi açar, bir uyarıdır
+(arıza değil, yapılacak iş) ve hiç site kalmayınca kendiliğinden kaybolur. Liste arka plan
+okumasından ve bir sitenin kartının her okunuşundan gelir; böylece taşınan site listeden hemen
+çıkar (`panel_settings` anahtarı `site_limit_outside_v1`; şema değişikliği yok).
+
+**Sahibin bağımsızlığı (D-022).** Dilimler yerel systemd birimleridir. Panel durdurulsa,
+kaldırılsa ya da lisansı bitse de dilimler ve sınırları çalışmaya devam eder. Bir sitenin
+sınırlarını panel olmadan kaldırmak ya da değiştirmek için sahip bir ek ayar dosyası ekler
+(`/etc/systemd/system/celiksite_<id>.slice.d/owner.conf`, örneğin `[Slice]` ve
+`MemoryMax=infinity` ile) ve `systemctl daemon-reload` çalıştırır; CelikPanel bu dosyayı hiçbir
+zaman yazmaz ya da silmez.

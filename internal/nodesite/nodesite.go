@@ -128,6 +128,9 @@ type Params struct {
 	// site has no environment variables) writes no line, so the unit is
 	// exactly what it was.
 	EnvFile string
+	// InSlice places the unit in the site's slice (S4 R2a): a unit that
+	// does not run when it is written, or the administrator's move.
+	InSlice bool
 }
 
 // EnvPath is a Node.js site's environment file (alpha.128): in the root
@@ -150,7 +153,9 @@ func profile(kind sitesandbox.Kind, unit, user, group, appDir, version string, p
 
 // Profile is the application unit's sandbox profile.
 func (p Params) Profile() sitesandbox.Profile {
-	return profile(sitesandbox.KindNode, UnitName(p.SiteID), p.User, p.Group, p.AppDir, p.NodeVersion, p.Port, RunLimits, p.Caps)
+	prof := profile(sitesandbox.KindNode, UnitName(p.SiteID), p.User, p.Group, p.AppDir, p.NodeVersion, p.Port, RunLimits, p.Caps)
+	prof.SiteID, prof.InSlice = p.SiteID, p.InSlice
+	return prof
 }
 
 // MaxCommand bounds the start command.

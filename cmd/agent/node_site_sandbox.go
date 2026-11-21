@@ -133,6 +133,10 @@ func planNodeSite(ctx context.Context, req *AppApplyRequest, unitPath string) (n
 		DropInDir: unitPath + ".d",
 		// alpha.128: the site's environment file, named while it exists.
 		EnvFile: nodeSiteEnvFileIfPresent(req.SiteID),
+		// S4 R2a: into the site's slice when the application does not run
+		// now (or already runs there), or with the administrator's sandbox
+		// move, which restarts it and puts the earlier unit back on failure.
+		InSlice: siteUnitEntersSlice(appUnitName(req.SiteID)+".service", siteSliceFor(req.Slice, req.SiteID), req.SandboxMove),
 	}
 	body, err := nodesite.RenderUnit(params)
 	if err != nil {

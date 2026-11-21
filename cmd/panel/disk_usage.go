@@ -214,6 +214,8 @@ func (p *Panel) measureSubscriptionDisk(ctx context.Context, subscriptionID int)
 		state = "partial"
 		detail = "not measured: " + strings.Join(resp.Unknown, ", ")
 	}
+	// S4 R2a: whether the file system could refuse writes itself (Problems now).
+	p.noteHostingProjectQuota(ctx, resp.ProjectQuota)
 	if resp.ProjectQuota {
 		if detail != "" {
 			detail += "; "

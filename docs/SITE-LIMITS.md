@@ -180,6 +180,63 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   working without the panel. A user whose server cannot be reached keeps its limit until the next
   change (logged).
 
+- **Time and temporary-file limits (S4 R2a, off unless a level sets them):**
+  `db.statement_seconds`, `db.idle_in_transaction_seconds` and `db.temp_file_mb` become
+  the engines' own role settings, written with the connection limit by the same function
+  and the same triggers (a new user; every user of the subscriptions a changed limit
+  reaches; no ceiling removes an earlier value) — `internal/services/database_role_limits.go`:
+
+  | Key | MariaDB | PostgreSQL | A limit or a default? |
+  |---|---|---|---|
+  | `db.statement_seconds` | `ALTER USER … WITH MAX_STATEMENT_TIME n` | `ALTER ROLE … SET statement_timeout = 'n s'` | **default** on both: MariaDB copies the account's value into the session's `max_statement_time` at sign-in (`acl_authenticate`, sql/sql_acl.cc, 10.11 and 11.8), a Session-scope, dynamic variable; PostgreSQL sets it as "the session default" at login (ALTER ROLE) and it is user-settable |
+  | `db.idle_in_transaction_seconds` | — | `ALTER ROLE … SET idle_in_transaction_session_timeout` | **default** (user-settable) |
+  | `db.temp_file_mb` | — | `ALTER ROLE … SET temp_file_limit = 'n MB'` | **limit**: "Only superusers and users with the appropriate SET privilege can change this setting" (runtime-config-resource, PostgreSQL 16 and 17) |
+
+  The panel's own work is never cut. Dumps run as the engine's administrator, whose
+  sessions do not read a customer role's settings. A load of a file as the database's
+  owner (restore, database copy, site copy, the customer's import, the cPanel import —
+  all through `loadDatabaseSQL`) sets `statement_timeout` and
+  `idle_in_transaction_session_timeout` to 0 for its own session, MariaDB's client starts
+  with `SET SESSION max_statement_time=0`, and the engine's administrator lifts
+  `temp_file_limit` for that one database while the load runs
+  (`ALTER ROLE … IN DATABASE … SET temp_file_limit = -1`, which outranks the role's own
+  value at sign-in; only when the role has one) and removes it afterwards. A lift a
+  stopped Agent could not remove is removed at the next write of the user's limits.
+  During a load the role's other new sessions to that database have no temporary-file
+  limit; that window is the load's length.
+
+## 4a. A site's limits: one bound for all of its programs (S4 R2a)
+
+Three keys, limits only (nothing for a customer to choose), in the `site` group:
+
+| Key | Becomes | Without any level |
+|---|---|---|
+| `site.memory_mb` | `MemoryMax=` of the site's slice | 3072 |
+| `site.tasks` | `TasksMax=` | 512 |
+| `site.cpu_percent` | `CPUQuota=` (100 is one core) | 200 |
+
+The slice gets the effective ceiling, else the server's default (`setting_policy.server_default`),
+else CelikPanel's default above: the largest limits a site's own programs had before R2a
+(a Node.js application 1536 MB, 200 %, 512 tasks; n8n 1536 MB running and 3072 MB while it
+installs; an Open WebUI install 3072 MB), so nothing a site runs today is cut. No schema
+change: a key without a `setting_policy` row has no server ceiling or default, and the
+server level writes its row when the administrator first saves it. Plans, reseller plans,
+Custom sets and the server's limits edit the keys where every other key is edited; a changed
+value is written into the slices that exist at once, in the background
+(`Agent.ApplySiteSlicesV1`). How the slice works, which programs are in it, and what people
+read when a limit is reached: docs/SITE-SANDBOX.md §8.
+
+**Disk limits.** `site.disk_mb` is not a key of this step. Where the hosting file system is
+not mounted with project quotas (typical ext4 roots of Debian 13 and Ubuntu 24.04, whose
+quota features cannot be turned on while mounted), a subscription's disk limit is counted
+by walking the folders and acted on by the panel (uploads stop; the "Close" rule), but the
+file system itself does not refuse a write. Problems now says so once for the server
+(`disk_limits_counted`, the server owner acts). Where it is mounted with project quotas
+(`prjquota`, `pquota`), the panel detects it and still counts by walking; it sets no quota.
+Enforcement by the file system is the owner's: a separate volume for
+`/var/www/celikpanel` made with `mkfs.ext4 -O quota,project` or XFS mounted with
+`prjquota`. CelikPanel never changes file systems.
+
 ## 5. Password level (G21)
 
 `GET/PUT /api/v1/rights/password-level` (PUT administrator): `owner` (default), `strong` (10

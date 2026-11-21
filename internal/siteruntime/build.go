@@ -89,6 +89,9 @@ type BuildParams struct {
 	// SourceBuilds: the administrator allowed source builds for the
 	// offering (off by default, named in the risk summary).
 	SourceBuilds bool
+	// SiteID and InSlice run the build in its site's slice (S4 R2a).
+	SiteID  int
+	InSlice bool
 }
 
 // Profile is the build's sandbox profile: the app's, without a port.
@@ -96,7 +99,7 @@ func (p BuildParams) Profile() sitesandbox.Profile {
 	return sitesandbox.Profile{
 		Kind: sitesandbox.KindPython, Unit: BuildUnitName(p.AppID), User: p.User, Group: p.Group, AppDir: p.Layout.Root,
 		Limits: sitesandbox.Limits{MemoryMB: p.Limits.MemoryMB, CPUPercent: p.Limits.CPUPercent, Tasks: p.Limits.Tasks, NOFILE: 8192},
-		Level:  p.Level,
+		Level:  p.Level, SiteID: p.SiteID, InSlice: p.InSlice,
 	}
 }
 

@@ -20,6 +20,8 @@ type RuntimeAppTarget struct {
 	SubscriptionID int    `json:"subscription_id"`
 	DomainID       int    `json:"domain_id"`
 	Domain         string `json:"domain"`
+	// Slice (S4 R2a, additive): the site's slice and its limits.
+	Slice *SiteSlice `json:"slice,omitempty"`
 }
 
 // RuntimeAppLimits are the offering's limits written into the unit.
