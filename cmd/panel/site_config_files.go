@@ -349,6 +349,10 @@ func (p *Panel) applySitePool(ctx context.Context, site siteFileSite, request tr
 // applyAppUnit sends one unit operation and records its result. An older
 // Agent reports no File: its error, if any, stands.
 func (p *Panel) applyAppUnit(ctx context.Context, site siteFileSite, request *transport.AppApplyRequest) (*transport.SiteFileResult, error) {
+	if request.Slice == nil {
+		// S4 R2a: the site's slice and its limits.
+		request.Slice = p.siteSliceForDomain(ctx, site.DomainID)
+	}
 	var response transport.AppApplyResponse
 	if err := p.callAgentContext(ctx, "Agent.ApplyAppUnit", request, &response); err != nil {
 		return nil, fmt.Errorf("apply application unit: %w", err)

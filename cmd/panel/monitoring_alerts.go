@@ -555,6 +555,17 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "stock_pool_in_use", "stock_pool_owner_changed":
 		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is kept on: Monitoring says why.", name),
 			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu açık bırakıldı; nedeni İzleme'de.", name)
+	// S4 R2a (site_limits_view.go).
+	case "site_limit_repeated":
+		if item.name == "tasks" {
+			return fmt.Sprintf("The programs of %s keep reaching their process limit (%s times in a day). The site's page says what its plan allows.", subject, n),
+				fmt.Sprintf("%s sitesinin programları işlem sınırına tekrar tekrar ulaşıyor (bir günde %s kez). Sitenin sayfası planın neye izin verdiğini söyler.", subject, n)
+		}
+		return fmt.Sprintf("The programs of %s keep using all their memory (%s times in a day). The site's page says what its plan allows.", subject, n),
+			fmt.Sprintf("%s sitesinin programları belleğin tamamını tekrar tekrar kullanıyor (bir günde %s kez). Sitenin sayfası planın neye izin verdiğini söyler.", subject, n)
+	case "disk_limits_counted":
+		return "Disk limits are counted, not enforced: the hosting file system has no project quotas. Monitoring says what that means.",
+			"Disk sınırları sayılıyor ama dosya sistemi tarafından uygulanmıyor: barındırma dosya sisteminde proje kotası yok. Ne anlama geldiği İzleme'de."
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

@@ -365,6 +365,12 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "php/settings":
 		// alpha.128: the site's own PHP values within the plan's ceilings.
 		match.kind, match.methods = "php-settings", []string{http.MethodGet, http.MethodPut}
+	case "site-limits":
+		// S4 R2a: the site's limits and when it reached them (read only).
+		match.kind, match.methods = "site-limits", []string{http.MethodGet}
+	case "site-limits/move":
+		// S4 R2a: the administrator's move of the site's programs into its limits.
+		match.kind, match.methods = "site-limits-move", []string{http.MethodPost}
 	case "general":
 		match.kind, match.methods = "general", getPost
 	case "aliases":
@@ -629,6 +635,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainPHPPool(w, r)
 	case "php-settings":
 		p.handleDomainPHPLimits(w, r, match.domainID)
+	case "site-limits":
+		p.handleDomainSiteLimits(w, r, match.domainID)
+	case "site-limits-move":
+		p.handleDomainSiteLimitsMove(w, r, match.domainID)
 	case "general":
 		p.handleDomainGeneralSettings(w, r)
 	case "aliases":

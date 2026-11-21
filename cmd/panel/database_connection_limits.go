@@ -43,7 +43,12 @@ func (p *Panel) applyNewUserConnectionLimit(ctx context.Context, server *core.Da
 	if err != nil {
 		return fmt.Errorf("read the connection limit: %w", err)
 	}
-	if limit == 0 {
+	// S4 R2a: the time and temporary-file limits, off unless set.
+	roleLimits, err := p.dbRoleLimits(ctx, subscriptionID)
+	if err != nil {
+		return fmt.Errorf("read the time limits: %w", err)
+	}
+	if limit == 0 && roleLimits == (services.RoleLimits{}) {
 		return nil
 	}
 	limiter, ok, err := p.connectionLimiterFor(ctx, server, driver, p.pgClustersOnce(ctx))
@@ -53,7 +58,15 @@ func (p *Panel) applyNewUserConnectionLimit(ctx context.Context, server *core.Da
 	if !ok {
 		return nil // an engine without per-user connection limits
 	}
-	return limiter.SetUserConnectionLimit(username, limit)
+	if limit != 0 {
+		if err := limiter.SetUserConnectionLimit(username, limit); err != nil {
+			return err
+		}
+	}
+	if roleLimiter, ok := limiter.(services.RoleLimiter); ok && roleLimits != (services.RoleLimits{}) {
+		return roleLimiter.SetUserRoleLimits(username, roleLimits)
+	}
+	return nil
 }
 
 // pgClustersOnce reads this server's PostgreSQL clusters at most once, when
@@ -161,6 +174,11 @@ func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionID
 			log.Printf("database connection limits of subscription %d: %v", subID, err)
 			continue
 		}
+		roleLimits, err := p.dbRoleLimits(ctx, subID)
+		if err != nil {
+			log.Printf("database time limits of subscription %d: %v", subID, err)
+			continue
+		}
 		rows, err := db.QueryContext(ctx, `SELECT server_id, username FROM database_users WHERE subscription_id = ? ORDER BY id`, subID)
 		if err != nil {
 			return err
@@ -195,6 +213,12 @@ func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionID
 			}
 			if err := limiter.SetUserConnectionLimit(u.username, limit); err != nil {
 				log.Printf("database connection limit of %s stays as it was until the next change: %v", u.username, err)
+			}
+			// S4 R2a: no limit removes an earlier one, as for connections.
+			if roleLimiter, ok := limiter.(services.RoleLimiter); ok {
+				if err := roleLimiter.SetUserRoleLimits(u.username, roleLimits); err != nil {
+					log.Printf("database time limits of %s stay as they were until the next change: %v", u.username, err)
+				}
 			}
 		}
 	}
@@ -254,17 +278,25 @@ func (p *Panel) subscriptionsReachedBy(ctx context.Context, ownerKind string, ow
 	return out, rows.Err()
 }
 
-// dbConnectionLimitChanged: whether an edit changed the key.
+// dbConnectionLimitChanged: whether an edit changed a key the database
+// users carry (the connection limit and, S4 R2a, the time and
+// temporary-file limits).
 func dbConnectionLimitChanged(before, after map[string]int) bool {
-	b, hadB := before[settingDBConnections]
-	a, hadA := after[settingDBConnections]
-	return hadB != hadA || b != a
+	for _, key := range append([]string{settingDBConnections}, dbRoleLimitKeys...) {
+		b, hadB := before[key]
+		a, hadA := after[key]
+		if hadB != hadA || b != a {
+			return true
+		}
+	}
+	return false
 }
 
 // reapplyDBConnectionLimitsAfter starts the rewrite for an owner whose
-// ceilings changed the key.
+// ceilings changed the database users' keys and (S4 R2a) the sites' slices.
 func (p *Panel) reapplyDBConnectionLimitsAfter(ctx context.Context, ownerKind string, ownerID int, before, after map[string]int) {
-	if !dbConnectionLimitChanged(before, after) {
+	dbChanged, siteChanged := dbConnectionLimitChanged(before, after), siteLimitsChanged(before, after)
+	if !dbChanged && !siteChanged {
 		return
 	}
 	subs, err := p.subscriptionsReachedBy(ctx, ownerKind, ownerID)
@@ -272,5 +304,10 @@ func (p *Panel) reapplyDBConnectionLimitsAfter(ctx context.Context, ownerKind st
 		log.Printf("database connection limits after a change of %s %d: %v", ownerKind, ownerID, err)
 		return
 	}
-	p.reapplyDBConnectionLimits(subs)
+	if dbChanged {
+		p.reapplyDBConnectionLimits(subs)
+	}
+	if siteChanged {
+		p.reapplySiteSlices(subs)
+	}
 }

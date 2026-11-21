@@ -284,6 +284,8 @@ func (p *Panel) moveNodeSiteIntoSandbox(ctx context.Context, c nodeSandboxCandid
 	}
 	request.SandboxMove = true
 	request.NoStart = !c.running
+	// S4 R2a: the move restarts the application once, in its site's slice.
+	request.Slice = p.siteSliceForDomain(ctx, c.site.DomainID)
 	resp, err := nodeSandboxApply(p, ctx, request)
 	if err != nil {
 		return nodeSiteMove{kind: "skipped", reason: "agent_unreachable", detail: err.Error()}
@@ -371,6 +373,8 @@ func (p *Panel) handleDomainAppInstall(w http.ResponseWriter, r *http.Request, d
 		ExpectedBuildCommit: request.ExpectedBuildCommit, RequestID: body.RequestID, SiteID: state.SiteID,
 		Domain: state.DomainName, WorkDir: request.WorkDir, RunAsUser: request.RunAsUser, NodeVersion: request.NodeVersion, Build: body.Build,
 		Script: body.Script,
+		// S4 R2a: the step runs in the site's slice.
+		Slice: p.siteSliceForDomain(ctx, domainID),
 	})
 	if err != nil {
 		writeServerError(w, err)
