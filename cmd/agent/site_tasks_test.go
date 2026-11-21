@@ -721,3 +721,36 @@ func TestLingerRuleAndAccounts(t *testing.T) {
 		t.Fatalf("no polkitd: %+v", out)
 	}
 }
+
+// TestOwnersHandEditReachesTheTimersAtTheNextStart: a moved site's task file
+// edited by hand is applied by the side doors step after a start (only a
+// site whose file changed since its timers were made is rendered), and
+// polkit 0.105, which reads no rules files, is reported as not closed.
+func TestOwnersHandEditReachesTheTimersAtTheNextStart(t *testing.T) {
+	host := useTaskTestHost(t)
+	target := taskTestTarget()
+	if _, err := writeSiteTaskSource(target, "17 3 * * * php a.php\n", transport.SiteFileTriggerCreate); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := applySiteTimers(target, "17 3 * * * php a.php\n"); err != nil {
+		t.Fatal(err)
+	}
+	if n := reconcileSiteTimers(); n != 0 {
+		t.Fatalf("an unchanged site was rendered again (%d)", n)
+	}
+	path := sitecron.SourcePath(taskTestSite)
+	writeTaskFile(t, path, readTaskFile(t, path)+"0 6 * * * php owner.php\n")
+	if n := reconcileSiteTimers(); n != 1 {
+		t.Fatalf("the hand edit was not applied (%d)", n)
+	}
+	if !host.enabled["celikcron-7-2.timer"] {
+		t.Fatalf("the owner's task got no timer: %v", host.unitFiles(t))
+	}
+	if n := reconcileSiteTimers(); n != 0 {
+		t.Fatalf("rendered again without a change (%d)", n)
+	}
+	out := closeSiteLingerWith(siteLingerOps{installed: func() bool { return false }, legacy: func() bool { return true }, readFile: os.ReadFile})
+	if out.State != transport.SideDoorsAtFailed || !strings.Contains(out.Detail, "0.105") {
+		t.Fatalf("polkit 0.105: %+v", out)
+	}
+}

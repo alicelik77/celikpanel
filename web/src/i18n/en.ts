@@ -103,6 +103,7 @@ import type { SideDoorsScreenKey } from './screens/sideDoors/en';
 import type { SiteJobsScreenKey } from './screens/siteJobs/en';
 import type { SideDoorsUndoScreenKey } from './screens/sideDoorsUndo/en';
 import type { SiteLimitsScreenKey } from './screens/siteLimits/en';
+import type { SiteTasksScreenKey } from './screens/siteTasks/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -633,5 +634,6 @@ export type ScreenKey =
     | SideDoorsScreenKey
     | SiteJobsScreenKey
     | SideDoorsUndoScreenKey
-    | SiteLimitsScreenKey;
+    | SiteLimitsScreenKey
+    | SiteTasksScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

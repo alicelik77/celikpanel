@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, ArrowRightLeft, CheckCircle2, Gauge } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, CheckCircle2, Gauge, Undo2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { formatDateTime } from '../lib/dateFormat';
@@ -11,6 +11,7 @@ import {
     decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
     type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
+import { decodeTasksAnswer, lineList, movedTaskCount, readTasksPreview, type TasksAnswer } from '../lib/siteTasks';
 import { Button, Checking, CouldNotCheck } from './ui';
 
 // The limits of a site's programs together (S4 R2a, docs/SITE-SANDBOX.md
@@ -34,7 +35,7 @@ const ORDER: { key: SiteLimitKey; label: TranslationKey }[] = [
     { key: 'site.cpu_percent', label: 'slim.cpu' },
 ];
 
-export function SiteLimitsCard({ domainId }: { domainId: number }) {
+export function SiteLimitsCard({ domainId, runsPrograms = true }: { domainId: number; runsPrograms?: boolean }) {
     const { t, locale } = useI18n();
     const url = `/api/v1/domains/${domainId}/site-limits`;
     const handle = useRemote(url, decodeSiteLimits);
@@ -44,6 +45,8 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
         return <div className="mb-4"><CouldNotCheck text={t('slim.unreadLimits')} onRetry={() => void handle.retry()} busy={handle.reading} /></div>;
     }
     const view = remote.state === 'known' ? remote.value : (remote.previous!.value as SiteLimitsView);
+    // A site without programs: only the administrator's tasks part says anything.
+    if (!view.admin && !runsPrograms) return null;
 
     const valueText = (limit: SiteLimitValue | undefined) => {
         if (!limit) return '';
@@ -142,6 +145,77 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
     const lower = lowerUnits(view);
     const edited = view.slice_file === 'owner_edited' || view.slice_file === 'foreign' || view.slice_file === 'unknown_origin';
     const owner = (view.db_owner ?? []).map((s) => `${s.user} (${t(`limits.key.${s.key}` as TranslationKey)}: ${s.value || '—'})`);
+    // S4 R2b: the site's scheduled tasks move with the same action.
+    const tasks = view.tasks;
+    const tasksToMove = !!tasks && !tasks.moved && !tasks.unknown && view.applies !== 'unsupported';
+    const [undoID, setUndoID] = useState(newMoveRequestID);
+
+    // What the move would make of the crontab, read before the question.
+    const preview = async (): Promise<TasksAnswer | 'unknown' | null> => {
+        if (!tasksToMove) return null;
+        try {
+            return await readTasksPreview(domainId);
+        } catch {
+            // Not known: the question says so; the move checks every line itself.
+            return 'unknown';
+        }
+    };
+    const previewText = (p: TasksAnswer | 'unknown' | null): string => {
+        if (!p) return '';
+        if (p === 'unknown') return t('slim.tasks.previewUnknown');
+        if (p.outcome === 'stayed') return t('slim.tasks.blocking', { list: lineList(p.blocking) });
+        if (p.outcome !== 'preview') return p.error ?? '';
+        const n = movedTaskCount(p);
+        return [n > 0 ? t('slim.tasks.rows', { n }) : t('slim.tasks.none'), n > 0 ? t('stasks.timers') : '', p.mail ? t('slim.tasks.mail') : ''].filter(Boolean).join(' ');
+    };
+    const tasksResult = (answer: TasksAnswer | undefined): string => {
+        if (!answer) return '';
+        switch (answer.outcome) {
+            case 'moved': return t('slim.tasks.done.moved');
+            case 'already': return '';
+            case 'stayed': return t('slim.tasks.done.stayed', { list: lineList(answer.blocking) });
+            default: return t('slim.tasks.done.failed', { detail: answer.error ?? answer.outcome });
+        }
+    };
+
+    // "Put the tasks back into cron": the panel's own question, then the steps.
+    const undo = async () => {
+        setWorking(true);
+        try {
+            await confirmAction({
+                title: t('slim.tasks.undo.confirm'),
+                message: t('slim.tasks.undo.body'),
+                confirmLabel: t('slim.tasks.undo.go'),
+                cancelLabel: t('slim.move.cancel'),
+                progressTitle: t('slim.tasks.undo.title'),
+                action: async (report): Promise<OperationEnd> => {
+                    report.steps([{ id: 'undo', label: t('slim.tasks.undo.step'), state: 'running', since: Date.now() }]);
+                    let sent: Response;
+                    try {
+                        sent = await fetch(`/api/v1/domains/${domainId}/site-limits/tasks-undo`, {
+                            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ request_id: undoID }),
+                        });
+                    } catch {
+                        return { state: 'unknown', reason: t('slim.move.unknown') };
+                    }
+                    if (!sent.ok) return { state: 'failed', reason: apiErrorText(await readApiError(sent), t) };
+                    let answer: TasksAnswer;
+                    try {
+                        answer = decodeTasksAnswer(await sent.json());
+                    } catch {
+                        return { state: 'unknown', reason: t('slim.move.unknown') };
+                    }
+                    setUndoID(newMoveRequestID());
+                    if (answer.outcome === 'undone') return { state: 'done', message: t('slim.tasks.undo.done') };
+                    if (answer.outcome === 'unknown') return { state: 'unknown', reason: answer.error || t('slim.move.unknown') };
+                    return { state: answer.outcome === 'refused' ? 'blocked' : 'failed', reason: answer.error || answer.outcome };
+                },
+            });
+        } finally {
+            setWorking(false);
+            onDone();
+        }
+    };
 
     // The product's own question and progress window: the page stays locked
     // with the steps until the server answers, then says how it ended.
@@ -149,16 +223,20 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
         const moving = units.filter((u) => u.placement === 'outside' && !u.blocked);
         const step = (id: string, label: string, state: OperationStep['state'], note?: string): OperationStep => ({ id, label, state, note, since: Date.now() });
         setWorking(true);
+        const tasksPreview = await preview();
         try {
             await confirmAction({
-                title: t('slim.move.confirm', { count: view.needs_move ?? 0 }),
-                message: t('slim.move.body', { seconds: MOVE_WAIT_SECONDS }) + (lower.length > 0 ? '\n\n' + t('slim.move.lowerWarn', { list: lower.map((u) => u.label).join(', ') }) : ''),
+                title: (view.needs_move ?? 0) > 0 ? t('slim.move.confirm', { count: view.needs_move ?? 0 }) : t('slim.tasks.title'),
+                message: [(view.needs_move ?? 0) > 0 ? t('slim.move.body', { seconds: MOVE_WAIT_SECONDS }) : '',
+                    lower.length > 0 ? t('slim.move.lowerWarn', { list: lower.map((u) => u.label).join(', ') }) : '',
+                    previewText(tasksPreview)].filter(Boolean).join('\n\n'),
                 confirmLabel: t('slim.move.go'),
                 cancelLabel: t('slim.move.cancel'),
                 progressTitle: t('slim.move.title'),
                 action: async (report): Promise<OperationEnd> => {
                     report.steps([
-                        step('write', t('slim.move.step.write'), 'running'),
+                        ...(tasksToMove ? [step('tasks', t('slim.tasks.step'), 'running')] : []),
+                        step('write', t('slim.move.step.write'), tasksToMove ? 'pending' : 'running'),
                         ...moving.map((u) => step(u.unit, `${t('slim.move.step.restart')}: ${u.label}`, 'pending')),
                         step('check', t('slim.move.step.check'), 'pending'),
                     ]);
@@ -172,15 +250,27 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     }
                     if (!sent.ok) return { state: 'failed', reason: apiErrorText(await readApiError(sent), t) };
                     let answer;
+                    let raw: { tasks?: unknown };
                     try {
-                        answer = decodeMoveAnswer(await sent.json());
+                        raw = await sent.json() as { tasks?: unknown };
+                        answer = decodeMoveAnswer(raw);
                     } catch {
                         return { state: 'unknown', reason: t('slim.move.unknown') };
                     }
                     setRequestID(newMoveRequestID());
-                    report.steps(moveSteps(answer, units, {
-                        write: t('slim.move.step.write'), restart: t('slim.move.step.restart'), check: t('slim.move.step.check'),
-                    }).map((s) => step(s.id, s.label, s.state, s.note)));
+                    let tasksAnswer: TasksAnswer | undefined;
+                    try {
+                        tasksAnswer = raw.tasks ? decodeTasksAnswer(raw.tasks) : undefined;
+                    } catch {
+                        tasksAnswer = undefined;
+                    }
+                    const tasksOK = !tasksAnswer || tasksAnswer.outcome === 'moved' || tasksAnswer.outcome === 'already';
+                    report.steps([
+                        ...(tasksToMove ? [step('tasks', t('slim.tasks.step'), tasksOK ? 'done' : 'failed', tasksOK ? undefined : tasksResult(tasksAnswer))] : []),
+                        ...(units.length > 0 ? moveSteps(answer, units, {
+                            write: t('slim.move.step.write'), restart: t('slim.move.step.restart'), check: t('slim.move.step.check'),
+                        }).map((s) => step(s.id, s.label, s.state, s.note)) : []),
+                    ]);
                     const notMoved = answer.units.flatMap((u) => {
                         const reason = notMovedReason(u.outcome);
                         if (!reason) return [];
@@ -190,8 +280,9 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     if (answer.rolled_back && failed) {
                         return { state: 'failed', reason: t('slim.move.rolledBack', { unit: labelOf(units, failed.unit), detail: failed.detail ?? '' }) };
                     }
-                    if (!answer.done) return { state: 'failed', reason: answer.error || t('slim.move.unknown') };
-                    return { state: 'done', message: [t('slim.move.done'), notMoved.length > 0 ? t('slim.move.notMoved', { list: notMoved.join('; ') }) : ''].filter(Boolean).join(' ') };
+                    if (!answer.done) return { state: 'failed', reason: [answer.error || t('slim.move.unknown'), tasksResult(tasksAnswer)].filter(Boolean).join(' ') };
+                    if (!tasksOK) return { state: tasksAnswer?.outcome === 'stayed' ? 'blocked' : 'failed', reason: tasksResult(tasksAnswer) };
+                    return { state: 'done', message: [units.length > 0 ? t('slim.move.done') : '', tasksResult(tasksAnswer), notMoved.length > 0 ? t('slim.move.notMoved', { list: notMoved.join('; ') }) : ''].filter(Boolean).join(' ') };
                 },
             });
         } finally {
@@ -223,11 +314,27 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     </ul>
                 </>
             )}
+            {tasks && (
+                <div className="mt-3" data-site-limits-tasks={tasks.unknown ? 'unknown' : tasks.moved ? 'moved' : 'cron'}>
+                    <h3 className="text-xs font-semibold text-fg">{t('slim.tasks.title')}</h3>
+                    <p className="mt-1 text-sm text-fg-muted">{t(tasks.unknown ? 'slim.tasks.unknown' : tasks.moved ? 'slim.tasks.moved' : 'slim.tasks.cron')}</p>
+                    {(tasks.reappeared ?? 0) > 0 && <p className="mt-1 text-sm text-warning" data-site-limits-tasks-returned="">{t('slim.tasks.reappeared', { n: tasks.reappeared ?? 0 })}</p>}
+                    {tasks.recovery && (
+                        <p className="mt-1 text-sm text-warning">{t('slim.tasks.recovery', { time: formatDateTime(tasks.recovery.split(' ')[0], locale), outcome: tasks.recovery.split(' ').slice(1).join(' ') })}</p>
+                    )}
+                    {tasks.moved && (
+                        <Button className="mt-2" icon={Undo2} loading={working} disabled={working || view.busy === true} onClick={() => void undo()} data-site-tasks-undo="">
+                            {t('slim.tasks.undo.button')}
+                        </Button>
+                    )}
+                </div>
+            )}
             {view.busy && <p className="mt-2 text-sm text-fg-muted">{t('slim.move.busy')}</p>}
-            {(view.needs_move ?? 0) > 0 && view.applies !== 'unsupported' && (
+            {((view.needs_move ?? 0) > 0 || tasksToMove) && view.applies !== 'unsupported' && (
                 <div className="mt-3 space-y-2 rounded-lg border border-border-strong bg-surface-2 px-3 py-2">
                     <p className="text-sm font-semibold text-fg">{t('slim.move.title')}</p>
-                    <p className="text-sm text-fg-muted">{t('slim.move.body', { seconds: MOVE_WAIT_SECONDS })}</p>
+                    {(view.needs_move ?? 0) > 0 && <p className="text-sm text-fg-muted">{t('slim.move.body', { seconds: MOVE_WAIT_SECONDS })}</p>}
+                    {tasksToMove && <p className="text-sm text-fg-muted">{t('slim.tasks.cron')}</p>}
                     <Button variant="primary" icon={ArrowRightLeft} loading={working} disabled={working || view.busy === true} onClick={() => void ask()}>
                         {t('slim.move.button')}
                     </Button>

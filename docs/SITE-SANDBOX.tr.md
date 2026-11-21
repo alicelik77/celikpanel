@@ -2,6 +2,8 @@
 
 *alpha.119 · Kaynakta var, bileşen testlerinden geçti; WSL Debian 13 (systemd 257) üzerinde bir kez kısa deneme yapıldı. Desteklenen beş sistemde kaçış matrisi laboratuvarda bekliyor.*
 
+*S4 R2b (22 Kasım 2026) · Bir sitenin zamanlanmış görevleri kendi diliminde zamanlayıcı olarak çalışır (§9); SMTP engeli üyelerinin bu sunucunun kendi gönderim hizmetine yerel adreste ulaşmasına izin verir (§3).*
+
 *alpha.127 · Node.js siteleri korumaya katıldı (§1, §6a, §7). Kaynakta var, bileşen testlerinden geçti; deneme takımının Node.js maddeleri (19, 20 ve Node.js sitesinin birimi altında matris) WSL Debian 13 (systemd 257, Node.js 22.23.4) üzerinde kısa denendi. Beş sistemde laboratuvar turu hâlâ açık.*
 
 İngilizcesi: [SITE-SANDBOX.md](SITE-SANDBOX.md).
@@ -214,9 +216,18 @@ tanımlıdır: `/usr/lib/celikpanel-sandbox/egress.nft`. Güvenlik duvarının `
 tablosuna asla girmez.
 
 - Korumalı birimlerin cgroup'ları `smtp_blocked` kümesinde tutulur.
-- Bu programların 25, 465 ve 587 numaralı portlara açtığı bağlantılar reddedilir. Bu her adres
-  için geçerlidir, 127.0.0.1 ve ::1 dahil. Reddedilen her deneme `smtp_rejects` sayacına
-  yazılır.
+- Bu programların 25 numaralı porta her adrese (127.0.0.1 ve ::1 dahil), 465 ve 587 numaralı
+  portlara da yerel adres dışındaki her adrese açtığı bağlantılar reddedilir. Reddedilen her deneme
+  `smtp_rejects` sayacına yazılır.
+- **Yerel adreste gönderime izin verilir (S4 R2b, 22 Kasım 2026; kümedeki her birim için geçerlidir,
+  bir sitenin programları da zamanlanmış görevleri de).** Reddetme kuralından önceki iki kural,
+  127.0.0.0/8 ve ::1 üzerinde 465 ve 587 numaralı portlara TCP'yi kabul eder: bu sunucunun kendi
+  gönderim hizmetleri, yalnız bir posta kutusunun adı ve parolasıyla giriş yapan istemciyi alır
+  (`smtpd_client_restrictions=permit_sasl_authenticated,reject`, `cmd/agent/mail_submission_rpc.go`;
+  sunucu sahibinin `master.cf` içinde yaptığı bir gönderim kaydı sahibinindir). Bir sitenin e-posta
+  göndermesinin desteklenen yolu budur. 25 numaralı port her yerde kapalı kalır: Postfix'in aktarma
+  listesi alpha.125'ten beri bu sunucunun kendi adreslerine parolasız izin vermiyor, engel de onu
+  yine kapalı tutar. Değişen kural takımı, Ajan dosyayı yazar yazmaz çalışan tabloya yüklenir.
 - Program kendi portunda 0.0.0.0 açsa bile dışarıdan gelen yeni bağlantı düşürülür.
 - Dosyayı yeniden yüklemek zararsızdır ve tek seferde (atomik) olur. Yalnız iki zincir
   boşaltılıp yeniden doldurulur; kümedeki üyeler ve sayaç korunur. Bu, nft 1.1.3 üzerinde bir
@@ -386,15 +397,15 @@ CelikPanel'in bir site için systemd birimi olarak başlattığı her program o 
 | `celiksvc-<kurulum kimliği>` | bir hizmet uygulaması (n8n) | evet |
 | `celikappinst-`, `celikgit-<site kimliği>` | Node.js kurulum adımı, Git ile dağıtım | evet (her seferinde yeni birim) |
 | `celikrtbuild-`, `celiksvcinst-<kimlik>` | Python derlemesi, bir hizmet uygulamasının kurulumu | evet (her seferinde yeni birim) |
-| sitenin PHP-FPM havuzu, zamanlanmış görevleri | | henüz değil: PHP ve görevler sonraki adımlarda dilime girer |
+| `celikcron-<site kimliği>-<n>` | taşınmış bir sitenin zamanlanmış bir görevi (§9) | evet (S4 R2b) |
+| sitenin PHP-FPM havuzu | | henüz değil: PHP dilime R3'te girer |
 | `celikpanel-sandbox@…`, `celikpanel-ftp@…` | root'un bağlama birimleri | hayır: müşteri kodu çalıştırmazlar |
 
-**Bu sürümden sonra henüz sınırlanmayanlar.** Açıkça: bir sitenin diliminin dışında çalışan
-programları (bu sürümden önce yazılmış her program, yönetici siteyi taşıyana kadar; böyle bir
-program, taşınana kadar sunucunun her yeniden başlatılmasından sonra yine), sitenin PHP'si (PHP-FPM
-havuzu), zamanlanmış görevleri ve bir site hesabının açık tutabildiği kullanıcı yöneticileri
-("lingering", polkitd olan Ubuntu) sitenin sınırlarıyla sınırlanmaz. PHP R3'tür; zamanlanmış
-görevler ve açık kalan kullanıcı yöneticileri R2b'dir.
+**Henüz sınırlanmayanlar.** Açıkça: bir sitenin diliminin dışında çalışan programları (R2a'dan
+önce yazılmış her program, yönetici siteyi taşıyana kadar; böyle bir program, taşınana kadar
+sunucunun her yeniden başlatılmasından sonra yine), sitenin PHP'si (PHP-FPM havuzu; R3), henüz
+taşınmamış bir sitenin crontab'ı (§9) ve bir site hesabının R2b'den önce açık tuttuğu kullanıcı
+yöneticisi ("kalıcı oturum", §9.5) sitenin sınırlarıyla sınırlanmaz.
 
 **Ad.** systemd için dilim adındaki tire iç içe geçme demektir (`celiksite-7.slice`,
 `celiksite.slice`'ın alt dilimi olurdu). Tire olmayınca dilim kökün hemen altındadır ve içindeki
@@ -593,3 +604,184 @@ kaldırmak ya da değiştirmek için sahip bir ekleme dosyası yazar
 `MemoryMax=infinity` ile) ve `systemctl daemon-reload` çalıştırır (systemd 257'de yeni değer çalışan
 programlara onlardan biri başladığında ya da `systemctl set-property --runtime` ile ulaşır);
 CelikPanel onu hiçbir zaman yazmaz ya da silmez.
+
+## 9. Sitenin zamanlanmış görevleri kendi sınırları içinde (S4 R2b)
+
+*22 Kasım 2026 · Kaynakta var ve bileşen testleriyle denendi; aşağıdaki gerçekler geçici
+Debian 13 ve Ubuntu 24.04 makinelerinde ölçüldü; panelin iki sistemdeki laboratuvar turu açık
+(adımlar çekme isteğinde).*
+
+Taşınmış bir sitenin zamanlanmış görevleri artık cron ile çalışmaz. Etkin her görev bir
+systemd zamanlayıcı ve hizmet çiftidir: `celikcron-<site kimliği>-<n>.timer` ve `.service`.
+Hizmet sitenin diliminde (§8), sitenin öteki programlarının ağ kurallarıyla çalışır. **Yeni
+siteler baştan taşınmıştır. Var olan bir site, yönetici onu taşıyana kadar cron'da kalır:**
+programlarıyla aynı "Sınırların içine taşı" işlemiyle (§8.4, §9.3) ya da hâlâ dışarıda olan
+bütün siteler için "Hepsini taşı" ile.
+
+**Bu adımdan sonra hâlâ sınırların dışında çalışanlar.** Açıkça: sitenin PHP'si (PHP-FPM
+havuzu; R3), henüz taşınmamış bir sitenin programları ve crontab'ı, R2a'dan önce yazılmış bir
+program (taşınana kadar sunucunun her yeniden başlatılmasından sonra yine, §8.3), sunucu
+sahibinin taşınmış bir sitenin hesabı için yeniden yaptığı crontab (§9.4) ve bu adımdan önce
+kalıcı oturum açmış bir site hesabının programları (§9.5).
+
+### 9.1 Gerçek sistemlerde ölçülen gerçekler (22 Kasım 2026)
+
+Temel görüntülerden başlatılan iki geçici makinede düz `crontab`, `systemctl` ve `loginctl`:
+Debian 13 (çekirdek 6.12.105, systemd 257.13, cron 3.0pl1-197, polkitd 126 kurulu ve gerektikçe
+başlıyor) ve Ubuntu 24.04.4 (çekirdek 6.8.0-138, systemd 255.4, cron 3.0pl1-184ubuntu2, polkitd 124
+çalışıyor). Bir hücre başka demedikçe ikisi de aynı yanıtı verdi.
+
+| | Soru | Yanıt |
+|---|---|---|
+| F1 | `/etc/cron.allow` bir hesabı dışarıda bırakıyor | hesabın **var olan crontab'ı her dakika çalışmayı sürdürür**; `crontab -u <hesap> -l`, `-r` ve dosya yükleme root için bile reddedilir ("The user … cannot use this program (crontab)"); root `/var/spool/cron/crontabs/<hesap>` dosyasını yine okuyabilir, silebilir ve yerinde yeniden yazabilir (yenisini oluşturamaz: `fs.protected_regular=2`); cron silinen ya da değişen dosyayı sinyal olmadan bir sonraki dakikada fark eder |
+| F2 | Aynı satır cron ile ve zamanlayıcı + hizmetle (`User=`, `Slice=`) | aynı hesap, gruplar, ev klasörü, çalışma klasörü, `LANG`, yetenekler; farklı olanlar: `PATH` (cron `/usr/bin:/bin`, Ubuntu'da `/etc/environment` içindeki), `SHELL` (cron `/bin/sh` koyar), umask (cron 0002), oturumun giriş kimliği, systemd'nin ek değişkenleri, standart girdi (boş bir boru, `/dev/null`) ve standart hata (günlük) |
+| F2 | Komutta `%`; iki `OnCalendar=` satırı; `AccuracySec=` | standart girdi bayt bayt aynı; iki satır da kabul edildi ve ikisinin sonraki zamanı listelendi; varsayılan doğruluk bir dakikadır, bu yüzden `AccuracySec=1s` cron'un dakikasını korur |
+| F2 | Aralığından uzun süren bir iş | cron her seferinde yeni bir kopya başlatır (üst üste biner); zamanlayıcı hiçbir zaman ikinci bir kopya başlatmaz, iş çalışırken saati gelen bir zaman onu **bittikten hemen sonra bir kez daha** başlatır (`Type=oneshot` ve `Type=simple` aynı); günlük atlanan zaman için bir şey söylemez |
+| F3 | Oturumu olmayan bir site hesabı (bir sitenin PHP'si gibi) `loginctl enable-linger <kendisi>` çalıştırır | dağıtımın polkitd'siyle **izin verilir** (`set-self-linger` herkes için "evet"); sonra kendi kullanıcı hizmetlerini diliminin dışında, `user@<uid>.service` içinde çalıştırır; polkitd olmayan Debian: root dışında her hesaba "Access denied" |
+| F3 | Çağıran yönetici grubunda değilse yönetici parolası isteyen bir kural dosyası | polkit 124 ve 126'da çalışır: site hesabı "Interactive authentication required" alır, bir yönetici ve root yine başarır; var olan bir `/var/lib/systemd/linger/<hesap>` kalır (kalıcı oturum sürer, `systemd-logind` yeniden başlasa da) |
+| F4 | Giden posta engeli | bir cron işi `/system.slice/cron.service` içinde çalışır ve engellenmez; sitenin dilimindeki bir hizmet ancak kendi cgroup'u eklenince engellenir (yardımcının `egress-add` adımı), dilimde olduğu için değil |
+
+### 9.2 Dosyalar ve bir görevin çalışması
+
+| Dosya | Ne |
+|---|---|
+| `/etc/celikpanel-cron/<site kimliği>.crontab` | sitenin görevleri crontab biçiminde, tek kaynak (0640 root:celikpanel; CelikPanel'in oluşturma başlığı ve kısa bir `#|` girişi) |
+| `/etc/celikpanel-cron/<site kimliği>.d/<n>.sh`, `<n>.in` | n numaralı görevin komutu, cron'un kabuğa verdiği haliyle, ve standart girdisi (`%`); sitenin grubuyla root'a ait 0640, o grubun 0750 klasöründe |
+| `/etc/celikpanel-cron/<site kimliği>.d/env` | crontab'ın `AD=değer` ayarları (systemd'nin root olarak okuduğu bir ortam dosyası) |
+| `/etc/systemd/system/celikcron-<site kimliği>-<n>.service`, `.timer` | birimler, D-031 kuralıyla |
+
+Komut ve girdisi hiçbir zaman bir birimin kendi ayarlarında durmaz: systemd bir birimin
+ayarlarını her yerel hesaba söyler (`systemctl show`); bir crontab ise yalnız kendi hesabınca
+okunur. Bir görev, metni aynı kaldıkça numarasını korur (hizmeti onu `# celikpanel-task:`
+satırıyla adlandırır); böylece son çalışması kendisinin kalır.
+
+**Hizmet** (`Type=oneshot`): `User=` ve `Group=` sitenin hesabı, `Slice=` sitenin dilimi,
+`WorkingDirectory=` ev klasörü, `UMask=0002`, `Environment=PATH=/usr/bin:/bin SHELL=/bin/sh`,
+ardından `EnvironmentFile=-/etc/environment`, `-/etc/default/locale` ve sitenin kendi ayar dosyası
+(sonraki dosya üstün gelir; cron'da da crontab'ın ayarları PAM'inkilerden üstündür), görevin girdisi
+varsa `StandardInput=file:<n>.in`, `ExecStart=<crontab'ın SHELL'i> <n>.sh`, SMTP engelinin yardımcı
+satırları (§3), `RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK` ve systemd
+uygulayabiliyorsa yerel bağlantı ve meta veri adreslerine `IPAddressDeny=`. Programların dosya
+sistemi korumasını (§1) **almaz**: bir cron işinin hiç olmadı, olsaydı sitenin dosyalarını yazan
+görevleri durdururdu. PHP ve dosya sistemi görünümü R3'te gelir.
+
+**Zamanlayıcı**: satırdan çevrilen `OnCalendar=` (`internal/sitecron`): her değer listesi
+systemd'nin listesi olarak, cron'un iki gün alanı için VEYA'sı (ikisi de `*` ile başlamıyorsa) iki
+`OnCalendar=` satırı olarak, haftanın günü için `7` ve adlar, ay adları, aralıklarda adımlar ve
+özel sözcükler; `@reboot` `OnBootSec=1min` olur, **etkinleştirilir ama başlatılmaz** (cron'un
+`@reboot` satırlarını kendisi başlarken çalıştırması gibi, sunucunun her açılışından sonra bir kez
+çalışır); `AccuracySec=1s`; `Persistent=false` (cron kaçırılanı yetiştirmez). Çevirinin bilmediği
+bir satır (`L`, `W`, `#`, `?`, aralık dışında bir değer, geriye giden bir aralık, 0 adımı)
+çevrilmez.
+
+**Bir cron işi ile bir zamanlayıcı görevi: farklar.**
+
+| | cron işi | zamanlayıcı görevi |
+|---|---|---|
+| hesap, gruplar, ev klasörü, çalışma klasörü, `LANG`, kabuk | aynı | aynı |
+| `PATH`, `SHELL`, umask | cron'un koyduğu gibi | aynı yapıldı (yukarıda) |
+| `$0` | `/bin/sh` | görevin dosyası (`<n>.sh`) |
+| ek ortam | — | `USER`, `INVOCATION_ID`, `JOURNAL_STREAM`, `MEMORY_PRESSURE_*`, `SYSTEMD_EXEC_PID`, `TRIGGER_*` |
+| giriş kimliği (denetim) | PAM koyar | konmaz |
+| `%` olmadan standart girdi | boş bir boru | `/dev/null` (ikisi de hemen biter) |
+| çıktı | e-postayla gönderilmez (alpha.125'ten beri `MAILTO=""`) | çalışmayla birlikte günlükte saklanır |
+| açık dosya üst sınırı (Ubuntu) | 1048576 | 524288 |
+| saati geldiğinde hâlâ çalışıyorsa | ikinci bir kopya başlar | yeniden başlatılmaz; bittikten hemen sonra bir kez daha başlar |
+| sınırlar, giden posta | yok; her porta posta | sitenin dilimi; §3'ün kuralı |
+
+**İnsanların okuduğu.** Zamanlanmış görevler ekranı taşınmış bir site için uzun süren bir
+çalışmanın iki yarısını tek cümlede söyler; her görev için son çalışmasını (ne zaman, ne kadar,
+çıkış durumu ve systemd'nin onun için sözcüğü, kendi günlük kayıtlarından yazdığı son on satır),
+ne zaman yeniden çalışacağını; sunucu sahibinin zamanlayıcısını kapattığı, birimi sunucuda
+değiştirilen, henüz zamanlanmamış ("yeniden kaydedin") ya da satırı çalışmayan (nedeniyle)
+görevleri de söyler. Sunucu yeniden başladıktan sonra o zamandan beri çalışmamış bir görev
+"Sunucu açıldığından beri çalışmadı" der (systemd son çalışmayı o zaman unutur; günlük tutar).
+Müşteri yalnız kendi sitesinin görevlerini görür.
+
+### 9.3 Var olan bir sitenin crontab'ını taşımak ve geri almak
+
+Yöneticinin sitenin Genel Bakış sayfasındaki "Sınırların içine taşı" işlemi önce bir **ön izleme**
+okur (neyin neye dönüştüğü, birlikte gelen ayarlar ve duraklatılmış görevler, e-posta gönderen bir
+görev: taşımadan sonra yalnız bu sunucunun kendi gönderim hizmetiyle, yerel adreste, §3). Çevrilemeyen
+bir satır ve CelikPanel'de yapılmamış, yöneticinin tutmadığı bir satır (S4 R1) **bütün** crontab'ı
+cron'da tutar ve adı söylenir; hiçbir şey yarım taşınmaz. Taşıma, programların taşınmasıyla aynı
+kilitleri (aynı anda tek taşıma; sitenin kilidi beklemeden, böylece silinmekte olan bir site
+taşınmaz) ve sitenin görevlerinin her değişikliğinin kilidini tutar; hiçbir şeyi yeniden başlatmaz.
+
+**Günlük** (programların taşıma günlüğü, `tasks` bölümüyle sürüm 2): crontab'ın tam baytları ve her
+adım, bir sonraki adım başlamadan yazılır.
+
+| Ulaşılan adım | Anlamı | Ajan'ın bir sonraki açılışında |
+|---|---|---|
+| planned | crontab'ın baytları kaydedildi; hiçbir şey yazılmadı | hiçbir şey ("denenmedi") |
+| source_written | görev dosyası crontab'ı tutuyor | geri konur: taşımanın her zamanlayıcısı ve dosyası kaldırılır; crontab yalnız yoksa yeniden yazılır ("geri kondu") |
+| units_written | her zamanlayıcı ve hizmet yazıldı ve systemd'ce denetlendi, hiçbiri başlatılmadı | aynısı |
+| crontab_emptied | `crontab -u <hesap> -r` | tamamlanır: zamanlayıcılar etkinleştirilir ("taşındı"); bu başarısız olursa geri konur |
+| enabled | zamanlayıcılar etkinleştirildi ve başlatıldı | tamamlanır ("taşındı") |
+
+Crontab boşaltılırken hâlâ kaydedilen crontab olmalıdır: arada yapılan bir değişiklik hiçbir zaman
+kaybolmaz (taşıma geri konur ve bunu söyler). Ancak ondan sonra `/etc/cron.allow` güncellenir
+(§9.5). Yöneticinin kartı yarıda kesilen bir taşımanın sonucunu gösterir.
+
+**Geri alma** ("Görevleri cron'a geri koy", yönetici): sunucu sahibinin kendi `/etc/cron.allow`
+dosyası hesabı dışarıda bırakıyorsa (ya da `/etc/cron.deny` onu adlandırıyorsa), görev dosyası elle
+değiştirilmişse ya da hesabın yeniden bir crontab'ı varsa, hiçbir şey değişmeden reddedilir. Yoksa
+CelikPanel'in `cron.allow` dosyası hesaba yeniden cron izni verir, crontab yazılır (görevler o
+zamandan beri değişmediyse taşınan crontab'ın bayt bayt aynısı; değiştiyse görevlerin şu anki hali,
+eksikse `MAILTO=""` ile) ve sonra zamanlayıcılar ve dosyalar kaldırılır. Günlük adımları:
+`undo_planned` (hiçbir şey değişmedi; açılışta hiçbir şey) ve `crontab_written` (açılışta
+zamanlayıcılar ve dosyalar kaldırılır).
+
+### 9.4 Sunucu sahibi ve görev dosyaları (D-022)
+
+- **Ekranda.** Yönetici taşınmış bir sitenin görevlerini Zamanlanmış görevler ekranında
+  değiştirir; CelikPanel görev dosyasını yazar ve yalnız değişen zamanlayıcıları oluşturur.
+- **Elle, görev dosyasında.** CelikPanel sahibin dosyasını korur ve uygular: zamanlayıcıları onu
+  ekrandaki bir sonraki kayıtta ve panelin her açılışından sonra izler (yan kapılar adımı, görev
+  dosyası zamanlayıcıları yapıldığından beri değişen siteyi yeniden oluşturur). CelikPanel'in sonraki
+  kendi değişiklikleri `<dosya>.celikpanel-pending` olarak yanında bekler ve ekran bunu söyler.
+  Dosyayı geri vermek için sahip bekleyen dosyayı onun üzerine taşır.
+- **Yerel olarak, birimlerde.** Değiştirilmiş bir `celikcron-*` birimi korunur (D-031) ve ekran onu
+  adlandırır. Sahibin durdurduğu ya da kapattığı bir zamanlayıcı (`systemctl disable --now`) öyle
+  kalır: değişen bir görev zamanlayıcısını yalnız çalışıyorsa yeniden başlatır.
+- **Yeniden bir crontab.** Sahibin taşınmış bir hesap için (`cron.allow` dosyasını değiştirdikten
+  sonra) yaptığı crontab her açılışta ve ekranın okumasında doğrudan biriktirme klasöründen okunur,
+  sahibinin olarak bildirilir ve satırları sınırların dışında çalışıyor diye adlandırılır (yalnız
+  yöneticiye).
+- **CelikPanel olmadan.** Zamanlayıcılar, hizmetler ve dosyalar yereldir: panel durdurulsa,
+  kaldırılsa ya da lisanssız kalsa da çalışmayı sürdürürler. Bir siteyi elle cron'a geri koymak
+  için: `crontab -u <hesap> /etc/celikpanel-cron/<kimlik>.crontab` (`/etc/cron.allow` izin verdikten
+  sonra), ardından `systemctl disable --now 'celikcron-<kimlik>-*.timer'` ve birimleri ve klasörü
+  kaldırın.
+
+### 9.5 Bir sitenin kendi işleri için son kapılar
+
+**`/etc/cron.allow`** taşınmış sitelerin hesaplarının kendi crontab'larını kurmasını engeller. R1'in
+`at.allow` kurallarıyla yazılır (`cmd/agent/side_doors_cron.go`): yalnız yoksa ve yalnız bir site
+taşındıktan sonra; önce root, sonra bugün crontab kullanabilen her hesap (`/etc/cron.deny` içinde
+adı geçmeyen), taşınmış sitelerin hesapları, CelikPanel'in araç hesapları ve bir sitenin kimliğini
+paylaşan her giriş hariç (crontab, çağıranın uid'inin passwd'deki ilk adına göre karar verir).
+Henüz taşınmamış bir site izinli kalır ve R1'in CelikPanel'de yapılmamış satırları işaretlemesi onun
+için çalışmayı sürdürür. CelikPanel'in dosyası, CelikPanel'in yazdığı gibi kaldıkça her açılışta ve
+her taşıma ya da geri almadan sonra güncellenir; sahibin dosyası bayt bayt korunur ve içinde adı
+geçen taşınmış bir hesap Şu anki sorunlar'da bir satır olur; sahibin CelikPanel'in dosyasını silmesi
+geçerli kalır (Şu anki sorunlar, "Yeniden kapat" ile); hesaplar bir dizin hizmetinden geliyorsa
+hiçbir şey yazılmaz ve bu söylenir. Dosya bir hesabı dışarıda bıraktıktan sonra da hesabın var olan
+crontab'ı çalışır (F1): taşıma onu kendisi boşaltır.
+
+**Kalıcı oturum** polkitd kurulu olan yerde kapatılır: `/etc/polkit-1/rules.d/49-celikpanel-linger.rules`,
+çağıran sistemin sahip olduğu bir yönetici grubunda değilse (`sudo`, `admin` ve `wheel` içinden;
+Debian 13 ve Ubuntu 24.04'te `sudo`) `org.freedesktop.login1.set-self-linger` için "bir yöneticinin
+parolası" yanıtını verir; CelikPanel'in oluşturma başlığını taşır ve ne yaptığını, nasıl geri
+alınacağını kendi sözleriyle söyler (dosyayı silin; polkit değişikliği hemen okur). Sahibin
+değişikliği korunur; sahibin silmesi geçerli kalır (Şu anki sorunlar, "Yeniden kapat"). polkitd
+olmadan systemd-logind zaten kalıcı oturumu yalnız root'a açtırır (F3). Ubuntu 22.04'te (polkit
+0.105) kural dosyası okunmaz: adım kalıcı oturumu kapatılmamış diye bildirir. **Zaten kalıcı
+oturumda olan hesaplar öyle kalır**: Şu anki sorunlar onları bitiren komutla adlandırır
+(`loginctl disable-linger <hesap>`); hiçbir şey kendiliğinden kaldırılmaz.
+
+**Bir site hesabının bu adımdan sonra hâlâ çalışır tutabildikleri**: sitesi taşındıktan ve polkitd
+(ya da hiç polkitd olmaması) yukarıdaki gibi olduktan sonra kendisine ait yeni hiçbir şey —
+crontab yok, `at` işi yok (R1), kalıcı oturumda kullanıcı yöneticisi yok. PHP'si (R3'e kadar) ve
+programları CelikPanel'in başlattığı yerde çalışır; daha önce kalıcı oturum açmış bir kullanıcı
+yöneticisi, sahip bitirene kadar çalışmayı sürdürür.

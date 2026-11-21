@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AlertTriangle, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
@@ -68,8 +68,15 @@ export type ProblemKind =
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
     | 'disk_limits_counted'
-    | 'site_programs_outside'
-    | 'site_limits_unsupported';
+    | 'site_limits_outside'
+    | 'site_limits_unsupported'
+    | 'cron_allow_lists_sites'
+    | 'cron_not_closed'
+    | 'cron_owner_removed'
+    | 'site_crontab_returned'
+    | 'site_lingering'
+    | 'linger_owner_removed'
+    | 'linger_not_closed';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -89,13 +96,19 @@ const KINDS: readonly ProblemKind[] = [
     'at_owner_removed', 'site_crontab_unreadable',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
-    // S4 R2a: sites whose programs still run outside their limits (a to-do).
-    'site_programs_outside',
+    // S4 R2a/R2b: sites whose programs or scheduled tasks still run outside
+    // their limits (a to-do; its action opens "Move all").
+    'site_limits_outside',
     // S4 R2a: this server cannot enforce a site's limits at all.
     'site_limits_unsupported',
+    // S4 R2b: cron.allow, a crontab that came back, lingering.
+    'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned',
+    'site_lingering', 'linger_owner_removed', 'linger_not_closed',
 ];
+// S4 R2b: "Move all" is fetched only when its line is shown.
+const MoveAllSites = lazy(() => import('./MoveAllSites').then((module) => ({ default: module.MoveAllSites })));
 // The doors the administrator may close again after the server owner undid them.
-const RECLOSE = ['at', 'stock_pool'];
+const RECLOSE = ['at', 'stock_pool', 'cron', 'linger'];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
 /** The words of a problem's title and body; alerts use the same (alpha.127). */
@@ -129,7 +142,7 @@ export interface Problem {
     value: number;
     since?: string;
     observed_at?: string;
-    action: { kind: 'start_service' | 'open' | 'reclose'; to?: string };
+    action: { kind: 'start_service' | 'open' | 'reclose' | 'move_all'; to?: string };
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
     holding_count?: number;
     holding_bytes?: number;
@@ -149,7 +162,7 @@ export function decodeProblems(raw: unknown): ProblemsReport {
     const problems = body.problems.filter((p): p is Problem => (
         !!p && typeof p === 'object' && KINDS.includes(p.kind) && typeof p.key === 'string'
         && (p.severity === 'warning' || p.severity === 'critical') && typeof p.value === 'number'
-        && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
+        && !!p.action && (p.action.kind === 'open' || p.action.kind === 'move_all' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
             : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'start_service' && typeof p.unit === 'string')
     ));
     const unknown = body.unknown.filter((u): u is ProblemsReport['unknown'][number] => (
@@ -341,6 +354,8 @@ export function ProblemsNow({
                                         >
                                             {t('pnow.service_stopped.action')}
                                         </Button>
+                                    ) : problem.action.kind === 'move_all' ? (
+                                        <Suspense fallback={null}><MoveAllSites onDone={() => void handle.retry()} /></Suspense>
                                     ) : problem.action.kind === 'reclose' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void reclose(problem)} data-problem-reclose="">
                                             {t(`pnow.${problem.kind}.action` as TranslationKey)}

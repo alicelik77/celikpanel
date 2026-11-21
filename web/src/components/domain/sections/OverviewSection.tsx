@@ -3,6 +3,7 @@
 // with facts (D2, D3) needs a summary read and comes in a later release.
 // Genel Bakış: sertifika kartı ve satırdaki her bölüm için bir kutucuk.
 import { lazy, Suspense } from 'react';
+import { useAuth } from '../../../auth/AuthContext';
 import { useI18n } from '../../../i18n';
 import { domainSectionIcons } from '../../../lib/domainSectionIcons';
 import { DomainSSLOverviewCard } from '../../DomainSSLOverviewCard';
@@ -26,6 +27,11 @@ export function OverviewSection({ domain, parts, part, sections, go, onCertifica
     const lead = programsLeadPart(domain.project_type);
     const leadShown = lead !== null && sections.some((section) => section.id === 'programs' && section.parts.some((item) => item.id === lead));
     const runsPrograms = PROGRAM_TYPES.includes(domain.project_type || 'php') || domain.holds_program === true || domain.holds_app === true;
+    // S4 R2b: every site's scheduled tasks share its limits, so the
+    // administrator reads the card (and moves the tasks) for every site; a
+    // customer reads it where the site runs a program.
+    const { role } = useAuth();
+    const showLimits = runsPrograms || role === 'admin';
     return (
         <SectionParts section="overview" parts={parts} part={part} go={go} render={() => (
             <div>
@@ -36,9 +42,9 @@ export function OverviewSection({ domain, parts, part, sections, go, onCertifica
                         onCertificateChange={onCertificateChange}
                     />
                 )}
-                {runsPrograms && (
+                {showLimits && (
                     <Suspense fallback={null}>
-                        <SiteLimitsCard domainId={domain.id} />
+                        <SiteLimitsCard domainId={domain.id} runsPrograms={runsPrograms} />
                     </Suspense>
                 )}
                 <p className="mb-4 text-sm text-fg-muted">{t('domain.overview.hint')}</p>

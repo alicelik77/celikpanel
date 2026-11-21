@@ -5,6 +5,8 @@
 // Bir sitenin programlarının birlikte sınırları: sunucunun yanıtı ve kartın
 // ondan söyledikleri.
 
+import type { TasksPlacement } from './siteTasks';
+
 export type SiteLimitKey = 'site.memory_mb' | 'site.tasks' | 'site.cpu_percent';
 
 export interface SiteLimitValue {
@@ -58,11 +60,21 @@ export interface SiteLimitsView {
     units?: SiteLimitUnit[];
     needs_move?: number;
     busy?: boolean;
+    /** S4 R2b (administrator): where the site's scheduled tasks run. */
+    tasks?: TasksPlacement;
 }
 
 const KEYS: readonly string[] = ['site.memory_mb', 'site.tasks', 'site.cpu_percent'];
 const EVENTS: readonly string[] = ['memory', 'tasks', 'cpu', 'memory_other', 'tasks_other'];
 const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_outside', 'elsewhere', 'absent'];
+
+/** S4 R2b: the site's tasks placement (a type-only import keeps this module standalone). */
+function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
+    const body = raw as Partial<TasksPlacement> | null;
+    if (!body || typeof body !== 'object' || typeof body.moved !== 'boolean') return undefined;
+    return { moved: body.moved, reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined,
+        recovery: typeof body.recovery === 'string' ? body.recovery : undefined, unknown: body.unknown === true };
+}
 
 /** Reads the answer; an answer of another shape is not a card. */
 export function decodeSiteLimits(raw: unknown): SiteLimitsView {
@@ -78,6 +90,7 @@ export function decodeSiteLimits(raw: unknown): SiteLimitsView {
         limits: body.limits.filter((l): l is SiteLimitValue => !!l && KEYS.includes(l.key) && typeof l.value === 'number' && typeof l.set_by === 'string'),
         events: body.events.filter((e): e is SiteLimitEvent => !!e && EVENTS.includes(e.kind) && typeof e.count === 'number' && typeof e.last_at === 'string'),
         units: Array.isArray(body.units) ? body.units.filter((u): u is SiteLimitUnit => !!u && typeof u.unit === 'string' && PLACES.includes(u.placement)) : undefined,
+        tasks: decodeTasksPlacement(body.tasks),
     };
 }
 

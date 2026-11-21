@@ -202,6 +202,64 @@ func splitSiteTaskSource(raw []byte) (string, string) {
 	return text, account
 }
 
+// parseSiteTaskIntro reads the domain and the account the intro of a source
+// names ("" when there is no intro).
+func parseSiteTaskIntro(raw []byte) (domain, account string) {
+	_, account = splitSiteTaskSource(raw)
+	for _, line := range strings.Split(string(raw), "\n") {
+		if _, rest, ok := strings.Cut(line, "the scheduled tasks of "); ok && strings.HasPrefix(line, siteTaskIntroMark) {
+			domain, _, _ = strings.Cut(rest, " (site ")
+			break
+		}
+	}
+	return domain, account
+}
+
+// The applied record: per site, the digest of the crontab its timers were
+// last made from (a sandbox ledger entry under a key that is not a path).
+const siteTaskAppliedKind = "site_task_applied"
+
+func siteTaskAppliedKey(siteID int) string { return "site-task-applied:" + strconv.Itoa(siteID) }
+
+// reconcileSiteTimers re-renders the timers of every moved site whose task
+// file changed since its timers were made (a hand edit by the server owner,
+// an interrupted render); run by the side doors step after each Panel start.
+// It reads small files only, and renders only a changed site.
+func reconcileSiteTimers() (rendered int) {
+	ids, _ := movedSiteTaskSites()
+	ledger := readSandboxLedger()
+	for _, id := range ids {
+		path := sitecron.SourcePath(id)
+		raw, err := os.ReadFile(path)
+		if err != nil || len(raw) > 1<<20 {
+			continue
+		}
+		crontab, _ := splitSiteTaskSource(raw)
+		if ledger[siteTaskAppliedKey(id)].RenderSHA256 == taskDigest(crontab) {
+			continue
+		}
+		domain, account := parseSiteTaskIntro(raw)
+		if domain == "" || !cronUsernameRe.MatchString(account) || account == "root" {
+			log.Printf("site tasks: %s names no site account; its timers are left as they are", path)
+			continue
+		}
+		uid, gid, group, home, err := siteTaskLookup(account)
+		if err != nil || uid < 1000 {
+			log.Printf("site tasks: the account of %s cannot be used (%v); its timers are left as they are", path, err)
+			continue
+		}
+		t := siteTaskTarget{SiteID: id, Domain: domain, Account: account, Group: group, UID: uid, GID: gid, Home: home}
+		cronMu.Lock()
+		if _, err := applySiteTimers(t, crontab); err != nil {
+			log.Printf("site tasks: the timers of site %d could not all be written: %v", id, err)
+		} else {
+			rendered++
+		}
+		cronMu.Unlock()
+	}
+	return rendered
+}
+
 func siteTaskSourceManaged(t siteTaskTarget, crontab, trigger string) services.ManagedSiteFile {
 	return services.ManagedSiteFile{Kind: siteTaskSourceKind, Path: sitecron.SourcePath(t.SiteID), HeaderPrefix: services.ManagedHeaderPrefixHash,
 		Body: siteTaskIntro(t) + crontab, Trigger: trigger}
@@ -551,6 +609,13 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 			return result, err
 		}
 	}
+	defer func() {
+		// The crontab these timers were made from, so the reconcile at each
+		// start re-renders only a site whose task file changed since.
+		if err := setSandboxLedgerEntry(siteTaskAppliedKey(t.SiteID), siteTaskAppliedKind, taskDigest(crontab)); err != nil {
+			log.Printf("site tasks: record what site %d's timers were made from: %v", t.SiteID, err)
+		}
+	}()
 	for i := range result.Tasks {
 		task := &result.Tasks[i]
 		timer := task.Unit + ".timer"
@@ -898,6 +963,12 @@ func siteTaskStore(t siteTaskTarget) cronStore {
 			}
 			switch result.Outcome {
 			case transport.SiteFileOutcomeKept:
+				// The owner's text applies: its timers follow it now.
+				if source, err := readSiteTaskSource(t.SiteID); err == nil && source.Exists {
+					if _, err := applySiteTimers(t, source.Crontab); err != nil {
+						log.Printf("site tasks: the timers of site %d could not follow the server owner's task file: %v", t.SiteID, err)
+					}
+				}
 				return errSiteTasksSourceOwner
 			case transport.SiteFileOutcomeFailed, transport.SiteFileOutcomeRefused:
 				return fmt.Errorf("the task file could not be written (%s %s)", result.Outcome, result.Reason)

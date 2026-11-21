@@ -15,6 +15,8 @@ import { AdminInstallLink } from './AdminInstallLink';
 import { useLeaveGuard } from './kit/save/leaveGuard';
 import { useSaveWords } from './kit/save/words';
 import { useAuth } from '../auth/AuthContext';
+import { formatDateTime } from '../lib/dateFormat';
+import { decodeTaskLines, decodeTaskRun, TASK_STATES, type TaskLine, type TaskRun, type TaskState } from '../lib/siteTasks';
 
 interface CronJob {
     id: string;
@@ -24,6 +26,17 @@ interface CronJob {
     comment: string;
     /** S4 R1: the line was not made in CelikPanel. */
     outside_panel?: boolean;
+    /** S4 R2b (a site whose tasks run as timers): the task's state and last run. */
+    task_state?: TaskState;
+    reason?: string;
+    run?: TaskRun;
+}
+
+/** S4 R2b: what the list says about a site whose tasks run as timers. */
+interface TimersFacts {
+    source: 'ours' | 'owner' | 'missing';
+    notRun: TaskLine[];
+    reappeared: string[];
 }
 
 /** S4 R1: a crontab line not made in CelikPanel that is not a task. */
@@ -68,7 +81,7 @@ const unreadableCauses: Record<string, TranslationKey> = {
 // görevlerini ekle, düzenle, etkinleştir/devre dışı bırak ve sil; insan-okur
 // hazır kalıplarla.
 export function DomainCronManager({ domainId, readOnly = false }: DomainCronManagerProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const say = useSaveWords();
     // S4 R1 fix round: only the administrator keeps a line not made in
     // CelikPanel; a customer may only delete it.
@@ -115,6 +128,8 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
     // made in CelikPanel carry their own mark in the list.
     // CelikPanel'de yapılmamış ve görev olmayan crontab satırları.
     const [otherLines, setOtherLines] = useState<CronOtherLine[]>([]);
+    // S4 R2b: the site's tasks run as timers inside its own limits (null: in cron).
+    const [timers, setTimers] = useState<TimersFacts | null>(null);
 
     // refused reads the coded API error once. A stale change becomes the
     // on-screen reload notice and the cron-missing answer the on-screen
@@ -137,13 +152,25 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
 
     const loadJobs = async () => {
         setLoading(true);
-        const next = await readCurrent<{ jobs?: CronJob[] | null; version?: string; other_lines?: CronOtherLine[] | null }>(`/api/v1/domains/${domainId}/cron`);
+        const next = await readCurrent<{
+            jobs?: CronJob[] | null; version?: string; other_lines?: CronOtherLine[] | null;
+            timers?: boolean; source?: string; not_run?: unknown; reappeared?: unknown;
+        }>(`/api/v1/domains/${domainId}/cron`);
         const missing = next.state === 'unknown' && next.error.code === 'CRON_NOT_INSTALLED';
         // The list is proven empty only by an answer that carries it: `jobs` as a
         // list, or the `null` the server writes for a list with no rows.
         // Liste, ancak onu taşıyan yanıtla boş sayılır.
         const list = next.state === 'known' && (next.value.jobs === null || Array.isArray(next.value.jobs)) ? next.value.jobs ?? [] : null;
-        setJobs(list ?? []);
+        setJobs((list ?? []).map((job) => ({
+            ...job,
+            task_state: TASK_STATES.includes(job.task_state as TaskState) ? job.task_state : undefined,
+            run: decodeTaskRun(job.run),
+        })));
+        setTimers(list && next.state === 'known' && next.value.timers === true ? {
+            source: next.value.source === 'owner' || next.value.source === 'missing' ? next.value.source : 'ours',
+            notRun: decodeTaskLines(next.value.not_run),
+            reappeared: Array.isArray(next.value.reappeared) ? next.value.reappeared.filter((l): l is string => typeof l === 'string') : [],
+        } : null);
         setOtherLines(list && next.state === 'known' && Array.isArray(next.value.other_lines)
             ? next.value.other_lines.filter((o) => !!o && typeof o.id === 'string' && typeof o.line === 'string')
             : []);
@@ -443,6 +470,44 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
 
                 {stale && <StaleNotice textKey="cron.stale" actionKey="cron.reload" onReload={loadJobs} busy={loading} />}
 
+                {/* S4 R2b: a site whose tasks run as timers inside its limits:
+                    how a task that runs long behaves, whose task file it is,
+                    and what does not run, before the list.
+                    Görevler sitenin sınırları içinde zamanlayıcı olarak çalışır. */}
+                {!loading && !unknown && timers && (
+                    <div className="mb-3 space-y-2" data-cron-timers={timers.source}>
+                        <p className="flex items-start gap-2 text-sm text-fg-muted">
+                            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span className="min-w-0 max-w-[75ch]">{t('stasks.timers')}</span>
+                        </p>
+                        {timers.source !== 'ours' && (
+                            <p className="flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg" data-cron-source={timers.source}>
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                                <span className="min-w-0 max-w-[75ch]">{t(timers.source === 'owner' ? 'stasks.source.owner' : 'stasks.source.missing')}</span>
+                            </p>
+                        )}
+                        {timers.reappeared.length > 0 && (
+                            <div className="rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg" data-cron-returned="">
+                                <p>{t('stasks.reappeared', { n: timers.reappeared.length })}</p>
+                                <pre className="mt-1 whitespace-pre-wrap break-all font-mono text-xs">{timers.reappeared.join('\n')}</pre>
+                            </div>
+                        )}
+                        {timers.notRun.length > 0 && (
+                            <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm text-fg" data-cron-not-run="">
+                                <p>{t('stasks.notRun')}</p>
+                                <ul className="mt-1 space-y-1">
+                                    {timers.notRun.map((line) => (
+                                        <li key={line.line} className="text-xs">
+                                            <code className="break-all">{line.line}: {line.text}</code>
+                                            {' '}— {t(`stasks.reason.${line.reason}` as TranslationKey)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* S4 R1: lines not made in CelikPanel are said before the
                     list, with what to do; each carries its mark below.
                     CelikPanel'de yapılmamış satırlar listeden önce söylenir. */}
@@ -489,7 +554,14 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                                     {t('cron.outside.badge')}
                                                 </span>
                                             )}
+                                            {timers && job.enabled && job.task_state && job.task_state !== 'scheduled' && (
+                                                <span data-cron-task-state={job.task_state} className="rounded bg-warning/15 px-1.5 py-0.5 text-warning">
+                                                    {t(`stasks.state.${job.task_state}` as TranslationKey)}
+                                                    {job.reason ? ` — ${t(`stasks.reason.${job.reason}` as TranslationKey)}` : ''}
+                                                </span>
+                                            )}
                                         </div>
+                                        {timers && job.enabled && job.run && <TaskRunLine run={job.run} locale={locale} />}
                                     </div>
 
                                     {/* A task not made in CelikPanel, enabled or paused, is
@@ -596,6 +668,34 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {t('cron.formatNote')}
             </p>
+        </div>
+    );
+}
+
+// S4 R2b: a task's last run (when, how long, how it ended), when it runs
+// next, and the last lines it wrote, kept closed until asked for.
+// Görevin son çalışması, sonraki çalışması ve yazdığı son satırlar.
+function TaskRunLine({ run, locale }: { run: TaskRun; locale: string }) {
+    const { t } = useI18n();
+    const time = run.started_at ? formatDateTime(run.started_at, locale as 'en' | 'tr') : '';
+    const seconds = run.seconds !== undefined ? (run.seconds < 10 ? run.seconds.toFixed(1) : String(Math.round(run.seconds))) : '0';
+    const said = run.state === 'never' ? t('stasks.run.never')
+        : run.state === 'running' ? t('stasks.run.running', { time })
+            : run.state === 'succeeded' ? t('stasks.run.succeeded', { time, seconds })
+                : run.state === 'failed' ? t('stasks.run.failed', { time, seconds, status: run.exit_status ?? 0, result: run.result ?? '' })
+                    : t('stasks.run.unknown', { time });
+    return (
+        <div className="mt-2 text-xs text-fg-muted" data-cron-run={run.state}>
+            <p className={run.state === 'failed' ? 'text-danger' : undefined}>
+                {said}
+                {run.next_at && <> {t('stasks.next', { time: formatDateTime(run.next_at, locale as 'en' | 'tr') })}</>}
+            </p>
+            {(run.output ?? []).length > 0 && (
+                <details className="mt-1">
+                    <summary className="cursor-pointer text-fg-subtle">{t('stasks.output')}</summary>
+                    <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 font-mono text-[11px] text-fg">{(run.output ?? []).join('\n')}</pre>
+                </details>
+            )}
         </div>
     );
 }

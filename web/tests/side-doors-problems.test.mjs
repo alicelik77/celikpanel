@@ -18,6 +18,8 @@ import { enSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/en.ts'
 import { trSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/tr.ts';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
+import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
+import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
 
 const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
 
@@ -29,9 +31,10 @@ test('every kind the list shows has a title, body and action in English and Turk
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part,
   // the site limits lines (S4 R2a) in the siteLimits part.
-  // Since alpha.142 the shared lines' words are in the problemsNow part.
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enSiteLimitsScreens };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trSiteLimitsScreens };
+  // Since alpha.142 the shared lines' words are in the problemsNow part;
+  // S4 R2b's lines (tasks, cron.allow, lingering) in the siteTasks part.
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enSiteLimitsScreens, ...enSiteTasksScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trSiteLimitsScreens, ...trSiteTasksScreens };
   for (const kind of shown) {
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);

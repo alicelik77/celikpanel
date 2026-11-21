@@ -399,6 +399,13 @@ const screenPartBudgets = {
   // part, so no existing part's budget is raised; set with at least 25%
   // headroom from its Turkish file.
   siteLimits: kib(9, 3.1),
+  // 22 Nov 2026 (S4 R2b): a site's scheduled tasks inside its limits - each
+  // task's last run on the Scheduled tasks screen (stasks.), the
+  // administrator's move of the crontab and its undo (slim.tasks.), "Move all"
+  // (moveall.) and the Problems now lines of cron.allow, crontabs that came
+  // back and lingering (pnow.). A new part, so no existing part's budget is
+  // raised; set with at least 25% headroom from its Turkish file.
+  siteTasks: kib(16, 5.2),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

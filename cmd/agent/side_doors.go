@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -82,6 +83,11 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 	state.Cron = closeSiteCronWith(hostSiteCronOps(), 0)
 	cronAllowMu.Unlock()
 	state.Linger = closeSiteLingerWith(hostSiteLingerOps())
+	// A moved site's task file edited by hand (or a render cut short) is
+	// applied to its timers here, after each start.
+	if n := reconcileSiteTimers(); n > 0 {
+		log.Printf("side doors: the timers of %d sites follow their task files again", n)
+	}
 	resp.State = &state
 	return nil
 }

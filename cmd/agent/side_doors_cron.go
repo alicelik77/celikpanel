@@ -384,7 +384,10 @@ polkit.addRule(function(action, subject) {
 
 type siteLingerOps struct {
 	installed func() bool
-	readFile  func(string) ([]byte, error)
+	// legacy: polkit 0.105 (Ubuntu 22.04), which reads .pkla files and no
+	// rules files, is installed.
+	legacy   func() bool
+	readFile func(string) ([]byte, error)
 }
 
 func hostSiteLingerOps() siteLingerOps {
@@ -396,6 +399,10 @@ func hostSiteLingerOps() siteLingerOps {
 				}
 			}
 			return false
+		},
+		legacy: func() bool {
+			info, err := os.Stat("/usr/lib/policykit-1/polkitd")
+			return err == nil && info.Mode().IsRegular()
 		},
 		readFile: os.ReadFile,
 	}
@@ -425,6 +432,9 @@ func closeSiteLingerWith(ops siteLingerOps) *transport.SideDoorsLinger {
 	}
 	if !ops.installed() {
 		out.State = transport.SideDoorsAtNotInstalled
+		if ops.legacy != nil && ops.legacy() {
+			out.State, out.Detail = transport.SideDoorsAtFailed, "polkit 0.105 is installed; it reads no rules files, so lingering stays open to site accounts on this system"
+		}
 		return out
 	}
 	path := filepath.Join(polkitRulesDir, lingerRuleName)
