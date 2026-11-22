@@ -804,6 +804,10 @@ func main() {
 	// per-site files at the earlier 0644 become 0640 and the hosting base
 	// 0711, before any site write races it (tenant_file_modes.go).
 	tightenTenantVisibleModesOnce()
+	// alpha.144: CelikPanel's log folder becomes passable for nginx's
+	// workers once (log_root_modes_linux.go), so they reopen the traffic logs
+	// after a rotation.
+	passLogRootOnce()
 
 	// Initialize PHP-FPM Manager
 	phpMgr, err := services.NewPHPFPMManager()

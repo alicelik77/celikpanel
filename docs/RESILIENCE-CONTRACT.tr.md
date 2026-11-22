@@ -8545,6 +8545,13 @@ bağlantıyı tutar.
   durağan dosya verir; nokta dosyaları ve yedek görünümlü adlar reddedilir.
   Önceki biçimdeki dosyalar Agent'ın ilk açılışında bir kez yeniden yazılır;
   sahibin dosyası korunur, metin yanına konur.
+- **Gece döndürmeden sonra trafik günlükleri.** nginx işçileri (`www-data`)
+  `/var/log/celikpanel` klasöründen geçemiyordu; her döndürmeden sonra hata
+  yazıp döndürülen dosyaya yazmayı sürdürüyorlardı. Agent'ın açılışında bir
+  kez: CelikPanel'in ürettiği kipteki kök sahipli klasör 0700 → 0711 ya da
+  0750 → 0751; trafik klasörü 0755 → 0711; sertifika aracının günlük klasörü
+  0700 kalır; başka kip ya da sahip korunur. Yeni kurulumlar ikisini de
+  0711 açar.
 - **Açık.** Laboratuvar denemesi yok; tarayıcı bağlamını Agent değişikliğine
   veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
   takma ad hâlâ DNS kaydı almaz. **Hiçbir P0 işi kapanmadı.**
