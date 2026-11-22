@@ -209,18 +209,49 @@ customer's DKIM signature, so receivers took it as genuine.
   is at every Panel start, the server owner's own filters included, with only
   OpenDKIM left out (joined by commas: `master.cf` takes no spaces there).
   Nothing that arrives on port 25, from outside or from a site over loopback,
-  is signed by this server. The setting is removed again when OpenDKIM is
-  removed or `main.cf`'s list names no OpenDKIM; CelikPanel recognises its
-  own value by a record of what it wrote
-  (`/var/lib/celikpanel-agent-private/mail-port25-milters.json`). `main.cf`
-  keeps OpenDKIM, so submission, smtps and any smtpd the owner added keep it.
+  is signed by this server. The setting is removed again at the next Panel
+  start or mail filter step (a component installed or removed) after
+  OpenDKIM is no longer set up (its unit or its `opendkim.conf` gone) or
+  `main.cf`'s list names no OpenDKIM; no component or button removes
+  OpenDKIM by itself. CelikPanel recognises its own value by a record of what
+  it wrote (`/var/lib/celikpanel-agent-private/mail-port25-milters.json`);
+  without that record (22 November 2026), by its content: a value equal to
+  `main.cf`'s list without OpenDKIM, or one made only of entries a CelikPanel
+  release writes. A value written for an earlier list is then kept as the
+  owner's (it leaves OpenDKIM out; a filter added later does not reach port
+  25 until the owner removes it with `postconf -PX smtp/inet/smtpd_milters`
+  and restarts the panel). `main.cf` keeps OpenDKIM, so submission, smtps and
+  any smtpd the owner added keep it.
+- OpenDKIM's address is recognised in `main.cf`'s list in every spelling
+  Postfix accepts for the same endpoint (22 November 2026). Postfix takes the
+  transport `inet` by exact comparison (`src/milter/milter8.c`,
+  `milter8_connect`) and parses the rest with `host_port(buf, &host,
+  "localhost", &port, NULL)` (`src/util/inet_connect.c`, `src/util/host_port.c`):
+  `[host]:port` (host may be `IPv6:addr`), `host:port` split at the last
+  colon, an empty host meaning `localhost`, or a bare port; names and
+  addresses are resolved. Accepted: `inet:127.0.0.1:8891`,
+  `inet:[127.0.0.1]:8891`, `inet:localhost:8891`, `inet:[localhost]:8891`,
+  `inet::8891`, `inet:8891`, `inet:[IPv6:::ffff:127.0.0.1]:8891`,
+  `inet:::ffff:127.0.0.1:8891`, any case of the host name, leading zeros of
+  the port. Not taken for OpenDKIM: another address (`::1` is another
+  endpoint), a service name instead of the number, a `unix:` socket.
+- Where `main.cf`'s list names its filters through a `$variable` or a `{ }`
+  group, CelikPanel cannot read it entry by entry, so it changes nothing on
+  port 25 (22 November 2026). Where its own earlier value is on a port-25
+  entry, that value stays in force: it leaves OpenDKIM out, but also every
+  filter added to the list since; it is not removed, because port 25 would
+  then follow a list that may name OpenDKIM. The state is
+  `port25_variable_own`. Where there is no such value, port 25 follows the
+  list and may still be signed: `port25_variable`. Problems now words each
+  with the step (write the filters into `smtpd_milters` by name and restart
+  the panel), never with the words of an entry the owner changed by hand.
 
 **What keeps being signed, and by which identity.**
 
 | Mail | Who hands it over | Signed for |
 |---|---|---|
 | A mail program or webmail over 587/465; a site's code or plugin with a mailbox login | the SASL login | the login's own domain |
-| Out-of-office replies | Dovecot's Sieve, as `vmail`, through `sendmail` | its `From:`: the mailbox's own address, or an additional address forwarded to the mailbox from a domain of the same account |
+| Out-of-office replies | Dovecot's Sieve, as `vmail`, through `sendmail` | its `From:`: the mailbox's own address, or an additional address forwarded to the mailbox from a domain of the same account, checked when the reply is saved, at every start, every hour, and right after every change of who holds a name or where an address goes (below); for the seconds between such a change and the rewrite, or while a rewrite cannot be made (Problems now), the earlier reply can still answer |
 | The panel's notices (invitations, password mail) | the Agent, as `root`, through `sendmail` | `no-reply@` of the owner's main domain |
 | Cron and system mail of the server | `root`, through `sendmail` | their `From:` domain (the server's own name) |
 | Forwarders, catch-alls, "keep a copy and forward" | Postfix's virtual aliases, inside the queue of the message that arrived on port 25 | not signed; the original signature passes through untouched |
@@ -247,6 +278,26 @@ signs it by its `From:`. Who can make the server do that (21 November 2026):
   before are rendered again without other addresses at the first start after
   the update; the reply's window says once which addresses were removed, and
   it is audited.
+- 22 November 2026 (second review): the same check and rewrite runs right
+  after, and inside, every operation that changes who holds a name or where
+  an address delivers: a subscription transfer, a domain deletion (after its
+  mail step), a domain added (also by an import), a forwarder or catch-all
+  added, changed or removed (also by an import), a mailbox added (also by an
+  import); and every hour, as a net for anything else. Each mailbox is
+  checked under the Panel's mail lock with its row read again, so a
+  customer's save of the same reply and the rewrite never overwrite each
+  other. A rewrite the Agent cannot make (no answer, another build, Dovecot
+  stopped, a refusal) turns the reply off where that can be applied (turning
+  a reply off needs neither Dovecot running nor the addresses checked); the
+  window then says it was turned off and that saving it turns it back on.
+  Where even that cannot be applied, the foreign address stays active:
+  Problems now shows one line per mailbox (`mail_autoresponder_foreign`,
+  administrator, with the step: the Agent does not answer, is another
+  version, or refused), the window says so, and it is tried again at every
+  start and every hour until done. After a normal update the Agent is never
+  the earlier build at the Panel's first start: `update.sh` installs and
+  verifies both binaries, starts the Agent and waits for it before it starts
+  the Panel.
 - Forwarders never pass `sendmail` or OpenDKIM again: an outside message with
   a forged `From:` sent to a forwarding address is not signed here.
 - Where `authorized_submit_users` is not limited to `root` and `vmail` (the
@@ -294,11 +345,17 @@ Dovecot drop-in and the submission chroot), in this order:
    with that. A restart recorded as owed by a start that was interrupted is
    made at the next start, even when the file is already CelikPanel's, and
    signing is not reported as in place until OpenDKIM is verified running.
-   While OpenDKIM restarts, Postfix passes mail on unsigned where the lists
-   are CelikPanel's (`milter_default_action = accept`, step 1); where the
-   owner keeps his own list, his `milter_default_action` applies and the
-   panel's note says what it does (Postfix's default `tempfail`: senders get
-   a temporary error and send again).
+   Setting up a domain's signing (`ConfigureDKIMSigning`) takes the same
+   order since 22 November 2026: the tables first, then the new text beside
+   the file and `opendkim -n`, the owed restart, the rename, and a restart
+   that puts the earlier text back when OpenDKIM does not run with it.
+   While OpenDKIM restarts, Postfix passes mail on unsigned where both lists
+   are CelikPanel's (`milter_default_action = accept`, step 1). Where either
+   list is the owner's, `accept` is not written, so his
+   `milter_default_action` applies, or Postfix's default `tempfail`, and the
+   panel's note says what it does: a sending mail server gets a temporary
+   error and tries again by itself; a mail program on 587 shows its user an
+   error and the person sends again.
 
 **The owner's own settings (D-022).** An `opendkim.conf` the owner changed is
 kept as he wrote it; CelikPanel's text is put beside it as
@@ -345,17 +402,57 @@ each message):
 8. The owner adds a filter to `main.cf` `smtpd_milters` (for example
    `inet:127.0.0.1:7777`), restart the panel: `postconf -P
    smtp/inet/smtpd_milters` names the spam filter and that filter, not
-   OpenDKIM; Problems now shows no port-25 line. Remove OpenDKIM from
-   Components: no CelikPanel `-o smtpd_milters` remains.
+   OpenDKIM; Problems now shows no port-25 line. There is no component that
+   removes OpenDKIM: as root, `systemctl disable --now opendkim` and move
+   `/etc/opendkim.conf` aside (`mv /etc/opendkim.conf /root/`), then restart
+   the panel: no CelikPanel `-o smtpd_milters` remains. Put the file back and
+   restart the panel before the next steps.
 9. Kill test: stop the Agent between the `opendkim.conf` rename and the
    restart (for example `systemctl kill -s KILL celikpanel-agent` while the
    start runs, with `strace` or a breakpoint), restart the panel: OpenDKIM is
    restarted, runs with SenderMacro (`/proc/<pid>` start time after the file's
    modification time), the record is gone.
 10. With an owner-kept milter list and no `milter_default_action`, send mail
-    over 587 during the reconcile restart: the client gets a temporary error
-    and sends again; the panel's log of that start says so.
+    over 587 during the reconcile restart: the mail program gets a temporary
+    error and the person sends again; the panel's log of that start says so.
 11. On a copy of the main server: edit `/etc/opendkim.conf` by hand, restart
     the panel: the file is unchanged, `opendkim.conf.celikpanel-pending` is
     beside it and starts under `opendkim -n -x`, Problems now names the file
     and the line, mail flows.
+
+Added 22 November 2026 (second review of alpha.143):
+
+12. Customer A holds `a.test` and `a2.test` in two subscriptions; forwarder
+    `x@a2.test` → `anna@a.test`; reply on `anna@a.test` with additional
+    address `x@a2.test`. Transfer the subscription of `a2.test` to customer
+    B: before the transfer answers, the reply's window says `x@a2.test` was
+    removed and the audit log has the row with `subscription_transfer`; a
+    message from outside to `anna@a.test` with `To: x@a2.test` gets a reply
+    from `anna@a.test`, never `From: x@a2.test`.
+13. The same with the `a2.test` domain deleted instead (row with
+    `domain_deleted`), and with the forwarder removed (row with
+    `forwarding_changed`).
+14. Stop Dovecot (`systemctl stop dovecot`), set a reply on `anna@a.test`
+    naming `x@a2.test` again in the database (`email_autoresponders`), restart
+    the panel: the reply is turned off, its window says so and that saving
+    turns it back on. Then stop the Agent (`systemctl stop celikpanel-agent`)
+    with the same row, restart the panel: Problems now shows "anna@a.test:
+    the out-of-office reply still answers from a foreign address" with the
+    Agent step; the reply's window names `x@a2.test`. Start the
+    Agent and Dovecot, wait for the hourly round (or restart the panel): the
+    line goes.
+15. `postconf -e 'owner_milters = inet:127.0.0.1:8891, inet:127.0.0.1:11332, inet:127.0.0.1:7777'`
+    and `postconf -e 'smtpd_milters = $owner_milters'`, restart the panel:
+    `postconf -P smtp/inet/smtpd_milters` still shows CelikPanel's earlier
+    value; Problems now says "Port 25 skips the filters added to main.cf
+    since", never "changed by hand". On a copy without an earlier value:
+    nothing is written for port 25 and Problems now says arriving mail may
+    still be signed. Put the list back by name, restart: the line goes.
+16. `postconf -e 'smtpd_milters = inet:[127.0.0.1]:8891, inet:127.0.0.1:7777'`,
+    restart the panel: `postconf -P smtp/inet/smtpd_milters` names only
+    `inet:127.0.0.1:7777`; port 25 mail of path b is not signed.
+17. `sha256sum /etc/opendkim.conf`; hold port 8891 (`systemctl stop opendkim`,
+    then `python3 -m http.server 8891 --bind 127.0.0.1`) and add a domain
+    that gets a DKIM key: the domain's signing step reports OpenDKIM not
+    running, `sha256sum` is unchanged, Problems now shows the signing
+    failure line. Stop the program and restart the panel: the line goes.

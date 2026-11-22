@@ -23,7 +23,11 @@ günceller.**
    (aşağıda "Giden posta ve imzası"). Sahibin elle değiştirdiği bir ayar
    korunur ve **Şu anki sorunlar**da adlandırılır. Kendisinin olmayan bir
    adresten yanıt veren otomatik yanıt o adres olmadan yeniden ayarlanır ve
-   penceresi bunu bir kez söyler. Basmanız gereken bir şey yok.
+   penceresi bunu bir kez söyler. Basmanız gereken bir şey yok. Sunucu onu
+   yeniden ayarlayamazsa (örneğin posta sunucusu durmuşsa) yanıt kapatılır
+   ve penceresi yeniden kaydetmeyi söyler; bu da yapılamazsa **Şu anki
+   sorunlar** posta kutusunu ve adımı adlandırır, panel her saat yeniden
+   dener.
 4. Açılıştan birkaç dakika sonra, güncelleme doğrulanmış ve sunucu sakinken
    panel, alpha.141'den önce açılan ve kendi başına kapatabileceği
    PostgreSQL veritabanlarını izlemeye başlar; her birini, başka kimsenin
@@ -69,7 +73,12 @@ günceller.**
   adres, yanıt kaydedilirken reddedilir. Önceden kaydedilmiş ve başka bir
   adresi adlandıran yanıt, güncellemeden sonraki ilk açılışta o adres
   olmadan yeniden ayarlanır. Penceresi hangi adreslerin çıkarıldığını bir
-  kez söyler; denetim kaydında satırı vardır.
+  kez söyler; denetim kaydında satırı vardır. Aynı denetim, bir adın kimde
+  olduğunu ya da bir adresin nereye gittiğini değiştiren her işlemden hemen
+  sonra çalışır: aboneliğin başka sahibe geçmesi, bir alan adının silinmesi
+  ya da eklenmesi, bir yönlendirmenin ya da catch-all adresinin
+  eklenmesi, değişmesi ya da kaldırılması, bir posta kutusunun eklenmesi;
+  ayrıca her saat.
 - **Sunucunun kendisinde oluşan posta** eskisi gibi "Kimden" alan adı için
   imzalanır: panelin bildirimleri (sahibin ana alan adı), sistemin kendi
   zamanlanmış işleri (root'unkiler) ve otomatik yanıtlar. Postayı bu yolla
@@ -84,14 +93,31 @@ günceller.**
 - **Sahip için:**
   - Değişiklik, panel durdurulsa ya da kaldırılsa da çalışan olağan posta
     sunucusu ayarlarıdır.
-  - CelikPanel yeni bir imza ayarını kullanmadan önce posta imzalayıcısı
-    onu denetler. Posta sunucusu onunla çalışmazsa önceki ayarlar birebir
-    geri konur.
+  - CelikPanel yeni bir imza dosyasını kullanmadan önce, panelin
+    açılışında da bir alan adının imzasını kurarken de, posta imzalayıcısı
+    onu denetler. İmzalayıcı onunla başlamazsa önceki dosya birebir geri
+    konur ve imzalayıcı onunla yeniden başlatılır.
   - Bir kesintinin yarım bıraktığı imzalayıcı yeniden başlatması sonraki
     açılışta yapılır.
   - Sahibin posta sunucusunun listesine eklediği süzgeç 25. portta da
-    kalır. CelikPanel'in kendi 25. port ayarı, imzalayıcı kaldırılınca
-    silinir.
+    kalır. İmzalayıcıyı kaldırmak için ayrı bir adım yoktur: CelikPanel'in
+    kendi 25. port ayarı, imzalayıcı artık kurulu değilken ya da listede
+    yokken, sonraki panel açılışında ya da sonraki posta süzgeci adımında
+    (bir bileşenin kurulması ya da kaldırılması) silinir.
+  - Liste süzgeçlerini bir `$değişken` ya da `{ }` grubuyla adlandırıyorsa
+    CelikPanel onu tek tek okuyamaz. Önceden yazdığı kendi 25. port ayarı
+    varsa geçerli kalır: imzalayıcıyı dışarıda bırakır, ama listeye
+    sonradan eklenen her süzgeci de. Yazmadıysa 25. port listeye uyar ve
+    gelen posta hâlâ imzalanabilir. **Şu anki sorunlar** bu ikisinden
+    hangisi olduğunu adımıyla söyler: süzgeçleri listeye adlarıyla yazın ve
+    paneli yeniden başlatın.
+  - CelikPanel kendi 25. port ayarını bir kayıt dosyasından tanır. Bu dosya
+    kaybolursa, imzalayıcısız listeye eşit olan ya da yalnız kendi
+    süzgeçlerinden oluşan ayarı yine tanır; daha önceki bir liste için
+    yazılmış ayar o zaman sahibinkiymiş gibi korunur.
+  - İmzalayıcı, Postfix adresinin nasıl yazılmasına izin veriyorsa o
+    biçimde sahibin listesinde tanınır (örneğin `inet:[127.0.0.1]:8891`,
+    `inet:localhost:8891` ya da `inet::8891`).
   - Sahibin elle değiştirdiği imza dosyası ya da 25. port süzgeç ayarı
     olduğu gibi kalır (CelikPanel'in metni yanında
     `opendkim.conf.celikpanel-pending` olarak durur). **Şu anki sorunlar**
@@ -100,10 +126,13 @@ günceller.**
     belirleyen ayar panelinki (`authorized_submit_users = root, vmail`)
     olmadığında da söyler; çünkü o zaman sitelerin programları buradaki her
     alan adı adına imzalı posta gönderebilir.
-  - İmzalayıcı yeniden başlarken posta imzasız geçer. Sahip kendi süzgeç
-    listesini ve kendi `milter_default_action` değerini tutuyorsa onun
-    yerine o ayar geçerlidir: Postfix'in varsayılanı gönderenlere geçici
-    hata verir, onlar da yeniden gönderir.
+  - İmzalayıcı yeniden başlarken (birkaç saniye) iki süzgeç listesi de
+    CelikPanel'inkiyse posta imzasız geçer: o zaman
+    `milter_default_action = accept` yazar. Listelerden biri sahibinkiyse
+    onu yazmaz; sahibin `milter_default_action` değeri, o da yoksa
+    Postfix'in varsayılanı (`tempfail`) geçerlidir: gönderen bir posta
+    sunucusu sonra kendiliğinden yeniden dener, 587 numaralı porttaki bir
+    posta programı ise kullanıcısına hata gösterir ve kişi yeniden gönderir.
 
 ### alpha.141'den önce açılan PostgreSQL veritabanları
 
@@ -183,6 +212,18 @@ günceller.**
   reddedilir.
 - Yanıtlar panelin kayıtlarından düzeltilir. Panel kaydı olmayan bir
   CelikPanel yanıt betiği yeniden yazılmaz.
+- Otomatik yanıt, kutusundan bir adresi alan değişiklikten (abonelik
+  taşındı, alan adı silindi, yönlendirme kaldırıldı) hemen sonra yeniden
+  ayarlanır: o değişiklikle yanıtın yeniden ayarlanması arasındaki birkaç
+  saniye boyunca önceki yanıt hâlâ verilebilir. Sunucu yanıtı yeniden
+  ayarlayamaz ya da kapatamazsa (Agent yanıt vermiyor ya da başka bir
+  sürümde), başarılı olan sonraki saatlik denemeye dek yanıt verilmeye
+  devam eder; bu arada **Şu anki sorunlar** posta kutusunu ve adımı
+  adlandırır.
+- Posta sunucusunun süzgeç listesi süzgeçlerini bir `$değişken` ya da
+  `{ }` grubuyla adlandırıyorsa, CelikPanel'in önceki 25. port ayarı
+  geçerli kaldıkça listeye sonradan eklenen bir süzgeç 25. porta gelen
+  postayı görmez (yukarıda "Sahip için").
 - **Bir veritabanını başka bir PostgreSQL sürümüne taşımak** (yönetici
   işlemi: yalnız yönetici başlatabilir), alpha.141'de olduğu gibi, taşıma
   sırasında içindeki müşterilerin veritabanı kodunu hâlâ yöneticinin
@@ -222,7 +263,8 @@ günceller.**
   imzalanır; 25. porta girişsiz bırakılan posta (örneğin bir web sitesinin)
   artık imzalanmaz.
 - Kendisinin olmayan bir adresi adlandıran otomatik yanıt, ilk açılışta o
-  adresi kaybeder ve penceresi hangi adresin çıkarıldığını bir kez söyler.
+  adresi kaybeder ve penceresi hangi adresin çıkarıldığını bir kez söyler;
+  yeniden ayarlanamadıysa kapatılır ve penceresi yeniden kaydetmeyi söyler.
 - alpha.141'den önce açılan ve başka kimsenin kullandığı görülmeyen bir
   PostgreSQL veritabanı, izlemesi başladıktan en az 24 saat sonraki ilk
   saatlik denetimde, en az 24 saatlik denetim onu okumuşsa kendiliğinden
@@ -274,6 +316,21 @@ geçen testler:
   gerçek Postfix araçlarıyla, sahibin sonradan eklediği 25. port süzgeci,
   birebir geri alma ve sahibin `authorized_submit_users` ayarı; her imza
   durumunun sözleri `web/tests/mail-signing-a143-fix.test.mjs` içinde.
+  İkinci incelemenin posta durumları:
+  `TestMailAutoresponderTransferRewritesTheReplyInTheSameRequest`,
+  `TestMailAutoresponderForwarderRemovalRewritesTheReplyInTheSameRequest`,
+  `TestMailAutoresponderRewriteThatCannotBeMadeIsNotSilent`,
+  `TestMailAutoresponderReconcileDoesNotOverwriteASaveMadeMeanwhile`,
+  `TestMailSigningVariableListStatesAndForeignReplyAreWorded`,
+  `TestMailSigningVariableListKeepsCelikPanelsValueAndSaysSo`,
+  `TestMailSigningPort25ValueIsRecognisedWithoutTheRecord`,
+  `TestMailSigningOpenDKIMEndpointSpellings` ve
+  `TestMailSigningConfigureDKIMSigningChecksAndPutsBack`; matris durumu
+  `postfix.mail-signing-variable-list` (eklendi, henüz çalıştırılmadı).
+  Ayrıca yeni ve eklemeli: "Şu anki sorunlar" türü
+  `mail_autoresponder_foreign`, imza durumları `port25_variable` ve
+  `port25_variable_own`, panel ayar satırları
+  `mail_autoresponder_foreign_v1:<hesap kimliği>`.
 - PostgreSQL, özel bir PostgreSQL 17.12 sunucusunda:
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve bağımsız
   incelemenin durumları

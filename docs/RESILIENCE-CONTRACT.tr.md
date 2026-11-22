@@ -8434,11 +8434,19 @@ bağlantıyı tutar.
   kipleri adlandırılmıyordu.
 - **Sözleşme.** `SenderMacro {auth_authen}` imza anahtarını girişe bağlar;
   25. port smtpd'si `main.cf` süzgeç listesini OpenDKIM'siz alır, liste her
-  açılışta yeniden hesaplanır ve OpenDKIM ile birlikte silinir; otomatik
-  yanıt yalnız kutunun kendi adresinden ya da aynı hesabın alan adlarından
-  ona yönlendirilmiş bir adresten verilir (panel ve Agent; önceki yanıtlar
-  yabancı adres olmadan yeniden yazılır, bir kez söylenir ve denetim
-  kaydına geçer); imza yalnız `authorized_submit_users` `root, vmail`
+  açılışta ve posta süzgeci adımında yeniden hesaplanır ve OpenDKIM artık
+  kurulu ya da listede değilken bunların ilkinde silinir (`$değişken` ya da
+  `{ }` grubu içeren bir `main.cf` listesi CelikPanel'in önceki 25. port
+  değerini korur ve bunu söyler, `port25_variable_own`, ya da
+  `port25_variable` bildirir); otomatik yanıt yalnız kutunun kendi
+  adresinden ya da aynı hesabın alan adlarından ona yönlendirilmiş bir
+  adresten verilir (panel ve Agent; önceki yanıtlar yabancı adres olmadan
+  yeniden yazılır, bir kez söylenir ve denetim kaydına geçer; bu her
+  açılışta, her saat ve bir adın kimde olduğunu ya da bir adresin nereye
+  teslim edildiğini değiştiren her işlemden hemen sonra, posta kilidi
+  altında olur; yapılamayan yeniden yazma yanıtı kapatır, o da
+  uygulanamazsa kutu başına saatlik yeniden denenen bir "Şu anki sorunlar"
+  satırıdır); imza yalnız `authorized_submit_users` `root, vmail`
   olduğunda yerinde gösterilir ve imzayı değiştiren her yol durumunu
   kaydeder (erken dönüş bilinmeyendir); `SenderMacro`'suz bir derleme önceki
   yapılandırmayı korur, bunu söyler ve ona seçenek asla önerilmez.
@@ -8474,13 +8482,16 @@ bağlantıyı tutar.
   panel_settings satırları `postgresql_public_v1:<kimlik>` ve
   `postgresql_public_list_v1`.
 - **Kurtarma.** Yeni bir `opendkim.conf`, yeniden adlandırmadan önce
-  `opendkim -n` ile denetlenir ve OpenDKIM onunla çalışmazsa geri konur;
+  `opendkim -n` ile denetlenir ve OpenDKIM onunla çalışmazsa geri konur
+  (açılışta ve ikinci incelemeden beri `ConfigureDKIMSigning`'de de);
   Postfix yazmaları herhangi bir hatada ters sırayla geri alınır (varsayılanında
   olan ayar yeniden silinir) ve Postfix yeniden yüklenir; OpenDKIM'in yeniden
   başlatılması yeniden adlandırmadan önce borç olarak kaydedilir ve bir
-  kesintiden sonraki açılışta yapılır; yeniden başlatma sırasında posta
-  imzasız geçer (`milter_default_action = accept` ya da listeleri sahip
-  tutuyorsa sahibin kendi değeri). Herhangi bir yerde kesilen kapatma
+  kesintiden sonraki açılışta yapılır; yeniden başlatma sırasında iki
+  süzgeç listesi de CelikPanel'inse posta imzasız geçer
+  (`milter_default_action = accept`), biri sahibinkiyse sahibin
+  `milter_default_action` değeri ya da Postfix'in varsayılanı `tempfail`
+  geçerlidir (gönderen sunucu yeniden dener; 587'deki kişi yeniden gönderir). Herhangi bir yerde kesilen kapatma
   veritabanını dokunulmamış ya da haklarıyla kapatılmış bırakır, panelin
   kaydını da motor hangisi olduğunu gösterene dek korur; veritabanı o zamandan beri değişmişse geri alma reddedilir ve
   hiçbir şey değiştirmez. Hepsi panel olmadan da çalışan doğal yapılandırma

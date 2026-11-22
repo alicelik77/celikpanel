@@ -35,6 +35,13 @@ type mailAutoresponderView struct {
 	// out of this reply because they are not the mailbox's own; shown until
 	// the reply is saved again (mail_autoresponder_own.go).
 	RemovedAddresses []string `json:"removed_addresses,omitempty"`
+	// RemovedTurnedOff (22 Nov 2026, B3): the rewrite could not be made on
+	// the server, so the reply was turned off; saving it turns it back on.
+	RemovedTurnedOff bool `json:"removed_turned_off,omitempty"`
+	// ForeignPending: addresses that are no longer the mailbox's own and that
+	// CelikPanel could neither take out of the reply on the server nor turn
+	// the reply off for yet; tried again every hour, the administrator sees it.
+	ForeignPending []string `json:"foreign_pending,omitempty"`
 }
 
 func (p *Panel) mailAutoresponderAccount(ctx context.Context, domainID, accountID int) (string, error) {
@@ -111,6 +118,10 @@ func (p *Panel) handleGetMailAutoresponder(w http.ResponseWriter, r *http.Reques
 	view := mailAutoresponderView{AccountID: accountID, Address: address, Setting: setting, Stored: stored}
 	if notice := p.autoresponderRemovedNoticeFor(r.Context(), accountID); notice != nil {
 		view.RemovedAddresses = notice.Addresses
+		view.RemovedTurnedOff = notice.TakenOff
+	}
+	if record := p.autoresponderForeignRecordFor(r.Context(), accountID); record != nil {
+		view.ForeignPending = record.Addresses
 	}
 	var state transport.MailAutoresponderResponse
 	if err := p.callAgentContext(r.Context(), "Agent.MailAutoresponderState",

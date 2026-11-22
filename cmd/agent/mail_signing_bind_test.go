@@ -273,8 +273,186 @@ func TestMailSigningPort25SettingGoesWithOpenDKIM(t *testing.T) {
 	if err != nil || !plan.variable || f.index("postconf -P smtp/inet/smtpd_milters=") >= 0 {
 		t.Fatalf("variable main list: plan %+v err %v", plan, err)
 	}
-	if state := decideMailSigning(mailSigningInputs{confState: mailSigningBound, port25: plan}); state.State != mailSigningPort25Kept {
+	// 22 Nov 2026 (B4): its own state, never the hand-changed entry's.
+	if state := decideMailSigning(mailSigningInputs{confState: mailSigningBound, port25: plan}); state.State != mailSigningPort25Variable {
 		t.Fatalf("state %+v", state)
+	}
+}
+
+// Second review of alpha.143, B4: main.cf's list turns into a variable after
+// CelikPanel wrote port 25's own value. That value stays in force (removing
+// it could put OpenDKIM back on port 25), the state says exactly that, and
+// never that the owner changed the port-25 entry by hand.
+func TestMailSigningVariableListKeepsCelikPanelsValueAndSaysSo(t *testing.T) {
+	record := memoryPort25Record(t)
+	f := newSigningPostfix()
+	if _, _, _, err := composeAndWriteMilterChain(f.run, true, rspamdMilter); err != nil {
+		t.Fatal(err)
+	}
+	f.main["smtpd_milters"] = "$owner_milters"
+	note, _, plan, err := composeAndWriteMilterChain(f.run, true, rspamdMilter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := f.params["smtp/inet/smtpd_milters"]; got != rspamdMilter || (*record)["smtp/inet"] != rspamdMilter {
+		t.Fatalf("CelikPanel's value must stay in force and recorded: %q record %+v", got, *record)
+	}
+	if len(plan.owner) != 0 || plan.variable || len(plan.variableOwn) != 1 {
+		t.Fatalf("plan %+v", plan)
+	}
+	state := decideMailSigning(mailSigningInputs{confState: mailSigningBound, port25: plan})
+	if state.State != mailSigningPort25VariableOwn || state.Subject != "smtp/inet" || !strings.Contains(state.Detail, "still in force") ||
+		strings.Contains(state.Detail, "changed by the server owner") || !strings.Contains(note, "still in force") {
+		t.Fatalf("state %+v note %q", state, note)
+	}
+	// A risk that signs for another domain is said before it.
+	if got := decideMailSigning(mailSigningInputs{confState: mailSigningBound, port25: plan, submitOpen: true}); got.State != mailSigningSubmitOpen {
+		t.Fatalf("submit_open hidden by %s", got.State)
+	}
+	// The owner names his filters again: port 25 follows main.cf again.
+	f.main["smtpd_milters"] = opendkimMilter + ", " + rspamdMilter + ", inet:127.0.0.1:7777"
+	_, _, plan, err = composeAndWriteMilterChain(f.run, true, rspamdMilter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := f.params["smtp/inet/smtpd_milters"]; got != rspamdMilter+",inet:127.0.0.1:7777" {
+		t.Fatalf("port 25 after the owner named his filters: %q", got)
+	}
+	if state := decideMailSigning(mailSigningInputs{confState: mailSigningBound, port25: plan}); state.State != mailSigningBound {
+		t.Fatalf("state %+v", state)
+	}
+}
+
+// Second review of alpha.143, B4: the record file is lost. CelikPanel still
+// recognises its own value by its content (main.cf's list without OpenDKIM,
+// joined by commas), so it is followed and removed with OpenDKIM instead of
+// being kept as the owner's.
+func TestMailSigningPort25ValueIsRecognisedWithoutTheRecord(t *testing.T) {
+	record := memoryPort25Record(t)
+	f := newSigningPostfix()
+	f.main["smtpd_milters"] = opendkimMilter + ", " + rspamdMilter + ", inet:127.0.0.1:7777"
+	if _, _, _, err := composeAndWriteMilterChain(f.run, true, rspamdMilter); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.params["smtp/inet/smtpd_milters"]; got != rspamdMilter+",inet:127.0.0.1:7777" {
+		t.Fatalf("port 25 reads %q", got)
+	}
+	for k := range *record {
+		delete(*record, k)
+	}
+	// OpenDKIM is removed: the value goes, record or not.
+	if _, _, _, err := composeAndWriteMilterChain(f.run, false, rspamdMilter); err != nil {
+		t.Fatal(err)
+	}
+	if got, set := f.params["smtp/inet/smtpd_milters"]; set {
+		t.Fatalf("CelikPanel's own value was taken for the owner's without its record: %q", got)
+	}
+}
+
+// Second review of alpha.143, B9: OpenDKIM's endpoint is recognised in every
+// spelling Postfix accepts for it (milter8.c, inet_connect.c, host_port.c).
+func TestMailSigningOpenDKIMEndpointSpellings(t *testing.T) {
+	for entry, want := range map[string]bool{
+		"inet:127.0.0.1:8891":               true,
+		"inet:localhost:8891":               true,
+		"inet:[127.0.0.1]:8891":             true,
+		"inet:[localhost]:8891":             true,
+		"inet:LocalHost:8891":               true,
+		"inet::8891":                        true,
+		"inet:8891":                         true,
+		"inet:127.0.0.1:08891":              true,
+		"inet:[IPv6:::ffff:127.0.0.1]:8891": true,
+		"inet:[ipv6:::ffff:127.0.0.1]:8891": true,
+		"inet:::ffff:127.0.0.1:8891":        true,
+		"inet:127.0.0.1:8892":               false,
+		"inet:127.0.0.2:8891":               false,
+		"inet:[::1]:8891":                   false,
+		"inet:[127.0.0.1]":                  false,
+		"inet:[127.0.0.1]8891":              false,
+		"INET:127.0.0.1:8891":               false,
+		"unix:/run/opendkim/opendkim.sock":  false,
+		"inet:8891@127.0.0.1":               false,
+		"inet:127.0.0.1:opendkim":           false,
+		"inet:":                             false,
+	} {
+		if got := isOpenDKIMMilter(entry); got != want {
+			t.Errorf("%s: %v, want %v", entry, got, want)
+		}
+	}
+	// In a list: port 25 leaves the other spelling out, keeps the rest.
+	rest, named, ok := milterListWithoutOpenDKIM("inet:[127.0.0.1]:8891, inet:127.0.0.1:7777")
+	if !ok || !named || rest != "inet:127.0.0.1:7777" {
+		t.Fatalf("rest %q named %v ok %v", rest, named, ok)
+	}
+}
+
+// Second review of alpha.143, B9: ConfigureDKIMSigning puts a new
+// opendkim.conf in place the way the start does: checked with `opendkim -n`
+// before it is used (a refusal changes nothing), and put back when OpenDKIM
+// does not run with it.
+func TestMailSigningConfigureDKIMSigningChecksAndPutsBack(t *testing.T) {
+	h, layout := installOpenDKIMHost(t, aptLayout(t))
+	earlier := renderOpenDKIMConfWithSocket(layout, opendkimSocket)
+	next := []byte(renderOpenDKIMConf(layout))
+	if err := os.WriteFile(layout.confPath, []byte(earlier), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Refused by the check: nothing changes, no restart is owed.
+	h.refuseNew = true
+	if err := installCheckedOpenDKIMConf(h.run, layout.confPath, next); err == nil || !strings.Contains(err.Error(), "was not changed") {
+		t.Fatalf("refusal: %v", err)
+	}
+	if content, _ := os.ReadFile(layout.confPath); string(content) != earlier || openDKIMRestartIsOwed() {
+		t.Fatalf("a refused text changed something (owed %v)", openDKIMRestartIsOwed())
+	}
+	if _, err := os.Stat(layout.confPath + opendkimCandidateSuffix); !os.IsNotExist(err) {
+		t.Fatal("the refused candidate was left behind")
+	}
+	// Accepted, but OpenDKIM starts only with the earlier text: put back.
+	h.refuseNew = false
+	h.startsWith = func(string) bool {
+		content, _ := os.ReadFile(layout.confPath)
+		return string(content) == earlier
+	}
+	if err := installCheckedOpenDKIMConf(h.run, layout.confPath, next); err != nil {
+		t.Fatal(err)
+	}
+	if !openDKIMRestartIsOwed() {
+		t.Fatal("the owed restart was not recorded before the file was put in place")
+	}
+	err := restartOpenDKIMOrPutBack(h.run, layout.confPath, []byte(earlier), true, true)
+	if err == nil || !strings.Contains(err.Error(), "put back") {
+		t.Fatalf("put back: %v", err)
+	}
+	if content, _ := os.ReadFile(layout.confPath); string(content) != earlier || !h.active || openDKIMRestartIsOwed() {
+		t.Fatalf("not put back: active %v owed %v", h.active, openDKIMRestartIsOwed())
+	}
+	// Accepted and running: the restart owed is cleared.
+	h.startsWith = func(string) bool { return true }
+	if err := installCheckedOpenDKIMConf(h.run, layout.confPath, next); err != nil {
+		t.Fatal(err)
+	}
+	if err := restartOpenDKIMOrPutBack(h.run, layout.confPath, []byte(earlier), true, true); err != nil || openDKIMRestartIsOwed() {
+		t.Fatalf("restart: %v owed %v", err, openDKIMRestartIsOwed())
+	}
+	if content, _ := os.ReadFile(layout.confPath); string(content) != string(next) {
+		t.Fatal("the new text is not in place")
+	}
+	// ConfigureDKIMSigning takes this path: tables first (without the
+	// configuration), then the checked text, then the restart that puts back.
+	source, err := os.ReadFile("dkim_signing_rpc.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(source)
+	start := strings.Index(text, "func (a *Agent) ConfigureDKIMSigning(")
+	body := text[start:]
+	body = body[:strings.Index(body, "\n}\n")]
+	tables := strings.Index(body, "writeDKIMTables(ctx, domains, layout.confPath, nil)")
+	check := strings.Index(body, "installCheckedOpenDKIMConf(run, layout.confPath, conf)")
+	restart := strings.Index(body, "restartOpenDKIMOrPutBack(run, layout.confPath, current, exists, changed)")
+	if tables < 0 || check < tables || restart < check || strings.Contains(body, `"systemctl", "restart", "opendkim"`) {
+		t.Fatalf("ConfigureDKIMSigning order: tables %d check %d restart %d", tables, check, restart)
 	}
 }
 

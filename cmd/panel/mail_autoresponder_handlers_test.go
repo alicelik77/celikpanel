@@ -22,13 +22,27 @@ type autoresponderPanelAgent struct {
 	mu       sync.Mutex
 	answer   transport.MailAutoresponderResponse
 	setCalls []transport.SetMailAutoresponderRequest
+	// respond, when set, answers instead of answer (22 Nov 2026: an Agent
+	// that fails one call and takes the next).
+	respond func(*transport.SetMailAutoresponderRequest) (transport.MailAutoresponderResponse, error)
 }
 
 func (a *autoresponderPanelAgent) SetMailAutoresponder(request *transport.SetMailAutoresponderRequest, response *transport.MailAutoresponderResponse) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.setCalls = append(a.setCalls, *request)
+	if a.respond != nil {
+		answer, err := a.respond(request)
+		*response = answer
+		return err
+	}
 	*response = a.answer
+	return nil
+}
+
+// UpdateMailForwarding takes every forwarding list (22 Nov 2026 tests).
+func (a *autoresponderPanelAgent) UpdateMailForwarding(_ *transport.UpdateMailForwardingRequest, response *transport.MailMutationResponse) error {
+	*response = transport.MailMutationResponse{Applied: true}
 	return nil
 }
 
@@ -72,6 +86,16 @@ func newAutoresponderPanel(t *testing.T, agent *autoresponderPanelAgent) (*Panel
 	`); err != nil {
 		t.Fatalf("seed fixture: %v", err)
 	}
+	return &Panel{
+		db:           database,
+		pkgFamilyVal: "apt",
+		agentClient:  autoresponderAgentClient(t, agent),
+	}, 6103
+}
+
+// autoresponderAgentClient serves agent as the Panel's Agent.
+func autoresponderAgentClient(t *testing.T, agent *autoresponderPanelAgent) *transport.ReconnectingClient {
+	t.Helper()
 	server := rpc.NewServer()
 	if err := server.RegisterName("Agent", agent); err != nil {
 		t.Fatal(err)
@@ -89,11 +113,7 @@ func newAutoresponderPanel(t *testing.T, agent *autoresponderPanelAgent) (*Panel
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = client.Close() })
-	return &Panel{
-		db:           database,
-		pkgFamilyVal: "apt",
-		agentClient:  transport.NewReconnectingClientWithContextConnector(client, connector),
-	}, 6103
+	return transport.NewReconnectingClientWithContextConnector(client, connector)
 }
 
 func putAutoresponder(panel *Panel, domainID int, body string) *httptest.ResponseRecorder {

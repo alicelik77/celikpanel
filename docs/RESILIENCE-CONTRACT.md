@@ -9207,10 +9207,17 @@ until the backup reports ready.
   blocked its site's deletion, and kept owner modes were not named.
 - **Contract.** `SenderMacro {auth_authen}` ties the signing key to the
   login; the port-25 smtpd gets `main.cf`'s milter list without OpenDKIM,
-  recomputed at every start and removed with OpenDKIM; an out-of-office reply
-  answers only from the mailbox's own address or a forwarder to it from the
-  same account's domains (panel and Agent; earlier replies are rendered again
-  without a foreign address, said once and audited); signing is shown as in
+  recomputed at every start and mail filter step and removed at the first of
+  them after OpenDKIM is no longer set up or listed (a `main.cf` list with
+  `$variables` or `{ }` groups keeps CelikPanel's earlier port-25 value and
+  says so, `port25_variable_own`, or reports `port25_variable`); an
+  out-of-office reply answers only from the mailbox's own address or a
+  forwarder to it from the same account's domains (panel and Agent; earlier
+  replies are rendered again without a foreign address, said once and
+  audited, at every start, every hour and right after every operation that
+  changes who holds a name or where an address delivers, under the mail lock;
+  a rewrite that cannot be made turns the reply off, or, where that cannot be
+  applied either, is a Problems-now line per mailbox retried hourly); signing is shown as in
   place only when `authorized_submit_users` is `root, vmail`, and every path
   that changes signing records its state (an early return is unknown); a
   build without `SenderMacro` keeps the earlier configuration, says so and is
@@ -9245,13 +9252,15 @@ until the backup reports ready.
   `missing`, `replication`), panel_settings rows
   `postgresql_public_v1:<id>` and `postgresql_public_list_v1`.
 - **Recovery.** A new `opendkim.conf` is checked with `opendkim -n` before
-  the rename and put back if OpenDKIM does not run with it; Postfix writes
+  the rename and put back if OpenDKIM does not run with it, at the start and
+  (since the second review) in `ConfigureDKIMSigning`; Postfix writes
   are undone in reverse order on any failure (a setting that was at its
   default is removed again) and Postfix reloaded; an OpenDKIM restart is
   recorded as owed before the rename and made at the next start after an
-  interruption; mail passes unsigned during a restart
-  (`milter_default_action = accept`, or the owner's own value where he keeps
-  the lists). A close interrupted anywhere leaves the database untouched or closed with
+  interruption; during a restart mail passes unsigned where both milter
+  lists are CelikPanel's (`milter_default_action = accept`), and where either
+  is the owner's his `milter_default_action` or Postfix's default
+  `tempfail` applies (a sending server retries; a person on 587 sends again). A close interrupted anywhere leaves the database untouched or closed with
   its grants, and the panel's record of it until the engine shows which; an undo whose database changed since is refused
   and changes nothing. Everything is native configuration and rights that
   work without the panel; the owner undoes them with the plain settings or

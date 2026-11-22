@@ -56,3 +56,39 @@ test('an address that is not the mailbox’s own is refused with its name, and r
     assert.match(dialog, /removed_addresses/);
     assert.match(dialog, /t\('mail\.autoreply\.removed', \{ addresses:/);
 });
+
+// Second review of alpha.143 (22 Nov 2026): a main.cf filter list the panel
+// cannot read has two states of its own (B4); an out-of-office reply that
+// still answers from a foreign address is one Problems now line per mailbox,
+// worded per step (B3), and its window says it was turned off or is pending.
+// The words live in the mail screen's part (Problems now's part is full).
+test('the variable filter list and a reply still answering from a foreign address have their own words', () => {
+    const keys = [
+        'pnow.mail_signing.port25_variable', 'pnow.mail_signing.port25_variable_own', 'pnow.mail_signing.port25_variable_own_title',
+        'pnow.mail_autoresponder_foreign.title', 'pnow.mail_autoresponder_foreign.agent_unreachable', 'pnow.mail_autoresponder_foreign.agent_build',
+        'pnow.mail_autoresponder_foreign.agent_failed', 'pnow.mail_autoresponder_foreign.action',
+        'mail.autoreply.removedOff', 'mail.autoreply.foreignPending',
+    ];
+    for (const key of keys) {
+        const en = enMailDatabasesScreens[key];
+        const tr = trMailDatabasesScreens[key];
+        assert.ok(en && tr, `${key} has no words`);
+        assert.notEqual(en, tr, `${key} is not translated`);
+        assert.deepEqual(placeholders(tr), placeholders(en), `${key}: different values`);
+    }
+    // Never the hand-changed entry's words, and the own-value state says it is still in force.
+    assert.doesNotMatch(enMailDatabasesScreens['pnow.mail_signing.port25_variable_own'], /changed by hand/);
+    assert.match(enMailDatabasesScreens['pnow.mail_signing.port25_variable_own'], /still in force/);
+    const source = read('../src/components/ProblemsNow.tsx');
+    assert.match(source, /'mail_autoresponder_foreign'/);
+    assert.match(source, /t\(problemTitleKey\(problem\), vars\)/);
+    const body = /export function problemBodyKey[\s\S]*?\n}\n/.exec(source)?.[0] ?? '';
+    // eslint-disable-next-line no-new-func
+    const problemBodyKey = new Function('MAIL_SIGNING_STATES', `return ${body.replace(/^export function problemBodyKey\(problem[^)]*\): TranslationKey/, 'function (problem)').replace(/ as TranslationKey/g, '')}`)([...states, 'port25_variable', 'port25_variable_own']);
+    assert.equal(problemBodyKey({ kind: 'mail_signing', name: 'port25_variable_own' }), 'pnow.mail_signing.port25_variable_own');
+    assert.equal(problemBodyKey({ kind: 'mail_autoresponder_foreign', subject: 'agent_build' }), 'pnow.mail_autoresponder_foreign.agent_build');
+    assert.equal(problemBodyKey({ kind: 'mail_autoresponder_foreign', subject: 'from_a_newer_panel' }), 'pnow.mail_autoresponder_foreign.agent_failed');
+    const dialog = read('../src/components/MailAutoresponderDialog.tsx');
+    assert.match(dialog, /t\('mail\.autoreply\.removedOff'\)/);
+    assert.match(dialog, /t\('mail\.autoreply\.foreignPending', \{ addresses:/);
+});

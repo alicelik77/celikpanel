@@ -23,6 +23,10 @@ screen.**
    changed by hand is kept and named in **Problems now**. An out-of-office
    reply that answered from an address not its own is set again without
    that address, and its window says so once. There is nothing to press.
+   If the server cannot set it again (for example the mail server is
+   stopped), the reply is turned off and its window says to save it again;
+   if even that cannot be done, **Problems now** names the mailbox and the
+   step, and the panel tries again every hour.
 4. A few minutes after the start, once the update is verified and the
    server is quiet, the panel starts watching the PostgreSQL databases made
    before alpha.141 that it may close by itself, and closes each one after a
@@ -66,7 +70,11 @@ screen.**
   account. Another address is refused when the reply is saved. A reply
   saved earlier that named another address is set again without it at the
   first start after the update. Its window says once which addresses were
-  removed, and the audit log has a row.
+  removed, and the audit log has a row. The same check runs right after
+  every change of who holds a name or where an address goes: a
+  subscription moved to another owner, a domain deleted or added, a
+  forwarder or catch-all added, changed or removed, a mailbox added; and
+  every hour.
 - **Mail made on the server itself** is signed for its "From" domain as
   before: the panel's notices (the owner's main domain), the system's own
   scheduled jobs (root's) and out-of-office replies. Only the system's root
@@ -80,14 +88,31 @@ screen.**
 - **For the owner:**
   - The change consists of ordinary mail server settings that work with
     the panel stopped or removed.
-  - Before CelikPanel uses a new signing setting, the mail signer checks
-    it. If the mail server does not run with it, the earlier settings are
-    put back exactly.
+  - Before CelikPanel uses a new signing file, at the panel's start and
+    when it sets up a domain's signing, the mail signer checks it. If the
+    mail signer does not start with it, the earlier file is put back exactly
+    and the signer restarted with it.
   - A restart of the mail signer that an interruption left undone is made
     at the next start.
   - A filter the owner adds to the mail server's list also stays on port
-    25. CelikPanel's own port-25 setting is removed when the mail signer is
-    removed.
+    25. There is no separate step to remove the mail signer: CelikPanel's
+    own port-25 setting goes at the next panel start, or the next mail
+    filter step (a component installed or removed), after the mail signer
+    is no longer set up or no longer in the list.
+  - Where the list names its filters through a `$variable` or a `{ }`
+    group, CelikPanel cannot read it entry by entry. Its own earlier
+    port-25 setting, where it wrote one, stays in force: it leaves the mail
+    signer out, but also every filter added to the list since. Where it
+    wrote none, port 25 follows the list and arriving mail may still be
+    signed. **Problems now** says which of the two, with the step: write the
+    filters into the list by name and restart the panel.
+  - CelikPanel recognises its own port-25 setting from a record file. If
+    that file is lost, it still recognises a setting equal to the list
+    without the mail signer, or one made only of its own filters; a setting
+    written for an earlier list is then kept as if it were the owner's.
+  - The mail signer is recognised in the owner's list however Postfix lets
+    its address be written (for example `inet:[127.0.0.1]:8891`,
+    `inet:localhost:8891` or `inet::8891`).
   - A signing file or port-25 filter setting the owner changed by hand
     stays as it is (CelikPanel's text is beside it as
     `opendkim.conf.celikpanel-pending`). **Problems now** names the file or
@@ -96,10 +121,13 @@ screen.**
     accounts may hand mail over without a login is not the panel's
     (`authorized_submit_users = root, vmail`), because sites' programs
     could then send mail signed for any domain here.
-  - While the mail signer restarts, mail passes unsigned. Where the owner
-    keeps his own filter list and his own `milter_default_action`, that
-    setting applies instead: Postfix's default gives senders a temporary
-    error, and they send again.
+  - While the mail signer restarts (a few seconds), mail passes unsigned
+    where both filter lists are CelikPanel's: it sets
+    `milter_default_action = accept` then. Where either list is the
+    owner's, it does not set it, so the owner's `milter_default_action`
+    applies, or, if he set none, Postfix's default (`tempfail`): a sending
+    mail server tries again later by itself, while a mail program on port
+    587 shows its user an error and the person sends again.
 
 ### PostgreSQL databases made before alpha.141
 
@@ -176,6 +204,17 @@ screen.**
   refused.
 - Replies are corrected from the panel's records. A CelikPanel reply script
   on a server whose panel record is missing is not rewritten.
+- An out-of-office reply is set again right after the change that took an
+  address from its mailbox (a subscription moved, a domain deleted, a
+  forwarder removed): for the few seconds between that change and the
+  reply being set again, the earlier reply can still answer. When the
+  server cannot set it again or turn it off (the Agent does not answer or
+  is another version), it keeps answering until the next hourly try that
+  succeeds; **Problems now** names the mailbox and the step meanwhile.
+- Where the mail server's filter list names its filters through a
+  `$variable` or a `{ }` group, a filter added to it later does not see
+  mail arriving on port 25 while CelikPanel's earlier port-25 setting
+  stays in force (see "For the owner" above).
 - **Moving a database to another PostgreSQL server version** (an
   administrator action: only the administrator can start one) still runs
   the customers' database code in it with the administrator's rights during
@@ -217,7 +256,8 @@ screen.**
   longer signed.
 - An out-of-office reply that named an address not its own loses that
   address at the first start, and its window says once which address was
-  removed.
+  removed; where it could not be set again, it is turned off and its window
+  says to save it again.
 - A PostgreSQL database made before alpha.141 that nobody else is seen
   using is closed to other accounts by itself at the first hourly check at
   least 24 hours after its watch began, once at least 24 hourly checks have
@@ -267,7 +307,20 @@ this release's:
   `TestMailSigningChainIsWrittenBeforeOpenDKIMRestarts`; in the matrix, with
   the release's real Postfix tools, an owner's later port-25 filter, exact
   rollback and an owner's `authorized_submit_users`; the words of each
-  signing state in `web/tests/mail-signing-a143-fix.test.mjs`.
+  signing state in `web/tests/mail-signing-a143-fix.test.mjs`. The second
+  review's mail cases: `TestMailAutoresponderTransferRewritesTheReplyInTheSameRequest`,
+  `TestMailAutoresponderForwarderRemovalRewritesTheReplyInTheSameRequest`,
+  `TestMailAutoresponderRewriteThatCannotBeMadeIsNotSilent`,
+  `TestMailAutoresponderReconcileDoesNotOverwriteASaveMadeMeanwhile`,
+  `TestMailSigningVariableListStatesAndForeignReplyAreWorded`,
+  `TestMailSigningVariableListKeepsCelikPanelsValueAndSaysSo`,
+  `TestMailSigningPort25ValueIsRecognisedWithoutTheRecord`,
+  `TestMailSigningOpenDKIMEndpointSpellings` and
+  `TestMailSigningConfigureDKIMSigningChecksAndPutsBack`; the matrix case
+  `postfix.mail-signing-variable-list` (added, not run yet). Also new and
+  additive: the Problems now kind `mail_autoresponder_foreign`, the signing
+  states `port25_variable` and `port25_variable_own`, and panel setting rows
+  `mail_autoresponder_foreign_v1:<account id>`.
 - PostgreSQL, on a private PostgreSQL 17.12 server:
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the
   independent review's cases

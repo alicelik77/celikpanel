@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,6 +75,15 @@ const (
 	// mailSigningUnknown: the signing step did not run or its result is not
 	// known; never shown as "in place" (21 Nov 2026).
 	mailSigningUnknown = "unknown"
+	// 22 Nov 2026 (second review of alpha.143, B4): main.cf's smtpd_milters
+	// cannot be read entry by entry ($variables, { } groups).
+	// mailSigningPort25Variable: port 25 has no setting of its own and follows
+	// that list, so arriving mail may still be signed.
+	mailSigningPort25Variable = "port25_variable"
+	// mailSigningPort25VariableOwn: CelikPanel's own earlier port-25 setting is
+	// still in force: nothing arriving is signed, but filters added to
+	// main.cf since do not see mail on port 25.
+	mailSigningPort25VariableOwn = "port25_variable_own"
 )
 
 // opendkimPendingSuffix names CelikPanel's text held beside an owner's file.
@@ -382,6 +392,57 @@ func checkOpenDKIMCandidate(run postconfRunner, path string, next []byte) string
 	return ""
 }
 
+// installCheckedOpenDKIMConf puts a new CelikPanel text in place the way the
+// start does (22 Nov 2026, second review of alpha.143, B9; used by
+// ConfigureDKIMSigning): written beside the file and checked with
+// `opendkim -n` first (a refusal changes nothing), the owed restart recorded,
+// then renamed over the file. The caller restarts OpenDKIM with
+// restartOpenDKIMOrPutBack.
+func installCheckedOpenDKIMConf(run postconfRunner, path string, next []byte) error {
+	if refusal := checkOpenDKIMCandidate(run, path, next); refusal != "" {
+		return errors.New(refusal)
+	}
+	if err := markOpenDKIMRestartOwed(path); err != nil {
+		_ = opendkimConfRemove(path + opendkimCandidateSuffix)
+		return fmt.Errorf("CelikPanel could not record the OpenDKIM restart it owes (%v), so %s was not changed and stays in use", err, path)
+	}
+	if err := opendkimConfRename(path+opendkimCandidateSuffix, path); err != nil {
+		_ = opendkimConfRemove(path + opendkimCandidateSuffix)
+		clearOpenDKIMRestartOwed()
+		return fmt.Errorf("CelikPanel's new %s could not be put in place (%v); the earlier one stays in use", path, err)
+	}
+	return nil
+}
+
+// restartOpenDKIMOrPutBack restarts OpenDKIM and verifies it runs. When it
+// does not and the text was just changed, the earlier text is put back
+// exactly (or, where there was no file, the new one removed) and OpenDKIM
+// restarted with it. nil: OpenDKIM runs with the file in place.
+func restartOpenDKIMOrPutBack(run postconfRunner, path string, earlier []byte, existed, changed bool) error {
+	if openDKIMRestarted(run) {
+		clearOpenDKIMRestartOwed()
+		return nil
+	}
+	state := strings.TrimSpace(string(firstOutput(run("systemctl", "is-active", "opendkim"))))
+	if !changed {
+		return fmt.Errorf("OpenDKIM is %q after its restart, so mail is delivered unsigned until it runs; the next panel start restarts it again", state)
+	}
+	if !existed {
+		if err := opendkimConfRemove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("OpenDKIM did not start with CelikPanel's new %s, and removing it again failed (%v): mail is delivered unsigned until OpenDKIM runs; the next panel start tries again", path, err)
+		}
+		clearOpenDKIMRestartOwed()
+		return fmt.Errorf("OpenDKIM did not start with CelikPanel's new %s, so the file was removed again (there was none before) and nothing else changed; mail is delivered unsigned as before", path)
+	}
+	restoreErr := opendkimConfWrite(path, earlier, 0o644)
+	if restoreErr == nil && openDKIMRestarted(run) {
+		clearOpenDKIMRestartOwed()
+		return fmt.Errorf("OpenDKIM did not start with CelikPanel's new %s, so the earlier file was put back and OpenDKIM runs with it; mail is signed as before", path)
+	}
+	// The record stays: the next start tries again.
+	return fmt.Errorf("OpenDKIM did not start with CelikPanel's new %s, and starting it again with the earlier file did not succeed either (%v): mail is delivered unsigned until OpenDKIM runs, and the next panel start tries again", path, restoreErr)
+}
+
 // openDKIMRestarted restarts OpenDKIM and says whether it is active after.
 func openDKIMRestarted(run postconfRunner) bool {
 	if _, err := run("systemctl", "restart", "opendkim"); err != nil {
@@ -521,9 +582,64 @@ func milterEntries(value string) []string {
 	})
 }
 
-// isOpenDKIMMilter reports one of the names CelikPanel gives OpenDKIM.
+// isOpenDKIMMilter reports an entry that names the endpoint OpenDKIM listens
+// on for CelikPanel (opendkimSocket, inet:8891@127.0.0.1; before alpha.114
+// inet:8891@localhost), in every spelling Postfix accepts for it (22 Nov 2026,
+// second review of alpha.143, B9). Postfix splits a milter name at its first
+// ":" and takes the transport by exact, case-sensitive comparison
+// (src/milter/milter8.c, milter8_connect: strcmp(transport, "inet")); the
+// rest goes to inet_connect (src/util/inet_connect.c), which parses it with
+// host_port(buf, &host, "localhost", &port, NULL) (src/util/host_port.c):
+// "[host]:port" (host may be "IPv6:addr", the prefix in any case), or
+// "host:port" split at the LAST colon, an empty host meaning localhost, or a
+// bare "port" meaning localhost:port; host names and addresses are resolved
+// (getaddrinfo), so the host name is not case-sensitive, and a numeric port
+// with leading zeros is the same port. So these all name OpenDKIM:
+// inet:127.0.0.1:8891, inet:[127.0.0.1]:8891, inet:localhost:8891,
+// inet:[localhost]:8891, inet::8891, inet:8891, inet:[IPv6:::ffff:127.0.0.1]:8891,
+// inet:::ffff:127.0.0.1:8891 (any case of the name, any leading zeros of the
+// port). Not accepted: another address (::1 is another endpoint than
+// 127.0.0.1), a symbolic service name (no standard name exists for 8891), a
+// "unix:" or "local:" socket.
 func isOpenDKIMMilter(entry string) bool {
-	return entry == opendkimMilter || entry == legacyOpenDKIMMilter
+	if entry == opendkimMilter || entry == legacyOpenDKIMMilter {
+		return true
+	}
+	rest, ok := strings.CutPrefix(entry, "inet:")
+	if !ok || rest == "" {
+		return false
+	}
+	var host, port string
+	switch {
+	case strings.HasPrefix(rest, "["):
+		end := strings.IndexByte(rest, ']')
+		if end < 0 || !strings.HasPrefix(rest[end+1:], ":") {
+			return false
+		}
+		host, port = rest[1:end], rest[end+2:]
+		if len(host) > 5 && strings.EqualFold(host[:5], "ipv6:") {
+			host = host[5:]
+		}
+	case strings.Contains(rest, ":"):
+		at := strings.LastIndexByte(rest, ':')
+		host, port = rest[:at], rest[at+1:]
+		if host == "" {
+			host = "localhost"
+		}
+	default:
+		host, port = "localhost", rest
+	}
+	if port == "" || strings.Trim(port, "0123456789") != "" {
+		return false
+	}
+	if number := strings.TrimLeft(port, "0"); number != "8891" {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.To4() != nil && ip.To4().Equal(net.IPv4(127, 0, 0, 1).To4())
 }
 
 // milterListWithoutOpenDKIM is main.cf's list with only OpenDKIM left out, in
@@ -554,9 +670,17 @@ type port25Plan struct {
 	// OpenDKIM (or cannot be read), kept as they are and reported.
 	owner []string
 	// variable: main.cf's list cannot be read entry by entry, so port 25 was
-	// not changed.
+	// not changed, and an entry without a setting of its own follows that
+	// list (OpenDKIM may be in it).
 	variable bool
-	record   map[string]string
+	// variableOwn (22 Nov 2026, second review of alpha.143, B4): main.cf's
+	// list cannot be read entry by entry and CelikPanel's own earlier value
+	// is still in force on these entries ("entry smtpd_milters = value"). It
+	// leaves OpenDKIM out, and also every filter added to main.cf since. It
+	// is kept, not removed: removed, port 25 would follow main.cf's list,
+	// which may name OpenDKIM.
+	variableOwn []string
+	record      map[string]string
 }
 
 // planPort25Milters decides each port-25 entry's own milter list from
@@ -578,7 +702,14 @@ func planPort25Milters(run postconfRunner, mainList string, hasDKIM bool, spam s
 			return port25Plan{}, err
 		}
 		recorded, hasRecord := record[entry]
-		ours := set && ((hasRecord && value == recorded) || milterListPanelComposed(value, spam))
+		// CelikPanel's own value: the one it recorded, a list only of entries
+		// a CelikPanel release writes, or (22 Nov 2026, B4: the record file
+		// lost) exactly the value it writes from main.cf's list as it is now
+		// (taking that value for CelikPanel's changes nothing on port 25:
+		// it is rewritten to the same text, or removed where it equals
+		// main.cf's whole list).
+		ours := set && ((hasRecord && value == recorded) || milterListPanelComposed(value, spam) ||
+			(readable && value == want))
 		if set && !ours {
 			// The owner's own setting: kept as he wrote it.
 			delete(plan.record, entry)
@@ -588,9 +719,16 @@ func planPort25Milters(run postconfRunner, mainList string, hasDKIM bool, spam s
 			continue
 		}
 		if hasDKIM && !readable {
-			// main.cf's list hides its entries behind a variable: port 25 is
-			// not changed and the state says so.
-			plan.variable = true
+			// main.cf's list hides its entries behind a variable or a { }
+			// group: port 25 is not changed and the state says which way.
+			// CelikPanel's own earlier value stays in force (B4): removing it
+			// could put OpenDKIM back on port 25; the owner is told it hides
+			// his later filters.
+			if set {
+				plan.variableOwn = append(plan.variableOwn, fmt.Sprintf("%s smtpd_milters = %s", entry, value))
+			} else {
+				plan.variable = true
+			}
 			continue
 		}
 		switch {
@@ -650,8 +788,15 @@ func port25KeptNote(plan port25Plan) string {
 			"can still leave signed for a hosted domain. The server owner removes OpenDKIM from that setting, or removes the setting so CelikPanel writes it, and restarts the panel")
 	}
 	if plan.variable {
-		notes = append(notes, "main.cf's smtpd_milters names its filters through a variable, so CelikPanel could not leave OpenDKIM out for port 25 and did not change it; "+
-			"mail that arrives on port 25 may still be signed. The server owner writes the filters into smtpd_milters by name and restarts the panel")
+		notes = append(notes, "main.cf's smtpd_milters names its filters through a variable or a { } group, so CelikPanel cannot read it entry by entry and could not leave OpenDKIM out for port 25. "+
+			"The smtpd that receives mail on port 25 has no milter setting of its own, so it follows that list, and mail that arrives on port 25 may still be signed. "+
+			"The server owner writes the filters into smtpd_milters by name and restarts the panel")
+	}
+	if len(plan.variableOwn) > 0 {
+		notes = append(notes, "main.cf's smtpd_milters names its filters through a variable or a { } group, so CelikPanel cannot read it entry by entry. "+
+			"CelikPanel's own earlier milter setting for port 25 is still in force ("+strings.Join(plan.variableOwn, "; ")+"): it leaves OpenDKIM out, so mail that arrives on port 25 is not signed, "+
+			"but it also leaves out every filter added to main.cf since it was written. CelikPanel did not remove it, because port 25 would then follow main.cf's list, which may name OpenDKIM. "+
+			"The server owner writes the filters into smtpd_milters by name and restarts the panel; the setting then follows main.cf again")
 	}
 	return joinNotes(notes...)
 }
@@ -718,18 +863,24 @@ func decideMailSigning(in mailSigningInputs) *transport.MailSigningState {
 		return &transport.MailSigningState{State: in.confState, Detail: in.confNote}
 	case in.confState == mailSigningConfKept:
 		return &transport.MailSigningState{State: mailSigningConfKept, Detail: in.confNote, Subject: in.confPath}
-	case len(in.port25.owner) > 0 || in.port25.variable:
-		subject := ""
-		if len(in.port25.owner) > 0 {
-			subject = strings.SplitN(in.port25.owner[0], " ", 2)[0]
-		}
+	case len(in.port25.owner) > 0:
+		subject := strings.SplitN(in.port25.owner[0], " ", 2)[0]
 		return &transport.MailSigningState{State: mailSigningPort25Kept, Detail: port25KeptNote(in.port25), Subject: subject}
+	case in.port25.variable:
+		// 22 Nov 2026 (B4): its own state and step, never the words of a
+		// hand-changed port-25 entry.
+		return &transport.MailSigningState{State: mailSigningPort25Variable, Detail: port25KeptNote(in.port25), Subject: "smtpd_milters"}
 	case in.submitErr != nil:
 		return &transport.MailSigningState{State: mailSigningUnknown, Detail: "who may hand mail over on this server could not be read: " + in.submitErr.Error()}
 	case in.submitOpen:
 		return &transport.MailSigningState{State: mailSigningSubmitOpen, Detail: in.submitNote}
 	case in.confState == mailSigningUnsupported:
 		return &transport.MailSigningState{State: mailSigningUnsupported, Detail: in.confNote}
+	case len(in.port25.variableOwn) > 0:
+		// Last before "bound": nothing is signed for another domain here, but
+		// the owner's later filters do not reach port 25 (B4).
+		subject := strings.SplitN(in.port25.variableOwn[0], " ", 2)[0]
+		return &transport.MailSigningState{State: mailSigningPort25VariableOwn, Detail: port25KeptNote(in.port25), Subject: subject}
 	}
 	return &transport.MailSigningState{State: mailSigningBound, Detail: in.confNote}
 }

@@ -60,6 +60,10 @@ func (p *Panel) recordMailSigningCall(ctx context.Context, state *transport.Mail
 var mailSigningProblemStates = map[string]bool{
 	"conf_kept": true, "port25_kept": true, "failed": true, "unsupported": true,
 	"submit_open": true, mailSigningUnknownState: true,
+	// 22 Nov 2026 (second review of alpha.143, B4): a main.cf list read
+	// through a variable or a { } group; port 25 follows it, or CelikPanel's
+	// own earlier value is still in force.
+	"port25_variable": true, "port25_variable_own": true,
 }
 
 // mailSigningProblems turns the recorded state into Problems now. Name is the

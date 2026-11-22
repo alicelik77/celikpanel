@@ -188,6 +188,18 @@ export const enMailDatabasesScreens = {
     'mail.autoreply.intervalInvalid': 'The number of days between replies must be a whole number from 1 to 30.',
     'mail.autoreply.help': 'The mail server sends the reply itself, also when the panel is stopped. Days follow the server’s date. Mailing lists and automatic messages get no reply.',
     'mail.autoreply.removed': 'CelikPanel removed {addresses} from this reply: not this mailbox’s own addresses, so a reply from them would have been signed for a domain this account does not hold. This note goes when you save the reply.',
+    // 22 Nov 2026 (second review of alpha.143, B3, B4). The pnow.* keys are
+    // Problems now's, kept here because its own part is full.
+    'mail.autoreply.removedOff': 'The reply could not be changed on the server, so it was turned off. Save it to turn it back on.',
+    'mail.autoreply.foreignPending': 'No longer this mailbox’s own: {addresses}. Not yet taken out of the reply on the server; tried again every hour, and the administrator was told. Remove them and save, or turn the reply off.',
+    'pnow.mail_autoresponder_foreign.title': '{other}: the out-of-office reply still answers from a foreign address',
+    'pnow.mail_autoresponder_foreign.agent_unreachable': 'The Agent did not answer; the address could not be taken out of the reply, nor the reply turned off. Check the Agent (systemctl status celikpanel-agent) or turn the reply off on the mailbox’s page. Tried again every hour.',
+    'pnow.mail_autoresponder_foreign.agent_build': 'The Agent is another version than the panel (an unfinished update) and refused the change. Finish the update on the update page, or turn the reply off on the mailbox’s page. Tried again every hour.',
+    'pnow.mail_autoresponder_foreign.agent_failed': 'The Agent could neither take the address out of the reply nor turn the reply off. Turn the reply off or save it again on the mailbox’s page. Tried again every hour.',
+    'pnow.mail_autoresponder_foreign.action': 'Open the mailboxes',
+    'pnow.mail_signing.port25_variable': 'main.cf’s smtpd_milters is written with a variable or a { } group; the panel cannot leave OpenDKIM out for port 25, so arriving mail may be signed. The server owner writes the filters into smtpd_milters by name and restarts the panel.',
+    'pnow.mail_signing.port25_variable_own_title': 'Port 25 skips the filters added to main.cf since',
+    'pnow.mail_signing.port25_variable_own': 'main.cf’s smtpd_milters is written with a variable or a { } group. The panel’s earlier port 25 setting ({domain}) is still in force: it leaves OpenDKIM out, so arriving mail is not signed, but filters added since do not see it either. Removed, port 25 would follow the main.cf list, which may name OpenDKIM. The server owner writes the filters into smtpd_milters by name and restarts the panel.',
     'mail.autoreply.savedOn': 'The out-of-office reply is on.',
     'mail.autoreply.savedOff': 'The out-of-office reply is off.',
     'mail.autoreply.saveFailed': 'The reply could not be saved.',

@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -249,36 +248,45 @@ func (a *Agent) ConfigureDKIMSigning(req *ServiceMutationRequest, resp *Configur
 			confNote = unsupportedNote()
 		}
 	}
-	// A configuration that changes is a restart owed until OpenDKIM is
-	// verified running with it (review finding 4): recorded before the file
-	// is put in place, so an interruption is finished at the next start.
-	if conf != nil && !bytes.Equal(conf, current) {
-		if err := markOpenDKIMRestartOwed(layout.confPath); err != nil {
-			resp.Error = fmt.Sprintf("CelikPanel could not record the OpenDKIM restart it owes (%v); %s was not changed", err, layout.confPath)
-			return nil
-		}
-	}
-	if err := writeDKIMTables(ctx, domains, layout.confPath, conf); err != nil {
+	// 22 Nov 2026 (second review of alpha.143, B9): the same order as the
+	// start's reconcileOpenDKIMConf, so that "checked before it is used, and
+	// put back when OpenDKIM does not run with it" holds here too. The tables
+	// are written first (the check reads the key and signing tables the new
+	// text names); the new opendkim.conf is written beside the file and
+	// checked with `opendkim -n` (a refusal changes nothing); the owed
+	// restart is recorded (review finding 4); only then is the text renamed
+	// over the file; a restart OpenDKIM does not come up from puts the
+	// earlier text back and restarts OpenDKIM with it.
+	changed := conf != nil && (!exists || !bytes.Equal(conf, current))
+	if err := writeDKIMTables(ctx, domains, layout.confPath, nil); err != nil {
 		resp.Error = err.Error()
 		return nil
+	}
+	if changed {
+		if err := installCheckedOpenDKIMConf(run, layout.confPath, conf); err != nil {
+			resp.Error = err.Error()
+			resp.Signing = &transport.MailSigningState{State: mailSigningFailed, Detail: err.Error()}
+			return nil
+		}
 	}
 
 	if out, err := serviceMutationCommand(ctx, "systemctl", "enable", "opendkim").CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("opendkim enable: %s", firstLine(string(out)))
+		if changed {
+			// Not restarted with the new text: the start finishes the owed restart.
+			resp.Signing = &transport.MailSigningState{State: mailSigningFailed,
+				Detail: "OpenDKIM could not be enabled; " + layout.confPath + " is CelikPanel's new text and the next panel start restarts OpenDKIM with it"}
+		}
 		return nil
 	}
 	// The restart window (review finding 7): said when the server owner's
 	// milter_default_action is not accept.
 	windowNote := milterDefaultActionNote(run)
-	if out, err := serviceMutationCommand(ctx, "systemctl", "restart", "opendkim").CombinedOutput(); err != nil {
-		resp.Error = fmt.Sprintf("opendkim restart: %s", firstLine(string(out)))
+	if err := restartOpenDKIMOrPutBack(run, layout.confPath, current, exists, changed); err != nil {
+		resp.Error = err.Error()
+		resp.Signing = &transport.MailSigningState{State: mailSigningFailed, Detail: err.Error()}
 		return nil
 	}
-	if state := strings.TrimSpace(string(firstOutput(run("systemctl", "is-active", "opendkim")))); state != "active" {
-		resp.Error = fmt.Sprintf("OpenDKIM is %q after its restart, so mail is delivered unsigned until it runs; the next panel start restarts it again", state)
-		return nil
-	}
-	clearOpenDKIMRestartOwed()
 
 	// Wire the milters through the ONE composer: writing smtpd_milters here
 	// directly used to erase any spam filter already wired (last writer wins,

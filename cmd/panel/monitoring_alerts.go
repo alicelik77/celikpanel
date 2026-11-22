@@ -561,8 +561,18 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("%s PostgreSQL databases made before alpha.141 are still open to this server's other accounts (%s): every account may connect to them, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
 			fmt.Sprintf("alpha.141'den önce açılan %s PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap bunlara bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
 	case "mail_signing":
+		if item.name == "port25_variable_own" {
+			// 22 Nov 2026 (B4): nothing is signed here; the owner's filters
+			// do not reach port 25.
+			return "Mail that arrives on port 25 passes CelikPanel's earlier filter list, not the filters added to main.cf since. Monitoring says what the server owner does.",
+				"25. kapıya gelen posta, main.cf'e sonradan eklenen filtrelerden değil, CelikPanel'in önceki filtre listesinden geçiyor. İzleme sunucu sahibinin ne yapacağını söyler."
+		}
 		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
 			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
+	case "mail_autoresponder_foreign":
+		// 22 Nov 2026 (B3): item.name is the mailbox.
+		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),
+			fmt.Sprintf("%s kutusunun otomatik yanıtı hâlâ artık bu kutunun olmayan bir adresten yanıt veriyor ve CelikPanel bunu sunucuda değiştiremedi. İzleme'yi açın: yapılacak adımı söyler; CelikPanel her saat yeniden dener.", item.name)
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

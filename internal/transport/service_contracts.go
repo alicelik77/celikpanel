@@ -521,9 +521,13 @@ type WireMailFiltersResponse struct {
 // cannot choose the key by the login), and since 21 Nov 2026 submit_open
 // (authorized_submit_users lets other accounts than root and vmail use the
 // sendmail command) and unknown (the signing step did not run or its result
-// is not known). Detail is the Agent's English sentence for the log and the
-// administrator. Subject (additive) names the file or master.cf entry the
-// administrator's step is about (conf_kept, port25_kept).
+// is not known), and since 22 Nov 2026 port25_variable (main.cf's
+// smtpd_milters cannot be read entry by entry and port 25 follows it) and
+// port25_variable_own (the same list, with CelikPanel's own earlier port-25
+// value still in force). Detail is the Agent's English sentence for the log
+// and the administrator. Subject (additive) names the file or master.cf entry
+// the administrator's step is about (conf_kept, port25_kept,
+// port25_variable_own).
 type MailSigningState struct {
 	State   string `json:"state"`
 	Detail  string `json:"detail,omitempty"`

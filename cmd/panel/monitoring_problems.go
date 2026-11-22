@@ -117,6 +117,9 @@ var problemKindOrder = map[string]int{
 	// S1b: PostgreSQL databases left open to other accounts.
 	"postgresql_databases_open": 15,
 	"mail_signing":              16,
+	// 22 Nov 2026: an out-of-office reply that still answers from an address
+	// that is no longer the mailbox's own.
+	"mail_autoresponder_foreign": 17,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -181,6 +184,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// 20 Nov 2026: mail signed only for the sender's own domain, as the
 	// Agent said at the Panel's last start (mail_signing_problem.go).
 	add(mailSigningProblems(p.setting(ctx, settingMailSigningState)), nil)
+	// 22 Nov 2026: an out-of-office reply whose address that is no longer the
+	// mailbox's own could not be taken off the server (mail_autoresponder_own.go).
+	add(autoresponderForeignProblems(ctx, db), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

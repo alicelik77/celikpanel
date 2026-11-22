@@ -213,6 +213,120 @@ func renderMatrixPostfixMailSigning(t *testing.T, h *matrixHost) {
 		}
 		h.write(t, c)
 	})
+
+	// 4. 22 Nov 2026 (second review of alpha.143, B4, B9): the owner's main.cf
+	// list names its filters through a variable. With CelikPanel's earlier
+	// port-25 value in place it is kept and reported as still in force
+	// (port25_variable_own); without one, port 25 is left alone and reported
+	// as following the list (port25_variable). And an owner's readable list
+	// that spells OpenDKIM's endpoint another way Postfix accepts
+	// (inet:[127.0.0.1]:8891) still has OpenDKIM left out of port 25.
+	t.Run("variable-list", func(t *testing.T) {
+		const id = "postfix.mail-signing-variable-list"
+		fail := func(err error) {
+			h.renderFailure(t, id, "postfix", "main.cf milter list through a variable", source, err)
+		}
+		record = map[string]string{}
+		dir, run, err := matrixScratchPostfix(t)
+		if err != nil {
+			fail(err)
+			return
+		}
+		if _, _, _, err := composeAndWriteMilterChain(run, true, rspamdMilter); err != nil {
+			fail(err)
+			return
+		}
+		entries := port25SMTPDEntries(run)
+		if len(entries) == 0 {
+			fail(fmt.Errorf("no smtpd receives mail on port 25 in the stock master.cf"))
+			return
+		}
+		for _, args := range [][]string{
+			{"-e", "owner_milters=" + opendkimMilter + ", " + rspamdMilter + ", " + owner},
+			{"-e", "smtpd_milters=$owner_milters"},
+		} {
+			if out, err := run("postconf", args...); err != nil {
+				fail(fmt.Errorf("the owner's edit %v: %s", args, out))
+				return
+			}
+		}
+		_, _, plan, err := composeAndWriteMilterChain(run, true, rspamdMilter)
+		if err != nil {
+			fail(err)
+			return
+		}
+		for _, entry := range entries {
+			if got, set, err := masterServiceParam(run, entry, "smtpd_milters"); err != nil || !set || got != rspamdMilter {
+				fail(fmt.Errorf("%s smtpd_milters = %q (set %v, %v): CelikPanel's earlier value must stay in force", entry, got, set, err))
+				return
+			}
+		}
+		if state := decideMailSigning(mailSigningInputs{confState: mailSigningBound, port25: plan}); state.State != mailSigningPort25VariableOwn ||
+			!strings.Contains(state.Detail, "still in force") {
+			fail(fmt.Errorf("variable list with CelikPanel's value: state %+v", state))
+			return
+		}
+		c, err := matrixPostfixFilesCase(t, dir, "mail-signing-variable-list", "main.cf's milter list through a variable; CelikPanel's earlier port-25 value kept", source)
+		if err != nil {
+			fail(err)
+			return
+		}
+
+		// Without a value of CelikPanel's: port 25 is not touched.
+		record = map[string]string{}
+		_, fresh, err := matrixScratchPostfix(t)
+		if err != nil {
+			fail(err)
+			return
+		}
+		for _, args := range [][]string{
+			{"-e", "owner_milters=" + opendkimMilter + ", " + owner},
+			{"-e", "smtpd_milters=$owner_milters"},
+		} {
+			if out, err := fresh("postconf", args...); err != nil {
+				fail(fmt.Errorf("the owner's edit %v: %s", args, out))
+				return
+			}
+		}
+		_, _, plan, err = composeAndWriteMilterChain(fresh, true, rspamdMilter)
+		if err != nil {
+			fail(err)
+			return
+		}
+		for _, entry := range port25SMTPDEntries(fresh) {
+			if got, set, err := masterServiceParam(fresh, entry, "smtpd_milters"); err != nil || set {
+				fail(fmt.Errorf("%s smtpd_milters = %q was written for a list CelikPanel cannot read (%v)", entry, got, err))
+				return
+			}
+		}
+		if state := decideMailSigning(mailSigningInputs{confState: mailSigningBound, port25: plan}); state.State != mailSigningPort25Variable {
+			fail(fmt.Errorf("variable list without CelikPanel's value: state %+v", state))
+			return
+		}
+
+		// Another spelling of OpenDKIM's endpoint in a readable owner's list.
+		record = map[string]string{}
+		_, spelled, err := matrixScratchPostfix(t)
+		if err != nil {
+			fail(err)
+			return
+		}
+		if out, err := spelled("postconf", "-e", "smtpd_milters=inet:[127.0.0.1]:8891, "+owner); err != nil {
+			fail(fmt.Errorf("the owner's edit: %s", out))
+			return
+		}
+		if _, _, _, err := composeAndWriteMilterChain(spelled, true, rspamdMilter); err != nil {
+			fail(err)
+			return
+		}
+		for _, entry := range port25SMTPDEntries(spelled) {
+			if got, set, err := masterServiceParam(spelled, entry, "smtpd_milters"); err != nil || !set || got != owner {
+				fail(fmt.Errorf("%s smtpd_milters = %q (set %v, %v), want %q: OpenDKIM spelled inet:[127.0.0.1]:8891 must be left out", entry, got, set, err, owner))
+				return
+			}
+		}
+		h.write(t, c)
+	})
 }
 
 // renderMatrixOpenDKIMDecisions runs the OpenDKIM decisions with the release's
