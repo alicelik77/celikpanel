@@ -11244,7 +11244,9 @@ kurulu olmalıdır.
 
 ### alpha.143 laboratuvarının düzeltmeleri (alpha.144, 22 Kasım 2026)
 
-Bileşen testleriyle kaynak durumu; henüz laboratuvar denemesi yok.
+Bileşen testleri ve bir laboratuvar denemesi (22 Kasım 2026; neyi
+kanıtladığı ve neyi denetlemediği için alpha.144 sürüm notlarının
+"Laboratuvarda denetlenenler" bölümüne bakın).
 
 - **Sayfadan çıkıldı diye değişiklik kaybolmaz.** Yöneticinin başka hesapların
   girebildiği bir PostgreSQL veritabanını kapatması ya da geri alması (ve

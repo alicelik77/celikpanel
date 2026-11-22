@@ -8577,6 +8577,17 @@ bağlantıyı tutar.
   PHP havuzu) günlükleri hâlâ okuyabilir: günlükler zaman ve bayt sayısı
   tutar, adres tutmaz; o programlar her sitenin sunulan dosyalarını zaten
   okur.
-- **Açık.** Laboratuvar denemesi yok; tarayıcı bağlamını Agent değişikliğine
+- **Laboratuvar.** 22 Kasım 2026'da bir deneme (PowerDNS'li Debian 13 ana ve
+  BIND'li Ubuntu 24.04 yedek; ikisi de alpha.143 durumundan panelin kendi
+  güncelleme sayfasıyla güncellendi; `6ed1f94a0`'dan yapılan, yalnız
+  laboratuvara ait alpha.152 etiketi): ağır hata yok; web postası adresi
+  düzeltmesi, ayrılan yollar, alma retleri, takma ad kayıtları ve trafik
+  klasörü kipleri yukarıda yazıldığı gibi davrandı (bkz. sürüm notlarının
+  "Laboratuvarda denetlenenler" bölümü). Web postasının posta
+  gönderemediğini (yapılandırması postayı STARTTLS olmadan 587 numaralı
+  porta veriyor; bu daldan eski) ve iki görünüm bulgusunu buldu; alpha.145'e
+  planlandı.
+- **Açık.** Tarayıcı bağlamını Agent değişikliğine
   veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
-  takma ad hâlâ DNS kaydı almaz. **Hiçbir P0 işi kapanmadı.**
+  takma ad hâlâ DNS kaydı almaz; laboratuvarın denetlemedikleri sürüm
+  notlarında listeli. **Hiçbir P0 işi kapanmadı.**

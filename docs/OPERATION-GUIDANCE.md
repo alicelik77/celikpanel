@@ -11354,7 +11354,8 @@ to show.
 
 ### Corrections from the alpha.143 lab (alpha.144, 22 November 2026)
 
-Source state with component tests; no lab run yet.
+Component tests and one lab run (22 November 2026, see the alpha.144
+release notes' "Checked in the lab" for what it proved and did not check).
 
 - **A change is not lost because the page was left.** An administrator's
   close or undo of a PostgreSQL database other accounts can enter (and its

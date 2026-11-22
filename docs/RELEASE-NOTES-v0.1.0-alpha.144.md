@@ -175,51 +175,188 @@ screen.**
   rules; it is not reachable from the network.
 - Everything alpha.143's notes list as still open stays open
   ([alpha.143 release notes](RELEASE-NOTES-v0.1.0-alpha.143.md)).
+- **Webmail cannot send mail** (reading mail, attachments and settings
+  work); until alpha.145, send from a mail program. The lab found it and two
+  small display findings, each with what to do until alpha.145: see "Found
+  in the lab, planned for alpha.145" below.
 
 ## Checked in the lab
 
-**Open.** This release has not been run in the lab yet. The planned run, on
-the pair of test servers (a Debian 13 main DNS server with PowerDNS and an
-Ubuntu 24.04 backup DNS server with BIND), updated from the alpha.143 state
-through the panel's own update page:
+Lab check finished: one run on a pair of test servers, a Debian 13 main DNS
+server with PowerDNS and an Ubuntu 24.04 backup DNS server with BIND
+(22 November 2026, UTC 19:02 to about 20:30 with the clean-up). It started
+from the alpha.143 state and followed the owner's path: before the update
+the owner gave webmail its own address on the main server through the
+page, and both servers were updated through the panel's own update page to
+the release's code (`6ed1f94a0`, under the lab-only label
+v0.1.0-alpha.152). Two customers of one reseller, in separate accounts,
+played the two sides: alice, and bob, whose site's own account tried to
+read her traffic log. Everything was done through the page's own buttons
+except where it says the lab did it. No hard failure.
 
-1. Webmail: before updating, a copy of the webmail address file; after it,
-   the agent's log says the file was rewritten; sign in, list a mailbox, open
-   a message with an attachment (a PDF opened, a text file downloaded),
-   compose with the editor, no console error; a planted
-   `plugins/archive/config.inc.php.bak` and `plugins/archive/archive.php`
-   answer 404, `program/js/app.min.js`, `program/resources/blank.tiff` and
-   `skins/elastic/watermark.html` answer 200, `index.php/x.txt` gives
-   Roundcube's page. An address file changed by hand is kept with
-   `.celikpanel-pending` beside it and named in **Problems now**; with another
-   web server file broken, webmail and every site keep answering, the address
-   file is unchanged and **Problems now** names the broken file.
-2. The traffic logs: the folder and log modes after the update, a forced
-   rotation without any "Permission denied" line, requests landing in the new
-   log, the agent's log block only once, and, as a site's account, reading
-   another site's traffic log refused.
-3. An alias in DNS: answered from both servers and gone after removal; with a
-   certificate; a refused issuance leaves no record; next to an owner's
-   record nothing is written or added; a domain deleted while the backup
-   server is unreachable completes, and the hourly round publishes the
-   alias's zone.
-4. A PostgreSQL close with the page left, and a failed close's window and
-   reason in both languages; a server whose PostgreSQL messages are not in
-   English.
-5. The Turkish page's alias refusals (an invalid and a duplicate alias, the
-   certificate step, HSTS) and the singular line.
-6. A mailbox and an out-of-office reply saved with the page left; a mailbox
-   found on the server: a customer's sentence, the administrator's adoption
-   with a new password (the earlier password no longer signs in), a mailbox
-   with mail refused, another account's or another domain's address refused.
+- **Before the update webmail's address was open** (alpha.143's code): a
+  backup copy of a plugin's configuration (`plugins/archive/config.inc.php.bak`)
+  and a text file the lab had planted in that plugin's folder were given out
+  with their content, a plugin's `composer.json` was given out, and a
+  plugin's PHP file (`plugins/archive/archive.php`), asked for directly, was
+  handed to PHP and run (it answered with a PHP error).
+- **Both servers updated through the panel's own update page by
+  themselves**, in about a minute and a half each. No schema step (it stays
+  81); one panel and one agent ran on each server; no new failed service.
+  On the main server, which has the webmail address, the web server was
+  reloaded once; a check every second from outside saw a site and webmail
+  answering throughout the update. The backup server's web server files
+  did not change and it was not reloaded.
+- **Webmail's address after the update** (the security correction):
+  - the planted backup copy and text file, the plugin's PHP file, a
+    `config.inc.php.dist`, `composer.json` and `.sql`, `.log` and `.md`
+    files answered "not found", and dot-files (`.htaccess`, `.env`,
+    `.git/config`) were refused; scripts, style sheets, pictures, the
+    browser check's file (`blank.tiff`), a skin's page and the entry point
+    (`index.php`) still answered;
+  - alice walked through webmail in a browser as a customer: she signed in,
+    listed her inbox, opened a message with a PDF and a text attachment and
+    downloaded both, opened the editor, saved a setting, opened a plugin's
+    settings and the contacts; no request failed and no console error was
+    logged. Sending failed: see "Found in the lab", 1;
+  - an address file the owner had changed was kept byte for byte, with the
+    panel's text beside it and one line in **Problems now** (Turkish and
+    English); once the owner took the panel's text and reloaded the web
+    server, the line went by itself;
+  - with another web server file broken on purpose, the earlier address file
+    was put back exactly, sites and webmail kept answering, and the
+    **Problems now** line named the broken file. Once that file was gone,
+    the agent's next start wrote the new form and the line went.
+- **Mail.**
+  - A mailbox created while the page was left at once has its record and
+    signs in.
+  - Creating a mailbox that the server held without a record was told to
+    the customer plainly: it exists on the server, nothing was changed, ask
+    the administrator or choose another name.
+  - The administrator adopted it with a new password: the new password signs
+    in, the old one no longer does.
+  - A mailbox holding a message was refused for adoption; its password was
+    not replaced and its message was kept.
+  - Adopting a mailbox through another account's domain was refused with
+    "not found" (404), saying nothing about that domain; an address of
+    another domain was refused too.
+  - An out-of-office reply saved while the page was left at once was
+    stored.
+- **Aliases in DNS.**
+  - An alias inside alice's own domain answered from both servers at the
+    first look and stopped answering on both once removed.
+  - A name at which she already had her own address record was left as it
+    was, nothing was added beside it, and the page said so.
+  - An invalid and a duplicate alias name were refused in the page's
+    language (Turkish).
+  - With the backup server unreachable, an alias was saved and its row said
+    "waiting to be published"; shortly after the backup server came back
+    its record was published and answered from both servers (for the row
+    itself see "Found in the lab", 2).
+- **PostgreSQL.**
+  - A close whose page was left at once showed its real result on return.
+  - A close while the database's owner held a lock, with the page left
+    before the server answered, showed on return that it was not done, that
+    nothing was changed and why (the database was in use and the lock did
+    not come in time), with the server's message; it was not sent again.
+  - Undo through the page gave the earlier rights back.
+  - A failed close (a recorded user's role dropped by the lab) ended on "Not
+    done — nothing was changed", named the kind of cause (something it names
+    does not exist on the database server) and quoted the server, in
+    Turkish and English (for its title see "Found in the lab", 3).
+- **Traffic logs.**
+  - After the update `/var/log/celikpanel` went from 0750 to 0751 (other
+    accounts may pass through it, not list it), its `traffic` folder from
+    0755 to 0710 for root and the web server's group, and the certificate
+    tool's folder stayed closed (0700); no traffic log was readable by other
+    accounts; the agent's log said so once; the rotation file was rewritten
+    once.
+  - On the backup server, a `traffic` folder whose group the lab had set by
+    hand was kept and named in the agent's log.
+  - A new site's first log was made closed (0640, the web server's account).
+  - bob's site's own account could neither read alice's site's traffic log
+    nor list the folder, before and after a forced rotation.
+  - After the forced rotation no "Permission denied" line was logged and
+    new requests landed in the new log.
+- The usual pages on both servers loaded without an error.
+
+**Where the lab left the page's path.** As root on the lab servers, the lab
+planted a backup copy and a text file in a webmail plugin's folder; changed
+webmail's address file as an owner would (a comment line), restarted the
+agent, then took the panel's text over that file and reloaded the web
+server; broke another web server file on purpose, restarted the agent, and
+removed the file again; handed test messages over on the server; set the
+`traffic` folder's group by hand on the backup server; put a small script
+into bob's site to read another site's traffic log; forced a log rotation;
+made the backup server unreachable from the main server and reachable
+again; and registered the certificate tool with the lab's own certificate
+authority. Once, with the panel stopped, it wrote to the lab panel's
+database, removing two mailboxes' panel rows, to make mailboxes the server
+holds without a record (two tries at leaving the page on alpha.143's code
+had not left a mailbox without its row). As the database administrator it
+put a database into the state of ones made before alpha.141 and dropped a
+recorded user's role; as that database's owner it held a lock. The two
+adoption refusals across accounts and domains were sent to the panel's API
+directly.
+
+**Not checked:**
+
+- The singular wording of the **Problems now** line for one open
+  PostgreSQL database: the state could not be reached, because databases
+  being watched do not count as open; covered by tests.
+- Undo and Read again with the page left: only the close was tried with the
+  page left; covered by tests.
+- The traffic figure on a site's page after the rotation: time.
+- Deleting a domain while the backup server is unreachable: time; covered by
+  tests.
+- Removing an alias after its subscription moved to another account: the
+  page offers a move only as a request and an approval; covered by tests.
+- An alias with a certificate (issued again for the alias, or refused) and
+  the Turkish page's certificate and HSTS refusals: not part of this run;
+  covered by tests.
+- The **Logs** page in the walk through the usual pages: the address the lab
+  used is not a page of its own, so the page was not opened.
+- Webmail on the backup server: it has no webmail address in the lab.
+- The database web tools: not installed on the lab pair (carried from
+  alpha.142, still open).
+- PostgreSQL versions other than the lab server's 17, a server whose
+  PostgreSQL messages are not in English, and a server whose templates are
+  SQL_ASCII.
+
+### Found in the lab, planned for alpha.145
+
+None of these is a security problem or data loss.
+
+1. **Webmail cannot send mail.** Sending from webmail answers with an
+   authentication error: the panel's webmail configuration hands mail to the
+   mail server's submission port without first switching the connection to
+   encryption, and the mail server accepts a login only on an encrypted
+   connection. Reading mail, attachments and settings work. This is older
+   than this release: the same configuration text is in alpha.143, which the
+   owner's servers run; it was found now because this was the first lab run
+   with a webmail address. Since which release webmail could not send was
+   not established. Until alpha.145: send from a mail program (port 587 or
+   465, with the mailbox's full address and its password).
+2. After the backup server came back, an alias's row kept saying "waiting
+   to be published" until the next hourly round (here about half an hour)
+   although its record already answered on both servers; meanwhile the
+   zone's own notice said to make the change again, while the alias row said
+   nothing needs doing. Nothing to do: the hourly round clears the row.
+3. The window of a failed PostgreSQL close keeps its in-progress title
+   ("Closing … to other accounts") above "Not completed". The steps and the
+   reason below it are right.
 
 ## What to expect after updating
 
+- The update took under two minutes per server in the lab and says by
+  itself when it has finished.
 - No schema step: the layout stays schema 81, and going back to alpha.143 is
   the ordinary rollback.
 - On a server with a webmail address, the web server is reloaded once at the
   first start, after its configuration check passes; from then on webmail's
   address gives out only what its pages load.
+- Webmail still cannot send mail (known limit; "Found in the lab", 1):
+  send from a mail program until alpha.145.
 - The log folders' modes change once at the first start:
   `/var/log/celikpanel` from 0700 to 0711, or from 0750 to 0751; its `traffic`
   folder from 0755 to 0710, owned by root and the web server's group

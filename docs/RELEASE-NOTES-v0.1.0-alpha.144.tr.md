@@ -179,52 +179,199 @@ günceller.**
   kurallarını korur; ona ağdan ulaşılamaz.
 - alpha.143'ün notlarının hâlâ açık diye listelediği her şey açık kalır
   ([alpha.143 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.143.tr.md)).
+- **Web postası posta gönderemiyor** (posta okumak, ekler ve ayarlar
+  çalışıyor); alpha.145'e dek bir posta programından gönderin. Laboratuvar
+  bunu ve iki küçük görünüm bulgusunu, her biri alpha.145'e dek ne
+  yapılacağıyla birlikte buldu: aşağıda "Laboratuvarda bulunan, alpha.145'e
+  planlananlar".
 
 ## Laboratuvarda denetlenenler
 
-**Açık.** Bu sürüm henüz laboratuvarda denenmedi. Planlanan deneme, test
-sunucusu çiftinde (PowerDNS'li bir Debian 13 ana DNS sunucusu ve BIND'li bir
-Ubuntu 24.04 yedek DNS sunucusu), alpha.143 durumundan panelin kendi
-güncelleme sayfasıyla güncellenerek:
+Laboratuvar denemesi bitti: bir test sunucusu çiftinde bir deneme, PowerDNS'li
+Debian 13 ana DNS sunucusu ve BIND'li Ubuntu 24.04 yedek DNS sunucusu
+(22 Kasım 2026, UTC 19:02'den toparlamayla birlikte yaklaşık 20:30'a).
+alpha.143 durumundan başladı ve sahibin yolunu izledi: güncellemeden önce
+sahip ana sunucuda web postasına sayfadan kendi adresini verdi ve iki sunucu
+da panelin kendi güncelleme sayfasından sürümün koduna güncellendi
+(`6ed1f94a0`, yalnız laboratuvara ait v0.1.0-alpha.152 etiketiyle). İki
+tarafı, aynı bayinin ayrı hesaplardaki iki müşterisi oynadı: alice ve sitesinin
+kendi hesabıyla onun trafik günlüğünü okumaya çalışan bob. Laboratuvarın
+yaptığı yazılanlar dışında her şey sayfanın kendi düğmeleriyle yapıldı. Ağır
+hata yok.
 
-1. Web postası: güncellemeden önce web postası adresi dosyasının bir kopyası;
-   sonra aracının günlüğü dosyanın yeniden yazıldığını söyler; oturum açma,
-   bir kutuyu listeleme, ekli bir iletiyi açma (bir PDF açılır, bir metin
-   dosyası indirilir), düzenleyiciyle yazma, konsolda hata yok; yerleştirilmiş
-   `plugins/archive/config.inc.php.bak` ve `plugins/archive/archive.php` 404,
-   `program/js/app.min.js`, `program/resources/blank.tiff` ve
-   `skins/elastic/watermark.html` 200 yanıtı verir, `index.php/x.txt`
-   Roundcube'un sayfasını verir. Elle değiştirilen bir adres dosyası yanında
-   `.celikpanel-pending` ile korunur ve **Şu anki sorunlar**da adlandırılır;
-   başka bir web sunucusu dosyası bozukken web postası ve bütün siteler yanıt
-   vermeyi sürdürür, adres dosyası değişmez ve **Şu anki sorunlar** bozuk
-   dosyayı adlandırır.
-2. Trafik günlükleri: güncellemeden sonraki klasör ve günlük kipleri,
-   "Permission denied" satırı olmadan zorla bir döndürme, yeni günlüğe düşen
-   istekler, aracının günlüğündeki bloğun yalnız bir kez yazılması ve bir
-   sitenin hesabıyla başka bir sitenin trafik günlüğünü okumanın reddedilmesi.
-3. DNS'te takma ad: iki sunucudan yanıt, kaldırmadan sonra yok; sertifikayla;
-   reddedilen bir sertifika kayıt bırakmaz; sahibin kaydının yanında hiçbir
-   şey yazılmaz ya da eklenmez; yedek sunucuya ulaşılamazken silinen bir alan
-   adı silinmeyi tamamlar ve saatlik tur takma adın bölgesini yayımlar.
-4. Sayfası bırakılan bir PostgreSQL kapatması ve başarısız bir kapatmanın
-   penceresi ve nedeni iki dilde; PostgreSQL iletileri İngilizce olmayan bir
-   sunucu.
-5. Türkçe sayfadaki takma ad retleri (geçersiz ve yinelenen takma ad,
-   sertifika adımı, HSTS) ve tekil satır.
-6. Sayfası bırakılarak kaydedilen bir posta kutusu ve otomatik yanıt;
-   sunucuda bulunan bir posta kutusu: müşterinin cümlesi, yöneticinin yeni
-   parolayla alması (önceki parola artık oturum açmaz), içinde posta olan bir
-   kutunun reddi, başka bir hesabın ya da başka bir alan adının adresinin
-   reddi.
+- **Güncellemeden önce web postasının adresi açıktı** (alpha.143'ün kodu):
+  bir eklentinin yapılandırmasının yedek kopyası
+  (`plugins/archive/config.inc.php.bak`) ve laboratuvarın o eklentinin
+  klasörüne koyduğu bir metin dosyası içerikleriyle verildi, bir eklentinin
+  `composer.json` dosyası verildi ve doğrudan istenen bir eklenti PHP dosyası
+  (`plugins/archive/archive.php`) PHP'ye verilip çalıştırıldı (bir PHP
+  hatasıyla yanıt verdi).
+- **İki sunucu da panelin kendi güncelleme sayfasından kendiliğinden
+  güncellendi**, her biri yaklaşık bir buçuk dakikada. Şema adımı yok (81'de
+  kalır); her sunucuda bir panel ve bir aracı çalıştı; yeni hatalı hizmet
+  yok. Web postası adresinin bulunduğu ana sunucuda web sunucusu bir kez
+  yeniden yüklendi; dışarıdan her saniye yapılan bir denetim, güncelleme
+  boyunca bir sitenin ve web postasının yanıt verdiğini gördü. Yedek
+  sunucunun web sunucusu dosyaları değişmedi ve yeniden yüklenmedi.
+- **Güncellemeden sonra web postasının adresi** (güvenlik düzeltmesi):
+  - konan yedek kopya ve metin dosyası, eklentinin PHP dosyası, bir
+    `config.inc.php.dist`, `composer.json` ve `.sql`, `.log` ve `.md`
+    dosyaları "bulunamadı" yanıtı verdi; nokta ile başlayan dosyalar
+    (`.htaccess`, `.env`, `.git/config`) reddedildi; betikler, stil
+    dosyaları, resimler, tarayıcı denetiminin dosyası (`blank.tiff`), bir
+    temanın sayfası ve giriş noktası (`index.php`) yanıt vermeyi sürdürdü;
+  - alice web postasını bir müşteri olarak tarayıcıda baştan sona kullandı:
+    oturum açtı, gelen kutusunu listeledi, bir PDF ve bir metin eki olan bir
+    iletiyi açıp iki eki de indirdi, düzenleyiciyi açtı, bir ayarı kaydetti,
+    bir eklentinin ayarlarını ve kişileri açtı; hiçbir istek başarısız olmadı
+    ve konsolda hata yazılmadı. Gönderme başarısız oldu: bkz.
+    "Laboratuvarda bulunan", 1;
+  - sahibin değiştirdiği bir adres dosyası birebir korundu; panelin metni
+    yanında, **Şu anki sorunlar**da tek satır (Türkçe ve İngilizce). Sahip
+    panelin metnini alıp web sunucusunu yeniden yükleyince satır
+    kendiliğinden kalktı;
+  - başka bir web sunucusu dosyası bilerek bozulmuşken önceki adres dosyası
+    aynen geri kondu, siteler ve web postası yanıt vermeyi sürdürdü ve
+    **Şu anki sorunlar** satırı bozuk dosyayı adlandırdı. O dosya
+    kaldırılınca aracının bir sonraki açılışı yeni biçimi yazdı ve satır
+    kalktı.
+- **Posta.**
+  - Sayfadan hemen ayrılırken oluşturulan posta kutusunun kaydı var ve
+    oturum açıyor.
+  - Sunucunun kaydı olmadan tuttuğu bir posta kutusunu oluşturmak müşteriye
+    açıkça söylendi: kutu sunucuda var, hiçbir şey değiştirilmedi,
+    yöneticiye başvurun ya da başka bir ad seçin.
+  - Yönetici onu yeni bir parolayla aldı: yeni parola oturum açıyor, eskisi
+    artık açmıyor.
+  - İçinde bir ileti olan posta kutusunun alınması reddedildi; parolası
+    değiştirilmedi ve iletisi korundu.
+  - Başka bir hesabın alan adı üzerinden posta kutusu almak "bulunamadı"
+    (404) ile, o alan adı hakkında hiçbir şey söylenmeden reddedildi; başka
+    bir alan adının adresi de reddedildi.
+  - Sayfadan hemen ayrılırken kaydedilen otomatik yanıt saklandı.
+- **DNS'te takma adlar.**
+  - alice'in kendi alan adının içindeki bir takma ad ilk bakışta iki
+    sunucudan da yanıt verdi ve kaldırılınca ikisinde de yanıt vermez oldu.
+  - Onun zaten kendi adres kaydı olan bir ad olduğu gibi bırakıldı, yanına
+    hiçbir şey eklenmedi ve sayfa bunu söyledi.
+  - Geçersiz ve yinelenen bir takma ad, sayfanın dilinde (Türkçe)
+    reddedildi.
+  - Yedek sunucuya ulaşılamazken bir takma ad kaydedildi ve satırı
+    "yayımlanmayı bekliyor" dedi; yedek sunucu dönünce kısa süre sonra kaydı
+    yayımlandı ve iki sunucudan da yanıt verdi (satırın kendisi için bkz.
+    "Laboratuvarda bulunan", 2).
+- **PostgreSQL.**
+  - Sayfası hemen bırakılan bir kapatma, dönüldüğünde gerçek sonucunu
+    gösterdi.
+  - Veritabanının sahibi bir kilit tutarken yapılan ve sayfası sunucu yanıt
+    vermeden bırakılan bir kapatma, dönüldüğünde yapılmadığını, hiçbir şeyin
+    değiştirilmediğini ve nedenini (veritabanı kullanımdaydı ve kilit zamanında
+    gelmedi) sunucunun iletisiyle gösterdi; yeniden gönderilmedi.
+  - Sayfadan Geri al önceki hakları geri verdi.
+  - Başarısız bir kapatma (kayıtlı bir kullanıcının rolü laboratuvarca
+    silinmişken) "Yapılmadı — hiçbir şey değiştirilmedi" adımında bitti,
+    nedenin türünü söyledi (adı geçen bir şey veritabanı sunucusunda yok) ve
+    sunucuyu tırnak içinde aktardı, Türkçe ve İngilizce (başlığı için bkz.
+    "Laboratuvarda bulunan", 3).
+- **Trafik günlükleri.**
+  - Güncellemeden sonra `/var/log/celikpanel` 0750'den 0751'e (diğer
+    hesaplar içinden geçebilir, listeleyemez), `traffic` klasörü 0755'ten
+    root ve web sunucusunun grubu için 0710'a geçti, sertifika aracının
+    klasörü kapalı kaldı (0700); hiçbir trafik günlüğü diğer hesaplarca
+    okunamıyordu; aracının günlüğü bunu bir kez söyledi; döndürme dosyası
+    bir kez yeniden yazıldı.
+  - Yedek sunucuda, grubunu laboratuvarın elle koyduğu bir `traffic` klasörü
+    korundu ve aracının günlüğünde adlandırıldı.
+  - Yeni bir sitenin ilk günlüğü kapalı oluşturuldu (0640, web sunucusunun
+    hesabı).
+  - bob'un sitesinin kendi hesabı, zorla yapılan bir döndürmeden önce de
+    sonra da ne alice'in sitesinin trafik günlüğünü okuyabildi ne de klasörü
+    listeleyebildi.
+  - Zorla yapılan döndürmeden sonra "Permission denied" satırı yazılmadı ve
+    yeni istekler yeni günlüğe düştü.
+- İki sunucuda da olağan sayfalar hatasız açıldı.
+
+**Laboratuvarın sayfanın yolundan ayrıldığı yerler.** Laboratuvar,
+laboratuvar sunucularında root olarak, bir web postası eklentisinin
+klasörüne bir yedek kopya ve bir metin dosyası koydu; web postasının adres
+dosyasını bir sahibin yapacağı gibi değiştirdi (bir yorum satırı), aracıyı
+yeniden başlattı, sonra panelin metnini o dosyanın yerine alıp web
+sunucusunu yeniden yükledi; başka bir web sunucusu dosyasını bilerek bozdu,
+aracıyı yeniden başlattı ve dosyayı yeniden kaldırdı; deneme iletilerini
+sunucuda teslim etti; yedek sunucuda `traffic` klasörünün grubunu elle
+koydu; başka bir sitenin trafik günlüğünü okumak için bob'un sitesine küçük
+bir betik koydu; zorla bir günlük döndürmesi yaptı; yedek sunucuyu ana
+sunucudan ulaşılamaz yapıp yeniden ulaşılır yaptı ve sertifika aracını
+laboratuvarın kendi sertifika yetkilisine kaydetti. Bir kez, panel
+durmuşken, sunucunun kaydı olmadan tuttuğu posta kutuları oluşturmak için
+laboratuvar panelinin veritabanına yazdı ve iki posta kutusunun panel
+satırlarını sildi (alpha.143'ün kodunda sayfadan ayrılarak yapılan iki
+deneme, satırı olmayan bir posta kutusu bırakmamıştı). Veritabanı yöneticisi
+olarak bir veritabanını alpha.141'den önce açılanların durumuna getirdi ve
+kayıtlı bir kullanıcının rolünü sildi; o veritabanının sahibi olarak bir
+kilit tuttu. Hesaplar ve alan adları arasındaki iki alma reddi doğrudan
+panelin API'sine gönderildi.
+
+**Denetlenmeyenler:**
+
+- Açık tek PostgreSQL veritabanı için **Şu anki sorunlar** satırının tekil
+  ifadesi: o duruma ulaşılamadı, çünkü izlenen veritabanları açık
+  sayılmıyor; testlerle kapsanıyor.
+- Sayfası bırakılan Geri al ve Yeniden oku: sayfası bırakılarak yalnız
+  kapatma denendi; testlerle kapsanıyor.
+- Döndürmeden sonra bir sitenin sayfasındaki trafik rakamı: süre.
+- Yedek sunucuya ulaşılamazken bir alan adını silmek: süre; testlerle
+  kapsanıyor.
+- Aboneliği başka bir hesaba geçtikten sonra bir takma adı kaldırmak: sayfa
+  taşımayı yalnız bir istek ve onay olarak sunuyor; testlerle kapsanıyor.
+- Sertifikalı bir takma ad (takma ad için yeniden verilen ya da reddedilen)
+  ve Türkçe sayfanın sertifika ve HSTS retleri: bu denemenin parçası değildi;
+  testlerle kapsanıyor.
+- Olağan sayfaların gezintisinde **Günlükler** sayfası: laboratuvarın
+  kullandığı adres kendi başına bir sayfa değil, bu yüzden sayfa açılmadı.
+- Yedek sunucuda web postası: laboratuvarda onun web postası adresi yok.
+- Veritabanı web araçları: laboratuvar çiftinde kurulu değil (alpha.142'den
+  taşındı, hâlâ açık).
+- Laboratuvar sunucusunun 17'si dışındaki PostgreSQL sürümleri, PostgreSQL
+  iletileri İngilizce olmayan bir sunucu ve şablonları SQL_ASCII olan bir
+  sunucu.
+
+### Laboratuvarda bulunan, alpha.145'e planlananlar
+
+Hiçbiri bir güvenlik ya da veri kaybı sorunu değil.
+
+1. **Web postası posta gönderemiyor.** Web postasından göndermek bir kimlik
+   doğrulama hatasıyla yanıtlanıyor: panelin web postası yapılandırması
+   postayı, bağlantıyı önce şifrelemeye geçirmeden posta sunucusunun
+   gönderim portuna veriyor; posta sunucusu ise girişi yalnız şifreli bir
+   bağlantıda kabul ediyor. Posta okumak, ekler ve ayarlar çalışıyor. Bu, bu
+   sürümden eski: aynı yapılandırma metni, sahibin sunucularının çalıştırdığı
+   alpha.143'te de var; web postası adresli ilk laboratuvar denemesi bu
+   olduğu için şimdi bulundu. Web postasının hangi sürümden beri
+   gönderemediği belirlenmedi. alpha.145'e dek: bir posta programından
+   gönderin (587 ya da 465 numaralı port, posta kutusunun tam adresi ve
+   parolasıyla).
+2. Yedek sunucu dönünce bir takma adın satırı, kaydı iki sunucudan da yanıt
+   verdiği hâlde bir sonraki saatlik tura dek (burada yaklaşık yarım saat)
+   "yayımlanmayı bekliyor" demeyi sürdürdü; bu arada bölgenin kendi
+   bildirimi değişikliği yeniden yapmayı söylerken takma ad satırı bir şey
+   yapmak gerekmediğini söylüyordu. Yapılacak bir şey yok: saatlik tur
+   satırı temizler.
+3. Başarısız bir PostgreSQL kapatmasının penceresi, "Tamamlanmadı"nın
+   üstünde sürmekte olan başlığını ("… başka hesaplara kapatılıyor") tutuyor.
+   Altındaki adımlar ve neden doğru.
 
 ## Güncellemeden sonra ne beklenir
 
+- Güncelleme laboratuvarda sunucu başına iki dakikadan kısa sürdü ve
+  bittiğini kendisi söyler.
 - Şema adımı yok: yapı şema 81'de kalır ve alpha.143'e dönmek olağan geri
   dönüştür.
 - Web postası adresi olan bir sunucuda web sunucusu ilk açılışta,
   yapılandırma denetimi geçtikten sonra bir kez yeniden yüklenir; bundan
   sonra web postasının adresi yalnız sayfalarının yüklediğini verir.
+- Web postası hâlâ posta gönderemez (bilinen sınır; "Laboratuvarda bulunan",
+  1): alpha.145'e dek bir posta programından gönderin.
 - Günlük klasörlerinin kipleri ilk açılışta bir kez değişir:
   `/var/log/celikpanel` 0700'den 0711'e ya da 0750'den 0751'e; `traffic`
   klasörü 0755'ten 0710'a, sahibi root ve grubu web sunucusunun grubu

@@ -9370,7 +9370,17 @@ until the backup reports ready.
   `TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead`,
   `TestWebmailAddress*` (agent); the detached tests fail with the guard
   removed (the lab's "sending/lost" record, no mailbox row, no reply copy).
-- **Open.** No lab run; the other Panel handlers that pass the browser's
+- **Lab.** One run on 22 November 2026 (a Debian 13 PowerDNS main and an
+  Ubuntu 24.04 BIND backup, both updated from the alpha.143 state through
+  the panel's own update page; lab-only label alpha.152 built from
+  `6ed1f94a0`): no hard failure; the webmail address correction, the
+  detached routes, the adoption refusals, the alias records and the
+  traffic folder modes behaved as stated above (see the release notes'
+  "Checked in the lab"). It found that webmail cannot send mail (its
+  configuration hands mail to port 587 without STARTTLS; older than this
+  branch) and two display findings, planned for alpha.145.
+- **Open.** The other Panel handlers that pass the browser's
   context into an Agent change are listed in the pull request for a later
   lane; an alias that is a zone of its own still gets no DNS (no zone is
-  created for it). **No P0 item is closed.**
+  created for it); the lab's not-checked items are listed in the release
+  notes. **No P0 item is closed.**
