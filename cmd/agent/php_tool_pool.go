@@ -432,7 +432,10 @@ func ownSocketForUnboundTool(ctx context.Context, state phpToolState, socket str
 			log.Printf("record %s account failure: %v", state.Tool, recordErr)
 		}
 		if !pathExists(socket) {
-			return socket, fmt.Sprintf("%s could not be given its own account on PHP %s (%v), and that version's stock pool is off, so nothing would answer for it; it was not pointed there. The administrator opens it under Components and chooses its PHP version, which tries its own account again", phpToolDisplayName(state.Tool), version, err)
+			// Its caller then does not point it there (S4 R1, second fix
+			// round, B3): webmail's configuration is refused, a database tool
+			// is left out of the configuration.
+			return socket, fmt.Sprintf("%s could not be given its own account on PHP %s (%v), and that version's stock pool is off, so nothing would answer for it: it is not pointed there and does not open until it is moved. The administrator opens it under Components and chooses its PHP version, which tries its own account again", phpToolDisplayName(state.Tool), version, err)
 		}
 		return socket, fmt.Sprintf("%s runs under the web server's account on PHP %s, which can read every site, because it could not be given its own account (%v). The administrator opens it under Components and chooses its PHP version to try again", phpToolDisplayName(state.Tool), version, err)
 	}

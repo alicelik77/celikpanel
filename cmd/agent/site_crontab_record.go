@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -68,8 +69,6 @@ const siteCrontabBaselineName = "baseline-v1"
 
 type siteCrontabRecord struct {
 	Version int `json:"version"`
-	// Digest is cronVersion of the crontab the record was taken from.
-	Digest string `json:"digest"`
 	// Known: each accounted line's digest and how many times it stands.
 	Known map[string]int `json:"known"`
 	At    string         `json:"at"`
@@ -249,7 +248,7 @@ func siteCrontabRecordAfter(username, before, after string, authored []string) s
 			known[cronLineDigest(line)]++
 		}
 	}
-	record := siteCrontabRecord{Version: 1, Digest: cronVersion(after), Known: map[string]int{}, At: time.Now().UTC().Format(time.RFC3339)}
+	record := siteCrontabRecord{Version: 1, Known: map[string]int{}, At: time.Now().UTC().Format(time.RFC3339)}
 	for _, line := range cronEffectiveLines(after) {
 		digest := cronLineDigest(line)
 		if known[digest] > 0 {
@@ -260,23 +259,37 @@ func siteCrontabRecordAfter(username, before, after string, authored []string) s
 	return record
 }
 
-// setSiteCrontab writes a site's crontab, then its record.
+// setSiteCrontab writes a site's crontab and its record in the order that is
+// safe for every change (S4 R1, second fix round, B8):
 //
-// The order fails in the safe direction. A power loss (or a failed record
-// write) between the two leaves the new crontab with the earlier record: a
-// line this write made is then listed as not made in CelikPanel, and the
-// administrator's Keep, or adding it again, resolves it. The other order
-// would leave a record that accounts for a line the crontab does not have,
-// and site code that then added exactly that text would be taken as
-// CelikPanel's.
-// Önce crontab, sonra kaydı yazılır; arada kesinti olursa yeni satır
-// "CelikPanel'de yapılmadı" görünür, tersi asla olmaz.
+//   - When the change takes away a line CelikPanel accounted for (a delete,
+//     an edit), the record without it is written FIRST: it accounts only for
+//     the lines the old and the new crontab share. A power loss before the
+//     crontab is written shows the old crontab with that line listed as not
+//     made in CelikPanel (the administrator's Keep, or deleting it, resolves
+//     it); never a record that still accounts for a line the crontab no
+//     longer has, which site code could then add back as CelikPanel's.
+//   - Then the crontab, then the record of the lines this write made. A power
+//     loss between the two shows the new line listed as not made in
+//     CelikPanel (the administrator's Keep, or deleting it, resolves it);
+//     never a record that accounts for a line before the crontab has it.
+//
+// If the first record cannot be written, nothing is changed.
+// Satır kaldıran değişiklikte önce o satırsız kayıt, sonra crontab, sonra
+// yeni satırların kaydı yazılır; arada kesinti olursa satır yalnız
+// "CelikPanel'de yapılmadı" görünür, kayıt asla fazlasını açıklamaz.
 func setSiteCrontab(username, before, content string, authored []string) error {
 	if !validSiteCrontabRecordName(username) {
 		return setCrontab(username, content)
 	}
 	if content != "" && !strings.HasSuffix(content, "\n") {
 		content += "\n"
+	}
+	shared := siteCrontabRecordAfter(username, before, content, nil)
+	if siteCrontabAccountedLines(username, before) > siteCrontabKnownLines(shared) {
+		if err := writeSiteCrontabRecord(username, shared); err != nil {
+			return fmt.Errorf("CelikPanel's record of %s's crontab could not be written, so nothing was changed: %w", username, err)
+		}
 	}
 	record := siteCrontabRecordAfter(username, before, content, authored)
 	if err := setCrontab(username, content); err != nil {
@@ -286,6 +299,26 @@ func setSiteCrontab(username, before, content string, authored []string) error {
 		log.Printf("cron: the record of %s's crontab could not be written; its new lines will be listed as not made in CelikPanel: %v", username, err)
 	}
 	return nil
+}
+
+// siteCrontabAccountedLines counts the lines of content the record accounts
+// for now.
+func siteCrontabAccountedLines(username, content string) int {
+	count := 0
+	for _, class := range cronClassifyLines(username, content) {
+		if !class.Outside {
+			count++
+		}
+	}
+	return count
+}
+
+func siteCrontabKnownLines(record siteCrontabRecord) int {
+	count := 0
+	for _, n := range record.Known {
+		count += n
+	}
+	return count
 }
 
 // cronSplitLines are the lines of a crontab text as written (for authored).

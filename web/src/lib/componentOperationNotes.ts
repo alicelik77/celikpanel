@@ -16,8 +16,8 @@ type Translate = (key: string, params?: Record<string, string | number>) => stri
 // Panel carries the Agent's per-tool problems in the operation result.
 // Bu kurulumdan sonra ilgi isteyen PHP aracı; işlem sonucunda taşınır.
 const PHP_TOOL_NAMES = { webmail: 'Roundcube', phpmyadmin: 'phpMyAdmin', phppgadmin: 'phpPgAdmin' } as const;
-type PHPToolProblem = { tool: keyof typeof PHP_TOOL_NAMES; version: string; kind: 'version_gone' | 'extensions_failed' | 'own_account_failed' };
-const PROBLEM_KINDS = ['version_gone', 'extensions_failed', 'own_account_failed'];
+type PHPToolProblem = { tool: keyof typeof PHP_TOOL_NAMES; version: string; kind: 'version_gone' | 'extensions_failed' | 'own_account_failed' | 'own_account_not_served' };
+const PROBLEM_KINDS = ['version_gone', 'extensions_failed', 'own_account_failed', 'own_account_not_served'];
 
 export function decodePHPToolProblems(result: unknown): PHPToolProblem[] {
     if (!result || typeof result !== 'object') return [];
@@ -212,9 +212,11 @@ export function installedNotes({ result, name, fallbackOnly, t }: { result: unkn
     // Another PHP tool needing attention does not fail this install
     // (alpha.104 review): it is said as a warning that names the tool.
     for (const problem of decodePHPToolProblems(result)) {
-        // S4 R1 fix round: a tool that could not be given its own account.
+        // S4 R1 fix round: a tool that could not be given its own account;
+        // second fix round: one that is then not served at all.
         const key = problem.kind === 'version_gone' ? 'services.phpToolProblem.versionGone'
-            : problem.kind === 'own_account_failed' ? 'services.phpToolProblem.ownAccountFailed' : 'services.phpToolProblem.extensionsFailed';
+            : problem.kind === 'own_account_failed' ? 'services.phpToolProblem.ownAccountFailed'
+            : problem.kind === 'own_account_not_served' ? 'services.phpToolProblem.ownAccountNotServed' : 'services.phpToolProblem.extensionsFailed';
         const text = said(t, key, {
             tool: PHP_TOOL_NAMES[problem.tool],
             version: problem.version,

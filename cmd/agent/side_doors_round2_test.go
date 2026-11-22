@@ -497,3 +497,25 @@ func TestARoundcubeWalkThatEndsEarlyIsAFailure(t *testing.T) {
 		t.Fatal("a walk that failed was taken as a complete plan")
 	}
 }
+
+// --- B3: a database tool without its own account is never pointed at nothing ---
+
+func TestADatabaseToolThatCannotGetItsAccountIsNeverPointedAtAMissingSocket(t *testing.T) {
+	stock := "/run/php/php8.4-fpm.sock"
+	missing := func(string) bool { return false }
+	if !dbToolLeftOut(stock, "phpMyAdmin could not be given its own account", missing) {
+		t.Fatal("a tool whose stock socket does not exist would be pointed at it")
+	}
+	if dbToolLeftOut(stock, "phpMyAdmin could not be given its own account", func(string) bool { return true }) {
+		t.Fatal("a tool whose stock pool answers is left out")
+	}
+	if dbToolLeftOut(stock, "", missing) {
+		t.Fatal("a tool that got its own account is left out")
+	}
+	served := dbToolsServed([]string{phpToolPHPMyAdmin, phpToolPHPPgAdmin}, map[string]bool{phpToolPHPMyAdmin: true})
+	conf := renderDBToolsConfig(served, map[string]string{phpToolPHPMyAdmin: "/usr/share/phpmyadmin", phpToolPHPPgAdmin: "/usr/share/phppgadmin"},
+		map[string]string{phpToolPHPPgAdmin: "/run/php/php8.4-fpm-celikpanel-phppgadmin.sock"})
+	if strings.Contains(conf, "/dbtool/phpmyadmin/") || strings.Contains(conf, "unix:"+stock+";") || !strings.Contains(conf, "/dbtool/phppgadmin/") {
+		t.Fatalf("configuration:\n%s", conf)
+	}
+}

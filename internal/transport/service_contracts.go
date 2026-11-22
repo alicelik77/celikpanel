@@ -590,7 +590,10 @@ type ConfigureWebmailResponse struct {
 	Error      string `json:"error,omitempty"`
 	// ToolProblems (S4 R1 fix round): webmail could not be given its own
 	// account and runs under the web server's account (kind
-	// "own_account_failed"); said as a warning by the screen.
+	// "own_account_failed"); said as a warning by the screen. A database
+	// tool that could not get it while its version's stock pool is off is
+	// left out of the configuration (kind "own_account_not_served", second
+	// fix round); webmail is then refused instead.
 	ToolProblems []PHPToolProblem `json:"tool_problems,omitempty"`
 }
 

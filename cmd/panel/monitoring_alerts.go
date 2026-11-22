@@ -582,12 +582,17 @@ func alertLine(item pendingAlertMail) (string, string) {
 			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: hesaplar bir dizin hizmetinden geldiği için CelikPanel /etc/at.allow dosyasını yazmadı."
 	// S4 R1 fix round (side_doors.go, side_doors_jobs.go).
 	case "tool_down":
-		return fmt.Sprintf("%s does not answer on PHP %s. Open it under Components and choose its PHP version again; Monitoring says what was tried.", name, subject),
-			fmt.Sprintf("%s PHP %s üzerinde yanıt vermiyor. Bileşenler'de açıp PHP sürümünü yeniden seçin; nelerin denendiği İzleme'de.", name, subject)
+		return fmt.Sprintf("%s does not answer on PHP %s. Open it under Components and choose its PHP version again; Monitoring says why.", name, subject),
+			fmt.Sprintf("%s PHP %s üzerinde yanıt vermiyor. Bileşenler'de açıp PHP sürümünü yeniden seçin; nedeni İzleme'de.", name, subject)
 	case "stock_pool_not_put_back":
 		return fmt.Sprintf("The distribution's PHP %s pool could not be put back after turning it off failed. Monitoring says how to put it back.", name),
 			fmt.Sprintf("Dağıtımın PHP %s havuzu kapatılamadı ve geri de konamadı. Nasıl geri konacağı İzleme'de.", name)
-	case "stock_pool_failed", "stock_pool_unknown":
+	case "stock_pool_unknown":
+		// Second fix round (B10): it may not be readable at all; "still on"
+		// is not said.
+		return fmt.Sprintf("What the distribution's PHP %s pool is could not be read, so CelikPanel changed nothing: Monitoring says why.", name),
+			fmt.Sprintf("Dağıtımın PHP %s havuzunun durumu okunamadı; CelikPanel hiçbir şeyi değiştirmedi. Nedeni İzleme'de.", name)
+	case "stock_pool_failed":
 		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is still on: Monitoring says why.", name),
 			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu hâlâ açık; nedeni İzleme'de.", name)
 	case "stock_pool_owner_restored":

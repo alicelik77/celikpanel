@@ -16,6 +16,10 @@ import { enSiteJobsScreens } from '../src/i18n/screens/siteJobs/en.ts';
 import { trSiteJobsScreens } from '../src/i18n/screens/siteJobs/tr.ts';
 import { enSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/en.ts';
 import { trSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/tr.ts';
+import { enMailDatabasesScreens } from '../src/i18n/screens/mailDatabases/en.ts';
+import { trMailDatabasesScreens } from '../src/i18n/screens/mailDatabases/tr.ts';
+import { enPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/en.ts';
+import { trPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/tr.ts';
 
 const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
 
@@ -27,9 +31,18 @@ test('every kind the list shows has a title, body and action in English and Turk
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part.
   // Since alpha.142 the shared lines' words are in the problemsNow part.
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens };
+  // alpha.143 (merged): its lines' words are in the mailDatabases and
+  // pgLeftovers parts.
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens };
   for (const kind of shown) {
+    // alpha.143: mail_signing and mail_autoresponder_foreign have one body
+    // per state instead of one body (their own tests check them).
+    const perState = (words) => Object.keys(words).some((key) => key.startsWith(`pnow.${kind}.`) && !/\.(title|action|body)$/.test(key));
+    if (!en[`pnow.${kind}.body`] && perState(en) && perState(tr)) {
+      assert.ok(en[`pnow.${kind}.title`] && tr[`pnow.${kind}.title`], `pnow.${kind}.title`);
+      continue;
+    }
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);
       assert.ok(tr[`pnow.${kind}.${part}`], `Turkish pnow.${kind}.${part}`);
