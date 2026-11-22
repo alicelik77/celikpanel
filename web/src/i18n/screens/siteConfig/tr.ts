@@ -207,4 +207,17 @@ export const trSiteConfigScreens: Record<SiteConfigScreenKey, string> = {
     'siteConfig.service.nginx_vhost.not_reloaded.stopped.plain': 'Önceki dosya geri kondu. nginx şu anda çalışmıyor, bu yüzden yeniden yüklenmedi; yapılandırması başka bir dosya yüzünden reddediliyor. Sunucu yöneticisi sudo nginx -t’nin adını verdiği sorunu giderir, sonra nginx’i başlatır. Ardından CelikPanel’in metnini hâlâ istiyorsanız yeniden seçin.',
     'siteConfig.service.nginx_vhost.not_running': 'Önceki dosya geri kondu. nginx bu değişiklikten önce çalışmıyordu; bu yüzden CelikPanel onu ne yeniden yükledi ne de başlattı. nginx’i kendiniz başlatın, sonra yeniden seçin.',
     // --- site yapılandırma dosyası bloğunun sonu ---
+    // alpha.144 (alpha.143 lab): alias and certificate refusals in the page's language (in this part for its size)
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED': 'Sitenin sertifikası bu değişiklik için yeniden alınamadı; bu yüzden hiçbir şey değiştirilmedi. SSL/TLS sekmesinde sertifikayı kontrol edip yeniden deneyin.',
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED.untrusted_source': 'Sitenin şimdiki sertifikası yenisine temel olamıyor (artık geçerli değil ya da veren kuruluşa bu sunucuda güvenilmiyor); bu yüzden hiçbir şey değiştirilmedi. Önce SSL/TLS sekmesinden yeni bir sertifika alın, sonra bu değişikliği yeniden yapın.',
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED.not_acme': 'Sitenin sertifikası CelikPanel’in aldığı türden değil; bu yüzden bu değişiklikle yeniden alınamaz. Hiçbir şey değiştirilmedi. SSL/TLS sekmesinden yeni adları da kapsayan bir sertifika yükleyin.',
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED.mail_name': 'Güvenli posta açık ama şimdiki sertifika posta adını kapsamıyor; bu yüzden hiçbir şey değiştirilmedi. Önce SSL/TLS sekmesinden sertifikayı posta adıyla yenileyin, sonra bu değişikliği yeniden yapın.',
+    'err.ALIAS_CERTIFICATE_NOT_COVERING': 'Sitenin etkin sertifikası geçerli değil ya da {name} adını kapsamıyor; bu yüzden takma ad eklenmedi. Önce SSL/TLS sekmesinden sertifikayı değiştirin ya da kaldırın. Hiçbir şey değiştirilmedi.',
+    'err.ALIAS_CERTIFICATE_NOT_COVERING.custom': 'Bu site için yüklenen sertifika {name} adını kapsamıyor; bu yüzden takma ad eklenmedi. Önce SSL/TLS sekmesinden {name} adını da kapsayan bir sertifika yükleyin. Hiçbir şey değiştirilmedi.',
+    'err.ALIAS_INVALID': '{name} bir takma ad için geçerli bir ad değil. Hiçbir şey değiştirilmedi.',
+    'err.ALIAS_NOT_FOUND': '{name} artık bu sitenin takma adı değil; bu yüzden hiçbir şey değiştirilmedi. Liste yeniden okunuyor.',
+    'err.HSTS_REMOVAL_BLOCKED': 'HSTS açıkken kaldırılamaz: tarayıcılara bu siteye yalnız HTTPS ile ulaşmaları söylendi. Önce SSL/TLS sekmesinden HSTS’yi kapatın, sonra kaldırın. Hiçbir şey değiştirilmedi.',
+    'err.HSTS_REMOVAL_BLOCKED.enabled': 'HSTS açıkken kaldırılamaz: tarayıcılara bu siteye yalnız HTTPS ile ulaşmaları söylendi. Önce SSL/TLS sekmesinden HSTS’yi kapatın, sonra kaldırın. Hiçbir şey değiştirilmedi.',
+    'err.HSTS_REMOVAL_BLOCKED.retiring': 'Önceki HSTS ayarı bitene kadar ({until}) kalmalı: onu görmüş tarayıcılar bu siteye hâlâ yalnız HTTPS ile ulaşıyor. O saatten sonra kaldırın. Hiçbir şey değiştirilmedi.',
+    'err.SSL_NO_ACTIVE_CERTIFICATE': 'Bu alan adının etkin sertifikası yok; kaldırılacak bir şey yok. Hiçbir şey değiştirilmedi.',
 };

@@ -213,6 +213,19 @@ export const enSiteConfigScreens = {
     'siteConfig.service.nginx_vhost.not_reloaded.stopped.plain': 'The previous file is back. nginx is not running now, so it was not reloaded; its configuration is refused by another file. The server administrator fixes what sudo nginx -t names, then starts nginx. After that, choose again if you still want CelikPanel’s text.',
     'siteConfig.service.nginx_vhost.not_running': 'The previous file is back. nginx was not running before this change, so CelikPanel neither reloaded nor started it. Start nginx yourself, then choose again.',
     // --- end of the site configuration file block ---
+    // alpha.144 (alpha.143 lab): alias and certificate refusals in the page's language (in this part for its size)
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED': 'The site’s certificate could not be issued again for this change, so nothing was changed. Check the certificate on the SSL/TLS tab, then try again.',
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED.untrusted_source': 'The site’s current certificate cannot be the basis of a new one (it is no longer valid, or its authority is not trusted on this server), so nothing was changed. Issue a new certificate on the SSL/TLS tab first, then make this change again.',
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED.not_acme': 'The site’s certificate is not one CelikPanel issues, so it cannot be issued again with this change. Nothing was changed. Upload a certificate that covers the new names on the SSL/TLS tab.',
+    'err.ALIAS_CERTIFICATE_REISSUE_FAILED.mail_name': 'Secure mail is on, but the current certificate does not cover the mail name, so nothing was changed. Renew the certificate with the mail name on the SSL/TLS tab first, then make this change again.',
+    'err.ALIAS_CERTIFICATE_NOT_COVERING': 'The site’s active certificate is not valid or does not cover {name}, so the alias was not added. Replace or remove the certificate on the SSL/TLS tab first. Nothing was changed.',
+    'err.ALIAS_CERTIFICATE_NOT_COVERING.custom': 'The certificate uploaded for this site does not cover {name}, so the alias was not added. Upload a certificate that also covers {name} on the SSL/TLS tab first. Nothing was changed.',
+    'err.ALIAS_INVALID': '{name} is not a valid name for an alias. Nothing was changed.',
+    'err.ALIAS_NOT_FOUND': '{name} is no longer an alias of this site, so nothing was changed. The list is read again.',
+    'err.HSTS_REMOVAL_BLOCKED': 'It cannot be removed while HSTS is on: browsers were told to reach this site only over HTTPS. Turn HSTS off on the SSL/TLS tab first, then remove it. Nothing was changed.',
+    'err.HSTS_REMOVAL_BLOCKED.enabled': 'It cannot be removed while HSTS is on: browsers were told to reach this site only over HTTPS. Turn HSTS off on the SSL/TLS tab first, then remove it. Nothing was changed.',
+    'err.HSTS_REMOVAL_BLOCKED.retiring': 'It must stay until the earlier HSTS setting ends ({until}): browsers that saw it still reach this site only over HTTPS. Remove it after that time. Nothing was changed.',
+    'err.SSL_NO_ACTIVE_CERTIFICATE': 'This domain has no active certificate, so there is nothing to remove. Nothing was changed.',
 } as const;
 
 export type SiteConfigScreenKey = keyof typeof enSiteConfigScreens;

@@ -134,6 +134,19 @@ export const enWebmailAddressScreens = {
     'life.addr.removeFail.CONFIG_OWNER_EDITED': 'The address {host} was not removed: its web server configuration was changed by hand, so CelikPanel does not touch it. {reason} Who acts: the server owner. Next: remove the file by hand, then reload Nginx.',
     'life.addr.removeUnknown': 'Whether the address {host} was removed is not known: the answer from the server agent did not arrive. Nothing is repeated by itself. Next: reload this page in a minute; this card shows what the server holds.',
     'life.addr.removeInterrupted': 'The panel restarted before the address {host} was removed; webmail still answers there. Nothing was retried by itself. Next: press Remove address again.',
+    // alpha.144 (alpha.143 lab): a mailbox on the server without a row, and its adoption (in this part for its size)
+    'err.MAIL_ACCOUNT_ON_SERVER_ONLY': 'A mailbox named {address} already exists on the server, but the panel has no record of it, so nothing was changed. Ask the server’s administrator to look at it, or choose another name.',
+    'err.MAIL_ACCOUNT_ON_SERVER_ONLY.admin': 'A mailbox named {address} already exists on the server, but the panel has no record of it, so nothing was changed. Adopt it into this domain: CelikPanel records it as it is, with its mail and password; afterwards you can keep it or delete it like any mailbox. Or choose another name.',
+    'mail.adopt.action': 'Adopt into this domain',
+    'mail.adopt.title': 'Adopt {address} into this domain?',
+    'mail.adopt.body': 'CelikPanel reads what the server holds for {address} and records it in this domain with the size limit it has there. Nothing on the server is changed.',
+    'mail.adopt.kept': 'Its mail, its folder and its password stay as they are.',
+    'mail.adopt.progress': 'Adopting {address}',
+    'mail.adopt.done': '{address} is recorded in this domain. Its mail and password are as they were.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED': 'The mailbox {address} was not recorded. Nothing was changed.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.gone': 'The server no longer holds a mailbox named {address}, so nothing was recorded. Create it again.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.incomplete': 'The server holds only part of the mailbox {address} (one of its two lines, in /etc/dovecot/users or /etc/postfix/vmailbox), so nothing was recorded. The server owner removes the line that is left; then create the mailbox again.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.elsewhere': 'The mailbox {address} on the server is not in the form CelikPanel writes (its folder, account or size limit is set differently), so nothing was recorded: it is left to the server owner. Choose another name, or the server owner removes it first.',
 } as const;
 
 export type WebmailAddressScreenKey = keyof typeof enWebmailAddressScreens;

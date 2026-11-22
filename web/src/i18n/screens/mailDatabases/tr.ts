@@ -477,17 +477,5 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'pwmail.set.done': 'Tamam',
     // alpha.125 (a124 lab): var olan posta kutusunu yeniden oluşturmak 500'dü.
     'err.MAIL_ACCOUNT_EXISTS': '{address} posta kutusu zaten var; bu yüzden hiçbir şey değiştirilmedi. Var olan posta kutusunu kullanın (parolası bilinmiyorsa listedeki anahtar düğmesiyle yeni parola verin) ya da başka bir ad seçin.',
-    'err.MAIL_ACCOUNT_ON_SERVER_ONLY': '{address} adlı bir posta kutusu sunucuda zaten var ama panelde kaydı yok; bu yüzden hiçbir şey değiştirilmedi. Sunucu yöneticisinden buna bakmasını isteyin ya da başka bir ad seçin.',
-    'err.MAIL_ACCOUNT_ON_SERVER_ONLY.admin': '{address} adlı bir posta kutusu sunucuda zaten var ama panelde kaydı yok; bu yüzden hiçbir şey değiştirilmedi. Onu bu alan adına alın: CelikPanel onu postası ve parolasıyla olduğu gibi kaydeder; sonra her posta kutusu gibi tutabilir ya da silebilirsiniz. Ya da başka bir ad seçin.',
-    'mail.adopt.action': 'Bu alan adına al',
-    'mail.adopt.title': '{address} bu alan adına alınsın mı?',
-    'mail.adopt.body': 'CelikPanel sunucunun {address} için tuttuğunu okur ve onu oradaki boyut sınırıyla bu alan adına kaydeder. Sunucuda hiçbir şey değiştirilmez.',
-    'mail.adopt.kept': 'Postası, klasörü ve parolası olduğu gibi kalır.',
-    'mail.adopt.progress': '{address} alınıyor',
-    'mail.adopt.done': '{address} bu alan adına kaydedildi. Postası ve parolası olduğu gibi.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED': '{address} posta kutusu kaydedilmedi. Hiçbir şey değiştirilmedi.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED.gone': 'Sunucuda artık {address} adlı bir posta kutusu yok; bu yüzden hiçbir şey kaydedilmedi. Onu yeniden oluşturun.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED.incomplete': 'Sunucu {address} posta kutusunun yalnız bir kısmını tutuyor (iki satırından biri, /etc/dovecot/users ya da /etc/postfix/vmailbox içinde); bu yüzden hiçbir şey kaydedilmedi. Sunucu sahibi kalan satırı siler; sonra posta kutusunu yeniden oluşturun.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED.elsewhere': 'Sunucudaki {address} posta kutusu CelikPanel’in yazdığı biçimde değil (klasörü, hesabı ya da boyut sınırı farklı ayarlanmış); bu yüzden hiçbir şey kaydedilmedi: sunucu sahibine bırakıldı. Başka bir ad seçin ya da önce sunucu sahibi onu kaldırsın.',
     // --- end of set1 corrections ---
 };

@@ -31,6 +31,20 @@ export const enMonitoringScreens = {
     // alpha.128 ops (G18): notifications by recipient.
     'dashboard.audit.action.notifications.preferences': 'changed which notices they receive by email',
     'dashboard.audit.action.notifications.settings': 'changed the server-wide notification settings',
+    // alpha.144 (alpha.143 lab): a failed PostgreSQL close names the kind of cause (pgpub.; in this part for its size)
+    'err.POSTGRESQL_PUBLIC_FAILED.refused': 'The database server refused it. Nothing was changed.',
+    'err.POSTGRESQL_PUBLIC_FAILED.in_use': 'The database is in use: the database server did not grant the lock it needed in time. Nothing was changed. Try again when the connections that hold it have ended.',
+    'err.POSTGRESQL_PUBLIC_FAILED.timeout': 'The database server took too long and stopped it. Nothing was changed. Try again.',
+    'err.POSTGRESQL_PUBLIC_FAILED.connection': 'The connection to the database server was lost. Nothing was changed. Check that PostgreSQL runs, then try again.',
+    'err.POSTGRESQL_PUBLIC_FAILED.rights': 'The database server did not allow it: a right was missing. Nothing was changed.',
+    'err.POSTGRESQL_PUBLIC_FAILED.missing': 'Something it names does not exist on the database server (a user or a role). Nothing was changed.',
+    'pgpub.step.notDone': 'Not done — nothing was changed',
+    'pgpub.step.unknown': 'Result not confirmed yet — not sent again',
+    'pgpub.why.server.in_use': 'the database was in use and the database server did not grant the lock in time; nothing was changed: “{detail}”',
+    'pgpub.why.server.timeout': 'the database server took too long and stopped it; nothing was changed: “{detail}”',
+    'pgpub.why.server.connection': 'the connection to the database server was lost; nothing was changed: “{detail}”',
+    'pgpub.why.server.rights': 'the database server did not allow it (a right was missing); nothing was changed: “{detail}”',
+    'pgpub.why.server.missing': 'something it names does not exist on the database server; nothing was changed: “{detail}”',
 } as const;
 
 export type MonitoringScreenKey = keyof typeof enMonitoringScreens;

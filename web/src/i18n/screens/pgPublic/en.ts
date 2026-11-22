@@ -67,21 +67,6 @@ export const enPgPublicScreens = {
     'err.POSTGRESQL_PUBLIC_WAITING': 'The panel and its Agent are different builds while an update finishes. Nothing was changed; try again in a minute.',
     'err.POSTGRESQL_PUBLIC_CHANGED': 'The database is no longer as the list showed it, so nothing was changed. The list is read again; read it, then decide.',
     'err.POSTGRESQL_PUBLIC_FAILED': 'The database server did not do it. Nothing was changed.',
-    // alpha.144 (alpha.143 lab): the kind of cause the database server's
-    // message names; its message follows quoted.
-    'err.POSTGRESQL_PUBLIC_FAILED.refused': 'The database server refused it. Nothing was changed.',
-    'err.POSTGRESQL_PUBLIC_FAILED.in_use': 'The database is in use: the database server did not grant the lock it needed in time. Nothing was changed. Try again when the connections that hold it have ended.',
-    'err.POSTGRESQL_PUBLIC_FAILED.timeout': 'The database server took too long and stopped it. Nothing was changed. Try again.',
-    'err.POSTGRESQL_PUBLIC_FAILED.connection': 'The connection to the database server was lost. Nothing was changed. Check that PostgreSQL runs, then try again.',
-    'err.POSTGRESQL_PUBLIC_FAILED.rights': 'The database server did not allow it: a right was missing. Nothing was changed.',
-    'err.POSTGRESQL_PUBLIC_FAILED.missing': 'Something it names does not exist on the database server (a user or a role). Nothing was changed.',
-    'pgpub.step.notDone': 'Not done — nothing was changed',
-    'pgpub.step.unknown': 'Result not confirmed yet — not sent again',
-    'pgpub.why.server.in_use': 'the database was in use and the database server did not grant the lock in time; nothing was changed: “{detail}”',
-    'pgpub.why.server.timeout': 'the database server took too long and stopped it; nothing was changed: “{detail}”',
-    'pgpub.why.server.connection': 'the connection to the database server was lost; nothing was changed: “{detail}”',
-    'pgpub.why.server.rights': 'the database server did not allow it (a right was missing); nothing was changed: “{detail}”',
-    'pgpub.why.server.missing': 'something it names does not exist on the database server; nothing was changed: “{detail}”',
     'err.POSTGRESQL_PUBLIC_UNKNOWN': 'The database could not be reached, so whether it changed is not known. The list is read again and shows what it holds now.',
 };
 

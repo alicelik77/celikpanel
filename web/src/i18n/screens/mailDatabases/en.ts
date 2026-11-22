@@ -489,20 +489,6 @@ export const enMailDatabasesScreens = {
     'pwmail.set.done': 'Done',
     // alpha.125 (a124 lab): creating a mailbox that already exists was a 500.
     'err.MAIL_ACCOUNT_EXISTS': 'The mailbox {address} already exists, so nothing was changed. Use the existing mailbox (if its password is not known, set a new one with the key button in the list), or choose another name.',
-    // alpha.144 (alpha.143 lab): a mailbox the server holds without a row in
-    // the panel, and the administrator's adoption of it.
-    'err.MAIL_ACCOUNT_ON_SERVER_ONLY': 'A mailbox named {address} already exists on the server, but the panel has no record of it, so nothing was changed. Ask the server’s administrator to look at it, or choose another name.',
-    'err.MAIL_ACCOUNT_ON_SERVER_ONLY.admin': 'A mailbox named {address} already exists on the server, but the panel has no record of it, so nothing was changed. Adopt it into this domain: CelikPanel records it as it is, with its mail and password; afterwards you can keep it or delete it like any mailbox. Or choose another name.',
-    'mail.adopt.action': 'Adopt into this domain',
-    'mail.adopt.title': 'Adopt {address} into this domain?',
-    'mail.adopt.body': 'CelikPanel reads what the server holds for {address} and records it in this domain with the size limit it has there. Nothing on the server is changed.',
-    'mail.adopt.kept': 'Its mail, its folder and its password stay as they are.',
-    'mail.adopt.progress': 'Adopting {address}',
-    'mail.adopt.done': '{address} is recorded in this domain. Its mail and password are as they were.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED': 'The mailbox {address} was not recorded. Nothing was changed.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED.gone': 'The server no longer holds a mailbox named {address}, so nothing was recorded. Create it again.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED.incomplete': 'The server holds only part of the mailbox {address} (one of its two lines, in /etc/dovecot/users or /etc/postfix/vmailbox), so nothing was recorded. The server owner removes the line that is left; then create the mailbox again.',
-    'err.MAIL_ACCOUNT_ADOPT_REFUSED.elsewhere': 'The mailbox {address} on the server is not in the form CelikPanel writes (its folder, account or size limit is set differently), so nothing was recorded: it is left to the server owner. Choose another name, or the server owner removes it first.',
     // --- end of set1 corrections ---
 } as const;
 
