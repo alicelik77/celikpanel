@@ -31,6 +31,8 @@ export const trSideDoorsUndoScreens: Record<SideDoorsUndoScreenKey, string> = {
     'pnow.reclose.done': 'Yeniden kapatıldı.',
     'pnow.reclose.still': 'Kapatılamadı: nedeni Şu anki sorunlar’da.',
     'pnow.reclose.failed': 'Şu an yeniden kapatılamadı',
+    'pnow.reclose.lastFailed': '{time} saatindeki yeniden kapatma olmadı: {reason}',
+    'pnow.reclose.unknown': '{time} saatindeki yeniden kapatmanın olup olmadığı bilinmiyor: o sırada panel yeniden başladı. Liste durumu yeniden okur; satır kalırsa düğmeye yeniden basın.',
     'cron.outside.keep': 'Kalsın',
     'cron.outside.keepConfirm': 'Bu satır kalsın mı? Crontab’da kalır ve artık CelikPanel’de yapılmamış diye işaretlenmez ya da listelenmez. Yalnız bildiğiniz bir satırı tutun.',
     'cron.outside.kept': 'Satır tutuldu',

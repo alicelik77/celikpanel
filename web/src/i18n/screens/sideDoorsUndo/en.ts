@@ -42,6 +42,8 @@ export const enSideDoorsUndoScreens = {
     'pnow.reclose.done': 'It is closed again.',
     'pnow.reclose.still': 'It was not closed: Problems now says why.',
     'pnow.reclose.failed': 'It could not be closed again now',
+    'pnow.reclose.lastFailed': 'Closing it again at {time} did not work: {reason}',
+    'pnow.reclose.unknown': 'Whether closing it again at {time} worked is not known: the panel restarted while it ran. This list reads the state again; if the line stays, press the button again.',
     'cron.outside.keep': 'Keep',
     'cron.outside.keepConfirm': 'Keep this line? It stays in the crontab and is no longer marked or listed as not made in CelikPanel. Keep only a line you know.',
     'cron.outside.kept': 'Line kept',

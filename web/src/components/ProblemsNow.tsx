@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
@@ -75,6 +75,9 @@ export type ProblemKind =
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
 const RECLOSE_URL = '/api/v1/metrics/side-doors/reclose';
+// Third fix round: the panel keeps the last result with its time, also over
+// a restart; one a restart cut is "unknown".
+type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; unknown?: boolean; error?: string; at?: string };
 const RECLOSE_POLL_MS = 2000;
 const RECLOSE_FOLLOW_MS = 25 * 60 * 1000;
 
@@ -234,6 +237,18 @@ export function ProblemsNow({
     const [starting, setStarting] = useState<string | null>(null);
     const [outcome, setOutcome] = useState<ApiError | null>(null);
     const [failed, setFailed] = useState<{ key: string; text: string } | null>(null);
+    // The last close-again's result when it did not close the door (failed,
+    // or cut by a panel restart): read once when a line offers it (reads only).
+    const [lastReclose, setLastReclose] = useState<RecloseStatus | null>(null);
+    const listed = handle.remote.state === 'known' ? handle.remote.value : handle.remote.state === 'unknown' ? handle.remote.previous?.value : undefined;
+    const offersReclose = (listed?.problems ?? []).some((p: Problem) => p.action.kind === 'reclose');
+    const readLastReclose = useCallback(async () => {
+        const read = await readRemote(RECLOSE_URL, (raw) => raw as RecloseStatus);
+        if (read.state === 'known') setLastReclose(read.value);
+    }, []);
+    useEffect(() => {
+        if (offersReclose) void readLastReclose();
+    }, [offersReclose, readLastReclose]);
 
     const clock = (iso?: string) => {
         if (!iso) return '';
@@ -305,7 +320,6 @@ export function ProblemsNow({
             progressTitle: t('pnow.reclose.progress'),
             action: async (report) => {
                 report.steps([{ id: 'reclose', label: t('pnow.reclose.step'), state: 'running', since: Date.now() }]);
-                type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; error?: string };
                 const unknown = { state: 'unknown' as const, reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
                 try {
                     const response = await fetch(RECLOSE_URL, {
@@ -334,13 +348,14 @@ export function ProblemsNow({
                         lastRead = again.state;
                         if (again.state === 'known') status = again.value;
                     }
-                    if (lastRead === 'unknown' || status?.running || status?.target !== target || (status?.version ?? '') !== version) return unknown;
+                    if (lastRead === 'unknown' || status?.running || status?.unknown || status?.target !== target || (status?.version ?? '') !== version) return unknown;
                     if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: status.error };
                     return status.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
                 } catch {
                     return unknown;
                 } finally {
                     void handle.retry();
+                    void readLastReclose();
                 }
             },
         });
@@ -401,6 +416,15 @@ export function ProblemsNow({
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}
                                         {failed?.key === problem.key && <p className="mt-1 text-sm text-danger" role="alert">{failed.text}</p>}
+                                        {problem.action.kind === 'reclose' && lastReclose && !lastReclose.running && (lastReclose.error || lastReclose.unknown)
+                                            && lastReclose.target === problem.action.to
+                                            && (lastReclose.version ?? '') === (problem.action.to === 'stock_pool' ? problem.name ?? '' : '') && (
+                                            <p className="mt-1 text-sm text-fg" data-problem-reclose-last="">
+                                                {lastReclose.error
+                                                    ? t('pnow.reclose.lastFailed', { time: clock(lastReclose.at), reason: lastReclose.error })
+                                                    : t('pnow.reclose.unknown', { time: clock(lastReclose.at) })}
+                                            </p>
+                                        )}
                                     </div>
                                     {problem.action.kind === 'start_service' ? (
                                         <Button

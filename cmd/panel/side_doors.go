@@ -392,7 +392,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(sideDoorsRecloseStatus())
+		_ = json.NewEncoder(w).Encode(p.recloseStatus(r.Context()))
 		return
 	case http.MethodPost:
 	default:
@@ -431,7 +431,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		details["api_token"] = c.APIToken.label()
 	}
 	auditDone := auditRecord{UserID: uid, ActingAs: actingAs, ResourceType: "service", IP: ip, UserAgent: agent, Details: auditDetailsText(details)}
-	started, running := beginSideDoorsReclose(request.Target, request.Version)
+	started, running := p.beginSideDoorsReclose(r.Context(), request.Target, request.Version)
 	if !started {
 		if running.Target == request.Target && running.Version == request.Version {
 			w.Header().Set("Content-Type", "application/json")
@@ -448,7 +448,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		response, err := closeSideDoorsThroughAgent(p, ctx, request.Target, request.Version)
 		if err != nil {
 			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
-			endSideDoorsReclose(false, "", "the side doors step could not run now: "+auditReason(err.Error()))
+			p.endSideDoorsReclose(context.Background(), false, "", "the side doors step could not run now: "+auditReason(err.Error()))
 			return
 		}
 		p.applySideDoorsAnswer(ctx, response.State)
@@ -458,27 +458,35 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		} else {
 			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
 		}
-		endSideDoorsReclose(closed, sideDoorState(response.State, request.Target, request.Version), "")
+		p.endSideDoorsReclose(context.Background(), closed, sideDoorState(response.State, request.Target, request.Version), "")
 	}()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(sideDoorsRecloseStatus())
 }
 
-// sideDoorsReclose is the last "close it again" (one at a time).
+// sideDoorsReclose is the last "close it again" (one at a time). It is kept
+// in panel_settings with its time (S4 R1, third fix round), so the result
+// is still there after a Panel restart; one that was running when the Panel
+// stopped is said as not known (Unknown), never as closed or as still open.
 type sideDoorsReclose struct {
 	Target  string `json:"target,omitempty"`
 	Version string `json:"version,omitempty"`
 	Running bool   `json:"running"`
 	Closed  bool   `json:"closed"`
+	Unknown bool   `json:"unknown,omitempty"`
 	State   string `json:"state,omitempty"`
 	Error   string `json:"error,omitempty"`
 	At      string `json:"at,omitempty"`
 }
 
+const settingSideDoorsReclose = "side_doors_reclose_v1"
+
 var (
 	sideDoorsRecloseMu   sync.Mutex
 	sideDoorsRecloseLast sideDoorsReclose
+	// sideDoorsRecloseLoaded: the kept result was read in this process.
+	sideDoorsRecloseLoaded bool
 )
 
 func sideDoorsRecloseStatus() sideDoorsReclose {
@@ -487,23 +495,68 @@ func sideDoorsRecloseStatus() sideDoorsReclose {
 	return sideDoorsRecloseLast
 }
 
-// beginSideDoorsReclose starts one unless one runs (then it returns that one).
-func beginSideDoorsReclose(target, version string) (bool, sideDoorsReclose) {
+// recloseStatus is the last result, read from panel_settings once per
+// process.
+func (p *Panel) recloseStatus(ctx context.Context) sideDoorsReclose {
 	sideDoorsRecloseMu.Lock()
 	defer sideDoorsRecloseMu.Unlock()
+	p.loadSideDoorsRecloseLocked(ctx)
+	return sideDoorsRecloseLast
+}
+
+func (p *Panel) loadSideDoorsRecloseLocked(ctx context.Context) {
+	if sideDoorsRecloseLoaded {
+		return
+	}
+	sideDoorsRecloseLoaded = true
+	raw := p.setting(ctx, settingSideDoorsReclose)
+	if raw == "" {
+		return
+	}
+	var kept sideDoorsReclose
+	if json.Unmarshal([]byte(raw), &kept) != nil {
+		return
+	}
+	if kept.Running {
+		// The Panel stopped while it ran: its end was never seen here.
+		kept.Running, kept.Closed, kept.Unknown, kept.Error = false, false, true, ""
+		sideDoorsRecloseLast = kept
+		p.saveSideDoorsRecloseLocked(ctx)
+		return
+	}
+	sideDoorsRecloseLast = kept
+}
+
+func (p *Panel) saveSideDoorsRecloseLocked(ctx context.Context) {
+	raw, err := json.Marshal(sideDoorsRecloseLast)
+	if err != nil {
+		return
+	}
+	if err := p.setSetting(ctx, settingSideDoorsReclose, string(raw)); err != nil {
+		log.Printf("side doors: the close-again result was not kept: %v", err)
+	}
+}
+
+// beginSideDoorsReclose starts one unless one runs (then it returns that one).
+func (p *Panel) beginSideDoorsReclose(ctx context.Context, target, version string) (bool, sideDoorsReclose) {
+	sideDoorsRecloseMu.Lock()
+	defer sideDoorsRecloseMu.Unlock()
+	p.loadSideDoorsRecloseLocked(ctx)
 	if sideDoorsRecloseLast.Running {
 		return false, sideDoorsRecloseLast
 	}
 	sideDoorsRecloseLast = sideDoorsReclose{Target: target, Version: version, Running: true, At: time.Now().UTC().Format(time.RFC3339)}
+	p.saveSideDoorsRecloseLocked(ctx)
 	return true, sideDoorsRecloseLast
 }
 
-func endSideDoorsReclose(closed bool, state, failure string) {
+func (p *Panel) endSideDoorsReclose(ctx context.Context, closed bool, state, failure string) {
 	sideDoorsRecloseMu.Lock()
 	defer sideDoorsRecloseMu.Unlock()
-	sideDoorsRecloseLast.Running, sideDoorsRecloseLast.Closed = false, closed
+	sideDoorsRecloseLast.Running, sideDoorsRecloseLast.Closed, sideDoorsRecloseLast.Unknown = false, closed, false
 	sideDoorsRecloseLast.State, sideDoorsRecloseLast.Error = state, failure
 	sideDoorsRecloseLast.At = time.Now().UTC().Format(time.RFC3339)
+	p.saveSideDoorsRecloseLocked(ctx)
 }
 
 var sideDoorsPHPVersion = regexp.MustCompile(`^[0-9]{1,2}\.[0-9]{1,2}$`)
