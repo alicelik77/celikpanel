@@ -149,6 +149,9 @@ func readSideDoorsTools(ctx context.Context, ops phpToolBindOps, hooks sideDoors
 			if err := ops.httpProbe(ctx, row.Tool, row.Version); err != nil {
 				row.State, row.Detail = transport.SideDoorsToolDown, "it does not answer on its own pool: "+err.Error()
 			}
+			if note := hooks.note(row.Tool); note != "" {
+				row.Detail = strings.TrimPrefix(row.Detail+"; "+note, "; ")
+			}
 			tools = append(tools, row)
 			continue
 		}
@@ -190,6 +193,17 @@ type sideDoorsToolHooks struct {
 	// earlier move (proven now) and removes the tool's pools left on other
 	// versions by an interrupted move.
 	recheck func(ctx context.Context, tool, version string) error
+	// treeNote says when what lets the tool's own account into its files is
+	// gone (webmail: the access-control-list entry on its tree's root, B2);
+	// "" when it is there. nil in tests that do not look at it.
+	treeNote func(tool string) string
+}
+
+func (h sideDoorsToolHooks) note(tool string) string {
+	if h.treeNote == nil {
+		return ""
+	}
+	return h.treeNote(tool)
 }
 
 // closeSideDoorsTools moves each installed tool still in a stock pool to its
@@ -289,6 +303,11 @@ func sideDoorsOwnTool(ctx context.Context, ops phpToolBindOps, hooks sideDoorsTo
 	if err := hooks.recheck(ctx, row.Tool, row.Version); err != nil {
 		notes = append(notes, err.Error())
 	}
+	// The owner's removal of the entry stands (it is not put back here); the
+	// line says what it means.
+	if note := hooks.note(row.Tool); note != "" {
+		notes = append(notes, note)
+	}
 	if err := ops.httpProbe(ctx, row.Tool, row.Version); err != nil {
 		// A move cut between writing the web server's configuration and
 		// reloading it leaves the running web server on the old socket.
@@ -323,6 +342,12 @@ func hostSideDoorsToolHooks() sideDoorsToolHooks {
 			return ""
 		},
 		webAccount: webServerGroup,
+		treeNote: func(tool string) string {
+			if tool != phpToolWebmail {
+				return ""
+			}
+			return webmailRootEntryNote()
+		},
 		recheck: func(ctx context.Context, tool, version string) error {
 			var errs []error
 			if err := clearPHPToolFileJournal(tool); err != nil {

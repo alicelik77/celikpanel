@@ -181,10 +181,10 @@ func TestRoundcubeOwnAccountPlanChangesOnlyWhatMust(t *testing.T) {
 		"temp": "4242:4243:0700", "temp/attachment": "4242:4243:0640",
 		"logs": "4242:4243:0700", "logs/errors.log": "4242:4243:0640",
 		"config": "0:4243:0750", "config/config.inc.php": uid + ":4243:0640", "config/defaults.inc.php": uid + ":4243:0644",
-		"plugins/password/config.inc.php":    uid + ":4243:0640",
-		"plugins/managesieve/config.inc.php": uid + ":4243:0640",
-		"owner-notes.txt":                    uid + ":" + fixItoa(gid) + ":0640",
-		".":                                  uid + ":" + fixItoa(gid) + ":0751",
+		"plugins/password/config.inc.php": uid + ":4243:0640",
+		// Second fix round (B2): the root stays closed to others; webmail's
+		// account alone gets through it by an access-control-list entry.
+		".": uid + ":" + fixItoa(gid) + ":0750",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("plan:\n%v\nwant:\n%v", got, want)
@@ -200,6 +200,9 @@ func TestRoundcubeOwnAccountPlanChangesOnlyWhatMust(t *testing.T) {
 	// The private parts first, the tree's own directory last.
 	if order[len(order)-1] != "." || order[0] != "db" {
 		t.Fatalf("order %v", order)
+	}
+	if root := plan[len(plan)-1]; !aclHasUser(root.ACL, 4242, aclExecute) || aclHasUser(root.ACL, 4243, aclExecute) {
+		t.Fatal("the root's access-control list does not let webmail's account (and only it) through")
 	}
 	for _, change := range plan {
 		rel, _ := filepath.Rel(base, change.Path)
@@ -219,9 +222,9 @@ func modeText(mode os.FileMode) string { return fmt.Sprintf("%04o", uint32(mode.
 // The files' undo puts back what the FIRST attempt recorded, decided from
 // what serves the tool, not from a file's group.
 func TestAnInterruptedMovesRetryPutsBackWhatTheFirstAttemptRecorded(t *testing.T) {
-	savedDir, savedSet, savedRestore := phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState
+	savedDir, savedSet, savedRestore, savedCurrent := phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState, currentPHPToolFileState
 	t.Cleanup(func() {
-		phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState = savedDir, savedSet, savedRestore
+		phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState, currentPHPToolFileState = savedDir, savedSet, savedRestore, savedCurrent
 	})
 	phpToolFilesRecordDir = t.TempDir()
 	base := filepath.Join(t.TempDir(), "roundcube")
@@ -234,9 +237,20 @@ func TestAnInterruptedMovesRetryPutsBackWhatTheFirstAttemptRecorded(t *testing.T
 		t.Fatal(err)
 	}
 	var applied []string
+	// What the (not made) changes would leave, so the undo sees each path as
+	// CelikPanel set it.
+	set := map[string][3]int{}
 	setPHPToolPathMeta = func(path string, _ bool, uid, gid int, mode os.FileMode) error {
 		applied = append(applied, path)
+		set[path] = [3]int{uid, gid, int(unixModeBits(mode))}
 		return nil
+	}
+	currentPHPToolFileState = func(path string, content, acl bool) (phpToolFileState, error) {
+		state, err := readPHPToolFileState(path, content, acl)
+		if meta, ok := set[path]; ok {
+			state.UID, state.GID, state.Mode = meta[0], meta[1], uint32(meta[2])
+		}
+		return state, err
 	}
 	var restored []phpToolFileState
 	restorePHPToolFileState = func(state phpToolFileState) error {

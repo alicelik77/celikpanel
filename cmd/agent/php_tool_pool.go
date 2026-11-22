@@ -622,11 +622,11 @@ func preparePHPMyAdminOwnAccount(uid, gid int, servedOwn bool) (func() error, er
 	} else if journal, err = loadPHPToolFileJournal(phpToolPHPMyAdmin); err != nil {
 		return nil, err
 	}
-	note := func(path string, content bool) error {
+	note := func(path string, content bool, after phpToolFileMeta) error {
 		if journal == nil {
 			return nil
 		}
-		return journal.note([]string{path}, map[string]bool{path: content})
+		return journal.note([]phpToolPlanned{{Path: path, WithContent: content, After: after}})
 	}
 	fail := func(err error) (func() error, error) {
 		if journal != nil && len(journal.before) > 0 {
@@ -659,7 +659,7 @@ func preparePHPMyAdminOwnAccount(uid, gid int, servedOwn bool) (func() error, er
 		}
 		content := []byte(renderPHPMyAdminOwnAccountConf(secret))
 		if !previous.exists || string(previous.content) != string(content) || previous.uid != 0 || previous.gid != gid || previous.mode.Perm() != 0o640 {
-			if err := note(phpMyAdminOwnAccountConf, true); err != nil {
+			if err := note(phpMyAdminOwnAccountConf, true, phpToolFileMeta{UID: 0, GID: gid, Mode: 0o640, ContentSHA: contentDigest(content)}); err != nil {
 				return nil, fmt.Errorf("record phpMyAdmin's files before changing them: %w", err)
 			}
 			if err := secureWriteConfigOwnedBy(phpMyAdminOwnAccountConf, content, 0o640, 0, uint32(gid)); err != nil {
@@ -678,7 +678,7 @@ func preparePHPMyAdminOwnAccount(uid, gid int, servedOwn bool) (func() error, er
 		if err != nil || !file.exists || file.uid != 0 || file.gid != webGID || file.mode.Perm() != 0o640 {
 			continue
 		}
-		if err := note(path, false); err != nil {
+		if err := note(path, false, phpToolFileMeta{UID: 0, GID: gid, Mode: 0o640}); err != nil {
 			return fail(fmt.Errorf("record phpMyAdmin's files before changing them: %w", err))
 		}
 		if err := secureSetMailFileMetadata(path, 0o640, 0, gid); err != nil {

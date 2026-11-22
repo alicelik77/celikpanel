@@ -325,3 +325,175 @@ func TestClosingAtAgainThatFailsKeepsTheOwnersUndo(t *testing.T) {
 		t.Fatalf("%+v: a failed close-again made a later start write it by itself", at)
 	}
 }
+
+// --- B2: no access-control lists, no move; nothing changed ---
+
+func TestWebmailStaysOnTheWebAccountWhereTheFileSystemRefusesAccessControlLists(t *testing.T) {
+	savedDir, savedSet, savedRead := phpToolFilesRecordDir, setPHPToolPathMeta, readPathACL
+	t.Cleanup(func() { phpToolFilesRecordDir, setPHPToolPathMeta, readPathACL = savedDir, savedSet, savedRead })
+	phpToolFilesRecordDir = t.TempDir()
+	base := filepath.Join(t.TempDir(), "roundcube")
+	for _, dir := range []string{"config", "db", "temp", "logs"} {
+		if err := os.MkdirAll(filepath.Join(base, dir), 0o770); err != nil {
+			t.Fatal(err)
+		}
+	}
+	changed := 0
+	setPHPToolPathMeta = func(string, bool, int, int, os.FileMode) error { changed++; return nil }
+	readPathACL = func(path string) ([]byte, error) { return nil, errors.Join(errors.New(path), errACLUnsupported) }
+	undo, err := prepareRoundcubeOwnAccountWith(base, 4242, 4243, false)
+	var refused *errWebmailNoACL
+	if !errors.As(err, &refused) || undo != nil {
+		t.Fatalf("err %v: the move must stop with the reason", err)
+	}
+	if changed != 0 {
+		t.Fatalf("%d paths changed: nothing may change, and the root is never opened instead", changed)
+	}
+	if _, err := os.Stat(phpToolFilesRecordPath(phpToolWebmail)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("a record was written for a move that changed nothing")
+	}
+	if !strings.Contains(err.Error(), "acl mount option") || !strings.Contains(err.Error(), "stays on the web server's account") {
+		t.Fatalf("the reason does not say what the owner can do: %v", err)
+	}
+}
+
+// --- B10: the undo never puts an earlier state over a path changed since ---
+
+func TestTheUndoKeepsAPathChangedSinceAndNamesIt(t *testing.T) {
+	savedDir, savedSet, savedRestore, savedCurrent := phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState, currentPHPToolFileState
+	t.Cleanup(func() {
+		phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState, currentPHPToolFileState = savedDir, savedSet, savedRestore, savedCurrent
+	})
+	phpToolFilesRecordDir = t.TempDir()
+	base := filepath.Join(t.TempDir(), "roundcube")
+	for _, dir := range []string{"config", "db", "temp", "logs"} {
+		if err := os.MkdirAll(filepath.Join(base, dir), 0o770); err != nil {
+			t.Fatal(err)
+		}
+	}
+	set := map[string][3]int{}
+	setPHPToolPathMeta = func(path string, _ bool, uid, gid int, mode os.FileMode) error {
+		set[path] = [3]int{uid, gid, int(unixModeBits(mode))}
+		return nil
+	}
+	currentPHPToolFileState = func(path string, content, acl bool) (phpToolFileState, error) {
+		state, err := readPHPToolFileState(path, content, acl)
+		if meta, ok := set[path]; ok {
+			state.UID, state.GID, state.Mode = meta[0], meta[1], uint32(meta[2])
+		}
+		return state, err
+	}
+	var restored []string
+	restorePHPToolFileState = func(state phpToolFileState) error {
+		restored = append(restored, filepath.Base(state.Path))
+		return nil
+	}
+	undo, err := prepareRoundcubeOwnAccountWith(base, 4242, 4243, false)
+	if err != nil || undo == nil {
+		t.Fatalf("move: %v", err)
+	}
+	// A Roundcube update (or the owner) changes temp/ after CelikPanel did.
+	set[filepath.Join(base, "temp")] = [3]int{1, 1, 0o755}
+	err = undo()
+	var kept *errChangedOutsideTheMove
+	if !errors.As(err, &kept) || len(kept.paths) != 1 || kept.paths[0] != filepath.Join(base, "temp") {
+		t.Fatalf("err %v: the changed path is kept and named", err)
+	}
+	for _, name := range restored {
+		if name == "temp" {
+			t.Fatal("an earlier state was put over a path that changed since")
+		}
+	}
+	if len(restored) == 0 {
+		t.Fatal("the paths still as CelikPanel set them were not put back")
+	}
+}
+
+// --- C5: set-group-id and sticky bits are kept in every change and undo ---
+
+func TestSetGroupIDAndStickyBitsAreKept(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "roundcube")
+	for _, dir := range []string{"config", "db", "temp", "logs"} {
+		if err := os.MkdirAll(filepath.Join(base, dir), 0o770); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Chmod(filepath.Join(base, "db"), 0o770|os.ModeSetgid); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(base, "temp"), 0o770|os.ModeSticky); err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(filepath.Join(base, "db"))
+	if info.Mode()&os.ModeSetgid == 0 {
+		t.Skip("this file system does not keep set-group-id on a directory")
+	}
+	plan, _, err := roundcubeOwnAccountPlan(base, 4242, 4243, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modes := map[string]os.FileMode{}
+	for _, change := range plan {
+		modes[filepath.Base(change.Path)] = change.Mode
+	}
+	if modes["db"]&os.ModeSetgid == 0 || modes["temp"]&os.ModeSticky == 0 {
+		t.Fatalf("plan modes %v: the special bits were dropped", modes)
+	}
+	state, err := readPHPToolFileState(filepath.Join(base, "db"), false, false)
+	if err != nil || state.Mode&0o2000 == 0 || fileModeOfBits(state.Mode)&os.ModeSetgid == 0 {
+		t.Fatalf("recorded %o, %v: the undo would drop set-group-id", state.Mode, err)
+	}
+}
+
+// --- B2 (low): a walk that ends early is a failure, never a shorter plan ---
+
+func TestARoundcubeWalkThatEndsEarlyIsAFailure(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "roundcube")
+	for _, rel := range []string{"config", "db", "temp", "logs"} {
+		if err := os.MkdirAll(filepath.Join(base, rel), 0o770); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, rel := range []string{"temp/a", "temp/b"} {
+		if err := os.WriteFile(filepath.Join(base, rel), []byte("x"), 0o640); err != nil {
+			t.Fatal(err)
+		}
+	}
+	saved := roundcubeWalkTree
+	t.Cleanup(func() { roundcubeWalkTree = saved })
+	// temp/a vanishes between the listing and its read; temp/b must still be
+	// in the plan.
+	roundcubeWalkTree = func(root string, fn filepath.WalkFunc) error {
+		return saved(root, func(path string, info os.FileInfo, err error) error {
+			if filepath.Base(path) == "a" && filepath.Base(root) == "temp" {
+				return fn(path, nil, &os.PathError{Op: "lstat", Path: path, Err: os.ErrNotExist})
+			}
+			return fn(path, info, err)
+		})
+	}
+	plan, _, err := roundcubeOwnAccountPlan(base, 4242, 4243, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, change := range plan {
+		if filepath.Base(change.Path) == "b" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("a vanished file ended the walk early and the plan was shorter")
+	}
+	// Any other error ends the plan as a failure.
+	roundcubeWalkTree = func(root string, fn filepath.WalkFunc) error {
+		return saved(root, func(path string, info os.FileInfo, err error) error {
+			if filepath.Base(root) == "temp" && path != root {
+				return fn(path, nil, &os.PathError{Op: "open", Path: path, Err: os.ErrPermission})
+			}
+			return fn(path, info, err)
+		})
+	}
+	if _, _, err := roundcubeOwnAccountPlan(base, 4242, 4243, -1); err == nil {
+		t.Fatal("a walk that failed was taken as a complete plan")
+	}
+}
