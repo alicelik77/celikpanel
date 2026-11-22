@@ -9337,15 +9337,19 @@ until the backup reports ready.
   could not pass through `/var/log/celikpanel` (0750 `root:celikpanel` on the
   owner's server, read on 22 November 2026), so after each rotation they
   logged `[emerg] … (13: Permission denied)` and kept writing into the
-  rotated file. Once at the Agent's start (receipt `log-root-modes-v1.done`):
+  rotated file. Once at the Agent's start (receipt `log-root-modes-v2.done`):
   the folder, root-owned at a mode CelikPanel produced, 0700 → 0711 or
-  0750 → 0751; its traffic folder 0755 → 0711 (passable, not listable); the
-  certificate tool's log folder stays 0700; any other mode or owner is kept
-  and named. New installations make both at 0711 whatever the umask. No
-  reload: the workers reach the current files at the next rotation.
+  0750 → 0751; its traffic folder 0755 → 0710 owned by root and the web
+  server's group (only the workers pass; no other account opens another
+  site's log); traffic logs readable by others 0644 → 0640; the certificate
+  tool's log folder stays 0700; any other mode, a link or another owner is
+  kept and named. New installations make the log folder 0711 and the
+  traffic folder 0710 with that group whatever the umask, and a site's
+  first log 0640 before nginx opens it. No reload: the workers reach the
+  current files at the next rotation.
 - **Evidence.** `TestA144*` (panel), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
   `TestLogRootIsMadePassableWhateverTheUmask`, `TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes`,
-  `TestWebServerWorkerReachesTrafficLogAfterTheCorrection`,
+  `TestTrafficLogsReachOnlyTheWebServerWorkers`,
   `TestWebmailAddress*` (agent); the detached tests fail with the guard
   removed (the lab's "sending/lost" record, no mailbox row, no reply copy).
 - **Open.** No lab run; the other Panel handlers that pass the browser's

@@ -1477,7 +1477,14 @@ func (a *Agent) WebmailAddressFormsV1(_ *transport.WebmailAddressFormsRequest, r
 			webmailAddressRewriteRefusalsMu.Unlock()
 			resp.Open = append(resp.Open, transport.WebmailAddressForm{Host: host, State: "test_failed", File: file})
 		case !managed && !strings.Contains(string(content), webmailAddressCurrentMarker):
-			resp.Open = append(resp.Open, transport.WebmailAddressForm{Host: host, State: "owner_edited", File: path + webmailAddressPendingSuffix})
+			// CelikPanel's text is named only when it lies beside the file;
+			// otherwise the file itself is named (review of PR #355 fixes,
+			// finding 6).
+			file := path + webmailAddressPendingSuffix
+			if info, err := os.Lstat(file); err != nil || !info.Mode().IsRegular() {
+				file = path
+			}
+			resp.Open = append(resp.Open, transport.WebmailAddressForm{Host: host, State: "owner_edited", File: file})
 		}
 	}
 	return nil

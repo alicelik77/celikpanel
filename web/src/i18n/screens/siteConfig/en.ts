@@ -232,6 +232,7 @@ export const enSiteConfigScreens = {
     'mail.adopt.action': 'Adopt into this domain',
     'mail.adopt.title': 'Adopt {address} into this domain',
     'mail.adopt.body': 'Only a mailbox that holds no mail is adopted. Its password is replaced by the one you type here, so no earlier password works. It then follows this domain like a new mailbox: its size limit is the one found on the server, and the domain’s signing key and the first-day sending limit apply to it.',
+    'err.MAIL_ACCOUNT_ADOPT_RECORD_NOT_WRITTEN': 'The password of {address} was replaced, but its record could not be written in the panel. Press Adopt again: it is safe, and it sets the password you type then.',
     'mail.adopt.done': '{address} is adopted into this domain with the new password.',
     'err.MAIL_ACCOUNT_ADOPT_REFUSED': 'The mailbox {address} was not adopted. Nothing was changed.',
     'err.MAIL_ACCOUNT_ADOPT_REFUSED.gone': 'The server no longer holds a mailbox named {address}, so nothing was adopted. Create it again.',

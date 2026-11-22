@@ -583,7 +583,12 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
 			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
 	case "webmail_address_kept":
-		// alpha.144: item.subject is the address, item.name CelikPanel's text beside it.
+		// alpha.144: item.subject is the address, item.name CelikPanel's text
+		// beside it, or the owner's file when no text lies beside it.
+		if !strings.HasSuffix(item.name, ".celikpanel-pending") {
+			return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: its web server file %s was changed by hand and kept. To take CelikPanel's text, the server owner moves that file away and presses Set up again for the address on Roundcube's page.", subject, item.name),
+				fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: %s web sunucusu dosyası elle değiştirilmiş ve korunmuş. CelikPanel'in metnini almak için sunucu sahibi o dosyayı kaldırır ve Roundcube sayfasında adres için Yeniden kur'a basar.", subject, item.name)
+		}
 		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: its web server file was changed by hand and kept. The server owner takes CelikPanel's text from %s (or adds its rules) and reloads nginx.", subject, item.name),
 			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini alır (ya da kurallarını ekler) ve nginx'i yeniden yükler.", subject, item.name)
 	case "webmail_address_refused":

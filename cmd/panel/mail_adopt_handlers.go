@@ -38,6 +38,9 @@ const (
 	// errCodeMailAccountAdoptRefused: the administrator's adoption found
 	// something it does not record by itself; the reason says what.
 	errCodeMailAccountAdoptRefused = "MAIL_ACCOUNT_ADOPT_REFUSED"
+	// errCodeMailAccountAdoptRecordNotWritten: the password was replaced,
+	// the row could not be written; adopting again is safe.
+	errCodeMailAccountAdoptRecordNotWritten = "MAIL_ACCOUNT_ADOPT_RECORD_NOT_WRITTEN"
 )
 
 // Reasons of MAIL_ACCOUNT_ADOPT_REFUSED.
@@ -162,35 +165,13 @@ func (p *Panel) handleAdoptEmailAccount(w http.ResponseWriter, r *http.Request, 
 			"whose mail it is is not known to CelikPanel. The server owner decides on the server what becomes of it.")
 		return
 	}
-	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
-	if err != nil {
-		writeServerError(w, err)
-		return
-	}
-	result, err := tx.ExecContext(r.Context(),
-		"INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb) VALUES (?, ?, ?, ?)",
-		domainID, address, "managed-by-agent", found.QuotaMB)
-	if err != nil {
-		rollbackErr := rollbackMailTx(tx, err)
-		if rollbackErr == err && isEmailAccountAddressTaken(err) {
-			writeMailAccountExists(w, address)
-			return
-		}
-		writeServerError(w, rollbackErr)
-		return
-	}
-	newID, err := result.LastInsertId()
-	if err != nil {
-		writeServerError(w, rollbackMailTx(tx, err))
-		return
-	}
-	// The earlier password is replaced, through the password change's own
-	// Agent step; until it is confirmed the row is not kept.
+	// The earlier password is replaced first, through the password
+	// change's own Agent step, with no panel database write open (review
+	// of PR #355 fixes, finding 3).
 	var replaced transport.MailMutationResponse
 	if err := p.callAgentContext(r.Context(), "Agent.UpdateMailPassword", &transport.UpdateMailPasswordRequest{
 		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Email: address, NewPassword: request.Password,
 	}, &replaced); err != nil || !replaced.Applied {
-		_ = rollbackMailTx(tx, errors.New("password not replaced"))
 		if err != nil && agentAnsweredExactly(err, transport.MailConfigurationBusy) {
 			writeServerError(w, agentMutationBusy())
 			return
@@ -198,8 +179,26 @@ func (p *Panel) handleAdoptEmailAccount(w http.ResponseWriter, r *http.Request, 
 		writeServerError(w, errors.New("the mailbox's new password was not confirmed by the Agent, so it was not adopted"))
 		return
 	}
-	if err := tx.Commit(); err != nil {
-		writeServerError(w, err)
+	// Then the row, in a short write of its own. When it cannot be written
+	// the answer says so exactly: the password was replaced, the record was
+	// not; pressing Adopt again is safe (the same checks, the same password
+	// step, then the row).
+	result, err := p.db.GetDB().ExecContext(r.Context(),
+		"INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb) VALUES (?, ?, ?, ?)",
+		domainID, address, "managed-by-agent", found.QuotaMB)
+	var newID int64
+	if err == nil {
+		newID, err = result.LastInsertId()
+	}
+	if err != nil {
+		if isEmailAccountAddressTaken(err) {
+			writeMailAccountExists(w, address)
+			return
+		}
+		log.Printf("[mail] %s: its password was replaced, but its record could not be written: %v", address, err)
+		writeCodedErrorVars(w, http.StatusInternalServerError, errCodeMailAccountAdoptRecordNotWritten,
+			"the mailbox "+address+"'s password was replaced, but its record could not be written in the panel. Press Adopt again: it is safe, and it uses the password you type then.",
+			"", nil, map[string]string{"address": address})
 		return
 	}
 	p.audit(r, "mail.account.adopt", "email_account", int(newID))

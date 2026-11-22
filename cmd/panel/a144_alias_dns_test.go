@@ -291,3 +291,52 @@ func TestA144AliasHandlersRefuseAnInvalidNameCoded(t *testing.T) {
 		}
 	}
 }
+
+// Review of PR #355 fixes, finding 5: records are withdrawn only while the
+// zone still belongs to the account that held it; a zone made again by
+// another account keeps its records and the note is cleared.
+func TestA144AliasRecordsStayInAZoneNowHeldByAnotherAccount(t *testing.T) {
+	p, _ := newA144AliasDNSPanel(t)
+	ctx := context.Background()
+	if got := p.publishAliasDNS(ctx, 7121, "kampanya.kahve.test"); got != aliasDNSPublished {
+		t.Fatalf("publish: %s", got)
+	}
+	// kahve.test now belongs to bob (deleted by alice, made again by him).
+	if _, err := p.db.GetDB().Exec(`UPDATE domains SET subscription_id = 7113 WHERE name = 'kahve.test'`); err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := p.withdrawAliasDNS(ctx, "kampanya.kahve.test", ""); err != nil || pending {
+		t.Fatalf("withdraw: %v %v", pending, err)
+	}
+	assertSubdomainRecordCount(t, p, "kahve.test", "kampanya.kahve.test", "A", "192.0.3.210", 1)
+	if raw := p.setting(ctx, aliasDNSKey("kampanya.kahve.test")); raw != "" {
+		t.Fatalf("the note stayed: %s", raw)
+	}
+}
+
+// Review of PR #355 fixes, finding 4: a waiting zone that is no longer kept
+// here is cleared without publishing; a marker matches its zone without
+// case (and is published and cleared).
+func TestA144AWaitingZoneNoLongerKeptHereIsClearedWithoutPublishing(t *testing.T) {
+	p, agent := newA144AliasDNSPanel(t)
+	ctx := context.Background()
+	p.markAliasZoneUnpublished(ctx, "gone.test")
+	before := len(agent.syncCalls)
+	p.republishAliasZones(ctx)
+	if len(agent.syncCalls) != before {
+		t.Fatal("a zone not kept here was published")
+	}
+	if zones, _ := p.aliasZonesUnpublished(ctx); len(zones) != 0 {
+		t.Fatalf("the marker stayed: %v", zones)
+	}
+	if err := p.setSetting(ctx, aliasDNSUnpublishedPrefix+"KAHVE.test", "1"); err != nil {
+		t.Fatal(err)
+	}
+	p.republishAliasZones(ctx)
+	if len(agent.syncCalls) == before || agent.syncCalls[len(agent.syncCalls)-1] != "kahve.test" {
+		t.Fatalf("the zone named in another case was not published: %v", agent.syncCalls)
+	}
+	if zones, _ := p.aliasZonesUnpublished(ctx); len(zones) != 0 {
+		t.Fatalf("the marker stayed: %v", zones)
+	}
+}

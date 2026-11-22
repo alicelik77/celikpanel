@@ -115,6 +115,8 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     }
     // alpha.144: nginx's test named no file.
     if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
+    // CelikPanel's text is named only when it lies beside the owner's file.
+    if (problem.kind === 'webmail_address_kept' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_address_kept.body_no_text' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 

@@ -66,7 +66,8 @@ type WebmailAddressFormsRequest struct{}
 // WebmailAddressForm is one webmail address file that still serves
 // Roundcube's tree as alpha.143 and earlier did. State "owner_edited": the
 // owner changed the file and it is kept; File is CelikPanel's current text
-// beside it. State "test_failed": it is CelikPanel's earlier text and its
+// beside it (<file>.celikpanel-pending) when that exists, otherwise the
+// owner's file itself. State "test_failed": it is CelikPanel's earlier text and its
 // rewrite was put back because nginx's configuration test failed; File is
 // the file the test named ("" when it named none).
 type WebmailAddressForm struct {

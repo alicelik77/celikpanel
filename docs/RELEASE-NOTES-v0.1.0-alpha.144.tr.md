@@ -48,7 +48,9 @@ günceller.**
   CelikPanel'in metni yanına `<dosya>.celikpanel-pending` olarak konur (web
   sunucusu onu okumaz). **Şu anki sorunlar** bunun üzerine tek satırda web
   postasının adresinin hâlâ eklenti dosyalarını verdiğini, sunucu sahibinin
-  işlem yapacağını ve adımı söyler. Web sunucusunun denetimi başka bir
+  işlem yapacağını ve adımı söyler: o metni adlandırır ya da CelikPanel onu
+  dosyanızın yanına yazamadıysa dosyanızı kaldırıp Roundcube sayfasında adres
+  için **Yeniden kur**'a basmanızı söyler. Web sunucusunun denetimi başka bir
   dosyada başarısız olduğu için yeni metin geri alındığında da aynısını
   yapar ve o dosyayı adlandırır. Aracı her açılışta yeniden dener; dosya yeni
   biçime girince satır kendiliğinden kalkar.
@@ -102,13 +104,19 @@ günceller.**
   bir "Permission denied" hata satırı) ve döndürülen dosyaya yazmayı
   sürdürüyordu; o dosyayı bir sonraki gecenin döndürmesi siliyordu.
   Güncellemeden sonraki ilk açılışta CelikPanel'in günlük klasörü
-  `/var/log/celikpanel` onlar için geçilebilir olur (diğer hesaplar içinden
-  geçebilir, listeleyemez) ve `traffic` klasörü listelenebilirden yalnız
-  geçilebilire döner. Kendi koyduğunuz bir klasör kipi korunur ve aracının
-  günlüğünde adlandırılır; sertifika aracının günlük klasörü kapalı kalır.
-  Yeniden yükleme gerekmez: güncellemeden sonraki ilk geceden itibaren böyle
-  bir hata satırı yazılmaz ve trafik, bir yeniden yükleme beklemeden yeniden
-  eksiksiz sayılır. Yeni kurulumlar iki klasörü baştan böyle oluşturur.
+  `/var/log/celikpanel` geçilebilir olur (diğer hesaplar içinden geçebilir,
+  listeleyemez) ve `traffic` klasörüne yalnız web sunucusunun çalışan
+  süreçleri geçebilir (0710; sahibi root, grubu web sunucusunun grubu):
+  sitelerin programları dahil başka hiçbir hesap başka bir sitenin trafik
+  günlüğünü açamaz. Diğer hesapların okuyabildiği bir trafik günlüğü (ilkini
+  web sunucusu herkese okunur yapıyordu) onlara kapatılır; bir sitenin ilk
+  günlüğü artık web sunucusu açmadan önce kapalı olarak oluşturulur. Kendi
+  koyduğunuz bir klasör kipi ya da yaptığınız bir bağlantı korunur ve
+  aracının günlüğünde adlandırılır; sertifika aracının günlük klasörü kapalı
+  kalır. Yeniden yükleme gerekmez: güncellemeden sonraki ilk geceden
+  itibaren böyle bir hata satırı yazılmaz ve trafik, bir yeniden yükleme
+  beklemeden yeniden eksiksiz sayılır. Yeni kurulumlar klasörleri ve
+  günlükleri baştan böyle oluşturur.
 
 ### Yeni, küçük: takma ad DNS'te yanıt verir
 
@@ -179,9 +187,10 @@ güncelleme sayfasıyla güncellenerek:
    başka bir web sunucusu dosyası bozukken web postası ve bütün siteler yanıt
    vermeyi sürdürür, adres dosyası değişmez ve **Şu anki sorunlar** bozuk
    dosyayı adlandırır.
-2. Trafik günlükleri: güncellemeden sonraki klasör kipleri, "Permission
-   denied" satırı olmadan zorla bir döndürme, yeni günlüğe düşen istekler ve
-   aracının günlüğündeki bloğun yalnız bir kez yazılması.
+2. Trafik günlükleri: güncellemeden sonraki klasör ve günlük kipleri,
+   "Permission denied" satırı olmadan zorla bir döndürme, yeni günlüğe düşen
+   istekler, aracının günlüğündeki bloğun yalnız bir kez yazılması ve bir
+   sitenin hesabıyla başka bir sitenin trafik günlüğünü okumanın reddedilmesi.
 3. DNS'te takma ad: iki sunucudan yanıt, kaldırmadan sonra yok; sertifikayla;
    reddedilen bir sertifika kayıt bırakmaz; sahibin kaydının yanında hiçbir
    şey yazılmaz ya da eklenmez; yedek sunucuya ulaşılamazken silinen bir alan
@@ -204,9 +213,12 @@ güncelleme sayfasıyla güncellenerek:
 - Web postası adresi olan bir sunucuda web sunucusu ilk açılışta,
   yapılandırma denetimi geçtikten sonra bir kez yeniden yüklenir; bundan
   sonra web postasının adresi yalnız sayfalarının yüklediğini verir.
-- Günlük klasörünün kipi ilk açılışta bir kez değişir (`/var/log/celikpanel`
-  0700'den 0711'e ya da 0750'den 0751'e; `traffic` klasörü 0755'ten 0711'e);
-  kendi koyduğunuz bir kip korunur. Güncellemeden sonraki ilk geceden
+- Günlük klasörlerinin kipleri ilk açılışta bir kez değişir:
+  `/var/log/celikpanel` 0700'den 0711'e ya da 0750'den 0751'e; `traffic`
+  klasörü 0755'ten 0710'a, sahibi root ve grubu web sunucusunun grubu
+  (Debian ve Ubuntu'da `www-data`, Arch Linux'ta `http`); diğer hesapların
+  okuyabildiği trafik günlükleri 0644'ten 0640'a. Kendi koyduğunuz bir kip ya
+  da yaptığınız bir bağlantı korunur. Güncellemeden sonraki ilk geceden
   itibaren trafik rakamları eksiksizdir.
 - Sunucunun panel kaydı olmadan tuttuğu bir posta kutusu açıkça söylenir;
   onu yalnız yönetici, yalnız içinde posta yokken ve yeni bir parolayla
@@ -225,12 +237,13 @@ değişmez; yapı 81'de kalır. Yeni, hepsi ekleme: derlemeye bağlı, salt-okur
 aracı çağrısı `MailboxOnServerV1`; salt-okur aracı çağrısı
 `WebmailAddressFormsV1`; Şu anki sorunlar türleri `webmail_address_kept` ve
 `webmail_address_refused`; ret kodları `MAIL_ACCOUNT_ON_SERVER_ONLY`,
-`MAIL_ACCOUNT_ADOPT_REFUSED`, `ALIAS_INVALID`, `ALIAS_CONFLICT`,
+`MAIL_ACCOUNT_ADOPT_REFUSED`, `MAIL_ACCOUNT_ADOPT_RECORD_NOT_WRITTEN`,
+`ALIAS_INVALID`, `ALIAS_CONFLICT`,
 `ALIAS_NOT_FOUND`, `ALIAS_CERTIFICATE_REISSUE_FAILED`,
 `ALIAS_CERTIFICATE_NOT_COVERING`, `HSTS_REMOVAL_BLOCKED` ve
 `SSL_NO_ACTIVE_CERTIFICATE` (durum kodları değişmedi); panel ayar satırları
 `alias_dns_v1:<takma ad>`; denetim kaydı eylemi `mail.account.adopt`; aracının
-bir kezlik makbuzu `log-root-modes-v1.done`. Dört yol, istek kimliği
+bir kezlik makbuzu `log-root-modes-v2.done`. Dört yol, istek kimliği
 korumasının işlem adımlarına katılır (PostgreSQL kapatma, geri alma ve
 Yeniden oku; posta kutusu oluşturma; otomatik yanıt kaydı; alma); saklanan
 özetleri asla parola tutmaz.
@@ -271,10 +284,14 @@ Maddeye göre testler:
   değiştirilir), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
   `TestMailboxMessageCountReadsCurAndNewOnly`.
 - Trafik günlükleri: `TestLogRootIsMadePassableWhateverTheUmask`,
+  `TestASitesFirstTrafficLogIsMadeClosed`,
+  `TestALogFolderThatIsTheOwnersLinkIsUsedAsBefore`,
   `TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes`,
-  `TestWebServerWorkerReachesTrafficLogAfterTheCorrection` (klasörün grubu
-  dışındaki bir hesap düzeltmeden önce günlüğü açamaz, sonra açabilir ve
-  traffic klasörünü listeleyemez); düzeltmeden önceki kodda başarısız olurlar.
+  `TestLogRootKeepsTheOwnersLinks`, `TestCertbotStorageGoesOnThroughTheOwnersLogLink`,
+  `TestTrafficLogsReachOnlyTheWebServerWorkers` (web sunucusunun hesabı
+  günlüğüne döndürmeden önce ve sonra ulaşır; ne root ne de web sunucusunun
+  grubunda olan bir hesap hiçbir trafik günlüğünü adıyla açamaz ve hiçbir
+  şeyi listeleyemez); düzeltmeden önceki kodda başarısız olurlar.
 
 Go modülünün ve web'in tam test takımları düzeltme şeridinde temel
 (alpha.143'ün kodu) ve düzeltmeler üzerinde çalıştı; sürüm çekme isteğinin

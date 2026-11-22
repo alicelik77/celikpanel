@@ -283,6 +283,12 @@ func TestWebmailAddressFormsNameWhatStillServesPluginFiles(t *testing.T) {
 	_ = os.WriteFile(webmailAddressConfPath("old.example.test"), []byte(render("old.example.test", false)), 0o600)
 	_ = os.WriteFile(webmailAddressConfPath("own.example.test"), []byte(strings.Replace(render("own.example.test", false), "25m", "50m", 1)), 0o600)
 	_ = os.WriteFile(webmailAddressConfPath("new.example.test"), []byte(render("new.example.test", true)), 0o600)
+	// An owner's file CelikPanel cannot render its text for (no root or
+	// PHP line): no text beside it, so the file itself is named.
+	_ = os.WriteFile(webmailAddressConfPath("bare.example.test"), []byte(`server {
+    listen 443 ssl;
+}
+`), 0o600)
 	// The start's rewrite of old.example.test was put back: nginx -t named another file.
 	run := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		if name == "nginx" {
@@ -299,6 +305,10 @@ func TestWebmailAddressFormsNameWhatStillServesPluginFiles(t *testing.T) {
 	for _, open := range resp.Open {
 		got[open.Host] = open
 	}
+	if got["bare.example.test"].State != "owner_edited" || got["bare.example.test"].File != webmailAddressConfPath("bare.example.test") {
+		t.Fatalf("an owner's file with no text beside it: %+v", got["bare.example.test"])
+	}
+	delete(got, "bare.example.test")
 	if len(got) != 2 || got["old.example.test"].State != "test_failed" || got["old.example.test"].File != "/etc/nginx/conf.d/broken.conf" ||
 		got["own.example.test"].State != "owner_edited" || !strings.HasSuffix(got["own.example.test"].File, webmailAddressPendingSuffix) {
 		t.Fatalf("listed: %+v", resp.Open)

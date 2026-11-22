@@ -364,3 +364,40 @@ func a144AgentClient(t *testing.T, agent any) *transport.ReconnectingClient {
 	t.Cleanup(func() { _ = client.Close() })
 	return transport.NewReconnectingClientWithContextConnector(client, connector)
 }
+
+// Review of PR #355 fixes, finding 3: the password is replaced before the
+// row is written, with no database write open; a row that cannot be written
+// is said exactly, and adopting again works.
+func TestA144AdoptionWhoseRowCannotBeWrittenSaysSoAndCanBeRepeated(t *testing.T) {
+	agent := &a144MailAgent{onServer: map[string]transport.MailboxOnServerResponse{
+		"satis@example.com": {InUsers: true, InMap: true, OwnFolder: true, QuotaMB: 300},
+	}}
+	agent.passwordApplied = true
+	panel, domainID := newA144MailPanel(t, agent)
+	if _, err := panel.db.GetDB().Exec(`CREATE TRIGGER a144_refuse BEFORE INSERT ON email_accounts BEGIN SELECT RAISE(ABORT, 'disk full'); END`); err != nil {
+		t.Fatal(err)
+	}
+	handler := a144MailHandler(panel)
+	path := "/api/v1/domains/" + strconv.Itoa(domainID) + "/mail/accounts/adopt"
+	adopt := func() (*httptest.ResponseRecorder, apiErrorBody) {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, a144MailRequest(http.MethodPost, path, `{"address":"satis@example.com","password":"New-adopted-9"}`, a144Admin, ""))
+		var body apiErrorBody
+		_ = json.Unmarshal(recorder.Body.Bytes(), &body)
+		return recorder, body
+	}
+	recorder, body := adopt()
+	if recorder.Code != http.StatusInternalServerError || body.Code != errCodeMailAccountAdoptRecordNotWritten ||
+		!strings.Contains(body.Error, "password was replaced") || !strings.Contains(body.Error, "Press Adopt again") {
+		t.Fatalf("failed write: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if calls := agent.passwordCallState(); len(calls) != 1 {
+		t.Fatalf("password replacements: %d", len(calls))
+	}
+	if _, err := panel.db.GetDB().Exec(`DROP TRIGGER a144_refuse`); err != nil {
+		t.Fatal(err)
+	}
+	if recorder, _ := adopt(); recorder.Code != http.StatusOK {
+		t.Fatalf("adopting again: %d %s", recorder.Code, recorder.Body.String())
+	}
+}

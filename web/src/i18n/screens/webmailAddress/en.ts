@@ -138,6 +138,7 @@ export const enWebmailAddressScreens = {
     'pnow.webmail_address_kept.title': 'Webmail’s address {domain} still gives out plugin files that are not part of its pages',
     'pnow.webmail_address_kept.body': 'Its web server file was changed by hand, so CelikPanel kept it and put its new text beside it: {other}. The server owner takes that text (or adds its rules to the file) and reloads nginx. This line goes by itself once the file has them.',
     'pnow.webmail_address_kept.action': 'Open webmail',
+    'pnow.webmail_address_kept.body_no_text': 'Its web server file {other} was changed by hand, so CelikPanel kept it. To take CelikPanel’s text, the server owner moves that file away, then presses Set up again for the address on Roundcube’s page (Open webmail); this line then goes by itself.',
     'pnow.webmail_address_refused.title': 'Webmail’s address {domain} still gives out plugin files that are not part of its pages',
     'pnow.webmail_address_refused.body': 'Its new text was put back because nginx’s configuration test failed in {other}. The server owner corrects that file; CelikPanel writes the new text again at its next start, and this line goes by itself.',
     'pnow.webmail_address_refused.body_unnamed': 'Its new text was put back because nginx’s configuration test failed or nginx could not be reloaded. The server owner runs sudo nginx -t to see why; CelikPanel writes the new text again at its next start, and this line goes by itself.',

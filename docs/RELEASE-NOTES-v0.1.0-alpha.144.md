@@ -47,7 +47,9 @@ screen.**
   CelikPanel's text is put beside it as `<file>.celikpanel-pending` (the web
   server does not read it). **Problems now** then says in one line that
   webmail's address still gives out plugin files, that the server owner acts,
-  and the step. It does the same when the new text was put back because the
+  and the step: it names that text, or, when CelikPanel could not write it
+  beside your file, says to move your file away and press **Set up again**
+  for the address on Roundcube's page. It does the same when the new text was put back because the
   web server's check failed in another file, and names that file. The agent
   tries again at every start; the line goes by itself once the file is in
   the new form.
@@ -100,13 +102,18 @@ screen.**
   logs (one "Permission denied" error line per log every night) and kept
   writing into the rotated file, which the next night's rotation removed. At
   the first start after the update, CelikPanel's log folder
-  `/var/log/celikpanel` becomes passable for them (other accounts may pass
-  through it, not list it), and its `traffic` folder goes from listable to
-  pass-only. A folder mode you set yourself is kept and named in the agent's
+  `/var/log/celikpanel` becomes passable (other accounts may pass through it,
+  not list it), and its `traffic` folder becomes passable for the web
+  server's workers only (0710, owned by root and the web server's group):
+  no other account, a site's programs included, can open another site's
+  traffic log. A traffic log that other accounts could read (the web server
+  made the first one readable by everybody) is closed to them; a site's
+  first log is now made closed before the web server opens it. A folder mode
+  you set yourself, or a link you made, is kept and named in the agent's
   log; the certificate tool's log folder stays closed. No reload is needed:
   from the first night after the update no such error line is logged, and
   traffic is counted completely again without waiting for a reload. New
-  installations make both folders this way from the start.
+  installations make the folders and logs this way from the start.
 
 ### New, small: an alias answers in DNS
 
@@ -175,9 +182,10 @@ through the panel's own update page:
    `.celikpanel-pending` beside it and named in **Problems now**; with another
    web server file broken, webmail and every site keep answering, the address
    file is unchanged and **Problems now** names the broken file.
-2. The traffic logs: the folder modes after the update, a forced rotation
-   without any "Permission denied" line, requests landing in the new log, and
-   the agent's log block only once.
+2. The traffic logs: the folder and log modes after the update, a forced
+   rotation without any "Permission denied" line, requests landing in the new
+   log, the agent's log block only once, and, as a site's account, reading
+   another site's traffic log refused.
 3. An alias in DNS: answered from both servers and gone after removal; with a
    certificate; a refused issuance leaves no record; next to an owner's
    record nothing is written or added; a domain deleted while the backup
@@ -200,10 +208,13 @@ through the panel's own update page:
 - On a server with a webmail address, the web server is reloaded once at the
   first start, after its configuration check passes; from then on webmail's
   address gives out only what its pages load.
-- The log folder's mode changes once at the first start (`/var/log/celikpanel`
-  from 0700 to 0711, or from 0750 to 0751; its `traffic` folder from 0755 to
-  0711); a mode you set yourself is kept. From the first night after the
-  update the traffic figures are complete.
+- The log folders' modes change once at the first start:
+  `/var/log/celikpanel` from 0700 to 0711, or from 0750 to 0751; its `traffic`
+  folder from 0755 to 0710, owned by root and the web server's group
+  (`www-data` on Debian and Ubuntu, `http` on Arch Linux); traffic logs
+  readable by other accounts from 0644 to 0640. A mode you set yourself, or a
+  link you made, is kept. From the first night after the update the traffic
+  figures are complete.
 - A mailbox that the server holds without a panel record is said plainly;
   only the administrator can adopt it, only when it holds no mail, and with a
   new password.
@@ -221,11 +232,12 @@ layout stays 81. New, all additive: the build-gated, read-only agent call
 `MailboxOnServerV1`; the read-only agent call `WebmailAddressFormsV1`; the
 Problems now kinds `webmail_address_kept` and `webmail_address_refused`; the
 refusal codes `MAIL_ACCOUNT_ON_SERVER_ONLY`, `MAIL_ACCOUNT_ADOPT_REFUSED`,
+`MAIL_ACCOUNT_ADOPT_RECORD_NOT_WRITTEN`,
 `ALIAS_INVALID`, `ALIAS_CONFLICT`, `ALIAS_NOT_FOUND`,
 `ALIAS_CERTIFICATE_REISSUE_FAILED`, `ALIAS_CERTIFICATE_NOT_COVERING`,
 `HSTS_REMOVAL_BLOCKED` and `SSL_NO_ACTIVE_CERTIFICATE` (statuses unchanged);
 the panel setting rows `alias_dns_v1:<alias>`; the audit action
-`mail.account.adopt`; the agent's one-time receipt `log-root-modes-v1.done`.
+`mail.account.adopt`; the agent's one-time receipt `log-root-modes-v2.done`.
 Four routes join the request-identity guard's operation steps (the
 PostgreSQL close, undo and Read again; mailbox creation; the out-of-office
 save; adoption); their stored digests never hold a password.
@@ -265,11 +277,14 @@ Tests by item:
   once, through the password step), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
   `TestMailboxMessageCountReadsCurAndNewOnly`.
 - The traffic logs: `TestLogRootIsMadePassableWhateverTheUmask`,
+  `TestASitesFirstTrafficLogIsMadeClosed`,
+  `TestALogFolderThatIsTheOwnersLinkIsUsedAsBefore`,
   `TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes`,
-  `TestWebServerWorkerReachesTrafficLogAfterTheCorrection` (an account
-  outside the folder's group cannot open the log before the correction, can
-  after it, and cannot list the traffic folder); they fail on the code before
-  the correction.
+  `TestLogRootKeepsTheOwnersLinks`, `TestCertbotStorageGoesOnThroughTheOwnersLogLink`,
+  `TestTrafficLogsReachOnlyTheWebServerWorkers` (the web server's account
+  reaches its log, before and after a rotation; an account that is neither
+  root nor in the web server's group can open no traffic log by name and
+  list nothing); they fail on the code before the correction.
 
 The full Go module and web suites ran on the base (alpha.143's code) and on
 the corrections in the corrections lane, and every check of the release pull

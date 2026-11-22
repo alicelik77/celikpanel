@@ -130,6 +130,7 @@ export const trWebmailAddressScreens: Record<WebmailAddressScreenKey, string> = 
     'pnow.webmail_address_kept.title': 'Web postasının {domain} adresi sayfalarına ait olmayan eklenti dosyalarını hâlâ veriyor',
     'pnow.webmail_address_kept.body': 'Web sunucusu dosyası elle değiştirilmiş; CelikPanel onu korudu ve yeni metnini yanına koydu: {other}. Sunucu sahibi bu metni alır (ya da kurallarını dosyaya ekler) ve nginx’i yeniden yükler. Dosyada bu kurallar olunca bu satır kendiliğinden kalkar.',
     'pnow.webmail_address_kept.action': 'Web postasını aç',
+    'pnow.webmail_address_kept.body_no_text': '{other} web sunucusu dosyası elle değiştirilmiş; CelikPanel onu korudu. CelikPanel’in metnini almak için sunucu sahibi o dosyayı kaldırır, sonra Roundcube sayfasında (Web postasını aç) adres için Yeniden kur’a basar; bu satır da kendiliğinden kalkar.',
     'pnow.webmail_address_refused.title': 'Web postasının {domain} adresi sayfalarına ait olmayan eklenti dosyalarını hâlâ veriyor',
     'pnow.webmail_address_refused.body': 'Yeni metni geri alındı, çünkü nginx yapılandırma denetimi {other} dosyasında başarısız oldu. Sunucu sahibi o dosyayı düzeltir; CelikPanel yeni metni bir sonraki açılışında yeniden yazar ve bu satır kendiliğinden kalkar.',
     'pnow.webmail_address_refused.body_unnamed': 'Yeni metni geri alındı, çünkü nginx yapılandırma denetimi başarısız oldu ya da nginx yeniden yüklenemedi. Sunucu sahibi nedenini sudo nginx -t ile görür; CelikPanel yeni metni bir sonraki açılışında yeniden yazar ve bu satır kendiliğinden kalkar.',

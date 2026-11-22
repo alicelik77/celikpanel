@@ -226,6 +226,7 @@ export const trSiteConfigScreens: Record<SiteConfigScreenKey, string> = {
     'mail.adopt.action': 'Bu alan adına al',
     'mail.adopt.title': '{address} bu alan adına alınıyor',
     'mail.adopt.body': 'Yalnız içinde posta olmayan bir kutu alınır. Parolası burada yazdığınızla değiştirilir; önceki hiçbir parola çalışmaz. Sonra bu alan adını yeni bir kutu gibi izler: boyut sınırı sunucuda bulunan sınırdır; alan adının imza anahtarı ve ilk gün gönderim sınırı ona da uygulanır.',
+    'err.MAIL_ACCOUNT_ADOPT_RECORD_NOT_WRITTEN': '{address} kutusunun parolası değiştirildi ama kaydı panele yazılamadı. Yeniden alın: güvenlidir ve o an yazdığınız parolayı verir.',
     'mail.adopt.done': '{address} yeni parolayla bu alan adına alındı.',
     'err.MAIL_ACCOUNT_ADOPT_REFUSED': '{address} posta kutusu alınmadı. Hiçbir şey değiştirilmedi.',
     'err.MAIL_ACCOUNT_ADOPT_REFUSED.gone': 'Sunucuda artık {address} adlı bir posta kutusu yok; bu yüzden hiçbir şey alınmadı. Onu yeniden oluşturun.',

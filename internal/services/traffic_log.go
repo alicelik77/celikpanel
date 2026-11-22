@@ -187,9 +187,10 @@ func planTrafficFormat() (*plannedTrafficFile, bool, error) {
 	return &plannedTrafficFile{path: path, sealed: sealed, inspected: inspected}, true, nil
 }
 
-// ensureTrafficLogDir makes the log directory (0711: nginx's workers reopen
-// the logs by name after a rotation, so they pass through it and through
-// CelikPanel's log folder above it; log_root.go). nginx -t opens every log,
+// ensureTrafficLogDir makes the log directory (0710 with the web server's
+// group: nginx's workers reopen the logs by name after a rotation, so they
+// pass through it and through CelikPanel's log folder above it; nobody else
+// passes; log_root.go). nginx -t opens every log,
 // so it must exist before a site names its log.
 func ensureTrafficLogDir() error {
 	dir := TrafficLogDir()
@@ -198,7 +199,16 @@ func ensureTrafficLogDir() error {
 			return err
 		}
 	}
-	return ensureLogFolder(dir, TrafficLogDirMode)
+	gid := -1
+	if !nginxDevMode() {
+		_, webGID, ok := webServerIDs()
+		if !ok {
+			return errors.New("the web server's group could not be read for the traffic folder")
+		}
+		gid = webGID
+	}
+	_, err := ensureLogFolder(dir, TrafficLogDirMode, gid)
+	return err
 }
 
 // planTrafficInclude writes one site's setting when absent or CelikPanel's
@@ -206,7 +216,11 @@ func ensureTrafficLogDir() error {
 func planTrafficInclude(domain string, item TrafficLogItem, formatOK bool) (*plannedTrafficFile, string, error) {
 	counted := item.Counted && formatOK
 	if counted {
+		// The folder, then the site's log itself before nginx opens it
+		// (closed to other accounts from its first line; log_root.go).
 		if err := ensureTrafficLogDir(); err != nil {
+			counted = false
+		} else if err := ensureTrafficLogFile(TrafficLogPath(item.DomainID)); err != nil {
 			counted = false
 		}
 	}

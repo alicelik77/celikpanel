@@ -8555,9 +8555,13 @@ bağlantıyı tutar.
   `/var/log/celikpanel` klasöründen geçemiyordu; her döndürmeden sonra hata
   yazıp döndürülen dosyaya yazmayı sürdürüyorlardı. Agent'ın açılışında bir
   kez: CelikPanel'in ürettiği kipteki kök sahipli klasör 0700 → 0711 ya da
-  0750 → 0751; trafik klasörü 0755 → 0711; sertifika aracının günlük klasörü
-  0700 kalır; başka kip ya da sahip korunur. Yeni kurulumlar ikisini de
-  0711 açar.
+  0750 → 0751; trafik klasörü 0755 → 0710, sahibi root ve grubu web
+  sunucusunun grubu (yalnız çalışan süreçler geçer; başka hiçbir hesap başka
+  sitenin günlüğünü açamaz); diğerlerinin okuyabildiği trafik günlükleri
+  0644 → 0640; sertifika aracının günlük klasörü 0700 kalır; başka kip,
+  bağlantı ya da sahip korunur. Yeni kurulumlar günlük klasörünü 0711,
+  trafik klasörünü o grupla 0710 açar ve bir sitenin ilk günlüğünü 0640
+  oluşturur.
 - **Açık.** Laboratuvar denemesi yok; tarayıcı bağlamını Agent değişikliğine
   veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
   takma ad hâlâ DNS kaydı almaz. **Hiçbir P0 işi kapanmadı.**
