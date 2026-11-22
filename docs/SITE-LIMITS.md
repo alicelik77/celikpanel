@@ -222,9 +222,11 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
     own `temp_file_limit`, is named as the server owner's, not the plan's, and the server
     owner raises it. Every answer says that nothing was changed and to start the load
     again. Because nothing is lifted, an Agent stopped in the middle of a load leaves
-    nothing lifted. The server move of a PostgreSQL database is published with alpha.143
-    (`main`); this branch's base does not contain it yet, so what that loader does with
-    the limit is not described here and is checked when the branches meet.
+    nothing lifted. The administrator's move of a PostgreSQL database to another cluster
+    (`pg_move.go`, as published with alpha.143) restores with `pg_restore` as the target
+    cluster's administrator account (an administrator session, `pg_admin_session.go`), so a
+    customer role's temporary-file limit does not apply to it and nothing is lifted for any
+    role; a `temp_file_limit` the owner set on the database itself would apply to it.
   - Dumps run as the engine's administrator, whose sessions do not read a customer role's
     settings.
 
