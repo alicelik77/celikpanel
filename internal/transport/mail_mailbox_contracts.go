@@ -80,4 +80,12 @@ type WebmailAddressForm struct {
 // form; an empty list: every address file is (or there is none).
 type WebmailAddressFormsResponse struct {
 	Open []WebmailAddressForm `json:"open"`
+	// Sending (alpha.145): "cannot_send" when webmail's own configuration
+	// still hands mail to this server's submission service without
+	// encryption, which refuses the login; "" when it does not or when that
+	// is not known. SendingFile: CelikPanel's text beside the owner's file
+	// (config.inc.php.celikpanel-pending) when it lies there, otherwise the
+	// configuration itself.
+	Sending     string `json:"sending,omitempty"`
+	SendingFile string `json:"sending_file,omitempty"`
 }

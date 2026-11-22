@@ -769,6 +769,13 @@ func main() {
 		}
 		cancelWebmail()
 	}
+	// alpha.145: webmail's configuration in CelikPanel's earlier text could
+	// not send (no encryption to the submission service); once after the
+	// update it gets the current text (an owner's file is kept, the text goes
+	// beside it).
+	for _, line := range reconcileRoundcubeConfigAtStartup() {
+		log.Printf("[webmail] configuration %s", line)
+	}
 	// alpha.130: the automatic removal's archives of leftover PostgreSQL
 	// clusters expire after 30 days (pg_leftovers.go).
 	if pruned := pruneExpiredPGAutoArchives(); len(pruned) > 0 {

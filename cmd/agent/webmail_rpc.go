@@ -442,24 +442,23 @@ func writeRoundcubeConfig(root, phpVer string) error {
 
 // renderRoundcubeConfig is CelikPanel's form of Roundcube's configuration
 // with its des_key (alpha.110: read back to recognise CelikPanel's form).
+// alpha.145: mail is sent with encryption (roundcubeSMTPSettings,
+// webmail_sending.go); the earlier text is legacyRenderRoundcubeConfig.
 func renderRoundcubeConfig(desKey string) string {
 	dbPath := filepath.Join(webmailBaseDir, "db", "roundcube.sqlite3")
 	return fmt.Sprintf(`<?php
 // Managed by CelikPanel. Roundcube installed from the official tarball (D-004:
-// one path on every Linux). SQLite store, localhost IMAP/SMTP.
+// one path on every Linux). SQLite store, IMAP and SMTP on this server.
 $config = [];
 $config['db_dsnw'] = 'sqlite:///%s?mode=0664';
 $config['imap_host'] = 'localhost:143';
-$config['smtp_host'] = 'localhost:587';
-$config['smtp_user'] = '%%u';
-$config['smtp_pass'] = '%%p';
-$config['support_url'] = '';
+%s$config['support_url'] = '';
 $config['des_key'] = '%s';
 $config['product_name'] = 'CelikPanel Webmail';
 $config['plugins'] = ['archive', 'zipdownload'];
 $config['skin'] = 'elastic';
 $config['enable_installer'] = false;
-`, dbPath, desKey)
+`, dbPath, roundcubeSMTPSettings, desKey)
 }
 
 // roundcubeAddressSettings are CelikPanel's lines for webmail on its own
@@ -477,9 +476,10 @@ var roundcubeDesKeyLine = regexp.MustCompile(`(?m)^\$config\['des_key'\] = '([0-
 // setRoundcubeAddressSettings adds (enabled) or removes CelikPanel's lines
 // for the address, only when the configuration is exactly CelikPanel's form
 // (with or without them): "applied", "unchanged" or "owner_edited". The
-// file's mode and owner are kept.
+// file's mode and owner are kept. alpha.145: CelikPanel's earlier text is
+// still its own and is written in the current form at the same time.
 func setRoundcubeAddressSettings(enabled bool) (string, error) {
-	path := filepath.Join(webmailBaseDir, "config", "config.inc.php")
+	path := roundcubeConfigPath()
 	snapshot, err := snapshotMailFile(path)
 	if err != nil {
 		return "", err
@@ -487,40 +487,38 @@ func setRoundcubeAddressSettings(enabled bool) (string, error) {
 	if !snapshot.exists {
 		return "", fmt.Errorf("%s is missing", path)
 	}
-	content := string(snapshot.content)
-	key := roundcubeDesKeyLine.FindStringSubmatch(content)
-	if key == nil {
+	form, managed := parseRoundcubeConfigForm(string(snapshot.content))
+	if !managed {
 		return "owner_edited", nil
 	}
-	base := renderRoundcubeConfig(key[1])
-	var next string
-	switch {
-	case content == base && enabled:
-		next = base + roundcubeAddressSettings
-	case content == base+roundcubeAddressSettings && !enabled:
-		next = base
-	case content == base || content == base+roundcubeAddressSettings:
-		if enabled {
-			return "applied", nil
-		}
-		return "unchanged", nil
-	default:
-		return "owner_edited", nil
-	}
-	if err := secureWriteConfig(path, []byte(next), snapshot.mode); err != nil {
-		return "", err
-	}
-	if err := secureSetMailFileMetadata(path, snapshot.mode, snapshot.uid, snapshot.gid); err != nil {
-		// PHP-FPM must still read it: the previous file comes back.
-		if restoreErr := restoreMailFile(snapshot); restoreErr != nil {
-			return "", errors.Join(err, restoreErr)
-		}
-		return "", err
-	}
+	state := "unchanged"
 	if enabled {
-		return "applied", nil
+		state = "applied"
 	}
-	return "unchanged", nil
+	if form.current && form.withAddress == enabled {
+		return state, nil
+	}
+	form.withAddress = enabled
+	if err := writeRoundcubeConfigKeeping(snapshot, form.render()); err != nil {
+		return "", err
+	}
+	return state, nil
+}
+
+// writeRoundcubeConfigKeeping writes next over the configuration a snapshot
+// read, with the file's mode and owner kept; PHP-FPM must still read it, so
+// a failure brings the previous file back.
+func writeRoundcubeConfigKeeping(snapshot mailFileSnapshot, next string) error {
+	if err := secureWriteConfig(snapshot.path, []byte(next), snapshot.mode); err != nil {
+		return err
+	}
+	if err := secureSetMailFileMetadata(snapshot.path, snapshot.mode, snapshot.uid, snapshot.gid); err != nil {
+		if restoreErr := restoreMailFile(snapshot); restoreErr != nil {
+			return errors.Join(err, restoreErr)
+		}
+		return err
+	}
+	return nil
 }
 
 const roundcubePHPCapabilityProbe = "$missing=[];if(!function_exists('mb_internal_encoding')){$missing[]='mbstring';}if(!class_exists('DOMDocument')){$missing[]='dom';}if(!extension_loaded('intl')){$missing[]='intl';}if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true)){$missing[]='pdo_sqlite';}if(!class_exists('ZipArchive')){$missing[]='zip';}echo count($missing)===0?'ok':'missing:'.implode(',',$missing);"

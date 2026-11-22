@@ -1462,6 +1462,8 @@ const webmailAddressCurrentMarker = "location ~ ^/(plugins|skins|program)/ {"
 // the current form.
 func (a *Agent) WebmailAddressFormsV1(_ *transport.WebmailAddressFormsRequest, resp *transport.WebmailAddressFormsResponse) error {
 	*resp = transport.WebmailAddressFormsResponse{Open: []transport.WebmailAddressForm{}}
+	// alpha.145: webmail's configuration that still cannot send.
+	resp.Sending, resp.SendingFile = roundcubeSendingForm()
 	for _, host := range webmailAddressHosts() {
 		path := webmailAddressConfPath(host)
 		content, err := os.ReadFile(path)

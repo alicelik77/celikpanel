@@ -595,6 +595,15 @@ func alertLine(item pendingAlertMail) (string, string) {
 		// alpha.144: item.name is the file nginx's test named ("" when none).
 		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: nginx's configuration test failed (%s), so its new text was put back. Correct that file; CelikPanel writes the new text at its next start.", subject, item.name),
 			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", subject, item.name)
+	case "webmail_cannot_send":
+		// alpha.145: item.name is CelikPanel's text beside the configuration,
+		// or the configuration itself when no text lies beside it.
+		if strings.HasSuffix(item.name, ".celikpanel-pending") {
+			return fmt.Sprintf("Webmail cannot send: its configuration was changed by hand and kept, and it still hands mail to this server's sending service without encryption, which refuses the login. The server owner takes CelikPanel's text from %s (or its sending lines).", item.name),
+				fmt.Sprintf("Web postası gönderemiyor: yapılandırması elle değiştirilmiş ve korunmuş; postayı hâlâ bu sunucunun gönderim hizmetine şifresiz veriyor, hizmet de girişi reddediyor. Sunucu sahibi CelikPanel'in %s içindeki metnini (ya da gönderim satırlarını) alır.", item.name)
+		}
+		return fmt.Sprintf("Webmail cannot send: %s still hands mail to this server's sending service without encryption, which refuses the login. The server owner sets smtp_host to tls://127.0.0.1:587 in it, with smtp_conn_options for 127.0.0.1 only.", item.name),
+			fmt.Sprintf("Web postası gönderemiyor: %s postayı hâlâ bu sunucunun gönderim hizmetine şifresiz veriyor, hizmet de girişi reddediyor. Sunucu sahibi içinde smtp_host değerini tls://127.0.0.1:587 yapar ve yalnız 127.0.0.1 için smtp_conn_options ekler.", item.name)
 	case "mail_autoresponder_foreign":
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),

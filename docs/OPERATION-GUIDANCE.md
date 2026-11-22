@@ -11419,3 +11419,38 @@ Code: `cmd/panel/operation_step_routes.go`, `postgresql_public_access.go`,
 `mail_adopt_handlers.go`, `alias_dns.go`, `alias_certificates.go`,
 `cmd/agent/mail_adopt.go`. Tests: `cmd/panel/a144_*_test.go`,
 `cmd/agent/mail_adopt_test.go`.
+
+### Corrections from the alpha.144 lab (alpha.145, 23 November 2026)
+
+- **Webmail sends.** From the first release Roundcube's configuration handed
+  mail to this server's submission service on 587 without encryption
+  (`smtp_host 'localhost:587'`), and the service takes a login only with
+  encryption, so every message failed with "authentication failed". The
+  configuration now says `tls://127.0.0.1:587` with the mailbox's own login;
+  for 127.0.0.1 only, the certificate's name and chain are not checked (the
+  connection never leaves the server, and the service may present the mail
+  host's certificate or, before one exists, a self-signed one). Any other
+  host keeps the full check.
+- **Existing installations** are corrected at the Agent's first start after
+  the update when the file is CelikPanel's own text (with or without the
+  address lines; mode and owner kept). A file the owner changed is kept; when
+  it still sends without encryption, CelikPanel's current text (with the
+  file's own `des_key`, readable by root only) lies beside it as
+  `config.inc.php.celikpanel-pending`, and Problems now has one line
+  (`webmail_cannot_send`, who acts: the server owner) naming that text, or the
+  file itself when no text could be put there. The line goes by itself once
+  the file sends with encryption; an owner's own sending setting (another
+  host, `ssl://`, a value CelikPanel cannot read) is not named. The webmail
+  profile is not "installed and verified" while the last component check
+  reads that it cannot send.
+- **An alias's DNS record that waited** stops waiting when the zone's held
+  change is published, not at the next hourly round; while it waits, the
+  zone's notice says the alias records are published by themselves instead
+  of asking to make the change again.
+- **A PostgreSQL close or its undo** ends with a title that says the outcome
+  (closed, not closed, not known), never the running "Closing …".
+
+Code: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
+`cmd/panel/webmail_address_problem.go`, `mail_profiles.go`, `alias_dns.go`,
+`dns_pending_publication.go`. Tests: `cmd/agent/webmail_sending_test.go`,
+`cmd/panel/a145_webmail_send_test.go`, `web/tests/a145-webmail-send-lab.test.mjs`.

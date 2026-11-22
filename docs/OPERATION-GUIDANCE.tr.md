@@ -11285,3 +11285,37 @@ kanıtladığı ve neyi denetlemediği için alpha.144 sürüm notlarının
   başarısız oldu, adını verdiği dosyayla). Dosya yeni biçime geçince
   kendiliğinden kalkar; Agent her açılışta yeniden dener.
 - **Tek veritabanı** Şimdiki sorunlar'da ve uyarı e-postasında tekil söylenir.
+
+### alpha.144 laboratuvarının düzeltmeleri (alpha.145, 23 Kasım 2026)
+
+- **Web postası gönderir.** İlk sürümden beri Roundcube yapılandırması postayı
+  bu sunucunun 587'deki gönderim hizmetine şifresiz veriyordu
+  (`smtp_host 'localhost:587'`); hizmet ise girişi yalnız şifreli bağlantıda
+  kabul ediyor, bu yüzden her ileti "kimlik doğrulanamadı" ile kalıyordu.
+  Yapılandırma artık `tls://127.0.0.1:587` ve kutunun kendi girişini
+  kullanır; yalnız 127.0.0.1 için sertifikanın adı ve zinciri denetlenmez
+  (bağlantı sunucudan çıkmaz; hizmet posta adının sertifikasını ya da o yokken
+  kendi imzalı bir sertifikayı gösterebilir). Başka her ad tam denetimi korur.
+- **Kurulu sunucularda** dosya CelikPanel'in kendi metniyse (adres satırlarıyla
+  ya da onlarsız) güncellemeden sonra Agent'ın ilk açılışında düzeltilir; kipi
+  ve sahibi korunur. Sahibin değiştirdiği dosya korunur; hâlâ şifresiz
+  gönderiyorsa CelikPanel'in şimdiki metni (dosyanın kendi `des_key` değeriyle,
+  yalnız root okuyabilir) yanına `config.inc.php.celikpanel-pending` olarak
+  konur ve Şu anki sorunlar'da tek satır çıkar (`webmail_cannot_send`, kim
+  yapar: sunucu sahibi); satır bu metni, metin konamadıysa dosyanın kendisini
+  adlandırır. Dosya şifreli gönderince satır kendiliğinden kalkar; sahibin
+  kendi gönderim ayarı (başka bir ad, `ssl://`, CelikPanel'in okuyamadığı bir
+  değer) adlandırılmaz. Son bileşen denetimi gönderemediğini okuduğu sürece web
+  postası profili "kurulu ve doğrulanmış" görünmez.
+- **Bekleyen takma ad DNS kaydı**, bölgenin bekletilen değişikliği
+  yayımlanınca beklemeyi bırakır, bir sonraki saatlik turu beklemez; beklerken
+  bölgenin uyarısı değişikliği yeniden yapmayı istemez, takma ad kayıtlarının
+  kendiliğinden yayımlanacağını söyler.
+- **PostgreSQL kapatma ya da geri alma** penceresi sonucu söyleyen bir
+  başlıkla biter (kapatıldı, kapatılamadı, bilinmiyor); sürmekte olan
+  "… kapatılıyor" başlığıyla bitmez.
+
+Kod: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
+`cmd/panel/webmail_address_problem.go`, `mail_profiles.go`, `alias_dns.go`,
+`dns_pending_publication.go`. Testler: `cmd/agent/webmail_sending_test.go`,
+`cmd/panel/a145_webmail_send_test.go`, `web/tests/a145-webmail-send-lab.test.mjs`.

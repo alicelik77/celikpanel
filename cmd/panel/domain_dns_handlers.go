@@ -50,6 +50,9 @@ type DNSZone struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+	// AliasesWaiting (alpha.145): records CelikPanel saved in this zone for
+	// an alias wait for the zone's publication and are retried by themselves.
+	AliasesWaiting bool `json:"aliases_waiting,omitempty"`
 }
 
 type dnsRecordCreateRequest struct {
@@ -205,6 +208,7 @@ func (p *Panel) handleGetDNSZone(w http.ResponseWriter, r *http.Request, domainN
 		writeServerError(w, fmt.Errorf("load DNS zone %s: %w", domainName, err))
 		return
 	}
+	zone.AliasesWaiting = p.aliasZoneWaiting(r.Context(), zone.Name)
 	if err := json.NewEncoder(w).Encode(zone); err != nil {
 		log.Printf("encode DNS zone %s: %v", domainName, err)
 	}

@@ -53,7 +53,8 @@ export type ProblemKind =
     | 'mail_autoresponder_foreign'
     | 'postgresql_databases_unreadable'
     | 'webmail_address_kept'
-    | 'webmail_address_refused';
+    | 'webmail_address_refused'
+    | 'webmail_cannot_send';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -75,6 +76,8 @@ const KINDS: readonly ProblemKind[] = [
     // alpha.144: webmail's address still in its earlier form (owner's file,
     // or a rewrite nginx's test put back).
     'webmail_address_kept', 'webmail_address_refused',
+    // alpha.145: webmail's configuration still sends without encryption.
+    'webmail_cannot_send',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
@@ -117,6 +120,8 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
     // CelikPanel's text is named only when it lies beside the owner's file.
     if (problem.kind === 'webmail_address_kept' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_address_kept.body_no_text' as TranslationKey;
+    // alpha.145: CelikPanel's text is named only when it lies beside the configuration.
+    if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 

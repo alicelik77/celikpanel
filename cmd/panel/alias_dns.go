@@ -195,6 +195,27 @@ func (p *Panel) markAliasZoneUnpublished(ctx context.Context, zone string) {
 	}
 }
 
+// clearAliasZoneWait (alpha.145, alpha.144 lab O1): the zone's publication
+// completed (a held change published once the earlier publication
+// completed), so its alias records that waited are published now; their
+// rows stop saying they wait at once, not at the next hourly round.
+func (p *Panel) clearAliasZoneWait(ctx context.Context, zone string) {
+	result, err := p.db.GetDB().ExecContext(context.WithoutCancel(ctx), `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+strings.ToLower(zone))
+	if err != nil {
+		log.Printf("[alias-dns] %s: published, but its wait could not be cleared (the hourly round clears it): %v", zone, err)
+		return
+	}
+	if n, _ := result.RowsAffected(); n > 0 {
+		log.Printf("[alias-dns] %s: the alias records that waited are published", zone)
+	}
+}
+
+// aliasZoneWaiting reports whether zone's alias records wait for its
+// publication (the zone's notice then says they are retried by themselves).
+func (p *Panel) aliasZoneWaiting(ctx context.Context, zone string) bool {
+	return p.setting(ctx, aliasDNSUnpublishedPrefix+strings.ToLower(zone)) != ""
+}
+
 // aliasZonesUnpublished lists the zones whose alias records wait.
 func (p *Panel) aliasZonesUnpublished(ctx context.Context) (map[string]bool, error) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT key FROM panel_settings WHERE key LIKE ?`, aliasDNSUnpublishedPrefix+"%")

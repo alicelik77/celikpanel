@@ -775,6 +775,9 @@ func (p *Panel) republishHeldDNSZones(ctx context.Context) {
 		cancel()
 		if err == nil {
 			log.Printf("held DNS change for %s published after the earlier publication completed", state.ZoneName)
+			// alpha.145 (alpha.144 lab O1): the alias records it carried
+			// stop waiting now.
+			p.clearAliasZoneWait(ctx, state.ZoneName)
 			continue
 		}
 		var publicationErr *dnsAgentPublicationError

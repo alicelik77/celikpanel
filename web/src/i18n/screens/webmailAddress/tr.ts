@@ -135,4 +135,9 @@ export const trWebmailAddressScreens: Record<WebmailAddressScreenKey, string> = 
     'pnow.webmail_address_refused.body': 'Yeni metni geri alındı, çünkü nginx yapılandırma denetimi {other} dosyasında başarısız oldu. Sunucu sahibi o dosyayı düzeltir; CelikPanel yeni metni bir sonraki açılışında yeniden yazar ve bu satır kendiliğinden kalkar.',
     'pnow.webmail_address_refused.body_unnamed': 'Yeni metni geri alındı, çünkü nginx yapılandırma denetimi başarısız oldu ya da nginx yeniden yüklenemedi. Sunucu sahibi nedenini sudo nginx -t ile görür; CelikPanel yeni metni bir sonraki açılışında yeniden yazar ve bu satır kendiliğinden kalkar.',
     'pnow.webmail_address_refused.action': 'Web postasını aç',
+    // alpha.145: yapılandırması hâlâ şifresiz gönderen web postası
+    'pnow.webmail_cannot_send.title': 'Web postası posta gönderemiyor',
+    'pnow.webmail_cannot_send.body': 'Yapılandırması elle değiştirilmiş; CelikPanel onu korudu. Dosya postayı hâlâ bu sunucunun gönderim hizmetine şifresiz veriyor, hizmet de girişi reddediyor. CelikPanel yeni metnini yanına koydu: {other}. Sunucu sahibi bu metni (ya da gönderim satırlarını) dosyaya alır. Dosya şifreli gönderince bu satır kendiliğinden kalkar.',
+    'pnow.webmail_cannot_send.body_no_text': '{other} yapılandırması postayı hâlâ bu sunucunun gönderim hizmetine şifresiz veriyor, hizmet de girişi reddediyor. Sunucu sahibi içinde smtp_host değerini tls://127.0.0.1:587 yapar ve yalnız 127.0.0.1 için sertifika denetimini atlayan smtp_conn_options ekler (bağlantı sunucudan çıkmaz). Dosyada bunlar olunca bu satır kendiliğinden kalkar.',
+    'pnow.webmail_cannot_send.action': 'Web postasını aç',
 };

@@ -25,6 +25,18 @@ func (p *Panel) webmailAddressProblems(ctx context.Context) []monitoringProblem 
 		return nil
 	}
 	var problems []monitoringProblem
+	// alpha.145: webmail's own configuration still hands mail to this
+	// server's submission service without encryption, so nothing can be sent
+	// from webmail. The Agent corrects CelikPanel's own text at its start; an
+	// owner's file is kept (CelikPanel's text beside it, Name). The line goes
+	// by itself once the file sends with encryption.
+	if resp.Sending == "cannot_send" {
+		problems = append(problems, monitoringProblem{
+			Key: "webmail_cannot_send", Kind: "webmail_cannot_send", Severity: "warning", Actor: "server_owner",
+			Name:   resp.SendingFile,
+			Action: monitoringProblemAction{Kind: "open", To: "/components/roundcube"},
+		})
+	}
 	for _, open := range resp.Open {
 		kind := "webmail_address_kept"
 		actor := "server_owner"

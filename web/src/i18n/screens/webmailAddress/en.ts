@@ -143,6 +143,11 @@ export const enWebmailAddressScreens = {
     'pnow.webmail_address_refused.body': 'Its new text was put back because nginx’s configuration test failed in {other}. The server owner corrects that file; CelikPanel writes the new text again at its next start, and this line goes by itself.',
     'pnow.webmail_address_refused.body_unnamed': 'Its new text was put back because nginx’s configuration test failed or nginx could not be reloaded. The server owner runs sudo nginx -t to see why; CelikPanel writes the new text again at its next start, and this line goes by itself.',
     'pnow.webmail_address_refused.action': 'Open webmail',
+    // alpha.145: webmail's configuration still sends without encryption
+    'pnow.webmail_cannot_send.title': 'Webmail cannot send mail',
+    'pnow.webmail_cannot_send.body': 'Its configuration was changed by hand, so CelikPanel kept it. It still hands mail to this server’s sending service without encryption, and the service refuses the login. CelikPanel put its new text beside it: {other}. The server owner takes that text (or its sending lines) into the file. This line goes by itself once the file sends with encryption.',
+    'pnow.webmail_cannot_send.body_no_text': 'Its configuration {other} still hands mail to this server’s sending service without encryption, and the service refuses the login. The server owner sets smtp_host to tls://127.0.0.1:587 in it, with smtp_conn_options that skip the certificate check for 127.0.0.1 only (the connection never leaves the server). This line goes by itself once the file has them.',
+    'pnow.webmail_cannot_send.action': 'Open webmail',
 } as const;
 
 export type WebmailAddressScreenKey = keyof typeof enWebmailAddressScreens;
