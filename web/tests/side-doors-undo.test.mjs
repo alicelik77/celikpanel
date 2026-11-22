@@ -29,7 +29,12 @@ test('every new kind is shown, worded in both languages and says who acts', () =
 test('the owner’s undo is closed again only by an explicit action, asked first in the panel’s own window', () => {
   const source = read('../src/components/ProblemsNow.tsx');
   assert.match(source, /p\.action\.kind === 'reclose' \? RECLOSE\.includes/, 'only the known doors');
-  assert.match(source, /confirmAction\(\{[\s\S]*?\/api\/v1\/metrics\/side-doors\/reclose/, 'asked, then sent');
+  assert.match(source, /const RECLOSE_URL = '\/api\/v1\/metrics\/side-doors\/reclose';/);
+  assert.match(source, /confirmAction\(\{[\s\S]*?fetch\(RECLOSE_URL, \{\s*method: 'POST'/, 'asked, then sent once');
+  // Second fix round (B4): the panel runs it apart from the page; the window
+  // follows it with reads only, and leaving the page does not cancel it.
+  assert.match(source, /while \(status\?\.running[\s\S]*?await fetch\(RECLOSE_URL\);/, 'followed with reads only');
+  assert.equal((source.match(/method: 'POST'/g) ?? []).length, 2, 'one start request (and the service start), never one per read');
   assert.match(source, /report\.steps\(/, 'the work is shown while it runs');
   assert.match(source, /handle\.retry\(\)/, 'the list reads itself again');
   for (const kind of ['stock_pool_owner_restored', 'at_owner_removed']) {

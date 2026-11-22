@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -23,6 +24,12 @@ import (
 // panel_settings; what needs someone (a move that failed, a configuration or
 // pool the owner changed, a pool something still uses) is shown in Problems
 // now with who acts and what to do (D-024). Reading it never starts a change.
+//
+// The states are read again without changing anything (S4 R1, second fix
+// round, B7): after every move in a tool's Manage window and in an hourly
+// round (Agent.ReadSideDoorsV1), so a tool that stopped answering has its
+// Problems line without a Panel restart, and a line whose cause is gone goes
+// by itself.
 //
 // Yan kapılar: her başlangıçtan sonra bir kez araçlar kendi hesaplarına
 // taşınır ve dokunulmamış, kullanılmayan varsayılan havuz kapatılır; birinin
@@ -38,22 +45,74 @@ var (
 	sideDoorsFirstWait = 3 * time.Minute
 	sideDoorsRetry     = 5 * time.Minute
 	sideDoorsAttempts  = 12
+	// sideDoorsReadEvery: the hourly round that reads the states again.
+	sideDoorsReadEvery = time.Hour
+	// After a Manage-window move: read again now, and again while the Agent
+	// does not answer (it may be restarting).
+	sideDoorsAfterMoveRetry    = 20 * time.Second
+	sideDoorsAfterMoveAttempts = 6
 )
 
-// startSideDoorsClose runs the step once after the start, in the background.
+// startSideDoorsClose runs the step once after the start, then reads the
+// states again every hour, in the background.
 func (p *Panel) startSideDoorsClose() {
 	go func() {
 		time.Sleep(sideDoorsFirstWait)
-		for attempt := 0; attempt < sideDoorsAttempts; attempt++ {
+		closed := false
+		for attempt := 0; attempt < sideDoorsAttempts && !closed; attempt++ {
 			ctx, cancel := context.WithTimeout(context.Background(), agentRPCDeploymentTimeout+2*time.Minute)
-			done := p.closeSideDoorsOnce(ctx)
+			closed = p.closeSideDoorsOnce(ctx)
 			cancel()
-			if done {
+			if !closed {
+				time.Sleep(sideDoorsRetry)
+			}
+		}
+		if !closed {
+			log.Printf("side doors: the step could not run (the server stayed busy or the Agent did not answer); it runs again at the next start")
+		}
+		for {
+			time.Sleep(sideDoorsReadEvery)
+			if err := p.readSideDoorsOnce(); err != nil {
+				log.Printf("side doors: the hourly read did not answer: %v", err)
+			}
+		}
+	}()
+}
+
+// readSideDoorsOnce reads the states again through the Agent (nothing is
+// changed) and keeps them; an Agent older than this Panel is not an error.
+func (p *Panel) readSideDoorsOnce() error {
+	ctx, cancel := context.WithTimeout(context.Background(), agentRPCNetworkReadTimeout+30*time.Second)
+	defer cancel()
+	var response transport.SideDoorsResponse
+	if err := p.callAgentContext(ctx, "Agent.ReadSideDoorsV1", &transport.SideDoorsReadRequest{}, &response); err != nil {
+		if strings.Contains(err.Error(), "can't find method") {
+			return nil
+		}
+		return err
+	}
+	if response.Error != "" {
+		return errors.New(response.Error)
+	}
+	if response.State == nil {
+		return nil
+	}
+	p.recordSideDoorsState(ctx, response.State)
+	p.recordSiteCrontabsOutside(ctx, siteJobsCheckedAt(response.State), response.State.SiteCrontabs)
+	return nil
+}
+
+// readSideDoorsAfterMove reads the states again after a move in a tool's
+// Manage window, whatever came of it; while the Agent does not answer (an
+// Agent restarted in the middle of the move) it tries again a few times.
+var readSideDoorsAfterMove = func(p *Panel) {
+	go func() {
+		for attempt := 0; attempt < sideDoorsAfterMoveAttempts; attempt++ {
+			if err := p.readSideDoorsOnce(); err == nil {
 				return
 			}
-			time.Sleep(sideDoorsRetry)
+			time.Sleep(sideDoorsAfterMoveRetry)
 		}
-		log.Printf("side doors: the step could not run (the server stayed busy or the Agent did not answer); it runs again at the next start")
 	}()
 }
 
@@ -124,18 +183,90 @@ func (p *Panel) applySideDoorsAnswer(ctx context.Context, state *transport.SideD
 	}
 }
 
-// recordSideDoorsState keeps the Agent's latest answer.
+var sideDoorsStateMu sync.Mutex
+
+// recordSideDoorsState keeps the Agent's latest answer, merged with what is
+// kept by the answer's scope (mergeSideDoorsState).
 func (p *Panel) recordSideDoorsState(ctx context.Context, state *transport.SideDoorsState) {
 	if state == nil {
 		return
 	}
-	raw, err := json.Marshal(state)
+	sideDoorsStateMu.Lock()
+	defer sideDoorsStateMu.Unlock()
+	var previous transport.SideDoorsState
+	if raw := p.setting(ctx, settingSideDoorsState); raw != "" {
+		_ = json.Unmarshal([]byte(raw), &previous)
+	}
+	raw, err := json.Marshal(mergeSideDoorsState(previous, *state))
 	if err != nil {
 		return
 	}
 	if err := p.setSetting(ctx, settingSideDoorsState, string(raw)); err != nil {
 		log.Printf("side doors: state not recorded: %v", err)
 	}
+}
+
+// mergeSideDoorsState: the whole step's answer replaces what is kept; the
+// administrator's "close it again" replaces only its door; a read again
+// replaces the tools and every stock pool or at state it could read, and
+// keeps the step's word for the others.
+func mergeSideDoorsState(previous, fresh transport.SideDoorsState) transport.SideDoorsState {
+	switch fresh.Scope {
+	case "":
+		return fresh
+	case transport.SideDoorsScopeReClose:
+		out := previous
+		if fresh.At != nil {
+			out.At = fresh.At
+		}
+		for _, row := range fresh.StockPools {
+			replaced := false
+			pools := make([]transport.SideDoorsStockPool, 0, len(out.StockPools)+1)
+			for _, kept := range out.StockPools {
+				if kept.Version == row.Version {
+					kept, replaced = row, true
+				}
+				pools = append(pools, kept)
+			}
+			if !replaced {
+				pools = append(pools, row)
+			}
+			out.StockPools = pools
+		}
+		if out.CheckedAt == "" {
+			out.CheckedAt = fresh.CheckedAt
+		}
+		return out
+	case transport.SideDoorsScopeRead:
+		out := previous
+		out.CheckedAt = fresh.CheckedAt
+		out.Tools = fresh.Tools
+		pools := []transport.SideDoorsStockPool{}
+		for _, row := range fresh.StockPools {
+			if row.State == "" {
+				for _, kept := range previous.StockPools {
+					if kept.Version == row.Version {
+						pools = append(pools, kept)
+					}
+				}
+				continue
+			}
+			pools = append(pools, row)
+		}
+		out.StockPools = pools
+		switch {
+		case fresh.At == nil:
+		case fresh.At.State != "":
+			out.At = fresh.At
+		case out.At != nil:
+			at := *out.At
+			at.Jobs = fresh.At.Jobs
+			out.At = &at
+		}
+		out.SiteCrontabs = fresh.SiteCrontabs
+		return out
+	}
+	return previous
 }
 
 // sideDoorsToolComponent is the component page of a tool.
@@ -244,17 +375,28 @@ func sideDoorsToolConfPath(tool string) string {
 }
 
 // handleSideDoorsReClose is the administrator's explicit "close it again"
-// for what the server owner undid (S4 R1 fix round, 21 Nov 2026): POST
-// {"target":"at"} or {"target":"stock_pool","version":"8.4"}, administrator
-// only (the /api/v1/metrics/ prefix). It runs the side doors step once with
-// the owner's undo forgotten for that target, keeps the answer, audits it and
-// says whether the door is closed now. The screen asks first in the panel's
-// own window and shows the work while it runs.
+// for what the server owner undid (S4 R1 fix round, 21 Nov 2026), on
+// /api/v1/metrics/side-doors/reclose, administrator only. POST
+// {"target":"at"} or {"target":"stock_pool","version":"8.4"} starts it and
+// answers 202 at once; GET says how the last one went. Since the second fix
+// round (B4) it does exactly what its confirmation says: only that door, in
+// the Agent's own job, run apart from the browser's request, so leaving the
+// page neither cancels nor half-does it, and the result is on the screen
+// when the page is opened again (the Problems now line goes, or stays with
+// Monitoring saying why). A second press while one runs is the same run, not
+// a second one. The owner's undo stays recorded until the door is closed
+// again, so a cut or refused attempt never arms a later automatic close.
 // Sahibin geri aldığını yönetici açıkça yeniden kapatır.
 func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
+	switch r.Method {
+	case http.MethodGet:
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(sideDoorsRecloseStatus())
+		return
+	case http.MethodPost:
+	default:
+		w.Header().Set("Allow", "GET, POST")
 		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
@@ -278,24 +420,92 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusBadRequest, "unknown side door")
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), agentRPCDeploymentTimeout+time.Minute)
-	defer cancel()
+	// The audit rows are written when it ends; who asked is read now.
+	uid, actingAs := auditPerson(r)
+	ip, agent := clientIP(r), r.UserAgent()
+	if len(agent) > 300 {
+		agent = agent[:300]
+	}
 	details := map[string]any{"target": request.Target, "php": request.Version}
-	response, err := closeSideDoorsThroughAgent(p, ctx, request.Target, request.Version)
-	if err != nil {
-		p.auditDetailed(r, "side_doors.reclose.failed:"+request.Target, "service", 0, details)
-		writeClientError(w, http.StatusConflict, "the side doors step could not run now: "+auditReason(err.Error()))
+	if c := currentCaller(r); c != nil && c.APIToken != nil {
+		details["api_token"] = c.APIToken.label()
+	}
+	audit := func(action string) {
+		p.recordAudit(auditRecord{UserID: uid, ActingAs: actingAs, Action: action, ResourceType: "service", IP: ip, UserAgent: agent, Details: auditDetailsText(details)})
+	}
+	started, running := beginSideDoorsReclose(request.Target, request.Version)
+	if !started {
+		if running.Target == request.Target && running.Version == request.Version {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			_ = json.NewEncoder(w).Encode(running)
+			return
+		}
+		writeClientError(w, http.StatusConflict, "another close-again is running; wait for it to finish")
 		return
 	}
-	p.applySideDoorsAnswer(ctx, response.State)
-	closed := sideDoorClosed(response.State, request.Target, request.Version)
-	action := "side_doors.reclose:" + request.Target
-	if !closed {
-		action = "side_doors.reclose.failed:" + request.Target
-	}
-	p.auditDetailed(r, action, "service", 0, details)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), agentRPCDeploymentTimeout+time.Minute)
+		defer cancel()
+		response, err := closeSideDoorsThroughAgent(p, ctx, request.Target, request.Version)
+		if err != nil {
+			audit("side_doors.reclose.failed:" + request.Target)
+			endSideDoorsReclose(false, "", "the side doors step could not run now: "+auditReason(err.Error()))
+			return
+		}
+		p.applySideDoorsAnswer(ctx, response.State)
+		closed := sideDoorClosed(response.State, request.Target, request.Version)
+		if closed {
+			audit("side_doors.reclose:" + request.Target)
+		} else {
+			audit("side_doors.reclose.failed:" + request.Target)
+		}
+		endSideDoorsReclose(closed, sideDoorState(response.State, request.Target, request.Version), "")
+	}()
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"closed": closed, "state": sideDoorState(response.State, request.Target, request.Version)})
+	w.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(w).Encode(sideDoorsRecloseStatus())
+}
+
+// sideDoorsReclose is the last "close it again" (one at a time).
+type sideDoorsReclose struct {
+	Target  string `json:"target,omitempty"`
+	Version string `json:"version,omitempty"`
+	Running bool   `json:"running"`
+	Closed  bool   `json:"closed"`
+	State   string `json:"state,omitempty"`
+	Error   string `json:"error,omitempty"`
+	At      string `json:"at,omitempty"`
+}
+
+var (
+	sideDoorsRecloseMu   sync.Mutex
+	sideDoorsRecloseLast sideDoorsReclose
+)
+
+func sideDoorsRecloseStatus() sideDoorsReclose {
+	sideDoorsRecloseMu.Lock()
+	defer sideDoorsRecloseMu.Unlock()
+	return sideDoorsRecloseLast
+}
+
+// beginSideDoorsReclose starts one unless one runs (then it returns that one).
+func beginSideDoorsReclose(target, version string) (bool, sideDoorsReclose) {
+	sideDoorsRecloseMu.Lock()
+	defer sideDoorsRecloseMu.Unlock()
+	if sideDoorsRecloseLast.Running {
+		return false, sideDoorsRecloseLast
+	}
+	sideDoorsRecloseLast = sideDoorsReclose{Target: target, Version: version, Running: true, At: time.Now().UTC().Format(time.RFC3339)}
+	return true, sideDoorsRecloseLast
+}
+
+func endSideDoorsReclose(closed bool, state, failure string) {
+	sideDoorsRecloseMu.Lock()
+	defer sideDoorsRecloseMu.Unlock()
+	sideDoorsRecloseLast.Running, sideDoorsRecloseLast.Closed = false, closed
+	sideDoorsRecloseLast.State, sideDoorsRecloseLast.Error = state, failure
+	sideDoorsRecloseLast.At = time.Now().UTC().Format(time.RFC3339)
 }
 
 var sideDoorsPHPVersion = regexp.MustCompile(`^[0-9]{1,2}\.[0-9]{1,2}$`)

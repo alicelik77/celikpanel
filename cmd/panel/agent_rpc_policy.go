@@ -170,6 +170,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 		Agent.DeletionHoldingInventoryV1 Agent.LeftMailFoldersV1
+		Agent.ReadSideDoorsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -606,6 +607,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.OSUpdatesStatusV1":           agentRPCNetworkReadTimeout,
 	"Agent.RoundcubeUpdateCheckV1":      agentRPCNetworkReadTimeout,
 	"Agent.WebmailProofV1":              agentRPCNetworkReadTimeout,
+	"Agent.ReadSideDoorsV1":             agentRPCNetworkReadTimeout,
 	"Agent.WebmailAddressStatusV1":      agentRPCNetworkReadTimeout,
 	"Agent.EnableWebmailAddressV1":      agentRPCDeploymentTimeout,
 	"Agent.RemoveWebmailAddressV1":      agentRPCDeploymentTimeout,

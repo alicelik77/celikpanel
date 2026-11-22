@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -92,5 +93,50 @@ func TestARefusedRemovalTurnsTheStockPoolOffAgain(t *testing.T) {
 	}
 	if off, _ := StockPoolsTurnedOff(); !off["8.3"] {
 		t.Fatal("the record of the stock pool did not come back")
+	}
+}
+
+// S4 R1, second fix round (B5): putting the stock pool back forgets the
+// version BEFORE the rename, and its undo marks the version "turning off"
+// before renaming it away, so a crash between record and rename never reads
+// as the server owner's doing. Does not build on 193b87001 (the record was
+// written after the rename there).
+func TestKeepingAPoolWritesTheRecordBeforeEachRename(t *testing.T) {
+	withPoolTree(t, "8.3", "site42", seededPool)
+	stock := turnedOffStock(t, "8.3")
+	var atRename []string
+	saved := stockPoolRename
+	t.Cleanup(func() { stockPoolRename = saved })
+	stockPoolRename = func(from, to string) error {
+		off, _ := StockPoolsTurnedOff()
+		turning, _ := StockPoolsTurningOff()
+		state := "none"
+		switch {
+		case turning["8.3"]:
+			state = "turning"
+		case off["8.3"]:
+			state = "off"
+		}
+		atRename = append(atRename, filepath.Base(to)+":"+state)
+		return os.Rename(from, to)
+	}
+	undo, err := KeepAPoolBeside(poolFilePath("8.3", "site42"))
+	if err != nil || undo == nil {
+		t.Fatalf("keep: %v", err)
+	}
+	if _, err := os.Stat(stock); err != nil {
+		t.Fatal(err)
+	}
+	if err := undo(); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(atRename, " "); got != "www.conf:none www.conf.off-by-celikpanel:turning" {
+		t.Fatalf("record at each rename: %s", got)
+	}
+	if off, _ := StockPoolsTurnedOff(); !off["8.3"] {
+		t.Fatal("the undo did not record the pool off again")
+	}
+	if turning, _ := StockPoolsTurningOff(); turning["8.3"] {
+		t.Fatal("the undo left its unfinished mark")
 	}
 }

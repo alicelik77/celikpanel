@@ -436,11 +436,9 @@ func TestTheOwnersUndoOfTheStockPoolStands(t *testing.T) {
 	if pools[0].State != transport.SideDoorsStockOwnerRestored || len(host.steps) != 0 {
 		t.Fatalf("after the owner's undo: %+v steps %v: it must not be turned off again by itself", pools, host.steps)
 	}
-	// The administrator's explicit "turn it off again".
-	if err := forgetOwnerUndo(transport.SideDoorsReCloseStockPool, "8.4"); err != nil {
-		t.Fatal(err)
-	}
-	if pools := closeStockFPMPoolsWith(context.Background(), ops); pools[0].State != transport.SideDoorsStockTurnedOff {
+	// The administrator's explicit "turn it off again" (second fix round:
+	// scoped to that version, the owner's undo kept until it is off).
+	if pools := closeStockFPMPoolsFor(context.Background(), ops, stockPoolPass{only: "8.4", reclose: true}); pools[0].State != transport.SideDoorsStockTurnedOff {
 		t.Fatalf("closing again: %+v", pools)
 	}
 }
@@ -464,10 +462,7 @@ func TestTheOwnersDeletionOfAtAllowStands(t *testing.T) {
 	if !strings.Contains(atAllowHeader, "does not write it again by itself") {
 		t.Fatal("the header does not tell the truth about deleting it")
 	}
-	if err := forgetOwnerUndo(transport.SideDoorsReCloseAt, ""); err != nil {
-		t.Fatal(err)
-	}
-	if at := closeSiteAtWith(context.Background(), fake.ops(true)); at.State != transport.SideDoorsAtWritten {
+	if at := closeSiteAtFor(context.Background(), fake.ops(true), atPass{reclose: true}); at.State != transport.SideDoorsAtWritten {
 		t.Fatalf("closing again: %+v", at)
 	}
 }

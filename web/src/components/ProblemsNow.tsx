@@ -70,6 +70,12 @@ export type ProblemKind =
     | 'mail_autoresponder_foreign'
     | 'postgresql_databases_unreadable';
 
+// S4 R1 second fix round: the administrator's "close it again" runs on the
+// panel; the window follows it with reads only.
+const RECLOSE_URL = '/api/v1/metrics/side-doors/reclose';
+const RECLOSE_POLL_MS = 2000;
+const RECLOSE_FOLLOW_MS = 25 * 60 * 1000;
+
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
     'memory_sustained', 'cpu_sustained', 'mail_queue_deferred', 'security_updates',
@@ -267,9 +273,14 @@ export function ProblemsNow({
 
     // S4 R1 fix round: close again what the server owner undid, after the
     // panel's own question; the window shows the work, then the list reads
-    // itself again. Nothing is sent twice.
+    // itself again. Nothing is sent twice. Second fix round: the panel runs it
+    // apart from this page (202), so leaving the page neither cancels nor
+    // half-does it; this window follows it until it ends, and a second press
+    // while it runs follows the same run.
     const reclose = async (problem: Problem) => {
         const vars = problemVars(problem, t);
+        const target = problem.action.to ?? '';
+        const version = target === 'stock_pool' ? problem.name ?? '' : '';
         await confirmAction({
             title: t(`pnow.${problem.kind}.title` as TranslationKey, vars),
             message: t(`pnow.${problem.kind}.confirm` as TranslationKey, vars),
@@ -277,25 +288,40 @@ export function ProblemsNow({
             progressTitle: t('pnow.reclose.progress'),
             action: async (report) => {
                 report.steps([{ id: 'reclose', label: t('pnow.reclose.step'), state: 'running', since: Date.now() }]);
+                type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; error?: string };
+                const unknown = { state: 'unknown' as const, reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
                 try {
-                    const response = await fetch('/api/v1/metrics/side-doors/reclose', {
+                    const response = await fetch(RECLOSE_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ target: problem.action.to, version: problem.action.to === 'stock_pool' ? problem.name : '' }),
+                        body: JSON.stringify({ target, version }),
                     });
                     if (!response.ok) {
                         return { state: 'failed', title: t('pnow.reclose.failed'), reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
                     }
-                    let answer: { closed?: boolean };
+                    let status: RecloseStatus;
                     try {
-                        answer = await response.json() as { closed?: boolean };
+                        status = await response.json() as RecloseStatus;
                     } catch {
-                        // The answer could not be read: what it came to is not known.
-                        return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                        return unknown;
                     }
-                    return answer?.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
+                    // Follow the run (reads only) until it ends; the answer
+                    // stays on the panel if this page is left.
+                    const until = Date.now() + RECLOSE_FOLLOW_MS;
+                    while (status?.running && Date.now() < until) {
+                        await new Promise((resolve) => setTimeout(resolve, RECLOSE_POLL_MS));
+                        try {
+                            const again = await fetch(RECLOSE_URL);
+                            if (again.ok) status = await again.json() as RecloseStatus;
+                        } catch {
+                            // A read that failed is tried again; nothing is sent.
+                        }
+                    }
+                    if (status?.running || status?.target !== target || (status?.version ?? '') !== version) return unknown;
+                    if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: status.error };
+                    return status.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
                 } catch {
-                    return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                    return unknown;
                 } finally {
                     void handle.retry();
                 }

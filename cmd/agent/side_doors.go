@@ -47,10 +47,29 @@ import (
 const stockPoolOffSuffix = services.StockPoolOffSuffix
 
 // CloseSideDoorsV1 is the step; it holds the job's mutation step.
+//
+// With ReClose set it is the administrator's explicit "close it again" and
+// does exactly what its confirmation says (S4 R1, second fix round, B4): only
+// /etc/at.allow, or only that PHP version's stock pool, decided and changed
+// as at a first start; no tool is moved, no other version is touched, no
+// crontab is read. The owner's undo stays recorded until the door is closed
+// again, so an attempt that is cut or refused never makes a later start
+// close it by itself.
 func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transport.SideDoorsResponse) error {
 	*resp = transport.SideDoorsResponse{}
 	if req == nil {
 		resp.Error = "missing request"
+		return nil
+	}
+	switch req.ReClose {
+	case "", transport.SideDoorsReCloseAt:
+	case transport.SideDoorsReCloseStockPool:
+		if !phpVersionText.MatchString(req.Version) {
+			resp.Error = fmt.Sprintf("invalid PHP version %q", req.Version)
+			return nil
+		}
+	default:
+		resp.Error = fmt.Sprintf("unknown side door %q", req.ReClose)
 		return nil
 	}
 	ctx, finishStep, err := a.requiredServiceMutationStep(
@@ -62,46 +81,101 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 		return nil
 	}
 	defer finishStep()
-	// The administrator's explicit "close it again" for what the owner undid
-	// (S4 R1 fix round): the owner's undo is forgotten, then the step decides
-	// as at a first start.
-	if err := forgetOwnerUndo(req.ReClose, req.Version); err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
 	state := transport.SideDoorsState{CheckedAt: time.Now().UTC().Format(time.RFC3339)}
-	state.Tools = closeSideDoorsTools(ctx, hostPHPToolBindOps(), hostSideDoorsToolHooks(), afterPHPToolBound)
-	state.StockPools = closeStockFPMPoolsWith(ctx, hostStockPoolOps())
-	// 3 and 4 (21 Nov 2026, side_doors_jobs.go): at closed to site accounts;
-	// site crontabs with lines not made in CelikPanel counted.
-	state.At = closeSiteAtWith(ctx, hostSiteAtOps())
-	state.SiteCrontabs = checkSiteCrontabs()
+	switch req.ReClose {
+	case transport.SideDoorsReCloseAt:
+		state.Scope = transport.SideDoorsScopeReClose
+		state.At = closeSiteAtFor(ctx, hostSiteAtOps(), atPass{reclose: true})
+	case transport.SideDoorsReCloseStockPool:
+		state.Scope = transport.SideDoorsScopeReClose
+		state.StockPools = closeStockFPMPoolsFor(ctx, hostStockPoolOps(), stockPoolPass{only: req.Version, reclose: true})
+	default:
+		state.Tools = closeSideDoorsTools(ctx, hostPHPToolBindOps(), hostSideDoorsToolHooks(), afterPHPToolBound)
+		state.StockPools = closeStockFPMPoolsWith(ctx, hostStockPoolOps())
+		// 3 and 4 (21 Nov 2026, side_doors_jobs.go): at closed to site
+		// accounts; site crontabs with lines not made in CelikPanel counted.
+		state.At = closeSiteAtWith(ctx, hostSiteAtOps())
+		state.SiteCrontabs = checkSiteCrontabs()
+	}
 	resp.State = &state
 	return nil
 }
 
-const sideDoorsMutationTarget = "side-doors"
-
-// forgetOwnerUndo is the explicit re-close: at forgets CelikPanel's record of
-// its /etc/at.allow (a file then missing is written as at a first start); a
-// stock pool forgets that CelikPanel turned that version's pool off.
-func forgetOwnerUndo(target, version string) error {
-	switch target {
-	case "":
-		return nil
-	case transport.SideDoorsReCloseAt:
-		if err := os.Remove(atAllowRecordPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("forget the record of /etc/at.allow: %w", err)
-		}
-		return nil
-	case transport.SideDoorsReCloseStockPool:
-		if !phpVersionText.MatchString(version) {
-			return fmt.Errorf("invalid PHP version %q", version)
-		}
-		return services.SetStockPoolTurnedOff(version, false)
-	}
-	return fmt.Errorf("unknown side door %q", target)
+// ReadSideDoorsV1 reads the side doors' states again without changing
+// anything (S4 R1, second fix round, B7): the Panel asks after every move in
+// a tool's Manage window and in its hourly round, so a tool that stopped
+// answering has its Problems line without a Panel restart, and a line whose
+// cause is gone goes by itself. Tools are asked whether they answer as they
+// are configured; the stock pools and at say what can be read (off, the
+// owner's undo, CelikPanel's file); site crontabs are counted (no record is
+// written). A state only the step decides comes back empty and the Panel
+// keeps what the step said.
+func (a *Agent) ReadSideDoorsV1(_ *transport.SideDoorsReadRequest, resp *transport.SideDoorsResponse) error {
+	*resp = transport.SideDoorsResponse{}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	state := transport.SideDoorsState{CheckedAt: time.Now().UTC().Format(time.RFC3339), Scope: transport.SideDoorsScopeRead}
+	state.Tools = readSideDoorsTools(ctx, hostPHPToolBindOps(), hostSideDoorsToolHooks())
+	state.StockPools = closeStockFPMPoolsFor(ctx, hostStockPoolOps(), stockPoolPass{readOnly: true})
+	state.At = closeSiteAtFor(ctx, hostSiteAtOps(), atPass{readOnly: true})
+	state.SiteCrontabs = checkSiteCrontabsFor(true)
+	resp.State = &state
+	return nil
 }
+
+// readSideDoorsTools is the read-only pass over the tools: nothing is moved,
+// reloaded or rechecked; each tool is asked whether it answers as it is
+// configured now.
+func readSideDoorsTools(ctx context.Context, ops phpToolBindOps, hooks sideDoorsToolHooks) []transport.SideDoorsTool {
+	tools := []transport.SideDoorsTool{}
+	failures := readPHPToolAccountFailures()
+	for _, state := range phpToolStates() {
+		if !state.Installed || state.Socket == "" {
+			continue
+		}
+		row := transport.SideDoorsTool{Tool: state.Tool, Version: state.version()}
+		if _, own := phpToolOwnSocket(state.Socket); own {
+			row.State, row.Account = transport.SideDoorsToolOwnAccount, phpToolAccount(state.Tool)
+			if user := hooks.poolUser(row.Tool, row.Version); user != "" && user != row.Account {
+				if user == hooks.webAccount() {
+					row.State, row.Account = transport.SideDoorsToolOwnerConfig, user
+					row.Path = phpToolPoolPath(row.Tool, row.Version)
+					row.Detail = fmt.Sprintf("%s was changed outside CelikPanel and runs as %s, the web server's account", row.Path, user)
+					tools = append(tools, row)
+					continue
+				}
+				row.Account = user
+			}
+			if err := ops.httpProbe(ctx, row.Tool, row.Version); err != nil {
+				row.State, row.Detail = transport.SideDoorsToolDown, "it does not answer on its own pool: "+err.Error()
+			}
+			tools = append(tools, row)
+			continue
+		}
+		switch {
+		case ops.family() != "apt":
+			row.State = transport.SideDoorsToolUnsupported
+		case row.Version == "" || !phpVersionInstalled(row.Version):
+			row.State, row.Detail = transport.SideDoorsToolWaiting, "the PHP version it runs on is not installed"
+		case refuseOwnerEditedConfig(phpToolConfPathFor(state.Tool)) != nil:
+			row.State, row.Detail = transport.SideDoorsToolOwnerConfig, refuseOwnerEditedConfig(phpToolConfPathFor(state.Tool)).Error()
+		default:
+			row.State = transport.SideDoorsToolWaiting
+			row.Detail = "it is moved to its own account at the panel's next start"
+			if failure, failed := failures[state.Tool]; failed && failure.PHPVersion == row.Version {
+				row.State, row.Detail = transport.SideDoorsToolFailed, failure.Detail
+			}
+			if err := ops.httpProbe(ctx, row.Tool, row.Version); err != nil {
+				row.State = transport.SideDoorsToolDown
+				row.Detail = strings.TrimPrefix(row.Detail+"; it does not answer as it is now: "+err.Error(), "; ")
+			}
+		}
+		tools = append(tools, row)
+	}
+	return tools
+}
+
+const sideDoorsMutationTarget = "side-doors"
 
 // sideDoorsToolHooks are what the step does for a tool already on its own
 // pool; production fills them with host operations, tests with recorders.
@@ -286,9 +360,17 @@ func sideDoorsRetryLater(code string) bool {
 type stockPoolOps struct {
 	versions func() []string
 	// turnedOff lists the versions CelikPanel turned off (its record);
-	// record writes it.
-	turnedOff   func() (map[string]bool, error)
-	record      func(version string, off bool) error
+	// record writes it. turning lists the versions whose turn-off began and
+	// did not finish, pending marks one before its rename and forgetPending
+	// ends the mark alone (nil in tests that do not look at them).
+	turnedOff     func() (map[string]bool, error)
+	turning       func() (map[string]bool, error)
+	record        func(version string, off bool) error
+	pending       func(version string) error
+	forgetPending func(version string) error
+	// lock is the host-wide lock of PHP-FPM pool files
+	// (services.LockPHPFPMPools); nil in tests.
+	lock        func() func()
 	readFile    func(path string) ([]byte, error)
 	conffileMD5 func(ctx context.Context, version, path string) (string, bool)
 	nginxDump   func(ctx context.Context) (string, error)
@@ -300,6 +382,36 @@ type stockPoolOps struct {
 	fpmReload   func(ctx context.Context, version string) error
 }
 
+func (ops stockPoolOps) hold() func() {
+	if ops.lock == nil {
+		return func() {}
+	}
+	return ops.lock()
+}
+
+func (ops stockPoolOps) turningOff() (map[string]bool, error) {
+	if ops.turning == nil {
+		return map[string]bool{}, nil
+	}
+	return ops.turning()
+}
+
+// stockPoolPass says what one pass over the stock pools may do.
+type stockPoolPass struct {
+	// only: this version alone ("" every version).
+	only string
+	// reclose: the administrator's explicit "turn it off again" for only;
+	// the owner's undo is passed over for it this once, and stays recorded
+	// until the pool is off again (B4: a cut or refused attempt never makes
+	// a later start turn it off by itself).
+	reclose bool
+	// readOnly: read again what can be read without changing anything (the
+	// hourly round and after a Manage-window move, B7). A version whose state
+	// only the step decides comes back with State "" (the Panel keeps what
+	// the step said).
+	readOnly bool
+}
+
 var stockPoolListen = regexp.MustCompile(`(?m)^\s*listen\s*=\s*(\S+)\s*$`)
 
 func stockPoolPath(version string) string {
@@ -309,22 +421,51 @@ func stockPoolPath(version string) string {
 // closeStockFPMPoolsWith decides and, where allowed, turns off each
 // version's stock pool.
 func closeStockFPMPoolsWith(ctx context.Context, ops stockPoolOps) []transport.SideDoorsStockPool {
+	return closeStockFPMPoolsFor(ctx, ops, stockPoolPass{})
+}
+
+func closeStockFPMPoolsFor(ctx context.Context, ops stockPoolOps, pass stockPoolPass) []transport.SideDoorsStockPool {
 	pools := []transport.SideDoorsStockPool{}
 	var dump string
 	var dumpErr error
 	dumped := false
-	turnedOff, recordErr := ops.turnedOff()
 	for _, version := range ops.versions() {
+		if pass.only != "" && version != pass.only {
+			continue
+		}
 		path := stockPoolPath(version)
 		row := transport.SideDoorsStockPool{Version: version, Path: path}
+		if pass.readOnly {
+			row.State, row.Detail = readStockPool(ops, version, path)
+			if row.State != stockPoolGone {
+				pools = append(pools, row)
+			}
+			continue
+		}
+		// The decision and the change run under the host-wide pool lock, so
+		// a site's last pool cannot go between "another pool remains" and the
+		// rename (B6).
+		release := ops.hold()
+		state, detail, decide := finishStockPoolStep(ctx, ops, version, path)
+		if !decide {
+			row.State, row.Detail = state, detail
+			release()
+			if row.State != stockPoolGone {
+				pools = append(pools, row)
+			}
+			continue
+		}
+		turnedOff, recordErr := ops.turnedOff()
 		content, err := ops.readFile(path)
 		if err != nil {
+			release()
 			if errors.Is(err, os.ErrNotExist) {
 				if _, offErr := ops.readFile(path + stockPoolOffSuffix); offErr == nil {
 					row.State = transport.SideDoorsStockOff
 					if recordErr == nil && !turnedOff[version] {
-						// Turned off before the record was kept: remembered now,
-						// so the owner putting it back is seen as such.
+						// Turned off before the record was kept, or by a put-back
+						// cut between forgetting the version and renaming:
+						// remembered now as CelikPanel's.
 						if err := ops.record(version, true); err != nil {
 							row.Detail = "CelikPanel's record of it could not be written: " + err.Error()
 						}
@@ -333,22 +474,24 @@ func closeStockFPMPoolsWith(ctx context.Context, ops stockPoolOps) []transport.S
 				}
 				continue
 			}
-			row.State, row.Detail = transport.SideDoorsStockUnknown, err.Error()
+			row.State, row.Detail = transport.SideDoorsStockUnknown, "it could not be read: "+err.Error()
 			pools = append(pools, row)
 			continue
 		}
 		// The owner's undo stands (D-022): CelikPanel turned it off and it is
 		// back under its own name, so the server owner put it back. It is left
-		// on; only the administrator's explicit "turn it off again" forgets
-		// this (forgetOwnerUndo).
-		if turnedOff[version] {
+		// on; only the administrator's explicit "turn it off again" passes
+		// over it, for this version, once.
+		if turnedOff[version] && !(pass.reclose && version == pass.only) {
 			if _, offErr := ops.readFile(path + stockPoolOffSuffix); offErr != nil {
+				release()
 				row.State = transport.SideDoorsStockOwnerRestored
 				pools = append(pools, row)
 				continue
 			}
 		}
 		if recordErr != nil {
+			release()
 			row.State, row.Detail = transport.SideDoorsStockUnknown, "CelikPanel's record of the pools it turned off could not be read: "+recordErr.Error()
 			pools = append(pools, row)
 			continue
@@ -357,10 +500,12 @@ func closeStockFPMPoolsWith(ctx context.Context, ops stockPoolOps) []transport.S
 		packaged, known := ops.conffileMD5(ctx, version, path)
 		switch {
 		case !known:
+			release()
 			row.State, row.Detail = transport.SideDoorsStockUnknown, "the package's own copy of this file could not be read (dpkg)"
 			pools = append(pools, row)
 			continue
 		case packaged != hex.EncodeToString(sum[:]):
+			release()
 			row.State = transport.SideDoorsStockOwnerChanged
 			pools = append(pools, row)
 			continue
@@ -370,6 +515,7 @@ func closeStockFPMPoolsWith(ctx context.Context, ops stockPoolOps) []transport.S
 			dumped = true
 		}
 		if dumpErr != nil {
+			release()
 			row.State, row.Detail = transport.SideDoorsStockUnknown, "nginx -T did not answer: "+dumpErr.Error()
 			pools = append(pools, row)
 			continue
@@ -380,19 +526,84 @@ func closeStockFPMPoolsWith(ctx context.Context, ops stockPoolOps) []transport.S
 		}
 		row.UsedBy = stockPoolUsers(dump, listen, ops.aliasFor(listen), ops.apacheRefs)
 		if len(row.UsedBy) > 0 {
+			release()
 			row.State = transport.SideDoorsStockInUse
 			pools = append(pools, row)
 			continue
 		}
 		if !otherPoolsBeside(path) {
+			release()
 			row.State = transport.SideDoorsStockOnlyPool
 			pools = append(pools, row)
 			continue
 		}
-		row.State, row.Detail = turnOffStockPool(ctx, ops, version, path)
+		row.State, row.Detail = turnOffStockPool(ctx, ops, version, path, turnedOff[version])
+		release()
 		pools = append(pools, row)
 	}
 	return pools
+}
+
+// stockPoolGone: neither www.conf nor CelikPanel's renamed copy is there (a
+// version without a stock pool); no row.
+const stockPoolGone = "gone"
+
+// finishStockPoolStep looks for CelikPanel's own unfinished turn-off of a
+// version (marked before its rename, B5) and finishes or forgets it; decide is
+// true when the ordinary decision is to follow. Called under the pool lock.
+//   - www.conf still there and no renamed copy: the rename never happened;
+//     the mark goes and the version is decided as usual (a version also
+//     recorded off keeps reading as the owner's undo: the administrator's
+//     "turn it off again" was cut before it changed anything).
+//   - renamed and www.conf gone: the rename happened and the check or reload
+//     may not have; they run now, and a refusal puts it back.
+func finishStockPoolStep(ctx context.Context, ops stockPoolOps, version, path string) (string, string, bool) {
+	turning, err := ops.turningOff()
+	if err != nil || !turning[version] {
+		return "", "", true
+	}
+	_, stockErr := ops.readFile(path)
+	_, offErr := ops.readFile(path + stockPoolOffSuffix)
+	switch {
+	case stockErr == nil && errors.Is(offErr, os.ErrNotExist):
+		if ops.forgetPending != nil {
+			if err := ops.forgetPending(version); err != nil {
+				return transport.SideDoorsStockUnknown, "CelikPanel's unfinished step on it could not be cleared from its record: " + err.Error(), false
+			}
+		}
+		return "", "", true
+	case errors.Is(stockErr, os.ErrNotExist) && offErr == nil:
+		turnedOff, _ := ops.turnedOff()
+		state, detail := checkAndReloadAfterRename(ctx, ops, version, path, turnedOff[version])
+		if detail == "" {
+			detail = "CelikPanel's earlier step on it was cut after the rename; it was finished now"
+		}
+		return state, detail, false
+	case errors.Is(stockErr, os.ErrNotExist) && errors.Is(offErr, os.ErrNotExist):
+		return stockPoolGone, "", false
+	}
+	return transport.SideDoorsStockUnknown, fmt.Sprintf("CelikPanel's step on it did not finish and %s and %s%s are both there (or could not be read); the server administrator keeps one of them", path, path, stockPoolOffSuffix), false
+}
+
+// readStockPool is the read-only pass: off, the owner's undo, a pool that
+// could not be read, or "" (only the step decides the rest).
+func readStockPool(ops stockPoolOps, version, path string) (string, string) {
+	turnedOff, recordErr := ops.turnedOff()
+	_, stockErr := ops.readFile(path)
+	_, offErr := ops.readFile(path + stockPoolOffSuffix)
+	switch {
+	case errors.Is(stockErr, os.ErrNotExist) && offErr == nil:
+		return transport.SideDoorsStockOff, ""
+	case errors.Is(stockErr, os.ErrNotExist):
+		return stockPoolGone, ""
+	case stockErr != nil:
+		return transport.SideDoorsStockUnknown, "it could not be read: " + stockErr.Error()
+	case recordErr != nil:
+		return transport.SideDoorsStockUnknown, "CelikPanel's record of the pools it turned off could not be read: " + recordErr.Error()
+	case turnedOff[version] && errors.Is(offErr, os.ErrNotExist):
+		return transport.SideDoorsStockOwnerRestored, ""
+	}
+	return "", ""
 }
 
 // stockPoolUsers names the configuration files that hand PHP to the stock
@@ -532,17 +743,50 @@ func otherPoolsBeside(path string) bool {
 	return false
 }
 
-// turnOffStockPool renames the pool away, checks and reloads, and puts it
-// back when PHP-FPM refuses.
-func turnOffStockPool(ctx context.Context, ops stockPoolOps, version, path string) (string, string) {
+// turnOffStockPool marks the version as being turned off, renames the pool
+// away, checks and reloads, then records it off; it puts the pool back when
+// PHP-FPM refuses. The mark is written BEFORE the rename (B5): a crash in
+// between reads at the next start as CelikPanel's unfinished step, never as
+// the owner's undo. Called under the pool lock.
+func turnOffStockPool(ctx context.Context, ops stockPoolOps, version, path string, wasOff bool) (string, string) {
 	off := path + stockPoolOffSuffix
 	if _, err := ops.readFile(off); err == nil {
 		return transport.SideDoorsStockUnknown, off + " already exists; the server owner decides which file to keep"
 	}
-	if err := ops.rename(path, off); err != nil {
-		return transport.SideDoorsStockFailed, err.Error()
+	if ops.pending != nil {
+		if err := ops.pending(version); err != nil {
+			return transport.SideDoorsStockFailed, "CelikPanel's record of it could not be written, so nothing was changed: " + err.Error()
+		}
 	}
+	if err := ops.rename(path, off); err != nil {
+		if ops.forgetPending != nil {
+			_ = ops.forgetPending(version)
+		}
+		return transport.SideDoorsStockFailed, err.Error() + "; nothing was changed"
+	}
+	return checkAndReloadAfterRename(ctx, ops, version, path, wasOff)
+}
+
+// checkAndReloadAfterRename checks PHP-FPM without the renamed pool, reloads
+// it and records the version off. A refusal renames it back with the record
+// as it was before the step (written before the rename back): a first
+// turn-off forgets the version; the administrator's "turn it off again" of a
+// pool the owner had put back keeps it recorded, so the owner's undo still
+// stands and no later start turns it off by itself.
+func checkAndReloadAfterRename(ctx context.Context, ops stockPoolOps, version, path string, wasOff bool) (string, string) {
+	off := path + stockPoolOffSuffix
 	putBack := func(cause error) (string, string) {
+		var recordErr error
+		if wasOff {
+			if ops.forgetPending != nil {
+				recordErr = ops.forgetPending(version)
+			}
+		} else {
+			recordErr = ops.record(version, false)
+		}
+		if recordErr != nil {
+			return transport.SideDoorsStockNotPutBack, fmt.Sprintf("%v; CelikPanel's record could not be written, so %s was not put back: %v", cause, path, recordErr)
+		}
 		if err := ops.rename(off, path); err != nil {
 			return transport.SideDoorsStockNotPutBack, fmt.Sprintf("%v; putting %s back also failed: %v", cause, path, err)
 		}
@@ -562,7 +806,7 @@ func turnOffStockPool(ctx context.Context, ops stockPoolOps, version, path strin
 		}
 	}
 	if err := ops.record(version, true); err != nil {
-		return transport.SideDoorsStockTurnedOff, "CelikPanel's record of it could not be written, so the server owner putting it back would not be told from a first start: " + err.Error()
+		return transport.SideDoorsStockTurnedOff, "CelikPanel's record of it could not be written, so the next start finishes this step again: " + err.Error()
 	}
 	return transport.SideDoorsStockTurnedOff, ""
 }
@@ -570,10 +814,14 @@ func turnOffStockPool(ctx context.Context, ops stockPoolOps, version, path strin
 func hostStockPoolOps() stockPoolOps {
 	poolOps := hostPHPToolPoolOps()
 	return stockPoolOps{
-		versions:  installedPHPFPMVersions,
-		turnedOff: services.StockPoolsTurnedOff,
-		record:    services.SetStockPoolTurnedOff,
-		readFile:  os.ReadFile,
+		versions:      installedPHPFPMVersions,
+		turnedOff:     services.StockPoolsTurnedOff,
+		turning:       services.StockPoolsTurningOff,
+		record:        services.SetStockPoolTurnedOff,
+		pending:       services.SetStockPoolTurningOff,
+		forgetPending: services.ForgetStockPoolTurningOff,
+		lock:          services.LockPHPFPMPools,
+		readFile:      os.ReadFile,
 		conffileMD5: func(ctx context.Context, version, path string) (string, bool) {
 			out, err := serviceMutationCommand(ctx, "dpkg-query", "-W", "-f", "${Conffiles}\n", "php"+version+"-fpm").Output()
 			if err != nil {

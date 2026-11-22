@@ -298,6 +298,9 @@ func (p *Panel) handlePHPToolBind(w http.ResponseWriter, r *http.Request) {
 	defer release()
 
 	response, err := bindPHPToolThroughAgent(p, r.Context(), req.Tool, req.Version)
+	// S4 R1 (second fix round, B7): the side doors' states are read again
+	// after the move, whatever came of it.
+	readSideDoorsAfterMove(p)
 	if _, scanErr := p.scanManagedServices(r.Context()); scanErr != nil {
 		log.Printf("rescan after PHP tool move: %v", scanErr)
 	}
