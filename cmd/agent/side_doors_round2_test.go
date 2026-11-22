@@ -519,3 +519,34 @@ func TestADatabaseToolThatCannotGetItsAccountIsNeverPointedAtAMissingSocket(t *t
 		t.Fatalf("configuration:\n%s", conf)
 	}
 }
+
+// B3: a database tool left out of the configuration is not added back,
+// pointed at nothing, when another tool moves in its Manage window. Fails on
+// 193b87001 (every installed tool was rendered).
+func TestAnotherToolsMoveDoesNotAddBackALeftOutTool(t *testing.T) {
+	host := newPHPToolHost(t)
+	savedRoots, savedCheck := dbToolRoots, phpToolCheckScriptPath
+	t.Cleanup(func() { dbToolRoots, phpToolCheckScriptPath = savedRoots, savedCheck })
+	phpToolCheckScriptPath = filepath.Join(t.TempDir(), "check", "check.php")
+	roots := map[string]string{}
+	dbToolRoots = map[string][]string{}
+	for _, tool := range []string{phpToolPHPMyAdmin, phpToolPHPPgAdmin} {
+		roots[tool] = filepath.Join(t.TempDir(), tool)
+		if err := os.MkdirAll(roots[tool], 0o755); err != nil {
+			t.Fatal(err)
+		}
+		dbToolRoots[tool] = []string{roots[tool]}
+	}
+	// phpMyAdmin was left out; only phpPgAdmin is served.
+	served := renderDBToolsConfig([]string{phpToolPHPPgAdmin}, roots, map[string]string{phpToolPHPPgAdmin: "/run/php/php8.4-fpm-celikpanel-phppgadmin.sock"})
+	if err := os.WriteFile(host.dbToolsConf, []byte(served), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, content, err := renderPHPToolConfig(phpToolPHPPgAdmin, "/run/php/php8.3-fpm-celikpanel-phppgadmin.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(content), "/dbtool/phpmyadmin/") || !strings.Contains(string(content), "php8.3-fpm-celikpanel-phppgadmin.sock") {
+		t.Fatalf("configuration:\n%s", content)
+	}
+}
