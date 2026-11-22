@@ -140,7 +140,7 @@ export const enWebmailAddressScreens = {
     'pnow.webmail_address_kept.action': 'Open webmail',
     'pnow.webmail_address_refused.title': 'Webmail’s address {domain} still gives out plugin files that are not part of its pages',
     'pnow.webmail_address_refused.body': 'Its new text was put back because nginx’s configuration test failed in {other}. The server owner corrects that file; CelikPanel writes the new text again at its next start, and this line goes by itself.',
-    'pnow.webmail_address_refused.body_unnamed': 'Its new text was put back because nginx’s configuration test failed or nginx could not be reloaded. The server owner checks nginx -t; CelikPanel writes the new text again at its next start, and this line goes by itself.',
+    'pnow.webmail_address_refused.body_unnamed': 'Its new text was put back because nginx’s configuration test failed or nginx could not be reloaded. The server owner runs sudo nginx -t to see why; CelikPanel writes the new text again at its next start, and this line goes by itself.',
     'pnow.webmail_address_refused.action': 'Open webmail',
 } as const;
 
