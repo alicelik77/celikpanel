@@ -7,7 +7,7 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { readServiceActionNote } from '../lib/serviceActionNote';
 import { componentName } from '../lib/componentName';
 import { sizeWord } from './kit/words';
-import { invalidate, useInvalidation, useRemote } from '../lib/remote';
+import { invalidate, readRemote, useInvalidation, useRemote } from '../lib/remote';
 import { startVisibleReads } from '../lib/visibleReads';
 import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
@@ -306,18 +306,18 @@ export function ProblemsNow({
                         return unknown;
                     }
                     // Follow the run (reads only) until it ends; the answer
-                    // stays on the panel if this page is left.
+                    // stays on the panel if this page is left. A read that
+                    // fails is tried again; when the run's end cannot be read
+                    // the result is said as not known.
                     const until = Date.now() + RECLOSE_FOLLOW_MS;
+                    let lastRead: 'known' | 'unknown' = 'known';
                     while (status?.running && Date.now() < until) {
                         await new Promise((resolve) => setTimeout(resolve, RECLOSE_POLL_MS));
-                        try {
-                            const again = await fetch(RECLOSE_URL);
-                            if (again.ok) status = await again.json() as RecloseStatus;
-                        } catch {
-                            // A read that failed is tried again; nothing is sent.
-                        }
+                        const again = await readRemote(RECLOSE_URL, (raw) => raw as RecloseStatus);
+                        lastRead = again.state;
+                        if (again.state === 'known') status = again.value;
                     }
-                    if (status?.running || status?.target !== target || (status?.version ?? '') !== version) return unknown;
+                    if (lastRead === 'unknown' || status?.running || status?.target !== target || (status?.version ?? '') !== version) return unknown;
                     if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: status.error };
                     return status.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
                 } catch {

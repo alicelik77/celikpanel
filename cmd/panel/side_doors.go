@@ -430,9 +430,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 	if c := currentCaller(r); c != nil && c.APIToken != nil {
 		details["api_token"] = c.APIToken.label()
 	}
-	audit := func(action string) {
-		p.recordAudit(auditRecord{UserID: uid, ActingAs: actingAs, Action: action, ResourceType: "service", IP: ip, UserAgent: agent, Details: auditDetailsText(details)})
-	}
+	auditDone := auditRecord{UserID: uid, ActingAs: actingAs, ResourceType: "service", IP: ip, UserAgent: agent, Details: auditDetailsText(details)}
 	started, running := beginSideDoorsReclose(request.Target, request.Version)
 	if !started {
 		if running.Target == request.Target && running.Version == request.Version {
@@ -449,16 +447,16 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		response, err := closeSideDoorsThroughAgent(p, ctx, request.Target, request.Version)
 		if err != nil {
-			audit("side_doors.reclose.failed:" + request.Target)
+			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
 			endSideDoorsReclose(false, "", "the side doors step could not run now: "+auditReason(err.Error()))
 			return
 		}
 		p.applySideDoorsAnswer(ctx, response.State)
 		closed := sideDoorClosed(response.State, request.Target, request.Version)
 		if closed {
-			audit("side_doors.reclose:" + request.Target)
+			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
 		} else {
-			audit("side_doors.reclose.failed:" + request.Target)
+			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
 		}
 		endSideDoorsReclose(closed, sideDoorState(response.State, request.Target, request.Version), "")
 	}()

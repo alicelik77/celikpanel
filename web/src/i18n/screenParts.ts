@@ -95,10 +95,10 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/dbEncoding/en'),
         () => import('./screens/problemsNow/en'),
         () => import('./screens/nameRule/en'),
+        () => import('./screens/pgPublic/en'),
         () => import('./screens/sideDoors/en'),
         () => import('./screens/siteJobs/en'),
         () => import('./screens/sideDoorsUndo/en'),
-        () => import('./screens/pgPublic/en'),
     ],
     tr: [
         () => import('./screens/setup/tr'),
@@ -170,9 +170,9 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/dbEncoding/tr'),
         () => import('./screens/problemsNow/tr'),
         () => import('./screens/nameRule/tr'),
+        () => import('./screens/pgPublic/tr'),
         () => import('./screens/sideDoors/tr'),
         () => import('./screens/siteJobs/tr'),
         () => import('./screens/sideDoorsUndo/tr'),
-        () => import('./screens/pgPublic/tr'),
     ],
 };
