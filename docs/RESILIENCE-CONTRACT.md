@@ -9312,15 +9312,20 @@ until the backup reports ready.
   Dovecot's users file, Postfix's map and the message count of the folder
   under the mail lock; the Panel adopts only CelikPanel's own form (the
   address's own folder, no uid/gid/home/shell, a size limit) with no
-  message, and replaces the password through `Agent.UpdateMailPassword`
-  before the row is committed; everything else stays the owner's (D-022).
+  message, looks for an existing row again under the mail lock, and
+  replaces the password through `Agent.UpdateMailPassword` before the row
+  is committed; everything else stays the owner's (D-022).
 - **Alias DNS (invariant 2).** What CelikPanel added for an alias is kept in
   `panel_settings` `alias_dns_v1:<alias>` (version 1, zone and records),
   written in the same transaction as the records; removal deletes exactly
-  those. A publication that does not finish marks the zone
+  those, while the zone belongs now to the account of the alias's domain now
+  (after a subscription transfer both moved, and the records go; in a zone
+  held by another account nothing is removed, the note is cleared and the
+  Panel's log names the record). A publication that does not finish marks the zone
   (`alias_dns_unpublished_v1:<zone>`) and the Panel's hourly round publishes
   it; it never stops a domain's deletion, also for a domain whose own DNS
-  is managed elsewhere. Aliases made before alpha.144 have no such note and
+  is managed elsewhere; a mark whose zone's DNS mode cannot be read is kept
+  for the next round. Aliases made before alpha.144 have no such note and
   get no record until they are added again.
 - **Webmail's address (constitution 1).** Only `index.php` runs; the linked
   folders give out static files only; dot-files and backup-looking names
@@ -9340,16 +9345,29 @@ until the backup reports ready.
   rotated file. Once at the Agent's start (receipt `log-root-modes-v2.done`):
   the folder, root-owned at a mode CelikPanel produced, 0700 → 0711 or
   0750 → 0751; its traffic folder 0755 → 0710 owned by root and the web
-  server's group (only the workers pass; no other account opens another
+  server's group (only the workers pass; no site account opens another
   site's log); traffic logs readable by others 0644 → 0640; the certificate
-  tool's log folder stays 0700; any other mode, a link or another owner is
+  tool's log folder stays 0700; any other mode (kept with its owner and
+  group), a traffic folder at 0710 whose group is neither the web server's
+  nor one CelikPanel gave it (root, celikpanel), a link or another owner is
   kept and named. New installations make the log folder 0711 and the
   traffic folder 0710 with that group whatever the umask, and a site's
-  first log 0640 before nginx opens it. No reload: the workers reach the
-  current files at the next rotation.
+  first log 0640 before nginx opens it; the web server's account is looked
+  up only to make them (a failed lookup leaves the site's traffic setting
+  as it was, one journal line). CelikPanel's rotation file makes each new
+  log 0640 for that account (managed text: an owner-edited file is kept).
+  No reload: the workers reach the current files at the next rotation.
+  Still readable by programs that run as the web server's own shared
+  account (Node.js sites not yet moved into their own account, the
+  distribution's default PHP pool where it is on): the logs hold time and
+  byte counts, no addresses, and those programs already read every site's
+  served files.
 - **Evidence.** `TestA144*` (panel), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
   `TestLogRootIsMadePassableWhateverTheUmask`, `TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes`,
   `TestTrafficLogsReachOnlyTheWebServerWorkers`,
+  `TestTrafficFolderAt0710WithTheOwnersGroupIsKept`,
+  `TestTrafficLogrotateMakesEachNewLogClosed`, `TestTrafficLogNeedsTheWebServerAccountOnlyToMakeIt`,
+  `TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead`,
   `TestWebmailAddress*` (agent); the detached tests fail with the guard
   removed (the lab's "sending/lost" record, no mailbox row, no reply copy).
 - **Open.** No lab run; the other Panel handlers that pass the browser's

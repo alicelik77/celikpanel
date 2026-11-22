@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -182,10 +183,39 @@ func TestParseTrafficLineSkipsWhatItCannotRead(t *testing.T) {
 }
 
 func TestTrafficLogrotateFileRotatesWithoutThePanel(t *testing.T) {
-	body := renderTrafficLogrotate()
+	body := renderTrafficLogrotate("www-data")
 	for _, want := range []string{"daily", "rotate 3", "maxsize 100M", "delaycompress", "missingok", "systemctl kill --kill-who=main --signal=USR1 nginx.service"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("logrotate file lacks %q:\n%s", want, body)
 		}
+	}
+}
+
+// Independent review of the last commit, B2: each new log is made 0640 for
+// the web server's account, also after a log nginx itself made at 0644. The
+// earlier unchanged text is replaced; a file the owner changed is kept.
+func TestTrafficLogrotateMakesEachNewLogClosed(t *testing.T) {
+	if body := renderTrafficLogrotate("www-data"); !strings.Contains(body, "\n    create 0640 www-data www-data\n") {
+		t.Fatalf("new logs are not made closed:\n%s", body)
+	}
+	if body := renderTrafficLogrotate(""); !strings.Contains(body, "\n    create\n") {
+		t.Fatalf("without the account the plain create is kept:\n%s", body)
+	}
+	path := filepath.Join(t.TempDir(), "celikpanel-traffic")
+	earlier := strings.Replace(renderTrafficLogrotate("http"), "    create 0640 http http\n", "    create\n", 1)
+	if err := os.WriteFile(path, []byte(services.SealManagedText(earlier)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if state, err := services.ReconcileManagedFile(path, renderTrafficLogrotate("http")); err != nil || state != "written" {
+		t.Fatalf("the earlier text: %s %v", state, err)
+	}
+	if content, _ := os.ReadFile(path); !strings.Contains(string(content), "create 0640 http http") {
+		t.Fatalf("not replaced:\n%s", content)
+	}
+	if err := os.WriteFile(path, []byte("# mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if state, _ := services.ReconcileManagedFile(path, renderTrafficLogrotate("http")); state != "kept" {
+		t.Fatalf("the owner's file: %s", state)
 	}
 }

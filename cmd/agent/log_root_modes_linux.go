@@ -37,7 +37,9 @@ import (
 //   - the certificate tool's log folder is not touched (0700) and its mode
 //     is said in the journal.
 //
-// Any other mode or owner is the server owner's: kept and named. A receipt
+// Any other mode or owner, and a traffic folder at 0710 whose group is
+// neither the web server's nor one CelikPanel produced (root, celikpanel),
+// is the server owner's: kept and named. A receipt
 // in the Agent's private state directory records that it ran, so a mode the
 // owner sets later is never changed back (D-022).
 //
@@ -140,11 +142,24 @@ func correctPanelDirMode(dir string, modes map[os.FileMode]os.FileMode) (string,
 	return fmt.Sprintf("%04o -> %04o %s", uint32(perm), uint32(next), dir), true
 }
 
+// panelLogGroup reports whether gid is a group CelikPanel itself gave a log
+// folder: root's, or the Agent's own group celikpanel (its unit's Group=).
+// A seam for tests.
+var panelLogGroup = func(gid int) bool {
+	if gid == 0 {
+		return true
+	}
+	panelGID, ok := lookupGroupID("celikpanel")
+	return ok && gid == panelGID
+}
+
 // correctTrafficFolder makes the traffic folder 0710 root:<web server's
-// group> from a mode CelikPanel set (0755, 0711, or 0710 with another
-// group). ours: the folder is CelikPanel's real folder (now or already at
-// the closed form), so its logs may be closed too. A link, another owner or
-// another mode is the owner's: kept and named.
+// group> from a mode CelikPanel set (0755, 0711, or 0710 with a group
+// CelikPanel itself produced). ours: the folder is CelikPanel's real folder
+// (now or already at the closed form), so its logs may be closed too. A
+// link, another owner, another mode, or 0710 with a group that is neither
+// the web server's nor one CelikPanel produced is the owner's: kept and
+// named (independent review of the last commit, B3).
 func correctTrafficFolder(dir string, webGID int) (string, bool, bool) {
 	info, err := os.Lstat(dir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -169,6 +184,9 @@ func correctTrafficFolder(dir string, webGID int) (string, bool, bool) {
 	}
 	if perm != 0o755 && perm != 0o711 && perm != services.TrafficLogDirMode {
 		return fmt.Sprintf("kept %s: mode %04o is the owner's choice", dir, uint32(perm)), false, false
+	}
+	if perm == services.TrafficLogDirMode && !panelLogGroup(gid) {
+		return fmt.Sprintf("kept %s: mode %04o with group %d is the owner's choice (the web server's group is %d)", dir, uint32(perm), gid, webGID), false, false
 	}
 	if err := os.Lchown(dir, 0, webGID); err != nil {
 		return fmt.Sprintf("kept %s: %v", dir, err), false, false

@@ -34,8 +34,8 @@ import (
 // changed there, and the work goes on through the link as before.
 //
 // CelikPanel'in kendi günlük klasörü: trafik klasörüne yalnız web
-// sunucusunun işçileri geçebilir; başka hiçbir hesap başka sitenin günlüğünü
-// açamaz.
+// sunucusunun işçileri geçebilir; hiçbir sitenin hesabı başka sitenin
+// günlüğünü açamaz.
 
 // celikPanelLogRoot is the folder (a seam for tests).
 var celikPanelLogRoot = "/var/log/celikpanel"
@@ -85,6 +85,16 @@ var webServerIDs = func() (uid, gid int, ok bool) {
 // WebServerIDs is the web server's account and group ids.
 func WebServerIDs() (uid, gid int, ok bool) { return webServerIDs() }
 
+// WebServerAccountName is the name of the web server's account, which is
+// also its group's name (phpWebServerAccount), when both can be read; ""
+// otherwise.
+func WebServerAccountName() string {
+	if _, _, ok := webServerIDs(); !ok {
+		return ""
+	}
+	return phpWebServerAccount()
+}
+
 // EnsureCelikPanelLogRoot makes the log folder at LogRootMode when it is
 // absent. An existing folder, or a link the owner made, is left as it is (an
 // earlier release's mode is corrected once by the Agent at start; any other
@@ -129,12 +139,30 @@ func ensureLogFolder(dir string, mode os.FileMode, gid int) (bool, error) {
 	return true, os.Chmod(dir, mode)
 }
 
+// errWebServerAccountUnknown: the web server's account or group could not be
+// read where a folder or a first log had to be made for it.
+var errWebServerAccountUnknown = errors.New("the web server's account could not be read")
+
 // ensureTrafficLogFile makes a site's traffic log before nginx opens it:
 // owned by the web server's account and group at TrafficLogFileMode, never
 // through a link. An existing file is left as it is (an earlier one readable
-// by others is corrected once by the Agent at start). O_CREATE with
-// O_EXCL never follows a link: a link in its place is "exists".
+// by others is corrected once by the Agent at start), with no lookup of the
+// web server's account. O_CREATE with O_EXCL never follows a link: a link
+// in its place is "exists".
 func ensureTrafficLogFile(path string) error {
+	if _, err := os.Lstat(path); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	chown := os.Geteuid() == 0 && !nginxDevMode()
+	uid, gid := -1, -1
+	if chown {
+		var ok bool
+		if uid, gid, ok = webServerIDs(); !ok {
+			return fmt.Errorf("%w (to make %s)", errWebServerAccountUnknown, path)
+		}
+	}
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, TrafficLogFileMode)
 	if errors.Is(err, os.ErrExist) {
 		return nil
@@ -143,11 +171,7 @@ func ensureTrafficLogFile(path string) error {
 		return err
 	}
 	defer file.Close()
-	if os.Geteuid() == 0 && !nginxDevMode() {
-		uid, gid, ok := webServerIDs()
-		if !ok {
-			return fmt.Errorf("the web server's account could not be read for %s", path)
-		}
+	if chown {
 		if err := file.Chown(uid, gid); err != nil {
 			return err
 		}

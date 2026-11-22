@@ -50,9 +50,9 @@ type aliasDNSAdded struct {
 	Version int              `json:"version"`
 	Zone    string           `json:"zone"`
 	Records []aliasDNSRecord `json:"records"`
-	// Owner is the account that held the zone when the records were added
-	// (review of PR #355 fixes, finding 5): they are removed only while the
-	// zone still belongs to that account.
+	// Owner is the account that held the zone when the records were added.
+	// It is only a hint for the journal: whether the records are removed is
+	// decided by the current owners (withdrawAliasDNS).
 	Owner int `json:"owner,omitempty"`
 }
 
@@ -232,7 +232,14 @@ func (p *Panel) republishAliasZones(ctx context.Context) {
 		}
 		mode := ""
 		if err == nil {
-			mode, _ = p.domainDNSManagementMode(ctx, zone)
+			var modeErr error
+			if mode, modeErr = p.domainDNSManagementMode(ctx, zone); modeErr != nil {
+				// Not known whether the zone is still kept here: the marker
+				// stays and the next round looks again (independent review
+				// of the last commit, C3).
+				log.Printf("[alias-dns] %s: its DNS mode could not be read (%v); its wait is kept for the next round", zone, modeErr)
+				continue
+			}
 		}
 		if err != nil || mode != setupDNSModeLocal {
 			// The zone went with its domain, or its DNS is no longer kept
@@ -357,7 +364,8 @@ func (p *Panel) addAliasDNSRecords(ctx context.Context, zone, alias string, addr
 // stays, so a later removal finds the records); a publication that does not
 // finish after the removal is recorded as waiting (pending) and published by
 // the hourly round, never an error (review of PR #355, finding 1).
-func (p *Panel) withdrawAliasDNS(ctx context.Context, alias, skipZone string) (bool, error) {
+// domainID is the alias's own domain (its row still exists when this runs).
+func (p *Panel) withdrawAliasDNS(ctx context.Context, domainID int, alias, skipZone string) (bool, error) {
 	alias = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(alias)), ".")
 	var raw string
 	err := p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, aliasDNSKey(alias)).Scan(&raw)
@@ -386,11 +394,22 @@ func (p *Panel) withdrawAliasDNS(ctx context.Context, alias, skipZone string) (b
 		_, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSKey(alias))
 		return false, err
 	}
-	// Only while the zone still belongs to the account that held it when
-	// the records were added: a zone deleted and made again by another
-	// account is that account's, and nothing is removed there.
-	if owner, known := p.zoneAccount(ctx, added.Zone); !known || added.Owner == 0 || owner != added.Owner {
-		log.Printf("[alias-dns] %s: %s no longer belongs to the account that held it when its records were added; nothing is removed there and the note is cleared", alias, added.Zone)
+	// Only while the zone belongs, now, to the same account as the alias's
+	// own domain now (independent review of the last commit, C1): after a
+	// subscription transfer both moved together and the records go with
+	// the alias; a zone deleted and made again by another account is that
+	// account's, and nothing is removed there. The owner kept in the note
+	// does not decide.
+	zoneOwner, zoneKnown, err := p.accountHolding(ctx, zoneAccountQuery, added.Zone)
+	if err != nil {
+		return false, err
+	}
+	aliasOwner, aliasKnown, err := p.accountHolding(ctx, domainAccountQuery, domainID)
+	if err != nil {
+		return false, err
+	}
+	if !zoneKnown || !aliasKnown || zoneOwner != aliasOwner {
+		log.Printf("[alias-dns] %s: %s is not held by the account of the alias's domain now; nothing is removed there and the note is cleared (look for %s there)", alias, added.Zone, alias)
 		_, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSKey(alias))
 		return false, err
 	}
@@ -433,25 +452,29 @@ func (p *Panel) withdrawAliasDNS(ctx context.Context, alias, skipZone string) (b
 // deleted; ownZone is the domain's own zone, removed with it.
 func (p *Panel) withdrawDomainAliasesDNS(ctx context.Context, domain, ownZone string) error {
 	rows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT a.alias FROM domain_aliases a JOIN domains d ON d.id = a.domain_id WHERE d.name = ?`, domain)
+		SELECT a.domain_id, a.alias FROM domain_aliases a JOIN domains d ON d.id = a.domain_id WHERE d.name = ?`, domain)
 	if err != nil {
 		return err
 	}
-	var aliases []string
+	type domainAlias struct {
+		domainID int
+		alias    string
+	}
+	var aliases []domainAlias
 	for rows.Next() {
-		var alias string
-		if err := rows.Scan(&alias); err != nil {
+		var row domainAlias
+		if err := rows.Scan(&row.domainID, &row.alias); err != nil {
 			rows.Close()
 			return err
 		}
-		aliases = append(aliases, alias)
+		aliases = append(aliases, row)
 	}
 	if err := rows.Close(); err != nil {
 		return err
 	}
 	var errs []error
-	for _, alias := range aliases {
-		if _, err := p.withdrawAliasDNS(ctx, alias, ownZone); err != nil {
+	for _, row := range aliases {
+		if _, err := p.withdrawAliasDNS(ctx, row.domainID, row.alias, ownZone); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -472,8 +495,8 @@ func readSettingTx(ctx context.Context, tx *sql.Tx, key string) (string, error) 
 // says what became of them (the answer's "dns"): removed, pending (removed
 // here, the publication waits and is retried every hour) or failed (nothing
 // removed; the records stay until the next removal finds them).
-func (p *Panel) aliasDNSRemovalOutcome(ctx context.Context, alias string) string {
-	pending, err := p.withdrawAliasDNS(ctx, alias, "")
+func (p *Panel) aliasDNSRemovalOutcome(ctx context.Context, domainID int, alias string) string {
+	pending, err := p.withdrawAliasDNS(ctx, domainID, alias, "")
 	switch {
 	case err != nil:
 		log.Printf("[alias-dns] %s: its records could not be removed: %v", alias, err)
@@ -484,15 +507,32 @@ func (p *Panel) aliasDNSRemovalOutcome(ctx context.Context, alias string) string
 	return "removed"
 }
 
+// The account that holds a zone's top-level domain now (by name, without
+// case), and the account that holds a domain now (by id).
+const (
+	zoneAccountQuery = `SELECT s.owner_id FROM domains d JOIN subscriptions s ON s.id = d.subscription_id
+		WHERE lower(d.name) = lower(?) AND d.parent_domain_id IS NULL`
+	domainAccountQuery = `SELECT s.owner_id FROM domains d JOIN subscriptions s ON s.id = d.subscription_id
+		WHERE d.id = ?`
+)
+
+// accountHolding runs one of the queries above; known=false when no domain
+// matches. A read error is returned as such (nothing is decided on it).
+func (p *Panel) accountHolding(ctx context.Context, query string, arg any) (int, bool, error) {
+	var owner int
+	err := p.db.GetDB().QueryRowContext(ctx, query, arg).Scan(&owner)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return owner, true, nil
+}
+
 // zoneAccount is the account that holds the top-level domain whose zone is
 // zone (compared without case); known=false when no domain holds it now.
 func (p *Panel) zoneAccount(ctx context.Context, zone string) (int, bool) {
-	var owner int
-	err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT s.owner_id FROM domains d JOIN subscriptions s ON s.id = d.subscription_id
-		WHERE lower(d.name) = lower(?) AND d.parent_domain_id IS NULL`, zone).Scan(&owner)
-	if err != nil {
-		return 0, false
-	}
-	return owner, true
+	owner, known, err := p.accountHolding(ctx, zoneAccountQuery, zone)
+	return owner, known && err == nil
 }

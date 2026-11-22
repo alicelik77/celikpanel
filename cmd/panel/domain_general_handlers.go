@@ -643,7 +643,7 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 		// it; what this added goes again if the alias is not added.
 		dnsOutcome := p.publishAliasDNS(ctx, domainID, alias)
 		withdrawDNS := func() {
-			if _, err := p.withdrawAliasDNS(ctx, alias, ""); err != nil {
+			if _, err := p.withdrawAliasDNS(ctx, domainID, alias, ""); err != nil {
 				log.Printf("[alias-dns] %s: %v", alias, err)
 			}
 		}
@@ -880,7 +880,7 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 		dnsOutcome := ""
 		if err == nil {
 			// alpha.144: the records CelikPanel added for it go with it.
-			dnsOutcome = p.aliasDNSRemovalOutcome(ctx, alias)
+			dnsOutcome = p.aliasDNSRemovalOutcome(ctx, domainID, alias)
 		}
 		if err != nil {
 			cleanupCtx, cleanupCancel := sslCompensationContext()
@@ -980,7 +980,7 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 	}
 
 	// alpha.144: the records CelikPanel added for it go with it.
-	dnsOutcome := p.aliasDNSRemovalOutcome(ctx, alias)
+	dnsOutcome := p.aliasDNSRemovalOutcome(ctx, domainID, alias)
 	p.audit(r, "domain.alias.delete", "domain", domainID)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success", "dns": dnsOutcome})

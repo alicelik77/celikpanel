@@ -132,6 +132,17 @@ func (p *Panel) handleAdoptEmailAccount(w http.ResponseWriter, r *http.Request, 
 		writeMailDomainMutationError(w, err)
 		return
 	}
+	// Looked at again under the lock, before the password step: another
+	// administrator's adoption of the same address may have finished while
+	// this one waited (independent review of the last commit, C2). Its
+	// password is never replaced by this one.
+	if exists, err := p.emailAccountExists(r.Context(), address); err != nil {
+		writeServerError(w, err)
+		return
+	} else if exists {
+		writeMailAccountExists(w, address)
+		return
+	}
 	var found transport.MailboxOnServerResponse
 	if err := p.callAgentContext(r.Context(), "Agent.MailboxOnServerV1", &transport.MailboxOnServerRequest{
 		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Email: address,

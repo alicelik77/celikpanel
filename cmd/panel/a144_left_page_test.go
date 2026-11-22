@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/rpc"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -340,6 +341,81 @@ func TestA144AdministratorAdoptsAMailboxFoundOnTheServer(t *testing.T) {
 	if recorder, body := adopt(a144Admin, "satis@example.com"); recorder.Code != http.StatusConflict || body.Code != errCodeMailAccountExists {
 		t.Fatalf("second adoption: %d %s", recorder.Code, recorder.Body.String())
 	}
+}
+
+// Independent review of the last commit, C2: two administrators adopt the
+// same address at the same time. The second one waited for the mail lock
+// after its first look found no row; meanwhile the first one finished. The
+// second is answered "already exists" and never replaces the password the
+// first one set.
+func TestA144SecondAdoptionOfTheSameAddressNeverReplacesThePassword(t *testing.T) {
+	agent := &a144MailAgent{onServer: map[string]transport.MailboxOnServerResponse{
+		"satis@example.com": {InUsers: true, InMap: true, OwnFolder: true, QuotaMB: 300},
+	}}
+	agent.passwordApplied = true
+	panel, domainID := newA144MailPanel(t, agent)
+	handler := a144MailHandler(panel)
+	path := "/api/v1/domains/" + strconv.Itoa(domainID) + "/mail/accounts/adopt"
+	// The first administrator's adoption holds the lock.
+	panel.mailMutationMu.Lock()
+	recorder := httptest.NewRecorder()
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		handler.ServeHTTP(recorder, a144MailRequest(http.MethodPost, path, `{"address":"satis@example.com","password":"Second-admin-9"}`, a144Admin, ""))
+	}()
+	// The second waits for the lock, its first look already made.
+	deadline := time.Now().Add(10 * time.Second)
+	for !a144WaitsForMailLock() {
+		if time.Now().After(deadline) {
+			panel.mailMutationMu.Unlock()
+			<-finished
+			t.Fatalf("the second adoption never waited for the mail lock: %d %s", recorder.Code, recorder.Body.String())
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	// The first finishes: its row is written, then the lock is let go.
+	if _, err := panel.db.GetDB().Exec(`INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb) VALUES (?, 'satis@example.com', 'managed-by-agent', 300)`, domainID); err != nil {
+		panel.mailMutationMu.Unlock()
+		t.Fatal(err)
+	}
+	panel.mailMutationMu.Unlock()
+	select {
+	case <-finished:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the second adoption did not end")
+	}
+	var body apiErrorBody
+	_ = json.Unmarshal(recorder.Body.Bytes(), &body)
+	if recorder.Code != http.StatusConflict || body.Code != errCodeMailAccountExists {
+		t.Fatalf("second adoption: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if calls := agent.passwordCallState(); len(calls) != 0 {
+		t.Fatalf("the second adoption replaced the password: %+v", calls)
+	}
+}
+
+// a144WaitsForMailLock: a goroutine of the adoption handler waits for the
+// mail lock (its frame directly under the lock's; the frame names carry
+// the package's import path in a test binary).
+func a144WaitsForMailLock() bool {
+	buffer := make([]byte, 1<<20)
+	n := runtime.Stack(buffer, true)
+	for n == len(buffer) {
+		buffer = make([]byte, 2*len(buffer))
+		n = runtime.Stack(buffer, true)
+	}
+	for _, stack := range strings.Split(string(buffer[:n]), "\n\n") {
+		lines := strings.Split(stack, "\n")
+		// Each frame is a function line and a file line.
+		for i := 0; i+2 < len(lines); i++ {
+			if strings.HasPrefix(lines[i], "sync.(*Mutex).Lock(") &&
+				strings.Contains(lines[i+2], ".(*Panel).handleAdoptEmailAccount(") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // a144AgentClient serves agent as the Panel's Agent.

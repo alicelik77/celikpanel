@@ -105,12 +105,16 @@ screen.**
   `/var/log/celikpanel` becomes passable (other accounts may pass through it,
   not list it), and its `traffic` folder becomes passable for the web
   server's workers only (0710, owned by root and the web server's group):
-  no other account, a site's programs included, can open another site's
-  traffic log. A traffic log that other accounts could read (the web server
-  made the first one readable by everybody) is closed to them; a site's
-  first log is now made closed before the web server opens it. A folder mode
-  you set yourself, or a link you made, is kept and named in the agent's
-  log; the certificate tool's log folder stays closed. No reload is needed:
+  no site account can open another site's traffic log (see "Known limits"
+  for programs that run as the web server's own account). A traffic log that
+  other accounts could read (the web server could make the first one
+  readable by everybody) is closed to them; a site's first log, and each new
+  log of the nightly rotation, is now made closed for the web server's
+  account. A folder mode you set yourself is kept with its owner and group,
+  and so is a `traffic` folder at 0710 whose group is neither the web
+  server's nor one CelikPanel gave it (root, celikpanel); a link you made is
+  kept too. Each is named in the agent's log; the certificate tool's log
+  folder stays closed. No reload is needed:
   from the first night after the update no such error line is logged, and
   traffic is counted completely again without waiting for a reload. New
   installations make the folders and logs this way from the start.
@@ -124,8 +128,11 @@ screen.**
   name in the site's web server file and certificate. When a certificate is
   issued again for the alias, the record is published before the certificate
   authority checks the name, and withdrawn if the alias is not added.
-- The record goes with the alias, also when the alias's domain is deleted.
-  Only what CelikPanel added is removed.
+- The record goes with the alias, also when the alias's domain is deleted
+  and after its subscription moved to another account. Only what CelikPanel
+  added is removed, and only while the zone belongs to the account of the
+  alias's domain: in a zone that now belongs to another account nothing is
+  removed, and the panel's log names the record to look at.
 - If the publication cannot finish (the backup DNS server waiting, the DNS
   publisher not ready), the alias row says "DNS record waiting to be
   published — retried every hour, nothing to do", and the panel's hourly round
@@ -159,6 +166,11 @@ screen.**
 - Until the first nightly rotation after the update, the web server's
   workers write where they wrote before; counting is complete from that
   night.
+- Programs that still run as the web server's own shared account can read
+  the traffic logs: Node.js sites not yet moved into their own account, and
+  the distribution's default PHP pool where it is on. These logs hold only
+  the time and byte counts of requests, no addresses; those programs can
+  already read every site's served files.
 - The webmail server that listens only on a local socket keeps its earlier
   rules; it is not reachable from the network.
 - Everything alpha.143's notes list as still open stays open
@@ -212,9 +224,13 @@ through the panel's own update page:
   `/var/log/celikpanel` from 0700 to 0711, or from 0750 to 0751; its `traffic`
   folder from 0755 to 0710, owned by root and the web server's group
   (`www-data` on Debian and Ubuntu, `http` on Arch Linux); traffic logs
-  readable by other accounts from 0644 to 0640. A mode you set yourself, or a
-  link you made, is kept. From the first night after the update the traffic
-  figures are complete.
+  readable by other accounts from 0644 to 0640. A mode you set yourself (with
+  its owner and group), a `traffic` folder at 0710 with a group of your own,
+  or a link you made, is kept. CelikPanel's rotation file
+  `/etc/logrotate.d/celikpanel-traffic`, if you have not changed it, is
+  rewritten once so that each new traffic log is made 0640 for the web
+  server's account; one you changed is kept. From the first night after the
+  update the traffic figures are complete.
 - A mailbox that the server holds without a panel record is said plainly;
   only the administrator can adopt it, only when it holds no mail, and with a
   new password.
@@ -259,7 +275,10 @@ Tests by item:
   `TestA144AliasRecordsSurviveAFailedPublicationAndArePublishedLater`,
   `TestA144AliasAddsNothingBesideAnOwnersAddressRecord`,
   `TestA144AliasPublicationThatWaitsIsRetriedAndNeverStopsADeletion`,
-  `TestA144DeletingADomainWithExternalDNSRemovesItsAliasRecordsHere`.
+  `TestA144DeletingADomainWithExternalDNSRemovesItsAliasRecordsHere`,
+  `TestA144AliasRecordsStayInAZoneNowHeldByAnotherAccount`,
+  `TestA144AliasRecordsGoWithTheAliasAfterASubscriptionTransfer`,
+  `TestA144AWaitingZoneWhoseModeCannotBeReadKeepsItsWait`.
 - A close with the page left: `TestA144PGPublicCloseIsNotLostWhenThePageIsLeft`
   (with the route not guarded it reproduces the lab's record).
 - The failed close: `TestA144PGFailureKindNamesTheCause`,
@@ -274,7 +293,9 @@ Tests by item:
   the guard removed), `TestA144MailboxOnTheServerWithoutARowIsSaidPlainly`,
   `TestA144AdministratorAdoptsAMailboxFoundOnTheServer` (refused with mail in
   the folder and with a folder that cannot be counted; the password replaced
-  once, through the password step), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
+  once, through the password step),
+  `TestA144SecondAdoptionOfTheSameAddressNeverReplacesThePassword`,
+  `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
   `TestMailboxMessageCountReadsCurAndNewOnly`.
 - The traffic logs: `TestLogRootIsMadePassableWhateverTheUmask`,
   `TestASitesFirstTrafficLogIsMadeClosed`,
@@ -284,7 +305,11 @@ Tests by item:
   `TestTrafficLogsReachOnlyTheWebServerWorkers` (the web server's account
   reaches its log, before and after a rotation; an account that is neither
   root nor in the web server's group can open no traffic log by name and
-  list nothing); they fail on the code before the correction.
+  list nothing); they fail on the code before the correction. With the
+  second review's corrections: `TestTrafficFolderAt0710WithTheOwnersGroupIsKept`,
+  `TestTrafficLogNeedsTheWebServerAccountOnlyToMakeIt`,
+  `TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead`,
+  `TestTrafficLogrotateMakesEachNewLogClosed`.
 
 The full Go module and web suites ran on the base (alpha.143's code) and on
 the corrections in the corrections lane, and every check of the release pull

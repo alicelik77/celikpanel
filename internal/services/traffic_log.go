@@ -3,6 +3,8 @@ package services
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -191,7 +193,9 @@ func planTrafficFormat() (*plannedTrafficFile, bool, error) {
 // group: nginx's workers reopen the logs by name after a rotation, so they
 // pass through it and through CelikPanel's log folder above it; nobody else
 // passes; log_root.go). nginx -t opens every log,
-// so it must exist before a site names its log.
+// so it must exist before a site names its log. The web server's group is
+// looked up only when the folder has to be made (independent review of the
+// last commit, B4): an existing folder needs no lookup.
 func ensureTrafficLogDir() error {
 	dir := TrafficLogDir()
 	if filepath.Dir(dir) == celikPanelLogRoot {
@@ -200,10 +204,10 @@ func ensureTrafficLogDir() error {
 		}
 	}
 	gid := -1
-	if !nginxDevMode() {
+	if _, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) && !nginxDevMode() {
 		_, webGID, ok := webServerIDs()
 		if !ok {
-			return errors.New("the web server's group could not be read for the traffic folder")
+			return fmt.Errorf("%w (to make the traffic folder)", errWebServerAccountUnknown)
 		}
 		gid = webGID
 	}
@@ -211,16 +215,28 @@ func ensureTrafficLogDir() error {
 	return err
 }
 
+// prepareTrafficLog makes the folder, then the site's log itself before
+// nginx opens it (closed to other accounts from its first line;
+// log_root.go). A seam for tests.
+var prepareTrafficLog = func(domainID int) error {
+	if err := ensureTrafficLogDir(); err != nil {
+		return err
+	}
+	return ensureTrafficLogFile(TrafficLogPath(domainID))
+}
+
 // planTrafficInclude writes one site's setting when absent or CelikPanel's
-// other text; a kept file is left alone.
+// other text; a kept file is left alone. When the web server's account
+// cannot be read to make the folder or the site's first log, the setting is
+// left as it was (counting goes on as before; one journal line), never
+// rewritten without its log line.
 func planTrafficInclude(domain string, item TrafficLogItem, formatOK bool) (*plannedTrafficFile, string, error) {
 	counted := item.Counted && formatOK
 	if counted {
-		// The folder, then the site's log itself before nginx opens it
-		// (closed to other accounts from its first line; log_root.go).
-		if err := ensureTrafficLogDir(); err != nil {
-			counted = false
-		} else if err := ensureTrafficLogFile(TrafficLogPath(item.DomainID)); err != nil {
+		if err := prepareTrafficLog(item.DomainID); errors.Is(err, errWebServerAccountUnknown) {
+			log.Printf("[traffic] %s: %v; its traffic setting is left as it was", domain, err)
+			return nil, transport.SiteFileChallengeFailed, nil
+		} else if err != nil {
 			counted = false
 		}
 	}

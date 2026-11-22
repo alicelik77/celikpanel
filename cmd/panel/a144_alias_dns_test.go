@@ -93,7 +93,7 @@ func TestA144AliasInsideItsAccountsZoneAnswersAndGoesAgain(t *testing.T) {
 
 	// Removed with the alias, and the removal is published.
 	before := len(agent.syncCalls)
-	if pending, err := p.withdrawAliasDNS(ctx, "kampanya.randevu.test", ""); err != nil || pending {
+	if pending, err := p.withdrawAliasDNS(ctx, 7121, "kampanya.randevu.test", ""); err != nil || pending {
 		t.Fatal(err)
 	}
 	assertSubdomainRecordCount(t, p, "randevu.test", "kampanya.randevu.test", "A", "192.0.3.210", 0)
@@ -126,7 +126,7 @@ func TestA144AliasNeverTakesTheOwnersRecords(t *testing.T) {
 	if got := p.publishAliasDNS(ctx, 7121, "own.randevu.test"); got != aliasDNSKept {
 		t.Fatalf("publish over the owner's equal record: %s", got)
 	}
-	if _, err := p.withdrawAliasDNS(ctx, "own.randevu.test", ""); err != nil {
+	if _, err := p.withdrawAliasDNS(ctx, 7121, "own.randevu.test", ""); err != nil {
 		t.Fatal(err)
 	}
 	assertSubdomainRecordCount(t, p, "randevu.test", "own.randevu.test", "A", "192.0.3.210", 1)
@@ -305,12 +305,80 @@ func TestA144AliasRecordsStayInAZoneNowHeldByAnotherAccount(t *testing.T) {
 	if _, err := p.db.GetDB().Exec(`UPDATE domains SET subscription_id = 7113 WHERE name = 'kahve.test'`); err != nil {
 		t.Fatal(err)
 	}
-	if pending, err := p.withdrawAliasDNS(ctx, "kampanya.kahve.test", ""); err != nil || pending {
+	if pending, err := p.withdrawAliasDNS(ctx, 7121, "kampanya.kahve.test", ""); err != nil || pending {
 		t.Fatalf("withdraw: %v %v", pending, err)
 	}
 	assertSubdomainRecordCount(t, p, "kahve.test", "kampanya.kahve.test", "A", "192.0.3.210", 1)
 	if raw := p.setting(ctx, aliasDNSKey("kampanya.kahve.test")); raw != "" {
 		t.Fatalf("the note stayed: %s", raw)
+	}
+}
+
+// Independent review of the last commit, C1: after an ordinary
+// subscription transfer the alias and its zone moved together, so the
+// records CelikPanel added go with the alias; a note written without the
+// owner behaves the same. The owner kept in the note does not decide.
+func TestA144AliasRecordsGoWithTheAliasAfterASubscriptionTransfer(t *testing.T) {
+	p, _ := newA144AliasDNSPanel(t)
+	ctx := context.Background()
+	if got := p.publishAliasDNS(ctx, 7121, "kampanya.randevu.test"); got != aliasDNSPublished {
+		t.Fatalf("publish: %s", got)
+	}
+	if got := p.publishAliasDNS(ctx, 7121, "yaz.randevu.test"); got != aliasDNSPublished {
+		t.Fatalf("publish: %s", got)
+	}
+	// The subscription of randevu.test goes from alice to bob.
+	if _, err := p.db.GetDB().Exec(`UPDATE subscriptions SET owner_id = 7102 WHERE id = 7111`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.withdrawAliasDNS(ctx, 7121, "kampanya.randevu.test", ""); err != nil {
+		t.Fatal(err)
+	}
+	assertSubdomainRecordCount(t, p, "randevu.test", "kampanya.randevu.test", "A", "192.0.3.210", 0)
+	// A note without the owner (a lab build's) is decided the same way.
+	var added aliasDNSAdded
+	if err := json.Unmarshal([]byte(p.setting(ctx, aliasDNSKey("yaz.randevu.test"))), &added); err != nil {
+		t.Fatal(err)
+	}
+	added.Owner = 0
+	raw, _ := json.Marshal(added)
+	if err := p.setSetting(ctx, aliasDNSKey("yaz.randevu.test"), string(raw)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.withdrawAliasDNS(ctx, 7121, "yaz.randevu.test", ""); err != nil {
+		t.Fatal(err)
+	}
+	assertSubdomainRecordCount(t, p, "randevu.test", "yaz.randevu.test", "A", "192.0.3.210", 0)
+	for _, alias := range []string{"kampanya.randevu.test", "yaz.randevu.test"} {
+		if raw := p.setting(ctx, aliasDNSKey(alias)); raw != "" {
+			t.Fatalf("%s: the note stayed: %s", alias, raw)
+		}
+	}
+}
+
+// Independent review of the last commit, C3: a zone whose DNS mode cannot be
+// read keeps its wait (it may still be kept here); it is neither published
+// nor cleared until the mode reads again.
+func TestA144AWaitingZoneWhoseModeCannotBeReadKeepsItsWait(t *testing.T) {
+	p, agent := newA144AliasDNSPanel(t)
+	ctx := context.Background()
+	p.markAliasZoneUnpublished(ctx, "kahve.test")
+	// The domains table cannot be read for a moment: the mode read fails.
+	if _, err := p.db.GetDB().Exec(`ALTER TABLE domains RENAME TO a144_domains_away`); err != nil {
+		t.Fatal(err)
+	}
+	before := len(agent.syncCalls)
+	p.republishAliasZones(ctx)
+	zones, _ := p.aliasZonesUnpublished(ctx)
+	if _, err := p.db.GetDB().Exec(`ALTER TABLE a144_domains_away RENAME TO domains`); err != nil {
+		t.Fatal(err)
+	}
+	if !zones["kahve.test"] || len(agent.syncCalls) != before {
+		t.Fatalf("after a read error: marker %v, publications %d -> %d", zones, before, len(agent.syncCalls))
+	}
+	p.republishAliasZones(ctx)
+	if zones, _ := p.aliasZonesUnpublished(ctx); len(zones) != 0 || len(agent.syncCalls) == before {
+		t.Fatalf("once readable: marker %v, publications %d -> %d", zones, before, len(agent.syncCalls))
 	}
 }
 

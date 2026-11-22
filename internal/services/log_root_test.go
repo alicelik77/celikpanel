@@ -3,6 +3,7 @@
 package services
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -75,6 +76,45 @@ func TestASitesFirstTrafficLogIsMadeClosed(t *testing.T) {
 	}
 	if _, err := os.Lstat(target); !os.IsNotExist(err) {
 		t.Fatal("the link was followed")
+	}
+}
+
+// Independent review of the last commit, B4: an existing traffic folder and
+// an existing log need no lookup of the web server's account; only making
+// them does, and a failed lookup then makes nothing.
+func TestTrafficLogNeedsTheWebServerAccountOnlyToMakeIt(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "celikpanel")
+	withTestLogRoot(t, root)
+	if err := ensureTrafficLogDir(); err != nil {
+		t.Fatal(err)
+	}
+	path := TrafficLogPath(9)
+	if err := ensureTrafficLogFile(path); err != nil {
+		t.Fatal(err)
+	}
+	lookups := 0
+	webServerIDs = func() (int, int, bool) { lookups++; return 0, 0, false }
+	if err := ensureTrafficLogDir(); err != nil {
+		t.Fatalf("an existing folder: %v", err)
+	}
+	if err := ensureTrafficLogFile(path); err != nil {
+		t.Fatalf("an existing log: %v", err)
+	}
+	if lookups != 0 {
+		t.Fatalf("looked up %d times for what exists", lookups)
+	}
+	// Making them needs the account; without it nothing is made.
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(TrafficLogDir()); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureTrafficLogDir(); !errors.Is(err, errWebServerAccountUnknown) {
+		t.Fatalf("making the folder without the account: %v", err)
+	}
+	if _, err := os.Lstat(TrafficLogDir()); !os.IsNotExist(err) {
+		t.Fatalf("the folder was made without its group: %v", err)
 	}
 }
 

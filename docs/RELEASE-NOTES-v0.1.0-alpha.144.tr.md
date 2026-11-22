@@ -107,13 +107,17 @@ günceller.**
   `/var/log/celikpanel` geçilebilir olur (diğer hesaplar içinden geçebilir,
   listeleyemez) ve `traffic` klasörüne yalnız web sunucusunun çalışan
   süreçleri geçebilir (0710; sahibi root, grubu web sunucusunun grubu):
-  sitelerin programları dahil başka hiçbir hesap başka bir sitenin trafik
-  günlüğünü açamaz. Diğer hesapların okuyabildiği bir trafik günlüğü (ilkini
-  web sunucusu herkese okunur yapıyordu) onlara kapatılır; bir sitenin ilk
-  günlüğü artık web sunucusu açmadan önce kapalı olarak oluşturulur. Kendi
-  koyduğunuz bir klasör kipi ya da yaptığınız bir bağlantı korunur ve
-  aracının günlüğünde adlandırılır; sertifika aracının günlük klasörü kapalı
-  kalır. Yeniden yükleme gerekmez: güncellemeden sonraki ilk geceden
+  hiçbir sitenin hesabı başka bir sitenin trafik günlüğünü açamaz (web
+  sunucusunun kendi hesabıyla çalışan programlar için "Bilinen sınırlar"a
+  bakın). Diğer hesapların okuyabildiği bir trafik günlüğü (ilkini web
+  sunucusu herkese okunur yapabiliyordu) onlara kapatılır; bir sitenin ilk
+  günlüğü ve gece döndürmesinin her yeni günlüğü artık web sunucusunun
+  hesabı için kapalı olarak oluşturulur. Kendi koyduğunuz bir klasör kipi
+  sahibi ve grubuyla korunur; grubu ne web sunucusunun ne de CelikPanel'in
+  verdiği bir grup (root, celikpanel) olan 0710 kipli bir `traffic` klasörü
+  de korunur; yaptığınız bir bağlantı da korunur. Her biri aracının
+  günlüğünde adlandırılır; sertifika aracının günlük klasörü kapalı kalır.
+  Yeniden yükleme gerekmez: güncellemeden sonraki ilk geceden
   itibaren böyle bir hata satırı yazılmaz ve trafik, bir yeniden yükleme
   beklemeden yeniden eksiksiz sayılır. Yeni kurulumlar klasörleri ve
   günlükleri baştan böyle oluşturur.
@@ -127,8 +131,11 @@ günceller.**
   sitenin web sunucusu dosyasında ve sertifikasında bir addı. Takma ad için
   sertifika yeniden verilirken kayıt, sertifika yetkilisi adı denetlemeden
   önce yayımlanır ve takma ad eklenmezse geri çekilir.
-- Kayıt takma adla birlikte gider; takma adın alan adı silindiğinde de. Yalnız
-  CelikPanel'in eklediği kaldırılır.
+- Kayıt takma adla birlikte gider; takma adın alan adı silindiğinde de,
+  aboneliği başka bir hesaba geçtikten sonra da. Yalnız CelikPanel'in
+  eklediği kaldırılır, o da yalnız bölge takma adın alan adının hesabına
+  aitken: artık başka bir hesaba ait bir bölgede hiçbir şey kaldırılmaz ve
+  panelin günlüğü bakılacak kaydı adlandırır.
 - Yayın bitemezse (yedek DNS sunucusu bekliyorsa, DNS yayımlayıcısı hazır
   değilse) takma ad satırı "DNS kaydı yayımlanmayı bekliyor — her saat yeniden
   denenir, bir şey yapmanız gerekmez" der ve panelin saatlik turu onu yayımlar.
@@ -163,6 +170,11 @@ günceller.**
 - Güncellemeden sonraki ilk gece döndürmesine dek web sunucusunun çalışan
   süreçleri önceden yazdıkları yere yazar; sayım o geceden itibaren
   eksiksizdir.
+- Hâlâ web sunucusunun kendi ortak hesabıyla çalışan programlar trafik
+  günlüklerini okuyabilir: henüz kendi hesabına taşınmamış Node.js siteleri
+  ve açıksa dağıtımın varsayılan PHP havuzu. Bu günlükler yalnız isteklerin
+  zamanını ve bayt sayılarını tutar, adres tutmaz; o programlar her sitenin
+  sunulan dosyalarını zaten okuyabilir.
 - Yalnız yerel bir soket üzerinden dinleyen web postası sunucusu önceki
   kurallarını korur; ona ağdan ulaşılamaz.
 - alpha.143'ün notlarının hâlâ açık diye listelediği her şey açık kalır
@@ -217,9 +229,13 @@ güncelleme sayfasıyla güncellenerek:
   `/var/log/celikpanel` 0700'den 0711'e ya da 0750'den 0751'e; `traffic`
   klasörü 0755'ten 0710'a, sahibi root ve grubu web sunucusunun grubu
   (Debian ve Ubuntu'da `www-data`, Arch Linux'ta `http`); diğer hesapların
-  okuyabildiği trafik günlükleri 0644'ten 0640'a. Kendi koyduğunuz bir kip ya
-  da yaptığınız bir bağlantı korunur. Güncellemeden sonraki ilk geceden
-  itibaren trafik rakamları eksiksizdir.
+  okuyabildiği trafik günlükleri 0644'ten 0640'a. Kendi koyduğunuz bir kip
+  (sahibi ve grubuyla), kendi grubunuzla 0710 kipli bir `traffic` klasörü ya
+  da yaptığınız bir bağlantı korunur. CelikPanel'in döndürme dosyası
+  `/etc/logrotate.d/celikpanel-traffic`, onu değiştirmediyseniz, her yeni
+  trafik günlüğü web sunucusunun hesabı için 0640 oluşturulsun diye bir kez
+  yeniden yazılır; değiştirdiğiniz dosya korunur. Güncellemeden sonraki ilk
+  geceden itibaren trafik rakamları eksiksizdir.
 - Sunucunun panel kaydı olmadan tuttuğu bir posta kutusu açıkça söylenir;
   onu yalnız yönetici, yalnız içinde posta yokken ve yeni bir parolayla
   alabilir.
@@ -266,7 +282,10 @@ Maddeye göre testler:
   `TestA144AliasRecordsSurviveAFailedPublicationAndArePublishedLater`,
   `TestA144AliasAddsNothingBesideAnOwnersAddressRecord`,
   `TestA144AliasPublicationThatWaitsIsRetriedAndNeverStopsADeletion`,
-  `TestA144DeletingADomainWithExternalDNSRemovesItsAliasRecordsHere`.
+  `TestA144DeletingADomainWithExternalDNSRemovesItsAliasRecordsHere`,
+  `TestA144AliasRecordsStayInAZoneNowHeldByAnotherAccount`,
+  `TestA144AliasRecordsGoWithTheAliasAfterASubscriptionTransfer`,
+  `TestA144AWaitingZoneWhoseModeCannotBeReadKeepsItsWait`.
 - Sayfası bırakılan kapatma: `TestA144PGPublicCloseIsNotLostWhenThePageIsLeft`
   (yol korunmadığında laboratuvarın kaydını yeniden üretir).
 - Başarısız kapatma: `TestA144PGFailureKindNamesTheCause`,
@@ -281,7 +300,9 @@ Maddeye göre testler:
   kaldırılınca başarısız olur), `TestA144MailboxOnTheServerWithoutARowIsSaidPlainly`,
   `TestA144AdministratorAdoptsAMailboxFoundOnTheServer` (klasörde posta
   varken ve klasör sayılamazken reddedilir; parola, parola adımıyla bir kez
-  değiştirilir), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
+  değiştirilir),
+  `TestA144SecondAdoptionOfTheSameAddressNeverReplacesThePassword`,
+  `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
   `TestMailboxMessageCountReadsCurAndNewOnly`.
 - Trafik günlükleri: `TestLogRootIsMadePassableWhateverTheUmask`,
   `TestASitesFirstTrafficLogIsMadeClosed`,
@@ -291,7 +312,11 @@ Maddeye göre testler:
   `TestTrafficLogsReachOnlyTheWebServerWorkers` (web sunucusunun hesabı
   günlüğüne döndürmeden önce ve sonra ulaşır; ne root ne de web sunucusunun
   grubunda olan bir hesap hiçbir trafik günlüğünü adıyla açamaz ve hiçbir
-  şeyi listeleyemez); düzeltmeden önceki kodda başarısız olurlar.
+  şeyi listeleyemez); düzeltmeden önceki kodda başarısız olurlar. İkinci
+  incelemenin düzeltmeleriyle: `TestTrafficFolderAt0710WithTheOwnersGroupIsKept`,
+  `TestTrafficLogNeedsTheWebServerAccountOnlyToMakeIt`,
+  `TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead`,
+  `TestTrafficLogrotateMakesEachNewLogClosed`.
 
 Go modülünün ve web'in tam test takımları düzeltme şeridinde temel
 (alpha.143'ün kodu) ve düzeltmeler üzerinde çalıştı; sürüm çekme isteğinin

@@ -97,6 +97,48 @@ func TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes(t *testing.T) {
 	}
 }
 
+// Independent review of the last commit, B3: a traffic folder at 0710 whose
+// group CelikPanel produced (root's, celikpanel) gets the web server's group;
+// at 0710 with any other group it is the owner's (for example nginx's
+// workers running as another account): kept and named, never re-grouped.
+func TestTrafficFolderAt0710WithTheOwnersGroupIsKept(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("the correction changes only root-owned folders; run as root")
+	}
+	const panelGroup, ownersGroup = 54320, 54329
+	saved := panelLogGroup
+	panelLogGroup = func(gid int) bool { return gid == 0 || gid == panelGroup }
+	t.Cleanup(func() { panelLogGroup = saved })
+	for _, c := range []struct {
+		group, want int
+		kept        bool
+	}{
+		{0, testWebGroup, false},
+		{panelGroup, testWebGroup, false},
+		{ownersGroup, ownersGroup, true},
+	} {
+		base := t.TempDir()
+		root, traffic := filepath.Join(base, "celikpanel"), filepath.Join(base, "celikpanel", "traffic")
+		if err := os.MkdirAll(traffic, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		_ = os.Chmod(root, 0o751)
+		_ = os.Chown(traffic, 0, c.group)
+		_ = os.Chmod(traffic, 0o710)
+		lines, _ := passLogRoot(filepath.Join(base, "receipt"), root, traffic, filepath.Join(root, "certbot"), testWebGroup, time.Now)
+		if got := folderGroup(t, traffic); got != c.want {
+			t.Errorf("group %d: now %d, want %d (%v)", c.group, got, c.want, lines)
+		}
+		if info, _ := os.Stat(traffic); info.Mode().Perm() != 0o710 {
+			t.Errorf("group %d: mode %04o", c.group, info.Mode().Perm())
+		}
+		named := strings.Contains(strings.Join(lines, "\n"), "kept "+traffic+": mode 0710 with group")
+		if named != c.kept {
+			t.Errorf("group %d: named as the owner's %v, want %v (%v)", c.group, named, c.kept, lines)
+		}
+	}
+}
+
 // A link the owner made in place of a folder is kept and named.
 func TestLogRootKeepsTheOwnersLinks(t *testing.T) {
 	if os.Geteuid() != 0 {
