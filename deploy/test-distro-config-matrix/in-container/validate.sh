@@ -660,6 +660,13 @@ v_polkit_rules() {
     printf 'polkit.addRule(function(action, subject) {\n' >"$broken"; chmod 0644 "$broken"
     polkit_load "$pd" "$user" "$log"
     rm -f "$broken"
+    # polkitd that never gets to its rules in this container (Arch's; Debian
+    # 12's cannot switch to its own user there) cannot judge any file: a
+    # warning that says why, as before.
+    if ! grep -q 'Loading rules from directory' "$log" || grep -q 'Error switching to user' "$log"; then
+        printf 'polkitd did not get to loading its rules in this container: %s\n' "$(tail -3 "$log" | tr '\n' ' ')"
+        rm -f "$log"; return 2
+    fi
     if [[ -z "$(polkit_errors "$log" 00-celikpanel-matrix-broken.rules)" ]]; then
         printf 'the check could not see a broken rules file, so it cannot judge this one: %s\n' "$(tail -3 "$log" | tr '\n' ' ')"
         rm -f "$log"; return 1
