@@ -491,22 +491,28 @@ func closeStockFPMPoolsFor(ctx context.Context, ops stockPoolOps, pass stockPool
 		turnedOff, recordErr := ops.turnedOff()
 		content, err := ops.readFile(path)
 		if err != nil {
-			release()
 			if errors.Is(err, os.ErrNotExist) {
 				if _, offErr := ops.readFile(path + stockPoolOffSuffix); offErr == nil {
 					row.State = transport.SideDoorsStockOff
 					if recordErr == nil && !turnedOff[version] {
-						// Turned off before the record was kept, or by a put-back
-						// cut between forgetting the version and renaming:
-						// remembered now as CelikPanel's.
-						if err := ops.record(version, true); err != nil {
-							row.Detail = "CelikPanel's record of it could not be written: " + err.Error()
+						// Renamed under CelikPanel's name without its record (a
+						// build before the "turning off" mark): the version's
+						// configuration test and reload run before it is
+						// recorded off, and a refusal puts it back (S4 R1,
+						// third fix round).
+						row.State, row.Detail = checkAndReloadAfterRename(ctx, ops, version, path, false)
+						if row.State == transport.SideDoorsStockTurnedOff && row.Detail == "" {
+							row.State, row.Detail = transport.SideDoorsStockOff, "found renamed without CelikPanel's record; checked and remembered now"
 						}
 					}
+					release()
 					pools = append(pools, row)
+					continue
 				}
+				release()
 				continue
 			}
+			release()
 			row.State, row.Detail = transport.SideDoorsStockUnknown, "it could not be read: "+err.Error()
 			pools = append(pools, row)
 			continue
@@ -1111,14 +1117,26 @@ func turnOffStockPool(ctx context.Context, ops stockPoolOps, version, path strin
 }
 
 // checkAndReloadAfterRename checks PHP-FPM without the renamed pool, reloads
-// it and records the version off. A refusal renames it back with the record
-// as it was before the step (written before the rename back): a first
-// turn-off forgets the version; the administrator's "turn it off again" of a
-// pool the owner had put back keeps it recorded, so the owner's undo still
-// stands and no later start turns it off by itself.
+// it and records the version off. A refusal renames it back, and only then
+// writes the record as it was before the step (S4 R1, third fix round): the
+// "turning off" mark stays until the pool is back under its name, so a crash
+// in between reads at the next start as CelikPanel's unfinished step (checked
+// again, put back again), never as a pool that is off. A first turn-off then
+// forgets the version; the administrator's "turn it off again" of a pool the
+// owner had put back keeps it recorded, so the owner's undo still stands and
+// no later start turns it off by itself.
 func checkAndReloadAfterRename(ctx context.Context, ops stockPoolOps, version, path string, wasOff bool) (string, string) {
 	off := path + stockPoolOffSuffix
 	putBack := func(cause error) (string, string) {
+		if err := ops.rename(off, path); err != nil {
+			return transport.SideDoorsStockNotPutBack, fmt.Sprintf("%v; putting %s back also failed: %v", cause, path, err)
+		}
+		detail := cause.Error() + "; it was put back"
+		if ops.fpmActive(version) {
+			if err := ops.fpmReload(ctx, version); err != nil {
+				detail = fmt.Sprintf("%v; %s was put back but PHP-FPM %s did not reload: %v", cause, path, version, err)
+			}
+		}
 		var recordErr error
 		if wasOff {
 			if ops.forgetPending != nil {
@@ -1128,17 +1146,9 @@ func checkAndReloadAfterRename(ctx context.Context, ops stockPoolOps, version, p
 			recordErr = ops.record(version, false)
 		}
 		if recordErr != nil {
-			return transport.SideDoorsStockNotPutBack, fmt.Sprintf("%v; CelikPanel's record could not be written, so %s was not put back: %v", cause, path, recordErr)
+			detail += fmt.Sprintf("; CelikPanel's record of it could not be written, so the next start decides it again: %v", recordErr)
 		}
-		if err := ops.rename(off, path); err != nil {
-			return transport.SideDoorsStockNotPutBack, fmt.Sprintf("%v; putting %s back also failed: %v", cause, path, err)
-		}
-		if ops.fpmActive(version) {
-			if err := ops.fpmReload(ctx, version); err != nil {
-				return transport.SideDoorsStockFailed, fmt.Sprintf("%v; %s was put back but PHP-FPM %s did not reload: %v", cause, path, version, err)
-			}
-		}
-		return transport.SideDoorsStockFailed, cause.Error() + "; it was put back"
+		return transport.SideDoorsStockFailed, detail
 	}
 	if err := ops.fpmTest(ctx, version); err != nil {
 		return putBack(err)

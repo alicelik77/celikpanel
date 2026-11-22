@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -211,5 +212,76 @@ func TestUnixPathsAreComparedByWhatTheyResolveTo(t *testing.T) {
 	apache := []stockPoolConfigText{{Name: "/etc/apache2/conf-enabled/owner.conf", Text: "SetHandler \"proxy:unix:" + filepath.Join(dir, "srv", "php.sock") + "|fcgi://localhost\"\n"}}
 	if got := stockPoolUsers("", listen, "", apache, hostSameSocket(listen)); !reflect.DeepEqual(got, []string{"/etc/apache2/conf-enabled/owner.conf"}) {
 		t.Fatalf("Apache's handler through a link: %v", got)
+	}
+}
+
+// Finding 3: a refused first turn-off renames the pool back while the
+// "turning off" mark is still kept, and only then forgets the version; a
+// crash in between is CelikPanel's unfinished step. Fails on b6d3c832e
+// (the mark went first).
+func TestThePutBackKeepsTheTurningMarkUntilThePoolIsBack(t *testing.T) {
+	host, path, ops := recordedStockHost(t)
+	host.testErr = errors.New("ERROR: No pool defined")
+	rename := ops.rename
+	markedAtPutBack := false
+	ops.rename = func(from, to string) error {
+		if to == path {
+			turning, _ := services.StockPoolsTurningOff()
+			markedAtPutBack = turning["8.4"]
+		}
+		return rename(from, to)
+	}
+	record := ops.record
+	ops.record = func(version string, off bool) error {
+		if _, err := os.Stat(path); err != nil && !off {
+			t.Errorf("the record was written before %s was back: %v", path, err)
+		}
+		return record(version, off)
+	}
+	pools := closeStockFPMPoolsWith(context.Background(), ops)
+	if len(pools) != 1 || pools[0].State != transport.SideDoorsStockFailed {
+		t.Fatalf("%+v", pools)
+	}
+	if !markedAtPutBack {
+		t.Fatal("the mark was gone before the pool was renamed back")
+	}
+	if turning, _ := services.StockPoolsTurningOff(); turning["8.4"] {
+		t.Fatal("the mark stayed after the put-back finished")
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("not put back")
+	}
+}
+
+// Finding 3: a pool found renamed under CelikPanel's name without its record
+// is checked before it is recorded off; a refusal puts it back. Fails on
+// b6d3c832e (recorded off without the check).
+func TestAPoolFoundRenamedWithoutTheRecordIsCheckedFirst(t *testing.T) {
+	host, path, ops := recordedStockHost(t)
+	if err := os.Rename(path, path+stockPoolOffSuffix); err != nil {
+		t.Fatal(err)
+	}
+	host.testErr = errors.New("ERROR: No pool defined")
+	pools := closeStockFPMPoolsWith(context.Background(), ops)
+	if len(pools) != 1 || pools[0].State != transport.SideDoorsStockFailed || !strings.HasPrefix(strings.Join(host.steps, " "), "fpm-t:8.4") {
+		t.Fatalf("%+v steps %v", pools, host.steps)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("a refused pool was left off")
+	}
+	if off, _ := services.StockPoolsTurnedOff(); off["8.4"] {
+		t.Fatal("recorded off although the check refused")
+	}
+	// Checked and accepted: recorded off.
+	host2, path2, ops2 := recordedStockHost(t)
+	if err := os.Rename(path2, path2+stockPoolOffSuffix); err != nil {
+		t.Fatal(err)
+	}
+	pools = closeStockFPMPoolsWith(context.Background(), ops2)
+	if len(pools) != 1 || pools[0].State != transport.SideDoorsStockOff || strings.Join(host2.steps, " ") != "fpm-t:8.4 fpm-reload:8.4" {
+		t.Fatalf("%+v steps %v", pools, host2.steps)
+	}
+	if off, _ := services.StockPoolsTurnedOff(); !off["8.4"] {
+		t.Fatal("not recorded off after the check")
 	}
 }
