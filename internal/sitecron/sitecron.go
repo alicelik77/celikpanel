@@ -31,6 +31,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // Kind is what a crontab line is.
@@ -60,7 +61,50 @@ const (
 	ReasonCarriage   = "carriage"    // a carriage return or another control character
 	ReasonEmpty      = "empty"       // a schedule without a command
 	ReasonInvalidEnv = "invalid_env" // a NAME=value line with a name cron does not take
+	ReasonTooLong    = "too_long"    // a command (or setting) longer than cron reads (MAX_COMMAND, MAX_ENVSTR)
 )
+
+// MaxCommand is cron 3.0pl1's MAX_COMMAND: load_entry reads the command
+// with get_string(cmd, MAX_COMMAND, ...) and refuses the line (e_cmd_len)
+// when the command fills the buffer, so a command of MaxCommand-1 bytes or
+// more is never run by cron. MaxEnvLine is MAX_ENVSTR: load_env keeps only
+// the first MaxEnvLine-1 bytes of a setting's line (the rest is dropped
+// silently), so a longer setting line is refused here instead.
+const (
+	MaxCommand = 1000
+	MaxEnvLine = 1000
+)
+
+// CommandFits reports whether cron runs a command of this length (the text
+// after the schedule's fields and the blanks that follow them).
+func CommandFits(command string) bool { return len(command) < MaxCommand-1 }
+
+// isBlank is cron's field separator: an ASCII space or tab only
+// (Skip_Blanks/Skip_Nonblanks in cron.h). Any other byte, a no-break space
+// or another Unicode blank included, is part of a field.
+func isBlank(b byte) bool { return b == ' ' || b == '\t' }
+
+// SplitFields splits on ASCII spaces and tabs only, as cron does.
+func SplitFields(text string) []string {
+	var out []string
+	start := -1
+	for i := 0; i < len(text); i++ {
+		if isBlank(text[i]) {
+			if start >= 0 {
+				out = append(out, text[start:i])
+				start = -1
+			}
+			continue
+		}
+		if start < 0 {
+			start = i
+		}
+	}
+	if start >= 0 {
+		out = append(out, text[start:])
+	}
+	return out
+}
 
 // Entry is one line of a crontab.
 type Entry struct {
@@ -147,8 +191,10 @@ func parseLine(n int, raw string) Entry {
 		e.Kind, e.Reason, e.Detail = KindInvalid, ReasonCarriage, "the line holds a carriage return or another control character"
 		return e
 	}
+	// cron's skip_comments: leading spaces and tabs, then a newline (blank)
+	// or "#" (a comment); nothing else counts as blank.
 	trimmed := strings.TrimLeft(raw, " \t")
-	if strings.TrimSpace(trimmed) == "" {
+	if trimmed == "" {
 		e.Kind = KindBlank
 		return e
 	}
@@ -167,46 +213,156 @@ func parseLine(n int, raw string) Entry {
 		e.Kind = KindComment
 		return e
 	}
-	if name, value, ok := envLine(trimmed); ok {
+	name, value, kind := envLine(trimmed)
+	switch kind {
+	case envUnsure:
+		e.Kind, e.Reason, e.Detail = KindInvalid, ReasonInvalidEnv, "cron cannot read this setting reliably (it ends right after an opening quote)"
+		return e
+	case envSetting:
+		if len(trimmed) >= MaxEnvLine {
+			e.Kind, e.Reason, e.Detail = KindInvalid, ReasonTooLong, fmt.Sprintf("cron reads at most %d bytes of a setting's line", MaxEnvLine-1)
+			return e
+		}
 		if !envNamePattern.MatchString(name) {
 			e.Kind, e.Reason, e.Detail = KindInvalid, ReasonInvalidEnv, "not a name a systemd environment file takes"
 			return e
 		}
 		e.Kind, e.Name, e.Value = KindEnv, name, value
 		if !envValueRepresentable(value) {
-			e.Kind, e.Reason, e.Detail = KindInvalid, ReasonEnvValue, "the value holds both quote marks, a backslash or a control character"
+			e.Kind, e.Reason, e.Detail = KindInvalid, ReasonEnvValue, "the value is not valid UTF-8 text, or holds a single quote, a backslash, a control character, U+FEFF or a noncharacter"
 		}
 		return e
 	}
-	return parseJob(n, raw, strings.TrimRight(trimmed, " \t"))
+	// cron keeps the command's trailing blanks (get_string reads up to the
+	// newline): nothing is trimmed on the right.
+	return parseJob(n, raw, trimmed)
 }
 
-// envLine recognises cron's environment setting: name = value, blanks
-// around "=" allowed, the value optionally in matching quotes (crontab(5)).
-// cron decides by whether the text before the first "=" is one word and the
-// line is not a schedule: a line starting with a schedule field is a job.
-func envLine(line string) (string, string, bool) {
-	eq := strings.IndexByte(line, '=')
-	if eq <= 0 {
-		return "", "", false
+// What envLine found.
+const (
+	envNot     = iota // not a setting: cron reads the line as a job
+	envSetting        // NAME=value
+	envUnsure         // the line ends right after an opening quote: cron's
+	// parser then reads past the line's end, so what it makes of it is not
+	// known; the line is refused
+)
+
+// envLine is cron 3.0pl1's load_env (Debian's env.c), state by state:
+// NAMEI (a quote may open the name), NAME (an unquoted name ends at a blank
+// or "="; "=" inside a quoted name is an error), EQ1 (blanks, then "="),
+// EQ2 (blanks after "="), VALUEI (a quote may open the value), VALUE, FINI
+// (only blanks after a closing quote). The line is a setting when the parse
+// ends in FINI, in an unquoted VALUE, or in EQ2 (an empty value: "MAILTO=").
+// An unquoted value loses its trailing blanks; then every value loses its
+// trailing blanks (strdtb) and one pair of matching outer quotes left in it.
+// So `A="x` and `A="x"y` are not settings (cron reads them as jobs, which
+// fail), `A=` is the empty value, and `A=" x "` is " x".
+func envLine(line string) (string, string, int) {
+	const (
+		stNameI = iota
+		stName
+		stEq1
+		stEq2
+		stValueI
+		stValue
+		stFini
+		stError
+	)
+	state := stNameI
+	var quote byte
+	var name, value []byte
+	inValue := false
+	c := 0
+	for state != stError && c < len(line) {
+		switch state {
+		case stNameI, stValueI:
+			if line[c] == '\'' || line[c] == '"' {
+				quote = line[c]
+				c++
+			}
+			state++
+			if c >= len(line) {
+				// C's loop goes on with the terminating NUL here.
+				return "", "", envUnsure
+			}
+			fallthrough
+		case stName, stValue:
+			ch := line[c]
+			if quote != 0 {
+				if ch == quote {
+					state++
+					c++
+					continue
+				}
+				if state == stName && ch == '=' {
+					state = stError
+					continue
+				}
+			} else if state == stName {
+				if isBlank(ch) {
+					c++
+					state++
+					continue
+				}
+				if ch == '=' {
+					state++
+					continue
+				}
+			}
+			if inValue {
+				value = append(value, ch)
+			} else {
+				name = append(name, ch)
+			}
+			c++
+		case stEq1:
+			if line[c] == '=' {
+				state++
+				inValue = true
+				quote = 0
+			} else if !isBlank(line[c]) {
+				state = stError
+			}
+			c++
+		case stEq2, stFini:
+			if isBlank(line[c]) {
+				c++
+			} else {
+				state++
+			}
+		}
 	}
-	name := strings.TrimRight(line[:eq], " \t")
-	if name == "" || strings.ContainsAny(name, " \t") {
-		return "", "", false
+	if state != stFini && !(state == stValue && quote == 0) && !(state == stEq2 && quote == 0) {
+		return "", "", envNot
 	}
-	value := strings.Trim(line[eq+1:], " \t")
-	if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') && value[len(value)-1] == value[0] {
-		value = value[1 : len(value)-1]
+	v := string(value)
+	if state == stValue {
+		v = strings.TrimRight(v, " \t")
 	}
-	return name, value, true
+	v = strings.TrimRight(v, " \t") // strdtb
+	if len(v) >= 2 && (v[0] == '\'' || v[0] == '"') && v[len(v)-1] == v[0] {
+		v = v[1 : len(v)-1]
+	}
+	// cron keeps only MaxEnvLine-1 bytes of the line (the rest is dropped
+	// silently); parseLine refuses a longer setting line (too_long) instead.
+	return string(name), v, envSetting
 }
 
 // envValueRepresentable: the value can be written to a systemd environment
-// file in single quotes byte for byte (no single quote, no backslash, no
-// control character).
+// file in single quotes byte for byte, and systemd reads it: valid UTF-8
+// (systemd.exec(5): the file "must be UTF-8 encoded"; one invalid value
+// would fail the whole file and with it every task of the site), no byte
+// order mark or noncharacter, no single quote, no backslash, no control
+// character.
 func envValueRepresentable(value string) bool {
+	if !utf8.ValidString(value) {
+		return false
+	}
 	for _, r := range value {
-		if r < 0x20 || r == 0x7f || r == '\'' || r == '\\' {
+		switch {
+		case r < 0x20 || r == 0x7f || r == '\'' || r == '\\':
+			return false
+		case r == 0xfeff, r >= 0xfdd0 && r <= 0xfdef, r&0xfffe == 0xfffe:
 			return false
 		}
 	}
@@ -225,7 +381,7 @@ var specialSchedules = map[string]string{
 
 func parseJob(n int, raw, text string) Entry {
 	e := Entry{Line: n, Raw: raw}
-	fields := strings.Fields(text)
+	fields := SplitFields(text)
 	if len(fields) == 0 {
 		e.Kind = KindBlank
 		return e
@@ -259,9 +415,15 @@ func parseJob(n int, raw, text string) Entry {
 		e.Kind, e.Reason, e.Detail = KindInvalid, ReasonSchedule, err.Error()
 		return e
 	}
+	if !CommandFits(rest) {
+		e.Kind, e.Reason, e.Detail = KindInvalid, ReasonTooLong, fmt.Sprintf("cron runs a command of at most %d bytes; this one has %d", MaxCommand-2, len(rest))
+		return e
+	}
 	e.Kind, e.Schedule, e.Spec = KindJob, schedule, spec
 	e.Command, e.Input, e.HasInput = SplitCommand(rest)
-	e.Text = text
+	// The task's identity (the screen's ID) is its text without trailing
+	// blanks, as the screen reads the line; the command keeps them.
+	e.Text = strings.TrimRight(text, " \t")
 	return e
 }
 
@@ -437,7 +599,7 @@ func Translate(schedule string) (Spec, error) {
 		}
 		schedule = expanded
 	}
-	parts := strings.Fields(schedule)
+	parts := SplitFields(schedule)
 	if len(parts) != 5 {
 		return Spec{}, errors.New("a schedule has five fields")
 	}

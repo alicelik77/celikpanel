@@ -46,7 +46,9 @@ func Probe(ctx context.Context, r Runner) Caps {
 	}
 	c.CgroupV2 = r.Exists(CgroupControllers)
 	if r.Exists(NFT) {
-		if _, err := r.Run(ctx, EgressRuleset(), NFT, "--check", "-f", "-"); err == nil {
+		// The larger form (with the submission exception) is checked, so
+		// both forms the Agent may write are known to load.
+		if _, err := r.Run(ctx, EgressRulesetWith(true), NFT, "--check", "-f", "-"); err == nil {
 			c.NFTSocketCgroup = true
 		}
 	}

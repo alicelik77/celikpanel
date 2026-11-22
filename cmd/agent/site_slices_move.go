@@ -690,7 +690,12 @@ func recoverSiteSliceMove() {
 		return
 	}
 	if journal.Tasks != nil {
-		recoverSiteTasksJournal(journal)
+		if !recoverSiteTasksJournal(journal) {
+			// Not resolved (a crontab that could not be written back, timers
+			// that could not be switched on again): the record stays, nothing
+			// is lost, and the next start tries again.
+			return
+		}
 		if err := os.Remove(siteMoveJournalPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 			log.Printf("site tasks: remove the move's record: %v", err)
 		}

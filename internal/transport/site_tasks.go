@@ -49,6 +49,41 @@ const (
 	SiteTasksSourceMissing = "missing" // the file is gone while timers of the site remain
 )
 
+// Errors a change of a moved site's tasks answers (exact texts; the Panel
+// classifies them).
+const (
+	// SiteTasksSourceGone: the task file is gone while timers of the
+	// site remain; a change is refused (it would rebuild the file from one
+	// line and remove every other task). The administrator rebuilds the file
+	// from the copy of what CelikPanel last rendered.
+	SiteTasksSourceGone = "site_tasks_source_missing: the site's task file is missing on the server while timers of the site remain; nothing was changed"
+	// SiteTasksLimitsMissing: the site's slice file is not in place (or not
+	// loaded by systemd), so no timer of the site is switched on: a task
+	// never runs without the site's limits.
+	SiteTasksLimitsMissing = "site_tasks_limits_missing: the site's limits file is not in place on the server, so its tasks were not switched on"
+	// CronCommandTooLong: cron 3.0pl1 refuses a command of 999 bytes or more
+	// (MAX_COMMAND); a task is saved only as cron would run it.
+	CronCommandTooLong = "cron_command_too_long: cron runs a command of at most 998 bytes"
+	// SiteTasksEnvValue: a setting line of the task file holds a value
+	// systemd cannot read (not UTF-8, a quote mark, a backslash, a control
+	// character); a save is refused until it is corrected.
+	SiteTasksEnvValue = "site_tasks_env_value: a setting of the site's task file holds a value systemd cannot read; nothing was changed"
+)
+
+// Mail submission as the SMTP block sees it (S4 R2b fix round;
+// SiteTasksMovedResponse.MailSubmission, SiteTasksMoveResponse.MailSubmission).
+const (
+	// MailSubmissionOurs: 465 and 587 are CelikPanel's own unchanged
+	// submission entries that take only a mailbox's login; sites' programs
+	// and tasks may reach them at this server's own addresses.
+	MailSubmissionOurs = "ours"
+	// MailSubmissionOwner: an entry or a program of the server owner's is on
+	// 465 or 587; the SMTP block keeps those ports closed to sites.
+	MailSubmissionOwner = "owner"
+	// MailSubmissionAbsent: no submission service; nothing to reach.
+	MailSubmissionAbsent = "absent"
+)
+
 // SiteTasksMoveRequest moves a site's crontab into timers (Preview: only say
 // what would become what, change nothing), or puts them back (Undo).
 type SiteTasksMoveRequest struct {
@@ -60,16 +95,20 @@ type SiteTasksMoveRequest struct {
 
 // Outcomes of a tasks move (SiteTasksMoveResponse.Outcome).
 const (
-	SiteTasksMoved     = "moved"    // the crontab became timers and was emptied
-	SiteTasksAlready   = "already"  // the site's tasks already run as timers
-	SiteTasksStayed    = "stayed"   // a line keeps the whole crontab in cron (Blocking)
-	SiteTasksPutBack   = "put_back" // a step failed; the crontab is as it was and no timer is left
-	SiteTasksPreview   = "preview"  // nothing was changed (Preview)
-	SiteTasksUndone    = "undone"   // the timers are gone and the crontab is back
-	SiteTasksRefused   = "refused"  // nothing was changed (Error says why, who acts)
-	SiteTasksNoCron    = "no_cron"  // the crontab cannot be read (no cron, or it refuses): nothing was changed
-	SiteTasksUnknown   = "unknown"  // the result is not known (read the page again)
-	SiteTaskLineMarked = "not_made_here"
+	SiteTasksMoved   = "moved"    // the crontab became timers and was emptied
+	SiteTasksAlready = "already"  // the site's tasks already run as timers
+	SiteTasksStayed  = "stayed"   // a line keeps the whole crontab in cron (Blocking)
+	SiteTasksPutBack = "put_back" // a step failed; the crontab is as it was and no timer is left
+	SiteTasksPreview = "preview"  // nothing was changed (Preview)
+	SiteTasksUndone  = "undone"   // the timers are gone and the crontab is back
+	SiteTasksRefused = "refused"  // nothing was changed (Error says why, who acts)
+	SiteTasksNoCron  = "no_cron"  // the crontab cannot be read (no cron, or it refuses): nothing was changed
+	SiteTasksUnknown = "unknown"  // the result is not known (read the page again)
+	// SiteTasksCrontabBack: the tasks run as timers, but a crontab exists
+	// again for the account and runs outside the site's limits (never
+	// answered as "moved").
+	SiteTasksCrontabBack = "crontab_back"
+	SiteTaskLineMarked   = "not_made_here"
 )
 
 // SiteTaskMoveRow is one line of the crontab and what it becomes.
@@ -82,6 +121,10 @@ type SiteTaskMoveRow struct {
 	Paused    bool     `json:"paused,omitempty"`
 	// Setting: an environment setting carried to every task.
 	Setting bool `json:"setting,omitempty"`
+	// Privileged: the task calls a program that needs extra rights (a
+	// set-user-id or set-group-id helper such as sudo, crontab or ping);
+	// inside a task it runs without them (NoNewPrivileges) and may fail.
+	Privileged bool `json:"privileged,omitempty"`
 }
 
 // SiteTasksMoveResponse is what the move did or would do.
@@ -94,14 +137,37 @@ type SiteTasksMoveResponse struct {
 	Blocking []SiteTaskLine `json:"blocking,omitempty"`
 	// Mail: some task line sends mail (names sendmail, mail, an SMTP port):
 	// after the move only submission to this server's own mail service on
-	// 127.0.0.1 ports 465 and 587 is allowed (docs/SITE-SANDBOX.md section 3).
-	Mail  bool   `json:"mail,omitempty"`
-	Error string `json:"error,omitempty"`
-	// Refusal is a code for Error (cron_allow_owner: the server owner's
-	// /etc/cron.allow leaves the account out; source_owner: the task file was
-	// changed by hand; busy: another move runs).
+	// ports 465 and 587 is allowed, and only where MailSubmission is "ours"
+	// (docs/SITE-SANDBOX.md section 3).
+	Mail           bool   `json:"mail,omitempty"`
+	MailSubmission string `json:"mail_submission,omitempty"`
+	Error          string `json:"error,omitempty"`
+	// Refusal is a code for Error (cron_allow_owner: cron's access files
+	// would let the account install its own jobs after the move, or leave it
+	// out for an undo; source_owner: the task file was changed by hand;
+	// busy: another move runs; limits: the site's limits file is not in
+	// place).
 	Refusal string `json:"refusal,omitempty"`
 }
+
+// SiteTaskSourceResponse answers the administrator's rebuild of a missing
+// task file from the copy of what CelikPanel last rendered (Preview: only
+// say what it would contain).
+type SiteTaskSourceResponse struct {
+	// Outcome: preview, rebuilt, refused, unknown.
+	Outcome string `json:"outcome"`
+	// Crontab is what the file holds (or would hold) below CelikPanel's
+	// header and intro.
+	Crontab string `json:"crontab,omitempty"`
+	// RenderedAt is when CelikPanel last rendered the site's timers from it.
+	RenderedAt string `json:"rendered_at,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
+// Outcomes of a task file rebuild.
+const (
+	SiteTaskSourceRebuilt = "rebuilt"
+)
 
 // SiteTasksSourceHeld is the error a change of a moved site's tasks answers
 // when the server owner changed its task file by hand: the file is kept and
@@ -114,6 +180,7 @@ const (
 	SiteTasksRefusalSource    = "source_owner"
 	SiteTasksRefusalBusy      = "busy"
 	SiteTasksRefusalCrontab   = "crontab_changed"
+	SiteTasksRefusalLimits    = "limits"
 )
 
 // SiteTasksMovedRequest asks which sites run their tasks as timers (SiteIDs
@@ -127,10 +194,17 @@ type SiteTasksMovedRequest struct {
 type SiteTasksMovedResponse struct {
 	Moved      []int          `json:"moved"`
 	Reappeared map[string]int `json:"reappeared,omitempty"`
+	// ReappearedBySite: per site id, the account could have installed that
+	// crontab itself (the site's own code can have made it); absent: only
+	// root could have.
+	ReappearedBySite map[string]bool `json:"reappeared_by_site,omitempty"`
 	// Recovery: what the Agent did with an interrupted tasks move at its
 	// start, per site id (for the administrator's card).
 	Recovery map[string]string `json:"recovery,omitempty"`
-	Error    string            `json:"error,omitempty"`
+	// MailSubmission: MailSubmission* as the Agent last wrote the SMTP block
+	// ("" when it has not, or the host holds no block).
+	MailSubmission string `json:"mail_submission,omitempty"`
+	Error          string `json:"error,omitempty"`
 }
 
 // --- The side doors step: cron.allow and lingering -------------------------
@@ -146,6 +220,18 @@ type SideDoorsCron struct {
 	// a site whose tasks run as timers (the server owner's, running outside
 	// the site's limits).
 	Reappeared map[string]int `json:"reappeared,omitempty"`
+	// ReappearedBySite: account -> the account could have installed it
+	// itself (the site's own code can have made it).
+	ReappearedBySite map[string]bool `json:"reappeared_by_site,omitempty"`
+}
+
+// SideDoorsTasksHeld is a moved site whose timers are held at the start:
+// its limits file is not in place and could not be written, so its running
+// timers were stopped (they start again once the file is back).
+type SideDoorsTasksHeld struct {
+	SiteID int    `json:"site_id"`
+	Domain string `json:"domain,omitempty"`
+	Detail string `json:"detail,omitempty"`
 }
 
 // SideDoorsCronNotNeeded: no site runs its tasks as timers yet; nothing is

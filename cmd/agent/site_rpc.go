@@ -86,7 +86,7 @@ type siteLifecycleOps struct {
 	removeSiteSlice func(int) ([]string, error)
 	// S4 R2b: a new site's task file (its tasks run as timers from the
 	// start) and a deleted site's timers and task files. Nil skips each.
-	createSiteTasks func(siteID int, domain, username string) error
+	createSiteTasks func(siteID int, domain, username string, slice *transport.SiteSlice) error
 	removeSiteTasks func(int) ([]string, error)
 }
 
@@ -641,7 +641,7 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 	// start (its empty task file). A failure here leaves it in cron, as
 	// before; it is logged and the administrator's move takes it later.
 	if ops.createSiteTasks != nil {
-		if err := ops.createSiteTasks(req.SiteID, req.Domain, req.Username); err != nil {
+		if err := ops.createSiteTasks(req.SiteID, req.Domain, req.Username, req.Slice); err != nil {
 			log.Printf("CreateSite %s: the task file was not written (the site keeps cron until it is moved): %v", req.Domain, err)
 		}
 	}

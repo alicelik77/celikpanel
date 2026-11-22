@@ -64,8 +64,9 @@ const cronAllowHeader = cronAllowMark + `
 # run as timers in the site's own limits, CelikPanel's tool accounts and extra logins that
 # share a site's id. A crontab such an account already had keeps running (CelikPanel moved
 # the site's tasks out of it). While this file is as CelikPanel wrote it, CelikPanel brings it
-# up to date at its next start and after each move. Once you change it, it is yours and
-# CelikPanel leaves it as it is.
+# up to date at its next start and after each move: an account you create later may use
+# crontab from the panel's next start; until then (or without the panel) add its name here or
+# delete this file. Once you change it, it is yours and CelikPanel leaves it as it is.
 # To undo: delete this file. /etc/cron.deny then applies again, as before, and CelikPanel
 # does not write it again by itself: its Problems now list says cron is open to those
 # accounts, and closing it again there writes it anew.
@@ -173,14 +174,24 @@ func closeSiteCronWith(ops siteCronOps, exceptSite int) *transport.SideDoorsCron
 	}
 	out := &transport.SideDoorsCron{Path: cronAllowPath}
 	moved := movedSiteAccounts(exceptSite)
-	for account := range moved {
-		if n := len(spoolCrontabLines(account)); n > 0 {
-			if out.Reappeared == nil {
-				out.Reappeared = map[string]int{}
+	defer func() {
+		// After the file is decided: a crontab found for a moved account, and
+		// whether the account could have installed it itself (fix round: it is
+		// called the server owner's only when it could not).
+		pruneCronClosed()
+		for account := range moved {
+			if n := len(spoolCrontabLines(account)); n > 0 {
+				if out.Reappeared == nil {
+					out.Reappeared, out.ReappearedBySite = map[string]int{}, map[string]bool{}
+				}
+				out.Reappeared[account] = n
+				files, _ := accountSpoolFiles(account)
+				if reappearedBySite(account, files) {
+					out.ReappearedBySite[account] = true
+				}
 			}
-			out.Reappeared[account] = n
 		}
-	}
+	}()
 	entries, nisLines, passwdErr := readPasswd(sideDoorsPasswd)
 	if passwdErr != nil {
 		out.State, out.Detail = transport.SideDoorsAtFailed, "the account list could not be read: "+passwdErr.Error()
@@ -368,8 +379,11 @@ func lingerRuleText(groups []string) string {
 	return `// CelikPanel (docs/SITE-SANDBOX.md section 9.5): a website's account may not keep its own
 // programs running after its work is done ("lingering", loginctl enable-linger). Switching
 // lingering on for oneself is left to ` + who + `; any other account is asked
-// for an administrator's password, which a website's code cannot give. Accounts that
-// already linger keep doing so (CelikPanel names them in its Problems now list).
+// for an administrator's password, which a website's code cannot give. Only the groups
+// sudo, admin and wheel count, as /etc/group names them: administrators in another group
+// (from LDAP or SSSD, for example) run "sudo loginctl enable-linger <name>", or the server
+// owner adds their group below (the file is then the owner's and CelikPanel keeps it).
+// Accounts that already linger keep doing so (CelikPanel names them in its Problems now list).
 // To undo: delete this file; polkit reads the change at once. CelikPanel does not write it
 // again by itself; its Problems now list then says lingering is open.
 //

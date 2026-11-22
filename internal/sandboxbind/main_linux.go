@@ -88,7 +88,7 @@ func readControlGroup(unit string) (string, error) {
 func ProductionHelper(log io.Writer) Helper {
 	return Helper{
 		Plan: PlanFor, MountRoot: sitesandbox.MountRoot, RootUID: 0, Mounter: KernelMounter{},
-		LookupUser: lookupAccount, UnitInfo: readUnitInfo, ControlGroup: readControlGroup, NFT: runNFT, Log: log,
+		LookupUser: lookupAccount, UnitInfo: readUnitInfo, ControlGroup: readControlGroup, NFT: runNFT, Procs: ReadCgroupProcs, Log: log,
 	}
 }
 

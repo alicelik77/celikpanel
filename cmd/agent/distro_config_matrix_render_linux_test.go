@@ -1568,9 +1568,15 @@ func renderMatrixSiteTasks(t *testing.T, h *matrixHost, dir, sliceTarget string,
 		h.renderFailure(t, "systemd.site-task", "systemd", "a site's scheduled task", source, err)
 	}
 
-	c := &configmatrix.Case{ID: "nftables.sandbox-egress", Program: "nftables", Variant: "the site sandbox's SMTP block (loopback submission allowed)",
-		Validator: "nftables", Source: "internal/sitesandbox/egress.go EgressRuleset", Target: "/run/celikpanel-matrix/egress.nft"}
-	c.File(c.Target, []byte(sitesandbox.EgressRuleset()), 0o600)
+	// Both forms the Agent may write: with the submission exception (the
+	// listeners on 465/587 are CelikPanel's own) and without it.
+	c := &configmatrix.Case{ID: "nftables.sandbox-egress", Program: "nftables", Variant: "the site sandbox's SMTP block (submission to this server allowed)",
+		Validator: "nftables", Source: "internal/sitesandbox/egress.go EgressRulesetWith(true)", Target: "/run/celikpanel-matrix/egress.nft"}
+	c.File(c.Target, []byte(sitesandbox.EgressRulesetWith(true)), 0o600)
+	h.write(t, c)
+	c = &configmatrix.Case{ID: "nftables.sandbox-egress-closed", Program: "nftables", Variant: "the site sandbox's SMTP block (no mail port open)",
+		Validator: "nftables", Source: "internal/sitesandbox/egress.go EgressRulesetWith(false)", Target: "/run/celikpanel-matrix/egress-closed.nft"}
+	c.File(c.Target, []byte(sitesandbox.EgressRulesetWith(false)), 0o600)
 	h.write(t, c)
 
 	ruleSource := "cmd/agent/side_doors_cron.go lingerRuleText"

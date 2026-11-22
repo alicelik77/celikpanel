@@ -618,8 +618,32 @@ v_systemd_unit() {
 # starts: a syntax error is "Error compiling script <file>". Where polkitd or
 # a bus cannot be started in the container, the case warns (it says why)
 # instead of passing.
+#
+# Fix round (S4 R2b review): only the exact harmless lines are ignored -
+# "Error opening rules directory" for polkitd's two OPTIONAL folders when
+# they do not exist (/run/polkit-1/rules.d, /usr/local/share/polkit-1/rules.d).
+# Any other line naming an error fails the case, and polkitd must say it
+# loaded rules from /etc/polkit-1/rules.d. Before the real file is judged, a
+# deliberately broken rule is loaded the same way and must be reported: a
+# check that cannot see a broken rule fails the case instead of passing it.
+polkit_load() { # $1 polkitd, $2 user, $3 log
+    local pid i
+    runuser -u "$2" -- "$1" >"$3" 2>&1 &
+    pid=$!
+    for i in $(seq 1 60); do
+        grep -q 'Finished loading' "$3" && break
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.25
+    done
+    kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+}
+polkit_errors() { # $1 log, $2 rules file name
+    grep -E "Error|error|SyntaxError|ReferenceError|TypeError|$2" "$1" |
+        grep -Ev "Error opening rules directory: Error opening directory .{1,3}(/run/polkit-1/rules\.d|/usr/local/share/polkit-1/rules\.d).{1,3}: No such file or directory" |
+        grep -v "Loading rules from directory" | head -5
+}
 v_polkit_rules() {
-    local pd="" log pid i user=root out
+    local pd="" log user=root out broken
     for p in /usr/lib/polkit-1/polkitd /usr/libexec/polkitd /usr/lib/polkit/polkitd; do
         [[ -x "$p" ]] && { pd=$p; break; }
     done
@@ -631,19 +655,21 @@ v_polkit_rules() {
     fi
     id polkitd >/dev/null 2>&1 && user=polkitd
     log=$(mktemp)
-    runuser -u "$user" -- "$pd" >"$log" 2>&1 &
-    pid=$!
-    for i in $(seq 1 60); do
-        grep -q 'Finished loading' "$log" && break
-        kill -0 "$pid" 2>/dev/null || break
-        sleep 0.25
-    done
-    kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
-    # polkitd says "Error opening rules directory" for each of its optional
-    # rules folders that does not exist (/run, /usr/local); that is not this
-    # file. A rules file it cannot compile or run is named with the error.
-    out=$(grep -E "Error compiling|Error evaluating|SyntaxError|ReferenceError|TypeError|$(basename "$TARGET")" "$log" | grep -v 'Error opening rules directory' | head -5)
+    # The control: a rule that cannot load must be seen.
+    broken="$(dirname "$TARGET")/00-celikpanel-matrix-broken.rules"
+    printf 'polkit.addRule(function(action, subject) {\n' >"$broken"; chmod 0644 "$broken"
+    polkit_load "$pd" "$user" "$log"
+    rm -f "$broken"
+    if [[ -z "$(polkit_errors "$log" 00-celikpanel-matrix-broken.rules)" ]]; then
+        printf 'the check could not see a broken rules file, so it cannot judge this one: %s\n' "$(tail -3 "$log" | tr '\n' ' ')"
+        rm -f "$log"; return 1
+    fi
+    polkit_load "$pd" "$user" "$log"
+    out=$(polkit_errors "$log" "$(basename "$TARGET")")
     if [[ -n "$out" ]]; then printf '%s\n' "$out"; rm -f "$log"; return 1; fi
+    if ! grep -q 'Loading rules from directory /etc/polkit-1/rules.d' "$log"; then
+        printf 'polkitd did not load /etc/polkit-1/rules.d: %s\n' "$(tail -3 "$log" | tr '\n' ' ')"; rm -f "$log"; return 1
+    fi
     if ! grep -q 'Finished loading' "$log"; then
         printf 'polkitd did not report loading its rules: %s\n' "$(tail -3 "$log" | tr '\n' ' ')"; rm -f "$log"; return 2
     fi

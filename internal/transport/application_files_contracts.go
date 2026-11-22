@@ -297,6 +297,11 @@ type ListCronJobsResponse struct {
 	Source     string         `json:"source,omitempty"`
 	NotRun     []SiteTaskLine `json:"not_run,omitempty"`
 	Reappeared []string       `json:"reappeared,omitempty"`
+	// ReappearedBySite (S4 R2b fix round): the account could have installed
+	// that crontab itself (cron's access files let it in at some point since
+	// its tasks moved), so the site's own code can have made it; false: only
+	// root could have (the server owner's).
+	ReappearedBySite bool `json:"reappeared_by_site,omitempty"`
 }
 
 // CronTenant identifies WHOSE crontab an operation targets. It carries the

@@ -13,7 +13,7 @@ import (
 
 // Files of a moved site's tasks (docs/SITE-SANDBOX.md section 9):
 //
-//	/etc/celikpanel-cron/<site id>.crontab        the source: crontab syntax, root's (0640 root:celikpanel)
+//	/etc/celikpanel-cron/<site id>.crontab        the source: crontab syntax, root's (0640 root:root)
 //	/etc/celikpanel-cron/<site id>.d/env          its NAME=value settings (an environment file)
 //	/etc/celikpanel-cron/<site id>.d/<n>.sh       task n's command, as cron hands it to the shell
 //	/etc/celikpanel-cron/<site id>.d/<n>.in       task n's standard input ("%" in cron), if any
@@ -137,6 +137,24 @@ func (u Unit) validate() error {
 // or metadata addresses, the same address families). It is not given the
 // programs' file system sandbox: a cron job never had one, and it would stop
 // tasks that write the site's files.
+//
+// KillMode=process (S4 R2b fix round): when the task's shell ends, systemd
+// stops only that shell; processes it left running (`nohup worker &`, as a
+// cron job may leave them) keep running in the unit's own cgroup, so inside
+// the site's slice and under the SMTP block (the helper's egress-remove
+// keeps the cgroup in the set while processes remain in it), and the next
+// run still starts. systemd logs "Unit process <pid> (<name>) remains
+// running after unit stopped." when the run ends and "Found left-over
+// process <pid> (<name>) in control group while starting unit. Ignoring."
+// when the next one starts. The task services get the programs' log rate
+// limit and no core files (docs/SITE-SANDBOX.md section 1).
+//
+// RestrictAddressFamilies= with User= implies NoNewPrivileges=yes
+// (systemd.exec(5)): a set-user-id or set-group-id program (crontab, sudo,
+// ping with file capabilities, dotlockfile) gains no rights inside a task.
+// There is no PAM session (no PAMName=): /etc/security/limits.conf does not
+// apply; the site's slice limits do. Both are listed for the people who
+// read the screen (section 9.2).
 func ServiceText(u Unit) (string, error) {
 	if err := u.validate(); err != nil {
 		return "", err
@@ -153,6 +171,7 @@ func ServiceText(u Unit) (string, error) {
 	b.WriteString("Description=CelikPanel task " + strconv.Itoa(u.N) + " of " + u.Domain + "\n")
 	b.WriteString("\n[Service]\n")
 	b.WriteString("Type=oneshot\n")
+	b.WriteString("KillMode=process\n")
 	b.WriteString("User=" + u.Account + "\n")
 	b.WriteString("Group=" + u.Group + "\n")
 	b.WriteString("Slice=" + sitesandbox.SliceName(u.SiteID) + "\n")
@@ -175,6 +194,9 @@ func ServiceText(u Unit) (string, error) {
 		b.WriteString("ExecStopPost=-+" + sitesandbox.HelperCommand(sitesandbox.EgressRemoveArgs(unit)) + "\n")
 	}
 	b.WriteString("RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK\n")
+	b.WriteString("LogRateLimitIntervalSec=30s\n")
+	b.WriteString("LogRateLimitBurst=1000\n")
+	b.WriteString("LimitCORE=0\n")
 	if u.BPF {
 		b.WriteString("IPAddressDeny=" + strings.Join(sitesandbox.DeniedAddresses, " ") + "\n")
 	}

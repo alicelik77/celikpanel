@@ -9,14 +9,21 @@ import (
 
 // The SMTP egress block. A program in the sandbox may not open a mail
 // connection (ports 25, 465, 587) to any address, with one exception (S4
-// R2b, 22 Nov 2026): submission to this server's own mail service on
-// loopback (127.0.0.0/8 and ::1, ports 465 and 587), which needs a mailbox's
-// password (CelikPanel's submission services take only SASL-authenticated
-// clients: smtpd_client_restrictions=permit_sasl_authenticated,reject,
-// mail_submission_rpc.go) and is the supported way for a site to send mail.
-// Port 25 stays refused on every address, loopback included (Postfix
-// relayed from 127.0.0.1 without a password before alpha.125's
-// permit_mynetworks change), and so do 465 and 587 to any other address.
+// R2b, 22 Nov 2026; narrowed in its fix round): submission to this server's
+// own mail service on ports 465 and 587, at any of this server's own
+// addresses (traffic to a local address leaves through the loopback
+// interface, so `oifname "lo"` covers 127.0.0.1, ::1 and the server's public
+// addresses, and a task that connects to the server's host name reaches the
+// name its certificate carries). The Agent writes the exception ONLY while
+// the listeners on 465 and 587 are CelikPanel's own unchanged submission
+// entries that take nothing but SASL-authenticated clients
+// (smtpd_client_restrictions=permit_sasl_authenticated,reject,
+// mail_submission_rpc.go; cmd/agent/site_tasks_mail.go checks it); with an
+// owner's own entry or another program there, the file has no exception and
+// the screens say that sites cannot send mail through this server. Port 25
+// stays refused on every address, loopback included (Postfix relayed from
+// 127.0.0.1 without a password before alpha.125's permit_mynetworks
+// change), and so do 465 and 587 to any address that is not this server's.
 //
 // It is a separate nftables table (inet celikpanel_egress), never the
 // firewall's own inet celikpanel_fw: the firewall policy (V2) is input-only
@@ -51,41 +58,61 @@ const (
 // SMTPPorts are the mail ports the block refuses.
 var SMTPPorts = []int{25, 465, 587}
 
-// SubmissionPorts are the mail ports a member may still reach on loopback:
-// this server's own submission services, which take only clients that log
-// in with a mailbox's password (S4 R2b).
+// SubmissionPorts are the mail ports a member may still reach at this
+// server's own addresses, when the exception is written: this server's own
+// submission services, which take only clients that log in with a mailbox's
+// password (S4 R2b).
 var SubmissionPorts = []int{465, 587}
 
-// EgressRuleset is the text of EgressFile (without CelikPanel's header).
-// Loading it again is harmless and atomic: the table, set, counter and
-// chains are declared (an existing one is kept with its elements and its
-// count), the two chains are flushed and their rules added in the same
-// transaction. Running units therefore stay in the set across every reload.
-func EgressRuleset() string {
+// EgressRuleset is the text of EgressFile without the submission exception
+// (without CelikPanel's header): every mail port refused for members.
+func EgressRuleset() string { return EgressRulesetWith(false) }
+
+// EgressRulesetWith is the text of EgressFile; submission adds the accept
+// rule for this server's own submission services (see above). Loading it
+// again is harmless and atomic: the table, set, counter and chains are
+// declared (an existing one is kept with its elements and its count), the
+// two chains are flushed and their rules added in the same transaction.
+// Running units therefore stay in the set across every reload, and the
+// exception comes or goes at once.
+func EgressRulesetWith(submission bool) string {
 	ports := make([]string, len(SMTPPorts))
 	for i, p := range SMTPPorts {
 		ports[i] = strconv.Itoa(p)
 	}
 	portSet := "{ " + strings.Join(ports, ", ") + " }"
-	submission := make([]string, len(SubmissionPorts))
+	subPorts := make([]string, len(SubmissionPorts))
 	for i, p := range SubmissionPorts {
-		submission[i] = strconv.Itoa(p)
+		subPorts[i] = strconv.Itoa(p)
 	}
-	submissionSet := "{ " + strings.Join(submission, ", ") + " }"
+	submissionSet := "{ " + strings.Join(subPorts, ", ") + " }"
+	mailSentence := `# They cannot connect to port 25, 465 or 587 on any address, 127.0.0.1 included.
+# (Sites cannot send mail through this server: CelikPanel opens 465 and 587 to them only
+# while those ports are its own submission services that take a mailbox's password.)`
+	mailSentenceTR := `# CelikPanel site korumasi: korumadaki programlar 25, 465 ve 587 numarali portlara
+# hicbir adrese (127.0.0.1 dahil) baglanamaz.`
+	acceptRule := ""
+	if submission {
+		mailSentence = `# They cannot connect to port 25 on any address, 127.0.0.1 included, nor to ports 465
+# and 587 anywhere but this server's own addresses (its own submission services, which
+# take only a mailbox's name and password; traffic to a local address leaves through "lo").`
+		mailSentenceTR = `# CelikPanel site korumasi: korumadaki programlar 25 numarali porta hicbir adrese
+# (127.0.0.1 dahil) baglanamaz; 465 ve 587'ye yalniz bu sunucunun kendi adreslerindeki
+# posta hizmetine (posta kutusu parolasiyla) baglanabilir.`
+		acceptRule = "\t\toifname \"lo\" tcp dport " + submissionSet + " accept\n"
+	}
 	return `# CelikPanel site sandbox: SMTP egress block (docs/SITE-SANDBOX.md).
 # Members of @smtp_blocked are the cgroups of sandboxed programs (celiksvc-*,
 # celiksvcinst-*, celikrt-*, celikrtbuild-*, celikapp-*, celikappinst-*, celikgit-*) and of
-# sites' scheduled tasks (celikcron-*). They cannot connect to port 25 on any address,
-# 127.0.0.1 included, nor to ports 465 and 587 anywhere but this server's own mail
-# service on loopback (submission with a mailbox's password), and nothing outside
-# reaches a port they opened on another address than loopback. Each unit adds its own cgroup
-# before it starts and removes it after it stops; celikpanel-egress-guard.timer
-# loads this file again and re-adds running units every 30 seconds.
+# sites' scheduled tasks (celikcron-*).
+` + mailSentence + `
+# Nothing outside reaches a port they opened on another address than loopback. Each unit
+# adds its own cgroup before it starts and removes it after it stops (a task's cgroup stays
+# while processes it left run in it); celikpanel-egress-guard.timer loads this file again
+# and re-adds running units every 30 seconds.
 # It works without CelikPanel. Removing it: nft delete table inet celikpanel_egress
 #
-# CelikPanel site korumasi: korumadaki programlar 25 numarali porta hicbir adrese
-# (127.0.0.1 dahil) baglanamaz; 465 ve 587'ye yalniz bu sunucunun kendi posta
-# hizmetine (127.0.0.1, posta kutusu parolasiyla) baglanabilir.
+` + mailSentenceTR + `
 table inet ` + EgressTable + ` {
 	set ` + EgressSet + ` {
 		typeof socket cgroupv2 level 2
@@ -103,9 +130,7 @@ flush chain inet ` + EgressTable + ` output
 flush chain inet ` + EgressTable + ` input
 table inet ` + EgressTable + ` {
 	chain output {
-		ip daddr 127.0.0.0/8 tcp dport ` + submissionSet + ` accept
-		ip6 daddr ::1 tcp dport ` + submissionSet + ` accept
-		meta l4proto tcp tcp dport ` + portSet + ` socket cgroupv2 level 2 @` + EgressSet + ` counter name "` + EgressCounter + `" reject with tcp reset
+` + acceptRule + `		meta l4proto tcp tcp dport ` + portSet + ` socket cgroupv2 level 2 @` + EgressSet + ` counter name "` + EgressCounter + `" reject with tcp reset
 	}
 	chain input {
 		iifname != "lo" tcp flags & (fin | syn | rst | ack) == syn socket cgroupv2 level 2 @` + EgressSet + ` drop
@@ -165,6 +190,29 @@ for unit in $(systemctl list-units --type=service --state=active,activating,relo
 		continue
 	fi
 	"$nft" add element inet ` + EgressTable + ` ` + EgressSet + ` "{ \"${cgroup#/}\" }" || { echo "celikpanel-egress: $unit could not be added"; status=1; }
+done
+# A site's task whose run ended can leave processes running in its cgroup
+# (KillMode=process, as under cron); the unit is inactive then, so the loop
+# above does not see it. Every task cgroup in a site's slice that still holds
+# a process is added too.
+for dir in /sys/fs/cgroup/celiksite_*.slice/celikcron-*-*.service; do
+	[ -d "$dir" ] || continue
+	read -r first 2>/dev/null < "$dir/cgroup.procs" || continue
+	[ -n "$first" ] || continue
+	unit=${dir##*/}
+	slice=${dir%/*}
+	slice=${slice##*/}
+	site=${slice#celiksite_}
+	site=${site%.slice}
+	case "$site" in
+		''|0*|*[!0-9]*) continue ;;
+	esac
+	case "$unit" in
+		celikcron-"$site"-[0-9]*.service) ;;
+		*) continue ;;
+	esac
+	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue
+	"$nft" add element inet ` + EgressTable + ` ` + EgressSet + ` "{ \"$slice/$unit\" }" || { echo "celikpanel-egress: the processes $unit left could not be added"; status=1; }
 done
 exit $status
 `

@@ -54,11 +54,23 @@ func useSandboxHost(t *testing.T, nftOK bool) *fakeSandboxRunner {
 	t.Helper()
 	runner := &fakeSandboxRunner{nftOK: nftOK}
 	oldRunner, oldDir, oldUnitDir, oldLedger, oldReload := sandboxRunner, sandboxEgressDir, sandboxUnitDir, sandboxLedgerPath, sandboxReloadEgress
+	oldSubmission, oldSubmissionRecord, oldClosed, oldHeld, oldRendered := siteSubmissionStateNow, siteSubmissionRecordPath, siteCronClosedPath, siteTimersHeldPath, siteTaskRenderedDir
 	t.Cleanup(func() {
 		sandboxRunner, sandboxEgressDir, sandboxUnitDir, sandboxLedgerPath, sandboxReloadEgress = oldRunner, oldDir, oldUnitDir, oldLedger, oldReload
+		siteSubmissionStateNow, siteSubmissionRecordPath, siteCronClosedPath, siteTimersHeldPath, siteTaskRenderedDir = oldSubmission, oldSubmissionRecord, oldClosed, oldHeld, oldRendered
 		resetSandboxCapsCache()
 	})
 	sandboxReloadEgress = func() error { return nil }
+	// S4 R2b fix round: no real Postfix is asked; the Agent's private records
+	// live in a temporary folder.
+	siteSubmissionStateNow = func() (string, string) {
+		return transport.MailSubmissionAbsent, "no submission service is set up on this server"
+	}
+	private := t.TempDir()
+	siteSubmissionRecordPath = filepath.Join(private, "mail-submission.json")
+	siteCronClosedPath = filepath.Join(private, "site-cron-closed.json")
+	siteTimersHeldPath = filepath.Join(private, "site-timers-held.json")
+	siteTaskRenderedDir = filepath.Join(private, "site-task-rendered")
 	units := t.TempDir()
 	sandboxRunner = runner
 	sandboxEgressDir = filepath.Join(t.TempDir(), "celikpanel-sandbox")

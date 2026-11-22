@@ -18,6 +18,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitecron"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -70,6 +71,18 @@ type cronStore struct {
 	read    func() (string, error)
 	write   func(before, after string, authored []string) error
 	crontab bool
+	// resolve (fix round) decides the store under cronMu: a change queued
+	// behind a move then writes where the site's tasks are after it, never
+	// a crontab for a moved account.
+	resolve func() (cronStore, error)
+}
+
+// resolved is the store to use; the caller holds cronMu.
+func (s cronStore) resolved() (cronStore, error) {
+	if s.resolve == nil {
+		return s, nil
+	}
+	return s.resolve()
 }
 
 func crontabStore(username string) cronStore {
@@ -96,19 +109,36 @@ func movedSiteTaskTarget(tenant transport.CronTenant, username string) (siteTask
 }
 
 // cronStoreFor is the tenant's store: a moved site's task file, or the
-// account's crontab (cron must then be installed).
+// account's crontab (cron must then be installed). It is decided under
+// cronMu, when the change runs (resolve).
 func cronStoreFor(tenant transport.CronTenant, username string) (cronStore, error) {
-	target, moved, err := movedSiteTaskTarget(tenant, username)
-	if err != nil {
+	decide := func() (cronStore, error) {
+		target, moved, err := movedSiteTaskTarget(tenant, username)
+		if err != nil {
+			return cronStore{}, err
+		}
+		if moved {
+			return siteTaskStore(target), nil
+		}
+		if err := requireCronInstalled(); err != nil {
+			return cronStore{}, err
+		}
+		return crontabStore(username), nil
+	}
+	if _, err := decide(); err != nil {
 		return cronStore{}, err
 	}
-	if moved {
-		return siteTaskStore(target), nil
+	return cronStore{resolve: decide}, nil
+}
+
+// cronCommandFits: cron runs the command (fix round: cron 3.0pl1 refuses a
+// command of MAX_COMMAND-1 bytes or more; a task is saved only as cron
+// would run it).
+func cronCommandFits(command string) error {
+	if !sitecron.CommandFits(strings.TrimLeft(command, " \t")) {
+		return errors.New(transport.CronCommandTooLong)
 	}
-	if err := requireCronInstalled(); err != nil {
-		return cronStore{}, err
-	}
-	return crontabStore(username), nil
+	return nil
 }
 
 // listCronJobsFor reads the proven user's crontab into resp.
@@ -238,9 +268,16 @@ func addCronJobIn(store cronStore, username string, req *AddCronJobRequest) erro
 	if !isValidCronSchedule(req.Schedule) {
 		return fmt.Errorf("invalid cron schedule: %s", req.Schedule)
 	}
+	if err := cronCommandFits(req.Command); err != nil {
+		return err
+	}
 
 	cronMu.Lock()
 	defer cronMu.Unlock()
+	store, err := store.resolved()
+	if err != nil {
+		return err
+	}
 
 	// The pre-image: never append to a crontab that was not read.
 	// Ön görüntü: okunmamış bir crontab'a asla ekleme yapılmaz.
@@ -254,7 +291,7 @@ func addCronJobIn(store cronStore, username string, req *AddCronJobRequest) erro
 	// not tell them apart.
 	// Aynı zamanlama ve komut ikinci kez eklenmez: komutu iki kez çalıştırır ve
 	// iki satır tek kimliği paylaşır.
-	wanted := strings.Join(strings.Fields(req.Schedule+" "+req.Command), " ")
+	wanted := strings.Join(sitecron.SplitFields(req.Schedule+" "+req.Command), " ")
 	for _, job := range parseCrontab(existing) {
 		if job.Schedule+" "+job.Command == wanted {
 			return errors.New(transport.CronJobDuplicate)
@@ -319,9 +356,16 @@ func updateCronJobIn(store cronStore, username string, req *UpdateCronJobRequest
 	if !isValidCronSchedule(req.Schedule) {
 		return fmt.Errorf("invalid cron schedule: %s", req.Schedule)
 	}
+	if err := cronCommandFits(req.Command); err != nil {
+		return err
+	}
 
 	cronMu.Lock()
 	defer cronMu.Unlock()
+	store, err := store.resolved()
+	if err != nil {
+		return err
+	}
 
 	existing, err := readForChange(store, req.Version)
 	if err != nil {
@@ -397,6 +441,10 @@ func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
 func deleteCronJobIn(store cronStore, username string, req *DeleteCronJobRequest) error {
 	cronMu.Lock()
 	defer cronMu.Unlock()
+	store, err := store.resolved()
+	if err != nil {
+		return err
+	}
 
 	existing, err := readForChange(store, req.Version)
 	if err != nil {
@@ -581,8 +629,9 @@ func parseCrontab(content string) []CronJob {
 
 func parseCronLine(line string) []string {
 	// Cron format: min hour dom month dow command
-	// Need to extract first 5 fields and the rest is command
-	fields := strings.Fields(line)
+	// Need to extract first 5 fields and the rest is command. Fields are
+	// split at ASCII spaces and tabs only, as cron splits them.
+	fields := sitecron.SplitFields(line)
 	if len(fields) < 6 {
 		return nil
 	}
@@ -702,7 +751,13 @@ func rejectCrontabInjection(fields map[string]string) error {
 }
 
 func isValidCronSchedule(schedule string) bool {
-	fields := strings.Fields(schedule)
+	// Only ASCII spaces and tabs separate fields, as in cron (fix round): a
+	// no-break space or another Unicode blank is part of a field, so the
+	// field is refused here exactly as crontab would refuse the line.
+	if strings.ContainsAny(schedule, "\r\n\x00") {
+		return false
+	}
+	fields := sitecron.SplitFields(schedule)
 	if len(fields) != 5 {
 		return false
 	}

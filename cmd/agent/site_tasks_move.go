@@ -21,57 +21,82 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// Moving a site's crontab into timers, and back (S4 R2b, 22 Nov 2026;
-// docs/SITE-SANDBOX.md section 9.3). Part of the administrator's "Move into
-// the limits" on the site's Overview; it holds the same locks as the
-// programs' move (one move at a time, the site's lock without waiting) and
-// cronMu, the lock of every change of a site's tasks.
+// Moving a site's crontab into timers, and back (S4 R2b, 22 Nov 2026, with
+// its fix round; docs/SITE-SANDBOX.md section 9.3). Part of the
+// administrator's "Move into the limits" on the site's Overview; it holds
+// the same locks as the programs' move (one move at a time, the site's lock
+// without waiting) and cronMu, the lock of every change of a site's tasks.
 //
 // Nothing is half-moved: a line that cannot become a timer, or one not made
 // in CelikPanel that the administrator has not kept, keeps the WHOLE crontab
-// in cron and is named. Otherwise, in this order, each step recorded in the
-// move journal (site-slice-move.json, the programs' move journal, version 2
-// with a "tasks" part) before the next one starts:
+// in cron and is named. A move after which the account could still install
+// its own jobs (the server owner's cron.allow lets it in, CelikPanel's file
+// was deleted by the owner, accounts from a directory service) is refused
+// before anything changes, with who acts. Otherwise, in this order, each
+// step recorded in the move journal (site-slice-move.json, version 2 with a
+// "tasks" part) before the next one starts:
 //
-//	planned          the crontab's exact bytes are recorded; nothing written yet
+//	planned          the crontab's exact bytes (as `crontab -l` printed them) are recorded
 //	source_written   /etc/celikpanel-cron/<id>.crontab holds the crontab
-//	units_written    every timer and service is written and checked by systemd, none started
-//	crontab_emptied  `crontab -u <account> -r`
+//	units_written    every timer and service written and checked by systemd, none started
+//	cron_closed      /etc/cron.allow leaves the account out (checked), and every crontab
+//	                 process of the account's uid started before that is ended
+//	crontab_emptied  the spool file, checked to hold the recorded crontab, is removed
+//	                 directly (crontab -u is refused by then) and checked gone
 //	enabled          the timers are enabled and started (an @reboot one only enabled)
 //
-// No minute runs twice and none is lost: the timers start only after cron
-// has no line any more. At the Agent's start an interrupted move is resolved
-// by its step:
+// There is no moment in which the site's own code can put a crontab back:
+// the account is out of cron.allow before the crontab goes. No minute runs
+// twice and none is lost: the timers start only after cron has no line any
+// more. At the Agent's start an interrupted move is resolved by its step:
 //
-//	planned                         nothing to do ("not_tried")
-//	source_written, units_written   put back: the crontab as recorded (written again only if it is
-//	                                gone), every timer and file of the move removed ("put_back")
-//	crontab_emptied                 finished: the timers are enabled ("moved"); if that fails, put back
-//	enabled                         finished ("moved")
+//	planned                                   nothing to do ("not_tried")
+//	source_written, units_written, cron_closed put back (below)
+//	crontab_emptied                           finished: the timers are enabled ("moved"); if
+//	                                          that fails, put back
+//	enabled                                   finished ("moved")
+//
+// Putting back disables the move's timers, lets the account use cron again
+// and writes the recorded crontab back when it is gone, checks it, and only
+// then removes the timers, the files and the journal. A crontab that could
+// not be written back keeps the journal, the task file and the units
+// (switched on again where they can be), so nothing is lost and the next
+// start tries again.
 //
 // The undo (the administrator's "Put the tasks back into cron") is refused
-// before anything changes when the server owner's own /etc/cron.allow (or
-// cron.deny) leaves the account out, or when the task file was changed by
-// hand. Otherwise CelikPanel's cron.allow lets the account use cron again
-// first, then the crontab is written (byte for byte the crontab moved, when
-// the tasks did not change since), then the timers and files go. Its steps:
+// before anything changes when cron's access files would keep the account
+// out, when the task file was changed by hand, or when the account has a
+// crontab again. It is journaled the same way; the crontab and the timers
+// are never both on and never both gone:
 //
-//	undo_planned      nothing changed yet ("not_tried")
-//	crontab_written   the crontab is back; at the start the timers and files are removed ("undone")
+//	undo_planned     the crontab to write (the task file's bytes) and the timers that are on
+//	timers_disabled  those timers are disabled (a running task is not stopped)
+//	cron_opened      CelikPanel's cron.allow lets the account in again
+//	crontab_written  the crontab is written and checked (`crontab -l` gives the bytes back)
+//	(then the timers and files are removed and the journal goes)
+//
+// At the Agent's start: undo_planned and timers_disabled switch the timers
+// on again and close cron again ("not_tried"); cron_opened finishes when the
+// spool holds the journal's crontab ("undone"), otherwise it rolls back;
+// crontab_written finishes ("undone").
 //
 // Moving tasks restarts nothing and stops no running task.
 //
-// Bir sitenin crontab'ı zamanlayıcılara yarım taşınmaz; her adım günlüğe
-// yazılır ve Ajan açılışta adımına göre tamamlar ya da geri koyar.
+// Bir sitenin crontab'ı zamanlayıcılara yarım taşınmaz; hesap crontab'ı
+// silinmeden önce cron.allow'dan çıkarılır; her adım günlüğe yazılır ve Ajan
+// açılışta adımına göre tamamlar ya da geri koyar.
 
 // Steps of the tasks part of the move journal.
 const (
 	siteTasksStepPlanned        = "planned"
 	siteTasksStepSourceWritten  = "source_written"
 	siteTasksStepUnitsWritten   = "units_written"
+	siteTasksStepCronClosed     = "cron_closed"
 	siteTasksStepCrontabEmptied = "crontab_emptied"
 	siteTasksStepEnabled        = "enabled"
 	siteTasksStepUndoPlanned    = "undo_planned"
+	siteTasksStepTimersDisabled = "timers_disabled"
+	siteTasksStepCronOpened     = "cron_opened"
 	siteTasksStepCrontabWritten = "crontab_written"
 )
 
@@ -79,19 +104,21 @@ const (
 type siteTasksJournal struct {
 	Undo    bool   `json:"undo,omitempty"`
 	Account string `json:"account"`
+	UID     int    `json:"uid,omitempty"`
 	// Crontab is the account's crontab as `crontab -l` printed it before the
 	// move (or, for the undo, the crontab being written).
 	Crontab string `json:"crontab"`
 	Step    string `json:"step"`
-	// Timers to enable after the crontab is empty; AtBoot ones are only
-	// enabled.
+	// Timers to enable after the crontab is empty (the undo: the timers that
+	// were on); AtBoot ones are only enabled.
 	Timers []string        `json:"timers,omitempty"`
 	AtBoot map[string]bool `json:"at_boot,omitempty"`
 }
 
 // Seams for tests.
 var (
-	// cronRemoveCrontab is `crontab -u <account> -r` ("no crontab" is fine).
+	// cronRemoveCrontab is `crontab -u <account> -r` ("no crontab" is fine);
+	// used by a site's deletion (the move removes the spool file itself).
 	cronRemoveCrontab = func(username string) error {
 		cmd := exec.Command("crontab", "-u", username, "-r")
 		cmd.Env = append(os.Environ(), "LC_ALL=C", "LANGUAGE=C")
@@ -102,10 +129,11 @@ var (
 		}
 		return nil
 	}
-	// siteTasksMoveKilled simulates the Agent stopping right after a step
-	// (tests only): when it answers true the move returns at once and leaves
-	// the journal.
-	siteTasksMoveKilled = func(step string) bool { return false }
+	// siteTasksMoveKilled simulates the Agent stopping (tests only): it is
+	// asked with "act:<step>" right after a step's action and before its
+	// record, and with "<step>" right after the record; when it answers true
+	// the move returns at once and leaves the journal.
+	siteTasksMoveKilled = func(point string) bool { return false }
 )
 
 var siteTasksOutcomesPath = filepath.Join(hostingpath.ServiceMutationStateRoot(), "sandbox", "site-tasks-move-outcomes.json")
@@ -150,9 +178,15 @@ func forgetSiteTasksUndo(siteID int) { setSiteTasksOutcome(siteID, "") }
 // what the move changes for it).
 var mailCommand = regexp.MustCompile(`(?i)(sendmail|\bmailx?\b|\bmutt\b|\bswaks\b|smtp|:(25|465|587)\b)`)
 
+// privilegedCommand: a task line that calls a common set-user-id or
+// set-group-id helper (or one with file capabilities). Inside a task it runs
+// without those rights (NoNewPrivileges, implied by the unit's
+// RestrictAddressFamilies= with User=) and may fail; the preview names it.
+var privilegedCommand = regexp.MustCompile(`(^|[\s;&|()/` + "`" + `])(sudo|su|crontab|at|batch|ping6?|traceroute6?|dotlockfile|lockfile|mail-lock|wall|write|newgrp|sg|passwd|chsh|chfn|mount|umount|fusermount3?|pkexec|ssh-agent|unix_chkpwd)($|[\s;&|()])`)
+
 // planSiteTasksMove says what the crontab becomes (read-only).
 func planSiteTasksMove(username string, siteID int, crontab string) transport.SiteTasksMoveResponse {
-	resp := transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksPreview}
+	resp := transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksPreview, MailSubmission: recordedMailSubmission()}
 	c := sitecron.Parse(crontab)
 	classes := cronClassifyLines(username, crontab)
 	next := 0
@@ -179,7 +213,7 @@ func planSiteTasksMove(username string, siteID int, crontab string) transport.Si
 		case e.Kind == sitecron.KindJob:
 			n++
 			resp.Rows = append(resp.Rows, transport.SiteTaskMoveRow{Line: e.Line, Text: e.Raw, Unit: sitecron.UnitBase(siteID, n),
-				Calendars: e.Spec.Calendars, AtBoot: e.Spec.Reboot})
+				Calendars: e.Spec.Calendars, AtBoot: e.Spec.Reboot, Privileged: privilegedCommand.MatchString(e.Command)})
 			if mailCommand.MatchString(e.Command) {
 				resp.Mail = true
 			}
@@ -244,6 +278,13 @@ func (a *Agent) MoveSiteTasksV1(req *transport.SiteTasksMoveRequest, resp *trans
 			return nil
 		}
 		*resp = planSiteTasksMove(username, target.SiteID, crontab)
+		// A move that would be refused before anything changes says so in
+		// the preview too (Move all lists it as staying, with why).
+		if resp.Outcome == transport.SiteTasksPreview {
+			if why := cronMoveRefusal(username); why != "" {
+				resp.Outcome, resp.Refusal, resp.Error = transport.SiteTasksRefused, transport.SiteTasksRefusalCronAllow, why
+			}
+		}
 		return nil
 	}
 	if !siteMoveRunning.TryLock() {
@@ -271,6 +312,14 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	if siteTasksMoved(target.SiteID) {
 		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksAlready}
 	}
+	refused := func(code, text string) transport.SiteTasksMoveResponse {
+		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: code, Error: text}
+	}
+	// Before anything changes: cron's access files must keep the account out
+	// once the move is done.
+	if why := cronMoveRefusal(username); why != "" {
+		return refused(transport.SiteTasksRefusalCronAllow, why)
+	}
 	crontab, err := readCrontab(username)
 	if err != nil {
 		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksNoCron, Error: err.Error()}
@@ -280,8 +329,16 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 		resp.Outcome = transport.SiteTasksStayed
 		return resp
 	}
+	// No task runs without the site's limits: their file first.
+	if len(sitecron.Parse(crontab).Jobs()) > 0 {
+		if err := requireTaskSlice(target); err != nil {
+			out := refused(transport.SiteTasksRefusalLimits, strings.TrimPrefix(err.Error(), transport.SiteTasksLimitsMissing+": ")+"; nothing was moved")
+			out.Rows = resp.Rows
+			return out
+		}
+	}
 	journal := &siteMoveJournal{Version: 2, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339),
-		Tasks: &siteTasksJournal{Account: username, Crontab: crontab, Step: siteTasksStepPlanned}}
+		Tasks: &siteTasksJournal{Account: username, UID: target.UID, Crontab: crontab, Step: siteTasksStepPlanned}}
 	if err := journal.save(); err != nil {
 		resp.Outcome, resp.Error = transport.SiteTasksRefused, "the move's record could not be written in the Agent's folder ("+err.Error()+"); nothing was moved"
 		return resp
@@ -295,11 +352,17 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 		out.Error = fmt.Sprintf("the tasks could not be moved (%s): %v; the crontab is as it was and no timer was left", step, cause)
 		if backErr := putBackSiteTasks(target.SiteID, journal.Tasks); backErr != nil {
 			out.Outcome = transport.SiteTasksUnknown
-			out.Error = fmt.Sprintf("the tasks could not be moved (%s): %v; putting them back did not complete (%v): read the site's tasks before you try again", step, cause, backErr)
+			out.Error = fmt.Sprintf("the tasks could not be moved (%s): %v; putting them back did not complete (%v). Nothing is lost: the record, the task file and the timers are kept, and the Agent's next start tries again; read the site's tasks before you try again", step, cause, backErr)
+			setSiteTasksOutcome(target.SiteID, transport.SiteTasksUnknown)
+			return out
 		}
 		_ = os.Remove(siteMoveJournalPath)
 		return out
 	}
+	// killed answers the test seam at a point; a killed move leaves its journal.
+	killed := func(point string) bool { return siteTasksMoveKilled(point) }
+	unknown := transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
+
 	result, err := writeSiteTaskSource(target, crontab, transport.SiteFileTriggerCreate)
 	if err == nil && result.Outcome != transport.SiteFileOutcomeWritten && result.Outcome != transport.SiteFileOutcomeRecreated {
 		err = fmt.Errorf("%s was not written (%s %s)", sitecron.SourcePath(target.SiteID), result.Outcome, result.Reason)
@@ -307,11 +370,14 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	if err != nil {
 		return fail("task file", err)
 	}
+	if killed("act:" + siteTasksStepSourceWritten) {
+		return unknown
+	}
 	if stepErr := journal.tasksStep(siteTasksStepSourceWritten); stepErr != nil {
 		return fail("record", stepErr)
 	}
-	if siteTasksMoveKilled(siteTasksStepSourceWritten) {
-		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
+	if killed(siteTasksStepSourceWritten) {
+		return unknown
 	}
 	applied, err := applySiteTimersHeld(target, crontab)
 	if err != nil {
@@ -327,44 +393,91 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 			journal.Tasks.AtBoot[task.Unit+".timer"] = true
 		}
 	}
+	if killed("act:" + siteTasksStepUnitsWritten) {
+		return unknown
+	}
 	if stepErr := journal.tasksStep(siteTasksStepUnitsWritten); stepErr != nil {
 		return fail("record", stepErr)
 	}
-	if siteTasksMoveKilled(siteTasksStepUnitsWritten) {
-		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
+	if killed(siteTasksStepUnitsWritten) {
+		return unknown
+	}
+	// The account leaves cron first: from here on neither the site's code nor
+	// anyone through `crontab` can give it a crontab (Stage 1 F1).
+	refreshCronAllow()
+	if !cronRefusesAccount(username) {
+		return fail("cron.allow", fmt.Errorf("%s does not keep %s out", cronAllowPath, username))
+	}
+	if n, err := siteTaskEndCrontabs(target.UID); err != nil {
+		log.Printf("site tasks: the crontab processes of %s could not be listed: %v", username, err)
+	} else if n > 0 {
+		log.Printf("site tasks: %d crontab process(es) of %s started before cron.allow closed were ended", n, username)
+	}
+	if killed("act:" + siteTasksStepCronClosed) {
+		return unknown
+	}
+	if stepErr := journal.tasksStep(siteTasksStepCronClosed); stepErr != nil {
+		return fail("record", stepErr)
+	}
+	if killed(siteTasksStepCronClosed) {
+		return unknown
 	}
 	// The crontab must still be the one moved: a change meanwhile (the site's
-	// own code, the owner) is not lost.
-	if now, err := readCrontab(username); err != nil || now != crontab {
-		if err == nil {
-			err = errors.New("the crontab changed while it was being moved")
-		}
-		out := fail("crontab", err)
+	// own code before cron closed, the owner) is never lost. Then its spool
+	// file goes (root may; `crontab -u` is refused by now) and is checked gone.
+	files, err := accountSpoolFiles(username)
+	if err != nil {
+		return fail("crontab", err)
+	}
+	switch {
+	case crontab == "" && len(files) == 0:
+	case crontab != "" && len(files) == 1 && spoolHolds(files[0], crontab):
+	default:
+		out := fail("crontab", errors.New("the crontab changed while it was being moved"))
 		out.Refusal = transport.SiteTasksRefusalCrontab
 		return out
 	}
-	if err := cronRemoveCrontab(username); err != nil {
+	for _, f := range files {
+		if err := os.Remove(f.Path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fail("crontab", err)
+		}
+	}
+	if left, err := accountSpoolFiles(username); err != nil || len(left) > 0 {
+		if err == nil {
+			err = errors.New("a crontab is still there")
+		}
 		return fail("crontab", err)
+	}
+	if killed("act:" + siteTasksStepCrontabEmptied) {
+		return unknown
 	}
 	if stepErr := journal.tasksStep(siteTasksStepCrontabEmptied); stepErr != nil {
 		log.Printf("site tasks: the move's record: %v", stepErr)
 	}
-	if siteTasksMoveKilled(siteTasksStepCrontabEmptied) {
-		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
+	if killed(siteTasksStepCrontabEmptied) {
+		return unknown
 	}
-	if err := enableSiteTaskTimers(journal.Tasks); err != nil {
+	noteCronClosed(username, time.Now())
+	if err := enableSiteTaskTimers(target.SiteID, journal.Tasks); err != nil {
 		return fail("enable", err)
+	}
+	if killed("act:" + siteTasksStepEnabled) {
+		return unknown
 	}
 	if stepErr := journal.tasksStep(siteTasksStepEnabled); stepErr != nil {
 		log.Printf("site tasks: the move's record: %v", stepErr)
 	}
-	if siteTasksMoveKilled(siteTasksStepEnabled) {
-		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
+	if killed(siteTasksStepEnabled) {
+		return unknown
 	}
 	_ = os.Remove(siteMoveJournalPath)
 	setSiteTasksOutcome(target.SiteID, "")
-	refreshCronAllow()
 	resp.Outcome = transport.SiteTasksMoved
+	// Never "moved" while a crontab exists for the account.
+	if back, _ := accountSpoolFiles(username); len(back) > 0 {
+		resp.Outcome = transport.SiteTasksCrontabBack
+		resp.Error = "the tasks run inside the limits now, but a crontab exists again for " + username + " (" + back[0].Path + ") and runs outside them; it was never removed by the move, so the server owner removes it or moves its lines into Scheduled tasks"
+	}
 	return resp
 }
 
@@ -385,8 +498,18 @@ func applySiteTimersHeld(t siteTaskTarget, crontab string) (siteTimersResult, er
 // enable them (set only by the move under cronMu).
 var siteTimersHoldEnable bool
 
-// enableSiteTaskTimers enables (and starts) the move's timers.
-func enableSiteTaskTimers(j *siteTasksJournal) error {
+// enableSiteTaskTimers enables (and starts) the journal's timers, only while
+// the site's limits file is in place and loaded.
+func enableSiteTaskTimers(siteID int, j *siteTasksJournal) error {
+	if len(j.Timers) > 0 {
+		path, err := siteSlicePathOf(siteID)
+		if err != nil {
+			return err
+		}
+		if info, err := os.Lstat(path); err != nil || !info.Mode().IsRegular() || !siteSliceLoaded(siteID, path) {
+			return fmt.Errorf("%s: %s is not in place", transport.SiteTasksLimitsMissing, path)
+		}
+	}
 	for _, timer := range j.Timers {
 		args := []string{"enable", "--now", timer}
 		if j.AtBoot[timer] {
@@ -399,26 +522,14 @@ func enableSiteTaskTimers(j *siteTasksJournal) error {
 	return nil
 }
 
-// putBackSiteTasks undoes an unfinished move: the crontab as recorded
-// (written again only when it is gone: a crontab that differs was changed by
-// someone else and is left), then every timer and file of the site's tasks.
-func putBackSiteTasks(siteID int, j *siteTasksJournal) error {
+// disableSiteTaskTimers disables and stops the journal's timers (a running
+// task is not stopped: only its timer).
+func disableSiteTaskTimers(j *siteTasksJournal) error {
 	var failures []string
-	if j.Crontab != "" {
-		now, err := readCrontab(j.Account)
-		switch {
-		case err != nil:
-			failures = append(failures, "the crontab could not be read: "+err.Error())
-		case now == "":
-			if err := cronInstallCrontab(j.Account, j.Crontab); err != nil {
-				failures = append(failures, "the crontab could not be written back: "+err.Error())
-			}
-		case now != j.Crontab:
-			log.Printf("site tasks: the crontab of %s changed during the move; it is left as it is", j.Account)
+	for _, timer := range j.Timers {
+		if out, err := siteTaskSystemctl("disable", "--now", timer); err != nil {
+			failures = append(failures, fmt.Sprintf("systemctl disable --now %s: %v: %s", timer, err, strings.TrimSpace(string(out))))
 		}
-	}
-	if _, err := removeSiteTasksLocked(siteID, false); err != nil {
-		failures = append(failures, err.Error())
 	}
 	if len(failures) > 0 {
 		return errors.New(strings.Join(failures, "; "))
@@ -426,49 +537,165 @@ func putBackSiteTasks(siteID int, j *siteTasksJournal) error {
 	return nil
 }
 
+// crontabBackFromJournal makes sure the journal's crontab is in place: left
+// as it is when the spool holds a crontab (the recorded one, or one changed
+// by someone else, which is never overwritten); written back and checked
+// when it is gone (cron.allow lets the account in first). back: a crontab is
+// in place now (or none was there to begin with).
+func crontabBackFromJournal(siteID int, j *siteTasksJournal) (bool, error) {
+	files, err := accountSpoolFiles(j.Account)
+	if err != nil {
+		return false, err
+	}
+	if len(files) > 0 {
+		if !spoolHolds(files[0], j.Crontab) {
+			log.Printf("site tasks: the crontab of %s changed during the move; it is left as it is", j.Account)
+		}
+		return true, nil
+	}
+	if j.Crontab == "" {
+		return true, nil
+	}
+	if _, _, _, _, err := siteTaskLookup(j.Account); err != nil {
+		// The account is gone (its site was deleted): there is nobody to give
+		// the crontab back to.
+		log.Printf("site tasks: %s no longer exists; its crontab is not written back", j.Account)
+		return true, nil
+	}
+	if err := allowCronFor(j.Account, siteID); err != nil {
+		return false, err
+	}
+	if err := setCrontab(j.Account, j.Crontab); err != nil {
+		return false, fmt.Errorf("the crontab could not be written back: %w", err)
+	}
+	now, err := readCrontab(j.Account)
+	if err != nil {
+		return false, fmt.Errorf("the crontab written back could not be read: %w", err)
+	}
+	if now != j.Crontab {
+		return false, errors.New("the crontab written back is not the recorded one")
+	}
+	return true, nil
+}
+
+// putBackSiteTasks undoes an unfinished move: the timers off, the crontab
+// back (written again only when it is gone) and checked, and only then
+// every timer and file of the site's tasks removed. A crontab that is not
+// confirmed back keeps the task file and the units (switched on again where
+// the site's limits allow, so the tasks keep running) and returns an error:
+// the caller keeps the journal.
+func putBackSiteTasks(siteID int, j *siteTasksJournal) error {
+	disableErr := disableSiteTaskTimers(j)
+	back, err := crontabBackFromJournal(siteID, j)
+	if !back {
+		reason := "the crontab is not back"
+		if err != nil {
+			reason = err.Error()
+		}
+		refreshCronAllow() // the task file stays: the account stays out
+		if enableErr := enableSiteTaskTimers(siteID, j); enableErr != nil {
+			reason += "; the timers could not be switched on again either (" + enableErr.Error() + ")"
+		}
+		return errors.New(reason)
+	}
+	var failures []string
+	if disableErr != nil {
+		failures = append(failures, disableErr.Error())
+	}
+	if _, err := removeSiteTasksLocked(siteID, false); err != nil {
+		failures = append(failures, err.Error())
+	}
+	refreshCronAllow()
+	if len(failures) > 0 {
+		// The crontab is back; a timer that could not be removed is disabled
+		// (or named here): no task runs twice.
+		return errors.New(strings.Join(failures, "; "))
+	}
+	return nil
+}
+
 // recoverSiteTasksJournal resolves an interrupted tasks move or undo at the
-// Agent's start (the table above).
-func recoverSiteTasksJournal(journal *siteMoveJournal) {
+// Agent's start (the tables above). It reports whether the journal can go:
+// false keeps it, so the next start tries again.
+func recoverSiteTasksJournal(journal *siteMoveJournal) bool {
 	j := journal.Tasks
 	cronMu.Lock()
 	defer cronMu.Unlock()
 	outcome := ""
-	switch {
-	case j.Undo && j.Step == siteTasksStepCrontabWritten:
-		if _, err := removeSiteTasksLocked(journal.SiteID, false); err != nil {
-			log.Printf("site tasks: the interrupted undo of site %d: %v", journal.SiteID, err)
-			outcome = transport.SiteTasksUnknown
-		} else {
-			outcome = transport.SiteTasksUndone
-		}
-		refreshCronAllow()
-	case j.Undo:
-		outcome = "not_tried"
-		refreshCronAllow()
-	case j.Step == siteTasksStepPlanned:
-		outcome = "not_tried"
-	case j.Step == siteTasksStepSourceWritten || j.Step == siteTasksStepUnitsWritten:
+	done := true
+	putBack := func() {
 		outcome = transport.SiteTasksPutBack
 		if err := putBackSiteTasks(journal.SiteID, j); err != nil {
 			log.Printf("site tasks: the interrupted move of site %d could not be put back: %v", journal.SiteID, err)
-			outcome = transport.SiteTasksUnknown
+			outcome, done = transport.SiteTasksUnknown, false
 		}
+	}
+	switch {
+	case j.Undo:
+		outcome, done = recoverSiteTasksUndo(journal.SiteID, j)
+	case j.Step == siteTasksStepPlanned:
+		// Stopped between writing the task file and recording it: what was
+		// written goes (the crontab was never touched).
+		outcome = "not_tried"
+		if siteTasksMoved(journal.SiteID) {
+			putBack()
+		}
+	case j.Step == siteTasksStepSourceWritten || j.Step == siteTasksStepUnitsWritten || j.Step == siteTasksStepCronClosed:
+		putBack()
 	case j.Step == siteTasksStepCrontabEmptied:
 		outcome = transport.SiteTasksMoved
-		if err := enableSiteTaskTimers(j); err != nil {
+		if err := enableSiteTaskTimers(journal.SiteID, j); err != nil {
 			log.Printf("site tasks: the interrupted move of site %d could not be finished (%v); it is put back", journal.SiteID, err)
-			outcome = transport.SiteTasksPutBack
-			if err := putBackSiteTasks(journal.SiteID, j); err != nil {
-				outcome = transport.SiteTasksUnknown
-			}
+			putBack()
+		} else {
+			noteCronClosed(j.Account, time.Now())
 		}
-		refreshCronAllow()
 	default: // enabled
 		outcome = transport.SiteTasksMoved
 		refreshCronAllow()
 	}
 	setSiteTasksOutcome(journal.SiteID, outcome)
 	log.Printf("site tasks: the interrupted tasks move of site %d was resolved at the Agent's start: %s", journal.SiteID, outcome)
+	return done
+}
+
+// recoverSiteTasksUndo resolves an interrupted undo: never the crontab and
+// the timers both on, never both gone.
+func recoverSiteTasksUndo(siteID int, j *siteTasksJournal) (string, bool) {
+	finish := func() (string, bool) {
+		if _, err := removeSiteTasksLocked(siteID, false); err != nil {
+			log.Printf("site tasks: the interrupted undo of site %d: %v", siteID, err)
+			refreshCronAllow()
+			return transport.SiteTasksUnknown, false
+		}
+		refreshCronAllow()
+		return transport.SiteTasksUndone, true
+	}
+	rollback := func() (string, bool) {
+		refreshCronAllow() // the task file is there: the account is kept out again
+		if err := enableSiteTaskTimers(siteID, j); err != nil {
+			log.Printf("site tasks: the interrupted undo of site %d could not switch its timers on again: %v", siteID, err)
+			return transport.SiteTasksUnknown, false
+		}
+		return "not_tried", true
+	}
+	switch j.Step {
+	case siteTasksStepCrontabWritten:
+		return finish()
+	case siteTasksStepCronOpened:
+		files, err := accountSpoolFiles(j.Account)
+		if err != nil {
+			return transport.SiteTasksUnknown, false
+		}
+		if (j.Crontab == "" && len(files) == 0) || (len(files) == 1 && spoolHolds(files[0], j.Crontab)) {
+			return finish()
+		}
+		// No crontab yet, or one the site's own code made while cron was open
+		// (it is never removed; it is reported as running outside the limits).
+		return rollback()
+	default: // undo_planned, timers_disabled
+		return rollback()
+	}
 }
 
 // UndoSiteTasksMoveV1 puts a moved site's tasks back into its crontab.
@@ -507,6 +734,42 @@ func (a *Agent) UndoSiteTasksMoveV1(req *transport.SiteTasksMoveRequest, resp *t
 	return nil
 }
 
+// enabledSiteTimers are the site's timers that are on now (enabled), and
+// the @reboot ones among them (from the task file).
+func enabledSiteTimers(siteID int, crontab string) ([]string, map[string]bool) {
+	units, _ := siteTaskUnits(siteID)
+	var timers []string
+	for n, u := range units {
+		if u.Timer {
+			timers = append(timers, sitecron.UnitBase(siteID, n)+".timer")
+		}
+	}
+	sort.Strings(timers)
+	props := siteTaskShow(timers, siteTaskShowTimerProps)
+	var on []string
+	atBoot := map[string]bool{}
+	reboot := map[string]bool{}
+	jobs := sitecron.Parse(crontab).Jobs()
+	keys := siteTaskKeys(jobs)
+	for i, job := range jobs {
+		if job.Spec.Reboot {
+			reboot[keys[i]] = true
+		}
+	}
+	for _, timer := range timers {
+		if props[timer]["UnitFileState"] != "enabled" {
+			continue
+		}
+		on = append(on, timer)
+		if site, n, _, ok := sitecron.ParseUnit(timer); ok && site == siteID {
+			if u := units[n]; u != nil && reboot[u.TaskKey] {
+				atBoot[timer] = true
+			}
+		}
+	}
+	return on, atBoot
+}
+
 func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteTasksMoveResponse {
 	refused := func(code, text string) transport.SiteTasksMoveResponse {
 		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: code, Error: text}
@@ -519,7 +782,7 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	case err != nil:
 		return refused("", "the task file could not be read ("+err.Error()+"); nothing was changed")
 	case !source.Exists:
-		return refused(transport.SiteTasksRefusalSource, "the task file "+sitecron.SourcePath(target.SiteID)+" is gone while timers of the site remain; the server owner decides (remove the timers or put the file back); nothing was changed")
+		return refused(transport.SiteTasksRefusalSource, "the task file "+sitecron.SourcePath(target.SiteID)+" is gone while timers of the site remain; the administrator rebuilds it on the Scheduled tasks screen first; nothing was changed")
 	case source.State != transport.SiteFileManagedUnchanged:
 		return refused(transport.SiteTasksRefusalSource, "the server owner changed "+sitecron.SourcePath(target.SiteID)+" by hand; putting the tasks back would lose that change, so nothing was changed")
 	case source.Account != "" && source.Account != username:
@@ -533,59 +796,111 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	if why := cronAllowRefuses(username, target.SiteID); why != "" {
 		return refused(transport.SiteTasksRefusalCronAllow, why)
 	}
-	written, authored := withSiteCronMailtoLines(username, source.Crontab)
-	authored = append(authored, cronEffectiveLines(source.Crontab)...)
+	if files, err := accountSpoolFiles(username); err != nil {
+		return refused("", "the account's crontab could not be read ("+err.Error()+"); nothing was changed")
+	} else if len(files) > 0 {
+		return refused(transport.SiteTasksRefusalCrontab, "the account has a crontab again ("+files[0].Path+", running outside the site's limits); it is never overwritten, so nothing was changed. The server owner merges it into Scheduled tasks or removes it first")
+	}
+	// Byte for byte: the task file's crontab, nothing added.
+	written := source.Crontab
+	timers, atBoot := enabledSiteTimers(target.SiteID, written)
 	journal := &siteMoveJournal{Version: 2, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339),
-		Tasks: &siteTasksJournal{Undo: true, Account: username, Crontab: written, Step: siteTasksStepUndoPlanned}}
+		Tasks: &siteTasksJournal{Undo: true, Account: username, UID: target.UID, Crontab: written, Step: siteTasksStepUndoPlanned, Timers: timers, AtBoot: atBoot}}
 	if err := journal.save(); err != nil {
 		return refused("", "the record could not be written in the Agent's folder ("+err.Error()+"); nothing was changed")
 	}
+	unknown := transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
 	if siteTasksMoveKilled(siteTasksStepUndoPlanned) {
-		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
+		return unknown
 	}
+	// Back to where it started, at any failure before the crontab is in place.
+	rollback := func(text string) transport.SiteTasksMoveResponse {
+		refreshCronAllow()
+		if err := enableSiteTaskTimers(target.SiteID, journal.Tasks); err != nil {
+			setSiteTasksOutcome(target.SiteID, transport.SiteTasksUnknown)
+			return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown,
+				Error: text + "; the timers could not be switched on again (" + err.Error() + "). The record is kept and the Agent's next start tries again"}
+		}
+		_ = os.Remove(siteMoveJournalPath)
+		return refused("", text+"; the tasks run as timers, as before")
+	}
+	// 1. The timers off (a running task is not stopped).
+	if err := disableSiteTaskTimers(journal.Tasks); err != nil {
+		return rollback("the timers could not be switched off (" + err.Error() + ")")
+	}
+	if siteTasksMoveKilled("act:" + siteTasksStepTimersDisabled) {
+		return unknown
+	}
+	if err := journal.tasksStep(siteTasksStepTimersDisabled); err != nil {
+		return rollback("the record could not be written (" + err.Error() + ")")
+	}
+	if siteTasksMoveKilled(siteTasksStepTimersDisabled) {
+		return unknown
+	}
+	// 2. The account back into cron.
 	if err := allowCronFor(username, target.SiteID); err != nil {
-		_ = os.Remove(siteMoveJournalPath)
-		return refused(transport.SiteTasksRefusalCronAllow, err.Error())
+		return rollback(err.Error())
 	}
-	existing, err := readCrontab(username)
-	if err != nil {
-		_ = os.Remove(siteMoveJournalPath)
-		refreshCronAllow()
-		return refused("", "the crontab could not be read ("+err.Error()+"); nothing was changed")
+	if siteTasksMoveKilled("act:" + siteTasksStepCronOpened) {
+		return unknown
 	}
-	if strings.TrimSpace(existing) != "" {
-		_ = os.Remove(siteMoveJournalPath)
-		refreshCronAllow()
-		return refused(transport.SiteTasksRefusalCrontab, "the account has a crontab again (the server owner's, running outside the site's limits); it is never overwritten, so nothing was changed. The server owner merges or removes it first")
+	if err := journal.tasksStep(siteTasksStepCronOpened); err != nil {
+		return rollback("the record could not be written (" + err.Error() + ")")
 	}
-	if err := setSiteCrontab(username, "", written, authored); err != nil {
-		_ = os.Remove(siteMoveJournalPath)
-		refreshCronAllow()
-		return refused("", "the crontab could not be written ("+err.Error()+"); nothing was changed")
+	if siteTasksMoveKilled(siteTasksStepCronOpened) {
+		return unknown
+	}
+	// 3. The crontab, from the journal's bytes, checked.
+	if written != "" {
+		if err := setSiteCrontab(username, "", written, cronEffectiveLines(written)); err != nil {
+			return rollback("the crontab could not be written (" + err.Error() + ")")
+		}
+		now, err := readCrontab(username)
+		if err != nil || now != written {
+			if files, _ := accountSpoolFiles(username); len(files) == 1 && spoolHolds(files[0], written) {
+				err = nil // the spool holds it; crontab -l failed for another reason
+			} else {
+				// What was written is not the crontab: it is taken away again
+				// (the account had none a moment ago), then back to timers.
+				for _, f := range files {
+					_ = os.Remove(f.Path)
+				}
+				if err == nil {
+					err = errors.New("it reads back differently")
+				}
+				return rollback("the crontab written could not be confirmed (" + err.Error() + ")")
+			}
+		}
+	}
+	if siteTasksMoveKilled("act:" + siteTasksStepCrontabWritten) {
+		return unknown
 	}
 	if stepErr := journal.tasksStep(siteTasksStepCrontabWritten); stepErr != nil {
 		log.Printf("site tasks: the undo's record: %v", stepErr)
 	}
 	if siteTasksMoveKilled(siteTasksStepCrontabWritten) {
-		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}
+		return unknown
 	}
+	// 4. The timers and files go.
 	if _, err := removeSiteTasksLocked(target.SiteID, false); err != nil {
-		_ = os.Remove(siteMoveJournalPath)
 		refreshCronAllow()
+		setSiteTasksOutcome(target.SiteID, transport.SiteTasksUnknown)
 		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown,
-			Error: "the crontab is back, but not every timer could be removed (" + err.Error() + "); read the site's tasks: a task may now run twice until its timer is removed"}
+			Error: "the crontab is back, but not every timer could be removed (" + err.Error() + "); they are switched off, so no task runs twice. The Agent's next start removes them"}
 	}
 	_ = os.Remove(siteMoveJournalPath)
 	setSiteTasksOutcome(target.SiteID, "")
+	forgetCronClosed(map[string]bool{username: true})
 	refreshCronAllow()
 	return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUndone}
 }
 
 // SiteTasksMovedV1 lists the sites whose tasks run as timers, the crontabs
-// that came back for their accounts and what the Agent did with an
-// interrupted tasks move (read-only).
+// that came back for their accounts (and whether the site's own code can
+// have made them) and what the Agent did with an interrupted tasks move
+// (read-only).
 func (a *Agent) SiteTasksMovedV1(req *transport.SiteTasksMovedRequest, resp *transport.SiteTasksMovedResponse) error {
-	*resp = transport.SiteTasksMovedResponse{Moved: []int{}}
+	*resp = transport.SiteTasksMovedResponse{Moved: []int{}, MailSubmission: recordedMailSubmission()}
 	want := map[int]bool{}
 	if req != nil {
 		for _, id := range req.SiteIDs {
@@ -601,9 +916,13 @@ func (a *Agent) SiteTasksMovedV1(req *transport.SiteTasksMovedRequest, resp *tra
 		if account := accounts[id]; account != "" {
 			if n := len(spoolCrontabLines(account)); n > 0 {
 				if resp.Reappeared == nil {
-					resp.Reappeared = map[string]int{}
+					resp.Reappeared, resp.ReappearedBySite = map[string]int{}, map[string]bool{}
 				}
 				resp.Reappeared[strconv.Itoa(id)] = n
+				files, _ := accountSpoolFiles(account)
+				if reappearedBySite(account, files) {
+					resp.ReappearedBySite[strconv.Itoa(id)] = true
+				}
 			}
 		}
 	}
@@ -617,6 +936,64 @@ func (a *Agent) SiteTasksMovedV1(req *transport.SiteTasksMovedRequest, resp *tra
 		}
 		resp.Recovery[key] = outcome
 	}
+	return nil
+}
+
+// RebuildSiteTaskSourceV1 is the administrator's one action for a moved
+// site whose task file is missing while its timers remain: the file is
+// rebuilt from the copy of what CelikPanel last rendered (kept in the
+// Agent's private folder). Preview shows what it would contain and changes
+// nothing.
+func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, resp *transport.SiteTaskSourceResponse) error {
+	*resp = transport.SiteTaskSourceResponse{Outcome: transport.SiteTasksRefused}
+	if req != nil && !req.Preview {
+		if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "rebuilding a site's task file"); err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+	}
+	target, _, err := siteTasksTenantTarget(req)
+	if err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	source, err := readSiteTaskSource(target.SiteID)
+	switch {
+	case err != nil:
+		resp.Error = "the task file could not be read (" + err.Error() + "); nothing was changed"
+		return nil
+	case source.Exists:
+		resp.Error = "the task file is there; nothing to rebuild"
+		return nil
+	case !siteTaskUnitsExist(target.SiteID):
+		resp.Error = "the site has no timers; nothing to rebuild"
+		return nil
+	}
+	path := siteTaskRenderedPath(target.SiteID)
+	info, statErr := os.Stat(path)
+	raw, readErr := os.ReadFile(path)
+	if statErr != nil || readErr != nil || len(raw) > 1<<20 {
+		resp.Error = "no copy of what CelikPanel last made the timers from is kept for this site (" + path + "), so the file cannot be rebuilt here; the server owner puts the file back from a backup, or removes the site's timers (systemctl disable --now 'celikcron-" + strconv.Itoa(target.SiteID) + "-*.timer')"
+		return nil
+	}
+	resp.Crontab = string(raw)
+	resp.RenderedAt = info.ModTime().UTC().Format(time.RFC3339)
+	if req.Preview {
+		resp.Outcome = transport.SiteTasksPreview
+		return nil
+	}
+	result, err := writeSiteTaskSource(target, resp.Crontab, transport.SiteFileTriggerCreate)
+	if err != nil || (result.Outcome != transport.SiteFileOutcomeWritten && result.Outcome != transport.SiteFileOutcomeRecreated) {
+		resp.Outcome = transport.SiteTasksUnknown
+		resp.Error = fmt.Sprintf("the task file could not be written (%s %s %v); read the site's tasks again", result.Outcome, result.Reason, err)
+		return nil
+	}
+	if _, err := applySiteTimers(target, resp.Crontab); err != nil {
+		log.Printf("site tasks: the rebuilt task file of site %d: its timers: %v", target.SiteID, err)
+	}
+	resp.Outcome = transport.SiteTaskSourceRebuilt
 	return nil
 }
 

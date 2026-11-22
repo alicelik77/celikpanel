@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -15,11 +16,14 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
+	"github.com/alicelik/celikpanel/internal/hostingpath"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/sitecron"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -146,11 +150,120 @@ func siteTaskTargetFor(tenant transport.CronTenant, username string) (siteTaskTa
 	}
 	t := siteTaskTarget{SiteID: tenant.SiteID, Domain: strings.ToLower(strings.TrimSpace(tenant.Domain)), Account: username,
 		Group: group, UID: uid, GID: gid, Home: home}
+	if err := siteTaskOwnership(t.SiteID, username); err != nil {
+		return siteTaskTarget{}, err
+	}
 	if tenant.Site != nil && tenant.Site.SiteID == tenant.SiteID {
 		t.Slice = tenant.Site
 	}
 	return t, nil
 }
+
+// siteTaskOwnership re-derives, from the Agent's own files, that the site id
+// the Panel sent belongs to the proved account (S4 R2b fix round; the Agent
+// re-derives every fact it acts on): the task file's intro and every task
+// unit of that id must name this account. An id with no task file and no
+// unit holds nothing of another site.
+func siteTaskOwnership(siteID int, account string) error {
+	if raw, err := os.ReadFile(sitecron.SourcePath(siteID)); err == nil && len(raw) <= 1<<20 {
+		if _, named := splitSiteTaskSource(raw); named != "" && named != account {
+			return fmt.Errorf("the task file of site %d belongs to another account; nothing was changed", siteID)
+		}
+	}
+	dir, err := sandboxUnitDir()
+	if err != nil {
+		return nil
+	}
+	units, _ := siteTaskUnits(siteID)
+	for n := range units {
+		path := filepath.Join(dir, sitecron.UnitBase(siteID, n)+".service")
+		for _, line := range strings.Split(readSmallFile(path), "\n") {
+			if user, ok := strings.CutPrefix(line, "User="); ok && strings.TrimSpace(user) != account {
+				return fmt.Errorf("the tasks of site %d run as another account; nothing was changed", siteID)
+			}
+		}
+	}
+	return nil
+}
+
+// --- The site's limits ----------------------------------------------------------
+
+// siteSliceLoaded says whether systemd loaded the site's slice from its file
+// (FragmentPath is the file): a slice systemd made up for a missing file has
+// no limits. A test seam.
+var siteSliceLoaded = func(siteID int, path string) bool {
+	out, err := appUnitSystemctl(systemctlArgs("show", sitesandbox.SliceName(siteID), "--property=FragmentPath", "--value")...)
+	return err == nil && strings.TrimSpace(string(out)) == path
+}
+
+// siteSlicePathOf is the site's slice file.
+func siteSlicePathOf(siteID int) (string, error) {
+	dir, err := sandboxUnitDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, sitesandbox.SliceName(siteID)), nil
+}
+
+// ensureSiteSliceStrict is ensureSiteSlice for a site's tasks: a slice file
+// that could not be written is an error (with what failed), not a log line.
+// An owner's edited slice file is kept and used: it is in place.
+func ensureSiteSliceStrict(s *transport.SiteSlice) error {
+	siteSliceMu.Lock()
+	defer siteSliceMu.Unlock()
+	result, written, _, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, readSandboxLedger())
+	if err != nil {
+		return err
+	}
+	switch result.Outcome {
+	case transport.SiteFileOutcomeFailed, transport.SiteFileOutcomeRefused:
+		return fmt.Errorf("%s %s %s", result.Outcome, result.Reason, result.Detail)
+	}
+	if written {
+		if err := siteSliceDaemonReload(); err != nil {
+			return err
+		}
+		pushSiteSlicesToKernel([]int{s.SiteID})
+	}
+	return nil
+}
+
+// requireTaskSlice puts the site's slice file in place when the Panel sent
+// its limits, then checks that it is there and loaded. Its error is
+// transport.SiteTasksLimitsMissing with what is wrong, who acts and what to
+// do: no timer of the site is switched on without it.
+func requireTaskSlice(t siteTaskTarget) error {
+	path, err := siteSlicePathOf(t.SiteID)
+	if err != nil {
+		return fmt.Errorf("%s (%v)", transport.SiteTasksLimitsMissing, err)
+	}
+	var writeErr error
+	if t.Slice != nil {
+		writeErr = ensureSiteSliceStrict(t.Slice)
+	}
+	info, statErr := os.Lstat(path)
+	switch {
+	case statErr == nil && info.Mode().IsRegular() && siteSliceLoaded(t.SiteID, path):
+		return nil
+	case writeErr != nil:
+		return fmt.Errorf("%s: %s could not be written (%v). The server owner checks the folder (disk full, a file in its way); saving the task again tries again", transport.SiteTasksLimitsMissing, path, writeErr)
+	case t.Slice == nil:
+		return fmt.Errorf("%s: %s is not there and the subscription's limits could not be read. The administrator opens the subscription's limits and saves them; then the task is saved again", transport.SiteTasksLimitsMissing, path)
+	case statErr != nil || !info.Mode().IsRegular():
+		return fmt.Errorf("%s: %s is not a file. The server owner removes what is in its place; saving the task again writes it", transport.SiteTasksLimitsMissing, path)
+	default:
+		return fmt.Errorf("%s: systemd has not loaded %s. The server owner runs systemctl daemon-reload; saving the task again checks it again", transport.SiteTasksLimitsMissing, path)
+	}
+}
+
+// siteTaskRenderedPath is the copy of the crontab a site's timers were last
+// made from, in the Agent's private folder.
+func siteTaskRenderedPath(siteID int) string {
+	return filepath.Join(siteTaskRenderedDir, strconv.Itoa(siteID)+".crontab")
+}
+
+// siteTaskRenderedDir holds those copies (a variable for tests).
+var siteTaskRenderedDir = filepath.Join(hostingpath.ServiceMutationStateRoot(), "sandbox", "site-task-rendered")
 
 // --- The source ---------------------------------------------------------------
 
@@ -158,13 +271,16 @@ func siteTaskTargetFor(tenant transport.CronTenant, username string) (siteTaskTa
 // its source; they are not part of the crontab the screen shows.
 const siteTaskIntroMark = "#| "
 
+// siteTaskIntroLines is how many lines siteTaskIntro writes.
+const siteTaskIntroLines = 6
+
 func siteTaskIntro(t siteTaskTarget) string {
 	id := strconv.Itoa(t.SiteID)
 	lines := []string{
 		"CelikPanel: the scheduled tasks of " + t.Domain + " (site " + id + ", account " + t.Account + "), in crontab form.",
 		"They run as systemd timers celikcron-" + id + "-<n> in the site's own limits, not by cron (docs/SITE-SANDBOX.md section 9).",
-		"Change them on the site's Scheduled tasks screen. A change made here by hand is kept and used; CelikPanel's",
-		"own later changes then wait beside this file as .celikpanel-pending, and the screen says so.",
+		"Change them on the site's Scheduled tasks screen. A change made here by hand is kept and reaches the timers at",
+		"the panel's next start or next save (later panel changes wait beside it as .celikpanel-pending).",
 		"Back to cron: the administrator's \"Put the tasks back into cron\" on the site's Overview.",
 		"CelikPanel: sitenin zamanlanmis gorevleri; sitenin kendi sinirlari icinde zamanlayici olarak calisir.",
 	}
@@ -187,7 +303,10 @@ func splitSiteTaskSource(raw []byte) (string, string) {
 		}
 	}
 	account := ""
-	for strings.HasPrefix(text, strings.TrimSpace(siteTaskIntroMark)) {
+	// Only CelikPanel's own intro lines (six of them) are taken off: a
+	// crontab whose own first lines start with "#|" keeps them (fix round:
+	// the undo gives the crontab back byte for byte).
+	for i := 0; i < siteTaskIntroLines && strings.HasPrefix(text, siteTaskIntroMark); i++ {
 		newline := strings.IndexByte(text, '\n')
 		line := text
 		if newline >= 0 {
@@ -225,9 +344,16 @@ func siteTaskAppliedKey(siteID int) string { return "site-task-applied:" + strco
 // file changed since its timers were made (a hand edit by the server owner,
 // an interrupted render); run by the side doors step after each Panel start.
 // It reads small files only, and renders only a changed site.
-func reconcileSiteTimers() (rendered int) {
+//
+// Fix round: it also puts a missing limits file back from the slices the
+// Panel sent (no task runs without the site's limits). A site whose limits
+// file is not in place and cannot be written has its running timers held
+// (stopped, and remembered), and is returned with why; held timers start
+// again at the first start that finds the file in place.
+func reconcileSiteTimers(slices map[int]*transport.SiteSlice) (rendered int, held []transport.SideDoorsTasksHeld) {
 	ids, _ := movedSiteTaskSites()
 	ledger := readSandboxLedger()
+	wasHeld := readHeldSiteTimers()
 	for _, id := range ids {
 		path := sitecron.SourcePath(id)
 		raw, err := os.ReadFile(path)
@@ -235,9 +361,6 @@ func reconcileSiteTimers() (rendered int) {
 			continue
 		}
 		crontab, _ := splitSiteTaskSource(raw)
-		if ledger[siteTaskAppliedKey(id)].RenderSHA256 == taskDigest(crontab) {
-			continue
-		}
 		domain, account := parseSiteTaskIntro(raw)
 		if domain == "" || !cronUsernameRe.MatchString(account) || account == "root" {
 			log.Printf("site tasks: %s names no site account; its timers are left as they are", path)
@@ -248,16 +371,114 @@ func reconcileSiteTimers() (rendered int) {
 			log.Printf("site tasks: the account of %s cannot be used (%v); its timers are left as they are", path, err)
 			continue
 		}
-		t := siteTaskTarget{SiteID: id, Domain: domain, Account: account, Group: group, UID: uid, GID: gid, Home: home}
+		t := siteTaskTarget{SiteID: id, Domain: domain, Account: account, Group: group, UID: uid, GID: gid, Home: home, Slice: slices[id]}
+		jobs := len(sitecron.Parse(crontab).Jobs())
 		cronMu.Lock()
-		if _, err := applySiteTimers(t, crontab); err != nil {
-			log.Printf("site tasks: the timers of site %d could not all be written: %v", id, err)
-		} else {
-			rendered++
+		if jobs > 0 || len(wasHeld[strconv.Itoa(id)]) > 0 {
+			if err := requireTaskSlice(t); err != nil {
+				holdSiteTimers(id)
+				held = append(held, transport.SideDoorsTasksHeld{SiteID: id, Domain: domain,
+					Detail: strings.TrimPrefix(strings.TrimPrefix(err.Error(), transport.SiteTasksLimitsMissing), ": ")})
+				cronMu.Unlock()
+				continue
+			}
+			resumeSiteTimers(id)
+		}
+		if ledger[siteTaskAppliedKey(id)].RenderSHA256 != taskDigest(crontab) {
+			if _, err := applySiteTimers(t, crontab); err != nil {
+				log.Printf("site tasks: the timers of site %d could not all be written: %v", id, err)
+			} else {
+				rendered++
+			}
 		}
 		cronMu.Unlock()
 	}
-	return rendered
+	return rendered, held
+}
+
+// siteTimersHeldPath records, per site, the timers the start held because
+// the site's limits file was missing.
+var siteTimersHeldPath = filepath.Join(hostingpath.ServiceMutationStateRoot(), "sandbox", "site-timers-held.json")
+
+func readHeldSiteTimers() map[string][]string {
+	out := map[string][]string{}
+	if raw, err := os.ReadFile(siteTimersHeldPath); err == nil {
+		_ = json.Unmarshal(raw, &out)
+	}
+	return out
+}
+
+func writeHeldSiteTimers(all map[string][]string) {
+	raw, err := json.Marshal(all)
+	if err == nil {
+		err = writePrivateFile(siteTimersHeldPath, raw)
+	}
+	if err != nil {
+		log.Printf("site tasks: record the held timers: %v", err)
+	}
+}
+
+// holdSiteTimers stops the site's running timers (a running task is not
+// stopped) and remembers them (the caller holds cronMu).
+func holdSiteTimers(siteID int) {
+	units, err := siteTaskUnits(siteID)
+	if err != nil {
+		return
+	}
+	var timers []string
+	for n, u := range units {
+		if u.Timer {
+			timers = append(timers, sitecron.UnitBase(siteID, n)+".timer")
+		}
+	}
+	sort.Strings(timers)
+	all := readHeldSiteTimers()
+	key := strconv.Itoa(siteID)
+	known := map[string]bool{}
+	for _, timer := range all[key] {
+		known[timer] = true
+	}
+	props := siteTaskShow(timers, siteTaskShowTimerProps)
+	for _, timer := range timers {
+		if props[timer]["ActiveState"] != "active" {
+			continue
+		}
+		if out, err := siteTaskSystemctl("stop", timer); err != nil {
+			log.Printf("site tasks: %s could not be held: %v: %s", timer, err, strings.TrimSpace(string(out)))
+			continue
+		}
+		if !known[timer] {
+			all[key] = append(all[key], timer)
+			known[timer] = true
+		}
+	}
+	if len(all[key]) > 0 {
+		writeHeldSiteTimers(all)
+	}
+}
+
+// resumeSiteTimers starts the timers the start held for the site (its limits
+// file is back).
+func resumeSiteTimers(siteID int) {
+	all := readHeldSiteTimers()
+	key := strconv.Itoa(siteID)
+	timers := all[key]
+	if len(timers) == 0 {
+		return
+	}
+	var left []string
+	for _, timer := range timers {
+		if out, err := siteTaskSystemctl("start", timer); err != nil {
+			log.Printf("site tasks: held %s could not be started again: %v: %s", timer, err, strings.TrimSpace(string(out)))
+			left = append(left, timer)
+		}
+	}
+	if len(left) == 0 {
+		delete(all, key)
+	} else {
+		all[key] = left
+	}
+	writeHeldSiteTimers(all)
 }
 
 func siteTaskSourceManaged(t siteTaskTarget, crontab, trigger string) services.ManagedSiteFile {
@@ -500,8 +721,14 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 		wanted[n] = true
 		result.Tasks = append(result.Tasks, siteTimerTask{Entry: job, Key: keys[i], N: n, Unit: sitecron.UnitBase(t.SiteID, n)})
 	}
-	if t.Slice != nil && len(jobs) > 0 {
-		ensureSiteSlice(t.Slice)
+	// No task runs without the site's limits (fix round): nothing of the
+	// timers is written (and so none is switched on) until the site's slice
+	// file is in place and loaded. The task file itself is saved; the next
+	// save, or the next start, writes the timers once the limits are there.
+	if len(jobs) > 0 {
+		if err := requireTaskSlice(t); err != nil {
+			return result, err
+		}
 	}
 	if len(jobs) > 0 || len(c.Env) > 0 {
 		if err := ensureSiteTaskDirs(t); err != nil {
@@ -619,9 +846,14 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 	}
 	defer func() {
 		// The crontab these timers were made from, so the reconcile at each
-		// start re-renders only a site whose task file changed since.
+		// start re-renders only a site whose task file changed since, and a
+		// copy of it in the Agent's private folder: a task file that goes
+		// missing is rebuilt from it by the administrator (fix round).
 		if err := setSandboxLedgerEntry(siteTaskAppliedKey(t.SiteID), siteTaskAppliedKind, taskDigest(crontab)); err != nil {
 			log.Printf("site tasks: record what site %d's timers were made from: %v", t.SiteID, err)
+		}
+		if err := writePrivateFile(siteTaskRenderedPath(t.SiteID), []byte(crontab)); err != nil {
+			log.Printf("site tasks: keep the copy of what site %d's timers were made from: %v", t.SiteID, err)
 		}
 	}()
 	for i := range result.Tasks {
@@ -798,12 +1030,54 @@ var (
 )
 
 // siteTaskOutputLines and siteTaskOutputBytes bound the output a run shows;
-// siteTaskOutputTasks bounds the journal reads of one list.
+// siteTaskOutputReads bounds the journal readers one list starts (fix round:
+// a finished run's lines never change, so they are kept in a bounded cache
+// and read once; a list shows at most this many runs it has not read yet,
+// the others on the next read).
 const (
 	siteTaskOutputLines = 10
 	siteTaskOutputBytes = 300
-	siteTaskOutputTasks = 100
+	siteTaskOutputReads = 8
+	siteTaskOutputCache = 4096
 )
+
+var (
+	siteTaskOutputMu   sync.Mutex
+	siteTaskOutputSeen = map[string][]string{}
+)
+
+// cachedTaskOutput returns a finished run's lines, reading the journal only
+// when it has not yet and reads are left for this list.
+func cachedTaskOutput(invocation string, finished bool, reads *int) ([]string, bool) {
+	siteTaskOutputMu.Lock()
+	lines, ok := siteTaskOutputSeen[invocation]
+	siteTaskOutputMu.Unlock()
+	if ok {
+		return lines, true
+	}
+	if *reads >= siteTaskOutputReads {
+		return nil, false
+	}
+	*reads++
+	lines, err := siteTaskJournal(invocation, siteTaskOutputLines)
+	if err != nil {
+		return nil, false
+	}
+	if finished {
+		siteTaskOutputMu.Lock()
+		if len(siteTaskOutputSeen) >= siteTaskOutputCache {
+			for k := range siteTaskOutputSeen {
+				delete(siteTaskOutputSeen, k)
+				if len(siteTaskOutputSeen) < siteTaskOutputCache/2 {
+					break
+				}
+			}
+		}
+		siteTaskOutputSeen[invocation] = lines
+		siteTaskOutputMu.Unlock()
+	}
+	return lines, true
+}
 
 func siteTaskShow(names []string, props []string) map[string]map[string]string {
 	out := map[string]map[string]string{}
@@ -864,7 +1138,7 @@ func siteTaskRuns(tasks []siteTimerTask, kept []string) map[string]*transport.Si
 		keptSet[filepath.Base(k)] = true
 	}
 	runs := map[string]*transport.SiteTaskRun{}
-	journals := 0
+	reads := 0
 	for i := range tasks {
 		task := &tasks[i]
 		tp := timerProps[task.Unit+".timer"]
@@ -905,9 +1179,8 @@ func siteTaskRuns(tasks []siteTimerTask, kept []string) map[string]*transport.Si
 				run.EndedAt = ended
 				run.Seconds = endAt.Sub(startAt).Seconds()
 			}
-			if inv := sp["InvocationID"]; inv != "" && journals < siteTaskOutputTasks {
-				journals++
-				if lines, err := siteTaskJournal(inv, siteTaskOutputLines); err == nil {
+			if inv := sp["InvocationID"]; inv != "" {
+				if lines, ok := cachedTaskOutput(inv, run.State != "running" && run.State != "unknown", &reads); ok {
 					for _, line := range lines {
 						run.Output = append(run.Output, boundedLine(line, siteTaskOutputBytes))
 					}
@@ -921,34 +1194,6 @@ func siteTaskRuns(tasks []siteTimerTask, kept []string) map[string]*transport.Si
 
 // --- Reading a moved site's tasks and a crontab that came back -------------------
 
-// siteCronSpoolDir is where Debian's and Ubuntu's cron keep crontabs.
-var siteCronSpoolDir = "/var/spool/cron/crontabs"
-
-// spoolCrontabLines reads an account's crontab straight from cron's spool
-// (root may read it; `crontab -u` refuses an account that /etc/cron.allow
-// leaves out, Stage 1 F1) and returns its lines cron acts on.
-func spoolCrontabLines(account string) []string {
-	if !validSiteCrontabRecordName(account) {
-		return nil
-	}
-	path := filepath.Join(siteCronSpoolDir, account)
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() > 1<<20 {
-		return nil
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	var lines []string
-	for _, line := range cronEffectiveLines(string(raw)) {
-		if !strings.HasPrefix(strings.TrimLeft(line, " \t"), "#") {
-			lines = append(lines, line)
-		}
-	}
-	return lines
-}
-
 // siteTaskStore is a moved site's tasks as the cron RPCs edit them.
 func siteTaskStore(t siteTaskTarget) cronStore {
 	return cronStore{
@@ -960,9 +1205,23 @@ func siteTaskStore(t siteTaskTarget) cronStore {
 			if source.Exists && source.Account != "" && source.Account != t.Account {
 				return "", fmt.Errorf("the task file of site %d names another account", t.SiteID)
 			}
+			// Fix round: a missing task file while timers of the site remain
+			// is a state to report, never one to rebuild from a single line
+			// (that would remove every other task). The administrator
+			// rebuilds it from the copy of what CelikPanel last rendered.
+			if !source.Exists && siteTaskUnitsExist(t.SiteID) {
+				return "", errSiteTasksSourceGone
+			}
 			return source.Crontab, nil
 		},
 		write: func(before, after string, _ []string) error {
+			// A setting systemd cannot read would fail every task of the site:
+			// such a file is never written by a save.
+			for _, bad := range sitecron.Parse(after).Untranslatable() {
+				if bad.Reason == sitecron.ReasonEnvValue {
+					return errSiteTasksEnvValue
+				}
+			}
 			// An owner's edit is kept and used; this change is written beside
 			// it as the pending file (ApplyManagedSiteFile) and refused here.
 			result, err := writeSiteTaskSource(t, after, transport.SiteFileTriggerCreate)
@@ -982,6 +1241,9 @@ func siteTaskStore(t siteTaskTarget) cronStore {
 				return fmt.Errorf("the task file could not be written (%s %s)", result.Outcome, result.Reason)
 			}
 			if _, err := applySiteTimers(t, after); err != nil {
+				if strings.HasPrefix(err.Error(), transport.SiteTasksLimitsMissing) {
+					return err // saved; its timers wait for the site's limits (said with who acts)
+				}
 				return fmt.Errorf("the task file was saved, but its timers could not all be written (%v); saving again tries again", err)
 			}
 			return nil
@@ -992,6 +1254,13 @@ func siteTaskStore(t siteTaskTarget) cronStore {
 // errSiteTasksSourceOwner: the source was changed on the server; the
 // panel's change waits beside it.
 var errSiteTasksSourceOwner = errors.New(transport.SiteTasksSourceHeld)
+
+// errSiteTasksSourceGone, errSiteTasksEnvValue: the exact answers the Panel
+// classifies (fix round).
+var (
+	errSiteTasksSourceGone = errors.New(transport.SiteTasksSourceGone)
+	errSiteTasksEnvValue   = errors.New(transport.SiteTasksEnvValue)
+)
 
 // listSiteTasks answers ListCronJobs for a moved site.
 func listSiteTasks(t siteTaskTarget, resp *ListCronJobsResponse) error {
@@ -1014,6 +1283,10 @@ func listSiteTasks(t siteTaskTarget, resp *ListCronJobsResponse) error {
 	}
 	resp.Version = cronVersion(source.Crontab)
 	resp.Reappeared = spoolCrontabLines(t.Account)
+	if len(resp.Reappeared) > 0 {
+		files, _ := accountSpoolFiles(t.Account)
+		resp.ReappearedBySite = reappearedBySite(t.Account, files)
+	}
 
 	c := sitecron.Parse(source.Crontab)
 	for _, bad := range c.Untranslatable() {
@@ -1082,12 +1355,19 @@ func listSiteTasks(t siteTaskTarget, resp *ListCronJobsResponse) error {
 // createSiteTasks gives a new site its empty task file: new sites run their
 // tasks as timers from the start (nothing is enabled until a task exists).
 // A host that cannot hold a site's limits keeps cron for new sites too.
-func createSiteTasks(siteID int, domain, username string) error {
+func createSiteTasks(siteID int, domain, username string, slice *transport.SiteSlice) error {
 	if siteID < 1 {
 		return nil
 	}
 	if reason := siteSliceHostSupport(); reason != "" {
 		log.Printf("site tasks: site %d keeps cron: this server cannot hold a site's limits (%s)", siteID, reason)
+		return nil
+	}
+	// Fix round: a site whose account cron's access files would still let
+	// install its own jobs keeps cron (the administrator sees it outside its
+	// limits and why when moving it), as an existing site's move is refused.
+	if why := cronMoveRefusal(username); why != "" {
+		log.Printf("site tasks: site %d keeps cron: %s", siteID, why)
 		return nil
 	}
 	uid, gid, group, home, err := siteTaskLookup(username)
@@ -1097,6 +1377,12 @@ func createSiteTasks(siteID int, domain, username string) error {
 	cronMu.Lock()
 	defer cronMu.Unlock()
 	t := siteTaskTarget{SiteID: siteID, Domain: domain, Account: username, Group: group, UID: uid, GID: gid, Home: home}
+	// Its limits file comes with the site (no task of it may run without it).
+	if slice != nil && slice.SiteID == siteID {
+		if err := ensureSiteSliceStrict(slice); err != nil {
+			log.Printf("site tasks: the limits file of new site %d could not be written (%v); its first task waits for it", siteID, err)
+		}
+	}
 	result, err := writeSiteTaskSource(t, "", transport.SiteFileTriggerCreate)
 	if err != nil {
 		return err
@@ -1105,6 +1391,13 @@ func createSiteTasks(siteID int, domain, username string) error {
 		log.Printf("site tasks: %s was already there and changed on this server (an earlier site with the same id); it is kept", sitecron.SourcePath(siteID))
 	}
 	refreshCronAllow()
+	// A new account never had a crontab: from now on one found for it was
+	// made by root, while CelikPanel's own cron.allow keeps it out.
+	if cronKeptOutByUs(username) {
+		if files, _ := accountSpoolFiles(username); len(files) == 0 {
+			noteCronClosed(username, time.Now())
+		}
+	}
 	return nil
 }
 
@@ -1117,7 +1410,15 @@ func removeSiteTasks(siteID int) ([]string, error) {
 	}
 	cronMu.Lock()
 	defer cronMu.Unlock()
+	account := ""
+	if raw, err := os.ReadFile(sitecron.SourcePath(siteID)); err == nil && len(raw) <= 1<<20 {
+		_, account = splitSiteTaskSource(raw)
+	}
 	aside, err := removeSiteTasksLocked(siteID, true)
 	forgetSiteTasksUndo(siteID)
+	_ = os.Remove(siteTaskRenderedPath(siteID))
+	if account != "" {
+		forgetCronClosed(map[string]bool{account: true})
+	}
 	return aside, err
 }

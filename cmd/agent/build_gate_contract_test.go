@@ -770,6 +770,12 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.UndoSiteTasksMoveV1(&transport.SiteTasksMoveRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// Fix round: a missing task file rebuilt from the last rendered copy.
+		{name: "RebuildSiteTaskSourceV1", run: func(expected string) string {
+			var response transport.SiteTaskSourceResponse
+			_ = agent.RebuildSiteTaskSourceV1(&transport.SiteTasksMoveRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 	}
 }
 

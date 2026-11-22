@@ -150,7 +150,7 @@ func TestParseLines(t *testing.T) {
 		"MAILTO=owner@example.test\n": ReasonMailto,
 		"HOME=/tmp\n":                 ReasonHome,
 		"SHELL=bash\n":                ReasonShell,
-		"X='it''s'\n":                 ReasonEnvValue,
+		"X='it''s'\n":                 ReasonSchedule, // cron: not a setting (text after the closing quote), so a job, which fails
 		"X=a\\b\n":                    ReasonEnvValue,
 		"0 3 * * * php x.php\r\n":     ReasonCarriage,
 		"0 3 * * *\n":                 ReasonEmpty,
@@ -165,6 +165,99 @@ func TestParseLines(t *testing.T) {
 		if len(bad) != 1 || bad[0].Reason != reason {
 			t.Errorf("%q: want %s, got %+v", line, reason, bad)
 		}
+	}
+}
+
+// TestParseLinesLikeCron3 (S4 R2b fix round, review finding 7): a line is
+// read exactly as Debian's cron 3.0pl1 reads it (entry.c, env.c, cron.h),
+// or refused with a reason - never silently read differently:
+//   - only ASCII spaces and tabs separate fields (Skip_Blanks); a no-break
+//     space or U+3000 is part of a field, which is then not a value;
+//   - the command keeps its trailing blanks (get_string reads to the newline);
+//   - a command of MAX_COMMAND-1 (999) bytes or more is refused by cron
+//     (e_cmd_len), so it is refused here;
+//   - settings follow load_env's states: "A=" is the empty value, `A="x` and
+//     `A="x"y` are not settings (cron then fails them as jobs), quotes and
+//     blanks come off as strdtb and the dequoting do;
+//   - a value systemd cannot read (not UTF-8, U+FEFF, a noncharacter) is a
+//     line that cannot be translated (env_value).
+func TestParseLinesLikeCron3(t *testing.T) {
+	long := strings.Repeat("x", MaxCommand-2) // 998 bytes: cron runs it
+	type want struct {
+		kind           Kind
+		reason         string
+		command, input string
+		name, value    string
+		schedule, text string
+	}
+	cases := []struct {
+		line string
+		want want
+	}{
+		// Field separators.
+		{"* * * * *\u00a0echo hi", want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"*\u00a0* * * * echo hi", want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"* * * * *\u3000echo hi", want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"* * * *\u2003* echo hi", want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"*\t*\t*\t*\t*\techo\u00a0hi", want{kind: KindJob, schedule: "* * * * *", command: "echo\u00a0hi", text: "*\t*\t*\t*\t*\techo\u00a0hi"}},
+		{"\u00a0", want{kind: KindInvalid, reason: ReasonSchedule}},
+		// Trailing blanks stay in the command and its input.
+		{"* * * * * echo foo\\ ", want{kind: KindJob, schedule: "* * * * *", command: "echo foo\\ ", text: "* * * * * echo foo\\"}},
+		{"* * * * * cat%abc   ", want{kind: KindJob, schedule: "* * * * *", command: "cat", input: "abc   \n", text: "* * * * * cat%abc"}},
+		{"@daily  run.sh\t", want{kind: KindJob, schedule: "@daily", command: "run.sh\t", text: "@daily  run.sh"}},
+		// The command limit.
+		{"* * * * * " + long, want{kind: KindJob, schedule: "* * * * *", command: long, text: "* * * * * " + long}},
+		{"* * * * * " + long + "y", want{kind: KindInvalid, reason: ReasonTooLong}},
+		{"@hourly " + long + "yz", want{kind: KindInvalid, reason: ReasonTooLong}},
+		// Settings as load_env reads them.
+		{"MAILTO=", want{kind: KindEnv, name: "MAILTO", value: ""}},
+		{"MAILTO=\"\"", want{kind: KindEnv, name: "MAILTO", value: ""}},
+		{"A = x  ", want{kind: KindEnv, name: "A", value: "x"}},
+		{"A=\" x \"", want{kind: KindEnv, name: "A", value: " x"}},
+		{"A=' x'  ", want{kind: KindEnv, name: "A", value: " x"}},
+		{"\"A\"=x", want{kind: KindEnv, name: "A", value: "x"}},
+		{"A=x y", want{kind: KindEnv, name: "A", value: "x y"}},
+		{"A=\"'x'\"", want{kind: KindEnv, name: "A", value: "x"}},
+		{"A=\"x", want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"A=\"x\"y", want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"A=\"", want{kind: KindInvalid, reason: ReasonInvalidEnv}},
+		{"A B=c", want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"A" + strings.Repeat("v", MaxEnvLine), want{kind: KindInvalid, reason: ReasonSchedule}},
+		{"A=" + strings.Repeat("v", MaxEnvLine), want{kind: KindInvalid, reason: ReasonTooLong}},
+		// Values systemd cannot read.
+		{"GREETING=caf\xe9", want{kind: KindInvalid, reason: ReasonEnvValue}},
+		{"X=\ufeffa", want{kind: KindInvalid, reason: ReasonEnvValue}},
+		{"X=a\ufffe", want{kind: KindInvalid, reason: ReasonEnvValue}},
+		{"X=a\ufdd0", want{kind: KindInvalid, reason: ReasonEnvValue}},
+		{"X=caf\u00e9", want{kind: KindEnv, name: "X", value: "caf\u00e9"}},
+	}
+	for _, c := range cases {
+		got := Parse(c.line + "\n").Entries[0]
+		w := c.want
+		if got.Kind != w.kind || got.Reason != w.reason {
+			t.Errorf("%q: kind %d reason %q (%s), want kind %d reason %q", c.line, got.Kind, got.Reason, got.Detail, w.kind, w.reason)
+			continue
+		}
+		switch w.kind {
+		case KindJob:
+			if got.Schedule != w.schedule || got.Command != w.command || got.Input != w.input || got.Text != w.text {
+				t.Errorf("%q: schedule %q command %q input %q text %q", c.line, got.Schedule, got.Command, got.Input, got.Text)
+			}
+		case KindEnv:
+			if got.Name != w.name || got.Value != w.value {
+				t.Errorf("%q: name %q value %q", c.line, got.Name, got.Value)
+			}
+		}
+	}
+	// A setting that cannot be read never reaches the environment file.
+	if body := Parse("GREETING=caf\xe9\nX=1\n").EnvFileBody(); body != "X='1'\n" {
+		t.Errorf("environment file %q", body)
+	}
+	if !CommandFits(long) || CommandFits(long+"y") {
+		t.Error("CommandFits")
+	}
+	if got := SplitFields(" a\u00a0b\tc  d "); strings.Join(got, "|") != "a\u00a0b|c|d" {
+		t.Errorf("SplitFields %q", got)
 	}
 }
 
@@ -189,6 +282,10 @@ func TestUnitTexts(t *testing.T) {
 		"ExecStart=/bin/sh /etc/celikpanel-cron/7.d/3.sh\n",
 		"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celikcron-7-3.service\n",
 		"RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK\n", "IPAddressDeny=169.254.0.0/16",
+		// Fix round: what a task leaves running keeps running in its own
+		// cgroup (inside the slice, under the SMTP block), as under cron;
+		// the programs' log rate limit and no core files.
+		"Type=oneshot\nKillMode=process\n", "LogRateLimitIntervalSec=30s\n", "LogRateLimitBurst=1000\n", "LimitCORE=0\n",
 	} {
 		if !strings.Contains(service, want) {
 			t.Errorf("service lacks %q:\n%s", want, service)

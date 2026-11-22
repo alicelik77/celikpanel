@@ -30,6 +30,15 @@ type SiteOrchestrator struct {
 	// sitePHPLimits (alpha.128) gives creation the domain's site limits, so
 	// the new pool starts within the plan's process limit. Nil: none.
 	sitePHPLimits func(context.Context, int) transport.SitePHPLimits
+	// siteSlice (S4 R2b fix round) gives creation the new site's slice with
+	// its subscription's limits (site id, subscription id, domain), so its
+	// limits file is in place before any task of it runs. Nil: none.
+	siteSlice func(context.Context, int, int, string) *transport.SiteSlice
+}
+
+// SetSiteSlice gives creation the Panel's slice of a new site.
+func (so *SiteOrchestrator) SetSiteSlice(derive func(context.Context, int, int, string) *transport.SiteSlice) {
+	so.siteSlice = derive
 }
 
 // SetSitePHPLimits gives creation the Panel's limits of a domain's site.
@@ -280,6 +289,9 @@ func (so *SiteOrchestrator) CreateSite(ctx context.Context, req *CreateSiteReque
 	}
 	if so.sitePHPLimits != nil {
 		agentReq.PHPLimits = so.sitePHPLimits(ctx, domain.ID)
+	}
+	if so.siteSlice != nil {
+		agentReq.Slice = so.siteSlice(ctx, siteID, req.SubscriptionID, req.Domain)
 	}
 
 	var agentReply transport.CreateSiteResponse

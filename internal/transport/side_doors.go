@@ -20,6 +20,10 @@ type SideDoorsRequest struct {
 	ServiceMutationBinding
 	ReClose string `json:"reclose,omitempty"`
 	Version string `json:"version,omitempty"`
+	// Slices (S4 R2b fix round): every site's slice with its limits, so the
+	// re-render of moved sites' timers at the start can put a missing limits
+	// file back before a timer runs (no task runs without the site's limits).
+	Slices []SiteSlice `json:"slices,omitempty"`
 }
 
 // ReClose targets.
@@ -47,6 +51,9 @@ type SideDoorsState struct {
 	// timers, crontabs that came back for them, and lingering.
 	Cron   *SideDoorsCron   `json:"cron,omitempty"`
 	Linger *SideDoorsLinger `json:"linger,omitempty"`
+	// TasksHeld (fix round): moved sites whose timers are held because their
+	// limits file is not in place and could not be written.
+	TasksHeld []SideDoorsTasksHeld `json:"tasks_held,omitempty"`
 }
 
 // `at` states.

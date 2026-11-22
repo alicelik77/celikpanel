@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -45,7 +46,11 @@ type Helper struct {
 	ControlGroup func(unit string) (string, error)
 	// NFT runs nft with the given arguments (an empty environment).
 	NFT func(args ...string) error
-	Log io.Writer
+	// Procs lists the processes in a cgroup (its cgroup.procs; nil: never
+	// read). S4 R2b fix round: a site's task leaves its cgroup in the SMTP
+	// set while processes it started still run there.
+	Procs func(cgroup string) ([]int, error)
+	Log   io.Writer
 }
 
 var userName = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
@@ -171,17 +176,62 @@ func ParseControlGroup(unit, show string) string {
 // which must be the system slice or its site's slice (depth two, where the
 // set matches). Anything else is refused, so the unit does not start.
 func (h Helper) egressElement(unit string) (string, error) {
+	_, element, err := h.egressTarget(unit)
+	return element, err
+}
+
+// egressTarget is the unit's cgroup and its set element.
+func (h Helper) egressTarget(unit string) (string, string, error) {
 	if !sitesandbox.ValidUnitName(unit) {
-		return "", errors.New("not a sandboxed unit name")
+		return "", "", errors.New("not a sandboxed unit name")
 	}
 	if h.ControlGroup == nil {
-		return sitesandbox.CgroupElement(unit)
+		element, err := sitesandbox.CgroupElement(unit)
+		return "/system.slice/" + unit, element, err
 	}
 	cgroup, err := h.ControlGroup(unit)
 	if err != nil {
-		return "", fmt.Errorf("the cgroup of %s could not be read: %v", unit, err)
+		return "", "", fmt.Errorf("the cgroup of %s could not be read: %v", unit, err)
 	}
-	return sitesandbox.CgroupElementFor(cgroup, unit)
+	element, err := sitesandbox.CgroupElementFor(cgroup, unit)
+	return cgroup, element, err
+}
+
+// taskProcessesRemain: a site's task unit (celikcron-*) whose cgroup still
+// holds a process other than this helper (ExecStopPost runs in the unit's
+// own cgroup). Its run ended, but what it left keeps running there
+// (KillMode=process), so the cgroup stays in the SMTP set.
+func (h Helper) taskProcessesRemain(unit, cgroup string) bool {
+	if h.Procs == nil || !strings.HasPrefix(unit, "celikcron-") {
+		return false
+	}
+	pids, err := h.Procs(cgroup)
+	if err != nil {
+		return false
+	}
+	self := os.Getpid()
+	for _, pid := range pids {
+		if pid != self {
+			return true
+		}
+	}
+	return false
+}
+
+// ReadCgroupProcs reads a cgroup's cgroup.procs under /sys/fs/cgroup.
+func ReadCgroupProcs(cgroup string) ([]int, error) {
+	clean := filepath.Clean("/" + cgroup)
+	raw, err := os.ReadFile(filepath.Join("/sys/fs/cgroup", clean, "cgroup.procs"))
+	if err != nil {
+		return nil, err
+	}
+	var pids []int
+	for _, field := range strings.Fields(string(raw)) {
+		if pid, err := strconv.Atoi(field); err == nil {
+			pids = append(pids, pid)
+		}
+	}
+	return pids, nil
 }
 
 // EgressAdd loads the SMTP block and adds the unit's cgroup (the sandboxed
@@ -202,9 +252,15 @@ func (h Helper) EgressAdd(unit string) error {
 
 // EgressRemove removes the unit's cgroup from the SMTP block.
 func (h Helper) EgressRemove(unit string) error {
-	element, err := h.egressElement(unit)
+	cgroup, element, err := h.egressTarget(unit)
 	if err != nil {
 		return err
+	}
+	if h.taskProcessesRemain(unit, cgroup) {
+		if h.Log != nil {
+			fmt.Fprintf(h.Log, "celikpanel-sandbox: %s ended, but processes it started still run in %s; they stay in the SMTP block\n", unit, cgroup)
+		}
+		return nil
 	}
 	if err := h.NFT("delete", "element", "inet", sitesandbox.EgressTable, sitesandbox.EgressSet, element); err != nil {
 		// The table may be gone (nft flush ruleset); the guard re-adds

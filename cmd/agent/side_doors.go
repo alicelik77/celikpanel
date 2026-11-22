@@ -84,10 +84,23 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 	cronAllowMu.Unlock()
 	state.Linger = closeSiteLingerWith(hostSiteLingerOps())
 	// A moved site's task file edited by hand (or a render cut short) is
-	// applied to its timers here, after each start.
-	if n := reconcileSiteTimers(); n > 0 {
+	// applied to its timers here, after each start; a missing limits file is
+	// put back from the slices the Panel sent, or the site's timers are held
+	// (fix round: no task runs without the site's limits).
+	slices := map[int]*transport.SiteSlice{}
+	for i := range req.Slices {
+		s := req.Slices[i]
+		if s.SiteID > 0 {
+			slices[s.SiteID] = &s
+		}
+	}
+	n, held := reconcileSiteTimers(slices)
+	if n > 0 {
 		log.Printf("side doors: the timers of %d sites follow their task files again", n)
 	}
+	state.TasksHeld = held
+	// The SMTP block's submission exception follows the mail services.
+	refreshSandboxEgressIfPresent(ctx)
 	resp.State = &state
 	return nil
 }
