@@ -401,18 +401,38 @@ func TestPGPublicAnUnknownAnswerKeepsTheRecordAndReadsTheEngine(t *testing.T) {
 		t.Fatalf("undo after an unknown answer: %d %s", rec.Code, rec.Body.String())
 	}
 
-	// An unknown answer that did not close: a failure with its reason.
+	// An unknown answer that did not close: a failure, said as "its answer
+	// did not arrive and the database is unchanged" (code lost), never with
+	// the Agent's English sentence (alpha.143 lab, P2).
 	f.agent.close = func(in *transport.PostgreSQLPublicAccessCloseRequest, out *transport.PostgreSQLPublicAccessCloseResponse) error {
-		out.Unknown, out.Error = true, `the database server's answer ended inside the close: ERROR: role "reader" does not exist`
+		out.Unknown, out.Error = true, "the close did not finish within 3m0s; the client was ended at 2026-11-22T00:00:00Z because its time ran out, so whether it was closed is not known"
 		return nil
 	}
 	rec = pgPublicPost(t, f.visibleDatabasesFixture, "admin", map[string]any{"action": "close", "database_id": 9981, "acl": "", "roles": []string{"admin_user", "reader"}})
-	if rec.Code != http.StatusBadGateway || !strings.Contains(rec.Body.String(), errCodePGPublicFailed) || !strings.Contains(rec.Body.String(), `role \"reader\" does not exist`) {
+	if rec.Code != http.StatusBadGateway || !strings.Contains(rec.Body.String(), errCodePGPublicFailed) || strings.Contains(rec.Body.String(), "not known") {
 		t.Fatalf("an unknown answer that changed nothing: %d %s", rec.Code, rec.Body.String())
 	}
 	marker, _ = f.panel.readPGPublicMarker(context.Background(), 9981)
-	if marker == nil || marker.State != pgPublicWatch || marker.FailedAt == "" || marker.FailedBy != pgPublicByAdministrator {
+	if marker == nil || marker.State != pgPublicWatch || marker.FailedAt == "" || marker.FailedBy != pgPublicByAdministrator || marker.FailureCode != "lost" || marker.Failure != "" {
 		t.Fatalf("the failed close's record: %+v", marker)
+	}
+	// A verified failure (a recorded user's role is missing): nothing was
+	// changed, and only the database server's own message goes with it,
+	// quoted.
+	f.agent.close = func(in *transport.PostgreSQLPublicAccessCloseRequest, out *transport.PostgreSQLPublicAccessCloseResponse) error {
+		out.Detail = `ERROR:  role "reader" does not exist`
+		out.Error = "the database server did not close it; nothing was changed: " + out.Detail
+		return nil
+	}
+	rec = pgPublicPost(t, f.visibleDatabasesFixture, "admin", map[string]any{"action": "close", "database_id": 9981, "acl": "", "roles": []string{"admin_user", "reader"}})
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadGateway || !strings.Contains(body, errCodePGPublicFailed) || !strings.Contains(body, `“ERROR:  role \"reader\" does not exist”`) ||
+		strings.Contains(body, "not known") || strings.Contains(body, "did not close it; nothing") {
+		t.Fatalf("a verified failure: %d %s", rec.Code, body)
+	}
+	marker, _ = f.panel.readPGPublicMarker(context.Background(), 9981)
+	if marker == nil || marker.FailureCode != "server" || marker.Failure != `ERROR:  role "reader" does not exist` {
+		t.Fatalf("the verified failure's record: %+v", marker)
 	}
 }
 
@@ -444,7 +464,7 @@ func TestPGPublicALostAnswerIsSettledFromTheEngineUnderTheSameConditions(t *test
 	}
 	// admin_tools: lost, and the engine did nothing: settled as a failure
 	// with its reason, not sent again every hour.
-	if entry := pgPublicEntryOf(view.Open, "admin_tools"); entry == nil || entry.Found[0] != "close_failed" || !strings.Contains(entry.Failure, "did not arrive") {
+	if entry := pgPublicEntryOf(view.Open, "admin_tools"); entry == nil || entry.Found[0] != "close_failed" || entry.FailureCode != "lost" {
 		t.Fatalf("admin_tools settled: %+v", entry)
 	}
 	// A foreign role appears meanwhile: listed, and not closed by itself.
@@ -473,7 +493,7 @@ func TestPGPublicALostAnswerIsSettledFromTheEngineUnderTheSameConditions(t *test
 	sent = f.agent.closesOf("foreign_db")
 	view = f.round(t)
 	entry := pgPublicEntryOf(view.Open, "foreign_db")
-	if f.agent.closesOf("foreign_db") != sent || entry == nil || entry.Found[0] != "close_failed" || entry.Failure == "" {
+	if f.agent.closesOf("foreign_db") != sent || entry == nil || entry.Found[0] != "close_failed" || entry.FailureCode == "" {
 		t.Fatalf("the administrator's lost close after a round: %+v", entry)
 	}
 }
@@ -528,7 +548,8 @@ func TestPGPublicAFailedCloseIsShownAndNotRetriedEveryHour(t *testing.T) {
 		f.round(t)
 	}
 	f.agent.close = func(in *transport.PostgreSQLPublicAccessCloseRequest, out *transport.PostgreSQLPublicAccessCloseResponse) error {
-		out.Error = "the database server did not close it; nothing was changed: ERROR: permission denied"
+		out.Detail = "ERROR: permission denied"
+		out.Error = "the database server did not close it; nothing was changed: " + out.Detail
 		return nil
 	}
 	view := f.round(t)

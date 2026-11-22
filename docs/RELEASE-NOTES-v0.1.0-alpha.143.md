@@ -116,7 +116,11 @@ screen.**
   - A signing file or port-25 filter setting the owner changed by hand
     stays as it is (CelikPanel's text is beside it as
     `opendkim.conf.celikpanel-pending`). **Problems now** names the file or
-    setting and the owner's concrete step.
+    setting and the owner's concrete step. Once the owner's own signing file
+    has the line `SenderMacro {auth_authen}` (and no other `SenderMacro`, and
+    no `Include`), it counts as in place: the line in **Problems now** goes at
+    the next panel start, the panel's text beside it is removed, and the file
+    stays his.
   - **Problems now** also does this when the setting that decides which
     accounts may hand mail over without a login is not the panel's
     (`authorized_submit_users = root, vmail`), because sites' programs
@@ -187,6 +191,13 @@ screen.**
   alert mail, and is never closed again by itself.
 - The page shows the last reading with its time; **Read again** reads every
   database of a database server in one connection.
+- Right after the panel closed a database by itself, the page shows that
+  close (by the panel, when, **Undo**) without **Read again**. A close that
+  failed says only that nothing was changed, why in the page's language,
+  and the database server's own message in quotes; "not known" is said only
+  when it is not known. The default rights written out for the database's
+  owner (as an undo leaves them) count as the default everywhere, so a
+  database opened again is not called "changed outside CelikPanel".
 - MariaDB has no such default: nothing changes there. PostgreSQL servers
   registered on other machines are not touched.
 
@@ -369,7 +380,12 @@ this release's:
   `TestPGPublicARoundSkipsARecordChangedAfterItsScanBegan`,
   `TestPGPublicASessionTheClosesGuardCaughtIsRecordedAndEndsTheWatch`,
   `TestPGPublicADatabaseUnreadForMoreThanThreeRoundsIsListed` and
-  `TestPGPublicTheRecordOfARemovedDatabaseIsRemoved`. Also new and additive:
+  `TestPGPublicTheRecordOfARemovedDatabaseIsRemoved`; the alpha.143 lab's
+  `TestMailSigningOwnersFileWithTheLoginSettingIsInPlace`,
+  `TestPGPublicThePageShowsARoundsOwnCloseRightAway`,
+  `TestPGPublicTheDefaultRightsWrittenOutAreTheDefault` and the verified
+  failure cases in `TestPGPublicAnUnknownAnswerKeepsTheRecordAndReadsTheEngine`
+  and `TestS1bFixARecordedUserWithoutItsRoleIsSeenAndItsGrantIsNotNothingChanged`. Also new and additive:
   the Problems now kind `postgresql_databases_unreadable`, the build-gated
   agent call `PostgreSQLPublicAccessRunningV1` and the close's answer
   `sessions`.

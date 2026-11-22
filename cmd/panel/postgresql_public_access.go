@@ -171,6 +171,11 @@ type pgPublicMarker struct {
 	FailedBy          string `json:"failed_by,omitempty"`
 	Failure           string `json:"failure,omitempty"`
 	FailedFingerprint string `json:"failed_fingerprint,omitempty"`
+	// FailureCode (alpha.143 lab): why, for the page's own words: server
+	// (Failure is the database server's own message), lost (the answer did
+	// not arrive and the database is unchanged), cluster (its cluster does
+	// not run), refused (a name CelikPanel does not write).
+	FailureCode string `json:"failure_code,omitempty"`
 	// Second review of alpha.143: when the record was written (B7: a round
 	// whose scan began before skips it); an undo whose answer did not arrive
 	// (B1: settled like a close's); and, in a watch, the close that was sent
@@ -219,8 +224,9 @@ type pgPublicEntry struct {
 	ClosesAt   string `json:"closes_at,omitempty"`
 	Rounds     int    `json:"rounds,omitempty"`
 	// The last failed close.
-	FailedAt string `json:"failed_at,omitempty"`
-	Failure  string `json:"failure,omitempty"`
+	FailedAt    string `json:"failed_at,omitempty"`
+	Failure     string `json:"failure,omitempty"`
+	FailureCode string `json:"failure_code,omitempty"`
 	// UndoStatements: the plain statements of an undo, for an owner without
 	// the panel (run as the postgres account).
 	UndoStatements []string `json:"undo_statements,omitempty"`
@@ -524,8 +530,61 @@ func pgPublicFingerprint(record pgPublicRecord, f transport.PostgreSQLPublicAcce
 	sort.Strings(roles)
 	missing := append([]string{}, f.Missing...)
 	sort.Strings(missing)
-	sum := sha256.Sum256([]byte(strings.Join([]string{f.Owner, f.ACL, strings.Join(roles, ","), strings.Join(users, ","), strings.Join(missing, ",")}, "\x1f")))
+	acl := f.ACL
+	if pgPublicDefaultACL(acl, f.Owner) {
+		acl = "" // the default, however it is written
+	}
+	sum := sha256.Sum256([]byte(strings.Join([]string{f.Owner, acl, strings.Join(roles, ","), strings.Join(users, ","), strings.Join(missing, ",")}, "\x1f")))
 	return hex.EncodeToString(sum[:12])
+}
+
+// pgPublicDefaultACL reports PostgreSQL's untouched default rights of a
+// database (alpha.143 lab, 22 Nov 2026): the empty list, or the same rights
+// written out for the database's owner, {=Tc/owner,owner=CTc/owner}, which
+// is what a GRANT to PUBLIC (the undo) leaves. The rights are the same, so
+// both are the default wherever the panel asks.
+func pgPublicDefaultACL(acl, owner string) bool {
+	acl = strings.TrimSpace(acl)
+	if acl == "" {
+		return true
+	}
+	items := splitACLItems(strings.TrimSuffix(strings.TrimPrefix(acl, "{"), "}"))
+	if len(items) != 2 || owner == "" {
+		return false
+	}
+	want := map[string]string{"": "Tc", owner: "CTc"}
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if strings.HasPrefix(item, `"`) && strings.HasSuffix(item, `"`) && len(item) > 1 && !strings.HasPrefix(item, `""`) {
+			item = strings.ReplaceAll(item[1:len(item)-1], `\"`, `"`)
+		}
+		grantee, rest, ok := pgACLCut(item)
+		if !ok {
+			return false
+		}
+		privileges, grantor, _ := strings.Cut(rest, "/")
+		if grantor = strings.Trim(grantor, `"`); grantor != owner {
+			return false
+		}
+		expected, known := want[grantee]
+		if !known || !sameLetters(privileges, expected) {
+			return false
+		}
+		delete(want, grantee)
+	}
+	return len(want) == 0
+}
+
+func sameLetters(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, r := range b {
+		if !strings.ContainsRune(a, r) {
+			return false
+		}
+	}
+	return true
 }
 
 // pgPublicDecide is what one database's facts say.
@@ -565,7 +624,7 @@ func pgPublicDecide(record pgPublicRecord, f transport.PostgreSQLPublicAccessFac
 		}
 	}
 	for reason, found := range map[string]bool{
-		"changed_rights":    f.ACL != "",
+		"changed_rights":    !pgPublicDefaultACL(f.ACL, f.Owner),
 		"other_roles":       len(entry.OtherRoles) > 0,
 		"other_sessions":    len(entry.Sessions) > 0,
 		"missing_users":     len(entry.Missing) > 0,
@@ -580,7 +639,7 @@ func pgPublicDecide(record pgPublicRecord, f transport.PostgreSQLPublicAccessFac
 	return entry
 }
 
-var pgPublicFoundOrder = map[string]int{"close_failed": 0, "unknown_result": 1, "changed_rights": 2, "other_roles": 3, "other_sessions": 4,
+var pgPublicFoundOrder = map[string]int{"close_failed": 0, "unknown_result": 1, "changed_rights": 2, "rights_default": 2, "other_roles": 3, "other_sessions": 4,
 	"missing_users": 5, "monitoring_roles": 6, "replication_roles": 7, "observing": 8}
 
 // startPostgreSQLPublicAccess runs the rounds until ctx ends.
@@ -688,9 +747,11 @@ func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, recor
 	if err != nil {
 		return "", pgPublicEntry{}, err
 	}
-	if marker != nil && pass.write && pgPublicWrittenAfter(marker, scan.started) {
-		// B7: the record changed after this scan began, so its facts are
-		// older than the record: shown from the record, nothing written.
+	if marker != nil && pgPublicWrittenAfter(marker, scan.started) {
+		// B7, and the alpha.143 lab's P1: the record changed after this scan
+		// began (a round's own close, an administrator's action), so the
+		// scan's facts are older than the record: shown from the record on
+		// every pass (the page's read of the last scan too), nothing written.
 		pass = pgPublicPass{}
 		if marker.State == pgPublicClosed {
 			return pgPublicClosed, pgPublicClosedEntry(record, marker), nil
@@ -750,10 +811,12 @@ func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, recor
 				return pgPublicClosed, pgPublicClosedEntry(record, marker), nil
 			}
 			// Opened again outside the panel: listed, never closed by itself.
+			// Rights that are the default again say so (never an empty
+			// "changed" finding).
 			entry.State = "open"
 			pgPublicFailureOf(&entry, marker, pgPublicFingerprint(record, f))
 			if len(entry.Found) == 0 {
-				entry.Found = []string{"changed_rights"}
+				entry.Found = []string{"rights_default"}
 			}
 			return "open", entry, nil
 		case pgPublicUndone:
@@ -806,7 +869,7 @@ func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, recor
 	fingerprint := pgPublicFingerprint(record, f)
 	if watch.FailedAt != "" && watch.FailedFingerprint != fingerprint {
 		// Something changed since the close failed: it may be tried again.
-		watch.FailedAt, watch.FailedBy, watch.Failure, watch.FailedFingerprint = "", "", "", ""
+		watch.FailedAt, watch.FailedBy, watch.Failure, watch.FailedFingerprint, watch.FailureCode = "", "", "", "", ""
 	}
 	failed := pgPublicFailureOf(&entry, watch, fingerprint)
 	if len(entry.Found) == 0 {
@@ -868,7 +931,7 @@ func pgPublicFailureOf(entry *pgPublicEntry, marker *pgPublicMarker, fingerprint
 	if marker == nil || marker.FailedAt == "" || marker.FailedFingerprint != fingerprint {
 		return false
 	}
-	entry.FailedAt, entry.Failure = marker.FailedAt, marker.Failure
+	entry.FailedAt, entry.Failure, entry.FailureCode = marker.FailedAt, marker.Failure, marker.FailureCode
 	entry.Found = append([]string{"close_failed"}, entry.Found...)
 	return true
 }
@@ -920,11 +983,11 @@ func (p *Panel) pgPublicReconcile(ctx context.Context, record pgPublicRecord, ma
 	watch := &pgPublicMarker{State: pgPublicWatch, WatchSince: marker.WatchSince, Rounds: marker.Rounds, Fingerprint: marker.Fingerprint,
 		SeenRoles: marker.SeenRoles, SeenAt: marker.SeenAt, Sent: &sent}
 	outcome := "unchanged"
-	if marker.By == pgPublicByAdministrator || marker.Failure != "" {
+	if marker.By == pgPublicByAdministrator || marker.Failure != "" || marker.FailureCode != "" {
 		watch.FailedAt, watch.FailedBy, watch.FailedFingerprint = pgPublicNow().UTC().Format(time.RFC3339), marker.By, pgPublicFingerprint(record, f)
-		watch.Failure = marker.Failure
-		if watch.Failure == "" {
-			watch.Failure = "the server's answer to the close was lost and the database is unchanged"
+		watch.Failure, watch.FailureCode = marker.Failure, marker.FailureCode
+		if watch.FailureCode == "" {
+			watch.FailureCode = "lost"
 		}
 		outcome = "failed"
 	}
@@ -940,7 +1003,7 @@ func pgPublicSentClosed(sent *pgPublicMarker, afterACL string) *pgPublicMarker {
 	closed := *sent
 	closed.State, closed.AfterACL = pgPublicClosed, afterACL
 	closed.Added = pgPublicAddedFrom(closed.BeforeACL, closed.Grants)
-	closed.Grants, closed.Failure, closed.Sent = nil, "", nil
+	closed.Grants, closed.Failure, closed.FailureCode, closed.Sent = nil, "", "", nil
 	closed.WatchSince, closed.Rounds, closed.Fingerprint = "", 0, ""
 	return &closed
 }
@@ -1037,7 +1100,7 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 		// then unchanged, it is a failure shown to the administrator, not a
 		// close sent again every hour.
 		log.Printf("postgresql databases: %s: the close's answer did not arrive; it stays as being sent until it is confirmed ended: %v", record.name, err)
-		marker.Failure = "the Agent's answer to the close did not arrive (" + boundedAgentDiagnostic(err.Error()) + ")"
+		marker.Failure, marker.FailureCode = "", "lost"
 		if err := p.writePGPublicMarker(ctx, record.id, marker); err != nil {
 			return "unknown", marker, err
 		}
@@ -1079,7 +1142,8 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 	case resp.Changed:
 		return "changed", prev, putBack()
 	case resp.Unknown:
-		marker.Failure = boundedAgentDiagnostic(resp.Error)
+		log.Printf("postgresql databases: %s: the close's result is not known: %s", record.name, boundedAgentDiagnostic(resp.Error))
+		marker.Failure, marker.FailureCode = "", "lost"
 		if err := p.writePGPublicMarker(ctx, record.id, marker); err != nil {
 			return "unknown", marker, err
 		}
@@ -1094,7 +1158,7 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 		failed = &copied
 	}
 	failed.FailedAt, failed.FailedBy, failed.FailedFingerprint = pgPublicNow().UTC().Format(time.RFC3339), by, fingerprint
-	failed.Failure = boundedAgentDiagnostic(resp.Error)
+	failed.Failure, failed.FailureCode = pgPublicFailureFrom(resp.Detail, resp.Refusal != nil, resp.Error)
 	log.Printf("postgresql databases: %s was not closed: %s", record.name, failed.Failure)
 	return "failed", failed, p.writePGPublicMarker(ctx, record.id, failed)
 }
@@ -1110,6 +1174,22 @@ func (p *Panel) pgPublicSettle(ctx context.Context, record pgPublicRecord, marke
 	}
 	settled, outcome, err := p.pgPublicReconcile(ctx, record, marker, f)
 	return outcome, settled, f, true, err
+}
+
+// pgPublicFailureFrom is a verified failure's record (alpha.143 lab, P2):
+// the database server's own message with the code "server"; "cluster" when
+// its cluster does not run; "refused" for a request CelikPanel would not
+// write. The page words each code; only the server's message is shown as
+// it came, quoted.
+func pgPublicFailureFrom(detail string, refusal bool, agentError string) (string, string) {
+	switch {
+	case refusal:
+		return "", "cluster"
+	case strings.TrimSpace(detail) != "":
+		return boundedAgentDiagnostic(detail), "server"
+	}
+	log.Printf("postgresql databases: a close was refused before it was sent: %s", boundedAgentDiagnostic(agentError))
+	return "", "refused"
 }
 
 // pgPublicRights is what PUBLIC held in a database's rights: the untouched
@@ -1586,7 +1666,12 @@ func (p *Panel) pgPublicAct(ctx context.Context, record pgPublicRecord, action, 
 	case "changed":
 		return coded(http.StatusConflict, errCodePGPublicChanged, "The database was not closed: it is no longer as the list showed it (its rights or the roles inside it changed). Nothing was changed. Read the list again, then decide.")
 	case "failed":
-		return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not close it. Nothing was changed. The reason is below; it stays on the list with it.", closed.Failure)
+		// Only the database server's own message goes with it, quoted; the
+		// page words every other reason (the list shows it).
+		if closed.FailureCode == "server" && closed.Failure != "" {
+			return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not close it. Nothing was changed. Its message is below; it stays on the list with it.", "“"+closed.Failure+"”")
+		}
+		return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not close it. Nothing was changed. The reason is on the list.")
 	}
 	return coded(http.StatusBadGateway, errCodePGPublicUnknown, "The server's answer was lost, so whether the database was closed is not known. CelikPanel keeps its record and reads the database again; the list shows what it holds.")
 }
@@ -1605,7 +1690,11 @@ func (p *Panel) pgPublicUndo(ctx context.Context, record pgPublicRecord, marker 
 	case err == nil && resp.Changed:
 		return coded(http.StatusConflict, errCodePGPublicChanged, "The database's rights were changed since CelikPanel closed it, so the undo would not be exact. Nothing was changed. The statements under the database say what the close changed.")
 	case err == nil && !resp.Undone && !resp.Unknown:
-		return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not open it again. Nothing was changed. The reason is below.", boundedAgentDiagnostic(resp.Error))
+		if strings.TrimSpace(resp.Detail) != "" {
+			return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not open it again. Nothing was changed. Its message is below.", "“"+boundedAgentDiagnostic(resp.Detail)+"”")
+		}
+		log.Printf("postgresql databases: %s: the undo was not done: %s", record.name, boundedAgentDiagnostic(resp.Error))
+		return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not open it again. Nothing was changed.")
 	case err != nil || resp.Unknown:
 		// B1: read what the database holds, once nothing of the undo runs.
 		f, read := p.pgPublicConfirmedFacts(ctx, record)

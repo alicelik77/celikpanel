@@ -113,8 +113,14 @@ func TestPGPublicCloseAnswersWhatItChanged(t *testing.T) {
 		{"the guard refused", "began=1\nbefore=\nERROR:  celikpanel-changed\n", errors.New("exit status 3"), true, false},
 		{"the read-back refused (rolled back)", "began=1\nbefore=\nERROR:  celikpanel-readback\n", errors.New("exit status 3"), false, false},
 		{"the database could not be entered", `psql:<stdin>:1: error: \connect: connection to server failed: FATAL:  database "shop" does not exist` + "\n", errors.New("exit status 2"), false, false},
-		// Finding 4: past BEGIN, the answer is unknown, never "nothing changed".
-		{"a grant failed after BEGIN", "began=1\nbefore=\n" + `ERROR:  role "gone" does not exist` + "\n", errors.New("exit status 3"), false, true},
+		// alpha.143 lab: psql stopped at a server ERROR before COMMIT ended
+		// its session inside the transaction, which is rolled back: a
+		// verified failure, not unknown.
+		{"a grant failed after BEGIN, before COMMIT", "began=1\nbefore=\n" + `ERROR:  role "gone" does not exist` + "\n", errors.New("exit status 3"), false, false},
+		// Finding 4: an error after the COMMIT acknowledgement, or a session
+		// the server ended, stays unknown, never "nothing changed".
+		{"an error after COMMIT", "began=1\nbefore=\nCOMMIT\nERROR:  something\n", errors.New("exit status 3"), false, true},
+		{"a grant failed and the session was ended", "began=1\nbefore=\nERROR:  x\nFATAL:  terminating connection\n", errors.New("exit status 3"), false, true},
 		{"the connection ended after COMMIT", "began=1\nbefore=\n" + "server closed the connection unexpectedly\n", errors.New("exit status 2"), false, true},
 		{"killed with nothing printed", "", errors.New("signal: killed"), false, true},
 		{"no read-back after a clean exit", "began=1\nbefore=\n", nil, false, true},

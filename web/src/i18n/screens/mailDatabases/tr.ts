@@ -179,6 +179,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.autoreply.intervalInvalid': 'Yanıtlar arasındaki gün sayısı 1 ile 30 arasında bir tam sayı olmalı.',
     'mail.autoreply.help': 'Yanıtı posta sunucusu kendisi gönderir; panel durduğunda da. Günler sunucunun tarihine göredir. Posta listelerine ve otomatik iletilere yanıt gitmez.',
     'mail.autoreply.removed': 'CelikPanel bu yanıttan {addresses} adreslerini çıkardı: bu kutunun kendi adresleri değil; onlardan giden yanıt, bu hesabın sahip olmadığı bir alan adı adına imzalanırdı. Yanıtı kaydettiğinizde bu not kalkar.',
+    'mail.autoreply.removedOne': 'CelikPanel bu yanıttan {addresses} adresini çıkardı: bu kutunun kendi adresi değil; ondan giden yanıt, bu hesabın sahip olmadığı bir alan adı adına imzalanırdı. Yanıtı kaydettiğinizde bu not kalkar.',
     'mail.autoreply.removedOff': 'Yanıt sunucuda değiştirilemediği için kapatıldı. Yeniden açmak için kaydedin.',
     'mail.autoreply.foreignPending': 'Artık bu kutunun değil: {addresses}. Sunucudaki yanıttan henüz çıkarılamadı; her saat yeniden denenir, yöneticiye bildirildi. Adresleri silip kaydedin ya da yanıtı kapatın.',
     'pnow.mail_autoresponder_foreign.title': '{other}: otomatik yanıt hâlâ yabancı bir adresten gidiyor',

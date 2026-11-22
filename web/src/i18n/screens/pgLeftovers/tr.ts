@@ -38,4 +38,9 @@ export const trPgLeftoversScreens: Record<PgLeftoversScreenKey, string> = {
     'pnow.postgresql_databases_unreadable.title': '{value} PostgreSQL veritabanı saatlerdir okunamadı',
     'pnow.postgresql_databases_unreadable.body': 'Başka hesapların girip giremediği bilinmiyor: {name}. Nedeni düzeltin, sonra PostgreSQL sayfasında Yeniden oku’ya basın.',
     'pnow.postgresql_databases_unreadable.action': 'PostgreSQL’i aç',
+    'pgpub.why.server': 'veritabanı sunucusu reddetti ve hiçbir şey değişmedi: “{detail}”',
+    'pgpub.why.lost': 'yanıtı zamanında gelmedi ve veritabanı değişmedi',
+    'pgpub.why.cluster': 'PostgreSQL kümesi çalışmıyor',
+    'pgpub.why.refused': 'içindeki bir rol adı CelikPanel’in yazdığı türden değil, bu yüzden gönderilmedi',
+    'pgpub.found.rights_default': 'Hakları CelikPanel dışında yeniden PostgreSQL’in varsayılanına getirilmiş.',
 };

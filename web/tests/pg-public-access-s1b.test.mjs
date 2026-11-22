@@ -182,3 +182,19 @@ test('unreadable databases have their line; the watch and an unconfirmed close a
     assert.match(trPgPublicScreens['pgpub.found.observing'], /saatlik denetimlerde .* bağlı görülmezse/);
     assert.match(enPgPublicScreens['pgpub.found.unknown_result'], /not sent again/);
 });
+
+// alpha.143 lab (P1, P2, P3): a failed close is worded per reason in the
+// page's language with only the database server's message quoted; rights
+// that are the default again, or an empty rights finding, never show an empty
+// detail after a colon.
+test('a failed close is worded per reason; no empty finding after a colon', () => {
+    const block = read('../src/components/PostgreSQLPublicAccessBlock.tsx');
+    assert.match(block, /reason: failureWhy\(entry\)/);
+    assert.doesNotMatch(block, /reason: entry\.failure \?\? ''/);
+    assert.match(block, /entry\.acl \? t\('pgpub\.found\.changed_rights'/);
+    for (const words of [enPgLeftoversScreens, trPgLeftoversScreens]) {
+        for (const key of ['pgpub.why.server', 'pgpub.why.lost', 'pgpub.why.cluster', 'pgpub.why.refused', 'pgpub.found.rights_default']) assert.ok(words[key], key);
+        assert.match(words['pgpub.why.server'], /“\{detail\}”/);
+        assert.doesNotMatch(words['pgpub.why.server'], /not known|bilinmiyor/);
+    }
+});

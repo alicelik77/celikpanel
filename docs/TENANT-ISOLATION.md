@@ -359,7 +359,12 @@ Dovecot drop-in and the submission chroot), in this order:
 
 **The owner's own settings (D-022).** An `opendkim.conf` the owner changed is
 kept as he wrote it; CelikPanel's text is put beside it as
-`opendkim.conf.celikpanel-pending`. A milter list the owner wrote in `main.cf`
+`opendkim.conf.celikpanel-pending`. Read as OpenDKIM reads it (one `Name
+value` per line, names in any case, `#` a comment), a file of his that has
+`SenderMacro {auth_authen}`, no other `SenderMacro` value and no `Include`
+is in place: signing counts as bound, the other states are decided
+normally, and the pending text is removed (alpha.143 lab, 22 November
+2026). A milter list the owner wrote in `main.cf`
 is kept, and port 25 follows it without OpenDKIM. His own `-o smtpd_milters`
 on a port-25 entry is kept and, when it names OpenDKIM, reported. Every step
 that can change OpenDKIM or the milters (the start, a component's install or
@@ -418,7 +423,11 @@ each message):
 11. On a copy of the main server: edit `/etc/opendkim.conf` by hand, restart
     the panel: the file is unchanged, `opendkim.conf.celikpanel-pending` is
     beside it and starts under `opendkim -n -x`, Problems now names the file
-    and the line, mail flows.
+    and the line, mail flows. Add `SenderMacro {auth_authen}` to the owner's
+    file, `systemctl restart opendkim`, restart the panel: the line goes,
+    `opendkim.conf.celikpanel-pending` is gone, the owner's file is
+    unchanged (`sha256sum`), and with `authorized_submit_users =
+    static:anyone` set, Problems now shows that state instead.
 
 Added 22 November 2026 (second review of alpha.143):
 
@@ -492,3 +501,18 @@ alpha.140 or earlier and watched for a day:
 22. Delete a database that has a record (`SELECT key FROM panel_settings
     WHERE key LIKE 'postgresql_public_v1:%'` before and after, read with
     python3's sqlite3 module): its record goes with it.
+23. (alpha.143 lab corrections) After a round closed `a_shop` by itself,
+    open the PostgreSQL page without pressing Read again: it shows the close
+    (by CelikPanel, its time, Undo), never the database as open, and no
+    finding ends in an empty colon.
+24. As the administrator, `DROP ROLE a_reader` by hand (after `REASSIGN
+    OWNED`/`DROP OWNED` in `a_shop`), then press Close on the Turkish page:
+    the window says nothing was changed, why in Turkish, and the database
+    server's own message quoted; never "not known"; the list's failed line
+    says the same.
+25. Undo a close: `datacl` is the default written out
+    (`{=Tc/a_owner,a_owner=CTc/a_owner}` in some order); the database is
+    listed under "Opened again by an administrator" without "changed
+    outside CelikPanel".
+26. A reply that named one foreign address says it in the singular, one
+    with two in the plural (Turkish and English).

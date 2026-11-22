@@ -51,10 +51,15 @@ test('an address that is not the mailbox’s own is refused with its name, and r
     for (const [errors, mail] of [[enErrorsScreens, enMailDatabasesScreens], [trErrorsScreens, trMailDatabasesScreens]]) {
         assert.deepEqual(placeholders(errors['err.MAIL_AUTORESPONDER_REFUSED.foreign_address']), ['addresses']);
         assert.deepEqual(placeholders(mail['mail.autoreply.removed']), ['addresses']);
+        assert.deepEqual(placeholders(mail['mail.autoreply.removedOne']), ['addresses']);
     }
+    // alpha.143 lab: one removed address is said in the singular.
+    assert.match(enMailDatabasesScreens['mail.autoreply.removedOne'], /it is not this mailbox’s own address/);
+    assert.match(trMailDatabasesScreens['mail.autoreply.removedOne'], /adresini çıkardı: bu kutunun kendi adresi değil/);
+    assert.match(trMailDatabasesScreens['mail.autoreply.removed'], /adreslerini çıkardı/);
     const dialog = read('../src/components/MailAutoresponderDialog.tsx');
     assert.match(dialog, /removed_addresses/);
-    assert.match(dialog, /t\('mail\.autoreply\.removed', \{ addresses:/);
+    assert.match(dialog, /length === 1 \? 'mail\.autoreply\.removedOne' : 'mail\.autoreply\.removed', \{ addresses:/);
 });
 
 // Second review of alpha.143 (22 Nov 2026): a main.cf filter list the panel

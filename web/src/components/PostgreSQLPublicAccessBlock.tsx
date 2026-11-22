@@ -51,6 +51,8 @@ export interface PGPublicEntry {
     closes_at?: string;
     failed_at?: string;
     failure?: string;
+    /** alpha.143 lab: why a close failed, worded here (server: failure is the database server's own message). */
+    failure_code?: string;
     undo_statements?: string[];
     reason?: string;
 }
@@ -63,7 +65,7 @@ export interface PGPublicView {
     unknown: PGPublicEntry[];
 }
 
-const FOUND = ['observing', 'close_failed', 'unknown_result', 'changed_rights', 'other_roles', 'other_sessions', 'missing_users', 'monitoring_roles', 'replication_roles'] as const;
+const FOUND = ['observing', 'close_failed', 'unknown_result', 'changed_rights', 'rights_default', 'other_roles', 'other_sessions', 'missing_users', 'monitoring_roles', 'replication_roles'] as const;
 
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []);
 
@@ -213,13 +215,28 @@ export function PostgreSQLPublicAccessBlock() {
         <p className={`mt-2 text-sm ${said.tone === 'ok' ? 'text-success' : 'text-danger'}`} role={said.tone === 'ok' ? 'status' : 'alert'} data-pgpub-said={said.tone}>{said.text}</p>
     );
 
+    // Why a close failed, in the page's language; only the database server's
+    // own message is shown as it came, quoted (alpha.143 lab).
+    const failureWhy = (entry: PGPublicEntry) => {
+        switch (entry.failure_code) {
+            case 'server': return t('pgpub.why.server', { detail: entry.failure ?? '' });
+            case 'lost': return t('pgpub.why.lost');
+            case 'cluster': return t('pgpub.why.cluster');
+            case 'refused': return t('pgpub.why.refused');
+            default: return entry.failure || t('pgpub.why.lost');
+        }
+    };
+
     const foundLine = (entry: PGPublicEntry, reason: string) => {
         const roles = (list?: string[]) => ({ roles: (list ?? []).join(', ') });
         switch (reason) {
             case 'observing': return t('pgpub.found.observing', { since: when(entry.watch_since), until: when(entry.closes_at) });
-            case 'close_failed': return t('pgpub.found.close_failed', { time: when(entry.failed_at), reason: entry.failure ?? '' });
+            case 'close_failed': return t('pgpub.found.close_failed', { time: when(entry.failed_at), reason: failureWhy(entry) });
             case 'unknown_result': return t('pgpub.found.unknown_result');
-            case 'changed_rights': return t('pgpub.found.changed_rights', { acl: entry.acl ?? '' });
+            // Never an empty finding after a colon: rights written out as the
+            // default are said as the default (alpha.143 lab).
+            case 'changed_rights': return entry.acl ? t('pgpub.found.changed_rights', { acl: entry.acl }) : t('pgpub.found.rights_default');
+            case 'rights_default': return t('pgpub.found.rights_default');
             case 'other_roles': return t('pgpub.found.other_roles', roles(entry.other_roles));
             case 'other_sessions': return t('pgpub.found.other_sessions', roles(entry.sessions));
             case 'missing_users': return t('pgpub.found.missing_users', roles(entry.missing));

@@ -903,3 +903,52 @@ func TestMailSigningStateNamesEveryOutcome(t *testing.T) {
 		t.Fatalf("not run: %+v", got)
 	}
 }
+
+// alpha.143 lab (22 Nov 2026): the owner did what the kept-file line says
+// (added "SenderMacro {auth_authen}" to his own opendkim.conf). His file is
+// then in place: bound, so the other states (authorized_submit_users) are
+// decided normally; CelikPanel's text beside it goes; his file is not
+// written. A file whose SenderMacro is another macro, or one that pulls in
+// another file, stays kept.
+func TestMailSigningOwnersFileWithTheLoginSettingIsInPlace(t *testing.T) {
+	h, layout := installOpenDKIMHost(t, aptLayout(t))
+	owner := renderOpenDKIMConfWithSocket(layout, opendkimSocket) + "SignatureAlgorithm\trsa-sha256\n"
+	if err := os.WriteFile(layout.confPath, []byte(owner), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if state, _ := reconcileOpenDKIMConf(h.run, layout); state != mailSigningConfKept {
+		t.Fatalf("an owner's file without the line: %s", state)
+	}
+	if _, err := os.Stat(layout.confPath + opendkimPendingSuffix); err != nil {
+		t.Fatal("no text beside the owner's file")
+	}
+	owner += "# signing by login, as the panel said\nsendermacro   {auth_authen}   # the login\n"
+	if err := os.WriteFile(layout.confPath, []byte(owner), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	state, note := reconcileOpenDKIMConf(h.run, layout)
+	if state != mailSigningBound || !strings.Contains(note, "kept as it is") {
+		t.Fatalf("an owner's file with the line: %s %q", state, note)
+	}
+	if _, err := os.Stat(layout.confPath + opendkimPendingSuffix); !os.IsNotExist(err) {
+		t.Fatal("the text beside the owner's file stayed although it is no longer needed")
+	}
+	if content, _ := os.ReadFile(layout.confPath); string(content) != owner {
+		t.Fatal("the owner's file was changed")
+	}
+	if observed, _ := observeOpenDKIMConf(h.run, layout); observed != mailSigningBound {
+		t.Fatalf("observed: %s", observed)
+	}
+	if got := decideMailSigning(mailSigningInputs{confState: state, submitOpen: true}); got.State != mailSigningSubmitOpen {
+		t.Fatalf("the submit state is hidden: %s", got.State)
+	}
+	for _, other := range []string{
+		"SenderMacro {auth_authen}\nSenderMacro {mail_addr}\n",
+		"SenderMacro {auth_authen}\nInclude /etc/opendkim.d/more.conf\n",
+		"SenderMacro\n",
+	} {
+		if ownerOpenDKIMConfBindsLogin([]byte(other)) {
+			t.Fatalf("judged in place: %q", other)
+		}
+	}
+}

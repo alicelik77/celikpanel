@@ -360,6 +360,9 @@ func observeOpenDKIMConf(run postconfRunner, layout opendkimLayout) (string, str
 		if !supported {
 			return mailSigningUnsupported, unsupportedNote()
 		}
+		if ownerOpenDKIMConfBindsLogin(content) {
+			return mailSigningBound, ownerBindsLoginNote(layout.confPath)
+		}
 		return mailSigningConfKept, ownerOpenDKIMNote(layout.confPath)
 	case "earlier":
 		return mailSigningUnknown, layout.confPath + " is an earlier release's text; the next panel start puts this release's in place"
@@ -459,15 +462,62 @@ func ownerOpenDKIMNote(path string) string {
 		path, openDKIMSenderMacro, path, opendkimPendingSuffix)
 }
 
+// ownerOpenDKIMConfBindsLogin reports whether an owner's opendkim.conf
+// already chooses the signing key by the mailbox login, read as OpenDKIM
+// reads its configuration file (opendkim.conf(5)): one "Name value" per
+// line, names in any case, "#" starts a comment. Required: at least one
+// SenderMacro line, and every SenderMacro line has the value {auth_authen}
+// (so whichever line OpenDKIM takes, it is that one). A file that pulls in
+// another file (Include) is not judged: its effective settings are not all
+// in it, so it stays "kept".
+func ownerOpenDKIMConfBindsLogin(content []byte) bool {
+	found := false
+	for _, line := range strings.Split(string(content), "\n") {
+		if at := strings.IndexByte(line, '#'); at >= 0 {
+			line = line[:at]
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		switch {
+		case strings.EqualFold(fields[0], "Include"):
+			return false
+		case strings.EqualFold(fields[0], "SenderMacro"):
+			if len(fields) != 2 || fields[1] != openDKIMSenderMacro {
+				return false
+			}
+			found = true
+		}
+	}
+	return found
+}
+
+// ownerBindsLoginNote is the note for an owner's file that is in place.
+func ownerBindsLoginNote(path string) string {
+	return path + " was changed by the server owner and is kept as it is; it has \"SenderMacro " + openDKIMSenderMacro + "\", so mail is signed by the mailbox login"
+}
+
 // holdOpenDKIMPending keeps an owner's file. Where the installed OpenDKIM
 // knows SenderMacro, CelikPanel's text is put beside it and the state is
 // conf_kept. Where it does not (review finding 6), nothing is put beside it
 // (a text the owner's OpenDKIM would refuse is never offered), a pending
 // text an earlier candidate left there is removed, and the state is
-// unsupported. The owner's file is not read by anything of CelikPanel's.
+// unsupported. An owner's file that already binds the signing key to the
+// login (ownerOpenDKIMConfBindsLogin; alpha.143 lab, 22 Nov 2026) is in
+// place: the state is bound, and CelikPanel's text beside it, no longer
+// needed, is removed. The owner's file itself is never written.
 func holdOpenDKIMPending(path string, layout opendkimLayout, supported bool) (string, string) {
 	pending := path + opendkimPendingSuffix
 	current, exists, err := readOpenDKIMConf(pending)
+	if supported {
+		if owner, ownerExists, ownerErr := readOpenDKIMConf(path); ownerErr == nil && ownerExists && ownerOpenDKIMConfBindsLogin(owner) {
+			if err == nil && exists && openDKIMConfKind(current, true, layout, nil) != "owner" {
+				_ = opendkimConfRemove(pending)
+			}
+			return mailSigningBound, ownerBindsLoginNote(path)
+		}
+	}
 	if !supported {
 		if err == nil && exists && openDKIMConfKind(current, true, layout, nil) != "owner" {
 			_ = opendkimConfRemove(pending)

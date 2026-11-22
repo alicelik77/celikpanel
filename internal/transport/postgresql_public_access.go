@@ -119,6 +119,9 @@ type PostgreSQLPublicAccessCloseResponse struct {
 	// Sessions (second review of alpha.143, B8): with Changed, the roles
 	// outside the records the close's own session guard found connected.
 	Sessions []string `json:"sessions,omitempty"`
+	// Detail (alpha.143 lab, 22 Nov 2026): with a verified failure, the
+	// database server's own message (shown quoted, never as the sentence).
+	Detail string `json:"detail,omitempty"`
 }
 
 // PostgreSQLPublicAccessUndoRequest undoes one close in one transaction:
@@ -142,6 +145,8 @@ type PostgreSQLPublicAccessUndoResponse struct {
 	AfterACL      string                  `json:"after_acl,omitempty"`
 	Error         string                  `json:"error,omitempty"`
 	Refusal       *DatabaseClusterRefusal `json:"refusal,omitempty"`
+	// Detail: as the close's.
+	Detail string `json:"detail,omitempty"`
 }
 
 // PostgreSQLPublicAccessRunningRequest asks whether a close or an undo of one

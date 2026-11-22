@@ -508,6 +508,40 @@ func pgPublicOutcome(out []byte) (changed, verified bool) {
 	return false, false
 }
 
+// pgPublicOutcomeOf is pgPublicOutcome with psql's own way of ending
+// (alpha.143 lab, 22 Nov 2026): psql stopped by ON_ERROR_STOP at a server
+// ERROR (exit status 3), without a FATAL or a lost connection, and without
+// the COMMIT acknowledgement in its output, ended its session inside the
+// open transaction, which the server rolls back: verified, nothing changed
+// (a recorded user whose role is missing, a lock or statement timeout). An
+// error in COMMIT itself also means it was not committed.
+func pgPublicOutcomeOf(out []byte, err error) (changed, verified bool) {
+	if changed, verified = pgPublicOutcome(out); changed || verified {
+		return changed, verified
+	}
+	code := -1
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		code = exit.ExitCode()
+	} else if err != nil && strings.Contains(err.Error(), "exit status 3") {
+		code = 3
+	}
+	if code != 3 {
+		return false, false
+	}
+	text := string(out)
+	if !strings.Contains(text, "ERROR:") || strings.Contains(text, "FATAL:") || strings.Contains(text, "server closed the connection") ||
+		strings.Contains(text, "connection to server was lost") || strings.Contains(text, "no connection to the server") {
+		return false, false
+	}
+	for _, line := range strings.Split(text, "\n") {
+		if strings.TrimSpace(line) == "COMMIT" {
+			return false, false
+		}
+	}
+	return false, true
+}
+
 // PostgreSQLPublicAccessCloseV1 closes one database to other accounts (see
 // the request's comment).
 func (a *Agent) PostgreSQLPublicAccessCloseV1(req *transport.PostgreSQLPublicAccessCloseRequest, resp *transport.PostgreSQLPublicAccessCloseResponse) error {
@@ -538,14 +572,15 @@ func (a *Agent) PostgreSQLPublicAccessCloseV1(req *transport.PostgreSQLPublicAcc
 		return nil
 	}
 	if err != nil {
-		changed, verified := pgPublicOutcome(out)
+		changed, verified := pgPublicOutcomeOf(out, err)
 		switch {
 		case changed:
 			resp.Changed = true
 			resp.Sessions = pgPublicGuardSessions(out)
 			resp.Error = "the database is no longer as it was read; nothing was changed"
 		case verified:
-			resp.Error = "the database server did not close it; nothing was changed: " + boundedText(pgPublicErrorLines(out), 240)
+			resp.Detail = boundedText(pgPublicErrorLines(out), 240)
+			resp.Error = "the database server did not close it; nothing was changed: " + resp.Detail
 		default:
 			// Past BEGIN: rolled back, or committed with its answer lost.
 			resp.Unknown = true
@@ -790,13 +825,14 @@ func (a *Agent) PostgreSQLPublicAccessUndoV1(req *transport.PostgreSQLPublicAcce
 		return nil
 	}
 	if err != nil {
-		changed, verified := pgPublicOutcome(out)
+		changed, verified := pgPublicOutcomeOf(out, err)
 		switch {
 		case changed:
 			resp.Changed = true
 			resp.Error = "the database's rights were changed since it was closed; nothing was changed"
 		case verified:
-			resp.Error = "the database server did not open it again; nothing was changed: " + boundedText(pgPublicErrorLines(out), 240)
+			resp.Detail = boundedText(pgPublicErrorLines(out), 240)
+			resp.Error = "the database server did not open it again; nothing was changed: " + resp.Detail
 		default:
 			resp.Unknown = true
 			resp.Error = "the database server's answer ended inside the undo, so whether it was opened again is not known: " + boundedText(pgPublicErrorLines(out), 240)

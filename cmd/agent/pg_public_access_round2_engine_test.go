@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -143,7 +144,7 @@ func TestS1bRound2ACloseThatWaitsIsEndedAndLeavesNothingHalfDone(t *testing.T) {
 	_ = (&Agent{}).PostgreSQLPublicAccessCloseV1(request, &bounded)
 	took = time.Since(started)
 	t.Logf("the close bounded by its lock_timeout was answered after %s: %+v", took.Round(time.Millisecond), bounded)
-	if bounded.Closed || !strings.Contains(bounded.Error, "lock timeout") || took > 20*time.Second {
+	if bounded.Closed || bounded.Unknown || !strings.Contains(bounded.Detail, "lock timeout") || took > 20*time.Second {
 		t.Fatalf("a close bounded by its lock_timeout: %+v after %s", bounded, took)
 	}
 	holder.release()
@@ -196,6 +197,16 @@ func TestS1bRound2TheOwnersDatabaseSettingsDoNotReachTheAdministratorSession(t *
 		t.Fatalf("the close of a database whose owner tuned it: %v %+v", err, closed)
 	}
 	pgFixUndo(t, e, port, "s1r_tuned", closed.Change.Added)
+	// alpha.143 lab, P3: the undo leaves PostgreSQL's default rights written
+	// out for the owner (the Panel's pgPublicDefaultACL takes it as the
+	// default; cmd/panel TestPGPublicTheDefaultRightsWrittenOutAreTheDefault).
+	acl := pgFixACL(t, e, "s1r_tuned")
+	items := strings.Split(strings.Trim(acl, "{}"), ",")
+	sort.Strings(items)
+	t.Logf("the rights after the undo: %s", acl)
+	if strings.Join(items, ",") != "=Tc/s1r_owner,s1r_owner=CTc/s1r_owner" {
+		t.Fatalf("the rights after the undo are not the default written out: %s", acl)
+	}
 }
 
 // B8: the close's session guard names the role it caught.

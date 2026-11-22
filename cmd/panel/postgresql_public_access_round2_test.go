@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -296,5 +297,80 @@ func TestPGPublicTheRecordOfARemovedDatabaseIsRemoved(t *testing.T) {
 	f.panel.runPostgreSQLPublicRound(context.Background(), time.Time{})
 	if marker, _ := f.panel.readPGPublicMarker(context.Background(), 99999); marker != nil {
 		t.Fatalf("the record of a removed database stayed: %+v", marker)
+	}
+}
+
+// alpha.143 lab, P1: right after a round closed a database by itself, the
+// page (which reads the last scan, taken before the close) shows that close
+// (when, by the panel, Undo), never the database as open with an empty
+// "changed outside CelikPanel" finding.
+func TestPGPublicThePageShowsARoundsOwnCloseRightAway(t *testing.T) {
+	f := pgPublicFixture(t)
+	for round := 1; round <= pgPublicWatchRounds+1; round++ {
+		f.round(t)
+	}
+	if f.agent.closesOf("clean_db") != 1 {
+		t.Fatalf("closes: %d", f.agent.closesOf("clean_db"))
+	}
+	scans := f.agent.scans
+	rec := pgPublicPost(t, f.visibleDatabasesFixture, "admin", nil)
+	var view pgPublicView
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &view) != nil || f.agent.scans != scans {
+		t.Fatalf("the page: %d %s (scans %d → %d)", rec.Code, rec.Body.String(), scans, f.agent.scans)
+	}
+	closed := pgPublicEntryOf(view.Closed, "clean_db")
+	if closed == nil || closed.By != pgPublicByPanel || closed.At == "" || len(closed.UndoStatements) == 0 || pgPublicEntryOf(view.Open, "clean_db") != nil {
+		t.Fatalf("the page after the round's own close: open %+v closed %+v", view.Open, view.Closed)
+	}
+	for _, list := range [][]pgPublicEntry{view.Open, view.Reopened} {
+		for _, entry := range list {
+			if containsString(entry.Found, "changed_rights") && entry.ACL == "" {
+				t.Fatalf("an empty changed-rights finding: %+v", entry)
+			}
+		}
+	}
+}
+
+// alpha.143 lab, P3: the default rights written out for the database's owner
+// ({=Tc/owner,owner=CTc/owner}, what an undo's GRANT leaves) are the default
+// everywhere: not "changed outside CelikPanel", the watch counts, and a
+// database opened again by an administrator says no such thing.
+func TestPGPublicTheDefaultRightsWrittenOutAreTheDefault(t *testing.T) {
+	for acl, want := range map[string]bool{
+		"": true,
+		"{=Tc/shop_owner,shop_owner=CTc/shop_owner}":                     true,
+		"{shop_owner=CTc/shop_owner,=cT/shop_owner}":                     true,
+		"{=Tc/shop_owner,shop_owner=CTc/shop_owner,reader=c/shop_owner}": false,
+		"{=c/shop_owner,shop_owner=CTc/shop_owner}":                      false,
+		"{=Tc/postgres,shop_owner=CTc/postgres}":                         false,
+		"{=Tc/other,other=CTc/other}":                                    false,
+	} {
+		if got := pgPublicDefaultACL(acl, "shop_owner"); got != want {
+			t.Fatalf("default(%q) = %v, want %v", acl, got, want)
+		}
+	}
+	f := pgPublicFixture(t)
+	clean := f.agent.facts["clean_db"]
+	clean.ACL = "{=Tc/admin_user,admin_user=CTc/admin_user}"
+	f.agent.facts["clean_db"] = clean
+	var view pgPublicView
+	for round := 1; round <= pgPublicWatchRounds-1; round++ {
+		view = f.round(t)
+	}
+	if entry := pgPublicEntryOf(view.Open, "clean_db"); entry == nil || !reflect.DeepEqual(entry.Found, []string{"observing"}) {
+		t.Fatalf("written-out default rights: %+v", entry)
+	}
+	f.round(t)
+	f.round(t)
+	if f.agent.closesOf("clean_db") != 1 {
+		t.Fatalf("closes: %d", f.agent.closesOf("clean_db"))
+	}
+	if rec := pgPublicPost(t, f.visibleDatabasesFixture, "admin", map[string]any{"action": "undo", "database_id": 9981}); rec.Code != http.StatusOK {
+		t.Fatalf("undo: %d %s", rec.Code, rec.Body.String())
+	}
+	view = f.round(t)
+	reopened := pgPublicEntryOf(view.Reopened, "clean_db")
+	if reopened == nil || containsString(reopened.Found, "changed_rights") {
+		t.Fatalf("opened again with the default written out: %+v", reopened)
 	}
 }

@@ -27,9 +27,10 @@ func TestS1bFixARecordedUserWithoutItsRoleIsSeenAndItsGrantIsNotNothingChanged(t
 	var closed transport.PostgreSQLPublicAccessCloseResponse
 	_ = (&Agent{}).PostgreSQLPublicAccessCloseV1(&transport.PostgreSQLPublicAccessCloseRequest{Port: port, Name: "s1f_missing", ExpectACL: facts.ACL, ExpectRoles: facts.Roles,
 		Grants: []transport.PostgreSQLPublicAccessGrant{{Role: "s1f_gone"}}, Recorded: []string{"s1f_owner", "s1f_gone"}}, &closed)
-	// After BEGIN: unknown to the Agent; the Panel reads the database and
-	// finds it unchanged (a failure with this reason).
-	if closed.Closed || !closed.Unknown || !strings.Contains(closed.Error, `role "s1f_gone" does not exist`) {
+	// alpha.143 lab: psql stopped at the server's ERROR before COMMIT, so the
+	// transaction was rolled back: a verified failure with the server's own
+	// message as its detail, never "not known".
+	if closed.Closed || closed.Unknown || closed.Changed || !strings.Contains(closed.Detail, `role "s1f_gone" does not exist`) || strings.Contains(closed.Error, "not known") {
 		t.Fatalf("a grant to a missing role: %+v", closed)
 	}
 	if acl := pgFixACL(t, e, "s1f_missing"); acl != "" {

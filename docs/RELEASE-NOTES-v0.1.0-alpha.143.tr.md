@@ -121,7 +121,11 @@ günceller.**
   - Sahibin elle değiştirdiği imza dosyası ya da 25. port süzgeç ayarı
     olduğu gibi kalır (CelikPanel'in metni yanında
     `opendkim.conf.celikpanel-pending` olarak durur). **Şu anki sorunlar**
-    dosyayı ya da ayarı ve sahibin somut adımını söyler.
+    dosyayı ya da ayarı ve sahibin somut adımını söyler. Sahibin kendi imza
+    dosyasında `SenderMacro {auth_authen}` satırı olduğunda (başka bir
+    `SenderMacro` ve `Include` olmadan) yerinde sayılır: **Şu anki
+    sorunlar**daki satır sonraki panel açılışında kalkar, panelin yanındaki
+    metni silinir ve dosya sahibinin kalır.
   - **Şu anki sorunlar** bunu, girişsiz posta teslim edebilecek hesapları
     belirleyen ayar panelinki (`authorized_submit_users = root, vmail`)
     olmadığında da söyler; çünkü o zaman sitelerin programları buradaki her
@@ -195,6 +199,14 @@ günceller.**
   kapatılmaz.
 - Sayfa son okumayı zamanıyla gösterir; **Yeniden oku** bir veritabanı
   sunucusunun bütün veritabanlarını tek bağlantıda okur.
+- Panel bir veritabanını kendiliğinden kapattıktan hemen sonra sayfa,
+  **Yeniden oku** gerekmeden o kapatmayı gösterir (panel, zamanı, **Geri
+  al**). Başarısız bir kapatma yalnız hiçbir şeyin değişmediğini, nedenini
+  sayfanın dilinde ve veritabanı sunucusunun kendi iletisini tırnak içinde
+  söyler; "bilinmiyor" yalnız gerçekten bilinmediğinde söylenir. Sahibi için
+  yazılmış varsayılan haklar (geri almanın bıraktığı gibi) her yerde
+  varsayılan sayılır; böylece yeniden açılan bir veritabanına "CelikPanel
+  dışında değiştirilmiş" denmez.
 - MariaDB'de böyle bir varsayılan yok: orada hiçbir şey değişmez. Başka
   makinelerde kayıtlı PostgreSQL sunucularına dokunulmaz.
 
@@ -380,7 +392,13 @@ geçen testler:
   `TestPGPublicARoundSkipsARecordChangedAfterItsScanBegan`,
   `TestPGPublicASessionTheClosesGuardCaughtIsRecordedAndEndsTheWatch`,
   `TestPGPublicADatabaseUnreadForMoreThanThreeRoundsIsListed` ve
-  `TestPGPublicTheRecordOfARemovedDatabaseIsRemoved`. Ayrıca yeni ve
+  `TestPGPublicTheRecordOfARemovedDatabaseIsRemoved`; alpha.143
+  laboratuvarının `TestMailSigningOwnersFileWithTheLoginSettingIsInPlace`,
+  `TestPGPublicThePageShowsARoundsOwnCloseRightAway`,
+  `TestPGPublicTheDefaultRightsWrittenOutAreTheDefault` testleri ve
+  `TestPGPublicAnUnknownAnswerKeepsTheRecordAndReadsTheEngine` ile
+  `TestS1bFixARecordedUserWithoutItsRoleIsSeenAndItsGrantIsNotNothingChanged`
+  içindeki doğrulanmış hata durumları. Ayrıca yeni ve
   eklemeli: "Şu anki sorunlar" türü `postgresql_databases_unreadable`,
   sürüme bağlı aracı çağrısı `PostgreSQLPublicAccessRunningV1` ve kapatmanın
   `sessions` yanıtı.

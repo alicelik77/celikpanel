@@ -307,7 +307,11 @@ onarımı adımında), şu sırayla:
    kullanıcısına hata gösterir ve kişi yeniden gönderir.
 
 **Sahibin kendi ayarları (D-022).** Sahibin değiştirdiği `opendkim.conf` yazdığı gibi korunur;
-CelikPanel'in metni yanına `opendkim.conf.celikpanel-pending` olarak konur. Sahibin `main.cf`'te
+CelikPanel'in metni yanına `opendkim.conf.celikpanel-pending` olarak konur. OpenDKIM'in okuduğu gibi
+okunduğunda (satır başına bir `Ad değer`, adlarda büyük/küçük harf fark etmez, `#` açıklamadır)
+`SenderMacro {auth_authen}` içeren, başka bir `SenderMacro` değeri ve `Include` içermeyen bir sahip
+dosyası yerindedir: imza bağlı sayılır, diğer durumlar olağan biçimde değerlendirilir ve bekleyen metin
+silinir (alpha.143 laboratuvarı, 22 Kasım 2026). Sahibin `main.cf`'te
 yazdığı süzgeç listesi korunur ve 25. kapı onu OpenDKIM'siz izler. Bir 25. kapı girdisindeki kendi
 `-o smtpd_milters` ayarı korunur; OpenDKIM'i adlandırıyorsa bildirilir. OpenDKIM'i ya da süzgeçleri
 değiştirebilen her adım (açılış, bir bileşenin kurulması ya da kaldırılması, posta kurulumu, DKIM
@@ -359,7 +363,10 @@ gösterir):
 11. Ana sunucunun bir kopyasında: `/etc/opendkim.conf` elle değiştirilir, panel yeniden
     başlatılır: dosya değişmez, yanında `opendkim -n -x` ile başlayan
     `opendkim.conf.celikpanel-pending` vardır, Şu anki sorunlar dosyayı ve satırı söyler, posta
-    akar.
+    akar. Sahibin dosyasına `SenderMacro {auth_authen}` eklenir, `systemctl restart opendkim`, panel
+    yeniden başlatılır: satır kalkar, `opendkim.conf.celikpanel-pending` silinmiştir, sahibin dosyası
+    değişmemiştir (`sha256sum`) ve `authorized_submit_users = static:anyone` ayarlıyken Şu anki
+    sorunlar bunun yerine o durumu gösterir.
 
 22 Kasım 2026'da eklendi (alpha.143'ün ikinci incelemesi):
 
@@ -421,3 +428,15 @@ izlenmiş eski veritabanı `a_shop` ile (sahibi `a_owner`, kayıtlı okuyucu `a_
 22. Kaydı olan bir veritabanı silinir (`SELECT key FROM panel_settings WHERE key LIKE
     'postgresql_public_v1:%'` öncesi ve sonrası, python3'ün sqlite3 modülüyle okunur):
     kaydı onunla birlikte gider.
+23. (alpha.143 laboratuvar düzeltmeleri) Bir denetim `a_shop`'u kendiliğinden kapattıktan sonra
+    PostgreSQL sayfası Yeniden oku'ya basmadan açılır: kapatmayı gösterir (CelikPanel, zamanı, Geri
+    al), veritabanını asla açık göstermez ve hiçbir bulgu boş bir iki noktayla bitmez.
+24. Yönetici olarak `a_reader` elle silinir (`a_shop` içinde `REASSIGN OWNED`/`DROP OWNED`
+    sonrasında `DROP ROLE a_reader`), sonra Türkçe sayfada Kapat'a basılır: pencere hiçbir şeyin
+    değişmediğini, nedenini Türkçe ve veritabanı sunucusunun kendi iletisini tırnak içinde söyler;
+    asla "bilinmiyor" demez; listedeki başarısız satırı da aynısını söyler.
+25. Bir kapatma geri alınır: `datacl` yazılmış varsayılandır (sırası değişebilir
+    `{=Tc/a_owner,a_owner=CTc/a_owner}`); veritabanı "CelikPanel dışında değiştirilmiş" demeden "Bir
+    yöneticinin yeniden açtıkları" altında listelenir.
+26. Tek yabancı adres adlandıran yanıtın notu tekil, iki adres adlandıranınki çoğul söyler (Türkçe ve
+    İngilizce).

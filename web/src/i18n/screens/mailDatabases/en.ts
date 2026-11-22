@@ -187,7 +187,8 @@ export const enMailDatabasesScreens = {
     'mail.autoreply.messageRequired': 'Write the message to turn the reply on.',
     'mail.autoreply.intervalInvalid': 'The number of days between replies must be a whole number from 1 to 30.',
     'mail.autoreply.help': 'The mail server sends the reply itself, also when the panel is stopped. Days follow the server’s date. Mailing lists and automatic messages get no reply.',
-    'mail.autoreply.removed': 'CelikPanel removed {addresses} from this reply: not this mailbox’s own addresses, so a reply from them would have been signed for a domain this account does not hold. This note goes when you save the reply.',
+    'mail.autoreply.removed': 'CelikPanel removed {addresses} from this reply: they are not this mailbox’s own addresses, so a reply from them would have been signed for a domain this account does not hold. This note goes when you save the reply.',
+    'mail.autoreply.removedOne': 'CelikPanel removed {addresses} from this reply: it is not this mailbox’s own address, so a reply from it would have been signed for a domain this account does not hold. This note goes when you save the reply.',
     // 22 Nov 2026 (second review of alpha.143, B3, B4). The pnow.* keys are
     // Problems now's, kept here because its own part is full.
     'mail.autoreply.removedOff': 'The reply could not be changed on the server, so it was turned off. Save it to turn it back on.',
