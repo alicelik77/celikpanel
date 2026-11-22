@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.143.tr.md)
 
+> **Published** on 2026-11-22 (UTC): release commit `462c854fb`, GitHub pre-release at 07:21:01Z, download portal at about 07:24Z (public check 27/27).
+
 **A security release: please update soon.** It closes two ways in which
 one customer could act as another: outgoing mail signed with another
 customer's domain, and PostgreSQL databases made before alpha.141 that
