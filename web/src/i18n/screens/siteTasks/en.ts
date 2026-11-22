@@ -1,30 +1,38 @@
-// SCREEN catalogue part "siteTasks" (22 Nov 2026, S4 R2b): a site's
-// scheduled tasks as timers inside its own limits - what the Scheduled tasks
-// screen says about each task's last run (stasks.), the administrator's move
-// of the site's crontab and its undo on the Overview card (slim.tasks.),
-// "Move all" (moveall.), and the Problems now lines of cron.allow, crontabs
-// that came back and lingering (pnow.). One part of the screen copy;
-// ../../index.tsx fetches every part in parallel and no screen renders before
-// all of them have arrived.
+// SCREEN catalogue part "siteTasks" (22 Nov 2026, S4 R2b and its fix round):
+// a site's scheduled tasks as timers inside its own limits - what the
+// Scheduled tasks screen says about each task's last run (stasks.), the
+// administrator's move of the site's crontab and its undo on the Overview
+// card (slim.tasks.), "Move all" (moveall.), and the Problems now lines of
+// cron.allow, crontabs that came back, held tasks and lingering (pnow.).
+// One part of the screen copy; ../../index.tsx fetches every part in
+// parallel and no screen renders before all of them have arrived.
 //
 // EKRAN katalogu parçası "siteTasks": sitenin zamanlanmış görevleri kendi
 // sınırları içinde; son çalışma, taşıma, geri alma, hepsini taşıma.
 
 export const enSiteTasksScreens = {
     'stasks.timers': 'These tasks run inside this site’s own limits. A task still running when its next time comes is not started a second time; if its time came while it ran, it starts once more right after it ends.',
-    'stasks.differences': 'Each task runs as cron ran it: the same account, folder, shell and settings. What differs: its output is kept with each run instead of being mailed, it starts without a login session, and the shell’s $0 is the task’s own file.',
+    'stasks.differences': 'Each task runs as cron ran it: the same account, folder, shell and settings, and what it starts in the background keeps running, inside the limits. What differs: its output is kept with each run instead of being mailed; it starts without a login session, so the server’s per-login limits do not apply (the site’s limits do); a program that needs extra rights (set-user-id, such as sudo, crontab or ping) runs without them; and the shell’s $0 is the task’s own file.',
     'stasks.source.owner': 'The server owner changed this site’s task file by hand. Their file is kept and its tasks run as it says; changes made here wait beside it until the server owner takes them in.',
-    'stasks.source.missing': 'This site’s task file is missing on the server while timers of the site remain; they run as they are. The server owner puts the file back or removes the timers.',
-    'stasks.reappeared': 'A crontab was made again for this site’s account ({n} lines). It is the server owner’s and runs outside the site’s limits:',
+    'stasks.source.missing': 'This site’s task file is missing on the server while its timers remain; they keep running as they are, and no change can be saved here until the file is back (it would remove every other task). The administrator rebuilds it from what CelikPanel last made the timers from.',
+    'stasks.rebuild.button': 'Rebuild the task file',
+    'stasks.rebuild.confirm': 'Rebuild this site’s task file?',
+    'stasks.rebuild.body': 'The file is written again from what CelikPanel last made this site’s timers from. Nothing else changes and the timers keep running. It will hold:',
+    'stasks.rebuild.empty': '(no lines)',
+    'stasks.rebuild.done': 'The task file is back; changes on this screen work again.',
+    'stasks.rebuild.unknown': 'What happened is not known. Read this page again.',
+    'stasks.reappeared': 'A crontab was made again for this site’s account ({n} lines). Only root could make it (the server owner), and it runs outside the site’s limits:',
+    'stasks.reappearedSite': 'A crontab exists again for this site’s account ({n} lines) and runs outside the site’s limits. Cron let this account in, so the site’s own code can have made it:',
     'stasks.notRun': 'These lines of the task file do not run:',
     'stasks.reason.schedule': 'a time that cannot be read',
     'stasks.reason.mailto': 'mailing the output is not possible; output is kept with each run',
     'stasks.reason.home': 'a different home folder is not possible',
     'stasks.reason.shell': 'the shell must be a full path',
-    'stasks.reason.env_value': 'the value holds a quote mark, a backslash or a control character',
+    'stasks.reason.env_value': 'the value is not text the server can read (a quote mark, a backslash, a control character or bytes that are not UTF-8)',
     'stasks.reason.carriage': 'the line holds a hidden control character',
     'stasks.reason.empty': 'a time without a command',
-    'stasks.reason.invalid_env': 'not a valid setting name',
+    'stasks.reason.invalid_env': 'not a valid setting',
+    'stasks.reason.too_long': 'longer than cron runs (998 bytes at most)',
     'stasks.state.off': 'Turned off on the server',
     'stasks.state.at_boot': 'Runs after each start of the server',
     'stasks.state.kept': 'Its file was changed on the server and is kept',
@@ -42,36 +50,55 @@ export const enSiteTasksScreens = {
     'slim.tasks.moved': 'The site’s scheduled tasks run inside these limits.',
     'slim.tasks.cron': 'The site’s scheduled tasks still run in cron, outside these limits, and the site’s own code can add more there. The move takes them in too.',
     'slim.tasks.unknown': 'Where the site’s scheduled tasks run could not be read.',
-    'slim.tasks.reappeared': 'A crontab was made again for this site’s account ({n} lines); it runs outside the limits. It is the server owner’s; Scheduled tasks lists its lines.',
+    'slim.tasks.reappeared': 'A crontab was made again for this site’s account ({n} lines); it runs outside the limits. Only root could make it (the server owner); Scheduled tasks lists its lines.',
+    'slim.tasks.reappearedSite': 'A crontab exists again for this site’s account ({n} lines) and runs outside the limits. Cron let this account in, so the site’s own code can have made it. The server owner removes it and keeps the account out of cron; Scheduled tasks lists its lines.',
+    'slim.tasks.mailOwner': 'Tasks and programs of sites cannot send mail through this server: port 465 or 587 is the server owner’s own mail service (or another program listens there), so CelikPanel does not open it to them. They send through an outside mail service, or the server owner gives those ports back to CelikPanel’s mail service.',
+    'slim.tasks.mailAbsent': 'Tasks and programs of sites cannot send mail through this server: it has no mail sending service set up. Setting up mail on this server opens it to them, with a mailbox’s password.',
     'slim.tasks.recovery': 'A move of the site’s tasks was interrupted; at the agent’s start it ended as “{outcome}” ({time}).',
     'slim.tasks.rows': 'The site’s {n} tasks become timers inside the limits; settings and paused tasks come with them. Nothing restarts and no running task stops.',
     'slim.tasks.none': 'The site has no scheduled tasks now; from now on its tasks run inside its limits.',
     'slim.tasks.blocking': 'These lines keep all of the site’s tasks in cron: {list}. Delete them, or keep them on the Scheduled tasks screen (administrator), then move again.',
-    'slim.tasks.mail': 'A task that sends mail can then send it only through this server’s own mail service, with a mailbox’s name and password, on port 465 or 587.',
+    'slim.tasks.mail': 'A task that sends mail can then send it only through this server’s own mail service on port 465 or 587, with a mailbox’s name and password, connecting to this server’s own host name.',
+    'slim.tasks.privileged': 'These tasks call a program that needs extra rights (set-user-id, such as sudo, crontab or ping); inside the limits it runs without them and may fail: {list}.',
     'slim.tasks.previewUnknown': 'What the move makes of the site’s scheduled tasks could not be read now. The move still checks every line itself and moves nothing by half.',
     'moveall.unread': 'The list of sites outside their limits could not be read, so nothing would be moved. Close this and press again.',
     'slim.tasks.step': 'Moving the scheduled tasks',
     'slim.tasks.done.moved': 'The scheduled tasks run inside the limits now.',
     'slim.tasks.done.stayed': 'The scheduled tasks stayed in cron: {list}.',
     'slim.tasks.done.failed': 'The scheduled tasks stayed in cron: {detail}',
+    'slim.tasks.done.back': 'The scheduled tasks run inside the limits now, but {detail}',
     'slim.tasks.undo.button': 'Put the tasks back into cron',
     'slim.tasks.undo.confirm': 'Put this site’s tasks back into cron?',
     'slim.tasks.undo.body': 'The site’s crontab gets its tasks back exactly as they are now, and their timers are removed. They then run outside the site’s limits again, and the site’s own code can add jobs to its crontab again.',
     'slim.tasks.undo.go': 'Put them back',
-    'slim.tasks.undo.step': 'Writing the crontab, then removing the timers',
+    'slim.tasks.undo.step': 'Timers off, cron open, crontab written and checked, then the timers removed',
     'slim.tasks.undo.done': 'The tasks run in cron again.',
     'slim.tasks.undo.title': 'Putting the tasks back into cron',
 
     'moveall.button': 'Move them all',
     'moveall.title': 'Moving every site into its limits',
     'moveall.confirm': 'Move {n} sites into their limits, one after another?',
-    'moveall.body': 'Each site moves the way its own “Move into the limits” does: its tasks first, then its running programs restart once inside the limits. The work stops at the first site that does not move and says why; the sites after it are not touched. Pressing again later goes on from there.',
+    'moveall.body': 'Each site moves the way its own “Move into the limits” does: its tasks first, then its running programs restart once inside the limits. A site that cannot move is skipped and said why; the work stops only if a move that started fails.',
     'moveall.go': 'Move them all',
     'moveall.cancel': 'Cancel',
     'moveall.none': 'No site is outside its limits now.',
     'moveall.done': 'Done: {n} sites moved.',
     'moveall.failed': '{domain} did not move: {reason}. The sites after it were not touched.',
     'moveall.unknown': 'The server did not answer about {domain}, so its result is unknown. Read this page again before you go on.',
+    'moveall.programs': '{n} programs restart inside the limits',
+    'moveall.tasks': '{n} tasks become timers',
+    'moveall.skip': '{domain}: skipped, {reason}',
+    'moveall.tasksStay': '{domain}: skipped; its tasks stay in cron ({reason}), its {n} programs could move',
+    'moveall.option': 'Also move the programs of the sites whose tasks stay in cron ({n})',
+    'moveall.optionRow': '{domain}: its programs move; its tasks stay in cron',
+    'moveall.previewUnknown': 'what its move would do could not be read',
+    'moveall.notMoved': 'Not moved',
+    'moveall.partial': 'its programs moved; its tasks stayed in cron ({reason})',
+
+    'err.SITE_TASKS_SOURCE_MISSING': 'This site’s task file is missing on the server while its tasks still run as timers, so nothing was changed: a change now would remove every other task. The administrator rebuilds the file on this screen; then change the task again.',
+    'err.CRON_COMMAND_TOO_LONG': 'The command is longer than cron runs (998 bytes at most), so nothing was saved. Put the command into a script file and run the script from the task.',
+    'err.SITE_TASKS_ENV_VALUE': 'A setting of this site’s task file holds a value the server cannot read, so nothing was saved. The server owner corrects that line of the task file; then save again.',
+    'err.SITE_TASKS_LIMITS_MISSING': 'The task was saved, but it does not run yet: this site’s limits file is not in place on the server, and no task runs outside the site’s limits. The administrator opens the subscription’s limits and saves them; then save the task again.',
 
     'pnow.site_limits_outside.title': 'Sites outside their limits: {value}',
     'pnow.site_limits_outside.body': 'The running programs or scheduled tasks of these sites still run outside their limits: {domain}. Moving restarts each site’s programs once inside the limits and turns its tasks into timers there; nothing is half-moved. This line goes away by itself.',
@@ -87,8 +114,14 @@ export const enSiteTasksScreens = {
     'pnow.cron_owner_removed.confirm': 'CelikPanel writes /etc/cron.allow again: every account that may use cron now keeps it, except these sites’ accounts.',
     'pnow.cron_owner_removed.action': 'Close it again',
     'pnow.site_crontab_returned.title': 'A crontab was made again for sites inside their limits',
-    'pnow.site_crontab_returned.body': 'These accounts have a crontab again ({value} lines in all): {domain}. Its lines run outside the sites’ limits. The server owner moves them into the site’s Scheduled tasks or removes the crontab (crontab -r is refused for these accounts; the file is in /var/spool/cron/crontabs).',
+    'pnow.site_crontab_returned.body': 'These accounts have a crontab again ({value} lines in all), made by root: {domain}. Its lines run outside the sites’ limits. The server owner moves them into the site’s Scheduled tasks or removes the file (crontab -r is refused for these accounts; it is in /var/spool/cron/crontabs, or /var/spool/cron with cronie).',
     'pnow.site_crontab_returned.action': 'Open Monitoring',
+    'pnow.site_crontab_by_site.title': 'Sites inside their limits have a crontab again',
+    'pnow.site_crontab_by_site.body': 'These accounts have a crontab again ({value} lines in all): {domain}. Cron let them in, so the sites’ own code can have made it, and its lines run outside the limits. The server owner keeps the accounts out of cron, then removes the file (in /var/spool/cron/crontabs, or /var/spool/cron with cronie).',
+    'pnow.site_crontab_by_site.action': 'Open Monitoring',
+    'pnow.site_tasks_held.title': 'Scheduled tasks held: {value} sites',
+    'pnow.site_tasks_held.body': 'The scheduled tasks of these sites do not run: their limits file is not in place and could not be written ({other}), and no task runs outside a site’s limits: {domain}. The administrator saves the subscription’s limits; they run again at the next start once the file is back.',
+    'pnow.site_tasks_held.action': 'Open Monitoring',
     'pnow.site_lingering.title': 'Site accounts keep their own programs running',
     'pnow.site_lingering.body': 'These accounts linger, so programs they started keep running outside their limits: {domain}. The server owner ends it with: {other}',
     'pnow.site_lingering.action': 'Open Monitoring',
@@ -100,6 +133,7 @@ export const enSiteTasksScreens = {
     'pnow.linger_not_closed.body': 'CelikPanel’s polkit rule is not in place ({domain}): it was changed on the server, or could not be written ({other}). Site accounts may keep their own programs running outside their limits. The server owner checks the file.',
     'pnow.linger_not_closed.action': 'Open Monitoring',
     'dashboard.audit.action.site.tasks_undo': 'put a site’s scheduled tasks back into cron ({target})',
+    'dashboard.audit.action.site.tasks_source_rebuild': 'rebuilt a site’s task file ({target})',
 };
 
 export type SiteTasksScreenKey = keyof typeof enSiteTasksScreens;

@@ -61,8 +61,9 @@ func (p *Panel) startSideDoorsClose() {
 // administrator's explicit "close it again" (empty at each start).
 var closeSideDoorsThroughAgent = func(p *Panel, ctx context.Context, reclose, version string) (transport.SideDoorsResponse, error) {
 	var response transport.SideDoorsResponse
+	slices := p.allSiteSlices(ctx)
 	err := p.withStandaloneAgentMutation(ctx, sideDoorsJobKind, sideDoorsJobTarget, "", func(callCtx context.Context, binding agentMutationBinding) error {
-		request := transport.SideDoorsRequest{ServiceMutationBinding: binding, ReClose: reclose, Version: version}
+		request := transport.SideDoorsRequest{ServiceMutationBinding: binding, ReClose: reclose, Version: version, Slices: slices}
 		if err := p.callAgentContext(callCtx, "Agent.CloseSideDoorsV1", &request, &response); err != nil {
 			return err
 		}
@@ -72,6 +73,37 @@ var closeSideDoorsThroughAgent = func(p *Panel, ctx context.Context, reclose, ve
 		return nil
 	})
 	return response, err
+}
+
+// allSiteSlices is every site's slice with its subscription's limits (S4 R2b
+// fix round): the step's re-render of moved sites' timers puts a missing
+// limits file back from it before a timer runs. A site whose limits cannot
+// be read is left out (its timers are then held if its file is missing).
+func (p *Panel) allSiteSlices(ctx context.Context) []transport.SiteSlice {
+	if p == nil || p.db == nil {
+		return nil
+	}
+	sites, err := p.siteLimitSites(ctx, 0)
+	if err != nil {
+		log.Printf("side doors: the sites' limits could not be read: %v", err)
+		return nil
+	}
+	limits := map[int]settingLimits{}
+	var out []transport.SiteSlice
+	for _, s := range sites {
+		l, ok := limits[s.SubscriptionID]
+		if !ok {
+			read, err := subscriptionSettingLimits(ctx, p.db.GetDB(), s.SubscriptionID)
+			if err != nil {
+				continue
+			}
+			l, limits[s.SubscriptionID] = read, read
+		}
+		if slice := siteSliceFromLimits(s.SiteID, s.Domain, l); slice != nil {
+			out = append(out, *slice)
+		}
+	}
+	return out
 }
 
 // closeSideDoorsOnce is one attempt: done is true when the outcome is final.

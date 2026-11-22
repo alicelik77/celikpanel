@@ -37,6 +37,8 @@ const stub = dataModule(`
   export const TASK_STATES = [];
   export const decodeTaskRun = () => undefined;
   export const decodeTaskLines = () => [];
+  // S4 R2b fix round: the missing task file's rebuild names its request.
+  export const newMoveRequestID = () => 'move-0123456789abcdef01234567';
   export const formatDateTime = (value) => String(value);
   export const AdminInstallLink = () => null;
   export const showToast = (type, message) => { globalThis.toasts.push([type, message]); };

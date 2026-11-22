@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"net/rpc"
 	"strings"
 	"testing"
 	"time"
@@ -134,6 +136,84 @@ func TestTheOutsideLineCountsProgramsAndTasks(t *testing.T) {
 		if en, tr := alertLine(pendingAlertMail{kind: kind, subject: "shop.example.com", name: "/etc/cron.allow", value: 2}); strings.HasPrefix(en, "A monitored problem") || tr == "" {
 			t.Errorf("%s has no alert line", kind)
 		}
+	}
+}
+
+// TestFixRoundProblemsAndRefusals (S4 R2b fix round): a crontab the site's
+// own code can have made is its own line (never called the owner's); held
+// tasks are one administrator line naming the sites; the Agent's new exact
+// refusals of a task change become coded answers with words; the task file
+// rebuild is the administrator's alone and audited.
+func TestFixRoundProblemsAndRefusals(t *testing.T) {
+	state := transport.SideDoorsState{CheckedAt: "2026-11-22T10:00:00Z",
+		Cron: &transport.SideDoorsCron{State: transport.SideDoorsAtCurrent, Reappeared: map[string]int{"a_test": 1, "b_test": 3},
+			ReappearedBySite: map[string]bool{"b_test": true}},
+		TasksHeld: []transport.SideDoorsTasksHeld{{SiteID: 4, Domain: "shop.test", Detail: "the slice file could not be written"}}}
+	kinds := map[string]monitoringProblem{}
+	for _, p := range append(siteCronProblems(state), siteTasksHeldProblems(state)...) {
+		kinds[p.Kind] = p
+	}
+	if p := kinds["site_crontab_returned"]; p.Subject != "a_test" || p.Value != 1 {
+		t.Fatalf("owner's: %+v", p)
+	}
+	if p := kinds["site_crontab_by_site"]; p.Subject != "b_test" || p.Value != 3 {
+		t.Fatalf("by site: %+v", p)
+	}
+	if p := kinds["site_tasks_held"]; p.Subject != "shop.test" || p.Actor != "administrator" || p.Name == "" {
+		t.Fatalf("held: %+v", p)
+	}
+	for _, kind := range []string{"site_crontab_by_site", "site_tasks_held"} {
+		if _, ordered := problemKindOrder[kind]; !ordered {
+			t.Errorf("%s has no place in the problem order", kind)
+		}
+		if en, tr := alertLine(pendingAlertMail{kind: kind, subject: "shop.example.com", name: "x", value: 2}); strings.HasPrefix(en, "A monitored problem") || tr == "" {
+			t.Errorf("%s has no alert line", kind)
+		}
+	}
+	for code, err := range map[string]error{
+		errCodeSiteTasksSourceMissing: rpc.ServerError(transport.SiteTasksSourceGone),
+		errCodeCronCommandTooLong:     rpc.ServerError(transport.CronCommandTooLong),
+		errCodeSiteTasksEnvValue:      rpc.ServerError(transport.SiteTasksEnvValue),
+		errCodeSiteTasksLimitsMissing: rpc.ServerError(transport.SiteTasksLimitsMissing + ": /etc/systemd/system/celiksite_4.slice is not there"),
+	} {
+		recorder := httptest.NewRecorder()
+		writeCronAgentError(recorder, err, cronReasonWrite)
+		var body apiErrorBody
+		_ = json.Unmarshal(recorder.Body.Bytes(), &body)
+		if body.Code != code || recorder.Code < 400 || body.Error == "" {
+			t.Errorf("%s: %d %+v", code, recorder.Code, body)
+		}
+	}
+
+	useHostMemory(t, 8192)
+	f := newRightsFixture(t)
+	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/php', 'php')`)
+	old := rebuildSiteTaskSourceCall
+	t.Cleanup(func() { rebuildSiteTaskSourceCall = old })
+	var calls []bool
+	rebuildSiteTaskSourceCall = func(p *Panel, ctx context.Context, req *transport.SiteTasksMoveRequest) (transport.SiteTaskSourceResponse, error) {
+		calls = append(calls, req.Preview)
+		if req.Preview {
+			return transport.SiteTaskSourceResponse{Outcome: transport.SiteTasksPreview, Crontab: "0 3 * * * php x.php\n"}, nil
+		}
+		return transport.SiteTaskSourceResponse{Outcome: transport.SiteTaskSourceRebuilt}, nil
+	}
+	handler := siteLimitsMux(f)
+	wantStatus(t, siteLimitsCall(t, f, handler, authzMatrixCustomerID, http.MethodGet, "/api/v1/domains/9902/site-limits/tasks-source", ""), http.StatusForbidden, "")
+	wantStatus(t, siteLimitsCall(t, f, handler, authzMatrixCustomerID, http.MethodPost, "/api/v1/domains/9902/site-limits/tasks-source", `{"request_id":"move-0003"}`), http.StatusForbidden, "")
+	if len(calls) != 0 {
+		t.Fatalf("a customer reached the Agent: %v", calls)
+	}
+	preview := siteLimitsCall(t, f, handler, authzMatrixAdminID, http.MethodGet, "/api/v1/domains/9902/site-limits/tasks-source", "")
+	wantStatus(t, preview, http.StatusOK, "")
+	if !strings.Contains(preview.Body.String(), `php x.php`) {
+		t.Fatalf("preview %s", preview.Body.String())
+	}
+	wantStatus(t, siteLimitsCall(t, f, handler, authzMatrixAdminID, http.MethodPost, "/api/v1/domains/9902/site-limits/tasks-source", `{"request_id":"move-0004"}`), http.StatusOK, "")
+	var audited int
+	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM audit_logs WHERE action = 'site.tasks_source_rebuild'`).Scan(&audited)
+	if audited != 1 || len(calls) != 2 || !calls[0] || calls[1] {
+		t.Fatalf("audited %d calls %v", audited, calls)
 	}
 }
 

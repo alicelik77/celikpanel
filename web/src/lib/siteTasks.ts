@@ -45,7 +45,7 @@ export interface TaskLine {
     reason: string;
 }
 
-export const TASK_REASONS = ['schedule', 'mailto', 'home', 'shell', 'env_value', 'carriage', 'empty', 'invalid_env', 'not_made_here'] as const;
+export const TASK_REASONS = ['schedule', 'mailto', 'home', 'shell', 'env_value', 'carriage', 'empty', 'invalid_env', 'too_long', 'not_made_here'] as const;
 
 export function decodeTaskLines(raw: unknown): TaskLine[] {
     if (!Array.isArray(raw)) return [];
@@ -56,6 +56,10 @@ export function decodeTaskLines(raw: unknown): TaskLine[] {
 export interface TasksPlacement {
     moved: boolean;
     reappeared?: number;
+    /** Fix round: the account could have installed that crontab itself. */
+    by_site?: boolean;
+    /** Whether sites may reach this server's own submission services ('ours'), or why not. */
+    mail_submission?: string;
     recovery?: string;
     unknown?: boolean;
 }
@@ -66,6 +70,8 @@ export function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
     return {
         moved: body.moved,
         reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined,
+        by_site: body.by_site === true,
+        mail_submission: typeof body.mail_submission === 'string' ? body.mail_submission : undefined,
         recovery: typeof body.recovery === 'string' ? body.recovery : undefined,
         unknown: body.unknown === true,
     };
@@ -73,15 +79,16 @@ export function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
 
 /** What a tasks move did or would do (the preview, the move, the undo). */
 export interface TasksAnswer {
-    outcome: 'moved' | 'already' | 'stayed' | 'put_back' | 'preview' | 'undone' | 'refused' | 'no_cron' | 'unknown';
-    rows: { line: number; text: string; unit?: string; at_boot?: boolean; paused?: boolean; setting?: boolean }[];
+    outcome: 'moved' | 'already' | 'stayed' | 'put_back' | 'preview' | 'undone' | 'refused' | 'no_cron' | 'unknown' | 'crontab_back';
+    rows: { line: number; text: string; unit?: string; at_boot?: boolean; paused?: boolean; setting?: boolean; privileged?: boolean }[];
     blocking: TaskLine[];
     mail: boolean;
+    mail_submission?: string;
     error?: string;
     refusal?: string;
 }
 
-const OUTCOMES: readonly string[] = ['moved', 'already', 'stayed', 'put_back', 'preview', 'undone', 'refused', 'no_cron', 'unknown'];
+const OUTCOMES: readonly string[] = ['moved', 'already', 'stayed', 'put_back', 'preview', 'undone', 'refused', 'no_cron', 'unknown', 'crontab_back'];
 
 export function decodeTasksAnswer(raw: unknown): TasksAnswer {
     const body = raw as Partial<TasksAnswer> | null;
@@ -91,6 +98,7 @@ export function decodeTasksAnswer(raw: unknown): TasksAnswer {
         rows: Array.isArray(body.rows) ? body.rows.filter((r) => !!r && typeof r.line === 'number' && typeof r.text === 'string') : [],
         blocking: decodeTaskLines(body.blocking),
         mail: body.mail === true,
+        mail_submission: typeof body.mail_submission === 'string' ? body.mail_submission : undefined,
         error: typeof body.error === 'string' ? body.error : undefined,
         refusal: typeof body.refusal === 'string' ? body.refusal : undefined,
     };
@@ -106,19 +114,92 @@ export function lineList(lines: TaskLine[]): string {
     return lines.map((l) => `${l.line}: ${l.text}`).join('; ');
 }
 
-/** Whether one site's move ended well for "Move all" (it then goes on). */
-export function siteMoved(answer: { done?: boolean; rolled_back?: boolean; error?: string; tasks?: unknown }): { ok: boolean; reason: string } {
+/** The tasks that call a program needing extra rights (set-user-id), as "line: text". */
+export function privilegedList(answer: TasksAnswer): string {
+    return answer.rows.filter((r) => r.privileged).map((r) => `${r.line}: ${r.text}`).join('; ');
+}
+
+/**
+ * How one site's move ended for "Move all" (fix round): moved; a site where
+ * nothing changed (skipped, with why: the run goes on); a site whose programs
+ * moved while its tasks stayed (goes on); or a move that started and failed,
+ * or whose result is unknown (the run stops).
+ */
+export type SiteMoveEnd = { kind: 'moved'; note: string } | { kind: 'skipped' | 'partial' | 'stop'; reason: string };
+
+export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; units?: unknown[]; tasks?: unknown }): SiteMoveEnd {
     let tasks: TasksAnswer | undefined;
     try {
         tasks = answer.tasks ? decodeTasksAnswer(answer.tasks) : undefined;
     } catch {
         tasks = undefined;
     }
-    if (answer.rolled_back || answer.done === false) return { ok: false, reason: answer.error ?? '' };
-    if (!tasks) return { ok: false, reason: '' };
-    if (tasks.outcome === 'stayed') return { ok: false, reason: lineList(tasks.blocking) };
-    if (tasks.outcome !== 'moved' && tasks.outcome !== 'already') return { ok: false, reason: tasks.error ?? tasks.outcome };
-    return { ok: true, reason: '' };
+    if (answer.rolled_back || answer.done === false) return { kind: 'stop', reason: answer.error ?? '' };
+    if (!tasks || tasks.outcome === 'put_back' || tasks.outcome === 'unknown') return { kind: 'stop', reason: tasks?.error ?? '' };
+    if (tasks.outcome === 'moved' || tasks.outcome === 'already') return { kind: 'moved', note: '' };
+    if (tasks.outcome === 'crontab_back') return { kind: 'moved', note: tasks.error ?? '' };
+    // Nothing of the tasks changed (stayed, refused, no cron).
+    const reason = tasks.outcome === 'stayed' ? lineList(tasks.blocking) : tasks.error ?? tasks.outcome;
+    return { kind: Array.isArray(answer.units) && answer.units.length > 0 ? 'partial' : 'skipped', reason };
+}
+
+/** How "Move all" ended (fix round). */
+export interface MoveAllOutcome {
+    moved: number;
+    /** Sites that did not (fully) move, with why; partial: its programs moved, its tasks stayed. */
+    notMoved: { domain: string; reason: string; partial?: boolean }[];
+    /** The move that started and failed (or whose result is unknown): the run stopped there. */
+    stop?: { domain: string; reason: string; unknown: boolean };
+}
+
+/** One site's move as "Move all" sends it: the HTTP status and answer, or null when nothing readable came back. */
+export type SiteMoveCall = (site: OutsideSite) => Promise<{ status: number; body?: unknown; refusal?: string } | null>;
+
+/**
+ * "Move all"'s run (fix round): each site in turn; a site refused before
+ * anything changed, or whose move changed nothing, is skipped with why and
+ * the run goes on; a move that started and failed, or whose result is not
+ * known, stops it. onStep says each site's state as it goes.
+ */
+export async function moveSitesInTurn(
+    sites: OutsideSite[], move: SiteMoveCall,
+    onStep: (index: number, state: 'running' | 'done' | 'failed', note?: string) => void,
+): Promise<MoveAllOutcome> {
+    const out: MoveAllOutcome = { moved: 0, notMoved: [] };
+    for (let i = 0; i < sites.length; i++) {
+        const site = sites[i];
+        onStep(i, 'running');
+        const sent = await move(site);
+        if (!sent) {
+            onStep(i, 'failed');
+            out.stop = { domain: site.domain, reason: '', unknown: true };
+            return out;
+        }
+        if (sent.status < 200 || sent.status > 299) {
+            onStep(i, 'failed', sent.refusal);
+            out.notMoved.push({ domain: site.domain, reason: sent.refusal ?? '' });
+            continue;
+        }
+        const end = siteMoveEnd((sent.body ?? {}) as Parameters<typeof siteMoveEnd>[0]);
+        switch (end.kind) {
+            case 'stop':
+                onStep(i, 'failed', end.reason);
+                out.stop = { domain: site.domain, reason: end.reason, unknown: false };
+                return out;
+            case 'moved':
+                out.moved++;
+                onStep(i, 'done', end.note || undefined);
+                break;
+            case 'partial':
+                onStep(i, 'done', end.reason);
+                out.notMoved.push({ domain: site.domain, reason: end.reason, partial: true });
+                break;
+            default:
+                onStep(i, 'failed', end.reason);
+                out.notMoved.push({ domain: site.domain, reason: end.reason });
+        }
+    }
+    return out;
 }
 
 /** A site still outside its limits (GET /api/v1/site-limits/outside). */

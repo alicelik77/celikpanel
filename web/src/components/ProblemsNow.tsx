@@ -74,6 +74,8 @@ export type ProblemKind =
     | 'cron_not_closed'
     | 'cron_owner_removed'
     | 'site_crontab_returned'
+    | 'site_crontab_by_site'
+    | 'site_tasks_held'
     | 'site_lingering'
     | 'linger_owner_removed'
     | 'linger_not_closed';
@@ -103,6 +105,9 @@ const KINDS: readonly ProblemKind[] = [
     'site_limits_unsupported',
     // S4 R2b: cron.allow, a crontab that came back, lingering.
     'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned',
+    // S4 R2b fix round: a crontab the site's own code can have made; tasks
+    // held for want of the site's limits file.
+    'site_crontab_by_site', 'site_tasks_held',
     'site_lingering', 'linger_owner_removed', 'linger_not_closed',
 ];
 // S4 R2b: "Move all" is fetched only when its line is shown.

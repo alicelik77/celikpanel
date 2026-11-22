@@ -70,8 +70,14 @@ type siteTasksView struct {
 	// Moved: the tasks run as timers in the site's limits; otherwise in cron.
 	Moved bool `json:"moved"`
 	// Reappeared: lines of a crontab that came back for the moved site's
-	// account (the server owner's, outside the limits).
-	Reappeared int `json:"reappeared,omitempty"`
+	// account (running outside the limits); BySite: the account could have
+	// installed it itself, so the site's own code can have made it
+	// (otherwise only root could: the server owner's).
+	Reappeared int  `json:"reappeared,omitempty"`
+	BySite     bool `json:"by_site,omitempty"`
+	// MailSubmission: whether the SMTP block lets sites reach this server's
+	// own submission services (transport.MailSubmission*; "" not known).
+	MailSubmission string `json:"mail_submission,omitempty"`
 	// Recovery: what the Agent did with an interrupted tasks move at its
 	// start ("<time> <outcome>").
 	Recovery string `json:"recovery,omitempty"`
@@ -93,8 +99,63 @@ func (p *Panel) siteTasksViewOf(ctx context.Context, siteID int) *siteTasksView 
 	}
 	key := strconv.Itoa(siteID)
 	view.Reappeared = resp.Reappeared[key]
+	view.BySite = resp.ReappearedBySite[key]
 	view.Recovery = resp.Recovery[key]
+	view.MailSubmission = resp.MailSubmission
 	return view
+}
+
+// handleDomainSiteTaskSource: GET (what it would contain) or POST
+// {request_id} (rebuild) /api/v1/domains/{id}/site-limits/tasks-source
+// (administrator): a moved site's task file that is missing while its
+// timers remain is rebuilt from the copy of what CelikPanel last made the
+// timers from (S4 R2b fix round).
+func (p *Panel) handleDomainSiteTaskSource(w http.ResponseWriter, r *http.Request, domainID int) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	if c := currentCaller(r); c == nil || c.Role != roleAdmin {
+		writeClientError(w, http.StatusForbidden, "administrator access required")
+		return
+	}
+	preview := r.Method == http.MethodGet
+	requestID := ""
+	if !preview {
+		var req struct {
+			RequestID string `json:"request_id"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil || !refreshRequestIDPattern.MatchString(req.RequestID) {
+			writeClientError(w, http.StatusBadRequest, "a request id is required")
+			return
+		}
+		requestID = req.RequestID
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+	sites, err := p.siteLimitSites(ctx, domainID)
+	if err != nil || len(sites) != 1 {
+		writeClientError(w, http.StatusNotFound, "site not found for domain")
+		return
+	}
+	site := sites[0]
+	tenant := p.cronTenantFor(ctx, site.SubscriptionID, site.DomainID, site.Domain)
+	resp, err := rebuildSiteTaskSourceCall(p, ctx, &transport.SiteTasksMoveRequest{
+		ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: requestID, CronTenant: tenant, Preview: preview})
+	if err != nil {
+		writeServiceAppRefusal(w, http.StatusServiceUnavailable, "agent_unreachable",
+			"The server did not answer, so the result is unknown. Read this page again before you try again.", nil)
+		return
+	}
+	if !preview {
+		p.auditDetailed(r, "site.tasks_source_rebuild", "domain", domainID, map[string]any{
+			"request_id": requestID, "site": site.Domain, "outcome": resp.Outcome, "error": resp.Error,
+		})
+	}
+	writeRightsJSON(w, http.StatusOK, resp)
+}
+
+var rebuildSiteTaskSourceCall = func(p *Panel, ctx context.Context, req *transport.SiteTasksMoveRequest) (transport.SiteTaskSourceResponse, error) {
+	var resp transport.SiteTaskSourceResponse
+	err := p.callAgentContext(ctx, "Agent.RebuildSiteTaskSourceV1", req, &resp)
+	return resp, err
 }
 
 // moveSiteTasks moves (or, preview, describes) one site's tasks.
@@ -356,22 +417,63 @@ func siteCronProblems(state transport.SideDoorsState) []monitoringProblem {
 			Actor: "administrator", Name: c.Path, Subject: c.Path, ObservedAt: state.CheckedAt,
 			Action: monitoringProblemAction{Kind: "reclose", To: transport.SideDoorsReCloseCron}})
 	}
-	if len(c.Reappeared) > 0 {
-		accounts := make([]string, 0, len(c.Reappeared))
+	// A crontab that came back for a moved site: one line for those only root
+	// could have made (the server owner's), one for those the site's own code
+	// can have made (cron's access files let the account in at some point).
+	for _, bySite := range []bool{false, true} {
+		var accounts []string
 		total := 0
 		for account, n := range c.Reappeared {
-			accounts = append(accounts, account)
-			total += n
+			if c.ReappearedBySite[account] == bySite {
+				accounts = append(accounts, account)
+				total += n
+			}
+		}
+		if len(accounts) == 0 {
+			continue
 		}
 		sort.Strings(accounts)
 		if len(accounts) > 5 {
 			accounts = append(accounts[:5], "…")
 		}
 		subject := strings.Join(accounts, ", ")
-		problems = append(problems, monitoringProblem{Key: "site_crontab_returned", Kind: "site_crontab_returned", Severity: "warning",
+		kind := "site_crontab_returned"
+		if bySite {
+			kind = "site_crontab_by_site"
+		}
+		problems = append(problems, monitoringProblem{Key: kind, Kind: kind, Severity: "warning",
 			Actor: "server_owner", Name: subject, Subject: subject, Value: float64(total), ObservedAt: state.CheckedAt, Action: action})
 	}
 	return problems
+}
+
+// siteTasksHeldProblems: moved sites whose timers the start held because
+// their limits file is not in place and could not be written (S4 R2b fix
+// round: no task runs without the site's limits).
+func siteTasksHeldProblems(state transport.SideDoorsState) []monitoringProblem {
+	if len(state.TasksHeld) == 0 {
+		return nil
+	}
+	var names []string
+	detail := ""
+	for _, h := range state.TasksHeld {
+		name := h.Domain
+		if name == "" {
+			name = "site " + strconv.Itoa(h.SiteID)
+		}
+		names = append(names, name)
+		if detail == "" {
+			detail = h.Detail
+		}
+	}
+	sort.Strings(names)
+	if len(names) > 5 {
+		names = append(names[:5], "…")
+	}
+	subject := strings.Join(names, ", ")
+	return []monitoringProblem{{Key: "site_tasks_held", Kind: "site_tasks_held", Severity: "critical", Actor: "administrator",
+		Name: detail, Subject: subject, Value: float64(len(state.TasksHeld)), ObservedAt: state.CheckedAt,
+		Action: monitoringProblemAction{Kind: "open", To: "/monitoring"}}}
 }
 
 // siteLingerProblems turns the step's answer about lingering into Problems

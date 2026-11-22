@@ -11,7 +11,7 @@ import {
     decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
     type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
-import { decodeTasksAnswer, lineList, movedTaskCount, readTasksPreview, type TasksAnswer } from '../lib/siteTasks';
+import { decodeTasksAnswer, lineList, movedTaskCount, privilegedList, readTasksPreview, type TasksAnswer } from '../lib/siteTasks';
 import { Button, Checking, CouldNotCheck } from './ui';
 
 // The limits of a site's programs together (S4 R2a, docs/SITE-SANDBOX.md
@@ -166,12 +166,19 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
         if (p.outcome === 'stayed') return t('slim.tasks.blocking', { list: lineList(p.blocking) });
         if (p.outcome !== 'preview') return p.error ?? '';
         const n = movedTaskCount(p);
-        return [n > 0 ? t('slim.tasks.rows', { n }) : t('slim.tasks.none'), n > 0 ? t('stasks.timers') : '', p.mail ? t('slim.tasks.mail') : ''].filter(Boolean).join(' ');
+        const privileged = privilegedList(p);
+        // Mail: through this server only while its submission services are
+        // CelikPanel's own; otherwise the card says sites cannot send through it.
+        const mail = !p.mail ? '' : p.mail_submission === 'owner' ? t('slim.tasks.mailOwner')
+            : p.mail_submission === 'absent' ? t('slim.tasks.mailAbsent') : t('slim.tasks.mail');
+        return [n > 0 ? t('slim.tasks.rows', { n }) : t('slim.tasks.none'), n > 0 ? t('stasks.timers') : '', mail,
+            privileged ? t('slim.tasks.privileged', { list: privileged }) : ''].filter(Boolean).join(' ');
     };
     const tasksResult = (answer: TasksAnswer | undefined): string => {
         if (!answer) return '';
         switch (answer.outcome) {
             case 'moved': return t('slim.tasks.done.moved');
+            case 'crontab_back': return t('slim.tasks.done.back', { detail: answer.error ?? '' });
             case 'already': return '';
             case 'stayed': return t('slim.tasks.done.stayed', { list: lineList(answer.blocking) });
             default: return t('slim.tasks.done.failed', { detail: answer.error ?? answer.outcome });
@@ -264,7 +271,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     } catch {
                         tasksAnswer = undefined;
                     }
-                    const tasksOK = !tasksAnswer || tasksAnswer.outcome === 'moved' || tasksAnswer.outcome === 'already';
+                    const tasksOK = !tasksAnswer || tasksAnswer.outcome === 'moved' || tasksAnswer.outcome === 'already' || tasksAnswer.outcome === 'crontab_back';
                     report.steps([
                         ...(tasksToMove ? [step('tasks', t('slim.tasks.step'), tasksOK ? 'done' : 'failed', tasksOK ? undefined : tasksResult(tasksAnswer))] : []),
                         ...(units.length > 0 ? moveSteps(answer, units, {
@@ -318,7 +325,16 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                 <div className="mt-3" data-site-limits-tasks={tasks.unknown ? 'unknown' : tasks.moved ? 'moved' : 'cron'}>
                     <h3 className="text-xs font-semibold text-fg">{t('slim.tasks.title')}</h3>
                     <p className="mt-1 text-sm text-fg-muted">{t(tasks.unknown ? 'slim.tasks.unknown' : tasks.moved ? 'slim.tasks.moved' : 'slim.tasks.cron')}</p>
-                    {(tasks.reappeared ?? 0) > 0 && <p className="mt-1 text-sm text-warning" data-site-limits-tasks-returned="">{t('slim.tasks.reappeared', { n: tasks.reappeared ?? 0 })}</p>}
+                    {(tasks.reappeared ?? 0) > 0 && (
+                        <p className="mt-1 text-sm text-warning" data-site-limits-tasks-returned={tasks.by_site ? 'site' : 'owner'}>
+                            {t(tasks.by_site ? 'slim.tasks.reappearedSite' : 'slim.tasks.reappeared', { n: tasks.reappeared ?? 0 })}
+                        </p>
+                    )}
+                    {(tasks.mail_submission === 'owner' || tasks.mail_submission === 'absent') && (
+                        <p className="mt-1 text-sm text-fg-muted" data-site-limits-mail={tasks.mail_submission}>
+                            {t(tasks.mail_submission === 'owner' ? 'slim.tasks.mailOwner' : 'slim.tasks.mailAbsent')}
+                        </p>
+                    )}
                     {tasks.recovery && (
                         <p className="mt-1 text-sm text-warning">{t('slim.tasks.recovery', { time: formatDateTime(tasks.recovery.split(' ')[0], locale), outcome: tasks.recovery.split(' ').slice(1).join(' ') })}</p>
                     )}

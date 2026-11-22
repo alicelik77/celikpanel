@@ -72,7 +72,8 @@ const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_ou
 function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
     const body = raw as Partial<TasksPlacement> | null;
     if (!body || typeof body !== 'object' || typeof body.moved !== 'boolean') return undefined;
-    return { moved: body.moved, reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined,
+    return { moved: body.moved, reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined, by_site: body.by_site === true,
+        mail_submission: typeof body.mail_submission === 'string' ? body.mail_submission : undefined,
         recovery: typeof body.recovery === 'string' ? body.recovery : undefined, unknown: body.unknown === true };
 }
 

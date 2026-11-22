@@ -129,6 +129,21 @@ func writeCronAgentError(w http.ResponseWriter, err error, reason string) {
 		log.Printf("[409][cron] a task that stands twice in the crontab was not changed")
 		writeCodedError(w, http.StatusConflict, errCodeCronJobAmbiguous, cronJobAmbiguousMessage, "")
 		return
+	// S4 R2b fix round.
+	case agentAnsweredExactly(err, transport.SiteTasksSourceGone):
+		log.Printf("[409][cron] the site's task file is missing while its timers remain; nothing was changed")
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksSourceMissing, siteTasksSourceMissingMessage, "")
+		return
+	case agentAnsweredExactly(err, transport.CronCommandTooLong):
+		writeCodedError(w, http.StatusBadRequest, errCodeCronCommandTooLong, cronCommandTooLongMessage, "")
+		return
+	case agentAnsweredExactly(err, transport.SiteTasksEnvValue):
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksEnvValue, siteTasksEnvValueMessage, "")
+		return
+	case agentAnsweredWithPrefix(err, transport.SiteTasksLimitsMissing):
+		log.Printf("[409][cron] saved, but the site's limits file is not in place: %s", boundedAgentDiagnostic(err.Error()))
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksLimitsMissing, siteTasksLimitsMissingMessage, "")
+		return
 	}
 	if !agentReportedCronNotInstalled(err) {
 		writeServerError(w, err)
@@ -158,3 +173,25 @@ const (
 	errCodeSiteTasksSourceHeld = "SITE_TASKS_SOURCE_HELD"
 	siteTasksSourceHeldMessage = "The server owner changed this site's task file by hand. Their file is kept and its tasks run as it says; your change was saved beside it and does not apply until the server owner takes it in."
 )
+
+// S4 R2b fix round: the refusals of a change of a moved site's tasks.
+const (
+	errCodeSiteTasksSourceMissing = "SITE_TASKS_SOURCE_MISSING"
+	siteTasksSourceMissingMessage = "This site's task file is missing on the server while its tasks still run as timers, so nothing was changed: a change now would remove every other task. The administrator rebuilds the file on this screen from what CelikPanel last made the timers from; then change the task again."
+	errCodeCronCommandTooLong     = "CRON_COMMAND_TOO_LONG"
+	cronCommandTooLongMessage     = "The command is longer than cron runs (998 bytes at most), so nothing was saved. Put the command into a script file and run the script from the task."
+	errCodeSiteTasksEnvValue      = "SITE_TASKS_ENV_VALUE"
+	siteTasksEnvValueMessage      = "A setting of this site's task file holds a value the server cannot read (not plain UTF-8 text, a quote mark, a backslash or a control character), so nothing was saved. The server owner corrects that line of the task file; then save again."
+	errCodeSiteTasksLimitsMissing = "SITE_TASKS_LIMITS_MISSING"
+	siteTasksLimitsMissingMessage = "The task was saved, but it does not run yet: this site's limits file is not in place on the server, and no task runs outside the site's limits. The administrator opens the subscription's limits and saves them (or the server owner checks /etc/systemd/system); then save the task again."
+)
+
+// agentAnsweredWithPrefix: err is the Agent's own RPC answer starting with
+// this exact code text (the rest names what is wrong on that server).
+func agentAnsweredWithPrefix(err error, prefix string) bool {
+	var serverErr rpc.ServerError
+	if !errors.As(err, &serverErr) {
+		return false
+	}
+	return strings.HasPrefix(strings.TrimSpace(string(serverErr)), prefix)
+}

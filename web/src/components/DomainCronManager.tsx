@@ -17,6 +17,7 @@ import { useSaveWords } from './kit/save/words';
 import { useAuth } from '../auth/AuthContext';
 import { formatDateTime } from '../lib/dateFormat';
 import { decodeTaskLines, decodeTaskRun, TASK_STATES, type TaskLine, type TaskRun, type TaskState } from '../lib/siteTasks';
+import { newMoveRequestID } from '../lib/siteLimits';
 
 interface CronJob {
     id: string;
@@ -37,6 +38,8 @@ interface TimersFacts {
     source: 'ours' | 'owner' | 'missing';
     notRun: TaskLine[];
     reappeared: string[];
+    /** Fix round: the account could have installed that crontab itself. */
+    bySite: boolean;
 }
 
 /** S4 R1: a crontab line not made in CelikPanel that is not a task. */
@@ -146,6 +149,46 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         showToast('error', text);
     };
 
+    // S4 R2b fix round: the task file is missing while the site's timers
+    // remain. The administrator rebuilds it from what CelikPanel last made
+    // the timers from; the panel's own window shows first what it will hold.
+    const rebuildSource = async () => {
+        const url = `/api/v1/domains/${domainId}/site-limits/tasks-source`;
+        const read = await readCurrent<{ outcome?: string; crontab?: string; error?: string }>(url);
+        if (read.state !== 'known') {
+            showToast('error', read.state === 'unknown' ? apiErrorText(read.error, t) : t('stasks.rebuild.unknown'));
+            return;
+        }
+        const preview = read.value;
+        if (preview.outcome !== 'preview') {
+            showToast('error', preview.error || t('stasks.rebuild.unknown'));
+            return;
+        }
+        await confirmAction({
+            title: t('stasks.rebuild.confirm'),
+            message: `${t('stasks.rebuild.body')}\n\n${preview.crontab || t('stasks.rebuild.empty')}`,
+            confirmLabel: t('stasks.rebuild.button'),
+            progressTitle: t('stasks.rebuild.button'),
+            action: async (report) => {
+                report.steps([{ id: 'rebuild', label: t('stasks.rebuild.button'), state: 'running', since: Date.now() }]);
+                try {
+                    const sent = await fetch(url, {
+                        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ request_id: newMoveRequestID() }),
+                    });
+                    if (!sent.ok) return { state: 'failed', reason: apiErrorText(await readApiError(sent), t) };
+                    const answer = await sent.json() as { outcome?: string; error?: string };
+                    if (answer.outcome === 'rebuilt') return { state: 'done', message: t('stasks.rebuild.done') };
+                    if (answer.outcome === 'refused') return { state: 'blocked', reason: answer.error || '' };
+                    return { state: 'unknown', reason: answer.error || t('stasks.rebuild.unknown') };
+                } catch {
+                    return { state: 'unknown', reason: t('stasks.rebuild.unknown') };
+                }
+            },
+        });
+        void loadJobs();
+    };
+
     useEffect(() => {
         loadJobs();
     }, [domainId]);
@@ -154,7 +197,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         setLoading(true);
         const next = await readCurrent<{
             jobs?: CronJob[] | null; version?: string; other_lines?: CronOtherLine[] | null;
-            timers?: boolean; source?: string; not_run?: unknown; reappeared?: unknown;
+            timers?: boolean; source?: string; not_run?: unknown; reappeared?: unknown; reappeared_by_site?: unknown;
         }>(`/api/v1/domains/${domainId}/cron`);
         const missing = next.state === 'unknown' && next.error.code === 'CRON_NOT_INSTALLED';
         // The list is proven empty only by an answer that carries it: `jobs` as a
@@ -170,6 +213,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
             source: next.value.source === 'owner' || next.value.source === 'missing' ? next.value.source : 'ours',
             notRun: decodeTaskLines(next.value.not_run),
             reappeared: Array.isArray(next.value.reappeared) ? next.value.reappeared.filter((l): l is string => typeof l === 'string') : [],
+            bySite: next.value.reappeared_by_site === true,
         } : null);
         setOtherLines(list && next.state === 'known' && Array.isArray(next.value.other_lines)
             ? next.value.other_lines.filter((o) => !!o && typeof o.id === 'string' && typeof o.line === 'string')
@@ -484,11 +528,14 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                             <p className="flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg" data-cron-source={timers.source}>
                                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
                                 <span className="min-w-0 max-w-[75ch]">{t(timers.source === 'owner' ? 'stasks.source.owner' : 'stasks.source.missing')}</span>
+                                {timers.source === 'missing' && role === 'admin' && !readOnly && (
+                                    <Button className="shrink-0" onClick={() => void rebuildSource()} data-cron-rebuild="">{t('stasks.rebuild.button')}</Button>
+                                )}
                             </p>
                         )}
                         {timers.reappeared.length > 0 && (
-                            <div className="rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg" data-cron-returned="">
-                                <p>{t('stasks.reappeared', { n: timers.reappeared.length })}</p>
+                            <div className="rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg" data-cron-returned={timers.bySite ? 'site' : 'owner'}>
+                                <p>{t(timers.bySite ? 'stasks.reappearedSite' : 'stasks.reappeared', { n: timers.reappeared.length })}</p>
                                 <pre className="mt-1 whitespace-pre-wrap break-all font-mono text-xs">{timers.reappeared.join('\n')}</pre>
                             </div>
                         )}

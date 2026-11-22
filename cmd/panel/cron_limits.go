@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/sitecron"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -79,7 +80,10 @@ func cronMinIntervalMinutes(schedule string) (int, bool) {
 	case "@daily", "@midnight", "@weekly", "@monthly", "@yearly", "@annually":
 		return 24 * 60, true
 	}
-	fields := strings.Fields(schedule)
+	// ASCII spaces and tabs only separate fields, as in cron (S4 R2b fix
+	// round): a schedule with another blank is not read here, and the Agent
+	// refuses it.
+	fields := sitecron.SplitFields(schedule)
 	if len(fields) != 5 {
 		return 0, false
 	}

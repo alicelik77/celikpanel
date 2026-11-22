@@ -709,7 +709,7 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 	}
 	resp.Tasks = tasks
 	switch tasks.Outcome {
-	case transport.SiteTasksMoved, transport.SiteTasksAlready:
+	case transport.SiteTasksMoved, transport.SiteTasksAlready, transport.SiteTasksCrontabBack:
 		p.noteSiteTasksOutside(ctx, nil, map[int]bool{site.SiteID: true}, time.Now())
 	}
 	p.auditDetailed(r, "site.limits_move", "domain", domainID, map[string]any{

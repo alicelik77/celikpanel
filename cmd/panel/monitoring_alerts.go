@@ -628,6 +628,12 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "site_crontab_returned":
 		return fmt.Sprintf("A crontab was made again for sites whose tasks run in their limits (%s); its lines run outside the limits. Monitoring says what to do.", subject),
 			fmt.Sprintf("Görevleri sınırları içinde çalışan siteler için yeniden crontab yapılmış (%s); satırları sınırların dışında çalışıyor. Ne yapılacağı İzleme'de.", subject)
+	case "site_crontab_by_site":
+		return fmt.Sprintf("A crontab exists again for sites whose tasks run in their limits (%s) and runs outside them; cron let these accounts in, so the sites' own code can have made it. Monitoring says what to do.", subject),
+			fmt.Sprintf("Görevleri sınırları içinde çalışan siteler için yeniden crontab var (%s) ve sınırların dışında çalışıyor; cron bu hesaplara izin verdi, yani sitenin kendi kodu yapmış olabilir. Ne yapılacağı İzleme'de.", subject)
+	case "site_tasks_held":
+		return fmt.Sprintf("The scheduled tasks of %s sites are held: their limits file is not in place (%s), and no task runs outside a site's limits. Monitoring says what to do.", n, subject),
+			fmt.Sprintf("%s sitenin zamanlanmış görevleri bekletiliyor: sınır dosyaları yerinde değil (%s) ve hiçbir görev sitenin sınırları dışında çalışmaz. Ne yapılacağı İzleme'de.", n, subject)
 	case "site_lingering":
 		return fmt.Sprintf("Site accounts keep their own programs running outside their limits (lingering: %s). Monitoring gives the command that ends it.", subject),
 			fmt.Sprintf("Site hesapları kendi programlarını sınırlarının dışında çalışır tutuyor (kalıcı oturum: %s). Bunu bitiren komut İzleme'de.", subject)

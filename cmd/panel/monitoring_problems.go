@@ -152,6 +152,10 @@ var problemKindOrder = map[string]int{
 	"site_lingering":         40,
 	"linger_owner_removed":   41,
 	"linger_not_closed":      42,
+	// S4 R2b fix round: a crontab the site's own code can have made; moved
+	// sites whose timers are held for want of their limits file.
+	"site_crontab_by_site": 43,
+	"site_tasks_held":      44,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
