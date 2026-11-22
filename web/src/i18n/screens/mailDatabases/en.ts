@@ -194,7 +194,7 @@ export const enMailDatabasesScreens = {
     'mail.autoreply.removedOff': 'The reply could not be changed on the server, so it was turned off. Save it to turn it back on.',
     'mail.autoreply.foreignPending': 'No longer this mailbox’s own: {addresses}. Not yet taken out of the reply on the server; tried again every hour, and the administrator was told. Remove them and save, or turn the reply off.',
     'pnow.mail_autoresponder_foreign.title': '{other}: the out-of-office reply still answers from a foreign address',
-    'pnow.mail_autoresponder_foreign.agent_unreachable': 'The Agent did not answer; the address could not be taken out of the reply, nor the reply turned off. Check the Agent (systemctl status celikpanel-agent) or turn the reply off on the mailbox’s page. Tried again every hour.',
+    'pnow.mail_autoresponder_foreign.agent_unreachable': 'The Agent did not answer; the address could not be taken out of the reply, nor the reply turned off. Check the Agent (sudo systemctl status celikpanel-agent) or turn the reply off on the mailbox’s page. Tried again every hour.',
     'pnow.mail_autoresponder_foreign.agent_build': 'The Agent is another version than the panel (an unfinished update) and refused the change. Finish the update on the update page, or turn the reply off on the mailbox’s page. Tried again every hour.',
     'pnow.mail_autoresponder_foreign.agent_failed': 'The Agent could neither take the address out of the reply nor turn the reply off. Turn the reply off or save it again on the mailbox’s page. Tried again every hour.',
     'pnow.mail_autoresponder_foreign.action': 'Open the mailboxes',

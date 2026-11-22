@@ -183,7 +183,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.autoreply.removedOff': 'Yanıt sunucuda değiştirilemediği için kapatıldı. Yeniden açmak için kaydedin.',
     'mail.autoreply.foreignPending': 'Artık bu kutunun değil: {addresses}. Sunucudaki yanıttan henüz çıkarılamadı; her saat yeniden denenir, yöneticiye bildirildi. Adresleri silip kaydedin ya da yanıtı kapatın.',
     'pnow.mail_autoresponder_foreign.title': '{other}: otomatik yanıt hâlâ yabancı bir adresten gidiyor',
-    'pnow.mail_autoresponder_foreign.agent_unreachable': 'Agent yanıt vermedi; adres yanıttan çıkarılamadı, yanıt kapatılamadı. Agent’ı denetleyin (systemctl status celikpanel-agent) ya da yanıtı kutunun sayfasında kapatın. Her saat yeniden denenir.',
+    'pnow.mail_autoresponder_foreign.agent_unreachable': 'Agent yanıt vermedi; adres yanıttan çıkarılamadı, yanıt kapatılamadı. Agent’ı denetleyin (sudo systemctl status celikpanel-agent) ya da yanıtı kutunun sayfasında kapatın. Her saat yeniden denenir.',
     'pnow.mail_autoresponder_foreign.agent_build': 'Agent panelden farklı sürümde (güncelleme yarım) ve değişikliği reddetti. Güncellemeyi güncelleme sayfasında tamamlayın ya da yanıtı kutunun sayfasında kapatın. Her saat yeniden denenir.',
     'pnow.mail_autoresponder_foreign.agent_failed': 'Agent adresi yanıttan çıkaramadı, yanıtı kapatamadı. Kutunun sayfasında yanıtı kapatın ya da yeniden kaydedin. Her saat yeniden denenir.',
     'pnow.mail_autoresponder_foreign.action': 'Posta kutularını aç',
