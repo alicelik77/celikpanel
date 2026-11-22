@@ -391,6 +391,10 @@ const screenPartBudgets = {
   // which have no room; set with at least 25% headroom from its Turkish
   // file: 5.23 / 1.78 KiB.
   sideDoorsUndo: kib(7, 2.4),
+  // 20 Nov 2026 (security lane S1b): the PostgreSQL databases every account
+  // of the server can enter, closing them and the undo (pgpub.). A new part;
+  // set with at least 25% headroom from its Turkish file.
+  pgPublic: kib(6, 2.6),
   // 21 Nov 2026 (S4 R2a): the limits of a site's programs together on the
   // domain's Overview, the plan keys of those limits and of the database
   // users' time limits, the administrator's move into the limits and the

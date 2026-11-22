@@ -7,7 +7,7 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { readServiceActionNote } from '../lib/serviceActionNote';
 import { componentName } from '../lib/componentName';
 import { sizeWord } from './kit/words';
-import { invalidate, useInvalidation, useRemote } from '../lib/remote';
+import { invalidate, readRemote, useInvalidation, useRemote } from '../lib/remote';
 import { startVisibleReads } from '../lib/visibleReads';
 import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
@@ -65,6 +65,10 @@ export type ProblemKind =
     | 'stock_pool_owner_restored'
     | 'at_owner_removed'
     | 'site_crontab_unreadable'
+    | 'postgresql_databases_open'
+    | 'mail_signing'
+    | 'mail_autoresponder_foreign'
+    | 'postgresql_databases_unreadable'
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
     | 'disk_limits_counted'
@@ -72,6 +76,12 @@ export type ProblemKind =
     | 'site_limits_unsupported'
     | 'site_limits_unapplied'
     | 'site_memory_default';
+
+// S4 R1 second fix round: the administrator's "close it again" runs on the
+// panel; the window follows it with reads only.
+const RECLOSE_URL = '/api/v1/metrics/side-doors/reclose';
+const RECLOSE_POLL_MS = 2000;
+const RECLOSE_FOLLOW_MS = 25 * 60 * 1000;
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -89,6 +99,15 @@ const KINDS: readonly ProblemKind[] = [
     // states, the server owner's undo and an unreadable crontab.
     'tool_down', 'stock_pool_not_put_back', 'stock_pool_failed', 'stock_pool_unknown', 'stock_pool_owner_restored',
     'at_owner_removed', 'site_crontab_unreadable',
+    // 20 Nov 2026 (S1b): PostgreSQL databases every account can enter.
+    'postgresql_databases_open',
+    // 20 Nov 2026: mail signed only for the sender's own domain.
+    'mail_signing',
+    // 22 Nov 2026: an out-of-office reply still answering from an address
+    // that is no longer the mailbox's own.
+    'mail_autoresponder_foreign',
+    // 22 Nov 2026: PostgreSQL databases the hourly checks could not read.
+    'postgresql_databases_unreadable',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
     // S4 R2a: sites whose programs still run outside their limits (a to-do).
@@ -117,6 +136,32 @@ export function problemVars(
         days: Math.max(problem.value, 0),
         value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? t('monitoring.pct', { n: Math.round(problem.value) }) : problem.value,
     };
+}
+
+// 21 Nov 2026: mail signing is worded per state, each with its concrete step
+// (cmd/panel/mail_signing_problem.go); a state this screen does not know reads
+// as "unknown", never as fine.
+// 22 Nov 2026 (B4): a main.cf filter list CelikPanel cannot read entry by
+// entry has two states of its own, never the hand-changed port-25 words.
+const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
+
+/** The catalogue key of a problem's body. */
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string }): TranslationKey {
+    if (problem.kind === 'mail_signing') {
+        return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
+    }
+    // 22 Nov 2026 (B3): worded per step; an unknown step reads as the Agent's failure.
+    if (problem.kind === 'mail_autoresponder_foreign') {
+        const step = ['agent_unreachable', 'agent_build', 'agent_failed'].includes(problem.subject ?? '') ? problem.subject : 'agent_failed';
+        return `pnow.mail_autoresponder_foreign.${step}` as TranslationKey;
+    }
+    return `pnow.${problem.kind}.body` as TranslationKey;
+}
+
+/** The catalogue key of a problem's title (22 Nov 2026: one signing state signs nothing). */
+export function problemTitleKey(problem: { kind: string; name?: string }): TranslationKey {
+    if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
+    return `pnow.${problem.kind}.title` as TranslationKey;
 }
 
 /** Whether a kind is one this screen has words for. */
@@ -247,9 +292,14 @@ export function ProblemsNow({
 
     // S4 R1 fix round: close again what the server owner undid, after the
     // panel's own question; the window shows the work, then the list reads
-    // itself again. Nothing is sent twice.
+    // itself again. Nothing is sent twice. Second fix round: the panel runs it
+    // apart from this page (202), so leaving the page neither cancels nor
+    // half-does it; this window follows it until it ends, and a second press
+    // while it runs follows the same run.
     const reclose = async (problem: Problem) => {
         const vars = problemVars(problem, t);
+        const target = problem.action.to ?? '';
+        const version = target === 'stock_pool' ? problem.name ?? '' : '';
         await confirmAction({
             title: t(`pnow.${problem.kind}.title` as TranslationKey, vars),
             message: t(`pnow.${problem.kind}.confirm` as TranslationKey, vars),
@@ -257,25 +307,40 @@ export function ProblemsNow({
             progressTitle: t('pnow.reclose.progress'),
             action: async (report) => {
                 report.steps([{ id: 'reclose', label: t('pnow.reclose.step'), state: 'running', since: Date.now() }]);
+                type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; error?: string };
+                const unknown = { state: 'unknown' as const, reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
                 try {
-                    const response = await fetch('/api/v1/metrics/side-doors/reclose', {
+                    const response = await fetch(RECLOSE_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ target: problem.action.to, version: problem.action.to === 'stock_pool' ? problem.name : '' }),
+                        body: JSON.stringify({ target, version }),
                     });
                     if (!response.ok) {
                         return { state: 'failed', title: t('pnow.reclose.failed'), reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
                     }
-                    let answer: { closed?: boolean };
+                    let status: RecloseStatus;
                     try {
-                        answer = await response.json() as { closed?: boolean };
+                        status = await response.json() as RecloseStatus;
                     } catch {
-                        // The answer could not be read: what it came to is not known.
-                        return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                        return unknown;
                     }
-                    return answer?.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
+                    // Follow the run (reads only) until it ends; the answer
+                    // stays on the panel if this page is left. A read that
+                    // fails is tried again; when the run's end cannot be read
+                    // the result is said as not known.
+                    const until = Date.now() + RECLOSE_FOLLOW_MS;
+                    let lastRead: 'known' | 'unknown' = 'known';
+                    while (status?.running && Date.now() < until) {
+                        await new Promise((resolve) => setTimeout(resolve, RECLOSE_POLL_MS));
+                        const again = await readRemote(RECLOSE_URL, (raw) => raw as RecloseStatus);
+                        lastRead = again.state;
+                        if (again.state === 'known') status = again.value;
+                    }
+                    if (lastRead === 'unknown' || status?.running || status?.target !== target || (status?.version ?? '') !== version) return unknown;
+                    if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: status.error };
+                    return status.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
                 } catch {
-                    return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                    return unknown;
                 } finally {
                     void handle.retry();
                 }
@@ -375,10 +440,10 @@ export function ProblemsNow({
                                     <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`} aria-hidden="true" />
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold text-fg">
-                                            {t(`pnow.${problem.kind}.title` as TranslationKey, vars)}
+                                            {t(problemTitleKey(problem), vars)}
                                             {when && <span className="ml-2 text-xs font-normal text-fg-subtle">{when}</span>}
                                         </p>
-                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{t(`pnow.${problem.kind}.body` as TranslationKey, vars)}</p>
+                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{t(problemBodyKey(problem), vars)}</p>
                                         {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 && (
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}

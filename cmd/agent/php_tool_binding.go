@@ -1424,10 +1424,13 @@ func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 		}
 		return phpToolWebmailConfPath, []byte(renderWebmailNginxConfig(webmailSocket, roundcubeRootDir(), socket)), nil
 	}
-	tools, roots := installedDBToolRoots()
+	installed, roots := installedDBToolRoots()
 	sockets := map[string]string{}
 	for _, state := range phpToolStates() {
-		if state.Tool == tool || roots[state.Tool] == "" {
+		// Only the other tools the configuration serves now keep their line
+		// (S4 R1, second fix round, B3): a tool left out because nothing
+		// would answer for it is not added back by another tool's move.
+		if state.Tool == tool || roots[state.Tool] == "" || state.Source != "config" {
 			continue
 		}
 		current, err := phpToolSocket(state.Tool, state.Socket)
@@ -1437,6 +1440,12 @@ func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 		sockets[state.Tool] = current
 	}
 	sockets[tool] = socket
+	tools := make([]string, 0, len(installed))
+	for _, id := range installed {
+		if sockets[id] != "" {
+			tools = append(tools, id)
+		}
+	}
 	return phpToolDBToolsConfPath, []byte(renderDBToolsConfig(tools, roots, sockets)), nil
 }
 

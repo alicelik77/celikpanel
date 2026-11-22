@@ -633,6 +633,15 @@ func (a *Agent) RemoveAppUnit(req *AppControlRequest, resp *AppApplyResponse) er
 	if output, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 		intermediateFailures = append(intermediateFailures, fmt.Errorf("daemon-reload: %v: %s", err, strings.TrimSpace(string(output))))
 	}
+	// A unit whose application failed (a start that exited with an error, a
+	// sandbox proof that stopped it) stays in systemd's memory as "failed"
+	// after its file is removed and systemd reloaded: neither stop, disable
+	// nor daemon-reload clears that state, so the proof below never saw
+	// "inactive" and the site's deletion stopped (alpha.142 lab). Forgetting
+	// the failed state of this exact unit is the last cleanup step; systemd
+	// answers an error when it holds nothing for the name, and the proof
+	// below decides either way.
+	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", name)...)
 
 	var finalFailures []error
 	if _, err := os.Lstat(unitPath); err == nil {

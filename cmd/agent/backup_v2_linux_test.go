@@ -181,7 +181,7 @@ func TestBackupDatabaseIdentityAndArgv(t *testing.T) {
 	}
 	wantPGDump := backupCommand{
 		Name: "sudo",
-		Args: []string{"-u", "postgres", "env", "PGOPTIONS=-c search_path=pg_catalog,pg_temp", "pg_dump", "--no-owner", "--no-privileges", "--dbname", "tenant_pg_data"},
+		Args: []string{"-u", "postgres", "env", pgAdminSessionEnv, "pg_dump", "--no-owner", "--no-privileges", "--dbname", "tenant_pg_data"},
 	}
 	if !reflect.DeepEqual(pgDump, wantPGDump) {
 		t.Fatalf("PostgreSQL dump argv = %#v, want %#v", pgDump, wantPGDump)

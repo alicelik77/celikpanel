@@ -636,10 +636,48 @@ func (a *Agent) SetMailAutoresponder(req *transport.SetMailAutoresponderRequest,
 	defer mailMutex.Unlock()
 	ctx, cancel := newMailMutationContext()
 	defer cancel()
-	return fillAutoresponderRefusal(resp, applyMailAutoresponder(ctx, email, local, domain, setting, resp))
+	return fillAutoresponderRefusal(resp, applyMailAutoresponder(ctx, email, local, domain, setting, req.AccountDomains, resp))
 }
 
-func applyMailAutoresponder(ctx context.Context, email, local, domain string, setting transport.MailAutoresponder, resp *transport.MailAutoresponderResponse) error {
+// autoresponderForeignDetail is the neutral refusal: it says only that the
+// addresses are not the mailbox's own, never whose they are.
+func autoresponderForeignDetail(foreign []string) string {
+	return "Not one of this mailbox's own addresses: " + strings.Join(foreign, ", ") +
+		". An additional address must be forwarded to this mailbox from a domain of the same account. Nothing was changed."
+}
+
+// autoresponderForeignAddresses reads the server's alias map and mailbox map
+// and returns the additional addresses that are not the mailbox's own
+// (transport.ForeignAutoresponderAddresses).
+func autoresponderForeignAddresses(email string, addresses, accountDomains []string) ([]string, error) {
+	if len(addresses) == 0 {
+		return nil, nil
+	}
+	virtual, err := readMailFile(postfixVirtualPath)
+	if err != nil {
+		return nil, fmt.Errorf("read the mail forwardings: %w", err)
+	}
+	mailboxes, err := readMailFile(postfixVBoxPath)
+	if err != nil {
+		return nil, fmt.Errorf("read the mailboxes: %w", err)
+	}
+	var forwardings []transport.MailForwarding
+	for _, line := range strings.Split(string(virtual), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		forwardings = append(forwardings, transport.MailForwarding{Source: fields[0], Destination: strings.Join(fields[1:], " ")})
+	}
+	return transport.ForeignAutoresponderAddresses(email, addresses, accountDomains, forwardings,
+		func(address string) bool { return mailFileHasKey(mailboxes, address) }), nil
+}
+
+func applyMailAutoresponder(ctx context.Context, email, local, domain string, setting transport.MailAutoresponder, accountDomains []string, resp *transport.MailAutoresponderResponse) error {
 	if !dovecotInstalledForRepair() || !autoresponderFileExists("/etc/postfix") {
 		return refuseAutoresponder(transport.AutoresponderRefusedMailNotInstalled,
 			"Mail is not set up on this server (Postfix and Dovecot), so there is nothing to answer mail. Install the mail service first.")
@@ -651,6 +689,20 @@ func applyMailAutoresponder(ctx context.Context, email, local, domain string, se
 	if !exists && setting.Enabled {
 		return refuseAutoresponder(transport.AutoresponderRefusedNoMailbox,
 			"This mailbox is not in the server's mail configuration. Save the mailbox again, then the reply.")
+	}
+	// The reply's From: is the additional address the incoming message
+	// named, and it is signed by that From: (review finding 1): only the
+	// mailbox's own addresses, checked again here against the server's own
+	// alias map, whatever the Panel sent.
+	// Turning a reply off is never refused for its addresses.
+	if setting.Enabled {
+		foreign, err := autoresponderForeignAddresses(email, setting.Addresses, accountDomains)
+		if err != nil {
+			return err
+		}
+		if len(foreign) > 0 {
+			return refuseAutoresponder(transport.AutoresponderRefusedForeignAddress, autoresponderForeignDetail(foreign))
+		}
 	}
 	state, err := autoresponderStore.Read(domain, local)
 	if err != nil {

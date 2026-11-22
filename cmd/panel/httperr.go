@@ -198,6 +198,8 @@ const (
 	// which one it means (9 Oct 2026).
 	// Aynı görev crontab'da iki satırda duruyor.
 	errCodeCronJobAmbiguous = "CRON_JOB_AMBIGUOUS"
+	// S4 R1, second fix round: the task is a line not made in CelikPanel.
+	errCodeCronJobOutsidePanel = "CRON_JOB_OUTSIDE_PANEL"
 	// The mail policy was written to main.cf, but Postfix could not be
 	// reloaded, so it still runs with the previous values. A verified failure
 	// after a change: `mutation_applied` is true (9 Oct 2026).

@@ -582,12 +582,17 @@ func alertLine(item pendingAlertMail) (string, string) {
 			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: hesaplar bir dizin hizmetinden geldiği için CelikPanel /etc/at.allow dosyasını yazmadı."
 	// S4 R1 fix round (side_doors.go, side_doors_jobs.go).
 	case "tool_down":
-		return fmt.Sprintf("%s does not answer on PHP %s. Open it under Components and choose its PHP version again; Monitoring says what was tried.", name, subject),
-			fmt.Sprintf("%s PHP %s üzerinde yanıt vermiyor. Bileşenler'de açıp PHP sürümünü yeniden seçin; nelerin denendiği İzleme'de.", name, subject)
+		return fmt.Sprintf("%s does not answer on PHP %s. Open it under Components and choose its PHP version again; Monitoring says why.", name, subject),
+			fmt.Sprintf("%s PHP %s üzerinde yanıt vermiyor. Bileşenler'de açıp PHP sürümünü yeniden seçin; nedeni İzleme'de.", name, subject)
 	case "stock_pool_not_put_back":
 		return fmt.Sprintf("The distribution's PHP %s pool could not be put back after turning it off failed. Monitoring says how to put it back.", name),
 			fmt.Sprintf("Dağıtımın PHP %s havuzu kapatılamadı ve geri de konamadı. Nasıl geri konacağı İzleme'de.", name)
-	case "stock_pool_failed", "stock_pool_unknown":
+	case "stock_pool_unknown":
+		// Second fix round (B10): it may not be readable at all; "still on"
+		// is not said.
+		return fmt.Sprintf("What the distribution's PHP %s pool is could not be read, so CelikPanel changed nothing: Monitoring says why.", name),
+			fmt.Sprintf("Dağıtımın PHP %s havuzunun durumu okunamadı; CelikPanel hiçbir şeyi değiştirmedi. Nedeni İzleme'de.", name)
+	case "stock_pool_failed":
 		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is still on: Monitoring says why.", name),
 			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu hâlâ açık; nedeni İzleme'de.", name)
 	case "stock_pool_owner_restored":
@@ -602,6 +607,26 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "at_not_closed":
 		return "Website accounts can still use at on this server: CelikPanel could not write /etc/at.allow. It tries again at the panel's next start.",
 			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: CelikPanel /etc/at.allow dosyasını yazamadı. Panelin bir sonraki başlangıcında yeniden dener."
+	case "postgresql_databases_open":
+		return fmt.Sprintf("%s PostgreSQL databases made before alpha.141 are still open to this server's other accounts (%s): every account may connect to them, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
+			fmt.Sprintf("alpha.141'den önce açılan %s PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap bunlara bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
+	case "postgresql_databases_unreadable":
+		// 22 Nov 2026 (B5): item.name names each database with its reason.
+		return fmt.Sprintf("Whether other accounts can enter these PostgreSQL databases is not known: they could not be read at the last hourly checks (%s). Open the PostgreSQL page, correct what the reason names, then press Read again.", name),
+			fmt.Sprintf("Bu PostgreSQL veritabanlarına başka hesapların girip giremediği bilinmiyor: son saatlik denetimlerde okunamadılar (%s). PostgreSQL sayfasını açın, nedenin söylediğini düzeltin, sonra Yeniden oku'ya basın.", name)
+	case "mail_signing":
+		if item.name == "port25_variable_own" {
+			// 22 Nov 2026 (B4): nothing is signed here; the owner's filters
+			// do not reach port 25.
+			return "Mail that arrives on port 25 passes CelikPanel's earlier filter list, not the filters added to main.cf since. Monitoring says what the server owner does.",
+				"25. kapıya gelen posta, main.cf'e sonradan eklenen filtrelerden değil, CelikPanel'in önceki filtre listesinden geçiyor. İzleme sunucu sahibinin ne yapacağını söyler."
+		}
+		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
+			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
+	case "mail_autoresponder_foreign":
+		// 22 Nov 2026 (B3): item.name is the mailbox.
+		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),
+			fmt.Sprintf("%s kutusunun otomatik yanıtı hâlâ artık bu kutunun olmayan bir adresten yanıt veriyor ve CelikPanel bunu sunucuda değiştiremedi. İzleme'yi açın: yapılacak adımı söyler; CelikPanel her saat yeniden dener.", item.name)
 	// S4 R2a (site_limits_view.go).
 	case "site_tasks_repeated":
 		return fmt.Sprintf("The programs of %s keep reaching their process limit (%s times in a day). The site's page says what its plan allows.", subject, n),

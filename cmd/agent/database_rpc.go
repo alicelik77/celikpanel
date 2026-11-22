@@ -108,10 +108,7 @@ var postgreSQLExecStatementOnPort = func(port int, statement string) ([]byte, er
 // (pgClusterRefusalError), and 0 resolves to the running cluster where the
 // clusters can be read (pg_statement_target.go).
 func postgreSQLStatementFor(port int) (func(string) ([]byte, error), error) {
-	if port < 0 || port > 65535 {
-		return nil, fmt.Errorf("invalid PostgreSQL port %d", port)
-	}
-	port, err := resolvePGStatementPort(port)
+	port, err := pgStatementPortFor(port)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +116,16 @@ func postgreSQLStatementFor(port int) (func(string) ([]byte, error), error) {
 		return postgreSQLExecStatement, nil
 	}
 	return func(statement string) ([]byte, error) { return postgreSQLExecStatementOnPort(port, statement) }, nil
+}
+
+// pgStatementPortFor checks and resolves a request's port as
+// postgreSQLStatementFor does (0: psql's own choice where the clusters
+// cannot be read).
+func pgStatementPortFor(port int) (int, error) {
+	if port < 0 || port > 65535 {
+		return 0, fmt.Errorf("invalid PostgreSQL port %d", port)
+	}
+	return resolvePGStatementPort(port)
 }
 
 // Database Management RPC Methods

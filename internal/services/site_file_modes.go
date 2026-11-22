@@ -99,11 +99,15 @@ func tightenManagedFileMode(path, header string) (ManagedFileModeChange, bool) {
 	if inspected.state != transport.SiteFileManagedUnchanged {
 		return ManagedFileModeChange{}, false
 	}
-	if inspected.mode&0o004 == 0 {
-		// Not readable by others already: nothing to do.
+	if inspected.mode == managedSiteFileNewMode {
+		// Already the mode this release writes: nothing to do or to say.
 		return ManagedFileModeChange{}, false
 	}
 	if inspected.mode != legacyManagedFileMode {
+		// Any other mode, also one that already keeps other accounts out
+		// (0600 and the like), is the owner's choice: kept and named in the
+		// journal, as docs/TENANT-ISOLATION.md says (alpha.142 lab: an
+		// owner's 0600 was kept but the summary said "0 kept").
 		return ManagedFileModeChange{Path: path, Kept: true,
 			Why: fmt.Sprintf("mode %04o is not the %04o earlier releases wrote; the owner's choice is kept", uint32(inspected.mode), uint32(legacyManagedFileMode))}, true
 	}

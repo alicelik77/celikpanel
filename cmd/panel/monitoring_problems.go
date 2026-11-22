@@ -114,38 +114,46 @@ var problemKindOrder = map[string]int{
 	"name_server_reserved":       12,
 	"name_overlap":               13,
 	"node_port_reserved":         14,
+	// S1b: PostgreSQL databases left open to other accounts.
+	"postgresql_databases_open": 15,
+	"mail_signing":              16,
+	// 22 Nov 2026: an out-of-office reply that still answers from an address
+	// that is no longer the mailbox's own.
+	"mail_autoresponder_foreign": 17,
+	// 22 Nov 2026 (B5): PostgreSQL databases the rounds could not read.
+	"postgresql_databases_unreadable": 18,
 	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
-	"tool_account_failed":       15,
-	"tool_account_owner_config": 16,
-	"stock_pool_in_use":         17,
-	"stock_pool_owner_changed":  18,
+	"tool_account_failed":       19,
+	"tool_account_owner_config": 20,
+	"stock_pool_in_use":         21,
+	"stock_pool_owner_changed":  22,
 	// S4 R1: jobs a site's own code can make.
-	"site_crontab_outside":  19,
-	"site_at_jobs":          20,
-	"at_allow_lists_sites":  21,
-	"at_directory_accounts": 22,
-	"at_not_closed":         23,
+	"site_crontab_outside":  23,
+	"site_at_jobs":          24,
+	"at_allow_lists_sites":  25,
+	"at_directory_accounts": 26,
+	"at_not_closed":         27,
 	// S4 R1 fix round.
-	"tool_down":                 24,
-	"stock_pool_not_put_back":   25,
-	"stock_pool_failed":         26,
-	"stock_pool_unknown":        27,
-	"stock_pool_owner_restored": 28,
-	"at_owner_removed":          29,
-	"site_crontab_unreadable":   30,
+	"tool_down":                 28,
+	"stock_pool_not_put_back":   29,
+	"stock_pool_failed":         30,
+	"stock_pool_unknown":        31,
+	"stock_pool_owner_restored": 32,
+	"at_owner_removed":          33,
+	"site_crontab_unreadable":   34,
 	// S4 R2a: a site that keeps reaching its limits; disk limits counted
 	// but not enforced (site_limits_view.go).
-	"site_memory_repeated": 31,
-	"site_tasks_repeated":  32,
-	"disk_limits_counted":  33,
+	"site_memory_repeated": 35,
+	"site_tasks_repeated":  36,
+	"disk_limits_counted":  37,
 	// S4 R2a: sites whose programs still run outside their limits (a to-do).
-	"site_programs_outside": 34,
+	"site_programs_outside": 38,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
-	"site_limits_unsupported": 35,
+	"site_limits_unsupported": 39,
 	// S4 R2a second fix round: a change of limits that did not reach every
 	// site; a default memory limit fixed for the host's earlier memory.
-	"site_limits_unapplied": 36,
-	"site_memory_default":   37,
+	"site_limits_unapplied": 40,
+	"site_memory_default":   41,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -208,6 +216,15 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
 	// S4 R1: site crontab lines not made in CelikPanel and at (side_doors_jobs.go).
 	add(p.siteJobsProblems(ctx, db), nil)
+	// S1b: PostgreSQL databases made before alpha.141 still open to other
+	// accounts, from the last round (postgresql_public_access.go).
+	add(pgPublicProblems(ctx, db), nil)
+	// 20 Nov 2026: mail signed only for the sender's own domain, as the
+	// Agent said at the Panel's last start (mail_signing_problem.go).
+	add(mailSigningProblems(p.setting(ctx, settingMailSigningState)), nil)
+	// 22 Nov 2026: an out-of-office reply whose address that is no longer the
+	// mailbox's own could not be taken off the server (mail_autoresponder_own.go).
+	add(autoresponderForeignProblems(ctx, db), nil)
 	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
 	add(p.siteLimitProblems(ctx, now), nil)
 	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)

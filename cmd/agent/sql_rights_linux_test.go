@@ -126,7 +126,7 @@ func TestTheDatabaseToolsQueryInsideADatabaseHasTheFixedSearchPath(t *testing.T)
 		t.Fatalf("query = %q %v", out, err)
 	}
 	args, _ := os.ReadFile(record)
-	if got := strings.TrimSpace(string(args)); got != "-u postgres env PGOPTIONS=-c search_path=pg_catalog,pg_temp psql --no-psqlrc --set ON_ERROR_STOP=on --tuples-only --no-align --port 5433 --dbname shop" {
+	if got := strings.TrimSpace(string(args)); got != "-u postgres env "+pgAdminSessionEnv+" psql --no-psqlrc --set ON_ERROR_STOP=on --tuples-only --no-align --port 5433 --dbname shop" {
 		t.Fatalf("command line %q", got)
 	}
 }

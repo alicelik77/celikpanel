@@ -8391,3 +8391,139 @@ bağlantıyı tutar.
   kuralıdır); hesap adları alan adlarından türetilir; posta, barındırılan
   her alan adı için imzalanır (sonraki sürüm). **Hiçbir P0 maddesi
   kapanmadı.**
+
+### security/s3b-mail-signing, security/s1b-pg-leftovers ve fix/a143-lab-corrections dalları (posta yalnız göndericinin kendi alan adı için imzalanır, bağımsız incelemeden sonra fix/a143-mail'de düzeltildi; alpha.141'den önce açılan PostgreSQL veritabanları, bağımsız incelemeden sonra fix/a143-pg'de düzeltildi, küme taşıması çıkarıldı; alpha.142 laboratuvarının dört düzeltmesi; şema 80 -> 81, yalnız tetikleyiciler; anayasa 1; ilke 1, 2, 3 ve 4; D-022; D-024; D-025; 2026-11-21, aday alpha.143)
+
+- **Neden burada.** Panelin açılışındaki posta onarım adımı doğal OpenDKIM
+  ve Postfix ayarlarını yazar; PostgreSQL döngüsü doğal veritabanı haklarını
+  değiştirir; veritabanı tetikleyicisi bir şema geçişidir; site
+  silmenin uygulama birimi temizliği ve tek seferlik kip düzeltmesi yaşam
+  döngüsü adımlarıdır: anayasa 1 (her işlem tam kendi kaynakları için
+  yetkilendirilir), ilke 1 (sahibin düzenlediği `opendkim.conf`, süzgeç
+  ayarları ve dosya kipleri korunur), ilke 2 (iddiadan önce doğrulanmış
+  durum: her kapatma ve geri alma sonucunu geri okur; işlem başladıktan sonra
+  kaybolan yanıt bilinmeyendir ve motordan uzlaştırılır, hiçbir zaman
+  "değişmedi" sayılmaz), ilke 3 (durum sorgusu ikinci bir değişiklik
+  başlatmaz: PostgreSQL sayfasını ya da "Şu anki sorunlar"ı okumak hiçbir
+  şeyi değiştirmez; kapatmalar sıraya konur, başarısız olan her saat yeniden
+  denenmez) ve ilke 4 (retler hiçbir
+  şey yapılmadan verilir).
+- **Kusurlar (her biri düzeltmeden önce bir testle gösterildi).** OpenDKIM,
+  `From:` satırında barındırılan bir alan adı geçen her iletiyi, kimliği
+  doğrulanmış ve yerel istemciler için ve 25. portta imzalıyordu; böylece
+  başka bir müşterinin adresini taşıyan posta o müşterinin imzasıyla
+  çıkıyordu (ilk sürümün bağımsız incelemesi şunları buldu: otomatik yanıt
+  başka bir hesabın adresinden imzalı yanıt verebiliyordu; site postası,
+  `authorized_submit_users` panelinki değilken `From:` satırına göre
+  imzalanıyor, yine de yerinde gösteriliyordu; 25. port listesi sahibin
+  sonradan eklediği süzgeçlerin önüne geçiyor ve OpenDKIM'den sonra da
+  kalıyordu; yeniden adlandırmadan sonra kaçırılan yeniden başlatma hiç
+  yapılmıyordu; durum yalnız açılışta kaydediliyordu; Arch'a OpenDKIM'inin
+  reddettiği bir satır öneriliyordu; geri alma varsayılanları dosyaya
+  yazıyordu); alpha.141'den önce açılan PostgreSQL veritabanları PUBLIC'in
+  CONNECT ve TEMPORARY haklarını koruyordu (ilk sürümün bağımsız incelemesi
+  şunları buldu: COMMIT'ten sonra kaybolan yanıt geri almanın kaydını
+  siliyordu, başarısız kapatma saatte bir yeniden deneniyor ve gizleniyordu,
+  hiçbir şeyin sahibi olmadan veritabanını kullanan roller görülmüyordu, bir
+  rol adı koruma bloğunun dolar tırnaklı gövdesini bitirebiliyordu, tarama
+  sayfayla büyüyordu ve yöneticinin yeniden açtığı veritabanı sonsuza dek
+  uyarıyordu); alpha.142 laboratuvarından: bir müşterinin
+  sunucu ya da yönetici adının altındaki kendi alan adının içinde alt alan
+  adı reddediliyordu, yöneticiye uzak bir sahip söyleniyordu, hata veren bir
+  Node.js birimi sitesinin silinmesini engelliyordu ve korunan sahip
+  kipleri adlandırılmıyordu.
+- **Sözleşme.** `SenderMacro {auth_authen}` imza anahtarını girişe bağlar;
+  25. port smtpd'si `main.cf` süzgeç listesini OpenDKIM'siz alır, liste her
+  açılışta ve posta süzgeci adımında yeniden hesaplanır ve OpenDKIM artık
+  kurulu ya da listede değilken bunların ilkinde silinir (`$değişken` ya da
+  `{ }` grubu içeren bir `main.cf` listesi CelikPanel'in önceki 25. port
+  değerini korur ve bunu söyler, `port25_variable_own`, ya da
+  `port25_variable` bildirir); otomatik yanıt yalnız kutunun kendi
+  adresinden ya da aynı hesabın alan adlarından ona yönlendirilmiş bir
+  adresten verilir (panel ve Agent; önceki yanıtlar yabancı adres olmadan
+  yeniden yazılır, bir kez söylenir ve denetim kaydına geçer; bu her
+  açılışta, her saat ve bir adın kimde olduğunu ya da bir adresin nereye
+  teslim edildiğini değiştiren her işlemden hemen sonra, posta kilidi
+  altında olur; yapılamayan yeniden yazma yanıtı kapatır, o da
+  uygulanamazsa kutu başına saatlik yeniden denenen bir "Şu anki sorunlar"
+  satırıdır); imza yalnız `authorized_submit_users` `root, vmail`
+  olduğunda yerinde gösterilir ve imzayı değiştiren her yol durumunu
+  kaydeder (erken dönüş bilinmeyendir); `SenderMacro`'suz bir derleme önceki
+  yapılandırmayı korur, bunu söyler ve ona seçenek asla önerilmez.
+  Eski bir veritabanı kendiliğinden yalnız dokunulmamış varsayılan
+  haklarda, içinde hiçbir izi olan kayıt dışı rol yokken, kayıtlı her
+  kullanıcının rolü varken, kümesinde izleme ya da çoğaltma rolü yokken ve
+  bir günlük izlemeden sonra kapatılır (izleme başladıktan en az 24 saat ve
+  en az 24 denetim sonraki ilk denetim; haklarının, içindeki rollerin,
+  sahibinin ya da kayıtlı kullanıcılarının değişmesi onu yeniden başlatır;
+  kayıt dışı bir rolün bir kez bağlı görülmesi onu bitirir); aksi hâlde
+  onaylı tek kapatmayla listelenir. Kapatma "kapatıldı", "doğrulanmış olarak
+  kapatılmadı" ya da "bilinmiyor" diye yanıtlanır; bilinmeyen kaydı korur ve
+  her şeyden önce motorun durumundan uzlaştırılır; başarısız kapatma
+  nedenini korur ve yalnız olgular değişince ya da yönetici basınca yeniden
+  denenir; kapatmalar sıraya konur. Her kapatmanın tam bir geri alması
+  vardır (panel ve düz SQL); yöneticinin yeniden açtığı veritabanı sayfada o
+  tercih olarak kalır, "Şu anki sorunlar"dan çıkar, bir daha kendiliğinden
+  kapatılmaz. Küme taşıması alpha.142'deki gibidir (sahip haklarıyla
+  yüklemesi çıkarıldı; ROADMAP güvenlik dizisi 6. madde).
+  Ad kuralı, alan hesap N'nin altında olduğu bir R tutuyorsa ve R bir sunucu
+  adının ya da yöneticinin tuttuğu bir adın altındaysa N'yi muaf tutar;
+  diğer her şey panelde ve göç 081'de reddedilmeye devam eder.
+  `RemoveAppUnit`, değişmeyen kanıtından önce tam o birim için `systemctl
+  reset-failed` çalıştırır; kip düzeltmesi korunan her kipi adlandırır.
+- **Şema / sürüm geçişi.** 80 -> 81: göç 081, 080'in altı tetikleyicisini
+  aynı adlarla kaldırıp yeniden oluşturur; tablo, sütun ya da satır yok,
+  bu yüzden çakışma tutan bir veritabanında da uygulanır; eski sürüm kaydı
+  reddeder, alpha.142'ye dönüş güncellemeden önceki anlık görüntünün geri
+  yüklenmesidir. Eklemeli: `WireMailFiltersResponse.signing`, "Şu anki
+  sorunlar" türleri `mail_signing` ve `postgresql_databases_open`, sürüme
+  bağlı Agent çağrıları `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`
+  (`unknown`, `missing`, `replication` yanıtları),
+  panel_settings satırları `postgresql_public_v1:<kimlik>` ve
+  `postgresql_public_list_v1`.
+- **Kurtarma.** Yeni bir `opendkim.conf`, yeniden adlandırmadan önce
+  `opendkim -n` ile denetlenir ve OpenDKIM onunla çalışmazsa geri konur
+  (açılışta ve ikinci incelemeden beri `ConfigureDKIMSigning`'de de);
+  Postfix yazmaları herhangi bir hatada ters sırayla geri alınır (varsayılanında
+  olan ayar yeniden silinir) ve Postfix yeniden yüklenir; OpenDKIM'in yeniden
+  başlatılması yeniden adlandırmadan önce borç olarak kaydedilir ve bir
+  kesintiden sonraki açılışta yapılır; yeniden başlatma sırasında iki
+  süzgeç listesi de CelikPanel'inse posta imzasız geçer
+  (`milter_default_action = accept`), biri sahibinkiyse sahibin
+  `milter_default_action` değeri ya da Postfix'in varsayılanı `tempfail`
+  geçerlidir (gönderen sunucu yeniden dener; 587'deki kişi yeniden gönderir). Herhangi bir yerde kesilen kapatma
+  veritabanını dokunulmamış ya da haklarıyla kapatılmış bırakır, panelin
+  kaydını da motor hangisi olduğunu gösterene dek korur; veritabanı o zamandan beri değişmişse geri alma reddedilir ve
+  hiçbir şey değiştirmez. Hepsi panel olmadan da çalışan doğal yapılandırma
+  ve haklardır; sahip bunları `docs/TENANT-ISOLATION.tr.md` ve
+  `docs/DATABASE-USERS.md` içinde adı geçen düz ayar ya da komutlarla geri
+  alır.
+- **Kanıt.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` ve dağıtım
+  matrisinde Debian 12/13 ve Ubuntu 22.04/24.04'ün gerçek OpenDKIM'i;
+  posta düzeltme turunun `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart` testleri ve matrisin
+  gerçek `postconf` durumları;
+  özel PostgreSQL 17.12'de
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve düzeltme
+  turunun `TestS1bFix*` testleri (COMMIT'ten sonra kaybolan yanıt, sütun
+  hakları, ayarlar, ilkeler ve kullanıcı eşlemeleri, dolar tırnaklı gövdeyi
+  bitirecek adlı bir rol, rolü olmayan kayıtlı kullanıcı, mantıksal
+  çoğaltma abonesi, tek tarama oturumunda 300 veritabanı), panelin
+  `TestPGPublic*` testleri;
+  `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
+  `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
+  `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
+  `TestAppUnitRemovalForgetsAFailedUnit`,
+  `TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner`; sürüm
+  kurtarma laboratuvarı şema 81'i sabitler.
+- **Açık.** Henüz laboratuvar çalışması yok. Arch Linux'un OpenDKIM'inde
+  `SenderMacro` yok: orada girişle gönderilen posta, `From:` satırında
+  geçen barındırılan her alan adı için hâlâ imzalanır; panelin kaydetmediği
+  veritabanlarına dokunulmaz; istisnayla açılan alt alan adı "Şu anki
+  sorunlar"da hâlâ listelenir; SQL_ASCII bir PostgreSQL sunucusu hâlâ
+  laboratuvarda denenmedi; kapatma yalnız PostgreSQL 17'de çalıştırıldı;
+  taşıma müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla
+  çalıştırır. **Hiçbir P0 maddesi kapanmadı.**

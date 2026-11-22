@@ -36,8 +36,10 @@ import (
 // used; the Panel's text then waits beside it.
 //
 // What each account reads and writes:
-//   - Webmail: Roundcube's code is readable by everyone (the published
-//     source); config/ is root:<account> 0750 with its files 0640 (des_key);
+//   - Webmail: the tree's root stays closed to others (root:<web group>
+//     0750); the account gets through it by an access-control-list entry
+//     and reads the published code (php_tool_files.go, second fix round);
+//     config/ is root:<account> 0750 with its files 0640 (des_key);
 //     db/ (SQLite and its journal: sessions and settings), temp/
 //     (attachments being written) and logs/ belong to the account, 0700.
 //   - phpMyAdmin (distribution package): its code and /etc/phpmyadmin/
@@ -146,6 +148,18 @@ type phpToolPoolOps struct {
 	fpmReload    func(ctx context.Context, version string) error
 	socketReady  func(path string) bool
 	wait         func(ctx context.Context, d time.Duration) bool
+	// lockPools is the host-wide lock of PHP-FPM pool files
+	// (services.LockPHPFPMPools), held around every keep, write, remove,
+	// configuration test and reload of a version's pools (S4 R1, second fix
+	// round, B6); nil in tests that do not look at it.
+	lockPools func() func()
+}
+
+func (ops phpToolPoolOps) holdPools() func() {
+	if ops.lockPools == nil {
+		return func() {}
+	}
+	return ops.lockPools()
 }
 
 // ownPHPToolPoolWith gives a tool its own account and pool on one PHP
@@ -236,11 +250,14 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 	// The bytes before the write: a CelikPanel pool the write replaced (a new
 	// web server account, a later release's text) comes back as it was, so
 	// the socket the restored web server configuration names still answers.
+	release := ops.holdPools()
 	previous, err := ops.snapshotFile(path)
 	if err != nil {
+		release()
 		return fail(fmt.Errorf("read the pool %s: %w", path, err))
 	}
 	result, err := ops.applyPool(file, validate, activate)
+	release()
 	if err != nil {
 		return fail(fmt.Errorf("write the pool %s: %w", path, err))
 	}
@@ -248,6 +265,7 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 	switch result.Outcome {
 	case transport.SiteFileOutcomeWritten, transport.SiteFileOutcomeRecreated:
 		undos = append(undos, func(ctx context.Context) error {
+			defer ops.holdPools()()
 			if previous.exists {
 				if err := ops.restoreFile(previous); err != nil {
 					return fmt.Errorf("put %s back: %w", path, err)
@@ -306,50 +324,56 @@ func retirePHPToolPoolsWith(ctx context.Context, ops phpToolPoolOps, tool, keep 
 		if version == keep {
 			continue
 		}
-		path := phpToolPoolPath(tool, version)
-		if _, err := os.Lstat(path); err != nil {
-			services.RemoveSiteFilePending(path)
-			continue
-		}
-		previous, err := ops.snapshotFile(path)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("read %s: %w", path, err))
-			continue
-		}
-		if _, err := services.BackupUnlessManaged(path, services.ManagedHeaderPrefixINI, nil); err != nil {
-			errs = append(errs, fmt.Errorf("keep a copy of %s: %w", path, err))
-			continue
-		}
-		undoKeep, err := services.KeepAPoolBeside(path)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("%s is kept: %w", path, err))
-			continue
-		}
-		if err := ops.removeFile(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-			if undoKeep != nil {
-				err = errors.Join(err, undoKeep())
-			}
-			errs = append(errs, fmt.Errorf("remove %s: %w", path, err))
-			continue
-		}
-		if err := ops.fpmTest(ctx, version); err != nil {
-			putBack := ops.restoreFile(previous)
-			if putBack == nil && undoKeep != nil {
-				putBack = undoKeep()
-			}
-			if putBack != nil {
-				errs = append(errs, fmt.Errorf("PHP-FPM %s refuses its configuration without %s's pool (%v), and putting the pool back failed: %v; PHP-FPM %s was not reloaded, the server administrator checks %s", version, phpToolDisplayName(tool), err, putBack, version, filepath.Dir(path)))
-			} else {
-				errs = append(errs, fmt.Errorf("PHP-FPM %s refuses its configuration without %s's pool (%v); the pool was put back and PHP-FPM %s was not reloaded", version, phpToolDisplayName(tool), err, version))
-			}
-			continue
-		}
-		services.RemoveSiteFilePending(path)
-		if err := ops.fpmReload(ctx, version); err != nil {
-			errs = append(errs, fmt.Errorf("reload PHP-FPM %s after its %s pool went: %w", version, phpToolDisplayName(tool), err))
+		if err := retirePHPToolPoolOn(ctx, ops, tool, version); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// retirePHPToolPoolOn removes a tool's pool on one version under the
+// host-wide pool lock: whether another pool remains, the stock pool put back,
+// the removal, the configuration test and the reload are one step that no
+// site deletion or switch can interleave with (B6).
+func retirePHPToolPoolOn(ctx context.Context, ops phpToolPoolOps, tool, version string) error {
+	defer ops.holdPools()()
+	path := phpToolPoolPath(tool, version)
+	if _, err := os.Lstat(path); err != nil {
+		services.RemoveSiteFilePending(path)
+		return nil
+	}
+	previous, err := ops.snapshotFile(path)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+	if _, err := services.BackupUnlessManaged(path, services.ManagedHeaderPrefixINI, nil); err != nil {
+		return fmt.Errorf("keep a copy of %s: %w", path, err)
+	}
+	undoKeep, err := services.KeepAPoolBeside(path)
+	if err != nil {
+		return fmt.Errorf("%s is kept: %w", path, err)
+	}
+	if err := ops.removeFile(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if undoKeep != nil {
+			err = errors.Join(err, undoKeep())
+		}
+		return fmt.Errorf("remove %s: %w", path, err)
+	}
+	if err := ops.fpmTest(ctx, version); err != nil {
+		putBack := ops.restoreFile(previous)
+		if putBack == nil && undoKeep != nil {
+			putBack = undoKeep()
+		}
+		if putBack != nil {
+			return fmt.Errorf("PHP-FPM %s refuses its configuration without %s's pool (%v), and putting the pool back failed: %v; PHP-FPM %s was not reloaded, the server administrator checks %s", version, phpToolDisplayName(tool), err, putBack, version, filepath.Dir(path))
+		}
+		return fmt.Errorf("PHP-FPM %s refuses its configuration without %s's pool (%v); the pool was put back and PHP-FPM %s was not reloaded", version, phpToolDisplayName(tool), err, version)
+	}
+	services.RemoveSiteFilePending(path)
+	if err := ops.fpmReload(ctx, version); err != nil {
+		return fmt.Errorf("reload PHP-FPM %s after its %s pool went: %w", version, phpToolDisplayName(tool), err)
+	}
+	return nil
 }
 
 // retireUninstalledPHPToolWith removes everything a tool's own account had
@@ -410,7 +434,10 @@ func ownSocketForUnboundTool(ctx context.Context, state phpToolState, socket str
 			log.Printf("record %s account failure: %v", state.Tool, recordErr)
 		}
 		if !pathExists(socket) {
-			return socket, fmt.Sprintf("%s could not be given its own account on PHP %s (%v), and that version's stock pool is off, so nothing would answer for it; it was not pointed there. The administrator opens it under Components and chooses its PHP version, which tries its own account again", phpToolDisplayName(state.Tool), version, err)
+			// Its caller then does not point it there (S4 R1, second fix
+			// round, B3): webmail's configuration is refused, a database tool
+			// is left out of the configuration.
+			return socket, fmt.Sprintf("%s could not be given its own account on PHP %s (%v), and that version's stock pool is off, so nothing would answer for it: it is not pointed there and does not open until it is moved. The administrator opens it under Components and chooses its PHP version, which tries its own account again", phpToolDisplayName(state.Tool), version, err)
 		}
 		return socket, fmt.Sprintf("%s runs under the web server's account on PHP %s, which can read every site, because it could not be given its own account (%v). The administrator opens it under Components and chooses its PHP version to try again", phpToolDisplayName(state.Tool), version, err)
 	}
@@ -487,6 +514,7 @@ func hostPHPToolPoolOps() phpToolPoolOps {
 			return nil
 		},
 		socketReady: pathExists,
+		lockPools:   services.LockPHPFPMPools,
 		wait: func(ctx context.Context, d time.Duration) bool {
 			select {
 			case <-ctx.Done():
@@ -599,11 +627,11 @@ func preparePHPMyAdminOwnAccount(uid, gid int, servedOwn bool) (func() error, er
 	} else if journal, err = loadPHPToolFileJournal(phpToolPHPMyAdmin); err != nil {
 		return nil, err
 	}
-	note := func(path string, content bool) error {
+	note := func(path string, content bool, after phpToolFileMeta) error {
 		if journal == nil {
 			return nil
 		}
-		return journal.note([]string{path}, map[string]bool{path: content})
+		return journal.note([]phpToolPlanned{{Path: path, WithContent: content, After: after}})
 	}
 	fail := func(err error) (func() error, error) {
 		if journal != nil && len(journal.before) > 0 {
@@ -636,7 +664,7 @@ func preparePHPMyAdminOwnAccount(uid, gid int, servedOwn bool) (func() error, er
 		}
 		content := []byte(renderPHPMyAdminOwnAccountConf(secret))
 		if !previous.exists || string(previous.content) != string(content) || previous.uid != 0 || previous.gid != gid || previous.mode.Perm() != 0o640 {
-			if err := note(phpMyAdminOwnAccountConf, true); err != nil {
+			if err := note(phpMyAdminOwnAccountConf, true, phpToolFileMeta{UID: 0, GID: gid, Mode: 0o640, ContentSHA: contentDigest(content)}); err != nil {
 				return nil, fmt.Errorf("record phpMyAdmin's files before changing them: %w", err)
 			}
 			if err := secureWriteConfigOwnedBy(phpMyAdminOwnAccountConf, content, 0o640, 0, uint32(gid)); err != nil {
@@ -655,7 +683,7 @@ func preparePHPMyAdminOwnAccount(uid, gid int, servedOwn bool) (func() error, er
 		if err != nil || !file.exists || file.uid != 0 || file.gid != webGID || file.mode.Perm() != 0o640 {
 			continue
 		}
-		if err := note(path, false); err != nil {
+		if err := note(path, false, phpToolFileMeta{UID: 0, GID: gid, Mode: 0o640}); err != nil {
 			return fail(fmt.Errorf("record phpMyAdmin's files before changing them: %w", err))
 		}
 		if err := secureSetMailFileMetadata(path, 0o640, 0, gid); err != nil {

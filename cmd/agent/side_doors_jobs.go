@@ -47,7 +47,15 @@ import (
 //     Undo: delete the file. The owner's undo stands (S4 R1 fix round): a
 //     file CelikPanel wrote and the owner deleted is never written again by
 //     itself; Problems now says at is open, and the administrator's explicit
-//     "close it again" writes it anew. Accounts that come from a directory
+//     "close it again" writes it anew.
+//     CelikPanel's record of its file (at-allow.sha256 in the Agent's private
+//     state) is written BEFORE the file (S4 R1, second fix round): first
+//     "pending <new digest> <earlier digest or ->", then the file, then the
+//     new digest alone. A crash in between reads at the next start as
+//     CelikPanel's unfinished step: a file with either digest is CelikPanel's
+//     (finished or brought up to date), a first write that never happened is
+//     written, and only a file that is gone after it was there reads as the
+//     owner's undo. Accounts that come from a directory
 //     service (LDAP, SSSD, NIS) cannot be listed safely, so nothing is
 //     written then. Pending at jobs of site accounts are listed (number,
 //     account, time; never their commands, which are the site's own text) and
@@ -236,9 +244,73 @@ func atDigest(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// atRecord is CelikPanel's record of its /etc/at.allow: the digest of the
+// file it wrote (done), or a write it began (pendingNew, with pendingOld the
+// digest it replaced, or "-" for a first write).
+type atRecord struct {
+	exists                       bool
+	done, pendingNew, pendingOld string
+	err                          error
+}
+
+func readAtRecord(ops siteAtOps) atRecord {
+	data, err := ops.readFile(atAllowRecordPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return atRecord{}
+	}
+	if err != nil {
+		return atRecord{err: err}
+	}
+	fields := strings.Fields(string(data))
+	switch {
+	case len(fields) == 1:
+		return atRecord{exists: true, done: fields[0]}
+	case len(fields) == 3 && fields[0] == "pending":
+		return atRecord{exists: true, pendingNew: fields[1], pendingOld: fields[2]}
+	}
+	return atRecord{err: fmt.Errorf("%s is not CelikPanel's record", atAllowRecordPath)}
+}
+
+// ours: the file with this digest is the one CelikPanel wrote, or the one an
+// unfinished write of its own was replacing.
+func (r atRecord) ours(digest string) bool {
+	return r.exists && (r.done == digest || r.pendingNew == digest || (r.pendingOld != "-" && r.pendingOld == digest))
+}
+
+// gone: CelikPanel's file was there and is not: the owner deleted it. A first
+// write that never finished ("pending <new> -") is not.
+func (r atRecord) gone() bool {
+	return r.exists && (r.done != "" || (r.pendingOld != "" && r.pendingOld != "-"))
+}
+
+// lastDigest is the digest the record holds of a file that was there.
+func (r atRecord) lastDigest() string {
+	if r.done != "" {
+		return r.done
+	}
+	if r.pendingOld != "-" {
+		return r.pendingOld
+	}
+	return ""
+}
+
+// atPass says what one pass over at may do: reclose is the administrator's
+// explicit "close it again" (a file the owner deleted is written anew; a cut
+// or refused attempt leaves the owner's undo recorded); readOnly reads again
+// without writing (the hourly round, B7), and a state only the step decides
+// comes back as "".
+type atPass struct {
+	reclose  bool
+	readOnly bool
+}
+
 // closeSiteAtWith decides and, where allowed, writes /etc/at.allow, and lists
 // the site accounts' pending jobs.
 func closeSiteAtWith(ctx context.Context, ops siteAtOps) *transport.SideDoorsAt {
+	return closeSiteAtFor(ctx, ops, atPass{})
+}
+
+func closeSiteAtFor(ctx context.Context, ops siteAtOps, pass atPass) *transport.SideDoorsAt {
 	if !ops.installed() {
 		return &transport.SideDoorsAt{State: transport.SideDoorsAtNotInstalled}
 	}
@@ -268,14 +340,22 @@ func closeSiteAtWith(ctx context.Context, ops siteAtOps) *transport.SideDoorsAt 
 		at.State, at.Detail = transport.SideDoorsAtFailed, "the account list could not be read: "+passwdErr.Error()
 		return at
 	}
+	record := readAtRecord(ops)
+	if record.err != nil {
+		// Whether CelikPanel wrote the file, and whether the owner deleted
+		// it, cannot be told: nothing is written.
+		at.State, at.Detail = transport.SideDoorsAtFailed, "CelikPanel's record of /etc/at.allow could not be read, so nothing was written: "+record.err.Error()
+		return at
+	}
 	current, err := ops.readFile(atAllowPath)
 	switch {
 	case err == nil:
+		digest := atDigest(current)
 		desired := ""
-		if strings.HasPrefix(string(current), atAllowMark+"\n") {
-			recorded, recordErr := ops.readFile(atAllowRecordPath)
+		ours := strings.HasPrefix(string(current), atAllowMark+"\n") && record.ours(digest)
+		if ours {
 			deny, denyErr := ops.readFile(atDenyPath)
-			if recordErr == nil && strings.TrimSpace(string(recorded)) == atDigest(current) && denyErr == nil && !nisLines {
+			if denyErr == nil && !nisLines {
 				desired = renderAtAllow(entries, string(deny))
 			}
 		}
@@ -289,19 +369,34 @@ func closeSiteAtWith(ctx context.Context, ops siteAtOps) *transport.SideDoorsAt 
 			sort.Strings(at.SiteAccounts)
 			return at
 		}
-		if desired == string(current) {
+		if pass.readOnly {
 			at.State = transport.SideDoorsAtCurrent
 			return at
 		}
-		return writeAtAllow(ops, at, desired)
+		if desired == string(current) {
+			at.State = transport.SideDoorsAtCurrent
+			if record.done != digest {
+				// CelikPanel's own write finished but its record did not.
+				if err := writePrivateFileAtomic(atAllowRecordPath, []byte(digest+"\n"), ".at-allow-*"); err != nil {
+					at.Detail = "CelikPanel's record of the file could not be written: " + err.Error()
+				}
+			}
+			return at
+		}
+		return writeAtAllow(ops, at, desired, digest)
 	case !errors.Is(err, fs.ErrNotExist):
 		at.State, at.Detail = transport.SideDoorsAtFailed, err.Error()
 		return at
 	}
-	// The owner's undo stands (D-022): CelikPanel's record without its file
-	// means the owner deleted the file. It is not written again by itself.
-	if _, recordErr := ops.readFile(atAllowRecordPath); recordErr == nil {
+	// The owner's undo stands (D-022): CelikPanel's file was there and is
+	// gone, so the owner deleted it. It is not written again by itself; the
+	// administrator's explicit "close it again" writes it anew.
+	if record.gone() && !pass.reclose {
 		at.State = transport.SideDoorsAtOwnerRemoved
+		return at
+	}
+	if pass.readOnly {
+		at.State = ""
 		return at
 	}
 	deny, err := ops.readFile(atDenyPath)
@@ -320,17 +415,40 @@ func closeSiteAtWith(ctx context.Context, ops siteAtOps) *transport.SideDoorsAt 
 		at.Detail = "accounts come from a directory service (" + sideDoorsNSSwitch + " or + lines in " + sideDoorsPasswd + "), so who may use at today cannot be listed; nothing was written"
 		return at
 	}
-	return writeAtAllow(ops, at, renderAtAllow(entries, string(deny)))
+	// A first write is recorded with "-"; the administrator's "close it
+	// again" keeps the digest of the file the owner deleted, so a cut attempt
+	// still reads as the owner's undo.
+	earlier := "-"
+	if last := record.lastDigest(); last != "" {
+		earlier = last
+	}
+	return writeAtAllow(ops, at, renderAtAllow(entries, string(deny)), earlier)
 }
 
-func writeAtAllow(ops siteAtOps, at *transport.SideDoorsAt, content string) *transport.SideDoorsAt {
+// writeAtAllow writes CelikPanel's record of the write first, then the file,
+// then the record of the finished write (B5/B10: a crash in between is
+// CelikPanel's unfinished step, never the owner's file or the owner's undo).
+// earlier is the digest of the file this write replaces, "-" for none.
+func writeAtAllow(ops siteAtOps, at *transport.SideDoorsAt, content, earlier string) *transport.SideDoorsAt {
+	digest := atDigest([]byte(content))
+	previous, previousErr := ops.readFile(atAllowRecordPath)
+	if err := writePrivateFileAtomic(atAllowRecordPath, []byte("pending "+digest+" "+earlier+"\n"), ".at-allow-*"); err != nil {
+		at.State, at.Detail = transport.SideDoorsAtFailed, "CelikPanel's record of the file could not be written, so nothing was written: "+err.Error()
+		return at
+	}
 	if err := ops.writeLike(atAllowPath, atDenyPath, []byte(content)); err != nil {
+		// The record goes back to what it was; nothing else changed.
+		if previousErr == nil {
+			_ = writePrivateFileAtomic(atAllowRecordPath, previous, ".at-allow-*")
+		} else {
+			_ = os.Remove(atAllowRecordPath)
+		}
 		at.State, at.Detail = transport.SideDoorsAtFailed, err.Error()
 		return at
 	}
 	at.State = transport.SideDoorsAtWritten
-	if err := writePrivateFileAtomic(atAllowRecordPath, []byte(atDigest([]byte(content))+"\n"), ".at-allow-*"); err != nil {
-		at.Detail = "CelikPanel's record of the file could not be written, so it will not bring it up to date: " + err.Error()
+	if err := writePrivateFileAtomic(atAllowRecordPath, []byte(digest+"\n"), ".at-allow-*"); err != nil {
+		at.Detail = "CelikPanel's record of the finished write could not be written; the next start finishes it: " + err.Error()
 	}
 	return at
 }
@@ -446,6 +564,12 @@ var siteCrontabAccounts = func() ([]passwdEntry, error) {
 // Problems now, and gets no record (once readable its lines are listed until
 // the administrator keeps or someone deletes them).
 func checkSiteCrontabs() []transport.SideDoorsSiteCrontab {
+	return checkSiteCrontabsFor(false)
+}
+
+// checkSiteCrontabsFor: readOnly counts without taking the baseline (the
+// hourly round and after a Manage-window move write nothing).
+func checkSiteCrontabsFor(readOnly bool) []transport.SideDoorsSiteCrontab {
 	if requireCronInstalled() != nil {
 		return nil
 	}
@@ -455,7 +579,7 @@ func checkSiteCrontabs() []transport.SideDoorsSiteCrontab {
 	}
 	cronMu.Lock()
 	defer cronMu.Unlock()
-	baseline := !siteCrontabBaselineTaken()
+	baseline := !readOnly && !siteCrontabBaselineTaken()
 	recorded := true
 	var rows []transport.SideDoorsSiteCrontab
 	for _, account := range accounts {
