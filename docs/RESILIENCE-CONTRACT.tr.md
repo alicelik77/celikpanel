@@ -8527,3 +8527,24 @@ bağlantıyı tutar.
   laboratuvarda denenmedi; kapatma yalnız PostgreSQL 17'de çalıştırıldı;
   taşıma müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla
   çalıştırır. **Hiçbir P0 maddesi kapanmadı.**
+
+### fix/a144-lab-corrections dalı (alpha.143 laboratuvarının altı bulgusu ve web postası adresinin bir güvenlik düzeltmesi; şema değişikliği yok; anayasa 1 ve 3; ilke 2, 3 ve 4; D-022; D-024; D-025; 2026-11-22, aday alpha.144)
+
+- **Sayfadan uzun yaşayan değişiklikler.** Yöneticinin PostgreSQL kapatması ya
+  da geri alması, yeni posta kutusu ve otomatik yanıt tarayıcının bağlantısında
+  çalışıyordu; sayfadan çıkmak Panel'i Agent'ın işi ile kaydı arasında
+  kesiyordu. Artık istek kimliğiyle (D-029), rotanın süre sınırıyla, ayrık bir
+  bağlamda çalışırlar. Sayfadan çıkmak hiçbir şey bırakmaz; Panel'in durması
+  istek satırını "bilinmiyor" bırakır, kapatma kaydı motordan uzlaştırılır,
+  satırı olmayan posta kutusu açıkça söylenir ve yönetici onu alabilir.
+- **Alma sunucuda yalnız okur.** Panel satırı yalnız CelikPanel'in kendi
+  biçimi için yazar; gerisi sahibin kalır (D-022).
+- **Takma ad DNS'i.** CelikPanel'in eklediği kayıtlar `alias_dns_v1:<takma ad>`
+  notunda, kayıtlarla aynı işlemde tutulur; kaldırma yalnız onları siler.
+- **Web postası adresi.** Yalnız `index.php` çalışır; bağlı klasörler yalnız
+  durağan dosya verir; nokta dosyaları ve yedek görünümlü adlar reddedilir.
+  Önceki biçimdeki dosyalar Agent'ın ilk açılışında bir kez yeniden yazılır;
+  sahibin dosyası korunur, metin yanına konur.
+- **Açık.** Laboratuvar denemesi yok; tarayıcı bağlamını Agent değişikliğine
+  veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
+  takma ad hâlâ DNS kaydı almaz. **Hiçbir P0 işi kapanmadı.**

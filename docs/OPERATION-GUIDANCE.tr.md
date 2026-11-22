@@ -11241,3 +11241,39 @@ yüklenir). Testler: `cmd/panel/webmail_address_dns_record_test.go`,
 üzerinden), `web/tests/webmail-dns-add-alpha135.test.mjs`. Açık: gerçek bir
 çiftte lab denemesi henüz yok; kartın görünmesi için yedek sunucuda Roundcube
 kurulu olmalıdır.
+
+### alpha.143 laboratuvarının düzeltmeleri (alpha.144, 22 Kasım 2026)
+
+Bileşen testleriyle kaynak durumu; henüz laboratuvar denemesi yok.
+
+- **Sayfadan çıkıldı diye değişiklik kaybolmaz.** Yöneticinin başka hesapların
+  girebildiği bir PostgreSQL veritabanını kapatması ya da geri alması (ve
+  "Yeniden oku"), posta kutusu oluşturma ve otomatik yanıtı kaydetme, sayfanın
+  istek kimliğiyle (D-029), tarayıcının iptal edemediği bir bağlamda, kendi
+  süre sınırına kadar çalışır. Sayfayı yeniden açan sonucu okur; aynı istek
+  yeniden gelirse kaydından yanıtlanır, asla iki kez çalışmaz. Yeni bir basış
+  yeni istektir: değişikliği yapılmış bulur.
+- **Başarısız kapatma ne olduğunu söyler.** Penceresi "Yapılmadı — hiçbir şey
+  değiştirilmedi" adımıyla biter; doğrulanmamış sonuç "Sonuç henüz
+  doğrulanmadı — yeniden gönderilmez" adımıyla. Neden satırı önce nedenin
+  türünü söyler (kilit zamanında verilmedi, süre aşıldı, bağlantı koptu, yetki
+  eksik, adı geçen şey yok, sunucu reddetti), sonra veritabanı sunucusunun
+  iletisini tırnak içinde verir.
+- **Panelde satırı olmadan sunucuda bulunan posta kutusu** asla iç hata
+  değildir. Yöneticiye **Bu alan adına al** sunulur: sunucunun bu adres için
+  tuttuğu satırları okur ve oradaki boyut sınırıyla satırı yazar; postaya,
+  klasörüne ve parolasına dokunulmaz; sonra her posta kutusu gibi tutulur ya da
+  silinir. Başkasına yöneticiye sorması söylenir; cümle yalnız istenen adresi,
+  kişinin kendi alan adında adlandırır. Sunucu kutuyu artık tutmuyorsa, iki
+  satırından yalnız birini tutuyorsa (sunucu sahibi kalan satırı siler) ya da
+  CelikPanel'in yazmadığı bir biçimde tutuyorsa (sunucu sahibine bırakılır)
+  alma reddedilir.
+- **Takma ad DNS'te yanıt verir.** Aynı hesabın bu sunucuda tutulan bir
+  bölgesinin içindeki takma ad oraya sitenin adreslerini alır (yayımlanmadıysa
+  bölgenin bir sonraki yayınıyla gider; sahip o adda başka bir adres tutuyorsa
+  dokunulmaz). Kayıtlar takma adla birlikte, yalnız CelikPanel'in eklediği
+  kadarıyla kalkar.
+- **Retler sayfanın dilinde:** takma adın sertifikası yeniden alınamadı,
+  sertifika takma adı kapsamıyor, geçersiz ad, takma ad artık yok, HSTS
+  kaldırmayı engelliyor, etkin sertifika yok.
+- **Tek veritabanı** Şimdiki sorunlar'da ve uyarı e-postasında tekil söylenir.

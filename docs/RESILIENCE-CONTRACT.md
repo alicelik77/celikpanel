@@ -9291,3 +9291,43 @@ until the backup reports ready.
   SQL_ASCII PostgreSQL server is still unchecked in a lab; the closing was
   run on PostgreSQL 17 only; a move still runs customers' database code with
   the administrator's rights. **No P0 item is closed.**
+
+### Branch fix/a144-lab-corrections (the alpha.143 lab's six findings and one security correction of webmail's address; no schema change; constitution 1 and 3; invariants 2, 3 and 4; D-022; D-024; D-025; 2026-11-22, candidate alpha.144)
+
+- **Changes that outlive the page (invariant 4, constitution 3: refresh and
+  timeout never authorize duplicate work).** An administrator's PostgreSQL
+  close or undo, a new mailbox and an out-of-office reply ran on the
+  browser's connection: leaving the page cut the Panel between the Agent's
+  work and its record (lab: "sent, not yet confirmed" for a close that had
+  finished; a mailbox on the server without a row). They now run under the
+  request identity (D-029) on a detached context with their route's limit.
+  What each interruption leaves: the page left — nothing (the change and
+  its record complete); the Panel stopped mid-change — the request row
+  `interrupted` (answered "not known"), a close's record `sending` settled
+  from the engine once the Agent confirms nothing of it runs, a mailbox
+  possibly on the server without a row (now said plainly, with the
+  administrator's adoption); who acts: nobody for the first, the
+  administrator reads the page again for the second.
+- **Adoption is read-only on the server.** `Agent.MailboxOnServerV1` reads
+  Dovecot's users file and Postfix's map under the mail lock; the Panel
+  writes the row only for CelikPanel's own form (the address's own folder,
+  no uid/gid/home/shell, a size limit); everything else stays the owner's
+  (D-022).
+- **Alias DNS (invariant 2).** What CelikPanel added for an alias is kept in
+  `panel_settings` `alias_dns_v1:<alias>` (version 1, zone and records),
+  written in the same transaction as the records; removal deletes exactly
+  those. Aliases made before alpha.144 have no such note and get no record
+  until they are added again.
+- **Webmail's address (constitution 1).** Only `index.php` runs; the linked
+  folders give out static files only; dot-files and backup-looking names
+  are refused. Earlier address files are CelikPanel's own form, read as
+  stale, and rewritten once at the Agent's start (nginx -t, reload, the
+  earlier file put back on failure); an owner's file is kept with the text
+  beside it.
+- **Evidence.** `TestA144*` (panel), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
+  `TestWebmailAddress*` (agent); the detached tests fail with the guard
+  removed (the lab's "sending/lost" record, no mailbox row, no reply copy).
+- **Open.** No lab run; the other Panel handlers that pass the browser's
+  context into an Agent change are listed in the pull request for a later
+  lane; an alias that is a zone of its own still gets no DNS (no zone is
+  created for it). **No P0 item is closed.**
