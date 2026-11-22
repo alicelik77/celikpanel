@@ -34,7 +34,10 @@ test('the owner’s undo is closed again only by an explicit action, asked first
   // Second fix round (B4): the panel runs it apart from the page; the window
   // follows it with reads only, and leaving the page does not cancel it.
   assert.match(source, /while \(status\?\.running[\s\S]*?await readRemote\(RECLOSE_URL,/, 'followed with reads only');
-  assert.equal((source.match(/method: 'POST'/g) ?? []).length, 2, 'one start request (and the service start), never one per read');
+  // S4 R2a second fix round: the site memory default's action has its own
+  // sender (a preview, then the apply), outside the close-again's follow-up.
+  assert.equal((source.match(/method: 'POST'/g) ?? []).length, 3, 'one start request (and the service start, and the default’s sender), never one per read');
+  assert.equal((source.match(/fetch\(RECLOSE_URL/g) ?? []).length, 1, 'the close again is sent once');
   assert.match(source, /report\.steps\(/, 'the work is shown while it runs');
   assert.match(source, /handle\.retry\(\)/, 'the list reads itself again');
   for (const kind of ['stock_pool_owner_restored', 'at_owner_removed']) {
