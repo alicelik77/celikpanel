@@ -164,33 +164,20 @@ func moveSliceFileAside(path string) (string, error) {
 }
 
 // writeSiteSlice applies the slice file and records CelikPanel's digest. The
-// caller holds siteSliceMu and reloads systemd when written is true. A slice
-// file the ledger does not know (a site deleted under an earlier
-// installation, whose id is used again) is treated as a leftover first: an
-// owner's edit of it is moved aside (named in the answer and the log),
-// CelikPanel's unchanged text is replaced as usual.
-func writeSiteSlice(s *transport.SiteSlice, trigger string, ledger map[string]sandboxLedgerEntry) (transport.SiteFileResult, bool, string, error) {
+// caller holds siteSliceMu, read the ledger with loadSandboxLedger (never
+// one that could not be read) and reloads systemd when written is true. An
+// earlier site's leftover file of the same id is not this function's: it is
+// moved aside when the new site is created (setAsideEarlierSiteSlice), so a
+// write for an existing site never moves an owner's file or drop-in aside.
+func writeSiteSlice(s *transport.SiteSlice, trigger string, ledger map[string]sandboxLedgerEntry) (transport.SiteFileResult, bool, error) {
 	f, err := siteSliceManaged(s, trigger, "")
 	if err != nil {
-		return transport.SiteFileResult{}, false, "", err
+		return transport.SiteFileResult{}, false, err
 	}
 	f.RecordedSHA256 = ledger[f.Path].RenderSHA256
-	aside := ""
-	if _, known := ledger[f.Path]; !known {
-		inspected, _, _ := services.InspectManagedSiteFile(f)
-		switch inspected.State {
-		case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
-			moved, err := moveSliceFileAside(f.Path)
-			if err != nil {
-				return inspected, false, "", fmt.Errorf("an earlier site's limits file %s could not be moved aside: %v", f.Path, err)
-			}
-			aside = moved
-			log.Printf("site slice: %s belonged to an earlier site with the same id and was changed on this server; it is kept as %s (systemd does not load it)", f.Path, moved)
-		}
-	}
 	result, err := services.ApplyManagedSiteFile(f, func() error { return siteSliceVerify(f.Path) }, nil)
 	if err != nil {
-		return result, false, aside, err
+		return result, false, err
 	}
 	written := false
 	switch result.Outcome {
@@ -207,7 +194,50 @@ func writeSiteSlice(s *transport.SiteSlice, trigger string, ledger map[string]sa
 	case transport.SiteFileOutcomeKept:
 		log.Printf("site slice: %s was changed on this server and is kept (%s); CelikPanel's text is in %s", f.Path, result.State, result.PendingPath)
 	}
-	return result, written, aside, nil
+	return result, written, nil
+}
+
+// setAsideEarlierSiteSlice runs when a site is created (CreateSite; S4 R2a
+// second fix round, review B4): a slice file of the new site's id that the
+// ledger does not know belongs to an earlier site of an earlier installation
+// with the same id. The file AND its drop-in folder are moved aside together
+// under names systemd does not load, so the new customer's site inherits
+// neither; their new names are returned (and logged). A ledger that cannot
+// be read moves nothing and returns the error. A file the ledger knows, and
+// a site that has no such file, are left alone.
+func setAsideEarlierSiteSlice(siteID int) ([]string, error) {
+	file, err := siteSliceFile(siteID)
+	if err != nil {
+		return nil, err
+	}
+	siteSliceMu.Lock()
+	defer siteSliceMu.Unlock()
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		return nil, err
+	}
+	if _, known := ledger[file]; known {
+		return nil, nil
+	}
+	var aside []string
+	for _, p := range []string{file, file + ".d"} {
+		if _, err := os.Lstat(p); err != nil {
+			continue
+		}
+		moved, err := moveSliceFileAside(p)
+		if err != nil {
+			return aside, fmt.Errorf("an earlier site's %s could not be moved aside: %v", p, err)
+		}
+		aside = append(aside, moved)
+		log.Printf("site slice: %s belonged to an earlier site with the id %d; it is kept as %s (systemd does not load it)", p, siteID, moved)
+	}
+	if len(aside) > 0 {
+		_ = os.Remove(file + ".celikpanel-pending")
+		if err := siteSliceDaemonReload(); err != nil {
+			log.Printf("site slice: %v", err)
+		}
+	}
+	return aside, nil
 }
 
 func siteSliceDaemonReload() error {
@@ -229,7 +259,12 @@ func ensureSiteSlice(s *transport.SiteSlice) {
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
-	result, written, _, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, readSandboxLedger())
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		log.Printf("site slice: %s was not written: %v", sitesandbox.SliceName(s.SiteID), err)
+		return
+	}
+	result, written, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, ledger)
 	if err != nil || result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused {
 		log.Printf("site slice: %s could not be written (%s %s %s): %v", sitesandbox.SliceName(s.SiteID), result.Outcome, result.Reason, result.Detail, err)
 		return
@@ -313,8 +348,14 @@ const (
 	// below it; a larger request is read up to the bound and says so
 	// (Partial), never refused as a whole.
 	siteSliceMaxSites = 5000
+	// siteSliceMaxUnits bounds one move (its units each restart in turn).
 	siteSliceMaxUnits = 64
-	siteSliceShowList = 400
+	// siteSliceMaxReadUnits bounds the units of one status request (review
+	// B9): a site may have any number of programs; the Panel pages its
+	// reads by units too, and a request above the bound is read up to it,
+	// the rest counted per site as unread, never refused as a whole.
+	siteSliceMaxReadUnits = 20000
+	siteSliceShowList     = 400
 )
 
 var siteSliceShowProperties = []string{"Id", "LoadState", "ActiveState", "ControlGroup", "Slice", "MemoryMax", "TasksMax",
@@ -488,9 +529,11 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 		resp.Partial = fmt.Sprintf("only the first %d of %d sites were read in this request", siteSliceMaxSites, len(req.Sites))
 	}
 	var names []string
-	for _, q := range sites {
-		if q.SiteID <= 0 || len(q.Units) > siteSliceMaxUnits {
-			resp.Error = "a site identity and at most 64 units per site are required"
+	unread := map[int]int{}
+	taken := 0
+	for i, q := range sites {
+		if q.SiteID <= 0 {
+			resp.Error = "a site identity is required"
 			return nil
 		}
 		names = append(names, sitesandbox.SliceName(q.SiteID))
@@ -499,8 +542,17 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 				resp.Error = "not a site's unit: " + u
 				return nil
 			}
-			names = append(names, u)
 		}
+		if room := siteSliceMaxReadUnits - taken; len(q.Units) > room {
+			if room < 0 {
+				room = 0
+			}
+			unread[i] = len(q.Units) - room
+			sites[i].Units = q.Units[:room]
+			resp.Partial = fmt.Sprintf("only the first %d programs were read in this request", siteSliceMaxReadUnits)
+		}
+		taken += len(sites[i].Units)
+		names = append(names, sites[i].Units...)
 	}
 	show := map[string]map[string]string{}
 	if len(names) > 0 {
@@ -510,12 +562,13 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			return nil
 		}
 	}
-	ledger := readSandboxLedger()
+	ledger := readSandboxLedger() // read-only here: nothing is written
 	moves := readSiteMoveOutcomes()
-	for _, q := range sites {
+	named := siteSlicesNamed()
+	for i, q := range sites {
 		slice := sitesandbox.SliceName(q.SiteID)
 		props := show[slice]
-		status := transport.SiteSliceStatus{SiteID: q.SiteID, Slice: slice, Units: []transport.SiteSliceUnit{}}
+		status := transport.SiteSliceStatus{SiteID: q.SiteID, Slice: slice, Units: []transport.SiteSliceUnit{}, Named: named[q.SiteID], UnitsUnread: unread[i]}
 		status.File, status.DropIns = siteSliceFileState(q.SiteID, ledger)
 		status.Active = siteUnitRunningStates[props["ActiveState"]]
 		status.Live = transport.SiteSliceLimitsRead{MemoryMB: systemdBytesMB(props["MemoryMax"]), Tasks: systemdCount(props["TasksMax"]),
@@ -593,10 +646,11 @@ func siteSliceUnitStatus(siteID int, unit string, props map[string]string) trans
 const siteSliceApplyBatch = 100
 
 // ApplySiteSlicesV1 writes changed limits into the slices. A site without a
-// slice file gets one when one of its units names the slice or runs in it
-// (the owner deleted the file: no limit would apply otherwise); a site
-// nothing of which uses the slice gets one when its first unit goes into
-// it. The running slices take the new limits at once (one daemon-reload per
+// slice file gets one when one of its units names the slice or runs in it,
+// or CelikPanel wrote the file before (the owner deleted it: no limit would
+// apply otherwise); a site nothing of which uses the slice gets one when its
+// first unit goes into it. A ledger that cannot be read writes nothing and
+// answers why (Error). The running slices take the new limits at once (one daemon-reload per
 // request, then pushSiteSlicesToKernel); nothing is restarted.
 func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *transport.ApplySiteSlicesResponse) error {
 	resp.Sites = []transport.SiteSliceApplied{}
@@ -618,7 +672,11 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
-	ledger := readSandboxLedger()
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		resp.Error = err.Error() // nothing was written
+		return nil
+	}
 	named := siteSlicesNamed()
 	var written []int
 	for i := range req.Sites {
@@ -630,13 +688,16 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 			continue
 		}
 		trigger := transport.SiteFileTriggerChange
-		if named[s.SiteID] {
-			// A unit names the slice or runs in it: an absent file is written
-			// again (systemd would otherwise run the slice without limits).
+		path, _ := siteSliceFile(s.SiteID)
+		if _, wrote := ledger[path]; named[s.SiteID] || wrote {
+			// A unit names the slice or runs in it, or CelikPanel wrote the
+			// file before (the owner deleted it to give it back): an absent
+			// file is written again (systemd would otherwise run the slice
+			// without limits).
 			trigger = transport.SiteFileTriggerCreate
 		}
-		result, didWrite, aside, err := writeSiteSlice(s, trigger, ledger)
-		applied.Outcome, applied.PendingPath, applied.MovedAside = result.Outcome, result.PendingPath, aside
+		result, didWrite, err := writeSiteSlice(s, trigger, ledger)
+		applied.Outcome, applied.PendingPath = result.Outcome, result.PendingPath
 		switch {
 		case err != nil:
 			applied.Outcome, applied.Detail = transport.SiteFileOutcomeFailed, err.Error()
@@ -673,8 +734,12 @@ func removeSiteSlice(siteID int) ([]string, error) {
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		return nil, err // nothing is removed or moved aside on that reading
+	}
 	var aside []string
-	state, _ := siteSliceFileState(siteID, readSandboxLedger())
+	state, _ := siteSliceFileState(siteID, ledger)
 	switch state {
 	case transport.SiteFileAbsent:
 	case transport.SiteFileManagedUnchanged:

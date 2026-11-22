@@ -371,9 +371,9 @@ Next.js).
 
 ## 8. Sitenin dilimi: bir sitenin bütün programları için tek sınır takımı
 
-*21 Kasım 2026 · Kaynakta var ve bileşen testleriyle denendi; aşağıdaki gerçekler geçici
-Debian 13 ve Ubuntu 24.04 makinelerinde ölçüldü; panelin iki sistemdeki laboratuvar turu açık
-(adımlar çekme isteğinde).*
+*21 Kasım 2026, ikinci düzeltme turu 22 Kasım 2026 · Kaynakta var ve bileşen testleriyle
+denendi; aşağıdaki gerçekler geçici Debian 13 ve Ubuntu 24.04 makinelerinde ölçüldü; panelin iki
+sistemdeki laboratuvar turu açık (adımlar çekme isteğinde).*
 
 CelikPanel'in bir site için systemd birimi olarak başlattığı her program o sitenin dilimi
 `celiksite_<site kimliği>.slice` içinde çalışır. Dilimin `MemoryMax=`, `MemorySwapMax=0`,
@@ -412,7 +412,20 @@ systemd.resource-control(5), systemd 257 ve 255). Birim kendi sınırlarını do
 uygulaması 1536 MB, n8n 1536 MB); dilim dış sınırdır. Hiçbir düzey sınır koymamışsa dilim 512
 işlem, %200 ve bellek için **3072 MB ile sunucu belleğinin %75'inden küçük olanı** alır
 (`/proc/meminfo` içindeki `MemTotal`, tam MB'ye aşağı yuvarlanır, hiçbir zaman 64 MB'den az değil);
-böylece tek bir site varsayılanla bütün sunucuyu alamaz.
+böylece tek bir site varsayılanla bütün sunucuyu alamaz. Bu bellek varsayılanı **ilk
+hesaplandığında sabitlenir** (panelin bu sürümle ilk açılışında; hesaplandığı sunucu belleğiyle
+birlikte `panel_settings` `site_memory_default_v1` içine yazılır). Sunucu belleği sonradan
+değişirse kendiliğinden hiçbir şey değişmez: yönetici Şu anki sorunlar'da tek satır okur ("varsayılan
+önceki belleğe göre konmuştu", iki büyüklükle) ve o satırın tek işlemi, düşürülen her sınırda olduğu
+gibi, daha düşük bir varsayılanın durduracağı siteleri önce gösterir ve ancak o liste onaylanınca
+uygular.
+
+**Bir bayi varsayılanla sunucuyu tüketemez.** Yönetici bir `site.*` anahtarı için tavan koymadıysa
+(ne sunucunun sınırları ne bayinin kendi planı ya da Özel takımı), bayinin planları, müşterilerinin
+Özel takımları ve altındaki her site o anahtarın sunucu varsayılanıyla sınırlanır (bellek için
+sabitlenmiş, sunucuya bağlı varsayılan). Bayinin formu bu sınırı "sınırı koyan: sunucu yöneticisi"
+diye gösterir; yönetici bayiye (bayi planına ya da Özel takımına) bir tavan vererek onu yükseltir.
+Yöneticinin kendi planları varsayılanla sınırlanmaz.
 
 **Sınır uygulayamayan sunucu.** Birleşik cgroup düzeni (`/sys/fs/cgroup/cgroup.controllers`) ya da
 onun `memory`, `pids` ve `cpu` denetleyicileri yoksa sınırlıyormuş gibi görünen hiçbir şey yazılmaz:
@@ -466,16 +479,34 @@ sayısını korur) karşılaştırır ve yalnız farklı olan anahtar için `sys
 dosyası ve sahibin eklemeleri olur. Denetim eklemesi zaten var olan anahtara (sahibin kendi anlık
 ayarı) hiç dokunulmaz. systemd 255'te yeniden yükleme değerleri zaten uygulamıştır ve hiçbir şey
 yapılmaz. Hiçbir şey yeniden başlatılmaz ve müşterinin diliminde hiçbir süreç başlatılmaz.
-Yapılacak dosyalar önce Ajan'ın özel klasörüne kaydedilir; çağrı ile silme arasında Ajan durursa
-`/run` içinde aynı etkin değerler kalır (zararsız, bir sonraki açılışta zaten gider) ve Ajan'ın
-bir sonraki başlangıcı onları siler. **Düşürülen sınır bu yüzden iki sistemde de hemen geçerli
-olur**; bu nedenle önce sorulur (§8.5).
+Yapılacak dosyalar önce Ajan'ın özel klasörüne kaydedilir ve aynı adımda, adımdan her çıkışta
+silinir. Yalnız çağrı ile silme arasında Ajan durursa kalırlar: o anda dilimin etkin değerlerini
+taşıdıkları için sahip için o an hiçbir şey değişmez; ama **silinene kadar o anahtarlar için
+sahibin kendi eklemelerinin** (`/etc/systemd/system/<dilim>.d/*.conf`) **önüne geçerler**: sahibin
+bu arada böyle bir anahtar için eklediği ya da değiştirdiği ekleme ancak Ajan'ın bir sonraki
+başlangıcından sonra (Ajan onları örnek kilidini alır almaz, sınırları okuyan hiçbir şeyden önce
+siler) ya da bir sonraki açılıştan sonra (`/run` boşalır) geçerli olur. Sahibin o arada aynı anahtar
+için kendisinin çalıştırdığı `systemctl set-property --runtime` de onlarla birlikte silinir.
+**Düşürülen sınır bu yüzden iki sistemde de hemen geçerli olur**; bu nedenle önce sorulur (§8.5).
 
-**Eksik dosya.** Dosyası olmayan dilimin sınırı yoktur (F4). Bir birim dilimi adlandırıyor ya da
-içinde çalışıyorsa sınırların bir sonraki değişikliği olmayan dosyayı yeniden yazar, yöneticinin
-taşıması da yazar; o zamana kadar sitenin kartı dosya eksik olduğu için sınırların geçerli olmadığını
-söyler ve Şu anki sorunlar hiçbir şeyi sınırlanmış saymaz. Sahibin CelikPanel'e geri vermek için
-sildiği dosya da aynı yolla yeniden yazılır.
+**Her siteye ulaşmayan değişiklik.** Sınır değişiklikleri birer birer yazılır (ikinci değişiklik
+bekler, sonra sınırları o anki haliyle okur; iki değişiklik hiç iç içe geçmez); 100 sitelik her
+partinin kendi süre sınırı vardır. Ajan'ın yanıt vermediği parti (ve ondan sonrakiler), reddettiği
+ya da systemd'ye aldıramadığı parti (başarısız `daemon-reload`, okunamayan kayıt defteri) ve dosyası
+yazılamayan site önceki sınırlarını korur ve bu kaydedilir (`panel_settings` `site_limit_apply_v1`):
+yönetici Şu anki sorunlar'da değişikliği, kaç sitede hâlâ önceki sınırların geçerli olduğunu ve
+nedenini söyleyen TEK satır okur; panel her saat o siteleri sınırların o anki haliyle yeniden yazar
+ve her site yenilerini alınca satır kaybolur. Sitenin kartı, ikisi farklı olduğunda geçerli sınırı
+(systemd'nin uyguladığını) planın değerinin yanında gösterir.
+
+**Eksik dosya.** Dosyası olmayan dilimin sınırı yoktur (F4). Kart üç durumu ayırır. Güncellemeden
+hemen sonra var olan her sitenin dilim dosyası yoktur, çünkü programları hiç taşınmadı: hiçbir birim
+dilimi adlandırmaz; kart programların sınırların dışında çalıştığını söyler ve taşımayı sunar. Bir
+birim dilimi adlandırıyor ya da içinde çalışıyorken dosya gitmişse (sahip sildi) kart dosyanın eksik
+olduğunu ve sınırların bir sonraki değişikliğinin onu yeniden yazacağını söyler; site "dışarıda"
+satırına sayılır ve yöneticinin kartı dosyayı yazan taşımayı sunar. CelikPanel'in yazdığı ve sahibin
+geri vermek için sildiği dosya, hiçbir birim dilimi adlandırmasa da bir sonraki değişiklikle yeniden
+yazılır.
 
 **Yöneticinin kartı** sahibin eklemelerini dosya adıyla ve "sunucu sahibinin eklemeleri geçerli"
 diyerek gösterir; değiştirilmiş dosyayı korunuyor diye anar.
@@ -513,63 +544,95 @@ olarak yazılır.
   taşınmaz ve yeniden başlatılmaz; kart onları kimin ne yapacağıyla adlandırır ve "dışarıda" satırına
   sayılmazlar.
 - İlk yazmadan önce günlüğü kaydeder (aşağıda). Sonra dilim, sonra sırayla her birim, **o programın
-  kendi değişiklik kilidiyle** (programın her başka değişikliğinin aldığı kilit): dosya taşımanın
-  planladığı metin olmalıdır (değilse arada yapılmış bir değişikliktir: korunur, "değiştirildi"),
-  CelikPanel'in değişmemiş metni `Slice=celiksite_<kimlik>.slice` alır (yeniden mühürlenir), systemd
-  yeniden yüklenir ve çalışan birim bir kez yeniden başlar; **kendi başlama süresi içinde** dilimde
-  çalışmalı ve önceden dinlediği her bağlantı noktasını yeniden dinlemelidir: birimin kendi
-  `TimeoutStartUSec` değeri (bu birimler koymaz, yani systemd'nin 90 saniyesi), hiçbir zaman 20
-  saniyeden az, 300 saniyeden çok değil. Bütün taşıma 10 dakika içinde kalır: beklemesi artık
-  sığmayan program başlatılmaz ve yanıt yeniden basmayı söyler.
+  kendi değişiklik kilidiyle** (programın her başka değişikliğinin aldığı kilit; her programın kendi
+  kilidi, başka hiçbir program ya da siteyle paylaşılmaz): dosya taşımanın planladığı metin olmalıdır
+  (değilse arada yapılmış bir değişikliktir: korunur, "değiştirildi"), CelikPanel'in değişmemiş metni
+  `Slice=celiksite_<kimlik>.slice` alır (yeniden mühürlenir), systemd yeniden yüklenir ve çalışan birim
+  bir kez yeniden başlar; **kendi başlama süresi içinde** dilimde çalışmalı ve önceden dinlediği her
+  bağlantı noktasını yeniden dinlemelidir: birimin kendi `TimeoutStartUSec` değeri (bu birimler koymaz,
+  yani systemd'nin 90 saniyesi), hiçbir zaman 20 saniyeden az, 300 saniyeden çok değil. Ne neyi
+  bekler: taşınan programın bir değişikliği onun adımını bekler (en fazla başlama süresinin iki katı:
+  yeniden başlatma ve bir geri koyma); taşıma siteyi tutarken aynı sitenin bir değişikliği reddedilir
+  ("değiştiriliyor"), site değiştirilirken taşımanın reddedildiği gibi; başka programlar ve başka
+  siteler hiç beklemez.
+- **Taşımanın süre kuralı.** Taşımanın 11 dakikası vardır. Çalışan bir program ancak kalan süre onun
+  kendi başlama süresini, kendi geri koymasını (o süreyi yeniden alabilen bir yeniden başlatma),
+  ondan önce taşınan her programın geri koymasını ve 5 saniyeyi tutuyorsa yeniden başlatılır; böylece
+  ilk program, en uzun başlama süresi olan 300 saniyeyle bile her zaman sığar ve geri koymalar dahil
+  bütün taşıma panelin çağrı için koyduğu 12 dakikanın altında kalır. Süre yüzünden duran taşıma bunu
+  söyler: taşıdığı programlar sınırların içinde kalır ve tamamlandı olarak işaretlenir, başlatmadıkları
+  "denenmedi" olur ve bir sonraki taşıma onlarla sürer.
 - Bir birim başarısız olursa o ve sitenin ondan önce taşınan her birimi taşıma öncesi baytlarına
   geri konur, ama yalnız taşımanın kendi metninin üstüne: arada değiştirilen ya da silinen dosya
   olduğu gibi bırakılır. Diğer sitelere hiç dokunulmaz.
 
-**Günlük** (Ajan'ın özel klasöründe `site-slice-move.json`): taşımanın değiştireceği her birim
-dosyasının taşıma öncesi baytları ve kipi, dilim dosyasının var olup olmadığı ve her birimin
-ulaştığı adım. Ajan başlarken:
+**Günlük** (Ajan'ın özel klasöründe `site-slice-move.json`) **her yazmadan önce** yazılır ve diske
+işlenir: ilk yazmadan önce taşımanın değiştireceği her birim dosyasının taşıma öncesi baytları ve
+kipi, dilim dosyasının baytları ve kipi (ya da olmadığı) ile kayıt defterindeki özeti ve her birimin
+adımı; bir birim dosyası yazılmadan önce adımı "yazılıyor" olur; dilim dosyası yazılır yazılmaz yeni
+baytları. Yazılamayan günlük başarısız bir adımdır: başka hiçbir şey yazılmaz ve yazılan geri konur.
+Ajan başlarken yalnız adımın adına hiç güvenilmez: her birimin dosyası kaydedilen taşıma öncesi
+baytlarla ve taşımanın yazmak istediği metinle karşılaştırılır:
 
-| Ulaşılan adım | Ajan'ın bir sonraki başlangıcında |
+| Birim dosyasında olan | Ajan'ın bir sonraki başlangıcında |
 |---|---|
-| planlandı (hiçbir şey yazılmadı) | dokunulmaz ("denenmedi") |
-| yazıldı, durdurulmuş birim | korunur: dosyası dilimi adlandırır, orada başlar ("yeniden yazıldı") |
-| yazıldı, çalışan birim (yeniden başlatılmadı) | taşıma öncesi baytlar geri, daemon-reload; hiç ayrılmadı ("geri kondu") |
-| yeniden başlatılıyor (sonuç bilinmiyor) | taşıma öncesi baytlar geri, daemon-reload, yeniden başlatma ("geri kondu") |
-| taşındı (dilimde çalıştı ve yanıt verdi) | korunur ("taşındı") |
-| geri kondu ya da arada değiştirildi | başka bir şey yapılmaz |
+| taşıma öncesi baytlar, adım "planlandı" ya da "yazılıyor" | dokunulmaz ("denenmedi") |
+| taşıma öncesi baytlar, daha sonraki bir adım | zaten geri kondu; önceden çalışıyorsa ve şimdi sistem diliminde çalışmıyorsa yeniden başlatılır ("geri kondu") |
+| taşımanın metni, durdurulmuş birim | korunur: dosyası dilimi adlandırır, orada başlar ("yeniden yazıldı") |
+| taşımanın metni, çalışan birim, adım "taşındı" (dilimde çalıştı ve yanıt verdi) | korunur ("taşındı") |
+| taşımanın metni, çalışan birim, başka her adım | taşıma öncesi baytlar geri, daemon-reload ve hâlâ sistem diliminde çalışmıyorsa yeniden başlatma ("geri kondu") |
+| başka bir şey ya da dosya yok | olduğu gibi bırakılır ("değiştirildi") |
 
-Taşımanın yazdığını artık tutmayan dosya olduğu gibi bırakılır ("değiştirildi"). Taşımanın
-yarattığı dilim dosyası, hiçbir birim onu adlandırmıyorsa yeniden silinir. Ajan'ın ne yaptığı
-sitenin bir sonraki taşımasına kadar yöneticinin site kartında gösterilir ("son taşıma yarıda
-kesildi … her program tamamlandı ya da geri kondu").
+Dilim dosyası: bundan sonra hiçbir birim dilimi adlandırmıyorsa ve dosya tam olarak taşımanın
+yazdığı baytları tutuyorsa kaydedilen asıl geri gelir (önceki baytları ve kayıt defteri özeti, ya
+da önceden yoksa dosya yok); yoksa kalır. Geri koyması tamamlanmayan taşıma günlüğünü korur; bir
+sonraki başlangıç ya da bir sonraki taşıma onu aynı yolla bitirir (o zamana kadar yeni taşıma
+reddedilir). Ajan'ın ne yaptığı sitenin bir sonraki taşımasına kadar yöneticinin site kartında
+gösterilir ("son taşıma yarıda kesildi … her program tamamlandı ya da geri kondu").
 
 ### 8.5 Sınırı sitenin kullandığının altına düşürmek
 
 `site.memory_mb` değerini sitenin programlarının şu an kullandığının altına düşürmek çekirdeğin
 onlardan birini hemen durdurmasına yol açar (F4); `site.tasks` değerini tuttukları işlem sayısının
-altına düşürmek yeni işlemleri durdurur. Bu yüzden plan formu, bayi planı ve bir hesabın kendi
-sınırları, değişiklik onaylanmadan önceki önizlemesinde (panelin kendi onayı) programları yeni
-değerden fazlasını kullanan siteleri ve değişiklik kaydedilince sistemin onları hemen durduracağını
-gösterir. Sınırların uygulanmasında başka hiçbir şey değişmez. Sunucunun kendi sınırlar ekranı
-onları listelemez.
+altına düşürmek yeni işlemleri reddeder, çalışanlardan hiçbirini durdurmaz. Bu yüzden plan formu,
+bayi planı ve bir hesabın kendi sınırları, değişiklik onaylanmadan önceki önizlemesinde (panelin
+kendi onayı) programları yeni değerden fazlasını kullanan siteleri gösterir ve tam olarak şunu söyler:
+bellek sınırını aşan program hemen durdurulur; işlem sınırında yeni işlem başlamaz, çalışanlar sürer.
+**Önizlemeyi ekran değil sunucu uygular:** sınırı sitelerin şu an kullandığının altına düşüren istek
+ancak sunucunun o anda verdiği listenin işaretiyle (`confirm_stopped`, önizlemenin `stopped_token`
+değeri) kaydedilir; API'den bu işaret olmadan ya da önceki bir listenin işaretiyle gelen istek
+(sitelerin kullanımı bu arada değişti) güncel listeyle reddedilir. Önceki belleğe göre sabitlenmiş
+varsayılanın işlemi için de aynısı geçerlidir (§8 "Sınırlar"). Sınırların uygulanmasında başka hiçbir
+şey değişmez. Sunucunun kendi sınırlar ekranı onları listelemez (bilinen bir açık: bir `site.*`
+anahtarının düşürülen sunucu tavanı ya da varsayılanı önizlemesiz uygulanır).
 
 ### 8.6 Bir sınıra ulaşıldığında insanların okuduğu (D-024)
 
 Ajan dilimin sayaçlarını sitenin durum okumasıyla ve program çalıştıran bütün siteler için arka
-planda en fazla beş dakikada bir okur (1000 sitelik sayfalarla; hiçbir okuma site sayısı yüzünden
-reddedilmez; kayıt defteri her okumada bir kez okunur). Panel bir sayacın ne zaman arttığını kaydeder
-(`panel_settings` `site_limit_events_v1`; bir sitenin ilk okuması başlangıç noktasıdır; yalnız bir
-sınıra ulaşıldığında, bir sayaç yeniden başladığında ya da bir site gittiğinde yazılır).
+planda en fazla beş dakikada bir okur (en çok 1000 site ve 4000 programlık sayfalarla; bir sitenin
+istediği kadar programı olabilir; hiçbir okuma site ya da program sayısı yüzünden reddedilmez; kayıt
+defteri her okumada bir kez okunur). Panel bir sayacın ne zaman arttığını kaydeder (`panel_settings`
+`site_limit_events_v1`; bir sitenin ilk okuması başlangıç noktasıdır; yalnız bir sınıra
+ulaşıldığında, bir sayaç yeniden başladığında ya da bir site gittiğinde yazılır). Kayıt sınırlıdır:
+her tür için beş dakikada en fazla bir ulaşma anı ve hiçbir zaman bir günlükten (288) fazlası tutulur;
+kart ne kadar sık okunursa okunsun kayıt bununla büyümez; sayılar eksiksiz kalır.
 
 - "Sitenin kendi sınırı" (bellek, işlem) yalnız §8.1'in kanıtladığıdır. Kart o zaman ne olduğunu ve
-  ne zaman olduğunu, planın neye izin verdiğini ve kimin yükseltebileceğini söyler: müşteriye "hizmet
-  sağlayıcınız", bayiye "kendi sınırlarınız içinde müşterinin planında siz", yöneticiye planın ya da
-  bayinin adı. Bir günde iki ya da daha fazla okumada kendi bellek ya da işlem sınırına ulaşan site
-  Şu anki sorunlar'da bir satırdır.
+  ne zaman olduğunu, geçerli sınırı (ulaşılan sayı: systemd'nin uyguladığı; sahibin eklemesi,
+  değiştirilmiş dosya ya da henüz yazılmamış bir değişiklik başkasını koymadıkça planın değeri) ve
+  planınki ise kimin yükseltebileceğini söyler: müşteriye "hizmet sağlayıcınız", bayiye "kendi
+  sınırlarınız içinde müşterinin planında siz", yöneticiye planın ya da bayinin adı. Bir günde iki ya
+  da daha fazla okumada kendi bellek ya da işlem sınırına ulaşan site Şu anki sorunlar'da bir satırdır.
+- **Ne sayılır.** Sitenin kendi bellek sınırına bir kez ulaşılması, o sınıra ulaşılmışken çekirdeğin
+  durdurduğu bir programdır: dilimin kendi `memory.events.local` `oom` değerinin arttığı bir okumada
+  dilimin `oom_kill` artışı (en az bir); her başarısız geri kazanmayı sayan ham `oom` sayısı hiçbir
+  zaman sayılmaz (F4: durdurulan tek program için `oom 10576`). Sitenin sınırında reddedilen işlemde
+  her reddedilen başlatma sayılır.
 - Sitenin sınırı olmadan bellek yetmediği için durdurulan (kendi daha küçük sınırı ya da bütün
-  sunucunun darlığı) ya da kendi sınırında işlemi reddedilen program yalnız bu kadarıyla söylenir
-  ("bu sitenin bir programı bellek yetmediği için durduruldu"): plan hiçbir zaman suçlanmaz ve Şu
-  anki sorunlar satırı çıkmaz.
+  sunucunun darlığı) ya da çekirdeğin sitenin sınırına bağlamadığı bir işlem reddi yaşayan (programın
+  kendi sınırı ya da 6.8'de birimin bunu söyleyecek `pids.peak` değeri olmadığında) program yalnız bu
+  kadarıyla söylenir ("bu sitenin bir programı yeni işlem başlatamadı; çekirdek bunun sitenin sınırı
+  olduğunu göstermiyor"): plan hiçbir zaman suçlanmaz ve Şu anki sorunlar satırı çıkmaz.
 - Sınırların geçerli olmadığı yerde (bütün programlar dışarıda, dilim dosyası yok, sınırları
   uygulayamayan sunucu) kart "sınırlarının içinde kaldı" yerine bunu söyler.
 
@@ -583,8 +646,15 @@ kendiliğinden kaybolur (`panel_settings` `site_limit_outside_v1`, yalnız liste
 Bir site silinince CelikPanel'in değişmemiş dilim dosyası gider ve kayıt defteri onu unutur; sahibin
 değiştirdiği dosya ve sahibin ekleme klasörü systemd'nin yüklemediği adlarla kenara konur
 (`<dosya>.celikpanel-aside-<UTC zamanı>`) ve denetim kaydında adlandırılır (`site.limits_file_aside`).
-Yeni bir sitenin kimliği için bulunup Ajan'ın kayıt defterinin tanımadığı dilim dosyası (önceki bir
-kurulumda aynı kimliğe sahip bir site) yenisi yazılmadan önce aynı biçimde ele alınır.
+**Bir site yaratılırken** (henüz hiçbir şeyi yok: ev klasörü ve hesabı yeni), onun kimliğine ait olup
+Ajan'ın kayıt defterinin tanımadığı dilim dosyası (önceki bir kurulumda aynı kimliğe sahip bir site)
+**ekleme klasörüyle birlikte** aynı biçimde kenara konur; yeni müşterinin sitesi ikisini de devralmaz;
+Ajan'ın kaydında adlandırılır. Var olan bir site için sonraki bir yazma sahibin dosyasını ya da
+eklemesini hiçbir zaman kenara koymaz. Kayıt defterinin tanıdığı dilim dosyası (aynı kurulumun,
+silinmesi çalışmamış önceki bir sitesi) olduğu gibi bırakılır. **Okunamayan kayıt defteri** bir
+hatadır, hiçbir zaman boş bir kayıt defteri değildir: o okumayla hiçbir şey yazılmaz, silinmez ya da
+kenara konmaz ve çağıran bunu söyler (sınır değişikliğinin Şu anki sorunlar satırı, taşımanın yanıtı,
+silmenin başarısız adımı, bir programın kendi yazması için Ajan'ın kaydı).
 
 **Sahibin bağımsızlığı (D-022).** Dilimler yerel birimlerdir. Panel durdurulsa, kaldırılsa ya da
 lisanssız kalsa da onlar ve sınırları çalışmaya devam eder. Bir sitenin sınırlarını panel olmadan

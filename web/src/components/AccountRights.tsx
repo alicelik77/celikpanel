@@ -109,7 +109,7 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
         try {
             const sent = body();
             const accept = confirm && (shown?.over_limit.length ?? 0) > 0;
-            const result = await sendRights(target.url, 'PUT', confirm ? { ...sent, confirm: true, ...(accept && !reseller ? { accept_over_usage: true } : {}) } : sent);
+            const result = await sendRights(target.url, 'PUT', confirm ? { ...sent, confirm: true, ...(shown?.stopped_token ? { confirm_stopped: shown.stopped_token } : {}), ...(accept && !reseller ? { accept_over_usage: true } : {}) } : sent);
             if (result.kind === 'lost') {
                 showToast('error', t('common.resultUnknown'));
                 invalidate('rights', 'users');

@@ -51,6 +51,11 @@ type planPayload struct {
 	// ConfirmNarrowing confirms an edit that takes items away from the
 	// subscriptions on the plan (PLAN_NARROWING_CONFIRM shows them first).
 	ConfirmNarrowing bool `json:"confirm_narrowing,omitempty"`
+	// ConfirmStopped (S4 R2a second fix round) is the preview's
+	// stopped_token: a lowered site limit below what sites use now is saved
+	// only with the token of the list the server answers now
+	// (site_limits.go siteLimitsStoppedToken).
+	ConfirmStopped string `json:"confirm_stopped,omitempty"`
 	// Ceilings (alpha.128, setting_limits.go): the plan's limits of site
 	// settings, key -> value; absent keys are "up to the level above".
 	// Absent on a create: none; absent on an edit: unchanged.
@@ -484,11 +489,10 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// S4 R2a: and a lowered site limit below what a site's programs use
-		// now (the system stops them at once).
-		if action == "preview" || !pl.ConfirmNarrowing {
-			if subs, err := subscriptionsOnPlan(r.Context(), p.db.GetDB(), id); err == nil {
-				p.previewSiteLimitsLowered(r.Context(), &preview, subs, ceilingsBefore, ceilingsAfter)
-			}
+		// now, read on every request that lowers one: the list is enforced
+		// by the server (its token), not only shown.
+		if subs, err := subscriptionsOnPlan(r.Context(), p.db.GetDB(), id); err == nil {
+			p.previewSiteLimitsLowered(r.Context(), &preview, subs, ceilingsBefore, ceilingsAfter)
 		}
 		if action == "preview" {
 			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
@@ -496,7 +500,8 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		}
 		// Taking items away is shown first (6.4, P7); so is a lowered
 		// ceiling that sites of the plan are above (alpha.128).
-		if (len(preview.Removed) > 0 || preview.SitesAboveCount > 0 || preview.SitesUnread || preview.SitesStoppedCount > 0) && !pl.ConfirmNarrowing {
+		if ((len(preview.Removed) > 0 || preview.SitesAboveCount > 0 || preview.SitesUnread || preview.SitesStoppedCount > 0) && !pl.ConfirmNarrowing) ||
+			!siteLimitsStoppedConfirmed(preview, pl.ConfirmStopped) {
 			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
 			return
 		}

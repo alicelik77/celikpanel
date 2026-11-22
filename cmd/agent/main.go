@@ -712,6 +712,11 @@ func main() {
 	if instanceLock != nil {
 		defer instanceLock.Close()
 	}
+	// S4 R2a: a limit pushed to a running site slice for a moment
+	// (site_slices_runtime.go) that an Agent stop left in /run outranks the
+	// owner's own drop-ins until it is gone: removed first, before anything
+	// else reads or writes limits.
+	cleanupSiteSliceRuntime()
 
 	// A ledger that cannot be brought up is a reason to refuse mutations, not a
 	// reason to leave the host without an agent. Exiting here is what turned a

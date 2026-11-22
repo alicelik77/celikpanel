@@ -4,7 +4,7 @@ import type { TranslationKey } from '../i18n/en';
 import { Checking, CouldNotCheck, inputClass } from './ui';
 import { useRemote } from '../lib/remote';
 import type { EditedPlan, PlanKind } from '../lib/rights';
-import { unitText } from '../lib/settingLimits';
+import { unitText, whoText } from '../lib/settingLimits';
 import { ChangedMark, changedRowClass } from './kit/save/SaveBar';
 
 // The plan form's limits of site settings (alpha.128, docs/SITE-LIMITS.md):
@@ -24,6 +24,9 @@ export interface GrantorLimit {
     ceiling: number | null;
     /** S4 R2a: what applies without a ceiling (a site's limits always have one). */
     default?: number | null;
+    /** Who sets the ceiling (a reseller's site limits: the administrator's bound, S4 R2a). */
+    set_by?: string;
+    set_by_name?: string;
     min: number;
     max: number;
 }
@@ -110,6 +113,11 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                                         placeholder={t('limits.plan.upTo', { value: above })} onChange={(e) => setCeiling(limit.key, e.target.value)}
                                         className={`${inputClass} field-sm`} aria-invalid={outside || undefined} />
                                     {outside && value !== undefined && <span className="mt-1 block text-xs text-danger">{outsideWords(limit, value)}</span>}
+                                    {/* A reseller's site limits are bounded by the server's default unless the
+                                        administrator gives the reseller more: the bound and who raises it. */}
+                                    {grantor.remote.state === 'known' && grantor.remote.value.scope === 'reseller' && limit.key.startsWith('site.') && limit.ceiling !== null && limit.set_by && (
+                                        <span className="mt-1 block text-xs text-fg-subtle" data-plan-limit-who="">{t('slim.who.line', { who: whoText(t, limit.set_by, limit.set_by_name) })}</span>
+                                    )}
                                 </label>
                             );
                         })}

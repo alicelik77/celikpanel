@@ -615,6 +615,12 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "site_limits_unsupported":
 		return "This server cannot enforce the limits of sites' programs (missing: " + subject + "). Monitoring says what that means.",
 			"Bu sunucu sitelerin programlarının sınırlarını uygulayamıyor (eksik: " + subject + "). Ne anlama geldiği İzleme'de."
+	case "site_limits_unapplied":
+		return fmt.Sprintf("A change of limits (%s) did not reach %s sites yet; they keep their earlier limits. CelikPanel tries again every hour. Monitoring says why.", subject, n),
+			fmt.Sprintf("Bir sınır değişikliği (%s) henüz %s siteye ulaşmadı; o siteler önceki sınırlarını koruyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, n)
+	case "site_memory_default":
+		return "The server's memory changed: the default memory limit of a site is still the one set for the earlier memory. Monitoring offers the new default after a preview.",
+			"Sunucunun belleği değişti: bir sitenin varsayılan bellek sınırı hâlâ önceki belleğe göre konan sınır. İzleme yeni varsayılanı önizlemeyle sunar."
 	case "disk_limits_counted":
 		return "Disk limits are counted, not enforced: the hosting file system has no project quotas. Monitoring says what that means.",
 			"Disk sınırları sayılıyor ama dosya sistemi tarafından uygulanmıyor: barındırma dosya sisteminde proje kotası yok. Ne anlama geldiği İzleme'de."

@@ -37,16 +37,30 @@ import (
 
 var systemdUserMode = os.Getenv("CELIKPANEL_SYSTEMD_USER") == "1"
 
-const appUnitMutationLockStripes = 256
+// perIDMutex holds one mutex per id, made on first use (S4 R2a second fix
+// round, review B10): a program's or a site's lock is its own, never shared
+// with another id that happens to fall in the same stripe, so a long step of
+// one program (the move's restart and start wait) holds only that program's
+// changes, never another site's. A mutex is a few bytes; ids are bounded by
+// the panel's own rows.
+type perIDMutex struct{ locks sync.Map }
 
-var appUnitMutationLocks [appUnitMutationLockStripes]sync.Mutex
+func (p *perIDMutex) of(id int) *sync.Mutex {
+	if m, ok := p.locks.Load(id); ok {
+		return m.(*sync.Mutex)
+	}
+	m, _ := p.locks.LoadOrStore(id, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
+
+var appUnitMutationLocks perIDMutex
 
 // net/rpc cannot cancel a method that was already dispatched. If the panel
 // times out and starts compensation, the original method may therefore still
 // be running. Serializing mutations for the same site makes the compensation
 // deterministically run after that original method, rather than racing it.
 func lockAppUnitMutation(siteID int) func() {
-	lock := &appUnitMutationLocks[siteID%appUnitMutationLockStripes]
+	lock := appUnitMutationLocks.of(siteID)
 	lock.Lock()
 	return lock.Unlock
 }

@@ -368,7 +368,7 @@ func resellerSettingLimits(ctx context.Context, q rowQueryer, resellerID int) (s
 	}
 	var name string
 	_ = q.QueryRowContext(ctx, `SELECT username FROM users WHERE id = ?`, resellerID).Scan(&name)
-	return limits.withLevel(layer, settingSetByReseller, name).settled(), nil
+	return siteLimitsWithResellerBound(limits.withLevel(layer, settingSetByReseller, name)).settled(), nil
 }
 
 // subscriptionSettingLimits is the effective limit of every key for the
@@ -397,7 +397,7 @@ func subscriptionSettingLimits(ctx context.Context, q rowQueryer, subID int) (se
 		}
 		var name string
 		_ = q.QueryRowContext(ctx, `SELECT username FROM users WHERE id = ?`, resellerID).Scan(&name)
-		limits = limits.withLevel(layer, settingSetByReseller, name)
+		limits = siteLimitsWithResellerBound(limits.withLevel(layer, settingSetByReseller, name))
 	}
 	switch own.State {
 	case rightsStatePlan:

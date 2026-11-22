@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -114,20 +115,46 @@ type sandboxLedgerEntry struct {
 // drops another writer's entry.
 var sandboxLedgerMu sync.Mutex
 
+// readSandboxLedger is the ledger for a read that writes nothing (a status
+// read): a file that cannot be read reads as no entries. Every path that
+// writes or moves a file uses loadSandboxLedger instead.
 func readSandboxLedger() map[string]sandboxLedgerEntry {
-	ledger := map[string]sandboxLedgerEntry{}
-	if raw, err := os.ReadFile(sandboxLedgerPath); err == nil {
-		_ = json.Unmarshal(raw, &ledger)
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		return map[string]sandboxLedgerEntry{}
 	}
 	return ledger
 }
 
+// loadSandboxLedger reads the ledger for a write (S4 R2a second fix round,
+// review B4): no file is an empty ledger; a file that cannot be read or is
+// not the ledger's JSON is an error, never an empty ledger, so nothing is
+// written or moved aside on that reading and the caller reports it.
+func loadSandboxLedger() (map[string]sandboxLedgerEntry, error) {
+	ledger := map[string]sandboxLedgerEntry{}
+	raw, err := os.ReadFile(sandboxLedgerPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return ledger, nil
+	}
+	if err == nil {
+		err = json.Unmarshal(raw, &ledger)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("the Agent's record of its files (%s) could not be read: %v; nothing was written. The server owner checks or removes that file", sandboxLedgerPath, err)
+	}
+	return ledger, nil
+}
+
 // updateSandboxLedger changes the ledger file under its lock: change gets
-// the file's current entries and reports whether it changed them.
+// the file's current entries and reports whether it changed them. A ledger
+// that cannot be read is never written over.
 func updateSandboxLedger(change func(map[string]sandboxLedgerEntry) bool) error {
 	sandboxLedgerMu.Lock()
 	defer sandboxLedgerMu.Unlock()
-	ledger := readSandboxLedger()
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		return err
+	}
 	if !change(ledger) {
 		return nil
 	}
@@ -148,17 +175,13 @@ func setSandboxLedgerEntry(path, kind, digest string) error {
 // writeSandboxLedger writes the whole file; only updateSandboxLedger calls
 // it, under sandboxLedgerMu.
 func writeSandboxLedger(ledger map[string]sandboxLedgerEntry) error {
-	if err := os.MkdirAll(filepath.Dir(sandboxLedgerPath), 0o700); err != nil {
-		return err
-	}
 	raw, err := json.MarshalIndent(ledger, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(sandboxLedgerPath+".tmp", raw, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(sandboxLedgerPath+".tmp", sandboxLedgerPath)
+	// Synced before and after the rename (review B4): a crash leaves the
+	// earlier ledger or the new one, never an empty file.
+	return writePrivateFile(sandboxLedgerPath, raw)
 }
 
 var sandboxEgressMu sync.Mutex

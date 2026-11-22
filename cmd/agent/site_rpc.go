@@ -21,11 +21,13 @@ import (
 
 const siteMutationLockStripeCount = 256
 
-var siteMutationLockStripes [siteMutationLockStripeCount]sync.Mutex
+// siteMutationLocks: one lock per site (S4 R2a review B10: not striped, so
+// a site being moved never makes an unrelated site's change wait).
+var siteMutationLocks perIDMutex
 var siteUsernameLockStripes [siteMutationLockStripeCount]sync.Mutex
 
 func siteMutationMutex(siteID int) *sync.Mutex {
-	return &siteMutationLockStripes[uint(siteID)%siteMutationLockStripeCount]
+	return siteMutationLocks.of(siteID)
 }
 
 func siteUsernameMutex(username string) *sync.Mutex {
@@ -84,6 +86,10 @@ type siteLifecycleOps struct {
 	// S4 R2a: the site's slice file (CelikPanel's unchanged one removed, an
 	// owner's edit and drop-ins moved aside and returned). Nil skips it.
 	removeSiteSlice func(int) ([]string, error)
+	// S4 R2a second fix round (review B4): an earlier installation's slice
+	// file and drop-in folder of the new site's id, moved aside together
+	// before anything of the new site exists. Nil skips it.
+	setAsideSiteSlice func(int) ([]string, error)
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -128,10 +134,11 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return file.Close()
 		},
-		removeSiteSlice: removeSiteSlice,
-		applyLayout:     applyHostingLayout,
-		applyVhost:      a.nginxGen.ApplyVhost,
-		applySiteVhost:  a.nginxGen.ApplyManagedVhost,
+		removeSiteSlice:   removeSiteSlice,
+		setAsideSiteSlice: setAsideEarlierSiteSlice,
+		applyLayout:       applyHostingLayout,
+		applyVhost:        a.nginxGen.ApplyVhost,
+		applySiteVhost:    a.nginxGen.ApplyManagedVhost,
 		removeVhost: func(domain string) error {
 			backup, err := a.nginxGen.RemoveSiteVhost(domain)
 			if backup != "" {
@@ -439,6 +446,16 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 	} else if !unknownSiteUser(lookupErr) {
 		failCreateSite(reply, req.Domain, "site identity preflight", lookupErr, nil)
 		return nil
+	}
+	// S4 R2a: nothing of this site exists yet (its home and account are
+	// new), so a limits file or drop-in folder of its id that the Agent's
+	// ledger does not know is an earlier installation's: moved aside, never
+	// inherited (site_slices.go). It never stops the creation; a ledger that
+	// cannot be read moves nothing and is logged.
+	if ops.setAsideSiteSlice != nil {
+		if _, err := ops.setAsideSiteSlice(req.SiteID); err != nil {
+			log.Printf("CreateSite %s: an earlier site's limits file was left as it is: %v", req.Domain, err)
+		}
 	}
 	// The web server and the site users must be able to reach the hosting
 	// base. An owner's directory that blocks them refuses the site here,

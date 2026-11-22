@@ -1599,6 +1599,12 @@ func main() {
 	// S4 R1: the tools to their own accounts and the untouched stock PHP-FPM
 	// pool off, once after the start (side_doors.go).
 	panel.startSideDoorsClose()
+	// S4 R2a second fix round: a site's default memory limit is fixed when
+	// first computed (never moved by a later change of the host's memory),
+	// and the sites a change of limits did not reach are written again every
+	// hour (site_limits.go).
+	panel.freezeSiteMemoryDefault(context.Background())
+	panel.startSiteLimitApplyRound()
 
 	// Purge expired sessions on startup and then hourly.
 	// Başlangıçta ve sonra saatlik olarak süresi dolmuş oturumları temizle.

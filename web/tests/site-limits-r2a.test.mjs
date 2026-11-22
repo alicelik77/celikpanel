@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
+import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
 import { decodeMoveAnswer, decodeSiteLimits, eventKey, lowerUnits, moveSteps, newMoveRequestID, notMovedReason } from '../src/lib/siteLimits.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -134,7 +135,8 @@ test('a lowered limit lists the sites whose programs would be stopped, in the ch
   assert.match(box, /preview\.sites_stopped_count/);
   assert.match(box, /limits\.preview\.sitesStopped/);
   assert.match(read('../src/lib/rights.ts'), /sites_stopped: Array\.isArray\(raw\.sites_stopped\)/);
-  assert.match(enSiteLimitsScreens['limits.preview.sitesStopped'], /stops them at once/);
+  // Second fix round: the sentence moved to its own part and says what each lowered limit does.
+  assert.match(enSiteLimitsApplyScreens['limits.preview.sitesStopped'], /memory limit is stopped at once; at the process limit no new process starts and running ones go on/);
   const problems = read('../src/components/ProblemsNow.tsx');
   assert.ok(problems.includes("'site_limits_unsupported'"), 'the host line is a known kind');
   for (const part of ['title', 'body', 'action']) assert.ok(trSiteLimitsScreens[`pnow.site_limits_unsupported.${part}`]);

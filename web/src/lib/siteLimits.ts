@@ -86,6 +86,18 @@ export function limitOf(view: SiteLimitsView, key: SiteLimitKey): SiteLimitValue
     return view.limits.find((l) => l.key === key);
 }
 
+/**
+ * The value systemd applies for one key when it is not the plan's (an owner's
+ * drop-in, an edited file, or a change of limits that has not reached the
+ * site yet): undefined when it is the plan's or not known; 0 means no limit.
+ */
+export function appliedOf(view: SiteLimitsView, key: SiteLimitKey): number | undefined {
+    const limit = limitOf(view, key);
+    if (!view.live || !limit) return undefined;
+    const live = key === 'site.memory_mb' ? view.live.memory_mb : key === 'site.tasks' ? view.live.tasks : view.live.cpu_percent;
+    return live === limit.value ? undefined : live;
+}
+
 /** The limit an event is about. */
 export function eventKey(kind: SiteLimitEvent['kind']): SiteLimitKey {
     return kind.startsWith('memory') ? 'site.memory_mb' : kind.startsWith('tasks') ? 'site.tasks' : 'site.cpu_percent';
@@ -120,6 +132,8 @@ export interface MoveOutcome {
 export interface MoveAnswer {
     done: boolean;
     rolled_back?: boolean;
+    /** The move's time ran out: the programs it moved stay moved; the next move continues. */
+    time_up?: boolean;
     units: MoveOutcome[];
     error?: string;
 }
@@ -127,7 +141,7 @@ export interface MoveAnswer {
 export function decodeMoveAnswer(raw: unknown): MoveAnswer {
     const body = raw as Partial<MoveAnswer> | null;
     if (!body || typeof body !== 'object' || typeof body.done !== 'boolean' || !Array.isArray(body.units)) throw new Error('shape');
-    return { done: body.done, rolled_back: body.rolled_back === true, units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error };
+    return { done: body.done, rolled_back: body.rolled_back === true, time_up: body.time_up === true, units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error };
 }
 
 /** How long the move waits for each program at most (systemd's start timeout of these units). */

@@ -141,7 +141,7 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
         setRefusal(null);
         try {
             const overUsage = confirm && (shown?.preview.over_limit.length ?? 0) > 0;
-            const result = await sendRights(url, isNew ? 'POST' : 'PUT', planBody(kind, plan, chosen, { narrowing: confirm, overUsage }));
+            const result = await sendRights(url, isNew ? 'POST' : 'PUT', planBody(kind, plan, chosen, { narrowing: confirm, overUsage, stoppedToken: shown?.preview.stopped_token }));
             if (result.kind === 'lost') {
                 // Not known whether it was saved: nothing is sent again
                 // until the list has been read again.

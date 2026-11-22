@@ -18,6 +18,8 @@ import { enSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/en.ts'
 import { trSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/tr.ts';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
+import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
+import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr.ts';
 
 const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
 
@@ -28,10 +30,11 @@ test('every kind the list shows has a title, body and action in English and Turk
   const shown = [...list[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part,
-  // the site limits lines (S4 R2a) in the siteLimits part.
+  // the site limits lines (S4 R2a) in the siteLimits part, and those of its
+  // second fix round in the siteLimitsApply part.
   // Since alpha.142 the shared lines' words are in the problemsNow part.
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enSiteLimitsScreens };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trSiteLimitsScreens };
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enSiteLimitsScreens, ...enSiteLimitsApplyScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trSiteLimitsScreens, ...trSiteLimitsApplyScreens };
   for (const kind of shown) {
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);

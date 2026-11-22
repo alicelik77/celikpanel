@@ -33,7 +33,10 @@ func TestAMoveSurvivesAnAgentStopAtEveryStep(t *testing.T) {
 		{"", "journal", "before", "before", false, transport.SiteMoveNotTried, 0},
 		{"", "slice", "before", "before", false, transport.SiteMoveNotTried, 0},
 		{running, siteMoveStepWritten, "before", "before", false, transport.SiteMovePutBack, 0},
-		{running, siteMoveStepRestarting, "before", "before", false, transport.SiteMovePutBack, 1},
+		// Recorded, the restart not sent: it never left the system slice, so
+		// the recovery does not restart it (second fix round: what is found
+		// decides, not the step's name).
+		{running, siteMoveStepRestarting, "before", "before", false, transport.SiteMovePutBack, 0},
 		{running, siteMoveStepMoved, "after", "before", true, transport.SiteMoveMoved, 1},
 		{stopped, siteMoveStepWritten, "after", "after", true, transport.SiteMoveRewritten, 1},
 	}
@@ -136,9 +139,9 @@ func TestAMoveTakesEachProgramsLockAndLosesNothing(t *testing.T) {
 		case first:
 			// While the first program restarts, its lock is held by the move;
 			// a customer's change of the second program completes meanwhile.
-			lockHeld = !runtimeAppLocks[5%len(runtimeAppLocks)].TryLock()
+			lockHeld = !runtimeAppLocks.of(5).TryLock()
 			if !lockHeld {
-				runtimeAppLocks[5%len(runtimeAppLocks)].Unlock()
+				runtimeAppLocks.of(5).Unlock()
 			}
 			writeTestUnit(t, host, second, customer)
 		case third:
@@ -356,14 +359,21 @@ func TestADeletedSitesSliceGoes(t *testing.T) {
 			t.Errorf("%s is not kept: %v", name, err)
 		}
 	}
-	// A leftover of an earlier installation (unknown to the ledger, edited).
+	// A leftover of an earlier installation (unknown to the ledger, edited)
+	// with its drop-in folder: both go aside when the new site is created
+	// (second fix round, B4), and a write never moves anything aside.
 	_ = os.WriteFile(file, []byte(strings.Replace(string(raw), "MemoryMax=1024M", "MemoryMax=8192M", 1)), 0o644)
-	var resp transport.ApplySiteSlicesResponse
-	writeTestUnit(t, host, "celikrt-5.service", strings.Replace(sealedTestUnit("celikrt-5.service", sliceTestHome+"/app"), "Slice=system.slice", "Slice=celiksite_7.slice", 1))
-	_ = (&Agent{}).ApplySiteSlicesV1(&transport.ApplySiteSlicesRequest{Sites: []transport.SiteSlice{*testSlice()}}, &resp)
-	now, _ := os.ReadFile(file)
-	if resp.Sites[0].MovedAside == "" || !strings.Contains(string(now), "MemoryMax=1024M") {
-		t.Fatalf("leftover: %+v\n%s", resp.Sites[0], now)
+	_ = os.MkdirAll(file+".d", 0o755)
+	_ = os.WriteFile(filepath.Join(file+".d", "owner.conf"), []byte("[Slice]\nMemoryMax=infinity\n"), 0o644)
+	aside, err = setAsideEarlierSiteSlice(7)
+	if err != nil || len(aside) != 2 {
+		t.Fatalf("leftover at creation: %v %v", aside, err)
+	}
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Fatal("the earlier site's file stayed in place")
+	}
+	if _, err := os.Stat(file + ".d"); !os.IsNotExist(err) {
+		t.Fatal("the earlier site's drop-in folder stayed in place")
 	}
 }
 

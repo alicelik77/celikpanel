@@ -124,6 +124,14 @@ type SiteSliceStatus struct {
 	// MoveInterrupted: an Agent stop interrupted the last move of this site
 	// and the Agent finished or put it back at its start.
 	MoveInterrupted *SiteSliceMoveRecovery `json:"move_interrupted,omitempty"`
+	// Named (S4 R2a second fix round, review B2): a unit file names the
+	// site's slice or a unit runs in it. An absent file is then a file that
+	// was there and is gone (the next change of limits writes it again);
+	// without it, the site's programs were never moved into their limits.
+	Named bool `json:"named,omitempty"`
+	// UnitsUnread (review B9): units of this site the read did not take
+	// (above the request's bound); the rest were read.
+	UnitsUnread int `json:"units_unread,omitempty"`
 }
 
 // SiteSlicesStatusResponse answers SiteSlicesStatusV1. Unsupported says why
@@ -140,22 +148,19 @@ type SiteSlicesStatusResponse struct {
 // ApplySiteSlicesRequest writes changed limits into the slices (a plan, a
 // reseller's limits or the server's changed), at most 100 sites per request
 // (the Panel sends a large change in batches). A site without a slice file
-// gets one when one of its units names the slice or runs in it, or when its
-// first unit goes into it.
+// gets one when one of its units names the slice or runs in it, when
+// CelikPanel wrote the file before, or when its first unit goes into it.
 type ApplySiteSlicesRequest struct {
 	ExpectedBuildCommit string      `json:"expected_build_commit"`
 	Sites               []SiteSlice `json:"sites"`
 }
 
 // SiteSliceApplied is what happened to one slice: written, unchanged,
-// absent (nothing uses it yet), kept (an owner's edit), failed. MovedAside
-// names an earlier site's changed file of the same id that was moved aside
-// before the new one was written.
+// absent (nothing uses it yet), kept (an owner's edit), failed, refused.
 type SiteSliceApplied struct {
 	SiteID      int    `json:"site_id"`
 	Outcome     string `json:"outcome"`
 	PendingPath string `json:"pending_path,omitempty"`
-	MovedAside  string `json:"moved_aside,omitempty"`
 	Detail      string `json:"detail,omitempty"`
 }
 
@@ -236,8 +241,12 @@ type MoveSiteSliceResponse struct {
 	// WaitSeconds is how long the move waited at most for each program to
 	// run and answer again (the unit's own start timeout, at least 20 and
 	// at most 300 seconds; systemd's default of 90 for these units).
-	WaitSeconds int              `json:"wait_seconds,omitempty"`
-	SliceFile   string           `json:"slice_file,omitempty"`
-	Units       []SiteSliceMoved `json:"units"`
-	Error       string           `json:"error,omitempty"`
+	WaitSeconds int `json:"wait_seconds,omitempty"`
+	// TimeUp (review B8): the move's time ran out; the units it moved stay
+	// moved ("moved", "rewritten") and the ones it did not start are
+	// "not_tried", for the next move to continue with.
+	TimeUp    bool             `json:"time_up,omitempty"`
+	SliceFile string           `json:"slice_file,omitempty"`
+	Units     []SiteSliceMoved `json:"units"`
+	Error     string           `json:"error,omitempty"`
 }

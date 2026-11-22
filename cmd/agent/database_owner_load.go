@@ -179,10 +179,10 @@ func loadDatabaseSQL(ctx context.Context, target databaseLoadTarget, r io.Reader
 		if err := pgLoadLiftSessionLimits(ctx, conn); err != nil {
 			return pgLoadSessionDefaultsError(err)
 		}
-		limit := pgLoadTempFileLimit(ctx, conn)
+		limit, source := pgLoadTempFileLimit(ctx, conn)
 		if err := pgLoadTransaction(ctx, conn, r, pgEmptyFirst); err != nil {
 			if pgTempFileLimitReached(err) {
-				return fmt.Errorf("ERROR: %s", pgLoadTempFileLimitText(target.Account.User, limit))
+				return fmt.Errorf("ERROR: %s", pgLoadTempFileLimitText(target.Account.User, limit, source))
 			}
 			return pgLoadErrorText(err)
 		}

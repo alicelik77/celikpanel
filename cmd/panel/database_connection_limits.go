@@ -312,6 +312,6 @@ func (p *Panel) reapplyDBConnectionLimitsAfter(ctx context.Context, ownerKind st
 		p.reapplyDBConnectionLimits(subs)
 	}
 	if siteChanged {
-		p.reapplySiteSlices(subs)
+		p.reapplySiteSlices(p.siteLimitChangeLabel(ctx, ownerKind, ownerID), subs)
 	}
 }

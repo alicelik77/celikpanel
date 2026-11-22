@@ -51,13 +51,21 @@ func pgLoadLiftSessionLimits(ctx context.Context, exec pgLoadExecutor) error {
 }
 
 // pgLoadTempFileLimit reads the session's temporary-file limit as the server
-// shows it ("-1" or "" when there is none or it cannot be read).
-func pgLoadTempFileLimit(ctx context.Context, conn pgLoadConn) string {
-	rows, err := conn.QueryValues(ctx, "SHOW temp_file_limit")
-	if err != nil || len(rows) != 1 || len(rows[0]) != 1 {
-		return ""
+// shows it ("-1" or "" when there is none or it cannot be read) and where it
+// comes from (pg_settings.source: "user" for a role's own setting, which is
+// where the plan's value is written; "database" or "database user" for a
+// setting of the database; "configuration file", "default" and the like for
+// the server's own; "" when it cannot be read).
+func pgLoadTempFileLimit(ctx context.Context, conn pgLoadConn) (string, string) {
+	rows, err := conn.QueryValues(ctx, "SELECT current_setting('temp_file_limit'), source FROM pg_catalog.pg_settings WHERE name = 'temp_file_limit'")
+	if err != nil || len(rows) != 1 || len(rows[0]) == 0 {
+		return "", ""
 	}
-	return strings.TrimSpace(rows[0][0])
+	source := ""
+	if len(rows[0]) > 1 {
+		source = strings.TrimSpace(rows[0][1])
+	}
+	return strings.TrimSpace(rows[0][0]), source
 }
 
 // pgTempFileLimitReached: the error is PostgreSQL's refusal at
@@ -71,17 +79,30 @@ func pgTempFileLimitReached(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "exceeds temp_file_limit")
 }
 
-// pgLoadTempFileLimitText is the sentence for a load the user's
-// temporary-file limit stopped: what happened, that nothing changed, who can
-// raise the limit and how the load resumes.
-func pgLoadTempFileLimitText(user, limit string) string {
+// pgLoadTempFileLimitText is the sentence for a load a temporary-file limit
+// stopped: what happened, which limit was in force (review C5: by where the
+// server says it comes from), that nothing changed, who can raise it and how
+// the load resumes. A role's own setting is where the plan's value is
+// written, but it may be the server owner's own (the panel keeps a value it
+// did not write); a setting of the database or of the server is the server
+// owner's, never the plan's.
+func pgLoadTempFileLimitText(user, limit, source string) string {
 	value := ""
 	if limit != "" && limit != "-1" {
 		value = " (" + limit + ")"
 	}
-	return fmt.Sprintf("the load needed more temporary space than the database user %s may use%s: the hosting plan's "+
-		"\"Temporary files of one database session\" limit. Nothing was changed. The administrator, or the reseller within "+
-		"their own limits, raises it in the plan; then start the load again", user, value)
+	switch source {
+	case "database", "database user":
+		return fmt.Sprintf("the load needed more temporary space than this database allows%s: a temp_file_limit set on the database "+
+			"on the server by its owner, not the hosting plan's. Nothing was changed. The server owner raises it; then start the load again", value)
+	case "user", "":
+		return fmt.Sprintf("the load needed more temporary space than the database user %s may use%s: the user's own limit, the hosting "+
+			"plan's \"Temporary files of one database session\" or a value the server owner set by hand. Nothing was changed. The administrator, or the reseller within their own limits, raises it in the plan, the "+
+			"server owner their own setting; then start the load again", user, value)
+	}
+	return fmt.Sprintf("the load needed more temporary space than this server's PostgreSQL allows one session%s: its own "+
+		"temp_file_limit (%s), the server owner's, not the hosting plan's. Nothing was changed. The server owner raises it; then "+
+		"start the load again", value, source)
 }
 
 // mariadbLoadArgvWithLimits is the load's client command line with the

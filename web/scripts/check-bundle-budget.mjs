@@ -399,6 +399,16 @@ const screenPartBudgets = {
   // part, so no existing part's budget is raised; set with at least 25%
   // headroom from its Turkish file.
   siteLimits: kib(9, 3.1),
+  // 22 Nov 2026 (S4 R2a second fix round): the limit in force on a site's
+  // card, a move that ran out of time, the preview of a lowered site limit
+  // (moved here from siteLimits) and the Problems now lines of a limit change
+  // that did not reach every site and of a default memory limit set for the
+  // server's earlier memory (slim.applied, slim.move.timeUp,
+  // limits.preview.sitesStopped, pnow.site_limits_unapplied.*,
+  // pnow.site_memory_default.*). A new part beside siteLimits, which has no
+  // room; set with at least 25% headroom from its Turkish file: 1.65 / 0.74
+  // KiB.
+  siteLimitsApply: kib(2.3, 1.0),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

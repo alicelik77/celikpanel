@@ -44,14 +44,17 @@ const (
 )
 
 type rightsChangeRequest struct {
-	State           string            `json:"state,omitempty"`
-	PlanID          int               `json:"plan_id,omitempty"`
-	Rights          *rightsPayload    `json:"rights,omitempty"`
-	Quantities      *rightsQuantities `json:"quantities,omitempty"`
-	Grant           []string          `json:"grant,omitempty"`
-	Revoke          []string          `json:"revoke,omitempty"`
-	Confirm         bool              `json:"confirm,omitempty"`
-	AcceptOverUsage bool              `json:"accept_over_usage,omitempty"`
+	State      string            `json:"state,omitempty"`
+	PlanID     int               `json:"plan_id,omitempty"`
+	Rights     *rightsPayload    `json:"rights,omitempty"`
+	Quantities *rightsQuantities `json:"quantities,omitempty"`
+	Grant      []string          `json:"grant,omitempty"`
+	Revoke     []string          `json:"revoke,omitempty"`
+	Confirm    bool              `json:"confirm,omitempty"`
+	// ConfirmStopped (S4 R2a second fix round): the preview's stopped_token
+	// (site_limits.go siteLimitsStoppedToken).
+	ConfirmStopped  string `json:"confirm_stopped,omitempty"`
+	AcceptOverUsage bool   `json:"accept_over_usage,omitempty"`
 	// alpha.128: a Custom set's own limits of site settings (nil keeps
 	// them; leaving a plan starts from the plan's), a Custom subscription's
 	// overuse policy and notice levels, and a Custom reseller's overselling
@@ -113,7 +116,9 @@ type rightsPreview struct {
 	// at once when the change is saved.
 	SitesStopped      []string `json:"sites_stopped,omitempty"`
 	SitesStoppedCount int      `json:"sites_stopped_count,omitempty"`
-	Message           string   `json:"message"`
+	// StoppedToken names that list; a save sends it back as confirm_stopped.
+	StoppedToken string `json:"stopped_token,omitempty"`
+	Message      string `json:"message"`
 	// clamped (alpha.128): the sites above a lowered limit, for their notices.
 	clamped         []clampedSite
 	planned         *plannedRights
@@ -315,8 +320,9 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	// S4 R2a: a lowered site limit below what a site's programs use now is
-	// shown before the change is confirmed.
-	if req.Ceilings != nil && (preview || !req.Confirm) {
+	// shown before the change is confirmed, and saved only with the token
+	// of the list the server answers now.
+	if req.Ceilings != nil {
 		if before, err := loadSettingCeilings(ctx, p.db.GetDB(), rightsOwnerSubscription, subID); err == nil {
 			p.previewSiteLimitsLowered(ctx, &plan, []int{subID}, before, map[string]int(*req.Ceilings))
 		}
@@ -325,7 +331,7 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 		writeRightsJSON(w, http.StatusOK, map[string]any{"preview": plan})
 		return
 	}
-	if !req.Confirm {
+	if !req.Confirm || !siteLimitsStoppedConfirmed(plan, req.ConfirmStopped) {
 		code := errCodeRightsConfirm
 		if plan.LeavesPlan {
 			code = errCodeRightsLeavesPlan
@@ -394,7 +400,7 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 	// state or its own ceilings; its database users follow.
 	p.reapplyDBConnectionLimits([]int{subID})
 	// S4 R2a: and its sites' slices.
-	p.reapplySiteSlices([]int{subID})
+	p.reapplySiteSlices(p.siteLimitChangeLabel(ctx, rightsOwnerSubscription, subID), []int{subID})
 	// alpha.128 (integration): outgoing mail follows the mail keys.
 	p.requestOutgoingApply()
 	p.auditDetailed(r, "subscription.rights:"+plan.To, "subscription", subID, map[string]any{
@@ -661,7 +667,7 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 		return
 	}
 	// S4 R2a: as for a subscription, over the reseller's whole tree.
-	if req.Ceilings != nil && (preview || !req.Confirm) {
+	if req.Ceilings != nil {
 		before, err := loadSettingCeilings(ctx, p.db.GetDB(), rightsOwnerReseller, target.ID)
 		tree, treeErr := treeSubscriptionIDs(ctx, p.db.GetDB(), target.ID)
 		if err == nil && treeErr == nil {
@@ -672,7 +678,7 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 		writeRightsJSON(w, http.StatusOK, map[string]any{"preview": plan})
 		return
 	}
-	if !req.Confirm {
+	if !req.Confirm || !siteLimitsStoppedConfirmed(plan, req.ConfirmStopped) {
 		code := errCodeRightsConfirm
 		if plan.LeavesPlan {
 			code = errCodeRightsLeavesPlan
@@ -726,7 +732,7 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 	if tree, err := treeSubscriptionIDs(ctx, p.db.GetDB(), target.ID); err == nil {
 		p.reapplyDBConnectionLimits(tree)
 		// S4 R2a: and the sites' slices.
-		p.reapplySiteSlices(tree)
+		p.reapplySiteSlices(p.siteLimitChangeLabel(ctx, rightsOwnerReseller, target.ID), tree)
 	}
 	// alpha.128 (integration): outgoing mail follows the mail keys.
 	p.requestOutgoingApply()

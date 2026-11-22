@@ -152,7 +152,7 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 		}
 		if siteLimitsChanged(map[string]int{}, map[string]int{req.Key: 0}) {
 			if subs, err := p.subscriptionsReachedBy(ctx, "server", 0); err == nil {
-				p.reapplySiteSlices(subs)
+				p.reapplySiteSlices(req.Key, subs)
 			}
 		}
 		p.auditDetailed(r, "settings.limit:"+req.Key, "settings", 0, map[string]any{

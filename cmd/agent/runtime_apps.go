@@ -17,7 +17,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -54,7 +53,7 @@ var (
 	runtimeAppStateRoot = filepath.Join(hostingpath.ServiceMutationStateRoot(), "runtime-apps")
 	runtimeAppEnvDir    = siteruntime.EnvDir
 	runtimeAppOperation = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{7,63}$`)
-	runtimeAppLocks     [64]sync.Mutex
+	runtimeAppLocks     perIDMutex
 	// runtimeAppHostArch is this server's ELF machine.
 	runtimeAppHostArch = siteruntime.MachineFor(runtime.GOARCH)
 	// runtimeAppCgroupRoot is where a unit's cgroup files are read.
@@ -69,7 +68,7 @@ var (
 )
 
 func lockRuntimeApp(appID int) func() {
-	lock := &runtimeAppLocks[uint(appID)%uint(len(runtimeAppLocks))]
+	lock := runtimeAppLocks.of(appID)
 	lock.Lock()
 	return lock.Unlock
 }

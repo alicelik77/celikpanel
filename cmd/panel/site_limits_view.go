@@ -37,9 +37,11 @@ import (
 //   - Problems now: a site that reached its OWN memory or process limit at
 //     two or more readings in the last day; one line, for the administrator,
 //     naming the sites whose programs still run outside their limits; one
-//     line when this host cannot enforce a site's limits at all; and, once
-//     for the server, that disk limits are counted but not enforced where the
-//     hosting file system has no project quota.
+//     line when this host cannot enforce a site's limits at all; one line
+//     when a change of limits did not reach every site (site_limits.go); one
+//     line when a site's default memory limit was fixed for the host's
+//     earlier memory; and, once for the server, that disk limits are counted
+//     but not enforced where the hosting file system has no project quota.
 //
 // Sitenin sınırları: herkes sınırları, uygulanıp uygulanmadığını ve ne zaman
 // aşıldığını okur; yönetici hangi programların sınır içinde olduğunu da görür
@@ -161,8 +163,15 @@ func siteSliceQueries(sites []siteLimitSite) *transport.SiteSlicesStatusRequest 
 
 // siteSliceReadPage is the number of sites per status read: well under the
 // Agent's bound, so no reading is ever refused or cut for the number of
-// sites (review finding 12).
-const siteSliceReadPage = 1000
+// sites (review finding 12). siteSliceReadPageUnits bounds the programs of
+// one page (review B9): a site may have any number of programs; a page
+// closes before it would pass the bound, and a site larger than the bound
+// alone gets a page of its own (the Agent reads up to its own bound of
+// 20000 and counts the rest as unread, never refusing the read).
+const (
+	siteSliceReadPage      = 1000
+	siteSliceReadPageUnits = 4000
+)
 
 // readSiteSlicesPaged reads the sites' slices in pages and joins the
 // answers. The host's Unsupported reason comes back with the statuses.
@@ -173,12 +182,15 @@ func (p *Panel) readSiteSlicesPaged(ctx context.Context, sites []siteLimitSite) 
 
 func (p *Panel) readSiteSlicesAll(ctx context.Context, sites []siteLimitSite) (transport.SiteSlicesStatusResponse, error) {
 	out := transport.SiteSlicesStatusResponse{Sites: []transport.SiteSliceStatus{}}
-	for start := 0; start < len(sites); start += siteSliceReadPage {
-		end := start + siteSliceReadPage
-		if end > len(sites) {
-			end = len(sites)
+	for start := 0; start < len(sites); {
+		end, units := start, 0
+		for end < len(sites) && end-start < siteSliceReadPage && (end == start || units+len(sites[end].Units) <= siteSliceReadPageUnits) {
+			units += len(sites[end].Units)
+			end++
 		}
-		resp, err := readSiteSlicesCall(p, ctx, siteSliceQueries(sites[start:end]))
+		page := sites[start:end]
+		start = end
+		resp, err := readSiteSlicesCall(p, ctx, siteSliceQueries(page))
 		if err == nil && resp.Error != "" {
 			err = errorString(resp.Error)
 		}
@@ -213,6 +225,11 @@ const siteLimitCPUSeconds = 30
 const (
 	siteLimitRepeatWindow = 24 * time.Hour
 	siteLimitRepeatHits   = 2
+	// siteLimitHitEvery and siteLimitMaxHits bound the record (review B7):
+	// at most one hit per kind every five minutes, so at most 288 a day, and
+	// never more than that are kept.
+	siteLimitHitEvery = 5 * time.Minute
+	siteLimitMaxHits  = 288
 )
 
 // Event kinds. Only "memory" and "tasks" are the site's own limit (proved
@@ -281,6 +298,18 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 		}
 		memory := delta(current.MemoryLimitHits, before.MemoryLimitHits)
 		kills := delta(current.OOMKills, before.OOMKills)
+		// Review C3: one "time" of the site's own memory limit is one
+		// program the kernel stopped while that limit was reached: the
+		// rise of the slice's oom_kill over a reading in which its own
+		// memory.events.local oom rose (at least one), never the raw
+		// oom count, which counts every failed reclaim (F3c: oom 10576
+		// for one stopped program).
+		if memory > 0 {
+			memory = kills
+			if memory < 1 {
+				memory = 1
+			}
+		}
 		rises := map[string]int64{
 			"memory": memory,
 			"tasks":  delta(current.TasksLimitHits, before.TasksLimitHits),
@@ -312,8 +341,21 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 				previous.Events[kind] = event
 			}
 			event.Count += n
+			// Review B7: at most one hit per kind every siteLimitHitEvery,
+			// and never more than siteLimitMaxHits kept: the record's size
+			// does not grow with how often a card is read (the count stays
+			// whole: every rise adds to it).
+			last := time.Time{}
+			if len(event.Hits) > 0 {
+				last, _ = time.Parse(time.RFC3339, event.Hits[len(event.Hits)-1])
+			}
 			event.LastAt = at
-			event.Hits = append(event.Hits, at)
+			if last.IsZero() || now.Sub(last) >= siteLimitHitEvery {
+				event.Hits = append(event.Hits, at)
+			}
+			if len(event.Hits) > siteLimitMaxHits {
+				event.Hits = event.Hits[len(event.Hits)-siteLimitMaxHits:]
+			}
 		}
 		if !rose {
 			// Nothing reached: the earlier counters stay the baseline (the
@@ -406,8 +448,9 @@ type siteLimitsView struct {
 	// Applies: yes, outside, no_file, unsupported (Unsupported says why).
 	Applies     string `json:"applies,omitempty"`
 	Unsupported string `json:"unsupported,omitempty"`
-	// Live is what systemd applies now (nil: no program of the site runs in
-	// its limits yet); usage now.
+	// Live is what systemd applies now (the file and every drop-in; nil where
+	// the limits do not apply); the card shows it beside the plan's value
+	// when they differ. Usage now (when a program runs in the slice).
 	Live            *transport.SiteSliceLimitsRead `json:"live,omitempty"`
 	MemoryCurrentMB int64                          `json:"memory_current_mb,omitempty"`
 	TasksCurrent    int64                          `json:"tasks_current,omitempty"`
@@ -478,10 +521,14 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 	if resp.Unsupported != "" {
 		view.Unsupported = resp.Unsupported
 	}
-	if status.Active && view.Applies == siteLimitsApply {
+	if view.Applies == siteLimitsApply {
+		// What systemd applies (the file and every drop-in): the card shows
+		// it beside the plan's value when they differ (review B3, C6).
 		live := status.Live
 		view.Live = &live
-		view.MemoryCurrentMB, view.TasksCurrent = status.MemoryCurrentMB, status.TasksCurrent
+		if status.Active {
+			view.MemoryCurrentMB, view.TasksCurrent = status.MemoryCurrentMB, status.TasksCurrent
+		}
 	}
 	if admin {
 		view.SliceFile, view.Slice, view.DropIns, view.MoveInterrupted = status.File, status.Slice, status.DropIns, status.MoveInterrupted
@@ -498,11 +545,11 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 				unit.Blocked = siteUnitBlocked(found)
 			}
 			unit.Lower = found.Own.MemoryMB > memory || (found.Own.MemoryMB == 0 && unit.Placement != transport.SiteUnitAbsent && unit.Placement != transport.SiteUnitInSlice)
-			if siteUnitNeedsMove(unit.Placement, unit.Blocked) {
-				view.NeedsMove++
-			}
 			view.Units = append(view.Units, unit)
 		}
+		// The move brings these programs in, or (the file gone) writes the
+		// file again: the action the card offers does what it says.
+		view.NeedsMove = siteUnitsOutside(status)
 		view.Busy = siteMoveBusy()
 	}
 	// A reader's reading keeps the administrator's Problems now line current
@@ -514,13 +561,20 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 // siteLimitsApplies says whether a site's limits hold for its programs: the
 // host can enforce them, the slice file is there (an absent file means
 // systemd runs the slice without limits), and at least one program runs or
-// would start inside them.
+// would start inside them. Review B2: an absent file is "no_file" (the file
+// was there and is gone; the next change of limits, and the move, write it
+// again) only when a unit names the slice or runs in it; otherwise the
+// site's programs were never moved into their limits (every existing site
+// right after the update): "outside".
 func siteLimitsApplies(status transport.SiteSliceStatus, unsupported string) string {
 	if unsupported != "" {
 		return siteLimitsUnsupported
 	}
 	if status.File == transport.SiteFileAbsent {
-		return siteLimitsNoFile
+		if status.Named {
+			return siteLimitsNoFile
+		}
+		return siteLimitsOutside
 	}
 	for _, u := range status.Units {
 		switch placement := siteUnitPlacement(u, status.Slice); placement {
@@ -570,11 +624,17 @@ func siteUnitNeedsMove(placement, blocked string) bool {
 	return blocked == "" && (placement == transport.SiteUnitOutside || placement == siteUnitStoppedOutside)
 }
 
-// siteUnitsOutside counts a site's programs the move would bring in.
+// siteUnitsOutside counts a site's programs outside its limits that the
+// move takes care of: the ones it brings in and, where the slice file is
+// gone while units use the slice (nothing limits them; review B2), the ones
+// inside the slice too (the move writes the file again).
 func siteUnitsOutside(status transport.SiteSliceStatus) int {
 	n := 0
+	noFile := status.File == transport.SiteFileAbsent && status.Named
 	for _, u := range status.Units {
-		if siteUnitNeedsMove(siteUnitPlacement(u, status.Slice), siteUnitBlocked(u)) {
+		placement := siteUnitPlacement(u, status.Slice)
+		if siteUnitNeedsMove(placement, siteUnitBlocked(u)) ||
+			(noFile && (placement == transport.SiteUnitInSlice || placement == transport.SiteUnitStopped)) {
 			n++
 		}
 	}
@@ -752,8 +812,11 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	siteLimitLedgerMu.Unlock()
 	outside := p.setting(ctx, settingSiteLimitOutside)
 	host := p.setting(ctx, settingSiteLimitHost)
+	// Review B3 and B5: a change of limits that did not reach every site,
+	// and a default memory limit fixed for the host's earlier memory.
+	extra := append(siteLimitApplyProblem(p.setting(ctx, settingSiteLimitApply)), p.siteMemoryDefaultProblem(ctx)...)
 	if len(ledger) == 0 && outside == "" && host == "" {
-		return nil
+		return extra
 	}
 	names := map[string]string{}
 	if rows, err := p.db.GetDB().QueryContext(ctx, `SELECT s.id, d.name FROM sites s JOIN domains d ON d.id = s.domain_id`); err == nil {
@@ -795,6 +858,7 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
 	problems = append(problems, siteLimitHostProblem(host)...)
+	problems = append(problems, extra...)
 	return append(problems, siteLimitOutsideProblem(outside, names)...)
 }
 

@@ -214,14 +214,17 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   - **`temp_file_limit` is never lifted** for a role the customer signs in with, at any
     time; it is the user's limit during the load and for every other session the role
     opens meanwhile. A load that needs more temporary space stops, is rolled back whole
-    (one transaction) and says so: "the load needed more temporary space than the
-    database user … may use (…): the hosting plan's "Temporary files of one database
-    session" limit. Nothing was changed. The administrator, or the reseller within their
-    own limits, raises it in the plan; then start the load again". Because nothing is
-    lifted, an Agent stopped in the middle of a load leaves nothing lifted. A loader with
-    a temporary account of its own (the server move of a PostgreSQL database on
-    `security/s1b-pg-leftovers`, coming with alpha.143) gets the server's default for that
-    account's own session, never the customer's role.
+    (one transaction) and names the limit actually in force, by where PostgreSQL says it
+    comes from (`pg_settings.source`): the user's own setting is "the user's own limit, the
+    hosting plan's "Temporary files of one database session" or a value the server owner set
+    by hand … The administrator, or the reseller within their own limits, raises it in the
+    plan, the server owner their own setting"; a setting of the database, or the server's
+    own `temp_file_limit`, is named as the server owner's, not the plan's, and the server
+    owner raises it. Every answer says that nothing was changed and to start the load
+    again. Because nothing is lifted, an Agent stopped in the middle of a load leaves
+    nothing lifted. The server move of a PostgreSQL database is published with alpha.143
+    (`main`); this branch's base does not contain it yet, so what that loader does with
+    the limit is not described here and is checked when the branches meet.
   - Dumps run as the engine's administrator, whose sessions do not read a customer role's
     settings.
 
@@ -239,7 +242,16 @@ The slice gets the effective ceiling, else the server's default (`setting_policy
 else CelikPanel's default above. For memory that is the smaller of 3072 MB (the largest a
 site's own program had before R2a: an n8n or Open WebUI install) and 75 % of the host's memory
 (`MemTotal` in `/proc/meminfo`, rounded down to a whole MB, never under 64 MB), so one site
-never takes the whole host by default. No schema change: a key without a `setting_policy` row
+never takes the whole host by default. That memory default is fixed when it is first
+computed (`panel_settings` `site_memory_default_v1`, with the host memory it was computed
+for); a later change of the host's memory moves nothing by itself: the administrator reads
+one Problems now line and its one action previews and applies the new default
+(`POST /api/v1/rights/site-memory-default` `{"action":"preview"}`, then `{"action":"apply",
+"confirm_stopped":"<token>"}`). **A reseller is bounded by the default:** where the
+administrator set no ceiling for a `site.*` key (server or the reseller's own level), the
+reseller's plans, its customers' Custom sets and their sites stay within the server's default
+for that key, shown on the reseller's form as set by the server administrator, who raises it
+by giving the reseller a ceiling. No schema change: a key without a `setting_policy` row
 has no server ceiling or default, and the server level writes its row when the administrator
 first saves it. Plans, reseller plans, Custom sets and the server's limits edit the keys where
 every other key is edited; a reseller can never set a site's limit above its own ceiling (the
@@ -247,8 +259,15 @@ plan and the account's own limits are both refused above it). A changed value is
 the slices in the background in batches of 100 sites (`Agent.ApplySiteSlicesV1`) and applies
 to running programs at once on Debian 13 and Ubuntu 24.04 alike, so **lowering a limit below
 what a site uses now asks first**: the change's preview (plans, reseller plans, an account's
-own limits) lists the sites whose programs use more than the new value and that the system
-stops them at once when it is saved. The keys `db.statement_seconds` and
+own limits) lists the sites whose programs use more than the new value and says what
+happens when it is saved (a program over the memory limit is stopped at once; at the process
+limit new processes are refused and running ones keep running). The server enforces it: such
+a change is saved only with the token of the list it answers at that moment
+(`confirm_stopped`), and a request through the API without it, or with an earlier list's, is
+refused with the current list. A change that does not reach every site is one Problems now
+line (which change, how many sites, why), and the panel writes those sites again every hour.
+The server's own limits screen does not preview a lowered `site.*` key (declared). The keys
+`db.statement_seconds` and
 `db.idle_in_transaction_seconds` are defaults a user's own session can change; the form says
 so, and `db.temp_file_mb` is a firm limit. **Not bounded by these keys yet:** a site's programs
 not yet moved into its slice (and such a program again after each restart of the server until

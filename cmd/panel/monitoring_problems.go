@@ -142,6 +142,10 @@ var problemKindOrder = map[string]int{
 	"site_programs_outside": 34,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
 	"site_limits_unsupported": 35,
+	// S4 R2a second fix round: a change of limits that did not reach every
+	// site; a default memory limit fixed for the host's earlier memory.
+	"site_limits_unapplied": 36,
+	"site_memory_default":   37,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

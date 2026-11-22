@@ -8,7 +8,7 @@ import { confirmAction, type OperationEnd, type OperationStep } from '../lib/con
 import { useRemote } from '../lib/remote';
 import { unitText, whoText } from '../lib/settingLimits';
 import {
-    decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
+    appliedOf, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
     type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
 import { Button, Checking, CouldNotCheck } from './ui';
@@ -45,12 +45,13 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
     }
     const view = remote.state === 'known' ? remote.value : (remote.previous!.value as SiteLimitsView);
 
-    const valueText = (limit: SiteLimitValue | undefined) => {
-        if (!limit) return '';
-        if (limit.key === 'site.memory_mb') return unitText(t, 'mb', limit.value);
-        if (limit.key === 'site.tasks') return t('slim.value.tasks', { n: limit.value });
-        return t('slim.value.cpu', { n: limit.value });
+    const amountText = (key: SiteLimitKey, n: number) => {
+        if (n === 0) return t('limits.plan.none');
+        if (key === 'site.memory_mb') return unitText(t, 'mb', n);
+        if (key === 'site.tasks') return t('slim.value.tasks', { n });
+        return t('slim.value.cpu', { n });
     };
+    const valueText = (limit: SiteLimitValue | undefined) => (limit ? amountText(limit.key, limit.value) : '');
     const who = (limit: SiteLimitValue | undefined) => {
         if (!limit) return '';
         return limit.set_by === 'server_default' || limit.set_by === 'default' ? t('slim.who.default') : whoText(t, limit.set_by, limit.set_by_name);
@@ -71,10 +72,13 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
             <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {ORDER.map(({ key, label }) => {
                     const limit = limitOf(view, key);
+                    // The limit in force when it is not the plan's (review B3, C6).
+                    const applied = appliedOf(view, key);
                     return (
                         <div key={key} className="rounded-lg bg-surface-2 px-3 py-2" data-site-limit={key}>
                             <dt className="text-xs text-fg-muted">{t(label)}</dt>
                             <dd className="text-sm font-semibold text-fg">{valueText(limit)}</dd>
+                            {applied !== undefined && <dd className="text-xs text-warning" data-site-limit-applied="">{t('slim.applied', { value: amountText(key, applied) })}</dd>}
                             {provider && limit && <dd className="text-xs text-fg-subtle">{t('slim.who.line', { who: who(limit) })}</dd>}
                         </div>
                     );
@@ -110,13 +114,17 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
             ) : (
                 <ul className="mt-3 space-y-2" data-site-limits-events="">
                     {view.events.map((event) => {
-                        const limit = limitOf(view, eventKey(event.kind));
-                        const atLimit = eventAtSiteLimit(event.kind);
+                        const key = eventKey(event.kind);
+                        const limit = limitOf(view, key);
+                        // The number reached is the one in force; where it is not the
+                        // plan's, raising the plan would not change it, so no fix names it.
+                        const applied = appliedOf(view, key);
+                        const atLimit = eventAtSiteLimit(event.kind) && applied === undefined;
                         return (
                             <li key={event.kind} className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-fg" data-site-limit-event={event.kind}>
                                 <p>
                                     {t(`slim.event.${event.kind}` as TranslationKey, {
-                                        time: formatDateTime(event.last_at, locale), count: event.count, limit: valueText(limit),
+                                        time: formatDateTime(event.last_at, locale), count: event.count, limit: applied !== undefined ? amountText(key, applied) : valueText(limit),
                                     })}
                                     {event.repeated && <> {t('slim.event.repeated')}</>}
                                 </p>
@@ -187,6 +195,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                         return [`${labelOf(units, u.unit)} (${t(reason === 'changed' ? 'slim.move.changed' : `slim.blocked.${reason}` as TranslationKey)})`];
                     });
                     const failed = answer.units.find((u) => u.outcome === 'failed');
+                    if (answer.time_up) return { state: 'failed', reason: t('slim.move.timeUp') };
                     if (answer.rolled_back && failed) {
                         return { state: 'failed', reason: t('slim.move.rolledBack', { unit: labelOf(units, failed.unit), detail: failed.detail ?? '' }) };
                     }

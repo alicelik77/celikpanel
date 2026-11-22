@@ -38,11 +38,19 @@ import (
 // setting) is never touched. On systemd 255 the kernel already holds the
 // new values after the reload, so nothing is pushed.
 //
-// An Agent stop between set-property and the removal leaves those control
-// drop-ins with the same effective values the slice had: harmless, and gone
-// at the next reboot anyway (/run). The files the Agent is about to make are
-// recorded first (siteSliceRuntimeJournalPath) and removed at the Agent's
-// next start (cleanupSiteSliceRuntime).
+// The files the Agent is about to make are recorded first
+// (siteSliceRuntimeJournalPath), and removed in the same step on every way
+// out of it (a deferred cleanup after the record). Only an Agent stop
+// between set-property and the removal leaves them (review B6): they carry
+// the effective values the slice had at that moment, so nothing changes for
+// the owner then, but until they are removed they outrank the owner's own
+// drop-ins in /etc/systemd/system/<slice>.d for those keys: a drop-in the
+// owner adds or changes for such a key meanwhile does not apply until the
+// Agent's next start removes the file (cleanupSiteSliceRuntime, the first
+// thing the Agent does after taking its instance lock, before anything
+// reads limits) or the next reboot (/run is emptied). An owner's own
+// `systemctl set-property --runtime` of the same key made in that window is
+// removed with them.
 //
 // Değişen sınır çalışan dilime hemen ulaşır: systemd 257 dosyayı yeniden
 // yüklemede uygulamadığı için yalnız farklı olan anahtar, systemd'nin
@@ -217,6 +225,8 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 		log.Printf("site slice: the running limits were not pushed (their record could not be written: %v); they apply when a program of the site next starts", err)
 		return
 	}
+	// The control drop-ins go again in this same step, on every way out.
+	defer cleanupSiteSliceRuntime()
 	for _, name := range names {
 		if len(plan[name]) == 0 {
 			continue
@@ -226,7 +236,6 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 			log.Printf("site slice: %s keeps its earlier running limits until a program of the site starts: %v: %s", name, err, strings.TrimSpace(string(out)))
 		}
 	}
-	cleanupSiteSliceRuntime()
 }
 
 // cleanupSiteSliceRuntime removes the control drop-ins the Agent recorded
@@ -261,7 +270,7 @@ func cleanupSiteSliceRuntime() {
 		if err := os.Remove(clean); err == nil {
 			removed = true
 		} else if !errors.Is(err, os.ErrNotExist) {
-			log.Printf("site slice: %s could not be removed: %v (it holds the same limits and is gone at the next reboot)", clean, err)
+			log.Printf("site slice: %s could not be removed: %v (it holds the limits in force when it was made; until it is removed or the next reboot it outranks the owner's own drop-ins for that key)", clean, err)
 		}
 		_ = os.Remove(filepath.Dir(clean)) // only when empty
 	}

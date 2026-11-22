@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -53,13 +52,13 @@ import (
 var (
 	serviceAppStateRoot = filepath.Join(hostingpath.ServiceMutationStateRoot(), "service-apps")
 	serviceAppOperation = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{7,63}$`)
-	serviceAppLocks     [64]sync.Mutex
+	serviceAppLocks     perIDMutex
 	// serviceAppGeneratedValue is a key made on the server (randomHex).
 	serviceAppGeneratedValue = regexp.MustCompile(`^[0-9a-f]{32,128}$`)
 )
 
 func lockServiceApp(installID int) func() {
-	lock := &serviceAppLocks[uint(installID)%uint(len(serviceAppLocks))]
+	lock := serviceAppLocks.of(installID)
 	lock.Lock()
 	return lock.Unlock
 }

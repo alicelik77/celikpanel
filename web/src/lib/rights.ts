@@ -323,6 +323,8 @@ export interface RightsPreview {
     /** S4 R2a: sites whose programs use more now than a lowered site limit (stopped at once when saved). */
     sites_stopped?: string[];
     sites_stopped_count?: number;
+    /** S4 R2a second fix round: names that list; a save sends it back (confirm_stopped). */
+    stopped_token?: string;
     message: string;
 }
 
@@ -482,6 +484,7 @@ export function decodePreview(raw: unknown): RightsPreview {
         sites_above_count: typeof raw.sites_above_count === 'number' ? raw.sites_above_count : undefined,
         sites_stopped: Array.isArray(raw.sites_stopped) ? strings(raw.sites_stopped) : undefined,
         sites_stopped_count: typeof raw.sites_stopped_count === 'number' ? raw.sites_stopped_count : undefined,
+        stopped_token: typeof raw.stopped_token === 'string' ? raw.stopped_token : undefined,
         sites_unread: raw.sites_unread === true || undefined,
         message: typeof raw.message === 'string' ? raw.message : '',
     };
@@ -901,7 +904,7 @@ export function editedFromResellerPlan(plan: ResellerPlan): EditedPlan {
 }
 
 /** The body a plan is saved with. Rights go only when they were chosen. */
-export function planBody(kind: PlanKind, plan: EditedPlan, selection: RightsSelection | null, flags: { narrowing?: boolean; overUsage?: boolean } = {}): Record<string, unknown> {
+export function planBody(kind: PlanKind, plan: EditedPlan, selection: RightsSelection | null, flags: { narrowing?: boolean; overUsage?: boolean; stoppedToken?: string } = {}): Record<string, unknown> {
     const { max_customers, traffic_quota_mb, ...limits } = plan.numbers;
     // A customer plan keeps its traffic limit in bandwidth_quota_mb (D-044).
     const body: Record<string, unknown> = kind === 'reseller'
@@ -918,6 +921,8 @@ export function planBody(kind: PlanKind, plan: EditedPlan, selection: RightsSele
         body.overselling = plan.overselling;
     }
     if (flags.narrowing) body.confirm_narrowing = true;
+    // The list of sites a lowered site limit stops that the save confirms (the server refuses another).
+    if (flags.narrowing && flags.stoppedToken) body.confirm_stopped = flags.stoppedToken;
     if (flags.overUsage && kind === 'customer') body.accept_over_usage = true;
     return body;
 }
