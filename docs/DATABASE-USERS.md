@@ -420,10 +420,14 @@ there.
   `transaction_timeout` (17+) are reset by the closing sessions right after
   they connect, where the server knows them.
 - Its answers are three (D-024): closed; verified not closed (the database
-  was no longer as read, its read-back refused, or it could not be entered),
-  with the reason; and unknown (the script got past `BEGIN` and then failed
-  or gave no read-back: rolled back, or committed with its answer lost; or
-  its client was ended at the deadline). On an unknown answer, or when the
+  was no longer as read, its read-back refused, it could not be entered, or
+  psql stopped at a server error before `COMMIT` was acknowledged, without
+  a fatal error or a lost connection, so the transaction was rolled back:
+  a recorded user's missing role, a lock or statement timeout), with the
+  database server's own message, which the page shows quoted after its own
+  words; and unknown (anything else after `BEGIN`: a lost connection, an
+  error after `COMMIT`, no read-back, or its client was ended at the
+  deadline). On an unknown answer, or when the
   panel's call got no answer at all, the panel keeps its record ("sending"),
   sends nothing again, and reads the database only after the Agent confirms
   that no client of a close or undo of that database runs (its own, or a
@@ -467,7 +471,13 @@ there.
   record of a close is never deleted while the database may be closed. A database an administrator opened again stays on
   the page as the administrator's choice ("Opened again by an
   administrator"), out of Problems now and the alert mail, and is never
-  closed again by itself.
+  closed again by itself. The rights written out as the default for the
+  database's owner (`{=Tc/owner,owner=CTc/owner}`, what an undo's `GRANT`
+  leaves) count as PostgreSQL's untouched default everywhere the panel asks
+  (what was found, the watch, the opened-again entry); rights that are the
+  default again after a close are said as such. Right after a round closed
+  a database, the page (which reads the last scan) shows that close from
+  its record.
 - When: after the panel has been up a few minutes, an update of it is
   verified, the server is not busy and the Agent is the same build (the
   database-rights loop's admission), then hourly. A scan reads every recorded
