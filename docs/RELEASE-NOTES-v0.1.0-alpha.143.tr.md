@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.143.md)
 
+> **Yayımlandı**, 22 Kasım 2026 (UTC): sürüm commit'i `462c854fb`, GitHub ön sürümü 07:21:01Z, indirme portalı yaklaşık 07:24Z (dış denetim 27/27).
+
 **Bir güvenlik sürümü: lütfen yakında güncelleyin.** Bir müşterinin başka
 bir müşteri gibi davranabildiği iki yolu kapatır: başka bir müşterinin alan
 adıyla imzalanan giden posta ve alpha.141'den önce açılan, sunucudaki her
