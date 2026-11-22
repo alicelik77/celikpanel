@@ -280,14 +280,181 @@ screen.**
   account; a site deployed from a Git repository may clone from an address
   on the server itself; testing a remote backup destination can reach
   addresses inside the server's network.
+- The lab found six more limits, each with what to do until alpha.144: see
+  "Found in the lab, planned for alpha.144" below.
 
 ## Checked in the lab
 
-**OPEN.** No lab run yet.
+Lab check finished: two runs on a pair of test servers, a Debian 13 main
+DNS server with PowerDNS and an Ubuntu 24.04 backup DNS server with BIND.
+Each run started from the alpha.142 state and followed the owner's path:
+both servers were updated through the panel's own update page. The first
+run (21 November 2026, UTC 22:30, to about 01:40 on 22 November with the
+clean-up) checked the release as it stood after the first fix round
+(`c012e3eac`, under the lab-only label v0.1.0-alpha.150). It found four
+display and wording defects and one state that did not clear; the second
+fix round corrected them. The second run (22 November 2026, UTC 03:38 to
+about 05:24) checked the final code (`1d3d8801a`, lab-only label
+v0.1.0-alpha.151) and found all five corrected. Two customers of one
+reseller, in separate accounts, played the two sides: alice, and bob, who
+tried to send mail as her and to reach her databases. Everything was done
+through the page's own buttons except where it says the lab did it. No hard
+failure in either run. What follows was seen on the final code, except
+where it says "(first run)": that was seen only in the first run, on the
+code before the second fix round.
+
+- **Before the update the ways were open** (alpha.142's code, first run):
+  bob's mailbox login sending with alice's address in "From" was signed for
+  her domain (`d=kahvedukkani.dr.test`) and the signature verified; mail
+  his site handed to port 25 on the server's own loopback address without
+  a login was signed for her domain too; his out-of-office reply was
+  accepted with her address and answered from it with her signature. In the
+  second run the old code again accepted that reply.
+- **Both servers updated through the panel's own update page by
+  themselves**, in about three minutes each (about two minutes in the
+  first run). Schema 80 → 81 was applied with the six name rules in place;
+  one panel and one agent ran on each server; no new failed service; web,
+  mail, DNS (the same answers from both servers) and the databases
+  answered.
+- **No mail signed with another customer's domain.** After the update:
+  - bob's login with alice's address in "From" was signed for his own
+    domain only (`d=pastane.dr.test`);
+  - mail his site handed to port 25 without a login was not signed, on the
+    loopback address and on the public address;
+  - his reply set to answer from her address lost that address at the
+    first start (a journal line and an audit row); its window said so once,
+    and saving her address again was refused with a sentence that does not
+    say whose it is (Turkish and English);
+  - legitimate mail of both customers was signed for their own domains and
+    verified; a forged message forwarded through her forwarder got no added
+    signature (first run).
+- **Replies follow name changes.** bob's reply answering from his own
+  forwarder was accepted and answered signed for his domain. When he
+  removed that forwarder, and when alice deleted a second domain that her
+  reply named, the reply was rewritten inside the same request, and its
+  window said which address was removed. With the mail store service
+  stopped, removing the forwarder turned the reply off, and its window said
+  so and to save it again.
+- **The owner's own signing file.** A signing file the owner had changed
+  was kept byte for byte, with the panel's text beside it and one line in
+  **Problems now** with his step. Once the owner added the login setting
+  (`SenderMacro {auth_authen}`) to his own file, the line went by itself at
+  the next panel start and the panel's file beside it was removed; his file
+  stayed as he had saved it, also when a new domain got its signing key
+  afterwards. The lab also saw alpha.142's code replace an owner-edited
+  signing file when a new domain got its key; this release leaves the
+  owner's file as it is on that path too. An open "who may hand mail over"
+  setting (`authorized_submit_users`) and a signing port held by another
+  program were each said plainly in **Problems now**, and each line went
+  once corrected. Port 25 followed a filter the owner added to the mail
+  server's list (first run).
+- **Older PostgreSQL databases.**
+  - The PostgreSQL page showed each watched database with the date its
+    watch began and when it would close by itself (first run).
+  - Nothing was closed during the day of watching. During that day another
+    customer's database account could still connect to them.
+  - A role the panel does not record, seen connected, ended the watch, and
+    the page named it (first run).
+  - With the watch record set back a day by the lab (the one stated write),
+    the next hourly check closed the database: the other customer's account
+    was refused, the database's own users got in, and the page showed the
+    close (by the panel, when, **Undo**) without **Read again**. **Undo**
+    gave the earlier rights back, the page did not call them changed
+    outside CelikPanel, and the next check did not close the database
+    again.
+  - A close while the owner held the database's row was answered after
+    about half a minute with "nothing was changed" and the database
+    server's message; no client was left behind and it was not sent again.
+  - A close that failed said why in the page's language, with the database
+    server's message in quotes.
+  - The owner's own database settings (read-only mode, his own role, no
+    lock wait) did not get in the way of reading, watching, closing or
+    undoing.
+  - A deleted database's record went with it.
+  - A database made after the update was closed to other accounts from the
+    start (first run).
+- **The corrections.** A subdomain inside alice's own domain under the
+  server's zone was created and answered from both servers (first run).
+  bob was still refused for every name he tried (the server's zone, a new
+  name under it, the panel's and the mail server's names, a name under
+  alice's alias) with the same sentence, which names nobody. The
+  administrator refused a name in another account was told the nearest
+  holder (first run). A Node.js site whose application had failed was
+  deleted in one press; its failed service went with it.
+- The usual pages on both servers loaded without an error.
+
+**Where the lab left the page's path.** As root on the lab servers, the lab
+changed the mail server's and the signing service's files as an owner would
+(a comment line and then the login setting in the signing file, the "who
+may hand mail over" setting, an extra port-25 filter), placed a pending
+restart marker by hand (first run), stopped and started the mail store
+service and the signing service, ran a dummy listener on the signing port,
+put a small mail script into bob's site to hand mail to port 25, sent test
+mail from outside, and registered the certificate tool with the lab's own
+certificate authority. As the database administrator it put databases into
+the state of ones made before alpha.141 (PostgreSQL's default rights),
+added a reporting role with a column right, and dropped a recorded user's
+role (in the first run it made it again later); as a database's owner it
+set his own database settings and held a transaction open. It restarted
+the panel to bring an hourly check forward. Once in each run, with the
+panel stopped, it wrote one row of the lab panel's database, which set a
+watch record back by a day. The administrator's placing of a name into
+another account was sent to the panel's API directly (first run).
+
+**Not checked:**
+
+- Webmail and the database web tools: the lab pair has no webmail address
+  and the tools are not installed (carried from alpha.142, still open).
+- Moving a subscription to another account while a reply names its domain:
+  the page offers this only as a request and an approval; covered by tests.
+- A mailbox login whose domain has no signing key: every domain gets one.
+- The signature of a panel notice: no way was found to send one in the
+  lab; covered by tests.
+- Backup and restore of a database whose owner set his own database
+  settings: time.
+- Ending the database client right after a close's commit: not tried;
+  covered by the engine tests.
+- The Agent stopped at the first start while a reply names another
+  customer's address: this could not be arranged without a second write to
+  the panel's database.
+- The journal line for a kept file mode: the one-time correction had
+  already run on these servers.
+- A healthy Node.js site created and deleted: time.
+- PostgreSQL versions other than the lab server's 17, and a server whose
+  templates are SQL_ASCII.
+- Moving a database to another PostgreSQL server version: not part of this
+  release.
+
+### Found in the lab, planned for alpha.144
+
+None of these is a security problem or data loss.
+
+1. An alias inside a customer's own domain is created, but on the lab pair
+   it got no DNS record: it did not answer from either server. Whether
+   releases before alpha.143 did the same was not established.
+2. When the administrator leaves the PostgreSQL page while a close is
+   running, the panel records the answer as lost although the close
+   finished on the server: the page says "sent, not yet confirmed" and the
+   close is not sent again. The database is never shown closed without its
+   **Undo**.
+3. The window of a failed close keeps the step "working on the server" with
+   a red mark, and its reason in the page's language is general ("the
+   database server did not do it"); the real reason is the database
+   server's quoted message.
+4. One refusal (an alias whose certificate step fails) appears in English
+   on the Turkish page.
+5. The English **Problems now** line says "1 PostgreSQL databases".
+6. Older than this release, seen on alpha.142's code in the first run and
+   not tried again on the final code: leaving the page while a mailbox is
+   being created can leave the mailbox on the server without a row in the
+   panel; creating it again then answers with an internal error. The way
+   out today: the administrator removes the mailbox on the server, or
+   creates it under another name.
 
 ### What to expect after updating
 
-- The update takes a few minutes and says by itself when it has finished.
+- The update takes about three minutes per server and says by itself when
+  it has finished.
 - The layout is schema 81: going back to alpha.142 means restoring the
   snapshot or backup taken before the update.
 - Mail sent with a mailbox login is signed only for its own domain; mail
@@ -295,14 +462,17 @@ screen.**
   longer signed.
 - An out-of-office reply that named an address not its own loses that
   address at the first start, and its window says once which address was
-  removed; where it could not be set again, it is turned off and its window
+  removed; where it cannot be set again, it is turned off and its window
   says to save it again.
 - A PostgreSQL database made before alpha.141 that nobody else is seen
   using is closed to other accounts by itself at the first hourly check at
   least 24 hours after its watch began, once at least 24 hourly checks have
-  read it; until then the PostgreSQL page shows when it closes. The others
-  are listed for the administrator in **Problems now** and on the
-  PostgreSQL page, each with one button to close it.
+  read it; until then the PostgreSQL page shows when it closes, and other
+  accounts can still connect to it. The others are listed for the
+  administrator in **Problems now** and on the PostgreSQL page, each with
+  one button to close it.
+- A signing file the owner edited by hand is kept, with one line in
+  **Problems now** that goes by itself once the login setting is in it.
 - A customer whose domain lies under a server name or an administrator's
   name can add subdomains of it again.
 

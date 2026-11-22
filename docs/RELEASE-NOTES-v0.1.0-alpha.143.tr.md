@@ -289,14 +289,185 @@ günceller.**
   her hesaba görünür; bir Git deposundan yayımlanan site sunucunun kendi
   adreslerinden birinden kopyalayabilir; uzak yedek hedefini denemek
   sunucunun ağı içindeki adreslere ulaşabilir.
+- Laboratuvar altı sınır daha buldu; her biri için alpha.144'e dek
+  yapılacak olan aşağıda, "Laboratuvarda bulunan, alpha.144'e planlananlar"
+  altında.
 
 ## Laboratuvarda denenenler
 
-**AÇIK.** Henüz laboratuvar çalışması yok.
+Laboratuvar denemesi bitti: bir test sunucusu çiftinde iki deneme,
+PowerDNS'li Debian 13 ana DNS sunucusu ve BIND'li Ubuntu 24.04 yedek DNS
+sunucusu. Her deneme alpha.142 durumundan başladı ve sahibin yolunu izledi:
+iki sunucu da panelin kendi güncelleme sayfasından güncellendi. Birinci
+deneme (21 Kasım 2026, UTC 22:30'dan toparlamayla birlikte 22 Kasım
+yaklaşık 01:40'a) sürümü ilk düzeltme turundan sonraki hâliyle denedi
+(`c012e3eac`, yalnız laboratuvara ait v0.1.0-alpha.150 etiketiyle). Dört
+görünüm ve ifade kusuru ile kalkmayan bir durum buldu; ikinci düzeltme turu
+bunları düzeltti. İkinci deneme (22 Kasım 2026, UTC 03:38'den yaklaşık
+05:24'e) son kodu denedi (`1d3d8801a`, yalnız laboratuvara ait
+v0.1.0-alpha.151 etiketi) ve beşinin de düzeldiğini buldu. İki tarafı, aynı
+bayinin ayrı hesaplardaki iki müşterisi oynadı: alice ve onun adına posta
+göndermeye ve veritabanlarına ulaşmaya çalışan bob. Laboratuvarın yaptığı
+yazılanlar dışında her şey sayfanın kendi düğmeleriyle yapıldı. İki
+denemede de ağır hata yok. Aşağıdakiler son kodda görüldü; "(birinci
+deneme)" yazanlar yalnız birinci denemede, ikinci düzeltme turundan önceki
+kodda görüldü.
+
+- **Güncellemeden önce yollar açıktı** (alpha.142'nin kodu, birinci
+  deneme): bob'un posta kutusu girişiyle, "Kimden" satırında alice'in
+  adresiyle gönderdiği posta onun alan adı için imzalandı
+  (`d=kahvedukkani.dr.test`) ve imza doğrulandı; sitesinin sunucunun kendi geri döngü adresinde 25.
+  porta girişsiz bıraktığı posta da onun alan adı için imzalandı; otomatik
+  yanıtı onun adresiyle kabul edildi ve o adresten onun imzasıyla yanıt
+  verdi. İkinci denemede eski kod o yanıtı yine kabul etti.
+- **İki sunucu da panelin kendi güncelleme sayfasından kendiliğinden
+  güncellendi**, her biri yaklaşık üç dakikada (birinci denemede yaklaşık
+  iki dakikada). Şema 80 → 81, altı ad kuralı yerindeyken uygulandı; her
+  sunucuda bir panel ve bir aracı çalıştı; yeni hatalı hizmet yok; web,
+  posta, DNS (iki sunucudan aynı yanıtlar) ve veritabanları yanıt verdi.
+- **Başka bir müşterinin alan adıyla imzalanan posta yok.** Güncellemeden
+  sonra:
+  - bob'un girişiyle, "Kimden" satırında alice'in adresiyle gönderdiği
+    posta yalnız kendi alan adı için imzalandı (`d=pastane.dr.test`);
+  - sitesinin 25. porta girişsiz bıraktığı posta, geri döngü adresinde de
+    genel adreste de imzalanmadı;
+  - onun adresinden yanıt verecek biçimde ayarlanan yanıtı ilk açılışta o
+    adresi kaybetti (bir günlük satırı ve bir denetim kaydı satırı);
+    penceresi bunu bir kez söyledi ve onun adresini yeniden kaydetmek,
+    kimin olduğunu söylemeyen bir cümleyle reddedildi (Türkçe ve
+    İngilizce);
+  - iki müşterinin olağan postası kendi alan adları için imzalandı ve
+    doğrulandı; onun yönlendirmesinden geçen sahte bir ileti eklenmiş bir
+    imza almadı (birinci deneme).
+- **Yanıtlar ad değişikliklerini izler.** bob'un kendi yönlendirmesinden
+  yanıt veren yanıtı kabul edildi ve kendi alan adı için imzalı yanıt
+  verdi. O yönlendirmeyi kaldırdığında ve alice yanıtının adlandırdığı ikinci
+  bir alan adını sildiğinde yanıt aynı istek içinde yeniden yazıldı ve
+  penceresi hangi adresin çıkarıldığını söyledi. Posta deposu hizmeti
+  durmuşken yönlendirmeyi kaldırmak yanıtı kapattı; penceresi bunu ve
+  yeniden kaydetmeyi söyledi.
+- **Sahibin kendi imza dosyası.** Sahibin değiştirdiği imza dosyası
+  birebir korundu; panelin metni yanında, **Şu anki sorunlar**da sahibin
+  adımıyla bir satır. Sahip kendi dosyasına giriş ayarını
+  (`SenderMacro {auth_authen}`) ekleyince satır sonraki panel açılışında
+  kendiliğinden kalktı ve panelin yanındaki dosyası silindi; sahibin dosyası
+  kaydettiği gibi kaldı, sonradan yeni bir alan adı imza anahtarını
+  aldığında da. Laboratuvar, alpha.142'nin kodunun yeni bir alan adı
+  anahtarını aldığında sahibin değiştirdiği imza dosyasını değiştirdiğini
+  de gördü; bu sürüm sahibin dosyasını o yolda da olduğu gibi bırakır. Açık
+  bir "posta kimler teslim edebilir" ayarı (`authorized_submit_users`) ve
+  başka bir programın tuttuğu imza portu, her biri **Şu anki sorunlar**da
+  açıkça söylendi; her satır düzeltilince kalktı. 25. port, sahibin posta
+  sunucusunun listesine eklediği bir süzgece uydu (birinci deneme).
+- **Eski PostgreSQL veritabanları.**
+  - PostgreSQL sayfası izlenen her veritabanını izlemenin başladığı tarihle
+    ve ne zaman kendiliğinden kapanacağıyla gösterdi (birinci deneme).
+  - İzleme günü boyunca hiçbir şey kapatılmadı. O gün boyunca başka bir
+    müşterinin veritabanı hesabı onlara hâlâ bağlanabildi.
+  - Panelin kaydetmediği bir rolün bağlı görülmesi izlemeyi bitirdi ve
+    sayfa onu adıyla söyledi (birinci deneme).
+  - İzleme kaydı laboratuvarca bir gün geri alınınca (yazılı tek yazma)
+    sonraki saatlik denetim veritabanını kapattı: diğer müşterinin hesabı
+    reddedildi, veritabanının kendi kullanıcıları girdi ve sayfa kapatmayı
+    (panel, zamanı, **Geri al**) **Yeniden oku** gerekmeden gösterdi. **Geri
+    al** önceki hakları geri verdi, sayfa onlara "CelikPanel dışında
+    değiştirilmiş" demedi ve sonraki denetim veritabanını yeniden
+    kapatmadı.
+  - Sahip veritabanının satırını tutarken yapılan kapatma yaklaşık yarım
+    dakika sonra "hiçbir şey değiştirilmedi" ve veritabanı sunucusunun
+    iletisiyle yanıtlandı; geride istemci kalmadı ve yeniden gönderilmedi.
+  - Başarısız bir kapatma nedenini sayfanın dilinde, veritabanı sunucusunun
+    iletisini tırnak içinde söyledi.
+  - Sahibin kendi veritabanı ayarları (salt okunur kip, kendi rolü, kilit
+    beklememe) okumayı, izlemeyi, kapatmayı ve geri almayı engellemedi.
+  - Silinen bir veritabanının kaydı onunla birlikte gitti.
+  - Güncellemeden sonra açılan bir veritabanı baştan başka hesaplara
+    kapalıydı (birinci deneme).
+- **Düzeltmeler.** alice'in sunucunun bölgesi altındaki kendi alan adının
+  içinde bir alt alan adı açıldı ve iki sunucudan da yanıt verdi (birinci
+  deneme). bob denediği her adda (sunucunun bölgesi, onun altında yeni bir
+  ad, panelin ve posta sunucusunun adları, alice'in takma adının altında
+  bir ad) kimseyi adlandırmayan aynı cümleyle reddedilmeye devam etti. Başka
+  bir hesaba ad yerleştirmesi reddedilen yöneticiye en yakın sahip
+  söylendi (birinci deneme). Uygulaması hata veren bir Node.js sitesi tek
+  basışta silindi; hatalı hizmeti de onunla gitti.
+- İki sunucuda da olağan sayfalar hatasız açıldı.
+
+**Laboratuvarın sayfanın yolundan ayrıldığı yerler.** Laboratuvar,
+laboratuvar sunucularında root olarak, posta sunucusunun ve imza hizmetinin
+dosyalarını bir sahibin yapacağı gibi değiştirdi (imza dosyasına önce bir
+yorum satırı, sonra giriş ayarı; "posta kimler teslim edebilir" ayarı; ek
+bir 25. port süzgeci), bekleyen bir yeniden başlatma işaretini elle koydu
+(birinci deneme), posta deposu hizmetini ve imza hizmetini durdurup
+başlattı, imza portunda sahte bir dinleyici çalıştırdı, 25. porta posta
+bırakmak için bob'un sitesine küçük bir posta betiği koydu, dışarıdan
+deneme postası gönderdi ve sertifika aracını laboratuvarın kendi sertifika
+yetkilisine kaydetti. Veritabanı yöneticisi olarak veritabanlarını
+alpha.141'den önce açılanların durumuna getirdi (PostgreSQL'in varsayılan
+hakları), sütun hakkı olan bir raporlama rolü ekledi ve kayıtlı bir
+kullanıcının rolünü sildi (birinci denemede sonra yeniden oluşturdu); bir
+veritabanının sahibi olarak kendi veritabanı ayarlarını yaptı ve bir
+işlemi açık tuttu. Saatlik bir denetimi öne almak için paneli yeniden
+başlattı. Her denemede bir kez, panel durmuşken, laboratuvar panelinin
+veritabanına bir izleme kaydını bir gün geri alan tek bir satır yazdı.
+Yöneticinin başka bir hesaba ad yerleştirmesi doğrudan panelin API'sine
+gönderildi (birinci deneme).
+
+**Denetlenmeyenler:**
+
+- Web postası ve veritabanı web araçları: laboratuvar çiftinin web postası
+  adresi yok ve araçlar kurulu değil (alpha.142'den taşındı, hâlâ açık).
+- Bir yanıt alan adını adlandırırken aboneliği başka bir hesaba taşımak:
+  sayfa bunu yalnız bir istek ve onay olarak sunuyor; testlerle kapsanıyor.
+- Alan adının imza anahtarı olmayan bir posta kutusu girişi: her alan adı
+  bir anahtar alıyor.
+- Bir panel bildiriminin imzası: laboratuvarda bir bildirim göndermenin
+  yolu bulunamadı; testlerle kapsanıyor.
+- Sahibi kendi veritabanı ayarlarını yapmış bir veritabanının yedeklenmesi
+  ve geri yüklenmesi: süre.
+- Bir kapatmanın kaydından hemen sonra veritabanı istemcisini sonlandırmak:
+  denenmedi; motor testleriyle kapsanıyor.
+- Bir yanıt başka bir müşterinin adresini adlandırırken ilk açılışta
+  aracının durmuş olması: panelin veritabanına ikinci bir yazma olmadan
+  hazırlanamadı.
+- Korunan dosya kipinin günlük satırı: tek seferlik düzeltme bu sunucularda
+  zaten çalışmıştı.
+- Sağlıklı bir Node.js sitesinin açılıp silinmesi: süre.
+- Laboratuvar sunucusunun 17'si dışındaki PostgreSQL sürümleri ve
+  şablonları SQL_ASCII olan bir sunucu.
+- Bir veritabanını başka bir PostgreSQL sunucu sürümüne taşımak: bu sürümün
+  parçası değil.
+
+### Laboratuvarda bulunan, alpha.144'e planlananlar
+
+Hiçbiri bir güvenlik ya da veri kaybı sorunu değil.
+
+1. Bir müşterinin kendi alan adının içindeki takma ad oluşturuluyor, ama
+   laboratuvar çiftinde DNS kaydı almadı: iki sunucudan da yanıt vermedi.
+   alpha.143'ten önceki sürümlerin de böyle yapıp yapmadığı belirlenmedi.
+2. Yönetici bir kapatma sürerken PostgreSQL sayfasından ayrılırsa, kapatma
+   sunucuda bittiği hâlde panel yanıtı kaybolmuş diye kaydediyor: sayfa
+   "gönderildi, henüz doğrulanmadı" diyor ve kapatma yeniden gönderilmiyor.
+   Veritabanı hiçbir zaman **Geri al** düğmesi olmadan kapalı gösterilmez.
+3. Başarısız bir kapatmanın penceresi "sunucuda çalışılıyor" adımını kırmızı
+   bir işaretle tutuyor ve sayfanın dilindeki nedeni genel ("veritabanı
+   sunucusu bunu yapmadı"); gerçek neden, veritabanı sunucusunun tırnak
+   içindeki iletisi.
+4. Bir ret (sertifika adımı başarısız olan bir takma ad) Türkçe sayfada
+   İngilizce çıkıyor.
+5. İngilizce **Problems now** satırı "1 PostgreSQL databases" diyor (tek
+   veritabanı için çoğul).
+6. Bu sürümden eski; birinci denemede alpha.142'nin kodunda görüldü ve son
+   kodda yeniden denenmedi: bir posta kutusu oluşturulurken sayfadan
+   ayrılmak, posta kutusunu sunucuda panelde satırı olmadan bırakabiliyor;
+   onu yeniden oluşturmak o zaman bir iç hatayla yanıtlanıyor. Bugünkü
+   çıkış yolu: yönetici posta kutusunu sunucuda kaldırır ya da onu başka
+   bir adla oluşturur.
 
 ### Güncellemeden sonra ne beklenir
 
-- Güncelleme birkaç dakika sürer ve bittiğini kendisi söyler.
+- Güncelleme sunucu başına yaklaşık üç dakika sürer ve bittiğini kendisi
+  söyler.
 - Yapı şema 81'dir: alpha.142'ye dönmek, güncellemeden önce alınan anlık
   görüntüyü ya da yedeği geri yüklemek demektir.
 - Posta kutusu girişiyle gönderilen posta yalnız kendi alan adı için
@@ -304,13 +475,16 @@ günceller.**
   artık imzalanmaz.
 - Kendisinin olmayan bir adresi adlandıran otomatik yanıt, ilk açılışta o
   adresi kaybeder ve penceresi hangi adresin çıkarıldığını bir kez söyler;
-  yeniden ayarlanamadıysa kapatılır ve penceresi yeniden kaydetmeyi söyler.
+  yeniden ayarlanamazsa kapatılır ve penceresi yeniden kaydetmeyi söyler.
 - alpha.141'den önce açılan ve başka kimsenin kullandığı görülmeyen bir
   PostgreSQL veritabanı, izlemesi başladıktan en az 24 saat sonraki ilk
   saatlik denetimde, en az 24 saatlik denetim onu okumuşsa kendiliğinden
   başka hesaplara kapatılır; o zamana dek PostgreSQL sayfası ne zaman
-  kapanacağını gösterir. Diğerleri yöneticiye **Şu anki sorunlar**da ve
-  PostgreSQL sayfasında, her biri onu kapatan tek düğmeyle listelenir.
+  kapanacağını gösterir ve başka hesaplar ona hâlâ bağlanabilir. Diğerleri
+  yöneticiye **Şu anki sorunlar**da ve PostgreSQL sayfasında, her biri onu
+  kapatan tek düğmeyle listelenir.
+- Sahibin elle düzenlediği imza dosyası korunur; **Şu anki sorunlar**daki
+  bir satır, giriş ayarı dosyaya girince kendiliğinden kalkar.
 - Alan adı bir sunucu adının ya da yöneticinin bir adının altında olan bir
   müşteri yeniden onun alt alan adlarını ekleyebilir.
 
