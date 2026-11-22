@@ -1,7 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -48,7 +52,49 @@ func (a *Agent) MailboxOnServerV1(req *transport.MailboxOnServerRequest, resp *t
 		return err
 	}
 	*resp = mailboxOnServer(users, vboxes, email, local, domain)
+	if root, err := managedMailRootPath(); err != nil {
+		resp.MessagesUnknown = true
+	} else if count, err := mailboxMessageCount(root, domain, local); err != nil {
+		resp.MessagesUnknown = true
+	} else {
+		resp.Messages = count
+	}
 	return nil
+}
+
+// mailboxMessageCount counts the messages in <root>/<domain>/<local>: the
+// regular files in any cur/ or new/ folder under it (Maildir and its
+// subfolders). No folder is 0. A link anywhere on the way or inside, or an
+// entry that cannot be read, is an error: the count is not known.
+func mailboxMessageCount(root, domain, local string) (int, error) {
+	for _, path := range []string{filepath.Join(root, domain), filepath.Join(root, domain, local)} {
+		info, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			return 0, nil
+		}
+		if err != nil {
+			return 0, err
+		}
+		if !info.IsDir() {
+			return 0, fmt.Errorf("%s is not a folder", path)
+		}
+	}
+	count := 0
+	err := filepath.WalkDir(filepath.Join(root, domain, local), func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return fmt.Errorf("%s is a link", path)
+		}
+		if entry.Type().IsRegular() {
+			if folder := filepath.Base(filepath.Dir(path)); folder == "cur" || folder == "new" {
+				count++
+			}
+		}
+		return nil
+	})
+	return count, err
 }
 
 // mailboxOnServer reads one address's lines. OwnFolder only when the map

@@ -1612,6 +1612,8 @@ func main() {
 			if err := sweepMailboxRecoveryLinks(context.Background(), panel.db.GetDB()); err != nil {
 				log.Printf("[mailbox-recovery] old links could not be removed: %v", err)
 			}
+			// alpha.144: alias records whose zone's publication waited.
+			panel.republishAliasZones(context.Background())
 		}
 	}()
 

@@ -51,7 +51,9 @@ export type ProblemKind =
     | 'postgresql_databases_open'
     | 'mail_signing'
     | 'mail_autoresponder_foreign'
-    | 'postgresql_databases_unreadable';
+    | 'postgresql_databases_unreadable'
+    | 'webmail_address_kept'
+    | 'webmail_address_refused';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -70,6 +72,9 @@ const KINDS: readonly ProblemKind[] = [
     'mail_autoresponder_foreign',
     // 22 Nov 2026: PostgreSQL databases the hourly checks could not read.
     'postgresql_databases_unreadable',
+    // alpha.144: webmail's address still in its earlier form (owner's file,
+    // or a rewrite nginx's test put back).
+    'webmail_address_kept', 'webmail_address_refused',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
@@ -108,6 +113,8 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
         return `pnow.${problem.kind}.body_one` as TranslationKey;
     }
+    // alpha.144: nginx's test named no file.
+    if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 

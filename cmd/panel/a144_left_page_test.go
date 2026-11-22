@@ -285,13 +285,18 @@ func TestA144AdministratorAdoptsAMailboxFoundOnTheServer(t *testing.T) {
 		"half@example.com":    {InUsers: true},
 		"owners@example.com":  {InUsers: true, InMap: true, OwnFolder: false, QuotaMB: 100},
 		"nolimit@example.com": {InUsers: true, InMap: true, OwnFolder: true},
+		// Review of PR #355, finding 3: mail in the folder, or a folder that
+		// could not be counted, is never handed over.
+		"full@example.com":    {InUsers: true, InMap: true, OwnFolder: true, QuotaMB: 100, Messages: 3},
+		"unknown@example.com": {InUsers: true, InMap: true, OwnFolder: true, QuotaMB: 100, MessagesUnknown: true},
 	}}
+	agent.passwordApplied = true
 	panel, domainID := newA144MailPanel(t, agent)
 	handler := a144MailHandler(panel)
 	path := "/api/v1/domains/" + strconv.Itoa(domainID) + "/mail/accounts/adopt"
 	adopt := func(caller *Caller, address string) (*httptest.ResponseRecorder, apiErrorBody) {
 		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, a144MailRequest(http.MethodPost, path, `{"address":"`+address+`"}`, caller, ""))
+		handler.ServeHTTP(recorder, a144MailRequest(http.MethodPost, path, `{"address":"`+address+`","password":"New-adopted-9"}`, caller, ""))
 		var body apiErrorBody
 		_ = json.Unmarshal(recorder.Body.Bytes(), &body)
 		return recorder, body
@@ -304,6 +309,8 @@ func TestA144AdministratorAdoptsAMailboxFoundOnTheServer(t *testing.T) {
 		"half@example.com":    mailAdoptIncomplete,
 		"owners@example.com":  mailAdoptElsewhere,
 		"nolimit@example.com": mailAdoptElsewhere,
+		"full@example.com":    mailAdoptMailFound,
+		"unknown@example.com": mailAdoptUnknown,
 	} {
 		if recorder, body := adopt(a144Admin, address); recorder.Code != http.StatusConflict || body.Code != errCodeMailAccountAdoptRefused || body.Reason != reason {
 			t.Fatalf("%s: %d %s", address, recorder.Code, recorder.Body.String())
@@ -323,6 +330,11 @@ func TestA144AdministratorAdoptsAMailboxFoundOnTheServer(t *testing.T) {
 	}
 	if agent.adds() != 0 {
 		t.Fatalf("the adoption created a mailbox on the server (%d calls)", agent.adds())
+	}
+	// The earlier password is replaced through the password change's step;
+	// the refused adoptions changed no password.
+	if calls := agent.passwordCallState(); len(calls) != 1 || calls[0].Email != "satis@example.com" || calls[0].NewPassword != "New-adopted-9" {
+		t.Fatalf("password replacements: %+v", calls)
 	}
 	// Adopted once: a second adoption is the ordinary "already exists".
 	if recorder, body := adopt(a144Admin, "satis@example.com"); recorder.Code != http.StatusConflict || body.Code != errCodeMailAccountExists {

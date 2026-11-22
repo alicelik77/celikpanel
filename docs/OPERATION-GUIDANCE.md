@@ -11375,22 +11375,36 @@ Source state with component tests; no lab run yet.
 - **A mailbox on the server without a row in the panel** (a creation whose
   record could not be written) is never an internal error:
   `MAIL_ACCOUNT_ON_SERVER_ONLY`. The administrator (reason `admin`) is
-  offered **Adopt into this domain**: it reads the server's lines for the
-  address and writes the row with the size limit found there; the mail, its
-  folder and its password are not touched; afterwards the mailbox is kept or
-  deleted like any other. Anybody else is told to ask the administrator; the
+  offered **Adopt into this domain**, allowed only while the mailbox's
+  folder holds no message (no file in any `cur/` or `new/` folder of it):
+  it reads the server's lines for the address, writes the row with the size
+  limit found there and replaces the password with the one typed in the
+  adoption window (the password change's own step), so no earlier password
+  works; the domain's signing key and the first-day sending limit then
+  apply as for a new mailbox. Afterwards it is kept or deleted like any
+  other. Anybody else is told to ask the administrator; the
   sentence names only the address asked for, in the person's own domain.
   The adoption refuses (`MAIL_ACCOUNT_ADOPT_REFUSED`) when the server no
   longer holds it (`gone`), holds one of its two lines only (`incomplete`:
   the server owner removes the line that is left), or holds it in a form
   CelikPanel does not write (`elsewhere`: another folder, account, shell or
-  no size limit — left to the server owner).
+  no size limit — left to the server owner), `mail_found` (mail is in
+  it: the server owner decides on the server) or `folder_unknown`.
 - **An alias answers in DNS.** An alias inside a zone this server keeps for
   the same account gets the site's addresses there (`dns`: `published`;
-  `pending` when the zone's publication did not finish — the next one
-  carries it; `kept` when the owner has another address at that name;
+  `pending` when the zone's publication did not finish — the Panel's hourly
+  round publishes it, and the alias row says "waiting to be published —
+  retried every hour, nothing to do"; `kept` when the name already has an
+  address record CelikPanel did not add (nothing of either type is added);
   `elsewhere` when no zone of the account here holds it). The records go
-  with the alias; only those CelikPanel added.
+  with the alias; only those CelikPanel added. A removal whose publication
+  waits is shown the same way and never stops a domain's deletion.
+- **Webmail's address in its earlier form** is a Problems-now line
+  (`webmail_address_kept`: the owner's file is kept, CelikPanel's text lies
+  beside it as `.celikpanel-pending`; `webmail_address_refused`: the
+  rewrite was put back because nginx's test failed, naming the file it
+  named). Who acts: the server owner. It goes by itself once the file is in
+  the current form; the Agent tries again at each start.
 - **Refusals in the page's language:** `ALIAS_CERTIFICATE_REISSUE_FAILED`
   (reasons `untrusted_source`, `not_acme`, `mail_name`),
   `ALIAS_CERTIFICATE_NOT_COVERING` (reason `custom`), `ALIAS_INVALID`,

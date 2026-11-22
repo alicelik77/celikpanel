@@ -226,6 +226,23 @@ export const enSiteConfigScreens = {
     'err.HSTS_REMOVAL_BLOCKED.enabled': 'It cannot be removed while HSTS is on: browsers were told to reach this site only over HTTPS. Turn HSTS off on the SSL/TLS tab first, then remove it. Nothing was changed.',
     'err.HSTS_REMOVAL_BLOCKED.retiring': 'It must stay until the earlier HSTS setting ends ({until}): browsers that saw it still reach this site only over HTTPS. Remove it after that time. Nothing was changed.',
     'err.SSL_NO_ACTIVE_CERTIFICATE': 'This domain has no active certificate, so there is nothing to remove. Nothing was changed.',
+    // alpha.144 (review of PR #355): adoption of an empty mailbox with a new password; the alias conflict; alias DNS waiting (in this part for its size)
+    'err.MAIL_ACCOUNT_ON_SERVER_ONLY': 'A mailbox named {address} already exists on the server, but the panel has no record of it, so nothing was changed. Ask the server’s administrator to look at it, or choose another name.',
+    'err.MAIL_ACCOUNT_ON_SERVER_ONLY.admin': 'A mailbox named {address} already exists on the server, but the panel has no record of it, so nothing was changed. If it holds no mail, adopt it into this domain with a new password; or choose another name.',
+    'mail.adopt.action': 'Adopt into this domain',
+    'mail.adopt.title': 'Adopt {address} into this domain',
+    'mail.adopt.body': 'Only a mailbox that holds no mail is adopted. Its password is replaced by the one you type here, so no earlier password works. It then follows this domain like a new mailbox: its size limit is the one found on the server, and the domain’s signing key and the first-day sending limit apply to it.',
+    'mail.adopt.done': '{address} is adopted into this domain with the new password.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED': 'The mailbox {address} was not adopted. Nothing was changed.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.gone': 'The server no longer holds a mailbox named {address}, so nothing was adopted. Create it again.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.incomplete': 'The server holds only part of the mailbox {address} (one of its two lines, in /etc/dovecot/users or /etc/postfix/vmailbox), so nothing was adopted. The server owner removes the line that is left; then create the mailbox again.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.elsewhere': 'The mailbox {address} on the server is not in the form CelikPanel writes (its folder, account or size limit is set differently), so nothing was adopted: it is left to the server owner. Choose another name, or the server owner removes it first.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.mail_found': 'Mail was found in the mailbox {address} on the server, so it was not adopted and nothing was changed: CelikPanel cannot tell whose mail it is. The server’s owner decides on the server what becomes of it.',
+    'err.MAIL_ACCOUNT_ADOPT_REFUSED.folder_unknown': 'Whether the mailbox {address} on the server holds mail could not be checked, so it was not adopted and nothing was changed. The server’s owner decides on the server what becomes of it.',
+    'err.ALIAS_CONFLICT': '{name} meets a name already in use on this server, so the alias was not added. Nothing was changed.',
+    'general.aliasDNS.waiting': 'DNS record waiting to be published — retried every hour, nothing to do',
+    'general.aliasDNS.removed.pending': 'The DNS record of {name} was removed on this server; its publication waits and is retried every hour by itself.',
+    'general.aliasDNS.removed.failed': 'The DNS record of {name} could not be removed on this server. It is removed when the alias is added and removed again, or remove it in the DNS records.',
 } as const;
 
 export type SiteConfigScreenKey = keyof typeof enSiteConfigScreens;

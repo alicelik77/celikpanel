@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { formatDate, formatTime } from '../lib/dateFormat';
 import { sizeWord } from './kit/words';
-import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
 import type { TranslationKey } from '../i18n/en';
 import { invalidate, lastKnown, useRemote, useRereadWhileRechecking, type Remote } from '../lib/remote';
@@ -247,37 +247,17 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         }
     };
 
-    // alpha.144 (alpha.143 lab): the administrator records a mailbox the
-    // server holds without a row; nothing on the server is changed.
-    const adoptAccount = async (address: string) => {
+    // alpha.144 (alpha.143 lab; review of PR #355, finding 3): the
+    // administrator adopts an empty mailbox the server holds without a row;
+    // its password is replaced by the one typed in the window (the shared
+    // password window below), so no earlier password survives.
+    const [adoptAddress, setAdoptAddress] = useState<string | null>(null);
+    const openAdopt = (address: string) => {
         if (readOnly || !address) return;
-        await confirmAction({
-            title: t('mail.adopt.title', { address }),
-            message: t('mail.adopt.body', { address }),
-            confirmLabel: t('mail.adopt.action'),
-            kept: [t('mail.adopt.kept')],
-            progressTitle: t('mail.adopt.progress', { address }),
-            action: async () => {
-                try {
-                    const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts/adopt`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ address }),
-                    });
-                    if (!res.ok) {
-                        const problem = await readApiError(res);
-                        return { state: res.status === 409 || res.status === 403 ? 'blocked' : 'failed', reason: apiErrorText(problem, t, 'mail.createFailed') };
-                    }
-                    setRefusal(null);
-                    setShowForm(false);
-                    reloadAccounts();
-                    return { state: 'done', message: t('mail.adopt.done', { address }) };
-                } catch {
-                    reloadAccounts();
-                    return { state: 'unknown', reason: t('common.resultUnknown') };
-                }
-            },
-        });
+        setNewPassword('');
+        setPasswordConfirmation('');
+        setPasswordRefusal(null);
+        setAdoptAddress(address);
     };
 
     const saveQuota = async (id: number) => {
@@ -433,9 +413,52 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const closePasswordDialog = () => {
         if (passwordSaving) return;
         setPasswordAccount(null);
+        setAdoptAddress(null);
         setNewPassword('');
         setPasswordConfirmation('');
         setPasswordRefusal(null);
+    };
+
+    const adoptWithPassword = async () => {
+        if (readOnly || passwordSaving || !adoptAddress || passwordRequestRef.current) return;
+        if (!passwordAcceptable(newPassword, 'mailbox') || newPassword !== passwordConfirmation) return;
+        const request = new AbortController();
+        passwordRequestRef.current = request;
+        const address = adoptAddress;
+        let succeeded = false;
+        setPasswordSaving(true);
+        setPasswordRefusal(null);
+        try {
+            const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts/adopt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address, password: newPassword }),
+                signal: request.signal,
+            });
+            if (!res.ok) {
+                // Said inside the window, by its code (the refusal names only
+                // the address asked for).
+                setPasswordRefusal(await readApiError(res));
+                return;
+            }
+            succeeded = true;
+            setRefusal(null);
+            setShowForm(false);
+            showToast('success', t('mail.adopt.done', { address }));
+            reloadAccounts();
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            setPasswordRefusal({ message: '' });
+            reloadAccounts();
+        } finally {
+            if (passwordRequestRef.current === request) {
+                passwordRequestRef.current = null;
+                setNewPassword('');
+                setPasswordConfirmation('');
+                setPasswordSaving(false);
+                if (succeeded) setAdoptAddress(null);
+            }
+        }
     };
 
     const rotateAccountPassword = async () => {
@@ -577,7 +600,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             {/* alpha.144: a mailbox on the server without a row; the administrator may adopt it. */}
             {!readOnly && refusal?.problem.code === 'MAIL_ACCOUNT_ON_SERVER_ONLY' && refusal.problem.reason === 'admin' && refusal.problem.vars?.address && (
                 <div className="-mt-2 mb-4" data-mail-adopt="">
-                    <Button onClick={() => void adoptAccount(refusal.problem.vars?.address ?? '')}>{t('mail.adopt.action')}</Button>
+                    <Button onClick={() => openAdopt(refusal.problem.vars?.address ?? '')}>{t('mail.adopt.action')}</Button>
                 </div>
             )}
             {!readOnly && showForm && listed.state === 'known' && (
@@ -879,6 +902,50 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                     address={autoreplyAccount.address}
                     onClose={() => setAutoreplyAccount(null)}
                 />
+            )}
+            {adoptAddress && !readOnly && (
+                <Dialog
+                    id="mail-adopt-dialog"
+                    icon={KeyRound}
+                    width="sm"
+                    busy={passwordSaving}
+                    onDismiss={closePasswordDialog}
+                    noValidate
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        void adoptWithPassword();
+                    }}
+                    title={t('mail.adopt.title', { address: adoptAddress })}
+                    description={t('mail.adopt.body')}
+                    actions={
+                        <>
+                            <Button type="button" onClick={closePasswordDialog} disabled={passwordSaving}>
+                                {t('common.cancel')}
+                            </Button>
+                            <Button type="submit" variant="primary" icon={KeyRound} disabled={passwordSaving || !passwordInRange || !passwordMatches}>
+                                {passwordSaving ? t('mail.passwordDialog.saving') : t('mail.adopt.action')}
+                            </Button>
+                        </>
+                    }
+                >
+                    <div className="space-y-3">
+                        <label className="block">
+                            <span className="mb-1 block text-xs text-fg-muted">{t('mail.passwordDialog.new')}</span>
+                            <PasswordInput field="mailbox" value={newPassword} onChange={setNewPassword} onGenerated={setPasswordConfirmation}
+                                maxLength={1024} autoComplete="new-password" required autoFocus disabled={passwordSaving}
+                                aria-invalid={newPassword.length > 0 && !passwordInRange} />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1 block text-xs text-fg-muted">{t('mail.passwordDialog.confirm')}</span>
+                            <PasswordInput value={passwordConfirmation} onChange={setPasswordConfirmation} maxLength={1024} autoComplete="new-password"
+                                required disabled={passwordSaving} aria-invalid={passwordConfirmation.length > 0 && !passwordMatches} />
+                        </label>
+                        {passwordConfirmation.length > 0 && !passwordMatches && (
+                            <p role="alert" className="text-xs text-danger">{t('mail.passwordDialog.mismatch')}</p>
+                        )}
+                        <ErrorBanner error={passwordRefusal} sentence="mail.createFailed" />
+                    </div>
+                </Dialog>
             )}
             {passwordAccount && !readOnly && (
                 <Dialog

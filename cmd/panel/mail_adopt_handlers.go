@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -15,11 +17,17 @@ import (
 // stopped between the Agent's work and its own row) left the mailbox in the
 // server's mail files; creating it again was answered "internal error".
 // Now it is said plainly: the administrator may adopt it into its domain
-// (one explicit action that reads the server and writes the row; the mail,
-// its folder and its password are not touched) and then keep it or delete
-// it like any mailbox; anybody else is told to ask the administrator. The
-// sentence names only the address asked for, inside the person's own domain:
-// nothing of another account.
+// and then keep it or delete it like any mailbox; anybody else is told to
+// ask the administrator. The sentence names only the address asked for,
+// inside the person's own domain: nothing of another account.
+//
+// Adoption never hands over mail or a password it cannot account for
+// (review of PR #355, finding 3): it is allowed only when the mailbox's
+// folder holds no message (no file in any cur/ or new/ folder of it), and
+// it always sets the new password the administrator types, through the same
+// Agent step as a password change, so no earlier password survives. Then
+// the mailbox follows the domain like a new one (signing key, first-day
+// sending limit, size limit).
 //
 // Panelde satırı olmadan sunucuda bulunan posta kutusu: yönetici onu alan
 // adına sahiplenebilir (sunucuyu okur, satırı yazar; postaya dokunmaz);
@@ -34,9 +42,11 @@ const (
 
 // Reasons of MAIL_ACCOUNT_ADOPT_REFUSED.
 const (
-	mailAdoptGone       = "gone"       // the server holds no line for it now
-	mailAdoptIncomplete = "incomplete" // only one of the two lines exists
-	mailAdoptElsewhere  = "elsewhere"  // its lines are not CelikPanel's form
+	mailAdoptGone       = "gone"           // the server holds no line for it now
+	mailAdoptIncomplete = "incomplete"     // only one of the two lines exists
+	mailAdoptElsewhere  = "elsewhere"      // its lines are not CelikPanel's form
+	mailAdoptMailFound  = "mail_found"     // its folder holds messages
+	mailAdoptUnknown    = "folder_unknown" // its folder could not be counted
 )
 
 // writeMailAccountOnServerOnly answers a creation the server refused because
@@ -49,7 +59,7 @@ func writeMailAccountOnServerOnly(w http.ResponseWriter, r *http.Request, addres
 		w.WriteHeader(http.StatusConflict)
 		_ = json.NewEncoder(w).Encode(apiErrorBody{
 			Error: "a mailbox named " + address + " already exists on the server without a record in the panel, so nothing was changed. " +
-				"Adopt it into this domain (CelikPanel records it as it is; its mail and password stay as they are), or choose another name.",
+				"Adopt it into this domain (allowed while it holds no mail; you give it a new password), or choose another name.",
 			Code: errCodeMailAccountOnServerOnly, Reason: "admin", Vars: vars,
 		})
 		return
@@ -60,9 +70,10 @@ func writeMailAccountOnServerOnly(w http.ResponseWriter, r *http.Request, addres
 }
 
 // handleAdoptEmailAccount: POST /api/v1/domains/{id}/mail/accounts/adopt
-// {address}. Administrator only. It reads what the server holds for the
-// address and writes the Panel's row with the size limit found there; it
-// changes nothing on the server.
+// {address, password}. Administrator only. It reads what the server holds
+// for the address; only an empty mailbox in CelikPanel's own form is
+// adopted: the row is written with the size limit found there and the
+// mailbox gets the new password (the earlier one is replaced).
 func (p *Panel) handleAdoptEmailAccount(w http.ResponseWriter, r *http.Request, domainID int) {
 	if r.Method != http.MethodPost {
 		rejectRouteMethod(w, []string{http.MethodPost})
@@ -74,10 +85,19 @@ func (p *Panel) handleAdoptEmailAccount(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	var request struct {
-		Address string `json:"address"`
+		Address  string `json:"address"`
+		Password string `json:"password"`
 	}
 	if err := decodeStrictJSON(w, r, &request); err != nil {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if refusal := passwordpolicy.CheckField(request.Password, "mailbox"); refusal != nil {
+		writePasswordRefusal(w, refusal)
+		return
+	}
+	if err := transport.ValidateMailboxPassword(request.Password); err != nil {
+		writeClientError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	domain, err := p.domainNameByIDStrict(r.Context(), domainID)
@@ -134,20 +154,51 @@ func (p *Panel) handleAdoptEmailAccount(w http.ResponseWriter, r *http.Request, 
 		refuse(mailAdoptElsewhere, "the mailbox "+address+" on the server is not in the form CelikPanel writes (its folder, account or size limit is set differently), so nothing was recorded: "+
 			"it is left to the server owner. Choose another name, or the server owner removes it first.")
 		return
+	case found.MessagesUnknown:
+		refuse(mailAdoptUnknown, "whether the mailbox "+address+" on the server holds mail could not be checked, so nothing was recorded: the server owner decides on the server what becomes of it.")
+		return
+	case found.Messages > 0:
+		refuse(mailAdoptMailFound, "mail was found in the mailbox "+address+" on the server, so it was not adopted and nothing was changed: "+
+			"whose mail it is is not known to CelikPanel. The server owner decides on the server what becomes of it.")
+		return
 	}
-	result, err := p.db.GetDB().ExecContext(r.Context(),
+	tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	result, err := tx.ExecContext(r.Context(),
 		"INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb) VALUES (?, ?, ?, ?)",
 		domainID, address, "managed-by-agent", found.QuotaMB)
 	if err != nil {
-		if isEmailAccountAddressTaken(err) {
+		rollbackErr := rollbackMailTx(tx, err)
+		if rollbackErr == err && isEmailAccountAddressTaken(err) {
 			writeMailAccountExists(w, address)
 			return
 		}
-		writeServerError(w, err)
+		writeServerError(w, rollbackErr)
 		return
 	}
 	newID, err := result.LastInsertId()
 	if err != nil {
+		writeServerError(w, rollbackMailTx(tx, err))
+		return
+	}
+	// The earlier password is replaced, through the password change's own
+	// Agent step; until it is confirmed the row is not kept.
+	var replaced transport.MailMutationResponse
+	if err := p.callAgentContext(r.Context(), "Agent.UpdateMailPassword", &transport.UpdateMailPasswordRequest{
+		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Email: address, NewPassword: request.Password,
+	}, &replaced); err != nil || !replaced.Applied {
+		_ = rollbackMailTx(tx, errors.New("password not replaced"))
+		if err != nil && agentAnsweredExactly(err, transport.MailConfigurationBusy) {
+			writeServerError(w, agentMutationBusy())
+			return
+		}
+		writeServerError(w, errors.New("the mailbox's new password was not confirmed by the Agent, so it was not adopted"))
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		writeServerError(w, err)
 		return
 	}

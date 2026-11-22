@@ -77,9 +77,13 @@ var (
 		digest: requestIdentityMailboxCreateDigest,
 	}
 	requestIdentityRouteMailAutoresponder = operationStepRoute("/api/v1/domains/{id}/mail/autoresponder")
-	// The administrator's adoption of a mailbox found on the server without
-	// a record (it reads the server and writes one row).
-	requestIdentityRouteMailboxAdopt = operationStepRoute("/api/v1/domains/{id}/mail/accounts/adopt")
+	// The administrator's adoption of an empty mailbox found on the server
+	// without a record (it reads the server, writes one row and sets the new
+	// password); the stored digest leaves the password out.
+	requestIdentityRouteMailboxAdopt = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/mail/accounts/adopt", timeout: operationStepRouteTimeout, optional: true,
+		digest: requestIdentityMailboxCreateDigest,
+	}
 )
 
 // requestIdentityMailboxCreateDigest is the part of a new mailbox's body that

@@ -237,7 +237,7 @@ export const enSitesScreens = {
     'general.aliasAdded': 'Alias {name} added',
     'general.aliasDeleted': 'Alias {name} deleted',
     // alpha.144: an alias answers in DNS like its domain.
-    'general.aliasDNS.pending': '{name} is saved in this server’s DNS, but its publication has not finished; it is published with the zone’s next change. The site already answers for it.',
+    'general.aliasDNS.pending': '{name} is saved in this server’s DNS, but its publication has not finished; it is retried every hour by itself, nothing to do. The site already answers for it.',
     'general.aliasDNS.kept': '{name} already has a different address in this server’s DNS, which was left as it is: point it to this server in the DNS records if the alias should reach this site.',
     'general.aliasDNS.failed': 'The DNS record of {name} could not be added on this server. Add an address record for it in the DNS records.',
     'general.confirmDeleteAlias': 'Delete alias {name}?',

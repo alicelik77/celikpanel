@@ -582,6 +582,14 @@ func alertLine(item pendingAlertMail) (string, string) {
 		}
 		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
 			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
+	case "webmail_address_kept":
+		// alpha.144: item.subject is the address, item.name CelikPanel's text beside it.
+		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: its web server file was changed by hand and kept. The server owner takes CelikPanel's text from %s (or adds its rules) and reloads nginx.", subject, item.name),
+			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini alır (ya da kurallarını ekler) ve nginx'i yeniden yükler.", subject, item.name)
+	case "webmail_address_refused":
+		// alpha.144: item.name is the file nginx's test named ("" when none).
+		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: nginx's configuration test failed (%s), so its new text was put back. Correct that file; CelikPanel writes the new text at its next start.", subject, item.name),
+			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", subject, item.name)
 	case "mail_autoresponder_foreign":
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),

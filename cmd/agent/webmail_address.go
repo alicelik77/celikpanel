@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
@@ -1394,6 +1395,7 @@ func reconcileWebmailAddressesAtStartup(ctx context.Context, run webmailCommandR
 			next := renderWebmailAddressConfig(host, form.challenge, form.root, form.fpm, form.withHTTP)
 			if err := applyWebmailNginxMutation(ctx, path, []byte(next), true, run); err != nil {
 				said = append(said, fmt.Sprintf("%s: kept in its earlier form (%v)", host, err))
+				noteWebmailAddressRewriteRefused(host, err)
 				continue
 			}
 			_ = os.Remove(path + webmailAddressPendingSuffix)
@@ -1426,4 +1428,57 @@ func reconcileWebmailAddressesAtStartup(ctx context.Context, run webmailCommandR
 		said = append(said, fmt.Sprintf("%s: changed by the owner and kept as it is; CelikPanel's current text, which refuses plugin copies, dumps and logs, is in %s", host, path+webmailAddressPendingSuffix))
 	}
 	return said
+}
+
+// webmailAddressRewriteRefusals keeps, per address, the file nginx's test
+// named when this start's rewrite was put back ("" when it named none).
+var (
+	webmailAddressRewriteRefusalsMu sync.Mutex
+	webmailAddressRewriteRefusals   = map[string]string{}
+)
+
+// nginxTestNamedFile is the file an nginx -t failure names ("in <file>:<n>").
+var nginxTestNamedFile = regexp.MustCompile(`in (/[^\s:]+):[0-9]+`)
+
+func noteWebmailAddressRewriteRefused(host string, err error) {
+	file := ""
+	if err != nil {
+		if m := nginxTestNamedFile.FindStringSubmatch(err.Error()); m != nil {
+			file = m[1]
+		}
+	}
+	webmailAddressRewriteRefusalsMu.Lock()
+	webmailAddressRewriteRefusals[host] = file
+	webmailAddressRewriteRefusalsMu.Unlock()
+}
+
+// webmailAddressCurrentMarker is in every text of the current form: an owner
+// who took CelikPanel's text (and added to it) is not named.
+const webmailAddressCurrentMarker = "location ~ ^/(plugins|skins|program)/ {"
+
+// WebmailAddressFormsV1 lists, read only, the address files that still serve
+// Roundcube's tree as alpha.143 and earlier did (alpha.144, review of PR
+// #355 finding 2): the Panel names each one in Problems now until it is in
+// the current form.
+func (a *Agent) WebmailAddressFormsV1(_ *transport.WebmailAddressFormsRequest, resp *transport.WebmailAddressFormsResponse) error {
+	*resp = transport.WebmailAddressFormsResponse{Open: []transport.WebmailAddressForm{}}
+	for _, host := range webmailAddressHosts() {
+		path := webmailAddressConfPath(host)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		form, managed := parseWebmailAddressConfig(host, string(content))
+		switch {
+		case managed && form.pending:
+		case managed && form.openLayout:
+			webmailAddressRewriteRefusalsMu.Lock()
+			file := webmailAddressRewriteRefusals[host]
+			webmailAddressRewriteRefusalsMu.Unlock()
+			resp.Open = append(resp.Open, transport.WebmailAddressForm{Host: host, State: "test_failed", File: file})
+		case !managed && !strings.Contains(string(content), webmailAddressCurrentMarker):
+			resp.Open = append(resp.Open, transport.WebmailAddressForm{Host: host, State: "owner_edited", File: path + webmailAddressPendingSuffix})
+		}
+	}
+	return nil
 }

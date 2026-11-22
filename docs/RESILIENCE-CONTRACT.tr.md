@@ -8537,14 +8537,20 @@ bağlantıyı tutar.
   bağlamda çalışırlar. Sayfadan çıkmak hiçbir şey bırakmaz; Panel'in durması
   istek satırını "bilinmiyor" bırakır, kapatma kaydı motordan uzlaştırılır,
   satırı olmayan posta kutusu açıkça söylenir ve yönetici onu alabilir.
-- **Alma sunucuda yalnız okur.** Panel satırı yalnız CelikPanel'in kendi
-  biçimi için yazar; gerisi sahibin kalır (D-022).
+- **Alma.** Panel yalnız CelikPanel'in kendi biçimindeki ve içinde ileti
+  olmayan kutuyu alır; satır kaydedilmeden önce parolayı değiştirir; gerisi
+  sahibin kalır (D-022).
 - **Takma ad DNS'i.** CelikPanel'in eklediği kayıtlar `alias_dns_v1:<takma ad>`
   notunda, kayıtlarla aynı işlemde tutulur; kaldırma yalnız onları siler.
+  Bitmeyen yayın bölgeyi işaretler, saatlik tur yayımlar; alan adı silmeyi
+  asla durdurmaz.
 - **Web postası adresi.** Yalnız `index.php` çalışır; bağlı klasörler yalnız
   durağan dosya verir; nokta dosyaları ve yedek görünümlü adlar reddedilir.
   Önceki biçimdeki dosyalar Agent'ın ilk açılışında bir kez yeniden yazılır;
-  sahibin dosyası korunur, metin yanına konur.
+  sahibin dosyası korunur, metin yanına konur; ikisi de dosya yeni biçime
+  geçene dek Şimdiki sorunlar'da bir satırdır. alpha.143'e otomatik geri dönüş
+  yeni dosyayı sahibinki sayar ve korur: web postası çalışmaya devam eder,
+  hiçbir şey yeniden açılmaz.
 - **Gece döndürmeden sonra trafik günlükleri.** nginx işçileri (`www-data`)
   `/var/log/celikpanel` klasöründen geçemiyordu; her döndürmeden sonra hata
   yazıp döndürülen dosyaya yazmayı sürdürüyorlardı. Agent'ın açılışında bir

@@ -32,6 +32,12 @@ import (
 
 const aliasDNSKeyPrefix = "alias_dns_v1:"
 
+// aliasDNSUnpublishedPrefix marks a zone whose alias records changed in the
+// ledger while its publication did not finish (review of PR #355, findings
+// 1 and 6): the hourly round publishes it again until it does
+// (republishAliasZones), and the alias rows say they wait.
+const aliasDNSUnpublishedPrefix = "alias_dns_unpublished_v1:"
+
 // aliasDNSRecord is one record CelikPanel added for an alias.
 type aliasDNSRecord struct {
 	Type    string `json:"type"`
@@ -166,9 +172,82 @@ func (p *Panel) publishAliasDNS(ctx context.Context, domainID int, alias string)
 	}
 	if err := p.syncZoneToDNS(ctx, zone, false); err != nil {
 		log.Printf("[alias-dns] %s: saved in %s, publication pending: %v", alias, zone, err)
+		p.markAliasZoneUnpublished(ctx, zone)
 		return aliasDNSPending
 	}
 	return aliasDNSPublished
+}
+
+// markAliasZoneUnpublished records that zone's alias records wait for their
+// publication.
+func (p *Panel) markAliasZoneUnpublished(ctx context.Context, zone string) {
+	if err := p.setSetting(context.WithoutCancel(ctx), aliasDNSUnpublishedPrefix+strings.ToLower(zone), "1"); err != nil {
+		log.Printf("[alias-dns] %s: the wait for publication could not be recorded: %v", zone, err)
+	}
+}
+
+// aliasZonesUnpublished lists the zones whose alias records wait.
+func (p *Panel) aliasZonesUnpublished(ctx context.Context) (map[string]bool, error) {
+	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT key FROM panel_settings WHERE key LIKE ?`, aliasDNSUnpublishedPrefix+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	zones := map[string]bool{}
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		zones[strings.TrimPrefix(key, aliasDNSUnpublishedPrefix)] = true
+	}
+	return zones, rows.Err()
+}
+
+// republishAliasZones publishes every zone whose alias records wait (the
+// Panel's hourly round); a zone that publishes is
+// no longer marked. It never adds or removes a record.
+func (p *Panel) republishAliasZones(ctx context.Context) {
+	zones, err := p.aliasZonesUnpublished(ctx)
+	if err != nil {
+		log.Printf("[alias-dns] the zones that wait could not be read: %v", err)
+		return
+	}
+	for zone := range zones {
+		var exists int
+		if err := p.db.GetDB().QueryRowContext(ctx, `SELECT COUNT(*) FROM pdns_domains WHERE name = ?`, zone).Scan(&exists); err != nil {
+			continue
+		}
+		if exists == 0 {
+			// The zone went with its domain: nothing to publish.
+			_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+zone)
+			continue
+		}
+		if err := p.syncZoneToDNS(ctx, zone, false); err != nil {
+			log.Printf("[alias-dns] %s: publication still waits: %v", zone, err)
+			continue
+		}
+		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+zone)
+		log.Printf("[alias-dns] %s: the alias records that waited are published", zone)
+	}
+}
+
+// aliasesWaitingForPublication are the aliases among aliases whose records
+// wait for their zone's publication.
+func (p *Panel) aliasesWaitingForPublication(ctx context.Context, aliases []string) []string {
+	zones, err := p.aliasZonesUnpublished(ctx)
+	if err != nil || len(zones) == 0 {
+		return nil
+	}
+	var waiting []string
+	for _, alias := range aliases {
+		raw := p.setting(ctx, aliasDNSKey(alias))
+		var added aliasDNSAdded
+		if raw != "" && json.Unmarshal([]byte(raw), &added) == nil && zones[strings.ToLower(added.Zone)] {
+			waiting = append(waiting, alias)
+		}
+	}
+	return waiting
 }
 
 // addAliasDNSRecords writes the records and the note of what was added in
@@ -201,18 +280,35 @@ func (p *Panel) addAliasDNSRecords(ctx context.Context, zone, alias string, addr
 	if cname > 0 {
 		return aliasDNSKept, fmt.Errorf("%s already has a CNAME record in %s; it was left as it is", alias, zone)
 	}
-	for _, address := range addresses {
-		var total, exact int
-		if err := tx.QueryRowContext(ctx, `
-			SELECT COUNT(*), COALESCE(SUM(CASE WHEN content = ? THEN 1 ELSE 0 END), 0)
-			FROM pdns_records WHERE domain_id = ? AND name = ? AND type = ?`,
-			address.Content, zoneID, alias, address.Type).Scan(&total, &exact); err != nil {
+	// Any address record at the name that CelikPanel did not add is the
+	// owner's: nothing is added beside it, of either type (review of PR
+	// #355, finding 4).
+	noted := map[aliasDNSRecord]bool{}
+	for _, record := range added.Records {
+		noted[record] = true
+	}
+	present := map[aliasDNSRecord]bool{}
+	existing, err := tx.QueryContext(ctx, `SELECT type, content FROM pdns_records WHERE domain_id = ? AND name = ? AND type IN ('A', 'AAAA')`, zoneID, alias)
+	if err != nil {
+		return aliasDNSFailed, err
+	}
+	for existing.Next() {
+		var record aliasDNSRecord
+		if err := existing.Scan(&record.Type, &record.Content); err != nil {
+			existing.Close()
 			return aliasDNSFailed, err
 		}
-		if total > exact {
-			return aliasDNSKept, fmt.Errorf("%s already has a different %s record in %s; it was left as it is", alias, address.Type, zone)
+		if !noted[record] {
+			existing.Close()
+			return aliasDNSKept, fmt.Errorf("%s already has a %s record in %s that CelikPanel did not add; it was left as it is", alias, record.Type, zone)
 		}
-		if exact > 0 {
+		present[record] = true
+	}
+	if err := existing.Close(); err != nil {
+		return aliasDNSFailed, err
+	}
+	for _, address := range addresses {
+		if present[address] {
 			continue
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO pdns_records (domain_id, name, type, content, ttl) VALUES (?, ?, ?, ?, 3600)`,
@@ -238,56 +334,65 @@ func (p *Panel) addAliasDNSRecords(ctx context.Context, zone, alias string, addr
 // withdrawAliasDNS removes the records CelikPanel added for alias (and only
 // those) and publishes their zone. skipZone, when set, is a zone that is
 // being removed with its domain: its records go with it, only the note is
-// removed. An error leaves the note, so a later removal finds the records.
-func (p *Panel) withdrawAliasDNS(ctx context.Context, alias, skipZone string) error {
+// removed. An error is returned only when nothing was removed (the note
+// stays, so a later removal finds the records); a publication that does not
+// finish after the removal is recorded as waiting (pending) and published by
+// the hourly round, never an error (review of PR #355, finding 1).
+func (p *Panel) withdrawAliasDNS(ctx context.Context, alias, skipZone string) (bool, error) {
 	alias = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(alias)), ".")
 	var raw string
 	err := p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, aliasDNSKey(alias)).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	var added aliasDNSAdded
 	if err := json.Unmarshal([]byte(raw), &added); err != nil || added.Version != 1 {
-		return fmt.Errorf("the note of %s's DNS records cannot be read", alias)
+		// A note no release wrote names nothing it could remove: it goes,
+		// and the records (if any) stay as the owner's.
+		log.Printf("[alias-dns] %s: the note of its records cannot be read and is removed; its records, if any, are left", alias)
+		_, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSKey(alias))
+		return false, err
 	}
 	if added.Zone == "" || strings.EqualFold(added.Zone, skipZone) {
 		_, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSKey(alias))
-		return err
+		return false, err
 	}
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
 	var zoneID int
 	zoneErr := tx.QueryRowContext(ctx, `SELECT id FROM pdns_domains WHERE name = ?`, added.Zone).Scan(&zoneID)
 	if zoneErr != nil && !errors.Is(zoneErr, sql.ErrNoRows) {
-		return zoneErr
+		return false, zoneErr
 	}
 	if zoneErr == nil {
 		for _, record := range added.Records {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM pdns_records WHERE domain_id = ? AND name = ? AND type = ? AND content = ?`,
 				zoneID, alias, record.Type, record.Content); err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSKey(alias)); err != nil {
-		return err
+		return false, err
 	}
 	if err := tx.Commit(); err != nil {
-		return err
+		return false, err
 	}
 	if zoneErr != nil || len(added.Records) == 0 {
-		return nil
+		return false, nil
 	}
 	if err := p.syncZoneToDNS(ctx, added.Zone, false); err != nil {
-		return fmt.Errorf("the records of %s were removed from %s, but its publication is pending: %w", alias, added.Zone, err)
+		log.Printf("[alias-dns] the records of %s were removed from %s; its publication waits and is retried every hour: %v", alias, added.Zone, err)
+		p.markAliasZoneUnpublished(ctx, added.Zone)
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 // withdrawDomainAliasesDNS removes the alias records of a domain being
@@ -312,7 +417,7 @@ func (p *Panel) withdrawDomainAliasesDNS(ctx context.Context, domain, ownZone st
 	}
 	var errs []error
 	for _, alias := range aliases {
-		if err := p.withdrawAliasDNS(ctx, alias, ownZone); err != nil {
+		if _, err := p.withdrawAliasDNS(ctx, alias, ownZone); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -327,4 +432,20 @@ func readSettingTx(ctx context.Context, tx *sql.Tx, key string) (string, error) 
 		return "", nil
 	}
 	return value, err
+}
+
+// aliasDNSRemovalOutcome removes an alias's records after the alias went and
+// says what became of them (the answer's "dns"): removed, pending (removed
+// here, the publication waits and is retried every hour) or failed (nothing
+// removed; the records stay until the next removal finds them).
+func (p *Panel) aliasDNSRemovalOutcome(ctx context.Context, alias string) string {
+	pending, err := p.withdrawAliasDNS(ctx, alias, "")
+	switch {
+	case err != nil:
+		log.Printf("[alias-dns] %s: its records could not be removed: %v", alias, err)
+		return aliasDNSFailed
+	case pending:
+		return aliasDNSPending
+	}
+	return "removed"
 }

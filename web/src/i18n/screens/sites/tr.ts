@@ -230,7 +230,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'general.add': 'Ekle',
     'general.aliasAdded': '{name} takma adı eklendi',
     'general.aliasDeleted': '{name} takma adı silindi',
-    'general.aliasDNS.pending': '{name} bu sunucunun DNS’ine kaydedildi ama yayımlanması bitmedi; bölgenin bir sonraki değişikliğiyle yayımlanır. Site onun için şimdiden yanıt veriyor.',
+    'general.aliasDNS.pending': '{name} bu sunucunun DNS’ine kaydedildi ama yayımlanması bitmedi; her saat kendiliğinden yeniden denenir, bir şey yapmanız gerekmez. Site onun için şimdiden yanıt veriyor.',
     'general.aliasDNS.kept': '{name} bu sunucunun DNS’inde zaten başka bir adrese gidiyor; olduğu gibi bırakıldı. Takma ad bu siteye ulaşacaksa DNS kayıtlarından onu bu sunucuya yönlendirin.',
     'general.aliasDNS.failed': '{name} için DNS kaydı bu sunucuda eklenemedi. DNS kayıtlarından onun için bir adres kaydı ekleyin.',
     'general.confirmDeleteAlias': '{name} takma adı silinsin mi?',

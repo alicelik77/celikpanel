@@ -93,7 +93,7 @@ func TestA144AliasInsideItsAccountsZoneAnswersAndGoesAgain(t *testing.T) {
 
 	// Removed with the alias, and the removal is published.
 	before := len(agent.syncCalls)
-	if err := p.withdrawAliasDNS(ctx, "kampanya.randevu.test", ""); err != nil {
+	if pending, err := p.withdrawAliasDNS(ctx, "kampanya.randevu.test", ""); err != nil || pending {
 		t.Fatal(err)
 	}
 	assertSubdomainRecordCount(t, p, "randevu.test", "kampanya.randevu.test", "A", "192.0.3.210", 0)
@@ -118,15 +118,15 @@ func TestA144AliasNeverTakesTheOwnersRecords(t *testing.T) {
 	p, _ := newA144AliasDNSPanel(t)
 	ctx := context.Background()
 	zoneID := strictDNSZoneID(t, p, "randevu.test")
-	// The owner already points the name here: nothing is added, and the
-	// alias's removal leaves the owner's record.
+	// The owner already points the name here: the record is the owner's
+	// (kept), nothing is added, and the alias's removal leaves it.
 	if _, err := p.db.GetDB().Exec(`INSERT INTO pdns_records (domain_id, name, type, content, ttl) VALUES (?, 'own.randevu.test', 'A', '192.0.3.210', 600)`, zoneID); err != nil {
 		t.Fatal(err)
 	}
-	if got := p.publishAliasDNS(ctx, 7121, "own.randevu.test"); got != aliasDNSPublished {
+	if got := p.publishAliasDNS(ctx, 7121, "own.randevu.test"); got != aliasDNSKept {
 		t.Fatalf("publish over the owner's equal record: %s", got)
 	}
-	if err := p.withdrawAliasDNS(ctx, "own.randevu.test", ""); err != nil {
+	if _, err := p.withdrawAliasDNS(ctx, "own.randevu.test", ""); err != nil {
 		t.Fatal(err)
 	}
 	assertSubdomainRecordCount(t, p, "randevu.test", "own.randevu.test", "A", "192.0.3.210", 1)
@@ -189,5 +189,105 @@ func TestA144AliasRefusalsAreCoded(t *testing.T) {
 	}
 	if writeHSTSRemovalRefusal(httptest.NewRecorder(), context.Canceled, "the alias") {
 		t.Fatal("another error taken for an HSTS refusal")
+	}
+}
+
+// Review of PR #355, finding 4: an owner's A record at the name (no AAAA)
+// keeps the panel from adding an AAAA beside it.
+func TestA144AliasAddsNothingBesideAnOwnersAddressRecord(t *testing.T) {
+	p, _ := newA144AliasDNSPanel(t)
+	t.Setenv("CELIKPANEL_SERVER_IPV6", "2001:db8::210")
+	zoneID := strictDNSZoneID(t, p, "randevu.test")
+	if _, err := p.db.GetDB().Exec(`INSERT INTO pdns_records (domain_id, name, type, content, ttl) VALUES (?, 'shop.randevu.test', 'A', '192.0.3.210', 600)`, zoneID); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.publishAliasDNS(context.Background(), 7121, "shop.randevu.test"); got != aliasDNSKept {
+		t.Fatalf("beside the owner's A: %s", got)
+	}
+	assertSubdomainRecordCount(t, p, "randevu.test", "shop.randevu.test", "AAAA", "2001:db8::210", 0)
+	if raw := p.setting(context.Background(), aliasDNSKey("shop.randevu.test")); raw != "" {
+		t.Fatalf("a note was kept: %s", raw)
+	}
+}
+
+// Review of PR #355, findings 1 and 6: a removal whose publication does not
+// finish is no error of the domain's deletion; the zone is marked as
+// waiting, the alias rows say so, and the hourly round publishes it.
+func TestA144AliasPublicationThatWaitsIsRetriedAndNeverStopsADeletion(t *testing.T) {
+	p, agent := newA144AliasDNSPanel(t)
+	ctx := context.Background()
+	if got := p.publishAliasDNS(ctx, 7121, "kampanya.kahve.test"); got != aliasDNSPublished {
+		t.Fatalf("publish: %s", got)
+	}
+	if _, err := p.db.GetDB().Exec(`INSERT INTO domain_aliases (domain_id, alias) VALUES (7121, 'kampanya.kahve.test')`); err != nil {
+		t.Fatal(err)
+	}
+	// The backup waits (the publication of kahve.test does not finish).
+	agent.mu.Lock()
+	agent.failZone = "kahve.test"
+	agent.mu.Unlock()
+	if err := p.withdrawDomainAliasesDNS(ctx, "randevu.test", "randevu.test"); err != nil {
+		t.Fatalf("the deletion's alias step stopped: %v", err)
+	}
+	assertSubdomainRecordCount(t, p, "kahve.test", "kampanya.kahve.test", "A", "192.0.3.210", 0)
+	if zones, _ := p.aliasZonesUnpublished(ctx); !zones["kahve.test"] {
+		t.Fatalf("the wait was not recorded: %v", zones)
+	}
+	// An alias whose record waits is named as waiting on its domain's page.
+	if got := p.publishAliasDNS(ctx, 7122, "neu.kahve.test"); got != aliasDNSPending {
+		t.Fatalf("publish while waiting: %s", got)
+	}
+	if waiting := p.aliasesWaitingForPublication(ctx, []string{"neu.kahve.test", "other.example"}); len(waiting) != 1 || waiting[0] != "neu.kahve.test" {
+		t.Fatalf("waiting aliases: %v", waiting)
+	}
+	// The hourly round publishes it once the backup answers, and the wait goes.
+	agent.mu.Lock()
+	agent.failZone = ""
+	agent.mu.Unlock()
+	before := len(agent.syncCalls)
+	p.republishAliasZones(ctx)
+	if len(agent.syncCalls) == before || !a144Published(a144SyncedRecords(agent, "kahve.test"), "neu.kahve.test", "A", "192.0.3.210") ||
+		a144Published(a144SyncedRecords(agent, "kahve.test"), "kampanya.kahve.test", "A", "192.0.3.210") {
+		t.Fatalf("the round did not publish the waiting zone: %+v", a144SyncedRecords(agent, "kahve.test"))
+	}
+	if zones, _ := p.aliasZonesUnpublished(ctx); len(zones) != 0 {
+		t.Fatalf("the wait stayed after publication: %v", zones)
+	}
+}
+
+// Review of PR #355, finding 7: a domain whose own DNS is managed elsewhere
+// still takes its alias records out of a zone of the account kept here.
+func TestA144DeletingADomainWithExternalDNSRemovesItsAliasRecordsHere(t *testing.T) {
+	p, _ := newA144AliasDNSPanel(t)
+	ctx := context.Background()
+	if _, err := p.db.GetDB().Exec(`
+		INSERT INTO domains (id, subscription_id, name, status, dns_management) VALUES (7124, 7111, 'elsewhere.example', 'active', 'external');
+		INSERT INTO domain_aliases (domain_id, alias) VALUES (7124, 'promo.kahve.test');`); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.publishAliasDNS(ctx, 7124, "promo.kahve.test"); got != aliasDNSPublished {
+		t.Fatalf("publish: %s", got)
+	}
+	if err := p.removeDomainDNSForDeletion(ctx, "elsewhere.example", ""); err != nil {
+		t.Fatal(err)
+	}
+	assertSubdomainRecordCount(t, p, "kahve.test", "promo.kahve.test", "A", "192.0.3.210", 0)
+}
+
+// Review of PR #355, finding 5: the handlers' own name checks answer coded.
+func TestA144AliasHandlersRefuseAnInvalidNameCoded(t *testing.T) {
+	p := newDNSPanelForTest(t)
+	for _, c := range []struct {
+		method, path, body string
+	}{
+		{http.MethodPost, "/api/v1/domains/7/aliases", `{"alias":"a..b"}`},
+		{http.MethodDelete, "/api/v1/domains/7/aliases/a..b", ""},
+	} {
+		recorder := httptest.NewRecorder()
+		p.handleDomainAliases(recorder, httptest.NewRequest(c.method, c.path, strings.NewReader(c.body)))
+		var body apiErrorBody
+		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil || recorder.Code != http.StatusBadRequest || body.Code != errCodeAliasInvalid {
+			t.Fatalf("%s: %d %s", c.method, recorder.Code, recorder.Body.String())
+		}
 	}
 }

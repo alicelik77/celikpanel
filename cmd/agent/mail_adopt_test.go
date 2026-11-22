@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 // alpha.144: what the server holds for one address, read before the
 // administrator's adoption; only CelikPanel's own form is adoptable.
@@ -40,5 +44,38 @@ func TestMailboxOnServerReadsOnlyCelikPanelsOwnForm(t *testing.T) {
 		if got.InUsers != want.users || got.InMap != want.inMap || got.OwnFolder != want.own || got.QuotaMB != want.quota {
 			t.Errorf("%s: %+v, want %+v", email, got, want)
 		}
+	}
+}
+
+// Review of PR #355, finding 3: adoption needs an empty folder; the count is
+// the files in any cur/ or new/ folder of the mailbox (and its subfolders);
+// a link makes it unknown.
+func TestMailboxMessageCountReadsCurAndNewOnly(t *testing.T) {
+	root := t.TempDir()
+	if n, err := mailboxMessageCount(root, "example.com", "none"); err != nil || n != 0 {
+		t.Fatalf("no folder: %d %v", n, err)
+	}
+	box := filepath.Join(root, "example.com", "satis")
+	for _, dir := range []string{"cur", "new", "tmp", ".Sent/cur", ".Sent/new"} {
+		if err := os.MkdirAll(filepath.Join(box, dir), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"dovecot.index", "dovecot-uidlist", "tmp/partial", "subscriptions"} {
+		_ = os.WriteFile(filepath.Join(box, name), []byte("x"), 0o600)
+	}
+	if n, err := mailboxMessageCount(root, "example.com", "satis"); err != nil || n != 0 {
+		t.Fatalf("an empty mailbox with Dovecot's own files: %d %v", n, err)
+	}
+	_ = os.WriteFile(filepath.Join(box, "new", "1.mail"), []byte("x"), 0o600)
+	_ = os.WriteFile(filepath.Join(box, ".Sent", "cur", "2.mail:2,S"), []byte("x"), 0o600)
+	if n, err := mailboxMessageCount(root, "example.com", "satis"); err != nil || n != 2 {
+		t.Fatalf("two messages: %d %v", n, err)
+	}
+	if err := os.Symlink("/etc", filepath.Join(box, ".Trash")); err != nil {
+		t.Skip("links not available")
+	}
+	if _, err := mailboxMessageCount(root, "example.com", "satis"); err == nil {
+		t.Fatal("a link inside the mailbox was counted through")
 	}
 }

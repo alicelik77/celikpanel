@@ -28,6 +28,7 @@ type DomainGeneralSettings struct {
 	RedirectWWWAvailable bool     `json:"redirect_www_available"`
 	RedirectHTTPS        bool     `json:"redirect_https"`
 	Aliases              []string `json:"aliases"`
+	AliasesDNSPending    []string `json:"aliases_dns_pending,omitempty"`
 }
 
 type UpdateGeneralSettingsRequest struct {
@@ -471,6 +472,9 @@ func (p *Panel) handleGetGeneralSettings(w http.ResponseWriter, r *http.Request,
 		RedirectWWWAvailable: redirectWWWAvailable,
 		RedirectHTTPS:        site.RedirectHTTPS,
 		Aliases:              aliases,
+		// alpha.144: aliases whose DNS records wait for their zone's
+		// publication (retried every hour).
+		AliasesDNSPending: p.aliasesWaitingForPublication(r.Context(), aliases),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -563,7 +567,7 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 
 	alias, err := canonicalDomainAlias(req.Alias)
 	if err != nil {
-		writeClientError(w, http.StatusBadRequest, err.Error())
+		writeCodedErrorVars(w, http.StatusBadRequest, errCodeAliasInvalid, err.Error(), "", nil, map[string]string{"name": req.Alias})
 		return
 	}
 	unlockAlias := lockDomainAliasMutation(alias)
@@ -639,7 +643,7 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 		// it; what this added goes again if the alias is not added.
 		dnsOutcome := p.publishAliasDNS(ctx, domainID, alias)
 		withdrawDNS := func() {
-			if err := p.withdrawAliasDNS(ctx, alias, ""); err != nil {
+			if _, err := p.withdrawAliasDNS(ctx, alias, ""); err != nil {
 				log.Printf("[alias-dns] %s: %v", alias, err)
 			}
 		}
@@ -759,12 +763,10 @@ func (p *Panel) handleAddAlias(w http.ResponseWriter, r *http.Request, domainID 
 		switch {
 		case errors.As(err, &refusal):
 			writeHostnameClaimRefusal(w, currentCaller(r), refusal)
-		case errors.Is(err, errInvalidDomainAlias):
-			writeCodedErrorVars(w, http.StatusBadRequest, errCodeAliasInvalid, err.Error(), "", nil, map[string]string{"name": req.Alias})
 		case errors.Is(err, errAliasCertificateCoverage):
 			writeCodedErrorVars(w, http.StatusConflict, errCodeAliasCertificateNotCovering, err.Error(), "", nil, map[string]string{"name": alias})
 		case errors.Is(err, errDomainAliasConflict):
-			http.Error(w, err.Error(), http.StatusConflict)
+			writeCodedErrorVars(w, http.StatusConflict, errCodeAliasConflict, err.Error(), "", nil, map[string]string{"name": alias})
 		default:
 			writeServerError(w, err)
 		}
@@ -787,7 +789,7 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 
 	alias, err := canonicalDomainAlias(pathParts[6])
 	if err != nil {
-		writeClientError(w, http.StatusBadRequest, err.Error())
+		writeCodedErrorVars(w, http.StatusBadRequest, errCodeAliasInvalid, err.Error(), "", nil, map[string]string{"name": pathParts[6]})
 		return
 	}
 	unlockAlias := lockDomainAliasMutation(alias)
@@ -875,11 +877,10 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 		_, err := p.mutateAliasAndActivateCertificate(
 			ctx, domainID, alias, false, install,
 		)
+		dnsOutcome := ""
 		if err == nil {
 			// alpha.144: the records CelikPanel added for it go with it.
-			if dnsErr := p.withdrawAliasDNS(ctx, alias, ""); dnsErr != nil {
-				log.Printf("[alias-dns] %s: %v", alias, dnsErr)
-			}
+			dnsOutcome = p.aliasDNSRemovalOutcome(ctx, alias)
 		}
 		if err != nil {
 			cleanupCtx, cleanupCancel := sslCompensationContext()
@@ -951,6 +952,7 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 		answer := map[string]any{
 			"status":               "success",
 			"certificate_reissued": true,
+			"dns":                  dnsOutcome,
 		}
 		if waitingForOwner {
 			answer["status"] = sslWaitingForOwner
@@ -966,8 +968,6 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 	)
 	if err != nil {
 		switch {
-		case errors.Is(err, errInvalidDomainAlias):
-			http.Error(w, err.Error(), http.StatusBadRequest)
 		case errors.Is(err, errDomainAliasNotFound):
 			writeCodedErrorVars(w, http.StatusNotFound, errCodeAliasNotFound, "Alias not found", "", nil, map[string]string{"name": alias})
 		default:
@@ -980,11 +980,7 @@ func (p *Panel) handleDeleteAlias(w http.ResponseWriter, r *http.Request, domain
 	}
 
 	// alpha.144: the records CelikPanel added for it go with it.
-	dnsOutcome := "removed"
-	if err := p.withdrawAliasDNS(ctx, alias, ""); err != nil {
-		log.Printf("[alias-dns] %s: %v", alias, err)
-		dnsOutcome = aliasDNSPending
-	}
+	dnsOutcome := p.aliasDNSRemovalOutcome(ctx, alias)
 	p.audit(r, "domain.alias.delete", "domain", domainID)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success", "dns": dnsOutcome})

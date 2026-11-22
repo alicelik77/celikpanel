@@ -51,4 +51,32 @@ type MailboxOnServerResponse struct {
 	InMap     bool `json:"in_map"`
 	OwnFolder bool `json:"own_folder"`
 	QuotaMB   int  `json:"quota_mb"`
+	// Messages is how many messages its folder <mail root>/<domain>/<local>
+	// holds: regular files in any cur/ or new/ folder of it (the mailbox and
+	// its subfolders); 0 when the folder does not exist. MessagesUnknown:
+	// they could not be counted (an unreadable entry or a link in it).
+	Messages        int  `json:"messages"`
+	MessagesUnknown bool `json:"messages_unknown,omitempty"`
+}
+
+// WebmailAddressFormsRequest is Agent.WebmailAddressFormsV1's request (read
+// only; alpha.144).
+type WebmailAddressFormsRequest struct{}
+
+// WebmailAddressForm is one webmail address file that still serves
+// Roundcube's tree as alpha.143 and earlier did. State "owner_edited": the
+// owner changed the file and it is kept; File is CelikPanel's current text
+// beside it. State "test_failed": it is CelikPanel's earlier text and its
+// rewrite was put back because nginx's configuration test failed; File is
+// the file the test named ("" when it named none).
+type WebmailAddressForm struct {
+	Host  string `json:"host"`
+	State string `json:"state"`
+	File  string `json:"file,omitempty"`
+}
+
+// WebmailAddressFormsResponse lists the address files not in the current
+// form; an empty list: every address file is (or there is none).
+type WebmailAddressFormsResponse struct {
+	Open []WebmailAddressForm `json:"open"`
 }

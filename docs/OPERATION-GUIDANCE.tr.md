@@ -11260,20 +11260,26 @@ Bileşen testleriyle kaynak durumu; henüz laboratuvar denemesi yok.
   eksik, adı geçen şey yok, sunucu reddetti), sonra veritabanı sunucusunun
   iletisini tırnak içinde verir.
 - **Panelde satırı olmadan sunucuda bulunan posta kutusu** asla iç hata
-  değildir. Yöneticiye **Bu alan adına al** sunulur: sunucunun bu adres için
-  tuttuğu satırları okur ve oradaki boyut sınırıyla satırı yazar; postaya,
-  klasörüne ve parolasına dokunulmaz; sonra her posta kutusu gibi tutulur ya da
+  değildir. Yöneticiye **Bu alan adına al** sunulur; yalnız kutunun klasöründe
+  ileti yokken (hiçbir `cur/` ya da `new/` klasöründe dosya yokken) izin
+  verilir: sunucunun bu adres için tuttuğu satırları okur, oradaki boyut
+  sınırıyla satırı yazar ve parolayı alma penceresinde yazılanla değiştirir;
+  önceki hiçbir parola çalışmaz. Sonra her posta kutusu gibi tutulur ya da
   silinir. Başkasına yöneticiye sorması söylenir; cümle yalnız istenen adresi,
   kişinin kendi alan adında adlandırır. Sunucu kutuyu artık tutmuyorsa, iki
   satırından yalnız birini tutuyorsa (sunucu sahibi kalan satırı siler) ya da
-  CelikPanel'in yazmadığı bir biçimde tutuyorsa (sunucu sahibine bırakılır)
-  alma reddedilir.
+  CelikPanel'in yazmadığı bir biçimde tutuyorsa (sunucu sahibine bırakılır) ya
+  da içinde posta varsa (sunucu sahibi sunucuda karar verir) alma reddedilir.
 - **Takma ad DNS'te yanıt verir.** Aynı hesabın bu sunucuda tutulan bir
   bölgesinin içindeki takma ad oraya sitenin adreslerini alır (yayımlanmadıysa
-  bölgenin bir sonraki yayınıyla gider; sahip o adda başka bir adres tutuyorsa
-  dokunulmaz). Kayıtlar takma adla birlikte, yalnız CelikPanel'in eklediği
+  panelin saatlik turu yayımlar ve satırda "yayımlanmayı bekliyor" yazar; adda
+  CelikPanel'in eklemediği bir adres kaydı varsa hiçbir şey eklenmez). Kayıtlar takma adla birlikte, yalnız CelikPanel'in eklediği
   kadarıyla kalkar.
 - **Retler sayfanın dilinde:** takma adın sertifikası yeniden alınamadı,
   sertifika takma adı kapsamıyor, geçersiz ad, takma ad artık yok, HSTS
   kaldırmayı engelliyor, etkin sertifika yok.
+- **Önceki biçimdeki web postası adresi** Şimdiki sorunlar'da bir satırdır
+  (sahibin dosyası korundu, CelikPanel'in metni yanında; ya da nginx denetimi
+  başarısız oldu, adını verdiği dosyayla). Dosya yeni biçime geçince
+  kendiliğinden kalkar; Agent her açılışta yeniden dener.
 - **Tek veritabanı** Şimdiki sorunlar'da ve uyarı e-postasında tekil söylenir.

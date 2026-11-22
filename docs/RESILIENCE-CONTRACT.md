@@ -9308,22 +9308,30 @@ until the backup reports ready.
   possibly on the server without a row (now said plainly, with the
   administrator's adoption); who acts: nobody for the first, the
   administrator reads the page again for the second.
-- **Adoption is read-only on the server.** `Agent.MailboxOnServerV1` reads
-  Dovecot's users file and Postfix's map under the mail lock; the Panel
-  writes the row only for CelikPanel's own form (the address's own folder,
-  no uid/gid/home/shell, a size limit); everything else stays the owner's
-  (D-022).
+- **Adoption.** `Agent.MailboxOnServerV1` reads, changing nothing,
+  Dovecot's users file, Postfix's map and the message count of the folder
+  under the mail lock; the Panel adopts only CelikPanel's own form (the
+  address's own folder, no uid/gid/home/shell, a size limit) with no
+  message, and replaces the password through `Agent.UpdateMailPassword`
+  before the row is committed; everything else stays the owner's (D-022).
 - **Alias DNS (invariant 2).** What CelikPanel added for an alias is kept in
   `panel_settings` `alias_dns_v1:<alias>` (version 1, zone and records),
   written in the same transaction as the records; removal deletes exactly
-  those. Aliases made before alpha.144 have no such note and get no record
-  until they are added again.
+  those. A publication that does not finish marks the zone
+  (`alias_dns_unpublished_v1:<zone>`) and the Panel's hourly round publishes
+  it; it never stops a domain's deletion, also for a domain whose own DNS
+  is managed elsewhere. Aliases made before alpha.144 have no such note and
+  get no record until they are added again.
 - **Webmail's address (constitution 1).** Only `index.php` runs; the linked
   folders give out static files only; dot-files and backup-looking names
   are refused. Earlier address files are CelikPanel's own form, read as
   stale, and rewritten once at the Agent's start (nginx -t, reload, the
   earlier file put back on failure); an owner's file is kept with the text
-  beside it.
+  beside it. Either outcome is a Problems-now line until the file is in the
+  current form (`Agent.WebmailAddressFormsV1`). An automatic rollback to
+  alpha.143 treats the new file as the owner's and keeps it: webmail keeps
+  serving, nothing is reopened, and later webmail address changes are
+  refused as owner-edited until the update is made again.
 - **Traffic logs after the nightly rotation (invariant 4, constitution 2:
   permission normalization is a mutation).** nginx's workers (`www-data`)
   could not pass through `/var/log/celikpanel` (0750 `root:celikpanel` on the

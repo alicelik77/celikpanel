@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // alpha.144 (security): webmail's own address served every file of
@@ -255,5 +257,60 @@ func TestWebmailAddressEarlierFormIsRewrittenAtStartAndAnOwnersFileKept(t *testi
 	commands = nil
 	if again := reconcileWebmailAddressesAtStartup(context.Background(), run); len(again) != 0 || len(commands) != 0 {
 		t.Fatalf("second start: %v %v", again, commands)
+	}
+}
+
+// Review of PR #355, finding 2: a file the start could not bring to the
+// current form is listed for Problems now with why, and goes once it is.
+func TestWebmailAddressFormsNameWhatStillServesPluginFiles(t *testing.T) {
+	root := t.TempDir()
+	savedDir, savedHTTP2 := webmailAddressConfDir, webmailAddressHTTP2Form
+	webmailAddressConfDir = filepath.Join(root, "conf.d")
+	webmailAddressHTTP2Form = func() string { return services.NginxHTTP2Off }
+	t.Cleanup(func() {
+		webmailAddressConfDir, webmailAddressHTTP2Form = savedDir, savedHTTP2
+		webmailAddressRewriteRefusalsMu.Lock()
+		webmailAddressRewriteRefusals = map[string]string{}
+		webmailAddressRewriteRefusalsMu.Unlock()
+	})
+	if err := os.MkdirAll(webmailAddressConfDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	tls := webmailAddressTLSLines()
+	render := func(host string, current bool) string {
+		return renderWebmailAddressConfigForm(host, "", "/opt/celikpanel/webmail/public_html", "/run/php/php8.4-fpm.sock", false, services.NginxHTTP2Off, tls, current)
+	}
+	_ = os.WriteFile(webmailAddressConfPath("old.example.test"), []byte(render("old.example.test", false)), 0o600)
+	_ = os.WriteFile(webmailAddressConfPath("own.example.test"), []byte(strings.Replace(render("own.example.test", false), "25m", "50m", 1)), 0o600)
+	_ = os.WriteFile(webmailAddressConfPath("new.example.test"), []byte(render("new.example.test", true)), 0o600)
+	// The start's rewrite of old.example.test was put back: nginx -t named another file.
+	run := func(_ context.Context, name string, args ...string) ([]byte, error) {
+		if name == "nginx" {
+			return []byte(`nginx: [emerg] unknown directive "oops" in /etc/nginx/conf.d/broken.conf:3`), errors.New("exit status 1")
+		}
+		return nil, nil
+	}
+	reconcileWebmailAddressesAtStartup(context.Background(), run)
+	var resp transport.WebmailAddressFormsResponse
+	if err := (&Agent{}).WebmailAddressFormsV1(&transport.WebmailAddressFormsRequest{}, &resp); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]transport.WebmailAddressForm{}
+	for _, open := range resp.Open {
+		got[open.Host] = open
+	}
+	if len(got) != 2 || got["old.example.test"].State != "test_failed" || got["old.example.test"].File != "/etc/nginx/conf.d/broken.conf" ||
+		got["own.example.test"].State != "owner_edited" || !strings.HasSuffix(got["own.example.test"].File, webmailAddressPendingSuffix) {
+		t.Fatalf("listed: %+v", resp.Open)
+	}
+	// The owner takes CelikPanel's text: the line goes by itself.
+	pending, _ := os.ReadFile(webmailAddressConfPath("own.example.test") + webmailAddressPendingSuffix)
+	_ = os.WriteFile(webmailAddressConfPath("own.example.test"), pending, 0o600)
+	resp = transport.WebmailAddressFormsResponse{}
+	_ = (&Agent{}).WebmailAddressFormsV1(&transport.WebmailAddressFormsRequest{}, &resp)
+	for _, open := range resp.Open {
+		if open.Host == "own.example.test" {
+			t.Fatalf("still listed after the owner took the text: %+v", open)
+		}
 	}
 }

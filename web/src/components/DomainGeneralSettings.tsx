@@ -23,6 +23,8 @@ interface GeneralSettings {
     redirect_www: boolean;
     redirect_www_available: boolean;
     aliases: string[];
+    /** alpha.144: aliases whose DNS records wait for their zone's publication. */
+    aliases_dns_pending: string[];
 }
 
 // The general settings of one domain. The form below is built from these and
@@ -48,6 +50,7 @@ function decodeGeneralSettings(raw: unknown): GeneralSettings {
         redirect_www: body.redirect_www,
         redirect_www_available: body.redirect_www_available,
         aliases: decodeList<string>(body.aliases),
+        aliases_dns_pending: Array.isArray(body.aliases_dns_pending) ? decodeList<string>(body.aliases_dns_pending) : [],
     };
 }
 
@@ -200,6 +203,9 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                         }
                     }
                     showToast('success', t('general.aliasDeleted', { name: alias }));
+                    // alpha.144: whether its DNS records went from this server.
+                    const dnsRemoved = await aliasDNSOutcome(res);
+                    if (dnsRemoved === 'pending' || dnsRemoved === 'failed') showToast('warning', t(`general.aliasDNS.removed.${dnsRemoved}` as TranslationKey, { name: alias }));
                     if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
                     const notRunAddress = await aliasValidationNotRunAddress(res);
                     if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
@@ -319,6 +325,9 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                                             <span className="flex min-w-0 items-center gap-2 break-all font-mono text-sm text-fg">
                                                 <Globe className="h-4 w-4 shrink-0 text-fg-subtle" />
                                                 {alias}
+                                                {settings.aliases_dns_pending.includes(alias) && (
+                                                    <span className="font-sans text-xs text-warning" data-alias-dns="pending">{t('general.aliasDNS.waiting')}</span>
+                                                )}
                                             </span>
                                             <button
                                                 onClick={() => handleDeleteAlias(alias)}

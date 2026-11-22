@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -67,5 +68,41 @@ func TestA144FailedCloseAnswersTheKindOfCause(t *testing.T) {
 	entry := pgPublicEntryOf(view.Open, "foreign_db")
 	if entry == nil || entry.FailureCode != "server" || entry.FailureKind != "in_use" {
 		t.Fatalf("the list's entry: %+v", entry)
+	}
+}
+
+// a144WebmailFormsAgent answers which webmail address files are still open.
+type a144WebmailFormsAgent struct {
+	verifiedAPTAgentRPCFixture
+	open []transport.WebmailAddressForm
+}
+
+func (a *a144WebmailFormsAgent) WebmailAddressFormsV1(_ *transport.WebmailAddressFormsRequest, resp *transport.WebmailAddressFormsResponse) error {
+	resp.Open = a.open
+	return nil
+}
+
+// Review of PR #355, finding 2: a webmail address file the start could not
+// bring to the current form is a Problems-now line with why, and goes once
+// the Agent no longer lists it.
+func TestA144WebmailAddressInItsEarlierFormIsAProblemUntilItIsNot(t *testing.T) {
+	agent := &a144WebmailFormsAgent{open: []transport.WebmailAddressForm{
+		{Host: "webmail.example.test", State: "owner_edited", File: "/etc/nginx/conf.d/celikpanel-webmail-origin-webmail.example.test.conf.celikpanel-pending"},
+		{Host: "mail2.example.test", State: "test_failed", File: "/etc/nginx/conf.d/broken.conf"},
+	}}
+	p := newDNSPanelForTest(t)
+	p.pkgFamilyVal = "apt"
+	p.agentClient = a144AgentClient(t, agent)
+	problems := p.webmailAddressProblems(context.Background())
+	if len(problems) != 2 || problems[0].Kind != "webmail_address_kept" || problems[0].Subject != "webmail.example.test" || !strings.HasSuffix(problems[0].Name, ".celikpanel-pending") ||
+		problems[1].Kind != "webmail_address_refused" || problems[1].Name != "/etc/nginx/conf.d/broken.conf" {
+		t.Fatalf("problems: %+v", problems)
+	}
+	if en, tr := alertLine(pendingAlertMail{kind: "webmail_address_refused", subject: "mail2.example.test", name: "/etc/nginx/conf.d/broken.conf"}); !strings.Contains(en, "broken.conf") || !strings.Contains(tr, "broken.conf") {
+		t.Fatalf("alert mail: %q / %q", en, tr)
+	}
+	agent.open = nil
+	if problems := p.webmailAddressProblems(context.Background()); len(problems) != 0 {
+		t.Fatalf("still listed: %+v", problems)
 	}
 }

@@ -23,6 +23,7 @@ const (
 	errCodeAliasCertificateNotCovering   = "ALIAS_CERTIFICATE_NOT_COVERING"
 	errCodeAliasInvalid                  = "ALIAS_INVALID"
 	errCodeAliasNotFound                 = "ALIAS_NOT_FOUND"
+	errCodeAliasConflict                 = "ALIAS_CONFLICT"
 )
 
 // Why an alias's certificate could not be issued again before the authority
