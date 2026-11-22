@@ -8527,3 +8527,67 @@ bağlantıyı tutar.
   laboratuvarda denenmedi; kapatma yalnız PostgreSQL 17'de çalıştırıldı;
   taşıma müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla
   çalıştırır. **Hiçbir P0 maddesi kapanmadı.**
+
+### fix/a144-lab-corrections dalı (alpha.143 laboratuvarının altı bulgusu ve web postası adresinin bir güvenlik düzeltmesi; şema değişikliği yok; anayasa 1 ve 3; ilke 2, 3 ve 4; D-022; D-024; D-025; 2026-11-22, aday alpha.144)
+
+- **Sayfadan uzun yaşayan değişiklikler.** Yöneticinin PostgreSQL kapatması ya
+  da geri alması, yeni posta kutusu ve otomatik yanıt tarayıcının bağlantısında
+  çalışıyordu; sayfadan çıkmak Panel'i Agent'ın işi ile kaydı arasında
+  kesiyordu. Artık istek kimliğiyle (D-029), rotanın süre sınırıyla, ayrık bir
+  bağlamda çalışırlar. Sayfadan çıkmak hiçbir şey bırakmaz; Panel'in durması
+  istek satırını "bilinmiyor" bırakır, kapatma kaydı motordan uzlaştırılır,
+  satırı olmayan posta kutusu açıkça söylenir ve yönetici onu alabilir.
+- **Alma.** Panel yalnız CelikPanel'in kendi biçimindeki ve içinde ileti
+  olmayan kutuyu alır; posta kilidi altında var olan bir satıra yeniden
+  bakar; satır kaydedilmeden önce parolayı değiştirir; gerisi
+  sahibin kalır (D-022).
+- **Takma ad DNS'i.** CelikPanel'in eklediği kayıtlar `alias_dns_v1:<takma ad>`
+  notunda, kayıtlarla aynı işlemde tutulur; kaldırma yalnız onları siler, o
+  da bölge şu an takma adın alan adının şu anki hesabına aitken (abonelik
+  devrinden sonra ikisi birlikte geçmiştir ve kayıtlar gider; başka hesabın
+  bölgesinde hiçbir şey silinmez, not temizlenir ve Panel'in günlüğü kaydı
+  adlandırır). Bitmeyen yayın bölgeyi işaretler, saatlik tur yayımlar; alan
+  adı silmeyi asla durdurmaz; bölgesinin DNS kipi okunamayan işaret sonraki
+  tura kalır.
+- **Web postası adresi.** Yalnız `index.php` çalışır; bağlı klasörler yalnız
+  durağan dosya verir; nokta dosyaları ve yedek görünümlü adlar reddedilir.
+  Önceki biçimdeki dosyalar Agent'ın ilk açılışında bir kez yeniden yazılır;
+  sahibin dosyası korunur, metin yanına konur; ikisi de dosya yeni biçime
+  geçene dek Şimdiki sorunlar'da bir satırdır. alpha.143'e otomatik geri dönüş
+  yeni dosyayı sahibinki sayar ve korur: web postası çalışmaya devam eder,
+  hiçbir şey yeniden açılmaz.
+- **Gece döndürmeden sonra trafik günlükleri.** nginx işçileri (`www-data`)
+  `/var/log/celikpanel` klasöründen geçemiyordu; her döndürmeden sonra hata
+  yazıp döndürülen dosyaya yazmayı sürdürüyorlardı. Agent'ın açılışında bir
+  kez: CelikPanel'in ürettiği kipteki kök sahipli klasör 0700 → 0711 ya da
+  0750 → 0751; trafik klasörü 0755 → 0710, sahibi root ve grubu web
+  sunucusunun grubu (yalnız çalışan süreçler geçer; hiçbir sitenin hesabı
+  başka sitenin günlüğünü açamaz); diğerlerinin okuyabildiği trafik
+  günlükleri 0644 → 0640; sertifika aracının günlük klasörü 0700 kalır;
+  başka kip (sahibi ve grubuyla), grubu ne web sunucusunun ne de
+  CelikPanel'in verdiği (root, celikpanel) olan 0710 kipli trafik klasörü,
+  bağlantı ya da başka sahip korunur ve adlandırılır. Yeni kurulumlar günlük
+  klasörünü 0711, trafik klasörünü o grupla 0710 açar ve bir sitenin ilk
+  günlüğünü 0640 oluşturur; web sunucusunun hesabına yalnız bunları
+  oluştururken bakılır (bakılamazsa sitenin trafik ayarı olduğu gibi kalır,
+  günlükte tek satır). CelikPanel'in döndürme dosyası her yeni günlüğü o
+  hesap için 0640 oluşturur (yönetilen metin: sahibin değiştirdiği dosya
+  korunur). Web sunucusunun kendi ortak hesabıyla çalışan programlar (henüz
+  kendi hesabına taşınmamış Node.js siteleri, açıksa dağıtımın varsayılan
+  PHP havuzu) günlükleri hâlâ okuyabilir: günlükler zaman ve bayt sayısı
+  tutar, adres tutmaz; o programlar her sitenin sunulan dosyalarını zaten
+  okur.
+- **Laboratuvar.** 22 Kasım 2026'da bir deneme (PowerDNS'li Debian 13 ana ve
+  BIND'li Ubuntu 24.04 yedek; ikisi de alpha.143 durumundan panelin kendi
+  güncelleme sayfasıyla güncellendi; `6ed1f94a0`'dan yapılan, yalnız
+  laboratuvara ait alpha.152 etiketi): ağır hata yok; web postası adresi
+  düzeltmesi, ayrılan yollar, alma retleri, takma ad kayıtları ve trafik
+  klasörü kipleri yukarıda yazıldığı gibi davrandı (bkz. sürüm notlarının
+  "Laboratuvarda denetlenenler" bölümü). Web postasının posta
+  gönderemediğini (yapılandırması postayı STARTTLS olmadan 587 numaralı
+  porta veriyor; bu daldan eski) ve iki görünüm bulgusunu buldu; alpha.145'e
+  planlandı.
+- **Açık.** Tarayıcı bağlamını Agent değişikliğine
+  veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
+  takma ad hâlâ DNS kaydı almaz; laboratuvarın denetlemedikleri sürüm
+  notlarında listeli. **Hiçbir P0 işi kapanmadı.**

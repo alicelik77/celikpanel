@@ -134,6 +134,15 @@ export const enWebmailAddressScreens = {
     'life.addr.removeFail.CONFIG_OWNER_EDITED': 'The address {host} was not removed: its web server configuration was changed by hand, so CelikPanel does not touch it. {reason} Who acts: the server owner. Next: remove the file by hand, then reload Nginx.',
     'life.addr.removeUnknown': 'Whether the address {host} was removed is not known: the answer from the server agent did not arrive. Nothing is repeated by itself. Next: reload this page in a minute; this card shows what the server holds.',
     'life.addr.removeInterrupted': 'The panel restarted before the address {host} was removed; webmail still answers there. Nothing was retried by itself. Next: press Remove address again.',
+    // alpha.144 (review of PR #355, finding 2): webmail’s address still in its earlier form
+    'pnow.webmail_address_kept.title': 'Webmail’s address {domain} still gives out plugin files that are not part of its pages',
+    'pnow.webmail_address_kept.body': 'Its web server file was changed by hand, so CelikPanel kept it and put its new text beside it: {other}. The server owner takes that text (or adds its rules to the file) and reloads nginx. This line goes by itself once the file has them.',
+    'pnow.webmail_address_kept.action': 'Open webmail',
+    'pnow.webmail_address_kept.body_no_text': 'Its web server file {other} was changed by hand, so CelikPanel kept it. To take CelikPanel’s text, the server owner moves that file away, then presses Set up again for the address on Roundcube’s page (Open webmail); this line then goes by itself.',
+    'pnow.webmail_address_refused.title': 'Webmail’s address {domain} still gives out plugin files that are not part of its pages',
+    'pnow.webmail_address_refused.body': 'Its new text was put back because nginx’s configuration test failed in {other}. The server owner corrects that file; CelikPanel writes the new text again at its next start, and this line goes by itself.',
+    'pnow.webmail_address_refused.body_unnamed': 'Its new text was put back because nginx’s configuration test failed or nginx could not be reloaded. The server owner runs sudo nginx -t to see why; CelikPanel writes the new text again at its next start, and this line goes by itself.',
+    'pnow.webmail_address_refused.action': 'Open webmail',
 } as const;
 
 export type WebmailAddressScreenKey = keyof typeof enWebmailAddressScreens;

@@ -51,7 +51,9 @@ export type ProblemKind =
     | 'postgresql_databases_open'
     | 'mail_signing'
     | 'mail_autoresponder_foreign'
-    | 'postgresql_databases_unreadable';
+    | 'postgresql_databases_unreadable'
+    | 'webmail_address_kept'
+    | 'webmail_address_refused';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -70,6 +72,9 @@ const KINDS: readonly ProblemKind[] = [
     'mail_autoresponder_foreign',
     // 22 Nov 2026: PostgreSQL databases the hourly checks could not read.
     'postgresql_databases_unreadable',
+    // alpha.144: webmail's address still in its earlier form (owner's file,
+    // or a rewrite nginx's test put back).
+    'webmail_address_kept', 'webmail_address_refused',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
@@ -95,7 +100,7 @@ export function problemVars(
 const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
 
 /** The catalogue key of a problem's body. */
-export function problemBodyKey(problem: { kind: string; name?: string; subject?: string }): TranslationKey {
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
     if (problem.kind === 'mail_signing') {
         return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
     }
@@ -104,12 +109,24 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
         const step = ['agent_unreachable', 'agent_build', 'agent_failed'].includes(problem.subject ?? '') ? problem.subject : 'agent_failed';
         return `pnow.mail_autoresponder_foreign.${step}` as TranslationKey;
     }
+    // alpha.144 (alpha.143 lab): one database is said in the singular.
+    if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
+        return `pnow.${problem.kind}.body_one` as TranslationKey;
+    }
+    // alpha.144: nginx's test named no file.
+    if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
+    // CelikPanel's text is named only when it lies beside the owner's file.
+    if (problem.kind === 'webmail_address_kept' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_address_kept.body_no_text' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
 /** The catalogue key of a problem's title (22 Nov 2026: one signing state signs nothing). */
-export function problemTitleKey(problem: { kind: string; name?: string }): TranslationKey {
+export function problemTitleKey(problem: { kind: string; name?: string; value?: number }): TranslationKey {
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
+    // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
+    if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
+        return `pnow.${problem.kind}.title_one` as TranslationKey;
+    }
     return `pnow.${problem.kind}.title` as TranslationKey;
 }
 

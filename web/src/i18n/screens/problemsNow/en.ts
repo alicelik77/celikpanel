@@ -84,6 +84,9 @@ export const enProblemsNowScreens = {
     'pnow.postgresql_databases_open.title': '{value} PostgreSQL databases are still open to the server’s other accounts',
     'pnow.postgresql_databases_open.body': 'Made before alpha.141: {name}. Every account of the server may connect to them, or make temporary tables where it may already connect. CelikPanel found something there it does not decide by itself, or its close failed. On the PostgreSQL page, read what was found, then close each one; it can be undone.',
     'pnow.postgresql_databases_open.action': 'Review and close',
+    // alpha.144: one database, in the singular.
+    'pnow.postgresql_databases_open.title_one': '1 PostgreSQL database is still open to the server’s other accounts',
+    'pnow.postgresql_databases_open.body_one': 'Made before alpha.141: {name}. Every account of the server may connect to it, or make temporary tables where it may already connect. CelikPanel found something there it does not decide by itself, or its close failed. On the PostgreSQL page, read what was found, then close it; it can be undone.',
     // alpha.143 (lane S3b): mail signed only for the sender's own domain.
     'pnow.mail_signing.title': 'Mail may still be signed for another customer’s domain',
     // 21 Nov 2026: one body per state, each with the server owner's concrete step.

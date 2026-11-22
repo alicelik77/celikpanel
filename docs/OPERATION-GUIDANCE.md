@@ -11351,3 +11351,71 @@ page). Tests: `cmd/panel/webmail_address_dns_record_test.go`,
 receiver), `web/tests/webmail-dns-add-alpha135.test.mjs`. Open: no lab run on a
 real pair yet; Roundcube must be installed on the backup server for the card
 to show.
+
+### Corrections from the alpha.143 lab (alpha.144, 22 November 2026)
+
+Component tests and one lab run (22 November 2026, see the alpha.144
+release notes' "Checked in the lab" for what it proved and did not check).
+
+- **A change is not lost because the page was left.** An administrator's
+  close or undo of a PostgreSQL database other accounts can enter (and its
+  "Read again"), creating a mailbox and saving an out-of-office reply run
+  under the page's request identity (D-029) on a context the browser cannot
+  cancel, to their own time limit. Whoever opens the page again reads the
+  result; the same request arriving again is answered from its record and
+  never runs twice. A new press is a new request: it finds the change made
+  (closed already; "the mailbox already exists").
+- **A failed close says what happened.** Its window ends on the step "Not
+  done — nothing was changed" (TR "Yapılmadı — hiçbir şey değiştirilmedi");
+  an unconfirmed result ends on "Result not confirmed yet — not sent again"
+  (TR "Sonuç henüz doğrulanmadı — yeniden gönderilmez"). The reason names
+  the kind of cause, then the database server's message quoted:
+  `err.POSTGRESQL_PUBLIC_FAILED.<kind>` with kind `in_use` (a lock was not
+  granted in time), `timeout`, `connection`, `rights`, `missing`, `refused`;
+  the list's `pgpub.why.server.<kind>` says the same.
+- **A mailbox on the server without a row in the panel** (a creation whose
+  record could not be written) is never an internal error:
+  `MAIL_ACCOUNT_ON_SERVER_ONLY`. The administrator (reason `admin`) is
+  offered **Adopt into this domain**, allowed only while the mailbox's
+  folder holds no message (no file in any `cur/` or `new/` folder of it):
+  it reads the server's lines for the address, writes the row with the size
+  limit found there and replaces the password with the one typed in the
+  adoption window (the password change's own step), so no earlier password
+  works; the domain's signing key and the first-day sending limit then
+  apply as for a new mailbox. Afterwards it is kept or deleted like any
+  other. Anybody else is told to ask the administrator; the
+  sentence names only the address asked for, in the person's own domain.
+  The adoption refuses (`MAIL_ACCOUNT_ADOPT_REFUSED`) when the server no
+  longer holds it (`gone`), holds one of its two lines only (`incomplete`:
+  the server owner removes the line that is left), or holds it in a form
+  CelikPanel does not write (`elsewhere`: another folder, account, shell or
+  no size limit — left to the server owner), `mail_found` (mail is in
+  it: the server owner decides on the server) or `folder_unknown`.
+- **An alias answers in DNS.** An alias inside a zone this server keeps for
+  the same account gets the site's addresses there (`dns`: `published`;
+  `pending` when the zone's publication did not finish — the Panel's hourly
+  round publishes it, and the alias row says "waiting to be published —
+  retried every hour, nothing to do"; `kept` when the name already has an
+  address record CelikPanel did not add (nothing of either type is added);
+  `elsewhere` when no zone of the account here holds it). The records go
+  with the alias; only those CelikPanel added. A removal whose publication
+  waits is shown the same way and never stops a domain's deletion.
+- **Webmail's address in its earlier form** is a Problems-now line
+  (`webmail_address_kept`: the owner's file is kept, CelikPanel's text lies
+  beside it as `.celikpanel-pending`; `webmail_address_refused`: the
+  rewrite was put back because nginx's test failed, naming the file it
+  named). Who acts: the server owner. It goes by itself once the file is in
+  the current form; the Agent tries again at each start.
+- **Refusals in the page's language:** `ALIAS_CERTIFICATE_REISSUE_FAILED`
+  (reasons `untrusted_source`, `not_acme`, `mail_name`),
+  `ALIAS_CERTIFICATE_NOT_COVERING` (reason `custom`), `ALIAS_INVALID`,
+  `ALIAS_NOT_FOUND`, `HSTS_REMOVAL_BLOCKED` (reasons `enabled`, `retiring`
+  with `until`), `SSL_NO_ACTIVE_CERTIFICATE`. Texts in
+  `web/src/i18n/screens/errors`.
+- **One database** is said in the singular in Problems now and in the alert
+  mail.
+
+Code: `cmd/panel/operation_step_routes.go`, `postgresql_public_access.go`,
+`mail_adopt_handlers.go`, `alias_dns.go`, `alias_certificates.go`,
+`cmd/agent/mail_adopt.go`. Tests: `cmd/panel/a144_*_test.go`,
+`cmd/agent/mail_adopt_test.go`.

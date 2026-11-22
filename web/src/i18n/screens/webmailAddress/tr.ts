@@ -126,4 +126,13 @@ export const trWebmailAddressScreens: Record<WebmailAddressScreenKey, string> = 
     'life.addr.removeFail.CONFIG_OWNER_EDITED': '{host} adresi kaldırılamadı: web sunucusu yapılandırması elle değiştirilmiş, bu yüzden CelikPanel ona dokunmaz. {reason} Kim işlem yapar: sunucu sahibi. Sonraki adım: dosyayı elle kaldırın, sonra Nginx’i yeniden yükleyin.',
     'life.addr.removeUnknown': '{host} adresinin kaldırılıp kaldırılmadığı bilinmiyor: sunucu ajanının yanıtı gelmedi. Hiçbir şey kendiliğinden yinelenmez. Sonraki adım: bir dakika sonra bu sayfayı yeniden yükleyin; bu kart sunucunun tuttuğunu gösterir.',
     'life.addr.removeInterrupted': 'Panel, {host} adresi kaldırılmadan önce yeniden başladı; web postası orada hâlâ yanıt veriyor. Hiçbir şey kendiliğinden yeniden denenmedi. Sonraki adım: Adresi kaldır’a yeniden basın.',
+    // alpha.144 (PR #355 incelemesi, bulgu 2): önceki biçimdeki web postası adresi
+    'pnow.webmail_address_kept.title': 'Web postasının {domain} adresi sayfalarına ait olmayan eklenti dosyalarını hâlâ veriyor',
+    'pnow.webmail_address_kept.body': 'Web sunucusu dosyası elle değiştirilmiş; CelikPanel onu korudu ve yeni metnini yanına koydu: {other}. Sunucu sahibi bu metni alır (ya da kurallarını dosyaya ekler) ve nginx’i yeniden yükler. Dosyada bu kurallar olunca bu satır kendiliğinden kalkar.',
+    'pnow.webmail_address_kept.action': 'Web postasını aç',
+    'pnow.webmail_address_kept.body_no_text': '{other} web sunucusu dosyası elle değiştirilmiş; CelikPanel onu korudu. CelikPanel’in metnini almak için sunucu sahibi o dosyayı kaldırır, sonra Roundcube sayfasında (Web postasını aç) adres için Yeniden kur’a basar; bu satır da kendiliğinden kalkar.',
+    'pnow.webmail_address_refused.title': 'Web postasının {domain} adresi sayfalarına ait olmayan eklenti dosyalarını hâlâ veriyor',
+    'pnow.webmail_address_refused.body': 'Yeni metni geri alındı, çünkü nginx yapılandırma denetimi {other} dosyasında başarısız oldu. Sunucu sahibi o dosyayı düzeltir; CelikPanel yeni metni bir sonraki açılışında yeniden yazar ve bu satır kendiliğinden kalkar.',
+    'pnow.webmail_address_refused.body_unnamed': 'Yeni metni geri alındı, çünkü nginx yapılandırma denetimi başarısız oldu ya da nginx yeniden yüklenemedi. Sunucu sahibi nedenini sudo nginx -t ile görür; CelikPanel yeni metni bir sonraki açılışında yeniden yazar ve bu satır kendiliğinden kalkar.',
+    'pnow.webmail_address_refused.action': 'Web postasını aç',
 };

@@ -76,6 +76,8 @@ export const trProblemsNowScreens: Record<ProblemsNowScreenKey, string> = {
     'pnow.postgresql_databases_open.title': '{value} PostgreSQL veritabanı hâlâ sunucunun diğer hesaplarına açık',
     'pnow.postgresql_databases_open.body': 'alpha.141’den önce açılanlar: {name}. Sunucudaki her hesap bunlara bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. CelikPanel orada kendi başına karar vermediği bir şey buldu ya da kapatma başarısız oldu. PostgreSQL sayfasında bulunanı okuyun, sonra her birini kapatın; geri alınabilir.',
     'pnow.postgresql_databases_open.action': 'İncele ve kapat',
+    'pnow.postgresql_databases_open.title_one': '1 PostgreSQL veritabanı hâlâ sunucunun diğer hesaplarına açık',
+    'pnow.postgresql_databases_open.body_one': 'alpha.141’den önce açılan: {name}. Sunucudaki her hesap buna bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. CelikPanel orada kendi başına karar vermediği bir şey buldu ya da kapatma başarısız oldu. PostgreSQL sayfasında bulunanı okuyun, sonra kapatın; geri alınabilir.',
     'pnow.mail_signing.title': 'Posta hâlâ başka bir müşterinin alan adıyla imzalanabilir',
     'pnow.mail_signing.conf_kept': '{domain} elle değiştirildi ve korundu. Sunucu sahibi dosyaya SenderMacro {auth_authen} satırını ekler (panelin tam metni {domain}.celikpanel-pending dosyasında) ve OpenDKIM’i yeniden başlatır.',
     'pnow.mail_signing.port25_kept': '25. kapının milter ayarı ({domain}) elle değiştirildi; gelen posta hâlâ imzalanabilir. Sunucu sahibi OpenDKIM’i bu ayardan çıkarır ya da ayarı siler ki panel yazsın, sonra paneli yeniden başlatır.',

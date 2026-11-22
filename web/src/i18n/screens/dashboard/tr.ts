@@ -356,6 +356,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.import.cpanel.complete': 'bir cPanel hesabını içe aktardı',
     'dashboard.audit.action.import.cpanel.complete_with_skips': 'bir cPanel hesabını içe aktardı; adları MariaDB’nin tam olarak onlara hak saklayabilmesi için fazla uzun olan veritabanlarını dışarıda bıraktı',
     'dashboard.audit.action.import.cpanel.incomplete': 'bir cPanel hesabının bir kısmını içe aktardı',
+    'dashboard.audit.action.mail.account.adopt': 'sunucuda bulunan bir posta kutusunu alan adına kaydetti',
     'dashboard.audit.action.mail.account.password.rotate': 'bir posta hesabının parolasını değiştirdi',
     'dashboard.audit.action.mail.account.recovery.confirmed': 'bir posta kutusunun kurtarma adresi sahibince onaylandı',
     'dashboard.audit.action.mail.account.recovery.mail_failed': 'bir posta kutusu sıfırlama bağlantısı posta sistemine verilemedi',

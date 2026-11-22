@@ -54,6 +54,9 @@ export const enPgLeftoversScreens = {
     'pnow.postgresql_databases_unreadable.title': '{value} PostgreSQL databases could not be read for hours',
     'pnow.postgresql_databases_unreadable.body': 'Whether other accounts can enter them is not known: {name}. Correct the reason, then press Read again on the PostgreSQL page.',
     'pnow.postgresql_databases_unreadable.action': 'Open PostgreSQL',
+    // alpha.144: one database, in the singular.
+    'pnow.postgresql_databases_unreadable.title_one': '1 PostgreSQL database could not be read for hours',
+    'pnow.postgresql_databases_unreadable.body_one': 'Whether other accounts can enter it is not known: {name}. Correct the reason, then press Read again on the PostgreSQL page.',
     // alpha.143 lab (22 Nov 2026): the PostgreSQL page's reasons for a failed
     // close and rights that are the default again (pgPublic has no room).
     'pgpub.why.server': 'the database server refused it and nothing was changed: “{detail}”',

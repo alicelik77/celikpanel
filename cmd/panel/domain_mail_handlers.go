@@ -77,6 +77,8 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleUpdateEmailPassword(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/accounts/recovery"):
 		p.handleMailboxRecovery(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/accounts/adopt"):
+		p.handleAdoptEmailAccount(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/accounts"):
 		switch r.Method {
 		case http.MethodGet:
@@ -322,7 +324,15 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		Email: address, Password: request.Password, QuotaMB: request.QuotaMB, LeftDomainID: domainID,
 	})
 	if err != nil {
-		writeServerError(w, rollbackMailTx(tx, err))
+		rollbackErr := rollbackMailTx(tx, err)
+		if rollbackErr == err && agentAnsweredExactly(err, transport.MailAccountExistsOnServer) {
+			// alpha.144 (alpha.143 lab): the server already holds this
+			// mailbox and the Panel has no row for it. Nothing was changed;
+			// who can do what is said, never an internal error.
+			writeMailAccountOnServerOnly(w, r, address)
+			return
+		}
+		writeServerError(w, rollbackErr)
 		return
 	}
 	if err := tx.Commit(); err != nil {
