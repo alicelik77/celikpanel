@@ -59,9 +59,16 @@ import (
 //     again by itself until something about the database changed, or the
 //     administrator presses Close.
 //   - Closes, undos and the panel's writes for one database are serialised
-//     (pgPublicActMu): the hourly round and an administrator never both act;
-//     the second reads the first's result. The record of a close (what an
-//     undo needs) is never deleted while the database may be closed.
+//     by that database's own lock (pgPublicLock; second review of alpha.143,
+//     B6: one database's close never holds up another's, nor "Read again",
+//     which leaves a database whose lock is held to the holder). A close or
+//     undo whose answer did not arrive stays "sending" (nothing is sent
+//     again) until the Agent confirms that no client or engine session of a
+//     close or undo of that database still runs; only then is the database
+//     read, by a scan that begins after that confirmation (B1). The record
+//     of a close (what an undo needs) is never deleted while the database
+//     may be closed: a watch that holds a close found applied later becomes
+//     that close's record.
 //   - A database an administrator opened again stays on the page as the
 //     administrator's choice, out of Problems now and the alert mail.
 //
@@ -108,9 +115,29 @@ var (
 	// pgPublicWatchPeriod: the time a database is watched before CelikPanel
 	// closes it by itself.
 	pgPublicWatchPeriod = 24 * time.Hour
-	// pgPublicActMu serialises every action and write for the databases.
-	pgPublicActMu sync.Mutex
+	// pgPublicLocks: one lock per database (pgPublicLock).
+	pgPublicLocks = struct {
+		sync.Mutex
+		byID map[int]*sync.Mutex
+	}{byID: map[int]*sync.Mutex{}}
 )
+
+// pgPublicUnreadRounds: a database the rounds could not read more than this
+// many times in a row is listed in Problems now as not readable (B5).
+const pgPublicUnreadRounds = 3
+
+// pgPublicLock is the lock of one database: its close, undo and the panel's
+// writes for it.
+func pgPublicLock(id int) *sync.Mutex {
+	pgPublicLocks.Lock()
+	defer pgPublicLocks.Unlock()
+	lock := pgPublicLocks.byID[id]
+	if lock == nil {
+		lock = &sync.Mutex{}
+		pgPublicLocks.byID[id] = lock
+	}
+	return lock
+}
 
 // pgPublicMarker is what CelikPanel did to, or saw of, one database.
 type pgPublicMarker struct {
@@ -144,6 +171,14 @@ type pgPublicMarker struct {
 	FailedBy          string `json:"failed_by,omitempty"`
 	Failure           string `json:"failure,omitempty"`
 	FailedFingerprint string `json:"failed_fingerprint,omitempty"`
+	// Second review of alpha.143: when the record was written (B7: a round
+	// whose scan began before skips it); an undo whose answer did not arrive
+	// (B1: settled like a close's); and, in a watch, the close that was sent
+	// and found not applied (B1: if the database is found closed later, it is
+	// that close's record, with its Undo).
+	WrittenAt  string          `json:"written_at,omitempty"`
+	UndoSentAt string          `json:"undo_sent_at,omitempty"`
+	Sent       *pgPublicMarker `json:"sent,omitempty"`
 }
 
 // pgPublicEntry is one database on the administrator's view.
@@ -229,6 +264,7 @@ func (p *Panel) readPGPublicMarker(ctx context.Context, id int) (*pgPublicMarker
 
 func (p *Panel) writePGPublicMarker(ctx context.Context, id int, marker *pgPublicMarker) error {
 	marker.Version = 1
+	marker.WrittenAt = pgPublicNow().UTC().Format(time.RFC3339Nano)
 	if marker.Added == nil {
 		marker.Added = []string{}
 	}
@@ -239,6 +275,12 @@ func (p *Panel) writePGPublicMarker(ctx context.Context, id int, marker *pgPubli
 	_, err = p.db.GetDB().ExecContext(context.WithoutCancel(ctx), `INSERT INTO panel_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`, pgPublicMarkerKey(id), string(raw))
 	return err
+}
+
+// pgPublicWrittenAfter: the record was written after t (B7).
+func pgPublicWrittenAfter(marker *pgPublicMarker, t time.Time) bool {
+	written, err := time.Parse(time.RFC3339Nano, marker.WrittenAt)
+	return err == nil && written.After(t)
 }
 
 // deletePGPublicWatch removes a watch record with nothing left to keep. It
@@ -569,6 +611,12 @@ func (p *Panel) startPostgreSQLPublicAccess(ctx context.Context) <-chan struct{}
 // may close by itself.
 func (p *Panel) runPostgreSQLPublicRound(ctx context.Context, startedAt time.Time) {
 	closeNow := p.databaseGrantFormsHold(ctx, startedAt) == ""
+	// B9: the records of databases that are gone go with them (no
+	// leftovers; a deletion removes its own, this catches any other).
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key LIKE ? AND
+		CAST(substr(key, ?) AS INTEGER) NOT IN (SELECT id FROM databases_v2)`, pgPublicMarkerPrefix+"%", len(pgPublicMarkerPrefix)+1); err != nil {
+		log.Printf("postgresql databases: records of removed databases could not be removed: %v", err)
+	}
 	view, err := p.pgPublicRead(ctx, pgPublicNow(), pgPublicPass{write: true, round: true, closeNow: closeNow})
 	if err != nil {
 		if !errors.Is(err, errGrantFormsBuildMismatch) {
@@ -576,7 +624,7 @@ func (p *Panel) runPostgreSQLPublicRound(ctx context.Context, startedAt time.Tim
 		}
 		return
 	}
-	p.storePGPublicList(ctx, view)
+	p.storePGPublicListRound(ctx, view, true)
 }
 
 // pgPublicPass says what one pass over a scan may do: write the panel's own
@@ -628,12 +676,25 @@ func (p *Panel) pgPublicBuild(ctx context.Context, scan *pgPublicScanResult, pas
 // pgPublicOne decides one database: the list it belongs to and its entry.
 func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, record pgPublicRecord, pass pgPublicPass) (string, pgPublicEntry, error) {
 	if pass.write {
-		pgPublicActMu.Lock()
-		defer pgPublicActMu.Unlock()
+		// B6: a database another caller acts on is left to it; this pass
+		// only shows it.
+		if lock := pgPublicLock(record.id); lock.TryLock() {
+			defer lock.Unlock()
+		} else {
+			pass = pgPublicPass{}
+		}
 	}
 	marker, err := p.readPGPublicMarker(ctx, record.id)
 	if err != nil {
 		return "", pgPublicEntry{}, err
+	}
+	if marker != nil && pass.write && pgPublicWrittenAfter(marker, scan.started) {
+		// B7: the record changed after this scan began, so its facts are
+		// older than the record: shown from the record, nothing written.
+		pass = pgPublicPass{}
+		if marker.State == pgPublicClosed {
+			return pgPublicClosed, pgPublicClosedEntry(record, marker), nil
+		}
 	}
 	f, read := scan.facts[record.id]
 	if !read || f.Error != "" {
@@ -651,10 +712,24 @@ func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, recor
 	}
 	publicClosed := !f.PublicConnect && !f.PublicTemporary
 	// A close whose answer was lost: what the engine shows decides, before
-	// anything else.
+	// anything else, once the Agent confirmed that nothing of it still runs
+	// (B1), from a scan that began after.
 	if marker != nil && marker.State == pgPublicSending && pass.write {
-		if marker, _, err = p.pgPublicReconcile(ctx, record, marker, f); err != nil {
+		_, settled, fresh, ok, err := p.pgPublicSettle(ctx, record, marker)
+		if err != nil {
 			return "", pgPublicEntry{}, err
+		}
+		if marker = settled; ok {
+			f, publicClosed = fresh, !fresh.PublicConnect && !fresh.PublicTemporary
+		}
+	}
+	if marker != nil && marker.State == pgPublicClosed && marker.UndoSentAt != "" && pass.write {
+		settled, fresh, ok, err := p.pgPublicSettleUndo(ctx, record, marker)
+		if err != nil {
+			return "", pgPublicEntry{}, err
+		}
+		if marker = settled; ok {
+			f, publicClosed = fresh, !fresh.PublicConnect && !fresh.PublicTemporary
 		}
 	}
 	entry := pgPublicDecide(record, f, scan.clusters[record.port], marker)
@@ -662,15 +737,16 @@ func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, recor
 		switch marker.State {
 		case pgPublicSending:
 			if publicClosed {
-				closed := *marker
-				closed.AfterACL = f.ACL
-				return pgPublicClosed, pgPublicClosedEntry(record, &closed), nil
+				// Shown as the close it would be, with its Undo (what the
+				// close gave), until it is settled.
+				return pgPublicClosed, pgPublicClosedEntry(record, pgPublicSentClosed(marker, f.ACL)), nil
 			}
 			entry.State, entry.By, entry.At = "open", marker.By, marker.At
 			entry.Found = append([]string{"unknown_result"}, entry.Found...)
 			return "open", entry, nil
 		case pgPublicClosed:
-			if publicClosed {
+			if publicClosed || marker.UndoSentAt != "" {
+				// Closed; or an undo whose result is not settled yet.
 				return pgPublicClosed, pgPublicClosedEntry(record, marker), nil
 			}
 			// Opened again outside the panel: listed, never closed by itself.
@@ -690,6 +766,21 @@ func (p *Panel) pgPublicOne(ctx context.Context, scan *pgPublicScanResult, recor
 		}
 	}
 	if publicClosed {
+		if marker != nil && marker.State == pgPublicWatch && marker.Sent != nil {
+			// B1: the close this watch holds was found not applied, and the
+			// database is closed now: that close's full record (when, by
+			// whom, what an undo gives back), never a deleted one.
+			closed := pgPublicSentClosed(marker.Sent, f.ACL)
+			if pass.write {
+				if err := p.writePGPublicMarker(ctx, record.id, closed); err != nil {
+					return "", pgPublicEntry{}, err
+				}
+				if closed.By == pgPublicByPanel {
+					p.recordAudit(auditRecord{Action: "database.postgresql.closed_to_other_accounts:" + record.name, ResourceType: "database", ResourceID: record.id})
+				}
+			}
+			return pgPublicClosed, pgPublicClosedEntry(record, closed), nil
+		}
 		// Closed already (alpha.141 or later, or by its owner).
 		if marker != nil && marker.State == pgPublicWatch && pass.write {
 			p.deletePGPublicWatch(ctx, record.id)
@@ -805,29 +896,29 @@ func pgPublicObserving(entry *pgPublicEntry, watch *pgPublicMarker) {
 // pgPublicReconcile settles a "sending" record from the engine's state:
 // closed; unchanged (a failure with its reason; or, for the panel's own
 // close whose answer was simply lost, a watch again under the same
-// conditions); or still unknown. The caller holds pgPublicActMu.
+// conditions); or still unknown. The caller holds the database's lock, and
+// f was read after the Agent confirmed that nothing of the close runs.
 func (p *Panel) pgPublicReconcile(ctx context.Context, record pgPublicRecord, marker *pgPublicMarker, f transport.PostgreSQLPublicAccessFacts) (*pgPublicMarker, string, error) {
 	if f.Error != "" || !f.Exists {
 		return marker, "unknown", nil
 	}
 	if !f.PublicConnect && !f.PublicTemporary {
-		closed := *marker
-		closed.State, closed.AfterACL = pgPublicClosed, f.ACL
-		closed.Added = pgPublicAddedFrom(closed.BeforeACL, closed.Grants)
-		closed.Grants, closed.Failure = nil, ""
-		if err := p.writePGPublicMarker(ctx, record.id, &closed); err != nil {
+		closed := pgPublicSentClosed(marker, f.ACL)
+		if err := p.writePGPublicMarker(ctx, record.id, closed); err != nil {
 			return marker, "unknown", err
 		}
 		if closed.By == pgPublicByPanel {
 			p.recordAudit(auditRecord{Action: "database.postgresql.closed_to_other_accounts:" + record.name, ResourceType: "database", ResourceID: record.id})
 		}
-		return &closed, pgPublicClosed, nil
+		return closed, pgPublicClosed, nil
 	}
 	if f.ACL != marker.BeforeACL || f.PublicConnect != marker.PublicConnect || f.PublicTemporary != marker.PublicTemporary {
 		return marker, "unknown", nil
 	}
+	sent := *marker
+	sent.Sent, sent.WrittenAt = nil, ""
 	watch := &pgPublicMarker{State: pgPublicWatch, WatchSince: marker.WatchSince, Rounds: marker.Rounds, Fingerprint: marker.Fingerprint,
-		SeenRoles: marker.SeenRoles, SeenAt: marker.SeenAt}
+		SeenRoles: marker.SeenRoles, SeenAt: marker.SeenAt, Sent: &sent}
 	outcome := "unchanged"
 	if marker.By == pgPublicByAdministrator || marker.Failure != "" {
 		watch.FailedAt, watch.FailedBy, watch.FailedFingerprint = pgPublicNow().UTC().Format(time.RFC3339), marker.By, pgPublicFingerprint(record, f)
@@ -843,13 +934,80 @@ func (p *Panel) pgPublicReconcile(ctx context.Context, record pgPublicRecord, ma
 	return watch, outcome, nil
 }
 
+// pgPublicSentClosed is the record of a sent close found applied: the
+// database's rights after it, what it gave (an undo takes exactly that).
+func pgPublicSentClosed(sent *pgPublicMarker, afterACL string) *pgPublicMarker {
+	closed := *sent
+	closed.State, closed.AfterACL = pgPublicClosed, afterACL
+	closed.Added = pgPublicAddedFrom(closed.BeforeACL, closed.Grants)
+	closed.Grants, closed.Failure, closed.Sent = nil, "", nil
+	closed.WatchSince, closed.Rounds, closed.Fingerprint = "", 0, ""
+	return &closed
+}
+
+// pgPublicNothingRunning asks the Agent whether a close or undo of the
+// database may still run (B1); true only when it confirmed that none does.
+func (p *Panel) pgPublicNothingRunning(ctx context.Context, record pgPublicRecord) bool {
+	req := &transport.PostgreSQLPublicAccessRunningRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), Port: record.port, Name: record.name}
+	var resp transport.PostgreSQLPublicAccessRunningResponse
+	if err := pgPublicAgent(p, ctx, "Agent.PostgreSQLPublicAccessRunningV1", req, &resp); err != nil || resp.BuildMismatch || resp.Error != "" || resp.Running {
+		if err == nil && resp.Error != "" {
+			log.Printf("postgresql databases: %s: whether a close still runs could not be read: %s", record.name, resp.Error)
+		}
+		return false
+	}
+	return true
+}
+
+// pgPublicConfirmedFacts are one database's facts from a scan that began
+// after the Agent confirmed that no close or undo of it runs; ok=false when
+// that could not be confirmed or the database could not be read.
+func (p *Panel) pgPublicConfirmedFacts(ctx context.Context, record pgPublicRecord) (transport.PostgreSQLPublicAccessFacts, bool) {
+	if !p.pgPublicNothingRunning(ctx, record) {
+		return transport.PostgreSQLPublicAccessFacts{}, false
+	}
+	scan, err := p.pgPublicFreshScan(ctx, pgPublicNow().Add(time.Nanosecond))
+	if err != nil {
+		return transport.PostgreSQLPublicAccessFacts{}, false
+	}
+	f, read := scan.facts[record.id]
+	if !read || f.Error != "" || !f.Exists {
+		return transport.PostgreSQLPublicAccessFacts{}, false
+	}
+	return f, true
+}
+
+// pgPublicSettleUndo settles an undo whose answer did not arrive (B1): once
+// nothing of it runs, the database's rights decide: opened again as before
+// the close, unchanged (the undo did not happen), or still not known.
+func (p *Panel) pgPublicSettleUndo(ctx context.Context, record pgPublicRecord, marker *pgPublicMarker) (*pgPublicMarker, transport.PostgreSQLPublicAccessFacts, bool, error) {
+	f, ok := p.pgPublicConfirmedFacts(ctx, record)
+	if !ok {
+		return marker, f, false, nil
+	}
+	settled := *marker
+	switch {
+	case f.PublicConnect == marker.PublicConnect && f.PublicTemporary == marker.PublicTemporary && f.ACL != marker.AfterACL:
+		settled.State, settled.UndoneAt, settled.AfterACL = pgPublicUndone, settled.UndoSentAt, f.ACL
+		p.recordAudit(auditRecord{Action: "database.postgresql.reopened_to_other_accounts:" + record.name, ResourceType: "database", ResourceID: record.id})
+	case f.ACL == marker.AfterACL:
+	default:
+		return marker, f, true, nil
+	}
+	settled.UndoSentAt = ""
+	if err := p.writePGPublicMarker(ctx, record.id, &settled); err != nil {
+		return marker, f, true, err
+	}
+	return &settled, f, true, nil
+}
+
 // pgPublicCloseBy closes one database; the record is written before the
 // Agent is asked, so a lost answer is settled from the engine. prev is the
 // record before (put back when the Agent verified that nothing changed);
 // fingerprint is the facts the close was decided on. Outcomes: closed,
 // changed (verified: nothing changed), failed (verified, with its reason),
 // unchanged (the panel's answer was lost and nothing changed), unknown,
-// mismatch. The caller holds pgPublicActMu.
+// mismatch. The caller holds the database's lock (pgPublicLock).
 func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entry pgPublicEntry, by string, prev *pgPublicMarker, fingerprint string) (string, *pgPublicMarker, error) {
 	connect, temporary := pgPublicRights(entry.ACL)
 	marker := &pgPublicMarker{State: pgPublicSending, By: by, Port: record.port, Name: record.name, BeforeACL: entry.ACL,
@@ -873,8 +1031,17 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 	err := pgPublicAgent(p, ctx, "Agent.PostgreSQLPublicAccessCloseV1", req, &resp)
 	switch {
 	case err != nil:
-		log.Printf("postgresql databases: %s: the close's answer was lost; the database is read again: %v", record.name, err)
-		return p.pgPublicSettle(ctx, record, marker)
+		// B1: no answer. The record stays "sending" and nothing is sent
+		// again; the next reading settles it once the Agent confirms that no
+		// client of this close runs. The reason is kept: if the database is
+		// then unchanged, it is a failure shown to the administrator, not a
+		// close sent again every hour.
+		log.Printf("postgresql databases: %s: the close's answer did not arrive; it stays as being sent until it is confirmed ended: %v", record.name, err)
+		marker.Failure = "the Agent's answer to the close did not arrive (" + boundedAgentDiagnostic(err.Error()) + ")"
+		if err := p.writePGPublicMarker(ctx, record.id, marker); err != nil {
+			return "unknown", marker, err
+		}
+		return "unknown", marker, nil
 	case resp.BuildMismatch:
 		return "mismatch", prev, putBack()
 	case resp.Closed && resp.Change != nil:
@@ -889,6 +1056,26 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 			p.recordAudit(auditRecord{Action: "database.postgresql.closed_to_other_accounts:" + record.name, ResourceType: "database", ResourceID: record.id})
 		}
 		return pgPublicClosed, marker, nil
+	case resp.Changed && len(resp.Sessions) > 0:
+		// B8: the close's own guard found roles connected that the records
+		// do not hold: they are recorded and named like the roles a round
+		// saw, and the watch ends (the administrator decides).
+		seen := &pgPublicMarker{State: pgPublicWatch}
+		if prev != nil {
+			copied := *prev
+			seen = &copied
+		}
+		for _, role := range resp.Sessions {
+			if !containsString(record.userIn, role) && !containsString(seen.SeenRoles, role) {
+				seen.SeenRoles = append(seen.SeenRoles, role)
+				if seen.SeenAt == "" {
+					seen.SeenAt = pgPublicNow().UTC().Format(time.RFC3339)
+				}
+			}
+		}
+		sort.Strings(seen.SeenRoles)
+		seen.WatchSince, seen.Rounds, seen.Fingerprint = "", 0, ""
+		return "changed", seen, p.writePGPublicMarker(ctx, record.id, seen)
 	case resp.Changed:
 		return "changed", prev, putBack()
 	case resp.Unknown:
@@ -896,7 +1083,8 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 		if err := p.writePGPublicMarker(ctx, record.id, marker); err != nil {
 			return "unknown", marker, err
 		}
-		return p.pgPublicSettle(ctx, record, marker)
+		outcome, settled, _, _, err := p.pgPublicSettle(ctx, record, marker)
+		return outcome, settled, err
 	}
 	// Verified: nothing was changed; the failure is kept with the facts it
 	// failed on.
@@ -911,16 +1099,17 @@ func (p *Panel) pgPublicCloseBy(ctx context.Context, record pgPublicRecord, entr
 	return "failed", failed, p.writePGPublicMarker(ctx, record.id, failed)
 }
 
-// pgPublicSettle reads the one database again at once and settles a
-// "sending" record from it.
-func (p *Panel) pgPublicSettle(ctx context.Context, record pgPublicRecord, marker *pgPublicMarker) (string, *pgPublicMarker, error) {
-	facts, _, _, err := p.pgPublicScan(ctx, []pgPublicRecord{record})
-	f, ok := facts[record.id]
-	if err != nil || !ok {
-		return "unknown", marker, nil
+// pgPublicSettle settles a "sending" record (B1): only once the Agent
+// confirmed that no client or engine session of the close still runs, and
+// from a scan that began after that confirmation (joining one that runs);
+// otherwise the record stays as it is ("unknown"). ok: f is that scan's.
+func (p *Panel) pgPublicSettle(ctx context.Context, record pgPublicRecord, marker *pgPublicMarker) (string, *pgPublicMarker, transport.PostgreSQLPublicAccessFacts, bool, error) {
+	f, ok := p.pgPublicConfirmedFacts(ctx, record)
+	if !ok {
+		return "unknown", marker, f, false, nil
 	}
 	settled, outcome, err := p.pgPublicReconcile(ctx, record, marker, f)
-	return outcome, settled, err
+	return outcome, settled, f, true, err
 }
 
 // pgPublicRights is what PUBLIC held in a database's rights: the untouched
@@ -1054,13 +1243,60 @@ func pgPublicUndoStatements(marker *pgPublicMarker) []string {
 	return out
 }
 
+// pgPublicList is what Problems now reads: the databases the administrator
+// must decide on, and (B5) the databases the rounds could not read, with
+// how many rounds in a row and the last reason.
+type pgPublicList struct {
+	CheckedAt string                    `json:"checked_at"`
+	Open      []string                  `json:"open"`
+	Unread    map[string]pgPublicUnread `json:"unread,omitempty"`
+}
+
+type pgPublicUnread struct {
+	Name   string `json:"name"`
+	Rounds int    `json:"rounds"`
+	Reason string `json:"reason,omitempty"`
+}
+
+func readPGPublicList(ctx context.Context, db *sql.DB) (pgPublicList, bool) {
+	var raw string
+	var list pgPublicList
+	if err := db.QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, pgPublicListKey).Scan(&raw); err != nil {
+		return list, false
+	}
+	if json.Unmarshal([]byte(raw), &list) != nil {
+		return pgPublicList{}, false
+	}
+	return list, true
+}
+
 // storePGPublicList keeps the last scan's databases the administrator must
-// decide on, for Problems now.
+// decide on, for Problems now (a reading that is not a round: a database it
+// read is no longer counted as unread, the others keep their count).
 func (p *Panel) storePGPublicList(ctx context.Context, view pgPublicView) {
-	raw, err := json.Marshal(struct {
-		CheckedAt string   `json:"checked_at"`
-		Open      []string `json:"open"`
-	}{view.CheckedAt, pgPublicNames(view.Open)})
+	p.storePGPublicListRound(ctx, view, false)
+}
+
+// storePGPublicListRound is storePGPublicList; a round also counts, for
+// every database it could not read, one more round in a row (B5).
+func (p *Panel) storePGPublicListRound(ctx context.Context, view pgPublicView, round bool) {
+	previous, _ := readPGPublicList(ctx, p.db.GetDB())
+	list := pgPublicList{CheckedAt: view.CheckedAt, Open: pgPublicNames(view.Open), Unread: map[string]pgPublicUnread{}}
+	for _, entry := range view.Unknown {
+		key := strconv.Itoa(entry.DatabaseID)
+		unread := previous.Unread[key]
+		unread.Name, unread.Reason = entry.Name, entry.Reason
+		if round {
+			unread.Rounds++
+		}
+		if unread.Rounds > 0 {
+			list.Unread[key] = unread
+		}
+	}
+	if len(list.Unread) == 0 {
+		list.Unread = nil
+	}
+	raw, err := json.Marshal(list)
 	if err != nil {
 		return
 	}
@@ -1109,20 +1345,36 @@ func pgPublicNames(entries []pgPublicEntry) []string {
 // pgPublicProblems is the Problems-now line: databases left open to other
 // accounts, from the last scan (read only).
 func pgPublicProblems(ctx context.Context, db *sql.DB) []monitoringProblem {
-	var raw string
-	if err := db.QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, pgPublicListKey).Scan(&raw); err != nil {
+	list, ok := readPGPublicList(ctx, db)
+	if !ok {
 		return nil
 	}
-	var list struct {
-		CheckedAt string   `json:"checked_at"`
-		Open      []string `json:"open"`
+	var problems []monitoringProblem
+	if len(list.Open) > 0 {
+		problems = append(problems, monitoringProblem{Key: "postgresql_databases_open", Kind: "postgresql_databases_open", Severity: "warning", Actor: "administrator",
+			Value: float64(len(list.Open)), Name: strings.Join(list.Open, ", "), ObservedAt: list.CheckedAt,
+			Action: monitoringProblemAction{Kind: "open", To: "/components/postgresql#databases-open"}})
 	}
-	if json.Unmarshal([]byte(raw), &list) != nil || len(list.Open) == 0 {
-		return nil
+	// B5: a database the rounds could not read more than three times in a
+	// row: whether other accounts can enter it is not known. Named with the
+	// last reason; the step is on the PostgreSQL page.
+	var unread []string
+	for _, entry := range list.Unread {
+		if entry.Rounds > pgPublicUnreadRounds {
+			named := entry.Name
+			if entry.Reason != "" {
+				named += " (" + entry.Reason + ")"
+			}
+			unread = append(unread, named)
+		}
 	}
-	return []monitoringProblem{{Key: "postgresql_databases_open", Kind: "postgresql_databases_open", Severity: "warning", Actor: "administrator",
-		Value: float64(len(list.Open)), Name: strings.Join(list.Open, ", "), ObservedAt: list.CheckedAt,
-		Action: monitoringProblemAction{Kind: "open", To: "/components/postgresql#databases-open"}}}
+	if len(unread) > 0 {
+		sort.Strings(unread)
+		problems = append(problems, monitoringProblem{Key: "postgresql_databases_unreadable", Kind: "postgresql_databases_unreadable", Severity: "warning", Actor: "administrator",
+			Value: float64(len(unread)), Name: strings.Join(unread, "; "), ObservedAt: list.CheckedAt,
+			Action: monitoringProblemAction{Kind: "open", To: "/components/postgresql#databases-open"}})
+	}
+	return problems
 }
 
 // handlePostgreSQLPublicAccess: GET the view of the last scan (it changes
@@ -1214,10 +1466,12 @@ func (p *Panel) handlePostgreSQLPublicAccessAction(w http.ResponseWriter, r *htt
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	// One action at a time; the round waits, and reads this one's result.
-	pgPublicActMu.Lock()
+	// One action at a time for this database; the round leaves it to this
+	// one and reads its result (B6: other databases do not wait).
+	lock := pgPublicLock(record.id)
+	lock.Lock()
 	status, answer := p.pgPublicAct(ctx, *record, body.Action, body.ACL, body.Roles)
-	pgPublicActMu.Unlock()
+	lock.Unlock()
 	if status == http.StatusOK && answer.did {
 		if body.Action == "undo" {
 			p.audit(r, "database.postgresql.reopened_to_other_accounts:"+record.name, "database", record.id)
@@ -1230,7 +1484,7 @@ func (p *Panel) handlePostgreSQLPublicAccessAction(w http.ResponseWriter, r *htt
 	answer.write(w)
 }
 
-// pgPublicAnswer is an action's answer, written after pgPublicActMu is
+// pgPublicAnswer is an action's answer, written after the database's lock is
 // released; did: this request made the change (it is audited).
 type pgPublicAnswer struct {
 	did   bool
@@ -1239,7 +1493,7 @@ type pgPublicAnswer struct {
 
 type pgPublicCoded = func(int, string, string, ...string) (int, pgPublicAnswer)
 
-// pgPublicAct does one administrator action under pgPublicActMu.
+// pgPublicAct does one administrator action under the database's lock.
 func (p *Panel) pgPublicAct(ctx context.Context, record pgPublicRecord, action, acl string, roles []string) (int, pgPublicAnswer) {
 	ok := func(status string, did bool) (int, pgPublicAnswer) {
 		return http.StatusOK, pgPublicAnswer{did: did, write: func(w http.ResponseWriter) { _ = json.NewEncoder(w).Encode(map[string]any{"status": status}) }}
@@ -1261,19 +1515,47 @@ func (p *Panel) pgPublicAct(ctx context.Context, record pgPublicRecord, action, 
 	if err != nil {
 		return serverError(err)
 	}
-	facts, _, _, err := p.pgPublicScan(ctx, []pgPublicRecord{record})
+	// B6: a scan that begins now, joining one that runs (one scan at a
+	// time for the whole page).
+	scan, err := p.pgPublicFreshScan(ctx, pgPublicNow())
 	if errors.Is(err, errGrantFormsBuildMismatch) {
 		return coded(http.StatusServiceUnavailable, errCodePGPublicWaiting, "The panel and its Agent are different builds while an update finishes; try again in a minute. Nothing was changed.")
 	}
-	f, read := facts[record.id]
+	var f transport.PostgreSQLPublicAccessFacts
+	read := false
+	if err == nil {
+		f, read = scan.facts[record.id]
+	}
 	if err != nil || !read || f.Error != "" || !f.Exists {
 		return coded(http.StatusBadGateway, errCodePGPublicUnknown, "The database could not be read now, so nothing was changed. Read the list again, then decide.")
 	}
-	// A close whose answer was lost is settled first.
+	// A close or undo whose answer was lost is settled first (B1), once
+	// nothing of it runs; until then nothing is sent.
+	still := false
 	if marker != nil && marker.State == pgPublicSending {
-		if marker, _, err = p.pgPublicReconcile(ctx, record, marker, f); err != nil {
+		var fresh transport.PostgreSQLPublicAccessFacts
+		var ok bool
+		if _, marker, fresh, ok, err = p.pgPublicSettle(ctx, record, marker); err != nil {
 			return serverError(err)
 		}
+		if ok {
+			f = fresh
+		}
+		still = marker.State == pgPublicSending
+	}
+	if marker != nil && marker.State == pgPublicClosed && marker.UndoSentAt != "" {
+		var fresh transport.PostgreSQLPublicAccessFacts
+		var ok bool
+		if marker, fresh, ok, err = p.pgPublicSettleUndo(ctx, record, marker); err != nil {
+			return serverError(err)
+		}
+		if ok {
+			f = fresh
+		}
+		still = still || marker.UndoSentAt != ""
+	}
+	if still {
+		return coded(http.StatusConflict, errCodePGPublicUnknown, "An earlier close or undo of this database may still be running, or its result is not confirmed yet, so nothing was sent. Read the list again in a minute.")
 	}
 	publicClosed := !f.PublicConnect && !f.PublicTemporary
 	if action == "undo" {
@@ -1325,11 +1607,10 @@ func (p *Panel) pgPublicUndo(ctx context.Context, record pgPublicRecord, marker 
 	case err == nil && !resp.Undone && !resp.Unknown:
 		return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not open it again. Nothing was changed. The reason is below.", boundedAgentDiagnostic(resp.Error))
 	case err != nil || resp.Unknown:
-		// Read what the database holds now.
-		facts, _, _, scanErr := p.pgPublicScan(ctx, []pgPublicRecord{record})
-		f, read := facts[record.id]
+		// B1: read what the database holds, once nothing of the undo runs.
+		f, read := p.pgPublicConfirmedFacts(ctx, record)
 		switch {
-		case scanErr != nil || !read || f.Error != "" || !f.Exists:
+		case !read:
 		case f.PublicConnect == marker.PublicConnect && f.PublicTemporary == marker.PublicTemporary && f.ACL != marker.AfterACL:
 			undone, after = true, f.ACL
 		case f.ACL == marker.AfterACL:
@@ -1337,9 +1618,14 @@ func (p *Panel) pgPublicUndo(ctx context.Context, record pgPublicRecord, marker 
 		}
 	}
 	if !undone {
+		// The record says an undo was sent; the next reading settles it.
+		marker.UndoSentAt = pgPublicNow().UTC().Format(time.RFC3339)
+		if err := p.writePGPublicMarker(ctx, record.id, marker); err != nil {
+			return serverError(err)
+		}
 		return coded(http.StatusBadGateway, errCodePGPublicUnknown, "The server did not answer, so whether the database was opened again is not known. CelikPanel keeps its record of the close; the list shows what the database holds now.")
 	}
-	marker.State, marker.UndoneAt, marker.AfterACL = pgPublicUndone, pgPublicNow().UTC().Format(time.RFC3339), after
+	marker.State, marker.UndoneAt, marker.AfterACL, marker.UndoSentAt = pgPublicUndone, pgPublicNow().UTC().Format(time.RFC3339), after, ""
 	if err := p.writePGPublicMarker(ctx, record.id, marker); err != nil {
 		return serverError(err)
 	}

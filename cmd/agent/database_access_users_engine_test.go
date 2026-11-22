@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,12 +84,20 @@ func (e testEngines) pg(user, password, database, statement string) engineResult
 // engines for one test.
 func installTestEngines(t *testing.T, e testEngines) {
 	t.Helper()
-	oldMySQL, oldPG, oldClusters := mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters
+	oldMySQL, oldPG, oldClusters, oldBounded := mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters, pgBoundedCommand
 	mysqlExecStatement = func(statement string) ([]byte, error) { r := e.maria("", "", statement); return r.out, r.err }
 	postgreSQLExecStatementOnPort = func(_ int, statement string) ([]byte, error) { r := e.pg("", "", "", statement); return r.out, r.err }
 	pgStatementClusters = func() ([]transport.PostgreSQLCluster, bool) { return nil, false }
+	// The bounded clients (pg_public_access.go) with the administrator
+	// session's own options, name and connect timeout, as through sudo.
+	pgBoundedCommand = func(ctx context.Context, _ int, application string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, filepath.Join(e.dir, "root/usr/lib/postgresql/17/bin/psql"), "-h", filepath.Join(e.dir, "run"), "-p", e.pgPort, "-U", "postgres",
+			"--no-psqlrc", "--set", "ON_ERROR_STOP=on")
+		cmd.Env = append(e.env(), pgAdminSessionEnv, "PGAPPNAME="+application, "PGCONNECT_TIMEOUT=10")
+		return cmd
+	}
 	t.Cleanup(func() {
-		mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters = oldMySQL, oldPG, oldClusters
+		mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters, pgBoundedCommand = oldMySQL, oldPG, oldClusters, oldBounded
 	})
 }
 

@@ -391,8 +391,11 @@ there.
   starts the count again. A session of a role outside its records seen
   connected to it in any reading (`pg_stat_activity`) ends the watch: the
   database is listed for the administrator with that role's name, also after
-  the session has ended. The page says, for a watched database, since when
-  and the time after which it closes by itself if nobody else connects; the
+  the session has ended; so is a role the close's own last check finds
+  connected (the close then changes nothing). Sessions are hourly snapshots:
+  a role that connects only between two readings is not seen. The page says,
+  for a watched database, since when and the time after which it closes by
+  itself if no other role is seen connected at an hourly check; the
   administrator can close it at any time.
 - The close is one transaction inside the database: it changes nothing unless
   the database is still as read; it gives `CONNECT` to the recorded users
@@ -400,38 +403,68 @@ there.
   owner), takes `CONNECT` and `TEMPORARY` from `PUBLIC`, and reads back that
   `PUBLIC` holds neither and every recorded user and the owner may connect,
   before `COMMIT`. Role names and rights reach its checks as transaction
-  settings, never inside a dollar-quoted body.
+  settings, never inside a dollar-quoted body. Before its first statement
+  that can wait it sets `lock_timeout = 30s` and `statement_timeout = 60s`
+  for its transaction (`SET LOCAL`, which outranks the owner's own settings),
+  so a session that holds the database's row makes it end inside the engine.
+  The Agent ends a close (or undo) client still running after 3 minutes (the
+  panel waits 10); its answer is then unknown, with the time it was ended.
+- Every administrator session (psql, pg_dump, pg_restore, as `postgres` or a
+  cluster's owner, so also alpha.141's restore and copy) pins, as connection
+  options that outrank `ALTER DATABASE/ROLE ... SET`: `search_path`,
+  `statement_timeout=0`, `lock_timeout=0`,
+  `idle_in_transaction_session_timeout=0`, `default_transaction_read_only=off`,
+  `role=none` and `exit_on_error=off` (PostgreSQL's own defaults: a short
+  limit would cut the panel's long loads, so the bounded close sets its own
+  inside its transaction). `idle_session_timeout` (PostgreSQL 14+) and
+  `transaction_timeout` (17+) are reset by the closing sessions right after
+  they connect, where the server knows them.
 - Its answers are three (D-024): closed; verified not closed (the database
   was no longer as read, its read-back refused, or it could not be entered),
   with the reason; and unknown (the script got past `BEGIN` and then failed
-  or gave no read-back: rolled back, or committed with its answer lost). On
-  an unknown answer the panel keeps its record and reads the database's real
-  state before anything else: closed (the record is finished, with who
-  closed it); unchanged (a failure with the reason; for CelikPanel's own
-  close whose answer was simply lost, the same conditions as a first close
-  apply again; an administrator's close is never redone by itself); or still
-  unknown (listed as such, never closed by itself).
+  or gave no read-back: rolled back, or committed with its answer lost; or
+  its client was ended at the deadline). On an unknown answer, or when the
+  panel's call got no answer at all, the panel keeps its record ("sending"),
+  sends nothing again, and reads the database only after the Agent confirms
+  that no client of a close or undo of that database runs (its own, or a
+  process with that close's `application_name`) and no session with that
+  name is on the engine (a `COMMIT` already sent), from a scan that begins
+  after that confirmation: closed (the record is finished, with who closed
+  it); unchanged (a failure with the reason, never redone by itself); or
+  still unknown (listed as such, never closed by itself). A watch that holds
+  a close found not applied keeps that close; if the database is found
+  closed later, it becomes that close's full record (when, by whom, the
+  Undo), never a deleted one.
 - A close that failed is kept with its reason and time, listed on the page
   and in Problems now with who acts and what to do; it is not tried every
   hour, only when the database's facts change or when the administrator
-  presses Close. Closes, undos and the panel's records for these databases
-  are done one at a time: the hourly round and an administrator never both
-  act, and the second reads the first's result.
-- Everything else is left exactly as it is and listed (Problems now, and the
+  presses Close. Closes, undos and the panel's records of one database are
+  done one at a time under that database's own lock: the hourly round and an
+  administrator never both act on it, and the second reads the first's
+  result; with a close still possibly running, no second close is sent.
+  Another database's close and "Read again" do not wait for it (a reading
+  shows a database whose lock is held without changing its record). A round
+  whose scan began before a record changed shows that database from the
+  record and writes nothing for it.
+- Everything else the panel can read is left exactly as it is and listed (Problems now, and the
   PostgreSQL page under "Databases other accounts can enter") with what was
   found (rights changed by hand, other roles inside, other roles seen
   connected, recorded users without a role, monitoring or replication roles,
   a failed close, an unknown result), what every account can do there now
   (connect, or only make temporary tables) and what closing changes; the
   administrator closes it there after reading that. The confirmation names
-  the roles outside the records connected at the last reading.
+  the roles outside the records connected at the last reading. A database
+  that cannot be read is shown on the page as not read, with the reason;
+  after more than three rounds in a row it is also listed in Problems now
+  and the alert mail (`postgresql_databases_unreadable`) with the reason and
+  the step.
 - Undo: on the PostgreSQL page beside each closed database (when, by whom),
   and as the plain statements for an owner without the panel (run as the
   postgres account). It gives `PUBLIC` back what it held and takes away
   exactly the rights the close gave; it is refused, changing nothing, when the
   database's rights changed since. Its unknown answer is settled from the
-  database the same way; the record of a close is never deleted while the
-  database may be closed. A database an administrator opened again stays on
+  database the same way, after the Agent confirms nothing of it runs; the
+  record of a close is never deleted while the database may be closed. A database an administrator opened again stays on
   the page as the administrator's choice ("Opened again by an
   administrator"), out of Problems now and the alert mail, and is never
   closed again by itself.
@@ -440,16 +473,23 @@ there.
   database-rights loop's admission), then hourly. A scan reads every recorded
   database of a cluster in one session; the page shows the last scan with its
   time and changes nothing; "Read again" starts one scan (a press while one
-  runs waits for it). A database or cluster that cannot be read is shown as
-  not read, never as safe. Measured on a private PostgreSQL 17.12: 300
+  runs waits for it; an administrator's action reads through the same one
+  scan). A database or cluster that cannot be read is shown as not read,
+  never as safe. Whether each database exists is asked in the session's
+  first connection, before any database is entered. The Agent ends a scan
+  after 45 seconds and keeps the facts of every database it read; the
+  others are not read, with that reason. Measured on a private PostgreSQL 17.12: 300
   databases in one session in about 5 seconds (the panel's bound for the
   read is 60 seconds).
 - Kept in `panel_settings` (no schema change):
   `postgresql_public_v1:<database id>` per database CelikPanel watches,
   closed or is closing (state, by whom, when, the rights before and after,
   what `PUBLIC` held, what the close gave; the watch's start, rounds and
-  facts; the roles seen connected; the last failed close), and
-  `postgresql_public_list_v1` for the list Problems now shows.
+  facts; the roles seen connected; the last failed close; when it was
+  written; an undo whose answer is not settled; a close found not applied),
+  removed with the database's record (and by the hourly round for any
+  database that is gone), and `postgresql_public_list_v1` for the lists
+  Problems now shows (with the rounds each unread database was not read).
 - Not covered: registered PostgreSQL servers on other machines (their own
   administrator's), and the `postgres`/`template1` databases.
 

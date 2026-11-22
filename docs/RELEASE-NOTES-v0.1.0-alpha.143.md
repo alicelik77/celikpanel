@@ -144,20 +144,42 @@ screen.**
   have read it. A change of its rights, of the accounts inside it, of its
   owner or of its recorded users starts the watch again. An account the
   panel does not record for it seen connected even once ends the watch: the
-  administrator decides, and the account is named. The **PostgreSQL** page
-  shows since when each database is watched and when it closes by itself if
-  nobody else connects; the administrator can close it at any time.
-- Every other such database is left exactly as it is and listed in
-  **Problems now** and on the **PostgreSQL** page with what was found, what
-  every account can do there now (connect, or only make temporary tables),
-  what closing changes, and one button to close it after a confirmation
-  that names the accounts connected at the last reading.
-- A close whose answer is lost is never taken as "nothing changed": the
-  panel keeps its record and reads the database again before doing anything
-  else. A close that fails is shown with its reason, its time and the step
-  to take; it is not retried every hour, only when something about the
-  database changes or the administrator presses Close. Two closes of the
-  same database never run at once.
+  administrator decides, and the account is named; so does an account the
+  close itself finds connected at the last moment. Connections are seen at
+  the hourly checks: an account that connects only between two checks is
+  not seen. The **PostgreSQL** page shows since when each database is
+  watched and when it closes by itself if no other account is seen
+  connected at an hourly check meanwhile; the administrator can close it at
+  any time.
+- Every other such database the panel can read is left exactly as it is
+  and listed in **Problems now** and on the **PostgreSQL** page with what
+  was found, what every account can do there now (connect, or only make
+  temporary tables), what closing changes, and one button to close it after
+  a confirmation that names the accounts connected at the last reading. A
+  database the panel cannot read is shown on the page as not readable, with
+  the reason; after more than three hourly checks in a row it is also
+  listed in **Problems now** and the alert mail as not readable, with the
+  reason and the step. A reading that runs out of time keeps what it read
+  of the other databases.
+- A close waits at most 30 seconds for another session that holds the
+  database (and no statement of it runs longer than 60 seconds), whatever
+  the database's owner set for it; the Agent ends a close or undo still
+  running after 3 minutes, and its answer is then "not known", with the
+  time it was ended. A close or undo whose answer is lost or not known is
+  never taken as "nothing changed": the panel keeps its record, sends
+  nothing again, and reads the database only after the Agent confirms that
+  no part of that close or undo is still running on the server, so the
+  record of a close is never deleted while the database may be closed, and
+  its **Undo** is there whenever the database is closed. A close that fails
+  is shown with its reason, its time and the step to take; it is not
+  retried every hour, only when something about the database changes or the
+  administrator presses Close. Two closes of the same database never run
+  at once; a close of one database holds up neither another database's
+  close nor **Read again**.
+- The administrator's sessions inside a customer's database keep
+  PostgreSQL's own defaults whatever the database's owner set for it
+  (timeouts, read-only mode, the acting role, ending the session on an
+  error); this also holds for alpha.141's restore and copy.
 - Every close shows when and by whom it was made, with **Undo** (and the
   plain statements to undo it without the panel); undo gives back exactly
   what the close changed. A database the administrator opened again stays
@@ -226,6 +248,12 @@ screen.**
   for the day it is watched. Databases the panel does not record (for
   example made by hand) are not touched. The closing was tested on
   PostgreSQL 17 only.
+- Sessions are seen at the hourly checks: an account that connects to a
+  watched database only between two checks is not seen, and the database
+  can be closed by itself after its day. The idle-session and transaction
+  timeouts a database's owner may set (PostgreSQL 14 and 17) are reset by
+  the panel's closing sessions right after they connect, not as connection
+  options (an older server would refuse an option it does not know).
 - A subdomain made inside a customer's own domain under a server name is
   listed in **Problems now** like its parent domain (above). The
   administrator giving a customer a new name under a server name is not
@@ -321,6 +349,30 @@ this release's:
   additive: the Problems now kind `mail_autoresponder_foreign`, the signing
   states `port25_variable` and `port25_variable_own`, and panel setting rows
   `mail_autoresponder_foreign_v1:<account id>`.
+- PostgreSQL, the second review's cases: on a private PostgreSQL 17.12
+  server `TestS1bRound2ACloseThatWaitsIsEndedAndLeavesNothingHalfDone` (a
+  second session holds the database's row: the Agent's deadline ends the
+  close as "not known" and the running check sees it until it is gone; the
+  close's own lock_timeout ends it whatever the owner set; nothing changed
+  either time), `TestS1bRound2TheOwnersDatabaseSettingsDoNotReachTheAdministratorSession`
+  and `TestS1bRound2TheClosesSessionGuardNamesTheRoleItCaught`; without an
+  engine `TestPGPublicCloseAndUndoBoundThemselvesBeforeTheyCanWait`,
+  `TestPGPublicAClientEndedAtItsDeadlineIsUnknown`,
+  `TestPGPublicTheScanAsksWhichDatabasesExistBeforeEnteringAny`,
+  `TestPGPublicAScanWhoseTimeRanOutKeepsWhatItRead`,
+  `TestPGPublicAClientIsFoundByItsNameAmongTheProcesses` and
+  `TestAdministratorSessionPinsWhatADatabaseOwnerCouldSet`; the panel's
+  `TestPGPublicACloseThatMayStillRunStaysSendingAndIsNeverSentAgain`,
+  `TestPGPublicAnUndoWhoseAnswerIsLostKeepsTheCloseUntilItIsConfirmed`,
+  `TestPGPublicAWatchHoldingASentCloseFoundClosedLaterIsThatClosesRecord`,
+  `TestPGPublicOneDatabasesCloseDoesNotHoldUpOthers`,
+  `TestPGPublicARoundSkipsARecordChangedAfterItsScanBegan`,
+  `TestPGPublicASessionTheClosesGuardCaughtIsRecordedAndEndsTheWatch`,
+  `TestPGPublicADatabaseUnreadForMoreThanThreeRoundsIsListed` and
+  `TestPGPublicTheRecordOfARemovedDatabaseIsRemoved`. Also new and additive:
+  the Problems now kind `postgresql_databases_unreadable`, the build-gated
+  agent call `PostgreSQLPublicAccessRunningV1` and the close's answer
+  `sessions`.
 - PostgreSQL, on a private PostgreSQL 17.12 server:
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the
   independent review's cases
@@ -355,7 +407,8 @@ and after:
 | `cmd/panel` | 4726 | 4749 |
 
 (Passed tests and subtests; the whole Go module 15838 → 15894, measured on
-the merged release. In this test machine 19 tests of `cmd/agent` fail
+the merged release before the second fix round; to be measured again on
+its head. In this test machine 19 tests of `cmd/agent` fail
 identically before and after, because of the machine itself: its DNS engine
 state does not authorize PowerDNS, and its temporary folders are not owned by
 the root group. The database tests on private PostgreSQL 17.12 and MariaDB

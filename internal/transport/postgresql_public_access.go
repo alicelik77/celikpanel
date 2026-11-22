@@ -116,6 +116,9 @@ type PostgreSQLPublicAccessCloseResponse struct {
 	Change  *PostgreSQLPublicAccessChange `json:"change,omitempty"`
 	Error   string                        `json:"error,omitempty"`
 	Refusal *DatabaseClusterRefusal       `json:"refusal,omitempty"`
+	// Sessions (second review of alpha.143, B8): with Changed, the roles
+	// outside the records the close's own session guard found connected.
+	Sessions []string `json:"sessions,omitempty"`
 }
 
 // PostgreSQLPublicAccessUndoRequest undoes one close in one transaction:
@@ -139,4 +142,22 @@ type PostgreSQLPublicAccessUndoResponse struct {
 	AfterACL      string                  `json:"after_acl,omitempty"`
 	Error         string                  `json:"error,omitempty"`
 	Refusal       *DatabaseClusterRefusal `json:"refusal,omitempty"`
+}
+
+// PostgreSQLPublicAccessRunningRequest asks whether a close or an undo of one
+// database may still be running (second review of alpha.143, B1): a client
+// the Agent started for it, or a session of that client on the engine.
+type PostgreSQLPublicAccessRunningRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit,omitempty"`
+	Port                int    `json:"port"`
+	Name                string `json:"name"`
+}
+
+// PostgreSQLPublicAccessRunningResponse: Running is false only when the
+// Agent confirmed that no client and no engine session of a close or undo of
+// the database exists; Error (unknown) otherwise keeps the Panel's record.
+type PostgreSQLPublicAccessRunningResponse struct {
+	BuildMismatch bool   `json:"build_mismatch,omitempty"`
+	Running       bool   `json:"running,omitempty"`
+	Error         string `json:"error,omitempty"`
 }

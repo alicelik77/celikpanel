@@ -112,6 +112,11 @@ type pgPublicFakeAgent struct {
 	closeGate chan struct{}
 	gateName  string
 	scanGate  chan struct{}
+	// running: a close or undo of the database may still run (B1); runningErr:
+	// the Agent's running check cannot answer.
+	running    map[string]bool
+	runningErr error
+	checks     int
 }
 
 func (a *pgPublicFakeAgent) closeOnEngine(name string) {
@@ -159,6 +164,15 @@ func (a *pgPublicFakeAgent) call(_ *Panel, _ context.Context, method string, req
 		for _, grant := range in.Grants {
 			out.Change.Added = append(out.Change.Added, grant.Role+":CONNECT")
 		}
+	case "Agent.PostgreSQLPublicAccessRunningV1":
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		a.checks++
+		if a.runningErr != nil {
+			return a.runningErr
+		}
+		in, out := req.(*transport.PostgreSQLPublicAccessRunningRequest), resp.(*transport.PostgreSQLPublicAccessRunningResponse)
+		out.Running = a.running[in.Name]
 	case "Agent.PostgreSQLPublicAccessUndoV1":
 		a.mu.Lock()
 		defer a.mu.Unlock()
@@ -415,17 +429,28 @@ func TestPGPublicALostAnswerIsSettledFromTheEngineUnderTheSameConditions(t *test
 		return errors.New("connection reset")
 	}
 	view := f.round(t)
+	// Second review, B1: a call without an answer stays "sending"; the
+	// reading that may race the close settles nothing, nothing is sent again.
 	marker, _ := f.panel.readPGPublicMarker(context.Background(), 9981)
-	if marker == nil || marker.State != pgPublicClosed || marker.By != pgPublicByPanel || !reflect.DeepEqual(marker.Added, []string{"reader:CONNECT"}) || pgPublicEntryOf(view.Closed, "clean_db") == nil {
+	if marker == nil || marker.State != pgPublicSending {
+		t.Fatalf("a lost answer was settled by the reading that may race it: %+v", marker)
+	}
+	f.agent.close = nil
+	sentClean := f.agent.closesOf("clean_db")
+	view = f.round(t) // the next reading: the Agent confirms nothing runs
+	marker, _ = f.panel.readPGPublicMarker(context.Background(), 9981)
+	if marker == nil || marker.State != pgPublicClosed || marker.By != pgPublicByPanel || !reflect.DeepEqual(marker.Added, []string{"reader:CONNECT"}) || pgPublicEntryOf(view.Closed, "clean_db") == nil || f.agent.closesOf("clean_db") != sentClean {
 		t.Fatalf("a lost answer the engine did: %+v", marker)
 	}
-	// admin_tools: lost, and the engine did nothing. The same conditions as
-	// a first close hold, so it is closed again; first a foreign role
-	// appears, and it is not.
+	// admin_tools: lost, and the engine did nothing: settled as a failure
+	// with its reason, not sent again every hour.
+	if entry := pgPublicEntryOf(view.Open, "admin_tools"); entry == nil || entry.Found[0] != "close_failed" || !strings.Contains(entry.Failure, "did not arrive") {
+		t.Fatalf("admin_tools settled: %+v", entry)
+	}
+	// A foreign role appears meanwhile: listed, and not closed by itself.
 	tools := f.agent.facts["admin_tools"]
 	tools.Roles = append(tools.Roles, "intruder")
 	f.agent.facts["admin_tools"] = tools
-	f.agent.close = nil
 	sent := f.agent.closesOf("admin_tools")
 	view = f.round(t)
 	if f.agent.closesOf("admin_tools") != sent {
@@ -441,7 +466,7 @@ func TestPGPublicALostAnswerIsSettledFromTheEngineUnderTheSameConditions(t *test
 		return errors.New("connection reset")
 	}
 	rec := pgPublicPost(t, f.visibleDatabasesFixture, "admin", map[string]any{"action": "close", "database_id": 9982, "acl": "", "roles": []string{"admin_user", "other_customer"}})
-	if rec.Code != http.StatusBadGateway || !strings.Contains(rec.Body.String(), errCodePGPublicFailed) {
+	if rec.Code != http.StatusBadGateway || !strings.Contains(rec.Body.String(), errCodePGPublicUnknown) {
 		t.Fatalf("an administrator's lost close: %d %s", rec.Code, rec.Body.String())
 	}
 	f.agent.close = nil

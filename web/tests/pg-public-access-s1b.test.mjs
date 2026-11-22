@@ -15,6 +15,8 @@ import Renderer, { act } from 'react-test-renderer';
 import { compileSource, dataModule, reactURL } from './fixtures/shared-layer.mjs';
 import { enPgPublicScreens } from '../src/i18n/screens/pgPublic/en.ts';
 import { trPgPublicScreens } from '../src/i18n/screens/pgPublic/tr.ts';
+import { enPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/en.ts';
+import { trPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/tr.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -164,4 +166,19 @@ test('no browser dialogue; the words exist in both languages; Problems now has t
         for (const part of ['title', 'body', 'action']) assert.match(problemsNow, new RegExp(`'pnow\\.postgresql_databases_open\\.${part}'`));
     }
     assert.match(read('../src/components/PostgreSQLManagement.tsx'), /PostgreSQLPublicAccessBlock/);
+});
+
+// Second review of alpha.143 (22 Nov 2026): a database the hourly checks could
+// not read for hours has its own Problems-now line (words in the pgLeftovers
+// part, the same lane's); the watch says a connection is seen at an hourly check (C5); a close
+// whose result is not confirmed says nothing is sent again (B1).
+test('unreadable databases have their line; the watch and an unconfirmed close are worded truthfully', () => {
+    assert.match(read('../src/components/ProblemsNow.tsx'), /'postgresql_databases_unreadable'/);
+    for (const words of [enPgLeftoversScreens, trPgLeftoversScreens]) {
+        for (const part of ['title', 'body', 'action']) assert.ok(words[`pnow.postgresql_databases_unreadable.${part}`], part);
+    }
+    assert.match(enPgPublicScreens['pgpub.found.observing'], /is seen connected at an hourly check/);
+    assert.doesNotMatch(enPgPublicScreens['pgpub.found.observing'], /connects meanwhile/);
+    assert.match(trPgPublicScreens['pgpub.found.observing'], /saatlik denetimlerde .* bağlı görülmezse/);
+    assert.match(enPgPublicScreens['pgpub.found.unknown_result'], /not sent again/);
 });

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -84,8 +85,8 @@ func TestS1bFixACloseWhoseAnswerIsLostAfterCommitIsUnknown(t *testing.T) {
 	pgFixSetup(t, e, []string{"s1f_lost"}, []string{"s1f_owner", "s1f_reader", "s1f_stranger"}, "CREATE DATABASE s1f_lost OWNER s1f_owner;")
 	facts := pgFixScan(t, port, "s1f_lost", []string{"s1f_owner", "s1f_reader"})
 	saved := pgPublicAccessRunner
-	pgPublicAccessRunner = func(p int) (func(string) ([]byte, error), error) {
-		run, err := saved(p)
+	pgPublicAccessRunner = func(p int, application string, deadline time.Time) (func(string) ([]byte, error), error) {
+		run, err := saved(p, application, deadline)
 		if err != nil {
 			return nil, err
 		}

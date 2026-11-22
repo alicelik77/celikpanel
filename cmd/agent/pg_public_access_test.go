@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -17,7 +18,7 @@ func pgPublicRunner(t *testing.T, answer func(script string) ([]byte, error)) *[
 	t.Helper()
 	var scripts []string
 	saved := pgPublicAccessRunner
-	pgPublicAccessRunner = func(int) (func(string) ([]byte, error), error) {
+	pgPublicAccessRunner = func(int, string, time.Time) (func(string) ([]byte, error), error) {
 		return func(script string) ([]byte, error) {
 			scripts = append(scripts, script)
 			return answer(script)

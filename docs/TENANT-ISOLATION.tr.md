@@ -392,3 +392,32 @@ gösterir):
     `python3 -m http.server 8891 --bind 127.0.0.1`) ve DKIM anahtarı alan bir alan adı eklenir:
     alan adının imza adımı OpenDKIM'in çalışmadığını söyler, `sha256sum` değişmez, Şu anki sorunlar
     imza hatası satırını gösterir. Program durdurulur, panel yeniden başlatılır: satır kalkar.
+
+alpha.141'den önce açılan PostgreSQL veritabanları (`docs/DATABASE-USERS.md`, düzeltme turunun
+ikinci incelemesi), aynı sunucularda, A müşterisinin alpha.140 ya da öncesiyle açılmış ve bir gün
+izlenmiş eski veritabanı `a_shop` ile (sahibi `a_owner`, kayıtlı okuyucu `a_reader`):
+
+18. A veritabanının satırını tutar: `psql -U a_owner a_shop`, sonra `BEGIN; GRANT CONNECT ON
+    DATABASE a_shop TO a_reader;` ve oturumu açık bırakır. Yönetici Kapat'a basar: yanıt yaklaşık
+    30 saniye içinde gelir ve veritabanı sunucusunun kapatmadığını ya da sonucun bilinmediğini
+    söyler; sayfa onu asla Geri al düğmesi olmadan kapalı göstermez ve oturum açıkken hiçbir şey
+    kapatılmaz (`SELECT datacl FROM pg_database WHERE datname = 'a_shop'` değişmez). Yanıttan
+    sonra `ps -ef | grep celikpanel-pgpublic` hiçbir istemci göstermez. A oturumu bitirir
+    (`ROLLBACK;`); Yeniden oku: sayfa durumu söyler (açık, hatası ve zamanıyla); yeniden Kapat:
+    kapalı, Geri al ile.
+19. Geri al, sonra 18. adım panelin kendi kapatmasıyla tekrarlanır: oturum açıkken saatlik denetim
+    beklenir. PostgreSQL sayfası veritabanını "kapatma gönderildi, sonucu henüz doğrulanmadı" ile
+    açık ya da başarısız kapatma olarak gösterir, asla yeniden izleniyor diye göstermez ve sonraki
+    denetimde ikinci bir kapatma gönderilmez (`journalctl -u celikpanel` bir tane gösterir).
+20. `a_owner` olarak: `ALTER DATABASE a_shop SET default_transaction_read_only = on; ALTER DATABASE
+    a_shop SET role = 'a_owner'; ALTER DATABASE a_shop SET lock_timeout = '1ms';`. Yeniden oku:
+    veritabanı okunur; Kapat: kapalı; Geri al: yeniden açık. Alan adı sayfasından `a_shop`
+    yedeklenip geri yüklenebilir.
+21. Küme dört saat durdurulur (ya da bir kopyada `a_shop`, `ALTER DATABASE a_shop ALLOW_CONNECTIONS
+    false` ile her bağlantıyı reddeder, sonra `true` ile geri alınır): sayfa nedeniyle "Şu an
+    okunamadı" gösterir;
+    dördüncü saatlik denetimden sonra Şu anki sorunlar ve uyarı postası onu nedeni ve adımıyla
+    okunamadı diye listeler. Küme başlatılır, Yeniden oku: satır kalkar.
+22. Kaydı olan bir veritabanı silinir (`SELECT key FROM panel_settings WHERE key LIKE
+    'postgresql_public_v1:%'` öncesi ve sonrası, python3'ün sqlite3 modülüyle okunur):
+    kaydı onunla birlikte gider.

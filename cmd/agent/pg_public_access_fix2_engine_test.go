@@ -114,8 +114,8 @@ func TestS1bFixAScanOf300DatabasesIsOneSession(t *testing.T) {
 	t.Logf("made %d databases in %s", n, time.Since(started).Round(time.Millisecond))
 	sessions := 0
 	saved := pgPublicAccessRunner
-	pgPublicAccessRunner = func(p int) (func(string) ([]byte, error), error) {
-		run, err := saved(p)
+	pgPublicAccessRunner = func(p int, application string, deadline time.Time) (func(string) ([]byte, error), error) {
+		run, err := saved(p, application, deadline)
 		return func(script string) ([]byte, error) { sessions++; return run(script) }, err
 	}
 	defer func() { pgPublicAccessRunner = saved }()

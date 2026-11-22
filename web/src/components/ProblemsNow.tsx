@@ -50,7 +50,8 @@ export type ProblemKind =
     | 'node_port_reserved'
     | 'postgresql_databases_open'
     | 'mail_signing'
-    | 'mail_autoresponder_foreign';
+    | 'mail_autoresponder_foreign'
+    | 'postgresql_databases_unreadable';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -67,6 +68,8 @@ const KINDS: readonly ProblemKind[] = [
     // 22 Nov 2026: an out-of-office reply still answering from an address
     // that is no longer the mailbox's own.
     'mail_autoresponder_foreign',
+    // 22 Nov 2026: PostgreSQL databases the hourly checks could not read.
+    'postgresql_databases_unreadable',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 

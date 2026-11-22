@@ -120,6 +120,8 @@ var problemKindOrder = map[string]int{
 	// 22 Nov 2026: an out-of-office reply that still answers from an address
 	// that is no longer the mailbox's own.
 	"mail_autoresponder_foreign": 17,
+	// 22 Nov 2026 (B5): PostgreSQL databases the rounds could not read.
+	"postgresql_databases_unreadable": 18,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

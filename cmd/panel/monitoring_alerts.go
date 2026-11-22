@@ -560,6 +560,10 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "postgresql_databases_open":
 		return fmt.Sprintf("%s PostgreSQL databases made before alpha.141 are still open to this server's other accounts (%s): every account may connect to them, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
 			fmt.Sprintf("alpha.141'den önce açılan %s PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap bunlara bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
+	case "postgresql_databases_unreadable":
+		// 22 Nov 2026 (B5): item.name names each database with its reason.
+		return fmt.Sprintf("Whether other accounts can enter these PostgreSQL databases is not known: they could not be read at the last hourly checks (%s). Open the PostgreSQL page, correct what the reason names, then press Read again.", name),
+			fmt.Sprintf("Bu PostgreSQL veritabanlarına başka hesapların girip giremediği bilinmiyor: son saatlik denetimlerde okunamadılar (%s). PostgreSQL sayfasını açın, nedenin söylediğini düzeltin, sonra Yeniden oku'ya basın.", name)
 	case "mail_signing":
 		if item.name == "port25_variable_own" {
 			// 22 Nov 2026 (B4): nothing is signed here; the owner's filters

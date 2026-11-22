@@ -456,3 +456,39 @@ Added 22 November 2026 (second review of alpha.143):
     that gets a DKIM key: the domain's signing step reports OpenDKIM not
     running, `sha256sum` is unchanged, Problems now shows the signing
     failure line. Stop the program and restart the panel: the line goes.
+
+The PostgreSQL databases made before alpha.141 (`docs/DATABASE-USERS.md`,
+second review of the fix round), on the same servers, with customer A's
+old database `a_shop` (owner `a_owner`, recorded reader `a_reader`) made by
+alpha.140 or earlier and watched for a day:
+
+18. A holds the database's row: `psql -U a_owner a_shop` then `BEGIN; GRANT
+    CONNECT ON DATABASE a_shop TO a_reader;` and leaves the session open.
+    The administrator presses Close: the answer comes within about 30
+    seconds and says the database server did not close it, or its result
+    is not known; the page never shows it closed without its Undo, and
+    nothing is closed while the session is open
+    (`SELECT datacl FROM pg_database WHERE datname = 'a_shop'` unchanged).
+    `ps -ef | grep celikpanel-pgpublic` shows no client after the answer.
+    A ends the session (`ROLLBACK;`); Read again: the page says what holds
+    (open, with the failure and its time); Close again: closed, with Undo.
+19. Undo, then repeat step 18 with the panel's own close: wait for the
+    hourly round with the session open. The PostgreSQL page shows the
+    database as open with "a close was sent and its result is not confirmed
+    yet" or as a failed close, never as watched again, and no second close
+    is sent at the next round (`journalctl -u celikpanel` shows one).
+20. As `a_owner`: `ALTER DATABASE a_shop SET default_transaction_read_only =
+    on; ALTER DATABASE a_shop SET role = 'a_owner'; ALTER DATABASE a_shop SET
+    lock_timeout = '1ms';`. Read again: the database is read; Close: closed;
+    Undo: open again. A backup and restore of `a_shop` from the domain page
+    still works.
+21. Stop the cluster for four hours (or, on a copy, make `a_shop` refuse
+    every connection with `ALTER DATABASE a_shop ALLOW_CONNECTIONS false`,
+    undone afterwards with `true`): the
+    page shows "Could not be read now" with the reason; after the fourth
+    hourly round Problems now and the alert mail list it as not readable,
+    with the reason and the step. Start the cluster, Read again: the line
+    goes.
+22. Delete a database that has a record (`SELECT key FROM panel_settings
+    WHERE key LIKE 'postgresql_public_v1:%'` before and after, read with
+    python3's sqlite3 module): its record goes with it.

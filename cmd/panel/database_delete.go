@@ -723,6 +723,12 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 		databaseDeleteMarkerKey(databaseID), databaseDeleteMarkerPrefix+"%", len(databaseDeleteMarkerPrefix)+1); err != nil {
 		return nil, recordsLeft(fmt.Errorf("remove the deletion marker of database %s: %w", deletion.Name, err))
 	}
+	// Second review of alpha.143, B9: what CelikPanel did to or saw of a
+	// PostgreSQL database's default rights goes with it (the hourly round
+	// removes any other such record whose database is gone).
+	if _, err := tx.ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, pgPublicMarkerKey(databaseID)); err != nil {
+		return nil, recordsLeft(fmt.Errorf("remove the closing record of database %s: %w", deletion.Name, err))
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, recordsLeft(fmt.Errorf("commit the removal of database %s: %w", deletion.Name, err))
 	}

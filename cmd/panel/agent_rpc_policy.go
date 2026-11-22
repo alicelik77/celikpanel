@@ -156,7 +156,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
 		Agent.DatabaseRemoteStatusV1 Agent.DatabaseGrantFormsScanV1 Agent.DatabaseIdentityV1
-		Agent.PostgreSQLPublicAccessScanV1
+		Agent.PostgreSQLPublicAccessScanV1 Agent.PostgreSQLPublicAccessRunningV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
@@ -536,11 +536,12 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DatabaseIdentityV1": agentRPCQuickReadTimeout,
 	"Agent.DropDatabaseOnceV1": agentRPCDatabaseTimeout,
 	// S1b: closing databases made before alpha.141 to other accounts.
-	"Agent.PostgreSQLPublicAccessScanV1":  agentRPCStandardReadTimeout,
-	"Agent.PostgreSQLPublicAccessCloseV1": agentRPCDatabaseTimeout,
-	"Agent.PostgreSQLPublicAccessUndoV1":  agentRPCDatabaseTimeout,
-	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,
-	"Agent.RemoveDatabaseAdminAccount":    agentRPCDatabaseTimeout,
+	"Agent.PostgreSQLPublicAccessScanV1":    agentRPCStandardReadTimeout,
+	"Agent.PostgreSQLPublicAccessRunningV1": agentRPCQuickReadTimeout,
+	"Agent.PostgreSQLPublicAccessCloseV1":   agentRPCDatabaseTimeout,
+	"Agent.PostgreSQLPublicAccessUndoV1":    agentRPCDatabaseTimeout,
+	"Agent.ProvisionDatabaseAdminAccount":   agentRPCDatabaseTimeout,
+	"Agent.RemoveDatabaseAdminAccount":      agentRPCDatabaseTimeout,
 	// alpha.108: PostgreSQL clusters side by side.
 	"Agent.PostgreSQLClustersV1":           agentRPCNetworkReadTimeout,
 	"Agent.PostgreSQLClusterPortPreviewV1": agentRPCNetworkReadTimeout,

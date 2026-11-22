@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
@@ -116,8 +122,119 @@ const pgReplicationStatement = `SELECT 'replication=' OPERATOR(pg_catalog.||) r.
 // pgScanDatabaseMark separates the databases of one scan session's output.
 const pgScanDatabaseMark = "celikpanel-database="
 
-// pgPublicAccessRunner is the statement runner of one cluster (a seam).
-var pgPublicAccessRunner = postgreSQLStatementFor
+// Second review of alpha.143 (22 November 2026), B1 and B5: every client
+// these calls start has a deadline and a name. A close or an undo that waits
+// (another session holds the database's row) stops itself inside the engine
+// first: its transaction sets lock_timeout and statement_timeout (SET LOCAL,
+// which outranks the database owner's own settings) before its first
+// statement that can wait. The Agent ends a client still running at its
+// deadline (SIGINT to its process group: psql cancels its statement and
+// stops), and its answer is then "unknown" with the time it was ended. The
+// client's application_name (pgPublicApplication) lets the Agent say whether
+// any client or engine session of a close of that database is still running
+// (PostgreSQLPublicAccessRunningV1); the Panel settles a "sending" record
+// only after that confirmation. A scan ends before the Panel's 60-second
+// read bound and keeps the facts it has.
+var (
+	// pgPublicLockTimeout, pgPublicStatementTimeout: inside the close's and
+	// the undo's transaction; far under the Agent's deadline (variables for
+	// the engine tests).
+	pgPublicLockTimeout      = "30s"
+	pgPublicStatementTimeout = "60s"
+	// pgPublicActDeadline: a close or undo client (the Panel waits 10
+	// minutes for the call).
+	pgPublicActDeadline = 3 * time.Minute
+)
+
+const (
+	// pgPublicScanBudget: one scan, all its sessions (the Panel waits 60
+	// seconds).
+	pgPublicScanBudget = 45 * time.Second
+	// pgPublicCheckDeadline: the running check's engine read (the Panel
+	// waits 20 seconds).
+	pgPublicCheckDeadline = 15 * time.Second
+
+	pgPublicScanApplication  = "celikpanel-pgpublic-scan"
+	pgPublicCheckApplication = "celikpanel-pgpublic-check"
+)
+
+// pgPublicSessionPins sets, right after a connection, what the connection
+// options cannot pin in every supported version (pg_admin_session.go): the
+// idle session timeout (PostgreSQL 14+) and the transaction timeout (17+),
+// only where the server knows them.
+const pgPublicSessionPins = "SELECT 'pinned=' OPERATOR(pg_catalog.||) pg_catalog.count(pg_catalog.set_config(s.name, '0', false))::pg_catalog.text FROM pg_catalog.pg_settings s " +
+	"WHERE s.name OPERATOR(pg_catalog.=) ANY (ARRAY['idle_session_timeout','transaction_timeout']::pg_catalog.text[]);"
+
+// pgPublicApplication is the application_name of the clients that close or
+// undo one database (the same for both: one database has one of them at a
+// time).
+func pgPublicApplication(port int, name string) string {
+	sum := sha256.Sum256([]byte(strconv.Itoa(port) + "/" + name))
+	return "celikpanel-pgpublic-" + hex.EncodeToString(sum[:8])
+}
+
+// pgClientEndedError is a client the Agent ended at its deadline.
+type pgClientEndedError struct{ at time.Time }
+
+func (e *pgClientEndedError) Error() string {
+	return "the client was ended at " + e.at.UTC().Format(time.RFC3339) + " because its time ran out"
+}
+
+// pgPublicClients counts the clients this Agent runs, by application_name.
+var pgPublicClients = struct {
+	sync.Mutex
+	running map[string]int
+}{running: map[string]int{}}
+
+func pgPublicClientsRunning(application string) bool {
+	pgPublicClients.Lock()
+	defer pgPublicClients.Unlock()
+	return pgPublicClients.running[application] > 0
+}
+
+// pgBoundedCommand is the client command of one bounded run (a seam).
+var pgBoundedCommand = func(ctx context.Context, port int, application string) *exec.Cmd {
+	var extra []string
+	if port > 0 {
+		extra = append(extra, "--port", strconv.Itoa(port))
+	}
+	return exec.CommandContext(ctx, "sudo", pgAdminPSQLArgsFor(application, extra...)...)
+}
+
+// pgBoundedRun runs one script with a deadline; a client still running then
+// is ended and answered as pgClientEndedError.
+func pgBoundedRun(port int, application string, deadline time.Time, script string) ([]byte, error) {
+	pgPublicClients.Lock()
+	pgPublicClients.running[application]++
+	pgPublicClients.Unlock()
+	defer func() {
+		pgPublicClients.Lock()
+		if pgPublicClients.running[application]--; pgPublicClients.running[application] <= 0 {
+			delete(pgPublicClients.running, application)
+		}
+		pgPublicClients.Unlock()
+	}()
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+	cmd := pgBoundedCommand(ctx, port, application)
+	cmd.Stdin = strings.NewReader(script + "\n")
+	pgBoundedProcess(cmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil && ctx.Err() != nil {
+		return out, &pgClientEndedError{at: time.Now()}
+	}
+	return out, err
+}
+
+// pgPublicAccessRunner is the statement runner of one cluster for one named
+// client with a deadline (a seam).
+var pgPublicAccessRunner = func(port int, application string, deadline time.Time) (func(string) ([]byte, error), error) {
+	resolved, err := pgStatementPortFor(port)
+	if err != nil {
+		return nil, err
+	}
+	return func(script string) ([]byte, error) { return pgBoundedRun(resolved, application, deadline, script) }, nil
+}
 
 func pgPublicAccessFailure(err error) (string, *transport.DatabaseClusterRefusal) {
 	return boundedText(err.Error(), 300), pgClusterRefusalOf(err)
@@ -136,7 +253,7 @@ func (a *Agent) PostgreSQLPublicAccessScanV1(req *transport.PostgreSQLPublicAcce
 		resp.Error, resp.BuildMismatch = err.Error(), true
 		return nil
 	}
-	run, err := pgPublicAccessRunner(req.Port)
+	run, err := pgPublicAccessRunner(req.Port, pgPublicScanApplication, time.Now().Add(pgPublicScanBudget))
 	if err != nil {
 		resp.Error, resp.Refusal = pgPublicAccessFailure(err)
 		return nil
@@ -200,18 +317,22 @@ func pgPublicScanDatabases(run func(string) ([]byte, error), header []string, to
 		if first {
 			script = append(script, header...)
 		}
+		// Second review, B5: whether each database exists is asked in the
+		// session's first connection, before any database is entered, so a
+		// failure inside one database is never taken for the next one's.
+		script = append(script, pgScanExistsProbes(todo, facts)...)
 		for _, i := range todo {
 			ident, _ := services.QuotePGIdentifier(facts[i].Name)
-			literal, _ := services.QuotePGStringLiteral(facts[i].Name)
 			// psql's own \if: a database that is gone is answered, not entered.
 			script = append(script, `\echo `+pgScanDatabaseMark+strconv.Itoa(i),
-				"SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_database d WHERE d.datname OPERATOR(pg_catalog.=) "+literal+") AS celikpanel_exists \\gset",
-				`\if :celikpanel_exists`, `\connect `+ident, pgDatabaseFactsStatement, pgInsideRolesStatement,
+				`\if :celikpanel_exists_`+strconv.Itoa(i), `\connect `+ident, pgPublicSessionPins, pgDatabaseFactsStatement, pgInsideRolesStatement,
 				"SELECT DISTINCT 'session=' OPERATOR(pg_catalog.||) x.rolname FROM ("+pgSessionsNames+") x(rolname) ORDER BY 1;",
 				`\else`, `\echo absent=1`, `\endif`)
 		}
 		script = append(script, `\echo `+pgScanDatabaseMark+"end")
 		out, err := run(strings.Join(script, "\n"))
+		var ended *pgClientEndedError
+		timedOut := errors.As(err, &ended)
 		if first {
 			first = false
 			if !strings.Contains(string(out), "celikpanel-header-done") {
@@ -224,6 +345,12 @@ func pgPublicScanDatabases(run func(string) ([]byte, error), header []string, to
 		for at, i := range todo {
 			segment, seen := segments[i]
 			switch {
+			case !seen && timedOut:
+				// Not reached before the scan's time ran out: the facts read
+				// so far are kept, no further session starts.
+				facts[i].Exists = true
+				facts[i].Error = "not read: the reading's time ran out before this database (" + ended.Error() + ")"
+				continue
 			case !seen:
 				// Not reached: the session ended before it.
 				if err == nil {
@@ -233,6 +360,10 @@ func pgPublicScanDatabases(run func(string) ([]byte, error), header []string, to
 				next = todo[at:]
 			case i == last && (err != nil || !strings.Contains(string(out), pgScanDatabaseMark+"end")):
 				facts[i].Exists = true
+				if timedOut {
+					facts[i].Error = "not read: the reading's time ran out while this database was read (" + ended.Error() + ")"
+					continue
+				}
 				facts[i].Error = "the database could not be read: " + boundedText(string(segment), 200)
 				next = todo[at+1:]
 			default:
@@ -255,6 +386,28 @@ func pgPublicScanDatabases(run func(string) ([]byte, error), header []string, to
 		todo = next
 	}
 	return headerOut, true
+}
+
+// pgScanExistsProbes asks, in the session's first connection, whether each
+// database in todo exists: one \gset variable celikpanel_exists_<i> each (at
+// most 500 columns per statement).
+func pgScanExistsProbes(todo []int, facts []transport.PostgreSQLPublicAccessFacts) []string {
+	var lines, columns []string
+	flush := func() {
+		if len(columns) > 0 {
+			lines = append(lines, "SELECT "+strings.Join(columns, ", ")+" \\gset")
+			columns = nil
+		}
+	}
+	for _, i := range todo {
+		literal, _ := services.QuotePGStringLiteral(facts[i].Name)
+		columns = append(columns, "EXISTS (SELECT 1 FROM pg_catalog.pg_database d WHERE d.datname OPERATOR(pg_catalog.=) "+literal+") AS celikpanel_exists_"+strconv.Itoa(i))
+		if len(columns) == 500 {
+			flush()
+		}
+	}
+	flush()
+	return lines
 }
 
 // pgScanSegments splits one scan session's output at its database marks:
@@ -371,17 +524,25 @@ func (a *Agent) PostgreSQLPublicAccessCloseV1(req *transport.PostgreSQLPublicAcc
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
-	run, err := pgPublicAccessRunner(req.Port)
+	run, err := pgPublicAccessRunner(req.Port, pgPublicApplication(req.Port, req.Name), time.Now().Add(pgPublicActDeadline))
 	if err != nil {
 		resp.Error, resp.Refusal = pgPublicAccessFailure(err)
 		return nil
 	}
 	out, err := run(script)
+	var ended *pgClientEndedError
+	if errors.As(err, &ended) {
+		// Ended at its deadline: its statements may have reached COMMIT.
+		resp.Unknown = true
+		resp.Error = "the close did not finish within " + pgPublicActDeadline.String() + "; " + ended.Error() + ", so whether it was closed is not known"
+		return nil
+	}
 	if err != nil {
 		changed, verified := pgPublicOutcome(out)
 		switch {
 		case changed:
 			resp.Changed = true
+			resp.Sessions = pgPublicGuardSessions(out)
 			resp.Error = "the database is no longer as it was read; nothing was changed"
 		case verified:
 			resp.Error = "the database server did not close it; nothing was changed: " + boundedText(pgPublicErrorLines(out), 240)
@@ -417,6 +578,99 @@ func (a *Agent) PostgreSQLPublicAccessCloseV1(req *transport.PostgreSQLPublicAcc
 	}
 	sort.Strings(change.Added)
 	resp.Closed, resp.Change = true, change
+	return nil
+}
+
+// pgPublicGuardSessions reads the roles the close's session guard named
+// ("celikpanel-changed sessions=" and quote_ident names separated by spaces).
+func pgPublicGuardSessions(out []byte) []string {
+	text := string(out)
+	at := strings.Index(text, "celikpanel-changed sessions=")
+	if at < 0 {
+		return nil
+	}
+	rest := text[at+len("celikpanel-changed sessions="):]
+	if end := strings.IndexByte(rest, '\n'); end >= 0 {
+		rest = rest[:end]
+	}
+	var names []string
+	for i := 0; i < len(rest); {
+		switch {
+		case rest[i] == ' ':
+			i++
+		case rest[i] == '"':
+			var name strings.Builder
+			j := i + 1
+			for ; j < len(rest); j++ {
+				if rest[j] == '"' {
+					if j+1 < len(rest) && rest[j+1] == '"' {
+						name.WriteByte('"')
+						j++
+						continue
+					}
+					break
+				}
+				name.WriteByte(rest[j])
+			}
+			names = append(names, name.String())
+			i = j + 1
+		default:
+			j := strings.IndexByte(rest[i:], ' ')
+			if j < 0 {
+				j = len(rest) - i
+			}
+			names = append(names, strings.TrimSpace(rest[i:i+j]))
+			i += j
+		}
+	}
+	return names
+}
+
+// PostgreSQLPublicAccessRunningV1 says whether a close or an undo of one
+// database may still be running: a client this Agent runs for it, a client
+// process with its application_name (also one an earlier Agent process
+// started), or an engine session with that application_name (a COMMIT the
+// client sent before it was ended). Running is false only when all three
+// were read and none was found.
+func (a *Agent) PostgreSQLPublicAccessRunningV1(req *transport.PostgreSQLPublicAccessRunningRequest, resp *transport.PostgreSQLPublicAccessRunningResponse) error {
+	if req == nil || resp == nil {
+		return errors.New("request and response are required")
+	}
+	*resp = transport.PostgreSQLPublicAccessRunningResponse{}
+	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "reading whether a PostgreSQL close still runs"); err != nil {
+		resp.Error, resp.BuildMismatch = err.Error(), true
+		return nil
+	}
+	if services.ValidateSQLIdentifier(req.Name) != nil {
+		resp.Error = "not a database name CelikPanel manages"
+		return nil
+	}
+	application := pgPublicApplication(req.Port, req.Name)
+	if pgPublicClientsRunning(application) {
+		resp.Running = true
+		return nil
+	}
+	running, err := pgPublicProcessesRunning(application)
+	if err != nil {
+		resp.Error = "the running programs could not be read: " + boundedText(err.Error(), 200)
+		return nil
+	}
+	if running {
+		resp.Running = true
+		return nil
+	}
+	run, err := pgPublicAccessRunner(req.Port, pgPublicCheckApplication, time.Now().Add(pgPublicCheckDeadline))
+	if err != nil {
+		resp.Error, _ = pgPublicAccessFailure(err)
+		return nil
+	}
+	out, err := run("SELECT 'running=' OPERATOR(pg_catalog.||) pg_catalog.count(*)::pg_catalog.text FROM pg_catalog.pg_stat_activity s WHERE s.application_name OPERATOR(pg_catalog.=) '" + application + "';")
+	count, ok := markerValue(out, "running")
+	if err != nil || !ok {
+		resp.Error = "the database server's sessions could not be read: " + boundedText(pgPublicErrorLines(out), 200)
+		return nil
+	}
+	resp.Running = count != "0"
 	return nil
 }
 
@@ -471,7 +725,9 @@ func pgPublicCloseScript(req *transport.PostgreSQLPublicAccessCloseRequest) (str
 	}
 	connectArray, _ := pgNameArray(connect)
 	temporaryArray, _ := pgNameArray(temporary)
-	lines := []string{`\connect ` + ident, "BEGIN;", "SELECT 'began=1';",
+	lines := []string{`\connect ` + ident, pgPublicSessionPins, "BEGIN;", "SELECT 'began=1';",
+		// Second review, B1: before the first statement that can wait.
+		"SET LOCAL lock_timeout = '" + pgPublicLockTimeout + "';", "SET LOCAL statement_timeout = '" + pgPublicStatementTimeout + "';",
 		pgPublicSetting("expect_acl", acl), pgPublicSetting("expect_roles", expected), pgPublicSetting("recorded", recorded),
 		pgPublicSetting("connect", connectArray), pgPublicSetting("temporary", temporaryArray),
 		"SELECT 'before=' OPERATOR(pg_catalog.||) coalesce(d.datacl::pg_catalog.text, '') FROM pg_catalog.pg_database d WHERE d.datname OPERATOR(pg_catalog.=) pg_catalog.current_database();",
@@ -484,8 +740,11 @@ func pgPublicCloseScript(req *transport.PostgreSQLPublicAccessCloseRequest) (str
 			"THEN RAISE EXCEPTION 'celikpanel-changed'; END IF; END $celikpanel$;",
 	}
 	if req.NoOtherSessions {
-		lines = append(lines, "DO $celikpanel$ BEGIN IF EXISTS (SELECT x FROM ("+pgSessionsNames+") s(x) WHERE x OPERATOR(pg_catalog.<>) ALL ("+pgPublicSettingArray("recorded")+")) "+
-			"THEN RAISE EXCEPTION 'celikpanel-changed'; END IF; END $celikpanel$;")
+		// Second review, B8: the refusal names the roles it found, so the
+		// Panel records them like the roles a round saw.
+		lines = append(lines, "DO $celikpanel$ DECLARE found pg_catalog.text; BEGIN SELECT pg_catalog.string_agg(DISTINCT pg_catalog.quote_ident(x), ' ') INTO found FROM ("+pgSessionsNames+") s(x) "+
+			"WHERE x OPERATOR(pg_catalog.<>) ALL ("+pgPublicSettingArray("recorded")+"); "+
+			"IF found IS NOT NULL THEN RAISE EXCEPTION 'celikpanel-changed sessions=%', found; END IF; END $celikpanel$;")
 	}
 	lines = append(lines, grants...)
 	// Only what lets another account in: an undo gives back exactly these.
@@ -518,12 +777,18 @@ func (a *Agent) PostgreSQLPublicAccessUndoV1(req *transport.PostgreSQLPublicAcce
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
-	run, err := pgPublicAccessRunner(req.Port)
+	run, err := pgPublicAccessRunner(req.Port, pgPublicApplication(req.Port, req.Name), time.Now().Add(pgPublicActDeadline))
 	if err != nil {
 		resp.Error, resp.Refusal = pgPublicAccessFailure(err)
 		return nil
 	}
 	out, err := run(script)
+	var ended *pgClientEndedError
+	if errors.As(err, &ended) {
+		resp.Unknown = true
+		resp.Error = "the undo did not finish within " + pgPublicActDeadline.String() + "; " + ended.Error() + ", so whether it was opened again is not known"
+		return nil
+	}
 	if err != nil {
 		changed, verified := pgPublicOutcome(out)
 		switch {
@@ -557,7 +822,9 @@ func pgPublicUndoScript(req *transport.PostgreSQLPublicAccessUndoRequest) (strin
 	if err != nil {
 		return "", err
 	}
-	lines := []string{`\connect ` + ident, "BEGIN;", "SELECT 'began=1';", pgPublicSetting("expect_acl", acl), pgACLGuard}
+	lines := []string{`\connect ` + ident, pgPublicSessionPins, "BEGIN;", "SELECT 'began=1';",
+		"SET LOCAL lock_timeout = '" + pgPublicLockTimeout + "';", "SET LOCAL statement_timeout = '" + pgPublicStatementTimeout + "';",
+		pgPublicSetting("expect_acl", acl), pgACLGuard}
 	var public []string
 	if req.PublicConnect {
 		public = append(public, "CONNECT")

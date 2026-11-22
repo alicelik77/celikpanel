@@ -150,21 +150,43 @@ günceller.**
   kapatılır. Haklarının, içindeki hesapların, sahibinin ya da kayıtlı
   kullanıcılarının değişmesi izlemeyi yeniden başlatır. Panelin onun için
   kaydetmediği bir hesabın ona bir kez bile bağlı görülmesi izlemeyi bitirir:
-  karar yöneticinindir ve hesap adıyla söylenir. **PostgreSQL** sayfası her
-  veritabanının ne zamandan beri izlendiğini ve başka kimse bağlanmazsa ne
-  zaman kendiliğinden kapanacağını gösterir; yönetici onu istediği an
+  karar yöneticinindir ve hesap adıyla söylenir; kapatmanın kendisinin son
+  anda bağlı bulduğu bir hesap da öyle. Bağlantılar saatlik denetimlerde
+  görülür: yalnız iki denetim arasında bağlanan bir hesap görülmez.
+  **PostgreSQL** sayfası her veritabanının ne zamandan beri izlendiğini ve
+  bu arada saatlik bir denetimde başka bir hesabın bağlı olduğu görülmezse
+  ne zaman kendiliğinden kapanacağını gösterir; yönetici onu istediği an
   kapatabilir.
-- Diğer her böyle veritabanı olduğu gibi bırakılır ve **Şu anki sorunlar**da
-  ve **PostgreSQL** sayfasında, neyin bulunduğu, her hesabın orada şu an ne
-  yapabildiği (bağlanmak ya da yalnız geçici tablo açmak), kapatmanın neyi
-  değiştireceği ve son okumada bağlı olan hesapları adlandıran bir onaydan
-  sonra kapatan tek düğmeyle listelenir.
-- Yanıtı kaybolan bir kapatma hiçbir zaman "hiçbir şey değişmedi" sayılmaz:
-  panel kaydını korur ve başka bir şey yapmadan önce veritabanını yeniden
-  okur. Başarısız bir kapatma nedeni, zamanı ve atılacak adımla gösterilir;
-  her saat yeniden denenmez, yalnız veritabanında bir şey değişince ya da
-  yönetici Kapat'a basınca denenir. Aynı veritabanının iki kapatması asla
-  aynı anda çalışmaz.
+- Panelin okuyabildiği diğer her böyle veritabanı olduğu gibi bırakılır ve
+  **Şu anki sorunlar**da ve **PostgreSQL** sayfasında, neyin bulunduğu, her
+  hesabın orada şu an ne yapabildiği (bağlanmak ya da yalnız geçici tablo
+  açmak), kapatmanın neyi değiştireceği ve son okumada bağlı olan hesapları
+  adlandıran bir onaydan sonra kapatan tek düğmeyle listelenir. Panelin
+  okuyamadığı bir veritabanı sayfada nedeniyle birlikte okunamadı diye
+  gösterilir; üst üste üçten fazla saatlik denetimde okunamazsa **Şu anki
+  sorunlar**da ve uyarı postasında da nedeni ve atılacak adımla okunamadı
+  diye listelenir. Süresi biten bir okuma, diğer veritabanlarından
+  okuduğunu korur.
+- Bir kapatma, veritabanını tutan başka bir oturumu en çok 30 saniye bekler
+  (ve hiçbir komutu 60 saniyeden uzun sürmez); veritabanının sahibi onun
+  için ne ayarlamış olursa olsun. Ajan, 3 dakika sonra hâlâ çalışan bir
+  kapatmayı ya da geri almayı sonlandırır; yanıtı o zaman sonlandırıldığı
+  zamanla birlikte "bilinmiyor" olur. Yanıtı kaybolan ya da bilinmeyen bir
+  kapatma veya geri alma hiçbir zaman "hiçbir şey değişmedi" sayılmaz: panel
+  kaydını korur, hiçbir şeyi yeniden göndermez ve veritabanını ancak ajan o
+  kapatmanın ya da geri almanın hiçbir parçasının sunucuda hâlâ çalışmadığını
+  doğruladıktan sonra okur; böylece veritabanı kapalı olabildiği sürece bir
+  kapatmanın kaydı asla silinmez ve veritabanı kapalıyken **Geri al** her
+  zaman vardır. Başarısız bir kapatma nedeni, zamanı ve atılacak adımla
+  gösterilir; her saat yeniden denenmez, yalnız veritabanında bir şey
+  değişince ya da yönetici Kapat'a basınca denenir. Aynı veritabanının iki
+  kapatması asla aynı anda çalışmaz; bir veritabanının kapatması başka bir
+  veritabanının kapatmasını da **Yeniden oku**yu da bekletmez.
+- Yöneticinin bir müşterinin veritabanı içindeki oturumları, veritabanının
+  sahibi onun için ne ayarlamış olursa olsun PostgreSQL'in kendi
+  varsayılanlarını korur (zaman sınırları, salt okunur kip, oturumun hangi
+  rolle çalıştığı, bir hatada oturumun kapanması); bu alpha.141'in geri
+  yükleme ve kopyalama işleri için de geçerlidir.
 - Her kapatma ne zaman ve kim tarafından yapıldığını, **Geri al** düğmesini
   (ve panel olmadan geri almak için düz komutları) gösterir; geri alma,
   kapatmanın değiştirdiğini tam olarak geri verir. Yöneticinin yeniden
@@ -234,6 +256,12 @@ günceller.**
   hesaplara açık kalır; kendi başına kapatabileceği bir veritabanı izlendiği
   gün boyunca açık kalır. Panelin kaydetmediği veritabanlarına (örneğin elle
   açılanlar) dokunulmaz. Kapatma yalnız PostgreSQL 17'de denendi.
+- Oturumlar saatlik denetimlerde görülür: izlenen bir veritabanına yalnız
+  iki denetim arasında bağlanan bir hesap görülmez ve veritabanı günü
+  dolunca kendiliğinden kapatılabilir. Bir veritabanı sahibinin
+  ayarlayabileceği boşta oturum ve işlem zaman sınırları (PostgreSQL 14 ve
+  17) panelin kapatma oturumlarında bağlantı seçeneği olarak değil, bağlanır
+  bağlanmaz sıfırlanır (eski bir sunucu tanımadığı bir seçeneği reddederdi).
 - Bir müşterinin kendi alan adının içinde, bir sunucu adının altında açılan
   alt alan adı, üst alan adı gibi **Şu anki sorunlar**da listelenir
   (yukarıda). Yöneticinin bir müşteriye sunucu adının altında yeni bir ad
@@ -331,6 +359,31 @@ geçen testler:
   `mail_autoresponder_foreign`, imza durumları `port25_variable` ve
   `port25_variable_own`, panel ayar satırları
   `mail_autoresponder_foreign_v1:<hesap kimliği>`.
+- PostgreSQL, ikinci incelemenin durumları: özel bir PostgreSQL 17.12
+  sunucusunda `TestS1bRound2ACloseThatWaitsIsEndedAndLeavesNothingHalfDone`
+  (ikinci bir oturum veritabanının satırını tutar: ajanın süre sınırı
+  kapatmayı "bilinmiyor" diye sonlandırır ve çalışma denetimi o bitene dek
+  onu görür; kapatmanın kendi lock_timeout değeri, sahip ne ayarlamış olursa
+  olsun onu sonlandırır; iki seferde de hiçbir şey değişmez),
+  `TestS1bRound2TheOwnersDatabaseSettingsDoNotReachTheAdministratorSession`
+  ve `TestS1bRound2TheClosesSessionGuardNamesTheRoleItCaught`; motor olmadan
+  `TestPGPublicCloseAndUndoBoundThemselvesBeforeTheyCanWait`,
+  `TestPGPublicAClientEndedAtItsDeadlineIsUnknown`,
+  `TestPGPublicTheScanAsksWhichDatabasesExistBeforeEnteringAny`,
+  `TestPGPublicAScanWhoseTimeRanOutKeepsWhatItRead`,
+  `TestPGPublicAClientIsFoundByItsNameAmongTheProcesses` ve
+  `TestAdministratorSessionPinsWhatADatabaseOwnerCouldSet`; panelin
+  `TestPGPublicACloseThatMayStillRunStaysSendingAndIsNeverSentAgain`,
+  `TestPGPublicAnUndoWhoseAnswerIsLostKeepsTheCloseUntilItIsConfirmed`,
+  `TestPGPublicAWatchHoldingASentCloseFoundClosedLaterIsThatClosesRecord`,
+  `TestPGPublicOneDatabasesCloseDoesNotHoldUpOthers`,
+  `TestPGPublicARoundSkipsARecordChangedAfterItsScanBegan`,
+  `TestPGPublicASessionTheClosesGuardCaughtIsRecordedAndEndsTheWatch`,
+  `TestPGPublicADatabaseUnreadForMoreThanThreeRoundsIsListed` ve
+  `TestPGPublicTheRecordOfARemovedDatabaseIsRemoved`. Ayrıca yeni ve
+  eklemeli: "Şu anki sorunlar" türü `postgresql_databases_unreadable`,
+  sürüme bağlı aracı çağrısı `PostgreSQLPublicAccessRunningV1` ve kapatmanın
+  `sessions` yanıtı.
 - PostgreSQL, özel bir PostgreSQL 17.12 sunucusunda:
   `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve bağımsız
   incelemenin durumları
@@ -364,8 +417,9 @@ sonra:
 | `cmd/agent` | 5854 | 5884 |
 | `cmd/panel` | 4726 | 4749 |
 
-(Geçen testler ve alt testler; Go modülünün tamamı 15838 → 15894, birleşmiş
-sürümde ölçüldü. Bu test makinesinde `cmd/agent` paketinin 19 testi önce ve
+(Geçen testler ve alt testler; Go modülünün tamamı 15838 → 15894, ikinci
+düzeltme turundan önce birleşmiş sürümde ölçüldü; onun son hâlinde yeniden
+ölçülecek. Bu test makinesinde `cmd/agent` paketinin 19 testi önce ve
 sonra aynı biçimde, makinenin kendisi yüzünden başarısız: DNS motoru durumu
 PowerDNS'e yetki vermiyor ve geçici klasörleri root grubuna ait değil. Özel
 PostgreSQL 17.12 ve MariaDB 11.8 sunucularında veritabanı testleri: 22'si
