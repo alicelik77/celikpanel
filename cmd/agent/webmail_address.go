@@ -272,6 +272,75 @@ func webmailAddressTLSLines() string {
 }
 
 func renderWebmailAddressConfigWith(host, challengeRoot, roundcubeRoot, fpmSocket string, withHTTP bool, http2, tlsLines string) string {
+	return renderWebmailAddressConfigForm(host, challengeRoot, roundcubeRoot, fpmSocket, withHTTP, http2, tlsLines, true)
+}
+
+// webmailAddressLocations143 is how alpha.110 to alpha.143 served the
+// Roundcube tree: every file nginx found was given out as it is and every
+// .php ran, also under the linked folders (plugins, skins, program), so a
+// plugin's copied configuration, a database dump or a log there could be
+// downloaded by anyone who could open the address. Still CelikPanel's own
+// form (its next write is the current one).
+const webmailAddressLocations143 = `    location ~ /\. {
+        deny all;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+`
+
+// webmailAddressLocations is the current form (alpha.144): only
+// Roundcube's entry point runs PHP (Roundcube runs its plugins inside it;
+// CelikPanel's configuration sets no assets_path, so its pages load their
+// files straight from the linked folders); under the linked folders only
+// the static files its pages load are given out (scripts, style sheets,
+// pictures, fonts, the sounds of new mail, the PDF and TIFF files of its
+// browser check, and the skins' blank pages); dot-files and names that look
+// like a backup, a dump, a log or a configuration are refused everywhere.
+const webmailAddressLocations = `    location ~ /\. {
+        deny all;
+    }
+
+    # CelikPanel (alpha.144): copies, dumps, logs and settings files are
+    # never given out, wherever they are.
+    location ~* (~|\.(bak|old|orig|save|swp|swo|tmp|dist|sample|sql|log|ini|yml|yaml|json|lock|md|txt|sh|inc|conf|cfg|phar)|\.php\.[^/]*)$ {
+        return 404;
+    }
+
+    # The linked folders give out only the static files Roundcube's pages
+    # load; nothing else in them is served or run.
+    location ~ ^/(plugins|skins|program)/ {
+        location ~* ^/skins/.+\.html$ {
+            try_files $uri =404;
+        }
+        location ~* \.(js|css|png|gif|jpe?g|svg|ico|webp|bmp|tiff?|pdf|woff2?|ttf|otf|eot|mp3|wav|ogg)$ {
+            try_files $uri =404;
+        }
+        return 404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    # Roundcube's entry point is the only PHP that runs here.
+    location ~ \.php$ {
+        return 404;
+    }
+
+    location = /index.php {
+        try_files $uri =404;
+`
+
+func renderWebmailAddressConfigForm(host, challengeRoot, roundcubeRoot, fpmSocket string, withHTTP bool, http2, tlsLines string, current bool) string {
+	locations := webmailAddressLocations
+	if !current {
+		locations = webmailAddressLocations143
+	}
 	lineage := webmailAddressLineageName(host)
 	live := webmailAddressLiveDir(lineage)
 	var b strings.Builder
@@ -299,17 +368,7 @@ func renderWebmailAddressConfigWith(host, challengeRoot, roundcubeRoot, fpmSocke
     index index.php;
     client_max_body_size 25m;
 
-    location ~ /\. {
-        deny all;
-    }
-
-    location / {
-        try_files $uri $uri/ /index.php$is_args$args;
-    }
-
-    location ~ \.php$ {
-        try_files $uri =404;
-        include fastcgi_params;
+%s        include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param HTTPS on;
         fastcgi_pass unix:%s;
@@ -326,7 +385,7 @@ func renderWebmailAddressConfigWith(host, challengeRoot, roundcubeRoot, fpmSocke
         fastcgi_pass unix:%s;
     }
 }
-`, host, live, live, tlsLines, roundcubeRoot, fpmSocket, phpToolCheckPrefix, phpToolWebmail,
+`, host, live, live, tlsLines, roundcubeRoot, locations, fpmSocket, phpToolCheckPrefix, phpToolWebmail,
 		phpToolCheckScriptPath, strings.Join(phpToolExtensions[phpToolWebmail], ","), fpmSocket)
 	return b.String()
 }
@@ -349,6 +408,9 @@ type webmailAddressForm struct {
 	legacyTLS bool
 	// otherHTTP2: the file's HTTP/2 form is not this nginx's.
 	otherHTTP2 bool
+	// openLayout: the file serves the Roundcube tree as alpha.143 and
+	// earlier did (every file, every .php).
+	openLayout bool
 }
 
 func parseWebmailAddressConfig(host, content string) (webmailAddressForm, bool) {
@@ -374,27 +436,30 @@ func parseWebmailAddressConfig(host, content string) (webmailAddressForm, bool) 
 	// file written before the policy changed, or for another nginx version,
 	// is still followed (PHP version) and removable.
 	current := webmailAddressHTTP2Form()
-	for _, tlsLines := range []string{webmailAddressTLSLines(), webmailAddressLegacyTLS} {
-		for _, http2 := range webmailAddressHTTP2Forms() {
-			form.legacyTLS = tlsLines == webmailAddressLegacyTLS
-			form.otherHTTP2 = http2 != current
-			if form.challenge != "" && content == renderWebmailAddressConfigWith(host, form.challenge, form.root, form.fpm, true, http2, tlsLines) {
-				form.withHTTP = true
-				return form, true
-			}
-			if content == renderWebmailAddressConfigWith(host, "", form.root, form.fpm, false, http2, tlsLines) {
-				return form, true
+	for _, layout := range []bool{true, false} {
+		for _, tlsLines := range []string{webmailAddressTLSLines(), webmailAddressLegacyTLS} {
+			for _, http2 := range webmailAddressHTTP2Forms() {
+				form.legacyTLS = tlsLines == webmailAddressLegacyTLS
+				form.otherHTTP2 = http2 != current
+				form.openLayout = !layout
+				if form.challenge != "" && content == renderWebmailAddressConfigForm(host, form.challenge, form.root, form.fpm, true, http2, tlsLines, layout) {
+					form.withHTTP = true
+					return form, true
+				}
+				if content == renderWebmailAddressConfigForm(host, "", form.root, form.fpm, false, http2, tlsLines, layout) {
+					return form, true
+				}
 			}
 		}
 	}
-	form.legacyTLS, form.otherHTTP2 = false, false
+	form.legacyTLS, form.otherHTTP2, form.openLayout = false, false, false
 	return form, false
 }
 
 // stale: the file is CelikPanel's form of an earlier release or of another
 // nginx version, so its next write is this release's form for this nginx.
 func (form webmailAddressForm) stale() bool {
-	return form.legacyTLS || form.otherHTTP2
+	return form.legacyTLS || form.otherHTTP2 || form.openLayout
 }
 
 // webmailAddressHosts lists the names that have an address file.
@@ -1300,4 +1365,65 @@ func isDigits(value string) bool {
 		}
 	}
 	return true
+}
+
+// webmailAddressPendingSuffix names CelikPanel's text put beside an address
+// file the owner changed (nginx reads only *.conf in its directory).
+const webmailAddressPendingSuffix = ".celikpanel-pending"
+
+// reconcileWebmailAddressesAtStartup (alpha.144) brings every address file
+// in an earlier CelikPanel form to the current one once after an update (the
+// same write, check and reload as a PHP version move, each file keeping its
+// PHP-FPM socket). A file the owner changed is kept as it is; CelikPanel's
+// current text for it is put beside it as <file>.celikpanel-pending and the
+// journal says so. It answers what it did, one line per address.
+func reconcileWebmailAddressesAtStartup(ctx context.Context, run webmailCommandRunner) []string {
+	var said []string
+	for _, host := range webmailAddressHosts() {
+		path := webmailAddressConfPath(host)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			said = append(said, fmt.Sprintf("%s: could not be read: %v", host, err))
+			continue
+		}
+		form, managed := parseWebmailAddressConfig(host, string(content))
+		if managed {
+			if form.pending || !form.stale() {
+				continue
+			}
+			next := renderWebmailAddressConfig(host, form.challenge, form.root, form.fpm, form.withHTTP)
+			if err := applyWebmailNginxMutation(ctx, path, []byte(next), true, run); err != nil {
+				said = append(said, fmt.Sprintf("%s: kept in its earlier form (%v)", host, err))
+				continue
+			}
+			_ = os.Remove(path + webmailAddressPendingSuffix)
+			said = append(said, fmt.Sprintf("%s: rewritten in the current form", host))
+			continue
+		}
+		// The owner's file: CelikPanel's text goes beside it, never over it.
+		text := string(content)
+		root, fpm, challenge := "", "", ""
+		if m := webmailAddressRootLine.FindStringSubmatch(text); m != nil {
+			root = m[1]
+		}
+		if m := webmailAddressFPMLine.FindStringSubmatch(text); m != nil {
+			fpm = m[1]
+		}
+		if m := webmailAddressChallengeLine.FindStringSubmatch(text); m != nil {
+			challenge = m[1]
+		}
+		if root == "" || fpm == "" {
+			continue
+		}
+		pending := renderWebmailAddressConfig(host, challenge, root, fpm, challenge != "")
+		if existing, err := os.ReadFile(path + webmailAddressPendingSuffix); err == nil && string(existing) == pending {
+			continue
+		}
+		if err := secureWriteConfig(path+webmailAddressPendingSuffix, []byte(pending), 0o600); err != nil {
+			said = append(said, fmt.Sprintf("%s: changed by the owner and kept; CelikPanel's text could not be put beside it: %v", host, err))
+			continue
+		}
+		said = append(said, fmt.Sprintf("%s: changed by the owner and kept as it is; CelikPanel's current text, which refuses plugin copies, dumps and logs, is in %s", host, path+webmailAddressPendingSuffix))
+	}
+	return said
 }

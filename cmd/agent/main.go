@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Agent struct {
@@ -757,6 +758,17 @@ func main() {
 	// service starts, so a deletion re-checked after the update already
 	// meets the new tool.
 	reconcileDNSPeerInspectorToolsAtStartup()
+	// alpha.144 (security): webmail's own address files in an earlier form
+	// served every file of Roundcube's linked folders; once after the update
+	// they get the current form (an owner's file is kept, the text goes
+	// beside it). Before the RPC service starts, so no webmail change races it.
+	{
+		webmailCtx, cancelWebmail := context.WithTimeout(context.Background(), 2*time.Minute)
+		for _, line := range reconcileWebmailAddressesAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
+			log.Printf("[webmail] address %s", line)
+		}
+		cancelWebmail()
+	}
 	// alpha.130: the automatic removal's archives of leftover PostgreSQL
 	// clusters expire after 30 days (pg_leftovers.go).
 	if pruned := pruneExpiredPGAutoArchives(); len(pruned) > 0 {
