@@ -513,35 +513,6 @@ func TestPendingAtJobsAreNumberAccountAndTimeOnly(t *testing.T) {
 	}
 }
 
-// --- Finding 14: only real directives keep the stock pool on ---
-
-func TestOnlyRealDirectivesKeepTheStockPoolOn(t *testing.T) {
-	listen := "/run/php/php8.4-fpm.sock"
-	header := "# configuration file /etc/nginx/sites-enabled/site7.conf:\nserver {\n"
-	cases := []struct {
-		name string
-		dump string
-		used []string
-	}{
-		{"a header value naming the socket", header + "    add_header X-Note \"unix:/run/php/php8.4-fpm.sock\";\n}\n", nil},
-		{"a quoted value across lines faking a file and a directive", header +
-			"    add_header X-Note \"a\n# configuration file /etc/nginx/fake.conf:\n    fastcgi_pass unix:/run/php/php8.4-fpm.sock;\n\";\n}\n", nil},
-		{"a comment", header + "    # fastcgi_pass unix:/run/php/php8.4-fpm.sock;\n}\n", nil},
-		{"fastcgi_pass", header + "    fastcgi_pass unix:/run/php/php8.4-fpm.sock;\n}\n", []string{"/etc/nginx/sites-enabled/site7.conf"}},
-		{"an upstream's server", "# configuration file /etc/nginx/conf.d/up.conf:\nupstream php { server unix:/var/run/php/php8.4-fpm.sock; }\n", []string{"/etc/nginx/conf.d/up.conf"}},
-		{"another socket with the same start", header + "    fastcgi_pass unix:/run/php/php8.4-fpm.sock2;\n}\n", nil},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := stockPoolUsers(tc.dump, listen, "", nil); !reflect.DeepEqual(got, append([]string{}, tc.used...)) {
-				if !(len(got) == 0 && len(tc.used) == 0) {
-					t.Fatalf("users %v, want %v", got, tc.used)
-				}
-			}
-		})
-	}
-}
-
 // --- Finding 8: webmail without its own account says so ---
 
 func TestWebmailWithoutItsOwnAccountIsSaidAndNeverPointedAtAMissingSocket(t *testing.T) {

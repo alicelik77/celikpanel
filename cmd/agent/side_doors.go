@@ -412,20 +412,60 @@ func stockPoolUsers(dump, listen, alias string, apacheRefs func(string) []string
 			targets = append(targets, "/var"+alias)
 		}
 	}
+	if strings.HasPrefix(listen, "/var/run/") {
+		targets = append(targets, strings.TrimPrefix(listen, "/var"))
+	}
 	seen := map[string]bool{}
-	// Only a directive that hands requests to the socket counts (S4 R1 fix
-	// round): fastcgi_pass, proxy_pass and the other *_pass, or an upstream's
-	// server line, whose first argument is the socket. Quoted values (a
-	// customer's allowed header text, even across lines) and comments are
-	// not directives, so they can neither keep the pool on nor name a file.
-	for _, statement := range nginxDumpStatements(dump) {
-		if len(statement.words) < 2 || !(strings.HasSuffix(statement.words[0], "_pass") || statement.words[0] == "server") {
+	// The question may only ever fail in the safe direction (S4 R1, second
+	// fix round): turning the pool off while something uses it stops that
+	// site. So nothing reads nginx's grammar to decide "not used". The pool
+	// counts as used when:
+	//   - any line that is not a full-line comment names its socket (either
+	//     spelling) anywhere: a directive, an argument, a set, a map, an
+	//     upstream, quoted or not;
+	//   - or any *_pass on such a line is followed, before the statement can
+	//     have ended, by a "$": the address is a variable whose value cannot
+	//     be known here.
+	// A customer's harmless directive that names the socket keeps the pool on
+	// and gives the customer nothing: the socket is www-data's, mode 0660,
+	// and a site account is not in that group; customers may not write any
+	// *_pass (internal/services/site_directives.go).
+	// The file a mention is in is named from the "# configuration file" line
+	// nginx -T prints before each file. That name is only a label for the
+	// administrator: a quoted value that fakes such a line can mislabel a
+	// mention, never hide one.
+	lines := strings.Split(dump, "\n")
+	files := make([]string, len(lines))
+	file := "nginx"
+	for i, line := range lines {
+		files[i] = ""
+		trimmed := strings.TrimLeft(line, " \t\r")
+		if strings.HasPrefix(trimmed, "#") {
+			if name, ok := strings.CutPrefix(strings.TrimRight(trimmed, " \t\r"), "# configuration file "); ok && strings.HasSuffix(name, ":") {
+				file = strings.TrimSuffix(name, ":")
+			}
 			continue
 		}
-		argument := strings.TrimPrefix(strings.TrimPrefix(statement.words[1], "http://"), "https://")
+		files[i] = file
 		for _, target := range targets {
-			if argument == "unix:"+target || strings.HasPrefix(argument, "unix:"+target+":") {
-				seen[statement.file] = true
+			if strings.Contains(line, target) {
+				seen[file] = true
+			}
+		}
+	}
+	for i, line := range lines {
+		if files[i] == "" {
+			continue
+		}
+		for offset := 0; ; {
+			at := strings.Index(line[offset:], "_pass")
+			if at < 0 {
+				break
+			}
+			offset += at + len("_pass")
+			if passAddressHasVariable(lines, files, i, offset) {
+				seen[files[i]] = true
+				break
 			}
 		}
 	}
@@ -444,92 +484,38 @@ func stockPoolUsers(dump, listen, alias string, apacheRefs func(string) []string
 	return users
 }
 
-// nginxStatement is one directive of `nginx -T` output: its words (quotes
-// removed) and the configuration file nginx named before it.
-type nginxStatement struct {
-	file  string
-	words []string
-}
-
-// nginxDumpStatements splits `nginx -T` output into directives, the way nginx
-// reads them: words end at blanks, a directive at ';', '{' or '}', a comment
-// runs from '#' to the end of its line, and none of these count inside
-// quotes (which may span lines; a backslash escapes the next character).
-// nginx -T prints "# configuration file <path>:" before each file; that line
-// is read only outside quotes.
-func nginxDumpStatements(dump string) []nginxStatement {
-	var statements []nginxStatement
-	file := "nginx"
-	var words []string
-	var word strings.Builder
-	inWord := false
-	var quote rune
-	escaped, comment, lineStart := false, false, true
-	endWord := func() {
-		if inWord {
-			words = append(words, word.String())
-			word.Reset()
-			inWord = false
-		}
-	}
-	endStatement := func() {
-		endWord()
-		if len(words) > 0 {
-			statements = append(statements, nginxStatement{file: file, words: words})
-		}
-		words = nil
-	}
-	runes := []rune(dump)
-	for i := 0; i < len(runes); i++ {
-		r := runes[i]
-		if comment {
-			if r == '\n' {
-				comment, lineStart = false, true
-			}
+// passAddressHasVariable reads on from just after a "_pass" (line i, byte
+// offset) over the lines that are not full-line comments: a "$" before the
+// statement can have ended means the address may be a variable. The statement
+// can only have ended at a ";" with no "#" before it on its line ("#" may
+// begin a comment that holds that ";"). A ";" inside quotes ends the window
+// early only where the address then carries a literal ";", which no stock
+// socket path has. Nothing here decides "not used" on its own: it only adds
+// users.
+func passAddressHasVariable(lines, files []string, i, offset int) bool {
+	for line := i; line < len(lines); line++ {
+		if files[line] == "" {
 			continue
 		}
-		if quote != 0 {
-			switch {
-			case escaped:
-				word.WriteRune(r)
-				escaped = false
-			case r == '\\':
-				escaped = true
-			case r == quote:
-				quote = 0
-			default:
-				word.WriteRune(r)
-			}
-			continue
+		text := lines[line]
+		if line == i {
+			text = text[offset:]
 		}
-		if lineStart && r == '#' {
-			rest := string(runes[i:])
-			if end := strings.IndexByte(rest, '\n'); end >= 0 {
-				rest = rest[:end]
+		hash := false
+		for _, r := range text {
+			switch r {
+			case '$':
+				return true
+			case '#':
+				hash = true
+			case ';':
+				if !hash {
+					return false
+				}
 			}
-			if name, ok := strings.CutPrefix(rest, "# configuration file "); ok && strings.HasSuffix(name, ":") {
-				endStatement()
-				file = strings.TrimSuffix(name, ":")
-			}
-		}
-		lineStart = r == '\n'
-		switch {
-		case r == '#':
-			endWord()
-			comment = true
-		case r == '"' || r == '\'':
-			quote, inWord = r, true
-		case r == ';' || r == '{' || r == '}':
-			endStatement()
-		case r == ' ' || r == '\t' || r == '\n' || r == '\r':
-			endWord()
-		default:
-			word.WriteRune(r)
-			inWord = true
 		}
 	}
-	endStatement()
-	return statements
+	return false
 }
 
 // otherPoolsBeside: another pool file is in the same pool directory.
