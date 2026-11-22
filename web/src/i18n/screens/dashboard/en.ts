@@ -375,6 +375,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.import.cpanel.complete': 'imported a cPanel account',
     'dashboard.audit.action.import.cpanel.complete_with_skips': 'imported a cPanel account, leaving out databases whose names are too long for MariaDB to keep a right on exactly them',
     'dashboard.audit.action.import.cpanel.incomplete': 'imported part of a cPanel account',
+    'dashboard.audit.action.mail.account.adopt': 'recorded a mailbox found on the server in its domain',
     'dashboard.audit.action.mail.account.password.rotate': 'changed a mail account’s password',
     'dashboard.audit.action.mail.account.recovery.confirmed': 'a mailbox’s recovery address was confirmed by its owner',
     'dashboard.audit.action.mail.account.recovery.mail_failed': 'a mailbox reset link could not be handed to the mail system',

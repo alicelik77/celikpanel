@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Plus, Trash2, Globe } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import type { TranslationKey } from '../i18n/en';
 import { Button, FormSection, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { decodeList, lastKnown, useRemote } from '../lib/remote';
@@ -155,6 +156,9 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                 }
             }
             showToast('success', t('general.aliasAdded', { name: alias }));
+            // alpha.144: whether the alias answers in DNS now.
+            const dns = await aliasDNSOutcome(res);
+            if (dns === 'pending' || dns === 'kept' || dns === 'failed') showToast('warning', t(`general.aliasDNS.${dns}` as TranslationKey, { name: alias }));
             if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
             const notRunAddress = await aliasValidationNotRunAddress(res);
             if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
@@ -189,7 +193,7 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                         }
                         if (!res.ok) {
                             showToast('error', apiErrorText(apiError, t));
-                            if (apiError.code === 'ALIAS_CERTIFICATE_ACTIVATION_PENDING') {
+                            if (apiError.code === 'ALIAS_CERTIFICATE_ACTIVATION_PENDING' || apiError.code === 'ALIAS_NOT_FOUND') {
                                 await general.retry();
                             }
                             return;
@@ -352,6 +356,16 @@ async function issuedWaitingForOwner(res: Response): Promise<boolean> {
 
 // The alias change's certificate request went ahead without the probe
 // (set11 cell A6): the address, or ''.
+// alpha.144: what became of the alias's DNS records ('' when not said).
+async function aliasDNSOutcome(res: Response): Promise<string> {
+    try {
+        const body = (await res.clone().json()) as { dns?: unknown } | null;
+        return typeof body?.dns === 'string' ? body.dns : '';
+    } catch {
+        return '';
+    }
+}
+
 async function aliasValidationNotRunAddress(res: Response): Promise<string> {
     try {
         return validationNotRunAddress((await res.clone().json()) as IssuedAnswer | null);

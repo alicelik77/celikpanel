@@ -313,6 +313,18 @@ func (p *Panel) removeDomainDNSForDeletion(
 	if mode == setupDNSModeExisting {
 		return p.syncRemoteDomainDNS(ctx, domain, true)
 	}
+	// alpha.144: the records CelikPanel added for the domain's aliases go
+	// first; those in its own zone go with the zone (the infrastructure
+	// zone and a subdomain's parent zone stay, so theirs are removed).
+	ownZone := domain
+	if parentDomain != "" {
+		ownZone = ""
+	} else if infrastructure, err := p.isInfrastructureDNSZone(ctx, domain); err != nil || infrastructure {
+		ownZone = ""
+	}
+	if err := p.withdrawDomainAliasesDNS(ctx, domain, ownZone); err != nil {
+		return fmt.Errorf("remove the records of the domain's aliases: %w", err)
+	}
 	if parentDomain != "" {
 		_, err := p.removeSubdomainFromParentZone(ctx, parentDomain, domain)
 		return err

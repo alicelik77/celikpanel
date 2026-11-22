@@ -558,10 +558,19 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("The Node.js site %s sends its visitors to port %s, which a service of this server uses. Open the domain and save its Node.js settings again: the site gets a free port, and its program must listen on that port.", subject, n),
 			fmt.Sprintf("%s Node.js sitesi ziyaretçilerini bu sunucunun bir hizmetinin kullandığı %s numaralı porta gönderiyor. Alan adını açıp Node.js ayarlarını yeniden kaydedin: site boş bir port alır; programı o portu dinlemelidir.", subject, n)
 	case "postgresql_databases_open":
+		if item.value == 1 {
+			// alpha.144 (alpha.143 lab): one database, in the singular.
+			return fmt.Sprintf("1 PostgreSQL database made before alpha.141 is still open to this server's other accounts (%s): every account may connect to it, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close it; it can be undone.", name),
+				fmt.Sprintf("alpha.141'den önce açılan 1 PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap buna bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve kapatın; geri alınabilir.", name)
+		}
 		return fmt.Sprintf("%s PostgreSQL databases made before alpha.141 are still open to this server's other accounts (%s): every account may connect to them, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
 			fmt.Sprintf("alpha.141'den önce açılan %s PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap bunlara bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
 	case "postgresql_databases_unreadable":
 		// 22 Nov 2026 (B5): item.name names each database with its reason.
+		if item.value == 1 {
+			return fmt.Sprintf("Whether other accounts can enter this PostgreSQL database is not known: it could not be read at the last hourly checks (%s). Open the PostgreSQL page, correct what the reason names, then press Read again.", name),
+				fmt.Sprintf("Bu PostgreSQL veritabanına başka hesapların girip giremediği bilinmiyor: son saatlik denetimlerde okunamadı (%s). PostgreSQL sayfasını açın, nedenin söylediğini düzeltin, sonra Yeniden oku'ya basın.", name)
+		}
 		return fmt.Sprintf("Whether other accounts can enter these PostgreSQL databases is not known: they could not be read at the last hourly checks (%s). Open the PostgreSQL page, correct what the reason names, then press Read again.", name),
 			fmt.Sprintf("Bu PostgreSQL veritabanlarına başka hesapların girip giremediği bilinmiyor: son saatlik denetimlerde okunamadılar (%s). PostgreSQL sayfasını açın, nedenin söylediğini düzeltin, sonra Yeniden oku'ya basın.", name)
 	case "mail_signing":

@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { formatDate, formatTime } from '../lib/dateFormat';
 import { sizeWord } from './kit/words';
-import { readApiError, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
 import type { TranslationKey } from '../i18n/en';
 import { invalidate, lastKnown, useRemote, useRereadWhileRechecking, type Remote } from '../lib/remote';
@@ -245,6 +245,39 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             // The server's reason (taken, quota, plan limit) stays with the sentence, on the page too.
             failedCreate(failure, 'mail.createFailed');
         }
+    };
+
+    // alpha.144 (alpha.143 lab): the administrator records a mailbox the
+    // server holds without a row; nothing on the server is changed.
+    const adoptAccount = async (address: string) => {
+        if (readOnly || !address) return;
+        await confirmAction({
+            title: t('mail.adopt.title', { address }),
+            message: t('mail.adopt.body', { address }),
+            confirmLabel: t('mail.adopt.action'),
+            kept: [t('mail.adopt.kept')],
+            progressTitle: t('mail.adopt.progress', { address }),
+            action: async () => {
+                try {
+                    const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts/adopt`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ address }),
+                    });
+                    if (!res.ok) {
+                        const problem = await readApiError(res);
+                        return { state: res.status === 409 || res.status === 403 ? 'blocked' : 'failed', reason: apiErrorText(problem, t, 'mail.createFailed') };
+                    }
+                    setRefusal(null);
+                    setShowForm(false);
+                    reloadAccounts();
+                    return { state: 'done', message: t('mail.adopt.done', { address }) };
+                } catch {
+                    reloadAccounts();
+                    return { state: 'unknown', reason: t('common.resultUnknown') };
+                }
+            },
+        });
     };
 
     const saveQuota = async (id: number) => {
@@ -541,6 +574,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             </div>
 
             <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
+            {/* alpha.144: a mailbox on the server without a row; the administrator may adopt it. */}
+            {!readOnly && refusal?.problem.code === 'MAIL_ACCOUNT_ON_SERVER_ONLY' && refusal.problem.reason === 'admin' && refusal.problem.vars?.address && (
+                <div className="-mt-2 mb-4" data-mail-adopt="">
+                    <Button onClick={() => void adoptAccount(refusal.problem.vars?.address ?? '')}>{t('mail.adopt.action')}</Button>
+                </div>
+            )}
             {!readOnly && showForm && listed.state === 'known' && (
                 <div className="mb-4 rounded-lg border border-border bg-surface-2/50 p-4">
                     {activeTab === 'accounts' ? (

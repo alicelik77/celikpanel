@@ -191,6 +191,7 @@ var auditActionNames = []string{
 	"import.cpanel.complete",
 	"import.cpanel.complete_with_skips",
 	"import.cpanel.incomplete",
+	"mail.account.adopt",
 	"mail.account.empty",
 	"logs.retention",
 	"mail.account.password.rotate",

@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/core"
@@ -15,7 +17,54 @@ import (
 const (
 	errCodeAliasCertificateReissueRequired = "ALIAS_CERTIFICATE_REISSUE_REQUIRED"
 	errCodeAliasCertificatePending         = "ALIAS_CERTIFICATE_ACTIVATION_PENDING"
+	// alpha.144 (alpha.143 lab item 4): the alias refusals that reached the
+	// page as the server's English sentence, coded so the page words them.
+	errCodeAliasCertificateReissueFailed = "ALIAS_CERTIFICATE_REISSUE_FAILED"
+	errCodeAliasCertificateNotCovering   = "ALIAS_CERTIFICATE_NOT_COVERING"
+	errCodeAliasInvalid                  = "ALIAS_INVALID"
+	errCodeAliasNotFound                 = "ALIAS_NOT_FOUND"
 )
+
+// Why an alias's certificate could not be issued again before the authority
+// was asked (reasons of ALIAS_CERTIFICATE_REISSUE_FAILED); any other failure
+// (the authority, the validation) has no reason and carries its text in the
+// answer's details.
+var (
+	errAliasReissueNotACME   = errors.New("an active panel-managed ACME certificate is required")
+	errAliasReissueUntrusted = errors.New("the active certificate is not a trusted reissue source")
+	errAliasReissueMailName  = errors.New("secure mail is enabled but the active certificate does not cover the mail name")
+)
+
+// writeAliasRefusal is a coded alias refusal with its reason; the page words
+// it and names the alias.
+func writeAliasRefusal(w http.ResponseWriter, status int, code, reason, message, alias string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: message, Code: code, Reason: reason, Vars: map[string]string{"name": alias}})
+}
+
+// writeAliasReissueFailed answers an alias change whose certificate could
+// not be issued again; nothing was changed.
+func writeAliasReissueFailed(w http.ResponseWriter, alias string, issueErr error) {
+	reason := ""
+	switch {
+	case errors.Is(issueErr, errAliasReissueUntrusted):
+		reason = "untrusted_source"
+	case errors.Is(issueErr, errAliasReissueNotACME):
+		reason = "not_acme"
+	case errors.Is(issueErr, errAliasReissueMailName):
+		reason = "mail_name"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{
+		Error:   "the alias certificate could not be reissued, so nothing was changed: " + issueErr.Error(),
+		Code:    errCodeAliasCertificateReissueFailed,
+		Reason:  reason,
+		Details: []string{boundedAgentDiagnostic(issueErr.Error())},
+		Vars:    map[string]string{"name": alias},
+	})
+}
 
 type activeAliasCertificate struct {
 	ID             int64
@@ -232,7 +281,7 @@ func (p *Panel) issueAliasCertificateSnapshot(
 		p.cleanupUncommittedCertificate(cleanupCtx, cleanupTarget)
 	}()
 	if current == nil || current.Type != "letsencrypt" {
-		return install, fmt.Errorf("an active panel-managed ACME certificate is required")
+		return install, errAliasReissueNotACME
 	}
 	if len(desiredNames) == 0 {
 		return install, fmt.Errorf("the desired certificate hostname set is empty")
@@ -261,7 +310,7 @@ func (p *Panel) issueAliasCertificateSnapshot(
 		return install, fmt.Errorf("inspect active certificate before alias reissue: %w", err)
 	}
 	if !currentInfo.Valid || !currentInfo.TrustChecked || !currentInfo.Trusted {
-		return install, fmt.Errorf("the active certificate is not a trusted reissue source")
+		return install, errAliasReissueUntrusted
 	}
 	mailName, err := mailCertificateHostname(domainName)
 	if err != nil {
@@ -269,7 +318,7 @@ func (p *Panel) issueAliasCertificateSnapshot(
 	}
 	preserveMailSAN := certificateCoversHostname(currentInfo.DNSNames, mailName)
 	if current.SecureMail && !preserveMailSAN {
-		return install, fmt.Errorf("secure mail is enabled but the active certificate does not cover %s", mailName)
+		return install, fmt.Errorf("%w (%s)", errAliasReissueMailName, mailName)
 	}
 
 	requestedNames := append([]string(nil), desiredNames...)

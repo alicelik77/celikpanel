@@ -95,7 +95,7 @@ export function problemVars(
 const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
 
 /** The catalogue key of a problem's body. */
-export function problemBodyKey(problem: { kind: string; name?: string; subject?: string }): TranslationKey {
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
     if (problem.kind === 'mail_signing') {
         return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
     }
@@ -104,12 +104,20 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
         const step = ['agent_unreachable', 'agent_build', 'agent_failed'].includes(problem.subject ?? '') ? problem.subject : 'agent_failed';
         return `pnow.mail_autoresponder_foreign.${step}` as TranslationKey;
     }
+    // alpha.144 (alpha.143 lab): one database is said in the singular.
+    if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
+        return `pnow.${problem.kind}.body_one` as TranslationKey;
+    }
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
 /** The catalogue key of a problem's title (22 Nov 2026: one signing state signs nothing). */
-export function problemTitleKey(problem: { kind: string; name?: string }): TranslationKey {
+export function problemTitleKey(problem: { kind: string; name?: string; value?: number }): TranslationKey {
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
+    // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
+    if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
+        return `pnow.${problem.kind}.title_one` as TranslationKey;
+    }
     return `pnow.${problem.kind}.title` as TranslationKey;
 }
 
