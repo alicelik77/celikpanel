@@ -36,8 +36,10 @@ import (
 // used; the Panel's text then waits beside it.
 //
 // What each account reads and writes:
-//   - Webmail: Roundcube's code is readable by everyone (the published
-//     source); config/ is root:<account> 0750 with its files 0640 (des_key);
+//   - Webmail: the tree's root stays closed to others (root:<web group>
+//     0750); the account gets through it by an access-control-list entry
+//     and reads the published code (php_tool_files.go, second fix round);
+//     config/ is root:<account> 0750 with its files 0640 (des_key);
 //     db/ (SQLite and its journal: sessions and settings), temp/
 //     (attachments being written) and logs/ belong to the account, 0700.
 //   - phpMyAdmin (distribution package): its code and /etc/phpmyadmin/

@@ -30,8 +30,9 @@ import (
 //     owner changed is not touched (D-022).
 //  2. The distribution's stock pool (www.conf) of each PHP version is turned
 //     off when it is still the package's untouched file (dpkg's own MD5 of
-//     the conffile), no web server configuration hands PHP to it, and another
-//     pool remains (PHP-FPM refuses to start without one). Turning off is a
+//     the conffile), no web server configuration names its socket (any line
+//     outside a full-line comment, or a *_pass whose address is a variable,
+//     keeps it on: stockPoolUsers), and another pool remains (PHP-FPM refuses to start without one). Turning off is a
 //     rename to www.conf.off-by-celikpanel (dpkg keeps a removed conffile
 //     removed on upgrades), checked with php-fpm -t and a reload, and put
 //     back when either refuses. An owner-changed or used pool is kept and
