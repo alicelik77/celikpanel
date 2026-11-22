@@ -440,3 +440,95 @@ izlenmiş eski veritabanı `a_shop` ile (sahibi `a_owner`, kayıtlı okuyucu `a_
     yöneticinin yeniden açtıkları" altında listelenir.
 26. Tek yabancı adres adlandıran yanıtın notu tekil, iki adres adlandıranınki çoğul söyler (Türkçe ve
     İngilizce).
+
+## 7. Yan kapılar: veritabanı araçları, web postası, varsayılan PHP-FPM havuzu, `at` ve site crontab'ları
+
+*22 Kasım 2026 (kum havuzu dilimi R1, #348 numaralı istek, iki bağımsız incelemeden sonra) ·
+Kaynakta var, bileşen testlerinden geçti; web postası ağacındaki erişim listesi, deneme
+sunucusunun ext4 dosya sisteminde gerçek dosyalar, sahipler ve erişim denetimleriyle denendi.
+Debian 13 ve Ubuntu 24.04 laboratuvar turu açık (adımlar istekte).*
+
+**Sorun.** phpMyAdmin, phpPgAdmin ve web postası (Roundcube), dağıtımın varsayılan PHP-FPM
+havuzunda, grubu her sitenin evini okuyan web sunucusu hesabıyla çalışıyordu; birindeki bir hata
+her siteyi okuyordu. Varsayılan havuz, hiçbir şey kullanmasa da açık kalıyordu. Bir sitenin kendi
+kodu, sınırlarının dışında çalışan `at` işleri ve crontab satırları kurabiliyor, hiçbir şey
+bunları göstermiyordu.
+
+**CelikPanel her Panel başlangıcından sonra bir kez ne yapar (yan kapılar adımı); sonra
+durumları her saat ve bir aracın Yönet penceresindeki her taşımadan sonra, hiçbir şeyi
+değiştirmeden yeniden okur:**
+
+1. *Her araç kendi hesabında.* `celikpanel-webmail`, `celikpanel-phpmyadmin` ve
+   `celikpanel-phppgadmin` (girişi, evi yok, başka hiçbir grupta değil); her birinin bağlı olduğu
+   PHP sürümünde kendi havuzu var (`/etc/php/<s>/fpm/pool.d/celikpanel-<araç>.conf`; soketi web
+   sunucusu hesabının, 0660). Taşıma, Yönet penceresinin doğrulanan adımıdır: kendi havuzu,
+   nginx denetlenip yeniden yüklenir, araç kendisi olarak yanıt vermelidir; vermezse her şey
+   geri gelir. Sahibin değiştirdiği yapılandırma korunur (D-022).
+2. *Web postası ağacı.* `/var/lib/celikpanel-webmail` kökü, kurulumun bıraktığı gibi
+   `root:<web grubu> 0750` kalır, başkalarına kapalıdır. İçinden yalnız web postasının hesabı
+   geçer: tek bir erişim listesi girdisiyle, `user:celikpanel-webmail:--x`. Girdi, hiçbir
+   bağlantı izlenmeden açılan bir tanıtıcı üzerinde `fsetxattr` ile yazılır (`acl` paketine gerek
+   yok). Web sunucusu `public_html`'e (içindeki `plugins`, `skins` ve `program/js` ağacın içine
+   bağlantıdır) kökün grubuyla ulaşır. `db/`, `temp/` ve `logs/` hesabın olur; `config/`
+   `root:<hesap> 0750` olur; web grubunun okuduğu eklenti yapılandırması hesabın grubunu alır.
+   Hiçbir site hesabı ağaca hiç giremez. Erişim listesini kabul etmeyen dosya sisteminde taşıma
+   hiçbir şey değişmeden durur: web postası web sunucusu hesabında kalır, Şu anki sorunlar
+   nedenini ve sahibin ne yapabileceğini söyler. Web postası güncellemeleri girdiyi yeni ağaca,
+   yayımlanmadan önce koyar.
+3. *Varsayılan havuz* (`www.conf`): paketin dokunulmamış dosyasıysa (dpkg'nin kendi MD5'i),
+   hiçbir web sunucusu yapılandırması soketini anmıyorsa (tam satır yorum dışındaki her satır ya
+   da adresi değişken olan bir `*_pass` onu açık tutar) ve başka bir havuz kalıyorsa kapatılır.
+   Kapatma, adını `www.conf.off-by-celikpanel` yapmaktır; `php-fpm -t` ve yeniden yükleme ile
+   denetlenir, reddedilirse geri konur. Bir sürüm hiç havuzsuz bırakılmaz: son diğer havuzu
+   gitmeden önce (site silinir ya da taşınır, araç taşınır ya da kaldırılır) varsayılan havuz geri
+   konur. Bir sürümün havuzlarındaki her tutma, yazma, silme, deneme ve yeniden yükleme tek bir
+   sunucu kilidi altındadır.
+4. *`at`* site hesaplarına kapatılır: at paketi kuruluysa ve `/etc/at.allow` yoksa CelikPanel,
+   bugün at kullanabilen her hesabı, site hesapları (ve bir site hesabının kimliğini paylaşan her
+   hesap) dışında listeleyen bir dosya yazar. Site hesaplarının bekleyen at işleri listelenir
+   (numara, hesap, zaman), asla silinmez.
+5. *Site crontab'ları.* CelikPanel'de yapılmamış satırlar sitenin Zamanlanmış görevler
+   listesinde işaretlenir (yalnız Sil; yönetici Kalsın diyebilir) ve Şu anki sorunlar'da
+   sayılır. Agent böyle bir satırı, tutulmadan değiştirmez ya da etkinleştirmez.
+
+**Diskte tutulanlar** (hepsi root'un, `/var/lib/celikpanel-agent-private/` içinde):
+
+| Dosya | Ne tutar | Ne zaman silinir |
+|---|---|---|
+| `php-tool-accounts.json` | bir aracın başarısız taşınması (sürüm, neden) | taşıma başarılı olunca |
+| `php-tool-files-<araç>.json` | değişen her yolun sahibi, grubu, kipi (özel bitlerle), kökün erişim listesi ve CelikPanel'in koyduğu | araç kendi havuzunda yanıt verince ya da geri alma bitince |
+| `stock-pools-off.json` | CelikPanel'in kapattığı sürümler ve başlayıp bitmemiş bir kapatma | sürüm geri konunca |
+| `at-allow.sha256` | CelikPanel'in `/etc/at.allow` dosyasının özeti, yazarken `pending <yeni> <önceki>` | hiçbir zaman (sahibin silmesi onunla anlaşılır) |
+| `site-crontabs/<hesap>.json`, `site-crontabs/baseline-v1` | CelikPanel'in açıkladığı crontab satırlarının özetleri | site hesabı silinince |
+
+**Her adım nasıl toparlanır.** Her kayıt, anlattığı değişiklikten önce yazılır; arada elektrik
+kesilirse bir sonraki başlangıç bunu sahibin işi olarak değil, CelikPanel'in bitmemiş adımı olarak
+okur. nginx değiştirilmeden kesilen araç taşıması yeniden denenir ve başarısız olursa ilk denemenin
+kaydettiği geri konur; sonra kesilen bir kez yeniden yüklenir ve yeniden sorulur; yine yanıt
+vermeyen araç Şu anki sorunlar'da bir satırdır (kim, ne yapar). Geri alma bir yolu yalnız
+CelikPanel'in koyduğu gibi duruyorsa geri koyar; o arada değişen korunur ve adı söylenir.
+"Kapatılıyor" diye işaretli varsayılan havuz bitirilir (deneme ve yeniden yükleme) ya da yeniden
+karar verilir; kaydı bekleyen `at.allow` bitirilir ya da yeniden yazılır. Satır kaldıran crontab
+değişikliği önce o satırsız kaydı yazar.
+
+**Sahip her birini panel olmadan nasıl geri alır (D-022).**
+
+- Aracın kendi havuzu: `/etc/php/<s>/fpm/pool.d/celikpanel-<araç>.conf` silinir, aracın nginx
+  dosyası yeniden varsayılan sokete çevrilir, ikisi de yeniden yüklenir. Hesaplar `userdel` ile
+  silinir.
+- Web postasının girdisi: `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`
+  (okumak için `getfacl`). Web postası o zaman dosyalarını okuyamaz; CelikPanel girdiyi
+  kendiliğinden geri koymaz ve bunu söyler; web postasının Yönet penceresinde PHP sürümünü seçmek
+  girdiyi geri koyar.
+- Varsayılan havuz: `www.conf.off-by-celikpanel` yeniden `www.conf` yapılır, PHP-FPM yeniden
+  yüklenir. CelikPanel açık bırakır ve listeler; yalnız yöneticinin açıkça "Yeniden kapat" demesi
+  (yalnız o havuz) yeniden kapatır.
+- `at`: `/etc/at.allow` silinir; yeniden `/etc/at.deny` geçerli olur. CelikPanel dosyayı
+  kendiliğinden yeniden yazmaz; "Yeniden kapat" (yalnız o dosya) yeniden yazar.
+- Crontab satırı: crontab root olarak düzenlenir. CelikPanel'in yazmadığı satırlar listelenir,
+  asla onun tarafından silinmez.
+
+**Bir site hesabının hâlâ ulaşabildiği.** Web postası ağacının altında hiçbir şey. Araçların
+soketleri web sunucusunundur (0660) ve site hesabı o grupta değildir; müşteriler hiçbir `*_pass`
+yönergesi yazamaz. Varsayılan soketi zararsız bir yönergede anan müşteri o havuzu açık tutar ve
+bundan bir şey kazanmaz.

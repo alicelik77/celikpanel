@@ -516,3 +516,111 @@ alpha.140 or earlier and watched for a day:
     outside CelikPanel".
 26. A reply that named one foreign address says it in the singular, one
     with two in the plural (Turkish and English).
+
+## 7. Side doors: the database tools, webmail, the stock PHP-FPM pool, `at` and site crontabs
+
+*22 November 2026 (sandbox slice R1, pull request #348, after two
+independent reviews) · In source and component-tested; the access-control
+list on webmail's tree was checked with real files, owners and access checks
+on the test guest's ext4. The lab round on Debian 13 and Ubuntu 24.04 is
+open (steps in the pull request).*
+
+**The problem.** phpMyAdmin, phpPgAdmin and webmail (Roundcube) ran in the
+distribution's stock PHP-FPM pool as the web server's account, whose group
+reads every site's home; a fault in any of them read every site. The stock
+pool stayed on even where nothing used it. A site's own code could plant
+`at` jobs and crontab lines that run outside its limits, and nothing showed
+them.
+
+**What CelikPanel does once after each Panel start (the side doors step);
+it then reads the states again, without changing anything, every hour and
+after every move in a tool's Manage window:**
+
+1. *Each tool on its own account.* `celikpanel-webmail`,
+   `celikpanel-phpmyadmin` and `celikpanel-phppgadmin` (no login, no home, in
+   no other group), each with its own pool on the PHP version it is bound to
+   (`/etc/php/<v>/fpm/pool.d/celikpanel-<tool>.conf`; the socket is the web
+   server's account's, 0660). The move is the verified step of the Manage
+   window: own pool, nginx checked and reloaded, the tool must answer as
+   itself, otherwise everything comes back. A configuration the owner
+   changed is kept (D-022).
+2. *Webmail's tree.* The root of `/var/lib/celikpanel-webmail` stays
+   `root:<web group> 0750`, closed to others, as the install leaves it.
+   Webmail's account alone gets through it, by one access-control-list
+   entry, `user:celikpanel-webmail:--x`, set with `fsetxattr` on a
+   descriptor opened without following any link (no dependency on the `acl`
+   package). The web server reaches `public_html` (whose `plugins`, `skins`
+   and `program/js` are links inside the tree) through the root's group.
+   `db/`, `temp/` and `logs/` become the account's; `config/` becomes
+   `root:<account> 0750`; a plugin configuration the web group read gets the
+   account's group. No website account enters the tree at all. A file
+   system that refuses access-control lists stops the move before anything
+   changes: webmail stays on the web server's account, and Problems now says
+   why and what the owner can do. Webmail's updates put the entry on the new
+   tree before it is published.
+3. *The stock pool* (`www.conf`) of each PHP version is turned off when it is
+   the package's untouched file (dpkg's own MD5), no web server
+   configuration names its socket (any line outside a full-line comment, or
+   a `*_pass` whose address is a variable, keeps it on), and another pool
+   remains. Turning off is a rename to `www.conf.off-by-celikpanel`, checked
+   with `php-fpm -t` and a reload; a refusal puts it back. A version is
+   never left without a pool: before its last other pool goes (a site
+   deleted or moved, a tool moved or removed) the stock pool is put back.
+   One host-wide lock covers every keep, write, remove, test and reload of
+   a version's pools.
+4. *`at`* is closed to website accounts: where the at package is installed
+   and no `/etc/at.allow` exists, CelikPanel writes one listing every account
+   that may use at today minus the website accounts (and every account that
+   shares a website account's id). Pending at jobs of site accounts are
+   listed (number, account, time), never removed.
+5. *Site crontabs.* Lines not made in CelikPanel are marked on the site's
+   Scheduled tasks list (Delete only; the administrator may Keep one) and
+   counted in Problems now. The Agent refuses to edit or enable such a line
+   until it is kept.
+
+**What is kept on disk** (all root's, in `/var/lib/celikpanel-agent-private/`):
+
+| File | Holds | Removed when |
+|---|---|---|
+| `php-tool-accounts.json` | a tool's failed move (version, reason) | the move succeeds |
+| `php-tool-files-<tool>.json` | each changed path's owner, group, mode (special bits included), the root's access-control list, and what CelikPanel set | the tool answers on its own pool, or the undo is done |
+| `stock-pools-off.json` | the versions CelikPanel turned off, and a turn-off begun and not finished | a version is put back |
+| `at-allow.sha256` | the digest of CelikPanel's `/etc/at.allow`, or `pending <new> <earlier>` while it writes | never (it is how the owner's deletion is recognised) |
+| `site-crontabs/<account>.json`, `site-crontabs/baseline-v1` | the digests of the crontab lines CelikPanel accounts for | the site account is deleted |
+
+**How each step recovers.** Every record is written before the change it
+describes, so a power loss in between reads at the next start as
+CelikPanel's unfinished step, never as the owner's doing. A tool move cut
+before nginx was switched is tried again, and its failure puts back what the
+first attempt recorded; one cut after is reloaded once and asked again; a
+tool that still does not answer is a Problems line (who acts, what to do).
+The undo puts a path back only while it is exactly as CelikPanel set it; a
+path changed since is kept and named. A stock pool marked "turning off" is
+finished (check and reload) or decided again; `at.allow` with a pending
+record is finished or written again. A crontab change that removes a line
+writes the record without it first.
+
+**How the owner undoes each thing without the panel (D-022).**
+
+- A tool's own pool: delete `/etc/php/<v>/fpm/pool.d/celikpanel-<tool>.conf`,
+  point the tool's nginx file back at the stock socket and reload both. The
+  accounts are removed with `userdel`.
+- Webmail's entry: `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`
+  (`getfacl` reads it). Webmail then cannot read its files; CelikPanel does
+  not put the entry back by itself and says so; choosing webmail's PHP
+  version in its Manage window puts it back.
+- The stock pool: rename `www.conf.off-by-celikpanel` back to `www.conf` and
+  reload PHP-FPM. CelikPanel leaves it on and lists it; only the
+  administrator's explicit "Turn it off again" (that one pool only) turns it
+  off again.
+- `at`: delete `/etc/at.allow`; `/etc/at.deny` applies again. CelikPanel does
+  not write it again by itself; "Close again" (that file only) writes it
+  anew.
+- A crontab line: edit the crontab as root. Lines CelikPanel did not write
+  are listed, never removed by it.
+
+**What a site account can still reach.** Nothing under webmail's tree. The
+tools' sockets are the web server's (0660), and a site account is not in
+that group; customers cannot write any `*_pass` directive. A customer who
+names the stock socket in a harmless directive keeps that pool on and gains
+nothing by it.
