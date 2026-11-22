@@ -102,6 +102,9 @@ func TestDatabaseDeleteRemovesItsOwnUsersAndKeepsASharedOne(t *testing.T) {
 	// A read-only user only this database uses goes with it as well.
 	f.exec(t, `INSERT INTO database_users (id, server_id, subscription_id, username, password) VALUES (9948, 9921, 9802, 'shop_rapor', 'x')`)
 	f.exec(t, `INSERT INTO database_user_grants (database_id, user_id, privileges) VALUES (9961, 9948, 'SELECT')`)
+	// Second review of alpha.143, B9: a closing record of the database goes
+	// with it.
+	f.exec(t, `INSERT INTO panel_settings (key, value) VALUES ('postgresql_public_v1:9961', '{"version":1,"state":"watch","added":[]}')`)
 
 	got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
 	if got.Code != http.StatusOK {
@@ -141,6 +144,9 @@ func TestDatabaseDeleteRemovesItsOwnUsersAndKeepsASharedOne(t *testing.T) {
 	}
 	if n := f.count(t, `SELECT COUNT(*) FROM database_user_grants WHERE database_id = 9961`); n != 0 {
 		t.Fatal("grants of the deleted database stayed")
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM panel_settings WHERE key = 'postgresql_public_v1:9961'`); n != 0 {
+		t.Fatal("the closing record of the deleted database stayed")
 	}
 }
 

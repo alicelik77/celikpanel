@@ -340,6 +340,10 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		writeServerError(w, err)
 		return
 	}
+	// 22 Nov 2026 (B2): an address the domain's catch-all delivered to
+	// another mailbox is now this new mailbox's; a reply that named it is
+	// rewritten now (the mail lock is held).
+	p.reconcileAutoresponderAddressesLocked(context.WithoutCancel(r.Context()), "mailbox_added")
 	// The domain's first mailbox: its DKIM key and signing follow by
 	// themselves, without blocking this answer (domain_dkim_automatic.go).
 	p.queueAutomaticDKIMForMailbox(context.WithoutCancel(r.Context()), domainID, domain)
@@ -765,6 +769,11 @@ func (p *Panel) mutateForwardings(
 		}
 		return err
 	}
+	// 22 Nov 2026 (second review of alpha.143, B2): a forwarder or catch-all
+	// that was added, changed or removed can change where an address an
+	// out-of-office reply names delivers; such a reply is rewritten now. Every
+	// caller holds p.mailMutationMu.
+	p.reconcileAutoresponderAddressesLocked(context.WithoutCancel(ctx), "forwarding_changed")
 	return nil
 }
 

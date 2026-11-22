@@ -135,6 +135,7 @@ func TestRenderDistroConfigMatrix(t *testing.T) {
 	t.Run("roundcube", func(t *testing.T) { renderMatrixRoundcube(t, h) })
 	t.Run("postfix", func(t *testing.T) { renderMatrixPostfix(t, h) })
 	t.Run("dovecot", func(t *testing.T) { renderMatrixDovecot(t, h) })
+	t.Run("opendkim", func(t *testing.T) { renderMatrixOpenDKIM(t, h) })
 	t.Run("bind", func(t *testing.T) { renderMatrixBIND(t, h) })
 	t.Run("powerdns", func(t *testing.T) { renderMatrixPowerDNS(t, h) })
 	t.Run("nftables", func(t *testing.T) { renderMatrixNftables(t, h) })
@@ -834,8 +835,19 @@ func renderMatrixPostfix(t *testing.T, h *matrixHost) {
 				all.Command("postconf", "-e", kv[0]+"="+kv[1])
 			}
 		}
+		// 20 Nov 2026: with OpenDKIM, the smtpd on port 25 gets its own list
+		// without it (mail_signing_bind.go), in the release's real master.cf:
+		// main.cf's list with only OpenDKIM left out (21 Nov 2026).
+		if v.dkim {
+			port25, _, _ := milterListWithoutOpenDKIM(incoming)
+			c.Command("postconf", "-P", "smtp/inet/smtpd_milters="+port25)
+			if v.id == "milters-dkim-rspamd" {
+				all.Command("postconf", "-P", "smtp/inet/smtpd_milters="+port25)
+			}
+		}
 		h.write(t, c)
 	}
+	renderMatrixPostfixMailSigning(t, h)
 
 	// 3. TLS + SNI: configurePostfixTLS (mail_tls_rpc.go:1138) with a
 	// recording runner; it writes /etc/postfix/celikpanel_sni itself.

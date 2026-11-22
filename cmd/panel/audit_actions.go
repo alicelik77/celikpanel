@@ -82,6 +82,10 @@ var auditActionNames = []string{
 	"database.export",
 	"database.import",
 	"database.import.failed",
+	// 20 Nov 2026 (S1b): an old PostgreSQL database closed to other accounts
+	// (by the panel itself or by an administrator) and opened again.
+	"database.postgresql.closed_to_other_accounts",
+	"database.postgresql.reopened_to_other_accounts",
 	"database.remote.add",
 	"database.remote.expire",
 	"database.remote.extend",
@@ -200,6 +204,7 @@ var auditActionNames = []string{
 	"mail.account.recovery.set",
 	"mail.autoconfig.dns",
 	"mail.autoconfig.site",
+	"mail.autoresponder.addresses_removed",
 	"mail.autoresponder.disable",
 	"mail.autoresponder.enable",
 	"mail.configure",

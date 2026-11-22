@@ -6,7 +6,8 @@
 // editors open when several run. Split out of "databaseClusters", which had
 // no headroom left.
 // Key prefixes kept here: pgc.leftover., pgc.pick., opstep.pgLeftover.,
-// err.PG_LEFTOVER_, err.PG_NOT_A_LEFTOVER, err.PG_CLUSTERS_UNKNOWN.
+// err.PG_LEFTOVER_, err.PG_NOT_A_LEFTOVER, err.PG_CLUSTERS_UNKNOWN, and (22 Nov
+// 2026) pnow.postgresql_databases_unreadable., pgpub.why. and pgpub.found.rights_default.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
@@ -47,6 +48,19 @@ export const enPgLeftoversScreens = {
     'err.PG_LEFTOVER_HAS_RECORDS': 'Nothing was changed: CelikPanel still records databases on this cluster. Remove those database records on the Databases page, or move them to another cluster, then archive and remove it.',
     'err.PG_LEFTOVER_DATA_OUTSIDE_STANDARD': 'Nothing was changed: this cluster keeps its data outside PostgreSQL’s standard place, and CelikPanel does not remove data it did not place. Keep or remove that directory yourself.',
     'err.PG_CLUSTERS_UNKNOWN': 'Nothing was changed: the PostgreSQL clusters could not be read. Check that the CelikPanel Agent runs (sudo systemctl status celikpanel-agent), then try again.',
+    // 22 Nov 2026 (second review of alpha.143, B5): the Problems-now line of
+    // PostgreSQL databases the hourly checks could not read (the problemsNow
+    // and pgPublic parts have no room left; this lane's other part).
+    'pnow.postgresql_databases_unreadable.title': '{value} PostgreSQL databases could not be read for hours',
+    'pnow.postgresql_databases_unreadable.body': 'Whether other accounts can enter them is not known: {name}. Correct the reason, then press Read again on the PostgreSQL page.',
+    'pnow.postgresql_databases_unreadable.action': 'Open PostgreSQL',
+    // alpha.143 lab (22 Nov 2026): the PostgreSQL page's reasons for a failed
+    // close and rights that are the default again (pgPublic has no room).
+    'pgpub.why.server': 'the database server refused it and nothing was changed: “{detail}”',
+    'pgpub.why.lost': 'its answer did not arrive in time and the database is unchanged',
+    'pgpub.why.cluster': 'its PostgreSQL cluster does not run',
+    'pgpub.why.refused': 'a role name in it is not one CelikPanel writes, so it was not sent',
+    'pgpub.found.rights_default': 'Its rights are PostgreSQL’s default again, set outside CelikPanel.',
 } as const;
 
 export type PgLeftoversScreenKey = keyof typeof enPgLeftoversScreens;

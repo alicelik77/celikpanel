@@ -282,7 +282,9 @@ func (p *Panel) removeComponentInOperation(ctx context.Context, id string) *serv
 		var wire transport.WireMailFiltersResponse
 		if err := p.withStandaloneAgentMutation(ctx, "mail_filter_wire", id, "", func(callCtx context.Context, binding agentMutationBinding) error {
 			request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
-			if err := p.callAgentContext(callCtx, "Agent.WireMailFilters", &request, &wire); err != nil {
+			wireErr := p.callAgentContext(callCtx, "Agent.WireMailFilters", &request, &wire)
+			p.recordMailSigningCall(callCtx, wire.Signing, wireErr)
+			if err := wireErr; err != nil {
 				return err
 			}
 			if wire.Error != "" {

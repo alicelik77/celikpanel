@@ -9169,3 +9169,125 @@ until the backup reports ready.
   site folder (the link rule is the barrier until one group per site);
   account names are derived from domain names; mail is signed for any
   hosted domain (the next release). **No P0 item is closed.**
+
+### Branches security/s3b-mail-signing, security/s1b-pg-leftovers and fix/a143-lab-corrections (mail signed only for the sender's own domain, corrected after the independent review in fix/a143-mail; PostgreSQL databases made before alpha.141, corrected after the independent review in fix/a143-pg, the cluster move taken out; the alpha.142 lab's four corrections; schema 80 -> 81, triggers only; constitution 1; invariants 1, 2, 3 and 4; D-022; D-024; D-025; 2026-11-21, candidate alpha.143)
+
+- **Why it is here.** The mail repair step at the panel's start writes
+  native OpenDKIM and Postfix settings; the PostgreSQL loop changes native
+  database rights; a database trigger is a schema
+  transition; a site deletion's application-unit cleanup and the one-time
+  mode correction are lifecycle steps: constitution 1 (authorize each action
+  for its exact resources) and invariants 1 (owner authority: owner-edited
+  `opendkim.conf`, milter settings and file modes are kept), 2 (verified
+  state before claims: every close and undo reads its result back; an
+  answer lost after the transaction began is unknown and settled from the
+  engine, never taken as nothing changed), 3 (no duplicate mutation from
+  polling: reading the PostgreSQL page or Problems now changes nothing;
+  closes are serialised and a failed one is not retried every hour) and 4
+  (refusals decided before anything is made).
+- **Defects (each shown before the fix by a test).** OpenDKIM signed any
+  message whose `From:` named a hosted domain, for authenticated and local
+  clients and on port 25, so mail with another customer's address left with
+  that customer's signature (the independent review of the first version
+  found: an out-of-office reply could answer, signed, from another account's
+  address; site mail was signed by its `From:` while `authorized_submit_users`
+  was not the panel's, yet shown as in place; the port-25 list overrode the
+  owner's later filters and outlived OpenDKIM; a restart missed after the
+  rename was never made; the state was recorded only at the start; Arch was
+  advised a line its OpenDKIM refuses; rollback wrote defaults out);
+  PostgreSQL databases made before alpha.141 kept
+  PUBLIC's CONNECT and TEMPORARY (the independent review of the first
+  version found: an answer lost after COMMIT deleted the undo's record, a
+  failing close was retried hourly and hidden, roles using a database
+  without owning anything were not seen, a role name could end a guard's
+  dollar-quoted body, the scan grew with the page, and a database an
+  administrator opened again warned forever); from the alpha.142 lab: a customer's
+  subdomain inside its own domain under a server or administrator name was
+  refused, the administrator was told a far holder, a failed Node.js unit
+  blocked its site's deletion, and kept owner modes were not named.
+- **Contract.** `SenderMacro {auth_authen}` ties the signing key to the
+  login; the port-25 smtpd gets `main.cf`'s milter list without OpenDKIM,
+  recomputed at every start and mail filter step and removed at the first of
+  them after OpenDKIM is no longer set up or listed (a `main.cf` list with
+  `$variables` or `{ }` groups keeps CelikPanel's earlier port-25 value and
+  says so, `port25_variable_own`, or reports `port25_variable`); an
+  out-of-office reply answers only from the mailbox's own address or a
+  forwarder to it from the same account's domains (panel and Agent; earlier
+  replies are rendered again without a foreign address, said once and
+  audited, at every start, every hour and right after every operation that
+  changes who holds a name or where an address delivers, under the mail lock;
+  a rewrite that cannot be made turns the reply off, or, where that cannot be
+  applied either, is a Problems-now line per mailbox retried hourly); signing is shown as in
+  place only when `authorized_submit_users` is `root, vmail`, and every path
+  that changes signing records its state (an early return is unknown); a
+  build without `SenderMacro` keeps the earlier configuration, says so and is
+  never advised the option.
+  An older database is closed by itself only with untouched default rights,
+  no unrecorded role with any footprint inside it, every recorded user's role
+  present, no monitoring or replication role on its cluster, and after a
+  day's watch (the first round at least 24 hours and at least 24 rounds after
+  the watch began; a change of its rights, roles inside, owner or recorded
+  users starts it again; a role outside the records seen connected once ends
+  it); otherwise listed with one confirmed close. A close answers closed,
+  verified not closed, or unknown; unknown keeps the record and is settled
+  from the engine's state before anything else; a failed close keeps its
+  reason and is tried again only when the facts change or the administrator
+  presses; closes are serialised. Every close has an exact undo (panel and
+  plain SQL); a database an administrator opened again stays on the page as
+  that choice, out of Problems now, never closed by itself. The cluster move
+  is unchanged from alpha.142 (its owner-rights load was taken out; ROADMAP
+  security series item 6). The name rule exempts N when the receiving
+  account holds R with N under R and R under a server name or an
+  administrator-held name; everything else stays refused, in the panel and
+  in migration 081. `RemoveAppUnit` runs `systemctl reset-failed` for the
+  exact unit before its unchanged proof; the mode correction names every
+  kept mode.
+- **Schema / version transition.** 80 -> 81: migration 081 drops and
+  recreates the six triggers of 080 under the same names; no table, column
+  or row, so it applies on a database that holds overlaps; an older release
+  refuses the ledger and going back to alpha.142 is the pre-update snapshot
+  restore. Additive: `WireMailFiltersResponse.signing`, the Problems-now
+  kinds `mail_signing` and `postgresql_databases_open`, the build-gated Agent
+  calls `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1` (answers `unknown`,
+  `missing`, `replication`), panel_settings rows
+  `postgresql_public_v1:<id>` and `postgresql_public_list_v1`.
+- **Recovery.** A new `opendkim.conf` is checked with `opendkim -n` before
+  the rename and put back if OpenDKIM does not run with it, at the start and
+  (since the second review) in `ConfigureDKIMSigning`; Postfix writes
+  are undone in reverse order on any failure (a setting that was at its
+  default is removed again) and Postfix reloaded; an OpenDKIM restart is
+  recorded as owed before the rename and made at the next start after an
+  interruption; during a restart mail passes unsigned where both milter
+  lists are CelikPanel's (`milter_default_action = accept`), and where either
+  is the owner's his `milter_default_action` or Postfix's default
+  `tempfail` applies (a sending server retries; a person on 587 sends again). A close interrupted anywhere leaves the database untouched or closed with
+  its grants, and the panel's record of it until the engine shows which; an undo whose database changed since is refused
+  and changes nothing. Everything is native configuration and rights that
+  work without the panel; the owner undoes them with the plain settings or
+  statements named in `docs/TENANT-ISOLATION.md` and `docs/DATABASE-USERS.md`.
+- **Evidence.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` and the
+  distribution matrix's real OpenDKIM on Debian 12/13 and Ubuntu 22.04/24.04;
+  the mail fix round's `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart` and the matrix's real
+  `postconf` cases;
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the fix
+  round's `TestS1bFix*` on a private PostgreSQL 17.12 (an answer lost after
+  COMMIT, column rights, settings, policies and user mappings, a role named
+  to end a dollar-quoted body, a recorded user without its role, a logical
+  replication subscriber, 300 databases in one scan session), the panel's
+  `TestPGPublic*`; `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
+  `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
+  `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
+  `TestAppUnitRemovalForgetsAFailedUnit`,
+  `TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner`; the
+  release-recovery lab pins schema 81.
+- **Open.** No lab run yet. Arch Linux's OpenDKIM has no `SenderMacro`:
+  mail sent with a login is still signed for any hosted domain its `From:`
+  names there; databases the panel does not record are not touched; a
+  subdomain made under the exemption is still listed in Problems now; a
+  SQL_ASCII PostgreSQL server is still unchecked in a lab; the closing was
+  run on PostgreSQL 17 only; a move still runs customers' database code with
+  the administrator's rights. **No P0 item is closed.**

@@ -47,7 +47,11 @@ export type ProblemKind =
     | 'service_restarting'
     | 'name_overlap'
     | 'name_server_reserved'
-    | 'node_port_reserved';
+    | 'node_port_reserved'
+    | 'postgresql_databases_open'
+    | 'mail_signing'
+    | 'mail_autoresponder_foreign'
+    | 'postgresql_databases_unreadable';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -57,6 +61,15 @@ const KINDS: readonly ProblemKind[] = [
     // Security release (20 November 2026): names and Node.js ports held
     // before the one name rule.
     'name_overlap', 'name_server_reserved', 'node_port_reserved',
+    // 20 Nov 2026 (S1b): PostgreSQL databases every account can enter.
+    'postgresql_databases_open',
+    // 20 Nov 2026: mail signed only for the sender's own domain.
+    'mail_signing',
+    // 22 Nov 2026: an out-of-office reply still answering from an address
+    // that is no longer the mailbox's own.
+    'mail_autoresponder_foreign',
+    // 22 Nov 2026: PostgreSQL databases the hourly checks could not read.
+    'postgresql_databases_unreadable',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
@@ -72,6 +85,32 @@ export function problemVars(
         days: Math.max(problem.value, 0),
         value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? t('monitoring.pct', { n: Math.round(problem.value) }) : problem.value,
     };
+}
+
+// 21 Nov 2026: mail signing is worded per state, each with its concrete step
+// (cmd/panel/mail_signing_problem.go); a state this screen does not know reads
+// as "unknown", never as fine.
+// 22 Nov 2026 (B4): a main.cf filter list CelikPanel cannot read entry by
+// entry has two states of its own, never the hand-changed port-25 words.
+const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
+
+/** The catalogue key of a problem's body. */
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string }): TranslationKey {
+    if (problem.kind === 'mail_signing') {
+        return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
+    }
+    // 22 Nov 2026 (B3): worded per step; an unknown step reads as the Agent's failure.
+    if (problem.kind === 'mail_autoresponder_foreign') {
+        const step = ['agent_unreachable', 'agent_build', 'agent_failed'].includes(problem.subject ?? '') ? problem.subject : 'agent_failed';
+        return `pnow.mail_autoresponder_foreign.${step}` as TranslationKey;
+    }
+    return `pnow.${problem.kind}.body` as TranslationKey;
+}
+
+/** The catalogue key of a problem's title (22 Nov 2026: one signing state signs nothing). */
+export function problemTitleKey(problem: { kind: string; name?: string }): TranslationKey {
+    if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
+    return `pnow.${problem.kind}.title` as TranslationKey;
 }
 
 /** Whether a kind is one this screen has words for. */
@@ -245,10 +284,10 @@ export function ProblemsNow({
                                     <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`} aria-hidden="true" />
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold text-fg">
-                                            {t(`pnow.${problem.kind}.title` as TranslationKey, vars)}
+                                            {t(problemTitleKey(problem), vars)}
                                             {when && <span className="ml-2 text-xs font-normal text-fg-subtle">{when}</span>}
                                         </p>
-                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{t(`pnow.${problem.kind}.body` as TranslationKey, vars)}</p>
+                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{t(problemBodyKey(problem), vars)}</p>
                                         {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 && (
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}
