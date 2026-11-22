@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.144.tr.md)
 
+> **Published** on 2026-11-22 (UTC): release commit `99e65fc3d`, GitHub pre-release at 22:55:55Z, download portal at about 22:59Z (public check 27/27).
+
 **A small release.** It closes one security gap in webmail's own address,
 brings the six corrections the alpha.143 lab asked for and one correction of
 the traffic figures, and adds one small thing: an alias inside a domain of
