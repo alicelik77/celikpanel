@@ -1579,11 +1579,12 @@ func (p *Panel) handleDeleteSSL(w http.ResponseWriter, r *http.Request, domainID
 	reportOperationStep(ctx, "detach")
 	detach, err := p.detachCertificate(ctx, domainID)
 	if err != nil {
-		if message, guarded := hstsRemovalConflictMessage(err, "the certificate"); guarded {
-			writeClientError(w, http.StatusConflict, message)
-		} else if errors.Is(err, errNoActiveCertificate) {
-			writeClientError(w, http.StatusConflict, "the domain has no active certificate")
-		} else {
+		// alpha.144: both refusals are coded, the page words them.
+		switch {
+		case writeHSTSRemovalRefusal(w, err, "the certificate"):
+		case errors.Is(err, errNoActiveCertificate):
+			writeCodedError(w, http.StatusConflict, errCodeSSLNoActiveCertificate, "the domain has no active certificate", "")
+		default:
 			writeServerError(w, err)
 		}
 		return

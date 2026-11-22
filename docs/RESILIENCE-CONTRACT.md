@@ -9291,3 +9291,96 @@ until the backup reports ready.
   SQL_ASCII PostgreSQL server is still unchecked in a lab; the closing was
   run on PostgreSQL 17 only; a move still runs customers' database code with
   the administrator's rights. **No P0 item is closed.**
+
+### Branch fix/a144-lab-corrections (the alpha.143 lab's six findings and one security correction of webmail's address; no schema change; constitution 1 and 3; invariants 2, 3 and 4; D-022; D-024; D-025; 2026-11-22, candidate alpha.144)
+
+- **Changes that outlive the page (invariant 4, constitution 3: refresh and
+  timeout never authorize duplicate work).** An administrator's PostgreSQL
+  close or undo, a new mailbox and an out-of-office reply ran on the
+  browser's connection: leaving the page cut the Panel between the Agent's
+  work and its record (lab: "sent, not yet confirmed" for a close that had
+  finished; a mailbox on the server without a row). They now run under the
+  request identity (D-029) on a detached context with their route's limit.
+  What each interruption leaves: the page left — nothing (the change and
+  its record complete); the Panel stopped mid-change — the request row
+  `interrupted` (answered "not known"), a close's record `sending` settled
+  from the engine once the Agent confirms nothing of it runs, a mailbox
+  possibly on the server without a row (now said plainly, with the
+  administrator's adoption); who acts: nobody for the first, the
+  administrator reads the page again for the second.
+- **Adoption.** `Agent.MailboxOnServerV1` reads, changing nothing,
+  Dovecot's users file, Postfix's map and the message count of the folder
+  under the mail lock; the Panel adopts only CelikPanel's own form (the
+  address's own folder, no uid/gid/home/shell, a size limit) with no
+  message, looks for an existing row again under the mail lock, and
+  replaces the password through `Agent.UpdateMailPassword` before the row
+  is committed; everything else stays the owner's (D-022).
+- **Alias DNS (invariant 2).** What CelikPanel added for an alias is kept in
+  `panel_settings` `alias_dns_v1:<alias>` (version 1, zone and records),
+  written in the same transaction as the records; removal deletes exactly
+  those, while the zone belongs now to the account of the alias's domain now
+  (after a subscription transfer both moved, and the records go; in a zone
+  held by another account nothing is removed, the note is cleared and the
+  Panel's log names the record). A publication that does not finish marks the zone
+  (`alias_dns_unpublished_v1:<zone>`) and the Panel's hourly round publishes
+  it; it never stops a domain's deletion, also for a domain whose own DNS
+  is managed elsewhere; a mark whose zone's DNS mode cannot be read is kept
+  for the next round. Aliases made before alpha.144 have no such note and
+  get no record until they are added again.
+- **Webmail's address (constitution 1).** Only `index.php` runs; the linked
+  folders give out static files only; dot-files and backup-looking names
+  are refused. Earlier address files are CelikPanel's own form, read as
+  stale, and rewritten once at the Agent's start (nginx -t, reload, the
+  earlier file put back on failure); an owner's file is kept with the text
+  beside it. Either outcome is a Problems-now line until the file is in the
+  current form (`Agent.WebmailAddressFormsV1`). An automatic rollback to
+  alpha.143 treats the new file as the owner's and keeps it: webmail keeps
+  serving, nothing is reopened, and later webmail address changes are
+  refused as owner-edited until the update is made again.
+- **Traffic logs after the nightly rotation (invariant 4, constitution 2:
+  permission normalization is a mutation).** nginx's workers (`www-data`)
+  could not pass through `/var/log/celikpanel` (0750 `root:celikpanel` on the
+  owner's server, read on 22 November 2026), so after each rotation they
+  logged `[emerg] … (13: Permission denied)` and kept writing into the
+  rotated file. Once at the Agent's start (receipt `log-root-modes-v2.done`):
+  the folder, root-owned at a mode CelikPanel produced, 0700 → 0711 or
+  0750 → 0751; its traffic folder 0755 → 0710 owned by root and the web
+  server's group (only the workers pass; no site account opens another
+  site's log); traffic logs readable by others 0644 → 0640; the certificate
+  tool's log folder stays 0700; any other mode (kept with its owner and
+  group), a traffic folder at 0710 whose group is neither the web server's
+  nor one CelikPanel gave it (root, celikpanel), a link or another owner is
+  kept and named. New installations make the log folder 0711 and the
+  traffic folder 0710 with that group whatever the umask, and a site's
+  first log 0640 before nginx opens it; the web server's account is looked
+  up only to make them (a failed lookup leaves the site's traffic setting
+  as it was, one journal line). CelikPanel's rotation file makes each new
+  log 0640 for that account (managed text: an owner-edited file is kept).
+  No reload: the workers reach the current files at the next rotation.
+  Still readable by programs that run as the web server's own shared
+  account (Node.js sites not yet moved into their own account, the
+  distribution's default PHP pool where it is on): the logs hold time and
+  byte counts, no addresses, and those programs already read every site's
+  served files.
+- **Evidence.** `TestA144*` (panel), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
+  `TestLogRootIsMadePassableWhateverTheUmask`, `TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes`,
+  `TestTrafficLogsReachOnlyTheWebServerWorkers`,
+  `TestTrafficFolderAt0710WithTheOwnersGroupIsKept`,
+  `TestTrafficLogrotateMakesEachNewLogClosed`, `TestTrafficLogNeedsTheWebServerAccountOnlyToMakeIt`,
+  `TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead`,
+  `TestWebmailAddress*` (agent); the detached tests fail with the guard
+  removed (the lab's "sending/lost" record, no mailbox row, no reply copy).
+- **Lab.** One run on 22 November 2026 (a Debian 13 PowerDNS main and an
+  Ubuntu 24.04 BIND backup, both updated from the alpha.143 state through
+  the panel's own update page; lab-only label alpha.152 built from
+  `6ed1f94a0`): no hard failure; the webmail address correction, the
+  detached routes, the adoption refusals, the alias records and the
+  traffic folder modes behaved as stated above (see the release notes'
+  "Checked in the lab"). It found that webmail cannot send mail (its
+  configuration hands mail to port 587 without STARTTLS; older than this
+  branch) and two display findings, planned for alpha.145.
+- **Open.** The other Panel handlers that pass the browser's
+  context into an Agent change are listed in the pull request for a later
+  lane; an alias that is a zone of its own still gets no DNS (no zone is
+  created for it); the lab's not-checked items are listed in the release
+  notes. **No P0 item is closed.**

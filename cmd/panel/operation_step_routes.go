@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -62,7 +64,40 @@ var (
 		pattern: "/api/v1/domains/{id}/access/logins/{login}", timeout: operationStepRouteTimeout, optional: true,
 		digest: requestIdentityFTPLoginDigest,
 	}
+	// alpha.144 (alpha.143 lab): an administrator's close or undo of a
+	// PostgreSQL database other accounts can enter, and "Read again". Leaving
+	// the page no longer cuts the Panel between the Agent's work and its
+	// record: the change runs to its own limit and the list shows its result.
+	requestIdentityRoutePGPublic = operationStepRoute(pgPublicPath)
+	// alpha.144 (alpha.143 lab): creating a mailbox and saving an
+	// out-of-office reply end with the Panel's row and the server in step
+	// when the page is left; the stored digest leaves the password out.
+	requestIdentityRouteMailboxCreate = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/mail/accounts", timeout: operationStepRouteTimeout, optional: true,
+		digest: requestIdentityMailboxCreateDigest,
+	}
+	requestIdentityRouteMailAutoresponder = operationStepRoute("/api/v1/domains/{id}/mail/autoresponder")
+	// The administrator's adoption of an empty mailbox found on the server
+	// without a record (it reads the server, writes one row and sets the new
+	// password); the stored digest leaves the password out.
+	requestIdentityRouteMailboxAdopt = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/mail/accounts/adopt", timeout: operationStepRouteTimeout, optional: true,
+		digest: requestIdentityMailboxCreateDigest,
+	}
 )
+
+// requestIdentityMailboxCreateDigest is the part of a new mailbox's body that
+// identifies the request: its address and size, never its password.
+func requestIdentityMailboxCreateDigest(body []byte) []byte {
+	var request struct {
+		Address string `json:"address"`
+		QuotaMB int    `json:"quota_mb"`
+	}
+	if err := json.Unmarshal(body, &request); err != nil {
+		return []byte("unreadable")
+	}
+	return []byte(strings.ToLower(strings.TrimSpace(request.Address)) + "\x00" + strconv.Itoa(request.QuotaMB))
+}
 
 // operationStepRouteFor names the optional route a request would reach, using
 // the dispatchers' own strict matchers where they exist.
@@ -96,6 +131,8 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteSSHPasswordLogin, true
 		case pgLeftoverAPIPath: // alpha.130: archive and remove a leftover cluster
 			return requestIdentityRoutePGLeftover, true
+		case pgPublicPath: // alpha.144: close, undo, read again
+			return requestIdentityRoutePGPublic, true
 		}
 		// alpha.128 ops: G31, installing a request's issued certificate.
 		if rest, ok := strings.CutPrefix(path, certificateRequestsPath+"/"); ok {
@@ -171,6 +208,12 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRouteFTPLoginAdd, true
 	case match.kind == "ftp-logins" && (r.Method == http.MethodPut || r.Method == http.MethodDelete):
 		return requestIdentityRouteFTPLogin, true
+	case match.kind == "mail" && r.Method == http.MethodPost && strings.HasSuffix(path, "/mail/accounts"):
+		return requestIdentityRouteMailboxCreate, true
+	case match.kind == "mail" && r.Method == http.MethodPost && strings.HasSuffix(path, "/mail/accounts/adopt"):
+		return requestIdentityRouteMailboxAdopt, true
+	case match.kind == "mail" && r.Method == http.MethodPut && strings.HasSuffix(path, "/mail/autoresponder"):
+		return requestIdentityRouteMailAutoresponder, true
 	case match.kind == "dns" && strings.HasSuffix(path, "/records") &&
 		(r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete):
 		return requestIdentityRouteDNSRecords, true
