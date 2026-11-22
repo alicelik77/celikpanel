@@ -164,6 +164,15 @@ func SealManagedTextWith(prefix, body string) string {
 	return prefix + sha256Hex([]byte(body)) + "\n" + body
 }
 
+// SealedUnchanged says whether content is CelikPanel's sealed nginx text as
+// it was written: the render header's digest is the body's (S4 R1, third fix
+// round: the stock pool's "in use" check trusts the generator's own lines
+// only in such a file).
+func SealedUnchanged(content []byte) bool {
+	declared, body, ok := splitManagedHeader(content)
+	return ok && sha256Hex(body) == declared
+}
+
 // splitManagedHeader returns the digest the first line declares and the body
 // after it. A first line ending in CR (an editor that wrote CRLF) is still read
 // as the header, so the edit is "owner-edited", not "foreign".

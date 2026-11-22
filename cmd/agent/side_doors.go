@@ -30,9 +30,12 @@ import (
 //     owner changed is not touched (D-022).
 //  2. The distribution's stock pool (www.conf) of each PHP version is turned
 //     off when it is still the package's untouched file (dpkg's own MD5 of
-//     the conffile), no web server configuration names its socket (any line
-//     outside a full-line comment, or a *_pass whose address is a variable,
-//     keeps it on: stockPoolUsers), and another pool remains (PHP-FPM refuses to start without one). Turning off is a
+//     the conffile), no web server configuration that is loaded names its
+//     socket (any line outside a full-line comment, a unix: path that reaches
+//     the same socket or cannot be followed, or a *_pass whose address is a
+//     variable, keeps it on: stockPoolUsers; an Apache file only counts when
+//     Apache is installed and loads it), and another pool remains (PHP-FPM
+//     refuses to start without one). Turning off is a
 //     rename to www.conf.off-by-celikpanel (dpkg keeps a removed conffile
 //     removed on upgrades), checked with php-fpm -t and a reload, and put
 //     back when either refuses. An owner-changed or used pool is kept and
@@ -400,7 +403,11 @@ type stockPoolOps struct {
 	readFile    func(path string) ([]byte, error)
 	conffileMD5 func(ctx context.Context, version, path string) (string, bool)
 	nginxDump   func(ctx context.Context) (string, error)
-	apacheRefs  func(socket string) []string
+	// apacheFiles lists the Apache files Apache loads (none when Apache is
+	// not installed); sameSocket answers, for the pool's socket, whether a
+	// unix: path reaches it (nil in tests that compare text only).
+	apacheFiles func() []stockPoolConfigText
+	sameSocket  func(listen string) socketMatcher
 	aliasFor    func(listen string) string
 	rename      func(from, to string) error
 	fpmTest     func(ctx context.Context, version string) error
@@ -550,7 +557,15 @@ func closeStockFPMPoolsFor(ctx context.Context, ops stockPoolOps, pass stockPool
 		if match := stockPoolListen.FindSubmatch(content); match != nil {
 			listen = string(match[1])
 		}
-		row.UsedBy = stockPoolUsers(dump, listen, ops.aliasFor(listen), ops.apacheRefs)
+		var apache []stockPoolConfigText
+		if ops.apacheFiles != nil {
+			apache = ops.apacheFiles()
+		}
+		var same socketMatcher
+		if ops.sameSocket != nil {
+			same = ops.sameSocket(listen)
+		}
+		row.UsedBy = stockPoolUsers(dump, listen, ops.aliasFor(listen), apache, same)
 		if len(row.UsedBy) > 0 {
 			release()
 			row.State = transport.SideDoorsStockInUse
@@ -632,9 +647,21 @@ func readStockPool(ops stockPoolOps, version, path string) (string, string) {
 	return "", ""
 }
 
+// stockPoolConfigText is one web server configuration file something loads
+// (Err: it could not be read, so it counts as a user).
+type stockPoolConfigText struct {
+	Name, Text string
+	Err        error
+}
+
+// socketMatcher answers whether a unix: path reaches the stock pool's socket
+// (same) and whether that could be decided at all (known).
+type socketMatcher func(path string) (same, known bool)
+
 // stockPoolUsers names the configuration files that hand PHP to the stock
-// pool's socket (or to the php-fpm.sock alias when it points there).
-func stockPoolUsers(dump, listen, alias string, apacheRefs func(string) []string) []string {
+// pool's socket (or to the php-fpm.sock alias when it points there): nginx's
+// effective configuration (dump) and the Apache files Apache loads (apache).
+func stockPoolUsers(dump, listen, alias string, apache []stockPoolConfigText, same socketMatcher) []string {
 	if listen == "" || !strings.HasPrefix(listen, "/") {
 		// A TCP listen address: anything could reach it; it is not turned off.
 		return []string{"listen " + listen}
@@ -663,6 +690,10 @@ func stockPoolUsers(dump, listen, alias string, apacheRefs func(string) []string
 	//   - or any *_pass on such a line is followed, before the statement can
 	//     have ended, by a "$": the address is a variable whose value cannot
 	//     be known here.
+	//   - or a unix: path on such a line reaches the same socket by another
+	//     spelling ("//", "./", "..", a link of the owner's own), or cannot be
+	//     followed at all (a relative path, a missing folder): socketMatcher
+	//     compares what the paths resolve to (S4 R1, third fix round).
 	// A customer's harmless directive that names the socket keeps the pool on
 	// and gives the customer nothing: the socket is www-data's, mode 0660,
 	// and a site account is not in that group; customers may not write any
@@ -671,6 +702,14 @@ func stockPoolUsers(dump, listen, alias string, apacheRefs func(string) []string
 	// nginx -T prints before each file. That name is only a label for the
 	// administrator: a quoted value that fakes such a line can mislabel a
 	// mention, never hide one.
+	mentions := func(line string) bool {
+		for _, target := range targets {
+			if strings.Contains(line, target) {
+				return true
+			}
+		}
+		return same != nil && unixPathReaches(line, same)
+	}
 	lines := strings.Split(dump, "\n")
 	files := make([]string, len(lines))
 	file := "nginx"
@@ -684,14 +723,20 @@ func stockPoolUsers(dump, listen, alias string, apacheRefs func(string) []string
 			continue
 		}
 		files[i] = file
-		for _, target := range targets {
-			if strings.Contains(line, target) {
-				seen[file] = true
-			}
+		if mentions(line) {
+			seen[file] = true
 		}
 	}
+	sealed := sealedPanelLines(lines)
 	for i, line := range lines {
 		if files[i] == "" {
+			continue
+		}
+		// The generator's reverse-proxy line in CelikPanel's own unchanged
+		// file: its variable is only ever "http(s)://host[:port]"
+		// (services.runtimeResolvedProxy), never a socket; a socket path in
+		// the site's target would still be named on the lines above it.
+		if sealed[i] && strings.TrimSpace(line) == panelUpstreamPass {
 			continue
 		}
 		for offset := 0; ; {
@@ -706,10 +751,18 @@ func stockPoolUsers(dump, listen, alias string, apacheRefs func(string) []string
 			}
 		}
 	}
-	if apacheRefs != nil {
-		for _, target := range targets {
-			for _, ref := range apacheRefs(target) {
-				seen[ref] = true
+	// Apache's files: a mention or a reaching unix: path outside a comment
+	// line (Apache has no comment after a directive); one that could not be
+	// read counts.
+	for _, f := range apache {
+		if f.Err != nil {
+			seen[f.Name] = true
+			continue
+		}
+		for _, line := range strings.Split(f.Text, "\n") {
+			if !strings.HasPrefix(strings.TrimLeft(line, " \t\r"), "#") && mentions(line) {
+				seen[f.Name] = true
+				break
 			}
 		}
 	}
@@ -753,6 +806,270 @@ func passAddressHasVariable(lines, files []string, i, offset int) bool {
 		}
 	}
 	return false
+}
+
+// panelUpstreamPass is the reverse-proxy line CelikPanel's vhost writes for
+// an application addressed by a host name (templates/nginx/vhost.conf.tmpl).
+const panelUpstreamPass = "proxy_pass $celikpanel_upstream;"
+
+// sealedPanelLines marks the dump's lines that belong to a file carrying
+// CelikPanel's render header whose digest is still its body's
+// (services.SealedUnchanged): nginx -T prints each file's text after its
+// "# configuration file <name>:" line, followed by a line end. A fake header
+// line inside a quoted value splits a file, so neither half is sealed.
+func sealedPanelLines(lines []string) []bool {
+	sealed := make([]bool, len(lines))
+	start := -1
+	mark := func(end int) {
+		if start < 0 || start >= end {
+			return
+		}
+		text := strings.Join(lines[start:end], "\n")
+		if services.SealedUnchanged([]byte(text)) || services.SealedUnchanged([]byte(strings.TrimSuffix(text, "\n"))) {
+			for i := start; i < end; i++ {
+				sealed[i] = true
+			}
+		}
+	}
+	for i, line := range lines {
+		if strings.HasPrefix(line, "# configuration file ") && strings.HasSuffix(strings.TrimRight(line, "\r"), ":") {
+			mark(i)
+			start = i + 1
+		}
+	}
+	mark(len(lines))
+	return sealed
+}
+
+// unixPathReaches: a unix: path on the line reaches the stock pool's socket,
+// or cannot be followed (same == nil: never asked).
+func unixPathReaches(line string, same socketMatcher) bool {
+	for rest := line; ; {
+		at := strings.Index(rest, "unix:")
+		if at < 0 {
+			return false
+		}
+		rest = rest[at+len("unix:"):]
+		end := strings.IndexAny(rest, " \t\r;\"'|{}:")
+		path := rest
+		if end >= 0 {
+			path = rest[:end]
+		}
+		if path == "" {
+			continue
+		}
+		if reaches, known := same(path); reaches || !known {
+			return true
+		}
+	}
+}
+
+// socketIdentity is what a socket path resolves to: the device and inode of
+// the file when it exists, and of its folder with the last name (a socket
+// not listening yet, or a link to one). ok is false when it cannot be
+// followed: a relative path, a folder that is missing or cannot be read.
+func socketIdentity(path string) (ids []string, ok bool) {
+	if !filepath.IsAbs(path) {
+		return nil, false
+	}
+	if info, err := os.Stat(path); err == nil {
+		if id, has := fileIdentity(info); has {
+			ids = append(ids, "file:"+id)
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, false
+	}
+	target := path
+	if followed := followSymlinks(path); followed != "" {
+		target = followed
+	}
+	cut := strings.LastIndex(target, "/")
+	dir, name := target[:cut], target[cut+1:]
+	if dir == "" {
+		dir = "/"
+	}
+	if name == "" || name == "." || name == ".." {
+		return ids, len(ids) > 0
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		return ids, len(ids) > 0
+	}
+	if id, has := fileIdentity(info); has {
+		ids = append(ids, "entry:"+id+"/"+name)
+	}
+	return ids, len(ids) > 0
+}
+
+// hostSameSocket compares every unix: path with the pool's socket by what
+// both resolve to; with the socket itself unresolvable, nothing is known.
+func hostSameSocket(listen string) socketMatcher {
+	want, wantOK := socketIdentity(listen)
+	return func(path string) (bool, bool) {
+		if !wantOK {
+			return false, false
+		}
+		got, ok := socketIdentity(path)
+		if !ok {
+			return false, false
+		}
+		for _, a := range got {
+			for _, b := range want {
+				if a == b {
+					return true, true
+				}
+			}
+		}
+		return false, true
+	}
+}
+
+// apacheIncludeLine reads an Include or IncludeOptional directive (Apache's
+// directive names are case-insensitive).
+var apacheIncludeLine = regexp.MustCompile(`(?i)^\s*include(?:optional)?\s+(.+?)\s*$`)
+
+// apacheServerRootLine reads a ServerRoot directive.
+var apacheServerRootLine = regexp.MustCompile(`(?i)^\s*serverroot\s+(.+?)\s*$`)
+
+// apacheLoadedFiles lists the Apache files Apache loads (S4 R1, third fix
+// round): none when the Apache program is not installed; otherwise every
+// file under root outside the *-available folders (the enabled links
+// followed and named as the link), and what any of them includes, wherever
+// it is. A file under *-available counts only through an enabled link or an
+// include: the PHP-FPM package's own conf-available/php<V>-fpm.conf that
+// nobody enabled is not a user. An include that cannot be followed (a
+// variable, a line continued on the next) makes every file under root count,
+// as before. A file that cannot be read counts.
+func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
+	if !installed {
+		return nil
+	}
+	if _, err := os.Lstat(root); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return []stockPoolConfigText{{Name: root, Err: err}}
+	}
+	loaded := map[string]stockPoolConfigText{}
+	var queue []string
+	add := func(name, path string) {
+		if _, done := loaded[name]; done {
+			return
+		}
+		data, err := os.ReadFile(path)
+		loaded[name] = stockPoolConfigText{Name: name, Text: string(data), Err: err}
+		queue = append(queue, name)
+	}
+	// addTree adds a file, or every file below a folder (links followed, a
+	// few levels deep).
+	var addTree func(name, path string, depth int)
+	addTree = func(name, path string, depth int) {
+		info, err := os.Stat(path)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				loaded[name] = stockPoolConfigText{Name: name, Err: err}
+			}
+			return
+		}
+		if !info.IsDir() {
+			add(name, path)
+			return
+		}
+		if depth > 8 {
+			loaded[name] = stockPoolConfigText{Name: name, Err: errors.New("folders nested too deep")}
+			return
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			loaded[name] = stockPoolConfigText{Name: name, Err: err}
+			return
+		}
+		for _, entry := range entries {
+			addTree(filepath.Join(name, entry.Name()), filepath.Join(path, entry.Name()), depth+1)
+		}
+	}
+	everything := false
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return []stockPoolConfigText{{Name: root, Err: err}}
+	}
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasSuffix(entry.Name(), "-available") {
+			continue
+		}
+		addTree(filepath.Join(root, entry.Name()), filepath.Join(root, entry.Name()), 0)
+	}
+	serverRoots := []string{root}
+	for len(queue) > 0 && !everything {
+		name := queue[0]
+		queue = queue[1:]
+		f := loaded[name]
+		if f.Err != nil {
+			continue
+		}
+		for _, line := range strings.Split(f.Text, "\n") {
+			if strings.HasPrefix(strings.TrimLeft(line, " \t\r"), "#") {
+				continue
+			}
+			if m := apacheServerRootLine.FindStringSubmatch(line); m != nil {
+				serverRoots = append(serverRoots, strings.Trim(m[1], `"'`))
+			}
+			m := apacheIncludeLine.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			arg := strings.Trim(m[1], `"'`)
+			if strings.Contains(arg, "$") || strings.HasSuffix(arg, `\`) || strings.ContainsAny(arg, " \t") {
+				everything = true
+				break
+			}
+			patterns := []string{arg}
+			if !filepath.IsAbs(arg) {
+				patterns = patterns[:0]
+				for _, base := range serverRoots {
+					patterns = append(patterns, filepath.Join(base, arg))
+				}
+			}
+			for _, pattern := range patterns {
+				matches, err := filepath.Glob(pattern)
+				if err != nil {
+					everything = true
+					break
+				}
+				for _, match := range matches {
+					addTree(match, match, 0)
+				}
+			}
+		}
+	}
+	if everything {
+		_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
+				loaded[path] = stockPoolConfigText{Name: path, Err: err}
+				return nil
+			}
+			if !entry.IsDir() {
+				if _, done := loaded[path]; !done {
+					data, readErr := os.ReadFile(path)
+					loaded[path] = stockPoolConfigText{Name: path, Text: string(data), Err: readErr}
+				}
+			}
+			return nil
+		})
+	}
+	files := make([]stockPoolConfigText, 0, len(loaded))
+	for _, f := range loaded {
+		files = append(files, f)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Name < files[j].Name })
+	return files
+}
+
+// apacheInstalled: the Apache program is there (an answer other than "not
+// there" counts as installed).
+func apacheInstalled() bool {
+	_, err := os.Stat("/usr/sbin/apache2")
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 // otherPoolsBeside: another pool file is in the same pool directory.
@@ -862,19 +1179,10 @@ func hostStockPoolOps() stockPoolOps {
 			}
 			return string(out), nil
 		},
-		apacheRefs: func(socket string) []string {
-			var refs []string
-			_ = filepath.WalkDir("/etc/apache2", func(path string, entry os.DirEntry, err error) error {
-				if err != nil || entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
-					return nil
-				}
-				if data, readErr := os.ReadFile(path); readErr == nil && strings.Contains(string(data), socket) {
-					refs = append(refs, path)
-				}
-				return nil
-			})
-			return refs
+		apacheFiles: func() []stockPoolConfigText {
+			return apacheLoadedFiles("/etc/apache2", apacheInstalled())
 		},
+		sameSocket: hostSameSocket,
 		aliasFor: func(listen string) string {
 			alias := filepath.Join(phpFPMRunDir, "php-fpm.sock")
 			if followSymlinks(alias) == listen {
