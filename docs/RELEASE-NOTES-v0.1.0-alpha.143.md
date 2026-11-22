@@ -419,18 +419,25 @@ and after:
 | `internal/transport` | 62 | 63 |
 | `internal/db` | 182 | 184 |
 | `internal/services` | 371 | 371 |
-| `cmd/agent` | 5854 | 5884 |
-| `cmd/panel` | 4726 | 4749 |
+| `cmd/agent` | 5854 | 5920 |
+| `cmd/panel` | 4726 | 4763 |
 
-(Passed tests and subtests; the whole Go module 15838 → 15894, measured on
-the merged release before the second fix round; to be measured again on
-its head. In this test machine 19 tests of `cmd/agent` fail
-identically before and after, because of the machine itself: its DNS engine
-state does not authorize PowerDNS, and its temporary folders are not owned by
-the root group. The database tests on private PostgreSQL 17.12 and MariaDB
-11.8 servers: 22 pass, and the two that need a server whose templates are
-SQL_ASCII are skipped there.)
+(Passed tests and subtests. "After" was measured on 22 November 2026 on
+the second fix round's head (`14b7caf11`) with the private PostgreSQL
+17.12 and MariaDB 11.8 servers attached, so the database tests ran inside
+the package suites; alpha.143's candidate measured the same way that day
+gives 63, 184, 371, 5906 and 4749. In this test machine 94 tests and
+subtests of `cmd/agent` (19 tests) fail identically on both, because of the
+machine itself: its DNS engine state does not authorize PowerDNS, and its
+temporary folders are not owned by the root group. On the head run three
+more failed that are not the change's: the two recovery-runtime packages,
+which then failed on the candidate as well once the machine's /run state
+had changed; one panel restore test that ran out of its time under the
+full run and passes alone. One agent contract test named the new
+`PostgreSQLPublicAccessRunningV1` as missing from its build-gate list; it
+was added after the run and passes. The two database tests that need a
+server whose templates are SQL_ASCII are skipped.)
 
-No new failure. Web: `npm test` 3090 → 3102 passed, 0 failed; the type
+No new failure. Web: `npm test` 3090 → 3105 passed (3102 before the second fix round), 0 failed; the type
 check is clean and the build meets every size budget (first-load path
-109.38 KiB of 110.00 KiB compressed; alpha.142: 109.37).
+109.36 KiB of 110.00 KiB compressed; alpha.142: 109.37).

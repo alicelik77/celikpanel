@@ -432,17 +432,24 @@ sonra:
 | `internal/transport` | 62 | 63 |
 | `internal/db` | 182 | 184 |
 | `internal/services` | 371 | 371 |
-| `cmd/agent` | 5854 | 5884 |
-| `cmd/panel` | 4726 | 4749 |
+| `cmd/agent` | 5854 | 5920 |
+| `cmd/panel` | 4726 | 4763 |
 
-(Geçen testler ve alt testler; Go modülünün tamamı 15838 → 15894, ikinci
-düzeltme turundan önce birleşmiş sürümde ölçüldü; onun son hâlinde yeniden
-ölçülecek. Bu test makinesinde `cmd/agent` paketinin 19 testi önce ve
-sonra aynı biçimde, makinenin kendisi yüzünden başarısız: DNS motoru durumu
-PowerDNS'e yetki vermiyor ve geçici klasörleri root grubuna ait değil. Özel
-PostgreSQL 17.12 ve MariaDB 11.8 sunucularında veritabanı testleri: 22'si
-geçer, şablonları SQL_ASCII olan bir sunucu isteyen ikisi orada atlanır.)
+(Geçen testler ve alt testler. "Sonra" sütunu 22 Kasım 2026'da ikinci
+düzeltme turunun son hâlinde (`14b7caf11`), özel PostgreSQL 17.12 ve
+MariaDB 11.8 sunucuları bağlıyken ölçüldü; veritabanı testleri paket
+takımlarının içinde çalıştı. alpha.143 adayı aynı gün aynı biçimde 63, 184,
+371, 5906 ve 4749 verir. Bu test makinesinde `cmd/agent` paketinin 94 test
+ve alt testi (19 test) ikisinde de aynı biçimde, makinenin kendisi yüzünden
+başarısız: DNS motoru durumu PowerDNS'e yetki vermiyor ve geçici klasörleri
+root grubuna ait değil. Son hâlin çalışmasında değişiklikten kaynaklanmayan
+üç başarısızlık daha oldu: makinenin /run durumu değiştikten sonra adayda da
+başarısız olan iki kurtarma paketi ve tam çalışmada süresi dolan, tek başına
+geçen bir panel geri yükleme testi. Bir aracı sözleşme testi yeni
+`PostgreSQLPublicAccessRunningV1` çağrısını sürüm kapısı listesinde eksik
+buldu; çalışmadan sonra eklendi ve geçer. Şablonları SQL_ASCII olan bir
+sunucu isteyen iki veritabanı testi atlanır.)
 
-Yeni başarısızlık yok. Web: `npm test` 3090 → 3102 geçti, 0 başarısız; tür
+Yeni başarısızlık yok. Web: `npm test` 3090 → 3105 geçti (ikinci düzeltme turundan önce 3102), 0 başarısız; tür
 denetimi temiz ve derleme her boyut bütçesini karşılıyor (ilk yükleme yolu
-sıkıştırılmış 110,00 KiB'nin 109,38 KiB'i; alpha.142: 109,37).
+sıkıştırılmış 110,00 KiB'nin 109,36 KiB'i; alpha.142: 109,37).

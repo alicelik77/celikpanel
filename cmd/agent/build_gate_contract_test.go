@@ -309,6 +309,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// Second review of alpha.143 (B1): whether a close still runs.
+			name: "PostgreSQLPublicAccessRunningV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessRunningResponse
+				_ = agent.PostgreSQLPublicAccessRunningV1(&transport.PostgreSQLPublicAccessRunningRequest{ExpectedBuildCommit: expected, Name: "shop"}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.134: the rights naming a deleted database.
 			name: "RemoveDroppedDatabaseRightsV1",
 			run: func(expected string) string {
