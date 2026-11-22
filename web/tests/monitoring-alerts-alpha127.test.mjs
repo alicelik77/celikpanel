@@ -36,6 +36,7 @@ const stub = dataModule(`
   export const componentName = ({ id, name }) => name || id;
   export const isProblemKind = (kind) => ['disk_full', 'site_down', 'service_stopped', 'service_restarting', 'site_certificate'].includes(kind);
   export const problemVars = (p) => ({ name: p.name || p.subject || '', domain: p.subject || '', days: p.value, value: p.value });
+  export const problemTitleKey = (p) => 'pnow.' + p.kind + '.title';
   export function postJSON(url, body, method = 'POST') {
     return fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }

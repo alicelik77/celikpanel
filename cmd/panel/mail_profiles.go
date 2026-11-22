@@ -662,7 +662,9 @@ func (p *Panel) runMailProfileInstall(
 	}
 	var mailStack transport.ConfigureMailStackResponse
 	mailStackRequest := p.configureMailStackRequest(ctx, binding)
-	if err := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailStackRequest, &mailStack); err != nil {
+	mailStackErr := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailStackRequest, &mailStack)
+	p.recordMailSigningCall(ctx, mailStack.Signing, mailStackErr)
+	if err := mailStackErr; err != nil {
 		return result, mailProfileInstallFailure(fmt.Errorf("final mail stack configuration: %w", err))
 	}
 	if mailStack.Error != "" {
@@ -706,6 +708,7 @@ func (p *Panel) runMailProfileInstall(
 	}
 	var signing transport.ConfigureDKIMSigningResponse
 	signingErr := p.callAgentContext(ctx, "Agent.ConfigureDKIMSigning", &mutationRequest, &signing)
+	p.recordMailSigningCall(ctx, signing.Signing, signingErr)
 	switch {
 	case signingErr != nil:
 		result["dkim_signing"] = false

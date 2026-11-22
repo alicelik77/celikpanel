@@ -104,7 +104,8 @@ func tightenTenantVisibleModes(
 
 // tightenHostingDirMode turns the hosting base or the subscriptions root from
 // the earlier releases' 0755 into hostingBaseMode. "" when there is nothing to
-// say (absent, or already not listable by others).
+// say (absent, or already at hostingBaseMode). Any other mode, also one that
+// already keeps others from listing it, is the owner's and is named as kept.
 func tightenHostingDirMode(dir string) (string, bool) {
 	info, err := os.Lstat(dir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -117,11 +118,14 @@ func tightenHostingDirMode(dir string) (string, bool) {
 		return fmt.Sprintf("kept %s: not a directory (a link the owner made is the owner's)", dir), false
 	}
 	perm := info.Mode().Perm()
-	if perm&0o004 == 0 {
+	if perm == hostingBaseMode {
 		return "", false
 	}
-	if perm != legacyHostingBaseMode || !rootOwnedInfo(info) {
+	if perm != legacyHostingBaseMode {
 		return fmt.Sprintf("kept %s: mode %04o is the owner's choice", dir, uint32(perm)), false
+	}
+	if !rootOwnedInfo(info) {
+		return fmt.Sprintf("kept %s: not owned by root; the owner's choice", dir), false
 	}
 	if err := os.Chmod(dir, hostingBaseMode); err != nil {
 		return fmt.Sprintf("kept %s: %v", dir, err), false

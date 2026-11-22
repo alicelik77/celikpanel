@@ -429,6 +429,8 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	domainID, siteID := created.DomainID, created.SiteID
+	// 22 Nov 2026 (B2): as for a domain added on its own (domain_handlers.go).
+	p.reconcileAutoresponderAddressesAfter(context.WithoutCancel(ctx), "domain_added")
 	ok("domain", fmt.Sprintf("%s (id %d, site %d) → %s", req.Domain, domainID, siteID, created.DocumentRoot))
 
 	// 2. Site files.
@@ -550,6 +552,9 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 				fail("mail:"+email, txErr)
 				continue
 			}
+			// 22 Nov 2026 (B2): a new mailbox can take an address a catch-all
+			// delivered elsewhere (mail_autoresponder_own.go).
+			p.reconcileAutoresponderAddressesLocked(context.WithoutCancel(ctx), "mailbox_added")
 			p.mailMutationMu.Unlock()
 			imported++
 			p.requestMailQuotaReconcile()

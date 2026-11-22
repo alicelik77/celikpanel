@@ -418,6 +418,10 @@ func (p *Panel) performTransfer(w http.ResponseWriter, r *http.Request, c *Calle
 	if suspensionChanged || rotationID != "" {
 		p.kickSuspensionWorker()
 	}
+	// 22 Nov 2026 (second review of alpha.143, B2): the subscription's domains
+	// belong to another account now, so an out-of-office reply of either
+	// account that names one of them is rewritten before this answers.
+	p.reconcileAutoresponderAddressesAfter(context.WithoutCancel(ctx), "subscription_transfer")
 
 	requestRef := 0
 	if requestRow != nil {

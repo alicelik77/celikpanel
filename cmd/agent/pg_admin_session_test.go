@@ -22,7 +22,7 @@ func TestEveryPostgreSQLAdministratorSessionHasTheFixedSearchPath(t *testing.T) 
 	root := filepath.Join(filepath.Dir(self), "..", "..")
 	client := regexp.MustCompile(`"(psql|pg_dump|pg_dumpall|pg_restore)"`)
 	asPostgres := regexp.MustCompile(`"-u",\s*"postgres"`)
-	allowed := []string{"pgAdminSudoArgs(", "pgAdminPSQLArgs(", "pgClientBinary(", "host.stream(", `exec.LookPath("psql")`, `exec.Command("which", "psql")`}
+	allowed := []string{"pgAdminSudoArgs(", "pgAdminPSQLArgs(", "pgAdminPSQLArgsFor(", "pgClientBinary(", "host.stream(", `exec.LookPath("psql")`, `exec.Command("which", "psql")`}
 	for _, dir := range []string{"cmd/agent", "cmd/panel", "cmd/recovery", "internal"} {
 		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, entry os.DirEntry, err error) error {
 			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
@@ -70,7 +70,7 @@ func TestEveryPostgreSQLAdministratorSessionHasTheFixedSearchPath(t *testing.T) 
 // The command lines themselves: the statement runner, the backup's dump and
 // the database tools' query.
 func TestAdministratorCommandLinesStartWithTheFixedSearchPath(t *testing.T) {
-	want := "PGOPTIONS=-c search_path=pg_catalog,pg_temp"
+	want := pgAdminSessionEnv
 	statement := newPostgreSQLStatementCommandOn(5433, "SELECT 1;")
 	args := strings.Join(statement.Args, " ")
 	if !strings.Contains(args, "-u postgres env "+want+" psql --no-psqlrc --set ON_ERROR_STOP=on --port 5433") {
@@ -83,5 +83,20 @@ func TestAdministratorCommandLinesStartWithTheFixedSearchPath(t *testing.T) {
 	cluster := pgAdminPSQLArgs("18/main", "--quiet")
 	if strings.Join(cluster, " ") != "-u postgres env "+want+" psql --cluster 18/main --no-psqlrc --set ON_ERROR_STOP=on --quiet" {
 		t.Fatalf("cluster query = %v", cluster)
+	}
+}
+
+// Second review of alpha.143, B5: the administrator session pins what a
+// database's owner could otherwise set for it (ALTER DATABASE ... SET).
+func TestAdministratorSessionPinsWhatADatabaseOwnerCouldSet(t *testing.T) {
+	for _, pin := range []string{"search_path=pg_catalog,pg_temp", "statement_timeout=0", "lock_timeout=0", "idle_in_transaction_session_timeout=0",
+		"default_transaction_read_only=off", "role=none", "exit_on_error=off"} {
+		if !strings.Contains(pgAdminSessionEnv, "-c "+pin) {
+			t.Errorf("the administrator session does not pin %s: %s", pin, pgAdminSessionEnv)
+		}
+	}
+	named := strings.Join(pgAdminPSQLArgsFor("celikpanel-x", "--port", "5433"), " ")
+	if !strings.HasPrefix(named, "-u postgres env "+pgAdminSessionEnv+" PGAPPNAME=celikpanel-x PGCONNECT_TIMEOUT=10 psql --no-psqlrc --set ON_ERROR_STOP=on --port 5433") {
+		t.Fatalf("named client = %s", named)
 	}
 }

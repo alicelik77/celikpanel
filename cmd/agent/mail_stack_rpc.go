@@ -170,7 +170,12 @@ func (a *Agent) ConfigureMailStack(req *ConfigureMailStackRequest, resp *Configu
 		// Kurulu olan filtreleri Postfix'in İÇİNE bağla. Bu olmadan spam
 		// filtresi posta sunucusunun yanında koşar, içinde değil — kurulu,
 		// "Çalışıyor", hiçbir şey süzmüyor (operatör, 24 Tem).
-		milterNote, err := writeMilterChain(ctx)
+		milterNote, chain, err := writeMilterChain(ctx)
+		// The signing state after the chain this step wrote (review finding
+		// 5: every path that changes the milters records it).
+		resp.Signing = observedMailSigning(func(name string, args ...string) ([]byte, error) {
+			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+		}, chain, err)
 		if err != nil {
 			resp.Error = fmt.Sprintf("milter wiring: %v", err)
 			return nil
@@ -289,6 +294,9 @@ func (a *Agent) WireMailFilters(req *ServiceMutationRequest, resp *WireMailFilte
 func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 	if _, err := exec.LookPath("postconf"); err != nil {
 		resp.Error = "Postfix is required before a mail filter can be wired"
+		// No Postfix: nothing on this server signs mail (review finding 5:
+		// every path records the state).
+		resp.Signing = &transport.MailSigningState{State: mailSigningNoDKIM}
 		return nil
 	}
 	// Repair the lookup tables while we are here. A server configured before
@@ -305,16 +313,19 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 	if _, err := exec.LookPath("postconf"); err == nil && fileExistsAgent(postfixVBoxPath) {
 		if err := configurePostfixVirtual(ctx); err != nil {
 			resp.Error = err.Error()
+			resp.Signing = mailSigningNotRun(err)
 			return nil
 		}
 		for _, p := range []string{postfixVBoxPath, postfixVirtualPath, postfixDomainsPath} {
 			if err := postmapReadableContext(ctx, p); err != nil {
 				resp.Error = err.Error()
+				resp.Signing = mailSigningNotRun(err)
 				return nil
 			}
 		}
 		if err := ensureAliasDatabase(ctx); err != nil {
 			resp.Error = fmt.Sprintf("postfix aliases: %v", err)
+			resp.Signing = mailSigningNotRun(errors.New(resp.Error))
 			return nil
 		}
 	}
@@ -349,16 +360,49 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 	if passwordlessErr != nil {
 		passwordlessNote = passwordlessErr.Error()
 	}
-	milterNote, err := applyMilterChain(ctx)
+	// 20 Nov 2026, order corrected 21 Nov 2026 (review finding 7): the milter
+	// chain first, which keeps OpenDKIM off port 25 and, where the lists are
+	// CelikPanel's, ensures milter_default_action = accept; then OpenDKIM's
+	// configuration (checked before use, its restart recorded as owed before
+	// the file is put in place, undone when OpenDKIM does not start with it),
+	// so mail passing OpenDKIM while it restarts is passed on, not held
+	// (mail_signing_bind.go). Its outcome is a note and the Signing state,
+	// never the wiring's failure.
+	// Önce 25. kapıyı imzasız bırakan zincir, sonra OpenDKIM yapılandırması.
+	run := func(name string, args ...string) ([]byte, error) {
+		return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+	}
+	milterNote, chain, err := applyMilterChainDetailed(ctx)
+	signing := mailSigningInputs{confState: mailSigningNoDKIM, port25: chain, milterErr: err}
+	if layout, ok := opendkimLayoutFor(detectPkgFamily()); ok && unitExists("opendkim") {
+		signing.confPath = layout.confPath
+		signing.confState, signing.confNote = reconcileOpenDKIMConf(run, layout)
+	}
+	signing.submitOpen, signing.submitNote, signing.submitErr = localSubmitOpen(run)
+	resp.Signing = decideMailSigning(signing)
+	signingNote := joinNotes(signing.confNote, signing.submitNote)
 	if err != nil {
 		resp.Error = err.Error()
-		resp.Detail = joinNotes(dovecotNote, chrootNote, passwordlessNote, milterNote)
+		resp.Detail = joinNotes(dovecotNote, chrootNote, passwordlessNote, signingNote, milterNote)
 		return nil
 	}
 	resp.Wired = true
 	resp.Detail = joinNotes(fmt.Sprintf("milters=%q maps=%s", postconfValue("smtpd_milters"), postfixMapTypeContext(ctx)),
-		dovecotNote, chrootNote, passwordlessNote, milterNote)
+		dovecotNote, chrootNote, passwordlessNote, signingNote, milterNote)
 	return nil
+}
+
+// observedMailSigning is the Signing state after a step that wrote the milter
+// chain (and possibly OpenDKIM's files) but did not reconcile opendkim.conf
+// itself: ConfigureDKIMSigning and ConfigureMailStack (review finding 5).
+func observedMailSigning(run postconfRunner, chain port25Plan, milterErr error) *transport.MailSigningState {
+	in := mailSigningInputs{confState: mailSigningNoDKIM, port25: chain, milterErr: milterErr}
+	if layout, ok := opendkimLayoutFor(detectPkgFamily()); ok && unitExists("opendkim") {
+		in.confPath = layout.confPath
+		in.confState, in.confNote = observeOpenDKIMConf(run, layout)
+	}
+	in.submitOpen, in.submitNote, in.submitErr = localSubmitOpen(run)
+	return decideMailSigning(in)
 }
 
 // rspamdMilter is rspamd_proxy in milter mode — a TCP port, identical on every
@@ -505,12 +549,23 @@ func postconfExpandedContext(ctx context.Context, key string) (string, error) {
 // ileti geçmiyordu. Panelin kurduğu filtre gerçekten süzmelidir; her bileşen
 // için geçerli olan aynı kural.
 func applyMilterChain(ctx context.Context) (string, error) {
+	note, _, err := applyMilterChainDetailed(ctx)
+	return note, err
+}
+
+// applyMilterChainDetailed is applyMilterChain that also returns what the
+// port-25 step found (20 Nov 2026, mail_signing_bind.go). When Postfix does
+// not take the new settings, every setting written here is put back
+// (settings that were at Postfix's default are removed again, not written
+// out, review finding 8) and Postfix is reloaded with the earlier ones, so
+// mail keeps flowing as before; the error says which.
+func applyMilterChainDetailed(ctx context.Context) (string, port25Plan, error) {
 	if _, err := exec.LookPath("postconf"); err != nil {
-		return "", nil // no postfix here, nothing to wire
+		return "", port25Plan{}, nil // no postfix here, nothing to wire
 	}
-	note, err := writeMilterChain(ctx)
+	note, undo, plan, err := writeMilterChainUndoable(ctx)
 	if err != nil {
-		return "", err
+		return "", plan, err
 	}
 	// A running Postfix must verifiably take the chain; a stopped one is left
 	// stopped and reads main.cf when it starts. Until 10 Oct 2026 this was
@@ -519,9 +574,66 @@ func applyMilterChain(ctx context.Context) (string, error) {
 	// Çalışan Postfix zinciri doğrulanmış biçimde almalıdır; durmuş olan
 	// durmuş bırakılır ve main.cf'i başlarken okur.
 	if _, err := applyPostfixVerified(mailServiceLeaseRunner(ctx), mailServiceReload); err != nil {
-		return note, fmt.Errorf("the milter chain is written to main.cf, but %w", err)
+		if undo.empty() {
+			return note, plan, fmt.Errorf("the milter chain is written to main.cf, but %w", err)
+		}
+		run := func(name string, args ...string) ([]byte, error) {
+			return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+		}
+		if undoErr := undo.undo(run); undoErr != nil {
+			return note, plan, fmt.Errorf("Postfix did not take the new milter settings (%v), and putting the earlier ones back failed too (%v)", err, undoErr)
+		}
+		if _, reloadErr := applyPostfixVerified(mailServiceLeaseRunner(ctx), mailServiceReload); reloadErr != nil {
+			return note, plan, fmt.Errorf("Postfix did not take the new milter settings (%v); the earlier ones were put back, but Postfix did not take them either (%v)", err, reloadErr)
+		}
+		return note, plan, fmt.Errorf("Postfix did not take the new milter settings (%v), so the earlier ones were put back and Postfix runs with them; mail is delivered as before", err)
 	}
-	return note, nil
+	return note, plan, nil
+}
+
+// milterSettingBefore is one main.cf setting as it was: set=false when
+// main.cf did not name it (Postfix's default applied).
+type milterSettingBefore struct {
+	name  string
+	value string
+	set   bool
+}
+
+// milterChainUndo is what writeMilterChainUndoable changed, with the values
+// it found before, and the port-25 record as it was.
+type milterChainUndo struct {
+	mainBefore   []milterSettingBefore
+	port25       []port25MilterChange
+	recordBefore map[string]string
+	recordSaved  bool
+}
+
+func (u milterChainUndo) empty() bool { return len(u.mainBefore) == 0 && len(u.port25) == 0 }
+
+// undo puts the port-25 entries back first, then main.cf, the reverse of the
+// order they were written in. A main.cf setting that was at its default is
+// removed (postconf -X), so the owner's file is as it was (review finding 8).
+func (u milterChainUndo) undo(run postconfRunner) error {
+	var errs []error
+	if err := undoPort25Milters(run, u.port25); err != nil {
+		errs = append(errs, err)
+	}
+	for index := len(u.mainBefore) - 1; index >= 0; index-- {
+		before := u.mainBefore[index]
+		args := []string{"-X", before.name}
+		if before.set {
+			args = []string{"-e", before.name + "=" + before.value}
+		}
+		if out, err := run("postconf", args...); err != nil {
+			errs = append(errs, fmt.Errorf("postconf %s: %s", strings.Join(args, " "), strings.TrimSpace(string(out))))
+		}
+	}
+	if u.recordSaved {
+		if err := writePort25Record(u.recordBefore); err != nil {
+			errs = append(errs, fmt.Errorf("CelikPanel's port-25 record: %w", err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // writeMilterChain writes the composed chain to main.cf and reloads nothing.
@@ -538,9 +650,24 @@ func applyMilterChain(ctx context.Context) (string, error) {
 // boştur. Listeler yalnız bir CelikPanel sürümünün bestelediği girdileri
 // taşıdıkça yeniden yazılır; sahibin genişlettiği liste üzerine yazılmaz,
 // bildirilir.
-func writeMilterChain(ctx context.Context) (string, error) {
+func writeMilterChain(ctx context.Context) (string, port25Plan, error) {
+	note, _, plan, err := writeMilterChainUndoable(ctx)
+	return note, plan, err
+}
+
+// writeMilterChainUndoable is writeMilterChain that returns what it changed.
+// Since 20 Nov 2026 the smtpd that receives mail on port 25 also gets its own
+// milter list without OpenDKIM (mail_signing_bind.go), written after main.cf.
+// Since 21 Nov 2026 (review finding 3) that list is main.cf's list as it is,
+// the owner's own included, with only OpenDKIM left out, and it is removed
+// when it is no longer needed.
+func writeMilterChainUndoable(ctx context.Context) (string, milterChainUndo, port25Plan, error) {
+	var undo milterChainUndo
 	if _, err := exec.LookPath("postconf"); err != nil {
-		return "", nil // no postfix here, nothing to wire
+		return "", undo, port25Plan{}, nil // no postfix here, nothing to wire
+	}
+	run := func(name string, args ...string) ([]byte, error) {
+		return serviceMutationCommand(ctx, name, args...).CombinedOutput()
 	}
 
 	spam := ""
@@ -550,19 +677,43 @@ func writeMilterChain(ctx context.Context) (string, error) {
 	case unitExists("spamass-milter"):
 		spam = spamassMilterEndpoint()
 	}
-	incoming, outgoing := composeMilterChain(unitExists("opendkim") && fileExistsAgent(opendkimConfPath()), spam)
+	hasDKIM := unitExists("opendkim") && fileExistsAgent(opendkimConfPath())
+	return composeAndWriteMilterChain(run, hasDKIM, spam)
+}
 
+// composeAndWriteMilterChain is the system-call part of
+// writeMilterChainUndoable behind a runner, so the order of the writes and
+// the owner's settings can be tested without a mail server.
+func composeAndWriteMilterChain(run postconfRunner, hasDKIM bool, spam string) (string, milterChainUndo, port25Plan, error) {
+	var undo milterChainUndo
+	incoming, outgoing := composeMilterChain(hasDKIM, spam)
 	var settings [][2]string
 	var kept []string
-	for _, kv := range [][2]string{{"smtpd_milters", incoming}, {"non_smtpd_milters", outgoing}} {
-		out, err := serviceMutationCommand(ctx, "postconf", "-h", kv[0]).CombinedOutput()
+	read := func(name string) (string, error) {
+		out, err := run("postconf", "-h", name)
 		current, known := postconfOneValue(out)
 		if err != nil || !known {
-			return "", &postconfUnreadError{setting: kv[0], command: "postconf -h " + kv[0]}
+			return "", &postconfUnreadError{setting: name, command: "postconf -h " + name}
+		}
+		return current, nil
+	}
+	// mainList is main.cf's smtpd_milters as it is after this step: the
+	// composed list, or the owner's kept as he wrote it.
+	mainList := ""
+	for _, kv := range [][2]string{{"smtpd_milters", incoming}, {"non_smtpd_milters", outgoing}} {
+		current, err := read(kv[0])
+		if err != nil {
+			return "", undo, port25Plan{}, err
 		}
 		if !milterListPanelComposed(current, spam) {
 			kept = append(kept, fmt.Sprintf("%s = %s", kv[0], current))
+			if kv[0] == "smtpd_milters" {
+				mainList = current
+			}
 			continue
+		}
+		if kv[0] == "smtpd_milters" {
+			mainList = kv[1]
 		}
 		settings = append(settings, kv)
 	}
@@ -574,12 +725,63 @@ func writeMilterChain(ctx context.Context) (string, error) {
 			[2]string{"milter_protocol", "6"},
 		)
 	}
+	fail := func(err error) (string, milterChainUndo, port25Plan, error) {
+		_ = undo.undo(run)
+		return "", milterChainUndo{}, port25Plan{}, err
+	}
 	for _, kv := range settings {
-		if out, err := serviceMutationCommand(ctx, "postconf", "-e", kv[0]+"="+kv[1]).CombinedOutput(); err != nil {
-			return "", fmt.Errorf("postconf %s: %s", kv[0], strings.TrimSpace(string(out)))
+		// Whether main.cf names the setting decides how it is put back
+		// (review finding 8): `postconf -n` names only what main.cf sets.
+		before, err := readPasswordlessSetting(run, kv[0])
+		if err != nil {
+			return fail(err)
+		}
+		if before.Set && before.Value == kv[1] {
+			continue
+		}
+		if out, err := run("postconf", "-e", kv[0]+"="+kv[1]); err != nil {
+			return fail(fmt.Errorf("postconf %s: %s", kv[0], strings.TrimSpace(string(out))))
+		}
+		undo.mainBefore = append(undo.mainBefore, milterSettingBefore{name: kv[0], value: before.Value, set: before.Set})
+	}
+	note := ownerMilterListNote(kept)
+	// Port 25 (20 Nov 2026, corrected 21 Nov 2026): written after main.cf, so
+	// OpenDKIM never leaves submission while it is still being written; it
+	// follows main.cf's list, the owner's included, and is removed when no
+	// OpenDKIM needs leaving out.
+	record, err := readPort25Record()
+	if err != nil {
+		return fail(err)
+	}
+	plan, err := planPort25Milters(run, mainList, hasDKIM, spam, record)
+	if err != nil {
+		return fail(err)
+	}
+	if err := applyPort25Milters(run, plan.changes); err != nil {
+		undo.port25 = plan.changes
+		return fail(err)
+	}
+	undo.port25 = plan.changes
+	if !sameStringMap(record, plan.record) {
+		if err := writePort25Record(plan.record); err != nil {
+			return fail(fmt.Errorf("CelikPanel's port-25 record could not be written: %w", err))
+		}
+		undo.recordBefore, undo.recordSaved = record, true
+	}
+	return joinNotes(note, port25KeptNote(plan)), undo, plan, nil
+}
+
+// sameStringMap reports whether two records hold the same entries.
+func sameStringMap(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for key, value := range a {
+		if other, ok := b[key]; !ok || other != value {
+			return false
 		}
 	}
-	return ownerMilterListNote(kept), nil
+	return true
 }
 
 // milterListPanelComposed reports whether a Postfix milter list holds only

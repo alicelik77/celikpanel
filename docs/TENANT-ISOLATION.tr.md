@@ -1,4 +1,4 @@
-# Müşteriler arası ayrım: dosyalar, bağlantılar ve adlar
+# Müşteriler arası ayrım: dosyalar, bağlantılar, adlar ve posta imzası
 
 *20 Kasım 2026 · Kaynakta var, bileşen testlerinden geçti. Bağlantı kuralı Debian 13'ün kendi
 nginx 1.26.3 programıyla, ayrı bir deneme klasöründe de denendi. Debian 13 ve Ubuntu 24.04
@@ -153,3 +153,290 @@ satırıyla görünür. Bunlar 4. bölümdeki değişiklikleri gerektirir.
    `fastcgi_param PHP_ADMIN_VALUE "memory_limit=-1";` ve bağlantı olan bir
    `auth_basic_user_file` her biri düz bir nedenle reddedilir.
 8. A, B'ninkiyle aynı adlı bir ek giriş ekler: cevap bu adın kimde olduğunu söylemez.
+
+## 6. Posta yalnız göndericinin kendi alan adıyla imzalanır
+
+*20 Kasım 2026, sürüm adayının bağımsız incelemesinden sonra 21 Kasım 2026'da düzeltildi ·
+Kaynakta var, bileşen testlerinden geçti; dağıtım yapılandırma matrisi CelikPanel'in
+`opendkim.conf` dosyasını her sürümün kendi OpenDKIM'iyle denetler, `miltertest` ile (Debian ve
+Ubuntu) her deneme iletisini hangi alan adıyla imzaladığını sorar ve CelikPanel'in kendi
+kararlarını her sürümün gerçek `postconf` ve `opendkim -n` komutlarıyla çalıştırır. Laboratuvar
+turu açık (adımlar aşağıda).*
+
+**Sorun.** OpenDKIM, istemci kimliğini doğrulamışsa ya da sunucunun kendisinden bağlanmışsa,
+`From:` satırında barındırılan bir alan adı geçen her iletiyi imzalıyordu ve 25. kapı dahil her
+smtpd üzerindeydi. Bir posta kutusu `From:` satırına başka bir müşterinin adresini yazarak posta
+gönderebiliyor, bir web sitesinin kodu da iletiyi geri döngü üzerinden 25. kapıya verebiliyordu;
+ikisi de bu sunucudan o müşterinin DKIM imzasıyla çıkıyor, alıcılar onu gerçek sanıyordu.
+
+**CelikPanel'in artık koyduğu.**
+
+- `opendkim.conf` içinde `SenderMacro {auth_authen}`: OpenDKIM imza anahtarını `From:` satırına
+  göre değil, SASL girişine göre seçer. Kaynaklar: opendkim.conf(5) "SenderMacro"; `opendkim.c`
+  (2.11.0, `mlfi_eoh`): boş olmayan makro değeri imzalama tablosunda aranan adrestir, boş değer
+  `From:` satırına döner; Postfix `{auth_authen}`'i MAIL FROM ile gönderir (`postconf -d
+  milter_mail_macros`). Submission (587/465) giriş ister ve bu sunucuda giriş posta kutusunun tam
+  adresidir; gönderilen posta girişin kendi alan adıyla imzalanır ya da hiç imzalanmaz. Zarf
+  göndericisi (`{mail_addr}`) kullanılmadı: Postfix boş gönderici için
+  `reject_sender_login_mismatch` denetimini atlar (`smtpd_check.c`) ve boş değer `From:`'a döner.
+- 25. kapıdan posta alan smtpd (`smtp/inet`, ya da postscreen arkasında `smtpd/pass`) kendi
+  `-o smtpd_milters=` ayarını alır: panelin her açılışında `main.cf`'teki liste, sunucu sahibinin
+  kendi süzgeçleri dahil, yalnız OpenDKIM çıkarılarak (virgülle, boşluksuz: `master.cf` orada
+  boşluk kabul etmez). 25. kapıya gelen hiçbir şey, dışarıdan ya da bir siteden geri döngüyle, bu
+  sunucuca imzalanmaz. OpenDKIM artık kurulu değilken (birimi ya da `opendkim.conf` dosyası
+  gitmişse) ya da `main.cf` listesinde OpenDKIM kalmadığında ayar, sonraki panel açılışında ya da
+  sonraki posta süzgeci adımında (bir bileşenin kurulması ya da kaldırılması) yeniden silinir;
+  OpenDKIM'i kendi başına kaldıran bir bileşen ya da düğme yoktur. CelikPanel kendi değerini
+  yazdıklarının kaydından tanır (`/var/lib/celikpanel-agent-private/mail-port25-milters.json`);
+  kayıt yoksa (22 Kasım 2026) içeriğinden: `main.cf` listesinin OpenDKIM'siz hâline eşit olan ya da
+  yalnız bir CelikPanel sürümünün yazdığı girdilerden oluşan değer. Daha önceki bir liste için
+  yazılmış değer o zaman sahibinki sayılıp korunur (OpenDKIM'i dışarıda bırakır; sahip onu
+  `postconf -PX smtp/inet/smtpd_milters` ile silip paneli yeniden başlatana dek sonradan eklenen
+  süzgeç 25. kapıya ulaşmaz). `main.cf` OpenDKIM'i tutar; submission, smtps ve sahibin eklediği
+  smtpd'ler onu korur.
+- OpenDKIM'in adresi `main.cf` listesinde, Postfix'in aynı uç nokta için kabul ettiği her yazılışla
+  tanınır (22 Kasım 2026). Postfix `inet` taşıma adını birebir karşılaştırır (`src/milter/milter8.c`,
+  `milter8_connect`) ve gerisini `host_port(buf, &host, "localhost", &port, NULL)` ile ayrıştırır
+  (`src/util/inet_connect.c`, `src/util/host_port.c`): `[host]:port` (host `IPv6:adres` olabilir),
+  son iki noktadan bölünen `host:port`, boş host `localhost` demektir, ya da yalnız port; adlar ve
+  adresler çözülür. Kabul edilenler: `inet:127.0.0.1:8891`, `inet:[127.0.0.1]:8891`,
+  `inet:localhost:8891`, `inet:[localhost]:8891`, `inet::8891`, `inet:8891`,
+  `inet:[IPv6:::ffff:127.0.0.1]:8891`, `inet:::ffff:127.0.0.1:8891`, host adının her harf biçimi,
+  portun baştaki sıfırları. OpenDKIM sayılmayanlar: başka bir adres (`::1` başka bir uç noktadır),
+  numara yerine hizmet adı, bir `unix:` soketi.
+- `main.cf` listesi süzgeçlerini bir `$değişken` ya da `{ }` grubuyla adlandırıyorsa CelikPanel onu
+  tek tek okuyamaz; bu yüzden 25. kapıda hiçbir şeyi değiştirmez (22 Kasım 2026). Bir 25. kapı
+  girdisinde kendi önceki değeri varsa o değer geçerli kalır: OpenDKIM'i dışarıda bırakır, ama
+  listeye sonradan eklenen her süzgeci de; silinmez, çünkü o zaman 25. kapı OpenDKIM'i
+  adlandırıyor olabilecek listeye uyardı. Durum `port25_variable_own`'dur. Böyle bir değer yoksa
+  25. kapı listeye uyar ve hâlâ imzalanabilir: `port25_variable`. Şu anki sorunlar her birini
+  adımıyla söyler (süzgeçleri `smtpd_milters`'a adlarıyla yazın ve paneli yeniden başlatın), elle
+  değiştirilmiş bir girdinin sözleriyle asla söylemez.
+
+**İmzalanmaya devam edenler ve hangi kimlikle.**
+
+| Posta | Kim teslim eder | Hangi alan adıyla imzalanır |
+|---|---|---|
+| 587/465 üzerinden posta programı ya da web postası; posta kutusu girişiyle gönderen site kodu ya da eklentisi | SASL girişi | girişin kendi alan adı |
+| Ofis dışında yanıtları | Dovecot'un Sieve'i, `vmail` olarak, `sendmail` ile | `From:` satırı: kutunun kendi adresi ya da aynı hesabın bir alan adından kutuya yönlendirilmiş ek adres; yanıt kaydedilirken, her açılışta, her saat ve bir adın kimde olduğunu ya da bir adresin nereye gittiğini değiştiren her işlemden hemen sonra denetlenir (aşağıda); böyle bir değişiklikle yeniden yazma arasındaki saniyelerde ya da yeniden yazma yapılamadıkça (Şu anki sorunlar) önceki yanıt hâlâ verilebilir |
+| Panelin bildirimleri (davet, parola postası) | Agent, `root` olarak, `sendmail` ile | sahibin ana alan adındaki `no-reply@` |
+| Sunucunun cron ve sistem postası | `root`, `sendmail` ile | `From:` alan adı (sunucunun kendi adı) |
+| Yönlendirmeler, tümünü yakalama, "kopya tut ve yönlendir" | Postfix'in sanal takma adları, 25. kapıdan gelen iletinin kuyruğu içinde | imzalanmaz; özgün imza dokunulmadan geçer |
+| Bir sitenin `mail()` ya da `sendmail` çağrısı | reddedilir (`authorized_submit_users = root, vmail`, alpha.125) | — |
+| Bir sitenin girişsiz 25. kapıya verdiği posta | — | imzalanmaz |
+
+Sunucuda girişsiz teslim edilen postanın girişi yoktur; OpenDKIM onu `From:` satırına göre
+imzalar. Sunucuya bunu kim yaptırabilir (21 Kasım 2026):
+
+- Müşteriler kendi Sieve betiğini veremez: ManageSieve dinleyicisi kurulmaz (Debian ve Ubuntu'nun
+  `dovecot-managesieved` paketi CelikPanel'in kurduklarından değildir), web postasının süzgeç eki
+  yoktur, posta klasörleri `vmail`'indir ve yanıt ayarları Agent'ın betiğe çevirdiği alanlardır,
+  hiçbir zaman betik metni değil. CelikPanel'in yazdığı tek betik ofis dışında yanıtıdır (Sieve
+  `vacation`, `date`, `relational`).
+- Yanıtın `From:` satırı kutunun adresi ya da gelen iletinin adlandırdığı ek adrestir
+  (Pigeonhole'un `vacation :addresses`'i). Bu düzeltmeden beri ek adres, aynı hesabın bir alan
+  adından kutuya yönlendirilmiş olmalıdır; Panel bunu kendi kayıtlarından, Agent da sunucunun kendi
+  yönlendirme tablosundan yeniden denetler; ret yalnız adresin kutunun kendi adresi olmadığını
+  söyler. Pigeonhole'un `sieve_vacation_use_original_recipient` ayarı kapalı kalır; yönlendirilmiş
+  bir kopyanın özgün alıcısı asla `From:` olmaz. Önceden kaydedilmiş yanıtlar güncellemeden sonraki
+  ilk açılışta başka adresler olmadan yeniden yazılır; yanıt penceresi hangi adreslerin
+  çıkarıldığını bir kez söyler ve denetim kaydına yazılır.
+- 22 Kasım 2026 (ikinci inceleme): aynı denetim ve yeniden yazma, bir adın kimde olduğunu ya da bir
+  adresin nereye teslim edildiğini değiştiren her işlemin hemen ardından ve içinde çalışır: abonelik
+  devri, alan adı silme (posta adımından sonra), alan adı ekleme (içe aktarmayla da), yönlendirme ya
+  da catch-all ekleme, değiştirme ya da kaldırma (içe aktarmayla da), posta kutusu ekleme (içe
+  aktarmayla da); ayrıca başka her şeye karşı ağ olarak her saat. Her kutu, satırı yeniden okunarak
+  Panel'in posta kilidi altında denetlenir; böylece müşterinin aynı yanıtı kaydetmesiyle yeniden
+  yazma birbirinin üzerine yazmaz. Agent'ın yapamadığı bir yeniden yazma (yanıt yok, başka sürüm,
+  Dovecot durmuş, bir ret), uygulanabildiği yerde yanıtı kapatır (yanıtı kapatmak ne Dovecot'un
+  çalışmasını ne adreslerin denetlenmesini ister); pencere o zaman yanıtın kapatıldığını ve
+  kaydetmenin onu yeniden açacağını söyler. Bu da uygulanamazsa yabancı adres etkin kalır: Şu anki
+  sorunlar kutu başına bir satır gösterir (`mail_autoresponder_foreign`, yönetici, adımıyla: Agent
+  yanıt vermiyor, başka sürümde ya da reddetti), pencere bunu söyler ve iş bitene dek her açılışta
+  ve her saat yeniden denenir. Olağan bir güncellemeden sonra Agent, Panel'in ilk açılışında asla
+  önceki sürüm değildir: `update.sh` iki ikiliyi de kurup doğrular, Agent'ı başlatır ve Panel'i
+  başlatmadan önce onu bekler.
+- Yönlendirmeler `sendmail`'den ya da OpenDKIM'den yeniden geçmez: `From:` satırı sahte olan ve
+  yönlendirme adresine gönderilen dış ileti burada imzalanmaz.
+- `authorized_submit_users` yalnız `root` ve `vmail` ile sınırlı değilse (sahibin kendi değeri ya
+  da geri alınmış değişiklik), sitelerin programları barındırılan her alan adı adına imzalı posta
+  gönderebilir. İmza o zaman yerinde gösterilmez: Şu anki sorunlar bunu yazılacak satırla söyler;
+  sahibin dosyasında hiçbir şey değiştirilmez.
+
+Bir posta kutusu bugün takma alan adı adına gönderemez (zarf göndericisi kendi adresi olmalıdır);
+bu yüzden orada bir şey değişmez.
+
+**Gelen posta.** OpenDKIM hâlâ imzala ve doğrula kipinde çalışır ama artık 25. kapıda değildir;
+gelen postanın imzalarını denetlemez ve ona kendi `Authentication-Results` satırını eklemez.
+Rspamd kuruluysa gelen postanın DKIM (ve DMARC) denetimini spam puanı için sürdürür;
+spamass-milter imzaları yalnız SpamAssassin'in DKIM eki çalışıyorsa puanlar; spam süzgeci yoksa bu
+sunucuda onları hiçbir şey denetlemez. CelikPanel'in hiçbir parçası `Authentication-Results`
+satırını okumaz.
+
+**Seçeneği olmayan OpenDKIM.** `SenderMacro` yalnız dağıtım açtığında derlenir. 20 Kasım 2026'da
+paketlerde ölçüldü: Debian 11, 12, 13 ve Ubuntu'nun 2.11.0 paketlerinde (24.04:
+`2.11.0~beta2-9build4`) var; Arch Linux'un `opendkim 2.11.0beta2-2` paketinde ne bu seçenek ne Lua
+var. Agent önce kurulu OpenDKIM'e sorar (yalnız o satırı içeren bir dosyayla `opendkim -n`);
+bilmiyorsa CelikPanel önceki yapılandırmayı korur, 25. kapı yine imzaya kapalıdır ve Şu anki
+sorunlar orada posta kutusu parolasıyla gönderilen postanın hâlâ `From:` satırına göre
+imzalandığını söyler (bilinen sınır). Böyle bir sistemde sahibin `opendkim.conf` dosyası korunur ve
+yanına hiçbir şey konmaz: sunucu sahibine OpenDKIM'inin reddettiği bir satırı eklemesi asla
+söylenmez.
+
+**Var olan sunucular.** Panelin her açılışında (Dovecot eki ve submission chroot'u ile aynı posta
+onarımı adımında), şu sırayla:
+
+1. Süzgeç listeleri: önce `main.cf` (listeler CelikPanel'inse onlarla birlikte
+   `milter_default_action = accept`), sonra 25. kapı girdileri (`postconf -P`, ya da silmek için
+   `-PX`), ardından `postfix check` ve Postfix'in doğrulanmış biçimde alması gereken bir yeniden
+   yükleme. Almazsa yazılan her ayar birebir geri konur (Postfix'in varsayılanında olan ayar
+   yazılmaz, yeniden silinir) ve Postfix öncekilerle yeniden yüklenir.
+2. `opendkim.conf`: dosya önceki bir sürümün yazdığıyla birebir aynıysa CelikPanel'in yeni metni
+   yanına yazılır ve `opendkim -n` ile denetlenir; yeniden başlatma borç olarak kaydedilir; ancak
+   sonra metin dosyanın yerine konur, OpenDKIM yeniden başlatılır ve doğrulanır. OpenDKIM onunla
+   çalışmazsa önceki dosya geri konur ve OpenDKIM onunla başlatılır. Yarıda kesilen bir açılışın
+   borç bıraktığı yeniden başlatma, dosya zaten CelikPanel'inki olsa da sonraki açılışta yapılır;
+   OpenDKIM'in çalıştığı doğrulanana dek imza yerinde gösterilmez. Bir alan adının imzasını kurmak
+   (`ConfigureDKIMSigning`) 22 Kasım 2026'dan beri aynı sırayı izler: önce tablolar, sonra yeni
+   metin dosyanın yanına ve `opendkim -n`, borçlu yeniden başlatma, yer değiştirme ve OpenDKIM onunla
+   çalışmazsa önceki metni geri koyan bir yeniden başlatma. OpenDKIM yeniden başlarken iki liste de
+   CelikPanel'inse Postfix postayı imzasız geçirir (`milter_default_action = accept`, 1. adım).
+   Listelerden biri sahibinkiyse `accept` yazılmaz; onun `milter_default_action` değeri, o da yoksa
+   Postfix'in varsayılanı `tempfail` geçerlidir ve panelin notu bunun ne yaptığını söyler: gönderen
+   bir posta sunucusu geçici hata alır ve kendiliğinden yeniden dener; 587'deki bir posta programı
+   kullanıcısına hata gösterir ve kişi yeniden gönderir.
+
+**Sahibin kendi ayarları (D-022).** Sahibin değiştirdiği `opendkim.conf` yazdığı gibi korunur;
+CelikPanel'in metni yanına `opendkim.conf.celikpanel-pending` olarak konur. OpenDKIM'in okuduğu gibi
+okunduğunda (satır başına bir `Ad değer`, adlarda büyük/küçük harf fark etmez, `#` açıklamadır)
+`SenderMacro {auth_authen}` içeren, başka bir `SenderMacro` değeri ve `Include` içermeyen bir sahip
+dosyası yerindedir: imza bağlı sayılır, diğer durumlar olağan biçimde değerlendirilir ve bekleyen metin
+silinir (alpha.143 laboratuvarı, 22 Kasım 2026). Sahibin `main.cf`'te
+yazdığı süzgeç listesi korunur ve 25. kapı onu OpenDKIM'siz izler. Bir 25. kapı girdisindeki kendi
+`-o smtpd_milters` ayarı korunur; OpenDKIM'i adlandırıyorsa bildirilir. OpenDKIM'i ya da süzgeçleri
+değiştirebilen her adım (açılış, bir bileşenin kurulması ya da kaldırılması, posta kurulumu, DKIM
+imzalama) imza durumunu kaydeder; gelmeyen bir yanıt "bilinmiyor" olarak kaydedilir. Şu anki
+sorunlar dosyayı ya da ayarı ve sunucu sahibinin somut adımını söyler; sonraki bir adım her şeyi
+yerinde bulunca satır kalkar.
+
+**Laboratuvar adımları** (ikilinin ana sunucusu postayı barındırır, Debian 13'te ve Ubuntu
+24.04'te; laboratuvardaki bir alıcı her iletinin `From:` ve `DKIM-Signature: d=` değerini
+gösterir):
+
+1. Güncellemeden önce, a yolu: `anna@a.test` posta kutusuyla
+   `swaks --server <ana>:587 --tls --auth-user anna@a.test --from anna@a.test --header 'From: ceo@b.test' --to <alıcı>`:
+   alıcı `d=b.test` gösterir. b yolu: `a.test`'in bir sitesinden 127.0.0.1:25'e bağlanıp
+   `MAIL FROM:<x@b.test>`, `From: x@b.test` ile `a.test`'in alıcıya yönlendiren bir adresine
+   gönderin: `d=b.test`. `anna@a.test` üzerinde ek adresi `ceo@b.test` (B müşterisinin alan adı)
+   olan ofis dışında yanıtı: dışarıdan `To: ceo@b.test` ile ileti gönderin: yanıt
+   `From: ceo@b.test`, `d=b.test` gösterir.
+2. Sahip paneli kendi güncelleme ekranından günceller.
+3. `/etc/opendkim.conf` SenderMacro satırını içerir; `postconf -P smtp/inet/smtpd_milters` yalnız
+   spam süzgecini gösterir (ya da hiçbir şeyi); `ls /var/lib/celikpanel-agent-private/opendkim-restart-owed`
+   hiçbir şey bulmaz.
+4. a yolu yeniden: `d=a.test`. DKIM anahtarı olmayan bir alan adının girişi: imza yok (`From:`
+   alan adı değil). Girişli boş gönderici: `d=a.test`. b yolu yeniden, 127.0.0.1:25'e ve genel
+   adrese: imza yok.
+5. Başka bir alan adının kimliğiyle web postası: girişin alan adının `d=` değeri. Panel bildirimi:
+   sahibin ana alan adının `d=` değeri. Dışarıdan, barındırılan bir alan adının sahte `From:`
+   satırıyla yönlendirilen ileti: teslim edilir, imza eklenmez.
+6. 1. adımdaki yanıt: yanıt penceresi `ceo@b.test`'in çıkarıldığını bir kez söyler; denetim
+   kaydında satırı vardır; aynı ileti yeniden `anna@a.test`'ten yanıt alır (kutuyu adlandırmıyorsa
+   hiç almaz). `ceo@b.test`'i yeniden kaydetmek tarafsız cümleyle reddedilir.
+7. `postconf -e 'authorized_submit_users = static:anyone'`, panel yeniden başlatılır: Şu anki
+   sorunlar yazılacak satırı gösterir; bir siteden `From: ceo@b.test` ile `mail()` `d=b.test` ile
+   çıkar (satırın söylediği). `root, vmail`'e geri alınır, panel yeniden başlatılır: satır kalkar.
+8. Sahip `main.cf` `smtpd_milters`'a bir süzgeç ekler (örneğin `inet:127.0.0.1:7777`), panel
+   yeniden başlatılır: `postconf -P smtp/inet/smtpd_milters` spam süzgecini ve o süzgeci gösterir,
+   OpenDKIM'i değil; Şu anki sorunlar 25. kapı satırı göstermez. OpenDKIM'i kaldıran bir bileşen
+   yoktur: root olarak `systemctl disable --now opendkim` çalıştırılır ve `/etc/opendkim.conf`
+   kenara alınır (`mv /etc/opendkim.conf /root/`), sonra panel yeniden başlatılır: CelikPanel'in
+   hiçbir `-o smtpd_milters` ayarı kalmaz. Sonraki adımlardan önce dosya geri konur ve panel
+   yeniden başlatılır.
+9. Öldürme denemesi: açılış sürerken `opendkim.conf` yer değiştirmesiyle yeniden başlatma arasında
+   Agent durdurulur (örneğin `strace` ya da bir kesme noktasıyla, `systemctl kill -s KILL
+   celikpanel-agent`), panel yeniden başlatılır: OpenDKIM yeniden başlatılır, SenderMacro ile çalışır
+   (`/proc/<pid>` başlangıç zamanı dosyanın değişme zamanından sonra), kayıt silinmiştir.
+10. Sahibin tuttuğu bir süzgeç listesi ve `milter_default_action` olmadan, uzlaştırma yeniden
+    başlatması sırasında 587 üzerinden posta gönderilir: posta programı geçici hata alır ve kişi
+    yeniden gönderir; panelin o açılıştaki günlüğü bunu söyler.
+11. Ana sunucunun bir kopyasında: `/etc/opendkim.conf` elle değiştirilir, panel yeniden
+    başlatılır: dosya değişmez, yanında `opendkim -n -x` ile başlayan
+    `opendkim.conf.celikpanel-pending` vardır, Şu anki sorunlar dosyayı ve satırı söyler, posta
+    akar. Sahibin dosyasına `SenderMacro {auth_authen}` eklenir, `systemctl restart opendkim`, panel
+    yeniden başlatılır: satır kalkar, `opendkim.conf.celikpanel-pending` silinmiştir, sahibin dosyası
+    değişmemiştir (`sha256sum`) ve `authorized_submit_users = static:anyone` ayarlıyken Şu anki
+    sorunlar bunun yerine o durumu gösterir.
+
+22 Kasım 2026'da eklendi (alpha.143'ün ikinci incelemesi):
+
+12. A müşterisi `a.test` ve `a2.test` alan adlarını iki abonelikte tutar; `x@a2.test` →
+    `anna@a.test` yönlendirmesi; `anna@a.test` üzerinde ek adresi `x@a2.test` olan yanıt.
+    `a2.test`'in aboneliği B müşterisine devredilir: devir yanıt vermeden önce yanıt penceresi
+    `x@a2.test`'in çıkarıldığını söyler ve denetim kaydında `subscription_transfer` ile satır
+    vardır; dışarıdan `anna@a.test`'e `To: x@a2.test` ile gelen ileti `anna@a.test`'ten yanıt alır,
+    asla `From: x@a2.test` değil.
+13. Aynısı, bunun yerine `a2.test` silinerek (`domain_deleted` satırı) ve yönlendirme kaldırılarak
+    (`forwarding_changed` satırı).
+14. Dovecot durdurulur (`systemctl stop dovecot`), `anna@a.test` üzerindeki yanıt veritabanında
+    (`email_autoresponders`) yeniden `x@a2.test`'i adlandıracak biçimde ayarlanır, panel yeniden
+    başlatılır: yanıt kapatılır, penceresi bunu ve kaydetmenin onu yeniden açacağını söyler. Sonra
+    aynı satırla Agent durdurulur (`systemctl stop celikpanel-agent`), panel yeniden başlatılır:
+    Şu anki sorunlar "anna@a.test: otomatik yanıt hâlâ yabancı bir adresten gidiyor" satırını
+    Agent adımıyla gösterir; yanıt penceresi `x@a2.test`'i adlandırır. Agent ve Dovecot başlatılır,
+    saatlik tur beklenir (ya da panel yeniden başlatılır): satır kalkar.
+15. `postconf -e 'owner_milters = inet:127.0.0.1:8891, inet:127.0.0.1:11332, inet:127.0.0.1:7777'`
+    ve `postconf -e 'smtpd_milters = $owner_milters'`, panel yeniden başlatılır:
+    `postconf -P smtp/inet/smtpd_milters` hâlâ CelikPanel'in önceki değerini gösterir; Şu anki
+    sorunlar "25. kapı, main.cf’e sonradan eklenen filtreleri atlıyor" der, asla "elle
+    değiştirildi" demez. Önceki değeri olmayan bir kopyada: 25. kapı için hiçbir şey yazılmaz ve
+    Şu anki sorunlar gelen postanın hâlâ imzalanabileceğini söyler. Liste adlarıyla geri yazılır,
+    panel yeniden başlatılır: satır kalkar.
+16. `postconf -e 'smtpd_milters = inet:[127.0.0.1]:8891, inet:127.0.0.1:7777'`, panel yeniden
+    başlatılır: `postconf -P smtp/inet/smtpd_milters` yalnız `inet:127.0.0.1:7777`'yi gösterir;
+    b yolunun 25. kapı postası imzalanmaz.
+17. `sha256sum /etc/opendkim.conf`; 8891 numaralı port tutulur (`systemctl stop opendkim`, sonra
+    `python3 -m http.server 8891 --bind 127.0.0.1`) ve DKIM anahtarı alan bir alan adı eklenir:
+    alan adının imza adımı OpenDKIM'in çalışmadığını söyler, `sha256sum` değişmez, Şu anki sorunlar
+    imza hatası satırını gösterir. Program durdurulur, panel yeniden başlatılır: satır kalkar.
+
+alpha.141'den önce açılan PostgreSQL veritabanları (`docs/DATABASE-USERS.md`, düzeltme turunun
+ikinci incelemesi), aynı sunucularda, A müşterisinin alpha.140 ya da öncesiyle açılmış ve bir gün
+izlenmiş eski veritabanı `a_shop` ile (sahibi `a_owner`, kayıtlı okuyucu `a_reader`):
+
+18. A veritabanının satırını tutar: `psql -U a_owner a_shop`, sonra `BEGIN; GRANT CONNECT ON
+    DATABASE a_shop TO a_reader;` ve oturumu açık bırakır. Yönetici Kapat'a basar: yanıt yaklaşık
+    30 saniye içinde gelir ve veritabanı sunucusunun kapatmadığını ya da sonucun bilinmediğini
+    söyler; sayfa onu asla Geri al düğmesi olmadan kapalı göstermez ve oturum açıkken hiçbir şey
+    kapatılmaz (`SELECT datacl FROM pg_database WHERE datname = 'a_shop'` değişmez). Yanıttan
+    sonra `ps -ef | grep celikpanel-pgpublic` hiçbir istemci göstermez. A oturumu bitirir
+    (`ROLLBACK;`); Yeniden oku: sayfa durumu söyler (açık, hatası ve zamanıyla); yeniden Kapat:
+    kapalı, Geri al ile.
+19. Geri al, sonra 18. adım panelin kendi kapatmasıyla tekrarlanır: oturum açıkken saatlik denetim
+    beklenir. PostgreSQL sayfası veritabanını "kapatma gönderildi, sonucu henüz doğrulanmadı" ile
+    açık ya da başarısız kapatma olarak gösterir, asla yeniden izleniyor diye göstermez ve sonraki
+    denetimde ikinci bir kapatma gönderilmez (`journalctl -u celikpanel` bir tane gösterir).
+20. `a_owner` olarak: `ALTER DATABASE a_shop SET default_transaction_read_only = on; ALTER DATABASE
+    a_shop SET role = 'a_owner'; ALTER DATABASE a_shop SET lock_timeout = '1ms';`. Yeniden oku:
+    veritabanı okunur; Kapat: kapalı; Geri al: yeniden açık. Alan adı sayfasından `a_shop`
+    yedeklenip geri yüklenebilir.
+21. Küme dört saat durdurulur (ya da bir kopyada `a_shop`, `ALTER DATABASE a_shop ALLOW_CONNECTIONS
+    false` ile her bağlantıyı reddeder, sonra `true` ile geri alınır): sayfa nedeniyle "Şu an
+    okunamadı" gösterir;
+    dördüncü saatlik denetimden sonra Şu anki sorunlar ve uyarı postası onu nedeni ve adımıyla
+    okunamadı diye listeler. Küme başlatılır, Yeniden oku: satır kalkar.
+22. Kaydı olan bir veritabanı silinir (`SELECT key FROM panel_settings WHERE key LIKE
+    'postgresql_public_v1:%'` öncesi ve sonrası, python3'ün sqlite3 modülüyle okunur):
+    kaydı onunla birlikte gider.
+23. (alpha.143 laboratuvar düzeltmeleri) Bir denetim `a_shop`'u kendiliğinden kapattıktan sonra
+    PostgreSQL sayfası Yeniden oku'ya basmadan açılır: kapatmayı gösterir (CelikPanel, zamanı, Geri
+    al), veritabanını asla açık göstermez ve hiçbir bulgu boş bir iki noktayla bitmez.
+24. Yönetici olarak `a_reader` elle silinir (`a_shop` içinde `REASSIGN OWNED`/`DROP OWNED`
+    sonrasında `DROP ROLE a_reader`), sonra Türkçe sayfada Kapat'a basılır: pencere hiçbir şeyin
+    değişmediğini, nedenini Türkçe ve veritabanı sunucusunun kendi iletisini tırnak içinde söyler;
+    asla "bilinmiyor" demez; listedeki başarısız satırı da aynısını söyler.
+25. Bir kapatma geri alınır: `datacl` yazılmış varsayılandır (sırası değişebilir
+    `{=Tc/a_owner,a_owner=CTc/a_owner}`); veritabanı "CelikPanel dışında değiştirilmiş" demeden "Bir
+    yöneticinin yeniden açtıkları" altında listelenir.
+26. Tek yabancı adres adlandıran yanıtın notu tekil, iki adres adlandıranınki çoğul söyler (Türkçe ve
+    İngilizce).

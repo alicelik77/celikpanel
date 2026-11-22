@@ -102,6 +102,7 @@ import type { DbEncodingScreenKey } from './screens/dbEncoding/en';
 import type { SideDoorsScreenKey } from './screens/sideDoors/en';
 import type { SiteJobsScreenKey } from './screens/siteJobs/en';
 import type { SideDoorsUndoScreenKey } from './screens/sideDoorsUndo/en';
+import type { PgPublicScreenKey } from './screens/pgPublic/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -631,5 +632,6 @@ export type ScreenKey =
     | DbEncodingScreenKey
     | SideDoorsScreenKey
     | SiteJobsScreenKey
-    | SideDoorsUndoScreenKey;
+    | SideDoorsUndoScreenKey
+    | PgPublicScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

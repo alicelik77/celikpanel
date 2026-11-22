@@ -9,7 +9,7 @@ import { componentName } from '../lib/componentName';
 import { useRemote, type RemoteHandle } from '../lib/remote';
 import { startVisibleReads } from '../lib/visibleReads';
 import { Button, inputClass, RemoteGate } from './ui';
-import { ALERTS_URL, isProblemKind, problemVars } from './ProblemsNow';
+import { ALERTS_URL, isProblemKind, problemTitleKey, problemVars } from './ProblemsNow';
 
 // Monitoring stages 2 and 3 (alpha.127): the alerts with their one settings
 // block, the services, and the website checks. Every list is the server's
@@ -178,7 +178,7 @@ export function AlertsSection() {
                                             <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${tone}`} aria-hidden="true" />
                                             <div className="min-w-0 flex-1 text-sm">
                                                 <p className={open ? 'font-medium text-fg' : 'text-fg-muted'}>
-                                                    {t(`pnow.${alert.kind}.title` as TranslationKey, problemVars(alert, t))}
+                                                    {t(problemTitleKey(alert), problemVars(alert, t))}
                                                     {!alert.seen && <span className="ml-2 text-xs font-semibold text-warning">•</span>}
                                                 </p>
                                                 <p className="text-xs text-fg-subtle">
