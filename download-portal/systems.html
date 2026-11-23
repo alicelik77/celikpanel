@@ -61,7 +61,7 @@
 </table>
 </div>
 <p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Development level (Arch Linux): CelikPanel is built for it and runs on it as it is today, but release candidates are not tried on it and a rolling update can change what works. Debian dates include Debian LTS; Ubuntu dates are standard support, without ESM. The release package is built for amd64.</p>
-<p class="note">Other systems are not supported yet; support for more systems is planned. Red Hat family systems (RHEL, AlmaLinux, Rocky Linux 9) are recognised, and the installer refuses them for now. A system not in this table has not been checked.</p>
+<p class="note">Other systems are not supported; support for more systems is planned. Red Hat family systems (RHEL, AlmaLinux, Rocky Linux 9) are recognised, and the installer refuses them. A system not in this table has not been checked.</p>
 </div>
 </section>
 <section class="part" id="debian-ubuntu" aria-labelledby="h-deb">
@@ -72,7 +72,7 @@
 <caption>Table 2 · What the apt systems offer</caption>
 <tbody>
 <tr><th scope="row">What is offered</th><td>CelikPanel’s components from the distribution’s own packages. Where a newer version is wanted, a vendor repository (for PHP or PostgreSQL, for example) is offered only as a deliberate choice.</td></tr>
-<tr><th scope="row">What is not offered</th><td>Apache and Exim, on any system: their integration is not finished, so use Nginx and Postfix. Versions differ by release: Debian 13 ships PHP 8.4 and PostgreSQL 17, Ubuntu 24.04 ships PHP 8.3 and PostgreSQL 16. The panel shows what your release offers.</td></tr>
+<tr><th scope="row">What is not offered</th><td>Apache and Exim, on any system: CelikPanel uses Nginx and Postfix. Versions differ by release: Debian 13 ships PHP 8.4 and PostgreSQL 17, Ubuntu 24.04 ships PHP 8.3 and PostgreSQL 16. The panel shows what your release offers.</td></tr>
 <tr><th scope="row">How updates work</th><td>Fixes come from the distribution. With Automatic, the system’s own <code>unattended-upgrades</code> installs what it is set to take (by default the security updates) by itself every day; with Manual you install them yourself. You choose in the panel under Security; the panel shows which archives are used. The choice is one apt file, <code>/etc/apt/apt.conf.d/20auto-upgrades</code>, so it keeps working while CelikPanel is stopped. The panel never restarts the server by itself.</td></tr>
 <tr><th scope="row">New major versions</th><td>A new major version, such as PostgreSQL 17 after 16 or PHP 8.5 after 8.4, is a separate program and not an update. Updates fix the version you have; you move to a new major version yourself, when you decide.</td></tr>
 </tbody>
@@ -91,7 +91,7 @@
 <tr><th scope="row">What is not offered, and why</th><td><ul class="plain">
 <li>phpPgAdmin is not in Arch’s official repositories, and neither is SpamAssassin’s Postfix bridge (both only in the AUR, which CelikPanel does not use). Manage PostgreSQL with psql, and use Rspamd as the spam filter.</li>
 <li>Redis: Arch ships the compatible Valkey instead, so Valkey is offered.</li>
-<li>Apache and Exim: not offered yet on any system. Use Nginx and Postfix.</li>
+<li>Apache and Exim: not offered on any system; CelikPanel uses Nginx and Postfix.</li>
 <li>Switching an existing DNS server to PowerDNS: on Arch, PowerDNS is installed only on a server with no DNS software.</li>
 <li>Automatic upgrades: CelikPanel schedules none on Arch.</li>
 </ul></td></tr>

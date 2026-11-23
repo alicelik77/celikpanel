@@ -135,7 +135,7 @@ sh celikpanel-install.sh</code></pre>
 </div>
 </section>
 <section class="part" aria-labelledby="h-separation">
-<header><span class="num">4</span><h2 id="h-separation">Separation between customers</h2><p>What keeps one account from reaching another, and what is not done yet.</p></header>
+<header><span class="num">4</span><h2 id="h-separation">Separation between customers</h2><p>What keeps one account from reaching another, and what it does not cover.</p></header>
 <div>
 <div class="table">
 <table class="stack">
@@ -149,19 +149,19 @@ sh celikpanel-install.sh</code></pre>
 <tr><td data-k="Measure">A link in a site’s folder does not serve another account’s files</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.142</td></tr>
 <tr><td data-k="Measure">SQL from a backup, a copy or an import runs with the database owner’s rights, not the administrator’s</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.141</td></tr>
 <tr><td data-k="Measure">PostgreSQL databases are closed to other accounts: new ones from the start; older ones by the panel after a day in which no other account was seen using them, otherwise when the administrator closes them on the PostgreSQL page</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.143</td></tr>
-<tr><td data-k="Measure">Outgoing mail is signed only for the sender’s own domain (not yet on Arch Linux, whose OpenDKIM cannot tie signing to the login)</td><td data-k="Status"><span class="tag ok">Yes, except Arch Linux</span></td><td class="v" data-k="Since">alpha.143</td></tr>
+<tr><td data-k="Measure">Outgoing mail is signed only for the sender’s own domain (except on Arch Linux, whose OpenDKIM cannot tie signing to the login)</td><td data-k="Status"><span class="tag ok">Yes, except Arch Linux</span></td><td class="v" data-k="Since">alpha.143</td></tr>
 <tr><td data-k="Measure">Webmail’s local door on the server answers only CelikPanel’s own checks, not other accounts asking for Roundcube’s files</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.145</td></tr>
 <tr><td data-k="Measure">Outgoing mail limits per mailbox, domain and hosting account (optional; off until the administrator turns them on)</td><td data-k="Status"><span class="tag no">Optional</span></td><td class="v" data-k="Since">alpha.128</td></tr>
-<tr><td data-k="Measure">PHP and scheduled tasks in the site’s own sandbox</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
-<tr><td data-k="Measure">Processor and memory limits per account for all of its programs (today: PHP memory, run time and process count per site)</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
-<tr><td data-k="Measure">Hiding which other sites exist: account names and processes are still visible to a site account</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
-<tr><td data-k="Measure">Each site with its own web-server group (today the web server’s group can read every site’s folder; the link rule is the barrier)</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
-<tr><td data-k="Measure">Mail address lists hidden from other accounts</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
-<tr><td data-k="Measure">Moving a database to another PostgreSQL version with the owner’s rights (today: the administrator’s)</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">PHP and scheduled tasks in the site’s own sandbox</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Processor and memory limits per account for all of its programs (today: PHP memory, run time and process count per site)</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Hiding which other sites exist: account names and processes are still visible to a site account</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Each site with its own web-server group (today the web server’s group can read every site’s folder; the link rule is the barrier)</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Mail address lists hidden from other accounts</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Moving a database to another PostgreSQL version with the owner’s rights (today: the administrator’s)</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">Not yet: not in any published release. The sandbox’s escape tests on every supported system are still open in the lab.</p>
+<p class="note">No: not in the current release.</p>
 </div>
 </section>
 <section class="part" aria-labelledby="h-stops">
@@ -184,7 +184,7 @@ sh celikpanel-install.sh</code></pre>
 <li>Monitoring alerts</li>
 </ul></div>
 </div>
-<p class="note">Removing CelikPanel from a server is not supported yet. <a href="guide/en/without-panel.html">Running the server without the panel</a></p>
+<p class="note">Removing CelikPanel from a server is not supported. <a href="guide/en/without-panel.html">Running the server without the panel</a></p>
 </div>
 </section>
 <section class="part" aria-labelledby="h-measured">
@@ -213,12 +213,12 @@ sh celikpanel-install.sh</code></pre>
 <caption>Table 5 · The licence today and from version 1.0</caption>
 <thead><tr><th scope="col">Item</th><th scope="col">Today, alpha</th><th scope="col">From version 1.0</th></tr></thead>
 <tbody>
-<tr><th scope="row">Price</th><td data-k="Today, alpha">Free</td><td data-k="From version 1.0">99 USD per server per year (list price)</td></tr>
-<tr><th scope="row">Term</th><td data-k="Today, alpha">One year from creation; renewed free from your account</td><td data-k="From version 1.0">One year; the price does not rise while you renew without a break</td></tr>
-<tr><th scope="row">If celikpanel.net cannot be reached</th><td data-k="Today, alpha">Management stays open for up to 7 days</td><td data-k="From version 1.0">Everything keeps working for 30 days</td></tr>
-<tr><th scope="row">When a licence ends</th><td data-k="Today, alpha">Almost every panel screen locks; sites, mail, DNS, databases and scheduled jobs keep running</td><td data-k="From version 1.0">Reminders 30, 7 and 1 day before; 30 days of grace; then only creating new domains, accounts and mailboxes is closed until renewal</td></tr>
-<tr><th scope="row">Trial and refund</th><td data-k="Today, alpha">—</td><td data-k="From version 1.0">30-day trial without a card; refund within 30 days</td></tr>
-<tr><th scope="row">Payment</th><td data-k="Today, alpha">None</td><td data-k="From version 1.0">List price in US dollars; the payment provider, tax and other currencies are not decided</td></tr>
+<tr><th scope="row">Price</th><td data-k="Today, alpha">Free</td><td data-k="From version 1.0">99 USD per server per year</td></tr>
+<tr><th scope="row">Term</th><td data-k="Today, alpha">One year from creation; renewed free from your account</td><td data-k="From version 1.0">One year; your price does not rise while you renew before the end date</td></tr>
+<tr><th scope="row">If celikpanel.net cannot be reached</th><td data-k="Today, alpha">Management stays open for up to 7 days</td><td data-k="From version 1.0">The panel keeps working for up to 30 days</td></tr>
+<tr><th scope="row">When a licence ends</th><td data-k="Today, alpha">The panel’s screens close until it is renewed; sites, mail, DNS and databases keep running</td><td data-k="From version 1.0">As today, with reminders 30, 7 and 1 day before the end date</td></tr>
+<tr><th scope="row">Trial</th><td data-k="Today, alpha">—</td><td data-k="From version 1.0">30 days the first time, without a card</td></tr>
+<tr><th scope="row">Payment</th><td data-k="Today, alpha">None</td><td data-k="From version 1.0">By card, through Stripe</td></tr>
 </tbody>
 </table>
 </div>
@@ -236,14 +236,13 @@ sh celikpanel-install.sh</code></pre>
 <p><a href="changelog.html">Changes by version</a><span class="sep" aria-hidden="true">·</span><a href="problems.html">Known problems and how to report one</a></p>
 </div>
 <div>
-<h3>Not offered yet</h3>
+<h3>Not included</h3>
 <ul class="plain">
-<li>Apache and Exim: use Nginx and Postfix</li>
+<li>Apache and Exim: CelikPanel uses Nginx and Postfix</li>
 <li>A whole-server backup in the panel: use your provider’s snapshots for the system</li>
 <li>Removing the panel from a server</li>
 <li>Processor and memory limits per account</li>
 <li>Processors other than amd64</li>
-<li>Payment: it opens with version 1.0</li>
 </ul>
 </div>
 </div>

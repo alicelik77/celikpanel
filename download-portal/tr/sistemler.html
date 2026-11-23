@@ -61,7 +61,7 @@
 </table>
 </div>
 <p class="note">Her sürümde denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Geliştirme düzeyi (Arch Linux): CelikPanel onun için de hazırlanır ve bugünkü hâliyle çalışır, ama sürüm adayları orada denenmez ve sürekli güncellemeler çalışanı değiştirebilir. Debian tarihleri Debian LTS’i içerir; Ubuntu tarihleri ESM olmadan standart destektir. Sürüm paketi amd64 için hazırlanır.</p>
-<p class="note">Başka sistemler henüz desteklenmiyor; daha fazla sistem için destek planlanıyor. Red Hat ailesi sistemleri (RHEL, AlmaLinux, Rocky Linux 9) tanınır ve kurucu şimdilik bunları reddeder. Bu tabloda olmayan bir sistem denetlenmemiştir.</p>
+<p class="note">Başka sistemler desteklenmiyor; daha fazla sistem için destek planlanıyor. Red Hat ailesi sistemleri (RHEL, AlmaLinux, Rocky Linux 9) tanınır ve kurucu bunları reddeder. Bu tabloda olmayan bir sistem denetlenmemiştir.</p>
 </div>
 </section>
 <section class="part" id="debian-ubuntu" aria-labelledby="h-deb">
@@ -72,7 +72,7 @@
 <caption>Tablo 2 · apt kullanan sistemlerde neler var</caption>
 <tbody>
 <tr><th scope="row">Neler var</th><td>CelikPanel’in bileşenleri, dağıtımın kendi paketlerinden. Daha yeni bir sürüm istendiğinde üretici deposu (örneğin PHP ya da PostgreSQL için) yalnız bilerek yapılan bir seçim olarak sunulur.</td></tr>
-<tr><th scope="row">Neler yok</th><td>Apache ve Exim, hiçbir sistemde: tümleştirmeleri bitmedi; Nginx ve Postfix kullanın. Sürümler dağıtım sürümüne göre değişir: Debian 13 PHP 8.4 ve PostgreSQL 17 getirir, Ubuntu 24.04 PHP 8.3 ve PostgreSQL 16 getirir. Panel, sisteminizin neler sunduğunu gösterir.</td></tr>
+<tr><th scope="row">Neler yok</th><td>Apache ve Exim, hiçbir sistemde: CelikPanel Nginx ve Postfix kullanır. Sürümler dağıtım sürümüne göre değişir: Debian 13 PHP 8.4 ve PostgreSQL 17 getirir, Ubuntu 24.04 PHP 8.3 ve PostgreSQL 16 getirir. Panel, sisteminizin neler sunduğunu gösterir.</td></tr>
 <tr><th scope="row">Güncellemeler nasıl işler</th><td>Düzeltmeler dağıtımdan gelir. Otomatik seçilirse sistemin kendi <code>unattended-upgrades</code> aracı, almaya ayarlı olduğu güncellemeleri (varsayılan olarak güvenlik güncellemelerini) her gün kendiliğinden kurar; Elle seçilirse siz kurarsınız. Seçimi panelde Güvenlik bölümünde yaparsınız; panel hangi arşivlerin kullanıldığını gösterir. Seçim tek bir apt dosyasıdır, <code>/etc/apt/apt.conf.d/20auto-upgrades</code>; bu yüzden CelikPanel dururken de işler. Panel sunucuyu hiçbir zaman kendiliğinden yeniden başlatmaz.</td></tr>
 <tr><th scope="row">Yeni ana sürümler</th><td>16’dan sonra PostgreSQL 17 ya da 8.4’ten sonra PHP 8.5 gibi yeni bir ana sürüm ayrı bir programdır, güncelleme değildir. Güncellemeler sahip olduğunuz sürümü düzeltir; yeni ana sürüme siz karar verdiğinizde kendiniz geçersiniz.</td></tr>
 </tbody>
@@ -91,7 +91,7 @@
 <tr><th scope="row">Neler yok ve neden</th><td><ul class="plain">
 <li>phpPgAdmin Arch’ın resmî depolarında yok, SpamAssassin’in Postfix köprüsü de yok (ikisi de yalnız AUR’da; CelikPanel AUR kullanmaz). PostgreSQL’i psql ile yönetin, istenmeyen posta süzgeci olarak Rspamd kullanın.</li>
 <li>Redis: Arch onun yerine uyumlu Valkey’i getirir, bu yüzden Valkey sunulur.</li>
-<li>Apache ve Exim: henüz hiçbir sistemde sunulmuyor. Nginx ve Postfix kullanın.</li>
+<li>Apache ve Exim: hiçbir sistemde sunulmuyor; CelikPanel Nginx ve Postfix kullanır.</li>
 <li>Çalışan bir DNS sunucusunu PowerDNS’e geçirmek: Arch’ta PowerDNS yalnız DNS yazılımı olmayan bir sunucuya kurulur.</li>
 <li>Otomatik yükseltme: CelikPanel Arch’ta hiçbir yükseltme zamanlamaz.</li>
 </ul></td></tr>

@@ -135,7 +135,7 @@ sh celikpanel-install.sh</code></pre>
 </div>
 </section>
 <section class="part" aria-labelledby="h-separation">
-<header><span class="num">4</span><h2 id="h-separation">Müşterileri birbirinden ayırma</h2><p>Bir hesabın başka bir hesaba ulaşmasını önleyen önlemler ve henüz yapılmamış olanlar.</p></header>
+<header><span class="num">4</span><h2 id="h-separation">Müşterileri birbirinden ayırma</h2><p>Bir hesabın başka bir hesaba ulaşmasını önleyen önlemler ve kapsamadıkları.</p></header>
 <div>
 <div class="table">
 <table class="stack">
@@ -149,19 +149,19 @@ sh celikpanel-install.sh</code></pre>
 <tr><td data-k="Önlem">Bir sitenin klasöründeki bağlantı, başka bir hesabın dosyalarını sunmaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.142</td></tr>
 <tr><td data-k="Önlem">Yedekten, kopyadan ya da içe aktarmadan gelen SQL, yöneticinin değil veritabanı sahibinin yetkisiyle çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.141</td></tr>
 <tr><td data-k="Önlem">PostgreSQL veritabanları başka hesaplara kapalıdır: yeniler baştan; eskiler, başka bir hesabın kullandığı görülmeyen bir günün ardından panel tarafından, aksi hâlde yönetici PostgreSQL sayfasında kapattığında</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
-<tr><td data-k="Önlem">Giden posta yalnız gönderenin kendi alan adı için imzalanır (Arch Linux’ta henüz değil: oradaki OpenDKIM imzayı girişe bağlayamıyor)</td><td data-k="Durum"><span class="tag ok">Var, Arch Linux hariç</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
+<tr><td data-k="Önlem">Giden posta yalnız gönderenin kendi alan adı için imzalanır (Arch Linux hariç: oradaki OpenDKIM imzayı girişe bağlayamıyor)</td><td data-k="Durum"><span class="tag ok">Var, Arch Linux hariç</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
 <tr><td data-k="Önlem">Web postanın sunucudaki yerel kapısı yalnız CelikPanel’in kendi denetimlerine cevap verir, Roundcube’un dosyalarını isteyen başka hesaplara değil</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.145</td></tr>
 <tr><td data-k="Önlem">Posta kutusu, alan adı ve hosting hesabı başına giden posta sınırları (isteğe bağlı; yönetici açana kadar kapalı)</td><td data-k="Durum"><span class="tag no">İsteğe bağlı</span></td><td class="v" data-k="İlk sürüm">alpha.128</td></tr>
-<tr><td data-k="Önlem">PHP’nin ve zamanlanmış görevlerin sitenin kendi kum havuzunda çalışması</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
-<tr><td data-k="Önlem">Her hesabın bütün programları için işlemci ve bellek sınırı (bugün: site başına PHP belleği, çalışma süresi ve işlem sayısı)</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
-<tr><td data-k="Önlem">Başka hangi sitelerin olduğunu gizleme: hesap adları ve işlemler bir site hesabına hâlâ görünür</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
-<tr><td data-k="Önlem">Her site için ayrı web sunucusu grubu (bugün web sunucusunun grubu her sitenin klasörünü okuyabilir; aradaki engel bağlantı kuralıdır)</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
-<tr><td data-k="Önlem">Posta adres listelerinin diğer hesaplardan gizlenmesi</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
-<tr><td data-k="Önlem">Bir veritabanını başka bir PostgreSQL sürümüne sahibinin yetkisiyle taşımak (bugün: yöneticinin)</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">PHP’nin ve zamanlanmış görevlerin sitenin kendi kum havuzunda çalışması</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Her hesabın bütün programları için işlemci ve bellek sınırı (bugün: site başına PHP belleği, çalışma süresi ve işlem sayısı)</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Başka hangi sitelerin olduğunu gizleme: hesap adları ve işlemler bir site hesabına hâlâ görünür</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Her site için ayrı web sunucusu grubu (bugün web sunucusunun grubu her sitenin klasörünü okuyabilir; aradaki engel bağlantı kuralıdır)</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Posta adres listelerinin diğer hesaplardan gizlenmesi</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Bir veritabanını başka bir PostgreSQL sürümüne sahibinin yetkisiyle taşımak (bugün: yöneticinin)</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">Henüz yok: yayımlanmış hiçbir sürümde yok. Kum havuzunun kaçış denemeleri, desteklenen her sistemde laboratuvarda hâlâ açık.</p>
+<p class="note">Yok: güncel sürümde bulunmaz.</p>
 </div>
 </section>
 <section class="part" aria-labelledby="h-stops">
@@ -184,7 +184,7 @@ sh celikpanel-install.sh</code></pre>
 <li>İzleme uyarıları</li>
 </ul></div>
 </div>
-<p class="note">CelikPanel’i bir sunucudan kaldırmak henüz desteklenmiyor. <a href="../guide/tr/without-panel.html">Sunucuyu panelsiz yönetmek</a></p>
+<p class="note">CelikPanel’i bir sunucudan kaldırmak desteklenmiyor. <a href="../guide/tr/without-panel.html">Sunucuyu panelsiz yönetmek</a></p>
 </div>
 </section>
 <section class="part" aria-labelledby="h-measured">
@@ -213,12 +213,12 @@ sh celikpanel-install.sh</code></pre>
 <caption>Tablo 5 · Bugünkü ve 1.0 sürümünden itibaren geçerli lisans</caption>
 <thead><tr><th scope="col">Konu</th><th scope="col">Bugün (alfa)</th><th scope="col">1.0 sürümünden itibaren</th></tr></thead>
 <tbody>
-<tr><th scope="row">Fiyat</th><td data-k="Bugün (alfa)">Ücretsiz</td><td data-k="1.0 sürümünden itibaren">Sunucu başına yıllık 99 USD (liste fiyatı)</td></tr>
-<tr><th scope="row">Süre</th><td data-k="Bugün (alfa)">Oluşturulduğundan itibaren bir yıl; hesabınızdan ücretsiz yenilenir</td><td data-k="1.0 sürümünden itibaren">Bir yıl; kesintisiz yenilediğiniz sürece fiyat artmaz</td></tr>
-<tr><th scope="row">celikpanel.net’e ulaşılamazsa</th><td data-k="Bugün (alfa)">Yönetim en çok 7 gün açık kalır</td><td data-k="1.0 sürümünden itibaren">Her şey 30 gün çalışmaya devam eder</td></tr>
-<tr><th scope="row">Lisans biterse</th><td data-k="Bugün (alfa)">Panel ekranlarının neredeyse hepsi kilitlenir; siteler, posta, DNS, veritabanları ve zamanlanmış işler çalışır</td><td data-k="1.0 sürümünden itibaren">30, 7 ve 1 gün önce hatırlatma; 30 gün ek süre; sonra yenilenene kadar yalnız yeni alan adı, hesap ve posta kutusu oluşturmak kapanır</td></tr>
-<tr><th scope="row">Deneme ve iade</th><td data-k="Bugün (alfa)">—</td><td data-k="1.0 sürümünden itibaren">Kart istemeyen 30 günlük deneme; 30 gün içinde iade</td></tr>
-<tr><th scope="row">Ödeme</th><td data-k="Bugün (alfa)">Yok</td><td data-k="1.0 sürümünden itibaren">Liste fiyatı ABD doları; ödeme sağlayıcısı, vergi ve diğer para birimleri henüz belirlenmedi</td></tr>
+<tr><th scope="row">Fiyat</th><td data-k="Bugün (alfa)">Ücretsiz</td><td data-k="1.0 sürümünden itibaren">Sunucu başına yıllık 99 USD</td></tr>
+<tr><th scope="row">Süre</th><td data-k="Bugün (alfa)">Oluşturulduğundan itibaren bir yıl; hesabınızdan ücretsiz yenilenir</td><td data-k="1.0 sürümünden itibaren">Bir yıl; bitiş tarihinden önce yenilediğiniz sürece fiyatınız artmaz</td></tr>
+<tr><th scope="row">celikpanel.net’e ulaşılamazsa</th><td data-k="Bugün (alfa)">Yönetim en çok 7 gün açık kalır</td><td data-k="1.0 sürümünden itibaren">Panel en çok 30 gün çalışmaya devam eder</td></tr>
+<tr><th scope="row">Lisans biterse</th><td data-k="Bugün (alfa)">Panelin ekranları lisans yenilenene kadar kapanır; siteler, posta, DNS ve veritabanları çalışmaya devam eder</td><td data-k="1.0 sürümünden itibaren">Bugünkü gibi; bitiş tarihinden 30, 7 ve 1 gün önce hatırlatmayla</td></tr>
+<tr><th scope="row">Deneme</th><td data-k="Bugün (alfa)">—</td><td data-k="1.0 sürümünden itibaren">İlk seferde 30 gün, kart istenmez</td></tr>
+<tr><th scope="row">Ödeme</th><td data-k="Bugün (alfa)">Yok</td><td data-k="1.0 sürümünden itibaren">Stripe üzerinden kartla</td></tr>
 </tbody>
 </table>
 </div>
@@ -236,14 +236,13 @@ sh celikpanel-install.sh</code></pre>
 <p><a href="degisiklikler.html">Sürümlere göre değişiklikler</a><span class="sep" aria-hidden="true">·</span><a href="sorunlar.html">Bilinen sorunlar ve sorun bildirmek</a></p>
 </div>
 <div>
-<h3>Henüz sunulmayanlar</h3>
+<h3>Kapsamda olmayanlar</h3>
 <ul class="plain">
-<li>Apache ve Exim: yerine Nginx ve Postfix kullanın</li>
+<li>Apache ve Exim: CelikPanel Nginx ve Postfix kullanır</li>
 <li>Panelde sunucunun tamamının yedeği: sistem için sağlayıcınızın anlık görüntülerini kullanın</li>
 <li>Paneli bir sunucudan kaldırmak</li>
 <li>Hesap başına işlemci ve bellek sınırları</li>
 <li>amd64 dışındaki işlemciler</li>
-<li>Ödeme: 1.0 sürümüyle açılır</li>
 </ul>
 </div>
 </div>
