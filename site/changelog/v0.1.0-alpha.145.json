@@ -1,0 +1,69 @@
+{
+  "version": "v0.1.0-alpha.145",
+  "published": "2026-11-23",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md",
+  "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:5",
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "Webmail’s local door on the server answers only CelikPanel’s own checks; before, any account on the server could read Roundcube’s files through it and run plugin scripts.",
+        "tr": "Web postanın sunucudaki yerel kapısı artık yalnız CelikPanel’in kendi denetimlerine cevap verir; önceden sunucudaki her hesap oradan Roundcube’un dosyalarını okuyabiliyor ve eklenti betiklerini çalıştırabiliyordu."
+      },
+      "case": "CP-2026-16",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:29"
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "Webmail can send mail: it switches encryption on and signs in with the mailbox’s own address and password.",
+        "tr": "Web posta e-posta gönderebilir: şifrelemeyi açar ve posta kutusunun kendi adresi ve parolasıyla giriş yapar."
+      },
+      "case": "CP-2026-12",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:68"
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "An alias’s “waiting to be published” ends when its zone’s change is published, not an hour later.",
+        "tr": "Bir takma adın “yayımlanmayı bekliyor” durumu, bölgesinin değişikliği yayımlandığında biter, bir saat sonra değil."
+      },
+      "case": "CP-2026-13",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:95"
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "The window of a PostgreSQL close or its undo ends with a title that says the outcome.",
+        "tr": "Bir PostgreSQL kapatmasının ya da geri alınmasının penceresi, sonucu söyleyen bir başlıkla biter."
+      },
+      "case": "CP-2026-14",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:100"
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A longer change can stay “in progress” on the panel after it has finished on the server; after about five minutes, run sudo systemctl restart celikpanel-panel. Nothing is run again and nothing on the server is harmed.",
+        "tr": "Uzun süren bir değişiklik sunucuda bittikten sonra panelde “sürüyor” görünmeye devam edebilir; yaklaşık beş dakika sonra sudo systemctl restart celikpanel-panel komutunu çalıştırın. Hiçbir şey yeniden çalıştırılmaz ve sunucuda hiçbir şey zarar görmez."
+      },
+      "case": "CP-2026-17",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128"
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "The Webmail card still offers Repair while webmail cannot send; Repair does not correct the configuration, and the step is in Problems now.",
+        "tr": "Web posta gönderemezken Webmail kartı hâlâ Onar düğmesini sunar; Onar yapılandırmayı düzeltmez, adım Şu anki sorunlar bölümündedir."
+      },
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:119"
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "Nothing of this release was tried on Arch Linux in its lab.",
+        "tr": "Bu sürümün hiçbir parçası laboratuvarında Arch Linux’ta denenmedi."
+      },
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:308"
+    }
+  ]
+}

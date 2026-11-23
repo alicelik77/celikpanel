@@ -48,6 +48,27 @@
 </div>
 </div>
 <div class="wrap">
+<section class="part" id="v0.1.0-alpha.145" aria-labelledby="h-v0.1.0-alpha.145">
+<header><span class="num">2026-11-23</span><h2 id="h-v0.1.0-alpha.145">v0.1.0-alpha.145</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.145</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">Webmail’s local door on the server answers only CelikPanel’s own checks; before, any account on the server could read Roundcube’s files through it and run plugin scripts.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-16">CP-2026-16</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">Webmail can send mail: it switches encryption on and signs in with the mailbox’s own address and password.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-12">CP-2026-12</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">An alias’s “waiting to be published” ends when its zone’s change is published, not an hour later.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-13">CP-2026-13</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">The window of a PostgreSQL close or its undo ends with a title that says the outcome.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-14">CP-2026-14</a></td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A longer change can stay “in progress” on the panel after it has finished on the server; after about five minutes, run sudo systemctl restart celikpanel-panel. Nothing is run again and nothing on the server is harmed.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-17">CP-2026-17</a></td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">The Webmail card still offers Repair while webmail cannot send; Repair does not correct the configuration, and the step is in Problems now.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">Nothing of this release was tried on Arch Linux in its lab.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.145.md">Full release notes of v0.1.0-alpha.145</a></p>
+</div>
+</section>
 <section class="part" id="v0.1.0-alpha.144" aria-labelledby="h-v0.1.0-alpha.144">
 <header><span class="num">2026-11-22</span><h2 id="h-v0.1.0-alpha.144">v0.1.0-alpha.144</h2></header>
 <div>

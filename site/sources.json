@@ -224,8 +224,8 @@
     ],
     "home.sep.caption": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:5",
-        "says": "Published** on 2026-11-22 (UTC): release commit"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:5",
+        "says": "Published** on 2026-11-23"
       }
     ],
     "home.sep.note": [
@@ -902,6 +902,18 @@
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:276",
         "says": "the web server's group can still read every"
+      }
+    ],
+    "sep.webmaildoor": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42",
+        "says": "Now the door answers only what CelikPanel"
+      }
+    ],
+    "sep.webmaildoor.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42",
+        "says": "Now the door answers only what CelikPanel"
       }
     ],
     "sep.yes.notarch": [

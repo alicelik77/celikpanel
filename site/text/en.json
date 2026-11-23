@@ -113,7 +113,7 @@
   "home.install.systems": "What each system offers, and how its updates work",
   "home.sep.title": "Separation between customers",
   "home.sep.text": "What keeps one account from reaching another, and what is not done yet.",
-  "home.sep.caption": "Separation between accounts, as the release notes up to 0.1.0-alpha.144 state it",
+  "home.sep.caption": "Separation between accounts, as the release notes up to 0.1.0-alpha.145 state it",
   "home.sep.what": "Measure",
   "home.sep.status": "Status",
   "home.sep.since": "Since",
@@ -484,5 +484,7 @@
   "sep.pgmove.since": "—",
   "systems.development": "Development level",
   "changelog.kind.removed": "Removed",
-  "problems.note": "Note:"
+  "problems.note": "Note:",
+  "sep.webmaildoor": "Webmail’s local door on the server answers only CelikPanel’s own checks, not other accounts asking for Roundcube’s files",
+  "sep.webmaildoor.since": "alpha.145"
 }
