@@ -20,6 +20,8 @@ import { enMailDatabasesScreens } from '../src/i18n/screens/mailDatabases/en.ts'
 import { trMailDatabasesScreens } from '../src/i18n/screens/mailDatabases/tr.ts';
 import { enPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/en.ts';
 import { trPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/tr.ts';
+import { enWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/en.ts';
+import { trWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/tr.ts';
 
 const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
 
@@ -32,9 +34,10 @@ test('every kind the list shows has a title, body and action in English and Turk
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part.
   // Since alpha.142 the shared lines' words are in the problemsNow part.
   // alpha.143 (merged): its lines' words are in the mailDatabases and
-  // pgLeftovers parts.
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens };
+  // pgLeftovers parts; alpha.144 (merged): its webmail address lines' words
+  // are in the webmailAddress part.
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens, ...enWebmailAddressScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens, ...trWebmailAddressScreens };
   for (const kind of shown) {
     // alpha.143: mail_signing and mail_autoresponder_foreign have one body
     // per state instead of one body (their own tests check them).
