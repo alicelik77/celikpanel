@@ -50,6 +50,16 @@ or changed. Line references are to `main` at `1f1d80672`.*
 >   raised, "Revocations raise the generation" below), a renewal's year is taken back. No page
 >   offers a refund; the page before payment says plainly that payments are not refunded and
 >   that the 30-day trial is for trying first.
+> - **As built in S2 (after its first review):** an account that buys its years (in test
+>   mode: one the operator flagged) gets its first licence ever as the 30-day trial, without
+>   payment details; any later licence is created awaiting its first year (its end is its
+>   creation time, so neither the Go nor the PHP service activates it) together with its order;
+>   there is no free renewal for it. Everyone else keeps the beta's free licence and free
+>   renewal. A lost dispute is applied like a refund; open disputes, partial refunds, stuck
+>   refunds and payments that could not be granted are listed by `membership orders -attention`
+>   and at the end of every `membership reconcile`. The operator commands record the
+>   `-operator` name as given: run them as a separate Unix user that owns the private
+>   directory, not as the web server's user.
 > - **Questions 5 and 6 (§k) are answered:** a renewal paid before the end continues from the
 >   old end at the locked price; after the end it is a new purchase at the list price from the
 >   payment (the "During grace" and "In protection" lines of "Renewal" no longer apply).

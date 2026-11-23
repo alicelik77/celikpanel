@@ -117,12 +117,16 @@ Bunun 14 Kasım maddelerinde değiştirdikleri:
   görevler, sertifika yenileme -- çalışmaya devam eder. Uyarılar kalır: bitişten 30, 7 ve 1
   gün önce (koordinatörün "1 ay öncesinden" okuması).
 - **6. madde: 30 günlük koşulsuz iade kaldırıldı.** İade yoktur; müşterinin elinde bunun
-  yerine kartsız 30 günlük deneme vardır (yalnız ilk sefer). Otomatik yenilemenin yalnız
+  yerine 30 günlük deneme vardır (yalnız ilk sefer). Denemenin kart ya da ödeme bilgisi
+  istememesi koordinatörün okumasıdır (D-047'nin 14 Kasım 6. maddesi "kartsız" der; sahibin 23
+  Kasım sözleri bunu tekrarlamaz) ve öyle kuruldu. Otomatik yenilemenin yalnız
   müşterinin açık seçimiyle olması değişmedi.
 - **Tasarımın açık 5. ve 6. soruları kapandı:** bitiş tarihinden önce ödenen yenileme
   kesintisizdir -- yıl eski bitişten devam eder ve fiyat artmaz (2. madde); bitiş
   tarihinden sonraki satın alma, güncel liste fiyatıyla yeni bir satın almadır ve yılı
   ödemeyle başlar. Hiçbir yenileme iade edilmez.
+- Bir okuma, sahibin sözü değil: "yeni lisans alması gerekir" sözü, aynı lisansa (anahtarı ve
+  sunucusu kalır) ödemeden başlayan, liste fiyatıyla yeni bir yıl alınması olarak kuruldu.
 - Hizmetin yine de ele aldığı: ödeme sağlayıcısında gerçekleşen bir iade ya da kaybedilen
   bir itiraz (işletmecinin sağlayıcı panelindeki istisnai işlemi ya da bir ters ibraz)
   doğrulanmış bir olgu olarak gelir ve uygulanır -- ilk yıl geri alınır (lisans sona erer),

@@ -122,12 +122,16 @@ What this changes in the 14 November points:
   renewal -- keeps running. The warnings stay: 30, 7 and 1 day before the end (the
   coordinator's reading of "1 ay öncesinden").
 - **Point 6: the 30-day unconditional refund is withdrawn.** There are no refunds; the 30-day
-  trial without a card (first time only) is what a customer has instead. Automatic renewal
+  trial (first time only) is what a customer has instead. That it asks for no card or payment
+  details is the coordinator's reading (D-047's 14 November point 6 says "without a card"; the
+  owner's 23 November words do not repeat it), and it is built that way. Automatic renewal
   only by the customer's explicit choice is unchanged.
 - **The design's open questions 5 and 6 are closed:** a renewal paid before the end date is
   uninterrupted -- the year continues from the old end and the price does not rise (point
   2); a purchase after the end date is a new purchase at the current list price, its year
   starting at the payment. No renewal is refundable.
+- A reading, not the owner's words: "yeni lisans alması gerekir" is built as a new year bought
+  on the same licence (it keeps its key and its server), at the list price from the payment.
 - What the service still handles: a refund or a lost dispute that happens at the payment
   provider (the operator's exceptional act in the provider's dashboard, or a chargeback)
   arrives as a confirmed fact and is applied -- a first year is revoked, a renewal's year is
