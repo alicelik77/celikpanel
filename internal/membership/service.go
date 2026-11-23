@@ -476,7 +476,10 @@ func (s *Service) Login(email, password string) (Member, error) {
 	if !found {
 		hash = dummyHash
 	}
-	valid := verifyPassword(candidate, hash)
+	valid, err := verifyPassword(candidate, hash)
+	if err != nil {
+		return Member{}, err
+	}
 	if !found || !valid || len(password) > 128 {
 		return Member{}, ErrInvalidLogin
 	}
@@ -616,15 +619,38 @@ func scanRow(r *sql.Row) (*row, error) {
 	return &l, nil
 }
 
-// owned is Service::owned(): the member's password, then the member's own
-// licence that was not removed.
-func (s *Service) owned(ctx context.Context, q querier, member int64, id, password string) (*row, error) {
+// verifyMember is the password half of Service::owned(), done before any transaction so
+// the database's write lock is never held while the password work runs or waits for a
+// slot (second review of #361, 6). It answers the hash it verified.
+func (s *Service) verifyMember(member int64, password string) (string, error) {
+	var hash string
+	err := s.db.QueryRowContext(context.Background(), "SELECT password FROM members WHERE id=? AND verified=1", member).Scan(&hash)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
+	if errors.Is(err, sql.ErrNoRows) || len(password) > 128 {
+		return "", ErrInvalidLogin
+	}
+	valid, err := verifyPassword(password, hash)
+	if err != nil {
+		return "", err
+	}
+	if !valid {
+		return "", ErrInvalidLogin
+	}
+	return hash, nil
+}
+
+// owned is the rest of Service::owned(): the member's password is still the one just
+// verified (a reset in between refuses), then the member's own licence that was not
+// removed. The codes and their order are PHP's: invalid_login before license_not_found.
+func (s *Service) owned(ctx context.Context, q querier, member int64, id, verified string) (*row, error) {
 	var hash string
 	err := q.QueryRowContext(ctx, "SELECT password FROM members WHERE id=? AND verified=1", member).Scan(&hash)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
-	if errors.Is(err, sql.ErrNoRows) || len(password) > 128 || !verifyPassword(password, hash) {
+	if errors.Is(err, sql.ErrNoRows) || !hmac.Equal([]byte(hash), []byte(verified)) {
 		return nil, ErrInvalidLogin
 	}
 	l, err := scanRow(q.QueryRowContext(ctx, "SELECT "+rowColumns+" FROM licenses WHERE id=? AND member_id=? AND removed IS NULL", id, member))
@@ -688,8 +714,12 @@ func (s *Service) Reveal(member int64, id, password string) (Issued, error) {
 	if err := s.Limit("key-access:"+strconv.FormatInt(member, 10), 10, 900); err != nil {
 		return Issued{}, err
 	}
+	verified, err := s.verifyMember(member, password)
+	if err != nil {
+		return Issued{}, err
+	}
 	ctx := context.Background()
-	l, err := s.owned(ctx, s.db, member, id, password)
+	l, err := s.owned(ctx, s.db, member, id, verified)
 	if err != nil {
 		return Issued{}, err
 	}
@@ -712,9 +742,13 @@ func (s *Service) Release(member int64, id, password string) error {
 	if err := s.Limit("release:"+strconv.FormatInt(member, 10), 5, 86400); err != nil {
 		return err
 	}
+	verified, err := s.verifyMember(member, password)
+	if err != nil {
+		return err
+	}
 	ctx := context.Background()
 	return s.atomic(func(tx *sql.Tx) error {
-		if _, err := s.owned(ctx, tx, member, id, password); err != nil {
+		if _, err := s.owned(ctx, tx, member, id, verified); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE licenses SET server_id=NULL,server_ip=NULL,hostname=NULL,generation=generation+1 WHERE id=?", id); err != nil {
@@ -730,9 +764,13 @@ func (s *Service) Remove(member int64, id, password string) error {
 	if err := s.Limit("remove:"+strconv.FormatInt(member, 10), 10, 86400); err != nil {
 		return err
 	}
+	verified, err := s.verifyMember(member, password)
+	if err != nil {
+		return err
+	}
 	ctx := context.Background()
 	return s.atomic(func(tx *sql.Tx) error {
-		if _, err := s.owned(ctx, tx, member, id, password); err != nil {
+		if _, err := s.owned(ctx, tx, member, id, verified); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE licenses SET removed=?,key_hash=?,key_encrypted=NULL,server_id=NULL,server_ip=NULL,generation=generation+1 WHERE id=?",
@@ -748,10 +786,14 @@ func (s *Service) Rotate(member int64, id, password string) (Issued, error) {
 	if err := s.Limit("rotate:"+strconv.FormatInt(member, 10), 5, 86400); err != nil {
 		return Issued{}, err
 	}
+	verified, err := s.verifyMember(member, password)
+	if err != nil {
+		return Issued{}, err
+	}
 	ctx := context.Background()
 	var out Issued
-	err := s.atomic(func(tx *sql.Tx) error {
-		if _, err := s.owned(ctx, tx, member, id, password); err != nil {
+	err = s.atomic(func(tx *sql.Tx) error {
+		if _, err := s.owned(ctx, tx, member, id, verified); err != nil {
 			return err
 		}
 		key := "CPK-" + randomHex(32)
@@ -788,9 +830,13 @@ func anniversary(timestamp int64) int64 {
 // Renew is the free renewal: in the last 30 days or after expiry, one year from
 // the later of now and the old end. A later fulfilled order grants the same.
 func (s *Service) Renew(member int64, id, password string) error {
+	verified, err := s.verifyMember(member, password)
+	if err != nil {
+		return err
+	}
 	ctx := context.Background()
 	return s.atomic(func(tx *sql.Tx) error {
-		l, err := s.owned(ctx, tx, member, id, password)
+		l, err := s.owned(ctx, tx, member, id, verified)
 		if err != nil {
 			return err
 		}
@@ -966,6 +1012,9 @@ func (s *Service) Refresh(id, server, token, observedIP string) (Envelope, error
 		}
 		if l == nil || !l.ServerID.Valid || !phpTruthyString(l.ServerID.String) || !hmac.Equal([]byte(l.ServerID.String), []byte(server)) ||
 			!hmac.Equal([]byte(s.activationToken(l.ID, l.ServerID.String, l.Generation)), []byte(token)) {
+			if s.tokenAhead(l, id, server, token) {
+				return ErrDatabaseBehind // a deliberate difference from PHP (which answers 400 here)
+			}
 			return ErrInvalidActivation
 		}
 		if l.ServerIP.Valid && !hmac.Equal([]byte(l.ServerIP.String), []byte(ip)) {
@@ -983,6 +1032,48 @@ func (s *Service) Refresh(id, server, token, observedIP string) (Envelope, error
 		return nil
 	})
 	return out, err
+}
+
+// ErrDatabaseBehind: a panel presented an activation token that our signing key made, for
+// a state this database does not know yet (the licence row is missing, or its generation
+// is lower, or it is unbound or bound elsewhere at the token's generation). The database is
+// older than the licence, for example a stale copy after a move. The service answers 503 so
+// the panel keeps its receipt, instead of PHP's 400 that would lock it. Second review of #361,
+// finding 1(b): a deliberate difference from the PHP service.
+var ErrDatabaseBehind = errors.New("membership: the database is older than a licence our key signed")
+
+// tokenAhead reports whether token is ours for a generation this database has not reached.
+// Every deliberate change of a licence -- rotate, release, remove, a reinstall at the same
+// address -- raises the row's generation, so the token of a revoked state is always for a
+// LOWER generation and keeps its rejection. Only a token for the row's generation or later,
+// on a row that is missing, has a lower generation, or is unbound or bound elsewhere at that
+// generation, means the database is behind. A first activation binds an unbound row without
+// raising the generation, which is why "unbound at the same generation" counts as behind.
+func (s *Service) tokenAhead(l *row, id, server, token string) bool {
+	if !hex32.MatchString(id) || !hex64.MatchString(server) || !hex64.MatchString(token) {
+		return false
+	}
+	from := int64(1)
+	if l != nil && l.Generation > 0 {
+		from = l.Generation
+	}
+	for g := from; g <= from+64; g++ {
+		if !hmac.Equal([]byte(s.activationToken(id, server, g)), []byte(token)) {
+			continue
+		}
+		return l == nil || g > l.Generation || !l.ServerID.Valid || l.ServerID.String != server
+	}
+	return false
+}
+
+var hex32 = regexp.MustCompile(`^[a-f0-9]{32}$`)
+
+// HasLicences reports whether the file holds at least one licence row. A file without any
+// (a fresh initialisation, or the wrong file) cannot answer panels: the API answers 503.
+func (s *Service) HasLicences() (bool, error) {
+	var exists int
+	err := s.db.QueryRowContext(context.Background(), "SELECT EXISTS(SELECT 1 FROM licenses)").Scan(&exists)
+	return exists == 1, err
 }
 
 // phpTruthyString is PHP's truthiness of a string: "" and "0" are false.

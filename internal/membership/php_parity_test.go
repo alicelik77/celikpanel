@@ -23,9 +23,12 @@ package membership
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -336,6 +339,19 @@ type driverOp struct {
 	Now  int64    `json:"now,omitempty"`
 	// OnlyOutcome: the answer holds fresh randomness (a new key); compare ok/code only.
 	OnlyOutcome bool `json:"-"`
+	// GoDiffers names a deliberate difference from PHP: PHP must answer invalid_activation
+	// and Go this code. The one such difference is "database_behind" (second review of #361,
+	// 1b): a panel's own token for a state the database does not know gets 503 from Go, so
+	// the panel keeps its receipt, where PHP's 400 would lock it.
+	GoDiffers string `json:"-"`
+}
+
+// tokenFor is the activation token our key makes for a licence state (Service.php
+// activationToken), computed here so the test can present a token from "the future".
+func tokenFor(secret ed25519.PrivateKey, id, server string, generation int64) string {
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte("activation-v1:" + id + ":" + server + ":" + strconv.FormatInt(generation, 10)))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 type driverResult struct {
@@ -463,6 +479,9 @@ func runGoOps(t *testing.T, db string, secret ed25519.PrivateKey, now int64, ops
 			results = append(results, driverResult{OK: true, Result: result})
 		case errors.As(err, &problem):
 			results = append(results, driverResult{Code: string(problem)})
+			err = nil
+		case errors.Is(err, ErrDatabaseBehind):
+			results = append(results, driverResult{Code: "database_behind"})
 			err = nil
 		default:
 			t.Fatalf("op %s: %v", op.Op, err)
@@ -606,6 +625,14 @@ func compareResults(t *testing.T, label string, ops []driverOp, php, goResults [
 	}
 	for i := range ops {
 		p, g := php[i], goResults[i]
+		if ops[i].GoDiffers != "" {
+			if p.OK || p.Code != "invalid_activation" || g.OK || g.Code != ops[i].GoDiffers {
+				t.Errorf("%s #%d %s: the named difference %q: PHP ok=%v %q, Go ok=%v %q", label, i, ops[i].Op, ops[i].GoDiffers, p.OK, p.Code, g.OK, g.Code)
+			} else {
+				t.Logf("%s #%d: deliberate difference %q: PHP %s (400), Go %s (503)", label, i, ops[i].GoDiffers, p.Code, g.Code)
+			}
+			continue
+		}
 		if p.OK != g.OK || p.Code != g.Code {
 			t.Errorf("%s #%d %s %q: PHP ok=%v %q, Go ok=%v %q", label, i, ops[i].Op, ops[i].Args, p.OK, p.Code, g.OK, g.Code)
 			continue
@@ -799,6 +826,10 @@ func differentialOps(b *phpBase, t1 int64) []driverOp {
 		driverOp{Op: "consume", Args: []string{strings.Repeat("a", 64), "reset", pw}},
 		driverOp{Op: "register", Args: []string{" New@Example.com "}},
 		driverOp{Op: "register", Args: []string{"bad address@example.com"}},
+		// The one deliberate difference: our own token for a state this database does not
+		// know (a generation ahead of the row; a licence it does not have).
+		driverOp{Op: "refresh", Args: []string{b.ids[0], d, tokenFor(b.secret, b.ids[0], d, 3), "8.8.8.8"}, GoDiffers: "database_behind"},
+		driverOp{Op: "refresh", Args: []string{strings.Repeat("e", 32), d, tokenFor(b.secret, strings.Repeat("e", 32), d, 1), "8.8.8.8"}, GoDiffers: "database_behind"},
 		driverOp{Op: "dump"},
 		driverOp{Op: "rotate", Args: []string{m, b.ids[2], pw}, OnlyOutcome: true},
 		driverOp{Op: "activate", Args: []string{b.keys[2], c, "v6.example.com", "2a00:1450:4001:81c::200e"}},
@@ -973,7 +1004,9 @@ func (c *pageClient) send(t *testing.T, method, target, contentType, origin stri
 	}
 	defer response.Body.Close()
 	raw, _ := io.ReadAll(response.Body)
-	if strings.HasPrefix(response.Header.Get("Content-Type"), "text/html") {
+	// Keep the last page that holds a form: an empty answer (a 405, a 303) must not wipe
+	// the CSRF value the next form step is posted with (second review of #361, 2).
+	if csrfValue.Match(raw) {
 		c.body = string(raw)
 	}
 	answer := pageAnswer{status: response.StatusCode, headers: map[string]string{},

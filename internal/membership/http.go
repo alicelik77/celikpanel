@@ -113,8 +113,13 @@ func (x *exchange) fail(err error) {
 	}
 	status, code, class := http.StatusServiceUnavailable, "service_unavailable", "error"
 	var problem Problem
-	if errors.As(err, &problem) {
+	switch {
+	case errors.As(err, &problem):
 		status, code, class = http.StatusBadRequest, string(problem), "problem"
+	case errors.Is(err, ErrDatabaseBehind):
+		class = "database behind the signing key (a panel's own token for a state this database does not know; 503, receipt kept)"
+	case errors.Is(err, ErrNoDatabase):
+		class = "no usable database (missing, or no licence in it; 503)"
 	}
 	x.finishSession()
 	if x.api {
@@ -181,6 +186,12 @@ func (x *exchange) run(get phpVars, action string, arrayAction bool) error {
 		return nil
 	}
 	if x.api {
+		// A file without a single licence cannot be the live one: answering from it would
+		// reject every panel (second review of #361, 1a). Pages stay open, so a fresh
+		// service can take its first member.
+		if has, err := service.HasLicences(); err != nil || !has {
+			return ErrNoDatabase
+		}
 		return x.panelAPI(service, config, ip, action)
 	}
 	return x.pages(service, config, ip, get, action, arrayAction)
