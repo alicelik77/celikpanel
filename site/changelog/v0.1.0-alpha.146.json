@@ -1,8 +1,11 @@
 {
   "version": "v0.1.0-alpha.146",
-  "published": "",
+  "published": "2026-11-23",
   "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.146.md",
-  "source": "docs/RELEASE-NOTES-v0.1.0-alpha.146.md:5",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.146.md:5",
+    "says": "Published** on 2026-11-23 (UTC)"
+  },
   "lines": [
     {
       "kind": "new",
@@ -10,7 +13,10 @@
         "en": "The new public website, in Turkish and English, with this changelog by version and the known-problems page; nothing changes in the panel.",
         "tr": "Türkçe ve İngilizce yeni herkese açık site; sürümlere göre bu değişiklik listesi ve bilinen sorunlar sayfasıyla. Panelde hiçbir şey değişmez."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.146.md:5"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.146.md:5",
+        "says": "Published** on 2026-11-23 (UTC)"
+      }
     }
   ]
 }

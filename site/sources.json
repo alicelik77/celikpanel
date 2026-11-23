@@ -1,5 +1,5 @@
 {
-  "about": "Where each claim on the public site is proved. Every catalogue key whose text (in either language) holds a number must be listed; other claims may be. Each source cites a repository path, optionally with :line, and for a line also a short phrase quoted from that line (says). site.TestEveryNumberHasASource checks that every cited file exists and that the phrase is on its line, so a citation that drifts or names the wrong line fails. Change the text and its source together.",
+  "about": "Where each claim on the public site is proved. Every catalogue key whose text (in either language) holds a number must be listed; other claims may be. Each source cites a repository path, optionally with :line, and for a line also a short phrase quoted from that line (says). The phrase is the proof (site/sources.go): it must be on the cited line or exactly once elsewhere in the file (the line moved; `go run ./site -fix-sources` rewrites the number); a phrase the file no longer has, or one that occurs several times but not on the cited line, fails site.TestEveryNumberHasASource. A phrase has at least 12 characters and a letter. Change the text and its source together.",
   "sources": {
     "changelog.earlier.text": [
       {
@@ -150,7 +150,7 @@
     "fig.domain.caption": [
       {
         "cite": "web/tools/browser-inspect/README.md:781",
-        "says": "2026-11-19"
+        "says": "the public website's screens, 2026-11-19"
       },
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
@@ -163,7 +163,7 @@
     "footer.copyright": [
       {
         "cite": "LICENSE:4",
-        "says": "CELIKBROS"
+        "says": "Copyright (c) 2026 CELIKBROS"
       }
     ],
     "home.def": [
@@ -187,11 +187,11 @@
     "home.measured.caption": [
       {
         "cite": "docs/RISK-REGISTER.md:188",
-        "says": "5 September 2026"
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
       },
       {
         "cite": "docs/RISK-REGISTER.md:1589",
-        "says": "4 September 2026"
+        "says": "Fixed and proven live, 4 September 2026"
       }
     ],
     "home.release.about": [
@@ -287,7 +287,7 @@
       },
       {
         "cite": "docs/DECISIONS.md:43",
-        "says": "30 days of"
+        "says": "30 days of grace after expiry"
       },
       {
         "cite": "docs/DECISIONS.md:47",
@@ -359,7 +359,7 @@
     "measured.age.date": [
       {
         "cite": "docs/RISK-REGISTER.md:188",
-        "says": "5 September 2026"
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
       }
     ],
     "measured.age.value": [
@@ -377,7 +377,7 @@
     "measured.bind.date": [
       {
         "cite": "docs/RISK-REGISTER.md:1589",
-        "says": "4 September 2026"
+        "says": "Fixed and proven live, 4 September 2026"
       }
     ],
     "measured.bind.value": [
@@ -389,17 +389,17 @@
     "measured.power.condition": [
       {
         "cite": "docs/RISK-REGISTER.md:2032",
-        "says": "four cuts"
+        "says": "cutting its power: four cuts"
       }
     ],
     "measured.power.date": [
       {
         "cite": "docs/RISK-REGISTER.md:2011",
-        "says": "Fixed 4 September 2026"
+        "says": "Fixed 4 September 2026. A detection failure is now classified"
       },
       {
         "cite": "docs/RISK-REGISTER.md:2032",
-        "says": "four cuts"
+        "says": "cutting its power: four cuts"
       }
     ],
     "measured.power.value": [
@@ -423,7 +423,7 @@
     "measured.restore.date": [
       {
         "cite": "docs/RISK-REGISTER.md:188",
-        "says": "5 September 2026"
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
       }
     ],
     "measured.restore.value": [
@@ -509,7 +509,7 @@
     "pricing.from.grace.text": [
       {
         "cite": "docs/DECISIONS.md:43",
-        "says": "30 days of"
+        "says": "30 days of grace after expiry"
       }
     ],
     "pricing.from.id": [
@@ -579,7 +579,7 @@
     "pricing.from.text": [
       {
         "cite": "docs/DECISIONS.md:24",
-        "says": "2026-11-14"
+        "says": "Owner's approval of the licence, subscription and payment direction (14 November 2026)"
       },
       {
         "cite": "docs/DECISIONS.md:57",
@@ -587,7 +587,7 @@
       },
       {
         "cite": "LICENSE:4",
-        "says": "CELIKBROS"
+        "says": "Copyright (c) 2026 CELIKBROS"
       }
     ],
     "pricing.from.title": [
@@ -665,7 +665,7 @@
     "releases.check.note": [
       {
         "cite": "download-portal/get.sh:598",
-        "says": "archive_sha256="
+        "says": "= \"archive_sha256=$signed_manifest_archive_sha256\" ]"
       }
     ],
     "releases.check.step1": [
@@ -689,7 +689,7 @@
     "releases.check.step4": [
       {
         "cite": "download-portal/get.sh:598",
-        "says": "archive_sha256="
+        "says": "= \"archive_sha256=$signed_manifest_archive_sha256\" ]"
       }
     ],
     "releases.description": [
@@ -701,7 +701,7 @@
     "releases.files.checksum": [
       {
         "cite": "download-portal/get.sh:1415",
-        "says": "sha256sum -c"
+        "says": "sha256sum -c \"$archive.sha256\")"
       }
     ],
     "releases.files.signature": [
@@ -791,7 +791,7 @@
     "sep.mail.since": [
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:68",
-        "says": "Outgoing mail limits"
+        "says": "## Outgoing mail limits"
       }
     ],
     "sep.mailmaps": [
@@ -823,7 +823,7 @@
     "sep.pgmove": [
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:253",
-        "says": "Moving a database to another PostgreSQL server version"
+        "says": "**Moving a database to another PostgreSQL server version** (an"
       }
     ],
     "sep.php": [
@@ -879,7 +879,7 @@
     "sep.signing": [
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:63",
-        "says": "Mail sent with a mailbox login"
+        "says": "**Mail sent with a mailbox login** (a mail program"
       },
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233",
@@ -1063,7 +1063,7 @@
       },
       {
         "cite": "docs/DISTRO-SUPPORT.md:142",
-        "says": "Node.js"
+        "says": "Node.js | Runtime"
       }
     ],
     "systems.arch.big.text": [

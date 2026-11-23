@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -21,18 +20,16 @@ var digit = regexp.MustCompile(`[0-9]`)
 
 // Every catalogue text that holds a number, in either language, names where
 // the repository proves it (site/sources.json). Each citation of a line also
-// quotes a short phrase from that line, and the phrase must be on it: a line
-// number that drifted after an edit of the cited document, or a citation of
-// the wrong line, fails here. A placeholder the portal builder fills is not a
-// number of ours.
+// quotes a phrase from that line, and the phrase is the proof (sources.go):
+// on the cited line, or exactly once elsewhere in the file (the line moved;
+// `go run ./site -fix-sources` brings the number up to date). A phrase the
+// file no longer has, or one that occurs several times and not on the cited
+// line, fails here. A placeholder the portal builder fills is not a number of
+// ours.
 func TestEveryNumberHasASource(t *testing.T) {
 	raw, err := os.ReadFile("sources.json")
 	if err != nil {
 		t.Fatal(err)
-	}
-	type citation struct {
-		Cite string `json:"cite"`
-		Says string `json:"says"`
 	}
 	var file struct {
 		About   string                `json:"about"`
@@ -58,48 +55,23 @@ func TestEveryNumberHasASource(t *testing.T) {
 			t.Errorf("%q holds a number but sources.json gives no source for it", key)
 		}
 	}
-	files := map[string][]string{}
-	read := func(name string) ([]string, error) {
-		if lines, ok := files[name]; ok {
-			return lines, nil
-		}
-		raw, err := os.ReadFile(filepath.Join("..", filepath.FromSlash(name)))
-		if err != nil {
-			return nil, err
-		}
-		lines := strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n")
-		files[name] = lines
-		return lines, nil
-	}
+	files := newRepoFiles("..")
 	for key, refs := range file.Sources {
 		if _, ok := text["en"][key]; !ok {
 			t.Errorf("sources.json names %q, which no catalogue has", key)
 		}
 		for _, ref := range refs {
-			name, line := ref.Cite, 0
-			if i := strings.LastIndex(ref.Cite, ":"); i > 0 {
-				if n, err := strconv.Atoi(ref.Cite[i+1:]); err == nil {
-					name, line = ref.Cite[:i], n
-				}
-			}
-			if line == 0 {
-				if _, err := os.Stat(filepath.Join("..", filepath.FromSlash(name))); err != nil {
-					t.Errorf("%s: %v", key, err)
-				}
-				continue
-			}
-			lines, err := read(name)
-			if err != nil {
-				t.Errorf("%s: source %s: %v", key, ref.Cite, err)
-				continue
-			}
-			switch {
-			case line > len(lines):
-				t.Errorf("%s: source %s: the file has only %d lines", key, ref.Cite, len(lines))
-			case strings.TrimSpace(ref.Says) == "":
+			_, line := ref.split()
+			if line > 0 && strings.TrimSpace(ref.Says) == "" {
 				t.Errorf("%s: source %s quotes no phrase from its line", key, ref.Cite)
-			case !strings.Contains(lines[line-1], ref.Says):
-				t.Errorf("%s: source %s no longer says %q (the line is %q): correct the line number or the claim", key, ref.Cite, ref.Says, strings.TrimSpace(lines[line-1]))
+				continue
+			}
+			at, err := files.check(ref)
+			switch {
+			case err != nil:
+				t.Errorf("%s: source %s: %v", key, ref.Cite, err)
+			case at != line:
+				t.Logf("%s: source %s: the phrase is now on line %d; `go run ./site -fix-sources` updates the number", key, ref.Cite, at)
 			}
 		}
 	}
