@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.146.md)
 
+> **Yayımlandı**, 23 Kasım 2026 (UTC): sürüm commit'i `8917ed407`, GitHub ön sürümü 13:27:13Z, indirme portalı yaklaşık 13:31Z (dış denetim 27/27).
+
 **Yalnız herkese açık site için bir sürüm.** Yeni celikpanel.net'i bu sürümün
 indirme portalıyla getirir. Panelin ve ajanın kodunda hiçbir şey değişmez;
 panelin veritabanı düzeni de değişmez.
