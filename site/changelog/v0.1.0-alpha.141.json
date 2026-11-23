@@ -30,6 +30,14 @@
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:116"
     },
     {
+      "kind": "removed",
+      "text": {
+        "en": "Open WebUI is no longer offered; an existing one keeps running.",
+        "tr": "Open WebUI artık sunulmuyor; kurulu olan çalışmaya devam eder."
+      },
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:142"
+    },
+    {
       "kind": "limits",
       "text": {
         "en": "On PostgreSQL, users added to a database lose their rights on what a restore makes again; add them again on the database card.",

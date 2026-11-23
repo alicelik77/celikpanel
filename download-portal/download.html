@@ -44,7 +44,7 @@
 <dl class="spec" aria-label="The release this page installs">
 <div><dt>Release</dt><dd><a class="mono" href="releases.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time>; signed with Ed25519</dd></div>
 <div><dt>Package</dt><dd>One archive for Linux amd64, with its SHA-256 and a signed manifest</dd></div>
-<div><dt>Systems</dt><dd>Debian 13, Ubuntu 24.04 <small>(tried on every release candidate)</small><br>Debian 12, Ubuntu 22.04, Arch Linux <small>(supported)</small><br>amd64</dd></div>
+<div><dt>Systems</dt><dd>Debian 13, Ubuntu 24.04 <small>(tried on every release candidate)</small><br>Debian 12, Ubuntu 22.04 <small>(supported)</small><br>Arch Linux <small>(development level, not tried on every release)</small><br>amd64</dd></div>
 <div><dt>Status</dt><dd>Alpha: for test servers; not ready for production</dd></div>
 </dl>
 </div>
@@ -61,7 +61,7 @@
 <tr><td class="v" data-k="Step">1</td><td data-k="What to do">Create an account and take a licence for the server</td><td data-k="Where">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Step">2</td><td data-k="What to do">Prepare a clean server with a supported system</td><td data-k="Where">Your server provider</td></tr>
 <tr><td class="v" data-k="Step">3</td><td data-k="What to do">Run the install command; the installer checks the release’s signature and SHA-256 before it installs anything</td><td data-k="Where">The server’s root terminal</td></tr>
-<tr><td class="v" data-k="Step">4</td><td data-k="What to do">Sign in at the address the installer shows; the setup wizard asks for your domain and where DNS lives</td><td data-k="Where">The panel, in a browser</td></tr>
+<tr><td class="v" data-k="Step">4</td><td data-k="What to do">Sign in at the address the installer shows and enter your licence key; the setup wizard then asks for your domain and where DNS lives</td><td data-k="Where">The panel, in a browser</td></tr>
 </tbody>
 </table>
 </div>
@@ -87,11 +87,11 @@ sh celikpanel-install.sh</code></pre>
 <tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2029-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
 <tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2028-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
 <tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2027-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Development level</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Arch Linux is supported as it is today. The release package is built for amd64.</p>
+<p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Development level (Arch Linux): CelikPanel is built for it and runs on it as it is today, but release candidates are not tried on it and a rolling update can change what works. Debian dates include Debian LTS; Ubuntu dates are standard support, without ESM. The release package is built for amd64.</p>
 <p class="more"><a href="systems.html">What each system offers, and how its updates work</a></p>
 </div>
 </section>
@@ -119,9 +119,9 @@ sh celikpanel-install.sh</code></pre>
 <caption>Table 4 · Rules for changes</caption>
 <thead><tr><th scope="col">Rule</th><th scope="col">What it means</th></tr></thead>
 <tbody>
-<tr><th scope="row">Confirmation first</th><td data-k="What it means">Every change shows what it will do and waits for your confirmation.</td></tr>
+<tr><th scope="row">Confirmation first</th><td data-k="What it means">Server changes (installing components, the setup wizard, updates) show what they will do and wait for your confirmation.</td></tr>
 <tr><th scope="row">Once only</th><td data-k="What it means">A repeated click or a resent request never runs a change twice.</td></tr>
-<tr><th scope="row">One at a time</th><td data-k="What it means">Only one change runs on the server at a time; another is refused until it ends.</td></tr>
+<tr><th scope="row">One at a time</th><td data-k="What it means">Server-wide changes (installs, setup, updates) run one at a time; another waits or is refused until the first ends.</td></tr>
 <tr><th scope="row">The system’s own services</th><td data-k="What it means">Sites, mail, DNS and databases run as the system’s own services and keep running when the panel stops.</td></tr>
 <tr><th scope="row">Your edits are kept</th><td data-k="What it means">A configuration file you changed by hand is kept; CelikPanel puts its own text beside it and tells you.</td></tr>
 <tr><th scope="row">Two services</th><td data-k="What it means">The web-facing panel never runs as root. Only the local agent may change the system.</td></tr>
@@ -134,7 +134,7 @@ sh celikpanel-install.sh</code></pre>
 <section class="part" aria-labelledby="h-installed">
 <header><span class="num">5</span><h2 id="h-installed">Already installed?</h2></header>
 <div>
-<p>Update from inside your panel, under Settings, CelikPanel updates. Only the owner starts it; nothing installs by itself. If an update does not complete, the panel puts back the previous version and its database by itself.</p>
+<p>Update from inside your panel, under Settings, CelikPanel updates. Only the owner starts it; nothing installs by itself. If an update fails after it has replaced the installed version, the panel puts back the previous version and its database by itself (changes made in the panel after the update are lost); if it stops earlier, nothing was changed. The update screen says which happened.</p>
 <p class="more"><a href="releases.html">Release notes and files</a><span class="sep" aria-hidden="true">·</span><a href="guide/en/panel-settings.html">How updates work</a></p>
 </div>
 </section>

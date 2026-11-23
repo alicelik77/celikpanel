@@ -40,21 +40,21 @@
 <div class="lead">
 <div class="wrap">
 <h1>A hosting control panel for Linux servers</h1>
-<p class="def">It manages websites, mail, DNS, databases and backups with the server’s own services, so they keep running when the panel stops.</p>
+<p class="def">It manages websites, mail, DNS, databases and backups with the server’s own services, so sites, mail, DNS and databases keep running when the panel stops.</p>
 <div class="actions">
 <a class="btn primary" href="download.html">Install on a test server</a>
 <a class="btn plain" href="pricing.html">Licence terms</a>
 </div>
 <div class="sheet">
 <dl class="spec" aria-label="Specifications">
-<div><dt>Systems</dt><dd>Debian 13, Ubuntu 24.04 <small>(tried on every release candidate)</small><br>Debian 12, Ubuntu 22.04, Arch Linux <small>(supported)</small><br>amd64</dd></div>
-<div><dt>Web</dt><dd>Nginx; PHP-FPM with the PHP version chosen per site; Node.js, Python apps, static sites</dd></div>
+<div><dt>Systems</dt><dd>Debian 13, Ubuntu 24.04 <small>(tried on every release candidate)</small><br>Debian 12, Ubuntu 22.04 <small>(supported)</small><br>Arch Linux <small>(development level, not tried on every release)</small><br>amd64</dd></div>
+<div><dt>Web</dt><dd>Nginx; PHP-FPM with the PHP version chosen per site; static sites; Node.js and Python apps (optional)</dd></div>
 <div><dt>Mail</dt><dd>Postfix, Dovecot, Rspamd; Roundcube webmail</dd></div>
 <div><dt>DNS</dt><dd>BIND or PowerDNS on this server, or an outside provider; a second server with a copy of the DNS is optional</dd></div>
 <div><dt>Databases</dt><dd>MariaDB, PostgreSQL</dd></div>
 <div><dt>Backups</dt><dd>Site backups by hand or on a schedule, kept on the server; a remote copy (S3-compatible storage or SFTP) is optional</dd></div>
 <div><dt>Users</dt><dd>Administrator, reseller, customer and a customer’s team members; plans with limits</dd></div>
-<div><dt>Licence</dt><dd>Per server, per year. Free during the alpha; 99 USD from version 1.0</dd></div>
+<div><dt>Licence</dt><dd>Per server, per year. Free until version 1.0; 99 USD from version 1.0</dd></div>
 <div><dt>Release</dt><dd><a class="mono" href="releases.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time>; signed with Ed25519</dd></div>
 <div><dt>Status</dt><dd>Alpha: for test servers; not ready for production</dd></div>
 </dl>
@@ -65,7 +65,7 @@
 <source media="(prefers-color-scheme: dark)" srcset="assets/shots/domain-en-dark.webp 1280w, assets/shots/domain-en-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
 <img src="assets/shots/domain-en-light.webp" srcset="assets/shots/domain-en-light.webp 1280w, assets/shots/domain-en-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="Overview tab of the domain example.com: connected, DNS served by this server; its name servers and the address it resolves to; certificate valid for 78 more days; mail sending and authentication complete; last backup today." decoding="async">
 </picture>
-<figcaption><b>Fig. 1.</b> A domain’s overview. The real panel with sample data; screen taken on 19 November 2026.</figcaption>
+<figcaption><b>Fig. 1.</b> A domain’s overview. The real panel with sample data; screen taken on 19 November 2026, before alpha.141, so details may differ in the current release.</figcaption>
 </figure>
 </div>
 </div>
@@ -105,7 +105,7 @@
 <tr><td class="v" data-k="Step">1</td><td data-k="What to do">Create an account and take a licence for the server</td><td data-k="Where">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Step">2</td><td data-k="What to do">Prepare a clean server with a supported system</td><td data-k="Where">Your server provider</td></tr>
 <tr><td class="v" data-k="Step">3</td><td data-k="What to do">Run the install command; the installer checks the release’s signature and SHA-256 before it installs anything</td><td data-k="Where">The server’s root terminal</td></tr>
-<tr><td class="v" data-k="Step">4</td><td data-k="What to do">Sign in at the address the installer shows; the setup wizard asks for your domain and where DNS lives</td><td data-k="Where">The panel, in a browser</td></tr>
+<tr><td class="v" data-k="Step">4</td><td data-k="What to do">Sign in at the address the installer shows and enter your licence key; the setup wizard then asks for your domain and where DNS lives</td><td data-k="Where">The panel, in a browser</td></tr>
 </tbody>
 </table>
 </div>
@@ -126,11 +126,11 @@ sh celikpanel-install.sh</code></pre>
 <tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2029-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
 <tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2028-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
 <tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2027-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Development level</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Arch Linux is supported as it is today. The release package is built for amd64.</p>
+<p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Development level (Arch Linux): CelikPanel is built for it and runs on it as it is today, but release candidates are not tried on it and a rolling update can change what works. Debian dates include Debian LTS; Ubuntu dates are standard support, without ESM. The release package is built for amd64.</p>
 <p class="more"><a href="systems.html">What each system offers, and how its updates work</a></p>
 </div>
 </section>
@@ -139,21 +139,24 @@ sh celikpanel-install.sh</code></pre>
 <div>
 <div class="table">
 <table class="stack">
-<caption>Table 3 · Separation between accounts in the published release 0.1.0-alpha.144</caption>
+<caption>Table 3 · Separation between accounts, as the release notes up to 0.1.0-alpha.144 state it</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Status</th><th scope="col">Since</th></tr></thead>
 <tbody>
-<tr><td data-k="Measure">Each site has its own system account, and its PHP runs as that account</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">≤ alpha.82</td></tr>
-<tr><td data-k="Measure">Node.js sites, Python apps and uploaded programs run in a sandbox under the site’s own account; existing Node.js sites move in when the administrator moves them</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.127</td></tr>
+<tr><td data-k="Measure">Each site has its own system account, and its PHP runs as that account</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.82 or earlier</td></tr>
+<tr><td data-k="Measure">Node.js sites, Python apps and uploaded programs (optional programs) run in a sandbox under the site’s own account; existing Node.js sites move in when the administrator moves them</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.127</td></tr>
 <tr><td data-k="Measure">Extra FTP and SFTP logins see one folder of their site and never a command line</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.128</td></tr>
-<tr><td data-k="Measure">No account can take another account’s domain name or site account, or a port of the server’s own services</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.142</td></tr>
+<tr><td data-k="Measure">No customer or reseller can take another account’s domain name or site account, or a port of the server’s own services (names that overlapped before alpha.142 are listed for the administrator)</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.142</td></tr>
 <tr><td data-k="Measure">A link in a site’s folder does not serve another account’s files</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.142</td></tr>
 <tr><td data-k="Measure">SQL from a backup, a copy or an import runs with the database owner’s rights, not the administrator’s</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.141</td></tr>
-<tr><td data-k="Measure">PostgreSQL databases are closed to other accounts: new ones from the start, older ones once no other account has used them for a day</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.143</td></tr>
-<tr><td data-k="Measure">Outgoing mail is signed only for the sender’s own domain</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.143</td></tr>
+<tr><td data-k="Measure">PostgreSQL databases are closed to other accounts: new ones from the start; older ones by the panel after a day in which no other account was seen using them, otherwise when the administrator closes them on the PostgreSQL page</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.143</td></tr>
+<tr><td data-k="Measure">Outgoing mail is signed only for the sender’s own domain (not yet on Arch Linux, whose OpenDKIM cannot tie signing to the login)</td><td data-k="Status"><span class="tag ok">Yes, except Arch Linux</span></td><td class="v" data-k="Since">alpha.143</td></tr>
 <tr><td data-k="Measure">Outgoing mail limits per mailbox, domain and hosting account (optional; off until the administrator turns them on)</td><td data-k="Status"><span class="tag no">Optional</span></td><td class="v" data-k="Since">alpha.128</td></tr>
 <tr><td data-k="Measure">PHP and scheduled tasks in the site’s own sandbox</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
 <tr><td data-k="Measure">Processor and memory limits per account for all of its programs (today: PHP memory, run time and process count per site)</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
 <tr><td data-k="Measure">Hiding which other sites exist: account names and processes are still visible to a site account</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Each site with its own web-server group (today the web server’s group can read every site’s folder; the link rule is the barrier)</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Mail address lists hidden from other accounts</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Moving a database to another PostgreSQL version with the owner’s rights (today: the administrator’s)</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
 </tbody>
 </table>
 </div>
@@ -188,10 +191,10 @@ sh celikpanel-install.sh</code></pre>
 <div>
 <div class="table">
 <table class="stack">
-<caption>Table 4 · Recovery tests</caption>
+<caption>Table 4 · Recovery tests on builds of September 2026</caption>
 <thead><tr><th scope="col">Measurement</th><th scope="col">Value</th><th scope="col">Condition</th><th scope="col">Date</th></tr></thead>
 <tbody>
-<tr><th scope="row">From a dead server back into service</th><td class="v" data-k="Value">105 s</td><td data-k="Condition">The first server was stopped by a power cut; a new machine was provisioned and restored from one sealed archive</td><td class="v" data-k="Date">2026-09-05</td></tr>
+<tr><th scope="row">From a dead server to the panel serving again (DNS answered 15 s later)</th><td class="v" data-k="Value">105 s</td><td data-k="Condition">The first server was stopped by a power cut; a new machine was provisioned and restored from one sealed archive</td><td class="v" data-k="Date">2026-09-05</td></tr>
 <tr><th scope="row">Archive age at the cut, data lost</th><td class="v" data-k="Value">40.9 s · 0</td><td data-k="Condition">Nothing was written in that window, so nothing was lost</td><td class="v" data-k="Date">2026-09-05</td></tr>
 <tr><th scope="row">Queries unanswered while taking over a running BIND</th><td class="v" data-k="Value">0 / 2508</td><td data-k="Condition">A hand-installed BIND answering its own zone on Debian 13, adopted through the panel</td><td class="v" data-k="Date">2026-09-04</td></tr>
 <tr><th scope="row">Time to settle unfinished work after a power cut</th><td class="v" data-k="Value">≤ 7 s</td><td data-k="Condition">Four power cuts on a real virtual machine; each time the work was finished or rolled back with nobody touching it</td><td class="v" data-k="Date">2026-09-04</td></tr>
@@ -212,9 +215,9 @@ sh celikpanel-install.sh</code></pre>
 <tr><th scope="row">Price</th><td data-k="Today, alpha">Free</td><td data-k="From version 1.0">99 USD per server per year (list price)</td></tr>
 <tr><th scope="row">Term</th><td data-k="Today, alpha">One year from creation; renewed free from your account</td><td data-k="From version 1.0">One year; the price does not rise while you renew without a break</td></tr>
 <tr><th scope="row">If celikpanel.net cannot be reached</th><td data-k="Today, alpha">Management stays open for up to 7 days</td><td data-k="From version 1.0">Everything keeps working for 30 days</td></tr>
-<tr><th scope="row">When a licence ends</th><td data-k="Today, alpha">Almost every panel screen locks; sites, mail, DNS, databases and scheduled jobs keep running</td><td data-k="From version 1.0">Reminders 30, 7 and 1 day before; 30 days of grace; then only new domains, accounts and mailboxes wait</td></tr>
+<tr><th scope="row">When a licence ends</th><td data-k="Today, alpha">Almost every panel screen locks; sites, mail, DNS, databases and scheduled jobs keep running</td><td data-k="From version 1.0">Reminders 30, 7 and 1 day before; 30 days of grace; then only creating new domains, accounts and mailboxes is closed until renewal</td></tr>
 <tr><th scope="row">Trial and refund</th><td data-k="Today, alpha">—</td><td data-k="From version 1.0">30-day trial without a card; refund within 30 days</td></tr>
-<tr><th scope="row">Payment</th><td data-k="Today, alpha">None</td><td data-k="From version 1.0">In US dollars; the payment provider and tax details are not decided</td></tr>
+<tr><th scope="row">Payment</th><td data-k="Today, alpha">None</td><td data-k="From version 1.0">List price in US dollars; the payment provider, tax and other currencies are not decided</td></tr>
 </tbody>
 </table>
 </div>
@@ -227,7 +230,7 @@ sh celikpanel-install.sh</code></pre>
 <div>
 <h3>Current release: <span class="mono">@@CP_RELEASE_VERSION@@</span>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></h3>
 <p>Signed with Ed25519. Its notes name the release commit, what was tried in the lab, what was not, and the known limits.</p>
-<p>If an update does not complete, the panel puts back the previous version and its database by itself. Sites, mail, DNS and databases are not part of it.</p>
+<p>If an update fails after it has replaced the installed version, the panel puts back the previous version and its database by itself (changes made in the panel after the update are lost); if it stops earlier, nothing was changed. The update screen says which happened.</p>
 <p><a href="releases.html">Release notes, files and how to check them</a></p>
 <p><a href="changelog.html">Changes by version</a><span class="sep" aria-hidden="true">·</span><a href="problems.html">Known problems and how to report one</a></p>
 </div>

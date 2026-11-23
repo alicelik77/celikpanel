@@ -7,20 +7,20 @@
     {
       "kind": "security",
       "text": {
-        "en": "Outgoing mail is signed only for the sender’s own domain, never for another customer’s.",
-        "tr": "Giden posta yalnız gönderenin kendi alan adı için imzalanır, hiçbir zaman başka bir müşterininki için değil."
+        "en": "Mail sent with a mailbox login is signed only for that mailbox’s own domain, and mail arriving on port 25 is no longer signed. On Arch Linux, mail sent with a login is still signed for any hosted domain.",
+        "tr": "Posta kutusu girişiyle gönderilen posta yalnız o posta kutusunun kendi alan adı için imzalanır; 25 numaralı porttan gelen posta artık imzalanmaz. Arch Linux’ta girişle gönderilen posta hâlâ barındırılan her alan adı için imzalanır."
       },
       "case": "CP-2026-5",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41"
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:63"
     },
     {
       "kind": "security",
       "text": {
-        "en": "PostgreSQL databases made before alpha.141 are closed to other accounts once no other account has used them for a day.",
-        "tr": "alpha.141’den önce oluşturulan PostgreSQL veritabanları, başka bir hesap bir gün boyunca kullanmadığında başka hesaplara kapatılır."
+        "en": "PostgreSQL databases made before alpha.141 are closed to other accounts: by the panel after a day in which no other account was seen using them, otherwise by the administrator with one button.",
+        "tr": "alpha.141’den önce oluşturulan PostgreSQL veritabanları başka hesaplara kapatılır: başka bir hesabın kullandığı görülmeyen bir günün ardından panel tarafından, aksi hâlde yöneticinin tek düğmesiyle."
       },
       "case": "CP-2026-6",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50"
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:140"
     },
     {
       "kind": "fixed",
@@ -35,7 +35,7 @@
       "kind": "fixed",
       "text": {
         "en": "A Node.js site whose application had failed can be deleted in one press.",
-        "tr": "Uygulaması başarısız olmuş bir Node.js sitesi tek basışta silinebilir."
+        "tr": "Uygulaması başarısız olmuş bir Node.js sitesi tek tıklamayla silinebilir."
       },
       "case": "CP-2026-4",
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223"
@@ -47,6 +47,14 @@
         "tr": "Ek bir otomatik yanıt adresi, panelin bildiği bir yönlendirme olmalıdır."
       },
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:237"
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A website that hands mail to port 25 without a login is no longer signed; set it to sign in on port 587.",
+        "tr": "Giriş yapmadan 25 numaralı porta posta veren bir web sitesinin postası artık imzalanmaz; 587 numaralı portta girişle göndermesini ayarlayın."
+      },
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:67"
     }
   ]
 }

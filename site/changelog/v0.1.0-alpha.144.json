@@ -14,10 +14,10 @@
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31"
     },
     {
-      "kind": "fixed",
+      "kind": "new",
       "text": {
-        "en": "An alias inside a domain of the same account now answers in DNS.",
-        "tr": "Aynı hesabın bir alan adının içindeki takma ad artık DNS’te cevap verir."
+        "en": "An alias inside a domain of the same account whose DNS this server keeps now answers in DNS; aliases made earlier do so once removed and added again.",
+        "tr": "Bu sunucunun DNS’ini tuttuğu, aynı hesaba ait bir alan adının içindeki takma ad artık DNS’te cevap verir; daha önce eklenmiş takma adlar kaldırılıp yeniden eklenince."
       },
       "case": "CP-2026-7",
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126"
@@ -35,7 +35,7 @@
       "kind": "fixed",
       "text": {
         "en": "Closing a PostgreSQL database to other accounts shows its real result even when the page was left.",
-        "tr": "Bir PostgreSQL veritabanını başka hesaplara kapatmak, sayfadan ayrılınmış olsa da gerçek sonucunu gösterir."
+        "tr": "Bir PostgreSQL veritabanını başka hesaplara kapatmak, sayfadan ayrılsanız da gerçek sonucunu gösterir."
       },
       "case": "CP-2026-9",
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83"
@@ -53,7 +53,7 @@
       "kind": "fixed",
       "text": {
         "en": "Traffic figures are complete again after the nightly log rotation.",
-        "tr": "Trafik rakamları gece günlük döndürmesinden sonra yeniden eksiksizdir."
+        "tr": "Trafik rakamları gece yapılan günlük dosyası döndürmesinden sonra yeniden eksiksizdir."
       },
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:101"
     },

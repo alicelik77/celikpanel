@@ -60,6 +60,7 @@ type problemCase struct {
 	FixedIn   string   `json:"fixed_in,omitempty"`
 	Summary   both     `json:"summary"`
 	Meanwhile *both    `json:"meanwhile,omitempty"`
+	Note      *both    `json:"note,omitempty"`
 	Reason    *both    `json:"reason,omitempty"`
 	Sources   []string `json:"sources"`
 }
@@ -70,7 +71,7 @@ type problemsFile struct {
 }
 
 var (
-	changeKinds   = []string{"security", "fixed", "new", "limits"}
+	changeKinds   = []string{"security", "fixed", "new", "removed", "limits"}
 	caseStates    = []string{"looking", "accepted", "fixed", "not-defect"}
 	caseNumber    = regexp.MustCompile(`^CP-(20[0-9]{2})-([1-9][0-9]*)$`)
 	releaseName   = regexp.MustCompile(`^v0\.1\.0-alpha\.([0-9]+)$`)
@@ -255,6 +256,9 @@ func (r *renderer) recordFuncs(v view, lookup func(string) (string, error)) map[
 				}
 				if c.Reason != nil {
 					entry["Reason"] = c.Reason.in(v.Lang)
+				}
+				if c.Note != nil {
+					entry["Note"] = c.Note.in(v.Lang)
 				}
 				out = append(out, entry)
 			}

@@ -65,8 +65,8 @@ var previewText = map[string]map[string]string{
 		previewSHA256: "example only: the release build writes the archive’s SHA-256 here",
 	},
 	"tr": {
-		previewCommit: " (kısa biçim; tam kaydı buraya sürüm paketi yazar)",
-		previewSHA256: "yalnız örnek: arşivin SHA-256 özetini buraya sürüm paketi yazar",
+		previewCommit: " (kısa biçim; tam commit’i buraya sürüm derlemesi yazar)",
+		previewSHA256: "yalnız örnek: arşivin SHA-256 özetini buraya sürüm derlemesi yazar",
 	},
 }
 

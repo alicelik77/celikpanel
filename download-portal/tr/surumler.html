@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sürümler · CelikPanel</title>
-<meta name="description" content="Güncel CelikPanel sürümü; sürüm numarası, tarihi, kaydı, SHA-256 özeti ve imzalı dosyalarıyla. İndirdiğinizi kendiniz nasıl denetlersiniz.">
+<meta name="description" content="Güncel CelikPanel sürümü; sürüm numarası, tarihi, commit’i, SHA-256 özeti ve imzalı dosyalarıyla. İndirdiğinizi kendiniz nasıl denetlersiniz.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
@@ -24,7 +24,7 @@
 <header class="doc">
 <div class="wrap">
 <a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
-<span class="docid">Veri sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
 <nav aria-label="Ana menü"><ul>
 <li><a href="sistemler.html">Sistemler</a></li>
 <li><a href="indir.html">Kurulum</a></li>
@@ -40,11 +40,11 @@
 <div class="lead">
 <div class="wrap">
 <h1>Sürümler</h1>
-<p class="def">Her sürüm imzalıdır ve kaydıyla adlandırılır. Kurulu paneller yalnız sahibi başlattığında güncellenir.</p>
+<p class="def">Her sürüm imzalıdır ve commit’iyle adlandırılır. Kurulu paneller yalnız sahibi başlattığında güncellenir.</p>
 <dl class="spec" aria-label="Son sürüm">
 <div><dt>Sürüm</dt><dd class="mono">@@CP_RELEASE_VERSION@@</dd></div>
-<div><dt>Yayım</dt><dd><time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></dd></div>
-<div><dt>Kayıt</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
+<div><dt>Yayım tarihi</dt><dd><time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></dd></div>
+<div><dt>Commit (kaynak kod kaydı)</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
 <div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
 <div><dt>Paket</dt><dd><code>@@CP_RELEASE_ARCHIVE_NAME@@</code></dd></div>
 </dl>
@@ -62,8 +62,8 @@
 <li><a href="@@CP_RELEASE_ARCHIVE_URL@@">Paket (.tar.gz)</a></li>
 <li><a href="@@CP_RELEASE_CHECKSUM_URL@@">SHA-256 dosyası</a></li>
 <!-- cp:signed -->
-<li><a href="@@CP_RELEASE_MANIFEST_URL@@">İmzalı sürüm bildirimi</a></li>
-<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">Bildirim imzası (Ed25519)</a></li>
+<li><a href="@@CP_RELEASE_MANIFEST_URL@@">İmzalı sürüm listesi (manifest)</a></li>
+<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">Manifest imzası (Ed25519)</a></li>
 <!-- cp:/signed -->
 <li><a href="../release-signing-ed25519.pem">Sürüm imzalama açık anahtarı</a></li>
 </ul>
@@ -76,9 +76,10 @@
 <table class="stack">
 <caption>Tablo 1 · Adımlar</caption>
 <tbody>
-<tr><td class="v">1</td><td>Paketi, SHA-256 dosyasını, imzalı bildirimi, imzasını ve açık anahtarı aynı klasöre indirin.</td></tr>
+<tr><td class="v">1</td><td>Paketi, SHA-256 dosyasını, imzalı manifest’i, imzasını ve açık anahtarı aynı klasöre indirin.</td></tr>
 <tr><td class="v">2</td><td>Anahtarın SHA-256 özetini aşağıdakiyle karşılaştırın, sonra paketi SHA-256 dosyasıyla denetleyin.</td></tr>
-<tr><td class="v">3</td><td>Bildirimin imzasını anahtarla doğrulayın. Bildirim, paketin SHA-256 özetini ve boyutunu yazar.</td></tr>
+<tr><td class="v">3</td><td>Manifest’in imzasını anahtarla doğrulayın.</td></tr>
+<tr><td class="v">4</td><td>Manifest’teki archive_sha256 satırını paketin SHA-256 özetiyle karşılaştırın; ikisi aynı olmalıdır. Paket ancak o zaman imzalı olanla aynıdır.</td></tr>
 </tbody>
 </table>
 </div>
@@ -88,8 +89,10 @@
 sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
 openssl pkeyutl -verify -rawin -pubin \
   -inkey release-signing-ed25519.pem \
-  -in release-manifest-v2 -sigfile release-manifest-v2.sig</code></pre>
-<p class="note">Her satır hatasız bitmelidir: özet için “OK”, imza için “Signature Verified Successfully”.</p>
+  -in release-manifest-v2 -sigfile release-manifest-v2.sig
+grep '^archive_sha256=' release-manifest-v2
+sha256sum @@CP_RELEASE_ARCHIVE_NAME@@</code></pre>
+<p class="note">Özet satırı “OK”, imza satırı “Signature Verified Successfully” demeli; son iki satır aynı SHA-256 özetini yazmalıdır.</p>
 </div>
 <p class="key">Sürüm imzalama açık anahtarının SHA-256 özeti: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
 </div>
@@ -97,8 +100,8 @@ openssl pkeyutl -verify -rawin -pubin \
 <section class="part" aria-labelledby="h-update">
 <header><span class="num">3</span><h2 id="h-update">Kurulu bir paneli güncellemek</h2></header>
 <div>
-<p>Ayarlar, CelikPanel güncellemeleri bölümünü açın ve güncellemeyi kendiniz başlatın; bunu yalnız sahibi yapabilir. Bir güncelleme tamamlanmazsa panel önceki sürümü ve veritabanını kendisi geri koyar. Siteler, posta, DNS ve veritabanları buna dahil değildir.</p>
-<p>Her sürümün notları kaydını yazar, laboratuvarda neyin denendiğini ve neyin denenmediğini söyler, bilinen sınırları listeler.</p>
+<p>Ayarlar, CelikPanel güncellemeleri bölümünü açın ve güncellemeyi kendiniz başlatın; bunu yalnız sahibi yapabilir. Güncelleme kurulu sürümü değiştirdikten sonra başarısız olursa panel önceki sürümü ve veritabanını kendisi geri koyar (güncellemeden sonra panelde yapılanlar kaybolur); daha önce durursa hiçbir şey değişmemiştir. Hangisinin olduğunu güncelleme ekranı söyler. Siteler, posta, DNS ve veritabanları geri almaya dahil değildir.</p>
+<p>Her sürümün notları commit’ini yazar, laboratuvarda neyin denendiğini ve neyin denenmediğini söyler, bilinen sınırları listeler.</p>
 <ul class="plain">
 <li><a href="degisiklikler.html">Her sürümün değiştirdikleri</a></li>
 <li><a href="sorunlar.html">Bilinen sorunlar ve sorun bildirmek</a></li>

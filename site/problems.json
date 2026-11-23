@@ -10,7 +10,9 @@
         "en": "SQL from a backup, a copy or an import ran with the database server administrator’s rights.",
         "tr": "Yedekten, kopyadan ya da içe aktarmadan gelen SQL, veritabanı sunucusunun yönetici yetkisiyle çalışıyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28"
+      ]
     },
     {
       "id": "CP-2026-2",
@@ -21,7 +23,10 @@
         "en": "A customer or reseller could take a name, a site account, a server port or files that belong to another account.",
         "tr": "Bir müşteri ya da bayi, başka bir hesaba ait bir adı, site hesabını, sunucu portunu ya da dosyaları alabiliyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32", "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53"
+      ]
     },
     {
       "id": "CP-2026-3",
@@ -32,7 +37,10 @@
         "en": "A customer whose domain lies under one of the server’s own names could not add a subdomain of it.",
         "tr": "Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adına alt alan adı ekleyemiyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.142.md:236", "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:208"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:236",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:208"
+      ]
     },
     {
       "id": "CP-2026-4",
@@ -43,7 +51,10 @@
         "en": "A Node.js site whose application had failed could not be deleted.",
         "tr": "Uygulaması başarısız olmuş bir Node.js sitesi silinemiyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.142.md:247", "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:247",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223"
+      ]
     },
     {
       "id": "CP-2026-5",
@@ -54,7 +65,14 @@
         "en": "Outgoing mail could be signed with another customer’s domain.",
         "tr": "Giden posta başka bir müşterinin alan adıyla imzalanabiliyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41"]
+      "note": {
+        "en": "Fixed on Debian and Ubuntu; on Arch Linux, mail sent with a login can still be signed for another hosted domain.",
+        "tr": "Debian ve Ubuntu’da düzeltildi; Arch Linux’ta girişle gönderilen posta hâlâ başka bir barındırılan alan adı için imzalanabilir."
+      },
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233"
+      ]
     },
     {
       "id": "CP-2026-6",
@@ -65,7 +83,15 @@
         "en": "PostgreSQL databases made before alpha.141 were open to every account’s sign-in.",
         "tr": "alpha.141’den önce oluşturulan PostgreSQL veritabanları her hesabın girişine açıktı."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50"]
+      "note": {
+        "en": "The administrator closes the ones the panel does not close by itself; databases made by hand are not touched.",
+        "tr": "Panelin kendiliğinden kapatmadıklarını yönetici kapatır; elle oluşturulan veritabanlarına dokunulmaz."
+      },
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:160",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:262"
+      ]
     },
     {
       "id": "CP-2026-7",
@@ -76,7 +102,15 @@
         "en": "An alias inside a customer’s own domain got no DNS record.",
         "tr": "Bir müşterinin kendi alan adının içindeki takma ad DNS kaydı almıyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:434", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126"]
+      "note": {
+        "en": "Aliases made before alpha.144 get their record once removed and added again.",
+        "tr": "alpha.144’ten önce eklenen takma adlar, kaldırılıp yeniden eklenince kaydını alır."
+      },
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:434",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:148"
+      ]
     },
     {
       "id": "CP-2026-8",
@@ -87,7 +121,10 @@
         "en": "Leaving the page while a mailbox was being created could leave the mailbox without its record, and creating it again failed.",
         "tr": "Posta kutusu oluşturulurken sayfadan ayrılmak kutuyu kaydı olmadan bırakabiliyor, yeniden oluşturmak da başarısız oluyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:449", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:66"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:449",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:66"
+      ]
     },
     {
       "id": "CP-2026-9",
@@ -98,7 +135,10 @@
         "en": "Leaving the PostgreSQL page while a database was being closed to other accounts left its result shown as not confirmed.",
         "tr": "Bir veritabanı başka hesaplara kapatılırken PostgreSQL sayfasından ayrılmak, sonucunu onaylanmamış olarak gösteriyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:437", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:437",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83"
+      ]
     },
     {
       "id": "CP-2026-10",
@@ -109,7 +149,10 @@
         "en": "Some alias and certificate refusals were shown in English on the Turkish page.",
         "tr": "Bazı takma ad ve sertifika retleri Türkçe sayfada İngilizce gösteriliyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:446", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:93"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:446",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:93"
+      ]
     },
     {
       "id": "CP-2026-11",
@@ -120,7 +163,9 @@
         "en": "Webmail’s own address gave out files of its plugins that are not part of its pages.",
         "tr": "Web postanın kendi adresi, eklentilerinin sayfalarına ait olmayan dosyalarını veriyordu."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31"
+      ]
     },
     {
       "id": "CP-2026-12",
@@ -134,7 +179,11 @@
         "en": "Send from a mail program (port 587 or 465, with the mailbox’s full address and its password).",
         "tr": "Bir posta programından gönderin (587 ya da 465 numaralı port, posta kutusunun tam adresi ve parolasıyla)."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:180", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:332", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:340"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:180",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:332",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:340"
+      ]
     },
     {
       "id": "CP-2026-13",
@@ -148,7 +197,9 @@
         "en": "Nothing to do: the hourly round clears the row.",
         "tr": "Yapılacak bir şey yok: saatlik tur satırı temizler."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:342"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:342"
+      ]
     },
     {
       "id": "CP-2026-14",
@@ -162,7 +213,9 @@
         "en": "Read the steps and the reason below the title; they are right.",
         "tr": "Başlığın altındaki adımları ve nedeni okuyun; onlar doğrudur."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:347"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:347"
+      ]
     },
     {
       "id": "CP-2026-15",
@@ -176,7 +229,9 @@
         "en": "Stay on the page until the change says it has finished.",
         "tr": "Değişiklik bittiğini söyleyene kadar sayfada kalın."
       },
-      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:157"]
+      "sources": [
+        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:157"
+      ]
     }
   ]
 }

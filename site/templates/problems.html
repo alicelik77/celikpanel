@@ -20,9 +20,9 @@
 <caption>{{t "common.table"}} 1 · {{t "problems.list.caption"}}</caption>
 <thead><tr><th scope="col">{{t "problems.col.id"}}</th><th scope="col">{{t "problems.col.problem"}}</th><th scope="col">{{t "problems.col.state"}}</th></tr></thead>
 <tbody>
-{{- $until := t "problems.meanwhile"}}{{$why := t "problems.reason"}}
+{{- $until := t "problems.meanwhile"}}{{$why := t "problems.reason"}}{{$note := t "problems.note"}}
 {{- range $c := cases}}
-<tr id="{{$c.ID}}"><td class="v" data-k="{{t "problems.col.id"}}">{{$c.ID}}</td><td data-k="{{t "problems.col.problem"}}">{{$c.Summary}}{{if $c.Meanwhile}}<br><small>{{$until}} {{$c.Meanwhile}}</small>{{end}}{{if $c.Reason}}<br><small>{{$why}} {{$c.Reason}}</small>{{end}}</td><td data-k="{{t "problems.col.state"}}"><span class="tag {{if eq $c.Class "fixed"}}ok{{else if eq $c.Class "accepted"}}warn{{else}}no{{end}}">{{$c.State}}</span>{{if $c.FixedIn}}<br><a class="mono nowrap" href="{{$c.FixedHref}}">{{$c.FixedIn}}</a>{{end}}</td></tr>
+<tr id="{{$c.ID}}"><td class="v" data-k="{{t "problems.col.id"}}">{{$c.ID}}</td><td data-k="{{t "problems.col.problem"}}">{{$c.Summary}}{{if $c.Meanwhile}}<br><small>{{$until}} {{$c.Meanwhile}}</small>{{end}}{{if $c.Note}}<br><small>{{$note}} {{$c.Note}}</small>{{end}}{{if $c.Reason}}<br><small>{{$why}} {{$c.Reason}}</small>{{end}}</td><td data-k="{{t "problems.col.state"}}"><span class="tag {{if eq $c.Class "fixed"}}ok{{else if eq $c.Class "accepted"}}warn{{else}}no{{end}}">{{$c.State}}</span>{{if $c.FixedIn}}<br><a class="mono nowrap" href="{{$c.FixedHref}}">{{$c.FixedIn}}</a>{{end}}</td></tr>
 {{- end}}
 </tbody>
 </table>

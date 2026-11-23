@@ -78,7 +78,8 @@
 <tbody>
 <tr><td class="v">1</td><td>Download the package, its SHA-256 file, the signed manifest, its signature and the public key into one folder.</td></tr>
 <tr><td class="v">2</td><td>Compare the key’s SHA-256 with the one printed below, then check the package against its SHA-256 file.</td></tr>
-<tr><td class="v">3</td><td>Verify the manifest’s signature with the key. The manifest names the package’s SHA-256 and size.</td></tr>
+<tr><td class="v">3</td><td>Verify the manifest’s signature with the key.</td></tr>
+<tr><td class="v">4</td><td>Compare the archive_sha256 line of the manifest with the package’s SHA-256; they must be identical. Only then is the package the signed one.</td></tr>
 </tbody>
 </table>
 </div>
@@ -88,8 +89,10 @@
 sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
 openssl pkeyutl -verify -rawin -pubin \
   -inkey release-signing-ed25519.pem \
-  -in release-manifest-v2 -sigfile release-manifest-v2.sig</code></pre>
-<p class="note">Each line must end without an error: “OK” for the checksum, “Signature Verified Successfully” for the signature.</p>
+  -in release-manifest-v2 -sigfile release-manifest-v2.sig
+grep '^archive_sha256=' release-manifest-v2
+sha256sum @@CP_RELEASE_ARCHIVE_NAME@@</code></pre>
+<p class="note">The checksum line must say “OK”, the signature line “Signature Verified Successfully”, and the last two lines must print the same SHA-256.</p>
 </div>
 <p class="key">SHA-256 of the release signing public key: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
 </div>
@@ -97,7 +100,7 @@ openssl pkeyutl -verify -rawin -pubin \
 <section class="part" aria-labelledby="h-update">
 <header><span class="num">3</span><h2 id="h-update">Updating an installed panel</h2></header>
 <div>
-<p>Open Settings, CelikPanel updates, and start the update yourself; only the owner can. If an update does not complete, the panel puts back the previous version and its database by itself. Sites, mail, DNS and databases are not part of it.</p>
+<p>Open Settings, CelikPanel updates, and start the update yourself; only the owner can. If an update fails after it has replaced the installed version, the panel puts back the previous version and its database by itself (changes made in the panel after the update are lost); if it stops earlier, nothing was changed. The update screen says which happened. Sites, mail, DNS and databases are not part of a rollback.</p>
 <p>Each release’s notes name its commit, say what was tried in the lab and what was not, and list the known limits.</p>
 <ul class="plain">
 <li><a href="changelog.html">What each release changed</a></li>

@@ -7,7 +7,6 @@ package main
 // optional; and nothing of the rejected decorative design comes back.
 
 import (
-	"bufio"
 	"encoding/json"
 	"io/fs"
 	"os"
@@ -21,18 +20,27 @@ import (
 var digit = regexp.MustCompile(`[0-9]`)
 
 // Every catalogue text that holds a number, in either language, names where
-// the repository proves it (site/sources.json), and every cited file and line
-// exists. A placeholder the portal builder fills is not a number of ours.
+// the repository proves it (site/sources.json). Each citation of a line also
+// quotes a short phrase from that line, and the phrase must be on it: a line
+// number that drifted after an edit of the cited document, or a citation of
+// the wrong line, fails here. A placeholder the portal builder fills is not a
+// number of ours.
 func TestEveryNumberHasASource(t *testing.T) {
 	raw, err := os.ReadFile("sources.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var file struct {
-		About   string              `json:"about"`
-		Sources map[string][]string `json:"sources"`
+	type citation struct {
+		Cite string `json:"cite"`
+		Says string `json:"says"`
 	}
-	if err := json.Unmarshal(raw, &file); err != nil {
+	var file struct {
+		About   string                `json:"about"`
+		Sources map[string][]citation `json:"sources"`
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&file); err != nil {
 		t.Fatalf("sources.json: %v", err)
 	}
 	text, err := loadCatalogues()
@@ -50,49 +58,48 @@ func TestEveryNumberHasASource(t *testing.T) {
 			t.Errorf("%q holds a number but sources.json gives no source for it", key)
 		}
 	}
-	lines := map[string]int{}
-	count := func(name string) (int, error) {
-		if n, ok := lines[name]; ok {
-			return n, nil
+	files := map[string][]string{}
+	read := func(name string) ([]string, error) {
+		if lines, ok := files[name]; ok {
+			return lines, nil
 		}
-		handle, err := os.Open(filepath.Join("..", filepath.FromSlash(name)))
+		raw, err := os.ReadFile(filepath.Join("..", filepath.FromSlash(name)))
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
-		defer handle.Close()
-		scanner := bufio.NewScanner(handle)
-		scanner.Buffer(make([]byte, 1024*1024), 16*1024*1024)
-		n := 0
-		for scanner.Scan() {
-			n++
-		}
-		lines[name] = n
-		return n, scanner.Err()
+		lines := strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n")
+		files[name] = lines
+		return lines, nil
 	}
 	for key, refs := range file.Sources {
 		if _, ok := text["en"][key]; !ok {
 			t.Errorf("sources.json names %q, which no catalogue has", key)
 		}
 		for _, ref := range refs {
-			name, line := ref, 0
-			if i := strings.LastIndex(ref, ":"); i > 0 {
-				if n, err := strconv.Atoi(ref[i+1:]); err == nil {
-					name, line = ref[:i], n
+			name, line := ref.Cite, 0
+			if i := strings.LastIndex(ref.Cite, ":"); i > 0 {
+				if n, err := strconv.Atoi(ref.Cite[i+1:]); err == nil {
+					name, line = ref.Cite[:i], n
 				}
 			}
-			if strings.HasSuffix(name, ".webp") {
+			if line == 0 {
 				if _, err := os.Stat(filepath.Join("..", filepath.FromSlash(name))); err != nil {
 					t.Errorf("%s: %v", key, err)
 				}
 				continue
 			}
-			n, err := count(name)
+			lines, err := read(name)
 			if err != nil {
-				t.Errorf("%s: source %s: %v", key, ref, err)
+				t.Errorf("%s: source %s: %v", key, ref.Cite, err)
 				continue
 			}
-			if line > n {
-				t.Errorf("%s: source %s: the file has only %d lines", key, ref, n)
+			switch {
+			case line > len(lines):
+				t.Errorf("%s: source %s: the file has only %d lines", key, ref.Cite, len(lines))
+			case strings.TrimSpace(ref.Says) == "":
+				t.Errorf("%s: source %s quotes no phrase from its line", key, ref.Cite)
+			case !strings.Contains(lines[line-1], ref.Says):
+				t.Errorf("%s: source %s no longer says %q (the line is %q): correct the line number or the claim", key, ref.Cite, ref.Says, strings.TrimSpace(lines[line-1]))
 			}
 		}
 	}

@@ -24,7 +24,7 @@
 <header class="doc">
 <div class="wrap">
 <a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
-<span class="docid">Veri sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
 <nav aria-label="Ana menü"><ul>
 <li><a href="sistemler.html">Sistemler</a></li>
 <li><a href="indir.html" aria-current="page">Kurulum</a></li>
@@ -43,8 +43,8 @@
 <p class="def">Temiz bir Linux sunucuda tek komut imzalı sürümü indirir, denetler ve paneli kurar. Go, Node.js ya da Git gerekmez.</p>
 <dl class="spec" aria-label="Bu sayfanın kurduğu sürüm">
 <div><dt>Sürüm</dt><dd><a class="mono" href="surumler.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time>; Ed25519 ile imzalı</dd></div>
-<div><dt>Paket</dt><dd>Linux amd64 için tek arşiv; SHA-256 özeti ve imzalı bildirimiyle</dd></div>
-<div><dt>Sistemler</dt><dd>Debian 13, Ubuntu 24.04 <small>(her sürüm adayında denenir)</small><br>Debian 12, Ubuntu 22.04, Arch Linux <small>(desteklenir)</small><br>amd64</dd></div>
+<div><dt>Paket</dt><dd>Linux amd64 için tek arşiv; SHA-256 özeti ve imzalı manifest’iyle</dd></div>
+<div><dt>Sistemler</dt><dd>Debian 13, Ubuntu 24.04 <small>(her sürüm adayında denenir)</small><br>Debian 12, Ubuntu 22.04 <small>(desteklenir)</small><br>Arch Linux <small>(geliştirme düzeyi, her sürümde denenmez)</small><br>amd64</dd></div>
 <div><dt>Durum</dt><dd>Alfa: deneme sunucuları için; canlı kullanıma hazır değil</dd></div>
 </dl>
 </div>
@@ -61,7 +61,7 @@
 <tr><td class="v" data-k="Adım">1</td><td data-k="Yapılacak">Hesap oluşturun ve sunucu için lisans alın</td><td data-k="Nerede">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Adım">2</td><td data-k="Yapılacak">Desteklenen bir sistemle temiz bir sunucu hazırlayın</td><td data-k="Nerede">Sunucu sağlayıcınız</td></tr>
 <tr><td class="v" data-k="Adım">3</td><td data-k="Yapılacak">Kurulum komutunu çalıştırın; kurucu, hiçbir şey kurmadan önce sürümün imzasını ve SHA-256 özetini denetler</td><td data-k="Nerede">Sunucunun root terminalinde</td></tr>
-<tr><td class="v" data-k="Adım">4</td><td data-k="Yapılacak">Kurucunun gösterdiği adresten giriş yapın; kurulum sihirbazı alan adınızı ve DNS’in nerede olacağını sorar</td><td data-k="Nerede">Panel, tarayıcıda</td></tr>
+<tr><td class="v" data-k="Adım">4</td><td data-k="Yapılacak">Kurucunun gösterdiği adresten giriş yapın ve lisans anahtarınızı girin; ardından kurulum sihirbazı alan adınızı ve DNS’in nerede olacağını sorar</td><td data-k="Nerede">Panel, tarayıcıda</td></tr>
 </tbody>
 </table>
 </div>
@@ -81,17 +81,17 @@ sh celikpanel-install.sh</code></pre>
 <div class="table">
 <table class="stack">
 <caption>Tablo 2 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
-<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
+<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği bitişi</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Geliştirme düzeyi</span></td><td data-k="Dağıtımın güvenlik desteği bitişi">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">Denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Arch Linux bugünkü hâliyle desteklenir. Sürüm paketi amd64 için hazırlanır.</p>
+<p class="note">Her sürümde denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Geliştirme düzeyi (Arch Linux): CelikPanel onun için de hazırlanır ve bugünkü hâliyle çalışır, ama sürüm adayları orada denenmez ve sürekli güncellemeler çalışanı değiştirebilir. Debian tarihleri Debian LTS’i içerir; Ubuntu tarihleri ESM olmadan standart destektir. Sürüm paketi amd64 için hazırlanır.</p>
 <p class="more"><a href="sistemler.html">Her sistemde neler var, güncellemeler nasıl işler</a></p>
 </div>
 </section>
@@ -119,11 +119,11 @@ sh celikpanel-install.sh</code></pre>
 <caption>Tablo 4 · Değişiklik kuralları</caption>
 <thead><tr><th scope="col">Kural</th><th scope="col">Anlamı</th></tr></thead>
 <tbody>
-<tr><th scope="row">Önce onay</th><td data-k="Anlamı">Her değişiklik ne yapacağını gösterir ve onayınızı bekler.</td></tr>
+<tr><th scope="row">Önce onay</th><td data-k="Anlamı">Sunucu değişiklikleri (bileşen kurma, kurulum sihirbazı, güncellemeler) ne yapacaklarını gösterir ve onayınızı bekler.</td></tr>
 <tr><th scope="row">Yalnız bir kez</th><td data-k="Anlamı">Tekrarlanan bir tıklama ya da yeniden gönderilen bir istek, bir değişikliği iki kez çalıştırmaz.</td></tr>
-<tr><th scope="row">Sırayla</th><td data-k="Anlamı">Sunucuda aynı anda yalnız bir değişiklik çalışır; bir başkası o bitene kadar reddedilir.</td></tr>
+<tr><th scope="row">Sırayla</th><td data-k="Anlamı">Sunucu genelindeki değişiklikler (kurulum, ayar, güncelleme) sırayla çalışır; başka biri, ilki bitene kadar bekler ya da reddedilir.</td></tr>
 <tr><th scope="row">Sistemin kendi hizmetleri</th><td data-k="Anlamı">Siteler, posta, DNS ve veritabanları sistemin kendi hizmetleri olarak çalışır ve panel durduğunda da çalışmaya devam eder.</td></tr>
-<tr><th scope="row">Sizin düzenlemeniz korunur</th><td data-k="Anlamı">Elle değiştirdiğiniz bir yapılandırma dosyası korunur; CelikPanel kendi metnini yanına koyar ve size söyler.</td></tr>
+<tr><th scope="row">Elle yaptığınız düzenlemeler korunur</th><td data-k="Anlamı">Elle değiştirdiğiniz bir yapılandırma dosyası korunur; CelikPanel kendi metnini yanına koyar ve size söyler.</td></tr>
 <tr><th scope="row">İki ayrı hizmet</th><td data-k="Anlamı">İnternete açık panel hiçbir zaman root olarak çalışmaz. Sistemi yalnız yerel ajan değiştirebilir.</td></tr>
 <tr><th scope="row">Parolanız sunucunuzda kalır</th><td data-k="Anlamı">İlk yönetici sunucunuzda oluşturulur; parolası bu siteye hiçbir zaman gönderilmez.</td></tr>
 </tbody>
@@ -134,7 +134,7 @@ sh celikpanel-install.sh</code></pre>
 <section class="part" aria-labelledby="h-installed">
 <header><span class="num">5</span><h2 id="h-installed">Zaten kurulu mu?</h2></header>
 <div>
-<p>Panelinizin içinden, Ayarlar, CelikPanel güncellemeleri bölümünden güncelleyin. Güncellemeyi yalnız sahibi başlatır; hiçbir şey kendiliğinden kurulmaz. Bir güncelleme tamamlanmazsa panel önceki sürümü ve veritabanını kendisi geri koyar.</p>
+<p>Panelinizin içinden, Ayarlar, CelikPanel güncellemeleri bölümünden güncelleyin. Güncellemeyi yalnız sahibi başlatır; hiçbir şey kendiliğinden kurulmaz. Güncelleme kurulu sürümü değiştirdikten sonra başarısız olursa panel önceki sürümü ve veritabanını kendisi geri koyar (güncellemeden sonra panelde yapılanlar kaybolur); daha önce durursa hiçbir şey değişmemiştir. Hangisinin olduğunu güncelleme ekranı söyler.</p>
 <p class="more"><a href="surumler.html">Sürüm notları ve dosyalar</a><span class="sep" aria-hidden="true">·</span><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler</a></p>
 </div>
 </section>

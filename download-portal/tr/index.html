@@ -24,7 +24,7 @@
 <header class="doc">
 <div class="wrap">
 <a class="brand" href="./" aria-current="page"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
-<span class="docid">Veri sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
 <nav aria-label="Ana menü"><ul>
 <li><a href="sistemler.html">Sistemler</a></li>
 <li><a href="indir.html">Kurulum</a></li>
@@ -40,21 +40,21 @@
 <div class="lead">
 <div class="wrap">
 <h1>Linux sunucular için hosting kontrol paneli</h1>
-<p class="def">Web sitelerini, e-postayı, DNS’i, veritabanlarını ve yedekleri sunucunun kendi hizmetleriyle yönetir; bu yüzden panel durduğunda da çalışmaya devam ederler.</p>
+<p class="def">Web sitelerini, e-postayı, DNS’i, veritabanlarını ve yedekleri sunucunun kendi hizmetleriyle yönetir; bu yüzden siteler, e-posta, DNS ve veritabanları panel durduğunda da çalışır.</p>
 <div class="actions">
 <a class="btn primary" href="indir.html">Deneme sunucusuna kur</a>
 <a class="btn plain" href="fiyat.html">Lisans koşulları</a>
 </div>
 <div class="sheet">
 <dl class="spec" aria-label="Özellikler">
-<div><dt>Sistemler</dt><dd>Debian 13, Ubuntu 24.04 <small>(her sürüm adayında denenir)</small><br>Debian 12, Ubuntu 22.04, Arch Linux <small>(desteklenir)</small><br>amd64</dd></div>
-<div><dt>Web</dt><dd>Nginx; site başına seçilen PHP sürümüyle PHP-FPM; Node.js, Python uygulamaları, statik siteler</dd></div>
+<div><dt>Sistemler</dt><dd>Debian 13, Ubuntu 24.04 <small>(her sürüm adayında denenir)</small><br>Debian 12, Ubuntu 22.04 <small>(desteklenir)</small><br>Arch Linux <small>(geliştirme düzeyi, her sürümde denenmez)</small><br>amd64</dd></div>
+<div><dt>Web</dt><dd>Nginx; site başına seçilen PHP sürümüyle PHP-FPM; statik siteler; Node.js ve Python uygulamaları (isteğe bağlı)</dd></div>
 <div><dt>E-posta</dt><dd>Postfix, Dovecot, Rspamd; Roundcube web posta</dd></div>
 <div><dt>DNS</dt><dd>Bu sunucuda BIND ya da PowerDNS, ya da dış bir sağlayıcı; DNS’in kopyasını tutan ikinci sunucu isteğe bağlıdır</dd></div>
 <div><dt>Veritabanı</dt><dd>MariaDB, PostgreSQL</dd></div>
 <div><dt>Yedek</dt><dd>Elle ya da zamanlanmış site yedekleri, sunucuda saklanır; uzak kopya (S3 uyumlu depolama ya da SFTP) isteğe bağlıdır</dd></div>
 <div><dt>Kullanıcılar</dt><dd>Yönetici, bayi, müşteri ve müşterinin ekip üyeleri; sınırları olan planlar</dd></div>
-<div><dt>Lisans</dt><dd>Sunucu başına, yıllık. Alfa süresince ücretsiz; 1.0 sürümünden itibaren 99 USD</dd></div>
+<div><dt>Lisans</dt><dd>Sunucu başına, yıllık. 1.0 sürümüne kadar ücretsiz; 1.0 sürümünden itibaren 99 USD</dd></div>
 <div><dt>Sürüm</dt><dd><a class="mono" href="surumler.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time>; Ed25519 ile imzalı</dd></div>
 <div><dt>Durum</dt><dd>Alfa: deneme sunucuları için; canlı kullanıma hazır değil</dd></div>
 </dl>
@@ -65,7 +65,7 @@
 <source media="(prefers-color-scheme: dark)" srcset="../assets/shots/domain-tr-dark.webp 1280w, ../assets/shots/domain-tr-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
 <img src="../assets/shots/domain-tr-light.webp" srcset="../assets/shots/domain-tr-light.webp 1280w, ../assets/shots/domain-tr-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="example.com alan adının Genel Bakış sekmesi: bağlı, DNS bu sunucudan sunuluyor; ad sunucuları ve çözüldüğü adres; sertifika 78 gün daha geçerli; posta gönderimi ve kimlik doğrulaması tamam; son yedek bugün." decoding="async">
 </picture>
-<figcaption><b>Şekil 1.</b> Bir alan adının genel bakışı. Gerçek panel, örnek veriler; ekran 19 Kasım 2026’da alındı.</figcaption>
+<figcaption><b>Şekil 1.</b> Bir alan adının genel bakışı. Gerçek panel, örnek veriler; ekran 19 Kasım 2026’da, alpha.141’den önce alındı; güncel sürümde ayrıntılar farklı olabilir.</figcaption>
 </figure>
 </div>
 </div>
@@ -105,7 +105,7 @@
 <tr><td class="v" data-k="Adım">1</td><td data-k="Yapılacak">Hesap oluşturun ve sunucu için lisans alın</td><td data-k="Nerede">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Adım">2</td><td data-k="Yapılacak">Desteklenen bir sistemle temiz bir sunucu hazırlayın</td><td data-k="Nerede">Sunucu sağlayıcınız</td></tr>
 <tr><td class="v" data-k="Adım">3</td><td data-k="Yapılacak">Kurulum komutunu çalıştırın; kurucu, hiçbir şey kurmadan önce sürümün imzasını ve SHA-256 özetini denetler</td><td data-k="Nerede">Sunucunun root terminalinde</td></tr>
-<tr><td class="v" data-k="Adım">4</td><td data-k="Yapılacak">Kurucunun gösterdiği adresten giriş yapın; kurulum sihirbazı alan adınızı ve DNS’in nerede olacağını sorar</td><td data-k="Nerede">Panel, tarayıcıda</td></tr>
+<tr><td class="v" data-k="Adım">4</td><td data-k="Yapılacak">Kurucunun gösterdiği adresten giriş yapın ve lisans anahtarınızı girin; ardından kurulum sihirbazı alan adınızı ve DNS’in nerede olacağını sorar</td><td data-k="Nerede">Panel, tarayıcıda</td></tr>
 </tbody>
 </table>
 </div>
@@ -120,17 +120,17 @@ sh celikpanel-install.sh</code></pre>
 <div class="table">
 <table class="stack">
 <caption>Tablo 2 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
-<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
+<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği bitişi</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Geliştirme düzeyi</span></td><td data-k="Dağıtımın güvenlik desteği bitişi">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">Denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Arch Linux bugünkü hâliyle desteklenir. Sürüm paketi amd64 için hazırlanır.</p>
+<p class="note">Her sürümde denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Geliştirme düzeyi (Arch Linux): CelikPanel onun için de hazırlanır ve bugünkü hâliyle çalışır, ama sürüm adayları orada denenmez ve sürekli güncellemeler çalışanı değiştirebilir. Debian tarihleri Debian LTS’i içerir; Ubuntu tarihleri ESM olmadan standart destektir. Sürüm paketi amd64 için hazırlanır.</p>
 <p class="more"><a href="sistemler.html">Her sistemde neler var, güncellemeler nasıl işler</a></p>
 </div>
 </section>
@@ -139,21 +139,24 @@ sh celikpanel-install.sh</code></pre>
 <div>
 <div class="table">
 <table class="stack">
-<caption>Tablo 3 · Yayımlanmış 0.1.0-alpha.144 sürümünde hesaplar arası ayırma</caption>
-<thead><tr><th scope="col">Önlem</th><th scope="col">Durum</th><th scope="col">Sürümden beri</th></tr></thead>
+<caption>Tablo 3 · Hesaplar arası ayırma, 0.1.0-alpha.144’e kadarki sürüm notlarına göre</caption>
+<thead><tr><th scope="col">Önlem</th><th scope="col">Durum</th><th scope="col">İlk sürüm</th></tr></thead>
 <tbody>
-<tr><td data-k="Önlem">Her sitenin kendi sistem hesabı vardır; sitenin PHP’si bu hesapla çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">≤ alpha.82</td></tr>
-<tr><td data-k="Önlem">Node.js siteleri, Python uygulamaları ve yüklenen programlar sitenin kendi hesabıyla bir kum havuzunda çalışır; mevcut Node.js sitelerini yönetici taşıdığında içeri girerler</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">alpha.127</td></tr>
-<tr><td data-k="Önlem">Ek FTP ve SFTP girişleri sitelerinin yalnız bir klasörünü görür, komut satırı açamaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">alpha.128</td></tr>
-<tr><td data-k="Önlem">Hiçbir hesap başka bir hesabın alan adını ya da site hesabını, sunucunun kendi hizmetlerinin portlarını alamaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">alpha.142</td></tr>
-<tr><td data-k="Önlem">Bir sitenin klasöründeki bağlantı, başka bir hesabın dosyalarını sunmaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">alpha.142</td></tr>
-<tr><td data-k="Önlem">Yedekten, kopyadan ya da içe aktarmadan gelen SQL, yöneticinin değil veritabanı sahibinin yetkisiyle çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">alpha.141</td></tr>
-<tr><td data-k="Önlem">PostgreSQL veritabanları başka hesaplara kapalıdır: yeniler baştan, eskiler başka bir hesap bir gün boyunca kullanmadığında</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">alpha.143</td></tr>
-<tr><td data-k="Önlem">Giden posta yalnız gönderenin kendi alan adı için imzalanır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="Sürümden beri">alpha.143</td></tr>
-<tr><td data-k="Önlem">Posta kutusu, alan adı ve hosting hesabı başına giden posta sınırları (isteğe bağlı; yönetici açana kadar kapalı)</td><td data-k="Durum"><span class="tag no">İsteğe bağlı</span></td><td class="v" data-k="Sürümden beri">alpha.128</td></tr>
-<tr><td data-k="Önlem">PHP’nin ve zamanlanmış görevlerin sitenin kendi kum havuzunda çalışması</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="Sürümden beri">—</td></tr>
-<tr><td data-k="Önlem">Hesabın bütün programları için hesap başına işlemci ve bellek sınırları (bugün: site başına PHP belleği, çalışma süresi ve işlem sayısı)</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="Sürümden beri">—</td></tr>
-<tr><td data-k="Önlem">Başka hangi sitelerin olduğunu gizleme: hesap adları ve işlemler bir site hesabına hâlâ görünür</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="Sürümden beri">—</td></tr>
+<tr><td data-k="Önlem">Her sitenin kendi sistem hesabı vardır; sitenin PHP’si bu hesapla çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.82 ya da öncesi</td></tr>
+<tr><td data-k="Önlem">Node.js siteleri, Python uygulamaları ve yüklenen programlar (isteğe bağlı programlar) sitenin kendi hesabıyla bir kum havuzunda çalışır; mevcut Node.js sitelerini yönetici taşıdığında içeri girerler</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.127</td></tr>
+<tr><td data-k="Önlem">Ek FTP ve SFTP girişleri sitelerinin yalnız bir klasörünü görür, komut satırı açamaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.128</td></tr>
+<tr><td data-k="Önlem">Hiçbir müşteri ya da bayi başka bir hesabın alan adını ya da site hesabını, sunucunun kendi hizmetlerinin portlarını alamaz (alpha.142’den önce çakışmış adlar yöneticiye listelenir)</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.142</td></tr>
+<tr><td data-k="Önlem">Bir sitenin klasöründeki bağlantı, başka bir hesabın dosyalarını sunmaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.142</td></tr>
+<tr><td data-k="Önlem">Yedekten, kopyadan ya da içe aktarmadan gelen SQL, yöneticinin değil veritabanı sahibinin yetkisiyle çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.141</td></tr>
+<tr><td data-k="Önlem">PostgreSQL veritabanları başka hesaplara kapalıdır: yeniler baştan; eskiler, başka bir hesabın kullandığı görülmeyen bir günün ardından panel tarafından, aksi hâlde yönetici PostgreSQL sayfasında kapattığında</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
+<tr><td data-k="Önlem">Giden posta yalnız gönderenin kendi alan adı için imzalanır (Arch Linux’ta henüz değil: oradaki OpenDKIM imzayı girişe bağlayamıyor)</td><td data-k="Durum"><span class="tag ok">Var, Arch Linux hariç</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
+<tr><td data-k="Önlem">Posta kutusu, alan adı ve hosting hesabı başına giden posta sınırları (isteğe bağlı; yönetici açana kadar kapalı)</td><td data-k="Durum"><span class="tag no">İsteğe bağlı</span></td><td class="v" data-k="İlk sürüm">alpha.128</td></tr>
+<tr><td data-k="Önlem">PHP’nin ve zamanlanmış görevlerin sitenin kendi kum havuzunda çalışması</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Her hesabın bütün programları için işlemci ve bellek sınırı (bugün: site başına PHP belleği, çalışma süresi ve işlem sayısı)</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Başka hangi sitelerin olduğunu gizleme: hesap adları ve işlemler bir site hesabına hâlâ görünür</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Her site için ayrı web sunucusu grubu (bugün web sunucusunun grubu her sitenin klasörünü okuyabilir; aradaki engel bağlantı kuralıdır)</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Posta adres listelerinin diğer hesaplardan gizlenmesi</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Bir veritabanını başka bir PostgreSQL sürümüne sahibinin yetkisiyle taşımak (bugün: yöneticinin)</td><td data-k="Durum"><span class="tag warn">Henüz yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
 </tbody>
 </table>
 </div>
@@ -188,13 +191,13 @@ sh celikpanel-install.sh</code></pre>
 <div>
 <div class="table">
 <table class="stack">
-<caption>Tablo 4 · Kurtarma denemeleri</caption>
+<caption>Tablo 4 · Eylül 2026 derlemeleriyle kurtarma denemeleri</caption>
 <thead><tr><th scope="col">Ölçüm</th><th scope="col">Değer</th><th scope="col">Koşul</th><th scope="col">Tarih</th></tr></thead>
 <tbody>
-<tr><th scope="row">Ölen bir sunucudan yeniden hizmete dönüş</th><td class="v" data-k="Değer">105 sn</td><td data-k="Koşul">Birinci sunucu elektrik kesintisiyle durdu; yeni bir makine açılıp tek mühürlü arşivden geri yüklendi</td><td class="v" data-k="Tarih">2026-09-05</td></tr>
+<tr><th scope="row">Çöken bir sunucudan panelin yeniden hizmet vermesine (DNS 15 sn sonra cevap verdi)</th><td class="v" data-k="Değer">105 sn</td><td data-k="Koşul">Birinci sunucu elektrik kesintisiyle durdu; yeni bir makine açılıp mühürlü tek bir arşivden geri yüklendi</td><td class="v" data-k="Tarih">2026-09-05</td></tr>
 <tr><th scope="row">Kesinti anında arşivin yaşı, kaybolan veri</th><td class="v" data-k="Değer">40,9 sn · 0</td><td data-k="Koşul">O aralıkta hiçbir şey yazılmamıştı; hiçbir şey kaybolmadı</td><td class="v" data-k="Tarih">2026-09-05</td></tr>
 <tr><th scope="row">Çalışan bir BIND devralınırken cevapsız kalan sorgu</th><td class="v" data-k="Değer">0 / 2508</td><td data-k="Koşul">Debian 13’te kendi bölgesini cevaplayan, elle kurulmuş bir BIND, panelden devralındı</td><td class="v" data-k="Tarih">2026-09-04</td></tr>
-<tr><th scope="row">Elektrik kesintisinden sonra yarım işin çözülme süresi</th><td class="v" data-k="Değer">≤ 7 sn</td><td data-k="Koşul">Gerçek bir sanal makinede dört kesinti; her defasında iş kimse dokunmadan tamamlandı ya da geri alındı</td><td class="v" data-k="Tarih">2026-09-04</td></tr>
+<tr><th scope="row">Elektrik kesintisinden sonra yarım kalan işin sonuçlanma süresi</th><td class="v" data-k="Değer">≤ 7 sn</td><td data-k="Koşul">Gerçek bir sanal makinede dört kesinti; her defasında iş kimse dokunmadan tamamlandı ya da geri alındı</td><td class="v" data-k="Tarih">2026-09-04</td></tr>
 </tbody>
 </table>
 </div>
@@ -207,14 +210,14 @@ sh celikpanel-install.sh</code></pre>
 <div class="table">
 <table class="stack kv">
 <caption>Tablo 5 · Bugünkü ve 1.0 sürümünden itibaren geçerli lisans</caption>
-<thead><tr><th scope="col">Konu</th><th scope="col">Bugün, alfa</th><th scope="col">1.0 sürümünden itibaren</th></tr></thead>
+<thead><tr><th scope="col">Konu</th><th scope="col">Bugün (alfa)</th><th scope="col">1.0 sürümünden itibaren</th></tr></thead>
 <tbody>
-<tr><th scope="row">Fiyat</th><td data-k="Bugün, alfa">Ücretsiz</td><td data-k="1.0 sürümünden itibaren">Sunucu başına yıllık 99 USD (liste fiyatı)</td></tr>
-<tr><th scope="row">Süre</th><td data-k="Bugün, alfa">Oluşturulduğundan itibaren bir yıl; hesabınızdan ücretsiz yenilenir</td><td data-k="1.0 sürümünden itibaren">Bir yıl; kesintisiz yenilediğiniz sürece fiyat artmaz</td></tr>
-<tr><th scope="row">celikpanel.net’e ulaşılamazsa</th><td data-k="Bugün, alfa">Yönetim en çok 7 gün açık kalır</td><td data-k="1.0 sürümünden itibaren">Her şey 30 gün çalışmaya devam eder</td></tr>
-<tr><th scope="row">Lisans biterse</th><td data-k="Bugün, alfa">Panel ekranlarının neredeyse hepsi kilitlenir; siteler, posta, DNS, veritabanları ve zamanlanmış işler çalışır</td><td data-k="1.0 sürümünden itibaren">30, 7 ve 1 gün önce hatırlatma; 30 gün ek süre; sonra yalnız yeni alan adı, hesap ve posta kutusu açmak bekler</td></tr>
-<tr><th scope="row">Deneme ve iade</th><td data-k="Bugün, alfa">—</td><td data-k="1.0 sürümünden itibaren">Kart istemeyen 30 günlük deneme; 30 gün içinde iade</td></tr>
-<tr><th scope="row">Ödeme</th><td data-k="Bugün, alfa">Yok</td><td data-k="1.0 sürümünden itibaren">ABD doları ile; ödeme sağlayıcısı ve vergi ayrıntıları henüz belirlenmedi</td></tr>
+<tr><th scope="row">Fiyat</th><td data-k="Bugün (alfa)">Ücretsiz</td><td data-k="1.0 sürümünden itibaren">Sunucu başına yıllık 99 USD (liste fiyatı)</td></tr>
+<tr><th scope="row">Süre</th><td data-k="Bugün (alfa)">Oluşturulduğundan itibaren bir yıl; hesabınızdan ücretsiz yenilenir</td><td data-k="1.0 sürümünden itibaren">Bir yıl; kesintisiz yenilediğiniz sürece fiyat artmaz</td></tr>
+<tr><th scope="row">celikpanel.net’e ulaşılamazsa</th><td data-k="Bugün (alfa)">Yönetim en çok 7 gün açık kalır</td><td data-k="1.0 sürümünden itibaren">Her şey 30 gün çalışmaya devam eder</td></tr>
+<tr><th scope="row">Lisans biterse</th><td data-k="Bugün (alfa)">Panel ekranlarının neredeyse hepsi kilitlenir; siteler, posta, DNS, veritabanları ve zamanlanmış işler çalışır</td><td data-k="1.0 sürümünden itibaren">30, 7 ve 1 gün önce hatırlatma; 30 gün ek süre; sonra yenilenene kadar yalnız yeni alan adı, hesap ve posta kutusu oluşturmak kapanır</td></tr>
+<tr><th scope="row">Deneme ve iade</th><td data-k="Bugün (alfa)">—</td><td data-k="1.0 sürümünden itibaren">Kart istemeyen 30 günlük deneme; 30 gün içinde iade</td></tr>
+<tr><th scope="row">Ödeme</th><td data-k="Bugün (alfa)">Yok</td><td data-k="1.0 sürümünden itibaren">Liste fiyatı ABD doları; ödeme sağlayıcısı, vergi ve diğer para birimleri henüz belirlenmedi</td></tr>
 </tbody>
 </table>
 </div>
@@ -226,15 +229,15 @@ sh celikpanel-install.sh</code></pre>
 <div class="split">
 <div>
 <h3>Son sürüm: <span class="mono">@@CP_RELEASE_VERSION@@</span>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></h3>
-<p>Ed25519 ile imzalı. Sürüm notları sürümün kaydını, laboratuvarda neyin denendiğini, neyin denenmediğini ve bilinen sınırları yazar.</p>
-<p>Bir güncelleme tamamlanmazsa panel önceki sürümü ve veritabanını kendisi geri koyar. Siteler, posta, DNS ve veritabanları buna dahil değildir.</p>
+<p>Ed25519 ile imzalı. Sürüm notları sürümün commit’ini, laboratuvarda neyin denendiğini, neyin denenmediğini ve bilinen sınırları yazar.</p>
+<p>Güncelleme kurulu sürümü değiştirdikten sonra başarısız olursa panel önceki sürümü ve veritabanını kendisi geri koyar (güncellemeden sonra panelde yapılanlar kaybolur); daha önce durursa hiçbir şey değişmemiştir. Hangisinin olduğunu güncelleme ekranı söyler.</p>
 <p><a href="surumler.html">Sürüm notları, dosyalar ve nasıl denetlenecekleri</a></p>
 <p><a href="degisiklikler.html">Sürümlere göre değişiklikler</a><span class="sep" aria-hidden="true">·</span><a href="sorunlar.html">Bilinen sorunlar ve sorun bildirmek</a></p>
 </div>
 <div>
 <h3>Henüz sunulmayanlar</h3>
 <ul class="plain">
-<li>Apache ve Exim: yerlerine Nginx ve Postfix</li>
+<li>Apache ve Exim: yerine Nginx ve Postfix kullanın</li>
 <li>Panelde sunucunun tamamının yedeği: sistem için sağlayıcınızın anlık görüntülerini kullanın</li>
 <li>Paneli bir sunucudan kaldırmak</li>
 <li>Hesap başına işlemci ve bellek sınırları</li>

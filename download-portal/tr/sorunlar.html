@@ -24,7 +24,7 @@
 <header class="doc">
 <div class="wrap">
 <a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
-<span class="docid">Veri sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
 <nav aria-label="Ana menü"><ul>
 <li><a href="sistemler.html">Sistemler</a></li>
 <li><a href="indir.html">Kurulum</a></li>
@@ -64,9 +64,9 @@
 <tr id="CP-2026-10"><td class="v" data-k="Numara">CP-2026-10</td><td data-k="Sorun">Bazı takma ad ve sertifika retleri Türkçe sayfada İngilizce gösteriliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
 <tr id="CP-2026-9"><td class="v" data-k="Numara">CP-2026-9</td><td data-k="Sorun">Bir veritabanı başka hesaplara kapatılırken PostgreSQL sayfasından ayrılmak, sonucunu onaylanmamış olarak gösteriyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
 <tr id="CP-2026-8"><td class="v" data-k="Numara">CP-2026-8</td><td data-k="Sorun">Posta kutusu oluşturulurken sayfadan ayrılmak kutuyu kaydı olmadan bırakabiliyor, yeniden oluşturmak da başarısız oluyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
-<tr id="CP-2026-7"><td class="v" data-k="Numara">CP-2026-7</td><td data-k="Sorun">Bir müşterinin kendi alan adının içindeki takma ad DNS kaydı almıyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
-<tr id="CP-2026-6"><td class="v" data-k="Numara">CP-2026-6</td><td data-k="Sorun">alpha.141’den önce oluşturulan PostgreSQL veritabanları her hesabın girişine açıktı.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
-<tr id="CP-2026-5"><td class="v" data-k="Numara">CP-2026-5</td><td data-k="Sorun">Giden posta başka bir müşterinin alan adıyla imzalanabiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-7"><td class="v" data-k="Numara">CP-2026-7</td><td data-k="Sorun">Bir müşterinin kendi alan adının içindeki takma ad DNS kaydı almıyordu.<br><small>Not: alpha.144’ten önce eklenen takma adlar, kaldırılıp yeniden eklenince kaydını alır.</small></td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-6"><td class="v" data-k="Numara">CP-2026-6</td><td data-k="Sorun">alpha.141’den önce oluşturulan PostgreSQL veritabanları her hesabın girişine açıktı.<br><small>Not: Panelin kendiliğinden kapatmadıklarını yönetici kapatır; elle oluşturulan veritabanlarına dokunulmaz.</small></td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-5"><td class="v" data-k="Numara">CP-2026-5</td><td data-k="Sorun">Giden posta başka bir müşterinin alan adıyla imzalanabiliyordu.<br><small>Not: Debian ve Ubuntu’da düzeltildi; Arch Linux’ta girişle gönderilen posta hâlâ başka bir barındırılan alan adı için imzalanabilir.</small></td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
 <tr id="CP-2026-4"><td class="v" data-k="Numara">CP-2026-4</td><td data-k="Sorun">Uygulaması başarısız olmuş bir Node.js sitesi silinemiyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
 <tr id="CP-2026-3"><td class="v" data-k="Numara">CP-2026-3</td><td data-k="Sorun">Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adına alt alan adı ekleyemiyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
 <tr id="CP-2026-2"><td class="v" data-k="Numara">CP-2026-2</td><td data-k="Sorun">Bir müşteri ya da bayi, başka bir hesaba ait bir adı, site hesabını, sunucu portunu ya da dosyaları alabiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.142">v0.1.0-alpha.142</a></td></tr>
@@ -74,7 +74,7 @@
 </tbody>
 </table>
 </div>
-<p class="note">Her vaka yayımlanmış sürüm notlarından alınır. Bir bildirim burada yalnız kendi özetimizle gösterilir: bildirenin adı, sunucusu, alan adı ya da sözleri hiçbir zaman.</p>
+<p class="note">Her vaka yayımlanmış sürüm notlarından alınır. Bir bildirim burada yalnız kendi özetimizle gösterilir: bildirenin adı, sunucusu, alan adı ya da kendi sözleri hiçbir zaman gösterilmez.</p>
 </div>
 </section>
 <section class="part" id="bildir" aria-labelledby="h-report">
@@ -89,7 +89,7 @@
 <tr><th scope="row">Neler yazılmalı</th><td>CelikPanel sürümü, işletim sistemi, neye bastığınız ve ekranın ne dediği.</td></tr>
 <tr><th scope="row">Asla gönderilmemesi gerekenler</th><td>Parolalar, anahtarlar, erişim jetonları ya da kimsenin kişisel verisi.</td></tr>
 <tr><th scope="row">Sonra ne olur</th><td>Bir bildirimi kabul ettiğimizde bu sayfada bir numara alır, ardından durumu, düzeltildiğinde de onu düzelten sürüm yazılır.</td></tr>
-<tr><th scope="row">Yakında</th><td>Üyeler için celikpanel.net hesabında bir bildirim formu geliyor; o zamana kadar yukarıdaki gibi bildirin.</td></tr>
+<tr><th scope="row">Bildirim formu</th><td>celikpanel.net hesabında henüz bir bildirim formu yok; yukarıdaki gibi bildirin.</td></tr>
 </tbody>
 </table>
 </div>

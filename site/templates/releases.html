@@ -41,7 +41,7 @@
 <table class="stack">
 <caption>{{t "common.table"}} 1 · {{t "releases.check.caption"}}</caption>
 <tbody>
-{{- range $i, $k := (list "1" "2" "3")}}
+{{- range $i, $k := (list "1" "2" "3" "4")}}
 <tr><td class="v">{{$k}}</td><td>{{t (print "releases.check.step" $k)}}</td></tr>
 {{- end}}
 </tbody>
@@ -53,7 +53,9 @@
 sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
 openssl pkeyutl -verify -rawin -pubin \
   -inkey release-signing-ed25519.pem \
-  -in release-manifest-v2 -sigfile release-manifest-v2.sig</code></pre>
+  -in release-manifest-v2 -sigfile release-manifest-v2.sig
+grep '^archive_sha256=' release-manifest-v2
+sha256sum @@CP_RELEASE_ARCHIVE_NAME@@</code></pre>
 <p class="note">{{t "releases.check.note"}}</p>
 </div>
 <p class="key">{{t "releases.check.key"}} <code>{{t "releases.check.fingerprint"}}</code></p>

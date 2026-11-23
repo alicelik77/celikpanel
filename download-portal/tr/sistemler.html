@@ -24,7 +24,7 @@
 <header class="doc">
 <div class="wrap">
 <a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
-<span class="docid">Veri sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
 <nav aria-label="Ana menü"><ul>
 <li><a href="sistemler.html" aria-current="page">Sistemler</a></li>
 <li><a href="indir.html">Kurulum</a></li>
@@ -50,17 +50,17 @@
 <div class="table">
 <table class="stack">
 <caption>Tablo 1 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
-<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
+<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği bitişi</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Geliştirme düzeyi</span></td><td data-k="Dağıtımın güvenlik desteği bitişi">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
 </tbody>
 </table>
 </div>
-<p class="note">Denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Arch Linux bugünkü hâliyle desteklenir. Sürüm paketi amd64 için hazırlanır.</p>
+<p class="note">Her sürümde denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Geliştirme düzeyi (Arch Linux): CelikPanel onun için de hazırlanır ve bugünkü hâliyle çalışır, ama sürüm adayları orada denenmez ve sürekli güncellemeler çalışanı değiştirebilir. Debian tarihleri Debian LTS’i içerir; Ubuntu tarihleri ESM olmadan standart destektir. Sürüm paketi amd64 için hazırlanır.</p>
 <p class="note">Başka sistemler henüz desteklenmiyor; daha fazla sistem için destek planlanıyor. Red Hat ailesi sistemleri (RHEL, AlmaLinux, Rocky Linux 9) tanınır ve kurucu şimdilik bunları reddeder. Bu tabloda olmayan bir sistem denetlenmemiştir.</p>
 </div>
 </section>
@@ -73,7 +73,7 @@
 <tbody>
 <tr><th scope="row">Neler var</th><td>CelikPanel’in bileşenleri, dağıtımın kendi paketlerinden. Daha yeni bir sürüm istendiğinde üretici deposu (örneğin PHP ya da PostgreSQL için) yalnız bilerek yapılan bir seçim olarak sunulur.</td></tr>
 <tr><th scope="row">Neler yok</th><td>Apache ve Exim, hiçbir sistemde: tümleştirmeleri bitmedi; Nginx ve Postfix kullanın. Sürümler dağıtım sürümüne göre değişir: Debian 13 PHP 8.4 ve PostgreSQL 17 getirir, Ubuntu 24.04 PHP 8.3 ve PostgreSQL 16 getirir. Panel, sisteminizin neler sunduğunu gösterir.</td></tr>
-<tr><th scope="row">Güncellemeler nasıl işler</th><td>Düzeltmeler dağıtımın güvenlik ve güncelleme arşivlerinden gelir. Sistemin kendi <code>unattended-upgrades</code> aracı bunları her gün kendiliğinden kurar ya da siz elle kurarsınız; seçimi panelde Güvenlik bölümünde yaparsınız. Seçim tek bir apt dosyasıdır, <code>/etc/apt/apt.conf.d/20auto-upgrades</code>; bu yüzden CelikPanel dururken de işler. Panel sunucuyu hiçbir zaman kendiliğinden yeniden başlatmaz.</td></tr>
+<tr><th scope="row">Güncellemeler nasıl işler</th><td>Düzeltmeler dağıtımdan gelir. Otomatik seçilirse sistemin kendi <code>unattended-upgrades</code> aracı, almaya ayarlı olduğu güncellemeleri (varsayılan olarak güvenlik güncellemelerini) her gün kendiliğinden kurar; Elle seçilirse siz kurarsınız. Seçimi panelde Güvenlik bölümünde yaparsınız; panel hangi arşivlerin kullanıldığını gösterir. Seçim tek bir apt dosyasıdır, <code>/etc/apt/apt.conf.d/20auto-upgrades</code>; bu yüzden CelikPanel dururken de işler. Panel sunucuyu hiçbir zaman kendiliğinden yeniden başlatmaz.</td></tr>
 <tr><th scope="row">Yeni ana sürümler</th><td>16’dan sonra PostgreSQL 17 ya da 8.4’ten sonra PHP 8.5 gibi yeni bir ana sürüm ayrı bir programdır, güncelleme değildir. Güncellemeler sahip olduğunuz sürümü düzeltir; yeni ana sürüme siz karar verdiğinizde kendiniz geçersiniz.</td></tr>
 </tbody>
 </table>
@@ -89,7 +89,7 @@
 <tbody>
 <tr><th scope="row">Neler var</th><td>Arch’ın resmî paketleriyle sunucu rolleri: web, PHP, MariaDB, PostgreSQL, posta, sertifikalar, güvenlik duvarı ve yedekler. Başka sistemlerin Redis sunduğu yerde Valkey sunulur.</td></tr>
 <tr><th scope="row">Neler yok ve neden</th><td><ul class="plain">
-<li>phpPgAdmin ve SpamAssassin: Arch’ın resmî depolarında çalışan bir paketleri yok (yalnız AUR’da var ve CelikPanel AUR kullanmaz). PostgreSQL’i psql ile yönetin, istenmeyen posta süzgeci olarak Rspamd kullanın.</li>
+<li>phpPgAdmin Arch’ın resmî depolarında yok, SpamAssassin’in Postfix köprüsü de yok (ikisi de yalnız AUR’da; CelikPanel AUR kullanmaz). PostgreSQL’i psql ile yönetin, istenmeyen posta süzgeci olarak Rspamd kullanın.</li>
 <li>Redis: Arch onun yerine uyumlu Valkey’i getirir, bu yüzden Valkey sunulur.</li>
 <li>Apache ve Exim: henüz hiçbir sistemde sunulmuyor. Nginx ve Postfix kullanın.</li>
 <li>Çalışan bir DNS sunucusunu PowerDNS’e geçirmek: Arch’ta PowerDNS yalnız DNS yazılımı olmayan bir sunucuya kurulur.</li>

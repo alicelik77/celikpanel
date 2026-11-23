@@ -121,7 +121,7 @@ func TestProblemsAndChangelog(t *testing.T) {
 	if err := json.Unmarshal(raw, &loose); err != nil {
 		t.Fatal(err)
 	}
-	allowed := map[string]bool{"id": true, "opened": true, "state": true, "fixed_in": true, "summary": true, "meanwhile": true, "reason": true, "sources": true}
+	allowed := map[string]bool{"id": true, "opened": true, "state": true, "fixed_in": true, "summary": true, "meanwhile": true, "note": true, "reason": true, "sources": true}
 	for _, c := range loose.Cases {
 		for field := range c {
 			if !allowed[field] {
