@@ -109,5 +109,16 @@ func noSecretIn(t *testing.T, err error, secrets ...string) {
 	}
 }
 
-// membershipID is a real-shaped uuid for the tests.
-const membershipID = "01234567-89ab-cdef-0123-456789abcdef"
+// CelikPanel: licenseID is a licence id's shape (32 hex) for the tests, in place of
+// bioexamine's membership UUID.
+const licenseID = "0123456789abcdef0123456789abcdef"
+
+// mustReference is a fresh order reference for licenseID.
+func mustReference(t *testing.T, license string, automaticRenewal bool) string {
+	t.Helper()
+	reference, err := NewOrderReference(license, automaticRenewal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reference
+}

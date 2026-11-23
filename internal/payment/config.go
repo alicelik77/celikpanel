@@ -308,67 +308,53 @@ func FromMinor(minor int64, currency string) (string, error) {
 	return fmt.Sprintf("%d.%02d", minor/100, minor%100), nil
 }
 
-// twoDecimals normalizes a decimal amount to "123.40".
-func twoDecimals(amount string) (string, error) {
-	minor, err := ToMinor(amount, "TRY")
-	if err != nil {
-		return "", err
-	}
-	return FromMinor(minor, "TRY")
-}
-
 // ---------------------------------------------------------------------------
 // References.
 //
 // Our reference for a checkout or a renewal is letters and digits only (PayTR's merchant_oid must
-// be alphanumeric, at most 64): "BX", a kind letter (C checkout, R renewal), the membership id
-// without dashes (32 hex), and 12 characters that make it unique. The membership can be read back
-// from it, so a provider that echoes only our reference still names the membership.
+// be alphanumeric, at most 64, which keeps a later provider open): CelikPanel: "CP", a kind letter
+// (C one-time checkout, S subscription checkout, R renewal charge), the licence id (32 hex), and 12
+// characters that make it unique. The licence can be read back from it, so a provider that echoes
+// only our reference still names the licence.
 
-var referencePattern = regexp.MustCompile(`^BX[CR]([0-9a-f]{32})[0-9a-zA-Z]{12}$`)
+var referencePattern = regexp.MustCompile(`^CP[CSR]([0-9a-f]{32})[0-9a-zA-Z]{12}$`)
 
-// NewCheckoutReference is a fresh reference for one checkout attempt.
-func NewCheckoutReference(membershipID string) (string, error) {
-	hexID, err := compactUUID(membershipID)
-	if err != nil {
-		return "", err
+var licensePattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
+// NewOrderReference is a fresh reference for one checkout attempt: kind C for a one-time payment,
+// S when the member asked for automatic renewal.
+func NewOrderReference(licenseID string, automaticRenewal bool) (string, error) {
+	if !licensePattern.MatchString(licenseID) {
+		return "", ErrCheckoutIncomplete
 	}
 	var random [6]byte
 	if _, err := rand.Read(random[:]); err != nil {
 		return "", err
 	}
-	return "BXC" + hexID + hex.EncodeToString(random[:]), nil
+	kind := "C"
+	if automaticRenewal {
+		kind = "S"
+	}
+	return "CP" + kind + licenseID + hex.EncodeToString(random[:]), nil
 }
 
 // RenewalReference is the reference of the charge for the year that ends at periodEnd: the same
 // every time it is computed, so a second attempt is the same order to the provider.
-func RenewalReference(membershipID string, periodEnd time.Time) (string, error) {
-	hexID, err := compactUUID(membershipID)
-	if err != nil {
-		return "", err
+func RenewalReference(licenseID string, periodEnd time.Time) (string, error) {
+	if !licensePattern.MatchString(licenseID) {
+		return "", ErrCheckoutIncomplete
 	}
-	return "BXR" + hexID + periodEnd.UTC().Format("200601021504"), nil
+	return "CPR" + licenseID + periodEnd.UTC().Format("200601021504"), nil
 }
 
-// MembershipFromReference reads the membership id back from one of our references ("" if the
+// LicenseFromReference reads the licence id back from one of our references ("" if the
 // reference is not ours).
-func MembershipFromReference(reference string) string {
+func LicenseFromReference(reference string) string {
 	m := referencePattern.FindStringSubmatch(reference)
 	if m == nil {
 		return ""
 	}
-	h := m[1]
-	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:32]
-}
-
-var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-func compactUUID(id string) (string, error) {
-	id = strings.ToLower(strings.TrimSpace(id))
-	if !uuidPattern.MatchString(id) {
-		return "", ErrCheckoutIncomplete
-	}
-	return strings.ReplaceAll(id, "-", ""), nil
+	return m[1]
 }
 
 // ---------------------------------------------------------------------------
@@ -412,14 +398,6 @@ func (n Notification) header(name string) string {
 	return ""
 }
 
-func truncate(value string, max int) string {
-	if utf8.RuneCountInString(value) <= max {
-		return value
-	}
-	runes := []rune(value)
-	return string(runes[:max])
-}
-
 func languageOr(language string) string {
 	if strings.HasPrefix(strings.ToLower(language), "en") {
 		return "en"
@@ -427,22 +405,10 @@ func languageOr(language string) string {
 	return "tr"
 }
 
-// productName is what the payer sees on the provider's page: the plan, yearly.
-func productName(planKind, language string) string {
-	tr := map[string]string{"individual": "Bireysel", "family": "Aile", "group": "Grup",
-		"clinician": "Hekim", "institution": "Kurum"}
-	en := map[string]string{"individual": "Individual", "family": "Family", "group": "Group",
-		"clinician": "Clinician", "institution": "Institution"}
+// productName is what the payer sees on the provider's page. CelikPanel: one licence, one year.
+func productName(language string) string {
 	if languageOr(language) == "en" {
-		name := en[planKind]
-		if name == "" {
-			name = "Membership"
-		}
-		return "BioExamine " + name + " (yearly)"
+		return "CelikPanel licence, one server, one year"
 	}
-	name := tr[planKind]
-	if name == "" {
-		name = "Üyelik"
-	}
-	return "BioExamine " + name + " (yıllık)"
+	return "CelikPanel lisansı, bir sunucu, bir yıl"
 }

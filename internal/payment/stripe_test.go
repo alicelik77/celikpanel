@@ -68,14 +68,21 @@ func TestStripeSignatureKnownVector(t *testing.T) {
 	}
 }
 
+// CelikPanel: a yearly subscription session exists only when the member turned automatic
+// renewal on; its first charge is the licence end (the one-time purchase is
+// TestStripeEveryPurchaseIsAOneTimePayment).
 func TestStripeCheckoutIsAYearlySubscriptionSession(t *testing.T) {
 	fake := newFakeServer(t)
 	fake.on(http.MethodPost, "/v1/checkout/sessions", func(r recordedRequest) (int, string) {
 		return 200, `{"id":"cs_test_a1","object":"checkout.session","url":"https://checkout.stripe.com/c/pay/cs_test_a1"}`
 	})
-	provider := &Stripe{BaseURL: fake.server.URL}
-	checkout := Checkout{MembershipID: membershipID, PlanKind: "family", Amount: "179.00", Currency: "EUR",
-		Period: PeriodYearly, PayerEmail: "payer@example.com", PayerID: "p1", Origin: "https://app.example", Language: "en"}
+	now := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	provider := &Stripe{BaseURL: fake.server.URL, Now: func() time.Time { return now }}
+	order := mustReference(t, licenseID, true)
+	licenceEnd := now.AddDate(0, 10, 0)
+	checkout := Checkout{LicenseID: licenseID, Order: order, Amount: "99.00", Currency: "USD", Period: PeriodYearly,
+		PayerEmail: "payer@example.com", SuccessURL: "https://account.example/done", CancelURL: "https://account.example/back",
+		Language: "en", AutomaticRenewal: true, FirstChargeAt: licenceEnd}
 	start, err := provider.StartCheckout(context.Background(), stripeCredentials(t), checkout)
 	if err != nil || start.Reference != "cs_test_a1" || start.RedirectURL != "https://checkout.stripe.com/c/pay/cs_test_a1" {
 		t.Fatalf("checkout: %+v %v", start, err)
@@ -83,14 +90,16 @@ func TestStripeCheckoutIsAYearlySubscriptionSession(t *testing.T) {
 	sent := fake.last()
 	form, _ := url.ParseQuery(string(sent.Body))
 	want := map[string]string{
-		"mode": "subscription", "client_reference_id": membershipID,
-		"line_items[0][price_data][currency]":            "eur",
-		"line_items[0][price_data][unit_amount]":         "17900", // 179.00 EUR in cents
-		"line_items[0][price_data][recurring][interval]": "year",
-		"line_items[0][quantity]":                        "1",
-		"subscription_data[metadata][membership_id]":     membershipID,
-		"success_url":    "https://app.example/ayarlar/uyelik?odeme=tamam",
-		"customer_email": "payer@example.com",
+		"mode": "subscription", "client_reference_id": order,
+		"line_items[0][price_data][currency]":                  "usd",
+		"line_items[0][price_data][unit_amount]":               "9900", // 99.00 USD in cents
+		"line_items[0][price_data][recurring][interval]":       "year",
+		"line_items[0][price_data][recurring][interval_count]": "1",
+		"line_items[0][quantity]":                              "1",
+		"subscription_data[metadata][license_id]":              licenseID,
+		"subscription_data[trial_end]":                         strconv.FormatInt(licenceEnd.Unix(), 10),
+		"success_url":                                          "https://account.example/done",
+		"customer_email":                                       "payer@example.com",
 	}
 	for field, value := range want {
 		if form.Get(field) != value {
@@ -98,7 +107,7 @@ func TestStripeCheckoutIsAYearlySubscriptionSession(t *testing.T) {
 		}
 	}
 	if sent.Header.Get("Authorization") != "Bearer "+stripeTestKey || sent.Header.Get("Stripe-Version") != stripeVersion ||
-		!strings.HasPrefix(sent.Header.Get("Idempotency-Key"), "BXC") {
+		sent.Header.Get("Idempotency-Key") != order || !strings.HasPrefix(order, "CPS") {
 		t.Fatalf("headers: %v", sent.Header)
 	}
 
@@ -136,36 +145,37 @@ func stripeNotification(t *testing.T, provider *Stripe, body string, sign bool) 
 func TestStripeWebhookEvents(t *testing.T) {
 	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
 	provider := &Stripe{Now: func() time.Time { return now }}
+	order := mustReference(t, licenseID, true)
 
 	completed := `{"id":"evt_1","type":"checkout.session.completed","data":{"object":{"id":"cs_1","mode":"subscription",` +
-		`"client_reference_id":"` + membershipID + `","subscription":"sub_1","customer":"cus_1","payment_status":"paid"}}}`
+		`"client_reference_id":"` + order + `","subscription":"sub_1","customer":"cus_1","payment_status":"paid"}}}`
 	event, err := stripeNotification(t, provider, completed, true)
-	if err != nil || event.Kind != EventRenewalMethod || event.MembershipID != membershipID || event.Renewal == nil ||
-		event.Renewal.Reference != "sub_1" || event.Renewal.Customer != "cus_1" || !event.Renewal.Active {
+	if err != nil || event.Kind != EventRenewalMethod || event.LicenseID != licenseID || event.Renewal == nil ||
+		event.Renewal.Reference != "sub_1" || event.Renewal.Customer != "cus_1" || !event.Renewal.Active || event.EventID != "evt_1" {
 		t.Fatalf("session completed: %+v %v", event, err)
 	}
 
 	// invoice.paid, the basil shape: the subscription and its metadata under parent.
-	paid := `{"id":"evt_2","type":"invoice.paid","data":{"object":{"id":"in_1","object":"invoice","amount_paid":17900,` +
-		`"amount_due":17900,"currency":"eur","customer":"cus_1","billing_reason":"subscription_create",` +
-		`"parent":{"type":"subscription_details","subscription_details":{"subscription":"sub_1","metadata":{"membership_id":"` + membershipID + `"}}}}}}`
+	paid := `{"id":"evt_2","type":"invoice.paid","data":{"object":{"id":"in_1","object":"invoice","amount_paid":9900,` +
+		`"amount_due":9900,"currency":"usd","customer":"cus_1","billing_reason":"subscription_cycle",` +
+		`"parent":{"type":"subscription_details","subscription_details":{"subscription":"sub_1","metadata":{"license_id":"` + licenseID + `"}}}}}}`
 	event, err = stripeNotification(t, provider, paid, true)
 	if err != nil || event.Kind != EventPayment || event.Reference != "in_1" || event.Status != StatusSucceeded ||
-		event.Amount != "179.00" || event.Currency != "EUR" || event.Period != PeriodYearly || event.Renewal == nil {
+		event.Amount != "99.00" || event.Currency != "USD" || event.Period != PeriodYearly || event.Renewal == nil {
 		t.Fatalf("invoice paid: %+v %v", event, err)
 	}
 	// The pre-basil shape: subscription and subscription_details at the top.
-	old := `{"id":"evt_3","type":"invoice.paid","data":{"object":{"id":"in_2","amount_paid":9900,"currency":"eur",` +
-		`"subscription":"sub_1","subscription_details":{"metadata":{"membership_id":"` + membershipID + `"}}}}}`
+	old := `{"id":"evt_3","type":"invoice.paid","data":{"object":{"id":"in_2","amount_paid":9900,"currency":"usd",` +
+		`"subscription":"sub_1","subscription_details":{"metadata":{"license_id":"` + licenseID + `"}}}}}`
 	if event, err = stripeNotification(t, provider, old, true); err != nil || event.Reference != "in_2" || event.Amount != "99.00" {
 		t.Fatalf("old shape: %+v %v", event, err)
 	}
-	failed := strings.Replace(strings.Replace(paid, "invoice.paid", "invoice.payment_failed", 1), `"amount_paid":17900`, `"amount_paid":0`, 1)
-	if event, err = stripeNotification(t, provider, failed, true); err != nil || event.Status != StatusFailed || event.Amount != "179.00" || event.Renewal != nil {
+	failed := strings.Replace(strings.Replace(paid, "invoice.paid", "invoice.payment_failed", 1), `"amount_paid":9900`, `"amount_paid":0`, 1)
+	if event, err = stripeNotification(t, provider, failed, true); err != nil || event.Status != StatusFailed || event.Amount != "99.00" || event.Renewal != nil {
 		t.Fatalf("payment failed: %+v %v", event, err)
 	}
 	deleted := `{"id":"evt_4","type":"customer.subscription.deleted","data":{"object":{"id":"sub_1","customer":"cus_1",` +
-		`"metadata":{"membership_id":"` + membershipID + `"}}}}`
+		`"metadata":{"license_id":"` + licenseID + `"}}}}`
 	if event, err = stripeNotification(t, provider, deleted, true); err != nil || event.Kind != EventRenewalMethod || event.Renewal.Active {
 		t.Fatalf("subscription deleted: %+v %v", event, err)
 	}
@@ -179,7 +189,7 @@ func TestStripeWebhookEvents(t *testing.T) {
 		t.Fatalf("an unsigned invoice.paid was accepted: %v", err)
 	}
 	header := signStripe(paid, stripeTestSecret, now)
-	tampered := strings.Replace(paid, "17900", "1790000", 1)
+	tampered := strings.Replace(paid, "9900", "990000", 1)
 	_, err = provider.ParseNotification(context.Background(), stripeCredentials(t),
 		Notification{Headers: map[string][]string{"Stripe-Signature": {header}}, Body: []byte(tampered)})
 	if !errors.Is(err, ErrInvalidNotification) {
@@ -227,7 +237,7 @@ func TestStripeCancelRefundAndStatus(t *testing.T) {
 	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), renewal, true); err != nil {
 		t.Fatalf("resume: %v", err)
 	}
-	if err := provider.Refund(context.Background(), stripeCredentials(t), Event{Reference: "in_1", MembershipID: membershipID}); err != nil {
+	if err := provider.Refund(context.Background(), stripeCredentials(t), Event{Reference: "in_1", LicenseID: licenseID}); err != nil {
 		t.Fatalf("refund: %v", err)
 	}
 	if got := fake.last(); got.Path != "/v1/refunds" || got.Header.Get("Idempotency-Key") != "refund-in_1" {
@@ -265,18 +275,25 @@ func TestAmountsInMinorUnits(t *testing.T) {
 	}
 }
 
+// CelikPanel: references name a licence (32 hex), not a membership UUID.
 func TestReferencesNameTheirMembership(t *testing.T) {
-	reference, err := NewCheckoutReference(membershipID)
-	if err != nil || len(reference) != 47 || MembershipFromReference(reference) != membershipID {
+	reference, err := NewOrderReference(licenseID, false)
+	if err != nil || len(reference) != 47 || LicenseFromReference(reference) != licenseID || !strings.HasPrefix(reference, "CPC") {
 		t.Fatalf("checkout reference: %q %v", reference, err)
 	}
-	renewal, _ := RenewalReference(membershipID, time.Date(2027, 12, 5, 9, 30, 0, 0, time.UTC))
-	again, _ := RenewalReference(membershipID, time.Date(2027, 12, 5, 9, 30, 0, 0, time.UTC))
-	if renewal != again || MembershipFromReference(renewal) != membershipID || !strings.HasPrefix(renewal, "BXR") {
+	if again, _ := NewOrderReference(licenseID, false); again == reference {
+		t.Fatal("two checkout attempts got the same reference")
+	}
+	renewal, _ := RenewalReference(licenseID, time.Date(2027, 12, 5, 9, 30, 0, 0, time.UTC))
+	again, _ := RenewalReference(licenseID, time.Date(2027, 12, 5, 9, 30, 0, 0, time.UTC))
+	if renewal != again || LicenseFromReference(renewal) != licenseID || !strings.HasPrefix(renewal, "CPR") {
 		t.Fatalf("renewal reference must be deterministic: %q %q", renewal, again)
 	}
-	if MembershipFromReference("BXCnotours") != "" {
-		t.Fatal("a foreign reference named a membership")
+	if LicenseFromReference("CPCnotours") != "" || LicenseFromReference("BXC"+licenseID+"abcdefabcdef") != "" {
+		t.Fatal("a foreign reference named a licence")
+	}
+	if _, err := NewOrderReference("01234567-89ab-cdef-0123-456789abcdef", false); !errors.Is(err, ErrCheckoutIncomplete) {
+		t.Fatalf("a non-licence id: %v", err)
 	}
 }
 

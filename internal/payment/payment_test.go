@@ -41,19 +41,20 @@ func TestManualGoesThroughTheProviderInterface(t *testing.T) {
 	}
 }
 
+// CelikPanel: the entry names a licence (license_id) instead of a membership.
 func TestManualEntryIsChecked(t *testing.T) {
-	ok := `{"membership_id":"m","reference":"dekont-1","amount":"3990.00","currency":"TRY"}`
+	ok := `{"license_id":"m","reference":"dekont-1","amount":"3990.00","currency":"TRY"}`
 	event, err := Manual{}.ParseNotification(context.Background(), "", Notification{Body: []byte(ok)})
 	if err != nil || event.Status != StatusSucceeded || event.Period != PeriodYearly || event.Provider != ManualCode {
 		t.Fatalf("a plain entry is a succeeded yearly payment: %+v %v", event, err)
 	}
 	for body, want := range map[string]error{
-		`{"membership_id":"m","reference":"r","amount":"1","currency":"TRY","period":"monthly"}`: ErrPeriodNotYearly,
-		`{"membership_id":"m","reference":"","amount":"1","currency":"TRY"}`:                     ErrInvalidNotification,
-		`{"membership_id":"m","reference":"r","amount":"-1","currency":"TRY"}`:                   ErrInvalidNotification,
-		`{"membership_id":"m","reference":"r","amount":"1","currency":"try"}`:                    ErrInvalidNotification,
-		`{"membership_id":"m","reference":"r","amount":"1","currency":"TRY","status":"maybe"}`:   ErrInvalidNotification,
-		`{"membership_id":"m","reference":"r","amount":"1","currency":"TRY","extra":1}`:          ErrInvalidNotification,
+		`{"license_id":"m","reference":"r","amount":"1","currency":"TRY","period":"monthly"}`: ErrPeriodNotYearly,
+		`{"license_id":"m","reference":"","amount":"1","currency":"TRY"}`:                     ErrInvalidNotification,
+		`{"license_id":"m","reference":"r","amount":"-1","currency":"TRY"}`:                   ErrInvalidNotification,
+		`{"license_id":"m","reference":"r","amount":"1","currency":"try"}`:                    ErrInvalidNotification,
+		`{"license_id":"m","reference":"r","amount":"1","currency":"TRY","status":"maybe"}`:   ErrInvalidNotification,
+		`{"license_id":"m","reference":"r","amount":"1","currency":"TRY","extra":1}`:          ErrInvalidNotification,
 	} {
 		if _, err := (Manual{}).ParseNotification(context.Background(), "", Notification{Body: []byte(body)}); !errors.Is(err, want) {
 			t.Errorf("%s: got %v, want %v", body, err, want)
