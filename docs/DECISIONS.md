@@ -81,6 +81,21 @@ Two related lines, each with its own source:
 - **The PHP release stays selectable as the way back during the switch:** the plan's
   proposal (the 23 November 2026 accounts-and-Stripe plan), not a decision of the owner.
 
+**Awaiting the owner's confirmation: one answer of the Go service differs from the PHP one.**
+The coordinator's decision of 23 November 2026, put to the owner for confirmation: when a
+panel's refresh presents an activation token made by our signing key for a state the
+database does not know (the licence row is missing, the token's generation is above the
+row's, or the row is unbound at that generation), the Go service answers 503 and logs one
+line, so the panel keeps its receipt; the PHP service answers 400 `invalid_activation` and
+the panel locks its management screens. It protects installed panels from a database copy
+that is behind (a move, a late copy). It rests on an invariant every later change must keep:
+a licence row is never deleted, its generation never falls, and every revocation (release,
+remove, rotate, a reinstall elsewhere, and later refund, operator revoke, account closing)
+raises the generation in the same statement; a row marked removed or revoked is never
+"behind". The operator can switch the answer off with `database_is_authority` in the
+private configuration after a deliberate restore. Status: awaiting the owner's
+confirmation.
+
 **Requirements for the next design step, the owner's words, 23 November 2026.**
 "celikpanel.net frankfurta taşınacak" ("celikpanel.net will move to Frankfurt"); "frankfurt
 sadece bizde duracak" ("Frankfurt will stay only with us"); "lisans sunucusunu her zaman

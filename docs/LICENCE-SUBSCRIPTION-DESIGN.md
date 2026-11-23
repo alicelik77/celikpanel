@@ -592,7 +592,8 @@ grace case.
 - **Refund (30 days, unconditional):** the member presses "Refund" on the order in the
   account, or the operator does it. The service calls `refund`, and on the confirmed state:
   a first purchase revokes the licence (`revoked`, `revoked_reason = refunded`, binding
-  cleared); the server's next refresh gets 400 `invalid_license` with `reason: refunded`,
+  cleared, **`generation` raised in the same statement**: see "Revocations raise the
+  generation" below); the server's next refresh gets 400 `invalid_license` with `reason: refunded`,
   i.e. the protection level, never a stopped service. A refunded renewal puts `expires` back
   to the order's `term_from`; the dates then decide the state. Whether renewals are
   refundable is open question 6.
@@ -618,7 +619,34 @@ orders, events), `extend <licence> <days> --reason`, `refund <order> --reason`,
 `founder-grant` (§f). Every command writes `operator_events` with before and after values;
 operators never see licence keys (no `reveal`). A web back-office later would need separate
 operator accounts, mandatory TOTP, an address allowlist in the private configuration and its
-own session cookie; it is not part of these stages.
+own session cookie; it is not part of these stages. `revoke` and `restore` follow the rule
+below.
+
+### Revocations raise the generation (a rule for every later change)
+
+*Added 23 November 2026 after the third look at PR #361.* The Go member service answers a
+panel's refresh with 503 ("database behind", the receipt is kept) instead of 400 when the
+panel's activation token is ours for a state the database does not know. That is safe only
+while this invariant holds, so every change to a licence keeps it:
+
+- **A licence row is never deleted.** Removal, refund, operator revoke, account closing,
+  erasure and any later end mark the row; they never `DELETE` it.
+- **Every revocation raises `generation` in the same statement** that clears or changes the
+  binding, marks the row removed or revoked, or replaces the key: release, remove, rotate, a
+  reinstall elsewhere at the same address (today), and refund, operator `revoke`, account
+  closing and any future one. A generation never falls.
+- **A revoked state is checked before the database-behind answer.** A row marked removed
+  (and, once the column exists, `revoked`) is never "behind", whatever its generation.
+- **Only a first activation binds without a raise** (from no server to one).
+
+Tests that hold the service to it: `TestEveryLicenceChangeRaisesTheGeneration` (each
+mutating operation of `Service`; a new revocation path is added to its table) and
+`TestNoSQLRevokesWithoutRaisingTheGeneration` (no `DELETE FROM licenses` and no binding,
+removal, revocation or key change without the generation in any non-test Go string of the
+module). The second reads SQL literals only: SQL assembled at run time, or an explicit
+`generation=?` whose value is not higher, is caught only by the first, for the operations in
+its table. The PHP service is not checked by them (it is the parity reference and changes
+nothing).
 
 ### Reminder e-mails
 
@@ -659,41 +687,80 @@ EU) need anything more for these service messages is for the owner's adviser to 
 
 ### Moving or switching the member service (draft, not yet rehearsed)
 
-*Added 23 November 2026 after the second review of PR #361. Not rehearsed on any host; it is
-proved on a test copy before it is used. It applies to moving the service to another host
-and to switching between the PHP service and the Go one, in either direction.*
+*Added 23 November 2026 after the second review of PR #361, extended the same day after the
+third look. Not rehearsed on any host; it is proved on a test copy before it is used. It
+applies to moving the service to another host and to switching between the PHP service and
+the Go one, in either direction.*
 
 **Why the order matters.** A panel that refreshes against a copy of the database that is
 behind (a licence issued, bound or rotated on the old side after the copy) gets an answer
 about a state the copy does not know. The Go service answers 503 when the panel's activation
 token verifies under the signing key but the copy does not know that state, and the panel
-keeps its receipt. The PHP service answers `invalid_activation` (400), and the panel locks
-its management screens. So the old side stops changing the file before the copy is taken.
+keeps its receipt (for at most 7 days after its last successful check, then it shows
+"verification unavailable"). The PHP service answers `invalid_activation` (400), and the
+panel locks its management screens. So the old side stops changing the file before the copy
+is taken, and never changes it again.
 
-1. **Maintenance first.** The web server answers 503 for `/account/` on the old side (pages
-   and panel API). Panels treat a 503 as "unreachable" and keep their receipts for the
-   offline window; only a new server's first activation waits.
-2. **A consistent copy.** Use SQLite's backup API on the stopped service (`sqlite3
+**An in-place switch needs no copy.** Switching between the PHP and the Go service on the
+same host and the same `members.sqlite` (both take the same SQLite locks on the same file)
+is only the selector change of step 5, with the maintenance of step 1 around it. Steps 2–4
+are for a move to another host.
+
+1. **A day ahead (a move only).** Lower the DNS TTL of the service's name, so caches let go
+   quickly at the switch. Panels and resolvers that looked the name up earlier keep reaching
+   the old host until their cached answer expires: that is why step 2 is never undone on the
+   old host. On the new host: its TLS certificate for the service's name is valid before the
+   switch (otherwise first activations fail as "unreachable"), and `members.sqlite`, its
+   `-wal` and `-shm`, `sessions/` and `config.json` are owned by the one Unix user that runs
+   the service, with the private directory at mode 0700.
+2. **Maintenance first, for good on the old host.** The web server answers 503 for
+   `/account/` on the old side (pages and panel API). Panels treat a 503 as "unreachable" and
+   keep their receipts for the offline window; only a new server's first activation waits.
+   After a move the old host **stays** in maintenance (or is shut down) and is never made
+   writable again: two writable copies with the same key are a fork, which no answer can make
+   right. It is decommissioned only after the watch period of step 7.
+3. **A consistent copy.** Use SQLite's backup API on the stopped service (`sqlite3
    members.sqlite ".backup copy.sqlite"`, or Python's `sqlite3` `backup()` where the
    `sqlite3` command is missing). Never a plain file copy of a live WAL database, and never
    `members.sqlite` without its `-wal`. `config.json` (the signing key) goes by the owner's
    own offline path, never through the repository or a message.
-3. **Compare on both sides.** Run `membership check-db` (with `CELIKPANEL_MEMBERSHIP_PRIVATE`
-   naming the private directory) on the old and the new copy. Every count must be equal,
-   above all the line "to compare two copies: events …, newest event at …, licence
-   generations in total …": any deliberate licence change raises a generation and every
-   action adds an event, so a copy that is behind shows lower numbers. Different numbers:
-   copy again. "result: every live licence can be served" must stand on the new side.
-4. **Switch the selector.** The web server's rule for `/account/` (which program it runs, or
-   which host the name points to) is changed, and maintenance ends. The selector is the
-   owner's web-server configuration; PR #361 builds none.
-5. **Watch.** On the new side, a log line "database behind the signing key" means a panel
-   presented a state this copy does not know: go back (step 6) and find the missing change.
-6. **Going back.** Maintenance on the new side first. If the new side changed the file
-   (licences issued, servers bound), copy its file back the same way and compare with
-   `check-db` before pointing the selector back. Never point back to the older file: the
-   PHP service would reject every panel bound on the new side, because it has no "database
-   behind" answer.
+4. **Compare on both sides.**
+   - A checksum (`sha256sum`) of the backup file on the old host and of the file that arrived
+     on the new host: equal, or copy again. With maintenance on, this is exact and covers
+     everything, members included (a registration, an e-mail verification or a password
+     reset writes no event, so the counts below cannot see them).
+   - `membership check-db` (with `CELIKPANEL_MEMBERSHIP_PRIVATE` naming the private
+     directory) on both copies: every line equal, above all "members: …" and "to compare two
+     copies: events …, newest event at …, licence generations in total …", and "result:
+     every live licence can be served" on the new side. It also prints whether the
+     database-behind check is on (it should be, see step 8).
+5. **Switch the selector.** The web server's rule for `/account/` (which program it runs, or
+   which host the name points to) is changed, and maintenance ends **on the new side only**.
+   The selector is the owner's web-server configuration; PR #361 builds none.
+6. **Keep the old file unchanged.** The old private directory is kept as it is, read-only,
+   for at least the panels' offline window plus one refresh interval (7 days plus the
+   interval), because a panel that is behind only shows itself at its next refresh, and the
+   old file is the only place the missing change can be read from (the log line names no
+   licence).
+7. **Watch.** On the new side, a log line "database behind the signing key" means a panel
+   presented a state this copy does not know. Find the change in the old file (step 6) and
+   go back (step 9), or, if the newer file is lost, see step 8.
+8. **When the newer file is lost, or after a deliberate restore of an older file.**
+   - Set `"database_is_authority": true` in the new side's private `config.json`. The
+     database-behind answer is then off: every unknown or older state is rejected as the PHP
+     service does, so the affected panels learn that their licence is not valid here instead
+     of seeing "unreachable" for a week. `check-db` shows the setting. Set it only when this
+     file is deliberately the authority (a restore that was chosen, or a newer file that is
+     gone for good), never during an ordinary move, where the 503 protects panels from a copy
+     that is merely late.
+   - Tell the members whose servers were bound or moved after the file's time: they release
+     the licence in their account and activate it again on their server. Panels cannot tell
+     their administrators this (they see 503, or a rejection), so the owner must.
+9. **Going back.** Maintenance on the new side first. If the new side changed the file
+   (licences issued, servers bound), copy its file back the same way and compare (step 4)
+   before pointing the selector back. Never point back to the older file: the PHP service
+   would reject every panel bound on the new side, because it has no "database behind"
+   answer.
 
 ---
 

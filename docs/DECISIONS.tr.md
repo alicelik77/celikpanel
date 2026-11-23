@@ -80,6 +80,21 @@ arkasında, böylece ileride lisanslara dokunmadan başka bir sağlayıcı eklen
 - **Geçiş sırasında PHP sürümü geri dönüş yolu olarak seçilebilir kalır:** planın önerisi
   (23 Kasım 2026 hesap ve Stripe planı), sahibin kararı değil.
 
+**Sahibin onayını bekliyor: Go hizmetinin bir yanıtı PHP hizmetininkinden farklıdır.**
+Koordinatörün 23 Kasım 2026 kararı, sahibin onayına sunuldu: bir panelin yenileme isteği,
+imza anahtarımızın ürettiği bir etkinleştirme belirtecini veritabanının bilmediği bir durum
+için sunduğunda (lisans satırı yoktur, belirtecin kuşağı satırınkinden yüksektir ya da satır
+o kuşakta bir sunucuya bağlı değildir), Go hizmeti 503 yanıtı verir ve tek satır kayıt düşer,
+böylece panel makbuzunu korur; PHP hizmeti 400 `invalid_activation` yanıtı verir ve panel
+yönetim ekranlarını kilitler. Kurulu panelleri geride kalmış bir veritabanı kopyasından
+(taşıma, geç alınmış kopya) korur. Sonraki her değişikliğin koruması gereken bir değişmeze
+dayanır: lisans satırı asla silinmez, kuşağı asla düşmez ve her geri alma (bırakma, kaldırma,
+anahtar yenileme, başka sunucuya yeniden kurulum; ileride iade, işletmecinin geri alması,
+hesap kapatma) kuşağı aynı ifadede yükseltir; kaldırıldı ya da geri alındı olarak işaretli
+bir satır asla "geride" sayılmaz. İşletmeci, bilinçli bir geri yüklemeden sonra özel
+yapılandırmadaki `database_is_authority` ile bu yanıtı kapatabilir. Durum: sahibin onayını
+bekliyor.
+
 **Sonraki tasarım adımı için gereksinimler, sahibin sözleri, 23 Kasım 2026.**
 "celikpanel.net frankfurta taşınacak"; "frankfurt sadece bizde duracak"; "lisans sunucusunu
 her zaman değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım".
