@@ -88,4 +88,9 @@ type WebmailAddressFormsResponse struct {
 	// configuration itself.
 	Sending     string `json:"sending,omitempty"`
 	SendingFile string `json:"sending_file,omitempty"`
+	// SendingReason (review of PR #357, finding 2): "rewrite_failed" when
+	// the file is still CelikPanel's own earlier text whose rewrite at the
+	// Agent's start did not happen (the Agent tries again at its next start);
+	// "" otherwise.
+	SendingReason string `json:"sending_reason,omitempty"`
 }

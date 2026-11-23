@@ -120,6 +120,9 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
     // CelikPanel's text is named only when it lies beside the owner's file.
     if (problem.kind === 'webmail_address_kept' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_address_kept.body_no_text' as TranslationKey;
+    // alpha.145 (review of PR #357, finding 2): CelikPanel's own earlier text
+    // that it could not rewrite: the journal and a restart, never a hand edit.
+    if (problem.kind === 'webmail_cannot_send' && problem.subject === 'rewrite_failed') return 'pnow.webmail_cannot_send.body_rewrite_failed' as TranslationKey;
     // alpha.145: CelikPanel's text is named only when it lies beside the configuration.
     if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -16,12 +17,12 @@ import (
 // a145WebmailSendingAgent answers whether webmail's configuration can send.
 type a145WebmailSendingAgent struct {
 	verifiedAPTAgentRPCFixture
-	sending, file string
+	sending, reason, file string
 }
 
 func (a *a145WebmailSendingAgent) WebmailAddressFormsV1(_ *transport.WebmailAddressFormsRequest, resp *transport.WebmailAddressFormsResponse) error {
 	resp.Open = []transport.WebmailAddressForm{}
-	resp.Sending, resp.SendingFile = a.sending, a.file
+	resp.Sending, resp.SendingReason, resp.SendingFile = a.sending, a.reason, a.file
 	return nil
 }
 
@@ -149,5 +150,87 @@ func TestA145AliasWaitEndsWhenTheHeldPublicationCompletes(t *testing.T) {
 	}
 	if zoneSays() {
 		t.Fatal("the zone still says its alias records wait")
+	}
+}
+
+// Review of PR #357, finding 2: CelikPanel's own earlier text whose rewrite
+// did not happen is the same line with its own words: the journal and a
+// restart, never a hand edit.
+func TestA145FailedRewriteIsNamedWithTheRestartNotAHandEdit(t *testing.T) {
+	path := "/var/lib/celikpanel-webmail/config/config.inc.php"
+	agent := &a145WebmailSendingAgent{sending: "cannot_send", reason: "rewrite_failed", file: path}
+	p := newDNSPanelForTest(t)
+	p.pkgFamilyVal = "apt"
+	p.agentClient = a144AgentClient(t, agent)
+	problems := p.webmailAddressProblems(context.Background())
+	if len(problems) != 1 || problems[0].Kind != "webmail_cannot_send" || problems[0].Subject != "rewrite_failed" || problems[0].Name != path || problems[0].Actor != "server_owner" {
+		t.Fatalf("problems: %+v", problems)
+	}
+	en, tr := alertLine(pendingAlertMail{kind: "webmail_cannot_send", subject: "rewrite_failed", name: path})
+	for _, line := range []string{en, tr} {
+		if !strings.Contains(line, "sudo systemctl restart celikpanel-agent") || !strings.Contains(line, "sudo journalctl -u celikpanel-agent") || strings.Contains(line, "smtp_host") {
+			t.Fatalf("alert mail: %q", line)
+		}
+	}
+	if !strings.Contains(en, "Do not edit the file by hand") || !strings.Contains(tr, "elle düzenlemeyin") {
+		t.Fatalf("alert mail: %q / %q", en, tr)
+	}
+}
+
+// Review of PR #357, finding 1: the owner without CelikPanel's text beside
+// the file is given the two lines exactly as CelikPanel writes them.
+func TestA145TheOwnerIsGivenCelikPanelsTwoSendingLines(t *testing.T) {
+	source, err := os.ReadFile("../agent/webmail_sending.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range []string{webmailSendingHostLine, webmailSendingOptionsLine} {
+		if !strings.Contains(string(source), "\n"+line+"\n") {
+			t.Fatalf("not CelikPanel's rendered line: %s", line)
+		}
+	}
+	en, tr := alertLine(pendingAlertMail{kind: "webmail_cannot_send", name: "/var/lib/celikpanel-webmail/config/config.inc.php"})
+	for _, line := range []string{en, tr} {
+		if !strings.Contains(line, webmailSendingHostLine) || !strings.Contains(line, webmailSendingOptionsLine) {
+			t.Fatalf("alert mail without the two lines: %q", line)
+		}
+	}
+}
+
+// Review of PR #357, finding 3: a zone whose alias publication was deferred
+// behind its own pending publication (the backup catching up) is settled
+// when that publication completes, by the hourly round's own step (a fresh
+// publication of the zone's current ledger), not an hour later.
+func TestA145AliasWaitIsSettledWhenThePendingPublicationCompletes(t *testing.T) {
+	panel, agent, clock, _ := newPendingPublicationPanel(t, "d-alias.example")
+	configurePendingWithCode(t, agent, transport.DNSPeerPendingCatchingUp)
+	backupDown := true
+	recoverOutcome(t, agent, func() bool { return backupDown }, func() string { return transport.DNSPeerPendingCatchingUp })
+	ctx := context.Background()
+	if err := panel.syncZoneToDNS(ctx, "d-alias.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
+		t.Fatalf("deferred err=%v", err)
+	}
+	panel.markAliasZoneUnpublished(ctx, "d-alias.example")
+	panel.markAliasZoneUnpublished(ctx, "other-alias.example")
+	panel.reconcilePendingDNSPublicationsOnce(ctx) // discovers the pending publication, not due yet
+	if leaseCount(t, panel) != 1 {
+		t.Fatal("the deferred publication holds no lease")
+	}
+
+	backupDown = false
+	agent.syncResponseHook = nil
+	clock.Advance(dnsPendingPublicationMaxDelay)
+	panel.reconcilePendingDNSPublicationsOnce(ctx)
+	if state, err := readDNSZoneSyncState(ctx, panel.db.GetDB(), "d-alias.example"); err != nil || state.Status != "applied" {
+		t.Fatalf("pending publication not completed: %+v %v", state, err)
+	}
+	waiting, err := panel.aliasZonesUnpublished(ctx)
+	if err != nil || waiting["d-alias.example"] || !waiting["other-alias.example"] {
+		t.Fatalf("waits after the pending publication completed: %v %v", waiting, err)
+	}
+	// Settled by publishing the zone's current ledger again, not by a blind clear.
+	syncs, _ := pendingAgentCalls(agent)
+	if len(syncs) != 2 || syncs[1].Domain != "d-alias.example" {
+		t.Fatalf("publications: %+v", syncs)
 	}
 }

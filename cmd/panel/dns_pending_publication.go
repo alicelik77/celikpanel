@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -581,6 +582,15 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 			publishCtx, cancelPublish := context.WithTimeout(ctx, dnsPendingPublicationAttemptLimit)
 			p.publishZoneAfterPendingLocked(publishCtx, lease)
 			cancelPublish()
+		}
+		// alpha.145 (review of PR #357, finding 3): alias records that
+		// waited behind this zone's pending publication are settled now by
+		// the hourly round's own step (a fresh publication of the zone's
+		// current ledger), not an hour later.
+		if p.aliasZoneWaiting(ctx, lease.ZoneName) {
+			settleCtx, cancelSettle := context.WithTimeout(ctx, dnsPendingPublicationAttemptLimit)
+			p.settleAliasZoneWait(settleCtx, strings.ToLower(lease.ZoneName), p.syncZoneToDNSLocked)
+			cancelSettle()
 		}
 	case dnsPendingPublicationInFlight:
 		log.Printf("pending DNS publication %s: its re-check is still running on the Agent; its result is read again in %s",

@@ -3,8 +3,10 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -58,10 +60,10 @@ func TestA145WebmailSendsWithEncryptionAndRelaxesTheCheckOnLoopbackOnly(t *testi
 	if strings.Contains(text, "imap_conn_options") || strings.Contains(text, "allow_self_signed") {
 		t.Fatalf("more than the SMTP loopback check changed:\n%s", text)
 	}
-	if plain, known := roundcubeSendsWithoutEncryption(text); plain || !known {
+	if plain, known := roundcubeCannotSend(text); plain || !known {
 		t.Fatalf("current text read as plain=%v known=%v", plain, known)
 	}
-	if plain, known := roundcubeSendsWithoutEncryption(legacyRenderRoundcubeConfig(strings.Repeat("ab", 18))); !plain || !known {
+	if plain, known := roundcubeCannotSend(legacyRenderRoundcubeConfig(strings.Repeat("ab", 18))); !plain || !known {
 		t.Fatalf("earlier text read as plain=%v known=%v", plain, known)
 	}
 }
@@ -76,14 +78,105 @@ func TestA145SendingSettingIsReadFromTheLastAssignment(t *testing.T) {
 		{"<?php\n$config['smtp_host'] = \"127.0.0.1\"; // own\n", true, true},
 		{"<?php\n$config['smtp_host'] = 'localhost:587';\n$config['smtp_host'] = 'ssl://mail.example.test:465';\n", false, true},
 		{"<?php\n// $config['smtp_host'] = 'tls://127.0.0.1:587';\n$config['smtp_host'] = 'localhost';\n", true, true},
-		{"<?php\n$config['smtp_host'] = 'tls://localhost:587';\n", false, true},
 		{"<?php\n$config['smtp_host'] = 'relay.example.test:25';\n", false, true},
 		{"<?php\n$config['smtp_host'] = ['imap.example.test' => 'smtp.example.test'];\n", false, false},
 		{"<?php\n$config = ['smtp_host' => 'localhost:587'];\n", false, false},
+		// Review of PR #357, finding 1: encryption to a loopback name with no
+		// certificate options at all still cannot send (PHP checks the
+		// certificate against the loopback name); any options of the owner's
+		// are their own setting.
+		{"<?php\n$config['smtp_host'] = 'tls://localhost:587';\n", true, true},
+		{"<?php\n$config['smtp_host'] = 'tls://127.0.0.1:587';\n", true, true},
+		{"<?php\n$config['smtp_host'] = 'ssl://[::1]:465';\n", true, true},
+		{"<?php\n$config['smtp_host'] = 'tls://127.0.0.1:2525';\n// $config['smtp_conn_options'] = null;\n", true, true},
+		{"<?php\n" + roundcubeSMTPSettings, false, true},
+		{"<?php\n$config['smtp_host'] = 'tls://localhost:587';\n$config['smtp_conn_options'] = array('ssl' => array('cafile' => '/etc/ssl/own.pem'));\n", false, true},
+		{"<?php\n$config['smtp_host'] = 'tls://mail.example.test:587';\n", false, true},
+		// Finding 7: CRLF; the legacy key smtp_server; smtp_host only in a
+		// whole-line comment (Roundcube's default then applies).
+		{"<?php\r\n$config['smtp_host'] = 'localhost:587';\r\n", true, true},
+		{"<?php\r\n$config['smtp_host'] = 'tls://127.0.0.1:587';\r\n$config['smtp_conn_options'] = ['127.0.0.1' => []];\r\n", false, true},
+		{"<?php\n$config['smtp_server'] = 'tls://mail.example.test';\n", false, false},
+		{"<?php\n// $config['smtp_host'] = 'tls://127.0.0.1:587';\n# smtp_host is set below by hand\n", true, true},
+		{"<?php\n$host = 'x'; // smtp_host\n", false, false},
 	} {
-		if plain, known := roundcubeSendsWithoutEncryption(c.content); plain != c.plain || known != c.known {
-			t.Fatalf("%q: plain=%v known=%v, want %v %v", c.content, plain, known, c.plain, c.known)
+		if plain, known := roundcubeCannotSend(c.content); plain != c.plain || known != c.known {
+			t.Fatalf("%q: cannot=%v known=%v, want %v %v", c.content, plain, known, c.plain, c.known)
 		}
+	}
+}
+
+// Review of PR #357, finding 2: CelikPanel's own earlier text whose rewrite
+// failed is named as such (never as a file to edit by hand), and a later
+// successful start clears it.
+func TestA145FailedRewriteOfCelikPanelsTextIsItsOwnState(t *testing.T) {
+	path := useWebmailBaseDir(t)
+	key := strings.Repeat("9a", 18)
+	earlier := legacyRenderRoundcubeConfig(key) + roundcubeAddressSettings
+	mustWriteTestFile(t, path, []byte(earlier), 0o640)
+	saved := roundcubeConfigPublish
+	t.Cleanup(func() { roundcubeConfigPublish = saved })
+	roundcubeConfigPublish = func(string, []byte, os.FileMode, uint32, uint32) error {
+		return errors.New("read-only file system")
+	}
+	said := reconcileRoundcubeConfigAtStartup()
+	if len(said) != 1 || !strings.Contains(said[0], "kept in its earlier form") || !strings.Contains(said[0], "read-only file system") {
+		t.Fatalf("said %q", said)
+	}
+	if content, _ := os.ReadFile(path); string(content) != earlier {
+		t.Fatal("the file changed although the write failed")
+	}
+	if _, err := os.Stat(path + roundcubeConfigPendingSuffix); !os.IsNotExist(err) {
+		t.Fatalf("a text beside CelikPanel's own file: %v", err)
+	}
+	if resp := webmailSendingState(t); resp.Sending != "cannot_send" || resp.SendingReason != "rewrite_failed" || resp.SendingFile != path {
+		t.Fatalf("named: %+v", resp)
+	}
+	roundcubeConfigPublish = saved
+	if said := reconcileRoundcubeConfigAtStartup(); len(said) != 1 || !strings.Contains(said[0], "rewritten in the current form") {
+		t.Fatalf("said %q", said)
+	}
+	if resp := webmailSendingState(t); resp.Sending != "" || resp.SendingReason != "" {
+		t.Fatalf("still named after the next start: %+v", resp)
+	}
+}
+
+// Review of PR #357, finding 4: the rewritten configuration is in place with
+// its final owner and mode the moment it is renamed (no window in which
+// PHP-FPM cannot read it), seen right after the publishing step. (The
+// earlier helper already had this through secureWriteConfig, which gives
+// the new file the replaced file's owner and mode before the rename; this
+// test guards it.)
+func TestA145RewrittenConfigurationIsPublishedWithItsFinalOwner(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("changing a file's group to another one needs root")
+	}
+	path := useWebmailBaseDir(t)
+	key := strings.Repeat("7b", 18)
+	mustWriteTestFile(t, path, []byte(legacyRenderRoundcubeConfig(key)), 0o640)
+	const webGroup = 65534
+	if err := os.Chown(path, 0, webGroup); err != nil {
+		t.Fatal(err)
+	}
+	saved := roundcubeConfigPublish
+	t.Cleanup(func() { roundcubeConfigPublish = saved })
+	var atRename *syscall.Stat_t
+	roundcubeConfigPublish = func(p string, content []byte, mode os.FileMode, uid, gid uint32) error {
+		err := saved(p, content, mode, uid, gid)
+		// The state a crash right after this step would leave.
+		if info, statErr := os.Stat(p); statErr == nil {
+			atRename = info.Sys().(*syscall.Stat_t)
+		}
+		return err
+	}
+	if said := reconcileRoundcubeConfigAtStartup(); len(said) != 1 || !strings.Contains(said[0], "rewritten in the current form") {
+		t.Fatalf("said %q", said)
+	}
+	if atRename == nil || atRename.Uid != 0 || atRename.Gid != webGroup || os.FileMode(atRename.Mode).Perm() != 0o640 {
+		t.Fatalf("in place without its final owner and mode: %+v", atRename)
+	}
+	if content, _ := os.ReadFile(path); string(content) != renderRoundcubeConfig(key) {
+		t.Fatal("not the current text")
 	}
 }
 
@@ -98,7 +191,7 @@ func TestA145EarlierConfigurationIsCorrectedAtTheFirstStart(t *testing.T) {
 			want += roundcubeAddressSettings
 		}
 		mustWriteTestFile(t, path, []byte(earlier), 0o640)
-		if resp := webmailSendingState(t); resp.Sending != "cannot_send" || resp.SendingFile != path {
+		if resp := webmailSendingState(t); resp.Sending != "cannot_send" || resp.SendingReason != "rewrite_failed" || resp.SendingFile != path {
 			t.Fatalf("before the start: %+v", resp)
 		}
 		said := reconcileRoundcubeConfigAtStartup()
@@ -190,9 +283,16 @@ func TestA145OwnerEditedConfigurationIsKeptWithTheTextBesideIt(t *testing.T) {
 	if said := reconcileRoundcubeConfigAtStartup(); len(said) != 1 {
 		t.Fatalf("said %q", said)
 	}
-	// The owner corrects the file their own way: the line goes by itself and
+	// Review of PR #357, finding 1: the owner changes only smtp_host: still
+	// named (sending still fails on the certificate check).
+	half := strings.Replace(owner, "'localhost:587'", "'tls://127.0.0.1:587'", 1)
+	mustWriteTestFile(t, path, []byte(half), 0o640)
+	if resp := webmailSendingState(t); resp.Sending != "cannot_send" || resp.SendingFile != pending {
+		t.Fatalf("not named after only smtp_host changed: %+v", resp)
+	}
+	// The owner writes CelikPanel's two lines: the line goes by itself and
 	// the text beside it is no longer needed.
-	fixed := strings.Replace(owner, "'localhost:587'", "'tls://127.0.0.1:587'", 1)
+	fixed := half + "$config['smtp_conn_options'] = ['127.0.0.1' => ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]];\n"
 	mustWriteTestFile(t, path, []byte(fixed), 0o640)
 	if resp := webmailSendingState(t); resp.Sending != "" {
 		t.Fatalf("still named after the owner's correction: %+v", resp)

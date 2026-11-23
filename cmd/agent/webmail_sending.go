@@ -119,28 +119,48 @@ func parseRoundcubeConfigForm(content string) (roundcubeConfigForm, bool) {
 	return roundcubeConfigForm{desKey: key}, false
 }
 
-// roundcubeSMTPHostLine is an uncommented smtp_host assignment.
+// roundcubeSMTPHostLine is an uncommented smtp_host assignment;
+// roundcubeConnOptionsLine an uncommented smtp_conn_options assignment.
 var (
-	roundcubeSMTPHostLine  = regexp.MustCompile(`(?m)^[ \t]*\$config\[\s*['"]smtp_host['"]\s*\][ \t]*=[ \t]*(.*?)[ \t]*$`)
-	roundcubeQuotedValue   = regexp.MustCompile(`^(?:'([^'\\]*)'|"([^"\\$]*)")[ \t]*;[ \t]*(?:(?://|#).*)?$`)
-	roundcubePlainLoopback = map[string]bool{
-		"localhost": true, "localhost:587": true,
-		"127.0.0.1": true, "127.0.0.1:587": true,
-		"[::1]": true, "[::1]:587": true,
-	}
+	roundcubeSMTPHostLine    = regexp.MustCompile(`(?m)^[ \t]*\$config\[\s*['"]smtp_host['"]\s*\][ \t]*=[ \t]*(.*?)[ \t]*$`)
+	roundcubeConnOptionsLine = regexp.MustCompile(`(?m)^[ \t]*\$config\[\s*['"]smtp_conn_options['"]\s*\][ \t]*=`)
+	roundcubeQuotedValue     = regexp.MustCompile(`^(?:'([^'\\]*)'|"([^"\\$]*)")[ \t]*;[ \t]*(?:(?://|#).*)?$`)
+	roundcubeLoopbackHosts   = map[string]bool{"localhost": true, "127.0.0.1": true, "::1": true}
 )
 
-// roundcubeSendsWithoutEncryption reads, from a configuration's text, whether
-// webmail hands mail to this server's submission service on 587 without
-// encryption, which the service refuses: the last smtp_host assignment (or,
-// with none, Roundcube's default 'localhost:587') names a loopback host with
-// no tls:// or ssl:// prefix. known is false when the value is not a plain
-// quoted string (an array, an expression, another file): then nothing is said.
-func roundcubeSendsWithoutEncryption(content string) (plain, known bool) {
+// roundcubeCannotSend reads, from a configuration's text, whether webmail
+// cannot send through this server's submission service because of it
+// (review of PR #357, findings 1 and 7). The last uncommented smtp_host
+// assignment decides; with none, Roundcube's default 'localhost:587'.
+//   - A loopback host (localhost, 127.0.0.1, [::1]) without tls:// or ssl://,
+//     on 587 or no port: the service refuses a login without encryption.
+//   - A loopback host WITH tls:// or ssl://, on any port, while the file has
+//     no uncommented smtp_conn_options assignment at all: PHP then checks the
+//     certificate against the loopback name, which no certificate of this
+//     server carries. Any smtp_conn_options assignment is the owner's own
+//     setting (its PHP array is not read): nothing is said.
+//
+// known is false (nothing is said) for a value that is not one quoted string
+// (an array, an expression, another file), for a file that mentions the
+// legacy key smtp_server, and for an smtp_host that appears only on a line
+// that is not a whole-line comment and not an assignment. CRLF line endings
+// are read as LF. Known gap: an assignment inside a /* … */ block comment is
+// read as active.
+func roundcubeCannotSend(content string) (cannot, known bool) {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	if strings.Contains(content, "smtp_server") {
+		return false, false
+	}
 	matches := roundcubeSMTPHostLine.FindAllStringSubmatch(content, -1)
 	if len(matches) == 0 {
-		if strings.Contains(content, "smtp_host") {
-			return false, false
+		for _, line := range strings.Split(content, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "//") || strings.HasPrefix(line, "#") {
+				continue
+			}
+			if strings.Contains(line, "smtp_host") {
+				return false, false
+			}
 		}
 		return true, true
 	}
@@ -149,7 +169,33 @@ func roundcubeSendsWithoutEncryption(content string) (plain, known bool) {
 		return false, false
 	}
 	host := strings.ToLower(strings.TrimSpace(value[1] + value[2]))
-	return roundcubePlainLoopback[host], true
+	encrypted := false
+	for _, scheme := range []string{"tls://", "ssl://"} {
+		if rest, ok := strings.CutPrefix(host, scheme); ok {
+			host, encrypted = rest, true
+		}
+	}
+	if strings.Contains(host, "://") {
+		return false, true
+	}
+	name, port := host, ""
+	switch {
+	case strings.HasPrefix(host, "["):
+		end := strings.Index(host, "]")
+		if end < 0 {
+			return false, true
+		}
+		name, port = host[1:end], strings.TrimPrefix(host[end+1:], ":")
+	case strings.Count(host, ":") == 1:
+		name, port, _ = strings.Cut(host, ":")
+	}
+	if !roundcubeLoopbackHosts[name] {
+		return false, true
+	}
+	if !encrypted {
+		return port == "" || port == "587", true
+	}
+	return !roundcubeConnOptionsLine.MatchString(content), true
 }
 
 // reconcileRoundcubeConfigAtStartup brings CelikPanel's earlier text of
@@ -183,13 +229,13 @@ func reconcileRoundcubeConfigAtStartup() []string {
 		removeRoundcubePendingText(pending)
 		return []string{"rewritten in the current form: webmail sends through this server's submission service with encryption"}
 	}
-	if plain, known := roundcubeSendsWithoutEncryption(content); !known || !plain {
+	if cannot, known := roundcubeCannotSend(content); !known || !cannot {
 		// The owner's own sending setting: nothing of CelikPanel's is needed.
 		removeRoundcubePendingText(pending)
 		return nil
 	}
 	if form.desKey == "" {
-		return []string{fmt.Sprintf("%s was changed by the owner and kept; it still sends without encryption, so webmail cannot send; CelikPanel's text is not put beside it because the file has no des_key line of CelikPanel's form", path)}
+		return []string{fmt.Sprintf("%s was changed by the owner and kept; webmail cannot send with it; CelikPanel's text is not put beside it because the file has no des_key line of CelikPanel's form", path)}
 	}
 	text := renderRoundcubeConfig(form.desKey)
 	if strings.Contains(content, roundcubeAddressSettings) {
@@ -200,9 +246,9 @@ func reconcileRoundcubeConfigAtStartup() []string {
 	}
 	// The text holds the des_key: readable by root only.
 	if err := secureWriteConfig(pending, []byte(text), 0o600); err != nil {
-		return []string{fmt.Sprintf("%s was changed by the owner and kept; it still sends without encryption, so webmail cannot send; CelikPanel's text could not be put beside it: %v", path, err)}
+		return []string{fmt.Sprintf("%s was changed by the owner and kept; webmail cannot send with it; CelikPanel's text could not be put beside it: %v", path, err)}
 	}
-	return []string{fmt.Sprintf("%s was changed by the owner and kept as it is; it still sends without encryption, so webmail cannot send; CelikPanel's current text is in %s", path, pending)}
+	return []string{fmt.Sprintf("%s was changed by the owner and kept as it is; webmail cannot send with it; CelikPanel's current text is in %s", path, pending)}
 }
 
 // removeRoundcubePendingText removes CelikPanel's own text beside the
@@ -218,26 +264,28 @@ func removeRoundcubePendingText(pending string) {
 // roundcubeSendingForm reads, read only, whether webmail cannot send because
 // of its configuration: "cannot_send" with the file to name (CelikPanel's
 // text beside it when it lies there, otherwise the configuration itself), or
-// "" when it can or when it is not known.
-func roundcubeSendingForm() (string, string) {
+// "" when it can or when it is not known. reason "rewrite_failed" (review of
+// PR #357, finding 2): the file is still CelikPanel's own earlier text, whose
+// rewrite at the Agent's start did not happen; the Agent rewrites it at its
+// next start, so the owner must not edit it by hand.
+func roundcubeSendingForm() (state, reason, file string) {
 	path := roundcubeConfigPath()
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	if form, managed := parseRoundcubeConfigForm(string(content)); managed {
 		if form.current {
-			return "", ""
+			return "", "", ""
 		}
-		// CelikPanel's earlier text: its rewrite did not happen.
-		return "cannot_send", path
+		return "cannot_send", "rewrite_failed", path
 	}
-	if plain, known := roundcubeSendsWithoutEncryption(string(content)); !known || !plain {
-		return "", ""
+	if cannot, known := roundcubeCannotSend(string(content)); !known || !cannot {
+		return "", "", ""
 	}
 	pending := path + roundcubeConfigPendingSuffix
 	if info, err := os.Lstat(pending); err == nil && info.Mode().IsRegular() {
-		return "cannot_send", pending
+		return "cannot_send", "", pending
 	}
-	return "cannot_send", path
+	return "cannot_send", "", path
 }

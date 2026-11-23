@@ -597,13 +597,19 @@ func alertLine(item pendingAlertMail) (string, string) {
 			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", subject, item.name)
 	case "webmail_cannot_send":
 		// alpha.145: item.name is CelikPanel's text beside the configuration,
-		// or the configuration itself when no text lies beside it.
-		if strings.HasSuffix(item.name, ".celikpanel-pending") {
-			return fmt.Sprintf("Webmail cannot send: its configuration was changed by hand and kept, and it still hands mail to this server's sending service without encryption, which refuses the login. The server owner takes CelikPanel's text from %s (or its sending lines).", item.name),
-				fmt.Sprintf("Web postası gönderemiyor: yapılandırması elle değiştirilmiş ve korunmuş; postayı hâlâ bu sunucunun gönderim hizmetine şifresiz veriyor, hizmet de girişi reddediyor. Sunucu sahibi CelikPanel'in %s içindeki metnini (ya da gönderim satırlarını) alır.", item.name)
+		// or the configuration itself when no text lies beside it; subject
+		// "rewrite_failed": CelikPanel's own earlier text whose rewrite did
+		// not happen (review of PR #357, finding 2: never a hand edit).
+		if item.subject == "rewrite_failed" {
+			return fmt.Sprintf("Webmail cannot send: its configuration %s is still CelikPanel's earlier text, which CelikPanel could not rewrite when its Agent started (the reason is in sudo journalctl -u celikpanel-agent). The server owner removes that cause and runs sudo systemctl restart celikpanel-agent; CelikPanel then rewrites the file by itself. Do not edit the file by hand.", item.name),
+				fmt.Sprintf("Web postası gönderemiyor: %s yapılandırması hâlâ CelikPanel'in önceki metni ve CelikPanel Agent açılırken onu yeniden yazamadı (nedeni sudo journalctl -u celikpanel-agent çıktısında). Sunucu sahibi bu nedeni giderir ve sudo systemctl restart celikpanel-agent komutunu çalıştırır; CelikPanel dosyayı kendisi yeniden yazar. Dosyayı elle düzenlemeyin.", item.name)
 		}
-		return fmt.Sprintf("Webmail cannot send: %s still hands mail to this server's sending service without encryption, which refuses the login. The server owner sets smtp_host to tls://127.0.0.1:587 in it, with smtp_conn_options for 127.0.0.1 only.", item.name),
-			fmt.Sprintf("Web postası gönderemiyor: %s postayı hâlâ bu sunucunun gönderim hizmetine şifresiz veriyor, hizmet de girişi reddediyor. Sunucu sahibi içinde smtp_host değerini tls://127.0.0.1:587 yapar ve yalnız 127.0.0.1 için smtp_conn_options ekler.", item.name)
+		if strings.HasSuffix(item.name, ".celikpanel-pending") {
+			return fmt.Sprintf("Webmail cannot send: its configuration was changed by hand and kept, and it does not hand mail to this server's sending service with encryption and the certificate settings for 127.0.0.1. The server owner copies CelikPanel's text from %s (or its two sending lines) into the file.", item.name),
+				fmt.Sprintf("Web postası gönderemiyor: yapılandırması elle değiştirilmiş ve korunmuş; postayı bu sunucunun gönderim hizmetine şifreli ve 127.0.0.1 için sertifika ayarlarıyla vermiyor. Sunucu sahibi CelikPanel'in %s içindeki metnini (ya da iki gönderim satırını) dosyaya kopyalar.", item.name)
+		}
+		return fmt.Sprintf("Webmail cannot send: %s does not hand mail to this server's sending service with encryption and the certificate settings for 127.0.0.1. The server owner writes these two lines in it: %s and %s", item.name, webmailSendingHostLine, webmailSendingOptionsLine),
+			fmt.Sprintf("Web postası gönderemiyor: %s postayı bu sunucunun gönderim hizmetine şifreli ve 127.0.0.1 için sertifika ayarlarıyla vermiyor. Sunucu sahibi içine şu iki satırı yazar: %s ve %s", item.name, webmailSendingHostLine, webmailSendingOptionsLine)
 	case "mail_autoresponder_foreign":
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),

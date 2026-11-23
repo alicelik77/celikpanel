@@ -11433,18 +11433,37 @@ Code: `cmd/panel/operation_step_routes.go`, `postgresql_public_access.go`,
   host keeps the full check.
 - **Existing installations** are corrected at the Agent's first start after
   the update when the file is CelikPanel's own text (with or without the
-  address lines; mode and owner kept). A file the owner changed is kept; when
-  it still sends without encryption, CelikPanel's current text (with the
-  file's own `des_key`, readable by root only) lies beside it as
+  address lines; mode and owner kept; the new file has its final owner and
+  mode before it is put in place). A file the owner changed is kept; when
+  webmail cannot send with it, CelikPanel's current text (with the file's own
+  `des_key`, readable by root only) lies beside it as
   `config.inc.php.celikpanel-pending`, and Problems now has one line
   (`webmail_cannot_send`, who acts: the server owner) naming that text, or the
-  file itself when no text could be put there. The line goes by itself once
-  the file sends with encryption; an owner's own sending setting (another
-  host, `ssl://`, a value CelikPanel cannot read) is not named. The webmail
-  profile is not "installed and verified" while the last component check
-  reads that it cannot send.
+  file itself with the two lines to write when no text could be put there.
+  "Cannot send" means: a loopback host (`localhost`, `127.0.0.1`, `[::1]`)
+  without `tls://` or `ssl://` on 587 or no port, or with `tls://`/`ssl://`
+  while the file has no `smtp_conn_options` assignment at all. The line goes
+  by itself once that is no longer so; an owner's own sending setting
+  (another host, any `smtp_conn_options` of theirs, a value CelikPanel cannot
+  read, the legacy key `smtp_server`) is not named. Known gap: an assignment
+  inside a `/* … */` block comment is read as active. The pending file is
+  CelikPanel's own and is removed by name once it is no longer needed.
+- **CelikPanel's own earlier text that could not be rewritten** (a read-only
+  file system, an immutable flag, a full disk) is the same Problems-now line
+  with its own words: the cause is in the Agent's journal; the server owner
+  removes it and restarts the Agent, which then rewrites the file by itself.
+  The file must not be edited by hand: it would then be the owner's for good.
+- The webmail profile is not "installed and verified" while the last
+  component check reads that webmail cannot send; its Repair stays offered and
+  cannot correct the file (the profile says to look at Problems now).
+- **Going back to alpha.144** keeps webmail sending, but alpha.144 does not
+  know the new text: it treats the configuration as changed by the owner and
+  cannot switch webmail's own address lines until the server is updated
+  again.
 - **An alias's DNS record that waited** stops waiting when the zone's held
-  change is published, not at the next hourly round; while it waits, the
+  change is published, or when the zone's own pending publication (the backup
+  catching up) completes — then by the hourly round's own step, a fresh
+  publication of the zone — not at the next hourly round; while it waits, the
   zone's notice says the alias records are published by themselves instead
   of asking to make the change again.
 - **A PostgreSQL close or its undo** ends with a title that says the outcome

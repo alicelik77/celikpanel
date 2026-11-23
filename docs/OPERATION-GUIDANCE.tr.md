@@ -11298,19 +11298,39 @@ kanıtladığı ve neyi denetlemediği için alpha.144 sürüm notlarının
   kendi imzalı bir sertifikayı gösterebilir). Başka her ad tam denetimi korur.
 - **Kurulu sunucularda** dosya CelikPanel'in kendi metniyse (adres satırlarıyla
   ya da onlarsız) güncellemeden sonra Agent'ın ilk açılışında düzeltilir; kipi
-  ve sahibi korunur. Sahibin değiştirdiği dosya korunur; hâlâ şifresiz
-  gönderiyorsa CelikPanel'in şimdiki metni (dosyanın kendi `des_key` değeriyle,
-  yalnız root okuyabilir) yanına `config.inc.php.celikpanel-pending` olarak
-  konur ve Şu anki sorunlar'da tek satır çıkar (`webmail_cannot_send`, kim
-  yapar: sunucu sahibi); satır bu metni, metin konamadıysa dosyanın kendisini
-  adlandırır. Dosya şifreli gönderince satır kendiliğinden kalkar; sahibin
-  kendi gönderim ayarı (başka bir ad, `ssl://`, CelikPanel'in okuyamadığı bir
-  değer) adlandırılmaz. Son bileşen denetimi gönderemediğini okuduğu sürece web
-  postası profili "kurulu ve doğrulanmış" görünmez.
+  ve sahibi korunur; yeni dosya yerine konmadan önce son sahibini ve kipini
+  alır. Sahibin değiştirdiği dosya korunur; web postası onunla gönderemiyorsa
+  CelikPanel'in şimdiki metni (dosyanın kendi `des_key` değeriyle, yalnız root
+  okuyabilir) yanına `config.inc.php.celikpanel-pending` olarak konur ve Şu
+  anki sorunlar'da tek satır çıkar (`webmail_cannot_send`, kim yapar: sunucu
+  sahibi); satır bu metni, metin konamadıysa dosyanın kendisini ve yazılacak
+  iki satırı söyler. "Gönderemiyor" şu demektir: yerel döngü adı
+  (`localhost`, `127.0.0.1`, `[::1]`) `tls://` ya da `ssl://` olmadan 587'de
+  ya da kapısız; ya da `tls://`/`ssl://` ile ama dosyada hiç
+  `smtp_conn_options` ataması yokken. Bu durum kalkınca satır kendiliğinden
+  kalkar; sahibin kendi gönderim ayarı (başka bir ad, kendi
+  `smtp_conn_options` ayarı, CelikPanel'in okuyamadığı bir değer, eski
+  `smtp_server` anahtarı) adlandırılmaz. Bilinen açık: `/* … */` yorum
+  bloğunun içindeki bir atama etkin sayılır. Bekleyen metin dosyası
+  CelikPanel'indir; gerekmeyince adıyla silinir.
+- **Yeniden yazılamayan önceki CelikPanel metni** (salt okunur dosya sistemi,
+  değiştirilemez işareti, dolu disk) aynı satırdır ama kendi sözleriyle: neden
+  Agent günlüğündedir; sunucu sahibi nedeni giderir ve Agent'ı yeniden
+  başlatır, Agent dosyayı kendisi yeniden yazar. Dosya elle düzenlenmemeli:
+  yoksa sahibin dosyası sayılır ve CelikPanel onu bir daha yazmaz.
+- Son bileşen denetimi gönderemediğini okuduğu sürece Webmail profili "kurulu
+  ve doğrulanmış" görünmez; Onar düğmesi yine sunulur ama dosyayı düzeltemez
+  (profil Şu anki sorunlar'a bakmayı söyler).
+- **alpha.144'e geri dönülürse** web postası göndermeyi sürdürür, ama
+  alpha.144 yeni metni tanımaz: yapılandırmayı sahibin değiştirdiği dosya sayar
+  ve sunucu yeniden güncellenene dek web postasının kendi adres satırlarını
+  açıp kapatamaz.
 - **Bekleyen takma ad DNS kaydı**, bölgenin bekletilen değişikliği
-  yayımlanınca beklemeyi bırakır, bir sonraki saatlik turu beklemez; beklerken
-  bölgenin uyarısı değişikliği yeniden yapmayı istemez, takma ad kayıtlarının
-  kendiliğinden yayımlanacağını söyler.
+  yayımlanınca ya da bölgenin kendi bekleyen yayını (yedeğin yetişmesi)
+  tamamlanınca — o zaman saatlik turun kendi adımıyla, bölgenin yeniden
+  yayımlanmasıyla — beklemeyi bırakır, bir sonraki saatlik turu beklemez;
+  beklerken bölgenin uyarısı değişikliği yeniden yapmayı istemez, takma ad
+  kayıtlarının kendiliğinden yayımlanacağını söyler.
 - **PostgreSQL kapatma ya da geri alma** penceresi sonucu söyleyen bir
   başlıkla biter (kapatıldı, kapatılamadı, bilinmiyor); sürmekte olan
   "… kapatılıyor" başlığıyla bitmez.

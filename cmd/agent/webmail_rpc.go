@@ -506,20 +506,24 @@ func setRoundcubeAddressSettings(enabled bool) (string, error) {
 }
 
 // writeRoundcubeConfigKeeping writes next over the configuration a snapshot
-// read, with the file's mode and owner kept; PHP-FPM must still read it, so
-// a failure brings the previous file back.
+// read, with the file's mode and owner kept. alpha.145 (review of PR #357,
+// finding 4): the new file gets its final owner and mode BEFORE it is renamed
+// into place, in one step, so there is no moment in which PHP-FPM cannot read
+// webmail's configuration (a file the Agent creates is group celikpanel).
+// secureWriteConfig already gave the new file the replaced file's owner and
+// mode before the rename; the owner is now named explicitly from the
+// snapshot and the second change of owner after the rename is gone. A failed
+// write leaves the previous file as it was.
 func writeRoundcubeConfigKeeping(snapshot mailFileSnapshot, next string) error {
-	if err := secureWriteConfig(snapshot.path, []byte(next), snapshot.mode); err != nil {
-		return err
+	if snapshot.uid < 0 || snapshot.gid < 0 {
+		return fmt.Errorf("%s: its owner could not be read", snapshot.path)
 	}
-	if err := secureSetMailFileMetadata(snapshot.path, snapshot.mode, snapshot.uid, snapshot.gid); err != nil {
-		if restoreErr := restoreMailFile(snapshot); restoreErr != nil {
-			return errors.Join(err, restoreErr)
-		}
-		return err
-	}
-	return nil
+	return roundcubeConfigPublish(snapshot.path, []byte(next), snapshot.mode, uint32(snapshot.uid), uint32(snapshot.gid))
 }
+
+// roundcubeConfigPublish publishes Roundcube's configuration owned by
+// uid:gid (a test seam).
+var roundcubeConfigPublish = secureWriteConfigOwnedBy
 
 const roundcubePHPCapabilityProbe = "$missing=[];if(!function_exists('mb_internal_encoding')){$missing[]='mbstring';}if(!class_exists('DOMDocument')){$missing[]='dom';}if(!extension_loaded('intl')){$missing[]='intl';}if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true)){$missing[]='pdo_sqlite';}if(!class_exists('ZipArchive')){$missing[]='zip';}echo count($missing)===0?'ok':'missing:'.implode(',',$missing);"
 const pacmanRoundcubePHPConfigFile = "celikpanel-sqlite.ini"

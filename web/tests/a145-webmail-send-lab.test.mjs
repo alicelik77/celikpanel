@@ -111,3 +111,33 @@ test('O2: the window of a close or its undo ends with a title that follows the o
         }
     }
 });
+
+// Review of PR #357 (findings 1, 2 and 8): CelikPanel's own earlier text it
+// could not rewrite has its own words (the journal and a restart, never a
+// hand edit); the owner without a text beside the file gets CelikPanel's two
+// lines literally; one Turkish verb for publishing, one name for webmail in
+// the components part, plain English.
+test('fix round: a failed rewrite says restart, not hand edit; the literal lines; the wording', () => {
+    const source = read('../src/components/ProblemsNow.tsx');
+    const body = /export function problemBodyKey[\s\S]*?\n}\n/.exec(source)?.[0] ?? '';
+    const problemBodyKey = new Function('MAIL_SIGNING_STATES', `return ${body.replace(/^export function problemBodyKey\(problem[^)]*\): TranslationKey/, 'function (problem)').replace(/ as TranslationKey/g, '')}`)([]);
+    assert.equal(problemBodyKey({ kind: 'webmail_cannot_send', subject: 'rewrite_failed', name: '/var/lib/celikpanel-webmail/config/config.inc.php' }), 'pnow.webmail_cannot_send.body_rewrite_failed');
+    const host = "$config['smtp_host'] = 'tls://127.0.0.1:587';";
+    const options = "$config['smtp_conn_options'] = ['127.0.0.1' => ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]];";
+    assert.ok(read('../../cmd/agent/webmail_sending.go').includes(`\n${host}\n`) && read('../../cmd/agent/webmail_sending.go').includes(`\n${options}\n`), 'the lines CelikPanel renders');
+    for (const catalogue of [enScreens, trScreens]) {
+        const failed = catalogue['pnow.webmail_cannot_send.body_rewrite_failed'];
+        assert.match(failed, /\{other\}/);
+        assert.match(failed, /sudo systemctl restart celikpanel-agent/);
+        assert.match(failed, /sudo journalctl -u celikpanel-agent/);
+        assert.doesNotMatch(failed, /smtp_host|smtp_conn_options/);
+        const noText = catalogue['pnow.webmail_cannot_send.body_no_text'];
+        assert.ok(noText.includes(host) && noText.includes(options), 'the two lines, exactly');
+        for (const state of ['pair_pending', 'switching', 'not_running']) assert.doesNotMatch(catalogue[`dnsstate.${state}.todo_held`], /yayınlanır|made again/);
+    }
+    assert.match(enScreens['pnow.webmail_cannot_send.body_rewrite_failed'], /Do not edit the file by hand/);
+    assert.match(trScreens['pnow.webmail_cannot_send.body_rewrite_failed'], /elle düzenlemeyin/);
+    assert.match(enScreens['pnow.webmail_cannot_send.body'], /copies that text/);
+    assert.match(trScreens['services.mailProfiles.code.webmail_cannot_send'], /^Webmail /);
+    assert.match(trScreens['services.mailProfiles.code.webmail_unverified'], /^Webmail /);
+});
