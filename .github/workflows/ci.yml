@@ -592,6 +592,84 @@ jobs:
           go build -o "$RUNNER_TEMP/license-entry-panel" ./cmd/panel
           sudo python3 deploy/test-install-license-entry.py "$RUNNER_TEMP/license-entry-panel"
 
+  # The Go member service (internal/membership, cmd/membership) that replaces
+  # portal-membership/ step by step (D-047, amended 2026-11-23), and the
+  # payment package (internal/payment). Its tests compare it with the PHP
+  # service itself: the same PHP 8.3 as the job above, the same requests on
+  # copies of one database, byte-equal receipts and pages; then
+  # portal-membership's own HTTP flow test runs unchanged against the Go
+  # server. Throwaway keys only; nothing leaves the runner.
+  #
+  # Go uye hizmeti ve odeme paketi; PHP hizmetiyle ayni PHP 8.3 uzerinde
+  # karsilastirilir, sonra PHP'nin HTTP akis testi Go sunucusuna kosulur.
+  membership-go:
+    name: Membership — Go service, parity with PHP 8.3, payment package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.5'
+          cache: true
+      - name: Verify exact Go toolchain
+        run: test "$(go env GOVERSION)" = go1.26.5
+      # The same step as the membership job above: the runner's PHP 8.3 when
+      # it is complete, the package mirror only for a missing piece.
+      - name: Use the runner's PHP 8.3 with SQLite support (mirror only if missing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_modules=(PDO pdo_sqlite sodium openssl pcntl session filter json)
+          missing_pieces() {
+            local version modules module
+            local -a missing=()
+            if ! command -v php >/dev/null 2>&1; then
+              printf '%s\n' 'the php command'
+              return 0
+            fi
+            version=$(php -r 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;' 2>/dev/null) || version=unknown
+            [[ "$version" == 8.3 ]] || missing+=("PHP 8.3 (php is $version)")
+            modules=$(php -m 2>/dev/null) || modules=
+            for module in "${required_modules[@]}"; do
+              grep -Fxiq -- "$module" <<< "$modules" || missing+=("PHP extension $module")
+            done
+            (( ${#missing[@]} == 0 )) || printf '%s\n' "${missing[@]}"
+          }
+          show_php() {
+            php -v
+            printf 'php binary: %s\n' "$(command -v php)"
+            printf 'required modules loaded:\n'
+            php -m | grep -Fxi -f <(printf '%s\n' "${required_modules[@]}") | sed 's/^/  /'
+          }
+          missing=$(missing_pieces)
+          if [[ -z "$missing" ]]; then
+            printf '%s\n' 'PHP 8.3 and every required extension are on the runner; the package mirror is not used.'
+            show_php
+            exit 0
+          fi
+          printf 'Not on the runner image:\n%s\nInstalling PHP 8.3 from the Ubuntu package mirror.\n' "$missing"
+          if ! { sudo apt-get -o Acquire::Retries=3 update &&
+                 sudo apt-get -o Acquire::Retries=3 install -y php8.3-cli php8.3-sqlite3; }; then
+            printf '::error title=PHP 8.3 unavailable::The runner image lacks %s and the Ubuntu package mirror could not supply it (see the apt output above). No membership test ran. Re-run this job once the mirror answers.\n' \
+              "$(paste -sd ';' <<< "$missing")"
+            exit 1
+          fi
+          if [[ -x /usr/bin/php8.3 ]] && update-alternatives --query php >/dev/null 2>&1; then
+            sudo update-alternatives --set php /usr/bin/php8.3
+          fi
+          missing=$(missing_pieces)
+          if [[ -n "$missing" ]]; then
+            printf '::error title=PHP 8.3 incomplete::Still missing after installing php8.3-cli and php8.3-sqlite3: %s. The membership tests need PHP 8.3 with these.\n' \
+              "$(paste -sd ';' <<< "$missing")"
+            exit 1
+          fi
+          show_php
+      - name: Verify the Go member service against the PHP one, and the payment package
+        env:
+          CELIKPANEL_MEMBERSHIP_PHP: php
+          CELIKPANEL_MEMBERSHIP_REQUIRE_PHP: '1'
+        run: bash deploy/test-membership-go.sh
+
   package:
     name: Release — reproducible archive and checksum
     runs-on: ubuntu-24.04

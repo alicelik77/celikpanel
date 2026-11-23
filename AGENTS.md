@@ -142,8 +142,14 @@ actions" was his approval of 14 November): without a licence the panel's own scr
 security screens included, are closed until a licence is entered again, and the server's
 owner does such work on the server itself; entering or renewing a licence and installing
 the panel's own updates stay possible. The owner chose Stripe as the first payment method
-on 23 November 2026 (D-047's amendment of that date). This does not authorize contacting
-the live licence service, changing the live portal, or updating installed panels from the
+on 23 November 2026 (D-047's amendment of that date). New member-service code is Go, by
+his direction of 15 November 2026; it replaces `portal-membership/` step by step. His
+requirements of that day (celikpanel.net moves to Frankfurt; the licence server can be
+changed at any time and need not be celikpanel.net) and his acceptance in principle of a
+signed operator licence are recorded in D-047's amendments, each with its source; the
+proposals there are marked as proposals. The legal entity of the Stripe account, tax and
+invoices are not decided. This does not authorize contacting the live licence service or
+Stripe, changing the live portal, or updating installed panels from the
 assistant's side.
 
 Sahip, ücretli yıllık lisans yönünü D-047'de (docs/DECISIONS.tr.md) tasarım ve küçük
@@ -156,6 +162,11 @@ asla engellemez" ifadesi onun 14 Kasım onayıydı): lisans yokken panelin kendi
 güvenlik ekranları dahil, yeniden lisans girilene kadar kapalıdır; bu işleri sunucunun
 sahibi sunucunun kendisinde yapar. Lisans girmek ya da yenilemek ve panelin kendi
 güncellemelerini kurmak açık kalır. Sahip 23 Kasım 2026'da ilk ödeme yöntemi olarak
-Stripe'ı seçti (D-047'nin o tarihli değişikliği). Bu onay canlı lisans hizmetine
-bağlanmaya, canlı portalı değiştirmeye ya da kurulu panelleri asistan tarafından
-güncellemeye izin vermez.
+Stripe'ı seçti (D-047'nin o tarihli değişikliği). Yeni üyelik hizmeti kodu, sahibin
+15 Kasım 2026 yönergesiyle Go ile yazılır ve `portal-membership/` dizininin yerini adım
+adım alır. O günkü gereksinimleri (celikpanel.net Frankfurt'a taşınır; lisans sunucusu her
+zaman değiştirilebilir ve celikpanel.net olmak zorunda değildir) ve imzalı bir işletmeci
+lisansını ilke olarak kabulü D-047'nin eklerinde, her biri kaynağıyla kaydedildi; oradaki
+öneriler öneri olarak işaretlidir. Stripe hesabının tüzel kişiliği, vergi ve fatura karara
+bağlanmadı. Bu onay canlı lisans hizmetine ya da Stripe'a bağlanmaya, canlı portalı
+değiştirmeye ya da kurulu panelleri asistan tarafından güncellemeye izin vermez.

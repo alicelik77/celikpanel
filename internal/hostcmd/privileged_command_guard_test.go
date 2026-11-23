@@ -131,6 +131,11 @@ var privilegedCommandAllowlist = map[string]string{
 	"internal/hostplatform/detect_linux.go:<computed>":                 "the platform probe's launcher; it runs before anything is installed",
 	"internal/systemsqlite/owner_worker_linux.go:/proc/self/exe":       "re-executes this binary as the SQLite owner worker; not a host tool at all",
 
+	// The central member service (internal/membership) runs on the product's own
+	// portal host as its service account, never on a panel server.
+	// Merkezi uye hizmeti; hicbir panel sunucusunda calismaz.
+	"internal/membership/mail.go:/usr/sbin/sendmail": "the member service's local mail transport, exactly PHP mail()'s (sendmail -t -i) for hosts without an smtp block; fixed path and arguments, the message on stdin, a fixed PATH and the 15-second mail deadline; a failure is only mail_unavailable and no output is read or forwarded",
+
 	// Read-only probes. A failure here means "this tool is not installed" or
 	// "this setting is not set", the answer is the output, and there is no
 	// operator instruction beyond what the caller already gives.

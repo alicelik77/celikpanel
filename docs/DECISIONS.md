@@ -60,12 +60,6 @@ payment, invoice or reminder exists anywhere.
 CelikPanel's own service keeps issuing and signing licences; a payment provider only
 reports "paid", "refunded" or "cancelled".
 
-**Not decided (open).** The payment provider: abroad a merchant of record (Polar and Creem
-document payouts to Turkey; Paddle is to be asked), in Turkey later iyzico or PayTR. This
-waits for the owner's accountant: VAT on exported software licences, e-arşiv invoices,
-selling through a foreign merchant of record. The founder price. Any multi-server discount.
-Currencies other than USD. The design's own questions for the owner are in its section k.
-
 **What it supersedes or amends.**
 
 - **D-039.** The title's "up to seven days offline" and the decision bullets
@@ -161,6 +155,89 @@ the points above were his approval of 14 November 2026.
 Wherever this record speaks of grace, the protection state, a refund or security actions
 that are never refused for a licence reason, this amendment prevails. It changes no code, no
 installed panel and no live service.
+
+**The rest of 23 November 2026, each line with its source.** The amendment above is the
+owner's decision. What follows records what else that day settled or proposed, and says
+whose each line is; nothing here softens the amendment above.
+
+- **Confirmed by the owner: one answer of the Go service differs from the PHP one.**
+  Proposed by the coordinator; asked "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz'
+  yerine 'şu an kullanılamıyor' desin mi?" ("Should the new service say 'unavailable right
+  now' instead of 'invalid' when the database is older than the licence?"), he answered
+  "evet" ("yes"). When a panel's refresh presents an activation token made by our signing
+  key for a state the database does not know (the licence row is missing, the token's
+  generation is above the row's, or the row is unbound at that generation), the Go service
+  answers 503 and logs one line, so the panel keeps its receipt; the PHP service answers 400
+  `invalid_activation` and the panel locks its management screens. It protects installed
+  panels from a database copy that is behind (a move, a late copy). It rests on an invariant
+  every later change must keep: a licence row is never deleted, its generation never falls,
+  and every revocation (release, remove, rotate, a reinstall elsewhere, a refund or lost
+  dispute applied, account closing) raises the generation in the same statement; a row
+  marked removed or revoked is never "behind". The operator can switch the answer off with
+  `database_is_authority` in the private configuration after a deliberate restore.
+- **The owner's statement (a statement, not recorded here as done):** "Stripe deneme hesabı
+  açarız" ("we will open a Stripe test account").
+- **New member-service code is Go, no new PHP:** the owner's direction of 15 November 2026
+  (PHP is used as little as possible; new services in Go). The Go service replaces
+  `portal-membership/` (PHP) step by step: first at exact parity (same pages, same panel
+  API, same database file, same signing key), then orders and payments.
+- **Requirements for the next design step, his words.** "celikpanel.net frankfurta
+  taşınacak" ("celikpanel.net will move to Frankfurt"); "frankfurt sadece bizde duracak"
+  ("Frankfurt will stay only with us"); "lisans sunucusunu her zaman değiştirebilirim.
+  celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım" ("I can change the licence
+  server at any time. It may not even be celikpanel.net … let us make it flexible and
+  professional"). His requirements: celikpanel.net moves to Frankfurt; the licence server
+  must be changeable at any time and need not be celikpanel.net; the result must be
+  flexible and professional. *A reading, not his words:* the member and licence service
+  moves together with celikpanel.net, and "only with us" means the Frankfurt server hosts
+  only the owner's own things.
+- **Accepted by the owner in principle, format not designed:** a signed operator licence
+  that needs no online check. His words: "bazen güvenlik için sabit kullanımlı key
+  üretebiliriz. o keyleri bir yerden valide etmez" ("sometimes, for security, we can produce
+  fixed-use keys; those keys are not validated from anywhere"), and on the proposal:
+  "önerin mantıklı. devam" ("your proposal makes sense; go on").
+
+*Readings of his answers, not his words (how the service is built):*
+
+- Every purchase is a one-time payment by card; a Stripe subscription only when the member
+  turns automatic renewal on (point 6, unchanged). Stripe only reports what was paid,
+  refunded or disputed; the service still issues and signs.
+- The trial asks for no card or payment details (point 6 of 14 November says "without a
+  card"; his words of 23 November do not repeat it).
+- A renewal paid before the end date is uninterrupted: the year continues from the old end
+  and the price does not rise (point 2). A purchase after the end date is a new purchase at
+  the current list price, its year starting at the payment. "yeni lisans alması gerekir" is
+  built as such a new year on the same licence (it keeps its key and its server). This
+  closes the design's open questions 5 and 6.
+- No page offers a refund. A refund the operator makes as an exceptional act in the
+  provider's dashboard, or a chargeback the member's bank decides, arrives as a confirmed
+  fact and is applied: a first year is revoked, a renewal's year is taken back, and the
+  operator's log records it.
+
+*Proposals of the coordinating session and the reviews, not decided by the owner (the code
+does what each says until he decides otherwise):*
+
+- Trials: one per account and per mode, and one per server while a licence is still in its
+  trial; an account that held a free beta licence has had its free period.
+- A chargeback ends the time it bought when the dispute is lost; while it is open the
+  licence runs and the operator sees it.
+- The PHP release stays selectable as the way back during the switch, but never once the
+  store has been used (`check-db -for-php` refuses such a database file).
+- The operator's `reinstate`, for a revocation applied by mistake, gives no time back; a
+  gift is `extend` with its own reason.
+- For the licence API: a separate, stable name with the old path still answered; more than
+  one address known to panels; a root key kept offline that signs a short-lived service key.
+  The last would change how panels trust the service's key (today a pinned key) and needs
+  its own decision.
+
+**Not decided (open).** The legal entity and country of the Stripe account, and whether
+charging goes live through it or through a merchant of record abroad (Polar and Creem
+document payouts to Turkey; Paddle is to be asked) or, for a Turkish entity, iyzico or
+PayTR. Tax and invoices: this waits for the owner's accountant (VAT on exported software
+licences, e-arşiv invoices, selling through a foreign merchant of record). The founder
+price. Any multi-server discount. Currencies other than USD. The legal wording of "no
+refunds" in the terms (for the owner's lawyer). The design's own questions for the owner
+are in its section k.
 
 ## D-046 · No mail without a password: sites send only through authenticated submission
 

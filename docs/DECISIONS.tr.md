@@ -60,13 +60,6 @@ sipariş, ödeme, fatura ya da hatırlatma hiçbir yerde yoktur.
 Lisansları CelikPanel'in kendi hizmeti vermeye ve imzalamaya devam eder; ödeme sağlayıcısı
 yalnız "ödendi", "iade edildi" ya da "iptal edildi" bildirir.
 
-**Karara bağlanmayanlar (açık).** Ödeme sağlayıcısı: yurt dışı için bir satıcı-aracı
-(merchant of record; Polar ve Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a
-sorulacak), Türkiye için ileride iyzico ya da PayTR. Bu karar sahibin mali müşavirini
-bekliyor: yurt dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir
-satıcı-aracı üzerinden satış. Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para
-birimleri. Tasarımın sahibe soruları tasarımın k bölümündedir.
-
 **Neyi değiştirir.**
 
 - **D-039.** Başlıktaki "çevrimdışı en çok yedi gün" ile karar maddelerindeki
@@ -160,6 +153,86 @@ yukarıdaki maddeler onun 14 Kasım 2026 onayıydı.
 Bu kaydın ek süreden, koruma durumundan, iadeden ya da lisans nedeniyle asla reddedilmeyen
 güvenlik işlemlerinden söz eden her yerinde bu değişiklik geçerlidir. Hiçbir kodu, kurulu
 paneli ya da canlı hizmeti değiştirmez.
+
+**23 Kasım 2026'nın geri kalanı, her satır kaynağıyla.** Yukarıdaki değişiklik sahibin
+kararıdır. Aşağıdakiler o gün başka neyin kararlaştırıldığını ya da önerildiğini kaydeder ve
+her satırın kimin olduğunu söyler; hiçbiri yukarıdaki değişikliği yumuşatmaz.
+
+- **Sahip onayladı: Go hizmetinin bir yanıtı PHP hizmetininkinden farklıdır.** Koordinatörün
+  önerisi; "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz' yerine 'şu an
+  kullanılamıyor' desin mi?" sorusuna "evet" yanıtını verdi. Bir panelin yenileme isteği,
+  imza anahtarımızın ürettiği bir etkinleştirme belirtecini veritabanının bilmediği bir durum
+  için sunduğunda (lisans satırı yoktur, belirtecin kuşağı satırınkinden yüksektir ya da satır
+  o kuşakta bir sunucuya bağlı değildir), Go hizmeti 503 yanıtı verir ve tek satır kayıt
+  düşer, böylece panel makbuzunu korur; PHP hizmeti 400 `invalid_activation` yanıtı verir ve
+  panel yönetim ekranlarını kilitler. Kurulu panelleri geride kalmış bir veritabanı
+  kopyasından (taşıma, geç alınmış kopya) korur. Sonraki her değişikliğin koruması gereken
+  bir değişmeze dayanır: lisans satırı asla silinmez, kuşağı asla düşmez ve her geri alma
+  (bırakma, kaldırma, anahtar yenileme, başka sunucuya yeniden kurulum, uygulanan bir iade ya
+  da kaybedilen itiraz, hesap kapatma) kuşağı aynı ifadede yükseltir; kaldırıldı ya da geri
+  alındı olarak işaretli bir satır asla "geride" sayılmaz. İşletmeci, bilinçli bir geri
+  yüklemeden sonra özel yapılandırmadaki `database_is_authority` ile bu yanıtı kapatabilir.
+- **Sahibin sözü (bir söz; burada yapılmış olarak kaydedilmedi):** "Stripe deneme hesabı
+  açarız".
+- **Yeni üyelik hizmeti kodu Go ile yazılır, yeni PHP yazılmaz:** sahibin 15 Kasım 2026
+  yönergesi (PHP mümkün olduğunca kullanılmaz; yeni hizmetler Go ile). Go hizmeti
+  `portal-membership/` (PHP) dizininin yerini adım adım alır: önce birebir denk (aynı
+  sayfalar, aynı panel API'si, aynı veritabanı dosyası, aynı imza anahtarı), sonra sipariş ve
+  ödemeler.
+- **Sonraki tasarım adımı için gereksinimler, sahibin sözleri.** "celikpanel.net frankfurta
+  taşınacak"; "frankfurt sadece bizde duracak"; "lisans sunucusunu her zaman
+  değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım".
+  Gereksinimleri: celikpanel.net Frankfurt'a taşınır; lisans sunucusu her zaman
+  değiştirilebilmeli ve celikpanel.net olmak zorunda değildir; sonuç esnek ve profesyonel
+  olmalıdır. *Bir okuma, sahibin sözü değil:* üyelik ve lisans hizmeti celikpanel.net ile
+  birlikte taşınır ve "sadece bizde" sözü Frankfurt sunucusunun yalnız sahibin kendi işlerini
+  barındıracağı anlamına gelir.
+- **Sahibin ilke olarak kabul ettiği, biçimi tasarlanmamış:** çevrimiçi denetim
+  gerektirmeyen, imzalı bir işletmeci lisansı. Sözleri: "bazen güvenlik için sabit kullanımlı
+  key üretebiliriz. o keyleri bir yerden valide etmez", öneri üzerine: "önerin mantıklı.
+  devam".
+
+*Sahibin yanıtlarının okumaları, kendi sözleri değil (hizmetin nasıl kurulduğu):*
+
+- Her satın alma kartla tek seferlik ödemedir; Stripe aboneliği yalnız üye otomatik
+  yenilemeyi açtığında (6. madde, değişmedi). Stripe yalnız neyin ödendiğini, iade
+  edildiğini ya da itiraz edildiğini bildirir; lisansı yine hizmet verir ve imzalar.
+- Deneme kart ya da ödeme bilgisi istemez (14 Kasım 6. madde "kartsız" der; sahibin 23 Kasım
+  sözleri bunu tekrarlamaz).
+- Bitiş tarihinden önce ödenen yenileme kesintisizdir: yıl eski bitişten devam eder ve fiyat
+  artmaz (2. madde). Bitiş tarihinden sonraki satın alma, güncel liste fiyatıyla yeni bir
+  satın almadır ve yılı ödemeyle başlar. "yeni lisans alması gerekir" sözü aynı lisansa
+  (anahtarı ve sunucusu kalır) böyle yeni bir yıl alınması olarak kuruldu. Bu, tasarımın açık
+  5. ve 6. sorularını kapatır.
+- Hiçbir sayfa iade sunmaz. İşletmecinin sağlayıcı panelinde istisnai olarak yaptığı bir
+  iade ya da üyenin bankasının karara bağladığı bir ters ibraz doğrulanmış bir olgu olarak
+  gelir ve uygulanır: ilk yıl geri alınır, bir yenilemenin yılı geri alınır ve işletmecinin
+  kaydına yazılır.
+
+*Koordinatör oturumun ve incelemelerin önerileri, sahip karara bağlamadı (sahip başka türlü
+karar verene kadar kod her birinin dediğini yapar):*
+
+- Deneme: hesap ve kip başına bir; lisans hâlâ denemesindeyken sunucu başına bir; ücretsiz
+  beta lisansı almış bir hesap ücretsiz dönemini kullanmıştır.
+- Bir ters ibraz, itiraz kaybedildiğinde satın aldığı süreyi sona erdirir; itiraz açıkken
+  lisans çalışır ve işletmeci bunu görür.
+- Geçiş sırasında PHP sürümü geri dönüş yolu olarak seçilebilir kalır, ama mağaza bir kez
+  kullanıldıktan sonra asla (`check-db -for-php` böyle bir veritabanı dosyasını reddeder).
+- İşletmecinin yanlışlıkla uygulanan bir geri alma için `reinstate` komutu süre geri vermez;
+  hediye, kendi gerekçesiyle `extend` komutudur.
+- Lisans API'si için: ayrı ve kalıcı bir ad, eski yol da yanıt vermeye devam eder; panellerin
+  bildiği birden çok adres; çevrimdışı saklanan ve kısa ömürlü bir hizmet anahtarını
+  imzalayan bir kök anahtar. Sonuncusu panellerin hizmet anahtarına güvenme biçimini (bugün
+  sabitlenmiş bir anahtar) değiştirir ve kendi kararını gerektirir.
+
+**Karara bağlanmayanlar (açık).** Stripe hesabının tüzel kişiliği ve ülkesi; ücret almanın
+canlıda bu hesapla mı, yoksa yurt dışında bir satıcı-aracıyla (merchant of record; Polar ve
+Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a sorulacak) ya da Türk bir şirket için
+iyzico veya PayTR ile mi yapılacağı. Vergi ve fatura: sahibin mali müşavirini bekliyor (yurt
+dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir satıcı-aracı üzerinden
+satış). Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para birimleri. Koşullardaki "iade
+yok" ifadesinin hukuki metni (sahibin avukatı için). Tasarımın sahibe soruları tasarımın k
+bölümündedir.
 
 ## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
 

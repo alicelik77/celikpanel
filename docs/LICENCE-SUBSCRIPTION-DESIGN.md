@@ -5,6 +5,86 @@ direction of the same day ([D-047](DECISIONS.md)). Status: design only. Nothing 
 implemented; no installed panel, live licence service or payment provider was contacted
 or changed. Line references are to `main` at `1f1d80672`.*
 
+> **Amendment, 23 November 2026 ([D-047](DECISIONS.md), the owner's words there).** The
+> owner's words of 23 November establish that members manage their accounts and
+> subscriptions and that Stripe is the first payment method: section e's provider adapter is
+> built for Stripe first (every purchase a one-time Checkout payment; a Stripe subscription
+> only when the member turns automatic renewal on, as point 6 of D-047 already requires),
+> behind the same provider-neutral seam; building against a fake Stripe server first and then
+> Stripe's test mode is the plan's proposal, not the owner's words. By the owner's direction of 15 November 2026 (no new PHP), the service in section e
+> is written in Go and replaces `portal-membership/` step by step: first a Go service at
+> exact parity with the PHP one (same pages and texts, same panel API, the same SQLite file
+> opened in place, the same signing key), then orders and payments. Keeping the PHP release
+> selectable as the way back during the switch is the plan's proposal, not the owner's
+> decision. Where this document says "the service" or names `Service.php`/`http.php`, read
+> the Go service for new work; the PHP lines stay the reference for parity. The owner's
+> requirements of the same day (celikpanel.net moves to Frankfurt; the licence server can be
+> changed at any time and need not be celikpanel.net), his acceptance in principle of a
+> signed operator licence, and the design proposals that are not decided are recorded in
+> D-047, each with its source, and are not designed here. A draft procedure for moving or
+> switching the member service, not yet rehearsed, is in §e ("Moving or switching the member
+> service"). Still open: the
+> legal entity and country of the Stripe account, tax and invoices, the founder price,
+> currencies other than USD (§k). Everything else here is unchanged.
+
+> **Changed by the owner on 23 November 2026 ([D-047](DECISIONS.md), his words quoted there):
+> no grace period, no protection state, no refunds.** "ek süre diye birşey yok. 1 ay
+> öncesinden uyarı yapalım. uzatsın yada sonucuna katlansın."; "lisansın bittiği gün biter.
+> yeni lisans alması gerekir."; "lisans yoksa panel çalışmaz. sunucu çalışır bizi
+> ilgilendirmez"; "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi
+> yok." What this document says below is superseded where it disagrees:
+>
+> - **Dropped by this decision:** the 30 days of grace, the protection level and its gate
+>   (main choices 1, 2 and 4; §a's grace and protection states; §b entirely; the parts of §c
+>   and §g that carry grace or protection into the receipt and the texts; the stage of §j
+>   that builds them). A licence ends on its end date; without a licence the panel's screens
+>   are closed until a licence is entered again, and the server -- hosted sites, mail, DNS,
+>   databases, scheduled jobs, certificate renewal -- keeps running. The receipt format work
+>   planned for grace and protection is no longer needed. The warnings stay at 30, 7 and 1 day
+>   before the end.
+> - **Unchanged:** the 30-day offline window when CelikPanel's own licence service cannot be
+>   reached (main choice 4's other half, D-039) is a different thing and stays.
+> - **Refunds (§e "Refund", the operator's `refund`):** there are none. A refund or a lost
+>   dispute that happens at the payment provider (the operator's exceptional act, or a
+>   chargeback) is still applied when confirmed: a first year is revoked (the generation
+>   raised, "Revocations raise the generation" below), a renewal's year is taken back. No page
+>   offers a refund; the page before payment says plainly that payments are not refunded and
+>   that the 30-day trial is for trying first.
+> - **As built in S2 (after its two reviews):**
+>   - *Who buys.* An account that buys its years (in test mode: one the operator flagged; live
+>     mode is refused in this release) gets its first licence in that mode as the 30-day
+>     trial, without payment details -- unless it held a free beta licence, which was its free
+>     period. One trial per account and per mode, and per server while the licence is still in
+>     its trial: a trial licence does not activate on a server that already ran a trial in the
+>     same mode; once its year is bought it works on any server (the coordinator's anti-abuse
+>     rules, for the owner to confirm). Later licences wait for their first year (at most three at a
+>     time; their end is their creation time, so neither the Go nor the PHP service activates
+>     them); the order is made only when the member asks to pay. No free renewal for such an
+>     account. Everyone else keeps the beta's free licence and free renewal.
+>   - *Payments made in time are honoured.* A renewal at the locked price could only be paid
+>     before the licence's end (its checkout ended then), so it is granted from the old end
+>     whenever its confirmation arrives. The price stays locked only while the licence is in
+>     paid time without a gap.
+>   - *Disputes.* While a dispute is open nothing changes for the customer; reconciliation asks
+>     again every day until it closes, whatever the payment's age. A lost dispute (and a
+>     refund at the provider) takes back exactly the time that payment gave; later paid years
+>     stay; if nothing remains, the licence is ended (revoked, the generation raised).
+>   - *The operator* (`membership …`, run as a separate Unix user that owns the private
+>     directory; the `-operator` name is recorded as given): `orders -attention` lists the
+>     open matters with their age (also at the end of every `reconcile`), each closing by
+>     itself when applied or settled, or by `attend -order … -reason …`; `grant -order …
+>     -reason …` honours a payment that arrived but could not be granted (refused for a
+>     removed licence, and says so; it asks the provider first and never grants test money of an
+>     account no longer flagged); `reinstate -licence … -reason …` is for a revocation applied to
+>     the wrong licence or by a fault of ours: it gives no time back (the end becomes what remains
+>     without the reversed year, at the earliest now; a gift is `extend` with its own reason), and
+>     raises the generation (the server activates its key again). A licence with an open payment
+>     page is removed only after the page is ended at the provider.
+>   - *Receipts.* Claimed once in the transaction that makes the order paid ("owed"), mailed
+>     after the answer, and retried by `reconcile` until sent.
+> - **Questions 5 and 6 (§k) are answered:** a renewal paid before the end continues from the
+>   old end at the locked price; after the end it is a new purchase at the list price from the
+>   payment (the "During grace" and "In protection" lines of "Renewal" no longer apply).
 This document says how the eight approved points are built, in small releases, without
 locking any installed panel and without letting a licence state stop a hosted service
 (D-022) or a security action. Where the owner has not decided something, it is listed as
@@ -570,7 +650,8 @@ grace case.
 - **Refund (30 days, unconditional):** the member presses "Refund" on the order in the
   account, or the operator does it. The service calls `refund`, and on the confirmed state:
   a first purchase revokes the licence (`revoked`, `revoked_reason = refunded`, binding
-  cleared); the server's next refresh gets 400 `invalid_license` with `reason: refunded`,
+  cleared, **`generation` raised in the same statement**: see "Revocations raise the
+  generation" below); the server's next refresh gets 400 `invalid_license` with `reason: refunded`,
   i.e. the protection level, never a stopped service. A refunded renewal puts `expires` back
   to the order's `term_from`; the dates then decide the state. Whether renewals are
   refundable is open question 6.
@@ -596,7 +677,35 @@ orders, events), `extend <licence> <days> --reason`, `refund <order> --reason`,
 `founder-grant` (§f). Every command writes `operator_events` with before and after values;
 operators never see licence keys (no `reveal`). A web back-office later would need separate
 operator accounts, mandatory TOTP, an address allowlist in the private configuration and its
-own session cookie; it is not part of these stages.
+own session cookie; it is not part of these stages. `revoke` and `restore` follow the rule
+below.
+
+### Revocations raise the generation (a rule for every later change)
+
+*Added 23 November 2026 after the third look at PR #361.* The Go member service answers a
+panel's refresh with 503 ("database behind", the receipt is kept) instead of 400 when the
+panel's activation token is ours for a state the database does not know (confirmed by the
+owner on 23 November 2026: asked "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz' yerine 'şu an kullanılamıyor' desin mi?", he answered "evet"). That is safe only
+while this invariant holds, so every change to a licence keeps it:
+
+- **A licence row is never deleted.** Removal, refund, operator revoke, account closing,
+  erasure and any later end mark the row; they never `DELETE` it.
+- **Every revocation raises `generation` in the same statement** that clears or changes the
+  binding, marks the row removed or revoked, or replaces the key: release, remove, rotate, a
+  reinstall elsewhere at the same address (today), and refund, operator `revoke`, account
+  closing and any future one. A generation never falls.
+- **A revoked state is checked before the database-behind answer.** A row marked removed
+  (and, once the column exists, `revoked`) is never "behind", whatever its generation.
+- **Only a first activation binds without a raise** (from no server to one).
+
+Tests that hold the service to it: `TestEveryLicenceChangeRaisesTheGeneration` (each
+mutating operation of `Service`; a new revocation path is added to its table) and
+`TestNoSQLRevokesWithoutRaisingTheGeneration` (no `DELETE FROM licenses` and no binding,
+removal, revocation or key change without the generation in any non-test Go string of the
+module). The second reads SQL literals only: SQL assembled at run time, or an explicit
+`generation=?` whose value is not higher, is caught only by the first, for the operations in
+its table. The PHP service is not checked by them (it is the parity reference and changes
+nothing).
 
 ### Reminder e-mails
 
@@ -634,6 +743,97 @@ EU) need anything more for these service messages is for the owner's adviser to 
   checkout takes them; no card field is ever posted to celikpanel.net); full webhook bodies
   (only a digest and the fields above); provider API and webhook secrets outside the private
   configuration; licence keys in clear in logs (unchanged rule, `http.php:109-110`).
+
+### Moving or switching the member service (draft, not yet rehearsed)
+
+*Added 23 November 2026 after the second review of PR #361, extended the same day after the
+third look. Not rehearsed on any host; it is proved on a test copy before it is used. It
+applies to moving the service to another host and to switching between the PHP service and
+the Go one, in either direction.*
+
+**Why the order matters.** A panel that refreshes against a copy of the database that is
+behind (a licence issued, bound or rotated on the old side after the copy) gets an answer
+about a state the copy does not know. The Go service answers 503 when the panel's activation
+token verifies under the signing key but the copy does not know that state, and the panel
+keeps its receipt (for at most 7 days after its last successful check, then it shows
+"verification unavailable"). The PHP service answers `invalid_activation` (400), and the
+panel locks its management screens. So the old side stops changing the file before the copy
+is taken, and never changes it again.
+
+**An in-place switch needs no copy.** Switching between the PHP and the Go service on the
+same host and the same `members.sqlite` (both take the same SQLite locks on the same file)
+is only the selector change of step 5, with the maintenance of step 1 around it. Steps 2–4
+are for a move to another host.
+
+1. **A day ahead (a move only).** Lower the DNS TTL of the service's name, so caches let go
+   quickly at the switch. Panels and resolvers that looked the name up earlier keep reaching
+   the old host until their cached answer expires: that is why step 2 is never undone on the
+   old host. On the new host: its TLS certificate for the service's name is valid before the
+   switch (otherwise first activations fail as "unreachable"), and `members.sqlite`, its
+   `-wal` and `-shm`, `sessions/` and `config.json` are owned by the one Unix user that runs
+   the service, with the private directory at mode 0700.
+2. **Maintenance first, for good on the old host.** The web server answers 503 for
+   `/account/` on the old side (pages and panel API). Panels treat a 503 as "unreachable" and
+   keep their receipts for the offline window; only a new server's first activation waits.
+   After a move the old host **stays** in maintenance (or is shut down) and is never made
+   writable again: two writable copies with the same key are a fork, which no answer can make
+   right. It is decommissioned only after the watch period of step 7.
+3. **A consistent copy.** Use SQLite's backup API on the stopped service (`sqlite3
+   members.sqlite ".backup copy.sqlite"`, or Python's `sqlite3` `backup()` where the
+   `sqlite3` command is missing). Never a plain file copy of a live WAL database, and never
+   `members.sqlite` without its `-wal`. `config.json` (the signing key) goes by the owner's
+   own offline path, never through the repository or a message.
+4. **Compare on both sides.**
+   - A checksum (`sha256sum`) of the backup file on the old host and of the file that arrived
+     on the new host: equal, or copy again. With maintenance on, this is exact and covers
+     everything, members included (a registration, an e-mail verification or a password
+     reset writes no event, so the counts below cannot see them).
+   - `membership check-db` (with `CELIKPANEL_MEMBERSHIP_PRIVATE` naming the private
+     directory) on both copies: every line equal, above all "members: …" and "to compare two
+     copies: events …, newest event at …, licence generations in total …", and "result:
+     every live licence can be served" on the new side. It also prints whether the
+     database-behind check is on (it should be, see step 8).
+5. **Switch the selector.** The web server's rule for `/account/` (which program it runs, or
+   which host the name points to) is changed, and maintenance ends **on the new side only**.
+   The selector is the owner's web-server configuration; PR #361 builds none.
+6. **Keep the old file unchanged.** The old private directory is kept as it is, read-only,
+   for at least the panels' offline window plus one refresh interval (7 days plus the
+   interval), because a panel that is behind only shows itself at its next refresh, and the
+   old file is the only place the missing change can be read from (the log line names no
+   licence).
+7. **Watch.** On the new side, a log line "database behind the signing key" means a panel
+   presented a state this copy does not know. Find the change in the old file (step 6) and
+   go back (step 9), or, if the newer file is lost, see step 8.
+8. **When the newer file is lost, or after a deliberate restore of an older file.**
+   - Set `"database_is_authority": true` in the new side's private `config.json`. The
+     database-behind answer is then off: every unknown or older state is rejected as the PHP
+     service does, so the affected panels learn that their licence is not valid here instead
+     of seeing "unreachable" for a week. `check-db` shows the setting. Set it only when this
+     file is deliberately the authority (a restore that was chosen, or a newer file that is
+     gone for good), never during an ordinary move, where the 503 protects panels from a copy
+     that is merely late.
+   - Tell the members whose servers were bound or moved after the file's time: they release
+     the licence in their account and activate it again on their server. Panels cannot tell
+     their administrators this (they see 503, or a rejection), so the owner must.
+9. **Going back.** Maintenance on the new side first. If the new side changed the file
+   (licences issued, servers bound), copy its file back the same way and compare (step 4)
+   before pointing the selector back. Never point back to the older file: the PHP service
+   would reject every panel bound on the new side, because it has no "database behind"
+   answer.
+
+   **Once the store has been used, there is no going back to the PHP service on that file.**
+   The Go store ends a licence whose payment was reversed by marking it "revoked". The PHP
+   service does not read that mark. On such a file it would still let the member renew that
+   licence for free and then let a server activate it again: a licence that was taken back
+   would work. Its free renewal would also give a year to a licence the store issued to be
+   paid for (a trial, or a licence waiting for its first year). So once the store has issued
+   such a licence or made an order, going back means the Go service on the same file, or a
+   copy of it, never the PHP service: `membership check-db -for-php` must pass before the PHP
+   service may serve a file, and it fails once the store holds an order, a revocation or a
+   licence issued to be paid for. Before that, going back to PHP is as described above.
+   What PHP does on a revoked licence is proven against PHP 8.3 in CI
+   (`TestPHPDifferentialOnAStoreFile`): it refuses the panel's token (no binding) and the key
+   (ended), but its free renewal revives the licence and an activation then binds it.
 
 ---
 
@@ -844,10 +1044,12 @@ evidence (AGENTS.md); open items stay open.
 
 ## k. Open questions for the owner
 
-1. **Payment provider.** *Recommendation:* a merchant of record with documented payouts to
-   Turkey (Polar or Creem; Paddle once it confirms payouts), chosen after the accountant's
-   answer on VAT, e-arşiv and selling through a foreign merchant of record; Turkish
-   processors later for domestic customers. *Blocks:* stage 4 only.
+1. **Payment provider.** *Answered in part on 23 November 2026:* Stripe is the first
+   payment method (D-047 amendment). Still open: the legal entity and country of the Stripe
+   account, and whether live charging goes through it, through a merchant of record with
+   documented payouts to Turkey (Polar or Creem; Paddle once it confirms payouts) or, for
+   domestic customers, a Turkish processor — after the accountant's answer on VAT, e-arşiv
+   and selling through a foreign merchant of record. *Blocks:* live charging only.
 2. **Founder price and who is a beta participant.** Amount; per licence or per member;
    whether "permanent" holds after an interruption. *Recommendation:* a participant is a
    member with a licence activated on a server before the 1.0 date; the founder price
@@ -863,10 +1065,13 @@ evidence (AGENTS.md); open items stay open.
    *Recommendation:* the same protection level — one floor is simpler, and a security
    action should never depend on why a licence is absent. *Blocks:* stage 1's scope for
    `missing`, stage 2.
-5. **What "without interruption" means for the price lock.** *Recommendation:* a renewal
+5. **What "without interruption" means for the price lock.** *Answered on 23 November 2026*
+   *(D-047): no grace; a renewal paid before the end is uninterrupted, after the end it is a new*
+   *purchase at the list price.* The earlier recommendation, kept for the record: a renewal
    paid before the grace period ends is uninterrupted and extends from the old end; after
    grace it is an interruption. *Blocks:* renewal logic in stage 3.
-6. **Refunds of renewals.** Does the 30-day unconditional refund apply to every paid year,
+6. **Refunds of renewals.** *Answered on 23 November 2026 (D-047): there are no refunds at*
+   *all.* The earlier question, kept for the record: does the 30-day unconditional refund apply to every paid year,
    renewals (manual and automatic) included? *Recommendation:* yes — a forgotten automatic
    renewal is the most likely reason to ask. *Blocks:* refunds in stage 3.
 
