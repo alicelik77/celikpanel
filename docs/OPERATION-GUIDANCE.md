@@ -11493,47 +11493,62 @@ Code: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
 ### A longer change never stays "in progress" for ever (alpha.145 lab, D1, 23 November 2026)
 
 In the alpha.145 lab a webmail update stayed "in progress" on the panel and
-every other server change was refused as "another operation is running"
-until the panel's web process was restarted. The Panel had stopped the
-update's worker after one renewal of its Agent lease went unanswered; the
-Agent finished the step anyway, refused the Panel's Finish while the step
-still ran, and the Panel gave up after 15 seconds without recording the
-operation's end. The same path served component installs, install-together,
-remove-together, mail profiles, Node.js runtimes, setup steps and webmail
-addresses.
+every component and setup change was refused as "another operation is
+running" until the panel's web process was restarted. The Panel had stopped
+the update's worker after one renewal of its Agent lease went unanswered;
+the Agent finished the step anyway, refused the Panel's Finish while the
+step still ran, and the Panel gave up after 15 seconds without recording
+the operation's end. The same path served component installs,
+install-together, remove-together, mail profiles, Node.js runtimes, setup
+steps and webmail addresses.
 
 - **The row is settled by the running panel.** After a refused or lost
-  Finish the same goroutine reads the Agent's job, changing nothing, until it
-  has ended (bounded by the job's own deadline, not 15 seconds), then runs
-  for that one row the reconciliation startup recovery runs: a succeeded job
-  is recorded as succeeded, a failed one with its reason, and an interrupted
-  one is continued exactly as at a restart (a webmail update or address is
-  only read again; an install, a removal or a mail profile continues where it
-  stopped). The process lock is held throughout and the continuation starts
-  only after the Agent recorded the first job as ended, so no step runs
-  twice at once. A running panel continues one row at most once.
-- **What the screen says meanwhile.** The operation is shown as "the panel
-  lost contact with its agent; it is reading what was done" while the job
-  runs, then "the change has finished on the server; the panel is recording
-  the result" — who acts: nobody; it ends by itself. A change refused
-  meanwhile says the same (`service_operation_busy`, reason `settling`)
-  instead of "wait for it to finish".
-- **When it cannot be settled** (the Agent stays unreachable past the job's
-  deadline, the panel's database refuses the write) the operation says so,
-  a refused change names the server owner's step (reason `unsettled`), and
-  Problems now has one line (`service_operation_unsettled`, who acts: the
-  server owner): `sudo systemctl restart celikpanel-panel` restarts only the
-  panel's web process, whose startup recovery records what was done (a
-  webmail update or address is only read; an install or removal is
-  continued, and what is already done is not changed again).
+  Finish the same goroutine reads the Agent's job, changing nothing, until
+  it has ended (bounded by the job's own deadline), then runs for that one
+  row the reconciliation startup recovery runs: a succeeded job is recorded
+  as succeeded, a failed one with its reason, and an interrupted one is
+  handled as at a restart. A webmail update or address is only read again.
+  An install, removal or mail profile is run once more from its start,
+  after the first run has ended, and relies on its steps being safe to
+  repeat; it may take as long again. The process lock is held throughout,
+  so no two steps overlap, and a running panel runs a row again at most
+  once (each restart allows one more, as before).
+- **What the screen says meanwhile.** The operation reads "the panel could
+  not record the end of this change on its agent; it is reading what the
+  server did", then "the change has ended on the server; the panel is
+  recording the result", each with what follows for its kind. Who acts:
+  nobody; it ends by itself. A change refused meanwhile says the same
+  (`service_operation_busy`, reason `settling`).
+- **When it cannot be settled** — the Agent answers no read for two
+  minutes, the Agent has no record of the job (its result is not known),
+  the job's deadline passes, a run again stays refused because the host is
+  busy for two minutes, or the panel's database refuses the write — the
+  operation says so, the process lock is released (the Agent's own lease
+  keeps everything else off the host), a refused change names the server
+  owner's steps (reason `unsettled`), and Problems now has one line
+  (`service_operation_unsettled`, who acts: the server owner): first check
+  the Agent (`sudo systemctl status celikpanel-agent`, start it if it is
+  stopped), then `sudo systemctl restart celikpanel-panel`, which restarts
+  only the panel's web process; its startup recovery records what was done
+  (a webmail update or address is only read; an install, removal or mail
+  profile is run once more from its start). While the lock is held (at most
+  the Agent's silence bound of two minutes, or until the job ends), DNS,
+  firewall and mail TLS changes wait for it.
 - **One slow renewal is not a lost Agent.** The worker is stopped on the
   Agent's definite answer (lease lost or owned by another, job ended), or
-  when renewals have gone unanswered for 15 seconds (below the Agent's
-  20-second lease); an answered renewal starts the count again. The Agent's
-  lease rules are unchanged.
+  15 seconds after the last renewal the Agent answered, counted from when
+  it was sent; every renewal is bounded by the time that remains, so the
+  stop comes 5 seconds before the Agent's 20-second lease can end. The
+  rule governs every standalone mutation too (firewall, DNS, mail TLS,
+  certificates, VPN, webmail). The Agent's lease rules are unchanged.
+- A setup install keeps its accepted point updates in its row, so a run
+  again is asked as the review accepted it.
 - The outcome sentences of an interrupted webmail update or address and the
-  audit lines of continued operations no longer say "after a panel restart":
-  they say the operation was interrupted.
+  audit lines of operations finished after an interruption no longer say
+  "after a panel restart": they say the operation was interrupted.
+- **D-025.** Invariants 2 and 4 of the resilience contract; what changes,
+  the bound, the assumption, the (absent) schema transition and what stays
+  open are recorded there (branch fix/d1-stuck-operation).
 
 Code: `cmd/panel/service_operation_settle.go`, `service_operations.go`
 (`reconcileInterruptedServiceOperationLocked`, shared with startup

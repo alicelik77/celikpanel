@@ -9425,3 +9425,58 @@ until the backup reports ready.
   the "cannot send" reading skips an owner's own certificate options and
   `/* */` comments; an owner's own block proxying to the socket gets only
   the sign-in page and style sheets. **No P0 item is closed.**
+
+### Branch fix/d1-stuck-operation (a durable operation whose Finish failed is settled by the running panel; the heartbeat stops before the lease can end; no schema change; constitution 2 and 3; invariants 2 and 4; P0.2; D-024; D-025; 2026-11-23, after the alpha.145 lab)
+
+- **The defect (alpha.145 lab, D1).** One unanswered lease renewal stopped
+  an operation's worker while its Agent step ran on; the Agent refused
+  Finish while the step was active, and the Panel returned without settling
+  its row. The row stayed `running` and every component or setup change was
+  refused until `celikpanel-panel` restarted.
+- **Invariant 2 (a timeout is not proof of failure, success or permission
+  to start again).** The running panel now reads the Agent's job, changing
+  nothing, until the job has ended, then settles the one row with the code
+  startup recovery runs (`reconcileInterruptedServiceOperationLocked`, one
+  function for both). A job the Agent has no record of is unknown, not
+  ended: the row is left unsettled. An Agent that answers no read for two
+  minutes leaves the row unsettled and the process lock released; the
+  Agent's own lease still keeps every other mutation off the host.
+- **Invariant 4 (retrying a transient read is not re-running a mutation
+  whose outcome is unknown).** What changes: an install, install-together,
+  remove-together, mail profile, runtime or setup install whose job ended
+  `service_mutation_lease_expired` (its step may have succeeded) is run
+  again from its start by the running panel about 20 s after the Agent
+  hiccup, instead of after a person's restart. The bound: once per row and
+  running panel, held in memory; every restart allows one more, as before.
+  The assumption it rests on: the install steps are safe to repeat (the
+  startup design already assumed it). A webmail update or address is only
+  read. The settle's retry loop asks again only errors raised before the
+  first privileged sync. A run again the Agent refuses because the host is
+  busy is asked again for two minutes, then left unsettled (at startup
+  too), never recorded as "not started".
+- **Heartbeat.** The worker is stopped on the Agent's definite answer, or
+  15 s after the last renewal the Agent answered (counted from when it was
+  sent), every renewal bounded by the time that remains: 5 s before the
+  Agent's 20-second lease can end. The rule governs every standalone
+  mutation too (firewall, DNS, mail TLS, certificates, VPN, webmail). The
+  Agent's lease rules are unchanged.
+- **Schema or version transition.** None. The settling phases and refusal
+  reasons live in memory (laid over reads); rows are written with existing
+  phases and codes. The one new stored value is the alert kind
+  `service_operation_unsettled`, which the previous release shows with its
+  general alert line. A setup install's row also keeps its accepted point
+  updates in `operation_data` (an additive key the previous release
+  ignores).
+- **Recovery behaviour.** Startup recovery is the same function; a row that
+  cannot be settled is named on its screen, in every refusal and in
+  Problems now (the server owner checks the Agent, then restarts the
+  panel's web process).
+- **Evidence.** `cmd/panel/d1_stuck_operation_test.go` (a step-counting
+  fake Agent: no overlap, a restart during the second run, webmail update
+  and address, install, mail profile, the bounds, the heartbeat stop
+  measured against a scaled lease), `web/tests/d1-stuck-operation.test.mjs`.
+- **Open.** No real-system proof yet (lab steps L1–L8 in the pull
+  request); whether every install path is truly safe to repeat after a
+  successful first run is observed in the lab (L3), not proved; P0.2 is
+  advanced for an Agent unavailable mid-operation, not closed. **No P0
+  item is closed.**
