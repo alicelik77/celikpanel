@@ -54,9 +54,10 @@ or changed. Line references are to `main` at `1f1d80672`.*
 >   - *Who buys.* An account that buys its years (in test mode: one the operator flagged; live
 >     mode is refused in this release) gets its first licence in that mode as the 30-day
 >     trial, without payment details -- unless it held a free beta licence, which was its free
->     period. One trial per account and per mode, and per server: a trial licence does not
->     activate on a server that already ran a trial (the coordinator's anti-abuse rules, for
->     the owner to confirm). Later licences wait for their first year (at most three at a
+>     period. One trial per account and per mode, and per server while the licence is still in
+>     its trial: a trial licence does not activate on a server that already ran a trial in the
+>     same mode; once its year is bought it works on any server (the coordinator's anti-abuse
+>     rules, for the owner to confirm). Later licences wait for their first year (at most three at a
 >     time; their end is their creation time, so neither the Go nor the PHP service activates
 >     them); the order is made only when the member asks to pay. No free renewal for such an
 >     account. Everyone else keeps the beta's free licence and free renewal.
@@ -73,8 +74,12 @@ or changed. Line references are to `main` at `1f1d80672`.*
 >     open matters with their age (also at the end of every `reconcile`), each closing by
 >     itself when applied or settled, or by `attend -order … -reason …`; `grant -order …
 >     -reason …` honours a payment that arrived but could not be granted (refused for a
->     removed licence, and says so); `reinstate -licence … -reason …` undoes a revocation made
->     by mistake (its end restored, the generation raised; the server activates its key again).
+>     removed licence, and says so; it asks the provider first and never grants test money of an
+>     account no longer flagged); `reinstate -licence … -reason …` is for a revocation applied to
+>     the wrong licence or by a fault of ours: it gives no time back (the end becomes what remains
+>     without the reversed year, at the earliest now; a gift is `extend` with its own reason), and
+>     raises the generation (the server activates its key again). A licence with an open payment
+>     page is removed only after the page is ended at the provider.
 >   - *Receipts.* Claimed once in the transaction that makes the order paid ("owed"), mailed
 >     after the answer, and retried by `reconcile` until sent.
 > - **Questions 5 and 6 (§k) are answered:** a renewal paid before the end continues from the
