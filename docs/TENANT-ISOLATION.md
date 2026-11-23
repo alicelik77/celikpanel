@@ -667,15 +667,17 @@ in a row failed.
 - A crontab line: edit the crontab as root. Lines CelikPanel did not write
   are listed, never removed by it.
 
-**Going back to the release before (alpha.144).** Going back puts back
+**Going back to the release before (alpha.146).** Going back puts back
 CelikPanel's own files only; it does not touch `/etc/php`, `/etc/nginx`,
-`/etc/at.allow`, the tools' trees or the access-control list. Under alpha.144:
+`/etc/at.allow`, the tools' trees or the access-control list. alpha.146 (and
+alpha.144 and alpha.145) behave the same towards this change. Under alpha.146:
 
-- *Keeps working:* PHP-FPM runs the tools' own pools, and alpha.144 uses the
+- *Keeps working:* PHP-FPM runs the tools' own pools, and alpha.146 uses the
   sockets their configurations name, so phpMyAdmin, phpPgAdmin and webmail
-  keep answering; webmail's address files keep their socket; `/etc/at.allow`
-  stays as it is.
-- *No longer guarded:* alpha.144 does not know a tool's own socket, so it
+  keep answering; webmail's address files and its local server keep their
+  socket (alpha.146 reads the local server's closed form on webmail's own
+  pool as its own current form); `/etc/at.allow` stays as it is.
+- *No longer guarded:* alpha.146 does not know a tool's own socket, so it
   does not refuse removing the PHP version a tool runs on (the tool then
   stops, and nothing says why); the tools' Manage windows show no PHP
   version.
@@ -683,7 +685,7 @@ CelikPanel's own files only; it does not touch `/etc/php`, `/etc/nginx`,
   entry and folders, so the update puts the old tree back and says webmail
   did not answer); deleting the last site of a PHP version whose stock pool
   is off, or moving it to another version (PHP-FPM's check refuses a
-  version without a pool, and alpha.144 does not put the stock pool back);
+  version without a pool, and alpha.146 does not put the stock pool back);
   installing or proving a tool again on such a version.
 - *Also:* the side doors' Problems now lines are not shown; removing a tool
   leaves its account, pool and data folder; a phpMyAdmin package upgrade

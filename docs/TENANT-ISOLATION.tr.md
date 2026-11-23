@@ -564,20 +564,22 @@ art arda iki deneme başarısız olunca çalışmıyor sayar.
 - Crontab satırı: crontab root olarak düzenlenir. CelikPanel'in yazmadığı satırlar listelenir,
   asla onun tarafından silinmez.
 
-**Önceki sürüme dönmek (alpha.144).** Geri dönüş yalnız CelikPanel'in kendi dosyalarını geri
+**Önceki sürüme dönmek (alpha.146).** Geri dönüş yalnız CelikPanel'in kendi dosyalarını geri
 koyar; `/etc/php`, `/etc/nginx`, `/etc/at.allow`, araçların ağaçları ve erişim listesi olduğu gibi
-kalır. alpha.144 altında:
+kalır. alpha.146 (alpha.144 ve alpha.145 de) bu değişikliğe karşı aynı davranır. alpha.146 altında:
 
-- *Çalışmayı sürdürür:* PHP-FPM araçların kendi havuzlarını çalıştırır; alpha.144 yapılandırmaların
+- *Çalışmayı sürdürür:* PHP-FPM araçların kendi havuzlarını çalıştırır; alpha.146 yapılandırmaların
   andığı soketleri kullanır, phpMyAdmin, phpPgAdmin ve web postası yanıt vermeyi sürdürür; web
-  postasının adres dosyaları soketlerini korur; `/etc/at.allow` olduğu gibi kalır.
-- *Artık korunmaz:* alpha.144 bir aracın kendi soketini tanımaz; bu yüzden aracın çalıştığı PHP
+  postasının adres dosyaları ve yerel sunucusu soketlerini korur (alpha.146 yerel sunucunun web
+  postasının kendi havuzundaki kapalı biçimini kendi güncel biçimi sayar); `/etc/at.allow` olduğu
+  gibi kalır.
+- *Artık korunmaz:* alpha.146 bir aracın kendi soketini tanımaz; bu yüzden aracın çalıştığı PHP
   sürümünün kaldırılmasını reddetmez (araç durur ve nedeni söylenmez); araçların Yönet
   pencerelerinde PHP sürümü görünmez.
 - *Başarısız olur:* web postasının kendi güncellemesi (yeni ağaç hesabın girdisini ve klasörlerini
   almaz; güncelleme eski ağacı geri koyar ve web postasının yanıt vermediğini söyler); varsayılan
   havuzu kapalı bir PHP sürümünün son sitesini silmek ya da başka sürüme taşımak (PHP-FPM'in
-  denetimi havuzsuz sürümü reddeder, alpha.144 varsayılan havuzu geri koymaz); böyle bir sürümde
+  denetimi havuzsuz sürümü reddeder, alpha.146 varsayılan havuzu geri koymaz); böyle bir sürümde
   bir aracı yeniden kurmak ya da kanıtlamak.
 - *Ayrıca:* yan kapıların Şu anki sorunlar satırları görünmez; bir aracı kaldırmak hesabını,
   havuzunu ve veri klasörünü bırakır; gizli dosyalarını web grubuna geri veren bir phpMyAdmin paket
