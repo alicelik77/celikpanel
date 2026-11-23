@@ -174,13 +174,13 @@ func TestAPaidFactGrantsTheFirstYearOnce(t *testing.T) {
 	s := f.s
 	before := f.expires(f.licence.ID) // the free year still runs
 	o := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
-	if err := s.AttachCheckout(o.ID, "stripe", "cs_1", "https://checkout.example/cs_1"); err != nil {
+	if err := s.AttachCheckout(o.ID, "stripe", "cs_1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AttachCheckout(o.ID, "stripe", "cs_1", "https://checkout.example/cs_1"); err != nil {
+	if err := s.AttachCheckout(o.ID, "stripe", "cs_1"); err != nil {
 		t.Fatal("the same checkout again must be a no-op")
 	}
-	if err := s.AttachCheckout(o.ID, "stripe", "cs_2", "https://checkout.example/cs_2"); err == nil {
+	if err := s.AttachCheckout(o.ID, "stripe", "cs_2"); err == nil {
 		t.Fatal("a second checkout for one order")
 	}
 	o = must(s.GetOrder(o.ID))
@@ -284,9 +284,9 @@ func TestFactsThatGrantNothing(t *testing.T) {
 	o3 = must(s.ApplyFact(o3.ID, "stripe", "provider:stripe", part))
 	listed := false
 	for _, a := range must(s.AttentionOrders()) {
-		listed = listed || a.ID == o3.ID
+		listed = listed || a.Order.ID == o3.ID
 	}
-	if o3.State != OrderCreated || o3.Attention == "" || !listed {
+	if o3.State != OrderCreated || !listed {
 		t.Fatalf("partial refund and dispute: %+v listed %v", o3, listed)
 	}
 }
@@ -295,6 +295,7 @@ func TestARefundedFirstYearIsRevoked(t *testing.T) {
 	f := newStore(t)
 	s := f.s
 	a := strings.Repeat("a", 64)
+	f.h.now = f.expires(f.licence.ID) + 86400 // the free year ended: taking the paid year back ends the licence
 	o := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
 	o = must(s.ApplyFact(o.ID, "stripe", "provider:stripe", paid(o, "pi_1")))
 	envelope := must(s.Activate(f.licence.Key, a, "a.example.com", "8.8.8.8"))
@@ -455,6 +456,7 @@ func TestOperatorStoreActsAreAudited(t *testing.T) {
 func TestStoreChangesKeepTheGenerationRule(t *testing.T) {
 	f := newStore(t)
 	s := f.s
+	f.h.now = f.expires(f.licence.ID) + 86400 // the free year ended: a refund leaves nothing, the licence ends
 	steps := []struct {
 		name string
 		run  func() error
@@ -472,16 +474,20 @@ func TestStoreChangesKeepTheGenerationRule(t *testing.T) {
 		struct {
 			name string
 			run  func() error
-		}{"extend by hand", func() error { return s.ExtendByHand("operator:test", "gift", f.licence.ID, 10) }},
-		struct {
-			name string
-			run  func() error
 		}{"refund and revoke", func() error {
 			fact := paid(o, "pi_1")
 			fact.Outcome = payment.OutcomeRefunded
 			_, err := s.ApplyFact(o.ID, "stripe", "provider:stripe", fact)
 			return err
 		}},
+		struct {
+			name string
+			run  func() error
+		}{"reinstate", func() error { return s.Reinstate("operator:test", f.licence.ID, "by mistake") }},
+		struct {
+			name string
+			run  func() error
+		}{"extend by hand", func() error { return s.ExtendByHand("operator:test", "gift", f.licence.ID, 10) }},
 	)
 	for _, step := range steps {
 		before := licenceStates(t, s.DB())
@@ -490,8 +496,8 @@ func TestStoreChangesKeepTheGenerationRule(t *testing.T) {
 		}
 		after := licenceStates(t, s.DB())
 		checkGenerationInvariant(t, step.name, before, after)
-		if step.name == "refund and revoke" && after[f.licence.ID].generation != before[f.licence.ID].generation+1 {
-			t.Fatal("the revocation did not raise the generation")
+		if (step.name == "refund and revoke" || step.name == "reinstate") && after[f.licence.ID].generation != before[f.licence.ID].generation+1 {
+			t.Fatalf("%s did not raise the generation", step.name)
 		}
 	}
 }

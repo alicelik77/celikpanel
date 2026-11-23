@@ -301,12 +301,12 @@ func TestMigrateStoreCommand(t *testing.T) {
 	}
 	for i := 0; i < 2; i++ {
 		code, out, stderr := run(t, env, "migrate-store -operator test "+key, nil)
-		if code != 0 || !strings.Contains(out, "store version 1 is ready") {
+		if code != 0 || !strings.Contains(out, "store version 2 is ready") {
 			t.Fatalf("migrate-store: %d\n%s\n%s", code, out, stderr)
 		}
 	}
 	if code, out, _ := run(t, env, "check-db "+key, nil); code != 0 || !strings.Contains(out, "result: every live licence can be served") ||
-		!strings.Contains(out, "store: version 1; orders 0") || !strings.Contains(out, "charging: off (the default)") || !strings.Contains(out, "payment provider: none set") {
+		!strings.Contains(out, "store: version 2; orders 0") || !strings.Contains(out, "charging: off (the default)") || !strings.Contains(out, "payment provider: none set") {
 		t.Fatalf("check-db after the store: %d\n%s", code, out)
 	}
 	// Charging in test mode with the provider's keys: check-db says "set", never a value.

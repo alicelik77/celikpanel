@@ -8,6 +8,7 @@ package membership
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"net/http"
@@ -164,7 +165,7 @@ func (x *exchange) buy(service *Service, config Config, member *Member, licenseI
 		if !strings.HasPrefix(start.RedirectURL, "https://") {
 			return "", ErrPaymentUnavailable
 		}
-		if err := service.AttachCheckout(order.ID, provider.Code(), start.Reference, start.RedirectURL); err != nil {
+		if err := service.AttachCheckout(order.ID, provider.Code(), start.Reference); err != nil {
 			return "", err
 		}
 		return start.RedirectURL, nil
@@ -234,6 +235,9 @@ func (x *exchange) receipt(service *Service, config Config, after Order) {
 func (x *exchange) webhook(service *Service, config Config, ip string, get phpVars) error {
 	answer := func(status int, body string) error {
 		x.w.Header().Set("Content-Type", "application/json")
+		// The length is set, so the provider has the whole answer at the flush below, before
+		// any mail is tried -- under serve and under CGI alike (S2 review 2, N3).
+		x.w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 		x.w.WriteHeader(status)
 		io.WriteString(x.w, body)
 		x.written = true
@@ -358,28 +362,38 @@ func (s *Service) findOrder(provider string, event payment.Event) (Order, error)
 // ReconcileReport is what one reconciliation run did.
 type ReconcileReport struct {
 	Confirmed, Paid, Expired, Refunded, Unreachable int
-	// PaidOrders became paid in this run and claimed their receipt: theirs are to be mailed.
-	PaidOrders []Order
+	// Left is how many orders that were due are left for the next run (the cap).
+	Left int
+	// Failed lists orders whose confirmation or application failed for another reason than
+	// the provider being unreachable (each also opens an attention entry).
+	Failed []string
+	// ReceiptsOwed are paid orders whose receipt mail is owed (claimed, not yet sent): the
+	// command mails them and marks them sent.
+	ReceiptsOwed []Order
 	// Attention is what the operator must look at after the run (orders -attention).
-	Attention []Order
+	Attention []AttentionEntry
 }
 
-// Reconcile is the command for a timer (`membership reconcile`). It asks the provider about:
+// ReconcileCap is how many orders one run asks the provider about; the rest wait for the
+// next run (and the output says so).
+const ReconcileCap = 200
+
+// Reconcile is the command for a timer (`membership reconcile`). Oldest due first, at most
+// ReconcileCap provider questions, one failing order never stopping the run. It asks about:
 //   - open orders older than ten minutes (a lost webhook);
-//   - orders that closed unpaid, once more after their checkout's own end has passed, so a
-//     payment made at the last moment is not lost (S2 review, 7);
-//   - paid orders whose payment is younger than RecheckWindow, at most once a day each, and
-//     those with a refund in progress -- so a lost webhook cannot hide a refund or a lost
-//     dispute (S2 review, 1).
+//   - orders that closed unpaid, once more an hour after their checkout's own end;
+//   - paid orders whose payment is younger than RecheckWindow, at most once a day each;
+//   - paid orders with a dispute that is not closed, whatever their age, at most once a day;
+//   - paid orders with a refund in progress.
 //
-// It applies what it confirms, ends an unpaid order past its time (its checkout first), and
-// answers what needs the operator. Nothing is fulfilled that the provider did not confirm.
+// It applies what it confirms, ends an unpaid order past its time (its checkout first), lists
+// the receipts still owed, and answers what needs the operator.
 func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, config Config, actor string) (ReconcileReport, error) {
 	var report ReconcileReport
 	if !s.StoreReady() {
 		return report, ErrStoreNotReady
 	}
-	orders, err := s.Orders(0)
+	due, err := s.dueOrders()
 	if err != nil {
 		return report, err
 	}
@@ -388,46 +402,36 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 	sessions, canExpire := provider.(payment.Sessions)
 	usable := canConfirm && PaymentState(registry, config) == PaymentReady
 	now := s.Now()
-	for _, o := range orders {
-		checked, err := s.CheckedAt(o.ID)
-		if err != nil {
-			return report, err
-		}
-		var ask bool
-		switch o.State {
-		case OrderCreated, OrderPending:
-			ask = o.Created <= now-600
-		case OrderExpired, OrderFailed:
-			ask = o.ProviderRef != "" && now >= o.Expires+3600 && checked < o.Expires+3600
-		case OrderPaid:
-			paid, err := s.PaidAt(o.ID)
-			if err != nil {
-				return report, err
-			}
-			refunds, err := s.Refunds(o.ID)
-			if err != nil {
-				return report, err
-			}
-			for _, r := range refunds {
-				ask = ask || r.State == "sent" || r.State == "requested"
-			}
-			ask = ask || (now-paid < RecheckWindow && now-checked >= 86400)
-		}
-		if !ask {
-			continue
-		}
+	asked := 0
+	fail := func(o Order, what string) {
+		report.Failed = append(report.Failed, o.ID+": "+what)
+		_ = s.atomic(func(tx *sql.Tx) error {
+			return s.openAttention(ctx, tx, o.ID, actor, AttentionUnconfirmed, what)
+		})
+	}
+	for _, o := range due {
 		if o.ProviderRef == "" || !usable || o.Provider != config.PaymentProvider {
 			if (o.State == OrderCreated || o.State == OrderPending) && o.Expires <= now && o.ProviderRef == "" {
 				if err := s.ExpireOrder(o.ID, actor, false); err != nil {
-					return report, err
+					fail(o, "could not close: "+err.Error())
+					continue
 				}
 				report.Expired++
 			}
 			continue
 		}
+		if asked >= ReconcileCap {
+			report.Left++
+			continue
+		}
+		asked++
 		fact, err := confirmer.Confirm(ctx, config.PaymentCredentials, o.ProviderRef, o.Expected())
-		if err != nil {
+		if errors.Is(err, payment.ErrProviderUnavailable) || errors.Is(err, payment.ErrProviderBusy) || ctx.Err() != nil {
 			report.Unreachable++
+			continue
+		}
+		if err != nil {
+			fail(o, "the provider's answer could not be confirmed ("+err.Error()+")")
 			continue
 		}
 		report.Confirmed++
@@ -436,14 +440,15 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 		}
 		applied, err := s.ApplyFact(o.ID, o.Provider, actor, fact)
 		if err != nil {
-			return report, err
+			fail(o, "could not apply the confirmed answer ("+err.Error()+")")
+			continue
 		}
+		_ = s.atomic(func(tx *sql.Tx) error {
+			return s.closeAttention(ctx, tx, o.ID, actor, AttentionUnconfirmed, "confirmed again")
+		})
 		switch {
 		case applied.State == OrderPaid && o.State != OrderPaid:
 			report.Paid++
-			if applied.ReceiptMine {
-				report.PaidOrders = append(report.PaidOrders, applied)
-			}
 		case applied.State == OrderRefunded && o.State != OrderRefunded:
 			report.Refunded++
 		case (applied.State == OrderCreated || applied.State == OrderPending) && applied.Expires <= now && fact.Outcome == payment.OutcomeNotPaid:
@@ -455,13 +460,43 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 				}
 			}
 			if err := s.ExpireOrder(o.ID, actor, false); err != nil {
-				return report, err
+				fail(o, "could not close: "+err.Error())
+				continue
 			}
 			report.Expired++
 		}
 	}
+	if report.ReceiptsOwed, err = s.ReceiptsOwed(600); err != nil {
+		return report, err
+	}
 	report.Attention, err = s.AttentionOrders()
 	return report, err
+}
+
+// dueOrders are the orders reconciliation should ask about now, oldest first.
+func (s *Service) dueOrders() ([]Order, error) {
+	now := s.Now()
+	rows, err := s.db.QueryContext(context.Background(), "SELECT "+orderColumns+" FROM store_orders o WHERE "+
+		"(o.state IN ('created','pending') AND o.created<=?) "+
+		"OR (o.state IN ('expired','failed') AND o.provider_ref IS NOT NULL AND ?>=o.expires+3600 AND COALESCE(o.checked,0)<o.expires+3600) "+
+		"OR (o.state='paid' AND COALESCE(o.checked,0)<=? AND ("+
+		"EXISTS (SELECT 1 FROM store_payments p WHERE p.order_id=o.id AND (p.confirmed>? OR (p.disputed=1 AND p.dispute_status NOT IN ('won','lost','warning_closed','prevented'))))"+
+		" OR EXISTS (SELECT 1 FROM store_refunds r WHERE r.order_id=o.id AND r.state IN ('requested','sent')))) "+
+		"OR (o.state='paid' AND EXISTS (SELECT 1 FROM store_refunds r WHERE r.order_id=o.id AND r.state IN ('requested','sent'))) "+
+		"ORDER BY COALESCE(o.checked,0),o.created", now-600, now, now-86400, now-RecheckWindow)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Order
+	for rows.Next() {
+		o, err := scanOrder(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, o)
+	}
+	return out, rows.Err()
 }
 
 // storePage gathers the store's facts for the signed-in member's pages.
@@ -469,11 +504,12 @@ func (x *exchange) storePage(service *Service, config Config, member *Member, li
 	store := &storePage{charging: config.Charging, revoked: map[string]bool{}, quotes: map[string]Quote{}, paidAt: map[string]int64{}, awaiting: map[string]bool{}}
 	store.charged = Charged(service, config, member.ID) // everyone else sees the beta pages (S2 review, 3)
 	store.ready = store.charged && config.Charging == ChargingTest && PaymentState(x.h.payments(), config) == PaymentReady
-	trialID, trialEnds, err := service.Trial(member.ID)
+	trialID, trialEnds, trialUsed, err := service.Trial(member.ID, config.Charging)
 	if err != nil {
 		return nil, err
 	}
-	store.trialID, store.trialEnds, store.trialUsed = trialID, trialEnds, trialID != ""
+	store.trialID, store.trialEnds, store.trialUsed = trialID, trialEnds, trialUsed
+	store.trialRefused = trialID != "" && service.TrialRefused(trialID)
 	orders, err := service.Orders(member.ID)
 	if err != nil {
 		return nil, err

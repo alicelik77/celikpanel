@@ -20,7 +20,7 @@
 //	                        asks the payment provider about open orders older than ten
 //	                        minutes and refunds in progress, applies what it confirms,
 //	                        closes unpaid orders after a day, lists mismatches (a timer)
-//	membership order | orders | test-account | price | extend | refund
+//	membership order | orders | test-account | price | extend | refund | grant | reinstate | attend
 //	                        the operator's store commands; each act is written to the
 //	                        store's audit log with the operator's name and a reason.
 //	                        refund is an exceptional act: there are no refunds by policy
@@ -80,7 +80,7 @@ func main() {
 		os.Exit(runMigrateStore(os.Args[2:]))
 	case "reconcile":
 		os.Exit(runReconcile(os.Args[2:]))
-	case "order", "orders", "test-account", "price", "extend", "refund":
+	case "order", "orders", "test-account", "price", "extend", "refund", "grant", "reinstate", "attend":
 		os.Exit(runOperator(os.Args[1], os.Args[2:]))
 	}
 	usage()
@@ -88,7 +88,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-for-php] [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX] | reconcile -operator NAME | order -id ORDER | orders [-pending] [-mismatch] [-attention] | test-account -operator NAME -email ADDRESS -on|-off -reason TEXT | price -operator NAME -amount 99.00 [-from YYYY-MM-DD] -reason TEXT | extend -operator NAME -licence ID -days N -reason TEXT | refund -operator NAME -order ORDER -reason TEXT (each also [-test-signing-public-key HEX])")
+	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-for-php] [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX] | reconcile -operator NAME | order -id ORDER | orders [-pending] [-mismatch] [-attention] | test-account -operator NAME -email ADDRESS -on|-off -reason TEXT | price -operator NAME -amount 99.00 [-from YYYY-MM-DD] -reason TEXT | extend -operator NAME -licence ID -days N -reason TEXT | refund -operator NAME -order ORDER -reason TEXT | grant -operator NAME -order ORDER -reason TEXT | reinstate -operator NAME -licence ID -reason TEXT | attend -operator NAME -order ORDER [-kind KIND] -reason TEXT (each also [-test-signing-public-key HEX])")
 }
 
 // privateDir is named explicitly, never derived from where the program sits: a guess
@@ -350,17 +350,18 @@ func runReconcile(args []string) int {
 		logLine("membership reconcile: " + err.Error())
 		return 1
 	}
-	fmt.Printf("confirmed %d, paid %d, closed unpaid %d, refunded %d, provider not reachable %d\n",
-		report.Confirmed, report.Paid, report.Expired, report.Refunded, report.Unreachable)
+	fmt.Printf("confirmed %d, paid %d, closed unpaid %d, refunded %d, provider not reachable %d, left for the next run %d\n",
+		report.Confirmed, report.Paid, report.Expired, report.Refunded, report.Unreachable, report.Left)
+	for _, failed := range report.Failed {
+		fmt.Printf("could not settle: order %s\n", failed)
+	}
 	send := membership.ConfigMailer(config)
-	for _, o := range report.PaidOrders {
+	for _, o := range report.ReceiptsOwed {
 		if err := service.SendReceipt(o, send); err != nil {
-			fmt.Printf("receipt mail for order %s could not be sent; the receipt is on the member's page\n", o.ID)
+			fmt.Printf("receipt mail for order %s could not be sent; it stays owed and is tried again on the next run\n", o.ID)
 		}
 	}
-	for _, o := range report.Attention {
-		fmt.Printf("for the operator: order %s (%s): %s\n", o.ID, o.State, attentionText(o))
-	}
+	printAttention(report.Attention)
 	return 0
 }
 
@@ -383,6 +384,7 @@ func runOperator(command string, args []string) int {
 	from := flags.String("from", "", "the day the price applies from (UTC, YYYY-MM-DD; default now)")
 	licence := flags.String("licence", "", "the licence id")
 	days := flags.Int("days", 0, "days to add")
+	kind := flags.String("kind", "", "attend: only this kind of matter (default: all of the order's)")
 	if flags.Parse(args) != nil {
 		return 2
 	}
@@ -439,10 +441,7 @@ func runOperator(command string, args []string) int {
 			if err != nil {
 				return fail(err)
 			}
-			for _, o := range list {
-				printOrder(o)
-				fmt.Printf("  needs: %s\n", attentionText(o))
-			}
+			printAttention(list)
 			return 0
 		}
 		orders, err := service.Orders(0)
@@ -487,6 +486,28 @@ func runOperator(command string, args []string) int {
 			return fail(err)
 		}
 		fmt.Printf("licence %s extended by %d days\n", *licence, *days)
+	case "grant":
+		o, err := service.GrantOrder(actor, *orderID, *reason)
+		if err != nil {
+			return fail(err)
+		}
+		fmt.Printf("order %s granted: licence %s runs until %s\n", o.ID, o.LicenseID, when(o.GrantedTo))
+		if o.ReceiptMine {
+			if err := service.SendReceipt(o, membership.ConfigMailer(config)); err != nil {
+				fmt.Println("the receipt mail could not be sent; it stays owed and reconcile tries again")
+			}
+		}
+	case "reinstate":
+		if err := service.Reinstate(actor, *licence, *reason); err != nil {
+			return fail(err)
+		}
+		fmt.Printf("licence %s reinstated; its server activates its key again to get it back\n", *licence)
+	case "attend":
+		n, err := service.Attend(actor, *orderID, *kind, *reason)
+		if err != nil {
+			return fail(err)
+		}
+		fmt.Printf("%d matters of order %s closed\n", n, *orderID)
 	case "refund":
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
@@ -521,12 +542,10 @@ func printOrder(o membership.Order) {
 	fmt.Println()
 }
 
-func attentionText(o membership.Order) string {
-	if o.Attention != "" {
-		return o.Attention
+// printAttention lists the open matters, oldest first, with their age.
+func printAttention(list []membership.AttentionEntry) {
+	now := time.Now().Unix()
+	for _, a := range list {
+		fmt.Printf("for the operator: order %s (%s), %s, open %d days: %s\n", a.Order.ID, a.Order.State, a.Kind, (now-a.Opened)/86400, a.Detail)
 	}
-	if o.State == membership.OrderMismatch {
-		return "the provider's payment did not match the order; nothing was granted"
-	}
-	return "a refund failed or has waited more than a day"
 }

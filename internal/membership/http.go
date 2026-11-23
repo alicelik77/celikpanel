@@ -550,6 +550,9 @@ func (x *exchange) pages(service *Service, config Config, ip string, get phpVars
 		if store, err = x.storePage(service, config, member, licenses); err != nil {
 			return err
 		}
+		if action == "renew" && store.charged {
+			action, errorCode = "home", string(ErrRenewalIsBought) // no free renewal page for it
+		}
 		if action == "buy" && x.r.Method == http.MethodGet {
 			action, errorCode = x.buyPage(service, config, member, licenses, get.str("id"), store)
 		}
@@ -568,6 +571,9 @@ func (x *exchange) pages(service *Service, config Config, ip string, get phpVars
 				action, errorCode = "home", string(ErrOrderNotFound)
 			} else {
 				store.order = &order
+				if store.causeKind, store.causeDetail, store.settled, err = service.Cause(order.ID); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -652,8 +658,11 @@ func (x *exchange) form(service *Service, config Config, ip string, post phpVars
 				// An account that buys its years: the first licence is the trial; a later one waits
 				// for its first year to be paid (S2 review, 2).
 				issued, trial, err := service.IssueCharged(member.ID, config.Charging)
-				if issued.ID == "" && err != nil {
+				if err != nil {
 					return "", err
+				}
+				if issued.ID == "" {
+					return "home", nil // the same click twice: nothing more was created
 				}
 				data.Issued = &issued
 				data.Notice = "license_awaiting_payment"

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/payment"
 )
@@ -18,6 +19,7 @@ import (
 func TestALostDisputeIsApplied(t *testing.T) {
 	site := newStoreSite(t, "test", "test")
 	config := must(LoadConfig(site.dir))
+	freeEnd := site.expires()
 	session := site.buy()
 	site.stripe.pay(session)
 	order := must(site.s.OrderByProviderRef("stripe", session))
@@ -33,7 +35,7 @@ func TestALostDisputeIsApplied(t *testing.T) {
 	site.stripe.mu.Unlock()
 	clock += 86400
 	report := must(site.s.Reconcile(t.Context(), site.handler.Payments, config, "reconcile:test"))
-	if revoked, _, _ := site.s.LicenceRevocation(site.licence.ID); revoked || len(report.Attention) != 1 || !strings.Contains(report.Attention[0].Attention, "dispute needs_response") {
+	if revoked, _, _ := site.s.LicenceRevocation(site.licence.ID); revoked || len(report.Attention) != 1 || report.Attention[0].Kind != AttentionDispute || report.Attention[0].Detail != "needs_response" {
 		t.Fatalf("an open dispute: %+v", report.Attention)
 	}
 	// Lost, and no webhook came: the next day's reconciliation applies it.
@@ -46,50 +48,106 @@ func TestALostDisputeIsApplied(t *testing.T) {
 	}
 	clock += 86400
 	report = must(site.s.Reconcile(t.Context(), site.handler.Payments, config, "reconcile:test"))
-	if revoked, _, _ := site.s.LicenceRevocation(site.licence.ID); !revoked || report.Refunded != 1 || must(site.s.GetOrder(order.ID)).State != OrderRefunded {
-		t.Fatalf("a lost dispute: %+v", report)
+	// It takes back exactly the time this payment gave: the free year that was still running
+	// stays, the licence is not ended; the dispute leaves the attention list by itself.
+	if revoked, _, _ := site.s.LicenceRevocation(site.licence.ID); revoked || report.Refunded != 1 || must(site.s.GetOrder(order.ID)).State != OrderRefunded ||
+		site.expires() != freeEnd || len(report.Attention) != 0 {
+		t.Fatalf("a lost dispute: %+v, expires %d want %d", report, site.expires(), freeEnd)
 	}
 }
 
-// 2. An account that buys its years: the first licence is the 30-day trial, a later one waits
-// for its first year, and there is no free renewal. The beta (charging off) is unchanged.
+// 2. An account that buys its years: its first licence is the 30-day trial (once per mode, per
+// account, per server); later ones wait for payment (at most three), with no order until the
+// member asks to pay; there is no free renewal. An account that held a free beta licence has
+// had its free period.
 func TestTrialAndLicencesAwaitingPayment(t *testing.T) {
-	site := newStoreSite(t, "test", "test")
-	// The site's member already has a free licence from before; the trial is still unused.
+	site := buildStoreSite(t, "test", "test", false)
 	_, _, home := site.page(http.MethodGet, "lang=en", nil)
 	if !strings.Contains(home, "Your first license is a free 30-day trial; no payment details are asked.") || !strings.Contains(home, "Start the 30-day trial") ||
-		strings.Contains(home, "Create a free license") || strings.Contains(home, "Renew for free") {
-		t.Fatalf("home of a charged account: %s", home)
+		strings.Contains(home, "Create a free license") {
+		t.Fatalf("home of a new charged account: %s", home)
 	}
 	site.page(http.MethodPost, "action=issue&lang=en", nil)
+	site.page(http.MethodPost, "action=issue&lang=en", nil) // a double click: one licence
+	if n := len(must(site.s.Licenses(site.member))); n != 1 {
+		t.Fatalf("a double click made %d licences", n)
+	}
+	trialID, ends, used := must3(site.s.Trial(site.member, ChargingTest))
+	if !used || site.s.Now() < ends-TrialDays*86400 {
+		t.Fatal("no trial")
+	}
+	if _, _, liveUsed := must3(site.s.Trial(site.member, ChargingLive)); liveUsed {
+		t.Fatal("a test-mode trial counts for live")
+	}
 	_, _, home = site.page(http.MethodGet, "lang=en", nil)
-	trialID, ends := must2(site.s.Trial(site.member))
-	if trialID == "" || !strings.Contains(home, "Free trial until "+day(ends)+".") || !strings.Contains(home, "A new license can be used once its first year is paid.") {
+	if !strings.Contains(home, "Free trial until "+day(ends)+".") || !strings.Contains(home, "A new license can be used once its first year is paid.") {
 		t.Fatalf("after the trial started: %s", home)
 	}
-	// A second licence: awaiting payment, with its order, and it cannot be activated.
-	site.page(http.MethodPost, "action=issue&lang=en", nil)
-	_, _, home = site.page(http.MethodGet, "lang=en", nil)
-	if strings.Count(home, "Awaiting payment: this license can be used once its first year is paid.") != 1 {
-		t.Fatalf("a licence awaiting payment: %s", home)
+	// The trial on a server that already ran a trial: the ordinary refusal, and the page says why.
+	key := must(site.s.Reveal(site.member, trialID, "buyer-password-1234")).Key
+	if _, err := site.s.DB().Exec("INSERT INTO store_trial_servers(server_id,license_id,at) VALUES(?,?,1)", strings.Repeat("d", 64), strings.Repeat("0", 32)); err == nil {
+		t.Fatal("a trial server row for no licence") // foreign keys are on: use a real licence below
 	}
-	var waiting Issued
-	for _, l := range must(site.s.Licenses(site.member)) {
-		if yes, _ := site.s.AwaitingPayment(l.ID); yes {
-			waiting.ID = l.ID
+	other := must(site.s.Issue(site.member))
+	if _, err := site.s.DB().Exec("INSERT INTO store_trial_servers(server_id,license_id,at) VALUES(?,?,1)", strings.Repeat("d", 64), other.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := site.s.Activate(key, strings.Repeat("d", 64), "d.example.com", "8.8.8.8"); !errors.Is(err, ErrInvalidLicense) {
+		t.Fatalf("a trial on a server that had one: %v", err)
+	}
+	if _, err := site.s.Activate(key, strings.Repeat("e", 64), "e.example.com", "8.8.4.4"); err != nil {
+		t.Fatalf("a trial on a new server: %v", err)
+	}
+	_, _, home = site.page(http.MethodGet, "lang=en", nil)
+	if !strings.Contains(home, "That server already used a trial") {
+		t.Fatalf("the refused trial is not said: %s", home)
+	}
+	// Later licences wait for payment, no order yet, at most three.
+	if _, err := site.s.DB().Exec("DELETE FROM rate_limits"); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		site.s.clock = func() int64 { return time.Now().Unix() + int64(20*(i+1)) }
+		if _, trial, err := site.s.IssueCharged(site.member, ChargingTest); err != nil || trial {
+			t.Fatalf("licence %d: %v %v", i, trial, err)
 		}
 	}
-	key := must(site.s.Reveal(site.member, waiting.ID, "buyer-password-1234")).Key
-	if _, err := site.s.Activate(key, strings.Repeat("c", 64), "c.example.com", "8.8.8.8"); !errors.Is(err, ErrLicenseExpired) {
-		t.Fatalf("activating a licence awaiting payment: %v", err)
+	site.s.clock = func() int64 { return time.Now().Unix() + 100 }
+	if _, _, err := site.s.IssueCharged(site.member, ChargingTest); !errors.Is(err, ErrTooManyAwaiting) {
+		t.Fatalf("a fourth licence awaiting payment: %v", err)
 	}
-	if !site.s.HasOpenOrder(waiting.ID) {
-		t.Fatal("the licence awaiting payment has no order")
+	if orders := must(site.s.Orders(site.member)); len(orders) != 0 {
+		t.Fatalf("orders were made before anyone asked to pay: %d", len(orders))
 	}
-	// No free renewal for a charged account.
-	if _, _, body := site.page(http.MethodPost, "action=renew&lang=en", url.Values{"id": {trialID}, "password": {"buyer-password-1234"}}); !strings.Contains(body, "This license is renewed by buying a year") {
+	site.s.clock = nil
+	site.s.clock = func() int64 { return time.Now().Unix() }
+	_, _, home = site.page(http.MethodGet, "lang=en", nil)
+	if strings.Count(home, "Awaiting payment: this license can be used once its first year is paid.") != 3 {
+		t.Fatalf("licences awaiting payment: %s", home)
+	}
+	// No free renewal for a charged account, not even its page.
+	if _, _, body := site.page(http.MethodGet, "action=renew&id="+trialID+"&lang=en", nil); !strings.Contains(body, "This license is renewed by buying a year on it.") || strings.Contains(body, "Renewal is currently free") {
+		t.Fatalf("the free renewal page: %s", body)
+	}
+	if _, _, body := site.page(http.MethodPost, "action=renew&lang=en", url.Values{"id": {trialID}, "password": {"buyer-password-1234"}}); !strings.Contains(body, "This license is renewed by buying a year on it.") {
 		t.Fatalf("a free renewal: %s", body)
 	}
+}
+
+// 2. An account that held a free beta licence has had its free period: no trial.
+func TestABetaLicenceWasTheTrial(t *testing.T) {
+	site := newStoreSite(t, "test", "test")
+	_, _, home := site.page(http.MethodGet, "lang=en", nil)
+	if strings.Contains(home, "Start the 30-day trial") || !strings.Contains(home, "A new license can be used once its first year is paid.") {
+		t.Fatalf("a beta account was offered a trial: %s", home)
+	}
+}
+
+func must3[A, B, C any](a A, b B, c C, err error) (A, B, C) {
+	if err != nil {
+		panic(err)
+	}
+	return a, b, c
 }
 
 // 2 (beta), 3. Everyone who is not a flagged test account sees the beta pages.
@@ -120,7 +178,7 @@ func TestTestMoneyIsFencedOff(t *testing.T) {
 	}
 	before := f.expires(f.licence.ID)
 	o = must(s.ApplyFact(o.ID, "stripe", "provider:stripe", paid(o, "pi_1")))
-	if o.State != OrderMismatch || f.expires(f.licence.ID) != before || !strings.Contains(o.Attention, "no longer a test account") {
+	if kind, detail, _, _ := s.Cause(o.ID); o.State != OrderMismatch || f.expires(f.licence.ID) != before || kind != AttentionNotGranted || detail != NotGrantedUnflagged {
 		t.Fatalf("a test payment for an unflagged account: %+v", o)
 	}
 	if err := s.SetTestAccount("operator:test", "flag", f.member, true); err != nil {
@@ -151,7 +209,7 @@ func TestAPaymentNeverFallsIntoNothing(t *testing.T) {
 		t.Fatal("the removed licence's order is still open")
 	}
 	o = must(s.ApplyFact(o.ID, "stripe", "provider:stripe", paid(o, "pi_1")))
-	if o.State != OrderMismatch || !strings.Contains(o.Attention, "removed") {
+	if kind, detail, _, _ := s.Cause(o.ID); o.State != OrderMismatch || kind != AttentionNotGranted || detail != NotGrantedRemoved {
 		t.Fatalf("a payment for a removed licence: %+v", o)
 	}
 }
@@ -220,10 +278,12 @@ func TestALockedRenewalEndsWithTheLicence(t *testing.T) {
 	if !renewal.Locked || renewal.Expires != end {
 		t.Fatalf("a locked renewal an hour before the end: %+v", renewal)
 	}
-	f.h.now = end + 60 // paid after the end at the locked price
+	// Paid 30 s before the end (its session could not be paid later), confirmed a minute after:
+	// granted, from the old end (S2 review 2, N1).
+	f.h.now = end + 60
 	renewal = must(s.ApplyFact(renewal.ID, "stripe", "provider:stripe", paid(renewal, "pi_2")))
-	if renewal.State != OrderMismatch || f.expires(f.licence.ID) != end {
-		t.Fatalf("a locked price paid after the end: %+v", renewal)
+	if renewal.State != OrderPaid || renewal.GrantedFrom != end || f.expires(f.licence.ID) != anniversary(end) {
+		t.Fatalf("a locked renewal confirmed after the end: %+v", renewal)
 	}
 	// Ten minutes before an end: the year is bought after the end.
 	l2 := must(s.Issue(f.member))

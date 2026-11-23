@@ -187,6 +187,12 @@ var csrfField = regexp.MustCompile(`name="csrf" value="([a-f0-9]{64})"`)
 
 func newStoreSite(t *testing.T, charging string, keyMode string) *storeSite {
 	t.Helper()
+	return buildStoreSite(t, charging, keyMode, true)
+}
+
+// buildStoreSite: issue says whether the member gets a free (beta) licence first.
+func buildStoreSite(t *testing.T, charging string, keyMode string, issue bool) *storeSite {
+	t.Helper()
 	site := &storeSite{t: t, dir: t.TempDir(), stripe: newFakeStripe(t), webhook: "whsec_" + randomHex(16)}
 	site.handler = &Handler{Private: site.dir, RemoteAddr: PeerAddress,
 		Payments: payment.NewRegistry(payment.Manual{}, &payment.Stripe{BaseURL: site.stripe.server.URL}),
@@ -221,7 +227,9 @@ func newStoreSite(t *testing.T, charging string, keyMode string) *storeSite {
 		t.Fatal(err)
 	}
 	site.member = must(site.s.Login("buyer@example.com", "buyer-password-1234")).ID
-	site.licence = must(site.s.Issue(site.member))
+	if issue {
+		site.licence = must(site.s.Issue(site.member))
+	}
 	if err := site.s.MigrateStore("operator:test"); err != nil {
 		t.Fatal(err)
 	}
@@ -499,6 +507,10 @@ func TestTheWebhookRoute(t *testing.T) {
 	}
 	// A refund made at the provider (there are none by policy; the operator's exceptional act
 	// or a chargeback): the hint is confirmed, the first year revoked.
+	// The year this payment gave is all the licence has (nothing before it): taking it back ends it.
+	if _, err := site.s.DB().Exec("UPDATE store_orders SET previous_expires=1 WHERE id=?", order.ID); err != nil {
+		t.Fatal(err)
+	}
 	site.stripe.mu.Lock()
 	site.stripe.sessions[session].refunded = site.stripe.sessions[session].amount
 	site.stripe.mu.Unlock()
@@ -588,7 +600,7 @@ func TestReconciliation(t *testing.T) {
 	// An unpaid order past its day closes; a mismatch is listed and never fulfilled.
 	l2 := must(site.s.Issue(site.member))
 	o2 := must(site.s.CreateOrder(site.member, l2.ID, ChargingTest))
-	if err := site.s.AttachCheckout(o2.ID, "stripe", "cs_none", "https://checkout.example/cs_none"); err != nil {
+	if err := site.s.AttachCheckout(o2.ID, "stripe", "cs_none"); err != nil {
 		t.Fatal(err)
 	}
 	clock += OrderLifetime + 1
@@ -597,7 +609,7 @@ func TestReconciliation(t *testing.T) {
 	site.stripe.mu.Unlock()
 	l3 := must(site.s.Issue(site.member))
 	o3 := must(site.s.CreateOrder(site.member, l3.ID, ChargingTest))
-	if err := site.s.AttachCheckout(o3.ID, "stripe", "cs_wrong", "https://checkout.example/cs_wrong"); err != nil {
+	if err := site.s.AttachCheckout(o3.ID, "stripe", "cs_wrong"); err != nil {
 		t.Fatal(err)
 	}
 	site.stripe.mu.Lock()
@@ -605,7 +617,7 @@ func TestReconciliation(t *testing.T) {
 	site.stripe.mu.Unlock()
 	clock += 601
 	report = must(site.s.Reconcile(t.Context(), registry, config, "reconcile:test"))
-	if report.Expired != 1 || len(report.Attention) != 1 || report.Attention[0].ID != o3.ID {
+	if report.Expired != 1 || len(report.Attention) != 1 || report.Attention[0].Order.ID != o3.ID {
 		t.Fatalf("expiry and mismatch: %+v", report)
 	}
 	if must(site.s.GetOrder(o2.ID)).State != OrderExpired {
@@ -623,6 +635,9 @@ func TestOperatorRefund(t *testing.T) {
 	config := must(LoadConfig(site.dir))
 	if _, _, page := site.page(http.MethodGet, "action=order&id="+order.ID+"&lang=en", nil); !strings.Contains(page, "Paid.") {
 		t.Fatal("not paid")
+	}
+	if _, err := site.s.DB().Exec("UPDATE store_orders SET previous_expires=1 WHERE id=?", order.ID); err != nil {
+		t.Fatal(err) // nothing before this year: taking it back ends the licence
 	}
 	if _, _, err := site.s.OperatorRefund(t.Context(), site.handler.Payments, config, "operator:test", order.ID, ""); err != ErrInvalidRequest {
 		t.Fatalf("without a reason: %v", err)

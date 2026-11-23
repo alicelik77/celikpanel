@@ -999,6 +999,7 @@ func (s *Service) Activate(key, server, hostname, observedIP string) (Envelope, 
 	}
 	ctx := context.Background()
 	var out Envelope
+	trialRefused := ""
 	err = s.atomic(func(tx *sql.Tx) error {
 		l, err := scanRow(tx.QueryRowContext(ctx, "SELECT "+rowColumns+" FROM licenses WHERE key_hash=?", sha256Hex(key)))
 		if err != nil {
@@ -1012,6 +1013,12 @@ func (s *Service) Activate(key, server, hostname, observedIP string) (Envelope, 
 		}
 		if l.Revoked {
 			return ErrInvalidLicense // a refunded licence never binds again
+		}
+		if ok, err := s.trialServer(ctx, tx, l.ID, server); err != nil {
+			return err
+		} else if !ok {
+			trialRefused = l.ID
+			return errTrialServerUsed
 		}
 		if l.ServerIP.Valid && !hmac.Equal([]byte(l.ServerIP.String), []byte(ip)) {
 			return ErrLicenseInUse
@@ -1052,6 +1059,10 @@ func (s *Service) Activate(key, server, hostname, observedIP string) (Envelope, 
 		out = s.entitlement(l.ID, server, activated.Int64, expires.Int64, generation)
 		return nil
 	})
+	if errors.Is(err, errTrialServerUsed) {
+		s.noteTrialRefused(trialRefused)
+		return Envelope{}, ErrInvalidLicense
+	}
 	return out, err
 }
 

@@ -23,12 +23,16 @@ type storePage struct {
 	paidAt   map[string]int64 // order id -> first confirmation of its payment
 	// charged: this account buys its years (test mode: flagged; S2 review, 2 and 3). Everyone
 	// else sees the beta pages.
-	charged   bool
-	trialID   string // the account's trial licence (" when none)
-	trialEnds int64
-	trialUsed bool
-	awaiting  map[string]bool // licences waiting for their first year to be paid
-	receipt   *Order          // the receipt page's order
+	charged      bool
+	trialID      string // the account's trial licence (" when none)
+	trialEnds    int64
+	trialUsed    bool
+	awaiting     map[string]bool // licences waiting for their first year to be paid
+	trialRefused bool            // the trial licence was refused on a server that had a trial
+	// The order page's cause when it did not become paid normally (Service.Cause).
+	causeKind, causeDetail string
+	settled                bool
+	receipt                *Order // the receipt page's order
 }
 
 func money(minor int64, currency string) string {
@@ -43,6 +47,8 @@ func leftPad(s string, n int) string {
 }
 
 func day(at int64) string { return time.Unix(at, 0).UTC().Format("2006-01-02") }
+
+func moment(at int64) string { return time.Unix(at, 0).UTC().Format("2006-01-02 15:04") + " UTC" }
 
 // storeSummary is the line under the free licence button: free during the beta, and what
 // test mode means.
@@ -89,16 +95,21 @@ func (p *page) licenceStore(b *strings.Builder, l License) {
 		b.WriteString(`<p class="member-state">` + p.t("Bu lisansın ödemesi geri alındı; lisans sona erdi.", "This license's payment was reversed; the license has ended.") + `</p>`)
 		return
 	}
-	if !p.store.charged || !p.store.ready {
+	if !p.store.charged {
 		return
 	}
 	q, quoted := p.store.quotes[l.ID]
 	switch end := l.Expires.Int64; {
 	case p.store.awaiting[l.ID]:
 		b.WriteString(`<p class="member-state">` + p.t("Ödeme bekleniyor: bu lisans ilk yılı ödendiğinde kullanılabilir.", "Awaiting payment: this license can be used once its first year is paid.") + `</p>`)
-	case l.ID == p.store.trialID && end > p.now:
+	case l.ID == p.store.trialID && end == p.store.trialEnds && end > p.now:
+		// The trial line only while the licence is still in its trial (no paid year, no gift).
 		b.WriteString(`<p class="member-state">` + p.t("Ücretsiz deneme "+day(end)+" tarihine kadar. Panelin açık kalması için o tarihten önce bir yıl satın alın.",
 			"Free trial until "+day(end)+". Buy a year before then to keep the panel open.") + `</p>`)
+		if p.store.trialRefused {
+			b.WriteString(`<p class="member-state">` + p.t("Bu sunucu daha önce bir deneme kullandı; deneme orada başlamaz. Lisansı orada kullanmak için bir yıl satın alın.",
+				"That server already used a trial, so the trial does not start there. Buy a year to use this license on it.") + `</p>`)
+		}
 	case end <= p.now:
 		b.WriteString(`<p class="member-state">` + p.t(day(end)+" tarihinde sona erdi. O sunucudaki panel, yeni bir yıl alana kadar kapalı kalır; sunucu, siteler, e-posta ve DNS çalışmaya devam eder.",
 			"Ended on "+day(end)+". The panel on that server stays closed until you buy a new year; the server and its sites, mail and DNS keep running.") + `</p>`)
@@ -112,8 +123,8 @@ func (p *page) licenceStore(b *strings.Builder, l License) {
 				"Ends in "+left+" days ("+day(end)+"). Buy a year before then to keep the panel open.") + `</p>`)
 		}
 	}
-	if !quoted {
-		return
+	if !quoted || !p.store.ready {
+		return // the state is said above; only buying needs the payment provider
 	}
 	if q.WaitUntilEnd {
 		b.WriteString(`<p>` + p.t("Yeni yıl, "+day(l.Expires.Int64)+" bitişinden sonra satın alınabilir.", "The new year can be bought after the end on "+day(l.Expires.Int64)+".") + `</p>`)
@@ -145,7 +156,7 @@ func (p *page) buyPage(b *strings.Builder) {
 		b.WriteString(`<p>` + p.t("Yıl, ödemeniz onaylandığında başlar.", "The year starts when your payment is confirmed.") + `</p>`)
 	}
 	if q.Locked {
-		b.WriteString(`<p>` + p.t("Bitiş tarihinden önce yenilediğiniz için fiyatınız aynı kalır. Bu ödeme "+day(q.Expires)+" tarihine kadar yapılabilir.", "Because you renew before the end date, your price stays the same. This payment can be made until "+day(q.Expires)+".") + `</p>`)
+		b.WriteString(`<p>` + p.t("Bitiş tarihinden önce yenilediğiniz için fiyatınız aynı kalır. Bu ödeme "+moment(q.Expires)+" tarihine kadar yapılabilir.", "Because you renew before the end date, your price stays the same. This payment can be made until "+moment(q.Expires)+".") + `</p>`)
 	}
 	b.WriteString(`<p class="member-notice" role="note"><strong>` + p.t("Ödemeler iade edilmez.", "Payments are not refunded.") + `</strong> ` +
 		p.t("Her hesabın ilk lisansı, ödemeden önce denemeniz için 30 günlük ücretsiz denemedir.", "Every account's first license is a free 30-day trial, to try CelikPanel before paying.") + `</p>` + "\n")
@@ -185,9 +196,7 @@ func (p *page) orderPage(b *strings.Builder) {
 		state = p.t("Sipariş ödenmeden kapandı.", "The order closed unpaid.")
 		next = p.t("Hiçbir ücret alınmadı. Lisanslarınızdan yeniden deneyebilirsiniz.", "Nothing was charged. You can try again from your licenses.")
 	case OrderMismatch:
-		state = p.t("Bu ödemeyi siparişle eşleştiremedik.", "We could not match this payment to the order.")
-		next = p.t("Lisansınızda hiçbir şey değişmedi. Durumu biz inceliyoruz ve size e-postayla yazacağız; sizin bir şey yapmanız gerekmiyor.",
-			"Nothing changed on your license. We are looking into it and will write to you by email; you do not need to do anything.")
+		state, next = p.mismatchText()
 	case OrderRefunded:
 		state = p.t("Ödeme geri alındı.", "The payment was reversed.")
 		next = p.t("Ödeme size geri döndü ve bu lisans sona erdi.", "The payment went back to you and this license has ended.")
@@ -281,4 +290,23 @@ func (s *storePage) openOrder(licenseID string) bool {
 		}
 	}
 	return false
+}
+
+// mismatchText says, for each cause, what is true about an order that did not become paid
+// normally -- and that the payment went back once that is settled (S2 review 2, N8).
+func (p *page) mismatchText() (string, string) {
+	contact := p.t("Size e-postayla yazacağız; sizin bir şey yapmanız gerekmiyor.", "We will write to you by email; you do not need to do anything.")
+	if p.store.settled {
+		return p.t("Ödeme size geri döndü.", "The payment went back to you."), p.t("Lisansınızda hiçbir şey değişmedi.", "Nothing changed on your license.")
+	}
+	switch {
+	case p.store.causeKind == AttentionNotGranted && p.store.causeDetail == NotGrantedRemoved:
+		return p.t("Ödemeniz ulaştı, ancak ilgili lisans artık yok; bu yüzden yıl eklenemedi.", "Your payment arrived, but the license it was for no longer exists, so no year could be added."), contact
+	case p.store.causeKind == AttentionNotGranted && p.store.causeDetail == NotGrantedRevoked:
+		return p.t("Ödemeniz ulaştı, ancak ilgili lisans sona ermişti; bu yüzden yıl eklenemedi.", "Your payment arrived, but the license it was for had ended, so no year could be added."), contact
+	case p.store.causeKind == AttentionNotGranted && p.store.causeDetail == NotGrantedUnflagged:
+		return p.t("Ödemeniz ulaştı, ancak bu hesap artık deneme kipinde satın almıyor; bu yüzden yıl eklenemedi.", "Your payment arrived, but this account no longer buys in test mode, so no year could be added."), contact
+	}
+	return p.t("Bu ödemeyi siparişle eşleştiremedik.", "We could not match this payment to the order."),
+		p.t("Lisansınızda hiçbir şey değişmedi. ", "Nothing changed on your license. ") + contact
 }

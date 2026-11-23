@@ -1,6 +1,8 @@
 package membership
 
-// The receipt mail (S2): sent once when an order becomes paid, to the member's verified
+// The receipt mail (S2): claimed once when an order becomes paid (owed), sent by the request
+// that claimed it, and retried by reconciliation until it went (sent), so at most one mail goes
+// per order unless sending fails after the server accepted it; to the member's verified
 // address only, through the existing mail code. It names what was paid, when, for which
 // licence and term, says it is not a tax invoice, and carries no secret and no provider
 // identifier beyond our order number. There is no refund mail: there are no refunds.
@@ -58,7 +60,30 @@ func (s *Service) sendReceipt(o Order, send func(to, subject, body string) error
 		return err
 	}
 	subject, body := ReceiptMail(o, paidAt)
-	return send(email, subject, body)
+	if err := send(email, subject, body); err != nil {
+		return err // still owed: reconciliation tries again
+	}
+	_, err = s.db.ExecContext(context.Background(), "UPDATE store_orders SET receipt_sent=? WHERE id=? AND receipt_sent IS NULL", s.Now(), o.ID)
+	return err
+}
+
+// ReceiptsOwed are paid orders whose receipt was claimed more than olderThan seconds ago and
+// has not gone yet (a mail that failed): reconciliation mails them again.
+func (s *Service) ReceiptsOwed(olderThan int64) ([]Order, error) {
+	rows, err := s.db.QueryContext(context.Background(), "SELECT "+orderColumns+" FROM store_orders WHERE state='paid' AND receipt_owed IS NOT NULL AND receipt_owed<=? AND receipt_sent IS NULL ORDER BY receipt_owed", s.Now()-olderThan)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Order
+	for rows.Next() {
+		o, err := scanOrder(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, o)
+	}
+	return out, rows.Err()
 }
 
 // mail is the service's way to send a store mail: the test folder in the loopback
