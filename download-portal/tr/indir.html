@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="tr" data-page="download">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kurulum · CelikPanel</title>
+<meta name="description" content="CelikPanel’i temiz bir Linux sunucuya tek komutla kurun: imzalı sürüm, desteklenen sistemler, kurulum sihirbazı ve panelin sunucunuzu nasıl değiştirdiği.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/public.css">
+<link rel="stylesheet" href="../assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/tr/indir.html">
+<link rel="alternate" hreflang="en" href="../download.html">
+<link rel="alternate" hreflang="tr" href="indir.html">
+<link rel="alternate" hreflang="x-default" href="../download.html">
+<script src="../assets/boot.js"></script>
+<script src="../assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">İçeriğe geç</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<nav aria-label="Ana menü"><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html" aria-current="page">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="../guide/tr/">Kılavuz</a></li>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../download.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>CelikPanel’i kurun</h1>
+<p class="def">Temiz bir Linux sunucuda tek komut imzalı sürümü indirir, denetler ve paneli kurar. Go, Node.js ya da Git gerekmez.</p>
+<dl class="spec" aria-label="Bu sayfanın kurduğu sürüm">
+<div><dt>Sürüm</dt><dd><a class="mono" href="surumler.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time>; Ed25519 ile imzalı</dd></div>
+<div><dt>Paket</dt><dd>Linux amd64 için tek arşiv; SHA-256 özeti ve imzalı manifest’iyle</dd></div>
+<div><dt>Sistemler</dt><dd>Debian 13, Ubuntu 24.04 <small>(her sürüm adayında denenir)</small><br>Debian 12, Ubuntu 22.04 <small>(desteklenir)</small><br>Arch Linux <small>(geliştirme düzeyi, her sürümde denenmez)</small><br>amd64</dd></div>
+<div><dt>Durum</dt><dd>Alfa: deneme sunucuları için; canlı kullanıma hazır değil</dd></div>
+</dl>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-steps">
+<header><span class="num">1</span><h2 id="h-steps">Adımlar</h2><p>Yeniden kurabileceğiniz temiz bir deneme sunucusuyla başlayın.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 1 · Kurulum adımları</caption>
+<thead><tr><th scope="col" class="n">Adım</th><th scope="col">Yapılacak</th><th scope="col">Nerede</th></tr></thead>
+<tbody>
+<tr><td class="v" data-k="Adım">1</td><td data-k="Yapılacak">Hesap oluşturun ve sunucu için lisans alın</td><td data-k="Nerede">celikpanel.net</td></tr>
+<tr><td class="v" data-k="Adım">2</td><td data-k="Yapılacak">Desteklenen bir sistemle temiz bir sunucu hazırlayın</td><td data-k="Nerede">Sunucu sağlayıcınız</td></tr>
+<tr><td class="v" data-k="Adım">3</td><td data-k="Yapılacak">Kurulum komutunu çalıştırın; kurucu, hiçbir şey kurmadan önce sürümün imzasını ve SHA-256 özetini denetler</td><td data-k="Nerede">Sunucunun root terminalinde</td></tr>
+<tr><td class="v" data-k="Adım">4</td><td data-k="Yapılacak">Kurucunun gösterdiği adresten giriş yapın ve lisans anahtarınızı girin; ardından kurulum sihirbazı alan adınızı ve DNS’in nerede olacağını sorar</td><td data-k="Nerede">Panel, tarayıcıda</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="cmd-title-download">Kurulum komutu</h3><button class="copy" type="button" hidden data-copy="cmd-download" data-copied="Kopyalandı" data-failed="Kopyalamak için metni seçin">Kopyala</button></div>
+<pre tabindex="0" aria-labelledby="cmd-title-download"><code id="cmd-download">timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+sh celikpanel-install.sh</code></pre>
+<p class="note">Üç satırı birlikte sunucunun root terminalinde çalıştırın. İlk satır saat eşitlemesini açar.</p>
+<p class="sr-only" role="status" data-copy-status></p>
+</div>
+</div>
+</section>
+<section class="part" aria-labelledby="h-systems">
+<header><span class="num">2</span><h2 id="h-systems">Sistemler</h2><p>Her sürüm adayında denenen ya da desteklenen.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 2 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
+<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği bitişi</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
+<tbody>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Geliştirme düzeyi</span></td><td data-k="Dağıtımın güvenlik desteği bitişi">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Her sürümde denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Geliştirme düzeyi (Arch Linux): CelikPanel onun için de hazırlanır ve bugünkü hâliyle çalışır, ama sürüm adayları orada denenmez ve sürekli güncellemeler çalışanı değiştirebilir. Debian tarihleri Debian LTS’i içerir; Ubuntu tarihleri ESM olmadan standart destektir. Sürüm paketi amd64 için hazırlanır.</p>
+<p class="more"><a href="sistemler.html">Her sistemde neler var, güncellemeler nasıl işler</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-wizard">
+<header><span class="num">3</span><h2 id="h-wizard">Kurulum sihirbazı</h2><p>İlk girişte ana alan adını ve DNS’in nerede olacağını sorar. Planını gösterir ve siz başlatana kadar hiçbir şeyi değiştirmez.</p></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Tablo 3 · DNS nerede olacak</caption>
+<thead><tr><th scope="col">Seçim</th><th scope="col">Ne olur</th></tr></thead>
+<tbody>
+<tr><th scope="row">Bu sunucu</th><td data-k="Ne olur">Sunucu kendi DNS’ini BIND ya da PowerDNS ile tutar. Tek sunucu yeterlidir.</td></tr>
+<tr><th scope="row">Dış bir DNS sağlayıcısı</th><td data-k="Ne olur">DNS yazılımı kurulmaz. Panel, sağlayıcınızda eklenecek kayıtları ve internetin her birine ne cevap verdiğini gösterir; sağlayıcıya yazmaz.</td></tr>
+<tr><th scope="row">İki sunucu (isteğe bağlı)</th><td data-k="Ne olur">İkinci sunucu DNS’in bir kopyasını tutar. Bir kez gösterilen ve 24 saat geçerli bir kodla katılır. Her sunucunun kendi lisansı olur.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section class="part" id="nasil" aria-labelledby="h-how">
+<header><span class="num">4</span><h2 id="h-how">CelikPanel sunucunuzu nasıl değiştirir</h2><p>Her değişikliğin uyduğu kurallar.</p></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Tablo 4 · Değişiklik kuralları</caption>
+<thead><tr><th scope="col">Kural</th><th scope="col">Anlamı</th></tr></thead>
+<tbody>
+<tr><th scope="row">Önce onay</th><td data-k="Anlamı">Sunucu değişiklikleri (bileşen kurma, kurulum sihirbazı, güncellemeler) ne yapacaklarını gösterir ve onayınızı bekler.</td></tr>
+<tr><th scope="row">Yalnız bir kez</th><td data-k="Anlamı">Tekrarlanan bir tıklama ya da yeniden gönderilen bir istek, bir değişikliği iki kez çalıştırmaz.</td></tr>
+<tr><th scope="row">Sırayla</th><td data-k="Anlamı">Sunucu genelindeki değişiklikler (kurulum, ayar, güncelleme) sırayla çalışır; başka biri, ilki bitene kadar bekler ya da reddedilir.</td></tr>
+<tr><th scope="row">Sistemin kendi hizmetleri</th><td data-k="Anlamı">Siteler, posta, DNS ve veritabanları sistemin kendi hizmetleri olarak çalışır ve panel durduğunda da çalışmaya devam eder.</td></tr>
+<tr><th scope="row">Elle yaptığınız düzenlemeler korunur</th><td data-k="Anlamı">Elle değiştirdiğiniz bir yapılandırma dosyası korunur; CelikPanel kendi metnini yanına koyar ve size söyler.</td></tr>
+<tr><th scope="row">İki ayrı hizmet</th><td data-k="Anlamı">İnternete açık panel hiçbir zaman root olarak çalışmaz. Sistemi yalnız yerel ajan değiştirebilir.</td></tr>
+<tr><th scope="row">Parolanız sunucunuzda kalır</th><td data-k="Anlamı">İlk yönetici sunucunuzda oluşturulur; parolası bu siteye hiçbir zaman gönderilmez.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section class="part" aria-labelledby="h-installed">
+<header><span class="num">5</span><h2 id="h-installed">Zaten kurulu mu?</h2></header>
+<div>
+<p>Panelinizin içinden, Ayarlar, CelikPanel güncellemeleri bölümünden güncelleyin. Güncellemeyi yalnız sahibi başlatır; hiçbir şey kendiliğinden kurulmaz. Güncelleme kurulu sürümü değiştirdikten sonra başarısız olursa panel önceki sürümü ve veritabanını kendisi geri koyar (güncellemeden sonra panelde yapılanlar kaybolur); daha önce durursa hiçbir şey değişmemiştir. Hangisinin olduğunu güncelleme ekranı söyler.</p>
+<p class="more"><a href="surumler.html">Sürüm notları ve dosyalar</a><span class="sep" aria-hidden="true">·</span><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler</a></p>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>Linux sunucular için hosting kontrol paneli.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="degisiklikler.html">Değişiklikler</a></li>
+<li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Koşullar ve veri bildirimi</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">İletişim</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+<li><a href="sorunlar.html">Bilinen sorunlar</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Özellik öner</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

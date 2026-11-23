@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.145.md)
 
+> **Yayımlandı**, 23 Kasım 2026 (UTC): sürüm commit'i `2584a566e`, GitHub ön sürümü 08:56:20Z, indirme portalı yaklaşık 09:00Z (dış denetim 27/27).
+
 **Küçük bir sürüm.** Web postasının yerel kapısındaki bir güvenlik açığını
 kapatır, web postasının posta gönderebilmesini sağlar (daha önce hiç
 gönderemiyordu) ve alpha.144 laboratuvarının istediği iki küçük görünüm

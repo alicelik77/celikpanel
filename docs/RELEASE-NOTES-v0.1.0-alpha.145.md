@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.145.tr.md)
 
+> **Published** on 2026-11-23 (UTC): release commit `2584a566e`, GitHub pre-release at 08:56:20Z, download portal at about 09:00Z (public check 27/27).
+
 **A small release.** It closes one security gap in webmail's local door,
 makes webmail able to send mail (it never could), and brings the two small
 display corrections the alpha.144 lab asked for. Nothing else is new, and the

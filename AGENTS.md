@@ -136,29 +136,37 @@ The owner approved the paid yearly licence direction in D-047 (docs/DECISIONS.md
 design and for implementation in small releases. Before touching licence states, the
 licence gate, the licence file format or `portal-membership/`, read D-047 and
 docs/LICENCE-SUBSCRIPTION-DESIGN.md. A lapsed, unverifiable or unpaid licence never
-stops hosted workloads and never blocks security actions. On 23 November 2026 the owner
-chose Stripe as the first payment method, for members managing their accounts and
-subscriptions (D-047, amendment). New member-service code is Go, by his direction of
-15 November 2026; it replaces `portal-membership/` step by step. His requirements of the
-same day (celikpanel.net moves to Frankfurt; the licence server can be changed at any time
-and need not be celikpanel.net) and his acceptance in principle of a signed operator licence
-are recorded in the same amendment, each line with its source; the design proposals there
-are not decided. The legal entity of the Stripe account, tax and invoices are not decided.
-This does not authorize contacting the live
-licence service or Stripe, changing the live portal, or updating installed panels from the
+stops hosted workloads. Changed by the owner on 23 November 2026 ("lisans yoksa panel
+çalışmaz. sunucu çalışır bizi ilgilendirmez"; the earlier "and never blocks security
+actions" was his approval of 14 November): without a licence the panel's own screens,
+security screens included, are closed until a licence is entered again, and the server's
+owner does such work on the server itself; entering or renewing a licence and installing
+the panel's own updates stay possible. The owner chose Stripe as the first payment method
+on 23 November 2026 (D-047's amendment of that date). New member-service code is Go, by
+his direction of 15 November 2026; it replaces `portal-membership/` step by step. His
+requirements of that day (celikpanel.net moves to Frankfurt; the licence server can be
+changed at any time and need not be celikpanel.net) and his acceptance in principle of a
+signed operator licence are recorded in D-047's amendments, each with its source; the
+proposals there are marked as proposals. The legal entity of the Stripe account, tax and
+invoices are not decided. This does not authorize contacting the live licence service or
+Stripe, changing the live portal, or updating installed panels from the
 assistant's side.
 
 Sahip, ücretli yıllık lisans yönünü D-047'de (docs/DECISIONS.tr.md) tasarım ve küçük
 sürümlerle uygulama için onayladı. Lisans durumlarına, lisans kapısına, lisans dosyası
 biçimine ya da `portal-membership/` dizinine dokunmadan önce D-047 ve
 docs/LICENCE-SUBSCRIPTION-DESIGN.md okunur. Süresi biten, doğrulanamayan ya da ödenmeyen
-lisans barındırılan hizmetleri asla durdurmaz ve güvenlik işlemlerini asla engellemez.
-Sahip 23 Kasım 2026'da, üyelerin hesaplarını ve aboneliklerini yönetmesi için ilk ödeme
-yöntemi olarak Stripe'ı seçti (D-047, ek). Yeni üyelik hizmeti kodu, sahibin 15 Kasım 2026
-yönergesiyle Go ile yazılır ve `portal-membership/` dizininin yerini adım adım alır. Aynı
-günkü gereksinimleri (celikpanel.net Frankfurt'a taşınır; lisans sunucusu her zaman
-değiştirilebilir ve celikpanel.net olmak zorunda değildir) ve imzalı bir işletmeci lisansını
-ilke olarak kabulü aynı ekte, her satır kaynağıyla kaydedildi; oradaki tasarım önerileri
-karara bağlanmadı. Stripe hesabının tüzel kişiliği, vergi ve fatura karara bağlanmadı. Bu onay canlı lisans
-hizmetine ya da Stripe'a bağlanmaya, canlı portalı değiştirmeye ya da kurulu panelleri
-asistan tarafından güncellemeye izin vermez.
+lisans barındırılan hizmetleri asla durdurmaz. Sahip 23 Kasım 2026'da değiştirdi ("lisans
+yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez"; önceki "ve güvenlik işlemlerini
+asla engellemez" ifadesi onun 14 Kasım onayıydı): lisans yokken panelin kendi ekranları,
+güvenlik ekranları dahil, yeniden lisans girilene kadar kapalıdır; bu işleri sunucunun
+sahibi sunucunun kendisinde yapar. Lisans girmek ya da yenilemek ve panelin kendi
+güncellemelerini kurmak açık kalır. Sahip 23 Kasım 2026'da ilk ödeme yöntemi olarak
+Stripe'ı seçti (D-047'nin o tarihli değişikliği). Yeni üyelik hizmeti kodu, sahibin
+15 Kasım 2026 yönergesiyle Go ile yazılır ve `portal-membership/` dizininin yerini adım
+adım alır. O günkü gereksinimleri (celikpanel.net Frankfurt'a taşınır; lisans sunucusu her
+zaman değiştirilebilir ve celikpanel.net olmak zorunda değildir) ve imzalı bir işletmeci
+lisansını ilke olarak kabulü D-047'nin eklerinde, her biri kaynağıyla kaydedildi; oradaki
+öneriler öneri olarak işaretlidir. Stripe hesabının tüzel kişiliği, vergi ve fatura karara
+bağlanmadı. Bu onay canlı lisans hizmetine ya da Stripe'a bağlanmaya, canlı portalı
+değiştirmeye ya da kurulu panelleri asistan tarafından güncellemeye izin vermez.

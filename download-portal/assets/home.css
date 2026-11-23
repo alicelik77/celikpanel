@@ -1,0 +1,1 @@
+.sheet{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:var(--gap);margin-top:26px;align-items:start}.sheet .fig figcaption{max-width:70ch}@media (max-width:1100px){.sheet{grid-template-columns:1fr}}

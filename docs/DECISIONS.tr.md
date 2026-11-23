@@ -60,109 +60,6 @@ sipariş, ödeme, fatura ya da hatırlatma hiçbir yerde yoktur.
 Lisansları CelikPanel'in kendi hizmeti vermeye ve imzalamaya devam eder; ödeme sağlayıcısı
 yalnız "ödendi", "iade edildi" ya da "iptal edildi" bildirir.
 
-**Ek, 23 Kasım 2026 (sahip).** "kullanıcılarım hesaplarını aboneliklerini yönetelim.
-öncelikle stripe ödeme yöntemine bağlayacağız." Bu sözler yalnız iki şeyi belirler: üyeler
-hesaplarını ve aboneliklerini yönetir, **ilk ödeme yöntemi Stripe'tır**. Bu kaydın geri kalanı
-değişmez. Bu kaydın bugünkü hâlinden çıkanlar: her satın alma tek seferlik ödeme, Stripe
-aboneliği yalnız üye otomatik yenilemeyi açtığında (6. madde); Stripe yalnız neyin ödendiğini
-ya da iade edildiğini bildirir, lisansı yine hizmet verir ve imzalar. Yöntem sahibin sözü
-değil, planın önerisidir (23 Kasım 2026 hesap ve Stripe planı): önce sahte bir Stripe
-sunucusuna, sonra Stripe'ın test kipine karşı kurmak; sağlayıcıdan bağımsız bir bağlantının
-arkasında, böylece ileride lisanslara dokunmadan başka bir sağlayıcı eklenebilir.
-
-İlgili iki çizgi, her biri kendi kaynağıyla:
-
-- **Yeni üyelik hizmeti kodu Go ile yazılır, yeni PHP yazılmaz:** sahibin 15 Kasım 2026
-  yönergesi (PHP mümkün olduğunca kullanılmaz; yeni hizmetler Go ile). Go hizmeti
-  `portal-membership/` (PHP) dizininin yerini adım adım alır: önce birebir denk (aynı
-  sayfalar, aynı panel API'si, aynı veritabanı dosyası, aynı imza anahtarı), sonra sipariş ve
-  ödemeler.
-- **Geçiş sırasında PHP sürümü geri dönüş yolu olarak seçilebilir kalır:** planın önerisi
-  (23 Kasım 2026 hesap ve Stripe planı), sahibin kararı değil.
-
-**Sahip 23 Kasım 2026'da onayladı: Go hizmetinin bir yanıtı PHP hizmetininkinden farklıdır.**
-Koordinatörün önerisi, sahip aynı gün onayladı: "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz' yerine 'şu an kullanılamıyor' desin mi?" sorusuna "evet" yanıtını verdi. Bir
-panelin yenileme isteği,
-imza anahtarımızın ürettiği bir etkinleştirme belirtecini veritabanının bilmediği bir durum
-için sunduğunda (lisans satırı yoktur, belirtecin kuşağı satırınkinden yüksektir ya da satır
-o kuşakta bir sunucuya bağlı değildir), Go hizmeti 503 yanıtı verir ve tek satır kayıt düşer,
-böylece panel makbuzunu korur; PHP hizmeti 400 `invalid_activation` yanıtı verir ve panel
-yönetim ekranlarını kilitler. Kurulu panelleri geride kalmış bir veritabanı kopyasından
-(taşıma, geç alınmış kopya) korur. Sonraki her değişikliğin koruması gereken bir değişmeze
-dayanır: lisans satırı asla silinmez, kuşağı asla düşmez ve her geri alma (bırakma, kaldırma,
-anahtar yenileme, başka sunucuya yeniden kurulum; ileride iade, işletmecinin geri alması,
-hesap kapatma) kuşağı aynı ifadede yükseltir; kaldırıldı ya da geri alındı olarak işaretli
-bir satır asla "geride" sayılmaz. İşletmeci, bilinçli bir geri yüklemeden sonra özel
-yapılandırmadaki `database_is_authority` ile bu yanıtı kapatabilir. Durum: sahip 23 Kasım
-2026'da onayladı.
-
-**Sahibin 23 Kasım 2026 sözü (bir söz; burada yapılmış olarak kaydedilmedi):** "Stripe
-deneme hesabı açarız".
-
-**Sahip 23 Kasım 2026'da değiştirdi: ek süre yok, koruma durumu yok, iade yok.** Sahibin
-yanıtları, kendi sözleriyle:
-
-- Ek süre ve yenileme üzerine: "ek süre diye birşey yok. 1 ay öncesinden uyarı yapalım.
-  uzatsın yada sonucuna katlansın."
-- Lisansın bitişi üzerine: "lisansın bittiği gün biter. yeni lisans alması gerekir." ve
-  "lisans yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez"
-- İade üzerine: "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi
-  yok."
-
-Bunun 14 Kasım maddelerinde değiştirdikleri:
-
-- **3. madde değişti.** 30 günlük ek süre ve koruma durumu yok: lisans bitiş tarihinde
-  biter; lisans yokken panelin ekranları, yeniden bir lisans girilene kadar kapalıdır;
-  sunucunun kendisi -- barındırılan siteler, e-posta, DNS, veritabanları, zamanlanmış
-  görevler, sertifika yenileme -- çalışmaya devam eder. Uyarılar kalır: bitişten 30, 7 ve 1
-  gün önce (koordinatörün "1 ay öncesinden" okuması).
-- **6. madde: 30 günlük koşulsuz iade kaldırıldı.** İade yoktur; müşterinin elinde bunun
-  yerine 30 günlük deneme vardır (yalnız ilk sefer). Denemenin kart ya da ödeme bilgisi
-  istememesi koordinatörün okumasıdır (D-047'nin 14 Kasım 6. maddesi "kartsız" der; sahibin 23
-  Kasım sözleri bunu tekrarlamaz) ve öyle kuruldu. Otomatik yenilemenin yalnız
-  müşterinin açık seçimiyle olması değişmedi.
-- **Tasarımın açık 5. ve 6. soruları kapandı:** bitiş tarihinden önce ödenen yenileme
-  kesintisizdir -- yıl eski bitişten devam eder ve fiyat artmaz (2. madde); bitiş
-  tarihinden sonraki satın alma, güncel liste fiyatıyla yeni bir satın almadır ve yılı
-  ödemeyle başlar. Hiçbir yenileme iade edilmez.
-- Bir okuma, sahibin sözü değil: "yeni lisans alması gerekir" sözü, aynı lisansa (anahtarı ve
-  sunucusu kalır) ödemeden başlayan, liste fiyatıyla yeni bir yıl alınması olarak kuruldu.
-- Hizmetin yine de ele aldığı: ödeme sağlayıcısında gerçekleşen bir iade ya da kaybedilen
-  bir itiraz (işletmecinin sağlayıcı panelindeki istisnai işlemi ya da bir ters ibraz)
-  doğrulanmış bir olgu olarak gelir ve uygulanır -- ilk yıl geri alınır (lisans sona erer),
-  bir yenilemenin yılı geri alınır -- ve işletmecinin kaydına yazılır. Hiçbir sayfa iade
-  sunmaz.
-- Değişmeyen: CelikPanel'in kendi lisans hizmetine ulaşılamadığında geçerli 4. maddedeki 30
-  günlük süre ayrı bir şeydir ve kalır.
-**Sonraki tasarım adımı için gereksinimler, sahibin sözleri, 23 Kasım 2026.**
-"celikpanel.net frankfurta taşınacak"; "frankfurt sadece bizde duracak"; "lisans sunucusunu
-her zaman değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım".
-Aşağıdaki her satır kimin olduğunu söyler:
-
-- *Sahibin gereksinimleri (yukarıdaki sözleri):* celikpanel.net Frankfurt'a taşınır; lisans
-  sunucusu her zaman değiştirilebilmeli ve celikpanel.net olmak zorunda değildir; sonuç
-  esnek ve profesyonel olmalıdır.
-- *Bir okuma, sahibin sözü değil:* üyelik ve lisans hizmetinin celikpanel.net ile birlikte
-  taşınacağı ve "sadece bizde" sözünün Frankfurt sunucusunun yalnız sahibin kendi işlerini
-  barındıracağı anlamına geldiği.
-- *Sahibin ilke olarak kabul ettiği, biçimi tasarlanmamış:* çevrimiçi denetim gerektirmeyen,
-  imzalı bir işletmeci lisansı. Sözleri: "bazen güvenlik için sabit kullanımlı key
-  üretebiliriz. o keyleri bir yerden valide etmez", öneri üzerine: "önerin mantıklı. devam".
-- *Koordinatör oturumun ve incelemelerin tasarım önerileri, karara bağlanmadı:* lisans API'si
-  için ayrı ve kalıcı bir ad, eski yol da yanıt vermeye devam eder; panellerin bildiği birden
-  çok adres; çevrimdışı saklanan ve kısa ömürlü bir hizmet anahtarını imzalayan bir kök
-  anahtar. Sonuncusu panellerin hizmet anahtarına güvenme biçimini (bugün sabitlenmiş bir
-  anahtar) değiştirir ve kendi kararını gerektirir.
-
-**Karara bağlanmayanlar (açık).** Stripe hesabının tüzel kişiliği ve ülkesi; ücret almanın
-canlıda bu hesapla mı, yoksa yurt dışında bir satıcı-aracıyla (merchant of record; Polar ve
-Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a sorulacak) ya da Türk bir şirket için
-iyzico veya PayTR ile mi yapılacağı. Vergi ve fatura: sahibin mali müşavirini bekliyor (yurt
-dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir satıcı-aracı üzerinden
-satış). Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para birimleri. Koşullardaki "iade
-yok" ifadesinin hukuki metni (sahibin avukatı için). Tasarımın sahibe soruları tasarımın k
-bölümündedir.
-
 **Neyi değiştirir.**
 
 - **D-039.** Başlıktaki "çevrimdışı en çok yedi gün" ile karar maddelerindeki
@@ -229,6 +126,113 @@ kanıtı (`license.json`), imzalı biçim ve üyelik veritabanı. Her aşama, PR
 biçim geçişini, kurtarmayı ve kanıtı adıyla yazar. Bu kayıt hiçbir kodu, kurulu paneli ya da
 canlı hizmeti değiştirmez. Canlı lisans hizmetine bağlanmaya, canlı portalı değiştirmeye ya
 da kurulu panelleri güncellemeye izin vermez.
+
+**Değişiklik, 23 Kasım 2026 (sahip).** Sahibin o günkü cevapları dört şeyi değiştirir;
+yukarıdaki maddeler onun 14 Kasım 2026 onayıydı.
+
+- **Ödeme.** "kullanıcılarım hesaplarını aboneliklerini yönetelim. öncelikle stripe ödeme
+  yöntemine bağlayacağız." İlk ödeme yöntemi Stripe üzerinden kartla ödemedir. Her lisansı
+  yine CelikPanel'in kendi hizmeti verir ve imzalar.
+- **Ek süre yok.** "ek süre diye birşey yok. 1 ay öncesinden uyarı yapalım. uzatsın yada
+  sonucuna katlansın." 3. maddedeki 30 günlük ek süre kaldırıldı. Hatırlatmalar bitiş
+  tarihinden bir ay önce başlar: 30, 7 ve 1 gün önce, panelde ve e-postayla.
+- **Lisans bittiğinde.** "lisansın bittiği gün biter. yeni lisans alması gerekir." ve
+  "lisans yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez". Lisans bitiş tarihinde
+  biter; 4. maddedeki çevrimdışı süre onu bu tarihin ötesine taşımaz (bu, sahibin ilk
+  cümlesinin yorumudur, kendi sözü değildir). 3. maddedeki koruma
+  durumu ("yalnız büyüme işlemleri kapanır") kaldırıldı: lisans yokken panelin yönetim
+  ekranları, güvenlik ekranları dahil, yeniden lisans girilene kadar kapalıdır; bu işleri
+  sunucunun sahibi sunucunun kendisinde yapar. Lisanssız bir panelde iki şey açık kalır,
+  çünkü çıkış yolu onlardır: lisans girmek ya da yenilemek ve panelin kendi güncellemelerini
+  kurmak. Sunucu çalışmaya devam eder: barındırılan siteler, e-posta, DNS, veritabanları,
+  zamanlanmış işler ve sertifika yenileme sürer, çünkü hiçbiri panele bağlı değildi (D-022,
+  değişmedi).
+- **İade yok.** "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi
+  yok." 6. maddedeki 30 günlük iade kaldırıldı; ilk seferdeki 30 günlük deneme kalır.
+
+Bu kaydın ek süreden, koruma durumundan, iadeden ya da lisans nedeniyle asla reddedilmeyen
+güvenlik işlemlerinden söz eden her yerinde bu değişiklik geçerlidir. Hiçbir kodu, kurulu
+paneli ya da canlı hizmeti değiştirmez.
+
+**23 Kasım 2026'nın geri kalanı, her satır kaynağıyla.** Yukarıdaki değişiklik sahibin
+kararıdır. Aşağıdakiler o gün başka neyin kararlaştırıldığını ya da önerildiğini kaydeder ve
+her satırın kimin olduğunu söyler; hiçbiri yukarıdaki değişikliği yumuşatmaz.
+
+- **Sahip onayladı: Go hizmetinin bir yanıtı PHP hizmetininkinden farklıdır.** Koordinatörün
+  önerisi; "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz' yerine 'şu an
+  kullanılamıyor' desin mi?" sorusuna "evet" yanıtını verdi. Bir panelin yenileme isteği,
+  imza anahtarımızın ürettiği bir etkinleştirme belirtecini veritabanının bilmediği bir durum
+  için sunduğunda (lisans satırı yoktur, belirtecin kuşağı satırınkinden yüksektir ya da satır
+  o kuşakta bir sunucuya bağlı değildir), Go hizmeti 503 yanıtı verir ve tek satır kayıt
+  düşer, böylece panel makbuzunu korur; PHP hizmeti 400 `invalid_activation` yanıtı verir ve
+  panel yönetim ekranlarını kilitler. Kurulu panelleri geride kalmış bir veritabanı
+  kopyasından (taşıma, geç alınmış kopya) korur. Sonraki her değişikliğin koruması gereken
+  bir değişmeze dayanır: lisans satırı asla silinmez, kuşağı asla düşmez ve her geri alma
+  (bırakma, kaldırma, anahtar yenileme, başka sunucuya yeniden kurulum, uygulanan bir iade ya
+  da kaybedilen itiraz, hesap kapatma) kuşağı aynı ifadede yükseltir; kaldırıldı ya da geri
+  alındı olarak işaretli bir satır asla "geride" sayılmaz. İşletmeci, bilinçli bir geri
+  yüklemeden sonra özel yapılandırmadaki `database_is_authority` ile bu yanıtı kapatabilir.
+- **Sahibin sözü (bir söz; burada yapılmış olarak kaydedilmedi):** "Stripe deneme hesabı
+  açarız".
+- **Yeni üyelik hizmeti kodu Go ile yazılır, yeni PHP yazılmaz:** sahibin 15 Kasım 2026
+  yönergesi (PHP mümkün olduğunca kullanılmaz; yeni hizmetler Go ile). Go hizmeti
+  `portal-membership/` (PHP) dizininin yerini adım adım alır: önce birebir denk (aynı
+  sayfalar, aynı panel API'si, aynı veritabanı dosyası, aynı imza anahtarı), sonra sipariş ve
+  ödemeler.
+- **Sonraki tasarım adımı için gereksinimler, sahibin sözleri.** "celikpanel.net frankfurta
+  taşınacak"; "frankfurt sadece bizde duracak"; "lisans sunucusunu her zaman
+  değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım".
+  Gereksinimleri: celikpanel.net Frankfurt'a taşınır; lisans sunucusu her zaman
+  değiştirilebilmeli ve celikpanel.net olmak zorunda değildir; sonuç esnek ve profesyonel
+  olmalıdır. *Bir okuma, sahibin sözü değil:* üyelik ve lisans hizmeti celikpanel.net ile
+  birlikte taşınır ve "sadece bizde" sözü Frankfurt sunucusunun yalnız sahibin kendi işlerini
+  barındıracağı anlamına gelir.
+- **Sahibin ilke olarak kabul ettiği, biçimi tasarlanmamış:** çevrimiçi denetim
+  gerektirmeyen, imzalı bir işletmeci lisansı. Sözleri: "bazen güvenlik için sabit kullanımlı
+  key üretebiliriz. o keyleri bir yerden valide etmez", öneri üzerine: "önerin mantıklı.
+  devam".
+
+*Sahibin yanıtlarının okumaları, kendi sözleri değil (hizmetin nasıl kurulduğu):*
+
+- Her satın alma kartla tek seferlik ödemedir; Stripe aboneliği yalnız üye otomatik
+  yenilemeyi açtığında (6. madde, değişmedi). Stripe yalnız neyin ödendiğini, iade
+  edildiğini ya da itiraz edildiğini bildirir; lisansı yine hizmet verir ve imzalar.
+- Deneme kart ya da ödeme bilgisi istemez (14 Kasım 6. madde "kartsız" der; sahibin 23 Kasım
+  sözleri bunu tekrarlamaz).
+- Bitiş tarihinden önce ödenen yenileme kesintisizdir: yıl eski bitişten devam eder ve fiyat
+  artmaz (2. madde). Bitiş tarihinden sonraki satın alma, güncel liste fiyatıyla yeni bir
+  satın almadır ve yılı ödemeyle başlar. "yeni lisans alması gerekir" sözü aynı lisansa
+  (anahtarı ve sunucusu kalır) böyle yeni bir yıl alınması olarak kuruldu. Bu, tasarımın açık
+  5. ve 6. sorularını kapatır.
+- Hiçbir sayfa iade sunmaz. İşletmecinin sağlayıcı panelinde istisnai olarak yaptığı bir
+  iade ya da üyenin bankasının karara bağladığı bir ters ibraz doğrulanmış bir olgu olarak
+  gelir ve uygulanır: ilk yıl geri alınır, bir yenilemenin yılı geri alınır ve işletmecinin
+  kaydına yazılır.
+
+*Koordinatör oturumun ve incelemelerin önerileri, sahip karara bağlamadı (sahip başka türlü
+karar verene kadar kod her birinin dediğini yapar):*
+
+- Deneme: hesap ve kip başına bir; lisans hâlâ denemesindeyken sunucu başına bir; ücretsiz
+  beta lisansı almış bir hesap ücretsiz dönemini kullanmıştır.
+- Bir ters ibraz, itiraz kaybedildiğinde satın aldığı süreyi sona erdirir; itiraz açıkken
+  lisans çalışır ve işletmeci bunu görür.
+- Geçiş sırasında PHP sürümü geri dönüş yolu olarak seçilebilir kalır, ama mağaza bir kez
+  kullanıldıktan sonra asla (`check-db -for-php` böyle bir veritabanı dosyasını reddeder).
+- İşletmecinin yanlışlıkla uygulanan bir geri alma için `reinstate` komutu süre geri vermez;
+  hediye, kendi gerekçesiyle `extend` komutudur.
+- Lisans API'si için: ayrı ve kalıcı bir ad, eski yol da yanıt vermeye devam eder; panellerin
+  bildiği birden çok adres; çevrimdışı saklanan ve kısa ömürlü bir hizmet anahtarını
+  imzalayan bir kök anahtar. Sonuncusu panellerin hizmet anahtarına güvenme biçimini (bugün
+  sabitlenmiş bir anahtar) değiştirir ve kendi kararını gerektirir.
+
+**Karara bağlanmayanlar (açık).** Stripe hesabının tüzel kişiliği ve ülkesi; ücret almanın
+canlıda bu hesapla mı, yoksa yurt dışında bir satıcı-aracıyla (merchant of record; Polar ve
+Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a sorulacak) ya da Türk bir şirket için
+iyzico veya PayTR ile mi yapılacağı. Vergi ve fatura: sahibin mali müşavirini bekliyor (yurt
+dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir satıcı-aracı üzerinden
+satış). Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para birimleri. Koşullardaki "iade
+yok" ifadesinin hukuki metni (sahibin avukatı için). Tasarımın sahibe soruları tasarımın k
+bölümündedir.
 
 ## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
 

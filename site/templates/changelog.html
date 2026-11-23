@@ -1,0 +1,42 @@
+{{define "lead" -}}
+<div class="lead">
+<div class="wrap">
+<h1>{{t "changelog.h1"}}</h1>
+<p class="def">{{t "changelog.def"}}</p>
+<div class="actions">
+<a class="btn plain" href="{{link "problems"}}">{{t "changelog.problems"}}</a>
+<a class="btn plain" href="{{link "releases"}}">{{t "changelog.releases"}}</a>
+</div>
+</div>
+</div>
+{{- end}}
+
+{{define "main" -}}
+{{- range $r := changelog}}
+<section class="part" id="{{$r.Version}}" aria-labelledby="h-{{$r.Version}}">
+<header><span class="num">{{$r.Published}}</span><h2 id="h-{{$r.Version}}">{{$r.Version}}</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>{{t "changelog.caption"}} {{$r.Version}}</caption>
+<thead><tr><th scope="col">{{t "changelog.col.kind"}}</th><th scope="col">{{t "changelog.col.change"}}</th><th scope="col">{{t "changelog.col.case"}}</th></tr></thead>
+<tbody>
+{{- range $l := $r.Lines}}
+<tr><th scope="row">{{$l.Kind}}</th><td data-k="{{t "changelog.col.change"}}">{{$l.Text}}</td><td class="v" data-k="{{t "changelog.col.case"}}">{{if $l.Case}}<a href="{{$l.CaseHref}}">{{$l.Case}}</a>{{else}}—{{end}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+<p class="more"><a href="{{$r.Notes}}">{{t "changelog.notes"}} {{$r.Version}}</a></p>
+</div>
+</section>
+{{- end}}
+
+<section class="part" aria-labelledby="h-earlier">
+{{template "head" (dict "Num" "" "ID" "h-earlier" "Title" (t "changelog.earlier.title") "Text" "")}}
+<div>
+<p>{{t "changelog.earlier.text"}}</p>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/releases">{{t "changelog.earlier.link"}}</a></p>
+</div>
+</section>
+{{- end}}
