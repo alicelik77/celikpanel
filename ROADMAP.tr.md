@@ -93,7 +93,11 @@ bu bölümde öyle yazılır.
   değişikliği yok (81 olarak kalır). Site, Türkçe ve İngilizce bir teknik
   bilgi sayfasıdır; alpha.141'den itibaren sürümlere göre değişiklikler ve
   numaralı vakalarla bir bilinen sorunlar sayfası, sorun bildirme yoluyla.
-  Laboratuvar denetimi: açık
+  Laboratuvar denetimi: yapıldı, 23 Kasım 2026'da bir deneme, ağır hata yok
+  (iki deneme sunucusu panelin kendi sayfasından güncellendi; yeni site iki
+  dilde, masaüstü ve telefon genişliğinde denetlendi). Açık kalanlar: üye
+  giriş sayfaları (yayımda canlı sitede salt-okur denetlenir), sayfadaki
+  komutla sıfırdan kurulum, Arch Linux'ta hiçbir şey
   ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.146.tr.md)).
 - **Sahip, site hakkında, 23 Kasım 2026:** teknik bilgi sayfası tasarımını
   onayladı ve "yayınla" dedi; düzeltilen bir sorunun düzeltildi olarak

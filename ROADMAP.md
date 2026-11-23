@@ -91,7 +91,12 @@ back, it moves to the next one and is written down here.
   own small release: nothing in the panel's or the agent's code changes, no
   schema change (stays 81). The site is a datasheet in Turkish and English,
   with a changelog by version from alpha.141 and a known-problems page with
-  numbered cases and how to report a problem. Lab check: open
+  numbered cases and how to report a problem. Lab check: done, one run on
+  23 November 2026, no hard failure (both test servers updated through the
+  panel's own page; the new site checked in both languages at desktop and
+  phone width). Open: the member sign-in pages (checked read-only on the
+  live site at publication), a fresh install with the page's command,
+  nothing on Arch Linux
   ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.146.md)).
 - **The owner on the website, 23 November 2026:** he approved the datasheet
   design and said "yayınla" (publish); he asked for a bug-report section in

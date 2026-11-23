@@ -84,10 +84,63 @@ in `download-portal/` that differ are:
 
 - Everything alpha.145's notes list as known limits stays as it is
   ([alpha.145 release notes](RELEASE-NOTES-v0.1.0-alpha.145.md)).
+- On Ubuntu, if the system's own automatic package update is running when
+  the update is pressed, the update is refused without changing anything and
+  can be pressed again when that has finished (the card may say the server is
+  ready a little before the package manager is really idle).
 
 ## Checked in the lab
 
-OPEN.
+One run on 23 November 2026 (UTC about 10:30 to 11:10) on the pair of test
+servers: a Debian 13 main DNS server with PowerDNS, mail and webmail, and an
+Ubuntu 24.04 backup DNS server with BIND. Both started on alpha.145's code and
+were updated to this release's code, built under the lab-only label
+v0.1.0-alpha.154, through the panel's own update page. The lab's download
+portal served this release's own new site. No hard failure.
+
+- **Both updates finished by themselves.** The main server: pressed at
+  10:35:54, "updated" with every step ticked at 10:41:22. The backup server:
+  the first press at 10:43:18 was refused at 10:45:17 because Ubuntu's own
+  daily package job had started at 10:44:05; the window said the package
+  manager was busy and nothing had been changed, and the server kept running
+  alpha.145's code. The second press at 10:50:22, after that job had ended at
+  10:47:55, ended "updated" at 10:53:59.
+- **The schema did not change:** both servers stayed on schema 81, with no
+  new step.
+- **Webmail and the web server were left alone:** on both servers webmail's
+  configuration and its local door kept their content and times, the web
+  server was not reloaded and PHP was not restarted.
+- **What the panel's start refreshes, as at every update:** Postfix was
+  refreshed twice and Dovecot reloaded once on each server when the panel
+  started again, the same as at the panel's starts in alpha.145's lab run.
+- **Sites, DNS and mail kept answering:** during the main server's update
+  756 requests to three sites from outside all answered; after both updates
+  the sites, both panels and webmail's page answered as before, mail answered
+  on ports 25, 587 and 993, and both servers gave the same DNS answers as
+  before. The panel's usual pages showed the new version on both servers.
+- **The new site, as the lab's portal served it:** home, install, systems,
+  licence, releases, changelog and known problems, in English and Turkish, at
+  desktop and phone width: every page answered in its own language with the
+  version and date filled in and no placeholder left; the style sheets, both
+  fonts and the home's screens loaded, with no failed file, no browser error
+  and no sideways scrolling on the phone. Every link between the pages and
+  every anchor resolved. The changelog shows this release, dated 23 November
+  2026. The Releases page's check commands, run by hand as printed (English
+  and Turkish) on the files downloaded through the page's own links: the
+  checksum matched, the signature was verified, and the signed manifest's
+  archive digest equalled the archive's. (The lab's portal serves the lab's
+  signing key, so the key's digest differed from the one the page prints, as
+  expected.)
+- **Compared with the earlier portal:** `latest.txt` has the same form and
+  names the new version, the signing key file is the same byte for byte, and
+  `get.sh` differs only in the two lines that name the release. The member
+  area's selector files (`account/`) are the same as alpha.145's and name the
+  same member-app release.
+
+**Not checked in the lab:** the member sign-in pages themselves (the lab's
+portal does not run PHP; they are checked read-only on the live site when
+this release is published); a fresh install with the page's command; links
+to other sites; nothing on Arch Linux.
 
 ## Evidence
 

@@ -85,10 +85,64 @@ alpha.145'in sürüm commit'iyle karşılaştırıldığında, `site/` ve
 
 - alpha.145'in notlarının bilinen sınır olarak listelediği her şey olduğu gibi
   kalır ([alpha.145 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.145.tr.md)).
+- Ubuntu'da güncellemeye basıldığında sistemin kendi otomatik paket
+  güncellemesi çalışıyorsa güncelleme hiçbir şeyi değiştirmeden reddedilir;
+  o iş bitince yeniden basılabilir (kart, paket yöneticisi gerçekten boşa
+  çıkmadan biraz önce sunucunun hazır olduğunu söyleyebilir).
 
 ## Laboratuvarda denenenler
 
-AÇIK.
+23 Kasım 2026'da (UTC yaklaşık 10:30–11:10) iki deneme sunucusunda bir
+deneme yapıldı: PowerDNS, posta ve web postası olan bir Debian 13 ana DNS
+sunucusu ve BIND'li bir Ubuntu 24.04 yedek DNS sunucusu. İkisi de alpha.145'in
+koduyla başladı ve yalnız laboratuvara ait v0.1.0-alpha.154 etiketiyle
+derlenen bu sürümün koduna panelin kendi güncelleme sayfasından güncellendi.
+Laboratuvarın indirme portalı bu sürümün yeni sitesini sundu. Ağır hata yok.
+
+- **İki güncelleme de kendiliğinden tamamlandı.** Ana sunucu: 10:35:54'te
+  basıldı, 10:41:22'de bütün adımları işaretli "güncellendi" ile bitti. Yedek
+  sunucu: 10:43:18'deki ilk basış 10:45:17'de reddedildi, çünkü Ubuntu'nun
+  kendi günlük paket işi 10:44:05'te başlamıştı; pencere paket yöneticisinin
+  meşgul olduğunu ve hiçbir şeyin değiştirilmediğini söyledi, sunucu
+  alpha.145'in koduyla çalışmayı sürdürdü. O iş 10:47:55'te bittikten sonra
+  10:50:22'deki ikinci basış 10:53:59'da "güncellendi" ile bitti.
+- **Şema değişmedi:** iki sunucu da şema 81'de kaldı, yeni bir adım yok.
+- **Web postasına ve web sunucusuna dokunulmadı:** iki sunucuda da web
+  postasının yapılandırması ve yerel kapısı içeriğini ve zamanını korudu, web
+  sunucusu yeniden yüklenmedi, PHP yeniden başlatılmadı.
+- **Panelin açılışında yenilenenler, her güncellemede olduğu gibi:** panel
+  yeniden açılırken her sunucuda Postfix iki kez yenilendi, Dovecot bir kez
+  yeniden yüklendi; alpha.145'in laboratuvar denemesinde panelin açılışlarında
+  olanın aynısı.
+- **Siteler, DNS ve posta yanıt vermeyi sürdürdü:** ana sunucunun
+  güncellemesi sırasında dışarıdan üç siteye gönderilen 756 isteğin hepsi
+  yanıt aldı; iki güncellemeden sonra siteler, iki panel ve web postası
+  sayfası önceki gibi yanıt verdi, posta 25, 587 ve 993 numaralı portlarda
+  yanıt verdi, iki sunucunun DNS yanıtları öncekiyle aynıydı. Panelin olağan
+  sayfaları iki sunucuda da yeni sürümü gösterdi.
+- **Laboratuvar portalının sunduğu biçimiyle yeni site:** ana sayfa, kurulum,
+  sistemler, lisans, sürümler, değişiklikler ve bilinen sorunlar; İngilizce ve
+  Türkçe, masaüstü ve telefon genişliğinde: her sayfa kendi dilinde, sürüm ve
+  tarih doldurulmuş, doldurulmamış yer tutucu kalmadan açıldı; stil
+  dosyaları, iki yazı tipi ve ana sayfanın ekran görüntüleri yüklendi;
+  yüklenemeyen dosya, tarayıcı hatası ve telefonda yana kayma olmadı.
+  Sayfalar arasındaki her bağlantı ve her çapa doğru yere çıktı.
+  Değişiklikler sayfası bu sürümü 23 Kasım 2026 tarihiyle gösteriyor. Sürümler
+  sayfasının denetim komutları, sayfanın kendi bağlantılarıyla indirilen
+  dosyalar üzerinde yazıldığı gibi elle çalıştırıldı (İngilizce ve Türkçe):
+  sağlama toplamı tuttu, imza doğrulandı, imzalı manifest'teki arşiv özeti
+  arşivinkine eşitti. (Laboratuvarın portalı laboratuvarın imza anahtarını
+  sunduğu için anahtarın özeti sayfanın yazdığından farklıydı; beklenen
+  buydu.)
+- **Önceki portalla karşılaştırma:** `latest.txt` aynı biçimde ve yeni sürümü
+  adlandırıyor, imza anahtarı dosyası bayt bayt aynı, `get.sh` yalnız sürümü
+  adlandıran iki satırda farklı. Üye alanının seçici dosyaları (`account/`)
+  alpha.145'inkilerle aynı ve aynı üye uygulaması sürümünü adlandırıyor.
+
+**Laboratuvarda denenmeyenler:** üye giriş sayfalarının kendisi
+(laboratuvarın portalı PHP çalıştırmaz; bu sürüm yayımlanırken canlı sitede
+salt-okur denetlenir); sayfadaki komutla sıfırdan kurulum; başka sitelere
+giden bağlantılar; Arch Linux'ta hiçbir şey.
 
 ## Kanıt
 
