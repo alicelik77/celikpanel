@@ -146,7 +146,7 @@ func (r DBReport) Print(w io.Writer) {
 	fmt.Fprintf(w, "members: %d (verified %d; password hashes argon2id %d, other %d)\n", r.Members, r.Verified, r.HashArgon2id, r.HashOther)
 	fmt.Fprintf(w, "licences: %d (removed %d, live %d, live without an end date %d, live and ended %d)\n", r.Licenses, r.Removed, r.Live, r.NoExpiry, r.Expired)
 	fmt.Fprintf(w, "stored keys: %d, of which decrypt to their hash: %d\n", r.StoredKeys, r.StoredKeysOK)
-	fmt.Fprintf(w, "bound and running licences: %d, receipts made and verified with the pinned key: %d of %d\n", r.Bound, r.ReceiptsVerified, r.Receipts)
+	fmt.Fprintf(w, "bound and running licences: %d, receipts made and verified with the configured key: %d of %d\n", r.Bound, r.ReceiptsVerified, r.Receipts)
 	fmt.Fprintf(w, "tables: %s\n", strings.Join(r.SchemaTables, ", "))
 	if len(r.UnknownColumns) > 0 {
 		fmt.Fprintf(w, "licence columns this version does not know (left untouched): %s\n", strings.Join(r.UnknownColumns, ", "))
