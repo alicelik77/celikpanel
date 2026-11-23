@@ -519,7 +519,7 @@ alpha.140 or earlier and watched for a day:
 
 ## 7. Side doors: the database tools, webmail, the stock PHP-FPM pool, `at` and site crontabs
 
-*22 November 2026 (sandbox slice R1, pull request #348, after two
+*23 November 2026 (sandbox slice R1, pull request #348, after three
 independent reviews) · In source and component-tested; the access-control
 list on webmail's tree was checked with real files, owners and access checks
 on the test guest's ext4. The lab round on Debian 13 and Ubuntu 24.04 is
@@ -560,10 +560,28 @@ after every move in a tool's Manage window:**
    tree before it is published.
 3. *The stock pool* (`www.conf`) of each PHP version is turned off when it is
    the package's untouched file (dpkg's own MD5), no web server
-   configuration names its socket (any line outside a full-line comment, or
-   a `*_pass` whose address is a variable, keeps it on), and another pool
-   remains. Turning off is a rename to `www.conf.off-by-celikpanel`, checked
-   with `php-fpm -t` and a reload; a refusal puts it back. A version is
+   configuration that is loaded names its socket, and another pool remains.
+   "Loaded" is nginx's effective configuration (`nginx -T`) and, only when
+   the Apache program is installed, the Apache files Apache loads: every
+   file under `/etc/apache2` outside the `*-available` folders, the enabled
+   links, and what any of them includes. The PHP-FPM package's own
+   `/etc/apache2/conf-available/php<v>-fpm.conf`, which nothing enables on a
+   standard server, is not a user; an Apache include that cannot be followed
+   makes every Apache file count. In what is loaded, any line outside a
+   full-line comment that names the socket, a `unix:` path that reaches the
+   same socket by another spelling or link (compared by device and inode) or
+   cannot be followed at all, or a `*_pass` whose address is a variable,
+   keeps the pool on. The one exception is CelikPanel's own reverse-proxy
+   line `proxy_pass $celikpanel_upstream;` in a site file that carries
+   CelikPanel's seal and is unchanged: that variable only ever holds
+   `http(s)://host[:port]`. So on a standard Debian 13 or Ubuntu 24.04
+   server with nginx the pool is turned off once nothing CelikPanel did not
+   write points at it and a site or tool pool runs beside it; it stays on
+   where Apache loads the packaged snippet, where an owner's configuration
+   names the socket or a socket path that cannot be followed, or where a
+   `*_pass` other than CelikPanel's own uses a variable. Turning off is a
+   rename to `www.conf.off-by-celikpanel`, checked with `php-fpm -t` and a
+   reload; a refusal puts it back. A version is
    never left without a pool: before its last other pool goes (a site
    deleted or moved, a tool moved or removed) the stock pool is put back.
    One host-wide lock covers every keep, write, remove, test and reload of
@@ -584,21 +602,40 @@ after every move in a tool's Manage window:**
 |---|---|---|
 | `php-tool-accounts.json` | a tool's failed move (version, reason) | the move succeeds |
 | `php-tool-files-<tool>.json` | each changed path's owner, group, mode (special bits included), the root's access-control list, and what CelikPanel set | the tool answers on its own pool, or the undo is done |
-| `stock-pools-off.json` | the versions CelikPanel turned off, and a turn-off begun and not finished | a version is put back |
+| `stock-pools-off.json` | the versions CelikPanel turned off, and a turn-off begun and not finished | never as a file; a version's entry goes when it is put back |
 | `at-allow.sha256` | the digest of CelikPanel's `/etc/at.allow`, or `pending <new> <earlier>` while it writes | never (it is how the owner's deletion is recognised) |
 | `site-crontabs/<account>.json`, `site-crontabs/baseline-v1` | the digests of the crontab lines CelikPanel accounts for | the site account is deleted |
 
-**How each step recovers.** Every record is written before the change it
-describes, so a power loss in between reads at the next start as
-CelikPanel's unfinished step, never as the owner's doing. A tool move cut
+The Panel keeps its own records in its database: the side doors' last
+answer, and the administrator's last "close it again" with its time (a run
+a Panel restart cut is said as not known).
+
+**How each step recovers.** Wherever the other order would make a power
+loss look like the owner's doing, a record is written before the change it
+describes: a tool's files before they change, the "turning off" mark of a
+stock pool before its rename, the pending record of `at.allow` before the
+file. A power loss in between then reads at the next start as CelikPanel's
+unfinished step. The finished records come after the change they confirm
+(a stock pool recorded off, `at.allow` recorded as CelikPanel's), and a
+crontab change that adds a line writes the crontab first and its record
+after, by design: a power loss in between shows the new line as not made in
+CelikPanel, never hides one. A tool move cut
 before nginx was switched is tried again, and its failure puts back what the
 first attempt recorded; one cut after is reloaded once and asked again; a
 tool that still does not answer is a Problems line (who acts, what to do).
 The undo puts a path back only while it is exactly as CelikPanel set it; a
-path changed since is kept and named. A stock pool marked "turning off" is
-finished (check and reload) or decided again; `at.allow` with a pending
-record is finished or written again. A crontab change that removes a line
-writes the record without it first.
+file the move itself created (phpMyAdmin's
+`conf.d/celikpanel-own-account.php`) is removed while it still holds what
+the move wrote; a path already gone has nothing to put back and is said so;
+a path changed since is kept and named. A stock pool marked "turning off" is
+finished (check and reload) or decided again; a refused turn-off renames the
+pool back before the mark goes; a pool found renamed under CelikPanel's
+name without its record is checked (`php-fpm -t` and a reload) before it is
+recorded off. `at.allow` with a pending record is finished or written again.
+A crontab change that removes a line writes the record without it first.
+The hourly read takes the step's lock,
+never replaces a newer answer, and calls a tool down only after two probes
+in a row failed.
 
 **How the owner undoes each thing without the panel (D-022).**
 

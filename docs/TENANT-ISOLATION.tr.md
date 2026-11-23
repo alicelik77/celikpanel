@@ -443,7 +443,7 @@ izlenmiş eski veritabanı `a_shop` ile (sahibi `a_owner`, kayıtlı okuyucu `a_
 
 ## 7. Yan kapılar: veritabanı araçları, web postası, varsayılan PHP-FPM havuzu, `at` ve site crontab'ları
 
-*22 Kasım 2026 (kum havuzu dilimi R1, #348 numaralı istek, iki bağımsız incelemeden sonra) ·
+*23 Kasım 2026 (kum havuzu dilimi R1, #348 numaralı istek, üç bağımsız incelemeden sonra) ·
 Kaynakta var, bileşen testlerinden geçti; web postası ağacındaki erişim listesi, deneme
 sunucusunun ext4 dosya sisteminde gerçek dosyalar, sahipler ve erişim denetimleriyle denendi.
 Debian 13 ve Ubuntu 24.04 laboratuvar turu açık (adımlar istekte).*
@@ -476,9 +476,22 @@ değiştirmeden yeniden okur:**
    nedenini ve sahibin ne yapabileceğini söyler. Web postası güncellemeleri girdiyi yeni ağaca,
    yayımlanmadan önce koyar.
 3. *Varsayılan havuz* (`www.conf`): paketin dokunulmamış dosyasıysa (dpkg'nin kendi MD5'i),
-   hiçbir web sunucusu yapılandırması soketini anmıyorsa (tam satır yorum dışındaki her satır ya
-   da adresi değişken olan bir `*_pass` onu açık tutar) ve başka bir havuz kalıyorsa kapatılır.
-   Kapatma, adını `www.conf.off-by-celikpanel` yapmaktır; `php-fpm -t` ve yeniden yükleme ile
+   yüklenen hiçbir web sunucusu yapılandırması soketini anmıyorsa ve başka bir havuz kalıyorsa
+   kapatılır. "Yüklenen", nginx'in geçerli yapılandırmasıdır (`nginx -T`) ve yalnız Apache
+   programı kuruluysa Apache'nin yüklediği dosyalardır: `/etc/apache2` altında `*-available`
+   klasörleri dışındaki her dosya, etkin bağlantılar ve bunların içe aldığı her şey. PHP-FPM
+   paketinin kendi `/etc/apache2/conf-available/php<s>-fpm.conf` dosyası, standart sunucuda onu
+   hiçbir şey etkinleştirmediği için kullanıcı sayılmaz; izlenemeyen bir Apache içe alması her
+   Apache dosyasını sayar. Yüklenen yapılandırmada soketi anan, tam satır yorum olmayan her satır;
+   aynı sokete başka bir yazılışla ya da bağlantıyla ulaşan (aygıt ve düğüm numarasıyla
+   karşılaştırılır) ya da hiç izlenemeyen bir `unix:` yolu; ya da adresi değişken olan bir
+   `*_pass` havuzu açık tutar. Tek ayrık, CelikPanel'in mührünü taşıyan ve değişmemiş bir site
+   dosyasındaki kendi ters vekil satırıdır, `proxy_pass $celikpanel_upstream;`: bu değişken
+   yalnız `http(s)://ad[:port]` tutar. Yani nginx kullanan standart bir Debian 13 ya da Ubuntu
+   24.04 sunucusunda havuz, CelikPanel'in yazmadığı hiçbir şey onu göstermiyorsa ve yanında bir
+   site ya da araç havuzu çalışıyorsa kapatılır; Apache paketin dosyasını yüklüyorsa, sahibin bir
+   yapılandırması soketi ya da izlenemeyen bir soket yolunu anıyorsa veya CelikPanel'inki dışında
+   bir `*_pass` değişken kullanıyorsa açık kalır. Kapatma, adını `www.conf.off-by-celikpanel` yapmaktır; `php-fpm -t` ve yeniden yükleme ile
    denetlenir, reddedilirse geri konur. Bir sürüm hiç havuzsuz bırakılmaz: son diğer havuzu
    gitmeden önce (site silinir ya da taşınır, araç taşınır ya da kaldırılır) varsayılan havuz geri
    konur. Bir sürümün havuzlarındaki her tutma, yazma, silme, deneme ve yeniden yükleme tek bir
@@ -497,19 +510,34 @@ değiştirmeden yeniden okur:**
 |---|---|---|
 | `php-tool-accounts.json` | bir aracın başarısız taşınması (sürüm, neden) | taşıma başarılı olunca |
 | `php-tool-files-<araç>.json` | değişen her yolun sahibi, grubu, kipi (özel bitlerle), kökün erişim listesi ve CelikPanel'in koyduğu | araç kendi havuzunda yanıt verince ya da geri alma bitince |
-| `stock-pools-off.json` | CelikPanel'in kapattığı sürümler ve başlayıp bitmemiş bir kapatma | sürüm geri konunca |
+| `stock-pools-off.json` | CelikPanel'in kapattığı sürümler ve başlayıp bitmemiş bir kapatma | dosya olarak hiçbir zaman; bir sürümün satırı sürüm geri konunca gider |
 | `at-allow.sha256` | CelikPanel'in `/etc/at.allow` dosyasının özeti, yazarken `pending <yeni> <önceki>` | hiçbir zaman (sahibin silmesi onunla anlaşılır) |
 | `site-crontabs/<hesap>.json`, `site-crontabs/baseline-v1` | CelikPanel'in açıkladığı crontab satırlarının özetleri | site hesabı silinince |
 
-**Her adım nasıl toparlanır.** Her kayıt, anlattığı değişiklikten önce yazılır; arada elektrik
-kesilirse bir sonraki başlangıç bunu sahibin işi olarak değil, CelikPanel'in bitmemiş adımı olarak
-okur. nginx değiştirilmeden kesilen araç taşıması yeniden denenir ve başarısız olursa ilk denemenin
+Panel kendi kayıtlarını kendi veritabanında tutar: yan kapıların son yanıtını ve yöneticinin
+son "Yeniden kapat" işini, zamanıyla (Panel'in yeniden başlamasıyla kesilen iş "bilinmiyor" diye
+söylenir).
+
+**Her adım nasıl toparlanır.** Ters sıranın elektrik kesintisini sahibin işi gibi göstereceği her
+yerde kayıt, anlattığı değişiklikten önce yazılır: aracın dosyaları değişmeden önce, varsayılan
+havuzun "kapatılıyor" işareti adı değişmeden önce, `at.allow` dosyasının bekleyen kaydı dosyadan
+önce. Arada elektrik kesilirse bir sonraki başlangıç bunu CelikPanel'in bitmemiş adımı olarak
+okur. Bitmiş kayıtlar, doğruladıkları değişiklikten sonra gelir (kapalı diye kaydedilen havuz,
+CelikPanel'in diye kaydedilen `at.allow`); satır ekleyen crontab değişikliği de bilerek önce
+crontab'ı, sonra kaydını yazar: arada elektrik kesilirse yeni satır CelikPanel'de yapılmamış diye
+görünür, hiçbir satır gizlenmez. nginx değiştirilmeden kesilen araç taşıması yeniden denenir ve başarısız olursa ilk denemenin
 kaydettiği geri konur; sonra kesilen bir kez yeniden yüklenir ve yeniden sorulur; yine yanıt
 vermeyen araç Şu anki sorunlar'da bir satırdır (kim, ne yapar). Geri alma bir yolu yalnız
-CelikPanel'in koyduğu gibi duruyorsa geri koyar; o arada değişen korunur ve adı söylenir.
-"Kapatılıyor" diye işaretli varsayılan havuz bitirilir (deneme ve yeniden yükleme) ya da yeniden
-karar verilir; kaydı bekleyen `at.allow` bitirilir ya da yeniden yazılır. Satır kaldıran crontab
-değişikliği önce o satırsız kaydı yazar.
+CelikPanel'in koyduğu gibi duruyorsa geri koyar; taşımanın kendi oluşturduğu dosya (phpMyAdmin'in
+`conf.d/celikpanel-own-account.php` dosyası) taşımanın yazdığını hâlâ tutuyorsa silinir; zaten
+gitmiş bir yolun geri konacak bir şeyi yoktur ve böyle söylenir; o arada değişen korunur ve adı
+söylenir. "Kapatılıyor" diye işaretli varsayılan havuz bitirilir (deneme ve yeniden yükleme) ya da
+yeniden karar verilir; reddedilen bir kapatmada havuz, işaret kalkmadan önce eski adına döner;
+CelikPanel'in adıyla ama kaydı olmadan yeniden adlandırılmış bulunan havuz, kapalı diye
+kaydedilmeden önce denetlenir (`php-fpm -t` ve yeniden yükleme). Kaydı bekleyen `at.allow`
+bitirilir ya da yeniden yazılır. Satır kaldıran crontab değişikliği önce o satırsız kaydı yazar.
+Saatlik okuma adımın kilidini alır, daha yeni bir yanıtın yerine asla geçmez ve bir aracı ancak
+art arda iki deneme başarısız olunca çalışmıyor sayar.
 
 **Sahip her birini panel olmadan nasıl geri alır (D-022).**
 
