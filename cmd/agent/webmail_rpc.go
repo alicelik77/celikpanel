@@ -1047,6 +1047,9 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 		return nil
 	}
 	defer finishStep()
+	// A read of the side doors waits for the rewrite (S4 R1, fourth fix round).
+	sideDoorsMu.Lock()
+	defer sideDoorsMu.Unlock()
 	a.configureWebmailWith(ctx, resp)
 	return nil
 }
