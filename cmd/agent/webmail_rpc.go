@@ -911,15 +911,20 @@ func applyWebmailNginxMutation(
 
 	rollback := func(cause error, restoreRuntime bool) error {
 		var rollbackErrs []error
+		// The put-back's test and reload run detached from the caller's
+		// cancellation (alpha.147 review): a write cut after nginx reloaded
+		// still reloads the file it puts back.
+		undoCtx, cancel := detachedUndoContext(ctx)
+		defer cancel()
 		if err := restoreMailFile(snapshot); err != nil {
 			rollbackErrs = append(rollbackErrs, err)
 		} else if restoreRuntime {
-			if out, err := run(ctx, "nginx", "-t"); err != nil {
+			if out, err := run(undoCtx, "nginx", "-t"); err != nil {
 				rollbackErrs = append(rollbackErrs, fmt.Errorf(
 					"validate restored nginx configuration: %s",
 					commandFailureDetail("nginx -t", out, err),
 				))
-			} else if out, err := run(ctx, "systemctl", "reload", "nginx"); err != nil {
+			} else if out, err := run(undoCtx, "systemctl", "reload", "nginx"); err != nil {
 				rollbackErrs = append(rollbackErrs, fmt.Errorf(
 					"reload restored nginx configuration: %s",
 					commandFailureDetail("systemctl reload nginx", out, err),

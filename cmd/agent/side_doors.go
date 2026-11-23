@@ -1349,7 +1349,11 @@ func checkAndReloadAfterRename(ctx context.Context, ops stockPoolOps, version, p
 		}
 		detail := cause.Error() + "; it was put back"
 		if ops.fpmActive(version) {
-			if err := ops.fpmReload(ctx, version); err != nil {
+			// Detached from the step's cancellation: a turn-off cut after
+			// PHP-FPM reloaded still reloads the pool it puts back.
+			undoCtx, cancel := detachedUndoContext(ctx)
+			defer cancel()
+			if err := ops.fpmReload(undoCtx, version); err != nil {
 				detail = fmt.Sprintf("%v; %s was put back but PHP-FPM %s did not reload: %v", cause, path, version, err)
 			}
 		}

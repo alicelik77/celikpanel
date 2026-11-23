@@ -162,6 +162,18 @@ func (ops phpToolPoolOps) holdPools() func() {
 	return ops.lockPools()
 }
 
+// phpToolUndoTimeout bounds a put-back that runs after the step's own
+// context was cancelled (the Agent's lease ended: the Panel stalled or
+// restarted, or its renewals went unanswered).
+var phpToolUndoTimeout = 60 * time.Second
+
+// detachedUndoContext is the context of a put-back: not cancelled with the
+// step (S4 R1, alpha.147 review, finding 1), so a move cut half-way still
+// tests and reloads what it puts back, within a bound of its own.
+func detachedUndoContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), phpToolUndoTimeout)
+}
+
 // ownPHPToolPoolWith gives a tool its own account and pool on one PHP
 // version. It returns the socket nginx hands the tool's PHP to and the undo
 // of what this call changed (the pool file it wrote, the files it gave the
@@ -189,7 +201,9 @@ func ownPHPToolPoolWith(ctx context.Context, ops phpToolPoolOps, tool, version s
 		return errors.Join(errs...)
 	}
 	fail := func(err error) (string, func(context.Context) error, error) {
-		if undoErr := undoAll(ctx); undoErr != nil {
+		undoCtx, cancel := detachedUndoContext(ctx)
+		defer cancel()
+		if undoErr := undoAll(undoCtx); undoErr != nil {
 			return "", nil, fmt.Errorf("%w; putting back what was changed also failed: %v", err, undoErr)
 		}
 		return "", nil, err
