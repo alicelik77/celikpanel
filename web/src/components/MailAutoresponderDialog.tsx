@@ -42,6 +42,12 @@ interface View {
     stored: boolean;
     state?: ServerState;
     state_error?: string;
+    /** 21 Nov 2026: addresses CelikPanel took out (not the mailbox's own); shown until the next save. */
+    removed_addresses?: string[];
+    /** 22 Nov 2026: the rewrite could not be made, so the reply was turned off. */
+    removed_turned_off?: boolean;
+    /** 22 Nov 2026: no longer the mailbox's own, still in the reply on the server (tried again hourly). */
+    foreign_pending?: string[];
 }
 
 type Load = { state: 'loading' } | { state: 'failed' } | { state: 'known'; view: View };
@@ -307,6 +313,17 @@ export function MailAutoresponderDialog({
                     {ownerScript && (
                         <p role="status" className="rounded-md border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-sm text-fg">
                             {t('mail.autoreply.ownerScript')}
+                        </p>
+                    )}
+                    {(load.view.removed_addresses?.length ?? 0) > 0 && (
+                        <p role="status" data-autoreply-removed="" className="rounded-md border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-sm text-fg">
+                            {t((load.view.removed_addresses ?? []).length === 1 ? 'mail.autoreply.removedOne' : 'mail.autoreply.removed', { addresses: (load.view.removed_addresses ?? []).join(', ') })}
+                            {load.view.removed_turned_off && <> {t('mail.autoreply.removedOff')}</>}
+                        </p>
+                    )}
+                    {(load.view.foreign_pending?.length ?? 0) > 0 && (
+                        <p role="alert" data-autoreply-foreign="" className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+                            {t('mail.autoreply.foreignPending', { addresses: (load.view.foreign_pending ?? []).join(', ') })}
                         </p>
                     )}
                     {load.view.state_error && <p className="text-xs text-fg-muted">{t('mail.autoreply.stateUnknown')}</p>}

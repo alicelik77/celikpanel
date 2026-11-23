@@ -124,10 +124,14 @@ func installDatabaseState(t *testing.T, state map[int]string, fail func(backupsp
 	t.Helper()
 	oldDump := dumpDatabaseToFile
 	oldRestore := restoreDatabaseFromFile
+	// S1: the account check and the binary-log question go with the engine.
+	oldPrepare, oldGate := prepareDatabaseLoadFor, mariadbBinlogGate
+	prepareDatabaseLoadFor = func(databaseLoadTarget) error { return nil }
+	mariadbBinlogGate = func() (bool, error) { return false, nil }
 	dumpDatabaseToFile = func(database backupspec.DatabaseIdentity, destination string) error {
 		return writeGzipText(destination, state[database.ID])
 	}
-	restoreDatabaseFromFile = func(database backupspec.DatabaseIdentity, source string) error {
+	restoreDatabaseFromFile = func(database databaseLoadTarget, source string) error {
 		value, err := readGzipText(source)
 		if err != nil {
 			return err
@@ -137,13 +141,14 @@ func installDatabaseState(t *testing.T, state map[int]string, fail func(backupsp
 			*calls = append(*calls, fmt.Sprintf("%d=%s", database.ID, value))
 		}
 		if fail != nil {
-			return fail(database, value)
+			return fail(database.DatabaseIdentity, value)
 		}
 		return nil
 	}
 	t.Cleanup(func() {
 		dumpDatabaseToFile = oldDump
 		restoreDatabaseFromFile = oldRestore
+		prepareDatabaseLoadFor, mariadbBinlogGate = oldPrepare, oldGate
 	})
 }
 
@@ -167,17 +172,19 @@ func TestBackupDatabaseIdentityAndArgv(t *testing.T) {
 	if !reflect.DeepEqual(dump, wantDump) {
 		t.Fatalf("dump argv = %#v, want %#v", dump, wantDump)
 	}
+	// S1: a PostgreSQL dump is taken by the administrator with the fixed
+	// search path; it is never loaded through psql (database_owner_load.go).
 	postgres := backupspec.DatabaseIdentity{ID: 13, Name: "tenant_pg_data", Type: "postgresql"}
-	restore, err := databaseRestoreCommand(postgres)
+	pgDump, err := databaseDumpCommand(postgres)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantRestore := backupCommand{
+	wantPGDump := backupCommand{
 		Name: "sudo",
-		Args: []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", "tenant_pg_data", "--single-transaction", "--command", pgRestorePrelude, "--file", "-"},
+		Args: []string{"-u", "postgres", "env", pgAdminSessionEnv, "pg_dump", "--no-owner", "--no-privileges", "--dbname", "tenant_pg_data"},
 	}
-	if !reflect.DeepEqual(restore, wantRestore) {
-		t.Fatalf("restore argv = %#v, want %#v", restore, wantRestore)
+	if !reflect.DeepEqual(pgDump, wantPGDump) {
+		t.Fatalf("PostgreSQL dump argv = %#v, want %#v", pgDump, wantPGDump)
 	}
 	if _, err := databaseDumpCommand(backupspec.DatabaseIdentity{ID: 1, Name: "db;touch_pwned", Type: "mysql"}); err == nil {
 		t.Fatal("shell metacharacters were accepted")

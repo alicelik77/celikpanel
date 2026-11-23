@@ -22,13 +22,27 @@ type autoresponderPanelAgent struct {
 	mu       sync.Mutex
 	answer   transport.MailAutoresponderResponse
 	setCalls []transport.SetMailAutoresponderRequest
+	// respond, when set, answers instead of answer (22 Nov 2026: an Agent
+	// that fails one call and takes the next).
+	respond func(*transport.SetMailAutoresponderRequest) (transport.MailAutoresponderResponse, error)
 }
 
 func (a *autoresponderPanelAgent) SetMailAutoresponder(request *transport.SetMailAutoresponderRequest, response *transport.MailAutoresponderResponse) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.setCalls = append(a.setCalls, *request)
+	if a.respond != nil {
+		answer, err := a.respond(request)
+		*response = answer
+		return err
+	}
 	*response = a.answer
+	return nil
+}
+
+// UpdateMailForwarding takes every forwarding list (22 Nov 2026 tests).
+func (a *autoresponderPanelAgent) UpdateMailForwarding(_ *transport.UpdateMailForwardingRequest, response *transport.MailMutationResponse) error {
+	*response = transport.MailMutationResponse{Applied: true}
 	return nil
 }
 
@@ -59,9 +73,29 @@ func newAutoresponderPanel(t *testing.T, agent *autoresponderPanelAgent) (*Panel
 		VALUES (6103, 6102, 'example.com', 'active'), (6104, 6102, 'other.test', 'active');
 		INSERT INTO email_accounts (id, domain_id, address, password_hash, quota_mb)
 		VALUES (6201, 6103, 'me@example.com', 'x', 100), (6202, 6104, 'you@other.test', 'x', 100);
+		INSERT INTO email_forwardings (domain_id, source, destination)
+		VALUES (6103, 'info@example.com', 'me@example.com');
+		INSERT INTO users (id, username, password_hash, email, role)
+		VALUES (6105, 'another-customer', 'x', 'another@example.test', 'customer');
+		INSERT INTO subscriptions (id, owner_id, name, max_email_accounts, status)
+		VALUES (6106, 6105, 'Another subscription', 50, 'active');
+		INSERT INTO domains (id, subscription_id, name, status)
+		VALUES (6107, 6106, 'b-customer.test', 'active');
+		INSERT INTO email_forwardings (domain_id, source, destination)
+		VALUES (6107, 'ceo@b-customer.test', 'me@example.com');
 	`); err != nil {
 		t.Fatalf("seed fixture: %v", err)
 	}
+	return &Panel{
+		db:           database,
+		pkgFamilyVal: "apt",
+		agentClient:  autoresponderAgentClient(t, agent),
+	}, 6103
+}
+
+// autoresponderAgentClient serves agent as the Panel's Agent.
+func autoresponderAgentClient(t *testing.T, agent *autoresponderPanelAgent) *transport.ReconnectingClient {
+	t.Helper()
 	server := rpc.NewServer()
 	if err := server.RegisterName("Agent", agent); err != nil {
 		t.Fatal(err)
@@ -79,11 +113,7 @@ func newAutoresponderPanel(t *testing.T, agent *autoresponderPanelAgent) (*Panel
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = client.Close() })
-	return &Panel{
-		db:           database,
-		pkgFamilyVal: "apt",
-		agentClient:  transport.NewReconnectingClientWithContextConnector(client, connector),
-	}, 6103
+	return transport.NewReconnectingClientWithContextConnector(client, connector)
 }
 
 func putAutoresponder(panel *Panel, domainID int, body string) *httptest.ResponseRecorder {

@@ -75,10 +75,16 @@ const (
 	errCodeDatabaseDeleteRecordsLeft = "DATABASE_DELETE_RECORDS_LEFT"
 )
 
-// databaseDeleteAgent is the Agent call for dropping a database; tests
-// replace it.
-var databaseDeleteAgent = func(p *Panel, ctx context.Context, req transport.DeleteDatabaseRequest, resp *transport.DeleteDatabaseResponse) error {
-	return p.callAgentContext(ctx, "Agent.DeleteDatabase", &req, resp)
+// databaseIdentityAgent reads a database's identity on this machine's engine
+// (alpha.140, database_delete_once.go); tests replace it.
+var databaseIdentityAgent = func(p *Panel, ctx context.Context, req transport.DatabaseIdentityRequest, resp *transport.DatabaseIdentityResponse) error {
+	return p.callAgentContext(ctx, "Agent.DatabaseIdentityV1", &req, resp)
+}
+
+// databaseDropOnceAgent drops a database on this machine's engine only while
+// it is the identified one (alpha.140); tests replace it.
+var databaseDropOnceAgent = func(p *Panel, ctx context.Context, req transport.DropDatabaseOnceRequest, resp *transport.DropDatabaseOnceResponse) error {
+	return p.callAgentContext(ctx, "Agent.DropDatabaseOnceV1", &req, resp)
 }
 
 // databaseDroppedRightsAgent is the Agent call that takes every right naming
@@ -221,7 +227,12 @@ type databaseDeleteError struct {
 	sweepLeft, sweepUnknown bool
 	// recordsLeft: the engine is done; the records were not removed.
 	recordsLeft bool
-	refusal     *transport.DatabaseClusterRefusal
+	// unverified (alpha.140): an earlier press of this deletion got no
+	// answer, the database's identity is not known, and a database of that
+	// name is on the engine now: whether it is the one asked for cannot be
+	// told, so nothing was dropped.
+	unverified bool
+	refusal    *transport.DatabaseClusterRefusal
 	// engine: an error from the record's credential path.
 	engine   error
 	server   *core.DatabaseServer
@@ -616,11 +627,26 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	var keptOnEngine map[string]string
 	// Only CelikPanel's own record of the machine's engine goes through the
 	// Agent's door; a record an administrator registered with their own
-	// credential (127.0.0.1:3307, a container) is reached with it.
+	// credential (127.0.0.1:3307, a container) is reached with it. Either way
+	// the drop is bound to the database this deletion was asked for
+	// (alpha.140, database_delete_once.go): a press after a lost answer, a
+	// stop or a step that did not finish never drops a database of the same
+	// name made in the meantime.
+	var reach databaseDropReach
 	if databaseRecordIsOurLocalEngine(server) {
-		keptOnEngine, err = p.deleteDatabaseOnThisMachine(ctx, server, deletion, remove, shared)
+		reach = p.databaseDropThroughAgent(server, deletion.Name)
 	} else {
-		err = p.deleteDatabaseElsewhere(server, deletion)
+		reach, err = p.databaseDropWithRecord(server, deletion.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err = p.dropDatabaseOnce(ctx, databaseID, databaseServerEngineIdentity(server), deletion, reach); err == nil {
+		if databaseRecordIsOurLocalEngine(server) {
+			keptOnEngine, err = p.deleteDatabaseUsersOnThisMachine(ctx, server, deletion, remove, shared)
+		} else {
+			p.removeDroppedRightsElsewhere(server, deletion, reach)
+		}
 	}
 	var failed *databaseDeleteError
 	errors.As(err, &failed)
@@ -689,6 +715,20 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 			return nil, recordsLeft(fmt.Errorf("remove the record of user %s: %w", user.Username, err))
 		}
 	}
+	// The deletion's own marker goes with the records (alpha.140), and so
+	// does any marker whose database record went another way (a cascade):
+	// record ids are never used again, so such a marker means nothing more.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ? OR (key LIKE ? AND
+		CAST(substr(key, ?) AS INTEGER) NOT IN (SELECT id FROM databases_v2))`,
+		databaseDeleteMarkerKey(databaseID), databaseDeleteMarkerPrefix+"%", len(databaseDeleteMarkerPrefix)+1); err != nil {
+		return nil, recordsLeft(fmt.Errorf("remove the deletion marker of database %s: %w", deletion.Name, err))
+	}
+	// Second review of alpha.143, B9: what CelikPanel did to or saw of a
+	// PostgreSQL database's default rights goes with it (the hourly round
+	// removes any other such record whose database is gone).
+	if _, err := tx.ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, pgPublicMarkerKey(databaseID)); err != nil {
+		return nil, recordsLeft(fmt.Errorf("remove the closing record of database %s: %w", deletion.Name, err))
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, recordsLeft(fmt.Errorf("commit the removal of database %s: %w", deletion.Name, err))
 	}
@@ -696,29 +736,21 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	return deletion, nil
 }
 
-// deleteDatabaseOnThisMachine drops the database and then its own users
-// through the Agent. It answers the users the Agent kept for rights the
-// owner gave by hand.
-func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.DatabaseServer, deletion *databaseDeletion, remove, shared []databaseDeleteUser) (map[string]string, error) {
-	name := deletion.Name
-	engine, port := "mysql", 0
+// databaseAgentEngine is the Agent's engine name and PostgreSQL port of a
+// record of this machine's engine.
+func databaseAgentEngine(server *core.DatabaseServer) (string, int) {
 	if dbDriverTypeFor(server) == "postgresql" {
-		engine, port = "postgresql", server.Port
+		return "postgresql", server.Port
 	}
-	var resp transport.DeleteDatabaseResponse
-	// No user here: the database's own users go below, each only when nothing
-	// else uses it (the Agent's old user field dropped one blindly).
-	req := transport.DeleteDatabaseRequest{Type: engine, Name: name, Port: port}
-	if err := databaseDeleteAgent(p, ctx, req, &resp); err != nil {
-		return nil, &databaseDeleteError{unknown: true, cause: fmt.Errorf("drop database %s: %w", name, err)}
-	}
-	if resp.Refusal != nil {
-		return nil, &databaseDeleteError{refusal: resp.Refusal, cause: fmt.Errorf("drop database %s: its PostgreSQL cluster cannot take it", name)}
-	}
-	if !resp.Success {
-		log.Printf("[409][database] %s %s: %s", errCodeDatabaseDeleteFailed, name, boundedAgentDiagnostic(resp.Error))
-		return nil, &databaseDeleteError{cause: fmt.Errorf("drop database %s: the engine did not drop it", name)}
-	}
+	return "mysql", 0
+}
+
+// deleteDatabaseUsersOnThisMachine removes, through the Agent, the users of a
+// database the engine no longer holds (dropDatabaseOnce). It answers the
+// users the Agent kept for rights the owner gave by hand.
+func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *core.DatabaseServer, deletion *databaseDeletion, remove, shared []databaseDeleteUser) (map[string]string, error) {
+	name := deletion.Name
+	engine, port := databaseAgentEngine(server)
 	kept := map[string]string{}
 	var left, rightsLeft []string
 	unknown, exists := false, false
@@ -806,7 +838,7 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 	return kept, nil
 }
 
-// deleteDatabaseElsewhere drops the database on an engine reached with the
+// removeDroppedRightsElsewhere follows the drop on an engine reached with the
 // record's own credential (another machine, or an administrator's own record
 // on this one). Its users stay (review W-A): removing them safely needs a
 // look at the rights the owner gave there, which the record's account may
@@ -819,16 +851,10 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 // account cannot, the deletion still finishes (the database is gone) and the
 // answer says rights may remain there and that the administrator of that
 // server removes them.
-func (p *Panel) deleteDatabaseElsewhere(server *core.DatabaseServer, deletion *databaseDeletion) error {
+func (p *Panel) removeDroppedRightsElsewhere(server *core.DatabaseServer, deletion *databaseDeletion, reach databaseDropReach) {
 	name := deletion.Name
-	driver, err := p.dbDriverFor(server)
-	if err != nil {
-		return fmt.Errorf("open the credential of database server %d: %w", server.ID, err)
-	}
-	if err := driver.DeleteDatabase(name); err != nil {
-		return &databaseDeleteError{engine: err, server: server, cause: fmt.Errorf("drop database %s: %w", name, err)}
-	}
-	if dbDriverTypeFor(server) == "mariadb" {
+	driver := reach.driver
+	if driver != nil && dbDriverTypeFor(server) == "mariadb" {
 		result, err := databaseDroppedRightsElsewhere(driver, name, deletion.owners)
 		if err != nil {
 			deletion.RightsMayRemain = true
@@ -841,7 +867,6 @@ func (p *Panel) deleteDatabaseElsewhere(server *core.DatabaseServer, deletion *d
 			deletion.addRightsRemoved(grantees, droppedRightsKeptOf(result.Kept))
 		}
 	}
-	return nil
 }
 
 // databaseDeletionAnswer is the success body of both delete routes.
@@ -935,6 +960,21 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 	switch {
 	case failed.refusal != nil:
 		writeDatabaseClusterRefusal(w, r, failed.refusal)
+	case failed.unverified:
+		// alpha.140: nothing was changed by this press (like a refused drop,
+		// no audit row); who acts is the administrator, on the database
+		// server (D-024: the reason, who acts, what next).
+		log.Printf("[409][database] %s: %v", errCodeDatabaseDeleteUnverified, failed.cause)
+		body := apiErrorBody{Code: errCodeDatabaseDeleteUnverified, Vars: map[string]string{"name": name},
+			Error: "No answer came back when " + name + " was deleted earlier, and a database named " + name +
+				" is on the database server now. CelikPanel cannot tell whether it is that database or one made after the deletion, so it deleted nothing. " +
+				"The server administrator checks it on the database server."}
+		if caller := currentCaller(r); caller != nil && caller.hasAccountRole(roleAdmin) {
+			body.Reason = "administrator"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(body)
 	case failed.databaseGone && (len(failed.usersLeft) > 0 || failed.sweepLeft || failed.databaseExists):
 		p.auditDatabaseDeletion(r, failed.deletion, "users_left")
 		log.Printf("[409][database] %s: %v", errCodeDatabaseDeleteUsersLeft, failed.cause)
@@ -962,7 +1002,11 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 		}
 		switch {
 		case failed.databaseExists:
+			// alpha.140: a later press never drops it (database_delete_once.go).
 			body.Reason = "exists"
+			body.Error = "The database " + name + " was deleted, but a database with this name is on the database server again, made after the deletion. " +
+				"CelikPanel does not delete it, and its users (" + strings.Join(failed.usersLeft, ", ") + ") were left as they are, because that database may use them. " +
+				"It stays in the list until that database is gone; the server administrator decides about it on the database server, then Delete finishes."
 		case len(failed.usersLeft) == 0 && failed.sweepUnknown:
 			// alpha.134: only the rights naming it on other accounts are left.
 			body.Reason = "sweep_unknown"

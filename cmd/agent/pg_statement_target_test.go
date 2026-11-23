@@ -33,6 +33,10 @@ func freshPGNames(statement string) []byte {
 	if strings.HasPrefix(statement, "SELECT 'roles='") {
 		return []byte("roles=0\nmark=\nowner=\n")
 	}
+	// 20 Nov 2026: the new database closed to PUBLIC, read back.
+	if strings.HasPrefix(statement, "REVOKE ALL ON DATABASE") {
+		return []byte("public=false\nowner=true\n")
+	}
 	return nil
 }
 
@@ -88,8 +92,8 @@ func TestAStatementGoesToTheRunningClusterItNames(t *testing.T) {
 	if err := (&Agent{}).CreateDatabase(CreateDatabaseRequest{Type: "postgresql", Name: "shop", User: "shop_user", Password: "pw", Port: 5433}, &resp); err != nil || !resp.Success {
 		t.Fatalf("resp=%+v err=%v", resp, err)
 	}
-	if len(*got) != 3 || !strings.HasPrefix((*got)[0], "5433 SELECT 'roles='") || !strings.Contains((*got)[1], "CREATE ROLE") ||
-		!strings.HasPrefix((*got)[1], "5433 ") || !strings.HasPrefix((*got)[2], "5433 CREATE DATABASE") {
+	if len(*got) != 4 || !strings.HasPrefix((*got)[0], "5433 SELECT 'roles='") || !strings.Contains((*got)[1], "CREATE ROLE") ||
+		!strings.HasPrefix((*got)[1], "5433 ") || !strings.HasPrefix((*got)[2], "5433 CREATE DATABASE") || !strings.HasPrefix((*got)[3], "5433 REVOKE ALL ON DATABASE") {
 		t.Fatalf("statements = %v", *got)
 	}
 }
@@ -178,9 +182,9 @@ func TestAPostgreSQLBackupGoesToTheRunningCluster(t *testing.T) {
 	if err != nil || !strings.HasSuffix(strings.Join(dump.Args, " "), "--dbname shop --port 5433") {
 		t.Fatalf("dump = %v %v", dump.Args, err)
 	}
-	restore, err := databaseRestoreCommand(identity)
-	if err != nil || !strings.Contains(strings.Join(restore.Args, " "), "--dbname shop --port 5433 --single-transaction --command ") {
-		t.Fatalf("restore = %v %v", restore.Args, err)
+	// S1: the restore signs in on the running cluster's port.
+	if port := pgLoadPort(identity); port != 5433 {
+		t.Fatalf("restore port = %d", port)
 	}
 	usePGStatementClusters(t, bostonLsclusters[:strings.Index(bostonLsclusters, "\n18")+1])
 	if _, err := databaseDumpCommand(identity); pgClusterRefusalOf(err) == nil {

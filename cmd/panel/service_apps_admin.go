@@ -34,6 +34,7 @@ type serviceAppAdminEntry struct {
 	RuntimeSource string                     `json:"runtime_source,omitempty"`
 	Installs      int                        `json:"installs"`
 	Running       int                        `json:"running"`
+	serviceAppRuntimeFacts
 }
 
 func (p *Panel) handleServiceAppsAdmin(w http.ResponseWriter, r *http.Request) {
@@ -107,16 +108,22 @@ func (p *Panel) writeServiceAppsAdmin(w http.ResponseWriter, r *http.Request) {
 	rows.Close()
 	entries := []serviceAppAdminEntry{}
 	for _, app := range serviceapps.Catalog() {
+		// alpha.141: a withdrawn app is not in the catalogue anyone chooses from.
+		if !app.Listed() {
+			continue
+		}
 		o := offerings[app.ID]
 		entry := serviceAppAdminEntry{App: app, RiskDigest: app.RiskDigest(), Offered: o.Offered, Held: o.Held,
 			HeldReason: o.HeldReason, Limits: serviceAppLimitsFor(app, offerings),
 			Installs: counts[app.ID][0], Running: counts[app.ID][1]}
 		entry.OfferStale = o.Offered && o.RiskDigest != app.RiskDigest()
-		if a, ok := availability[app.ID]; ok {
+		a, ok := availability[app.ID]
+		if ok {
 			entry.Available, entry.Reason, entry.Detail, entry.RuntimeSource = a.Available, a.Reason, a.Detail, a.RuntimeSource
 		} else if probeErr != nil {
 			entry.Reason = serviceapps.ReasonProbeFailed
 		}
+		entry.serviceAppRuntimeFacts = serviceAppRuntimeFactsFor(app, a)
 		if app.Deferred != "" {
 			entry.Available, entry.Reason, entry.Detail = false, serviceapps.ReasonDeferred, app.Deferred
 		}
@@ -136,9 +143,24 @@ func (p *Panel) offerServiceApp(w http.ResponseWriter, r *http.Request, app serv
 	if !decodeServiceAppBody(w, r, &req) {
 		return
 	}
+	if writeServiceAppWithdrawn(w, app) {
+		return
+	}
 	if !app.Installable() {
 		writeServiceAppRefusal(w, http.StatusConflict, "deferred",
 			"Nothing was changed: "+app.Name+" cannot be offered in this release; docs/AI-APPS.md says what blocks it.", map[string]string{"app": app.Name})
+		return
+	}
+	// alpha.140: an app that cannot run on this server's operating system is
+	// not offered here; offering it would put on customers' screens what
+	// nobody can install (service_apps_os.go). Unknown does not refuse.
+	if p.serviceAppsUnsupportedHere(r.Context())[app.ID] {
+		runtimeName := serviceAppRuntimeName(app)
+		_, needs := serviceapps.RuntimeNeeds(app)
+		writeServiceAppRefusal(w, http.StatusConflict, serviceapps.ReasonOSUnsupported,
+			"Nothing was changed: "+app.Name+" cannot run on this server's operating system: it needs "+runtimeName+" "+
+				strings.Join(needs, " or ")+", which the operating system's own packages do not provide. It cannot be offered here.",
+			map[string]string{"app": app.Name, "runtime": runtimeName, "needs": strings.Join(needs, " / ")})
 		return
 	}
 	if req.RiskDigest != app.RiskDigest() {

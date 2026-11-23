@@ -57,3 +57,17 @@ test('every panel port sentence is in English and Turkish with the same placehol
   const card = read('components/PanelPortCard.tsx');
   for (const [, key] of card.matchAll(/t\('(panelPort\.[\w.]+)'/g)) assert.equal(typeof en[key], 'string', key);
 });
+
+// alpha.139 (owner rule of 20 Nov 2026: nothing of ours carries another
+// company's product name): the legacy port is said without naming one, and
+// the comments that named one are neutral. The cPanel import feature, the
+// stored-style migration map and the PLESK-GAP labels are factual and stay.
+test('the legacy port and the list-page comments name no other company\'s product', () => {
+  assert.match(en['panelPort.legacy'], /Port \{legacy\} is also used by other hosting control panels\./);
+  assert.match(tr['panelPort.legacy'], /\{legacy\} portunu başka barındırma panelleri de kullanır\./);
+  for (const text of [en['panelPort.legacy'], tr['panelPort.legacy']]) assert.doesNotMatch(text, /cPanel|Plesk/);
+  for (const file of ['components/Domains.tsx', 'components/ui.tsx', 'components/ServerSetupWizardSteps.tsx']) {
+    assert.doesNotMatch(read(file), /Plesk-style|Plesk tarzı|Plesk's toolbar|Plesk'in araç|Plesk's first site/, file);
+  }
+  assert.doesNotMatch(readFileSync(new URL('../../cmd/panel/server_setup_main_site.go', import.meta.url), 'utf8'), /Plesk's first site/);
+});

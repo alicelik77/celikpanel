@@ -12,12 +12,14 @@ import { en as enShell } from '../src/i18n/en.ts';
 import { tr as trShell } from '../src/i18n/tr.ts';
 import { enMonitoringScreens } from '../src/i18n/screens/monitoring/en.ts';
 import { trMonitoringScreens } from '../src/i18n/screens/monitoring/tr.ts';
+import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
+import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import { enMonitoringAlerts } from '../src/i18n/monitoringAlerts/en.ts';
 import { trMonitoringAlerts } from '../src/i18n/monitoringAlerts/tr.ts';
 
 const words = {
-  en: { ...enShell, ...enMonitoringScreens, ...enMonitoringAlerts },
-  tr: { ...trShell, ...trMonitoringScreens, ...trMonitoringAlerts },
+  en: { ...enShell, ...enMonitoringScreens, ...enProblemsNowScreens, ...enMonitoringAlerts },
+  tr: { ...trShell, ...trMonitoringScreens, ...trProblemsNowScreens, ...trMonitoringAlerts },
 };
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 globalThis.a127Say = (key, vars) => (words.en[key] !== undefined ? fill(words.en[key], vars) : key);
@@ -34,6 +36,7 @@ const stub = dataModule(`
   export const componentName = ({ id, name }) => name || id;
   export const isProblemKind = (kind) => ['disk_full', 'site_down', 'service_stopped', 'service_restarting', 'site_certificate'].includes(kind);
   export const problemVars = (p) => ({ name: p.name || p.subject || '', domain: p.subject || '', days: p.value, value: p.value });
+  export const problemTitleKey = (p) => 'pnow.' + p.kind + '.title';
   export function postJSON(url, body, method = 'POST') {
     return fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }

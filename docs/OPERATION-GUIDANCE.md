@@ -11276,3 +11276,146 @@ DNS server's confirmation) keep their single sentence for now. Open: a
 re-checked reason can still make the Agent hold every change if the owner
 edits this server's DNS during the wait (RESILIENCE-CONTRACT, "Branch
 a133/proofwait").
+
+### The main DNS server's answer to a host record request (alpha.139, 2026-11-19)
+
+In the alpha.135 lab a backup DNS server asked its main DNS server for one
+host record and got two wrong answers: "this name is already taken" for a
+record that did not exist (a customer zone under the infrastructure zone
+refused the whole zone), and "unknown" with nothing in the main server's
+journal (a domain deletion held the DNS locks for about 29 seconds, past the
+asking server's 10-second limit). What the main server answers now:
+
+| Answer | Meaning | Who acts | How it continues |
+|---|---|---|---|
+| created / updated / present | the record is in the zone and published | nobody | public DNS shows it after the transfer and caches |
+| `REMOTE_DNS_HOST_RECORD_CONFLICT` (409) | a clash at that very name: another record with other content, a CNAME/DNAME/delegation in the way, a disabled record, or this channel's record changed or removed by hand | the main server's administrator | correct that record in Domains, or add the record by hand |
+| `REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE` (409) | the name is not answered by an infrastructure zone there; also when another zone hosted there (a customer zone under the infrastructure zone) answers for that name | the administrator | add the record where that name is managed |
+| `REMOTE_DNS_HOST_RECORD_ZONE_REVIEW` (409, new) | the zone itself cannot take records from this connection now: not a local primary zone, DNSSEC-signed, ownership not verified, external or remote DNS, over its bounds; nothing was written | the main server's administrator | review the zone there, or add the record by hand |
+| busy (503 with `Retry-After`, no code, new) | another DNS change holds the locks; the main server waited at most 3 seconds and applied nothing | nobody | the asking server sends the same request again (setup: after two minutes, five times at most) |
+| `REMOTE_DNS_HOST_RECORD_PENDING` (409) | saved, publication not verified | nobody | the same request again is answered "present" once published |
+
+A customer zone elsewhere under the infrastructure zone, or a zone above it,
+no longer refuses a host record; the setup review's own zone-wide rule is
+unchanged in this release. Every answer that applies nothing leaves a journal
+line and an audit row (`dns.remote.host_record.refused`, its code in the
+details), also when the asking server stopped waiting before the locks were
+free (it was answered 401 without either before). The publication itself is
+not cut to fit the asking server's 10 seconds: if it takes longer, the asking
+server reads "unknown" and asks again; the repeat is "busy" while the first
+still publishes and "present" afterwards, never a second write. The remote
+DNS publication receiver waits for the same locks within the same bound and
+answers 503 `REMOTE_DNS_BUSY`; every sending version keeps its saved
+publication and sends it again. The busy host record answer has no code on
+purpose: an alpha.137 secondary records any coded answer as a refusal for
+good, and an uncoded 503 as "unknown", which it asks again. It reads the new
+ZONE_REVIEW code as its generic refusal ("did not create this record; add it
+by hand"). Schema: none. Code: `cmd/panel/remote_dns_host_record.go`,
+`setup_dns_remote_receiver.go`, `server_setup_infrastructure_dns.go`;
+`web/src/lib/serverSetupGuidance.ts`, `web/src/i18n/setupDNS/*.ts`. Tests:
+`cmd/panel/remote_dns_host_record_receiver_test.go`,
+`web/tests/server-setup-guidance.test.mjs`. Open: no lab run on a real pair
+yet; an older (alpha.137) main server still answers CONFLICT for a zone-wide
+reason, and the setup review still refuses a main domain with customer zones
+under it. That refusal is now said as its own cause, in the plan review
+(`server_setup_infrastructure_dns_zone_overlap`: another zone hosted here lies
+inside the main domain's zone or around it; not a record clash; the
+administrator reviews that zone in Domains, then reads the plan again) and at
+the peer join (`server_setup_peer_zone_overlap`: not about the joining
+server's names; setup continues by itself once the zone no longer overlaps).
+
+### "Add…" for webmail's address record on the backup DNS server (alpha.139, 2026-11-19)
+
+On the pair's backup DNS server, when the name checked for webmail lies in the
+main domain and the DNS connection to the main server is ready, "Add…" beside
+"Copy" asks the main DNS server to add the A record (and the AAAA record when
+this server has a global IPv6 address; optional). Elsewhere only "Copy" is
+offered. The request is shown before anything is sent, runs in the locked
+progress window with its steps, and ends as one of:
+
+| End | Who acts | Next |
+|---|---|---|
+| added / already there / confirmed after the re-ask | nobody | the page reads public DNS every 20 s for at most 5 minutes |
+| busy (the main server applied nothing) | the owner, when they choose | "Ask again…" (a new request; never adds twice) |
+| no answer within 10 s | nobody | asked again once by itself after 25 s; then "not known" with "Ask again…" or Check |
+| refused: another record or a hand change there, or (older main server) the zone itself | the owner, on the main server | decide in its DNS editor, or Copy |
+| refused: the zone there needs review (ZONE_REVIEW) | the main server's administrator | check that zone, then Add again or Copy |
+| refused: not in a zone the main server keeps, or another zone there holds the name | the owner | add it where the name's DNS is managed (Copy) |
+
+Audit: `webmail.address.dns_record.*` on this server (busy is new),
+`dns.remote.host_record.*` on the main server. Code:
+`cmd/panel/webmail_address_dns_record.go`, `web/src/lib/webmailAddressRecords.ts`,
+`web/src/components/WebmailAddressCard.tsx` (now loaded only on Roundcube's
+page). Tests: `cmd/panel/webmail_address_dns_record_test.go`,
+`webmail_address_dns_record_tls_test.go` (over real TLS against the production
+receiver), `web/tests/webmail-dns-add-alpha135.test.mjs`. Open: no lab run on a
+real pair yet; Roundcube must be installed on the backup server for the card
+to show.
+
+### Corrections from the alpha.143 lab (alpha.144, 22 November 2026)
+
+Component tests and one lab run (22 November 2026, see the alpha.144
+release notes' "Checked in the lab" for what it proved and did not check).
+
+- **A change is not lost because the page was left.** An administrator's
+  close or undo of a PostgreSQL database other accounts can enter (and its
+  "Read again"), creating a mailbox and saving an out-of-office reply run
+  under the page's request identity (D-029) on a context the browser cannot
+  cancel, to their own time limit. Whoever opens the page again reads the
+  result; the same request arriving again is answered from its record and
+  never runs twice. A new press is a new request: it finds the change made
+  (closed already; "the mailbox already exists").
+- **A failed close says what happened.** Its window ends on the step "Not
+  done — nothing was changed" (TR "Yapılmadı — hiçbir şey değiştirilmedi");
+  an unconfirmed result ends on "Result not confirmed yet — not sent again"
+  (TR "Sonuç henüz doğrulanmadı — yeniden gönderilmez"). The reason names
+  the kind of cause, then the database server's message quoted:
+  `err.POSTGRESQL_PUBLIC_FAILED.<kind>` with kind `in_use` (a lock was not
+  granted in time), `timeout`, `connection`, `rights`, `missing`, `refused`;
+  the list's `pgpub.why.server.<kind>` says the same.
+- **A mailbox on the server without a row in the panel** (a creation whose
+  record could not be written) is never an internal error:
+  `MAIL_ACCOUNT_ON_SERVER_ONLY`. The administrator (reason `admin`) is
+  offered **Adopt into this domain**, allowed only while the mailbox's
+  folder holds no message (no file in any `cur/` or `new/` folder of it):
+  it reads the server's lines for the address, writes the row with the size
+  limit found there and replaces the password with the one typed in the
+  adoption window (the password change's own step), so no earlier password
+  works; the domain's signing key and the first-day sending limit then
+  apply as for a new mailbox. Afterwards it is kept or deleted like any
+  other. Anybody else is told to ask the administrator; the
+  sentence names only the address asked for, in the person's own domain.
+  The adoption refuses (`MAIL_ACCOUNT_ADOPT_REFUSED`) when the server no
+  longer holds it (`gone`), holds one of its two lines only (`incomplete`:
+  the server owner removes the line that is left), or holds it in a form
+  CelikPanel does not write (`elsewhere`: another folder, account, shell or
+  no size limit — left to the server owner), `mail_found` (mail is in
+  it: the server owner decides on the server) or `folder_unknown`.
+- **An alias answers in DNS.** An alias inside a zone this server keeps for
+  the same account gets the site's addresses there (`dns`: `published`;
+  `pending` when the zone's publication did not finish — the Panel's hourly
+  round publishes it, and the alias row says "waiting to be published —
+  retried every hour, nothing to do"; `kept` when the name already has an
+  address record CelikPanel did not add (nothing of either type is added);
+  `elsewhere` when no zone of the account here holds it). The records go
+  with the alias; only those CelikPanel added. A removal whose publication
+  waits is shown the same way and never stops a domain's deletion.
+- **Webmail's address in its earlier form** is a Problems-now line
+  (`webmail_address_kept`: the owner's file is kept, CelikPanel's text lies
+  beside it as `.celikpanel-pending`; `webmail_address_refused`: the
+  rewrite was put back because nginx's test failed, naming the file it
+  named). Who acts: the server owner. It goes by itself once the file is in
+  the current form; the Agent tries again at each start.
+- **Refusals in the page's language:** `ALIAS_CERTIFICATE_REISSUE_FAILED`
+  (reasons `untrusted_source`, `not_acme`, `mail_name`),
+  `ALIAS_CERTIFICATE_NOT_COVERING` (reason `custom`), `ALIAS_INVALID`,
+  `ALIAS_NOT_FOUND`, `HSTS_REMOVAL_BLOCKED` (reasons `enabled`, `retiring`
+  with `until`), `SSL_NO_ACTIVE_CERTIFICATE`. Texts in
+  `web/src/i18n/screens/errors`.
+- **One database** is said in the singular in Problems now and in the alert
+  mail.
+
+Code: `cmd/panel/operation_step_routes.go`, `postgresql_public_access.go`,
+`mail_adopt_handlers.go`, `alias_dns.go`, `alias_certificates.go`,
+`cmd/agent/mail_adopt.go`. Tests: `cmd/panel/a144_*_test.go`,
+`cmd/agent/mail_adopt_test.go`.

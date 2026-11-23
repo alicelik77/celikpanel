@@ -149,7 +149,7 @@ func newAutoresponderFixture(t *testing.T) *autoresponderFixture {
 	return f
 }
 
-func (f *autoresponderFixture) set(t *testing.T, setting transport.MailAutoresponder) transport.MailAutoresponderResponse {
+func (f *autoresponderFixture) set(t *testing.T, setting transport.MailAutoresponder, accountDomains ...string) transport.MailAutoresponderResponse {
 	t.Helper()
 	normalized, err := transport.NormalizeMailAutoresponder(setting, "me@example.test")
 	if err != nil {
@@ -157,10 +157,53 @@ func (f *autoresponderFixture) set(t *testing.T, setting transport.MailAutorespo
 	}
 	var resp transport.MailAutoresponderResponse
 	if err := fillAutoresponderRefusal(&resp, applyMailAutoresponder(context.Background(),
-		"me@example.test", "me", "example.test", normalized, &resp)); err != nil {
+		"me@example.test", "me", "example.test", normalized, accountDomains, &resp)); err != nil {
 		t.Fatal(err)
 	}
 	return resp
+}
+
+// Review finding 1 (21 Nov 2026): an additional address of another account's
+// domain, or one that is not forwarded to the mailbox, is refused by the
+// Agent from the server's own alias map, whatever the Panel sent; nothing is
+// written. An address forwarded to the mailbox from the same account's
+// domains is taken.
+func TestAutoresponderAgentRefusesAnotherAccountsAddress(t *testing.T) {
+	f := newAutoresponderFixture(t)
+	writeMailTestFile(t, postfixVirtualPath, "ceo@other.test me@example.test\ninfo@example.test me@example.test\nsales@second.test me@example.test\n", 0o644)
+	base := transport.MailAutoresponder{Enabled: true, Subject: "Away", Message: "Back soon", IntervalDays: 1}
+
+	foreign := base
+	foreign.Addresses = []string{"info@example.test", "ceo@other.test"}
+	resp := f.set(t, foreign, "second.test")
+	if resp.Applied || resp.Refusal != transport.AutoresponderRefusedForeignAddress || !strings.Contains(resp.Detail, "ceo@other.test") || strings.Contains(resp.Detail, "info@example.test") {
+		t.Fatalf("another account's address: %+v", resp)
+	}
+	if _, err := os.Lstat(f.mailbox("sieve/" + autoresponderScriptName)); !os.IsNotExist(err) {
+		t.Fatalf("a script was written for a refused setting: %v", err)
+	}
+	notForwarded := base
+	notForwarded.Addresses = []string{"boss@example.test"}
+	if resp := f.set(t, notForwarded, "second.test"); resp.Refusal != transport.AutoresponderRefusedForeignAddress {
+		t.Fatalf("an address of the own domain that is not forwarded here: %+v", resp)
+	}
+
+	own := base
+	own.Addresses = []string{"info@example.test", "sales@second.test"}
+	resp = f.set(t, own, "second.test")
+	if !resp.Applied || resp.Refusal != "" {
+		t.Fatalf("own addresses: %+v", resp)
+	}
+	script, _ := os.ReadFile(f.mailbox("sieve/" + autoresponderScriptName))
+	if !strings.Contains(string(script), `:addresses ["info@example.test", "sales@second.test"]`) {
+		t.Fatalf("script:\n%s", script)
+	}
+	// Turning the reply off is never refused for its addresses.
+	off := foreign
+	off.Enabled = false
+	if resp := f.set(t, off); !resp.Applied || resp.Refusal != "" {
+		t.Fatalf("turning off: %+v", resp)
+	}
 }
 
 func (f *autoresponderFixture) mailbox(name string) string {

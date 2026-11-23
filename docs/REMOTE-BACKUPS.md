@@ -141,6 +141,12 @@ Paths are relative to the bucket folder (prefix) or the SFTP folder:
   the same path as a local restore: a safety backup of the current state is kept first, and the
   disk quota applies.
 
+  These checks prove that the file is intact, not who wrote it: whoever holds the destination
+  and its passphrase can change a package. So a package never gets more than its site's own
+  rights (20 November 2026): its database dumps are loaded with each database's own user, never
+  as the database server's administrator (see "SQL from a file" in
+  [DATABASE-USERS.md](DATABASE-USERS.md)).
+
 ## Operations and what they tell you
 
 - **One operation at a time.** Every send and every restore is an operation with a lasting id
@@ -248,17 +254,23 @@ panel lists only its own backups and refuses the earlier site's package as anoth
    Environment files (secret values) are never in a backup: enter them again where the
    program reads them.
 
-6. **Load each database.**
-   - MariaDB or MySQL:
+6. **Load each database** as the database's own user, not as root or postgres: a package that
+   was kept where someone else can write may hold more than data.
+   - MariaDB or MySQL (`--sandbox` refuses the client's shell and file commands; MariaDB 10.5.25,
+     10.6.18, 10.11.8 or later):
 
      ```sh
-     gunzip -c restore/payload/databases/12.sql.gz | mariadb dbname
+     gunzip -c restore/payload/databases/12.sql.gz | mariadb --sandbox -u dbuser -p dbname
      ```
 
-   - PostgreSQL:
+   - PostgreSQL: first check that the only lines starting with a backslash are `\restrict`,
+     `\unrestrict` and the `\.` that ends a table's data (any other is a psql command); then load the dump in one
+     transaction, the user's own objects dropped first:
 
      ```sh
-     gunzip -c restore/payload/databases/12.sql.gz | psql dbname
+     gunzip -c restore/payload/databases/12.sql.gz | grep -n '^\\' | grep -v -e 'restrict ' -e ':\\\.$'
+     gunzip -c restore/payload/databases/12.sql.gz | psql -X -v ON_ERROR_STOP=1 --single-transaction \
+         -h 127.0.0.1 -U dbuser -c 'DROP OWNED BY CURRENT_USER' -f - dbname
      ```
 
    The database name for each id is in `manifest.json`.

@@ -293,6 +293,9 @@ func (p *Panel) startInstallTogether(w http.ResponseWriter, r *http.Request, req
 		writeDNSEngineWorkflowRequired(w)
 		return
 	}
+	if refuseComponentInstalledByVersion(w, append([]string{req.ServiceID}, req.InstallTogether...)...) {
+		return
+	}
 	for _, id := range append(append([]string{}, req.InstallTogether...), req.ServiceID) {
 		phpVersion := ""
 		if id == req.ServiceID {

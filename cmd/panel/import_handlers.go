@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -281,6 +282,20 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The one name rule (hostname_claim.go): an import gives a subscription
+	// a name like Add domain does.
+	if refusal, err := p.claimForSubscription(ctx, req.SubscriptionID, req.Domain, true); err != nil {
+		if errors.Is(err, errHostnameClaimNoOwner) {
+			writeClientError(w, http.StatusNotFound, "subscription not found")
+			return
+		}
+		writeServerError(w, err)
+		return
+	} else if refusal != nil {
+		writeHostnameClaimRefusal(w, currentCaller(r), refusal)
+		return
+	}
+
 	var importParentID *int
 	remoteConnectionID := ""
 	parentID, parentName, isSubdomain, err := p.resolveParentDomain(ctx, req.SubscriptionID, req.Domain)
@@ -382,6 +397,10 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 	})
 	cancelCreate()
 	if err != nil {
+		if hostname.IsNamespaceConflict(err) || errors.Is(err, services.ErrSiteAccountTaken) {
+			writeHostnameClaimRefusal(w, currentCaller(r), genericHostnameClaimRefusal(req.Domain))
+			return
+		}
 		if strings.Contains(err.Error(), "UNIQUE") {
 			writeClientError(w, http.StatusConflict, "domain already exists on this server")
 			return
@@ -410,6 +429,8 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	domainID, siteID := created.DomainID, created.SiteID
+	// 22 Nov 2026 (B2): as for a domain added on its own (domain_handlers.go).
+	p.reconcileAutoresponderAddressesAfter(context.WithoutCancel(ctx), "domain_added")
 	ok("domain", fmt.Sprintf("%s (id %d, site %d) → %s", req.Domain, domainID, siteID, created.DocumentRoot))
 
 	// 2. Site files.
@@ -531,6 +552,9 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 				fail("mail:"+email, txErr)
 				continue
 			}
+			// 22 Nov 2026 (B2): a new mailbox can take an address a catch-all
+			// delivered elsewhere (mail_autoresponder_own.go).
+			p.reconcileAutoresponderAddressesLocked(context.WithoutCancel(ctx), "mailbox_added")
 			p.mailMutationMu.Unlock()
 			imported++
 			p.requestMailQuotaReconcile()
@@ -686,7 +710,7 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fail("databases", fmt.Errorf("no active MySQL/MariaDB server registered for this subscription"))
 			} else {
-				p.importArchiveDatabases(ctx, req.Path, req.SubscriptionID, serverID, domainID, preview.Databases, fail, ok, nothing)
+				p.importArchiveDatabases(ctx, req.Path, req.SubscriptionID, serverID, domainID, req.Domain, preview.Databases, fail, ok, nothing)
 			}
 		}
 	}
@@ -717,7 +741,7 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 // importArchiveDatabases creates and loads the archive's databases, one step
 // each. A name MariaDB cannot keep a right on exactly (alpha.134 second
 // review) is left out first: nothing is created under it.
-func (p *Panel) importArchiveDatabases(ctx context.Context, path string, subscriptionID, serverID, domainID int, databases []transport.CpmoveDatabase,
+func (p *Panel) importArchiveDatabases(ctx context.Context, path string, subscriptionID, serverID, domainID int, domainName string, databases []transport.CpmoveDatabase,
 	fail func(string, error), ok func(string, string), nothing func(string, string, string)) {
 	for _, db := range databases {
 		// alpha.134 second review: MariaDB would keep a right on exactly
@@ -741,6 +765,10 @@ func (p *Panel) importArchiveDatabases(ctx context.Context, path string, subscri
 			Path:                path,
 			DumpName:            db.Name,
 			TargetDB:            db.Name,
+			// S1: the dump is loaded under the imported site's account.
+			SubscriptionID: subscriptionID,
+			DomainID:       domainID,
+			Domain:         domainName,
 		}, &imp)
 		switch {
 		case importErr != nil:

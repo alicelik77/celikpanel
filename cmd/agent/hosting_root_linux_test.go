@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,7 +66,8 @@ func statMode(t *testing.T, path string) os.FileMode {
 }
 
 // P3: under the Agent's UMask=0027, mkdir alone made /var/www 0750. The
-// directories the Agent creates must come out 0755 whatever the umask.
+// directories the Agent creates must come out 0755 whatever the umask, and
+// the hosting base itself 0711 (20 Nov 2026): passable, not listable.
 func TestHostingRootCreatesMissingParentsAt0755UnderRestrictiveUmask(t *testing.T) {
 	preparer, root, receipt := hostingRootTestPreparer(t)
 	previous := syscall.Umask(0o027)
@@ -80,9 +82,15 @@ func TestHostingRootCreatesMissingParentsAt0755UnderRestrictiveUmask(t *testing.
 		filepath.Join(root, "var", "www"),
 		filepath.Join(root, "var", "www", "celikpanel"),
 	}
-	for _, dir := range created {
-		if mode := statMode(t, dir); mode != 0o755 {
-			t.Fatalf("%s mode = %04o, want 0755", dir, mode)
+	wantMode := func(index int) os.FileMode {
+		if index == len(created)-1 {
+			return 0o711
+		}
+		return 0o755
+	}
+	for index, dir := range created {
+		if mode := statMode(t, dir); mode != wantMode(index) {
+			t.Fatalf("%s mode = %04o, want %04o", dir, mode, wantMode(index))
 		}
 	}
 	var recorded hostingRootReceipt
@@ -94,7 +102,7 @@ func TestHostingRootCreatesMissingParentsAt0755UnderRestrictiveUmask(t *testing.
 	}
 	for index, dir := range created {
 		entry := recorded.Directories[index]
-		if entry.Path != dir || entry.Mode != "0755" || entry.UID != os.Getuid() || entry.GID != os.Getgid() || entry.CreatedAt != "2026-10-01T12:00:00Z" {
+		if entry.Path != dir || entry.Mode != fmt.Sprintf("%04o", uint32(wantMode(index))) || entry.UID != os.Getuid() || entry.GID != os.Getgid() || entry.CreatedAt != "2026-10-01T12:00:00Z" {
 			t.Fatalf("receipt entry %d = %+v", index, entry)
 		}
 	}

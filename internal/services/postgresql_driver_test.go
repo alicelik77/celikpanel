@@ -24,6 +24,8 @@ type postgreSQLScript struct {
 
 	queryErr      error
 	terminationOK bool
+	// versionNum answers current_setting('server_version_num') when set.
+	versionNum    string
 	failExecMatch string
 	execErr       error
 	beginErr      error
@@ -109,7 +111,26 @@ func (c *postgreSQLScriptConn) QueryContext(
 	if c.state.queryErr != nil {
 		return nil, c.state.queryErr
 	}
+	if c.state.versionNum != "" && strings.Contains(query, "server_version_num") {
+		return &postgreSQLTextRows{value: c.state.versionNum}, nil
+	}
 	return &postgreSQLBoolRows{value: c.state.terminationOK}, nil
+}
+
+type postgreSQLTextRows struct {
+	value string
+	done  bool
+}
+
+func (r *postgreSQLTextRows) Columns() []string { return []string{"value"} }
+func (r *postgreSQLTextRows) Close() error      { return nil }
+func (r *postgreSQLTextRows) Next(values []driver.Value) error {
+	if r.done {
+		return io.EOF
+	}
+	r.done = true
+	values[0] = r.value
+	return nil
 }
 
 type postgreSQLScriptTx struct {

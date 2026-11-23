@@ -271,6 +271,20 @@ var NativeCatalogV3Releases = []NativeCatalogV3Release{
 		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
 	{Version: "v0.1.0-alpha.137", Policy: "pdns-native-catalog-v3",
 		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.138", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.139", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.140", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.141", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.142", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.143", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.144", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
 }
 
 func readsNativeCatalogV3(contract agentnativecontract.Contract, present map[string]bool) bool {

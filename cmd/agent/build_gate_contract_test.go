@@ -67,6 +67,14 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SitePageCacheClearV1(&transport.SitePageCacheClearRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.144: reading a mailbox found on the server without a record.
+		{name: "MailboxOnServerV1", run: func(expected string) string {
+			var response transport.MailboxOnServerResponse
+			if err := agent.MailboxOnServerV1(&transport.MailboxOnServerRequest{ExpectedBuildCommit: expected, Email: "old@example.com"}, &response); err != nil {
+				return err.Error()
+			}
+			return ""
+		}},
 		// alpha.135: removing one item of what deletions left.
 		{name: "RemoveHeldItemV1", run: func(expected string) string {
 			var response transport.RemoveHeldItemResponse
@@ -284,11 +292,62 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// S1b (20 Nov 2026): old PostgreSQL databases closed to other accounts.
+			name: "PostgreSQLPublicAccessScanV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessScanResponse
+				_ = agent.PostgreSQLPublicAccessScanV1(&transport.PostgreSQLPublicAccessScanRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "PostgreSQLPublicAccessCloseV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessCloseResponse
+				_ = agent.PostgreSQLPublicAccessCloseV1(&transport.PostgreSQLPublicAccessCloseRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "PostgreSQLPublicAccessUndoV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessUndoResponse
+				_ = agent.PostgreSQLPublicAccessUndoV1(&transport.PostgreSQLPublicAccessUndoRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// Second review of alpha.143 (B1): whether a close still runs.
+			name: "PostgreSQLPublicAccessRunningV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessRunningResponse
+				_ = agent.PostgreSQLPublicAccessRunningV1(&transport.PostgreSQLPublicAccessRunningRequest{ExpectedBuildCommit: expected, Name: "shop"}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.134: the rights naming a deleted database.
 			name: "RemoveDroppedDatabaseRightsV1",
 			run: func(expected string) string {
 				var response transport.DroppedDatabaseRightsResponse
 				_ = agent.RemoveDroppedDatabaseRightsV1(&transport.DroppedDatabaseRightsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.140: a deletion bound to the database it was asked for.
+			name: "DatabaseIdentityV1",
+			run: func(expected string) string {
+				var response transport.DatabaseIdentityResponse
+				_ = agent.DatabaseIdentityV1(&transport.DatabaseIdentityRequest{ExpectedBuildCommit: expected, Type: "mysql", Name: "shop"}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "DropDatabaseOnceV1",
+			run: func(expected string) string {
+				var response transport.DropDatabaseOnceResponse
+				_ = agent.DropDatabaseOnceV1(&transport.DropDatabaseOnceRequest{ExpectedBuildCommit: expected, Type: "mysql", Name: "shop", Identity: "x"}, &response)
 				return response.Error
 			},
 		},

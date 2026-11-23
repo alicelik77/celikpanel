@@ -39,6 +39,8 @@ type fakeServiceAppNative struct {
 	proof        *transport.SandboxProof
 	generations  map[int]int
 	sandboxReads int
+	// probeErr makes the probe fail (the Agent cannot say).
+	probeErr error
 }
 
 func newFakeServiceAppNative() *fakeServiceAppNative {
@@ -52,6 +54,9 @@ func newFakeServiceAppNative() *fakeServiceAppNative {
 func (f *fakeServiceAppNative) probe(context.Context) (transport.ServiceAppProbeResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.probeErr != nil {
+		return transport.ServiceAppProbeResponse{}, f.probeErr
+	}
 	return transport.ServiceAppProbeResponse{Apps: append([]transport.ServiceAppAvailability(nil), f.probeApps...)}, nil
 }
 
@@ -236,61 +241,62 @@ func (f serviceAppFixture) waitOperation(t *testing.T, id string) serviceAppOper
 
 const n8nInstallBody = `{"app":"n8n","operation_id":"op-n8n-0001","owner_email":"owner@outsider.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`
 
-const webuiInstallBody = `{"app":"open-webui","operation_id":"op-webui-0001","owner_email":"owner@customer.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`
-
+// alpha.141: Open WebUI was withdrawn, so n8n (closed to resellers by its
+// licence) is the app this runs on, for the administrator's own customer
+// 9704 on 9903; the narrowing layer is the subscription's own rights.
 func TestServiceAppIsClosedUntilTheAdministratorOffersIt(t *testing.T) {
 	f := newServiceAppFixture(t)
-	path := "/api/v1/domains/9902/service-apps"
+	path := "/api/v1/domains/9903/service-apps"
 
 	// Installed is not offered: closed by default, for the customer and the
 	// administrator alike.
-	rec := f.as(t, 9703, http.MethodGet, path, "")
+	rec := f.as(t, 9704, http.MethodGet, path, "")
 	wantStatus(t, rec, http.StatusOK, "")
 	var view serviceAppsDomainView
 	if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
 		t.Fatal(err)
 	}
 	for _, app := range view.Apps {
-		if app.Offered || (app.ID == "n8n" && app.RefusedBy != rightsLayerLicence) || (app.ID == "open-webui" && app.RefusedBy != rightsLayerAdministrator) {
+		if app.Offered || (app.ID == "n8n" && app.RefusedBy != rightsLayerAdministrator) {
 			t.Fatalf("an app is open before it was offered: %+v", app)
 		}
 	}
-	wantStatus(t, f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody), http.StatusConflict, errCodeNotOffered)
-	wantStatus(t, f.as(t, 9701, http.MethodPost, path+"/install", webuiInstallBody), http.StatusConflict, errCodeNotOffered)
+	wantStatus(t, f.as(t, 9704, http.MethodPost, path+"/install", n8nInstallBody), http.StatusConflict, errCodeNotOffered)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, path+"/install", n8nInstallBody), http.StatusConflict, errCodeNotOffered)
 
 	// The administrator offers only with the current risk summary.
 	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/n8n/offer", `{"risk_digest":"stale"}`), http.StatusConflict, errCodeServiceApp)
-	wantStatus(t, f.as(t, 9703, http.MethodGet, serviceAppsAdminPath, ""), http.StatusForbidden, "")
+	wantStatus(t, f.as(t, 9704, http.MethodGet, serviceAppsAdminPath, ""), http.StatusForbidden, "")
 	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/openclaw/offer", `{"risk_digest":"x"}`), http.StatusConflict, errCodeServiceApp)
-	f.offer(t, "open-webui")
+	f.offer(t, "n8n")
 
-	// The reseller narrows: without app:open-webui in the reseller's set the
-	// customer is refused, and the reseller is named as the layer.
-	reseller := newRightsSet(true, false, "component:php-fpm:8.3")
-	if err := saveRightsSet(context.Background(), f.panel.db.GetDB(), rightsOwnerReseller, 9702, reseller); err != nil {
+	// The subscription's own rights narrow: without app:n8n the customer is
+	// refused, and the subscription is named as the layer.
+	narrowed := newRightsSet(true, false, "component:php-fpm:8.3")
+	if err := saveRightsSet(context.Background(), f.panel.db.GetDB(), rightsOwnerSubscription, 9803, narrowed); err != nil {
 		t.Fatal(err)
 	}
-	rec = f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody)
+	rec = f.as(t, 9704, http.MethodPost, path+"/install", n8nInstallBody)
 	wantStatus(t, rec, http.StatusConflict, errCodeNotOffered)
-	if !strings.Contains(rec.Body.String(), `"reason":"reseller"`) {
-		t.Fatalf("the reseller layer must be named: %s", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"reason":"subscription"`) {
+		t.Fatalf("the subscription layer must be named: %s", rec.Body.String())
 	}
-	reseller.Items["app:open-webui"] = true
-	if err := saveRightsSet(context.Background(), f.panel.db.GetDB(), rightsOwnerReseller, 9702, reseller); err != nil {
+	narrowed.Items["app:n8n"] = true
+	if err := saveRightsSet(context.Background(), f.panel.db.GetDB(), rightsOwnerSubscription, 9803, narrowed); err != nil {
 		t.Fatal(err)
 	}
 
 	// A security hold refuses new installs with its own reason.
-	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/open-webui/hold", `{"reason":"CVE-2026-0001"}`), http.StatusOK, "")
-	rec = f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/n8n/hold", `{"reason":"CVE-2026-0001"}`), http.StatusOK, "")
+	rec = f.as(t, 9704, http.MethodPost, path+"/install", n8nInstallBody)
 	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
 	if !strings.Contains(rec.Body.String(), `"reason":"held"`) {
 		t.Fatalf("held: %s", rec.Body.String())
 	}
-	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/open-webui/release", `{}`), http.StatusOK, "")
-	rec = f.as(t, 9703, http.MethodPost, path+"/install", webuiInstallBody)
+	wantStatus(t, f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/n8n/release", `{}`), http.StatusOK, "")
+	rec = f.as(t, 9704, http.MethodPost, path+"/install", n8nInstallBody)
 	wantStatus(t, rec, http.StatusAccepted, "")
-	f.waitOperation(t, "op-webui-0001")
+	f.waitOperation(t, "op-n8n-0001")
 }
 
 func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
@@ -372,28 +378,113 @@ func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
 	}
 }
 
-func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
-	f := newServiceAppFixture(t)
+// setN8nCannotRunHere makes the probe say that no runtime this server can
+// install would let n8n run (reason os_unsupported); restore puts it back.
+// alpha.141: Open WebUI on Python 3.13 was the real case until it was
+// withdrawn; the rule is the same for any app.
+func (f serviceAppFixture) setN8nCannotRunHere() (restore func()) {
 	f.native.mu.Lock()
+	var before transport.ServiceAppAvailability
 	for i := range f.native.probeApps {
-		if f.native.probeApps[i].AppID == "open-webui" {
-			f.native.probeApps[i] = transport.ServiceAppAvailability{AppID: "open-webui", Reason: serviceapps.ReasonOSUnsupported, Detail: "needs Python 3.11 or 3.12; this system has Python 3.13"}
+		if f.native.probeApps[i].AppID == "n8n" {
+			before = f.native.probeApps[i]
+			f.native.probeApps[i] = transport.ServiceAppAvailability{AppID: "n8n", Reason: serviceapps.ReasonOSUnsupported,
+				Detail: "unknown runtime", FoundKnown: true,
+				Found: []transport.ServiceAppRuntimeFound{{Version: "20.19.2", Source: "distribution"}}}
 		}
 	}
 	f.native.mu.Unlock()
-	f.offer(t, "open-webui")
-	rec := f.as(t, 9703, http.MethodPost, "/api/v1/domains/9902/service-apps/install",
-		`{"app":"open-webui","owner_email":"owner@customer.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`)
-	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
-	if !strings.Contains(rec.Body.String(), `"reason":"os_unsupported"`) || !strings.Contains(rec.Body.String(), "Python 3.13") {
-		t.Fatalf("refusal: %s", rec.Body.String())
+	resetServiceAppProbeCache()
+	return func() {
+		f.native.mu.Lock()
+		for i := range f.native.probeApps {
+			if f.native.probeApps[i].AppID == "n8n" {
+				f.native.probeApps[i] = before
+			}
+		}
+		f.native.mu.Unlock()
+		resetServiceAppProbeCache()
 	}
+}
+
+func (f serviceAppFixture) domainApps(t *testing.T, userID int, domainID string) map[string]serviceAppAppView {
+	t.Helper()
+	rec := f.as(t, userID, http.MethodGet, "/api/v1/domains/"+domainID+"/service-apps", "")
+	wantStatus(t, rec, http.StatusOK, "")
+	var view serviceAppsDomainView
+	if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]serviceAppAppView{}
+	for _, app := range view.Apps {
+		out[app.ID] = app
+	}
+	return out
+}
+
+func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
+	f := newServiceAppFixture(t)
+	// An offer made while the app could run (or before this release) stays
+	// recorded; it no longer gives the app on a system that cannot run it.
+	f.offer(t, "n8n")
+	restore := f.setN8nCannotRunHere()
+
+	// The customer neither sees it nor can install it; nothing is recorded.
+	if _, shown := f.domainApps(t, 9704, "9903")["n8n"]; shown {
+		t.Fatal("an app that cannot run on this operating system was shown to the customer")
+	}
+	rec := f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/install", n8nInstallBody)
+	wantStatus(t, rec, http.StatusConflict, errCodeNotOffered)
 	if n := f.count(t, `SELECT COUNT(*) FROM service_app_installs`); n != 0 {
 		t.Fatal("a refused install left a record")
 	}
+
+	// The administrator sees it with the facts behind the reason: what the
+	// catalogue needs and what this server has.
+	adminView := f.domainApps(t, 9701, "9903")["n8n"]
+	if adminView.Reason != serviceapps.ReasonOSUnsupported || strings.Join(adminView.Needs, ",") != "24" ||
+		!adminView.FoundKnown || len(adminView.Found) != 1 || adminView.Found[0].Version != "20.19.2" {
+		t.Fatalf("administrator's entry: %+v", adminView)
+	}
+	// Acting for the account the administrator gets the true reason, with
+	// the runtime and the catalogue's versions for the screen's sentence.
+	rec = f.as(t, 9701, http.MethodPost, "/api/v1/domains/9903/service-apps/install", n8nInstallBody)
+	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+	var refusal apiErrorBody
+	if err := json.Unmarshal(rec.Body.Bytes(), &refusal); err != nil {
+		t.Fatal(err)
+	}
+	if refusal.Reason != serviceapps.ReasonOSUnsupported || refusal.Vars["runtime"] != "Node.js" || refusal.Vars["needs"] != "24" {
+		t.Fatalf("refusal: %s", rec.Body.String())
+	}
+	// It cannot be offered again here.
+	app, _ := serviceapps.Lookup("n8n")
+	rec = f.as(t, 9701, http.MethodPost, serviceAppsAdminPath+"/n8n/offer", `{"risk_digest":"`+app.RiskDigest()+`"}`)
+	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
+	if !strings.Contains(rec.Body.String(), `"reason":"os_unsupported"`) {
+		t.Fatalf("offer: %s", rec.Body.String())
+	}
+	// Catalog management keeps the entry with the reason and the facts.
+	rec = f.as(t, 9701, http.MethodGet, serviceAppsAdminPath, "")
+	wantStatus(t, rec, http.StatusOK, "")
+	var page struct {
+		Apps []serviceAppAdminEntry `json:"apps"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, entry := range page.Apps {
+		if entry.ID == "n8n" {
+			found = entry.Reason == serviceapps.ReasonOSUnsupported && strings.Join(entry.Needs, ",") == "24" && entry.FoundKnown
+		}
+	}
+	if !found {
+		t.Fatalf("Catalog management: %s", rec.Body.String())
+	}
 	// A site without a certificate is an unmet prerequisite.
+	restore()
 	f.exec(t, `UPDATE sites SET ssl_enabled = 0 WHERE id = 9941`)
-	f.offer(t, "n8n")
 	rec = f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/install", n8nInstallBody)
 	if !strings.Contains(rec.Body.String(), `"reason":"certificate_missing"`) {
 		t.Fatalf("certificate: %s", rec.Body.String())

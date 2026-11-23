@@ -11166,3 +11166,122 @@ doğrulamasıyla ilgili olmayanlar) şimdilik tek cümlelerini korur. Açık:
 yeniden denetlenen bir neden, sahip bekleme sırasında bu sunucunun DNS'ini
 değiştirirse Agent'ın her değişikliği bekletmesine yine yol açabilir
 (RESILIENCE-CONTRACT, "Dal a133/proofwait").
+
+### Ana DNS sunucusunun ad kaydı isteğine yanıtı (alpha.139, 19 Kasım 2026)
+
+alpha.135 lab'ında bir yedek DNS sunucusu ana DNS sunucusundan bir ad kaydı
+istedi ve iki yanlış yanıt aldı: var olmayan bir kayıt için "bu ad zaten
+kullanılıyor" (altyapı bölgesinin altındaki bir müşteri bölgesi bütün bölgeyi
+reddettirdi) ve ana sunucunun günlüğünde hiçbir iz bırakmayan "bilinmiyor"
+(bir alan adı silmesi DNS kilitlerini yaklaşık 29 saniye tuttu; isteyen
+sunucunun sınırı 10 saniye). Ana sunucunun şimdiki yanıtları:
+
+| Yanıt | Anlamı | Kim yapar | Nasıl sürer |
+|---|---|---|---|
+| oluşturuldu / güncellendi / zaten var | kayıt bölgede ve yayımlandı | kimse | genel DNS aktarım ve önbelleklerden sonra gösterir |
+| `REMOTE_DNS_HOST_RECORD_CONFLICT` (409) | tam o adda çakışma: başka içerikli bir kayıt, araya giren CNAME/DNAME/yetki devri, kapalı bir kayıt ya da bu kanalın kaydı elle değiştirilmiş veya silinmiş | ana sunucunun yöneticisi | o kaydı Alan adları'nda düzeltir ya da kaydı elle ekler |
+| `REMOTE_DNS_HOST_RECORD_OUTSIDE_ZONE` (409) | adı oradaki bir altyapı bölgesi yanıtlamıyor; orada barındırılan başka bir bölge (altyapı bölgesinin altındaki bir müşteri bölgesi) o adı yanıtladığında da | yönetici | kaydı o adın yönetildiği yerde ekler |
+| `REMOTE_DNS_HOST_RECORD_ZONE_REVIEW` (409, yeni) | bölgenin kendisi şu anda bu bağlantıdan kayıt alamıyor: yerel birincil bölge değil, DNSSEC ile imzalı, sahipliği doğrulanmamış, dış ya da uzak DNS, sınırının üstünde; hiçbir şey yazılmadı | ana sunucunun yöneticisi | bölgeyi orada gözden geçirir ya da kaydı elle ekler |
+| meşgul (503, `Retry-After`, kodsuz, yeni) | kilitleri başka bir DNS değişikliği tutuyor; ana sunucu en çok 3 saniye bekledi ve hiçbir şey uygulamadı | kimse | isteyen sunucu aynı isteği yeniden gönderir (kurulum: iki dakika sonra, en çok beş kez) |
+| `REMOTE_DNS_HOST_RECORD_PENDING` (409) | kaydedildi, yayımı doğrulanmadı | kimse | aynı istek yayımdan sonra "zaten var" yanıtını alır |
+
+Altyapı bölgesinin altında başka bir yerdeki müşteri bölgesi ya da üstündeki
+bir bölge artık ad kaydını reddettirmez; kurulum incelemesinin kendi bölge
+geneli kuralı bu sürümde değişmedi. Hiçbir şey uygulamayan her yanıt günlüğe
+bir satır ve denetim kaydına bir satır bırakır (`dns.remote.host_record.refused`,
+kodu ayrıntılarda); isteyen sunucu kilitler boşalmadan beklemeyi bıraktığında
+da (önceden hiçbirini bırakmadan 401 dönüyordu). Yayımın kendisi isteyen
+sunucunun 10 saniyesine sığsın diye kesilmez: daha uzun sürerse isteyen sunucu
+"bilinmiyor" okur ve yeniden sorar; yineleme ilk yayım sürerken "meşgul",
+sonra "zaten var" olur, asla ikinci bir yazma olmaz. Uzak DNS yayım alıcısı
+aynı kilitleri aynı sınırla bekler ve 503 `REMOTE_DNS_BUSY` döner; gönderen
+her sürüm kayıtlı yayımını saklar ve yeniden gönderir. Meşgul ad kaydı
+yanıtının bilerek kodu yoktur: alpha.137 bir ikincil, kodlu her yanıtı kalıcı
+ret, kodsuz bir 503'ü ise yeniden sorduğu "bilinmiyor" olarak kaydeder. Yeni
+ZONE_REVIEW kodunu genel reddi olarak okur ("bu kaydı oluşturmadı; elle
+ekleyin"). Şema: yok. Kod: `cmd/panel/remote_dns_host_record.go`,
+`setup_dns_remote_receiver.go`, `server_setup_infrastructure_dns.go`;
+`web/src/lib/serverSetupGuidance.ts`, `web/src/i18n/setupDNS/*.ts`. Testler:
+`cmd/panel/remote_dns_host_record_receiver_test.go`,
+`web/tests/server-setup-guidance.test.mjs`. Açık: gerçek bir çiftte lab
+denemesi henüz yok; daha eski (alpha.137) bir ana sunucu bölge geneli bir
+neden için hâlâ CONFLICT döner ve kurulum incelemesi, altında müşteri bölgeleri
+olan bir ana alan adını hâlâ reddeder. Bu ret artık kendi nedeniyle söylenir:
+plan incelemesinde (`server_setup_infrastructure_dns_zone_overlap`: burada
+barındırılan başka bir bölge ana alan adının bölgesinin içinde ya da
+çevresinde; bir kayıt çakışması değil; yönetici o bölgeyi Alan adları'nda
+gözden geçirir, sonra planı yeniden okur) ve katılmada
+(`server_setup_peer_zone_overlap`: katılan sunucunun adlarıyla ilgili değil;
+bölge artık çakışmadığında kurulum kendiliğinden sürer).
+
+### Yedek DNS sunucusunda web postası adres kaydı için "Ekle…" (alpha.139, 19 Kasım 2026)
+
+Çiftin yedek DNS sunucusunda, web postası için denetlenen ad ana alan adının
+içindeyse ve ana sunucuya DNS bağlantısı hazırsa, "Kopyala"nın yanındaki
+"Ekle…" ana DNS sunucusundan A kaydını (ve bu sunucunun genel bir IPv6 adresi
+varsa AAAA kaydını; isteğe bağlı) eklemesini ister. Başka her yerde yalnız
+"Kopyala" sunulur. İstek gönderilmeden önce gösterilir, adımlarıyla kilitli
+ilerleme penceresinde çalışır ve şunlardan biriyle biter:
+
+| Son | Kim yapar | Sonraki adım |
+|---|---|---|
+| eklendi / zaten var / yeniden sorunca doğrulandı | kimse | sayfa genel DNS'i 20 saniyede bir, en çok 5 dakika okur |
+| meşgul (ana sunucu hiçbir şey uygulamadı) | sahip, istediğinde | "Yeniden sor…" (yeni istek; asla iki kez eklemez) |
+| 10 saniye içinde yanıt yok | kimse | 25 saniye sonra kendiliğinden bir kez yeniden sorulur; sonra "bilinmiyor", "Yeniden sor…" ya da Denetle |
+| reddedildi: orada başka kayıt ya da elle değişiklik, ya da (eski ana sunucu) bölgenin kendisi | sahip, ana sunucuda | onun DNS düzenleyicisinde karar verir ya da Kopyala |
+| reddedildi: oradaki bölgenin gözden geçirilmesi gerekiyor (ZONE_REVIEW) | ana sunucunun yöneticisi | o bölgeyi denetler, sonra yeniden Ekle ya da Kopyala |
+| reddedildi: ad ana sunucunun tuttuğu bir bölgede değil ya da oradaki başka bir bölge adı tutuyor | sahip | kaydı adın DNS'inin yönetildiği yere ekler (Kopyala) |
+
+Denetim kaydı: bu sunucuda `webmail.address.dns_record.*` (meşgul yeni), ana
+sunucuda `dns.remote.host_record.*`. Kod:
+`cmd/panel/webmail_address_dns_record.go`, `web/src/lib/webmailAddressRecords.ts`,
+`web/src/components/WebmailAddressCard.tsx` (artık yalnız Roundcube sayfasında
+yüklenir). Testler: `cmd/panel/webmail_address_dns_record_test.go`,
+`webmail_address_dns_record_tls_test.go` (üretim alıcısına karşı gerçek TLS
+üzerinden), `web/tests/webmail-dns-add-alpha135.test.mjs`. Açık: gerçek bir
+çiftte lab denemesi henüz yok; kartın görünmesi için yedek sunucuda Roundcube
+kurulu olmalıdır.
+
+### alpha.143 laboratuvarının düzeltmeleri (alpha.144, 22 Kasım 2026)
+
+Bileşen testleri ve bir laboratuvar denemesi (22 Kasım 2026; neyi
+kanıtladığı ve neyi denetlemediği için alpha.144 sürüm notlarının
+"Laboratuvarda denetlenenler" bölümüne bakın).
+
+- **Sayfadan çıkıldı diye değişiklik kaybolmaz.** Yöneticinin başka hesapların
+  girebildiği bir PostgreSQL veritabanını kapatması ya da geri alması (ve
+  "Yeniden oku"), posta kutusu oluşturma ve otomatik yanıtı kaydetme, sayfanın
+  istek kimliğiyle (D-029), tarayıcının iptal edemediği bir bağlamda, kendi
+  süre sınırına kadar çalışır. Sayfayı yeniden açan sonucu okur; aynı istek
+  yeniden gelirse kaydından yanıtlanır, asla iki kez çalışmaz. Yeni bir basış
+  yeni istektir: değişikliği yapılmış bulur.
+- **Başarısız kapatma ne olduğunu söyler.** Penceresi "Yapılmadı — hiçbir şey
+  değiştirilmedi" adımıyla biter; doğrulanmamış sonuç "Sonuç henüz
+  doğrulanmadı — yeniden gönderilmez" adımıyla. Neden satırı önce nedenin
+  türünü söyler (kilit zamanında verilmedi, süre aşıldı, bağlantı koptu, yetki
+  eksik, adı geçen şey yok, sunucu reddetti), sonra veritabanı sunucusunun
+  iletisini tırnak içinde verir.
+- **Panelde satırı olmadan sunucuda bulunan posta kutusu** asla iç hata
+  değildir. Yöneticiye **Bu alan adına al** sunulur; yalnız kutunun klasöründe
+  ileti yokken (hiçbir `cur/` ya da `new/` klasöründe dosya yokken) izin
+  verilir: sunucunun bu adres için tuttuğu satırları okur, oradaki boyut
+  sınırıyla satırı yazar ve parolayı alma penceresinde yazılanla değiştirir;
+  önceki hiçbir parola çalışmaz. Sonra her posta kutusu gibi tutulur ya da
+  silinir. Başkasına yöneticiye sorması söylenir; cümle yalnız istenen adresi,
+  kişinin kendi alan adında adlandırır. Sunucu kutuyu artık tutmuyorsa, iki
+  satırından yalnız birini tutuyorsa (sunucu sahibi kalan satırı siler) ya da
+  CelikPanel'in yazmadığı bir biçimde tutuyorsa (sunucu sahibine bırakılır) ya
+  da içinde posta varsa (sunucu sahibi sunucuda karar verir) alma reddedilir.
+- **Takma ad DNS'te yanıt verir.** Aynı hesabın bu sunucuda tutulan bir
+  bölgesinin içindeki takma ad oraya sitenin adreslerini alır (yayımlanmadıysa
+  panelin saatlik turu yayımlar ve satırda "yayımlanmayı bekliyor" yazar; adda
+  CelikPanel'in eklemediği bir adres kaydı varsa hiçbir şey eklenmez). Kayıtlar takma adla birlikte, yalnız CelikPanel'in eklediği
+  kadarıyla kalkar.
+- **Retler sayfanın dilinde:** takma adın sertifikası yeniden alınamadı,
+  sertifika takma adı kapsamıyor, geçersiz ad, takma ad artık yok, HSTS
+  kaldırmayı engelliyor, etkin sertifika yok.
+- **Önceki biçimdeki web postası adresi** Şimdiki sorunlar'da bir satırdır
+  (sahibin dosyası korundu, CelikPanel'in metni yanında; ya da nginx denetimi
+  başarısız oldu, adını verdiği dosyayla). Dosya yeni biçime geçince
+  kendiliğinden kalkar; Agent her açılışta yeniden dener.
+- **Tek veritabanı** Şimdiki sorunlar'da ve uyarı e-postasında tekil söylenir.

@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -98,6 +99,14 @@ func (storage certbotStorage) certificateDir(certName string) string {
 }
 
 func ensureIsolatedSiteCertbotStorage(storage certbotStorage) error {
+	// alpha.144: CelikPanel's log folder above the certificate tool's logs
+	// is made passable (services/log_root.go), never at the umask's 0700;
+	// the certificate tool's own folder stays 0700.
+	if filepath.Dir(storage.LogsDir) == services.CelikPanelLogRoot() {
+		if err := services.EnsureCelikPanelLogRoot(); err != nil {
+			return fmt.Errorf("create CelikPanel's log folder: %w", err)
+		}
+	}
 	for _, dir := range []string{storage.ConfigDir, storage.WorkDir, storage.LogsDir} {
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return fmt.Errorf("create site certbot directory %s: %w", dir, err)

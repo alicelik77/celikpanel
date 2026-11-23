@@ -28,6 +28,26 @@ export interface DatabaseInfo {
     engine?: 'mariadb' | 'mysql' | 'postgresql';
     engine_version?: string;
     users?: DatabaseUserInfo[];
+    /** 20 Nov 2026: a PostgreSQL database's encoding as the server names it ("UTF8", "SQL_ASCII"…); absent when not known. */
+    encoding?: string;
+}
+
+// 20 Nov 2026: what a PostgreSQL database's encoding means to a person.
+// Only UTF8 holds text the server checks as Unicode; SQL_ASCII keeps bytes
+// unchecked; any other encoding (LATIN1…) has no room for many letters.
+// Bir PostgreSQL veritabanının kodlamasının kişi için anlamı.
+export type DatabaseEncodingWarning = 'unchecked' | 'limited';
+
+/** "UTF-8" for UTF8, else the server's own name. */
+export function encodingLabel(encoding: string): string {
+    return encoding.trim().toUpperCase() === 'UTF8' ? 'UTF-8' : encoding.trim();
+}
+
+/** The warning a database's card shows, or null: none for UTF8, for an unknown encoding or for another engine. */
+export function databaseEncodingWarning(engine: DatabaseEngineName, encoding: string | undefined): DatabaseEncodingWarning | null {
+    const name = (encoding ?? '').trim().toUpperCase();
+    if (engine !== 'postgresql' || name === '' || name === 'UTF8') return null;
+    return name === 'SQL_ASCII' ? 'unchecked' : 'limited';
 }
 
 export function parseAvailableDatabaseTypes(value: unknown): DatabaseEngine[] {

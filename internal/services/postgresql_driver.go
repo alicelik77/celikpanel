@@ -101,13 +101,41 @@ func (d *PostgreSQLDriver) CreateDatabase(name string) error {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s WITH ENCODING='UTF8';", ident))
+	// 20 Nov 2026: the shared statement (postgresql_create.go). The old
+	// "WITH ENCODING='UTF8'" copied template1, so on a cluster whose
+	// template1 is SQL_ASCII it was refused ("new encoding (UTF8) is
+	// incompatible with the encoding of the template database").
+	var versionText string
+	if err := db.QueryRow("SELECT current_setting('server_version_num')").Scan(&versionText); err != nil {
+		return fmt.Errorf("read PostgreSQL version for create: %w", err)
+	}
+	versionNum := ParsePostgreSQLVersionNum(versionText)
+	_, err = db.Exec(PostgreSQLCreateDatabaseStatement(ident, "", versionNum, false))
+	if PostgreSQLCreateDatabaseNeedsFallback(versionNum, err) {
+		_, err = db.Exec(PostgreSQLCreateDatabaseStatement(ident, "", versionNum, true))
+	}
 	if err != nil {
 		// 42P04 duplicate_database: the name is somebody's already.
 		if strings.Contains(err.Error(), "42P04") {
 			return fmt.Errorf("database %s: %w", name, ErrDatabaseNameTaken)
 		}
 		return fmt.Errorf("failed to create database: %w", err)
+	}
+	// Closed to every other role, read back; a database that could not be
+	// closed is removed again (postgresql_create.go).
+	var open bool
+	_, err = db.Exec(PostgreSQLClosePublicStatement(ident))
+	if err == nil {
+		err = db.QueryRow(PostgreSQLPublicReachQuery, name).Scan(&open)
+	}
+	if err == nil && open {
+		err = fmt.Errorf("PUBLIC still has CONNECT or TEMPORARY on it")
+	}
+	if err != nil {
+		if _, dropErr := db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s;", ident)); dropErr != nil {
+			return fmt.Errorf("database %s was created but could not be closed to other database users (%v), and removing it again failed: %w", name, err, dropErr)
+		}
+		return fmt.Errorf("database %s could not be closed to other database users, so it was removed again: %w", name, err)
 	}
 	return nil
 }
@@ -147,6 +175,26 @@ func (d *PostgreSQLDriver) DeleteDatabase(name string) error {
 		return fmt.Errorf("failed to drop database: %w", err)
 	}
 	return nil
+}
+
+// DatabaseIdentity answers whether the database exists and its oid
+// ("postgresql-oid:<oid>"), the identity a deletion is bound to (alpha.140,
+// internal/transport/database_drop_once.go). Read only.
+func (d *PostgreSQLDriver) DatabaseIdentity(name string) (bool, string, error) {
+	db, err := d.getDB("postgres")
+	if err != nil {
+		return false, "", fmt.Errorf("open PostgreSQL control database to read a database: %w", err)
+	}
+	defer db.Close()
+	var oid string
+	err = db.QueryRow(`SELECT oid::text FROM pg_catalog.pg_database WHERE datname = $1`, name).Scan(&oid)
+	if err == sql.ErrNoRows {
+		return false, "", nil
+	}
+	if err != nil {
+		return false, "", fmt.Errorf("read database %s: %w", name, err)
+	}
+	return true, "postgresql-oid:" + oid, nil
 }
 
 // ListDatabases lists all PostgreSQL databases

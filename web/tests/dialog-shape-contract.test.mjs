@@ -169,7 +169,7 @@ test('every dialogue in the product is the shared one', () => {
     'Dashboard.tsx': 1,
     // alpha.133: CelikPanel's engine account (its password, shown once) with Security › Open to the outside.
     'DatabaseRemoteServerPanel.tsx': 1,
-    'DomainMailManager.tsx': 1,
+    'DomainMailManager.tsx': 2, // alpha.144: the password window and the adoption's window
     // alpha.135: a mailbox's sending limit in its own window (explicit save).
     'OutgoingMailboxLimits.tsx': 1,
     // alpha.124: the sending mailbox's settings, password shown once (passwordless mail).
@@ -189,8 +189,9 @@ test('every dialogue in the product is the shared one', () => {
     'OSUpdatesChoice.tsx': 1,
     'RestartsCard.tsx': 1,
     'RoundcubeUpdateFlow.tsx': 1,
-    // alpha.110: webmail's own address - add to the zone, set up, remove.
-    'WebmailAddressCard.tsx': 3,
+    // alpha.110: webmail's own address - set up, remove (alpha.135: adding a
+    // DNS record asks through confirmAction, lib/webmailAddressRecords.ts).
+    'WebmailAddressCard.tsx': 2,
     'SecurityUpdatesCard.tsx': 1,
     // alpha.128 ops (G31): making a certificate request (CSR).
     'ServerCertificatesCard.tsx': 2,

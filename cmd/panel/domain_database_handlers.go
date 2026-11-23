@@ -41,6 +41,9 @@ type DatabaseInfo struct {
 	Engine        string               `json:"engine"`
 	EngineVersion string               `json:"engine_version,omitempty"`
 	Users         []domainDatabaseUser `json:"users"`
+	// Encoding (20 Nov 2026): a PostgreSQL database's encoding as the
+	// server names it ("UTF8", "SQL_ASCII", ...); absent when not known.
+	Encoding string `json:"encoding,omitempty"`
 }
 
 // CreateDatabaseRequest represents a request to create a database
@@ -218,7 +221,8 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 		                 JOIN database_users u ON u.id = g.user_id
 		                 WHERE g.database_id = d.id
 		                 ORDER BY g.id LIMIT 1), ''),
-		       d.created_at, COALESCE(ds.version, '')
+		       d.created_at, COALESCE(ds.version, ''),
+		       COALESCE(ds.host, ''), ds.port, COALESCE(ds.cluster, '')
 		FROM databases_v2 d
 		JOIN database_servers ds ON ds.id = d.server_id
 		JOIN database_server_types dst ON dst.id = ds.type_id
@@ -232,21 +236,29 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 	defer rows.Close()
 
 	databases := make([]DatabaseInfo, 0)
+	var wantEncoding []pgEncodingWanted
 	for rows.Next() {
 		var db DatabaseInfo
 		var serverType, version string
-		if err := rows.Scan(&db.ID, &db.Name, &serverType, &db.User, &db.CreatedAt, &version); err != nil {
+		var record pgServerRecord
+		if err := rows.Scan(&db.ID, &db.Name, &serverType, &db.User, &db.CreatedAt, &version, &record.Host, &record.Port, &record.Cluster); err != nil {
 			http.Error(w, "Failed to load databases", http.StatusInternalServerError)
 			return
 		}
 		db.Type = apiTypeNameFor(serverType)
 		db.Engine, db.EngineVersion = databaseEngineLabel(serverType, version)
+		if serverType == "postgresql" && databaseEngineIsOnThisMachine(record.Host) {
+			wantEncoding = append(wantEncoding, pgEncodingWanted{index: len(databases), name: db.Name, record: record})
+		}
 		databases = append(databases, db)
 	}
 	if err := rows.Err(); err != nil {
 		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
 		return
 	}
+	rows.Close()
+	// 20 Nov 2026: each PostgreSQL database's encoding, one Agent read.
+	p.fillPGEncodings(ctx, databases, wantEncoding)
 
 	users, err := p.domainDatabaseUsers(ctx, domainID)
 	if err != nil {

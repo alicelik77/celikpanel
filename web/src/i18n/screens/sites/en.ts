@@ -236,6 +236,10 @@ export const enSitesScreens = {
     'general.add': 'Add',
     'general.aliasAdded': 'Alias {name} added',
     'general.aliasDeleted': 'Alias {name} deleted',
+    // alpha.144: an alias answers in DNS like its domain.
+    'general.aliasDNS.pending': '{name} is saved in this server’s DNS, but its publication has not finished; it is retried every hour by itself, nothing to do. The site already answers for it.',
+    'general.aliasDNS.kept': '{name} already has a different address in this server’s DNS, which was left as it is: point it to this server in the DNS records if the alias should reach this site.',
+    'general.aliasDNS.failed': 'The DNS record of {name} could not be added on this server. Add an address record for it in the DNS records.',
     'general.confirmDeleteAlias': 'Delete alias {name}?',
     'general.aliasReissueAddConfirm': 'Adding {name} requires reissuing the active ACME certificate with this hostname. Continue?',
     'general.aliasReissueDeleteConfirm': 'Removing {name} requires reissuing the active ACME certificate without this hostname. Continue?',
@@ -507,6 +511,7 @@ export const enSitesScreens = {
     'logs.timeUnparsed': '{n} lines had no supported timestamp and were omitted.',
     'logs.timeAssumedZone': 'Timezone assumed for timezone-free timestamps: {zone}',
     'logs.resultLimited': 'The log result is limited.',
+    'logs.refusedLink': 'Some lines below say "Too many levels of symbolic links": a link in this site points to a file that belongs to another account or to the server, so the web server does not serve it. Put a copy of the file in the site instead of the link. A link to a file of this site keeps working.',
     'logs.resultTruncated': 'Only part of the matching log could be returned; older matches may be absent.',
     'logs.serverWarning': 'Server detail: {warning}',
     'logs.refresh': 'Refresh',

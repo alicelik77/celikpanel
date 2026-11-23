@@ -210,6 +210,47 @@ func removeSiteUser(
 	return nil
 }
 
+// siteAccountState is what the account named for a site is, proved from
+// its home (security release, 20 November 2026).
+type siteAccountState int
+
+const (
+	// siteAccountAbsent: no account has the name (any more).
+	siteAccountAbsent siteAccountState = iota
+	// siteAccountThisSite: a tenant account whose home is this site's.
+	siteAccountThisSite
+	// siteAccountOtherSite: a tenant account whose home is ANOTHER site's
+	// immutable home: two domain names derived the same account name.
+	siteAccountOtherSite
+	// siteAccountForeign: a system account, or one with a home outside the
+	// hosting tree; never acted on.
+	siteAccountForeign
+)
+
+// classifySiteAccount proves, the way cronTenantUser does, whose account
+// username is before anything keyed by that name is done.
+func classifySiteAccount(ops siteLifecycleOps, username, siteHome string) (siteAccountState, error) {
+	account, err := ops.lookupUser(username)
+	if err != nil {
+		if unknownSiteUser(err) {
+			return siteAccountAbsent, nil
+		}
+		return siteAccountForeign, fmt.Errorf("lookup user: %w", err)
+	}
+	uid, err := strconv.Atoi(account.Uid)
+	if err != nil || uid < 1000 {
+		return siteAccountForeign, nil
+	}
+	home := filepath.Clean(account.HomeDir)
+	if home == siteHome {
+		return siteAccountThisSite, nil
+	}
+	if hostingpath.IsSiteHome(home) {
+		return siteAccountOtherSite, nil
+	}
+	return siteAccountForeign, nil
+}
+
 func (a *Agent) validatedCreateSiteRequest(
 	req transport.CreateSiteRequest,
 ) (
@@ -375,6 +416,7 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 		return nil
 	} else if exists {
 		reply.ErrorMessage = "site provisioning refused because its immutable home already exists"
+		reply.ErrorCode = transport.SiteIdentityExists
 		return nil
 	}
 	if account, lookupErr := ops.lookupUser(req.Username); lookupErr == nil {
@@ -386,6 +428,9 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 			account.HomeDir,
 		)
 		reply.ErrorMessage = "site provisioning refused because its system user already exists"
+		// Nothing was made; the account may be another site's, so the Panel
+		// must not compensate with a deletion keyed by its name.
+		reply.ErrorCode = transport.SiteIdentityExists
 		return nil
 	} else if !unknownSiteUser(lookupErr) {
 		failCreateSite(reply, req.Domain, "site identity preflight", lookupErr, nil)
@@ -684,23 +729,51 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 		keepFailure("PHP-FPM pool", ops.deletePool(req.SiteID, req.PHPVersion))
 	}
 
+	// Every step keyed by the account's name acts only on an account proved
+	// to be this site's (its home is this site's immutable home), or on a
+	// name no account has any more. Two domain names can derive the same
+	// account name (services.SiteUsername), so the name alone proves nothing:
+	// another site's account, its crontab and its FTP logins are never
+	// touched (security release, 20 November 2026), the way cronTenantUser
+	// already proves the account before crontab -u.
+	// Hesap adiyla yapilan her adim yalniz bu sitenin oldugu kanitlanan
+	// hesapta ya da artik hic olmayan bir adda calisir.
+	account, username := siteAccountAbsent, req.Username
+	if username != "" {
+		state, err := classifySiteAccount(ops, username, cleanHome)
+		switch {
+		case err != nil:
+			keepFailure("system user", err)
+			username = ""
+		case state == siteAccountOtherSite:
+			log.Printf("DeleteSite %s: the account %s belongs to another site; it, its scheduled tasks and its FTP logins are left untouched", req.Domain, username)
+			username = ""
+		default:
+			account = state
+		}
+	}
+
 	// 3b. The account's scheduled tasks (alpha.134): `userdel` leaves the
 	// crontab behind. Removed before the account, and again by file when an
 	// earlier attempt already removed the account.
 	// 3b. Hesabın zamanlanmış görevleri: userdel crontab'ı bırakır.
-	if req.Username != "" && ops.removeCrontab != nil {
-		keepFailure("scheduled tasks", ops.removeCrontab(req.Username))
+	if username != "" && account != siteAccountForeign && ops.removeCrontab != nil {
+		keepFailure("scheduled tasks", ops.removeCrontab(username))
 	}
 
 	// 4. System user — never a system account, even if asked.
 	// 4. Sistem kullanıcısı — istense bile asla bir sistem hesabı değil.
-	if req.Username != "" {
+	if username != "" && account == siteAccountForeign {
+		// A system account, or one whose home is outside the hosting tree:
+		// refused and named, as before (removeSiteUser says why).
+		keepFailure("system user", removeSiteUser(ops, username, cleanHome))
+	} else if username != "" {
 		// 4a. Additional FTP logins first: an account left with the site's
 		// uid would outlive the site. If they cannot be removed, the site's
 		// account stays too (its uid is not freed) and the deletion is
 		// reported incomplete, so it can be repeated.
 		if ops.forgetLogins != nil {
-			if err := ops.forgetLogins(req.Username); err != nil {
+			if err := ops.forgetLogins(username); err != nil {
 				keepFailure("FTP logins", err)
 				keepFailure("site files", ops.removeAll(cleanHome))
 				logSiteLifecycleFailures("DeleteSite", req.Domain, failures)
@@ -709,9 +782,9 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 				return nil
 			}
 		}
-		keepFailure("system user", removeSiteUser(ops, req.Username, cleanHome))
+		keepFailure("system user", removeSiteUser(ops, username, cleanHome))
 		if ops.forgetAccess != nil {
-			ops.forgetAccess(req.Username)
+			ops.forgetAccess(username)
 		}
 	}
 

@@ -284,8 +284,8 @@ and disk limits. How an application is added and pinned: [APP-CATALOG.md](APP-CA
 
 Beside the application catalog (4.5), third-party software built on 4.4 includes the AI and
 automation app catalog ([AI-APPS.md](AI-APPS.md)). Both catalogs share the one `app:<id>` offering
-namespace (their ids never overlap); each keeps its own offer rule below. Each app is one offering, `app:<id>` (for example `app:n8n`,
-`app:open-webui`), and using any of them also needs the permission **AI and automation apps**
+namespace (their ids never overlap); each keeps its own offer rule below. Each app is one offering, `app:<id>` (for example `app:n8n`),
+and using any of them also needs the permission **AI and automation apps**
 (`service_apps`).
 
 - **Closed until offered.** Unlike PHP and Node.js versions, an app is not offered by default: the

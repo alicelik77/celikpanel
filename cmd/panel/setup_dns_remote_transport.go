@@ -144,6 +144,31 @@ func remoteDNSHTTPJSON(ctx context.Context, endpoint, path, secret string, reque
 	})
 }
 
+// remoteDNSExchangeFrom is remoteDNSExchange with the connection made from one
+// local address of this server (alpha.135). An AAAA host record names the
+// address the request comes from, and the receiver accepts exactly that; so
+// the request leaves from that address or not at all. A target of the other
+// address family is never dialled.
+// Istek yalniz bu yerel adresten cikar; diger adres ailesi aranmaz.
+var remoteDNSExchangeFrom = func(ctx context.Context, source netip.Addr, endpoint, path, secret string, request, response any) error {
+	dialer := &net.Dialer{Timeout: 3 * time.Second, LocalAddr: &net.TCPAddr{IP: net.IP(source.AsSlice())}}
+	return remoteDNSHTTPJSONWith(ctx, endpoint, path, secret, request, response, remoteDNSTransportDependencies{
+		lookup: net.DefaultResolver.LookupNetIP,
+		dial:   remoteDNSSourceDial(source, dialer.DialContext),
+	})
+}
+
+func remoteDNSSourceDial(source netip.Addr, dial func(context.Context, string, string) (net.Conn, error)) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		host, _, err := net.SplitHostPort(address)
+		target, parseErr := netip.ParseAddr(host)
+		if err != nil || parseErr != nil || !source.IsValid() || target.Is4() != source.Is4() {
+			return nil, errors.New("remote DNS target is not of the source address family")
+		}
+		return dial(ctx, network, address)
+	}
+}
+
 func remoteDNSHTTPJSONWith(ctx context.Context, endpoint, path, secret string, request, response any, deps remoteDNSTransportDependencies) error {
 	endpoint, err := canonicalRemoteDNSEndpoint(endpoint)
 	if err != nil {

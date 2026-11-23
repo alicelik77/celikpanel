@@ -110,8 +110,10 @@ var (
 )
 
 func (p UnitParams) validate() error {
-	if p.InstallID <= 0 || !p.App.Installable() {
-		return errors.New("an installable application and a positive install identity are required")
+	// alpha.141: Runnable, not Installable: a withdrawn app's existing
+	// install keeps its unit (start, keys, the new sandbox).
+	if p.InstallID <= 0 || !p.App.Runnable() {
+		return errors.New("a catalogue application and a positive install identity are required")
 	}
 	if !versionShape.MatchString(p.Version) {
 		return errors.New("invalid version")

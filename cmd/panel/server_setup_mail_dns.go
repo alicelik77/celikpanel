@@ -380,7 +380,9 @@ func (p *Panel) runServerSetupMailDNS(ctx context.Context, plan serverSetupPlan,
 		var sign transport.ConfigureDKIMSigningResponse
 		signErr := p.withStandaloneAgentMutationIdentity(ctx, signing.op, signing.OwnerID, func(callCtx context.Context, binding agentMutationBinding) error {
 			request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
-			if err := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign); err != nil {
+			callErr := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign)
+			p.recordMailSigningCall(callCtx, sign.Signing, callErr)
+			if err := callErr; err != nil {
 				return err
 			}
 			if sign.Error != "" {

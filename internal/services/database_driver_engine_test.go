@@ -49,6 +49,17 @@ func TestPostgreSQLDriverCreatesExclusivelyOnARealEngine(t *testing.T) {
 	if err := driver.CreateDatabase("a129names"); err != nil {
 		t.Fatal(err)
 	}
+	// 20 Nov 2026: UTF8 whatever the cluster's template1 is (on a cluster
+	// with SQL_ASCII templates the old statement was refused outright).
+	db, err := driver.getDB("postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var encoding string
+	if err := db.QueryRow("SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname = 'a129names'").Scan(&encoding); err != nil || encoding != "UTF8" {
+		t.Fatalf("encoding = %q %v", encoding, err)
+	}
+	_ = db.Close()
 	if err := driver.CreateDatabase("a129names"); !errors.Is(err, ErrDatabaseNameTaken) {
 		t.Fatalf("second create = %v, want ErrDatabaseNameTaken", err)
 	}

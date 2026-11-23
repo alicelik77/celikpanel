@@ -27,8 +27,10 @@ import (
 // through the copy protocol, pg_dump's \restrict/\unrestrict guard lines are
 // skipped, ALTER ... OWNER TO and SET ROLE/SESSION AUTHORIZATION (another
 // server's roles) are left out so the objects belong to this database's
-// role, and BEGIN/COMMIT are left out because the whole load already runs in
-// one transaction. ROLLBACK, SAVEPOINT and PREPARE TRANSACTION are refused:
+// role, COMMENT ON EXTENSION is left out (CREATE EXTENSION writes the same
+// text, and an extension the administrator made is not the role's), and
+// BEGIN/COMMIT are left out because the whole load already runs in one
+// transaction. ROLLBACK, SAVEPOINT and PREPARE TRANSACTION are refused:
 // a file that steers the transaction could commit half of itself.
 //
 // Yüklenen SQL dosyası psql'e verilmez ve yönetici rolüyle çalıştırılmaz:
@@ -93,6 +95,11 @@ var (
 	pgBeginAtomicRe     = regexp.MustCompile(`(?is)\bbegin\s+atomic\b`)
 	pgEndsWithEndRe     = regexp.MustCompile(`(?is)\bend\s*$`)
 )
+
+// pgCommentOnExtensionRe (S1, 20 Nov 2026): the extension's own description;
+// CREATE EXTENSION writes it, and only the extension's owner may write it
+// again (an extension the administrator made is not the database owner's).
+var pgCommentOnExtensionRe = regexp.MustCompile(`(?is)^comment\s+on\s+extension\s`)
 
 // pgAtomicBodyOpen: a CREATE FUNCTION/PROCEDURE with a BEGIN ATOMIC body whose
 // END has not come yet. An approximation of psql's own rule: a CASE ... END
@@ -430,6 +437,8 @@ func loadPGStatements(ctx context.Context, exec pgLoadExecutor, r io.Reader) err
 			return &pgLoadRefusal{Code: "transaction_control", Line: line, What: "the file contains " + word + "; the whole file is loaded as one transaction, so it may not end or split it"}
 		case pgSkippedTxRe.MatchString(head), pgAlterOwnerRe.MatchString(head), pgSkippedSessionRe.MatchString(head):
 			continue
+		case pgCommentOnExtensionRe.MatchString(head):
+			continue
 		case pgCopyFromStdinRe.MatchString(head):
 			if err := flush(); err != nil {
 				return err
@@ -445,6 +454,9 @@ func loadPGStatements(ctx context.Context, exec pgLoadExecutor, r io.Reader) err
 				return &pgLoadStatementError{Line: line, Err: copyErr}
 			}
 		default:
+			// 20 Nov 2026: a SQL_ASCII dump's client encoding is checked
+			// UTF-8 in a UTF8 database (pg_client_encoding.go).
+			text, _ = pgCheckedClientEncoding(text)
 			if batchLine == 0 {
 				batchLine = line
 			}

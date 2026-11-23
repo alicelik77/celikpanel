@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"strings"
@@ -120,11 +121,27 @@ func (p *Panel) handleRemoteDNSReceivePublication(w http.ResponseWriter, r *http
 	}
 	// The receiver owns its local authority. The remote client controls only
 	// records in its claimed zone, never topology, agent commands or NS/SOA.
-	p.serviceMutationMu.Lock()
-	defer p.serviceMutationMu.Unlock()
-	dnsPublicationMu.Lock()
-	defer dnsPublicationMu.Unlock()
-	if !p.remoteDNSClientAuthorized(r.Context(), claim.clientID, claim.credentialHash) {
+	// Its locks are waited for only within the bound (alpha.139); then the
+	// answer is "busy", nothing applied, and the sender's saved publication
+	// is sent again (every sending version reads a 503 as "no verdict").
+	if !p.lockRemoteDNSReceiver(r.Context(), remoteDNSReceiverLockWait) {
+		why := "this server's DNS locks are held by another change"
+		if r.Context().Err() != nil {
+			why = "the sending server left before this server could take it"
+		}
+		log.Printf("[503][dns] remote DNS publication of %s generation %d from client %s not taken: %s", canonical.Domain, canonical.Generation, claim.clientID, why)
+		writeRemoteDNSReceiverBusy(w, errCodeRemoteDNSBusy)
+		return
+	}
+	defer p.unlockRemoteDNSReceiver()
+	authorized, err := p.remoteDNSClientStillAuthorized(r.Context(), claim.clientID, claim.credentialHash)
+	if err != nil {
+		log.Printf("[503][dns] remote DNS publication of %s from client %s not taken: its authorization could not be read now", canonical.Domain, claim.clientID)
+		writeRemoteDNSReceiverBusy(w, errCodeRemoteDNSBusy)
+		return
+	}
+	if !authorized {
+		log.Printf("[401][dns] remote DNS publication of %s refused: client %s is revoked on this server", canonical.Domain, claim.clientID)
 		writeClientError(w, 401, "Remote DNS authorization was revoked")
 		return
 	}

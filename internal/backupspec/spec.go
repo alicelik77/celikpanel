@@ -245,6 +245,22 @@ type RestoreRequest struct {
 	// TargetDir is a rollback compatibility field. A v2 agent derives the
 	// document root from SubscriptionID and DomainID and ignores this value.
 	TargetDir string `json:"target_dir,omitempty"`
+
+	// Credentials (20 Nov 2026, additive): for each database of the restore,
+	// the database's own account (the user recorded first for it, with its
+	// stored password). The backup's SQL is loaded with that account's
+	// rights and never as the engine's administrator; a database without one
+	// is refused before anything is written (RestoreCodeDatabaseAccount).
+	Credentials []DatabaseCredential `json:"credentials,omitempty"`
+}
+
+// DatabaseCredential is one database's own account, by the database's ID.
+// The password is a secret: never logged, never part of an answer.
+// DatabaseCredential, bir veritabanının kendi hesabıdır; parola gizlidir.
+type DatabaseCredential struct {
+	ID       int    `json:"id"`
+	User     string `json:"user"`
+	Password string `json:"password"`
 }
 
 type RestoreResponse struct {
@@ -296,6 +312,20 @@ const (
 	// RestoreCodeSiteAccount: the site's own system account, which the
 	// program's files are given to, could not be found or proved.
 	RestoreCodeSiteAccount = "site_account"
+	// 20 Nov 2026 (S1): a backup's SQL is loaded only with the rights of the
+	// database's own account. Each of these is said before anything is
+	// written; Detail names the database and the engine's reason.
+	// RestoreCodeDatabaseAccount: the database has no account with a stored
+	// password, or the engine refused it, or it is not the database's own.
+	RestoreCodeDatabaseAccount = "database_account"
+	// RestoreCodeClientUnsafe: this server's MariaDB client has no sandbox
+	// mode, so it could run the file's client commands.
+	RestoreCodeClientUnsafe = "client_unsafe"
+	// RestoreCodeNeedsAdministrator: the backup holds something only the
+	// engine's administrator may create on this server (MariaDB with binary
+	// logging: stored functions and triggers; PostgreSQL: a database owned
+	// by an administrator role).
+	RestoreCodeNeedsAdministrator = "needs_administrator"
 )
 
 // RestoreInProgress is the exact RestoreResponse.Error of a restore refused

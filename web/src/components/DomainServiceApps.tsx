@@ -16,6 +16,7 @@ import {
 } from '../lib/serviceApps';
 import { AdminInstallLink } from './AdminInstallLink';
 import { ServiceAppRisk } from './ServiceAppRisk';
+import { hasRuntimeLine, runtimeLine } from '../lib/serviceAppRuntime';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 import { confirmAction } from '../lib/confirmAction';
@@ -171,13 +172,20 @@ function OperationLine({ op }: { op: ServiceAppOperation }) {
     return null;
 }
 
-// alpha.127: the component the administrator installs so the app can be
-// installed here (Node.js, or Python whose package brings venv); none when
-// the app is closed for another reason.
-// Uygulamanın burada kurulabilmesi için yöneticinin kuracağı bileşen.
-function missingComponent(app: DomainServiceAppEntry): string | null {
-    if (app.deferred || app.held || !app.offered || app.available) return null;
-    return app.reason === 'runtime_missing' ? 'node' : app.reason === 'venv_missing' ? 'python' : null;
+// alpha.140: an offered app whose runtime is missing here gets the line built
+// from the server's facts (lib/serviceAppRuntime.ts): what it needs, what this
+// server has, and the next step: the administrator gets the action on
+// Components (the Node.js version list, or Python's missing module), anyone
+// else who acts. None when the app is closed for another reason.
+// Çalışma ortamı eksik uygulamanın satırı sunucunun olgularından kurulur.
+function RuntimeLineNote({ app }: { app: DomainServiceAppEntry }) {
+    const { t } = useI18n();
+    if (app.deferred || app.held || !app.offered) return null;
+    const say = t as unknown as (key: string, vars?: Record<string, string | number>) => string;
+    const admin = runtimeLine(app, 'admin', say);
+    const account = runtimeLine(app, 'account', say);
+    if (!admin || !account) return null;
+    return <AdminInstallLink to={admin.action?.to} label={admin.action?.label} admin={admin.text} fallback={account.text} />;
 }
 
 // alpha.127: the administrator's own sentence for an app they hold or do not
@@ -194,7 +202,7 @@ function closedReason(app: DomainServiceAppEntry, t: (key: TranslationKey, vars?
     if (app.deferred) return t(('svcapps.deferred.' + app.deferred) as TranslationKey);
     if (app.held) return t('svcapps.heldNote');
     if (!app.offered) return t(('svcapps.closed.' + (app.refused_by ?? 'administrator')) as TranslationKey, { grantor: app.grantor ?? '' });
-    if (!app.available) return t(('svcapps.unavailable.' + (app.reason ?? 'probe_failed')) as TranslationKey, { detail: app.detail ?? '' });
+    if (!app.available) return hasRuntimeLine(app) ? 'runtime' : t(('svcapps.unavailable.' + (app.reason ?? 'probe_failed')) as TranslationKey);
     return '';
 }
 
@@ -219,7 +227,7 @@ function Catalog({ view, onInstall }: { view: DomainServiceAppsView; onInstall: 
                         </div>
                         {why && <p className="mt-2 text-sm text-warning">{adminClosed(app)
                             ? <AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} admin={t(adminClosed(app)!)} fallback={why} />
-                            : <>{why}{missingComponent(app) && <>{' '}<AdminInstallLink component={missingComponent(app)!} /></>}</>}</p>}
+                            : why === 'runtime' ? <RuntimeLineNote app={app} /> : why}</p>}
                         <details className="mt-3">
                             <summary className="cursor-pointer text-sm text-primary">{t('svcapps.risk.canDo')} · {t('svcapps.risk.remains')}</summary>
                             <div className="mt-3"><ServiceAppRisk app={app} /></div>
@@ -417,6 +425,8 @@ function InstalledApp({ view, install, base, after, onReinstall, republishRefuse
                 )}
             </div>
             {install.held && <Notice><AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} admin={t('adminNext.svcapps.held')} fallback={t('svcapps.heldNote')} /></Notice>}
+            {/* alpha.141: an app withdrawn from the catalogue keeps running here and stays removable. / Katalogdan çıkarılan uygulama burada çalışır ve kaldırılabilir. */}
+            {app?.withdrawn && <Notice tone="info">{t('svcapps.withdrawnInstalled', { name: install.name })}</Notice>}
             {install.needs_sandbox && <Notice tone="info">{t('svcapps.needsSandbox')}</Notice>}
             {install.update_available && !busy && !republishRefused && (
                 <Notice tone="info">
@@ -447,7 +457,7 @@ function InstalledApp({ view, install, base, after, onReinstall, republishRefuse
                 {retryKind === 'install' && !install.version && app && !republishRefused && (
                     <Button icon={RotateCw} disabled={!!acting || closedReason(app, t) !== '' || !view.certificate} onClick={() => onReinstall(app)}>{t('svcapps.op.retry')}</Button>
                 )}
-                {retryKind === 'update' && !republishRefused && (
+                {retryKind === 'update' && !republishRefused && !app?.withdrawn && (
                     <Button icon={RotateCw} loading={acting === 'update'} disabled={!!acting} onClick={() => void act('/update', { operation_id: opID }, 'update', () => setOpID(newOperationID()))}>{t('svcapps.op.retry')}</Button>
                 )}
                 <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('svcapps.uninstall')}</Button>

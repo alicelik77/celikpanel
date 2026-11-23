@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.138.md)
 
+> **Yayımlandı**, 19 Kasım 2026 (UTC): sürüm commit'i `edf77685a`, GitHub ön sürümü 21:27:56Z, indirme portalı yaklaşık 22:11Z (dış denetim 27/27).
+
 İki işlik küçük bir sürüm. Bir alan adının programları ve yapay zekâ
 uygulamaları alan adı sayfasında kendi yerlerine kavuşuyor; bir program ile
 bir yapay zekâ uygulaması artık birbirinin alan adını almıyor. Her posta

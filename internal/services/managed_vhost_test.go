@@ -630,8 +630,9 @@ func TestNewSiteFilesAndIncludeDirectoriesHaveTheirModesUnderTheAgentsUmask(t *t
 	} {
 		check(directory, 0o755)
 	}
-	check(SiteVhostPath(data.Domain), 0o644)
-	check(ACMEChallengeFilePath(data.Domain), 0o644)
+	// 0640 since 20 Nov 2026: site accounts do not read other sites' files.
+	check(SiteVhostPath(data.Domain), 0o640)
+	check(ACMEChallengeFilePath(data.Domain), 0o640)
 	check(OwnerIncludeDir(owned.Domain), 0o700)
 }
 

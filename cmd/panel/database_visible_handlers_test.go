@@ -78,12 +78,16 @@ func newVisibleDatabasesFixture(t *testing.T) visibleDatabasesFixture {
 		return nil, errors.New("a local engine was reached with a record's stored credential")
 	}
 	t.Cleanup(func() { newDatabaseDriver = savedDriver })
-	savedAgent := databaseDeleteAgent
-	databaseDeleteAgent = func(_ *Panel, _ context.Context, _ transport.DeleteDatabaseRequest, resp *transport.DeleteDatabaseResponse) error {
-		resp.Success = true
+	savedIdentity, savedDrop := databaseIdentityAgent, databaseDropOnceAgent
+	databaseIdentityAgent = func(_ *Panel, _ context.Context, req transport.DatabaseIdentityRequest, resp *transport.DatabaseIdentityResponse) error {
+		resp.Exists, resp.Identity = true, "fake:"+req.Name
 		return nil
 	}
-	t.Cleanup(func() { databaseDeleteAgent = savedAgent })
+	databaseDropOnceAgent = func(_ *Panel, _ context.Context, _ transport.DropDatabaseOnceRequest, resp *transport.DropDatabaseOnceResponse) error {
+		resp.Dropped = true
+		return nil
+	}
+	t.Cleanup(func() { databaseIdentityAgent, databaseDropOnceAgent = savedIdentity, savedDrop })
 	savedSweep := databaseDroppedRightsAgent
 	databaseDroppedRightsAgent = func(_ *Panel, _ context.Context, _ transport.DroppedDatabaseRightsRequest, resp *transport.DroppedDatabaseRightsResponse) error {
 		resp.Applied = true

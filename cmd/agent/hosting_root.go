@@ -114,8 +114,15 @@ func (p hostingRootPreparer) prepare() (*hostingpath.TraversalBlock, error) {
 	}
 
 	var created []hostingRootReceiptDirectory
-	for _, dir := range append(ancestors[1:], filepath.Clean(p.base)) {
-		made, err := p.createIfMissing(dir)
+	base := filepath.Clean(p.base)
+	for _, dir := range append(ancestors[1:], base) {
+		// The hosting base itself is 0711 (20 Nov 2026): every account may
+		// pass through it, none but root may list what is in it.
+		mode := os.FileMode(0o755)
+		if dir == base {
+			mode = hostingBaseMode
+		}
+		made, err := p.createIfMissing(dir, mode)
 		if err != nil {
 			p.record(created)
 			return nil, err
@@ -123,7 +130,7 @@ func (p hostingRootPreparer) prepare() (*hostingpath.TraversalBlock, error) {
 		if made {
 			created = append(created, hostingRootReceiptDirectory{
 				Path:      dir,
-				Mode:      "0755",
+				Mode:      fmt.Sprintf("%04o", uint32(mode)),
 				UID:       p.uid,
 				GID:       p.gid,
 				CreatedAt: p.now().UTC().Format(time.RFC3339),
@@ -134,10 +141,10 @@ func (p hostingRootPreparer) prepare() (*hostingpath.TraversalBlock, error) {
 	return nil, nil
 }
 
-// createIfMissing makes one directory at exactly 0755 uid:gid. An existing
+// createIfMissing makes one directory at exactly mode uid:gid. An existing
 // entry is left as it is: a directory (or a link the owner made) is the
 // owner's, anything else stops preparation.
-func (p hostingRootPreparer) createIfMissing(dir string) (bool, error) {
+func (p hostingRootPreparer) createIfMissing(dir string, mode os.FileMode) (bool, error) {
 	info, err := os.Lstat(dir)
 	if err == nil {
 		if info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
@@ -148,7 +155,7 @@ func (p hostingRootPreparer) createIfMissing(dir string) (bool, error) {
 	if !errors.Is(err, os.ErrNotExist) {
 		return false, fmt.Errorf("inspect %s: %w", dir, err)
 	}
-	if err := os.Mkdir(dir, 0o755); err != nil {
+	if err := os.Mkdir(dir, mode); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return false, nil
 		}
@@ -159,7 +166,7 @@ func (p hostingRootPreparer) createIfMissing(dir string) (bool, error) {
 	if err := os.Chown(dir, p.uid, p.gid); err != nil {
 		return true, fmt.Errorf("set owner of %s: %w", dir, err)
 	}
-	if err := os.Chmod(dir, 0o755); err != nil {
+	if err := os.Chmod(dir, mode); err != nil {
 		return true, fmt.Errorf("set mode of %s: %w", dir, err)
 	}
 	return true, nil
@@ -191,7 +198,7 @@ func (p hostingRootPreparer) record(created []hostingRootReceiptDirectory) {
 		}) {
 			receipt.Directories = append(receipt.Directories, entry)
 		}
-		log.Printf("hosting root: created %s at 0755 %d:%d", entry.Path, entry.UID, entry.GID)
+		log.Printf("hosting root: created %s at %s %d:%d", entry.Path, entry.Mode, entry.UID, entry.GID)
 	}
 	data, err := json.MarshalIndent(receipt, "", "  ")
 	if err == nil {

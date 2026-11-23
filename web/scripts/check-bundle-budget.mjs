@@ -348,6 +348,35 @@ const screenPartBudgets = {
   // alpha.135: what deletions left, kept 30 days (holding.). A new part, set
   // with at least 25% headroom from its Turkish file.
   deletionHolding: kib(4.5, 2),
+  // alpha.135: adding a DNS record where the panel can do it safely
+  // (dnsadd.), split out of "webmailAddress" (full). A new part, set with at
+  // least 25% headroom from its Turkish file.
+  dnsAdd: kib(9, 2.5),
+  // alpha.140: the administrator's Catalog management of AI and automation
+  // apps and the site sandbox panel (svcapps.admin., svcapps.sandbox.), split
+  // out of "serviceApps" when the sentences built from the server's runtime
+  // facts filled it. A new part, set with at least 25% headroom from its
+  // Turkish file: 4.41 / 1.77 KiB.
+  serviceAppsAdmin: kib(6, 2.4),
+  // 20 Nov 2026: a PostgreSQL database's text encoding on its card and the
+  // one warning for a database that is not UTF-8 (dbenc.). A new part, as
+  // the database parts are full; set with at least 25% headroom from its
+  // Turkish file.
+  dbEncoding: kib(2.5, 1.2),
+  // The security release of 20 November 2026: the "Problems now" list
+  // (pnow.), split out of "monitoring" when the names and ports an
+  // installation held before the one name rule filled it. A new part, set
+  // with at least 25% headroom from its Turkish file: 7.50 / 2.48 KiB.
+  problemsNow: kib(10.5, 3.4),
+  // The same release: the one name rule's and the Node.js port rule's
+  // refusals (err.HOSTNAME_NOT_AVAILABLE, err.APP_PORT_NOT_ALLOWED), a new part
+  // as "errors" is full; set with at least 25% headroom from its Turkish
+  // file: 1.78 / 0.75 KiB.
+  nameRule: kib(2.5, 1.1),
+  // 20 Nov 2026 (security lane S1b): the PostgreSQL databases every account
+  // of the server can enter, closing them and the undo (pgpub.). A new part;
+  // set with at least 25% headroom from its Turkish file.
+  pgPublic: kib(6, 2.6),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

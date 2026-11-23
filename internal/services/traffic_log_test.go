@@ -88,6 +88,32 @@ func TestTrafficLogSettingIsWrittenWithTheVhostAndFollowsThePage(t *testing.T) {
 	}
 }
 
+// Independent review of the last commit, B4: when the web server's account
+// cannot be read to make the traffic folder or a site's first log, the
+// site's setting is left as it was: a counting site keeps its log line.
+func TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead(t *testing.T) {
+	ng, _ := trafficTestGenerator(t)
+	item := ManagedVhostItem{
+		Domain: "lookup.example", Body: "server { include " + PanelManagedDir("lookup.example") + "/*.conf; }\n",
+		Trigger: transport.SiteFileTriggerCreate, TrafficLog: &TrafficLogItem{DomainID: 44, Counted: true},
+	}
+	if _, err := ng.ApplyManagedVhosts([]ManagedVhostItem{item}); err != nil {
+		t.Fatal(err)
+	}
+	saved := prepareTrafficLog
+	prepareTrafficLog = func(int) error { return errWebServerAccountUnknown }
+	t.Cleanup(func() { prepareTrafficLog = saved })
+	item.Trigger = transport.SiteFileTriggerChange
+	item.Body = "server { include " + PanelManagedDir("lookup.example") + "/*.conf; listen 8080; }\n"
+	results, err := ng.ApplyManagedVhosts([]ManagedVhostItem{item})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if TrafficIncludeState("lookup.example", 44) != "counting" {
+		t.Fatalf("the site's setting lost its log line (%q):\n%s", results[0].TrafficLog, readTrafficFile(t, TrafficIncludePath("lookup.example")))
+	}
+}
+
 func TestTrafficLogSettingKeepsTheOwnersFiles(t *testing.T) {
 	ng, _ := trafficTestGenerator(t)
 	// The owner replaced CelikPanel's log format file.

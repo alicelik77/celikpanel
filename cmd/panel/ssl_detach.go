@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 )
 
@@ -64,6 +66,32 @@ func hstsRemovalConflictMessage(err error, subject string) (string, bool) {
 		), true
 	}
 	return "", false
+}
+
+// errCodeHSTSRemovalBlocked (alpha.144, alpha.143 lab item 4): a name or a
+// certificate HSTS still needs; the page words it (reason enabled or
+// retiring, var until). The English sentence stays for API readers.
+const errCodeHSTSRemovalBlocked = "HSTS_REMOVAL_BLOCKED"
+
+// errCodeSSLNoActiveCertificate: a removal found no active certificate.
+const errCodeSSLNoActiveCertificate = "SSL_NO_ACTIVE_CERTIFICATE"
+
+// writeHSTSRemovalRefusal answers a removal HSTS blocks; false when err is
+// not such a refusal (nothing was written).
+func writeHSTSRemovalRefusal(w http.ResponseWriter, err error, subject string) bool {
+	message, guarded := hstsRemovalConflictMessage(err, subject)
+	if !guarded {
+		return false
+	}
+	reason, vars := "enabled", map[string]string{}
+	var retirementErr *hstsRetirementActiveError
+	if errors.As(err, &retirementErr) {
+		reason, vars["until"] = "retiring", retirementErr.Until.UTC().Format("2006-01-02 15:04 UTC")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: message, Code: errCodeHSTSRemovalBlocked, Reason: reason, Vars: vars})
+	return true
 }
 
 type certificateDetach struct {

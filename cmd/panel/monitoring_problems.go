@@ -111,6 +111,20 @@ var problemKindOrder = map[string]int{
 	"cpu_sustained":              9,
 	"mail_queue_deferred":        10,
 	"security_updates":           11,
+	"name_server_reserved":       12,
+	"name_overlap":               13,
+	"node_port_reserved":         14,
+	// S1b: PostgreSQL databases left open to other accounts.
+	"postgresql_databases_open": 15,
+	"mail_signing":              16,
+	// 22 Nov 2026: an out-of-office reply that still answers from an address
+	// that is no longer the mailbox's own.
+	"mail_autoresponder_foreign": 17,
+	// 22 Nov 2026 (B5): PostgreSQL databases the rounds could not read.
+	"postgresql_databases_unreadable": 18,
+	// alpha.144: webmail's address still in its earlier form.
+	"webmail_address_kept":    19,
+	"webmail_address_refused": 20,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -166,6 +180,21 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	}
 	// alpha.127: the sites as the server itself reaches them.
 	add(siteProblems(ctx, db, now, certificates))
+	// Security release (20 November 2026): names and Node.js ports an
+	// existing installation holds that the one name rule refuses today.
+	add(p.namespaceProblems(ctx))
+	// S1b: PostgreSQL databases made before alpha.141 still open to other
+	// accounts, from the last round (postgresql_public_access.go).
+	add(pgPublicProblems(ctx, db), nil)
+	// 20 Nov 2026: mail signed only for the sender's own domain, as the
+	// Agent said at the Panel's last start (mail_signing_problem.go).
+	add(mailSigningProblems(p.setting(ctx, settingMailSigningState)), nil)
+	// 22 Nov 2026: an out-of-office reply whose address that is no longer the
+	// mailbox's own could not be taken off the server (mail_autoresponder_own.go).
+	add(autoresponderForeignProblems(ctx, db), nil)
+	// alpha.144: webmail's address that still gives out plugin files
+	// (webmail_address_problem.go).
+	add(p.webmailAddressProblems(ctx), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

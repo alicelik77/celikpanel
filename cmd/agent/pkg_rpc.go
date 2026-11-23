@@ -213,6 +213,31 @@ func installPackages(family string, packages []string) (string, error) {
 	return installPackagesContext(context.Background(), family, packages)
 }
 
+// aptInstallEnv is the environment of a real apt-get install (20 Nov 2026).
+// A PostgreSQL server package (postgresql-NN) creates its NN/main in its own
+// maintainer script with pg_createcluster, which takes the cluster's locale
+// from this environment; the Agent's own is whatever systemd gave it (the
+// system's locale, or none, which is C: SQL_ASCII templates). Such an install
+// runs with LC_ALL=C.UTF-8, so that cluster is UTF8 with C.UTF-8 like the
+// one the Agent creates itself (pgCreateClusterArgs). An owner's
+// createcluster.conf initdb_options still decide: pg_createcluster passes
+// them to initdb explicitly, and an explicit option wins over the
+// environment. Every other install keeps the environment as it was.
+//
+// PostgreSQL sunucu paketi kurulumu LC_ALL=C.UTF-8 ile çalışır; paketin kendi
+// betiğinin oluşturduğu küme UTF8 olur.
+func aptInstallEnv(base []string, packages []string) []string {
+	env := append(append([]string(nil), base...), "DEBIAN_FRONTEND=noninteractive")
+	for _, name := range packages {
+		// A pinned install names "postgresql-17=17.6-1.pgdg13+1".
+		name, _, _ = strings.Cut(name, "=")
+		if pgVersionPackageRe.MatchString(name) {
+			return append(env, "LC_ALL=C.UTF-8")
+		}
+	}
+	return env
+}
+
 func installPackagesContext(ctx context.Context, family string, packages []string) (string, error) {
 	return installPackagesWithCandidateContext(ctx, family, packages, "")
 }
@@ -279,7 +304,7 @@ func installPackagesGuardedContext(ctx context.Context, family string, packages 
 			if err := checkAptInstallSimulation(ctx, runPackageSimulationCommand, aptGet, packages, args, guard); err != nil {
 				return "", err
 			}
-			env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
+			env := aptInstallEnv(os.Environ(), packages)
 			out, err := runServiceMutationCombinedOutputEnv(ctx, env, aptGet, args...)
 			return string(out), err
 		}

@@ -50,66 +50,67 @@ const (
 // routeRoleMatrix: registered pattern → gate. The comment after a row names
 // the handler's own rule where it narrows the gate further.
 var routeRoleMatrix = map[string]string{
-	"/":                                  gatePublic, // the web interface (SPA)
-	"/api/v1/admin/store-catalog":        gateAdmin,
-	"/api/v1/admin/store-catalog/":       gateAdmin,
-	"/api/v1/admin/service-apps":         gateAdmin, // alpha.118: offering AI and automation apps
-	"/api/v1/admin/database-grant-forms": gateAdmin, // alpha.134: rights by exact name (read only)
-	"/api/v1/admin/service-apps/":        gateAdmin,
-	"/api/v1/admin/runtime-apps":         gateAdmin, // alpha.119: offering runtime apps
-	"/api/v1/admin/runtime-apps/":        gateAdmin,
-	"/api/v1/apps":                       gateTenant, // catalog read; install is ownership-checked
-	"/api/v1/audit-logs":                 gateAdmin,
-	"/api/v1/auth/2fa/disable":           gateTenant, // own account only
-	"/api/v1/auth/2fa/enable":            gateTenant, // own account only
-	"/api/v1/auth/2fa/setup":             gateTenant, // own account only
-	"/api/v1/auth/2fa/status":            gateTenant, // own account only
-	"/api/v1/auth/demo":                  gatePublic, // empty unless --demo
-	"/api/v1/auth/login":                 gatePublic,
-	"/api/v1/auth/login/totp":            gatePublic,
-	"/api/v1/auth/logout":                gateTenant,
-	"/api/v1/auth/me":                    gateTenant,
-	"/api/v1/auth/password":              gateTenant, // own account only
-	"/api/v1/auth/unimpersonate":         gateTenant, // only with the operator's own session cookie
-	"/api/v1/config":                     gateAdmin,
-	"/api/v1/config/mysql":               gateAdmin,
-	"/api/v1/config/php":                 gateAdmin,
-	"/api/v1/dashboard":                  gateAdmin,
-	"/api/v1/database-grants/":           gateTenant,  // ownership-checked
-	"/api/v1/database-servers":           gateTenant,  // registration admin-only in handler
-	"/api/v1/database-servers/":          gateTenant,  // ownership-checked
-	"/api/v1/database-users/":            gateTenant,  // ownership-checked
-	"/api/v1/database-remote/":           gateAccount, // alpha.129: ownership-checked; server switch administrator only
-	"/api/v1/databases/":                 gateTenant,  // ownership-checked
-	"/api/v1/databases/visible":          gateTenant,  // alpha.133: visibility-filtered list; a team member gets an empty answer
-	"/api/v1/domains":                    gateTenant,  // ownership-filtered list
-	"/api/v1/domains/":                   gateTenant,  // single ownership chokepoint + team grants
-	"/api/v1/domains/create":             gateAccount,
-	"/api/v1/dovecot/stats":              gateAdmin,
-	"/api/v1/fail2ban/banned":            gateAdmin,
-	"/api/v1/fail2ban/config":            gateAdmin,
-	"/api/v1/fail2ban/jails":             gateAdmin,
-	"/api/v1/firewall":                   gateAdmin,
-	"/api/v1/hosting/capabilities":       gateAccount,
-	"/api/v1/import/cpanel/apply":        gateAdmin,
-	"/api/v1/import/cpanel/inspect":      gateAdmin,
-	"/api/v1/mail/configure":             gateAdmin,
-	"/api/v1/mail/passwordless":          gateAdmin,
-	"/api/v1/mail/outgoing":              gateAdmin,
-	"/api/v1/mail/relay":                 gateAdmin,
-	"/api/v1/mail/relay/test":            gateAdmin,
-	"/api/v1/mail/server-settings":       gateAdmin,
-	"/api/v1/mail/subaddressing":         gateAdmin,
-	"/api/v1/mail/sender-rules":          gateAdmin,
-	"/api/v1/mail/outgoing/report":       gateAdmin,
-	"/api/v1/mail/plan-limits":           gateAdmin,
-	"/api/v1/mail-outgoing-notices":      gateTenant, // the caller's own notices
-	"/api/v1/mail-outgoing-notices/":     gateTenant, // marks one of the caller's own as seen
-	"/api/v1/mail/policy":                gateAdmin,
-	"/api/v1/managed-services":           gateAdmin,
-	"/api/v1/managed-services/scan":      gateAdmin,
-	"/api/v1/metrics/history":            gateAdmin,
-	"/api/v1/metrics/problems":           gateAdmin,
+	"/":                                      gatePublic, // the web interface (SPA)
+	"/api/v1/admin/store-catalog":            gateAdmin,
+	"/api/v1/admin/store-catalog/":           gateAdmin,
+	"/api/v1/admin/service-apps":             gateAdmin, // alpha.118: offering AI and automation apps
+	"/api/v1/admin/database-grant-forms":     gateAdmin, // alpha.134: rights by exact name (read only)
+	"/api/v1/admin/postgresql/public-access": gateAdmin, // S1b: databases closed to other accounts
+	"/api/v1/admin/service-apps/":            gateAdmin,
+	"/api/v1/admin/runtime-apps":             gateAdmin, // alpha.119: offering runtime apps
+	"/api/v1/admin/runtime-apps/":            gateAdmin,
+	"/api/v1/apps":                           gateTenant, // catalog read; install is ownership-checked
+	"/api/v1/audit-logs":                     gateAdmin,
+	"/api/v1/auth/2fa/disable":               gateTenant, // own account only
+	"/api/v1/auth/2fa/enable":                gateTenant, // own account only
+	"/api/v1/auth/2fa/setup":                 gateTenant, // own account only
+	"/api/v1/auth/2fa/status":                gateTenant, // own account only
+	"/api/v1/auth/demo":                      gatePublic, // empty unless --demo
+	"/api/v1/auth/login":                     gatePublic,
+	"/api/v1/auth/login/totp":                gatePublic,
+	"/api/v1/auth/logout":                    gateTenant,
+	"/api/v1/auth/me":                        gateTenant,
+	"/api/v1/auth/password":                  gateTenant, // own account only
+	"/api/v1/auth/unimpersonate":             gateTenant, // only with the operator's own session cookie
+	"/api/v1/config":                         gateAdmin,
+	"/api/v1/config/mysql":                   gateAdmin,
+	"/api/v1/config/php":                     gateAdmin,
+	"/api/v1/dashboard":                      gateAdmin,
+	"/api/v1/database-grants/":               gateTenant,  // ownership-checked
+	"/api/v1/database-servers":               gateTenant,  // registration admin-only in handler
+	"/api/v1/database-servers/":              gateTenant,  // ownership-checked
+	"/api/v1/database-users/":                gateTenant,  // ownership-checked
+	"/api/v1/database-remote/":               gateAccount, // alpha.129: ownership-checked; server switch administrator only
+	"/api/v1/databases/":                     gateTenant,  // ownership-checked
+	"/api/v1/databases/visible":              gateTenant,  // alpha.133: visibility-filtered list; a team member gets an empty answer
+	"/api/v1/domains":                        gateTenant,  // ownership-filtered list
+	"/api/v1/domains/":                       gateTenant,  // single ownership chokepoint + team grants
+	"/api/v1/domains/create":                 gateAccount,
+	"/api/v1/dovecot/stats":                  gateAdmin,
+	"/api/v1/fail2ban/banned":                gateAdmin,
+	"/api/v1/fail2ban/config":                gateAdmin,
+	"/api/v1/fail2ban/jails":                 gateAdmin,
+	"/api/v1/firewall":                       gateAdmin,
+	"/api/v1/hosting/capabilities":           gateAccount,
+	"/api/v1/import/cpanel/apply":            gateAdmin,
+	"/api/v1/import/cpanel/inspect":          gateAdmin,
+	"/api/v1/mail/configure":                 gateAdmin,
+	"/api/v1/mail/passwordless":              gateAdmin,
+	"/api/v1/mail/outgoing":                  gateAdmin,
+	"/api/v1/mail/relay":                     gateAdmin,
+	"/api/v1/mail/relay/test":                gateAdmin,
+	"/api/v1/mail/server-settings":           gateAdmin,
+	"/api/v1/mail/subaddressing":             gateAdmin,
+	"/api/v1/mail/sender-rules":              gateAdmin,
+	"/api/v1/mail/outgoing/report":           gateAdmin,
+	"/api/v1/mail/plan-limits":               gateAdmin,
+	"/api/v1/mail-outgoing-notices":          gateTenant, // the caller's own notices
+	"/api/v1/mail-outgoing-notices/":         gateTenant, // marks one of the caller's own as seen
+	"/api/v1/mail/policy":                    gateAdmin,
+	"/api/v1/managed-services":               gateAdmin,
+	"/api/v1/managed-services/scan":          gateAdmin,
+	"/api/v1/metrics/history":                gateAdmin,
+	"/api/v1/metrics/problems":               gateAdmin,
 
 	// alpha.128: offering additional nginx directives (admin through /api/v1/nginx/).
 	"/api/v1/nginx/directives-offer": gateAdmin,
@@ -234,69 +235,70 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/security/os-updates/summary":   gateAdmin,
 
 	// Server, DNS infrastructure, setup and updates: administrator only.
-	"/api/v1/dns/engine":                       gateAdmin,
-	"/api/v1/dns/engine/reconcile":             gateAdmin,
-	"/api/v1/dns/engine/switch":                gateAdmin,
-	"/api/v1/dns/engine/switch/preview":        gateAdmin,
-	"/api/v1/dns/infrastructure-zones":         gateAdmin,
-	"/api/v1/dns/infrastructure-zones/":        gateAdmin,
-	"/api/v1/dns/overview":                     gateAdmin,
-	"/api/v1/dns/peer-inspector-tool":          gateAdmin, // 6 Nov 2026: the backup's DNS check tool (admin in handler)
-	"/api/v1/dns/server-hostname":              gateAdmin, // alpha.121: read-only, admin in handler too
-	"/api/v1/dns/remote/accept":                gateAdmin, // machine-verified peers bypass sessions
-	"/api/v1/dns/remote/clients":               gateAdmin,
-	"/api/v1/dns/remote/connections":           gateAdmin,
-	"/api/v1/dns/remote/enrollments":           gateAdmin,
-	"/api/v1/dns/remote/receiver/host-record":  gateAdmin, // machine-verified peers bypass sessions
-	"/api/v1/dns/remote/receiver/publish":      gateAdmin, // machine-verified peers bypass sessions
-	"/api/v1/dns/remote/receiver/status":       gateAdmin, // machine-verified peers bypass sessions
-	"/api/v1/nginx/default-https":              gateAdmin,
-	"/api/v1/panel/license":                    gateAdmin,
-	"/api/v1/panel/update/abandon":             gateAdmin,
-	"/api/v1/panel/update/check":               gateAdmin,
-	"/api/v1/panel/update/discovery":           gateAdmin,
-	"/api/v1/panel/update/discovery/refresh":   gateAdmin,
-	"/api/v1/panel/update/start":               gateAdmin,
-	"/api/v1/panel/update/status":              gateAdmin,
-	"/api/v1/recovery/status":                  gateAdmin,
-	"/api/v1/repo/confine-preview":             gateAdmin,
-	"/api/v1/repo/lane":                        gateAdmin,
-	"/api/v1/security/audit":                   gateAdmin,
-	"/api/v1/security/os-updates":              gateAdmin,
-	"/api/v1/security/os-updates/origins":      gateAdmin,
-	"/api/v1/service/install-preview":          gateAdmin,
-	"/api/v1/service/install-plan":             gateAdmin,
-	"/api/v1/service/php-tools":                gateAdmin,
-	"/api/v1/service/php-tools/bind":           gateAdmin,
-	"/api/v1/service/php-tools/prove":          gateAdmin,
-	"/api/v1/service/postgresql/":              gateAdmin,
-	"/api/v1/service/profile/install":          gateAdmin,
-	"/api/v1/service/removal-impact":           gateAdmin,
-	"/api/v1/service/roundcube/address":        gateAdmin,
-	"/api/v1/service/roundcube/address/check":  gateAdmin,
-	"/api/v1/service/roundcube/address/remove": gateAdmin,
-	"/api/v1/service/roundcube/update":         gateAdmin,
-	"/api/v1/service/uninstall":                gateAdmin,
-	"/api/v1/setup":                            gateAdmin,
-	"/api/v1/setup/complete":                   gateAdmin,
-	"/api/v1/setup/components":                 gateAdmin,
-	"/api/v1/setup/delegation":                 gateAdmin,
-	"/api/v1/setup/extend":                     gateAdmin,
-	"/api/v1/setup/guidance":                   gateAdmin,
-	"/api/v1/setup/join-codes":                 gateAdmin,
-	"/api/v1/setup/mail-enrollment/continue":   gateAdmin,
-	"/api/v1/setup/mail-enrollment/retry":      gateAdmin,
-	"/api/v1/setup/operation":                  gateAdmin,
-	"/api/v1/setup/package-updates":            gateAdmin,
-	"/api/v1/setup/peer":                       gateAdmin,
-	"/api/v1/setup/peer/connect":               gateAdmin,
-	"/api/v1/setup/peer/retire":                gateAdmin,
-	"/api/v1/setup/plan":                       gateAdmin,
-	"/api/v1/setup/provider-records":           gateAdmin,
-	"/api/v1/setup/public-records":             gateAdmin,
-	"/api/v1/setup/publisher":                  gateAdmin,
-	"/api/v1/setup/revise":                     gateAdmin,
-	"/api/v1/setup/start":                      gateAdmin,
+	"/api/v1/dns/engine":                           gateAdmin,
+	"/api/v1/dns/engine/reconcile":                 gateAdmin,
+	"/api/v1/dns/engine/switch":                    gateAdmin,
+	"/api/v1/dns/engine/switch/preview":            gateAdmin,
+	"/api/v1/dns/infrastructure-zones":             gateAdmin,
+	"/api/v1/dns/infrastructure-zones/":            gateAdmin,
+	"/api/v1/dns/overview":                         gateAdmin,
+	"/api/v1/dns/peer-inspector-tool":              gateAdmin, // 6 Nov 2026: the backup's DNS check tool (admin in handler)
+	"/api/v1/dns/server-hostname":                  gateAdmin, // alpha.121: read-only, admin in handler too
+	"/api/v1/dns/remote/accept":                    gateAdmin, // machine-verified peers bypass sessions
+	"/api/v1/dns/remote/clients":                   gateAdmin,
+	"/api/v1/dns/remote/connections":               gateAdmin,
+	"/api/v1/dns/remote/enrollments":               gateAdmin,
+	"/api/v1/dns/remote/receiver/host-record":      gateAdmin, // machine-verified peers bypass sessions
+	"/api/v1/dns/remote/receiver/publish":          gateAdmin, // machine-verified peers bypass sessions
+	"/api/v1/dns/remote/receiver/status":           gateAdmin, // machine-verified peers bypass sessions
+	"/api/v1/nginx/default-https":                  gateAdmin,
+	"/api/v1/panel/license":                        gateAdmin,
+	"/api/v1/panel/update/abandon":                 gateAdmin,
+	"/api/v1/panel/update/check":                   gateAdmin,
+	"/api/v1/panel/update/discovery":               gateAdmin,
+	"/api/v1/panel/update/discovery/refresh":       gateAdmin,
+	"/api/v1/panel/update/start":                   gateAdmin,
+	"/api/v1/panel/update/status":                  gateAdmin,
+	"/api/v1/recovery/status":                      gateAdmin,
+	"/api/v1/repo/confine-preview":                 gateAdmin,
+	"/api/v1/repo/lane":                            gateAdmin,
+	"/api/v1/security/audit":                       gateAdmin,
+	"/api/v1/security/os-updates":                  gateAdmin,
+	"/api/v1/security/os-updates/origins":          gateAdmin,
+	"/api/v1/service/install-preview":              gateAdmin,
+	"/api/v1/service/install-plan":                 gateAdmin,
+	"/api/v1/service/php-tools":                    gateAdmin,
+	"/api/v1/service/php-tools/bind":               gateAdmin,
+	"/api/v1/service/php-tools/prove":              gateAdmin,
+	"/api/v1/service/postgresql/":                  gateAdmin,
+	"/api/v1/service/profile/install":              gateAdmin,
+	"/api/v1/service/removal-impact":               gateAdmin,
+	"/api/v1/service/roundcube/address":            gateAdmin,
+	"/api/v1/service/roundcube/address/check":      gateAdmin,
+	"/api/v1/service/roundcube/address/remove":     gateAdmin,
+	"/api/v1/service/roundcube/address/dns-record": gateAdmin,
+	"/api/v1/service/roundcube/update":             gateAdmin,
+	"/api/v1/service/uninstall":                    gateAdmin,
+	"/api/v1/setup":                                gateAdmin,
+	"/api/v1/setup/complete":                       gateAdmin,
+	"/api/v1/setup/components":                     gateAdmin,
+	"/api/v1/setup/delegation":                     gateAdmin,
+	"/api/v1/setup/extend":                         gateAdmin,
+	"/api/v1/setup/guidance":                       gateAdmin,
+	"/api/v1/setup/join-codes":                     gateAdmin,
+	"/api/v1/setup/mail-enrollment/continue":       gateAdmin,
+	"/api/v1/setup/mail-enrollment/retry":          gateAdmin,
+	"/api/v1/setup/operation":                      gateAdmin,
+	"/api/v1/setup/package-updates":                gateAdmin,
+	"/api/v1/setup/peer":                           gateAdmin,
+	"/api/v1/setup/peer/connect":                   gateAdmin,
+	"/api/v1/setup/peer/retire":                    gateAdmin,
+	"/api/v1/setup/plan":                           gateAdmin,
+	"/api/v1/setup/provider-records":               gateAdmin,
+	"/api/v1/setup/public-records":                 gateAdmin,
+	"/api/v1/setup/publisher":                      gateAdmin,
+	"/api/v1/setup/revise":                         gateAdmin,
+	"/api/v1/setup/start":                          gateAdmin,
 
 	// alpha.118: domain ownership, suspension and the wordpress_tools /
 	// malware_scan rights are checked in the handlers; the schedule is

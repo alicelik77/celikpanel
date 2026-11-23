@@ -125,6 +125,11 @@ type App struct {
 	// administrator's own customers. A code (svcapps.licence.<code>); empty
 	// for apps without the restriction. Stop, logs and removal stay open.
 	ResellerClosed string `json:"reseller_closed,omitempty"`
+	// Withdrawn (alpha.141): the date the app left the catalogue. Nobody can
+	// choose, offer, be given, install or update it any more; an install that
+	// exists keeps running and keeps its stop, start, log, keys and removal,
+	// so its entry stays here for those. Empty for apps in the catalogue.
+	Withdrawn string `json:"withdrawn,omitempty"`
 
 	Defaults Resources `json:"defaults"`
 	Risk     Risk      `json:"risk"`
@@ -140,7 +145,8 @@ type App struct {
 func OfferingID(appID string) string { return "app:" + appID }
 
 // catalog is the closed list of this release. Versions, hashes and URLs were
-// read from the official registries on 2026-11-03 (docs/AI-APPS.md).
+// read from the official registries on 2026-11-03 (docs/AI-APPS.md). A
+// withdrawn app keeps its entry for the installs that exist (Withdrawn).
 var catalog = []App{
 	{
 		ID: "n8n", Name: "n8n", Vendor: "n8n GmbH",
@@ -189,6 +195,12 @@ var catalog = []App{
 		},
 		Secrets:    []Secret{{Key: "OPENAI_API_KEY", Label: "OpenAI API key"}, {Key: "OPENAI_API_BASE_URL", Label: "OpenAI-compatible API address"}},
 		OwnerLogin: true,
+		// Withdrawn by the owner on 20 November 2026 (alpha.140 lab): about
+		// 9 GB of disk and 2 GB of memory while installing, an install that
+		// cannot be stopped part-way, and no Python it supports on Debian 13.
+		// The entry stays for installs that exist (their unit, keys, stop,
+		// start, log and removal); docs/AI-APPS.md.
+		Withdrawn: "2026-11-20",
 	},
 	{
 		ID: "openclaw", Name: "OpenClaw", Vendor: "OpenClaw",
@@ -252,10 +264,24 @@ func ResellerClosedOffering(offeringID string) (App, bool) {
 // Known reports whether id is a catalog app (offered or not).
 func Known(id string) bool { _, ok := Lookup(id); return ok }
 
-// Installable: in the catalog, not deferred, and offerable to customers.
+// Installable: in the catalog, not deferred, not withdrawn, and offerable to
+// customers.
 func (a App) Installable() bool {
+	return a.Deferred == "" && a.Withdrawn == "" && a.CustomerOfferable && a.ArtifactHash != ""
+}
+
+// Runnable: an install of the app can exist and be run, rendered and
+// managed: every app that was ever installable, a withdrawn one included
+// (its installs keep running; alpha.141).
+func (a App) Runnable() bool {
 	return a.Deferred == "" && a.CustomerOfferable && a.ArtifactHash != ""
 }
+
+// Listed: the app appears in the catalogue a person chooses from (the
+// administrator's Catalog management, the domain's list, the rights
+// screens). A withdrawn app does not; an install of it is shown only where
+// it exists.
+func (a App) Listed() bool { return a.Withdrawn == "" }
 
 // RiskDigest is a short hash of everything the administrator agrees to when
 // offering an app: version, licence, limits and risk codes. An offer records

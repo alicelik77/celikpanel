@@ -149,12 +149,14 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
+		Agent.PostgreSQLDatabaseEncodingsV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.MailRelayStatusV1 Agent.MailServerSettingsStatusV1 Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
 		Agent.MailPasswordFingerprintV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
-		Agent.DatabaseRemoteStatusV1 Agent.DatabaseGrantFormsScanV1
+		Agent.DatabaseRemoteStatusV1 Agent.DatabaseGrantFormsScanV1 Agent.DatabaseIdentityV1
+		Agent.PostgreSQLPublicAccessScanV1 Agent.PostgreSQLPublicAccessRunningV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
@@ -168,6 +170,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 		Agent.DeletionHoldingInventoryV1 Agent.LeftMailFoldersV1
+		Agent.MailboxOnServerV1 Agent.WebmailAddressFormsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -273,7 +276,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
 		Agent.RemoveDroppedDatabaseRightsV1 Agent.DatabaseGrantFormConvertV1
-		Agent.ApplyDatabaseRemoteV1
+		Agent.ApplyDatabaseRemoteV1 Agent.DropDatabaseOnceV1
+		Agent.PostgreSQLPublicAccessCloseV1 Agent.PostgreSQLPublicAccessUndoV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectAccessNarrowing, agentRPCCapabilityFirewall, `
 		Agent.NarrowDatabaseRemoteFilterV1
@@ -391,6 +395,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DeletionHoldingInventoryV1":    agentRPCStandardReadTimeout,
 	"Agent.RemoveHeldItemV1":              agentRPCMutationTimeout,
 	"Agent.LeftMailFoldersV1":             agentRPCStandardReadTimeout,
+	"Agent.MailboxOnServerV1":             agentRPCQuickReadTimeout,
+	"Agent.WebmailAddressFormsV1":         agentRPCQuickReadTimeout,
 	"Agent.HoldLeftMailFolderV1":          agentRPCMutationTimeout,
 	"Agent.ReadBackupChunk":               agentRPCStandardReadTimeout,
 	"Agent.ReadSystemSQLiteSnapshotChunk": agentRPCStandardReadTimeout,
@@ -524,12 +530,21 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DatabaseCopyV1":         agentRPCSiteLongTimeout,
 	"Agent.DatabaseCheckV1":        agentRPCSiteLongTimeout,
 	// alpha.128 (G24): the Agent bounds one read at 25 s and 1 GiB.
-	"Agent.SiteVisitorStatsV1":            agentRPCStandardReadTimeout,
-	"Agent.ServerIPAddressesV1":           agentRPCQuickReadTimeout,
-	"Agent.CreateSite":                    agentRPCDatabaseTimeout,
-	"Agent.DeleteDatabase":                agentRPCDatabaseTimeout,
-	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,
-	"Agent.RemoveDatabaseAdminAccount":    agentRPCDatabaseTimeout,
+	"Agent.SiteVisitorStatsV1":  agentRPCStandardReadTimeout,
+	"Agent.ServerIPAddressesV1": agentRPCQuickReadTimeout,
+	"Agent.CreateSite":          agentRPCDatabaseTimeout,
+	"Agent.DeleteDatabase":      agentRPCDatabaseTimeout,
+	// alpha.140: a deletion bound to the database it was asked for: one
+	// identity read, then the drop (database_delete_once.go).
+	"Agent.DatabaseIdentityV1": agentRPCQuickReadTimeout,
+	"Agent.DropDatabaseOnceV1": agentRPCDatabaseTimeout,
+	// S1b: closing databases made before alpha.141 to other accounts.
+	"Agent.PostgreSQLPublicAccessScanV1":    agentRPCStandardReadTimeout,
+	"Agent.PostgreSQLPublicAccessRunningV1": agentRPCQuickReadTimeout,
+	"Agent.PostgreSQLPublicAccessCloseV1":   agentRPCDatabaseTimeout,
+	"Agent.PostgreSQLPublicAccessUndoV1":    agentRPCDatabaseTimeout,
+	"Agent.ProvisionDatabaseAdminAccount":   agentRPCDatabaseTimeout,
+	"Agent.RemoveDatabaseAdminAccount":      agentRPCDatabaseTimeout,
 	// alpha.108: PostgreSQL clusters side by side.
 	"Agent.PostgreSQLClustersV1":           agentRPCNetworkReadTimeout,
 	"Agent.PostgreSQLClusterPortPreviewV1": agentRPCNetworkReadTimeout,
@@ -537,6 +552,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetPostgreSQLClusterPortV1":     agentRPCDatabaseTimeout,
 	"Agent.CopyPostgreSQLDatabaseV1":       agentRPCDeploymentTimeout,
 	"Agent.DropPostgreSQLDatabaseV1":       agentRPCDatabaseTimeout,
+	// 20 Nov 2026: every PostgreSQL database's encoding, one read for a list.
+	"Agent.PostgreSQLDatabaseEncodingsV1": agentRPCStandardReadTimeout,
 	// alpha.130: leftover clusters of removed majors (archive may be large).
 	"Agent.PostgreSQLLeftoverCleanupV1":  agentRPCDatabaseTimeout,
 	"Agent.RemovePostgreSQLLeftoverV1":   agentRPCDeploymentTimeout,

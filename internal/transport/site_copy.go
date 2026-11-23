@@ -20,6 +20,11 @@ type SiteCopyRequest struct {
 	Overwrite           bool          `json:"overwrite,omitempty"`
 	SourceDatabase      string        `json:"source_database,omitempty"`
 	TargetDatabase      string        `json:"target_database,omitempty"`
+	// TargetDBUser and TargetDBPass (20 Nov 2026, additive): the new
+	// database's own account, which loads the copy (never the engine's
+	// administrator).
+	TargetDBUser string `json:"target_db_user,omitempty"`
+	TargetDBPass string `json:"target_db_pass,omitempty"`
 }
 
 // SiteCopyResponse is the outcome. Code SiteCopyTargetNotEmpty: nothing was

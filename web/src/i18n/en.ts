@@ -78,6 +78,8 @@ import type { HostNameScreenKey } from './screens/hostName/en';
 import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
 import type { MonitoringScreenKey } from './screens/monitoring/en';
+import type { ProblemsNowScreenKey } from './screens/problemsNow/en';
+import type { NameRuleScreenKey } from './screens/nameRule/en';
 import type { PasswordsScreenKey } from './screens/passwords/en';
 import type { AdminNextScreenKey } from './screens/adminNext/en';
 import type { NodeSandboxScreenKey } from './screens/nodeSandbox/en';
@@ -94,6 +96,10 @@ import type { CertCoverageScreenKey } from './screens/certCoverage/en';
 import type { SiteBackupScreenKey } from './screens/siteBackup/en';
 import type { DomainDeleteScreenKey } from './screens/domainDelete/en';
 import type { DeletionHoldingScreenKey } from './screens/deletionHolding/en';
+import type { DnsAddScreenKey } from './screens/dnsAdd/en';
+import type { ServiceAppsAdminScreenKey } from './screens/serviceAppsAdmin/en';
+import type { DbEncodingScreenKey } from './screens/dbEncoding/en';
+import type { PgPublicScreenKey } from './screens/pgPublic/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -600,6 +606,8 @@ export type ScreenKey =
     | RemovalRuleScreenKey
     | ComponentInstallScreenKey
     | MonitoringScreenKey
+    | ProblemsNowScreenKey
+    | NameRuleScreenKey
     | PasswordsScreenKey
     | AdminNextScreenKey
     | NodeSandboxScreenKey
@@ -615,5 +623,9 @@ export type ScreenKey =
     | CertCoverageScreenKey
     | SiteBackupScreenKey
     | DomainDeleteScreenKey
-    | DeletionHoldingScreenKey;
+    | DeletionHoldingScreenKey
+    | DnsAddScreenKey
+    | ServiceAppsAdminScreenKey
+    | DbEncodingScreenKey
+    | PgPublicScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

@@ -446,6 +446,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "mail/accounts/empty":
 		// alpha.128 (G20): remove every message of one mailbox.
 		match.kind, match.methods = "mail", []string{http.MethodPost}
+	case "mail/accounts/adopt":
+		// alpha.144: the administrator records a mailbox found on the server
+		// without a row in the panel (its mail is not touched).
+		match.kind, match.methods = "mail", []string{http.MethodPost}
 	case "mail/accounts":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/quota", "mail/rbl", "mail/setup", "mail/auth":
@@ -1582,6 +1586,9 @@ func main() {
 		activationCancel()
 		milterWiringDeferred = panel.wireMailFiltersSynchronouslyAtStartup()
 	}
+	// 21 Nov 2026: out-of-office replies saved before name only the
+	// mailbox's own addresses after this start (mail_autoresponder_own.go).
+	panel.startAutoresponderAddressReconcile()
 
 	// alpha.130: a removed PostgreSQL major's cluster that holds only what
 	// initdb made is removed once after the start (postgresql_leftovers.go).
@@ -1605,6 +1612,8 @@ func main() {
 			if err := sweepMailboxRecoveryLinks(context.Background(), panel.db.GetDB()); err != nil {
 				log.Printf("[mailbox-recovery] old links could not be removed: %v", err)
 			}
+			// alpha.144: alias records whose zone's publication waited.
+			panel.republishAliasZones(context.Background())
 		}
 	}()
 
@@ -1862,6 +1871,7 @@ func main() {
 	http.HandleFunc(webmailAddressPath, panel.handleWebmailAddress)
 	http.HandleFunc(webmailAddressCheckPath, panel.handleWebmailAddressCheck)
 	http.HandleFunc(webmailAddressRemovePath, panel.handleWebmailAddressRemove)
+	http.HandleFunc(webmailAddressDNSRecordPath, panel.handleWebmailAddressDNSRecord)
 
 	// Domain Management
 	http.HandleFunc("/api/v1/domains", panel.handleDomains)
@@ -1970,6 +1980,8 @@ func main() {
 	// alpha.134: the administrator's view of the rights rewritten to exact
 	// database names (read only).
 	http.HandleFunc(databaseGrantFormsPath, panel.handleDatabaseGrantForms)
+	// S1b: PostgreSQL databases closed to other accounts (postgresql_public_access.go).
+	http.HandleFunc(pgPublicPath, panel.handlePostgreSQLPublicAccess)
 
 	// Database operations
 	http.HandleFunc("/api/v1/databases/", func(w http.ResponseWriter, r *http.Request) {
@@ -2059,6 +2071,9 @@ func main() {
 	panel.startDatabaseRemoteSync(discoveryCtx)
 	// alpha.134: database rights by exact name (database_grant_forms.go).
 	panel.startDatabaseGrantForms(discoveryCtx)
+	// S1b: PostgreSQL databases made before alpha.141 closed to other
+	// accounts, behind the same admission (postgresql_public_access.go).
+	panel.startPostgreSQLPublicAccess(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.
@@ -2072,6 +2087,10 @@ func main() {
 	// does not wait for it. Changes keep using the live proofs.
 	displayChecksEnabled.Store(true)
 	go panel.warmDisplayChecks()
+	// Security release (20 November 2026): names and Node.js ports held
+	// before the one name rule are read once at start (log) and shown in
+	// Problems now; nothing is changed.
+	go panel.logNamespaceProblemsAtStart(context.Background())
 	if err := waitPanelHTTP(runningServer); err != nil {
 		log.Fatal(err)
 	}
@@ -2143,13 +2162,18 @@ func (p *Panel) wireMailFiltersOnce() (transport.WireMailFiltersResponse, error)
 			request := transport.ServiceMutationRequest{
 				ServiceMutationBinding: binding,
 			}
-			if err := p.callAgentContext(
+			callErr := p.callAgentContext(
 				callCtx,
 				"Agent.WireMailFilters",
 				&request,
 				&response,
-			); err != nil {
-				return err
+			)
+			// 20 Nov 2026: whether mail is signed only for the sender's own
+			// domain, for Monitoring → Problems now (mail_signing_problem.go);
+			// an answer that did not arrive is recorded as unknown.
+			p.recordMailSigningCall(ctx, response.Signing, callErr)
+			if callErr != nil {
+				return callErr
 			}
 			if response.Error != "" {
 				// R-056. The ledger's own words for a failed host mutation say
@@ -2181,6 +2205,9 @@ func (p *Panel) mailFilterWiringHasSubject() bool {
 	present, detail := p.mailFilterWiringSubject()
 	if !present {
 		log.Printf("milter chain: nothing to wire at startup: %s", detail)
+		// No mail server here: nothing signs mail, and an earlier state does
+		// not stand (review of alpha.143, finding 5).
+		p.recordMailSigningState(context.Background(), &transport.MailSigningState{State: "no_dkim"})
 	}
 	return present
 }

@@ -25,8 +25,16 @@ import (
 // Agent faked; the WSL test guest has no MariaDB or PostgreSQL to run.
 
 type recordedDatabaseDrops struct {
+	// requests: every drop sent to the Agent (alpha.140: Agent.DropDatabaseOnceV1,
+	// recorded in the older request's shape the assertions read).
 	requests []transport.DeleteDatabaseRequest
-	answer   func(*transport.DeleteDatabaseResponse) error
+	// once: the same drops as sent, with the identity they were bound to.
+	once   []transport.DropDatabaseOnceRequest
+	answer func(*transport.DeleteDatabaseResponse) error
+	// identities: Agent.DatabaseIdentityV1 reads; identify answers them
+	// (default: the database exists, identity "fake:<name>").
+	identities []transport.DatabaseIdentityRequest
+	identify   func(transport.DatabaseIdentityRequest, *transport.DatabaseIdentityResponse) error
 	// alpha.134: the removal of the rights naming the dropped database from
 	// every grantee (Agent.RemoveDroppedDatabaseRightsV1).
 	sweeps      []transport.DroppedDatabaseRightsRequest
@@ -36,19 +44,45 @@ type recordedDatabaseDrops struct {
 func recordDatabaseDrops(t *testing.T) *recordedDatabaseDrops {
 	t.Helper()
 	drops := &recordedDatabaseDrops{
-		answer:      func(resp *transport.DeleteDatabaseResponse) error { resp.Success = true; return nil },
+		answer: func(resp *transport.DeleteDatabaseResponse) error { resp.Success = true; return nil },
+		identify: func(req transport.DatabaseIdentityRequest, resp *transport.DatabaseIdentityResponse) error {
+			resp.Exists, resp.Identity = true, "fake:"+req.Name
+			return nil
+		},
 		sweepAnswer: func(resp *transport.DroppedDatabaseRightsResponse) error { resp.Applied = true; return nil },
 	}
-	saved, savedSweep := databaseDeleteAgent, databaseDroppedRightsAgent
-	databaseDeleteAgent = func(_ *Panel, _ context.Context, req transport.DeleteDatabaseRequest, resp *transport.DeleteDatabaseResponse) error {
-		drops.requests = append(drops.requests, req)
-		return drops.answer(resp)
+	savedIdentity, savedDrop, savedSweep := databaseIdentityAgent, databaseDropOnceAgent, databaseDroppedRightsAgent
+	databaseIdentityAgent = func(_ *Panel, _ context.Context, req transport.DatabaseIdentityRequest, resp *transport.DatabaseIdentityResponse) error {
+		drops.identities = append(drops.identities, req)
+		return drops.identify(req, resp)
+	}
+	databaseDropOnceAgent = func(_ *Panel, _ context.Context, req transport.DropDatabaseOnceRequest, resp *transport.DropDatabaseOnceResponse) error {
+		drops.requests = append(drops.requests, transport.DeleteDatabaseRequest{Type: req.Type, Name: req.Name, Port: req.Port})
+		drops.once = append(drops.once, req)
+		var legacy transport.DeleteDatabaseResponse
+		if err := drops.answer(&legacy); err != nil {
+			return err
+		}
+		switch {
+		case legacy.Refusal != nil:
+			resp.Refusal, resp.Error = legacy.Refusal, "refused"
+		case legacy.Success:
+			resp.Dropped = true
+		default:
+			resp.Error = legacy.Error
+			if resp.Error == "" {
+				resp.Error = "failed to drop database"
+			}
+		}
+		return nil
 	}
 	databaseDroppedRightsAgent = func(_ *Panel, _ context.Context, req transport.DroppedDatabaseRightsRequest, resp *transport.DroppedDatabaseRightsResponse) error {
 		drops.sweeps = append(drops.sweeps, req)
 		return drops.sweepAnswer(resp)
 	}
-	t.Cleanup(func() { databaseDeleteAgent, databaseDroppedRightsAgent = saved, savedSweep })
+	t.Cleanup(func() {
+		databaseIdentityAgent, databaseDropOnceAgent, databaseDroppedRightsAgent = savedIdentity, savedDrop, savedSweep
+	})
 	return drops
 }
 
@@ -68,6 +102,9 @@ func TestDatabaseDeleteRemovesItsOwnUsersAndKeepsASharedOne(t *testing.T) {
 	// A read-only user only this database uses goes with it as well.
 	f.exec(t, `INSERT INTO database_users (id, server_id, subscription_id, username, password) VALUES (9948, 9921, 9802, 'shop_rapor', 'x')`)
 	f.exec(t, `INSERT INTO database_user_grants (database_id, user_id, privileges) VALUES (9961, 9948, 'SELECT')`)
+	// Second review of alpha.143, B9: a closing record of the database goes
+	// with it.
+	f.exec(t, `INSERT INTO panel_settings (key, value) VALUES ('postgresql_public_v1:9961', '{"version":1,"state":"watch","added":[]}')`)
 
 	got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
 	if got.Code != http.StatusOK {
@@ -107,6 +144,9 @@ func TestDatabaseDeleteRemovesItsOwnUsersAndKeepsASharedOne(t *testing.T) {
 	}
 	if n := f.count(t, `SELECT COUNT(*) FROM database_user_grants WHERE database_id = 9961`); n != 0 {
 		t.Fatal("grants of the deleted database stayed")
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM panel_settings WHERE key = 'postgresql_public_v1:9961'`); n != 0 {
+		t.Fatal("the closing record of the deleted database stayed")
 	}
 }
 
@@ -157,12 +197,13 @@ func TestDatabaseDeleteInterruptedAfterTheDropIsFinishedByDeletingAgain(t *testi
 		t.Fatal("the user's record went while it is on the engine")
 	}
 
-	// Pressing Delete again runs the same steps over what is left.
+	// Pressing Delete again runs the same steps over what is left - and, since
+	// alpha.140, never the drop again: the engine already dropped it.
 	native.failRemove = false
 	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
 		t.Fatalf("again: %d %s", got.Code, got.Body.String())
 	}
-	if len(drops.requests) != 2 || removedUsernames(native) != "cust_user,wp_user" {
+	if len(drops.requests) != 1 || removedUsernames(native) != "cust_user,wp_user" {
 		t.Fatalf("second run: drops %d, removed %q", len(drops.requests), removedUsernames(native))
 	}
 	if n := f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = 9961`) + f.count(t, `SELECT COUNT(*) FROM database_users WHERE id = 9941`); n != 0 {
@@ -441,4 +482,27 @@ func TestDatabaseDeleteOnTheDomainPageOfAnAdministratorsRecordKeepsTheUsers(t *t
 		t.Fatalf("%d %s", got.Code, got.Body.String())
 	}
 	assertDatabaseDroppedUsersKeptOnServer(t, f, driver, got.Body.Bytes())
+}
+
+// A verified refusal, or an Agent that was not reached, ran nothing: the
+// marker is not kept, and the next press is a fresh deletion of what is
+// there.
+func TestDatabaseDeleteRefusedLeavesNoMarker(t *testing.T) {
+	f := newVisibleDatabasesFixture(t)
+	drops := recordDatabaseDrops(t)
+	drops.answer = func(resp *transport.DeleteDatabaseResponse) error { resp.Error = "failed to drop database"; return nil }
+	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusConflict ||
+		!strings.Contains(got.Body.String(), errCodeDatabaseDeleteFailed) {
+		t.Fatalf("%d %s", got.Code, got.Body.String())
+	}
+	if n := f.count(t, `SELECT COUNT(*) FROM panel_settings WHERE key = 'database_delete_v1:9961'`); n != 0 {
+		t.Fatal("a refused drop left its marker")
+	}
+	drops.answer = func(resp *transport.DeleteDatabaseResponse) error { resp.Success = true; return nil }
+	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
+		t.Fatalf("%d %s", got.Code, got.Body.String())
+	}
+	if len(drops.once) != 2 || drops.once[1].Identity != "fake:customer_matrix_test_shop" || drops.once[1].ByName {
+		t.Fatalf("drops %+v", drops.once)
+	}
 }

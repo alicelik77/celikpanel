@@ -1441,6 +1441,13 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the one name rule (migration 80, security release).
+        DROP TRIGGER trg_domains_namespace_tenant_insert;
+        DROP TRIGGER trg_domains_namespace_tenant_rename;
+        DROP TRIGGER trg_domains_namespace_tenant_move;
+        DROP TRIGGER trg_domain_aliases_namespace_tenant_insert;
+        DROP TRIGGER trg_domain_aliases_namespace_tenant_update;
+        DROP TRIGGER trg_subscriptions_namespace_tenant_owner;
         -- Reverse the rights by exact name (migration 79, alpha.134).
         DROP TABLE database_grant_form_engines;
         DROP INDEX idx_database_grant_forms_state;

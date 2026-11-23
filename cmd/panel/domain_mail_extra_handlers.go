@@ -382,7 +382,9 @@ func (p *Panel) handleMailConfigure(w http.ResponseWriter, r *http.Request) {
 	var resp transport.ConfigureMailStackResponse
 	err := p.withStandaloneAgentMutation(r.Context(), "mail_configure", "mail-stack", "", func(callCtx context.Context, binding agentMutationBinding) error {
 		request := p.configureMailStackRequest(callCtx, binding)
-		if err := p.callAgentContext(callCtx, "Agent.ConfigureMailStack", &request, &resp); err != nil {
+		callErr := p.callAgentContext(callCtx, "Agent.ConfigureMailStack", &request, &resp)
+		p.recordMailSigningCall(callCtx, resp.Signing, callErr)
+		if err := callErr; err != nil {
 			return err
 		}
 		if resp.Error != "" {
@@ -434,7 +436,9 @@ func (p *Panel) handleMailConfigure(w http.ResponseWriter, r *http.Request) {
 	var sign transport.ConfigureDKIMSigningResponse
 	err = p.withStandaloneAgentMutation(r.Context(), "dkim_signing_configure", "opendkim", "", func(callCtx context.Context, binding agentMutationBinding) error {
 		request := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
-		if err := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign); err != nil {
+		callErr := p.callAgentContext(callCtx, "Agent.ConfigureDKIMSigning", &request, &sign)
+		p.recordMailSigningCall(callCtx, sign.Signing, callErr)
+		if err := callErr; err != nil {
 			return err
 		}
 		if sign.Error != "" {

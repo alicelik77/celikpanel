@@ -71,7 +71,20 @@ same rules.
   PostgreSQL its open sessions are ended first), then every user recorded for
   it that nothing else uses, with the removal above; the records are removed
   last, in one transaction, so an interrupted deletion keeps the database
-  listed and the same Delete finishes it. A user stays when another database
+  listed and the same Delete finishes it. The drop happens at most once
+  (alpha.140): before it, the deletion reads the database's identity on the
+  engine (PostgreSQL: its oid; this machine's MariaDB: the database
+  directory's device, inode, inode generation and birth time) and keeps it
+  in a marker of the record (panel_settings `database_delete_v1:<id>`); the
+  Agent drops only while the engine shows that identity. A later press
+  after a lost answer, a stop or a step that did not finish never drops a
+  database of the same name made in the meantime: it finishes the users and
+  records, and while such a database is there it leaves it and its users
+  alone ("exists": the server administrator decides about it, then Delete
+  finishes). Without an identity (no birth times on the filesystem; a
+  MariaDB reached with a record's own account) a later press drops nothing
+  it cannot tell apart (DATABASE_DELETE_UNVERIFIED). The marker goes with
+  the records. A user stays when another database
   uses the same engine account (the engine and the name, across every server
   record of that engine), when it is recorded for another server record or
   subscription, and when it is an engine's or CelikPanel's own account
@@ -274,6 +287,221 @@ same rules.
 - Plans: there is no database-user quota in the plans
   (docs/PLANS-AND-RIGHTS.md), so none is counted; the databases permission
   and the engine offering apply, and team members need "manage".
+
+## SQL from a file (20 November 2026)
+
+SQL that comes from a file runs with the rights of the target database's own
+account and nothing more: a backup's dump (made on this server or brought back
+from a remote destination), the safety copy put back after a failed restore,
+the dump of a database, site or WordPress copy, a cPanel archive's dump and a
+file a customer imports. Its text is the customer's even when CelikPanel made
+the dump. Before, a restore and a copy ran it through `mysql` as root without
+sandbox mode or through `psql` as the postgres account, so a line of the file
+could reach a shell or the database server's administrator rights.
+
+- One mechanism (`cmd/agent/database_owner_load.go`) loads every such file.
+  - MariaDB: the client with `--no-defaults --sandbox` (no shell, no local
+    files), signed in as the database's own user, under the site's own system
+    account (`nobody` for a domain without hosting), never root. DEFINER
+    clauses of views, triggers and routines are written as `CURRENT_USER`: the
+    object belongs to the database's own user (a view an added user made comes
+    back as the database user's). The cPanel import, whose database has no user
+    of its own yet, loads through a temporary account with every right on the
+    new database only (`celikpanel_load_…`), removed afterwards.
+  - PostgreSQL: no psql. The Agent signs in as the database's owner role over
+    127.0.0.1 and sends the statements itself (the import's loader), in one
+    transaction after `DROP OWNED BY CURRENT_USER`; psql commands are refused,
+    `SET ROLE`/`RESET ROLE`, `ALTER … OWNER TO` and `COMMENT ON EXTENSION` are
+    left out.
+- The account is the user recorded first for the database, with its stored
+  password (as the import). It is proved before the safety backup and before
+  anything is written. A restore is refused with what to do when:
+  - the database has no user with a stored password, or the server refuses it
+    (it was changed outside the panel), or on PostgreSQL that user is not the
+    database's owner: set a new password for the user on the Databases page,
+    then restore again (`BACKUP_RESTORE_DATABASE_ACCOUNT`);
+  - the server's MariaDB client has no sandbox mode (older than 10.5.25,
+    10.6.18, 10.11.8): the administrator updates the MariaDB packages
+    (`BACKUP_RESTORE_CLIENT_UNSAFE`); a client without it is never replaced by
+    one that would obey the file's client commands;
+  - something only the server's administrator may create here:
+    MariaDB with binary logging and `log_bin_trust_function_creators` off and a
+    dump holding stored functions or triggers (the dump and the safety copy
+    are read first), or a PostgreSQL user that is an administrator role
+    (`BACKUP_RESTORE_NEEDS_ADMINISTRATOR`).
+- What the database's own rights cannot replay (measured on MariaDB 11.8.6 and
+  PostgreSQL 17.12 with dumps made by the panel's own backup code): a
+  PostgreSQL extension only the administrator may create, when the target does
+  not have it yet (a copy into a new database, a database the extension was
+  removed from): the load stops, the transaction leaves the database as it
+  was, the engine's reason names the extension. An extension the
+  administrator made in the database before is kept and the restore goes on.
+- Not changed by this, still open: on PostgreSQL a restore drops and
+  recreates the owner's objects, so the rights the panel gave to the
+  database's added users on them (and their default privileges) do not come
+  back with the restore (also before; measured on 17.12). MariaDB events are
+  not in the backup's dump (no `--events`).
+- Every session the engine's administrator opens on PostgreSQL (psql,
+  pg_dump, pg_restore, as postgres or as a cluster's owner) starts with
+  `search_path = pg_catalog, pg_temp` given as a connection option
+  (`cmd/agent/pg_admin_session.go`), and psql never reads a start-up file: a
+  database's owner can no longer place functions or operators that such a
+  session would run with the administrator's rights. A test fails when a
+  PostgreSQL client is started another way.
+
+## Moving a PostgreSQL database to another cluster
+
+A move (PostgreSQL page → a cluster's Move) still loads the copy with
+`pg_restore` as the cluster's administrator, as in alpha.141: code a
+database's user placed in a table (a CHECK constraint, a domain's constraint,
+a stored generated column) runs with the administrator's rights while the
+rows are loaded. Only the administrator can start a move; do not move a
+database whose owner you do not trust. Loading the copy with its owners'
+rights is an open item of the security series (ROADMAP).
+
+## Old PostgreSQL databases closed to other accounts (20 November 2026)
+
+alpha.141 makes every new PostgreSQL database closed to the server's other
+roles. A database made before keeps PostgreSQL's default rights: every role
+of the server may connect to it and make temporary tables in it, so one
+customer's database user can sign in to another customer's database and see
+how it is built (`cmd/panel/postgresql_public_access.go`,
+`cmd/agent/pg_public_access.go`). MariaDB has no such default: nothing to do
+there.
+
+- What CelikPanel closes by itself: a database it records on this machine's
+  clusters, only when nobody else can be seen using it: its own rights are
+  still PostgreSQL's untouched default (`datacl` empty); no role outside its
+  records for that database has any footprint inside it (owners and rights
+  of relations, columns, schemas, functions, types, large objects,
+  extensions, languages, operators and their classes and families,
+  collations, conversions, text search objects, extended statistics,
+  foreign data wrappers and servers, publications and subscriptions; default
+  rights; user mappings; row security policy roles; per-database role
+  settings); every recorded user has its role; and its cluster has no
+  monitoring login role (`pg_monitor` and the like) and no role with the
+  `REPLICATION` attribute.
+- The watch (the exact rule). Such a database is watched first. It is closed
+  by itself at the first hourly round that comes at least 24 hours after its
+  watch began and after at least 24 rounds have read it, each finding all of
+  the above. The watch begins at the first reading that finds it so (a
+  round, or the page's reading of a new scan). A round that cannot read it
+  does not count. A change of its rights, of the roles inside it, of its
+  owner or of its recorded users (and their read or read-and-write right)
+  starts the count again. A session of a role outside its records seen
+  connected to it in any reading (`pg_stat_activity`) ends the watch: the
+  database is listed for the administrator with that role's name, also after
+  the session has ended; so is a role the close's own last check finds
+  connected (the close then changes nothing). Sessions are hourly snapshots:
+  a role that connects only between two readings is not seen. The page says,
+  for a watched database, since when and the time after which it closes by
+  itself if no other role is seen connected at an hourly check; the
+  administrator can close it at any time.
+- The close is one transaction inside the database: it changes nothing unless
+  the database is still as read; it gives `CONNECT` to the recorded users
+  (and `TEMPORARY` to a read-and-write user; the owner keeps its rights as
+  owner), takes `CONNECT` and `TEMPORARY` from `PUBLIC`, and reads back that
+  `PUBLIC` holds neither and every recorded user and the owner may connect,
+  before `COMMIT`. Role names and rights reach its checks as transaction
+  settings, never inside a dollar-quoted body. Before its first statement
+  that can wait it sets `lock_timeout = 30s` and `statement_timeout = 60s`
+  for its transaction (`SET LOCAL`, which outranks the owner's own settings),
+  so a session that holds the database's row makes it end inside the engine.
+  The Agent ends a close (or undo) client still running after 3 minutes (the
+  panel waits 10); its answer is then unknown, with the time it was ended.
+- Every administrator session (psql, pg_dump, pg_restore, as `postgres` or a
+  cluster's owner, so also alpha.141's restore and copy) pins, as connection
+  options that outrank `ALTER DATABASE/ROLE ... SET`: `search_path`,
+  `statement_timeout=0`, `lock_timeout=0`,
+  `idle_in_transaction_session_timeout=0`, `default_transaction_read_only=off`,
+  `role=none` and `exit_on_error=off` (PostgreSQL's own defaults: a short
+  limit would cut the panel's long loads, so the bounded close sets its own
+  inside its transaction). `idle_session_timeout` (PostgreSQL 14+) and
+  `transaction_timeout` (17+) are reset by the closing sessions right after
+  they connect, where the server knows them.
+- Its answers are three (D-024): closed; verified not closed (the database
+  was no longer as read, its read-back refused, it could not be entered, or
+  psql stopped at a server error before `COMMIT` was acknowledged, without
+  a fatal error or a lost connection, so the transaction was rolled back:
+  a recorded user's missing role, a lock or statement timeout), with the
+  database server's own message, which the page shows quoted after its own
+  words; and unknown (anything else after `BEGIN`: a lost connection, an
+  error after `COMMIT`, no read-back, or its client was ended at the
+  deadline). On an unknown answer, or when the
+  panel's call got no answer at all, the panel keeps its record ("sending"),
+  sends nothing again, and reads the database only after the Agent confirms
+  that no client of a close or undo of that database runs (its own, or a
+  process with that close's `application_name`) and no session with that
+  name is on the engine (a `COMMIT` already sent), from a scan that begins
+  after that confirmation: closed (the record is finished, with who closed
+  it); unchanged (a failure with the reason, never redone by itself); or
+  still unknown (listed as such, never closed by itself). A watch that holds
+  a close found not applied keeps that close; if the database is found
+  closed later, it becomes that close's full record (when, by whom, the
+  Undo), never a deleted one.
+- A close that failed is kept with its reason and time, listed on the page
+  and in Problems now with who acts and what to do; it is not tried every
+  hour, only when the database's facts change or when the administrator
+  presses Close. Closes, undos and the panel's records of one database are
+  done one at a time under that database's own lock: the hourly round and an
+  administrator never both act on it, and the second reads the first's
+  result; with a close still possibly running, no second close is sent.
+  Another database's close and "Read again" do not wait for it (a reading
+  shows a database whose lock is held without changing its record). A round
+  whose scan began before a record changed shows that database from the
+  record and writes nothing for it.
+- Everything else the panel can read is left exactly as it is and listed (Problems now, and the
+  PostgreSQL page under "Databases other accounts can enter") with what was
+  found (rights changed by hand, other roles inside, other roles seen
+  connected, recorded users without a role, monitoring or replication roles,
+  a failed close, an unknown result), what every account can do there now
+  (connect, or only make temporary tables) and what closing changes; the
+  administrator closes it there after reading that. The confirmation names
+  the roles outside the records connected at the last reading. A database
+  that cannot be read is shown on the page as not read, with the reason;
+  after more than three rounds in a row it is also listed in Problems now
+  and the alert mail (`postgresql_databases_unreadable`) with the reason and
+  the step.
+- Undo: on the PostgreSQL page beside each closed database (when, by whom),
+  and as the plain statements for an owner without the panel (run as the
+  postgres account). It gives `PUBLIC` back what it held and takes away
+  exactly the rights the close gave; it is refused, changing nothing, when the
+  database's rights changed since. Its unknown answer is settled from the
+  database the same way, after the Agent confirms nothing of it runs; the
+  record of a close is never deleted while the database may be closed. A database an administrator opened again stays on
+  the page as the administrator's choice ("Opened again by an
+  administrator"), out of Problems now and the alert mail, and is never
+  closed again by itself. The rights written out as the default for the
+  database's owner (`{=Tc/owner,owner=CTc/owner}`, what an undo's `GRANT`
+  leaves) count as PostgreSQL's untouched default everywhere the panel asks
+  (what was found, the watch, the opened-again entry); rights that are the
+  default again after a close are said as such. Right after a round closed
+  a database, the page (which reads the last scan) shows that close from
+  its record.
+- When: after the panel has been up a few minutes, an update of it is
+  verified, the server is not busy and the Agent is the same build (the
+  database-rights loop's admission), then hourly. A scan reads every recorded
+  database of a cluster in one session; the page shows the last scan with its
+  time and changes nothing; "Read again" starts one scan (a press while one
+  runs waits for it; an administrator's action reads through the same one
+  scan). A database or cluster that cannot be read is shown as not read,
+  never as safe. Whether each database exists is asked in the session's
+  first connection, before any database is entered. The Agent ends a scan
+  after 45 seconds and keeps the facts of every database it read; the
+  others are not read, with that reason. Measured on a private PostgreSQL 17.12: 300
+  databases in one session in about 5 seconds (the panel's bound for the
+  read is 60 seconds).
+- Kept in `panel_settings` (no schema change):
+  `postgresql_public_v1:<database id>` per database CelikPanel watches,
+  closed or is closing (state, by whom, when, the rights before and after,
+  what `PUBLIC` held, what the close gave; the watch's start, rounds and
+  facts; the roles seen connected; the last failed close; when it was
+  written; an undo whose answer is not settled; a close found not applied),
+  removed with the database's record (and by the hourly round for any
+  database that is gone), and `postgresql_public_list_v1` for the lists
+  Problems now shows (with the rounds each unread database was not read).
+- Not covered: registered PostgreSQL servers on other machines (their own
+  administrator's), and the `postgres`/`template1` databases.
 
 ## Connecting
 

@@ -371,6 +371,9 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("service apps offered to customers: %w", err)
 	}
+	// alpha.140: an app that cannot run on this operating system is not
+	// given, whatever an earlier offer says (service_apps_os.go).
+	serviceApps = p.withoutServiceAppsUnsupportedHere(ctx, serviceApps)
 	runtimes, err := p.loadOfferedRuntimes(ctx)
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("runtime apps offered to customers: %w", err)
@@ -718,7 +721,7 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 		out = append(out, "integration:acme:"+provider.ID)
 	}
 	out = append(out, catalogOfferingIDs()...)
-	out = append(out, serviceAppCandidateOfferings()...)
+	out = append(out, p.serviceAppCandidateOfferingsHere(ctx)...)
 	out = append(out, runtimeCandidateOfferings()...)
 	return out, nil
 }

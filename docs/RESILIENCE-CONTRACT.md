@@ -8957,3 +8957,430 @@ until the backup reports ready.
   role, type and plan; the screen's rule checked against both server refusals, the type and a record of the other kind). Lab (one run, alpha.138 candidate): a direct AI app install on a deployed program's domain was refused with `program_created`, nothing recorded, the program answering 45 of 45 checks; a created program with its plan right closed was shown, removed and its domain deleted. Not producible in the lab: a domain holding both (no AI app installs on its Debian 13 / Ubuntu 24.04 servers).
 - **Open.** The server's English fallback refusals still name "the Programs
   tab". **No P0 item is closed.**
+
+### Branches a140/host-record-receiver and a140/dnsadd (the host-record receiver answers truthfully and in time; "Add…" for webmail's record; no schema change; invariants 2 and 3; D-022; D-024; D-025; 2026-11-20, candidate alpha.139)
+
+- **Why it is here.** The host-record receiver and the remote DNS
+  publication receiver are admission points of DNS mutations: invariant 3
+  (stop at the boundary, nothing half applied) and invariant 2 (unknown is
+  never said as a failure or a success) govern their answers.
+- **Defect (alpha.135 lab).** A backup's request was answered CONFLICT for a
+  record that did not exist: `applyRemoteDNSHostRecord` read the setup
+  snapshot, which refuses the whole infrastructure zone when any hosted zone
+  lies under or above it, and turned every review error into CONFLICT. Behind
+  a domain deletion holding `serviceMutationMu` / `dnsPublicationMu` ~29 s, a
+  request waited with an unbounded `Lock()` past the sender's 10 s header
+  limit; the cancelled request then failed its re-authorization on the
+  cancelled context and was answered 401 through a path that neither logged
+  nor audited.
+- **Contract.** A host record is refused because of another hosted zone only
+  when that zone answers for the name (`readInfrastructureDNSSnapshotForHost`,
+  exact candidate names; `OUTSIDE_ZONE`); zone-state refusals have
+  `REMOTE_DNS_HOST_RECORD_ZONE_REVIEW`; CONFLICT is a clash at the name. Both
+  receivers take the two locks by `TryLock` within 3 s
+  (`lockRemoteDNSReceiver`) and otherwise answer 503 with `Retry-After`,
+  nothing applied (host record: uncoded, so older secondaries read unknown;
+  publication: `REMOTE_DNS_BUSY`); a credential read error after the locks is
+  503, a definite revocation 401. Every host-record answer that applies
+  nothing writes a journal line and an audit row with its code. The publish
+  after a write is not cut short; a repeat is busy while it runs and `present`
+  after. The setup review's zone-wide rule is unchanged; its overlap cause has
+  its own blocker (`server_setup_infrastructure_dns_zone_overlap`) and peer
+  join wait (`server_setup_peer_zone_overlap`).
+- **"Add…".** The backup server's request (`webmail_address_dns_record.go`)
+  maps any 503 to `busy` (licence codes keep their reason) and a delivered
+  request without an answer to `unknown/no_answer`; the page re-asks once
+  after 25 s with a new request identity and then leaves the decision to a
+  person ("Ask again", the same confirmation). No polling sends a change.
+- **Schema / version transition.** None; additive wire answers and one more
+  outcome in this server's own answer. An older secondary reads ZONE_REVIEW as
+  its generic refusal and the busy 503 as unknown; a newer secondary paired
+  with an older primary keeps that primary's CONFLICT and unbounded wait.
+- **Recovery.** A busy or unknown end applies nothing that a repeat could
+  duplicate: the receiver is idempotent by content.
+- **Evidence.** `cmd/panel/remote_dns_host_record_receiver_test.go` (busy over
+  real TLS within the bound, child zone beside the main zone, zone-state
+  codes, a sender that left, a repeat during and after a slow publication,
+  the setup secondary's handling); `webmail_address_dns_record_tls_test.go`
+  (the request over real TLS against the production receiver: the lab's
+  situation ends added, busy, no answer then present, an older primary's
+  CONFLICT); `server_setup_zone_overlap_test.go`; web
+  `webmail-dns-add-alpha135.test.mjs`, `setup-zone-overlap-alpha139.test.mjs`.
+- **Open.** The lab run on a real pair. The authentication layer's own 401s
+  write no journal line. The setup review's zone-wide rule itself (a narrower
+  rule is a separate lane). **No P0 item is closed.**
+
+### Branches fix/db-delete-once and fix/ai-apps-truthful (a database is dropped once, bound to its identity; a held domain deletion says it waits; AI apps say what is missing; no schema change; invariants 2 and 4; D-024; D-025; 2026-11-20, candidate alpha.140)
+
+- **Why it is here.** A database deletion is a two-step mutation (the
+  engine's drop, then the panel's records) whose retry is the owner's
+  recovery path: invariant 4 (durable checkpoint before the engine step,
+  bounded idempotent continuation, never a second unknown mutation) and
+  invariant 2 (unknown is not absent or failed).
+- **Defect (carried item 12, shown before the fix).** Every press
+  sent `DROP DATABASE IF EXISTS <name>`. After a lost answer, users or rights
+  not all removed, or records not written, the record stayed listed; a
+  database of the same name made meanwhile (the customer's own user keeps its
+  exact-name rights until the deletion finishes; by hand; by a restore or an
+  installer) was dropped by the next press with its content; the same on a
+  domain deletion's retry.
+- **Contract.** Before the first drop the panel reads the database's identity
+  (`Agent.DatabaseIdentityV1`: PostgreSQL oid; this machine's MariaDB: the
+  database directory's device, inode, inode generation and birth time;
+  through a record's own credential: PostgreSQL oid, MariaDB none) and writes
+  it to `panel_settings` `database_delete_v1:<id>` (state `sent`) before
+  anything is dropped. `Agent.DropDatabaseOnceV1` drops only while the engine
+  shows that identity (dropped / absent / replaced; a drop statement whose
+  client failed is read again). After any of the three the marker is
+  `dropped` and later presses only finish users and records; a database of
+  the name made meanwhile is left with its users. A later press without an
+  identity drops nothing (`DATABASE_DELETE_UNVERIFIED`). A verified refusal
+  or failure clears the marker this press wrote; an unknown result keeps it;
+  the records' transaction removes it (and markers orphaned by a cascade).
+- **Held domain deletion (alpha.138 lab).** A removal held for the backup's
+  zone-list confirmation with the reconciler armed reads as the same wait when
+  the publisher is ready (the backup confirmed; the next check publishes it);
+  "incomplete" only when the reconciler is not armed, set the removal aside,
+  or no engine is ready. Read only.
+- **AI apps (PR #338).** The generic install request for a component
+  installed by version is refused before anything is queued
+  (`COMPONENT_INSTALLED_BY_VERSION`); the AI apps' facts are additive; no
+  lifecycle mutation is added.
+- **Schema / version transition.** None. Additive panel setting rows, Agent
+  RPCs and refusal codes. An older Agent has neither RPC, so a mixed pair
+  drops nothing; alpha.139 ignores the marker rows (its deletion behaves as
+  before).
+- **Recovery.** A deletion interrupted anywhere is continued by the same
+  Delete: before the marker nothing happened; with `sent` the next press is
+  bound to the stored identity; with `dropped` it finishes without a drop.
+  Nothing is retried automatically.
+- **Evidence.** `cmd/panel/database_delete_once_test.go` (failed on
+  alpha.139: lost answer on MariaDB and PostgreSQL, users left, no identity,
+  the domain retry, a record's own credential), `database_delete_test.go`,
+  `domain_deletion_pending_dns_test.go`; `cmd/agent/database_drop_once_test.go`
+  (directory identity on real ext4); `component_installed_by_version_test.go`,
+  `service_apps_os_test.go`; web `databases-page-alpha133.test.mjs`,
+  `ai-apps-truthful-alpha140.test.mjs`.
+- **Open.** No real MariaDB or PostgreSQL ran (lab). The create
+  compensations still drop by name what their own request made; the
+  "another database has the name" end has no in-panel way to close the
+  record. **No P0 item is closed.**
+
+### Branches security/s1-sql-rights, fix/pg-utf8 and fix/withdraw-open-webui (SQL from a file runs with the database owner's rights; administrator PostgreSQL sessions with a fixed search path; new PostgreSQL databases UTF-8 and closed to other accounts; Open WebUI withdrawn; no schema change; constitution 1; invariant 4; D-022; D-024; D-025; 2026-11-20, candidate alpha.141)
+
+- **Why it is here.** A database restore is the owner's recovery path, and
+  its load changes from the engine's administrator to the database's own
+  account: invariant 4 (every refusal decided before the safety backup and
+  before anything is written) and constitution 1 (the privileged Agent never
+  runs customer content with root or engine-administrator rights).
+- **Defect (tenant-isolation audit of 20 November 2026, shown before the
+  fix on private engines).** A restore (local or from a remote destination
+  the customer controls), the safety copy put back after a failed one,
+  database, site and WordPress copies and the cPanel import loaded the file
+  through `mysql` as root without sandbox mode or `psql` as postgres; the
+  administrator's PostgreSQL sessions inside a customer database used that
+  database's search path.
+- **Contract.** One loader (`cmd/agent/database_owner_load.go`): MariaDB by
+  the client with `--no-defaults --sandbox` as the database's own user under
+  the site's account (a client without sandbox mode is refused, never
+  replaced; DEFINER written as the loading user; a binary-log gate read
+  before anything is loaded); PostgreSQL over the protocol as the owner role
+  in one transaction (an administrator role or a non-owner refused). The
+  panel sends each database's stored account. Every administrator
+  PostgreSQL client starts with `search_path=pg_catalog,pg_temp`
+  (`cmd/agent/pg_admin_session.go`, guarded by a test). New PostgreSQL
+  databases: template0, UTF-8, `ALLOW_CONNECTIONS false`, `REVOKE ALL … FROM
+  PUBLIC`, open, read back; a database that cannot be closed is removed with
+  the role this call made.
+- **Schema / version transition.** None (schema 079). Additive request
+  fields, refusal codes, the read-only `PostgreSQLDatabaseEncodingsV1` and
+  the catalogue's `withdrawn`. A new Agent with an older Panel refuses
+  restores and copies for lack of an account, before anything is written;
+  going back to alpha.140 restores the earlier load path.
+- **Recovery.** A refused restore changed nothing (no safety backup made);
+  PostgreSQL keeps its single transaction; MariaDB puts the safety copy back
+  with the same account's rights. Without the panel the package format is
+  unchanged and the documented manual restore loads each dump as the
+  database's own user.
+- **Evidence.** `cmd/agent/sql_rights_engine_test.go` (four attacks fail on
+  alpha.140 and pass here on real MariaDB 11.8.6 and PostgreSQL 17.12),
+  `sql_rights_replay_engine_test.go`, `pg_admin_session_test.go`,
+  `database_owner_load_test.go`, `sql_rights_linux_test.go`,
+  `pg_utf8_engine_test.go`, `service_apps_withdrawn_test.go`.
+- **Open.** No lab run yet. Moving a database to another PostgreSQL cluster
+  still restores it with the cluster owner's rights; databases made before
+  alpha.141 stay open to other accounts' sign-in; added PostgreSQL users
+  lose their rights on what a restore makes again. **No P0 item is closed.**
+
+### Branches security/s2-names and security/s3-files-mail (names, ports and files of another account or of the server are out of a customer's reach; schema 79 -> 80, triggers only; constitution 1; invariants 1 and 4; D-022; D-024; D-025; 2026-11-20, candidate alpha.142)
+
+- **Why it is here.** Domain creation and deletion are lifecycle paths, a
+  database trigger is a schema transition, and a site deletion's account
+  steps and the one-time file-mode correction change native state:
+  constitution 1 (authorize each action for its exact resources) and
+  invariants 1 (the owner keeps authority: owner-changed modes and the
+  owner's own `disable_symlinks` are kept) and 4 (refusals decided before
+  anything is made; a compensation removes only what its operation made).
+- **Defects (tenant-isolation audit of 20 November 2026, each shown before
+  the fix by a test).** A customer's subscription could receive a name
+  equal to, under or above another account's name or one of the server's
+  own names (an existing infrastructure zone was handed to the new domain);
+  two domain names derive one system account, and the compensation of a
+  refused creation removed the other site's scheduled tasks and FTP logins;
+  a Node.js site's port could be a port of the server's own services; nginx
+  followed a link to another account's file; per-site configuration files
+  were world-readable; customer directives could lift PHP limits or make
+  nginx read files as root; Add domain read a subscription named in the
+  request before the access check.
+- **Contract.** One name rule in the panel (`cmd/panel/hostname_claim.go`)
+  for every path that gives a subscription a name (create, alias, import,
+  transfer) and again in the database (migration 080: domain insert, rename
+  and move; alias insert and update; subscription owner change). An
+  administrator's own subscription may hold such a name on purpose; an
+  ordinary account is told the same whoever holds it. The account a name
+  would get is checked before creation; the Agent proves an account's home
+  before every step keyed by its name. Node.js ports from 3001-3999, never a
+  server service's, refused again by the Agent. `disable_symlinks
+  if_not_owner` in every block that serves files; per-site files 0640, the
+  hosting base 0711, corrected once with owner-changed modes kept.
+- **Schema / version transition.** 79 -> 80: six triggers, no table,
+  column or row changed. A database that already holds an overlap migrates
+  and keeps working (only a newly given or moving name is compared); an
+  older release refuses the ledger, and going back to alpha.141 is the
+  pre-update snapshot restore. Additive: the refusal codes
+  `HOSTNAME_NOT_AVAILABLE`, `APP_PORT_NOT_ALLOWED`, `TRANSFER_NAME_OVERLAP`,
+  the Agent answer `site_identity_exists`, the site-part outcome `refused`,
+  three kinds in Problems now, one Agent receipt file
+  (`tenant-file-modes-v1.done`).
+- **Recovery.** The update deletes and renames nothing: names and ports an
+  installation already holds stay and are listed in Problems now with what
+  to do; a deletion that meets another site's account completes for its own
+  parts. Every file change is native nginx configuration or a file mode
+  that keeps working without the panel; the owner undoes it with `chmod` or
+  his own `disable_symlinks`, and CelikPanel keeps his choice.
+- **Evidence.** Proof tests that fail on alpha.141 and pass here:
+  `TestNameRuleProof*`, `TestNameRuleParentLookupWaitsForTheAccessCheck`
+  (cmd/panel), `TestDeleteSiteLeavesAnotherSitesAccountCrontabAndLoginsAlone`,
+  `TestNodeVhostRefusesAPortOfTheServersOwnServices`, `TestTenantIsolation*`
+  (cmd/agent, internal/services); `TestSchema79DatabaseWithOverlapsUpgradesAndKeepsWorking`;
+  the link rule against Debian 13's nginx 1.26.3; the release-recovery lab
+  pins schema 80.
+- **Open.** No lab run yet. The web server's group can still read every
+  site folder (the link rule is the barrier until one group per site);
+  account names are derived from domain names; mail is signed for any
+  hosted domain (the next release). **No P0 item is closed.**
+
+### Branches security/s3b-mail-signing, security/s1b-pg-leftovers and fix/a143-lab-corrections (mail signed only for the sender's own domain, corrected after the independent review in fix/a143-mail; PostgreSQL databases made before alpha.141, corrected after the independent review in fix/a143-pg, the cluster move taken out; the alpha.142 lab's four corrections; schema 80 -> 81, triggers only; constitution 1; invariants 1, 2, 3 and 4; D-022; D-024; D-025; 2026-11-21, candidate alpha.143)
+
+- **Why it is here.** The mail repair step at the panel's start writes
+  native OpenDKIM and Postfix settings; the PostgreSQL loop changes native
+  database rights; a database trigger is a schema
+  transition; a site deletion's application-unit cleanup and the one-time
+  mode correction are lifecycle steps: constitution 1 (authorize each action
+  for its exact resources) and invariants 1 (owner authority: owner-edited
+  `opendkim.conf`, milter settings and file modes are kept), 2 (verified
+  state before claims: every close and undo reads its result back; an
+  answer lost after the transaction began is unknown and settled from the
+  engine, never taken as nothing changed), 3 (no duplicate mutation from
+  polling: reading the PostgreSQL page or Problems now changes nothing;
+  closes are serialised and a failed one is not retried every hour) and 4
+  (refusals decided before anything is made).
+- **Defects (each shown before the fix by a test).** OpenDKIM signed any
+  message whose `From:` named a hosted domain, for authenticated and local
+  clients and on port 25, so mail with another customer's address left with
+  that customer's signature (the independent review of the first version
+  found: an out-of-office reply could answer, signed, from another account's
+  address; site mail was signed by its `From:` while `authorized_submit_users`
+  was not the panel's, yet shown as in place; the port-25 list overrode the
+  owner's later filters and outlived OpenDKIM; a restart missed after the
+  rename was never made; the state was recorded only at the start; Arch was
+  advised a line its OpenDKIM refuses; rollback wrote defaults out);
+  PostgreSQL databases made before alpha.141 kept
+  PUBLIC's CONNECT and TEMPORARY (the independent review of the first
+  version found: an answer lost after COMMIT deleted the undo's record, a
+  failing close was retried hourly and hidden, roles using a database
+  without owning anything were not seen, a role name could end a guard's
+  dollar-quoted body, the scan grew with the page, and a database an
+  administrator opened again warned forever); from the alpha.142 lab: a customer's
+  subdomain inside its own domain under a server or administrator name was
+  refused, the administrator was told a far holder, a failed Node.js unit
+  blocked its site's deletion, and kept owner modes were not named.
+- **Contract.** `SenderMacro {auth_authen}` ties the signing key to the
+  login; the port-25 smtpd gets `main.cf`'s milter list without OpenDKIM,
+  recomputed at every start and mail filter step and removed at the first of
+  them after OpenDKIM is no longer set up or listed (a `main.cf` list with
+  `$variables` or `{ }` groups keeps CelikPanel's earlier port-25 value and
+  says so, `port25_variable_own`, or reports `port25_variable`); an
+  out-of-office reply answers only from the mailbox's own address or a
+  forwarder to it from the same account's domains (panel and Agent; earlier
+  replies are rendered again without a foreign address, said once and
+  audited, at every start, every hour and right after every operation that
+  changes who holds a name or where an address delivers, under the mail lock;
+  a rewrite that cannot be made turns the reply off, or, where that cannot be
+  applied either, is a Problems-now line per mailbox retried hourly); signing is shown as in
+  place only when `authorized_submit_users` is `root, vmail`, and every path
+  that changes signing records its state (an early return is unknown); a
+  build without `SenderMacro` keeps the earlier configuration, says so and is
+  never advised the option.
+  An older database is closed by itself only with untouched default rights,
+  no unrecorded role with any footprint inside it, every recorded user's role
+  present, no monitoring or replication role on its cluster, and after a
+  day's watch (the first round at least 24 hours and at least 24 rounds after
+  the watch began; a change of its rights, roles inside, owner or recorded
+  users starts it again; a role outside the records seen connected once ends
+  it); otherwise listed with one confirmed close. A close answers closed,
+  verified not closed, or unknown; unknown keeps the record and is settled
+  from the engine's state before anything else; a failed close keeps its
+  reason and is tried again only when the facts change or the administrator
+  presses; closes are serialised. Every close has an exact undo (panel and
+  plain SQL); a database an administrator opened again stays on the page as
+  that choice, out of Problems now, never closed by itself. The cluster move
+  is unchanged from alpha.142 (its owner-rights load was taken out; ROADMAP
+  security series item 6). The name rule exempts N when the receiving
+  account holds R with N under R and R under a server name or an
+  administrator-held name; everything else stays refused, in the panel and
+  in migration 081. `RemoveAppUnit` runs `systemctl reset-failed` for the
+  exact unit before its unchanged proof; the mode correction names every
+  kept mode.
+- **Schema / version transition.** 80 -> 81: migration 081 drops and
+  recreates the six triggers of 080 under the same names; no table, column
+  or row, so it applies on a database that holds overlaps; an older release
+  refuses the ledger and going back to alpha.142 is the pre-update snapshot
+  restore. Additive: `WireMailFiltersResponse.signing`, the Problems-now
+  kinds `mail_signing` and `postgresql_databases_open`, the build-gated Agent
+  calls `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1` (answers `unknown`,
+  `missing`, `replication`), panel_settings rows
+  `postgresql_public_v1:<id>` and `postgresql_public_list_v1`.
+- **Recovery.** A new `opendkim.conf` is checked with `opendkim -n` before
+  the rename and put back if OpenDKIM does not run with it, at the start and
+  (since the second review) in `ConfigureDKIMSigning`; Postfix writes
+  are undone in reverse order on any failure (a setting that was at its
+  default is removed again) and Postfix reloaded; an OpenDKIM restart is
+  recorded as owed before the rename and made at the next start after an
+  interruption; during a restart mail passes unsigned where both milter
+  lists are CelikPanel's (`milter_default_action = accept`), and where either
+  is the owner's his `milter_default_action` or Postfix's default
+  `tempfail` applies (a sending server retries; a person on 587 sends again). A close interrupted anywhere leaves the database untouched or closed with
+  its grants, and the panel's record of it until the engine shows which; an undo whose database changed since is refused
+  and changes nothing. Everything is native configuration and rights that
+  work without the panel; the owner undoes them with the plain settings or
+  statements named in `docs/TENANT-ISOLATION.md` and `docs/DATABASE-USERS.md`.
+- **Evidence.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` and the
+  distribution matrix's real OpenDKIM on Debian 12/13 and Ubuntu 22.04/24.04;
+  the mail fix round's `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart` and the matrix's real
+  `postconf` cases;
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the fix
+  round's `TestS1bFix*` on a private PostgreSQL 17.12 (an answer lost after
+  COMMIT, column rights, settings, policies and user mappings, a role named
+  to end a dollar-quoted body, a recorded user without its role, a logical
+  replication subscriber, 300 databases in one scan session), the panel's
+  `TestPGPublic*`; `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
+  `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
+  `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
+  `TestAppUnitRemovalForgetsAFailedUnit`,
+  `TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner`; the
+  release-recovery lab pins schema 81.
+- **Open.** No lab run yet. Arch Linux's OpenDKIM has no `SenderMacro`:
+  mail sent with a login is still signed for any hosted domain its `From:`
+  names there; databases the panel does not record are not touched; a
+  subdomain made under the exemption is still listed in Problems now; a
+  SQL_ASCII PostgreSQL server is still unchecked in a lab; the closing was
+  run on PostgreSQL 17 only; a move still runs customers' database code with
+  the administrator's rights. **No P0 item is closed.**
+
+### Branch fix/a144-lab-corrections (the alpha.143 lab's six findings and one security correction of webmail's address; no schema change; constitution 1 and 3; invariants 2, 3 and 4; D-022; D-024; D-025; 2026-11-22, candidate alpha.144)
+
+- **Changes that outlive the page (invariant 4, constitution 3: refresh and
+  timeout never authorize duplicate work).** An administrator's PostgreSQL
+  close or undo, a new mailbox and an out-of-office reply ran on the
+  browser's connection: leaving the page cut the Panel between the Agent's
+  work and its record (lab: "sent, not yet confirmed" for a close that had
+  finished; a mailbox on the server without a row). They now run under the
+  request identity (D-029) on a detached context with their route's limit.
+  What each interruption leaves: the page left — nothing (the change and
+  its record complete); the Panel stopped mid-change — the request row
+  `interrupted` (answered "not known"), a close's record `sending` settled
+  from the engine once the Agent confirms nothing of it runs, a mailbox
+  possibly on the server without a row (now said plainly, with the
+  administrator's adoption); who acts: nobody for the first, the
+  administrator reads the page again for the second.
+- **Adoption.** `Agent.MailboxOnServerV1` reads, changing nothing,
+  Dovecot's users file, Postfix's map and the message count of the folder
+  under the mail lock; the Panel adopts only CelikPanel's own form (the
+  address's own folder, no uid/gid/home/shell, a size limit) with no
+  message, looks for an existing row again under the mail lock, and
+  replaces the password through `Agent.UpdateMailPassword` before the row
+  is committed; everything else stays the owner's (D-022).
+- **Alias DNS (invariant 2).** What CelikPanel added for an alias is kept in
+  `panel_settings` `alias_dns_v1:<alias>` (version 1, zone and records),
+  written in the same transaction as the records; removal deletes exactly
+  those, while the zone belongs now to the account of the alias's domain now
+  (after a subscription transfer both moved, and the records go; in a zone
+  held by another account nothing is removed, the note is cleared and the
+  Panel's log names the record). A publication that does not finish marks the zone
+  (`alias_dns_unpublished_v1:<zone>`) and the Panel's hourly round publishes
+  it; it never stops a domain's deletion, also for a domain whose own DNS
+  is managed elsewhere; a mark whose zone's DNS mode cannot be read is kept
+  for the next round. Aliases made before alpha.144 have no such note and
+  get no record until they are added again.
+- **Webmail's address (constitution 1).** Only `index.php` runs; the linked
+  folders give out static files only; dot-files and backup-looking names
+  are refused. Earlier address files are CelikPanel's own form, read as
+  stale, and rewritten once at the Agent's start (nginx -t, reload, the
+  earlier file put back on failure); an owner's file is kept with the text
+  beside it. Either outcome is a Problems-now line until the file is in the
+  current form (`Agent.WebmailAddressFormsV1`). An automatic rollback to
+  alpha.143 treats the new file as the owner's and keeps it: webmail keeps
+  serving, nothing is reopened, and later webmail address changes are
+  refused as owner-edited until the update is made again.
+- **Traffic logs after the nightly rotation (invariant 4, constitution 2:
+  permission normalization is a mutation).** nginx's workers (`www-data`)
+  could not pass through `/var/log/celikpanel` (0750 `root:celikpanel` on the
+  owner's server, read on 22 November 2026), so after each rotation they
+  logged `[emerg] … (13: Permission denied)` and kept writing into the
+  rotated file. Once at the Agent's start (receipt `log-root-modes-v2.done`):
+  the folder, root-owned at a mode CelikPanel produced, 0700 → 0711 or
+  0750 → 0751; its traffic folder 0755 → 0710 owned by root and the web
+  server's group (only the workers pass; no site account opens another
+  site's log); traffic logs readable by others 0644 → 0640; the certificate
+  tool's log folder stays 0700; any other mode (kept with its owner and
+  group), a traffic folder at 0710 whose group is neither the web server's
+  nor one CelikPanel gave it (root, celikpanel), a link or another owner is
+  kept and named. New installations make the log folder 0711 and the
+  traffic folder 0710 with that group whatever the umask, and a site's
+  first log 0640 before nginx opens it; the web server's account is looked
+  up only to make them (a failed lookup leaves the site's traffic setting
+  as it was, one journal line). CelikPanel's rotation file makes each new
+  log 0640 for that account (managed text: an owner-edited file is kept).
+  No reload: the workers reach the current files at the next rotation.
+  Still readable by programs that run as the web server's own shared
+  account (Node.js sites not yet moved into their own account, the
+  distribution's default PHP pool where it is on): the logs hold time and
+  byte counts, no addresses, and those programs already read every site's
+  served files.
+- **Evidence.** `TestA144*` (panel), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
+  `TestLogRootIsMadePassableWhateverTheUmask`, `TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes`,
+  `TestTrafficLogsReachOnlyTheWebServerWorkers`,
+  `TestTrafficFolderAt0710WithTheOwnersGroupIsKept`,
+  `TestTrafficLogrotateMakesEachNewLogClosed`, `TestTrafficLogNeedsTheWebServerAccountOnlyToMakeIt`,
+  `TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead`,
+  `TestWebmailAddress*` (agent); the detached tests fail with the guard
+  removed (the lab's "sending/lost" record, no mailbox row, no reply copy).
+- **Lab.** One run on 22 November 2026 (a Debian 13 PowerDNS main and an
+  Ubuntu 24.04 BIND backup, both updated from the alpha.143 state through
+  the panel's own update page; lab-only label alpha.152 built from
+  `6ed1f94a0`): no hard failure; the webmail address correction, the
+  detached routes, the adoption refusals, the alias records and the
+  traffic folder modes behaved as stated above (see the release notes'
+  "Checked in the lab"). It found that webmail cannot send mail (its
+  configuration hands mail to port 587 without STARTTLS; older than this
+  branch) and two display findings, planned for alpha.145.
+- **Open.** The other Panel handlers that pass the browser's
+  context into an Agent change are listed in the pull request for a later
+  lane; an alias that is a zone of its own still gets no DNS (no zone is
+  created for it); the lab's not-checked items are listed in the release
+  notes. **No P0 item is closed.**

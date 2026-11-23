@@ -8,7 +8,7 @@ export const trPanelPortScreens: Record<PanelPortScreenKey, string> = {
     'panelPort.checking': 'Panel portu okunuyor…',
     'panelPort.unknown': 'Panel portu okunamadı; bu yüzden burada bir şey gösterilmiyor. Hiçbir şey değiştirilmedi. Yeniden deneyin.',
     'panelPort.current': 'Panel {port} numaralı portta yanıt veriyor.',
-    'panelPort.legacy': 'Bu sunucu, {port} varsayılan olmadan önce kuruldu; bu yüzden {legacy} portunu korur. {legacy}, cPanel’in de kullandığı porttur. Paneli buradan başka bir porta taşıyabilirsiniz.',
+    'panelPort.legacy': 'Bu sunucu, {port} varsayılan olmadan önce kuruldu; bu yüzden {legacy} portunu korur. {legacy} portunu başka barındırma panelleri de kullanır. Paneli buradan başka bir porta taşıyabilirsiniz.',
     'panelPort.how': 'Panel iki portta da yanıt verir. Yeni adresi açın ve orada onaylayın. Ardından eski port kapanır. {minutes} dakika içinde kimse onaylamazsa panel kendiliğinden eski portta kalır.',
     'panelPort.input': 'Yeni port (1024–65535)',
     'panelPort.provider': 'Barındırma sağlayıcınızın kendi güvenlik duvarı varsa önce yeni portu orada açın. CelikPanel portu yalnız bu sunucunun güvenlik duvarında açar.',

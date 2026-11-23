@@ -174,6 +174,7 @@ func TestRuntimeChoiceRefusesUnsupportedSystems(t *testing.T) {
 	}
 
 	ow, _ := Lookup("open-webui")
+	ow.Withdrawn = "" // alpha.141: withdrawn; the Python path it used is still code
 	for _, version := range []string{"3.13", "3.10", "3.14"} {
 		choice = ChooseRuntime(ow, nil, []PythonCandidate{{Path: "/usr/bin/python3", Version: version, Venv: true}})
 		if choice.Available || choice.Reason != ReasonOSUnsupported {
@@ -191,6 +192,39 @@ func TestRuntimeChoiceRefusesUnsupportedSystems(t *testing.T) {
 	claw, _ := Lookup("openclaw")
 	if ChooseRuntime(claw, nil, nil).Reason != ReasonDeferred || claw.Installable() {
 		t.Fatalf("command-running agents are deferred in this release")
+	}
+}
+
+// alpha.140: the facts a screen words in its reader's language: what the app
+// needs (from the catalogue) and every runtime the probe saw.
+func TestRuntimeChoiceCarriesTheFacts(t *testing.T) {
+	n8n, _ := Lookup("n8n")
+	if kind, needs := RuntimeNeeds(n8n); kind != RuntimeNode || strings.Join(needs, ",") != "24" {
+		t.Fatalf("n8n needs %s %v", kind, needs)
+	}
+	choice := ChooseRuntime(n8n, []NodeCandidate{
+		{Path: "/usr/bin/node", Version: "20.19.2", NPMCLI: "/usr/share/nodejs/npm/bin/npm-cli.js", Source: "distribution"},
+		{Path: "/opt/celikpanel/runtimes/node/22.11.0/bin/node", Version: "22.11.0", NPMCLI: "/opt/x/npm-cli.js", Source: "panel"},
+	}, []PythonCandidate{{Version: "3.13", Venv: true}})
+	if choice.Reason != ReasonRuntimeAbsent || len(choice.Found) != 2 ||
+		choice.Found[0] != (RuntimeFound{Version: "20.19.2", Source: "distribution"}) || choice.Found[1] != (RuntimeFound{Version: "22.11.0", Source: "panel"}) {
+		t.Fatalf("n8n facts: %+v", choice)
+	}
+	if none := ChooseRuntime(n8n, nil, nil); none.Found == nil || len(none.Found) != 0 {
+		t.Fatalf("nothing found is an empty list, not unknown: %+v", none)
+	}
+	ow, _ := Lookup("open-webui")
+	ow.Withdrawn = "" // alpha.141: withdrawn; the Python path it used is still code
+	if kind, needs := RuntimeNeeds(ow); kind != RuntimePython || strings.Join(needs, ",") != "3.11,3.12" {
+		t.Fatalf("open-webui needs %s %v", kind, needs)
+	}
+	choice = ChooseRuntime(ow, nil, []PythonCandidate{{Path: "/usr/bin/python3", Version: "3.12", Venv: false}})
+	if choice.Reason != ReasonVenvMissing || len(choice.Found) != 1 || choice.Found[0] != (RuntimeFound{Version: "3.12", Source: "distribution"}) {
+		t.Fatalf("open-webui without venv: %+v", choice)
+	}
+	claw, _ := Lookup("openclaw")
+	if deferred := ChooseRuntime(claw, nil, nil); deferred.Found != nil {
+		t.Fatalf("a deferred app reports no runtime: %+v", deferred)
 	}
 }
 

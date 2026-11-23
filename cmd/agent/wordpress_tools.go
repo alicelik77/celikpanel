@@ -1344,7 +1344,21 @@ func (a *Agent) WordPressCloneV1(req *transport.WordPressCloneRequest, resp *tra
 		return nil
 	}
 	defer staged.Cleanup()
-	if err := restoreDatabaseFromFile(copyDatabaseIdentity(req.TargetDatabase), targetDump); err != nil {
+	// S1: the copy is loaded with the new database's own account.
+	load := databaseLoadTarget{
+		DatabaseIdentity: copyDatabaseIdentity(req.TargetDatabase),
+		Account:          databaseLoadAccount{User: req.TargetDBUser, Password: req.TargetDBPass},
+		SiteUser:         databaseLoadSiteUser(req.Target.SubscriptionID, req.Target.DomainID, req.Target.Domain),
+	}
+	if err := prepareDatabaseLoadFor(load); err != nil {
+		resp.Error = "load the database copy: " + boundedText(err.Error(), 300) + "; nothing was published"
+		return nil
+	}
+	if err := checkLoadableByAccount(load.DatabaseIdentity, targetDump); err != nil {
+		resp.Error = "load the database copy: " + boundedText(err.Error(), 300) + "; nothing was published"
+		return nil
+	}
+	if err := restoreDatabaseFromFile(load, targetDump); err != nil {
 		resp.Error = "load the database copy: " + boundedText(err.Error(), 300)
 		return nil
 	}
