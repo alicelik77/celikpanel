@@ -11356,3 +11356,52 @@ Kod: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
 `cmd/panel/webmail_address_problem.go`, `mail_profiles.go`, `alias_dns.go`,
 `dns_pending_publication.go`. Testler: `cmd/agent/webmail_sending_test.go`,
 `cmd/panel/a145_webmail_send_test.go`, `web/tests/a145-webmail-send-lab.test.mjs`.
+
+### Uzun bir değişiklik sonsuza dek "sürüyor" kalmaz (alpha.145 laboratuvarı, D1, 23 Kasım 2026)
+
+alpha.145 laboratuvarında bir web postası güncellemesi panelde "sürüyor"
+olarak kaldı ve panelin web işlemi yeniden başlatılana dek başka her sunucu
+değişikliği "başka bir işlem sürüyor" diye reddedildi. Panel, Agent kirasının
+tek bir yenilemesi yanıtsız kalınca güncellemenin işçisini durdurmuştu; Agent
+adımı yine de bitirdi, adım sürerken Panel'in Finish isteğini reddetti ve
+Panel 15 saniye sonra işlemin sonunu kaydetmeden vazgeçti. Bileşen kurulumu,
+birlikte kurma, birlikte kaldırma, posta profilleri, Node.js çalışma
+ortamları, kurulum adımları ve web postası adresleri de aynı yoldan geçiyordu.
+
+- **Satırı çalışan panel kapatır.** Finish reddedilir ya da yanıtı kaybolursa
+  aynı goroutine Agent'ın işini hiçbir şey değiştirmeden okur, iş bitene dek
+  (sınır 15 saniye değil, işin kendi son tarihi), sonra bu tek satır için
+  başlangıç kurtarmasının uzlaştırmasını çalıştırır: başarılı iş başarılı,
+  başarısız iş nedeniyle kaydedilir; yarıda kalan iş yeniden başlatmadaki
+  gibi sürdürülür (web postası güncellemesi ya da adresi yalnız yeniden
+  okunur; kurulum, kaldırma ya da posta profili kaldığı yerden sürer). Süreç
+  kilidi baştan sona tutulur ve sürdürme ancak Agent ilk işin bittiğini
+  kaydettikten sonra başlar; hiçbir adım aynı anda iki kez çalışmaz. Çalışan
+  panel bir satırı en çok bir kez sürdürür.
+- **Bu sırada ekranın söyledikleri.** İş sürerken işlem "panelin sunucu
+  ajanıyla bağlantısı koptu; panel yapılanı okuyor", sonra "değişiklik
+  sunucuda bitti; panel sonucu kaydediyor" olarak görünür — kim yapar:
+  kimse; kendiliğinden biter. Bu sırada reddedilen değişiklik de aynısını
+  söyler (`service_operation_busy`, neden `settling`), "bitmesini bekleyin"
+  demez.
+- **Kapatılamazsa** (Agent işin son tarihinden sonra da ulaşılamaz, panelin
+  veritabanı yazmayı reddeder) işlem bunu söyler, reddedilen değişiklik
+  sunucu sahibinin adımını adlandırır (neden `unsettled`) ve Şu anki
+  sorunlar'da tek satır çıkar (`service_operation_unsettled`, kim yapar:
+  sunucu sahibi): `sudo systemctl restart celikpanel-panel` yalnız panelin web
+  işlemini yeniden başlatır; açılıştaki kurtarma yapılanı kaydeder (web
+  postası güncellemesi ya da adresi yalnız okunur; kurulum ya da kaldırma
+  sürdürülür, zaten yapılmış olan yeniden değiştirilmez).
+- **Tek bir geç yenileme, kaybolmuş bir Agent değildir.** İşçi Agent'ın kesin
+  yanıtıyla (kira kaybedildi ya da başkasının, iş bitti) ya da yenilemeler 15
+  saniye boyunca yanıtsız kalınca durdurulur (Agent'ın 20 saniyelik kirasının
+  altında); yanıt alan bir yenileme sayımı yeniden başlatır. Agent'ın kira
+  kuralları değişmedi.
+- Yarıda kalan web postası güncellemesinin ya da adresinin sonuç cümleleri ve
+  sürdürülen işlemlerin denetim satırları artık "panel yeniden başladıktan
+  sonra" demez: işlemin yarıda kaldığını söyler.
+
+Kod: `cmd/panel/service_operation_settle.go`, `service_operations.go`
+(`reconcileInterruptedServiceOperationLocked`, başlangıç kurtarmasıyla
+ortak), `service_mutation_agent.go`. Testler:
+`cmd/panel/d1_stuck_operation_test.go`, `web/tests/d1-stuck-operation.test.mjs`.
