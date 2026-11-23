@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="tr" data-page="changelog">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Değişiklikler · CelikPanel</title>
+<meta name="description" content="Her CelikPanel sürümünün değiştirdikleri, en yenisi önce: güvenlik, düzeltmeler, yenilikler ve bilinen sınırlar; her biri sürüm notlarının tamamına bağlantıyla.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/public.css">
+<link rel="stylesheet" href="../assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/tr/degisiklikler.html">
+<link rel="alternate" hreflang="en" href="../changelog.html">
+<link rel="alternate" hreflang="tr" href="degisiklikler.html">
+<link rel="alternate" hreflang="x-default" href="../changelog.html">
+<script src="../assets/boot.js"></script>
+<script src="../assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">İçeriğe geç</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<nav aria-label="Ana menü"><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="../guide/tr/">Kılavuz</a></li>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../changelog.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Değişiklikler</h1>
+<p class="def">Her sürümün değiştirdikleri, birkaç sade satırda, en yenisi önce. Her sürümün notlarının tamamı, laboratuvarda neyin denendiğini ve neyin denenmediğini de yazar.</p>
+<div class="actions">
+<a class="btn plain" href="sorunlar.html">Bilinen sorunlar</a>
+<a class="btn plain" href="surumler.html">Son sürüm ve dosyaları</a>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" id="v0.1.0-alpha.146" aria-labelledby="h-v0.1.0-alpha.146">
+<header><span class="num">@@CP_RELEASE_DAY@@</span><h2 id="h-v0.1.0-alpha.146">v0.1.0-alpha.146</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Değişiklikler: v0.1.0-alpha.146</caption>
+<thead><tr><th scope="col">Tür</th><th scope="col">Değişiklik</th><th scope="col">Vaka</th></tr></thead>
+<tbody>
+<tr><th scope="row">Yeni</th><td data-k="Değişiklik">Türkçe ve İngilizce yeni herkese açık site; sürümlere göre bu değişiklik listesi ve bilinen sorunlar sayfasıyla. Panelde hiçbir şey değişmez.</td><td class="v" data-k="Vaka">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.146.tr.md">Sürüm notlarının tamamı: v0.1.0-alpha.146</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.145" aria-labelledby="h-v0.1.0-alpha.145">
+<header><span class="num">2026-11-23</span><h2 id="h-v0.1.0-alpha.145">v0.1.0-alpha.145</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Değişiklikler: v0.1.0-alpha.145</caption>
+<thead><tr><th scope="col">Tür</th><th scope="col">Değişiklik</th><th scope="col">Vaka</th></tr></thead>
+<tbody>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Web postanın sunucudaki yerel kapısı artık yalnız CelikPanel’in kendi denetimlerine cevap verir; önceden sunucudaki her hesap oradan Roundcube’un dosyalarını okuyabiliyor ve eklenti betiklerini çalıştırabiliyordu.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-16">CP-2026-16</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Web posta e-posta gönderebilir: şifrelemeyi açar ve posta kutusunun kendi adresi ve parolasıyla giriş yapar.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-12">CP-2026-12</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Bir takma adın “yayımlanmayı bekliyor” durumu, bölgesinin değişikliği yayımlandığında biter, bir saat sonra değil.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-13">CP-2026-13</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Bir PostgreSQL kapatmasının ya da geri alınmasının penceresi, sonucu söyleyen bir başlıkla biter.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-14">CP-2026-14</a></td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Uzun süren bir değişiklik sunucuda bittikten sonra panelde “sürüyor” görünmeye devam edebilir; yaklaşık beş dakika sonra sudo systemctl restart celikpanel-panel komutunu çalıştırın. Panel o zaman gerçekte ne yapıldığını kaydeder: bir web posta güncellemesi yalnız okunur, yeniden çalıştırılmaz; yarıda kalmış bir kurulum sunucuda sürdürülür ve tamamlanır.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-17">CP-2026-17</a></td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Web posta gönderemezken Webmail kartı hâlâ Onar düğmesini sunar; Onar yapılandırmayı düzeltmez, adım Şu anki sorunlar bölümündedir.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Bu sürümün hiçbir parçası laboratuvarında Arch Linux’ta denenmedi.</td><td class="v" data-k="Vaka">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.145.tr.md">Sürüm notlarının tamamı: v0.1.0-alpha.145</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.144" aria-labelledby="h-v0.1.0-alpha.144">
+<header><span class="num">2026-11-22</span><h2 id="h-v0.1.0-alpha.144">v0.1.0-alpha.144</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Değişiklikler: v0.1.0-alpha.144</caption>
+<thead><tr><th scope="col">Tür</th><th scope="col">Değişiklik</th><th scope="col">Vaka</th></tr></thead>
+<tbody>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Web postanın kendi adresi artık eklentilerinin her dosyasını değil, yalnız sayfalarının yüklediği dosyaları verir.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-11">CP-2026-11</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Siz sayfadan ayrılırken oluşturulan posta kutusu, kaydıyla birlikte eksiksiz oluşturulur.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-8">CP-2026-8</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Bir PostgreSQL veritabanını başka hesaplara kapatmak, sayfadan ayrılsanız da gerçek sonucunu gösterir.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-9">CP-2026-9</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Takma ad ve sertifika retleri sayfanın dilinde söylenir.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-10">CP-2026-10</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Trafik rakamları gece yapılan günlük dosyası döndürmesinden sonra yeniden eksiksizdir.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Yeni</th><td data-k="Değişiklik">Bu sunucunun DNS’ini tuttuğu, aynı hesaba ait bir alan adının içindeki takma ad artık DNS’te cevap verir; daha önce eklenmiş takma adlar kaldırılıp yeniden eklenince.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-7">CP-2026-7</a></td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Web posta e-posta gönderemiyor; okuma, ekler ve ayarlar çalışıyor. Düzeltilene kadar bir posta programından gönderin.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-12">CP-2026-12</a></td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.144.tr.md">Sürüm notlarının tamamı: v0.1.0-alpha.144</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.143" aria-labelledby="h-v0.1.0-alpha.143">
+<header><span class="num">2026-11-22</span><h2 id="h-v0.1.0-alpha.143">v0.1.0-alpha.143</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Değişiklikler: v0.1.0-alpha.143</caption>
+<thead><tr><th scope="col">Tür</th><th scope="col">Değişiklik</th><th scope="col">Vaka</th></tr></thead>
+<tbody>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Posta kutusu girişiyle gönderilen posta yalnız o posta kutusunun kendi alan adı için imzalanır; 25 numaralı porttan gelen posta artık imzalanmaz. Arch Linux’ta girişle gönderilen posta hâlâ barındırılan her alan adı için imzalanır.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-5">CP-2026-5</a></td></tr>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">alpha.141’den önce oluşturulan PostgreSQL veritabanları başka hesaplara kapatılır: başka bir hesabın kullandığı görülmeyen bir günün ardından panel tarafından, aksi hâlde yöneticinin tek düğmesiyle.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-6">CP-2026-6</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adının içinde yeniden alt alan adı ve takma ad ekleyebilir.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-3">CP-2026-3</a></td></tr>
+<tr><th scope="row">Düzeltildi</th><td data-k="Değişiklik">Uygulaması başarısız olmuş bir Node.js sitesi tek tıklamayla silinebilir.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-4">CP-2026-4</a></td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Ek bir otomatik yanıt adresi, panelin bildiği bir yönlendirme olmalıdır.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Giriş yapmadan 25 numaralı porta posta veren bir web sitesinin postası artık imzalanmaz; 587 numaralı portta girişle göndermesini ayarlayın.</td><td class="v" data-k="Vaka">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.143.tr.md">Sürüm notlarının tamamı: v0.1.0-alpha.143</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.142" aria-labelledby="h-v0.1.0-alpha.142">
+<header><span class="num">2026-11-21</span><h2 id="h-v0.1.0-alpha.142">v0.1.0-alpha.142</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Değişiklikler: v0.1.0-alpha.142</caption>
+<thead><tr><th scope="col">Tür</th><th scope="col">Değişiklik</th><th scope="col">Vaka</th></tr></thead>
+<tbody>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Hiçbir müşteri ya da bayi başka bir hesabın alan adını, site hesabını, sunucunun kendi hizmetlerinin bir portunu ya da bir bağlantı üzerinden dosyalarını alamaz.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-2">CP-2026-2</a></td></tr>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Her sitenin yapılandırma dosyaları artık sunucudaki her hesap tarafından okunamaz.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Bir müşteriye verilebilen web sunucusu yönergeleri artık bağlantı kuralını kapatamaz, klasör listeleyemez, sitenin PHP sınırlarını yükseltemez ya da bir dosyayı yönetici olarak okuyamaz.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Alan adı ekleme, istekte adı geçen bir aboneliğe artık çağıranın onu kullanabildiğini denetlemeden bakmaz.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Ad ve port denetimleri panelde çalışır: sunucuda elle verilen bir ad ya da port denetlenmez.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">Güncellemeden önce zaten çakışan adlar korunur ve yöneticiye Şu anki sorunlar bölümünde listelenir.</td><td class="v" data-k="Vaka">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.142.tr.md">Sürüm notlarının tamamı: v0.1.0-alpha.142</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.141" aria-labelledby="h-v0.1.0-alpha.141">
+<header><span class="num">2026-11-20</span><h2 id="h-v0.1.0-alpha.141">v0.1.0-alpha.141</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Değişiklikler: v0.1.0-alpha.141</caption>
+<thead><tr><th scope="col">Tür</th><th scope="col">Değişiklik</th><th scope="col">Vaka</th></tr></thead>
+<tbody>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Yedekten, kopyadan ya da içe aktarmadan gelen SQL artık yöneticinin değil, veritabanı sahibinin yetkisiyle çalışır.</td><td class="v" data-k="Vaka"><a href="sorunlar.html#CP-2026-1">CP-2026-1</a></td></tr>
+<tr><th scope="row">Güvenlik</th><td data-k="Değişiklik">Yeni bir PostgreSQL veritabanı artık başka hesapların kullanıcılarından bağlantı kabul etmez.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Yeni</th><td data-k="Değişiklik">Panelin oluşturduğu her PostgreSQL veritabanı UTF-8’dir.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Kaldırıldı</th><td data-k="Değişiklik">Open WebUI artık sunulmuyor; kurulu olan çalışmaya devam eder.</td><td class="v" data-k="Vaka">—</td></tr>
+<tr><th scope="row">Bilinen sınır</th><td data-k="Değişiklik">PostgreSQL’de bir veritabanına eklenen kullanıcılar, geri yüklemenin yeniden oluşturduğu nesnelerdeki yetkilerini kaybeder; veritabanı kartından yeniden ekleyin.</td><td class="v" data-k="Vaka">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.141.tr.md">Sürüm notlarının tamamı: v0.1.0-alpha.141</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-earlier">
+<header><h2 id="h-earlier">Önceki sürümler</h2></header>
+<div>
+<p>Bu liste v0.1.0-alpha.141 ile başlar. Önceki her sürümün kendi notları vardır.</p>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/releases">Bütün sürümler ve notları</a></p>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>Linux sunucular için hosting kontrol paneli.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="degisiklikler.html">Değişiklikler</a></li>
+<li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Koşullar ve veri bildirimi</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">İletişim</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+<li><a href="sorunlar.html">Bilinen sorunlar</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Özellik öner</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

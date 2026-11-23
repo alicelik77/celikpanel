@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="tr" data-page="releases">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sürümler · CelikPanel</title>
+<meta name="description" content="Güncel CelikPanel sürümü; sürüm numarası, tarihi, commit’i, SHA-256 özeti ve imzalı dosyalarıyla. İndirdiğinizi kendiniz nasıl denetlersiniz.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/public.css">
+<link rel="stylesheet" href="../assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/tr/surumler.html">
+<link rel="alternate" hreflang="en" href="../releases.html">
+<link rel="alternate" hreflang="tr" href="surumler.html">
+<link rel="alternate" hreflang="x-default" href="../releases.html">
+<script src="../assets/boot.js"></script>
+<script src="../assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">İçeriğe geç</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<nav aria-label="Ana menü"><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html" aria-current="page">Sürümler</a></li>
+<li><a href="../guide/tr/">Kılavuz</a></li>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../releases.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Sürümler</h1>
+<p class="def">Her sürüm imzalıdır ve commit’iyle adlandırılır. Kurulu paneller yalnız sahibi başlattığında güncellenir.</p>
+<dl class="spec" aria-label="Son sürüm">
+<div><dt>Sürüm</dt><dd class="mono">@@CP_RELEASE_VERSION@@</dd></div>
+<div><dt>Yayım tarihi</dt><dd><time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></dd></div>
+<div><dt>Commit (kaynak kod kaydı)</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
+<div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
+<div><dt>Paket</dt><dd><code>@@CP_RELEASE_ARCHIVE_NAME@@</code></dd></div>
+</dl>
+<div class="actions">
+<a class="btn primary" href="@@CP_RELEASE_ARCHIVE_URL@@">Paketi indir</a>
+<a class="btn plain" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.tr.md">Sürüm notları</a>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-files">
+<header><span class="num">1</span><h2 id="h-files">Dosyalar</h2><p>Kurucunun denetlediği her şey, sizin de denetlemeniz için.</p></header>
+<div>
+<ul class="files">
+<li><a href="@@CP_RELEASE_ARCHIVE_URL@@">Paket (.tar.gz)</a></li>
+<li><a href="@@CP_RELEASE_CHECKSUM_URL@@">SHA-256 dosyası</a></li>
+<!-- cp:signed -->
+<li><a href="@@CP_RELEASE_MANIFEST_URL@@">İmzalı sürüm listesi (manifest)</a></li>
+<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">Manifest imzası (Ed25519)</a></li>
+<!-- cp:/signed -->
+<li><a href="../release-signing-ed25519.pem">Sürüm imzalama açık anahtarı</a></li>
+</ul>
+</div>
+</section>
+<section class="part" aria-labelledby="h-check">
+<header><span class="num">2</span><h2 id="h-check">İndirdiğinizi kendiniz denetleyin</h2><p>Kurucu bunu hiçbir şey kurmadan önce yapar. Siz de elle tekrarlayabilirsiniz.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 1 · Adımlar</caption>
+<tbody>
+<tr><td class="v">1</td><td>Paketi, SHA-256 dosyasını, imzalı manifest’i, imzasını ve açık anahtarı aynı klasöre indirin.</td></tr>
+<tr><td class="v">2</td><td>Anahtarın SHA-256 özetini aşağıdakiyle karşılaştırın, sonra paketi SHA-256 dosyasıyla denetleyin.</td></tr>
+<tr><td class="v">3</td><td>Manifest’in imzasını anahtarla doğrulayın.</td></tr>
+<tr><td class="v">4</td><td>Manifest’teki archive_sha256 satırını paketin SHA-256 özetiyle karşılaştırın; ikisi aynı olmalıdır. Paket ancak o zaman imzalı olanla aynıdır.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="verify-title">Komutlar</h3></div>
+<pre tabindex="0" aria-labelledby="verify-title"><code>sha256sum release-signing-ed25519.pem
+sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
+openssl pkeyutl -verify -rawin -pubin \
+  -inkey release-signing-ed25519.pem \
+  -in release-manifest-v2 -sigfile release-manifest-v2.sig
+grep '^archive_sha256=' release-manifest-v2
+sha256sum @@CP_RELEASE_ARCHIVE_NAME@@</code></pre>
+<p class="note">Özet satırı “OK”, imza satırı “Signature Verified Successfully” demeli; son iki satır aynı SHA-256 özetini yazmalıdır.</p>
+</div>
+<p class="key">Sürüm imzalama açık anahtarının SHA-256 özeti: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-update">
+<header><span class="num">3</span><h2 id="h-update">Kurulu bir paneli güncellemek</h2></header>
+<div>
+<p>Ayarlar, CelikPanel güncellemeleri bölümünü açın ve güncellemeyi kendiniz başlatın; bunu yalnız sahibi yapabilir. Güncelleme kurulu sürümü değiştirdikten sonra başarısız olursa panel önceki sürümü ve veritabanını kendisi geri koyar (güncellemeden sonra panelde yapılanlar kaybolur); daha önce durursa hiçbir şey değişmemiştir. Hangisinin olduğunu güncelleme ekranı söyler. Siteler, posta, DNS ve veritabanları geri almaya dahil değildir.</p>
+<p>Her sürümün notları commit’ini yazar, laboratuvarda neyin denendiğini ve neyin denenmediğini söyler, bilinen sınırları listeler.</p>
+<ul class="plain">
+<li><a href="degisiklikler.html">Her sürümün değiştirdikleri</a></li>
+<li><a href="sorunlar.html">Bilinen sorunlar ve sorun bildirmek</a></li>
+<li><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler, kullanım kılavuzunda</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel/releases">Bütün sürümler ve notları</a></li>
+<li><a href="indir.html">Yeni bir sunucuya kur</a></li>
+</ul>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>Linux sunucular için hosting kontrol paneli.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="degisiklikler.html">Değişiklikler</a></li>
+<li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Koşullar ve veri bildirimi</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">İletişim</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+<li><a href="sorunlar.html">Bilinen sorunlar</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Özellik öner</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

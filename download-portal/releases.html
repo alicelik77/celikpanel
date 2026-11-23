@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" data-page="releases">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Releases · CelikPanel</title>
+<meta name="description" content="The current CelikPanel release with its version, date, commit, SHA-256 and signed files, and how to check a download yourself.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
+<link rel="preload" href="assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/releases.html">
+<link rel="alternate" hreflang="en" href="releases.html">
+<link rel="alternate" hreflang="tr" href="tr/surumler.html">
+<link rel="alternate" hreflang="x-default" href="releases.html">
+<script src="assets/boot.js"></script>
+<script src="assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
+<span class="docid">Datasheet · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></span>
+<nav aria-label="Main"><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html" aria-current="page">Releases</a></li>
+<li><a href="guide/en/">Guide</a></li>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="tr/surumler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe">TR</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Releases</h1>
+<p class="def">Every release is signed and named by its commit. Installed panels update only when their owner starts it.</p>
+<dl class="spec" aria-label="Current release">
+<div><dt>Version</dt><dd class="mono">@@CP_RELEASE_VERSION@@</dd></div>
+<div><dt>Published</dt><dd><time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></dd></div>
+<div><dt>Commit</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
+<div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
+<div><dt>Package</dt><dd><code>@@CP_RELEASE_ARCHIVE_NAME@@</code></dd></div>
+</dl>
+<div class="actions">
+<a class="btn primary" href="@@CP_RELEASE_ARCHIVE_URL@@">Download the package</a>
+<a class="btn plain" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.md">Release notes</a>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-files">
+<header><span class="num">1</span><h2 id="h-files">Files</h2><p>What the installer checks, to check yourself.</p></header>
+<div>
+<ul class="files">
+<li><a href="@@CP_RELEASE_ARCHIVE_URL@@">Package (.tar.gz)</a></li>
+<li><a href="@@CP_RELEASE_CHECKSUM_URL@@">SHA-256 file</a></li>
+<!-- cp:signed -->
+<li><a href="@@CP_RELEASE_MANIFEST_URL@@">Signed release manifest</a></li>
+<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">Manifest signature (Ed25519)</a></li>
+<!-- cp:/signed -->
+<li><a href="release-signing-ed25519.pem">Release signing public key</a></li>
+</ul>
+</div>
+</section>
+<section class="part" aria-labelledby="h-check">
+<header><span class="num">2</span><h2 id="h-check">Check a download yourself</h2><p>The installer does this before it installs anything. You can repeat it by hand.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 1 · Steps</caption>
+<tbody>
+<tr><td class="v">1</td><td>Download the package, its SHA-256 file, the signed manifest, its signature and the public key into one folder.</td></tr>
+<tr><td class="v">2</td><td>Compare the key’s SHA-256 with the one printed below, then check the package against its SHA-256 file.</td></tr>
+<tr><td class="v">3</td><td>Verify the manifest’s signature with the key.</td></tr>
+<tr><td class="v">4</td><td>Compare the archive_sha256 line of the manifest with the package’s SHA-256; they must be identical. Only then is the package the signed one.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="verify-title">Commands</h3></div>
+<pre tabindex="0" aria-labelledby="verify-title"><code>sha256sum release-signing-ed25519.pem
+sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
+openssl pkeyutl -verify -rawin -pubin \
+  -inkey release-signing-ed25519.pem \
+  -in release-manifest-v2 -sigfile release-manifest-v2.sig
+grep '^archive_sha256=' release-manifest-v2
+sha256sum @@CP_RELEASE_ARCHIVE_NAME@@</code></pre>
+<p class="note">The checksum line must say “OK”, the signature line “Signature Verified Successfully”, and the last two lines must print the same SHA-256.</p>
+</div>
+<p class="key">SHA-256 of the release signing public key: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-update">
+<header><span class="num">3</span><h2 id="h-update">Updating an installed panel</h2></header>
+<div>
+<p>Open Settings, CelikPanel updates, and start the update yourself; only the owner can. If an update fails after it has replaced the installed version, the panel puts back the previous version and its database by itself (changes made in the panel after the update are lost); if it stops earlier, nothing was changed. The update screen says which happened. Sites, mail, DNS and databases are not part of a rollback.</p>
+<p>Each release’s notes name its commit, say what was tried in the lab and what was not, and list the known limits.</p>
+<ul class="plain">
+<li><a href="changelog.html">What each release changed</a></li>
+<li><a href="problems.html">Known problems and how to report one</a></li>
+<li><a href="guide/en/panel-settings.html">How updates work, in the user guide</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel/releases">Every release and its notes</a></li>
+<li><a href="download.html">Install on a new server</a></li>
+</ul>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>A hosting control panel for Linux servers.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Product</h2><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+<li><a href="guide/en/">User guide</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Account</h2><ul>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="account/?action=register&amp;lang=en">Create an account</a></li>
+<li><a href="account/?action=terms&amp;lang=en">Terms and data notice</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">Contact</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
+<li><a href="problems.html">Known problems</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Report a bug</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml">Suggest a feature</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

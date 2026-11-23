@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-page="problems">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Known problems · CelikPanel</title>
+<meta name="description" content="Problems in CelikPanel that we have accepted, what to do meanwhile, and the version that fixed them; and how to report a problem.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
+<link rel="preload" href="assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/problems.html">
+<link rel="alternate" hreflang="en" href="problems.html">
+<link rel="alternate" hreflang="tr" href="tr/sorunlar.html">
+<link rel="alternate" hreflang="x-default" href="problems.html">
+<script src="assets/boot.js"></script>
+<script src="assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
+<span class="docid">Datasheet · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></span>
+<nav aria-label="Main"><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="guide/en/">Guide</a></li>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="tr/sorunlar.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe">TR</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Known problems</h1>
+<p class="def">Problems we have accepted, in our own words, with what to do meanwhile and the version that fixed them. A security problem is listed here only after the release that closes it is published.</p>
+<div class="actions">
+<a class="btn primary" href="#report">Report a problem</a>
+<a class="btn plain" href="changelog.html">Changelog</a>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-cases">
+<header><span class="num">1</span><h2 id="h-cases">Cases</h2><p>Newest first. A fixed case links to the changes of the release that fixed it.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 1 · Known problems</caption>
+<thead><tr><th scope="col">Number</th><th scope="col">Problem</th><th scope="col">State</th></tr></thead>
+<tbody>
+<tr id="CP-2026-17"><td class="v" data-k="Number">CP-2026-17</td><td data-k="Problem">A longer change (a webmail update, a component or mail profile install) can stay shown as “in progress” after the panel loses contact with its agent for a moment, although it finished on the server; other server changes are then refused.<br><small>Until then: If a change has shown as in progress for more than about five minutes, run sudo systemctl restart celikpanel-panel on the server. It restarts only the panel’s web process, which then records what was really done: a webmail update is only read and not run again; an interrupted install is resumed and completed on the server. Sites, mail and webmail keep working meanwhile.</small></td><td data-k="State"><span class="tag warn">Accepted, will be fixed</span></td></tr>
+<tr id="CP-2026-16"><td class="v" data-k="Number">CP-2026-16</td><td data-k="Problem">Webmail’s local door on the server answered every account of the server: any of them could read Roundcube’s files through it and run plugin scripts (not from the network).</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-15"><td class="v" data-k="Number">CP-2026-15</td><td data-k="Problem">Some changes still run on the browser’s request: if you leave the page while the server works, the change can finish without the panel’s record, or only its answer is lost.<br><small>Until then: Stay on the page until the change says it has finished.</small></td><td data-k="State"><span class="tag warn">Accepted, will be fixed</span></td></tr>
+<tr id="CP-2026-14"><td class="v" data-k="Number">CP-2026-14</td><td data-k="Problem">The window of a failed PostgreSQL close kept its in-progress title above “Not completed”.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-13"><td class="v" data-k="Number">CP-2026-13</td><td data-k="Problem">After a backup DNS server (an optional second server) came back, an alias could keep saying “waiting to be published” until the next hourly round, although it already answered.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-12"><td class="v" data-k="Number">CP-2026-12</td><td data-k="Problem">Webmail could not send mail; reading mail, attachments and settings worked.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-11"><td class="v" data-k="Number">CP-2026-11</td><td data-k="Problem">Webmail’s own address gave out files of its plugins that are not part of its pages.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-10"><td class="v" data-k="Number">CP-2026-10</td><td data-k="Problem">Some alias and certificate refusals were shown in English on the Turkish page.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-9"><td class="v" data-k="Number">CP-2026-9</td><td data-k="Problem">Leaving the PostgreSQL page while a database was being closed to other accounts left its result shown as not confirmed.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-8"><td class="v" data-k="Number">CP-2026-8</td><td data-k="Problem">Leaving the page while a mailbox was being created could leave the mailbox without its record, and creating it again failed.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-7"><td class="v" data-k="Number">CP-2026-7</td><td data-k="Problem">An alias inside a customer’s own domain got no DNS record.<br><small>Note: Aliases made before alpha.144 get their record once removed and added again.</small></td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-6"><td class="v" data-k="Number">CP-2026-6</td><td data-k="Problem">PostgreSQL databases made before alpha.141 were open to every account’s sign-in.<br><small>Note: The administrator closes the ones the panel does not close by itself; databases made by hand are not touched.</small></td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-5"><td class="v" data-k="Number">CP-2026-5</td><td data-k="Problem">Outgoing mail could be signed with another customer’s domain.<br><small>Note: Fixed on Debian and Ubuntu; on Arch Linux, mail sent with a login can still be signed for another hosted domain.</small></td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-4"><td class="v" data-k="Number">CP-2026-4</td><td data-k="Problem">A Node.js site whose application had failed could not be deleted.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-3"><td class="v" data-k="Number">CP-2026-3</td><td data-k="Problem">A customer whose domain lies under one of the server’s own names could not add a subdomain of it.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-2"><td class="v" data-k="Number">CP-2026-2</td><td data-k="Problem">A customer or reseller could take a name, a site account, a server port or files that belong to another account.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.142">v0.1.0-alpha.142</a></td></tr>
+<tr id="CP-2026-1"><td class="v" data-k="Number">CP-2026-1</td><td data-k="Problem">SQL from a backup, a copy or an import ran with the database server administrator’s rights.</td><td data-k="State"><span class="tag ok">Fixed</span><br><a class="mono nowrap" href="changelog.html#v0.1.0-alpha.141">v0.1.0-alpha.141</a></td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Each case is taken from the published release notes. A report is shown here only in our own summary: never the reporter’s name, server, domain or words.</p>
+</div>
+</section>
+<section class="part" id="report" aria-labelledby="h-report">
+<header><span class="num">2</span><h2 id="h-report">Report a problem</h2><p>How to report today, what to include, and what happens next.</p></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Table 2 · Reporting a problem</caption>
+<tbody>
+<tr><th scope="row">A security problem</th><td>Report it privately, never in a public issue: <a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">private security report on GitHub</a></td></tr>
+<tr><th scope="row">Any other problem</th><td>Open a report in our feedback repository on GitHub. Write nothing there that you would not publish. <a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Report a bug on GitHub</a></td></tr>
+<tr><th scope="row">What to include</th><td>The CelikPanel version, the operating system, what you pressed, and what the screen said.</td></tr>
+<tr><th scope="row">What never to send</th><td>Passwords, keys, tokens or anyone’s personal data.</td></tr>
+<tr><th scope="row">What happens next</th><td>When we accept a report, it gets a number on this page, then its state, and once fixed the version that fixed it.</td></tr>
+<tr><th scope="row">Reporting form</th><td>There is no reporting form in the celikpanel.net account yet; report as above.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section class="part" aria-labelledby="h-states">
+<header><span class="num">3</span><h2 id="h-states">What the states mean</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Table 3 · States of a case</caption>
+<tbody>
+<tr><th scope="row">Reported, being looked at</th><td>We have the report and are finding out what happens and why.</td></tr>
+<tr><th scope="row">Accepted, will be fixed</th><td>It is a defect and a release will fix it; the case says what to do until then.</td></tr>
+<tr><th scope="row">Fixed</th><td>The named release fixed it; update to it from the panel’s own update screen.</td></tr>
+<tr><th scope="row">Not a defect</th><td>The panel works as intended; the case says why.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>A hosting control panel for Linux servers.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Product</h2><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+<li><a href="guide/en/">User guide</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Account</h2><ul>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="account/?action=register&amp;lang=en">Create an account</a></li>
+<li><a href="account/?action=terms&amp;lang=en">Terms and data notice</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">Contact</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
+<li><a href="problems.html">Known problems</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Report a bug</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml">Suggest a feature</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>
