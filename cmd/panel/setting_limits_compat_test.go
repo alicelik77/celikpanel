@@ -76,3 +76,38 @@ func TestPlanAndAccountSavesKeepCeilingsThisReleaseDoesNotKnow(t *testing.T) {
 		t.Fatal("a reseller save deleted the ceilings of keys this release does not know")
 	}
 }
+
+// TestResellerLeavingItsResellerPlanKeepsUnknownCeilings: a reseller bound to
+// a reseller plan that has rows of keys this release does not know gets them
+// copied once when it becomes Custom; saving it again neither duplicates nor
+// drops them, and they go with the reseller plan when it is deleted.
+func TestResellerLeavingItsResellerPlanKeepsUnknownCeilings(t *testing.T) {
+	f := newRightsFixture(t)
+	created := f.call(t, authzMatrixAdminID, http.MethodPost, resellerPlansPath,
+		`{"name":"Gold","max_customers":3,"max_domains":30,"max_databases":0,"max_email_accounts":0,"disk_quota_mb":0,"rights":{"all_permissions":true,"all_software":true,"permissions":[],"software":[]},"ceilings":{"php.memory_limit_mb":384}}`)
+	wantStatus(t, created, http.StatusOK, "")
+	gold := int(decodeBody(t, created)["id"].(float64))
+	plantLaterReleaseCeilings(t, f, rightsOwnerResellerPlan, gold)
+	wantStatus(t, f.call(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/"+itoa(authzMatrixResellerID)+"/rights",
+		`{"state":"plan","plan_id":`+itoa(gold)+`,"confirm":true}`), http.StatusOK, "")
+	if n := f.count(t, `SELECT COUNT(*) FROM setting_ceilings WHERE owner_kind = 'reseller' AND owner_id = ?`, authzMatrixResellerID); n != 0 {
+		t.Fatalf("a bound reseller has %d rows of its own", n)
+	}
+	custom := `{"state":"custom","rights":{"all_permissions":true,"all_software":true,"permissions":[],"software":[]},"quantities":{"max_domains":10},"ceilings":{"php.memory_limit_mb":256},"overselling":"not_allowed","confirm":true}`
+	for round := 0; round < 2; round++ {
+		wantStatus(t, f.call(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/"+itoa(authzMatrixResellerID)+"/rights", custom), http.StatusOK, "")
+		if storedCeiling(t, f, rightsOwnerReseller, authzMatrixResellerID, "site.memory_mb") != 8192 ||
+			storedCeiling(t, f, rightsOwnerReseller, authzMatrixResellerID, "db.statement_seconds") != 300 ||
+			storedCeiling(t, f, rightsOwnerReseller, authzMatrixResellerID, settingPHPMemoryMB) != 256 {
+			t.Fatalf("round %d: the reseller's rows after leaving its reseller plan are wrong", round)
+		}
+		if n := f.count(t, `SELECT COUNT(*) FROM setting_ceilings WHERE owner_kind = 'reseller' AND owner_id = ? AND key IN ('site.memory_mb', 'db.statement_seconds')`, authzMatrixResellerID); n != 2 {
+			t.Fatalf("round %d: %d unknown rows", round, n)
+		}
+	}
+	// The reseller plan's own rows go with it (the 066 trigger).
+	f.exec(t, `DELETE FROM reseller_plans WHERE id = ?`, gold)
+	if n := f.count(t, `SELECT COUNT(*) FROM setting_ceilings WHERE owner_kind = 'reseller_plan' AND owner_id = ?`, gold); n != 0 {
+		t.Fatalf("%d rows outlived their reseller plan", n)
+	}
+}

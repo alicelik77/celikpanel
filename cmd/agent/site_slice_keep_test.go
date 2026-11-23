@@ -69,19 +69,44 @@ func TestUnitKeepsOnlyItsOwnSitesSliceWithItsFile(t *testing.T) {
 			t.Errorf("%s: kept", name)
 		}
 	}
-	// A slice "file" that is a folder is not the slice's file.
-	if err := os.Remove(filepath.Join(dir, "celiksite_7.slice")); err != nil {
+	// The unit file itself: a regular file keeps the line, a missing one or a
+	// symbolic link to the same text keeps nothing.
+	unitPath := filepath.Join(dir, "celikrt-1.service")
+	if err := os.WriteFile(unitPath, []byte(unit), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(filepath.Join(dir, "celiksite_7.slice"), 0o755); err != nil {
+	if !unitFileKeepsSiteSlice(unitPath, 7) {
+		t.Fatal("a regular unit file did not keep its site's slice")
+	}
+	if unitFileKeepsSiteSlice(filepath.Join(dir, "celikrt-2.service"), 7) {
+		t.Fatal("a missing unit file kept a slice")
+	}
+	if err := os.Symlink(unitPath, filepath.Join(dir, "celikrt-3.service")); err != nil {
+		t.Fatal(err)
+	}
+	if unitFileKeepsSiteSlice(filepath.Join(dir, "celikrt-3.service"), 7) {
+		t.Fatal("a unit file that is a link kept a slice")
+	}
+	// A slice "file" that is a symbolic link or a folder is not the slice's file.
+	slice := filepath.Join(dir, "celiksite_7.slice")
+	real := filepath.Join(t.TempDir(), "real.slice")
+	if err := os.Rename(slice, real); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, slice); err != nil {
+		t.Fatal(err)
+	}
+	if unitKeepsSiteSlice(unit, 7, dir) {
+		t.Fatal("a link was taken for the slice's file")
+	}
+	if err := os.Remove(slice); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(slice, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if unitKeepsSiteSlice(unit, 7, dir) {
 		t.Fatal("a folder was taken for the slice's file")
-	}
-	// The unit file itself: missing or a link keeps nothing.
-	if unitFileKeepsSiteSlice(filepath.Join(dir, "celikrt-1.service"), 7) {
-		t.Fatal("a missing unit file kept a slice")
 	}
 }
 

@@ -40,8 +40,11 @@ type Helper struct {
 	LookupUser func(name string) (Account, error)
 	// UnitInfo reads the sandboxed unit's settings from systemd.
 	UnitInfo func(unit string) (UnitInfo, error)
-	// ControlGroup reads the cgroup the unit runs in (the system slice, or
-	// its site's slice where a later release placed it, S4 R2a).
+	// SelfCgroup reads the helper's own cgroup (/proc/self/cgroup), and
+	// ControlGroup asks systemd for the cgroup the unit runs in: the system
+	// slice, or its site's slice where a later release placed it
+	// (egressElement says in which order).
+	SelfCgroup   func() (string, error)
 	ControlGroup func(unit string) (string, error)
 	// NFT runs nft with the given arguments (an empty environment).
 	NFT func(args ...string) error
@@ -167,22 +170,76 @@ func ParseControlGroup(unit, show string) string {
 	return ""
 }
 
+// ParseSelfCgroup reads /proc/self/cgroup: the unified hierarchy's path (the
+// "0::" line), or "" when there is none.
+func ParseSelfCgroup(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		if rest, ok := strings.CutPrefix(line, "0::"); ok {
+			return strings.TrimSpace(rest)
+		}
+	}
+	return ""
+}
+
 // egressElement is the SMTP set's element of the unit: the cgroup it runs in,
-// which must be the system slice or its site's slice (depth two, where the
-// set matches). Anything else is refused, so the unit does not start.
+// the system slice or its site's slice (depth two, where the set matches).
+// It is established in this order, so that a moment in which systemd does
+// not answer never stops a program from starting:
+//
+//  1. The helper's own cgroup (SelfCgroup): egress-add and egress-remove run
+//     as the unit's own ExecStartPre=+ and ExecStopPost=-+, and systemd runs a
+//     unit's control processes in the unit's own cgroup. Only a unit with
+//     Delegate= gets a ".control" subgroup for them (systemd's "Control Group
+//     APIs and Delegation"); a sandboxed unit never has Delegate=, so the
+//     line is exactly /system.slice/<unit> or /celiksite_<id>.slice/<unit>.
+//     Anything else - the helper run by hand, a cgroup namespace - is not
+//     taken, and systemd is asked.
+//  2. systemd (ControlGroup): the unit's ControlGroup=, or its Slice=. A
+//     place that is neither slice is refused, so the unit does not start.
+//  3. When systemd cannot be asked or names no place: the system slice's
+//     element, the one this release always added. nft turns the path into
+//     the cgroup's inode when it adds the element, so for a unit that does
+//     not run there the add fails and the unit does not start either: no
+//     program ever starts outside the block.
 func (h Helper) egressElement(unit string) (string, error) {
 	if !sitesandbox.ValidUnitName(unit) {
 		return "", errors.New("not a sandboxed unit name")
 	}
-	if h.ControlGroup == nil {
-		return sitesandbox.CgroupElement(unit)
+	if h.SelfCgroup != nil {
+		if cgroup, err := h.SelfCgroup(); err == nil {
+			if _, ok := sitesandbox.UnitControlGroupAllowed(cgroup, unit); ok {
+				return sitesandbox.CgroupElementFor(cgroup, unit)
+			}
+		}
 	}
-	cgroup, err := h.ControlGroup(unit)
-	if err != nil {
-		return "", fmt.Errorf("the cgroup of %s could not be read: %v", unit, err)
+	if h.ControlGroup != nil {
+		cgroup, err := h.ControlGroup(unit)
+		if err == nil && cgroup != "" {
+			element, err := sitesandbox.CgroupElementFor(cgroup, unit)
+			if err != nil {
+				return "", &PlaceError{Unit: unit, Detail: err.Error()}
+			}
+			return element, nil
+		}
+		if h.Log != nil {
+			reason := "it named no place"
+			if err != nil {
+				reason = err.Error()
+			}
+			fmt.Fprintf(h.Log, "celikpanel-sandbox: systemd could not tell where %s runs (%s); the SMTP block takes it in the system slice, as before\n", unit, reason)
+		}
 	}
-	return sitesandbox.CgroupElementFor(cgroup, unit)
+	return sitesandbox.CgroupElement(unit)
 }
+
+// PlaceError: the unit runs somewhere the SMTP block cannot hold it (neither
+// the system slice nor its site's slice), so it is not started.
+type PlaceError struct {
+	Unit   string
+	Detail string
+}
+
+func (e *PlaceError) Error() string { return e.Detail }
 
 // EgressAdd loads the SMTP block and adds the unit's cgroup (the sandboxed
 // unit's ExecStartPre=+, run inside the unit's cgroup).
@@ -195,7 +252,9 @@ func (h Helper) EgressAdd(unit string) error {
 		return fmt.Errorf("the SMTP block could not be loaded from %s: %v", sitesandbox.EgressFile, err)
 	}
 	if err := h.NFT("add", "element", "inet", sitesandbox.EgressTable, sitesandbox.EgressSet, element); err != nil {
-		return fmt.Errorf("the unit's cgroup could not be added to the SMTP block: %v", err)
+		// nft's own words: for a unit that does not run at that path, the
+		// path does not exist.
+		return &PlaceError{Unit: unit, Detail: fmt.Sprintf("the unit's cgroup %s could not be added to the SMTP block: %v", element, err)}
 	}
 	return nil
 }

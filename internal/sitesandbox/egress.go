@@ -101,7 +101,10 @@ table inet ` + EgressTable + ` {
 // of every running sandboxed unit whose helper loads the block (its
 // ExecStartPre runs the helper's egress-add) again. A unit whose cgroup is not
 // /system.slice/<unit> or /celiksite_<site id>.slice/<unit> (its site's slice,
-// S4 R2a) is named in the journal and left out. A finished
+// where the next release places it) is named in the journal and left out.
+// Each release writes the guard in its own text at its first sandboxed write
+// (ensureSandboxEgress); this text covers every unit form the next release
+// creates. A finished
 // install step that stays "active (exited)" has no cgroup and is skipped
 // (alpha.127 lab: after a Node.js "Install packages and build" the guard
 // failed every 30 seconds on celikappinst-N, "runs in , not ...").
@@ -125,8 +128,9 @@ for unit in $(systemctl list-units --type=service --state=active,activating,relo
 	# A finished install step (RemainAfterExit, "active (exited)") has no
 	# cgroup any more: nothing runs there, so there is nothing to block.
 	[ -n "$cgroup" ] || continue
-	# The system slice, or the site's own slice celiksite_<site id>.slice
-	# (docs/SITE-SANDBOX.md section 8): both are depth two, as the set matches.
+	# The system slice, or the site's own slice celiksite_<site id>.slice where
+	# a later release places it (docs/SITE-SANDBOX.md section 3): both are depth
+	# two, as the set matches.
 	allowed=no
 	case "$cgroup" in
 		"/system.slice/$unit") allowed=yes ;;

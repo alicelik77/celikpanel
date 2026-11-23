@@ -4,6 +4,7 @@ package sandboxbind
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -74,21 +75,56 @@ func readUnitInfo(unit string) (UnitInfo, error) {
 	return ParseUnitInfo(unit, string(out))
 }
 
+// systemctlRun runs systemctl for readControlGroup (tests replace it).
+var systemctlRun = runClean
+
 // readControlGroup asks systemd for the cgroup the unit runs in (its
-// ControlGroup=, or "/<Slice=>/<unit>" when systemd shows none yet).
+// ControlGroup=, or "/<Slice=>/<unit>" when systemd shows none yet). A failure
+// carries systemctl's own words.
 func readControlGroup(unit string) (string, error) {
-	out, err := runClean(systemctlPath, "show", unit, "--property=ControlGroup,Slice")
+	out, err := systemctlRun(systemctlPath, "show", unit, "--property=ControlGroup,Slice")
 	if err != nil {
-		return "", fmt.Errorf("systemctl show: %v", err)
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && len(strings.TrimSpace(string(exit.Stderr))) > 0 {
+			return "", fmt.Errorf("systemctl show %s: %v: %s", unit, err, strings.TrimSpace(string(exit.Stderr)))
+		}
+		return "", fmt.Errorf("systemctl show %s: %v", unit, err)
 	}
 	return ParseControlGroup(unit, string(out)), nil
+}
+
+// selfCgroupPath is the helper's own cgroup file (tests replace it).
+var selfCgroupPath = "/proc/self/cgroup"
+
+// readSelfCgroup reads the helper's own cgroup in the unified hierarchy.
+func readSelfCgroup() (string, error) {
+	raw, err := os.ReadFile(selfCgroupPath)
+	if err != nil {
+		return "", err
+	}
+	return ParseSelfCgroup(string(raw)), nil
 }
 
 // ProductionHelper is the helper as the units run it.
 func ProductionHelper(log io.Writer) Helper {
 	return Helper{
 		Plan: PlanFor, MountRoot: sitesandbox.MountRoot, RootUID: 0, Mounter: KernelMounter{},
-		LookupUser: lookupAccount, UnitInfo: readUnitInfo, ControlGroup: readControlGroup, NFT: runNFT, Log: log,
+		LookupUser: lookupAccount, UnitInfo: readUnitInfo, SelfCgroup: readSelfCgroup, ControlGroup: readControlGroup,
+		NFT: runNFT, Log: log,
+	}
+}
+
+// egressGuidance is what the journal says after egress-add refused a start:
+// what was being established, who acts, and the command that shows the
+// unit's place.
+func egressGuidance(unit string) []string {
+	return []string{
+		"celikpanel-sandbox: the SMTP block could not take " + unit + " where it runs, so it was not started. " +
+			"The server's administrator checks its place with: systemctl show -p ControlGroup,Slice " + unit +
+			" (it must be /system.slice/" + unit + " or its site's /celiksite_<site>.slice/" + unit + "), corrects it, then starts the program again.",
+		"celikpanel-sandbox: posta engeli " + unit + " birimini çalıştığı yerde tutamadı, bu yüzden başlatılmadı. " +
+			"Sunucu yöneticisi yerini şu komutla görür: systemctl show -p ControlGroup,Slice " + unit +
+			" (/system.slice/" + unit + " ya da sitesinin /celiksite_<site>.slice/" + unit + " olmalı); düzeltir, sonra programı yeniden başlatır.",
 	}
 }
 
@@ -171,6 +207,12 @@ func Main(args []string, stderr io.Writer) int {
 		return 1
 	}
 	fmt.Fprintf(stderr, "celikpanel-sandbox: %s %s: %v\n", args[0], *unit, err)
+	var place *PlaceError
+	if args[0] == "egress-add" && errors.As(err, &place) {
+		for _, line := range egressGuidance(*unit) {
+			fmt.Fprintln(stderr, line)
+		}
+	}
 	return 1
 }
 
