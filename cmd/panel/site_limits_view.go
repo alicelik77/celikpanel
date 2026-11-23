@@ -434,6 +434,13 @@ const (
 	siteLimitsOutside     = "outside"     // every program runs, or would start, outside them
 	siteLimitsNoFile      = "no_file"     // the slice file is absent: nothing is enforced
 	siteLimitsUnsupported = "unsupported" // this host cannot enforce them
+	// Third fix round (review N3): "in force" is what the kernel says.
+	siteLimitsPending = "pending" // written, but the running slice does not hold them yet
+	siteLimitsUnknown = "unknown" // the running slice's cgroup could not be read
+	// siteLimitsNotYet (review W1) is the one state a customer or reseller
+	// reads for every state they cannot act on; the administrator reads the
+	// reason and the step.
+	siteLimitsNotYet = "not_yet"
 )
 
 type siteLimitsView struct {
@@ -521,7 +528,8 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 	if resp.Unsupported != "" {
 		view.Unsupported = resp.Unsupported
 	}
-	if view.Applies == siteLimitsApply {
+	switch view.Applies {
+	case siteLimitsApply:
 		// What systemd applies (the file and every drop-in): the card shows
 		// it beside the plan's value when they differ (review B3, C6).
 		live := status.Live
@@ -529,6 +537,15 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 		if status.Active {
 			view.MemoryCurrentMB, view.TasksCurrent = status.MemoryCurrentMB, status.TasksCurrent
 		}
+	case siteLimitsPending:
+		// Review N3: what the kernel holds now, not the values written.
+		kernel := status.Kernel
+		view.Live = &kernel
+	}
+	if !admin && view.Applies != siteLimitsApply {
+		// Review W1: a customer or reseller cannot act on any of these; they
+		// read one neutral state, the administrator the reason and the step.
+		view.Applies, view.Unsupported, view.Live = siteLimitsNotYet, "", nil
 	}
 	if admin {
 		view.SliceFile, view.Slice, view.DropIns, view.MoveInterrupted = status.File, status.Slice, status.DropIns, status.MoveInterrupted
@@ -555,6 +572,7 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 	// A reader's reading keeps the administrator's Problems now line current
 	// (written only when the list changed).
 	p.noteSiteLimitOutside(ctx, resp.Sites, false, time.Now())
+	p.noteSiteMoveKept(ctx, resp.Sites, false)
 	writeRightsJSON(w, http.StatusOK, view)
 }
 
@@ -576,15 +594,33 @@ func siteLimitsApplies(status transport.SiteSliceStatus, unsupported string) str
 		}
 		return siteLimitsOutside
 	}
+	inSlice, stopped := false, false
 	for _, u := range status.Units {
-		switch placement := siteUnitPlacement(u, status.Slice); placement {
+		switch siteUnitPlacement(u, status.Slice) {
 		case transport.SiteUnitInSlice:
-			return siteLimitsApply
+			inSlice = true
 		case transport.SiteUnitStopped:
-			return siteLimitsApply // it starts inside them
+			stopped = true // it starts inside them
 		}
 	}
-	return siteLimitsOutside
+	if !inSlice && !stopped {
+		return siteLimitsOutside
+	}
+	// Review N3: where the slice runs, the limits are in force only when its
+	// cgroup holds what systemd applies; a slice that does not run takes the
+	// file when a program starts. Anything not read is not "in force".
+	switch status.KernelState {
+	case transport.SiteSliceInForce:
+		return siteLimitsApply
+	case transport.SiteSlicePending:
+		return siteLimitsPending
+	case transport.SiteSliceKernelUnknown:
+		return siteLimitsUnknown
+	}
+	if inSlice {
+		return siteLimitsUnknown // a program runs in the slice but its cgroup was not read
+	}
+	return siteLimitsApply
 }
 
 // siteUnitPlacement is where a unit runs as the card says it; a stopped unit
@@ -691,6 +727,9 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 	}
 	var req struct {
 		RequestID string `json:"request_id"`
+		// Recover (review N2): "Try again" for a move whose put-back did not
+		// complete; the Agent runs the put-back now and moves nothing new.
+		Recover bool `json:"recover"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil || !refreshRequestIDPattern.MatchString(req.RequestID) {
 		writeClientError(w, http.StatusBadRequest, "a request id is required")
@@ -724,16 +763,18 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	site := sites[0]
-	slice := p.siteSliceForSubscription(ctx, site.SiteID, site.SubscriptionID, site.Domain)
-	if slice == nil || len(site.Units) == 0 {
-		writeServiceAppRefusal(w, http.StatusConflict, "site_limits_nothing",
-			"Nothing was changed: this site runs no program, or its limits could not be read.", nil)
-		return
-	}
-	move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID,
-		Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID}
-	for _, u := range site.Units {
-		move.Units = append(move.Units, u.Unit)
+	move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID, Recover: req.Recover}
+	if !req.Recover {
+		slice := p.siteSliceForSubscription(ctx, site.SiteID, site.SubscriptionID, site.Domain)
+		if slice == nil || len(site.Units) == 0 {
+			writeServiceAppRefusal(w, http.StatusConflict, "site_limits_nothing",
+				"Nothing was changed: this site runs no program, or its limits could not be read.", nil)
+			return
+		}
+		move.Site, move.SubscriptionID, move.DomainID = *slice, site.SubscriptionID, site.DomainID
+		for _, u := range site.Units {
+			move.Units = append(move.Units, u.Unit)
+		}
 	}
 	resp, err := moveSiteSliceCall(p, ctx, move)
 	if err != nil {
@@ -743,7 +784,8 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 	}
 	p.auditDetailed(r, "site.limits_move", "domain", domainID, map[string]any{
 		"request_id": req.RequestID, "site": site.Domain, "done": resp.Done, "rolled_back": resp.RolledBack,
-		"units": resp.Units, "error": resp.Error, "wait_seconds": resp.WaitSeconds,
+		"units": resp.Units, "error": resp.Error, "wait_seconds": resp.WaitSeconds, "recover": req.Recover, "kept": resp.Kept,
+		"recovery": resp.Recovery,
 	})
 	siteMoveMu.Lock()
 	siteMoveAnswers[req.RequestID] = resp
@@ -812,10 +854,11 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	siteLimitLedgerMu.Unlock()
 	outside := p.setting(ctx, settingSiteLimitOutside)
 	host := p.setting(ctx, settingSiteLimitHost)
+	kept := p.setting(ctx, settingSiteMoveKept)
 	// Review B3 and B5: a change of limits that did not reach every site,
 	// and a default memory limit fixed for the host's earlier memory.
 	extra := append(siteLimitApplyProblem(p.setting(ctx, settingSiteLimitApply)), p.siteMemoryDefaultProblem(ctx)...)
-	if len(ledger) == 0 && outside == "" && host == "" {
+	if len(ledger) == 0 && outside == "" && host == "" && kept == "" {
 		return extra
 	}
 	names := map[string]string{}
@@ -857,9 +900,93 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 		}
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
+	problems = append(problems, siteMoveKeptProblem(kept, names)...)
 	problems = append(problems, siteLimitHostProblem(host)...)
 	problems = append(problems, extra...)
 	return append(problems, siteLimitOutsideProblem(outside, names)...)
+}
+
+// --- A move whose put-back did not complete (review N2) ----------------------------
+
+// settingSiteMoveKept keeps the sites whose move record the Agent keeps (its
+// put-back did not complete; no site is moved until it is settled), as the
+// last reading said: site id -> since when (panel_settings; no schema
+// change). Written only when the list changes.
+const settingSiteMoveKept = "site_move_kept_v1"
+
+var siteMoveKeptMu sync.Mutex
+
+// noteSiteMoveKept records a reading: whole (the background reading of every
+// site) replaces the list; one site's card changes that site only.
+func (p *Panel) noteSiteMoveKept(ctx context.Context, statuses []transport.SiteSliceStatus, whole bool) {
+	siteMoveKeptMu.Lock()
+	defer siteMoveKeptMu.Unlock()
+	raw := p.setting(ctx, settingSiteMoveKept)
+	previous := map[string]string{}
+	if raw != "" {
+		_ = json.Unmarshal([]byte(raw), &previous)
+	}
+	next := map[string]string{}
+	if !whole {
+		for k, v := range previous {
+			next[k] = v
+		}
+	}
+	for _, status := range statuses {
+		key := strconv.Itoa(status.SiteID)
+		if status.MoveInterrupted != nil && status.MoveInterrupted.Kept {
+			next[key] = status.MoveInterrupted.At
+		} else {
+			delete(next, key)
+		}
+	}
+	if reflect.DeepEqual(next, previous) {
+		return
+	}
+	value := ""
+	if len(next) > 0 {
+		encoded, err := json.Marshal(next)
+		if err != nil {
+			return
+		}
+		value = string(encoded)
+	}
+	if err := p.setSetting(ctx, settingSiteMoveKept, value); err != nil {
+		log.Printf("site limits: the unfinished move was not recorded: %v", err)
+	}
+}
+
+// siteMoveKeptProblem is ONE line, for the administrator, while the Agent
+// keeps a move's record: a program may be stopped and no site is moved until
+// it is settled; it opens the site, whose card names each program left, the
+// next step and "Try again".
+func siteMoveKeptProblem(raw string, names map[string]string) []monitoringProblem {
+	if raw == "" {
+		return nil
+	}
+	kept := map[string]string{}
+	if err := json.Unmarshal([]byte(raw), &kept); err != nil {
+		return nil
+	}
+	var sites []string
+	since := ""
+	for key, at := range kept {
+		if name := names[key]; name != "" {
+			sites = append(sites, name)
+			if since == "" || at < since {
+				since = at
+			}
+		}
+	}
+	if len(sites) == 0 {
+		return nil
+	}
+	sort.Strings(sites)
+	return []monitoringProblem{{
+		Key: "site_move_kept", Kind: "site_move_kept", Severity: "warning", Actor: "administrator",
+		Subject: strings.Join(sites, ", "), Name: sites[0], Value: float64(len(sites)), Since: since, ObservedAt: since,
+		Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(sites[0])},
+	}}
 }
 
 // --- A host that cannot enforce a site's limits -------------------------------------
@@ -1032,6 +1159,11 @@ func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
 	p.noteSiteLimitHost(ctx, resp.Unsupported, now)
 	p.noteSiteSlices(ctx, resp.Sites, true, now)
 	p.noteSiteLimitOutside(ctx, resp.Sites, true, now)
+	if resp.Partial == "" {
+		p.noteSiteMoveKept(ctx, resp.Sites, true)
+	} else {
+		p.noteSiteMoveKept(ctx, resp.Sites, false)
+	}
 	return true
 }
 

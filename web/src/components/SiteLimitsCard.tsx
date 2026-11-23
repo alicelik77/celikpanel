@@ -4,12 +4,12 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { formatDateTime } from '../lib/dateFormat';
 import { readApiError, apiErrorText } from '../lib/apiError';
-import { confirmAction, type OperationEnd, type OperationStep } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 import { useRemote } from '../lib/remote';
 import { unitText, whoText } from '../lib/settingLimits';
 import {
-    appliedOf, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
-    type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
+    appliedOf, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
+    putBackSplit, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
 import { Button, Checking, CouldNotCheck } from './ui';
 
@@ -91,7 +91,7 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
                     <span className="min-w-0 flex-1">{t(`slim.applies.${applies}` as TranslationKey, { detail: view.unsupported ?? '' })}</span>
                 </p>
             )}
-            {view.known && view.live && (
+            {view.known && view.live && applies === 'yes' && (
                 <p className="mt-2 text-sm text-fg-muted" data-site-limits-using="">
                     {t('slim.using', { memory: unitText(t, 'mb', view.memory_current_mb ?? 0), tasks: view.tasks_current ?? 0 })}
                 </p>
@@ -197,7 +197,14 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     const failed = answer.units.find((u) => u.outcome === 'failed');
                     if (answer.time_up) return { state: 'failed', reason: t('slim.move.timeUp') };
                     if (answer.rolled_back && failed) {
-                        return { state: 'failed', reason: t('slim.move.rolledBack', { unit: labelOf(units, failed.unit), detail: failed.detail ?? '' }) };
+                        // "Put back" only for what was confirmed back; the rest is named (review W1).
+                        const { back, left } = putBackSplit(answer);
+                        const list = (names: string[]) => names.map((u) => labelOf(units, u)).join(', ') || '—';
+                        return {
+                            state: 'failed',
+                            reason: [t('slim.move.rolledBack', { unit: labelOf(units, failed.unit), detail: failed.detail ?? '', back: list(back) }),
+                                left.length > 0 ? t('slim.move.notBack', { list: list(left) }) : ''].filter(Boolean).join(' '),
+                        };
                     }
                     if (!answer.done) return { state: 'failed', reason: answer.error || t('slim.move.unknown') };
                     return { state: 'done', message: [t('slim.move.done'), notMoved.length > 0 ? t('slim.move.notMoved', { list: notMoved.join('; ') }) : ''].filter(Boolean).join(' ') };
@@ -209,12 +216,58 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
         }
     };
 
+    // "Try again" for a move whose put-back did not complete (review N2): the
+    // put-back runs now in the panel's own window; nothing new is moved.
+    const retry = async () => {
+        setWorking(true);
+        try {
+            await followOperation({
+                progressTitle: t('pnow.retry'),
+                action: async (report): Promise<OperationEnd> => {
+                    report.steps([{ id: 'put_back', label: t('slim.move.step.restart'), state: 'running', since: Date.now() }]);
+                    let sent: Response;
+                    try {
+                        sent = await fetch(`/api/v1/domains/${domainId}/site-limits/move`, {
+                            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ request_id: requestID, recover: true }),
+                        });
+                    } catch {
+                        return { state: 'unknown', reason: t('slim.move.unknown') };
+                    }
+                    if (!sent.ok) return { state: 'failed', reason: apiErrorText(await readApiError(sent), t) };
+                    let answer;
+                    try {
+                        answer = decodeMoveAnswer(await sent.json());
+                    } catch {
+                        return { state: 'unknown', reason: t('slim.move.unknown') };
+                    }
+                    setRequestID(newMoveRequestID());
+                    if (answer.done) return { state: 'done' };
+                    return { state: 'failed', reason: answer.kept ? t('slim.kept', { time: formatDateTime(view.move_interrupted?.at ?? '', locale) }) : answer.error || t('slim.move.unknown') };
+                },
+            });
+        } finally {
+            setWorking(false);
+            onDone();
+        }
+    };
+    const kept = keptUnits(view);
+
     return (
         <div className="mt-4 border-t border-border pt-3" data-site-limits-admin="">
             {edited && <p className="mb-2 text-sm text-warning">{t('slim.sliceEdited')}</p>}
             {(view.drop_ins ?? []).length > 0 && <p className="mb-2 text-sm text-fg-muted" data-site-limits-dropins="">{t('slim.dropIns', { list: (view.drop_ins ?? []).join(', ') })}</p>}
             {(view.apply_total ?? 0) > 0 && <p className="mb-2 text-sm text-fg-muted" role="status">{t('slim.applying', { done: view.apply_done ?? 0, total: view.apply_total ?? 0 })}</p>}
-            {view.move_interrupted && <p className="mb-2 text-sm text-warning" data-site-limits-interrupted="">{t('slim.interrupted', { time: formatDateTime(view.move_interrupted.at, locale) })}</p>}
+            {view.move_interrupted?.kept ? (
+                <div className="mb-2 space-y-1 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-fg" role="status" data-site-limits-kept="">
+                    <p>{t('slim.kept', { time: formatDateTime(view.move_interrupted.at, locale) })}</p>
+                    {kept.map((k) => (
+                        <p key={k.unit} data-site-limits-kept-unit={k.state}>
+                            {t('slim.kept.unit', { unit: labelOf(units, k.unit), state: t(`slim.kept.${k.state}` as TranslationKey), name: k.unit })}
+                        </p>
+                    ))}
+                    <Button loading={working} disabled={working || view.busy === true} onClick={() => void retry()}>{t('pnow.retry')}</Button>
+                </div>
+            ) : view.move_interrupted && <p className="mb-2 text-sm text-warning" data-site-limits-interrupted="">{t('slim.interrupted', { time: formatDateTime(view.move_interrupted.at, locale) })}</p>}
             {owner.length > 0 && <p className="mb-2 text-sm text-fg-muted" data-site-limits-dbowner="">{t('slim.dbOwner', { list: owner.join('; ') })}</p>}
             {units.length > 0 && (
                 <>

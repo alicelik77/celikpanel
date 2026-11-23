@@ -13,6 +13,8 @@ import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
 import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
 import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr.ts';
+import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
+import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import { appliedOf, decodeMoveAnswer, decodeSiteLimits } from '../src/lib/siteLimits.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -24,9 +26,14 @@ test('the new part has the same keys and placeholders in both languages and says
     const got = [...trSiteLimitsApplyScreens[key].matchAll(/\{([a-z]+)\}/g)].map((m) => m[1]).sort();
     assert.deepEqual(got, want, `${key} keeps its placeholders`);
   }
+  // Third fix round: the administrator's by-hand steps (a stopped program,
+  // a change made by hand) name the commands the review asked for; nothing
+  // else names a system command.
+  const commands = new Set(['slim.kept.unit', 'slim.applies.pending']);
   for (const words of [enSiteLimitsApplyScreens, trSiteLimitsApplyScreens]) {
     for (const [key, text] of Object.entries(words)) {
-      assert.ok(!/cPanel|Plesk|aaPanel|DirectAdmin|celiksite_|systemctl|cgroup|MemoryMax|R2a|D-0/.test(text), `${key}: ${text}`);
+      const internal = commands.has(key) ? /cPanel|Plesk|aaPanel|DirectAdmin|celiksite_|cgroup|MemoryMax|R2a|D-0/ : /cPanel|Plesk|aaPanel|DirectAdmin|celiksite_|systemctl|cgroup|MemoryMax|R2a|D-0/;
+      assert.ok(!internal.test(text), `${key}: ${text}`);
     }
   }
   for (const key of Object.keys(enSiteLimitsApplyScreens)) {
@@ -83,15 +90,19 @@ test('a reseller’s form says who sets the bound of a site’s limits', () => {
 test('Problems now shows the two new lines with their words and the default’s preview-and-confirm action', () => {
   const problems = read('../src/components/ProblemsNow.tsx');
   const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
+  // Third fix round: the unapplied change's words moved to the problemsNow
+  // part (the siteLimitsApply part had no room for the round's new words).
+  const en = { ...enSiteLimitsApplyScreens, ...enProblemsNowScreens };
+  const tr = { ...trSiteLimitsApplyScreens, ...trProblemsNowScreens };
   for (const kind of ['site_limits_unapplied', 'site_memory_default']) {
     assert.ok(list && list[1].includes(`'${kind}'`), `${kind} is shown`);
     for (const part of ['title', 'body', 'action']) {
-      assert.ok(enSiteLimitsApplyScreens[`pnow.${kind}.${part}`] && trSiteLimitsApplyScreens[`pnow.${kind}.${part}`], `${kind} ${part}`);
+      assert.ok(en[`pnow.${kind}.${part}`] && tr[`pnow.${kind}.${part}`], `${kind} ${part}`);
     }
   }
   assert.match(problems, /p\.action\.kind === 'apply_default' \? p\.kind === 'site_memory_default'/, 'the action belongs to that line only');
   assert.match(problems, /send\(\{ action: 'preview' \}\)[\s\S]*confirmAction\([\s\S]*send\(\{ action: 'apply', confirm_stopped: preview\.stopped_token/, 'preview, the panel’s own question, then the apply with the list');
   assert.ok(!/window\.(confirm|alert|prompt)\(/.test(problems), 'no browser dialogs');
-  assert.match(enSiteLimitsApplyScreens['pnow.site_limits_unapplied.body'], /every hour/);
+  assert.match(en['pnow.site_limits_unapplied.body'], /every hour/);
   assert.match(enSiteLimitsApplyScreens['pnow.site_memory_default.body'], /Nothing changes by itself/);
 });

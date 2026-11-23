@@ -91,16 +91,46 @@ type SiteSliceUnit struct {
 	DropInSlice string `json:"drop_in_slice,omitempty"`
 }
 
-// SiteSliceMoveRecovery is what the Agent did at its start with a move of
-// the site that an Agent stop interrupted (site_slices_move.go): per unit
-// "moved" (it had come up in the slice and stays), "put_back" (its pre-move
-// bytes are back and it runs where it ran), "rewritten" (stopped; its file
-// names the slice), "not_tried", or "changed" (its file was changed meanwhile
-// and is left as it is).
+// SiteSliceMoveRecovery is what the Agent did with a move of the site that an
+// Agent stop interrupted or whose put-back did not complete
+// (site_slices_move.go): per unit "moved" (it had come up in the slice and
+// stays), "put_back" (its pre-move bytes are back and it runs where it ran),
+// "rewritten" (stopped; its file names the slice), "not_tried", "changed"
+// (its file was changed meanwhile and is left as it is) and, while Kept,
+// "failed" (its pre-move bytes are back but it did not start again: it is
+// stopped), "unknown" (where it runs could not be read, so it was not
+// restarted) or "starting" (its start was still running at its start wait).
 type SiteSliceMoveRecovery struct {
 	At    string            `json:"at"`
 	Units map[string]string `json:"units"`
+	// Kept (S4 R2a third fix round, review N2): the put-back did not
+	// complete, so the move's record stays and no site is moved until it is
+	// settled (MoveSiteSliceRequest.Recover tries again).
+	Kept bool `json:"kept,omitempty"`
 }
+
+// Recovery outcomes of a unit whose put-back did not complete (the record
+// is kept).
+const (
+	// SiteMoveUnknown: where the unit runs could not be read; it was not
+	// restarted.
+	SiteMoveUnknown = "unknown"
+	// SiteMoveStarting: its start was still running at its start wait.
+	SiteMoveStarting = "starting"
+)
+
+// Kernel states of a running slice (SiteSliceStatus.KernelState).
+const (
+	// SiteSliceInForce: the slice's cgroup holds the values systemd applies
+	// (memory.max, pids.max, cpu.max).
+	SiteSliceInForce = "in_force"
+	// SiteSlicePending: the values are written but the kernel (or systemd,
+	// which has not read the file) does not hold them yet.
+	SiteSlicePending = "pending"
+	// SiteSliceKernelUnknown: the slice runs but its cgroup files could not
+	// be read: never "in force".
+	SiteSliceKernelUnknown = "unknown"
+)
 
 // SiteSliceStatus is one site's slice.
 type SiteSliceStatus struct {
@@ -132,6 +162,12 @@ type SiteSliceStatus struct {
 	// UnitsUnread (review B9): units of this site the read did not take
 	// (above the request's bound); the rest were read.
 	UnitsUnread int `json:"units_unread,omitempty"`
+	// Kernel is what the slice's cgroup enforces (memory.max, pids.max,
+	// cpu.max; 0: no limit) and KernelState compares it with Live (S4 R2a
+	// third fix round, review N3): in_force, pending, unknown, or "" when the
+	// slice does not run (systemd applies the file when a program starts).
+	Kernel      SiteSliceLimitsRead `json:"kernel"`
+	KernelState string              `json:"kernel_state,omitempty"`
 }
 
 // SiteSlicesStatusResponse answers SiteSlicesStatusV1. Unsupported says why
@@ -183,6 +219,11 @@ type MoveSiteSliceRequest struct {
 	SubscriptionID      int       `json:"subscription_id"`
 	DomainID            int       `json:"domain_id"`
 	Units               []string  `json:"units"`
+	// Recover (S4 R2a third fix round, review N2): the administrator's "Try
+	// again" for a move whose put-back did not complete. The Agent runs the
+	// put-back of the kept record now and moves nothing new; only RequestID
+	// and ExpectedBuildCommit are read.
+	Recover bool `json:"recover,omitempty"`
 }
 
 // Outcomes of one unit in a move.
@@ -249,4 +290,9 @@ type MoveSiteSliceResponse struct {
 	SliceFile string           `json:"slice_file,omitempty"`
 	Units     []SiteSliceMoved `json:"units"`
 	Error     string           `json:"error,omitempty"`
+	// Kept (review N2): the move's record stays after this call (a put-back
+	// did not complete); no site is moved until it is settled. Recovery is
+	// the outcome of a Recover request (or of the kept record).
+	Kept     bool                   `json:"kept,omitempty"`
+	Recovery *SiteSliceMoveRecovery `json:"recovery,omitempty"`
 }

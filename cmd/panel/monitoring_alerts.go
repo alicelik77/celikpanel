@@ -643,6 +643,9 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "site_limits_unapplied":
 		return fmt.Sprintf("A change of limits (%s) did not reach %s sites yet; they keep their earlier limits. CelikPanel tries again every hour. Monitoring says why.", subject, n),
 			fmt.Sprintf("Bir sınır değişikliği (%s) henüz %s siteye ulaşmadı; o siteler önceki sınırlarını koruyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, n)
+	case "site_move_kept":
+		return fmt.Sprintf("A move of %s into its limits did not finish: a program may be stopped, and no site is moved until it is settled. The site's page names the program and has Try again.", subject),
+			fmt.Sprintf("%s sitesinin sınırlarına taşınması bitmedi: bir program durmuş olabilir; bu çözülene kadar hiçbir site taşınmaz. Sitenin sayfası programı söyler ve Tekrar dene düğmesini sunar.", subject)
 	case "site_memory_default":
 		return "The server's memory changed: the default memory limit of a site is still the one set for the earlier memory. Monitoring offers the new default after a preview.",
 			"Sunucunun belleği değişti: bir sitenin varsayılan bellek sınırı hâlâ önceki belleğe göre konan sınır. İzleme yeni varsayılanı önizlemeyle sunar."

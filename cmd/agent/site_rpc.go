@@ -450,11 +450,18 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 	// S4 R2a: nothing of this site exists yet (its home and account are
 	// new), so a limits file or drop-in folder of its id that the Agent's
 	// ledger does not know is an earlier installation's: moved aside, never
-	// inherited (site_slices.go). It never stops the creation; a ledger that
-	// cannot be read moves nothing and is logged.
+	// inherited (site_slices.go). Where such a file is there and could not
+	// be classified or moved aside, the site is refused here with the file
+	// and the reason (third fix round), before anything of it is made: the
+	// new customer's site never starts with an earlier site's limits.
 	if ops.setAsideSiteSlice != nil {
 		if _, err := ops.setAsideSiteSlice(req.SiteID); err != nil {
-			log.Printf("CreateSite %s: an earlier site's limits file was left as it is: %v", req.Domain, err)
+			log.Printf("CreateSite %s: refused: an earlier site's limits file is in the way: %v", req.Domain, err)
+			reply.Success = false
+			reply.ErrorMessage = "site provisioning refused: an earlier site's limits file of the same number is on the server and could not be set aside"
+			reply.ErrorCode = transport.SiteConfigExists
+			reply.ErrorDetail = err.Error()
+			return nil
 		}
 	}
 	// The web server and the site users must be able to reach the hosting

@@ -84,4 +84,10 @@ export const trProblemsNowScreens: Record<ProblemsNowScreenKey, string> = {
     'pnow.mail_signing.failed': 'Bir imza değişikliği geri alındı ya da OpenDKIM yeniden başlamadı. Posta teslim ediliyor. OpenDKIM’in çalıştığını bileşen sayfasında denetleyin, sonra paneli yeniden başlatın.',
     'pnow.mail_signing.unknown': 'Son posta değişikliği postanın nasıl imzalandığını doğrulayamadı. Yeniden denetlemek için paneli yeniden başlatın.',
     'pnow.mail_signing.action': 'Posta sunucusunu aç',
+    'pnow.site_limits_unapplied.title': 'Yeni site sınırları henüz {value} siteye ulaşmadı',
+    'pnow.site_limits_unapplied.body': 'Bir sınır değişikliğinden ({domain}) sonra {value} sitede hâlâ önceki sınırlar geçerli ({other}). CelikPanel saatte bir yeniden dener; her site yenilerini alınca bu satır kaybolur.',
+    'pnow.site_limits_unapplied.action': 'Planları aç',
+    'pnow.site_move_kept.title': 'Bir sitenin sınırlarına taşınması bitmedi: {domain}',
+    'pnow.site_move_kept.body': 'Bir program durmuş olabilir; bu çözülene kadar hiçbir site taşınmaz. Ne yapılacağını sitenin kartı söyler.',
+    'pnow.site_move_kept.action': 'Siteyi aç',
 };

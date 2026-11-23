@@ -478,7 +478,7 @@ administrator's action on each system.
 
 ## 8. The site's slice: one set of limits for all of a site's programs (S4 R2a)
 
-*21 November 2026, second fix round 22 November 2026 · In source and component-tested; the
+*21 November 2026, second fix round 22 November 2026, third 23 November 2026 · In source and component-tested; the
 facts below were measured on throwaway Debian 13 and Ubuntu 24.04 machines; the panel's lab
 round on both is open (steps in the pull request).*
 
@@ -615,6 +615,23 @@ earlier limits and why; every hour the panel writes those sites again with the l
 they are then, and the line goes when every site has them. A site's card shows the limit in
 force (what systemd applies) beside the plan's value whenever they differ.
 
+**"In force" is what the kernel says** (third fix round). The status read also reads the
+running slice's `memory.max`, `pids.max` and `cpu.max` and compares them with what systemd
+applies (memory allowing the kernel's rounding to whole pages). The card says the limits
+apply only when they are equal and systemd has read the file that is on disk
+(`FragmentPath` set, `NeedDaemonReload=no`). Otherwise the administrator reads "written, not
+in force yet", with the kernel's values as the ones in force: on systemd 257 a changed file
+reaches a running slice only by CelikPanel's own push or a program's start, and after an
+owner's edit a `daemon-reload` and up to about two minutes (measured, facts A7/N4). A cgroup
+file that cannot be read is "not known", never "in force"; a slice that does not run takes
+the file when a program starts. The push itself reports per site why a running slice does
+not hold its limits (systemd could not be read, the push's record could not be written,
+`set-property` failed, or the kernel's files still differ after it): such a site is a failed
+outcome of the change, never "written", so it is in the record above, its Problems now line
+and the hourly round, which pushes again even where the file did not change. A push after a
+program's own write or inside the move is only logged: each program started in the slice
+makes systemd apply the file, and the card reads the kernel.
+
 **A missing file.** A slice without a file has no limits (F4). The card tells three states
 apart. Every existing site right after the update has no slice file because its programs
 were never moved: no unit names the slice, so the card says the programs run outside the
@@ -668,7 +685,10 @@ answer; it is audited as `site.limits_move`.
   `Slice=celiksite_<id>.slice` (re-sealed), systemd is reloaded, and a running unit
   restarts once and must run in the slice and listen again on every port it listened
   on before **within its start time**: the unit's own `TimeoutStartUSec` (these units
-  set none, so systemd's 90 seconds), never under 20 or over 300 seconds. What waits
+  set none, so systemd's 90 seconds), never under 20 or over 300 seconds. The restart
+  itself is bounded by that same time whatever the unit's own `TimeoutStartSec` says
+  (even `infinity`): a start still running then is "still starting" (systemd keeps the
+  start job; only the move stops waiting), and the unit is put back. What waits
   behind what: a change of the program being moved waits for its step (at most twice
   its start time: the restart and a put-back); a change of the same site is refused
   while the move holds the site ("being changed"), as the move is refused while the
@@ -683,7 +703,9 @@ answer; it is audited as `site.limits_move`.
   continues with them.
 - If a unit fails, it and every unit of the site moved before it are put back to
   their pre-move bytes, but only over the move's own text: a file changed or removed
-  meanwhile is left as it is. Other sites are never touched.
+  meanwhile is left as it is. Other sites are never touched. The answer says "put back"
+  only for the programs confirmed back and names the ones whose put-back did not
+  complete.
 
 **The journal** (`site-slice-move.json` in the Agent's private folder) is written
 **ahead of every write** and synced: before the first write, the pre-move bytes and mode
@@ -703,13 +725,32 @@ compared with the recorded pre-move bytes and with the text the move intended:
 | the move's text, running unit, any other step | pre-move bytes back, daemon-reload, and a restart unless it still runs in the system slice ("put back") |
 | anything else, or no file | left as it is ("changed") |
 
-The slice file: when no unit names the slice after this and the file still holds exactly
-the bytes the move wrote, the recorded original comes back (its earlier bytes and ledger
-digest, or no file where there was none); otherwise it stays. A move whose put-back did
-not complete keeps its journal, and the next start or the next move finishes it the same
-way (a new move is refused until then). What the Agent did is shown on the site's card for
-the administrator ("the last move was interrupted … each program was finished or put
-back") until the site's next move.
+Unit files are written and put back through the writer every other managed file uses
+(the text synced before the rename, the folder after it), so a power loss right after a
+write never leaves an empty unit.
+
+The slice file: when every unit is settled, no unit names the slice after this and the file
+still holds exactly the bytes the move wrote, the recorded original comes back (its earlier
+bytes and ledger digest, or no file where there was none); otherwise it stays.
+
+**A put-back that does not complete keeps the journal** (third fix round). That is: a
+pre-move file that cannot be written; a unit whose place systemd cannot tell (a failed
+status read is "not known": nothing is restarted on it, never "not running, so restart
+it"); a `daemon-reload` that fails (systemd would still hold the moved text, so no unit is
+restarted); a restart that fails (the program is stopped) or is still starting at its start
+time. While the journal is kept, no site is moved: a new move is refused with the site whose
+move is unfinished. The site's card (administrator) says the last move did not finish and,
+per program left, its state (stopped and did not start again; place not known, not
+restarted; still starting), `journalctl -u <unit>` for why, and the by-hand step (start it
+on its page or with `systemctl start <unit>`); its **Try again** button
+(`POST …/site-limits/move {request_id, recover: true}`, audited as `site.limits_move` with
+`recover`) runs the put-back now and moves nothing new. A program started by hand meanwhile
+is found running in the system slice and the journal goes; there is no button that forgets
+the journal while a program stays stopped. Problems now has ONE administrator line while
+the journal is kept (`site_move_kept`, opening the site). The Agent's next start and the
+next move's attempt try the same put-back. Once it completes, the card says the last move
+was interrupted and each program was finished, put back, or left as changed meanwhile,
+until the site's next move.
 
 ### 8.5 Lowering a limit below what a site uses
 
@@ -762,8 +803,11 @@ whole.
   start new processes; the kernel does not show that it was this site's limit"): the
   plan is never blamed and no Problems now line follows.
 - Where the limits do not apply (every program outside them, no slice file, a host
-  that cannot enforce them) the card says so instead of "stayed within their
-  limits".
+  that cannot enforce them, written but not in force yet, not known) the card says so
+  instead of "stayed within their limits". **A customer or reseller cannot act on any
+  of these**, so they read one neutral sentence ("these limits do not apply yet; the
+  server's administrator sees to it; nothing is needed from you"); the administrator
+  reads the reason and the step.
 
 **Sites still to move.** Problems now has one line, for the administrator only:
 the sites whose own programs run, or would start, outside their limits and that the
@@ -780,8 +824,12 @@ named in the audit log (`site.limits_file_aside`). **When a site is created** (n
 of it exists yet: its home and account are new), a slice file of its id that the Agent's
 ledger does not know (a site of an earlier installation with the same id) is moved aside
 the same way **together with its drop-in folder**, so the new customer's site inherits
-neither; it is named in the Agent's log. A later write for an existing site never moves an
-owner's file or drop-in aside. A slice file the ledger knows (an earlier site of this same
+neither; it is named in the Agent's log. Where such a file or folder is there and cannot be
+classified (the ledger cannot be read) or moved aside, **the site is refused** before
+anything of it is made, with the file and the reason ("a configuration file for this name
+already exists on the server"; the server owner moves it away, then the site is created
+again); with no such file the creation goes on whatever the ledger. A later write for an
+existing site never moves an owner's file or drop-in aside. A slice file the ledger knows (an earlier site of this same
 installation whose deletion did not run) is left as it is. **A ledger that cannot be
 read** is an error, never an empty ledger: nothing is written, removed or moved aside on
 that reading, and the caller says so (a limit change's Problems now line, the move's
@@ -794,3 +842,63 @@ change a site's limits without the panel, the owner adds a drop-in
 `[Slice]` and `MemoryMax=infinity`) and runs `systemctl daemon-reload` (on systemd
 257 the new value reaches running programs when one of them starts, or with
 `systemctl set-property --runtime`); CelikPanel never writes or removes it.
+
+**What stays on the server when the panel is removed.** The limits keep working, also
+across reboots: at each start systemd applies the slice file to the programs whose unit
+names it (measured with the file present across a reboot, facts N4). What stays behind:
+
+- `/etc/systemd/system/celiksite_<id>.slice`, the owner's `celiksite_<id>.slice.d/`
+  folders, and any `celiksite_<id>.slice.celikpanel-pending` and
+  `….celikpanel-aside-<time>` copies;
+- the `Slice=celiksite_<id>.slice` line in each moved program's unit file;
+- the Agent's own records in its private folder (the ledger, `site-slice-move.json`,
+  `site-slice-move-outcomes.json`, `site-slice-runtime.json`): they do nothing without the
+  Agent;
+- only if the Agent stopped in the middle of a push: control drop-ins in
+  `/run/systemd/system.control/celiksite_<id>.slice.d/`, gone at the next reboot.
+
+To remove the limits by hand: in each program's unit file change
+`Slice=celiksite_<id>.slice` to `Slice=system.slice` (or add a drop-in
+`<unit>.d/slice.conf` with `[Service]` and `Slice=system.slice`), remove the
+`celiksite_*.slice` files and their `.d` folders, run `systemctl daemon-reload` and restart
+each program. To keep the programs where they are and only lift a limit, use the drop-in
+above.
+
+### 8.8 Going back to an earlier release
+
+The product's rollback goes back to exactly the release installed before this one (the
+update's snapshot is bound to the release it led into; `rollback.sh`), and with the current
+snapshots it also puts the panel's database back as it was before the update. The release
+before this one has to be a safe place to come back to, and only a release that **carries
+the compatibility change for site slices** is: its sandbox helper, SMTP guard and proof take
+a program that runs under `celiksite_<id>.slice` (so moved programs keep starting, inside the
+mail block), its save of a plan or account keeps limit keys it does not know, and its rewrite
+of a unit keeps a `Slice=celiksite_<id>.slice` line while that slice's file exists. That
+release is the earliest one it is safe to go back to from this one (its number is in its
+release notes). An earlier release does none of this: going back to it stops the moved
+programs at their next start, or starts them without the mail block.
+
+**What the earlier release does and does not do with this release's state.** It writes no
+slice file, applies and pushes no limits, moves no program, shows no site limits card and
+reads no move journal. The slice files stay and keep limiting the programs whose unit
+names them (also across reboots); the unit lines stay; the Agent's records, `.pending` and
+`aside` copies stay behind unused. A move journal kept by this release is not finished by
+the earlier one: **settle every unfinished move (its site's card, Try again) before going
+back.** The limits set on this release live in the database, which the rollback puts back
+as it was before the update: they are gone after going back, and after updating forward
+again the sites take the limits of their plans as they are then (the defaults where none is
+set) at the next change; set them again before moving or changing limits.
+
+**Going back further than that release, by hand.** The product's rollback neither refuses nor
+warns before going back further (it checks only the DNS and mail compatibility it knows).
+On the compatibility release, before its own rollback: **put every site back first**: for each
+site, remove its `celiksite_<id>.slice` file and `daemon-reload`, save each of its programs
+on its page (that release then writes the unit without the slice line) and restart it;
+check that `systemctl show -P ControlGroup <unit>` reads `/system.slice/<unit>` for every
+program; only then go back. This release installed directly over an older one (skipping the
+compatibility release) has that older one as its rollback target. This release has no
+action that takes a program out of its slice, so before such a rollback the steps are by
+hand: in each moved program's unit file change `Slice=celiksite_<id>.slice` to
+`Slice=system.slice` (the panel then shows the file as changed on the server and keeps it),
+remove the `celiksite_*.slice` files, `daemon-reload`, restart each program, check
+`ControlGroup` as above; then go back.

@@ -41,11 +41,16 @@ export interface SiteLimitsView {
     admin: boolean;
     reseller?: boolean;
     limits: SiteLimitValue[];
-    /** yes, outside, no_file, unsupported (unsupported names what the server lacks). */
-    applies?: 'yes' | 'outside' | 'no_file' | 'unsupported';
+    /**
+     * yes, outside, no_file, unsupported (unsupported names what the server lacks); pending (written, the
+     * kernel does not hold them yet) and unknown (not read) for the administrator; not_yet is what a customer
+     * or reseller reads for every state they cannot act on.
+     */
+    applies?: 'yes' | 'outside' | 'no_file' | 'unsupported' | 'pending' | 'unknown' | 'not_yet';
     unsupported?: string;
     drop_ins?: string[];
-    move_interrupted?: { at: string; units: Record<string, string> };
+    /** kept: the put-back did not complete; no site is moved until it is settled ("Try again"). */
+    move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean };
     db_owner?: { user: string; key: string; value: string }[];
     apply_done?: number;
     apply_total?: number;
@@ -134,6 +139,8 @@ export interface MoveAnswer {
     rolled_back?: boolean;
     /** The move's time ran out: the programs it moved stay moved; the next move continues. */
     time_up?: boolean;
+    /** The put-back did not complete: the record is kept and no site is moved until it is settled. */
+    kept?: boolean;
     units: MoveOutcome[];
     error?: string;
 }
@@ -141,7 +148,34 @@ export interface MoveAnswer {
 export function decodeMoveAnswer(raw: unknown): MoveAnswer {
     const body = raw as Partial<MoveAnswer> | null;
     if (!body || typeof body !== 'object' || typeof body.done !== 'boolean' || !Array.isArray(body.units)) throw new Error('shape');
-    return { done: body.done, rolled_back: body.rolled_back === true, time_up: body.time_up === true, units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error };
+    return {
+        done: body.done, rolled_back: body.rolled_back === true, time_up: body.time_up === true, kept: body.kept === true,
+        units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error,
+    };
+}
+
+/**
+ * After a failed move, the programs confirmed back where they ran and the ones whose put-back did not
+ * complete: "put back" is said only of the first (review W1).
+ */
+export function putBackSplit(answer: MoveAnswer): { back: string[]; left: string[] } {
+    const back: string[] = [];
+    const left: string[] = [];
+    for (const u of answer.units) {
+        if (u.outcome !== 'failed' && u.outcome !== 'put_back') continue;
+        (u.put_back ? back : left).push(u.unit);
+    }
+    return { back, left };
+}
+
+/** The programs a kept move record left, with their state: failed (stopped), unknown, starting. */
+export function keptUnits(view: SiteLimitsView): { unit: string; state: 'failed' | 'unknown' | 'starting' }[] {
+    const record = view.move_interrupted;
+    if (!record?.kept) return [];
+    return Object.entries(record.units ?? {})
+        .filter((e): e is [string, 'failed' | 'unknown' | 'starting'] => e[1] === 'failed' || e[1] === 'unknown' || e[1] === 'starting')
+        .map(([unit, state]) => ({ unit, state }))
+        .sort((a, b) => a.unit.localeCompare(b.unit));
 }
 
 /** How long the move waits for each program at most (systemd's start timeout of these units). */

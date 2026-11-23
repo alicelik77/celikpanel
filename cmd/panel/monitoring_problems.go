@@ -154,6 +154,9 @@ var problemKindOrder = map[string]int{
 	// site; a default memory limit fixed for the host's earlier memory.
 	"site_limits_unapplied": 40,
 	"site_memory_default":   41,
+	// S4 R2a third fix round: a move whose put-back did not complete (a
+	// program may be stopped; no site is moved until it is settled).
+	"site_move_kept": 42,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

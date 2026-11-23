@@ -75,7 +75,8 @@ export type ProblemKind =
     | 'site_programs_outside'
     | 'site_limits_unsupported'
     | 'site_limits_unapplied'
-    | 'site_memory_default';
+    | 'site_memory_default'
+    | 'site_move_kept';
 
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
@@ -117,6 +118,8 @@ const KINDS: readonly ProblemKind[] = [
     // S4 R2a second fix round: a change of limits that did not reach every
     // site; a default memory limit fixed for the server's earlier memory.
     'site_limits_unapplied', 'site_memory_default',
+    // S4 R2a third fix round: a move whose put-back did not complete.
+    'site_move_kept',
 ];
 // The doors the administrator may close again after the server owner undid them.
 // The action of a site's default memory limit fixed for the server's earlier memory (S4 R2a).

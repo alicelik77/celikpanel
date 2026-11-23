@@ -23,7 +23,13 @@ import (
 // says otherwise (TestNothingIsWrittenOnAHostWithoutLimits).
 var realSiteSliceHostSupport = siteSliceHostSupport
 
-func init() { siteSliceHostSupport = func() string { return "" } }
+func init() {
+	siteSliceHostSupport = func() string { return "" }
+	// No test restarts a real unit of the machine it runs on.
+	siteUnitRestart = func(string, time.Duration) ([]byte, error) {
+		return nil, errors.New("tests do not restart units of this machine")
+	}
+}
 
 // sliceTestUnit is one unit as the fake systemd sees it.
 type sliceTestUnit struct {
@@ -59,7 +65,28 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 	oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare := appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare
 	oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport := siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport
 	oldJournal, oldOutcomes, oldRuntime, oldControl := siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir
+	oldRestart := siteUnitRestart
+	// The bounded restart goes through the fake systemctl, with the same
+	// bound: an answer later than wait is "still starting".
+	siteUnitRestart = func(unit string, wait time.Duration) ([]byte, error) {
+		type answer struct {
+			out []byte
+			err error
+		}
+		done := make(chan answer, 1)
+		go func() {
+			out, err := appUnitSystemctl(systemctlArgs("restart", unit)...)
+			done <- answer{out, err}
+		}()
+		select {
+		case a := <-done:
+			return a.out, a.err
+		case <-time.After(wait):
+			return nil, errSiteUnitStillStarting
+		}
+	}
 	t.Cleanup(func() {
+		siteUnitRestart = oldRestart
 		appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare = oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare
 		siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport = oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport
 		siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir = oldJournal, oldOutcomes, oldRuntime, oldControl

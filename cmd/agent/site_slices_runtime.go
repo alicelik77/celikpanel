@@ -153,10 +153,32 @@ func siteSliceAssignment(k siteSliceKernelKey, effective, kernel string) string 
 		if want == -2 || have == -2 || want == have {
 			return ""
 		}
+		if strings.HasPrefix(k.file, "memory.") && siteSliceSameBytes(want, have) {
+			return "" // the kernel's page rounding of the same value
+		}
 		if want < 0 {
 			return k.assign + "=infinity"
 		}
 		return k.assign + "=" + strconv.FormatInt(want, 10)
+	}
+}
+
+// siteSliceSameBytes: a memory value systemd applies and the one the kernel
+// shows are the same (-1: no limit). The kernel keeps memory.max in whole
+// pages, rounding a value down by less than one page (64 KiB at most).
+func siteSliceSameBytes(want, have int64) bool {
+	if want < 0 || have < 0 {
+		return want == have
+	}
+	return have <= want && want-have < 64<<10
+}
+
+// logSiteSlicePushFailures logs a push's failures where no record follows
+// (a program's write, the move: each program started in the slice makes
+// systemd apply the file, and the card reads the kernel's values).
+func logSiteSlicePushFailures(failed map[int]string) {
+	for id, why := range failed {
+		log.Printf("site slice: %s keeps its earlier running limits until a program of the site starts: %s", sitesandbox.SliceName(id), why)
 	}
 }
 
@@ -170,10 +192,21 @@ func saveSiteSliceRuntimeJournal(files []string) error {
 
 // pushSiteSlicesToKernel makes the running slices of these sites enforce
 // their effective limits now (the rules above). The caller has written the
-// slice files and reloaded systemd.
-func pushSiteSlicesToKernel(siteIDs []int) {
+// slice files and reloaded systemd. It answers, per site, why its running
+// slice does not hold them (S4 R2a third fix round, review N3): systemd
+// could not be read, the record could not be written, set-property failed,
+// or the kernel's files still differ after it. ApplySiteSlicesV1 turns these
+// into failed outcomes, which the Panel records for its hourly round and
+// its Problems now line.
+func pushSiteSlicesToKernel(siteIDs []int) map[int]string {
+	failed := map[int]string{}
 	if systemdUserMode || len(siteIDs) == 0 {
-		return
+		return failed
+	}
+	fail := func(name, why string) {
+		if id, ok := sitesandbox.ParseSliceName(name); ok && failed[id] == "" {
+			failed[id] = why
+		}
 	}
 	var names []string
 	for _, id := range siteIDs {
@@ -183,13 +216,16 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 		}
 	}
 	if len(names) == 0 {
-		return
+		return failed
 	}
 	args := []string{"show", "--property=Id,MemoryMax,MemorySwapMax,TasksMax,CPUQuotaPerSecUSec"}
 	raw, err := appUnitSystemctl(systemctlArgs(append(args, names...)...)...)
 	if err != nil {
-		log.Printf("site slice: the running limits could not be read: %v: %s", err, strings.TrimSpace(string(raw)))
-		return
+		why := "systemd's running limits could not be read: " + strings.TrimSpace(err.Error()+" "+string(raw))
+		for _, name := range names {
+			fail(name, why)
+		}
+		return failed
 	}
 	effective := map[string]map[string]string{}
 	for _, block := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n\n") {
@@ -203,6 +239,7 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 	for _, name := range names {
 		props := effective[name]
 		if props == nil {
+			fail(name, "systemd did not report the slice's running limits")
 			continue
 		}
 		for _, k := range siteSliceKernelKeys {
@@ -219,11 +256,13 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 		}
 	}
 	if len(files) == 0 {
-		return // systemd already applied them (systemd 255), or nothing changed
+		return failed // systemd already applied them (systemd 255), or nothing changed
 	}
 	if err := saveSiteSliceRuntimeJournal(files); err != nil {
-		log.Printf("site slice: the running limits were not pushed (their record could not be written: %v); they apply when a program of the site next starts", err)
-		return
+		for name := range plan {
+			fail(name, "the running limits were not pushed: their record could not be written ("+err.Error()+")")
+		}
+		return failed
 	}
 	// The control drop-ins go again in this same step, on every way out.
 	defer cleanupSiteSliceRuntime()
@@ -233,9 +272,18 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 		}
 		out, err := appUnitSystemctl(systemctlArgs(append([]string{"set-property", "--runtime", name}, plan[name]...)...)...)
 		if err != nil {
-			log.Printf("site slice: %s keeps its earlier running limits until a program of the site starts: %v: %s", name, err, strings.TrimSpace(string(out)))
+			fail(name, "systemctl set-property: "+strings.TrimSpace(err.Error()+" "+string(out)))
 		}
 	}
+	// What the kernel holds now is the answer, not what was asked.
+	for name := range plan {
+		for _, k := range siteSliceKernelKeys {
+			if siteSliceAssignment(k, effective[name][k.property], readSmallFile(filepath.Join(siteSliceCgroupRoot, name, k.file))) != "" {
+				fail(name, "the kernel still holds the earlier "+k.file)
+			}
+		}
+	}
+	return failed
 }
 
 // cleanupSiteSliceRuntime removes the control drop-ins the Agent recorded

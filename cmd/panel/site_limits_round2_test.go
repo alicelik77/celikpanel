@@ -55,7 +55,8 @@ func TestTheCardSaysWhyTheLimitsDoNotApply(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &view)
 		return view
 	}
-	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsOutside {
+	// Third fix round (review W1): the customer reads the neutral state.
+	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsNotYet {
 		t.Fatalf("an existing site after the update: %q", view.Applies)
 	}
 	if view := get(authzMatrixAdminID); view.Applies != siteLimitsOutside || view.NeedsMove != 1 {
