@@ -19,7 +19,7 @@
 <table class="stack kv">
 <caption>{{t "common.table"}} 1 · {{t "pricing.today.caption"}}</caption>
 <tbody>
-{{- range $k := (list "price" "period" "check" "offline" "ends")}}
+{{- range $k := (list "price" "period" "check" "offline")}}
 <tr><th scope="row">{{t (print "pricing.today." $k)}}</th><td>{{t (print "pricing.today." $k ".text")}}</td></tr>
 {{- end}}
 </tbody>
@@ -35,7 +35,7 @@
 <table class="stack kv">
 <caption>{{t "common.table"}} 2 · {{t "pricing.from.caption"}}</caption>
 <tbody>
-{{- range $k := (list "price" "counted" "lock" "reminders" "grace" "protection" "offline" "move" "trial" "refund" "renewal" "lifetime" "beta")}}
+{{- range $k := (list "price" "counted" "payment" "trial" "refund" "lock" "renewal" "offline" "move" "lifetime" "beta")}}
 <tr><th scope="row">{{t (print "pricing.from." $k)}}</th><td>{{t (print "pricing.from." $k ".text")}}</td></tr>
 {{- end}}
 </tbody>
@@ -44,14 +44,11 @@
 </div>
 </section>
 
-<section class="part" aria-labelledby="h-open">
-{{template "head" (dict "Num" "3" "ID" "h-open" "Title" (t "pricing.open.title") "Text" (t "pricing.open.text"))}}
+<section class="part" aria-labelledby="h-ends">
+{{template "head" (dict "Num" "3" "ID" "h-ends" "Title" (t "pricing.ends.title") "Text" "")}}
 <div>
-<ul class="plain">
-{{- range $k := (list "provider" "tax" "founder" "servers" "currency")}}
-<li>{{t (print "pricing.open." $k)}}</li>
-{{- end}}
-</ul>
+<p>{{t "pricing.ends.text"}}</p>
+<p>{{t "pricing.ends.panel"}}</p>
 </div>
 </section>
 
@@ -59,7 +56,7 @@
 {{template "head" (dict "Num" "4" "ID" "h-never" "Title" (t "pricing.never.title") "Text" "")}}
 <div>
 <p>{{t "pricing.never.text"}}</p>
-<p class="more"><a href="{{repo "LICENSE"}}">{{t "pricing.never.licence"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{account "terms"}}">{{t "footer.terms"}}</a></p>
+<p class="more"><a href="{{guide "without-panel"}}">{{t "systems.yours.guide"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{repo "LICENSE"}}">{{t "pricing.never.licence"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{account "terms"}}">{{t "footer.terms"}}</a></p>
 </div>
 </section>
 {{- end}}

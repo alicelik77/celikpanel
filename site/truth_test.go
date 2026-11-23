@@ -296,3 +296,26 @@ func TestPagesCarryWhatTheDeployContractChecks(t *testing.T) {
 		}
 	}
 }
+
+// Talk of what we have not decided, or of our own pending work, in either
+// language. A public page states what the product is and what it costs; it
+// never lists the company's open questions (owner, 23 November 2026). A
+// capability the product lacks is stated as a plain fact ("No", "Not
+// included", "not supported"), never as "not yet".
+var undecidedTalk = regexp.MustCompile(`(?i)\bundecided\b|\b(not|yet|to be|are|is|once they are|once it is) decided\b|\bnot (yet )?(chosen|settled|determined|final)\b|\bto be (determined|announced|confirmed)\b|\byet\b|\bfor now\b|\bawaiting\b|\bTBD\b|\bTBA\b|\bopen questions?\b|\bwe plan to\b|\bwill say (them|it)\b|henüz|belirlenme|belirlenecek|kararlaştırılma|kararlaştırılacak|karar(a bağlan| veril)(ma|me|acak|ecek)|şimdilik|netleşme|netleşecek`)
+
+// No generated page tells a visitor what is undecided or still to come.
+func TestNoUndecidedTalk(t *testing.T) {
+	files, _ := rendered(t)
+	for _, name := range pageNames(files) {
+		plain := anyTag.ReplaceAllString(string(files[name]), " ")
+		if found := undecidedTalk.FindString(plain); found != "" {
+			t.Errorf("%s says %q: state the fact, or leave out what is not settled", name, found)
+		}
+	}
+	for _, sample := range []string{"Not decided yet", "the payment provider is not decided", "not offered yet", "Henüz belirlenmeyenler", "henüz desteklenmiyor", "şimdilik reddeder", "karara bağlanmadı"} {
+		if !undecidedTalk.MatchString(sample) {
+			t.Errorf("the guard misses %q", sample)
+		}
+	}
+}

@@ -134,6 +134,32 @@ biçim geçişini, kurtarmayı ve kanıtı adıyla yazar. Bu kayıt hiçbir kodu
 canlı hizmeti değiştirmez. Canlı lisans hizmetine bağlanmaya, canlı portalı değiştirmeye ya
 da kurulu panelleri güncellemeye izin vermez.
 
+**Değişiklik, 23 Kasım 2026 (sahip).** Sahibin o günkü cevapları dört şeyi değiştirir;
+yukarıdaki maddeler onun 14 Kasım 2026 onayıydı.
+
+- **Ödeme.** "kullanıcılarım hesaplarını aboneliklerini yönetelim. öncelikle stripe ödeme
+  yöntemine bağlayacağız." İlk ödeme yöntemi Stripe üzerinden kartla ödemedir. Her lisansı
+  yine CelikPanel'in kendi hizmeti verir ve imzalar.
+- **Ek süre yok.** "ek süre diye birşey yok. 1 ay öncesinden uyarı yapalım. uzatsın yada
+  sonucuna katlansın." 3. maddedeki 30 günlük ek süre kaldırıldı. Hatırlatmalar bitiş
+  tarihinden bir ay önce başlar: 30, 7 ve 1 gün önce, panelde ve e-postayla.
+- **Lisans bittiğinde.** "lisansın bittiği gün biter. yeni lisans alması gerekir." ve
+  "lisans yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez". Lisans bitiş tarihinde
+  biter; 4. maddedeki çevrimdışı süre onu bu tarihin ötesine taşımaz. 3. maddedeki koruma
+  durumu ("yalnız büyüme işlemleri kapanır") kaldırıldı: lisans yokken panelin yönetim
+  ekranları, güvenlik ekranları dahil, yeniden lisans girilene kadar kapalıdır; bu işleri
+  sunucunun sahibi sunucunun kendisinde yapar. Lisanssız bir panelde iki şey açık kalır,
+  çünkü çıkış yolu onlardır: lisans girmek ya da yenilemek ve panelin kendi güncellemelerini
+  kurmak. Sunucu çalışmaya devam eder: barındırılan siteler, e-posta, DNS, veritabanları,
+  zamanlanmış işler ve sertifika yenileme sürer, çünkü hiçbiri panele bağlı değildi (D-022,
+  değişmedi).
+- **İade yok.** "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi
+  yok." 6. maddedeki 30 günlük iade kaldırıldı; ilk seferdeki 30 günlük deneme kalır.
+
+Bu kaydın ek süreden, koruma durumundan, iadeden ya da lisans nedeniyle asla reddedilmeyen
+güvenlik işlemlerinden söz eden her yerinde bu değişiklik geçerlidir. Hiçbir kodu, kurulu
+paneli ya da canlı hizmeti değiştirmez.
+
 ## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
 
 *2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124, 2. aşama (kapatma) alpha.125; 2. aşamanın laboratuvar denetimi lab/alpha114-acceptance dalında (a125-mail)*

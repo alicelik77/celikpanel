@@ -45,7 +45,7 @@
     ],
     "download.how.once.text": [
       {
-        "cite": "docs/DECISIONS.md:3286",
+        "cite": "docs/DECISIONS.md:3316",
         "says": "D-029 · Every state-changing request carries"
       }
     ],
@@ -282,16 +282,12 @@
     ],
     "licence.ends.from": [
       {
-        "cite": "docs/DECISIONS.md:42",
-        "says": "out: warnings 30, 7 and 1"
+        "cite": "docs/DECISIONS.md:144",
+        "says": "before the end date: 30, 7 and 1 day before"
       },
       {
-        "cite": "docs/DECISIONS.md:43",
-        "says": "30 days of"
-      },
-      {
-        "cite": "docs/DECISIONS.md:47",
-        "says": "actions (creating a domain, an account,"
+        "cite": "docs/DECISIONS.md:150",
+        "says": "without a licence the panel's management screens"
       }
     ],
     "licence.ends.today": [
@@ -310,32 +306,32 @@
       {
         "cite": "docs/DECISIONS.md:48",
         "says": "4. If CelikPanel's own licence service"
+      },
+      {
+        "cite": "docs/DECISIONS.md:149",
+        "says": "does not carry it past that date"
       }
     ],
     "licence.offline.today": [
       {
-        "cite": "docs/DECISIONS.md:806",
+        "cite": "docs/DECISIONS.md:836",
         "says": "D-039 · One successful license check"
       }
     ],
     "licence.payment.from": [
       {
-        "cite": "docs/DECISIONS.md:39",
-        "says": "List price 99 USD per year"
-      },
-      {
-        "cite": "docs/DECISIONS.md:63",
-        "says": "The payment provider"
-      },
-      {
-        "cite": "docs/DECISIONS.md:67",
-        "says": "Currencies other than USD"
+        "cite": "docs/DECISIONS.md:139",
+        "says": "Payment by card through Stripe is the first"
       }
     ],
     "licence.period.from": [
       {
         "cite": "docs/DECISIONS.md:40",
         "says": "2. Price lock: the price a"
+      },
+      {
+        "cite": "docs/DECISIONS.md:148",
+        "says": "A licence ends on its end date"
       }
     ],
     "licence.period.today": [
@@ -354,6 +350,44 @@
       {
         "cite": "docs/DECISIONS.md:53",
         "says": "6. A 30-day trial"
+      },
+      {
+        "cite": "docs/DECISIONS.md:158",
+        "says": "the 30-day trial, the first time, stays"
+      }
+    ],
+    "limits.1": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:125",
+        "says": "🪶 Apache | apt | Apache"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:128",
+        "says": "📮 Exim | apt | Exim"
+      }
+    ],
+    "limits.2": [
+      {
+        "cite": "docs/guide/en/27-server-backups.md:13",
+        "says": "Each domain has a **Backups** section"
+      }
+    ],
+    "limits.3": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:28",
+        "says": "Removing CelikPanel from a server is"
+      }
+    ],
+    "limits.4": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:147",
+        "says": "Each site's PHP-FPM pool and scheduled"
+      }
+    ],
+    "limits.5": [
+      {
+        "cite": "README.md:117",
+        "says": "targets Linux x86_64/amd64."
       }
     ],
     "measured.age.date": [
@@ -432,60 +466,64 @@
         "says": "including provisioning a new machine 105 s; the zone answering again after"
       }
     ],
-    "notyet.1": [
-      {
-        "cite": "docs/DISTRO-SUPPORT.md:125",
-        "says": "🪶 Apache | apt | Apache"
-      },
-      {
-        "cite": "docs/DISTRO-SUPPORT.md:128",
-        "says": "📮 Exim | apt | Exim"
-      }
-    ],
-    "notyet.2": [
-      {
-        "cite": "docs/guide/en/27-server-backups.md:13",
-        "says": "Each domain has a **Backups** section"
-      }
-    ],
-    "notyet.3": [
-      {
-        "cite": "docs/guide/en/31-without-panel.md:28",
-        "says": "Removing CelikPanel from a server is"
-      }
-    ],
-    "notyet.4": [
-      {
-        "cite": "docs/TENANT-ISOLATION.md:147",
-        "says": "Each site's PHP-FPM pool and scheduled"
-      }
-    ],
-    "notyet.5": [
-      {
-        "cite": "README.md:117",
-        "says": "targets Linux x86_64/amd64."
-      }
-    ],
-    "notyet.6": [
-      {
-        "cite": "docs/DECISIONS.md:57",
-        "says": "starts with 1.0"
-      }
-    ],
     "pricing.def": [
       {
         "cite": "docs/DECISIONS.md:38",
         "says": "1. One flat price per server"
       },
       {
-        "cite": "docs/DECISIONS.md:63",
-        "says": "The payment provider"
+        "cite": "docs/DECISIONS.md:39",
+        "says": "List price 99 USD per year"
+      },
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
       }
     ],
     "pricing.description": [
       {
         "cite": "docs/DECISIONS.md:39",
         "says": "List price 99 USD per year"
+      },
+      {
+        "cite": "docs/DECISIONS.md:139",
+        "says": "Payment by card through Stripe is the first"
+      },
+      {
+        "cite": "docs/DECISIONS.md:158",
+        "says": "the 30-day trial, the first time, stays"
+      }
+    ],
+    "pricing.ends.panel": [
+      {
+        "cite": "docs/DECISIONS.md:150",
+        "says": "without a licence the panel's management screens"
+      },
+      {
+        "cite": "docs/DECISIONS.md:153",
+        "says": "entering or renewing a licence, and installing the panel's own"
+      },
+      {
+        "cite": "docs/DECISIONS.md:154",
+        "says": "The server keeps working"
+      },
+      {
+        "cite": "cmd/panel/license.go:190",
+        "says": "activation and administrator-only signed updates remain available while locked"
+      }
+    ],
+    "pricing.ends.text": [
+      {
+        "cite": "docs/DECISIONS.md:148",
+        "says": "A licence ends on its end date"
+      },
+      {
+        "cite": "docs/DECISIONS.md:144",
+        "says": "before the end date: 30, 7 and 1 day before"
+      },
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
       }
     ],
     "pricing.from.beta.text": [
@@ -506,12 +544,6 @@
         "says": "1. One flat price per server"
       }
     ],
-    "pricing.from.grace.text": [
-      {
-        "cite": "docs/DECISIONS.md:43",
-        "says": "30 days of"
-      }
-    ],
     "pricing.from.id": [
       {
         "cite": "docs/DECISIONS.md:57",
@@ -528,6 +560,10 @@
       {
         "cite": "docs/DECISIONS.md:40",
         "says": "2. Price lock: the price a"
+      },
+      {
+        "cite": "docs/DECISIONS.md:148",
+        "says": "A licence ends on its end date"
       }
     ],
     "pricing.from.move.text": [
@@ -540,6 +576,16 @@
       {
         "cite": "docs/DECISIONS.md:48",
         "says": "4. If CelikPanel's own licence service"
+      },
+      {
+        "cite": "docs/DECISIONS.md:149",
+        "says": "does not carry it past that date"
+      }
+    ],
+    "pricing.from.payment.text": [
+      {
+        "cite": "docs/DECISIONS.md:139",
+        "says": "Payment by card through Stripe is the first"
       }
     ],
     "pricing.from.price.text": [
@@ -548,26 +594,10 @@
         "says": "List price 99 USD per year"
       }
     ],
-    "pricing.from.protection.text": [
-      {
-        "cite": "docs/DECISIONS.md:44",
-        "says": "protection state. In the protection state"
-      },
-      {
-        "cite": "docs/DECISIONS.md:45",
-        "says": "backups, certificate renewal, panel updates and"
-      }
-    ],
     "pricing.from.refund.text": [
       {
-        "cite": "docs/DECISIONS.md:53",
-        "says": "6. A 30-day trial"
-      }
-    ],
-    "pricing.from.reminders.text": [
-      {
-        "cite": "docs/DECISIONS.md:42",
-        "says": "out: warnings 30, 7 and 1"
+        "cite": "docs/DECISIONS.md:158",
+        "says": "Point 6's 30-day refund is withdrawn"
       }
     ],
     "pricing.from.renewal.text": [
@@ -578,16 +608,8 @@
     ],
     "pricing.from.text": [
       {
-        "cite": "docs/DECISIONS.md:24",
-        "says": "2026-11-14"
-      },
-      {
         "cite": "docs/DECISIONS.md:57",
         "says": "starts with 1.0"
-      },
-      {
-        "cite": "LICENSE:4",
-        "says": "CELIKBROS"
       }
     ],
     "pricing.from.title": [
@@ -600,6 +622,10 @@
       {
         "cite": "docs/DECISIONS.md:53",
         "says": "6. A 30-day trial"
+      },
+      {
+        "cite": "docs/DECISIONS.md:158",
+        "says": "the 30-day trial, the first time, stays"
       }
     ],
     "pricing.never.text": [
@@ -620,27 +646,15 @@
         "says": "panelUpdateStartPath"
       }
     ],
-    "pricing.open.title": [
-      {
-        "cite": "docs/DECISIONS.md:63",
-        "says": "The payment provider"
-      }
-    ],
     "pricing.today.check.text": [
       {
-        "cite": "docs/DECISIONS.md:806",
+        "cite": "docs/DECISIONS.md:836",
         "says": "D-039 · One successful license check"
-      }
-    ],
-    "pricing.today.ends.text": [
-      {
-        "cite": "docs/DECISIONS.md:30",
-        "says": "verified for seven days (D-039), the"
       }
     ],
     "pricing.today.offline.text": [
       {
-        "cite": "docs/DECISIONS.md:806",
+        "cite": "docs/DECISIONS.md:836",
         "says": "D-039 · One successful license check"
       }
     ],
@@ -1096,7 +1110,7 @@
     ],
     "systems.arch.notoffered.4": [
       {
-        "cite": "docs/DECISIONS.md:3505",
+        "cite": "docs/DECISIONS.md:3535",
         "says": "On Arch, PowerDNS is installed only"
       }
     ],

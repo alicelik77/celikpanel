@@ -51,7 +51,7 @@
 {{- $state := dict "account" "ok" "sandbox" "ok" "logins" "ok" "names" "ok" "links" "ok" "restore" "ok" "postgres" "ok" "signing" "part" "webmaildoor" "ok" "mail" "no" "php" "warn" "limits" "warn" "visible" "warn" "webgroup" "warn" "mailmaps" "warn" "pgmove" "warn"}}
 {{- range $k := (list "account" "sandbox" "logins" "names" "links" "restore" "postgres" "signing" "webmaildoor" "mail" "php" "limits" "visible" "webgroup" "mailmaps" "pgmove")}}
 {{- $s := index $state $k}}
-<tr><td data-k="{{t "home.sep.what"}}">{{t (print "sep." $k)}}</td><td data-k="{{t "home.sep.status"}}"><span class="tag {{if eq $s "part"}}ok{{else}}{{$s}}{{end}}">{{if eq $s "ok"}}{{t "sep.yes"}}{{else if eq $s "part"}}{{t "sep.yes.notarch"}}{{else if eq $s "no"}}{{t "common.optional"}}{{else}}{{t "sep.notyet"}}{{end}}</span></td><td class="v" data-k="{{t "home.sep.since"}}">{{t (print "sep." $k ".since")}}</td></tr>
+<tr><td data-k="{{t "home.sep.what"}}">{{t (print "sep." $k)}}</td><td data-k="{{t "home.sep.status"}}"><span class="tag {{if eq $s "part"}}ok{{else}}{{$s}}{{end}}">{{if eq $s "ok"}}{{t "sep.yes"}}{{else if eq $s "part"}}{{t "sep.yes.notarch"}}{{else if eq $s "no"}}{{t "common.optional"}}{{else}}{{t "sep.no"}}{{end}}</span></td><td class="v" data-k="{{t "home.sep.since"}}">{{t (print "sep." $k ".since")}}</td></tr>
 {{- end}}
 </tbody>
 </table>
@@ -126,10 +126,10 @@
 <p><a href="{{link "changelog"}}">{{t "home.release.changelog"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{link "problems"}}">{{t "home.release.problems"}}</a></p>
 </div>
 <div>
-<h3>{{t "notyet.title"}}</h3>
+<h3>{{t "limits.title"}}</h3>
 <ul class="plain">
-{{- range $k := (list "1" "2" "3" "4" "5" "6")}}
-<li>{{t (print "notyet." $k)}}</li>
+{{- range $k := (list "1" "2" "3" "4" "5")}}
+<li>{{t (print "limits." $k)}}</li>
 {{- end}}
 </ul>
 </div>

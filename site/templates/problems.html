@@ -40,7 +40,7 @@
 <tbody>
 <tr><th scope="row">{{t "problems.report.security"}}</th><td>{{t "problems.report.security.text"}} <a href="{{feedback "security"}}">{{t "problems.report.security.link"}}</a></td></tr>
 <tr><th scope="row">{{t "problems.report.other"}}</th><td>{{t "problems.report.other.text"}} <a href="{{feedback "bug"}}">{{t "problems.report.other.link"}}</a></td></tr>
-{{- range $k := (list "include" "never" "next" "form")}}
+{{- range $k := (list "include" "never" "next")}}
 <tr><th scope="row">{{t (print "problems.report." $k)}}</th><td>{{t (print "problems.report." $k ".text")}}</td></tr>
 {{- end}}
 </tbody>

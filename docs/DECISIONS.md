@@ -131,6 +131,36 @@ schema or format transition, recovery and evidence in its PR. This record change
 no installed panel and no live service. It does not authorize contacting the live licence
 service, changing the live portal or updating installed panels.
 
+**Amendment, 23 November 2026 (the owner).** His answers of that day change four things;
+the points above were his approval of 14 November 2026.
+
+- **Payment.** "kullanıcılarım hesaplarını aboneliklerini yönetelim. öncelikle stripe ödeme
+  yöntemine bağlayacağız." ("Let my users manage their accounts and subscriptions; first
+  we will connect the Stripe payment method.") Payment by card through Stripe is the first
+  payment method. CelikPanel's own service still issues and signs every licence.
+- **No grace period.** "ek süre diye birşey yok. 1 ay öncesinden uyarı yapalım. uzatsın yada
+  sonucuna katlansın." ("There is no extra time. Let us warn one month before; renew, or
+  bear the result.") Point 3's 30 days of grace are withdrawn. Reminders start one month
+  before the end date: 30, 7 and 1 day before, in the panel and by e-mail.
+- **When a licence ends.** "lisansın bittiği gün biter. yeni lisans alması gerekir." and
+  "lisans yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez" ("A licence ends on its
+  day; a new licence is needed." "Without a licence the panel does not work. The server
+  works; that is not our concern.") A licence ends on its end date; point 4's offline window
+  does not carry it past that date. Point 3's protection state ("only growth actions are
+  closed") is withdrawn: without a licence the panel's management screens, security screens
+  included, are closed until a licence is entered again, and the server's owner does such
+  work on the server itself. Two things stay possible in a panel without a licence, because
+  they are the way out: entering or renewing a licence, and installing the panel's own
+  updates. The server keeps working: hosted sites, mail, DNS, databases, scheduled jobs and
+  certificate renewal go on, because they never depended on the panel (D-022, unchanged).
+- **No refunds.** "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi
+  yok." ("Never a refund. The first time, a 30-day trial if wanted. No payment refunds.")
+  Point 6's 30-day refund is withdrawn; the 30-day trial, the first time, stays.
+
+Wherever this record speaks of grace, the protection state, a refund or security actions
+that are never refused for a licence reason, this amendment prevails. It changes no code, no
+installed panel and no live service.
+
 ## D-046 · No mail without a password: sites send only through authenticated submission
 
 *2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · phase 1 (read-only report and sending mailboxes) for alpha.124, phase 2 (closing) for alpha.125; lab check of phase 2 recorded on lab/alpha114-acceptance (a125-mail)*
