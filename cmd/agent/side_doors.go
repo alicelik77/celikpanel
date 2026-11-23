@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
@@ -85,7 +86,9 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 		return nil
 	}
 	defer finishStep()
-	state := transport.SideDoorsState{CheckedAt: time.Now().UTC().Format(time.RFC3339)}
+	sideDoorsMu.Lock()
+	defer sideDoorsMu.Unlock()
+	state := transport.SideDoorsState{CheckedAt: sideDoorsNow()}
 	switch req.ReClose {
 	case transport.SideDoorsReCloseAt:
 		state.Scope = transport.SideDoorsScopeReClose
@@ -114,11 +117,22 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 // owner's undo, CelikPanel's file); site crontabs are counted (no record is
 // written). A state only the step decides comes back empty and the Panel
 // keeps what the step said.
+//
+// S4 R1, third fix round: the read takes the step's lock (sideDoorsMu, also
+// held by a Manage-window move), so it never runs beside them; while one
+// runs it answers that it waited in vain and changes nothing. Its time is
+// taken once it holds the lock, and the Panel never lets an answer replace a
+// newer one. A tool is said to be down only after two probes in a row failed.
 func (a *Agent) ReadSideDoorsV1(_ *transport.SideDoorsReadRequest, resp *transport.SideDoorsResponse) error {
 	*resp = transport.SideDoorsResponse{}
+	if !lockSideDoorsWithin(sideDoorsReadWait) {
+		resp.Error = "the side doors step or a tool's move is running; its own answer brings the states"
+		return nil
+	}
+	defer sideDoorsMu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	state := transport.SideDoorsState{CheckedAt: time.Now().UTC().Format(time.RFC3339), Scope: transport.SideDoorsScopeRead}
+	state := transport.SideDoorsState{CheckedAt: sideDoorsNow(), Scope: transport.SideDoorsScopeRead}
 	state.Tools = readSideDoorsTools(ctx, hostPHPToolBindOps(), hostSideDoorsToolHooks())
 	state.StockPools = closeStockFPMPoolsFor(ctx, hostStockPoolOps(), stockPoolPass{readOnly: true})
 	state.At = closeSiteAtFor(ctx, hostSiteAtOps(), atPass{readOnly: true})
@@ -127,9 +141,61 @@ func (a *Agent) ReadSideDoorsV1(_ *transport.SideDoorsReadRequest, resp *transpo
 	return nil
 }
 
+// sideDoorsMu is held by the side doors step, a Manage-window move and the
+// read (S4 R1, third fix round).
+var sideDoorsMu sync.Mutex
+
+var (
+	// sideDoorsReadWait bounds how long a read waits for the step or a move.
+	sideDoorsReadWait = 20 * time.Second
+	// sideDoorsProbeAgain is the pause before a read asks a tool a second
+	// time.
+	sideDoorsProbeAgain = 5 * time.Second
+)
+
+// lockSideDoorsWithin takes sideDoorsMu unless it stays held for wait.
+func lockSideDoorsWithin(wait time.Duration) bool {
+	deadline := time.Now().Add(wait)
+	for {
+		if sideDoorsMu.TryLock() {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// sideDoorsNow is an answer's time, to the millisecond, so the Panel can
+// tell which of two answers is newer.
+func sideDoorsNow() string {
+	return time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
+}
+
+// probeTwice asks a tool, and once more after a pause when it did not
+// answer: one slow answer is not "down". A read whose time ran out is not
+// known (known false), never "down".
+func probeTwice(ctx context.Context, probe func(context.Context, string, string) error, tool, version string) (known bool, err error) {
+	if err = probe(ctx, tool, version); err == nil {
+		return true, nil
+	}
+	select {
+	case <-ctx.Done():
+		return false, err
+	case <-time.After(sideDoorsProbeAgain):
+	}
+	err = probe(ctx, tool, version)
+	if err != nil && ctx.Err() != nil {
+		return false, err
+	}
+	return true, err
+}
+
 // readSideDoorsTools is the read-only pass over the tools: nothing is moved,
 // reloaded or rechecked; each tool is asked whether it answers as it is
-// configured now.
+// configured now. A tool whose answer could not be had in the read's time
+// comes back without a state (the Panel keeps what it knew).
 func readSideDoorsTools(ctx context.Context, ops phpToolBindOps, hooks sideDoorsToolHooks) []transport.SideDoorsTool {
 	tools := []transport.SideDoorsTool{}
 	failures := readPHPToolAccountFailures()
@@ -150,7 +216,9 @@ func readSideDoorsTools(ctx context.Context, ops phpToolBindOps, hooks sideDoors
 				}
 				row.Account = user
 			}
-			if err := ops.httpProbe(ctx, row.Tool, row.Version); err != nil {
+			if known, err := probeTwice(ctx, ops.httpProbe, row.Tool, row.Version); !known {
+				row.State, row.Detail = "", "its answer could not be read in time"
+			} else if err != nil {
 				row.State, row.Detail = transport.SideDoorsToolDown, "it does not answer on its own pool: "+err.Error()
 			}
 			if note := hooks.note(row.Tool); note != "" {
@@ -172,7 +240,7 @@ func readSideDoorsTools(ctx context.Context, ops phpToolBindOps, hooks sideDoors
 			if failure, failed := failures[state.Tool]; failed && failure.PHPVersion == row.Version {
 				row.State, row.Detail = transport.SideDoorsToolFailed, failure.Detail
 			}
-			if err := ops.httpProbe(ctx, row.Tool, row.Version); err != nil {
+			if known, err := probeTwice(ctx, ops.httpProbe, row.Tool, row.Version); known && err != nil {
 				row.State = transport.SideDoorsToolDown
 				row.Detail = strings.TrimPrefix(row.Detail+"; it does not answer as it is now: "+err.Error(), "; ")
 			}

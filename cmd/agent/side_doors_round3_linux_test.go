@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -283,5 +284,54 @@ func TestAPoolFoundRenamedWithoutTheRecordIsCheckedFirst(t *testing.T) {
 	}
 	if off, _ := services.StockPoolsTurnedOff(); !off["8.4"] {
 		t.Fatal("not recorded off after the check")
+	}
+}
+
+// Finding 6: one slow answer is not "down"; two in a row are; a read whose
+// time ran out is not known.
+func TestOneSlowAnswerIsNotDown(t *testing.T) {
+	saved := sideDoorsProbeAgain
+	sideDoorsProbeAgain = time.Millisecond
+	t.Cleanup(func() { sideDoorsProbeAgain = saved })
+	answers := []error{errors.New("timeout after 20s"), nil}
+	probe := func(context.Context, string, string) error {
+		err := answers[0]
+		answers = answers[1:]
+		return err
+	}
+	if known, err := probeTwice(context.Background(), probe, "webmail", "8.4"); !known || err != nil {
+		t.Fatalf("one slow answer: %v %v", known, err)
+	}
+	answers = []error{errors.New("timeout"), errors.New("502")}
+	if known, err := probeTwice(context.Background(), probe, "webmail", "8.4"); !known || err == nil {
+		t.Fatalf("two in a row: %v %v", known, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	answers = []error{errors.New("context canceled")}
+	if known, _ := probeTwice(ctx, probe, "webmail", "8.4"); known {
+		t.Fatal("a read whose time ran out said the tool is down")
+	}
+}
+
+// Finding 6: the read waits for the step's lock and changes nothing while
+// the step or a move holds it.
+func TestTheReadWaitsForTheStepAndAMove(t *testing.T) {
+	saved := sideDoorsReadWait
+	sideDoorsReadWait = 50 * time.Millisecond
+	t.Cleanup(func() { sideDoorsReadWait = saved })
+	sideDoorsMu.Lock()
+	var resp transport.SideDoorsResponse
+	err := (&Agent{}).ReadSideDoorsV1(&transport.SideDoorsReadRequest{}, &resp)
+	sideDoorsMu.Unlock()
+	if err != nil || resp.State != nil || !strings.Contains(resp.Error, "running") {
+		t.Fatalf("read beside the step: %v %+v", err, resp)
+	}
+	if !sideDoorsMu.TryLock() {
+		t.Fatal("the read kept the lock")
+	}
+	sideDoorsMu.Unlock()
+	if at := sideDoorsNow(); !strings.Contains(at, ".") {
+		t.Fatalf("%s: an answer's time is to the millisecond", at)
 	}
 }

@@ -97,8 +97,9 @@ func (p *Panel) readSideDoorsOnce() error {
 	if response.State == nil {
 		return nil
 	}
-	p.recordSideDoorsState(ctx, response.State)
-	p.recordSiteCrontabsOutside(ctx, siteJobsCheckedAt(response.State), response.State.SiteCrontabs)
+	if p.recordSideDoorsState(ctx, response.State) {
+		p.recordSiteCrontabsOutside(ctx, siteJobsCheckedAt(response.State), response.State.SiteCrontabs)
+	}
 	return nil
 }
 
@@ -187,9 +188,11 @@ var sideDoorsStateMu sync.Mutex
 
 // recordSideDoorsState keeps the Agent's latest answer, merged with what is
 // kept by the answer's scope (mergeSideDoorsState).
-func (p *Panel) recordSideDoorsState(ctx context.Context, state *transport.SideDoorsState) {
+// It answers false when a read's answer was older than the kept one and
+// nothing was taken from it.
+func (p *Panel) recordSideDoorsState(ctx context.Context, state *transport.SideDoorsState) bool {
 	if state == nil {
-		return
+		return false
 	}
 	sideDoorsStateMu.Lock()
 	defer sideDoorsStateMu.Unlock()
@@ -197,13 +200,17 @@ func (p *Panel) recordSideDoorsState(ctx context.Context, state *transport.SideD
 	if raw := p.setting(ctx, settingSideDoorsState); raw != "" {
 		_ = json.Unmarshal([]byte(raw), &previous)
 	}
+	if state.Scope == transport.SideDoorsScopeRead && sideDoorsAnswerOlder(state.CheckedAt, previous.CheckedAt) {
+		return false
+	}
 	raw, err := json.Marshal(mergeSideDoorsState(previous, *state))
 	if err != nil {
-		return
+		return false
 	}
 	if err := p.setSetting(ctx, settingSideDoorsState, string(raw)); err != nil {
 		log.Printf("side doors: state not recorded: %v", err)
 	}
+	return true
 }
 
 // mergeSideDoorsState: the whole step's answer replaces what is kept; the
@@ -238,9 +245,26 @@ func mergeSideDoorsState(previous, fresh transport.SideDoorsState) transport.Sid
 		}
 		return out
 	case transport.SideDoorsScopeRead:
+		// S4 R1, third fix round: a read never replaces a newer answer (one
+		// that began before the step or a move and ended after it).
+		if sideDoorsAnswerOlder(fresh.CheckedAt, previous.CheckedAt) {
+			return previous
+		}
 		out := previous
 		out.CheckedAt = fresh.CheckedAt
-		out.Tools = fresh.Tools
+		// A tool whose answer the read could not have keeps what was known.
+		out.Tools = make([]transport.SideDoorsTool, 0, len(fresh.Tools))
+		for _, row := range fresh.Tools {
+			if row.State == "" {
+				for _, kept := range previous.Tools {
+					if kept.Tool == row.Tool {
+						out.Tools = append(out.Tools, kept)
+					}
+				}
+				continue
+			}
+			out.Tools = append(out.Tools, row)
+		}
 		pools := []transport.SideDoorsStockPool{}
 		for _, row := range fresh.StockPools {
 			if row.State == "" {
@@ -267,6 +291,21 @@ func mergeSideDoorsState(previous, fresh transport.SideDoorsState) transport.Sid
 		return out
 	}
 	return previous
+}
+
+// sideDoorsAnswerOlder: the answer's time is before the kept one's (both
+// RFC 3339, to the second before the third fix round, to the millisecond
+// since); an unreadable time is not older.
+func sideDoorsAnswerOlder(fresh, kept string) bool {
+	freshAt, err := time.Parse(time.RFC3339Nano, fresh)
+	if err != nil {
+		return false
+	}
+	keptAt, err := time.Parse(time.RFC3339Nano, kept)
+	if err != nil {
+		return false
+	}
+	return freshAt.Before(keptAt)
 }
 
 // sideDoorsToolComponent is the component page of a tool.

@@ -74,3 +74,34 @@ func TestTheCloseAgainResultSurvivesAPanelRestart(t *testing.T) {
 	}
 	panel.endSideDoorsReclose(context.Background(), true, transport.SideDoorsAtWritten, "")
 }
+
+// Finding 6: a read never replaces a newer answer, and a tool whose answer
+// the read could not have keeps what was known.
+func TestAReadNeverReplacesANewerAnswer(t *testing.T) {
+	panel, _, _, _ := newServiceStateAtomicPanel(t)
+	ctx := context.Background()
+	step := transport.SideDoorsState{CheckedAt: "2026-11-23T09:00:00.500Z",
+		Tools: []transport.SideDoorsTool{{Tool: "webmail", Version: "8.4", State: transport.SideDoorsToolMoved}, {Tool: "phpmyadmin", Version: "8.4", State: transport.SideDoorsToolOwnAccount}}}
+	panel.recordSideDoorsState(ctx, &step)
+	older := transport.SideDoorsState{CheckedAt: "2026-11-23T09:00:00.200Z", Scope: transport.SideDoorsScopeRead,
+		Tools: []transport.SideDoorsTool{{Tool: "webmail", Version: "8.4", State: transport.SideDoorsToolDown}}}
+	if panel.recordSideDoorsState(ctx, &older) {
+		t.Fatal("an older read was taken")
+	}
+	// The same second in the earlier form is older too.
+	if !sideDoorsAnswerOlder("2026-11-23T09:00:00Z", step.CheckedAt) || sideDoorsAnswerOlder("2026-11-23T09:00:01Z", step.CheckedAt) {
+		t.Fatal("times of both forms are not compared as times")
+	}
+	newer := transport.SideDoorsState{CheckedAt: "2026-11-23T10:00:00.000Z", Scope: transport.SideDoorsScopeRead,
+		Tools: []transport.SideDoorsTool{{Tool: "webmail", Version: "8.4", State: transport.SideDoorsToolDown}, {Tool: "phpmyadmin", Version: "8.4"}}}
+	if !panel.recordSideDoorsState(ctx, &newer) {
+		t.Fatal("a newer read was dropped")
+	}
+	var kept transport.SideDoorsState
+	if err := json.Unmarshal([]byte(panel.setting(ctx, settingSideDoorsState)), &kept); err != nil {
+		t.Fatal(err)
+	}
+	if len(kept.Tools) != 2 || kept.Tools[0].State != transport.SideDoorsToolDown || kept.Tools[1].State != transport.SideDoorsToolOwnAccount {
+		t.Fatalf("kept %+v", kept.Tools)
+	}
+}
