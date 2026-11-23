@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/alicelik/celikpanel/internal/fileaccess"
+	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/sitesandbox"
 )
 
@@ -84,11 +85,7 @@ var systemctlRun = runClean
 func readControlGroup(unit string) (string, error) {
 	out, err := systemctlRun(systemctlPath, "show", unit, "--property=ControlGroup,Slice")
 	if err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) && len(strings.TrimSpace(string(exit.Stderr))) > 0 {
-			return "", fmt.Errorf("systemctl show %s: %v: %s", unit, err, strings.TrimSpace(string(exit.Stderr)))
-		}
-		return "", fmt.Errorf("systemctl show %s: %v", unit, err)
+		return "", fmt.Errorf("systemctl show %s: %s", unit, hostcmd.Reason(nil, err))
 	}
 	return ParseControlGroup(unit, string(out)), nil
 }
