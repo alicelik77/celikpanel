@@ -341,8 +341,8 @@ func TestBuyAYearThroughThePages(t *testing.T) {
 	}
 	before := site.expires()
 	for lang, words := range map[string][]string{
-		"en": {"<h1>Buy a year</h1>", "The new year starts after your current end date", "Payments are not refunded.", "a free 30-day trial, to try CelikPanel before paying", "Test mode: no real money is taken.", "99.00 USD"},
-		"tr": {"<h1>Bir yıl satın alın</h1>", "Ödemeler iade edilmez.", "30 günlük ücretsiz deneme", "Ödemeye geç"},
+		"en": {"<h1>Buy a year</h1>", "The new year starts after your current end date", "Payments are not refunded.", "Test mode: no real money is taken.", "99.00 USD"},
+		"tr": {"<h1>Bir yıl satın alın</h1>", "Ödemeler iade edilmez.", "Ödemeye geç"},
 	} {
 		_, _, page := site.page(http.MethodGet, "action=buy&id="+site.licence.ID+"&lang="+lang, nil)
 		for _, w := range words {

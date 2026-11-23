@@ -64,13 +64,14 @@ var messages = map[string][2]string{
 	"test_time_remains":         {"Bu hesabın deneme ödemesiyle alınmış süresi devam ediyor.", "This account still has time bought with test payments."},
 	"trial_started":             {"Ücretsiz 30 günlük denemeniz başladı. Panelin açık kalması için deneme bitmeden bir yıl satın alın.", "Your free 30-day trial has started. Buy a year before it ends to keep the panel open."},
 	"license_awaiting_payment":  {"Yeni lisansınız, ilk yılı ödendiğinde kullanılabilir.", "Your new license can be used once its first year is paid."},
-	"license_not_found":         {"Lisans bulunamadı.", "License not found."},
-	"renewal_not_due":           {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
-	"mail_sent":                 {"Bu adres için işlem yapılabiliyorsa e-posta gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.", "If this address is eligible, an email has been sent. Check your inbox and spam folder."},
-	"email_verified":            {"E-postanız doğrulandı. Şimdi giriş yapabilirsiniz.", "Your email is verified. You can now sign in."},
-	"password_reset":            {"Parolanız değiştirildi. Yeni parolanızla giriş yapın.", "Your password has changed. Sign in with your new password."},
-	"license_removed":           {"Lisans kaldırıldı. Anahtarı artık hiçbir sunucuda kullanılamaz.", "The license was removed. Its key no longer works on any server."},
-	"renewed":                   {"Lisans bir yıl uzatıldı. Sunucu sonraki lisans kontrolünde yeni tarihi alır.", "The license was extended by one year. Your server receives the new date on its next license check."},
+	"remove_payment_open":       {"Bu lisansın hâlâ açık bir ödeme sayfası var ve şu anda kapatılamadı. Birkaç dakika sonra tekrar deneyin ya da ödemeyi tamamlayın.", "This license still has an open payment page that could not be closed right now. Try again in a few minutes, or finish the payment."},
+	"remove_payment_completing": {"Bu lisans için bir ödeme tamamlanıyor. Birkaç dakika sonra sayfayı yenileyin: yıl eklenir, sonra lisans kaldırılabilir.", "A payment for this license is being completed. Reload in a few minutes: the year is added, and then the license can be removed."}, "license_not_found": {"Lisans bulunamadı.", "License not found."},
+	"renewal_not_due": {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
+	"mail_sent":       {"Bu adres için işlem yapılabiliyorsa e-posta gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.", "If this address is eligible, an email has been sent. Check your inbox and spam folder."},
+	"email_verified":  {"E-postanız doğrulandı. Şimdi giriş yapabilirsiniz.", "Your email is verified. You can now sign in."},
+	"password_reset":  {"Parolanız değiştirildi. Yeni parolanızla giriş yapın.", "Your password has changed. Sign in with your new password."},
+	"license_removed": {"Lisans kaldırıldı. Anahtarı artık hiçbir sunucuda kullanılamaz.", "The license was removed. Its key no longer works on any server."},
+	"renewed":         {"Lisans bir yıl uzatıldı. Sunucu sonraki lisans kontrolünde yeni tarihi alır.", "The license was extended by one year. Your server receives the new date on its next license check."},
 }
 
 func (p *page) message(code string) string {

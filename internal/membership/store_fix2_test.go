@@ -17,43 +17,67 @@ import (
 	"github.com/alicelik/celikpanel/internal/payment"
 )
 
-// A payment that could not be granted is honoured by the operator's grant; a removed licence
-// is refused and said so; the attention entry closes.
+// A payment that could not be granted is honoured by the operator's grant -- after asking the
+// provider (F2); test money of an unflagged account is never granted; a payment given back at
+// the provider is settled, not granted; the attention entry closes.
 func TestTheOperatorGrantsAPaymentThatCouldNotBeGranted(t *testing.T) {
-	f := newStore(t)
-	s := f.s
-	o := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
-	if err := s.SetTestAccount("operator:test", "unflag", f.member, false); err != nil {
+	site := newStoreSite(t, "test", "test")
+	config := must(LoadConfig(site.dir))
+	session := site.buy()
+	order := must(site.s.OrderByProviderRef("stripe", session))
+	if err := site.s.SetTestAccount("operator:test", "unflag", site.member, false); err != nil {
 		t.Fatal(err)
 	}
-	o = must(s.ApplyFact(o.ID, "stripe", "provider:stripe", paid(o, "pi_1")))
-	if o.State != OrderMismatch || len(must(s.AttentionOrders())) != 1 {
+	site.stripe.pay(session)
+	clock := order.Created + 700
+	site.s.clock = func() int64 { return clock }
+	must(site.s.Reconcile(t.Context(), site.handler.Payments, config, "reconcile:test"))
+	if o := must(site.s.GetOrder(order.ID)); o.State != OrderMismatch || len(must(site.s.AttentionOrders())) != 1 {
 		t.Fatalf("not granted: %+v", o)
 	}
-	if _, err := s.GrantOrder("operator:test", o.ID, ""); !errors.Is(err, ErrInvalidRequest) {
+	if _, err := site.s.GrantOrder(t.Context(), site.handler.Payments, config, "operator:test", order.ID, "honour it"); err == nil || !strings.Contains(err.Error(), "no longer a test account") {
+		t.Fatalf("test money for an unflagged account: %v", err)
+	}
+	if err := site.s.SetTestAccount("operator:test", "flag again", site.member, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := site.s.GrantOrder(t.Context(), site.handler.Payments, config, "operator:test", order.ID, ""); !errors.Is(err, ErrInvalidRequest) {
 		t.Fatalf("a grant without a reason: %v", err)
 	}
-	before := f.expires(f.licence.ID)
-	g := must(s.GrantOrder("operator:test", o.ID, "the member paid; honour it"))
-	if g.State != OrderPaid || f.expires(f.licence.ID) != anniversary(before) || len(must(s.AttentionOrders())) != 0 || !g.ReceiptMine {
-		t.Fatalf("the operator's grant: %+v", g)
+	before := site.expires()
+	g, err := site.s.GrantOrder(t.Context(), site.handler.Payments, config, "operator:test", order.ID, "the member paid; honour it")
+	if err != nil || g.State != OrderPaid || site.expires() != anniversary(before) || len(must(site.s.AttentionOrders())) != 0 || !g.ReceiptMine {
+		t.Fatalf("the operator's grant: %+v %v", g, err)
 	}
-	// A removed licence: refused, and said so.
-	if err := s.SetTestAccount("operator:test", "flag", f.member, true); err != nil {
+	// A payment given back at the provider (its webhook lost): settled, never granted.
+	l2 := must(site.s.Issue(site.member))
+	site.licence = l2
+	session2 := site.buy()
+	order2 := must(site.s.OrderByProviderRef("stripe", session2))
+	if err := site.s.SetTestAccount("operator:test", "unflag", site.member, false); err != nil && !errors.Is(err, ErrTestTimeRemains) {
 		t.Fatal(err)
 	}
-	l2 := must(s.Issue(f.member))
-	o2 := must(s.CreateOrder(f.member, l2.ID, ChargingTest))
-	if err := s.Remove(f.member, l2.ID, f.password); err != nil {
+	if _, err := site.s.DB().Exec("INSERT INTO store_attention(order_id,kind,detail,state,opened) VALUES(?,?,?,'open',1)", order2.ID, AttentionNotGranted, NotGrantedRemoved); err != nil {
 		t.Fatal(err)
 	}
-	must(s.ApplyFact(o2.ID, "stripe", "provider:stripe", paid(o2, "pi_2")))
-	if _, err := s.GrantOrder("operator:test", o2.ID, "try"); err == nil || !strings.Contains(err.Error(), NotGrantedRemoved) {
-		t.Fatalf("a grant into a removed licence: %v", err)
+	site.stripe.pay(session2)
+	o2 := must(site.s.GetOrder(order2.ID))
+	fact := payment.Fact{Outcome: payment.OutcomePaid, PaymentID: "pi_" + session2, Order: o2.ID, LicenseID: o2.LicenseID, PaidMinor: o2.AmountMinor, Currency: "USD"}
+	if _, err := site.s.DB().Exec("UPDATE store_orders SET state='mismatch' WHERE id=?", o2.ID); err != nil {
+		t.Fatal(err)
 	}
-	// The operator closes the matter with a reason; it leaves the list.
-	if n := must(s.Attend("operator:test", o2.ID, "", "the member was told")); n != 1 || len(must(s.AttentionOrders())) != 0 {
-		t.Fatalf("attend: %d", n)
+	if _, err := site.s.DB().Exec("INSERT INTO store_payments(provider,payment_id,order_id,outcome,paid_minor,refunded_minor,currency,live,disputed,confirmed,updated) VALUES('stripe',?,?,'paid',?,0,'USD',0,0,?,?)",
+		fact.PaymentID, o2.ID, o2.AmountMinor, clock, clock); err != nil {
+		t.Fatal(err)
+	}
+	site.stripe.mu.Lock()
+	site.stripe.sessions[session2].refunded = site.stripe.sessions[session2].amount
+	site.stripe.mu.Unlock()
+	if _, err := site.s.GrantOrder(t.Context(), site.handler.Payments, config, "operator:test", o2.ID, "try"); err == nil || !strings.Contains(err.Error(), "no longer shows this payment as paid") {
+		t.Fatalf("a refunded payment was granted: %v", err)
+	}
+	if _, _, _, settled, _ := site.s.Cause(o2.ID); !settled {
+		t.Fatal("the refunded payment was not settled")
 	}
 }
 
@@ -98,8 +122,16 @@ func TestALostDisputeTakesBackOnlyItsOwnTime(t *testing.T) {
 	if err := s.DB().QueryRow("SELECT generation FROM licenses WHERE id=?", f.licence.ID).Scan(&after); err != nil {
 		t.Fatal(err)
 	}
-	if revoked, _, _ := s.LicenceRevocation(f.licence.ID); revoked || f.expires(f.licence.ID) != expiresBefore || after != generation+1 {
-		t.Fatalf("reinstate: generation %d -> %d, expires %d want %d", generation, after, f.expires(f.licence.ID), expiresBefore)
+	var takenBack int64
+	if err := s.DB().QueryRow("SELECT taken_back FROM store_revocations WHERE license_id=?", f.licence.ID).Scan(&takenBack); err != nil {
+		t.Fatal(err)
+	}
+	want := expiresBefore - takenBack
+	if want < f.h.now {
+		want = f.h.now
+	}
+	if revoked, _, _ := s.LicenceRevocation(f.licence.ID); revoked || f.expires(f.licence.ID) != want || after != generation+1 {
+		t.Fatalf("reinstate: generation %d -> %d, expires %d want %d (no time given back)", generation, after, f.expires(f.licence.ID), want)
 	}
 	if err := s.Reinstate("operator:test", f.licence.ID, "again"); err == nil {
 		t.Fatal("a second reinstate of the same revocation")
@@ -224,9 +256,13 @@ func TestMemberTextsPerState(t *testing.T) {
 		t.Fatalf("awaiting payment without a provider: %s", home)
 	}
 	// The mismatch texts: a removed licence, then settled at the provider.
-	p := &page{lang: "en", store: &storePage{causeKind: AttentionNotGranted, causeDetail: NotGrantedRemoved}}
-	if state, _ := p.mismatchText(); !strings.Contains(state, "the license it was for no longer exists") {
+	p := &page{lang: "en", store: &storePage{causeKind: AttentionNotGranted, causeDetail: NotGrantedRemoved, causeOpen: true}}
+	if state, next := p.mismatchText(); !strings.Contains(state, "the license it was for no longer exists") || !strings.Contains(next, "We will write to you") {
 		t.Fatalf("removed: %s", state)
+	}
+	p.store.causeOpen = false // the operator closed the matter: no promise of a mail
+	if _, next := p.mismatchText(); strings.Contains(next, "We will write to you") {
+		t.Fatalf("a closed matter still promises a mail: %s", next)
 	}
 	p.store.settled = true
 	if state, next := p.mismatchText(); state != "The payment went back to you." || next != "Nothing changed on your license." {

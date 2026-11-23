@@ -85,11 +85,8 @@ func TestTrialAndLicencesAwaitingPayment(t *testing.T) {
 	}
 	// The trial on a server that already ran a trial: the ordinary refusal, and the page says why.
 	key := must(site.s.Reveal(site.member, trialID, "buyer-password-1234")).Key
-	if _, err := site.s.DB().Exec("INSERT INTO store_trial_servers(server_id,license_id,at) VALUES(?,?,1)", strings.Repeat("d", 64), strings.Repeat("0", 32)); err == nil {
-		t.Fatal("a trial server row for no licence") // foreign keys are on: use a real licence below
-	}
 	other := must(site.s.Issue(site.member))
-	if _, err := site.s.DB().Exec("INSERT INTO store_trial_servers(server_id,license_id,at) VALUES(?,?,1)", strings.Repeat("d", 64), other.ID); err != nil {
+	if _, err := site.s.DB().Exec("INSERT INTO store_trial_servers(server_id,mode,license_id,at) VALUES(?,'test',?,1)", strings.Repeat("d", 64), other.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := site.s.Activate(key, strings.Repeat("d", 64), "d.example.com", "8.8.8.8"); !errors.Is(err, ErrInvalidLicense) {
@@ -178,7 +175,7 @@ func TestTestMoneyIsFencedOff(t *testing.T) {
 	}
 	before := f.expires(f.licence.ID)
 	o = must(s.ApplyFact(o.ID, "stripe", "provider:stripe", paid(o, "pi_1")))
-	if kind, detail, _, _ := s.Cause(o.ID); o.State != OrderMismatch || f.expires(f.licence.ID) != before || kind != AttentionNotGranted || detail != NotGrantedUnflagged {
+	if kind, detail, _, _, _ := s.Cause(o.ID); o.State != OrderMismatch || f.expires(f.licence.ID) != before || kind != AttentionNotGranted || detail != NotGrantedUnflagged {
 		t.Fatalf("a test payment for an unflagged account: %+v", o)
 	}
 	if err := s.SetTestAccount("operator:test", "flag", f.member, true); err != nil {
@@ -209,7 +206,7 @@ func TestAPaymentNeverFallsIntoNothing(t *testing.T) {
 		t.Fatal("the removed licence's order is still open")
 	}
 	o = must(s.ApplyFact(o.ID, "stripe", "provider:stripe", paid(o, "pi_1")))
-	if kind, detail, _, _ := s.Cause(o.ID); o.State != OrderMismatch || kind != AttentionNotGranted || detail != NotGrantedRemoved {
+	if kind, detail, _, _, _ := s.Cause(o.ID); o.State != OrderMismatch || kind != AttentionNotGranted || detail != NotGrantedRemoved {
 		t.Fatalf("a payment for a removed licence: %+v", o)
 	}
 }

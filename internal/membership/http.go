@@ -571,7 +571,7 @@ func (x *exchange) pages(service *Service, config Config, ip string, get phpVars
 				action, errorCode = "home", string(ErrOrderNotFound)
 			} else {
 				store.order = &order
-				if store.causeKind, store.causeDetail, store.settled, err = service.Cause(order.ID); err != nil {
+				if store.causeKind, store.causeDetail, store.causeOpen, store.settled, err = service.Cause(order.ID); err != nil {
 					return err
 				}
 			}
@@ -688,6 +688,9 @@ func (x *exchange) form(service *Service, config Config, ip string, post phpVars
 			}
 			data.Issued = &issued
 		case "remove":
+			if err := x.closeCheckout(service, config, member.ID, id); err != nil {
+				return "", err
+			}
 			if err := service.Remove(member.ID, id, password); err != nil {
 				return "", err
 			}

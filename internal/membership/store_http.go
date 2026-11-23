@@ -33,6 +33,9 @@ const (
 const (
 	ErrPaymentNotReady    Problem = "payment_not_ready"
 	ErrPaymentUnavailable Problem = "payment_unavailable"
+	// A licence with an open payment page is not removed until the page is closed (F5).
+	ErrRemovePaymentOpen       Problem = "remove_payment_open"
+	ErrRemovePaymentCompleting Problem = "remove_payment_completing"
 )
 
 func (h *Handler) payments() *payment.Registry {
@@ -145,6 +148,17 @@ func (x *exchange) buy(service *Service, config Config, member *Member, licenseI
 				return strings.TrimRight(config.Origin, "/") + "/account/?action=order&id=" + order.ID + "&lang=" + lang, nil
 			}
 			// Expired at the provider: close this order; the next pass makes a new one.
+			if err := service.ExpireOrder(order.ID, memberActor(member.ID), true); err != nil {
+				return "", err
+			}
+			continue
+		}
+		// Too little time left for the provider's shortest checkout (F7): a locked renewal waits for
+		// the end; any other order closes and a new one is made.
+		if order.Expires-service.Now() < MinimumOrderLifetime {
+			if order.Locked {
+				return "", ErrBuyAfterEnd
+			}
 			if err := service.ExpireOrder(order.ID, memberActor(member.ID), true); err != nil {
 				return "", err
 			}
@@ -311,6 +325,12 @@ func (x *exchange) webhook(service *Service, config Config, ip string, get phpVa
 	}
 	if err != nil {
 		x.h.log("webhook: the provider's object is in an unexpected state; the operator looks at it")
+		// Nothing is dropped silently (S2 third look, F4): the order is listed for the operator.
+		if aerr := service.atomic(func(tx *sql.Tx) error {
+			return service.openAttention(context.Background(), tx, order.ID, "provider:"+code, AttentionUnconfirmed, "a notification whose payment could not be confirmed ("+err.Error()+")")
+		}); aerr != nil {
+			return aerr
+		}
 		return record()
 	}
 	applied, err := service.ApplyFact(order.ID, code, "provider:"+code, fact)
@@ -376,7 +396,7 @@ type ReconcileReport struct {
 
 // ReconcileCap is how many orders one run asks the provider about; the rest wait for the
 // next run (and the output says so).
-const ReconcileCap = 200
+var ReconcileCap = 200
 
 // Reconcile is the command for a timer (`membership reconcile`). Oldest due first, at most
 // ReconcileCap provider questions, one failing order never stopping the run. It asks about:
@@ -405,8 +425,11 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 	asked := 0
 	fail := func(o Order, what string) {
 		report.Failed = append(report.Failed, o.ID+": "+what)
+		// Marked checked, so it waits its turn (a day) and cannot take the cap every run; one
+		// attention entry, not a new log line each run (S2 third look, F8).
+		_ = s.MarkChecked(o.ID)
 		_ = s.atomic(func(tx *sql.Tx) error {
-			return s.openAttention(ctx, tx, o.ID, actor, AttentionUnconfirmed, what)
+			return s.openAttention(ctx, tx, o.ID, actor, AttentionUnconfirmed, "could not be settled by reconciliation")
 		})
 	}
 	for _, o := range due {
@@ -436,7 +459,8 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 		}
 		report.Confirmed++
 		if err := s.MarkChecked(o.ID); err != nil {
-			return report, err
+			fail(o, "could not record the check ("+err.Error()+")")
+			continue
 		}
 		applied, err := s.ApplyFact(o.ID, o.Provider, actor, fact)
 		if err != nil {
@@ -477,13 +501,14 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 func (s *Service) dueOrders() ([]Order, error) {
 	now := s.Now()
 	rows, err := s.db.QueryContext(context.Background(), "SELECT "+orderColumns+" FROM store_orders o WHERE "+
-		"(o.state IN ('created','pending') AND o.created<=?) "+
+		"(o.state IN ('created','pending') AND o.created<=? AND NOT (COALESCE(o.checked,0)>? AND EXISTS (SELECT 1 FROM store_attention a WHERE a.order_id=o.id AND a.kind='unconfirmed' AND a.state='open'))) "+
 		"OR (o.state IN ('expired','failed') AND o.provider_ref IS NOT NULL AND ?>=o.expires+3600 AND COALESCE(o.checked,0)<o.expires+3600) "+
 		"OR (o.state='paid' AND COALESCE(o.checked,0)<=? AND ("+
 		"EXISTS (SELECT 1 FROM store_payments p WHERE p.order_id=o.id AND (p.confirmed>? OR (p.disputed=1 AND p.dispute_status NOT IN ('won','lost','warning_closed','prevented'))))"+
 		" OR EXISTS (SELECT 1 FROM store_refunds r WHERE r.order_id=o.id AND r.state IN ('requested','sent')))) "+
-		"OR (o.state='paid' AND EXISTS (SELECT 1 FROM store_refunds r WHERE r.order_id=o.id AND r.state IN ('requested','sent'))) "+
-		"ORDER BY COALESCE(o.checked,0),o.created", now-600, now, now-86400, now-RecheckWindow)
+		"OR (o.state='paid' AND EXISTS (SELECT 1 FROM store_refunds r WHERE r.order_id=o.id AND r.state IN ('requested','sent')) AND COALESCE(o.checked,0)<=?) "+
+		"OR (o.state='mismatch' AND COALESCE(o.checked,0)<=? AND EXISTS (SELECT 1 FROM store_payments p WHERE p.order_id=o.id AND p.confirmed>?)) "+
+		"ORDER BY COALESCE(o.checked,0),o.created", now-600, now-86400, now, now-86400, now-RecheckWindow, now-3600, now-86400, now-RecheckWindow)
 	if err != nil {
 		return nil, err
 	}
@@ -609,4 +634,43 @@ func (s *Service) OperatorRefund(ctx context.Context, registry *payment.Registry
 		}
 	}
 	return r, order, answer
+}
+
+// closeCheckout ends the provider's open session of a licence's unpaid order before the
+// licence is removed (S2 third look, F5): a payment can then never arrive for a removed licence
+// through a session left open. If the session cannot be ended -- the provider cannot be asked,
+// or a payment is already being completed -- the removal is refused with words that say why.
+func (x *exchange) closeCheckout(service *Service, config Config, member int64, licenseID string) error {
+	if !service.StoreReady() {
+		return nil
+	}
+	orders, err := service.Orders(member)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	for _, o := range orders {
+		if o.LicenseID != licenseID || (o.State != OrderCreated && o.State != OrderPending) || o.ProviderRef == "" {
+			continue
+		}
+		provider, ok := x.h.payments().WebhookProvider(o.Provider)
+		sessions, canEnd := provider.(payment.Sessions)
+		if !ok || !canEnd || config.PaymentProvider != o.Provider || PaymentState(x.h.payments(), config) != PaymentReady {
+			return ErrRemovePaymentOpen
+		}
+		current, err := sessions.Session(ctx, config.PaymentCredentials, o.ProviderRef)
+		if err != nil {
+			return ErrRemovePaymentOpen
+		}
+		switch current.Status {
+		case "complete":
+			return ErrRemovePaymentCompleting
+		case "open":
+			if err := sessions.ExpireSession(ctx, config.PaymentCredentials, o.ProviderRef); err != nil {
+				return ErrRemovePaymentOpen
+			}
+		}
+	}
+	return nil
 }

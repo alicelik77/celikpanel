@@ -88,7 +88,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-for-php] [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX] | reconcile -operator NAME | order -id ORDER | orders [-pending] [-mismatch] [-attention] | test-account -operator NAME -email ADDRESS -on|-off -reason TEXT | price -operator NAME -amount 99.00 [-from YYYY-MM-DD] -reason TEXT | extend -operator NAME -licence ID -days N -reason TEXT | refund -operator NAME -order ORDER -reason TEXT | grant -operator NAME -order ORDER -reason TEXT | reinstate -operator NAME -licence ID -reason TEXT | attend -operator NAME -order ORDER [-kind KIND] -reason TEXT (each also [-test-signing-public-key HEX])")
+	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-for-php] [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX] | reconcile -operator NAME | order -id ORDER | orders [-pending] [-mismatch] [-attention] | test-account -operator NAME -email ADDRESS -on|-off -reason TEXT | price -operator NAME -amount 99.00 [-from YYYY-MM-DD] -reason TEXT | extend -operator NAME -licence ID -days N -reason TEXT | refund -operator NAME -order ORDER -reason TEXT | grant -operator NAME -order ORDER -reason TEXT | reinstate -operator NAME -licence ID -reason TEXT (for a revocation applied to the wrong licence or by our fault; gives no time back) | attend -operator NAME -order ORDER [-kind KIND] -reason TEXT (each also [-test-signing-public-key HEX])")
 }
 
 // privateDir is named explicitly, never derived from where the program sits: a guess
@@ -487,7 +487,9 @@ func runOperator(command string, args []string) int {
 		}
 		fmt.Printf("licence %s extended by %d days\n", *licence, *days)
 	case "grant":
-		o, err := service.GrantOrder(actor, *orderID, *reason)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		o, err := service.GrantOrder(ctx, payment.DefaultRegistry(), config, actor, *orderID, *reason)
 		if err != nil {
 			return fail(err)
 		}
@@ -501,7 +503,7 @@ func runOperator(command string, args []string) int {
 		if err := service.Reinstate(actor, *licence, *reason); err != nil {
 			return fail(err)
 		}
-		fmt.Printf("licence %s reinstated; its server activates its key again to get it back\n", *licence)
+		fmt.Printf("licence %s reinstated without the reversed year (no time is given back; a gift is extend); its server activates its key again\n", *licence)
 	case "attend":
 		n, err := service.Attend(actor, *orderID, *kind, *reason)
 		if err != nil {

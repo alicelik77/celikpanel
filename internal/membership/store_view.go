@@ -31,7 +31,7 @@ type storePage struct {
 	trialRefused bool            // the trial licence was refused on a server that had a trial
 	// The order page's cause when it did not become paid normally (Service.Cause).
 	causeKind, causeDetail string
-	settled                bool
+	causeOpen, settled     bool
 	receipt                *Order // the receipt page's order
 }
 
@@ -159,7 +159,7 @@ func (p *page) buyPage(b *strings.Builder) {
 		b.WriteString(`<p>` + p.t("Bitiş tarihinden önce yenilediğiniz için fiyatınız aynı kalır. Bu ödeme "+moment(q.Expires)+" tarihine kadar yapılabilir.", "Because you renew before the end date, your price stays the same. This payment can be made until "+moment(q.Expires)+".") + `</p>`)
 	}
 	b.WriteString(`<p class="member-notice" role="note"><strong>` + p.t("Ödemeler iade edilmez.", "Payments are not refunded.") + `</strong> ` +
-		p.t("Her hesabın ilk lisansı, ödemeden önce denemeniz için 30 günlük ücretsiz denemedir.", "Every account's first license is a free 30-day trial, to try CelikPanel before paying.") + `</p>` + "\n")
+		p.trialNote() + `</p>` + "\n")
 	if p.store.charging == ChargingTest {
 		b.WriteString(`<p>` + p.t("Deneme kipi: gerçek para alınmaz.", "Test mode: no real money is taken.") + `</p>`)
 	}
@@ -199,11 +199,20 @@ func (p *page) orderPage(b *strings.Builder) {
 		state, next = p.mismatchText()
 	case OrderRefunded:
 		state = p.t("Ödeme geri alındı.", "The payment was reversed.")
-		next = p.t("Ödeme size geri döndü ve bu lisans sona erdi.", "The payment went back to you and this license has ended.")
-		if o.GrantedFrom == 0 {
+		// What really happened to the licence (S2 third look, F7).
+		switch {
+		case o.GrantedFrom == 0:
 			next = p.t("Ödeme size geri döndü; lisansınızda hiçbir şey değişmedi.", "The payment went back to you; nothing changed on your license.")
-		} else if o.Kind == KindRenewal {
-			next = p.t("Ödeme size geri döndü ve bu ödemenin aldığı yıl geri alındı.", "The payment went back to you and the year it bought was taken back.")
+		case p.store.revoked[o.LicenseID]:
+			next = p.t("Ödeme size geri döndü ve aldığı süre geri alındı; lisans sona erdi.", "The payment went back to you and the time it bought was taken back; the license has ended.")
+		default:
+			end := ""
+			for _, l := range p.licenses {
+				if l.ID == o.LicenseID && l.Expires.Valid {
+					end = day(l.Expires.Int64)
+				}
+			}
+			next = p.t("Ödeme size geri döndü ve aldığı süre geri alındı; lisansınız artık "+end+" tarihine kadar geçerli.", "The payment went back to you and the time it bought was taken back; your license now runs until "+end+".")
 		}
 	}
 	b.WriteString(`<p class="member-notice" role="status"><strong>` + state + `</strong> ` + htmlEscape(next) + `</p>` + "\n")
@@ -295,7 +304,11 @@ func (s *storePage) openOrder(licenseID string) bool {
 // mismatchText says, for each cause, what is true about an order that did not become paid
 // normally -- and that the payment went back once that is settled (S2 review 2, N8).
 func (p *page) mismatchText() (string, string) {
-	contact := p.t("Size e-postayla yazacağız; sizin bir şey yapmanız gerekmiyor.", "We will write to you by email; you do not need to do anything.")
+	// "We will write to you" only while the matter is open for the operator (S2 third look, F7).
+	contact := ""
+	if p.store.causeOpen {
+		contact = p.t("Size e-postayla yazacağız; sizin bir şey yapmanız gerekmiyor.", "We will write to you by email; you do not need to do anything.")
+	}
 	if p.store.settled {
 		return p.t("Ödeme size geri döndü.", "The payment went back to you."), p.t("Lisansınızda hiçbir şey değişmedi.", "Nothing changed on your license.")
 	}
@@ -308,5 +321,14 @@ func (p *page) mismatchText() (string, string) {
 		return p.t("Ödemeniz ulaştı, ancak bu hesap artık deneme kipinde satın almıyor; bu yüzden yıl eklenemedi.", "Your payment arrived, but this account no longer buys in test mode, so no year could be added."), contact
 	}
 	return p.t("Bu ödemeyi siparişle eşleştiremedik.", "We could not match this payment to the order."),
-		p.t("Lisansınızda hiçbir şey değişmedi. ", "Nothing changed on your license. ") + contact
+		strings.TrimSpace(p.t("Lisansınızda hiçbir şey değişmedi. ", "Nothing changed on your license. ") + contact)
+}
+
+// trialNote is the buy page's trial sentence, only for an account that can still have the
+// trial (S2 third look, F7).
+func (p *page) trialNote() string {
+	if p.store.trialUsed {
+		return ""
+	}
+	return p.t("İlk seferde 30 günlük ücretsiz deneme kullanılabilir.", "A free 30-day trial is available the first time.")
 }
