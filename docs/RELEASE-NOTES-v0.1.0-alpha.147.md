@@ -1,0 +1,282 @@
+# v0.1.0-alpha.147
+
+[Türkçe](RELEASE-NOTES-v0.1.0-alpha.147.tr.md)
+
+**A security release with one correction.** The database tools and webmail
+no longer run under the web server's shared account, site accounts can no
+longer schedule jobs with the system's `at`, and the distribution's shared
+PHP pool is switched off where nothing uses it. A longer change no longer
+stays "in progress" on the panel for ever. The panel's database layout does
+not change.
+**Only the owner updates installed panels, from the panel's own update
+screen.**
+
+## Updating from alpha.146
+
+1. Update from the panel's own update screen, as before.
+2. **The panel's database layout does not change** (it stays schema 81).
+   Going back to alpha.146 is the ordinary rollback, with the steps in
+   "Going back to alpha.146" below; no snapshot has to be restored.
+3. About three minutes after the panel's first start, when the server is
+   quiet, the panel runs one step by itself, in its own job: it moves the
+   database tools and webmail to their own accounts, switches off the
+   distribution's PHP pool where nothing uses it, closes `at` to site
+   accounts and takes note of the site crontabs (see "Security: customers
+   are kept further apart"). There is nothing to press. What it cannot do is
+   a line in **Problems now** with who acts and the step.
+
+## Security: customers are kept further apart
+
+- **The database tools and webmail ran under the web server's shared
+  account.** phpMyAdmin, phpPgAdmin and webmail (Roundcube) ran in the
+  distribution's shared PHP pool as the web server's account, whose group
+  can read every site's folder. A fault in any of them could read every
+  site.
+- **Now each has a system account of its own**: `celikpanel-webmail`,
+  `celikpanel-phpmyadmin` and `celikpanel-phppgadmin` (no login, no home
+  folder, in no other group), each with its own PHP pool on the PHP version
+  the tool runs on, and its sessions, uploads and temporary files in
+  `/var/lib/celikpanel-php-tools/<tool>/`. Only the web server can reach a
+  tool's pool. New installations get this from the start; existing ones are
+  moved by the step above. A move is the same verified step as choosing a
+  tool's PHP version in its Manage window: the tool must answer as itself
+  afterwards, otherwise everything comes back as it was and **Problems now**
+  says so; choosing the tool's PHP version in its Manage window tries the
+  move again.
+- **Webmail's folder is closed to every site account.** The root of
+  `/var/lib/celikpanel-webmail` stays closed to other accounts, as the
+  install leaves it; webmail's own account alone gets through it, by one
+  access-control-list entry (`user:celikpanel-webmail:--x`; the owner reads
+  it with `getfacl` and removes it with `setfacl -x`). Webmail's database,
+  temporary files and logs become its account's; its configuration becomes
+  readable by its account only. Webmail's local door on the server (closed
+  in alpha.145 to everything but CelikPanel's own checks) now hands its PHP
+  to webmail's own pool too. **Webmail needs a file system with
+  access-control lists for this:** where the file system refuses them,
+  webmail stays on the web server's account, nothing is changed, and
+  **Problems now** says why and what the owner can do (the file system's
+  `acl` option).
+- **Site accounts can no longer schedule jobs with `at`.** Where the `at`
+  package is installed and no `/etc/at.allow` exists, CelikPanel writes one
+  that lists every account that may use `at` today except the website
+  accounts (and every account that shares a website account's id, such as an
+  extra FTP login). Pending `at` jobs of site accounts are listed for the
+  administrator (number, account and time), never removed. An `/etc/at.allow`
+  the owner wrote is kept as it is; site accounts it names are shown to the
+  administrator.
+- **Crontab lines a site adds outside the panel are shown.** On a site's
+  Scheduled tasks list a line not made in CelikPanel is marked "Not made in
+  CelikPanel": it can be deleted; the administrator may keep it. The agent
+  refuses to edit or enable such a line until it is kept. One line in
+  **Problems now** names the sites and how many lines.
+- **The distribution's shared PHP pool is switched off where nothing uses
+  it.** Each PHP version's pool `www.conf` runs as the web server's account.
+  It is switched off (renamed to `www.conf.off-by-celikpanel`, checked with
+  `php-fpm -t` and reloaded; put back if either refuses) only when it is the
+  package's untouched file, another pool runs beside it, and nothing that a
+  web server loads hands PHP to it. It is kept, and **Problems now** names
+  what keeps it, when nginx's configuration names its socket (also by
+  another spelling or a link, or through a socket path that cannot be
+  followed, or a `*_pass` address made from a variable other than
+  CelikPanel's own), when Apache is installed and loads a file that names
+  it, when an enabled or running Apache lets `.htaccess` files override
+  anything, or when another web server (httpd, lighttpd, Caddy,
+  OpenLiteSpeed) is enabled or running. A version is never left without a
+  pool: before its last other pool goes, the pool is put back.
+- **The owner's own decisions stand.** A tool's web server file or pool the
+  owner changed is kept as it is. When the owner puts a switched-off pool
+  back, or deletes `/etc/at.allow`, CelikPanel leaves it so and shows one
+  line in **Problems now** with one button ("Turn it off again", "Close
+  again") that acts on that one thing only, after the panel's own
+  confirmation. When it did not succeed, its result stays shown under that
+  line, also after a panel restart.
+- **What a site account can still reach.** On the file system, nothing under
+  webmail's folder. The tools' pools only through the web server. Customers
+  cannot write a `*_pass` directive; a customer who names the shared pool's
+  socket in a harmless directive keeps that pool switched on and gains
+  nothing by it.
+
+## Correction: a longer change no longer stays "in progress"
+
+- **Until now** (the known limit of alpha.145 and alpha.146), a longer change
+  — a webmail update, a component, mail profile or Node.js install, an
+  install or removal together, a webmail address — could stay "in progress"
+  on the panel after it had finished on the server, when the panel lost
+  touch with its agent for a moment. Other server changes were then refused
+  until the panel was restarted.
+- **Now the panel reads what the server did and records the result by
+  itself.** A webmail update or a webmail address is only read; nothing is
+  run again. An interrupted install or removal is run once more from its
+  start, which may take as long again. Meanwhile the page says what is
+  happening ("reading the result from the server", "recording the
+  result") and that nobody needs to act.
+- **One late answer from the agent no longer stops a running change**: only
+  when the agent leaves the panel's renewals unanswered for the whole window
+  is the change stopped, and then it is settled as above.
+- **When the result still cannot be recorded**, the page, every refusal of
+  another change and **Problems now** give the steps: check the agent
+  (`sudo systemctl status celikpanel-agent`), then
+  `sudo systemctl restart celikpanel-panel`. If the server's package manager
+  stays busy while an install is run again, the change ends with its own
+  words ("the server stayed busy") instead of "could not be started".
+
+## Under the hood: prepared for per-site limits
+
+This release can be the one you come back to from the release that
+introduces per-site limits: programs moved into their site's limits keep
+starting with the mail block, plans and accounts keep their site limits when
+you edit them here, and a program keeps its site's limits when this release
+writes it again. Going back further than this release is not supported for
+servers that have run per-site limits: programs moved into a site's limits
+would not start. On a server today nothing a customer sees changes: at each
+program start and stop, the small helper that keeps a program out of the
+mail ports first reads where the program runs from the system itself, then
+asks systemd, as before.
+
+## Going back to alpha.146
+
+Going back puts back CelikPanel's own files only; it does not touch
+`/etc/php`, `/etc/nginx`, `/etc/at.allow`, the tools' folders or the
+access-control list.
+
+- **Keeps working:** PHP-FPM keeps running the tools' own pools and
+  alpha.146 uses the sockets their configurations name, so phpMyAdmin,
+  phpPgAdmin and webmail keep answering; webmail's address and its local
+  door keep their socket; `/etc/at.allow` stays as it is.
+- **No longer guarded:** alpha.146 does not know a tool's own pool, so it
+  does not refuse removing the PHP version a tool runs on (the tool then
+  stops, and nothing says why); the tools' Manage windows show no PHP
+  version.
+- **Fails:** webmail's own update (its new folder does not get webmail's
+  account and entry, so the update puts the old folder back and says webmail
+  did not answer); deleting the last site of a PHP version whose shared pool
+  is switched off, or moving it to another version (PHP-FPM refuses a
+  version without a pool, and alpha.146 does not put the pool back);
+  installing or checking a tool again on such a version.
+- **Also:** the lines of this release in **Problems now** are not shown;
+  removing a tool leaves its account, pool and data folder; a phpMyAdmin
+  package upgrade that gives its secret files back to the web server's group
+  is not put right. A change being settled is settled by alpha.146's own
+  start, as before.
+- **The order:** before going back, put each switched-off pool back:
+
+  ```bash
+  sudo mv /etc/php/<version>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<version>/fpm/pool.d/www.conf
+  sudo systemctl reload php<version>-fpm
+  ```
+
+  If the tools should run as before, undo their own pools as
+  `docs/TENANT-ISOLATION.md` §7 describes; then go back. Already gone back:
+  put the pool back before deleting or moving the last site of a version; do
+  not remove a PHP version that `ls /etc/php/*/fpm/pool.d/celikpanel-*.conf`
+  lists; leave webmail's updates until this release is installed again.
+
+## Known limits
+
+- **On Arch Linux** the tools stay on the web server's account and the PHP
+  pool is not switched off: this release moves them on Debian and Ubuntu.
+  `at` and the site crontabs are handled on every system.
+- **A site account can still add lines to its own crontab.** They are shown,
+  can be deleted and, by the administrator, kept; they are not prevented.
+- **Not looked at when the shared PHP pool is switched off:** programs that
+  talk to its socket directly (for example a scheduled job that resets the
+  opcode cache, or a monitoring agent reading the pool's status page), a web
+  server started outside systemd, and Lua code that `nginx -T` does not
+  print. If one of them uses the pool, rename it back as above; CelikPanel
+  then leaves it on.
+- **The database tools' local server** (`127.0.0.1:8306`, behind the panel's
+  `/dbtool/`) answers every account on the server and every signed-in panel
+  user. It gives out the packages' own files (code, documentation, SQL
+  samples; no secret) and runs their PHP under the tools' own accounts; the
+  tools' own logins guard the databases.
+- **When a move is put back**, a file that is already gone at that moment is
+  only a line in the agent's journal, also when it mattered.
+- **If the owner opens webmail's folder to other accounts again**, CelikPanel
+  does not undo that and does not say so; a removed access-control-list entry
+  is said in **Problems now**.
+- **A crontab under the name of a login that shares a site's account id**,
+  and `systemd --user` timers, are not looked at.
+- **A change the panel could not record** settles by itself only at the
+  panel's next start once it has been named "not recorded"; until then
+  firewall, DNS and mail TLS changes are admitted beside a half-finished
+  component install. An install is run again from its start on the
+  assumption that its steps are safe to repeat.
+- The open list of alpha.145 stays open
+  ([alpha.145 release notes](RELEASE-NOTES-v0.1.0-alpha.145.md)).
+
+## Checked in the lab
+
+**Open.** The lab run on the pair of test servers (Debian 13 and Ubuntu
+24.04) has not been made yet. Its steps are, in this order: the nine steps
+of the per-site-limits preparation (the first: the firewall must refuse a
+place that does not exist; if it accepts one, this release is not
+published), then the ten steps of the "in progress" correction, then the
+twenty-five steps of the security part (pull request #348).
+
+## What to expect after updating
+
+- No schema step: the layout stays schema 81, and going back to alpha.146
+  is the ordinary rollback with the steps above.
+- About three minutes after the first start: each tool's own pool starts and
+  the web server reloads once per moved tool; PHP-FPM reloads once per
+  version whose shared pool is switched off; `/etc/at.allow` appears where
+  `at` is installed and the owner had none.
+- phpMyAdmin, phpPgAdmin and webmail sign in and work as before. If one of
+  them does not answer, **Problems now** says so, with the step.
+- **Problems now** may show lines that need the owner: a shared pool kept
+  because something uses it (it names what), pending `at` jobs of site
+  accounts, crontab lines not made in the panel. Each says who acts.
+- A longer change that loses touch with the agent ends by itself; the page
+  says while it settles that nobody needs to act.
+
+## Evidence
+
+No schema change: no file under `internal/db/migrations/` changes; the
+layout stays 81. New and additive: the agent calls `CloseSideDoorsV1`,
+`ReadSideDoorsV1` and `KeepCronLineV1`; the panel route
+`/api/v1/metrics/side-doors/reclose` (administrator only); the audit actions
+of the moves, the pool, `at` and kept crontab lines; Problems now kinds 22
+to 38; the settle phases and two terminal codes of the correction.
+
+Tests by part:
+
+- Tools on their own accounts: `TestASiteAccountReachesNothingUnderWebmailsTree`
+  (real files and owners), `TestWebmailStaysOnTheWebAccountWhereTheFileSystemRefusesAccessControlLists`,
+  `TestTheUndoKeepsAPathChangedSinceAndNamesIt`,
+  `TestTheUndoRemovesAFileTheMoveCreatedAndSaysNothingOfOneAlreadyGone`,
+  `TestAnAccessControlListOfAnySizeIsRead`, `TestInterruptedMoveTable`,
+  `TestWebmailLocalServerOnItsOwnPoolKeepsAlpha145Rules`,
+  `TestWebmailConfigRewriteKeepsTheOwnAccountsGroup`,
+  `TestEveryToolMoveTakesTheSideDoorsLockAfterItsStep`.
+- The shared PHP pool: `TestTheStockPoolInUseCheckFailsOnlyInTheSafeDirection`,
+  `TestOnlyApacheFilesApacheLoadsKeepTheStockPoolOn`,
+  `TestAnApacheIncludeThatCannotBeFollowedKeepsThePoolOn`,
+  `TestOtherWebServersKeepTheStockPoolOn`,
+  `TestUnixPathsAreComparedByWhatTheyResolveTo`,
+  `TestThePanelsOwnUpstreamLineDoesNotKeepTheStockPoolOn`,
+  `TestThePutBackKeepsTheTurningMarkUntilThePoolIsBack`,
+  `TestTheLastSiteDeletedWhileAToolMovesOffLeavesThatVersionAPool`,
+  `TestForgettingAVersionNeverRewritesAnUnreadableRecord`.
+- `at` and crontabs: `TestACutAtAllowWriteIsCelikPanelsUnfinishedStep`,
+  `TestTheAgentRefusesToEditOrEnableALineNotMadeInCelikPanel`,
+  `TestADeleteWritesTheRecordWithoutTheLineBeforeTheCrontab`.
+- What the administrator sees: `TestClosingAgainRunsApartFromTheRequestOnceAndOnlyForItsDoor`,
+  `TestTheCloseAgainResultSurvivesAPanelRestart`,
+  `TestAReadNeverReplacesANewerAnswer`, `TestOneSlowAnswerIsNotDown`,
+  `TestASideDoorsStepThatLosesTheAgentEndsAndIsNotLeftRunning`; web
+  `side-doors-problems.test.mjs`, `side-doors-undo.test.mjs`.
+- The "in progress" correction: the `TestD1…` tests (the webmail update and a
+  component install settle by themselves, a row is run again at most once,
+  one unanswered renewal does not stop a step, a standalone change follows
+  the same rule); web `d1-stuck-operation.test.mjs`.
+- Per-site limits preparation: `TestEgressPlaceOrder`,
+  `TestAddFailureIsAPlaceProblemOnlyWhenItIs`, `TestProductionPlaceReads`,
+  `TestGuardReaddsUnitsInTheirSitesSlice`, `TestProofAcceptsTheSitesSlice`,
+  `TestUnitKeepsOnlyItsOwnSitesSliceWithItsFile`,
+  `TestPlanAndAccountSavesKeepCeilingsThisReleaseDoesNotKnow`.
+
+The Go suites of the touched packages and the web suite ran on the base and
+on this release's code with the same failing set by name (three tests that
+read evidence files the test machine's copy leaves out; they pass in CI), and
+every check of the release pull request passed in CI. The security part went
+through four independent reviews, the other two parts through two each.
