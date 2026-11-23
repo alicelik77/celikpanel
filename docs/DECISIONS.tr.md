@@ -60,12 +60,28 @@ sipariş, ödeme, fatura ya da hatırlatma hiçbir yerde yoktur.
 Lisansları CelikPanel'in kendi hizmeti vermeye ve imzalamaya devam eder; ödeme sağlayıcısı
 yalnız "ödendi", "iade edildi" ya da "iptal edildi" bildirir.
 
-**Karara bağlanmayanlar (açık).** Ödeme sağlayıcısı: yurt dışı için bir satıcı-aracı
-(merchant of record; Polar ve Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a
-sorulacak), Türkiye için ileride iyzico ya da PayTR. Bu karar sahibin mali müşavirini
-bekliyor: yurt dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir
-satıcı-aracı üzerinden satış. Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para
-birimleri. Tasarımın sahibe soruları tasarımın k bölümündedir.
+**Ek, 23 Kasım 2026 (sahip).** "kullanıcılarım hesaplarını aboneliklerini yönetelim.
+öncelikle stripe ödeme yöntemine bağlayacağız." Bundan iki şey çıkar; bu kaydın geri kalanı
+değişmez:
+
+- **İlk ödeme yöntemi Stripe'tır.** Önce sahte bir Stripe sunucusuna, sonra Stripe'ın test
+  kipine karşı yapılır; ödeme bağlantısı sağlayıcıdan bağımsız kalır, böylece ileride
+  lisanslara dokunmadan başka bir sağlayıcı eklenebilir. Her satın alma tek seferlik
+  ödemedir; Stripe aboneliği yalnız üye otomatik yenilemeyi açtığında oluşur (6. madde).
+  Stripe yalnız neyin ödendiğini ya da iade edildiğini bildirir; lisansı yine hizmet verir
+  ve imzalar.
+- **Yeni üyelik hizmeti kodu Go ile yazılır.** Go hizmeti `portal-membership/` (PHP)
+  dizininin yerini adım adım alır: önce birebir denk (aynı sayfalar, aynı panel API'si,
+  aynı veritabanı dosyası, aynı imza anahtarı), sonra sipariş ve ödemeler. Yeni PHP
+  yazılmaz; sahip kaldırana kadar PHP sürümü geri dönüş olarak seçilebilir kalır.
+
+**Karara bağlanmayanlar (açık).** Stripe hesabının tüzel kişiliği ve ülkesi; ücret almanın
+canlıda bu hesapla mı, yoksa yurt dışında bir satıcı-aracıyla (merchant of record; Polar ve
+Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a sorulacak) ya da Türk bir şirket için
+iyzico veya PayTR ile mi yapılacağı. Vergi ve fatura: sahibin mali müşavirini bekliyor (yurt
+dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir satıcı-aracı üzerinden
+satış). Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para birimleri. Tasarımın sahibe
+soruları tasarımın k bölümündedir.
 
 **Neyi değiştirir.**
 

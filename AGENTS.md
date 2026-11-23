@@ -136,14 +136,20 @@ The owner approved the paid yearly licence direction in D-047 (docs/DECISIONS.md
 design and for implementation in small releases. Before touching licence states, the
 licence gate, the licence file format or `portal-membership/`, read D-047 and
 docs/LICENCE-SUBSCRIPTION-DESIGN.md. A lapsed, unverifiable or unpaid licence never
-stops hosted workloads and never blocks security actions. The payment provider is not
-chosen. This does not authorize contacting the live licence service, changing the live
-portal, or updating installed panels from the assistant's side.
+stops hosted workloads and never blocks security actions. On 23 November 2026 the owner
+chose Stripe as the first payment method; new member-service code is Go and replaces
+`portal-membership/` step by step (D-047, amendment). The legal entity of the Stripe
+account, tax and invoices are not decided. This does not authorize contacting the live
+licence service or Stripe, changing the live portal, or updating installed panels from the
+assistant's side.
 
 Sahip, ücretli yıllık lisans yönünü D-047'de (docs/DECISIONS.tr.md) tasarım ve küçük
 sürümlerle uygulama için onayladı. Lisans durumlarına, lisans kapısına, lisans dosyası
 biçimine ya da `portal-membership/` dizinine dokunmadan önce D-047 ve
 docs/LICENCE-SUBSCRIPTION-DESIGN.md okunur. Süresi biten, doğrulanamayan ya da ödenmeyen
 lisans barındırılan hizmetleri asla durdurmaz ve güvenlik işlemlerini asla engellemez.
-Ödeme sağlayıcısı seçilmedi. Bu onay canlı lisans hizmetine bağlanmaya, canlı portalı
-değiştirmeye ya da kurulu panelleri asistan tarafından güncellemeye izin vermez.
+Sahip 23 Kasım 2026'da ilk ödeme yöntemi olarak Stripe'ı seçti; yeni üyelik hizmeti kodu
+Go ile yazılır ve `portal-membership/` dizininin yerini adım adım alır (D-047, ek). Stripe
+hesabının tüzel kişiliği, vergi ve fatura karara bağlanmadı. Bu onay canlı lisans
+hizmetine ya da Stripe'a bağlanmaya, canlı portalı değiştirmeye ya da kurulu panelleri
+asistan tarafından güncellemeye izin vermez.

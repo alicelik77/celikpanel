@@ -60,11 +60,28 @@ payment, invoice or reminder exists anywhere.
 CelikPanel's own service keeps issuing and signing licences; a payment provider only
 reports "paid", "refunded" or "cancelled".
 
-**Not decided (open).** The payment provider: abroad a merchant of record (Polar and Creem
-document payouts to Turkey; Paddle is to be asked), in Turkey later iyzico or PayTR. This
-waits for the owner's accountant: VAT on exported software licences, e-arşiv invoices,
-selling through a foreign merchant of record. The founder price. Any multi-server discount.
-Currencies other than USD. The design's own questions for the owner are in its section k.
+**Amendment, 23 November 2026 (the owner).** "kullanıcılarım hesaplarını aboneliklerini
+yönetelim. öncelikle stripe ödeme yöntemine bağlayacağız." ("Let my users manage their
+accounts and subscriptions. First we will connect the Stripe payment method.") Two things
+follow and nothing else of this record changes:
+
+- **Stripe is the first payment method.** It is built first, against a fake Stripe server
+  and then Stripe's test mode; the payment seam stays provider-neutral, so another provider
+  can be added later without touching licences. Every purchase is a one-time payment; a
+  Stripe subscription exists only when the member turns automatic renewal on (point 6).
+  Stripe only reports what was paid or refunded; the service still issues and signs.
+- **New member-service code is Go.** The Go service replaces `portal-membership/` (PHP)
+  step by step: first at exact parity (same pages, same panel API, same database file, same
+  signing key), then orders and payments. No new PHP is written; the PHP release stays
+  selectable as the rollback until the owner retires it.
+
+**Not decided (open).** The legal entity and country of the Stripe account, and whether
+charging goes live through it or through a merchant of record abroad (Polar and Creem
+document payouts to Turkey; Paddle is to be asked) or, for a Turkish entity, iyzico or PayTR.
+Tax and invoices: this waits for the owner's accountant (VAT on exported software licences,
+e-arşiv invoices, selling through a foreign merchant of record). The founder price. Any
+multi-server discount. Currencies other than USD. The design's own questions for the owner
+are in its section k.
 
 **What it supersedes or amends.**
 

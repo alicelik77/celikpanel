@@ -5,6 +5,19 @@ direction of the same day ([D-047](DECISIONS.md)). Status: design only. Nothing 
 implemented; no installed panel, live licence service or payment provider was contacted
 or changed. Line references are to `main` at `1f1d80672`.*
 
+> **Amendment, 23 November 2026 ([D-047](DECISIONS.md), the owner's words there).** Stripe
+> is the first payment method: section e's provider adapter is built for Stripe first
+> (every purchase a one-time Checkout payment; a Stripe subscription only when the member
+> turns automatic renewal on), against a fake Stripe server and then Stripe's test mode,
+> behind the same provider-neutral seam. The service in section e is written in Go and
+> replaces `portal-membership/` step by step: first a Go service at exact parity with the
+> PHP one (same pages and texts, same panel API, the same SQLite file opened in place, the
+> same signing key, the PHP release kept as the rollback), then orders and payments. Where
+> this document says "the service" or names `Service.php`/`http.php`, read the Go service
+> for new work; the PHP lines stay the reference for parity. Still open: the legal entity
+> and country of the Stripe account, tax and invoices, the founder price, currencies other
+> than USD (§k). Everything else here is unchanged.
+
 This document says how the eight approved points are built, in small releases, without
 locking any installed panel and without letting a licence state stop a hosted service
 (D-022) or a security action. Where the owner has not decided something, it is listed as
@@ -844,10 +857,12 @@ evidence (AGENTS.md); open items stay open.
 
 ## k. Open questions for the owner
 
-1. **Payment provider.** *Recommendation:* a merchant of record with documented payouts to
-   Turkey (Polar or Creem; Paddle once it confirms payouts), chosen after the accountant's
-   answer on VAT, e-arşiv and selling through a foreign merchant of record; Turkish
-   processors later for domestic customers. *Blocks:* stage 4 only.
+1. **Payment provider.** *Answered in part on 23 November 2026:* Stripe is the first
+   payment method (D-047 amendment). Still open: the legal entity and country of the Stripe
+   account, and whether live charging goes through it, through a merchant of record with
+   documented payouts to Turkey (Polar or Creem; Paddle once it confirms payouts) or, for
+   domestic customers, a Turkish processor — after the accountant's answer on VAT, e-arşiv
+   and selling through a foreign merchant of record. *Blocks:* live charging only.
 2. **Founder price and who is a beta participant.** Amount; per licence or per member;
    whether "permanent" holds after an interruption. *Recommendation:* a participant is a
    member with a licence activated on a server before the 1.0 date; the founder price
