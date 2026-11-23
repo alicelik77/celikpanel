@@ -13,7 +13,9 @@ import (
 // The changelog and the known problems are records, not page text: one file
 // per release under changelog/ and one list of cases in problems.json. Each
 // line and each case names the release-notes line that proves it, in both
-// languages side by side. The pages are written from them.
+// languages side by side, as {"cite": "path:line", "says": "a phrase of that
+// line"} (the phrase rule of sources.go; a bare "path:line" string is still
+// read, without a phrase). The pages are written from them.
 //
 // Değişiklik günlüğü ve bilinen sorunlar kayıttır: sürüm başına bir dosya
 // (changelog/) ve bir vaka listesi (problems.json); her satır kanıtladığı
@@ -35,17 +37,17 @@ func (b both) in(lang string) string {
 // A changelog line: what kind of change, one sentence a server owner
 // understands, the case it closes or names (if any), and its proof.
 type changeLine struct {
-	Kind   string `json:"kind"`
-	Text   both   `json:"text"`
-	Case   string `json:"case,omitempty"`
-	Source string `json:"source"`
+	Kind   string   `json:"kind"`
+	Text   both     `json:"text"`
+	Case   string   `json:"case,omitempty"`
+	Source citation `json:"source"`
 }
 
 type changelogRelease struct {
 	Version   string       `json:"version"`
 	Published string       `json:"published"`
 	Notes     string       `json:"notes"`
-	Source    string       `json:"source"`
+	Source    citation     `json:"source"`
 	Lines     []changeLine `json:"lines"`
 }
 
@@ -54,15 +56,15 @@ type changelogRelease struct {
 // deliberately no field for a reporter, a server, a domain or the reporter's
 // own words.
 type problemCase struct {
-	ID        string   `json:"id"`
-	Opened    string   `json:"opened"`
-	State     string   `json:"state"`
-	FixedIn   string   `json:"fixed_in,omitempty"`
-	Summary   both     `json:"summary"`
-	Meanwhile *both    `json:"meanwhile,omitempty"`
-	Note      *both    `json:"note,omitempty"`
-	Reason    *both    `json:"reason,omitempty"`
-	Sources   []string `json:"sources"`
+	ID        string     `json:"id"`
+	Opened    string     `json:"opened"`
+	State     string     `json:"state"`
+	FixedIn   string     `json:"fixed_in,omitempty"`
+	Summary   both       `json:"summary"`
+	Meanwhile *both      `json:"meanwhile,omitempty"`
+	Note      *both      `json:"note,omitempty"`
+	Reason    *both      `json:"reason,omitempty"`
+	Sources   []citation `json:"sources"`
 }
 
 type problemsFile struct {
@@ -120,12 +122,12 @@ func loadRecords() ([]changelogRelease, []problemCase, error) {
 		}
 		// A release being built has no published day yet: its block shows the
 		// release's own day, which the portal builder fills (phDay).
-		if (release.Published != "" && !isoDay.MatchString(release.Published)) || !sourcePattern.MatchString(release.Source) ||
+		if (release.Published != "" && !isoDay.MatchString(release.Published)) || !sourcePattern.MatchString(release.Source.Cite) ||
 			release.Notes != "docs/RELEASE-NOTES-"+release.Version+".md" || len(release.Lines) == 0 {
 			return nil, nil, fmt.Errorf("%s: needs its published day, its notes file and the line that records the publication", name)
 		}
 		for i, line := range release.Lines {
-			if !contains(changeKinds, line.Kind) || strings.TrimSpace(line.Text.EN) == "" || strings.TrimSpace(line.Text.TR) == "" || !sourcePattern.MatchString(line.Source) {
+			if !contains(changeKinds, line.Kind) || strings.TrimSpace(line.Text.EN) == "" || strings.TrimSpace(line.Text.TR) == "" || !sourcePattern.MatchString(line.Source.Cite) {
 				return nil, nil, fmt.Errorf("%s: line %d needs a known kind, both languages and a source", name, i+1)
 			}
 		}
@@ -165,8 +167,8 @@ func loadRecords() ([]changelogRelease, []problemCase, error) {
 			return nil, nil, fmt.Errorf("problems.json %s: a case that is not a defect, and only such a case, gives the reason", c.ID)
 		}
 		for _, s := range c.Sources {
-			if !sourcePattern.MatchString(s) {
-				return nil, nil, fmt.Errorf("problems.json %s: source %q", c.ID, s)
+			if !sourcePattern.MatchString(s.Cite) {
+				return nil, nil, fmt.Errorf("problems.json %s: source %q", c.ID, s.Cite)
 			}
 		}
 	}

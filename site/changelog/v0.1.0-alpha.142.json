@@ -2,7 +2,10 @@
   "version": "v0.1.0-alpha.142",
   "published": "2026-11-21",
   "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md",
-  "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:5",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:5",
+    "says": "Published** on 2026-11-21 (UTC)"
+  },
   "lines": [
     {
       "kind": "security",
@@ -11,7 +14,10 @@
         "tr": "Hiçbir müşteri ya da bayi başka bir hesabın alan adını, site hesabını, sunucunun kendi hizmetlerinin bir portunu ya da bir bağlantı üzerinden dosyalarını alamaz."
       },
       "case": "CP-2026-2",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32",
+        "says": "A name of another account or of"
+      }
     },
     {
       "kind": "security",
@@ -19,7 +25,10 @@
         "en": "Each site’s configuration files are no longer readable by every account on the server.",
         "tr": "Her sitenin yapılandırma dosyaları artık sunucudaki her hesap tarafından okunamaz."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:57"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:57",
+        "says": "Configuration files readable by"
+      }
     },
     {
       "kind": "security",
@@ -27,7 +36,10 @@
         "en": "Web server directives a customer may be given can no longer switch the link rule off, list folders, raise the site’s PHP limits or read a file as the administrator.",
         "tr": "Bir müşteriye verilebilen web sunucusu yönergeleri artık bağlantı kuralını kapatamaz, klasör listeleyemez, sitenin PHP sınırlarını yükseltemez ya da bir dosyayı yönetici olarak okuyamaz."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:61"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:61",
+        "says": "Directives that lifted limits."
+      }
     },
     {
       "kind": "security",
@@ -35,7 +47,10 @@
         "en": "Add domain no longer looks into a subscription named in the request before checking that the caller may use it.",
         "tr": "Alan adı ekleme, istekte adı geçen bir aboneliğe artık çağıranın onu kullanabildiğini denetlemeden bakmaz."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:65"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:65",
+        "says": "What Add domain read before checking"
+      }
     },
     {
       "kind": "limits",
@@ -43,7 +58,10 @@
         "en": "The name and port checks run in the panel: a name or port set by hand on the server is not checked.",
         "tr": "Ad ve port denetimleri panelde çalışır: sunucuda elle verilen bir ad ya da port denetlenmez."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:146"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:146",
+        "says": "a name or port set by hand on the"
+      }
     },
     {
       "kind": "limits",
@@ -51,7 +69,10 @@
         "en": "Names that already overlapped before the update are kept and listed for the administrator in Problems now.",
         "tr": "Güncellemeden önce zaten çakışan adlar korunur ve yöneticiye Şu anki sorunlar bölümünde listelenir."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:87"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:87",
+        "says": "An update changes nothing that"
+      }
     }
   ]
 }

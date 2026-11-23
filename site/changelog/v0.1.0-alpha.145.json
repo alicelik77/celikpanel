@@ -2,7 +2,10 @@
   "version": "v0.1.0-alpha.145",
   "published": "2026-11-23",
   "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md",
-  "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:5",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:5",
+    "says": "Published** on 2026-11-23 (UTC)"
+  },
   "lines": [
     {
       "kind": "security",
@@ -11,7 +14,10 @@
         "tr": "Web postanın sunucudaki yerel kapısı artık yalnız CelikPanel’in kendi denetimlerine cevap verir; önceden sunucudaki her hesap oradan Roundcube’un dosyalarını okuyabiliyor ve eklenti betiklerini çalıştırabiliyordu."
       },
       "case": "CP-2026-16",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:29"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:29",
+        "says": "Webmail's local door answered every"
+      }
     },
     {
       "kind": "fixed",
@@ -20,7 +26,10 @@
         "tr": "Web posta e-posta gönderebilir: şifrelemeyi açar ve posta kutusunun kendi adresi ve parolasıyla giriş yapar."
       },
       "case": "CP-2026-12",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:68"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:68",
+        "says": "Now webmail switches encryption"
+      }
     },
     {
       "kind": "fixed",
@@ -29,7 +38,10 @@
         "tr": "Bir takma adın “yayımlanmayı bekliyor” durumu, bölgesinin değişikliği yayımlandığında biter, bir saat sonra değil."
       },
       "case": "CP-2026-13",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:95"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:95",
+        "says": "An alias's \"waiting to be published\""
+      }
     },
     {
       "kind": "fixed",
@@ -38,7 +50,10 @@
         "tr": "Bir PostgreSQL kapatmasının ya da geri alınmasının penceresi, sonucu söyleyen bir başlıkla biter."
       },
       "case": "CP-2026-14",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:100"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:100",
+        "says": "The window of a PostgreSQL close"
+      }
     },
     {
       "kind": "limits",
@@ -47,7 +62,10 @@
         "tr": "Uzun süren bir değişiklik sunucuda bittikten sonra panelde “sürüyor” görünmeye devam edebilir; yaklaşık beş dakika sonra sudo systemctl restart celikpanel-panel komutunu çalıştırın. Panel o zaman gerçekte ne yapıldığını kaydeder: bir web posta güncellemesi yalnız okunur, yeniden çalıştırılmaz; yarıda kalmış bir kurulum sunucuda sürdürülür ve tamamlanır."
       },
       "case": "CP-2026-17",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128",
+        "says": "A longer change can stay \"in progress\""
+      }
     },
     {
       "kind": "limits",
@@ -55,7 +73,10 @@
         "en": "The Webmail card still offers Repair while webmail cannot send; Repair does not correct the configuration, and the step is in Problems now.",
         "tr": "Web posta gönderemezken Webmail kartı hâlâ Onar düğmesini sunar; Onar yapılandırmayı düzeltmez, adım Şu anki sorunlar bölümündedir."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:119"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:119",
+        "says": "The Webmail card still offers Repair"
+      }
     },
     {
       "kind": "limits",
@@ -63,7 +84,10 @@
         "en": "Nothing of this release was tried on Arch Linux in its lab.",
         "tr": "Bu sürümün hiçbir parçası laboratuvarında Arch Linux’ta denenmedi."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:308"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:308",
+        "says": "Nothing was tried on Arch Linux."
+      }
     }
   ]
 }
