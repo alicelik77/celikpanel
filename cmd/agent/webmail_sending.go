@@ -173,6 +173,8 @@ func reconcileRoundcubeConfigAtStartup() []string {
 	form, managed := parseRoundcubeConfigForm(content)
 	if managed {
 		if form.current {
+			// Also an owner who took CelikPanel's text: it is no longer needed beside it.
+			removeRoundcubePendingText(pending)
 			return nil
 		}
 		if err := writeRoundcubeConfigKeeping(snapshot, form.render()); err != nil {

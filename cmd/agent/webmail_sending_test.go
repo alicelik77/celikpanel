@@ -174,6 +174,22 @@ func TestA145OwnerEditedConfigurationIsKeptWithTheTextBesideIt(t *testing.T) {
 	if again := reconcileRoundcubeConfigAtStartup(); len(again) != 0 {
 		t.Fatalf("the same text written again: %q", again)
 	}
+	// The owner takes CelikPanel's text: the line goes, and the text beside
+	// it goes at the next start.
+	mustWriteTestFile(t, path, text, 0o640)
+	if resp := webmailSendingState(t); resp.Sending != "" {
+		t.Fatalf("still named after the owner took the text: %+v", resp)
+	}
+	if said := reconcileRoundcubeConfigAtStartup(); len(said) != 0 {
+		t.Fatalf("said %q", said)
+	}
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Fatalf("the text beside it stayed: %v", err)
+	}
+	mustWriteTestFile(t, path, []byte(owner), 0o640)
+	if said := reconcileRoundcubeConfigAtStartup(); len(said) != 1 {
+		t.Fatalf("said %q", said)
+	}
 	// The owner corrects the file their own way: the line goes by itself and
 	// the text beside it is no longer needed.
 	fixed := strings.Replace(owner, "'localhost:587'", "'tls://127.0.0.1:587'", 1)
