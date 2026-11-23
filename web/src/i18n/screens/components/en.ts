@@ -497,6 +497,7 @@ export const enComponentsScreens = {
     'services.mailProfiles.code.repair_to_verify': 'Components are running. Run Repair to verify and reconcile the complete mail profile, including mail TLS and authenticated submission.',
     'services.mailProfiles.code.webmail_unverified': 'Whether the webmail runtime is ready is not verified yet; the next component check verifies it.',
     'services.mailProfiles.code.roundcube_not_ready': 'Roundcube is installed, but its Unix-socket runtime is not ready.',
+    'services.mailProfiles.code.webmail_cannot_send': 'Webmail cannot send: its configuration does not hand mail to this server’s sending service with encryption and its certificate settings. Problems now names the file and the step.',
     'services.mailProfiles.code.partly_present': 'Some components are already present. Installing this profile completes the full plan without removing the services already in place.',
     'services.mailProfiles.attemptError': 'The last attempt reported: {error}',
     'services.mailProfiles.plan.title.install': 'Install {name}',

@@ -25,6 +25,27 @@ func (p *Panel) webmailAddressProblems(ctx context.Context) []monitoringProblem 
 		return nil
 	}
 	var problems []monitoringProblem
+	// alpha.145: webmail's own configuration still hands mail to this
+	// server's submission service without encryption, so nothing can be sent
+	// from webmail. The Agent corrects CelikPanel's own text at its start; an
+	// owner's file is kept (CelikPanel's text beside it, Name). The line goes
+	// by itself once the file sends with encryption.
+	// Subject "rewrite_failed" (review of PR #357, finding 2): CelikPanel's
+	// own earlier text whose rewrite at the Agent's start did not happen; the
+	// step is the cause in the journal and a restart, never a hand edit.
+	if resp.Sending == "cannot_send" {
+		subject := ""
+		if resp.SendingReason == "rewrite_failed" {
+			subject = resp.SendingReason
+		}
+		problems = append(problems, monitoringProblem{
+			Key: "webmail_cannot_send", Kind: "webmail_cannot_send", Severity: "warning", Actor: "server_owner",
+			Subject: subject, Name: resp.SendingFile,
+			Action: monitoringProblemAction{Kind: "open", To: "/components/roundcube"},
+		})
+	}
+	// alpha.145 (security): an entry with no address is webmail's local
+	// server (its Subject stays empty; the screens word it as such).
 	for _, open := range resp.Open {
 		kind := "webmail_address_kept"
 		actor := "server_owner"
@@ -39,3 +60,11 @@ func (p *Panel) webmailAddressProblems(ctx context.Context) []monitoringProblem 
 	}
 	return problems
 }
+
+// The two sending lines CelikPanel writes in Roundcube's configuration
+// (cmd/agent/webmail_sending.go roundcubeSMTPSettings), given literally to an
+// owner whose file has no CelikPanel text beside it.
+const (
+	webmailSendingHostLine    = `$config['smtp_host'] = 'tls://127.0.0.1:587';`
+	webmailSendingOptionsLine = `$config['smtp_conn_options'] = ['127.0.0.1' => ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]];`
+)

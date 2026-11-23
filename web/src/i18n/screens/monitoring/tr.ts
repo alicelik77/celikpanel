@@ -33,6 +33,13 @@ export const trMonitoringScreens: Record<MonitoringScreenKey, string> = {
     'err.POSTGRESQL_PUBLIC_FAILED.connection': 'Veritabanı sunucusuyla bağlantı koptu. Hiçbir şey değiştirilmedi. PostgreSQL’in çalıştığını kontrol edip yeniden deneyin.',
     'err.POSTGRESQL_PUBLIC_FAILED.rights': 'Veritabanı sunucusu buna izin vermedi: bir yetki eksikti. Hiçbir şey değiştirilmedi.',
     'err.POSTGRESQL_PUBLIC_FAILED.missing': 'Adı geçen bir şey veritabanı sunucusunda yok (bir kullanıcı ya da rol). Hiçbir şey değiştirilmedi.',
+    // alpha.145 (alpha.144 laboratuvarı O2): pencere başlığı sonuca uyar.
+    'pgpub.end.closed': '{name} başka hesaplara kapatıldı',
+    'pgpub.end.notClosed': '{name} başka hesaplara kapatılamadı',
+    'pgpub.end.unknown': '{name} başka hesaplara kapatıldı mı bilinmiyor',
+    'pgpub.undo.end.opened': '{name} yeniden her hesaba açık',
+    'pgpub.undo.end.notOpened': '{name} yeniden açılamadı',
+    'pgpub.undo.end.unknown': '{name} yeniden açıldı mı bilinmiyor',
     'pgpub.step.notDone': 'Yapılmadı — hiçbir şey değiştirilmedi',
     'pgpub.step.unknown': 'Sonuç henüz doğrulanmadı — yeniden gönderilmez',
     'pgpub.why.server.in_use': 'veritabanı kullanımdaydı ve veritabanı sunucusu kilidi zamanında vermedi; hiçbir şey değişmedi: “{detail}”',
@@ -40,4 +47,10 @@ export const trMonitoringScreens: Record<MonitoringScreenKey, string> = {
     'pgpub.why.server.connection': 'veritabanı sunucusuyla bağlantı koptu; hiçbir şey değişmedi: “{detail}”',
     'pgpub.why.server.rights': 'veritabanı sunucusu izin vermedi (bir yetki eksikti); hiçbir şey değişmedi: “{detail}”',
     'pgpub.why.server.missing': 'adı geçen bir şey veritabanı sunucusunda yok; hiçbir şey değişmedi: “{detail}”',
+    // alpha.145 (güvenlik): önceki biçimdeki web postası yerel sunucusu.
+    'pnow.webmail_local_server.title': 'Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor',
+    'pnow.webmail_local_server.kept': 'Web sunucusu dosyası elle değiştirilmiş; CelikPanel onu korudu ve yeni metnini yanına koydu: {other}. Dosya bu metne geçene dek bu sunucunun her hesabı yerel soket üzerinden Roundcube klasörlerinin dosyalarını okuyabilir ve PHP’lerini çalıştırabilir (ağdan değil). Sunucu sahibi bu metni dosyanın üzerine kopyalar ve nginx’i yeniden yükler (sudo nginx -t, ardından sudo systemctl reload nginx). Dosyada bu kurallar olunca bu satır kendiliğinden kalkar.',
+    'pnow.webmail_local_server.kept_no_text': '{other} web sunucusu dosyası elle değiştirilmiş; CelikPanel onu korudu. Dosya değişene dek bu sunucunun her hesabı yerel soket üzerinden Roundcube klasörlerinin dosyalarını okuyabilir ve PHP’lerini çalıştırabilir (ağdan değil). Sunucu sahibi dosyaya CelikPanel’in kurallarını yazar: yalnız /webmail/, /webmail/index.php ve /webmail/skins/ altındaki stil dosyaları yanıt verir, gerisi bulunamaz; ardından sudo nginx -t ve sudo systemctl reload nginx. Dosyada bu kurallar olunca bu satır kendiliğinden kalkar.',
+    'pnow.webmail_local_server.refused': 'Yeni metni geri alındı, çünkü web sunucusunun yapılandırma denetimi {other} dosyasında başarısız oldu. Metin yazılana dek bu sunucunun her hesabı yerel soket üzerinden Roundcube klasörlerinin dosyalarını okuyabilir ve PHP’lerini çalıştırabilir (ağdan değil). Sunucu sahibi denetimin gösterdiğini düzeltir, ardından Agent’ı yeniden başlatır (sudo systemctl restart celikpanel-agent): CelikPanel yeni metni o açılışta yazar ve bu satır kendiliğinden kalkar.',
+    'pnow.webmail_local_server.refused_unnamed': 'CelikPanel dosyasını yeniden yazamadı. Nedeni Agent günlüğündedir (sudo journalctl -u celikpanel-agent, “local server kept in its earlier form” satırı); örneğin web sunucusu çalışmıyordur (sudo systemctl status nginx). Metin yazılana dek bu sunucunun her hesabı yerel soket üzerinden Roundcube klasörlerinin dosyalarını okuyabilir ve PHP’lerini çalıştırabilir (ağdan değil). Sunucu sahibi bu nedeni giderir, ardından Agent’ı yeniden başlatır (sudo systemctl restart celikpanel-agent): CelikPanel yeni metni o açılışta yazar ve bu satır kendiliğinden kalkar.',
 } as const;

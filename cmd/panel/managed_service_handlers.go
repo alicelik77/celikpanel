@@ -391,12 +391,16 @@ type serviceObservation struct {
 type scanCacheDoc struct {
 	Observations []serviceObservation `json:"observations"`
 	WebmailReady *bool                `json:"webmail_ready,omitempty"`
+	// WebmailCannotSend (alpha.145): the Agent read webmail's configuration
+	// as still sending without encryption (webmail_sending.go).
+	WebmailCannotSend bool `json:"webmail_cannot_send,omitempty"`
 }
 
 type decodedScanCache struct {
-	Observations  []serviceObservation
-	WebmailReady  bool
-	WebmailProven bool
+	Observations      []serviceObservation
+	WebmailReady      bool
+	WebmailProven     bool
+	WebmailCannotSend bool
 }
 
 // These wire types mirror Agent.InstalledRepoPackages. Only ServiceID crosses
@@ -442,8 +446,9 @@ func decodeScanCacheSnapshot(data string) (decodedScanCache, error) {
 		return decodedScanCache{Observations: obs}, nil
 	}
 	var envelope struct {
-		Observations json.RawMessage `json:"observations"`
-		WebmailReady *bool           `json:"webmail_ready"`
+		Observations      json.RawMessage `json:"observations"`
+		WebmailReady      *bool           `json:"webmail_ready"`
+		WebmailCannotSend bool            `json:"webmail_cannot_send"`
 	}
 	if err := json.Unmarshal([]byte(trimmed), &envelope); err != nil {
 		return decodedScanCache{}, fmt.Errorf("decode service scan cache: %w", err)
@@ -455,7 +460,7 @@ func decodeScanCacheSnapshot(data string) (decodedScanCache, error) {
 	if err := json.Unmarshal(envelope.Observations, &observations); err != nil {
 		return decodedScanCache{}, fmt.Errorf("decode service scan observations: %w", err)
 	}
-	decoded := decodedScanCache{Observations: observations}
+	decoded := decodedScanCache{Observations: observations, WebmailCannotSend: envelope.WebmailCannotSend}
 	if envelope.WebmailReady != nil {
 		decoded.WebmailReady = *envelope.WebmailReady
 		decoded.WebmailProven = true
@@ -824,7 +829,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		// kataloğu hakkında anında doğruyu söyler — adı değişen bir servisi,
 		// yenisini ya da düzeltilmiş bir açıklamayı görmek için tarama gerekmez.
 		payload.Services = catalogViewForHost(snapshot.Observations, host)
-		payload.Profiles = mailProfilesView(
+		payload.Profiles = withWebmailSending(mailProfilesView(
 			payload.Services,
 			profilesVerified,
 			packageFamily,
@@ -832,9 +837,9 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 			snapshot.WebmailReady,
 			snapshot.WebmailProven,
 			profileAttempts,
-		)
+		), snapshot.WebmailCannotSend)
 		payload.Bundles = bundlesView(payload.Services, profilesVerified, packageFamily, payload.Profiles,
-			mailProfilesView(payload.Services, profilesVerified, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts))
+			withWebmailSending(mailProfilesView(payload.Services, profilesVerified, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts), snapshot.WebmailCannotSend))
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		writeServerError(w, fmt.Errorf("read service scan cache: %w", err))
 		return
@@ -961,11 +966,12 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		writeServerError(w, err)
 		return
 	}
-	webmailReady, webmailProven, err := p.cachedWebmailReadinessProof(r.Context())
+	webmail, err := p.cachedWebmailSnapshot(r.Context())
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
+	webmailReady, webmailProven := webmail.WebmailReady, webmail.WebmailProven
 	profileAttempts, err := p.latestMailProfileAttemptProofs(r.Context())
 	if err != nil {
 		writeServerError(w, err)
@@ -977,14 +983,14 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 	payload := managedServicesPayload{
 		ScannedAt:        &now,
 		Services:         services,
-		Profiles:         mailProfilesView(services, true, p.packageFamily(), mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), webmailReady, webmailProven, profileAttempts),
+		Profiles:         withWebmailSending(mailProfilesView(services, true, p.packageFamily(), mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), webmailReady, webmailProven, profileAttempts), webmail.WebmailCannotSend),
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(r.Context()),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(r.Context(), dnsIdentityReady),
 		WebmailCleanup:   p.webmailCleanupRecord(r.Context()),
 	}
 	payload.Bundles = bundlesView(payload.Services, true, p.packageFamily(), payload.Profiles,
-		mailProfilesView(services, true, p.packageFamily(), "", webmailReady, webmailProven, profileAttempts))
+		withWebmailSending(mailProfilesView(services, true, p.packageFamily(), "", webmailReady, webmailProven, profileAttempts), webmail.WebmailCannotSend))
 	payload.stampScanAge(time.Now())
 	json.NewEncoder(w).Encode(payload)
 }
@@ -1053,13 +1059,13 @@ func (p *Panel) managedServicesCacheWithin(ctx context.Context, maxAge time.Dura
 	if err != nil {
 		return managedServicesPayload{}, false, err
 	}
-	profiles := mailProfilesView(services, true, packageFamily, mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts)
+	profiles := withWebmailSending(mailProfilesView(services, true, packageFamily, mailProfileCatalogBlockedReason(mailProfileHostBlockedReason(), dnsIdentityReady), snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts), snapshot.WebmailCannotSend)
 	return managedServicesPayload{
 		ScannedAt: &scanned,
 		Services:  services,
 		Profiles:  profiles,
 		Bundles: bundlesView(services, true, packageFamily, profiles,
-			mailProfilesView(services, true, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts)),
+			withWebmailSending(mailProfilesView(services, true, packageFamily, "", snapshot.WebmailReady, snapshot.WebmailProven, profileAttempts), snapshot.WebmailCannotSend)),
 		DNSIdentityReady: dnsIdentityReady,
 		MailHostname:     p.mailHostnameIdentity(ctx),
 		MailDNSGuidance:  p.mailProfileDNSGuidanceFor(ctx, dnsIdentityReady),
@@ -1099,6 +1105,8 @@ type managedServiceObservation struct {
 	host         core.ManagedServiceHostProfile
 	observations []serviceObservation
 	webmailReady bool
+	// webmailCannotSend (alpha.145): webmail's configuration cannot send.
+	webmailCannotSend bool
 }
 
 // observeManagedServices reads the host and nothing else: no record is
@@ -1310,11 +1318,23 @@ func (p *Panel) observeManagedServices(ctx context.Context, packageVersions map[
 		log.Printf("scan: PHP tool bindings could not be read: %v", err)
 	}
 
-	webmailReady := false
+	webmailReady, webmailCannotSend := false, false
 	if installedSet["roundcube"] {
 		webmailReady = p.webmailAvailable(ctx)
+		webmailCannotSend = p.webmailCannotSend(ctx)
 	}
-	return managedServiceObservation{host: host, observations: observations, webmailReady: webmailReady}, nil
+	return managedServiceObservation{host: host, observations: observations, webmailReady: webmailReady, webmailCannotSend: webmailCannotSend}, nil
+}
+
+// webmailCannotSend (alpha.145) asks the Agent, read only, whether webmail's
+// own configuration still hands mail to the submission service without
+// encryption. An Agent that does not answer says nothing (not "cannot send").
+func (p *Panel) webmailCannotSend(ctx context.Context) bool {
+	var resp transport.WebmailAddressFormsResponse
+	if err := p.callAgentContext(ctx, "Agent.WebmailAddressFormsV1", &transport.WebmailAddressFormsRequest{}, &resp); err != nil {
+		return false
+	}
+	return resp.Sending == "cannot_send"
 }
 
 // persistManagedServiceObservations stores one reading as the component
@@ -1323,8 +1343,9 @@ func (p *Panel) observeManagedServices(ctx context.Context, packageVersions map[
 func (p *Panel) persistManagedServiceObservations(ctx context.Context, observed managedServiceObservation) ([]ManagedServiceResponse, error) {
 	observations, webmailReady, host := observed.observations, observed.webmailReady, observed.host
 	data, err := json.Marshal(scanCacheDoc{
-		Observations: observations,
-		WebmailReady: &webmailReady,
+		Observations:      observations,
+		WebmailReady:      &webmailReady,
+		WebmailCannotSend: observed.webmailCannotSend,
 	})
 	if err != nil {
 		return nil, err
@@ -1340,18 +1361,22 @@ func (p *Panel) persistManagedServiceObservations(ctx context.Context, observed 
 }
 
 func (p *Panel) cachedWebmailReadinessProof(ctx context.Context) (bool, bool, error) {
+	snapshot, err := p.cachedWebmailSnapshot(ctx)
+	if err != nil {
+		return false, false, err
+	}
+	return snapshot.WebmailReady, snapshot.WebmailProven, nil
+}
+
+func (p *Panel) cachedWebmailSnapshot(ctx context.Context) (decodedScanCache, error) {
 	var data string
 	if err := p.db.GetDB().QueryRowContext(
 		ctx,
 		`SELECT data FROM service_scan_cache WHERE id = 1`,
 	).Scan(&data); err != nil {
-		return false, false, fmt.Errorf("read cached webmail readiness proof: %w", err)
+		return decodedScanCache{}, fmt.Errorf("read cached webmail readiness proof: %w", err)
 	}
-	snapshot, err := decodeScanCacheSnapshot(data)
-	if err != nil {
-		return false, false, err
-	}
-	return snapshot.WebmailReady, snapshot.WebmailProven, nil
+	return decodeScanCacheSnapshot(data)
 }
 
 // managedServiceUnitReady decides whether one active unit proves that the

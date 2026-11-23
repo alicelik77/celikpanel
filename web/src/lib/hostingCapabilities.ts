@@ -185,6 +185,14 @@ export function dnsStateExplanation(caps: HostingCapabilities, t: (key: Translat
     };
 }
 
+// alpha.145 (alpha.144 lab O1): while alias records saved in a zone wait for
+// its publication, the zone's notice does not ask to make the change again:
+// they are retried by themselves. null: the state's own words.
+const HELD_ALIAS_TODO_STATES: readonly DNSStateExplained[] = ['pair_pending', 'switching', 'not_running'];
+export function heldAliasTodo(state: DNSStateExplained, aliasesWaiting: boolean): TranslationKey | null {
+    return aliasesWaiting && HELD_ALIAS_TODO_STATES.includes(state) ? `dnsstate.${state}.todo_held` as TranslationKey : null;
+}
+
 /** The sentence an Add domain screen says when the engine half is missing. */
 export function dnsEngineBlockerText(caps: HostingCapabilities, t: (key: TranslationKey, vars?: Record<string, string>) => string): string {
     const explained = dnsStateExplanation(caps, t);

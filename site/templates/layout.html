@@ -1,0 +1,65 @@
+{{define "layout" -}}
+<!doctype html>
+<html lang="{{.Lang}}" data-page="{{.Key}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{t (print .Key ".title")}}</title>
+<meta name="description" content="{{t (print .Key ".description")}}">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="{{asset "favicon-v2.svg"}}">
+{{- if not .Preview}}
+<link rel="preload" href="{{asset "fonts/overpass-latin.woff2"}}" as="font" type="font/woff2" crossorigin>
+{{- end}}
+<link rel="stylesheet" href="{{asset "public.css"}}">
+<link rel="stylesheet" href="{{if eq .Key "home"}}{{asset "home.css"}}{{else}}{{asset "pages.css"}}{{end}}">
+<link rel="canonical" href="{{canonical}}">
+<link rel="alternate" hreflang="en" href="{{in "en"}}">
+<link rel="alternate" hreflang="tr" href="{{in "tr"}}">
+<link rel="alternate" hreflang="x-default" href="{{in "en"}}">
+<script src="{{asset "boot.js"}}"></script>
+<script src="{{asset "public.js"}}" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">{{t "common.skip"}}</a>
+{{template "masthead" .}}
+<main id="main">
+{{template "lead" .}}
+<div class="wrap">
+{{template "main" .}}
+</div>
+</main>
+{{template "footer" .}}
+</body>
+</html>
+{{end}}
+
+{{define "moved" -}}
+<!doctype html>
+<html lang="en" data-page="moved">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.TitleEN}} · CelikPanel</title>
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/svg+xml" href="{{.Icon}}">
+<link rel="stylesheet" href="{{.CSS}}">
+<link rel="stylesheet" href="{{.Pages}}">
+<link rel="alternate" hreflang="en" href="{{.EN}}">
+<link rel="alternate" hreflang="tr" href="{{.TR}}">
+<script src="{{.Boot}}"></script>
+<noscript><meta http-equiv="refresh" content="2; url={{.EN}}"></noscript>
+</head>
+<body>
+<main id="main" class="moved-sign">
+<h1 lang="en">{{.TitleEN}}</h1>
+<p lang="en">{{.TextEN}} <a href="{{.EN}}">{{.LinkEN}}</a></p>
+<h2 lang="tr">{{.TitleTR}}</h2>
+<p lang="tr">{{.TextTR}} <a href="{{.TR}}">{{.LinkTR}}</a></p>
+</main>
+</body>
+</html>
+{{end}}

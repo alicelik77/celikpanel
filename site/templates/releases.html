@@ -1,0 +1,79 @@
+{{define "lead" -}}
+<div class="lead">
+<div class="wrap">
+<h1>{{t "releases.h1"}}</h1>
+<p class="def">{{t "releases.def"}}</p>
+<dl class="spec" aria-label="{{t "releases.identity"}}">
+<div><dt>{{t "releases.version"}}</dt><dd class="mono">@@CP_RELEASE_VERSION@@</dd></div>
+<div><dt>{{t "releases.published"}}</dt><dd><time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time></dd></div>
+<div><dt>{{t "releases.commit"}}</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
+<div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
+<div><dt>{{t "releases.archive"}}</dt><dd><code>@@CP_RELEASE_ARCHIVE_NAME@@</code></dd></div>
+</dl>
+<div class="actions">
+<a class="btn primary" href="@@CP_RELEASE_ARCHIVE_URL@@">{{t "releases.package"}}</a>
+<a class="btn plain" href="{{repo (print "docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@" (t "releases.notes.ext"))}}">{{t "releases.notes"}}</a>
+</div>
+</div>
+</div>
+{{- end}}
+
+{{define "main" -}}
+<section class="part" aria-labelledby="h-files">
+{{template "head" (dict "Num" "1" "ID" "h-files" "Title" (t "releases.files.title") "Text" (t "releases.files.text"))}}
+<div>
+<ul class="files">
+<li><a href="@@CP_RELEASE_ARCHIVE_URL@@">{{t "releases.files.package"}}</a></li>
+<li><a href="@@CP_RELEASE_CHECKSUM_URL@@">{{t "releases.files.checksum"}}</a></li>
+{{marker "start"}}
+<li><a href="@@CP_RELEASE_MANIFEST_URL@@">{{t "releases.files.manifest"}}</a></li>
+<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">{{t "releases.files.signature"}}</a></li>
+{{marker "end"}}
+<li><a href="{{root}}release-signing-ed25519.pem">{{t "releases.files.key"}}</a></li>
+</ul>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-check">
+{{template "head" (dict "Num" "2" "ID" "h-check" "Title" (t "releases.check.title") "Text" (t "releases.check.text"))}}
+<div>
+<div class="table">
+<table class="stack">
+<caption>{{t "common.table"}} 1 · {{t "releases.check.caption"}}</caption>
+<tbody>
+{{- range $i, $k := (list "1" "2" "3" "4")}}
+<tr><td class="v">{{$k}}</td><td>{{t (print "releases.check.step" $k)}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="verify-title">{{t "releases.check.commands"}}</h3></div>
+<pre tabindex="0" aria-labelledby="verify-title"><code>sha256sum release-signing-ed25519.pem
+sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
+openssl pkeyutl -verify -rawin -pubin \
+  -inkey release-signing-ed25519.pem \
+  -in release-manifest-v2 -sigfile release-manifest-v2.sig
+grep '^archive_sha256=' release-manifest-v2
+sha256sum @@CP_RELEASE_ARCHIVE_NAME@@</code></pre>
+<p class="note">{{t "releases.check.note"}}</p>
+</div>
+<p class="key">{{t "releases.check.key"}} <code>{{t "releases.check.fingerprint"}}</code></p>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-update">
+{{template "head" (dict "Num" "3" "ID" "h-update" "Title" (t "releases.update.title") "Text" "")}}
+<div>
+<p>{{t "releases.update.text"}}</p>
+<p>{{t "releases.update.notes"}}</p>
+<ul class="plain">
+<li><a href="{{link "changelog"}}">{{t "releases.update.changelog"}}</a></li>
+<li><a href="{{link "problems"}}">{{t "releases.update.problems"}}</a></li>
+<li><a href="{{guide "panel-settings"}}">{{t "releases.update.guide"}}</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel/releases">{{t "releases.update.all"}}</a></li>
+<li><a href="{{link "download"}}">{{t "releases.update.new"}}</a></li>
+</ul>
+</div>
+</section>
+{{- end}}

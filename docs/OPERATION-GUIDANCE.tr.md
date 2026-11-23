@@ -11285,3 +11285,74 @@ kanıtladığı ve neyi denetlemediği için alpha.144 sürüm notlarının
   başarısız oldu, adını verdiği dosyayla). Dosya yeni biçime geçince
   kendiliğinden kalkar; Agent her açılışta yeniden dener.
 - **Tek veritabanı** Şimdiki sorunlar'da ve uyarı e-postasında tekil söylenir.
+
+### alpha.144 laboratuvarının düzeltmeleri (alpha.145, 23 Kasım 2026)
+
+- **Güvenlik: web postasının yerel sunucusu yalnız CelikPanel'in kendi
+  denetimlerini yanıtlar.** `/run/celikpanel-webmail.sock` soketi 0666'dır
+  (nginx öyle açar); bu yüzden sunucudaki her hesap ona bağlanabilir (ağ
+  değil). alpha.144'e dek Roundcube ağacının bütün dosyalarını, bağlı eklenti
+  ve tema klasörleriyle (nokta dosyaları, `.bak` gibi kopyalar, ayar dosyaları)
+  veriyor ve oradaki her `.php` dosyasını çalıştırıyordu. Artık yalnız
+  `/webmail/` (Roundcube'un giriş noktası, çalışan tek PHP), `/webmail/skins/`
+  altındaki stil dosyaları ve CelikPanel'in PHP denetimi yanıt verir; gerisi
+  bulunamaz. Panel'in hazırlık denetimi ve Agent'ın kanıtı (PHP denetimi,
+  sayfa ve stil dosyası) yalnız bunları sorar. CelikPanel'in önceki metni
+  güncellemeden sonra Agent'ın ilk açılışında yeniden yazılır (yapılandırma
+  denetimi, tek yeniden yükleme; hata olursa dosya geri konur ve açılış
+  sürer); sahibin dosyası korunur, CelikPanel'in metni yanına
+  `celikpanel-webmail.conf.celikpanel-pending` olarak konur ve Şu anki
+  sorunlar'da adres satırının adressiz biçimi çıkar (kim yapar: sunucu
+  sahibi). PHP denetimi soran kişiye yalnız hangi PHP sürümünün çalıştığını
+  ve web postasının hangi uzantılarının eksik olduğunu söyler.
+- **Web postası gönderir.** İlk sürümden beri Roundcube yapılandırması postayı
+  bu sunucunun 587'deki gönderim hizmetine şifresiz veriyordu
+  (`smtp_host 'localhost:587'`); hizmet ise girişi yalnız şifreli bağlantıda
+  kabul ediyor, bu yüzden her ileti "kimlik doğrulanamadı" ile kalıyordu.
+  Yapılandırma artık `tls://127.0.0.1:587` ve kutunun kendi girişini
+  kullanır; yalnız 127.0.0.1 için sertifikanın adı ve zinciri denetlenmez
+  (bağlantı sunucudan çıkmaz; hizmet posta adının sertifikasını ya da o yokken
+  kendi imzalı bir sertifikayı gösterebilir). Başka her ad tam denetimi korur.
+- **Kurulu sunucularda** dosya CelikPanel'in kendi metniyse (adres satırlarıyla
+  ya da onlarsız) güncellemeden sonra Agent'ın ilk açılışında düzeltilir; kipi
+  ve sahibi korunur; yeni dosya yerine konmadan önce son sahibini ve kipini
+  alır. Sahibin değiştirdiği dosya korunur; web postası onunla gönderemiyorsa
+  CelikPanel'in şimdiki metni (dosyanın kendi `des_key` değeriyle, yalnız root
+  okuyabilir) yanına `config.inc.php.celikpanel-pending` olarak konur ve Şu
+  anki sorunlar'da tek satır çıkar (`webmail_cannot_send`, kim yapar: sunucu
+  sahibi); satır bu metni, metin konamadıysa dosyanın kendisini ve yazılacak
+  iki satırı söyler. "Gönderemiyor" şu demektir: yerel döngü adı
+  (`localhost`, `127.0.0.1`, `[::1]`) `tls://` ya da `ssl://` olmadan 587'de
+  ya da kapısız; ya da `tls://`/`ssl://` ile ama dosyada hiç
+  `smtp_conn_options` ataması yokken. Bu durum kalkınca satır kendiliğinden
+  kalkar; sahibin kendi gönderim ayarı (başka bir ad, kendi
+  `smtp_conn_options` ayarı, CelikPanel'in okuyamadığı bir değer, eski
+  `smtp_server` anahtarı) adlandırılmaz. Bilinen açık: `/* … */` yorum
+  bloğunun içindeki bir atama etkin sayılır. Bekleyen metin dosyası
+  CelikPanel'indir; gerekmeyince adıyla silinir.
+- **Yeniden yazılamayan önceki CelikPanel metni** (salt okunur dosya sistemi,
+  değiştirilemez işareti, dolu disk) aynı satırdır ama kendi sözleriyle: neden
+  Agent günlüğündedir; sunucu sahibi nedeni giderir ve Agent'ı yeniden
+  başlatır, Agent dosyayı kendisi yeniden yazar. Dosya elle düzenlenmemeli:
+  yoksa sahibin dosyası sayılır ve CelikPanel onu bir daha yazmaz.
+- Son bileşen denetimi gönderemediğini okuduğu sürece Webmail profili "kurulu
+  ve doğrulanmış" görünmez; Onar düğmesi yine sunulur ama dosyayı düzeltemez
+  (profil Şu anki sorunlar'a bakmayı söyler).
+- **alpha.144'e geri dönülürse** web postası göndermeyi sürdürür, ama
+  alpha.144 yeni metni tanımaz: yapılandırmayı sahibin değiştirdiği dosya sayar
+  ve sunucu yeniden güncellenene dek web postasının kendi adres satırlarını
+  açıp kapatamaz.
+- **Bekleyen takma ad DNS kaydı**, bölgenin bekletilen değişikliği
+  yayımlanınca ya da bölgenin kendi bekleyen yayını (yedeğin yetişmesi)
+  tamamlanınca — o zaman saatlik turun kendi adımıyla, bölgenin yeniden
+  yayımlanmasıyla — beklemeyi bırakır, bir sonraki saatlik turu beklemez;
+  beklerken bölgenin uyarısı değişikliği yeniden yapmayı istemez, takma ad
+  kayıtlarının kendiliğinden yayımlanacağını söyler.
+- **PostgreSQL kapatma ya da geri alma** penceresi sonucu söyleyen bir
+  başlıkla biter (kapatıldı, kapatılamadı, bilinmiyor); sürmekte olan
+  "… kapatılıyor" başlığıyla bitmez.
+
+Kod: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
+`cmd/panel/webmail_address_problem.go`, `mail_profiles.go`, `alias_dns.go`,
+`dns_pending_publication.go`. Testler: `cmd/agent/webmail_sending_test.go`,
+`cmd/panel/a145_webmail_send_test.go`, `web/tests/a145-webmail-send-lab.test.mjs`.

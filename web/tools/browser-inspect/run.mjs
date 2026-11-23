@@ -1830,6 +1830,8 @@ const scenarios = {
 (await import('./scenarios-batch35.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // alpha.135: the screens the release integration touched.
 (await import('./scenarios-batch36.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// The public website's product screens (site/).
+(await import('./scenarios-batch37.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // alpha.138: a domain's programs in their own section.
 (await import('./scenarios-batch39.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // alpha.139: the setup review's zone-wide rule said in its own words.

@@ -125,25 +125,27 @@ var problemKindOrder = map[string]int{
 	// alpha.144: webmail's address still in its earlier form.
 	"webmail_address_kept":    19,
 	"webmail_address_refused": 20,
+	// alpha.145: webmail's configuration that still cannot send.
+	"webmail_cannot_send": 21,
 	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
-	"tool_account_failed":       21,
-	"tool_account_owner_config": 22,
-	"stock_pool_in_use":         23,
-	"stock_pool_owner_changed":  24,
+	"tool_account_failed":       22,
+	"tool_account_owner_config": 23,
+	"stock_pool_in_use":         24,
+	"stock_pool_owner_changed":  25,
 	// S4 R1: jobs a site's own code can make.
-	"site_crontab_outside":  25,
-	"site_at_jobs":          26,
-	"at_allow_lists_sites":  27,
-	"at_directory_accounts": 28,
-	"at_not_closed":         29,
+	"site_crontab_outside":  26,
+	"site_at_jobs":          27,
+	"at_allow_lists_sites":  28,
+	"at_directory_accounts": 29,
+	"at_not_closed":         30,
 	// S4 R1 fix round.
-	"tool_down":                 30,
-	"stock_pool_not_put_back":   31,
-	"stock_pool_failed":         32,
-	"stock_pool_unknown":        33,
-	"stock_pool_owner_restored": 34,
-	"at_owner_removed":          35,
-	"site_crontab_unreadable":   36,
+	"tool_down":                 31,
+	"stock_pool_not_put_back":   32,
+	"stock_pool_failed":         33,
+	"stock_pool_unknown":        34,
+	"stock_pool_owner_restored": 35,
+	"at_owner_removed":          36,
+	"site_crontab_unreadable":   37,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

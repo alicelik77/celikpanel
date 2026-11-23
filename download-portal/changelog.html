@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en" data-page="changelog">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog · CelikPanel</title>
+<meta name="description" content="What each CelikPanel release changed, newest first: security, fixes, new features and known limits, each with a link to the full release notes.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
+<link rel="preload" href="assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/changelog.html">
+<link rel="alternate" hreflang="en" href="changelog.html">
+<link rel="alternate" hreflang="tr" href="tr/degisiklikler.html">
+<link rel="alternate" hreflang="x-default" href="changelog.html">
+<script src="assets/boot.js"></script>
+<script src="assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
+<span class="docid">Datasheet · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></span>
+<nav aria-label="Main"><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="guide/en/">Guide</a></li>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="tr/degisiklikler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe">TR</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Changelog</h1>
+<p class="def">What each release changed, in a few plain lines, newest first. Each release’s full notes also say what was tried in the lab and what was not.</p>
+<div class="actions">
+<a class="btn plain" href="problems.html">Known problems</a>
+<a class="btn plain" href="releases.html">Current release and its files</a>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" id="v0.1.0-alpha.146" aria-labelledby="h-v0.1.0-alpha.146">
+<header><span class="num">2026-11-23</span><h2 id="h-v0.1.0-alpha.146">v0.1.0-alpha.146</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.146</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">New</th><td data-k="Change">The new public website, in Turkish and English, with this changelog by version and the known-problems page; nothing changes in the panel.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.146.md">Full release notes of v0.1.0-alpha.146</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.145" aria-labelledby="h-v0.1.0-alpha.145">
+<header><span class="num">2026-11-23</span><h2 id="h-v0.1.0-alpha.145">v0.1.0-alpha.145</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.145</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">Webmail’s local door on the server answers only CelikPanel’s own checks; before, any account on the server could read Roundcube’s files through it and run plugin scripts.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-16">CP-2026-16</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">Webmail can send mail: it switches encryption on and signs in with the mailbox’s own address and password.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-12">CP-2026-12</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">An alias’s “waiting to be published” ends when its zone’s change is published, not an hour later.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-13">CP-2026-13</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">The window of a PostgreSQL close or its undo ends with a title that says the outcome.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-14">CP-2026-14</a></td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A longer change can stay “in progress” on the panel after it has finished on the server; after about five minutes, run sudo systemctl restart celikpanel-panel. The panel then records what was really done: a webmail update is only read and not run again; an interrupted install is resumed and completed on the server.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-17">CP-2026-17</a></td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">The Webmail card still offers Repair while webmail cannot send; Repair does not correct the configuration, and the step is in Problems now.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">Nothing of this release was tried on Arch Linux in its lab.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.145.md">Full release notes of v0.1.0-alpha.145</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.144" aria-labelledby="h-v0.1.0-alpha.144">
+<header><span class="num">2026-11-22</span><h2 id="h-v0.1.0-alpha.144">v0.1.0-alpha.144</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.144</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">Webmail’s own address gives out only the files its pages load, no longer every file of its plugins.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-11">CP-2026-11</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">A mailbox created while you leave the page is created completely, with its record.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-8">CP-2026-8</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">Closing a PostgreSQL database to other accounts shows its real result even when the page was left.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-9">CP-2026-9</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">Alias and certificate refusals are said in the page’s language.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-10">CP-2026-10</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">Traffic figures are complete again after the nightly log rotation.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">New</th><td data-k="Change">An alias inside a domain of the same account whose DNS this server keeps now answers in DNS; aliases made earlier do so once removed and added again.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-7">CP-2026-7</a></td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">Webmail cannot send mail; reading mail, attachments and settings work. Until a fix, send from a mail program.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-12">CP-2026-12</a></td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.144.md">Full release notes of v0.1.0-alpha.144</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.143" aria-labelledby="h-v0.1.0-alpha.143">
+<header><span class="num">2026-11-22</span><h2 id="h-v0.1.0-alpha.143">v0.1.0-alpha.143</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.143</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">Mail sent with a mailbox login is signed only for that mailbox’s own domain, and mail arriving on port 25 is no longer signed. On Arch Linux, mail sent with a login is still signed for any hosted domain.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-5">CP-2026-5</a></td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">PostgreSQL databases made before alpha.141 are closed to other accounts: by the panel after a day in which no other account was seen using them, otherwise by the administrator with one button.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-6">CP-2026-6</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">A customer whose domain lies under one of the server’s own names can add subdomains and aliases inside it again.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-3">CP-2026-3</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">A Node.js site whose application had failed can be deleted in one press.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-4">CP-2026-4</a></td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">An additional out-of-office address must be a forwarder the panel knows.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A website that hands mail to port 25 without a login is no longer signed; set it to sign in on port 587.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.143.md">Full release notes of v0.1.0-alpha.143</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.142" aria-labelledby="h-v0.1.0-alpha.142">
+<header><span class="num">2026-11-21</span><h2 id="h-v0.1.0-alpha.142">v0.1.0-alpha.142</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.142</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">No customer or reseller can take another account’s domain name, site account, a port of the server’s own services, or its files through a link.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-2">CP-2026-2</a></td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">Each site’s configuration files are no longer readable by every account on the server.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">Web server directives a customer may be given can no longer switch the link rule off, list folders, raise the site’s PHP limits or read a file as the administrator.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">Add domain no longer looks into a subscription named in the request before checking that the caller may use it.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">The name and port checks run in the panel: a name or port set by hand on the server is not checked.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">Names that already overlapped before the update are kept and listed for the administrator in Problems now.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.142.md">Full release notes of v0.1.0-alpha.142</a></p>
+</div>
+</section>
+<section class="part" id="v0.1.0-alpha.141" aria-labelledby="h-v0.1.0-alpha.141">
+<header><span class="num">2026-11-20</span><h2 id="h-v0.1.0-alpha.141">v0.1.0-alpha.141</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.141</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">SQL from a backup, a copy or an import runs with the rights of the database’s own owner, no longer with the administrator’s.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-1">CP-2026-1</a></td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">A new PostgreSQL database no longer accepts connections from other accounts’ users.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">New</th><td data-k="Change">Every PostgreSQL database the panel creates is UTF-8.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Removed</th><td data-k="Change">Open WebUI is no longer offered; an existing one keeps running.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">On PostgreSQL, users added to a database lose their rights on what a restore makes again; add them again on the database card.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.141.md">Full release notes of v0.1.0-alpha.141</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-earlier">
+<header><h2 id="h-earlier">Earlier releases</h2></header>
+<div>
+<p>This list starts with v0.1.0-alpha.141. Every earlier release has its own notes.</p>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/releases">Every release and its notes</a></p>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>A hosting control panel for Linux servers.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Product</h2><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+<li><a href="guide/en/">User guide</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Account</h2><ul>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="account/?action=register&amp;lang=en">Create an account</a></li>
+<li><a href="account/?action=terms&amp;lang=en">Terms and data notice</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">Contact</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
+<li><a href="problems.html">Known problems</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Report a bug</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml">Suggest a feature</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

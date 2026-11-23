@@ -1,0 +1,1296 @@
+{
+  "about": "Where each claim on the public site is proved. Every catalogue key whose text (in either language) holds a number must be listed; other claims may be. Each source cites a repository path, optionally with :line, and for a line also a short phrase quoted from that line (says). The phrase is the proof (site/sources.go): it must be on the cited line or exactly once elsewhere in the file (the line moved; `go run ./site -fix-sources` rewrites the number); a phrase the file no longer has, or one that occurs several times but not on the cited line, fails site.TestEveryNumberHasASource. A phrase has at least 12 characters and a letter. Change the text and its source together.",
+  "sources": {
+    "changelog.earlier.text": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
+        "says": "Published** on 2026-11-20"
+      }
+    ],
+    "download.def": [
+      {
+        "cite": "README.md:114",
+        "says": "The supported fresh-install input is the"
+      }
+    ],
+    "download.how.confirm.text": [
+      {
+        "cite": "docs/guide/en/20-server-setup.md:9",
+        "says": "The setup wizard prepares a fresh"
+      },
+      {
+        "cite": "docs/guide/en/21-components.md:17",
+        "says": "When another page says a component"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.136.md:30",
+        "says": "Before an update"
+      }
+    ],
+    "download.how.kept.text": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:79",
+        "says": "new line. A vhost the owner"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:48",
+        "says": "A webmail address file you changed"
+      }
+    ],
+    "download.how.native.text": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:13",
+        "says": "When the panel is stopped, unreachable"
+      }
+    ],
+    "download.how.once.text": [
+      {
+        "cite": "docs/DECISIONS.md:3317",
+        "says": "D-029 · Every state-changing request carries"
+      }
+    ],
+    "download.how.one.text": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.136.md:30",
+        "says": "Before an update"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:182",
+        "says": "Two closes of the same database never run"
+      }
+    ],
+    "download.how.password.text": [
+      {
+        "cite": "README.md:125",
+        "says": "administrator password is never shared with"
+      },
+      {
+        "cite": "README.md:184",
+        "says": "The installer interactively creates the first"
+      }
+    ],
+    "download.how.split.text": [
+      {
+        "cite": "README.md:53",
+        "says": "The privilege split is deliberate: the"
+      }
+    ],
+    "download.installed.text": [
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:21",
+        "says": "Only you, the owner, update the"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:31",
+        "says": "Update stopped before changing the installed version"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:32",
+        "says": "previous version restored"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:35",
+        "says": "Anything done in the panel after the update is lost"
+      }
+    ],
+    "download.spec.package.v": [
+      {
+        "cite": "README.md:117",
+        "says": "targets Linux x86_64/amd64."
+      },
+      {
+        "cite": "docs/release-signing.md:9",
+        "says": "`release-manifest-v2.sig` is a raw detached Ed25519"
+      }
+    ],
+    "download.wizard.outside.text": [
+      {
+        "cite": "docs/guide/en/20-server-setup.md:31",
+        "says": "At an external DNS provider** |"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.111.md:48",
+        "says": "server can be the main. *An"
+      }
+    ],
+    "download.wizard.own.text": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.111.md:50",
+        "says": "each. *Standalone*: one server keeps its"
+      }
+    ],
+    "download.wizard.text": [
+      {
+        "cite": "docs/guide/en/20-server-setup.md:9",
+        "says": "The setup wizard prepares a fresh"
+      }
+    ],
+    "download.wizard.two.text": [
+      {
+        "cite": "docs/guide/en/20-server-setup.md:18",
+        "says": "2. **Number of servers:** **One server**"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.111.md:53",
+        "says": "is valid for 24 hours, allows"
+      },
+      {
+        "cite": "LICENSE:11",
+        "says": "An active server license issued by"
+      }
+    ],
+    "fig.domain.alt": [
+      {
+        "cite": "download-portal/assets/shots/domain-en-light.webp"
+      },
+      {
+        "cite": "download-portal/assets/shots/domain-tr-light.webp"
+      }
+    ],
+    "fig.domain.caption": [
+      {
+        "cite": "web/tools/browser-inspect/README.md:781",
+        "says": "the public website's screens, 2026-11-19"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
+        "says": "Published** on 2026-11-20"
+      },
+      {
+        "cite": "download-portal/assets/shots/domain-en-light.webp"
+      }
+    ],
+    "footer.copyright": [
+      {
+        "cite": "LICENSE:4",
+        "says": "Copyright (c) 2026 CELIKBROS"
+      }
+    ],
+    "home.def": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:13",
+        "says": "When the panel is stopped, unreachable"
+      }
+    ],
+    "home.licence.caption": [
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "home.licence.text": [
+      {
+        "cite": "docs/DECISIONS.md:38",
+        "says": "1. One flat price per server"
+      }
+    ],
+    "home.measured.caption": [
+      {
+        "cite": "docs/RISK-REGISTER.md:188",
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
+      },
+      {
+        "cite": "docs/RISK-REGISTER.md:1589",
+        "says": "Fixed and proven live, 4 September 2026"
+      }
+    ],
+    "home.release.about": [
+      {
+        "cite": "docs/release-signing.md:9",
+        "says": "detached Ed25519 signature"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:5",
+        "says": "Published** on 2026-11-22 (UTC): release commit"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:185",
+        "says": "Checked in the lab"
+      }
+    ],
+    "home.release.update": [
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:31",
+        "says": "Update stopped before changing the installed version"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:32",
+        "says": "previous version restored"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:35",
+        "says": "Anything done in the panel after the update is lost"
+      }
+    ],
+    "home.sep.caption": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:5",
+        "says": "Published** on 2026-11-23"
+      }
+    ],
+    "home.sep.note": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:142",
+        "says": "4. Open (proposals, not built)"
+      }
+    ],
+    "home.stops.needs": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:22",
+        "says": "What still needs the panel {#needs-panel}"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.127.md:157",
+        "says": "email. With the panel or server"
+      }
+    ],
+    "home.stops.note": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:28",
+        "says": "Removing CelikPanel from a server is"
+      }
+    ],
+    "home.stops.runs": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:13",
+        "says": "When the panel is stopped, unreachable"
+      }
+    ],
+    "install.step.run": [
+      {
+        "cite": "download-portal/get.sh:550",
+        "says": "openssl pkeyutl -verify"
+      },
+      {
+        "cite": "download-portal/get.sh:8",
+        "says": "7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb"
+      },
+      {
+        "cite": "README.md:145",
+        "says": "exact archive size and SHA-256 digest"
+      }
+    ],
+    "install.step.wizard": [
+      {
+        "cite": "README.md:122",
+        "says": "paste the key"
+      }
+    ],
+    "licence.ends.from": [
+      {
+        "cite": "docs/DECISIONS.md:144",
+        "says": "before the end date: 30, 7 and 1 day before"
+      },
+      {
+        "cite": "docs/DECISIONS.md:151",
+        "says": "without a licence the panel's management screens"
+      }
+    ],
+    "licence.ends.today": [
+      {
+        "cite": "docs/DECISIONS.md:30",
+        "says": "verified for seven days (D-039), the"
+      }
+    ],
+    "licence.from": [
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "licence.offline.from": [
+      {
+        "cite": "docs/DECISIONS.md:48",
+        "says": "4. If CelikPanel's own licence service"
+      },
+      {
+        "cite": "docs/DECISIONS.md:149",
+        "says": "does not carry it past that date"
+      }
+    ],
+    "licence.offline.today": [
+      {
+        "cite": "docs/DECISIONS.md:837",
+        "says": "D-039 · One successful license check"
+      }
+    ],
+    "licence.payment.from": [
+      {
+        "cite": "docs/DECISIONS.md:139",
+        "says": "Payment by card through Stripe is the first"
+      }
+    ],
+    "licence.period.from": [
+      {
+        "cite": "docs/DECISIONS.md:40",
+        "says": "2. Price lock: the price a"
+      },
+      {
+        "cite": "docs/DECISIONS.md:148",
+        "says": "A licence ends on its end date"
+      }
+    ],
+    "licence.period.today": [
+      {
+        "cite": "docs/DECISIONS.md:28",
+        "says": "`expires_at` is one calendar year after"
+      }
+    ],
+    "licence.price.from": [
+      {
+        "cite": "docs/DECISIONS.md:39",
+        "says": "List price 99 USD per year"
+      }
+    ],
+    "licence.trial.from": [
+      {
+        "cite": "docs/DECISIONS.md:53",
+        "says": "6. A 30-day trial"
+      },
+      {
+        "cite": "docs/DECISIONS.md:159",
+        "says": "the 30-day trial, the first time, stays"
+      }
+    ],
+    "limits.1": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:125",
+        "says": "🪶 Apache | apt | Apache"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:128",
+        "says": "📮 Exim | apt | Exim"
+      }
+    ],
+    "limits.2": [
+      {
+        "cite": "docs/guide/en/27-server-backups.md:13",
+        "says": "Each domain has a **Backups** section"
+      }
+    ],
+    "limits.3": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:28",
+        "says": "Removing CelikPanel from a server is"
+      }
+    ],
+    "limits.4": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:147",
+        "says": "Each site's PHP-FPM pool and scheduled"
+      }
+    ],
+    "limits.5": [
+      {
+        "cite": "README.md:117",
+        "says": "targets Linux x86_64/amd64."
+      }
+    ],
+    "measured.age.date": [
+      {
+        "cite": "docs/RISK-REGISTER.md:188",
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
+      }
+    ],
+    "measured.age.value": [
+      {
+        "cite": "docs/RISK-REGISTER.md:199",
+        "says": "at the kill 40.9 s with nothing"
+      }
+    ],
+    "measured.bind.condition": [
+      {
+        "cite": "docs/RISK-REGISTER.md:1590",
+        "says": "hand-installed BIND that was answering a"
+      }
+    ],
+    "measured.bind.date": [
+      {
+        "cite": "docs/RISK-REGISTER.md:1589",
+        "says": "Fixed and proven live, 4 September 2026"
+      }
+    ],
+    "measured.bind.value": [
+      {
+        "cite": "docs/RISK-REGISTER.md:1594",
+        "says": "**Measured: 2508 queries"
+      }
+    ],
+    "measured.power.condition": [
+      {
+        "cite": "docs/RISK-REGISTER.md:2032",
+        "says": "cutting its power: four cuts"
+      }
+    ],
+    "measured.power.date": [
+      {
+        "cite": "docs/RISK-REGISTER.md:2011",
+        "says": "Fixed 4 September 2026. A detection failure is now classified"
+      },
+      {
+        "cite": "docs/RISK-REGISTER.md:2032",
+        "says": "cutting its power: four cuts"
+      }
+    ],
+    "measured.power.value": [
+      {
+        "cite": "docs/RISK-REGISTER.md:2033",
+        "says": "boundary, every one decided within seven"
+      }
+    ],
+    "measured.restore": [
+      {
+        "cite": "docs/RISK-REGISTER.md:201",
+        "says": "including provisioning a new machine 105 s; the zone answering again after"
+      }
+    ],
+    "measured.restore.condition": [
+      {
+        "cite": "docs/RISK-REGISTER.md:189",
+        "says": "then B to C), on a"
+      }
+    ],
+    "measured.restore.date": [
+      {
+        "cite": "docs/RISK-REGISTER.md:188",
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
+      }
+    ],
+    "measured.restore.value": [
+      {
+        "cite": "docs/RISK-REGISTER.md:201",
+        "says": "including provisioning a new machine 105 s; the zone answering again after"
+      }
+    ],
+    "pricing.def": [
+      {
+        "cite": "docs/DECISIONS.md:38",
+        "says": "1. One flat price per server"
+      },
+      {
+        "cite": "docs/DECISIONS.md:39",
+        "says": "List price 99 USD per year"
+      },
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "pricing.description": [
+      {
+        "cite": "docs/DECISIONS.md:39",
+        "says": "List price 99 USD per year"
+      },
+      {
+        "cite": "docs/DECISIONS.md:139",
+        "says": "Payment by card through Stripe is the first"
+      },
+      {
+        "cite": "docs/DECISIONS.md:159",
+        "says": "the 30-day trial, the first time, stays"
+      }
+    ],
+    "pricing.ends.panel": [
+      {
+        "cite": "docs/DECISIONS.md:151",
+        "says": "without a licence the panel's management screens"
+      },
+      {
+        "cite": "docs/DECISIONS.md:154",
+        "says": "entering or renewing a licence, and installing the panel's own"
+      },
+      {
+        "cite": "docs/DECISIONS.md:155",
+        "says": "The server keeps working"
+      },
+      {
+        "cite": "cmd/panel/license.go:190",
+        "says": "activation and administrator-only signed updates remain available while locked"
+      }
+    ],
+    "pricing.ends.text": [
+      {
+        "cite": "docs/DECISIONS.md:148",
+        "says": "A licence ends on its end date"
+      },
+      {
+        "cite": "docs/DECISIONS.md:144",
+        "says": "before the end date: 30, 7 and 1 day before"
+      },
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "pricing.from.beta.text": [
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "pricing.from.caption": [
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "pricing.from.counted.text": [
+      {
+        "cite": "docs/DECISIONS.md:38",
+        "says": "1. One flat price per server"
+      }
+    ],
+    "pricing.from.id": [
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "pricing.from.lifetime.text": [
+      {
+        "cite": "docs/DECISIONS.md:55",
+        "says": "7. No lifetime licences."
+      }
+    ],
+    "pricing.from.lock.text": [
+      {
+        "cite": "docs/DECISIONS.md:40",
+        "says": "2. Price lock: the price a"
+      },
+      {
+        "cite": "docs/DECISIONS.md:148",
+        "says": "A licence ends on its end date"
+      }
+    ],
+    "pricing.from.move.text": [
+      {
+        "cite": "docs/DECISIONS.md:51",
+        "says": "5. Moving a licence to another"
+      }
+    ],
+    "pricing.from.offline.text": [
+      {
+        "cite": "docs/DECISIONS.md:48",
+        "says": "4. If CelikPanel's own licence service"
+      },
+      {
+        "cite": "docs/DECISIONS.md:149",
+        "says": "does not carry it past that date"
+      }
+    ],
+    "pricing.from.payment.text": [
+      {
+        "cite": "docs/DECISIONS.md:139",
+        "says": "Payment by card through Stripe is the first"
+      }
+    ],
+    "pricing.from.price.text": [
+      {
+        "cite": "docs/DECISIONS.md:39",
+        "says": "List price 99 USD per year"
+      }
+    ],
+    "pricing.from.refund.text": [
+      {
+        "cite": "docs/DECISIONS.md:159",
+        "says": "Point 6's 30-day refund is withdrawn"
+      }
+    ],
+    "pricing.from.renewal.text": [
+      {
+        "cite": "docs/DECISIONS.md:54",
+        "says": "a reminder 7 days before."
+      }
+    ],
+    "pricing.from.text": [
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "pricing.from.title": [
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "pricing.from.trial.text": [
+      {
+        "cite": "docs/DECISIONS.md:53",
+        "says": "6. A 30-day trial"
+      },
+      {
+        "cite": "docs/DECISIONS.md:159",
+        "says": "the 30-day trial, the first time, stays"
+      }
+    ],
+    "pricing.never.text": [
+      {
+        "cite": "docs/DECISIONS.md:101",
+        "says": "What stays unchanged.** D-022: hosted services"
+      },
+      {
+        "cite": "docs/DECISIONS.md:105",
+        "says": "updates stay available in every licence state"
+      },
+      {
+        "cite": "LICENSE:21",
+        "says": "written license agreements retain their terms."
+      },
+      {
+        "cite": "cmd/panel/license.go:199",
+        "says": "panelUpdateStartPath"
+      }
+    ],
+    "pricing.today.check.text": [
+      {
+        "cite": "docs/DECISIONS.md:837",
+        "says": "D-039 · One successful license check"
+      }
+    ],
+    "pricing.today.offline.text": [
+      {
+        "cite": "docs/DECISIONS.md:837",
+        "says": "D-039 · One successful license check"
+      }
+    ],
+    "pricing.today.period.text": [
+      {
+        "cite": "docs/DECISIONS.md:28",
+        "says": "`expires_at` is one calendar year after"
+      }
+    ],
+    "releases.check.fingerprint": [
+      {
+        "cite": "download-portal/get.sh:8",
+        "says": "7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb"
+      }
+    ],
+    "releases.check.key": [
+      {
+        "cite": "download-portal/get.sh:8",
+        "says": "7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb"
+      }
+    ],
+    "releases.check.note": [
+      {
+        "cite": "download-portal/get.sh:598",
+        "says": "= \"archive_sha256=$signed_manifest_archive_sha256\" ]"
+      }
+    ],
+    "releases.check.step1": [
+      {
+        "cite": "docs/release-signing.md:9",
+        "says": "`release-manifest-v2.sig` is a raw detached Ed25519"
+      }
+    ],
+    "releases.check.step2": [
+      {
+        "cite": "download-portal/get.sh:8",
+        "says": "7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb"
+      }
+    ],
+    "releases.check.step3": [
+      {
+        "cite": "docs/release-signing.md:9",
+        "says": "`release-manifest-v2.sig` is a raw detached Ed25519"
+      }
+    ],
+    "releases.check.step4": [
+      {
+        "cite": "download-portal/get.sh:598",
+        "says": "= \"archive_sha256=$signed_manifest_archive_sha256\" ]"
+      }
+    ],
+    "releases.description": [
+      {
+        "cite": "docs/release-signing.md:9",
+        "says": "`release-manifest-v2.sig` is a raw detached Ed25519"
+      }
+    ],
+    "releases.files.checksum": [
+      {
+        "cite": "download-portal/get.sh:1415",
+        "says": "sha256sum -c \"$archive.sha256\")"
+      }
+    ],
+    "releases.files.signature": [
+      {
+        "cite": "docs/release-signing.md:9",
+        "says": "detached Ed25519 signature"
+      }
+    ],
+    "releases.update.text": [
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:21",
+        "says": "Only you, the owner, update the"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:31",
+        "says": "Update stopped before changing the installed version"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:32",
+        "says": "previous version restored"
+      },
+      {
+        "cite": "docs/guide/en/26-panel-settings.md:35",
+        "says": "Anything done in the panel after the update is lost"
+      }
+    ],
+    "sep.account": [
+      {
+        "cite": "docs/FTP-LOGINS.md:7",
+        "says": "A site already has one access"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.82.md:533",
+        "says": "A PHP site was created through"
+      }
+    ],
+    "sep.account.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.82.md:533",
+        "says": "A PHP site was created through"
+      }
+    ],
+    "sep.limits": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:147",
+        "says": "Each site's PHP-FPM pool and scheduled"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:26",
+        "says": "PHP per site:** memory, run time,"
+      }
+    ],
+    "sep.links": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53",
+        "says": "A link that made the web"
+      },
+      {
+        "cite": "docs/TENANT-ISOLATION.md:26",
+        "says": "What CelikPanel writes now.** Every server"
+      }
+    ],
+    "sep.links.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53",
+        "says": "A link that made the web"
+      }
+    ],
+    "sep.logins": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:121",
+        "says": "A login for one folder:** the"
+      }
+    ],
+    "sep.logins.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:121",
+        "says": "A login for one folder:** the"
+      }
+    ],
+    "sep.mail": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:70",
+        "says": "Off until the administrator turns them"
+      }
+    ],
+    "sep.mail.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:68",
+        "says": "## Outgoing mail limits"
+      }
+    ],
+    "sep.mailmaps": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:279",
+        "says": "mail's address maps are"
+      }
+    ],
+    "sep.names": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32",
+        "says": "A customer's or"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:39",
+        "says": "The administrator's own subscription may still hold"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:87",
+        "says": "An update changes nothing that exists"
+      }
+    ],
+    "sep.names.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:7",
+        "says": "A security release: please update soon.**"
+      }
+    ],
+    "sep.pgmove": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:253",
+        "says": "**Moving a database to another PostgreSQL server version** (an"
+      }
+    ],
+    "sep.php": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:147",
+        "says": "Each site's PHP-FPM pool and scheduled"
+      }
+    ],
+    "sep.postgres": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:140",
+        "says": "The panel closes such a database by itself only when nobody else can be"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:160",
+        "says": "Every other such database the panel can read is left exactly as it is"
+      }
+    ],
+    "sep.postgres.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:8",
+        "says": "one customer could act as another:"
+      }
+    ],
+    "sep.restore": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28",
+        "says": "SQL from a backup, a copy"
+      }
+    ],
+    "sep.restore.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28",
+        "says": "SQL from a backup, a copy"
+      }
+    ],
+    "sep.sandbox": [
+      {
+        "cite": "docs/SITE-SANDBOX.md:14",
+        "says": "Every customer program runs in one"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.127.md:175",
+        "says": "Existing Node.js sites are not rewritten"
+      }
+    ],
+    "sep.sandbox.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.127.md:169",
+        "says": "Node.js sites run in the same"
+      }
+    ],
+    "sep.signing": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:63",
+        "says": "**Mail sent with a mailbox login** (a mail program"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233",
+        "says": "Arch Linux's OpenDKIM package cannot tie signing to the login"
+      }
+    ],
+    "sep.signing.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:8",
+        "says": "one customer could act as another:"
+      }
+    ],
+    "sep.visible": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:137",
+        "says": "Still visible, and why.** `/etc/passwd` lists"
+      }
+    ],
+    "sep.webgroup": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:276",
+        "says": "the web server's group can still read every"
+      }
+    ],
+    "sep.webmaildoor": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42",
+        "says": "Now the door answers only what CelikPanel"
+      }
+    ],
+    "sep.webmaildoor.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42",
+        "says": "Now the door answers only what CelikPanel"
+      }
+    ],
+    "sep.yes.notarch": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233",
+        "says": "Arch Linux's OpenDKIM package cannot tie signing to the login"
+      }
+    ],
+    "spec.backups.v_html": [
+      {
+        "cite": "docs/guide/en/16-backups.md:19",
+        "says": "Then press **Create backup**. **Existing backups**"
+      },
+      {
+        "cite": "docs/guide/en/27-server-backups.md:13",
+        "says": "Each domain has a **Backups** section"
+      },
+      {
+        "cite": "docs/REMOTE-BACKUPS.md:11",
+        "says": "- **S3-compatible"
+      },
+      {
+        "cite": "docs/REMOTE-BACKUPS.md:13",
+        "says": "SFTP servers"
+      }
+    ],
+    "spec.databases.v_html": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:42",
+        "says": "🐘 PostgreSQL | Service | `postgresql`"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:43",
+        "says": "🦭 MariaDB | Service | `mariadb-server`"
+      }
+    ],
+    "spec.dns.v_html": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:83",
+        "says": "🌐 BIND | Service | `bind9`"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:84",
+        "says": "⚡ PowerDNS | Service | `pdns-server`"
+      },
+      {
+        "cite": "docs/guide/en/20-server-setup.md:18",
+        "says": "2. **Number of servers:** **One server**"
+      },
+      {
+        "cite": "docs/guide/en/20-server-setup.md:31",
+        "says": "At an external DNS provider** |"
+      }
+    ],
+    "spec.licence.v_html": [
+      {
+        "cite": "docs/DECISIONS.md:26",
+        "says": "Context.** Every licence is free today"
+      },
+      {
+        "cite": "docs/DECISIONS.md:39",
+        "says": "List price 99 USD per year"
+      },
+      {
+        "cite": "docs/DECISIONS.md:56",
+        "says": "Free during the beta"
+      },
+      {
+        "cite": "docs/DECISIONS.md:57",
+        "says": "starts with 1.0"
+      }
+    ],
+    "spec.mail.v_html": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:51",
+        "says": "📧 Postfix | Service | `postfix`"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:53",
+        "says": "🧹 Rspamd | Service | `rspamd`"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:54",
+        "says": "📬 Dovecot | Service | `dovecot-imapd`"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:143",
+        "says": "✉️ Roundcube | Tool | —"
+      }
+    ],
+    "spec.release.signed": [
+      {
+        "cite": "docs/release-signing.md:9",
+        "says": "detached Ed25519 signature"
+      }
+    ],
+    "spec.status.v": [
+      {
+        "cite": "README.md:57",
+        "says": "⚠️ **Not production ready.** The Phase"
+      }
+    ],
+    "spec.systems.v_html": [
+      {
+        "cite": "internal/supportdata/os-releases.json:6",
+        "says": "\"version\": \"13\", \"codename\":"
+      },
+      {
+        "cite": "internal/supportdata/os-releases.json:8",
+        "says": "\"version\": \"12\", \"codename\":"
+      },
+      {
+        "cite": "internal/supportdata/os-releases.json:10",
+        "says": "\"level\": \"development\""
+      },
+      {
+        "cite": "README.md:117",
+        "says": "targets Linux x86_64/amd64."
+      }
+    ],
+    "spec.users.v_html": [
+      {
+        "cite": "docs/guide/en/01-getting-started.md:37",
+        "says": "User | A team member added"
+      },
+      {
+        "cite": "docs/guide/en/22-plans-rights.md:13",
+        "says": "Quantities:** customers (for a reseller), domains,"
+      }
+    ],
+    "spec.web.v_html": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:33",
+        "says": "🐘 PHP-FPM | Runtime | `php-fpm`"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:35",
+        "says": "🔄 Nginx | Service | `nginx`"
+      },
+      {
+        "cite": "docs/guide/en/10-domains-websites.md:52",
+        "says": "A new website starts as a"
+      },
+      {
+        "cite": "docs/RUNTIME-APPS.md:15",
+        "says": "A customer can also run a"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:142",
+        "says": "Node.js | Runtime"
+      }
+    ],
+    "systems.arch.big.text": [
+      {
+        "cite": "docs/OPERATION-GUIDANCE.md:10923",
+        "says": "Syu`, failed units, `nginx -t`, PHP-FPM"
+      }
+    ],
+    "systems.arch.name": [
+      {
+        "cite": "internal/supportdata/os-releases.json:10",
+        "says": "\"level\": \"development\""
+      }
+    ],
+    "systems.arch.notoffered.1": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:127",
+        "says": "🐘 phpPgAdmin | pacman | phpPgAdmin"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:130",
+        "says": "spamass-milter, is not in the official repositories"
+      }
+    ],
+    "systems.arch.notoffered.2": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:131",
+        "says": "⚡ Redis | pacman | Redis"
+      }
+    ],
+    "systems.arch.notoffered.4": [
+      {
+        "cite": "docs/DECISIONS.md:3536",
+        "says": "On Arch, PowerDNS is installed only"
+      }
+    ],
+    "systems.arch.notoffered.5": [
+      {
+        "cite": "install.sh:2630",
+        "says": "warn \"Arch has no security-only updates"
+      }
+    ],
+    "systems.arch.offered.text": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:131",
+        "says": "⚡ Redis | pacman | Redis"
+      }
+    ],
+    "systems.arch.updates.text_html": [
+      {
+        "cite": "docs/OPERATION-GUIDANCE.md:10922",
+        "says": "Arch.** No switch. The card lists"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.114.md:103",
+        "says": "Arch has no switch. CelikPanel never"
+      }
+    ],
+    "systems.deb.major.text_html": [
+      {
+        "cite": "docs/OPERATION-GUIDANCE.md:10929",
+        "says": "(PostgreSQL 17 after 16,"
+      }
+    ],
+    "systems.deb.notoffered.text_html": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:125",
+        "says": "🪶 Apache | apt | Apache"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:128",
+        "says": "📮 Exim | apt | Exim"
+      },
+      {
+        "cite": "internal/supportdata/support-table.json:40",
+        "says": "\"debian-13\": { \"8.4\":"
+      },
+      {
+        "cite": "internal/supportdata/support-table.json:42",
+        "says": "\"ubuntu-24.04\": { \"8.3\":"
+      },
+      {
+        "cite": "internal/supportdata/support-table.json:60",
+        "says": "\"debian-13\": { \"17\":"
+      },
+      {
+        "cite": "internal/supportdata/support-table.json:62",
+        "says": "\"ubuntu-24.04\": { \"16\":"
+      }
+    ],
+    "systems.deb.offered.text_html": [
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:33",
+        "says": "🐘 PHP-FPM | Runtime | `php-fpm`"
+      },
+      {
+        "cite": "docs/DISTRO-SUPPORT.md:42",
+        "says": "🐘 PostgreSQL | Service | `postgresql`"
+      }
+    ],
+    "systems.deb.updates.text_html": [
+      {
+        "cite": "docs/OPERATION-GUIDANCE.md:10898",
+        "says": "Automatic or manual (Debian, Ubuntu)"
+      },
+      {
+        "cite": "docs/OPERATION-GUIDANCE.md:10902",
+        "says": "installs what"
+      },
+      {
+        "cite": "docs/OPERATION-GUIDANCE.md:10903",
+        "says": "by default the security updates"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.114.md:100",
+        "says": "`/etc/apt/apt.conf.d/20auto-upgrades`."
+      },
+      {
+        "cite": "docs/guide/en/25-security.md:44",
+        "says": "Security updates** lists pending updates and"
+      }
+    ],
+    "systems.debian12.name": [
+      {
+        "cite": "internal/supportdata/os-releases.json:8",
+        "says": "\"version\": \"12\", \"codename\":"
+      }
+    ],
+    "systems.debian12.until": [
+      {
+        "cite": "internal/supportdata/support-table.json:17",
+        "says": "\"patched_until\": \"2028-06-30\","
+      }
+    ],
+    "systems.debian13.name": [
+      {
+        "cite": "internal/supportdata/os-releases.json:6",
+        "says": "\"version\": \"13\", \"codename\":"
+      }
+    ],
+    "systems.debian13.until": [
+      {
+        "cite": "internal/supportdata/support-table.json:16",
+        "says": "then Debian LTS until 2030-06-30"
+      }
+    ],
+    "systems.list.other": [
+      {
+        "cite": "internal/supportdata/os-releases.json:11",
+        "says": "\"version\": \"9\", \"codename\":"
+      },
+      {
+        "cite": "internal/supportdata/os-releases.json:4",
+        "says": "development: a rolling release used for development, supported as it is today"
+      }
+    ],
+    "systems.table.caption": [
+      {
+        "cite": "internal/supportdata/support-table.json:3",
+        "says": "\"checked\": \"2026-10-24\","
+      },
+      {
+        "cite": "internal/supportdata/os-releases.json:3",
+        "says": "\"checked\": \"2026-10-24\","
+      }
+    ],
+    "systems.table.note": [
+      {
+        "cite": "internal/supportdata/os-releases.json:4",
+        "says": "development: a rolling release used for development, supported as it is today"
+      },
+      {
+        "cite": "internal/supportdata/os-releases.json:10",
+        "says": "\"level\": \"development\""
+      },
+      {
+        "cite": "internal/supportdata/support-table.json:16",
+        "says": "then Debian LTS until 2030-06-30"
+      },
+      {
+        "cite": "internal/supportdata/support-table.json:18",
+        "says": "standard security maintenance of the main component until May 2029"
+      },
+      {
+        "cite": "README.md:117",
+        "says": "targets Linux x86_64/amd64."
+      }
+    ],
+    "systems.ubuntu2204.name": [
+      {
+        "cite": "internal/supportdata/os-releases.json:9",
+        "says": "\"version\": \"22.04\", \"codename\":"
+      }
+    ],
+    "systems.ubuntu2204.until": [
+      {
+        "cite": "internal/supportdata/support-table.json:19",
+        "says": "\"patched_until\": \"2027-05\", \"note\":"
+      }
+    ],
+    "systems.ubuntu2404.name": [
+      {
+        "cite": "internal/supportdata/os-releases.json:7",
+        "says": "\"version\": \"24.04\", \"codename\":"
+      }
+    ],
+    "systems.ubuntu2404.until": [
+      {
+        "cite": "internal/supportdata/support-table.json:18",
+        "says": "standard security maintenance of the main component until May 2029"
+      }
+    ],
+    "systems.yours.text": [
+      {
+        "cite": "docs/guide/en/31-without-panel.md:13",
+        "says": "When the panel is stopped, unreachable"
+      }
+    ]
+  }
+}

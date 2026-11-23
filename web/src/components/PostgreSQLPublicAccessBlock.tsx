@@ -103,6 +103,14 @@ export function decodePGPublic(raw: unknown): PGPublicView {
     };
 }
 
+/** The progress window's title once a close or its undo ended (alpha.145, alpha.144 lab O2). */
+export function pgPublicEndTitle(action: 'close' | 'undo', state: OperationEnd['state']): TranslationKey {
+    if (action === 'close') {
+        return state === 'done' ? 'pgpub.end.closed' : state === 'unknown' ? 'pgpub.end.unknown' : 'pgpub.end.notClosed';
+    }
+    return state === 'done' ? 'pgpub.undo.end.opened' : state === 'unknown' ? 'pgpub.undo.end.unknown' : 'pgpub.undo.end.notOpened';
+}
+
 export function PostgreSQLPublicAccessBlock() {
     const { t, locale } = useI18n();
     const handle = useRemote(PG_PUBLIC_URL, decodePGPublic);
@@ -165,6 +173,9 @@ export function PostgreSQLPublicAccessBlock() {
         } catch {
             end = { state: 'unknown', reason: t('pgpub.unknown', vars) };
         }
+        // alpha.145 (alpha.144 lab O2): the window's title follows the
+        // outcome, never "Closing …" above "Not completed".
+        end.title = t(pgPublicEndTitle(action, end.state), vars);
         // alpha.144 (alpha.143 lab): the window ends on a step that says what
         // happened, never on "Working on the server…" with a red mark.
         if (end.state !== 'done') {
