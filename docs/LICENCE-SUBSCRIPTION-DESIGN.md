@@ -27,6 +27,32 @@ or changed. Line references are to `main` at `1f1d80672`.*
 > legal entity and country of the Stripe account, tax and invoices, the founder price,
 > currencies other than USD (§k). Everything else here is unchanged.
 
+> **Changed by the owner on 23 November 2026 ([D-047](DECISIONS.md), his words quoted there):
+> no grace period, no protection state, no refunds.** "ek süre diye birşey yok. 1 ay
+> öncesinden uyarı yapalım. uzatsın yada sonucuna katlansın."; "lisansın bittiği gün biter.
+> yeni lisans alması gerekir."; "lisans yoksa panel çalışmaz. sunucu çalışır bizi
+> ilgilendirmez"; "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi
+> yok." What this document says below is superseded where it disagrees:
+>
+> - **Dropped by this decision:** the 30 days of grace, the protection level and its gate
+>   (main choices 1, 2 and 4; §a's grace and protection states; §b entirely; the parts of §c
+>   and §g that carry grace or protection into the receipt and the texts; the stage of §j
+>   that builds them). A licence ends on its end date; without a licence the panel's screens
+>   are closed until a licence is entered again, and the server -- hosted sites, mail, DNS,
+>   databases, scheduled jobs, certificate renewal -- keeps running. The receipt format work
+>   planned for grace and protection is no longer needed. The warnings stay at 30, 7 and 1 day
+>   before the end.
+> - **Unchanged:** the 30-day offline window when CelikPanel's own licence service cannot be
+>   reached (main choice 4's other half, D-039) is a different thing and stays.
+> - **Refunds (§e "Refund", the operator's `refund`):** there are none. A refund or a lost
+>   dispute that happens at the payment provider (the operator's exceptional act, or a
+>   chargeback) is still applied when confirmed: a first year is revoked (the generation
+>   raised, "Revocations raise the generation" below), a renewal's year is taken back. No page
+>   offers a refund; the page before payment says plainly that payments are not refunded and
+>   that the 30-day trial is for trying first.
+> - **Questions 5 and 6 (§k) are answered:** a renewal paid before the end continues from the
+>   old end at the locked price; after the end it is a new purchase at the list price from the
+>   payment (the "During grace" and "In protection" lines of "Renewal" no longer apply).
 This document says how the eight approved points are built, in small releases, without
 locking any installed panel and without letting a licence state stop a hosted service
 (D-022) or a security action. Where the owner has not decided something, it is listed as
@@ -993,10 +1019,13 @@ evidence (AGENTS.md); open items stay open.
    *Recommendation:* the same protection level — one floor is simpler, and a security
    action should never depend on why a licence is absent. *Blocks:* stage 1's scope for
    `missing`, stage 2.
-5. **What "without interruption" means for the price lock.** *Recommendation:* a renewal
+5. **What "without interruption" means for the price lock.** *Answered on 23 November 2026*
+   *(D-047): no grace; a renewal paid before the end is uninterrupted, after the end it is a new*
+   *purchase at the list price.* The earlier recommendation, kept for the record: a renewal
    paid before the grace period ends is uninterrupted and extends from the old end; after
    grace it is an interruption. *Blocks:* renewal logic in stage 3.
-6. **Refunds of renewals.** Does the 30-day unconditional refund apply to every paid year,
+6. **Refunds of renewals.** *Answered on 23 November 2026 (D-047): there are no refunds at*
+   *all.* The earlier question, kept for the record: does the 30-day unconditional refund apply to every paid year,
    renewals (manual and automatic) included? *Recommendation:* yes — a forgotten automatic
    renewal is the most likely reason to ask. *Blocks:* refunds in stage 3.
 

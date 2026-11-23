@@ -99,6 +99,37 @@ yapılandırmadaki `database_is_authority` ile bu yanıtı kapatabilir. Durum: s
 **Sahibin 23 Kasım 2026 sözü (bir söz; burada yapılmış olarak kaydedilmedi):** "Stripe
 deneme hesabı açarız".
 
+**Sahip 23 Kasım 2026'da değiştirdi: ek süre yok, koruma durumu yok, iade yok.** Sahibin
+yanıtları, kendi sözleriyle:
+
+- Ek süre ve yenileme üzerine: "ek süre diye birşey yok. 1 ay öncesinden uyarı yapalım.
+  uzatsın yada sonucuna katlansın."
+- Lisansın bitişi üzerine: "lisansın bittiği gün biter. yeni lisans alması gerekir." ve
+  "lisans yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez"
+- İade üzerine: "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi
+  yok."
+
+Bunun 14 Kasım maddelerinde değiştirdikleri:
+
+- **3. madde değişti.** 30 günlük ek süre ve koruma durumu yok: lisans bitiş tarihinde
+  biter; lisans yokken panelin ekranları, yeniden bir lisans girilene kadar kapalıdır;
+  sunucunun kendisi -- barındırılan siteler, e-posta, DNS, veritabanları, zamanlanmış
+  görevler, sertifika yenileme -- çalışmaya devam eder. Uyarılar kalır: bitişten 30, 7 ve 1
+  gün önce (koordinatörün "1 ay öncesinden" okuması).
+- **6. madde: 30 günlük koşulsuz iade kaldırıldı.** İade yoktur; müşterinin elinde bunun
+  yerine kartsız 30 günlük deneme vardır (yalnız ilk sefer). Otomatik yenilemenin yalnız
+  müşterinin açık seçimiyle olması değişmedi.
+- **Tasarımın açık 5. ve 6. soruları kapandı:** bitiş tarihinden önce ödenen yenileme
+  kesintisizdir -- yıl eski bitişten devam eder ve fiyat artmaz (2. madde); bitiş
+  tarihinden sonraki satın alma, güncel liste fiyatıyla yeni bir satın almadır ve yılı
+  ödemeyle başlar. Hiçbir yenileme iade edilmez.
+- Hizmetin yine de ele aldığı: ödeme sağlayıcısında gerçekleşen bir iade ya da kaybedilen
+  bir itiraz (işletmecinin sağlayıcı panelindeki istisnai işlemi ya da bir ters ibraz)
+  doğrulanmış bir olgu olarak gelir ve uygulanır -- ilk yıl geri alınır (lisans sona erer),
+  bir yenilemenin yılı geri alınır -- ve işletmecinin kaydına yazılır. Hiçbir sayfa iade
+  sunmaz.
+- Değişmeyen: CelikPanel'in kendi lisans hizmetine ulaşılamadığında geçerli 4. maddedeki 30
+  günlük süre ayrı bir şeydir ve kalır.
 **Sonraki tasarım adımı için gereksinimler, sahibin sözleri, 23 Kasım 2026.**
 "celikpanel.net frankfurta taşınacak"; "frankfurt sadece bizde duracak"; "lisans sunucusunu
 her zaman değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım".
@@ -124,8 +155,9 @@ canlıda bu hesapla mı, yoksa yurt dışında bir satıcı-aracıyla (merchant 
 Creem Türkiye'ye ödeme yaptığını belgeliyor, Paddle'a sorulacak) ya da Türk bir şirket için
 iyzico veya PayTR ile mi yapılacağı. Vergi ve fatura: sahibin mali müşavirini bekliyor (yurt
 dışına satılan yazılım lisansında KDV, e-arşiv fatura, yabancı bir satıcı-aracı üzerinden
-satış). Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para birimleri. Tasarımın sahibe
-soruları tasarımın k bölümündedir.
+satış). Kurucu fiyatı. Çok sunucu indirimi. USD dışındaki para birimleri. Koşullardaki "iade
+yok" ifadesinin hukuki metni (sahibin avukatı için). Tasarımın sahibe soruları tasarımın k
+bölümündedir.
 
 **Neyi değiştirir.**
 

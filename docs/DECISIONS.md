@@ -100,6 +100,40 @@ November 2026.
 **The owner's statement, 23 November 2026 (a statement, not recorded here as done):**
 "Stripe deneme hesabı açarız" ("we will open a Stripe test account").
 
+**Changed by the owner on 23 November 2026: no grace period, no protection state, no
+refunds.** His answers, in his words:
+
+- On grace and renewal: "ek süre diye birşey yok. 1 ay öncesinden uyarı yapalım. uzatsın yada
+  sonucuna katlansın." ("There is no such thing as extra time. Let us warn one month before.
+  Either they extend, or they live with the consequence.")
+- On the end of a licence: "lisansın bittiği gün biter. yeni lisans alması gerekir." ("A
+  licence ends on the day it ends. They need to buy a new licence.") and "lisans yoksa panel
+  çalışmaz. sunucu çalışır bizi ilgilendirmez" ("Without a licence the panel does not work.
+  The server works; that is not our concern.")
+- On refunds: "hiçbir zaman iade yok. ilk seferde 30 gün trial var isterse. ödeme iadesi yok."
+  ("There is never a refund. The first time there is a 30-day trial if they want. No payment
+  refunds.")
+
+What this changes in the 14 November points:
+
+- **Point 3 is replaced.** No 30 days of grace and no protection state: a licence ends on its
+  end date; without a licence the panel's screens are closed until a licence is entered
+  again; the server itself -- hosted sites, mail, DNS, databases, scheduled jobs, certificate
+  renewal -- keeps running. The warnings stay: 30, 7 and 1 day before the end (the
+  coordinator's reading of "1 ay öncesinden").
+- **Point 6: the 30-day unconditional refund is withdrawn.** There are no refunds; the 30-day
+  trial without a card (first time only) is what a customer has instead. Automatic renewal
+  only by the customer's explicit choice is unchanged.
+- **The design's open questions 5 and 6 are closed:** a renewal paid before the end date is
+  uninterrupted -- the year continues from the old end and the price does not rise (point
+  2); a purchase after the end date is a new purchase at the current list price, its year
+  starting at the payment. No renewal is refundable.
+- What the service still handles: a refund or a lost dispute that happens at the payment
+  provider (the operator's exceptional act in the provider's dashboard, or a chargeback)
+  arrives as a confirmed fact and is applied -- a first year is revoked, a renewal's year is
+  taken back -- and is written to the operator's log. No page offers a refund.
+- Unchanged: point 4's 30-day window when CelikPanel's own licence service cannot be reached
+  is a different thing and stays.
 **Requirements for the next design step, the owner's words, 23 November 2026.**
 "celikpanel.net frankfurta taşınacak" ("celikpanel.net will move to Frankfurt"); "frankfurt
 sadece bizde duracak" ("Frankfurt will stay only with us"); "lisans sunucusunu her zaman
@@ -129,8 +163,8 @@ charging goes live through it or through a merchant of record abroad (Polar and 
 document payouts to Turkey; Paddle is to be asked) or, for a Turkish entity, iyzico or PayTR.
 Tax and invoices: this waits for the owner's accountant (VAT on exported software licences,
 e-arşiv invoices, selling through a foreign merchant of record). The founder price. Any
-multi-server discount. Currencies other than USD. The design's own questions for the owner
-are in its section k.
+multi-server discount. Currencies other than USD. The legal wording of "no refunds" in the
+terms (for the owner's lawyer). The design's own questions for the owner are in its section k.
 
 **What it supersedes or amends.**
 
