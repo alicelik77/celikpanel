@@ -553,8 +553,9 @@ after every move in a tool's Manage window:**
    and `program/js` are links inside the tree) through the root's group.
    `db/`, `temp/` and `logs/` become the account's; `config/` becomes
    `root:<account> 0750`; a plugin configuration the web group read gets the
-   account's group. No website account enters the tree on the file system
-   (webmail's local server is another matter: see below). A file
+   account's group. No website account enters the tree on the file system,
+   and webmail's local server answers only CelikPanel's own checks (see
+   below). A file
    system that refuses access-control lists stops the move before anything
    changes: webmail stays on the web server's account, and Problems now says
    why and what the owner can do. Webmail's updates put the entry on the new
@@ -703,14 +704,13 @@ account is not in that group; customers cannot write any `*_pass`
 directive. A customer who names the stock socket in a harmless directive
 keeps that pool on and gains nothing by it.
 
-Not closed yet: webmail's server on the panel's local socket
-(`/run/celikpanel-webmail.sock`; nginx creates a Unix listening socket with
-mode 0666) answers every local account without a login. It gives out the
-files under `public_html`, including copies such as a `.bak` file in a
-plugin folder, and runs its `.php` files with webmail's pool (webmail's own
-account after the move). The panel itself only asks it whether webmail is
-ready. alpha.145 gives it the rules of webmail's own address, and this
-change takes them when it is merged with that release. The database tools'
+Webmail's server on the panel's local socket (`/run/celikpanel-webmail.sock`;
+nginx creates a Unix listening socket with mode 0666, so every local account
+can connect) answers, since alpha.145, only what CelikPanel itself asks:
+`/webmail/` (Roundcube's entry point, the only PHP that runs there), the style
+sheets under `/webmail/skins/` and CelikPanel's PHP check; everything else is
+not found. With this change that PHP runs in webmail's own pool, under
+webmail's own account. The database tools'
 server on `127.0.0.1:8306` is reachable the same way by every local account
 and, through the panel's `/dbtool/`, by every signed-in panel user: it gives
 out the packages' own files (code, documentation, SQL samples; no secret)

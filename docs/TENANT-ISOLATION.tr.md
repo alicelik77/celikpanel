@@ -471,8 +471,8 @@ değiştirmeden yeniden okur:**
    yok). Web sunucusu `public_html`'e (içindeki `plugins`, `skins` ve `program/js` ağacın içine
    bağlantıdır) kökün grubuyla ulaşır. `db/`, `temp/` ve `logs/` hesabın olur; `config/`
    `root:<hesap> 0750` olur; web grubunun okuduğu eklenti yapılandırması hesabın grubunu alır.
-   Hiçbir site hesabı dosya sisteminde ağaca giremez (web postasının yerel sunucusu ayrı bir
-   konudur: aşağıya bakın). Erişim listesini kabul etmeyen dosya sisteminde taşıma
+   Hiçbir site hesabı dosya sisteminde ağaca giremez; web postasının yerel sunucusu da yalnız
+   CelikPanel'in kendi denetimlerine yanıt verir (aşağıya bakın). Erişim listesini kabul etmeyen dosya sisteminde taşıma
    hiçbir şey değişmeden durur: web postası web sunucusu hesabında kalır, Şu anki sorunlar
    nedenini ve sahibin ne yapabileceğini söyler. Web postası güncellemeleri girdiyi yeni ağaca,
    yayımlanmadan önce koyar.
@@ -596,13 +596,12 @@ kurulana kadar bekletir.
 hiçbir `*_pass` yönergesi yazamaz. Varsayılan soketi zararsız bir yönergede anan müşteri o havuzu
 açık tutar ve bundan bir şey kazanmaz.
 
-Henüz kapanmadı: web postasının panelin yerel soketindeki sunucusu
-(`/run/celikpanel-webmail.sock`; nginx Unix dinleme soketini 0666 kipiyle oluşturur) her yerel
-hesaba girişsiz yanıt verir. `public_html` altındaki dosyaları, bir eklenti klasöründeki `.bak`
-dosyası gibi kopyalarla birlikte verir ve `.php` dosyalarını web postasının havuzuyla (taşımadan
-sonra web postasının kendi hesabıyla) çalıştırır. Panel ona yalnız web postasının hazır olup
-olmadığını sorar. alpha.145 ona web postasının kendi adresinin kurallarını verir; bu değişiklik o
-sürümle birleştirilince bunları alır. Veritabanı araçlarının `127.0.0.1:8306` üzerindeki sunucusuna
+Web postasının panelin yerel soketindeki sunucusu (`/run/celikpanel-webmail.sock`; nginx Unix
+dinleme soketini 0666 kipiyle oluşturur, bu yüzden her yerel hesap bağlanabilir) alpha.145'ten
+beri yalnız CelikPanel'in kendi sorduklarına yanıt verir: `/webmail/` (Roundcube'un giriş
+noktası, orada çalışan tek PHP), `/webmail/skins/` altındaki stil dosyaları ve CelikPanel'in PHP
+denetimi; geri kalan her şey bulunamaz. Bu değişiklikle o PHP web postasının kendi havuzunda,
+kendi hesabıyla çalışır. Veritabanı araçlarının `127.0.0.1:8306` üzerindeki sunucusuna
 her yerel hesap aynı biçimde, panelin `/dbtool/` yolundan da oturum açmış her panel kullanıcısı
 ulaşır: paketlerin kendi dosyalarını (kod, belgeler, örnek SQL; gizli bilgi yok) verir ve `.php`
 dosyalarını araçların kendi hesaplarıyla çalıştırır; veritabanlarını araçların kendi girişleri

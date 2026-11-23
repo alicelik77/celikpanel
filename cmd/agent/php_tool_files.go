@@ -482,12 +482,11 @@ var roundcubeWalkTree = filepath.Walk
 // web group, as the install leaves it). Nothing else changes: the published
 // code keeps the owner, group and modes it has.
 //
-// Not closed by this (fourth fix round, stated as it is): webmail's server
-// on the panel's local socket (/run/celikpanel-webmail.sock, mode 0666 as
-// nginx creates it) still gives every local account, without a login, the
-// files under public_html and runs its .php files with webmail's pool, as on
-// main. alpha.145 gives that server the rules of webmail's own address; this
-// branch takes them when it merges that release.
+// Webmail's server on the panel's local socket (/run/celikpanel-webmail.sock,
+// mode 0666 as nginx creates it, so every local account can connect) answers
+// only CelikPanel's own checks since alpha.145 (renderWebmailNginxConfig):
+// /webmail/, the style sheets under /webmail/skins/ and the PHP check; with
+// this move that PHP runs in webmail's own pool.
 func roundcubeOwnAccountPlan(baseDir string, uid, gid, webGID int) ([]roundcubeMetaChange, []string, error) {
 	var plan []roundcubeMetaChange
 	var notes []string
