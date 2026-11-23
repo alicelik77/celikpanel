@@ -61,19 +61,34 @@ Lisansları CelikPanel'in kendi hizmeti vermeye ve imzalamaya devam eder; ödeme
 yalnız "ödendi", "iade edildi" ya da "iptal edildi" bildirir.
 
 **Ek, 23 Kasım 2026 (sahip).** "kullanıcılarım hesaplarını aboneliklerini yönetelim.
-öncelikle stripe ödeme yöntemine bağlayacağız." Bundan iki şey çıkar; bu kaydın geri kalanı
-değişmez:
+öncelikle stripe ödeme yöntemine bağlayacağız." Bu sözler yalnız iki şeyi belirler: üyeler
+hesaplarını ve aboneliklerini yönetir, **ilk ödeme yöntemi Stripe'tır**. Bu kaydın geri kalanı
+değişmez. Nasıl yapılacağı bu kaydın bugünkü hâlinden çıkar: önce sahte bir Stripe
+sunucusuna, sonra Stripe'ın test kipine karşı; sağlayıcıdan bağımsız bir bağlantının
+arkasında, böylece ileride lisanslara dokunmadan başka bir sağlayıcı eklenebilir; her satın
+alma tek seferlik ödeme, Stripe aboneliği yalnız üye otomatik yenilemeyi açtığında (6. madde);
+Stripe yalnız neyin ödendiğini ya da iade edildiğini bildirir, lisansı yine hizmet verir ve
+imzalar.
 
-- **İlk ödeme yöntemi Stripe'tır.** Önce sahte bir Stripe sunucusuna, sonra Stripe'ın test
-  kipine karşı yapılır; ödeme bağlantısı sağlayıcıdan bağımsız kalır, böylece ileride
-  lisanslara dokunmadan başka bir sağlayıcı eklenebilir. Her satın alma tek seferlik
-  ödemedir; Stripe aboneliği yalnız üye otomatik yenilemeyi açtığında oluşur (6. madde).
-  Stripe yalnız neyin ödendiğini ya da iade edildiğini bildirir; lisansı yine hizmet verir
-  ve imzalar.
-- **Yeni üyelik hizmeti kodu Go ile yazılır.** Go hizmeti `portal-membership/` (PHP)
-  dizininin yerini adım adım alır: önce birebir denk (aynı sayfalar, aynı panel API'si,
-  aynı veritabanı dosyası, aynı imza anahtarı), sonra sipariş ve ödemeler. Yeni PHP
-  yazılmaz; sahip kaldırana kadar PHP sürümü geri dönüş olarak seçilebilir kalır.
+İlgili iki çizgi, her biri kendi kaynağıyla:
+
+- **Yeni üyelik hizmeti kodu Go ile yazılır, yeni PHP yazılmaz:** sahibin 15 Kasım 2026
+  yönergesi (PHP mümkün olduğunca kullanılmaz; yeni hizmetler Go ile). Go hizmeti
+  `portal-membership/` (PHP) dizininin yerini adım adım alır: önce birebir denk (aynı
+  sayfalar, aynı panel API'si, aynı veritabanı dosyası, aynı imza anahtarı), sonra sipariş ve
+  ödemeler.
+- **Geçiş sırasında PHP sürümü geri dönüş yolu olarak seçilebilir kalır:** planın önerisi
+  (23 Kasım 2026 hesap ve Stripe planı), sahibin kararı değil.
+
+**Sonraki tasarım adımı için gereksinimler, sahip, 23 Kasım 2026.** "celikpanel.net
+frankfurta taşınacak", "frankfurt sadece bizde duracak": celikpanel.net ve lisans hizmeti,
+sahibin yalnız kendi işlerini barındıran Frankfurt'taki kendi sunucusuna taşınır. "lisans
+sunucusunu her zaman değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel
+yapalım": lisans sunucusu her zaman taşınabilmeli ve celikpanel.net altında olmak zorunda
+değildir. Gereksinim olarak kaydedildi, henüz tasarlanmadı: lisans API'si için ayrı ve
+kalıcı bir ad, eski yol da yanıt vermeye devam eder; panellerin bildiği birden çok adres;
+çevrimdışı saklanan ve kısa ömürlü bir hizmet anahtarını imzalayan bir kök anahtar; sahibin
+kendi sunucusu için çevrimdışı bir "işletmeci lisansı".
 
 **Karara bağlanmayanlar (açık).** Stripe hesabının tüzel kişiliği ve ülkesi; ücret almanın
 canlıda bu hesapla mı, yoksa yurt dışında bir satıcı-aracıyla (merchant of record; Polar ve

@@ -5,18 +5,24 @@ direction of the same day ([D-047](DECISIONS.md)). Status: design only. Nothing 
 implemented; no installed panel, live licence service or payment provider was contacted
 or changed. Line references are to `main` at `1f1d80672`.*
 
-> **Amendment, 23 November 2026 ([D-047](DECISIONS.md), the owner's words there).** Stripe
-> is the first payment method: section e's provider adapter is built for Stripe first
-> (every purchase a one-time Checkout payment; a Stripe subscription only when the member
-> turns automatic renewal on), against a fake Stripe server and then Stripe's test mode,
-> behind the same provider-neutral seam. The service in section e is written in Go and
-> replaces `portal-membership/` step by step: first a Go service at exact parity with the
-> PHP one (same pages and texts, same panel API, the same SQLite file opened in place, the
-> same signing key, the PHP release kept as the rollback), then orders and payments. Where
-> this document says "the service" or names `Service.php`/`http.php`, read the Go service
-> for new work; the PHP lines stay the reference for parity. Still open: the legal entity
-> and country of the Stripe account, tax and invoices, the founder price, currencies other
-> than USD (§k). Everything else here is unchanged.
+> **Amendment, 23 November 2026 ([D-047](DECISIONS.md), the owner's words there).** The
+> owner's words of 23 November establish that members manage their accounts and
+> subscriptions and that Stripe is the first payment method: section e's provider adapter is
+> built for Stripe first (every purchase a one-time Checkout payment; a Stripe subscription
+> only when the member turns automatic renewal on, as point 6 of D-047 already requires),
+> against a fake Stripe server and then Stripe's test mode, behind the same provider-neutral
+> seam. By the owner's direction of 15 November 2026 (no new PHP), the service in section e
+> is written in Go and replaces `portal-membership/` step by step: first a Go service at
+> exact parity with the PHP one (same pages and texts, same panel API, the same SQLite file
+> opened in place, the same signing key), then orders and payments. Keeping the PHP release
+> selectable as the way back during the switch is the plan's proposal, not the owner's
+> decision. Where this document says "the service" or names `Service.php`/`http.php`, read
+> the Go service for new work; the PHP lines stay the reference for parity. The owner's
+> requirements of the same day for moving the licence service (his own Frankfurt server; a
+> licence address that can change at any time and need not be under celikpanel.net) are
+> recorded in D-047 for the next design step and are not designed here. Still open: the
+> legal entity and country of the Stripe account, tax and invoices, the founder price,
+> currencies other than USD (§k). Everything else here is unchanged.
 
 This document says how the eight approved points are built, in small releases, without
 locking any installed panel and without letting a licence state stop a hosted service

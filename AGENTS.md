@@ -137,9 +137,12 @@ design and for implementation in small releases. Before touching licence states,
 licence gate, the licence file format or `portal-membership/`, read D-047 and
 docs/LICENCE-SUBSCRIPTION-DESIGN.md. A lapsed, unverifiable or unpaid licence never
 stops hosted workloads and never blocks security actions. On 23 November 2026 the owner
-chose Stripe as the first payment method; new member-service code is Go and replaces
-`portal-membership/` step by step (D-047, amendment). The legal entity of the Stripe
-account, tax and invoices are not decided. This does not authorize contacting the live
+chose Stripe as the first payment method, for members managing their accounts and
+subscriptions (D-047, amendment). New member-service code is Go, by his direction of
+15 November 2026; it replaces `portal-membership/` step by step. His requirements for moving
+the licence service (his own Frankfurt server; a licence address that can change at any
+time) are recorded in the same amendment for the next design step, not yet designed. The
+legal entity of the Stripe account, tax and invoices are not decided. This does not authorize contacting the live
 licence service or Stripe, changing the live portal, or updating installed panels from the
 assistant's side.
 
@@ -148,8 +151,11 @@ sürümlerle uygulama için onayladı. Lisans durumlarına, lisans kapısına, l
 biçimine ya da `portal-membership/` dizinine dokunmadan önce D-047 ve
 docs/LICENCE-SUBSCRIPTION-DESIGN.md okunur. Süresi biten, doğrulanamayan ya da ödenmeyen
 lisans barındırılan hizmetleri asla durdurmaz ve güvenlik işlemlerini asla engellemez.
-Sahip 23 Kasım 2026'da ilk ödeme yöntemi olarak Stripe'ı seçti; yeni üyelik hizmeti kodu
-Go ile yazılır ve `portal-membership/` dizininin yerini adım adım alır (D-047, ek). Stripe
-hesabının tüzel kişiliği, vergi ve fatura karara bağlanmadı. Bu onay canlı lisans
+Sahip 23 Kasım 2026'da, üyelerin hesaplarını ve aboneliklerini yönetmesi için ilk ödeme
+yöntemi olarak Stripe'ı seçti (D-047, ek). Yeni üyelik hizmeti kodu, sahibin 15 Kasım 2026
+yönergesiyle Go ile yazılır ve `portal-membership/` dizininin yerini adım adım alır. Lisans
+hizmetinin taşınmasıyla ilgili gereksinimleri (Frankfurt'taki kendi sunucusu; her zaman
+değişebilen bir lisans adresi) sonraki tasarım adımı için aynı ekte kaydedildi, henüz
+tasarlanmadı. Stripe hesabının tüzel kişiliği, vergi ve fatura karara bağlanmadı. Bu onay canlı lisans
 hizmetine ya da Stripe'a bağlanmaya, canlı portalı değiştirmeye ya da kurulu panelleri
 asistan tarafından güncellemeye izin vermez.
