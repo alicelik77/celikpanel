@@ -471,8 +471,9 @@ type stockPoolOps struct {
 	readFile    func(path string) ([]byte, error)
 	conffileMD5 func(ctx context.Context, version, path string) (string, bool)
 	nginxDump   func(ctx context.Context) (string, error)
-	// apacheFiles lists the Apache files Apache loads (none when Apache is
-	// not installed); sameSocket answers, for the pool's socket, whether a
+	// apacheFiles lists what besides nginx may hand PHP to a stock pool:
+	// the Apache files Apache loads and every other web server CelikPanel
+	// does not read (webServerUsers); sameSocket answers, for the pool's socket, whether a
 	// unix: path reaches it (nil in tests that compare text only).
 	apacheFiles func() []stockPoolConfigText
 	sameSocket  func(listen string) socketMatcher
@@ -1005,6 +1006,9 @@ var apacheIncludeLine = regexp.MustCompile(`(?i)^\s*include(?:optional)?\s+(.+?)
 // apacheServerRootLine reads a ServerRoot directive.
 var apacheServerRootLine = regexp.MustCompile(`(?i)^\s*serverroot\s+(.+?)\s*$`)
 
+// errApacheIncludeUnfollowed marks an Apache include CelikPanel cannot follow.
+var errApacheIncludeUnfollowed = errors.New("an Include that cannot be followed: what it loads is not known")
+
 // apacheLoadedFiles lists the Apache files Apache loads (S4 R1, third fix
 // round): none when the Apache program is not installed; otherwise every
 // file under root outside the *-available folders (the enabled links
@@ -1012,8 +1016,10 @@ var apacheServerRootLine = regexp.MustCompile(`(?i)^\s*serverroot\s+(.+?)\s*$`)
 // it is. A file under *-available counts only through an enabled link or an
 // include: the PHP-FPM package's own conf-available/php<V>-fpm.conf that
 // nobody enabled is not a user. An include that cannot be followed (a
-// variable, a line continued on the next) makes every file under root count,
-// as before. A file that cannot be read counts.
+// variable, a line continued on the next, a quoted path with spaces) is
+// itself a user, named by its file and line (fourth fix round): what it
+// loads is not known, so the pool is kept; every other include is still
+// followed. A file that cannot be read counts.
 func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
 	if !installed {
 		return nil
@@ -1062,7 +1068,6 @@ func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
 			addTree(filepath.Join(name, entry.Name()), filepath.Join(path, entry.Name()), depth+1)
 		}
 	}
-	everything := false
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return []stockPoolConfigText{{Name: root, Err: err}}
@@ -1074,7 +1079,11 @@ func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
 		addTree(filepath.Join(root, entry.Name()), filepath.Join(root, entry.Name()), 0)
 	}
 	serverRoots := []string{root}
-	for len(queue) > 0 && !everything {
+	unfollowed := func(file, line string) {
+		name := file + ": " + strings.TrimSpace(line)
+		loaded[name] = stockPoolConfigText{Name: name, Err: errApacheIncludeUnfollowed}
+	}
+	for len(queue) > 0 {
 		name := queue[0]
 		queue = queue[1:]
 		f := loaded[name]
@@ -1094,8 +1103,8 @@ func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
 			}
 			arg := strings.Trim(m[1], `"'`)
 			if strings.Contains(arg, "$") || strings.HasSuffix(arg, `\`) || strings.ContainsAny(arg, " \t") {
-				everything = true
-				break
+				unfollowed(name, line)
+				continue
 			}
 			patterns := []string{arg}
 			if !filepath.IsAbs(arg) {
@@ -1107,7 +1116,7 @@ func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
 			for _, pattern := range patterns {
 				matches, err := filepath.Glob(pattern)
 				if err != nil {
-					everything = true
+					unfollowed(name, line)
 					break
 				}
 				for _, match := range matches {
@@ -1115,21 +1124,6 @@ func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
 				}
 			}
 		}
-	}
-	if everything {
-		_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-			if err != nil {
-				loaded[path] = stockPoolConfigText{Name: path, Err: err}
-				return nil
-			}
-			if !entry.IsDir() {
-				if _, done := loaded[path]; !done {
-					data, readErr := os.ReadFile(path)
-					loaded[path] = stockPoolConfigText{Name: path, Text: string(data), Err: readErr}
-				}
-			}
-			return nil
-		})
 	}
 	files := make([]stockPoolConfigText, 0, len(loaded))
 	for _, f := range loaded {
@@ -1144,6 +1138,160 @@ func apacheLoadedFiles(root string, installed bool) []stockPoolConfigText {
 func apacheInstalled() bool {
 	_, err := os.Stat("/usr/sbin/apache2")
 	return !errors.Is(err, os.ErrNotExist)
+}
+
+// webServerUnit is one web server unit's state.
+type webServerUnit struct {
+	Enabled, Active bool
+}
+
+// otherWebServerUnits are the units of PHP front ends whose configuration
+// CelikPanel does not read (S4 R1, fourth fix round): enabled or active, one
+// keeps every stock pool on.
+var otherWebServerUnits = []string{"httpd.service", "lighttpd.service", "caddy.service", "lshttpd.service", "lsws.service", "openlitespeed.service"}
+
+var (
+	errOtherWebServer = errors.New("a web server whose configuration CelikPanel does not read")
+	errApacheOverride = errors.New("the Apache configuration lets .htaccess files change how PHP is handled")
+	// apacheOverrideLine: an AllowOverride or AllowOverrideList that is not
+	// None (Apache 2.4's default is None).
+	apacheOverrideLine = regexp.MustCompile(`(?i)^\s*allowoverride(?:list)?\s+(.+?)\s*$`)
+)
+
+// webServerUsers is what keeps the stock pools on besides nginx (S4 R1,
+// fourth fix round):
+//   - the Apache files of /etc/apache2 that Apache loads, when the Apache
+//     program is installed or its unit is enabled or active, and of
+//     /etc/apache2-<name> for each enabled or active apache2@<name>;
+//   - for an enabled or active Apache, a loaded line that lets .htaccess
+//     files override anything (they may hand PHP to the socket, and no
+//     .htaccess is read here);
+//   - any enabled or active httpd, lighttpd, Caddy or OpenLiteSpeed unit;
+//   - the units that could not be listed at all.
+//
+// units maps each unit name to its state; load reads one Apache root.
+func webServerUsers(units map[string]webServerUnit, unitsErr error, apacheBinary bool, load func(root string, installed bool) []stockPoolConfigText) []stockPoolConfigText {
+	var out []stockPoolConfigText
+	if unitsErr != nil {
+		out = append(out, stockPoolConfigText{Name: "systemctl", Err: fmt.Errorf("the web servers' units could not be listed: %w", unitsErr)})
+	}
+	running := func(unit string) (string, bool) {
+		state, ok := units[unit]
+		switch {
+		case !ok:
+			return "", false
+		case state.Active:
+			return "active", true
+		case state.Enabled:
+			return "enabled", true
+		}
+		return "", false
+	}
+	roots := map[string]bool{}
+	if _, on := running("apache2.service"); on || apacheBinary {
+		roots["/etc/apache2"] = on
+	}
+	names := make([]string, 0, len(units))
+	for unit := range units {
+		names = append(names, unit)
+	}
+	sort.Strings(names)
+	for _, unit := range names {
+		if instance, ok := strings.CutPrefix(unit, "apache2@"); ok {
+			if _, on := running(unit); on {
+				roots["/etc/apache2-"+strings.TrimSuffix(instance, ".service")] = true
+			}
+		}
+	}
+	rootNames := make([]string, 0, len(roots))
+	for root := range roots {
+		rootNames = append(rootNames, root)
+	}
+	sort.Strings(rootNames)
+	for _, root := range rootNames {
+		files := load(root, true)
+		out = append(out, files...)
+		if !roots[root] {
+			continue
+		}
+		for _, f := range files {
+			if f.Err != nil {
+				continue
+			}
+			for _, line := range strings.Split(f.Text, "\n") {
+				if strings.HasPrefix(strings.TrimLeft(line, " \t\r"), "#") {
+					continue
+				}
+				if m := apacheOverrideLine.FindStringSubmatch(line); m != nil && !strings.EqualFold(strings.Trim(m[1], `"'`), "none") {
+					out = append(out, stockPoolConfigText{Name: f.Name + ": " + strings.TrimSpace(line), Err: errApacheOverride})
+				}
+			}
+		}
+	}
+	for _, unit := range otherWebServerUnits {
+		if state, on := running(unit); on {
+			out = append(out, stockPoolConfigText{Name: unit + " (" + state + ")", Err: errOtherWebServer})
+		}
+	}
+	for _, unit := range names {
+		if strings.HasPrefix(unit, "httpd@") {
+			if state, on := running(unit); on {
+				out = append(out, stockPoolConfigText{Name: unit + " (" + state + ")", Err: errOtherWebServer})
+			}
+		}
+	}
+	return out
+}
+
+// hostWebServerUnits reads the states of the web server units: Apache's own
+// and its instances (one per /etc/apache2-<name>), and the other front ends.
+func hostWebServerUnits(ctx context.Context) (map[string]webServerUnit, error) {
+	units := []string{"apache2.service"}
+	if dirs, err := filepath.Glob("/etc/apache2-*"); err == nil {
+		for _, dir := range dirs {
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				units = append(units, "apache2@"+strings.TrimPrefix(filepath.Base(dir), "apache2-")+".service")
+			}
+		}
+	}
+	units = append(units, otherWebServerUnits...)
+	args := append([]string{"show", "--no-pager", "-p", "Id", "-p", "UnitFileState", "-p", "ActiveState"}, units...)
+	out, err := serviceMutationCommand(ctx, "systemctl", args...).Output()
+	if err != nil {
+		return nil, errors.New(strings.TrimSpace(firstLine(string(out)) + " " + err.Error()))
+	}
+	return parseWebServerUnits(string(out)), nil
+}
+
+// parseWebServerUnits reads systemctl show's blocks (Id=, UnitFileState=,
+// ActiveState=, separated by blank lines). A unit that does not exist has no
+// unit file state and is inactive.
+func parseWebServerUnits(text string) map[string]webServerUnit {
+	units := map[string]webServerUnit{}
+	for _, block := range strings.Split(strings.ReplaceAll(text, "\r", ""), "\n\n") {
+		id, state := "", webServerUnit{}
+		for _, line := range strings.Split(block, "\n") {
+			key, value, _ := strings.Cut(line, "=")
+			switch key {
+			case "Id":
+				id = value
+			case "UnitFileState":
+				switch value {
+				case "enabled", "enabled-runtime", "linked", "linked-runtime", "alias", "generated", "transient":
+					state.Enabled = true
+				}
+			case "ActiveState":
+				switch value {
+				case "active", "activating", "reloading", "deactivating", "refreshing":
+					state.Active = true
+				}
+			}
+		}
+		if id != "" {
+			units[id] = state
+		}
+	}
+	return units
 }
 
 // otherPoolsBeside: another pool file is in the same pool directory.
@@ -1258,7 +1406,10 @@ func hostStockPoolOps() stockPoolOps {
 			return string(out), nil
 		},
 		apacheFiles: func() []stockPoolConfigText {
-			return apacheLoadedFiles("/etc/apache2", apacheInstalled())
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			units, err := hostWebServerUnits(ctx)
+			return webServerUsers(units, err, apacheInstalled(), apacheLoadedFiles)
 		},
 		sameSocket: hostSameSocket,
 		aliasFor: func(listen string) string {

@@ -93,9 +93,10 @@ func TestOnlyApacheFilesApacheLoadsKeepTheStockPoolOn(t *testing.T) {
 		t.Fatalf("included by name: %v", got)
 	}
 	// An include that cannot be followed makes every file count, as before.
+	// Fourth fix round: it is itself a user, named by its file and line.
 	writeRound3File(t, filepath.Join(root, "sites-enabled", "shop.conf"), "Include ${SHOP_DIR}/php.conf\n")
 	got := stockPoolUsers("", listen, "", apacheLoadedFiles(root, true), nil)
-	if !reflect.DeepEqual(got, []string{filepath.Join(root, "conf-available", "php8.4-fpm.conf")}) {
+	if !reflect.DeepEqual(got, []string{filepath.Join(root, "sites-enabled", "shop.conf") + ": Include ${SHOP_DIR}/php.conf"}) {
 		t.Fatalf("an include with a variable: %v", got)
 	}
 }
