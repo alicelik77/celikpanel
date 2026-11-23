@@ -38,6 +38,13 @@ export const enMonitoringScreens = {
     'err.POSTGRESQL_PUBLIC_FAILED.connection': 'The connection to the database server was lost. Nothing was changed. Check that PostgreSQL runs, then try again.',
     'err.POSTGRESQL_PUBLIC_FAILED.rights': 'The database server did not allow it: a right was missing. Nothing was changed.',
     'err.POSTGRESQL_PUBLIC_FAILED.missing': 'Something it names does not exist on the database server (a user or a role). Nothing was changed.',
+    // alpha.145 (alpha.144 lab O2): the window's title follows the outcome.
+    'pgpub.end.closed': '{name} is closed to other accounts',
+    'pgpub.end.notClosed': '{name} was not closed to other accounts',
+    'pgpub.end.unknown': 'Whether {name} was closed to other accounts is not known',
+    'pgpub.undo.end.opened': '{name} is open to every account again',
+    'pgpub.undo.end.notOpened': '{name} was not opened again',
+    'pgpub.undo.end.unknown': 'Whether {name} was opened again is not known',
     'pgpub.step.notDone': 'Not done — nothing was changed',
     'pgpub.step.unknown': 'Result not confirmed yet — not sent again',
     'pgpub.why.server.in_use': 'the database was in use and the database server did not grant the lock in time; nothing was changed: “{detail}”',

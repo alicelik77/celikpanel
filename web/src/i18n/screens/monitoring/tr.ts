@@ -33,6 +33,13 @@ export const trMonitoringScreens: Record<MonitoringScreenKey, string> = {
     'err.POSTGRESQL_PUBLIC_FAILED.connection': 'Veritabanı sunucusuyla bağlantı koptu. Hiçbir şey değiştirilmedi. PostgreSQL’in çalıştığını kontrol edip yeniden deneyin.',
     'err.POSTGRESQL_PUBLIC_FAILED.rights': 'Veritabanı sunucusu buna izin vermedi: bir yetki eksikti. Hiçbir şey değiştirilmedi.',
     'err.POSTGRESQL_PUBLIC_FAILED.missing': 'Adı geçen bir şey veritabanı sunucusunda yok (bir kullanıcı ya da rol). Hiçbir şey değiştirilmedi.',
+    // alpha.145 (alpha.144 laboratuvarı O2): pencere başlığı sonuca uyar.
+    'pgpub.end.closed': '{name} başka hesaplara kapatıldı',
+    'pgpub.end.notClosed': '{name} başka hesaplara kapatılamadı',
+    'pgpub.end.unknown': '{name} başka hesaplara kapatıldı mı bilinmiyor',
+    'pgpub.undo.end.opened': '{name} yeniden her hesaba açık',
+    'pgpub.undo.end.notOpened': '{name} yeniden açılamadı',
+    'pgpub.undo.end.unknown': '{name} yeniden açıldı mı bilinmiyor',
     'pgpub.step.notDone': 'Yapılmadı — hiçbir şey değiştirilmedi',
     'pgpub.step.unknown': 'Sonuç henüz doğrulanmadı — yeniden gönderilmez',
     'pgpub.why.server.in_use': 'veritabanı kullanımdaydı ve veritabanı sunucusu kilidi zamanında vermedi; hiçbir şey değişmedi: “{detail}”',
