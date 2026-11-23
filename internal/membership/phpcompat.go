@@ -472,8 +472,9 @@ func unhex(c byte) byte {
 // parsePHPQuery fills a $_GET/$_POST-like map from an urlencoded string the way
 // php_default_treat_data and php_register_variable_ex do for the names the member
 // pages use: pairs split on "&", the last plain value wins, a name is cut at its
-// first NUL, leading spaces dropped, " " and "." before the first "[" become "_",
-// and "name[...]" makes an array (an unmatched "[" becomes "_").
+// first NUL, leading spaces dropped, a name starting with "[" dropped, " " and "."
+// before the first "[" become "_", and "name[...]" makes an array; after an
+// unmatched "[" that bracket and every later " ", "." and "[" become "_".
 func parsePHPQuery(raw string, into phpVars) {
 	for _, pair := range strings.Split(raw, "&") {
 		if pair == "" {
@@ -503,10 +504,18 @@ func (v phpVars) set(name, value string) {
 			continue
 		}
 		if c == '[' {
+			if i == 0 {
+				return // an empty name before the bracket: PHP drops the pair
+			}
 			if strings.IndexByte(name[i+1:], ']') >= 0 {
 				array, cut = true, i
-			} else {
-				b[i] = '_' // PHP stops mangling here and keeps the rest as written
+				break
+			}
+			// Not an index: this bracket and every later " ", "." and "[" become "_".
+			for j := i; j < len(b); j++ {
+				if b[j] == ' ' || b[j] == '.' || b[j] == '[' {
+					b[j] = '_'
+				}
 			}
 			break
 		}

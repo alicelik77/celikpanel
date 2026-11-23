@@ -217,8 +217,10 @@ func TestPHPCompatCorpus(t *testing.T) {
 	}
 	t.Logf("PHP %s; %d e-mail, %d address, %d HTML and %d query cases", answer.Version, len(emails), len(ips), len(html), len(queries))
 	failures := 0
+	byKind := map[string]int{}
 	fail := func(format string, args ...any) {
 		failures++
+		byKind[strings.SplitN(format, "(", 2)[0]]++
 		if failures <= 40 {
 			t.Errorf(format, args...)
 		}
@@ -276,7 +278,7 @@ func TestPHPCompatCorpus(t *testing.T) {
 		}
 	}
 	if failures > 0 {
-		t.Fatalf("%d differences from PHP", failures)
+		t.Fatalf("%d differences from PHP, by kind: %v", failures, byKind)
 	}
 }
 
