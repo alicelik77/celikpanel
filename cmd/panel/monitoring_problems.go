@@ -146,6 +146,9 @@ var problemKindOrder = map[string]int{
 	"stock_pool_owner_restored": 35,
 	"at_owner_removed":          36,
 	"site_crontab_unreadable":   37,
+	// alpha.145 lab, D1: a server change whose end the panel could not
+	// record; every other server change waits for it.
+	"service_operation_unsettled": 38,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -220,6 +223,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// alpha.144: webmail's address that still gives out plugin files
 	// (webmail_address_problem.go).
 	add(p.webmailAddressProblems(ctx), nil)
+	// alpha.145 lab, D1: a server change whose end this panel process could
+	// not record (service_operation_settle.go).
+	add(p.serviceOperationUnsettledProblems(ctx), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

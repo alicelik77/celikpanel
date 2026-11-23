@@ -71,7 +71,8 @@ export type ProblemKind =
     | 'postgresql_databases_unreadable'
     | 'webmail_address_kept'
     | 'webmail_address_refused'
-    | 'webmail_cannot_send';
+    | 'webmail_cannot_send'
+    | 'service_operation_unsettled';
 
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
@@ -110,6 +111,8 @@ const KINDS: readonly ProblemKind[] = [
     // alpha.144: webmail's address still in its earlier form (owner's file,
     // or a rewrite nginx's test put back).
     'webmail_address_kept', 'webmail_address_refused',
+    // alpha.145 lab, D1: a server change whose end the panel could not record.
+    'service_operation_unsettled',
     // alpha.145: webmail's configuration still sends without encryption.
     'webmail_cannot_send',
 ];

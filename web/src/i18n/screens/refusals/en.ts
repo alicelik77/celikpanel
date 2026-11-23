@@ -55,6 +55,16 @@ export const enRefusalsScreens = {
     "ddb.confirmDelete": "Delete the database {name}? All its data is lost; this cannot be undone.",
     "ddb.deleted": "Database {name} deleted",
     "ddb.deleteFailed": "The database was not deleted",
+
+    // alpha.145 lab, D1: a change refused while the previous one's end is
+    // being recorded, or could not be (reason of service_operation_busy).
+    "err.service_operation_busy.settling": "Nothing was started: the panel could not yet record the end of the previous server change and is reading what the server did (an interrupted install is first run once more). Nobody needs to act: this ends by itself once that change has finished. Then press the same button again.",
+    // After a restart, the run again of an interrupted change that the server
+    // kept refusing as busy: what is known, who checks, and that other
+    // changes can be made again.
+    "err.service_operation_rerun_host_busy": "The interrupted change could not be run again because the server stayed busy (the package manager or another change); what its first run did is not known. You, the administrator: check the component’s state on its page and start the change again if needed. Other changes can be made again.",
+    "err.service_operation_reread_host_busy": "The result of the interrupted change could not be read because the server stayed busy; whether it was made is not known. You, the administrator: check its state on its page and start it again if needed. Other changes can be made again.",
+    "err.service_operation_busy.unsettled": "Nothing was started: the panel could not record the end of the previous server change. You, the server owner: first check the server agent (sudo systemctl status celikpanel-agent; start it if it is stopped), then run sudo systemctl restart celikpanel-panel (only the panel’s web process restarts; websites, mail and DNS keep running). At its start the panel records what was done. Then press the same button again.",
 } as const;
 
 export type RefusalsScreenKey = keyof typeof enRefusalsScreens;

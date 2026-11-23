@@ -685,6 +685,11 @@ func alertLine(item pendingAlertMail) (string, string) {
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),
 			fmt.Sprintf("%s kutusunun otomatik yanıtı hâlâ artık bu kutunun olmayan bir adresten yanıt veriyor ve CelikPanel bunu sunucuda değiştiremedi. İzleme'yi açın: yapılacak adımı söyler; CelikPanel her saat yeniden dener.", item.name)
+	case "service_operation_unsettled":
+		// alpha.145 lab, D1: the panel's web process restarts; its start
+		// records what the change did.
+		return "The panel could not record the end of a server change, so other component and setup changes are refused. The server owner first checks the server agent (sudo systemctl status celikpanel-agent; starts it if it is stopped), then runs sudo systemctl restart celikpanel-panel: only the panel's web process restarts (websites, mail and DNS keep running). At its start the panel reads what was done: a webmail update or address is only read; an install, removal or mail profile is run once more from its start.",
+			"Panel bir sunucu değişikliğinin sonunu kaydedemedi; bu yüzden diğer bileşen ve kurulum değişiklikleri reddediliyor. Sunucu sahibi önce sunucu ajanını denetler (sudo systemctl status celikpanel-agent; durmuşsa başlatır), sonra sudo systemctl restart celikpanel-panel komutunu çalıştırır: yalnız panelin web işlemi yeniden başlar (web siteleri, posta ve DNS çalışmayı sürdürür). Panel açılışta yapılanı okur: web postası güncellemesi ya da adresi yalnız okunur; kurulum, kaldırma ya da posta profili baştan bir kez daha çalıştırılır."
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

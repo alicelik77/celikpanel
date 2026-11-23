@@ -155,7 +155,8 @@ var readWebmailProofFromAgent = func(p *Panel, ctx context.Context) (transport.W
 }
 
 // reconcileInterruptedWebmailUpdate decides, read only, what an update
-// interrupted by a panel restart left. "Updated" is said only when the
+// interrupted by a panel restart, or by a lost Agent contact the running
+// panel settles (D1), left. "Updated" is said only when the
 // installed release is the target and webmail proves itself there (check,
 // page, stylesheet); a target release that does not prove, a Roundcube that
 // is not found and a read that fails are all "not known". Nothing is started
@@ -170,16 +171,16 @@ func (p *Panel) reconcileInterruptedWebmailUpdate(ctx context.Context, version s
 	}
 	check, err := readRoundcubeUpdateFromAgent(p, ctx)
 	if err != nil {
-		return unknown("The panel restarted during the webmail update and the installed version could not be read, so its result is not known.", err)
+		return unknown("The webmail update was interrupted (the panel restarted, or could not record its end on its agent) and the installed version could not be read, so its result is not known.", err)
 	}
 	if !check.Installed {
-		return unknown("The panel restarted during the webmail update and Roundcube was not found where CelikPanel installs it, so its result is not known.", nil)
+		return unknown("The webmail update was interrupted (the panel restarted, or could not record its end on its agent) and Roundcube was not found where CelikPanel installs it, so its result is not known.", nil)
 	}
 	result["from"] = check.Version
 	if check.Version != version {
 		result["outcome"] = webmailUpdateOutcomeInterrupted
 		return result, operationFailure("webmail_update_interrupted",
-			"The panel restarted during the webmail update; Roundcube was not updated.", nil)
+			"The webmail update was interrupted (the panel restarted, or could not record its end on its agent); Roundcube was not updated.", nil)
 	}
 	proof, err := readWebmailProofFromAgent(p, ctx)
 	if err != nil || !proof.Proved || proof.Version != version {
@@ -187,7 +188,7 @@ func (p *Panel) reconcileInterruptedWebmailUpdate(ctx context.Context, version s
 			err = errors.New(proof.Error)
 		}
 		result["reason"] = boundedWebmailReason(err.Error())
-		return unknown("Roundcube "+version+" is installed but webmail did not prove itself after the panel restarted; press Update again.", err)
+		return unknown("Roundcube "+version+" is installed but webmail did not prove itself after the update was interrupted; press Update again.", err)
 	}
 	result["success"], result["outcome"], result["proved"] = true, webmailUpdateOutcomeUpdated, true
 	return result, nil

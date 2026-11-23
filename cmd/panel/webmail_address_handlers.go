@@ -614,20 +614,21 @@ func (p *Panel) runWebmailAddressRemove(ctx context.Context, host string, remove
 }
 
 // reconcileInterruptedWebmailAddress decides, read only, what an operation
-// interrupted by a panel restart left: the server's own state decides and
-// nothing is started again by itself.
+// interrupted by a panel restart, or by a lost Agent contact the running
+// panel settles (D1), left: the server's own state decides and nothing is
+// started again by itself.
 func (p *Panel) reconcileInterruptedWebmailAddress(ctx context.Context, op serviceOperation) (serviceOperationResult, *serviceOperationFailure) {
 	host := op.PackageName
 	result := serviceOperationResult{"success": false, "host": host, "recovered": true}
 	status, err := readWebmailAddressStatusFromAgent(p, ctx, host, op.Kind == serviceOperationKindWebmailAddress)
 	if err != nil {
 		result["outcome"] = "unknown"
-		return result, operationFailure("webmail_address_unknown", "The panel restarted during the operation and the server's state could not be read; open the webmail address card again.", err)
+		return result, operationFailure("webmail_address_unknown", "The operation was interrupted (the panel restarted, or could not record its end on its agent) and the server's state could not be read; open the webmail address card again.", err)
 	}
 	if op.Kind == serviceOperationKindWebmailAddressRemove {
 		if status.Present {
 			result["outcome"] = "interrupted"
-			return result, operationFailure("webmail_address_interrupted", "The panel restarted before the address was removed; webmail still answers there. Press Remove again.", nil)
+			return result, operationFailure("webmail_address_interrupted", "The operation was interrupted before the address was removed; webmail still answers there. Press Remove again.", nil)
 		}
 		if current, ok := p.webmailAddress(ctx); ok && current.Host == host {
 			_ = p.clearWebmailAddress(ctx)
@@ -638,7 +639,7 @@ func (p *Panel) reconcileInterruptedWebmailAddress(ctx context.Context, op servi
 	if !status.Present || !status.Managed || !status.Proved {
 		result["outcome"] = "interrupted"
 		result["reason"] = boundedWebmailReason(status.ProofError)
-		return result, operationFailure("webmail_address_interrupted", "The panel restarted before webmail's address was proved; press Set up again.", nil)
+		return result, operationFailure("webmail_address_interrupted", "The operation was interrupted before webmail's address was proved; press Set up again.", nil)
 	}
 	if err := p.saveWebmailAddress(ctx, host); err != nil {
 		return result, operationFailure("webmail_address_not_recorded", "Webmail answers on its address, but the panel could not record it; press Set up again.", err)
