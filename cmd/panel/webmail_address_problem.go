@@ -44,6 +44,8 @@ func (p *Panel) webmailAddressProblems(ctx context.Context) []monitoringProblem 
 			Action: monitoringProblemAction{Kind: "open", To: "/components/roundcube"},
 		})
 	}
+	// alpha.145 (security): an entry with no address is webmail's local
+	// server (its Subject stays empty; the screens word it as such).
 	for _, open := range resp.Open {
 		kind := "webmail_address_kept"
 		actor := "server_owner"

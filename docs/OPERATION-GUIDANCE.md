@@ -11422,6 +11422,22 @@ Code: `cmd/panel/operation_step_routes.go`, `postgresql_public_access.go`,
 
 ### Corrections from the alpha.144 lab (alpha.145, 23 November 2026)
 
+- **Security: webmail's local server answers only CelikPanel's own checks.**
+  Its socket `/run/celikpanel-webmail.sock` is 0666 (nginx makes it so), so
+  every account of the server can connect to it (not the network). Until
+  alpha.144 it gave out every file of the Roundcube tree, with the linked
+  plugins and skins folders (dot-files, copies such as `.bak`, settings), and
+  ran every `.php` there. It now answers only `/webmail/` (Roundcube's entry
+  point, the only PHP), style sheets under `/webmail/skins/` and CelikPanel's
+  PHP check; everything else is not found. The Panel's readiness check and
+  the Agent's proof (the PHP check, the page and its style sheet) ask only
+  those. CelikPanel's earlier text is rewritten at the Agent's first start
+  after the update (configuration test, one reload; a failure puts the file
+  back and the start goes on); an owner's file is kept, CelikPanel's text lies
+  beside it as `celikpanel-webmail.conf.celikpanel-pending`, and Problems now
+  has the address line's variant with no address (who acts: the server
+  owner). The PHP check tells a caller which PHP version runs and which of
+  webmail's extensions are missing, nothing else.
 - **Webmail sends.** From the first release Roundcube's configuration handed
   mail to this server's submission service on 587 without encryption
   (`smtp_host 'localhost:587'`), and the service takes a login only with

@@ -141,3 +141,31 @@ test('fix round: a failed rewrite says restart, not hand edit; the literal lines
     assert.match(trScreens['services.mailProfiles.code.webmail_cannot_send'], /^Webmail /);
     assert.match(trScreens['services.mailProfiles.code.webmail_unverified'], /^Webmail /);
 });
+
+// alpha.145 (security): webmail's local server in an earlier form is a
+// variant of the address lines (no address), worded in both languages: any
+// account of the server, not the network; who acts; how it goes.
+test('security: the local server line is a variant of the address lines with its own words', () => {
+    const source = read('../src/components/ProblemsNow.tsx');
+    const body = /export function problemBodyKey[\s\S]*?\n}\n/.exec(source)?.[0] ?? '';
+    const problemBodyKey = new Function('MAIL_SIGNING_STATES', `return ${body.replace(/^export function problemBodyKey\(problem[^)]*\): TranslationKey/, 'function (problem)').replace(/ as TranslationKey/g, '')}`)([]);
+    const title = /export function problemTitleKey[\s\S]*?\n}\n/.exec(source)?.[0] ?? '';
+    const problemTitleKey = new Function(`return ${title.replace(/^export function problemTitleKey\(problem[^)]*\): TranslationKey/, 'function (problem)').replace(/ as TranslationKey/g, '')}`)();
+    const pending = '/etc/nginx/conf.d/celikpanel-webmail.conf.celikpanel-pending';
+    assert.equal(problemBodyKey({ kind: 'webmail_address_kept', subject: '', name: pending }), 'pnow.webmail_local_server.kept');
+    assert.equal(problemBodyKey({ kind: 'webmail_address_kept', subject: '', name: '/etc/nginx/conf.d/celikpanel-webmail.conf' }), 'pnow.webmail_local_server.kept_no_text');
+    assert.equal(problemBodyKey({ kind: 'webmail_address_refused', subject: '', name: '/etc/nginx/conf.d/x.conf' }), 'pnow.webmail_local_server.refused');
+    assert.equal(problemBodyKey({ kind: 'webmail_address_refused', subject: '', name: '' }), 'pnow.webmail_local_server.refused_unnamed');
+    assert.equal(problemTitleKey({ kind: 'webmail_address_kept', subject: '' }), 'pnow.webmail_local_server.title');
+    // An address keeps its own words.
+    assert.equal(problemBodyKey({ kind: 'webmail_address_kept', subject: 'webmail.example.test', name: pending }), 'pnow.webmail_address_kept.body');
+    assert.equal(problemTitleKey({ kind: 'webmail_address_kept', subject: 'webmail.example.test' }), 'pnow.webmail_address_kept.title');
+    for (const [catalogue, network] of [[enScreens, /not from the network/], [trScreens, /ağdan değil/]]) {
+        assert.ok(catalogue['pnow.webmail_local_server.title']);
+        for (const key of ['kept', 'kept_no_text', 'refused', 'refused_unnamed']) {
+            assert.match(catalogue[`pnow.webmail_local_server.${key}`], network, key);
+        }
+        assert.match(catalogue['pnow.webmail_local_server.kept'], /\{other\}.*sudo nginx -t/);
+        assert.match(catalogue['pnow.webmail_local_server.refused_unnamed'], /sudo nginx -t/);
+    }
+});

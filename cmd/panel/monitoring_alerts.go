@@ -585,6 +585,11 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "webmail_address_kept":
 		// alpha.144: item.subject is the address, item.name CelikPanel's text
 		// beside it, or the owner's file when no text lies beside it.
+		// alpha.145 (security): no subject: webmail's local server.
+		if item.subject == "" {
+			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: its web server file was changed by hand and kept. The server owner takes CelikPanel's text from %s (or its rules) and reloads nginx.", item.name),
+				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini (ya da kurallarını) alır ve nginx'i yeniden yükler.", item.name)
+		}
 		if !strings.HasSuffix(item.name, ".celikpanel-pending") {
 			return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: its web server file %s was changed by hand and kept. To take CelikPanel's text, the server owner moves that file away and presses Set up again for the address on Roundcube's page.", subject, item.name),
 				fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: %s web sunucusu dosyası elle değiştirilmiş ve korunmuş. CelikPanel'in metnini almak için sunucu sahibi o dosyayı kaldırır ve Roundcube sayfasında adres için Yeniden kur'a basar.", subject, item.name)
@@ -593,6 +598,10 @@ func alertLine(item pendingAlertMail) (string, string) {
 			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini alır (ya da kurallarını ekler) ve nginx'i yeniden yükler.", subject, item.name)
 	case "webmail_address_refused":
 		// alpha.144: item.name is the file nginx's test named ("" when none).
+		if item.subject == "" {
+			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: nginx's configuration test failed (%s), so its new text was put back. Correct that file; CelikPanel writes the new text at its next start.", item.name),
+				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", item.name)
+		}
 		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: nginx's configuration test failed (%s), so its new text was put back. Correct that file; CelikPanel writes the new text at its next start.", subject, item.name),
 			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", subject, item.name)
 	case "webmail_cannot_send":

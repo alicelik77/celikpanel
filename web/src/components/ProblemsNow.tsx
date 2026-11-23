@@ -117,6 +117,9 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
         return `pnow.${problem.kind}.body_one` as TranslationKey;
     }
     // alpha.144: nginx's test named no file.
+    // alpha.145 (security): no address: webmail's local server.
+    if (problem.kind === 'webmail_address_refused' && !problem.subject) return (problem.name ? 'pnow.webmail_local_server.refused' : 'pnow.webmail_local_server.refused_unnamed') as TranslationKey;
+    if (problem.kind === 'webmail_address_kept' && !problem.subject) return ((problem.name ?? '').endsWith('.celikpanel-pending') ? 'pnow.webmail_local_server.kept' : 'pnow.webmail_local_server.kept_no_text') as TranslationKey;
     if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
     // CelikPanel's text is named only when it lies beside the owner's file.
     if (problem.kind === 'webmail_address_kept' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_address_kept.body_no_text' as TranslationKey;
@@ -129,7 +132,9 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
 }
 
 /** The catalogue key of a problem's title (22 Nov 2026: one signing state signs nothing). */
-export function problemTitleKey(problem: { kind: string; name?: string; value?: number }): TranslationKey {
+export function problemTitleKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
+    // alpha.145 (security): no address: webmail's local server.
+    if ((problem.kind === 'webmail_address_kept' || problem.kind === 'webmail_address_refused') && !problem.subject) return 'pnow.webmail_local_server.title' as TranslationKey;
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
     // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
     if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {

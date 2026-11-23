@@ -1464,6 +1464,10 @@ func (a *Agent) WebmailAddressFormsV1(_ *transport.WebmailAddressFormsRequest, r
 	*resp = transport.WebmailAddressFormsResponse{Open: []transport.WebmailAddressForm{}}
 	// alpha.145: webmail's configuration that still cannot send.
 	resp.Sending, resp.SendingReason, resp.SendingFile = roundcubeSendingForm()
+	// alpha.145 (security): webmail's local server in an earlier form.
+	if form, open := webmailLocalServerForm(); open {
+		resp.Open = append(resp.Open, form)
+	}
 	for _, host := range webmailAddressHosts() {
 		path := webmailAddressConfPath(host)
 		content, err := os.ReadFile(path)

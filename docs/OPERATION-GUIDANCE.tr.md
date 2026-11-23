@@ -11288,6 +11288,23 @@ kanıtladığı ve neyi denetlemediği için alpha.144 sürüm notlarının
 
 ### alpha.144 laboratuvarının düzeltmeleri (alpha.145, 23 Kasım 2026)
 
+- **Güvenlik: web postasının yerel sunucusu yalnız CelikPanel'in kendi
+  denetimlerini yanıtlar.** `/run/celikpanel-webmail.sock` soketi 0666'dır
+  (nginx öyle açar); bu yüzden sunucudaki her hesap ona bağlanabilir (ağ
+  değil). alpha.144'e dek Roundcube ağacının bütün dosyalarını, bağlı eklenti
+  ve tema klasörleriyle (nokta dosyaları, `.bak` gibi kopyalar, ayar dosyaları)
+  veriyor ve oradaki her `.php` dosyasını çalıştırıyordu. Artık yalnız
+  `/webmail/` (Roundcube'un giriş noktası, çalışan tek PHP), `/webmail/skins/`
+  altındaki stil dosyaları ve CelikPanel'in PHP denetimi yanıt verir; gerisi
+  bulunamaz. Panel'in hazırlık denetimi ve Agent'ın kanıtı (PHP denetimi,
+  sayfa ve stil dosyası) yalnız bunları sorar. CelikPanel'in önceki metni
+  güncellemeden sonra Agent'ın ilk açılışında yeniden yazılır (yapılandırma
+  denetimi, tek yeniden yükleme; hata olursa dosya geri konur ve açılış
+  sürer); sahibin dosyası korunur, CelikPanel'in metni yanına
+  `celikpanel-webmail.conf.celikpanel-pending` olarak konur ve Şu anki
+  sorunlar'da adres satırının adressiz biçimi çıkar (kim yapar: sunucu
+  sahibi). PHP denetimi soran kişiye yalnız hangi PHP sürümünün çalıştığını
+  ve web postasının hangi uzantılarının eksik olduğunu söyler.
 - **Web postası gönderir.** İlk sürümden beri Roundcube yapılandırması postayı
   bu sunucunun 587'deki gönderim hizmetine şifresiz veriyordu
   (`smtp_host 'localhost:587'`); hizmet ise girişi yalnız şifreli bağlantıda

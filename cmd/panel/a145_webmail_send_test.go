@@ -234,3 +234,33 @@ func TestA145AliasWaitIsSettledWhenThePendingPublicationCompletes(t *testing.T) 
 		t.Fatalf("publications: %+v", syncs)
 	}
 }
+
+// alpha.145 (security): webmail's local server in an earlier form is a
+// variant of the address lines (no address): kept by the owner, or its
+// rewrite put back; the alert mail says it.
+func TestA145LocalServerInItsEarlierFormIsAProblemUntilItIsNot(t *testing.T) {
+	agent := &a144WebmailFormsAgent{open: []transport.WebmailAddressForm{
+		{Host: "", State: "owner_edited", File: "/etc/nginx/conf.d/celikpanel-webmail.conf.celikpanel-pending"},
+	}}
+	p := newDNSPanelForTest(t)
+	p.pkgFamilyVal = "apt"
+	p.agentClient = a144AgentClient(t, agent)
+	problems := p.webmailAddressProblems(context.Background())
+	if len(problems) != 1 || problems[0].Kind != "webmail_address_kept" || problems[0].Subject != "" || problems[0].Actor != "server_owner" ||
+		problems[0].Key != "webmail_address_kept:" || !strings.HasSuffix(problems[0].Name, ".celikpanel-pending") {
+		t.Fatalf("problems: %+v", problems)
+	}
+	for _, item := range []pendingAlertMail{
+		{kind: "webmail_address_kept", name: "/etc/nginx/conf.d/celikpanel-webmail.conf.celikpanel-pending"},
+		{kind: "webmail_address_refused", name: "/etc/nginx/conf.d/broken.conf"},
+	} {
+		en, tr := alertLine(item)
+		if !strings.Contains(en, "local server") || !strings.Contains(tr, "yerel sunucusu") || !strings.Contains(en, item.name) || strings.Contains(en, "address") {
+			t.Fatalf("alert mail: %q / %q", en, tr)
+		}
+	}
+	agent.open = nil
+	if problems := p.webmailAddressProblems(context.Background()); len(problems) != 0 {
+		t.Fatalf("still listed: %+v", problems)
+	}
+}

@@ -767,6 +767,12 @@ func main() {
 		for _, line := range reconcileWebmailAddressesAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
 			log.Printf("[webmail] address %s", line)
 		}
+		// alpha.145 (security): webmail's local server answers only
+		// CelikPanel's own checks (one more configuration test and reload
+		// when its file changes; a failure puts it back and the start goes on).
+		for _, line := range reconcileWebmailLocalServerAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
+			log.Printf("[webmail] local server %s", line)
+		}
 		cancelWebmail()
 	}
 	// alpha.145: webmail's configuration in CelikPanel's earlier text could

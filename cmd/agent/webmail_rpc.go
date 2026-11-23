@@ -1001,7 +1001,10 @@ server {
 `, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket)
 }
 
-func renderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
+// alpha144RenderWebmailNginxConfig is the form alpha.104 to alpha.144 wrote
+// (with CelikPanel's PHP check), still accepted as CelikPanel's own: it gave
+// out every file of the Roundcube tree as it is and ran every .php in it.
+func alpha144RenderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
 	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
 # The panel reverse-proxies /webmail/ here; Roundcube's own login is the auth.
 server {
@@ -1024,6 +1027,59 @@ server {
 %s}
 `, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket, phpToolCheckBlock(phpToolWebmail, fpmSocket))
 }
+
+// renderWebmailNginxConfig is webmail's local server on its Unix socket.
+// alpha.145 (security): nginx makes the socket 0666 under /run, so every
+// account of this server can connect to it. Until alpha.144 it gave out every
+// file of the Roundcube tree (with the linked plugins and skins folders:
+// dot-files, copies, settings) and ran every .php in it. Nothing reaches
+// webmail through it but CelikPanel itself: the Panel's readiness check
+// (GET /webmail/), and the Agent's proof (CelikPanel's PHP check, GET
+// /webmail/ and the style sheet that page names). It now answers exactly
+// those: /webmail/ (Roundcube's entry point, the only PHP), style sheets
+// under /webmail/skins/ and the PHP check; everything else is not found.
+// Webmail's own address (webmail_address.go) is how people use webmail.
+func renderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
+	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
+# It answers only what CelikPanel asks: /webmail/, style sheets under
+# /webmail/skins/ and CelikPanel's PHP check; everything else is not found.
+server {
+    listen unix:%s;
+    server_name _;
+    client_max_body_size 25m;
+
+    location /webmail/ {
+        alias %s/;
+        return 404;
+    }
+
+    location = /webmail/ {
+        alias %s/;
+        index index.php;
+    }
+
+    # Roundcube's entry point is the only PHP that runs here.
+    location = /webmail/index.php {
+        alias %s/index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $request_filename;
+        fastcgi_pass unix:%s;
+    }
+
+    location ~ ^/webmail/(skins/(?:[\w-][\w.-]*/)+[\w-][\w.-]*\.css)$ {
+        alias %s/$1;
+    }
+
+    location / {
+        return 404;
+    }
+%s}
+`, webmailSocket, roundcubeRoot, roundcubeRoot, roundcubeRoot, fpmSocket, roundcubeRoot, phpToolCheckBlock(phpToolWebmail, fpmSocket))
+}
+
+// webmailLocalServerMarker is in every text of the current form: an owner
+// who took CelikPanel's text (and added to it) is not named.
+const webmailLocalServerMarker = "location = /webmail/index.php {"
 
 type ConfigureWebmailResponse = transport.ConfigureWebmailResponse
 
