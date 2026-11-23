@@ -926,6 +926,50 @@
         "says": "Now the door answers only what CelikPanel"
       }
     ],
+    "sep.tools": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:539",
+        "says": "Each tool on its own account."
+      },
+      {
+        "cite": "docs/TENANT-ISOLATION.md:559",
+        "says": "system that refuses access-control lists stops the move"
+      }
+    ],
+    "sep.tools.since": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:522",
+        "says": "sandbox slice R1, pull request #348"
+      }
+    ],
+    "sep.at": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:600",
+        "says": "is closed to website accounts: where the at package is installed"
+      },
+      {
+        "cite": "docs/TENANT-ISOLATION.md:605",
+        "says": "Lines not made in CelikPanel are marked"
+      }
+    ],
+    "sep.at.since": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:522",
+        "says": "sandbox slice R1, pull request #348"
+      }
+    ],
+    "sep.stockpool": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:563",
+        "says": "of each PHP version is turned off when it is"
+      }
+    ],
+    "sep.stockpool.since": [
+      {
+        "cite": "docs/TENANT-ISOLATION.md:522",
+        "says": "sandbox slice R1, pull request #348"
+      }
+    ],
     "sep.yes.notarch": [
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233",

@@ -473,5 +473,11 @@
   "changelog.kind.removed": "Removed",
   "problems.note": "Note:",
   "sep.webmaildoor": "Webmail’s local door on the server answers only CelikPanel’s own checks, not other accounts asking for Roundcube’s files",
-  "sep.webmaildoor.since": "alpha.145"
+  "sep.webmaildoor.since": "alpha.145",
+  "sep.tools": "phpMyAdmin, phpPgAdmin and webmail run under their own system accounts, not as the web server’s account, which can read every site (webmail needs a file system with access-control lists; without them it stays on the web server’s account and the panel says so)",
+  "sep.tools.since": "alpha.147",
+  "sep.at": "Site accounts cannot schedule jobs with at (an at.allow the owner wrote is kept, and the site accounts it names are shown to the administrator); crontab lines added outside the panel are marked for the administrator",
+  "sep.at.since": "alpha.147",
+  "sep.stockpool": "The distribution’s shared PHP pool, which runs as the web server’s account, is turned off where nothing uses it",
+  "sep.stockpool.since": "alpha.147"
 }
