@@ -60,7 +60,9 @@ SUCCESS_MARKER = "CELIKPANEL_DOWNLOAD_PORTAL_PUBLISHED"
 # files, the bootstrap, the key and security.txt stay protected.
 SITE_CONTENT_FILES = frozenset({
     "index.html", "pricing.html", "download.html", "systems.html", "releases.html", "technical.html",
+    "changelog.html", "problems.html",
     "tr/index.html", "tr/fiyat.html", "tr/indir.html", "tr/sistemler.html", "tr/surumler.html",
+    "tr/degisiklikler.html", "tr/sorunlar.html",
     "assets/public.css", "assets/home.css", "assets/pages.css", "assets/public.js", "assets/boot.js", "assets/site.css",
     "account/index.php",
 })

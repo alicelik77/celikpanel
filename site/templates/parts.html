@@ -27,6 +27,7 @@
 <li><a href="{{link "download"}}">{{t "nav.download"}}</a></li>
 <li><a href="{{link "pricing"}}">{{t "nav.pricing"}}</a></li>
 <li><a href="{{link "releases"}}">{{t "nav.releases"}}</a></li>
+<li><a href="{{link "changelog"}}">{{t "footer.changelog"}}</a></li>
 <li><a href="{{guide ""}}">{{t "footer.guide"}}</a></li>
 </ul></nav>
 <nav aria-labelledby="f-account"><h2 id="f-account">{{t "footer.account"}}</h2><ul>
@@ -36,6 +37,7 @@
 </ul></nav>
 <nav aria-labelledby="f-help"><h2 id="f-help">{{t "footer.help"}}</h2><ul>
 <li><a href="{{feedback "security"}}">{{t "footer.security"}}</a></li>
+<li><a href="{{link "problems"}}">{{t "footer.problems"}}</a></li>
 <li><a href="{{feedback "bug"}}">{{t "footer.bug"}}</a></li>
 <li><a href="{{feedback "feature"}}">{{t "footer.feature"}}</a></li>
 </ul></nav>
@@ -45,7 +47,7 @@
 
 {{/* A part's side heading: number, title and one plain sentence. */}}
 {{define "head" -}}
-<header><span class="num">{{.Num}}</span><h2 id="{{.ID}}">{{.Title}}</h2>{{if .Text}}<p>{{.Text}}</p>{{end}}</header>
+<header>{{if .Num}}<span class="num">{{.Num}}</span>{{end}}<h2 id="{{.ID}}">{{.Title}}</h2>{{if .Text}}<p>{{.Text}}</p>{{end}}</header>
 {{- end}}
 
 {{/* Screen frame. A screen is one name in site.go's shots; its captures are

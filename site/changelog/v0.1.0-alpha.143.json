@@ -1,0 +1,52 @@
+{
+  "version": "v0.1.0-alpha.143",
+  "published": "2026-11-22",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md",
+  "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:5",
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "Outgoing mail is signed only for the sender’s own domain, never for another customer’s.",
+        "tr": "Giden posta yalnız gönderenin kendi alan adı için imzalanır, hiçbir zaman başka bir müşterininki için değil."
+      },
+      "case": "CP-2026-5",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41"
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "PostgreSQL databases made before alpha.141 are closed to other accounts once no other account has used them for a day.",
+        "tr": "alpha.141’den önce oluşturulan PostgreSQL veritabanları, başka bir hesap bir gün boyunca kullanmadığında başka hesaplara kapatılır."
+      },
+      "case": "CP-2026-6",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50"
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "A customer whose domain lies under one of the server’s own names can add subdomains and aliases inside it again.",
+        "tr": "Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adının içinde yeniden alt alan adı ve takma ad ekleyebilir."
+      },
+      "case": "CP-2026-3",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:208"
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "A Node.js site whose application had failed can be deleted in one press.",
+        "tr": "Uygulaması başarısız olmuş bir Node.js sitesi tek basışta silinebilir."
+      },
+      "case": "CP-2026-4",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223"
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "An additional out-of-office address must be a forwarder the panel knows.",
+        "tr": "Ek bir otomatik yanıt adresi, panelin bildiği bir yönlendirme olmalıdır."
+      },
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:237"
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "about": "Known problems shown on problems.html / tr/sorunlar.html. One case per problem: our number CP-<year>-<n> (never reused), the day it was first stated, its state (looking, accepted, fixed, not-defect), the release that fixed it, a one-sentence summary in our own words in both languages, what to do meanwhile or why it is not a defect, and the release-notes or lab lines that prove it. Never a reporter's name, server, domain or own words. A security problem is added only after the release that closes it is published. site.TestProblemsAndChangelog checks every field.",
+  "cases": [
+    {
+      "id": "CP-2026-1",
+      "opened": "2026-11-20",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.141",
+      "summary": {
+        "en": "SQL from a backup, a copy or an import ran with the database server administrator’s rights.",
+        "tr": "Yedekten, kopyadan ya da içe aktarmadan gelen SQL, veritabanı sunucusunun yönetici yetkisiyle çalışıyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28"]
+    },
+    {
+      "id": "CP-2026-2",
+      "opened": "2026-11-21",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.142",
+      "summary": {
+        "en": "A customer or reseller could take a name, a site account, a server port or files that belong to another account.",
+        "tr": "Bir müşteri ya da bayi, başka bir hesaba ait bir adı, site hesabını, sunucu portunu ya da dosyaları alabiliyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32", "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53"]
+    },
+    {
+      "id": "CP-2026-3",
+      "opened": "2026-11-21",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "A customer whose domain lies under one of the server’s own names could not add a subdomain of it.",
+        "tr": "Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adına alt alan adı ekleyemiyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.142.md:236", "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:208"]
+    },
+    {
+      "id": "CP-2026-4",
+      "opened": "2026-11-21",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "A Node.js site whose application had failed could not be deleted.",
+        "tr": "Uygulaması başarısız olmuş bir Node.js sitesi silinemiyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.142.md:247", "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223"]
+    },
+    {
+      "id": "CP-2026-5",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "Outgoing mail could be signed with another customer’s domain.",
+        "tr": "Giden posta başka bir müşterinin alan adıyla imzalanabiliyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41"]
+    },
+    {
+      "id": "CP-2026-6",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "PostgreSQL databases made before alpha.141 were open to every account’s sign-in.",
+        "tr": "alpha.141’den önce oluşturulan PostgreSQL veritabanları her hesabın girişine açıktı."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50"]
+    },
+    {
+      "id": "CP-2026-7",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "An alias inside a customer’s own domain got no DNS record.",
+        "tr": "Bir müşterinin kendi alan adının içindeki takma ad DNS kaydı almıyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:434", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126"]
+    },
+    {
+      "id": "CP-2026-8",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Leaving the page while a mailbox was being created could leave the mailbox without its record, and creating it again failed.",
+        "tr": "Posta kutusu oluşturulurken sayfadan ayrılmak kutuyu kaydı olmadan bırakabiliyor, yeniden oluşturmak da başarısız oluyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:449", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:66"]
+    },
+    {
+      "id": "CP-2026-9",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Leaving the PostgreSQL page while a database was being closed to other accounts left its result shown as not confirmed.",
+        "tr": "Bir veritabanı başka hesaplara kapatılırken PostgreSQL sayfasından ayrılmak, sonucunu onaylanmamış olarak gösteriyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:437", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83"]
+    },
+    {
+      "id": "CP-2026-10",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Some alias and certificate refusals were shown in English on the Turkish page.",
+        "tr": "Bazı takma ad ve sertifika retleri Türkçe sayfada İngilizce gösteriliyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.143.md:446", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:93"]
+    },
+    {
+      "id": "CP-2026-11",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Webmail’s own address gave out files of its plugins that are not part of its pages.",
+        "tr": "Web postanın kendi adresi, eklentilerinin sayfalarına ait olmayan dosyalarını veriyordu."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31"]
+    },
+    {
+      "id": "CP-2026-12",
+      "opened": "2026-11-22",
+      "state": "accepted",
+      "summary": {
+        "en": "Webmail cannot send mail; reading mail, attachments and settings work.",
+        "tr": "Web posta e-posta gönderemiyor; okuma, ekler ve ayarlar çalışıyor."
+      },
+      "meanwhile": {
+        "en": "Send from a mail program (port 587 or 465, with the mailbox’s full address and its password).",
+        "tr": "Bir posta programından gönderin (587 ya da 465 numaralı port, posta kutusunun tam adresi ve parolasıyla)."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:180", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:332", "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:340"]
+    },
+    {
+      "id": "CP-2026-13",
+      "opened": "2026-11-22",
+      "state": "accepted",
+      "summary": {
+        "en": "After a backup DNS server (an optional second server) comes back, an alias can keep saying “waiting to be published” until the next hourly round, although it already answers.",
+        "tr": "Yedek DNS sunucusu (isteğe bağlı ikinci sunucu) geri geldikten sonra bir takma ad, zaten cevap verdiği hâlde bir sonraki saatlik tura kadar “yayımlanmayı bekliyor” diyebilir."
+      },
+      "meanwhile": {
+        "en": "Nothing to do: the hourly round clears the row.",
+        "tr": "Yapılacak bir şey yok: saatlik tur satırı temizler."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:342"]
+    },
+    {
+      "id": "CP-2026-14",
+      "opened": "2026-11-22",
+      "state": "accepted",
+      "summary": {
+        "en": "The window of a failed PostgreSQL close keeps its in-progress title above “Not completed”.",
+        "tr": "Başarısız bir PostgreSQL kapatmasının penceresi, “Tamamlanmadı” yazısının üstünde sürmekte olan başlığını korur."
+      },
+      "meanwhile": {
+        "en": "Read the steps and the reason below the title; they are right.",
+        "tr": "Başlığın altındaki adımları ve nedeni okuyun; onlar doğrudur."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:347"]
+    },
+    {
+      "id": "CP-2026-15",
+      "opened": "2026-11-22",
+      "state": "accepted",
+      "summary": {
+        "en": "Some changes still run on the browser’s request: if you leave the page while the server works, the change can finish without the panel’s record, or only its answer is lost.",
+        "tr": "Bazı değişiklikler hâlâ tarayıcının isteğiyle çalışır: sunucu çalışırken sayfadan ayrılırsanız değişiklik panelin kaydı olmadan bitebilir ya da yalnız cevabı kaybolur."
+      },
+      "meanwhile": {
+        "en": "Stay on the page until the change says it has finished.",
+        "tr": "Değişiklik bittiğini söyleyene kadar sayfada kalın."
+      },
+      "sources": ["docs/RELEASE-NOTES-v0.1.0-alpha.144.md:157"]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "version": "v0.1.0-alpha.142",
+  "published": "2026-11-21",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md",
+  "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:5",
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "No customer or reseller can take another account’s domain name, site account, a port of the server’s own services, or its files through a link.",
+        "tr": "Hiçbir müşteri ya da bayi başka bir hesabın alan adını, site hesabını, sunucunun kendi hizmetlerinin bir portunu ya da bir bağlantı üzerinden dosyalarını alamaz."
+      },
+      "case": "CP-2026-2",
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32"
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "Each site’s configuration files are no longer readable by every account on the server.",
+        "tr": "Her sitenin yapılandırma dosyaları artık sunucudaki her hesap tarafından okunamaz."
+      },
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:57"
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "The name and port checks run in the panel: a name or port set by hand on the server is not checked.",
+        "tr": "Ad ve port denetimleri panelde çalışır: sunucuda elle verilen bir ad ya da port denetlenmez."
+      },
+      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:146"
+    }
+  ]
+}

@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-//go:embed templates/*.html text/*.json assets/*
+//go:embed templates/*.html text/*.json assets/* changelog/*.json problems.json
 var sources embed.FS
 
 // The languages, in the order the language switch shows them.
@@ -37,6 +37,8 @@ var pages = []struct {
 	{"download", map[string]string{"en": "download.html", "tr": "tr/indir.html"}},
 	{"systems", map[string]string{"en": "systems.html", "tr": "tr/sistemler.html"}},
 	{"releases", map[string]string{"en": "releases.html", "tr": "tr/surumler.html"}},
+	{"changelog", map[string]string{"en": "changelog.html", "tr": "tr/degisiklikler.html"}},
+	{"problems", map[string]string{"en": "problems.html", "tr": "tr/sorunlar.html"}},
 }
 
 // Old addresses that are now pointers to a section of a new page.
@@ -149,9 +151,11 @@ func (v view) href(target string) string {
 
 // renderer renders every page and records the catalogue keys it used.
 type renderer struct {
-	text    map[string]catalogue
-	used    map[string]bool
-	preview bool
+	text     map[string]catalogue
+	used     map[string]bool
+	preview  bool
+	releases []changelogRelease
+	cases    []problemCase
 }
 
 var allowedMarkup = regexp.MustCompile(`</?(strong|em|code|br|abbr|small)( title="[^"<>]*")?>`)
@@ -165,7 +169,7 @@ func (r *renderer) funcs(v view) template.FuncMap {
 		r.used[key] = true
 		return value, nil
 	}
-	return template.FuncMap{
+	funcs := template.FuncMap{
 		"t": lookup,
 		// th returns reviewed catalogue markup; only keys ending in "_html"
 		// may carry it, and only the few inline elements allowedMarkup names.
@@ -275,6 +279,10 @@ func (r *renderer) funcs(v view) template.FuncMap {
 			return "https://celikpanel.net/" + strings.TrimSuffix(p, "index.html")
 		},
 	}
+	for name, fn := range r.recordFuncs(v, lookup) {
+		funcs[name] = fn
+	}
+	return funcs
 }
 
 func (r *renderer) base() (*template.Template, error) {
@@ -328,7 +336,11 @@ func render(preview bool) (map[string][]byte, map[string]bool, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	r := &renderer{text: text, used: map[string]bool{}, preview: preview}
+	releases, cases, err := loadRecords()
+	if err != nil {
+		return nil, nil, err
+	}
+	r := &renderer{text: text, used: map[string]bool{}, preview: preview, releases: releases, cases: cases}
 	files := map[string][]byte{}
 	for _, page := range pages {
 		for _, lang := range languages {

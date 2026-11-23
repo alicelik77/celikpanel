@@ -1,0 +1,67 @@
+{{define "lead" -}}
+<div class="lead">
+<div class="wrap">
+<h1>{{t "problems.h1"}}</h1>
+<p class="def">{{t "problems.def"}}</p>
+<div class="actions">
+<a class="btn primary" href="#{{t "problems.report.id"}}">{{t "problems.report.button"}}</a>
+<a class="btn plain" href="{{link "changelog"}}">{{t "problems.changelog"}}</a>
+</div>
+</div>
+</div>
+{{- end}}
+
+{{define "main" -}}
+<section class="part" aria-labelledby="h-cases">
+{{template "head" (dict "Num" "1" "ID" "h-cases" "Title" (t "problems.list.title") "Text" (t "problems.list.text"))}}
+<div>
+<div class="table">
+<table class="stack">
+<caption>{{t "common.table"}} 1 · {{t "problems.list.caption"}}</caption>
+<thead><tr><th scope="col">{{t "problems.col.id"}}</th><th scope="col">{{t "problems.col.problem"}}</th><th scope="col">{{t "problems.col.state"}}</th></tr></thead>
+<tbody>
+{{- $until := t "problems.meanwhile"}}{{$why := t "problems.reason"}}
+{{- range $c := cases}}
+<tr id="{{$c.ID}}"><td class="v" data-k="{{t "problems.col.id"}}">{{$c.ID}}</td><td data-k="{{t "problems.col.problem"}}">{{$c.Summary}}{{if $c.Meanwhile}}<br><small>{{$until}} {{$c.Meanwhile}}</small>{{end}}{{if $c.Reason}}<br><small>{{$why}} {{$c.Reason}}</small>{{end}}</td><td data-k="{{t "problems.col.state"}}"><span class="tag {{if eq $c.Class "fixed"}}ok{{else if eq $c.Class "accepted"}}warn{{else}}no{{end}}">{{$c.State}}</span>{{if $c.FixedIn}}<br><a class="mono nowrap" href="{{$c.FixedHref}}">{{$c.FixedIn}}</a>{{end}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+<p class="note">{{t "problems.list.note"}}</p>
+</div>
+</section>
+
+<section class="part" id="{{t "problems.report.id"}}" aria-labelledby="h-report">
+{{template "head" (dict "Num" "2" "ID" "h-report" "Title" (t "problems.report.title") "Text" (t "problems.report.text"))}}
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>{{t "common.table"}} 2 · {{t "problems.report.caption"}}</caption>
+<tbody>
+<tr><th scope="row">{{t "problems.report.security"}}</th><td>{{t "problems.report.security.text"}} <a href="{{feedback "security"}}">{{t "problems.report.security.link"}}</a></td></tr>
+<tr><th scope="row">{{t "problems.report.other"}}</th><td>{{t "problems.report.other.text"}} <a href="{{feedback "bug"}}">{{t "problems.report.other.link"}}</a></td></tr>
+{{- range $k := (list "include" "never" "next" "form")}}
+<tr><th scope="row">{{t (print "problems.report." $k)}}</th><td>{{t (print "problems.report." $k ".text")}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-states">
+{{template "head" (dict "Num" "3" "ID" "h-states" "Title" (t "problems.states.title") "Text" "")}}
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>{{t "common.table"}} 3 · {{t "problems.states.caption"}}</caption>
+<tbody>
+{{- range $k := (list "looking" "accepted" "fixed" "not-defect")}}
+<tr><th scope="row">{{t (print "problems.state." $k)}}</th><td>{{t (print "problems.states." $k)}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+</div>
+</section>
+{{- end}}

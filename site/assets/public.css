@@ -93,6 +93,8 @@ table{width:100%;border-collapse:collapse;font-size:var(--t-table);line-height:1
 caption{caption-side:top;text-align:left;font:600 13px/1.4 var(--mono);color:var(--ink-2);padding-bottom:8px}
 th,td{text-align:left;vertical-align:top;padding:9px 18px 8px 0;border-bottom:1px solid var(--hair)}
 th.n{width:4.5em}
+td small{color:var(--ink-2);font-size:var(--t-small)}
+.nowrap{white-space:nowrap}
 table.kv tbody th{width:24%}
 thead th{font:600 var(--t-label)/1.4 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);border-bottom:1px solid var(--ink)}
 tbody th{font-weight:600}
