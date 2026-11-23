@@ -30,7 +30,7 @@ else
     printf '%s\n' 'PHP comparison tests: off (set CELIKPANEL_MEMBERSHIP_PHP=php to run them)'
 fi
 go test -count=1 -v ./internal/membership ./cmd/membership ./internal/payment ./internal/licensing 2>&1 \
-    | tee "$work/go-test.log" | { grep -E '^(--- FAIL|FAIL|ok|PASS|panic|\s+[a-z_]+\.go:[0-9]+:)|SKIP: TestPHP' || true; }
+    | tee "$work/go-test.log" | { grep -E '^(--- FAIL|FAIL|ok|PASS|panic|\s+[a-z_]+\.go:[0-9]+:)|^--- PASS: TestPHP|SKIP: TestPHP' || true; }
 grep -qE '^(--- FAIL|FAIL)' "$work/go-test.log" && exit 1
 if [[ -n "${CELIKPANEL_MEMBERSHIP_PHP:-}" ]] && grep -qE -- '--- SKIP: TestPHP' "$work/go-test.log"; then
     printf '%s\n' 'A PHP comparison test was skipped although PHP was given.' >&2
