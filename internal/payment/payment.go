@@ -156,6 +156,16 @@ type Checkout struct {
 	// FirstChargeAt is the licence end, where a subscription's first charge falls; required with
 	// AutomaticRenewal (the year already paid is not charged again).
 	FirstChargeAt time.Time
+	// ExpiresAt is when the checkout stops taking payment (CelikPanel, S2 review 7): the order's
+	// own end. Zero leaves the provider's default.
+	ExpiresAt time.Time
+}
+
+// Sessions is a provider whose checkout can be read again and ended (Stripe's Checkout
+// Sessions).
+type Sessions interface {
+	Session(ctx context.Context, credentials Credentials, reference string) (CheckoutSession, error)
+	ExpireSession(ctx context.Context, credentials Credentials, reference string) error
 }
 
 // CheckoutStart is the provider's answer: where to send the payer, or -- for the manual provider
@@ -263,6 +273,9 @@ const (
 	// OutcomePartlyRefunded: part of the payment was given back (a Dashboard refund). Never
 	// "paid", never "refunded": D-047's draft has no partial refunds, so the operator decides.
 	OutcomePartlyRefunded Outcome = "partly_refunded"
+	// OutcomeReversed (CelikPanel, S2 review 1): the payer's bank won a dispute and took the money
+	// back. Applied like a full refund.
+	OutcomeReversed Outcome = "reversed"
 	// OutcomeNothingCharged: a $0 set-up invoice; nothing to apply.
 	OutcomeNothingCharged Outcome = "nothing_charged"
 	// OutcomeSetUp: a subscription is in place; nothing was charged (subscription set-up only).
@@ -293,6 +306,9 @@ type Fact struct {
 	Currency      string
 	RefundedMinor int64
 	Disputed      bool
+	// DisputeStatus is the provider's status of a dispute on the payment (Stripe: needs_response,
+	// under_review, won, lost, ...); empty when there is none.
+	DisputeStatus string
 	PaymentIntent string
 	Subscription  string
 	Customer      string

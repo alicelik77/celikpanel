@@ -65,6 +65,8 @@ const (
 	stripeTolerance = 5 * time.Minute
 	// CelikPanel: Stripe requires a subscription's trial end at least two days ahead (VERIFY V4).
 	stripeMinimumFirstCharge = 48 * time.Hour
+	// StripeMinimumSession: a Checkout Session must stay open at least this long (expires_at).
+	StripeMinimumSession = 30 * time.Minute
 )
 
 // Stripe is the Stripe provider. The zero value talks to api.stripe.com; tests set BaseURL to a
@@ -249,6 +251,17 @@ func (s *Stripe) StartCheckout(ctx context.Context, credentials Credentials, che
 	form.Set("line_items[0][price_data][product_data][name]", productName(checkout.Language))
 	form.Set("metadata[order]", checkout.Order)
 	form.Set("metadata[license_id]", checkout.LicenseID)
+	// CelikPanel (S2 review, 8): the payer pays the order's amount in the order's currency;
+	// Stripe's local-currency presentment (Adaptive Pricing) is switched off (to verify, V14).
+	form.Set("adaptive_pricing[enabled]", "false")
+	// CelikPanel (S2 review, 7): the session ends with the order. Stripe accepts 30 minutes to
+	// 24 hours from creation (to verify, V15).
+	if !checkout.ExpiresAt.IsZero() {
+		if left := checkout.ExpiresAt.Sub(s.now()); left < StripeMinimumSession || left > 24*time.Hour {
+			return CheckoutStart{}, ErrCheckoutIncomplete
+		}
+		form.Set("expires_at", strconv.FormatInt(checkout.ExpiresAt.Unix(), 10))
+	}
 	if !checkout.AutomaticRenewal {
 		form.Set("mode", "payment")
 		// Cards only: the payment is confirmed or refused while the member waits (VERIFY V3).
@@ -700,6 +713,7 @@ type orderState struct {
 	currency      string
 	refundedMinor int64
 	disputed      bool
+	disputeStatus string
 	order         string
 	license       string
 	paymentID     string
@@ -856,7 +870,34 @@ func (s *Stripe) intentState(ctx context.Context, config Config, intent stripePa
 		}
 		charge = fetched
 	}
-	return chargeState(charge, state)
+	state, err := chargeState(charge, state)
+	if err != nil {
+		return orderState{}, err
+	}
+	return s.withDispute(ctx, config, charge, state)
+}
+
+// withDispute reads a disputed charge's dispute: its status decides (S2 review, 1). A lost
+// dispute is money taken back, applied like a refund; an open or won one changes nothing.
+// https://docs.stripe.com/api/disputes/list (charge filter)
+func (s *Stripe) withDispute(ctx context.Context, config Config, charge stripeCharge, state orderState) (orderState, error) {
+	if !charge.Disputed {
+		return state, nil
+	}
+	var list struct {
+		Data []struct {
+			ID     string `json:"id"`
+			Status string `json:"status"`
+		} `json:"data"`
+	}
+	if err := s.call(ctx, config, http.MethodGet, "/v1/disputes", url.Values{"charge": {charge.ID}, "limit": {"1"}}, "", &list); err != nil {
+		return orderState{}, err
+	}
+	if len(list.Data) == 0 || !strings.HasPrefix(list.Data[0].ID, "dp_") {
+		return orderState{}, ErrUnexpectedState
+	}
+	state.disputeStatus = list.Data[0].Status
+	return state, nil
 }
 
 // chargeState: the money that arrived, what was given back, a dispute.
@@ -967,6 +1008,9 @@ func (s *Stripe) invoiceState(ctx context.Context, config Config, reference stri
 	if err != nil {
 		return orderState{}, err
 	}
+	if state, err = s.withDispute(ctx, config, charge, state); err != nil {
+		return orderState{}, err
+	}
 	if state.paidMinor != invoice.AmountPaid || state.currency != strings.ToUpper(invoice.Currency) {
 		return orderState{}, ErrUnexpectedState
 	}
@@ -1021,7 +1065,7 @@ func (s *Stripe) Confirm(ctx context.Context, credentials Credentials, reference
 		return Fact{}, err
 	}
 	fact := Fact{Status: state.status, Kind: state.kind, Reference: reference, Order: state.order, LicenseID: state.license,
-		PaidMinor: state.paidMinor, Currency: state.currency, RefundedMinor: state.refundedMinor, Disputed: state.disputed,
+		PaidMinor: state.paidMinor, Currency: state.currency, RefundedMinor: state.refundedMinor, Disputed: state.disputed, DisputeStatus: state.disputeStatus,
 		PaymentID: state.paymentID, PaymentIntent: state.paymentIntent, Subscription: state.subscription, Customer: state.customer,
 		Live: state.live}
 	mismatch := func(what string) (Fact, error) {
@@ -1062,6 +1106,8 @@ func (s *Stripe) Confirm(ctx context.Context, credentials Credentials, reference
 			return mismatch("currency")
 		}
 		switch {
+		case state.disputeStatus == "lost":
+			fact.Outcome = OutcomeReversed // the payer's bank took the money back
 		case state.status == StatusRefunded:
 			fact.Outcome = OutcomeRefunded
 		case state.partly:
@@ -1093,4 +1139,53 @@ func (s *Stripe) ConfirmRenewal(ctx context.Context, credentials Credentials, su
 		return RenewalFact{Subscription: subscription, LicenseID: current.LicenseID, Live: current.Live, Mismatch: true}, nil
 	}
 	return current.RenewalFact, nil
+}
+
+// CheckoutSession is a checkout's current state as the provider has it: open (it can still be
+// paid), complete or expired, and the address that shows it.
+type CheckoutSession struct {
+	Status string
+	URL    string
+}
+
+// Session reads a Checkout Session (S2 review, 6): a second "Continue to payment" goes to the
+// stored session while it is open; nothing is created twice for one order.
+func (s *Stripe) Session(ctx context.Context, credentials Credentials, reference string) (CheckoutSession, error) {
+	config, err := s.config(credentials)
+	if err != nil {
+		return CheckoutSession{}, err
+	}
+	if !strings.HasPrefix(reference, "cs_") {
+		return CheckoutSession{}, ErrCheckoutIncomplete
+	}
+	var session struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+		URL    string `json:"url"`
+	}
+	if err := s.call(ctx, config, http.MethodGet, "/v1/checkout/sessions/"+url.PathEscape(reference), nil, "", &session); err != nil {
+		return CheckoutSession{}, err
+	}
+	if session.ID != reference {
+		return CheckoutSession{}, ErrProviderUnavailable
+	}
+	return CheckoutSession{Status: session.Status, URL: session.URL}, nil
+}
+
+// ExpireSession ends an open Checkout Session so it can no longer be paid (S2 review, 7).
+// A session that is already complete or expired is left as it is.
+// https://docs.stripe.com/api/checkout/sessions/expire
+func (s *Stripe) ExpireSession(ctx context.Context, credentials Credentials, reference string) error {
+	config, err := s.config(credentials)
+	if err != nil {
+		return err
+	}
+	current, err := s.Session(ctx, credentials, reference)
+	if err != nil {
+		return err
+	}
+	if current.Status != "open" {
+		return nil
+	}
+	return s.call(ctx, config, http.MethodPost, "/v1/checkout/sessions/"+url.PathEscape(reference)+"/expire", url.Values{}, "expire-"+reference, nil)
 }

@@ -178,6 +178,7 @@ var expectOneTime = Expected{Kind: OrderOneTime, Order: oneTimeOrder, LicenseID:
 // Review of #361, 2: every shape says what really happened; a paid amount only when money arrived.
 func TestStripeFetchOrderIsTheTruth(t *testing.T) {
 	fake := newFakeServer(t)
+	fake.on(http.MethodGet, "/v1/disputes", disputeAnswer("needs_response"))
 	provider := &Stripe{BaseURL: fake.server.URL, Now: func() time.Time { return testNow }}
 	confirm := func(reference string, expected Expected) (Fact, error) {
 		return provider.Confirm(context.Background(), stripeCredentials(t), reference, expected)
@@ -450,6 +451,7 @@ func TestStripeRefundOfAOneTimePayment(t *testing.T) {
 // final answers are distinct so a store never loops; a 409 is not a refusal.
 func TestStripeRefundOnlyAfterConfirm(t *testing.T) {
 	fake := newFakeServer(t)
+	fake.on(http.MethodGet, "/v1/disputes", disputeAnswer("needs_response"))
 	refunds := 0
 	conflict := false
 	fake.on(http.MethodPost, "/v1/refunds", func(recordedRequest) (int, string) {
@@ -816,5 +818,84 @@ func TestNoTestReachesTheRealStripe(t *testing.T) {
 		if _, err := provider.Confirm(context.Background(), stripeCredentials(t), "cs_1", expectOneTime); !errors.Is(err, ErrProviderUnavailable) {
 			t.Errorf("%q confirm: %v", base, err)
 		}
+	}
+}
+
+// disputeAnswer is Stripe's list of a charge's disputes with one dispute in this status.
+func disputeAnswer(status string) func(recordedRequest) (int, string) {
+	return func(r recordedRequest) (int, string) {
+		if query, _ := url.ParseQuery(r.Query); query.Get("charge") == "" {
+			return 400, `{"error":{}}`
+		}
+		return 200, `{"data":[{"id":"dp_1","status":"` + status + `"}]}`
+	}
+}
+
+// S2 review, 1: a dispute's status decides. Lost is money taken back (reversed, applied like a
+// refund); open or won changes nothing but is reported.
+func TestStripeADisputeIsReadByItsStatus(t *testing.T) {
+	fake := newFakeServer(t)
+	provider := &Stripe{BaseURL: fake.server.URL}
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) {
+		return 200, intentJSON("succeeded", 9900, 0, false, true)
+	})
+	for status, want := range map[string]Outcome{"needs_response": OutcomePaid, "under_review": OutcomePaid, "won": OutcomePaid, "lost": OutcomeReversed} {
+		fake.on(http.MethodGet, "/v1/disputes", disputeAnswer(status))
+		fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "pi_1", expectOneTime)
+		if err != nil || fact.Outcome != want || !fact.Disputed || fact.DisputeStatus != status {
+			t.Errorf("%s: %+v %v", status, fact, err)
+		}
+	}
+	// A charge marked disputed whose dispute cannot be found is not applied either way.
+	fake.on(http.MethodGet, "/v1/disputes", func(recordedRequest) (int, string) { return 200, `{"data":[]}` })
+	if _, err := provider.Confirm(context.Background(), stripeCredentials(t), "pi_1", expectOneTime); !errors.Is(err, ErrUnexpectedState) {
+		t.Fatalf("no dispute found: %v", err)
+	}
+}
+
+// S2 review, 6, 7 and 8: the checkout ends with the order, takes no converted currency, and can
+// be read again and ended.
+func TestStripeCheckoutSessionLifetime(t *testing.T) {
+	fake := newFakeServer(t)
+	clock := testNow
+	provider := &Stripe{BaseURL: fake.server.URL, Now: func() time.Time { return clock }}
+	fake.on(http.MethodPost, "/v1/checkout/sessions", func(recordedRequest) (int, string) {
+		return 200, `{"id":"cs_9","url":"https://checkout.stripe.com/c/pay/cs_9"}`
+	})
+	checkout := oneTimeCheckout(t)
+	checkout.ExpiresAt = clock.Add(23 * time.Hour)
+	if _, err := provider.StartCheckout(context.Background(), stripeCredentials(t), checkout); err != nil {
+		t.Fatal(err)
+	}
+	form, _ := url.ParseQuery(string(fake.last().Body))
+	if form.Get("expires_at") != strconv.FormatInt(checkout.ExpiresAt.Unix(), 10) || form.Get("adaptive_pricing[enabled]") != "false" {
+		t.Fatalf("checkout form: %v", form)
+	}
+	for _, bad := range []time.Duration{10 * time.Minute, 25 * time.Hour} {
+		checkout.ExpiresAt = clock.Add(bad)
+		if _, err := provider.StartCheckout(context.Background(), stripeCredentials(t), checkout); !errors.Is(err, ErrCheckoutIncomplete) {
+			t.Fatalf("an expiry %v ahead: %v", bad, err)
+		}
+	}
+	status := "open"
+	fake.on(http.MethodGet, "/v1/checkout/sessions/cs_9", func(recordedRequest) (int, string) {
+		return 200, `{"id":"cs_9","status":"` + status + `","url":"https://checkout.stripe.com/c/pay/cs_9"}`
+	})
+	expired := 0
+	fake.on(http.MethodPost, "/v1/checkout/sessions/cs_9/expire", func(recordedRequest) (int, string) {
+		expired++
+		status = "expired"
+		return 200, `{"id":"cs_9","status":"expired"}`
+	})
+	if s, err := provider.Session(context.Background(), stripeCredentials(t), "cs_9"); err != nil || s.Status != "open" || s.URL == "" {
+		t.Fatalf("session: %+v %v", s, err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := provider.ExpireSession(context.Background(), stripeCredentials(t), "cs_9"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if expired != 1 {
+		t.Fatalf("an expired session was ended again: %d", expired)
 	}
 }
