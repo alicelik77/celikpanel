@@ -1245,8 +1245,10 @@ func TestD1AHeartbeatStopIsLoggedWithItsCause(t *testing.T) {
 	}
 	_, _ = stop()
 	text := lines.String()
+	// The last renewal error is the Agent's or, for a renewal cut at the
+	// window's end, the renewal's own deadline.
 	if !strings.Contains(text, "agent mutation "+requestID+": worker stopped: no lease renewal answered for") ||
-		!strings.Contains(text, "simulated renewal timeout") {
+		!(strings.Contains(text, "last renewal error: simulated renewal timeout") || strings.Contains(text, "last renewal error: context deadline exceeded")) {
 		t.Fatalf("log: %q", text)
 	}
 }
