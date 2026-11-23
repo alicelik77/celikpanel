@@ -77,11 +77,12 @@ func TestPrepareHTTPFixture(t *testing.T) {
 }
 
 type apiServer struct {
-	t      *testing.T
-	dir    string
-	url    string
-	public ed25519.PublicKey
-	peer   string
+	handler *Handler
+	t       *testing.T
+	dir     string
+	url     string
+	public  ed25519.PublicKey
+	peer    string
 }
 
 func newAPIServer(t *testing.T) *apiServer {
@@ -93,6 +94,7 @@ func newAPIServer(t *testing.T) *apiServer {
 	a.url = server.URL + "/account/"
 	a.public = writeFixture(t, a.dir, server.URL)
 	handler.AllowTestKey = a.public
+	a.handler = handler
 	return a
 }
 

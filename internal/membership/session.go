@@ -35,6 +35,7 @@ type session struct {
 	incoming string // the id the browser sent, "" for none
 	data     sessionData
 	now      func() time.Time
+	unlock   func() // releases the lock on the browser's id after the save
 }
 
 var sessionID = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -52,8 +53,13 @@ func (s *session) path(id string) string { return filepath.Join(s.dir, "go-sess_
 // startSession is session_start() with session.use_strict_mode=1: an unknown,
 // expired or malformed id gets a fresh one.
 func startSession(dir, cookie string, now func() time.Time) *session {
-	s := &session{dir: dir, incoming: cookie, now: now}
+	s := &session{dir: dir, incoming: cookie, now: now, unlock: func() {}}
 	if sessionID.MatchString(cookie) {
+		if _, err := os.Stat(s.path(cookie)); err == nil {
+			// Held until the end of the request; the file is read again under the lock,
+			// so a sign-out that finished meanwhile is seen.
+			s.unlock = lockSession(dir, cookie)
+		}
 		if info, err := os.Stat(s.path(cookie)); err == nil && now().Sub(info.ModTime()) <= sessionLifetime*time.Second {
 			if raw, err := os.ReadFile(s.path(cookie)); err == nil && json.Unmarshal(raw, &s.data) == nil {
 				s.id = cookie
@@ -120,7 +126,7 @@ func (s *session) collect() {
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		if !strings.HasPrefix(name, "go-sess_") && !strings.HasPrefix(name, ".go-sess-tmp-") {
+		if !strings.HasPrefix(name, "go-sess_") && !strings.HasPrefix(name, ".go-sess-tmp-") && !strings.HasPrefix(name, "go-lock_") {
 			continue
 		}
 		if info, err := entry.Info(); err == nil && s.now().Sub(info.ModTime()) > sessionLifetime*time.Second {

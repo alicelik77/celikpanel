@@ -56,6 +56,8 @@ type Handler struct {
 	Mailer func(Config) Mailer
 	// Log receives one line per failed request: a class, never a value.
 	Log func(string)
+	// beforeSave lets a test hold a request just before its session is written.
+	beforeSave func()
 }
 
 func (h *Handler) wall() time.Time {
@@ -146,9 +148,13 @@ func (x *exchange) finishSession() {
 	if x.sess.cookieChanged() {
 		http.SetCookie(x.w, &http.Cookie{Name: x.cookie, Value: x.sess.id, Path: "/", Secure: x.secure, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	}
+	if x.h.beforeSave != nil {
+		x.h.beforeSave()
+	}
 	if err := x.sess.save(); err != nil {
 		x.h.log("session")
 	}
+	x.sess.unlock()
 	x.sess = nil
 }
 
