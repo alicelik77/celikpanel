@@ -12,6 +12,8 @@
 //	go run ./site                    # write the pages into download-portal/
 //	go run ./site -preview DIR       # a copy openable from disk, with the
 //	                                 # current release filled in
+//	go run ./site -fix-sources       # rewrite the line numbers of citations
+//	                                 # whose phrase moved (see sources.go)
 //
 // The generated files are committed under download-portal/ and listed with
 // their SHA-256 in download-portal/site.sha256. deploy/build-download-portal.sh
@@ -24,8 +26,10 @@
 // templates/<key>.html defining "lead" (the page's statement) and "main"
 // (its numbered parts), add <key>.title and <key>.description (and its text)
 // to both catalogues, give every text that holds a number its source in
-// site/sources.json, link the page from the navigation if it belongs there,
-// then run `go run ./site` and the tests.
+// site/sources.json (a "cite" of path:line and a phrase of that line in
+// "says": the phrase is the proof, the line number is kept current with
+// -fix-sources), link the page from the navigation if it belongs there, then
+// run `go run ./site` and the tests.
 //
 // Herkese açık sitenin üreticisi: sayfalar şablonlardan ve dil başına bir metin
 // kataloğundan üretilir, download-portal/ altına yazılır ve site.sha256 ile
@@ -41,9 +45,19 @@ import (
 func main() {
 	out := flag.String("out", "download-portal", "directory the pages are written into")
 	preview := flag.String("preview", "", "write a disk-openable preview with the current release into this directory instead")
+	fix := flag.Bool("fix-sources", false, "rewrite the line numbers of citations whose quoted phrase moved to one other line (site/sources.json, site/changelog, site/problems.json)")
 	flag.Parse()
 	var err error
-	if *preview != "" {
+	if *fix {
+		var moved []string
+		moved, err = fixSources(".", true)
+		for _, m := range moved {
+			fmt.Println("moved", m)
+		}
+		if err == nil && len(moved) == 0 {
+			fmt.Println("every citation is on its line")
+		}
+	} else if *preview != "" {
 		err = writePreview(*out, *preview)
 	} else {
 		err = writeSite(*out)

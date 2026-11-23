@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -12,32 +11,21 @@ import (
 	"testing"
 )
 
-// sourceExists says whether "path" or "path:line" names a repository file
-// and, with a line, a line that exists and is not empty.
-func sourceExists(t *testing.T, ref string) bool {
+// holds says whether a record's citation holds (sources.go): the file
+// exists; with a phrase, the phrase rule; with a line and no phrase, the line
+// exists and is not empty. A failure is reported, naming the record.
+func holds(t *testing.T, files *repoFiles, what string, ref citation) bool {
 	t.Helper()
-	name, line := ref, 0
-	if i := strings.LastIndex(ref, ":"); i > 0 {
-		if n, err := strconv.Atoi(ref[i+1:]); err == nil {
-			name, line = ref[:i], n
-		}
-	}
-	handle, err := os.Open(filepath.Join("..", filepath.FromSlash(name)))
-	if err != nil {
+	_, line := ref.split()
+	at, err := files.check(ref)
+	switch {
+	case err != nil:
+		t.Errorf("%s: source %s: %v", what, ref.Cite, err)
 		return false
+	case at != line:
+		t.Logf("%s: source %s: the phrase is now on line %d; `go run ./site -fix-sources` updates the number", what, ref.Cite, at)
 	}
-	defer handle.Close()
-	if line == 0 {
-		return true
-	}
-	scanner := bufio.NewScanner(handle)
-	scanner.Buffer(make([]byte, 1024*1024), 16*1024*1024)
-	for n := 1; scanner.Scan(); n++ {
-		if n == line {
-			return strings.TrimSpace(scanner.Text()) != ""
-		}
-	}
-	return false
+	return true
 }
 
 var publishedOn = regexp.MustCompile("(?m)^> \\*\\*Published\\*\\* on ([0-9]{4}-[0-9]{2}-[0-9]{2}) \\(UTC\\)")
@@ -63,6 +51,7 @@ func TestProblemsAndChangelog(t *testing.T) {
 		t.Fatal("download-portal/get.sh pins no release version")
 	}
 	pinned := string(pin[1])
+	repo := newRepoFiles("..")
 	have := map[string]changelogRelease{}
 	for _, release := range releases {
 		have[release.Version] = release
@@ -82,18 +71,17 @@ func TestProblemsAndChangelog(t *testing.T) {
 		case release.Published != "" && (match == nil || string(match[1]) != release.Published):
 			t.Errorf("%s: published %s, but its notes record no such publication", release.Version, release.Published)
 		}
-		if !sourceExists(t, release.Source) || !strings.HasPrefix(release.Source, release.Notes+":") {
-			t.Errorf("%s: source %s is not a line of its notes", release.Version, release.Source)
+		holds(t, repo, release.Version, release.Source)
+		if !strings.HasPrefix(release.Source.Cite, release.Notes+":") {
+			t.Errorf("%s: source %s is not a line of its notes", release.Version, release.Source.Cite)
 		}
 		if len(release.Lines) > 8 {
 			t.Errorf("%s: %d lines; keep a release to a handful", release.Version, len(release.Lines))
 		}
 		for _, line := range release.Lines {
-			if !sourceExists(t, line.Source) || !strings.HasPrefix(line.Source, "docs/RELEASE-NOTES-") {
-				t.Errorf("%s: %q: source %s is not a release-notes line that exists", release.Version, line.Text.EN, line.Source)
-			}
-			if !strings.HasPrefix(line.Source, release.Notes+":") {
-				t.Errorf("%s: %q is proved from another release's notes (%s)", release.Version, line.Text.EN, line.Source)
+			holds(t, repo, release.Version+" "+strconv.Quote(line.Text.EN), line.Source)
+			if !strings.HasPrefix(line.Source.Cite, release.Notes+":") {
+				t.Errorf("%s: %q is proved from another release's notes (%s)", release.Version, line.Text.EN, line.Source.Cite)
 			}
 		}
 	}
@@ -149,9 +137,7 @@ func TestProblemsAndChangelog(t *testing.T) {
 	}
 	for _, c := range cases {
 		for _, s := range c.Sources {
-			if !sourceExists(t, s) {
-				t.Errorf("%s: source %s does not exist", c.ID, s)
-			}
+			holds(t, repo, c.ID, s)
 		}
 		if c.State == "fixed" {
 			if _, ok := have[c.FixedIn]; !ok {
