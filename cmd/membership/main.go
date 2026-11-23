@@ -16,6 +16,10 @@
 //	                        creates the store's tables (orders, payments, refunds, prices,
 //	                        the audit log) and the licence columns they need; additive,
 //	                        repeatable, never done at request time
+//	membership reconcile -operator NAME
+//	                        asks the payment provider about open orders older than ten
+//	                        minutes and refunds in progress, applies what it confirms,
+//	                        closes unpaid orders after a day, lists mismatches (a timer)
 //
 // The private directory is $CELIKPANEL_MEMBERSHIP_PRIVATE (an absolute path), always
 // named explicitly; the program never guesses it from where it is installed. The
@@ -30,6 +34,7 @@
 package main
 
 import (
+	"context"
 	"crypto/ed25519"
 	"encoding/hex"
 	"errors"
@@ -43,6 +48,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/membership"
+	"github.com/alicelik/celikpanel/internal/payment"
 )
 
 const testKeyVariable = "CELIKPANEL_MEMBERSHIP_TEST_SIGNING_PUBLIC_KEY"
@@ -67,13 +73,15 @@ func main() {
 		os.Exit(runPublicKey(os.Args[2:]))
 	case "migrate-store":
 		os.Exit(runMigrateStore(os.Args[2:]))
+	case "reconcile":
+		os.Exit(runReconcile(os.Args[2:]))
 	}
 	usage()
 	os.Exit(2)
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX]")
+	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX] | reconcile -operator NAME [-test-signing-public-key HEX]")
 }
 
 // privateDir is named explicitly, never derived from where the program sits: a guess
@@ -223,6 +231,8 @@ func runCheckDB(args []string) int {
 		return 1
 	}
 	report.DatabaseIsAuthority = config.DatabaseIsAuthority
+	report.Charging, report.PaymentProvider = config.Charging, config.PaymentProvider
+	report.Payment = membership.PaymentState(payment.DefaultRegistry(), config)
 	report.Print(os.Stdout)
 	if !report.OK() {
 		return 1
@@ -293,5 +303,44 @@ func runMigrateStore(args []string) int {
 		return 1
 	}
 	fmt.Printf("store version %d is ready\n", membership.StoreVersion)
+	return 0
+}
+
+func runReconcile(args []string) int {
+	flags := flag.NewFlagSet("reconcile", flag.ContinueOnError)
+	testHex := flags.String("test-signing-public-key", "", "accept this throwaway key instead of the production key (tests)")
+	operator := flags.String("operator", "", "who runs it (written to the store's audit log)")
+	if flags.Parse(args) != nil || *operator == "" {
+		logLine("membership reconcile: name the operator: -operator NAME")
+		return 2
+	}
+	testKey, err := parseTestKey(*testHex)
+	if err != nil {
+		logLine("membership reconcile: " + err.Error())
+		return 2
+	}
+	dir, config, err := loadChecked(testKey)
+	if err != nil {
+		logLine("membership reconcile: " + err.Error())
+		return 1
+	}
+	service, err := membership.OpenExisting(filepath.Join(dir, "members.sqlite"), config.SigningKey, nil, nil)
+	if err != nil {
+		logLine("membership reconcile: " + err.Error())
+		return 1
+	}
+	defer service.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	report, err := service.Reconcile(ctx, payment.DefaultRegistry(), config, "reconcile:"+*operator)
+	if err != nil {
+		logLine("membership reconcile: " + err.Error())
+		return 1
+	}
+	fmt.Printf("confirmed %d, paid %d, closed unpaid %d, refunded %d, provider not reachable %d\n",
+		report.Confirmed, report.Paid, report.Expired, report.Refunded, report.Unreachable)
+	for _, o := range report.Mismatches {
+		fmt.Printf("for the operator (mismatch, nothing granted): order %s\n", o.ID)
+	}
 	return 0
 }

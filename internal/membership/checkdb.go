@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,8 +36,14 @@ type DBReport struct {
 	SchemaTables                       []string
 	// DatabaseIsAuthority is the private configuration's setting (the caller fills it).
 	DatabaseIsAuthority bool
-	UnknownColumns      []string
-	Problems            []string
+	// The store (S2): its version (0: not set up) and counts; Charging and Payment are the
+	// private configuration's (the caller fills them; never a value, only set / not set).
+	StoreVersion                                int
+	Orders, OrdersPaid, OrdersMismatch, Revoked int
+	Charging                                    ChargingMode
+	Payment, PaymentProvider                    string
+	UnknownColumns                              []string
+	Problems                                    []string
 }
 
 // CheckDB reads path with the configured key; now is the clock the receipts are
@@ -61,6 +68,16 @@ func CheckDB(path string, signingKey ed25519.PrivateKey, now int64) (DBReport, e
 	}
 	if err := db.QueryRowContext(ctx, "SELECT COALESCE(SUM(generation),0) FROM licenses").Scan(&r.GenerationSum); err != nil {
 		return r, err
+	}
+	var version string
+	if db.QueryRowContext(ctx, "SELECT value FROM store_meta WHERE key='version'").Scan(&version) == nil {
+		r.StoreVersion, _ = strconv.Atoi(version)
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*), COALESCE(SUM(state='paid'),0), COALESCE(SUM(state='mismatch'),0) FROM store_orders").Scan(&r.Orders, &r.OrdersPaid, &r.OrdersMismatch); err != nil {
+			return r, err
+		}
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM licenses WHERE revoked IS NOT NULL").Scan(&r.Revoked); err != nil {
+			return r, err
+		}
 	}
 	tables, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
 	if err != nil {
@@ -168,6 +185,27 @@ func (r DBReport) Print(w io.Writer) {
 		fmt.Fprintln(w, "database-behind check: OFF (database_is_authority is set): every unknown or older state is rejected, as the PHP service does")
 	} else {
 		fmt.Fprintln(w, "database-behind check: on (the default): a panel's own token for a state this file does not know is answered 503, receipt kept")
+	}
+	if r.StoreVersion == 0 {
+		fmt.Fprintln(w, "store: not set up (membership migrate-store creates it); charging is off")
+	} else {
+		fmt.Fprintf(w, "store: version %d; orders %d (paid %d, for the operator %d); licences revoked by a refund %d\n", r.StoreVersion, r.Orders, r.OrdersPaid, r.OrdersMismatch, r.Revoked)
+		if r.Revoked > 0 {
+			fmt.Fprintln(w, "note: the PHP service must not serve this file again: it does not read \"revoked\"")
+		}
+	}
+	switch r.Charging {
+	case ChargingTest:
+		fmt.Fprintln(w, "charging: test (the provider's test keys only; test accounts only)")
+	case ChargingLive:
+		fmt.Fprintln(w, "charging: live is set, but refused in this release (no order can be made)")
+	default:
+		fmt.Fprintln(w, "charging: off (the default)")
+	}
+	if r.PaymentProvider == "" {
+		fmt.Fprintln(w, "payment provider: none set")
+	} else {
+		fmt.Fprintf(w, "payment provider: %s, keys %s\n", r.PaymentProvider, r.Payment)
 	}
 	fmt.Fprintf(w, "tables: %s\n", strings.Join(r.SchemaTables, ", "))
 	if len(r.UnknownColumns) > 0 {

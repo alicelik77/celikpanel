@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/licensing"
+	"github.com/alicelik/celikpanel/internal/payment"
 )
 
 // Config is the parsed config.json.
@@ -37,6 +38,14 @@ type Config struct {
 	// older file (the move procedure in docs/LICENCE-SUBSCRIPTION-DESIGN.md §e). The PHP
 	// service ignores the key.
 	DatabaseIsAuthority bool
+	// Charging is "charging": off (the default, also for any unknown value), test or live
+	// (refused in this release). S2.
+	Charging ChargingMode
+	// Payment is the "payment" object: {"provider":"stripe","mode":"test","secret_key":...,
+	// "webhook_secret":...}. PaymentCredentials is that object's text, handed to the provider
+	// as it is; it is never logged, echoed or stored anywhere else.
+	PaymentProvider    string
+	PaymentCredentials payment.Credentials
 }
 
 // ErrUnpinnedKey: the configured signing key is neither the production key panels
@@ -116,6 +125,20 @@ func ParseConfig(raw []byte) (Config, error) {
 	c.Sender, _ = text("sender")
 	c.TestMailDir, _ = text("test_mail_dir")
 	c.DatabaseIsAuthority = strings.TrimSpace(string(fields["database_is_authority"])) == "true"
+	c.Charging = ChargingOff
+	if charging, ok := text("charging"); ok && (charging == string(ChargingTest) || charging == string(ChargingLive)) {
+		c.Charging = ChargingMode(charging)
+	}
+	if value, present := fields["payment"]; present {
+		var block map[string]json.RawMessage
+		if json.Unmarshal(value, &block) == nil && block != nil {
+			var provider string
+			if json.Unmarshal(block["provider"], &provider) == nil {
+				c.PaymentProvider = provider
+			}
+			c.PaymentCredentials = payment.Credentials(value)
+		}
+	}
 	encoded, ok := text("signing_key")
 	if !ok {
 		return Config{}, errors.New("membership: config has no signing key")

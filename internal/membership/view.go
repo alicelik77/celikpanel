@@ -24,6 +24,8 @@ type page struct {
 	csrf     string
 	get      phpVars
 	post     phpVars
+	// store is set only when the store exists and a member is signed in (S2).
+	store *storePage
 }
 
 func (p *page) t(tr, en string) string {
@@ -34,29 +36,37 @@ func (p *page) t(tr, en string) string {
 }
 
 var messages = map[string][2]string{
-	"invalid_email":           {"Geçerli bir e-posta adresi girin.", "Enter a valid email address."},
-	"password_length":         {"Parolanız 12–128 bayt uzunluğunda olmalı.", "Use a password between 12 and 128 bytes."},
-	"invalid_login":           {"E-posta veya parola doğru değil.", "The email or password is incorrect."},
-	"verify_email":            {"Giriş yapmadan önce e-postanızı doğrulayın. Aşağıdan yeni doğrulama e-postası isteyebilirsiniz.", "Verify your email before signing in. You can request another email below."},
-	"invalid_token":           {"Bağlantı kullanılmış veya süresi dolmuş. Yeni bir e-posta isteyin.", "This link has been used or has expired. Request another email."},
-	"rate_limited":            {"Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.", "Too many attempts. Please try again later."},
-	"service_busy":            {"Hizmet şu anda yoğun. Lütfen biraz sonra tekrar deneyin.", "The service is busy. Please try again in a moment."},
-	"session_changed":         {"Oturumunuz yenilendi. Sayfayı yenileyip tekrar deneyin.", "Your session changed. Reload this page and try again."},
-	"invalid_request":         {"İstek tamamlanamadı. Sayfayı yenileyip tekrar deneyin.", "The request could not be completed. Reload and try again."},
-	"authentication_required": {"Devam etmek için giriş yapın.", "Sign in to continue."},
-	"accept_terms":            {"Devam etmek için kullanım koşullarını kabul edin.", "Accept the terms to continue."},
-	"mail_unavailable":        {"E-posta şu anda gönderilemiyor. Daha sonra yeni bir doğrulama veya parola yenileme e-postası isteyin.", "Email is temporarily unavailable. Request another verification or reset email later."},
-	"key_not_saved":           {"Anahtar görüntülenemiyor. Lisanslarınızdan yeni anahtar oluşturabilirsiniz; bitiş tarihi değişmez.", "The key cannot be displayed. You can create a replacement from your licenses; the expiry date stays the same."},
-	"invalid_license":         {"Anahtar bu lisansla eşleşmiyor. Oluştururken aldığınız anahtarı girin.", "This key does not match this license. Enter the key you received when it was created."},
-	"server_released":         {"Sunucu eşlemesi kaldırıldı. Aynı anahtarı yeni sunucuda kullanabilirsiniz; bitiş tarihi değişmedi.", "The server binding was released. Use the same key on the new server; the expiry date is unchanged."},
-	"license_revoked":         {"Bu lisansın ödemesi iade edildi; lisans sona erdi.", "This license's payment was refunded; the license has ended."},
-	"license_not_found":       {"Lisans bulunamadı.", "License not found."},
-	"renewal_not_due":         {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
-	"mail_sent":               {"Bu adres için işlem yapılabiliyorsa e-posta gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.", "If this address is eligible, an email has been sent. Check your inbox and spam folder."},
-	"email_verified":          {"E-postanız doğrulandı. Şimdi giriş yapabilirsiniz.", "Your email is verified. You can now sign in."},
-	"password_reset":          {"Parolanız değiştirildi. Yeni parolanızla giriş yapın.", "Your password has changed. Sign in with your new password."},
-	"license_removed":         {"Lisans kaldırıldı. Anahtarı artık hiçbir sunucuda kullanılamaz.", "The license was removed. Its key no longer works on any server."},
-	"renewed":                 {"Lisans bir yıl uzatıldı. Sunucu sonraki lisans kontrolünde yeni tarihi alır.", "The license was extended by one year. Your server receives the new date on its next license check."},
+	"invalid_email":             {"Geçerli bir e-posta adresi girin.", "Enter a valid email address."},
+	"password_length":           {"Parolanız 12–128 bayt uzunluğunda olmalı.", "Use a password between 12 and 128 bytes."},
+	"invalid_login":             {"E-posta veya parola doğru değil.", "The email or password is incorrect."},
+	"verify_email":              {"Giriş yapmadan önce e-postanızı doğrulayın. Aşağıdan yeni doğrulama e-postası isteyebilirsiniz.", "Verify your email before signing in. You can request another email below."},
+	"invalid_token":             {"Bağlantı kullanılmış veya süresi dolmuş. Yeni bir e-posta isteyin.", "This link has been used or has expired. Request another email."},
+	"rate_limited":              {"Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.", "Too many attempts. Please try again later."},
+	"service_busy":              {"Hizmet şu anda yoğun. Lütfen biraz sonra tekrar deneyin.", "The service is busy. Please try again in a moment."},
+	"session_changed":           {"Oturumunuz yenilendi. Sayfayı yenileyip tekrar deneyin.", "Your session changed. Reload this page and try again."},
+	"invalid_request":           {"İstek tamamlanamadı. Sayfayı yenileyip tekrar deneyin.", "The request could not be completed. Reload and try again."},
+	"authentication_required":   {"Devam etmek için giriş yapın.", "Sign in to continue."},
+	"accept_terms":              {"Devam etmek için kullanım koşullarını kabul edin.", "Accept the terms to continue."},
+	"mail_unavailable":          {"E-posta şu anda gönderilemiyor. Daha sonra yeni bir doğrulama veya parola yenileme e-postası isteyin.", "Email is temporarily unavailable. Request another verification or reset email later."},
+	"key_not_saved":             {"Anahtar görüntülenemiyor. Lisanslarınızdan yeni anahtar oluşturabilirsiniz; bitiş tarihi değişmez.", "The key cannot be displayed. You can create a replacement from your licenses; the expiry date stays the same."},
+	"invalid_license":           {"Anahtar bu lisansla eşleşmiyor. Oluştururken aldığınız anahtarı girin.", "This key does not match this license. Enter the key you received when it was created."},
+	"server_released":           {"Sunucu eşlemesi kaldırıldı. Aynı anahtarı yeni sunucuda kullanabilirsiniz; bitiş tarihi değişmedi.", "The server binding was released. Use the same key on the new server; the expiry date is unchanged."},
+	"license_revoked":           {"Bu lisansın ödemesi iade edildi; lisans sona erdi.", "This license's payment was refunded; the license has ended."},
+	"charging_off":              {"Beta süresince satın alma yok; CelikPanel ücretsizdir. Ücretlendirme 1.0 sürümüyle başlar.", "There is nothing to buy during the beta; CelikPanel is free. Charging starts with version 1.0."},
+	"charging_live_not_enabled": {"Gerçek ödemeler bu sürümde açık değil. Sizin bir şey yapmanız gerekmiyor.", "Real payments are not enabled in this release. You do not need to do anything."},
+	"not_a_test_account":        {"Deneme kipinde yalnız deneme hesapları satın alabilir. Bu hesap bir deneme hesabı değil; hiçbir ücret alınmadı.", "In test mode only test accounts can buy. This account is not a test account; nothing was charged."},
+	"renewal_not_available":     {"Ücretli bir yılı olan lisansı yenileme henüz yok. Lisansınız bitiş tarihine kadar çalışır; hiçbir ücret alınmadı.", "Renewing a license that already has a paid year is not available yet. Your license runs until its end date; nothing was charged."},
+	"order_not_found":           {"Sipariş bulunamadı.", "Order not found."},
+	"refund_window_closed":      {"İade, ödemeden sonraki 30 gün içinde istenebilir; bu süre geçti.", "A refund can be asked for within 30 days of the payment; that time has passed."},
+	"refund_not_possible":       {"Bu sipariş için iade istenemiyor.", "A refund cannot be asked for this order."},
+	"payment_not_ready":         {"Ödeme şu anda alınamıyor; durumu biz düzeltiyoruz. Hiçbir ücret alınmadı; daha sonra tekrar deneyin.", "Payments cannot be taken right now; we are fixing it. Nothing was charged; please try again later."},
+	"payment_unavailable":       {"Ödeme sağlayıcısına şu anda ulaşılamıyor. Hiçbir ücret alınmadı; birkaç dakika sonra tekrar deneyin.", "The payment provider cannot be reached right now. Nothing was charged; please try again in a few minutes."}, "license_not_found": {"Lisans bulunamadı.", "License not found."},
+	"renewal_not_due": {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
+	"mail_sent":       {"Bu adres için işlem yapılabiliyorsa e-posta gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.", "If this address is eligible, an email has been sent. Check your inbox and spam folder."},
+	"email_verified":  {"E-postanız doğrulandı. Şimdi giriş yapabilirsiniz.", "Your email is verified. You can now sign in."},
+	"password_reset":  {"Parolanız değiştirildi. Yeni parolanızla giriş yapın.", "Your password has changed. Sign in with your new password."},
+	"license_removed": {"Lisans kaldırıldı. Anahtarı artık hiçbir sunucuda kullanılamaz.", "The license was removed. Its key no longer works on any server."},
+	"renewed":         {"Lisans bir yıl uzatıldı. Sunucu sonraki lisans kontrolünde yeni tarihi alır.", "The license was extended by one year. Your server receives the new date on its next license check."},
 }
 
 func (p *page) message(code string) string {
@@ -71,7 +81,7 @@ func (p *page) message(code string) string {
 }
 
 func (p *page) titles() map[string]string {
-	return map[string]string{
+	titles := map[string]string{
 		"terms":    p.t("Kullanım koşulları ve veri açıklaması", "Terms and data notice"),
 		"login":    p.t("Hesabınıza giriş yapın", "Sign in to your account"),
 		"register": p.t("CelikPanel hesabınızı oluşturun", "Create your CelikPanel account"),
@@ -86,6 +96,10 @@ func (p *page) titles() map[string]string {
 		"renew":    p.t("Lisansınızı uzatın", "Renew your license"),
 		"remove":   p.t("Lisansı kaldırın", "Remove the license"),
 	}
+	if p.store != nil && p.store.order != nil {
+		titles["order"] = p.t("Siparişiniz", "Your order")
+	}
+	return titles
 }
 
 func (p *page) formStart(b *strings.Builder, action string) {
@@ -164,6 +178,8 @@ func (p *page) render() string {
 		b.WriteString(p.terms())
 	case action == "home" && p.member != nil:
 		p.home(&b)
+	case action == "order" && p.member != nil && p.store != nil && p.store.order != nil:
+		p.orderPage(&b)
 	case (action == "release" || action == "renew" || action == "reveal" || action == "rotate" || action == "remove") && p.member != nil:
 		p.confirm(&b, action)
 	default:
@@ -186,6 +202,7 @@ func (p *page) home(b *strings.Builder) {
 	b.WriteString(`<section class="member-summary"><div><h2>CelikPanel</h2><p>` + p.t("Şu an ücretsiz. Oluşturulduğu tarihten itibaren bir yıl geçerli.", "Currently free. Valid for one year from creation.") + `</p></div>`)
 	p.formStart(b, "issue")
 	b.WriteString(`<button type="submit">` + p.t("Ücretsiz lisans oluştur", "Create a free license") + `</button></form></section>` + "\n")
+	p.storeSummary(b)
 	if len(p.licenses) == 0 {
 		b.WriteString(`<p class="member-empty">` + p.t("Henüz lisansınız yok. İlk lisansınızı oluşturup sunucunuza CelikPanel kurabilirsiniz.", "You have no licenses yet. Create your first license to install CelikPanel on your server.") + `</p>`)
 	}
@@ -228,7 +245,9 @@ func (p *page) home(b *strings.Builder) {
 		if expires && l.Expires.Int64 <= p.now+30*86400 {
 			b.WriteString(`<a href="?action=renew&amp;id=` + htmlEscape(l.ID) + `">` + p.t("Ücretsiz yenile", "Renew for free") + `</a>`)
 		}
-		b.WriteString(`<a href="?action=remove&amp;id=` + htmlEscape(l.ID) + `">` + p.t("Lisansı kaldır", "Remove license") + `</a></div></article>`)
+		b.WriteString(`<a href="?action=remove&amp;id=` + htmlEscape(l.ID) + `">` + p.t("Lisansı kaldır", "Remove license") + `</a></div>`)
+		p.licenceStore(b, l)
+		b.WriteString(`</article>`)
 	}
 	b.WriteString(`</div>` + "\n")
 	b.WriteString(`<section class="member-install"><h2>` + p.t("Sunucunuza kurun", "Install on your server") + `</h2><p>` +

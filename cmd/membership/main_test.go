@@ -305,7 +305,28 @@ func TestMigrateStoreCommand(t *testing.T) {
 			t.Fatalf("migrate-store: %d\n%s\n%s", code, out, stderr)
 		}
 	}
-	if code, out, _ := run(t, env, "check-db "+key, nil); code != 0 || !strings.Contains(out, "result: every live licence can be served") {
+	if code, out, _ := run(t, env, "check-db "+key, nil); code != 0 || !strings.Contains(out, "result: every live licence can be served") ||
+		!strings.Contains(out, "store: version 1; orders 0") || !strings.Contains(out, "charging: off (the default)") || !strings.Contains(out, "payment provider: none set") {
 		t.Fatalf("check-db after the store: %d\n%s", code, out)
+	}
+	// Charging in test mode with the provider's keys: check-db says "set", never a value.
+	raw, err := os.ReadFile(filepath.Join(f.dir, "config.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret, signing := "sk_test_"+strings.Repeat("q", 24), "whsec_"+strings.Repeat("r", 24)
+	withPayment := strings.TrimSuffix(strings.TrimSpace(string(raw)), "}") + `,"charging":"test","payment":{"provider":"stripe","mode":"test","secret_key":"` +
+		secret + `","webhook_secret":"` + signing + `"}}`
+	if err := os.WriteFile(filepath.Join(f.dir, "config.json"), []byte(withPayment), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, stderr := run(t, env, "check-db "+key, nil)
+	if code != 0 || !strings.Contains(out, "charging: test") || !strings.Contains(out, "payment provider: stripe, keys set") ||
+		strings.Contains(out+stderr, secret) || strings.Contains(out+stderr, signing) {
+		t.Fatalf("check-db with charging: %d\n%s\n%s", code, out, stderr)
+	}
+	// Reconciliation with nothing open asks nobody.
+	if code, out, stderr := run(t, env, "reconcile -operator test "+key, nil); code != 0 || !strings.Contains(out, "confirmed 0, paid 0") || strings.Contains(out+stderr, secret) {
+		t.Fatalf("reconcile: %d\n%s\n%s", code, out, stderr)
 	}
 }

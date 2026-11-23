@@ -27,6 +27,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/alicelik/celikpanel/internal/payment"
 )
 
 const (
@@ -58,6 +60,9 @@ type Handler struct {
 	Log func(string)
 	// beforeSave lets a test hold a request just before its session is written.
 	beforeSave func()
+	// Payments is the set of payment providers; nil is payment.DefaultRegistry() (tests put a
+	// Stripe pointed at a fake server here).
+	Payments *payment.Registry
 }
 
 func (h *Handler) wall() time.Time {
@@ -74,14 +79,17 @@ func (h *Handler) log(class string) {
 }
 
 type exchange struct {
-	h       *Handler
-	w       http.ResponseWriter
-	r       *http.Request
-	api     bool
-	sess    *session
-	cookie  string
-	secure  bool
-	written bool
+	h    *Handler
+	w    http.ResponseWriter
+	r    *http.Request
+	api  bool
+	hook bool
+	// external is where a form sends the member outside this site (the provider's checkout).
+	external string
+	sess     *session
+	cookie   string
+	secure   bool
+	written  bool
 }
 
 // ServeHTTP answers one request.
@@ -101,7 +109,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if v, ok := get["action"]; ok {
 		action, arrayAction = v.str, v.array
 	}
-	x := &exchange{h: h, w: w, r: r, api: !arrayAction && (action == "activate" || action == "refresh")}
+	x := &exchange{h: h, w: w, r: r, api: !arrayAction && (action == "activate" || action == "refresh"), hook: !arrayAction && action == "webhook"}
 	if err := x.run(get, action, arrayAction); err != nil {
 		x.fail(err)
 	}
@@ -191,6 +199,9 @@ func (x *exchange) run(get phpVars, action string, arrayAction bool) error {
 	defer service.Close()
 	service.SetDatabaseIsAuthority(config.DatabaseIsAuthority)
 	ip := x.h.RemoteAddr(x.r)
+	if x.hook {
+		return x.webhook(service, config, ip, get)
+	}
 	if x.r.ContentLength > maxBody {
 		x.respond(http.StatusRequestEntityTooLarge)
 		return nil
@@ -499,6 +510,11 @@ func (x *exchange) pages(service *Service, config Config, ip string, get phpVars
 	case http.MethodPost:
 		post = readPost(x.r)
 		target, err := x.form(service, config, ip, post, action, arrayAction, lang, member, now)
+		if err == nil && x.external != "" {
+			x.w.Header().Set("Location", x.external)
+			x.respond(http.StatusSeeOther)
+			return nil
+		}
 		if err == nil {
 			x.w.Header().Set("Location", "/account/?action="+target+"&lang="+lang)
 			x.respond(http.StatusSeeOther)
@@ -527,8 +543,22 @@ func (x *exchange) pages(service *Service, config Config, ip string, get phpVars
 			return err
 		}
 	}
+	var store *storePage
+	if member != nil && service.StoreReady() {
+		if store, err = x.storePage(service, config, member, licenses); err != nil {
+			return err
+		}
+		if action == "order" {
+			order, err := x.settle(service, config, member, get.str("id"))
+			if err != nil {
+				action, errorCode = "home", string(ErrOrderNotFound)
+			} else {
+				store.order = &order
+			}
+		}
+	}
 	view := &page{lang: lang, action: action, member: member, err: errorCode, notice: notice, issued: issued,
-		licenses: licenses, now: service.Now(), csrf: data.CSRF, get: get, post: post}
+		licenses: licenses, now: service.Now(), csrf: data.CSRF, get: get, post: post, store: store}
 	body := view.render()
 	x.w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	x.finishSession()
@@ -638,6 +668,16 @@ func (x *exchange) form(service *Service, config Config, ip string, post phpVars
 			data.Notice = "renewed"
 		}
 		return "home", nil
+	case "buy":
+		if member == nil {
+			return "", ErrAuthenticationRequired
+		}
+		target, err := x.buy(service, config, member, id, lang)
+		if err != nil {
+			return "", err
+		}
+		x.external = target
+		return "", nil
 	default:
 		return "", ErrInvalidRequest
 	}
