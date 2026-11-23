@@ -626,7 +626,8 @@ below.
 
 *Added 23 November 2026 after the third look at PR #361.* The Go member service answers a
 panel's refresh with 503 ("database behind", the receipt is kept) instead of 400 when the
-panel's activation token is ours for a state the database does not know. That is safe only
+panel's activation token is ours for a state the database does not know (confirmed by the
+owner on 23 November 2026: asked "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz' yerine 'şu an kullanılamıyor' desin mi?", he answered "evet"). That is safe only
 while this invariant holds, so every change to a licence keeps it:
 
 - **A licence row is never deleted.** Removal, refund, operator revoke, account closing,

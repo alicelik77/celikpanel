@@ -80,8 +80,9 @@ arkasında, böylece ileride lisanslara dokunmadan başka bir sağlayıcı eklen
 - **Geçiş sırasında PHP sürümü geri dönüş yolu olarak seçilebilir kalır:** planın önerisi
   (23 Kasım 2026 hesap ve Stripe planı), sahibin kararı değil.
 
-**Sahibin onayını bekliyor: Go hizmetinin bir yanıtı PHP hizmetininkinden farklıdır.**
-Koordinatörün 23 Kasım 2026 kararı, sahibin onayına sunuldu: bir panelin yenileme isteği,
+**Sahip 23 Kasım 2026'da onayladı: Go hizmetinin bir yanıtı PHP hizmetininkinden farklıdır.**
+Koordinatörün önerisi, sahip aynı gün onayladı: "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz' yerine 'şu an kullanılamıyor' desin mi?" sorusuna "evet" yanıtını verdi. Bir
+panelin yenileme isteği,
 imza anahtarımızın ürettiği bir etkinleştirme belirtecini veritabanının bilmediği bir durum
 için sunduğunda (lisans satırı yoktur, belirtecin kuşağı satırınkinden yüksektir ya da satır
 o kuşakta bir sunucuya bağlı değildir), Go hizmeti 503 yanıtı verir ve tek satır kayıt düşer,
@@ -92,8 +93,11 @@ dayanır: lisans satırı asla silinmez, kuşağı asla düşmez ve her geri alm
 anahtar yenileme, başka sunucuya yeniden kurulum; ileride iade, işletmecinin geri alması,
 hesap kapatma) kuşağı aynı ifadede yükseltir; kaldırıldı ya da geri alındı olarak işaretli
 bir satır asla "geride" sayılmaz. İşletmeci, bilinçli bir geri yüklemeden sonra özel
-yapılandırmadaki `database_is_authority` ile bu yanıtı kapatabilir. Durum: sahibin onayını
-bekliyor.
+yapılandırmadaki `database_is_authority` ile bu yanıtı kapatabilir. Durum: sahip 23 Kasım
+2026'da onayladı.
+
+**Sahibin 23 Kasım 2026 sözü (bir söz; burada yapılmış olarak kaydedilmedi):** "Stripe
+deneme hesabı açarız".
 
 **Sonraki tasarım adımı için gereksinimler, sahibin sözleri, 23 Kasım 2026.**
 "celikpanel.net frankfurta taşınacak"; "frankfurt sadece bizde duracak"; "lisans sunucusunu

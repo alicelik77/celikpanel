@@ -81,8 +81,9 @@ Two related lines, each with its own source:
 - **The PHP release stays selectable as the way back during the switch:** the plan's
   proposal (the 23 November 2026 accounts-and-Stripe plan), not a decision of the owner.
 
-**Awaiting the owner's confirmation: one answer of the Go service differs from the PHP one.**
-The coordinator's decision of 23 November 2026, put to the owner for confirmation: when a
+**Confirmed by the owner on 23 November 2026: one answer of the Go service differs from the
+PHP one.** Proposed by the coordinator and confirmed by the owner the same day: asked "Yeni hizmet, veritabanı lisanstan eskiyse 'geçersiz' yerine 'şu an kullanılamıyor' desin mi?" ("Should the new service say 'unavailable right now' instead of 'invalid' when the
+database is older than the licence?"), he answered "evet" ("yes"). When a
 panel's refresh presents an activation token made by our signing key for a state the
 database does not know (the licence row is missing, the token's generation is above the
 row's, or the row is unbound at that generation), the Go service answers 503 and logs one
@@ -93,8 +94,11 @@ a licence row is never deleted, its generation never falls, and every revocation
 remove, rotate, a reinstall elsewhere, and later refund, operator revoke, account closing)
 raises the generation in the same statement; a row marked removed or revoked is never
 "behind". The operator can switch the answer off with `database_is_authority` in the
-private configuration after a deliberate restore. Status: awaiting the owner's
-confirmation.
+private configuration after a deliberate restore. Status: confirmed by the owner on 23
+November 2026.
+
+**The owner's statement, 23 November 2026 (a statement, not recorded here as done):**
+"Stripe deneme hesabı açarız" ("we will open a Stripe test account").
 
 **Requirements for the next design step, the owner's words, 23 November 2026.**
 "celikpanel.net frankfurta taşınacak" ("celikpanel.net will move to Frankfurt"); "frankfurt
