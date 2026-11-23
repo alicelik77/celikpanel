@@ -82,7 +82,7 @@ func CheckDB(path string, signingKey ed25519.PrivateKey, now int64) (DBReport, e
 		return r, err
 	}
 	for name := range columns {
-		if !known[name] {
+		if !known[name] && name != "revoked" && name != "revoked_reason" { // the store's own (MigrateStore)
 			r.UnknownColumns = append(r.UnknownColumns, name)
 		}
 	}

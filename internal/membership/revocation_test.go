@@ -29,12 +29,21 @@ type licenceState struct {
 	server     sql.NullString
 	keyHash    string
 	removed    sql.NullInt64
+	revoked    sql.NullInt64
 	generation int64
 }
 
 func licenceStates(t *testing.T, db *sql.DB) map[string]licenceState {
 	t.Helper()
-	rows, err := db.Query("SELECT id,server_id,key_hash,removed,generation FROM licenses")
+	columns, err := tableColumns(t.Context(), db, "licenses")
+	if err != nil {
+		t.Fatal(err)
+	}
+	revoked := "NULL"
+	if columns["revoked"] {
+		revoked = "revoked"
+	}
+	rows, err := db.Query("SELECT id,server_id,key_hash,removed," + revoked + ",generation FROM licenses")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +52,7 @@ func licenceStates(t *testing.T, db *sql.DB) map[string]licenceState {
 	for rows.Next() {
 		var id string
 		var s licenceState
-		if err := rows.Scan(&id, &s.server, &s.keyHash, &s.removed, &s.generation); err != nil {
+		if err := rows.Scan(&id, &s.server, &s.keyHash, &s.removed, &s.revoked, &s.generation); err != nil {
 			t.Fatal(err)
 		}
 		out[id] = s
@@ -158,7 +167,7 @@ func invariantProblems(before, after map[string]licenceState) []string {
 			problems = append(problems, "licence "+id+"'s generation fell")
 		}
 		unbound := b.server.Valid && b.server.String != "" && (!a.server.Valid || a.server.String != b.server.String)
-		revoked := !b.removed.Valid && a.removed.Valid
+		revoked := (!b.removed.Valid && a.removed.Valid) || (!b.revoked.Valid && a.revoked.Valid)
 		if (unbound || revoked || a.keyHash != b.keyHash) && a.generation <= b.generation {
 			problems = append(problems, "licence "+id+" was unbound, removed or re-keyed without a generation raise")
 		}

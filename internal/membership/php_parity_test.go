@@ -50,6 +50,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/payment"
 )
 
 func phpCommand(t *testing.T) []string {
@@ -761,6 +763,66 @@ func TestPHPDifferential(t *testing.T) {
 	}
 	if !goResults[0].OK {
 		t.Error("Go refused a password PHP hashed")
+	}
+}
+
+// The store's migration adds tables and two licence columns to the same file; the PHP
+// service must keep working on it exactly as before (S2: "prove it with the existing
+// cross tests"). The whole comparison script runs on store-migrated copies, and PHP then
+// refuses a licence the Go store revoked.
+func TestPHPDifferentialOnAStoreFile(t *testing.T) {
+	b := buildPHPBase(t)
+	t1 := b.t0 + 120
+	ops := differentialOps(b, t1)
+	phpDB, goDB := filepath.Join(b.dir, "php-store.sqlite"), filepath.Join(b.dir, "go-store.sqlite")
+	for _, db := range []string{phpDB, goDB} {
+		copyDB(t, b.db, db)
+		s, err := OpenExisting(db, b.secret, nil, func() int64 { return t1 })
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.MigrateStore("operator:test"); err != nil {
+			t.Fatal(err)
+		}
+		s.Close()
+	}
+	compareResults(t, "store-migrated database", ops, runPHPOps(t, b.php, phpDB, b.secret, t1, ops), runGoOps(t, goDB, b.secret, t1, ops))
+
+	// A first year bought and refunded through the Go store, then the PHP service asked.
+	db := filepath.Join(b.dir, "revoked.sqlite")
+	copyDB(t, b.db, db)
+	s, err := OpenExisting(db, b.secret, nil, func() int64 { return t1 })
+	if err != nil {
+		t.Fatal(err)
+	}
+	member, _ := strconv.ParseInt(b.member, 10, 64)
+	if err := s.MigrateStore("operator:test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetTestAccount("operator:test", "cross test", member, true); err != nil {
+		t.Fatal(err)
+	}
+	o, err := s.CreateOrder(member, b.ids[0], ChargingTest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fact := payment.Fact{Outcome: payment.OutcomePaid, PaymentID: "pi_x", Kind: payment.OrderOneTime, Order: o.ID, LicenseID: o.LicenseID, PaidMinor: o.AmountMinor, Currency: "USD"}
+	if _, err := s.ApplyFact(o.ID, "stripe", "test", fact); err != nil {
+		t.Fatal(err)
+	}
+	fact.Outcome = payment.OutcomeRefunded
+	if _, err := s.ApplyFact(o.ID, "stripe", "test", fact); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	a := strings.Repeat("a", 64)
+	byPHP := runPHPOps(t, b.php, db, b.secret, t1+60, []driverOp{
+		{Op: "refresh", Args: []string{b.ids[0], a, tokenFor(b.secret, b.ids[0], a, 1), "8.8.8.8"}},
+		{Op: "activate", Args: []string{b.keys[0], a, "frankfurt.example.com", "8.8.8.8"}},
+		{Op: "licenses", Args: []string{b.member}},
+	})
+	if byPHP[0].OK || byPHP[0].Code != "invalid_activation" || byPHP[1].OK || byPHP[1].Code != "license_expired" || !byPHP[2].OK {
+		t.Fatalf("PHP on a store-revoked licence: %+v", byPHP)
 	}
 }
 

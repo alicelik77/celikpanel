@@ -49,6 +49,7 @@ var messages = map[string][2]string{
 	"key_not_saved":           {"Anahtar görüntülenemiyor. Lisanslarınızdan yeni anahtar oluşturabilirsiniz; bitiş tarihi değişmez.", "The key cannot be displayed. You can create a replacement from your licenses; the expiry date stays the same."},
 	"invalid_license":         {"Anahtar bu lisansla eşleşmiyor. Oluştururken aldığınız anahtarı girin.", "This key does not match this license. Enter the key you received when it was created."},
 	"server_released":         {"Sunucu eşlemesi kaldırıldı. Aynı anahtarı yeni sunucuda kullanabilirsiniz; bitiş tarihi değişmedi.", "The server binding was released. Use the same key on the new server; the expiry date is unchanged."},
+	"license_revoked":         {"Bu lisansın ödemesi iade edildi; lisans sona erdi.", "This license's payment was refunded; the license has ended."},
 	"license_not_found":       {"Lisans bulunamadı.", "License not found."},
 	"renewal_not_due":         {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
 	"mail_sent":               {"Bu adres için işlem yapılabiliyorsa e-posta gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.", "If this address is eligible, an email has been sent. Check your inbox and spam folder."},

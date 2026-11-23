@@ -12,6 +12,10 @@
 //	membership check-db     read-only counts of the live database: can every live
 //	                        licence be served with the configured key?
 //	membership public-key   prints license_public_key=<hex> like init.php
+//	membership migrate-store -operator NAME
+//	                        creates the store's tables (orders, payments, refunds, prices,
+//	                        the audit log) and the licence columns they need; additive,
+//	                        repeatable, never done at request time
 //
 // The private directory is $CELIKPANEL_MEMBERSHIP_PRIVATE (an absolute path), always
 // named explicitly; the program never guesses it from where it is installed. The
@@ -61,13 +65,15 @@ func main() {
 		os.Exit(runCheckDB(os.Args[2:]))
 	case "public-key":
 		os.Exit(runPublicKey(os.Args[2:]))
+	case "migrate-store":
+		os.Exit(runMigrateStore(os.Args[2:]))
 	}
 	usage()
 	os.Exit(2)
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX]")
+	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX]")
 }
 
 // privateDir is named explicitly, never derived from where the program sits: a guess
@@ -255,5 +261,37 @@ func runPublicKey(args []string) int {
 		logLine("membership public-key: " + err.Error())
 		return 1
 	}
+	return 0
+}
+
+func runMigrateStore(args []string) int {
+	flags := flag.NewFlagSet("migrate-store", flag.ContinueOnError)
+	testHex := flags.String("test-signing-public-key", "", "accept this throwaway key instead of the production key (tests)")
+	operator := flags.String("operator", "", "who runs it (written to the store's audit log)")
+	if flags.Parse(args) != nil || *operator == "" {
+		logLine("membership migrate-store: name the operator: -operator NAME")
+		return 2
+	}
+	testKey, err := parseTestKey(*testHex)
+	if err != nil {
+		logLine("membership migrate-store: " + err.Error())
+		return 2
+	}
+	dir, config, err := loadChecked(testKey)
+	if err != nil {
+		logLine("membership migrate-store: " + err.Error())
+		return 1
+	}
+	service, err := membership.OpenExisting(filepath.Join(dir, "members.sqlite"), config.SigningKey, nil, nil)
+	if err != nil {
+		logLine("membership migrate-store: " + err.Error())
+		return 1
+	}
+	defer service.Close()
+	if err := service.MigrateStore("operator:" + *operator); err != nil {
+		logLine("membership migrate-store: " + err.Error())
+		return 1
+	}
+	fmt.Printf("store version %d is ready\n", membership.StoreVersion)
 	return 0
 }

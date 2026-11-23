@@ -287,3 +287,25 @@ func TestPublicKeyAndReadOnlyCheckDB(t *testing.T) {
 		t.Fatalf("check-db with the wrong key: %d\n%s", code, out)
 	}
 }
+
+// S2: the store is created only by its explicit command, which names the operator.
+func TestMigrateStoreCommand(t *testing.T) {
+	f := newFixture(t, "https://account.example")
+	env := []string{"CELIKPANEL_MEMBERSHIP_PRIVATE=" + f.dir}
+	key := "-test-signing-public-key " + hex.EncodeToString(f.public)
+	if code, _, _ := run(t, env, "migrate-store "+key, nil); code != 2 {
+		t.Fatalf("without an operator: %d", code)
+	}
+	if code, _, _ := run(t, env, "migrate-store -operator test", nil); code != 1 {
+		t.Fatalf("an unpinned key must refuse: %d", code)
+	}
+	for i := 0; i < 2; i++ {
+		code, out, stderr := run(t, env, "migrate-store -operator test "+key, nil)
+		if code != 0 || !strings.Contains(out, "store version 1 is ready") {
+			t.Fatalf("migrate-store: %d\n%s\n%s", code, out, stderr)
+		}
+	}
+	if code, out, _ := run(t, env, "check-db "+key, nil); code != 0 || !strings.Contains(out, "result: every live licence can be served") {
+		t.Fatalf("check-db after the store: %d\n%s", code, out)
+	}
+}

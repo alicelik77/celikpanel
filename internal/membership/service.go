@@ -65,6 +65,9 @@ const (
 	ErrMailUnavailable        Problem = "mail_unavailable"
 	ErrSessionChanged         Problem = "session_changed"
 	ErrAcceptTerms            Problem = "accept_terms"
+	// ErrLicenseRevoked: the licence's payment was refunded and the store revoked it (the Go
+	// service's own code; a file without the store's columns never answers it).
+	ErrLicenseRevoked Problem = "license_revoked"
 )
 
 // RefreshAfter: a panel in use asks again after this many seconds (Service.php
@@ -89,6 +92,8 @@ type Service struct {
 	// older state is rejected as the PHP service does. The operator sets it in the
 	// private configuration after a deliberate restore (third look at #361, 2).
 	databaseIsAuthority bool
+	// hasRevoked: the licences table has the store's "revoked" column (MigrateStore).
+	hasRevoked bool
 }
 
 // SetDatabaseIsAuthority is the private configuration's "database_is_authority".
@@ -203,6 +208,7 @@ func (s *Service) migrate() error {
 		if err != nil {
 			return err
 		}
+		s.hasRevoked = columns["revoked"]
 		for _, add := range []struct{ name, sql string }{
 			{"key_encrypted", "ALTER TABLE licenses ADD COLUMN key_encrypted TEXT"},
 			{"server_ip", "ALTER TABLE licenses ADD COLUMN server_ip TEXT"},
@@ -612,6 +618,22 @@ type row struct {
 	KeyEncrypted sql.NullString
 	ServerIP     sql.NullString
 	Removed      sql.NullInt64
+	// Revoked is the store's "revoked" column, read by loadRevoked (not by scanRow, so a
+	// file without the store's columns reads as it always did).
+	Revoked bool
+}
+
+// loadRevoked fills l.Revoked when the file has the store's column.
+func (s *Service) loadRevoked(ctx context.Context, q querier, l *row) error {
+	if l == nil || !s.hasRevoked {
+		return nil
+	}
+	var at sql.NullInt64
+	if err := q.QueryRowContext(ctx, "SELECT revoked FROM licenses WHERE id=?", l.ID).Scan(&at); err != nil {
+		return err
+	}
+	l.Revoked = at.Valid
+	return nil
 }
 
 const rowColumns = "id,member_id,key_hash,key_suffix,created,activated,expires,server_id,hostname,generation,key_encrypted,server_ip,removed"
@@ -654,7 +676,10 @@ func (s *Service) verifyMember(member int64, password string) (string, error) {
 // owned is the rest of Service::owned(): the member's password is still the one just
 // verified (a reset in between refuses), then the member's own licence that was not
 // removed. The codes and their order are PHP's: invalid_login before license_not_found.
-func (s *Service) owned(ctx context.Context, q querier, member int64, id, verified string) (*row, error) {
+//
+// A licence the store revoked (a refunded payment) is refused with license_revoked, except
+// for removing it from the list (removing).
+func (s *Service) owned(ctx context.Context, q querier, member int64, id, verified string, removing bool) (*row, error) {
 	var hash string
 	err := q.QueryRowContext(ctx, "SELECT password FROM members WHERE id=? AND verified=1", member).Scan(&hash)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -669,6 +694,12 @@ func (s *Service) owned(ctx context.Context, q querier, member int64, id, verifi
 	}
 	if l == nil {
 		return nil, ErrLicenseNotFound
+	}
+	if err := s.loadRevoked(ctx, q, l); err != nil {
+		return nil, err
+	}
+	if l.Revoked && !removing {
+		return nil, ErrLicenseRevoked
 	}
 	return l, nil
 }
@@ -729,7 +760,7 @@ func (s *Service) Reveal(member int64, id, password string) (Issued, error) {
 		return Issued{}, err
 	}
 	ctx := context.Background()
-	l, err := s.owned(ctx, s.db, member, id, verified)
+	l, err := s.owned(ctx, s.db, member, id, verified, false)
 	if err != nil {
 		return Issued{}, err
 	}
@@ -758,7 +789,7 @@ func (s *Service) Release(member int64, id, password string) error {
 	}
 	ctx := context.Background()
 	return s.atomic(func(tx *sql.Tx) error {
-		if _, err := s.owned(ctx, tx, member, id, verified); err != nil {
+		if _, err := s.owned(ctx, tx, member, id, verified, false); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE licenses SET server_id=NULL,server_ip=NULL,hostname=NULL,generation=generation+1 WHERE id=?", id); err != nil {
@@ -780,7 +811,7 @@ func (s *Service) Remove(member int64, id, password string) error {
 	}
 	ctx := context.Background()
 	return s.atomic(func(tx *sql.Tx) error {
-		if _, err := s.owned(ctx, tx, member, id, verified); err != nil {
+		if _, err := s.owned(ctx, tx, member, id, verified, true); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE licenses SET removed=?,key_hash=?,key_encrypted=NULL,server_id=NULL,server_ip=NULL,generation=generation+1 WHERE id=?",
@@ -803,7 +834,7 @@ func (s *Service) Rotate(member int64, id, password string) (Issued, error) {
 	ctx := context.Background()
 	var out Issued
 	err = s.atomic(func(tx *sql.Tx) error {
-		if _, err := s.owned(ctx, tx, member, id, verified); err != nil {
+		if _, err := s.owned(ctx, tx, member, id, verified, false); err != nil {
 			return err
 		}
 		key := "CPK-" + randomHex(32)
@@ -846,7 +877,7 @@ func (s *Service) Renew(member int64, id, password string) error {
 	}
 	ctx := context.Background()
 	return s.atomic(func(tx *sql.Tx) error {
-		l, err := s.owned(ctx, tx, member, id, verified)
+		l, err := s.owned(ctx, tx, member, id, verified, false)
 		if err != nil {
 			return err
 		}
@@ -965,6 +996,12 @@ func (s *Service) Activate(key, server, hostname, observedIP string) (Envelope, 
 		if l == nil {
 			return ErrInvalidLicense
 		}
+		if err := s.loadRevoked(ctx, tx, l); err != nil {
+			return err
+		}
+		if l.Revoked {
+			return ErrInvalidLicense // a refunded licence never binds again
+		}
 		if l.ServerIP.Valid && !hmac.Equal([]byte(l.ServerIP.String), []byte(ip)) {
 			return ErrLicenseInUse
 		}
@@ -1020,6 +1057,12 @@ func (s *Service) Refresh(id, server, token, observedIP string) (Envelope, error
 		if err != nil {
 			return err
 		}
+		if err := s.loadRevoked(ctx, tx, l); err != nil {
+			return err
+		}
+		if l != nil && l.Revoked {
+			return ErrInvalidActivation // the record of a deliberate end: never "behind"
+		}
 		if l == nil || !l.ServerID.Valid || !phpTruthyString(l.ServerID.String) || !hmac.Equal([]byte(l.ServerID.String), []byte(server)) ||
 			!hmac.Equal([]byte(s.activationToken(l.ID, l.ServerID.String, l.Generation)), []byte(token)) {
 			if s.tokenAhead(l, id, server, token) {
@@ -1073,7 +1116,7 @@ func (s *Service) tokenAhead(l *row, id, server, token string) bool {
 	if s.databaseIsAuthority {
 		return false
 	}
-	if l != nil && l.Removed.Valid { // a future "revoked" column is checked here as well
+	if l != nil && (l.Removed.Valid || l.Revoked) {
 		return false
 	}
 	if !hex32.MatchString(id) || !hex64.MatchString(server) || !hex64.MatchString(token) {
