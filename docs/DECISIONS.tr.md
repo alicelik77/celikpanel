@@ -145,7 +145,8 @@ yukarıdaki maddeler onun 14 Kasım 2026 onayıydı.
   tarihinden bir ay önce başlar: 30, 7 ve 1 gün önce, panelde ve e-postayla.
 - **Lisans bittiğinde.** "lisansın bittiği gün biter. yeni lisans alması gerekir." ve
   "lisans yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez". Lisans bitiş tarihinde
-  biter; 4. maddedeki çevrimdışı süre onu bu tarihin ötesine taşımaz. 3. maddedeki koruma
+  biter; 4. maddedeki çevrimdışı süre onu bu tarihin ötesine taşımaz (bu, sahibin ilk
+  cümlesinin yorumudur, kendi sözü değildir). 3. maddedeki koruma
   durumu ("yalnız büyüme işlemleri kapanır") kaldırıldı: lisans yokken panelin yönetim
   ekranları, güvenlik ekranları dahil, yeniden lisans girilene kadar kapalıdır; bu işleri
   sunucunun sahibi sunucunun kendisinde yapar. Lisanssız bir panelde iki şey açık kalır,

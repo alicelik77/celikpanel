@@ -146,7 +146,8 @@ the points above were his approval of 14 November 2026.
   "lisans yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez" ("A licence ends on its
   day; a new licence is needed." "Without a licence the panel does not work. The server
   works; that is not our concern.") A licence ends on its end date; point 4's offline window
-  does not carry it past that date. Point 3's protection state ("only growth actions are
+  does not carry it past that date (a reading of his first sentence, not his own words).
+  Point 3's protection state ("only growth actions are
   closed") is withdrawn: without a licence the panel's management screens, security screens
   included, are closed until a licence is entered again, and the server's owner does such
   work on the server itself. Two things stay possible in a panel without a licence, because

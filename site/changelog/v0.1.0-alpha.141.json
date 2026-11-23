@@ -2,7 +2,10 @@
   "version": "v0.1.0-alpha.141",
   "published": "2026-11-20",
   "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md",
-  "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
+    "says": "Published** on 2026-11-20 (UTC)"
+  },
   "lines": [
     {
       "kind": "security",
@@ -11,7 +14,10 @@
         "tr": "Yedekten, kopyadan ya da içe aktarmadan gelen SQL artık yöneticinin değil, veritabanı sahibinin yetkisiyle çalışır."
       },
       "case": "CP-2026-1",
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28",
+        "says": "SQL from a backup, a copy or an"
+      }
     },
     {
       "kind": "security",
@@ -19,7 +25,10 @@
         "en": "A new PostgreSQL database no longer accepts connections from other accounts’ users.",
         "tr": "Yeni bir PostgreSQL veritabanı artık başka hesapların kullanıcılarından bağlantı kabul etmez."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:43"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:43",
+        "says": "A new PostgreSQL database no longer"
+      }
     },
     {
       "kind": "new",
@@ -27,7 +36,10 @@
         "en": "Every PostgreSQL database the panel creates is UTF-8.",
         "tr": "Panelin oluşturduğu her PostgreSQL veritabanı UTF-8’dir."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:116"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:116",
+        "says": "Every PostgreSQL database the panel"
+      }
     },
     {
       "kind": "removed",
@@ -35,7 +47,10 @@
         "en": "Open WebUI is no longer offered; an existing one keeps running.",
         "tr": "Open WebUI artık sunulmuyor; kurulu olan çalışmaya devam eder."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:142"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:142",
+        "says": "Open WebUI is no longer offered"
+      }
     },
     {
       "kind": "limits",
@@ -43,7 +58,10 @@
         "en": "On PostgreSQL, users added to a database lose their rights on what a restore makes again; add them again on the database card.",
         "tr": "PostgreSQL’de bir veritabanına eklenen kullanıcılar, geri yüklemenin yeniden oluşturduğu nesnelerdeki yetkilerini kaybeder; veritabanı kartından yeniden ekleyin."
       },
-      "source": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:157"
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:157",
+        "says": "On PostgreSQL, the users added to a database lose their rights on what a"
+      }
     }
   ]
 }

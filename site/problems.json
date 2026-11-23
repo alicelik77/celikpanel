@@ -1,5 +1,5 @@
 {
-  "about": "Known problems shown on problems.html / tr/sorunlar.html. One case per problem: our number CP-<year>-<n> (never reused), the day it was first stated, its state (looking, accepted, fixed, not-defect), the release that fixed it, a one-sentence summary in our own words in both languages, what to do meanwhile or why it is not a defect, and the release-notes or lab lines that prove it. Never a reporter's name, server, domain or own words. A security problem is added only after the release that closes it is published. site.TestProblemsAndChangelog checks every field.",
+  "about": "Known problems shown on problems.html / tr/sorunlar.html. One case per problem: our number CP-<year>-<n> (never reused), the day it was first stated, its state (looking, accepted, fixed, not-defect), the release that fixed it, a one-sentence summary in our own words in both languages, what to do meanwhile or why it is not a defect, and the release-notes or lab lines that prove it, each as {\"cite\": path:line, \"says\": a phrase of that line} (the phrase rule of site/sources.go). Never a reporter's name, server, domain or own words. A security problem is added only after the release that closes it is published. site.TestProblemsAndChangelog checks every field.",
   "cases": [
     {
       "id": "CP-2026-1",
@@ -11,7 +11,10 @@
         "tr": "Yedekten, kopyadan ya da içe aktarmadan gelen SQL, veritabanı sunucusunun yönetici yetkisiyle çalışıyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28",
+          "says": "SQL from a backup, a copy or an"
+        }
       ]
     },
     {
@@ -24,8 +27,14 @@
         "tr": "Bir müşteri ya da bayi, başka bir hesaba ait bir adı, site hesabını, sunucu portunu ya da dosyaları alabiliyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32",
+          "says": "A name of another account or of"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53",
+          "says": "A link that made the web server"
+        }
       ]
     },
     {
@@ -38,8 +47,14 @@
         "tr": "Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adına alt alan adı ekleyemiyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:236",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:208"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:236",
+          "says": "A customer whose domain lies under"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:208",
+          "says": "A subdomain inside your own domain."
+        }
       ]
     },
     {
@@ -52,8 +67,14 @@
         "tr": "Uygulaması başarısız olmuş bir Node.js sitesi silinemiyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:247",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:247",
+          "says": "A Node.js site whose application"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223",
+          "says": "A Node.js site whose application failed"
+        }
       ]
     },
     {
@@ -70,8 +91,14 @@
         "tr": "Debian ve Ubuntu’da düzeltildi; Arch Linux’ta girişle gönderilen posta hâlâ başka bir barındırılan alan adı için imzalanabilir."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41",
+          "says": "Mail signed with another customer's"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233",
+          "says": "Arch Linux's OpenDKIM package cannot"
+        }
       ]
     },
     {
@@ -88,9 +115,18 @@
         "tr": "Panelin kendiliğinden kapatmadıklarını yönetici kapatır; elle oluşturulan veritabanlarına dokunulmaz."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:160",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:262"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50",
+          "says": "Older PostgreSQL databases open"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:160",
+          "says": "Every other such database the panel"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:262",
+          "says": "example made by hand) are not touched."
+        }
       ]
     },
     {
@@ -107,9 +143,18 @@
         "tr": "alpha.144’ten önce eklenen takma adlar, kaldırılıp yeniden eklenince kaydını alır."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:434",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:148"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:434",
+          "says": "An alias inside a customer's own"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126",
+          "says": "An alias that lies inside a domain"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:148",
+          "says": "before this release gets its record"
+        }
       ]
     },
     {
@@ -122,8 +167,14 @@
         "tr": "Posta kutusu oluşturulurken sayfadan ayrılmak kutuyu kaydı olmadan bırakabiliyor, yeniden oluşturmak da başarısız oluyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:449",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:66"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:449",
+          "says": "Older than this release, seen on"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:66",
+          "says": "A mailbox created while you leave"
+        }
       ]
     },
     {
@@ -136,8 +187,14 @@
         "tr": "Bir veritabanı başka hesaplara kapatılırken PostgreSQL sayfasından ayrılmak, sonucunu onaylanmamış olarak gösteriyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:437",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:437",
+          "says": "When the administrator leaves the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83",
+          "says": "A PostgreSQL close whose page was"
+        }
       ]
     },
     {
@@ -150,8 +207,14 @@
         "tr": "Bazı takma ad ve sertifika retleri Türkçe sayfada İngilizce gösteriliyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:446",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:93"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:446",
+          "says": "One refusal (an alias whose certificate"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:93",
+          "says": "Refusals in the page's language."
+        }
       ]
     },
     {
@@ -164,7 +227,10 @@
         "tr": "Web postanın kendi adresi, eklentilerinin sayfalarına ait olmayan dosyalarını veriyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31",
+          "says": "Webmail's own address gave out"
+        }
       ]
     },
     {
@@ -177,11 +243,26 @@
         "tr": "Web posta e-posta gönderemiyordu; okuma, ekler ve ayarlar çalışıyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:180",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:332",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:340",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:64",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:68"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:180",
+          "says": "Webmail cannot send mail** (reading"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:332",
+          "says": "Webmail cannot send mail.** Sending"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:340",
+          "says": "not established. Until alpha.145"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:64",
+          "says": "Sending from webmail never worked"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:68",
+          "says": "Now webmail switches encryption"
+        }
       ]
     },
     {
@@ -194,8 +275,14 @@
         "tr": "Yedek DNS sunucusu (isteğe bağlı ikinci sunucu) geri geldikten sonra bir takma ad, zaten cevap verdiği hâlde bir sonraki saatlik tura kadar “yayımlanmayı bekliyor” diyebiliyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:342",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:95"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:342",
+          "says": "After the backup server came back"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:95",
+          "says": "An alias's \"waiting to be published\""
+        }
       ]
     },
     {
@@ -208,8 +295,14 @@
         "tr": "Başarısız bir PostgreSQL kapatmasının penceresi, “Tamamlanmadı” yazısının üstünde sürmekte olan başlığını koruyordu."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:347",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:100"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:347",
+          "says": "The window of a failed PostgreSQL"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:100",
+          "says": "The window of a PostgreSQL close"
+        }
       ]
     },
     {
@@ -225,8 +318,14 @@
         "tr": "Değişiklik bittiğini söyleyene kadar sayfada kalın."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:157",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:158"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:157",
+          "says": "Other changes still run on the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:158",
+          "says": "other changes that still run on"
+        }
       ]
     },
     {
@@ -239,9 +338,18 @@
         "tr": "Web postanın sunucudaki yerel kapısı sunucunun her hesabına cevap veriyordu: herhangi biri oradan Roundcube’un dosyalarını okuyabiliyor ve eklenti betiklerini çalıştırabiliyordu (ağdan değil)."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:29",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:38",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:29",
+          "says": "Webmail's local door answered every"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:38",
+          "says": "scripts directly. It was **not"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42",
+          "says": "Now the door answers only what"
+        }
       ]
     },
     {
@@ -257,11 +365,26 @@
         "tr": "Bir değişiklik yaklaşık beş dakikadan uzun süredir sürüyor görünüyorsa sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın. Yalnız panelin web işlemini yeniden başlatır; o da gerçekte ne yapıldığını kaydeder: bir web posta güncellemesi yalnız okunur, yeniden çalıştırılmaz; yarıda kalmış bir kurulum sunucuda sürdürülür ve tamamlanır. Bu sırada siteler, posta ve web posta çalışmaya devam eder."
       },
       "sources": [
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:135",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:137",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:139",
-        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:141"
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128",
+          "says": "A longer change can stay \"in progress\""
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:135",
+          "says": "end by itself). Nothing on the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:137",
+          "says": "as in progress for more than about"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:139",
+          "says": "the server. It restarts only the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:141",
+          "says": "webmail update is only read, nothing"
+        }
       ]
     }
   ]

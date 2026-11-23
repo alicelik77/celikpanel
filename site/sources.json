@@ -1,5 +1,5 @@
 {
-  "about": "Where each claim on the public site is proved. Every catalogue key whose text (in either language) holds a number must be listed; other claims may be. Each source cites a repository path, optionally with :line, and for a line also a short phrase quoted from that line (says). site.TestEveryNumberHasASource checks that every cited file exists and that the phrase is on its line, so a citation that drifts or names the wrong line fails. Change the text and its source together.",
+  "about": "Where each claim on the public site is proved. Every catalogue key whose text (in either language) holds a number must be listed; other claims may be. Each source cites a repository path, optionally with :line, and for a line also a short phrase quoted from that line (says). The phrase is the proof (site/sources.go): it must be on the cited line or exactly once elsewhere in the file (the line moved; `go run ./site -fix-sources` rewrites the number); a phrase the file no longer has, or one that occurs several times but not on the cited line, fails site.TestEveryNumberHasASource. A phrase has at least 12 characters and a letter. Change the text and its source together.",
   "sources": {
     "changelog.earlier.text": [
       {
@@ -45,7 +45,7 @@
     ],
     "download.how.once.text": [
       {
-        "cite": "docs/DECISIONS.md:3316",
+        "cite": "docs/DECISIONS.md:3317",
         "says": "D-029 · Every state-changing request carries"
       }
     ],
@@ -150,7 +150,7 @@
     "fig.domain.caption": [
       {
         "cite": "web/tools/browser-inspect/README.md:781",
-        "says": "2026-11-19"
+        "says": "the public website's screens, 2026-11-19"
       },
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:5",
@@ -163,7 +163,7 @@
     "footer.copyright": [
       {
         "cite": "LICENSE:4",
-        "says": "CELIKBROS"
+        "says": "Copyright (c) 2026 CELIKBROS"
       }
     ],
     "home.def": [
@@ -187,11 +187,11 @@
     "home.measured.caption": [
       {
         "cite": "docs/RISK-REGISTER.md:188",
-        "says": "5 September 2026"
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
       },
       {
         "cite": "docs/RISK-REGISTER.md:1589",
-        "says": "4 September 2026"
+        "says": "Fixed and proven live, 4 September 2026"
       }
     ],
     "home.release.about": [
@@ -229,10 +229,6 @@
       }
     ],
     "home.sep.note": [
-      {
-        "cite": "docs/SITE-SANDBOX.md:4",
-        "says": "(systemd 257). The escape matrix on"
-      },
       {
         "cite": "docs/TENANT-ISOLATION.md:142",
         "says": "4. Open (proposals, not built)"
@@ -286,7 +282,7 @@
         "says": "before the end date: 30, 7 and 1 day before"
       },
       {
-        "cite": "docs/DECISIONS.md:150",
+        "cite": "docs/DECISIONS.md:151",
         "says": "without a licence the panel's management screens"
       }
     ],
@@ -314,7 +310,7 @@
     ],
     "licence.offline.today": [
       {
-        "cite": "docs/DECISIONS.md:836",
+        "cite": "docs/DECISIONS.md:837",
         "says": "D-039 · One successful license check"
       }
     ],
@@ -352,7 +348,7 @@
         "says": "6. A 30-day trial"
       },
       {
-        "cite": "docs/DECISIONS.md:158",
+        "cite": "docs/DECISIONS.md:159",
         "says": "the 30-day trial, the first time, stays"
       }
     ],
@@ -393,7 +389,7 @@
     "measured.age.date": [
       {
         "cite": "docs/RISK-REGISTER.md:188",
-        "says": "5 September 2026"
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
       }
     ],
     "measured.age.value": [
@@ -411,7 +407,7 @@
     "measured.bind.date": [
       {
         "cite": "docs/RISK-REGISTER.md:1589",
-        "says": "4 September 2026"
+        "says": "Fixed and proven live, 4 September 2026"
       }
     ],
     "measured.bind.value": [
@@ -423,17 +419,17 @@
     "measured.power.condition": [
       {
         "cite": "docs/RISK-REGISTER.md:2032",
-        "says": "four cuts"
+        "says": "cutting its power: four cuts"
       }
     ],
     "measured.power.date": [
       {
         "cite": "docs/RISK-REGISTER.md:2011",
-        "says": "Fixed 4 September 2026"
+        "says": "Fixed 4 September 2026. A detection failure is now classified"
       },
       {
         "cite": "docs/RISK-REGISTER.md:2032",
-        "says": "four cuts"
+        "says": "cutting its power: four cuts"
       }
     ],
     "measured.power.value": [
@@ -457,7 +453,7 @@
     "measured.restore.date": [
       {
         "cite": "docs/RISK-REGISTER.md:188",
-        "says": "5 September 2026"
+        "says": "Drilled on disposable real virtual machines, 5 September 2026"
       }
     ],
     "measured.restore.value": [
@@ -490,21 +486,21 @@
         "says": "Payment by card through Stripe is the first"
       },
       {
-        "cite": "docs/DECISIONS.md:158",
+        "cite": "docs/DECISIONS.md:159",
         "says": "the 30-day trial, the first time, stays"
       }
     ],
     "pricing.ends.panel": [
       {
-        "cite": "docs/DECISIONS.md:150",
+        "cite": "docs/DECISIONS.md:151",
         "says": "without a licence the panel's management screens"
       },
       {
-        "cite": "docs/DECISIONS.md:153",
+        "cite": "docs/DECISIONS.md:154",
         "says": "entering or renewing a licence, and installing the panel's own"
       },
       {
-        "cite": "docs/DECISIONS.md:154",
+        "cite": "docs/DECISIONS.md:155",
         "says": "The server keeps working"
       },
       {
@@ -596,7 +592,7 @@
     ],
     "pricing.from.refund.text": [
       {
-        "cite": "docs/DECISIONS.md:158",
+        "cite": "docs/DECISIONS.md:159",
         "says": "Point 6's 30-day refund is withdrawn"
       }
     ],
@@ -624,7 +620,7 @@
         "says": "6. A 30-day trial"
       },
       {
-        "cite": "docs/DECISIONS.md:158",
+        "cite": "docs/DECISIONS.md:159",
         "says": "the 30-day trial, the first time, stays"
       }
     ],
@@ -648,13 +644,13 @@
     ],
     "pricing.today.check.text": [
       {
-        "cite": "docs/DECISIONS.md:836",
+        "cite": "docs/DECISIONS.md:837",
         "says": "D-039 · One successful license check"
       }
     ],
     "pricing.today.offline.text": [
       {
-        "cite": "docs/DECISIONS.md:836",
+        "cite": "docs/DECISIONS.md:837",
         "says": "D-039 · One successful license check"
       }
     ],
@@ -679,7 +675,7 @@
     "releases.check.note": [
       {
         "cite": "download-portal/get.sh:598",
-        "says": "archive_sha256="
+        "says": "= \"archive_sha256=$signed_manifest_archive_sha256\" ]"
       }
     ],
     "releases.check.step1": [
@@ -703,7 +699,7 @@
     "releases.check.step4": [
       {
         "cite": "download-portal/get.sh:598",
-        "says": "archive_sha256="
+        "says": "= \"archive_sha256=$signed_manifest_archive_sha256\" ]"
       }
     ],
     "releases.description": [
@@ -715,7 +711,7 @@
     "releases.files.checksum": [
       {
         "cite": "download-portal/get.sh:1415",
-        "says": "sha256sum -c"
+        "says": "sha256sum -c \"$archive.sha256\")"
       }
     ],
     "releases.files.signature": [
@@ -805,7 +801,7 @@
     "sep.mail.since": [
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:68",
-        "says": "Outgoing mail limits"
+        "says": "## Outgoing mail limits"
       }
     ],
     "sep.mailmaps": [
@@ -837,7 +833,7 @@
     "sep.pgmove": [
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:253",
-        "says": "Moving a database to another PostgreSQL server version"
+        "says": "**Moving a database to another PostgreSQL server version** (an"
       }
     ],
     "sep.php": [
@@ -893,7 +889,7 @@
     "sep.signing": [
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:63",
-        "says": "Mail sent with a mailbox login"
+        "says": "**Mail sent with a mailbox login** (a mail program"
       },
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233",
@@ -1077,7 +1073,7 @@
       },
       {
         "cite": "docs/DISTRO-SUPPORT.md:142",
-        "says": "Node.js"
+        "says": "Node.js | Runtime"
       }
     ],
     "systems.arch.big.text": [
@@ -1110,7 +1106,7 @@
     ],
     "systems.arch.notoffered.4": [
       {
-        "cite": "docs/DECISIONS.md:3535",
+        "cite": "docs/DECISIONS.md:3536",
         "says": "On Arch, PowerDNS is installed only"
       }
     ],
