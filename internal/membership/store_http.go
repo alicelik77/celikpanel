@@ -355,7 +355,7 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 
 // storePage gathers the store's facts for the signed-in member's pages.
 func (x *exchange) storePage(service *Service, config Config, member *Member, licenses []License) (*storePage, error) {
-	store := &storePage{charging: config.Charging, revoked: map[string]bool{}, currency: "USD"}
+	store := &storePage{charging: config.Charging, revoked: map[string]bool{}, quotes: map[string]Quote{}}
 	store.ready = config.Charging == ChargingTest && PaymentState(x.h.payments(), config) == PaymentReady
 	orders, err := service.Orders(member.ID)
 	if err != nil {
@@ -368,9 +368,36 @@ func (x *exchange) storePage(service *Service, config Config, member *Member, li
 			return nil, err
 		}
 		store.revoked[l.ID] = revoked
-	}
-	if price, err := service.CurrentPrice("USD"); err == nil {
-		store.price = price.AmountMinor
+		if store.ready && !revoked {
+			if q, err := service.QuoteFor(member.ID, l.ID); err == nil {
+				store.quotes[l.ID] = q
+			}
+		}
 	}
 	return store, nil
+}
+
+// buyPage prepares the page before payment, or answers home with the refusal in words.
+func (x *exchange) buyPage(service *Service, config Config, member *Member, licenses []License, id string, store *storePage) (string, string) {
+	if _, err := x.chargingProvider(service, config); err != nil {
+		if problem, ok := err.(Problem); ok {
+			return "home", string(problem)
+		}
+		return "home", string(ErrPaymentUnavailable)
+	}
+	for i := range licenses {
+		if licenses[i].ID != id {
+			continue
+		}
+		q, err := service.QuoteFor(member.ID, id)
+		if err != nil {
+			if problem, ok := err.(Problem); ok {
+				return "home", string(problem)
+			}
+			return "home", string(ErrPaymentUnavailable)
+		}
+		store.buy, store.quote = &licenses[i], q
+		return "buy", ""
+	}
+	return "home", string(ErrLicenseNotFound)
 }

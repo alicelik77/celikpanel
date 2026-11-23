@@ -548,6 +548,9 @@ func (x *exchange) pages(service *Service, config Config, ip string, get phpVars
 		if store, err = x.storePage(service, config, member, licenses); err != nil {
 			return err
 		}
+		if action == "buy" && x.r.Method == http.MethodGet {
+			action, errorCode = x.buyPage(service, config, member, licenses, get.str("id"), store)
+		}
 		if action == "order" {
 			order, err := x.settle(service, config, member, get.str("id"))
 			if err != nil {

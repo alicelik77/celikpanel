@@ -115,8 +115,8 @@ func TestStoreAuditIsAppendOnlyAndOrdersOnlyMoveForward(t *testing.T) {
 			t.Fatalf("paid went back to %s", back)
 		}
 	}
-	if _, err := f.s.DB().Exec("UPDATE store_orders SET kind='renewal' WHERE id=?", o.ID); err == nil {
-		t.Fatal("a renewal order was accepted by the schema")
+	if _, err := f.s.DB().Exec("UPDATE store_orders SET kind='gift' WHERE id=?", o.ID); err == nil {
+		t.Fatal("an unknown kind was accepted by the schema")
 	}
 }
 
@@ -211,8 +211,8 @@ func TestAPaidFactGrantsTheFirstYearOnce(t *testing.T) {
 		t.Fatal("one payment fulfilled two orders")
 	}
 	// A licence with a paid year: "Renew" is not built (the owner's questions 5 and 6).
-	if _, err := s.CreateOrder(f.member, f.licence.ID, ChargingTest); !errors.Is(err, ErrRenewalNotAvailable) {
-		t.Fatalf("a second year: %v", err)
+	if next := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest)); next.Kind != KindRenewal || next.ID == o.ID {
+		t.Fatalf("a second year is a renewal: %+v", next)
 	}
 	// Events are stored once.
 	if fresh, err := s.RecordEvent("stripe", "evt_1", "payment", "cs_1"); !fresh || err != nil {
@@ -303,19 +303,19 @@ func TestARefundedFirstYearIsRevoked(t *testing.T) {
 	if err := s.DB().QueryRow("SELECT generation FROM licenses WHERE id=?", f.licence.ID).Scan(&generation); err != nil {
 		t.Fatal(err)
 	}
-	// The member asks; the store keeps the attempt; a double click is the same request.
-	r := must(s.RequestRefund(memberActor(f.member), o.ID, "changed my mind", f.member))
-	if again := must(s.RequestRefund(memberActor(f.member), o.ID, "changed my mind", f.member)); again.ID != r.ID || r.Attempt != 0 {
-		t.Fatalf("refund requests: %+v %+v", r, again)
+	// No refunds by policy; the operator's exceptional act needs a reason and keeps the attempt.
+	if _, err := s.RequestRefund("operator:test", o.ID, " "); !errors.Is(err, ErrInvalidRequest) {
+		t.Fatalf("a refund without a reason: %v", err)
 	}
-	if _, err := s.RequestRefund(memberActor(f.member+1), o.ID, "", f.member+1); !errors.Is(err, ErrOrderNotFound) {
-		t.Fatalf("another member's order: %v", err)
+	r := must(s.RequestRefund("operator:test", o.ID, "an exceptional act for a test"))
+	if again := must(s.RequestRefund("operator:test", o.ID, "an exceptional act for a test")); again.ID != r.ID || r.Attempt != 0 {
+		t.Fatalf("refund requests: %+v %+v", r, again)
 	}
 	// A definite refusal: the next request raises the attempt.
 	if err := s.RefundAnswered(r.ID, "provider:stripe", payment.ErrProviderRefused); err != nil {
 		t.Fatal(err)
 	}
-	r = must(s.RequestRefund(memberActor(f.member), o.ID, "again", f.member))
+	r = must(s.RequestRefund("operator:test", o.ID, "again"))
 	if r.Attempt != 1 {
 		t.Fatalf("attempt after a refusal: %d", r.Attempt)
 	}
@@ -373,7 +373,7 @@ func TestARefundedFirstYearIsRevoked(t *testing.T) {
 	if err := s.ExtendByHand("operator:test", "gift", f.licence.ID, 30); !errors.Is(err, ErrLicenseRevoked) {
 		t.Fatalf("extending a revoked licence: %v", err)
 	}
-	if _, err := s.RequestRefund(memberActor(f.member), o.ID, "", f.member); !errors.Is(err, ErrRefundNotPossible) {
+	if _, err := s.RequestRefund("operator:test", o.ID, "again"); !errors.Is(err, ErrRefundNotPossible) {
 		t.Fatalf("a second refund: %v", err)
 	}
 	if err := s.Remove(f.member, f.licence.ID, f.password); err != nil {
@@ -385,22 +385,18 @@ func TestRefundRules(t *testing.T) {
 	f := newStore(t)
 	s := f.s
 	o := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
-	if _, err := s.RequestRefund(memberActor(f.member), o.ID, "", f.member); !errors.Is(err, ErrRefundNotPossible) {
+	if _, err := s.RequestRefund("operator:test", o.ID, "test"); !errors.Is(err, ErrRefundNotPossible) {
 		t.Fatalf("an unpaid order: %v", err)
 	}
 	o = must(s.ApplyFact(o.ID, "stripe", "provider:stripe", paid(o, "pi_1")))
-	f.h.now += RefundWindow + 1
-	if _, err := s.RequestRefund(memberActor(f.member), o.ID, "", f.member); !errors.Is(err, ErrRefundWindowClosed) {
-		t.Fatalf("after 30 days: %v", err)
-	}
-	f.h.now -= 2
-	r := must(s.RequestRefund(memberActor(f.member), o.ID, "", f.member))
+	f.h.now += 400 * 86400 // no window: the operator's act is not bound to 30 days (there are no member refunds)
+	r := must(s.RequestRefund("operator:test", o.ID, "test"))
 	// Unknown outcomes keep the attempt; a final answer ends the request for the operator.
 	for _, answer := range []error{payment.ErrProviderUnavailable, payment.ErrProviderBusy} {
 		if err := s.RefundAnswered(r.ID, "provider:stripe", answer); err != nil {
 			t.Fatal(err)
 		}
-		if again := must(s.RequestRefund(memberActor(f.member), o.ID, "", f.member)); again.ID != r.ID || again.Attempt != r.Attempt {
+		if again := must(s.RequestRefund("operator:test", o.ID, "test")); again.ID != r.ID || again.Attempt != r.Attempt {
 			t.Fatalf("after %v the same attempt must be asked again: %+v", answer, again)
 		}
 	}
@@ -410,7 +406,7 @@ func TestRefundRules(t *testing.T) {
 	if refunds := must(s.Refunds(o.ID)); refunds[0].State != "final" || refunds[0].Outcome != "disputed" {
 		t.Fatalf("disputed: %+v", refunds)
 	}
-	if _, err := s.RequestRefund(memberActor(f.member), o.ID, "", f.member); !errors.Is(err, ErrRefundNotPossible) {
+	if _, err := s.RequestRefund("operator:test", o.ID, "test"); !errors.Is(err, ErrRefundNotPossible) {
 		t.Fatalf("after a final answer: %v", err)
 	}
 	if revoked, _, _ := s.LicenceRevocation(f.licence.ID); revoked {
@@ -498,5 +494,53 @@ func TestStoreChangesKeepTheGenerationRule(t *testing.T) {
 		if step.name == "refund and revoke" && after[f.licence.ID].generation != before[f.licence.ID].generation+1 {
 			t.Fatal("the revocation did not raise the generation")
 		}
+	}
+}
+
+// The owner's rule of 23 November 2026: no grace. A renewal before the end continues from the
+// old end at the locked price; after the end it is a new purchase at the list price from the
+// payment. A renewal refunded at the provider takes back exactly the year it gave.
+func TestRenewalByTheOwnersRule(t *testing.T) {
+	f := newStore(t)
+	s := f.s
+	first := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
+	first = must(s.ApplyFact(first.ID, "stripe", "provider:stripe", paid(first, "pi_1")))
+	end := f.expires(f.licence.ID)
+	// The list price rises; a renewal before the end keeps the price paid.
+	if err := s.SetPrice("operator:test", "test rise", "USD", 12900, f.h.now); err != nil {
+		t.Fatal(err)
+	}
+	q := must(s.QuoteFor(f.member, f.licence.ID))
+	if q.Kind != KindRenewal || q.AmountMinor != 9900 || !q.Locked || q.From != end || q.To != anniversary(end) {
+		t.Fatalf("a renewal before the end: %+v", q)
+	}
+	renewal := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
+	if renewal.Kind != KindRenewal || renewal.AmountMinor != 9900 {
+		t.Fatalf("the renewal order: %+v", renewal)
+	}
+	renewal = must(s.ApplyFact(renewal.ID, "stripe", "provider:stripe", paid(renewal, "pi_2")))
+	if renewal.GrantedFrom != end || f.expires(f.licence.ID) != anniversary(end) {
+		t.Fatalf("from the old end: %+v", renewal)
+	}
+	// A renewal refunded at the provider (the operator's exceptional act): the year goes back.
+	back := paid(renewal, "pi_2")
+	back.Outcome = payment.OutcomeRefunded
+	renewal = must(s.ApplyFact(renewal.ID, "stripe", "provider:stripe", back))
+	if renewal.State != OrderRefunded || f.expires(f.licence.ID) != end {
+		t.Fatalf("a refunded renewal: %+v, expires %d, want %d", renewal, f.expires(f.licence.ID), end)
+	}
+	if revoked, _, _ := s.LicenceRevocation(f.licence.ID); revoked {
+		t.Fatal("a refunded renewal revoked the licence")
+	}
+	// After the end: the list price, and the year starts at the payment.
+	f.h.now = end + 10*86400
+	q = must(s.QuoteFor(f.member, f.licence.ID))
+	if q.Kind != KindRenewal || q.AmountMinor != 12900 || q.Locked || q.From != f.h.now {
+		t.Fatalf("after the end: %+v", q)
+	}
+	late := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
+	late = must(s.ApplyFact(late.ID, "stripe", "provider:stripe", paid(late, "pi_3")))
+	if late.AmountMinor != 12900 || late.GrantedFrom != f.h.now || f.expires(f.licence.ID) != anniversary(f.h.now) {
+		t.Fatalf("a purchase after the end: %+v", late)
 	}
 }

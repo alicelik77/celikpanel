@@ -51,14 +51,11 @@ var messages = map[string][2]string{
 	"key_not_saved":             {"Anahtar görüntülenemiyor. Lisanslarınızdan yeni anahtar oluşturabilirsiniz; bitiş tarihi değişmez.", "The key cannot be displayed. You can create a replacement from your licenses; the expiry date stays the same."},
 	"invalid_license":           {"Anahtar bu lisansla eşleşmiyor. Oluştururken aldığınız anahtarı girin.", "This key does not match this license. Enter the key you received when it was created."},
 	"server_released":           {"Sunucu eşlemesi kaldırıldı. Aynı anahtarı yeni sunucuda kullanabilirsiniz; bitiş tarihi değişmedi.", "The server binding was released. Use the same key on the new server; the expiry date is unchanged."},
-	"license_revoked":           {"Bu lisansın ödemesi iade edildi; lisans sona erdi.", "This license's payment was refunded; the license has ended."},
+	"license_revoked":           {"Bu lisansın ödemesi geri alındı; lisans sona erdi.", "This license's payment was reversed; the license has ended."},
 	"charging_off":              {"Beta süresince satın alma yok; CelikPanel ücretsizdir. Ücretlendirme 1.0 sürümüyle başlar.", "There is nothing to buy during the beta; CelikPanel is free. Charging starts with version 1.0."},
 	"charging_live_not_enabled": {"Gerçek ödemeler bu sürümde açık değil. Sizin bir şey yapmanız gerekmiyor.", "Real payments are not enabled in this release. You do not need to do anything."},
 	"not_a_test_account":        {"Deneme kipinde yalnız deneme hesapları satın alabilir. Bu hesap bir deneme hesabı değil; hiçbir ücret alınmadı.", "In test mode only test accounts can buy. This account is not a test account; nothing was charged."},
-	"renewal_not_available":     {"Ücretli bir yılı olan lisansı yenileme henüz yok. Lisansınız bitiş tarihine kadar çalışır; hiçbir ücret alınmadı.", "Renewing a license that already has a paid year is not available yet. Your license runs until its end date; nothing was charged."},
 	"order_not_found":           {"Sipariş bulunamadı.", "Order not found."},
-	"refund_window_closed":      {"İade, ödemeden sonraki 30 gün içinde istenebilir; bu süre geçti.", "A refund can be asked for within 30 days of the payment; that time has passed."},
-	"refund_not_possible":       {"Bu sipariş için iade istenemiyor.", "A refund cannot be asked for this order."},
 	"payment_not_ready":         {"Ödeme şu anda alınamıyor; durumu biz düzeltiyoruz. Hiçbir ücret alınmadı; daha sonra tekrar deneyin.", "Payments cannot be taken right now; we are fixing it. Nothing was charged; please try again later."},
 	"payment_unavailable":       {"Ödeme sağlayıcısına şu anda ulaşılamıyor. Hiçbir ücret alınmadı; birkaç dakika sonra tekrar deneyin.", "The payment provider cannot be reached right now. Nothing was charged; please try again in a few minutes."}, "license_not_found": {"Lisans bulunamadı.", "License not found."},
 	"renewal_not_due": {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
@@ -98,6 +95,12 @@ func (p *page) titles() map[string]string {
 	}
 	if p.store != nil && p.store.order != nil {
 		titles["order"] = p.t("Siparişiniz", "Your order")
+	}
+	if p.store != nil && p.store.buy != nil {
+		titles["buy"] = p.t("Bir yıl satın alın", "Buy a year")
+		if p.store.quote.Kind == KindRenewal {
+			titles["buy"] = p.t("Bir yıl yenileyin", "Renew for a year")
+		}
 	}
 	return titles
 }
@@ -180,6 +183,8 @@ func (p *page) render() string {
 		p.home(&b)
 	case action == "order" && p.member != nil && p.store != nil && p.store.order != nil:
 		p.orderPage(&b)
+	case action == "buy" && p.member != nil && p.store != nil && p.store.buy != nil:
+		p.buyPage(&b)
 	case (action == "release" || action == "renew" || action == "reveal" || action == "rotate" || action == "remove") && p.member != nil:
 		p.confirm(&b, action)
 	default:

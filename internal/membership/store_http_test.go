@@ -294,6 +294,20 @@ func TestBuyAYearThroughThePages(t *testing.T) {
 		t.Fatalf("home: %s", home)
 	}
 	before := site.expires()
+	for lang, words := range map[string][]string{
+		"en": {"<h1>Buy a year</h1>", "The new year starts after your current end date", "Payments are not refunded.", "the free 30-day trial", "Test mode: no real money is taken.", "99.00 USD"},
+		"tr": {"<h1>Bir yıl satın alın</h1>", "Ödemeler iade edilmez.", "30 günlük ücretsiz deneme", "Ödemeye geç"},
+	} {
+		_, _, page := site.page(http.MethodGet, "action=buy&id="+site.licence.ID+"&lang="+lang, nil)
+		for _, w := range words {
+			if !strings.Contains(page, w) {
+				t.Fatalf("%s: the page before payment lacks %q:\n%s", lang, w, page)
+			}
+		}
+	}
+	if orders := must(site.s.Orders(0)); len(orders) != 0 {
+		t.Fatal("looking at the page made an order")
+	}
 	session := site.buy()
 	// A double click: the same order and the same checkout (the provider answers once per key).
 	if again := site.buy(); again != session || site.stripe.posts != 2 || len(site.stripe.sessions) != 1 {
@@ -316,13 +330,15 @@ func TestBuyAYearThroughThePages(t *testing.T) {
 	if status, _ := site.event(completed("evt_1", session, order.ID, site.licence.ID), site.webhook); status != 200 || site.expires() != want {
 		t.Fatalf("the late webhook: %d", status)
 	}
-	// The licence now has a paid year: no "Buy a year"; "Renew" waits for the owner.
+	// The licence now has a paid year: "Renew for a year", from the new end, at the same price.
 	_, _, home = site.page(http.MethodGet, "lang=en", nil)
-	if strings.Contains(home, "Buy a year") {
-		t.Fatal("a second year offered")
+	if strings.Contains(home, ">Buy a year") || !strings.Contains(home, "Renew for a year · 99.00 USD") {
+		t.Fatalf("after the first year: %s", home)
 	}
-	if _, _, body := site.page(http.MethodPost, "action=buy&lang=en", url.Values{"id": {site.licence.ID}}); !strings.Contains(body, "Renewing a license that already has a paid year is not available yet.") {
-		t.Fatalf("a forced second purchase: %s", body)
+	_, _, renew := site.page(http.MethodGet, "action=buy&id="+site.licence.ID+"&lang=en", nil)
+	if !strings.Contains(renew, "<h1>Renew for a year</h1>") || !strings.Contains(renew, day(want)+" – "+day(anniversary(want))) ||
+		!strings.Contains(renew, "Payments are not refunded.") || !strings.Contains(renew, "Continue to payment") {
+		t.Fatalf("the renewal page: %s", renew)
 	}
 	// Another member's order is not shown.
 	if _, _, body := site.page(http.MethodGet, "action=order&id=CPC"+strings.Repeat("0", 44)+"&lang=en", nil); !strings.Contains(body, "Order not found.") {
@@ -409,7 +425,8 @@ func TestTheWebhookRoute(t *testing.T) {
 	if status, _ := site.event(completed("evt_9", "cs_test_99", "CPC"+strings.Repeat("e", 44), strings.Repeat("e", 32)), site.webhook); status != 200 {
 		t.Fatalf("no order of ours: %d", status)
 	}
-	// A refund made at the provider: the refund hint is confirmed, the first year revoked.
+	// A refund made at the provider (there are none by policy; the operator's exceptional act
+	// or a chargeback): the hint is confirmed, the first year revoked.
 	site.stripe.mu.Lock()
 	site.stripe.sessions[session].refunded = site.stripe.sessions[session].amount
 	site.stripe.mu.Unlock()
@@ -421,7 +438,7 @@ func TestTheWebhookRoute(t *testing.T) {
 		t.Fatal("the refunded first year was not revoked")
 	}
 	_, _, home := site.page(http.MethodGet, "lang=en", nil)
-	if !strings.Contains(home, "Its payment was refunded; this license has ended.") {
+	if !strings.Contains(home, "This license's payment was reversed; the license has ended.") {
 		t.Fatalf("home after the refund: %s", home)
 	}
 }

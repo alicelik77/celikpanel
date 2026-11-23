@@ -17,8 +17,9 @@ type storePage struct {
 	orders   []Order
 	revoked  map[string]bool
 	order    *Order // the order page's order
-	price    int64
-	currency string
+	quotes   map[string]Quote
+	buy      *License // the page before payment: its licence and quote
+	quote    Quote
 }
 
 func money(minor int64, currency string) string {
@@ -52,26 +53,71 @@ func (p *page) storeSummary(b *strings.Builder) {
 	}
 }
 
-// licenceStore is the store's part of one licence card: refunded, or "Buy a year".
+// licenceStore is the store's part of one licence card: its state in plain words (active /
+// ends in N days / ended: the owner, 23 November 2026 -- no grace; without a licence the
+// panel is closed and the server keeps running), and "Buy a year" or "Renew for a year".
 func (p *page) licenceStore(b *strings.Builder, l License) {
 	if p.store == nil {
 		return
 	}
 	if p.store.revoked[l.ID] {
-		b.WriteString(`<p class="member-state">` + p.t("Ödemesi iade edildi; bu lisans sona erdi.", "Its payment was refunded; this license has ended.") + `</p>`)
+		b.WriteString(`<p class="member-state">` + p.t("Bu lisansın ödemesi geri alındı; lisans sona erdi.", "This license's payment was reversed; the license has ended.") + `</p>`)
 		return
 	}
 	if p.store.charging != ChargingTest || !p.store.ready {
 		return
 	}
-	for _, o := range p.store.orders {
-		if o.LicenseID == l.ID && (o.State == OrderPaid || o.State == OrderRefunded) {
-			return // a paid year exists: "Renew" waits for the owner's answers
+	if l.Expires.Valid && l.Expires.Int64 != 0 {
+		end := day(l.Expires.Int64)
+		switch left := (l.Expires.Int64 - p.now) / 86400; {
+		case l.Expires.Int64 <= p.now:
+			b.WriteString(`<p class="member-state">` + p.t(end+" tarihinde sona erdi. O sunucudaki panel, yeni bir yıl alana kadar kapalı kalır; sunucu, siteler, e-posta ve DNS çalışmaya devam eder.",
+				"Ended on "+end+". The panel on that server stays closed until you buy a new year; the server and its sites, mail and DNS keep running.") + `</p>`)
+		case left < 30:
+			b.WriteString(`<p class="member-state">` + p.t(strconv.FormatInt(left, 10)+" gün sonra sona eriyor ("+end+"). Panelin açık kalması ve fiyatınızın aynı kalması için o tarihten önce yenileyin.",
+				"Ends in "+strconv.FormatInt(left, 10)+" days ("+end+"). Renew before then to keep the panel open and your price unchanged.") + `</p>`)
 		}
 	}
+	q, ok := p.store.quotes[l.ID]
+	if !ok {
+		return
+	}
+	label := p.t("Bir yıl satın al", "Buy a year")
+	if q.Kind == KindRenewal {
+		label = p.t("Bir yıl yenile", "Renew for a year")
+	}
+	b.WriteString(`<p><a href="?action=buy&amp;id=` + htmlEscape(l.ID) + `&amp;lang=` + htmlEscape(p.lang) + `">` + label + ` · ` + htmlEscape(money(q.AmountMinor, q.Currency)) + `</a></p>`)
+}
+
+// buyPage is the page before payment: what the member buys, from when to when, the price,
+// and -- plainly, before paying -- that payments are not refunded and that the trial is for
+// trying first (the owner, 23 November 2026). The legal wording of the terms is the owner's
+// lawyer's matter, not this page's.
+func (p *page) buyPage(b *strings.Builder) {
+	l, q := p.store.buy, p.store.quote
+	name := p.t("Aktivasyon bekliyor", "Awaiting activation")
+	if nullTruthy(l.Hostname.Valid, l.Hostname.String) {
+		name = l.Hostname.String
+	}
+	b.WriteString(`<dl><dt>` + p.t("Lisans", "License") + `</dt><dd>` + htmlEscape(name) + ` <code>…` + htmlEscape(l.KeySuffix) + `</code></dd>`)
+	b.WriteString(`<dt>` + p.t("Süre (UTC)", "Term (UTC)") + `</dt><dd>` + day(q.From) + ` – ` + day(q.To) + `</dd>`)
+	b.WriteString(`<dt>` + p.t("Tutar", "Amount") + `</dt><dd>` + htmlEscape(money(q.AmountMinor, q.Currency)) + `</dd></dl>` + "\n")
+	if q.From > p.now {
+		b.WriteString(`<p>` + p.t("Yeni yıl, şimdiki bitiş tarihinizden sonra başlar; kalan günleriniz kaybolmaz.", "The new year starts after your current end date; no remaining days are lost.") + `</p>`)
+	} else {
+		b.WriteString(`<p>` + p.t("Yıl, ödemeniz onaylandığında başlar.", "The year starts when your payment is confirmed.") + `</p>`)
+	}
+	if q.Locked {
+		b.WriteString(`<p>` + p.t("Bitiş tarihinden önce yenilediğiniz için fiyatınız aynı kalır.", "Because you renew before the end date, your price stays the same.") + `</p>`)
+	}
+	b.WriteString(`<p class="member-notice" role="note"><strong>` + p.t("Ödemeler iade edilmez.", "Payments are not refunded.") + `</strong> ` +
+		p.t("Önce denemek isterseniz ilk seferde 30 günlük ücretsiz deneme kullanabilirsiniz.", "If you want to try first, the free 30-day trial is there for your first time.") + `</p>` + "\n")
+	if p.store.charging == ChargingTest {
+		b.WriteString(`<p>` + p.t("Deneme kipi: gerçek para alınmaz.", "Test mode: no real money is taken.") + `</p>`)
+	}
 	p.formStart(b, "buy")
-	b.WriteString(`<input type="hidden" name="id" value="` + htmlEscape(l.ID) + `"><button type="submit">` +
-		p.t("Bir yıl satın al", "Buy a year") + ` · ` + htmlEscape(money(p.store.price, p.store.currency)) + `</button></form>`)
+	b.WriteString(`<input type="hidden" name="id" value="` + htmlEscape(l.ID) + `"><button type="submit">` + p.t("Ödemeye geç", "Continue to payment") + `</button></form>` + "\n")
+	b.WriteString(`<a href="/account/">` + p.t("Lisanslarıma dön", "Back to licenses") + `</a>` + "\n")
 }
 
 // orderPage is the page the member returns to from the provider, and every order's page.
@@ -106,8 +152,11 @@ func (p *page) orderPage(b *strings.Builder) {
 		next = p.t("Lisansınızda hiçbir şey değişmedi. Durumu biz inceliyoruz ve size e-postayla yazacağız; sizin bir şey yapmanız gerekmiyor.",
 			"Nothing changed on your license. We are looking into it and will write to you by email; you do not need to do anything.")
 	case OrderRefunded:
-		state = p.t("İade edildi.", "Refunded.")
-		next = p.t("Ödemeniz iade edildi ve bu lisans sona erdi.", "Your payment was refunded and this license has ended.")
+		state = p.t("Ödeme geri alındı.", "The payment was reversed.")
+		next = p.t("Ödeme size geri döndü ve bu lisans sona erdi.", "The payment went back to you and this license has ended.")
+		if o.Kind == KindRenewal {
+			next = p.t("Ödeme size geri döndü ve bu ödemenin aldığı yıl geri alındı.", "The payment went back to you and the year it bought was taken back.")
+		}
 	}
 	b.WriteString(`<p class="member-notice" role="status"><strong>` + state + `</strong> ` + htmlEscape(next) + `</p>` + "\n")
 	b.WriteString(`<a href="/account/">` + p.t("Lisanslarıma dön", "Back to licenses") + `</a>` + "\n")
