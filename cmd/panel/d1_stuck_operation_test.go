@@ -854,9 +854,17 @@ func TestD1AtStartupARunAgainTheHostKeepsRefusingEndsTheRow(t *testing.T) {
 			if reason := serviceOperationSettleBusyReason(); reason != "" {
 				t.Fatalf("an ended row still marks refusals: %q", reason)
 			}
-			// Other changes are admitted again.
+			// Other changes are admitted again (the ended run releases the
+			// process lock right after it records the row).
 			agent.beginBusy.Store(0)
 			agent.open(1)
+			waitFor(t, "the process lock's release", func() bool {
+				if f.panel.serviceMutationMu.TryLock() {
+					f.panel.serviceMutationMu.Unlock()
+					return true
+				}
+				return false
+			})
 			recorder, next := postServiceInstall(t, f, "certbot")
 			if recorder.Code != http.StatusAccepted {
 				t.Fatalf("next change: %d %s", recorder.Code, recorder.Body.String())

@@ -1012,6 +1012,7 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 				return
 			}
 			clearServiceOperationSettle(op.ID)
+			release()
 			auditWriter(context.Background(), actor, failureAudit+" — "+failure.Code)
 			return
 		}
