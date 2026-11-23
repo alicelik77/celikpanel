@@ -17,6 +17,8 @@ import { enRefusalsScreens } from '../src/i18n/screens/refusals/en.ts';
 import { trRefusalsScreens } from '../src/i18n/screens/refusals/tr.ts';
 import { enMonitoringScreens } from '../src/i18n/screens/monitoring/en.ts';
 import { trMonitoringScreens } from '../src/i18n/screens/monitoring/tr.ts';
+import { enSetupLinkScreens } from '../src/i18n/screens/setupLink/en.ts';
+import { trSetupLinkScreens } from '../src/i18n/screens/setupLink/tr.ts';
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const RESTART = /sudo systemctl restart celikpanel-panel/;
@@ -89,6 +91,16 @@ test('another change refused meanwhile says who acts and when', () => {
     // when it ends".
     assert.match(source('components/RoundcubeUpdateFlow.tsx'), /'err\.service_operation_busy\.unsettled'/);
     assert.match(source('lib/webmailAddressFlow.ts'), /'err\.service_operation_busy\.unsettled'/);
+});
+
+test('a setup step ended at startup by a busy host gets setup’s own next step', () => {
+    // Second look, finding 5: not "check the component's page", but setup's
+    // Review a revised plan; what the first run did is not known.
+    assert.match(source('components/ServerSetup.tsx'), /service_operation_rerun_host_busy: 'setup\.v5\.wait\.service_operation_rerun_host_busy'/);
+    const key = 'setup.v5.wait.service_operation_rerun_host_busy';
+    assert.match(enSetupLinkScreens[key], /not known.*Review a revised plan/s);
+    assert.match(trSetupLinkScreens[key], /bilinmiyor.*Düzeltilmiş planı incele/s);
+    for (const catalog of [enSetupLinkScreens, trSetupLinkScreens]) assert.doesNotMatch(catalog[key], /on its page|kendi sayfasında/);
 });
 
 test('Problems now has one line for a change that could not be recorded', () => {

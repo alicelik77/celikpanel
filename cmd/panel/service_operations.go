@@ -2251,6 +2251,11 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 		return 0, false, fmt.Errorf("read matching privileged mutation: %w", err)
 	}
 	if job == nil {
+		// A running panel has not restarted: the result is not known, and the
+		// row is left to the next start (D1 review, finding 4).
+		if live {
+			return 0, false, errAgentMutationNoRecord
+		}
 		failure := operationFailure(
 			"panel_restarted_without_agent_ledger",
 			"Panel restarted and the privileged agent has no matching operation record.",

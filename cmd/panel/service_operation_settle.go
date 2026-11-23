@@ -70,8 +70,12 @@ var (
 	serviceOperationSettleRetry  = newTunableDuration(time.Second)
 	// serviceOperationAgentSilence: how long the settling reads may go
 	// without one answer before the row is left unsettled and the process
-	// lock is released (D1 review, finding 4). The Agent itself refuses a new
-	// lease while its job is active, so nothing can overlap meanwhile.
+	// lock is released (D1 review, finding 4). While the interrupted job is
+	// still active, the Agent refuses every other lease, so no two privileged
+	// steps run at once. Once that job has ended, firewall, DNS, mail TLS and
+	// similar standalone changes are admitted again (they take the lock, not
+	// the row) before the interrupted install is run again at the panel's
+	// next start; component and setup changes stay refused by the row.
 	serviceOperationAgentSilence = newTunableDuration(2 * time.Minute)
 	// serviceOperationResumeBusyBound: how long a continuation the Agent
 	// refuses because the host is busy is asked again (finding 6).
@@ -265,7 +269,13 @@ func (p *Panel) settleAbandonedServiceOperation(op serviceOperation, deadline ti
 // after an interrupted step the package manager may still be finishing. A
 // first start is asked once, as before.
 func (p *Panel) beginServiceOperationLease(op serviceOperation, ownerID string, resume bool) (*agentMutationJob, time.Time, error) {
-	bound := time.Now().Add(serviceOperationResumeBusyBound.get())
+	wait := serviceOperationResumeBusyBound.get()
+	// A server setup step waits for a busy host as long as setup itself does
+	// (D1 review, finding 5).
+	if resume && p.markServerSetupChild(context.Background(), op).SetupChild && serverSetupHostBusyBound > wait {
+		wait = serverSetupHostBusyBound
+	}
+	bound := time.Now().Add(wait)
 	pause := serviceOperationSettleRetry.get()
 	for {
 		beginCtx, beginCancel := context.WithTimeout(context.Background(), panelMutationFinishTimeout)

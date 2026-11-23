@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/rpc"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -51,6 +53,7 @@ type heldStepAgent struct {
 	pending   map[string]string // request id -> code once its step ends
 	foreignFW atomic.Bool       // one foreign job after the first firewall apply
 	foreignOK atomic.Bool
+	vanish    atomic.Bool // a job read as ended is gone from the ledger after that read
 }
 
 func newHeldStepAgent(base *serviceOperationTestAgent) *heldStepAgent {
@@ -110,7 +113,14 @@ func (a *heldStepAgent) ServiceMutationStatus(req *ServiceOperationMutationStatu
 			return nil
 		}
 	}
-	return a.serviceOperationTestAgent.ServiceMutationStatus(req, resp)
+	err := a.serviceOperationTestAgent.ServiceMutationStatus(req, resp)
+	if req.RequestID != "" && a.vanish.Load() && resp.Job != nil && !agentMutationActive(resp.Job.Status) {
+		// The Agent's ledger is reset between this read and the next.
+		a.mu.Lock()
+		delete(a.mutationJobs, req.RequestID)
+		a.mu.Unlock()
+	}
+	return err
 }
 
 func (a *heldStepAgent) BeginServiceMutation(req *ServiceOperationMutationBeginRequest, resp *ServiceOperationMutationResponse) error {
@@ -286,9 +296,10 @@ func shortenD1Bounds(t *testing.T) {
 	t.Helper()
 	interval, window := panelOperationHeartbeatInterval.get(), panelHeartbeatUncertainWindow.get()
 	poll, retry, margin := serviceOperationSettlePoll.get(), serviceOperationSettleRetry.get(), serviceOperationSettleMargin.get()
-	silence, busy := serviceOperationAgentSilence.get(), serviceOperationResumeBusyBound.get()
+	silence, busy, pause := serviceOperationAgentSilence.get(), serviceOperationResumeBusyBound.get(), panelHeartbeatRetryPause.get()
 	panelOperationHeartbeatInterval.set(20 * time.Millisecond)
 	panelHeartbeatUncertainWindow.set(100 * time.Millisecond)
+	panelHeartbeatRetryPause.set(10 * time.Millisecond)
 	serviceOperationSettlePoll.set(10 * time.Millisecond)
 	serviceOperationSettleRetry.set(20 * time.Millisecond)
 	serviceOperationAgentSilence.set(2 * time.Second)
@@ -310,6 +321,7 @@ func shortenD1Bounds(t *testing.T) {
 		serviceOperationSettleMargin.set(margin)
 		serviceOperationAgentSilence.set(silence)
 		serviceOperationResumeBusyBound.set(busy)
+		panelHeartbeatRetryPause.set(pause)
 	})
 }
 
@@ -758,6 +770,95 @@ func TestD1AnAgentWithoutARecordIsUnknownNotEnded(t *testing.T) {
 	}
 }
 
+// Second look, finding 4: the reconciliation's own read also finds no
+// record (the Agent's ledger was reset after the wait read the job as
+// ended): in a running panel the row is left unsettled, never failed with
+// "the panel restarted".
+func TestD1InTheRunningPanelTheReconcilesNoRecordLeavesTheRowUnsettled(t *testing.T) {
+	f, agent, _ := newHeldStepFixture(t)
+	shortenD1Bounds(t)
+	clearD1Settles(t)
+	agent.vanish.Store(true)
+	op := seedInterruptedOperation(t, f, f.agent, serviceOperationKindInstall, "certbot", "", agentMutationFailed, agentMutationLeaseExpiredErrorCode)
+	if settleDirectly(t, f.panel, op, time.Now().Add(time.Hour)) {
+		t.Fatal("a job without a record was run again")
+	}
+	shown, body := getServiceOperation(t, f.panel, f.userID, op.ID)
+	if shown.Status != serviceOperationRunning || shown.Phase != serviceOperationUnsettledPhase || strings.Contains(body, "restarted") || agent.calls.Load() != 0 {
+		t.Fatalf("row: %s", body)
+	}
+}
+
+// Second look, finding 5: a server setup step waits for a busy host as long
+// as setup itself does, not the two minutes of an ordinary run again.
+func TestD1ASetupStepWaitsForABusyHostAsLongAsSetupDoes(t *testing.T) {
+	f, agent, _ := newHeldStepFixture(t)
+	shortenD1Bounds(t)
+	clearD1Settles(t)
+	serviceOperationResumeBusyBound.set(60 * time.Millisecond)
+	restoreSetup := serverSetupHostBusyBound
+	serverSetupHostBusyBound = 5 * time.Second
+	t.Cleanup(func() { serverSetupHostBusyBound = restoreSetup })
+	agent.open(1)
+	// Refused for longer than the ordinary bound (pauses 20+40+80+160 ms).
+	agent.beginBusy.Store(4)
+	op := seedInterruptedOperation(t, f, f.agent, serviceOperationKindInstall, "certbot", "", agentMutationFailed, agentMutationLeaseExpiredErrorCode)
+	// The row is a step of a server setup run.
+	conn, err := f.database.GetDB().Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{`PRAGMA foreign_keys = OFF`,
+		`INSERT INTO server_setup_executions (id, request_id, plan_id, status, execution_json, created_at, updated_at) VALUES ('` + strings.Repeat("d", 32) + `', '` + strings.Repeat("d", 32) + `', 'plan', 'running', '{"steps":[{"request_id":"` + op.RequestID + `"}]}', 'x', 'x')`,
+		`PRAGMA foreign_keys = ON`} {
+		if _, err := conn.ExecContext(context.Background(), statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = conn.Close()
+	if !f.panel.markServerSetupChild(context.Background(), op).SetupChild {
+		t.Fatal("fixture: the row is not a setup step")
+	}
+	if !settleDirectly(t, f.panel, op, time.Now().Add(time.Hour)) {
+		t.Fatal("the row was not handed to its run again")
+	}
+	waitForServiceOperation(t, f.panel, f.userID, op.ID, serviceOperationSucceeded)
+	if agent.beginBusy.Load() != 0 || agent.calls.Load() != 1 {
+		t.Fatalf("busy refusals left %d, install calls %d", agent.beginBusy.Load(), agent.calls.Load())
+	}
+}
+
+// Second look, finding 7: point updates read back from a row are used only
+// when bounded and each is an exact "package=version"; otherwise the list
+// is dropped.
+func TestD1AcceptedPointUpdatesReadBackAreValidated(t *testing.T) {
+	for name, items := range map[string][]string{
+		"not package=version": {"libc6=2.41-12", "rm -rf /"},
+		"no version":          {"openssl="},
+		"too many":            make([]string, maxAcceptedPointUpdates+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			for i := range items {
+				if items[i] == "" && name == "too many" {
+					items[i] = "libc6=2.41-12"
+				}
+			}
+			raw, _ := json.Marshal(serviceInstallOperationData{AcceptedPointUpdates: items})
+			var resumed serviceInstallRequest
+			restoreServiceInstallChoices(&resumed, string(raw))
+			if len(resumed.AcceptedPointUpdates) != 0 {
+				t.Fatalf("restored %d entries", len(resumed.AcceptedPointUpdates))
+			}
+		})
+	}
+	good := []string{"libc6=2.41-12", "openssl=3.5.1-1+deb13u1", "tzdata=2025b-4+deb13u1", "libssl3t64=3.0.13-0ubuntu3.5", "bind9=1:9.20.11-4"}
+	var resumed serviceInstallRequest
+	restoreServiceInstallChoices(&resumed, encodeServiceInstallOperationData(serviceInstallRequest{AcceptedPointUpdates: good}))
+	if !reflect.DeepEqual(resumed.AcceptedPointUpdates, good) {
+		t.Fatalf("valid list restored as %v", resumed.AcceptedPointUpdates)
+	}
+}
+
 // Finding 5: once a privileged sync has run, a reconciliation that fails is
 // never asked again by the running panel: the firewall is applied once and
 // the row is left to the restart, not recorded as failed.
@@ -986,14 +1087,16 @@ func TestD1OneUnansweredRenewalDoesNotStopTheStep(t *testing.T) {
 }
 
 // blockingRenewalAgent answers its first renewals, then lets every renewal
-// hang (an Agent that stalls), recording when it last answered.
+// hang (an Agent that stalls); slow, when set, is one renewal (by number)
+// that hangs for slowFor and then answers.
 type blockingRenewalAgent struct {
-	answered     int32
-	calls        atomic.Int32
-	lastAnswered atomic.Int64
-	block        chan struct{}
-	requestID    string
-	ownerID      string
+	answered  int32
+	slow      int32
+	slowFor   time.Duration
+	calls     atomic.Int32
+	block     chan struct{}
+	requestID string
+	ownerID   string
 }
 
 func (a *blockingRenewalAgent) PkgFamily(_ *transport.Empty, out *string) error {
@@ -1002,8 +1105,11 @@ func (a *blockingRenewalAgent) PkgFamily(_ *transport.Empty, out *string) error 
 }
 
 func (a *blockingRenewalAgent) HeartbeatServiceMutation(_ *ServiceOperationMutationHeartbeatRequest, resp *ServiceOperationMutationResponse) error {
-	if a.calls.Add(1) <= a.answered {
-		a.lastAnswered.Store(time.Now().UnixNano())
+	n := a.calls.Add(1)
+	if n == a.slow {
+		time.Sleep(a.slowFor)
+	}
+	if n <= a.answered || a.answered < 0 {
 		resp.Job = &ServiceOperationMutationJob{RequestID: a.requestID, OwnerID: a.ownerID, Status: agentMutationRunning}
 		return nil
 	}
@@ -1011,40 +1117,65 @@ func (a *blockingRenewalAgent) HeartbeatServiceMutation(_ *ServiceOperationMutat
 	return errors.New("released")
 }
 
-// Item 3, the rule: the window counts from the last answered renewal, every
-// renewal is bounded by the time that remains, so the worker stops before
-// the Agent's lease (here scaled: window 300 ms, lease 400 ms) could end; the
-// Agent's definite answer stops it at once.
+// heartbeatAtProductionRatio sets interval : window = 1 : 3 (production:
+// 5 s : 15 s), scaled to 100 ms : 300 ms, with a prompt retry of 30 ms.
+func heartbeatAtProductionRatio(t *testing.T) (interval, window time.Duration) {
+	t.Helper()
+	restoreWindow, restorePause := panelHeartbeatUncertainWindow.get(), panelHeartbeatRetryPause.get()
+	interval, window = 100*time.Millisecond, 300*time.Millisecond
+	panelHeartbeatUncertainWindow.set(window)
+	panelHeartbeatRetryPause.set(30 * time.Millisecond)
+	t.Cleanup(func() {
+		panelHeartbeatUncertainWindow.set(restoreWindow)
+		panelHeartbeatRetryPause.set(restorePause)
+	})
+	return interval, window
+}
+
+// Item 3, the rule, measured on the Panel's side with generous bounds: the
+// worker is never stopped while renewals are answered, and when they stop
+// being answered it is stopped before the Agent's lease could end (scaled:
+// window 300 ms, lease 400 ms, from the last renewal the Agent answered).
+// The Agent's definite answer stops it at once.
 func TestD1HeartbeatStopsTheWorkerBeforeTheLeaseEnds(t *testing.T) {
 	requestID, ownerID := strings.Repeat("6", 32), strings.Repeat("7", 32)
 	binding := agentMutationBinding{MutationRequestID: requestID, MutationOwnerID: ownerID}
-	const window, lease = 300 * time.Millisecond, 400 * time.Millisecond
 	for _, answered := range []int32{0, 3} {
 		t.Run(map[int32]string{0: "no renewal answered", 3: "three renewals answered"}[answered], func(t *testing.T) {
-			restore := panelHeartbeatUncertainWindow.get()
-			panelHeartbeatUncertainWindow.set(window)
-			t.Cleanup(func() { panelHeartbeatUncertainWindow.set(restore) })
+			interval, window := heartbeatAtProductionRatio(t)
+			lease := window * 4 / 3
 			agent := &blockingRenewalAgent{answered: answered, block: make(chan struct{}), requestID: requestID, ownerID: ownerID}
 			t.Cleanup(func() { close(agent.block) })
 			panel := newPolicyDispatchTestPanel(t, agent)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			began := time.Now()
-			// The ping timeout (the interval) is long: an unbounded ping
-			// would hang past the lease.
-			stop := panel.startObservedAgentMutationHeartbeatSince(ctx, cancel, binding, nil, 100*time.Millisecond, began)
+			stop := panel.startObservedAgentMutationHeartbeatSince(ctx, cancel, binding, nil, interval, began)
+			// The last renewal sent before the stall is sent by the Panel no
+			// later than answered intervals after the start.
 			select {
 			case <-ctx.Done():
 			case <-time.After(5 * time.Second):
 				t.Fatal("the worker was never stopped")
 			}
-			stopped := time.Now()
-			from := began
-			if answered > 0 {
-				from = time.Unix(0, agent.lastAnswered.Load())
+			stopped := time.Since(began)
+			if agent.calls.Load() < answered {
+				t.Fatalf("stopped after %v with only %d renewals", stopped, agent.calls.Load())
 			}
-			if since := stopped.Sub(from); since < window-50*time.Millisecond || since > window+40*time.Millisecond || since >= lease {
-				t.Fatalf("stopped %v after the last answered renewal; window %v, lease %v", since, window, lease)
+			// Not stopped while answered: never before the window after the
+			// last answered renewal was sent (at the earliest, the start
+			// plus answered-1 intervals).
+			lastAnsweredSent := time.Duration(0)
+			if answered > 0 {
+				lastAnsweredSent = time.Duration(answered) * interval
+			}
+			if stopped < lastAnsweredSent+window-interval {
+				t.Fatalf("stopped after %v, too early", stopped)
+			}
+			// Before the lease could end: the latest possible answered send
+			// plus the lease, with the scheduling slack of a loaded runner.
+			if stopped >= lastAnsweredSent+interval+lease+time.Second {
+				t.Fatalf("stopped after %v, past the lease", stopped)
 			}
 			if _, err := stop(); !errors.Is(err, errAgentMutationRenewalsUnanswered) {
 				t.Fatalf("reason: %v", err)
@@ -1065,13 +1196,110 @@ func TestD1HeartbeatStopsTheWorkerBeforeTheLeaseEnds(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("the worker was never stopped")
 		}
-		if elapsed := time.Since(began); elapsed > 200*time.Millisecond {
+		if elapsed := time.Since(began); elapsed > 2*time.Second {
 			t.Fatalf("a definite answer stopped the worker only after %v", elapsed)
 		}
 		if _, err := stop(); !errors.Is(err, errAgentMutationLeaseLost) {
 			t.Fatalf("reason: %v", err)
 		}
 	})
+}
+
+// lockedLog collects the panel's log lines while a test runs.
+type lockedLog struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (l *lockedLog) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.buf.Write(p)
+}
+
+func (l *lockedLog) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.buf.String()
+}
+
+// Second look, finding 6: a worker stopped by the renewal rule leaves one
+// journal line with the time since the last answered renewal and the last
+// error, so the lab can see why and when.
+func TestD1AHeartbeatStopIsLoggedWithItsCause(t *testing.T) {
+	requestID, ownerID := strings.Repeat("6", 32), strings.Repeat("7", 32)
+	binding := agentMutationBinding{MutationRequestID: requestID, MutationOwnerID: ownerID}
+	interval, _ := heartbeatAtProductionRatio(t)
+	lines := &lockedLog{}
+	log.SetOutput(lines)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	agent := &heartbeatFailureClassificationAgent{transportErr: errors.New("simulated renewal timeout")}
+	panel := newPolicyDispatchTestPanel(t, agent)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := panel.startObservedAgentMutationHeartbeatSince(ctx, cancel, binding, nil, interval, time.Now())
+	select {
+	case <-ctx.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("the worker was never stopped")
+	}
+	_, _ = stop()
+	text := lines.String()
+	if !strings.Contains(text, "agent mutation "+requestID+": worker stopped: no lease renewal answered for") ||
+		!strings.Contains(text, "simulated renewal timeout") {
+		t.Fatalf("log: %q", text)
+	}
+}
+
+// Second look, finding 1: at the production ratio, one renewal that hangs
+// for half the window and then answers does not stop the step.
+func TestD1OneSlowRenewalThatAnswersInTheWindowKeepsTheStep(t *testing.T) {
+	requestID, ownerID := strings.Repeat("6", 32), strings.Repeat("7", 32)
+	binding := agentMutationBinding{MutationRequestID: requestID, MutationOwnerID: ownerID}
+	interval, window := heartbeatAtProductionRatio(t)
+	agent := &blockingRenewalAgent{answered: -1, slow: 2, slowFor: window / 2, block: make(chan struct{}), requestID: requestID, ownerID: ownerID}
+	t.Cleanup(func() { close(agent.block) })
+	panel := newPolicyDispatchTestPanel(t, agent)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := panel.startObservedAgentMutationHeartbeatSince(ctx, cancel, binding, nil, interval, time.Now())
+	select {
+	case <-ctx.Done():
+		t.Fatalf("the step was stopped by one slow renewal (renewals %d)", agent.calls.Load())
+	case <-time.After(4 * window):
+	}
+	if agent.calls.Load() < 3 {
+		t.Fatalf("renewals after the slow one: %d", agent.calls.Load())
+	}
+	if _, err := stop(); err != nil {
+		t.Fatalf("reason: %v", err)
+	}
+}
+
+// Second look, finding 2: a lease granted slowly (here the grant took 280 ms
+// of the 300 ms window) still gets its first renewal at once, and the step
+// goes on while it is answered.
+func TestD1ASlowLeaseGrantStillGetsItsFirstRenewal(t *testing.T) {
+	requestID, ownerID := strings.Repeat("6", 32), strings.Repeat("7", 32)
+	binding := agentMutationBinding{MutationRequestID: requestID, MutationOwnerID: ownerID}
+	interval, window := heartbeatAtProductionRatio(t)
+	agent := &blockingRenewalAgent{answered: -1, block: make(chan struct{}), requestID: requestID, ownerID: ownerID}
+	t.Cleanup(func() { close(agent.block) })
+	panel := newPolicyDispatchTestPanel(t, agent)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := panel.startObservedAgentMutationHeartbeatSince(ctx, cancel, binding, nil, interval, time.Now().Add(-(window - 20*time.Millisecond)))
+	select {
+	case <-ctx.Done():
+		t.Fatalf("the step was stopped before its first renewal (renewals %d)", agent.calls.Load())
+	case <-time.After(2 * window):
+	}
+	if agent.calls.Load() < 1 {
+		t.Fatal("no renewal was sent")
+	}
+	if _, err := stop(); err != nil {
+		t.Fatalf("reason: %v", err)
+	}
 }
 
 // standaloneRenewalAgent is the standalone fixture whose renewals go

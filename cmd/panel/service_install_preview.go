@@ -314,6 +314,25 @@ func encodeServiceInstallOperationData(req serviceInstallRequest) string {
 	return string(data)
 }
 
+// maxAcceptedPointUpdates bounds a recorded setup step's point updates.
+const maxAcceptedPointUpdates = 256
+
+// acceptedPointUpdatePattern is one "package=version" as setup records it:
+// a Debian package name and an exact version.
+var acceptedPointUpdatePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]{0,127}=[A-Za-z0-9][A-Za-z0-9.+~:-]{0,127}$`)
+
+func validAcceptedPointUpdates(items []string) bool {
+	if len(items) > maxAcceptedPointUpdates {
+		return false
+	}
+	for _, item := range items {
+		if !acceptedPointUpdatePattern.MatchString(item) {
+			return false
+		}
+	}
+	return true
+}
+
 // restoreServiceInstallChoices puts a recorded install's choices back on a
 // resumed request; anything that does not validate is dropped (the install
 // then keeps the check with nothing confirmed).
@@ -330,7 +349,13 @@ func restoreServiceInstallChoices(req *serviceInstallRequest, raw string) {
 	if validServiceInstallChoices(candidate) != "" {
 		return
 	}
-	candidate.AcceptedPointUpdates = data.AcceptedPointUpdates
+	// The list is read back only when every entry is an exact
+	// "package=version" and the count is bounded; otherwise it is dropped
+	// and the install asks again as it would without it (D1 review,
+	// finding 7).
+	if validAcceptedPointUpdates(data.AcceptedPointUpdates) {
+		candidate.AcceptedPointUpdates = data.AcceptedPointUpdates
+	}
 	*req = candidate
 }
 

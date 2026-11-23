@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -729,11 +730,16 @@ var (
 	// panelHeartbeatUncertainWindow: how long after the last renewal the
 	// Agent answered (counted from when that renewal was sent) the worker may
 	// go on while renewals stay unanswered (a timeout, a broken connection,
-	// an answer that proves nothing). Every renewal is bounded by the time
-	// that remains, so the worker stops at the window's end at the latest:
-	// 5 s before the Agent's 20-second lease (serviceMutationLeaseDuration)
-	// can end. A definite answer stops it at once.
+	// an answer that proves nothing). A renewal may wait for the whole time
+	// that remains of the window, and an unanswered one is asked again after
+	// panelHeartbeatRetryPause; the worker stops at the window's end at the
+	// latest: 5 s before the Agent's 20-second lease
+	// (serviceMutationLeaseDuration) can end. A definite answer stops it at
+	// once.
 	panelHeartbeatUncertainWindow = newTunableDuration(15 * time.Second)
+	// panelHeartbeatRetryPause: the pause before an unanswered renewal is
+	// asked again (bounded by what remains of the window).
+	panelHeartbeatRetryPause = newTunableDuration(time.Second)
 )
 
 // errAgentMutationRenewalsUnanswered: the Agent answered no renewal for the
@@ -784,8 +790,11 @@ func (p *Panel) startAgentMutationHeartbeat(
 // first failed ping cancelled a webmail update whose Agent step ran on). The
 // worker is stopped on the Agent's definite answer, or when no renewal has
 // been answered for panelHeartbeatUncertainWindow since the last answered
-// one was sent; each renewal is bounded by the time that remains, so the
-// stop comes before the Agent's 20-second lease can end. The same rule
+// one was sent. A renewal may wait for the whole time that remains of the
+// window (a slow answer that comes in time keeps the step), an unanswered
+// one is asked again promptly, and the first one is scheduled from when the
+// lease was asked for; so the stop comes, at the latest, at the window's
+// end, before the Agent's 20-second lease can end. The same rule
 // governs every standalone mutation (firewall, DNS, mail TLS, certificates,
 // VPN, webmail). The Agent's own lease rules are unchanged.
 // Tek bir geç ya da kayıp yenileme işçiyi durdurmaz; kesin yanıt ya da son
@@ -815,16 +824,34 @@ func (p *Panel) startObservedAgentMutationHeartbeatSince(
 	var once sync.Once
 	var observedTerminal *agentMutationJob
 	var observedErr error
+	// stopCtx ends a renewal in flight when the caller stops the heartbeat,
+	// so stopping never waits for a slow renewal.
+	stopCtx, stopCancel := context.WithCancel(context.Background())
 	go func() {
 		defer close(done)
 		window := panelHeartbeatUncertainWindow.get()
+		retry := panelHeartbeatRetryPause.get()
 		// lastAnswered is when the last renewal the Agent answered was SENT
 		// (at first: before the lease was asked for). The Agent renewed the
 		// lease at or after that moment, so its lease lasts at least until
 		// lastAnswered + 20 s; the worker stops by lastAnswered + window.
 		lastAnswered := since
 		var lastErr error
-		timer := time.NewTimer(interval)
+		stopForWindow := func() {
+			observedErr = errors.Join(errAgentMutationRenewalsUnanswered, lastErr)
+			// D1 review: the one line that says why and when the worker
+			// stopped (no secret: a transport error or the Agent's refusal).
+			log.Printf("agent mutation %s: worker stopped: no lease renewal answered for %v (window %v); last renewal error: %v",
+				binding.MutationRequestID, time.Since(lastAnswered).Round(time.Millisecond), window, lastErr)
+			cancel()
+		}
+		// The first renewal is scheduled from when the lease was asked for,
+		// so a slow lease grant never pushes it past the window.
+		first := interval - time.Since(since)
+		if first < 0 {
+			first = 0
+		}
+		timer := time.NewTimer(first)
 		defer timer.Stop()
 		for {
 			select {
@@ -833,21 +860,24 @@ func (p *Panel) startObservedAgentMutationHeartbeatSince(
 			case <-stop:
 				return
 			case <-timer.C:
+				if stopCtx.Err() != nil {
+					return
+				}
 				sent := time.Now()
 				remaining := window - sent.Sub(lastAnswered)
 				if remaining <= 0 {
-					observedErr = errors.Join(errAgentMutationRenewalsUnanswered, lastErr)
-					cancel()
+					stopForWindow()
 					return
 				}
-				// One renewal never waits past the window's end.
-				pingTimeout := interval
-				if remaining < pingTimeout {
-					pingTimeout = remaining
-				}
-				pingCtx, pingCancel := context.WithTimeout(context.Background(), pingTimeout)
+				// A renewal may wait for the whole time that remains of the
+				// window: one slow answer that still comes in time keeps the
+				// step (D1 review, finding 1).
+				pingCtx, pingCancel := context.WithTimeout(stopCtx, remaining)
 				job, err := p.heartbeatAgentMutation(pingCtx, binding, "")
 				pingCancel()
+				if stopCtx.Err() != nil {
+					return
+				}
 				if expected != nil && job != nil {
 					if identityErr := validateAgentMutationIdentity(job, *expected); identityErr != nil {
 						observedErr = identityErr
@@ -866,21 +896,23 @@ func (p *Panel) startObservedAgentMutationHeartbeatSince(
 				}
 				if err != nil {
 					if !agentMutationHeartbeatDefinite(err) {
-						// Uncertain: asked again at the next tick, or at the
-						// window's end if that comes first.
+						// Uncertain: asked again promptly, bounded by what
+						// remains of the window.
 						lastErr = err
 						if left := window - time.Since(lastAnswered); left > 0 {
-							next := interval
-							if left < next {
-								next = left
+							// Never the window's end itself: one more renewal
+							// is still asked inside it.
+							next := retry
+							if next >= left {
+								next = left / 2
 							}
 							timer.Reset(next)
 							continue
 						}
-						observedErr = errors.Join(errAgentMutationRenewalsUnanswered, err)
-					} else {
-						observedErr = err
+						stopForWindow()
+						return
 					}
+					observedErr = err
 					cancel()
 					return
 				}
@@ -891,6 +923,7 @@ func (p *Panel) startObservedAgentMutationHeartbeatSince(
 	}()
 	return func() (*agentMutationJob, error) {
 		once.Do(func() {
+			stopCancel()
 			close(stop)
 			// Wait for an in-flight heartbeat before the caller commits a
 			// terminal result. Otherwise a late heartbeat failure can race a
