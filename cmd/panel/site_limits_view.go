@@ -693,7 +693,19 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 		tasks = &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "the server did not answer about the scheduled tasks; read this page again"}
 	}
 	resp := transport.MoveSiteSliceResponse{Units: []transport.SiteSliceMoved{}, Done: true}
-	if len(site.Units) > 0 {
+	// S4 R2b second fix round: a tasks part whose result is unknown (it may
+	// have left its journal), or that was refused for an earlier move that
+	// is unresolved, does not start the programs part: a new move would
+	// overwrite or delete the only record of the crontab.
+	tasksUnresolved := tasks.Outcome == transport.SiteTasksUnknown || tasks.Refusal == transport.SiteMoveRefusalUnresolved
+	if tasksUnresolved {
+		resp.Done, resp.Refusal = false, tasks.Refusal
+		resp.Error = tasks.Error
+		if resp.Error == "" {
+			resp.Error = "the result of the scheduled tasks' move is not known, so the programs were not moved; read this page again"
+		}
+	}
+	if len(site.Units) > 0 && !tasksUnresolved {
 		move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID,
 			Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID}
 		for _, u := range site.Units {
@@ -712,6 +724,7 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 	case transport.SiteTasksMoved, transport.SiteTasksAlready, transport.SiteTasksCrontabBack:
 		p.noteSiteTasksOutside(ctx, nil, map[int]bool{site.SiteID: true}, time.Now())
 	}
+	p.refreshSiteMoveUnresolved(ctx)
 	p.auditDetailed(r, "site.limits_move", "domain", domainID, map[string]any{
 		"request_id": req.RequestID, "site": site.Domain, "done": resp.Done, "rolled_back": resp.RolledBack,
 		"units": resp.Units, "error": resp.Error, "wait_seconds": resp.WaitSeconds,
@@ -827,6 +840,7 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
 	problems = append(problems, siteLimitHostProblem(host)...)
+	problems = append(problems, siteMoveUnresolvedProblem(outside, names)...)
 	return append(problems, siteLimitsOutsideProblem(outside, names)...)
 }
 
@@ -893,6 +907,9 @@ type siteLimitOutside struct {
 	Sites     map[string]int `json:"sites,omitempty"`
 	// Tasks (S4 R2b): sites whose scheduled tasks still run in cron.
 	Tasks map[string]bool `json:"tasks,omitempty"`
+	// Unresolved (S4 R2b second fix round): a move the Agent could not
+	// resolve; every new move and undo is refused until it is.
+	Unresolved *transport.SiteMoveUnresolved `json:"unresolved,omitempty"`
 }
 
 var siteLimitOutsideMu sync.Mutex

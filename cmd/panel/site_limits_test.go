@@ -221,8 +221,13 @@ func TestSiteLimitsMoveIsTheAdministratorsOneAction(t *testing.T) {
 	useHostMemory(t, 8192)
 	f := newRightsFixture(t)
 	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
-	old := moveSiteSliceCall
-	t.Cleanup(func() { moveSiteSliceCall = old })
+	old, oldTasks := moveSiteSliceCall, moveSiteTasksCall
+	t.Cleanup(func() { moveSiteSliceCall, moveSiteTasksCall = old, oldTasks })
+	// S4 R2b second fix round: the programs part runs only after a tasks
+	// part whose result is known.
+	moveSiteTasksCall = func(p *Panel, ctx context.Context, method string, req *transport.SiteTasksMoveRequest) (transport.SiteTasksMoveResponse, error) {
+		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksMoved}, nil
+	}
 	calls := 0
 	var got *transport.MoveSiteSliceRequest
 	moveSiteSliceCall = func(p *Panel, ctx context.Context, req *transport.MoveSiteSliceRequest) (transport.MoveSiteSliceResponse, error) {

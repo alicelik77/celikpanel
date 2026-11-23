@@ -95,7 +95,11 @@ func EgressRulesetWith(submission bool) string {
 	if submission {
 		mailSentence = `# They cannot connect to port 25 on any address, 127.0.0.1 included, nor to ports 465
 # and 587 anywhere but this server's own addresses (its own submission services, which
-# take only a mailbox's name and password; traffic to a local address leaves through "lo").`
+# take only a mailbox's name and password; traffic to a local address leaves through "lo").
+# CelikPanel decided this when it last checked those services (at the panel's start and
+# after its mail sending step); it stays so until the panel's next start, and for good
+# without the panel. If you put another program on 465 or 587, delete the "oifname" line
+# below and run: nft -f ` + EgressFile
 		mailSentenceTR = `# CelikPanel site korumasi: korumadaki programlar 25 numarali porta hicbir adrese
 # (127.0.0.1 dahil) baglanamaz; 465 ve 587'ye yalniz bu sunucunun kendi adreslerindeki
 # posta hizmetine (posta kutusu parolasiyla) baglanabilir.`
@@ -165,7 +169,7 @@ for unit in $(systemctl list-units --type=service --state=active,activating,relo
 		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service|celikapp-[0-9]*.service|celikappinst-[0-9]*.service|celikgit-[0-9]*.service|celikcron-[0-9]*-[0-9]*.service) ;;
 		*) continue ;;
 	esac
-	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue
+	systemctl show -P ExecStartPre "$unit" | grep -q -F -e 'argv[]=` + HelperPath + ` egress-add ' -e 'argv[]=` + TaskHelperPath + ` egress-add ' || continue
 	cgroup=$(systemctl show -P ControlGroup "$unit")
 	# A finished install step (RemainAfterExit, "active (exited)") has no
 	# cgroup any more: nothing runs there, so there is nothing to block.
@@ -194,7 +198,9 @@ done
 # A site's task whose run ended can leave processes running in its cgroup
 # (KillMode=process, as under cron); the unit is inactive then, so the loop
 # above does not see it. Every task cgroup in a site's slice that still holds
-# a process is added too.
+# a process is added too, by its path alone: celikcron-<site>-<n>.service in
+# celiksite_<site>.slice can only be a task's, also after its unit file was
+# removed (systemd then shows no ExecStartPre for it).
 for dir in /sys/fs/cgroup/celiksite_*.slice/celikcron-*-*.service; do
 	[ -d "$dir" ] || continue
 	read -r first 2>/dev/null < "$dir/cgroup.procs" || continue
@@ -211,7 +217,9 @@ for dir in /sys/fs/cgroup/celiksite_*.slice/celikcron-*-*.service; do
 		celikcron-"$site"-[0-9]*.service) ;;
 		*) continue ;;
 	esac
-	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue
+	case "${unit#celikcron-$site-}" in
+		*[!0-9]*.service|0*) continue ;;
+	esac
 	"$nft" add element inet ` + EgressTable + ` ` + EgressSet + ` "{ \"$slice/$unit\" }" || { echo "celikpanel-egress: the processes $unit left could not be added"; status=1; }
 done
 exit $status

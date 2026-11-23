@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -101,6 +104,109 @@ type siteMoveJournal struct {
 	// Tasks (version 2, S4 R2b): the move of the site's crontab into timers
 	// or its undo (site_tasks_move.go); a journal holds either units or tasks.
 	Tasks *siteTasksJournal `json:"tasks,omitempty"`
+	// ID (S4 R2b second fix round) names this journal: a move removes only
+	// the journal it wrote itself (removeOwn). Absent in an older journal.
+	ID string `json:"id,omitempty"`
+}
+
+// newSiteMoveJournalID names a new journal.
+func newSiteMoveJournalID() string {
+	var b [12]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 36)
+	}
+	return hex.EncodeToString(b[:])
+}
+
+// removeOwn removes the journal file only while it is this journal (its ID,
+// site and start), never one another move or undo wrote.
+func (j *siteMoveJournal) removeOwn() {
+	current, err := readSiteMoveJournal()
+	if err != nil || current.ID != j.ID || current.SiteID != j.SiteID || current.StartedAt != j.StartedAt {
+		return
+	}
+	if err := os.Remove(siteMoveJournalPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Printf("site slice: remove the move's record: %v", err)
+	}
+}
+
+// One unresolved journal blocks every new move and undo (S4 R2b second fix
+// round, review N1). There is one journal file for every site and every
+// kind of move. Each move and undo first lets recoverSiteSliceMove resolve a
+// journal it finds; when the journal is still there afterwards (a crontab
+// that could not be written back, timers that could not be switched on
+// again), nothing new starts - of any site, tasks or programs - until it is
+// resolved: at the Agent's next start, or by the server owner's two steps
+// by hand (docs/SITE-SANDBOX.md section 9.4). A new move would otherwise
+// overwrite or delete the only record of the crontab.
+
+// siteMoveActive is set while a move or undo holds siteMoveRunning: its own
+// journal is then in progress, not unresolved.
+var siteMoveActive atomic.Bool
+
+// holdSiteMove marks the running move (the caller holds siteMoveRunning);
+// the returned func clears it.
+func holdSiteMove() func() {
+	siteMoveActive.Store(true)
+	return func() { siteMoveActive.Store(false) }
+}
+
+// siteMoveUnresolvedNow is the journal that is still there, nil when none
+// (or while a move is running: its journal is its own, in progress).
+func siteMoveUnresolvedNow() *transport.SiteMoveUnresolved {
+	if siteMoveActive.Load() {
+		return nil
+	}
+	return siteMoveJournalLeft()
+}
+
+// siteMoveJournalLeft describes the journal file that is there, nil when none.
+func siteMoveJournalLeft() *transport.SiteMoveUnresolved {
+	j, err := readSiteMoveJournal()
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return &transport.SiteMoveUnresolved{Kind: transport.SiteMoveUnresolvedUnreadable}
+	}
+	u := &transport.SiteMoveUnresolved{SiteID: j.SiteID, StartedAt: j.StartedAt, Kind: transport.SiteMoveUnresolvedPrograms}
+	if j.Tasks != nil {
+		u.Kind, u.Step, u.Account = transport.SiteMoveUnresolvedTasksMove, j.Tasks.Step, j.Tasks.Account
+		if j.Tasks.Undo {
+			u.Kind = transport.SiteMoveUnresolvedTasksUndo
+		}
+	}
+	return u
+}
+
+// siteMoveUnresolvedRefusal resolves a journal left behind if it can and
+// says, when one is still there, why nothing new may start ("" when the
+// move may go on). The caller holds siteMoveRunning.
+func siteMoveUnresolvedRefusal() string {
+	if _, err := os.Stat(siteMoveJournalPath); err != nil {
+		return ""
+	}
+	recoverSiteSliceMove()
+	u := siteMoveJournalLeft()
+	if u == nil {
+		return ""
+	}
+	site := strconv.Itoa(u.SiteID)
+	what := "an earlier move of site " + site + "'s programs into its limits"
+	switch u.Kind {
+	case transport.SiteMoveUnresolvedTasksMove:
+		what = "an earlier move of site " + site + "'s scheduled tasks into its limits (step " + u.Step + ")"
+	case transport.SiteMoveUnresolvedTasksUndo:
+		what = "an earlier return of site " + site + "'s scheduled tasks into cron (step " + u.Step + ")"
+	case transport.SiteMoveUnresolvedUnreadable:
+		what = "an earlier move whose record cannot be read"
+	}
+	text := what + " could not be finished or put back; its record keeps the crontab, so nothing is lost. Nothing was changed: no site is moved and no move is undone until it is resolved. CelikPanel tries again at its next start"
+	if u.Account != "" {
+		text += "; if it cannot, the server owner switches that site's timers off and then gives the crontab back by hand: sudo systemctl disable --now 'celikcron-" + site +
+			"-*.timer', then (once /etc/cron.allow lets " + u.Account + " in) sudo crontab -u " + u.Account + " /etc/celikpanel-cron/" + site + ".crontab"
+	}
+	return text
 }
 
 // writePrivateFile writes a file of the Agent's private folder durably: a
@@ -337,15 +443,18 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		return nil
 	}
 	defer siteMoveRunning.Unlock()
+	defer holdSiteMove()()
 	siteMu := siteMutationMutex(s.SiteID)
 	if !siteMu.TryLock() {
 		resp.Error = "the site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute"
 		return nil
 	}
 	defer siteMu.Unlock()
-	// A journal left by an earlier Agent is resolved before anything new.
-	if _, err := os.Stat(siteMoveJournalPath); err == nil {
-		recoverSiteSliceMove()
+	// A journal left by an earlier Agent is resolved before anything new; one
+	// that cannot be resolved refuses the move (S4 R2b second fix round).
+	if why := siteMoveUnresolvedRefusal(); why != "" {
+		resp.Refusal, resp.Error = transport.SiteMoveRefusalUnresolved, why
+		return nil
 	}
 	// The units restart with this release's helper and guard: an earlier
 	// release's copy adds only system-slice cgroups to the SMTP block, so a
@@ -418,7 +527,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 	sliceFile, _ := siteSliceFile(s.SiteID)
 	_, sliceErr := os.Lstat(sliceFile)
 	journal := &siteMoveJournal{Version: 1, SiteID: s.SiteID, Slice: sitesandbox.SliceName(s.SiteID), RequestID: req.RequestID,
-		StartedAt: time.Now().UTC().Format(time.RFC3339), SliceFile: sliceFile, SliceExisted: sliceErr == nil}
+		StartedAt: time.Now().UTC().Format(time.RFC3339), SliceFile: sliceFile, SliceExisted: sliceErr == nil, ID: newSiteMoveJournalID()}
 	for _, m := range plan {
 		journal.Units = append(journal.Units, siteMoveJournalUnit{Unit: m.unit, File: m.file, Mode: uint32(m.mode), Before: m.before,
 			After: m.after, Running: m.running, Step: siteMoveStepPlanned})
@@ -445,7 +554,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		if err != nil {
 			resp.Error = "the site's limits could not be written: " + err.Error() + "; nothing was moved"
 		}
-		_ = os.Remove(siteMoveJournalPath)
+		journal.removeOwn()
 		return nil
 	}
 	if siteMoveKilled("", "slice") {
@@ -464,7 +573,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 				_ = journal.step(rest.unit, siteMoveStepPlanned)
 			}
 			resp.Error = "some programs were not moved in this round because the move's time ran out; press the move again"
-			_ = os.Remove(siteMoveJournalPath)
+			journal.removeOwn()
 			return nil
 		}
 		outcome, step, err, killed := moveOneSiteUnit(m, s.SiteID, journal)
@@ -508,10 +617,10 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		}
 		resp.RolledBack = true
 		resp.Error = fmt.Sprintf("%s could not be moved into the site's limits (%s): %s; the site was put back as it was", m.unit, step, err.Error())
-		_ = os.Remove(siteMoveJournalPath)
+		journal.removeOwn()
 		return nil
 	}
-	_ = os.Remove(siteMoveJournalPath)
+	journal.removeOwn()
 	forgetSiteMoveOutcome(s.SiteID)
 	resp.Done = true
 	return nil

@@ -27,7 +27,9 @@ import (
 //   - master.cf has submission/inet and smtps/inet in the form
 //     ConfigureMailSubmission writes (submissionEntryPanelForm), each with
 //     smtpd_sasl_auth_enable=yes and
-//     smtpd_client_restrictions=permit_sasl_authenticated,reject;
+//     smtpd_client_restrictions=permit_sasl_authenticated,reject, and (second
+//     fix round) reject_sender_login_mismatch before any permit and a
+//     smtpd_sender_login_maps;
 //   - no other master.cf inet entry listens on 465 or 587 (a "587", a
 //     "127.0.0.1:submission", a "submissions" entry is the owner's);
 //   - every socket listening on 465 or 587 belongs to Postfix's master
@@ -36,7 +38,10 @@ import (
 // Otherwise the block keeps 465 and 587 closed to sites, and the screens say
 // that sites' tasks and programs cannot send mail through this server, and
 // why. Password guessing over this path is not limited by CelikPanel yet
-// (a known limit for the reach slice, section 3).
+// (a known limit, a precondition of the reach slice R4: section 3). The
+// decision is taken at each Panel start and after the mail sending step; it
+// stays as last decided until the next start, and for good without the
+// panel (the block's own header says so).
 //
 // Site görevleri ve programları bu sunucunun posta gönderim hizmetine yalnız
 // o hizmet CelikPanel'in kendi, parola isteyen girdisiyken ulaşabilir.
@@ -112,8 +117,34 @@ func siteSubmissionState() (string, string) {
 			postconfParam(string(params), service+"/inet/smtpd_sasl_auth_enable") != "yes" {
 			return transport.MailSubmissionOwner, "the " + service + " entry does not take only a mailbox's login (smtpd_client_restrictions, smtpd_sasl_auth_enable)"
 		}
+		// Second fix round: a logged-in mailbox may send only as its own
+		// addresses (otherwise any site's code with one login could send as
+		// other customers): reject_sender_login_mismatch in force before any
+		// permit, and the login map set. Missing or unreadable: no exception.
+		if !rejectsSenderMismatch(postconfParam(string(params), service+"/inet/smtpd_sender_restrictions")) &&
+			!rejectsSenderMismatch(postconfParam(string(params), service+"/inet/smtpd_recipient_restrictions")) {
+			return transport.MailSubmissionOwner, "the " + service + " entry does not refuse a sender address that is not the logged-in mailbox's (reject_sender_login_mismatch)"
+		}
+		if postconfParam(string(params), service+"/inet/smtpd_sender_login_maps") == "" {
+			return transport.MailSubmissionOwner, "the " + service + " entry names no map of which mailbox may send as which address (smtpd_sender_login_maps)"
+		}
 	}
 	return transport.MailSubmissionOurs, ""
+}
+
+// rejectsSenderMismatch: a Postfix restriction list puts
+// reject_sender_login_mismatch before any permit (so it applies to every
+// logged-in client).
+func rejectsSenderMismatch(list string) bool {
+	for _, item := range strings.FieldsFunc(list, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
+		switch {
+		case item == "reject_sender_login_mismatch":
+			return true
+		case strings.HasPrefix(item, "permit"), strings.HasPrefix(item, "check_"), strings.HasPrefix(item, "$"), strings.ContainsAny(item, "{}"):
+			return false
+		}
+	}
+	return false
 }
 
 // submissionPortOf maps a master.cf service port to 465, 587 or 0.

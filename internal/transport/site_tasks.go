@@ -8,7 +8,9 @@ package transport
 
 // SiteTaskRun is a task's last run as systemd and its journal say.
 type SiteTaskRun struct {
-	// State: never (no run yet), running, succeeded, failed, unknown.
+	// State: never (no run yet), running, succeeded, failed, unknown, or
+	// skipped (SiteTaskRunSkipped: systemd skipped the last start because the
+	// site's limits file was missing; StartedAt is when).
 	State     string  `json:"state"`
 	StartedAt string  `json:"started_at,omitempty"`
 	EndedAt   string  `json:"ended_at,omitempty"`
@@ -31,7 +33,14 @@ const (
 	SiteTaskKept      = "kept"      // its unit file was changed on the server and is kept
 	SiteTaskWaiting   = "waiting"   // the file says it, its timer is not written yet (save again)
 	SiteTaskNotRun    = "not_run"   // the line cannot become a timer (Reason)
+	// SiteTaskNotOnYet (second fix round): CelikPanel wrote the timer but
+	// could not switch it on; it tries again at the next save or start.
+	SiteTaskNotOnYet = "not_on_yet"
 )
+
+// SiteTaskRunSkipped is a run systemd skipped because the site's limits
+// file was missing (the service's ConditionPathExists=); not a failure.
+const SiteTaskRunSkipped = "skipped"
 
 // SiteTaskLine is a line of a moved site's task file that does not run, and
 // why (a sitecron Reason code; Detail in English).
@@ -47,6 +56,11 @@ const (
 	SiteTasksSourceOurs    = "ours"    // CelikPanel's text
 	SiteTasksSourceOwner   = "owner"   // the server owner changed it: kept and used, the panel's changes wait beside it
 	SiteTasksSourceMissing = "missing" // the file is gone while timers of the site remain
+	// SiteTasksSourceCrontab (second fix round): the file is gone, timer
+	// files of the site remain, and the account has a crontab again: the
+	// tasks run from the crontab; the server owner removes the timer files
+	// (ListCronJobsResponse.LeftUnits).
+	SiteTasksSourceCrontab = "crontab_again"
 )
 
 // Errors a change of a moved site's tasks answers (exact texts; the Panel
@@ -82,6 +96,9 @@ const (
 	MailSubmissionOwner = "owner"
 	// MailSubmissionAbsent: no submission service; nothing to reach.
 	MailSubmissionAbsent = "absent"
+	// MailSubmissionOwnerFile (second fix round): the SMTP block's file was
+	// changed by the server owner and kept; what it says decides.
+	MailSubmissionOwnerFile = "owner_file"
 )
 
 // SiteTasksMoveRequest moves a site's crontab into timers (Preview: only say
@@ -162,11 +179,19 @@ type SiteTaskSourceResponse struct {
 	// RenderedAt is when CelikPanel last rendered the site's timers from it.
 	RenderedAt string `json:"rendered_at,omitempty"`
 	Error      string `json:"error,omitempty"`
+	// Refusal (second fix round): SiteTaskSourceRefusalCrontab when the
+	// account has a crontab, so the tasks run from it; LeftUnits then names
+	// the site's timer files the server owner removes.
+	Refusal   string   `json:"refusal,omitempty"`
+	LeftUnits []string `json:"left_units,omitempty"`
 }
 
 // Outcomes of a task file rebuild.
 const (
 	SiteTaskSourceRebuilt = "rebuilt"
+	// SiteTaskSourceRefusalCrontab: the account has a crontab; a rebuild
+	// would switch the timers on beside it and run every task twice.
+	SiteTaskSourceRefusalCrontab = "crontab_exists"
 )
 
 // SiteTasksSourceHeld is the error a change of a moved site's tasks answers
@@ -205,7 +230,31 @@ type SiteTasksMovedResponse struct {
 	// ("" when it has not, or the host holds no block).
 	MailSubmission string `json:"mail_submission,omitempty"`
 	Error          string `json:"error,omitempty"`
+	// Unresolved (second fix round): a move or undo the Agent could not
+	// resolve; until it is, every new move and undo is refused (any site).
+	// Whatever SiteIDs asked for.
+	Unresolved *SiteMoveUnresolved `json:"unresolved,omitempty"`
 }
+
+// SiteMoveUnresolved is the move journal that is still there after the
+// Agent tried to resolve it (one file for every site and kind of move).
+type SiteMoveUnresolved struct {
+	SiteID    int    `json:"site_id"`
+	Kind      string `json:"kind"`
+	Step      string `json:"step,omitempty"`
+	Account   string `json:"account,omitempty"`
+	StartedAt string `json:"started_at,omitempty"`
+}
+
+// Kinds of an unresolved move, and the refusal every new move and undo
+// answers meanwhile (SiteTasksMoveResponse.Refusal, MoveSiteSliceResponse.Refusal).
+const (
+	SiteMoveUnresolvedTasksMove  = "tasks_move"
+	SiteMoveUnresolvedTasksUndo  = "tasks_undo"
+	SiteMoveUnresolvedPrograms   = "programs_move"
+	SiteMoveUnresolvedUnreadable = "unreadable"
+	SiteMoveRefusalUnresolved    = "unresolved_move"
+)
 
 // --- The side doors step: cron.allow and lingering -------------------------
 
@@ -232,6 +281,23 @@ type SideDoorsTasksHeld struct {
 	SiteID int    `json:"site_id"`
 	Domain string `json:"domain,omitempty"`
 	Detail string `json:"detail,omitempty"`
+}
+
+// SideDoorsUserManagers (S4 R2b second fix round) is what the step did
+// about the site accounts' own service managers (user@<uid>.service, which
+// an SFTP login starts outside the site's limits): Masked by CelikPanel,
+// OwnerMasked by the server owner's own mask (closed too); still open, by
+// account: Owner (a file of the server owner's in its place), Removed
+// (CelikPanel's mask removed on the server), Failed (not written; Detail
+// says why); OpenUnits are their user@<uid>.service names.
+type SideDoorsUserManagers struct {
+	Masked      int      `json:"masked,omitempty"`
+	OwnerMasked int      `json:"owner_masked,omitempty"`
+	Owner       []string `json:"owner,omitempty"`
+	Removed     []string `json:"removed,omitempty"`
+	Failed      []string `json:"failed,omitempty"`
+	OpenUnits   []string `json:"open_units,omitempty"`
+	Detail      string   `json:"detail,omitempty"`
 }
 
 // SideDoorsCronNotNeeded: no site runs its tasks as timers yet; nothing is

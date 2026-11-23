@@ -1542,7 +1542,8 @@ func renderMatrixSiteTasks(t *testing.T, h *matrixHost, dir, sliceTarget string,
 		return
 	}
 	u := sitecron.Unit{SiteID: 42, N: 1, TaskID: "0123456789abcdef", Domain: "example.test", Account: "example_test", Group: "example_test",
-		Home: "/var/www/celikpanel/subscriptions/7/sites/19", Shell: "/bin/sh", HasEnv: true, HasInput: true, Spec: spec, Line: 3, Egress: true, BPF: true}
+		Home: "/var/www/celikpanel/subscriptions/7/sites/19", Shell: "/bin/sh", HasEnv: true, HasInput: true, Spec: spec, Line: 3, Egress: true, BPF: true,
+		SliceFile: sliceTarget}
 	service, err := sitecron.ServiceText(u)
 	if err == nil {
 		var timer string

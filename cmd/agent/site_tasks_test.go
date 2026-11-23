@@ -133,6 +133,9 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 	})
 	sitecron.SourceDir = filepath.Join(t.TempDir(), "celikpanel-cron")
 	private := t.TempDir()
+	oldToEnable, oldHeld := siteTimersToEnablePath, siteTimersHeldPath
+	keep(func() { siteTimersToEnablePath, siteTimersHeldPath = oldToEnable, oldHeld })
+	siteTimersToEnablePath, siteTimersHeldPath = filepath.Join(private, "to-enable.json"), filepath.Join(private, "held.json")
 	siteMoveJournalPath, siteMoveOutcomesPath = filepath.Join(private, "move.json"), filepath.Join(private, "outcomes.json")
 	siteTasksOutcomesPath, siteCrontabRecordDir = filepath.Join(private, "tasks-outcomes.json"), filepath.Join(private, "site-crontabs")
 	etc := t.TempDir()
@@ -1105,7 +1108,13 @@ func TestSubmissionExceptionOnlyForCelikPanelsOwnEntries(t *testing.T) {
 	t.Cleanup(func() { siteSubmissionPostconf, siteSubmissionListeners = oldPostconf, oldListeners })
 	master := "smtp inet n - y - - smtpd\nsubmission inet n - y - - smtpd\n  -o syslog_name=postfix/submission\nsmtps inet n - y - - smtpd\npickup unix n - y 60 1 pickup\n"
 	params := "submission/inet/smtpd_client_restrictions = permit_sasl_authenticated,reject\nsubmission/inet/smtpd_sasl_auth_enable = yes\n" +
-		"smtps/inet/smtpd_client_restrictions = permit_sasl_authenticated,reject\nsmtps/inet/smtpd_sasl_auth_enable = yes\n"
+		"smtps/inet/smtpd_client_restrictions = permit_sasl_authenticated,reject\nsmtps/inet/smtpd_sasl_auth_enable = yes\n" +
+		// Second fix round: as mail_submission_rpc.go writes them, the sender
+		// checks too (TestSubmissionExceptionNeedsTheSenderChecks).
+		"submission/inet/smtpd_recipient_restrictions = reject_sender_login_mismatch,permit_sasl_authenticated,reject\n" +
+		"submission/inet/smtpd_sender_login_maps = regexp:/etc/postfix/celikpanel_login_maps\n" +
+		"smtps/inet/smtpd_recipient_restrictions = reject_sender_login_mismatch,permit_sasl_authenticated,reject\n" +
+		"smtps/inet/smtpd_sender_login_maps = regexp:/etc/postfix/celikpanel_login_maps\n"
 	fields := func(name string) string {
 		return name + "/inet/service = " + name + "\n" + name + "/inet/type = inet\n" + name + "/inet/private = n\n" + name + "/inet/unprivileged = -\n" +
 			name + "/inet/chroot = y\n" + name + "/inet/wakeup = -\n" + name + "/inet/process_limit = -\n" + name + "/inet/command = smtpd\n"
@@ -1132,6 +1141,19 @@ func TestSubmissionExceptionOnlyForCelikPanelsOwnEntries(t *testing.T) {
 		"submissions_name": func() { master += "submissions inet n - y - - smtpd\n" },
 		"open_relay": func() {
 			params = strings.Replace(params, "smtps/inet/smtpd_client_restrictions = permit_sasl_authenticated,reject", "smtps/inet/smtpd_client_restrictions = permit_mynetworks", 1)
+		},
+		// Second fix round (review N8): a logged-in mailbox must send only as
+		// its own addresses; missing or loosened sender checks: no exception.
+		"no_sender_mismatch_check": func() {
+			params = strings.Replace(params, "submission/inet/smtpd_recipient_restrictions = reject_sender_login_mismatch,permit_sasl_authenticated,reject",
+				"submission/inet/smtpd_recipient_restrictions = permit_sasl_authenticated,reject", 1)
+		},
+		"mismatch_check_after_permit": func() {
+			params = strings.Replace(params, "smtps/inet/smtpd_recipient_restrictions = reject_sender_login_mismatch,permit_sasl_authenticated,reject",
+				"smtps/inet/smtpd_recipient_restrictions = permit_sasl_authenticated,reject_sender_login_mismatch,reject", 1)
+		},
+		"no_login_map": func() {
+			params = strings.Replace(params, "smtps/inet/smtpd_sender_login_maps = regexp:/etc/postfix/celikpanel_login_maps\n", "", 1)
 		},
 	}
 	baseMaster, baseParams := master, params
@@ -1167,6 +1189,21 @@ func TestSubmissionExceptionOnlyForCelikPanelsOwnEntries(t *testing.T) {
 	}
 	if raw := readTaskFile(t, egress); strings.Contains(raw, " accept\n") || recordedMailSubmission() != transport.MailSubmissionOwner {
 		t.Fatalf("owner's entry: %s", raw)
+	}
+	// Second fix round (review N8): the server owner edits the block's file;
+	// it is kept, and the record says the kept file decides - not what
+	// CelikPanel would have written (on 6db8cd368 it said "ours").
+	writeTaskFile(t, egress, readTaskFile(t, egress)+"# the owner's own line\n")
+	siteSubmissionStateNow = func() (string, string) { return transport.MailSubmissionOurs, "" }
+	if err := ensureSandboxEgress(sandboxCaps(context.Background())); err != nil {
+		t.Fatal(err)
+	}
+	if raw := readTaskFile(t, egress); !strings.Contains(raw, "# the owner's own line\n") || recordedMailSubmission() != transport.MailSubmissionOwnerFile {
+		t.Fatalf("the owner's file: recorded %q\n%s", recordedMailSubmission(), raw)
+	}
+	// The block's header says how long the decision stands.
+	if !strings.Contains(sitesandbox.EgressRulesetWith(true), "for good\n# without the panel") {
+		t.Fatalf("the header does not say the rule stays without the panel:\n%s", sitesandbox.EgressRulesetWith(true))
 	}
 }
 

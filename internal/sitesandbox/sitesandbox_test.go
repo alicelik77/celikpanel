@@ -233,7 +233,7 @@ func TestEgressFileAndLines(t *testing.T) {
 	}
 	guard := EgressGuardScriptText()
 	if !strings.Contains(guard, "/system.slice/$unit") || !strings.Contains(guard, EgressFile) || strings.Contains(guard, "flush ruleset") ||
-		!strings.Contains(guard, "grep -q -F 'argv[]="+HelperPath+" egress-add '") {
+		!strings.Contains(guard, "grep -q -F -e 'argv[]="+HelperPath+" egress-add ' -e 'argv[]="+TaskHelperPath+" egress-add '") {
 		t.Fatalf("guard script:\n%s", guard)
 	}
 	if !strings.Contains(EgressGuardServiceText(), "ExecStart=/bin/sh "+EgressGuardScript) || !strings.Contains(EgressGuardTimerText(), "OnUnitActiveSec=30s") {

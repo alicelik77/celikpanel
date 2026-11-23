@@ -302,6 +302,10 @@ type ListCronJobsResponse struct {
 	// its tasks moved), so the site's own code can have made it; false: only
 	// root could have (the server owner's).
 	ReappearedBySite bool `json:"reappeared_by_site,omitempty"`
+	// LeftUnits (S4 R2b second fix round; the administrator's only): with
+	// Source "crontab_again", the site's timer files the server owner
+	// removes (the tasks run from the crontab).
+	LeftUnits []string `json:"left_units,omitempty"`
 }
 
 // CronTenant identifies WHOSE crontab an operation targets. It carries the

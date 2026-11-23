@@ -40,7 +40,8 @@ import (
 //	source_written   /etc/celikpanel-cron/<id>.crontab holds the crontab
 //	units_written    every timer and service written and checked by systemd, none started
 //	cron_closed      /etc/cron.allow leaves the account out (checked), and every crontab
-//	                 process of the account's uid started before that is ended
+//	                 process of the account's uid started before that is ended (if they
+//	                 cannot be listed, the move fails here and is put back)
 //	crontab_emptied  the spool file, checked to hold the recorded crontab, is removed
 //	                 directly (crontab -u is refused by then) and checked gone
 //	enabled          the timers are enabled and started (an @reboot one only enabled)
@@ -178,11 +179,121 @@ func forgetSiteTasksUndo(siteID int) { setSiteTasksOutcome(siteID, "") }
 // what the move changes for it).
 var mailCommand = regexp.MustCompile(`(?i)(sendmail|\bmailx?\b|\bmutt\b|\bswaks\b|smtp|:(25|465|587)\b)`)
 
-// privilegedCommand: a task line that calls a common set-user-id or
-// set-group-id helper (or one with file capabilities). Inside a task it runs
-// without those rights (NoNewPrivileges, implied by the unit's
-// RestrictAddressFamilies= with User=) and may fail; the preview names it.
-var privilegedCommand = regexp.MustCompile(`(^|[\s;&|()/` + "`" + `])(sudo|su|crontab|at|batch|ping6?|traceroute6?|dotlockfile|lockfile|mail-lock|wall|write|newgrp|sg|passwd|chsh|chfn|mount|umount|fusermount3?|pkexec|ssh-agent|unix_chkpwd)($|[\s;&|()])`)
+// privilegedPrograms are common set-user-id or set-group-id programs (or
+// ones with file capabilities), and the server's sendmail with the mail
+// commands that call it (Postfix's sendmail hands mail to the set-group-id
+// postdrop). Inside a task they run without those rights (the service's
+// NoNewPrivileges=yes, second fix round) and may fail; the preview names
+// the tasks that call one.
+var privilegedPrograms = map[string]bool{
+	"sudo": true, "su": true, "crontab": true, "at": true, "batch": true, "ping": true, "ping6": true,
+	"traceroute": true, "traceroute6": true, "dotlockfile": true, "lockfile": true, "mail-lock": true,
+	"wall": true, "write": true, "newgrp": true, "sg": true, "passwd": true, "chsh": true, "chfn": true,
+	"mount": true, "umount": true, "fusermount": true, "fusermount3": true, "pkexec": true,
+	"ssh-agent": true, "unix_chkpwd": true, "sendmail": true, "mail": true, "mailx": true,
+}
+
+// commandWrappers run the next word as the command (it stays in command
+// position).
+var commandWrappers = map[string]bool{"nohup": true, "exec": true, "env": true, "command": true, "nice": true, "time": true}
+
+var shellAssignment = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
+
+// privilegedCommand (second fix round, review N13): the command calls one of
+// privilegedPrograms in command position - its first word, or the first
+// word after ;, &, &&, ||, |, a newline or a parenthesis, past NAME=value
+// settings and plain wrappers such as nohup - by the basename of that word.
+// A word anywhere else ("echo backup at noon") is not a call.
+func privilegedCommand(command string) bool {
+	for _, word := range commandWords(command) {
+		if privilegedPrograms[filepath.Base(word)] {
+			return true
+		}
+	}
+	return false
+}
+
+// commandWords are the words of a shell command in command position. Quotes
+// and backslashes are honoured: a separator inside quotes does not count.
+func commandWords(command string) []string {
+	var out []string
+	var word strings.Builder
+	atStart, inWord, single, double, escaped := true, false, false, false, false
+	prev := rune(0) // the last character outside quotes that is not a blank
+	finish := func() {
+		if !inWord {
+			return
+		}
+		w := word.String()
+		word.Reset()
+		inWord = false
+		if !atStart {
+			return
+		}
+		switch {
+		case shellAssignment.MatchString(w):
+			// NAME=value before the command: the next word is the command.
+		case commandWrappers[filepath.Base(w)]:
+			out = append(out, w)
+		default:
+			out = append(out, w)
+			atStart = false
+		}
+	}
+	for _, r := range command {
+		switch {
+		case escaped:
+			escaped = false
+			word.WriteRune(r)
+			inWord = true
+			continue
+		case single:
+			if r == '\'' {
+				single = false
+			} else {
+				word.WriteRune(r)
+			}
+			continue
+		case double:
+			switch r {
+			case '"':
+				double = false
+			case '\\':
+				escaped = true
+			default:
+				word.WriteRune(r)
+			}
+			continue
+		}
+		switch r {
+		case '\\':
+			escaped, inWord = true, true
+		case '\'':
+			single, inWord = true, true
+		case '"':
+			double, inWord = true, true
+		case ' ', '\t':
+			finish()
+		case ';', '|', '(', ')', '`', '\n':
+			finish()
+			atStart = true
+		case '&':
+			finish()
+			// "2>&1", ">&2" are redirections, not a new command.
+			if prev != '>' && prev != '<' {
+				atStart = true
+			}
+		default:
+			word.WriteRune(r)
+			inWord = true
+		}
+		if r != ' ' && r != '\t' {
+			prev = r
+		}
+	}
+	finish()
+	return out
+}
 
 // planSiteTasksMove says what the crontab becomes (read-only).
 func planSiteTasksMove(username string, siteID int, crontab string) transport.SiteTasksMoveResponse {
@@ -213,7 +324,7 @@ func planSiteTasksMove(username string, siteID int, crontab string) transport.Si
 		case e.Kind == sitecron.KindJob:
 			n++
 			resp.Rows = append(resp.Rows, transport.SiteTaskMoveRow{Line: e.Line, Text: e.Raw, Unit: sitecron.UnitBase(siteID, n),
-				Calendars: e.Spec.Calendars, AtBoot: e.Spec.Reboot, Privileged: privilegedCommand.MatchString(e.Command)})
+				Calendars: e.Spec.Calendars, AtBoot: e.Spec.Reboot, Privileged: privilegedCommand(e.Command)})
 			if mailCommand.MatchString(e.Command) {
 				resp.Mail = true
 			}
@@ -292,14 +403,18 @@ func (a *Agent) MoveSiteTasksV1(req *transport.SiteTasksMoveRequest, resp *trans
 		return nil
 	}
 	defer siteMoveRunning.Unlock()
+	defer holdSiteMove()()
 	siteMu := siteMutationMutex(target.SiteID)
 	if !siteMu.TryLock() {
 		resp.Refusal, resp.Error = transport.SiteTasksRefusalBusy, "the site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute"
 		return nil
 	}
 	defer siteMu.Unlock()
-	if _, err := os.Stat(siteMoveJournalPath); err == nil {
-		recoverSiteSliceMove()
+	// Second fix round: a journal that cannot be resolved refuses every new
+	// move and undo, of any site (site_slices_move.go).
+	if why := siteMoveUnresolvedRefusal(); why != "" {
+		resp.Refusal, resp.Error = transport.SiteMoveRefusalUnresolved, why
+		return nil
 	}
 	cronMu.Lock()
 	defer cronMu.Unlock()
@@ -337,7 +452,7 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 			return out
 		}
 	}
-	journal := &siteMoveJournal{Version: 2, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339),
+	journal := &siteMoveJournal{Version: 2, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339), ID: newSiteMoveJournalID(),
 		Tasks: &siteTasksJournal{Account: username, UID: target.UID, Crontab: crontab, Step: siteTasksStepPlanned}}
 	if err := journal.save(); err != nil {
 		resp.Outcome, resp.Error = transport.SiteTasksRefused, "the move's record could not be written in the Agent's folder ("+err.Error()+"); nothing was moved"
@@ -356,7 +471,7 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 			setSiteTasksOutcome(target.SiteID, transport.SiteTasksUnknown)
 			return out
 		}
-		_ = os.Remove(siteMoveJournalPath)
+		journal.removeOwn()
 		return out
 	}
 	// killed answers the test seam at a point; a killed move leaves its journal.
@@ -408,8 +523,12 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	if !cronRefusesAccount(username) {
 		return fail("cron.allow", fmt.Errorf("%s does not keep %s out", cronAllowPath, username))
 	}
+	// A crontab process that passed its access check before cron.allow closed
+	// could still install a file: when they cannot all be found and ended,
+	// the move fails here (second fix round) and cron opens again; nothing
+	// was removed.
 	if n, err := siteTaskEndCrontabs(target.UID); err != nil {
-		log.Printf("site tasks: the crontab processes of %s could not be listed: %v", username, err)
+		return fail("cron_closed", fmt.Errorf("the crontab processes of %s could not be listed, so one started before cron closed could still install a crontab: %v", username, err))
 	} else if n > 0 {
 		log.Printf("site tasks: %d crontab process(es) of %s started before cron.allow closed were ended", n, username)
 	}
@@ -470,7 +589,7 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	if killed(siteTasksStepEnabled) {
 		return unknown
 	}
-	_ = os.Remove(siteMoveJournalPath)
+	journal.removeOwn()
 	setSiteTasksOutcome(target.SiteID, "")
 	resp.Outcome = transport.SiteTasksMoved
 	// Never "moved" while a crontab exists for the account.
@@ -719,14 +838,16 @@ func (a *Agent) UndoSiteTasksMoveV1(req *transport.SiteTasksMoveRequest, resp *t
 		return nil
 	}
 	defer siteMoveRunning.Unlock()
+	defer holdSiteMove()()
 	siteMu := siteMutationMutex(target.SiteID)
 	if !siteMu.TryLock() {
 		resp.Refusal, resp.Error = transport.SiteTasksRefusalBusy, "the site is being changed right now; nothing was changed. Read its page again in a minute"
 		return nil
 	}
 	defer siteMu.Unlock()
-	if _, err := os.Stat(siteMoveJournalPath); err == nil {
-		recoverSiteSliceMove()
+	if why := siteMoveUnresolvedRefusal(); why != "" {
+		resp.Refusal, resp.Error = transport.SiteMoveRefusalUnresolved, why
+		return nil
 	}
 	cronMu.Lock()
 	defer cronMu.Unlock()
@@ -804,7 +925,7 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	// Byte for byte: the task file's crontab, nothing added.
 	written := source.Crontab
 	timers, atBoot := enabledSiteTimers(target.SiteID, written)
-	journal := &siteMoveJournal{Version: 2, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339),
+	journal := &siteMoveJournal{Version: 2, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339), ID: newSiteMoveJournalID(),
 		Tasks: &siteTasksJournal{Undo: true, Account: username, UID: target.UID, Crontab: written, Step: siteTasksStepUndoPlanned, Timers: timers, AtBoot: atBoot}}
 	if err := journal.save(); err != nil {
 		return refused("", "the record could not be written in the Agent's folder ("+err.Error()+"); nothing was changed")
@@ -821,7 +942,7 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 			return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown,
 				Error: text + "; the timers could not be switched on again (" + err.Error() + "). The record is kept and the Agent's next start tries again"}
 		}
-		_ = os.Remove(siteMoveJournalPath)
+		journal.removeOwn()
 		return refused("", text+"; the tasks run as timers, as before")
 	}
 	// 1. The timers off (a running task is not stopped).
@@ -860,15 +981,27 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 			if files, _ := accountSpoolFiles(username); len(files) == 1 && spoolHolds(files[0], written) {
 				err = nil // the spool holds it; crontab -l failed for another reason
 			} else {
-				// What was written is not the crontab: it is taken away again
-				// (the account had none a moment ago), then back to timers.
+				// What was written is not confirmed: back to timers. Only a
+				// spool file that holds exactly what the undo wrote is taken
+				// away again (second fix round); any other file is left as it
+				// is (cron was open: the site's own code can have made it) and
+				// named, and it is reported as running outside the limits.
+				var left []string
 				for _, f := range files {
-					_ = os.Remove(f.Path)
+					if spoolHolds(f, written) {
+						_ = os.Remove(f.Path)
+					} else {
+						left = append(left, f.Path)
+					}
 				}
 				if err == nil {
 					err = errors.New("it reads back differently")
 				}
-				return rollback("the crontab written could not be confirmed (" + err.Error() + ")")
+				text := "the crontab written could not be confirmed (" + err.Error() + ")"
+				if len(left) > 0 {
+					text += "; " + strings.Join(left, ", ") + " holds another crontab and was left as it is: it runs outside the site's limits until the server owner removes it"
+				}
+				return rollback(text)
 			}
 		}
 	}
@@ -888,7 +1021,7 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown,
 			Error: "the crontab is back, but not every timer could be removed (" + err.Error() + "); they are switched off, so no task runs twice. The Agent's next start removes them"}
 	}
-	_ = os.Remove(siteMoveJournalPath)
+	journal.removeOwn()
 	setSiteTasksOutcome(target.SiteID, "")
 	forgetCronClosed(map[string]bool{username: true})
 	refreshCronAllow()
@@ -900,7 +1033,7 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 // have made them) and what the Agent did with an interrupted tasks move
 // (read-only).
 func (a *Agent) SiteTasksMovedV1(req *transport.SiteTasksMovedRequest, resp *transport.SiteTasksMovedResponse) error {
-	*resp = transport.SiteTasksMovedResponse{Moved: []int{}, MailSubmission: recordedMailSubmission()}
+	*resp = transport.SiteTasksMovedResponse{Moved: []int{}, MailSubmission: recordedMailSubmission(), Unresolved: siteMoveUnresolvedNow()}
 	want := map[int]bool{}
 	if req != nil {
 		for _, id := range req.SiteIDs {
@@ -952,7 +1085,7 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 			return nil
 		}
 	}
-	target, _, err := siteTasksTenantTarget(req)
+	target, username, err := siteTasksTenantTarget(req)
 	if err != nil {
 		resp.Error = err.Error()
 		return nil
@@ -969,6 +1102,21 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 		return nil
 	case !siteTaskUnitsExist(target.SiteID):
 		resp.Error = "the site has no timers; nothing to rebuild"
+		return nil
+	}
+	// Second fix round: while the account has a crontab, its tasks run from
+	// it (an undo by hand, or a put-back that left a unit the owner changed);
+	// rebuilding would switch the timers on beside it and run every task
+	// twice. Refused, also in the preview, with who acts.
+	if files, err := accountSpoolFiles(username); err != nil || len(files) > 0 {
+		resp.Refusal = transport.SiteTaskSourceRefusalCrontab
+		if err != nil {
+			resp.Error = "the account's crontab could not be read (" + err.Error() + "), so it is not known whether its tasks run from it; nothing was changed"
+			return nil
+		}
+		resp.LeftUnits = siteTaskUnitPaths(target.SiteID)
+		resp.Error = "the account " + username + " has a crontab (" + files[0].Path + "), so the site's tasks run from it again; rebuilding the task file would switch the timers on beside it and run every task twice. Nothing was changed. The server owner removes the site's timer files (" +
+			strings.Join(resp.LeftUnits, ", ") + ": sudo systemctl disable --now 'celikcron-" + strconv.Itoa(target.SiteID) + "-*.timer', then delete them and run sudo systemctl daemon-reload); the tasks keep running from the crontab"
 		return nil
 	}
 	path := siteTaskRenderedPath(target.SiteID)
@@ -998,10 +1146,19 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 }
 
 // movedSiteTaskSites are the moved sites (a task file, or timers whose file
-// is gone) and the account each task file names.
+// is gone) and the account of each: the one its task file names or, when
+// the file is gone (second fix round), the one its units run as (User=, as
+// siteTaskOwnership reads them). unknown: moved sites whose account could be
+// read from neither (CelikPanel's cron.allow is then not re-rendered: a
+// moved site never counts as not moved).
 func movedSiteTaskSites() ([]int, map[int]string) {
+	ids, accounts, _ := movedSiteTaskSitesAll()
+	return ids, accounts
+}
+
+func movedSiteTaskSitesAll() (ids []int, accounts map[int]string, unknown []int) {
 	seen := map[int]bool{}
-	accounts := map[int]string{}
+	accounts = map[int]string{}
 	if entries, err := os.ReadDir(sitecron.SourceDir); err == nil {
 		for _, e := range entries {
 			name, ok := strings.CutSuffix(e.Name(), ".crontab")
@@ -1027,12 +1184,71 @@ func movedSiteTaskSites() ([]int, map[int]string) {
 			}
 		}
 	}
-	ids := make([]int, 0, len(seen))
+	ids = make([]int, 0, len(seen))
 	for id := range seen {
 		ids = append(ids, id)
 	}
 	sort.Ints(ids)
-	return ids, accounts
+	for _, id := range ids {
+		if accounts[id] != "" {
+			continue
+		}
+		if account := siteTaskUnitAccount(id); account != "" {
+			accounts[id] = account
+		} else {
+			unknown = append(unknown, id)
+		}
+	}
+	return ids, accounts, unknown
+}
+
+// siteTaskUnitPaths are the site's task unit files on the server.
+func siteTaskUnitPaths(siteID int) []string {
+	dir, err := sandboxUnitDir()
+	if err != nil {
+		return nil
+	}
+	units, _ := siteTaskUnits(siteID)
+	var out []string
+	for n, u := range units {
+		base := filepath.Join(dir, sitecron.UnitBase(siteID, n))
+		if u.Service {
+			out = append(out, base+".service")
+		}
+		if u.Timer {
+			out = append(out, base+".timer")
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// siteTaskUnitAccount is the account a site's task services run as (their
+// User= lines), "" when none can be read or they name more than one.
+func siteTaskUnitAccount(siteID int) string {
+	dir, err := sandboxUnitDir()
+	if err != nil {
+		return ""
+	}
+	units, _ := siteTaskUnits(siteID)
+	account := ""
+	for n, u := range units {
+		if !u.Service {
+			continue
+		}
+		for _, line := range strings.Split(readSmallFile(filepath.Join(dir, sitecron.UnitBase(siteID, n)+".service")), "\n") {
+			user, ok := strings.CutPrefix(line, "User=")
+			if !ok {
+				continue
+			}
+			user = strings.TrimSpace(user)
+			if !cronUsernameRe.MatchString(user) || user == "root" || (account != "" && account != user) {
+				return ""
+			}
+			account = user
+		}
+	}
+	return account
 }
 
 // removeSiteTasksLocked removes every timer and file of a site's tasks
@@ -1099,6 +1315,9 @@ func removeSiteTasksLocked(siteID int, aside bool) ([]string, error) {
 	source := sitecron.SourcePath(siteID)
 	if _, kept := removeTaskFile(siteTaskSourceKind, source, true); kept {
 		keep(source)
+	}
+	if left, _ := siteTaskUnits(siteID); len(left) == 0 {
+		setSiteTimersToEnable(siteID, nil)
 	}
 	if reload {
 		if err := siteSliceDaemonReload(); err != nil {

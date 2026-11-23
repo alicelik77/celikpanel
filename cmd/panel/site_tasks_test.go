@@ -111,6 +111,92 @@ func TestSiteTasksMoveIsPartOfTheMoveAndUndoIsTheAdministrators(t *testing.T) {
 	}
 }
 
+// TestAnUnresolvedTasksMoveStartsNoProgramsMove (S4 R2b second fix round,
+// review N1): a tasks part whose result is unknown, or that was refused for
+// an unresolved earlier move, does not start the programs part of the same
+// request; the answer says why; an unresolved move is ONE administrator line
+// in Problems now with the steps by hand, and the card of that site shows it.
+// On 6db8cd368 the programs part ran (and deleted the tasks' journal).
+func TestAnUnresolvedTasksMoveStartsNoProgramsMove(t *testing.T) {
+	useHostMemory(t, 8192)
+	f := newRightsFixture(t)
+	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
+	var siteID int
+	_ = f.panel.db.GetDB().QueryRow(`SELECT id FROM sites WHERE domain_id = 9902`).Scan(&siteID)
+	oldMove, oldSlice, oldMoved := moveSiteTasksCall, moveSiteSliceCall, siteTasksMovedCall
+	t.Cleanup(func() { moveSiteTasksCall, moveSiteSliceCall, siteTasksMovedCall = oldMove, oldSlice, oldMoved })
+	unresolved := &transport.SiteMoveUnresolved{SiteID: siteID, Kind: transport.SiteMoveUnresolvedTasksMove, Step: "crontab_emptied", Account: "customer_test",
+		StartedAt: "2026-11-23T10:00:00Z"}
+	answer := transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "putting them back did not complete"}
+	moveSiteTasksCall = func(p *Panel, ctx context.Context, method string, req *transport.SiteTasksMoveRequest) (transport.SiteTasksMoveResponse, error) {
+		return answer, nil
+	}
+	siteTasksMovedCall = func(p *Panel, ctx context.Context, req *transport.SiteTasksMovedRequest) (transport.SiteTasksMovedResponse, error) {
+		return transport.SiteTasksMovedResponse{Moved: []int{}, Unresolved: unresolved}, nil
+	}
+	programs := 0
+	moveSiteSliceCall = func(p *Panel, ctx context.Context, req *transport.MoveSiteSliceRequest) (transport.MoveSiteSliceResponse, error) {
+		programs++
+		return transport.MoveSiteSliceResponse{Done: true}, nil
+	}
+	handler := siteLimitsMux(f)
+	for i, tasks := range []transport.SiteTasksMoveResponse{
+		answer,
+		{Outcome: transport.SiteTasksRefused, Refusal: transport.SiteMoveRefusalUnresolved, Error: "an earlier move of site 7's scheduled tasks ... could not be finished"},
+	} {
+		answer = tasks
+		move := siteLimitsCall(t, f, handler, authzMatrixAdminID, http.MethodPost, "/api/v1/domains/9902/site-limits/move", `{"request_id":"move-001`+itoa(i)+`"}`)
+		wantStatus(t, move, http.StatusOK, "")
+		var resp transport.MoveSiteSliceResponse
+		_ = json.Unmarshal(move.Body.Bytes(), &resp)
+		if resp.Done || resp.Error == "" || resp.Tasks == nil || resp.Refusal != tasks.Refusal {
+			t.Fatalf("answer %s", move.Body.String())
+		}
+	}
+	if programs != 0 {
+		t.Fatalf("the programs part ran %d times after an unknown tasks part", programs)
+	}
+	raw := f.panel.setting(context.Background(), settingSiteLimitOutside)
+	lines := siteMoveUnresolvedProblem(raw, map[string]string{itoa(siteID): "customer.test"})
+	if len(lines) != 1 || lines[0].Kind != "site_move_unresolved" || lines[0].Subject != "customer.test" || lines[0].Actor != "administrator" ||
+		!strings.Contains(lines[0].Name, "sudo systemctl disable --now 'celikcron-"+itoa(siteID)+"-*.timer'") || !strings.Contains(lines[0].Name, "sudo crontab -u customer_test ") {
+		t.Fatalf("problem %+v (setting %s)", lines, raw)
+	}
+	if view := f.panel.siteTasksViewOf(context.Background(), siteID); view.Unresolved == nil || view.Unresolved.SiteID != siteID {
+		t.Fatalf("the card does not show it: %+v", view)
+	}
+	// Resolved: the line goes by itself.
+	unresolved = nil
+	f.panel.refreshSiteMoveUnresolved(context.Background())
+	if lines := siteMoveUnresolvedProblem(f.panel.setting(context.Background(), settingSiteLimitOutside), nil); len(lines) != 0 {
+		t.Fatalf("still shown: %+v", lines)
+	}
+	for _, kind := range []string{"site_move_unresolved", "site_user_manager_open"} {
+		if _, ordered := problemKindOrder[kind]; !ordered {
+			t.Errorf("%s has no place in the problem order", kind)
+		}
+		if en, tr := alertLine(pendingAlertMail{kind: kind, subject: "shop.example.com", name: "x", value: 2}); strings.HasPrefix(en, "A monitored problem") || tr == "" {
+			t.Errorf("%s has no alert line", kind)
+		}
+	}
+}
+
+// TestUserManagerProblem (review N11): one line names the site accounts whose
+// own service manager can still start (the owner's file, the owner's removal,
+// not written) with the units to mask; none while every one is closed.
+func TestUserManagerProblem(t *testing.T) {
+	state := transport.SideDoorsState{CheckedAt: "2026-11-23T10:00:00Z", UserManagers: &transport.SideDoorsUserManagers{Masked: 3,
+		Owner: []string{"b_test"}, Removed: []string{"a_test"}, OpenUnits: []string{"user@1502.service", "user@1501.service"}}}
+	lines := siteUserManagerProblems(state)
+	if len(lines) != 1 || lines[0].Subject != "a_test, b_test" || lines[0].Name != "user@1501.service user@1502.service" || lines[0].Value != 2 {
+		t.Fatalf("%+v", lines)
+	}
+	state.UserManagers = &transport.SideDoorsUserManagers{Masked: 3, OwnerMasked: 1}
+	if lines := siteUserManagerProblems(state); len(lines) != 0 {
+		t.Fatalf("a line while every manager is closed: %+v", lines)
+	}
+}
+
 // TestTheOutsideLineCountsProgramsAndTasks: ONE line for the sites whose
 // programs or tasks run outside their limits, opening "Move all"; a reading
 // of the programs keeps the tasks part.

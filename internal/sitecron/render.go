@@ -91,6 +91,10 @@ type Unit struct {
 	// Egress: the host holds the SMTP block (the unit adds itself to it);
 	// BPF: systemd can enforce IPAddressDeny=.
 	Egress, BPF bool
+	// SliceFile is the site's slice file (its limits): the service runs only
+	// while it exists (ConditionPathExists=), also after a reboot and
+	// without the panel (second fix round).
+	SliceFile string
 }
 
 var (
@@ -99,6 +103,7 @@ var (
 	taskIDPattern  = regexp.MustCompile(`^[0-9a-f]{16}(#[0-9]{1,3})?$`)
 	homePattern    = regexp.MustCompile(`^/[A-Za-z0-9/_.-]{1,400}$`)
 	calendarChars  = regexp.MustCompile(`^[A-Za-z0-9*:.,\- ]{1,600}$`)
+	sliceFileChars = regexp.MustCompile(`^/[A-Za-z0-9/_.-]{1,400}\.slice$`)
 )
 
 func (u Unit) validate() error {
@@ -117,6 +122,9 @@ func (u Unit) validate() error {
 		return errors.New("not a shell path")
 	case !u.Spec.Reboot && (len(u.Spec.Calendars) == 0 || len(u.Spec.Calendars) > 2):
 		return errors.New("a task needs when it runs")
+	case !sliceFileChars.MatchString(u.SliceFile) || path.Clean(u.SliceFile) != u.SliceFile ||
+		path.Base(u.SliceFile) != sitesandbox.SliceName(u.SiteID):
+		return errors.New("a task needs its site's slice file")
 	}
 	for _, c := range u.Spec.Calendars {
 		if !calendarChars.MatchString(c) {
@@ -149,12 +157,26 @@ func (u Unit) validate() error {
 // when the next one starts. The task services get the programs' log rate
 // limit and no core files (docs/SITE-SANDBOX.md section 1).
 //
-// RestrictAddressFamilies= with User= implies NoNewPrivileges=yes
-// (systemd.exec(5)): a set-user-id or set-group-id program (crontab, sudo,
-// ping with file capabilities, dotlockfile) gains no rights inside a task.
-// There is no PAM session (no PAMName=): /etc/security/limits.conf does not
-// apply; the site's slice limits do. Both are listed for the people who
-// read the screen (section 9.2).
+// NoNewPrivileges=yes is set explicitly, as for the site's sandboxed
+// programs (second fix round). Measured on systemd 257 and 255:
+// RestrictAddressFamilies= with User= does NOT imply it (NoNewPrivs stayed
+// 0 and a set-group-id crontab gained its group). So a set-user-id or
+// set-group-id program (sudo, crontab, ping with file capabilities,
+// dotlockfile, the server's sendmail and so PHP's mail()) gains no rights
+// inside a task and may fail; mail from a task goes by SMTP with a
+// mailbox's login. There is no PAM session (no PAMName=):
+// /etc/security/limits.conf does not apply; the site's slice limits do.
+// Both are listed for the people who read the screen (section 9.2).
+//
+// ConditionPathExists= on the site's slice file (second fix round): while
+// the file is missing systemd skips the run (an INFO line, the unit not
+// failed), also after a reboot and with no panel, so no task runs without
+// the site's limits. When the file comes back, the next run has its limits
+// once systemd has reloaded (CelikPanel's own write does; by hand:
+// systemctl daemon-reload).
+//
+// The helper lines name TaskHelperPath, a copy of the helper no release
+// before this one manages (sitesandbox/helper.go).
 func ServiceText(u Unit) (string, error) {
 	if err := u.validate(); err != nil {
 		return "", err
@@ -169,9 +191,11 @@ func ServiceText(u Unit) (string, error) {
 	b.WriteString("#\n# CelikPanel zamanlanmis gorevi: sitenin kendi sinirlari icinde calisir.\n")
 	b.WriteString("[Unit]\n")
 	b.WriteString("Description=CelikPanel task " + strconv.Itoa(u.N) + " of " + u.Domain + "\n")
+	b.WriteString("ConditionPathExists=" + u.SliceFile + "\n")
 	b.WriteString("\n[Service]\n")
 	b.WriteString("Type=oneshot\n")
 	b.WriteString("KillMode=process\n")
+	b.WriteString("NoNewPrivileges=yes\n")
 	b.WriteString("User=" + u.Account + "\n")
 	b.WriteString("Group=" + u.Group + "\n")
 	b.WriteString("Slice=" + sitesandbox.SliceName(u.SiteID) + "\n")
@@ -187,11 +211,11 @@ func ServiceText(u Unit) (string, error) {
 		b.WriteString("StandardInput=file:" + InputPath(u.SiteID, u.N) + "\n")
 	}
 	if u.Egress {
-		b.WriteString("ExecStartPre=+" + sitesandbox.HelperCommand(sitesandbox.EgressAddArgs(unit)) + "\n")
+		b.WriteString("ExecStartPre=+" + sitesandbox.TaskHelperCommand(sitesandbox.EgressAddArgs(unit)) + "\n")
 	}
 	b.WriteString("ExecStart=" + u.Shell + " " + ScriptPath(u.SiteID, u.N) + "\n")
 	if u.Egress {
-		b.WriteString("ExecStopPost=-+" + sitesandbox.HelperCommand(sitesandbox.EgressRemoveArgs(unit)) + "\n")
+		b.WriteString("ExecStopPost=-+" + sitesandbox.TaskHelperCommand(sitesandbox.EgressRemoveArgs(unit)) + "\n")
 	}
 	b.WriteString("RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK\n")
 	b.WriteString("LogRateLimitIntervalSec=30s\n")

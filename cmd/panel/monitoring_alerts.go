@@ -632,8 +632,14 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("A crontab exists again for sites whose tasks run in their limits (%s) and runs outside them; cron let these accounts in, so the sites' own code can have made it. Monitoring says what to do.", subject),
 			fmt.Sprintf("Görevleri sınırları içinde çalışan siteler için yeniden crontab var (%s) ve sınırların dışında çalışıyor; cron bu hesaplara izin verdi, yani sitenin kendi kodu yapmış olabilir. Ne yapılacağı İzleme'de.", subject)
 	case "site_tasks_held":
-		return fmt.Sprintf("The scheduled tasks of %s sites are held: their limits file is not in place (%s), and no task runs outside a site's limits. Monitoring says what to do.", n, subject),
-			fmt.Sprintf("%s sitenin zamanlanmış görevleri bekletiliyor: sınır dosyaları yerinde değil (%s) ve hiçbir görev sitenin sınırları dışında çalışmaz. Ne yapılacağı İzleme'de.", n, subject)
+		return fmt.Sprintf("The scheduled tasks of %s sites are held: their limits file is not in place (%s), and they do not run until it is back. Monitoring says what to do.", n, subject),
+			fmt.Sprintf("%s sitenin zamanlanmış görevleri bekletiliyor: sınır dosyaları yerinde değil (%s); dosya geri gelene kadar çalışmazlar. Ne yapılacağı İzleme'de.", n, subject)
+	case "site_move_unresolved":
+		return fmt.Sprintf("A move of %s into its limits could not be finished or put back, and no site is moved until it is. CelikPanel tries again at its next start; Monitoring gives the steps by hand.", subject),
+			fmt.Sprintf("%s sitesinin sınırlarına taşınması ne tamamlanabildi ne geri alınabildi; bu çözülene kadar hiçbir site taşınmaz. CelikPanel bir sonraki açılışında yeniden dener; elle yapılacaklar İzleme'de.", subject)
+	case "site_user_manager_open":
+		return fmt.Sprintf("Site accounts can still start their own service manager by signing in with SFTP, outside their limits (%s). Monitoring gives the command that closes it.", subject),
+			fmt.Sprintf("Site hesapları SFTP ile girince kendi hizmet yöneticilerini hâlâ sınırlarının dışında başlatabiliyor (%s). Bunu kapatan komut İzleme'de.", subject)
 	case "site_lingering":
 		return fmt.Sprintf("Site accounts keep their own programs running outside their limits (lingering: %s). Monitoring gives the command that ends it.", subject),
 			fmt.Sprintf("Site hesapları kendi programlarını sınırlarının dışında çalışır tutuyor (kalıcı oturum: %s). Bunu bitiren komut İzleme'de.", subject)

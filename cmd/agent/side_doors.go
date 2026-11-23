@@ -83,6 +83,9 @@ func (a *Agent) CloseSideDoorsV1(req *transport.SideDoorsRequest, resp *transpor
 	state.Cron = closeSiteCronWith(hostSiteCronOps(), 0)
 	cronAllowMu.Unlock()
 	state.Linger = closeSiteLingerWith(hostSiteLingerOps())
+	// Second fix round: a site account's own service manager does not start
+	// at an SFTP login (side_doors_user_manager.go).
+	state.UserManagers = closeSiteUserManagers()
 	// A moved site's task file edited by hand (or a render cut short) is
 	// applied to its timers here, after each start; a missing limits file is
 	// put back from the slices the Panel sent, or the site's timers are held

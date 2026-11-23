@@ -156,6 +156,11 @@ var problemKindOrder = map[string]int{
 	// sites whose timers are held for want of their limits file.
 	"site_crontab_by_site": 43,
 	"site_tasks_held":      44,
+	// S4 R2b second fix round: a move the Agent could not resolve (every new
+	// move waits for it); site accounts whose own service manager can still
+	// start at an SFTP login.
+	"site_move_unresolved":   45,
+	"site_user_manager_open": 46,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

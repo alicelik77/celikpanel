@@ -111,6 +111,7 @@ func (p *Panel) handleListCronJobs(w http.ResponseWriter, r *http.Request, tenan
 	// on it).
 	if caller := currentCaller(r); caller == nil || !caller.hasAccountRole(roleAdmin) {
 		resp.Reappeared = nil
+		resp.LeftUnits = nil
 	}
 
 	json.NewEncoder(w).Encode(resp)

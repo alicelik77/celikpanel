@@ -64,6 +64,14 @@ const (
 	HelperName = "sandbox-helper"
 	// HelperPath is where the Agent installs the helper.
 	HelperPath = EgressDir + "/" + HelperName
+	// TaskHelperName and TaskHelperPath (S4 R2b second fix round): the same
+	// program under a second name, which only sites' scheduled tasks
+	// (celikcron-*) call. A release before R2b manages and overwrites
+	// HelperPath with its own copy, which does not know the task units'
+	// names; it never touches this file, so after a return to such a
+	// release the tasks still start (docs/SITE-SANDBOX.md section 9.4).
+	TaskHelperName = "sandbox-task-helper"
+	TaskHelperPath = EgressDir + "/" + TaskHelperName
 	// MountRoot holds one root-only folder per running unit.
 	MountRoot = "/run/celikpanel-sandbox"
 	// BindTemplate is the bind unit's template file name.
@@ -117,6 +125,11 @@ func EgressRemoveArgs(unit string) []string { return []string{"egress-remove", "
 // (`systemctl show`'s "argv[]=" part).
 func HelperCommand(args []string) string {
 	return HelperPath + " " + strings.Join(args, " ")
+}
+
+// TaskHelperCommand is a scheduled task's helper call (TaskHelperPath).
+func TaskHelperCommand(args []string) string {
+	return TaskHelperPath + " " + strings.Join(args, " ")
 }
 
 // HelperLines are a sandboxed unit's lines for its bind unit ([Unit]:

@@ -187,7 +187,7 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		return fmt.Errorf("the sandbox folder %s: %v", sandboxEgressDir, err)
 	}
 	ledger := readSandboxLedger()
-	changed, rules := false, false
+	changed, rules, ownerFile := false, false, ""
 	record := map[string]sandboxLedgerEntry{}
 	for _, f := range files {
 		result, err := services.ApplyManagedSiteFile(f.managed(ledger[f.Path].RenderSHA256), nil, nil)
@@ -206,6 +206,9 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 			}
 		case transport.SiteFileOutcomeKept:
 			log.Printf("site sandbox: %s was changed on this server and is kept (%s); CelikPanel's text is in %s", f.Path, result.State, result.PendingPath)
+			if f.Kind == "sandbox_egress" {
+				ownerFile = f.Path
+			}
 		default:
 			return fmt.Errorf("%s could not be written (%s %s): %s", f.Path, result.Outcome, result.Reason, result.Detail)
 		}
@@ -227,6 +230,11 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		if err := sandboxReloadEgress(); err != nil {
 			return err
 		}
+	}
+	// The record says what decides (second fix round): the server owner's
+	// kept file decides, not what CelikPanel would have written.
+	if ownerFile != "" {
+		submission, why = transport.MailSubmissionOwnerFile, ownerFile+" was changed on this server and is kept; whether sites reach this server's submission ports is what that file says"
 	}
 	recordMailSubmission(submission, why)
 	if out, err := appUnitSystemctl(systemctlArgs("enable", "--now", sitesandbox.EgressGuardTimer)...); err != nil {

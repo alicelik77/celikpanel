@@ -748,6 +748,7 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 	if err != nil {
 		return result, err
 	}
+	sliceFile := filepath.Join(dir, sitesandbox.SliceName(t.SiteID))
 	var files []managedTaskFile
 	hasEnv := len(c.Env) > 0
 	if hasEnv {
@@ -761,7 +762,8 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 			files = append(files, managedTaskFile{kind: siteTaskInputKind, path: sitecron.InputPath(t.SiteID, task.N), body: task.Entry.Input, group: true})
 		}
 		u := sitecron.Unit{SiteID: t.SiteID, N: task.N, TaskID: task.Key, Domain: t.Domain, Account: t.Account, Group: t.Group, Home: t.Home,
-			Shell: c.Shell, HasEnv: hasEnv, HasInput: task.Entry.HasInput, Spec: task.Entry.Spec, Line: task.Entry.Line, Egress: egress, BPF: bpf}
+			Shell: c.Shell, HasEnv: hasEnv, HasInput: task.Entry.HasInput, Spec: task.Entry.Spec, Line: task.Entry.Line, Egress: egress, BPF: bpf,
+			SliceFile: sliceFile}
 		service, err := sitecron.ServiceText(u)
 		if err != nil {
 			return result, fmt.Errorf("task on line %d: %w", task.Entry.Line, err)
@@ -844,33 +846,35 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 			return result, err
 		}
 	}
-	defer func() {
-		// The crontab these timers were made from, so the reconcile at each
-		// start re-renders only a site whose task file changed since, and a
-		// copy of it in the Agent's private folder: a task file that goes
-		// missing is rebuilt from it by the administrator (fix round).
-		if err := setSandboxLedgerEntry(siteTaskAppliedKey(t.SiteID), siteTaskAppliedKind, taskDigest(crontab)); err != nil {
-			log.Printf("site tasks: record what site %d's timers were made from: %v", t.SiteID, err)
+	// A copy of the crontab these timers were made from, in the Agent's
+	// private folder: a task file that goes missing is rebuilt from it by the
+	// administrator (fix round). The units are written by now.
+	if err := writePrivateFile(siteTaskRenderedPath(t.SiteID), []byte(crontab)); err != nil {
+		log.Printf("site tasks: keep the copy of what site %d's timers were made from: %v", t.SiteID, err)
+	}
+	// New timers are switched on; one CelikPanel could not switch on before
+	// (a save or a start whose enable failed) is switched on now (second fix
+	// round: it is remembered until it is on, and never confused with a timer
+	// the server owner turned off).
+	toEnable := map[string]bool{}
+	for _, task := range result.Tasks {
+		timer := task.Unit + ".timer"
+		if newTimers[timer] && !siteTimersHoldEnable {
+			toEnable[timer] = task.Entry.Spec.Reboot
 		}
-		if err := writePrivateFile(siteTaskRenderedPath(t.SiteID), []byte(crontab)); err != nil {
-			log.Printf("site tasks: keep the copy of what site %d's timers were made from: %v", t.SiteID, err)
+	}
+	for timer, atBoot := range readSiteTimersToEnable()[strconv.Itoa(t.SiteID)] {
+		for _, task := range result.Tasks {
+			if task.Unit+".timer" == timer {
+				toEnable[timer] = atBoot
+			}
 		}
-	}()
+	}
+	enableErr := enableSiteTimersToEnable(t.SiteID, toEnable)
 	for i := range result.Tasks {
 		task := &result.Tasks[i]
 		timer := task.Unit + ".timer"
-		switch {
-		case newTimers[timer] && siteTimersHoldEnable:
-			// The move enables them after the crontab is empty.
-		case newTimers[timer] && task.Entry.Spec.Reboot:
-			if out, err := siteTaskSystemctl("enable", timer); err != nil {
-				return result, fmt.Errorf("systemctl enable %s: %v: %s", timer, err, strings.TrimSpace(string(out)))
-			}
-		case newTimers[timer]:
-			if out, err := siteTaskSystemctl("enable", "--now", timer); err != nil {
-				return result, fmt.Errorf("systemctl enable --now %s: %v: %s", timer, err, strings.TrimSpace(string(out)))
-			}
-		case changedTimers[timer]:
+		if changedTimers[timer] && !newTimers[timer] {
 			// Only a running timer is restarted: one the owner stopped or
 			// disabled stays so.
 			if out, err := siteTaskSystemctl("try-restart", timer); err != nil {
@@ -878,7 +882,89 @@ func applySiteTimers(t siteTaskTarget, crontab string) (siteTimersResult, error)
 			}
 		}
 	}
+	if enableErr != nil {
+		// Not recorded as applied: the reconcile at the next start renders
+		// the site again and switches the remembered timers on.
+		return result, enableErr
+	}
+	// The crontab these timers were made from, so the reconcile at each start
+	// re-renders only a site whose task file changed since; recorded only once
+	// every new timer is on (second fix round).
+	if err := setSandboxLedgerEntry(siteTaskAppliedKey(t.SiteID), siteTaskAppliedKind, taskDigest(crontab)); err != nil {
+		log.Printf("site tasks: record what site %d's timers were made from: %v", t.SiteID, err)
+	}
 	return result, nil
+}
+
+// siteTimersToEnablePath records, per site, the timers CelikPanel wrote but
+// could not switch on yet (timer -> an @reboot one, enabled only), so a
+// failed `systemctl enable` is tried again at the next save or start and the
+// screen says "could not be switched on yet" instead of "turned off".
+var siteTimersToEnablePath = filepath.Join(hostingpath.ServiceMutationStateRoot(), "sandbox", "site-timers-to-enable.json")
+
+var siteTimersToEnableMu sync.Mutex
+
+func readSiteTimersToEnable() map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	if raw, err := os.ReadFile(siteTimersToEnablePath); err == nil {
+		_ = json.Unmarshal(raw, &out)
+	}
+	return out
+}
+
+// setSiteTimersToEnable replaces one site's list (empty: none left).
+func setSiteTimersToEnable(siteID int, timers map[string]bool) {
+	siteTimersToEnableMu.Lock()
+	defer siteTimersToEnableMu.Unlock()
+	all := readSiteTimersToEnable()
+	key := strconv.Itoa(siteID)
+	if len(timers) == 0 {
+		if _, ok := all[key]; !ok {
+			return
+		}
+		delete(all, key)
+	} else {
+		all[key] = timers
+	}
+	raw, err := json.Marshal(all)
+	if err == nil {
+		err = writePrivateFile(siteTimersToEnablePath, raw)
+	}
+	if err != nil {
+		log.Printf("site tasks: record the timers still to switch on: %v", err)
+	}
+}
+
+// enableSiteTimersToEnable records the timers as to be switched on, switches
+// each on (an @reboot one is only enabled) and keeps the ones that failed.
+func enableSiteTimersToEnable(siteID int, timers map[string]bool) error {
+	if len(timers) == 0 {
+		setSiteTimersToEnable(siteID, nil)
+		return nil
+	}
+	setSiteTimersToEnable(siteID, timers)
+	names := make([]string, 0, len(timers))
+	for timer := range timers {
+		names = append(names, timer)
+	}
+	sort.Strings(names)
+	left := map[string]bool{}
+	var failures []string
+	for _, timer := range names {
+		args := []string{"enable", "--now", timer}
+		if timers[timer] {
+			args = []string{"enable", timer}
+		}
+		if out, err := siteTaskSystemctl(args...); err != nil {
+			left[timer] = timers[timer]
+			failures = append(failures, fmt.Sprintf("systemctl %s: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out))))
+		}
+	}
+	setSiteTimersToEnable(siteID, left)
+	if len(failures) > 0 {
+		return errors.New(strings.Join(failures, "; "))
+	}
+	return nil
 }
 
 // applyTaskFile puts one file in place: under the D-031 rule with
@@ -1025,8 +1111,9 @@ func removeTaskFile(kind, path string, header bool) (removed, kept bool) {
 // siteTaskShowServiceProps and siteTaskShowTimerProps are what a task's
 // last run and state are read from.
 var (
-	siteTaskShowServiceProps = []string{"Id", "ActiveState", "Result", "ExecMainStartTimestamp", "ExecMainExitTimestamp", "ExecMainStatus", "ExecMainCode", "InvocationID"}
-	siteTaskShowTimerProps   = []string{"Id", "LoadState", "ActiveState", "UnitFileState", "NextElapseUSecRealtime"}
+	siteTaskShowServiceProps = []string{"Id", "ActiveState", "Result", "ExecMainStartTimestamp", "ExecMainExitTimestamp", "ExecMainStatus", "ExecMainCode", "InvocationID",
+		"ConditionResult", "ConditionTimestamp"}
+	siteTaskShowTimerProps = []string{"Id", "LoadState", "ActiveState", "UnitFileState", "NextElapseUSecRealtime"}
 )
 
 // siteTaskOutputLines and siteTaskOutputBytes bound the output a run shows;
@@ -1124,8 +1211,9 @@ func boundedLine(line string, max int) string {
 	return line[:cut] + "…"
 }
 
-// siteTaskRuns fills each task's state and last run.
-func siteTaskRuns(tasks []siteTimerTask, kept []string) map[string]*transport.SiteTaskRun {
+// siteTaskRuns fills each task's state and last run; toEnable are the
+// site's timers CelikPanel could not switch on yet.
+func siteTaskRuns(tasks []siteTimerTask, kept []string, toEnable map[string]bool) map[string]*transport.SiteTaskRun {
 	var services, timers []string
 	for _, task := range tasks {
 		services = append(services, task.Unit+".service")
@@ -1142,11 +1230,16 @@ func siteTaskRuns(tasks []siteTimerTask, kept []string) map[string]*transport.Si
 	for i := range tasks {
 		task := &tasks[i]
 		tp := timerProps[task.Unit+".timer"]
+		_, pending := toEnable[task.Unit+".timer"]
 		switch {
 		case keptSet[task.Unit+".service"] || keptSet[task.Unit+".timer"]:
 			task.State = transport.SiteTaskKept
 		case tp == nil || tp["LoadState"] != "loaded":
 			task.State = transport.SiteTaskWaiting
+		case pending && (tp["UnitFileState"] != "enabled" || (!task.Entry.Spec.Reboot && tp["ActiveState"] != "active")):
+			// CelikPanel could not switch it on (second fix round): not the
+			// server owner's "turned off"; tried again at the next save or start.
+			task.State = transport.SiteTaskNotOnYet
 		case task.Entry.Spec.Reboot && tp["UnitFileState"] == "enabled":
 			task.State = transport.SiteTaskAtBoot
 		case tp["UnitFileState"] != "enabled" || (!task.Entry.Spec.Reboot && tp["ActiveState"] != "active"):
@@ -1186,6 +1279,14 @@ func siteTaskRuns(tasks []siteTimerTask, kept []string) map[string]*transport.Si
 					}
 				}
 			}
+		}
+		// Second fix round: the last start was skipped because the site's
+		// limits file was missing (ConditionPathExists=). systemd marks it
+		// as a success with an unmet condition, never as failed; the screen
+		// says the run was skipped and why.
+		if sp != nil && sp["ConditionResult"] == "no" && run.State != "running" {
+			skipped, _ := unixStamp(sp["ConditionTimestamp"])
+			*run = transport.SiteTaskRun{State: transport.SiteTaskRunSkipped, StartedAt: skipped, NextAt: run.NextAt}
 		}
 		runs[task.Unit] = run
 	}
@@ -1272,6 +1373,13 @@ func listSiteTasks(t siteTaskTarget, resp *ListCronJobsResponse) error {
 	switch {
 	case !source.Exists:
 		resp.Source = transport.SiteTasksSourceMissing
+		// Second fix round: with a crontab back for the account, the tasks
+		// run from it (a put-back that left a unit file the owner changed,
+		// or an undo by hand): not "missing"; the owner removes these files.
+		if files, err := accountSpoolFiles(t.Account); err == nil && len(files) > 0 {
+			resp.Source = transport.SiteTasksSourceCrontab
+			resp.LeftUnits = siteTaskUnitPaths(t.SiteID)
+		}
 	case source.State == transport.SiteFileManagedUnchanged:
 		resp.Source = transport.SiteTasksSourceOurs
 	default:
@@ -1316,7 +1424,7 @@ func listSiteTasks(t siteTaskTarget, resp *ListCronJobsResponse) error {
 			}
 		}
 	}
-	runs := siteTaskRuns(tasks, kept)
+	runs := siteTaskRuns(tasks, kept, readSiteTimersToEnable()[strconv.Itoa(t.SiteID)])
 	seen := map[string]int{}
 	for i := range resp.Jobs {
 		job := &resp.Jobs[i]

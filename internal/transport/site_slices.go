@@ -240,6 +240,9 @@ type MoveSiteSliceResponse struct {
 	SliceFile   string           `json:"slice_file,omitempty"`
 	Units       []SiteSliceMoved `json:"units"`
 	Error       string           `json:"error,omitempty"`
+	// Refusal (S4 R2b second fix round): SiteMoveRefusalUnresolved when an
+	// earlier move could not be resolved and nothing was changed.
+	Refusal string `json:"refusal,omitempty"`
 	// Tasks (S4 R2b) is the Panel's answer for the site's scheduled tasks,
 	// moved by the same action (the Agent's MoveSiteTasksV1).
 	Tasks *SiteTasksMoveResponse `json:"tasks,omitempty"`

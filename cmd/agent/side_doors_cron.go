@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -75,10 +76,18 @@ const cronAllowHeader = cronAllowMark + `
 // cronAllowMu serializes CelikPanel's writes of cron.allow.
 var cronAllowMu sync.Mutex
 
-// movedSiteAccounts are the accounts of moved sites (from their task files),
-// except the site exceptSite.
+// movedSiteAccounts are the accounts of moved sites (from their task files,
+// or their units when a task file is gone), except the site exceptSite.
 func movedSiteAccounts(exceptSite int) map[string]bool {
-	ids, accounts := movedSiteTaskSites()
+	out, _ := movedSiteAccountsChecked(exceptSite)
+	return out
+}
+
+// movedSiteAccountsChecked is movedSiteAccounts with an error naming the
+// moved sites whose account could not be read at all (second fix round):
+// cron.allow is then left as it is rather than rendered without them.
+func movedSiteAccountsChecked(exceptSite int) (map[string]bool, error) {
+	ids, accounts, unknown := movedSiteTaskSitesAll()
 	out := map[string]bool{}
 	for _, id := range ids {
 		if id == exceptSite {
@@ -88,7 +97,16 @@ func movedSiteAccounts(exceptSite int) map[string]bool {
 			out[account] = true
 		}
 	}
-	return out
+	var missing []string
+	for _, id := range unknown {
+		if id != exceptSite {
+			missing = append(missing, strconv.Itoa(id))
+		}
+	}
+	if len(missing) > 0 {
+		return out, fmt.Errorf("the account of moved site %s could be read neither from its task file nor from its timers' units", strings.Join(missing, ", "))
+	}
+	return out, nil
 }
 
 // renderCronAllow: root, then every account cron.deny does not name, in
@@ -173,7 +191,7 @@ func closeSiteCronWith(ops siteCronOps, exceptSite int) *transport.SideDoorsCron
 		return &transport.SideDoorsCron{State: transport.SideDoorsAtNotInstalled}
 	}
 	out := &transport.SideDoorsCron{Path: cronAllowPath}
-	moved := movedSiteAccounts(exceptSite)
+	moved, unknownErr := movedSiteAccountsChecked(exceptSite)
 	defer func() {
 		// After the file is decided: a crontab found for a moved account, and
 		// whether the account could have installed it itself (fix round: it is
@@ -233,6 +251,13 @@ func closeSiteCronWith(ops siteCronOps, exceptSite int) *transport.SideDoorsCron
 			sort.Strings(out.SiteAccounts)
 			return out
 		}
+		if unknownErr != nil {
+			// A moved site whose account is unknown must not come back into
+			// cron by a render without it: the file stays as it is.
+			log.Printf("site tasks: %s is left as it is this time: %v", cronAllowPath, unknownErr)
+			out.State, out.Detail = transport.SideDoorsAtCurrent, unknownErr.Error()+"; the file was left as it is"
+			return out
+		}
 		desired := renderCronAllow(entries, string(deny), moved)
 		if desired == string(current) {
 			out.State = transport.SideDoorsAtCurrent
@@ -246,6 +271,11 @@ func closeSiteCronWith(ops siteCronOps, exceptSite int) *transport.SideDoorsCron
 	// The owner's undo stands (D-022).
 	if _, recordErr := ops.readFile(cronAllowRecordPath); recordErr == nil {
 		out.State = transport.SideDoorsAtOwnerRemoved
+		return out
+	}
+	if unknownErr != nil {
+		log.Printf("site tasks: %s is not written this time: %v", cronAllowPath, unknownErr)
+		out.State, out.Detail = transport.SideDoorsAtFailed, unknownErr.Error()+"; the file was not written"
 		return out
 	}
 	if len(moved) == 0 {

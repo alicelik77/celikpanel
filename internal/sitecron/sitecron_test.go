@@ -268,7 +268,8 @@ func TestParseLinesLikeCron3(t *testing.T) {
 func TestUnitTexts(t *testing.T) {
 	u := Unit{SiteID: 7, N: 3, TaskID: "0123456789abcdef", Domain: "shop.example.test", Account: "shop_example_test", Group: "shop_example_test",
 		Home: "/var/www/celikpanel/subscriptions/2/sites/9", Shell: "/bin/sh", HasEnv: true, HasInput: true, Line: 4,
-		Spec: Spec{Calendars: []string{"*-*-01 12:00:00", "Mon *-*-* 12:00:00"}}, Egress: true, BPF: true}
+		Spec: Spec{Calendars: []string{"*-*-01 12:00:00", "Mon *-*-* 12:00:00"}}, Egress: true, BPF: true,
+		SliceFile: "/etc/systemd/system/celiksite_7.slice"}
 	service, err := ServiceText(u)
 	if err != nil {
 		t.Fatal(err)
@@ -278,18 +279,29 @@ func TestUnitTexts(t *testing.T) {
 		"Slice=celiksite_7.slice\n", "WorkingDirectory=/var/www/celikpanel/subscriptions/2/sites/9\n", "UMask=0002\n",
 		"Environment=PATH=/usr/bin:/bin SHELL=/bin/sh\nEnvironmentFile=-/etc/environment\nEnvironmentFile=-/etc/default/locale\nEnvironmentFile=/etc/celikpanel-cron/7.d/env\n",
 		"StandardInput=file:/etc/celikpanel-cron/7.d/3.in\n",
-		"ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celikcron-7-3.service\n",
+		// Second fix round: the task's own copy of the helper, which no
+		// earlier release manages (going back keeps the tasks starting).
+		"ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-task-helper egress-add --unit=celikcron-7-3.service\n",
 		"ExecStart=/bin/sh /etc/celikpanel-cron/7.d/3.sh\n",
-		"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celikcron-7-3.service\n",
+		"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-task-helper egress-remove --unit=celikcron-7-3.service\n",
 		"RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK\n", "IPAddressDeny=169.254.0.0/16",
 		// Fix round: what a task leaves running keeps running in its own
 		// cgroup (inside the slice, under the SMTP block), as under cron;
 		// the programs' log rate limit and no core files.
 		"Type=oneshot\nKillMode=process\n", "LogRateLimitIntervalSec=30s\n", "LogRateLimitBurst=1000\n", "LimitCORE=0\n",
+		// Second fix round: NoNewPrivileges is set, not assumed (measured:
+		// RestrictAddressFamilies= with User= does not imply it); and the run
+		// is skipped while the site's limits file is missing, also after a
+		// reboot and without the panel.
+		"NoNewPrivileges=yes\n",
+		"[Unit]\nDescription=CelikPanel task 3 of shop.example.test\nConditionPathExists=/etc/systemd/system/celiksite_7.slice\n",
 	} {
 		if !strings.Contains(service, want) {
 			t.Errorf("service lacks %q:\n%s", want, service)
 		}
+	}
+	if strings.Contains(service, "/sandbox-helper ") {
+		t.Errorf("a task names the helper an earlier release overwrites:\n%s", service)
 	}
 	timer, err := TimerText(u)
 	if err != nil {
@@ -311,6 +323,9 @@ func TestUnitTexts(t *testing.T) {
 		func(u *Unit) { u.Domain = "a b" },
 		func(u *Unit) { u.Spec = Spec{Calendars: []string{"*-*-* 00:00:00\nExecStart=/bin/x"}} },
 		func(u *Unit) { u.TaskID = "x" },
+		func(u *Unit) { u.SliceFile = "" },
+		func(u *Unit) { u.SliceFile = "/etc/systemd/system/celiksite_8.slice" },
+		func(u *Unit) { u.SliceFile = "/etc/systemd/system/x\nExecStart=/bin/x/celiksite_7.slice" },
 	} {
 		v := u
 		bad(&v)

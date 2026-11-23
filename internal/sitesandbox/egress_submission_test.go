@@ -1,6 +1,10 @@
 package sitesandbox
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -62,5 +66,62 @@ func TestEgressGuardKeepsWhatATaskLeftRunning(t *testing.T) {
 		if !strings.Contains(guard, want) {
 			t.Fatalf("guard lacks %q:\n%s", want, guard)
 		}
+	}
+}
+
+// TestEgressGuardKeepsALeftoverWhoseTaskWasRemoved (S4 R2b second fix round,
+// review N12): after a task's unit file is removed and systemd reloaded,
+// `systemctl show -P ExecStartPre` is empty while a process the task left
+// still runs in its cgroup (measured). The guard's second loop accepts such a
+// cgroup by its path alone, so after a flush the leftover is blocked again;
+// a cgroup whose name does not belong to its slice's site is not. On
+// 6db8cd368 the loop asked systemd for ExecStartPre and skipped it.
+func TestEgressGuardKeepsALeftoverWhoseTaskWasRemoved(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("runs the guard with /bin/sh")
+	}
+	dir := t.TempDir()
+	cgroups := filepath.Join(dir, "cgroup")
+	for _, d := range []string{"celiksite_7.slice/celikcron-7-3.service", "celiksite_7.slice/celikcron-8-1.service", "celiksite_7.slice/celikcron-7-4.service"} {
+		if err := os.MkdirAll(filepath.Join(cgroups, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	procs := map[string]string{"celiksite_7.slice/celikcron-7-3.service": "4242\n", "celiksite_7.slice/celikcron-8-1.service": "4343\n", "celiksite_7.slice/celikcron-7-4.service": ""}
+	for d, body := range procs {
+		if err := os.WriteFile(filepath.Join(cgroups, d, "cgroup.procs"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bin := filepath.Join(dir, "bin")
+	log := filepath.Join(dir, "nft.log")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// systemd knows no unit any more (its file was removed): nothing listed,
+	// nothing shown. nft has the table and logs what is added.
+	fakes := map[string]string{
+		"systemctl": "#!/bin/sh\nexit 0\n",
+		"nft":       "#!/bin/sh\nif [ \"$1\" = list ]; then echo '@smtp_blocked'; exit 0; fi\necho \"$*\" >> " + log + "\n",
+	}
+	for name, body := range fakes {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	script := strings.ReplaceAll(EgressGuardScriptText(), "/sys/fs/cgroup", cgroups)
+	script = strings.Replace(script, "nft="+NFT, "nft="+filepath.Join(bin, "nft"), 1)
+	cmd := exec.Command("/bin/sh", "-c", script)
+	cmd.Env = []string{"PATH=" + bin + ":/usr/bin:/bin"}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("guard: %v\n%s", err, out)
+	}
+	raw, _ := os.ReadFile(log)
+	added := string(raw)
+	if !strings.Contains(added, `add element inet celikpanel_egress smtp_blocked { "celiksite_7.slice/celikcron-7-3.service" }`) {
+		t.Fatalf("the leftover of a removed task was not blocked again:\n%s", added)
+	}
+	if strings.Contains(added, "celikcron-8-1") || strings.Contains(added, "celikcron-7-4") {
+		t.Fatalf("a cgroup of another site (or an empty one) was added:\n%s", added)
 	}
 }

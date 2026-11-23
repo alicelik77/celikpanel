@@ -54,6 +54,9 @@ type SideDoorsState struct {
 	// TasksHeld (fix round): moved sites whose timers are held because their
 	// limits file is not in place and could not be written.
 	TasksHeld []SideDoorsTasksHeld `json:"tasks_held,omitempty"`
+	// UserManagers (second fix round): the site accounts' own service
+	// managers closed (masked) or still open, and why.
+	UserManagers *SideDoorsUserManagers `json:"user_managers,omitempty"`
 }
 
 // `at` states.

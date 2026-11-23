@@ -243,6 +243,7 @@ func (p *Panel) siteJobsProblems(ctx context.Context, db *sql.DB) []monitoringPr
 			problems = append(problems, siteCronProblems(state)...)
 			problems = append(problems, siteLingerProblems(state)...)
 			problems = append(problems, siteTasksHeldProblems(state)...)
+			problems = append(problems, siteUserManagerProblems(state)...)
 		}
 	}
 	outside := p.readSiteCrontabsOutside(ctx)

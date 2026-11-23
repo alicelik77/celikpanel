@@ -88,6 +88,10 @@ type siteLifecycleOps struct {
 	// start) and a deleted site's timers and task files. Nil skips each.
 	createSiteTasks func(siteID int, domain, username string, slice *transport.SiteSlice) error
 	removeSiteTasks func(int) ([]string, error)
+	// S4 R2b second fix round: the site accounts' own service managers
+	// masked (a new account's written, a deleted account's removed;
+	// side_doors_user_manager.go). Nil skips it.
+	syncUserManagers func() error
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -132,12 +136,13 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return file.Close()
 		},
-		removeSiteSlice: removeSiteSlice,
-		createSiteTasks: createSiteTasks,
-		removeSiteTasks: removeSiteTasks,
-		applyLayout:     applyHostingLayout,
-		applyVhost:      a.nginxGen.ApplyVhost,
-		applySiteVhost:  a.nginxGen.ApplyManagedVhost,
+		removeSiteSlice:  removeSiteSlice,
+		createSiteTasks:  createSiteTasks,
+		removeSiteTasks:  removeSiteTasks,
+		syncUserManagers: syncSiteUserManagers,
+		applyLayout:      applyHostingLayout,
+		applyVhost:       a.nginxGen.ApplyVhost,
+		applySiteVhost:   a.nginxGen.ApplyManagedVhost,
 		removeVhost: func(domain string) error {
 			backup, err := a.nginxGen.RemoveSiteVhost(domain)
 			if backup != "" {
@@ -645,6 +650,14 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 			log.Printf("CreateSite %s: the task file was not written (the site keeps cron until it is moved): %v", req.Domain, err)
 		}
 	}
+	// Second fix round: the account's own service manager does not start at
+	// an SFTP login; a failure is logged and shown by the side doors step
+	// after the next Panel start, which writes it again.
+	if ops.syncUserManagers != nil {
+		if err := ops.syncUserManagers(); err != nil {
+			log.Printf("CreateSite %s: %v", req.Domain, err)
+		}
+	}
 	return nil
 }
 
@@ -817,6 +830,13 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 		keepFailure("system user", removeSiteUser(ops, username, cleanHome))
 		if ops.forgetAccess != nil {
 			ops.forgetAccess(username)
+		}
+	}
+	// 4b. S4 R2b second fix round: the deleted account's service manager
+	// mask goes with it (its uid may later be any account's).
+	if ops.syncUserManagers != nil {
+		if err := ops.syncUserManagers(); err != nil {
+			log.Printf("DeleteSite %s: %v", req.Domain, err)
 		}
 	}
 
