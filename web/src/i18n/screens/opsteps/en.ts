@@ -113,6 +113,13 @@ export const enOpstepsScreens = {
     'opstep.adminRemove.check': 'Checking CelikPanel’s account',
     'opstep.adminRemove.remove': 'Removing CelikPanel’s account from the database server',
     'opstep.userDelete.delete': 'Checking {name} owns nothing and deleting the account',
+
+    // alpha.145 lab, D1: a server change whose end the panel could not record
+    // at once (cmd/panel/service_operation_settle.go). What is true while it
+    // is settled, and the owner's step when it cannot be.
+    'services.operation.phase.settling_contact': 'The panel lost contact with its agent while this change ran; the change may still be finishing on the server. The panel is reading what was done and starts nothing again. Nobody needs to act: this ends by itself once the change has finished on the server.',
+    'services.operation.phase.settling_recording': 'The change has finished on the server. The panel is reading what it did and recording the result; nothing is started again. Nobody needs to act.',
+    'services.operation.phase.unsettled': 'The panel could not record the end of this change, so other server changes wait. You, the server owner: run sudo systemctl restart celikpanel-panel on this server. Only the panel’s web process restarts (websites, mail and DNS keep running); at its start the panel reads what was done and records it. A webmail update or address is only read; an install or removal is continued, and what is already done is not changed again.',
 } as const;
 
 export type OpstepsScreenKey = keyof typeof enOpstepsScreens;

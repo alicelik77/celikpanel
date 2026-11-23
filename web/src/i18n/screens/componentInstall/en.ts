@@ -65,8 +65,8 @@ export const enComponentInstallScreens = {
     'cinst.bindFailed': '{tool} is installed, but it could not be moved to PHP {version}{why}, so it runs on PHP {previous}. Who acts: you. Next: choose PHP {version} again in {tool}’s Manage window, or keep PHP {previous}.',
     'dashboard.audit.action.service.install.together': 'installed {target} together with what it needed',
     'dashboard.audit.action.service.install.together.failed': 'could not finish installing {target} together with what it needed',
-    'dashboard.audit.action.service.install.together.recovered': 'finished installing {target} together after a restart',
-    'dashboard.audit.action.service.install.together.recovered.failed': 'could not finish installing {target} together after a restart',
+    'dashboard.audit.action.service.install.together.recovered': 'finished installing {target} together after an interruption',
+    'dashboard.audit.action.service.install.together.recovered.failed': 'could not finish installing {target} together after an interruption',
 } as const;
 
 export type ComponentInstallScreenKey = keyof typeof enComponentInstallScreens;

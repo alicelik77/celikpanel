@@ -720,6 +720,32 @@ func (p *Panel) finishAgentMutationContext(
 	return response.Job, nil
 }
 
+// The heartbeat's two bounds (alpha.145 lab, D1). Variables only so tests
+// can make them short; production never changes them.
+var (
+	// panelOperationHeartbeatInterval: how often a durable operation's
+	// worker renews its Agent lease.
+	panelOperationHeartbeatInterval = newTunableDuration(panelMutationHeartbeatInterval)
+	// panelHeartbeatUncertainWindow: how long renewals may stay unanswered
+	// (a timeout, a broken connection, an answer that proves nothing)
+	// before the worker is stopped. It is below the Agent's 20-second lease
+	// (serviceMutationLeaseDuration), so the worker stops before the lease
+	// could have run out unseen; a definite answer stops it at once.
+	panelHeartbeatUncertainWindow = newTunableDuration(15 * time.Second)
+)
+
+// agentMutationHeartbeatDefinite reports whether a failed renewal is the
+// Agent's definite answer that this worker no longer owns a running lease:
+// the lease is lost or held by another owner, or the job ended. Anything
+// else (no answer in time, a broken connection, an answer without the job)
+// is uncertain, and one uncertain renewal is not a lost Agent (D1).
+// Kesin yanıt: kira kaybedildi, başka sahibin ya da iş bitti. Gerisi belirsiz.
+func agentMutationHeartbeatDefinite(err error) bool {
+	return errors.Is(err, errAgentMutationLeaseLost) ||
+		errors.Is(err, errAgentMutationTerminalFailed) ||
+		errors.Is(err, errAgentMutationIdentityMismatch)
+}
+
 func (p *Panel) startAgentMutationHeartbeat(
 	ctx context.Context,
 	cancel context.CancelFunc,
@@ -730,7 +756,7 @@ func (p *Panel) startAgentMutationHeartbeat(
 		cancel,
 		binding,
 		nil,
-		panelMutationHeartbeatInterval,
+		panelOperationHeartbeatInterval.get(),
 	)
 	return func() error {
 		_, err := stopObserved()
@@ -741,6 +767,16 @@ func (p *Panel) startAgentMutationHeartbeat(
 // startObservedAgentMutationHeartbeat retains an exact terminal success for a
 // standalone mutation. The agent can durably publish success before the
 // original mutating RPC response reaches the panel.
+//
+// One slow or lost renewal does not stop the worker (alpha.145 lab, D1: the
+// first failed ping cancelled a webmail update whose Agent step ran on). The
+// worker is stopped on the Agent's definite answer, or when renewals have
+// stayed unanswered for panelHeartbeatUncertainWindow; an answered renewal
+// in between starts the count again. The Agent's own lease rules are
+// unchanged: it still ends a lease that is not renewed for 20 seconds, and
+// the next answered renewal then says so.
+// Tek bir geç ya da kayıp yenileme işçiyi durdurmaz; kesin yanıt ya da
+// süre boyunca yanıtsız kalan yenilemeler durdurur.
 func (p *Panel) startObservedAgentMutationHeartbeat(
 	ctx context.Context,
 	cancel context.CancelFunc,
@@ -757,6 +793,7 @@ func (p *Panel) startObservedAgentMutationHeartbeat(
 		defer close(done)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
+		var uncertainSince time.Time
 		for {
 			select {
 			case <-ctx.Done():
@@ -784,10 +821,20 @@ func (p *Panel) startObservedAgentMutationHeartbeat(
 					}
 				}
 				if err != nil {
+					if !agentMutationHeartbeatDefinite(err) {
+						now := time.Now()
+						if uncertainSince.IsZero() {
+							uncertainSince = now
+						}
+						if now.Sub(uncertainSince) < panelHeartbeatUncertainWindow.get() {
+							continue
+						}
+					}
 					observedErr = err
 					cancel()
 					return
 				}
+				uncertainSince = time.Time{}
 			}
 		}
 	}()

@@ -635,6 +635,11 @@ func alertLine(item pendingAlertMail) (string, string) {
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),
 			fmt.Sprintf("%s kutusunun otomatik yanıtı hâlâ artık bu kutunun olmayan bir adresten yanıt veriyor ve CelikPanel bunu sunucuda değiştiremedi. İzleme'yi açın: yapılacak adımı söyler; CelikPanel her saat yeniden dener.", item.name)
+	case "service_operation_unsettled":
+		// alpha.145 lab, D1: the panel's web process restarts; its start
+		// records what the change did.
+		return "The panel could not record the end of a server change, so every other server change is refused. The server owner runs sudo systemctl restart celikpanel-panel: only the panel's web process restarts (websites, mail and DNS keep running), and at its start the panel reads what was done and records it.",
+			"Panel bir sunucu değişikliğinin sonunu kaydedemedi; bu yüzden başka her sunucu değişikliği reddediliyor. Sunucu sahibi sudo systemctl restart celikpanel-panel komutunu çalıştırır: yalnız panelin web işlemi yeniden başlar (web siteleri, posta ve DNS çalışmayı sürdürür); panel açılışta yapılanı okur ve kaydeder."
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

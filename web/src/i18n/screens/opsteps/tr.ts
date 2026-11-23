@@ -105,4 +105,8 @@ export const trOpstepsScreens: Record<OpstepsScreenKey, string> = {
     'opstep.adminRemove.check': 'CelikPanel hesabı denetleniyor',
     'opstep.adminRemove.remove': 'CelikPanel hesabı veritabanı sunucusundan kaldırılıyor',
     'opstep.userDelete.delete': '{name} hesabının hiçbir şeye sahip olmadığı denetleniyor ve hesap siliniyor',
+
+    'services.operation.phase.settling_contact': 'Bu değişiklik sürerken panelin sunucu ajanıyla bağlantısı koptu; değişiklik sunucuda hâlâ bitiyor olabilir. Panel yapılanı okuyor ve hiçbir şeyi yeniden başlatmıyor. Kimsenin bir şey yapması gerekmiyor: değişiklik sunucuda bitince bu kendiliğinden sona erer.',
+    'services.operation.phase.settling_recording': 'Değişiklik sunucuda bitti. Panel ne yaptığını okuyor ve sonucu kaydediyor; hiçbir şey yeniden başlatılmıyor. Kimsenin bir şey yapması gerekmiyor.',
+    'services.operation.phase.unsettled': 'Panel bu değişikliğin sonunu kaydedemedi; bu yüzden diğer sunucu değişiklikleri bekliyor. Siz, sunucu sahibi: bu sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın. Yalnız panelin web işlemi yeniden başlar (web siteleri, posta ve DNS çalışmayı sürdürür); panel açılışta yapılanı okur ve kaydeder. Web postası güncellemesi ya da adresi yalnız okunur; kurulum ya da kaldırma sürdürülür, zaten yapılmış olan yeniden değiştirilmez.',
 };

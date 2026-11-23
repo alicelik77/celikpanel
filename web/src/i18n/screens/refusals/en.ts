@@ -55,6 +55,11 @@ export const enRefusalsScreens = {
     "ddb.confirmDelete": "Delete the database {name}? All its data is lost; this cannot be undone.",
     "ddb.deleted": "Database {name} deleted",
     "ddb.deleteFailed": "The database was not deleted",
+
+    // alpha.145 lab, D1: a change refused while the previous one's end is
+    // being recorded, or could not be (reason of service_operation_busy).
+    "err.service_operation_busy.settling": "Nothing was started: the panel lost contact with its agent during the previous server change and is reading what was done. Nobody needs to act: this ends by itself once that change has finished on the server. Then press the same button again.",
+    "err.service_operation_busy.unsettled": "Nothing was started: the panel could not record the end of the previous server change. You, the server owner: run sudo systemctl restart celikpanel-panel on this server (only the panel’s web process restarts; websites, mail and DNS keep running). At its start the panel records what was done. Then press the same button again.",
 } as const;
 
 export type RefusalsScreenKey = keyof typeof enRefusalsScreens;

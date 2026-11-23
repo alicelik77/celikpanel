@@ -130,7 +130,7 @@ export function useWebmailAddressOperation({ lastOperation, onChanged, onNotRead
                 return;
             }
             const raw = await res.text();
-            let body: { operation?: unknown; error?: string | { code?: string; message?: string }; code?: string; check?: unknown } = {};
+            let body: { operation?: unknown; error?: string | { code?: string; message?: string }; code?: string; check?: unknown; reason?: string } = {};
             try {
                 body = JSON.parse(raw);
             } catch {
@@ -150,7 +150,12 @@ export function useWebmailAddressOperation({ lastOperation, onChanged, onNotRead
                 return;
             }
             if (res.status === 409 && (code === 'service_operation_busy' || code === 'server_setup_busy')) {
-                setNotice({ tone: 'info', key: 'life.addr.busy' });
+                // alpha.145 lab, D1: an earlier change being recorded, or one
+                // that could not be, says so and who acts.
+                const key: TranslationKey = code === 'service_operation_busy' && body.reason === 'unsettled'
+                    ? 'err.service_operation_busy.unsettled'
+                    : code === 'service_operation_busy' && body.reason === 'settling' ? 'err.service_operation_busy.settling' : 'life.addr.busy';
+                setNotice({ tone: 'info', key });
                 return;
             }
             const reason = typeof body.error === 'object' ? body.error?.message ?? '' : body.error ?? '';

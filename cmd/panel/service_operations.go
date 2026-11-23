@@ -153,6 +153,9 @@ type serviceOperation struct {
 func (p *Panel) markServerSetupChild(ctx context.Context, op serviceOperation) serviceOperation {
 	// A state the runner could not save yet is shown from memory (it is
 	// presentation only: the saved row keeps its real phase).
+	// A row being settled after its Finish failed says what is being done
+	// with it (D1); an unsaved wait, more specific, is laid over that.
+	op = overlayServiceOperationSettle(op)
 	op = overlayServiceOperationPanelBusy(op)
 	if !validServiceOperationID(op.RequestID) {
 		return op
@@ -405,9 +408,20 @@ func serviceOperationBusyReason(job *agentMutationJob, started, now time.Time) s
 }
 
 func writeServiceOperationBusyReason(w http.ResponseWriter, reason string) {
+	// alpha.145 lab, D1: a refusal while an earlier operation's row is being
+	// settled, or could not be, says so and who acts; "wait for it to finish"
+	// alone was said of a row that would never finish.
+	if reason == "" {
+		reason = serviceOperationSettleBusyReason()
+	}
 	message := "another package operation is already in progress"
-	if reason == serviceOperationBusyReasonStartup {
+	switch reason {
+	case serviceOperationBusyReasonStartup:
 		message = "the server is finishing its start-up work after an update or restart; this ends by itself in a minute or two"
+	case serviceOperationBusyReasonSettling:
+		message = "the previous server change has ended or is ending on the server, and the panel is recording what was done; this ends by itself, then press the same button again"
+	case serviceOperationBusyReasonUnsettled:
+		message = "the panel could not record the end of the previous server change; the server owner runs sudo systemctl restart celikpanel-panel (only the panel's web process restarts), which records it, then press the same button again"
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
@@ -954,7 +968,14 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 	go func() {
 		var releaseOnce sync.Once
 		release := func() { releaseOnce.Do(releaseMutation) }
-		defer release()
+		// A row settled by resuming it hands the lock to the resumed run
+		// (settleAbandonedServiceOperation), which releases it at its end.
+		lockTransferred := false
+		defer func() {
+			if !lockTransferred {
+				release()
+			}
+		}()
 		ownerID, err := newServiceOperationID()
 		if err != nil {
 			failure := operationStartFailure(err)
@@ -1007,12 +1028,14 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 			failure := operationStartFailure(startErr)
 			if _, finishErr := p.finishAgentMutation(binding, false, failure); finishErr != nil {
 				log.Printf("service operation %s agent start failure could not be finalized: %v", op.ID, finishErr)
+				noteServiceOperationUnsettled(op)
 				return
 			}
 			terminalCtx, cancelTerminal := context.WithTimeout(context.Background(), panelMutationFinishTimeout)
 			defer cancelTerminal()
 			if fallbackErr := p.forceFailActiveServiceOperation(terminalCtx, op.ID, "start_failed", failure); fallbackErr != nil {
 				log.Printf("service operation %s start failure could not be persisted: %v", op.ID, fallbackErr)
+				noteServiceOperationUnsettled(op)
 				return
 			}
 			release()
@@ -1027,7 +1050,10 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 			pingCtx, pingCancel := context.WithTimeout(context.Background(), panelMutationHeartbeatInterval)
 			_, heartbeatErr := p.heartbeatAgentMutation(pingCtx, binding, next)
 			pingCancel()
-			if heartbeatErr != nil {
+			// An unanswered renewal is left to the periodic heartbeat, which
+			// stops the worker only on a definite answer or after its window
+			// (D1); the Agent's answer that the lease is gone stops it here.
+			if heartbeatErr != nil && agentMutationHeartbeatDefinite(heartbeatErr) {
 				cancelWorker()
 				return fmt.Errorf("agent service mutation heartbeat: %w", heartbeatErr)
 			}
@@ -1050,7 +1076,11 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 			failure,
 		)
 		if finishErr != nil {
-			log.Printf("service operation %s agent terminal state could not be persisted: %v", op.ID, finishErr)
+			// alpha.145 lab, D1: returning here left the row running until
+			// the panel restarted. The row is settled now, from what the
+			// Agent recorded, by the reconciliation startup runs.
+			log.Printf("service operation %s agent terminal state could not be persisted: %v; settling it from the agent's record", op.ID, finishErr)
+			lockTransferred = p.settleAbandonedServiceOperation(op, deadline, release)
 			return
 		}
 		if failure == nil && agentTerminal.Status != agentMutationSucceeded {
@@ -1113,6 +1143,7 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 				fallback := operationAdvanceFailure(err)
 				if fallbackErr := p.forceFailActiveServiceOperation(terminalCtx, op.ID, phase, fallback); fallbackErr != nil {
 					log.Printf("service operation %s failure fallback could not be persisted: %v", op.ID, fallbackErr)
+					noteServiceOperationUnsettled(op)
 					return
 				}
 			}
@@ -1125,6 +1156,7 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 			fallback := operationAdvanceFailure(err)
 			if fallbackErr := p.forceFailActiveServiceOperation(terminalCtx, op.ID, phase, fallback); fallbackErr != nil {
 				log.Printf("service operation %s success fallback could not be persisted: %v", op.ID, fallbackErr)
+				noteServiceOperationUnsettled(op)
 				return
 			}
 			release()
@@ -1704,10 +1736,12 @@ func (p *Panel) requireStartupAgentMutationSlot(ctx context.Context) error {
 		return err
 	}
 	if job != nil && agentMutationActive(job.Status) {
-		return fmt.Errorf(
+		// errRecoveryHostLeaseHeld: a running panel settling one row asks
+		// again once that job has ended (D1); startup stops as before.
+		return &recoveryHostLeaseHeldError{message: fmt.Sprintf(
 			"agent mutation %s acquired the host lease during startup recovery",
 			job.RequestID,
-		)
+		)}
 	}
 	return nil
 }
@@ -2067,35 +2101,54 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 		}
 		return 0, nil
 	}
+	settled, transferred, err := p.reconcileInterruptedServiceOperationLocked(ctx, recoveryCtx, op, p.serviceMutationMu.Unlock)
+	lockTransferred = transferred
+	return settled, err
+}
+
+// reconcileInterruptedServiceOperationLocked settles one active row from
+// the Agent's record of its job: startup recovery runs it for the row a
+// stopped panel left, and a running panel for a row whose Finish it could
+// not record (alpha.145 lab, D1; settleAbandonedServiceOperation). ctx
+// carries the row's own writes, recoveryCtx the Agent reads. The caller
+// owns the process lock through release; transferred means a resumed run
+// took it and releases it at its end.
+// Bir etkin satırı Agent'ın kaydından kapatır: başlangıç kurtarması ve
+// Finish'i kaydedemeyen çalışan panel aynı kodu kullanır.
+func (p *Panel) reconcileInterruptedServiceOperationLocked(
+	ctx, recoveryCtx context.Context,
+	op *serviceOperation,
+	release func(),
+) (int64, bool, error) {
 	if !validServiceOperationID(op.RequestID) {
-		return 0, errors.New("active panel operation has no durable request identity")
+		return 0, false, errors.New("active panel operation has no durable request identity")
 	}
 	if strings.HasPrefix(op.Phase, firewallChildPhasePrefix) {
 		if _, ok := parseFirewallChildPhase(op.Phase); !ok {
-			return 0, errors.New("active panel operation has a malformed firewall child identity")
+			return 0, false, errors.New("active panel operation has a malformed firewall child identity")
 		}
 	}
 	if strings.HasPrefix(op.Phase, mailTLSChildPhasePrefix) {
 		if _, ok := parseMailTLSChildPhase(op.Phase); !ok {
-			return 0, errors.New("active panel operation has a malformed mail TLS child identity")
+			return 0, false, errors.New("active panel operation has a malformed mail TLS child identity")
 		}
 	}
 	var recoveryProfile mailProfileDefinition
 	if op.Kind == serviceOperationKindMailProfileInstall {
 		if op.PackageName != "" {
-			return 0, errors.New("interrupted mail profile operation has an unexpected package target")
+			return 0, false, errors.New("interrupted mail profile operation has an unexpected package target")
 		}
 		var ok bool
 		recoveryProfile, ok = mailProfileByID(op.ServiceID)
 		if !ok {
-			return 0, errors.New("interrupted mail profile operation has an unknown profile target")
+			return 0, false, errors.New("interrupted mail profile operation has an unknown profile target")
 		}
 	}
 	recoveredPowerDNSChild := false
 	recoveredMailTLSChild := false
-	globalJob, err = p.refreshStartupGlobalMutation(recoveryCtx)
+	globalJob, err := p.refreshStartupGlobalMutation(recoveryCtx)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if globalJob != nil && agentMutationActive(globalJob.Status) &&
 		globalJob.RequestID != op.RequestID {
@@ -2105,20 +2158,20 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 				recoveryCtx,
 				globalJob,
 			); err != nil {
-				return 0, err
+				return 0, false, err
 			}
 		case recoverableMailTLSChild(op, globalJob):
 			terminal, err := p.terminalizeInterruptedMailTLSSync(
 				recoveryCtx, globalJob,
 			)
 			if err != nil {
-				return 0, err
+				return 0, false, err
 			}
 			recoveredMailTLSChild = false
 			if terminal != nil && terminal.Status == agentMutationSucceeded {
 				persisted, ok := parseMailTLSChildPhase(op.Phase)
 				if !ok {
-					return 0, errors.New("persisted mail TLS child identity is invalid")
+					return 0, false, errors.New("persisted mail TLS child identity is invalid")
 				}
 				identity := agentMutationIdentity{
 					RequestID: persisted.RequestID, OwnerID: persisted.OwnerID,
@@ -2126,7 +2179,7 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 					PackageName: persisted.Qualifier,
 				}
 				if err := validateAgentMutationSucceededReceipt(terminal, identity); err != nil {
-					return 0, err
+					return 0, false, err
 				}
 				recoveredMailTLSChild = true
 			}
@@ -2135,34 +2188,36 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 				recoveryCtx,
 				globalJob,
 			); err != nil {
-				return 0, err
+				return 0, false, err
 			}
 		case p.recoverablePowerDNSZoneSync(recoveryCtx, op, globalJob):
 			if err := p.recoverDirectDNSZoneSyncLocked(
 				recoveryCtx,
 				globalJob,
 			); err != nil {
-				return 0, err
+				return 0, false, err
 			}
 			recoveredPowerDNSChild = true
 		default:
-			return 0, fmt.Errorf(
+			// Nothing was changed yet: a running panel asks again once the
+			// other job has ended (errRecoveryHostLeaseHeld).
+			return 0, false, &recoveryHostLeaseHeldError{message: fmt.Sprintf(
 				"agent mutation %s does not match active panel operation %s",
 				globalJob.RequestID,
 				op.RequestID,
-			)
+			)}
 		}
 	}
 	if !recoveredMailTLSChild && mailProfileNeedsMailTLSSync(*op) {
 		recoveredMailTLSChild, err = p.persistedMailTLSChildSucceeded(recoveryCtx, *op)
 		if err != nil {
-			return 0, fmt.Errorf("reconcile persisted mail TLS child: %w", err)
+			return 0, false, fmt.Errorf("reconcile persisted mail TLS child: %w", err)
 		}
 	}
 
 	job, err := p.statusAgentMutation(recoveryCtx, op.RequestID)
 	if err != nil {
-		return 0, fmt.Errorf("read matching privileged mutation: %w", err)
+		return 0, false, fmt.Errorf("read matching privileged mutation: %w", err)
 	}
 	if job == nil {
 		failure := operationFailure(
@@ -2171,13 +2226,13 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 			nil,
 		)
 		if err := p.forceFailActiveServiceOperation(ctx, op.ID, "interrupted", failure); err != nil {
-			return 0, err
+			return 0, false, err
 		}
-		return 1, nil
+		return 1, false, nil
 	}
 	if job.Kind != op.Kind || job.Target != op.ServiceID ||
 		job.PackageName != op.PackageName {
-		return 0, errors.New("panel and agent service mutation identities disagree")
+		return 0, false, errors.New("panel and agent service mutation identities disagree")
 	}
 
 	if agentMutationActive(job.Status) {
@@ -2188,20 +2243,20 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 				"panel_restarted_during_mutation",
 				"Panel restarted before the privileged operation result was committed.",
 			); err != nil {
-				return 0, fmt.Errorf("cancel interrupted privileged mutation: %w", err)
+				return 0, false, fmt.Errorf("cancel interrupted privileged mutation: %w", err)
 			}
 		}
 		job, err = p.waitAgentMutationTerminal(recoveryCtx, op.RequestID)
 		if err != nil {
-			return 0, fmt.Errorf("wait for interrupted privileged mutation: %w", err)
+			return 0, false, fmt.Errorf("wait for interrupted privileged mutation: %w", err)
 		}
 		if job == nil {
-			return 0, errors.New("agent lost the interrupted mutation while reconciling it")
+			return 0, false, errors.New("agent lost the interrupted mutation while reconciling it")
 		}
 	}
 	if wireGuardInstallNeedsPeerSync(*op) {
 		if _, err := p.clearInterruptedVPNSyncLease(recoveryCtx); err != nil {
-			return 0, err
+			return 0, false, err
 		}
 	}
 
@@ -2210,17 +2265,17 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 		if op.Kind == serviceOperationKindMailProfileInstall {
 			result, err = p.reconstructSucceededMailProfileResult(recoveryCtx, recoveryProfile)
 			if err != nil {
-				return 0, fmt.Errorf("reconstruct succeeded mail profile operation: %w", err)
+				return 0, false, fmt.Errorf("reconstruct succeeded mail profile operation: %w", err)
 			}
 		}
 		if op.Status == serviceOperationQueued {
 			if err := p.markServiceOperationRunning(ctx, op.ID, "recovered_terminal"); err != nil {
-				return 0, err
+				return 0, false, err
 			}
 		}
 		if serviceOperationNeedsFirewallSync(*op) {
 			if err := p.requireStartupAgentMutationSlot(recoveryCtx); err != nil {
-				return 0, err
+				return 0, false, err
 			}
 		}
 		// Startup recovery tries once: a busy host fails the operation with
@@ -2242,13 +2297,13 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 				result,
 				syncFailure,
 			); err != nil {
-				return 0, err
+				return 0, false, err
 			}
-			return 1, nil
+			return 1, false, nil
 		}
 		if mailProfileNeedsMailTLSSync(*op) && !recoveredMailTLSChild {
 			if err := p.requireStartupAgentMutationSlot(recoveryCtx); err != nil {
-				return 0, err
+				return 0, false, err
 			}
 			if syncFailure := p.syncMailTLSAfterOperation(*op, result); syncFailure != nil {
 				if result == nil {
@@ -2263,16 +2318,16 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 					terminalCtx, op.ID, mailProfilePhase(op.ServiceID, "mail-tls"),
 					result, syncFailure,
 				); err != nil {
-					return 0, err
+					return 0, false, err
 				}
-				return 1, nil
+				return 1, false, nil
 			}
 		}
 		if powerDNSInstallNeedsZoneSync(*op) && !recoveredPowerDNSChild {
 			dnsBatchCtx, cancelDNSBatch := dnsZoneBatchContext(recoveryCtx)
 			if err := p.requireStartupAgentMutationSlot(dnsBatchCtx); err != nil {
 				cancelDNSBatch()
-				return 0, err
+				return 0, false, err
 			}
 			syncFailure := p.syncPowerDNSZonesAfterInstallContext(dnsBatchCtx, *op)
 			cancelDNSBatch()
@@ -2293,14 +2348,14 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 					result,
 					syncFailure,
 				); err != nil {
-					return 0, err
+					return 0, false, err
 				}
-				return 1, nil
+				return 1, false, nil
 			}
 		}
 		if wireGuardInstallNeedsPeerSync(*op) {
 			if err := p.requireStartupAgentMutationSlot(recoveryCtx); err != nil {
-				return 0, err
+				return 0, false, err
 			}
 		}
 		if syncFailure := p.syncWireGuardPeersAfterInstall(*op); syncFailure != nil {
@@ -2320,18 +2375,18 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 				result,
 				syncFailure,
 			); err != nil {
-				return 0, err
+				return 0, false, err
 			}
-			return 1, nil
+			return 1, false, nil
 		}
 		if err := p.finishServiceOperationSucceeded(
 			ctx,
 			op.ID,
 			result,
 		); err != nil {
-			return 0, err
+			return 0, false, err
 		}
-		return 1, nil
+		return 1, false, nil
 	}
 	if !agentMutationCanResume(job) {
 		failure := operationFailure(
@@ -2340,18 +2395,17 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 			nil,
 		)
 		if err := p.forceFailActiveServiceOperation(ctx, op.ID, "interrupted", failure); err != nil {
-			return 0, err
+			return 0, false, err
 		}
-		return 1, nil
+		return 1, false, nil
 	}
 	if err := p.requireStartupAgentMutationSlot(recoveryCtx); err != nil {
-		return 0, err
+		return 0, false, err
 	}
-	if err := p.resumeInterruptedServiceOperationLocked(*op); err != nil {
-		return 0, err
+	if err := p.resumeInterruptedServiceOperationWith(*op, release); err != nil {
+		return 0, false, err
 	}
-	lockTransferred = true
-	return 0, nil
+	return 0, true, nil
 }
 
 func nonEmptyMutationValue(value, fallback string) string {
@@ -2379,6 +2433,13 @@ func agentMutationCanResume(job *agentMutationJob) bool {
 // mutation lock to the resumed goroutine, which releases it only after the
 // panel operation reaches a durable terminal state.
 func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) error {
+	return p.resumeInterruptedServiceOperationWith(op, p.serviceMutationMu.Unlock)
+}
+
+// resumeInterruptedServiceOperationWith is resumeInterruptedServiceOperation-
+// Locked with the caller's own release of the process lock (a running panel
+// settling a row hands over the release it holds; D1).
+func (p *Panel) resumeInterruptedServiceOperationWith(op serviceOperation, release func()) error {
 	var (
 		runner       serviceOperationRunner
 		successAudit string
@@ -2490,7 +2551,7 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 		"reconciling",
 		successAudit,
 		failureAudit,
-		p.serviceMutationMu.Unlock,
+		release,
 		runner,
 		p.auditServiceOperation,
 		true,

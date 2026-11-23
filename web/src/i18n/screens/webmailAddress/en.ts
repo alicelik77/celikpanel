@@ -125,7 +125,7 @@ export const enWebmailAddressScreens = {
     'life.addr.fail.PROOF_FAILED': 'Webmail was not set up on {host}: the configuration was written, but webmail did not answer there, so the web server was put back as it was (the certificate is kept). {reason} Next: check that PHP-FPM and Roundcube run, then try again.',
     'life.addr.fail.ROLLBACK_FAILED': 'Setting up {host} failed, and the web server could not be verified as put back, so the address may be half set up. {reason} Who acts: the server owner, on the server. Next: run sudo nginx -t, fix what it reports, then reload Nginx.',
     'life.addr.unknownResult': 'Whether webmail was set up on {host} is not known: the answer from the server agent did not arrive. Nothing is repeated by itself. Next: reload this page in a minute; this card shows what the server holds. If it shows no address, press Check and set it up again; that is safe to repeat.',
-    'life.addr.interrupted': 'The panel restarted before webmail’s address on {host} was proved, so it is not recorded. Nothing was retried by itself. Next: press Check, then Set up again; that is safe to repeat.',
+    'life.addr.interrupted': 'The operation was interrupted before webmail’s address on {host} was proved, so it is not recorded. Nothing was retried by itself. Next: press Check, then Set up again; that is safe to repeat.',
     'life.addr.notRecorded': 'Webmail answers on {host}, but the panel could not record the address. Next: press Set up again; that is safe to repeat.',
     'life.addr.removed': 'The address {host} was removed: the web server no longer answers webmail there.',
     'life.addr.removedCertKept': 'Its certificate was kept.',
@@ -133,7 +133,7 @@ export const enWebmailAddressScreens = {
     'life.addr.removeFail.default': 'The address {host} was not removed. {reason} Webmail still answers there. Next: fix the cause, then press Remove address again.',
     'life.addr.removeFail.CONFIG_OWNER_EDITED': 'The address {host} was not removed: its web server configuration was changed by hand, so CelikPanel does not touch it. {reason} Who acts: the server owner. Next: remove the file by hand, then reload Nginx.',
     'life.addr.removeUnknown': 'Whether the address {host} was removed is not known: the answer from the server agent did not arrive. Nothing is repeated by itself. Next: reload this page in a minute; this card shows what the server holds.',
-    'life.addr.removeInterrupted': 'The panel restarted before the address {host} was removed; webmail still answers there. Nothing was retried by itself. Next: press Remove address again.',
+    'life.addr.removeInterrupted': 'The operation was interrupted before the address {host} was removed; webmail still answers there. Nothing was retried by itself. Next: press Remove address again.',
     // alpha.144 (review of PR #355, finding 2): webmail’s address still in its earlier form
     'pnow.webmail_address_kept.title': 'Webmail’s address {domain} still gives out plugin files that are not part of its pages',
     'pnow.webmail_address_kept.body': 'Its web server file was changed by hand, so CelikPanel kept it and put its new text beside it: {other}. The server owner takes that text (or adds its rules to the file) and reloads nginx. This line goes by itself once the file has them.',
