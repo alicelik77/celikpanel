@@ -361,7 +361,21 @@ independent read-only reviews. See row 68.
    pending), and the zone's notice no longer asks to repeat the change; a PostgreSQL close's window
    title says the outcome.
 
-Lab check: open (the list is in PR #357). No P0 item is closed.
+Lab check: checked (one run, 23 November 2026 UTC 05:21 to about 06:50, the Debian 13 PowerDNS main
+with mail and webmail's own address and the Ubuntu 24.04 BIND backup, both updated from alpha.144's
+code through the panel's own page to `e10c2ddb6`, lab-only label alpha.153): no hard failure. Both
+updates by themselves (about 4.5 and 4 min), no schema step, one reload each. The local door gave a
+site account a planted plugin copy and ran planted PHP before the update and answered "not found"
+after it on both servers; webmail sent through 127.0.0.1:587 with encryption and the mailbox's login,
+signed for the sender's domain; a foreign identity refused; 587 and 465 unchanged; a restart changed
+nothing; the owner-edited door file and configuration kept with one Problems now line each, which
+went by themselves; the variants as designed; the alias wait ended when the held change was
+published; the PostgreSQL titles say the outcome. Met once, older than this release: a Roundcube
+update finished on the server while the panel kept it "updating" until a panel restart (known limit).
+Not run: the self-signed certificate state, the chain refusal for another host (only the name check),
+sending on the Ubuntu server (no mail service there), the Webmail card while it cannot send, the alias
+wait on the slow-backup path, the screen of the "could not be rewritten" line, the reinstall proof,
+the Undo window's "not known" outcome, Arch Linux. No P0 item is closed.
 
 **The plan after alpha.145 (owner, 22 and 23 November 2026)**
 The owner asked on 22 November that no risky change be pushed to his servers, and on 23 November

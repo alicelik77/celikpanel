@@ -129,6 +129,35 @@ günceller.**
   taşımak elle değiştirilmiş diye reddedilir. (Bu iletinin dediği gibi yerel
   kapının dosyasını silerseniz alpha.144 önceki, açık biçimini yeniden
   yazar.)
+- **Uzun bir değişiklik sunucuda bittikten sonra panelde "sürüyor"
+  kalabilir.** Uzun bir değişiklik sürerken — web postası güncellemesi,
+  bileşen kurulumu, posta profili kurulumu — panel birkaç saniyede bir
+  Agent'la bağını yoklar. Bu bağ bir an koparsa değişiklik sunucuda yine
+  biter; ama panel onu sürüyor gösterebilir ve başka sunucu değişikliklerini
+  "başka bir işlem çalışıyor" diye reddedebilir (bu ileti o işlem bitince
+  yeniden basmayı söyler; burada işlem kendiliğinden bitmez). Sunucuda
+  hiçbir şey zarar görmez: siteler, posta ve web postası çalışmayı sürdürür,
+  yapılan değişiklik kalır. Bir değişiklik beş dakikadan uzun süredir
+  sürüyor görünüyorsa (bir web postası güncellemesi normalde saniyeler
+  sürer) sunucuda `sudo systemctl restart celikpanel-panel` komutunu
+  çalıştırın. Bu yalnız panelin web sürecini yeniden başlatır; panel
+  açılırken sunucuda gerçekte ne yapıldığını okur ve sonucu kaydeder. Web
+  postası güncellemesi yalnız okunur, hiçbir şey yeniden çalıştırılmaz;
+  yarıda kalan bir kurulum sunucuda kaldığı yerden sürdürülüp tamamlanır.
+  Sayfanın yenilenmesi ya da yeniden oturum açılması gerekebilir. Bu önceki
+  sürümlerde de böyleydi: o yolun kodu bu sürümde değişmedi.
+  Laboratuvarda bu sürümde, hazırlığı alışılmadık biçimde yavaş geçen bir
+  Roundcube güncellemesinde bir kez oldu (sayfa yaklaşık kırk dakika
+  "güncelleniyor" dedi, bir panel yeniden başlatması güncellemeyi
+  tamamlandı diye kaydedene dek); aynı güncelleme alpha.144'ün koduyla
+  denendiğinde olmadı. Gelecek bir sürümde düzeltilecek.
+- **Bir bölgenin genel uyarısı bir yayının gerisinde kalabilir.**
+  Laboratuvarda bekletilen bir DNS değişikliği yayımlandıktan yaklaşık
+  yirmi saniye sonra bölgenin genel uyarısı hâlâ yeni değişikliklerin
+  beklediğini ve değişikliği yeniden yapmayı söylüyordu; takma ad satırı ise
+  artık beklediğini söylemiyordu. Yayın tamamlanmıştı; bir yayından hemen
+  sonra bu uyarıyı görürseniz bir değişikliği yeniden yapmadan önce biraz
+  sonra yeniden bakın.
 - alpha.144'ün açık listesi açık kalır
   ([alpha.144 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.144.tr.md)); aralarında
   tarayıcının isteğiyle çalışan diğer değişiklikler ve web sunucusunun ortak
@@ -136,12 +165,160 @@ günceller.**
 
 ## Laboratuvarda denetlenenler
 
-**AÇIK.** Bu sürümün laboratuvar denemesi henüz yapılmadı. Liste sürüm çekme
-isteğindedir (#357): yerel kapı güncellemeden önce ve sonra bir site hesabı
-olarak; Debian 13 ve Ubuntu 24.04'te iki sertifika durumunda web postasından
-gönderim, yolun posta günlüğünde kanıtıyla; iki dosya için başarısız yeniden
-yazma ve sahibin değiştirdiği dosya; takma ad beklemesi iki yolda;
-PostgreSQL penceresinin başlıkları.
+Laboratuvar denetimi bitti: deneme sunucusu çiftinde tek deneme; PowerDNS,
+posta ve kendi adresinde web postası olan bir Debian 13 ana DNS sunucusu ve
+web postasının yerel kapısı olan ama posta hizmeti olmayan, BIND'li bir
+Ubuntu 24.04 yedek DNS sunucusu (23 Kasım 2026, temizlikle birlikte UTC
+05:21 ile yaklaşık 06:50 arası). İki sunucu da alpha.144'ün koduyla
+başladı ve panelin kendi güncelleme sayfasından bu sürümün koduna
+(`e10c2ddb6`, yalnız laboratuvara özel v0.1.0-alpha.153 etiketiyle)
+güncellendi. Ayrı hesaplardaki iki müşteri iki tarafı oynadı: posta kutusu
+postayı gönderen alice ve sitesinin kendi hesabı yerel kapıyı deneyen bob.
+Laboratuvarın yaptığı yazan yerler dışında her şey sayfanın kendi
+düğmeleriyle yapıldı. Ağır hata yok; bu sürümden eski bir sınırla
+karşılaşıldı ("Bilinen sınırlar"a bakın).
+
+- **Güncellemeden önce yerel kapı açıktı** (alpha.144'ün kodu), iki
+  sunucuda da: bob'un site hesabı olarak — sitesinin PHP'si üzerinden ve
+  doğrudan soketten — laboratuvarın koyduğu bir eklenti ayarı yedek kopyası
+  ve bir nokta dosyası içerikleriyle verildi; bir eklenti klasörüne konan
+  PHP dosyası, `skins/…/../..` yoluyla istendiğinde de çalıştırıldı. Ana
+  sunucuda web postasından gönderim "kimlik doğrulanamadı" ile bitti; posta
+  günlüğünde yalnız bir bağlantı vardı, ne şifreleme ne giriş.
+- **İki sunucu da panelin kendi güncelleme sayfasından kendiliğinden
+  güncellendi**, yaklaşık dört buçuk ve yaklaşık dört dakikada. Şema adımı
+  yok (81'de kalır); her sunucuda bir panel ve bir Agent çalıştı; yeni
+  başarısız hizmet yok. İlk açılışta Agent yerel kapının dosyasını ve web
+  postasının yapılandırmasını yeniden yazdığını bir kez söyledi; web
+  sunucusu her sunucuda denetimi geçtikten sonra bir kez yeniden yüklendi;
+  PHP-FPM yeniden başlatılmadı. Web postasının yapılandırması kipini,
+  sahibini ve gizli anahtarını, ana sunucuda da web postasının kendi
+  adresinin satırlarını korudu. Dışarıdan saniyede bir yapılan denetim, ana
+  sunucuda güncelleme boyunca bir sitenin ve web postasının yanıt verdiğini
+  gördü (483 istek, hepsi yanıtlandı); bu denetim yeniden yüklemeden 13
+  saniye önce bitti, ikisi de yüklemeden sonra yine yanıt verdi.
+- **Güncellemeden sonra yerel kapı** (güvenlik düzeltmesi), iki sunucuda,
+  bob'un site hesabı olarak iki yoldan da: konan kopya ve nokta dosyası,
+  konan PHP ile Roundcube'un kendi eklenti PHP'si, bir eklentinin
+  `composer.json` dosyası, `index.php/x`, iki `..` yolu, bir betik dosyası,
+  web postasının yapılandırması ve onun `.celikpanel-pending` kopyası hep
+  "bulunamadı" yanıtı aldı; oturum açma sayfası, bir stil dosyası ve
+  CelikPanel'in PHP denetimi yanıt verdi. Web postasının kendi adresi
+  alpha.144'ün kurallarını korudu.
+- **Web postası gönderiyor** (ana sunucu, posta adının sertifikasıyla):
+  alice web postasının kendi adresinde oturum açtı ve üç ileti gönderdi:
+  kendine, başka bir posta kutusuna ve biri ekli. Her birinden sonra sayfa
+  hatasız gelen kutusuna döndü; üçü de Gönderilenler'de. Posta günlüğünde
+  her biri için gönderim hizmetine 127.0.0.1'den gelen bağlantının
+  şifrelemeye geçtiği (TLS 1.3), posta kutusunun kendi adresiyle giriş
+  yapıldığı ve iletinin teslim edildiği görülüyor; içeriden 25. kapıya
+  hiçbir şey gitmedi. Ulaşan kopyalar göndericinin kendi alan adı adına
+  imzalı ve imza doğrulandı. Dışarıdan gönderilen bir yanıt listelendi ve
+  açıldı. Başka bir hesabın adresli bir kimlikle gönderim, gönderim
+  hizmetince reddedildi ("Sender address rejected: not owned by user …").
+  Dışarıdan alice'in girişiyle posta programları: 587. kapı STARTTLS ile ve
+  465. kapı iletiyi kabul etti; başka bir hesabın gönderici adresi
+  reddedildi (553).
+- **Yeniden başlatma hiçbir şeyi değiştirmez:** laboratuvar Agent'ı ve
+  paneli yeniden başlattıktan sonra iki dosya da içeriğini ve zamanını
+  korudu, web sunucusu yeniden yüklenmedi ve web postası yine gönderdi.
+- **Başka bir sunucu adı için hiçbir şey gevşetilmez:** laboratuvar web
+  postasını `127.0.0.1` yerine `localhost`'a yönlendirince (sertifika posta
+  sunucusunun adına) gönderim şifreleme adımında durdu; yani ad denetimi
+  başka her ad için açık kalıyor. Laboratuvar sonra CelikPanel'in metnini
+  geri koydu.
+- **Sahibin değiştirdiği yerel kapı dosyası:**
+  - CelikPanel'in güncel metnine eklenen bir yorum satırı korundu, satır
+    çıkmadı ve kapı kapalı kaldı;
+  - alpha.144'ün açık metni bir yorum satırıyla bayt bayt korundu,
+    CelikPanel'in metni yanına kondu; bob'un site hesabı konan dosyaları
+    yine okuyabildi ve konan PHP'yi çalıştırabildi (onları sahibin dosyası
+    veriyor); **Şu anki sorunlar** Türkçe ve İngilizce tek satırda yerel
+    kapının Roundcube dosyalarını hâlâ her hesaba verdiğini, sunucu
+    sahibinin yapacağını ve adımı söyledi. Sahip CelikPanel'in metnini
+    dosyanın üzerine taşıyıp web sunucusunu yeniden yükleyince satır
+    sonraki okumada gitmişti.
+- **Sahibin değiştirdiği web postası yapılandırması** (alpha.144'ün metni,
+  bir yorum satırıyla) bayt bayt korundu; CelikPanel'in metni, yalnız
+  root'un okuyabileceği biçimde ve aynı gizli anahtarla yanına kondu. **Şu
+  anki sorunlar** Türkçe ve İngilizce tek satır gösterdi: "Web postası posta
+  gönderemiyor", nedeni ve adımı; sorun listesini isteyen bir müşteri ve
+  bir bayi reddedildi. Sahip CelikPanel'in metnini dosyaya kopyalayınca
+  satır, yeniden başlatma olmadan sonraki okumada gitmişti; yanındaki metin
+  Agent'ın sonraki açılışında kaldırıldı ve web postası yine gönderdi.
+- **Çeşitlemeler:**
+  - yalnız gönderim adresi şifreli biçime çevrilip sertifika satırı
+    eklenmeyince dosya korundu ve satır, yanındaki metni anarak kaldı; sahip
+    sertifika satırını ekleyince satır saniyeler içinde, yeniden başlatma
+    olmadan kendiliğinden gitti;
+  - laboratuvarın değiştirilemez yaptığı (immutable işareti) bir dosyada
+    CelikPanel'in kendi önceki metni: Agent önceki biçimi koruduğunu ve
+    sonraki açılışında yeniden deneyeceğini söyledi, satır dosyayı yeniden
+    yazılamayan dosya olarak andı; işaret kaldırılıp Agent yeniden
+    başlatılınca dosya yeniden yazıldı ve satır gitti;
+  - sahibin başka bir sunucuya giden kendi gönderim ayarı anılmadı;
+  - dosyanın kipi, sahibi ve gizli anahtarı hiç değişmedi.
+- **Bekletilen yolda takma ad beklemesi:** yedek sunucuya ulaşılamazken
+  alice bir takma ad ekledi; satırı "DNS kaydı yayımlanmayı bekliyor — her
+  saat yeniden denenir, bir şey yapmanız gerekmez" dedi; bölgenin uyarısı,
+  değişikliği yeniden yapmayı istemeden takma ad kayıtlarının
+  kendiliğinden yayımlanacağını söyledi (Türkçe ve İngilizce). Yedek sunucu
+  döndükten yaklaşık altı saniye sonra bekletilen değişiklik yayımlandı,
+  takma ad yaklaşık on üç saniye içinde iki sunucudan da yanıt verdi ve
+  satır artık beklediğini söylemiyordu. Satırdan kaldırılınca takma ad iki
+  sunucuda da yanıt vermez oldu.
+- **PostgreSQL penceresinin başlıkları** sonucu söylüyor, Türkçe ve
+  İngilizce: bir kapatma "… başka hesaplara kapatıldı", bir Geri al "…
+  yeniden her hesaba açık", başarısız bir kapatma (laboratuvar kayıtlı bir
+  kullanıcının rolünü silmişti) "… başka hesaplara kapatılamadı" başlığıyla,
+  "Yapılmadı — hiçbir şey değiştirilmedi", nedenin türü ve veritabanı
+  sunucusunun tırnak içindeki iletisiyle bitti. Hiçbiri "… kapatılıyor"
+  ile bitmedi.
+- **Sayfasından bir Roundcube güncellemesi** (1.6.20'den 1.6.21'e, ana
+  sunucu): güncelleme uygulandı, yapılandırma korundu, web postası 1.6.21
+  ile çalışmayı ve göndermeyi sürdürdü; ama panel güncellemeyi bir panel
+  yeniden başlatması onu tamamlandı diye kaydedene dek sürüyor gösterdi
+  ("Bilinen sınırlar"a bakın).
+- İki sunucuda olağan sayfalar betik hatası olmadan açıldı.
+
+**Laboratuvarın sayfanın yolundan ayrıldığı yerler.** Laboratuvar
+sunucularında root olarak laboratuvar bir web postası eklentisinin
+klasörüne bir yedek kopya, bir nokta dosyası ve bir PHP dosyası koydu ve
+yerel kapıya sormak için bob'un sitesine küçük bir betik koydu; yerel
+kapının dosyasını ve web postasının yapılandırmasını bir sahibin yapacağı
+gibi değiştirdi, Agent'ı yeniden başlattı, sonra CelikPanel'in metnini
+onların üzerine aldı; yapılandırmayı değiştirilemez yapıp yeniden
+değiştirilebilir yaptı; web postasını başka gönderim sunucularına
+yönlendirip CelikPanel'in metnini geri koydu; Agent'ı ve paneli yeniden
+başlattı; dışarıdaki bir makineden bir yanıt gönderdi ve posta programlarını
+kullandı; başka bir hesabın adresli kimliği web postasının ayarlarına kendi
+kestirme yoluyla ekledi; yedek sunucuyu ana sunucudan ulaşılamaz yapıp
+yeniden ulaşılır yaptı; veritabanı yöneticisi olarak bir veritabanını
+alpha.141'den önce açılanların durumuna getirdi ve kayıtlı bir kullanıcının
+rolünü sildi; web postası güncellemesini sonuçlandırmak için paneli bir kez
+yeniden başlattı. Deneme boyunca kendi sertifika yetkilisi iki sunucuda da
+güvenilir sayıldı.
+
+**Denetlenmeyenler:**
+
+- Gönderim hizmeti kendi imzalı sertifikasını gösterirken (posta adının
+  sertifikası henüz yokken) gönderim: o duruma ulaşmak posta adının
+  sertifikasını kaldırmayı gerektirirdi; testlerle kapsanıyor.
+- Başka bir sunucu adı için sertifika zinciri reddi: laboratuvar makineleri
+  laboratuvarın kendi sertifika yetkilisine güvendiği için sertifikası ona
+  bağlanan bir ad kabul edildi; yalnız ad denetimi gösterildi.
+- Ubuntu 24.04 sunucusunda web postasından gönderim: laboratuvarda orada
+  posta hizmeti yok (yapılandırması ana sunucudaki gibi yeniden yazıldı).
+- Web postası gönderemezken Webmail kartı: kart takılı kalan güncellemenin
+  yazısını gösterdi ("Bilinen sınırlar"a bakın), posta paketinin kartı
+  listelenmedi; kanıtlanmadı.
+- Yavaş yedek yolunda takma ad beklemesi (bekletilmeyen, bölgenin kendi
+  yayını bekliyor): süre içinde oluşturulamadı; testlerle kapsanıyor.
+- "Yeniden yazılamadı" satırının ekranı: sorun listesinden okundu, sayfada
+  bakılmadı.
+- Web postasının yeniden kurulum kanıtı ve PostgreSQL Geri al penceresinin
+  "bilinmiyor" sonucu: süre; testlerle kapsanıyor.
+- Arch Linux'ta hiçbir şey denenmedi.
 
 ## Güncellemeden sonra ne beklenir
 

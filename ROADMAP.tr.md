@@ -376,7 +376,23 @@ incelemeden sonra düzeltildi. Satır 68'e bakın.
    (bekletilen ya da bekleyen yayın) biter ve bölgenin uyarısı değişikliği yeniden yapmayı istemez;
    PostgreSQL kapatma penceresinin başlığı sonucu söyler.
 
-Laboratuvar denetimi: açık (liste PR #357'de). Hiçbir P0 işi kapanmadı.
+Laboratuvar denetimi: yapıldı (tek deneme, 23 Kasım 2026 UTC 05:21 ile yaklaşık 06:50 arası; posta ve
+web postasının kendi adresi olan PowerDNS'li Debian 13 ana sunucu ile BIND'li Ubuntu 24.04 yedek
+sunucu, ikisi de alpha.144'ün kodundan panelin kendi sayfasıyla `e10c2ddb6`'ya, laboratuvara özel
+alpha.153 etiketiyle güncellendi): ağır hata yok. İki güncelleme kendiliğinden (yaklaşık 4,5 ve 4
+dk), şema adımı yok, her birinde bir yeniden yükleme. Yerel kapı güncellemeden önce bir site hesabına
+konan eklenti kopyasını verdi ve konan PHP'yi çalıştırdı, güncellemeden sonra iki sunucuda da
+"bulunamadı" dedi; web postası 127.0.0.1:587 üzerinden şifreli ve posta kutusunun girişiyle gönderdi,
+göndericinin alan adı adına imzalandı; yabancı kimlik reddedildi; 587 ve 465 değişmedi; yeniden
+başlatma hiçbir şeyi değiştirmedi; sahibin değiştirdiği kapı dosyası ve yapılandırma korundu, her biri
+için Şu anki sorunlar'da tek satır çıktı ve kendiliğinden gitti; çeşitlemeler tasarlandığı gibi;
+takma ad beklemesi bekletilen değişiklik yayımlanınca bitti; PostgreSQL başlıkları sonucu söylüyor.
+Bir kez karşılaşılan, bu sürümden eski: bir Roundcube güncellemesi sunucuda bitti ama panel onu bir
+panel yeniden başlatmasına dek "güncelleniyor" gösterdi (bilinen sınır). Yapılmayanlar: kendi imzalı
+sertifika durumu, başka bir ad için zincir reddi (yalnız ad denetimi), Ubuntu sunucusunda gönderim
+(orada posta hizmeti yok), gönderemezken Webmail kartı, yavaş yedek yolunda takma ad beklemesi,
+"yeniden yazılamadı" satırının ekranı, yeniden kurulum kanıtı, Geri al penceresinin "bilinmiyor"
+sonucu, Arch Linux. Hiçbir P0 işi kapanmadı.
 
 **alpha.145'ten sonraki plan (sahip, 22 ve 23 Kasım 2026)**
 Sahip 22 Kasım'da sunucularına riskli hiçbir değişikliğin gönderilmemesini, 23 Kasım'da üründe

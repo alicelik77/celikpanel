@@ -123,6 +123,34 @@ screen.**
   version are refused as hand-edited until you update again. (If you delete
   the local door's file as that message says, alpha.144 writes its earlier,
   open form again.)
+- **A longer change can stay "in progress" on the panel after it has
+  finished on the server.** While a longer change runs — a webmail update,
+  a component install, a mail profile install — the panel keeps in touch
+  with its agent every few seconds. If that contact fails for a moment, the
+  change still finishes on the server, but the panel can keep showing it as
+  in progress and refuse other server changes with "another operation is
+  running" (that message says to press again once it ends; here it does not
+  end by itself). Nothing on the server is harmed: sites, mail and webmail
+  keep working, and the change that was made stays. If a change has shown
+  as in progress for more than about five minutes (a webmail update
+  normally takes seconds), run `sudo systemctl restart celikpanel-panel` on
+  the server. It restarts only the panel's web process; at its start the
+  panel reads what was really done on the server and records the result. A
+  webmail update is only read, nothing is run again; an interrupted install
+  is resumed and completed on the server. The page may need a reload or a
+  new sign-in.
+  This was already so in earlier releases: the code of that path is
+  unchanged in this release. In the lab it happened once on this release,
+  during a Roundcube update whose preparation was unusually slow (the page
+  said "updating" for about forty minutes until one panel restart recorded
+  the update as done), and not when the same update was tried on
+  alpha.144's code. It is to be fixed in a coming release.
+- **A zone's general notice can lag behind a publication.** In the lab,
+  about twenty seconds after a held DNS change had been published, the
+  zone's general notice still said that new changes were waiting and to
+  make the change again, while the alias row no longer said it was waiting.
+  The publication itself was complete; if you see that notice right after a
+  publication, look again a little later before making a change again.
 - The open list of alpha.144 stays open
   ([alpha.144 release notes](RELEASE-NOTES-v0.1.0-alpha.144.md)): among them,
   other changes that still run on the browser's request, and programs still
@@ -130,12 +158,152 @@ screen.**
 
 ## Checked in the lab
 
-**OPEN.** This release has not had its lab run yet. The lab list is in the
-release pull request (#357): the local door before and after the update as a
-site account; webmail sending in both certificate states on Debian 13 and
-Ubuntu 24.04 with the path proven in the mail log; a failed rewrite and an
-owner-edited file for both files; the alias wait on both paths; the
-PostgreSQL window's titles.
+Lab check finished: one run on the pair of test servers, a Debian 13 main
+DNS server with PowerDNS, mail and webmail on its own address, and an
+Ubuntu 24.04 backup DNS server with BIND, which has webmail's local door but
+no mail service (23 November 2026, UTC 05:21 to about 06:50 with the
+clean-up). Both servers started from alpha.144's code and were updated
+through the panel's own update page to this release's code (`e10c2ddb6`,
+under the lab-only label v0.1.0-alpha.153). Two customers in separate
+accounts played the two sides: alice, whose mailbox sent the mail, and bob,
+whose site's own account tried the local door. Everything was done through
+the page's own buttons except where it says the lab did it. No hard
+failure; one limit older than this release was met (see "Known limits").
+
+- **Before the update the local door was open** (alpha.144's code), on both
+  servers: as bob's site account — through his site's PHP and directly on
+  the socket — a backup copy of a plugin's settings and a dot-file that the
+  lab had planted were given out with their content, and a PHP file planted
+  in a plugin's folder was run, also when asked for through a
+  `skins/…/../..` path. On the main server, sending from webmail failed with
+  "authentication failed"; the mail log showed only a connection, with no
+  encryption and no login.
+- **Both servers updated through the panel's own update page by
+  themselves**, in about four and a half and about four minutes. No schema
+  step (it stays 81); one panel and one agent ran on each server; no new
+  failed service. At the first start the agent said once that it had
+  rewritten the local door's file and webmail's configuration; the web
+  server was reloaded once on each server, after its check passed; PHP-FPM
+  was not restarted. Webmail's configuration kept its mode, owner and secret
+  key, and on the main server the lines of webmail's own address. A check
+  every second from outside saw a site and webmail answer throughout the
+  update on the main server (483 requests, all answered); that check ended
+  13 seconds before the reload, and both answered again after it.
+- **The local door after the update** (the security correction), on both
+  servers, as bob's site account by both ways: the planted copy and
+  dot-file, the planted and Roundcube's own plugin PHP files, a plugin's
+  `composer.json`, `index.php/x`, both `..` paths, a script file, webmail's
+  configuration and its `.celikpanel-pending` copy all answered "not found";
+  the sign-in page, a style sheet and CelikPanel's PHP check answered.
+  Webmail's own address kept alpha.144's rules.
+- **Webmail sends** (main server, with the mail host's certificate): alice
+  signed in on webmail's own address and sent three messages, to herself,
+  to another mailbox and one with an attachment; after each the page went
+  back to the inbox without an error, and all three are in Sent. For each
+  the mail log shows the connection to the sending service from 127.0.0.1
+  switched to encryption (TLS 1.3) and the login with the mailbox's own
+  address, then delivery; nothing went over port 25 from inside. The
+  copies that arrived are signed for the sender's own domain and the
+  signature verified. A reply sent from outside was listed and opened.
+  Sending as an identity with another account's address was refused by the
+  sending service ("Sender address rejected: not owned by user …"). Mail
+  programs from outside with alice's login: port 587 with STARTTLS and
+  port 465 accepted the message; another account's sender address was
+  refused (553).
+- **A restart changes nothing:** after the lab restarted the agent and the
+  panel, both files kept their content and time, no web server reload
+  followed, and webmail sent again.
+- **Nothing is relaxed for another host:** when the lab pointed webmail at
+  `localhost` instead of `127.0.0.1` (the certificate is for the mail host's
+  name), sending stopped at the encryption step, so the name check stays on
+  for any other host. The lab then put CelikPanel's text back.
+- **A local door file the owner changed:**
+  - a comment line added to CelikPanel's current text was kept, no line
+    appeared, and the door stayed closed;
+  - alpha.144's open text with a comment line was kept byte for byte, with
+    CelikPanel's text beside it; bob's site account could again read the
+    planted files and run the planted PHP (the owner's file serves them);
+    **Problems now** showed one line, in Turkish and English, saying that
+    the local door still gives Roundcube's files to every account, that the
+    server owner acts, and the step. Once the owner moved CelikPanel's text
+    over the file and reloaded the web server, the line was gone at the next
+    read.
+- **A webmail configuration the owner changed** (alpha.144's text with a
+  comment line) was kept byte for byte; CelikPanel's text was put beside it,
+  readable by root only and with the same secret key. **Problems now**
+  showed one line, in Turkish and English: "Webmail cannot send mail", why,
+  and the step; a customer and a reseller asking for the problem list were
+  refused. Once the owner copied CelikPanel's text into the file, the line
+  was gone at the next read without a restart; the text beside it was
+  removed at the next agent start, and webmail sent again.
+- **Variants:**
+  - with only the sending address changed to the encrypted form, without the
+    certificate line, the file was kept and the line stayed, naming the text
+    beside it; once the owner added the certificate line, the line went by
+    itself within seconds, without a restart;
+  - CelikPanel's own earlier text in a file the lab made unchangeable
+    (immutable flag): the agent said it kept the earlier form and tries
+    again at its next start, and the line named the file as one that could
+    not be rewritten; with the flag removed and the agent restarted, the
+    file was rewritten and the line went;
+  - an owner's own sending setting to another host was not named;
+  - the file's mode, owner and secret key never changed.
+- **The alias wait on the held path:** with the backup server unreachable,
+  alice added an alias; its row said "DNS record waiting to be published —
+  retried every hour, nothing to do", and the zone's notice said the alias
+  records are published by themselves, without asking to make the change
+  again (Turkish and English). About six seconds after the backup server
+  came back the held change was published, the alias answered from both
+  servers within about thirteen seconds, and the row no longer said it was
+  waiting. Removed through the row, the alias stopped answering on both.
+- **The PostgreSQL window's titles** say the outcome, in Turkish and
+  English: a close ended on "… is closed to other accounts", an Undo on
+  "… is open to every account again", and a close that failed (the lab had
+  dropped a recorded user's role) on "… was not closed to other accounts"
+  with "Not done — nothing was changed", the kind of cause and the database
+  server's quoted message. None ended on "Closing …".
+- **A Roundcube update through its page** (1.6.20 to 1.6.21, main server):
+  the update was applied, the configuration kept, and webmail kept working
+  and sending on 1.6.21, but the panel kept showing the update as running
+  until one panel restart recorded it as done (see "Known limits").
+- The usual pages on both servers loaded without a script error.
+
+**Where the lab left the page's path.** As root on the lab servers, the lab
+planted a backup copy, a dot-file and a PHP file in a webmail plugin's
+folder and put a small script into bob's site to ask the local door;
+changed the local door's file and webmail's configuration as an owner
+would, restarted the agent, then took CelikPanel's text over them; made the
+configuration unchangeable and changeable again; pointed webmail at other
+sending hosts and put CelikPanel's text back; restarted the agent and the
+panel; sent a reply and used mail programs from a machine outside; added
+the identity with another account's address in webmail's settings by a
+shortcut of its own; made the backup server unreachable from the main
+server and reachable again; as the database administrator put a database
+into the state of ones made before alpha.141 and dropped a recorded user's
+role; and restarted the panel once to settle the webmail update. Its own certificate
+authority was trusted on both servers during the run.
+
+**Not checked:**
+
+- Sending while the sending service shows its own self-signed certificate
+  (before a mail host certificate exists): reaching that state would have
+  needed removing the mail host's certificate; covered by tests.
+- The certificate chain refusal for another host: the lab machines trust
+  the lab's own certificate authority, so a host whose certificate chains to
+  it was accepted; only the name check was shown.
+- Sending from webmail on the Ubuntu 24.04 server: it has no mail service
+  in the lab (its configuration was rewritten like the main server's).
+- The Webmail card while webmail cannot send: the card showed the stuck
+  update's text (see "Known limits") and the mail bundle's card was not
+  listed; not proven.
+- The alias wait on the slow-backup path (the zone's own publication
+  waiting, not held): it could not be produced in the time; covered by
+  tests.
+- The screen of the "could not be rewritten" line: it was read from the
+  problem list, not looked at on the page.
+- Webmail's reinstall proof, and the "not known" outcome of the PostgreSQL
+  Undo window: time; covered by tests.
+- Nothing was tried on Arch Linux.
 
 ## What to expect after updating
 
