@@ -121,7 +121,11 @@ func render(p Profile, c Caps, transient bool) ([]string, error) {
 		nofile = 8192
 	}
 	list := []directive{
-		{line: "Slice=system.slice"},
+		// The system slice or, for a unit a later release placed in its
+		// site's slice (slice.go), that slice kept. Either way the unit's
+		// cgroup is at depth two (/<slice>/<unit>), which the SMTP block's
+		// set matches.
+		{line: "Slice=" + p.SliceUnit()},
 		{line: "NoNewPrivileges=yes"},
 		{line: "ProtectSystem=strict"},
 		{line: "ProtectHome=yes"},

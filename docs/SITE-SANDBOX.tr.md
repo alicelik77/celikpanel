@@ -223,10 +223,19 @@ tablosuna asla girmez.
   ağ ad alanında ölçüldü.
 
 Engeli tutabilen sunucuda her korumalı birim yardımcıyı (§1a) çalıştırır:
-`ExecStartPre=+… sandbox-helper egress-add --unit=<birim>` tabloyu yükler ve birimin cgroup'unu
-kümeye ekler; `ExecStopPost=-+… egress-remove` durduktan sonra çıkarır. nft boş bir ortamla
-çalışır. nft tabloyu yükleyemezse ya da birimin cgroup'u
-`/system.slice/<birim>` değilse birim başlamaz; engel kapalı kalacağına program hiç çalışmaz.
+`ExecStartPre=+… sandbox-helper egress-add --unit=<birim>` tabloyu yükler ve birimin systemd'den
+okunan gerçek cgroup'unu (`'{ "<dilim>/<birim>" }'`) kümeye ekler; `ExecStopPost=-+… egress-remove`
+durduktan sonra çıkarır. nft boş bir ortamla çalışır. nft tabloyu yükleyemezse ya da birimin
+cgroup'u ne `/system.slice/<birim>` ne de sitesinin `/celiksite_<id>.slice/<birim>` dilimiyse
+(örneğin sahibin bir ek ayar dosyası birimi başka bir dilime taşıdıysa) birim başlamaz; engel
+kapalı kalacağına program hiç çalışmaz.
+
+Sitenin dilimi, site başına sınırları getiren sonraki sürümün bir sitenin programlarını koyduğu
+yerdir. Bu sürüm dilim oluşturmaz. Sonraki sürümün oraya koyduğu programı kabul eder; böylece bir
+önceki sürüme dönüldüğünde program yine posta engelinin içinde başlar. Bu sürüm böyle bir programın
+birim dosyasını yeniden yazarsa, `/etc/systemd/system/celiksite_<id>.slice` dosyası durdukça
+birimdeki `Slice=celiksite_<id>.slice` satırını korur; yoksa birim eskisi gibi
+`Slice=system.slice` alır.
 
 `celikpanel-egress-guard.timer` 30 saniyede bir çalışır. Biri `nft flush ruleset`
 çalıştırdıysa ya da `nftables.service` yeniden başlatıldıysa tabloyu yeniden yükler ve çalışan

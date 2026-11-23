@@ -182,6 +182,66 @@ func TestEgressRunsNFTOnly(t *testing.T) {
 	}
 }
 
+// TestEgressFollowsTheSitesSlice (S4 R2a, kept for going back one release):
+// a unit in its site's slice celiksite_<id>.slice adds and removes the
+// element of the cgroup it really runs in; a unit an owner's drop-in moved
+// anywhere else does not start, and neither does one whose cgroup cannot be
+// read.
+func TestEgressFollowsTheSitesSlice(t *testing.T) {
+	tr := newTree(t)
+	h := tr.helper(tr.uid)
+	cgroup := "/celiksite_9.slice/celiksvc-4.service"
+	h.ControlGroup = func(unit string) (string, error) {
+		if unit != "celiksvc-4.service" {
+			return "", errors.New("unexpected unit")
+		}
+		return cgroup, nil
+	}
+	if err := h.EgressAdd("celiksvc-4.service"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.EgressRemove("celiksvc-4.service"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"-f /usr/lib/celikpanel-sandbox/egress.nft",
+		`add element inet celikpanel_egress smtp_blocked { "celiksite_9.slice/celiksvc-4.service" }`,
+		`delete element inet celikpanel_egress smtp_blocked { "celiksite_9.slice/celiksvc-4.service" }`}
+	if strings.Join(tr.nft, "|") != strings.Join(want, "|") {
+		t.Fatalf("nft = %q", tr.nft)
+	}
+	// The system slice: exactly the element this release always added.
+	tr.nft = nil
+	cgroup = "/system.slice/celiksvc-4.service"
+	if err := h.EgressAdd("celiksvc-4.service"); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(tr.nft, "|"); got != `-f /usr/lib/celikpanel-sandbox/egress.nft|add element inet celikpanel_egress smtp_blocked { "system.slice/celiksvc-4.service" }` {
+		t.Fatalf("system slice nft = %q", tr.nft)
+	}
+	tr.nft = nil
+	cgroup = "/owner.slice/celiksvc-4.service"
+	if err := h.EgressAdd("celiksvc-4.service"); err == nil || len(tr.nft) != 0 {
+		t.Fatalf("a unit in another slice was let start: %v %q", err, tr.nft)
+	}
+	h.ControlGroup = func(string) (string, error) { return "", errors.New("systemd did not answer") }
+	if err := h.EgressAdd("celiksvc-4.service"); err == nil || len(tr.nft) != 0 {
+		t.Fatalf("an unreadable cgroup was let start: %v", err)
+	}
+	for show, want := range map[string]string{
+		"ControlGroup=/celiksite_9.slice/celiksvc-4.service\nSlice=celiksite_9.slice\n": "/celiksite_9.slice/celiksvc-4.service",
+		"ControlGroup=\nSlice=celiksite_9.slice\n":                                      "/celiksite_9.slice/celiksvc-4.service",
+		"ControlGroup=\nSlice=\n":                                                       "",
+	} {
+		if got := ParseControlGroup("celiksvc-4.service", show); got != want {
+			t.Errorf("%q = %q", show, got)
+		}
+	}
+	// The production helper reads the cgroup from systemd.
+	if ProductionHelper(nil).ControlGroup == nil {
+		t.Fatal("the production helper does not read the unit's cgroup")
+	}
+}
+
 // TestParseUnitInfo: the bind unit learns the account and the app folder
 // only from the sandboxed unit's own settings; it reads no environment file.
 func TestParseUnitInfo(t *testing.T) {

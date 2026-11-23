@@ -296,6 +296,8 @@ func runtimeAppUnitParams(rc runtimeAppContext, target transport.RuntimeAppTarge
 		Layout: rc.layout, Entry: spec.Entry, Args: spec.Args, Port: spec.Port,
 		Limits: siteruntime.Limits{MemoryMB: spec.Limits.MemoryMB, CPUPercent: spec.Limits.CPUPercent, Tasks: spec.Limits.TasksMax},
 		Level:  level, Caps: caps, DropInDir: path + ".d", Python: runtimePythonUnit(spec),
+		// A later release's site slice is kept (site_slice_keep.go).
+		SiteID: target.SiteID, InSlice: unitFileKeepsSiteSlice(path, target.SiteID),
 	}, nil
 }
 
@@ -551,7 +553,7 @@ func (a *Agent) RuntimeAppStatusV1(req *transport.RuntimeAppStatusRequest, resp 
 	caps := sandboxCaps(ctx)
 	assessment := sitesandbox.Assess(caps)
 	resp.Level, resp.Gaps = string(assessment.Level), gapNames(assessment)
-	out, err := appUnitSystemctl(systemctlArgs("show", name, "--property=LoadState,ActiveState,SubState,UnitFileState,MemoryCurrent,Result,NRestarts")...)
+	out, err := appUnitSystemctl(systemctlArgs("show", name, "--property=LoadState,ActiveState,SubState,UnitFileState,MemoryCurrent,Result,NRestarts,ControlGroup")...)
 	if err != nil {
 		resp.Error = "systemd could not be read: " + strings.TrimSpace(string(out))
 		return nil
@@ -569,10 +571,16 @@ func (a *Agent) RuntimeAppStatusV1(req *transport.RuntimeAppStatusRequest, resp 
 	if mem, err := strconv.ParseInt(props["MemoryCurrent"], 10, 64); err == nil && mem > 0 {
 		resp.MemoryMB = mem / (1 << 20)
 	}
-	if raw, err := os.ReadFile(filepath.Join(runtimeAppCgroupRoot, name, "memory.events")); err == nil {
+	// The unit's own cgroup: the system slice, or its site's slice where a
+	// later release placed it (S4 R2a).
+	cgroupDir := filepath.Join(runtimeAppCgroupRoot, name)
+	if siteID, ok := sitesandbox.UnitControlGroupAllowed(props["ControlGroup"], name); ok && siteID > 0 {
+		cgroupDir = filepath.Join(filepath.Dir(runtimeAppCgroupRoot), sitesandbox.SliceName(siteID), name)
+	}
+	if raw, err := os.ReadFile(filepath.Join(cgroupDir, "memory.events")); err == nil {
 		resp.OOMKills = parseCgroupCount(string(raw), "oom_kill")
 	}
-	if raw, err := os.ReadFile(filepath.Join(runtimeAppCgroupRoot, name, "pids.events")); err == nil {
+	if raw, err := os.ReadFile(filepath.Join(cgroupDir, "pids.events")); err == nil {
 		resp.PidsMax = parseCgroupCount(string(raw), "max")
 	}
 	var rc runtimeAppContext

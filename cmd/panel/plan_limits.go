@@ -334,7 +334,10 @@ func keepPlanLimitsAsOwn(ctx context.Context, tx rightsTx, subID int) error {
 	if err != nil {
 		return err
 	}
-	return saveSettingCeilings(ctx, tx, rightsOwnerSubscription, subID, ceilings)
+	if err := saveSettingCeilings(ctx, tx, rightsOwnerSubscription, subID, ceilings); err != nil {
+		return err
+	}
+	return copyUnknownSettingCeilings(ctx, tx, rightsOwnerPlan, int(planID.Int64), rightsOwnerSubscription, subID)
 }
 
 // keepResellerPlanLimitsAsOwn: a reseller that leaves its reseller plan
@@ -352,5 +355,8 @@ func keepResellerPlanLimitsAsOwn(ctx context.Context, tx rightsTx, resellerID in
 	if err != nil {
 		return err
 	}
-	return saveSettingCeilings(ctx, tx, rightsOwnerReseller, resellerID, ceilings)
+	if err := saveSettingCeilings(ctx, tx, rightsOwnerReseller, resellerID, ceilings); err != nil {
+		return err
+	}
+	return copyUnknownSettingCeilings(ctx, tx, rightsOwnerResellerPlan, planID, rightsOwnerReseller, resellerID)
 }
