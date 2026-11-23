@@ -195,7 +195,7 @@ func TestStripeFetchOrderIsTheTruth(t *testing.T) {
 		{"expired", sessionAnswer("payment", "expired", "unpaid", oneTimeOrder, "null"), OutcomeNotPaid, 0, 0, false},
 		{"paid", sessionAnswer("payment", "complete", "paid", oneTimeOrder, intentJSON("succeeded", 9900, 0, false, false)), OutcomePaid, 9900, 0, false},
 		{"refunded", sessionAnswer("payment", "complete", "paid", oneTimeOrder, intentJSON("succeeded", 9900, 9900, true, false)), OutcomeRefunded, 9900, 9900, false},
-		{"partly refunded", sessionAnswer("payment", "complete", "paid", oneTimeOrder, intentJSON("succeeded", 9900, 1000, false, false)), OutcomePaid, 9900, 1000, false},
+		{"partly refunded", sessionAnswer("payment", "complete", "paid", oneTimeOrder, intentJSON("succeeded", 9900, 1000, false, false)), OutcomePartlyRefunded, 9900, 1000, false},
 		{"disputed", sessionAnswer("payment", "complete", "paid", oneTimeOrder, intentJSON("succeeded", 9900, 0, false, true)), OutcomePaid, 9900, 0, true},
 	} {
 		fake.on(http.MethodGet, "/v1/checkout/sessions/cs_1", c.handler)
@@ -281,7 +281,7 @@ func TestStripeFetchOrderIsTheTruth(t *testing.T) {
 			t.Errorf("%s: paid %d", c.name, fact.PaidMinor)
 		}
 	}
-	if _, err := confirm("ch_1", expectOneTime); !errors.Is(err, ErrNotSupported) {
+	if _, err := confirm("xx_1", expectOneTime); !errors.Is(err, ErrNotSupported) {
 		t.Fatalf("an unknown object: %v", err)
 	}
 }
@@ -350,11 +350,11 @@ func TestStripeConfirmRenewal(t *testing.T) {
 	fake.on(http.MethodGet, "/v1/subscriptions/sub_1", func(recordedRequest) (int, string) {
 		return 200, `{"id":"sub_1","status":"active","cancel_at_period_end":true,"customer":"cus_1","metadata":{"license_id":"` + licenseID + `"}}`
 	})
-	fact, err := provider.ConfirmRenewal(context.Background(), stripeCredentials(t), "sub_1", licenseID)
+	fact, err := provider.ConfirmRenewal(context.Background(), stripeCredentials(t), "sub_1", licenseID, false)
 	if err != nil || fact.Active || !fact.CancelAtPeriodEnd || fact.Mismatch {
 		t.Fatalf("renewal turned off at the period end: %+v %v", fact, err)
 	}
-	if fact, _ := provider.ConfirmRenewal(context.Background(), stripeCredentials(t), "sub_1", strings.Repeat("f", 32)); !fact.Mismatch || fact.Active {
+	if fact, _ := provider.ConfirmRenewal(context.Background(), stripeCredentials(t), "sub_1", strings.Repeat("f", 32), false); !fact.Mismatch || fact.Active {
 		t.Fatalf("another licence's subscription: %+v", fact)
 	}
 }
@@ -383,7 +383,8 @@ func (c *stripeCache) wrap(handler func(recordedRequest) (int, string)) func(rec
 	}
 }
 
-// Review of #361, 8: keys name the operation; a definite refusal is asked again with the next attempt.
+// Review of #361, 8, and the second review, 3: keys name the payment and the operation; a
+// definite refusal is asked again with the next attempt; nothing goes out without the confirm step.
 func TestStripeRefundOfAOneTimePayment(t *testing.T) {
 	fake := newFakeServer(t)
 	cache := &stripeCache{answers: map[string][2]string{}}
@@ -403,12 +404,11 @@ func TestStripeRefundOfAOneTimePayment(t *testing.T) {
 		return 200, `{"id":"cs_open","mode":"payment","status":"open","payment_status":"unpaid","client_reference_id":"` + oneTimeOrder + `"}`
 	})
 	provider := &Stripe{BaseURL: fake.server.URL}
-	request := RefundRequest{Reference: "cs_1", Order: oneTimeOrder, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"}
+	request := RefundRequest{Reference: "cs_1", Expected: expectOneTime}
 	if err := provider.Refund(context.Background(), stripeCredentials(t), request); !errors.Is(err, ErrProviderRefused) {
 		t.Fatalf("the first try is refused: %v", err)
 	}
-	key := fake.last().Header.Get("Idempotency-Key")
-	if key != "refund-"+oneTimeOrder+"-9900usd-a0" {
+	if key := fake.last().Header.Get("Idempotency-Key"); key != "refund-pi_1-9900usd-a0" {
 		t.Fatalf("key %q", key)
 	}
 	balance = true
@@ -423,60 +423,272 @@ func TestStripeRefundOfAOneTimePayment(t *testing.T) {
 	}
 	sent := fake.last()
 	form, _ := url.ParseQuery(string(sent.Body))
-	if sent.Header.Get("Idempotency-Key") != "refund-"+oneTimeOrder+"-9900usd-a1" || form.Get("metadata[license_id]") != licenseID ||
+	if sent.Header.Get("Idempotency-Key") != "refund-pi_1-9900usd-a1" || form.Get("metadata[license_id]") != licenseID ||
 		form.Get("metadata[order]") != oneTimeOrder || form.Get("payment_intent") != "pi_1" {
 		t.Fatalf("refund request: %v %v", sent.Header, form)
 	}
-	before := fake.count()
+	refunds := cache.runs
 	request.Reference, request.Attempt = "cs_open", 2
-	if err := provider.Refund(context.Background(), stripeCredentials(t), request); !errors.Is(err, ErrProviderRefused) {
+	if err := provider.Refund(context.Background(), stripeCredentials(t), request); !errors.Is(err, ErrNothingPaid) || cache.runs != refunds {
 		t.Fatalf("refunding an unpaid checkout: %v", err)
 	}
-	if fake.last().Path == "/v1/refunds" && fake.count() > before+1 {
-		t.Fatal("an unpaid checkout reached the refund call")
-	}
 	for name, bad := range map[string]RefundRequest{
-		"no order":      {Reference: "cs_1", LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"},
-		"no amount":     {Reference: "cs_1", Order: oneTimeOrder, LicenseID: licenseID, Currency: "USD"},
-		"unknown thing": {Reference: "ch_1", Order: oneTimeOrder, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"},
+		"no order":      {Reference: "cs_1", Expected: Expected{Kind: OrderOneTime, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"}},
+		"no amount":     {Reference: "cs_1", Expected: Expected{Kind: OrderOneTime, Order: oneTimeOrder, LicenseID: licenseID, Currency: "USD"}},
+		"unknown thing": {Reference: "xx_1", Expected: expectOneTime},
 	} {
 		if err := provider.Refund(context.Background(), stripeCredentials(t), bad); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
 	}
+	if cache.runs != refunds {
+		t.Fatal("a refused request reached the refund call")
+	}
+}
+
+// Second review of #361, 3: a refund acts only on the order's own, fully paid payment, and its
+// final answers are distinct so a store never loops; a 409 is not a refusal.
+func TestStripeRefundOnlyAfterConfirm(t *testing.T) {
+	fake := newFakeServer(t)
+	refunds := 0
+	conflict := false
+	fake.on(http.MethodPost, "/v1/refunds", func(recordedRequest) (int, string) {
+		refunds++
+		if conflict {
+			return 409, `{"error":{"type":"idempotency_error"}}`
+		}
+		return 200, `{"id":"re_1","status":"succeeded"}`
+	})
+	provider := &Stripe{BaseURL: fake.server.URL}
+	for name, c := range map[string]struct {
+		intent string
+		want   error
+	}{
+		"already refunded":                {intentJSON("succeeded", 9900, 9900, true, false), ErrAlreadyRefunded},
+		"partly refunded (operator)":      {intentJSON("succeeded", 9900, 1000, false, false), ErrPartlyRefunded},
+		"another licence's payment":       {strings.Replace(intentJSON("succeeded", 9900, 0, false, false), `"license_id":"`+licenseID, `"license_id":"`+strings.Repeat("f", 32), 1), ErrMismatch},
+		"another amount than the order's": {intentJSON("succeeded", 4900, 0, false, false), ErrMismatch},
+	} {
+		body := c.intent
+		fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) { return 200, body })
+		before := refunds
+		if err := provider.Refund(context.Background(), stripeCredentials(t), RefundRequest{Reference: "pi_1", Expected: expectOneTime}); !errors.Is(err, c.want) || refunds != before {
+			t.Errorf("%s: %v (%d refund calls)", name, err, refunds-before)
+		}
+	}
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) { return 200, intentJSON("succeeded", 9900, 0, false, false) })
+	conflict = true
+	if err := provider.Refund(context.Background(), stripeCredentials(t), RefundRequest{Reference: "pi_1", Expected: expectOneTime}); !errors.Is(err, ErrProviderBusy) || errors.Is(err, ErrProviderRefused) {
+		t.Fatalf("a 409 is not a refusal: %v", err)
+	}
+}
+
+// subscriptionServer answers a subscription's state and keeps the change a POST makes; the first
+// POST can fail with a 500 (an unknown outcome).
+func subscriptionServer(t *testing.T, failFirst bool) (*fakeServer, *int) {
+	fake := newFakeServer(t)
+	cancel, posts := "false", 0
+	fake.on(http.MethodGet, "/v1/subscriptions/sub_1", func(recordedRequest) (int, string) {
+		return 200, `{"id":"sub_1","status":"active","livemode":false,"cancel_at_period_end":` + cancel +
+			`,"metadata":{"license_id":"` + licenseID + `","order":"` + renewalOrder + `"}}`
+	})
+	fake.on(http.MethodPost, "/v1/subscriptions/sub_1", func(r recordedRequest) (int, string) {
+		posts++
+		if failFirst && posts == 1 {
+			return 500, `{"error":{}}`
+		}
+		form, _ := url.ParseQuery(string(r.Body))
+		cancel = form.Get("cancel_at_period_end")
+		return 200, `{"id":"sub_1","cancel_at_period_end":` + cancel + `}`
+	})
+	return fake, &posts
 }
 
 func TestStripeRenewalKeysAreStable(t *testing.T) {
-	fake := newFakeServer(t)
-	fake.on(http.MethodPost, "/v1/subscriptions/sub_1", func(r recordedRequest) (int, string) {
-		form, _ := url.ParseQuery(string(r.Body))
-		return 200, `{"id":"sub_1","cancel_at_period_end":` + form.Get("cancel_at_period_end") + `}`
-	})
+	fake, posts := subscriptionServer(t, true)
 	clock := testNow
 	provider := &Stripe{BaseURL: fake.server.URL, Now: func() time.Time { return clock }}
-	key := func(change RenewalChange) string {
-		t.Helper()
-		if err := provider.SetRenewal(context.Background(), stripeCredentials(t), change); err != nil {
-			t.Fatal(err)
-		}
-		return fake.last().Header.Get("Idempotency-Key")
-	}
 	off := RenewalChange{Subscription: "sub_1", LicenseID: licenseID, On: false, Change: "ch1"}
-	first := key(off)
-	clock = clock.Add(time.Minute) // a retry a minute later is the same request
-	if again := key(off); again != first || first != "renewal-"+licenseID+"-off-ch1" {
+	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), off); !errors.Is(err, ErrProviderUnavailable) {
+		t.Fatalf("the first try's outcome is unknown: %v", err)
+	}
+	first := fake.last().Header.Get("Idempotency-Key")
+	clock = clock.Add(time.Minute) // the retry a minute later is the same request
+	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), off); err != nil {
+		t.Fatal(err)
+	}
+	if again := fake.last().Header.Get("Idempotency-Key"); again != first || first != "renewal-"+licenseID+"-off-ch1" {
 		t.Fatalf("keys %q %q", first, again)
 	}
 	on := RenewalChange{Subscription: "sub_1", LicenseID: licenseID, On: true, Change: "ch2"}
-	offAgain := RenewalChange{Subscription: "sub_1", LicenseID: licenseID, On: false, Change: "ch3"}
-	if k := key(on); k == first {
-		t.Fatal("turning on reused the off key")
-	}
-	if k := key(offAgain); k == first {
-		t.Fatal("a later change reused an earlier change's key")
+	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), on); err != nil || fake.last().Header.Get("Idempotency-Key") == first {
+		t.Fatalf("turning on: %v", err)
 	}
 	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), RenewalChange{Subscription: "sub_1", LicenseID: licenseID}); !errors.Is(err, ErrCheckoutIncomplete) {
 		t.Fatalf("a change without an id: %v", err)
+	}
+	_ = posts
+}
+
+// Second review of #361, 3 and 4: the switch acts only on the licence's own subscription, in the
+// order's mode, and answers "already in that state" without a change.
+func TestStripeSetRenewalOnlyOnTheLicencesSubscription(t *testing.T) {
+	fake, posts := subscriptionServer(t, false)
+	provider := &Stripe{BaseURL: fake.server.URL}
+	for name, c := range map[string]struct {
+		change RenewalChange
+		want   error
+	}{
+		"already on":         {RenewalChange{Subscription: "sub_1", LicenseID: licenseID, On: true, Change: "c1"}, ErrAlreadyInThatState},
+		"another licence":    {RenewalChange{Subscription: "sub_1", LicenseID: strings.Repeat("f", 32), On: false, Change: "c2"}, ErrMismatch},
+		"the other mode":     {RenewalChange{Subscription: "sub_1", LicenseID: licenseID, On: false, Change: "c3", Live: true}, ErrMismatch},
+		"not a subscription": {RenewalChange{Subscription: "cus_1", LicenseID: licenseID, On: false, Change: "c4"}, ErrCheckoutIncomplete},
+	} {
+		if err := provider.SetRenewal(context.Background(), stripeCredentials(t), c.change); !errors.Is(err, c.want) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if *posts != 0 {
+		t.Fatalf("%d changes were sent", *posts)
+	}
+}
+
+// Second review of #361, 3: one payment has one identity whatever it was reached through; a
+// renewal's PaymentIntent and charge are a renewal; a charge-only payment is found.
+func TestStripePaymentIdentity(t *testing.T) {
+	fake := newFakeServer(t)
+	provider := &Stripe{BaseURL: fake.server.URL}
+	fake.on(http.MethodGet, "/v1/checkout/sessions/cs_1", sessionAnswer("payment", "complete", "paid", oneTimeOrder, intentJSON("succeeded", 9900, 0, false, false)))
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) { return 200, intentJSON("succeeded", 9900, 0, false, false) })
+	viaSession, err1 := provider.Confirm(context.Background(), stripeCredentials(t), "cs_1", expectOneTime)
+	viaIntent, err2 := provider.Confirm(context.Background(), stripeCredentials(t), "pi_1", expectOneTime)
+	if err1 != nil || err2 != nil || viaSession.PaymentID != "pi_1" || viaIntent.PaymentID != viaSession.PaymentID || viaIntent.Outcome != OutcomePaid {
+		t.Fatalf("one payment, two ways: %+v %v / %+v %v", viaSession, err1, viaIntent, err2)
+	}
+
+	// A renewal invoice paid by a PaymentIntent without our metadata (Stripe made it), and
+	// another paid by a charge alone.
+	renewal := Expected{Kind: OrderRenewalInvoice, Order: renewalOrder, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"}
+	invoiceIntent := `{"id":"pi_9","status":"succeeded","amount":9900,"amount_received":9900,"currency":"usd","metadata":{},` +
+		`"latest_charge":{"id":"ch_8","payment_intent":"pi_9","paid":true,"amount":9900,"amount_captured":9900,"amount_refunded":0,"currency":"usd"}}`
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_9", func(recordedRequest) (int, string) { return 200, invoiceIntent })
+	fake.on(http.MethodGet, "/v1/charges/ch_8", func(recordedRequest) (int, string) {
+		return 200, `{"id":"ch_8","payment_intent":"pi_9","paid":true,"amount":9900,"amount_captured":9900,"currency":"usd"}`
+	})
+	fake.on(http.MethodGet, "/v1/charges/ch_9", func(recordedRequest) (int, string) {
+		return 200, `{"id":"ch_9","paid":true,"amount":9900,"amount_captured":9900,"amount_refunded":0,"currency":"usd"}`
+	})
+	fake.on(http.MethodGet, "/v1/invoices/in_2", func(recordedRequest) (int, string) { return 200, invoiceJSON("in_2", "paid", 9900, true) })
+	fake.on(http.MethodGet, "/v1/invoices/in_3", func(recordedRequest) (int, string) { return 200, invoiceJSON("in_3", "paid", 9900, true) })
+	fake.on(http.MethodGet, "/v1/invoice_payments", func(r recordedRequest) (int, string) {
+		query, _ := url.ParseQuery(r.Query)
+		switch {
+		case query.Get("invoice") == "in_2", query.Get("payment[payment_intent]") == "pi_9":
+			return 200, `{"data":[{"invoice":"in_2","payment":{"type":"payment_intent","payment_intent":"pi_9"}}]}`
+		case query.Get("invoice") == "in_3", query.Get("payment[charge]") == "ch_9":
+			return 200, `{"data":[{"invoice":"in_3","payment":{"type":"charge","charge":"ch_9"}}]}`
+		}
+		return 200, `{"data":[]}`
+	})
+	for reference, want := range map[string]string{"in_2": "pi_9", "pi_9": "pi_9", "ch_8": "pi_9", "in_3": "ch_9", "ch_9": "ch_9"} {
+		fact, err := provider.Confirm(context.Background(), stripeCredentials(t), reference, renewal)
+		if err != nil || fact.Outcome != OutcomePaid || fact.Kind != OrderRenewalInvoice || fact.PaymentID != want || fact.LicenseID != licenseID {
+			t.Errorf("%s: %+v %v", reference, fact, err)
+		}
+	}
+	// Two invoices of one subscription have different payment ids, so their refund keys differ.
+	fake.on(http.MethodPost, "/v1/refunds", func(recordedRequest) (int, string) { return 200, `{"id":"re_1","status":"succeeded"}` })
+	keys := map[string]bool{}
+	for _, reference := range []string{"in_2", "in_3"} {
+		if err := provider.Refund(context.Background(), stripeCredentials(t), RefundRequest{Reference: reference, Expected: renewal}); err != nil {
+			t.Fatalf("refund %s: %v", reference, err)
+		}
+		keys[fake.last().Header.Get("Idempotency-Key")] = true
+		if form, _ := url.ParseQuery(string(fake.last().Body)); reference == "in_3" && form.Get("charge") != "ch_9" {
+			t.Fatalf("a charge-only payment is refunded through its charge: %v", form)
+		}
+	}
+	if len(keys) != 2 {
+		t.Fatalf("two renewal refunds share a key: %v", keys)
+	}
+	// A PaymentIntent that is neither ours nor an invoice's is an error, not a guessed kind.
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_7", func(recordedRequest) (int, string) {
+		return 200, strings.Replace(invoiceIntent, `"pi_9"`, `"pi_7"`, -1)
+	})
+	if _, err := provider.Confirm(context.Background(), stripeCredentials(t), "pi_7", renewal); !errors.Is(err, ErrUnexpectedState) {
+		t.Fatalf("a stranger's PaymentIntent: %v", err)
+	}
+	// A refund hint for a charge-only payment names the charge (no PaymentIntent).
+	event, err := stripeNotification(t, &Stripe{Now: func() time.Time { return testNow }},
+		`{"id":"evt_1","type":"charge.refunded","data":{"object":{"id":"ch_9","amount":9900,"amount_refunded":9900,"refunded":true,"currency":"usd"}}}`, true)
+	if err != nil || event.Kind != EventRefund || event.Reference != "ch_9" || event.Charge != "ch_9" {
+		t.Fatalf("a charge-only refund hint: %+v %v", event, err)
+	}
+}
+
+// Second review of #361, 4: a test-mode payment never confirms a live order, nor the reverse.
+func TestStripeTestModeNeverConfirmsALiveOrder(t *testing.T) {
+	fake := newFakeServer(t)
+	provider := &Stripe{BaseURL: fake.server.URL}
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) { return 200, intentJSON("succeeded", 9900, 0, false, false) })
+	live := expectOneTime
+	live.Live = true
+	if fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "pi_1", live); err != nil || fact.Outcome != OutcomeMismatch || fact.Mismatch != "mode" {
+		t.Fatalf("a test payment for a live order: %+v %v", fact, err)
+	}
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) {
+		return 200, strings.Replace(intentJSON("succeeded", 9900, 0, false, false), `"id":"pi_1",`, `"id":"pi_1","livemode":true,`, 1)
+	})
+	if fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "pi_1", expectOneTime); err != nil || fact.Outcome != OutcomeMismatch || fact.Mismatch != "mode" {
+		t.Fatalf("a live payment for a test order: %+v %v", fact, err)
+	}
+	if fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "pi_1", live); err != nil || fact.Outcome != OutcomePaid || !fact.Live {
+		t.Fatalf("a live payment for a live order: %+v %v", fact, err)
+	}
+}
+
+// Second review of #361, 5: the $0 invoice of a set-up is its own kind (provider behaviour to
+// verify), and a partial refund is its own outcome with the amounts.
+func TestStripeSetupInvoiceAndPartialRefund(t *testing.T) {
+	fake := newFakeServer(t)
+	provider := &Stripe{BaseURL: fake.server.URL}
+	fake.on(http.MethodGet, "/v1/invoices/in_0", func(recordedRequest) (int, string) {
+		return 200, strings.Replace(invoiceJSON("in_0", "paid", 0, true), `"amount_paid":0`, `"amount_paid":0,"amount_due":0,"total":0,"billing_reason":"subscription_create"`, 1)
+	})
+	renewal := Expected{Kind: OrderRenewalInvoice, Order: renewalOrder, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"}
+	fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "in_0", renewal)
+	if err != nil || fact.Outcome != OutcomeNothingCharged || fact.Kind != OrderSetupInvoice || fact.PaidMinor != 0 {
+		t.Fatalf("the $0 set-up invoice: %+v %v", fact, err)
+	}
+	// A later (renewal-cycle) invoice with nothing paid is not a set-up: still an anomaly.
+	fake.on(http.MethodGet, "/v1/invoices/in_z", func(recordedRequest) (int, string) {
+		return 200, strings.Replace(invoiceJSON("in_z", "paid", 0, true), `"amount_paid":0`, `"amount_paid":0,"amount_due":0,"total":0,"billing_reason":"subscription_cycle"`, 1)
+	})
+	if fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "in_z", renewal); !errors.Is(err, ErrUnexpectedState) || fact.Outcome == OutcomeNothingCharged {
+		t.Fatalf("a cycle invoice with nothing paid: %+v %v", fact, err)
+	}
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) { return 200, intentJSON("succeeded", 9900, 2500, false, false) })
+	fact, err = provider.Confirm(context.Background(), stripeCredentials(t), "pi_1", expectOneTime)
+	if err != nil || fact.Outcome != OutcomePartlyRefunded || fact.PaidMinor != 9900 || fact.RefundedMinor != 2500 {
+		t.Fatalf("a partial refund: %+v %v", fact, err)
+	}
+}
+
+// Second review of #361, 7: the manual provider has no webhook; a route dispatching by code
+// cannot reach it.
+func TestManualHasNoWebhook(t *testing.T) {
+	if _, err := (Manual{}).ParseNotification(context.Background(), "", Notification{Body: []byte(`{}`)}); !errors.Is(err, ErrNoWebhook) {
+		t.Fatalf("manual parse: %v", err)
+	}
+	registry := DefaultRegistry()
+	if _, ok := registry.WebhookProvider(ManualCode); ok {
+		t.Fatal("the manual provider is reachable from a webhook route")
+	}
+	if p, ok := registry.WebhookProvider(StripeCode); !ok || p.Code() != StripeCode {
+		t.Fatal("Stripe must be reachable from its webhook route")
+	}
+	if _, ok := registry.WebhookProvider("nobody"); ok {
+		t.Fatal("an unknown code")
 	}
 }
 

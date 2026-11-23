@@ -208,9 +208,14 @@ func TestStripeWebhookEvents(t *testing.T) {
 func TestStripeCancelRefundAndStatus(t *testing.T) {
 	fake := newFakeServer(t)
 	order := "CPS" + licenseID + "abcdefabcdef"
+	cancelAtPeriodEnd := "false"
 	fake.on(http.MethodPost, "/v1/subscriptions/sub_1", func(r recordedRequest) (int, string) {
 		form, _ := url.ParseQuery(string(r.Body))
-		return 200, `{"id":"sub_1","object":"subscription","cancel_at_period_end":` + form.Get("cancel_at_period_end") + `}`
+		cancelAtPeriodEnd = form.Get("cancel_at_period_end")
+		return 200, `{"id":"sub_1","object":"subscription","cancel_at_period_end":` + cancelAtPeriodEnd + `}`
+	})
+	fake.on(http.MethodGet, "/v1/subscriptions/sub_1", func(recordedRequest) (int, string) {
+		return 200, `{"id":"sub_1","status":"active","cancel_at_period_end":` + cancelAtPeriodEnd + `,"metadata":{"license_id":"` + licenseID + `","order":"` + renewalOrder + `"}}`
 	})
 	fake.on(http.MethodGet, "/v1/invoice_payments", func(r recordedRequest) (int, string) {
 		query, _ := url.ParseQuery(r.Query)
@@ -244,19 +249,19 @@ func TestStripeCancelRefundAndStatus(t *testing.T) {
 	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), change); err != nil {
 		t.Fatalf("resume: %v", err)
 	}
-	request := RefundRequest{Reference: "in_1", Order: order, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"}
+	expected := Expected{Kind: OrderRenewalInvoice, Order: order, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"}
+	request := RefundRequest{Reference: "in_1", Expected: expected}
 	if err := provider.Refund(context.Background(), stripeCredentials(t), request); err != nil {
 		t.Fatalf("refund: %v", err)
 	}
-	if got := fake.last(); got.Path != "/v1/refunds" || got.Header.Get("Idempotency-Key") != "refund-"+order+"-9900usd-a0" {
+	if got := fake.last(); got.Path != "/v1/refunds" || got.Header.Get("Idempotency-Key") != "refund-pi_1-9900usd-a0" {
 		t.Fatalf("refund request: %+v", got)
 	}
 	request.Reference = "in_9"
 	if err := provider.Refund(context.Background(), stripeCredentials(t), request); !errors.Is(err, ErrProviderRefused) {
-		t.Fatalf("refund of an unpaid invoice: %v", err)
+		t.Fatalf("refund of an unknown invoice: %v", err)
 	}
-	fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "in_1",
-		Expected{Kind: OrderRenewalInvoice, Order: order, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"})
+	fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "in_1", expected)
 	if err != nil || fact.Outcome != OutcomePaid || fact.Status != StatusSucceeded {
 		t.Fatalf("status: %+v %v", fact, err)
 	}

@@ -110,6 +110,18 @@ var (
 	// CelikPanel: ErrUnexpectedState: the provider's object is in a shape this package does not
 	// apply (for example an invoice marked paid with nothing paid); the operator looks at it.
 	ErrUnexpectedState = errors.New("payment: the provider's object is in an unexpected state")
+	// CelikPanel (second review of #361): the answers of Refund and SetRenewal that are FINAL
+	// -- the store records them and does not try again.
+	ErrMismatch           = errors.New("payment: the provider's object is not the order's (nothing was done)")
+	ErrAlreadyRefunded    = errors.New("payment: the payment is already refunded (nothing was done)")
+	ErrPartlyRefunded     = errors.New("payment: the payment is partly refunded; the operator decides (nothing was done)")
+	ErrNothingPaid        = errors.New("payment: nothing was paid on this order (nothing was done)")
+	ErrAlreadyInThatState = errors.New("payment: automatic renewal is already in that state (nothing was done)")
+	// ErrProviderBusy: the provider is still working on a request with the same idempotency
+	// key (409). Not a refusal: ask again with the same key and attempt.
+	ErrProviderBusy = errors.New("payment: the provider is still handling the same request")
+	// ErrNoWebhook: this provider receives nothing from outside (the manual provider).
+	ErrNoWebhook = errors.New("payment: this provider has no webhook")
 )
 
 // Credentials are a provider's secret as the owner placed it ("" when none). Never logged.
@@ -195,8 +207,11 @@ type Event struct {
 	// Order and LicenseID as the body names them: only for finding the store's own order.
 	Order     string
 	LicenseID string
-	// PaymentIntent, Refund, Dispute and Subscription name the provider's objects (ids only).
+	// PaymentIntent, Charge, Refund, Dispute and Subscription name the provider's objects
+	// (ids only). A refund or dispute hint carries the charge too, so a payment made by a
+	// charge alone (some invoices) is found.
 	PaymentIntent string
+	Charge        string
 	Refund        string
 	Dispute       string
 	Subscription  string
@@ -213,16 +228,22 @@ const (
 	OrderSubscriptionSetup OrderKind = "subscription_setup"
 	// OrderRenewalInvoice: one year charged by the subscription (an invoice).
 	OrderRenewalInvoice OrderKind = "renewal_invoice"
+	// OrderSetupInvoice: the $0 invoice a subscription with a deferred first charge makes when
+	// it is set up (provider behaviour to verify, V4). Nothing was charged; not an anomaly.
+	OrderSetupInvoice OrderKind = "setup_invoice"
 )
 
 // Expected is what the store's order says should have happened: the order the provider must
 // echo, the licence, and the amount and currency that must have been paid.
+//
+// Live is the order's mode: a test-mode payment never confirms a live order, nor the reverse.
 type Expected struct {
 	Kind        OrderKind
 	Order       string
 	LicenseID   string
 	AmountMinor int64
 	Currency    string
+	Live        bool
 }
 
 // Outcome is what Confirm found.
@@ -235,6 +256,11 @@ const (
 	OutcomeNotPaid Outcome = "not_paid"
 	// OutcomeRefunded: the payment arrived and was given back in full.
 	OutcomeRefunded Outcome = "refunded"
+	// OutcomePartlyRefunded: part of the payment was given back (a Dashboard refund). Never
+	// "paid", never "refunded": D-047's draft has no partial refunds, so the operator decides.
+	OutcomePartlyRefunded Outcome = "partly_refunded"
+	// OutcomeNothingCharged: a $0 set-up invoice; nothing to apply.
+	OutcomeNothingCharged Outcome = "nothing_charged"
 	// OutcomeSetUp: a subscription is in place; nothing was charged (subscription set-up only).
 	OutcomeSetUp Outcome = "set_up"
 	// OutcomeMismatch: the provider's object is not what the order expects (Fact.Mismatch says
@@ -246,7 +272,13 @@ const (
 // order. PaidMinor is set only when money arrived.
 type Fact struct {
 	Outcome  Outcome
-	Mismatch string // "kind", "order", "licence", "amount" or "currency" when Outcome is mismatch
+	Mismatch string // "mode", "kind", "order", "licence", "amount" or "currency" when Outcome is mismatch
+	// PaymentID is the provider's own payment object (the PaymentIntent, or the charge when a
+	// payment has no PaymentIntent): the same whether the fact was reached through a Checkout
+	// Session, a PaymentIntent, a charge or an invoice. Fulfil once per (provider, PaymentID).
+	PaymentID string
+	// Live is the provider's own mode of the object (true: live, false: test).
+	Live bool
 	// Status is the provider's own state behind the outcome, for Advance.
 	Status        Status
 	Kind          OrderKind
@@ -287,17 +319,23 @@ type RenewalFact struct {
 	Customer          string
 	Active            bool
 	CancelAtPeriodEnd bool
-	Mismatch          bool // the subscription names another licence
+	Live              bool
+	Mismatch          bool // the subscription names another licence, or is of the other mode
 }
 
 // RenewalChange turns automatic renewal on or off. Change is the store's id for this change
 // (one id per member action): with the licence and the target state it makes the idempotency key,
 // so a retried call is the same change and a later change is a new one.
+//
+// SetRenewal reads the subscription first and acts only on the licence's own subscription in
+// the order's mode: another licence's is ErrMismatch, one already in the asked state is
+// ErrAlreadyInThatState; both are final and nothing is changed.
 type RenewalChange struct {
 	Subscription string
 	LicenseID    string
 	On           bool
 	Change       string
+	Live         bool
 }
 
 // RenewalSwitch is a provider whose subscription must be told when the member turns automatic
@@ -306,19 +344,19 @@ type RenewalSwitch interface {
 	SetRenewal(ctx context.Context, credentials Credentials, change RenewalChange) error
 }
 
-// RefundRequest gives a confirmed payment back, whole (CelikPanel). Reference is the order's
-// provider object (Checkout Session or invoice) or the PaymentIntent; AmountMinor and Currency are
-// the order's. Attempt numbers the store's tries: keep it while the outcome is unknown (a timeout
-// or a 5xx is asked again with the same key, and the provider answers once), raise it only after a
-// definite refusal the store wants to try again (a cached refusal would otherwise come back).
+// RefundRequest gives an order's payment back, whole (CelikPanel). Reference is the order's
+// provider object (Checkout Session, invoice, PaymentIntent or charge) and Expected the order.
+// Refund confirms first and acts only on the order's own, fully paid payment:
+//
+//   - final, do not retry: ErrMismatch, ErrAlreadyRefunded, ErrPartlyRefunded, ErrNothingPaid;
+//   - ErrProviderUnavailable, ErrProviderBusy: the outcome is unknown or still being made; ask
+//     again with the SAME Attempt (the provider answers once per key);
+//   - ErrProviderRefused: a definite refusal; to try again, raise Attempt (a new key), so the
+//     provider asks itself again instead of answering from its cache.
 type RefundRequest struct {
-	Reference     string
-	PaymentIntent string
-	Order         string
-	LicenseID     string
-	AmountMinor   int64
-	Currency      string
-	Attempt       int
+	Reference string
+	Expected  Expected
+	Attempt   int
 }
 
 // Provider is one way of taking money. Implementations must be safe for concurrent use.
@@ -345,6 +383,20 @@ func NewRegistry(providers ...Provider) *Registry {
 		r.providers[p.Code()] = p
 	}
 	return r
+}
+
+// WebhookProvider is the provider a webhook route may dispatch to: only one that receives
+// notifications from outside (ConfigSchema().Webhook). The manual provider never is.
+func (r *Registry) WebhookProvider(code string) (Provider, bool) {
+	p, ok := r.Get(code)
+	if !ok {
+		return nil, false
+	}
+	configurable, ok := p.(Configurable)
+	if !ok || !configurable.ConfigSchema().Webhook {
+		return nil, false
+	}
+	return p, true
 }
 
 // DefaultRegistry is what the product runs with: the manual provider and Stripe. A provider is
@@ -446,7 +498,7 @@ func (Manual) ParseEntry(notification Notification) (Fact, error) {
 	if err != nil {
 		return Fact{}, ErrInvalidNotification
 	}
-	fact := Fact{Status: status, Kind: OrderOneTime, Reference: reference, LicenseID: license, Currency: currency}
+	fact := Fact{Status: status, Kind: OrderOneTime, Reference: reference, PaymentID: "manual:" + reference, LicenseID: license, Currency: currency}
 	switch status {
 	case StatusSucceeded:
 		fact.Outcome, fact.PaidMinor = OutcomePaid, minor
@@ -458,13 +510,11 @@ func (Manual) ParseEntry(notification Notification) (Fact, error) {
 	return fact, nil
 }
 
-// ParseNotification implements Provider: the entry's identifiers; ParseEntry gives its facts.
-func (m Manual) ParseNotification(_ context.Context, _ Credentials, notification Notification) (Event, error) {
-	fact, err := m.ParseEntry(notification)
-	if err != nil {
-		return Event{}, err
-	}
-	return Event{Provider: ManualCode, Reference: fact.Reference, LicenseID: fact.LicenseID}, nil
+// ParseNotification implements Provider: the manual provider has no webhook, so nothing from
+// outside is ever parsed as its notification (second review of #361, 7). The operator's
+// entries come only through ParseEntry, from the operator's own authenticated tool.
+func (Manual) ParseNotification(context.Context, Credentials, Notification) (Event, error) {
+	return Event{}, ErrNoWebhook
 }
 
 // Refund implements Provider: a manual refund is the operator's entry with status refunded.

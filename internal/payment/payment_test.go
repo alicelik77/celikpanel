@@ -51,9 +51,12 @@ func TestManualEntryIsChecked(t *testing.T) {
 	if err != nil || fact.Outcome != OutcomePaid || fact.PaidMinor != 9900 || fact.LicenseID != licenseID || fact.Currency != "USD" {
 		t.Fatalf("a stated payment is a paid year: %+v %v", fact, err)
 	}
-	if event, err := (Manual{}).ParseNotification(context.Background(), "", Notification{Body: []byte(ok)}); err != nil ||
-		event.Provider != ManualCode || event.LicenseID != licenseID || event.Reference != "dekont-1" {
-		t.Fatalf("the entry's identifiers: %+v %v", event, err)
+	if fact.PaymentID != "manual:dekont-1" {
+		t.Fatalf("the entry's payment id: %q", fact.PaymentID)
+	}
+	// Second review of #361, 7: an entry is the operator's, never a webhook body.
+	if _, err := (Manual{}).ParseNotification(context.Background(), "", Notification{Body: []byte(ok)}); !errors.Is(err, ErrNoWebhook) {
+		t.Fatalf("a manual entry through the webhook path: %v", err)
 	}
 	for body, want := range map[string]error{
 		`{` + l + `,"reference":"r","status":"succeeded","amount":"1","currency":"TRY","period":"monthly"}`:                      ErrPeriodNotYearly,
