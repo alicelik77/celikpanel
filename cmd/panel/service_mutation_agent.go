@@ -860,8 +860,10 @@ func (p *Panel) startObservedAgentMutationHeartbeatSince(
 			case <-stop:
 				return
 			case <-timer.C:
-				if stopCtx.Err() != nil {
+				select {
+				case <-stop:
 					return
+				default:
 				}
 				sent := time.Now()
 				remaining := window - sent.Sub(lastAnswered)
@@ -875,7 +877,10 @@ func (p *Panel) startObservedAgentMutationHeartbeatSince(
 				pingCtx, pingCancel := context.WithTimeout(stopCtx, remaining)
 				job, err := p.heartbeatAgentMutation(pingCtx, binding, "")
 				pingCancel()
-				if stopCtx.Err() != nil {
+				// A renewal cut short by the caller's stop says nothing;
+				// one that answered is still read (it may carry the exact
+				// terminal success of a standalone mutation).
+				if err != nil && stopCtx.Err() != nil {
 					return
 				}
 				if expected != nil && job != nil {
@@ -923,15 +928,22 @@ func (p *Panel) startObservedAgentMutationHeartbeatSince(
 	}()
 	return func() (*agentMutationJob, error) {
 		once.Do(func() {
-			stopCancel()
 			close(stop)
 			// Wait for an in-flight heartbeat before the caller commits a
 			// terminal result. Otherwise a late heartbeat failure can race a
-			// successful FinishServiceMutation call.
+			// successful FinishServiceMutation call. A renewal may now wait
+			// for the rest of the window, so the wait is bounded by one
+			// interval (as before); past it the renewal is cut short.
 			// Çağıran terminal sonucu kaydetmeden önce devam eden heartbeat'i
 			// bekle. Aksi halde geç gelen heartbeat hatası başarılı
 			// FinishServiceMutation çağrısıyla yarışabilir.
-			<-done
+			select {
+			case <-done:
+			case <-time.After(interval):
+				stopCancel()
+				<-done
+			}
+			stopCancel()
 		})
 		return cloneAgentMutationJob(observedTerminal), observedErr
 	}
