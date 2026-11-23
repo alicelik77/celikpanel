@@ -133,6 +133,8 @@ func planNodeSite(ctx context.Context, req *AppApplyRequest, unitPath string) (n
 		DropInDir: unitPath + ".d",
 		// alpha.128: the site's environment file, named while it exists.
 		EnvFile: nodeSiteEnvFileIfPresent(req.SiteID),
+		// A later release's site slice is kept (site_slice_keep.go).
+		InSlice: exists && unitKeepsSiteSlice(text, req.SiteID, filepath.Dir(unitPath)),
 	}
 	body, err := nodesite.RenderUnit(params)
 	if err != nil {
