@@ -330,3 +330,68 @@ func TestMigrateStoreCommand(t *testing.T) {
 		t.Fatalf("reconcile: %d\n%s\n%s", code, out, stderr)
 	}
 }
+
+// S2: the operator's store commands. Acts need the operator's name and a reason; each is in
+// the audit log. The exceptional refund is not run here (it would ask the provider); its path
+// is tested in internal/membership against a fake provider.
+func TestOperatorCommands(t *testing.T) {
+	f := newFixture(t, "https://account.example")
+	env := []string{"CELIKPANEL_MEMBERSHIP_PRIVATE=" + f.dir}
+	key := " -test-signing-public-key " + hex.EncodeToString(f.public)
+	if code, _, _ := run(t, env, "orders"+key, nil); code != 1 {
+		t.Fatalf("before the store: %d", code)
+	}
+	if code, _, _ := run(t, env, "migrate-store -operator test"+key, nil); code != 0 {
+		t.Fatal("migrate-store")
+	}
+	for _, args := range []string{"test-account -email owner@example.com -on", "price -operator test -amount 129.00", "extend -operator test -licence x -days 3", "refund -operator test -order x"} {
+		if code, _, _ := run(t, env, args+key, nil); code != 2 {
+			t.Fatalf("%s without an operator or a reason: %d", args, code)
+		}
+	}
+	if code, out, stderr := run(t, env, "test-account -operator test -email owner@example.com -on -reason trying"+key, nil); code != 0 || !strings.Contains(out, "test account true") {
+		t.Fatalf("test-account: %d %s %s", code, out, stderr)
+	}
+	if code, out, stderr := run(t, env, "price -operator test -amount 129.00 -from 2030-01-01 -reason later"+key, nil); code != 0 || !strings.Contains(out, "price 129.00 USD from 2030-01-01") {
+		t.Fatalf("price: %d %s %s", code, out, stderr)
+	}
+	s, err := membership.OpenExisting(filepath.Join(f.dir, "members.sqlite"), f.secret, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	member, _ := s.MemberIDByEmail("owner@example.com")
+	licences, _ := s.Licenses(member)
+	before := licences[0].Expires.Int64
+	s.Close()
+	if code, out, stderr := run(t, env, "extend -operator test -licence "+licences[0].ID+" -days 10 -reason gift"+key, nil); code != 0 || !strings.Contains(out, "extended by 10 days") {
+		t.Fatalf("extend: %d %s %s", code, out, stderr)
+	}
+	s, err = membership.OpenExisting(filepath.Join(f.dir, "members.sqlite"), f.secret, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	licences, _ = s.Licenses(member)
+	if licences[0].Expires.Int64 != before+10*86400 {
+		t.Fatalf("the extension: %d -> %d", before, licences[0].Expires.Int64)
+	}
+	if test, _ := s.IsTestAccount(member); !test {
+		t.Fatal("the test-account flag")
+	}
+	lines, _ := s.Audit("")
+	acts := map[string]string{}
+	for _, l := range lines {
+		acts[l.Action] = l.Actor + " " + l.Why
+	}
+	for _, want := range []string{"test_account", "price_set", "extended_by_hand"} {
+		if !strings.HasPrefix(acts[want], "operator:test ") {
+			t.Fatalf("%s is not in the log with the operator: %v", want, acts)
+		}
+	}
+	if code, out, _ := run(t, env, "orders -pending"+key, nil); code != 0 || out != "" {
+		t.Fatalf("orders: %d %q", code, out)
+	}
+	if code, _, _ := run(t, env, "order -id CPCnothing"+key, nil); code != 1 {
+		t.Fatalf("an unknown order: %d", code)
+	}
+}

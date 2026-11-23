@@ -424,6 +424,13 @@ func (s *Service) OrderByPayment(provider, paymentID string) (Order, error) {
 	return s.GetOrder(id)
 }
 
+// PaidAt is when the store first confirmed a payment for this order (0: none).
+func (s *Service) PaidAt(orderID string) (int64, error) {
+	var at sql.NullInt64
+	err := s.db.QueryRowContext(context.Background(), "SELECT MIN(confirmed) FROM store_payments WHERE order_id=?", orderID).Scan(&at)
+	return at.Int64, err
+}
+
 // Expected is what the provider must confirm for this order (Confirm's input).
 func (o Order) Expected() payment.Expected {
 	return payment.Expected{Kind: payment.OrderOneTime, Order: o.ID, LicenseID: o.LicenseID, AmountMinor: o.AmountMinor, Currency: o.Currency, Live: o.Live}
@@ -1028,4 +1035,18 @@ func (s *Service) LicenceRevocation(licenseID string) (bool, string, error) {
 		return false, "", nil
 	}
 	return at.Valid, why.String, err
+}
+
+// MemberIDByEmail finds a member for the operator's commands (0 when there is none).
+func (s *Service) MemberIDByEmail(email string) (int64, error) {
+	normal, err := normalEmail(email)
+	if err != nil {
+		return 0, err
+	}
+	var id int64
+	err = s.db.QueryRowContext(context.Background(), "SELECT id FROM members WHERE email=?", normal).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	return id, err
 }

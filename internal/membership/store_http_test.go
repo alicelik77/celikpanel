@@ -86,6 +86,18 @@ func (f *fakeStripe) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		io.WriteString(w, f.sessionJSON(s))
+	case r.Method == http.MethodPost && r.URL.Path == "/v1/refunds":
+		f.refunds++
+		r.ParseForm()
+		for _, s := range f.sessions {
+			if "pi_"+s.id == r.PostForm.Get("payment_intent") && s.paid {
+				s.refunded = s.amount
+				io.WriteString(w, `{"id":"re_`+s.id+`","status":"succeeded"}`)
+				return
+			}
+		}
+		w.WriteHeader(400)
+		io.WriteString(w, `{"error":{"code":"resource_missing"}}`)
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/payment_intents/"):
 		for _, s := range f.sessions {
 			if "pi_"+s.id == strings.TrimPrefix(r.URL.Path, "/v1/payment_intents/") {
@@ -148,6 +160,7 @@ type storeSite struct {
 	member  int64
 	licence Issued
 	logged  []string
+	mails   []sentMail
 	mu      sync.Mutex
 }
 
@@ -159,6 +172,12 @@ func newStoreSite(t *testing.T, charging string, keyMode string) *storeSite {
 	site.handler = &Handler{Private: site.dir, RemoteAddr: PeerAddress,
 		Payments: payment.NewRegistry(payment.Manual{}, &payment.Stripe{BaseURL: site.stripe.server.URL}),
 		Log:      func(line string) { site.mu.Lock(); site.logged = append(site.logged, line); site.mu.Unlock() }}
+	site.handler.sendMail = func(to, subject, body string) error {
+		site.mu.Lock()
+		defer site.mu.Unlock()
+		site.mails = append(site.mails, sentMail{Email: to, Purpose: subject, Token: body})
+		return nil
+	}
 	site.server = httptest.NewUnstartedServer(site.handler)
 	site.server.StartTLS()
 	t.Cleanup(site.server.Close)
@@ -326,10 +345,28 @@ func TestBuyAYearThroughThePages(t *testing.T) {
 	if !strings.Contains(page, "Paid.") || !strings.Contains(page, day(want)) || site.expires() != want {
 		t.Fatalf("after paying: %s (expires %d, want %d)", page, site.expires(), want)
 	}
+	// One receipt mail, to the verified address, with nothing secret in it.
+	site.mu.Lock()
+	mails := append([]sentMail(nil), site.mails...)
+	site.mu.Unlock()
+	if len(mails) != 1 || mails[0].Email != "buyer@example.com" || !strings.Contains(mails[0].Purpose, order.ID) ||
+		!strings.Contains(mails[0].Token, "This receipt is not a tax invoice.") || !strings.Contains(mails[0].Token, "99.00 USD") {
+		t.Fatalf("the receipt mail: %+v", mails)
+	}
+	for _, secret := range []string{"sk_test_", "whsec_", "cs_test_", "pi_"} {
+		if strings.Contains(mails[0].Token+mails[0].Purpose, secret) {
+			t.Fatalf("the receipt mail carries %q", secret)
+		}
+	}
 	// The webhook that arrives afterwards changes nothing.
 	if status, _ := site.event(completed("evt_1", session, order.ID, site.licence.ID), site.webhook); status != 200 || site.expires() != want {
 		t.Fatalf("the late webhook: %d", status)
 	}
+	site.mu.Lock()
+	if len(site.mails) != 1 {
+		t.Fatalf("a second receipt: %d mails", len(site.mails))
+	}
+	site.mu.Unlock()
 	// The licence now has a paid year: "Renew for a year", from the new end, at the same price.
 	_, _, home = site.page(http.MethodGet, "lang=en", nil)
 	if strings.Contains(home, ">Buy a year") || !strings.Contains(home, "Renew for a year · 99.00 USD") {
@@ -340,7 +377,23 @@ func TestBuyAYearThroughThePages(t *testing.T) {
 		!strings.Contains(renew, "Payments are not refunded.") || !strings.Contains(renew, "Continue to payment") {
 		t.Fatalf("the renewal page: %s", renew)
 	}
+	// The payments list and the receipt (not a tax invoice), in both languages.
+	if !strings.Contains(home, "Your payments") || !strings.Contains(home, "paid "+day(order.Created)) || !strings.Contains(home, "action=receipt&amp;id="+order.ID) {
+		t.Fatalf("the payments list: %s", home)
+	}
+	_, _, receipt := site.page(http.MethodGet, "action=receipt&id="+order.ID+"&lang=en", nil)
+	for _, w := range []string{"<h1>Receipt</h1>", order.ID, "Paid on (UTC)", "99.00 USD", "First year, " + day(before) + " – " + day(want), "This receipt is not a tax invoice.", "Test mode: no real money was taken."} {
+		if !strings.Contains(receipt, w) {
+			t.Fatalf("the receipt lacks %q: %s", w, receipt)
+		}
+	}
+	if _, _, tr := site.page(http.MethodGet, "action=receipt&id="+order.ID+"&lang=tr", nil); !strings.Contains(tr, "Bu makbuz bir vergi faturası değildir.") {
+		t.Fatalf("the receipt in Turkish: %s", tr)
+	}
 	// Another member's order is not shown.
+	if _, _, body := site.page(http.MethodGet, "action=receipt&id=CPC"+strings.Repeat("0", 44)+"&lang=en", nil); !strings.Contains(body, "Order not found.") {
+		t.Fatalf("an unknown receipt: %s", body)
+	}
 	if _, _, body := site.page(http.MethodGet, "action=order&id=CPC"+strings.Repeat("0", 44)+"&lang=en", nil); !strings.Contains(body, "Order not found.") {
 		t.Fatalf("an unknown order: %s", body)
 	}
@@ -538,5 +591,42 @@ func TestReconciliation(t *testing.T) {
 	}
 	if must(site.s.GetOrder(o2.ID)).State != OrderExpired {
 		t.Fatal("the unpaid order did not close")
+	}
+}
+
+// The operator's exceptional refund (there are no refunds by policy): a reason is required, the
+// provider is asked with confirm-first, and the confirmed refund revokes the first year.
+func TestOperatorRefund(t *testing.T) {
+	site := newStoreSite(t, "test", "test")
+	session := site.buy()
+	site.stripe.pay(session)
+	order := must(site.s.OrderByProviderRef("stripe", session))
+	config := must(LoadConfig(site.dir))
+	if _, _, page := site.page(http.MethodGet, "action=order&id="+order.ID+"&lang=en", nil); !strings.Contains(page, "Paid.") {
+		t.Fatal("not paid")
+	}
+	if _, _, err := site.s.OperatorRefund(t.Context(), site.handler.Payments, config, "operator:test", order.ID, ""); err != ErrInvalidRequest {
+		t.Fatalf("without a reason: %v", err)
+	}
+	r, o, err := site.s.OperatorRefund(t.Context(), site.handler.Payments, config, "operator:test", order.ID, "an exceptional act for a test")
+	if err != nil || r.State != "done" || o.State != OrderRefunded || site.stripe.refunds != 1 {
+		t.Fatalf("the refund: %+v %+v %v (%d refund calls)", r, o, err, site.stripe.refunds)
+	}
+	if revoked, _, _ := site.s.LicenceRevocation(site.licence.ID); !revoked {
+		t.Fatal("the refunded first year was not revoked")
+	}
+	if _, _, err := site.s.OperatorRefund(t.Context(), site.handler.Payments, config, "operator:test", order.ID, "again"); err != ErrRefundNotPossible || site.stripe.refunds != 1 {
+		t.Fatalf("a second refund: %v", err)
+	}
+	// Nothing on the member's pages offers a refund.
+	_, _, home := site.page(http.MethodGet, "lang=en", nil)
+	_, _, receipt := site.page(http.MethodGet, "action=receipt&id="+order.ID+"&lang=en", nil)
+	for _, page := range []string{home, receipt} {
+		if strings.Contains(strings.ToLower(page), "refund") && !strings.Contains(page, "Payments are not refunded") {
+			t.Fatalf("a page speaks of refunds: %s", page)
+		}
+	}
+	if !strings.Contains(receipt, "Payment reversed") {
+		t.Fatalf("the receipt of a reversed payment: %s", receipt)
 	}
 }

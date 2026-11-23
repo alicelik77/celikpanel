@@ -63,6 +63,8 @@ type Handler struct {
 	// Payments is the set of payment providers; nil is payment.DefaultRegistry() (tests put a
 	// Stripe pointed at a fake server here).
 	Payments *payment.Registry
+	// sendMail replaces the store mails' transport (tests).
+	sendMail func(to, subject, body string) error
 }
 
 func (h *Handler) wall() time.Time {
@@ -550,6 +552,15 @@ func (x *exchange) pages(service *Service, config Config, ip string, get phpVars
 		}
 		if action == "buy" && x.r.Method == http.MethodGet {
 			action, errorCode = x.buyPage(service, config, member, licenses, get.str("id"), store)
+		}
+		if action == "receipt" {
+			action, errorCode = "home", string(ErrOrderNotFound)
+			for i := range store.orders {
+				o := store.orders[i]
+				if o.ID == get.str("id") && store.paidAt[o.ID] != 0 {
+					store.receipt, action, errorCode = &store.orders[i], "receipt", ""
+				}
+			}
 		}
 		if action == "order" {
 			order, err := x.settle(service, config, member, get.str("id"))

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -91,6 +92,10 @@ func (x *exchange) buy(service *Service, config Config, member *Member, licenseI
 	if err != nil {
 		return "", err
 	}
+	// Its own bucket (the reviews' list, 10): a member starts at most 20 checkouts an hour.
+	if err := service.Limit("buy:"+strconv.FormatInt(member.ID, 10), 20, 3600); err != nil {
+		return "", err
+	}
 	order, err := service.CreateOrder(member.ID, licenseID, config.Charging)
 	if err != nil {
 		return "", err
@@ -153,7 +158,23 @@ func (x *exchange) settle(service *Service, config Config, member *Member, order
 	if err != nil {
 		return order, nil
 	}
-	return service.ApplyFact(order.ID, order.Provider, "member:return", fact)
+	applied, err := service.ApplyFact(order.ID, order.Provider, "member:return", fact)
+	if err != nil {
+		return order, err
+	}
+	x.receipt(service, config, order, applied)
+	return applied, nil
+}
+
+// receipt mails the receipt when this request made the order paid (once: only the request
+// that moved it).
+func (x *exchange) receipt(service *Service, config Config, before, after Order) {
+	if before.State == OrderPaid || after.State != OrderPaid {
+		return
+	}
+	if err := service.sendReceipt(after, x.h.mail(config)); err != nil {
+		x.h.log("the receipt mail could not be sent; the receipt stays on the member's page")
+	}
 }
 
 // webhook is the provider's notification route: POST /account/?action=webhook&provider=CODE.
@@ -238,9 +259,11 @@ func (x *exchange) webhook(service *Service, config Config, ip string, get phpVa
 		x.h.log("webhook: the provider's object is in an unexpected state; the operator looks at it")
 		return record()
 	}
-	if _, err := service.ApplyFact(order.ID, code, "provider:"+code, fact); err != nil {
+	applied, err := service.ApplyFact(order.ID, code, "provider:"+code, fact)
+	if err != nil {
 		return err
 	}
+	x.receipt(service, config, order, applied)
 	return record()
 }
 
@@ -279,6 +302,8 @@ func (s *Service) findOrder(provider string, event payment.Event) (Order, error)
 type ReconcileReport struct {
 	Confirmed, Paid, Expired, Refunded, Unreachable int
 	Mismatches                                      []Order
+	// PaidOrders became paid in this run: their receipts are to be mailed.
+	PaidOrders []Order
 }
 
 // Reconcile asks the provider about every open order older than ten minutes and every
@@ -339,6 +364,7 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 		switch {
 		case applied.State == OrderPaid && o.State != OrderPaid:
 			report.Paid++
+			report.PaidOrders = append(report.PaidOrders, applied)
 		case applied.State == OrderRefunded:
 			report.Refunded++
 		case applied.State == OrderMismatch:
@@ -355,13 +381,22 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 
 // storePage gathers the store's facts for the signed-in member's pages.
 func (x *exchange) storePage(service *Service, config Config, member *Member, licenses []License) (*storePage, error) {
-	store := &storePage{charging: config.Charging, revoked: map[string]bool{}, quotes: map[string]Quote{}}
+	store := &storePage{charging: config.Charging, revoked: map[string]bool{}, quotes: map[string]Quote{}, paidAt: map[string]int64{}}
 	store.ready = config.Charging == ChargingTest && PaymentState(x.h.payments(), config) == PaymentReady
 	orders, err := service.Orders(member.ID)
 	if err != nil {
 		return nil, err
 	}
 	store.orders = orders
+	for _, o := range orders {
+		if o.State == OrderPaid || o.State == OrderRefunded {
+			at, err := service.PaidAt(o.ID)
+			if err != nil {
+				return nil, err
+			}
+			store.paidAt[o.ID] = at
+		}
+	}
 	for _, l := range licenses {
 		revoked, _, err := service.LicenceRevocation(l.ID)
 		if err != nil {
@@ -400,4 +435,45 @@ func (x *exchange) buyPage(service *Service, config Config, member *Member, lice
 		return "buy", ""
 	}
 	return "home", string(ErrLicenseNotFound)
+}
+
+// OperatorRefund is the operator's exceptional act (there are no refunds by policy): with a
+// reason, the attempt persisted first, the provider's Refund with confirm-first, its answer
+// recorded, and -- when the provider accepted -- the order confirmed again so a completed
+// refund is applied at once (otherwise reconciliation completes it).
+func (s *Service) OperatorRefund(ctx context.Context, registry *payment.Registry, config Config, actor, orderID, reason string) (Refund, Order, error) {
+	r, err := s.RequestRefund(actor, orderID, reason)
+	if err != nil {
+		return Refund{}, Order{}, err
+	}
+	order, err := s.GetOrder(orderID)
+	if err != nil {
+		return r, order, err
+	}
+	provider, ok := registry.WebhookProvider(order.Provider)
+	if !ok || config.PaymentProvider != order.Provider || PaymentState(registry, config) != PaymentReady || order.ProviderRef == "" {
+		return r, order, ErrPaymentNotReady
+	}
+	answer := provider.Refund(ctx, config.PaymentCredentials, payment.RefundRequest{Reference: order.ProviderRef, Expected: order.Expected(), Attempt: r.Attempt})
+	if err := s.RefundAnswered(r.ID, actor, answer); err != nil {
+		return r, order, err
+	}
+	if answer == nil || errors.Is(answer, payment.ErrAlreadyRefunded) {
+		if confirmer, ok := provider.(payment.Confirmer); ok {
+			if fact, err := confirmer.Confirm(ctx, config.PaymentCredentials, order.ProviderRef, order.Expected()); err == nil {
+				if order, err = s.ApplyFact(order.ID, order.Provider, actor, fact); err != nil {
+					return r, order, err
+				}
+			}
+		}
+	}
+	refunds, err := s.Refunds(orderID)
+	if err == nil {
+		for _, x := range refunds {
+			if x.ID == r.ID {
+				r = x
+			}
+		}
+	}
+	return r, order, answer
 }

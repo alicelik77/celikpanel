@@ -96,6 +96,9 @@ func (p *page) titles() map[string]string {
 	if p.store != nil && p.store.order != nil {
 		titles["order"] = p.t("Siparişiniz", "Your order")
 	}
+	if p.store != nil && p.store.receipt != nil {
+		titles["receipt"] = p.t("Makbuz", "Receipt")
+	}
 	if p.store != nil && p.store.buy != nil {
 		titles["buy"] = p.t("Bir yıl satın alın", "Buy a year")
 		if p.store.quote.Kind == KindRenewal {
@@ -185,6 +188,8 @@ func (p *page) render() string {
 		p.orderPage(&b)
 	case action == "buy" && p.member != nil && p.store != nil && p.store.buy != nil:
 		p.buyPage(&b)
+	case action == "receipt" && p.member != nil && p.store != nil && p.store.receipt != nil:
+		p.receiptPage(&b)
 	case (action == "release" || action == "renew" || action == "reveal" || action == "rotate" || action == "remove") && p.member != nil:
 		p.confirm(&b, action)
 	default:
@@ -255,6 +260,7 @@ func (p *page) home(b *strings.Builder) {
 		b.WriteString(`</article>`)
 	}
 	b.WriteString(`</div>` + "\n")
+	p.payments(b)
 	b.WriteString(`<section class="member-install"><h2>` + p.t("Sunucunuza kurun", "Install on your server") + `</h2><p>` +
 		p.t("Desteklenen temiz bir Linux sunucusunda çalıştırın. Terminalde yönetici hesabınızı oluşturun; kurulum bitince panele giriş yapıp lisans anahtarınızı girin. Yönetici parolası bu websitesiyle paylaşılmaz.",
 			"Run on a supported clean Linux server. Create your administrator account in the terminal, then sign in to the panel and enter your license key. The administrator password is not shared with this website.") +

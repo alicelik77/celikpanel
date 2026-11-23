@@ -789,6 +789,14 @@ are for a move to another host.
    would reject every panel bound on the new side, because it has no "database behind"
    answer.
 
+   **Once the store has been used, there is no going back to the PHP service on that file.**
+   The Go store ends a licence whose payment was reversed by marking it "revoked". The PHP
+   service does not read that mark. On such a file it would still let the member renew that
+   licence for free and then let a server activate it again: a licence that was taken back
+   would work. So after the first order (check-db shows "orders" above 0, and says so when
+   a licence was revoked), going back means the Go service on the same file, or a copy of it,
+   never the PHP service. Before the first order, going back to PHP is as described above.
+
 ---
 
 ## f. Existing free licences and beta participants

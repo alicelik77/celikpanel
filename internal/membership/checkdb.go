@@ -190,8 +190,8 @@ func (r DBReport) Print(w io.Writer) {
 		fmt.Fprintln(w, "store: not set up (membership migrate-store creates it); charging is off")
 	} else {
 		fmt.Fprintf(w, "store: version %d; orders %d (paid %d, for the operator %d); licences revoked by a refund %d\n", r.StoreVersion, r.Orders, r.OrdersPaid, r.OrdersMismatch, r.Revoked)
-		if r.Revoked > 0 {
-			fmt.Fprintln(w, "note: the PHP service must not serve this file again: it does not read \"revoked\"")
+		if r.Orders > 0 || r.Revoked > 0 {
+			fmt.Fprintln(w, "note: the PHP service must not serve this file again: it does not read the store's \"revoked\" mark")
 		}
 	}
 	switch r.Charging {

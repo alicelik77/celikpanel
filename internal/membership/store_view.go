@@ -20,6 +20,8 @@ type storePage struct {
 	quotes   map[string]Quote
 	buy      *License // the page before payment: its licence and quote
 	quote    Quote
+	paidAt   map[string]int64 // order id -> first confirmation of its payment
+	receipt  *Order           // the receipt page's order
 }
 
 func money(minor int64, currency string) string {
@@ -159,5 +161,74 @@ func (p *page) orderPage(b *strings.Builder) {
 		}
 	}
 	b.WriteString(`<p class="member-notice" role="status"><strong>` + state + `</strong> ` + htmlEscape(next) + `</p>` + "\n")
+	b.WriteString(`<a href="/account/">` + p.t("Lisanslarıma dön", "Back to licenses") + `</a>` + "\n")
+}
+
+// payments is the member's list of orders on the home page: what was paid, when, for which
+// licence and term, and a receipt for each payment; an order still being confirmed links to
+// its page. Orders that closed unpaid are not listed (nothing was charged).
+func (p *page) payments(b *strings.Builder) {
+	if p.store == nil {
+		return
+	}
+	var rows []Order
+	for _, o := range p.store.orders {
+		if o.State != OrderExpired && o.State != OrderFailed {
+			rows = append(rows, o)
+		}
+	}
+	if len(rows) == 0 {
+		return
+	}
+	b.WriteString(`<section class="member-payments" aria-labelledby="payments"><h2 id="payments">` + p.t("Ödemeleriniz", "Your payments") + `</h2><ul>`)
+	for _, o := range rows {
+		b.WriteString(`<li>` + htmlEscape(money(o.AmountMinor, o.Currency)) + ` · ` + p.t("lisans", "license") + ` <code>…` + htmlEscape(o.LicenseID[len(o.LicenseID)-8:]) + `</code> · `)
+		switch o.State {
+		case OrderPaid:
+			b.WriteString(p.t("ödendi ", "paid ") + day(p.store.paidAt[o.ID]) + ` · ` + day(o.GrantedFrom) + ` – ` + day(o.GrantedTo) +
+				` · <a href="?action=receipt&amp;id=` + htmlEscape(o.ID) + `&amp;lang=` + htmlEscape(p.lang) + `">` + p.t("Makbuz", "Receipt") + `</a>`)
+		case OrderRefunded:
+			b.WriteString(p.t("ödeme geri alındı", "payment reversed"))
+			if p.store.paidAt[o.ID] != 0 {
+				b.WriteString(` · <a href="?action=receipt&amp;id=` + htmlEscape(o.ID) + `&amp;lang=` + htmlEscape(p.lang) + `">` + p.t("Makbuz", "Receipt") + `</a>`)
+			}
+		case OrderMismatch:
+			b.WriteString(p.t("inceliyoruz; size e-postayla yazacağız", "we are looking into it and will write to you by email"))
+		default:
+			b.WriteString(`<a href="?action=order&amp;id=` + htmlEscape(o.ID) + `&amp;lang=` + htmlEscape(p.lang) + `">` + p.t("doğrulanıyor", "being confirmed") + `</a>`)
+		}
+		if !o.Live {
+			b.WriteString(` (` + p.t("deneme kipi", "test mode") + `)`)
+		}
+		b.WriteString(`</li>`)
+	}
+	b.WriteString(`</ul></section>` + "\n")
+}
+
+// receiptPage shows what was paid, when, for which licence and term. It is not a tax
+// invoice, and says so.
+func (p *page) receiptPage(b *strings.Builder) {
+	o := p.store.receipt
+	b.WriteString(`<dl><dt>` + p.t("Sipariş", "Order") + `</dt><dd><code>` + htmlEscape(o.ID) + `</code></dd>`)
+	b.WriteString(`<dt>` + p.t("Ödeme tarihi (UTC)", "Paid on (UTC)") + `</dt><dd>` + day(p.store.paidAt[o.ID]) + `</dd>`)
+	b.WriteString(`<dt>` + p.t("Tutar", "Amount") + `</dt><dd>` + htmlEscape(money(o.AmountMinor, o.Currency)) + `</dd>`)
+	b.WriteString(`<dt>` + p.t("Lisans", "License") + `</dt><dd><code>…` + htmlEscape(o.LicenseID[len(o.LicenseID)-8:]) + `</code></dd>`)
+	what := p.t("İlk yıl", "First year")
+	if o.Kind == KindRenewal {
+		what = p.t("Yenileme", "Renewal")
+	}
+	b.WriteString(`<dt>` + p.t("Ne için", "For") + `</dt><dd>` + what)
+	if o.GrantedFrom != 0 {
+		b.WriteString(`, ` + day(o.GrantedFrom) + ` – ` + day(o.GrantedTo))
+	}
+	b.WriteString(`</dd>`)
+	if o.State == OrderRefunded {
+		b.WriteString(`<dt>` + p.t("Durum", "Status") + `</dt><dd>` + p.t("Ödeme geri alındı", "Payment reversed") + `</dd>`)
+	}
+	b.WriteString(`</dl>` + "\n")
+	if !o.Live {
+		b.WriteString(`<p>` + p.t("Deneme kipi: gerçek para alınmadı.", "Test mode: no real money was taken.") + `</p>`)
+	}
+	b.WriteString(`<p class="member-notice" role="note">` + p.t("Bu makbuz bir vergi faturası değildir.", "This receipt is not a tax invoice.") + `</p>` + "\n")
 	b.WriteString(`<a href="/account/">` + p.t("Lisanslarıma dön", "Back to licenses") + `</a>` + "\n")
 }
