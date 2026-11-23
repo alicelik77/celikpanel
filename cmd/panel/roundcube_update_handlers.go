@@ -171,16 +171,16 @@ func (p *Panel) reconcileInterruptedWebmailUpdate(ctx context.Context, version s
 	}
 	check, err := readRoundcubeUpdateFromAgent(p, ctx)
 	if err != nil {
-		return unknown("The webmail update was interrupted (the panel restarted or lost contact with its agent) and the installed version could not be read, so its result is not known.", err)
+		return unknown("The webmail update was interrupted (the panel restarted, or could not record its end on its agent) and the installed version could not be read, so its result is not known.", err)
 	}
 	if !check.Installed {
-		return unknown("The webmail update was interrupted (the panel restarted or lost contact with its agent) and Roundcube was not found where CelikPanel installs it, so its result is not known.", nil)
+		return unknown("The webmail update was interrupted (the panel restarted, or could not record its end on its agent) and Roundcube was not found where CelikPanel installs it, so its result is not known.", nil)
 	}
 	result["from"] = check.Version
 	if check.Version != version {
 		result["outcome"] = webmailUpdateOutcomeInterrupted
 		return result, operationFailure("webmail_update_interrupted",
-			"The webmail update was interrupted (the panel restarted or lost contact with its agent); Roundcube was not updated.", nil)
+			"The webmail update was interrupted (the panel restarted, or could not record its end on its agent); Roundcube was not updated.", nil)
 	}
 	proof, err := readWebmailProofFromAgent(p, ctx)
 	if err != nil || !proof.Proved || proof.Version != version {

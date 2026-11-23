@@ -28,7 +28,8 @@ import (
 // recorded as succeeded, a failed one with its reason, and a job that was
 // only interrupted is resumed exactly as startup resumes it (a webmail update
 // or a webmail address is only read again; an install, a removal or a mail
-// profile continues, idempotently, where it stopped). The process lock is
+// profile is run once more from its start, which relies on its steps being
+// safe to repeat). The process lock is
 // held throughout, so nothing else starts meanwhile, and the Agent step is
 // never overlapped: the continuation starts only after the Agent recorded
 // the first job as ended. A running panel continues one row at most once; a

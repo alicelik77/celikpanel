@@ -623,7 +623,7 @@ func (p *Panel) reconcileInterruptedWebmailAddress(ctx context.Context, op servi
 	status, err := readWebmailAddressStatusFromAgent(p, ctx, host, op.Kind == serviceOperationKindWebmailAddress)
 	if err != nil {
 		result["outcome"] = "unknown"
-		return result, operationFailure("webmail_address_unknown", "The operation was interrupted (the panel restarted or lost contact with its agent) and the server's state could not be read; open the webmail address card again.", err)
+		return result, operationFailure("webmail_address_unknown", "The operation was interrupted (the panel restarted, or could not record its end on its agent) and the server's state could not be read; open the webmail address card again.", err)
 	}
 	if op.Kind == serviceOperationKindWebmailAddressRemove {
 		if status.Present {
