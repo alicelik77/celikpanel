@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Supported systems · CelikPanel</title>
-<meta name="description" content="The Debian, Ubuntu and Arch Linux releases CelikPanel installs on: what is offered on each, what is not and why, and how updates work.">
+<meta name="description" content="The Linux systems CelikPanel runs on today, what each offers, what it does not and why, and how its updates work.">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#0c1430" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f6f8fd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
-<link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/public.css">
 <link rel="stylesheet" href="assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/systems.html">
@@ -20,148 +20,104 @@
 <script src="assets/public.js" defer></script>
 </head>
 <body>
-<svg class="sprite" aria-hidden="true" focusable="false">
-<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
-<symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
-<symbol id="i-network" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></symbol>
-<symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
-<symbol id="i-calendar-clock" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></symbol>
-<symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
-<symbol id="i-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
-<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
-<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
-<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
-<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
-<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
-<symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
-<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
-<symbol id="i-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
-<symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
-<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
-<symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
-<symbol id="i-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></symbol>
-<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-<symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
-<symbol id="i-check-circle-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
-<symbol id="i-logo" viewBox="0 0 32 32"><path fill="currentColor" stroke="none" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></symbol>
-</svg>
 <a class="skip" href="#main">Skip to content</a>
-<header class="masthead">
-<div class="wrap bar">
-<a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
-<nav class="primary" aria-label="Main">
-<a href="pricing.html">Pricing</a>
-<a href="download.html">Download</a>
-<a href="systems.html" aria-current="page">Systems</a>
-<a href="guide/en/">Guide</a>
-</nav>
-<div class="tools">
-<a class="tool lang" href="tr/sistemler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span><span class="sep" aria-hidden="true">·</span><span class="cur">EN</span></a>
-<button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Switch to the dark theme" data-label-light="Switch to the light theme" aria-label="Switch to the dark theme"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
-<a class="signin" href="account/?action=login&amp;lang=en">Sign in</a>
-<a class="btn btn-primary btn-sm register" href="account/?action=register&amp;lang=en">Create account</a>
-<details class="menu">
-<summary aria-label="Menu"><svg class="i i-menu" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg><svg class="i i-x" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg></summary>
-<nav class="sheet" aria-label="Main">
-<a href="pricing.html">Pricing</a>
-<a href="download.html">Download</a>
-<a href="systems.html" aria-current="page">Systems</a>
-<a href="guide/en/">Guide</a>
-<a href="releases.html">Releases</a>
-<a href="account/?action=login&amp;lang=en">Sign in</a>
-<a class="btn btn-primary" href="account/?action=register&amp;lang=en">Create account</a>
-</nav>
-</details>
-</div>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
+<span class="docid">Datasheet · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></span>
+<nav aria-label="Main"><ul>
+<li><a href="systems.html" aria-current="page">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="guide/en/">Guide</a></li>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="tr/sistemler.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe">TR</a></li>
+</ul></nav>
 </div>
 </header>
 <main id="main">
-<section class="page-hero center" aria-labelledby="hero-title">
-<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="lead">
 <div class="wrap">
-<p class="eyebrow">Systems</p>
-<h1 id="hero-title">Supported operating systems.</h1>
-<p class="lede">What is offered on each system, what is not and why, and how updates work.</p>
-<nav class="jump" aria-label="On this page">
-<a href="#list">The list</a>
-<a href="#debian-ubuntu">Debian and Ubuntu</a>
-<a href="#arch">Arch Linux</a>
-<a href="download.html">Install CelikPanel</a>
-</nav>
+<h1>Supported operating systems</h1>
+<p class="def">CelikPanel runs on Linux servers. What is supported today, what each system offers, and how its updates work.</p>
 </div>
-</section>
-<section class="block tight" aria-labelledby="list-title" id="list">
+</div>
 <div class="wrap">
-<div class="block-head center">
-<h2 id="list-title">The list</h2>
-<p class="lede">Tested means every release candidate of CelikPanel runs on that system before it is published. Supported means CelikPanel installs and runs on it, but release candidates are not run on it. Dates are the distributions’ own support dates, checked on 24 October 2026.</p>
-</div>
-<div class="table-card"><div class="table-wrap" role="region" aria-labelledby="systems-caption" tabindex="0">
-<table class="data systems">
-<caption id="systems-caption" class="sr-only">Operating systems CelikPanel supports</caption>
-<thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">Updates</th></tr></thead>
+<section class="part" id="list" aria-labelledby="h-list">
+<header><span class="num">1</span><h2 id="h-list">The list</h2><p>Dates are the distributions’ own security support dates.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 1 · Operating systems (distribution dates checked on 24 October 2026)</caption>
+<thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">System updates</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-label="Status"><span class="state tested">Tested</span></td><td data-label="Patched by the distribution until">30 June 2030</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-label="Status"><span class="state tested">Tested</span></td><td data-label="Patched by the distribution until">May 2029</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">30 June 2028</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">May 2027</td><td data-label="Updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-label="Status"><span class="state">Supported</span></td><td data-label="Patched by the distribution until">No end date</td><td data-label="Updates">By hand, after reading the Arch news</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">30 June 2030</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">May 2029</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">30 June 2028</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">May 2027</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
 </tbody>
 </table>
-</div><p class="table-card-foot">Other systems are not supported yet. Red Hat family systems (RHEL, AlmaLinux, Rocky Linux 9) are recognised, and the installer refuses them for now instead of half-installing. A system that is not on this list has not been checked. Linux amd64.</p></div>
+</div>
+<p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Arch Linux is supported as it is today. The release package is built for amd64.</p>
+<p class="note">Other systems are not supported yet; support for more systems is planned. Red Hat family systems (RHEL, AlmaLinux, Rocky Linux 9) are recognised, and the installer refuses them for now. A system not in this table has not been checked.</p>
 </div>
 </section>
-<section class="block" aria-labelledby="deb-title" id="debian-ubuntu">
-<div class="wrap">
-<div class="block-head center"><h2 id="deb-title">Debian and Ubuntu</h2></div>
-<div class="text-cards">
-<div class="text-card"><h3>What is offered</h3><p>All of CelikPanel’s components: web server and PHP, MariaDB and PostgreSQL, mail with Rspamd, DNS with BIND or PowerDNS, certificates, the firewall, backups and the security tools. Packages come from the distribution. Where a newer version is wanted, the panel offers a vendor repository only as a deliberate, confined, tracked choice.</p></div>
-<div class="text-card"><h3>What is not offered</h3><p>Apache, Exim and FTP (vsftpd) are not offered yet, on any system: their integration is not finished, so use Nginx and Postfix. Everything else in the catalogue is offered. Versions differ by release: for example Debian 13 ships PHP 8.4 and PostgreSQL 17, Ubuntu 24.04 ships PHP 8.3 and PostgreSQL 16. The panel shows what your release offers.</p></div>
-<div class="text-card"><h3>How updates work</h3><p>Fixes come from the distribution’s security and update archives. The system’s own tool, unattended-upgrades, can install them every day by itself, or you install them by hand. You choose in the panel under Security, Security updates. The choice is one apt file on your server, so it keeps working while CelikPanel is stopped. If you edit that file yourself, the panel notices and asks before it replaces your text. The panel never restarts the server by itself.</p></div>
-<div class="text-card"><h3>New major versions</h3><p>A new major version of a program, such as PostgreSQL 17 after 16 or PHP 8.5 after 8.4, is a separate program and not an update. Updates fix the version you have. You move to a new major version yourself, when you decide.</p></div>
+<section class="part" id="debian-ubuntu" aria-labelledby="h-deb">
+<header><span class="num">2</span><h2 id="h-deb">Systems with apt</h2><p>Debian and Ubuntu. Packages come from the distribution.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 2 · What the apt systems offer</caption>
+<tbody>
+<tr><th scope="row">What is offered</th><td>CelikPanel’s components from the distribution’s own packages. Where a newer version is wanted, a vendor repository (for PHP or PostgreSQL, for example) is offered only as a deliberate choice.</td></tr>
+<tr><th scope="row">What is not offered</th><td>Apache and Exim, on any system: their integration is not finished, so use Nginx and Postfix. Versions differ by release: Debian 13 ships PHP 8.4 and PostgreSQL 17, Ubuntu 24.04 ships PHP 8.3 and PostgreSQL 16. The panel shows what your release offers.</td></tr>
+<tr><th scope="row">How updates work</th><td>Fixes come from the distribution’s security and update archives. The system’s own <code>unattended-upgrades</code> installs them every day by itself, or you install them by hand; you choose in the panel under Security. The choice is one apt file, <code>/etc/apt/apt.conf.d/20auto-upgrades</code>, so it keeps working while CelikPanel is stopped. The panel never restarts the server by itself.</td></tr>
+<tr><th scope="row">New major versions</th><td>A new major version, such as PostgreSQL 17 after 16 or PHP 8.5 after 8.4, is a separate program and not an update. Updates fix the version you have; you move to a new major version yourself, when you decide.</td></tr>
+</tbody>
+</table>
 </div>
 </div>
 </section>
-<section class="block" aria-labelledby="arch-title" id="arch">
-<div class="wrap">
-<div class="block-head center"><h2 id="arch-title">Arch Linux</h2></div>
-<div class="text-cards">
-<div class="text-card"><h3>What is offered</h3><p>The server roles work with official Arch packages only: web, PHP, MariaDB, PostgreSQL, mail, certificates, the firewall and backups. PowerDNS comes from Arch’s extra repository as a first install. Valkey is offered where other systems offer Redis.</p></div>
-<div class="text-card"><h3>What is not offered, and why</h3><ul>
-<li>phpPgAdmin and SpamAssassin: Arch’s official repositories carry no working package (only the AUR does, and CelikPanel does not use it). Manage PostgreSQL with psql, and use Rspamd as the spam filter.</li>
+<section class="part" id="arch" aria-labelledby="h-arch">
+<header><span class="num">3</span><h2 id="h-arch">Systems with pacman</h2><p>Arch Linux, a rolling release. Only official Arch packages are used.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 3 · What Arch Linux offers</caption>
+<tbody>
+<tr><th scope="row">What is offered</th><td>The server roles with official Arch packages: web, PHP, MariaDB, PostgreSQL, mail, certificates, the firewall and backups. Valkey is offered where other systems offer Redis.</td></tr>
+<tr><th scope="row">What is not offered, and why</th><td><ul class="plain">
+<li>phpPgAdmin and SpamAssassin: Arch’s official repositories have no working package (only the AUR does, which CelikPanel does not use). Manage PostgreSQL with psql, and use Rspamd as the spam filter.</li>
 <li>Redis: Arch ships the compatible Valkey instead, so Valkey is offered.</li>
-<li>Apache, Exim and FTP (vsftpd): not offered yet on any system. Use Nginx and Postfix.</li>
-<li>Switching an existing BIND server to PowerDNS: PowerDNS is offered as a first install only.</li>
-<li>Automatic upgrades: Arch has no security-only updates, and an unattended full upgrade can stop your services.</li>
-</ul></div>
-<div class="text-card"><h3>How updates work</h3><p>Arch is a rolling release. An update is always a full upgrade that you run on the server: read archlinux.org/news first, then run <code>sudo pacman -Syu</code>, then check failed units, <code>nginx -t</code>, PHP-FPM and the mail services, and restart the server if the kernel changed. The panel counts what is waiting and shows these steps; it never runs the upgrade for you.</p></div>
-<div class="text-card"><h3>Before a big upgrade</h3><p>A full upgrade can move Arch’s php package to a new major version, and PostgreSQL to a new major version whose data directory must then be upgraded before the server starts again. Test your sites after the upgrade, or on a copy of the server first.</p></div>
+<li>Apache and Exim: not offered yet on any system. Use Nginx and Postfix.</li>
+<li>Switching an existing DNS server to PowerDNS: on Arch, PowerDNS is installed only on a server with no DNS software.</li>
+<li>Automatic upgrades: CelikPanel schedules none on Arch.</li>
+</ul></td></tr>
+<tr><th scope="row">How updates work</th><td>Every update is a full upgrade that you run on the server: read archlinux.org/news first, then run <code>sudo pacman -Syu</code>, then check failed units, <code>nginx -t</code>, PHP-FPM and the mail services, and restart the server if the kernel changed. The panel lists these steps; it never runs the upgrade for you.</td></tr>
+<tr><th scope="row">Before a big upgrade</th><td>A full upgrade can move Arch’s php and PostgreSQL packages to a new major version. Test your sites after the upgrade, or on a copy of the server first.</td></tr>
+</tbody>
+</table>
 </div>
 </div>
 </section>
-<section class="block" aria-labelledby="yours-title">
-<div class="wrap split">
-<div class="block-head">
-<p class="eyebrow">Independent</p>
-<h2 id="yours-title">Your server stays yours.</h2>
-<p class="lede">CelikPanel operates your server; it does not own it. Sites, mail, DNS, databases, scheduled jobs and site certificate renewal keep running while the panel is stopped, on every system above.</p>
-</div>
-<ul class="link-list">
-<li><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">What is offered on which system, in detail<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a></li>
-<li><a href="guide/en/without-panel.html">Running the server without CelikPanel<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
-<li><a href="download.html">Install CelikPanel<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
-</ul>
+<section class="part" aria-labelledby="h-yours">
+<header><span class="num">4</span><h2 id="h-yours">Independent of the panel</h2></header>
+<div>
+<p>CelikPanel operates your server; it does not own it. On every system above, sites, mail, DNS, databases, scheduled tasks and site certificate renewal keep running while the panel is stopped.</p>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">Components by system, generated from the catalogue</a> · <a href="guide/en/without-panel.html">Running the server without the panel</a></p>
 </div>
 </section>
+</div>
 </main>
-<footer class="site-footer">
+<footer class="foot">
 <div class="wrap">
-<div class="footer-grid">
-<div class="footer-brand"><a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>CelikPanel</span></a><p>A hosting control panel for Debian and Ubuntu servers. Your server stays yours.</p></div>
+<div><p class="foot-name">CelikPanel</p><p>A hosting control panel for Linux servers.</p><p>© 2026 CELIKBROS</p></div>
 <nav aria-labelledby="f-product"><h2 id="f-product">Product</h2><ul>
-<li><a href="pricing.html">Pricing</a></li>
-<li><a href="download.html">Download and install</a></li>
 <li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
 <li><a href="releases.html">Releases</a></li>
 <li><a href="guide/en/">User guide</a></li>
 </ul></nav>
@@ -170,13 +126,11 @@
 <li><a href="account/?action=register&amp;lang=en">Create an account</a></li>
 <li><a href="account/?action=terms&amp;lang=en">Terms and data notice</a></li>
 </ul></nav>
-<nav aria-labelledby="f-help"><h2 id="f-help">Help</h2><ul>
+<nav aria-labelledby="f-help"><h2 id="f-help">Contact</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
 <li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Report a bug</a></li>
 <li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml">Suggest a feature</a></li>
-<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
 </ul></nav>
-</div>
-<div class="footer-bottom"><span>© 2026 CelikPanel</span><span>Alpha <span class="dot">·</span> free until 1.0 <span class="dot">·</span> Linux amd64</span></div>
 </div>
 </footer>
 </body>

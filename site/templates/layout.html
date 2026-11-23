@@ -7,11 +7,11 @@
 <title>{{t (print .Key ".title")}}</title>
 <meta name="description" content="{{t (print .Key ".description")}}">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#0c1430" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f6f8fd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="{{asset "favicon-v2.svg"}}">
 {{- if not .Preview}}
-<link rel="preload" href="{{asset "fonts/inter-latin.woff2"}}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{asset "fonts/overpass-latin.woff2"}}" as="font" type="font/woff2" crossorigin>
 {{- end}}
 <link rel="stylesheet" href="{{asset "public.css"}}">
 <link rel="stylesheet" href="{{if eq .Key "home"}}{{asset "home.css"}}{{else}}{{asset "pages.css"}}{{end}}">
@@ -23,12 +23,13 @@
 <script src="{{asset "public.js"}}" defer></script>
 </head>
 <body>
-{{template "icons"}}
 <a class="skip" href="#main">{{t "common.skip"}}</a>
 {{template "masthead" .}}
 <main id="main">
-{{template "hero" .}}
+{{template "lead" .}}
+<div class="wrap">
 {{template "main" .}}
+</div>
 </main>
 {{template "footer" .}}
 </body>
@@ -52,14 +53,12 @@
 <script src="{{.Boot}}"></script>
 <noscript><meta http-equiv="refresh" content="2; url={{.EN}}"></noscript>
 </head>
-<body class="moved">
+<body>
 <main id="main" class="moved-sign">
-<div class="sign">
 <h1 lang="en">{{.TitleEN}}</h1>
 <p lang="en">{{.TextEN}} <a href="{{.EN}}">{{.LinkEN}}</a></p>
 <h2 lang="tr">{{.TitleTR}}</h2>
 <p lang="tr">{{.TextTR}} <a href="{{.TR}}">{{.LinkTR}}</a></p>
-</div>
 </main>
 </body>
 </html>

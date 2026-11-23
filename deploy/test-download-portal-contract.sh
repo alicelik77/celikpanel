@@ -78,7 +78,7 @@ grep -Fq "/releases/$version/$archive" "$tmp/site/releases.html" || fail "releas
 for needle in 'Debian 13 <span class="code-name">trixie' 'Debian 12 <span class="code-name">bookworm' \
   'Ubuntu 24.04 LTS <span class="code-name">noble' 'Ubuntu 22.04 LTS <span class="code-name">jammy' 'Arch Linux' \
   'sudo pacman -Syu' 'archlinux.org/news' 'phpPgAdmin' 'SpamAssassin' 'Valkey' 'unattended-upgrades' \
-  'Supported operating systems.' 'How updates work' 'is a separate program and not an update'; do
+  'Supported operating systems' 'How updates work' 'is a separate program and not an update'; do
   grep -Fq -- "$needle" "$tmp/site/systems.html" || fail "systems page lacks: $needle"
 done
 for needle in 'Desteklenen işletim sistemleri' 'Güncellemeler nasıl işler' 'ayrı bir programdır, güncelleme değildir' 'sudo pacman -Syu'; do
@@ -114,7 +114,8 @@ for page in index.html pricing.html download.html systems.html releases.html; do
 done
 grep -Fq 'href="../guide/tr/"' "$tmp/site/tr/index.html" || fail "Turkish home does not link to the Turkish guide"
 for asset in public.css home.css pages.css public.js boot.js site.css guide.css favicon-v2.svg \
-  fonts/inter-latin.woff2 fonts/inter-latin-ext.woff2 fonts/jetbrains-mono-latin.woff2 fonts/OFL-Inter.txt LICENSE-Lucide.txt \
+  fonts/overpass-latin.woff2 fonts/overpass-latin-ext.woff2 fonts/overpass-mono-latin.woff2 fonts/overpass-mono-latin-ext.woff2 \
+  fonts/OFL-Overpass.txt fonts/OFL-OverpassMono.txt \
   shots/domains-en-light-2x.webp shots/domain-en-dark-phone.webp shots/domain-tr-light.webp shots/databases-tr-dark-2x.webp \
   shots/domains-en-light.webp shots/domains-tr-dark.webp shots/databases-en-light.webp shots/databases-tr-dark.webp; do
   [[ -s "$tmp/site/assets/$asset" ]] || fail "required asset was not shipped: $asset"
@@ -189,8 +190,8 @@ for en, tr in pairs.items():
 PY
 grep -Fq 'celikpanel-language' "$tmp/site/assets/public.js" || fail "language preference persistence is missing"
 grep -Fq 'celikpanel-language' "$tmp/site/assets/boot.js" || fail "remembered language is not applied"
-grep -Fq 'Your sites keep running.' "$tmp/site/index.html" || fail "English product copy is missing"
-grep -Fq 'Siteleriniz çalışır.' "$tmp/site/tr/index.html" || fail "Turkish product copy is missing"
+grep -Fq 'A hosting control panel for Linux servers' "$tmp/site/index.html" || fail "English product copy is missing"
+grep -Fq 'Linux sunucular için hosting kontrol paneli' "$tmp/site/tr/index.html" || fail "Turkish product copy is missing"
 [[ -f "$tmp/site/assets/fonts/overpass-latin-ext.woff2" ]] \
   || fail "self-hosted typeface with Turkish coverage was not shipped"
 [[ -f "$tmp/site/assets/fonts/OFL-Overpass.txt" ]] \

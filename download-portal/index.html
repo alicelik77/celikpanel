@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CelikPanel · Hosting control panel for Debian and Ubuntu</title>
-<meta name="description" content="A hosting control panel for Debian and Ubuntu servers: websites, mail, DNS, databases, certificates and backups. Your sites keep running with the panel or without it.">
+<title>CelikPanel · Hosting control panel for Linux servers</title>
+<meta name="description" content="CelikPanel is a hosting control panel for Linux servers: websites, mail, DNS, databases and backups, run as the system’s own services. Systems, customer separation, measurements, licence and release on one page.">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#0c1430" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f6f8fd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
-<link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/public.css">
 <link rel="stylesheet" href="assets/home.css">
 <link rel="canonical" href="https://celikpanel.net/">
@@ -20,351 +20,238 @@
 <script src="assets/public.js" defer></script>
 </head>
 <body>
-<svg class="sprite" aria-hidden="true" focusable="false">
-<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
-<symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
-<symbol id="i-network" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></symbol>
-<symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
-<symbol id="i-calendar-clock" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></symbol>
-<symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
-<symbol id="i-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
-<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
-<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
-<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
-<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
-<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
-<symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
-<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
-<symbol id="i-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
-<symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
-<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
-<symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
-<symbol id="i-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></symbol>
-<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-<symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
-<symbol id="i-check-circle-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
-<symbol id="i-logo" viewBox="0 0 32 32"><path fill="currentColor" stroke="none" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></symbol>
-</svg>
 <a class="skip" href="#main">Skip to content</a>
-<header class="masthead">
-<div class="wrap bar">
-<a class="brand" href="./" aria-current="page"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
-<nav class="primary" aria-label="Main">
-<a href="pricing.html">Pricing</a>
-<a href="download.html">Download</a>
-<a href="systems.html">Systems</a>
-<a href="guide/en/">Guide</a>
-</nav>
-<div class="tools">
-<a class="tool lang" href="tr/" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>TR</span><span class="sep" aria-hidden="true">·</span><span class="cur">EN</span></a>
-<button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Switch to the dark theme" data-label-light="Switch to the light theme" aria-label="Switch to the dark theme"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
-<a class="signin" href="account/?action=login&amp;lang=en">Sign in</a>
-<a class="btn btn-primary btn-sm register" href="account/?action=register&amp;lang=en">Create account</a>
-<details class="menu">
-<summary aria-label="Menu"><svg class="i i-menu" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg><svg class="i i-x" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg></summary>
-<nav class="sheet" aria-label="Main">
-<a href="pricing.html">Pricing</a>
-<a href="download.html">Download</a>
-<a href="systems.html">Systems</a>
-<a href="guide/en/">Guide</a>
-<a href="releases.html">Releases</a>
-<a href="account/?action=login&amp;lang=en">Sign in</a>
-<a class="btn btn-primary" href="account/?action=register&amp;lang=en">Create account</a>
-</nav>
-</details>
-</div>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./" aria-current="page"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
+<span class="docid">Datasheet · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></span>
+<nav aria-label="Main"><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="guide/en/">Guide</a></li>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="tr/" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe">TR</a></li>
+</ul></nav>
 </div>
 </header>
 <main id="main">
-<section class="hero" aria-labelledby="hero-title">
-<div class="hero-glow" aria-hidden="true"></div>
-<div class="wrap hero-copy">
-<p class="pill"><span class="live" aria-hidden="true"></span>Alpha <span class="dot">·</span> free until 1.0</p>
-<h1 id="hero-title">Your sites keep running. <span class="soft">With the panel or without it.</span></h1>
-<p class="lede">A hosting control panel for Debian and Ubuntu: sites, mail, DNS, databases and backups on your own server.</p>
+<div class="lead">
+<div class="wrap">
+<h1>A hosting control panel for Linux servers</h1>
+<p class="def">It manages websites, mail, DNS, databases and backups with the server’s own services, so they keep running when the panel stops.</p>
 <div class="actions">
-<a class="btn btn-primary btn-lg" href="download.html">Install on a test server<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
-<a class="btn btn-ghost btn-lg" href="pricing.html">See pricing</a>
+<a class="btn primary" href="download.html">Install on a test server</a>
+<a class="btn plain" href="pricing.html">Licence terms</a>
 </div>
-<div class="chip" title="Run it in the server’s root terminal">
-<span class="prompt" aria-hidden="true">$</span>
-<code id="cmd-home"><span class="c-skip">timedatectl set-ntp true
-</span>curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;<span class="c-skip">
-sh celikpanel-install.sh</span></code>
-<button class="copy" type="button" hidden data-copy="cmd-home" data-copied="Copied" data-failed="Select the text to copy it" aria-label="Copy the install command"><svg class="i i-copy" aria-hidden="true" focusable="false"><use href="#i-copy"></use></svg><span class="sr-only">Copy</span></button>
+<div class="sheet">
+<dl class="spec" aria-label="Specifications">
+<div><dt>Systems</dt><dd>Debian 13, Ubuntu 24.04 <small>(tried on every release candidate)</small><br>Debian 12, Ubuntu 22.04, Arch Linux <small>(supported)</small><br>amd64</dd></div>
+<div><dt>Web</dt><dd>Nginx; PHP-FPM with the PHP version chosen per site; Node.js, Python apps, static sites</dd></div>
+<div><dt>Mail</dt><dd>Postfix, Dovecot, Rspamd; Roundcube webmail</dd></div>
+<div><dt>DNS</dt><dd>BIND or PowerDNS on this server, or an outside provider; a second server with a copy of the DNS is optional</dd></div>
+<div><dt>Databases</dt><dd>MariaDB, PostgreSQL</dd></div>
+<div><dt>Backups</dt><dd>Site backups by hand or on a schedule, kept on the server; a remote copy (S3-compatible storage or SFTP) is optional</dd></div>
+<div><dt>Users</dt><dd>Administrator, reseller, customer and a customer’s team members; plans with limits</dd></div>
+<div><dt>Licence</dt><dd>Per server, per year. Free during the alpha; 99 USD from version 1.0</dd></div>
+<div><dt>Release</dt><dd><a class="mono" href="releases.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time>; signed with Ed25519</dd></div>
+<div><dt>Status</dt><dd>Alpha: for test servers; not ready for production</dd></div>
+</dl>
+<figure class="fig">
+<picture>
+<source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/shots/domain-en-dark-phone.webp" width="780" height="1688">
+<source media="(max-width: 640px)" srcset="assets/shots/domain-en-light-phone.webp" width="780" height="1688">
+<source media="(prefers-color-scheme: dark)" srcset="assets/shots/domain-en-dark.webp 1280w, assets/shots/domain-en-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
+<img src="assets/shots/domain-en-light.webp" srcset="assets/shots/domain-en-light.webp 1280w, assets/shots/domain-en-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="Overview tab of the domain example.com: connected, DNS served by this server; its name servers and the address it resolves to; certificate valid for 78 more days; mail sending and authentication complete; last backup today." decoding="async">
+</picture>
+<figcaption><b>Fig. 1.</b> A domain’s overview. The real panel with sample data; screen taken on 19 November 2026.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-screens">
+<header><span class="num">2</span><h2 id="h-screens">Screens</h2><p>The panel’s own screens, unedited.</p></header>
+<div class="figs">
+<figure class="fig">
+<picture>
+<source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/shots/domains-en-dark-phone.webp" width="780" height="1688">
+<source media="(max-width: 640px)" srcset="assets/shots/domains-en-light-phone.webp" width="780" height="1688">
+<source media="(prefers-color-scheme: dark)" srcset="assets/shots/domains-en-dark.webp 1280w, assets/shots/domains-en-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
+<img src="assets/shots/domains-en-light.webp" srcset="assets/shots/domains-en-light.webp 1280w, assets/shots/domains-en-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="The Domains page: six sample domains with their type, PHP version, disk use, monthly traffic and state." loading="lazy" decoding="async">
+</picture>
+<figcaption><b>Fig. 2.</b> Domains: type, PHP version, disk and monthly traffic. Sample data.</figcaption>
+</figure>
+<figure class="fig">
+<picture>
+<source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/shots/databases-en-dark-phone.webp" width="780" height="1688">
+<source media="(max-width: 640px)" srcset="assets/shots/databases-en-light-phone.webp" width="780" height="1688">
+<source media="(prefers-color-scheme: dark)" srcset="assets/shots/databases-en-dark.webp 1280w, assets/shots/databases-en-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
+<img src="assets/shots/databases-en-light.webp" srcset="assets/shots/databases-en-light.webp 1280w, assets/shots/databases-en-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="The Databases page: five sample MariaDB and PostgreSQL databases with their owner, reseller, domain, type and size." loading="lazy" decoding="async">
+</picture>
+<figcaption><b>Fig. 3.</b> Databases: owner, reseller, engine and size. Sample data.</figcaption>
+</figure>
+</div>
+</section>
+<section class="part" id="install" aria-labelledby="h-install">
+<header><span class="num">3</span><h2 id="h-install">Install and systems</h2><p>One command on a clean server. Go, Node.js or Git are not needed.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 1 · Installation steps</caption>
+<thead><tr><th scope="col">Step</th><th scope="col">What to do</th><th scope="col">Where</th></tr></thead>
+<tbody>
+<tr><td class="v" data-k="Step">1</td><td data-k="What to do">Create an account and take a licence for the server</td><td data-k="Where">celikpanel.net</td></tr>
+<tr><td class="v" data-k="Step">2</td><td data-k="What to do">Prepare a clean server with a supported system</td><td data-k="Where">Your server provider</td></tr>
+<tr><td class="v" data-k="Step">3</td><td data-k="What to do">Run the install command; the installer checks the release’s signature and SHA-256 before it installs anything</td><td data-k="Where">The server’s root terminal</td></tr>
+<tr><td class="v" data-k="Step">4</td><td data-k="What to do">Sign in at the address the installer shows; the setup wizard asks for your domain and where DNS lives</td><td data-k="Where">The panel, in a browser</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="cmd-title-home">Install command</h3><button class="copy" type="button" hidden data-copy="cmd-home" data-copied="Copied" data-failed="Select the text to copy it">Copy</button></div>
+<pre tabindex="0" aria-labelledby="cmd-title-home"><code id="cmd-home">timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+sh celikpanel-install.sh</code></pre>
+<p class="note">Run the three lines together in the server’s root terminal. The first line turns on clock synchronisation.</p>
 <p class="sr-only" role="status" data-copy-status></p>
 </div>
-<p class="chip-note"><a href="download.html">Run it in the server’s root terminal<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></p>
+<div class="table">
+<table class="stack">
+<caption>Table 2 · Operating systems (distribution dates checked on 24 October 2026)</caption>
+<thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">System updates</th></tr></thead>
+<tbody>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">30 June 2030</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">May 2029</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">30 June 2028</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">May 2027</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
+</tbody>
+</table>
 </div>
-<div class="product">
-<input class="sr-only" type="radio" name="screen" id="screen-domain" checked>
-<input class="sr-only" type="radio" name="screen" id="screen-domains">
-<input class="sr-only" type="radio" name="screen" id="screen-databases">
-<div class="tabs" aria-hidden="true">
-<label for="screen-domain"><svg class="i i-layout-dashboard" aria-hidden="true" focusable="false"><use href="#i-layout-dashboard"></use></svg>A domain</label>
-<label for="screen-domains"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg>Domains</label>
-<label for="screen-databases"><svg class="i i-database" aria-hidden="true" focusable="false"><use href="#i-database"></use></svg>Databases</label>
-</div>
-<div class="stage">
-<figure class="frame">
-<div class="frame-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="address"><svg class="i i-lock" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg>panel.example.com:1923</span></div>
-<div class="screens">
-<div class="screen s-domain">
-<picture class="v-light">
-<source media="(max-width: 640px)" srcset="assets/shots/domain-en-light-phone.webp" width="780" height="1688">
-<img src="assets/shots/domain-en-light.webp" srcset="assets/shots/domain-en-light.webp 1280w, assets/shots/domain-en-light-2x.webp 2560w" sizes="(max-width: 1240px) 94vw, 1180px" width="1280" height="680" alt="One example domain’s overview: connected, its certificate valid for 78 more days, mail authentication complete and last backup today." loading="lazy" decoding="async">
-</picture>
-<picture class="v-dark">
-<source media="(max-width: 640px)" srcset="assets/shots/domain-en-dark-phone.webp" width="780" height="1688">
-<img src="assets/shots/domain-en-dark.webp" srcset="assets/shots/domain-en-dark.webp 1280w, assets/shots/domain-en-dark-2x.webp 2560w" sizes="(max-width: 1240px) 94vw, 1180px" width="1280" height="680" alt="One example domain’s overview: connected, its certificate valid for 78 more days, mail authentication complete and last backup today." loading="lazy" decoding="async">
-</picture></div>
-<div class="screen s-domains">
-<picture class="v-light">
-<source media="(max-width: 640px)" srcset="assets/shots/domains-en-light-phone.webp" width="780" height="1688">
-<img src="assets/shots/domains-en-light.webp" srcset="assets/shots/domains-en-light.webp 1280w, assets/shots/domains-en-light-2x.webp 2560w" sizes="(max-width: 1240px) 94vw, 1180px" width="1280" height="680" alt="The Domains page with six example domains, their site type, PHP version, disk use, traffic and state." loading="lazy" decoding="async">
-</picture>
-<picture class="v-dark">
-<source media="(max-width: 640px)" srcset="assets/shots/domains-en-dark-phone.webp" width="780" height="1688">
-<img src="assets/shots/domains-en-dark.webp" srcset="assets/shots/domains-en-dark.webp 1280w, assets/shots/domains-en-dark-2x.webp 2560w" sizes="(max-width: 1240px) 94vw, 1180px" width="1280" height="680" alt="The Domains page with six example domains, their site type, PHP version, disk use, traffic and state." loading="lazy" decoding="async">
-</picture></div>
-<div class="screen s-databases">
-<picture class="v-light">
-<source media="(max-width: 640px)" srcset="assets/shots/databases-en-light-phone.webp" width="780" height="1688">
-<img src="assets/shots/databases-en-light.webp" srcset="assets/shots/databases-en-light.webp 1280w, assets/shots/databases-en-light-2x.webp 2560w" sizes="(max-width: 1240px) 94vw, 1180px" width="1280" height="680" alt="The Databases page with five example MariaDB and PostgreSQL databases, their owners, domains and sizes." loading="lazy" decoding="async">
-</picture>
-<picture class="v-dark">
-<source media="(max-width: 640px)" srcset="assets/shots/databases-en-dark-phone.webp" width="780" height="1688">
-<img src="assets/shots/databases-en-dark.webp" srcset="assets/shots/databases-en-dark.webp 1280w, assets/shots/databases-en-dark-2x.webp 2560w" sizes="(max-width: 1240px) 94vw, 1180px" width="1280" height="680" alt="The Databases page with five example MariaDB and PostgreSQL databases, their owners, domains and sizes." loading="lazy" decoding="async">
-</picture></div>
-</div>
-<figcaption class="sr-only">The real panel, with sample data.</figcaption>
-</figure>
-</div>
-<p class="wrap screen-note">The real panel, with sample data.</p>
+<p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Arch Linux is supported as it is today. The release package is built for amd64.</p>
+<p class="more"><a href="systems.html">What each system offers, and how its updates work</a></p>
 </div>
 </section>
-<section class="block independent" aria-labelledby="free-title">
-<div class="wrap">
-<div class="block-head center">
-<p class="eyebrow">Independent</p>
-<h2 id="free-title"><span class="sent">The panel stops.</span> <span class="sent">Your sites don’t.</span></h2>
-<p class="lede">They are your system’s own services. The panel only manages them.</p>
+<section class="part" aria-labelledby="h-separation">
+<header><span class="num">4</span><h2 id="h-separation">Separation between customers</h2><p>What keeps one account from reaching another, and what is not done yet.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 3 · Separation between accounts in the published release 0.1.0-alpha.144</caption>
+<thead><tr><th scope="col">Measure</th><th scope="col">Status</th><th scope="col">Since</th></tr></thead>
+<tbody>
+<tr><td data-k="Measure">Each site has its own system account</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.117</td></tr>
+<tr><td data-k="Measure">Node.js sites, Python apps and uploaded programs run in a sandbox under the site’s own account; existing Node.js sites move in when the administrator moves them</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.127</td></tr>
+<tr><td data-k="Measure">Extra FTP and SFTP logins see one folder of their site and never a command line</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.128</td></tr>
+<tr><td data-k="Measure">No account can take another account’s domain name or site account, or a port of the server’s own services</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.142</td></tr>
+<tr><td data-k="Measure">A link in a site’s folder does not serve another account’s files</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.142</td></tr>
+<tr><td data-k="Measure">SQL from a backup, a copy or an import runs with the database owner’s rights, not the administrator’s</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.141</td></tr>
+<tr><td data-k="Measure">PostgreSQL databases are closed to other accounts: new ones from the start, older ones once no other account has used them for a day</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.143</td></tr>
+<tr><td data-k="Measure">Outgoing mail is signed only for the sender’s own domain</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.143</td></tr>
+<tr><td data-k="Measure">Outgoing mail limits per mailbox, domain and hosting account (optional; off until the administrator turns them on)</td><td data-k="Status"><span class="tag no">Optional</span></td><td class="v" data-k="Since">alpha.128</td></tr>
+<tr><td data-k="Measure">PHP and scheduled tasks in the site’s own sandbox</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Processor and memory limits per account for all of its programs (today: PHP memory, run time and process count per site)</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Hiding which other sites exist: account names and processes are still visible to a site account</td><td data-k="Status"><span class="tag warn">Not yet</span></td><td class="v" data-k="Since">—</td></tr>
+</tbody>
+</table>
 </div>
-<figure class="diagram" aria-labelledby="free-caption">
-<figcaption id="free-caption" class="sr-only">Diagram: when CelikPanel stops, websites, mail, DNS, databases, scheduled jobs and site certificate renewal keep running.</figcaption>
-<svg class="wires" viewBox="0 0 600 380" aria-hidden="true" focusable="false">
-<path id="w1" d="M300 92 C300 140 100 130 100 186"/><path id="w2" d="M300 92 L300 186"/><path id="w3" d="M300 92 C300 140 500 130 500 186"/>
-<path id="w4" d="M300 92 C300 200 100 230 100 296"/><path id="w5" d="M300 92 C300 200 300 230 300 296"/><path id="w6" d="M300 92 C300 200 500 230 500 296"/>
-<g class="sparks">
-<circle r="3.2"><animateMotion dur="2.2s" begin="0s" repeatCount="indefinite"><mpath href="#w1"/></animateMotion><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.42;.48;.94;1"/></circle>
-<circle r="3.2"><animateMotion dur="2.2s" begin=".35s" repeatCount="indefinite"><mpath href="#w2"/></animateMotion><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.42;.48;.94;1"/></circle>
-<circle r="3.2"><animateMotion dur="2.2s" begin=".7s" repeatCount="indefinite"><mpath href="#w3"/></animateMotion><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.42;.48;.94;1"/></circle>
-<circle r="3.2"><animateMotion dur="2.2s" begin="1.05s" repeatCount="indefinite"><mpath href="#w4"/></animateMotion><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.42;.48;.94;1"/></circle>
-<circle r="3.2"><animateMotion dur="2.2s" begin="1.4s" repeatCount="indefinite"><mpath href="#w5"/></animateMotion><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.42;.48;.94;1"/></circle>
-<circle r="3.2"><animateMotion dur="2.2s" begin="1.75s" repeatCount="indefinite"><mpath href="#w6"/></animateMotion><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0;1" keyTimes="0;.42;.48;.94;1"/></circle>
-</g>
-</svg>
-<div class="node panel-node" aria-hidden="true"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span class="node-name">CelikPanel</span><span class="state"><span class="on">running</span><span class="off">stopped</span></span></div>
-<ul class="services">
-<li class="node"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span>Websites</span><i class="ok" aria-hidden="true"></i></li>
-<li class="node"><svg class="i i-mail" aria-hidden="true" focusable="false"><use href="#i-mail"></use></svg><span>Mail</span><i class="ok" aria-hidden="true"></i></li>
-<li class="node"><svg class="i i-network" aria-hidden="true" focusable="false"><use href="#i-network"></use></svg><span>DNS</span><i class="ok" aria-hidden="true"></i></li>
-<li class="node"><svg class="i i-database" aria-hidden="true" focusable="false"><use href="#i-database"></use></svg><span>Databases</span><i class="ok" aria-hidden="true"></i></li>
-<li class="node"><svg class="i i-calendar-clock" aria-hidden="true" focusable="false"><use href="#i-calendar-clock"></use></svg><span>Scheduled jobs</span><i class="ok" aria-hidden="true"></i></li>
-<li class="node"><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg><span>Site certificates</span><i class="ok" aria-hidden="true"></i></li>
-</ul>
-</figure>
-<p class="fine center-fine">Still tied to the panel today: its own and the mail server’s certificates, the firewall at boot, remote backups. <a href="guide/en/without-panel.html">Details<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></p>
+<p class="note">Not yet: not in any published release. The sandbox’s escape tests on every supported system are still open in the lab.</p>
 </div>
 </section>
-<section class="block features" aria-labelledby="features-title">
-<div class="wrap">
-<div class="block-head center">
-<p class="eyebrow">One panel</p>
-<h2 id="features-title">Everything a hosting server does.</h2>
-<p class="lede">Installed from your distribution’s packages, only what you choose.</p>
+<section class="part" aria-labelledby="h-stops">
+<header><span class="num">5</span><h2 id="h-stops">When the panel stops</h2><p>The services are the system’s own; CelikPanel manages them.</p></header>
+<div>
+<div class="split">
+<div><h3>Keeps running</h3><ul class="plain">
+<li>Websites and Node.js apps</li>
+<li>Mail and webmail</li>
+<li>DNS, including the copy on an optional backup DNS server</li>
+<li>Databases</li>
+<li>Scheduled tasks</li>
+<li>Renewal of site certificates, by the system’s own certbot timer</li>
+</ul></div>
+<div><h3>Still needs the panel</h3><ul class="plain">
+<li>Renewing the panel’s and the mail server’s own certificates</li>
+<li>Site certificates from older releases, until they are issued again</li>
+<li>Restoring the firewall at boot</li>
+<li>Sending scheduled remote backups (an optional feature)</li>
+<li>Monitoring alerts</li>
+</ul></div>
 </div>
-<div class="bento">
-<article class="card c-sites lead">
-<div class="art" aria-hidden="true">
-<div class="window">
-<div class="window-bar"><span class="dots"><i></i><i></i><i></i></span><b>Domains</b><span class="add">+ Add domain</span></div>
-<div class="window-body">
-<div class="side"><i></i><i class="on"></i><i></i><i></i><i></i></div>
-<div class="rows">
-<div class="row"><span class="lockdot"><svg class="i i-lock" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg></span><b>example.com</b><span class="tag">PHP 8.4</span><span class="use"><i></i></span><span class="up">Active</span></div>
-<div class="row"><span class="lockdot"><svg class="i i-lock" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg></span><b>shop.example.com</b><span class="tag">PHP 8.4</span><span class="use b2"><i></i></span><span class="up">Active</span></div>
-<div class="row"><span class="lockdot"><svg class="i i-lock" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg></span><b>app.example.net</b><span class="tag">Node.js</span><span class="use b3"><i></i></span><span class="up">Active</span></div>
-<div class="row"><span class="lockdot"><svg class="i i-lock" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg></span><b>docs.example.org</b><span class="tag">Static</span><span class="use b4"><i></i></span><span class="up">Active</span></div>
-<div class="row dim"><span class="lockdot"><svg class="i i-lock" aria-hidden="true" focusable="false"><use href="#i-lock"></use></svg></span><b>blog.example.net</b><span class="tag">PHP 8.3</span><span class="use b5"><i></i></span><span class="up">Active</span></div>
-</div>
-</div>
-</div>
-</div>
-<h3><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg>Websites</h3>
-<p>PHP, Node.js and static sites, each under its own user, with the PHP version you pick.</p>
-</article>
-<article class="card c-dns">
-<div class="art" aria-hidden="true">
-<div class="records">
-<div class="rec"><span class="type">A</span><span class="name">@</span><code>192.0.2.10</code></div>
-<div class="rec"><span class="type">AAAA</span><span class="name">@</span><code>2001:db8::10</code></div>
-<div class="rec"><span class="type">CNAME</span><span class="name">www</span><code>example.com</code></div>
-<div class="rec"><span class="type">MX</span><span class="name">@</span><code>mail.example.com</code></div>
-<div class="rec"><span class="type">TXT</span><span class="name">@</span><code>v=spf1 mx -all</code></div>
-</div>
-<p class="seen"><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>What the internet answers matches</p>
-</div>
-<h3><svg class="i i-network" aria-hidden="true" focusable="false"><use href="#i-network"></use></svg>DNS</h3>
-<p>Your own name servers or an outside provider, checked against the internet.</p>
-</article>
-<article class="card c-certs">
-<div class="art" aria-hidden="true">
-<div class="cert">
-<div class="ring"><b>78</b><small>days</small></div>
-<div class="names"><span>example.com</span><span>www.example.com</span><span>mail.example.com</span></div>
-</div>
-</div>
-<h3><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg>Certificates</h3>
-<p>Free for every site. Shows what it covers, and until when.</p>
-</article>
-<article class="card c-mail">
-<div class="art" aria-hidden="true">
-<div class="mailbox">
-<p class="addr"><svg class="i i-mail" aria-hidden="true" focusable="false"><use href="#i-mail"></use></svg>info@example.com</p>
-<div class="quota"><i></i></div>
-<p class="quota-text">1.2 / 2 GB</p>
-<div class="mail-actions"><span>Webmail</span><span>Password</span></div>
-</div>
-</div>
-<h3><svg class="i i-mail" aria-hidden="true" focusable="false"><use href="#i-mail"></use></svg>Mail</h3>
-<p>Mailboxes, forwarding, spam filtering and webmail.</p>
-</article>
-<article class="card c-backups">
-<div class="art" aria-hidden="true">
-<ol class="days"><li><span>Mon</span></li><li><span>Tue</span></li><li><span>Wed</span></li><li><span>Thu</span></li><li><span>Fri</span></li><li><span>Sat</span></li><li class="last"><span>Today</span></li></ol>
-<p class="latest"><svg class="i i-archive" aria-hidden="true" focusable="false"><use href="#i-archive"></use></svg><span>Last backup today</span><b>03:00</b></p>
-</div>
-<h3><svg class="i i-archive" aria-hidden="true" focusable="false"><use href="#i-archive"></use></svg>Backups</h3>
-<p>On a schedule, kept on the server. Send copies elsewhere if you like.</p>
-</article>
-<article class="card c-updates">
-<div class="art" aria-hidden="true">
-<ol class="steps-line">
-<li>Download</li><li>Signature</li><li>Check</li><li>Install</li><li>Verify</li>
-</ol>
-<svg class="back" viewBox="0 0 400 60" preserveAspectRatio="none" focusable="false"><path d="M372 6 C372 54 28 54 28 10"/><path class="head" d="M20 18 L28 6 L36 18"/></svg>
-<p class="back-label">If it does not come up, back to the previous version</p>
-</div>
-<h3><svg class="i i-rotate-ccw" aria-hidden="true" focusable="false"><use href="#i-rotate-ccw"></use></svg>Updates with a way back</h3>
-<p>You start it. If the new version does not come up, the old one returns.</p>
-</article>
-<article class="card c-pair">
-<div class="art" aria-hidden="true">
-<div class="pair">
-<div class="srv"><svg class="i i-server" aria-hidden="true" focusable="false"><use href="#i-server"></use></svg><b>Your server</b><small>sites · mail · DNS</small></div>
-<div class="sync"><span></span><small>zone copy</small></div>
-<div class="srv extra"><span class="plus">+</span><b>Backup DNS</b><small>when you want one</small></div>
-</div>
-</div>
-<h3><svg class="i i-server" aria-hidden="true" focusable="false"><use href="#i-server"></use></svg>A second server, if you want one <span class="optional">Optional</span></h3>
-<p>One server is enough. Add a second as backup DNS when you like.</p>
-</article>
-</div>
+<p class="note">Removing CelikPanel from a server is not supported yet. <a href="guide/en/without-panel.html">Running the server without the panel</a></p>
 </div>
 </section>
-<section class="block pricing-block" aria-labelledby="price-title">
-<div class="wrap">
-<div class="block-head center">
-<p class="eyebrow">Pricing</p>
-<h2 id="price-title"><span class="sent">One price.</span> <span class="sent">Nothing counted.</span></h2>
-<p class="lede">From version 1.0. Free until then.</p>
+<section class="part" aria-labelledby="h-measured">
+<header><span class="num">6</span><h2 id="h-measured">Measurements</h2><p>Measured on real machines under the condition shown. They describe those tests, not a guarantee for every server.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 4 · Recovery tests</caption>
+<thead><tr><th scope="col">Measurement</th><th scope="col">Value</th><th scope="col">Condition</th><th scope="col">Date</th></tr></thead>
+<tbody>
+<tr><th scope="row">From a dead server back into service</th><td class="v" data-k="Value">105 s</td><td data-k="Condition">The first server was stopped by a power cut; a new machine was provisioned and restored from one sealed archive</td><td class="v" data-k="Date">5 Sep 2026</td></tr>
+<tr><th scope="row">Archive age at the cut, data lost</th><td class="v" data-k="Value">40.9 s · 0</td><td data-k="Condition">Nothing was written in that window, so nothing was lost</td><td class="v" data-k="Date">5 Sep 2026</td></tr>
+<tr><th scope="row">Queries unanswered while taking over a running BIND</th><td class="v" data-k="Value">0 / 2508</td><td data-k="Condition">A hand-installed BIND answering its own zone on Debian 13, adopted through the panel</td><td class="v" data-k="Date">4 Sep 2026</td></tr>
+<tr><th scope="row">Time to settle unfinished work after a power cut</th><td class="v" data-k="Value">≤ 7 s</td><td data-k="Condition">Four power cuts on a real virtual machine; each time the work was finished or rolled back with nobody touching it</td><td class="v" data-k="Date">4 Sep 2026</td></tr>
+</tbody>
+</table>
 </div>
-<div class="price-pair">
-<div class="price-card">
-<p class="tag-from">from version 1.0</p>
-<p class="amount"><b>99</b><span>USD · per server · per year</span></p>
-<ul class="checks">
-<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Nothing counted: accounts, domains, sites unlimited</li>
-<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>One edition, every feature</li>
-<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Price locked while you renew without a break</li>
-<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Moving to another server is free</li>
-</ul>
-</div>
-<div class="today-card">
-<p class="pill"><span class="live" aria-hidden="true"></span>Today</p>
-<h3>Free during the alpha.</h3>
-<p>Every licence is free for a year and renews for free.</p>
-<ul class="checks quiet">
-<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>No card, no payment</li>
-<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>One licence per server</li>
-<li><svg class="i i-check" aria-hidden="true" focusable="false"><use href="#i-check"></use></svg>Beta participants: first paid year free</li>
-</ul>
-<a class="btn btn-primary" href="account/?action=register&amp;lang=en">Create a free account<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
-</div>
-</div>
-<div class="track">
-<p class="track-head"><b>If a licence runs out</b><span>terms from version 1.0</span></p>
-<ol class="stops">
-<li class="st-warn"><i aria-hidden="true"></i><b>Reminders</b><span>30 <span class="dot">·</span> 7 <span class="dot">·</span> 1 days before</span></li>
-<li class="st-end"><i aria-hidden="true"></i><b>End date</b><span>everything still works</span></li>
-<li class="st-grace"><i aria-hidden="true"></i><b>30 days of grace</b><span>a notice on top</span></li>
-<li class="st-protect"><i aria-hidden="true"></i><b>Then</b><span>only new things wait</span></li>
-</ol>
-<p class="track-always"><svg class="i i-shield-check" aria-hidden="true" focusable="false"><use href="#i-shield-check"></use></svg>At every step, sites, mail, DNS, updates and security keep working.</p>
-</div>
-<p class="center-link"><a class="link" href="pricing.html">Pricing in full<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></p>
+<p class="note">The conditions and the open risks are recorded in the repository. <a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RISK-REGISTER.md">Risk register</a></p>
 </div>
 </section>
-<section class="block install-block" aria-labelledby="install-title" id="install">
-<div class="wrap split install">
-<div class="block-head">
-<p class="eyebrow">Install</p>
-<h2 id="install-title">Try it on a clean server.</h2>
-<p class="lede">One command installs a signed release. No Go, Node.js or Git needed.</p>
-<ol class="num-steps">
-<li>Create a free account.</li>
-<li>Run the command as root.</li>
-<li>Open the address it shows.</li>
-</ol>
+<section class="part" aria-labelledby="h-licence">
+<header><span class="num">7</span><h2 id="h-licence">Licence</h2><p>One licence per server. Accounts, domains and sites are not counted.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 5 · The licence today and from version 1.0</caption>
+<thead><tr><th scope="col">Item</th><th scope="col">Today, alpha</th><th scope="col">From version 1.0</th></tr></thead>
+<tbody>
+<tr><th scope="row">Price</th><td data-k="Today, alpha">Free</td><td data-k="From version 1.0">99 USD per server per year (list price)</td></tr>
+<tr><th scope="row">Term</th><td data-k="Today, alpha">One year from creation; renewed free from your account</td><td data-k="From version 1.0">One year; the price does not rise while you renew without a break</td></tr>
+<tr><th scope="row">If celikpanel.net cannot be reached</th><td data-k="Today, alpha">Management stays open for up to 7 days</td><td data-k="From version 1.0">Everything keeps working for 30 days</td></tr>
+<tr><th scope="row">When a licence ends</th><td data-k="Today, alpha">Almost every panel screen locks; sites, mail, DNS, databases and scheduled jobs keep running</td><td data-k="From version 1.0">Reminders 30, 7 and 1 day before; 30 days of grace; then only new domains, accounts and mailboxes wait</td></tr>
+<tr><th scope="row">Trial and refund</th><td data-k="Today, alpha">—</td><td data-k="From version 1.0">30-day trial without a card; refund within 30 days</td></tr>
+<tr><th scope="row">Payment</th><td data-k="Today, alpha">None</td><td data-k="From version 1.0">In US dollars; the payment provider and tax details are not decided</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="pricing.html">The licence terms in full</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-release">
+<header><span class="num">8</span><h2 id="h-release">Release and limits</h2><p>Only the owner updates an installed panel, from the panel’s own update screen.</p></header>
+<div class="split">
+<div>
+<h3>Current release: <span class="mono">@@CP_RELEASE_VERSION@@</span>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></h3>
+<p>Signed with Ed25519. Its notes name the release commit, what was tried in the lab, what was not, and the known limits.</p>
+<p>If an update does not complete, the panel puts back the previous version and its database by itself. Sites, mail, DNS and databases are not part of it.</p>
+<p><a href="releases.html">Release notes, files and how to check them</a></p>
 </div>
 <div>
-<div class="terminal">
-<div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="cmd-title-install">Install command</h3><button class="copy" type="button" hidden data-copy="cmd-install" data-copied="Copied" data-failed="Select the text to copy it"><svg class="i i-copy" aria-hidden="true" focusable="false"><use href="#i-copy"></use></svg><span>Copy</span></button></div>
-<pre tabindex="0" aria-labelledby="cmd-title-install"><code id="cmd-install"><span class="ln">timedatectl set-ntp true
-</span><span class="ln">curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
-</span><span class="ln">sh celikpanel-install.sh</span></code></pre>
-<p class="terminal-foot">Run the three lines together in the server’s root terminal. The first turns on clock synchronisation, because certificates need the right time. If the installation stops, run the same command again.</p>
-<p class="sr-only" role="status" data-copy-status></p>
-</div>
-<div class="badges">
-<span class="badge tested">Debian 13</span><span class="badge tested">Ubuntu 24.04 LTS</span><span class="badge">Debian 12</span><span class="badge">Ubuntu 22.04 LTS</span><span class="badge">Arch Linux</span>
-<a class="link small" href="systems.html">What each system offers<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
-</div>
+<h3>Not offered yet</h3>
+<ul class="plain">
+<li>Apache and Exim: use Nginx and Postfix</li>
+<li>A whole-server backup in the panel: use your provider’s snapshots for the system</li>
+<li>Removing the panel from a server</li>
+<li>Processor and memory limits per account</li>
+<li>Processors other than amd64</li>
+<li>Payment: it opens with version 1.0</li>
+</ul>
 </div>
 </div>
 </section>
-<section class="closing" aria-labelledby="close-title">
-<div class="wrap">
-<div class="closing-card">
-<h2 id="close-title">Free until 1.0.</h2>
-<p>Create an account and install it on a test server today.</p>
-<div class="actions">
-<a class="btn btn-primary btn-lg" href="account/?action=register&amp;lang=en">Create a free account<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
-<a class="btn btn-ghost btn-lg" href="download.html">Install</a>
 </div>
-</div>
-</div>
-</section>
 </main>
-<footer class="site-footer">
+<footer class="foot">
 <div class="wrap">
-<div class="footer-grid">
-<div class="footer-brand"><a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>CelikPanel</span></a><p>A hosting control panel for Debian and Ubuntu servers. Your server stays yours.</p></div>
+<div><p class="foot-name">CelikPanel</p><p>A hosting control panel for Linux servers.</p><p>© 2026 CELIKBROS</p></div>
 <nav aria-labelledby="f-product"><h2 id="f-product">Product</h2><ul>
-<li><a href="pricing.html">Pricing</a></li>
-<li><a href="download.html">Download and install</a></li>
 <li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
 <li><a href="releases.html">Releases</a></li>
 <li><a href="guide/en/">User guide</a></li>
 </ul></nav>
@@ -373,13 +260,11 @@ sh celikpanel-install.sh</span></code>
 <li><a href="account/?action=register&amp;lang=en">Create an account</a></li>
 <li><a href="account/?action=terms&amp;lang=en">Terms and data notice</a></li>
 </ul></nav>
-<nav aria-labelledby="f-help"><h2 id="f-help">Help</h2><ul>
+<nav aria-labelledby="f-help"><h2 id="f-help">Contact</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
 <li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Report a bug</a></li>
 <li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml">Suggest a feature</a></li>
-<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
 </ul></nav>
-</div>
-<div class="footer-bottom"><span>© 2026 CelikPanel</span><span>Alpha <span class="dot">·</span> free until 1.0 <span class="dot">·</span> Linux amd64</span></div>
 </div>
 </footer>
 </body>

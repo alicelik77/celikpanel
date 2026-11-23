@@ -21,9 +21,11 @@
 // `go run ./site` again.
 //
 // Adding a page: add its two output paths to `pages` in site.go, write
-// templates/<key>.html defining "hero" and "main", add <key>.title and
-// <key>.description (and its text) to both catalogues, link it from the
-// navigation if it belongs there, then run `go run ./site` and the tests.
+// templates/<key>.html defining "lead" (the page's statement) and "main"
+// (its numbered parts), add <key>.title and <key>.description (and its text)
+// to both catalogues, give every text that holds a number its source in
+// site/sources.json, link the page from the navigation if it belongs there,
+// then run `go run ./site` and the tests.
 //
 // Herkese açık sitenin üreticisi: sayfalar şablonlardan ve dil başına bir metin
 // kataloğundan üretilir, download-portal/ altına yazılır ve site.sha256 ile

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sürümler · CelikPanel</title>
-<meta name="description" content="Güncel CelikPanel sürümü: sürüm numarası, tarihi, commit’i, SHA-256 özeti ve imzalı dosyaları; indirdiğinizi kendiniz nasıl denetlersiniz.">
+<meta name="description" content="Güncel CelikPanel sürümü; sürüm numarası, tarihi, kaydı, SHA-256 özeti ve imzalı dosyalarıyla. İndirdiğinizi kendiniz nasıl denetlersiniz.">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#0c1430" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f6f8fd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
-<link rel="preload" href="../assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../assets/public.css">
 <link rel="stylesheet" href="../assets/pages.css">
 <link rel="canonical" href="https://celikpanel.net/tr/surumler.html">
@@ -20,164 +20,114 @@
 <script src="../assets/public.js" defer></script>
 </head>
 <body>
-<svg class="sprite" aria-hidden="true" focusable="false">
-<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
-<symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
-<symbol id="i-network" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></symbol>
-<symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
-<symbol id="i-calendar-clock" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></symbol>
-<symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
-<symbol id="i-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
-<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
-<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
-<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
-<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
-<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
-<symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
-<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
-<symbol id="i-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
-<symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
-<symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
-<symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
-<symbol id="i-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></symbol>
-<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-<symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
-<symbol id="i-check-circle-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
-<symbol id="i-logo" viewBox="0 0 32 32"><path fill="currentColor" stroke="none" d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></symbol>
-</svg>
 <a class="skip" href="#main">İçeriğe geç</a>
-<header class="masthead">
-<div class="wrap bar">
-<a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
-<nav class="primary" aria-label="Ana menü">
-<a href="fiyat.html">Fiyat</a>
-<a href="indir.html">İndir</a>
-<a href="sistemler.html">Sistemler</a>
-<a href="../guide/tr/">Kılavuz</a>
-</nav>
-<div class="tools">
-<a class="tool lang" href="../releases.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English"><svg class="i i-globe" aria-hidden="true" focusable="false"><use href="#i-globe"></use></svg><span class="cur">TR</span><span class="sep" aria-hidden="true">·</span><span>EN</span></a>
-<button class="tool theme" type="button" hidden data-theme-toggle data-label-dark="Koyu temaya geç" data-label-light="Açık temaya geç" aria-label="Koyu temaya geç"><svg class="i i-moon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><svg class="i i-sun" aria-hidden="true" focusable="false"><use href="#i-sun"></use></svg></button>
-<a class="signin" href="../account/?action=login&amp;lang=tr">Giriş yap</a>
-<a class="btn btn-primary btn-sm register" href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
-<details class="menu">
-<summary aria-label="Menü"><svg class="i i-menu" aria-hidden="true" focusable="false"><use href="#i-menu"></use></svg><svg class="i i-x" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg></summary>
-<nav class="sheet" aria-label="Ana menü">
-<a href="fiyat.html">Fiyat</a>
-<a href="indir.html">İndir</a>
-<a href="sistemler.html">Sistemler</a>
-<a href="../guide/tr/">Kılavuz</a>
-<a href="surumler.html">Sürümler</a>
-<a href="../account/?action=login&amp;lang=tr">Giriş yap</a>
-<a class="btn btn-primary" href="../account/?action=register&amp;lang=tr">Hesap oluştur</a>
-</nav>
-</details>
-</div>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
+<span class="docid">Veri sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<nav aria-label="Ana menü"><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html" aria-current="page">Sürümler</a></li>
+<li><a href="../guide/tr/">Kılavuz</a></li>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../releases.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a></li>
+</ul></nav>
 </div>
 </header>
 <main id="main">
-<section class="page-hero center" aria-labelledby="hero-title">
-<div class="hero-glow soft" aria-hidden="true"></div>
+<div class="lead">
 <div class="wrap">
-<p class="eyebrow">Sürümler</p>
-<h1 id="hero-title">Sürümler.</h1>
-<p class="lede">Her sürüm imzalıdır ve commit’iyle adlandırılır. Kurulu paneller yalnız sahibi başlattığında güncellenir.</p>
-</div>
-</section>
-<section class="block tight" aria-labelledby="current-title">
-<div class="wrap release-grid">
-<div class="release-card">
-<p class="pill"><span class="live" aria-hidden="true"></span><span id="current-title">Güncel sürüm</span></p>
-<p class="version">@@CP_RELEASE_VERSION@@</p>
-<p class="published">Yayımlandı <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time> <span class="dot">·</span> Linux amd64</p>
-<div class="actions start">
-<a class="btn btn-primary" href="@@CP_RELEASE_ARCHIVE_URL@@">Paketi indir</a>
-<a class="btn btn-ghost" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.tr.md">Sürüm notları<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a>
-</div>
-</div>
-<div class="table-card identity-card">
-<div class="table-card-head"><h2>Sürüm kimliği</h2></div>
-<dl class="identity">
-<div><dt>Commit</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
+<h1>Sürümler</h1>
+<p class="def">Her sürüm imzalıdır ve kaydıyla adlandırılır. Kurulu paneller yalnız sahibi başlattığında güncellenir.</p>
+<dl class="spec" aria-label="Son sürüm">
+<div><dt>Sürüm</dt><dd class="mono">@@CP_RELEASE_VERSION@@</dd></div>
+<div><dt>Yayım</dt><dd><time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></dd></div>
+<div><dt>Kayıt</dt><dd><code>@@CP_RELEASE_COMMIT@@</code></dd></div>
 <div><dt>SHA-256</dt><dd><code>@@CP_RELEASE_SHA256@@</code></dd></div>
 <div><dt>Paket</dt><dd><code>@@CP_RELEASE_ARCHIVE_NAME@@</code></dd></div>
 </dl>
+<div class="actions">
+<a class="btn primary" href="@@CP_RELEASE_ARCHIVE_URL@@">Paketi indir</a>
+<a class="btn plain" href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-@@CP_RELEASE_VERSION@@.tr.md">Sürüm notları</a>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-files">
+<header><span class="num">1</span><h2 id="h-files">Dosyalar</h2><p>Kurucunun denetlediği her şey, sizin de denetlemeniz için.</p></header>
+<div>
 <ul class="files">
 <li><a href="@@CP_RELEASE_ARCHIVE_URL@@">Paket (.tar.gz)</a></li>
 <li><a href="@@CP_RELEASE_CHECKSUM_URL@@">SHA-256 dosyası</a></li>
 <!-- cp:signed -->
 <li><a href="@@CP_RELEASE_MANIFEST_URL@@">İmzalı sürüm bildirimi</a></li>
-<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">Bildirimin imzası (Ed25519)</a></li>
+<li><a href="@@CP_RELEASE_SIGNATURE_URL@@">Bildirim imzası (Ed25519)</a></li>
 <!-- cp:/signed -->
 <li><a href="../release-signing-ed25519.pem">Sürüm imzalama açık anahtarı</a></li>
 </ul>
 </div>
-</div>
 </section>
-<section class="block" aria-labelledby="check-title">
-<div class="wrap split install">
-<div class="block-head">
-<p class="eyebrow">Doğrulama</p>
-<h2 id="check-title">İndirdiğinizi kendiniz denetleyin.</h2>
-<p class="lede">Kurucu bunu bir şey kurmadan önce yapar. Siz de elle tekrarlayabilirsiniz.</p>
-<ol class="num-steps">
-<li>Paketi, SHA-256 dosyasını, imzalı bildirimi, imzasını ve açık anahtarı aynı klasöre indirin.</li>
-<li>Anahtarın SHA-256 özetini aşağıdakiyle karşılaştırın, sonra paketi SHA-256 dosyasıyla denetleyin.</li>
-<li>Bildirimin imzasını anahtarla doğrulayın. Bildirim, paketin SHA-256 özetini ve boyutunu adıyla verir.</li>
-</ol>
-</div>
+<section class="part" aria-labelledby="h-check">
+<header><span class="num">2</span><h2 id="h-check">İndirdiğinizi kendiniz denetleyin</h2><p>Kurucu bunu hiçbir şey kurmadan önce yapar. Siz de elle tekrarlayabilirsiniz.</p></header>
 <div>
-<div class="terminal">
-<div class="terminal-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="verify-title">Komutlar</h3></div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 1 · Adımlar</caption>
+<tbody>
+<tr><td class="v">1</td><td>Paketi, SHA-256 dosyasını, imzalı bildirimi, imzasını ve açık anahtarı aynı klasöre indirin.</td></tr>
+<tr><td class="v">2</td><td>Anahtarın SHA-256 özetini aşağıdakiyle karşılaştırın, sonra paketi SHA-256 dosyasıyla denetleyin.</td></tr>
+<tr><td class="v">3</td><td>Bildirimin imzasını anahtarla doğrulayın. Bildirim, paketin SHA-256 özetini ve boyutunu yazar.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="verify-title">Komutlar</h3></div>
 <pre tabindex="0" aria-labelledby="verify-title"><code>sha256sum release-signing-ed25519.pem
 sha256sum -c @@CP_RELEASE_ARCHIVE_NAME@@.sha256
 openssl pkeyutl -verify -rawin -pubin \
   -inkey release-signing-ed25519.pem \
   -in release-manifest-v2 -sigfile release-manifest-v2.sig</code></pre>
-<p class="terminal-foot">Her satır hatasız bitmelidir: sağlama toplamı için “OK”, imza için “Signature Verified Successfully”.</p>
+<p class="note">Her satır hatasız bitmelidir: özet için “OK”, imza için “Signature Verified Successfully”.</p>
 </div>
-<p class="fine key">Sürüm imzalama açık anahtarının SHA-256 özeti: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
-</div>
+<p class="key">Sürüm imzalama açık anahtarının SHA-256 özeti: <code>7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb</code></p>
 </div>
 </section>
-<section class="block" aria-labelledby="update-title">
-<div class="wrap split">
-<div class="block-head">
-<p class="eyebrow">Zaten kurulu</p>
-<h2 id="update-title">Kurulu paneli güncellemek.</h2>
-<p class="lede">Ayarlar, CelikPanel güncellemeleri’ni açın ve Güncellemeleri denetle’ye basın. Yeni sürüm ayağa kalkmazsa öncekine döner.</p>
-</div>
-<ul class="link-list">
-<li><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler, kullanım kılavuzunda<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
-<li><a href="https://github.com/alicelik77/celikpanel/releases">Bütün sürümler ve notları<svg class="i i-arrow-up-right" aria-hidden="true" focusable="false"><use href="#i-arrow-up-right"></use></svg></a></li>
-<li><a href="indir.html">Yeni bir sunucuya kur<svg class="i i-arrow-right" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></li>
+<section class="part" aria-labelledby="h-update">
+<header><span class="num">3</span><h2 id="h-update">Kurulu bir paneli güncellemek</h2></header>
+<div>
+<p>Ayarlar, CelikPanel güncellemeleri bölümünü açın ve güncellemeyi kendiniz başlatın; bunu yalnız sahibi yapabilir. Bir güncelleme tamamlanmazsa panel önceki sürümü ve veritabanını kendisi geri koyar. Siteler, posta, DNS ve veritabanları buna dahil değildir.</p>
+<p>Her sürümün notları kaydını yazar, laboratuvarda neyin denendiğini ve neyin denenmediğini söyler, bilinen sınırları listeler.</p>
+<ul class="plain">
+<li><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler, kullanım kılavuzunda</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel/releases">Bütün sürümler ve notları</a></li>
+<li><a href="indir.html">Yeni bir sunucuya kur</a></li>
 </ul>
 </div>
 </section>
+</div>
 </main>
-<footer class="site-footer">
+<footer class="foot">
 <div class="wrap">
-<div class="footer-grid">
-<div class="footer-brand"><a class="brand" href="./"><svg class="i i-logo" aria-hidden="true" focusable="false"><use href="#i-logo"></use></svg><span>CelikPanel</span></a><p>Debian ve Ubuntu sunucular için hosting kontrol paneli. Sunucunuz sizin kalır.</p></div>
+<div><p class="foot-name">CelikPanel</p><p>Linux sunucular için hosting kontrol paneli.</p><p>© 2026 CELIKBROS</p></div>
 <nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
-<li><a href="fiyat.html">Fiyat</a></li>
-<li><a href="indir.html">İndir ve kur</a></li>
 <li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
 <li><a href="surumler.html">Sürümler</a></li>
 <li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
 </ul></nav>
 <nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
 <li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
 <li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
-<li><a href="../account/?action=terms&amp;lang=tr">Kullanım koşulları ve veri açıklaması</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Koşullar ve veri bildirimi</a></li>
 </ul></nav>
-<nav aria-labelledby="f-help"><h2 id="f-help">Yardım</h2><ul>
-<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
-<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Öneri gönder</a></li>
+<nav aria-labelledby="f-help"><h2 id="f-help">İletişim</h2><ul>
 <li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Özellik öner</a></li>
 </ul></nav>
-</div>
-<div class="footer-bottom"><span>© 2026 CelikPanel</span><span>Alfa <span class="dot">·</span> 1.0’a kadar ücretsiz <span class="dot">·</span> Linux amd64</span></div>
 </div>
 </footer>
 </body>

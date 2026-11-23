@@ -52,10 +52,17 @@ var moved = []struct {
 var assetFiles = []string{"public.css", "home.css", "pages.css", "public.js", "boot.js"}
 
 // Product screens: assets/shots/<name>-<lang>-<theme>.webp, taken from the
-// current panel build with sample data (web/tools/browser-inspect, batch 37).
-// Each screen exists per language and theme as <name>-<lang>-<theme>.webp
-// (1280x680, cropped to the content), -2x.webp (2560x1360) and -phone.webp (780x1688, a 390-wide
-// phone at twice the density).
+// panel build of 19 November 2026 with sample data (web/tools/browser-inspect,
+// batch 37). Each screen exists per language and theme as
+// <name>-<lang>-<theme>.webp (1280x680, cropped to the content), -2x.webp
+// (2560x1360) and -phone.webp (780x1688, a 390-wide phone at twice the
+// density). The "figure" template shows a screen by its name only, so a new
+// capture replaces these files and changes no template; a new screen is one
+// line here and one figure line in a page.
+//
+// Screens planned from the lab, not captured yet (sample data, TR and EN):
+// dashboard, a domain's mail tab, DNS records, backups, the panel's update
+// screen, monitoring, users and plans, the setup wizard's DNS choice.
 var shots = map[string][2]int{
 	"domains":   {1280, 680},
 	"domain":    {1280, 680},
@@ -147,7 +154,7 @@ type renderer struct {
 	preview bool
 }
 
-var allowedMarkup = regexp.MustCompile(`</?(strong|em|code|br|abbr)( title="[^"<>]*")?>`)
+var allowedMarkup = regexp.MustCompile(`</?(strong|em|code|br|abbr|small)( title="[^"<>]*")?>`)
 
 func (r *renderer) funcs(v view) template.FuncMap {
 	lookup := func(key string) (string, error) {
@@ -230,9 +237,6 @@ func (r *renderer) funcs(v view) template.FuncMap {
 			}
 			return result, nil
 		},
-		"icon": func(name string) template.HTML {
-			return template.HTML(`<svg class="i i-` + name + `" aria-hidden="true" focusable="false"><use href="#i-` + name + `"></use></svg>`)
-		},
 		"current": func(key string) bool { return key == v.Key },
 		"root":    v.root,
 		"dict": func(pairs ...any) (map[string]any, error) {
@@ -249,14 +253,7 @@ func (r *renderer) funcs(v view) template.FuncMap {
 			}
 			return result, nil
 		},
-		"list":      func(items ...string) []string { return items },
-		"words":     strings.Fields,
-		"sentences": sentences,
-		// dots sets the separating middle dots of a short line in their own
-		// span: Overpass draws the dot against the following word.
-		"dots": func(text string) template.HTML {
-			return template.HTML(strings.ReplaceAll(template.HTMLEscapeString(text), " · ", ` <span class="dot">·</span> `))
-		},
+		"list": func(items ...string) []string { return items },
 		// marker writes a signed-block marker (html/template drops comments
 		// written in a template).
 		"marker": func(which string) (template.HTML, error) {
@@ -268,7 +265,6 @@ func (r *renderer) funcs(v view) template.FuncMap {
 			}
 			return "", fmt.Errorf("unknown marker %q", which)
 		},
-		"other": func() string { return map[string]string{"en": "tr", "tr": "en"}[v.Lang] },
 		"langs": func() []string { return languages },
 		"canonical": func() string {
 			p, _ := pagePath(v.Key, v.Lang)
@@ -282,7 +278,7 @@ func (r *renderer) funcs(v view) template.FuncMap {
 }
 
 func (r *renderer) base() (*template.Template, error) {
-	return template.New("site").Funcs(r.funcs(view{})).ParseFS(sources, "templates/layout.html", "templates/parts.html", "templates/icons.html")
+	return template.New("site").Funcs(r.funcs(view{})).ParseFS(sources, "templates/layout.html", "templates/parts.html")
 }
 
 func (r *renderer) page(key, lang, out string) ([]byte, error) {
@@ -378,36 +374,10 @@ var (
 	cssMediaFeature = regexp.MustCompile(`\(([a-z-]+): `)
 )
 
-// sentences sets each sentence of a headline in its own unbreakable-looking
-// box (".sent" is inline-block), so a two-sentence headline breaks between
-// its sentences ("One price." / "Nothing counted.") and never leaves half a
-// sentence on a line; a single sentence comes back as plain escaped text.
-func sentences(text string) template.HTML {
-	var parts []string
-	var current []string
-	for _, word := range strings.Fields(text) {
-		current = append(current, word)
-		if strings.HasSuffix(word, ".") || strings.HasSuffix(word, "?") || strings.HasSuffix(word, "!") {
-			parts = append(parts, strings.Join(current, " "))
-			current = nil
-		}
-	}
-	if len(current) > 0 {
-		parts = append(parts, strings.Join(current, " "))
-	}
-	if len(parts) < 2 {
-		return template.HTML(template.HTMLEscapeString(text))
-	}
-	for i, part := range parts {
-		parts[i] = `<span class="sent">` + template.HTMLEscapeString(part) + `</span>`
-	}
-	return template.HTML(strings.Join(parts, " "))
-}
-
 // minifyCSS drops comments and the whitespace that carries no meaning: runs
 // collapse to one space, and none is kept around braces, semicolons, commas
 // and child combinators. A space before a colon is kept, because in a
-// selector it is a descendant combinator (".gantry :focus-visible"). The
+// selector it is a descendant combinator (".doc :focus-visible"). The
 // readable source stays in site/assets/public.css.
 func minifyCSS(source []byte) []byte {
 	out := cssComment.ReplaceAll(source, nil)
