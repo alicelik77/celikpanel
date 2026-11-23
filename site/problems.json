@@ -382,7 +382,7 @@
           "says": "webmail update is only read, nothing"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:107",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:108",
           "says": "Now the panel reads what the server did and records the result by"
         }
       ],
@@ -399,11 +399,11 @@
       },
       "sources": [
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:30",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:31",
           "says": "The database tools and webmail ran under the web server's shared"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:35",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:36",
           "says": "Now each has a system account of its own"
         }
       ]
@@ -419,7 +419,7 @@
       },
       "sources": [
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:59",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:60",
           "says": "Site accounts can no longer schedule jobs with"
         }
       ]
@@ -435,7 +435,7 @@
       },
       "sources": [
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:72",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:73",
           "says": "shared PHP pool is switched off where nothing uses"
         }
       ]

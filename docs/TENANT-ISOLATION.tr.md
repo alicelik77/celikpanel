@@ -549,13 +549,6 @@ art arda iki deneme başarısız olunca çalışmıyor sayar.
 
 **Sahip her birini panel olmadan nasıl geri alır (D-022).**
 
-- Aracın kendi havuzu: `/etc/php/<s>/fpm/pool.d/celikpanel-<araç>.conf` silinir, aracın nginx
-  dosyası yeniden varsayılan sokete çevrilir, ikisi de yeniden yüklenir. Hesaplar `userdel` ile
-  silinir.
-- Web postasının girdisi: `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`
-  (okumak için `getfacl`). Web postası o zaman dosyalarını okuyamaz; CelikPanel girdiyi
-  kendiliğinden geri koymaz ve bunu söyler; web postasının Yönet penceresinde PHP sürümünü seçmek
-  girdiyi geri koyar.
 - Varsayılan havuz: `www.conf.off-by-celikpanel` yeniden `www.conf` yapılır, PHP-FPM yeniden
   yüklenir. CelikPanel açık bırakır ve listeler; yalnız yöneticinin açıkça "Yeniden kapat" demesi
   (yalnız o havuz) yeniden kapatır.
@@ -563,35 +556,55 @@ art arda iki deneme başarısız olunca çalışmıyor sayar.
   kendiliğinden yeniden yazmaz; "Yeniden kapat" (yalnız o dosya) yeniden yazar.
 - Crontab satırı: crontab root olarak düzenlenir. CelikPanel'in yazmadığı satırlar listelenir,
   asla onun tarafından silinmez.
+- Yalnız web postasının girdisi: `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`
+  (okumak için `getfacl`). Web postası o zaman dosyalarını okuyamaz; CelikPanel girdiyi
+  kendiliğinden geri koymaz ve bunu söyler; web postasının Yönet penceresinde PHP sürümünü seçmek
+  girdiyi geri koyar.
+- Araçları yeniden web sunucusu hesabına almak. Panelde bunun bir eylemi yoktur (bir aracın PHP
+  sürümünü seçmek kendi hesabını korur); elle, bu sırayla, root olarak (`www-data`, Debian ve
+  Ubuntu'da web sunucusunun grubudur; `<s>`, bir aracın çalıştığı her PHP sürümüdür):
+  1. Önce kapatılmış her varsayılan havuz geri konur, böylece araçların döneceği soket var olur:
+     `mv /etc/php/<s>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<s>/fpm/pool.d/www.conf && systemctl reload php<s>-fpm`.
+  2. Dosyalar, kurulumun koyduğu gibi web sunucusunun grubuna geri verilir
+     (`applyRoundcubePermissions`; phpMyAdmin'in iki paket dosyası paketin bıraktığı gibi):
+     `chown -R root:www-data /var/lib/celikpanel-webmail`,
+     `chmod 0750 /var/lib/celikpanel-webmail`,
+     `chmod 0770 /var/lib/celikpanel-webmail/db /var/lib/celikpanel-webmail/temp /var/lib/celikpanel-webmail/logs`,
+     `chmod -R g+rwX /var/lib/celikpanel-webmail/db /var/lib/celikpanel-webmail/temp /var/lib/celikpanel-webmail/logs`,
+     `chmod 0640 /var/lib/celikpanel-webmail/config/config.inc.php`,
+     `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`;
+     `rm /etc/phpmyadmin/conf.d/celikpanel-own-account.php`,
+     `chgrp www-data /etc/phpmyadmin/config-db.php /var/lib/phpmyadmin/blowfish_secret.inc.php`.
+  3. Web sunucusu yeniden varsayılan soketlere çevrilir, sonra denetlenip yeniden yüklenir:
+     `sed -i 's#php\([0-9.]*\)-fpm-celikpanel-[a-z]*\.sock#php\1-fpm.sock#g' /etc/nginx/conf.d/celikpanel-webmail.conf /etc/nginx/conf.d/celikpanel-dbtools.conf /etc/nginx/conf.d/celikpanel-webmail-*.conf`,
+     sonra `nginx -t && systemctl reload nginx`.
+  4. Araçların kendi havuzları kaldırılır: `rm /etc/php/<s>/fpm/pool.d/celikpanel-*.conf && systemctl reload php<s>-fpm`.
+  5. En son hesaplar ve veri klasörleri:
+     `userdel celikpanel-webmail; userdel celikpanel-phpmyadmin; userdel celikpanel-phppgadmin; rm -r /var/lib/celikpanel-php-tools`.
+- **Panel gidince artık güncel tutulmayanlar:** `/etc/at.allow` son yazıldığı gibi kalır; sonradan
+  açılan bir hesap, sahip onu eklemeden `at` kullanamaz. Bir PHP sürümünün son havuzunu kaybetmesini
+  de artık hiçbir şey önlemez: varsayılan havuz kapalıyken bir sürümün son diğer havuzunu kaldırmak
+  PHP-FPM'in başlamamasına yol açar (önce varsayılan havuzu geri koyun).
 
-**Önceki sürüme dönmek (alpha.146).** Geri dönüş yalnız CelikPanel'in kendi dosyalarını geri
-koyar; `/etc/php`, `/etc/nginx`, `/etc/at.allow`, araçların ağaçları ve erişim listesi olduğu gibi
-kalır. alpha.146 (alpha.144 ve alpha.145 de) bu değişikliğe karşı aynı davranır. alpha.146 altında:
+**Önceki sürüme dönmek (alpha.146).** Ürünün kendi geri dönüş yolu (`rollback.sh`) önceki sürümü
+yalnız agent'ın sunucu değişiklikleri kaydı güncellemenin sakladığıyla aynıyken geri koyar.
+Güncellemeden sonra herhangi bir sunucu değişikliği kaydedilir kaydedilmez reddeder ve şunu yazar:
+`!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
+Yan kapılar adımı böyle bir değişikliktir ve her panel açılışından yaklaşık üç dakika sonra
+kendiliğinden çalışır; bu yüzden geri dönüş pratikte yalnız güncellemeden sonraki o ilk dakikalarda
+kabul edilir. Başarısız bir güncellemenin otomatik geri dönüşü yeni panel açılmadan önce olur ve R1'in
+değişikliklerine hiç rastlamaz. Adım çalıştıktan sonra önceki sürüm ürünle geri konamaz. Yöneticinin
+elinde bunun yerine bu sürümün kendi geri alması vardır: kapatılmış bir varsayılan havuz adı geri
+verilerek açılır (yukarıda; CelikPanel onu sonra açık bırakır), `at`, `/etc/at.allow` silinerek
+yeniden açılır ve araçlar yukarıdaki adımlarla web sunucusu hesabına geri alınır.
 
-- *Çalışmayı sürdürür:* PHP-FPM araçların kendi havuzlarını çalıştırır; alpha.146 yapılandırmaların
-  andığı soketleri kullanır, phpMyAdmin, phpPgAdmin ve web postası yanıt vermeyi sürdürür; web
-  postasının adres dosyaları ve yerel sunucusu soketlerini korur (alpha.146 yerel sunucunun web
-  postasının kendi havuzundaki kapalı biçimini kendi güncel biçimi sayar); `/etc/at.allow` olduğu
-  gibi kalır.
-- *Artık korunmaz:* alpha.146 bir aracın kendi soketini tanımaz; bu yüzden aracın çalıştığı PHP
-  sürümünün kaldırılmasını reddetmez (araç durur ve nedeni söylenmez); araçların Yönet
-  pencerelerinde PHP sürümü görünmez.
-- *Başarısız olur:* web postasının kendi güncellemesi (yeni ağaç hesabın girdisini ve klasörlerini
-  almaz; güncelleme eski ağacı geri koyar ve web postasının yanıt vermediğini söyler); varsayılan
-  havuzu kapalı bir PHP sürümünün son sitesini silmek ya da başka sürüme taşımak (PHP-FPM'in
-  denetimi havuzsuz sürümü reddeder, alpha.146 varsayılan havuzu geri koymaz); böyle bir sürümde
-  bir aracı yeniden kurmak ya da kanıtlamak.
-- *Ayrıca:* yan kapıların Şu anki sorunlar satırları görünmez; bir aracı kaldırmak hesabını,
-  havuzunu ve veri klasörünü bırakır; gizli dosyalarını web grubuna geri veren bir phpMyAdmin paket
-  yükseltmesi düzeltilmez.
-
-Sahibin yapacağı: geri dönmeden önce her varsayılan havuzu geri koyar
-(`mv /etc/php/<s>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<s>/fpm/pool.d/www.conf &&
-systemctl reload php<s>-fpm`) ve araçlar eskisi gibi çalışsın isterse kendi havuzlarını yukarıdaki
-adımlarla geri alır; sonra geri döner. Zaten geri dönüldüyse: bir sürümün son sitesini silmeden ya
-da taşımadan önce varsayılan havuzu geri koyar; `ls /etc/php/*/fpm/pool.d/celikpanel-*.conf`
-komutunun listelediği bir PHP sürümünü kaldırmaz; web postası güncellemelerini yeni sürüm yeniden
-kurulana kadar bekletir.
+Yalnız eksiksiz olsun diye, alpha.146'nın (alpha.144 ve alpha.145 gibi) bu değişikliğin çalıştığı
+bir sunucuda çalışsaydı neyi korumayacağı: bir aracın kendi soketini tanımaz; bu yüzden aracın
+çalıştığı PHP sürümünün kaldırılmasını reddetmez ve araçların Yönet pencerelerinde PHP sürümü
+görünmez; web postasının kendi güncellemesi başarısız olur ve eski ağacı geri koyar (yeni ağaç
+hesabın girdisini ve klasörlerini almaz); varsayılan havuzu kapalı bir PHP sürümünün son sitesini
+silmek ya da taşımak reddedilir (alpha.146 varsayılan havuzu geri koymaz); yan kapıların Şu anki
+sorunlar satırları görünmez.
 
 **Bir site hesabının hâlâ ulaşabildiği.** Dosya sisteminde web postası ağacının altında hiçbir
 şey. Araçların soketleri web sunucusunundur (0660) ve site hesabı o grupta değildir; müşteriler

@@ -172,6 +172,27 @@ traffic as "not known" (no website is limited on an unknown number). To stop
 the mailbox quota: move `90-celikpanel-quota.conf` aside and remove the
 `check_policy_service` element, then reload Dovecot and Postfix.
 
+## Customer separation R1: the tools' accounts, the shared PHP pool, `at` (alpha.147)
+
+Source state with component tests; the native lab round is pending. Debian and
+Ubuntu (on Arch Linux the tools and the pool stay as they were).
+
+| What | What it does | Without CelikPanel |
+|---|---|---|
+| `/etc/php/<v>/fpm/pool.d/celikpanel-<tool>.conf` and the accounts `celikpanel-webmail`, `celikpanel-phpmyadmin`, `celikpanel-phppgadmin` | Each tool's own PHP-FPM pool under its own system account; data in `/var/lib/celikpanel-php-tools/<tool>/` | Keeps running; PHP-FPM reads the pool as any other |
+| `/etc/nginx/conf.d/celikpanel-webmail.conf`, `celikpanel-dbtools.conf`, `celikpanel-webmail-origin-*.conf` | Hand each tool's PHP to its own pool's socket | Same |
+| The access-control-list entry `user:celikpanel-webmail:--x` on `/var/lib/celikpanel-webmail` | Lets webmail's own account through the tree's closed root | Stays; `getfacl` reads it, `setfacl -x` removes it |
+| `/etc/php/<v>/fpm/pool.d/www.conf.off-by-celikpanel` | The distribution's pool, switched off by a rename (dpkg keeps it so on upgrades) | Stays off; rename it back to `www.conf` to turn it on |
+| `/etc/at.allow` | `at` for every account except the website accounts | Stays as last written: an account made later cannot use `at` until the owner adds it |
+
+What goes with the panel: the rule that a PHP version never loses its last
+pool. With the stock pool switched off, removing a version's last other pool
+makes PHP-FPM refuse to start; rename the stock pool back first. Putting the
+tools back on the web server's account by hand, in the right order (stock
+pool first, the files back to the web group, the web server files back to the
+stock sockets, the own pools removed, the accounts last), is in
+[TENANT-ISOLATION.md §7](TENANT-ISOLATION.md).
+
 ## Evidence
 
 [Local validation](validation/native-dns-independence-20260912/README.md) covers

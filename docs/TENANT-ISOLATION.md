@@ -650,13 +650,6 @@ in a row failed.
 
 **How the owner undoes each thing without the panel (D-022).**
 
-- A tool's own pool: delete `/etc/php/<v>/fpm/pool.d/celikpanel-<tool>.conf`,
-  point the tool's nginx file back at the stock socket and reload both. The
-  accounts are removed with `userdel`.
-- Webmail's entry: `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`
-  (`getfacl` reads it). Webmail then cannot read its files; CelikPanel does
-  not put the entry back by itself and says so; choosing webmail's PHP
-  version in its Manage window puts it back.
 - The stock pool: rename `www.conf.off-by-celikpanel` back to `www.conf` and
   reload PHP-FPM. CelikPanel leaves it on and lists it; only the
   administrator's explicit "Turn it off again" (that one pool only) turns it
@@ -666,39 +659,64 @@ in a row failed.
   anew.
 - A crontab line: edit the crontab as root. Lines CelikPanel did not write
   are listed, never removed by it.
+- Webmail's entry alone: `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`
+  (`getfacl` reads it). Webmail then cannot read its files; CelikPanel does
+  not put the entry back by itself and says so; choosing webmail's PHP
+  version in its Manage window puts it back.
+- The tools back on the web server's account. The panel has no action for
+  this (choosing a tool's PHP version keeps its own account); by hand, in
+  this order, as root (`www-data` is the web server's group on Debian and
+  Ubuntu; `<v>` each PHP version a tool runs on):
+  1. Every switched-off stock pool back first, so the socket the tools go
+     back to exists:
+     `mv /etc/php/<v>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<v>/fpm/pool.d/www.conf && systemctl reload php<v>-fpm`.
+  2. The files back to the web server's group, as the install sets them
+     (`applyRoundcubePermissions`; phpMyAdmin's two package files as the
+     package leaves them):
+     `chown -R root:www-data /var/lib/celikpanel-webmail`,
+     `chmod 0750 /var/lib/celikpanel-webmail`,
+     `chmod 0770 /var/lib/celikpanel-webmail/db /var/lib/celikpanel-webmail/temp /var/lib/celikpanel-webmail/logs`,
+     `chmod -R g+rwX /var/lib/celikpanel-webmail/db /var/lib/celikpanel-webmail/temp /var/lib/celikpanel-webmail/logs`,
+     `chmod 0640 /var/lib/celikpanel-webmail/config/config.inc.php`,
+     `setfacl -x u:celikpanel-webmail /var/lib/celikpanel-webmail`;
+     `rm /etc/phpmyadmin/conf.d/celikpanel-own-account.php`,
+     `chgrp www-data /etc/phpmyadmin/config-db.php /var/lib/phpmyadmin/blowfish_secret.inc.php`.
+  3. The web server back on the stock sockets, then checked and reloaded:
+     `sed -i 's#php\([0-9.]*\)-fpm-celikpanel-[a-z]*\.sock#php\1-fpm.sock#g' /etc/nginx/conf.d/celikpanel-webmail.conf /etc/nginx/conf.d/celikpanel-dbtools.conf /etc/nginx/conf.d/celikpanel-webmail-*.conf`,
+     then `nginx -t && systemctl reload nginx`.
+  4. The tools' own pools removed: `rm /etc/php/<v>/fpm/pool.d/celikpanel-*.conf && systemctl reload php<v>-fpm`.
+  5. Last, the accounts and their data folder:
+     `userdel celikpanel-webmail; userdel celikpanel-phpmyadmin; userdel celikpanel-phppgadmin; rm -r /var/lib/celikpanel-php-tools`.
+- **What is no longer kept up to date once the panel is gone:** `/etc/at.allow`
+  stays as it was last written, so an account made later cannot use `at`
+  until the owner adds it; and nothing keeps a PHP version from losing its
+  last pool: with the stock pool switched off, removing a version's last
+  other pool makes PHP-FPM refuse to start (rename the stock pool back
+  first).
 
-**Going back to the release before (alpha.146).** Going back puts back
-CelikPanel's own files only; it does not touch `/etc/php`, `/etc/nginx`,
-`/etc/at.allow`, the tools' trees or the access-control list. alpha.146 (and
-alpha.144 and alpha.145) behave the same towards this change. Under alpha.146:
+**Going back to the release before (alpha.146).** The product's own way back
+(`rollback.sh`) restores the release before only while the agent's record of
+server changes is still the one the update saved. It refuses as soon as any
+server change was recorded after the update, and prints:
+`!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
+The side doors step is such a change and runs by itself about three minutes
+after every panel start, so in practice the way back is admitted only in
+those first minutes after the update; an automatic rollback of a failed
+update happens before the new panel starts and never meets R1's changes.
+After the step has run, the earlier release cannot be put back by the
+product. What the administrator has instead is this release's own undo: a
+switched-off stock pool goes back on by renaming it (above; CelikPanel then
+leaves it on), `at` is reopened by deleting `/etc/at.allow`, and the tools go
+back on the web server's account by the steps above.
 
-- *Keeps working:* PHP-FPM runs the tools' own pools, and alpha.146 uses the
-  sockets their configurations name, so phpMyAdmin, phpPgAdmin and webmail
-  keep answering; webmail's address files and its local server keep their
-  socket (alpha.146 reads the local server's closed form on webmail's own
-  pool as its own current form); `/etc/at.allow` stays as it is.
-- *No longer guarded:* alpha.146 does not know a tool's own socket, so it
-  does not refuse removing the PHP version a tool runs on (the tool then
-  stops, and nothing says why); the tools' Manage windows show no PHP
-  version.
-- *Fails:* webmail's own update (its new tree does not get the account's
-  entry and folders, so the update puts the old tree back and says webmail
-  did not answer); deleting the last site of a PHP version whose stock pool
-  is off, or moving it to another version (PHP-FPM's check refuses a
-  version without a pool, and alpha.146 does not put the stock pool back);
-  installing or proving a tool again on such a version.
-- *Also:* the side doors' Problems now lines are not shown; removing a tool
-  leaves its account, pool and data folder; a phpMyAdmin package upgrade
-  that gives its secret files back to the web group is not put right.
-
-What the owner does: before going back, put each stock pool back
-(`mv /etc/php/<v>/fpm/pool.d/www.conf.off-by-celikpanel
-/etc/php/<v>/fpm/pool.d/www.conf && systemctl reload php<v>-fpm`) and, if
-the tools should run as before, undo their own pools with the steps above;
-then go back. Already gone back: put the stock pool back before deleting or
-moving the last site of a version; do not remove a PHP version that
-`ls /etc/php/*/fpm/pool.d/celikpanel-*.conf` lists; leave webmail's updates
-until the newer release is installed again.
+For completeness only, what alpha.146 (as alpha.144 and alpha.145) would not
+guard if it ran on a server where this change ran: it does not know a
+tool's own socket, so it would not refuse removing the PHP version a tool
+runs on, and the tools' Manage windows would show no PHP version; webmail's
+own update would fail and put the old tree back (its new tree does not get
+the account's entry and folders); deleting or moving the last site of a PHP
+version whose stock pool is off would be refused (alpha.146 does not put the
+stock pool back); the side doors' Problems now lines would not be shown.
 
 **What a site account can still reach.** On the file system, nothing under
 webmail's tree. The tools' sockets are the web server's (0660), and a site

@@ -15,7 +15,7 @@
       },
       "case": "CP-2026-18",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:35",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:36",
         "says": "Now each has a system account of its own"
       }
     },
@@ -27,7 +27,7 @@
       },
       "case": "CP-2026-19",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:59",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:60",
         "says": "Site accounts can no longer schedule jobs with"
       }
     },
@@ -39,7 +39,7 @@
       },
       "case": "CP-2026-20",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:72",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:73",
         "says": "shared PHP pool is switched off where nothing uses"
       }
     },
@@ -50,7 +50,7 @@
         "tr": "Bir sitenin panel dışında eklediği crontab satırları Zamanlanmış görevler listesinde işaretlenir; silinebilir, yönetici onları tutabilir."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:67",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:68",
         "says": "Crontab lines a site adds outside the panel are shown."
       }
     },
@@ -62,7 +62,7 @@
       },
       "case": "CP-2026-17",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:107",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:108",
         "says": "Now the panel reads what the server did and records the result by"
       }
     },
@@ -73,7 +73,7 @@
         "tr": "Arch Linux’ta araçlar web sunucusu hesabında kalır ve PHP havuzu kapatılmaz; at ve site crontab’ları her sistemde ele alınır."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:176",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:174",
         "says": "On Arch Linux"
       }
     },
@@ -84,7 +84,7 @@
         "tr": "Bir site hesabı kendi crontab’ına hâlâ satır ekleyebilir; satırlar görünür, silinebilir ve yönetici tarafından tutulabilir."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:179",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:177",
         "says": "A site account can still add lines to its own crontab."
       }
     }

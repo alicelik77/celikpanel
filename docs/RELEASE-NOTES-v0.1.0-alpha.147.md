@@ -15,8 +15,9 @@ screen.**
 
 1. Update from the panel's own update screen, as before.
 2. **The panel's database layout does not change** (it stays schema 81).
-   Going back to alpha.146 is the ordinary rollback, with the steps in
-   "Going back to alpha.146" below; no snapshot has to be restored.
+   Going back to alpha.146 with the product's rollback is admitted only
+   until the first server change after the update; see "Going back to
+   alpha.146" below.
 3. About three minutes after the panel's first start, when the server is
    quiet, the panel runs one step by itself, in its own job: it moves the
    database tools and webmail to their own accounts, switches off the
@@ -135,41 +136,38 @@ asks systemd, as before.
 
 ## Going back to alpha.146
 
-Going back puts back CelikPanel's own files only; it does not touch
-`/etc/php`, `/etc/nginx`, `/etc/at.allow`, the tools' folders or the
-access-control list.
-
-- **Keeps working:** PHP-FPM keeps running the tools' own pools and
-  alpha.146 uses the sockets their configurations name, so phpMyAdmin,
-  phpPgAdmin and webmail keep answering; webmail's address and its local
-  door keep their socket; `/etc/at.allow` stays as it is.
-- **No longer guarded:** alpha.146 does not know a tool's own pool, so it
-  does not refuse removing the PHP version a tool runs on (the tool then
-  stops, and nothing says why); the tools' Manage windows show no PHP
-  version.
-- **Fails:** webmail's own update (its new folder does not get webmail's
-  account and entry, so the update puts the old folder back and says webmail
-  did not answer); deleting the last site of a PHP version whose shared pool
-  is switched off, or moving it to another version (PHP-FPM refuses a
-  version without a pool, and alpha.146 does not put the pool back);
-  installing or checking a tool again on such a version.
-- **Also:** the lines of this release in **Problems now** are not shown;
-  removing a tool leaves its account, pool and data folder; a phpMyAdmin
-  package upgrade that gives its secret files back to the web server's group
-  is not put right. A change being settled is settled by alpha.146's own
-  start, as before.
-- **The order:** before going back, put each switched-off pool back:
+- **The way back is open only until the first server change after the
+  update.** The product's rollback (`rollback.sh`) puts the release before
+  back only while the agent's record of server changes is still the one the
+  update saved. Once any change has been recorded after the update, it
+  refuses and prints
+  `!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
+  The step that moves the tools is such a change and runs about three
+  minutes after the panel's start, so in practice the way back is admitted
+  only in those first minutes. An update that fails is rolled back by itself
+  before the new panel starts, so none of this release's changes exist then.
+- **After that, this release's own undo is the way back for each part:**
+  a switched-off shared pool goes back on when it is renamed back (CelikPanel
+  then leaves it on):
 
   ```bash
   sudo mv /etc/php/<version>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<version>/fpm/pool.d/www.conf
   sudo systemctl reload php<version>-fpm
   ```
 
-  If the tools should run as before, undo their own pools as
-  `docs/TENANT-ISOLATION.md` §7 describes; then go back. Already gone back:
-  put the pool back before deleting or moving the last site of a version; do
-  not remove a PHP version that `ls /etc/php/*/fpm/pool.d/celikpanel-*.conf`
-  lists; leave webmail's updates until this release is installed again.
+  `at` is reopened by deleting `/etc/at.allow`; the tools go back on the web
+  server's account by the ordered steps in `docs/TENANT-ISOLATION.md` §7
+  (the shared pool back first, the files back to the web server's group,
+  the web server files back to the shared socket, the own pools removed, the
+  accounts last). The panel itself has no button for the tools' way back.
+- **For completeness only**, what alpha.146 would not guard on a server where
+  this release ran: it does not know a tool's own pool, so it would not
+  refuse removing the PHP version a tool runs on, and the tools' Manage
+  windows would show no PHP version; webmail's own update would fail and put
+  the old folder back; deleting or moving the last site of a PHP version
+  whose shared pool is switched off would be refused (alpha.146 does not put
+  the pool back); this release's lines in **Problems now** would not be
+  shown.
 
 ## Known limits
 
@@ -211,12 +209,17 @@ access-control list.
 of the per-site-limits preparation (the first: the firewall must refuse a
 place that does not exist; if it accepts one, this release is not
 published), then the ten steps of the "in progress" correction, then the
-twenty-five steps of the security part (pull request #348).
+security part's steps (pull request #348): webmail and the database tools
+watched every second through the update and the move, a move cut by a
+stalled or restarted panel, a failed update's automatic rollback, the way
+back before and after the move, and the moves, the pool, `at` and the
+crontab lines on both servers.
 
 ## What to expect after updating
 
-- No schema step: the layout stays schema 81, and going back to alpha.146
-  is the ordinary rollback with the steps above.
+- No schema step: the layout stays schema 81. The product's way back to
+  alpha.146 is admitted only in the first minutes after the update, before
+  the step that moves the tools runs (see "Going back to alpha.146").
 - About three minutes after the first start: each tool's own pool starts and
   the web server reloads once per moved tool; PHP-FPM reloads once per
   version whose shared pool is switched off; `/etc/at.allow` appears where

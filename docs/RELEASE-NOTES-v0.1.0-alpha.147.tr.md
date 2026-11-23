@@ -13,9 +13,10 @@ günceller.**
 ## alpha.146'dan güncelleme
 
 1. Panelin kendi güncelleme ekranından, eskisi gibi güncelleyin.
-2. **Panelin veritabanı düzeni değişmez** (şema 81 olarak kalır). alpha.146'ya
-   dönmek olağan geri dönüştür; adımları aşağıdaki "alpha.146'ya dönmek"
-   bölümündedir. Hiçbir anlık görüntünün geri yüklenmesi gerekmez.
+2. **Panelin veritabanı düzeni değişmez** (şema 81 olarak kalır). Ürünün
+   geri dönüşüyle alpha.146'ya dönmek yalnız güncellemeden sonraki ilk sunucu
+   değişikliğine kadar kabul edilir; aşağıdaki "alpha.146'ya dönmek"
+   bölümüne bakın.
 3. Panelin ilk açılışından yaklaşık üç dakika sonra, sunucu sakinken, panel
    kendi işinde tek bir adımı kendiliğinden çalıştırır: veritabanı araçlarını
    ve web postasını kendi hesaplarına taşır, dağıtımın PHP havuzunu hiçbir şey
@@ -132,41 +133,38 @@ sistemin kendisinden okur, sonra eskisi gibi systemd'ye sorar.
 
 ## alpha.146'ya dönmek
 
-Geri dönüş yalnız CelikPanel'in kendi dosyalarını geri koyar; `/etc/php`,
-`/etc/nginx`, `/etc/at.allow`, araçların klasörleri ve erişim listesi olduğu
-gibi kalır.
-
-- **Çalışmayı sürdürür:** PHP-FPM araçların kendi havuzlarını çalıştırmayı
-  sürdürür ve alpha.146 yapılandırmaların andığı soketleri kullanır;
-  phpMyAdmin, phpPgAdmin ve web postası yanıt vermeyi sürdürür. Web postasının
-  adresi ve yerel kapısı soketlerini korur; `/etc/at.allow` olduğu gibi kalır.
-- **Artık korunmaz:** alpha.146 bir aracın kendi havuzunu tanımaz; bu yüzden
-  aracın çalıştığı PHP sürümünün kaldırılmasını reddetmez (araç durur ve
-  nedeni söylenmez); araçların Yönet pencerelerinde PHP sürümü görünmez.
-- **Başarısız olur:** web postasının kendi güncellemesi (yeni klasörü web
-  postasının hesabını ve girdisini almaz; güncelleme eski klasörü geri koyar
-  ve web postasının yanıt vermediğini söyler); ortak havuzu kapalı bir PHP
-  sürümünün son sitesini silmek ya da başka sürüme taşımak (PHP-FPM havuzsuz
-  bir sürümü reddeder, alpha.146 havuzu geri koymaz); böyle bir sürümde bir
-  aracı yeniden kurmak ya da denetlemek.
-- **Ayrıca:** bu sürümün **Şu anki sorunlar** satırları görünmez; bir aracı
-  kaldırmak hesabını, havuzunu ve veri klasörünü bırakır; gizli dosyalarını
-  web sunucusunun grubuna geri veren bir phpMyAdmin paket yükseltmesi
-  düzeltilmez. Sonuçlandırılmakta olan bir değişikliği, eskisi gibi
-  alpha.146'nın kendi açılışı sonuçlandırır.
-- **Sıra:** geri dönmeden önce kapatılmış her havuzu geri koyun:
+- **Geri dönüş yalnız güncellemeden sonraki ilk sunucu değişikliğine kadar
+  açıktır.** Ürünün geri dönüşü (`rollback.sh`) önceki sürümü yalnız agent'ın
+  sunucu değişiklikleri kaydı güncellemenin sakladığıyla aynıyken geri koyar.
+  Güncellemeden sonra herhangi bir değişiklik kaydedildiğinde reddeder ve şunu
+  yazar:
+  `!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
+  Araçları taşıyan adım böyle bir değişikliktir ve panelin açılışından
+  yaklaşık üç dakika sonra çalışır; bu yüzden geri dönüş pratikte yalnız o ilk
+  dakikalarda kabul edilir. Başarısız olan bir güncelleme yeni panel açılmadan
+  önce kendiliğinden geri alınır; o sırada bu sürümün değişikliklerinin hiçbiri
+  yoktur.
+- **Sonrasında her bölüm için geri dönüş bu sürümün kendi geri almasıdır:**
+  kapatılmış bir ortak havuz adı geri verildiğinde yeniden açılır (CelikPanel
+  onu sonra açık bırakır):
 
   ```bash
   sudo mv /etc/php/<sürüm>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<sürüm>/fpm/pool.d/www.conf
   sudo systemctl reload php<sürüm>-fpm
   ```
 
-  Araçlar eskisi gibi çalışsın isterseniz kendi havuzlarını
-  `docs/TENANT-ISOLATION.tr.md` §7'deki gibi geri alın; sonra geri dönün.
-  Zaten geri döndüyseniz: bir sürümün son sitesini silmeden ya da taşımadan
-  önce havuzu geri koyun; `ls /etc/php/*/fpm/pool.d/celikpanel-*.conf`
-  komutunun listelediği bir PHP sürümünü kaldırmayın; web postası
-  güncellemelerini bu sürüm yeniden kurulana kadar bekletin.
+  `at`, `/etc/at.allow` silinerek yeniden açılır; araçlar
+  `docs/TENANT-ISOLATION.tr.md` §7'deki sıralı adımlarla web sunucusu hesabına
+  geri alınır (önce ortak havuz, dosyalar web sunucusunun grubuna, web sunucusu
+  dosyaları ortak sokete, kendi havuzlar kaldırılır, hesaplar en son). Panelin
+  kendisinde araçları geri almak için bir düğme yoktur.
+- **Yalnız eksiksiz olsun diye**, bu sürümün çalıştığı bir sunucuda
+  alpha.146'nın neyi korumayacağı: bir aracın kendi havuzunu tanımaz; bu yüzden
+  aracın çalıştığı PHP sürümünün kaldırılmasını reddetmez ve araçların Yönet
+  pencerelerinde PHP sürümü görünmez; web postasının kendi güncellemesi
+  başarısız olur ve eski klasörü geri koyar; ortak havuzu kapalı bir PHP
+  sürümünün son sitesini silmek ya da taşımak reddedilir (alpha.146 havuzu geri
+  koymaz); bu sürümün **Şu anki sorunlar** satırları görünmez.
 
 ## Bilinen sınırlar
 
@@ -207,12 +205,17 @@ gibi kalır.
 turu henüz yapılmadı. Adımları bu sıradadır: site başına sınırlar
 hazırlığının dokuz adımı (ilki: güvenlik duvarı var olmayan bir yeri
 reddetmeli; kabul ederse bu sürüm yayımlanmaz), sonra "sürüyor" düzeltmesinin
-on adımı, sonra güvenlik bölümünün yirmi beş adımı (#348 numaralı istek).
+on adımı, sonra güvenlik bölümünün adımları (#348 numaralı istek): güncelleme ve
+taşıma boyunca her saniye izlenen web postası ve veritabanı araçları, takılan ya da
+yeniden başlatılan bir panelin kestiği bir taşıma, başarısız bir güncellemenin
+kendiliğinden geri alınması, taşımadan önce ve sonra geri dönüş, ve iki sunucuda
+taşımalar, havuz, `at` ve crontab satırları.
 
 ## Güncellemeden sonra ne beklenir
 
-- Şema adımı yok: düzen şema 81 olarak kalır ve alpha.146'ya dönmek,
-  yukarıdaki adımlarla olağan geri dönüştür.
+- Şema adımı yok: düzen şema 81 olarak kalır. Ürünün alpha.146'ya geri
+  dönüşü yalnız güncellemeden sonraki ilk dakikalarda, araçları taşıyan adım
+  çalışmadan önce kabul edilir (bkz. "alpha.146'ya dönmek").
 - İlk açılıştan yaklaşık üç dakika sonra: her aracın kendi havuzu başlar ve
   taşınan her araç için web sunucusu bir kez yeniden yüklenir; ortak havuzu
   kapatılan her sürüm için PHP-FPM bir kez yeniden yüklenir; `at` kurulu olan
