@@ -74,6 +74,13 @@ test('another change refused meanwhile says who acts and when', () => {
     const unsettled = apiErrorText({ message: 'x', code: 'service_operation_busy', reason: 'unsettled' }, t);
     assert.match(unsettled, RESTART);
     assert.doesNotMatch(unsettled, /Wait for it to finish/);
+    // At startup, a run again the busy host kept refusing ends with what is
+    // known: not "could not be started", who checks, other changes admitted.
+    for (const key of ['err.service_operation_rerun_host_busy', 'err.service_operation_reread_host_busy']) {
+        assert.match(enRefusalsScreens[key], /not known.*administrator.*Other changes can be made again/s);
+        assert.match(trRefusalsScreens[key], /bilinmiyor.*yönetici.*Başka değişiklikler yeniden yapılabilir/s);
+        assert.doesNotMatch(enRefusalsScreens[key], /could not be started/);
+    }
     for (const catalog of [enRefusalsScreens, trRefusalsScreens]) {
         assert.ok(catalog['err.service_operation_busy.settling']);
         assert.match(catalog['err.service_operation_busy.unsettled'], RESTART);

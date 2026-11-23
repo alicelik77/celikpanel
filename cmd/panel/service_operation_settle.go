@@ -227,7 +227,7 @@ func (p *Panel) settleAbandonedServiceOperation(op serviceOperation, deadline ti
 		if err == nil {
 			recoveryCtx, cancelRecovery := context.WithTimeout(waitCtx, panelMutationRecoveryTimeout)
 			var transferred bool
-			_, transferred, err = p.reconcileInterruptedServiceOperationLocked(context.Background(), recoveryCtx, &current, release)
+			_, transferred, err = p.reconcileInterruptedServiceOperationLocked(context.Background(), recoveryCtx, &current, release, true)
 			cancelRecovery()
 			if err == nil {
 				settled = true
@@ -281,6 +281,25 @@ func (p *Panel) beginServiceOperationLease(op serviceOperation, ownerID string, 
 			pause = 15 * time.Second
 		}
 	}
+}
+
+// The outcome of a run again that startup could not begin because the host
+// stayed busy: what the first run did is not known (it may have finished).
+const (
+	errCodeServiceOperationRerunHostBusy  = "service_operation_rerun_host_busy"
+	errCodeServiceOperationRereadHostBusy = "service_operation_reread_host_busy"
+)
+
+func serviceOperationRerunHostBusyFailure(op serviceOperation, cause error) *serviceOperationFailure {
+	switch op.Kind {
+	case serviceOperationKindWebmailUpdate, serviceOperationKindWebmailAddress, serviceOperationKindWebmailAddressRemove:
+		return operationFailure(errCodeServiceOperationRereadHostBusy,
+			"The result of the interrupted change could not be read because the server stayed busy (the package manager or another change); whether it was made is not known. The administrator checks its state on its page and starts it again if needed. Other changes can be made again.",
+			cause)
+	}
+	return operationFailure(errCodeServiceOperationRerunHostBusy,
+		"The interrupted change could not be run again because the server stayed busy (the package manager or another change); what its first run did is not known. The administrator checks the component's state on its page and starts the change again if needed. Other changes can be made again.",
+		cause)
 }
 
 // waitAbandonedAgentMutation reads the Agent's job of requestID, changing

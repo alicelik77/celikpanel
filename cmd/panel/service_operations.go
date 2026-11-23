@@ -625,7 +625,7 @@ func (p *Panel) launchServiceOperationWithAudit(
 ) {
 	p.launchServiceOperationWithAuditMode(
 		op, actor, initialPhase, successAudit, failureAudit,
-		releaseMutation, runner, auditWriter, false, false,
+		releaseMutation, runner, auditWriter, false, false, false,
 	)
 }
 
@@ -964,6 +964,9 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 	auditWriter serviceOperationAuditWriter,
 	resumeAgent bool,
 	panelAlreadyRunning bool,
+	// liveSettle: a run again started by a running panel settling a row
+	// (D1), not by startup recovery.
+	liveSettle bool,
 ) {
 	go func() {
 		var releaseOnce sync.Once
@@ -988,12 +991,28 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 		}
 		agentJob, leaseAskedAt, err := p.beginServiceOperationLease(op, ownerID, resumeAgent)
 		if err != nil && resumeAgent && hostMutationRefusedAsBusy(err) {
-			// D1 review, finding 6: a continuation the Agent kept refusing
-			// because the host stayed busy (the package manager, a release)
-			// is left to the panel's next start: the interrupted change may
-			// have been made, so it is never recorded as "not started".
-			log.Printf("service operation %s could not be continued: the host stayed busy (%v); the panel finishes it at its next start", op.ID, err)
-			noteServiceOperationUnsettled(op)
+			// D1 review, finding 6: a run again the Agent kept refusing
+			// because the host stayed busy (the package manager, a release).
+			// The interrupted change may have been made, so it is never
+			// recorded as "not started". A running panel leaves the row to
+			// its next start; startup has no further step, so the row ends
+			// there with what is known, and other changes are admitted again.
+			if liveSettle {
+				log.Printf("service operation %s could not be run again: the host stayed busy (%v); the panel finishes it at its next start", op.ID, err)
+				noteServiceOperationUnsettled(op)
+				return
+			}
+			failure := serviceOperationRerunHostBusyFailure(op, err)
+			log.Printf("service operation %s could not be run again at startup: the host stayed busy (%v); ended as %s", op.ID, err, failure.Code)
+			if fallbackErr := p.forceFailActiveServiceOperation(
+				context.Background(), op.ID, "interrupted", failure,
+			); fallbackErr != nil {
+				log.Printf("service operation %s busy-host outcome could not be persisted: %v", op.ID, fallbackErr)
+				noteServiceOperationUnsettled(op)
+				return
+			}
+			clearServiceOperationSettle(op.ID)
+			auditWriter(context.Background(), actor, failureAudit+" — "+failure.Code)
 			return
 		}
 		if err != nil {
@@ -2111,7 +2130,7 @@ func (p *Panel) recoverInterruptedServiceOperations(ctx context.Context) (int64,
 		}
 		return 0, nil
 	}
-	settled, transferred, err := p.reconcileInterruptedServiceOperationLocked(ctx, recoveryCtx, op, p.serviceMutationMu.Unlock)
+	settled, transferred, err := p.reconcileInterruptedServiceOperationLocked(ctx, recoveryCtx, op, p.serviceMutationMu.Unlock, false)
 	lockTransferred = transferred
 	return settled, err
 }
@@ -2129,6 +2148,7 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 	ctx, recoveryCtx context.Context,
 	op *serviceOperation,
 	release func(),
+	live bool,
 ) (int64, bool, error) {
 	if !validServiceOperationID(op.RequestID) {
 		return 0, false, errors.New("active panel operation has no durable request identity")
@@ -2425,7 +2445,7 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 	if err := p.requireStartupAgentMutationSlot(recoveryCtx); err != nil {
 		return 0, false, err
 	}
-	if err := p.resumeInterruptedServiceOperationWith(*op, release); err != nil {
+	if err := p.resumeInterruptedServiceOperationWith(*op, release, live); err != nil {
 		return 0, false, err
 	}
 	return 0, true, nil
@@ -2456,13 +2476,13 @@ func agentMutationCanResume(job *agentMutationJob) bool {
 // mutation lock to the resumed goroutine, which releases it only after the
 // panel operation reaches a durable terminal state.
 func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) error {
-	return p.resumeInterruptedServiceOperationWith(op, p.serviceMutationMu.Unlock)
+	return p.resumeInterruptedServiceOperationWith(op, p.serviceMutationMu.Unlock, false)
 }
 
 // resumeInterruptedServiceOperationWith is resumeInterruptedServiceOperation-
 // Locked with the caller's own release of the process lock (a running panel
 // settling a row hands over the release it holds; D1).
-func (p *Panel) resumeInterruptedServiceOperationWith(op serviceOperation, release func()) error {
+func (p *Panel) resumeInterruptedServiceOperationWith(op serviceOperation, release func(), live bool) error {
 	var (
 		runner       serviceOperationRunner
 		successAudit string
@@ -2579,6 +2599,7 @@ func (p *Panel) resumeInterruptedServiceOperationWith(op serviceOperation, relea
 		p.auditServiceOperation,
 		true,
 		op.Status == serviceOperationRunning,
+		live,
 	)
 	return nil
 }

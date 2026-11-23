@@ -825,6 +825,47 @@ func TestD1ARunAgainTheBusyHostRefusesIsAskedAgainThenLeftUnsettled(t *testing.T
 	})
 }
 
+// The same at startup, where there is no further step: after the bounded
+// retries the row ends with what is true (not "could not be started"), and
+// other changes are admitted again; a webmail update says its result could
+// not be read.
+func TestD1AtStartupARunAgainTheHostKeepsRefusingEndsTheRow(t *testing.T) {
+	for _, tc := range []struct {
+		kind, target, pkg, code string
+	}{
+		{serviceOperationKindInstall, "certbot", "", errCodeServiceOperationRerunHostBusy},
+		{serviceOperationKindWebmailUpdate, "roundcube", "1.6.21", errCodeServiceOperationRereadHostBusy},
+	} {
+		t.Run(tc.kind, func(t *testing.T) {
+			f, agent, _ := newHeldStepFixture(t)
+			shortenD1Bounds(t)
+			clearD1Settles(t)
+			serviceOperationResumeBusyBound.set(150 * time.Millisecond)
+			agent.beginBusy.Store(1 << 20)
+			op := seedInterruptedOperation(t, f, f.agent, tc.kind, tc.target, tc.pkg, agentMutationFailed, agentMutationLeaseExpiredErrorCode)
+			if _, err := f.panel.recoverInterruptedServiceOperations(context.Background()); err != nil {
+				t.Fatalf("startup recovery: %v", err)
+			}
+			ended, body := waitForServiceOperation(t, f.panel, f.userID, op.ID, serviceOperationFailed)
+			if ended.Error == nil || ended.Error.Code != tc.code || strings.Contains(body, "could not be started") ||
+				!strings.Contains(ended.Error.Message, "not known") || agent.calls.Load() != 0 {
+				t.Fatalf("ended row: %s (install calls %d)", body, agent.calls.Load())
+			}
+			if reason := serviceOperationSettleBusyReason(); reason != "" {
+				t.Fatalf("an ended row still marks refusals: %q", reason)
+			}
+			// Other changes are admitted again.
+			agent.beginBusy.Store(0)
+			agent.open(1)
+			recorder, next := postServiceInstall(t, f, "certbot")
+			if recorder.Code != http.StatusAccepted {
+				t.Fatalf("next change: %d %s", recorder.Code, recorder.Body.String())
+			}
+			waitForServiceOperation(t, f.panel, f.userID, next.ID, serviceOperationSucceeded)
+		})
+	}
+}
+
 // Finding 6: a setup step's accepted point updates travel with its row, so
 // an install run again is asked as the review accepted it.
 func TestD1ASetupInstallKeepsItsAcceptedPointUpdatesWhenRunAgain(t *testing.T) {
