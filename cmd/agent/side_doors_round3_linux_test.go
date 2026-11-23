@@ -14,6 +14,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 // S4 R1, third fix round (23 Nov 2026): the findings of the third
@@ -333,5 +334,37 @@ func TestTheReadWaitsForTheStepAndAMove(t *testing.T) {
 	sideDoorsMu.Unlock()
 	if at := sideDoorsNow(); !strings.Contains(at, ".") {
 		t.Fatalf("%s: an answer's time is to the millisecond", at)
+	}
+}
+
+// Finding 7: an access-control list of any size the kernel returns is read
+// (the size is asked first; a list that grew in between is read again).
+// Does not build on b6d3c832e (a fixed 4096-byte buffer, ERANGE beyond it).
+func TestAnAccessControlListOfAnySizeIsRead(t *testing.T) {
+	stored := make([]byte, 9000)
+	for i := range stored {
+		stored[i] = byte(i)
+	}
+	grown := false
+	get := func(dest []byte) (int, error) {
+		if dest == nil {
+			return len(stored), nil
+		}
+		if !grown {
+			// The list grows between the size and the read.
+			grown = true
+			stored = append(stored, 1, 2, 3, 4, 5, 6, 7, 8)
+		}
+		if len(dest) < len(stored) {
+			return 0, unix.ERANGE
+		}
+		return copy(dest, stored), nil
+	}
+	got, err := readSizedXattr(get)
+	if err != nil || len(got) != 9008 || got[8999] != stored[8999] {
+		t.Fatalf("read %d bytes: %v", len(got), err)
+	}
+	if got, err := readSizedXattr(func([]byte) (int, error) { return 0, nil }); err != nil || got != nil {
+		t.Fatalf("an empty list: %v %v", got, err)
 	}
 }

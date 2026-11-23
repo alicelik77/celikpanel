@@ -58,8 +58,7 @@ var readPathACL = func(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer unix.Close(fd)
-	buf := make([]byte, 4096)
-	n, err := unix.Fgetxattr(fd, posixACLXattr, buf)
+	acl, err := readSizedXattr(func(dest []byte) (int, error) { return unix.Fgetxattr(fd, posixACLXattr, dest) })
 	switch {
 	case errors.Is(err, unix.ENODATA):
 		return nil, nil
@@ -68,7 +67,31 @@ var readPathACL = func(path string) ([]byte, error) {
 	case err != nil:
 		return nil, fmt.Errorf("read the access-control list of %s: %w", path, err)
 	}
-	return append([]byte(nil), buf[:n]...), nil
+	return acl, nil
+}
+
+// readSizedXattr reads an extended attribute of any size the kernel returns
+// (S4 R1, third fix round): it asks for the size first, then reads into a
+// buffer of that size, and asks again when the list grew in between.
+func readSizedXattr(get func(dest []byte) (int, error)) ([]byte, error) {
+	for attempt := 0; ; attempt++ {
+		size, err := get(nil)
+		if err != nil {
+			return nil, err
+		}
+		if size == 0 {
+			return nil, nil
+		}
+		buf := make([]byte, size)
+		n, err := get(buf)
+		if errors.Is(err, unix.ERANGE) && attempt < 3 {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		return buf[:n], nil
+	}
 }
 
 // writePathACL sets the path's access-control list (nil removes it, leaving
