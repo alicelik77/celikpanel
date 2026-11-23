@@ -53,7 +53,8 @@ export type ProblemKind =
     | 'mail_autoresponder_foreign'
     | 'postgresql_databases_unreadable'
     | 'webmail_address_kept'
-    | 'webmail_address_refused';
+    | 'webmail_address_refused'
+    | 'webmail_cannot_send';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -75,6 +76,8 @@ const KINDS: readonly ProblemKind[] = [
     // alpha.144: webmail's address still in its earlier form (owner's file,
     // or a rewrite nginx's test put back).
     'webmail_address_kept', 'webmail_address_refused',
+    // alpha.145: webmail's configuration still sends without encryption.
+    'webmail_cannot_send',
 ];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
@@ -114,14 +117,24 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
         return `pnow.${problem.kind}.body_one` as TranslationKey;
     }
     // alpha.144: nginx's test named no file.
+    // alpha.145 (security): no address: webmail's local server.
+    if (problem.kind === 'webmail_address_refused' && !problem.subject) return (problem.name ? 'pnow.webmail_local_server.refused' : 'pnow.webmail_local_server.refused_unnamed') as TranslationKey;
+    if (problem.kind === 'webmail_address_kept' && !problem.subject) return ((problem.name ?? '').endsWith('.celikpanel-pending') ? 'pnow.webmail_local_server.kept' : 'pnow.webmail_local_server.kept_no_text') as TranslationKey;
     if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
     // CelikPanel's text is named only when it lies beside the owner's file.
     if (problem.kind === 'webmail_address_kept' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_address_kept.body_no_text' as TranslationKey;
+    // alpha.145 (review of PR #357, finding 2): CelikPanel's own earlier text
+    // that it could not rewrite: the journal and a restart, never a hand edit.
+    if (problem.kind === 'webmail_cannot_send' && problem.subject === 'rewrite_failed') return 'pnow.webmail_cannot_send.body_rewrite_failed' as TranslationKey;
+    // alpha.145: CelikPanel's text is named only when it lies beside the configuration.
+    if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
 /** The catalogue key of a problem's title (22 Nov 2026: one signing state signs nothing). */
-export function problemTitleKey(problem: { kind: string; name?: string; value?: number }): TranslationKey {
+export function problemTitleKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
+    // alpha.145 (security): no address: webmail's local server.
+    if ((problem.kind === 'webmail_address_kept' || problem.kind === 'webmail_address_refused') && !problem.subject) return 'pnow.webmail_local_server.title' as TranslationKey;
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
     // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
     if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
@@ -295,7 +308,9 @@ export function ProblemsNow({
                             const when = problem.since
                                 ? t('pnow.since', { time: clock(problem.since) })
                                 : problem.kind === 'service_stopped' && problem.observed_at ? t('pnow.seen', { time: clock(problem.observed_at) }) : '';
-                            const showLink = problem.action.kind === 'open' && problem.action.to !== here;
+                            // alpha.145: webmail's local-server line (no address) offers no link: Roundcube's page has nothing for it.
+                            const localWebmailLine = (problem.kind === 'webmail_address_kept' || problem.kind === 'webmail_address_refused') && !problem.subject;
+                            const showLink = problem.action.kind === 'open' && problem.action.to !== here && !localWebmailLine;
                             return (
                                 <li key={problem.key} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start" data-problem={problem.kind} data-severity={problem.severity}>
                                     <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`} aria-hidden="true" />

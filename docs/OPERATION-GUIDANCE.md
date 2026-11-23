@@ -11419,3 +11419,73 @@ Code: `cmd/panel/operation_step_routes.go`, `postgresql_public_access.go`,
 `mail_adopt_handlers.go`, `alias_dns.go`, `alias_certificates.go`,
 `cmd/agent/mail_adopt.go`. Tests: `cmd/panel/a144_*_test.go`,
 `cmd/agent/mail_adopt_test.go`.
+
+### Corrections from the alpha.144 lab (alpha.145, 23 November 2026)
+
+- **Security: webmail's local server answers only CelikPanel's own checks.**
+  Its socket `/run/celikpanel-webmail.sock` is 0666 (nginx makes it so), so
+  every account of the server can connect to it (not the network). Until
+  alpha.144 it gave out every file of the Roundcube tree, with the linked
+  plugins and skins folders (dot-files, copies such as `.bak`, settings), and
+  ran every `.php` there. It now answers only `/webmail/` (Roundcube's entry
+  point, the only PHP), style sheets under `/webmail/skins/` and CelikPanel's
+  PHP check; everything else is not found. The Panel's readiness check and
+  the Agent's proof (the PHP check, the page and its style sheet) ask only
+  those. CelikPanel's earlier text is rewritten at the Agent's first start
+  after the update (configuration test, one reload; a failure puts the file
+  back and the start goes on); an owner's file is kept, CelikPanel's text lies
+  beside it as `celikpanel-webmail.conf.celikpanel-pending`, and Problems now
+  has the address line's variant with no address (who acts: the server
+  owner). The PHP check tells a caller which PHP version runs and which of
+  webmail's extensions are missing, nothing else.
+- **Webmail sends.** From the first release Roundcube's configuration handed
+  mail to this server's submission service on 587 without encryption
+  (`smtp_host 'localhost:587'`), and the service takes a login only with
+  encryption, so every message failed with "authentication failed". The
+  configuration now says `tls://127.0.0.1:587` with the mailbox's own login;
+  for 127.0.0.1 only, the certificate's name and chain are not checked (the
+  connection never leaves the server, and the service may present the mail
+  host's certificate or, before one exists, a self-signed one). Any other
+  host keeps the full check.
+- **Existing installations** are corrected at the Agent's first start after
+  the update when the file is CelikPanel's own text (with or without the
+  address lines; mode and owner kept; the new file has its final owner and
+  mode before it is put in place). A file the owner changed is kept; when
+  webmail cannot send with it, CelikPanel's current text (with the file's own
+  `des_key`, readable by root only) lies beside it as
+  `config.inc.php.celikpanel-pending`, and Problems now has one line
+  (`webmail_cannot_send`, who acts: the server owner) naming that text, or the
+  file itself with the two lines to write when no text could be put there.
+  "Cannot send" means: a loopback host (`localhost`, `127.0.0.1`, `[::1]`)
+  without `tls://` or `ssl://` on 587 or no port, or with `tls://`/`ssl://`
+  while the file has no `smtp_conn_options` assignment at all. The line goes
+  by itself once that is no longer so; an owner's own sending setting
+  (another host, any `smtp_conn_options` of theirs, a value CelikPanel cannot
+  read, the legacy key `smtp_server`) is not named. Known gap: an assignment
+  inside a `/* … */` block comment is read as active. The pending file is
+  CelikPanel's own and is removed by name once it is no longer needed.
+- **CelikPanel's own earlier text that could not be rewritten** (a read-only
+  file system, an immutable flag, a full disk) is the same Problems-now line
+  with its own words: the cause is in the Agent's journal; the server owner
+  removes it and restarts the Agent, which then rewrites the file by itself.
+  The file must not be edited by hand: it would then be the owner's for good.
+- The webmail profile is not "installed and verified" while the last
+  component check reads that webmail cannot send; its Repair stays offered and
+  cannot correct the file (the profile says to look at Problems now).
+- **Going back to alpha.144** keeps webmail sending, but alpha.144 does not
+  know the new text: it treats the configuration as changed by the owner and
+  cannot switch webmail's own address lines until the server is updated
+  again.
+- **An alias's DNS record that waited** stops waiting when the zone's held
+  change is published, or when the zone's own pending publication (the backup
+  catching up) completes — then by the hourly round's own step, a fresh
+  publication of the zone — not at the next hourly round; while it waits, the
+  zone's notice says the alias records are published by themselves instead
+  of asking to make the change again.
+- **A PostgreSQL close or its undo** ends with a title that says the outcome
+  (closed, not closed, not known), never the running "Closing …".
+
+Code: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
+`cmd/panel/webmail_address_problem.go`, `mail_profiles.go`, `alias_dns.go`,
+`dns_pending_publication.go`. Tests: `cmd/agent/webmail_sending_test.go`,
+`cmd/panel/a145_webmail_send_test.go`, `web/tests/a145-webmail-send-lab.test.mjs`.

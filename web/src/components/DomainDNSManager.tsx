@@ -3,7 +3,7 @@ import { Globe, Plus, Trash2, ShieldCheck, Copy, AlertTriangle, RefreshCw } from
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
-import { dnsStateExplanation, useHostingCapabilities } from '../lib/hostingCapabilities';
+import { dnsStateExplanation, heldAliasTodo, useHostingCapabilities } from '../lib/hostingCapabilities';
 import { BlockingProblems } from './BlockingProblems';
 import { apiErrorText, readApiError, refusalText, refusalToast } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
@@ -52,6 +52,8 @@ interface Zone {
     external: boolean;
     /** The zone lives on another CelikPanel that this one may write to. */
     remote: boolean;
+    /** alpha.145: alias records saved in this zone wait for its publication and are retried by themselves. */
+    aliasesWaiting: boolean;
 }
 
 function decodeZone(raw: unknown): Zone {
@@ -60,6 +62,7 @@ function decodeZone(raw: unknown): Zone {
     return {
         external: body.type === 'EXTERNAL' && body.management === 'external',
         remote: body.type === 'REMOTE' && body.management === 'existing',
+        aliasesWaiting: body.aliases_waiting === true,
     };
 }
 
@@ -410,7 +413,7 @@ export function DomainDNSManager({
                 <BlockingProblems id="dns-not-ready" className="mb-4" title={t(dnsExplained.title, dnsExplained.vars)} problems={[{
                     code: `DNS_SERVER_REQUIRED${dnsExplained.state === 'none' ? '' : `:${dnsExplained.state}`}`,
                     what: t(dnsExplained.what, dnsExplained.vars),
-                    todo: t(dnsExplained.todo, dnsExplained.vars),
+                    todo: t(heldAliasTodo(dnsExplained.state, zoneValue?.aliasesWaiting === true) ?? dnsExplained.todo, dnsExplained.vars),
                     fix: { label: t('dnsstate.fix'), onFix: () => navigate('/dns-infrastructure') },
                 }]} />
             )}

@@ -8591,3 +8591,45 @@ bağlantıyı tutar.
   veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
   takma ad hâlâ DNS kaydı almaz; laboratuvarın denetlemedikleri sürüm
   notlarında listeli. **Hiçbir P0 işi kapanmadı.**
+
+### fix/a145-webmail-send dalı (web postasının yerel kapısı kapandı; web postası gönderebilir; alpha.144 laboratuvarının iki görünüm bulgusu; şema değişikliği yok; anayasa 1 ve 3; ilke 2 ve 4; D-022; D-024; D-025; 2026-11-23, aday alpha.145)
+
+- **Web postasının yerel kapısı (anayasa 1).** `/run/celikpanel-webmail.sock`
+  soketi 0666'dır (nginx öyle açar): sunucudaki her hesap Roundcube'un
+  `public_html` altındaki her dosyayı (eklentiler, temalar, `program/`)
+  okuyabiliyor ve oradaki her `.php` dosyasını çalıştırabiliyordu. Artık
+  kapalı bir liste yanıt verir (`/webmail/`, `/webmail/index.php`,
+  `/webmail/skins/` altındaki stil dosyaları, CelikPanel'in PHP denetimi);
+  Panel'in hazırlık denetimi ve Agent'ın PHP aracı kanıtı yalnız bunları
+  sorar. Önceki biçimler CelikPanel'indir (tam metin) ve RPC hizmetinden önce
+  Agent'ın açılışında bir kez yeniden yazılır (`nginx -t`, tek yeniden
+  yükleme, hata olursa önceki dosya geri konur, açılış sürer); sahibin
+  dosyası, CelikPanel'in metni yanında ve Şu anki sorunlar satırıyla korunur
+  (adressiz adres türleri); yanındaki metin web postasıyla birlikte adıyla
+  silinir. Soket taşınmaz, kipi değişmez.
+- **Web postasının yapılandırması (ilke 4: yeniden yazma bir değişikliktir).**
+  CelikPanel'in önceki metnindeki `config.inc.php` (adres satırlarıyla ya da
+  onlarsız, tam eşitlik) Agent'ın açılışında bir kez yeniden yazılır; sahip ve
+  kip yeni dosyaya yeniden adlandırmadan önce verilir, `des_key` korunur;
+  başarısız yazma dosyayı olduğu gibi bırakır, "yeniden yazılamadı" diye
+  söylenir (neden ve yeniden başlatma, asla elle düzenleme) ve bir sonraki
+  açılışta yeniden denenir. Sahibin dosyası korunur, CelikPanel'in metni
+  yanında (0600), gönderemediği sürece tek bir Şu anki sorunlar satırı (canlı
+  okunur; kendiliğinden kalkar).
+- **Takma ad DNS'i (ilke 2).** Bir bölgenin takma ad bekleme işareti yalnız
+  bölgenin şimdiki kayıtlarının bir yayını yayın kilitleri altında
+  tamamlanınca silinir (bekletilen yeniden yayın, bekleyen bir yayından sonraki
+  izleyen yayın ya da saatlik turun adımıyla yeni bir yayın); sonradan
+  kaydedilen bir kayıt işaretini korur.
+- **Geri alma.** alpha.144'e dönüşte web postası göndermeyi sürdürür ve yerel
+  kapı kapalı kalır; alpha.144 iki yeni metni sahibin değiştirdiği dosyalar
+  sayar (web postasının yapılandırma adımı, PHP taşıması ve adres satırları
+  güncelleme yeniden yapılana dek reddedilir).
+- **Kanıt.** `TestA145*` (agent ve panel), `web/tests/a145-webmail-send-lab.test.mjs`;
+  dağıtım yapılandırma matrisi yeni yerel kapı dosyasını işler ve nginx ile
+  denetler; bağımsız bir inceleme onu gerçek bir nginx üzerinde çalıştırdı.
+- **Laboratuvar.** Açık (liste PR #357'de).
+- **Açık.** Web postası gönderemezken Webmail kartı Onar'ı yine sunar;
+  "gönderemiyor" okuması sahibin kendi sertifika seçeneklerini ve `/* */`
+  yorumlarını atlar; sokete ileten sahibin kendi bloğu yalnız oturum açma
+  sayfasını ve stil dosyalarını alır. **Hiçbir P0 işi kapanmadı.**

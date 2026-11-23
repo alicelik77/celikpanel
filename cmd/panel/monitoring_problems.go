@@ -125,6 +125,8 @@ var problemKindOrder = map[string]int{
 	// alpha.144: webmail's address still in its earlier form.
 	"webmail_address_kept":    19,
 	"webmail_address_refused": 20,
+	// alpha.145: webmail's configuration that still cannot send.
+	"webmail_cannot_send": 21,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

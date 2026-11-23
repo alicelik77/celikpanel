@@ -195,6 +195,27 @@ func (p *Panel) markAliasZoneUnpublished(ctx context.Context, zone string) {
 	}
 }
 
+// clearAliasZoneWait (alpha.145, alpha.144 lab O1): the zone's publication
+// completed (a held change published once the earlier publication
+// completed), so its alias records that waited are published now; their
+// rows stop saying they wait at once, not at the next hourly round.
+func (p *Panel) clearAliasZoneWait(ctx context.Context, zone string) {
+	result, err := p.db.GetDB().ExecContext(context.WithoutCancel(ctx), `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+strings.ToLower(zone))
+	if err != nil {
+		log.Printf("[alias-dns] %s: published, but its wait could not be cleared (the hourly round clears it): %v", zone, err)
+		return
+	}
+	if n, _ := result.RowsAffected(); n > 0 {
+		log.Printf("[alias-dns] %s: the alias records that waited are published", zone)
+	}
+}
+
+// aliasZoneWaiting reports whether zone's alias records wait for its
+// publication (the zone's notice then says they are retried by themselves).
+func (p *Panel) aliasZoneWaiting(ctx context.Context, zone string) bool {
+	return p.setting(ctx, aliasDNSUnpublishedPrefix+strings.ToLower(zone)) != ""
+}
+
 // aliasZonesUnpublished lists the zones whose alias records wait.
 func (p *Panel) aliasZonesUnpublished(ctx context.Context) (map[string]bool, error) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `SELECT key FROM panel_settings WHERE key LIKE ?`, aliasDNSUnpublishedPrefix+"%")
@@ -223,39 +244,50 @@ func (p *Panel) republishAliasZones(ctx context.Context) {
 		return
 	}
 	for marked := range zones {
-		// The zone's own name as the ledger keeps it, compared without case
-		// (the marker is kept in lower case).
-		var zone string
-		err := p.db.GetDB().QueryRowContext(ctx, `SELECT name FROM pdns_domains WHERE lower(name) = lower(?)`, marked).Scan(&zone)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
-		mode := ""
-		if err == nil {
-			var modeErr error
-			if mode, modeErr = p.domainDNSManagementMode(ctx, zone); modeErr != nil {
-				// Not known whether the zone is still kept here: the marker
-				// stays and the next round looks again (independent review
-				// of the last commit, C3).
-				log.Printf("[alias-dns] %s: its DNS mode could not be read (%v); its wait is kept for the next round", zone, modeErr)
-				continue
-			}
-		}
-		if err != nil || mode != setupDNSModeLocal {
-			// The zone went with its domain, or its DNS is no longer kept
-			// here: nothing to publish, the marker goes (review of PR #355
-			// fixes, finding 4).
-			_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+marked)
-			log.Printf("[alias-dns] %s: no longer a zone kept here; its wait is cleared without publishing", marked)
-			continue
-		}
-		if err := p.syncZoneToDNS(ctx, zone, false); err != nil {
-			log.Printf("[alias-dns] %s: publication still waits: %v", zone, err)
-			continue
-		}
-		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+marked)
-		log.Printf("[alias-dns] %s: the alias records that waited are published", zone)
+		p.settleAliasZoneWait(ctx, marked, p.syncZoneToDNS)
 	}
+}
+
+// settleAliasZoneWait is the hourly round's step for one marked zone: a zone
+// no longer kept here loses its marker; otherwise the zone's current ledger
+// is published (publish) and the marker goes only when that publication
+// completes, so a record saved after an earlier publication is never left
+// unpublished with its marker gone. alpha.145 (review of PR #357, finding 3):
+// the same step runs for a zone whose pending publication just completed,
+// with the publication locks held (publish = syncZoneToDNSLocked).
+func (p *Panel) settleAliasZoneWait(ctx context.Context, marked string, publish func(context.Context, string, bool) error) {
+	// The zone's own name as the ledger keeps it, compared without case
+	// (the marker is kept in lower case).
+	var zone string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT name FROM pdns_domains WHERE lower(name) = lower(?)`, marked).Scan(&zone)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return
+	}
+	mode := ""
+	if err == nil {
+		var modeErr error
+		if mode, modeErr = p.domainDNSManagementMode(ctx, zone); modeErr != nil {
+			// Not known whether the zone is still kept here: the marker
+			// stays and the next round looks again (independent review
+			// of the last commit, C3).
+			log.Printf("[alias-dns] %s: its DNS mode could not be read (%v); its wait is kept for the next round", zone, modeErr)
+			return
+		}
+	}
+	if err != nil || mode != setupDNSModeLocal {
+		// The zone went with its domain, or its DNS is no longer kept
+		// here: nothing to publish, the marker goes (review of PR #355
+		// fixes, finding 4).
+		_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+marked)
+		log.Printf("[alias-dns] %s: no longer a zone kept here; its wait is cleared without publishing", marked)
+		return
+	}
+	if err := publish(ctx, zone, false); err != nil {
+		log.Printf("[alias-dns] %s: publication still waits: %v", zone, err)
+		return
+	}
+	_, _ = p.db.GetDB().ExecContext(ctx, `DELETE FROM panel_settings WHERE key = ?`, aliasDNSUnpublishedPrefix+marked)
+	log.Printf("[alias-dns] %s: the alias records that waited are published", zone)
 }
 
 // aliasesWaitingForPublication are the aliases among aliases whose records

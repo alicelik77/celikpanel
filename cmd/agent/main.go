@@ -767,7 +767,20 @@ func main() {
 		for _, line := range reconcileWebmailAddressesAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
 			log.Printf("[webmail] address %s", line)
 		}
+		// alpha.145 (security): webmail's local server answers only
+		// CelikPanel's own checks (one more configuration test and reload
+		// when its file changes; a failure puts it back and the start goes on).
+		for _, line := range reconcileWebmailLocalServerAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
+			log.Printf("[webmail] local server %s", line)
+		}
 		cancelWebmail()
+	}
+	// alpha.145: webmail's configuration in CelikPanel's earlier text could
+	// not send (no encryption to the submission service); once after the
+	// update it gets the current text (an owner's file is kept, the text goes
+	// beside it).
+	for _, line := range reconcileRoundcubeConfigAtStartup() {
+		log.Printf("[webmail] configuration %s", line)
 	}
 	// alpha.130: the automatic removal's archives of leftover PostgreSQL
 	// clusters expire after 30 days (pg_leftovers.go).
