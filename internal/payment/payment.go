@@ -7,8 +7,7 @@
 //
 // bioexamine, founder, 4 Kasım 2026: payments are modular -- PayTR, iyzico, Stripe and others plug
 // in; none is hard-wired. A Provider turns "pay for this" into a checkout, and turns what the
-// provider later sends back (a webhook, or -- for the manual provider -- the operator's own entry)
-// into one normalized Event.
+// provider later sends back into something the store records.
 //
 // CelikPanel (D-047, amended 2026-11-23): Stripe is the first provider; the seam stays
 // provider-neutral. The member service stays the only issuer and signer of licences: a provider
@@ -19,10 +18,14 @@
 //     card is stored for a later charge;
 //   - a provider subscription exists only when the member turned automatic renewal on, its first
 //     charge on the licence end (Checkout.FirstChargeAt), one year at a time, no bonus months;
-//   - a webhook body is a hint, never the truth: every Event names a provider object that
-//     Fetcher.FetchOrder reads back, and only the fetched state is applied;
+//   - a webhook body is only a hint, and the API says so: ParseNotification answers an Event
+//     that holds identifiers and the kind of hint, no status and no amount. The one way to
+//     learn what happened is Confirm, which reads the provider's current object, checks it
+//     against what the store expects (order, licence, amount, currency) and answers a Fact:
+//     paid, not paid, refunded, set up, or a mismatch;
+//   - a paid amount is reported only when money arrived (a subscription set-up is never paid);
 //   - payment states only move forward (Advance): a late "failed" never replaces "succeeded";
-//   - a refund of a one-time payment (a PaymentIntent) as well as of an invoice.
+//   - idempotency keys name the operation, so a retry is the same request to the provider.
 //
 // Credentials: in CelikPanel they come from the private configuration on the portal host, never
 // from a database, a page or a message (bioexamine stores them in its database). This package
@@ -93,18 +96,20 @@ var (
 	ErrPeriodNotYearly = errors.New("payment: a licence is paid for a year")
 	// ErrInvalidNotification: the notification did not verify or did not parse.
 	ErrInvalidNotification = errors.New("payment: the notification is not valid")
-	// ErrNotSupported: the provider has no such operation (the manual provider has no status
-	// query; a refund by hand is an entry with status refunded).
+	// ErrNotSupported: the provider has no such operation.
 	ErrNotSupported = errors.New("payment: the provider does not support this")
 	// ErrNotConfigured: the provider's credentials are missing or incomplete.
 	ErrNotConfigured = errors.New("payment: the provider's credentials are not entered")
 	// ErrCheckoutIncomplete: something the provider needs (the return addresses, the order
-	// reference, the first charge date of a subscription) is missing.
-	ErrCheckoutIncomplete = errors.New("payment: the checkout lacks what the provider needs")
+	// reference, the first charge date of a subscription, an operation key) is missing.
+	ErrCheckoutIncomplete = errors.New("payment: the request lacks what the provider needs")
 	// ErrProviderRefused: the provider answered and said no (a declined card, a refused refund).
 	ErrProviderRefused = errors.New("payment: the provider refused")
 	// ErrProviderUnavailable: the provider could not be reached or answered unreadably; try again.
 	ErrProviderUnavailable = errors.New("payment: the provider could not be reached")
+	// CelikPanel: ErrUnexpectedState: the provider's object is in a shape this package does not
+	// apply (for example an invoice marked paid with nothing paid); the operator looks at it.
+	ErrUnexpectedState = errors.New("payment: the provider's object is in an unexpected state")
 )
 
 // Credentials are a provider's secret as the owner placed it ("" when none). Never logged.
@@ -142,7 +147,7 @@ type Checkout struct {
 type CheckoutStart struct {
 	Provider string `json:"provider"`
 	// Reference is the provider's checkout object (a Stripe Checkout Session id): the store keeps
-	// it and FetchOrder reads its state.
+	// it and confirms the order with it.
 	Reference    string `json:"reference,omitempty"`
 	RedirectURL  string `json:"redirect_url,omitempty"`
 	Instructions string `json:"instructions,omitempty"`
@@ -155,51 +160,111 @@ type Notification struct {
 	Body    []byte
 }
 
-// EventKind says what a notification was about. The zero value is a payment.
+// EventKind says what a notification hints at. The zero value is a payment.
 type EventKind string
 
 const (
-	// EventPayment: a payment's state (a one-time checkout or a renewal invoice).
+	// EventPayment: a payment may have changed (a one-time checkout or a renewal invoice).
 	EventPayment EventKind = ""
-	// EventRenewalMethod: only the way a licence renews changed (a subscription was created,
-	// turned off at the period end, or ended); no money moved.
+	// EventRenewalMethod: the way a licence renews may have changed (a subscription was set up,
+	// turned off at the period end, or ended).
 	EventRenewalMethod EventKind = "renewal_method"
-	// CelikPanel: EventRefund: a refund was made or changed; Status is the refund's own
-	// (refunded = done, pending, failed), Amount the amount refunded so far.
+	// EventRefund: a refund was made or changed on PaymentIntent.
 	EventRefund EventKind = "refund"
-	// CelikPanel: EventDispute: the payer's bank disputes a payment; Note is the dispute's
-	// state. A dispute only flags the order for the operator; it never revokes by itself.
+	// EventDispute: the payer's bank disputes the payment of PaymentIntent. A dispute only flags
+	// the order for the operator; it never revokes by itself.
 	EventDispute EventKind = "dispute"
 	// EventIgnored: a verified notification that concerns nothing we record. The door answers
 	// that it was received, so the provider stops sending it.
 	EventIgnored EventKind = "ignored"
 )
 
-// Event is one payment fact, normalized. CelikPanel: it is a hint -- the store fetches the state
-// of Reference (FetchOrder) and applies that, never the event body.
+// Event is what a verified notification hints at: identifiers and a kind, nothing to act on.
+// CelikPanel (review of #361, 3): it carries no status, amount or renewal state, so a store
+// cannot apply a body. The store finds its order by Order, Reference or PaymentIntent, then
+// calls Confirm (payments) or ConfirmRenewal (renewal methods) with what it expects.
 type Event struct {
 	Kind     EventKind
 	Provider string
 	// EventID is the provider's id for this notification, for the store's
 	// UNIQUE(provider, event id): a replay or duplicate is recorded once.
 	EventID string
-	// Reference is the provider object to fetch: a Checkout Session, a PaymentIntent or an
-	// invoice id.
+	// Reference is the provider object to confirm: a Checkout Session, an invoice or a
+	// PaymentIntent (refund and dispute hints), or a subscription (renewal hints).
 	Reference string
-	// Order is our order reference when the provider echoed it; LicenseID the licence.
+	// Order and LicenseID as the body names them: only for finding the store's own order.
 	Order     string
 	LicenseID string
-	Status    Status
-	Amount    string
-	Currency  string
-	Period    string
-	Note      string
-	// PaymentIntent, Refund and Dispute name the provider's objects (ids only).
+	// PaymentIntent, Refund, Dispute and Subscription name the provider's objects (ids only).
 	PaymentIntent string
 	Refund        string
 	Dispute       string
-	// Renewal, when set, is how this licence renews from now on.
-	Renewal *Renewal
+	Subscription  string
+}
+
+// OrderKind is what an order's provider object is (CelikPanel).
+type OrderKind string
+
+const (
+	// OrderOneTime: a one-time purchase of a year (Checkout in payment mode, its PaymentIntent).
+	OrderOneTime OrderKind = "one_time"
+	// OrderSubscriptionSetup: automatic renewal set up (Checkout in subscription mode). No money
+	// moves at set-up; it is never "paid".
+	OrderSubscriptionSetup OrderKind = "subscription_setup"
+	// OrderRenewalInvoice: one year charged by the subscription (an invoice).
+	OrderRenewalInvoice OrderKind = "renewal_invoice"
+)
+
+// Expected is what the store's order says should have happened: the order the provider must
+// echo, the licence, and the amount and currency that must have been paid.
+type Expected struct {
+	Kind        OrderKind
+	Order       string
+	LicenseID   string
+	AmountMinor int64
+	Currency    string
+}
+
+// Outcome is what Confirm found.
+type Outcome string
+
+const (
+	// OutcomePaid: the expected amount arrived for this order and licence.
+	OutcomePaid Outcome = "paid"
+	// OutcomeNotPaid: nothing arrived (yet): open, processing, failed, cancelled or expired.
+	OutcomeNotPaid Outcome = "not_paid"
+	// OutcomeRefunded: the payment arrived and was given back in full.
+	OutcomeRefunded Outcome = "refunded"
+	// OutcomeSetUp: a subscription is in place; nothing was charged (subscription set-up only).
+	OutcomeSetUp Outcome = "set_up"
+	// OutcomeMismatch: the provider's object is not what the order expects (Fact.Mismatch says
+	// which part); nothing may be applied.
+	OutcomeMismatch Outcome = "mismatch"
+)
+
+// Fact is the only thing a store may apply: the provider's current object, checked against the
+// order. PaidMinor is set only when money arrived.
+type Fact struct {
+	Outcome  Outcome
+	Mismatch string // "kind", "order", "licence", "amount" or "currency" when Outcome is mismatch
+	// Status is the provider's own state behind the outcome, for Advance.
+	Status        Status
+	Kind          OrderKind
+	Reference     string
+	Order         string
+	LicenseID     string
+	PaidMinor     int64
+	Currency      string
+	RefundedMinor int64
+	Disputed      bool
+	PaymentIntent string
+	Subscription  string
+	Customer      string
+}
+
+// Confirmer reads the provider's current object and checks it against the order.
+type Confirmer interface {
+	Confirm(ctx context.Context, credentials Credentials, reference string, expected Expected) (Fact, error)
 }
 
 // RenewalKind is how a licence's next year is paid without the member acting.
@@ -213,64 +278,47 @@ const (
 	RenewalStoredCard RenewalKind = "stored_card"
 )
 
-// Renewal is a licence's renewal method at one provider. The references are provider tokens:
-// usable only with the merchant's own credentials, still never shown and never logged.
-type Renewal struct {
-	Kind      RenewalKind
-	Reference string // Stripe subscription id
-	Customer  string // Stripe customer id
-	Card      string // a stored-card provider's card token
-	Active    bool
+// RenewalFact is a subscription's current state, read from the provider and checked against the
+// licence (CelikPanel). Active: renewal goes on (not cancelled, not set to stop at the period end).
+type RenewalFact struct {
+	Subscription      string
+	LicenseID         string
+	Order             string
+	Customer          string
+	Active            bool
+	CancelAtPeriodEnd bool
+	Mismatch          bool // the subscription names another licence
 }
 
-// RenewalCharge is one year to charge to a stored card.
-type RenewalCharge struct {
-	LicenseID  string
-	Reference  string // our deterministic reference for this year end; the provider's order id
-	Amount     string
-	Currency   string
-	PayerEmail string
-	Language   string
-	Renewal    Renewal
-}
-
-// Renewer is a provider that can charge a stored card for the next year. The answer is an Event
-// to record: succeeded, failed, or pending when the provider reports later.
-type Renewer interface {
-	ChargeRenewal(ctx context.Context, credentials Credentials, charge RenewalCharge) (Event, error)
+// RenewalChange turns automatic renewal on or off. Change is the store's id for this change
+// (one id per member action): with the licence and the target state it makes the idempotency key,
+// so a retried call is the same change and a later change is a new one.
+type RenewalChange struct {
+	Subscription string
+	LicenseID    string
+	On           bool
+	Change       string
 }
 
 // RenewalSwitch is a provider whose subscription must be told when the member turns automatic
 // renewal off or on again (Stripe's cancel_at_period_end).
 type RenewalSwitch interface {
-	SetRenewal(ctx context.Context, credentials Credentials, renewal Renewal, on bool) error
+	SetRenewal(ctx context.Context, credentials Credentials, change RenewalChange) error
 }
 
-// OrderState is what the provider says now about one of its objects (CelikPanel). It is the
-// truth the store applies; amounts are decimal strings with two places.
-type OrderState struct {
-	// Reference is the object that was read.
-	Reference string
-	// Subscription: a subscription checkout (no money moved at checkout); Status is then the
-	// set-up's: pending, succeeded (in place) or expired.
-	Subscription  string
-	Status        Status
-	Amount        string
-	Currency      string
+// RefundRequest gives a confirmed payment back, whole (CelikPanel). Reference is the order's
+// provider object (Checkout Session or invoice) or the PaymentIntent; AmountMinor and Currency are
+// the order's. Attempt numbers the store's tries: keep it while the outcome is unknown (a timeout
+// or a 5xx is asked again with the same key, and the provider answers once), raise it only after a
+// definite refusal the store wants to try again (a cached refusal would otherwise come back).
+type RefundRequest struct {
+	Reference     string
+	PaymentIntent string
 	Order         string
 	LicenseID     string
-	PaymentIntent string
-	Customer      string
-	// RefundedAmount is what was given back so far ("" when nothing); Status is refunded only
-	// when everything was.
-	RefundedAmount string
-	// Disputed: the payer's bank disputes the payment (the operator decides; never automatic).
-	Disputed bool
-}
-
-// Fetcher reads the provider's current state of an object an Event or a checkout named.
-type Fetcher interface {
-	FetchOrder(ctx context.Context, credentials Credentials, reference string) (OrderState, error)
+	AmountMinor   int64
+	Currency      string
+	Attempt       int
 }
 
 // Provider is one way of taking money. Implementations must be safe for concurrent use.
@@ -279,12 +327,10 @@ type Provider interface {
 	Code() string
 	// StartCheckout begins paying for one licence year.
 	StartCheckout(ctx context.Context, credentials Credentials, checkout Checkout) (CheckoutStart, error)
-	// ParseNotification verifies what the provider sent and turns it into an Event (a hint).
+	// ParseNotification verifies what the provider sent and answers what it hints at.
 	ParseNotification(ctx context.Context, credentials Credentials, notification Notification) (Event, error)
-	// Refund asks the provider to give a recorded payment back, whole.
-	Refund(ctx context.Context, credentials Credentials, event Event) error
-	// Status asks the provider what became of a payment it knows by reference.
-	Status(ctx context.Context, credentials Credentials, reference string) (Status, error)
+	// Refund asks the provider to give a confirmed payment back, whole.
+	Refund(ctx context.Context, credentials Credentials, request RefundRequest) error
 }
 
 // Registry is the set of providers this process can use, by code.
@@ -369,48 +415,57 @@ var (
 	currencyPattern = regexp.MustCompile(`^[A-Z]{3}$`)
 )
 
-// ParseNotification implements Provider: the operator's entry, checked field by field.
-func (Manual) ParseNotification(_ context.Context, _ Credentials, notification Notification) (Event, error) {
+// ParseEntry reads and checks the operator's entry. The operator is the source here (there is
+// no provider to ask), so the answer is a Fact. CelikPanel (review of #361, 9): the status must
+// be stated -- an entry without one is refused, never read as paid -- and the licence id must
+// be one.
+func (Manual) ParseEntry(notification Notification) (Fact, error) {
 	var entry ManualEntry
 	decoder := json.NewDecoder(strings.NewReader(string(notification.Body)))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&entry); err != nil {
-		return Event{}, ErrInvalidNotification
+		return Fact{}, ErrInvalidNotification
 	}
 	period := strings.TrimSpace(entry.Period)
 	if period == "" {
 		period = PeriodYearly
 	}
 	if period != PeriodYearly {
-		return Event{}, ErrPeriodNotYearly
+		return Fact{}, ErrPeriodNotYearly
 	}
 	status := Status(strings.TrimSpace(entry.Status))
-	if status == "" {
-		status = StatusSucceeded
-	}
 	reference := strings.TrimSpace(entry.Reference)
+	license := strings.TrimSpace(entry.LicenseID)
+	currency := strings.TrimSpace(entry.Currency)
 	if !status.Valid() || reference == "" || len(reference) > 200 ||
-		!amountPattern.MatchString(strings.TrimSpace(entry.Amount)) ||
-		!currencyPattern.MatchString(strings.TrimSpace(entry.Currency)) ||
-		strings.TrimSpace(entry.LicenseID) == "" || len(entry.Note) > 500 {
-		return Event{}, ErrInvalidNotification
+		!amountPattern.MatchString(strings.TrimSpace(entry.Amount)) || !currencyPattern.MatchString(currency) ||
+		!licensePattern.MatchString(license) || len(entry.Note) > 500 {
+		return Fact{}, ErrInvalidNotification
 	}
-	return Event{
-		Provider:  ManualCode,
-		Reference: reference,
-		LicenseID: strings.TrimSpace(entry.LicenseID),
-		Status:    status,
-		Amount:    strings.TrimSpace(entry.Amount),
-		Currency:  strings.TrimSpace(entry.Currency),
-		Period:    period,
-		Note:      strings.TrimSpace(entry.Note),
-	}, nil
+	minor, err := ToMinor(strings.TrimSpace(entry.Amount), currency)
+	if err != nil {
+		return Fact{}, ErrInvalidNotification
+	}
+	fact := Fact{Status: status, Kind: OrderOneTime, Reference: reference, LicenseID: license, Currency: currency}
+	switch status {
+	case StatusSucceeded:
+		fact.Outcome, fact.PaidMinor = OutcomePaid, minor
+	case StatusRefunded:
+		fact.Outcome, fact.PaidMinor, fact.RefundedMinor = OutcomeRefunded, minor, minor
+	default:
+		fact.Outcome = OutcomeNotPaid
+	}
+	return fact, nil
+}
+
+// ParseNotification implements Provider: the entry's identifiers; ParseEntry gives its facts.
+func (m Manual) ParseNotification(_ context.Context, _ Credentials, notification Notification) (Event, error) {
+	fact, err := m.ParseEntry(notification)
+	if err != nil {
+		return Event{}, err
+	}
+	return Event{Provider: ManualCode, Reference: fact.Reference, LicenseID: fact.LicenseID}, nil
 }
 
 // Refund implements Provider: a manual refund is the operator's entry with status refunded.
-func (Manual) Refund(context.Context, Credentials, Event) error { return ErrNotSupported }
-
-// Status implements Provider: the manual provider has nobody to ask.
-func (Manual) Status(context.Context, Credentials, string) (Status, error) {
-	return "", ErrNotSupported
-}
+func (Manual) Refund(context.Context, Credentials, RefundRequest) error { return ErrNotSupported }

@@ -8,6 +8,7 @@ package payment
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -41,22 +42,32 @@ func TestManualGoesThroughTheProviderInterface(t *testing.T) {
 	}
 }
 
-// CelikPanel: the entry names a licence (license_id) instead of a membership.
+// CelikPanel: the entry names a licence (license_id) instead of a membership; review of #361, 9:
+// the status must be stated (never read as paid by default) and the licence id must be one.
 func TestManualEntryIsChecked(t *testing.T) {
-	ok := `{"license_id":"m","reference":"dekont-1","amount":"3990.00","currency":"TRY"}`
-	event, err := Manual{}.ParseNotification(context.Background(), "", Notification{Body: []byte(ok)})
-	if err != nil || event.Status != StatusSucceeded || event.Period != PeriodYearly || event.Provider != ManualCode {
-		t.Fatalf("a plain entry is a succeeded yearly payment: %+v %v", event, err)
+	l := `"license_id":"` + licenseID + `"`
+	ok := `{` + l + `,"reference":"dekont-1","status":"succeeded","amount":"99.00","currency":"USD"}`
+	fact, err := Manual{}.ParseEntry(Notification{Body: []byte(ok)})
+	if err != nil || fact.Outcome != OutcomePaid || fact.PaidMinor != 9900 || fact.LicenseID != licenseID || fact.Currency != "USD" {
+		t.Fatalf("a stated payment is a paid year: %+v %v", fact, err)
+	}
+	if event, err := (Manual{}).ParseNotification(context.Background(), "", Notification{Body: []byte(ok)}); err != nil ||
+		event.Provider != ManualCode || event.LicenseID != licenseID || event.Reference != "dekont-1" {
+		t.Fatalf("the entry's identifiers: %+v %v", event, err)
 	}
 	for body, want := range map[string]error{
-		`{"license_id":"m","reference":"r","amount":"1","currency":"TRY","period":"monthly"}`: ErrPeriodNotYearly,
-		`{"license_id":"m","reference":"","amount":"1","currency":"TRY"}`:                     ErrInvalidNotification,
-		`{"license_id":"m","reference":"r","amount":"-1","currency":"TRY"}`:                   ErrInvalidNotification,
-		`{"license_id":"m","reference":"r","amount":"1","currency":"try"}`:                    ErrInvalidNotification,
-		`{"license_id":"m","reference":"r","amount":"1","currency":"TRY","status":"maybe"}`:   ErrInvalidNotification,
-		`{"license_id":"m","reference":"r","amount":"1","currency":"TRY","extra":1}`:          ErrInvalidNotification,
+		`{` + l + `,"reference":"r","status":"succeeded","amount":"1","currency":"TRY","period":"monthly"}`:                      ErrPeriodNotYearly,
+		`{` + l + `,"reference":"r","amount":"1","currency":"TRY"}`:                                                              ErrInvalidNotification, // no status
+		`{` + l + `,"reference":"r","status":"","amount":"1","currency":"TRY"}`:                                                  ErrInvalidNotification,
+		`{"license_id":"m","reference":"r","status":"succeeded","amount":"1","currency":"TRY"}`:                                  ErrInvalidNotification,
+		`{"license_id":"` + strings.ToUpper(licenseID) + `","reference":"r","status":"succeeded","amount":"1","currency":"TRY"}`: ErrInvalidNotification,
+		`{` + l + `,"reference":"","status":"succeeded","amount":"1","currency":"TRY"}`:                                          ErrInvalidNotification,
+		`{` + l + `,"reference":"r","status":"succeeded","amount":"-1","currency":"TRY"}`:                                        ErrInvalidNotification,
+		`{` + l + `,"reference":"r","status":"succeeded","amount":"1","currency":"try"}`:                                         ErrInvalidNotification,
+		`{` + l + `,"reference":"r","status":"maybe","amount":"1","currency":"TRY"}`:                                             ErrInvalidNotification,
+		`{` + l + `,"reference":"r","status":"succeeded","amount":"1","currency":"TRY","extra":1}`:                               ErrInvalidNotification,
 	} {
-		if _, err := (Manual{}).ParseNotification(context.Background(), "", Notification{Body: []byte(body)}); !errors.Is(err, want) {
+		if _, err := (Manual{}).ParseEntry(Notification{Body: []byte(body)}); !errors.Is(err, want) {
 			t.Errorf("%s: got %v, want %v", body, err, want)
 		}
 	}

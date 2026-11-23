@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -24,19 +25,22 @@ import (
 // CelikPanel (D-047, amended 2026-11-23): every purchase is a Checkout Session in payment mode
 // (one charge, nothing stored for later, cards only so the result is known at once); a
 // subscription-mode session exists only when the member turned automatic renewal on, its first
-// charge on the licence end. Webhook events are hints: each names the object FetchOrder reads,
-// and only that fetched state is applied by the store. bioexamine's checkout was always a yearly
-// subscription and it recorded payments from the signed event body; both are changed here.
+// charge on the licence end. A webhook body is only a hint: ParseNotification answers
+// identifiers, and Confirm / ConfirmRenewal read Stripe's current object and check it against
+// the store's order. bioexamine's checkout was always a yearly subscription and it recorded
+// payments from the signed event body; both are changed here.
 //
 // API calls carry Stripe-Version 2025-03-31.basil (the release that moved an invoice's
 // subscription under parent.subscription_details and its payments to /v1/invoice_payments); the
-// webhook parser reads both that shape and the older top-level one, because an event's shape
-// follows the webhook endpoint's own API version, not ours.
+// parsers read both that shape and the older top-level one, because an event's shape follows the
+// webhook endpoint's own API version, not ours.
 //
 // Official documentation followed:
 //   - Checkout Session create: https://docs.stripe.com/api/checkout/sessions/create
 //   - Checkout Session retrieve: https://docs.stripe.com/api/checkout/sessions/retrieve
 //   - PaymentIntent retrieve: https://docs.stripe.com/api/payment_intents/retrieve
+//   - Charge retrieve: https://docs.stripe.com/api/charges/retrieve
+//   - Subscription retrieve: https://docs.stripe.com/api/subscriptions/retrieve
 //   - Webhook signatures (manual verification): https://docs.stripe.com/webhooks?verify=verify-manually
 //   - Invoice object: https://docs.stripe.com/api/invoices/object
 //   - Invoice payments list: https://docs.stripe.com/api/invoice-payment/list
@@ -74,7 +78,8 @@ type Stripe struct {
 // Code implements Provider.
 func (*Stripe) Code() string { return StripeCode }
 
-// ConfigSchema implements Configurable.
+// ConfigSchema implements Configurable. CelikPanel: Currencies is metadata only (what Stripe
+// takes); D-047 keeps currencies other than USD open.
 func (*Stripe) ConfigSchema() ConfigSchema {
 	return ConfigSchema{
 		Provider: StripeCode,
@@ -135,13 +140,26 @@ func (s *Stripe) now() time.Time {
 	return time.Now()
 }
 
+// stripeHost reports whether base names one of Stripe's own hosts: the parsed host,
+// lower-cased, without a trailing dot, whatever the port or path. An address that does
+// not parse counts as Stripe's, so the guard fails closed.
+func stripeHost(base string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(base))
+	if err != nil || parsed.Host == "" {
+		return true
+	}
+	host := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
+	return host == "stripe.com" || strings.HasSuffix(host, ".stripe.com")
+}
+
 // call sends one API request: form-encoded, Bearer key, pinned version, an idempotency key on
 // every POST (https://docs.stripe.com/api/idempotent_requests). A 4xx is ErrProviderRefused; a 5xx
 // or transport failure ErrProviderUnavailable. The answer is decoded into out.
 func (s *Stripe) call(ctx context.Context, config Config, method, path string, form url.Values, idempotencyKey string, out any) error {
-	// CelikPanel: a test never reaches the real Stripe, whatever it forgot to set (the same
-	// guard internal/licensing keeps for the live licence service).
-	if testing.Testing() && s.base() == stripeAPIBase {
+	// CelikPanel: a test never reaches the real Stripe, whatever it forgot to set or however
+	// it spelled the address (the same guard internal/licensing keeps for the live licence
+	// service).
+	if testing.Testing() && stripeHost(s.base()) {
 		return ErrProviderUnavailable
 	}
 	var body *strings.Reader
@@ -185,7 +203,8 @@ func (s *Stripe) call(ctx context.Context, config Config, method, path string, f
 // StartCheckout implements Provider. CelikPanel: a Checkout Session in payment mode for every
 // purchase (one charge of the list price, card only, nothing saved for a later charge); in
 // subscription mode only when checkout.AutomaticRenewal is set, a yearly price whose first
-// charge falls on checkout.FirstChargeAt (the licence end) and never earlier.
+// charge falls on checkout.FirstChargeAt (the licence end) and never earlier. The deferral uses
+// Stripe's trial_end: what the member is shown for it is open (VERIFY V4, the PR names it).
 // https://docs.stripe.com/api/checkout/sessions/create
 func (s *Stripe) StartCheckout(ctx context.Context, credentials Credentials, checkout Checkout) (CheckoutStart, error) {
 	if checkout.Period != PeriodYearly {
@@ -321,6 +340,7 @@ type stripeEvent struct {
 
 type stripeInvoice struct {
 	ID         string            `json:"id"`
+	Status     string            `json:"status"`
 	AmountPaid int64             `json:"amount_paid"`
 	AmountDue  int64             `json:"amount_due"`
 	Currency   string            `json:"currency"`
@@ -340,16 +360,16 @@ type stripeInvoice struct {
 	} `json:"subscription_details"`
 }
 
-// subscription answers the invoice's subscription and the licence its metadata names.
-func (i stripeInvoice) subscription() (string, string) {
+// subscription answers the invoice's subscription and the metadata it carries (licence, order).
+func (i stripeInvoice) subscription() (string, map[string]string) {
 	if i.Parent != nil && i.Parent.SubscriptionDetails != nil {
-		return i.Parent.SubscriptionDetails.Subscription, i.Parent.SubscriptionDetails.Metadata["license_id"]
+		return i.Parent.SubscriptionDetails.Subscription, i.Parent.SubscriptionDetails.Metadata
 	}
-	license := i.Metadata["license_id"]
+	metadata := i.Metadata
 	if i.SubscriptionDetails != nil && i.SubscriptionDetails.Metadata["license_id"] != "" {
-		license = i.SubscriptionDetails.Metadata["license_id"]
+		metadata = i.SubscriptionDetails.Metadata
 	}
-	return i.Subscription, license
+	return i.Subscription, metadata
 }
 
 // stripeSession is the part of a Checkout Session we read.
@@ -362,8 +382,6 @@ type stripeSession struct {
 	Subscription      json.RawMessage   `json:"subscription"`
 	Customer          json.RawMessage   `json:"customer"`
 	PaymentIntent     json.RawMessage   `json:"payment_intent"`
-	AmountTotal       int64             `json:"amount_total"`
-	Currency          string            `json:"currency"`
 	Metadata          map[string]string `json:"metadata"`
 }
 
@@ -394,25 +412,25 @@ type stripeCharge struct {
 	ID             string `json:"id"`
 	PaymentIntent  string `json:"payment_intent"`
 	Amount         int64  `json:"amount"`
+	AmountCaptured int64  `json:"amount_captured"`
 	AmountRefunded int64  `json:"amount_refunded"`
+	Paid           bool   `json:"paid"`
 	Refunded       bool   `json:"refunded"`
 	Disputed       bool   `json:"disputed"`
 	Currency       string `json:"currency"`
 }
 
-// ParseNotification implements Provider: verify the Stripe-Signature header, then read the event.
-// CelikPanel: the answer is a hint naming what to fetch (Event.Reference); the store applies
-// FetchOrder's state, never this body.
+// ParseNotification implements Provider: verify the Stripe-Signature header, then say what the
+// event hints at. CelikPanel (review of #361, 3): the answer holds identifiers only; the store
+// finds its order and asks Confirm or ConfirmRenewal.
 //
-//	checkout.session.completed            payment mode: the payment (paid, or pending for a delayed method)
-//	                                      subscription mode: the licence's renewal method
-//	checkout.session.async_payment_*      the delayed payment succeeded or failed
-//	checkout.session.expired              the member never paid
-//	invoice.paid / invoice.payment_failed a renewal year paid or failed (reference = invoice id)
-//	charge.refunded, refund.*             a refund (Dashboard refunds included)
-//	charge.dispute.*                      a dispute: flag for the operator, never a revocation
-//	customer.subscription.updated/deleted automatic renewal on, off at the period end, or ended
-//	anything else                         received, nothing recorded
+//	checkout.session.*                    payment mode: a payment hint on the session
+//	                                      subscription mode (completed): a renewal-method hint
+//	invoice.paid / invoice.payment_failed a renewal invoice hint
+//	charge.refunded, refund.*             a refund hint on the PaymentIntent (Dashboard refunds included)
+//	charge.dispute.*                      a dispute hint on the PaymentIntent
+//	customer.subscription.updated/deleted a renewal-method hint on the subscription
+//	anything else                         received, nothing to do
 func (s *Stripe) ParseNotification(_ context.Context, credentials Credentials, notification Notification) (Event, error) {
 	config, err := s.config(credentials)
 	if err != nil {
@@ -439,186 +457,104 @@ func (s *Stripe) ParseNotification(_ context.Context, credentials Credentials, n
 			return ignored, nil // not one of our checkouts
 		}
 		out := Event{Provider: StripeCode, EventID: event.ID, Reference: session.ID, Order: session.ClientReferenceID,
-			LicenseID: license, PaymentIntent: expandableID(session.PaymentIntent), Period: PeriodYearly}
-		if session.Mode == "subscription" {
-			subscription := expandableID(session.Subscription)
-			if event.Type != "checkout.session.completed" || subscription == "" {
-				return ignored, nil
-			}
+			LicenseID: license, PaymentIntent: expandableID(session.PaymentIntent), Subscription: expandableID(session.Subscription)}
+		switch session.Mode {
+		case "payment":
+			return out, nil
+		case "subscription":
 			out.Kind = EventRenewalMethod
-			out.Renewal = &Renewal{Kind: RenewalProviderSubscription, Reference: subscription,
-				Customer: expandableID(session.Customer), Active: true}
 			return out, nil
 		}
-		if session.Mode != "payment" {
-			return ignored, nil
-		}
-		switch {
-		case event.Type == "checkout.session.expired":
-			out.Status = StatusExpired
-		case event.Type == "checkout.session.async_payment_failed":
-			out.Status = StatusFailed
-		case event.Type == "checkout.session.async_payment_succeeded" || session.PaymentStatus == "paid":
-			out.Status = StatusSucceeded
-		default:
-			out.Status = StatusPending
-		}
-		if session.AmountTotal > 0 {
-			currency := strings.ToUpper(session.Currency)
-			amount, err := FromMinor(session.AmountTotal, currency)
-			if err != nil {
-				return Event{}, ErrInvalidNotification
-			}
-			out.Amount, out.Currency = amount, currency
-		}
-		return out, nil
+		return ignored, nil
 
 	case "invoice.paid", "invoice.payment_failed":
 		var invoice stripeInvoice
-		if json.Unmarshal(event.Data.Object, &invoice) != nil || invoice.ID == "" {
+		if json.Unmarshal(event.Data.Object, &invoice) != nil || !strings.HasPrefix(invoice.ID, "in_") {
 			return Event{}, ErrInvalidNotification
 		}
-		subscription, license := invoice.subscription()
-		if license == "" {
+		subscription, metadata := invoice.subscription()
+		if metadata["license_id"] == "" && subscription == "" {
 			return ignored, nil // not one of our licences' invoices
 		}
-		status, minor := StatusSucceeded, invoice.AmountPaid
-		if event.Type == "invoice.payment_failed" {
-			status, minor = StatusFailed, invoice.AmountDue
+		return Event{Provider: StripeCode, EventID: event.ID, Reference: invoice.ID, LicenseID: metadata["license_id"],
+			Order: metadata["order"], Subscription: subscription}, nil
+
+	case "charge.refunded", "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed",
+		"charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated", "refund.created", "refund.updated", "refund.failed":
+		var object struct {
+			ID            string `json:"id"`
+			PaymentIntent string `json:"payment_intent"`
 		}
-		if minor <= 0 {
-			return ignored, nil // a zero invoice moves no money and buys no year
-		}
-		currency := strings.ToUpper(invoice.Currency)
-		amount, err := FromMinor(minor, currency)
-		if err != nil {
+		if json.Unmarshal(event.Data.Object, &object) != nil || object.ID == "" {
 			return Event{}, ErrInvalidNotification
 		}
-		out := Event{Provider: StripeCode, EventID: event.ID, Reference: invoice.ID, LicenseID: license, Status: status,
-			Amount: amount, Currency: currency, Period: PeriodYearly}
-		if subscription != "" && status == StatusSucceeded {
-			out.Renewal = &Renewal{Kind: RenewalProviderSubscription, Reference: subscription,
-				Customer: invoice.Customer, Active: true}
+		if !strings.HasPrefix(object.PaymentIntent, "pi_") {
+			return ignored, nil
+		}
+		out := Event{Kind: EventRefund, Provider: StripeCode, EventID: event.ID, Reference: object.PaymentIntent,
+			PaymentIntent: object.PaymentIntent}
+		switch {
+		case strings.HasPrefix(event.Type, "charge.dispute."):
+			if !strings.HasPrefix(object.ID, "dp_") {
+				return Event{}, ErrInvalidNotification
+			}
+			out.Kind, out.Dispute = EventDispute, object.ID
+		case strings.HasPrefix(event.Type, "refund."):
+			if !strings.HasPrefix(object.ID, "re_") {
+				return Event{}, ErrInvalidNotification
+			}
+			out.Refund = object.ID
 		}
 		return out, nil
 
-	case "charge.refunded":
-		var charge stripeCharge
-		if json.Unmarshal(event.Data.Object, &charge) != nil || charge.ID == "" {
-			return Event{}, ErrInvalidNotification
-		}
-		if !strings.HasPrefix(charge.PaymentIntent, "pi_") {
-			return ignored, nil
-		}
-		currency := strings.ToUpper(charge.Currency)
-		amount, err := FromMinor(charge.AmountRefunded, currency)
-		if err != nil {
-			return Event{}, ErrInvalidNotification
-		}
-		status := StatusPending // part of the payment was given back; the operator decides
-		if charge.Refunded && charge.AmountRefunded >= charge.Amount {
-			status = StatusRefunded
-		}
-		return Event{Kind: EventRefund, Provider: StripeCode, EventID: event.ID, Reference: charge.PaymentIntent,
-			PaymentIntent: charge.PaymentIntent, Status: status, Amount: amount, Currency: currency}, nil
-
-	case "refund.created", "refund.updated", "refund.failed":
-		var refund struct {
-			ID            string `json:"id"`
-			PaymentIntent string `json:"payment_intent"`
-			Status        string `json:"status"`
-			Amount        int64  `json:"amount"`
-			Currency      string `json:"currency"`
-		}
-		if json.Unmarshal(event.Data.Object, &refund) != nil || !strings.HasPrefix(refund.ID, "re_") {
-			return Event{}, ErrInvalidNotification
-		}
-		if !strings.HasPrefix(refund.PaymentIntent, "pi_") {
-			return ignored, nil
-		}
-		currency := strings.ToUpper(refund.Currency)
-		amount, err := FromMinor(refund.Amount, currency)
-		if err != nil {
-			return Event{}, ErrInvalidNotification
-		}
-		var status Status
-		switch refund.Status {
-		case "succeeded":
-			status = StatusRefunded
-		case "failed", "canceled":
-			status = StatusFailed
-		default: // pending, requires_action
-			status = StatusPending
-		}
-		return Event{Kind: EventRefund, Provider: StripeCode, EventID: event.ID, Reference: refund.PaymentIntent,
-			PaymentIntent: refund.PaymentIntent, Refund: refund.ID, Status: status, Amount: amount, Currency: currency}, nil
-
-	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed",
-		"charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated":
-		var dispute struct {
-			ID            string `json:"id"`
-			PaymentIntent string `json:"payment_intent"`
-			Status        string `json:"status"`
-			Amount        int64  `json:"amount"`
-			Currency      string `json:"currency"`
-		}
-		if json.Unmarshal(event.Data.Object, &dispute) != nil || !strings.HasPrefix(dispute.ID, "dp_") {
-			return Event{}, ErrInvalidNotification
-		}
-		if !strings.HasPrefix(dispute.PaymentIntent, "pi_") {
-			return ignored, nil
-		}
-		return Event{Kind: EventDispute, Provider: StripeCode, EventID: event.ID, Reference: dispute.PaymentIntent,
-			PaymentIntent: dispute.PaymentIntent, Dispute: dispute.ID, Note: dispute.Status}, nil
-
 	case "customer.subscription.updated", "customer.subscription.deleted":
 		var subscription struct {
-			ID                string            `json:"id"`
-			Customer          string            `json:"customer"`
-			Status            string            `json:"status"`
-			CancelAtPeriodEnd bool              `json:"cancel_at_period_end"`
-			Metadata          map[string]string `json:"metadata"`
+			ID       string            `json:"id"`
+			Metadata map[string]string `json:"metadata"`
 		}
-		if json.Unmarshal(event.Data.Object, &subscription) != nil || subscription.ID == "" {
+		if json.Unmarshal(event.Data.Object, &subscription) != nil || !strings.HasPrefix(subscription.ID, "sub_") {
 			return Event{}, ErrInvalidNotification
 		}
 		if subscription.Metadata["license_id"] == "" {
 			return ignored, nil
 		}
-		// Renewal goes on only while the subscription lives and was not told to stop at the
-		// period end; the paid year itself is never shortened by this.
-		active := event.Type == "customer.subscription.updated" && !subscription.CancelAtPeriodEnd &&
-			(subscription.Status == "active" || subscription.Status == "trialing" || subscription.Status == "past_due")
 		return Event{Kind: EventRenewalMethod, Provider: StripeCode, EventID: event.ID, Reference: subscription.ID,
-			LicenseID: subscription.Metadata["license_id"],
-			Renewal: &Renewal{Kind: RenewalProviderSubscription, Reference: subscription.ID,
-				Customer: subscription.Customer, Active: active}}, nil
+			Subscription: subscription.ID, LicenseID: subscription.Metadata["license_id"], Order: subscription.Metadata["order"]}, nil
 	}
 	return ignored, nil
 }
 
+// operationKey is the part of an idempotency key the store supplies: letters, digits, "-" and "_".
+var operationKey = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
 // SetRenewal implements RenewalSwitch: off sets cancel_at_period_end=true (the paid year runs out,
-// no further invoice), on sets it back to false.
+// no further invoice), on sets it back to false. CelikPanel (review of #361, 8): the idempotency
+// key is the licence, the target state and the store's change id, so a retry is the same request
+// and the next change is a new one (bioexamine's key held the current second).
 // https://docs.stripe.com/api/subscriptions/update#update_subscription-cancel_at_period_end
-func (s *Stripe) SetRenewal(ctx context.Context, credentials Credentials, renewal Renewal, on bool) error {
+func (s *Stripe) SetRenewal(ctx context.Context, credentials Credentials, change RenewalChange) error {
 	config, err := s.config(credentials)
 	if err != nil {
 		return err
 	}
-	if renewal.Kind != RenewalProviderSubscription || !strings.HasPrefix(renewal.Reference, "sub_") {
-		return ErrNotSupported
+	if !strings.HasPrefix(change.Subscription, "sub_") || !licensePattern.MatchString(change.LicenseID) || !operationKey.MatchString(change.Change) {
+		return ErrCheckoutIncomplete
 	}
 	form := url.Values{}
-	form.Set("cancel_at_period_end", strconv.FormatBool(!on))
+	form.Set("cancel_at_period_end", strconv.FormatBool(!change.On))
 	var answer struct {
 		ID                string `json:"id"`
 		CancelAtPeriodEnd bool   `json:"cancel_at_period_end"`
 	}
-	key := "renewal-" + renewal.Reference + "-" + strconv.FormatBool(on) + "-" + strconv.FormatInt(s.now().Unix(), 10)
-	if err := s.call(ctx, config, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(renewal.Reference), form, key, &answer); err != nil {
+	state := "off"
+	if change.On {
+		state = "on"
+	}
+	key := "renewal-" + change.LicenseID + "-" + state + "-" + change.Change
+	if err := s.call(ctx, config, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(change.Subscription), form, key, &answer); err != nil {
 		return err
 	}
-	if answer.ID != renewal.Reference || answer.CancelAtPeriodEnd == on {
+	if answer.ID != change.Subscription || answer.CancelAtPeriodEnd == change.On {
 		return ErrProviderUnavailable
 	}
 	return nil
@@ -656,54 +592,53 @@ func (s *Stripe) stripePaymentOf(ctx context.Context, config Config, invoiceID s
 	return nil, ErrProviderRefused
 }
 
-// Refund implements Provider: the whole payment back. CelikPanel: a one-time payment is refunded
-// through its PaymentIntent (the member's 30-day refund or the operator's), a renewal through its
-// invoice; the idempotency key is the paid object, so a repeated request is one refund.
+// Refund implements Provider: the order's amount back, whole. CelikPanel: a one-time payment is
+// refunded through its PaymentIntent (also found from the paid Checkout Session), a renewal
+// through its invoice's payment. Review of #361, 8: the idempotency key is the order, the amount
+// and the store's attempt number (see RefundRequest), so a retry while the outcome is unknown is
+// answered once, and a definite refusal can be asked again with the next attempt.
 // https://docs.stripe.com/api/refunds/create
-func (s *Stripe) Refund(ctx context.Context, credentials Credentials, event Event) error {
+func (s *Stripe) Refund(ctx context.Context, credentials Credentials, request RefundRequest) error {
 	config, err := s.config(credentials)
 	if err != nil {
 		return err
 	}
+	if !referencePattern.MatchString(request.Order) || !licensePattern.MatchString(request.LicenseID) ||
+		request.AmountMinor <= 0 || !currencyPattern.MatchString(request.Currency) || request.Attempt < 0 {
+		return ErrCheckoutIncomplete
+	}
 	var target url.Values
-	var paid string
 	switch {
-	case strings.HasPrefix(event.PaymentIntent, "pi_"):
-		paid = event.PaymentIntent
-	case strings.HasPrefix(event.Reference, "pi_"):
-		paid = event.Reference
-	case strings.HasPrefix(event.Reference, "cs_"):
-		state, err := s.FetchOrder(ctx, credentials, event.Reference)
+	case strings.HasPrefix(request.PaymentIntent, "pi_"):
+		target = url.Values{"payment_intent": {request.PaymentIntent}}
+	case strings.HasPrefix(request.Reference, "pi_"):
+		target = url.Values{"payment_intent": {request.Reference}}
+	case strings.HasPrefix(request.Reference, "cs_"):
+		state, err := s.fetchOrder(ctx, config, request.Reference)
 		if err != nil {
 			return err
 		}
-		if !strings.HasPrefix(state.PaymentIntent, "pi_") || state.Status != StatusSucceeded {
+		if !strings.HasPrefix(state.paymentIntent, "pi_") || state.paidMinor <= 0 {
 			return ErrProviderRefused
 		}
-		paid = state.PaymentIntent
-	case strings.HasPrefix(event.Reference, "in_"):
-		if target, err = s.stripePaymentOf(ctx, config, event.Reference); err != nil {
+		target = url.Values{"payment_intent": {state.paymentIntent}}
+	case strings.HasPrefix(request.Reference, "in_"):
+		if target, err = s.stripePaymentOf(ctx, config, request.Reference); err != nil {
 			return err
 		}
-		paid = event.Reference
 	default:
 		return ErrNotSupported
 	}
-	if target == nil {
-		target = url.Values{}
-		target.Set("payment_intent", paid)
-	}
-	if event.LicenseID != "" {
-		target.Set("metadata[license_id]", event.LicenseID)
-	}
-	if event.Order != "" {
-		target.Set("metadata[order]", event.Order)
-	}
+	target.Set("amount", strconv.FormatInt(request.AmountMinor, 10))
+	target.Set("metadata[license_id]", request.LicenseID)
+	target.Set("metadata[order]", request.Order)
+	key := "refund-" + request.Order + "-" + strconv.FormatInt(request.AmountMinor, 10) + strings.ToLower(request.Currency) +
+		"-a" + strconv.Itoa(request.Attempt)
 	var refund struct {
 		ID     string `json:"id"`
 		Status string `json:"status"`
 	}
-	if err := s.call(ctx, config, http.MethodPost, "/v1/refunds", target, "refund-"+paid, &refund); err != nil {
+	if err := s.call(ctx, config, http.MethodPost, "/v1/refunds", target, key, &refund); err != nil {
 		return err
 	}
 	switch refund.Status {
@@ -713,165 +648,332 @@ func (s *Stripe) Refund(ctx context.Context, credentials Credentials, event Even
 	return ErrProviderRefused
 }
 
-// Status implements Provider: what Stripe says of an invoice
-// (https://docs.stripe.com/api/invoices/object#invoice_object-status).
-func (s *Stripe) Status(ctx context.Context, credentials Credentials, reference string) (Status, error) {
-	config, err := s.config(credentials)
-	if err != nil {
-		return "", err
-	}
-	if !strings.HasPrefix(reference, "in_") {
-		return "", ErrNotSupported
-	}
-	var invoice struct {
-		Status string `json:"status"`
-	}
-	if err := s.call(ctx, config, http.MethodGet, "/v1/invoices/"+url.PathEscape(reference), nil, "", &invoice); err != nil {
-		return "", err
-	}
-	switch invoice.Status {
-	case "paid":
-		return StatusSucceeded, nil
-	case "draft", "open":
-		return StatusPending, nil
-	case "void", "uncollectible":
-		return StatusFailed, nil
-	}
-	return "", ErrProviderUnavailable
-}
-
 // stripePaymentIntent is the part of a PaymentIntent we read, with its latest charge expanded.
 type stripePaymentIntent struct {
-	ID           string            `json:"id"`
-	Status       string            `json:"status"`
-	Amount       int64             `json:"amount"`
-	Currency     string            `json:"currency"`
-	Customer     json.RawMessage   `json:"customer"`
-	Metadata     map[string]string `json:"metadata"`
-	LatestCharge json.RawMessage   `json:"latest_charge"`
+	ID             string            `json:"id"`
+	Status         string            `json:"status"`
+	Amount         int64             `json:"amount"`
+	AmountReceived int64             `json:"amount_received"`
+	Currency       string            `json:"currency"`
+	Customer       json.RawMessage   `json:"customer"`
+	Metadata       map[string]string `json:"metadata"`
+	LatestCharge   json.RawMessage   `json:"latest_charge"`
 }
 
-// FetchOrder implements Fetcher (CelikPanel): the current state of a Checkout Session (cs_), a
-// PaymentIntent (pi_) or a renewal invoice (in_), read from Stripe. This, never an event body,
-// is what the store applies; a refund shows as refunded only when all of it was given back.
-func (s *Stripe) FetchOrder(ctx context.Context, credentials Credentials, reference string) (OrderState, error) {
-	config, err := s.config(credentials)
-	if err != nil {
-		return OrderState{}, err
-	}
+// orderState is Stripe's current object, before it is checked against an order.
+type orderState struct {
+	kind          OrderKind
+	status        Status
+	setUp         bool
+	paidMinor     int64
+	currency      string
+	refundedMinor int64
+	disputed      bool
+	order         string
+	license       string
+	paymentIntent string
+	subscription  string
+	customer      string
+}
+
+// fetchOrder reads the current state of a Checkout Session (cs_), a PaymentIntent (pi_) or a
+// renewal invoice (in_). A paid amount is set only when money arrived. CelikPanel (review of
+// #361, 2): a subscription set-up is never paid, and a renewal invoice names its licence and
+// order from the subscription's own metadata, read from Stripe.
+func (s *Stripe) fetchOrder(ctx context.Context, config Config, reference string) (orderState, error) {
 	switch {
 	case strings.HasPrefix(reference, "cs_"):
 		query := url.Values{}
 		query.Add("expand[]", "payment_intent.latest_charge")
 		var session stripeSession
 		if err := s.call(ctx, config, http.MethodGet, "/v1/checkout/sessions/"+url.PathEscape(reference), query, "", &session); err != nil {
-			return OrderState{}, err
+			return orderState{}, err
 		}
 		if session.ID != reference {
-			return OrderState{}, ErrProviderUnavailable
+			return orderState{}, ErrProviderUnavailable
 		}
-		state := OrderState{Reference: reference, Order: session.ClientReferenceID, LicenseID: session.license(),
-			Customer: expandableID(session.Customer), PaymentIntent: expandableID(session.PaymentIntent)}
-		if session.Mode == "subscription" {
-			state.Subscription = expandableID(session.Subscription)
+		state := orderState{order: session.ClientReferenceID, license: session.license(), customer: expandableID(session.Customer),
+			paymentIntent: expandableID(session.PaymentIntent), subscription: expandableID(session.Subscription)}
+		switch session.Mode {
+		case "subscription":
+			state.kind = OrderSubscriptionSetup
 			switch {
 			case session.Status == "expired":
-				state.Status = StatusExpired
-			case session.Status == "complete" && state.Subscription != "":
-				state.Status = StatusSucceeded
+				state.status = StatusExpired
+			case session.Status == "complete" && state.subscription != "":
+				state.setUp = true
 			default:
-				state.Status = StatusPending
+				state.status = StatusPending
 			}
 			return state, nil
+		case "payment":
+			state.kind = OrderOneTime
+		default:
+			return orderState{}, ErrUnexpectedState
 		}
 		switch {
 		case session.Status == "expired":
-			state.Status = StatusExpired
+			state.status = StatusExpired
 			return state, nil
 		case session.Status != "complete" || session.PaymentStatus != "paid":
-			state.Status = StatusPending
+			state.status = StatusPending
 			return state, nil
 		}
 		var intent stripePaymentIntent
 		if json.Unmarshal(session.PaymentIntent, &intent) != nil || intent.ID == "" {
-			// Not expanded (an older endpoint): read the PaymentIntent itself.
-			fetched, err := s.FetchOrder(ctx, credentials, state.PaymentIntent)
+			fetched, err := s.fetchIntent(ctx, config, state.paymentIntent)
 			if err != nil {
-				return OrderState{}, err
+				return orderState{}, err
 			}
-			fetched.Reference, fetched.Order, fetched.LicenseID = reference, state.Order, state.LicenseID
-			return fetched, nil
+			intent = fetched
 		}
-		return s.intentState(intent, state)
+		return s.intentState(ctx, config, intent, state)
 	case strings.HasPrefix(reference, "pi_"):
-		query := url.Values{}
-		query.Add("expand[]", "latest_charge")
-		var intent stripePaymentIntent
-		if err := s.call(ctx, config, http.MethodGet, "/v1/payment_intents/"+url.PathEscape(reference), query, "", &intent); err != nil {
-			return OrderState{}, err
+		intent, err := s.fetchIntent(ctx, config, reference)
+		if err != nil {
+			return orderState{}, err
 		}
-		if intent.ID != reference {
-			return OrderState{}, ErrProviderUnavailable
-		}
-		return s.intentState(intent, OrderState{Reference: reference, Order: intent.Metadata["order"], LicenseID: intent.Metadata["license_id"]})
+		return s.intentState(ctx, config, intent, orderState{kind: OrderOneTime, order: intent.Metadata["order"], license: intent.Metadata["license_id"]})
 	case strings.HasPrefix(reference, "in_"):
-		status, err := s.Status(ctx, credentials, reference)
-		if err != nil {
-			return OrderState{}, err
-		}
-		state := OrderState{Reference: reference, Status: status}
-		if status != StatusSucceeded {
-			return state, nil
-		}
-		target, err := s.stripePaymentOf(ctx, config, reference)
-		if err != nil || target.Get("payment_intent") == "" {
-			return state, err
-		}
-		paid, err := s.FetchOrder(ctx, credentials, target.Get("payment_intent"))
-		if err != nil {
-			return OrderState{}, err
-		}
-		paid.Reference = reference
-		return paid, nil
+		return s.invoiceState(ctx, config, reference)
 	}
-	return OrderState{}, ErrNotSupported
+	return orderState{}, ErrNotSupported
 }
 
-func (s *Stripe) intentState(intent stripePaymentIntent, state OrderState) (OrderState, error) {
-	state.PaymentIntent = intent.ID
-	if state.Customer == "" {
-		state.Customer = expandableID(intent.Customer)
+func (s *Stripe) fetchIntent(ctx context.Context, config Config, id string) (stripePaymentIntent, error) {
+	if !strings.HasPrefix(id, "pi_") {
+		return stripePaymentIntent{}, ErrUnexpectedState
 	}
-	currency := strings.ToUpper(intent.Currency)
-	amount, err := FromMinor(intent.Amount, currency)
-	if err != nil {
-		return OrderState{}, ErrProviderUnavailable
+	query := url.Values{}
+	query.Add("expand[]", "latest_charge")
+	var intent stripePaymentIntent
+	if err := s.call(ctx, config, http.MethodGet, "/v1/payment_intents/"+url.PathEscape(id), query, "", &intent); err != nil {
+		return stripePaymentIntent{}, err
 	}
-	state.Amount, state.Currency = amount, currency
+	if intent.ID != id {
+		return stripePaymentIntent{}, ErrProviderUnavailable
+	}
+	return intent, nil
+}
+
+func (s *Stripe) fetchCharge(ctx context.Context, config Config, id string) (stripeCharge, error) {
+	if !strings.HasPrefix(id, "ch_") && !strings.HasPrefix(id, "py_") {
+		return stripeCharge{}, ErrUnexpectedState
+	}
+	var charge stripeCharge
+	if err := s.call(ctx, config, http.MethodGet, "/v1/charges/"+url.PathEscape(id), nil, "", &charge); err != nil {
+		return stripeCharge{}, err
+	}
+	if charge.ID != id {
+		return stripeCharge{}, ErrProviderUnavailable
+	}
+	return charge, nil
+}
+
+// intentState reads a PaymentIntent: money arrived only when it succeeded; its charge tells
+// refunds and disputes (fetched when Stripe did not expand it).
+func (s *Stripe) intentState(ctx context.Context, config Config, intent stripePaymentIntent, state orderState) (orderState, error) {
+	state.paymentIntent = intent.ID
+	if state.customer == "" {
+		state.customer = expandableID(intent.Customer)
+	}
 	switch intent.Status {
 	case "succeeded":
-		state.Status = StatusSucceeded
 	case "canceled":
-		state.Status = StatusFailed
+		state.status = StatusFailed
 		return state, nil
 	default: // processing, requires_payment_method, requires_confirmation, requires_action, requires_capture
-		state.Status = StatusPending
+		state.status = StatusPending
 		return state, nil
 	}
 	var charge stripeCharge
 	if json.Unmarshal(intent.LatestCharge, &charge) != nil || charge.ID == "" {
-		return state, nil // not expanded: no refund or dispute is known from this answer
-	}
-	state.Disputed = charge.Disputed
-	if charge.AmountRefunded > 0 {
-		refunded, err := FromMinor(charge.AmountRefunded, currency)
+		fetched, err := s.fetchCharge(ctx, config, expandableID(intent.LatestCharge))
 		if err != nil {
-			return OrderState{}, ErrProviderUnavailable
+			return orderState{}, err
 		}
-		state.RefundedAmount = refunded
-		if charge.Refunded && charge.AmountRefunded >= charge.Amount {
-			state.Status = StatusRefunded
-		}
+		charge = fetched
+	}
+	return chargeState(charge, state)
+}
+
+// chargeState: the money that arrived, what was given back, a dispute.
+func chargeState(charge stripeCharge, state orderState) (orderState, error) {
+	received := charge.AmountCaptured
+	if received == 0 && charge.Paid {
+		received = charge.Amount
+	}
+	if !charge.Paid || received <= 0 {
+		return orderState{}, ErrUnexpectedState // "succeeded" with no money is never applied
+	}
+	state.status = StatusSucceeded
+	state.paidMinor, state.currency = received, strings.ToUpper(charge.Currency)
+	state.disputed = charge.Disputed
+	state.refundedMinor = charge.AmountRefunded
+	if charge.Refunded && charge.AmountRefunded >= received {
+		state.status = StatusRefunded
 	}
 	return state, nil
+}
+
+// invoiceState reads a renewal invoice; its licence and order come from the subscription's
+// metadata (on the invoice, or read from the subscription itself), never from an event body.
+func (s *Stripe) invoiceState(ctx context.Context, config Config, reference string) (orderState, error) {
+	var invoice stripeInvoice
+	if err := s.call(ctx, config, http.MethodGet, "/v1/invoices/"+url.PathEscape(reference), nil, "", &invoice); err != nil {
+		return orderState{}, err
+	}
+	if invoice.ID != reference {
+		return orderState{}, ErrProviderUnavailable
+	}
+	subscription, metadata := invoice.subscription()
+	state := orderState{kind: OrderRenewalInvoice, subscription: subscription, customer: invoice.Customer,
+		license: metadata["license_id"], order: metadata["order"]}
+	if (state.license == "" || state.order == "") && strings.HasPrefix(subscription, "sub_") {
+		fact, err := s.readSubscription(ctx, config, subscription)
+		if err != nil {
+			return orderState{}, err
+		}
+		state.license, state.order = fact.LicenseID, fact.Order
+	}
+	switch invoice.Status {
+	case "draft", "open":
+		state.status = StatusPending
+		return state, nil
+	case "void", "uncollectible":
+		state.status = StatusFailed
+		return state, nil
+	case "paid":
+	default:
+		return orderState{}, ErrProviderUnavailable
+	}
+	if invoice.AmountPaid <= 0 {
+		return orderState{}, ErrUnexpectedState // marked paid with nothing paid: never a bare "succeeded"
+	}
+	target, err := s.stripePaymentOf(ctx, config, reference)
+	if err != nil {
+		return orderState{}, ErrUnexpectedState
+	}
+	var charge stripeCharge
+	if pi := target.Get("payment_intent"); pi != "" {
+		intent, err := s.fetchIntent(ctx, config, pi)
+		if err != nil {
+			return orderState{}, err
+		}
+		state.paymentIntent = intent.ID
+		if intent.Status != "succeeded" {
+			return orderState{}, ErrUnexpectedState
+		}
+		if json.Unmarshal(intent.LatestCharge, &charge) != nil || charge.ID == "" {
+			if charge, err = s.fetchCharge(ctx, config, expandableID(intent.LatestCharge)); err != nil {
+				return orderState{}, err
+			}
+		}
+	} else if charge, err = s.fetchCharge(ctx, config, target.Get("charge")); err != nil {
+		return orderState{}, err
+	}
+	state, err = chargeState(charge, state)
+	if err != nil {
+		return orderState{}, err
+	}
+	if state.paidMinor != invoice.AmountPaid || state.currency != strings.ToUpper(invoice.Currency) {
+		return orderState{}, ErrUnexpectedState
+	}
+	return state, nil
+}
+
+// readSubscription is a subscription's current state.
+func (s *Stripe) readSubscription(ctx context.Context, config Config, id string) (RenewalFact, error) {
+	var subscription struct {
+		ID                string            `json:"id"`
+		Status            string            `json:"status"`
+		CancelAtPeriodEnd bool              `json:"cancel_at_period_end"`
+		Customer          string            `json:"customer"`
+		Metadata          map[string]string `json:"metadata"`
+	}
+	if err := s.call(ctx, config, http.MethodGet, "/v1/subscriptions/"+url.PathEscape(id), nil, "", &subscription); err != nil {
+		return RenewalFact{}, err
+	}
+	if subscription.ID != id {
+		return RenewalFact{}, ErrProviderUnavailable
+	}
+	live := subscription.Status == "active" || subscription.Status == "trialing" || subscription.Status == "past_due"
+	return RenewalFact{Subscription: id, LicenseID: subscription.Metadata["license_id"], Order: subscription.Metadata["order"],
+		Customer: subscription.Customer, CancelAtPeriodEnd: subscription.CancelAtPeriodEnd,
+		Active: live && !subscription.CancelAtPeriodEnd}, nil
+}
+
+// Confirm implements Confirmer (CelikPanel, review of #361, 3): the one way to learn what
+// happened to an order. It reads Stripe's current object and checks it against the order: the
+// kind, our order reference, the licence, and -- when money arrived -- the amount and currency.
+// Anything that differs is a mismatch and nothing may be applied.
+func (s *Stripe) Confirm(ctx context.Context, credentials Credentials, reference string, expected Expected) (Fact, error) {
+	config, err := s.config(credentials)
+	if err != nil {
+		return Fact{}, err
+	}
+	if expected.Order == "" || !licensePattern.MatchString(expected.LicenseID) || expected.Kind == "" {
+		return Fact{}, ErrCheckoutIncomplete
+	}
+	state, err := s.fetchOrder(ctx, config, reference)
+	if err != nil {
+		return Fact{}, err
+	}
+	fact := Fact{Status: state.status, Kind: state.kind, Reference: reference, Order: state.order, LicenseID: state.license,
+		PaidMinor: state.paidMinor, Currency: state.currency, RefundedMinor: state.refundedMinor, Disputed: state.disputed,
+		PaymentIntent: state.paymentIntent, Subscription: state.subscription, Customer: state.customer}
+	mismatch := func(what string) (Fact, error) {
+		fact.Outcome, fact.Mismatch = OutcomeMismatch, what
+		return fact, nil
+	}
+	switch {
+	case state.kind != expected.Kind:
+		return mismatch("kind")
+	case state.order != expected.Order:
+		return mismatch("order")
+	case state.license != expected.LicenseID:
+		return mismatch("licence")
+	}
+	if state.kind == OrderSubscriptionSetup {
+		fact.Outcome = OutcomeNotPaid
+		if state.setUp {
+			fact.Outcome = OutcomeSetUp
+		}
+		return fact, nil
+	}
+	switch state.status {
+	case StatusSucceeded, StatusRefunded:
+		if state.paidMinor != expected.AmountMinor {
+			return mismatch("amount")
+		}
+		if !strings.EqualFold(state.currency, expected.Currency) {
+			return mismatch("currency")
+		}
+		fact.Outcome = OutcomePaid
+		if state.status == StatusRefunded {
+			fact.Outcome = OutcomeRefunded
+		}
+	default:
+		fact.Outcome = OutcomeNotPaid
+	}
+	return fact, nil
+}
+
+// ConfirmRenewal reads a subscription's current state for a licence (renewal-method hints).
+func (s *Stripe) ConfirmRenewal(ctx context.Context, credentials Credentials, subscription, licenseID string) (RenewalFact, error) {
+	config, err := s.config(credentials)
+	if err != nil {
+		return RenewalFact{}, err
+	}
+	if !strings.HasPrefix(subscription, "sub_") || !licensePattern.MatchString(licenseID) {
+		return RenewalFact{}, ErrCheckoutIncomplete
+	}
+	fact, err := s.readSubscription(ctx, config, subscription)
+	if err != nil {
+		return RenewalFact{}, err
+	}
+	if fact.LicenseID != licenseID {
+		return RenewalFact{Subscription: subscription, LicenseID: fact.LicenseID, Mismatch: true}, nil
+	}
+	return fact, nil
 }

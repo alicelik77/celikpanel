@@ -142,6 +142,7 @@ func stripeNotification(t *testing.T, provider *Stripe, body string, sign bool) 
 	return provider.ParseNotification(context.Background(), stripeCredentials(t), Notification{Headers: headers, Body: []byte(body)})
 }
 
+// CelikPanel (review of #361, 3): an event holds identifiers and the kind of hint only.
 func TestStripeWebhookEvents(t *testing.T) {
 	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
 	provider := &Stripe{Now: func() time.Time { return now }}
@@ -150,8 +151,8 @@ func TestStripeWebhookEvents(t *testing.T) {
 	completed := `{"id":"evt_1","type":"checkout.session.completed","data":{"object":{"id":"cs_1","mode":"subscription",` +
 		`"client_reference_id":"` + order + `","subscription":"sub_1","customer":"cus_1","payment_status":"paid"}}}`
 	event, err := stripeNotification(t, provider, completed, true)
-	if err != nil || event.Kind != EventRenewalMethod || event.LicenseID != licenseID || event.Renewal == nil ||
-		event.Renewal.Reference != "sub_1" || event.Renewal.Customer != "cus_1" || !event.Renewal.Active || event.EventID != "evt_1" {
+	if err != nil || event.Kind != EventRenewalMethod || event.LicenseID != licenseID || event.Subscription != "sub_1" ||
+		event.Reference != "cs_1" || event.Order != order || event.EventID != "evt_1" {
 		t.Fatalf("session completed: %+v %v", event, err)
 	}
 
@@ -160,23 +161,22 @@ func TestStripeWebhookEvents(t *testing.T) {
 		`"amount_due":9900,"currency":"usd","customer":"cus_1","billing_reason":"subscription_cycle",` +
 		`"parent":{"type":"subscription_details","subscription_details":{"subscription":"sub_1","metadata":{"license_id":"` + licenseID + `"}}}}}}`
 	event, err = stripeNotification(t, provider, paid, true)
-	if err != nil || event.Kind != EventPayment || event.Reference != "in_1" || event.Status != StatusSucceeded ||
-		event.Amount != "99.00" || event.Currency != "USD" || event.Period != PeriodYearly || event.Renewal == nil {
+	if err != nil || event.Kind != EventPayment || event.Reference != "in_1" || event.LicenseID != licenseID || event.Subscription != "sub_1" {
 		t.Fatalf("invoice paid: %+v %v", event, err)
 	}
 	// The pre-basil shape: subscription and subscription_details at the top.
 	old := `{"id":"evt_3","type":"invoice.paid","data":{"object":{"id":"in_2","amount_paid":9900,"currency":"usd",` +
 		`"subscription":"sub_1","subscription_details":{"metadata":{"license_id":"` + licenseID + `"}}}}}`
-	if event, err = stripeNotification(t, provider, old, true); err != nil || event.Reference != "in_2" || event.Amount != "99.00" {
+	if event, err = stripeNotification(t, provider, old, true); err != nil || event.Reference != "in_2" || event.LicenseID != licenseID {
 		t.Fatalf("old shape: %+v %v", event, err)
 	}
 	failed := strings.Replace(strings.Replace(paid, "invoice.paid", "invoice.payment_failed", 1), `"amount_paid":9900`, `"amount_paid":0`, 1)
-	if event, err = stripeNotification(t, provider, failed, true); err != nil || event.Status != StatusFailed || event.Amount != "99.00" || event.Renewal != nil {
+	if event, err = stripeNotification(t, provider, failed, true); err != nil || event.Kind != EventPayment || event.Reference != "in_1" {
 		t.Fatalf("payment failed: %+v %v", event, err)
 	}
 	deleted := `{"id":"evt_4","type":"customer.subscription.deleted","data":{"object":{"id":"sub_1","customer":"cus_1",` +
 		`"metadata":{"license_id":"` + licenseID + `"}}}}`
-	if event, err = stripeNotification(t, provider, deleted, true); err != nil || event.Kind != EventRenewalMethod || event.Renewal.Active {
+	if event, err = stripeNotification(t, provider, deleted, true); err != nil || event.Kind != EventRenewalMethod || event.Reference != "sub_1" {
 		t.Fatalf("subscription deleted: %+v %v", event, err)
 	}
 	other := `{"id":"evt_5","type":"customer.created","data":{"object":{"id":"cus_9"}}}`
@@ -184,7 +184,7 @@ func TestStripeWebhookEvents(t *testing.T) {
 		t.Fatalf("an unused event type: %+v %v", event, err)
 	}
 
-	// What must never be recorded: unsigned, tampered, stale.
+	// What must never be read: unsigned, tampered, stale.
 	if _, err := stripeNotification(t, provider, paid, false); !errors.Is(err, ErrInvalidNotification) {
 		t.Fatalf("an unsigned invoice.paid was accepted: %v", err)
 	}
@@ -203,8 +203,11 @@ func TestStripeWebhookEvents(t *testing.T) {
 	}
 }
 
+// CelikPanel: the renewal switch takes a change id, the refund an order and amount, and an
+// invoice's state is read through Confirm.
 func TestStripeCancelRefundAndStatus(t *testing.T) {
 	fake := newFakeServer(t)
+	order := "CPS" + licenseID + "abcdefabcdef"
 	fake.on(http.MethodPost, "/v1/subscriptions/sub_1", func(r recordedRequest) (int, string) {
 		form, _ := url.ParseQuery(string(r.Body))
 		return 200, `{"id":"sub_1","object":"subscription","cancel_at_period_end":` + form.Get("cancel_at_period_end") + `}`
@@ -224,30 +227,38 @@ func TestStripeCancelRefundAndStatus(t *testing.T) {
 		return 200, `{"id":"re_1","object":"refund","status":"succeeded"}`
 	})
 	fake.on(http.MethodGet, "/v1/invoices/in_1", func(recordedRequest) (int, string) {
-		return 200, `{"id":"in_1","object":"invoice","status":"paid"}`
+		return 200, invoiceJSON("in_1", "paid", 9900, true)
+	})
+	fake.on(http.MethodGet, "/v1/payment_intents/pi_1", func(recordedRequest) (int, string) {
+		return 200, intentJSON("succeeded", 9900, 0, false, false)
 	})
 	provider := &Stripe{BaseURL: fake.server.URL}
-	renewal := Renewal{Kind: RenewalProviderSubscription, Reference: "sub_1", Active: true}
-	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), renewal, false); err != nil {
+	change := RenewalChange{Subscription: "sub_1", LicenseID: licenseID, On: false, Change: "c1"}
+	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), change); err != nil {
 		t.Fatalf("cancel at period end: %v", err)
 	}
 	if form, _ := url.ParseQuery(string(fake.last().Body)); form.Get("cancel_at_period_end") != "true" {
 		t.Fatalf("turning renewal off must set cancel_at_period_end=true: %s", fake.last().Body)
 	}
-	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), renewal, true); err != nil {
+	change.On, change.Change = true, "c2"
+	if err := provider.SetRenewal(context.Background(), stripeCredentials(t), change); err != nil {
 		t.Fatalf("resume: %v", err)
 	}
-	if err := provider.Refund(context.Background(), stripeCredentials(t), Event{Reference: "in_1", LicenseID: licenseID}); err != nil {
+	request := RefundRequest{Reference: "in_1", Order: order, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"}
+	if err := provider.Refund(context.Background(), stripeCredentials(t), request); err != nil {
 		t.Fatalf("refund: %v", err)
 	}
-	if got := fake.last(); got.Path != "/v1/refunds" || got.Header.Get("Idempotency-Key") != "refund-in_1" {
+	if got := fake.last(); got.Path != "/v1/refunds" || got.Header.Get("Idempotency-Key") != "refund-"+order+"-9900usd-a0" {
 		t.Fatalf("refund request: %+v", got)
 	}
-	if err := provider.Refund(context.Background(), stripeCredentials(t), Event{Reference: "in_9"}); !errors.Is(err, ErrProviderRefused) {
+	request.Reference = "in_9"
+	if err := provider.Refund(context.Background(), stripeCredentials(t), request); !errors.Is(err, ErrProviderRefused) {
 		t.Fatalf("refund of an unpaid invoice: %v", err)
 	}
-	if status, err := provider.Status(context.Background(), stripeCredentials(t), "in_1"); err != nil || status != StatusSucceeded {
-		t.Fatalf("status: %v %v", status, err)
+	fact, err := provider.Confirm(context.Background(), stripeCredentials(t), "in_1",
+		Expected{Kind: OrderRenewalInvoice, Order: order, LicenseID: licenseID, AmountMinor: 9900, Currency: "USD"})
+	if err != nil || fact.Outcome != OutcomePaid || fact.Status != StatusSucceeded {
+		t.Fatalf("status: %+v %v", fact, err)
 	}
 }
 
