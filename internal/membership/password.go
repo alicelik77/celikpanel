@@ -43,7 +43,8 @@ var passwordWorkHook func()
 
 // The wait for a slot is bounded (second review of #361, 6): at most passwordQueueLimit
 // callers wait, each at most passwordWait; a caller that cannot get a slot is answered
-// with the existing refusal (rate_limited). Nobody waits for a slot while holding the
+// with service_busy (third look at #361, 5: "the service is busy, try again in a moment",
+// not "too many attempts", which would blame the member). Nobody waits for a slot while holding the
 // database's write lock: the services check the password before their transaction.
 var (
 	passwordQueueLimit int32 = 32
@@ -85,7 +86,7 @@ func hashPassword(password string) (string, error) {
 	}
 	var key []byte
 	if err := withPasswordSlot(func() { key = argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen) }); err != nil {
-		return "", ErrRateLimited
+		return "", ErrServiceBusy
 	}
 	return "$argon2id$v=19$m=" + strconv.Itoa(argonMemory) + ",t=" + strconv.Itoa(argonTime) + ",p=" +
 		strconv.Itoa(argonThreads) + "$" + base64.RawStdEncoding.EncodeToString(salt) + "$" +
@@ -98,7 +99,7 @@ func hashPassword(password string) (string, error) {
 var dummyHash = "$argon2id$v=19$m=65536,t=4,p=1$" + base64.RawStdEncoding.EncodeToString(make([]byte, argonSaltLen)) +
 	"$" + base64.RawStdEncoding.EncodeToString(make([]byte, argonKeyLen))
 
-// verifyPassword is password_verify($password, $hash). The error is ErrRateLimited when no
+// verifyPassword is password_verify($password, $hash). The error is ErrServiceBusy when no
 // password slot could be had in time.
 func verifyPassword(password, hash string) (bool, error) {
 	switch {
@@ -111,7 +112,7 @@ func verifyPassword(password, hash string) (bool, error) {
 		}
 		ok := false
 		if err := withPasswordSlot(func() { ok = bcrypt.CompareHashAndPassword([]byte(hash), p) == nil }); err != nil {
-			return false, ErrRateLimited
+			return false, ErrServiceBusy
 		}
 		return ok, nil
 	}
@@ -161,7 +162,7 @@ func verifyArgon2(password, hash string) (bool, error) {
 			got = argon2.Key([]byte(password), salt, uint32(t), uint32(m), uint8(p), uint32(len(want)))
 		}
 	}); err != nil {
-		return false, ErrRateLimited
+		return false, ErrServiceBusy
 	}
 	return subtle.ConstantTimeCompare(got, want) == 1, nil
 }

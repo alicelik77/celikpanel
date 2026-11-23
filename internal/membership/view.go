@@ -40,6 +40,7 @@ var messages = map[string][2]string{
 	"verify_email":            {"Giriş yapmadan önce e-postanızı doğrulayın. Aşağıdan yeni doğrulama e-postası isteyebilirsiniz.", "Verify your email before signing in. You can request another email below."},
 	"invalid_token":           {"Bağlantı kullanılmış veya süresi dolmuş. Yeni bir e-posta isteyin.", "This link has been used or has expired. Request another email."},
 	"rate_limited":            {"Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.", "Too many attempts. Please try again later."},
+	"service_busy":            {"Hizmet şu anda yoğun. Lütfen biraz sonra tekrar deneyin.", "The service is busy. Please try again in a moment."},
 	"session_changed":         {"Oturumunuz yenilendi. Sayfayı yenileyip tekrar deneyin.", "Your session changed. Reload this page and try again."},
 	"invalid_request":         {"İstek tamamlanamadı. Sayfayı yenileyip tekrar deneyin.", "The request could not be completed. Reload and try again."},
 	"authentication_required": {"Devam etmek için giriş yapın.", "Sign in to continue."},

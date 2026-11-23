@@ -117,6 +117,10 @@ var (
 	ErrPartlyRefunded     = errors.New("payment: the payment is partly refunded; the operator decides (nothing was done)")
 	ErrNothingPaid        = errors.New("payment: nothing was paid on this order (nothing was done)")
 	ErrAlreadyInThatState = errors.New("payment: automatic renewal is already in that state (nothing was done)")
+	// Third look at #361, 6: a disputed payment is not refunded by us (the dispute decides where
+	// the money goes), and an ended subscription cannot be switched; both final.
+	ErrDisputed          = errors.New("payment: the payment is disputed; the dispute decides (nothing was done)")
+	ErrSubscriptionEnded = errors.New("payment: the subscription has ended; a new one is a new order (nothing was done)")
 	// ErrProviderBusy: the provider is still working on a request with the same idempotency
 	// key (409). Not a refusal: ask again with the same key and attempt.
 	ErrProviderBusy = errors.New("payment: the provider is still handling the same request")
@@ -329,7 +333,7 @@ type RenewalFact struct {
 //
 // SetRenewal reads the subscription first and acts only on the licence's own subscription in
 // the order's mode: another licence's is ErrMismatch, one already in the asked state is
-// ErrAlreadyInThatState; both are final and nothing is changed.
+// ErrAlreadyInThatState, an ended one ErrSubscriptionEnded; all final, nothing is changed.
 type RenewalChange struct {
 	Subscription string
 	LicenseID    string
@@ -348,7 +352,8 @@ type RenewalSwitch interface {
 // provider object (Checkout Session, invoice, PaymentIntent or charge) and Expected the order.
 // Refund confirms first and acts only on the order's own, fully paid payment:
 //
-//   - final, do not retry: ErrMismatch, ErrAlreadyRefunded, ErrPartlyRefunded, ErrNothingPaid;
+//   - final, do not retry: ErrMismatch, ErrAlreadyRefunded, ErrPartlyRefunded, ErrNothingPaid,
+//     ErrDisputed;
 //   - ErrProviderUnavailable, ErrProviderBusy: the outcome is unknown or still being made; ask
 //     again with the SAME Attempt (the provider answers once per key);
 //   - ErrProviderRefused: a definite refusal; to try again, raise Attempt (a new key), so the

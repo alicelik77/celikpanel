@@ -465,6 +465,7 @@ func TestStripeRefundOnlyAfterConfirm(t *testing.T) {
 		want   error
 	}{
 		"already refunded":                {intentJSON("succeeded", 9900, 9900, true, false), ErrAlreadyRefunded},
+		"disputed (third look, 6)":        {intentJSON("succeeded", 9900, 0, false, true), ErrDisputed},
 		"partly refunded (operator)":      {intentJSON("succeeded", 9900, 1000, false, false), ErrPartlyRefunded},
 		"another licence's payment":       {strings.Replace(intentJSON("succeeded", 9900, 0, false, false), `"license_id":"`+licenseID, `"license_id":"`+strings.Repeat("f", 32), 1), ErrMismatch},
 		"another amount than the order's": {intentJSON("succeeded", 4900, 0, false, false), ErrMismatch},
@@ -550,6 +551,27 @@ func TestStripeSetRenewalOnlyOnTheLicencesSubscription(t *testing.T) {
 	}
 	if *posts != 0 {
 		t.Fatalf("%d changes were sent", *posts)
+	}
+}
+
+// Third look at #361, 6: switching an ended subscription is a final answer of its own, never
+// "refused, retry", and nothing is sent.
+func TestStripeSetRenewalOnAnEndedSubscriptionIsFinal(t *testing.T) {
+	fake := newFakeServer(t)
+	posts := 0
+	fake.on(http.MethodGet, "/v1/subscriptions/sub_1", func(recordedRequest) (int, string) {
+		return 200, `{"id":"sub_1","status":"canceled","livemode":false,"cancel_at_period_end":false,"metadata":{"license_id":"` + licenseID + `"}}`
+	})
+	fake.on(http.MethodPost, "/v1/subscriptions/sub_1", func(recordedRequest) (int, string) { posts++; return 200, `{}` })
+	provider := &Stripe{BaseURL: fake.server.URL}
+	for _, on := range []bool{true, false} {
+		err := provider.SetRenewal(context.Background(), stripeCredentials(t), RenewalChange{Subscription: "sub_1", LicenseID: licenseID, On: on, Change: "c1"})
+		if !errors.Is(err, ErrSubscriptionEnded) || errors.Is(err, ErrProviderRefused) {
+			t.Fatalf("on=%v: %v", on, err)
+		}
+	}
+	if posts != 0 {
+		t.Fatalf("%d changes were sent", posts)
 	}
 }
 

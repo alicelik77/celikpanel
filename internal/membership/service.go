@@ -43,7 +43,10 @@ func (p Problem) Error() string { return string(p) }
 
 // The refusal codes of Service.php and http.php.
 const (
-	ErrRateLimited            Problem = "rate_limited"
+	ErrRateLimited Problem = "rate_limited"
+	// ErrServiceBusy: every password slot is busy and the queue is full or its wait ran out;
+	// the Go service's own code (PHP has no slot queue).
+	ErrServiceBusy            Problem = "service_busy"
 	ErrInvalidEmail           Problem = "invalid_email"
 	ErrPasswordLength         Problem = "password_length"
 	ErrInvalidRequest         Problem = "invalid_request"
@@ -82,7 +85,14 @@ type Service struct {
 	signingKey ed25519.PrivateKey
 	send       Sender
 	clock      func() int64
+	// databaseIsAuthority switches the "database behind" answer off: every unknown or
+	// older state is rejected as the PHP service does. The operator sets it in the
+	// private configuration after a deliberate restore (third look at #361, 2).
+	databaseIsAuthority bool
 }
+
+// SetDatabaseIsAuthority is the private configuration's "database_is_authority".
+func (s *Service) SetDatabaseIsAuthority(on bool) { s.databaseIsAuthority = on }
 
 // schema is Service.php's CREATE TABLE text, byte for byte: SQLite stores each
 // statement's text in sqlite_master, so a file created by either service is the same.
@@ -1035,21 +1045,37 @@ func (s *Service) Refresh(id, server, token, observedIP string) (Envelope, error
 }
 
 // ErrDatabaseBehind: a panel presented an activation token that our signing key made, for
-// a state this database does not know yet (the licence row is missing, or its generation
-// is lower, or it is unbound or bound elsewhere at the token's generation). The database is
-// older than the licence, for example a stale copy after a move. The service answers 503 so
-// the panel keeps its receipt, instead of PHP's 400 that would lock it. Second review of #361,
-// finding 1(b): a deliberate difference from the PHP service.
+// a state this database does not know yet (the licence row is missing, or the token's
+// generation is above the row's, or the row is unbound at that generation). The database
+// is older than the licence, for example a stale copy after a move. The service answers
+// 503 so the panel keeps its receipt, instead of PHP's 400 that would lock it. Second
+// review of #361, finding 1(b): a difference from the PHP service, the coordinator's
+// decision of 23 November 2026, awaiting the owner's confirmation (D-047).
 var ErrDatabaseBehind = errors.New("membership: the database is older than a licence our key signed")
 
 // tokenAhead reports whether token is ours for a generation this database has not reached.
-// Every deliberate change of a licence -- rotate, release, remove, a reinstall at the same
-// address -- raises the row's generation, so the token of a revoked state is always for a
-// LOWER generation and keeps its rejection. Only a token for the row's generation or later,
-// on a row that is missing, has a lower generation, or is unbound or bound elsewhere at that
-// generation, means the database is behind. A first activation binds an unbound row without
-// raising the generation, which is why "unbound at the same generation" counts as behind.
+//
+// The invariant it rests on: a licence row is never deleted, its generation never falls,
+// and every revocation -- release, remove, rotate, a reinstall at the same address, and
+// any later one (refund, operator revoke, account closing) -- raises the generation in the
+// same statement. So the token of a revoked state is always for a LOWER generation and
+// keeps its rejection. A first activation binds an unbound row without a raise, which is
+// why "unbound at the token's generation" counts as behind.
+//
+// Never behind (the ordinary rejection):
+//   - the operator declared this database the authority (database_is_authority);
+//   - a row that is marked removed -- and, when that state exists, revoked: such a row is
+//     the record of a deliberate end, whatever its generation;
+//   - a row bound to another server at the token's generation: in one database that only
+//     moves forward that state cannot be reached from a stale copy, only from a fork or a
+//     deliberate restore, where the database's answer is the one to give.
 func (s *Service) tokenAhead(l *row, id, server, token string) bool {
+	if s.databaseIsAuthority {
+		return false
+	}
+	if l != nil && l.Removed.Valid { // a future "revoked" column is checked here as well
+		return false
+	}
 	if !hex32.MatchString(id) || !hex64.MatchString(server) || !hex64.MatchString(token) {
 		return false
 	}
@@ -1061,7 +1087,7 @@ func (s *Service) tokenAhead(l *row, id, server, token string) bool {
 		if !hmac.Equal([]byte(s.activationToken(id, server, g)), []byte(token)) {
 			continue
 		}
-		return l == nil || g > l.Generation || !l.ServerID.Valid || l.ServerID.String != server
+		return l == nil || g > l.Generation || !l.ServerID.Valid
 	}
 	return false
 }

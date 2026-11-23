@@ -107,6 +107,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var (
+	errNoLicenceInDatabase = errors.New("membership: no licence in the database")
+	errDatabaseUnreadable  = errors.New("membership: the database could not be read")
+)
+
 func (x *exchange) fail(err error) {
 	if x.written {
 		return
@@ -118,8 +123,12 @@ func (x *exchange) fail(err error) {
 		status, code, class = http.StatusBadRequest, string(problem), "problem"
 	case errors.Is(err, ErrDatabaseBehind):
 		class = "database behind the signing key (a panel's own token for a state this database does not know; 503, receipt kept)"
+	case errors.Is(err, errNoLicenceInDatabase):
+		class = "no licence in the database (is it the live file?; 503)"
+	case errors.Is(err, errDatabaseUnreadable):
+		class = "the database could not be read (a read error, busy or I/O; 503)"
 	case errors.Is(err, ErrNoDatabase):
-		class = "no usable database (missing, or no licence in it; 503)"
+		class = "no usable database (missing, or the private directory is not set; 503)"
 	}
 	x.finishSession()
 	if x.api {
@@ -180,18 +189,13 @@ func (x *exchange) run(get phpVars, action string, arrayAction bool) error {
 		return err
 	}
 	defer service.Close()
+	service.SetDatabaseIsAuthority(config.DatabaseIsAuthority)
 	ip := x.h.RemoteAddr(x.r)
 	if x.r.ContentLength > maxBody {
 		x.respond(http.StatusRequestEntityTooLarge)
 		return nil
 	}
 	if x.api {
-		// A file without a single licence cannot be the live one: answering from it would
-		// reject every panel (second review of #361, 1a). Pages stay open, so a fresh
-		// service can take its first member.
-		if has, err := service.HasLicences(); err != nil || !has {
-			return ErrNoDatabase
-		}
 		return x.panelAPI(service, config, ip, action)
 	}
 	return x.pages(service, config, ip, get, action, arrayAction)
@@ -237,6 +241,17 @@ func (x *exchange) panelAPI(service *Service, config Config, ip, action string) 
 	}
 	if err := service.Limit("api:"+ip, 60, 60); err != nil {
 		return err
+	}
+	// A file without a single licence cannot be the live one: answering from it would
+	// reject every panel (second review of #361, 1a). Pages stay open, so a fresh service
+	// can take its first member. After the method check and the per-address limit, so a
+	// wrong method still answers 405 and the log line is bounded (third look, 3).
+	has, err := service.HasLicences()
+	if err != nil {
+		return errDatabaseUnreadable
+	}
+	if !has {
+		return errNoLicenceInDatabase
 	}
 	contentType, _, _ := strings.Cut(x.r.Header.Get("Content-Type"), ";")
 	if phpLower(phpTrim(contentType)) != "application/json" {

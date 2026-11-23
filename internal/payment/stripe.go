@@ -569,7 +569,7 @@ func (s *Stripe) SetRenewal(ctx context.Context, credentials Credentials, change
 		return ErrMismatch
 	}
 	if current.Status != "active" && current.Status != "trialing" && current.Status != "past_due" {
-		return ErrProviderRefused // an ended subscription cannot be turned on again
+		return ErrSubscriptionEnded // final: an ended subscription cannot be switched again
 	}
 	if current.CancelAtPeriodEnd == !change.On {
 		return ErrAlreadyInThatState
@@ -636,6 +636,9 @@ func (s *Stripe) Refund(ctx context.Context, credentials Credentials, request Re
 	}
 	switch fact.Outcome {
 	case OutcomePaid:
+		if fact.Disputed {
+			return ErrDisputed // final: the provider refuses a refund of a disputed charge
+		}
 	case OutcomeMismatch:
 		return ErrMismatch
 	case OutcomeRefunded:

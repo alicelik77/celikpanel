@@ -254,7 +254,7 @@ func TestPublicKeyAndReadOnlyCheckDB(t *testing.T) {
 	before := digest()
 	code, out, stderr := run(t, env, "check-db -test-signing-public-key "+hex.EncodeToString(f.public), nil)
 	if code != 0 || !strings.Contains(out, "result: every live licence can be served") || !strings.Contains(out, "receipts made and verified with the configured key: 1 of 1") ||
-		!strings.Contains(out, "to compare two copies: events ") {
+		!strings.Contains(out, "to compare two copies: events ") || !strings.Contains(out, "database-behind check: on (the default)") {
 		t.Fatalf("check-db: %d\n%s\n%s", code, out, stderr)
 	}
 	if digest() != before {
@@ -262,6 +262,19 @@ func TestPublicKeyAndReadOnlyCheckDB(t *testing.T) {
 	}
 	if strings.Contains(out, "owner@example.com") || strings.Contains(out, f.key) || strings.Contains(out, "8.8.8.8") {
 		t.Fatalf("check-db printed a value: %s", out)
+	}
+	// Third look at #361, 2: the private configuration's database_is_authority is shown.
+	raw, err := os.ReadFile(filepath.Join(f.dir, "config.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	authority := strings.TrimSuffix(strings.TrimSpace(string(raw)), "}") + `,"database_is_authority":true}`
+	if err := os.WriteFile(filepath.Join(f.dir, "config.json"), []byte(authority), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code, out, _ = run(t, env, "check-db -test-signing-public-key "+hex.EncodeToString(f.public), nil); code != 0 ||
+		!strings.Contains(out, "database-behind check: OFF (database_is_authority is set)") {
+		t.Fatalf("check-db with database_is_authority: %d\n%s", code, out)
 	}
 	// A stored key that no longer decrypts (another signing key) is reported, by count only.
 	_, other, _ := ed25519.GenerateKey(rand.Reader)

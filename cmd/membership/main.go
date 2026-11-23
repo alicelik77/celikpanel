@@ -216,6 +216,7 @@ func runCheckDB(args []string) int {
 		logLine("membership check-db: " + err.Error())
 		return 1
 	}
+	report.DatabaseIsAuthority = config.DatabaseIsAuthority
 	report.Print(os.Stdout)
 	if !report.OK() {
 		return 1

@@ -33,8 +33,10 @@ type DBReport struct {
 	// so a copy that is behind shows lower numbers here.
 	Events, NewestEvent, GenerationSum int64
 	SchemaTables                       []string
-	UnknownColumns                     []string
-	Problems                           []string
+	// DatabaseIsAuthority is the private configuration's setting (the caller fills it).
+	DatabaseIsAuthority bool
+	UnknownColumns      []string
+	Problems            []string
 }
 
 // CheckDB reads path with the configured key; now is the clock the receipts are
@@ -162,6 +164,11 @@ func (r DBReport) Print(w io.Writer) {
 	fmt.Fprintf(w, "stored keys: %d, of which decrypt to their hash: %d\n", r.StoredKeys, r.StoredKeysOK)
 	fmt.Fprintf(w, "bound and running licences: %d, receipts made and verified with the configured key: %d of %d\n", r.Bound, r.ReceiptsVerified, r.Receipts)
 	fmt.Fprintf(w, "to compare two copies: events %d, newest event at %d, licence generations in total %d\n", r.Events, r.NewestEvent, r.GenerationSum)
+	if r.DatabaseIsAuthority {
+		fmt.Fprintln(w, "database-behind check: OFF (database_is_authority is set): every unknown or older state is rejected, as the PHP service does")
+	} else {
+		fmt.Fprintln(w, "database-behind check: on (the default): a panel's own token for a state this file does not know is answered 503, receipt kept")
+	}
 	fmt.Fprintf(w, "tables: %s\n", strings.Join(r.SchemaTables, ", "))
 	if len(r.UnknownColumns) > 0 {
 		fmt.Fprintf(w, "licence columns this version does not know (left untouched): %s\n", strings.Join(r.UnknownColumns, ", "))

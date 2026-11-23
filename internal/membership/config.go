@@ -1,8 +1,8 @@
 package membership
 
 // The private configuration, read exactly where the PHP service reads it:
-// <private>/config.json (origin, sender, signing_key, optional smtp, and the
-// loopback-only test_mail_dir), next to members.sqlite and sessions/. The Go service
+// <private>/config.json (origin, sender, signing_key, optional smtp, the loopback-only
+// test_mail_dir, and the Go service's own optional database_is_authority), next to members.sqlite and sessions/. The Go service
 // never writes this file and never creates a signing key (portal-membership/init.php
 // does when the file is missing: the migration hazard this port removes).
 
@@ -30,6 +30,13 @@ type Config struct {
 	SMTPPresent bool
 	SMTP        *SMTPConfig
 	TestMailDir string
+	// DatabaseIsAuthority is "database_is_authority": true (a JSON true, nothing else).
+	// Default off: a panel's own token for a state this database does not know is
+	// answered 503 ("database behind"). On: every unknown or older state is rejected as
+	// the PHP service does. The operator sets it only after a deliberate restore of an
+	// older file (the move procedure in docs/LICENCE-SUBSCRIPTION-DESIGN.md §e). The PHP
+	// service ignores the key.
+	DatabaseIsAuthority bool
 }
 
 // ErrUnpinnedKey: the configured signing key is neither the production key panels
@@ -108,6 +115,7 @@ func ParseConfig(raw []byte) (Config, error) {
 	}
 	c.Sender, _ = text("sender")
 	c.TestMailDir, _ = text("test_mail_dir")
+	c.DatabaseIsAuthority = strings.TrimSpace(string(fields["database_is_authority"])) == "true"
 	encoded, ok := text("signing_key")
 	if !ok {
 		return Config{}, errors.New("membership: config has no signing key")

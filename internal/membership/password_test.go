@@ -71,14 +71,14 @@ func TestPasswordQueueHasALimitAndADeadline(t *testing.T) {
 	cheap := "$argon2id$v=19$m=8,t=1,p=1$" + base64.RawStdEncoding.EncodeToString([]byte("saltsaltsaltsalt")) + "$" +
 		base64.RawStdEncoding.EncodeToString(make([]byte, 32))
 	started := time.Now()
-	if _, err := verifyPassword("queued-password-1234", cheap); err != ErrRateLimited || time.Since(started) < 100*time.Millisecond {
+	if _, err := verifyPassword("queued-password-1234", cheap); err != ErrServiceBusy || time.Since(started) < 100*time.Millisecond {
 		t.Fatalf("a full house must be refused after the deadline: %v after %v", err, time.Since(started))
 	}
 	// While one caller waits, the queue (limit 1) is full: the next is refused at once.
 	go func() { _, _ = verifyPassword("waiting-password-1234", cheap) }()
 	time.Sleep(30 * time.Millisecond)
 	started = time.Now()
-	if _, err := verifyPassword("refused-password-1234", cheap); err != ErrRateLimited || time.Since(started) > 80*time.Millisecond {
+	if _, err := verifyPassword("refused-password-1234", cheap); err != ErrServiceBusy || time.Since(started) > 80*time.Millisecond {
 		t.Fatalf("a full queue must be refused at once: %v after %v", err, time.Since(started))
 	}
 }

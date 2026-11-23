@@ -107,6 +107,16 @@ func TestCheckDBWarnsOnAnEmptyDatabase(t *testing.T) {
 		!strings.Contains(out.String(), "to compare two copies: events 0, newest event at 0, licence generations in total 0") {
 		t.Fatalf("report: %s", out.String())
 	}
+	// Third look at #361, 2: check-db says which way the database-behind check is set.
+	if !strings.Contains(out.String(), "database-behind check: on (the default)") {
+		t.Fatalf("the default setting is not printed: %s", out.String())
+	}
+	report.DatabaseIsAuthority = true
+	out.Reset()
+	report.Print(&out)
+	if !strings.Contains(out.String(), "database-behind check: OFF (database_is_authority is set)") {
+		t.Fatalf("the authority setting is not printed: %s", out.String())
+	}
 	if _, err := CheckDB(filepath.Join(h.dir, "absent.sqlite"), h.secret, h.now); err == nil {
 		t.Fatal("check-db opened a missing file")
 	}
