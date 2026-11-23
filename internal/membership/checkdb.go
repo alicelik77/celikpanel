@@ -28,9 +28,13 @@ type DBReport struct {
 	StoredKeys, StoredKeysOK   int
 	Receipts, ReceiptsVerified int
 	Expired                    int
-	SchemaTables               []string
-	UnknownColumns             []string
-	Problems                   []string
+	// For comparing two copies of one database (a move or a switch): every recorded
+	// action adds an event, and every deliberate licence change raises a generation,
+	// so a copy that is behind shows lower numbers here.
+	Events, NewestEvent, GenerationSum int64
+	SchemaTables                       []string
+	UnknownColumns                     []string
+	Problems                           []string
 }
 
 // CheckDB reads path with the configured key; now is the clock the receipts are
@@ -50,6 +54,12 @@ func CheckDB(path string, signingKey ed25519.PrivateKey, now int64) (DBReport, e
 		return r, err
 	}
 	r.HashOther = r.Members - r.HashArgon2id
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*), COALESCE(MAX(created),0) FROM events").Scan(&r.Events, &r.NewestEvent); err != nil {
+		return r, err
+	}
+	if err := db.QueryRowContext(ctx, "SELECT COALESCE(SUM(generation),0) FROM licenses").Scan(&r.GenerationSum); err != nil {
+		return r, err
+	}
 	tables, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
 	if err != nil {
 		return r, err
@@ -151,6 +161,7 @@ func (r DBReport) Print(w io.Writer) {
 	fmt.Fprintf(w, "licences: %d (removed %d, live %d, live without an end date %d, live and ended %d)\n", r.Licenses, r.Removed, r.Live, r.NoExpiry, r.Expired)
 	fmt.Fprintf(w, "stored keys: %d, of which decrypt to their hash: %d\n", r.StoredKeys, r.StoredKeysOK)
 	fmt.Fprintf(w, "bound and running licences: %d, receipts made and verified with the configured key: %d of %d\n", r.Bound, r.ReceiptsVerified, r.Receipts)
+	fmt.Fprintf(w, "to compare two copies: events %d, newest event at %d, licence generations in total %d\n", r.Events, r.NewestEvent, r.GenerationSum)
 	fmt.Fprintf(w, "tables: %s\n", strings.Join(r.SchemaTables, ", "))
 	if len(r.UnknownColumns) > 0 {
 		fmt.Fprintf(w, "licence columns this version does not know (left untouched): %s\n", strings.Join(r.UnknownColumns, ", "))

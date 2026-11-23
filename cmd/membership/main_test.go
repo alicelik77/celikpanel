@@ -253,7 +253,8 @@ func TestPublicKeyAndReadOnlyCheckDB(t *testing.T) {
 	}
 	before := digest()
 	code, out, stderr := run(t, env, "check-db -test-signing-public-key "+hex.EncodeToString(f.public), nil)
-	if code != 0 || !strings.Contains(out, "result: every live licence can be served") || !strings.Contains(out, "receipts made and verified with the configured key: 1 of 1") {
+	if code != 0 || !strings.Contains(out, "result: every live licence can be served") || !strings.Contains(out, "receipts made and verified with the configured key: 1 of 1") ||
+		!strings.Contains(out, "to compare two copies: events ") {
 		t.Fatalf("check-db: %d\n%s\n%s", code, out, stderr)
 	}
 	if digest() != before {

@@ -63,12 +63,12 @@ yalnız "ödendi", "iade edildi" ya da "iptal edildi" bildirir.
 **Ek, 23 Kasım 2026 (sahip).** "kullanıcılarım hesaplarını aboneliklerini yönetelim.
 öncelikle stripe ödeme yöntemine bağlayacağız." Bu sözler yalnız iki şeyi belirler: üyeler
 hesaplarını ve aboneliklerini yönetir, **ilk ödeme yöntemi Stripe'tır**. Bu kaydın geri kalanı
-değişmez. Nasıl yapılacağı bu kaydın bugünkü hâlinden çıkar: önce sahte bir Stripe
-sunucusuna, sonra Stripe'ın test kipine karşı; sağlayıcıdan bağımsız bir bağlantının
-arkasında, böylece ileride lisanslara dokunmadan başka bir sağlayıcı eklenebilir; her satın
-alma tek seferlik ödeme, Stripe aboneliği yalnız üye otomatik yenilemeyi açtığında (6. madde);
-Stripe yalnız neyin ödendiğini ya da iade edildiğini bildirir, lisansı yine hizmet verir ve
-imzalar.
+değişmez. Bu kaydın bugünkü hâlinden çıkanlar: her satın alma tek seferlik ödeme, Stripe
+aboneliği yalnız üye otomatik yenilemeyi açtığında (6. madde); Stripe yalnız neyin ödendiğini
+ya da iade edildiğini bildirir, lisansı yine hizmet verir ve imzalar. Yöntem sahibin sözü
+değil, planın önerisidir (23 Kasım 2026 hesap ve Stripe planı): önce sahte bir Stripe
+sunucusuna, sonra Stripe'ın test kipine karşı kurmak; sağlayıcıdan bağımsız bir bağlantının
+arkasında, böylece ileride lisanslara dokunmadan başka bir sağlayıcı eklenebilir.
 
 İlgili iki çizgi, her biri kendi kaynağıyla:
 
@@ -80,15 +80,25 @@ imzalar.
 - **Geçiş sırasında PHP sürümü geri dönüş yolu olarak seçilebilir kalır:** planın önerisi
   (23 Kasım 2026 hesap ve Stripe planı), sahibin kararı değil.
 
-**Sonraki tasarım adımı için gereksinimler, sahip, 23 Kasım 2026.** "celikpanel.net
-frankfurta taşınacak", "frankfurt sadece bizde duracak": celikpanel.net ve lisans hizmeti,
-sahibin yalnız kendi işlerini barındıran Frankfurt'taki kendi sunucusuna taşınır. "lisans
-sunucusunu her zaman değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel
-yapalım": lisans sunucusu her zaman taşınabilmeli ve celikpanel.net altında olmak zorunda
-değildir. Gereksinim olarak kaydedildi, henüz tasarlanmadı: lisans API'si için ayrı ve
-kalıcı bir ad, eski yol da yanıt vermeye devam eder; panellerin bildiği birden çok adres;
-çevrimdışı saklanan ve kısa ömürlü bir hizmet anahtarını imzalayan bir kök anahtar; sahibin
-kendi sunucusu için çevrimdışı bir "işletmeci lisansı".
+**Sonraki tasarım adımı için gereksinimler, sahibin sözleri, 23 Kasım 2026.**
+"celikpanel.net frankfurta taşınacak"; "frankfurt sadece bizde duracak"; "lisans sunucusunu
+her zaman değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım".
+Aşağıdaki her satır kimin olduğunu söyler:
+
+- *Sahibin gereksinimleri (yukarıdaki sözleri):* celikpanel.net Frankfurt'a taşınır; lisans
+  sunucusu her zaman değiştirilebilmeli ve celikpanel.net olmak zorunda değildir; sonuç
+  esnek ve profesyonel olmalıdır.
+- *Bir okuma, sahibin sözü değil:* üyelik ve lisans hizmetinin celikpanel.net ile birlikte
+  taşınacağı ve "sadece bizde" sözünün Frankfurt sunucusunun yalnız sahibin kendi işlerini
+  barındıracağı anlamına geldiği.
+- *Sahibin ilke olarak kabul ettiği, biçimi tasarlanmamış:* çevrimiçi denetim gerektirmeyen,
+  imzalı bir işletmeci lisansı. Sözleri: "bazen güvenlik için sabit kullanımlı key
+  üretebiliriz. o keyleri bir yerden valide etmez", öneri üzerine: "önerin mantıklı. devam".
+- *Koordinatör oturumun ve incelemelerin tasarım önerileri, karara bağlanmadı:* lisans API'si
+  için ayrı ve kalıcı bir ad, eski yol da yanıt vermeye devam eder; panellerin bildiği birden
+  çok adres; çevrimdışı saklanan ve kısa ömürlü bir hizmet anahtarını imzalayan bir kök
+  anahtar. Sonuncusu panellerin hizmet anahtarına güvenme biçimini (bugün sabitlenmiş bir
+  anahtar) değiştirir ve kendi kararını gerektirir.
 
 **Karara bağlanmayanlar (açık).** Stripe hesabının tüzel kişiliği ve ülkesi; ücret almanın
 canlıda bu hesapla mı, yoksa yurt dışında bir satıcı-aracıyla (merchant of record; Polar ve

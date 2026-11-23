@@ -64,12 +64,13 @@ reports "paid", "refunded" or "cancelled".
 yönetelim. öncelikle stripe ödeme yöntemine bağlayacağız." ("Let my users manage their
 accounts and subscriptions. First we will connect the Stripe payment method.") These words
 establish two things only: members manage their accounts and subscriptions, and **Stripe is
-the first payment method**. Nothing else of this record changes. How it is built follows
-from this record as it stands: against a fake Stripe server and then Stripe's test mode;
-behind a provider-neutral seam, so another provider can be added later without touching
-licences; every purchase a one-time payment, a Stripe subscription only when the member
-turns automatic renewal on (point 6); Stripe only reports what was paid or refunded, and the
-service still issues and signs.
+the first payment method**. Nothing else of this record changes. What follows from this
+record as it stands: every purchase a one-time payment, a Stripe subscription only when the
+member turns automatic renewal on (point 6); Stripe only reports what was paid or refunded,
+and the service still issues and signs. The method is the plan's proposal (the 23 November
+2026 accounts-and-Stripe plan), not the owner's words: build against a fake Stripe server
+first and then Stripe's test mode, behind a provider-neutral seam so another provider can be
+added later without touching licences.
 
 Two related lines, each with its own source:
 
@@ -80,15 +81,29 @@ Two related lines, each with its own source:
 - **The PHP release stays selectable as the way back during the switch:** the plan's
   proposal (the 23 November 2026 accounts-and-Stripe plan), not a decision of the owner.
 
-**Requirements for the next design step, the owner, 23 November 2026.** "celikpanel.net
-frankfurta taşınacak", "frankfurt sadece bizde duracak": celikpanel.net and the licence
-service move to his own server in Frankfurt, which hosts only his own things. "lisans
-sunucusunu her zaman değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel
-yapalım": the licence server must be movable at any time and need not live under
-celikpanel.net. Recorded as requirements, not yet designed: a separate, stable name for the
-licence API with the old path still answered; more than one address known to panels; a root
-key kept offline that signs a short-lived service key; an offline "operator licence" for his
-own server.
+**Requirements for the next design step, the owner's words, 23 November 2026.**
+"celikpanel.net frankfurta taşınacak" ("celikpanel.net will move to Frankfurt"); "frankfurt
+sadece bizde duracak" ("Frankfurt will stay only with us"); "lisans sunucusunu her zaman
+değiştirebilirim. celikpanel.net bile olmayabilir … esnek ve profesyonel yapalım" ("I can
+change the licence server at any time. It may not even be celikpanel.net … let us make it
+flexible and professional"). Each line below says whose it is:
+
+- *The owner's requirements (his words above):* celikpanel.net moves to Frankfurt; the
+  licence server must be changeable at any time and need not be celikpanel.net; the result
+  must be flexible and professional.
+- *A reading, not his words:* that the member and licence service moves together with
+  celikpanel.net, and that "only with us" means the Frankfurt server hosts only the owner's
+  own things.
+- *Accepted by the owner in principle, format not designed:* a signed operator licence that
+  needs no online check. His words: "bazen güvenlik için sabit kullanımlı key üretebiliriz. o
+  keyleri bir yerden valide etmez" ("sometimes, for security, we can produce fixed-use keys;
+  those keys are not validated from anywhere"), and on the proposal: "önerin mantıklı. devam"
+  ("your proposal makes sense; go on").
+- *Design proposals of the coordinating session and the reviews, not decided:* a separate,
+  stable name for the licence API with the old path still answered; more than one address
+  known to panels; a root key kept offline that signs a short-lived service key. The last
+  would change how panels trust the service's key (today a pinned key) and needs its own
+  decision.
 
 **Not decided (open).** The legal entity and country of the Stripe account, and whether
 charging goes live through it or through a merchant of record abroad (Polar and Creem

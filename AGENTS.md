@@ -139,10 +139,12 @@ docs/LICENCE-SUBSCRIPTION-DESIGN.md. A lapsed, unverifiable or unpaid licence ne
 stops hosted workloads and never blocks security actions. On 23 November 2026 the owner
 chose Stripe as the first payment method, for members managing their accounts and
 subscriptions (D-047, amendment). New member-service code is Go, by his direction of
-15 November 2026; it replaces `portal-membership/` step by step. His requirements for moving
-the licence service (his own Frankfurt server; a licence address that can change at any
-time) are recorded in the same amendment for the next design step, not yet designed. The
-legal entity of the Stripe account, tax and invoices are not decided. This does not authorize contacting the live
+15 November 2026; it replaces `portal-membership/` step by step. His requirements of the
+same day (celikpanel.net moves to Frankfurt; the licence server can be changed at any time
+and need not be celikpanel.net) and his acceptance in principle of a signed operator licence
+are recorded in the same amendment, each line with its source; the design proposals there
+are not decided. The legal entity of the Stripe account, tax and invoices are not decided.
+This does not authorize contacting the live
 licence service or Stripe, changing the live portal, or updating installed panels from the
 assistant's side.
 
@@ -153,9 +155,10 @@ docs/LICENCE-SUBSCRIPTION-DESIGN.md okunur. Süresi biten, doğrulanamayan ya da
 lisans barındırılan hizmetleri asla durdurmaz ve güvenlik işlemlerini asla engellemez.
 Sahip 23 Kasım 2026'da, üyelerin hesaplarını ve aboneliklerini yönetmesi için ilk ödeme
 yöntemi olarak Stripe'ı seçti (D-047, ek). Yeni üyelik hizmeti kodu, sahibin 15 Kasım 2026
-yönergesiyle Go ile yazılır ve `portal-membership/` dizininin yerini adım adım alır. Lisans
-hizmetinin taşınmasıyla ilgili gereksinimleri (Frankfurt'taki kendi sunucusu; her zaman
-değişebilen bir lisans adresi) sonraki tasarım adımı için aynı ekte kaydedildi, henüz
-tasarlanmadı. Stripe hesabının tüzel kişiliği, vergi ve fatura karara bağlanmadı. Bu onay canlı lisans
+yönergesiyle Go ile yazılır ve `portal-membership/` dizininin yerini adım adım alır. Aynı
+günkü gereksinimleri (celikpanel.net Frankfurt'a taşınır; lisans sunucusu her zaman
+değiştirilebilir ve celikpanel.net olmak zorunda değildir) ve imzalı bir işletmeci lisansını
+ilke olarak kabulü aynı ekte, her satır kaynağıyla kaydedildi; oradaki tasarım önerileri
+karara bağlanmadı. Stripe hesabının tüzel kişiliği, vergi ve fatura karara bağlanmadı. Bu onay canlı lisans
 hizmetine ya da Stripe'a bağlanmaya, canlı portalı değiştirmeye ya da kurulu panelleri
 asistan tarafından güncellemeye izin vermez.

@@ -10,17 +10,20 @@ or changed. Line references are to `main` at `1f1d80672`.*
 > subscriptions and that Stripe is the first payment method: section e's provider adapter is
 > built for Stripe first (every purchase a one-time Checkout payment; a Stripe subscription
 > only when the member turns automatic renewal on, as point 6 of D-047 already requires),
-> against a fake Stripe server and then Stripe's test mode, behind the same provider-neutral
-> seam. By the owner's direction of 15 November 2026 (no new PHP), the service in section e
+> behind the same provider-neutral seam; building against a fake Stripe server first and then
+> Stripe's test mode is the plan's proposal, not the owner's words. By the owner's direction of 15 November 2026 (no new PHP), the service in section e
 > is written in Go and replaces `portal-membership/` step by step: first a Go service at
 > exact parity with the PHP one (same pages and texts, same panel API, the same SQLite file
 > opened in place, the same signing key), then orders and payments. Keeping the PHP release
 > selectable as the way back during the switch is the plan's proposal, not the owner's
 > decision. Where this document says "the service" or names `Service.php`/`http.php`, read
 > the Go service for new work; the PHP lines stay the reference for parity. The owner's
-> requirements of the same day for moving the licence service (his own Frankfurt server; a
-> licence address that can change at any time and need not be under celikpanel.net) are
-> recorded in D-047 for the next design step and are not designed here. Still open: the
+> requirements of the same day (celikpanel.net moves to Frankfurt; the licence server can be
+> changed at any time and need not be celikpanel.net), his acceptance in principle of a
+> signed operator licence, and the design proposals that are not decided are recorded in
+> D-047, each with its source, and are not designed here. A draft procedure for moving or
+> switching the member service, not yet rehearsed, is in §e ("Moving or switching the member
+> service"). Still open: the
 > legal entity and country of the Stripe account, tax and invoices, the founder price,
 > currencies other than USD (§k). Everything else here is unchanged.
 
@@ -653,6 +656,44 @@ EU) need anything more for these service messages is for the owner's adviser to 
   checkout takes them; no card field is ever posted to celikpanel.net); full webhook bodies
   (only a digest and the fields above); provider API and webhook secrets outside the private
   configuration; licence keys in clear in logs (unchanged rule, `http.php:109-110`).
+
+### Moving or switching the member service (draft, not yet rehearsed)
+
+*Added 23 November 2026 after the second review of PR #361. Not rehearsed on any host; it is
+proved on a test copy before it is used. It applies to moving the service to another host
+and to switching between the PHP service and the Go one, in either direction.*
+
+**Why the order matters.** A panel that refreshes against a copy of the database that is
+behind (a licence issued, bound or rotated on the old side after the copy) gets an answer
+about a state the copy does not know. The Go service answers 503 when the panel's activation
+token verifies under the signing key but the copy does not know that state, and the panel
+keeps its receipt. The PHP service answers `invalid_activation` (400), and the panel locks
+its management screens. So the old side stops changing the file before the copy is taken.
+
+1. **Maintenance first.** The web server answers 503 for `/account/` on the old side (pages
+   and panel API). Panels treat a 503 as "unreachable" and keep their receipts for the
+   offline window; only a new server's first activation waits.
+2. **A consistent copy.** Use SQLite's backup API on the stopped service (`sqlite3
+   members.sqlite ".backup copy.sqlite"`, or Python's `sqlite3` `backup()` where the
+   `sqlite3` command is missing). Never a plain file copy of a live WAL database, and never
+   `members.sqlite` without its `-wal`. `config.json` (the signing key) goes by the owner's
+   own offline path, never through the repository or a message.
+3. **Compare on both sides.** Run `membership check-db` (with `CELIKPANEL_MEMBERSHIP_PRIVATE`
+   naming the private directory) on the old and the new copy. Every count must be equal,
+   above all the line "to compare two copies: events …, newest event at …, licence
+   generations in total …": any deliberate licence change raises a generation and every
+   action adds an event, so a copy that is behind shows lower numbers. Different numbers:
+   copy again. "result: every live licence can be served" must stand on the new side.
+4. **Switch the selector.** The web server's rule for `/account/` (which program it runs, or
+   which host the name points to) is changed, and maintenance ends. The selector is the
+   owner's web-server configuration; PR #361 builds none.
+5. **Watch.** On the new side, a log line "database behind the signing key" means a panel
+   presented a state this copy does not know: go back (step 6) and find the missing change.
+6. **Going back.** Maintenance on the new side first. If the new side changed the file
+   (licences issued, servers bound), copy its file back the same way and compare with
+   `check-db` before pointing the selector back. Never point back to the older file: the
+   PHP service would reject every panel bound on the new side, because it has no "database
+   behind" answer.
 
 ---
 

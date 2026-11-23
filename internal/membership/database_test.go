@@ -103,7 +103,8 @@ func TestCheckDBWarnsOnAnEmptyDatabase(t *testing.T) {
 	}
 	var out strings.Builder
 	report.Print(&out)
-	if !strings.Contains(out.String(), "no live licence in this file") || !strings.Contains(out.String(), "NOT every live licence") {
+	if !strings.Contains(out.String(), "no live licence in this file") || !strings.Contains(out.String(), "NOT every live licence") ||
+		!strings.Contains(out.String(), "to compare two copies: events 0, newest event at 0, licence generations in total 0") {
 		t.Fatalf("report: %s", out.String())
 	}
 	if _, err := CheckDB(filepath.Join(h.dir, "absent.sqlite"), h.secret, h.now); err == nil {
