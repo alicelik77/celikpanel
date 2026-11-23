@@ -825,9 +825,15 @@ are for a move to another host.
    The Go store ends a licence whose payment was reversed by marking it "revoked". The PHP
    service does not read that mark. On such a file it would still let the member renew that
    licence for free and then let a server activate it again: a licence that was taken back
-   would work. So after the first order, going back means the Go service on the same file, or a copy of
-   it, never the PHP service: `membership check-db -for-php` must pass before the PHP service
-   may serve a file, and it fails once the store holds orders or revocations. Before the first order, going back to PHP is as described above.
+   would work. Its free renewal would also give a year to a licence the store issued to be
+   paid for (a trial, or a licence waiting for its first year). So once the store has issued
+   such a licence or made an order, going back means the Go service on the same file, or a
+   copy of it, never the PHP service: `membership check-db -for-php` must pass before the PHP
+   service may serve a file, and it fails once the store holds an order, a revocation or a
+   licence issued to be paid for. Before that, going back to PHP is as described above.
+   What PHP does on a revoked licence is proven against PHP 8.3 in CI
+   (`TestPHPDifferentialOnAStoreFile`): it refuses the panel's token (no binding) and the key
+   (ended), but its free renewal revives the licence and an activation then binds it.
 
 ---
 

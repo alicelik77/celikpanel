@@ -788,35 +788,63 @@ func TestPHPDifferentialOnAStoreFile(t *testing.T) {
 	}
 	compareResults(t, "store-migrated database", ops, runPHPOps(t, b.php, phpDB, b.secret, t1, ops), runGoOps(t, goDB, b.secret, t1, ops))
 
-	// A first year bought and refunded through the Go store, then the PHP service asked.
-	db := filepath.Join(b.dir, "revoked.sqlite")
-	copyDB(t, b.db, db)
-	s, err := OpenExisting(db, b.secret, nil, func() int64 { return t1 })
-	if err != nil {
-		t.Fatal(err)
-	}
+	// A year bought through the Go store for b.ids[0] (bound to server a, still in its free
+	// year) and refunded, then the PHP service asked. The bought year starts at the free year's
+	// end, so what a refund leaves depends on when it comes (S2 second look: a refund takes back
+	// only its own span).
 	member, _ := strconv.ParseInt(b.member, 10, 64)
-	if err := s.MigrateStore("operator:test"); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.SetTestAccount("operator:test", "cross test", member, true); err != nil {
-		t.Fatal(err)
-	}
-	o, err := s.CreateOrder(member, b.ids[0], ChargingTest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fact := payment.Fact{Outcome: payment.OutcomePaid, PaymentID: "pi_x", Kind: payment.OrderOneTime, Order: o.ID, LicenseID: o.LicenseID, PaidMinor: o.AmountMinor, Currency: "USD"}
-	if _, err := s.ApplyFact(o.ID, "stripe", "test", fact); err != nil {
-		t.Fatal(err)
-	}
-	fact.Outcome = payment.OutcomeRefunded
-	if _, err := s.ApplyFact(o.ID, "stripe", "test", fact); err != nil {
-		t.Fatal(err)
-	}
-	s.Close()
 	a := strings.Repeat("a", 64)
-	byPHP := runPHPOps(t, b.php, db, b.secret, t1+60, []driverOp{
+	buyAndRefund := func(name string, refundAt func(freeEnd int64) int64) (string, int64) {
+		db := filepath.Join(b.dir, name)
+		copyDB(t, b.db, db)
+		clock := t1
+		s, err := OpenExisting(db, b.secret, nil, func() int64 { return clock })
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		var freeEnd int64
+		if err := s.db.QueryRow("SELECT expires FROM licenses WHERE id=?", b.ids[0]).Scan(&freeEnd); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.MigrateStore("operator:test"); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.SetTestAccount("operator:test", "cross test", member, true); err != nil {
+			t.Fatal(err)
+		}
+		o, err := s.CreateOrder(member, b.ids[0], ChargingTest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fact := payment.Fact{Outcome: payment.OutcomePaid, PaymentID: "pi_x", Kind: payment.OrderOneTime, Order: o.ID, LicenseID: o.LicenseID, PaidMinor: o.AmountMinor, Currency: "USD"}
+		if _, err := s.ApplyFact(o.ID, "stripe", "test", fact); err != nil {
+			t.Fatal(err)
+		}
+		clock = refundAt(freeEnd)
+		fact.Outcome = payment.OutcomeRefunded
+		if _, err := s.ApplyFact(o.ID, "stripe", "test", fact); err != nil {
+			t.Fatal(err)
+		}
+		return db, freeEnd
+	}
+
+	// 1. Refunded while the free year still runs: the bought year is taken back, the licence
+	// keeps its free year, its binding and its generation, and PHP serves it as before.
+	db, freeEnd := buyAndRefund("taken-back.sqlite", func(int64) int64 { return t1 })
+	kept := runPHPOps(t, b.php, db, b.secret, t1+60, []driverOp{
+		{Op: "refresh", Args: []string{b.ids[0], a, tokenFor(b.secret, b.ids[0], a, 1), "8.8.8.8"}},
+	})
+	if !kept[0].OK || !strings.Contains(phpPayload(t, kept[0]), `"expires_at":`+strconv.FormatInt(freeEnd, 10)+`,`) {
+		t.Fatalf("PHP on a licence whose bought year was taken back: %+v", kept)
+	}
+
+	// 2. Refunded after the free year ended: nothing remains, the store revokes the licence
+	// (binding cleared, end at the refund, generation raised). PHP refuses the panel's token
+	// (no binding) and the key (ended), exactly as the Go service does.
+	db, freeEnd = buyAndRefund("revoked.sqlite", func(end int64) int64 { return end + 86400 }) // a day after the free year's end
+	at := freeEnd + 86400
+	byPHP := runPHPOps(t, b.php, db, b.secret, at+60, []driverOp{
 		{Op: "refresh", Args: []string{b.ids[0], a, tokenFor(b.secret, b.ids[0], a, 1), "8.8.8.8"}},
 		{Op: "activate", Args: []string{b.keys[0], a, "frankfurt.example.com", "8.8.8.8"}},
 		{Op: "licenses", Args: []string{b.member}},
@@ -827,13 +855,28 @@ func TestPHPDifferentialOnAStoreFile(t *testing.T) {
 	// A KNOWN difference, kept visible by this test (S2 review, 9): the PHP service does not read
 	// "revoked", so its free renewal revives a revoked licence and its activation binds it. The
 	// Go service refuses both, and check-db -for-php refuses to let PHP serve such a file.
-	revived := runPHPOps(t, b.php, db, b.secret, t1+120, []driverOp{
+	revived := runPHPOps(t, b.php, db, b.secret, at+120, []driverOp{
 		{Op: "renew", Args: []string{b.member, b.ids[0], b.password}},
 		{Op: "activate", Args: []string{b.keys[0], a, "frankfurt.example.com", "8.8.8.8"}},
 	})
 	if !revived[0].OK || !revived[1].OK {
 		t.Fatalf("the known difference changed (update the move procedure and this test): %+v", revived)
 	}
+}
+
+// phpPayload is the decoded receipt payload of a successful PHP activate or refresh.
+func phpPayload(t *testing.T, r driverResult) string {
+	t.Helper()
+	m, ok := r.Result.(map[string]any)
+	if !ok {
+		t.Fatalf("no receipt: %+v", r)
+	}
+	text, _ := m["payload"].(string)
+	raw, err := base64.StdEncoding.DecodeString(text)
+	if err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+	return string(raw)
 }
 
 // differentialOps is the comparison script: sign-in, listings, key display,

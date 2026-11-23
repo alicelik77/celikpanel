@@ -241,10 +241,11 @@ func runCheckDB(args []string) int {
 	report.DatabaseIsAuthority = config.DatabaseIsAuthority
 	report.Charging, report.PaymentProvider = config.Charging, config.PaymentProvider
 	report.Payment = membership.PaymentState(payment.DefaultRegistry(), config)
-	if *forPHP && (report.Orders > 0 || report.Revoked > 0) {
-		// S2 review, 9: the PHP service does not read the store's "revoked" mark; on this file it
-		// would renew and activate a licence whose payment was reversed.
-		report.Problems = append(report.Problems, "the store holds orders or revocations: the PHP service must not serve this file")
+	if *forPHP && report.PHPMustNotServe() {
+		// S2 review, 9: the PHP service does not read the store's "revoked" mark, and its free
+		// renewal gives a year to any licence near its end; on this file it would revive a licence
+		// whose payment was reversed and give a free year to one that must be paid for.
+		report.Problems = append(report.Problems, "the store holds orders, revocations or licences issued to be paid for: the PHP service must not serve this file")
 	}
 	report.Print(os.Stdout)
 	if !report.OK() {

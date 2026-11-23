@@ -40,10 +40,13 @@ type DBReport struct {
 	// private configuration's (the caller fills them; never a value, only set / not set).
 	StoreVersion                                int
 	Orders, OrdersPaid, OrdersMismatch, Revoked int
-	Charging                                    ChargingMode
-	Payment, PaymentProvider                    string
-	UnknownColumns                              []string
-	Problems                                    []string
+	// StoreIssued: licences the store issued for an account that pays (a trial, or one awaiting
+	// its first year); the PHP service's free renewal would give each a free year.
+	StoreIssued              int
+	Charging                 ChargingMode
+	Payment, PaymentProvider string
+	UnknownColumns           []string
+	Problems                 []string
 }
 
 // CheckDB reads path with the configured key; now is the clock the receipts are
@@ -76,6 +79,9 @@ func CheckDB(path string, signingKey ed25519.PrivateKey, now int64) (DBReport, e
 			return r, err
 		}
 		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM licenses WHERE revoked IS NOT NULL").Scan(&r.Revoked); err != nil {
+			return r, err
+		}
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM store_audit WHERE action IN ('trial_started','licence_awaiting_payment')").Scan(&r.StoreIssued); err != nil {
 			return r, err
 		}
 	}
@@ -189,9 +195,9 @@ func (r DBReport) Print(w io.Writer) {
 	if r.StoreVersion == 0 {
 		fmt.Fprintln(w, "store: not set up (membership migrate-store creates it); charging is off")
 	} else {
-		fmt.Fprintf(w, "store: version %d; orders %d (paid %d, for the operator %d); licences revoked by a refund %d\n", r.StoreVersion, r.Orders, r.OrdersPaid, r.OrdersMismatch, r.Revoked)
-		if r.Orders > 0 || r.Revoked > 0 {
-			fmt.Fprintln(w, "note: the PHP service must not serve this file again: it does not read the store's \"revoked\" mark")
+		fmt.Fprintf(w, "store: version %d; orders %d (paid %d, for the operator %d); licences revoked by a refund %d; licences issued to be paid for %d\n", r.StoreVersion, r.Orders, r.OrdersPaid, r.OrdersMismatch, r.Revoked, r.StoreIssued)
+		if r.PHPMustNotServe() {
+			fmt.Fprintln(w, "note: the PHP service must not serve this file again: it does not read the store's \"revoked\" mark, and its free renewal would give a year to a licence that must be paid for")
 		}
 	}
 	switch r.Charging {
@@ -222,6 +228,11 @@ func (r DBReport) Print(w io.Writer) {
 }
 
 func unixTime(n int64) time.Time { return time.Unix(n, 0) }
+
+// PHPMustNotServe says whether the store has been used on this file: an order, a revocation or a
+// licence issued to be paid for. The PHP service would then renew for free and activate what
+// must be paid for or has ended (S2 review, 9; the move procedure's way back).
+func (r DBReport) PHPMustNotServe() bool { return r.Orders > 0 || r.Revoked > 0 || r.StoreIssued > 0 }
 
 // OK says whether nothing was found wrong.
 func (r DBReport) OK() bool { return len(r.Problems) == 0 }

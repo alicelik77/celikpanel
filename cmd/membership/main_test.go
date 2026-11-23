@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/membership"
 )
@@ -415,6 +416,25 @@ func TestCheckDBForPHP(t *testing.T) {
 	member, _ := s.MemberIDByEmail("owner@example.com")
 	licences, _ := s.Licenses(member)
 	if err := s.SetTestAccount("operator:test", "test", member, true); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	// A licence issued to be paid for, and no order yet: the PHP service's free renewal would
+	// give it a year, so PHP must not serve this file either.
+	later := time.Now().Unix() + 60
+	s, err = membership.OpenExisting(filepath.Join(f.dir, "members.sqlite"), f.secret, nil, func() int64 { return later })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if issued, _, err := s.IssueCharged(member, membership.ChargingTest); err != nil || issued.ID == "" {
+		t.Fatalf("issue: %q %v", issued.ID, err)
+	}
+	s.Close()
+	if code, out, _ := run(t, env, "check-db -for-php"+key, nil); code != 1 || !strings.Contains(out, "the PHP service must not serve this file") {
+		t.Fatalf("a store that issued a licence to be paid for, for PHP: %d\n%s", code, out)
+	}
+	s, err = membership.OpenExisting(filepath.Join(f.dir, "members.sqlite"), f.secret, nil, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.CreateOrder(member, licences[0].ID, membership.ChargingTest); err != nil {
