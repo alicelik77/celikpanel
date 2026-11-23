@@ -824,6 +824,16 @@ func TestPHPDifferentialOnAStoreFile(t *testing.T) {
 	if byPHP[0].OK || byPHP[0].Code != "invalid_activation" || byPHP[1].OK || byPHP[1].Code != "license_expired" || !byPHP[2].OK {
 		t.Fatalf("PHP on a store-revoked licence: %+v", byPHP)
 	}
+	// A KNOWN difference, kept visible by this test (S2 review, 9): the PHP service does not read
+	// "revoked", so its free renewal revives a revoked licence and its activation binds it. The
+	// Go service refuses both, and check-db -for-php refuses to let PHP serve such a file.
+	revived := runPHPOps(t, b.php, db, b.secret, t1+120, []driverOp{
+		{Op: "renew", Args: []string{b.member, b.ids[0], b.password}},
+		{Op: "activate", Args: []string{b.keys[0], a, "frankfurt.example.com", "8.8.8.8"}},
+	})
+	if !revived[0].OK || !revived[1].OK {
+		t.Fatalf("the known difference changed (update the move procedure and this test): %+v", revived)
+	}
 }
 
 // differentialOps is the comparison script: sign-in, listings, key display,

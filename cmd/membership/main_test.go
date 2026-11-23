@@ -395,3 +395,36 @@ func TestOperatorCommands(t *testing.T) {
 		t.Fatalf("an unknown order: %d", code)
 	}
 }
+
+// S2 review, 9: the move procedure's way back asks check-db -for-php, which refuses a file the
+// store has used (the PHP service does not read its "revoked" mark).
+func TestCheckDBForPHP(t *testing.T) {
+	f := newFixture(t, "https://account.example")
+	env := []string{"CELIKPANEL_MEMBERSHIP_PRIVATE=" + f.dir}
+	key := " -test-signing-public-key " + hex.EncodeToString(f.public)
+	if code, _, _ := run(t, env, "migrate-store -operator test"+key, nil); code != 0 {
+		t.Fatal("migrate-store")
+	}
+	if code, out, _ := run(t, env, "check-db -for-php"+key, nil); code != 0 {
+		t.Fatalf("a store without orders: %d\n%s", code, out)
+	}
+	s, err := membership.OpenExisting(filepath.Join(f.dir, "members.sqlite"), f.secret, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	member, _ := s.MemberIDByEmail("owner@example.com")
+	licences, _ := s.Licenses(member)
+	if err := s.SetTestAccount("operator:test", "test", member, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateOrder(member, licences[0].ID, membership.ChargingTest); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	if code, out, _ := run(t, env, "check-db -for-php"+key, nil); code != 1 || !strings.Contains(out, "the PHP service must not serve this file") {
+		t.Fatalf("a store with an order, for PHP: %d\n%s", code, out)
+	}
+	if code, _, _ := run(t, env, "check-db"+key, nil); code != 0 {
+		t.Fatalf("the same file for the Go service: %d", code)
+	}
+}

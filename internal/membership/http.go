@@ -648,6 +648,20 @@ func (x *exchange) form(service *Service, config Config, ip string, post phpVars
 		}
 		switch action {
 		case "issue":
+			if Charged(service, config, member.ID) {
+				// An account that buys its years: the first licence is the trial; a later one waits
+				// for its first year to be paid (S2 review, 2).
+				issued, trial, err := service.IssueCharged(member.ID, config.Charging)
+				if issued.ID == "" && err != nil {
+					return "", err
+				}
+				data.Issued = &issued
+				data.Notice = "license_awaiting_payment"
+				if trial {
+					data.Notice = "trial_started"
+				}
+				return "home", nil
+			}
 			issued, err := service.Issue(member.ID)
 			if err != nil {
 				return "", err
@@ -676,6 +690,9 @@ func (x *exchange) form(service *Service, config Config, ip string, post phpVars
 			}
 			data.Issued = &issued
 		default:
+			if Charged(service, config, member.ID) {
+				return "", ErrRenewalIsBought // no free renewal beside a bought one (S2 review, 2a)
+			}
 			if err := service.Renew(member.ID, id, password); err != nil {
 				return "", err
 			}

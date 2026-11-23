@@ -64,8 +64,26 @@ func PaymentState(registry *payment.Registry, config Config) string {
 	return PaymentReady
 }
 
+// Charged says whether this member buys their years (S2 review, 2 and 3): in test mode only an
+// account the operator flagged. Live mode will make it every account; it is refused in this
+// release, so nobody is charged then. While charging is off -- the beta -- nobody is.
+func Charged(service *Service, config Config, member int64) bool {
+	switch config.Charging {
+	case ChargingTest:
+		if !service.StoreReady() {
+			return false
+		}
+		test, err := service.IsTestAccount(member)
+		return err == nil && test
+	case ChargingLive:
+		// Every account, once live charging exists; refused in this release, so nobody yet.
+		return false
+	}
+	return false
+}
+
 // chargingProvider is the provider for new orders, or the member-facing refusal.
-func (x *exchange) chargingProvider(service *Service, config Config) (payment.Provider, error) {
+func (x *exchange) chargingProvider(service *Service, config Config, member *Member) (payment.Provider, error) {
 	switch config.Charging {
 	case ChargingTest:
 	case ChargingLive:
@@ -76,6 +94,9 @@ func (x *exchange) chargingProvider(service *Service, config Config) (payment.Pr
 	if !service.StoreReady() {
 		return nil, ErrChargingOff
 	}
+	if !Charged(service, config, member.ID) {
+		return nil, ErrNotATestAccount
+	}
 	if PaymentState(x.h.payments(), config) != PaymentReady {
 		x.h.log("charging is on but the payment provider's keys are not set or not usable")
 		return nil, ErrPaymentNotReady
@@ -84,11 +105,12 @@ func (x *exchange) chargingProvider(service *Service, config Config) (payment.Pr
 	return provider, nil
 }
 
-// buy is the "Buy a year" form: an order (a second click returns the same one), the
-// provider's checkout for it (idempotent on the order id), then the member goes to the
-// provider's page.
+// buy is the "Continue to payment" form: an order (a second click returns the same one) and
+// ONE checkout session for it (S2 review, 6): a later click -- another language, a changed
+// address -- goes to the stored session while it is open; a session that ended closes its
+// order and a new order is made. The session ends with the order (S2 review, 7).
 func (x *exchange) buy(service *Service, config Config, member *Member, licenseID, lang string) (string, error) {
-	provider, err := x.chargingProvider(service, config)
+	provider, err := x.chargingProvider(service, config, member)
 	if err != nil {
 		return "", err
 	}
@@ -96,31 +118,58 @@ func (x *exchange) buy(service *Service, config Config, member *Member, licenseI
 	if err := service.Limit("buy:"+strconv.FormatInt(member.ID, 10), 20, 3600); err != nil {
 		return "", err
 	}
-	order, err := service.CreateOrder(member.ID, licenseID, config.Charging)
-	if err != nil {
-		return "", err
-	}
-	amount, err := payment.FromMinor(order.AmountMinor, order.Currency)
-	if err != nil {
-		return "", err
-	}
-	back := strings.TrimRight(config.Origin, "/") + "/account/?action=order&id=" + order.ID + "&lang=" + lang
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	start, err := provider.StartCheckout(ctx, config.PaymentCredentials, payment.Checkout{
-		LicenseID: order.LicenseID, Order: order.ID, Amount: amount, Currency: order.Currency, Period: payment.PeriodYearly,
-		PayerEmail: member.Email, Language: lang, SuccessURL: back, CancelURL: back,
-	})
-	if err != nil {
-		return "", paymentProblem(err)
+	for attempt := 0; attempt < 2; attempt++ {
+		order, err := service.CreateOrder(member.ID, licenseID, config.Charging)
+		if err != nil {
+			return "", err
+		}
+		if order.ProviderRef != "" {
+			sessions, ok := provider.(payment.Sessions)
+			if !ok {
+				return "", ErrPaymentUnavailable
+			}
+			current, err := sessions.Session(ctx, config.PaymentCredentials, order.ProviderRef)
+			if err != nil {
+				return "", paymentProblem(err)
+			}
+			switch current.Status {
+			case "open":
+				if strings.HasPrefix(current.URL, "https://") {
+					return current.URL, nil
+				}
+				return "", ErrPaymentUnavailable
+			case "complete":
+				return strings.TrimRight(config.Origin, "/") + "/account/?action=order&id=" + order.ID + "&lang=" + lang, nil
+			}
+			// Expired at the provider: close this order; the next pass makes a new one.
+			if err := service.ExpireOrder(order.ID, memberActor(member.ID), true); err != nil {
+				return "", err
+			}
+			continue
+		}
+		amount, err := payment.FromMinor(order.AmountMinor, order.Currency)
+		if err != nil {
+			return "", err
+		}
+		back := strings.TrimRight(config.Origin, "/") + "/account/?action=order&id=" + order.ID + "&lang=" + lang
+		start, err := provider.StartCheckout(ctx, config.PaymentCredentials, payment.Checkout{
+			LicenseID: order.LicenseID, Order: order.ID, Amount: amount, Currency: order.Currency, Period: payment.PeriodYearly,
+			PayerEmail: member.Email, Language: lang, SuccessURL: back, CancelURL: back, ExpiresAt: time.Unix(order.Expires, 0),
+		})
+		if err != nil {
+			return "", paymentProblem(err)
+		}
+		if !strings.HasPrefix(start.RedirectURL, "https://") {
+			return "", ErrPaymentUnavailable
+		}
+		if err := service.AttachCheckout(order.ID, provider.Code(), start.Reference, start.RedirectURL); err != nil {
+			return "", err
+		}
+		return start.RedirectURL, nil
 	}
-	if err := service.AttachCheckout(order.ID, provider.Code(), start.Reference); err != nil {
-		return "", err
-	}
-	if !strings.HasPrefix(start.RedirectURL, "https://") {
-		return "", ErrPaymentUnavailable
-	}
-	return start.RedirectURL, nil
+	return "", ErrPaymentUnavailable
 }
 
 // paymentProblem turns a provider's answer into what the member is told.
@@ -160,16 +209,17 @@ func (x *exchange) settle(service *Service, config Config, member *Member, order
 	}
 	applied, err := service.ApplyFact(order.ID, order.Provider, "member:return", fact)
 	if err != nil {
-		return order, err
+		x.h.log("the return page could not apply a confirmed fact; the order stays as it was")
+		return order, nil // the page shows the stored state (S2 review, 11)
 	}
-	x.receipt(service, config, order, applied)
+	x.receipt(service, config, applied)
 	return applied, nil
 }
 
-// receipt mails the receipt when this request made the order paid (once: only the request
-// that moved it).
-func (x *exchange) receipt(service *Service, config Config, before, after Order) {
-	if before.State == OrderPaid || after.State != OrderPaid {
+// receipt mails the receipt when this request's ApplyFact claimed it (exactly once: the claim
+// is made inside the transaction that made the order paid).
+func (x *exchange) receipt(service *Service, config Config, after Order) {
+	if !after.ReceiptMine {
 		return
 	}
 	if err := service.sendReceipt(after, x.h.mail(config)); err != nil {
@@ -263,8 +313,15 @@ func (x *exchange) webhook(service *Service, config Config, ip string, get phpVa
 	if err != nil {
 		return err
 	}
-	x.receipt(service, config, order, applied)
-	return record()
+	// Answer first (the provider does not wait for our mail), then mail (S2 review, 11).
+	if err := record(); err != nil {
+		return err
+	}
+	if flusher, ok := x.w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+	x.receipt(service, config, applied)
+	return nil
 }
 
 // EventSeen reports whether a provider's notification id was recorded.
@@ -301,15 +358,22 @@ func (s *Service) findOrder(provider string, event payment.Event) (Order, error)
 // ReconcileReport is what one reconciliation run did.
 type ReconcileReport struct {
 	Confirmed, Paid, Expired, Refunded, Unreachable int
-	Mismatches                                      []Order
-	// PaidOrders became paid in this run: their receipts are to be mailed.
+	// PaidOrders became paid in this run and claimed their receipt: theirs are to be mailed.
 	PaidOrders []Order
+	// Attention is what the operator must look at after the run (orders -attention).
+	Attention []Order
 }
 
-// Reconcile asks the provider about every open order older than ten minutes and every
-// refund still being processed, applies what it confirms, ends orders past their day that
-// are still unpaid, and lists mismatches for the operator (never fulfilled). It is the
-// command for a timer: `membership reconcile`.
+// Reconcile is the command for a timer (`membership reconcile`). It asks the provider about:
+//   - open orders older than ten minutes (a lost webhook);
+//   - orders that closed unpaid, once more after their checkout's own end has passed, so a
+//     payment made at the last moment is not lost (S2 review, 7);
+//   - paid orders whose payment is younger than RecheckWindow, at most once a day each, and
+//     those with a refund in progress -- so a lost webhook cannot hide a refund or a lost
+//     dispute (S2 review, 1).
+//
+// It applies what it confirms, ends an unpaid order past its time (its checkout first), and
+// answers what needs the operator. Nothing is fulfilled that the provider did not confirm.
 func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, config Config, actor string) (ReconcileReport, error) {
 	var report ReconcileReport
 	if !s.StoreReady() {
@@ -321,30 +385,40 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 	}
 	provider, _ := registry.WebhookProvider(config.PaymentProvider)
 	confirmer, canConfirm := provider.(payment.Confirmer)
+	sessions, canExpire := provider.(payment.Sessions)
 	usable := canConfirm && PaymentState(registry, config) == PaymentReady
 	now := s.Now()
 	for _, o := range orders {
-		if o.State == OrderMismatch {
-			report.Mismatches = append(report.Mismatches, o)
-			continue
+		checked, err := s.CheckedAt(o.ID)
+		if err != nil {
+			return report, err
 		}
-		open := (o.State == OrderCreated || o.State == OrderPending) && o.Created <= now-600
-		refunding := false
-		if o.State == OrderPaid {
+		var ask bool
+		switch o.State {
+		case OrderCreated, OrderPending:
+			ask = o.Created <= now-600
+		case OrderExpired, OrderFailed:
+			ask = o.ProviderRef != "" && now >= o.Expires+3600 && checked < o.Expires+3600
+		case OrderPaid:
+			paid, err := s.PaidAt(o.ID)
+			if err != nil {
+				return report, err
+			}
 			refunds, err := s.Refunds(o.ID)
 			if err != nil {
 				return report, err
 			}
 			for _, r := range refunds {
-				refunding = refunding || r.State == "sent" || r.State == "requested"
+				ask = ask || r.State == "sent" || r.State == "requested"
 			}
+			ask = ask || (now-paid < RecheckWindow && now-checked >= 86400)
 		}
-		if !open && !refunding {
+		if !ask {
 			continue
 		}
 		if o.ProviderRef == "" || !usable || o.Provider != config.PaymentProvider {
-			if open && o.Expires <= now && o.ProviderRef == "" {
-				if err := s.ExpireOrder(o.ID, actor); err != nil {
+			if (o.State == OrderCreated || o.State == OrderPending) && o.Expires <= now && o.ProviderRef == "" {
+				if err := s.ExpireOrder(o.ID, actor, false); err != nil {
 					return report, err
 				}
 				report.Expired++
@@ -357,6 +431,9 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 			continue
 		}
 		report.Confirmed++
+		if err := s.MarkChecked(o.ID); err != nil {
+			return report, err
+		}
 		applied, err := s.ApplyFact(o.ID, o.Provider, actor, fact)
 		if err != nil {
 			return report, err
@@ -364,25 +441,39 @@ func (s *Service) Reconcile(ctx context.Context, registry *payment.Registry, con
 		switch {
 		case applied.State == OrderPaid && o.State != OrderPaid:
 			report.Paid++
-			report.PaidOrders = append(report.PaidOrders, applied)
-		case applied.State == OrderRefunded:
+			if applied.ReceiptMine {
+				report.PaidOrders = append(report.PaidOrders, applied)
+			}
+		case applied.State == OrderRefunded && o.State != OrderRefunded:
 			report.Refunded++
-		case applied.State == OrderMismatch:
-			report.Mismatches = append(report.Mismatches, applied)
 		case (applied.State == OrderCreated || applied.State == OrderPending) && applied.Expires <= now && fact.Outcome == payment.OutcomeNotPaid:
-			if err := s.ExpireOrder(o.ID, actor); err != nil {
+			// Its checkout is ended first, so nothing can be paid into a closed order.
+			if canExpire {
+				if err := sessions.ExpireSession(ctx, config.PaymentCredentials, o.ProviderRef); err != nil {
+					report.Unreachable++
+					continue
+				}
+			}
+			if err := s.ExpireOrder(o.ID, actor, false); err != nil {
 				return report, err
 			}
 			report.Expired++
 		}
 	}
-	return report, nil
+	report.Attention, err = s.AttentionOrders()
+	return report, err
 }
 
 // storePage gathers the store's facts for the signed-in member's pages.
 func (x *exchange) storePage(service *Service, config Config, member *Member, licenses []License) (*storePage, error) {
-	store := &storePage{charging: config.Charging, revoked: map[string]bool{}, quotes: map[string]Quote{}, paidAt: map[string]int64{}}
-	store.ready = config.Charging == ChargingTest && PaymentState(x.h.payments(), config) == PaymentReady
+	store := &storePage{charging: config.Charging, revoked: map[string]bool{}, quotes: map[string]Quote{}, paidAt: map[string]int64{}, awaiting: map[string]bool{}}
+	store.charged = Charged(service, config, member.ID) // everyone else sees the beta pages (S2 review, 3)
+	store.ready = store.charged && config.Charging == ChargingTest && PaymentState(x.h.payments(), config) == PaymentReady
+	trialID, trialEnds, err := service.Trial(member.ID)
+	if err != nil {
+		return nil, err
+	}
+	store.trialID, store.trialEnds, store.trialUsed = trialID, trialEnds, trialID != ""
 	orders, err := service.Orders(member.ID)
 	if err != nil {
 		return nil, err
@@ -403,6 +494,11 @@ func (x *exchange) storePage(service *Service, config Config, member *Member, li
 			return nil, err
 		}
 		store.revoked[l.ID] = revoked
+		if store.charged && !revoked {
+			if store.awaiting[l.ID], err = service.AwaitingPayment(l.ID); err != nil {
+				return nil, err
+			}
+		}
 		if store.ready && !revoked {
 			if q, err := service.QuoteFor(member.ID, l.ID); err == nil {
 				store.quotes[l.ID] = q
@@ -414,7 +510,7 @@ func (x *exchange) storePage(service *Service, config Config, member *Member, li
 
 // buyPage prepares the page before payment, or answers home with the refusal in words.
 func (x *exchange) buyPage(service *Service, config Config, member *Member, licenses []License, id string, store *storePage) (string, string) {
-	if _, err := x.chargingProvider(service, config); err != nil {
+	if _, err := x.chargingProvider(service, config, member); err != nil {
 		if problem, ok := err.(Problem); ok {
 			return "home", string(problem)
 		}
@@ -442,17 +538,18 @@ func (x *exchange) buyPage(service *Service, config Config, member *Member, lice
 // recorded, and -- when the provider accepted -- the order confirmed again so a completed
 // refund is applied at once (otherwise reconciliation completes it).
 func (s *Service) OperatorRefund(ctx context.Context, registry *payment.Registry, config Config, actor, orderID, reason string) (Refund, Order, error) {
-	r, err := s.RequestRefund(actor, orderID, reason)
-	if err != nil {
-		return Refund{}, Order{}, err
-	}
 	order, err := s.GetOrder(orderID)
 	if err != nil {
-		return r, order, err
+		return Refund{}, order, err
 	}
+	// Nothing is recorded as requested when nothing can be sent (S2 review, 11).
 	provider, ok := registry.WebhookProvider(order.Provider)
-	if !ok || config.PaymentProvider != order.Provider || PaymentState(registry, config) != PaymentReady || order.ProviderRef == "" {
-		return r, order, ErrPaymentNotReady
+	if strings.TrimSpace(reason) != "" && (!ok || config.PaymentProvider != order.Provider || PaymentState(registry, config) != PaymentReady || order.ProviderRef == "") {
+		return Refund{}, order, ErrPaymentNotReady
+	}
+	r, err := s.RequestRefund(actor, orderID, reason)
+	if err != nil {
+		return Refund{}, order, err
 	}
 	answer := provider.Refund(ctx, config.PaymentCredentials, payment.RefundRequest{Reference: order.ProviderRef, Expected: order.Expected(), Attempt: r.Attempt})
 	if err := s.RefundAnswered(r.ID, actor, answer); err != nil {

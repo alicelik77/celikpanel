@@ -88,7 +88,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX] | reconcile -operator NAME | order -id ORDER | orders [-pending] [-mismatch] | test-account -operator NAME -email ADDRESS -on|-off -reason TEXT | price -operator NAME -amount 99.00 [-from YYYY-MM-DD] -reason TEXT | extend -operator NAME -licence ID -days N -reason TEXT | refund -operator NAME -order ORDER -reason TEXT (each also [-test-signing-public-key HEX])")
+	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-for-php] [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX] | migrate-store -operator NAME [-test-signing-public-key HEX] | reconcile -operator NAME | order -id ORDER | orders [-pending] [-mismatch] [-attention] | test-account -operator NAME -email ADDRESS -on|-off -reason TEXT | price -operator NAME -amount 99.00 [-from YYYY-MM-DD] -reason TEXT | extend -operator NAME -licence ID -days N -reason TEXT | refund -operator NAME -order ORDER -reason TEXT (each also [-test-signing-public-key HEX])")
 }
 
 // privateDir is named explicitly, never derived from where the program sits: a guess
@@ -219,6 +219,7 @@ func runServe(args []string) int {
 func runCheckDB(args []string) int {
 	flags := flag.NewFlagSet("check-db", flag.ContinueOnError)
 	testHex := flags.String("test-signing-public-key", "", "accept this throwaway key instead of the production key (tests)")
+	forPHP := flags.Bool("for-php", false, "also check that the PHP service may serve this file (the move procedure's way back)")
 	if flags.Parse(args) != nil {
 		return 2
 	}
@@ -240,6 +241,11 @@ func runCheckDB(args []string) int {
 	report.DatabaseIsAuthority = config.DatabaseIsAuthority
 	report.Charging, report.PaymentProvider = config.Charging, config.PaymentProvider
 	report.Payment = membership.PaymentState(payment.DefaultRegistry(), config)
+	if *forPHP && (report.Orders > 0 || report.Revoked > 0) {
+		// S2 review, 9: the PHP service does not read the store's "revoked" mark; on this file it
+		// would renew and activate a licence whose payment was reversed.
+		report.Problems = append(report.Problems, "the store holds orders or revocations: the PHP service must not serve this file")
+	}
 	report.Print(os.Stdout)
 	if !report.OK() {
 		return 1
@@ -352,8 +358,8 @@ func runReconcile(args []string) int {
 			fmt.Printf("receipt mail for order %s could not be sent; the receipt is on the member's page\n", o.ID)
 		}
 	}
-	for _, o := range report.Mismatches {
-		fmt.Printf("for the operator (mismatch, nothing granted): order %s\n", o.ID)
+	for _, o := range report.Attention {
+		fmt.Printf("for the operator: order %s (%s): %s\n", o.ID, o.State, attentionText(o))
 	}
 	return 0
 }
@@ -371,7 +377,8 @@ func runOperator(command string, args []string) int {
 	on := flags.Bool("on", false, "flag as a test account")
 	off := flags.Bool("off", false, "remove the test-account flag")
 	pending := flags.Bool("pending", false, "only orders still open")
-	mismatch := flags.Bool("mismatch", false, "only orders for the operator")
+	mismatch := flags.Bool("mismatch", false, "only orders that did not match")
+	attention := flags.Bool("attention", false, "what the operator must look at")
 	amount := flags.String("amount", "", "the price, e.g. 99.00")
 	from := flags.String("from", "", "the day the price applies from (UTC, YYYY-MM-DD; default now)")
 	licence := flags.String("licence", "", "the licence id")
@@ -427,13 +434,24 @@ func runOperator(command string, args []string) int {
 			fmt.Printf("log %s %s %s: %s -> %s %s\n", when(l.At), l.Actor, l.Action, l.Before, l.After, l.Why)
 		}
 	case "orders":
+		if *attention {
+			list, err := service.AttentionOrders()
+			if err != nil {
+				return fail(err)
+			}
+			for _, o := range list {
+				printOrder(o)
+				fmt.Printf("  needs: %s\n", attentionText(o))
+			}
+			return 0
+		}
 		orders, err := service.Orders(0)
 		if err != nil {
 			return fail(err)
 		}
 		for _, o := range orders {
 			open := o.State == membership.OrderCreated || o.State == membership.OrderPending
-			if (*pending && !open) || (*mismatch && o.State != membership.OrderMismatch) {
+			if (*pending && !open) || (*mismatch && o.State != membership.OrderMismatch) || *attention {
 				continue
 			}
 			printOrder(o)
@@ -473,6 +491,9 @@ func runOperator(command string, args []string) int {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
 		r, o, err := service.OperatorRefund(ctx, payment.DefaultRegistry(), config, actor, *orderID, *reason)
+		if errors.Is(err, membership.ErrPaymentNotReady) {
+			return fail(errors.New("the payment provider's keys are not set or not usable: nothing was sent"))
+		}
 		fmt.Printf("refund attempt %d: %s (%s); order %s\n", r.Attempt, r.State, r.Outcome, o.State)
 		if err != nil {
 			return fail(err)
@@ -498,4 +519,14 @@ func printOrder(o membership.Order) {
 		fmt.Printf(", term %s to %s", when(o.GrantedFrom), when(o.GrantedTo))
 	}
 	fmt.Println()
+}
+
+func attentionText(o membership.Order) string {
+	if o.Attention != "" {
+		return o.Attention
+	}
+	if o.State == membership.OrderMismatch {
+		return "the provider's payment did not match the order; nothing was granted"
+	}
+	return "a refund failed or has waited more than a day"
 }

@@ -44,7 +44,9 @@ type fakeSession struct {
 	paid               bool
 	refunded           int64
 	disputed           bool
+	dispute            string // the dispute's status when disputed
 	livemode           bool
+	expiresAt          string // the expires_at the store sent
 }
 
 func newFakeStripe(t *testing.T) *fakeStripe {
@@ -75,10 +77,27 @@ func (f *fakeStripe) serve(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			id = "cs_test_" + strconv.Itoa(len(f.sessions)+1)
 			amount, _ := strconv.ParseInt(r.PostForm.Get("line_items[0][price_data][unit_amount]"), 10, 64)
-			f.sessions[id] = &fakeSession{id: id, order: r.PostForm.Get("client_reference_id"), licence: r.PostForm.Get("metadata[license_id]"), amount: amount, status: "open"}
+			f.sessions[id] = &fakeSession{id: id, order: r.PostForm.Get("client_reference_id"), licence: r.PostForm.Get("metadata[license_id]"), amount: amount, status: "open",
+				expiresAt: r.PostForm.Get("expires_at")}
 			f.byKey[key] = id
 		}
 		io.WriteString(w, `{"id":"`+id+`","url":"https://checkout.example/`+id+`"}`)
+	case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/expire") && strings.HasPrefix(r.URL.Path, "/v1/checkout/sessions/"):
+		s := f.sessions[strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/checkout/sessions/"), "/expire")]
+		if s == nil {
+			w.WriteHeader(404)
+			return
+		}
+		s.status = "expired"
+		io.WriteString(w, f.sessionJSON(s))
+	case r.Method == http.MethodGet && r.URL.Path == "/v1/disputes":
+		for _, s := range f.sessions {
+			if "ch_"+s.id == r.URL.Query().Get("charge") && s.disputed {
+				io.WriteString(w, `{"data":[{"id":"dp_`+s.id+`","status":"`+s.dispute+`"}]}`)
+				return
+			}
+		}
+		io.WriteString(w, `{"data":[]}`)
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/checkout/sessions/"):
 		s := f.sessions[strings.TrimPrefix(r.URL.Path, "/v1/checkout/sessions/")]
 		if s == nil {
@@ -128,7 +147,7 @@ func (f *fakeStripe) sessionJSON(s *fakeSession) string {
 	if s.paid {
 		paymentStatus, intent = "paid", f.intentJSON(s)
 	}
-	return `{"id":"` + s.id + `","mode":"payment","status":"` + s.status + `","payment_status":"` + paymentStatus + `","livemode":` + strconv.FormatBool(s.livemode) +
+	return `{"id":"` + s.id + `","url":"https://checkout.example/` + s.id + `","mode":"payment","status":"` + s.status + `","payment_status":"` + paymentStatus + `","livemode":` + strconv.FormatBool(s.livemode) +
 		`,"client_reference_id":"` + s.order + `","metadata":{"license_id":"` + s.licence + `"},"payment_intent":` + intent + `}`
 }
 
@@ -314,7 +333,7 @@ func TestBuyAYearThroughThePages(t *testing.T) {
 	}
 	before := site.expires()
 	for lang, words := range map[string][]string{
-		"en": {"<h1>Buy a year</h1>", "The new year starts after your current end date", "Payments are not refunded.", "the free 30-day trial", "Test mode: no real money is taken.", "99.00 USD"},
+		"en": {"<h1>Buy a year</h1>", "The new year starts after your current end date", "Payments are not refunded.", "a free 30-day trial, to try CelikPanel before paying", "Test mode: no real money is taken.", "99.00 USD"},
 		"tr": {"<h1>Bir yıl satın alın</h1>", "Ödemeler iade edilmez.", "30 günlük ücretsiz deneme", "Ödemeye geç"},
 	} {
 		_, _, page := site.page(http.MethodGet, "action=buy&id="+site.licence.ID+"&lang="+lang, nil)
@@ -329,7 +348,7 @@ func TestBuyAYearThroughThePages(t *testing.T) {
 	}
 	session := site.buy()
 	// A double click: the same order and the same checkout (the provider answers once per key).
-	if again := site.buy(); again != session || site.stripe.posts != 2 || len(site.stripe.sessions) != 1 {
+	if again := site.buy(); again != session || site.stripe.posts != 1 || len(site.stripe.sessions) != 1 {
 		t.Fatalf("a double click made another checkout: %s %d", again, len(site.stripe.sessions))
 	}
 	order := must(site.s.OrderByProviderRef("stripe", session))
@@ -509,7 +528,7 @@ func TestChargingModesOnThePages(t *testing.T) {
 	} {
 		site := newStoreSite(t, c.charging, c.keys)
 		_, _, home := site.page(http.MethodGet, "lang=en", nil)
-		if strings.Contains(home, "Buy a year") != c.buy || !strings.Contains(home, c.says) {
+		if strings.Contains(home, "Buy a year · ") != c.buy || !strings.Contains(home, c.says) {
 			t.Fatalf("%s/%s: home: %s", c.charging, c.keys, home)
 		}
 		if _, _, body := site.page(http.MethodPost, "action=buy&lang=en", url.Values{"id": {site.licence.ID}}); !strings.Contains(body, c.refusal) {
@@ -569,7 +588,7 @@ func TestReconciliation(t *testing.T) {
 	// An unpaid order past its day closes; a mismatch is listed and never fulfilled.
 	l2 := must(site.s.Issue(site.member))
 	o2 := must(site.s.CreateOrder(site.member, l2.ID, ChargingTest))
-	if err := site.s.AttachCheckout(o2.ID, "stripe", "cs_none"); err != nil {
+	if err := site.s.AttachCheckout(o2.ID, "stripe", "cs_none", "https://checkout.example/cs_none"); err != nil {
 		t.Fatal(err)
 	}
 	clock += OrderLifetime + 1
@@ -578,7 +597,7 @@ func TestReconciliation(t *testing.T) {
 	site.stripe.mu.Unlock()
 	l3 := must(site.s.Issue(site.member))
 	o3 := must(site.s.CreateOrder(site.member, l3.ID, ChargingTest))
-	if err := site.s.AttachCheckout(o3.ID, "stripe", "cs_wrong"); err != nil {
+	if err := site.s.AttachCheckout(o3.ID, "stripe", "cs_wrong", "https://checkout.example/cs_wrong"); err != nil {
 		t.Fatal(err)
 	}
 	site.stripe.mu.Lock()
@@ -586,7 +605,7 @@ func TestReconciliation(t *testing.T) {
 	site.stripe.mu.Unlock()
 	clock += 601
 	report = must(site.s.Reconcile(t.Context(), registry, config, "reconcile:test"))
-	if report.Expired != 1 || len(report.Mismatches) != 1 || report.Mismatches[0].ID != o3.ID {
+	if report.Expired != 1 || len(report.Attention) != 1 || report.Attention[0].ID != o3.ID {
 		t.Fatalf("expiry and mismatch: %+v", report)
 	}
 	if must(site.s.GetOrder(o2.ID)).State != OrderExpired {

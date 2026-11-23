@@ -41,6 +41,14 @@ const (
 	ErrNotATestAccount      Problem = "not_a_test_account"
 	ErrOrderNotFound        Problem = "order_not_found"
 	ErrRefundNotPossible    Problem = "refund_not_possible"
+	// ErrTestTimeRemains: the account still has test-paid time running; the test-account flag
+	// stays until it ends (the operator's refusal).
+	ErrTestTimeRemains Problem = "test_time_remains"
+	// ErrBuyAfterEnd: too little time before the licence's end for the provider's checkout; the
+	// year is bought as a new one after the end.
+	ErrBuyAfterEnd Problem = "buy_after_end"
+	// ErrRenewalIsBought: an account that buys its years has no free renewal.
+	ErrRenewalIsBought Problem = "renewal_is_bought"
 )
 
 // ErrStoreNotReady: the store's tables are missing or of another version. The service then
@@ -86,9 +94,20 @@ var orderNext = map[string][]string{
 	OrderRefunded: {},
 }
 
-// OrderLifetime: an order nobody paid ends after a day (a provider's checkout page expires
-// in the same time).
-const OrderLifetime = 86400
+// OrderLifetime: an order nobody paid ends after 23 hours, and its checkout session with it
+// (S2 review, 7; Stripe allows 30 minutes to 24 hours). A renewal at the locked price ends
+// earlier: at the licence's end date.
+const OrderLifetime = 23 * 3600
+
+// MinimumOrderLifetime: the provider's shortest checkout session. A locked renewal with less
+// time than this before the licence's end is not offered; the year is bought after the end.
+const MinimumOrderLifetime = 30 * 60
+
+// RecheckWindow: paid orders whose payment is younger than this are confirmed again by
+// reconciliation, at most once a day each, so a lost webhook cannot hide a refund or a lost
+// dispute. 120 days is the longest time card networks give a payer to dispute a payment (to
+// verify against the provider's documentation, V16).
+const RecheckWindow = 120 * 86400
 
 func storeSchema() []string {
 	var pairs []string
@@ -100,8 +119,11 @@ func storeSchema() []string {
 	return []string{
 		"CREATE TABLE IF NOT EXISTS store_meta (\n key TEXT PRIMARY KEY, value TEXT NOT NULL\n)",
 		"CREATE TABLE IF NOT EXISTS store_prices (\n id INTEGER PRIMARY KEY, currency TEXT NOT NULL CHECK(length(currency)=3),\n amount_minor INTEGER NOT NULL CHECK(amount_minor>0), valid_from INTEGER NOT NULL,\n changed_by TEXT NOT NULL, reason TEXT NOT NULL, created INTEGER NOT NULL\n)",
+		"CREATE TRIGGER IF NOT EXISTS store_prices_no_update BEFORE UPDATE ON store_prices\n BEGIN SELECT RAISE(ABORT, 'store_prices is append-only'); END",
+		"CREATE TRIGGER IF NOT EXISTS store_prices_no_delete BEFORE DELETE ON store_prices\n BEGIN SELECT RAISE(ABORT, 'store_prices is append-only'); END",
+		"CREATE TABLE IF NOT EXISTS store_trials (\n member_id INTEGER PRIMARY KEY REFERENCES members(id), license_id TEXT NOT NULL REFERENCES licenses(id),\n started INTEGER NOT NULL, ends INTEGER NOT NULL\n)",
 		"CREATE TABLE IF NOT EXISTS store_test_accounts (\n member_id INTEGER PRIMARY KEY REFERENCES members(id), flagged_by TEXT NOT NULL,\n reason TEXT NOT NULL, created INTEGER NOT NULL\n)",
-		"CREATE TABLE IF NOT EXISTS store_orders (\n id TEXT PRIMARY KEY, member_id INTEGER NOT NULL REFERENCES members(id),\n license_id TEXT NOT NULL REFERENCES licenses(id), kind TEXT NOT NULL CHECK(kind IN ('first_year','renewal')),\n amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, live INTEGER NOT NULL CHECK(live IN (0,1)),\n state TEXT NOT NULL CHECK(state IN ('created','pending','paid','mismatch','expired','failed','refunded')),\n provider TEXT, provider_ref TEXT, granted_from INTEGER, granted_to INTEGER, previous_expires INTEGER,\n created INTEGER NOT NULL, expires INTEGER NOT NULL, updated INTEGER NOT NULL\n)",
+		"CREATE TABLE IF NOT EXISTS store_orders (\n id TEXT PRIMARY KEY, member_id INTEGER NOT NULL REFERENCES members(id),\n license_id TEXT NOT NULL REFERENCES licenses(id), kind TEXT NOT NULL CHECK(kind IN ('first_year','renewal')),\n amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, live INTEGER NOT NULL CHECK(live IN (0,1)),\n state TEXT NOT NULL CHECK(state IN ('created','pending','paid','mismatch','expired','failed','refunded')),\n provider TEXT, provider_ref TEXT, session_url TEXT, locked INTEGER NOT NULL DEFAULT 0,\n granted_from INTEGER, granted_to INTEGER, previous_expires INTEGER, receipt_sent INTEGER, attention TEXT, checked INTEGER,\n created INTEGER NOT NULL, expires INTEGER NOT NULL, updated INTEGER NOT NULL\n)",
 		"CREATE INDEX IF NOT EXISTS store_orders_license ON store_orders(license_id, state)",
 		"CREATE INDEX IF NOT EXISTS store_orders_ref ON store_orders(provider, provider_ref)",
 		"CREATE TRIGGER IF NOT EXISTS store_orders_forward BEFORE UPDATE OF state ON store_orders\n WHEN OLD.state<>NEW.state AND NOT (" + strings.Join(sortedStrings(pairs), " OR ") + ")\n BEGIN SELECT RAISE(ABORT, 'store_orders: a state only moves forward'); END",
@@ -257,9 +279,10 @@ func (s *Service) currentPrice(ctx context.Context, q querier, currency string) 
 	return p, err
 }
 
-// SetPrice adds a price row (history is kept); an operator act with a reason.
+// SetPrice adds a price row (history is kept, append-only); an operator act with a reason. A
+// price never starts in the past (S2 review, 11): the history says when each was in force.
 func (s *Service) SetPrice(actor, reason, currency string, amountMinor, validFrom int64) error {
-	if strings.TrimSpace(reason) == "" || len(currency) != 3 || strings.ToUpper(currency) != currency || amountMinor <= 0 {
+	if strings.TrimSpace(reason) == "" || len(currency) != 3 || strings.ToUpper(currency) != currency || amountMinor <= 0 || validFrom < s.Now() {
 		return ErrInvalidRequest
 	}
 	ctx := context.Background()
@@ -297,6 +320,18 @@ func (s *Service) SetTestAccount(actor, reason string, member int64, on bool) er
 		}
 		if was == on {
 			return nil
+		}
+		if !on {
+			// Test-paid time that has not ended stays on the licences; the flag is not taken away
+			// while it lasts (S2 review, 3), so it is never mistaken for paid time.
+			var running int
+			if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM store_orders o JOIN licenses l ON l.id=o.license_id WHERE o.member_id=? AND o.live=0 AND o.state='paid' AND o.granted_to>? AND l.expires>?",
+				member, s.Now(), s.Now()).Scan(&running); err != nil {
+				return err
+			}
+			if running > 0 {
+				return ErrTestTimeRemains
+			}
 		}
 		if on {
 			_, err = tx.ExecContext(ctx, "INSERT INTO store_test_accounts(member_id,flagged_by,reason,created) VALUES(?,?,?,?)", member, actor, reason, s.Now())
@@ -342,15 +377,22 @@ type Order struct {
 	Created         int64
 	Expires         int64
 	Updated         int64
+	SessionURL      string
+	Locked          bool   // a renewal at the locked price (valid only before the licence's end)
+	Attention       string // why the operator must look at it (empty: nothing)
+	// ReceiptMine is set (not stored) on the order ApplyFact returns when this very call made it
+	// paid and claimed its receipt: only that caller mails it.
+	ReceiptMine bool
 }
 
-const orderColumns = "id,member_id,license_id,kind,amount_minor,currency,live,state,COALESCE(provider,''),COALESCE(provider_ref,''),COALESCE(granted_from,0),COALESCE(granted_to,0),COALESCE(previous_expires,0),created,expires,updated"
+const orderColumns = "id,member_id,license_id,kind,amount_minor,currency,live,state,COALESCE(provider,''),COALESCE(provider_ref,''),COALESCE(granted_from,0),COALESCE(granted_to,0),COALESCE(previous_expires,0),created,expires,updated,COALESCE(session_url,''),locked,COALESCE(attention,'')"
 
 func scanOrder(scan func(...any) error) (Order, error) {
 	var o Order
-	var live int
+	var live, lockedInt int
 	err := scan(&o.ID, &o.Member, &o.LicenseID, &o.Kind, &o.AmountMinor, &o.Currency, &live, &o.State, &o.Provider, &o.ProviderRef,
-		&o.GrantedFrom, &o.GrantedTo, &o.PreviousExpires, &o.Created, &o.Expires, &o.Updated)
+		&o.GrantedFrom, &o.GrantedTo, &o.PreviousExpires, &o.Created, &o.Expires, &o.Updated, &o.SessionURL, &lockedInt, &o.Attention)
+	o.Locked = lockedInt == 1
 	o.Live = live == 1
 	return o, err
 }
@@ -491,17 +533,20 @@ func (s *Service) CreateOrder(member int64, licenseID string, mode ChargingMode)
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		q, err := s.quote(ctx, tx, l, now)
+		q, err := s.quote(ctx, tx, l, now, false)
 		if err != nil {
 			return err
+		}
+		if q.WaitUntilEnd {
+			return ErrBuyAfterEnd
 		}
 		kind, amount := q.Kind, q.AmountMinor
 		id, err := payment.NewOrderReference(licenseID, false)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, "INSERT INTO store_orders(id,member_id,license_id,kind,amount_minor,currency,live,state,created,expires,updated) VALUES(?,?,?,?,?,?,0,'created',?,?,?)",
-			id, member, licenseID, kind, amount, "USD", now, now+OrderLifetime, now); err != nil {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO store_orders(id,member_id,license_id,kind,amount_minor,currency,live,state,locked,created,expires,updated) VALUES(?,?,?,?,?,?,0,'created',?,?,?,?)",
+			id, member, licenseID, kind, amount, "USD", boolInt(q.Locked), now, q.Expires, now); err != nil {
 			return err
 		}
 		if err := s.audit(ctx, tx, memberActor(member), "order_created", id, "", kind+" "+strconv.FormatInt(amount, 10)+" USD test", ""); err != nil {
@@ -513,41 +558,66 @@ func (s *Service) CreateOrder(member int64, licenseID string, mode ChargingMode)
 	return out, err
 }
 
-// Quote is what buying a year of a licence would be now: its kind, its price and where the
-// year would start (the later of now and the current end, as granted on payment).
+// Quote is what buying a year of a licence would be now: its kind, its price, where the year
+// would start (the later of now and the current end, as granted on payment) and until when the
+// order (and its checkout) can be paid.
 type Quote struct {
 	Kind        string
 	AmountMinor int64
 	Currency    string
 	Locked      bool // a renewal before the end keeps the price its last paid year cost
 	From, To    int64
+	Expires     int64 // the order's end: a day, or the licence's end for a locked renewal
+	// WaitUntilEnd: a locked renewal has less time before the licence's end than the
+	// provider's shortest checkout; the year is bought as a new one after the end.
+	WaitUntilEnd bool
 }
 
-func (s *Service) quote(ctx context.Context, q querier, l *row, now int64) (Quote, error) {
+// quote prices a year in one mode (live or test): "has paid before" and the locked price look
+// only at that mode's payments (S2 review, 3). The price is locked only while the licence's
+// current end was set by its last paid year -- never by a free renewal (S2 review, 2d).
+func (s *Service) quote(ctx context.Context, q querier, l *row, now int64, live bool) (Quote, error) {
 	price, err := s.currentPrice(ctx, q, "USD")
 	if err != nil {
 		return Quote{}, err
 	}
-	out := Quote{Kind: KindFirstYear, AmountMinor: price.AmountMinor, Currency: "USD", From: now}
+	out := Quote{Kind: KindFirstYear, AmountMinor: price.AmountMinor, Currency: "USD", From: now, Expires: now + OrderLifetime}
 	if l.Expires.Valid && l.Expires.Int64 > now {
 		out.From = l.Expires.Int64
 	}
 	out.To = anniversary(out.From)
 	var everPaid int
-	if err := q.QueryRowContext(ctx, "SELECT COUNT(*) FROM store_orders WHERE license_id=? AND state IN ('paid','refunded')", l.ID).Scan(&everPaid); err != nil {
+	if err := q.QueryRowContext(ctx, "SELECT COUNT(*) FROM store_orders WHERE license_id=? AND live=? AND state IN ('paid','refunded')", l.ID, boolInt(live)).Scan(&everPaid); err != nil {
 		return Quote{}, err
 	}
 	if everPaid == 0 {
 		return out, nil
 	}
 	out.Kind = KindRenewal
-	var locked sql.NullInt64
-	err = q.QueryRowContext(ctx, "SELECT amount_minor FROM store_orders WHERE license_id=? AND state='paid' AND currency='USD' ORDER BY granted_to DESC,updated DESC LIMIT 1", l.ID).Scan(&locked)
+	var amount, grantedTo, paidAt sql.NullInt64
+	err = q.QueryRowContext(ctx, "SELECT o.amount_minor,o.granted_to,(SELECT MIN(confirmed) FROM store_payments p WHERE p.order_id=o.id) FROM store_orders o WHERE o.license_id=? AND o.live=? AND o.state='paid' AND o.currency='USD' ORDER BY o.granted_to DESC,o.updated DESC LIMIT 1",
+		l.ID, boolInt(live)).Scan(&amount, &grantedTo, &paidAt)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return Quote{}, err
 	}
-	if locked.Valid && l.Expires.Valid && l.Expires.Int64 > now && locked.Int64 <= out.AmountMinor {
-		out.AmountMinor, out.Locked = locked.Int64, true // uninterrupted: the price does not rise
+	if !amount.Valid || !l.Expires.Valid || l.Expires.Int64 <= now || grantedTo.Int64 > l.Expires.Int64 || amount.Int64 > out.AmountMinor {
+		return out, nil
+	}
+	var freeAfter int
+	if err := q.QueryRowContext(ctx, "SELECT COUNT(*) FROM events WHERE license_id=? AND kind='renewed_free' AND created>=?", l.ID, paidAt.Int64).Scan(&freeAfter); err != nil {
+		return Quote{}, err
+	}
+	if freeAfter > 0 {
+		return out, nil // the end was moved by a free renewal: interrupted
+	}
+	// Uninterrupted: the price does not rise, and the order is valid only until the end.
+	if l.Expires.Int64-now < MinimumOrderLifetime {
+		out.WaitUntilEnd = true
+		return out, nil
+	}
+	out.AmountMinor, out.Locked = amount.Int64, true
+	if l.Expires.Int64 < out.Expires {
+		out.Expires = l.Expires.Int64
 	}
 	return out, nil
 }
@@ -571,7 +641,7 @@ func (s *Service) QuoteFor(member int64, licenseID string) (Quote, error) {
 	if l.Revoked {
 		return Quote{}, ErrLicenseRevoked
 	}
-	return s.quote(ctx, s.db, l, s.Now())
+	return s.quote(ctx, s.db, l, s.Now(), false)
 }
 
 func memberActor(member int64) string { return "member:" + strconv.FormatInt(member, 10) }
@@ -604,7 +674,7 @@ func (s *Service) moveOrder(ctx context.Context, tx *sql.Tx, o *Order, to, actor
 
 // AttachCheckout records the provider's checkout reference (created -> pending). The same
 // reference again is a no-op.
-func (s *Service) AttachCheckout(orderID, provider, ref string) error {
+func (s *Service) AttachCheckout(orderID, provider, ref, address string) error {
 	if !s.StoreReady() {
 		return ErrStoreNotReady
 	}
@@ -620,7 +690,7 @@ func (s *Service) AttachCheckout(orderID, provider, ref string) error {
 			}
 			return errors.New("membership: order " + orderID + " already has another checkout")
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE store_orders SET provider=?,provider_ref=?,updated=? WHERE id=?", provider, ref, s.Now(), orderID); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE store_orders SET provider=?,provider_ref=?,session_url=?,updated=? WHERE id=?", provider, ref, address, s.Now(), orderID); err != nil {
 			return err
 		}
 		if o.State == OrderCreated {
@@ -647,17 +717,18 @@ func (s *Service) RecordEvent(provider, eventID, kind, reference string) (bool, 
 
 // ExpireOrder ends an unpaid order past its lifetime that the provider shows as not paid
 // (the caller confirmed each one first: reconciliation).
-func (s *Service) ExpireOrder(orderID, actor string) error {
+// force ends it before its time (its checkout session ended at the provider).
+func (s *Service) ExpireOrder(orderID, actor string, force bool) error {
 	ctx := context.Background()
 	return s.atomic(func(tx *sql.Tx) error {
 		o, err := s.orderTx(ctx, tx, orderID)
 		if err != nil {
 			return err
 		}
-		if (o.State != OrderCreated && o.State != OrderPending) || o.Expires > s.Now() {
+		if (o.State != OrderCreated && o.State != OrderPending) || (o.Expires > s.Now() && !force) {
 			return nil
 		}
-		return s.moveOrder(ctx, tx, &o, OrderExpired, actor, "unpaid after a day")
+		return s.moveOrder(ctx, tx, &o, OrderExpired, actor, "unpaid; its checkout ended")
 	})
 }
 
@@ -693,11 +764,14 @@ func (s *Service) ApplyFact(orderID, provider, actor string, fact payment.Fact) 
 				return s.moveOrder(ctx, tx, &o, OrderFailed, actor, "the provider shows the payment failed")
 			}
 			return nil
-		case payment.OutcomePaid, payment.OutcomeRefunded, payment.OutcomePartlyRefunded:
+		case payment.OutcomePaid, payment.OutcomeRefunded, payment.OutcomePartlyRefunded, payment.OutcomeReversed:
 		default:
 			return s.audit(ctx, tx, actor, "fact_ignored", o.ID, o.State, string(fact.Outcome), "not a payment of a first year")
 		}
-		if fact.PaymentID == "" || fact.LicenseID != o.LicenseID || fact.Live != o.Live {
+		// Defence in depth (S2 review, 11): the fact is this order's, in its mode, for its amount
+		// and currency -- whatever the caller confirmed.
+		if fact.PaymentID == "" || fact.LicenseID != o.LicenseID || fact.Live != o.Live || fact.Order != o.ID ||
+			fact.PaidMinor != o.AmountMinor || !strings.EqualFold(fact.Currency, o.Currency) {
 			return errors.New("membership: a fact that was not confirmed against this order")
 		}
 		// The payment, once per (provider, payment id).
@@ -722,8 +796,9 @@ func (s *Service) ApplyFact(orderID, provider, actor string, fact payment.Fact) 
 				return err
 			}
 		}
-		if fact.Disputed {
-			if err := s.audit(ctx, tx, actor, "disputed", o.ID, "", provider+" "+fact.PaymentID, "the payer's bank disputes the payment; the operator decides"); err != nil {
+		if fact.Disputed && fact.Outcome != payment.OutcomeReversed {
+			// An open or won dispute changes nothing; the operator sees it (orders -attention).
+			if err := s.flag(ctx, tx, &o, actor, "dispute "+fact.DisputeStatus); err != nil {
 				return err
 			}
 		}
@@ -734,8 +809,12 @@ func (s *Service) ApplyFact(orderID, provider, actor string, fact payment.Fact) 
 			}
 			return s.grantYear(ctx, tx, &o, actor, now)
 		case payment.OutcomePartlyRefunded:
-			return s.audit(ctx, tx, actor, "partly_refunded", o.ID, "", strconv.FormatInt(fact.RefundedMinor, 10)+" of "+strconv.FormatInt(fact.PaidMinor, 10),
-				"a partial refund was made at the provider; the operator decides")
+			return s.flag(ctx, tx, &o, actor, "partly refunded at the provider: "+strconv.FormatInt(fact.RefundedMinor, 10)+" of "+strconv.FormatInt(fact.PaidMinor, 10))
+		case payment.OutcomeReversed:
+			if err := s.flag(ctx, tx, &o, actor, "dispute lost: the payment was taken back"); err != nil {
+				return err
+			}
+			return s.completeRefund(ctx, tx, &o, actor, now)
 		default: // refunded in full
 			return s.completeRefund(ctx, tx, &o, actor, now)
 		}
@@ -763,6 +842,34 @@ func (s *Service) grantYear(ctx context.Context, tx *sql.Tx, o *Order, actor str
 	if l == nil {
 		return errors.New("membership: order " + o.ID + " names a licence that does not exist")
 	}
+	if err := s.loadRevoked(ctx, tx, l); err != nil {
+		return err
+	}
+	// Nothing is granted into nothing (S2 review, 3, 4, 7): the payment is recorded, the order
+	// goes to the operator.
+	refuse := func(why string) error {
+		if err := s.flag(ctx, tx, o, actor, why); err != nil {
+			return err
+		}
+		return s.moveOrder(ctx, tx, o, OrderMismatch, actor, why)
+	}
+	switch {
+	case l.Removed.Valid:
+		return refuse("paid for a licence the member removed; nothing granted")
+	case l.Revoked:
+		return refuse("paid for a licence that was revoked; nothing granted")
+	case o.Locked && (!l.Expires.Valid || l.Expires.Int64 <= now):
+		return refuse("the locked price was paid after the licence's end; nothing granted")
+	}
+	if !o.Live {
+		test, err := isTestAccount(ctx, tx, o.Member)
+		if err != nil {
+			return err
+		}
+		if !test {
+			return refuse("a test payment for an account that is no longer a test account; nothing granted")
+		}
+	}
 	from := now
 	if l.Expires.Valid && l.Expires.Int64 > from {
 		from = l.Expires.Int64
@@ -782,7 +889,26 @@ func (s *Service) grantYear(ctx context.Context, tx *sql.Tx, o *Order, actor str
 	if err := s.audit(ctx, tx, actor, "year_granted", l.ID, strconv.FormatInt(l.Expires.Int64, 10), strconv.FormatInt(to, 10), "order "+o.ID); err != nil {
 		return err
 	}
-	return s.moveOrder(ctx, tx, o, OrderPaid, actor, "the provider confirmed the payment")
+	if err := s.moveOrder(ctx, tx, o, OrderPaid, actor, "the provider confirmed the payment"); err != nil {
+		return err
+	}
+	// The receipt is claimed in the same transaction (S2 review, 5): only this call mails it.
+	result, err := tx.ExecContext(ctx, "UPDATE store_orders SET receipt_sent=? WHERE id=? AND receipt_sent IS NULL", now, o.ID)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	o.ReceiptMine = n == 1
+	return nil
+}
+
+// flag records why the operator must look at an order (orders -attention) and logs it.
+func (s *Service) flag(ctx context.Context, tx *sql.Tx, o *Order, actor, why string) error {
+	if _, err := tx.ExecContext(ctx, "UPDATE store_orders SET attention=?,updated=? WHERE id=?", why, s.Now(), o.ID); err != nil {
+		return err
+	}
+	o.Attention = why
+	return s.audit(ctx, tx, actor, "attention", o.ID, "", why, "")
 }
 
 // completeRefund applies a refund (or a lost dispute) that happened at the provider -- there
@@ -795,6 +921,11 @@ func (s *Service) grantYear(ctx context.Context, tx *sql.Tx, o *Order, actor str
 func (s *Service) completeRefund(ctx context.Context, tx *sql.Tx, o *Order, actor string, now int64) error {
 	if o.State == OrderRefunded {
 		return nil
+	}
+	if o.State == OrderMismatch {
+		// A payment that was never granted (a mismatch) and was given back at the provider:
+		// settled; nothing on the licence to undo (S2 review, 8).
+		return s.flag(ctx, tx, o, actor, "settled: the payment was given back at the provider")
 	}
 	fulfilled := o.State == OrderPaid
 	if fulfilled {
@@ -1049,4 +1180,161 @@ func (s *Service) MemberIDByEmail(email string) (int64, error) {
 		return 0, nil
 	}
 	return id, err
+}
+
+// AttentionOrders lists what the operator must look at (S2 review, 1): mismatches not yet
+// settled, partial refunds, open disputes, payments on a removed or revoked licence, and
+// refunds that failed or have been "sent" for more than a day.
+func (s *Service) AttentionOrders() ([]Order, error) {
+	if !s.StoreReady() {
+		return nil, ErrStoreNotReady
+	}
+	rows, err := s.db.QueryContext(context.Background(), "SELECT "+orderColumns+" FROM store_orders o WHERE "+
+		"(COALESCE(o.attention,'') NOT LIKE 'settled%' AND COALESCE(o.attention,'') NOT IN ('','dispute won')) "+
+		"OR (o.state='mismatch' AND COALESCE(o.attention,'') NOT LIKE 'settled%') "+
+		"OR EXISTS (SELECT 1 FROM store_refunds r WHERE r.order_id=o.id AND (r.state='final' OR (r.state IN ('requested','sent') AND r.updated<?))) "+
+		"ORDER BY o.updated", s.Now()-86400)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Order
+	for rows.Next() {
+		o, err := scanOrder(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, o)
+	}
+	return out, rows.Err()
+}
+
+// MarkChecked records that reconciliation confirmed an order now (at most once a day each).
+func (s *Service) MarkChecked(orderID string) error {
+	_, err := s.db.ExecContext(context.Background(), "UPDATE store_orders SET checked=? WHERE id=?", s.Now(), orderID)
+	return err
+}
+
+// CheckedAt is when reconciliation last confirmed an order (0: never).
+func (s *Service) CheckedAt(orderID string) (int64, error) {
+	var at sql.NullInt64
+	err := s.db.QueryRowContext(context.Background(), "SELECT checked FROM store_orders WHERE id=?", orderID).Scan(&at)
+	return at.Int64, err
+}
+
+// closeOpenOrders ends a removed licence's unpaid orders (S2 review, 4); a payment that still
+// arrives for one is recorded, grants nothing and goes to the operator.
+func (s *Service) closeOpenOrders(ctx context.Context, tx *sql.Tx, member int64, licenseID string) error {
+	rows, err := tx.QueryContext(ctx, "SELECT "+orderColumns+" FROM store_orders WHERE license_id=? AND state IN ('created','pending')", licenseID)
+	if err != nil {
+		return err
+	}
+	var open []Order
+	for rows.Next() {
+		o, err := scanOrder(rows.Scan)
+		if err != nil {
+			rows.Close()
+			return err
+		}
+		open = append(open, o)
+	}
+	rows.Close()
+	for i := range open {
+		if err := s.moveOrder(ctx, tx, &open[i], OrderExpired, memberActor(member), "the member removed the licence"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// HasOpenOrder says whether a licence has an unpaid order (the removal page says it closes).
+func (s *Service) HasOpenOrder(licenseID string) bool {
+	if !s.StoreReady() {
+		return false
+	}
+	var n int
+	if s.db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM store_orders WHERE license_id=? AND state IN ('created','pending')", licenseID).Scan(&n) != nil {
+		return false
+	}
+	return n > 0
+}
+
+// TrialDays is the first licence's free trial (D-047 point 6; the owner, 23 November 2026:
+// "ilk seferde 30 gün trial var").
+const TrialDays = 30
+
+// IssueCharged creates a licence for an account that buys its years (S2 review, 2): the
+// account's first licence ever is the 30-day trial; any later one is created awaiting payment
+// -- its end is its creation time, so neither this service nor the PHP service activates it,
+// and the panels' contract is unchanged -- together with its first-year order. No payment
+// details are asked for the trial.
+func (s *Service) IssueCharged(member int64, mode ChargingMode) (Issued, bool, error) {
+	if err := s.Limit("issue:"+strconv.FormatInt(member, 10), 10, 86400); err != nil {
+		return Issued{}, false, err
+	}
+	if !s.StoreReady() {
+		return Issued{}, false, ErrStoreNotReady
+	}
+	ctx := context.Background()
+	var out Issued
+	trial := false
+	err := s.atomic(func(tx *sql.Tx) error {
+		var id int64
+		err := tx.QueryRowContext(ctx, "SELECT id FROM members WHERE id=? AND verified=1", member).Scan(&id)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrAuthenticationRequired
+		}
+		if err != nil {
+			return err
+		}
+		var used int
+		if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM store_trials WHERE member_id=?", member).Scan(&used); err != nil {
+			return err
+		}
+		now := s.Now()
+		if used == 0 {
+			trial = true
+			if out, err = s.insertLicence(ctx, tx, member, now+TrialDays*86400, "trial_started"); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "INSERT INTO store_trials(member_id,license_id,started,ends) VALUES(?,?,?,?)", member, out.ID, now, now+TrialDays*86400); err != nil {
+				return err
+			}
+			return s.audit(ctx, tx, memberActor(member), "trial_started", out.ID, "", strconv.FormatInt(now+TrialDays*86400, 10), "")
+		}
+		if out, err = s.insertLicence(ctx, tx, member, now, "issued_awaiting_payment"); err != nil {
+			return err
+		}
+		return s.audit(ctx, tx, memberActor(member), "licence_awaiting_payment", out.ID, "", "awaiting its first year", "")
+	})
+	if err != nil || trial {
+		return out, trial, err
+	}
+	_, err = s.CreateOrder(member, out.ID, mode)
+	return out, false, err
+}
+
+// Trial is a member's trial licence and its end (empty when the member has none).
+func (s *Service) Trial(member int64) (string, int64, error) {
+	var id string
+	var ends int64
+	err := s.db.QueryRowContext(context.Background(), "SELECT license_id,ends FROM store_trials WHERE member_id=?", member).Scan(&id, &ends)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", 0, nil
+	}
+	return id, ends, err
+}
+
+// AwaitingPayment says whether a licence was created to be paid and has no paid year yet.
+func (s *Service) AwaitingPayment(licenseID string) (bool, error) {
+	var created, expires int64
+	if err := s.db.QueryRowContext(context.Background(), "SELECT created,COALESCE(expires,0) FROM licenses WHERE id=?", licenseID).Scan(&created, &expires); err != nil {
+		return false, err
+	}
+	if expires > created {
+		return false, nil
+	}
+	var paid int
+	err := s.db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM store_orders WHERE license_id=? AND state='paid'", licenseID).Scan(&paid)
+	return paid == 0, err
 }

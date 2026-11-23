@@ -21,7 +21,14 @@ type storePage struct {
 	buy      *License // the page before payment: its licence and quote
 	quote    Quote
 	paidAt   map[string]int64 // order id -> first confirmation of its payment
-	receipt  *Order           // the receipt page's order
+	// charged: this account buys its years (test mode: flagged; S2 review, 2 and 3). Everyone
+	// else sees the beta pages.
+	charged   bool
+	trialID   string // the account's trial licence (" when none)
+	trialEnds int64
+	trialUsed bool
+	awaiting  map[string]bool // licences waiting for their first year to be paid
+	receipt   *Order          // the receipt page's order
 }
 
 func money(minor int64, currency string) string {
@@ -43,8 +50,8 @@ func (p *page) storeSummary(b *strings.Builder) {
 	if p.store == nil {
 		return
 	}
-	switch p.store.charging {
-	case ChargingTest:
+	switch {
+	case p.store.charged && p.store.charging == ChargingTest:
 		b.WriteString(`<p class="member-notice" role="status">` + p.t(
 			"Deneme kipi: satın almalar ödeme sağlayıcısının deneme kipiyle yapılır; gerçek para alınmaz.",
 			"Test mode: purchases use the payment provider's test mode; no real money is taken.") + `</p>` + "\n")
@@ -55,9 +62,25 @@ func (p *page) storeSummary(b *strings.Builder) {
 	}
 }
 
-// licenceStore is the store's part of one licence card: its state in plain words (active /
-// ends in N days / ended: the owner, 23 November 2026 -- no grace; without a licence the
-// panel is closed and the server keeps running), and "Buy a year" or "Renew for a year".
+// chargedSummary replaces "Create a free license" for an account that buys its years: the
+// first licence is the 30-day trial; a later one waits for its first year to be paid.
+func (p *page) chargedSummary(b *strings.Builder) {
+	text, button := p.t("İlk lisansınız 30 günlük ücretsiz denemedir; ödeme bilgisi istenmez. Panelin açık kalması için deneme bitmeden bir yıl satın alın.",
+		"Your first license is a free 30-day trial; no payment details are asked. Buy a year before it ends to keep the panel open."),
+		p.t("30 günlük denemeyi başlat", "Start the 30-day trial")
+	if p.store.trialUsed {
+		text, button = p.t("Yeni bir lisans, ilk yılı ödendiğinde kullanılabilir.", "A new license can be used once its first year is paid."),
+			p.t("Lisans oluştur", "Create a license")
+	}
+	b.WriteString(`<section class="member-summary"><div><h2>CelikPanel</h2><p>` + text + `</p></div>`)
+	p.formStart(b, "issue")
+	b.WriteString(`<button type="submit">` + button + `</button></form></section>` + "\n")
+}
+
+// licenceStore is the store's part of one licence card for an account that buys its years:
+// its state in plain words (trial / awaiting payment / ends in N days / ended: the owner,
+// 23 November 2026 -- no grace; without a licence the panel is closed and the server keeps
+// running), and "Buy a year" or "Renew for a year".
 func (p *page) licenceStore(b *strings.Builder, l License) {
 	if p.store == nil {
 		return
@@ -66,22 +89,34 @@ func (p *page) licenceStore(b *strings.Builder, l License) {
 		b.WriteString(`<p class="member-state">` + p.t("Bu lisansın ödemesi geri alındı; lisans sona erdi.", "This license's payment was reversed; the license has ended.") + `</p>`)
 		return
 	}
-	if p.store.charging != ChargingTest || !p.store.ready {
+	if !p.store.charged || !p.store.ready {
 		return
 	}
-	if l.Expires.Valid && l.Expires.Int64 != 0 {
-		end := day(l.Expires.Int64)
-		switch left := (l.Expires.Int64 - p.now) / 86400; {
-		case l.Expires.Int64 <= p.now:
-			b.WriteString(`<p class="member-state">` + p.t(end+" tarihinde sona erdi. O sunucudaki panel, yeni bir yıl alana kadar kapalı kalır; sunucu, siteler, e-posta ve DNS çalışmaya devam eder.",
-				"Ended on "+end+". The panel on that server stays closed until you buy a new year; the server and its sites, mail and DNS keep running.") + `</p>`)
-		case left < 30:
-			b.WriteString(`<p class="member-state">` + p.t(strconv.FormatInt(left, 10)+" gün sonra sona eriyor ("+end+"). Panelin açık kalması ve fiyatınızın aynı kalması için o tarihten önce yenileyin.",
-				"Ends in "+strconv.FormatInt(left, 10)+" days ("+end+"). Renew before then to keep the panel open and your price unchanged.") + `</p>`)
+	q, quoted := p.store.quotes[l.ID]
+	switch end := l.Expires.Int64; {
+	case p.store.awaiting[l.ID]:
+		b.WriteString(`<p class="member-state">` + p.t("Ödeme bekleniyor: bu lisans ilk yılı ödendiğinde kullanılabilir.", "Awaiting payment: this license can be used once its first year is paid.") + `</p>`)
+	case l.ID == p.store.trialID && end > p.now:
+		b.WriteString(`<p class="member-state">` + p.t("Ücretsiz deneme "+day(end)+" tarihine kadar. Panelin açık kalması için o tarihten önce bir yıl satın alın.",
+			"Free trial until "+day(end)+". Buy a year before then to keep the panel open.") + `</p>`)
+	case end <= p.now:
+		b.WriteString(`<p class="member-state">` + p.t(day(end)+" tarihinde sona erdi. O sunucudaki panel, yeni bir yıl alana kadar kapalı kalır; sunucu, siteler, e-posta ve DNS çalışmaya devam eder.",
+			"Ended on "+day(end)+". The panel on that server stays closed until you buy a new year; the server and its sites, mail and DNS keep running.") + `</p>`)
+	case end-p.now < 30*86400:
+		left := strconv.FormatInt((end-p.now)/86400, 10)
+		if quoted && q.Locked {
+			b.WriteString(`<p class="member-state">` + p.t(left+" gün sonra sona eriyor ("+day(end)+"). Panelin açık kalması ve fiyatınızın aynı kalması için o tarihten önce yenileyin.",
+				"Ends in "+left+" days ("+day(end)+"). Renew before then to keep the panel open and your price unchanged.") + `</p>`)
+		} else {
+			b.WriteString(`<p class="member-state">` + p.t(left+" gün sonra sona eriyor ("+day(end)+"). Panelin açık kalması için o tarihten önce bir yıl alın.",
+				"Ends in "+left+" days ("+day(end)+"). Buy a year before then to keep the panel open.") + `</p>`)
 		}
 	}
-	q, ok := p.store.quotes[l.ID]
-	if !ok {
+	if !quoted {
+		return
+	}
+	if q.WaitUntilEnd {
+		b.WriteString(`<p>` + p.t("Yeni yıl, "+day(l.Expires.Int64)+" bitişinden sonra satın alınabilir.", "The new year can be bought after the end on "+day(l.Expires.Int64)+".") + `</p>`)
 		return
 	}
 	label := p.t("Bir yıl satın al", "Buy a year")
@@ -110,10 +145,10 @@ func (p *page) buyPage(b *strings.Builder) {
 		b.WriteString(`<p>` + p.t("Yıl, ödemeniz onaylandığında başlar.", "The year starts when your payment is confirmed.") + `</p>`)
 	}
 	if q.Locked {
-		b.WriteString(`<p>` + p.t("Bitiş tarihinden önce yenilediğiniz için fiyatınız aynı kalır.", "Because you renew before the end date, your price stays the same.") + `</p>`)
+		b.WriteString(`<p>` + p.t("Bitiş tarihinden önce yenilediğiniz için fiyatınız aynı kalır. Bu ödeme "+day(q.Expires)+" tarihine kadar yapılabilir.", "Because you renew before the end date, your price stays the same. This payment can be made until "+day(q.Expires)+".") + `</p>`)
 	}
 	b.WriteString(`<p class="member-notice" role="note"><strong>` + p.t("Ödemeler iade edilmez.", "Payments are not refunded.") + `</strong> ` +
-		p.t("Önce denemek isterseniz ilk seferde 30 günlük ücretsiz deneme kullanabilirsiniz.", "If you want to try first, the free 30-day trial is there for your first time.") + `</p>` + "\n")
+		p.t("Her hesabın ilk lisansı, ödemeden önce denemeniz için 30 günlük ücretsiz denemedir.", "Every account's first license is a free 30-day trial, to try CelikPanel before paying.") + `</p>` + "\n")
 	if p.store.charging == ChargingTest {
 		b.WriteString(`<p>` + p.t("Deneme kipi: gerçek para alınmaz.", "Test mode: no real money is taken.") + `</p>`)
 	}
@@ -156,7 +191,9 @@ func (p *page) orderPage(b *strings.Builder) {
 	case OrderRefunded:
 		state = p.t("Ödeme geri alındı.", "The payment was reversed.")
 		next = p.t("Ödeme size geri döndü ve bu lisans sona erdi.", "The payment went back to you and this license has ended.")
-		if o.Kind == KindRenewal {
+		if o.GrantedFrom == 0 {
+			next = p.t("Ödeme size geri döndü; lisansınızda hiçbir şey değişmedi.", "The payment went back to you; nothing changed on your license.")
+		} else if o.Kind == KindRenewal {
 			next = p.t("Ödeme size geri döndü ve bu ödemenin aldığı yıl geri alındı.", "The payment went back to you and the year it bought was taken back.")
 		}
 	}
@@ -231,4 +268,17 @@ func (p *page) receiptPage(b *strings.Builder) {
 	}
 	b.WriteString(`<p class="member-notice" role="note">` + p.t("Bu makbuz bir vergi faturası değildir.", "This receipt is not a tax invoice.") + `</p>` + "\n")
 	b.WriteString(`<a href="/account/">` + p.t("Lisanslarıma dön", "Back to licenses") + `</a>` + "\n")
+}
+
+// openOrder says whether a licence has an unpaid order (nil-safe: no store, no orders).
+func (s *storePage) openOrder(licenseID string) bool {
+	if s == nil {
+		return false
+	}
+	for _, o := range s.orders {
+		if o.LicenseID == licenseID && (o.State == OrderCreated || o.State == OrderPending) {
+			return true
+		}
+	}
+	return false
 }

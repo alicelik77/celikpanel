@@ -57,13 +57,19 @@ var messages = map[string][2]string{
 	"not_a_test_account":        {"Deneme kipinde yalnız deneme hesapları satın alabilir. Bu hesap bir deneme hesabı değil; hiçbir ücret alınmadı.", "In test mode only test accounts can buy. This account is not a test account; nothing was charged."},
 	"order_not_found":           {"Sipariş bulunamadı.", "Order not found."},
 	"payment_not_ready":         {"Ödeme şu anda alınamıyor; durumu biz düzeltiyoruz. Hiçbir ücret alınmadı; daha sonra tekrar deneyin.", "Payments cannot be taken right now; we are fixing it. Nothing was charged; please try again later."},
-	"payment_unavailable":       {"Ödeme sağlayıcısına şu anda ulaşılamıyor. Hiçbir ücret alınmadı; birkaç dakika sonra tekrar deneyin.", "The payment provider cannot be reached right now. Nothing was charged; please try again in a few minutes."}, "license_not_found": {"Lisans bulunamadı.", "License not found."},
-	"renewal_not_due": {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
-	"mail_sent":       {"Bu adres için işlem yapılabiliyorsa e-posta gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.", "If this address is eligible, an email has been sent. Check your inbox and spam folder."},
-	"email_verified":  {"E-postanız doğrulandı. Şimdi giriş yapabilirsiniz.", "Your email is verified. You can now sign in."},
-	"password_reset":  {"Parolanız değiştirildi. Yeni parolanızla giriş yapın.", "Your password has changed. Sign in with your new password."},
-	"license_removed": {"Lisans kaldırıldı. Anahtarı artık hiçbir sunucuda kullanılamaz.", "The license was removed. Its key no longer works on any server."},
-	"renewed":         {"Lisans bir yıl uzatıldı. Sunucu sonraki lisans kontrolünde yeni tarihi alır.", "The license was extended by one year. Your server receives the new date on its next license check."},
+	"payment_unavailable":       {"Ödeme sağlayıcısına şu anda ulaşılamıyor. Hiçbir ücret alınmadı; birkaç dakika sonra tekrar deneyin.", "The payment provider cannot be reached right now. Nothing was charged; please try again in a few minutes."},
+	"renewal_is_bought":         {"Bu lisans bir yıl satın alınarak yenilenir: lisansınızdaki “Bir yıl yenile” bağlantısını kullanın.", "This license is renewed by buying a year: use “Renew for a year” on it."},
+	"buy_after_end":             {"Lisansınızın bitişine çok az kaldı; yeni yıl bitişten sonra satın alınabilir.", "Your license ends very soon; the new year can be bought after it ends."},
+	"test_time_remains":         {"Bu hesabın deneme ödemesiyle alınmış süresi devam ediyor.", "This account still has time bought with test payments."},
+	"trial_started":             {"Ücretsiz 30 günlük denemeniz başladı. Panelin açık kalması için deneme bitmeden bir yıl satın alın.", "Your free 30-day trial has started. Buy a year before it ends to keep the panel open."},
+	"license_awaiting_payment":  {"Yeni lisansınız, ilk yılı ödendiğinde kullanılabilir: lisanstaki “Bir yıl satın al” bağlantısını kullanın.", "Your new license can be used once its first year is paid: use “Buy a year” on it."},
+	"license_not_found":         {"Lisans bulunamadı.", "License not found."},
+	"renewal_not_due":           {"Lisansınızı bitiş tarihinden önceki son 30 günde veya süresi dolduktan sonra yenileyebilirsiniz.", "Renew during the last 30 days of the license or after it expires."},
+	"mail_sent":                 {"Bu adres için işlem yapılabiliyorsa e-posta gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.", "If this address is eligible, an email has been sent. Check your inbox and spam folder."},
+	"email_verified":            {"E-postanız doğrulandı. Şimdi giriş yapabilirsiniz.", "Your email is verified. You can now sign in."},
+	"password_reset":            {"Parolanız değiştirildi. Yeni parolanızla giriş yapın.", "Your password has changed. Sign in with your new password."},
+	"license_removed":           {"Lisans kaldırıldı. Anahtarı artık hiçbir sunucuda kullanılamaz.", "The license was removed. Its key no longer works on any server."},
+	"renewed":                   {"Lisans bir yıl uzatıldı. Sunucu sonraki lisans kontrolünde yeni tarihi alır.", "The license was extended by one year. Your server receives the new date on its next license check."},
 }
 
 func (p *page) message(code string) string {
@@ -209,9 +215,13 @@ func (p *page) home(b *strings.Builder) {
 			`</p><code id="license-key">` + htmlEscape(p.issued.Key) + `</code><button type="button" data-copy="license-key">` + p.t("Anahtarı kopyala", "Copy key") +
 			`</button><span id="copy-status" role="status"></span></section>`)
 	}
-	b.WriteString(`<section class="member-summary"><div><h2>CelikPanel</h2><p>` + p.t("Şu an ücretsiz. Oluşturulduğu tarihten itibaren bir yıl geçerli.", "Currently free. Valid for one year from creation.") + `</p></div>`)
-	p.formStart(b, "issue")
-	b.WriteString(`<button type="submit">` + p.t("Ücretsiz lisans oluştur", "Create a free license") + `</button></form></section>` + "\n")
+	if p.store != nil && p.store.charged {
+		p.chargedSummary(b)
+	} else {
+		b.WriteString(`<section class="member-summary"><div><h2>CelikPanel</h2><p>` + p.t("Şu an ücretsiz. Oluşturulduğu tarihten itibaren bir yıl geçerli.", "Currently free. Valid for one year from creation.") + `</p></div>`)
+		p.formStart(b, "issue")
+		b.WriteString(`<button type="submit">` + p.t("Ücretsiz lisans oluştur", "Create a free license") + `</button></form></section>` + "\n")
+	}
 	p.storeSummary(b)
 	if len(p.licenses) == 0 {
 		b.WriteString(`<p class="member-empty">` + p.t("Henüz lisansınız yok. İlk lisansınızı oluşturup sunucunuza CelikPanel kurabilirsiniz.", "You have no licenses yet. Create your first license to install CelikPanel on your server.") + `</p>`)
@@ -239,6 +249,13 @@ func (p *page) home(b *strings.Builder) {
 			date = htmlEscape(time.Unix(l.Expires.Int64, 0).UTC().Format("2006-01-02 15:04"))
 		}
 		b.WriteString(`</div><dl><dt>` + p.t("Bitiş tarihi (UTC)", "Expires (UTC)") + `</dt><dd>` + date + `</dd></dl><div class="member-actions">`)
+		ended := p.store != nil && p.store.revoked[l.ID] // a revoked licence offers removal only
+		if ended {
+			b.WriteString(`<a href="?action=remove&amp;id=` + htmlEscape(l.ID) + `">` + p.t("Lisansı kaldır", "Remove license") + `</a></div>`)
+			p.licenceStore(b, l)
+			b.WriteString(`</article>`)
+			continue
+		}
 		if l.KeyAvailable != 0 {
 			b.WriteString(`<a href="?action=reveal&amp;id=` + htmlEscape(l.ID) + `">` + p.t("Anahtarı göster", "Show key") + `</a>`)
 		} else {
@@ -252,7 +269,7 @@ func (p *page) home(b *strings.Builder) {
 			replace = p.t("Anahtarı değiştir", "Replace key")
 		}
 		b.WriteString(`<a href="?action=rotate&amp;id=` + htmlEscape(l.ID) + `">` + replace + `</a>`)
-		if expires && l.Expires.Int64 <= p.now+30*86400 {
+		if expires && l.Expires.Int64 <= p.now+30*86400 && !(p.store != nil && p.store.charged) {
 			b.WriteString(`<a href="?action=renew&amp;id=` + htmlEscape(l.ID) + `">` + p.t("Ücretsiz yenile", "Renew for free") + `</a>`)
 		}
 		b.WriteString(`<a href="?action=remove&amp;id=` + htmlEscape(l.ID) + `">` + p.t("Lisansı kaldır", "Remove license") + `</a></div>`)
@@ -314,6 +331,9 @@ func (p *page) confirm(b *strings.Builder, action string) {
 			"Your current key will be replaced. The server binding and expiry date stay the same. Enter the new key in the panel’s License settings. On current panel versions, the previous verification becomes invalid at the panel’s next license check (usually within an hour while in use); a server that cannot reach the license service can stay open for up to 7 days. Update older versions first."))
 	default: // renew
 		description = htmlEscape(p.t("Şu an yenileme ücretsizdir. Lisans bitişi bir yıl uzatılır.", "Renewal is currently free. The license expiry is extended by one year."))
+	}
+	if action == "remove" && target != nil && p.store.openOrder(target.ID) {
+		description += " " + p.t("Bu lisansın ödenmemiş siparişi de kapanır; hiçbir ücret alınmaz.", "This license's unpaid order closes with it; nothing is charged.")
 	}
 	b.WriteString(`<p>` + description + `</p>` + "\n")
 	p.formStart(b, action)

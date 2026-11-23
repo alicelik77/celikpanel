@@ -174,13 +174,13 @@ func TestAPaidFactGrantsTheFirstYearOnce(t *testing.T) {
 	s := f.s
 	before := f.expires(f.licence.ID) // the free year still runs
 	o := must(s.CreateOrder(f.member, f.licence.ID, ChargingTest))
-	if err := s.AttachCheckout(o.ID, "stripe", "cs_1"); err != nil {
+	if err := s.AttachCheckout(o.ID, "stripe", "cs_1", "https://checkout.example/cs_1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AttachCheckout(o.ID, "stripe", "cs_1"); err != nil {
+	if err := s.AttachCheckout(o.ID, "stripe", "cs_1", "https://checkout.example/cs_1"); err != nil {
 		t.Fatal("the same checkout again must be a no-op")
 	}
-	if err := s.AttachCheckout(o.ID, "stripe", "cs_2"); err == nil {
+	if err := s.AttachCheckout(o.ID, "stripe", "cs_2", "https://checkout.example/cs_2"); err == nil {
 		t.Fatal("a second checkout for one order")
 	}
 	o = must(s.GetOrder(o.ID))
@@ -282,13 +282,12 @@ func TestFactsThatGrantNothing(t *testing.T) {
 	part := paid(o3, "pi_3")
 	part.Outcome, part.RefundedMinor, part.Disputed = payment.OutcomePartlyRefunded, 100, true
 	o3 = must(s.ApplyFact(o3.ID, "stripe", "provider:stripe", part))
-	lines := must(s.Audit(o3.ID))
-	seen := map[string]bool{}
-	for _, l := range lines {
-		seen[l.Action] = true
+	listed := false
+	for _, a := range must(s.AttentionOrders()) {
+		listed = listed || a.ID == o3.ID
 	}
-	if o3.State != OrderCreated || !seen["partly_refunded"] || !seen["disputed"] {
-		t.Fatalf("partial refund and dispute: %+v %v", o3, seen)
+	if o3.State != OrderCreated || o3.Attention == "" || !listed {
+		t.Fatalf("partial refund and dispute: %+v listed %v", o3, listed)
 	}
 }
 

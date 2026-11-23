@@ -583,24 +583,30 @@ func (s *Service) Issue(member int64) (Issued, error) {
 		if err != nil {
 			return err
 		}
-		licence := randomHex(16)
-		key := "CPK-" + randomHex(32)
-		now := s.Now()
-		encrypted, err := s.encryptKey(licence, key)
-		if err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, "INSERT INTO licenses(id,member_id,key_hash,key_suffix,created,expires,key_encrypted) VALUES(?,?,?,?,?,?,?)",
-			licence, member, sha256Hex(key), key[len(key)-8:], now, anniversary(now), encrypted); err != nil {
-			return err
-		}
-		if err := event(ctx, tx, s.Now(), member, &licence, "issued"); err != nil {
-			return err
-		}
-		out = Issued{ID: licence, Key: key}
-		return nil
+		out, err = s.insertLicence(ctx, tx, member, anniversary(s.Now()), "issued")
+		return err
 	})
 	return out, err
+}
+
+// insertLicence is Service::issue()'s row: a new id and key, the key stored encrypted, ending
+// at expires, and its event.
+func (s *Service) insertLicence(ctx context.Context, tx *sql.Tx, member, expires int64, kind string) (Issued, error) {
+	licence := randomHex(16)
+	key := "CPK-" + randomHex(32)
+	now := s.Now()
+	encrypted, err := s.encryptKey(licence, key)
+	if err != nil {
+		return Issued{}, err
+	}
+	if _, err := tx.ExecContext(ctx, "INSERT INTO licenses(id,member_id,key_hash,key_suffix,created,expires,key_encrypted) VALUES(?,?,?,?,?,?,?)",
+		licence, member, sha256Hex(key), key[len(key)-8:], now, expires, encrypted); err != nil {
+		return Issued{}, err
+	}
+	if err := event(ctx, tx, now, member, &licence, kind); err != nil {
+		return Issued{}, err
+	}
+	return Issued{ID: licence, Key: key}, nil
 }
 
 // row is SELECT * FROM licenses.
@@ -813,6 +819,11 @@ func (s *Service) Remove(member int64, id, password string) error {
 	return s.atomic(func(tx *sql.Tx) error {
 		if _, err := s.owned(ctx, tx, member, id, verified, true); err != nil {
 			return err
+		}
+		if s.hasRevoked { // the store exists: the licence's open orders close with it (S2 review, 4)
+			if err := s.closeOpenOrders(ctx, tx, member, id); err != nil {
+				return err
+			}
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE licenses SET removed=?,key_hash=?,key_encrypted=NULL,server_id=NULL,server_ip=NULL,generation=generation+1 WHERE id=?",
 			s.Now(), "removed:"+id, id); err != nil {
