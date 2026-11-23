@@ -118,7 +118,14 @@ export function MoveAllSites({ onDone }: { onDone: () => void }) {
                                 body: JSON.stringify({ request_id: newMoveRequestID() }),
                             });
                             if (!sent.ok) return { status: sent.status, refusal: apiErrorText(await readApiError(sent), t) };
-                            return { status: sent.status, body: await sent.json() };
+                            let body: unknown;
+                            try {
+                                body = await sent.json();
+                            } catch {
+                                // An answer without a readable body: the result is unknown (the run stops).
+                                return { status: sent.status };
+                            }
+                            return { status: sent.status, body };
                         } catch {
                             return null;
                         }
@@ -128,7 +135,8 @@ export function MoveAllSites({ onDone }: { onDone: () => void }) {
                     });
                     for (const l of outcome.notMoved) left.push({ domain: l.domain, reason: l.partial ? t('moveall.partial', { reason: l.reason }) : l.reason });
                     if (outcome.stop) {
-                        const reason = outcome.stop.unknown ? t('moveall.unknown', { domain: outcome.stop.domain }) : outcome.stop.reason || t('slim.move.unknown');
+                        const reason = outcome.stop.unknown ? t('moveall.unknown', { domain: outcome.stop.domain })
+                            : outcome.stop.unresolved ? t('moveall.unresolved') : outcome.stop.reason || t('slim.move.unknown');
                         setNotMoved([...left, { domain: outcome.stop.domain, reason }]);
                         return outcome.stop.unknown ? { state: 'unknown', reason }
                             : { state: 'failed', reason: t('moveall.failed', { domain: outcome.stop.domain, reason }) };

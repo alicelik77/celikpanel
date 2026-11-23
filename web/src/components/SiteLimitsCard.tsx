@@ -11,7 +11,7 @@ import {
     decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
     type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
-import { decodeTasksAnswer, lineList, movedTaskCount, privilegedList, readTasksPreview, type TasksAnswer } from '../lib/siteTasks';
+import { decodeTasksAnswer, lineList, movedTaskCount, privilegedList, readTasksPreview, unresolvedSteps, UNRESOLVED_MOVE, type TasksAnswer } from '../lib/siteTasks';
 import { Button, Checking, CouldNotCheck } from './ui';
 
 // The limits of a site's programs together (S4 R2a, docs/SITE-SANDBOX.md
@@ -170,12 +170,14 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
         // Mail: through this server only while its submission services are
         // CelikPanel's own; otherwise the card says sites cannot send through it.
         const mail = !p.mail ? '' : p.mail_submission === 'owner' ? t('slim.tasks.mailOwner')
-            : p.mail_submission === 'absent' ? t('slim.tasks.mailAbsent') : t('slim.tasks.mail');
+            : p.mail_submission === 'absent' ? t('slim.tasks.mailAbsent')
+                : p.mail_submission === 'owner_file' ? t('slim.tasks.mailOwnerFile') : t('slim.tasks.mail');
         return [n > 0 ? t('slim.tasks.rows', { n }) : t('slim.tasks.none'), n > 0 ? t('stasks.timers') : '', mail,
             privileged ? t('slim.tasks.privileged', { list: privileged }) : ''].filter(Boolean).join(' ');
     };
     const tasksResult = (answer: TasksAnswer | undefined): string => {
         if (!answer) return '';
+        if (answer.refusal === UNRESOLVED_MOVE) return t('moveall.unresolved');
         switch (answer.outcome) {
             case 'moved': return t('slim.tasks.done.moved');
             case 'crontab_back': return t('slim.tasks.done.back', { detail: answer.error ?? '' });
@@ -215,6 +217,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     setUndoID(newMoveRequestID());
                     if (answer.outcome === 'undone') return { state: 'done', message: t('slim.tasks.undo.done') };
                     if (answer.outcome === 'unknown') return { state: 'unknown', reason: answer.error || t('slim.move.unknown') };
+                    if (answer.refusal === UNRESOLVED_MOVE) return { state: 'blocked', reason: t('moveall.unresolved') };
                     return { state: answer.outcome === 'refused' ? 'blocked' : 'failed', reason: answer.error || answer.outcome };
                 },
             });
@@ -287,6 +290,10 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     if (answer.rolled_back && failed) {
                         return { state: 'failed', reason: t('slim.move.rolledBack', { unit: labelOf(units, failed.unit), detail: failed.detail ?? '' }) };
                     }
+                    // Second fix round: an unresolved earlier move, or a tasks part whose result is not
+                    // known, starts no programs move; the card says so.
+                    if (tasksAnswer?.refusal === UNRESOLVED_MOVE) return { state: 'blocked', reason: t('moveall.unresolved') };
+                    if (tasksAnswer?.outcome === 'unknown') return { state: 'unknown', reason: tasksAnswer.error || t('slim.move.unknown') };
                     if (!answer.done) return { state: 'failed', reason: [answer.error || t('slim.move.unknown'), tasksResult(tasksAnswer)].filter(Boolean).join(' ') };
                     if (!tasksOK) return { state: tasksAnswer?.outcome === 'stayed' ? 'blocked' : 'failed', reason: tasksResult(tasksAnswer) };
                     return { state: 'done', message: [units.length > 0 ? t('slim.move.done') : '', tasksResult(tasksAnswer), notMoved.length > 0 ? t('slim.move.notMoved', { list: notMoved.join('; ') }) : ''].filter(Boolean).join(' ') };
@@ -330,9 +337,14 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                             {t(tasks.by_site ? 'slim.tasks.reappearedSite' : 'slim.tasks.reappeared', { n: tasks.reappeared ?? 0 })}
                         </p>
                     )}
-                    {(tasks.mail_submission === 'owner' || tasks.mail_submission === 'absent') && (
+                    {tasks.unresolved && (
+                        <p className="mt-1 text-sm text-warning" data-site-limits-unresolved={tasks.unresolved.kind}>
+                            {t('slim.tasks.unresolved', { step: tasks.unresolved.step ?? '', steps: unresolvedSteps(tasks.unresolved) })}
+                        </p>
+                    )}
+                    {(tasks.mail_submission === 'owner' || tasks.mail_submission === 'absent' || tasks.mail_submission === 'owner_file') && (
                         <p className="mt-1 text-sm text-fg-muted" data-site-limits-mail={tasks.mail_submission}>
-                            {t(tasks.mail_submission === 'owner' ? 'slim.tasks.mailOwner' : 'slim.tasks.mailAbsent')}
+                            {t(tasks.mail_submission === 'owner' ? 'slim.tasks.mailOwner' : tasks.mail_submission === 'owner_file' ? 'slim.tasks.mailOwnerFile' : 'slim.tasks.mailAbsent')}
                         </p>
                     )}
                     {tasks.recovery && (

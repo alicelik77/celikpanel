@@ -79,6 +79,20 @@ export const enProblemsNowScreens = {
     'pnow.node_port_reserved.title': 'The Node.js site {domain} uses port {value} of a server service',
     'pnow.node_port_reserved.body': 'Its visitors are passed to port {value}, which a service of this server uses, so that service may be reachable from the internet. Nothing was changed. Save the site’s Node.js settings again: it gets a free port, and its program must listen on that port.',
     'pnow.node_port_reserved.action': 'Open the domain',
+    // S4 R2b (sites' scheduled tasks inside their limits; the second fix round
+    // moved these lines here from the "siteTasks" part).
+    'pnow.site_tasks_held.title': 'Scheduled tasks held: {value} sites',
+    'pnow.site_tasks_held.body': 'The scheduled tasks of these sites do not run while their limits file is missing ({other}), also after a restart of the server: {domain}. The administrator saves the subscription’s limits; the tasks run again at their next time once the file is back. A file put back by hand needs sudo systemctl daemon-reload too.',
+    'pnow.site_tasks_held.action': 'Open Monitoring',
+    'pnow.site_lingering.title': 'Site accounts keep their own programs running',
+    'pnow.site_lingering.body': 'These accounts linger, so programs they started keep running outside their limits: {domain}. The server owner ends it with: {other}',
+    'pnow.site_lingering.action': 'Open Monitoring',
+    'pnow.site_move_unresolved.title': 'A move into the limits is unresolved: {domain}',
+    'pnow.site_move_unresolved.body': 'A move of {domain} could not be finished or put back; its record keeps the crontab, so nothing is lost. No site is moved and no move is undone until it is resolved. CelikPanel tries again at its next start. If it cannot, the server owner switches the site’s timers off, lets the account into /etc/cron.allow, and gives the crontab back: {other}',
+    'pnow.site_move_unresolved.action': 'Open the site',
+    'pnow.site_user_manager_open.title': 'Site accounts can start their own service manager',
+    'pnow.site_user_manager_open.body': 'When these accounts sign in with SFTP, their own service manager can start and run programs outside their limits: {domain}. The server owner closes it with: sudo systemctl mask {other}',
+    'pnow.site_user_manager_open.action': 'Open Monitoring',
 } as const;
 
 export type ProblemsNowScreenKey = keyof typeof enProblemsNowScreens;

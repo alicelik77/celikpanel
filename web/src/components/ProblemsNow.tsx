@@ -78,7 +78,9 @@ export type ProblemKind =
     | 'site_tasks_held'
     | 'site_lingering'
     | 'linger_owner_removed'
-    | 'linger_not_closed';
+    | 'linger_not_closed'
+    | 'site_move_unresolved'
+    | 'site_user_manager_open';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -109,6 +111,9 @@ const KINDS: readonly ProblemKind[] = [
     // held for want of the site's limits file.
     'site_crontab_by_site', 'site_tasks_held',
     'site_lingering', 'linger_owner_removed', 'linger_not_closed',
+    // S4 R2b second fix round: a move that could not be resolved (no site is
+    // moved until it is); site accounts whose own service manager can start.
+    'site_move_unresolved', 'site_user_manager_open',
 ];
 // S4 R2b: "Move all" is fetched only when its line is shown.
 const MoveAllSites = lazy(() => import('./MoveAllSites').then((module) => ({ default: module.MoveAllSites })));

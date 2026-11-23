@@ -7,7 +7,8 @@
 
 /** A task's last run as the server reads it. */
 export interface TaskRun {
-    state: 'never' | 'running' | 'succeeded' | 'failed' | 'unknown';
+    /** skipped (second fix round): systemd skipped the run because the site's limits file was missing. */
+    state: 'never' | 'running' | 'succeeded' | 'failed' | 'unknown' | 'skipped';
     started_at?: string;
     ended_at?: string;
     seconds?: number;
@@ -17,10 +18,10 @@ export interface TaskRun {
     next_at?: string;
 }
 
-export const TASK_STATES = ['scheduled', 'off', 'at_boot', 'kept', 'waiting', 'not_run'] as const;
+export const TASK_STATES = ['scheduled', 'off', 'at_boot', 'kept', 'waiting', 'not_run', 'not_on_yet'] as const;
 export type TaskState = (typeof TASK_STATES)[number];
 
-const RUN_STATES: readonly string[] = ['never', 'running', 'succeeded', 'failed', 'unknown'];
+const RUN_STATES: readonly string[] = ['never', 'running', 'succeeded', 'failed', 'unknown', 'skipped'];
 
 /** Reads one task's run; anything of another shape is no run at all. */
 export function decodeTaskRun(raw: unknown): TaskRun | undefined {
@@ -62,12 +63,29 @@ export interface TasksPlacement {
     mail_submission?: string;
     recovery?: string;
     unknown?: boolean;
+    /** Second fix round: a move of this site that could not be finished or put back. */
+    unresolved?: UnresolvedMove;
+}
+
+/** A move the server could not resolve: no site is moved until it is. */
+export interface UnresolvedMove {
+    site_id: number;
+    kind: string;
+    step?: string;
+    account?: string;
+}
+
+/** The server owner's two steps by hand for an unresolved tasks move (timers off first). */
+export function unresolvedSteps(u: UnresolvedMove): string {
+    if (!u.account) return '';
+    return `sudo systemctl disable --now 'celikcron-${u.site_id}-*.timer' ; sudo crontab -u ${u.account} /etc/celikpanel-cron/${u.site_id}.crontab`;
 }
 
 export function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
     const body = raw as Partial<TasksPlacement> | null;
     if (!body || typeof body !== 'object' || typeof body.moved !== 'boolean') return undefined;
-    return {
+    const u = body.unresolved as Partial<UnresolvedMove> | undefined;
+    const placement: TasksPlacement = {
         moved: body.moved,
         reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined,
         by_site: body.by_site === true,
@@ -75,6 +93,10 @@ export function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
         recovery: typeof body.recovery === 'string' ? body.recovery : undefined,
         unknown: body.unknown === true,
     };
+    if (u && typeof u === 'object' && typeof u.site_id === 'number' && typeof u.kind === 'string') {
+        placement.unresolved = { site_id: u.site_id, kind: u.kind, step: typeof u.step === 'string' ? u.step : undefined, account: typeof u.account === 'string' ? u.account : undefined };
+    }
+    return placement;
 }
 
 /** What a tasks move did or would do (the preview, the move, the undo). */
@@ -125,15 +147,21 @@ export function privilegedList(answer: TasksAnswer): string {
  * moved while its tasks stayed (goes on); or a move that started and failed,
  * or whose result is unknown (the run stops).
  */
-export type SiteMoveEnd = { kind: 'moved'; note: string } | { kind: 'skipped' | 'partial' | 'stop'; reason: string };
+export type SiteMoveEnd = { kind: 'moved'; note: string } | { kind: 'skipped' | 'partial' | 'stop'; reason: string; unresolved?: boolean };
 
-export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; units?: unknown[]; tasks?: unknown }): SiteMoveEnd {
+/** The refusal every move and undo answers while an earlier move is unresolved. */
+export const UNRESOLVED_MOVE = 'unresolved_move';
+
+export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; refusal?: string; units?: unknown[]; tasks?: unknown }): SiteMoveEnd {
     let tasks: TasksAnswer | undefined;
     try {
         tasks = answer.tasks ? decodeTasksAnswer(answer.tasks) : undefined;
     } catch {
         tasks = undefined;
     }
+    // Second fix round: an earlier move that could not be resolved stops the
+    // run (nothing else is moved until it is).
+    if (answer.refusal === UNRESOLVED_MOVE || tasks?.refusal === UNRESOLVED_MOVE) return { kind: 'stop', reason: tasks?.error ?? answer.error ?? '', unresolved: true };
     if (answer.rolled_back || answer.done === false) return { kind: 'stop', reason: answer.error ?? '' };
     if (!tasks || tasks.outcome === 'put_back' || tasks.outcome === 'unknown') return { kind: 'stop', reason: tasks?.error ?? '' };
     if (tasks.outcome === 'moved' || tasks.outcome === 'already') return { kind: 'moved', note: '' };
@@ -149,8 +177,16 @@ export interface MoveAllOutcome {
     /** Sites that did not (fully) move, with why; partial: its programs moved, its tasks stayed. */
     notMoved: { domain: string; reason: string; partial?: boolean }[];
     /** The move that started and failed (or whose result is unknown): the run stopped there. */
-    stop?: { domain: string; reason: string; unknown: boolean };
+    stop?: { domain: string; reason: string; unknown: boolean; unresolved?: boolean };
 }
+
+/**
+ * Refusals that changed nothing (fix round 2, review N5): a bad request, no
+ * right, no such site, a move already running or a conflict. Every other
+ * answer that is not a success - a server error, a gateway timeout, an
+ * answer without a readable body - is "result unknown": the run stops.
+ */
+const SKIP_STATUSES: readonly number[] = [400, 403, 404, 409];
 
 /** One site's move as "Move all" sends it: the HTTP status and answer, or null when nothing readable came back. */
 export type SiteMoveCall = (site: OutsideSite) => Promise<{ status: number; body?: unknown; refusal?: string } | null>;
@@ -176,15 +212,26 @@ export async function moveSitesInTurn(
             return out;
         }
         if (sent.status < 200 || sent.status > 299) {
+            if (!SKIP_STATUSES.includes(sent.status)) {
+                onStep(i, 'failed', sent.refusal);
+                out.stop = { domain: site.domain, reason: sent.refusal ?? '', unknown: true };
+                return out;
+            }
             onStep(i, 'failed', sent.refusal);
             out.notMoved.push({ domain: site.domain, reason: sent.refusal ?? '' });
             continue;
         }
-        const end = siteMoveEnd((sent.body ?? {}) as Parameters<typeof siteMoveEnd>[0]);
+        if (!sent.body || typeof sent.body !== 'object') {
+            onStep(i, 'failed');
+            out.stop = { domain: site.domain, reason: '', unknown: true };
+            return out;
+        }
+        const end = siteMoveEnd(sent.body as Parameters<typeof siteMoveEnd>[0]);
         switch (end.kind) {
             case 'stop':
                 onStep(i, 'failed', end.reason);
-                out.stop = { domain: site.domain, reason: end.reason, unknown: false };
+                out.stop = end.unresolved ? { domain: site.domain, reason: end.reason, unknown: false, unresolved: true }
+                    : { domain: site.domain, reason: end.reason, unknown: false };
                 return out;
             case 'moved':
                 out.moved++;

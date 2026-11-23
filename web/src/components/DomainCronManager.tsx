@@ -35,7 +35,10 @@ interface CronJob {
 
 /** S4 R2b: what the list says about a site whose tasks run as timers. */
 interface TimersFacts {
-    source: 'ours' | 'owner' | 'missing';
+    /** crontab_again (second fix round): the file is gone and the account has a crontab: the tasks run from it. */
+    source: 'ours' | 'owner' | 'missing' | 'crontab_again';
+    /** The timer files left behind (administrator only). */
+    leftUnits: string[];
     notRun: TaskLine[];
     reappeared: string[];
     /** Fix round: the account could have installed that crontab itself. */
@@ -154,12 +157,18 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
     // the timers from; the panel's own window shows first what it will hold.
     const rebuildSource = async () => {
         const url = `/api/v1/domains/${domainId}/site-limits/tasks-source`;
-        const read = await readCurrent<{ outcome?: string; crontab?: string; error?: string }>(url);
+        const read = await readCurrent<{ outcome?: string; crontab?: string; error?: string; refusal?: string; left_units?: string[] }>(url);
         if (read.state !== 'known') {
             showToast('error', read.state === 'unknown' ? apiErrorText(read.error, t) : t('stasks.rebuild.unknown'));
             return;
         }
         const preview = read.value;
+        // Second fix round: the account has a crontab, so the tasks run from it;
+        // a rebuild would run every task twice and is refused.
+        if (preview.refusal === 'crontab_exists') {
+            showToast('error', t('stasks.source.crontab', { units: (preview.left_units ?? []).join(', ') || 'celikcron-*' }));
+            return;
+        }
         if (preview.outcome !== 'preview') {
             showToast('error', preview.error || t('stasks.rebuild.unknown'));
             return;
@@ -197,7 +206,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         setLoading(true);
         const next = await readCurrent<{
             jobs?: CronJob[] | null; version?: string; other_lines?: CronOtherLine[] | null;
-            timers?: boolean; source?: string; not_run?: unknown; reappeared?: unknown; reappeared_by_site?: unknown;
+            timers?: boolean; source?: string; not_run?: unknown; reappeared?: unknown; reappeared_by_site?: unknown; left_units?: unknown;
         }>(`/api/v1/domains/${domainId}/cron`);
         const missing = next.state === 'unknown' && next.error.code === 'CRON_NOT_INSTALLED';
         // The list is proven empty only by an answer that carries it: `jobs` as a
@@ -210,7 +219,8 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
             run: decodeTaskRun(job.run),
         })));
         setTimers(list && next.state === 'known' && next.value.timers === true ? {
-            source: next.value.source === 'owner' || next.value.source === 'missing' ? next.value.source : 'ours',
+            source: next.value.source === 'owner' || next.value.source === 'missing' || next.value.source === 'crontab_again' ? next.value.source : 'ours',
+            leftUnits: Array.isArray(next.value.left_units) ? next.value.left_units.filter((u): u is string => typeof u === 'string') : [],
             notRun: decodeTaskLines(next.value.not_run),
             reappeared: Array.isArray(next.value.reappeared) ? next.value.reappeared.filter((l): l is string => typeof l === 'string') : [],
             bySite: next.value.reappeared_by_site === true,
@@ -527,7 +537,9 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                         {timers.source !== 'ours' && (
                             <p className="flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm text-fg" data-cron-source={timers.source}>
                                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                                <span className="min-w-0 max-w-[75ch]">{t(timers.source === 'owner' ? 'stasks.source.owner' : 'stasks.source.missing')}</span>
+                                <span className="min-w-0 max-w-[75ch]">{timers.source === 'crontab_again'
+                                    ? t('stasks.source.crontab', { units: timers.leftUnits.join(', ') || 'celikcron-*' })
+                                    : t(timers.source === 'owner' ? 'stasks.source.owner' : 'stasks.source.missing')}</span>
                                 {timers.source === 'missing' && role === 'admin' && !readOnly && (
                                     <Button className="shrink-0" onClick={() => void rebuildSource()} data-cron-rebuild="">{t('stasks.rebuild.button')}</Button>
                                 )}
@@ -730,10 +742,12 @@ function TaskRunLine({ run, locale }: { run: TaskRun; locale: string }) {
         : run.state === 'running' ? t('stasks.run.running', { time })
             : run.state === 'succeeded' ? t('stasks.run.succeeded', { time, seconds })
                 : run.state === 'failed' ? t('stasks.run.failed', { time, seconds, status: run.exit_status ?? 0, result: run.result ?? '' })
-                    : t('stasks.run.unknown', { time });
+                    // Second fix round: systemd skipped it (the site's limits file was missing); not a failure.
+                    : run.state === 'skipped' ? t('stasks.run.skipped', { time })
+                        : t('stasks.run.unknown', { time });
     return (
         <div className="mt-2 text-xs text-fg-muted" data-cron-run={run.state}>
-            <p className={run.state === 'failed' ? 'text-danger' : undefined}>
+            <p className={run.state === 'failed' ? 'text-danger' : run.state === 'skipped' ? 'text-warning' : undefined}>
                 {said}
                 {run.next_at && <> {t('stasks.next', { time: formatDateTime(run.next_at, locale as 'en' | 'tr') })}</>}
             </p>

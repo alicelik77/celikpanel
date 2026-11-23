@@ -9,6 +9,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
 import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
+import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
+import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import {
   decodeOutsideSites, decodeTaskRun, decodeTasksAnswer, decodeTasksPlacement, lineList, movedTaskCount, moveSitesInTurn, privilegedList, siteMoveEnd,
 } from '../src/lib/siteTasks.ts';
@@ -120,6 +122,30 @@ test('"Move all" skips a site that cannot move and stops only when a started mov
   const unknown = await moveSitesInTurn([sites[1]], async () => null, () => {});
   assert.equal(unknown.stop.unknown, true);
 
+  // Second fix round (review N5): a 5xx (503 "the result is unknown", 504, 500), any other
+  // status that is not a refusal that changed nothing, and a success without a readable body
+  // all stop the run as unknown; only 400, 403, 404 and 409 are skipped.
+  for (const status of [500, 502, 503, 504, 401, 429]) {
+    seen.length = 0;
+    const answer = { status, refusal: 'The server did not answer, so the result is unknown.' };
+    const out = await moveSitesInTurn(sites, async (site) => { seen.push(site.domain); return site.domain_id === 1 ? answer : answers[2]; }, () => {});
+    assert.deepEqual(seen, ['a-stays.test'], `status ${status} stops the run`);
+    assert.equal(out.stop.unknown, true, `status ${status} is unknown`);
+  }
+  for (const status of [400, 403, 404, 409]) {
+    const out = await moveSitesInTurn([sites[0]], async () => ({ status, refusal: 'no' }), () => {});
+    assert.equal(out.stop, undefined, `status ${status} is a skip`);
+    assert.equal(out.notMoved.length, 1);
+  }
+  const noBody = await moveSitesInTurn([sites[0], sites[1]], async () => ({ status: 200 }), () => {});
+  assert.equal(noBody.stop.unknown, true, 'a success without a readable body is unknown');
+  // Review N1: an earlier move that is unresolved stops the run (nothing else is moved).
+  const unresolved = await moveSitesInTurn(sites, async (site) => ({ status: 200, body: { done: false, refusal: 'unresolved_move', units: [],
+    tasks: { outcome: 'refused', refusal: 'unresolved_move', error: 'an earlier move of site 7' } } }), () => {});
+  assert.equal(unresolved.stop.unresolved, true);
+  assert.equal(unresolved.moved, 0);
+  assert.match(read('../src/components/MoveAllSites.tsx'), /t\('moveall\.unresolved'\)/);
+
   const all = read('../src/components/MoveAllSites.tsx');
   assert.match(all, /readTasksPreview\(site\.domain_id\)/, 'each site\'s preview is read before the run');
   assert.match(all, /option: programsOnly\.length > 0/, 'programs-only sites move only when ticked');
@@ -131,17 +157,46 @@ test('"Move all" skips a site that cannot move and stops only when a started mov
 test('the Problems now lines are known kinds with words, and the two re-closes are offered', () => {
   const problems = read('../src/components/ProblemsNow.tsx');
   const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
-  for (const kind of ['site_limits_outside', 'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned', 'site_lingering', 'linger_owner_removed', 'linger_not_closed', 'site_crontab_by_site', 'site_tasks_held']) {
+  // Second fix round: the held, lingering, unresolved-move and service-manager lines live in
+  // the "problemsNow" part (the "siteTasks" part had no room left); either part may hold them.
+  const en = { ...enSiteTasksScreens, ...enProblemsNowScreens };
+  const tr = { ...trSiteTasksScreens, ...trProblemsNowScreens };
+  for (const kind of ['site_limits_outside', 'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned', 'site_lingering', 'linger_owner_removed', 'linger_not_closed', 'site_crontab_by_site', 'site_tasks_held',
+    'site_move_unresolved', 'site_user_manager_open']) {
     assert.ok(list && list[1].includes(`'${kind}'`), `${kind} is a known kind`);
     for (const part of ['title', 'body', 'action']) {
-      assert.ok(enSiteTasksScreens[`pnow.${kind}.${part}`], `English ${kind}.${part}`);
-      assert.ok(trSiteTasksScreens[`pnow.${kind}.${part}`], `Turkish ${kind}.${part}`);
+      assert.ok(en[`pnow.${kind}.${part}`], `English ${kind}.${part}`);
+      assert.ok(tr[`pnow.${kind}.${part}`], `Turkish ${kind}.${part}`);
     }
   }
-  for (const kind of ['cron_owner_removed', 'linger_owner_removed']) assert.ok(enSiteTasksScreens[`pnow.${kind}.confirm`] && trSiteTasksScreens[`pnow.${kind}.confirm`]);
+  for (const kind of ['cron_owner_removed', 'linger_owner_removed']) assert.ok(en[`pnow.${kind}.confirm`] && tr[`pnow.${kind}.confirm`]);
   assert.match(problems, /const RECLOSE = \['at', 'stock_pool', 'cron', 'linger'\];/);
   assert.match(problems, /problem\.action\.kind === 'move_all' \?/);
-  assert.match(enSiteTasksScreens['pnow.site_lingering.body'], /\{other\}/, 'the lingering line gives the command');
+  assert.match(en['pnow.site_lingering.body'], /\{other\}/, 'the lingering line gives the command');
+  // Review N4: the held line says the tasks do not run while the file is missing (also after a
+  // restart) and gives the reload a file put back by hand needs.
+  assert.match(en['pnow.site_tasks_held.body'], /daemon-reload/);
+  assert.match(tr['pnow.site_tasks_held.body'], /daemon-reload/);
+  assert.match(en['pnow.site_move_unresolved.body'], /\{other\}/, 'the unresolved line gives the steps by hand');
+  assert.match(en['pnow.site_user_manager_open.body'], /systemctl mask \{other\}/);
+});
+
+test('second fix round: what the screens say about a skipped run, a timer not on yet, a crontab back and the mail file', () => {
+  assert.equal(decodeTaskRun({ state: 'skipped', started_at: '2026-11-23T10:00:00Z' }).state, 'skipped');
+  for (const key of ['stasks.run.skipped', 'stasks.state.not_on_yet', 'stasks.source.crontab', 'slim.tasks.unresolved', 'slim.tasks.mailOwnerFile', 'moveall.unresolved']) {
+    assert.ok(enSiteTasksScreens[key] && trSiteTasksScreens[key], key);
+  }
+  assert.doesNotMatch(enSiteTasksScreens['stasks.run.skipped'], /fail/i, 'a skipped run is not called failed');
+  assert.match(enSiteTasksScreens['stasks.differences'], /sendmail/, 'the differences name the server\'s sendmail');
+  const placement = decodeTasksPlacement({ moved: true, unresolved: { site_id: 7, kind: 'tasks_move', step: 'crontab_emptied', account: 'shop_test' } });
+  assert.equal(placement.unresolved.site_id, 7);
+  const cron = read('../src/components/DomainCronManager.tsx');
+  assert.match(cron, /'crontab_again'/);
+  assert.match(cron, /preview\.refusal === 'crontab_exists'/, 'the rebuild is refused while the account has a crontab');
+  assert.match(cron, /t\('stasks\.run\.skipped'/);
+  const card = read('../src/components/SiteLimitsCard.tsx');
+  assert.match(card, /t\('slim\.tasks\.unresolved'/);
+  assert.match(card, /'owner_file'/);
 });
 
 test('the part is registered and budgeted', () => {
