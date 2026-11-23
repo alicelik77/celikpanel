@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.146.tr.md)
 
+> **Published** on 2026-11-23 (UTC): release commit `8917ed407`, GitHub pre-release at 13:27:13Z, download portal at about 13:31Z (public check 27/27).
+
 **A release for the public website only.** It brings the new celikpanel.net
 with this release's download portal. Nothing in the panel's or the agent's
 code changes, and the panel's database layout does not change.
