@@ -585,10 +585,15 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "webmail_address_kept":
 		// alpha.144: item.subject is the address, item.name CelikPanel's text
 		// beside it, or the owner's file when no text lies beside it.
-		// alpha.145 (security): no subject: webmail's local server.
+		// alpha.145 (security): no subject: webmail's local server; the
+		// branches follow the screen's (second review of PR #357, finding 2).
 		if item.subject == "" {
-			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: its web server file was changed by hand and kept. The server owner takes CelikPanel's text from %s (or its rules) and reloads nginx.", item.name),
-				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini (ya da kurallarını) alır ve nginx'i yeniden yükler.", item.name)
+			if !strings.HasSuffix(item.name, ".celikpanel-pending") {
+				return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: its web server file %s was changed by hand and kept. The server owner writes CelikPanel's rules into it (only /webmail/, /webmail/index.php and style sheets under /webmail/skins/ answer, everything else is not found), then runs sudo nginx -t and sudo systemctl reload nginx.", item.name),
+					fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: %s web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi dosyaya CelikPanel'in kurallarını yazar (yalnız /webmail/, /webmail/index.php ve /webmail/skins/ altındaki stil dosyaları yanıt verir, gerisi bulunamaz), ardından sudo nginx -t ve sudo systemctl reload nginx çalıştırır.", item.name)
+			}
+			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: its web server file was changed by hand and kept. The server owner copies CelikPanel's text from %s over the file, then runs sudo nginx -t and sudo systemctl reload nginx.", item.name),
+				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini dosyanın üzerine kopyalar, ardından sudo nginx -t ve sudo systemctl reload nginx çalıştırır.", item.name)
 		}
 		if !strings.HasSuffix(item.name, ".celikpanel-pending") {
 			return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: its web server file %s was changed by hand and kept. To take CelikPanel's text, the server owner moves that file away and presses Set up again for the address on Roundcube's page.", subject, item.name),
@@ -599,8 +604,15 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "webmail_address_refused":
 		// alpha.144: item.name is the file nginx's test named ("" when none).
 		if item.subject == "" {
-			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: nginx's configuration test failed (%s), so its new text was put back. Correct that file; CelikPanel writes the new text at its next start.", item.name),
-				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", item.name)
+			// Second review of PR #357, findings 1, 2 and 6: CelikPanel
+			// writes the file at the Agent's start, so the step ends with a
+			// restart; without a named file the cause is in the journal.
+			if item.name == "" {
+				return "Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: CelikPanel could not rewrite its file (the reason is in sudo journalctl -u celikpanel-agent, for example nginx not running: sudo systemctl status nginx). The server owner removes that cause and runs sudo systemctl restart celikpanel-agent; CelikPanel writes the new text at that start.",
+					"Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: CelikPanel dosyasını yeniden yazamadı (nedeni sudo journalctl -u celikpanel-agent çıktısında; örneğin nginx çalışmıyor: sudo systemctl status nginx). Sunucu sahibi bu nedeni giderir ve sudo systemctl restart celikpanel-agent çalıştırır; CelikPanel yeni metni o açılışta yazar."
+			}
+			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: nginx's configuration test failed in %s, so its new text was put back. The server owner corrects what the test names, then runs sudo systemctl restart celikpanel-agent; CelikPanel writes the new text at that start.", item.name),
+				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: nginx yapılandırma denetimi %s dosyasında başarısız oldu, bu yüzden yeni metni geri alındı. Sunucu sahibi denetimin gösterdiğini düzeltir, ardından sudo systemctl restart celikpanel-agent çalıştırır; CelikPanel yeni metni o açılışta yazar.", item.name)
 		}
 		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: nginx's configuration test failed (%s), so its new text was put back. Correct that file; CelikPanel writes the new text at its next start.", subject, item.name),
 			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", subject, item.name)

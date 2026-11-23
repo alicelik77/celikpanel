@@ -66,6 +66,9 @@ func reconcileWebmailLocalServerAtStartup(ctx context.Context, run webmailComman
 	pending := path + webmailAddressPendingSuffix
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
+		// Webmail is not served here (any more): CelikPanel's text beside a
+		// file that is gone is not needed (review of PR #357 fixes, finding 4).
+		removeWebmailLocalServerPending()
 		return nil
 	}
 	if err != nil {
@@ -89,6 +92,15 @@ func reconcileWebmailLocalServerAtStartup(ctx context.Context, run webmailComman
 		}
 		if err != nil {
 			noteWebmailAddressRewriteRefused(webmailLocalServerHost, err)
+			// Only another file nginx's test named is the owner's to correct;
+			// CelikPanel's own file, a reload, the PHP check script or the
+			// start's time limit are said without a file (review of PR #357
+			// fixes, findings 1 and 6: the journal and a restart of the Agent).
+			webmailAddressRewriteRefusalsMu.Lock()
+			if webmailAddressRewriteRefusals[webmailLocalServerHost] == path {
+				webmailAddressRewriteRefusals[webmailLocalServerHost] = ""
+			}
+			webmailAddressRewriteRefusalsMu.Unlock()
 			return []string{fmt.Sprintf("kept in its earlier form, which gives out Roundcube's files to every account of this server (%v); CelikPanel tries again at its next start", err)}
 		}
 		webmailAddressRewriteRefusalsMu.Lock()
@@ -145,4 +157,11 @@ func webmailLocalServerForm() (transport.WebmailAddressForm, bool) {
 		file = path
 	}
 	return transport.WebmailAddressForm{Host: webmailLocalServerHost, State: "owner_edited", File: file}, true
+}
+
+// removeWebmailLocalServerPending removes, by name, CelikPanel's text beside
+// the local server's file (a regular file only): when webmail goes, and when
+// the file it was for is gone.
+func removeWebmailLocalServerPending() {
+	removeRoundcubePendingText(phpToolWebmailConfPath + webmailAddressPendingSuffix)
 }

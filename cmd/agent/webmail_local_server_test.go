@@ -314,3 +314,80 @@ func TestA145OwnersLocalServerFileIsKeptWithTheTextBesideIt(t *testing.T) {
 		t.Fatalf("the text beside it stayed: %v", err)
 	}
 }
+
+// Second review of PR #357, findings 1 and 6: only another file the web
+// server's test named is named; CelikPanel's own file, a failed reload or a
+// check script that could not be written are said without a file (the
+// journal and a restart of the Agent).
+func TestA145LocalServerRewriteFailuresThatAreNotAnotherFileAreUnnamed(t *testing.T) {
+	conf := a145PointLocalServer(t)
+	earlier := alpha144RenderWebmailNginxConfig(a145Socket, a145Root, a145FPM)
+	for name, run := range map[string]webmailCommandRunner{
+		"own file named": func(_ context.Context, name string, _ ...string) ([]byte, error) {
+			if name == "nginx" {
+				return []byte(`nginx: [emerg] unknown directive "x" in ` + conf + `:12`), errors.New("exit status 1")
+			}
+			return nil, nil
+		},
+		"reload failed": func(_ context.Context, name string, args ...string) ([]byte, error) {
+			if name == "systemctl" && len(args) > 0 && args[0] == "reload" {
+				return []byte("nginx.service is not active, cannot reload."), errors.New("exit status 1")
+			}
+			return nil, nil
+		},
+	} {
+		mustWriteTestFile(t, conf, []byte(earlier), 0o600)
+		if said := reconcileWebmailLocalServerAtStartup(context.Background(), run); len(said) != 1 || !strings.Contains(said[0], "kept in its earlier form") {
+			t.Fatalf("%s: said %q", name, said)
+		}
+		if got, _ := os.ReadFile(conf); string(got) != earlier {
+			t.Fatalf("%s: the earlier file was not put back", name)
+		}
+		if forms := a145LocalForms(t); len(forms) != 1 || forms[0].State != "test_failed" || forms[0].File != "" {
+			t.Fatalf("%s: forms %+v", name, forms)
+		}
+	}
+	// The PHP check script cannot be written (its folder is a file).
+	blocker := filepath.Join(t.TempDir(), "file")
+	mustWriteTestFile(t, blocker, []byte("x"), 0o600)
+	phpToolCheckScriptPath = filepath.Join(blocker, "check.php")
+	// (The earlier text names the check script's path: rendered again.)
+	earlier = alpha144RenderWebmailNginxConfig(a145Socket, a145Root, a145FPM)
+	mustWriteTestFile(t, conf, []byte(earlier), 0o600)
+	ok := func(context.Context, string, ...string) ([]byte, error) { return nil, nil }
+	if said := reconcileWebmailLocalServerAtStartup(context.Background(), ok); len(said) != 1 || !strings.Contains(said[0], "kept in its earlier form") {
+		t.Fatalf("check script: said %q", said)
+	}
+	if forms := a145LocalForms(t); len(forms) != 1 || forms[0].File != "" {
+		t.Fatalf("check script: forms %+v", forms)
+	}
+}
+
+// Second review of PR #357, finding 4: CelikPanel's text beside the local
+// server's file goes, by name, when the file it was for is gone.
+func TestA145LocalServerPendingTextGoesWithTheFile(t *testing.T) {
+	conf := a145PointLocalServer(t)
+	pending := conf + webmailAddressPendingSuffix
+	mustWriteTestFile(t, pending, []byte("CelikPanel's text"), 0o600)
+	if said := reconcileWebmailLocalServerAtStartup(context.Background(), func(context.Context, string, ...string) ([]byte, error) { return nil, nil }); len(said) != 0 {
+		t.Fatalf("said %q", said)
+	}
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Fatalf("the text beside a missing file stayed: %v", err)
+	}
+	// Webmail removed: the same by-name removal (a link is left alone).
+	mustWriteTestFile(t, pending, []byte("CelikPanel's text"), 0o600)
+	removeWebmailLocalServerPending()
+	if _, err := os.Stat(pending); !os.IsNotExist(err) {
+		t.Fatalf("not removed with webmail: %v", err)
+	}
+	target := filepath.Join(t.TempDir(), "owner")
+	mustWriteTestFile(t, target, []byte("owner"), 0o600)
+	if err := os.Symlink(target, pending); err != nil {
+		t.Fatal(err)
+	}
+	removeWebmailLocalServerPending()
+	if _, err := os.Lstat(pending); err != nil {
+		t.Fatalf("a link of that name was removed: %v", err)
+	}
+}

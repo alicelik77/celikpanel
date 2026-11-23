@@ -807,6 +807,9 @@ func (a *Agent) RemoveRoundcube(req *WebmailMutationRequest, resp *RemoveRoundcu
 	}
 	defer finishStep()
 	result, err := retireRoundcubeTree(webmailBaseDir)
+	if err == nil {
+		removeWebmailLocalServerPending()
+	}
 	resp.Removed = result.Removed
 	resp.MutationApplied = result.MutationApplied
 	if err != nil {
@@ -1144,6 +1147,9 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 			resp.Error = err.Error()
 			return
 		}
+		// alpha.145: CelikPanel's text beside an owner's local server file
+		// goes with webmail.
+		removeWebmailLocalServerPending()
 		resp.Configured = true
 		resp.Present = false
 		return

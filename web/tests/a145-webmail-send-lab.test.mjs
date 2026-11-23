@@ -166,6 +166,20 @@ test('security: the local server line is a variant of the address lines with its
             assert.match(catalogue[`pnow.webmail_local_server.${key}`], network, key);
         }
         assert.match(catalogue['pnow.webmail_local_server.kept'], /\{other\}.*sudo nginx -t/);
-        assert.match(catalogue['pnow.webmail_local_server.refused_unnamed'], /sudo nginx -t/);
+        // Second review of PR #357 (findings 1, 6, 8): the step that makes
+        // CelikPanel try again is a restart of the Agent; the unnamed text
+        // also covers a web server that is not running.
+        for (const key of ['refused', 'refused_unnamed']) assert.match(catalogue[`pnow.webmail_local_server.${key}`], /sudo systemctl restart celikpanel-agent/);
+        assert.match(catalogue['pnow.webmail_local_server.refused_unnamed'], /sudo journalctl -u celikpanel-agent.*sudo systemctl status nginx/);
     }
+});
+
+test('second review: the local-server line offers no link and uses the agreed words', () => {
+    const source = read('../src/components/ProblemsNow.tsx');
+    assert.match(source, /const localWebmailLine = \(problem\.kind === 'webmail_address_kept' \|\| problem\.kind === 'webmail_address_refused'\) && !problem\.subject;/);
+    assert.match(source, /const showLink = problem\.action\.kind === 'open' && problem\.action\.to !== here && !localWebmailLine;/);
+    assert.match(enScreens['pnow.webmail_local_server.kept'], /copies that text over the file/);
+    assert.match(enScreens['pnow.webmail_local_server.kept_no_text'], /writes CelikPanel’s rules into it/);
+    assert.match(trScreens['pnow.webmail_local_server.kept_no_text'], /kurallarını yazar/);
+    assert.doesNotMatch(enScreens['pnow.webmail_local_server.kept'], /takes that text/);
 });

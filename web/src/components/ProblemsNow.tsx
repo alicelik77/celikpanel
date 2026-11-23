@@ -308,7 +308,9 @@ export function ProblemsNow({
                             const when = problem.since
                                 ? t('pnow.since', { time: clock(problem.since) })
                                 : problem.kind === 'service_stopped' && problem.observed_at ? t('pnow.seen', { time: clock(problem.observed_at) }) : '';
-                            const showLink = problem.action.kind === 'open' && problem.action.to !== here;
+                            // alpha.145: webmail's local-server line (no address) offers no link: Roundcube's page has nothing for it.
+                            const localWebmailLine = (problem.kind === 'webmail_address_kept' || problem.kind === 'webmail_address_refused') && !problem.subject;
+                            const showLink = problem.action.kind === 'open' && problem.action.to !== here && !localWebmailLine;
                             return (
                                 <li key={problem.key} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start" data-problem={problem.kind} data-severity={problem.severity}>
                                     <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`} aria-hidden="true" />

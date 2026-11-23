@@ -264,3 +264,75 @@ func TestA145LocalServerInItsEarlierFormIsAProblemUntilItIsNot(t *testing.T) {
 		t.Fatalf("still listed: %+v", problems)
 	}
 }
+
+// Second review of PR #357, finding 5: when the zone's desired state moved on
+// while its publication was pending, the follow-up publication of its
+// current ledger settles the alias wait; the zone is not published again.
+func TestA145AliasWaitSettledByTheFollowUpPublicationWithoutASecondOne(t *testing.T) {
+	panel, agent, clock, _ := newPendingPublicationPanel(t, "f-alias.example")
+	configurePendingWithCode(t, agent, transport.DNSPeerPendingCatchingUp)
+	backupDown := true
+	recoverOutcome(t, agent, func() bool { return backupDown }, func() string { return transport.DNSPeerPendingCatchingUp })
+	ctx := context.Background()
+	if err := panel.syncZoneToDNS(ctx, "f-alias.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
+		t.Fatalf("deferred err=%v", err)
+	}
+	// An alias record saved meanwhile: the zone's desired state moves on.
+	if _, err := panel.db.GetDB().Exec(`INSERT INTO pdns_records (domain_id, name, type, content, ttl, prio, disabled)
+		SELECT id, 'alias.f-alias.example', 'A', '192.0.2.10', 3600, 0, 0 FROM pdns_domains WHERE name = 'f-alias.example'`); err != nil {
+		t.Fatal(err)
+	}
+	_ = panel.syncZoneToDNS(ctx, "f-alias.example", false)
+	panel.markAliasZoneUnpublished(ctx, "f-alias.example")
+	panel.reconcilePendingDNSPublicationsOnce(ctx) // discovers
+	before, _ := pendingAgentCalls(agent)
+
+	backupDown = false
+	agent.syncResponseHook = nil
+	clock.Advance(dnsPendingPublicationMaxDelay)
+	panel.reconcilePendingDNSPublicationsOnce(ctx)
+	waiting, err := panel.aliasZonesUnpublished(ctx)
+	if err != nil || waiting["f-alias.example"] {
+		t.Fatalf("waits: %v %v", waiting, err)
+	}
+	after, _ := pendingAgentCalls(agent)
+	if len(after)-len(before) != 1 || after[len(after)-1].Domain != "f-alias.example" {
+		t.Fatalf("publications after the pending one completed: %d (%+v)", len(after)-len(before), after)
+	}
+}
+
+// Second review of PR #357, findings 1, 2 and 6: the local server's alert
+// mail follows the screen's branches and ends with the step that makes
+// CelikPanel try again (a restart of the Agent).
+func TestA145LocalServerAlertMailFollowsTheScreensBranches(t *testing.T) {
+	conf := "/etc/nginx/conf.d/celikpanel-webmail.conf"
+	cases := []struct {
+		item          pendingAlertMail
+		want, notWant []string
+	}{
+		{pendingAlertMail{kind: "webmail_address_kept", name: conf + ".celikpanel-pending"},
+			[]string{"copies CelikPanel's text from " + conf + ".celikpanel-pending over the file", "sudo systemctl reload nginx"}, nil},
+		{pendingAlertMail{kind: "webmail_address_kept", name: conf},
+			[]string{conf + " was changed by hand", "writes CelikPanel's rules into it"}, []string{"text from", "copies"}},
+		{pendingAlertMail{kind: "webmail_address_refused", name: "/etc/nginx/conf.d/broken.conf"},
+			[]string{"failed in /etc/nginx/conf.d/broken.conf", "sudo systemctl restart celikpanel-agent"}, []string{"next start."}},
+		{pendingAlertMail{kind: "webmail_address_refused", name: ""},
+			[]string{"sudo journalctl -u celikpanel-agent", "sudo systemctl status nginx", "sudo systemctl restart celikpanel-agent"}, []string{"()", "test failed"}},
+	}
+	for _, c := range cases {
+		en, tr := alertLine(c.item)
+		for _, want := range c.want {
+			if !strings.Contains(en, want) {
+				t.Errorf("%+v: %q lacks %q", c.item, en, want)
+			}
+		}
+		for _, not := range c.notWant {
+			if strings.Contains(en, not) {
+				t.Errorf("%+v: %q says %q", c.item, en, not)
+			}
+		}
+		if tr == "" || strings.Contains(tr, "()") {
+			t.Errorf("%+v: tr %q", c.item, tr)
+		}
+	}
+}

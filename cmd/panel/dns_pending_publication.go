@@ -576,18 +576,23 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 	case dnsPendingPublicationResolved:
 		log.Printf("pending DNS publication %s completed by its automatic re-check (exact=%t)", lease.ZoneName, done)
 		p.clearDNSPublicationStuckNotice(ctx, lease)
+		published := false
 		if !done {
 			// The exact operation is complete; the zone's desired state
 			// moved on while it was pending (or the operation never began).
 			publishCtx, cancelPublish := context.WithTimeout(ctx, dnsPendingPublicationAttemptLimit)
-			p.publishZoneAfterPendingLocked(publishCtx, lease)
+			published = p.publishZoneAfterPendingLocked(publishCtx, lease)
 			cancelPublish()
 		}
 		// alpha.145 (review of PR #357, finding 3): alias records that
 		// waited behind this zone's pending publication are settled now by
 		// the hourly round's own step (a fresh publication of the zone's
-		// current ledger), not an hour later.
-		if p.aliasZoneWaiting(ctx, lease.ZoneName) {
+		// current ledger), not an hour later. When the follow-up above just
+		// published that ledger under the same locks, it is not published
+		// again (second review, finding 5).
+		if published {
+			p.clearAliasZoneWait(ctx, lease.ZoneName)
+		} else if p.aliasZoneWaiting(ctx, lease.ZoneName) {
 			settleCtx, cancelSettle := context.WithTimeout(ctx, dnsPendingPublicationAttemptLimit)
 			p.settleAliasZoneWait(settleCtx, strings.ToLower(lease.ZoneName), p.syncZoneToDNSLocked)
 			cancelSettle()
@@ -633,21 +638,25 @@ func dnsPendingReasonForLog(code string) string {
 // publishZoneAfterPendingLocked publishes a zone whose exact pending
 // operation completed while its desired state had advanced. A verified
 // failure or a new pending result stays recorded by the publication itself.
-func (p *Panel) publishZoneAfterPendingLocked(ctx context.Context, lease dnsZoneEngineLease) {
+// It reports whether it published the zone's current ledger.
+func (p *Panel) publishZoneAfterPendingLocked(ctx context.Context, lease dnsZoneEngineLease) bool {
 	state, err := readDNSZoneSyncState(ctx, p.db.GetDB(), lease.ZoneName)
 	if errors.Is(err, sql.ErrNoRows) {
-		return
+		return false
 	}
 	if err != nil {
 		log.Printf("pending DNS publication %s: read follow-up state: %v", lease.ZoneName, err)
-		return
+		return false
 	}
 	if state.Status != "pending" {
-		return
+		return false
 	}
-	if err := p.syncZoneToDNSLocked(ctx, lease.ZoneName, state.DesiredAction == "delete"); err != nil {
+	deleted := state.DesiredAction == "delete"
+	if err := p.syncZoneToDNSLocked(ctx, lease.ZoneName, deleted); err != nil {
 		log.Printf("pending DNS publication %s: follow-up publication: %v", lease.ZoneName, err)
+		return false
 	}
+	return !deleted
 }
 
 // dnsPublicationRefusedBusy: a publication the Agent refused at admission
