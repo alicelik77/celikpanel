@@ -257,9 +257,9 @@ func fakeKernelNFT(tr *tree, exists map[string]bool) func(args ...string) error 
 }
 
 // TestEgressPlaceOrder: the helper's own cgroup first (no question to
-// systemd), then systemd, then the system slice's element as before; a
-// moment in which systemd does not answer never stops a program in the
-// system slice, and no program ever starts outside the block.
+// systemd), then systemd, then the system slice's element as before: the
+// SMTP helper adds no dependency on systemd answering, and no program ever
+// starts outside the block.
 func TestEgressPlaceOrder(t *testing.T) {
 	unit := "celiksvc-4.service"
 	asked := 0
@@ -277,11 +277,12 @@ func TestEgressPlaceOrder(t *testing.T) {
 	inSystem := map[string]bool{"system.slice/" + unit: true}
 	inSite := map[string]bool{"celiksite_9.slice/" + unit: true}
 
-	// 1. Its own cgroup names the site's slice: systemd is not asked.
+	// 1. Its own cgroup names the site's slice: systemd is not asked, and
+	// nothing is logged.
 	asked = 0
-	tr, h, _ := setup("/celiksite_9.slice/"+unit, nil, "", down, inSite)
-	if err := h.EgressAdd(unit); err != nil || asked != 0 || !strings.Contains(strings.Join(tr.nft, "|"), `{ "celiksite_9.slice/`+unit+`" }`) {
-		t.Fatalf("own cgroup in the site's slice: %v asked=%d %q", err, asked, tr.nft)
+	tr, h, quiet := setup("/celiksite_9.slice/"+unit, nil, "", down, inSite)
+	if err := h.EgressAdd(unit); err != nil || asked != 0 || !strings.Contains(strings.Join(tr.nft, "|"), `{ "celiksite_9.slice/`+unit+`" }`) || quiet.Len() != 0 {
+		t.Fatalf("own cgroup in the site's slice: %v asked=%d %q %s", err, asked, tr.nft, quiet)
 	}
 	if err := h.EgressRemove(unit); err != nil || asked != 0 || !strings.Contains(tr.nft[len(tr.nft)-1], `delete element inet celikpanel_egress smtp_blocked { "celiksite_9.slice/`+unit+`" }`) {
 		t.Fatalf("remove from the site's slice: %v %q", err, tr.nft)
@@ -297,9 +298,14 @@ func TestEgressPlaceOrder(t *testing.T) {
 	// another unit, run by hand, unreadable): systemd is asked.
 	for _, self := range []string{"/celiksite_9.slice/" + unit + "/.control", "/system.slice/celiksvc-5.service", "/", ""} {
 		asked = 0
-		tr, h, _ = setup(self, nil, "/celiksite_9.slice/"+unit, nil, inSite)
+		var said *bytes.Buffer
+		tr, h, said = setup(self, nil, "/celiksite_9.slice/"+unit, nil, inSite)
 		if err := h.EgressAdd(unit); err != nil || asked != 1 || !strings.Contains(strings.Join(tr.nft, "|"), `"celiksite_9.slice/`+unit+`"`) {
 			t.Fatalf("own cgroup %q: %v asked=%d %q", self, err, asked, tr.nft)
+		}
+		// One line says which step decided and the place taken.
+		if !strings.Contains(said.String(), "systemd says it runs in /celiksite_9.slice/"+unit) || strings.Count(said.String(), "\n") != 1 {
+			t.Fatalf("own cgroup %q: journal %q", self, said)
 		}
 	}
 	asked = 0
@@ -321,8 +327,9 @@ func TestEgressPlaceOrder(t *testing.T) {
 		!strings.Contains(log.String(), "Failed to connect to bus") {
 		t.Fatalf("systemd down, system slice: %v %q %s", err, tr.nft, log)
 	}
-	if err := h.EgressRemove(unit); err != nil {
-		t.Fatalf("systemd down, remove: %v", err)
+	log.Reset()
+	if err := h.EgressRemove(unit); err != nil || !strings.Contains(log.String(), "removes the system slice's element") {
+		t.Fatalf("systemd down, remove: %v %s", err, log)
 	}
 	// systemd answers with no place: the same.
 	tr, h, _ = setup("", nil, "", nil, inSystem)
@@ -339,6 +346,64 @@ func TestEgressPlaceOrder(t *testing.T) {
 	if lines := egressGuidance(unit); len(lines) != 2 || !strings.Contains(lines[0], "systemctl show -p ControlGroup,Slice "+unit) ||
 		!strings.Contains(lines[0], "administrator") {
 		t.Fatalf("guidance = %q", lines)
+	}
+}
+
+// TestAddFailureIsAPlaceProblemOnlyWhenItIs: nft's refusal of the element
+// is reported as a problem of the unit's place (with the place guidance)
+// only when nft says the cgroup path fails or that path does not exist under
+// the cgroup root; any other failure keeps the plain error.
+func TestAddFailureIsAPlaceProblemOnlyWhenItIs(t *testing.T) {
+	unit := "celiksvc-4.service"
+	run := func(nftErr string, exists func(string) bool) error {
+		tr := newTree(t)
+		h := tr.helper(tr.uid)
+		h.SelfCgroup = func() (string, error) { return "/system.slice/" + unit, nil }
+		h.CgroupExists = exists
+		h.NFT = func(args ...string) error {
+			if args[0] == "add" {
+				return errors.New(nftErr)
+			}
+			return nil
+		}
+		return h.EgressAdd(unit)
+	}
+	there := func(string) bool { return true }
+	gone := func(path string) bool {
+		if path != "system.slice/"+unit {
+			t.Errorf("checked %q", path)
+		}
+		return false
+	}
+	flushed := "exit status 1: Error: Could not process rule: No such file or directory add element inet celikpanel_egress smtp_blocked { \"system.slice/" + unit + "\" }"
+	var place *PlaceError
+	for name, c := range map[string]struct {
+		nftErr string
+		exists func(string) bool
+		place  bool
+	}{
+		"nft says the path fails":       {"exit status 1: Error: cgroupv2 path fails: No such file or directory", there, true},
+		"the path is not there":         {flushed, gone, true},
+		"the table was flushed between": {flushed, there, false},
+		"nft was killed":                {"signal: killed", nil, false},
+	} {
+		err := run(c.nftErr, c.exists)
+		if err == nil || errors.As(err, &place) != c.place || !strings.Contains(err.Error(), "could not be added to the SMTP block") {
+			t.Errorf("%s: %v (place error %v)", name, err, errors.As(err, &place))
+		}
+	}
+	// The production check reads the cgroup root.
+	old := cgroupRoot
+	t.Cleanup(func() { cgroupRoot = old })
+	cgroupRoot = t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cgroupRoot, "system.slice", unit), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if !cgroupExists("system.slice/"+unit) || cgroupExists("celiksite_9.slice/"+unit) || cgroupExists("../../etc") {
+		t.Fatal("cgroupExists")
+	}
+	if ProductionHelper(nil).CgroupExists == nil {
+		t.Fatal("the production helper does not check the path")
 	}
 }
 

@@ -296,8 +296,12 @@ for the cgroup the unit runs in (with an empty environment), and
 `nft delete element …` after the stop. It finds that cgroup in this order:
 its own cgroup in `/proc/self/cgroup` (it runs inside the unit), when that is
 exactly `/system.slice/<unit>` or `/celiksite_<id>.slice/<unit>`; otherwise
-systemd's `ControlGroup` of the unit; and when systemd cannot be asked, the
-system slice, as before. This fails closed. The unit does not start when nft
+systemd's `ControlGroup` of the unit; and when systemd cannot be asked or
+names no place, the system slice, as before. When its own cgroup line is not
+used, one journal line of the unit says why, which step decided and the place
+taken. The SMTP helper so adds no dependency on systemd answering; the bind
+unit's own read of the unit's settings, unchanged from earlier releases, still
+stops a start while systemd does not answer. This fails closed. The unit does not start when nft
 cannot load the table, when systemd names another place (for example, an
 owner's drop-in moved the unit to another slice), or when the unit's place
 cannot be established: nft refuses a cgroup path that does not exist, so the

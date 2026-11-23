@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -85,7 +86,7 @@ var systemctlRun = runClean
 func readControlGroup(unit string) (string, error) {
 	out, err := systemctlRun(systemctlPath, "show", unit, "--property=ControlGroup,Slice")
 	if err != nil {
-		return "", fmt.Errorf("systemctl show %s: %s", unit, hostcmd.Reason(nil, err))
+		return "", fmt.Errorf("systemctl show %s: %s", unit, hostcmd.Diagnostic(nil, err))
 	}
 	return ParseControlGroup(unit, string(out)), nil
 }
@@ -102,12 +103,21 @@ func readSelfCgroup() (string, error) {
 	return ParseSelfCgroup(string(raw)), nil
 }
 
+// cgroupRoot is the unified cgroup hierarchy (tests replace it).
+var cgroupRoot = "/sys/fs/cgroup"
+
+// cgroupExists reports whether a cgroup path exists under the hierarchy.
+func cgroupExists(path string) bool {
+	fi, err := os.Lstat(filepath.Join(cgroupRoot, filepath.Clean("/"+path)))
+	return err == nil && fi.IsDir()
+}
+
 // ProductionHelper is the helper as the units run it.
 func ProductionHelper(log io.Writer) Helper {
 	return Helper{
 		Plan: PlanFor, MountRoot: sitesandbox.MountRoot, RootUID: 0, Mounter: KernelMounter{},
 		LookupUser: lookupAccount, UnitInfo: readUnitInfo, SelfCgroup: readSelfCgroup, ControlGroup: readControlGroup,
-		NFT: runNFT, Log: log,
+		CgroupExists: cgroupExists, NFT: runNFT, Log: log,
 	}
 }
 

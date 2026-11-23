@@ -228,7 +228,11 @@ cgroup'unu (`'{ "<dilim>/<birim>" }'`) kümeye ekler; `ExecStopPost=-+… egress
 sonra çıkarır. nft boş bir ortamla çalışır. Yardımcı cgroup'u şu sırayla bulur: birimin içinde
 çalıştığı için önce kendi `/proc/self/cgroup` satırı (tam olarak `/system.slice/<birim>` ya da
 `/celiksite_<id>.slice/<birim>` ise); değilse systemd'nin söylediği `ControlGroup`; systemd'ye
-sorulamazsa eskisi gibi sistem dilimi. Birim şu durumlarda başlamaz: nft tabloyu yükleyemezse,
+sorulamazsa ya da bir yer söylemezse eskisi gibi sistem dilimi. Kendi cgroup satırı
+kullanılmadığında birimin günlüğüne tek satır yazılır: nedeni, hangi adımın karar verdiği ve alınan
+yer. Böylece posta engeli yardımcısı systemd'nin yanıt vermesine bağlı kalmaz; bağlama biriminin
+önceki sürümlerden beri aynı kalan kendi okuması ise systemd yanıt vermediği sürece başlatmayı yine
+durdurur. Birim şu durumlarda başlamaz: nft tabloyu yükleyemezse,
 systemd başka bir yer söylerse (örneğin sahibin bir ek ayar dosyası birimi başka bir dilime
 taşıdıysa) ya da birimin yeri belirlenemezse. nft var olmayan bir cgroup yolunu kabul etmediği
 için, başka yerde çalışan bir birime sistem diliminin öğesi verilemez; engel kapalı kalacağına
