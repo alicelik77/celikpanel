@@ -38,6 +38,13 @@ export const enMonitoringScreens = {
     'err.POSTGRESQL_PUBLIC_FAILED.connection': 'The connection to the database server was lost. Nothing was changed. Check that PostgreSQL runs, then try again.',
     'err.POSTGRESQL_PUBLIC_FAILED.rights': 'The database server did not allow it: a right was missing. Nothing was changed.',
     'err.POSTGRESQL_PUBLIC_FAILED.missing': 'Something it names does not exist on the database server (a user or a role). Nothing was changed.',
+    // alpha.145 (alpha.144 lab O2): the window's title follows the outcome.
+    'pgpub.end.closed': '{name} is closed to other accounts',
+    'pgpub.end.notClosed': '{name} was not closed to other accounts',
+    'pgpub.end.unknown': 'Whether {name} was closed to other accounts is not known',
+    'pgpub.undo.end.opened': '{name} is open to every account again',
+    'pgpub.undo.end.notOpened': '{name} was not opened again',
+    'pgpub.undo.end.unknown': 'Whether {name} was opened again is not known',
     'pgpub.step.notDone': 'Not done — nothing was changed',
     'pgpub.step.unknown': 'Result not confirmed yet — not sent again',
     'pgpub.why.server.in_use': 'the database was in use and the database server did not grant the lock in time; nothing was changed: “{detail}”',
@@ -45,6 +52,12 @@ export const enMonitoringScreens = {
     'pgpub.why.server.connection': 'the connection to the database server was lost; nothing was changed: “{detail}”',
     'pgpub.why.server.rights': 'the database server did not allow it (a right was missing); nothing was changed: “{detail}”',
     'pgpub.why.server.missing': 'something it names does not exist on the database server; nothing was changed: “{detail}”',
+    // alpha.145 (security): webmail's local server in an earlier form (a variant of the address lines).
+    'pnow.webmail_local_server.title': 'Webmail’s local server still gives Roundcube’s files to every account of this server',
+    'pnow.webmail_local_server.kept': 'Its web server file was changed by hand, so CelikPanel kept it and put its new text beside it: {other}. Until the file has it, any account of this server can read the files of Roundcube’s folders through the local socket and run their PHP (not from the network). The server owner copies that text over the file and reloads nginx (sudo nginx -t, then sudo systemctl reload nginx). This line goes by itself once the file has its rules.',
+    'pnow.webmail_local_server.kept_no_text': 'Its web server file {other} was changed by hand, so CelikPanel kept it. Until it changes, any account of this server can read the files of Roundcube’s folders through the local socket and run their PHP (not from the network). The server owner writes CelikPanel’s rules into it: only /webmail/, /webmail/index.php and style sheets under /webmail/skins/ answer, everything else is not found; then sudo nginx -t and sudo systemctl reload nginx. This line goes by itself once the file has them.',
+    'pnow.webmail_local_server.refused': 'Its new text was put back because the web server’s configuration test failed in {other}. Until it is written, any account of this server can read the files of Roundcube’s folders through the local socket and run their PHP (not from the network). The server owner corrects what the test names, then restarts the Agent (sudo systemctl restart celikpanel-agent): CelikPanel writes the new text at that start and this line goes by itself.',
+    'pnow.webmail_local_server.refused_unnamed': 'CelikPanel could not rewrite its file. The reason is in the Agent’s journal (sudo journalctl -u celikpanel-agent, the line “local server kept in its earlier form”); for example the web server is not running (sudo systemctl status nginx). Until it is written, any account of this server can read the files of Roundcube’s folders through the local socket and run their PHP (not from the network). The server owner removes that cause, then restarts the Agent (sudo systemctl restart celikpanel-agent): CelikPanel writes the new text at that start and this line goes by itself.',
 } as const;
 
 export type MonitoringScreenKey = keyof typeof enMonitoringScreens;

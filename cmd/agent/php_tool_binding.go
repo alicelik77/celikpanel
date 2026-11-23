@@ -1462,7 +1462,8 @@ func managedWebmailConfig(content string) bool {
 	if listen == nil {
 		return false
 	}
-	return content == renderWebmailNginxConfig(listen[1], alias[1], fpm) || content == legacyRenderWebmailNginxConfig(listen[1], alias[1], fpm)
+	return content == renderWebmailNginxConfig(listen[1], alias[1], fpm) || content == alpha144RenderWebmailNginxConfig(listen[1], alias[1], fpm) ||
+		content == legacyRenderWebmailNginxConfig(listen[1], alias[1], fpm)
 }
 
 // refuseOwnerEditedConfig returns errPHPToolConfigOwnerEdited when the file

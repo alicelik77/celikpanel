@@ -9384,3 +9384,44 @@ until the backup reports ready.
   lane; an alias that is a zone of its own still gets no DNS (no zone is
   created for it); the lab's not-checked items are listed in the release
   notes. **No P0 item is closed.**
+
+### Branch fix/a145-webmail-send (webmail's local door closed; webmail can send; the alpha.144 lab's two display findings; no schema change; constitution 1 and 3; invariants 2 and 4; D-022; D-024; D-025; 2026-11-23, candidate alpha.145)
+
+- **Webmail's local door (constitution 1).** The socket
+  `/run/celikpanel-webmail.sock` is 0666 (nginx makes it so): every account
+  of the server could read every file of Roundcube's `public_html` (plugins,
+  skins, `program/`) and run any `.php` there. It now answers a closed list
+  (`/webmail/`, `/webmail/index.php`, style sheets under `/webmail/skins/`,
+  CelikPanel's PHP check), which is all the Panel's readiness check and the
+  Agent's PHP-tool proof ask. Earlier forms are CelikPanel's own (exact
+  text) and rewritten once at the Agent's start before the RPC service
+  (`nginx -t`, one reload, the earlier file put back on failure, the start
+  goes on); an owner's file is kept with CelikPanel's text beside it and a
+  Problems-now line (the address kinds with no address); the text beside it
+  goes by name with webmail. The socket is not moved and its mode is not
+  changed.
+- **Webmail's configuration (invariant 4: a rewrite is a mutation).**
+  `config.inc.php` in CelikPanel's earlier text (exact equality, with or
+  without the address lines) is rewritten once at the Agent's start, owner
+  and mode set on the new file before the rename, `des_key` kept; a failed
+  write leaves the file as it was, is said as "rewrite failed" (the cause
+  and a restart, never a hand edit) and is tried again at the next start.
+  An owner's file is kept, CelikPanel's text beside it (0600), one
+  Problems-now line while it cannot send (read live; goes by itself).
+- **Alias DNS (invariant 2).** A zone's alias wait mark is cleared only
+  after a publication of the zone's current ledger completes under the
+  publication locks (the held republish, the follow-up after a pending
+  publication, or a fresh publication by the hourly round's step); a record
+  saved later keeps its mark.
+- **Rollback.** Going back to alpha.144 keeps webmail sending and the local
+  door closed; alpha.144 treats both new texts as owner-edited (webmail's
+  configure step, its PHP move and the address lines are refused until the
+  update is made again).
+- **Evidence.** `TestA145*` (agent and panel), `web/tests/a145-webmail-send-lab.test.mjs`;
+  the distribution configuration matrix renders the new local-door file and
+  checks it with nginx; an independent review ran it on a real nginx.
+- **Lab.** Open (the list is in PR #357).
+- **Open.** The Webmail card still offers Repair while webmail cannot send;
+  the "cannot send" reading skips an owner's own certificate options and
+  `/* */` comments; an owner's own block proxying to the socket gets only
+  the sign-in page and style sheets. **No P0 item is closed.**

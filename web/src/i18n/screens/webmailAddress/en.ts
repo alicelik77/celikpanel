@@ -143,6 +143,12 @@ export const enWebmailAddressScreens = {
     'pnow.webmail_address_refused.body': 'Its new text was put back because nginx’s configuration test failed in {other}. The server owner corrects that file; CelikPanel writes the new text again at its next start, and this line goes by itself.',
     'pnow.webmail_address_refused.body_unnamed': 'Its new text was put back because nginx’s configuration test failed or nginx could not be reloaded. The server owner runs sudo nginx -t to see why; CelikPanel writes the new text again at its next start, and this line goes by itself.',
     'pnow.webmail_address_refused.action': 'Open webmail',
+    // alpha.145: webmail's configuration still sends without encryption
+    'pnow.webmail_cannot_send.title': 'Webmail cannot send mail',
+    'pnow.webmail_cannot_send.body': 'Its configuration was changed by hand, so CelikPanel kept it. It does not hand mail to this server’s sending service with encryption and the certificate settings for 127.0.0.1, so the service refuses it. CelikPanel put its new text beside it: {other}. The server owner copies that text (or its two sending lines) into the file. This line goes by itself once the file has them.',
+    'pnow.webmail_cannot_send.body_no_text': 'Its configuration {other} does not hand mail to this server’s sending service with encryption and the certificate settings for 127.0.0.1, so the service refuses it. The server owner writes these two lines in it, exactly: $config[\'smtp_host\'] = \'tls://127.0.0.1:587\'; and $config[\'smtp_conn_options\'] = [\'127.0.0.1\' => [\'ssl\' => [\'verify_peer\' => false, \'verify_peer_name\' => false]]]; The connection never leaves the server. This line goes by itself once the file has them.',
+    'pnow.webmail_cannot_send.body_rewrite_failed': 'Its configuration {other} is still CelikPanel’s earlier text, and CelikPanel could not rewrite it when its Agent started. The reason is in the Agent’s journal (sudo journalctl -u celikpanel-agent, the line “configuration kept in its earlier form”). The server owner removes that cause (a read-only file system, an immutable flag, a full disk) and restarts the Agent (sudo systemctl restart celikpanel-agent); CelikPanel then rewrites the file by itself and this line goes. Do not edit the file by hand: CelikPanel would then keep it as yours and stop writing it.',
+    'pnow.webmail_cannot_send.action': 'Open webmail',
 } as const;
 
 export type WebmailAddressScreenKey = keyof typeof enWebmailAddressScreens;

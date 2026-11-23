@@ -442,24 +442,23 @@ func writeRoundcubeConfig(root, phpVer string) error {
 
 // renderRoundcubeConfig is CelikPanel's form of Roundcube's configuration
 // with its des_key (alpha.110: read back to recognise CelikPanel's form).
+// alpha.145: mail is sent with encryption (roundcubeSMTPSettings,
+// webmail_sending.go); the earlier text is legacyRenderRoundcubeConfig.
 func renderRoundcubeConfig(desKey string) string {
 	dbPath := filepath.Join(webmailBaseDir, "db", "roundcube.sqlite3")
 	return fmt.Sprintf(`<?php
 // Managed by CelikPanel. Roundcube installed from the official tarball (D-004:
-// one path on every Linux). SQLite store, localhost IMAP/SMTP.
+// one path on every Linux). SQLite store, IMAP and SMTP on this server.
 $config = [];
 $config['db_dsnw'] = 'sqlite:///%s?mode=0664';
 $config['imap_host'] = 'localhost:143';
-$config['smtp_host'] = 'localhost:587';
-$config['smtp_user'] = '%%u';
-$config['smtp_pass'] = '%%p';
-$config['support_url'] = '';
+%s$config['support_url'] = '';
 $config['des_key'] = '%s';
 $config['product_name'] = 'CelikPanel Webmail';
 $config['plugins'] = ['archive', 'zipdownload'];
 $config['skin'] = 'elastic';
 $config['enable_installer'] = false;
-`, dbPath, desKey)
+`, dbPath, roundcubeSMTPSettings, desKey)
 }
 
 // roundcubeAddressSettings are CelikPanel's lines for webmail on its own
@@ -477,9 +476,10 @@ var roundcubeDesKeyLine = regexp.MustCompile(`(?m)^\$config\['des_key'\] = '([0-
 // setRoundcubeAddressSettings adds (enabled) or removes CelikPanel's lines
 // for the address, only when the configuration is exactly CelikPanel's form
 // (with or without them): "applied", "unchanged" or "owner_edited". The
-// file's mode and owner are kept.
+// file's mode and owner are kept. alpha.145: CelikPanel's earlier text is
+// still its own and is written in the current form at the same time.
 func setRoundcubeAddressSettings(enabled bool) (string, error) {
-	path := filepath.Join(webmailBaseDir, "config", "config.inc.php")
+	path := roundcubeConfigPath()
 	snapshot, err := snapshotMailFile(path)
 	if err != nil {
 		return "", err
@@ -487,41 +487,43 @@ func setRoundcubeAddressSettings(enabled bool) (string, error) {
 	if !snapshot.exists {
 		return "", fmt.Errorf("%s is missing", path)
 	}
-	content := string(snapshot.content)
-	key := roundcubeDesKeyLine.FindStringSubmatch(content)
-	if key == nil {
+	form, managed := parseRoundcubeConfigForm(string(snapshot.content))
+	if !managed {
 		return "owner_edited", nil
 	}
-	base := renderRoundcubeConfig(key[1])
-	var next string
-	switch {
-	case content == base && enabled:
-		next = base + roundcubeAddressSettings
-	case content == base+roundcubeAddressSettings && !enabled:
-		next = base
-	case content == base || content == base+roundcubeAddressSettings:
-		if enabled {
-			return "applied", nil
-		}
-		return "unchanged", nil
-	default:
-		return "owner_edited", nil
-	}
-	if err := secureWriteConfig(path, []byte(next), snapshot.mode); err != nil {
-		return "", err
-	}
-	if err := secureSetMailFileMetadata(path, snapshot.mode, snapshot.uid, snapshot.gid); err != nil {
-		// PHP-FPM must still read it: the previous file comes back.
-		if restoreErr := restoreMailFile(snapshot); restoreErr != nil {
-			return "", errors.Join(err, restoreErr)
-		}
-		return "", err
-	}
+	state := "unchanged"
 	if enabled {
-		return "applied", nil
+		state = "applied"
 	}
-	return "unchanged", nil
+	if form.current && form.withAddress == enabled {
+		return state, nil
+	}
+	form.withAddress = enabled
+	if err := writeRoundcubeConfigKeeping(snapshot, form.render()); err != nil {
+		return "", err
+	}
+	return state, nil
 }
+
+// writeRoundcubeConfigKeeping writes next over the configuration a snapshot
+// read, with the file's mode and owner kept. alpha.145 (review of PR #357,
+// finding 4): the new file gets its final owner and mode BEFORE it is renamed
+// into place, in one step, so there is no moment in which PHP-FPM cannot read
+// webmail's configuration (a file the Agent creates is group celikpanel).
+// secureWriteConfig already gave the new file the replaced file's owner and
+// mode before the rename; the owner is now named explicitly from the
+// snapshot and the second change of owner after the rename is gone. A failed
+// write leaves the previous file as it was.
+func writeRoundcubeConfigKeeping(snapshot mailFileSnapshot, next string) error {
+	if snapshot.uid < 0 || snapshot.gid < 0 {
+		return fmt.Errorf("%s: its owner could not be read", snapshot.path)
+	}
+	return roundcubeConfigPublish(snapshot.path, []byte(next), snapshot.mode, uint32(snapshot.uid), uint32(snapshot.gid))
+}
+
+// roundcubeConfigPublish publishes Roundcube's configuration owned by
+// uid:gid (a test seam).
+var roundcubeConfigPublish = secureWriteConfigOwnedBy
 
 const roundcubePHPCapabilityProbe = "$missing=[];if(!function_exists('mb_internal_encoding')){$missing[]='mbstring';}if(!class_exists('DOMDocument')){$missing[]='dom';}if(!extension_loaded('intl')){$missing[]='intl';}if(!class_exists('PDO')||!in_array('sqlite',PDO::getAvailableDrivers(),true)){$missing[]='pdo_sqlite';}if(!class_exists('ZipArchive')){$missing[]='zip';}echo count($missing)===0?'ok':'missing:'.implode(',',$missing);"
 const pacmanRoundcubePHPConfigFile = "celikpanel-sqlite.ini"
@@ -805,6 +807,9 @@ func (a *Agent) RemoveRoundcube(req *WebmailMutationRequest, resp *RemoveRoundcu
 	}
 	defer finishStep()
 	result, err := retireRoundcubeTree(webmailBaseDir)
+	if err == nil {
+		removeWebmailLocalServerPending()
+	}
 	resp.Removed = result.Removed
 	resp.MutationApplied = result.MutationApplied
 	if err != nil {
@@ -999,7 +1004,10 @@ server {
 `, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket)
 }
 
-func renderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
+// alpha144RenderWebmailNginxConfig is the form alpha.104 to alpha.144 wrote
+// (with CelikPanel's PHP check), still accepted as CelikPanel's own: it gave
+// out every file of the Roundcube tree as it is and ran every .php in it.
+func alpha144RenderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
 	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
 # The panel reverse-proxies /webmail/ here; Roundcube's own login is the auth.
 server {
@@ -1022,6 +1030,59 @@ server {
 %s}
 `, webmailSocket, roundcubeRoot, roundcubeRoot, fpmSocket, phpToolCheckBlock(phpToolWebmail, fpmSocket))
 }
+
+// renderWebmailNginxConfig is webmail's local server on its Unix socket.
+// alpha.145 (security): nginx makes the socket 0666 under /run, so every
+// account of this server can connect to it. Until alpha.144 it gave out every
+// file of the Roundcube tree (with the linked plugins and skins folders:
+// dot-files, copies, settings) and ran every .php in it. Nothing reaches
+// webmail through it but CelikPanel itself: the Panel's readiness check
+// (GET /webmail/), and the Agent's proof (CelikPanel's PHP check, GET
+// /webmail/ and the style sheet that page names). It now answers exactly
+// those: /webmail/ (Roundcube's entry point, the only PHP), style sheets
+// under /webmail/skins/ and the PHP check; everything else is not found.
+// Webmail's own address (webmail_address.go) is how people use webmail.
+func renderWebmailNginxConfig(webmailSocket, roundcubeRoot, fpmSocket string) string {
+	return fmt.Sprintf(`# Managed by CelikPanel — Roundcube webmail, Unix socket only.
+# It answers only what CelikPanel asks: /webmail/, style sheets under
+# /webmail/skins/ and CelikPanel's PHP check; everything else is not found.
+server {
+    listen unix:%s;
+    server_name _;
+    client_max_body_size 25m;
+
+    location /webmail/ {
+        alias %s/;
+        return 404;
+    }
+
+    location = /webmail/ {
+        alias %s/;
+        index index.php;
+    }
+
+    # Roundcube's entry point is the only PHP that runs here.
+    location = /webmail/index.php {
+        alias %s/index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $request_filename;
+        fastcgi_pass unix:%s;
+    }
+
+    location ~ ^/webmail/(skins/(?:[\w-][\w.-]*/)+[\w-][\w.-]*\.css)$ {
+        alias %s/$1;
+    }
+
+    location / {
+        return 404;
+    }
+%s}
+`, webmailSocket, roundcubeRoot, roundcubeRoot, roundcubeRoot, fpmSocket, roundcubeRoot, phpToolCheckBlock(phpToolWebmail, fpmSocket))
+}
+
+// webmailLocalServerMarker is in every text of the current form: an owner
+// who took CelikPanel's text (and added to it) is not named.
+const webmailLocalServerMarker = "location = /webmail/index.php {"
 
 type ConfigureWebmailResponse = transport.ConfigureWebmailResponse
 
@@ -1086,6 +1147,9 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 			resp.Error = err.Error()
 			return
 		}
+		// alpha.145: CelikPanel's text beside an owner's local server file
+		// goes with webmail.
+		removeWebmailLocalServerPending()
 		resp.Configured = true
 		resp.Present = false
 		return
