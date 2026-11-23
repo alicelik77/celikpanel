@@ -43,8 +43,8 @@
     {
       "kind": "limits",
       "text": {
-        "en": "A longer change can stay “in progress” on the panel after it has finished on the server; after about five minutes, run sudo systemctl restart celikpanel-panel. Nothing is run again and nothing on the server is harmed.",
-        "tr": "Uzun süren bir değişiklik sunucuda bittikten sonra panelde “sürüyor” görünmeye devam edebilir; yaklaşık beş dakika sonra sudo systemctl restart celikpanel-panel komutunu çalıştırın. Hiçbir şey yeniden çalıştırılmaz ve sunucuda hiçbir şey zarar görmez."
+        "en": "A longer change can stay “in progress” on the panel after it has finished on the server; after about five minutes, run sudo systemctl restart celikpanel-panel. The panel then records what was really done: a webmail update is only read and not run again; an interrupted install is resumed and completed on the server.",
+        "tr": "Uzun süren bir değişiklik sunucuda bittikten sonra panelde “sürüyor” görünmeye devam edebilir; yaklaşık beş dakika sonra sudo systemctl restart celikpanel-panel komutunu çalıştırın. Panel o zaman gerçekte ne yapıldığını kaydeder: bir web posta güncellemesi yalnız okunur, yeniden çalıştırılmaz; yarıda kalmış bir kurulum sunucuda sürdürülür ve tamamlanır."
       },
       "case": "CP-2026-17",
       "source": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128"

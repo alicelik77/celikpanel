@@ -628,6 +628,7 @@ while IFS= read -r site_page; do
     -e "s|@@CP_RELEASE_DATE_EN@@|$release_date_en|g" \
     -e "s|@@CP_RELEASE_DATE_TR@@|$release_date_tr|g" \
     -e "s|@@CP_RELEASE_DATETIME@@|$published_at|g" \
+    -e "s|@@CP_RELEASE_DAY@@|$published_day|g" \
     -e "s|@@CP_RELEASE_COMMIT_SHORT@@|${commit:0:9}|g" \
     -e "s|@@CP_RELEASE_COMMIT@@|$commit|g" \
     -e "s|@@CP_RELEASE_SHA256@@|$sha256|g" \

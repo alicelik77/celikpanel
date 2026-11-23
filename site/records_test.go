@@ -44,7 +44,9 @@ var publishedOn = regexp.MustCompile("(?m)^> \\*\\*Published\\*\\* on ([0-9]{4}-
 
 // The changelog and the known problems: every line and every case names a
 // release-notes line that exists; a release's day is its notes' Published
-// day; every published release from alpha.141 on has its changelog file (a
+// day, and only the release being built (the version get.sh pins, its notes
+// not yet published) may leave it empty for the portal builder to fill; every
+// published release from alpha.141 on has its changelog file (a
 // release adds one when its publication is recorded); a fixed case names a
 // published release; a case carries no field about who reported it.
 func TestProblemsAndChangelog(t *testing.T) {
@@ -52,6 +54,15 @@ func TestProblemsAndChangelog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	bootstrap, err := os.ReadFile(filepath.Join(portal, "get.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin := pinnedVersion.FindSubmatch(bootstrap)
+	if pin == nil {
+		t.Fatal("download-portal/get.sh pins no release version")
+	}
+	pinned := string(pin[1])
 	have := map[string]changelogRelease{}
 	for _, release := range releases {
 		have[release.Version] = release
@@ -61,7 +72,14 @@ func TestProblemsAndChangelog(t *testing.T) {
 			continue
 		}
 		match := publishedOn.FindSubmatch(notes)
-		if match == nil || string(match[1]) != release.Published {
+		switch {
+		case release.Published == "" && match != nil:
+			t.Errorf("%s: its notes record the publication on %s; give the changelog file that day", release.Version, match[1])
+		case release.Published == "" && release.Version != pinned:
+			// Only the release being built (the one download-portal/get.sh
+			// pins) may have a block before it is published.
+			t.Errorf("%s has no published day and is not the release being built (%s)", release.Version, pinned)
+		case release.Published != "" && (match == nil || string(match[1]) != release.Published):
 			t.Errorf("%s: published %s, but its notes record no such publication", release.Version, release.Published)
 		}
 		if !sourceExists(t, release.Source) || !strings.HasPrefix(release.Source, release.Notes+":") {

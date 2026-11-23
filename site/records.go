@@ -118,7 +118,9 @@ func loadRecords() ([]changelogRelease, []problemCase, error) {
 		if alphaNumber(release.Version) < 0 || name != "changelog/"+release.Version+".json" {
 			return nil, nil, fmt.Errorf("%s: the file must be named after its version, v0.1.0-alpha.N", name)
 		}
-		if !isoDay.MatchString(release.Published) || !sourcePattern.MatchString(release.Source) ||
+		// A release being built has no published day yet: its block shows the
+		// release's own day, which the portal builder fills (phDay).
+		if (release.Published != "" && !isoDay.MatchString(release.Published)) || !sourcePattern.MatchString(release.Source) ||
 			release.Notes != "docs/RELEASE-NOTES-"+release.Version+".md" || len(release.Lines) == 0 {
 			return nil, nil, fmt.Errorf("%s: needs its published day, its notes file and the line that records the publication", name)
 		}
@@ -232,8 +234,12 @@ func (r *renderer) recordFuncs(v view, lookup func(string) (string, error)) map[
 						lines = append(lines, entry)
 					}
 				}
+				published := release.Published
+				if published == "" {
+					published = phDay
+				}
 				out = append(out, map[string]any{
-					"Version": release.Version, "Published": release.Published,
+					"Version": release.Version, "Published": published,
 					"Notes": notes(release.Version), "Lines": lines,
 				})
 			}

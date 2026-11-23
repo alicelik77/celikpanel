@@ -253,13 +253,14 @@
         "tr": "Uzun süren bir değişiklik (web posta güncellemesi, bileşen ya da posta profili kurulumu), panel ajanıyla bağlantısını bir an kaybedince sunucuda bitmiş olsa da “sürüyor” görünmeye devam edebilir; o sırada başka sunucu değişiklikleri reddedilir."
       },
       "meanwhile": {
-        "en": "If a change has shown as in progress for more than about five minutes, run sudo systemctl restart celikpanel-panel on the server: it restarts only the panel’s web process, which then records what was really done. Nothing is run again, and nothing on the server is harmed.",
-        "tr": "Bir değişiklik yaklaşık beş dakikadan uzun süredir sürüyor görünüyorsa sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın: yalnız panelin web işlemini yeniden başlatır, o da gerçekte ne yapıldığını kaydeder. Hiçbir şey yeniden çalıştırılmaz ve sunucuda hiçbir şey zarar görmez."
+        "en": "If a change has shown as in progress for more than about five minutes, run sudo systemctl restart celikpanel-panel on the server. It restarts only the panel’s web process, which then records what was really done: a webmail update is only read and not run again; an interrupted install is resumed and completed on the server. Sites, mail and webmail keep working meanwhile.",
+        "tr": "Bir değişiklik yaklaşık beş dakikadan uzun süredir sürüyor görünüyorsa sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın. Yalnız panelin web işlemini yeniden başlatır; o da gerçekte ne yapıldığını kaydeder: bir web posta güncellemesi yalnız okunur, yeniden çalıştırılmaz; yarıda kalmış bir kurulum sunucuda sürdürülür ve tamamlanır. Bu sırada siteler, posta ve web posta çalışmaya devam eder."
       },
       "sources": [
         "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128",
         "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:135",
         "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:137",
+        "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:139",
         "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:141"
       ]
     }

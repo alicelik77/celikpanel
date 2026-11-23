@@ -25,6 +25,7 @@ const (
 	phDateEN      = "@@CP_RELEASE_DATE_EN@@"
 	phDateTR      = "@@CP_RELEASE_DATE_TR@@"
 	phDateTime    = "@@CP_RELEASE_DATETIME@@"
+	phDay         = "@@CP_RELEASE_DAY@@"
 	phCommit      = "@@CP_RELEASE_COMMIT@@"
 	phCommitShort = "@@CP_RELEASE_COMMIT_SHORT@@"
 	phSHA256      = "@@CP_RELEASE_SHA256@@"
@@ -86,6 +87,7 @@ func fillRelease(page []byte, r release) []byte {
 		phDateEN, dateEN(r.Published),
 		phDateTR, dateTR(r.Published),
 		phDateTime, r.Published.UTC().Format(time.RFC3339),
+		phDay, r.Published.UTC().Format("2006-01-02"),
 		phCommit, r.Commit,
 		phCommitShort, r.CommitShort,
 		phSHA256, r.SHA256,
@@ -165,7 +167,7 @@ func placeholdersIn(page []byte) []string {
 }
 
 var knownPlaceholders = map[string]bool{
-	phVersion: true, phDateEN: true, phDateTR: true, phDateTime: true, phCommit: true,
+	phVersion: true, phDateEN: true, phDateTR: true, phDateTime: true, phDay: true, phCommit: true,
 	phCommitShort: true, phSHA256: true, phArchive: true, phArchiveURL: true,
 	phChecksumURL: true, phManifestURL: true, phSigURL: true,
 }
