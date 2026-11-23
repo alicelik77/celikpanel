@@ -11541,6 +11541,12 @@ steps and webmail addresses.
   stop comes 5 seconds before the Agent's 20-second lease can end. The
   rule governs every standalone mutation too (firewall, DNS, mail TLS,
   certificates, VPN, webmail). The Agent's lease rules are unchanged.
+- At startup a run again the host keeps refusing as busy (two minutes)
+  ends the row, since there is no further step: "could not be run again
+  because the server stayed busy; what its first run did is not known"
+  (for a webmail update or address: "its result could not be read"); who
+  acts: the administrator checks the component on its page and starts the
+  change again if needed; other changes are admitted again.
 - A setup install keeps its accepted point updates in its row, so a run
   again is asked as the review accepted it.
 - The outcome sentences of an interrupted webmail update or address and the

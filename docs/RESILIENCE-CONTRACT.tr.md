@@ -8662,8 +8662,11 @@ bağlantıyı tutar.
   da adresi yalnız okunur. Kapatmanın yeniden deneme döngüsü yalnız ilk
   ayrıcalıklı eşitlemeden önce çıkan hataları yeniden sorar. Sunucu meşgul
   olduğu için Agent'ın reddettiği yeniden çalıştırma iki dakika boyunca
-  yeniden istenir, sonra kapatılamamış bırakılır (başlangıçta da); asla
-  "başlatılamadı" diye kaydedilmez.
+  yeniden istenir, sonra çalışan panelde kapatılamamış bırakılır;
+  başka adımı olmayan başlangıçta satır doğru olanla biter ("sunucu meşgul
+  kaldığı için yeniden çalıştırılamadı; ilk çalışmasının ne yaptığı
+  bilinmiyor"; yönetici bileşeni denetler) ve başka değişiklikler yeniden
+  kabul edilir. Asla "başlatılamadı" denmez.
 - **Kalp atışı.** İşçi Agent'ın kesin yanıtıyla ya da Agent'ın yanıtladığı
   son yenilemeden (gönderildiği andan sayılarak) 15 saniye sonra durdurulur;
   her yenileme kalan süreyle sınırlıdır: Agent'ın 20 saniyelik kirası

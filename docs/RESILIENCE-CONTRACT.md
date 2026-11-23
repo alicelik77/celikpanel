@@ -9452,8 +9452,11 @@ until the backup reports ready.
   startup design already assumed it). A webmail update or address is only
   read. The settle's retry loop asks again only errors raised before the
   first privileged sync. A run again the Agent refuses because the host is
-  busy is asked again for two minutes, then left unsettled (at startup
-  too), never recorded as "not started".
+  busy is asked again for two minutes, then left unsettled in a running
+  panel; at startup, where there is no further step, the row ends with
+  what is true ("could not be run again because the server stayed busy;
+  what its first run did is not known"; the administrator checks the
+  component) and other changes are admitted again. Never "not started".
 - **Heartbeat.** The worker is stopped on the Agent's definite answer, or
   15 s after the last renewal the Agent answered (counted from when it was
   sent), every renewal bounded by the time that remains: 5 s before the

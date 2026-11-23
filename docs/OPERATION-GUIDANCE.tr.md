@@ -11409,6 +11409,13 @@ adresleri de aynı yoldan geçiyordu.
   Agent'ın 20 saniyelik kirası bitebilmeden 5 saniye önce gelir. Kural her
   tek başına değişikliği de yönetir (güvenlik duvarı, DNS, posta TLS,
   sertifikalar, VPN, web postası). Agent'ın kira kuralları değişmedi.
+- Başlangıçta, sunucunun meşgul diye (iki dakika) reddetmeyi sürdürdüğü bir
+  yeniden çalıştırma satırı bitirir, çünkü başka adım yoktur: "sunucu meşgul
+  kaldığı için yeniden çalıştırılamadı; ilk çalışmasının ne yaptığı
+  bilinmiyor" (web postası güncellemesi ya da adresi için: "sonucu
+  okunamadı"); kim yapar: yönetici bileşeni kendi sayfasında denetler,
+  gerekirse değişikliği yeniden başlatır; başka değişiklikler yeniden kabul
+  edilir.
 - Bir kurulum adımı kabul edilen nokta güncellemelerini satırında tutar; bu
   yüzden yeniden çalıştırma, incelemenin kabul ettiği gibi istenir.
 - Yarıda kalan web postası güncellemesinin ya da adresinin sonuç cümleleri
