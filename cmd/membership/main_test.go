@@ -176,6 +176,46 @@ func TestCGIIgnoresTheCommandLineAndRefusesAnUnpinnedKey(t *testing.T) {
 	}
 }
 
+// Review finding 1: the private directory is named explicitly and a missing database
+// is never created: CGI answers 503 (panels keep their receipts), serve refuses to
+// start.
+func TestNoDatabaseIsNeverCreated(t *testing.T) {
+	f := newFixture(t, "https://account.example")
+	testKey := "CELIKPANEL_MEMBERSHIP_TEST_SIGNING_PUBLIC_KEY=" + hex.EncodeToString(f.public)
+	if err := os.Remove(filepath.Join(f.dir, "members.sqlite")); err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"-wal", "-shm"} {
+		_ = os.Remove(filepath.Join(f.dir, "members.sqlite"+suffix))
+	}
+	body := []byte(`{"key":"` + f.key + `","server_id":"` + strings.Repeat("a", 64) + `","hostname":"bound.example.com"}`)
+	_, out, _ := run(t, append(cgiEnv(f, http.MethodPost, "action=activate", "8.8.8.8", body), testKey), "", body)
+	if status, answer := parseCGI(t, out); status != 503 || answer != `{"error":"service_unavailable"}` {
+		t.Fatalf("CGI without the database: %d %s", status, answer)
+	}
+	env := []string{"CELIKPANEL_MEMBERSHIP_PRIVATE=" + f.dir}
+	if code, _, stderr := run(t, env, "serve -listen 127.0.0.1:0 -test-signing-public-key "+hex.EncodeToString(f.public), nil); code != 1 ||
+		!strings.Contains(stderr, "nothing was created") {
+		t.Fatalf("serve without the database: %d %s", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(f.dir, "members.sqlite")); !os.IsNotExist(err) {
+		t.Fatal("a database file was created")
+	}
+	// No private directory named: CGI answers 503, the other commands refuse; nothing
+	// is guessed from the program's own location.
+	noDir := cgiEnv(f, http.MethodPost, "action=activate", "8.8.8.8", body)[1:]
+	_, out, _ = run(t, append(noDir, testKey), "", body)
+	if status, answer := parseCGI(t, out); status != 503 || answer != `{"error":"service_unavailable"}` {
+		t.Fatalf("CGI without a private directory: %d %s", status, answer)
+	}
+	for _, args := range []string{"public-key", "check-db", "serve -listen 127.0.0.1:0"} {
+		if code, _, stderr := run(t, []string{"CELIKPANEL_MEMBERSHIP_PRIVATE=relative/dir"}, args, nil); code == 0 ||
+			!strings.Contains(stderr, "CELIKPANEL_MEMBERSHIP_PRIVATE") {
+			t.Fatalf("%s with a relative directory: %d %s", args, code, stderr)
+		}
+	}
+}
+
 func TestServeRefusesBeforeListening(t *testing.T) {
 	f := newFixture(t, "http://127.0.0.1:8379")
 	env := []string{"CELIKPANEL_MEMBERSHIP_PRIVATE=" + f.dir}

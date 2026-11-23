@@ -37,7 +37,7 @@ type DBReport struct {
 // checked at (the panel's Verify).
 func CheckDB(path string, signingKey ed25519.PrivateKey, now int64) (DBReport, error) {
 	var r DBReport
-	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(5000)")
+	db, err := sql.Open("sqlite", fileURI(path)+"?mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return r, err
 	}
@@ -133,6 +133,10 @@ func CheckDB(path string, signingKey ed25519.PrivateKey, now int64) (DBReport, e
 			continue
 		}
 		r.ReceiptsVerified++
+	}
+	if r.Live == 0 {
+		// An empty or stale copy answers "invalid" to every panel; never call it fine.
+		problems["no live licence in this file: is it the live database?"]++
 	}
 	for reason, n := range problems {
 		r.Problems = append(r.Problems, fmt.Sprintf("%d × %s", n, reason))

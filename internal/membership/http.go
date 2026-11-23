@@ -153,6 +153,9 @@ func (x *exchange) finishSession() {
 }
 
 func (x *exchange) run(get phpVars, action string, arrayAction bool) error {
+	if x.h.Private == "" || !filepath.IsAbs(x.h.Private) {
+		return ErrNoDatabase // never a folder relative to wherever the program runs
+	}
 	config, err := LoadConfig(x.h.Private)
 	if err != nil {
 		return err
@@ -160,7 +163,8 @@ func (x *exchange) run(get phpVars, action string, arrayAction bool) error {
 	if err := CheckSigningKey(config.SigningKey, x.h.AllowTestKey); err != nil {
 		return err
 	}
-	service, err := Open(filepath.Join(x.h.Private, "members.sqlite"), config.SigningKey, x.h.sender(config), x.h.ServiceClock)
+	// Never Open: a missing database must answer 503, not become an empty one.
+	service, err := OpenExisting(filepath.Join(x.h.Private, "members.sqlite"), config.SigningKey, x.h.sender(config), x.h.ServiceClock)
 	if err != nil {
 		return err
 	}

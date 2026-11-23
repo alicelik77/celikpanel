@@ -13,8 +13,10 @@
 //	                        licence be served with the configured key?
 //	membership public-key   prints license_public_key=<hex> like init.php
 //
-// The private directory is $CELIKPANEL_MEMBERSHIP_PRIVATE, or <three folders above
-// the executable>/membership-private as http.php computes it for a staged release.
+// The private directory is $CELIKPANEL_MEMBERSHIP_PRIVATE (an absolute path), always
+// named explicitly; the program never guesses it from where it is installed. The
+// service opens members.sqlite there only if it already exists with its licences
+// table; otherwise every request is answered 503 and nothing is created.
 //
 // The service refuses to start with a signing key whose public half is not the
 // pinned production key (internal/licensing.PublicKeyHex). Only a test names a
@@ -68,15 +70,14 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "usage: membership cgi | serve [-listen 127.0.0.1:8379] [-test-signing-public-key HEX] | check-db [-test-signing-public-key HEX] | public-key [-test-signing-public-key HEX]")
 }
 
+// privateDir is named explicitly, never derived from where the program sits: a guess
+// that pointed at the wrong folder would find no database (503) at best.
 func privateDir() (string, error) {
-	if dir := os.Getenv("CELIKPANEL_MEMBERSHIP_PRIVATE"); dir != "" {
-		return dir, nil
+	dir := os.Getenv("CELIKPANEL_MEMBERSHIP_PRIVATE")
+	if dir == "" || !filepath.IsAbs(dir) {
+		return "", errors.New("set CELIKPANEL_MEMBERSHIP_PRIVATE to the absolute path of the private directory")
 	}
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(exe)))), "membership-private"), nil
+	return dir, nil
 }
 
 func parseTestKey(value string) (ed25519.PublicKey, error) {
@@ -119,8 +120,9 @@ func runCGI() int {
 	}
 	dir, err := privateDir()
 	if err != nil {
-		logLine("CelikPanel membership: no private directory")
-		return 1
+		// The handler answers 503 for an empty directory: panels keep their receipts.
+		logLine("CelikPanel membership: CELIKPANEL_MEMBERSHIP_PRIVATE is not set to an absolute path")
+		dir = ""
 	}
 	handler := &membership.Handler{
 		Private:      dir,
@@ -163,11 +165,17 @@ func runServe(args []string) int {
 		logLine("membership serve: listen only on a loopback address such as 127.0.0.1:8379")
 		return 2
 	}
-	dir, _, err := loadChecked(testKey)
+	dir, config, err := loadChecked(testKey)
 	if err != nil {
 		logLine("membership serve: " + err.Error())
 		return 1
 	}
+	probe, err := membership.OpenExisting(filepath.Join(dir, "members.sqlite"), config.SigningKey, nil, nil)
+	if err != nil {
+		logLine("membership serve: " + err.Error() + " (nothing was created)")
+		return 1
+	}
+	probe.Close()
 	handler := &membership.Handler{Private: dir, AllowTestKey: testKey, RemoteAddr: membership.PeerAddress, Log: logLine}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -228,7 +236,7 @@ func runPublicKey(args []string) int {
 	}
 	dir, err := privateDir()
 	if err != nil {
-		logLine("membership public-key: no private directory")
+		logLine("membership public-key: " + err.Error())
 		return 1
 	}
 	config, err := membership.LoadConfig(dir)

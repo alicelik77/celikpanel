@@ -25,8 +25,25 @@ import (
 )
 
 // writeFixture prepares a private directory like portal-membership/tests/prepare.php:
-// a throwaway signing key, the loopback origin and the test mail folder.
+// a throwaway signing key, the loopback origin and the test mail folder, and the
+// empty database an initialisation makes (the service itself never creates it).
 func writeFixture(t testing.TB, dir, origin string) ed25519.PublicKey {
+	t.Helper()
+	public := writeConfigOnly(t, dir, origin)
+	config, err := LoadConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := Open(filepath.Join(dir, "members.sqlite"), config.SigningKey, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	return public
+}
+
+// writeConfigOnly is writeFixture without the database.
+func writeConfigOnly(t testing.TB, dir, origin string) ed25519.PublicKey {
 	t.Helper()
 	public, secret, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -210,7 +227,7 @@ func TestUnpinnedKeyIsRefused(t *testing.T) {
 	dir := t.TempDir()
 	server := httptest.NewServer(&Handler{Private: dir, RemoteAddr: PeerAddress})
 	defer server.Close()
-	writeFixture(t, dir, server.URL) // a throwaway key nobody named
+	writeConfigOnly(t, dir, server.URL) // a throwaway key nobody named
 	for _, action := range []string{"activate", "home"} {
 		response, err := http.Post(server.URL+"/account/?action="+action, "application/json", strings.NewReader(`{}`))
 		if err != nil {

@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -93,28 +94,70 @@ var schema = []string{
 	"CREATE TABLE IF NOT EXISTS rate_limits (\n bucket TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL\n)",
 }
 
+// fileURI is the database address. SQLite reads it as a URI, so "%", "?" and "#"
+// in the path are escaped; anything else stands as it is.
+func fileURI(path string) string {
+	return "file:" + strings.NewReplacer("%", "%25", "?", "%3f", "#", "%23").Replace(path)
+}
+
 // dsn opens the file the way PHP's PDO connection is set up (Service.php:26):
 // foreign keys on, 5 s busy timeout, WAL, synchronous FULL; every transaction
-// starts with BEGIN IMMEDIATE like Service::atomic().
-func dsn(path string) string {
-	return "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)" +
+// starts with BEGIN IMMEDIATE like Service::atomic(). mode=rw opens an existing
+// file only; rwc may create it.
+func dsn(path, mode string) string {
+	return fileURI(path) + "?mode=" + mode + "&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)" +
 		"&_pragma=synchronous(FULL)&_txlock=immediate"
 }
 
-// Open is `new Service($database, $signingKey, $send, $clock)`: it creates missing
-// tables and applies the same additive migration. clock nil means the wall clock.
+// ErrNoDatabase: the file is missing, or holds no licences table. The service
+// answers 503 (panels keep their receipts and retry) instead of making an empty
+// database whose answers would reject every installed panel.
+var ErrNoDatabase = errors.New("membership: the members database is missing or has no licences table")
+
+// OpenExisting is the service's own way in (cgi, serve): the file and its licences
+// table must already exist; nothing is created when they do not. A file the PHP
+// service made is migrated exactly as PHP would (additive columns only).
+func OpenExisting(path string, signingKey []byte, send Sender, clock func() int64) (*Service, error) {
+	if len(signingKey) != ed25519.PrivateKeySize {
+		return nil, errors.New("invalid license signing key")
+	}
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+		return nil, ErrNoDatabase
+	}
+	db, err := sql.Open("sqlite", dsn(path, "rw"))
+	if err != nil {
+		return nil, ErrNoDatabase
+	}
+	db.SetMaxOpenConns(1)
+	var tables int
+	if err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='licenses'").Scan(&tables); err != nil || tables != 1 {
+		db.Close()
+		return nil, ErrNoDatabase
+	}
+	return finishOpen(db, signingKey, send, clock)
+}
+
+// Open is `new Service($database, $signingKey, $send, $clock)`: it creates the file
+// and missing tables and applies the same additive migration. Tests and an
+// explicit initialisation use it; the service itself uses OpenExisting. clock nil
+// means the wall clock.
 func Open(path string, signingKey []byte, send Sender, clock func() int64) (*Service, error) {
 	if len(signingKey) != ed25519.PrivateKeySize {
 		return nil, errors.New("invalid license signing key")
 	}
-	if clock == nil {
-		clock = func() int64 { return time.Now().Unix() }
-	}
-	db, err := sql.Open("sqlite", dsn(path))
+	db, err := sql.Open("sqlite", dsn(path, "rwc"))
 	if err != nil {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
+	return finishOpen(db, signingKey, send, clock)
+}
+
+func finishOpen(db *sql.DB, signingKey []byte, send Sender, clock func() int64) (*Service, error) {
+	if clock == nil {
+		clock = func() int64 { return time.Now().Unix() }
+	}
 	s := &Service{db: db, signingKey: ed25519.PrivateKey(append([]byte(nil), signingKey...)), send: send, clock: clock}
 	if err := s.migrate(); err != nil {
 		db.Close()
