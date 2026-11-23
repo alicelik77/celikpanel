@@ -29,12 +29,31 @@ const (
 	argonKeyLen  = 32
 )
 
+// passwordSlots bounds the password work running at once (review of #361, 5): each
+// Argon2id costs 64 MiB, and the loopback server has no process limit in front of it
+// the way CGI has. A burst waits for a slot instead of exhausting memory; every check
+// still costs the same work, so an unknown address stays indistinguishable.
+var passwordSlots = make(chan struct{}, 4)
+
+// passwordWorkHook lets a test observe the work inside a slot.
+var passwordWorkHook func()
+
+func withPasswordSlot(work func()) {
+	passwordSlots <- struct{}{}
+	defer func() { <-passwordSlots }()
+	if passwordWorkHook != nil {
+		passwordWorkHook()
+	}
+	work()
+}
+
 func hashPassword(password string) (string, error) {
 	salt := make([]byte, argonSaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	key := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	var key []byte
+	withPasswordSlot(func() { key = argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen) })
 	return "$argon2id$v=19$m=" + strconv.Itoa(argonMemory) + ",t=" + strconv.Itoa(argonTime) + ",p=" +
 		strconv.Itoa(argonThreads) + "$" + base64.RawStdEncoding.EncodeToString(salt) + "$" +
 		base64.RawStdEncoding.EncodeToString(key), nil
@@ -56,7 +75,9 @@ func verifyPassword(password, hash string) bool {
 		if len(p) > 72 {
 			p = p[:72] // crypt_blowfish reads at most 72 bytes
 		}
-		return bcrypt.CompareHashAndPassword([]byte(hash), p) == nil
+		ok := false
+		withPasswordSlot(func() { ok = bcrypt.CompareHashAndPassword([]byte(hash), p) == nil })
+		return ok
 	}
 	return false
 }
@@ -97,10 +118,12 @@ func verifyArgon2(password, hash string) bool {
 		return false
 	}
 	var got []byte
-	if parts[1] == "argon2id" {
-		got = argon2.IDKey([]byte(password), salt, uint32(t), uint32(m), uint8(p), uint32(len(want)))
-	} else {
-		got = argon2.Key([]byte(password), salt, uint32(t), uint32(m), uint8(p), uint32(len(want)))
-	}
+	withPasswordSlot(func() {
+		if parts[1] == "argon2id" {
+			got = argon2.IDKey([]byte(password), salt, uint32(t), uint32(m), uint8(p), uint32(len(want)))
+		} else {
+			got = argon2.Key([]byte(password), salt, uint32(t), uint32(m), uint8(p), uint32(len(want)))
+		}
+	})
 	return subtle.ConstantTimeCompare(got, want) == 1
 }

@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -41,6 +42,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -51,7 +53,15 @@ func phpCommand(t *testing.T) []string {
 	t.Helper()
 	php := os.Getenv("CELIKPANEL_MEMBERSHIP_PHP")
 	if php == "" {
+		// The CI job sets CELIKPANEL_MEMBERSHIP_REQUIRE_PHP=1: there a comparison test that
+		// would skip fails instead, whatever its name (review of #361, 10).
+		if os.Getenv("CELIKPANEL_MEMBERSHIP_REQUIRE_PHP") == "1" {
+			t.Fatal("the PHP comparison is required here but CELIKPANEL_MEMBERSHIP_PHP is not set")
+		}
 		t.Skip("set CELIKPANEL_MEMBERSHIP_PHP=php (PHP 8.3 with pdo_sqlite and sodium) to compare with the PHP service")
+	}
+	if _, err := exec.LookPath(php); err != nil {
+		t.Fatalf("CELIKPANEL_MEMBERSHIP_PHP names %q, which is not runnable", php)
 	}
 	command := []string{php}
 	for _, extension := range []string{"pdo_sqlite", "sodium"} {
@@ -61,6 +71,21 @@ func phpCommand(t *testing.T) []string {
 		}
 	}
 	return command
+}
+
+// TestPHPRequiredMeansNoSkip runs a comparison test in a child process with PHP required
+// but not given: it must fail, not skip (the CI job requires PHP).
+func TestPHPRequiredMeansNoSkip(t *testing.T) {
+	if os.Getenv("CELIKPANEL_MEMBERSHIP_CHILD") == "1" {
+		t.Skip("inside the child")
+	}
+	command := exec.Command(os.Args[0], "-test.run=^TestPHPCompatCorpus$", "-test.v")
+	command.Env = []string{"CELIKPANEL_MEMBERSHIP_REQUIRE_PHP=1", "CELIKPANEL_MEMBERSHIP_CHILD=1", "PATH=" + os.Getenv("PATH"),
+		"HOME=" + os.Getenv("HOME"), "TMPDIR=" + os.TempDir()}
+	out, err := command.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "--- FAIL: TestPHPCompatCorpus") || strings.Contains(string(out), "--- SKIP: TestPHPCompatCorpus") {
+		t.Fatalf("a required comparison skipped or passed without PHP:\n%s", out)
+	}
 }
 
 func repositoryRoot(t *testing.T) string {
@@ -74,6 +99,19 @@ func repositoryRoot(t *testing.T) string {
 
 func runPHP(t *testing.T, php []string, script string, input any) []byte {
 	t.Helper()
+	command := phpScript(t, php, script, input)
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+	out, err := command.Output()
+	if err != nil || stderr.Len() > 0 {
+		t.Fatalf("php %s: %v\n%s\n%s", script, err, stderr.String(), out)
+	}
+	return out
+}
+
+// phpScript prepares (on the test's goroutine) a PHP run that may then be started anywhere.
+func phpScript(t *testing.T, php []string, script string, input any) *exec.Cmd {
+	t.Helper()
 	root := repositoryRoot(t)
 	inputPath := filepath.Join(t.TempDir(), "input.json")
 	raw, err := json.Marshal(input)
@@ -86,14 +124,7 @@ func runPHP(t *testing.T, php []string, script string, input any) []byte {
 	args := append(append([]string{}, php[1:]...), "-d", "display_errors=stderr",
 		filepath.Join(root, "internal", "membership", "testdata", "php", script),
 		filepath.Join(root, "portal-membership", "src", "Service.php"), inputPath)
-	command := exec.Command(php[0], args...)
-	var stderr bytes.Buffer
-	command.Stderr = &stderr
-	out, err := command.Output()
-	if err != nil || stderr.Len() > 0 {
-		t.Fatalf("php %s: %v\n%s\n%s", script, err, stderr.String(), out)
-	}
-	return out
+	return exec.Command(php[0], args...)
 }
 
 // ---------------------------------------------------------------------------
@@ -867,9 +898,12 @@ type pageClient struct {
 	body   string
 }
 
-func newPageClient(name, base string) *pageClient {
+// newPageClient keeps cookies but never follows a redirect by itself: the 303 and its
+// Location are compared, then followed as a step of their own.
+func newPageClient(name, base string, transport http.RoundTripper) *pageClient {
 	jar, _ := cookiejar.New(nil)
-	return &pageClient{name: name, base: base, client: &http.Client{Jar: jar, Timeout: 30 * time.Second}}
+	return &pageClient{name: name, base: base, client: &http.Client{Jar: jar, Timeout: 30 * time.Second, Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 }
 
 var csrfValue = regexp.MustCompile(`name="csrf" value="[a-f0-9]{64}"`)
@@ -887,12 +921,70 @@ type pageStep struct {
 	form                               url.Values
 	raw                                string
 	keepCSRF                           bool // send the form's csrf as given
+	// expect must be in both answers (after a redirect is followed), so a failure that both
+	// sides share cannot pass; articles is the number of licences the page must list (-1: any).
+	expect   string
+	articles int
 }
 
+// comparedHeaders are the headers a member's browser acts on.
+var comparedHeaders = []string{"Content-Type", "Cache-Control", "Expires", "Pragma", "Referrer-Policy",
+	"X-Content-Type-Options", "Content-Security-Policy", "Location", "Allow"}
+
 type pageAnswer struct {
-	status      int
-	contentType string
-	body        string
+	status  int
+	headers map[string]string
+	// cookie is the last Set-Cookie's name and attributes (the value is a session id and
+	// differs), "" when none was sent.
+	cookie string
+	body   string
+}
+
+// cookieShape is a Set-Cookie line without its value: the name and the lower-cased,
+// sorted attributes, as a browser reads them.
+func cookieShape(line string) string {
+	parts := strings.Split(line, ";")
+	name, _, _ := strings.Cut(strings.TrimSpace(parts[0]), "=")
+	var attributes []string
+	for _, part := range parts[1:] {
+		if part = strings.ToLower(strings.TrimSpace(part)); part != "" {
+			attributes = append(attributes, part)
+		}
+	}
+	sort.Strings(attributes)
+	return name + "; " + strings.Join(attributes, "; ")
+}
+
+func (c *pageClient) send(t *testing.T, method, target, contentType, origin string, body io.Reader) pageAnswer {
+	t.Helper()
+	request, err := http.NewRequest(method, target, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	}
+	if origin != "" {
+		request.Header.Set("Origin", origin)
+	}
+	response, err := c.client.Do(request)
+	if err != nil {
+		t.Fatalf("%s %s %s: %v", c.name, method, target, err)
+	}
+	defer response.Body.Close()
+	raw, _ := io.ReadAll(response.Body)
+	if strings.HasPrefix(response.Header.Get("Content-Type"), "text/html") {
+		c.body = string(raw)
+	}
+	answer := pageAnswer{status: response.StatusCode, headers: map[string]string{},
+		body: csrfValue.ReplaceAllString(string(raw), `name="csrf" value="<csrf>"`)}
+	for _, name := range comparedHeaders {
+		answer.headers[name] = strings.Join(response.Header.Values(name), " | ")
+	}
+	if cookies := response.Header.Values("Set-Cookie"); len(cookies) > 0 {
+		answer.cookie = cookieShape(cookies[len(cookies)-1])
+	}
+	return answer
 }
 
 func (c *pageClient) do(t *testing.T, step pageStep) pageAnswer {
@@ -912,59 +1004,61 @@ func (c *pageClient) do(t *testing.T, step pageStep) pageAnswer {
 	} else if step.raw != "" {
 		body = strings.NewReader(step.raw)
 	}
-	request, err := http.NewRequest(step.method, c.base+"/account/?"+step.query, body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if contentType != "" {
-		request.Header.Set("Content-Type", contentType)
-	}
-	if step.origin != "" {
-		request.Header.Set("Origin", step.origin)
-	}
-	response, err := c.client.Do(request)
-	if err != nil {
-		t.Fatalf("%s %s %s: %v", c.name, step.method, step.query, err)
-	}
-	defer response.Body.Close()
-	raw, _ := io.ReadAll(response.Body)
-	if strings.HasPrefix(response.Header.Get("Content-Type"), "text/html") {
-		c.body = string(raw)
-	}
-	return pageAnswer{status: response.StatusCode, contentType: response.Header.Get("Content-Type"),
-		body: csrfValue.ReplaceAllString(string(raw), `name="csrf" value="<csrf>"`)}
+	return c.send(t, step.method, c.base+"/account/?"+step.query, contentType, step.origin, body)
 }
 
-func TestPHPPagesAreByteEqual(t *testing.T) {
-	b := buildPHPBase(t)
-	root := repositoryRoot(t)
+func compareAnswers(t *testing.T, label string, p, g pageAnswer) {
+	t.Helper()
+	if p.status != g.status || p.body != g.body {
+		t.Errorf("%s: PHP %d, Go %d\n%s", label, p.status, g.status, firstDifference(p.body, g.body))
+	}
+	for _, name := range comparedHeaders {
+		if p.headers[name] != g.headers[name] {
+			t.Errorf("%s: header %s: PHP %q, Go %q", label, name, p.headers[name], g.headers[name])
+		}
+	}
+	if (p.cookie == "") != (g.cookie == "") || (p.cookie != "" && p.cookie != g.cookie) {
+		t.Errorf("%s: Set-Cookie: PHP %q, Go %q", label, p.cookie, g.cookie)
+	}
+}
 
-	phpPort := freePort(t)
-	phpOrigin := "http://127.0.0.1:" + strconv.Itoa(phpPort)
-	phpDir := filepath.Join(b.dir, "php-private")
-	writePrivate(t, phpDir, phpOrigin, b.secret, b.db)
-	args := append(append([]string{}, b.php[1:]...), "-S", "127.0.0.1:"+strconv.Itoa(phpPort), "-t", filepath.Join(root, "download-portal"),
+// startPHPServer runs php -S with portal-membership's own router on a private directory.
+func startPHPServer(t *testing.T, php []string, port int, private string) {
+	t.Helper()
+	root := repositoryRoot(t)
+	args := append(append([]string{}, php[1:]...), "-S", "127.0.0.1:"+strconv.Itoa(port), "-t", filepath.Join(root, "download-portal"),
 		filepath.Join(root, "portal-membership", "tests", "router.php"))
-	server := exec.Command(b.php[0], args...)
-	server.Env = append(os.Environ(), "CELIKPANEL_MEMBERSHIP_PRIVATE="+phpDir)
+	server := exec.Command(php[0], args...)
+	server.Env = append(os.Environ(), "CELIKPANEL_MEMBERSHIP_PRIVATE="+private)
 	var serverLog bytes.Buffer
 	server.Stdout, server.Stderr = &serverLog, &serverLog
 	if err := server.Start(); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = server.Process.Kill(); _ = server.Wait() }()
-	ready := false
-	for i := 0; i < 100 && !ready; i++ {
-		if conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(phpPort)); err == nil {
-			conn.Close()
-			ready = true
-		} else {
-			time.Sleep(50 * time.Millisecond)
+	t.Cleanup(func() {
+		_ = server.Process.Kill()
+		_ = server.Wait()
+		if t.Failed() {
+			t.Logf("php -S log:\n%s", serverLog.String())
 		}
+	})
+	for i := 0; i < 100; i++ {
+		if conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(port)); err == nil {
+			conn.Close()
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
-	if !ready {
-		t.Fatalf("php -S did not start:\n%s", serverLog.String())
-	}
+	t.Fatalf("php -S did not start:\n%s", serverLog.String())
+}
+
+func TestPHPPagesAreByteEqual(t *testing.T) {
+	b := buildPHPBase(t)
+	phpPort := freePort(t)
+	phpOrigin := "http://127.0.0.1:" + strconv.Itoa(phpPort)
+	phpDir := filepath.Join(b.dir, "php-private")
+	writePrivate(t, phpDir, phpOrigin, b.secret, b.db)
+	startPHPServer(t, b.php, phpPort, phpDir)
 
 	goDir := filepath.Join(b.dir, "go-private")
 	goServer := httptest.NewUnstartedServer(&Handler{Private: goDir, AllowTestKey: b.public, RemoteAddr: PeerAddress})
@@ -972,7 +1066,7 @@ func TestPHPPagesAreByteEqual(t *testing.T) {
 	defer goServer.Close()
 	writePrivate(t, goDir, goServer.URL, b.secret, b.db)
 
-	phpClient, goClient := newPageClient("PHP", phpOrigin), newPageClient("Go", goServer.URL)
+	phpClient, goClient := newPageClient("PHP", phpOrigin, nil), newPageClient("Go", goServer.URL, nil)
 	form := func(pairs ...string) url.Values {
 		v := url.Values{}
 		for i := 0; i+1 < len(pairs); i += 2 {
@@ -980,53 +1074,162 @@ func TestPHPPagesAreByteEqual(t *testing.T) {
 		}
 		return v
 	}
-	get := func(query string) pageStep { return pageStep{method: http.MethodGet, query: query} }
-	post := func(query string, values url.Values) pageStep {
-		return pageStep{method: http.MethodPost, query: query, form: values}
+	get := func(query, expect string) pageStep {
+		return pageStep{method: http.MethodGet, query: query, expect: expect, articles: -1}
+	}
+	post := func(query string, values url.Values, expect string) pageStep {
+		return pageStep{method: http.MethodPost, query: query, form: values, expect: expect, articles: -1}
 	}
 	l1, l2, l4 := b.ids[0], b.ids[1], b.ids[3]
-	steps := []pageStep{
-		get("action=register"), get("action=login"), get("action=terms"), get("action=terms&lang=en"), get("action=forgot"),
-		get("action=resend"), get("action=verify"), get("action=reset"), get("action=nonexistent"), get(""), get("action=home"),
-		get("action=release&id=" + l1), get("action=register&lang=en"), get("action=login"),
-		post("action=login", form("email", "alice@example.com", "password", "wrong-password-123")),
-		post("action=login", form("email", `"<x>'&@example.com`, "password", "wrong-password-123")),
-		post("action=login", form("email", "\xff\xfe@x\xe2\x82", "password", "wrong-password-123")),
-		post("action=register", form("email", "new@example.com")),
-		{method: http.MethodPost, query: "action=login", form: form("email", "alice@example.com", "csrf", "wrong"), keepCSRF: true},
-		{method: http.MethodPost, query: "action=login", form: form("email", "alice@example.com", "password", parityPassword), origin: "https://attacker.example"},
-		post("action=issue", form()),
-		post("action=nonexistent", form()),
-		post("action=login", form("email", "alice@example.com", "password", parityPassword)),
-		get("action=home&lang=en"), get("action=home"),
-		get("action=remove&id=" + l1 + "&lang=en"), get("action=remove&id=" + l4), get("action=remove&id=" + l4 + "&lang=en"),
-		get("action=release&id=" + l2), get("action=reveal&id=" + l1), get("action=rotate&id=" + l1), get("action=renew&id=" + l1),
-		get("action=renew&id=" + l1 + "&lang=en"), get("action=remove&id=%22%3E%3Cscript%3E"), get("action=remove&id[]=1"),
-		get("action=terms&id=x%27y"), get("action=nonexistent&lang=en"),
-		post("action=reveal", form("id", l1, "password", "wrong-password-123")),
-		post("action=reveal", form("id", l1, "password", parityPassword)),
-		get("action=home"),
-		post("action=renew", form("id", l1, "password", parityPassword)),
-		post("action=release", form("id", strings.Repeat("f", 32), "password", parityPassword)),
-		{method: http.MethodPost, query: "action=release&lang=en", form: form("id", l1, "password", parityPassword, "extra[]", "x")},
-		get("action=activate"),
-		{method: http.MethodPost, query: "action=activate", contentType: "application/json", raw: `{"key":"CPK-` + strings.Repeat("0", 64) + `","server_id":"` + strings.Repeat("a", 64) + `","hostname":"h.example.com"}`},
-		{method: http.MethodPost, query: "action=refresh", contentType: "application/json", raw: `[]`},
-		{method: http.MethodPost, query: "action=activate", contentType: "text/plain", raw: `{}`},
-		{method: http.MethodPut, query: "action=home"},
-		get("action[]=home"),
-		post("action=logout", form()),
-		get("action=home"),
+	home := func(query, expect string) pageStep {
+		return pageStep{method: http.MethodGet, query: query, expect: expect, articles: 4}
 	}
+	steps := []pageStep{
+		get("action=register", "Hesap oluştur"), get("action=login", "Hesabınıza giriş yapın"),
+		get("action=terms", "Geçerli metin: 30 Ekim 2026."), get("action=terms&lang=en", "Effective text: 30 October 2026."),
+		get("action=forgot", "Reset your password"), get("action=resend", "Request a verification email"),
+		get("action=verify", "Code from your email"), get("action=reset", "Choose your new password"),
+		get("action=nonexistent", "Sign in to your account"), get("", "Sign in to your account"), get("action=home", "Sign in to your account"),
+		get("action=release&id="+l1, "Change server / IP"), get("action=register&lang=en", "Create your CelikPanel account"),
+		get("action=login", "Sign in to your account"),
+		post("action=login", form("email", "alice@example.com", "password", "wrong-password-123"), "The email or password is incorrect."),
+		post("action=login", form("email", `"<x>'&@example.com`, "password", "wrong-password-123"), "&quot;&lt;x&gt;&#039;&amp;@example.com"),
+		post("action=login", form("email", "\xff\xfe@x\xe2\x82", "password", "wrong-password-123"), "Enter a valid email address."),
+		post("action=register", form("email", "new@example.com"), "Accept the terms to continue."),
+		{method: http.MethodPost, query: "action=login", form: form("email", "alice@example.com", "csrf", "wrong"), keepCSRF: true,
+			expect: "Your session changed.", articles: -1},
+		{method: http.MethodPost, query: "action=login", form: form("email", "alice@example.com", "password", parityPassword),
+			origin: "https://attacker.example", expect: "The request could not be completed.", articles: -1},
+		post("action=issue", form(), "Sign in to continue."),
+		post("action=nonexistent", form(), "The request could not be completed."),
+		post("action=login", form("email", "alice@example.com", "password", parityPassword), ""), // 303, followed below
+		home("action=home&lang=en", "alice@example.com"), home("action=home", "Your licenses"),
+		get("action=remove&id="+l1+"&lang=en", "This license is used by frankfurt.example.com (8.8.8.8)."),
+		get("action=remove&id="+l4+"&lang=tr", "Bu lisans bir sunucuya bağlı değil."), get("action=remove&id="+l4+"&lang=en", "This license is not bound to a server."),
+		get("action=release&id="+l2+"&lang=tr", "Sunucu eşlemesi kaldırılacak."), get("action=reveal&id="+l1, "Anahtarınızı görüntülemek"),
+		get("action=rotate&id="+l1, "Mevcut anahtar iptal edilip"), get("action=renew&id="+l1, "Şu an yenileme ücretsizdir."),
+		get("action=renew&id="+l1+"&lang=en", "Renewal is currently free."), get("action=remove&id=%22%3E%3Cscript%3E", "&quot;&gt;&lt;script&gt;"),
+		get("action=remove&id[]=1", `value="Array"`), get("action=terms&id=x%27y", "&amp;id=x&#039;y"),
+		get("action=nonexistent&lang=en", "Your licenses"),
+		post("action=reveal", form("id", l1, "password", "wrong-password-123"), "The email or password is incorrect."),
+		post("action=reveal", form("id", l1, "password", parityPassword), ""), // 303 to the key, followed below
+		home("action=home", "Your licenses"),
+		post("action=renew", form("id", l1, "password", parityPassword), "Renew during the last 30 days"),
+		post("action=release", form("id", strings.Repeat("f", 32), "password", parityPassword), "License not found."),
+		{method: http.MethodPost, query: "action=release&lang=en", form: form("id", l1, "password", parityPassword, "extra[]", "x"),
+			expect: "The request could not be completed.", articles: -1},
+		get("action=activate", `{"error":"method_not_allowed"}`),
+		{method: http.MethodPost, query: "action=activate", contentType: "application/json",
+			raw:    `{"key":"CPK-` + strings.Repeat("0", 64) + `","server_id":"` + strings.Repeat("a", 64) + `","hostname":"h.example.com"}`,
+			expect: `{"error":"invalid_license"}`, articles: -1},
+		{method: http.MethodPost, query: "action=refresh", contentType: "application/json", raw: `[]`, expect: `{"error":"invalid_activation"}`, articles: -1},
+		{method: http.MethodPost, query: "action=activate", contentType: "text/plain", raw: `{}`, expect: `{"error":"invalid_request"}`, articles: -1},
+		{method: http.MethodPut, query: "action=home", articles: -1},
+		get("action[]=home", "Membership is temporarily unavailable."),
+		post("action=logout", form(), ""), // 303, followed below
+		get("action=home", "Sign in to your account"),
+	}
+	redirects := 0
 	for i, step := range steps {
-		p := phpClient.do(t, step)
-		g := goClient.do(t, step)
-		if p.status != g.status || p.contentType != g.contentType || p.body != g.body {
-			t.Errorf("step %d %s %s: PHP %d %q, Go %d %q\n%s", i, step.method, step.query, p.status, p.contentType, g.status, g.contentType, firstDifference(p.body, g.body))
+		label := fmt.Sprintf("step %d %s %s", i, step.method, step.query)
+		p, g := phpClient.do(t, step), goClient.do(t, step)
+		compareAnswers(t, label, p, g)
+		if p.status == http.StatusSeeOther && g.status == http.StatusSeeOther && p.headers["Location"] == g.headers["Location"] {
+			redirects++
+			target := p.headers["Location"]
+			p = phpClient.send(t, http.MethodGet, phpOrigin+target, "", "", nil)
+			g = goClient.send(t, http.MethodGet, goServer.URL+target, "", "", nil)
+			compareAnswers(t, label+" -> "+target, p, g)
+		}
+		for name, a := range map[string]pageAnswer{"PHP": p, "Go": g} {
+			if step.expect != "" && !strings.Contains(a.body, step.expect) {
+				t.Errorf("%s: %s's answer lacks %q", label, name, step.expect)
+			}
+			if step.articles >= 0 && strings.Count(a.body, `<article class="member-license">`) != step.articles {
+				t.Errorf("%s: %s lists %d licences, want %d", label, name, strings.Count(a.body, `<article class="member-license">`), step.articles)
+			}
 		}
 	}
-	if t.Failed() {
-		t.Logf("php -S log:\n%s", serverLog.String())
+	if redirects != 3 {
+		t.Errorf("%d redirects were compared, want 3 (sign-in, key, sign-out)", redirects)
+	}
+}
+
+// TestPHPSecureCookieShapes compares the cookie both services set for an https origin:
+// the __Host- name with Secure, HttpOnly, Path=/ and SameSite=Lax, and the cache headers.
+// PHP's built-in server speaks only plain HTTP, so its header is read there; the Go side
+// is served over TLS, where a browser keeps and returns such a cookie
+// (TestSecureCookieWorksOverTLS shows the round trip).
+func TestPHPSecureCookieShapes(t *testing.T) {
+	b := buildPHPBase(t)
+	phpPort := freePort(t)
+	phpDir := filepath.Join(b.dir, "php-https")
+	writePrivate(t, phpDir, "https://account.example", b.secret, b.db)
+	startPHPServer(t, b.php, phpPort, phpDir)
+	goDir := filepath.Join(b.dir, "go-https")
+	goServer := httptest.NewUnstartedServer(&Handler{Private: goDir, AllowTestKey: b.public, RemoteAddr: PeerAddress})
+	goServer.StartTLS()
+	defer goServer.Close()
+	writePrivate(t, goDir, "https://account.example", b.secret, b.db)
+	p := newPageClient("PHP", "http://127.0.0.1:"+strconv.Itoa(phpPort), nil).do(t, pageStep{method: http.MethodGet, query: "action=register"})
+	g := newPageClient("Go", goServer.URL, goServer.Client().Transport).do(t, pageStep{method: http.MethodGet, query: "action=register"})
+	compareAnswers(t, "register over an https origin", p, g)
+	if g.cookie != "__Host-celikpanel_member; httponly; path=/; samesite=lax; secure" {
+		t.Fatalf("Go's secure cookie: %q", g.cookie)
+	}
+}
+
+// TestPHPAndGoShareTheFile: while Go holds a write transaction on the live file (an
+// activation in progress), PHP's activation of the same licence waits on the SQLite lock and
+// then sees Go's binding: one winner across the two processes.
+func TestPHPAndGoShareTheFile(t *testing.T) {
+	b := buildPHPBase(t)
+	db, err := sql.Open("sqlite", dsn(b.db, "rw"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	tx, err := db.Begin() // BEGIN IMMEDIATE (_txlock=immediate): the write lock is held from here
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec("UPDATE licenses SET activated=?,server_id=?,hostname=?,server_ip=? WHERE id=?",
+		b.t0, strings.Repeat("d", 64), "go.example.com", "8.8.8.8", b.ids[3]); err != nil {
+		t.Fatal(err)
+	}
+	command := phpScript(t, b.php, "driver.php", map[string]any{"db": b.db, "secret": base64.StdEncoding.EncodeToString(b.secret),
+		"now": b.t0 + 60, "ops": []driverOp{{Op: "activate", Args: []string{b.keys[3], strings.Repeat("e", 64), "php.example.com", "9.9.9.9"}}}})
+	type ran struct {
+		out []byte
+		err error
+	}
+	done := make(chan ran, 1)
+	go func() {
+		out, err := command.Output()
+		done <- ran{out, err}
+	}()
+	select {
+	case r := <-done:
+		tx.Rollback()
+		t.Fatalf("PHP did not wait for Go's write lock: %s %v", r.out, r.err)
+	case <-time.After(1500 * time.Millisecond):
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case r := <-done:
+		var results []driverResult
+		if r.err != nil || json.Unmarshal(r.out, &results) != nil || len(results) != 1 || results[0].OK || results[0].Code != "license_in_use" {
+			t.Fatalf("PHP after Go's binding: %s %v", r.out, r.err)
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("PHP never finished")
+	}
+	var ip string
+	if err := db.QueryRow("SELECT server_ip FROM licenses WHERE id=?", b.ids[3]).Scan(&ip); err != nil || ip != "8.8.8.8" {
+		t.Fatalf("the binding after both: %q %v", ip, err)
 	}
 }
 

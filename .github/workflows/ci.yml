@@ -667,6 +667,7 @@ jobs:
       - name: Verify the Go member service against the PHP one, and the payment package
         env:
           CELIKPANEL_MEMBERSHIP_PHP: php
+          CELIKPANEL_MEMBERSHIP_REQUIRE_PHP: '1'
         run: bash deploy/test-membership-go.sh
 
   package:

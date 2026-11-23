@@ -21,6 +21,11 @@ trap cleanup EXIT
 
 if [[ -n "${CELIKPANEL_MEMBERSHIP_PHP:-}" ]]; then
     printf 'PHP comparison tests: on (%s)\n' "$("$CELIKPANEL_MEMBERSHIP_PHP" -r 'echo PHP_VERSION;')"
+    # Required from here: a comparison test that would skip fails instead, whatever its name.
+    export CELIKPANEL_MEMBERSHIP_REQUIRE_PHP=1
+elif [[ "${CELIKPANEL_MEMBERSHIP_REQUIRE_PHP:-}" == 1 ]]; then
+    printf '%s\n' 'The PHP comparison is required but CELIKPANEL_MEMBERSHIP_PHP is not set.' >&2
+    exit 1
 else
     printf '%s\n' 'PHP comparison tests: off (set CELIKPANEL_MEMBERSHIP_PHP=php to run them)'
 fi

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -135,6 +136,44 @@ func TestSignOutIsNotUndoneByARequestInFlight(t *testing.T) {
 	handler.beforeSave = nil
 	if body := withCookie(t, s.a.url+"?action=home", s.cookie, http.MethodGet, nil); !strings.Contains(body, "Hesabınıza giriş yapın") {
 		t.Fatal("the old session is signed in again after the sign-out")
+	}
+}
+
+// TestSecureCookieWorksOverTLS: for an https origin the session cookie is the __Host-
+// one (Secure, HttpOnly, Path=/, SameSite=Lax), and a client over TLS keeps and returns it:
+// a form posted with its CSRF value is read in the same session.
+func TestSecureCookieWorksOverTLS(t *testing.T) {
+	dir := t.TempDir()
+	handler := &Handler{Private: dir, RemoteAddr: PeerAddress}
+	server := httptest.NewUnstartedServer(handler)
+	server.StartTLS()
+	defer server.Close()
+	handler.AllowTestKey = writeFixture(t, dir, "https://account.example")
+	client := server.Client()
+	client.Jar, _ = cookiejar.New(nil)
+	client.Timeout = 30 * time.Second
+	response, err := client.Get(server.URL + "/account/?action=login&lang=en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(response.Body)
+	response.Body.Close()
+	cookie := response.Header.Get("Set-Cookie")
+	for _, part := range []string{"__Host-celikpanel_member=", "Path=/", "HttpOnly", "Secure", "SameSite=Lax"} {
+		if !strings.Contains(cookie, part) {
+			t.Fatalf("cookie %q lacks %s", cookie, part)
+		}
+	}
+	csrf := csrfPattern.FindStringSubmatch(string(raw))[1]
+	response, err = client.PostForm(server.URL+"/account/?action=login&lang=en", url.Values{"csrf": {csrf},
+		"email": {"nobody@example.com"}, "password": {"wrong-password-123"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ = io.ReadAll(response.Body)
+	response.Body.Close()
+	if !strings.Contains(string(raw), "The email or password is incorrect.") {
+		t.Fatalf("the secure cookie did not come back over TLS: %s", raw)
 	}
 }
 
