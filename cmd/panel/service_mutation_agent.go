@@ -726,12 +726,20 @@ var (
 	// panelOperationHeartbeatInterval: how often a durable operation's
 	// worker renews its Agent lease.
 	panelOperationHeartbeatInterval = newTunableDuration(panelMutationHeartbeatInterval)
-	// panelHeartbeatUncertainWindow: how long renewals may stay unanswered
-	// (a timeout, a broken connection, an answer that proves nothing)
-	// before the worker is stopped. It is below the Agent's 20-second lease
-	// (serviceMutationLeaseDuration), so the worker stops before the lease
-	// could have run out unseen; a definite answer stops it at once.
+	// panelHeartbeatUncertainWindow: how long after the last renewal the
+	// Agent answered (counted from when that renewal was sent) the worker may
+	// go on while renewals stay unanswered (a timeout, a broken connection,
+	// an answer that proves nothing). Every renewal is bounded by the time
+	// that remains, so the worker stops at the window's end at the latest:
+	// 5 s before the Agent's 20-second lease (serviceMutationLeaseDuration)
+	// can end. A definite answer stops it at once.
 	panelHeartbeatUncertainWindow = newTunableDuration(15 * time.Second)
+)
+
+// errAgentMutationRenewalsUnanswered: the Agent answered no renewal for the
+// whole window, so the worker stopped before the lease could end unseen.
+var errAgentMutationRenewalsUnanswered = errors.New(
+	"agent service mutation renewals were not answered before the lease's safety window ended",
 )
 
 // agentMutationHeartbeatDefinite reports whether a failed renewal is the
@@ -746,17 +754,21 @@ func agentMutationHeartbeatDefinite(err error) bool {
 		errors.Is(err, errAgentMutationIdentityMismatch)
 }
 
+// startAgentMutationHeartbeat renews a durable operation's lease; since is
+// when the lease was asked for.
 func (p *Panel) startAgentMutationHeartbeat(
 	ctx context.Context,
 	cancel context.CancelFunc,
 	binding agentMutationBinding,
+	since time.Time,
 ) func() error {
-	stopObserved := p.startObservedAgentMutationHeartbeat(
+	stopObserved := p.startObservedAgentMutationHeartbeatSince(
 		ctx,
 		cancel,
 		binding,
 		nil,
 		panelOperationHeartbeatInterval.get(),
+		since,
 	)
 	return func() error {
 		_, err := stopObserved()
@@ -770,19 +782,33 @@ func (p *Panel) startAgentMutationHeartbeat(
 //
 // One slow or lost renewal does not stop the worker (alpha.145 lab, D1: the
 // first failed ping cancelled a webmail update whose Agent step ran on). The
-// worker is stopped on the Agent's definite answer, or when renewals have
-// stayed unanswered for panelHeartbeatUncertainWindow; an answered renewal
-// in between starts the count again. The Agent's own lease rules are
-// unchanged: it still ends a lease that is not renewed for 20 seconds, and
-// the next answered renewal then says so.
-// Tek bir geç ya da kayıp yenileme işçiyi durdurmaz; kesin yanıt ya da
-// süre boyunca yanıtsız kalan yenilemeler durdurur.
+// worker is stopped on the Agent's definite answer, or when no renewal has
+// been answered for panelHeartbeatUncertainWindow since the last answered
+// one was sent; each renewal is bounded by the time that remains, so the
+// stop comes before the Agent's 20-second lease can end. The same rule
+// governs every standalone mutation (firewall, DNS, mail TLS, certificates,
+// VPN, webmail). The Agent's own lease rules are unchanged.
+// Tek bir geç ya da kayıp yenileme işçiyi durdurmaz; kesin yanıt ya da son
+// yanıtlanan yenilemeden beri süren pencere durdurur, kira bitmeden önce.
 func (p *Panel) startObservedAgentMutationHeartbeat(
 	ctx context.Context,
 	cancel context.CancelFunc,
 	binding agentMutationBinding,
 	expected *agentMutationIdentity,
 	interval time.Duration,
+) func() (*agentMutationJob, error) {
+	return p.startObservedAgentMutationHeartbeatSince(ctx, cancel, binding, expected, interval, time.Now())
+}
+
+// startObservedAgentMutationHeartbeatSince: since is when the lease was asked
+// for (the Agent granted it at or after that moment).
+func (p *Panel) startObservedAgentMutationHeartbeatSince(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	binding agentMutationBinding,
+	expected *agentMutationIdentity,
+	interval time.Duration,
+	since time.Time,
 ) func() (*agentMutationJob, error) {
 	stop := make(chan struct{})
 	done := make(chan struct{})
@@ -791,17 +817,35 @@ func (p *Panel) startObservedAgentMutationHeartbeat(
 	var observedErr error
 	go func() {
 		defer close(done)
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		var uncertainSince time.Time
+		window := panelHeartbeatUncertainWindow.get()
+		// lastAnswered is when the last renewal the Agent answered was SENT
+		// (at first: before the lease was asked for). The Agent renewed the
+		// lease at or after that moment, so its lease lasts at least until
+		// lastAnswered + 20 s; the worker stops by lastAnswered + window.
+		lastAnswered := since
+		var lastErr error
+		timer := time.NewTimer(interval)
+		defer timer.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-stop:
 				return
-			case <-ticker.C:
-				pingCtx, pingCancel := context.WithTimeout(context.Background(), interval)
+			case <-timer.C:
+				sent := time.Now()
+				remaining := window - sent.Sub(lastAnswered)
+				if remaining <= 0 {
+					observedErr = errors.Join(errAgentMutationRenewalsUnanswered, lastErr)
+					cancel()
+					return
+				}
+				// One renewal never waits past the window's end.
+				pingTimeout := interval
+				if remaining < pingTimeout {
+					pingTimeout = remaining
+				}
+				pingCtx, pingCancel := context.WithTimeout(context.Background(), pingTimeout)
 				job, err := p.heartbeatAgentMutation(pingCtx, binding, "")
 				pingCancel()
 				if expected != nil && job != nil {
@@ -822,19 +866,26 @@ func (p *Panel) startObservedAgentMutationHeartbeat(
 				}
 				if err != nil {
 					if !agentMutationHeartbeatDefinite(err) {
-						now := time.Now()
-						if uncertainSince.IsZero() {
-							uncertainSince = now
-						}
-						if now.Sub(uncertainSince) < panelHeartbeatUncertainWindow.get() {
+						// Uncertain: asked again at the next tick, or at the
+						// window's end if that comes first.
+						lastErr = err
+						if left := window - time.Since(lastAnswered); left > 0 {
+							next := interval
+							if left < next {
+								next = left
+							}
+							timer.Reset(next)
 							continue
 						}
+						observedErr = errors.Join(errAgentMutationRenewalsUnanswered, err)
+					} else {
+						observedErr = err
 					}
-					observedErr = err
 					cancel()
 					return
 				}
-				uncertainSince = time.Time{}
+				lastAnswered, lastErr = sent, nil
+				timer.Reset(interval)
 			}
 		}
 	}()
@@ -1048,6 +1099,7 @@ func (p *Panel) withStandaloneAgentMutationIdentityMode(
 	op.PackageName = strings.TrimSpace(op.PackageName)
 	identity := agentMutationIdentityForOperation(op, ownerID)
 	beginCtx, beginCancel := context.WithTimeout(ctx, panelMutationFinishTimeout)
+	leaseAskedAt := time.Now()
 	job, err := p.beginAgentMutation(beginCtx, op, ownerID, resume)
 	beginCancel()
 	if err != nil {
@@ -1063,12 +1115,13 @@ func (p *Panel) withStandaloneAgentMutationIdentityMode(
 	}
 	workerCtx, cancelWorker := context.WithDeadline(ctx, deadline)
 	boundCtx := withPanelMutationBinding(workerCtx, binding)
-	stopHeartbeat := p.startObservedAgentMutationHeartbeat(
+	stopHeartbeat := p.startObservedAgentMutationHeartbeatSince(
 		workerCtx,
 		cancelWorker,
 		binding,
 		&identity,
-		panelMutationHeartbeatInterval,
+		panelOperationHeartbeatInterval.get(),
+		leaseAskedAt,
 	)
 
 	callErr := call(boundCtx, binding)

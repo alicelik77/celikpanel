@@ -2037,6 +2037,12 @@ func (p *Panel) ensureServerSetupChild(ctx context.Context, plan serverSetupPlan
 		}
 	}
 	operationData := ""
+	if step.Kind == "service" {
+		// The accepted point updates travel with the row, so an install
+		// resumed after an interruption is asked as the review accepted it
+		// (D1 review, finding 6).
+		operationData = encodeServiceInstallOperationData(serviceInstallRequest{AcceptedPointUpdates: serverSetupAcceptedPointUpdates(plan)})
+	}
 	if step.Kind == "mail_profile" {
 		raw, _ := json.Marshal(serverSetupMailChild{MailHostname: plan.Draft.MailHostname})
 		operationData = string(raw)

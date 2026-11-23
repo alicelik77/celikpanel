@@ -22,7 +22,7 @@ import { readWebmailUpdateOperation } from './roundcubeUpdate';
 import { decodeWebmailAddressCheck, decodeWebmailAddressOperation, type WebmailAddressCheck, type WebmailAddressOperation } from './webmailAddress';
 
 export interface FlowNotice {
-    tone: 'info' | 'bad';
+    tone: 'info' | 'warn' | 'bad';
     key: TranslationKey;
     vars?: Record<string, string>;
     /** A reason the screen says in its own words (inside startFailed). */
@@ -155,7 +155,7 @@ export function useWebmailAddressOperation({ lastOperation, onChanged, onNotRead
                 const key: TranslationKey = code === 'service_operation_busy' && body.reason === 'unsettled'
                     ? 'err.service_operation_busy.unsettled'
                     : code === 'service_operation_busy' && body.reason === 'settling' ? 'err.service_operation_busy.settling' : 'life.addr.busy';
-                setNotice({ tone: 'info', key });
+                setNotice({ tone: key === 'err.service_operation_busy.unsettled' ? 'warn' : 'info', key });
                 return;
             }
             const reason = typeof body.error === 'object' ? body.error?.message ?? '' : body.error ?? '';

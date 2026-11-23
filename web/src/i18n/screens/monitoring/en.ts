@@ -61,7 +61,7 @@ export const enMonitoringScreens = {
     // alpha.145 lab, D1: Problems now's line for a server change whose end the
     // panel could not record, here because "problemsNow" is full.
     'pnow.service_operation_unsettled.title': 'A server change could not be recorded',
-    'pnow.service_operation_unsettled.body': 'The panel could not record the end of a change ({name}), so every other server change is refused. The server owner runs sudo systemctl restart celikpanel-panel: only the panel’s web process restarts (websites, mail and DNS keep running). At its start the panel reads what was done and records it: a webmail update or address is only read; an install or removal is continued, and what is already done is not changed again. This line then goes by itself.',
+    'pnow.service_operation_unsettled.body': 'The panel could not record the end of a change ({name}), so other component and setup changes are refused. The server owner first checks the server agent (sudo systemctl status celikpanel-agent; starts it if it is stopped), then runs sudo systemctl restart celikpanel-panel: only the panel’s web process restarts (websites, mail and DNS keep running). At its start the panel reads what was done: a webmail update or address is only read; an install, removal or mail profile is run once more from its start and relies on its steps being safe to repeat. This line then goes by itself.',
     'pnow.service_operation_unsettled.action': 'Open Components',
 } as const;
 

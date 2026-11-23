@@ -54,6 +54,6 @@ export const trRefusalsScreens: Record<RefusalsScreenKey, string> = {
     "ddb.deleted": "{name} veritabanı silindi",
     "ddb.deleteFailed": "Veritabanı silinmedi",
 
-    "err.service_operation_busy.settling": "Hiçbir şey başlatılmadı: önceki sunucu değişikliği sırasında panelin sunucu ajanıyla bağlantısı koptu ve panel yapılanı okuyor. Kimsenin bir şey yapması gerekmiyor: o değişiklik sunucuda bitince bu kendiliğinden sona erer. Sonra aynı düğmeye yeniden basın.",
-    "err.service_operation_busy.unsettled": "Hiçbir şey başlatılmadı: panel önceki sunucu değişikliğinin sonunu kaydedemedi. Siz, sunucu sahibi: bu sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın (yalnız panelin web işlemi yeniden başlar; web siteleri, posta ve DNS çalışmayı sürdürür). Panel açılışta yapılanı kaydeder. Sonra aynı düğmeye yeniden basın.",
+    "err.service_operation_busy.settling": "Hiçbir şey başlatılmadı: panel önceki sunucu değişikliğinin sonunu henüz kaydedemedi ve sunucunun ne yaptığını okuyor (yarıda kalan bir kurulum önce bir kez daha çalıştırılır). Kimsenin bir şey yapması gerekmiyor: o değişiklik bitince bu kendiliğinden sona erer. Sonra aynı düğmeye yeniden basın.",
+    "err.service_operation_busy.unsettled": "Hiçbir şey başlatılmadı: panel önceki sunucu değişikliğinin sonunu kaydedemedi. Siz, sunucu sahibi: önce sunucu ajanını denetleyin (sudo systemctl status celikpanel-agent; durmuşsa başlatın), sonra sudo systemctl restart celikpanel-panel komutunu çalıştırın (yalnız panelin web işlemi yeniden başlar; web siteleri, posta ve DNS çalışmayı sürdürür). Panel açılışta yapılanı kaydeder. Sonra aynı düğmeye yeniden basın.",
 };

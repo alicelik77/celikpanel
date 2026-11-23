@@ -419,9 +419,9 @@ func writeServiceOperationBusyReason(w http.ResponseWriter, reason string) {
 	case serviceOperationBusyReasonStartup:
 		message = "the server is finishing its start-up work after an update or restart; this ends by itself in a minute or two"
 	case serviceOperationBusyReasonSettling:
-		message = "the previous server change has ended or is ending on the server, and the panel is recording what was done; this ends by itself, then press the same button again"
+		message = "the panel could not yet record the end of the previous server change and is reading what the server did (an interrupted install is first run once more); this ends by itself, then press the same button again"
 	case serviceOperationBusyReasonUnsettled:
-		message = "the panel could not record the end of the previous server change; the server owner runs sudo systemctl restart celikpanel-panel (only the panel's web process restarts), which records it, then press the same button again"
+		message = "the panel could not record the end of the previous server change; the server owner first checks the agent (sudo systemctl status celikpanel-agent), then runs sudo systemctl restart celikpanel-panel (only the panel's web process restarts), which records it, then press the same button again"
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
@@ -986,9 +986,16 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 			}
 			return
 		}
-		beginCtx, beginCancel := context.WithTimeout(context.Background(), panelMutationFinishTimeout)
-		agentJob, err := p.beginAgentMutation(beginCtx, op, ownerID, resumeAgent)
-		beginCancel()
+		agentJob, leaseAskedAt, err := p.beginServiceOperationLease(op, ownerID, resumeAgent)
+		if err != nil && resumeAgent && hostMutationRefusedAsBusy(err) {
+			// D1 review, finding 6: a continuation the Agent kept refusing
+			// because the host stayed busy (the package manager, a release)
+			// is left to the panel's next start: the interrupted change may
+			// have been made, so it is never recorded as "not started".
+			log.Printf("service operation %s could not be continued: the host stayed busy (%v); the panel finishes it at its next start", op.ID, err)
+			noteServiceOperationUnsettled(op)
+			return
+		}
 		if err != nil {
 			log.Printf("service operation %s could not acquire the agent lease: %v", op.ID, err)
 			failure := operationStartFailure(err)
@@ -1001,6 +1008,9 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 			auditWriter(context.Background(), actor, failureAudit+" — "+failure.Code)
 			return
 		}
+		// A continuation that waited for a busy host runs as an ordinary
+		// operation from here on.
+		clearServiceOperationSettle(op.ID)
 		binding := agentMutationBinding{
 			MutationRequestID: op.RequestID,
 			MutationOwnerID:   ownerID,
@@ -1012,7 +1022,7 @@ func (p *Panel) launchServiceOperationWithAuditMode(
 		}
 		workerBase, cancelWorker := context.WithDeadline(context.Background(), deadline)
 		ctx := withPanelMutationBinding(workerBase, binding)
-		stopHeartbeat := p.startAgentMutationHeartbeat(workerBase, cancelWorker, binding)
+		stopHeartbeat := p.startAgentMutationHeartbeat(workerBase, cancelWorker, binding, leaseAskedAt)
 		defer func() {
 			_ = stopHeartbeat()
 			cancelWorker()
@@ -2278,6 +2288,16 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 				return 0, false, err
 			}
 		}
+		// D1 review, finding 5: once a privileged sync may have run, a running
+		// panel never asks this reconciliation again (the syncs are not run a
+		// second time); the error then leaves the row to the restart.
+		synced := serviceOperationNeedsFirewallSync(*op)
+		afterSync := func(err error) error {
+			if synced {
+				return &recoveryAfterSyncError{err: err}
+			}
+			return err
+		}
 		// Startup recovery tries once: a busy host fails the operation with
 		// its coded cause instead of holding startup for the busy wait.
 		if syncFailure := p.syncFirewallAfterOperationWithin(*op, 0); syncFailure != nil {
@@ -2297,14 +2317,15 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 				result,
 				syncFailure,
 			); err != nil {
-				return 0, false, err
+				return 0, false, afterSync(err)
 			}
 			return 1, false, nil
 		}
 		if mailProfileNeedsMailTLSSync(*op) && !recoveredMailTLSChild {
 			if err := p.requireStartupAgentMutationSlot(recoveryCtx); err != nil {
-				return 0, false, err
+				return 0, false, afterSync(err)
 			}
+			synced = true
 			if syncFailure := p.syncMailTLSAfterOperation(*op, result); syncFailure != nil {
 				if result == nil {
 					result = serviceOperationResult{}
@@ -2318,7 +2339,7 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 					terminalCtx, op.ID, mailProfilePhase(op.ServiceID, "mail-tls"),
 					result, syncFailure,
 				); err != nil {
-					return 0, false, err
+					return 0, false, afterSync(err)
 				}
 				return 1, false, nil
 			}
@@ -2327,8 +2348,9 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 			dnsBatchCtx, cancelDNSBatch := dnsZoneBatchContext(recoveryCtx)
 			if err := p.requireStartupAgentMutationSlot(dnsBatchCtx); err != nil {
 				cancelDNSBatch()
-				return 0, false, err
+				return 0, false, afterSync(err)
 			}
+			synced = true
 			syncFailure := p.syncPowerDNSZonesAfterInstallContext(dnsBatchCtx, *op)
 			cancelDNSBatch()
 			if syncFailure != nil {
@@ -2348,16 +2370,17 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 					result,
 					syncFailure,
 				); err != nil {
-					return 0, false, err
+					return 0, false, afterSync(err)
 				}
 				return 1, false, nil
 			}
 		}
 		if wireGuardInstallNeedsPeerSync(*op) {
 			if err := p.requireStartupAgentMutationSlot(recoveryCtx); err != nil {
-				return 0, false, err
+				return 0, false, afterSync(err)
 			}
 		}
+		synced = synced || wireGuardInstallNeedsPeerSync(*op)
 		if syncFailure := p.syncWireGuardPeersAfterInstall(*op); syncFailure != nil {
 			if result == nil {
 				result = serviceOperationResult{}
@@ -2375,7 +2398,7 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 				result,
 				syncFailure,
 			); err != nil {
-				return 0, false, err
+				return 0, false, afterSync(err)
 			}
 			return 1, false, nil
 		}
@@ -2384,7 +2407,7 @@ func (p *Panel) reconcileInterruptedServiceOperationLocked(
 			op.ID,
 			result,
 		); err != nil {
-			return 0, false, err
+			return 0, false, afterSync(err)
 		}
 		return 1, false, nil
 	}

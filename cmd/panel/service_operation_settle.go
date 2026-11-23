@@ -67,7 +67,31 @@ var (
 	serviceOperationSettleMargin = newTunableDuration(2 * time.Minute)
 	serviceOperationSettlePoll   = newTunableDuration(250 * time.Millisecond)
 	serviceOperationSettleRetry  = newTunableDuration(time.Second)
+	// serviceOperationAgentSilence: how long the settling reads may go
+	// without one answer before the row is left unsettled and the process
+	// lock is released (D1 review, finding 4). The Agent itself refuses a new
+	// lease while its job is active, so nothing can overlap meanwhile.
+	serviceOperationAgentSilence = newTunableDuration(2 * time.Minute)
+	// serviceOperationResumeBusyBound: how long a continuation the Agent
+	// refuses because the host is busy is asked again (finding 6).
+	serviceOperationResumeBusyBound = newTunableDuration(2 * time.Minute)
 )
+
+// errAgentMutationSilent: the settling reads went without one answer for
+// serviceOperationAgentSilence. errAgentMutationNoRecord: the Agent answered
+// twice that it has no record of the job, so its result is not known.
+var (
+	errAgentMutationSilent   = errors.New("the agent answered no read of the operation's job")
+	errAgentMutationNoRecord = errors.New("the agent has no record of this operation, so its result is not known")
+)
+
+// recoveryAfterSyncError is a reconciliation that failed after a privileged
+// sync had already run: it is never asked again by a running panel (finding
+// 5); the restart settles the row.
+type recoveryAfterSyncError struct{ err error }
+
+func (e *recoveryAfterSyncError) Error() string { return e.err.Error() }
+func (e *recoveryAfterSyncError) Unwrap() error { return e.err }
 
 // errRecoveryHostLeaseHeld marks a reconciliation that found another Agent
 // job holding the host. It changed nothing yet; a live Panel asks again.
@@ -181,7 +205,7 @@ func (p *Panel) settleAbandonedServiceOperation(op serviceOperation, deadline ti
 	defer cancel()
 	job, err := p.waitAbandonedAgentMutation(waitCtx, op.RequestID)
 	if err != nil {
-		log.Printf("service operation %s could not be settled: the agent's record of it was not read to its end: %v; restarting celikpanel-panel settles it", op.ID, err)
+		log.Printf("service operation %s could not be settled: the agent's record of it was not read to its end: %v; check the agent (systemctl status celikpanel-agent), then restarting celikpanel-panel settles it; the process lock is released", op.ID, err)
 		return false
 	}
 	// A running panel continues one row at most once: a continuation that
@@ -215,9 +239,12 @@ func (p *Panel) settleAbandonedServiceOperation(op serviceOperation, deadline ti
 			}
 		}
 		// Another Agent job held the host, or the panel database did not
-		// answer: nothing was changed yet, so the same reading is asked
-		// again until the bound.
-		if !errors.Is(err, errRecoveryHostLeaseHeld) && !panelDatabaseBusy(err) {
+		// answer, before the reconciliation changed anything: the same
+		// reading is asked again until the bound. Once a privileged sync has
+		// run (finding 5), nothing is asked again: the syncs are never run a
+		// second time and the row is left to the restart with its reason.
+		var afterSync *recoveryAfterSyncError
+		if errors.As(err, &afterSync) || (!errors.Is(err, errRecoveryHostLeaseHeld) && !panelDatabaseBusy(err)) {
 			log.Printf("service operation %s could not be settled: %v; restarting celikpanel-panel settles it", op.ID, err)
 			return false
 		}
@@ -230,11 +257,43 @@ func (p *Panel) settleAbandonedServiceOperation(op serviceOperation, deadline ti
 	}
 }
 
+// beginServiceOperationLease asks the Agent for an operation's lease and
+// returns when it was asked for. A continuation (resume) the Agent refuses
+// because the host is busy (the package manager, a release) is asked again
+// with a growing pause until serviceOperationResumeBusyBound has passed: right
+// after an interrupted step the package manager may still be finishing. A
+// first start is asked once, as before.
+func (p *Panel) beginServiceOperationLease(op serviceOperation, ownerID string, resume bool) (*agentMutationJob, time.Time, error) {
+	bound := time.Now().Add(serviceOperationResumeBusyBound.get())
+	pause := serviceOperationSettleRetry.get()
+	for {
+		beginCtx, beginCancel := context.WithTimeout(context.Background(), panelMutationFinishTimeout)
+		askedAt := time.Now()
+		job, err := p.beginAgentMutation(beginCtx, op, ownerID, resume)
+		beginCancel()
+		if err == nil || !resume || !hostMutationRefusedAsBusy(err) || !time.Now().Add(pause).Before(bound) {
+			return job, askedAt, err
+		}
+		noteServiceOperationSettle(op, serviceOperationSettleRecordingPhase)
+		time.Sleep(pause)
+		if pause *= 2; pause > 15*time.Second {
+			pause = 15 * time.Second
+		}
+	}
+}
+
 // waitAbandonedAgentMutation reads the Agent's job of requestID, changing
 // nothing, until it is no longer active. An unanswered read is asked again
 // until ctx ends; an Agent that refuses every mutation (held) ends the wait,
 // because its job cannot change.
+//
+// Two answers end the wait without a job to settle from (D1 review):
+// serviceOperationAgentSilence without one answered read (the Agent is not
+// answering: its owner checks it), and an Agent that has no record of the
+// job on two reads (its result is not known; it has not "ended").
 func (p *Panel) waitAbandonedAgentMutation(ctx context.Context, requestID string) (*agentMutationJob, error) {
+	lastAnswer := time.Now()
+	missing := 0
 	for {
 		// One read waits at most as long as a Finish does; a hung read is
 		// asked again rather than holding the whole wait.
@@ -244,8 +303,19 @@ func (p *Panel) waitAbandonedAgentMutation(ctx context.Context, requestID string
 		if hold != "" {
 			return job, &agentMutationHeldError{Hold: hold}
 		}
-		if err == nil && (job == nil || !agentMutationActive(job.Status)) {
-			return job, nil
+		if err == nil {
+			lastAnswer = time.Now()
+			if job == nil {
+				if missing++; missing >= 2 {
+					return nil, errAgentMutationNoRecord
+				}
+			} else if !agentMutationActive(job.Status) {
+				return job, nil
+			} else {
+				missing = 0
+			}
+		} else if time.Since(lastAnswer) >= serviceOperationAgentSilence.get() {
+			return job, fmt.Errorf("%w (last read: %v)", errAgentMutationSilent, err)
 		}
 		select {
 		case <-ctx.Done():

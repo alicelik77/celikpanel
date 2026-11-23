@@ -293,17 +293,21 @@ func vendorRefusalDetail(notable []transport.NotableInstall) string {
 
 // serviceInstallOperationData is what an install keeps in its operation
 // record so a resumed install runs as it was asked: the tool's PHP version
-// and the packages the owner confirmed.
+// and the packages the owner confirmed; for a reviewed server setup step also
+// the point updates its review accepted (D1 review, finding 6: a resumed
+// setup install was refused for a point update the owner had accepted). The
+// panel writes it; a request body never sets AcceptedPointUpdates.
 type serviceInstallOperationData struct {
-	PHPVersion        string   `json:"install_php_version,omitempty"`
-	ConfirmedInstalls []string `json:"install_confirmed,omitempty"`
+	PHPVersion           string   `json:"install_php_version,omitempty"`
+	ConfirmedInstalls    []string `json:"install_confirmed,omitempty"`
+	AcceptedPointUpdates []string `json:"setup_accepted_point_updates,omitempty"`
 }
 
 func encodeServiceInstallOperationData(req serviceInstallRequest) string {
-	if req.PHPVersion == "" && len(req.ConfirmedInstalls) == 0 {
+	if req.PHPVersion == "" && len(req.ConfirmedInstalls) == 0 && len(req.AcceptedPointUpdates) == 0 {
 		return ""
 	}
-	data, err := json.Marshal(serviceInstallOperationData{PHPVersion: req.PHPVersion, ConfirmedInstalls: req.ConfirmedInstalls})
+	data, err := json.Marshal(serviceInstallOperationData{PHPVersion: req.PHPVersion, ConfirmedInstalls: req.ConfirmedInstalls, AcceptedPointUpdates: req.AcceptedPointUpdates})
 	if err != nil {
 		return ""
 	}
@@ -326,6 +330,7 @@ func restoreServiceInstallChoices(req *serviceInstallRequest, raw string) {
 	if validServiceInstallChoices(candidate) != "" {
 		return
 	}
+	candidate.AcceptedPointUpdates = data.AcceptedPointUpdates
 	*req = candidate
 }
 
