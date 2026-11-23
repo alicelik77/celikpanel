@@ -290,7 +290,11 @@ firewall's `inet celikpanel_fw`, because firewall policy V2 is input-only.
   (`submission/inet` and `smtps/inet` in the form
   `cmd/agent/mail_submission_rpc.go` writes them) that take nothing but a
   mailbox's login (`smtpd_sasl_auth_enable=yes`,
-  `smtpd_client_restrictions=permit_sasl_authenticated,reject`), no other
+  `smtpd_client_restrictions=permit_sasl_authenticated,reject`) and let a
+  logged-in mailbox send only as its own addresses
+  (`reject_sender_login_mismatch` before any `permit`, and a
+  `smtpd_sender_login_maps`; second fix round: a setting that is missing or
+  cannot be read means no exception), no other
   `master.cf` entry listens on 465 or 587, and every socket listening there
   belongs to Postfix's master process (`cmd/agent/site_tasks_mail.go`). With
   an owner's own entry or another program on those ports (an msmtpd, an
@@ -298,12 +302,20 @@ firewall's `inet celikpanel_fw`, because firewall policy V2 is input-only.
   exception, and the site's Overview card says that tasks and programs of
   sites cannot send mail through this server and why. The decision is made
   again at each Panel start and after the mail submission step, and a
-  changed rule set is loaded into the running table at once. Port 25 stays
+  changed rule set is loaded into the running table at once. **It stays as
+  last decided until the Panel's next start, and for good without the
+  panel**: an owner who later puts another program on 465 or 587 removes the
+  rule by hand (the file's own header says how). When the server owner has
+  changed the block's file, it is kept, and the card says that the kept file
+  decides (not what CelikPanel would have written). Port 25 stays
   refused everywhere: Postfix's relay list has not allowed this server's own
   addresses without a password since alpha.125, and the block keeps it
   closed anyway.
-- **Known limit: password guessing over this path (for the reach slice,
-  R4).** CelikPanel adds no limiter of its own yet. What exists today:
+- **Known limit: password guessing over this path (a precondition of the
+  reach slice, R4).** CelikPanel adds no limiter of its own yet. Today a
+  site's PHP, which still runs outside the block, can already guess the same
+  way, so the step is small; once R3 puts PHP inside the block this path is
+  the only gate, and R4 must limit it before it opens anything further. What exists today:
   Postfix's `smtpd_client_auth_rate_limit` is 0 (no limit) by default and
   its event limits exempt `$mynetworks` (loopback) by default
   (`smtpd_client_event_limit_exceptions`); a session is dropped after 20
@@ -340,8 +352,11 @@ start.
 `celikpanel-egress-guard.timer` runs every 30 seconds. If someone ran
 `nft flush ruleset` or restarted `nftables.service`, the guard loads the table
 again. It then adds every running sandboxed unit whose `ExecStartPre` runs
-the helper's `egress-add`, and every task cgroup in a site's slice that
-still holds a process a finished task left running (§9.2). Between a flush and the guard's next run, the block is absent for
+the helper's `egress-add` (the programs' copy or the tasks' own copy,
+§9.4), and every task cgroup in a site's slice that still holds a process a
+finished task left running, by its path alone (`celikcron-<id>-<n>.service`
+under `celiksite_<id>.slice`; also after the task's unit file was removed,
+when systemd no longer shows its `ExecStartPre`, §9.2). Between a flush and the guard's next run, the block is absent for
 up to 30 seconds. A unit started by an earlier release (with no
 `ExecStartPre`) is never added silently. Since alpha.127 the guard also
 covers `celikapp-*` and `celikappinst-*`; a Node.js site's unit an earlier
@@ -803,17 +818,28 @@ account a unit's settings (`systemctl show`), while a crontab is readable by its
 only. A task keeps its number while its text stays the same (its service names it with a
 `# celikpanel-task:` line), so its last run stays its own.
 
-**The service** (`Type=oneshot`, `KillMode=process`): `User=` and `Group=` the site's
+**The service** (`Type=oneshot`, `KillMode=process`, `NoNewPrivileges=yes`):
+`ConditionPathExists=` the site's slice file (below), `User=` and `Group=` the site's
 account, `Slice=` the site's slice, `WorkingDirectory=` its home, `UMask=0002`,
 `Environment=PATH=/usr/bin:/bin SHELL=/bin/sh`, then `EnvironmentFile=-/etc/environment`,
-`-/etc/default/locale` and the site's own settings file (a later file wins, as the crontab's
-settings outrank PAM's in cron), `StandardInput=file:<n>.in` where the task has input,
-`ExecStart=<the crontab's SHELL> <n>.sh`, the SMTP block's helper lines (§3),
+`-/etc/default/locale` and the site's own settings file (a later file wins), `StandardInput=file:<n>.in` where the task has input,
+`ExecStart=<the crontab's SHELL> <n>.sh`, the SMTP block's helper lines (§3, through the
+tasks' own copy of the helper, `/usr/lib/celikpanel-sandbox/sandbox-task-helper`, §9.4),
 `RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK`, the programs' log rate limit
 (`LogRateLimitIntervalSec=30s`, `LogRateLimitBurst=1000`) and `LimitCORE=0`, and, where
 systemd enforces it, `IPAddressDeny=` of link-local and metadata addresses. It does **not**
 get the programs' file system sandbox (§1): a cron job never had one, and it would stop
 tasks that write the site's files. PHP and the file system view join in R3.
+
+**No extra rights inside a task (second fix round).** `NoNewPrivileges=yes` is set, as for
+the site's programs. Measured on systemd 257 and 255: `RestrictAddressFamilies=` with `User=`
+does **not** imply it (a set-group-id `crontab` gained its group inside a task without it). So
+a program that needs extra rights does not work in a task: `sudo`, `su`, `crontab`, `at`,
+`ping` with file capabilities, `dotlockfile`, and the server's own `sendmail` command - and
+therefore PHP's `mail()` called from a command-line script, which hands the message to
+`sendmail`. A task sends mail by SMTP with a mailbox's name and password (§3). The move's
+preview names every task that calls such a program in command position (the start of the
+command, or after `;`, `&&`, `||`, `|`), by the program's name.
 
 **What a task leaves running keeps running, inside the limits (fix round).** With
 `KillMode=process`, systemd stops only the task's own shell when it ends; a process the task
@@ -825,7 +851,13 @@ starts. systemd logs "Unit process <pid> (<name>) remains running after unit sto
 the run ends, and "Found left-over process <pid> (<name>) in control group while starting
 unit. Ignoring." when the next run starts; both are expected. `systemctl stop` of the task's
 service does not end them; `systemctl kill <service>` does. Removing a task (or the site's
-move back into cron) does not end them either, as cron did not.
+move back into cron) does not end them either, as cron did not: a process a task leaves
+behind **keeps running inside the site's limits until the administrator ends it**
+(`systemctl kill celikcron-<id>-<n>.service`, also after the task was removed). Measured:
+after its unit file is removed, it stays in the unit's cgroup under the slice's limits and the
+address rule, and the guard keeps it under the SMTP block by its cgroup's path (§3). A program
+that should run all the time belongs in the site's Programs, which the customer can see,
+restart and stop; a task is for work that ends.
 
 **The site's limits file first (fix round).** No timer of a site is switched on unless the
 site's slice file is in place and loaded by systemd: a new site's file is written with the
@@ -836,6 +868,19 @@ answers that the task waits for the site's limits (the task file is saved, its t
 not written yet), the move is refused before anything changes, and a site whose running
 timers find their file gone at the start has them held (stopped and remembered; they start
 again at the first start that finds the file back) with a Problems now line.
+
+**Held without the panel too (second fix round).** Every task service carries
+`ConditionPathExists=/etc/systemd/system/celiksite_<id>.slice`. Measured on both systems,
+with two reboots: while the file is missing, systemd **skips** each run (an information line
+"skipped, unmet condition check", the unit not failed, `systemctl --failed` empty), also
+after a reboot and with no panel at all; the Scheduled tasks screen shows such a run as
+skipped, not failed. **They do not run while the limits file is missing; they run again at
+their next time once it is back.** One measured gap: a slice file put back **without**
+`systemctl daemon-reload` leaves the slice that systemd made without a file in place, so the
+next runs have **no** limits until a reload or a reboot. CelikPanel's own way of putting the
+file back (a save of the subscription's limits, the start-up step) writes it, reloads
+systemd and pushes the limits to the running slice before the held timers start again. The
+server owner who puts the file back by hand runs `systemctl daemon-reload` right after.
 
 **The timer**: `OnCalendar=` translated from the line (`internal/sitecron`): every value
 list as systemd's list, cron's OR of the two day fields (neither starts with `*`) as two
@@ -866,7 +911,11 @@ range such as `fri-sun`); those are shown with their reason.
 | | cron job | timer task |
 |---|---|---|
 | account, groups, home, working folder, `LANG`, shell | the same | the same |
-| `PATH`, `SHELL`, umask | as cron sets them | made the same (above) |
+| `SHELL`, umask | as cron sets them | made the same (above) |
+| `PATH` when `/etc/environment` sets one | Debian: still `/usr/bin:/bin`; Ubuntu: the one in `/etc/environment` | the one in `/etc/environment` on both (it is read after `Environment=`; measured with `/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`); the crontab's own `PATH=` wins over both |
+| a variable set both in `/etc/environment` and in the crontab | the one in `/etc/environment` (PAM sets it last) | the crontab's (the site's own settings file comes last) |
+| `export NAME=value` lines and names with a dot or a dash (`MY.NAME`, `MY-NAME`) in `/etc/environment` | `export` lines are taken; dot and dash names are ignored | all three are ignored (systemd logs "Ignoring invalid environment assignment"); the task still starts |
+| `NAME = value` (blanks around `=`) and indented lines in `/etc/environment` | ignored; the indent is dropped | taken as `NAME=value`; an indented line keeps its leading blanks in the name |
 | `$0` | `/bin/sh` | the task's file (`<n>.sh`) |
 | extra environment | — | `USER`, `INVOCATION_ID`, `JOURNAL_STREAM`, `MEMORY_PRESSURE_*`, `SYSTEMD_EXEC_PID`, `TRIGGER_*` |
 | login id (audit) | set by PAM | not set |
@@ -875,7 +924,8 @@ range such as `fri-sun`); those are shown with their reason.
 | open files hard limit (Ubuntu) | 1048576 | 524288 |
 | still running when its time comes | a second copy starts | not started again; starts once more right after it ends |
 | a process left running in the background | keeps running | keeps running, in the site's slice and under §3's rule; systemd logs it (above) |
-| a set-user-id or set-group-id program (`sudo`, `crontab`, `ping` with file capabilities, `dotlockfile`, `at`) | gains its rights | runs without them (`NoNewPrivileges=yes`, implied by `RestrictAddressFamilies=` with `User=`) and may fail |
+| a set-user-id or set-group-id program (`sudo`, `crontab`, `ping` with file capabilities, `dotlockfile`, `at`, the server's `sendmail` and so PHP's `mail()` from a script) | gains its rights | runs without them (`NoNewPrivileges=yes`, set explicitly) and may fail; mail goes by SMTP with a mailbox's login |
+| the site's limits file is missing | — | the run is skipped (not failed), also after a reboot and without the panel |
 | the server owner's per-login limits (`/etc/security/limits.conf`, `pam_limits`) | apply (cron opens a PAM session) | do not apply (no PAM session); the site's slice limits do |
 | many tasks due in the same second | all start in that second (cron has no random delay) | the same: no random delay is added |
 | limits, outgoing mail | none; mail to every port | the site's slice; §3's rule |
@@ -887,9 +937,12 @@ so the per-login limits do not apply; a set-user-id program runs without its rig
 the move's preview names each task that calls a common set-user-id program and says how a
 task can send mail (or that it cannot, §3); and for each task its last run (when, how long, exit status
 and systemd's word for it, the last ten lines it wrote, from its own journal entries), when
-it runs next, and a task whose timer the server owner turned off, whose unit was changed on
-the server, that is not scheduled yet ("save it again"), or whose line does not run (with
-why). After a restart of the server, a task that has not run since says "No run since the
+it runs next, and a task whose timer the server owner turned off, whose timer CelikPanel
+wrote but could not switch on yet (second fix round: its own state, never "turned off"; a
+save is recorded as applied only once every new timer is on, and the next start or save
+tries again), whose unit was changed on the server, that is not scheduled yet ("save it
+again"), whose last run was skipped because the site's limits file was missing, or whose
+line does not run (with why). After a restart of the server, a task that has not run since says "No run since the
 server started" (systemd forgets the last run then; the journal keeps it). The customer sees
 only their own site's tasks. A finished run's last lines are read from the journal once and
 kept (a bounded cache); one reading of the list starts at most eight journal readers, and the
@@ -926,7 +979,7 @@ step starts.
 | planned | the crontab's bytes are recorded | nothing ("not tried"); a task file written before its record is removed |
 | source_written | the task file holds the crontab | put back (below) |
 | units_written | every timer and service written and checked by systemd, none started | put back |
-| cron_closed | `/etc/cron.allow` leaves the account out (checked), and every `crontab` process of its uid started before that is ended (it passed crontab's check before and could still install a file) | put back |
+| cron_closed | `/etc/cron.allow` leaves the account out (checked), and every `crontab` process of its uid started before that is ended (it passed crontab's check before and could still install a file); when those processes cannot be listed, the move fails here and is put back, nothing removed (second fix round) | put back |
 | crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | finished: the timers enabled ("moved"); if that fails, put back |
 | enabled | the timers enabled and started | finished ("moved") |
 
@@ -940,6 +993,17 @@ file and the units (switched on again where the site's limits allow), so nothing
 answer says so and the Agent's next start tries again. After the move, the move never
 answers "moved" while a crontab exists for the account. The administrator's card shows an
 interrupted move's outcome.
+
+**One unresolved record stops every new move (second fix round).** There is one move record
+for every site and every kind of move (tasks, programs, undo). Each move and undo first lets
+the Agent resolve a record it finds; when the record is still there afterwards (a crontab
+that could not be written back, timers that could not be switched on again), every new move
+and undo - of any site, tasks or programs - is refused before anything changes, with the
+site and what is unresolved; a move removes only the record it wrote itself. The Panel does
+not start the programs part of a request whose tasks part answered "unknown" or was refused
+this way, and "Move all" stops there. The state is on that site's card and is one line in
+Problems now: what is unresolved, that CelikPanel tries again at its next start, and, if it
+cannot, the server owner's steps by hand (§9.4).
 
 **The undo** ("Put the tasks back into cron", administrator): refused before anything
 changes when the server owner's own `/etc/cron.allow` leaves the account out (or
@@ -955,7 +1019,10 @@ the timers are never both on and never both gone:
 | crontab_written | the crontab is written and checked: `crontab -l` gives back exactly the bytes `crontab -l` gave before the move | finished: the timers and files removed ("undone") |
 
 A crontab the site's own code made in the moment cron was open is never removed: the
-rollback leaves it, and it is reported as running outside the limits (§9.4).
+rollback leaves it, and it is reported as running outside the limits (§9.4). When the
+crontab the undo wrote cannot be confirmed, only a spool file that holds exactly what the
+undo wrote is taken away again; any other file is left as it is and named in the answer
+(second fix round).
 
 ### 9.4 The server owner and the task files (D-022)
 
@@ -971,7 +1038,12 @@ rollback leaves it, and it is reported as running outside the limits (§9.4).
   screen is refused with why (it would remove every other task). The administrator gets one
   action on the screen, "Rebuild the task file", which shows first what the file will hold -
   the copy of what CelikPanel last made the timers from, kept in the Agent's private folder -
-  and then writes it.
+  and then writes it. **While the account has a crontab** (an undo by hand half done, or a
+  put-back that left a unit file the owner changed), the tasks run from that crontab: the
+  rebuild and its preview are refused (it would run every task twice), and the screen says
+  that the tasks run from the crontab again and names the timer files left behind, which the
+  server owner removes (`systemctl disable --now 'celikcron-<id>-*.timer'`, delete the files,
+  `systemctl daemon-reload`).
 - **Natively, in the units.** A changed `celikcron-*` unit is kept (D-031) and the screen
   names it. A timer the owner stopped or disabled (`systemctl disable --now`) stays so: a
   changed task restarts its timer only when it runs.
@@ -984,13 +1056,50 @@ rollback leaves it, and it is reported as running outside the limits (§9.4).
   and the file was written after that. Otherwise the words say the site's own code can have
   made it, and why (cron let the account in). The undo is refused while it exists.
 - **Without CelikPanel.** The timers, services and files are native: they keep running with
-  the panel stopped, removed or unlicensed. Every task's run calls
-  `/usr/lib/celikpanel-sandbox/sandbox-helper` first (the SMTP block, §3), so removing
-  CelikPanel's files stops the tasks too: the owner who removes them puts the site back into
-  cron first. To put a site back into cron by hand: `crontab -u <account>
-  /etc/celikpanel-cron/<id>.crontab` (after `/etc/cron.allow` allows it; the first six `#|`
-  lines and the header line are CelikPanel's and may be deleted first), then `systemctl
-  disable --now 'celikcron-<id>-*.timer'` and remove the units and the folder.
+  the panel stopped, removed or unlicensed. Once the panel is gone, editing
+  `/etc/celikpanel-cron/<id>.crontab` changes **no** timer (only the panel turns that file
+  into units); the owner changes a task in its files instead: the time in
+  `/etc/systemd/system/celikcron-<id>-<n>.timer`, the command in
+  `/etc/celikpanel-cron/<id>.d/<n>.sh`, then `systemctl daemon-reload` (a new task is a new
+  timer and service pair, enabled with `systemctl enable --now <timer>`). Every task's run
+  calls `/usr/lib/celikpanel-sandbox/sandbox-task-helper` first (the SMTP block, §3), so
+  removing CelikPanel's files stops the tasks too: the owner who removes them puts the site
+  back into cron first. To put a site back into cron by hand, **timers off first, then the
+  crontab** (never both on): `systemctl disable --now 'celikcron-<id>-*.timer'`, then, once
+  `/etc/cron.allow` lets the account in (add its name, or delete the file),
+  `crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (the first six `#|` lines and the
+  header line are CelikPanel's and may be deleted first), then remove the units, the folder
+  and the task file, and `systemctl daemon-reload`.
+- **What stays after the panel is removed.** The timers of moved sites, held ones included
+  (they stay held while the site's limits file is missing, §9.2); the SMTP block with its
+  submission exception as last decided (§3); `/etc/cron.allow`, which keeps moved accounts
+  out and any account created later as well until the owner adds it or deletes the file;
+  the lingering rule; and the masks of the site accounts' service managers (§9.5).
+- **Going back to an earlier release (version transition, second fix round).** The schema
+  does not change. What a release before this one (alpha.144 or earlier) does on a server
+  where sites were moved:
+  - It does not know the `celikcron-*` units, `/etc/celikpanel-cron` or the move record,
+    and neither removes nor changes them: **the tasks keep running as timers, inside the
+    sites' limits**. A move interrupted at that moment stays as it is until this release (or
+    a later one) starts again.
+  - Its Agent replaces `/usr/lib/celikpanel-sandbox/sandbox-helper` with its own copy the
+    first time it touches a program, and that copy refuses the task units' names. So the task
+    units call their own copy, `/usr/lib/celikpanel-sandbox/sandbox-task-helper`, which no
+    earlier release manages or overwrites; this release installs, checks and repairs it like
+    the programs' copy (its own record in the sandbox ledger) and never removes it.
+  - When it writes the SMTP block's file and guard again, it writes them without this
+    release's lines: the submission exception goes (tasks cannot send mail through this
+    server), and the guard no longer re-adds task cgroups after an `nft flush` (each run still
+    adds its own cgroup).
+  - Its Scheduled tasks screen reads the crontab, which is empty for a moved site: **it does
+    not show the timers, and it cannot add a task for a moved account**, nor for a site created
+    under it: `/etc/cron.allow` (CelikPanel's file, which it leaves as it is) keeps those
+    accounts out, and it never brings the file up to date. The masks of §9.5 stay.
+  - Recommended order: **undo the move of every site first** ("Put the tasks back into cron"
+    on each site's Overview), then go back. After going back without that, per moved site:
+    `systemctl disable --now 'celikcron-<id>-*.timer'`, then let the account into
+    `/etc/cron.allow` (or delete the file) and run
+    `crontab -u <account> /etc/celikpanel-cron/<id>.crontab`.
 
 ### 9.5 The last doors for a site's own jobs
 
@@ -1025,7 +1134,28 @@ Without polkitd, systemd-logind already lets only root switch lingering on (F3).
 **Accounts that already linger keep lingering**: Problems now names them with the command
 that ends it (`loginctl disable-linger <account>`); nothing is removed by itself.
 
+**A site account's own service manager at an SFTP login is closed (second fix round).**
+Measured on Debian 13 and Ubuntu 24.04: an SFTP login of a site account goes through sshd
+with `UsePAM yes` and `pam_systemd`, which starts `user@<uid>.service` in `user.slice`,
+outside the site's slice and the SMTP block; the site's own code could then run units of its
+own there (planted under `~/.config/systemd/user`, or `systemd-run --user` while a session is
+open) for as long as a session stays open. With `user@<uid>.service` masked, the SFTP login
+still works, `/run/user/<uid>` is still made, and no manager starts. So every site account's
+uid gets a mask, `/etc/systemd/system/user@<uid>.service` linked to `/dev/null`: CelikPanel's
+own link, recorded like the other files of this section, written when a site is created and by
+the step after each Panel start for existing sites (followed by `systemctl daemon-reload`),
+and removed when the uid no longer belongs to a site account (its site was deleted). A
+session that is open when the mask is written keeps its manager until it ends. Never for root or for a uid an
+administrator account shares (a member of `sudo`, `admin` or `wheel`). A file or link of that
+name that is not CelikPanel's is the server owner's: kept, and named in Problems now with the
+command that closes it; the owner's removal of CelikPanel's link stands and is named the same
+way; a mask that could not be written is named too. FTP as the panel configures it starts no
+manager (measured). **After the panel is removed the masks stay**; the owner removes one with
+`systemctl unmask user@<uid>.service`.
+
 **What a site account can still keep running after this step**: nothing new of its own
 once its site is moved and polkitd (or none) is as above — no crontab, no `at` job (R1), no
-lingering user manager. Its PHP (until R3) and its programs run where CelikPanel starts
-them; a user manager that already lingered keeps running until the owner ends it.
+lingering user manager, no user manager at an SFTP login. Its PHP (until R3) and its
+programs run where CelikPanel starts them; a user manager that already lingered keeps running
+until the owner ends it, and a process a finished task left behind keeps running inside the
+site's limits until the administrator ends it (§9.2).
