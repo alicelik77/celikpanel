@@ -175,7 +175,9 @@ func StockPoolsTurningOff() (map[string]bool, error) {
 }
 
 // SetStockPoolTurnedOff records (off) or forgets a version's stock pool; both
-// end an unfinished turn-off of it.
+// end an unfinished turn-off of it. A record that cannot be read is an error
+// either way: it is never rewritten from empty, which would forget the other
+// versions and the owner's undo of them (S4 R1, fourth fix round).
 func SetStockPoolTurnedOff(version string, off bool) error {
 	if err := ValidatePHPVersion(version); err != nil {
 		return err
@@ -183,7 +185,7 @@ func SetStockPoolTurnedOff(version string, off bool) error {
 	stockPoolsOffMu.Lock()
 	defer stockPoolsOffMu.Unlock()
 	current, turning, err := readStockPoolsOffLocked()
-	if err != nil && off {
+	if err != nil {
 		return err
 	}
 	if current[version] == off && !turning[version] {

@@ -140,3 +140,23 @@ func TestKeepingAPoolWritesTheRecordBeforeEachRename(t *testing.T) {
 		t.Fatal("the undo left its unfinished mark")
 	}
 }
+
+// S4 R1, fourth fix round (finding 6): a record that cannot be read is never
+// rewritten from empty, also when a version is forgotten. Fails on 336c1da28
+// (the other versions' entries, and so the owner's undo of them, were lost).
+func TestForgettingAVersionNeverRewritesAnUnreadableRecord(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stock-pools-off.json")
+	t.Cleanup(SetStockPoolsOffRecordPathForTest(path))
+	broken := []byte("{\"version\":1,\"off\":[\"8.2\",\"8.3\"]")
+	if err := os.WriteFile(path, broken, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, off := range []bool{false, true} {
+		if err := SetStockPoolTurnedOff("8.4", off); err == nil {
+			t.Fatalf("off=%v: an unreadable record was written over", off)
+		}
+	}
+	if data, _ := os.ReadFile(path); string(data) != string(broken) {
+		t.Fatalf("the record changed: %s", data)
+	}
+}
