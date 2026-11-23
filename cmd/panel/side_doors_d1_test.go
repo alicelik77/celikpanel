@@ -19,8 +19,16 @@ type sideDoorsLostAgent struct {
 	steps   atomic.Int32
 }
 
+// HostPlatform answers a verified Debian identity, as a real Agent does.
+func (a *sideDoorsLostAgent) HostPlatform(_ *transport.Empty, out *transport.HostPlatformResponse) error {
+	*out = debianPolicyTestIdentity()
+	return nil
+}
+
 func (a *sideDoorsLostAgent) CloseSideDoorsV1(_ *transport.SideDoorsRequest, resp *transport.SideDoorsResponse) error {
 	a.steps.Add(1)
+	// The contact is lost from here on.
+	a.unanswered.Store(true)
 	<-a.release
 	*resp = transport.SideDoorsResponse{}
 	return nil
@@ -42,7 +50,6 @@ func TestASideDoorsStepThatLosesTheAgentEndsAndIsNotLeftRunning(t *testing.T) {
 	}
 	var once sync.Once
 	t.Cleanup(func() { once.Do(func() { close(agent.release) }) })
-	agent.unanswered.Store(true)
 	panel := newPolicyDispatchTestPanel(t, agent)
 	began := time.Now()
 	_, err := closeSideDoorsThroughAgent(panel, context.Background(), transport.SideDoorsReCloseAt, "")
@@ -50,7 +57,7 @@ func TestASideDoorsStepThatLosesTheAgentEndsAndIsNotLeftRunning(t *testing.T) {
 		t.Fatalf("err=%v after %v: the step's call was not ended", err, time.Since(began))
 	}
 	if agent.steps.Load() != 1 {
-		t.Fatalf("the step was asked %d times", agent.steps.Load())
+		t.Fatalf("the step was asked %d times (err %v)", agent.steps.Load(), err)
 	}
 	finishes := agent.finishRequests()
 	if len(finishes) != 1 || finishes[0].Success || finishes[0].FailureCode != errCodeServiceOperationHeartbeatUncertain {
