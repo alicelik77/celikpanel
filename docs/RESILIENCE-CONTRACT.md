@@ -9439,8 +9439,17 @@ until the backup reports ready.
   startup recovery runs (`reconcileInterruptedServiceOperationLocked`, one
   function for both). A job the Agent has no record of is unknown, not
   ended: the row is left unsettled. An Agent that answers no read for two
-  minutes leaves the row unsettled and the process lock released; the
-  Agent's own lease still keeps every other mutation off the host.
+  minutes leaves the row unsettled and the process lock released. While
+  the interrupted job is still active, the Agent refuses every other lease,
+  so no two privileged steps run at once; once it has ended, firewall,
+  DNS, mail TLS and similar standalone changes are admitted again (they
+  take the lock, not the row) before the interrupted install is run again
+  at the panel's next start, and may run beside a half-finished component.
+  What the administrator sees meanwhile: component and setup changes are
+  refused with the unsettled words (check the Agent, then restart the
+  panel's web process); while the old job is active, a standalone change
+  gets the Agent's "another change is still running" refusal. Not gated by
+  design: a half-finished install must not block a firewall change.
 - **Invariant 4 (retrying a transient read is not re-running a mutation
   whose outcome is unknown).** What changes: an install, install-together,
   remove-together, mail profile, runtime or setup install whose job ended
@@ -9459,8 +9468,10 @@ until the backup reports ready.
   component) and other changes are admitted again. Never "not started".
 - **Heartbeat.** The worker is stopped on the Agent's definite answer, or
   15 s after the last renewal the Agent answered (counted from when it was
-  sent), every renewal bounded by the time that remains: 5 s before the
-  Agent's 20-second lease can end. The rule governs every standalone
+  sent). A renewal may wait for the whole time that remains, an unanswered
+  one is asked again about a second later, and the first one is scheduled
+  from when the lease was asked for: the stop comes at the latest 5 s before
+  the Agent's 20-second lease can end, and is logged with its cause. The rule governs every standalone
   mutation too (firewall, DNS, mail TLS, certificates, VPN, webmail). The
   Agent's lease rules are unchanged.
 - **Schema or version transition.** None. The settling phases and refusal

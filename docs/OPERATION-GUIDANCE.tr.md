@@ -11391,8 +11391,10 @@ adresleri de aynı yoldan geçiyordu.
   Agent'ın işe dair kaydı yoktur (sonucu bilinmiyor), işin son tarihi geçer,
   yeniden çalıştırma sunucu meşgul olduğu için iki dakika boyunca reddedilir
   ya da panelin veritabanı yazmayı reddeder — işlem bunu söyler, süreç
-  kilidi bırakılır (Agent'ın kendi kirası başka her şeyi sunucudan uzak
-  tutar), reddedilen değişiklik sunucu sahibinin adımlarını adlandırır
+  kilidi bırakılır (yarıda kalan iş hâlâ etkinken Agent başka her kirayı
+  reddeder; iş bittikten sonra güvenlik duvarı, DNS ve posta TLS
+  değişiklikleri, kurulum bir sonraki açılışta yeniden çalıştırılmadan önce
+  yeniden kabul edilir), reddedilen değişiklik sunucu sahibinin adımlarını adlandırır
   (neden `unsettled`) ve Şu anki sorunlar'da tek satır çıkar
   (`service_operation_unsettled`, kim yapar: sunucu sahibi): önce Agent'ı
   denetleyin (`sudo systemctl status celikpanel-agent`, durmuşsa başlatın),
@@ -11405,8 +11407,12 @@ adresleri de aynı yoldan geçiyordu.
 - **Tek bir geç yenileme, kaybolmuş bir Agent değildir.** İşçi Agent'ın kesin
   yanıtıyla (kira kaybedildi ya da başkasının, iş bitti) ya da Agent'ın
   yanıtladığı son yenilemeden, gönderildiği andan sayılarak 15 saniye sonra
-  durdurulur; her yenileme kalan süreyle sınırlıdır, bu yüzden durma
-  Agent'ın 20 saniyelik kirası bitebilmeden 5 saniye önce gelir. Kural her
+  durdurulur. Bir yenileme kalan sürenin tamamı kadar bekleyebilir (zamanında
+  gelen geç bir yanıt adımı korur), yanıtsız kalan yaklaşık bir saniye sonra
+  yeniden istenir ve ilki kiranın istendiği andan sayılarak planlanır; bu
+  yüzden durma en geç Agent'ın 20 saniyelik kirası bitebilmeden 5 saniye önce
+  gelir ve panelin günlüğünde ne zaman ve neden durduğunu söyleyen bir satır
+  çıkar ("worker stopped: no lease renewal answered for …"). Kural her
   tek başına değişikliği de yönetir (güvenlik duvarı, DNS, posta TLS,
   sertifikalar, VPN, web postası). Agent'ın kira kuralları değişmedi.
 - Başlangıçta, sunucunun meşgul diye (iki dakika) reddetmeyi sürdürdüğü bir

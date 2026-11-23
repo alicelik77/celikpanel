@@ -11523,8 +11523,10 @@ steps and webmail addresses.
   minutes, the Agent has no record of the job (its result is not known),
   the job's deadline passes, a run again stays refused because the host is
   busy for two minutes, or the panel's database refuses the write — the
-  operation says so, the process lock is released (the Agent's own lease
-  keeps everything else off the host), a refused change names the server
+  operation says so, the process lock is released (while the interrupted
+  job is still active the Agent refuses every other lease; once it has
+  ended, firewall, DNS and mail TLS changes are admitted again before the
+  install is run again at the next start), a refused change names the server
   owner's steps (reason `unsettled`), and Problems now has one line
   (`service_operation_unsettled`, who acts: the server owner): first check
   the Agent (`sudo systemctl status celikpanel-agent`, start it if it is
@@ -11537,8 +11539,12 @@ steps and webmail addresses.
 - **One slow renewal is not a lost Agent.** The worker is stopped on the
   Agent's definite answer (lease lost or owned by another, job ended), or
   15 seconds after the last renewal the Agent answered, counted from when
-  it was sent; every renewal is bounded by the time that remains, so the
-  stop comes 5 seconds before the Agent's 20-second lease can end. The
+  it was sent. A renewal may wait for the whole time that remains (a slow
+  answer that comes in time keeps the step), an unanswered one is asked
+  again about a second later, and the first one is scheduled from when the
+  lease was asked for; so the stop comes at the latest 5 seconds before
+  the Agent's 20-second lease can end, and one line in the panel's journal
+  says when and why ("worker stopped: no lease renewal answered for …"). The
   rule governs every standalone mutation too (firewall, DNS, mail TLS,
   certificates, VPN, webmail). The Agent's lease rules are unchanged.
 - At startup a run again the host keeps refusing as busy (two minutes)

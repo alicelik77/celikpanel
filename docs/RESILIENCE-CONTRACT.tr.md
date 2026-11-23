@@ -8647,8 +8647,18 @@ bağlantıyı tutar.
   çalıştırdığı kodla kapatır (`reconcileInterruptedServiceOperationLocked`,
   ikisi için tek işlev). Agent'ın kaydı olmayan iş bilinmiyordur, bitmiş
   değildir: satır kapatılamamış kalır. İki dakika boyunca hiçbir okumayı
-  yanıtlamayan Agent satırı kapatılamamış bırakır ve süreç kilidi bırakılır;
-  Agent'ın kendi kirası başka her değişikliği sunucudan uzak tutmayı sürdürür.
+  yanıtlamayan Agent satırı kapatılamamış bırakır ve süreç kilidi bırakılır.
+  Yarıda kalan iş hâlâ etkinken Agent başka her kirayı reddeder, bu yüzden iki
+  ayrıcalıklı adım aynı anda çalışmaz; iş bittikten sonra güvenlik duvarı,
+  DNS, posta TLS ve benzeri tek başına değişiklikler yeniden kabul edilir
+  (kilidi alırlar, satırı değil), yarıda kalan kurulum panelin bir sonraki
+  açılışında yeniden çalıştırılmadan önce, yarım kalmış bir bileşenin yanında
+  çalışabilirler. Yöneticinin bu sırada gördüğü: bileşen ve kurulum
+  değişiklikleri kapatılamamış satırın sözleriyle reddedilir (önce Agent'ı
+  denetleyin, sonra panelin web işlemini yeniden başlatın); eski iş etkinken
+  tek başına bir değişiklik Agent'ın "başka bir değişiklik hâlâ sürüyor"
+  reddini alır. Tasarım gereği engellenmez: yarım bir kurulum bir güvenlik
+  duvarı değişikliğini engellememelidir.
 - **İlke 4 (geçici bir okumayı yinelemek, sonucu bilinmeyen bir değişikliği
   yeniden çalıştırmak değildir).** Değişen: işi
   `service_mutation_lease_expired` ile biten (adımı başarılı olmuş olabilir)
@@ -8669,8 +8679,10 @@ bağlantıyı tutar.
   kabul edilir. Asla "başlatılamadı" denmez.
 - **Kalp atışı.** İşçi Agent'ın kesin yanıtıyla ya da Agent'ın yanıtladığı
   son yenilemeden (gönderildiği andan sayılarak) 15 saniye sonra durdurulur;
-  her yenileme kalan süreyle sınırlıdır: Agent'ın 20 saniyelik kirası
-  bitebilmeden 5 saniye önce. Kural her tek başına değişikliği de yönetir
+  bir yenileme kalan sürenin tamamı kadar bekleyebilir, yanıtsız kalan
+  yaklaşık bir saniye sonra yeniden istenir ve ilki kiranın istendiği andan
+  sayılarak planlanır: durma en geç Agent'ın 20 saniyelik kirası bitebilmeden
+  5 saniye önce gelir ve nedeniyle günlüğe yazılır. Kural her tek başına değişikliği de yönetir
   (güvenlik duvarı, DNS, posta TLS, sertifikalar, VPN, web postası). Agent'ın
   kira kuralları değişmedi.
 - **Şema ya da sürüm geçişi.** Yok. Kapatma aşamaları ve ret nedenleri
