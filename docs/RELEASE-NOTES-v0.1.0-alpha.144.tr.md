@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.144.md)
 
+> **Yayımlandı**, 22 Kasım 2026 (UTC): sürüm commit'i `99e65fc3d`, GitHub ön sürümü 22:55:55Z, indirme portalı yaklaşık 22:59Z (dış denetim 27/27).
+
 **Küçük bir sürüm.** Web postasının kendi adresindeki bir güvenlik açığını
 kapatır, alpha.143 laboratuvarının istediği altı düzeltmeyi ve trafik
 rakamlarının bir düzeltmesini getirir ve küçük bir şey ekler: aynı hesabın
