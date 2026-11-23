@@ -443,7 +443,7 @@ izlenmiş eski veritabanı `a_shop` ile (sahibi `a_owner`, kayıtlı okuyucu `a_
 
 ## 7. Yan kapılar: veritabanı araçları, web postası, varsayılan PHP-FPM havuzu, `at` ve site crontab'ları
 
-*23 Kasım 2026 (kum havuzu dilimi R1, #348 numaralı istek, üç bağımsız incelemeden sonra) ·
+*23 Kasım 2026 (kum havuzu dilimi R1, #348 numaralı istek, dört bağımsız incelemeden sonra) ·
 Kaynakta var, bileşen testlerinden geçti; web postası ağacındaki erişim listesi, deneme
 sunucusunun ext4 dosya sisteminde gerçek dosyalar, sahipler ve erişim denetimleriyle denendi.
 Debian 13 ve Ubuntu 24.04 laboratuvar turu açık (adımlar istekte).*
@@ -471,7 +471,8 @@ değiştirmeden yeniden okur:**
    yok). Web sunucusu `public_html`'e (içindeki `plugins`, `skins` ve `program/js` ağacın içine
    bağlantıdır) kökün grubuyla ulaşır. `db/`, `temp/` ve `logs/` hesabın olur; `config/`
    `root:<hesap> 0750` olur; web grubunun okuduğu eklenti yapılandırması hesabın grubunu alır.
-   Hiçbir site hesabı ağaca hiç giremez. Erişim listesini kabul etmeyen dosya sisteminde taşıma
+   Hiçbir site hesabı dosya sisteminde ağaca giremez (web postasının yerel sunucusu ayrı bir
+   konudur: aşağıya bakın). Erişim listesini kabul etmeyen dosya sisteminde taşıma
    hiçbir şey değişmeden durur: web postası web sunucusu hesabında kalır, Şu anki sorunlar
    nedenini ve sahibin ne yapabileceğini söyler. Web postası güncellemeleri girdiyi yeni ağaca,
    yayımlanmadan önce koyar.
@@ -481,17 +482,24 @@ değiştirmeden yeniden okur:**
    programı kuruluysa Apache'nin yüklediği dosyalardır: `/etc/apache2` altında `*-available`
    klasörleri dışındaki her dosya, etkin bağlantılar ve bunların içe aldığı her şey. PHP-FPM
    paketinin kendi `/etc/apache2/conf-available/php<s>-fpm.conf` dosyası, standart sunucuda onu
-   hiçbir şey etkinleştirmediği için kullanıcı sayılmaz; izlenemeyen bir Apache içe alması her
-   Apache dosyasını sayar. Yüklenen yapılandırmada soketi anan, tam satır yorum olmayan her satır;
+   hiçbir şey etkinleştirmediği için kullanıcı sayılmaz; izlenemeyen bir Apache içe alması (bir
+   değişken, sonraki satıra süren bir satır) kendisi kullanıcı sayılır ve satırıyla anılır. Yüklenen yapılandırmada soketi anan, tam satır yorum olmayan her satır;
    aynı sokete başka bir yazılışla ya da bağlantıyla ulaşan (aygıt ve düğüm numarasıyla
    karşılaştırılır) ya da hiç izlenemeyen bir `unix:` yolu; ya da adresi değişken olan bir
    `*_pass` havuzu açık tutar. Tek ayrık, CelikPanel'in mührünü taşıyan ve değişmemiş bir site
    dosyasındaki kendi ters vekil satırıdır, `proxy_pass $celikpanel_upstream;`: bu değişken
-   yalnız `http(s)://ad[:port]` tutar. Yani nginx kullanan standart bir Debian 13 ya da Ubuntu
-   24.04 sunucusunda havuz, CelikPanel'in yazmadığı hiçbir şey onu göstermiyorsa ve yanında bir
-   site ya da araç havuzu çalışıyorsa kapatılır; Apache paketin dosyasını yüklüyorsa, sahibin bir
-   yapılandırması soketi ya da izlenemeyen bir soket yolunu anıyorsa veya CelikPanel'inki dışında
-   bir `*_pass` değişken kullanıyorsa açık kalır. Kapatma, adını `www.conf.off-by-celikpanel` yapmaktır; `php-fpm -t` ve yeniden yükleme ile
+   yalnız `http(s)://ad[:port]` tutar. Havuz şu durumlarda da, birim ya da satır anılarak açık
+   tutulur: etkin ya da çalışan bir Apache (`apache2` ya da `/etc/apache2-<ad>` klasörü aynı
+   biçimde okunan bir `apache2@<ad>` örneği) yüklediği yapılandırmada `.htaccess` dosyalarının bir
+   şeyi değiştirmesine izin veriyorsa (`None` dışında bir `AllowOverride` ya da
+   `AllowOverrideList`); bir `httpd`, `lighttpd`, Caddy ya da OpenLiteSpeed birimi etkin ya da
+   çalışıyorsa (yapılandırmaları okunmaz); birimler listelenemiyorsa. Bakılmayanlar: sokete
+   doğrudan bağlanan programlar (işlem kodu önbelleğini sıfırlayan bir cron işi, havuzun durum
+   sayfasını okuyan bir izleme aracı), systemd dışında başlatılan bir web sunucusu ve `nginx -T`'nin
+   yazdırmadığı kod (bir Lua dosyası). Bunlardan biri havuzu kullanıyorsa sahip havuzu eski adına
+   döndürür (aşağıya bakın); CelikPanel onu sonra açık bırakır. Yani yalnız nginx kullanan
+   standart bir Debian 13 ya da Ubuntu 24.04 sunucusunda havuz, okunan hiçbir şey onu
+   göstermiyorsa ve yanında bir site ya da araç havuzu çalışıyorsa kapatılır. Kapatma, adını `www.conf.off-by-celikpanel` yapmaktır; `php-fpm -t` ve yeniden yükleme ile
    denetlenir, reddedilirse geri konur. Bir sürüm hiç havuzsuz bırakılmaz: son diğer havuzu
    gitmeden önce (site silinir ya da taşınır, araç taşınır ya da kaldırılır) varsayılan havuz geri
    konur. Bir sürümün havuzlarındaki her tutma, yazma, silme, deneme ve yeniden yükleme tek bir
@@ -556,7 +564,46 @@ art arda iki deneme başarısız olunca çalışmıyor sayar.
 - Crontab satırı: crontab root olarak düzenlenir. CelikPanel'in yazmadığı satırlar listelenir,
   asla onun tarafından silinmez.
 
-**Bir site hesabının hâlâ ulaşabildiği.** Web postası ağacının altında hiçbir şey. Araçların
-soketleri web sunucusunundur (0660) ve site hesabı o grupta değildir; müşteriler hiçbir `*_pass`
-yönergesi yazamaz. Varsayılan soketi zararsız bir yönergede anan müşteri o havuzu açık tutar ve
-bundan bir şey kazanmaz.
+**Önceki sürüme dönmek (alpha.144).** Geri dönüş yalnız CelikPanel'in kendi dosyalarını geri
+koyar; `/etc/php`, `/etc/nginx`, `/etc/at.allow`, araçların ağaçları ve erişim listesi olduğu gibi
+kalır. alpha.144 altında:
+
+- *Çalışmayı sürdürür:* PHP-FPM araçların kendi havuzlarını çalıştırır; alpha.144 yapılandırmaların
+  andığı soketleri kullanır, phpMyAdmin, phpPgAdmin ve web postası yanıt vermeyi sürdürür; web
+  postasının adres dosyaları soketlerini korur; `/etc/at.allow` olduğu gibi kalır.
+- *Artık korunmaz:* alpha.144 bir aracın kendi soketini tanımaz; bu yüzden aracın çalıştığı PHP
+  sürümünün kaldırılmasını reddetmez (araç durur ve nedeni söylenmez); araçların Yönet
+  pencerelerinde PHP sürümü görünmez.
+- *Başarısız olur:* web postasının kendi güncellemesi (yeni ağaç hesabın girdisini ve klasörlerini
+  almaz; güncelleme eski ağacı geri koyar ve web postasının yanıt vermediğini söyler); varsayılan
+  havuzu kapalı bir PHP sürümünün son sitesini silmek ya da başka sürüme taşımak (PHP-FPM'in
+  denetimi havuzsuz sürümü reddeder, alpha.144 varsayılan havuzu geri koymaz); böyle bir sürümde
+  bir aracı yeniden kurmak ya da kanıtlamak.
+- *Ayrıca:* yan kapıların Şu anki sorunlar satırları görünmez; bir aracı kaldırmak hesabını,
+  havuzunu ve veri klasörünü bırakır; gizli dosyalarını web grubuna geri veren bir phpMyAdmin paket
+  yükseltmesi düzeltilmez.
+
+Sahibin yapacağı: geri dönmeden önce her varsayılan havuzu geri koyar
+(`mv /etc/php/<s>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<s>/fpm/pool.d/www.conf &&
+systemctl reload php<s>-fpm`) ve araçlar eskisi gibi çalışsın isterse kendi havuzlarını yukarıdaki
+adımlarla geri alır; sonra geri döner. Zaten geri dönüldüyse: bir sürümün son sitesini silmeden ya
+da taşımadan önce varsayılan havuzu geri koyar; `ls /etc/php/*/fpm/pool.d/celikpanel-*.conf`
+komutunun listelediği bir PHP sürümünü kaldırmaz; web postası güncellemelerini yeni sürüm yeniden
+kurulana kadar bekletir.
+
+**Bir site hesabının hâlâ ulaşabildiği.** Dosya sisteminde web postası ağacının altında hiçbir
+şey. Araçların soketleri web sunucusunundur (0660) ve site hesabı o grupta değildir; müşteriler
+hiçbir `*_pass` yönergesi yazamaz. Varsayılan soketi zararsız bir yönergede anan müşteri o havuzu
+açık tutar ve bundan bir şey kazanmaz.
+
+Henüz kapanmadı: web postasının panelin yerel soketindeki sunucusu
+(`/run/celikpanel-webmail.sock`; nginx Unix dinleme soketini 0666 kipiyle oluşturur) her yerel
+hesaba girişsiz yanıt verir. `public_html` altındaki dosyaları, bir eklenti klasöründeki `.bak`
+dosyası gibi kopyalarla birlikte verir ve `.php` dosyalarını web postasının havuzuyla (taşımadan
+sonra web postasının kendi hesabıyla) çalıştırır. Panel ona yalnız web postasının hazır olup
+olmadığını sorar. alpha.145 ona web postasının kendi adresinin kurallarını verir; bu değişiklik o
+sürümle birleştirilince bunları alır. Veritabanı araçlarının `127.0.0.1:8306` üzerindeki sunucusuna
+her yerel hesap aynı biçimde, panelin `/dbtool/` yolundan da oturum açmış her panel kullanıcısı
+ulaşır: paketlerin kendi dosyalarını (kod, belgeler, örnek SQL; gizli bilgi yok) verir ve `.php`
+dosyalarını araçların kendi hesaplarıyla çalıştırır; veritabanlarını araçların kendi girişleri
+korur.

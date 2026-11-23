@@ -473,13 +473,21 @@ var roundcubeWalkTree = filepath.Walk
 //     named in notes;
 //   - the tree's root stays closed to others (S4 R1, second fix round): only
 //     webmail's own account gets through it, by the access-control-list
-//     entry "user:<account>:--x". No website account enters the tree at all,
-//     so nothing below it (nested plugin configurations, .bak or ~ copies,
-//     a plugin folder that is a link) is reachable for them.
+//     entry "user:<account>:--x". No website account enters the tree on
+//     the file system, so nothing below it (nested plugin configurations,
+//     .bak or ~ copies, a plugin folder that is a link) can be opened by
+//     them directly.
 //
 // The web server keeps reaching public_html through the root's group (the
 // web group, as the install leaves it). Nothing else changes: the published
 // code keeps the owner, group and modes it has.
+//
+// Not closed by this (fourth fix round, stated as it is): webmail's server
+// on the panel's local socket (/run/celikpanel-webmail.sock, mode 0666 as
+// nginx creates it) still gives every local account, without a login, the
+// files under public_html and runs its .php files with webmail's pool, as on
+// main. alpha.145 gives that server the rules of webmail's own address; this
+// branch takes them when it merges that release.
 func roundcubeOwnAccountPlan(baseDir string, uid, gid, webGID int) ([]roundcubeMetaChange, []string, error) {
 	var plan []roundcubeMetaChange
 	var notes []string

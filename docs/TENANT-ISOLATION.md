@@ -519,7 +519,7 @@ alpha.140 or earlier and watched for a day:
 
 ## 7. Side doors: the database tools, webmail, the stock PHP-FPM pool, `at` and site crontabs
 
-*23 November 2026 (sandbox slice R1, pull request #348, after three
+*23 November 2026 (sandbox slice R1, pull request #348, after four
 independent reviews) · In source and component-tested; the access-control
 list on webmail's tree was checked with real files, owners and access checks
 on the test guest's ext4. The lab round on Debian 13 and Ubuntu 24.04 is
@@ -553,7 +553,8 @@ after every move in a tool's Manage window:**
    and `program/js` are links inside the tree) through the root's group.
    `db/`, `temp/` and `logs/` become the account's; `config/` becomes
    `root:<account> 0750`; a plugin configuration the web group read gets the
-   account's group. No website account enters the tree at all. A file
+   account's group. No website account enters the tree on the file system
+   (webmail's local server is another matter: see below). A file
    system that refuses access-control lists stops the move before anything
    changes: webmail stays on the web server's account, and Problems now says
    why and what the owner can do. Webmail's updates put the entry on the new
@@ -567,19 +568,28 @@ after every move in a tool's Manage window:**
    links, and what any of them includes. The PHP-FPM package's own
    `/etc/apache2/conf-available/php<v>-fpm.conf`, which nothing enables on a
    standard server, is not a user; an Apache include that cannot be followed
-   makes every Apache file count. In what is loaded, any line outside a
+   (a variable, a continued line) is itself a user, named by its line. In
+   what is loaded, any line outside a
    full-line comment that names the socket, a `unix:` path that reaches the
    same socket by another spelling or link (compared by device and inode) or
    cannot be followed at all, or a `*_pass` whose address is a variable,
    keeps the pool on. The one exception is CelikPanel's own reverse-proxy
    line `proxy_pass $celikpanel_upstream;` in a site file that carries
    CelikPanel's seal and is unchanged: that variable only ever holds
-   `http(s)://host[:port]`. So on a standard Debian 13 or Ubuntu 24.04
-   server with nginx the pool is turned off once nothing CelikPanel did not
-   write points at it and a site or tool pool runs beside it; it stays on
-   where Apache loads the packaged snippet, where an owner's configuration
-   names the socket or a socket path that cannot be followed, or where a
-   `*_pass` other than CelikPanel's own uses a variable. Turning off is a
+   `http(s)://host[:port]`. The pool is also kept, with the unit or line
+   named, when an enabled or active Apache (`apache2`, or an `apache2@<name>`
+   instance, whose `/etc/apache2-<name>` is read the same way) lets
+   `.htaccess` files override anything in what it loads (`AllowOverride` or
+   `AllowOverrideList` other than `None`); when an `httpd`, `lighttpd`,
+   Caddy or OpenLiteSpeed unit is enabled or active (their configuration is
+   not read); and when the units cannot be listed. Not looked at: programs
+   that talk to the socket directly (a cron job that resets the opcode
+   cache, a monitoring agent reading the pool's status page), a web server
+   started outside systemd, and code `nginx -T` does not print (a Lua
+   file). Where one of those uses the pool, the owner renames it back (see
+   below); CelikPanel then leaves it on. So on a standard Debian 13 or Ubuntu
+   24.04 server with nginx alone the pool is turned off once nothing of what
+   is read points at it and a site or tool pool runs beside it. Turning off is a
    rename to `www.conf.off-by-celikpanel`, checked with `php-fpm -t` and a
    reload; a refusal puts it back. A version is
    never left without a pool: before its last other pool goes (a site
@@ -656,8 +666,53 @@ in a row failed.
 - A crontab line: edit the crontab as root. Lines CelikPanel did not write
   are listed, never removed by it.
 
-**What a site account can still reach.** Nothing under webmail's tree. The
-tools' sockets are the web server's (0660), and a site account is not in
-that group; customers cannot write any `*_pass` directive. A customer who
-names the stock socket in a harmless directive keeps that pool on and gains
-nothing by it.
+**Going back to the release before (alpha.144).** Going back puts back
+CelikPanel's own files only; it does not touch `/etc/php`, `/etc/nginx`,
+`/etc/at.allow`, the tools' trees or the access-control list. Under alpha.144:
+
+- *Keeps working:* PHP-FPM runs the tools' own pools, and alpha.144 uses the
+  sockets their configurations name, so phpMyAdmin, phpPgAdmin and webmail
+  keep answering; webmail's address files keep their socket; `/etc/at.allow`
+  stays as it is.
+- *No longer guarded:* alpha.144 does not know a tool's own socket, so it
+  does not refuse removing the PHP version a tool runs on (the tool then
+  stops, and nothing says why); the tools' Manage windows show no PHP
+  version.
+- *Fails:* webmail's own update (its new tree does not get the account's
+  entry and folders, so the update puts the old tree back and says webmail
+  did not answer); deleting the last site of a PHP version whose stock pool
+  is off, or moving it to another version (PHP-FPM's check refuses a
+  version without a pool, and alpha.144 does not put the stock pool back);
+  installing or proving a tool again on such a version.
+- *Also:* the side doors' Problems now lines are not shown; removing a tool
+  leaves its account, pool and data folder; a phpMyAdmin package upgrade
+  that gives its secret files back to the web group is not put right.
+
+What the owner does: before going back, put each stock pool back
+(`mv /etc/php/<v>/fpm/pool.d/www.conf.off-by-celikpanel
+/etc/php/<v>/fpm/pool.d/www.conf && systemctl reload php<v>-fpm`) and, if
+the tools should run as before, undo their own pools with the steps above;
+then go back. Already gone back: put the stock pool back before deleting or
+moving the last site of a version; do not remove a PHP version that
+`ls /etc/php/*/fpm/pool.d/celikpanel-*.conf` lists; leave webmail's updates
+until the newer release is installed again.
+
+**What a site account can still reach.** On the file system, nothing under
+webmail's tree. The tools' sockets are the web server's (0660), and a site
+account is not in that group; customers cannot write any `*_pass`
+directive. A customer who names the stock socket in a harmless directive
+keeps that pool on and gains nothing by it.
+
+Not closed yet: webmail's server on the panel's local socket
+(`/run/celikpanel-webmail.sock`; nginx creates a Unix listening socket with
+mode 0666) answers every local account without a login. It gives out the
+files under `public_html`, including copies such as a `.bak` file in a
+plugin folder, and runs its `.php` files with webmail's pool (webmail's own
+account after the move). The panel itself only asks it whether webmail is
+ready. alpha.145 gives it the rules of webmail's own address, and this
+change takes them when it is merged with that release. The database tools'
+server on `127.0.0.1:8306` is reachable the same way by every local account
+and, through the panel's `/dbtool/`, by every signed-in panel user: it gives
+out the packages' own files (code, documentation, SQL samples; no secret)
+and runs their `.php` files under the tools' own accounts; the tools' own
+logins guard the databases.
