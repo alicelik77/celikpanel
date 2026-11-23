@@ -72,7 +72,7 @@ func TestTheCloseAgainResultSurvivesAPanelRestart(t *testing.T) {
 	if started, _ := panel.beginSideDoorsReclose(context.Background(), "at", ""); !started {
 		t.Fatal("a cut run still blocks a new one")
 	}
-	panel.endSideDoorsReclose(context.Background(), true, transport.SideDoorsAtWritten, "")
+	panel.endSideDoorsReclose(context.Background(), true, transport.SideDoorsAtWritten, "", "")
 }
 
 // Finding 6: a read never replaces a newer answer, and a tool whose answer

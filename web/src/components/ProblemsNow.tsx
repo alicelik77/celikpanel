@@ -77,7 +77,7 @@ export type ProblemKind =
 const RECLOSE_URL = '/api/v1/metrics/side-doors/reclose';
 // Third fix round: the panel keeps the last result with its time, also over
 // a restart; one a restart cut is "unknown".
-type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; unknown?: boolean; error?: string; at?: string };
+type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; unknown?: boolean; error_kind?: string; error?: string; at?: string };
 const RECLOSE_POLL_MS = 2000;
 const RECLOSE_FOLLOW_MS = 25 * 60 * 1000;
 
@@ -349,7 +349,7 @@ export function ProblemsNow({
                         if (again.state === 'known') status = again.value;
                     }
                     if (lastRead === 'unknown' || status?.running || status?.unknown || status?.target !== target || (status?.version ?? '') !== version) return unknown;
-                    if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: status.error };
+                    if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: t('pnow.reclose.notRun', { reason: status.error }) };
                     return status.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
                 } catch {
                     return unknown;
@@ -421,7 +421,7 @@ export function ProblemsNow({
                                             && (lastReclose.version ?? '') === (problem.action.to === 'stock_pool' ? problem.name ?? '' : '') && (
                                             <p className="mt-1 text-sm text-fg" data-problem-reclose-last="">
                                                 {lastReclose.error
-                                                    ? t('pnow.reclose.lastFailed', { time: clock(lastReclose.at), reason: lastReclose.error })
+                                                    ? `${t('pnow.reclose.lastFailed', { time: clock(lastReclose.at) })} ${t('pnow.reclose.notRun', { reason: lastReclose.error })}`
                                                     : t('pnow.reclose.unknown', { time: clock(lastReclose.at) })}
                                             </p>
                                         )}

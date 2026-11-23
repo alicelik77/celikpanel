@@ -487,7 +487,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		response, err := closeSideDoorsThroughAgent(p, ctx, request.Target, request.Version)
 		if err != nil {
 			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
-			p.endSideDoorsReclose(context.Background(), false, "", "the side doors step could not run now: "+auditReason(err.Error()))
+			p.endSideDoorsReclose(context.Background(), false, "", sideDoorsRecloseNotRun, auditReason(err.Error()))
 			return
 		}
 		p.applySideDoorsAnswer(ctx, response.State)
@@ -497,7 +497,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		} else {
 			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
 		}
-		p.endSideDoorsReclose(context.Background(), closed, sideDoorState(response.State, request.Target, request.Version), "")
+		p.endSideDoorsReclose(context.Background(), closed, sideDoorState(response.State, request.Target, request.Version), "", "")
 	}()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
@@ -515,8 +515,12 @@ type sideDoorsReclose struct {
 	Closed  bool   `json:"closed"`
 	Unknown bool   `json:"unknown,omitempty"`
 	State   string `json:"state,omitempty"`
-	Error   string `json:"error,omitempty"`
-	At      string `json:"at,omitempty"`
+	// ErrorKind says in which way it failed ("not_run": the step could not
+	// run now), for the page's own sentence; Error is the server's own
+	// message, quoted after it (fourth fix round).
+	ErrorKind string `json:"error_kind,omitempty"`
+	Error     string `json:"error,omitempty"`
+	At        string `json:"at,omitempty"`
 }
 
 const settingSideDoorsReclose = "side_doors_reclose_v1"
@@ -558,7 +562,7 @@ func (p *Panel) loadSideDoorsRecloseLocked(ctx context.Context) {
 	}
 	if kept.Running {
 		// The Panel stopped while it ran: its end was never seen here.
-		kept.Running, kept.Closed, kept.Unknown, kept.Error = false, false, true, ""
+		kept.Running, kept.Closed, kept.Unknown, kept.ErrorKind, kept.Error = false, false, true, "", ""
 		sideDoorsRecloseLast = kept
 		p.saveSideDoorsRecloseLocked(ctx)
 		return
@@ -589,11 +593,15 @@ func (p *Panel) beginSideDoorsReclose(ctx context.Context, target, version strin
 	return true, sideDoorsRecloseLast
 }
 
-func (p *Panel) endSideDoorsReclose(ctx context.Context, closed bool, state, failure string) {
+// sideDoorsRecloseNotRun: the step could not run now (the Agent did not
+// answer, or another change held the server).
+const sideDoorsRecloseNotRun = "not_run"
+
+func (p *Panel) endSideDoorsReclose(ctx context.Context, closed bool, state, failureKind, failure string) {
 	sideDoorsRecloseMu.Lock()
 	defer sideDoorsRecloseMu.Unlock()
 	sideDoorsRecloseLast.Running, sideDoorsRecloseLast.Closed, sideDoorsRecloseLast.Unknown = false, closed, false
-	sideDoorsRecloseLast.State, sideDoorsRecloseLast.Error = state, failure
+	sideDoorsRecloseLast.State, sideDoorsRecloseLast.ErrorKind, sideDoorsRecloseLast.Error = state, failureKind, failure
 	sideDoorsRecloseLast.At = time.Now().UTC().Format(time.RFC3339)
 	p.saveSideDoorsRecloseLocked(ctx)
 }
