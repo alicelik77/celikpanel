@@ -50,16 +50,33 @@ or changed. Line references are to `main` at `1f1d80672`.*
 >   raised, "Revocations raise the generation" below), a renewal's year is taken back. No page
 >   offers a refund; the page before payment says plainly that payments are not refunded and
 >   that the 30-day trial is for trying first.
-> - **As built in S2 (after its first review):** an account that buys its years (in test
->   mode: one the operator flagged) gets its first licence ever as the 30-day trial, without
->   payment details; any later licence is created awaiting its first year (its end is its
->   creation time, so neither the Go nor the PHP service activates it) together with its order;
->   there is no free renewal for it. Everyone else keeps the beta's free licence and free
->   renewal. A lost dispute is applied like a refund; open disputes, partial refunds, stuck
->   refunds and payments that could not be granted are listed by `membership orders -attention`
->   and at the end of every `membership reconcile`. The operator commands record the
->   `-operator` name as given: run them as a separate Unix user that owns the private
->   directory, not as the web server's user.
+> - **As built in S2 (after its two reviews):**
+>   - *Who buys.* An account that buys its years (in test mode: one the operator flagged; live
+>     mode is refused in this release) gets its first licence in that mode as the 30-day
+>     trial, without payment details -- unless it held a free beta licence, which was its free
+>     period. One trial per account and per mode, and per server: a trial licence does not
+>     activate on a server that already ran a trial (the coordinator's anti-abuse rules, for
+>     the owner to confirm). Later licences wait for their first year (at most three at a
+>     time; their end is their creation time, so neither the Go nor the PHP service activates
+>     them); the order is made only when the member asks to pay. No free renewal for such an
+>     account. Everyone else keeps the beta's free licence and free renewal.
+>   - *Payments made in time are honoured.* A renewal at the locked price could only be paid
+>     before the licence's end (its checkout ended then), so it is granted from the old end
+>     whenever its confirmation arrives. The price stays locked only while the licence is in
+>     paid time without a gap.
+>   - *Disputes.* While a dispute is open nothing changes for the customer; reconciliation asks
+>     again every day until it closes, whatever the payment's age. A lost dispute (and a
+>     refund at the provider) takes back exactly the time that payment gave; later paid years
+>     stay; if nothing remains, the licence is ended (revoked, the generation raised).
+>   - *The operator* (`membership …`, run as a separate Unix user that owns the private
+>     directory; the `-operator` name is recorded as given): `orders -attention` lists the
+>     open matters with their age (also at the end of every `reconcile`), each closing by
+>     itself when applied or settled, or by `attend -order … -reason …`; `grant -order …
+>     -reason …` honours a payment that arrived but could not be granted (refused for a
+>     removed licence, and says so); `reinstate -licence … -reason …` undoes a revocation made
+>     by mistake (its end restored, the generation raised; the server activates its key again).
+>   - *Receipts.* Claimed once in the transaction that makes the order paid ("owed"), mailed
+>     after the answer, and retried by `reconcile` until sent.
 > - **Questions 5 and 6 (§k) are answered:** a renewal paid before the end continues from the
 >   old end at the locked price; after the end it is a new purchase at the list price from the
 >   payment (the "During grace" and "In protection" lines of "Renewal" no longer apply).
@@ -803,9 +820,9 @@ are for a move to another host.
    The Go store ends a licence whose payment was reversed by marking it "revoked". The PHP
    service does not read that mark. On such a file it would still let the member renew that
    licence for free and then let a server activate it again: a licence that was taken back
-   would work. So after the first order (check-db shows "orders" above 0, and says so when
-   a licence was revoked), going back means the Go service on the same file, or a copy of it,
-   never the PHP service. Before the first order, going back to PHP is as described above.
+   would work. So after the first order, going back means the Go service on the same file, or a copy of
+   it, never the PHP service: `membership check-db -for-php` must pass before the PHP service
+   may serve a file, and it fails once the store holds orders or revocations. Before the first order, going back to PHP is as described above.
 
 ---
 
