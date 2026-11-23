@@ -56,7 +56,7 @@ code{font-size:.94em;overflow-wrap:anywhere}
 /* The statement that opens every page. */
 .lead{padding:34px 0 0}
 h1{font:700 var(--t-h1)/1.15 var(--sans);letter-spacing:-.01em;margin:0}
-.def{font-size:18px;color:var(--ink-2);margin:10px 0 0;max-width:70ch}
+.def{font-size:1.1875rem;color:var(--ink-2);margin:10px 0 0;max-width:70ch}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
 .btn{display:inline-flex;align-items:center;min-height:42px;padding:2px 18px 0;font:600 15px/1.2 var(--sans);text-decoration:none;border:1.5px solid var(--accent)}
 .btn.primary{background:var(--accent);color:var(--on-accent)}
@@ -91,7 +91,9 @@ h1{font:700 var(--t-h1)/1.15 var(--sans);letter-spacing:-.01em;margin:0}
 .table{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:var(--t-table);line-height:1.45}
 caption{caption-side:top;text-align:left;font:600 13px/1.4 var(--mono);color:var(--ink-2);padding-bottom:8px}
-th,td{text-align:left;vertical-align:top;padding:9px 14px 8px 0;border-bottom:1px solid var(--hair)}
+th,td{text-align:left;vertical-align:top;padding:9px 18px 8px 0;border-bottom:1px solid var(--hair)}
+th.n{width:4.5em}
+table.kv tbody th{width:24%}
 thead th{font:600 var(--t-label)/1.4 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);border-bottom:1px solid var(--ink)}
 tbody th{font-weight:600}
 td.v{font-family:var(--mono);white-space:nowrap}
@@ -106,6 +108,8 @@ td.v{font-family:var(--mono);white-space:nowrap}
 .note{font-size:var(--t-small);color:var(--ink-2);margin:12px 0 0;max-width:80ch}
 .part > div:not(.split):not(.figs) > .note{margin-top:12px}
 .more{font-size:15px;margin:14px 0 0}
+/* Overpass sets a middle dot against the next word; give it room on both sides. */
+.sep{padding:0 .5em;color:var(--ink-2)}
 .part > div:not(.split):not(.figs) > .more{margin-top:14px}
 ul.plain{margin:0;padding-left:18px}
 ul.plain li{margin:3px 0}
@@ -133,8 +137,8 @@ pre code{font-size:inherit}
 
 /* The pointer page of an old address. */
 .moved-sign{max-width:640px;margin:0 auto;padding:64px var(--gutter)}
-.moved-sign h1{font-size:28px}
-.moved-sign h2{font:700 22px/1.2 var(--sans);margin:36px 0 0;padding-top:24px;border-top:2px solid var(--ink)}
+.moved-sign h1{font-size:var(--t-h2)}
+.moved-sign h2{font:700 var(--t-h2)/1.2 var(--sans);margin:36px 0 0;padding-top:24px;border-top:2px solid var(--ink)}
 
 @media (max-width:1100px){
   .part{grid-template-columns:1fr;gap:18px}
@@ -148,7 +152,8 @@ pre code{font-size:inherit}
   .doc nav{order:3;width:100%;margin:0}
   .doc nav ul{gap:6px 18px}
   .lead{padding-top:22px}
-  .def{font-size:16px}
+  .def{font-size:1.0625rem}
+  table.kv tbody th{width:auto}
   .spec div{grid-template-columns:104px 1fr;gap:10px}
   .spec dd{font-size:14.5px}
   .actions .btn{flex:1 1 auto;justify-content:center}

@@ -334,6 +334,8 @@ Both families are self-hosted with Latin and Latin Extended subsets and `font-di
 
 The frontmatter display and headline roles describe the current landing-page headings. Its hero uses a heavier, tightly spaced display with a short balanced measure; technical-page headings retain their own responsive scale. Body and small text provide a stable reading rhythm, with muted supporting text under headings. The wordmark uses heavier Celik lettering and a lighter Panel suffix at the same size. Mono belongs to versions, commands, hashes, dates and measured values.
 
+**Public site, datasheet (23 November 2026).** The site keeps the owner-chosen mock-up's own steps: 36px page heading (27px on a phone), 24px numbered section heading (22px), 15px table and specification text, 13–14.5px captions and notes, 12.5–13px mono labels; the lede and body use the ramp's 1.1875rem and 1.0625rem. Reason: a datasheet is denser than the panel, and the ramp's title (1.1875rem) is too close to body text to carry a numbered section.
+
 **The Mono Means Measured Rule.** Use mono for literal machine values and code; use sans for explanatory prose. Sample values in product captures remain labelled as sample data.
 
 **The Paired String Rule.** Maintain Turkish and English for visible text and accessible labels. The public site supports explicit `data-en` and label attributes alongside its existing text-node map; dynamic product descriptions and release states use the current language as well.

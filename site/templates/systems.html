@@ -20,7 +20,7 @@
 {{template "head" (dict "Num" "2" "ID" "h-deb" "Title" (t "systems.deb.title") "Text" (t "systems.deb.text"))}}
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>{{t "common.table"}} 2 · {{t "systems.deb.caption"}}</caption>
 <tbody>
 {{- range $k := (list "offered" "notoffered" "updates" "major")}}
@@ -36,7 +36,7 @@
 {{template "head" (dict "Num" "3" "ID" "h-arch" "Title" (t "systems.arch.title") "Text" (t "systems.arch.text"))}}
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>{{t "common.table"}} 3 · {{t "systems.arch.caption"}}</caption>
 <tbody>
 <tr><th scope="row">{{t "systems.arch.offered"}}</th><td>{{t "systems.arch.offered.text"}}</td></tr>
@@ -57,7 +57,7 @@
 {{template "head" (dict "Num" "4" "ID" "h-yours" "Title" (t "systems.yours.title") "Text" "")}}
 <div>
 <p>{{t "systems.yours.text"}}</p>
-<p class="more"><a href="{{repo "docs/DISTRO-SUPPORT.md"}}">{{t "systems.yours.detail"}}</a> · <a href="{{guide "without-panel"}}">{{t "systems.yours.guide"}}</a></p>
+<p class="more"><a href="{{repo "docs/DISTRO-SUPPORT.md"}}">{{t "systems.yours.detail"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{guide "without-panel"}}">{{t "systems.yours.guide"}}</a></p>
 </div>
 </section>
 {{- end}}

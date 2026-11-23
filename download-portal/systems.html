@@ -52,11 +52,11 @@
 <caption>Table 1 · Operating systems (distribution dates checked on 24 October 2026)</caption>
 <thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">System updates</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">30 June 2030</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">May 2029</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">30 June 2028</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">May 2027</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2030-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2029-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2028-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2027-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
 </tbody>
 </table>
 </div>
@@ -68,7 +68,7 @@
 <header><span class="num">2</span><h2 id="h-deb">Systems with apt</h2><p>Debian and Ubuntu. Packages come from the distribution.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Table 2 · What the apt systems offer</caption>
 <tbody>
 <tr><th scope="row">What is offered</th><td>CelikPanel’s components from the distribution’s own packages. Where a newer version is wanted, a vendor repository (for PHP or PostgreSQL, for example) is offered only as a deliberate choice.</td></tr>
@@ -84,7 +84,7 @@
 <header><span class="num">3</span><h2 id="h-arch">Systems with pacman</h2><p>Arch Linux, a rolling release. Only official Arch packages are used.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Table 3 · What Arch Linux offers</caption>
 <tbody>
 <tr><th scope="row">What is offered</th><td>The server roles with official Arch packages: web, PHP, MariaDB, PostgreSQL, mail, certificates, the firewall and backups. Valkey is offered where other systems offer Redis.</td></tr>
@@ -106,7 +106,7 @@
 <header><span class="num">4</span><h2 id="h-yours">Independent of the panel</h2></header>
 <div>
 <p>CelikPanel operates your server; it does not own it. On every system above, sites, mail, DNS, databases, scheduled tasks and site certificate renewal keep running while the panel is stopped.</p>
-<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">Components by system, generated from the catalogue</a> · <a href="guide/en/without-panel.html">Running the server without the panel</a></p>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">Components by system, generated from the catalogue</a><span class="sep" aria-hidden="true">·</span><a href="guide/en/without-panel.html">Running the server without the panel</a></p>
 </div>
 </section>
 </div>

@@ -51,11 +51,36 @@ func dateTR(t time.Time) string {
 	return fmt.Sprintf("%d %s %d", t.Day(), monthsTR[t.Month()-1], t.Year())
 }
 
+// The preview knows the version, the date and the short commit, but not the
+// full commit or the archive's SHA-256: only the release build does. Its page
+// shows these marked examples in the page's language instead.
+const (
+	previewCommit = "@preview-commit@"
+	previewSHA256 = "@preview-sha256@"
+)
+
+var previewText = map[string]map[string]string{
+	"en": {
+		previewCommit: " (short form; the release build writes the full commit here)",
+		previewSHA256: "example only: the release build writes the archive’s SHA-256 here",
+	},
+	"tr": {
+		previewCommit: " (kısa biçim; tam kaydı buraya sürüm paketi yazar)",
+		previewSHA256: "yalnız örnek: arşivin SHA-256 özetini buraya sürüm paketi yazar",
+	},
+}
+
 // fillRelease is the preview's version of the builder's substitution (signed
 // layout, linux/amd64).
 func fillRelease(page []byte, r release) []byte {
 	prefix := "/releases/" + r.Version + "/linux/amd64/"
 	archive := "celikpanel-" + r.Version + "-linux-amd64.tar.gz"
+	lang := "en"
+	if bytes.Contains(page, []byte(`<html lang="tr"`)) {
+		lang = "tr"
+	}
+	r.Commit = strings.ReplaceAll(r.Commit, previewCommit, previewText[lang][previewCommit])
+	r.SHA256 = strings.ReplaceAll(r.SHA256, previewSHA256, previewText[lang][previewSHA256])
 	replacer := strings.NewReplacer(
 		phVersion, r.Version,
 		phDateEN, dateEN(r.Published),
@@ -109,8 +134,8 @@ func currentRelease(portal string) (release, error) {
 		// Between a release's merge and the record of its publication the
 		// notes have no Published line yet; the preview still renders.
 		return release{
-			Version: version, Commit: "(not yet published)", CommitShort: "unpublished",
-			SHA256:    "(filled in when the portal package is built)",
+			Version: version, Commit: "unpublished" + previewCommit, CommitShort: "unpublished",
+			SHA256:    previewSHA256,
 			Published: time.Now().UTC(),
 		}, nil
 	}
@@ -120,8 +145,8 @@ func currentRelease(portal string) (release, error) {
 	}
 	commit := string(line[2])
 	return release{
-		Version: version, Commit: commit + " (preview: short form)", CommitShort: commit,
-		SHA256:    "(filled in when the portal package is built)",
+		Version: version, Commit: commit + previewCommit, CommitShort: commit,
+		SHA256:    previewSHA256,
 		Published: published,
 	}, nil
 }

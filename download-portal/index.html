@@ -100,7 +100,7 @@
 <div class="table">
 <table class="stack">
 <caption>Table 1 · Installation steps</caption>
-<thead><tr><th scope="col">Step</th><th scope="col">What to do</th><th scope="col">Where</th></tr></thead>
+<thead><tr><th scope="col" class="n">Step</th><th scope="col">What to do</th><th scope="col">Where</th></tr></thead>
 <tbody>
 <tr><td class="v" data-k="Step">1</td><td data-k="What to do">Create an account and take a licence for the server</td><td data-k="Where">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Step">2</td><td data-k="What to do">Prepare a clean server with a supported system</td><td data-k="Where">Your server provider</td></tr>
@@ -122,11 +122,11 @@ sh celikpanel-install.sh</code></pre>
 <caption>Table 2 · Operating systems (distribution dates checked on 24 October 2026)</caption>
 <thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">System updates</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">30 June 2030</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">May 2029</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">30 June 2028</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">May 2027</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2030-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2029-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2028-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2027-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
 </tbody>
 </table>
 </div>
@@ -191,10 +191,10 @@ sh celikpanel-install.sh</code></pre>
 <caption>Table 4 · Recovery tests</caption>
 <thead><tr><th scope="col">Measurement</th><th scope="col">Value</th><th scope="col">Condition</th><th scope="col">Date</th></tr></thead>
 <tbody>
-<tr><th scope="row">From a dead server back into service</th><td class="v" data-k="Value">105 s</td><td data-k="Condition">The first server was stopped by a power cut; a new machine was provisioned and restored from one sealed archive</td><td class="v" data-k="Date">5 Sep 2026</td></tr>
-<tr><th scope="row">Archive age at the cut, data lost</th><td class="v" data-k="Value">40.9 s · 0</td><td data-k="Condition">Nothing was written in that window, so nothing was lost</td><td class="v" data-k="Date">5 Sep 2026</td></tr>
-<tr><th scope="row">Queries unanswered while taking over a running BIND</th><td class="v" data-k="Value">0 / 2508</td><td data-k="Condition">A hand-installed BIND answering its own zone on Debian 13, adopted through the panel</td><td class="v" data-k="Date">4 Sep 2026</td></tr>
-<tr><th scope="row">Time to settle unfinished work after a power cut</th><td class="v" data-k="Value">≤ 7 s</td><td data-k="Condition">Four power cuts on a real virtual machine; each time the work was finished or rolled back with nobody touching it</td><td class="v" data-k="Date">4 Sep 2026</td></tr>
+<tr><th scope="row">From a dead server back into service</th><td class="v" data-k="Value">105 s</td><td data-k="Condition">The first server was stopped by a power cut; a new machine was provisioned and restored from one sealed archive</td><td class="v" data-k="Date">2026-09-05</td></tr>
+<tr><th scope="row">Archive age at the cut, data lost</th><td class="v" data-k="Value">40.9 s · 0</td><td data-k="Condition">Nothing was written in that window, so nothing was lost</td><td class="v" data-k="Date">2026-09-05</td></tr>
+<tr><th scope="row">Queries unanswered while taking over a running BIND</th><td class="v" data-k="Value">0 / 2508</td><td data-k="Condition">A hand-installed BIND answering its own zone on Debian 13, adopted through the panel</td><td class="v" data-k="Date">2026-09-04</td></tr>
+<tr><th scope="row">Time to settle unfinished work after a power cut</th><td class="v" data-k="Value">≤ 7 s</td><td data-k="Condition">Four power cuts on a real virtual machine; each time the work was finished or rolled back with nobody touching it</td><td class="v" data-k="Date">2026-09-04</td></tr>
 </tbody>
 </table>
 </div>
@@ -205,7 +205,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">7</span><h2 id="h-licence">Licence</h2><p>One licence per server. Accounts, domains and sites are not counted.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Table 5 · The licence today and from version 1.0</caption>
 <thead><tr><th scope="col">Item</th><th scope="col">Today, alpha</th><th scope="col">From version 1.0</th></tr></thead>
 <tbody>

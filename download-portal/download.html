@@ -56,7 +56,7 @@
 <div class="table">
 <table class="stack">
 <caption>Table 1 · Installation steps</caption>
-<thead><tr><th scope="col">Step</th><th scope="col">What to do</th><th scope="col">Where</th></tr></thead>
+<thead><tr><th scope="col" class="n">Step</th><th scope="col">What to do</th><th scope="col">Where</th></tr></thead>
 <tbody>
 <tr><td class="v" data-k="Step">1</td><td data-k="What to do">Create an account and take a licence for the server</td><td data-k="Where">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Step">2</td><td data-k="What to do">Prepare a clean server with a supported system</td><td data-k="Where">Your server provider</td></tr>
@@ -83,11 +83,11 @@ sh celikpanel-install.sh</code></pre>
 <caption>Table 2 · Operating systems (distribution dates checked on 24 October 2026)</caption>
 <thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">System updates</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">30 June 2030</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">May 2029</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">30 June 2028</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">May 2027</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2030-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2029-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2028-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2027-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
 </tbody>
 </table>
 </div>
@@ -99,7 +99,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">3</span><h2 id="h-wizard">Setup wizard</h2><p>On first sign-in it asks for the main domain and where DNS lives. It shows its plan and changes nothing until you start it.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Table 3 · Where DNS lives</caption>
 <thead><tr><th scope="col">Choice</th><th scope="col">What happens</th></tr></thead>
 <tbody>
@@ -115,7 +115,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">4</span><h2 id="h-how">How CelikPanel changes your server</h2><p>The rules every change follows.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Table 4 · Rules for changes</caption>
 <thead><tr><th scope="col">Rule</th><th scope="col">What it means</th></tr></thead>
 <tbody>
@@ -135,7 +135,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">5</span><h2 id="h-installed">Already installed?</h2></header>
 <div>
 <p>Update from inside your panel, under Settings, CelikPanel updates. Only the owner starts it; nothing installs by itself. If an update does not complete, the panel puts back the previous version and its database by itself.</p>
-<p class="more"><a href="releases.html">Release notes and files</a> · <a href="guide/en/panel-settings.html">How updates work</a></p>
+<p class="more"><a href="releases.html">Release notes and files</a><span class="sep" aria-hidden="true">·</span><a href="guide/en/panel-settings.html">How updates work</a></p>
 </div>
 </section>
 </div>

@@ -56,7 +56,7 @@
 <div class="table">
 <table class="stack">
 <caption>Tablo 1 · Kurulum adımları</caption>
-<thead><tr><th scope="col">Adım</th><th scope="col">Yapılacak</th><th scope="col">Nerede</th></tr></thead>
+<thead><tr><th scope="col" class="n">Adım</th><th scope="col">Yapılacak</th><th scope="col">Nerede</th></tr></thead>
 <tbody>
 <tr><td class="v" data-k="Adım">1</td><td data-k="Yapılacak">Hesap oluşturun ve sunucu için lisans alın</td><td data-k="Nerede">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Adım">2</td><td data-k="Yapılacak">Desteklenen bir sistemle temiz bir sunucu hazırlayın</td><td data-k="Nerede">Sunucu sağlayıcınız</td></tr>
@@ -83,11 +83,11 @@ sh celikpanel-install.sh</code></pre>
 <caption>Tablo 2 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
 <thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">30 Haziran 2030</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Mayıs 2029</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">30 Haziran 2028</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Mayıs 2027</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
 </tbody>
 </table>
 </div>
@@ -99,7 +99,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">3</span><h2 id="h-wizard">Kurulum sihirbazı</h2><p>İlk girişte ana alan adını ve DNS’in nerede olacağını sorar. Planını gösterir ve siz başlatana kadar hiçbir şeyi değiştirmez.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Tablo 3 · DNS nerede olacak</caption>
 <thead><tr><th scope="col">Seçim</th><th scope="col">Ne olur</th></tr></thead>
 <tbody>
@@ -115,7 +115,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">4</span><h2 id="h-how">CelikPanel sunucunuzu nasıl değiştirir</h2><p>Her değişikliğin uyduğu kurallar.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Tablo 4 · Değişiklik kuralları</caption>
 <thead><tr><th scope="col">Kural</th><th scope="col">Anlamı</th></tr></thead>
 <tbody>
@@ -135,7 +135,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">5</span><h2 id="h-installed">Zaten kurulu mu?</h2></header>
 <div>
 <p>Panelinizin içinden, Ayarlar, CelikPanel güncellemeleri bölümünden güncelleyin. Güncellemeyi yalnız sahibi başlatır; hiçbir şey kendiliğinden kurulmaz. Bir güncelleme tamamlanmazsa panel önceki sürümü ve veritabanını kendisi geri koyar.</p>
-<p class="more"><a href="surumler.html">Sürüm notları ve dosyalar</a> · <a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler</a></p>
+<p class="more"><a href="surumler.html">Sürüm notları ve dosyalar</a><span class="sep" aria-hidden="true">·</span><a href="../guide/tr/panel-settings.html">Güncellemeler nasıl işler</a></p>
 </div>
 </section>
 </div>

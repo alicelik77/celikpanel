@@ -79,7 +79,7 @@ sh celikpanel-install.sh</code></pre>
 <div class="table">
 <table class="stack">
 <caption>{{t "common.table"}} {{.Num}} · {{t "install.steps.caption"}}</caption>
-<thead><tr><th scope="col">{{t "install.steps.step"}}</th><th scope="col">{{t "install.steps.what"}}</th><th scope="col">{{t "install.steps.where"}}</th></tr></thead>
+<thead><tr><th scope="col" class="n">{{t "install.steps.step"}}</th><th scope="col">{{t "install.steps.what"}}</th><th scope="col">{{t "install.steps.where"}}</th></tr></thead>
 <tbody>
 {{- range $i, $k := (list "account" "server" "run" "wizard")}}
 <tr><td class="v" data-k="{{t "install.steps.step"}}">{{index (list "1" "2" "3" "4") $i}}</td><td data-k="{{t "install.steps.what"}}">{{t (print "install.step." $k)}}</td><td data-k="{{t "install.steps.where"}}">{{t (print "install.step." $k ".where")}}</td></tr>
@@ -96,7 +96,7 @@ sh celikpanel-install.sh</code></pre>
 <thead><tr><th scope="col">{{t "systems.table.system"}}</th><th scope="col">{{t "systems.table.status"}}</th><th scope="col">{{t "systems.table.until"}}</th><th scope="col">{{t "systems.table.updates"}}</th></tr></thead>
 <tbody>
 {{- range $k := (list "debian13" "ubuntu2404" "debian12" "ubuntu2204" "arch")}}
-<tr><th scope="row">{{t (print "systems." $k ".name")}} <span class="code-name">{{t (print "systems." $k ".code")}}</span></th><td data-k="{{t "systems.table.status"}}"><span class="tag {{if or (eq $k "debian13") (eq $k "ubuntu2404")}}ok{{else}}no{{end}}">{{if or (eq $k "debian13") (eq $k "ubuntu2404")}}{{t "systems.tested"}}{{else}}{{t "systems.supported"}}{{end}}</span></td><td class="v" data-k="{{t "systems.table.until"}}">{{t (print "systems." $k ".until")}}</td><td data-k="{{t "systems.table.updates"}}">{{if eq $k "arch"}}{{t "systems.updates.arch"}}{{else}}{{t "systems.updates.choice"}}{{end}}</td></tr>
+<tr><th scope="row">{{t (print "systems." $k ".name")}} <span class="code-name">{{t (print "systems." $k ".code")}}</span></th><td data-k="{{t "systems.table.status"}}"><span class="tag {{if or (eq $k "debian13") (eq $k "ubuntu2404")}}ok{{else}}no{{end}}">{{if or (eq $k "debian13") (eq $k "ubuntu2404")}}{{t "systems.tested"}}{{else}}{{t "systems.supported"}}{{end}}</span></td><td{{if ne $k "arch"}} class="v"{{end}} data-k="{{t "systems.table.until"}}">{{t (print "systems." $k ".until")}}</td><td data-k="{{t "systems.table.updates"}}">{{if eq $k "arch"}}{{t "systems.updates.arch"}}{{else}}{{t "systems.updates.choice"}}{{end}}</td></tr>
 {{- end}}
 </tbody>
 </table>

@@ -52,11 +52,11 @@
 <caption>Tablo 1 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
 <thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">30 Haziran 2030</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Mayıs 2029</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">30 Haziran 2028</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Mayıs 2027</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
 </tbody>
 </table>
 </div>
@@ -68,7 +68,7 @@
 <header><span class="num">2</span><h2 id="h-deb">apt kullanan sistemler</h2><p>Debian ve Ubuntu. Paketler dağıtımdan gelir.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Tablo 2 · apt kullanan sistemlerde neler var</caption>
 <tbody>
 <tr><th scope="row">Neler var</th><td>CelikPanel’in bileşenleri, dağıtımın kendi paketlerinden. Daha yeni bir sürüm istendiğinde üretici deposu (örneğin PHP ya da PostgreSQL için) yalnız bilerek yapılan bir seçim olarak sunulur.</td></tr>
@@ -84,7 +84,7 @@
 <header><span class="num">3</span><h2 id="h-arch">pacman kullanan sistemler</h2><p>Arch Linux, sürekli sürüm. Yalnız Arch’ın resmî paketleri kullanılır.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Tablo 3 · Arch Linux’ta neler var</caption>
 <tbody>
 <tr><th scope="row">Neler var</th><td>Arch’ın resmî paketleriyle sunucu rolleri: web, PHP, MariaDB, PostgreSQL, posta, sertifikalar, güvenlik duvarı ve yedekler. Başka sistemlerin Redis sunduğu yerde Valkey sunulur.</td></tr>
@@ -106,7 +106,7 @@
 <header><span class="num">4</span><h2 id="h-yours">Panelden bağımsız</h2></header>
 <div>
 <p>CelikPanel sunucunuzu yönetir; sunucunun sahibi değildir. Yukarıdaki her sistemde siteler, posta, DNS, veritabanları, zamanlanmış görevler ve site sertifikalarının yenilenmesi panel dururken de çalışır.</p>
-<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">Sistemlere göre bileşenler, katalogdan üretilir</a> · <a href="../guide/tr/without-panel.html">Sunucuyu panelsiz yönetmek</a></p>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/DISTRO-SUPPORT.md">Sistemlere göre bileşenler, katalogdan üretilir</a><span class="sep" aria-hidden="true">·</span><a href="../guide/tr/without-panel.html">Sunucuyu panelsiz yönetmek</a></p>
 </div>
 </section>
 </div>

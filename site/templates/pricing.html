@@ -16,7 +16,7 @@
 {{template "head" (dict "Num" "1" "ID" "h-today" "Title" (t "pricing.today.title") "Text" (t "pricing.today.text"))}}
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>{{t "common.table"}} 1 · {{t "pricing.today.caption"}}</caption>
 <tbody>
 {{- range $k := (list "price" "period" "check" "offline" "ends")}}
@@ -32,7 +32,7 @@
 {{template "head" (dict "Num" "2" "ID" "h-from" "Title" (t "pricing.from.title") "Text" (t "pricing.from.text"))}}
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>{{t "common.table"}} 2 · {{t "pricing.from.caption"}}</caption>
 <tbody>
 {{- range $k := (list "price" "counted" "lock" "reminders" "grace" "protection" "offline" "move" "trial" "refund" "renewal" "lifetime" "beta")}}
@@ -59,7 +59,7 @@
 {{template "head" (dict "Num" "4" "ID" "h-never" "Title" (t "pricing.never.title") "Text" "")}}
 <div>
 <p>{{t "pricing.never.text"}}</p>
-<p class="more"><a href="{{repo "LICENSE"}}">{{t "pricing.never.licence"}}</a> · <a href="{{account "terms"}}">{{t "footer.terms"}}</a></p>
+<p class="more"><a href="{{repo "LICENSE"}}">{{t "pricing.never.licence"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{account "terms"}}">{{t "footer.terms"}}</a></p>
 </div>
 </section>
 {{- end}}

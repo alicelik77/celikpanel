@@ -34,7 +34,7 @@
 {{template "head" (dict "Num" "3" "ID" "h-wizard" "Title" (t "download.wizard.title") "Text" (t "download.wizard.text"))}}
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>{{t "common.table"}} 3 · {{t "download.wizard.caption"}}</caption>
 <thead><tr><th scope="col">{{t "download.wizard.choice"}}</th><th scope="col">{{t "download.wizard.does"}}</th></tr></thead>
 <tbody>
@@ -51,7 +51,7 @@
 {{template "head" (dict "Num" "4" "ID" "h-how" "Title" (t "download.how.title") "Text" (t "download.how.text"))}}
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>{{t "common.table"}} 4 · {{t "download.how.caption"}}</caption>
 <thead><tr><th scope="col">{{t "download.how.rule"}}</th><th scope="col">{{t "download.how.means"}}</th></tr></thead>
 <tbody>
@@ -68,7 +68,7 @@
 {{template "head" (dict "Num" "5" "ID" "h-installed" "Title" (t "download.installed.title") "Text" "")}}
 <div>
 <p>{{t "download.installed.text"}}</p>
-<p class="more"><a href="{{link "releases"}}">{{t "download.installed.releases"}}</a> · <a href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}</a></p>
+<p class="more"><a href="{{link "releases"}}">{{t "download.installed.releases"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}</a></p>
 </div>
 </section>
 {{- end}}

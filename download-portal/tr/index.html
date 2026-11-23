@@ -100,7 +100,7 @@
 <div class="table">
 <table class="stack">
 <caption>Tablo 1 · Kurulum adımları</caption>
-<thead><tr><th scope="col">Adım</th><th scope="col">Yapılacak</th><th scope="col">Nerede</th></tr></thead>
+<thead><tr><th scope="col" class="n">Adım</th><th scope="col">Yapılacak</th><th scope="col">Nerede</th></tr></thead>
 <tbody>
 <tr><td class="v" data-k="Adım">1</td><td data-k="Yapılacak">Hesap oluşturun ve sunucu için lisans alın</td><td data-k="Nerede">celikpanel.net</td></tr>
 <tr><td class="v" data-k="Adım">2</td><td data-k="Yapılacak">Desteklenen bir sistemle temiz bir sunucu hazırlayın</td><td data-k="Nerede">Sunucu sağlayıcınız</td></tr>
@@ -122,11 +122,11 @@ sh celikpanel-install.sh</code></pre>
 <caption>Tablo 2 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
 <thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
 <tbody>
-<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">30 Haziran 2030</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Mayıs 2029</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">30 Haziran 2028</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Mayıs 2027</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
-<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td data-k="Dağıtımın güvenlik desteği">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
 </tbody>
 </table>
 </div>
@@ -191,10 +191,10 @@ sh celikpanel-install.sh</code></pre>
 <caption>Tablo 4 · Kurtarma denemeleri</caption>
 <thead><tr><th scope="col">Ölçüm</th><th scope="col">Değer</th><th scope="col">Koşul</th><th scope="col">Tarih</th></tr></thead>
 <tbody>
-<tr><th scope="row">Ölen bir sunucudan yeniden hizmete dönüş</th><td class="v" data-k="Değer">105 sn</td><td data-k="Koşul">Birinci sunucu elektrik kesintisiyle durdu; yeni bir makine açılıp tek mühürlü arşivden geri yüklendi</td><td class="v" data-k="Tarih">5 Eyl 2026</td></tr>
-<tr><th scope="row">Kesinti anında arşivin yaşı, kaybolan veri</th><td class="v" data-k="Değer">40,9 sn · 0</td><td data-k="Koşul">O aralıkta hiçbir şey yazılmamıştı; hiçbir şey kaybolmadı</td><td class="v" data-k="Tarih">5 Eyl 2026</td></tr>
-<tr><th scope="row">Çalışan bir BIND devralınırken cevapsız kalan sorgu</th><td class="v" data-k="Değer">0 / 2508</td><td data-k="Koşul">Debian 13’te kendi bölgesini cevaplayan, elle kurulmuş bir BIND, panelden devralındı</td><td class="v" data-k="Tarih">4 Eyl 2026</td></tr>
-<tr><th scope="row">Elektrik kesintisinden sonra yarım işin çözülme süresi</th><td class="v" data-k="Değer">≤ 7 sn</td><td data-k="Koşul">Gerçek bir sanal makinede dört kesinti; her defasında iş kimse dokunmadan tamamlandı ya da geri alındı</td><td class="v" data-k="Tarih">4 Eyl 2026</td></tr>
+<tr><th scope="row">Ölen bir sunucudan yeniden hizmete dönüş</th><td class="v" data-k="Değer">105 sn</td><td data-k="Koşul">Birinci sunucu elektrik kesintisiyle durdu; yeni bir makine açılıp tek mühürlü arşivden geri yüklendi</td><td class="v" data-k="Tarih">2026-09-05</td></tr>
+<tr><th scope="row">Kesinti anında arşivin yaşı, kaybolan veri</th><td class="v" data-k="Değer">40,9 sn · 0</td><td data-k="Koşul">O aralıkta hiçbir şey yazılmamıştı; hiçbir şey kaybolmadı</td><td class="v" data-k="Tarih">2026-09-05</td></tr>
+<tr><th scope="row">Çalışan bir BIND devralınırken cevapsız kalan sorgu</th><td class="v" data-k="Değer">0 / 2508</td><td data-k="Koşul">Debian 13’te kendi bölgesini cevaplayan, elle kurulmuş bir BIND, panelden devralındı</td><td class="v" data-k="Tarih">2026-09-04</td></tr>
+<tr><th scope="row">Elektrik kesintisinden sonra yarım işin çözülme süresi</th><td class="v" data-k="Değer">≤ 7 sn</td><td data-k="Koşul">Gerçek bir sanal makinede dört kesinti; her defasında iş kimse dokunmadan tamamlandı ya da geri alındı</td><td class="v" data-k="Tarih">2026-09-04</td></tr>
 </tbody>
 </table>
 </div>
@@ -205,7 +205,7 @@ sh celikpanel-install.sh</code></pre>
 <header><span class="num">7</span><h2 id="h-licence">Lisans</h2><p>Sunucu başına bir lisans. Hesap, alan adı ve site sayılmaz.</p></header>
 <div>
 <div class="table">
-<table class="stack">
+<table class="stack kv">
 <caption>Tablo 5 · Bugünkü ve 1.0 sürümünden itibaren geçerli lisans</caption>
 <thead><tr><th scope="col">Konu</th><th scope="col">Bugün, alfa</th><th scope="col">1.0 sürümünden itibaren</th></tr></thead>
 <tbody>
