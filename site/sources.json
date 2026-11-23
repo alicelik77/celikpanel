@@ -224,8 +224,8 @@
     ],
     "home.sep.caption": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:5",
-        "says": "Published** on 2026-11-23"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:5",
+        "says": "A security release with one correction."
       }
     ],
     "home.sep.note": [
@@ -928,46 +928,46 @@
     ],
     "sep.tools": [
       {
-        "cite": "docs/TENANT-ISOLATION.md:539",
-        "says": "Each tool on its own account."
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:35",
+        "says": "Now each has a system account of its own"
       },
       {
-        "cite": "docs/TENANT-ISOLATION.md:559",
-        "says": "system that refuses access-control lists stops the move"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:54",
+        "says": "Webmail needs a file system with"
       }
     ],
     "sep.tools.since": [
       {
-        "cite": "docs/TENANT-ISOLATION.md:522",
-        "says": "sandbox slice R1, pull request #348"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:1",
+        "says": "# v0.1.0-alpha.147"
       }
     ],
     "sep.at": [
       {
-        "cite": "docs/TENANT-ISOLATION.md:600",
-        "says": "is closed to website accounts: where the at package is installed"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:59",
+        "says": "Site accounts can no longer schedule jobs with"
       },
       {
-        "cite": "docs/TENANT-ISOLATION.md:605",
-        "says": "Lines not made in CelikPanel are marked"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:67",
+        "says": "Crontab lines a site adds outside the panel are shown."
       }
     ],
     "sep.at.since": [
       {
-        "cite": "docs/TENANT-ISOLATION.md:522",
-        "says": "sandbox slice R1, pull request #348"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:1",
+        "says": "# v0.1.0-alpha.147"
       }
     ],
     "sep.stockpool": [
       {
-        "cite": "docs/TENANT-ISOLATION.md:563",
-        "says": "of each PHP version is turned off when it is"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:72",
+        "says": "shared PHP pool is switched off where nothing uses"
       }
     ],
     "sep.stockpool.since": [
       {
-        "cite": "docs/TENANT-ISOLATION.md:522",
-        "says": "sandbox slice R1, pull request #348"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:1",
+        "says": "# v0.1.0-alpha.147"
       }
     ],
     "sep.yes.notarch": [

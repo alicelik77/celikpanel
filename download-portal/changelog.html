@@ -48,6 +48,27 @@
 </div>
 </div>
 <div class="wrap">
+<section class="part" id="v0.1.0-alpha.147" aria-labelledby="h-v0.1.0-alpha.147">
+<header><span class="num">@@CP_RELEASE_DAY@@</span><h2 id="h-v0.1.0-alpha.147">v0.1.0-alpha.147</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.147</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">phpMyAdmin, phpPgAdmin and webmail run under system accounts of their own instead of the web server’s shared account, which can read every site; webmail needs a file system with access-control lists for this.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-18">CP-2026-18</a></td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">Site accounts can no longer schedule jobs with the system’s at; an at.allow the owner wrote is kept and the site accounts it names are shown to the administrator.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-19">CP-2026-19</a></td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">The distribution’s shared PHP pool, which runs as the web server’s account, is switched off where nothing uses it; where something still uses it, it is kept and Problems now names what.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-20">CP-2026-20</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">A longer change no longer stays “in progress” when the panel loses touch with its agent for a moment: the panel reads what the server did and records the result by itself.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-17">CP-2026-17</a></td></tr>
+<tr><th scope="row">New</th><td data-k="Change">Crontab lines a site adds outside the panel are marked on its Scheduled tasks list; they can be deleted, and the administrator may keep them.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">On Arch Linux the tools stay on the web server’s account and the PHP pool is not switched off; at and the site crontabs are handled on every system.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A site account can still add lines to its own crontab; they are shown, can be deleted and, by the administrator, kept.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.147.md">Full release notes of v0.1.0-alpha.147</a></p>
+</div>
+</section>
 <section class="part" id="v0.1.0-alpha.146" aria-labelledby="h-v0.1.0-alpha.146">
 <header><span class="num">2026-11-23</span><h2 id="h-v0.1.0-alpha.146">v0.1.0-alpha.146</h2></header>
 <div>
