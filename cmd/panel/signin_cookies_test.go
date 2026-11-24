@@ -969,6 +969,9 @@ func TestDBToolProxyStripsPanelCredentialsBothWays(t *testing.T) {
 			w.Header().Del(name)
 		}
 		w.Header().Set("Clear-Site-Data", `"cookies"`)
+		// A tool's own framing and policy headers never replace the panel's.
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		w.Header().Set("Content-Security-Policy", "frame-ancestors *")
 		for _, value := range []string{
 			// Nameless: a browser sends these back as celikpanel_session=planted.
 			"=celikpanel_session=planted; Path=/",
@@ -993,7 +996,8 @@ func TestDBToolProxyStripsPanelCredentialsBothWays(t *testing.T) {
 		t.Fatal(err)
 	}
 	proxy := newDBToolProxy(target)
-	front := httptest.NewServer(proxy)
+	// As in production, the panel's security headers are set before the proxy.
+	front := httptest.NewServer(securityHeaders(true, proxy))
 	defer front.Close()
 
 	request, err := http.NewRequest(http.MethodGet, front.URL+"/dbtool/phpmyadmin/", nil)
@@ -1045,6 +1049,48 @@ func TestDBToolProxyStripsPanelCredentialsBothWays(t *testing.T) {
 	}
 	if body, _ := io.ReadAll(response.Body); string(body) != "tool page" {
 		t.Fatalf("body = %q", body)
+	}
+	// Second look at PR #368, finding B: after the 103 the reverse proxy
+	// clears every header already set; the final response still carries the
+	// panel's own security headers exactly as any other panel response.
+	panelResponse := http.Header{}
+	setPanelSecurityHeaders(panelResponse, true)
+	if len(panelResponse) != len(panelSecurityHeaderNames) {
+		t.Fatalf("panelSecurityHeaderNames %v is not what setPanelSecurityHeaders sets: %v", panelSecurityHeaderNames, panelResponse)
+	}
+	for _, name := range panelSecurityHeaderNames {
+		want := panelResponse.Values(name)
+		if got := response.Header.Values(name); len(want) != 1 || len(got) != 1 || got[0] != want[0] {
+			t.Errorf("%s through /dbtool/ after a 103 = %q, want the panel's %q", name, got, want)
+		}
+	}
+}
+
+// Without HTTPS the panel sends no Strict-Transport-Security, and a tool
+// cannot add one either; the other headers are the panel's.
+func TestDBToolProxyKeepsThePanelsSecurityHeadersOverPlainHTTP(t *testing.T) {
+	tool := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Strict-Transport-Security", "max-age=1")
+		w.Header().Set("Referrer-Policy", "unsafe-url")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer tool.Close()
+	target, err := url.Parse(tool.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	front := httptest.NewServer(securityHeaders(false, newDBToolProxy(target)))
+	defer front.Close()
+	response, err := http.Get(front.URL + "/dbtool/phpmyadmin/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if got := response.Header.Values("Strict-Transport-Security"); len(got) != 0 {
+		t.Fatalf("Strict-Transport-Security over plain HTTP = %q", got)
+	}
+	if got := response.Header.Values("Referrer-Policy"); len(got) != 1 || got[0] != "no-referrer" {
+		t.Fatalf("Referrer-Policy = %q", got)
 	}
 }
 

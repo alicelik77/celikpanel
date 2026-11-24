@@ -49,8 +49,20 @@ func newDBToolProxy(target *url.URL) http.Handler {
 		return nil
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxy.ServeHTTP(dbToolResponseWriter{w}, r)
+		proxy.ServeHTTP(&dbToolResponseWriter{ResponseWriter: w, panelHeaders: panelSecurityHeadersOf(w.Header())}, r)
 	})
+}
+
+// panelSecurityHeadersOf copies the panel's security headers (securityHeaders,
+// set before the proxy runs) from a response's header.
+func panelSecurityHeadersOf(header http.Header) http.Header {
+	kept := http.Header{}
+	for _, name := range panelSecurityHeaderNames {
+		if values := header.Values(name); len(values) > 0 {
+			kept[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
+		}
+	}
+	return kept
 }
 
 // filterToolResponseHeader removes from a tool's response what could touch
@@ -63,20 +75,42 @@ func filterToolResponseHeader(header http.Header) {
 
 // dbToolResponseWriter filters the headers of informational (1xx) responses:
 // httputil.ReverseProxy relays those from its Got1xxResponse trace straight
-// to the client, without ModifyResponse. Unwrap keeps flushing and protocol
-// upgrades (http.ResponseController) working through it.
+// to the client, without ModifyResponse. After relaying one it clears every
+// header already set, the panel's security headers too, so the final
+// response gets the panel's own values of those back (panelHeaders, read
+// before the proxy ran), replacing whatever the tool sent under those names
+// (second look at PR #368, B). Unwrap keeps flushing and protocol upgrades
+// (http.ResponseController) working through it.
 type dbToolResponseWriter struct {
 	http.ResponseWriter
+	panelHeaders http.Header
+	final        bool
 }
 
-func (w dbToolResponseWriter) WriteHeader(code int) {
+func (w *dbToolResponseWriter) WriteHeader(code int) {
 	if code >= 100 && code < 200 {
 		filterToolResponseHeader(w.Header())
+	} else if !w.final {
+		w.final = true
+		header := w.Header()
+		for _, name := range panelSecurityHeaderNames {
+			header.Del(name)
+			for _, value := range w.panelHeaders.Values(name) {
+				header.Add(name, value)
+			}
+		}
 	}
 	w.ResponseWriter.WriteHeader(code)
 }
 
-func (w dbToolResponseWriter) Unwrap() http.ResponseWriter {
+func (w *dbToolResponseWriter) Write(body []byte) (int, error) {
+	if !w.final {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(body)
+}
+
+func (w *dbToolResponseWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 

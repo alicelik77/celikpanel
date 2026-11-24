@@ -16,37 +16,49 @@ import (
 // da zararlı olurdu.
 func securityHeaders(secure bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h := w.Header()
-		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("X-Frame-Options", "DENY")
-		h.Set("Referrer-Policy", "no-referrer")
-		// The SPA is fully same-origin: scripts and XHR only from 'self'.
-		// Tailwind and React set inline styles, so style-src needs
-		// 'unsafe-inline'; script-src deliberately does not.
-		// SPA tümüyle aynı köken: script ve XHR yalnızca 'self'. Tailwind
-		// ve React satır içi stil koyduğundan style-src 'unsafe-inline'
-		// gerektirir; script-src bilinçli olarak gerektirmez.
-		h.Set("Content-Security-Policy",
-			"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "+
-				"img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; "+
-				"base-uri 'self'; form-action 'self'")
-		if secure {
-			// The Panel speaks for its own host name only (D-030). With
-			// includeSubDomains a browser that had opened the Panel at
-			// example.com refused plain HTTP on every name under it for a
-			// year, names the Panel does not serve and their owner may run
-			// elsewhere. A browser replaces the policy it holds for this
-			// host with the one it reads here, so the wider one ends at the
-			// owner's next visit after the update.
-			// Panel yalnız kendi ana makine adı için konuşur (D-030).
-			// includeSubDomains ile, Paneli example.com'da açmış bir
-			// tarayıcı onun altındaki her adda bir yıl boyunca düz HTTP'yi
-			// reddediyordu; tarayıcı bu ana makine için tuttuğu kuralı
-			// burada okuduğuyla değiştirir.
-			h.Set("Strict-Transport-Security", "max-age=31536000")
-		}
+		setPanelSecurityHeaders(w.Header(), secure)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// panelSecurityHeaderNames are every header setPanelSecurityHeaders sets
+// (Strict-Transport-Security only over HTTPS). The database tools' proxy puts
+// the panel's values of these back on a tool's final response
+// (dbtool_proxy.go); a test keeps the list equal to what is set.
+var panelSecurityHeaderNames = []string{
+	"X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy", "Content-Security-Policy", "Strict-Transport-Security",
+}
+
+// setPanelSecurityHeaders sets the panel's own security headers.
+func setPanelSecurityHeaders(h http.Header, secure bool) {
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("X-Frame-Options", "DENY")
+	h.Set("Referrer-Policy", "no-referrer")
+	// The SPA is fully same-origin: scripts and XHR only from 'self'.
+	// Tailwind and React set inline styles, so style-src needs
+	// 'unsafe-inline'; script-src deliberately does not.
+	// SPA tümüyle aynı köken: script ve XHR yalnızca 'self'. Tailwind
+	// ve React satır içi stil koyduğundan style-src 'unsafe-inline'
+	// gerektirir; script-src bilinçli olarak gerektirmez.
+	h.Set("Content-Security-Policy",
+		"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "+
+			"img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; "+
+			"base-uri 'self'; form-action 'self'")
+	if secure {
+		// The Panel speaks for its own host name only (D-030). With
+		// includeSubDomains a browser that had opened the Panel at
+		// example.com refused plain HTTP on every name under it for a
+		// year, names the Panel does not serve and their owner may run
+		// elsewhere. A browser replaces the policy it holds for this
+		// host with the one it reads here, so the wider one ends at the
+		// owner's next visit after the update.
+		// Panel yalnız kendi ana makine adı için konuşur (D-030).
+		// includeSubDomains ile, Paneli example.com'da açmış bir
+		// tarayıcı onun altındaki her adda bir yıl boyunca düz HTTP'yi
+		// reddediyordu; tarayıcı bu ana makine için tuttuğu kuralı
+		// burada okuduğuyla değiştirir.
+		h.Set("Strict-Transport-Security", "max-age=31536000")
+	}
 }
 
 // csrfProtect blocks cross-origin state-changing requests. Combined with
