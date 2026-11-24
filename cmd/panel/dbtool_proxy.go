@@ -21,7 +21,11 @@ import (
 // administrator's own session) and the Authorization header; from the tool it
 // drops any cookie a tool tries to set under the panel's names or with the
 // __Host- or __Secure- prefixes, which a response could otherwise use to
-// overwrite the panel's sign-in.
+// overwrite the panel's sign-in, and any cookie without a name (a browser
+// keeps "=celikpanel_session=x" as a nameless cookie and sends it back as
+// "celikpanel_session=x"), and Clear-Site-Data, with which a tool could sign
+// the person out of the panel. Informational (1xx) responses, which the
+// reverse proxy relays without ModifyResponse, are filtered the same way.
 //
 // Veritabanı web araçları (phpMyAdmin, phpPgAdmin) için ters vekil. Agent
 // onları yalnız loopback'te sunar (127.0.0.1:8306); içeri tek yol bu vekildir
@@ -33,7 +37,7 @@ import (
 
 var dbToolProxy = newDBToolProxy(&url.URL{Scheme: "http", Host: "127.0.0.1:8306"})
 
-func newDBToolProxy(target *url.URL) *httputil.ReverseProxy {
+func newDBToolProxy(target *url.URL) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	director := proxy.Director
 	proxy.Director = func(req *http.Request) {
@@ -41,10 +45,39 @@ func newDBToolProxy(target *url.URL) *httputil.ReverseProxy {
 		stripPanelCredentials(req.Header)
 	}
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		dropPanelNamedSetCookies(resp.Header)
+		filterToolResponseHeader(resp.Header)
 		return nil
 	}
-	return proxy
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxy.ServeHTTP(dbToolResponseWriter{w}, r)
+	})
+}
+
+// filterToolResponseHeader removes from a tool's response what could touch
+// the panel's sign-in: Set-Cookie under the panel's names or without a name,
+// and Clear-Site-Data.
+func filterToolResponseHeader(header http.Header) {
+	dropPanelNamedSetCookies(header)
+	header.Del("Clear-Site-Data")
+}
+
+// dbToolResponseWriter filters the headers of informational (1xx) responses:
+// httputil.ReverseProxy relays those from its Got1xxResponse trace straight
+// to the client, without ModifyResponse. Unwrap keeps flushing and protocol
+// upgrades (http.ResponseController) working through it.
+type dbToolResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (w dbToolResponseWriter) WriteHeader(code int) {
+	if code >= 100 && code < 200 {
+		filterToolResponseHeader(w.Header())
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w dbToolResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 // stripPanelCredentials removes the panel's own cookies (by exact name, old
@@ -78,7 +111,10 @@ func stripPanelCredentials(header http.Header) {
 
 // dropPanelNamedSetCookies removes every Set-Cookie of a tool's response
 // whose name starts with "celikpanel", "__Host-" or "__Secure-" (compared
-// without regard to case): those names belong to the panel.
+// without regard to case): those names belong to the panel. A Set-Cookie
+// whose name is empty is removed too, whatever its value: a browser stores
+// "=celikpanel_session=x" as a nameless cookie and sends it back as
+// "celikpanel_session=x", and the panel cannot remove a nameless cookie.
 func dropPanelNamedSetCookies(header http.Header) {
 	values := header.Values("Set-Cookie")
 	if len(values) == 0 {
@@ -87,7 +123,8 @@ func dropPanelNamedSetCookies(header http.Header) {
 	var kept []string
 	for _, value := range values {
 		name, _, _ := strings.Cut(value, "=")
-		if panelReservedCookieName(strings.TrimSpace(name)) {
+		name = strings.TrimSpace(name)
+		if name == "" || panelReservedCookieName(name) {
 			continue
 		}
 		kept = append(kept, value)

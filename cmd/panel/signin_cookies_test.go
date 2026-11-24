@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/http/httptrace"
+	"net/textproto"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -667,7 +669,22 @@ func TestDBToolProxyStripsPanelCredentialsBothWays(t *testing.T) {
 	var seenCookie, seenAuthorization string
 	tool := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seenCookie, seenAuthorization = r.Header.Get("Cookie"), r.Header.Get("Authorization")
+		// An informational response first: the reverse proxy relays it
+		// without ModifyResponse.
+		w.Header().Set("Link", "</dbtool/phpmyadmin/app.css>; rel=preload")
+		w.Header().Add("Set-Cookie", "celikpanel_session=early; Path=/")
+		w.Header().Add("Set-Cookie", "=celikpanel_session=early; Path=/")
+		w.Header().Set("Clear-Site-Data", `"cookies"`)
+		w.WriteHeader(http.StatusEarlyHints)
+		for _, name := range []string{"Link", "Set-Cookie", "Clear-Site-Data"} {
+			w.Header().Del(name)
+		}
+		w.Header().Set("Clear-Site-Data", `"cookies"`)
 		for _, value := range []string{
+			// Nameless: a browser sends these back as celikpanel_session=planted.
+			"=celikpanel_session=planted; Path=/",
+			" =__Host-celikpanel_session=planted; Path=/; Secure",
+			"=other; Path=/",
 			"celikpanel_session=planted; Path=/",
 			"__Host-celikpanel_session=planted; Path=/; Secure",
 			"__host-anything=1; Path=/; Secure",
@@ -697,11 +714,33 @@ func TestDBToolProxyStripsPanelCredentialsBothWays(t *testing.T) {
 	request.Header.Set("Cookie", "celikpanel_session=a; __Host-celikpanel_session=b; phpMyAdmin=tool-session; "+
 		"celikpanel_impersonator=c; __Host-celikpanel_impersonator=d; pma_lang=tr")
 	request.Header.Set("Authorization", "Bearer cpk_secret")
+	var early []textproto.MIMEHeader
+	request = request.WithContext(httptrace.WithClientTrace(request.Context(), &httptrace.ClientTrace{
+		Got1xxResponse: func(code int, header textproto.MIMEHeader) error {
+			early = append(early, header)
+			return nil
+		},
+	}))
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer response.Body.Close()
+	if len(early) != 1 || early[0].Get("Link") == "" {
+		t.Fatalf("the informational response was not relayed: %v", early)
+	}
+	if values := early[0].Values("Set-Cookie"); len(values) != 0 || early[0].Get("Clear-Site-Data") != "" {
+		t.Fatalf("the informational response carried Set-Cookie %q, Clear-Site-Data %q", values, early[0].Get("Clear-Site-Data"))
+	}
+	// What the browser receives, header by header (a nameless cookie is not
+	// in response.Cookies()).
+	if values := response.Header.Values("Set-Cookie"); len(values) != 2 ||
+		values[0] != "phpMyAdmin=tool-session; path=/dbtool/phpmyadmin/; HttpOnly" || values[1] != "pma_lang=tr; path=/dbtool/phpmyadmin/" {
+		t.Fatalf("Set-Cookie the tool could send = %q", values)
+	}
+	if value := response.Header.Get("Clear-Site-Data"); value != "" {
+		t.Fatalf("the tool could send Clear-Site-Data %q", value)
+	}
 	if seenCookie != "phpMyAdmin=tool-session; pma_lang=tr" {
 		t.Fatalf("the tool received Cookie %q", seenCookie)
 	}
