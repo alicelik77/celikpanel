@@ -706,19 +706,23 @@ func (p *Panel) handleUnimpersonate(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusUnauthorized, "impersonated session missing; sign in again")
 		return
 	}
-	if curValue == impValue {
-		// A duplicated cookie is not an impersonation state. Preserve the valid
-		// operator session and remove only the bogus return-path marker.
+	// Only a "Log in as" session has a way back. A return cookie beside any
+	// other session (left by a sign-out, a sign-in after it, or a duplicated
+	// cookie) leads nowhere: it is removed and the current session is kept.
+	// Yalnız "Farklı giriş yap" oturumunun dönüş yolu vardır; başka bir
+	// oturumun yanındaki dönüş çerezi silinir, mevcut oturum korunur.
+	c := currentCaller(r)
+	if c == nil || c.ImpersonatorID <= 0 || curValue == impValue {
 		p.clearImpersonatorCookie(w)
 		writeClientError(w, http.StatusBadRequest, "not impersonating")
 		return
 	}
-	// The stored token must still be a valid session.
-	// Saklanan token hâlâ geçerli bir oturum olmalı.
+	// The stored token must still be a valid session, and the way back leads
+	// only to the operator who opened this session, to their own session.
+	// Saklanan token hâlâ geçerli bir oturum olmalı; dönüş yolu yalnız bu
+	// oturumu açan operatörün kendi oturumuna çıkar.
 	original, err := p.sessions.ValidateIdentity(r.Context(), impValue)
-	// The way back leads only to the operator who opened this session.
-	// Dönüş yolu yalnız bu oturumu açan operatöre çıkar.
-	if c := currentCaller(r); err == nil && c != nil && c.ImpersonatorID > 0 && original.UserID != c.ImpersonatorID {
+	if err == nil && (original.UserID != c.ImpersonatorID || original.ImpersonatorID != 0) {
 		err = auth.ErrSessionInvalid
 	}
 	if err != nil {
@@ -753,9 +757,7 @@ func (p *Panel) handleUnimpersonate(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, fmt.Errorf("revoke impersonated session: %w", revokeErr))
 		return
 	}
-	if c := currentCaller(r); c != nil && c.ImpersonatorID > 0 {
-		p.audit(r, "impersonate.stop", "user", c.ID)
-	}
+	p.audit(r, "impersonate.stop", "user", c.ID)
 	http.SetCookie(w, p.cookie(p.sessionCookieNameInUse(), impValue, 0))
 	p.clearImpersonatorCookie(w)
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})

@@ -195,12 +195,26 @@ func (p *Panel) cookie(name, value string, maxAge int) *http.Cookie {
 	}
 }
 
-// setSessionCookie gives the browser its session token under the name in use
-// and, over HTTPS, removes the plain names a release before this one set when
-// the request carried one.
+// setSessionCookie gives the browser its session token under the name in use,
+// removes a "Log in as" return cookie the request carried (a new sign-in is
+// never a "Log in as" session, so a return cookie beside it is left over from
+// someone else's "Log in as" and must not lead anywhere) and, over HTTPS,
+// removes the plain names a release before this one set when the request
+// carried one. Sign-in, its second step and the transition's carry-over use it.
 func (p *Panel) setSessionCookie(w http.ResponseWriter, r *http.Request, token string, expires time.Time) {
 	http.SetCookie(w, p.sessionCookie(token, expires))
+	p.expireImpersonatorCookieSent(w, r)
 	p.expirePlainSigninCookiesSent(w, r)
+}
+
+// expireImpersonatorCookieSent removes the "Log in as" cookie under the name
+// in use when the request carried it (the plain names are
+// expirePlainSigninCookiesSent's).
+func (p *Panel) expireImpersonatorCookieSent(w http.ResponseWriter, r *http.Request) {
+	name := p.impersonatorCookieNameInUse()
+	if len(cookieValues(r, name)) > 0 {
+		http.SetCookie(w, p.cookie(name, "", -1))
+	}
 }
 
 // clearSessionCookie removes the session cookie under every name it had.

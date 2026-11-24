@@ -155,10 +155,20 @@ func (p *Panel) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if token := currentSessionToken(r); token != "" {
 		deleteErr = p.sessions.Delete(r.Context(), token)
 	}
+	// Signing out of a "Log in as" session also ends the operator's own
+	// session kept in the return cookie, once it is proved to be that
+	// operator's: no usable token of the operator stays in this browser for
+	// the next person who signs in on it.
+	// "Farklı giriş yap" içinden çıkış, dönüş çerezindeki operatör oturumunu da
+	// (operatörün olduğu doğrulanınca) sonlandırır.
+	if c := currentCaller(r); deleteErr == nil && c != nil && c.ImpersonatorID > 0 {
+		deleteErr = p.endKeptOperatorSession(r, c.ImpersonatorID)
+	}
 	// An already-expired cookie tells the browser to drop it, under every
-	// name the session cookie had.
+	// name the session cookie and the "Log in as" return cookie had.
 	// Süresi geçmiş bir çerez, tarayıcıya onu bırakmasını söyler.
 	p.clearSessionCookie(w)
+	p.clearImpersonatorCookie(w)
 	if deleteErr != nil {
 		// The browser token is still cleared, but do not claim a complete
 		// logout when the server-side credential could not be revoked.
@@ -168,6 +178,29 @@ func (p *Panel) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// endKeptOperatorSession ends the session the "Log in as" return cookie holds
+// when it is the given operator's own session. A cookie naming anything else
+// is not ended (it is only removed from the browser by the caller): it is not
+// this operator's to end. A return cookie that is absent or no longer valid
+// needs nothing.
+func (p *Panel) endKeptOperatorSession(r *http.Request, operatorID int) error {
+	kept, err := p.impersonatorCookieValue(r)
+	if err != nil {
+		return nil
+	}
+	original, err := p.sessions.ValidateIdentity(r.Context(), kept)
+	if errors.Is(err, auth.ErrSessionInvalid) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if original.UserID != operatorID || original.ImpersonatorID != 0 {
+		return nil
+	}
+	return p.sessions.Delete(r.Context(), kept)
 }
 
 // handleMe returns the current user, used by the SPA to decide whether to
@@ -202,14 +235,15 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Tell the SPA when this session is an impersonation so it can show the
-	// "return to my account" banner.
+	// "return to my account" banner. Only the session itself says so: a
+	// return cookie beside an ordinary session is left over from someone
+	// else's "Log in as" and is removed, never offered as a way back.
 	// Bu oturum bir taklit oturumuysa SPA'ya söyle; "hesabıma dön" şeridini
-	// gösterebilsin.
-	impersonating := false
-	if _, err := p.impersonatorCookieValue(r); err == nil {
-		impersonating = true
+	// gösterebilsin. Bunu yalnız oturumun kendisi söyler.
+	if caller.ImpersonatorID == 0 {
+		p.expireImpersonatorCookieSent(w, r)
 	}
-	response := p.identityResponse(r.Context(), identity, impersonating || caller.ImpersonatorID > 0)
+	response := p.identityResponse(r.Context(), identity, caller.ImpersonatorID > 0)
 	// The banner names the real person too (alpha.114): "Viewing as X —
 	// signed in as Y". A failed read leaves only the account's own name.
 	// Şerit gerçek kişiyi de adlandırır; okunamazsa yalnız hesabın adı kalır.

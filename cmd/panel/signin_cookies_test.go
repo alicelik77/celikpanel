@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
@@ -442,6 +443,223 @@ func TestSigninLogInAsAndReturnUseTheNewNames(t *testing.T) {
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("plain Log in as cookie was read: status = %d", recorder.Code)
+	}
+}
+
+// signinBrowser is one browser against the real sign-in handlers behind
+// requireAuth over HTTPS: its cookie jar keeps what the panel sets.
+type signinBrowser struct {
+	t      *testing.T
+	server *httptest.Server
+	client *http.Client
+}
+
+func newSigninBrowser(t *testing.T, fixture *signinFixture) *signinBrowser {
+	t.Helper()
+	panel := fixture.panel
+	panel.loginLimiter = newRateLimiter(100, time.Minute)
+	for _, id := range []int{signinAdminID, signinCustomerID} {
+		hash, err := auth.HashPassword(signinTestPassword)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := panel.db.GetDB().Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, hash, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/auth/login", panel.handleLogin)
+	mux.HandleFunc("/api/v1/auth/logout", panel.handleLogout)
+	mux.HandleFunc("/api/v1/auth/me", panel.handleMe)
+	mux.HandleFunc("/api/v1/auth/unimpersonate", panel.handleUnimpersonate)
+	// "Log in as" the customer, through the real handler (the route's own
+	// permission check is not what is tested here).
+	mux.HandleFunc("/api/v1/test/log-in-as-customer", func(w http.ResponseWriter, r *http.Request) {
+		target, err := panel.users.GetByID(r.Context(), signinCustomerID)
+		if err != nil {
+			t.Errorf("read the customer: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		panel.handleImpersonate(w, r, currentCaller(r), target)
+	})
+	server := httptest.NewTLSServer(panel.requireAuth(mux))
+	t.Cleanup(server.Close)
+	client := server.Client()
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Jar = jar
+	return &signinBrowser{t: t, server: server, client: client}
+}
+
+const signinTestPassword = "Sign-in cookies test password 368"
+
+func (b *signinBrowser) send(method, path, body string) (*http.Response, string) {
+	b.t.Helper()
+	request, err := http.NewRequest(method, b.server.URL+path, strings.NewReader(body))
+	if err != nil {
+		b.t.Fatal(err)
+	}
+	if body != "" {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	response, err := b.client.Do(request)
+	if err != nil {
+		b.t.Fatal(err)
+	}
+	defer response.Body.Close()
+	text, _ := io.ReadAll(response.Body)
+	return response, string(text)
+}
+
+func (b *signinBrowser) signIn(username string) {
+	b.t.Helper()
+	response, body := b.send(http.MethodPost, "/api/v1/auth/login", `{"username":"`+username+`","password":"`+signinTestPassword+`"}`)
+	if response.StatusCode != http.StatusOK {
+		b.t.Fatalf("sign in as %s: %d %s", username, response.StatusCode, body)
+	}
+}
+
+// cookie is the value the browser keeps under name ("" when it keeps none).
+func (b *signinBrowser) cookie(name string) string {
+	target, _ := url.Parse(b.server.URL)
+	for _, cookie := range b.client.Jar.Cookies(target) {
+		if cookie.Name == name {
+			return cookie.Value
+		}
+	}
+	return ""
+}
+
+func (b *signinBrowser) plant(name, value string) {
+	target, _ := url.Parse(b.server.URL)
+	b.client.Jar.SetCookies(target, []*http.Cookie{{Name: name, Value: value, Path: "/", Secure: true, HttpOnly: true}})
+}
+
+func (b *signinBrowser) me() (int, authMeResponse) {
+	b.t.Helper()
+	response, body := b.send(http.MethodGet, signinTestMeRoute, "")
+	var identity authMeResponse
+	_ = json.Unmarshal([]byte(body), &identity)
+	return response.StatusCode, identity
+}
+
+// Review of PR #368, finding 1 (older than the PR): after "Log in as", "Sign
+// out" left the operator's own session in the return cookie, and the next
+// person who signed in on that browser and pressed "Return to my account"
+// became the operator.
+func TestSigninLogInAsThenSignOutLeavesNoWayToTheOperator(t *testing.T) {
+	fixture := newSigninFixture(t, time.Now().Add(-time.Hour))
+	browser := newSigninBrowser(t, fixture)
+	sessions := fixture.panel.sessions
+
+	// The administrator signs in and uses "Log in as" on the customer.
+	browser.signIn("signin-admin")
+	operator := browser.cookie(hostSessionCookieName)
+	if response, body := browser.send(http.MethodPost, "/api/v1/test/log-in-as-customer", ""); response.StatusCode != http.StatusOK {
+		t.Fatalf("log in as: %d %s", response.StatusCode, body)
+	}
+	impersonated := browser.cookie(hostSessionCookieName)
+	if operator == "" || browser.cookie(hostImpersonatorCookieName) != operator || impersonated == operator {
+		t.Fatal("the browser is not in Log in as with the operator's session kept")
+	}
+	if status, identity := browser.me(); status != http.StatusOK || identity.Username != "signin-customer" || !identity.Impersonating {
+		t.Fatalf("/me in Log in as: %d %+v", status, identity)
+	}
+
+	// "Sign out" (the SPA calls only /auth/logout): no usable token is left,
+	// in the browser or on the server.
+	if response, body := browser.send(http.MethodPost, "/api/v1/auth/logout", ""); response.StatusCode != http.StatusNoContent {
+		t.Fatalf("sign out: %d %s", response.StatusCode, body)
+	}
+	if browser.cookie(hostImpersonatorCookieName) != "" || browser.cookie(hostSessionCookieName) != "" {
+		t.Fatal("sign out left a sign-in cookie in the browser")
+	}
+	for name, token := range map[string]string{"the operator's kept session": operator, "the Log in as session": impersonated} {
+		if _, err := sessions.Validate(context.Background(), token); err != auth.ErrSessionInvalid {
+			t.Fatalf("%s is still valid after sign out: %v", name, err)
+		}
+	}
+
+	// The next person signs in on that browser: an ordinary session, no way back.
+	browser.signIn("signin-customer")
+	if status, identity := browser.me(); status != http.StatusOK || identity.Username != "signin-customer" || identity.Impersonating {
+		t.Fatalf("/me after the next sign-in: %d %+v", status, identity)
+	}
+	response, _ := browser.send(http.MethodPost, "/api/v1/auth/unimpersonate", "")
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("return after someone else's sign-out: status %d", response.StatusCode)
+	}
+	if status, identity := browser.me(); status != http.StatusOK || identity.Username != "signin-customer" {
+		t.Fatalf("after the refused return: %d %+v", status, identity)
+	}
+}
+
+// The same browser with a return cookie still holding a valid operator
+// session beside an ordinary one (a browser from before this fix, or a
+// sign-out that never reached the panel): every step refuses to use it.
+func TestSigninReturnCookieBesideAnOrdinarySessionLeadsNowhere(t *testing.T) {
+	fixture := newSigninFixture(t, time.Now().Add(-time.Hour))
+	browser := newSigninBrowser(t, fixture)
+	operator := fixture.tokens[signinAdminID]
+
+	// Signing in removes a return cookie the browser still holds.
+	browser.plant(hostImpersonatorCookieName, operator)
+	browser.signIn("signin-customer")
+	if browser.cookie(hostImpersonatorCookieName) != "" {
+		t.Fatal("sign-in kept a return cookie")
+	}
+
+	// /me neither offers it as a way back nor keeps it.
+	browser.plant(hostImpersonatorCookieName, operator)
+	if status, identity := browser.me(); status != http.StatusOK || identity.Impersonating {
+		t.Fatalf("/me with a left-over return cookie: %d %+v", status, identity)
+	}
+	if browser.cookie(hostImpersonatorCookieName) != "" {
+		t.Fatal("/me kept a left-over return cookie")
+	}
+
+	// "Return" refuses it, removes it and keeps the person's own session.
+	customer := browser.cookie(hostSessionCookieName)
+	browser.plant(hostImpersonatorCookieName, operator)
+	response, _ := browser.send(http.MethodPost, "/api/v1/auth/unimpersonate", "")
+	if response.StatusCode != http.StatusBadRequest || browser.cookie(hostImpersonatorCookieName) != "" ||
+		browser.cookie(hostSessionCookieName) != customer || customer == operator {
+		t.Fatalf("return beside an ordinary session: status %d", response.StatusCode)
+	}
+	if _, err := fixture.panel.sessions.Validate(context.Background(), customer); err != nil {
+		t.Fatalf("the person's own session was ended: %v", err)
+	}
+
+	// Inside a real Log in as, a return cookie naming another person's
+	// session is refused too, and that Log in as session ends.
+	impersonated, err := fixture.panel.sessions.CreateImpersonation(context.Background(), signinCustomerID, signinAdminID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	browser.plant(hostSessionCookieName, impersonated)
+	browser.plant(hostImpersonatorCookieName, fixture.tokens[signinAdmin2ID])
+	response, _ = browser.send(http.MethodPost, "/api/v1/auth/unimpersonate", "")
+	if response.StatusCode != http.StatusUnauthorized || browser.cookie(hostSessionCookieName) != "" || browser.cookie(hostImpersonatorCookieName) != "" {
+		t.Fatalf("return to another person's session: status %d", response.StatusCode)
+	}
+
+	// The ordinary way still works: Log in as, then Return.
+	browser.signIn("signin-admin")
+	own := browser.cookie(hostSessionCookieName)
+	if response, body := browser.send(http.MethodPost, "/api/v1/test/log-in-as-customer", ""); response.StatusCode != http.StatusOK {
+		t.Fatalf("log in as: %d %s", response.StatusCode, body)
+	}
+	if response, body := browser.send(http.MethodPost, "/api/v1/auth/unimpersonate", ""); response.StatusCode != http.StatusOK {
+		t.Fatalf("return: %d %s", response.StatusCode, body)
+	}
+	if browser.cookie(hostSessionCookieName) != own || browser.cookie(hostImpersonatorCookieName) != "" {
+		t.Fatal("return did not restore the operator's own session")
+	}
+	if status, identity := browser.me(); status != http.StatusOK || identity.Username != "signin-admin" || identity.Impersonating {
+		t.Fatalf("/me after return: %d %+v", status, identity)
 	}
 }
 
