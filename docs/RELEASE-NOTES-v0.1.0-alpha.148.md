@@ -11,7 +11,10 @@ customers. A site's PHP keeps its own limits per site, as before, and is not
 inside the site's limits; its scheduled tasks are not inside them in this
 release; programs that ran before the update are inside once the
 administrator moves the site. Database users can get time limits and, on
-PostgreSQL, a firm limit on temporary files. The panel's database layout
+PostgreSQL, a firm limit on temporary files. The panel's sign-in cookies can
+no longer be set, shadowed or replaced by a website on another host name
+under the same domain, and signing out after "Log in as" no longer leaves
+the administrator's own sign-in in the browser. The panel's database layout
 does not change.
 **Only the owner updates installed panels, from the panel's own update
 screen.**
@@ -33,6 +36,10 @@ screen.**
    is the administrator's step, site by site, when it suits the site: it
    restarts the site's running programs once (see "What to expect after
    updating").
+4. **An administrator who follows the update on its page stays signed in.**
+   Resellers, customers and team members who were signed in at the time of
+   the update sign in once (see "Security: sign-in cookies that other
+   websites cannot set").
 
 ## Security: a site's programs inside limits of their own
 
@@ -110,6 +117,57 @@ screen.**
   `celiksite_<site id>.slice.d.celikpanel-aside-<UTC time>`); a deletion
   names them in the activity list.
 
+## Security: sign-in cookies that other websites cannot set
+
+- **Until now the panel's sign-in cookies had plain names.** A browser
+  also sends the panel a cookie that a website on another host name under
+  the same domain set for the whole domain (for example a site at
+  `shop.example.com` when the panel is at `panel.example.com`). Such a
+  website could put a sign-in of its own choosing into a visitor's browser,
+  which the panel then read before its own, so that the visitor worked in
+  another account without noticing; and it could put a sign-in behind
+  **Return to my account**.
+- **Now the panel's sign-in cookies carry names a browser keeps only for the
+  panel's own host name**, over HTTPS and never for a whole domain
+  (`__Host-celikpanel_session` and, during "Log in as",
+  `__Host-celikpanel_impersonator`). A website on another host name under
+  the same domain can no longer set, shadow or replace the panel's sign-in.
+  If a browser still sends the sign-in twice, the panel uses neither,
+  removes both, and the sign-in page says why. A signed-in browser's request
+  to the panel that comes from another website, or from another address of
+  the same site, is refused; the panel's own pages never send one.
+- **"Log in as", then "Sign out".** Until now, signing out of a "Log in as"
+  session ended only that session: the browser kept the administrator's own
+  sign-in for **Return to my account**, and the next person who signed in on
+  that browser, before it was closed, could press **Return to my account**
+  and continue as the administrator. Now **Sign out** during "Log in as"
+  also ends the administrator's own session in that browser; **Return to my
+  account** is offered and works only inside a "Log in as" session of that
+  same administrator; and every sign-in removes an administrator's sign-in
+  left in the browser.
+- **When a "Log in as" session ends any other way** (ended from a sessions
+  list, the account suspended or deleted, the session idle for too long, or
+  the administrator no longer allowed to manage the account), the browser no
+  longer keeps the administrator's own sign-in. Where the account may no
+  longer be used that way, the administrator's own session in that browser
+  ends too and the sign-in page says why; until now the panel refused every
+  request there, even **Sign out**.
+- **The database tools no longer receive the panel's sign-in.** What the
+  panel passes on to a database tool through its own address carries none of
+  the panel's sign-in cookies and no `Authorization` header, and a tool can
+  neither set cookies under the panel's names nor clear the panel's cookies.
+- **What people notice.** An administrator who was signed in when the update
+  ran stays signed in: the update page follows the update to its end by
+  itself, as before. Resellers, customers and team members who were signed
+  in at the time of the update, and an administrator who was inside "Log in
+  as" then, sign in once; so does anyone who comes back more than 24 hours
+  after the update. Whenever the panel asks for a new sign-in, or the
+  browser did not keep one (for example because a proxy in front of the
+  panel changes its cookies), the sign-in page says why and what to do.
+- **One host name for the panel.** Every service on the panel's own host
+  name shares its cookies, whatever the port, so that host name should serve
+  the panel alone.
+
 ## Going back to alpha.147
 
 - **An update that fails returns to alpha.147 by itself.** The new panel's
@@ -154,6 +212,11 @@ screen.**
     next update is refused until the change is moved into such a file).
   - A database user's limits: clearing the key makes the panel remove the
     value it wrote itself; a value the owner set by hand stays the owner's.
+- **The sign-in cookies need nothing undone.** Nothing of that part exists
+  at an automatic return: only the new panel, once started, sets the new
+  cookie names and records when it first did. Nothing of it is undone by
+  hand. A panel of an earlier release does not read the new names; there,
+  people simply sign in again.
 
 ## Known limits
 
@@ -193,6 +256,24 @@ screen.**
 - **Disk limits are counted, not enforced,** where the hosting file system
   has no project quotas: the panel counts and acts (uploads stop), the file
   system itself does not refuse a write. **Problems now** says so once.
+- **The panel's own host name is shared by every port.** A website or
+  service on that host name, on any port, receives the panel's sign-in
+  cookies and can set them; the new names do not separate ports. That host
+  name should serve the panel alone.
+- **For 24 hours after the update** an administrator's sign-in from before
+  the update is still accepted under the earlier cookie name and moved to
+  the new name; every other sign-in from before the update is asked to sign
+  in again.
+- **When a "Log in as" session is ended from a sessions list, or by
+  suspending or deleting the account,** the browser no longer keeps the
+  administrator's own sign-in, but that sign-in stays valid on the server
+  until it ends by itself (at most 24 hours after the administrator signed
+  in); no browser holds it any more.
+- **A website under the same domain can still fill the browser's cookies**
+  for that domain (which can make requests to the panel too large or push
+  cookies out); it can no longer set or replace the panel's sign-in.
+- **A session that ended because it was idle** shows the general "your
+  session ended" text on the sign-in page.
 - The open list of alpha.147 stays open
   ([alpha.147 release notes](RELEASE-NOTES-v0.1.0-alpha.147.md)).
 
@@ -230,6 +311,13 @@ screen.**
   limit it met.
 - **Problems now** shows the administrator "Sites whose programs run outside
   their limits" until every site is moved.
+- **Sign-in.** An administrator who was signed in when the update ran stays
+  signed in, and the update page shows the update's end by itself.
+  Resellers, customers and team members who were signed in then, and an
+  administrator who was inside "Log in as", see the sign-in page at their
+  next click, with the reason that the sign-in is from before the update,
+  and sign in once. Nothing of a customer's sites, mail or databases is
+  touched by this.
 
 ## Evidence
 
@@ -242,7 +330,11 @@ layout stays 81. New and additive: the agent calls `SiteSlicesStatusV1`,
 `site.memory_mb`, `site.tasks`, `site.cpu_percent`, `db.statement_seconds`,
 `db.idle_in_transaction_seconds`, `db.temp_file_mb`; the audit actions
 `site.limits_move` and `site.limits_file_aside`; Problems now kinds 39 to
-46.
+46. For the sign-in cookies: the cookie names `__Host-celikpanel_session`
+and `__Host-celikpanel_impersonator` over HTTPS; one panel setting,
+`auth.signin_cookie_names_since`, written once; the answers
+`SIGNIN_COOKIES_DUPLICATE`, `SIGNIN_FROM_BEFORE_UPDATE` and
+`LOG_IN_AS_ENDED` (401) and `CROSS_SITE_REQUEST_REFUSED` (403).
 
 Tests by part:
 
@@ -286,3 +378,19 @@ Tests by part:
   `TestR2aMariaDBStatementTimeDoesNotCutARestore`; web
   `site-limits-r2a.test.mjs`, `site-limits-round2.test.mjs`,
   `site-limits-round3.test.mjs`, `site-limits-a148.test.mjs`.
+- Sign-in cookies: `TestSigninCookiesUseHostPrefixOverHTTPS`,
+  `TestSigninDuplicateSessionCookiesAreRefusedAndCleared`,
+  `TestSigninPlainCookieBesideTheNewNameIsIgnoredAndCleared`,
+  `TestSigninFetchMetadataGate`, `TestCSRFBlocksOriginThatDiffersOnlyByPort`.
+- The update's sign-in: `TestSigninTransitionCarriesAPreUpdateAdministratorSessionOnce`,
+  `TestSigninTransitionCarriesOverOnlyOnAPIAndNeverCached`,
+  `TestSigninTransitionRefusals`,
+  `TestSigninCookieNamesSinceIsRecordedOnceAndKeptAcrossRestarts`.
+- "Log in as": `TestSigninLogInAsAndReturnUseTheNewNames`,
+  `TestSigninLogInAsThenSignOutLeavesNoWayToTheOperator`,
+  `TestSigninReturnCookieBesideAnOrdinarySessionLeadsNowhere`,
+  `TestSigninLogInAsEndedAnyOtherWayLeavesNoUsableTokenInTheBrowser`,
+  `TestSigninRefusalsAndTheReturnCookie`.
+- The database tools: `TestDBToolProxyStripsPanelCredentialsBothWays`,
+  `TestDBToolProxyKeepsThePanelsSecurityHeadersOverPlainHTTP`; the sign-in
+  page's reasons: web `access-hold-runtime.test.mjs`.

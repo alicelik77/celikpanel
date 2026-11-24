@@ -12,8 +12,11 @@ eskisi gibi site başına kendi sınırlarını korur ve sitenin sınırlarını
 içinde değildir; zamanlanmış görevleri bu sürümde bu sınırların içinde
 değildir; güncellemeden önce çalışan programlar yönetici siteyi taşıyınca
 içeri girer. Veritabanı kullanıcılarına süre sınırları ve PostgreSQL'de
-geçici dosyalar için kesin bir sınır konabilir. Panelin veritabanı düzeni
-değişmez.
+geçici dosyalar için kesin bir sınır konabilir. Panelin giriş çerezlerini
+aynı alan adı altında başka bir ana makine adındaki bir web sitesi artık
+koyamaz, gölgeleyemez ya da değiştiremez; "Farklı giriş yap"tan sonra çıkış
+yapmak artık yöneticinin kendi girişini tarayıcıda bırakmaz. Panelin
+veritabanı düzeni değişmez.
 **Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
 günceller.**
 
@@ -34,6 +37,10 @@ günceller.**
    sunar. Bu taşıma yöneticinin adımıdır; site site, sitenin işine uygun bir
    zamanda yapılır: sitenin çalışan programlarını bir kez yeniden başlatır
    (bkz. "Güncellemeden sonra ne beklenir").
+4. **Güncellemeyi kendi sayfasında izleyen yönetici oturumunu korur.**
+   Güncelleme sırasında oturumu açık olan bayiler, müşteriler ve ekip
+   üyeleri bir kez yeniden giriş yapar (bkz. "Güvenlik: başka sitelerin
+   koyamayacağı giriş çerezleri").
 
 ## Güvenlik: bir sitenin programları kendi sınırlarının içinde
 
@@ -116,6 +123,60 @@ günceller.**
   `celiksite_<site kimliği>.slice.d.celikpanel-aside-<UTC zamanı>`); silme
   işlemi onları etkinlik listesinde adlarıyla gösterir.
 
+## Güvenlik: başka sitelerin koyamayacağı giriş çerezleri
+
+- **Şimdiye kadar panelin giriş çerezlerinin adları sıradandı.** Tarayıcı,
+  aynı alan adı altında başka bir ana makine adındaki bir web sitesinin
+  bütün alan adı için koyduğu bir çerezi de panele gönderir (örneğin panel
+  `panel.example.com` adresindeyken `shop.example.com` adresindeki bir
+  site). Böyle bir web sitesi, bir ziyaretçinin tarayıcısına kendi seçtiği
+  bir girişi koyabiliyordu; panel bunu kendi girişinden önce okuyordu ve
+  ziyaretçi farkına varmadan başka bir hesapta çalışıyordu. Ayrıca **Hesabıma
+  dön** düğmesinin arkasına bir giriş koyabiliyordu.
+- **Artık panelin giriş çerezleri, tarayıcının yalnız panelin kendi ana
+  makine adı için sakladığı adları taşır**; yalnız HTTPS üzerinden ve hiçbir
+  zaman bütün bir alan adı için değil (`__Host-celikpanel_session` ve "Farklı
+  giriş yap" sırasında `__Host-celikpanel_impersonator`). Aynı alan adı
+  altında başka bir ana makine adındaki bir web sitesi panelin girişini artık
+  koyamaz, gölgeleyemez ya da değiştiremez. Bir tarayıcı girişi yine de iki
+  kez gönderirse panel ikisini de kullanmaz, ikisini de siler ve giriş
+  sayfası nedenini söyler. Oturumu açık bir tarayıcıdan panele gelen ve
+  başka bir web sitesinden ya da aynı sitenin başka bir adresinden çıkan
+  istek reddedilir; panelin kendi sayfaları hiçbir zaman böyle istek
+  göndermez.
+- **"Farklı giriş yap", sonra "Çıkış yap".** Şimdiye kadar "Farklı giriş
+  yap" oturumundan çıkış yapmak yalnız o oturumu kapatıyordu: tarayıcı
+  yöneticinin kendi girişini **Hesabıma dön** için saklıyordu ve o
+  tarayıcıda, tarayıcı kapanmadan sonra giriş yapan kişi **Hesabıma dön**
+  düğmesine basıp yönetici olarak devam edebiliyordu. Artık "Farklı giriş
+  yap" sırasında **Çıkış yap** yöneticinin o tarayıcıdaki kendi oturumunu da
+  kapatır; **Hesabıma dön** yalnız aynı yöneticinin bir "Farklı giriş yap"
+  oturumunda sunulur ve çalışır; her giriş, tarayıcıda kalmış bir yönetici
+  girişini siler.
+- **Bir "Farklı giriş yap" oturumu başka bir yolla sona erdiğinde**
+  (oturumlar listesinden kapatıldığında, hesap askıya alındığında ya da
+  silindiğinde, oturum uzun süre kullanılmadığında ya da yönetici hesabı
+  artık yönetemediğinde) tarayıcı yöneticinin kendi girişini artık saklamaz.
+  Hesap artık bu yolla kullanılamıyorsa yöneticinin o tarayıcıdaki kendi
+  oturumu da kapanır ve giriş sayfası nedenini söyler; şimdiye kadar panel
+  orada her isteği, **Çıkış yap** dahil, reddediyordu.
+- **Veritabanı araçları artık panelin girişini almaz.** Panelin kendi
+  adresi üzerinden bir veritabanı aracına ilettiği hiçbir şey panelin giriş
+  çerezlerini ya da bir `Authorization` başlığını taşımaz; bir araç panelin
+  adlarıyla çerez koyamaz ve panelin çerezlerini silemez.
+- **İnsanların fark ettiği.** Güncelleme sırasında oturumu açık olan yönetici
+  oturumunu korur: güncelleme sayfası güncellemeyi eskisi gibi kendiliğinden
+  sonuna kadar izler. Güncelleme sırasında oturumu açık olan bayiler,
+  müşteriler ve ekip üyeleri ile o sırada "Farklı giriş yap" içinde olan bir
+  yönetici bir kez yeniden giriş yapar; güncellemeden 24 saatten sonra geri
+  gelen herkes de öyle. Panel yeniden giriş istediğinde ya da tarayıcı bir
+  girişi saklamadığında (örneğin panelin önündeki bir vekil sunucu
+  çerezlerini değiştirdiği için) giriş sayfası nedenini ve ne yapılacağını
+  söyler.
+- **Panel için tek bir ana makine adı.** Panelin kendi ana makine adındaki
+  bütün hizmetler, bağlantı noktası ne olursa olsun, onun çerezlerini
+  paylaşır; bu nedenle bu ana makine adı yalnız panel için kullanılmalıdır.
+
 ## alpha.147'ye dönmek
 
 - **Başarısız olan bir güncelleme kendiliğinden alpha.147'ye döner.** Yeni
@@ -163,6 +224,11 @@ günceller.**
   - Bir veritabanı kullanıcısının sınırları: anahtarı boşaltmak panelin kendi
     yazdığı değeri kaldırmasını sağlar; sahibin elle koyduğu bir değer
     sahibinin olarak kalır.
+- **Giriş çerezlerinde geri alınacak bir şey yoktur.** Kendiliğinden
+  dönüşte o bölümden hiçbir şey yoktur: yeni çerez adlarını ve onları ilk ne
+  zaman kullandığını yalnız açılmış yeni panel koyar ve kaydeder. Elle geri
+  alınacak bir şey yoktur. Önceki bir sürümün paneli yeni adları okumaz;
+  orada insanlar yalnızca yeniden giriş yapar.
 
 ## Bilinen sınırlar
 
@@ -204,6 +270,25 @@ günceller.**
   dosya sisteminde proje kotası yoksa panel sayar ve davranır (yüklemeler
   durur), dosya sistemi bir yazmayı kendisi reddetmez. **Şu anki sorunlar**
   bunu bir kez söyler.
+- **Panelin kendi ana makine adını her bağlantı noktası paylaşır.** Bu ana
+  makine adındaki bir web sitesi ya da hizmet, hangi bağlantı noktasında
+  olursa olsun, panelin giriş çerezlerini alır ve onları koyabilir; yeni
+  adlar bağlantı noktalarını ayırmaz. Bu ana makine adı yalnız panel için
+  kullanılmalıdır.
+- **Güncellemeden sonraki 24 saat boyunca** bir yöneticinin güncellemeden
+  önceki girişi önceki çerez adıyla da kabul edilir ve yeni ada taşınır;
+  güncellemeden önceki öteki her giriş yeniden giriş yapmaya çağrılır.
+- **Bir "Farklı giriş yap" oturumu oturumlar listesinden ya da hesap askıya
+  alınarak veya silinerek kapatıldığında** tarayıcı yöneticinin kendi
+  girişini artık saklamaz, ama bu giriş kendiliğinden sona erene kadar
+  (yönetici giriş yaptıktan en çok 24 saat sonra) sunucuda geçerli kalır;
+  onu artık hiçbir tarayıcı tutmaz.
+- **Aynı alan adı altındaki bir web sitesi tarayıcının o alan adı için
+  çerezlerini yine doldurabilir** (bu, panele giden istekleri fazla büyütebilir
+  ya da çerezleri dışarı itebilir); panelin girişini artık koyamaz ya da
+  değiştiremez.
+- **Uzun süre kullanılmadığı için kapanan bir oturum** giriş sayfasında genel
+  "oturumunuz sona erdi" metnini gösterir.
 - alpha.147'nin açık listesi açık kalır
   ([alpha.147 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.147.tr.md)).
 
@@ -244,6 +329,13 @@ günceller.**
   takıldığını söyler.
 - **Şu anki sorunlar**, her site taşınana kadar yöneticiye "Programları
   sınırlarının dışında çalışan siteler" satırını gösterir.
+- **Giriş.** Güncelleme sırasında oturumu açık olan yönetici oturumunu
+  korur ve güncelleme sayfası güncellemenin sonunu kendiliğinden gösterir.
+  O sırada oturumu açık olan bayiler, müşteriler ve ekip üyeleri ile "Farklı
+  giriş yap" içinde olan bir yönetici, bir sonraki tıklamada girişin
+  güncellemeden önce açıldığını söyleyen giriş sayfasını görür ve bir kez
+  yeniden giriş yapar. Bu, bir müşterinin sitelerine, postasına ya da
+  veritabanlarına dokunmaz.
 
 ## Kanıt
 
@@ -256,7 +348,11 @@ değişmez; düzen 81 olarak kalır. Yeni ve ekleyici: ajan çağrıları
 `site.memory_mb`, `site.tasks`, `site.cpu_percent`, `db.statement_seconds`,
 `db.idle_in_transaction_seconds`, `db.temp_file_mb`; denetim kaydı
 işlemleri `site.limits_move` ve `site.limits_file_aside`; Şu anki sorunlar
-türleri 39 ile 46 arası.
+türleri 39 ile 46 arası. Giriş çerezleri için: HTTPS üzerinden çerez
+adları `__Host-celikpanel_session` ve `__Host-celikpanel_impersonator`;
+bir kez yazılan tek bir panel ayarı, `auth.signin_cookie_names_since`;
+yanıtlar `SIGNIN_COOKIES_DUPLICATE`, `SIGNIN_FROM_BEFORE_UPDATE` ve
+`LOG_IN_AS_ENDED` (401) ile `CROSS_SITE_REQUEST_REFUSED` (403).
 
 Bölüm bölüm testler:
 
@@ -302,3 +398,19 @@ Bölüm bölüm testler:
   `TestR2aMariaDBStatementTimeDoesNotCutARestore`; web
   `site-limits-r2a.test.mjs`, `site-limits-round2.test.mjs`,
   `site-limits-round3.test.mjs`, `site-limits-a148.test.mjs`.
+- Giriş çerezleri: `TestSigninCookiesUseHostPrefixOverHTTPS`,
+  `TestSigninDuplicateSessionCookiesAreRefusedAndCleared`,
+  `TestSigninPlainCookieBesideTheNewNameIsIgnoredAndCleared`,
+  `TestSigninFetchMetadataGate`, `TestCSRFBlocksOriginThatDiffersOnlyByPort`.
+- Güncellemedeki giriş: `TestSigninTransitionCarriesAPreUpdateAdministratorSessionOnce`,
+  `TestSigninTransitionCarriesOverOnlyOnAPIAndNeverCached`,
+  `TestSigninTransitionRefusals`,
+  `TestSigninCookieNamesSinceIsRecordedOnceAndKeptAcrossRestarts`.
+- "Farklı giriş yap": `TestSigninLogInAsAndReturnUseTheNewNames`,
+  `TestSigninLogInAsThenSignOutLeavesNoWayToTheOperator`,
+  `TestSigninReturnCookieBesideAnOrdinarySessionLeadsNowhere`,
+  `TestSigninLogInAsEndedAnyOtherWayLeavesNoUsableTokenInTheBrowser`,
+  `TestSigninRefusalsAndTheReturnCookie`.
+- Veritabanı araçları: `TestDBToolProxyStripsPanelCredentialsBothWays`,
+  `TestDBToolProxyKeepsThePanelsSecurityHeadersOverPlainHTTP`; giriş
+  sayfasının nedenleri: web `access-hold-runtime.test.mjs`.

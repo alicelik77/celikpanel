@@ -760,11 +760,11 @@
         "says": "Each site's PHP-FPM pool and scheduled"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:165",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:228",
         "says": "Outside a site's limits:"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:47",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:54",
         "says": "Now a site's programs run inside that site's own limits"
       },
       {
@@ -980,15 +980,15 @@
     ],
     "sep.sitelimits": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:47",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:54",
         "says": "Now a site's programs run inside that site's own limits"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:56",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:63",
         "says": "PHP-FPM pool keeps its own PHP limits"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:162",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:225",
         "says": "Programs that ran before the update stay outside their site's limits"
       }
     ],
