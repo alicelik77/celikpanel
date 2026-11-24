@@ -33,7 +33,7 @@ Storage (migration 066, additive):
 | Table / column | Meaning |
 |---|---|
 | `setting_policy(key, server_ceiling, server_default, customer_editable)` | The server level. Seeded with the owner's ceilings: 512 MB memory, 300 s, 256 MB upload, 10000 input fields, 20 PHP processes; scheduled tasks at least 5 minutes apart; no ceiling for database connections and task counts. |
-| `setting_ceilings(owner_kind, owner_id, key, value)` | Ceilings of a plan, reseller plan, Custom subscription or Custom reseller; removed with the owner by triggers. |
+| `setting_ceilings(owner_kind, owner_id, key, value)` | Ceilings of a plan, reseller plan, Custom subscription or Custom reseller; removed with the owner by triggers. A save replaces only the keys this release knows: a row of a key a later release wrote (kept after going back one release) stays as it is, unread and unshown, and goes along when an account leaves its plan for Custom. |
 | `service_plans` / `subscriptions`: `overuse_policy`, `notify_percent_disk`, `notify_percent_traffic` | G10. |
 | `reseller_plans` / `reseller_pools`: `overselling` | G17. |
 | `rights_set_items` | `permission:php_settings` and `permission:php_version` added to every listed set, so nobody loses what they could do before. |

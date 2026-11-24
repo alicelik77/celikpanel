@@ -39,8 +39,9 @@ func stubPHPToolBindings(t *testing.T, answer transport.PHPToolBindingsResponse,
 
 func stubPHPToolBind(t *testing.T, answer func(tool, version string) (transport.BindPHPToolResponse, error)) *[]string {
 	t.Helper()
-	restore := bindPHPToolThroughAgent
-	t.Cleanup(func() { bindPHPToolThroughAgent = restore })
+	restore, restoreRead := bindPHPToolThroughAgent, readSideDoorsAfterMove
+	t.Cleanup(func() { bindPHPToolThroughAgent, readSideDoorsAfterMove = restore, restoreRead })
+	readSideDoorsAfterMove = func(*Panel) {}
 	var calls []string
 	bindPHPToolThroughAgent = func(_ *Panel, _ context.Context, tool, version string) (transport.BindPHPToolResponse, error) {
 		calls = append(calls, tool+"->"+version)

@@ -89,6 +89,11 @@ func (p *Panel) runServiceInstall(
 		if !wmResp.Present {
 			return result, serviceInstallFailure(errors.New("agent did not confirm that Roundcube is present in the webmail configuration"))
 		}
+		// S4 R1 fix round: webmail that could not get its own account is a
+		// warning the result carries (the screen says who acts).
+		if len(wmResp.ToolProblems) > 0 {
+			result["php_tool_problems"] = wmResp.ToolProblems
+		}
 		// alpha.124: the PHP version the owner chose in the install window.
 		// Webmail is moved to it and proved there; a move that does not
 		// prove leaves it on the version it had and says so (the install

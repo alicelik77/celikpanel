@@ -964,6 +964,8 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 		InstallID: req.Target.InstallID, App: sc.app, Version: req.Version, Domain: req.Target.Domain,
 		User: sc.account.Name, Group: sc.account.Group, Layout: sc.layout, Port: req.Port, AuxPort: req.AuxPort,
 		Runtime: runtime, Limits: serviceAppLimits(sc.app, req.Limits), Caps: caps, DropInDir: path + ".d",
+		// A later release's site slice is kept (site_slice_keep.go).
+		SiteID: req.Target.SiteID, InSlice: unitFileKeepsSiteSlice(path, req.Target.SiteID),
 	})
 	if err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "unit_render", err.Error())

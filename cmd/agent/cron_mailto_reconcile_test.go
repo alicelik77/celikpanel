@@ -15,10 +15,11 @@ type fakeSiteCrontabs struct {
 
 func installFakeSiteCrontabs(t *testing.T, fake *fakeSiteCrontabs, users ...string) {
 	t.Helper()
-	oldList, oldInstall, oldLook, oldAccess, oldAccounts := cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile, cronSiteAccounts
+	oldList, oldInstall, oldLook, oldAccess, oldAccounts, oldRecords := cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile, cronSiteAccounts, siteCrontabRecordDir
 	t.Cleanup(func() {
-		cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile, cronSiteAccounts = oldList, oldInstall, oldLook, oldAccess, oldAccounts
+		cronListCrontab, cronInstallCrontab, cronLookPath, cronAccessFile, cronSiteAccounts, siteCrontabRecordDir = oldList, oldInstall, oldLook, oldAccess, oldAccounts, oldRecords
 	})
+	siteCrontabRecordDir = t.TempDir()
 	fake.installs = map[string]string{}
 	cronAccessFile = func(string) ([]byte, error) { return nil, errors.New("no such file") }
 	cronLookPath = func(string) (string, error) { return "/usr/bin/crontab", nil }

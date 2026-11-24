@@ -52,8 +52,8 @@ export const trRemovalRuleScreens: Record<RemovalRuleScreenKey, string> = {
     'rmrule.emergencyTitle': 'Buna ihtiyaç duyanlar (acil kaldırma yine yapılır; bunlar durur ya da onu kaybeder)',
     'dashboard.audit.action.service.uninstall.together': '{target} bileşenini yalnız onun kullandıklarıyla birlikte kaldırdı',
     'dashboard.audit.action.service.uninstall.together.failed': '{target} bileşenini birlikte kaldırmayı bitiremedi',
-    'dashboard.audit.action.service.uninstall.together.recovered': '{target} bileşenini birlikte kaldırmayı yeniden başlatmadan sonra bitirdi',
-    'dashboard.audit.action.service.uninstall.together.recovered.failed': '{target} bileşenini birlikte kaldırmayı yeniden başlatmadan sonra bitiremedi',
+    'dashboard.audit.action.service.uninstall.together.recovered': '{target} bileşenini birlikte kaldırmayı kesintiden sonra bitirdi',
+    'dashboard.audit.action.service.uninstall.together.recovered.failed': '{target} bileşenini birlikte kaldırmayı kesintiden sonra bitiremedi',
     'rmrule.needs': '{name} için {needs} gerekiyor ve kurulu değil; bu yüzden çalışamaz. Yapacak olan: siz. Sonraki adım: buradaki düğmeyle {needs} kurulsun; {name} ayarlarını korur.',
     'err.REMOVAL_NEEDS_TOGETHER': 'Bazı bileşenler ancak bununla birlikte kaldırılabilir: onları başka hiçbir şey kullanmıyor ve bu olmadan çalışamazlar. Hiçbir şey kaldırılmadı. Yapacak olan: siz. Sonraki adım: kaldırma penceresinde işaretli bırakıp Kaldır’a yeniden basın.',
 };

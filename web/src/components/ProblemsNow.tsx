@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
@@ -7,11 +7,12 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { readServiceActionNote } from '../lib/serviceActionNote';
 import { componentName } from '../lib/componentName';
 import { sizeWord } from './kit/words';
-import { invalidate, useInvalidation, useRemote } from '../lib/remote';
+import { invalidate, readRemote, useInvalidation, useRemote } from '../lib/remote';
 import { startVisibleReads } from '../lib/visibleReads';
 import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
 import { showToast } from './Toast';
+import { confirmAction } from '../lib/confirmAction';
 
 // "Problems now" (alpha.126, Monitoring stage 1; D-024). One list at the top
 // of Monitoring and on the Dashboard, computed on the server only from what
@@ -48,13 +49,39 @@ export type ProblemKind =
     | 'name_overlap'
     | 'name_server_reserved'
     | 'node_port_reserved'
+    | 'tool_account_failed'
+    | 'tool_account_owner_config'
+    | 'stock_pool_in_use'
+    | 'stock_pool_owner_changed'
+    | 'site_crontab_outside'
+    | 'site_at_jobs'
+    | 'at_allow_lists_sites'
+    | 'at_directory_accounts'
+    | 'at_not_closed'
+    | 'tool_down'
+    | 'stock_pool_not_put_back'
+    | 'stock_pool_failed'
+    | 'stock_pool_unknown'
+    | 'stock_pool_owner_restored'
+    | 'at_owner_removed'
+    | 'site_crontab_unreadable'
     | 'postgresql_databases_open'
     | 'mail_signing'
     | 'mail_autoresponder_foreign'
     | 'postgresql_databases_unreadable'
     | 'webmail_address_kept'
     | 'webmail_address_refused'
-    | 'webmail_cannot_send';
+    | 'webmail_cannot_send'
+    | 'service_operation_unsettled';
+
+// S4 R1 second fix round: the administrator's "close it again" runs on the
+// panel; the window follows it with reads only.
+const RECLOSE_URL = '/api/v1/metrics/side-doors/reclose';
+// Third fix round: the panel keeps the last result with its time, also over
+// a restart; one a restart cut is "unknown".
+type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; unknown?: boolean; error_kind?: string; error?: string; at?: string };
+const RECLOSE_POLL_MS = 2000;
+const RECLOSE_FOLLOW_MS = 25 * 60 * 1000;
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
@@ -64,6 +91,14 @@ const KINDS: readonly ProblemKind[] = [
     // Security release (20 November 2026): names and Node.js ports held
     // before the one name rule.
     'name_overlap', 'name_server_reserved', 'node_port_reserved',
+    // S4 R1: the tools' own accounts and the distribution's PHP-FPM pool.
+    'tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed',
+    // S4 R1: jobs a site's own code can make outside CelikPanel.
+    'site_crontab_outside', 'site_at_jobs', 'at_allow_lists_sites', 'at_directory_accounts', 'at_not_closed',
+    // S4 R1 fix round: a tool that does not answer, the stock pool's other
+    // states, the server owner's undo and an unreadable crontab.
+    'tool_down', 'stock_pool_not_put_back', 'stock_pool_failed', 'stock_pool_unknown', 'stock_pool_owner_restored',
+    'at_owner_removed', 'site_crontab_unreadable',
     // 20 Nov 2026 (S1b): PostgreSQL databases every account can enter.
     'postgresql_databases_open',
     // 20 Nov 2026: mail signed only for the sender's own domain.
@@ -76,9 +111,13 @@ const KINDS: readonly ProblemKind[] = [
     // alpha.144: webmail's address still in its earlier form (owner's file,
     // or a rewrite nginx's test put back).
     'webmail_address_kept', 'webmail_address_refused',
+    // alpha.145 lab, D1: a server change whose end the panel could not record.
+    'service_operation_unsettled',
     // alpha.145: webmail's configuration still sends without encryption.
     'webmail_cannot_send',
 ];
+// The doors the administrator may close again after the server owner undid them.
+const RECLOSE = ['at', 'stock_pool'];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
 /** The words of a problem's title and body; alerts use the same (alpha.127). */
@@ -160,7 +199,7 @@ export interface Problem {
     value: number;
     since?: string;
     observed_at?: string;
-    action: { kind: 'start_service' | 'open'; to?: string };
+    action: { kind: 'start_service' | 'open' | 'reclose'; to?: string };
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
     holding_count?: number;
     holding_bytes?: number;
@@ -180,7 +219,8 @@ export function decodeProblems(raw: unknown): ProblemsReport {
     const problems = body.problems.filter((p): p is Problem => (
         !!p && typeof p === 'object' && KINDS.includes(p.kind) && typeof p.key === 'string'
         && (p.severity === 'warning' || p.severity === 'critical') && typeof p.value === 'number'
-        && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/') : p.action.kind === 'start_service' && typeof p.unit === 'string')
+        && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
+            : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'start_service' && typeof p.unit === 'string')
     ));
     const unknown = body.unknown.filter((u): u is ProblemsReport['unknown'][number] => (
         !!u && SOURCES.includes(u.source) && REASONS.includes(u.reason)
@@ -213,6 +253,18 @@ export function ProblemsNow({
     const [starting, setStarting] = useState<string | null>(null);
     const [outcome, setOutcome] = useState<ApiError | null>(null);
     const [failed, setFailed] = useState<{ key: string; text: string } | null>(null);
+    // The last close-again's result when it did not close the door (failed,
+    // or cut by a panel restart): read once when a line offers it (reads only).
+    const [lastReclose, setLastReclose] = useState<RecloseStatus | null>(null);
+    const listed = handle.remote.state === 'known' ? handle.remote.value : handle.remote.state === 'unknown' ? handle.remote.previous?.value : undefined;
+    const offersReclose = (listed?.problems ?? []).some((p: Problem) => p.action.kind === 'reclose');
+    const readLastReclose = useCallback(async () => {
+        const read = await readRemote(RECLOSE_URL, (raw) => raw as RecloseStatus);
+        if (read.state === 'known') setLastReclose(read.value);
+    }, []);
+    useEffect(() => {
+        if (offersReclose) void readLastReclose();
+    }, [offersReclose, readLastReclose]);
 
     const clock = (iso?: string) => {
         if (!iso) return '';
@@ -265,6 +317,64 @@ export function ProblemsNow({
             // again, this list included (it listens for "components").
             invalidate('components');
         }
+    };
+
+    // S4 R1 fix round: close again what the server owner undid, after the
+    // panel's own question; the window shows the work, then the list reads
+    // itself again. Nothing is sent twice. Second fix round: the panel runs it
+    // apart from this page (202), so leaving the page neither cancels nor
+    // half-does it; this window follows it until it ends, and a second press
+    // while it runs follows the same run.
+    const reclose = async (problem: Problem) => {
+        const vars = problemVars(problem, t);
+        const target = problem.action.to ?? '';
+        const version = target === 'stock_pool' ? problem.name ?? '' : '';
+        await confirmAction({
+            title: t(`pnow.${problem.kind}.title` as TranslationKey, vars),
+            message: t(`pnow.${problem.kind}.confirm` as TranslationKey, vars),
+            confirmLabel: t(`pnow.${problem.kind}.action` as TranslationKey),
+            progressTitle: t('pnow.reclose.progress'),
+            action: async (report) => {
+                report.steps([{ id: 'reclose', label: t('pnow.reclose.step'), state: 'running', since: Date.now() }]);
+                const unknown = { state: 'unknown' as const, reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                try {
+                    const response = await fetch(RECLOSE_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ target, version }),
+                    });
+                    if (!response.ok) {
+                        return { state: 'failed', title: t('pnow.reclose.failed'), reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
+                    }
+                    let status: RecloseStatus;
+                    try {
+                        status = await response.json() as RecloseStatus;
+                    } catch {
+                        return unknown;
+                    }
+                    // Follow the run (reads only) until it ends; the answer
+                    // stays on the panel if this page is left. A read that
+                    // fails is tried again; when the run's end cannot be read
+                    // the result is said as not known.
+                    const until = Date.now() + RECLOSE_FOLLOW_MS;
+                    let lastRead: 'known' | 'unknown' = 'known';
+                    while (status?.running && Date.now() < until) {
+                        await new Promise((resolve) => setTimeout(resolve, RECLOSE_POLL_MS));
+                        const again = await readRemote(RECLOSE_URL, (raw) => raw as RecloseStatus);
+                        lastRead = again.state;
+                        if (again.state === 'known') status = again.value;
+                    }
+                    if (lastRead === 'unknown' || status?.running || status?.unknown || status?.target !== target || (status?.version ?? '') !== version) return unknown;
+                    if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: t('pnow.reclose.notRun', { reason: status.error }) };
+                    return status.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
+                } catch {
+                    return unknown;
+                } finally {
+                    void handle.retry();
+                    void readLastReclose();
+                }
+            },
+        });
     };
 
     const remote = handle.remote;
@@ -324,6 +434,15 @@ export function ProblemsNow({
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}
                                         {failed?.key === problem.key && <p className="mt-1 text-sm text-danger" role="alert">{failed.text}</p>}
+                                        {problem.action.kind === 'reclose' && lastReclose && !lastReclose.running && (lastReclose.error || lastReclose.unknown)
+                                            && lastReclose.target === problem.action.to
+                                            && (lastReclose.version ?? '') === (problem.action.to === 'stock_pool' ? problem.name ?? '' : '') && (
+                                            <p className="mt-1 text-sm text-fg" data-problem-reclose-last="">
+                                                {lastReclose.error
+                                                    ? `${t('pnow.reclose.lastFailed', { time: clock(lastReclose.at) })} ${t('pnow.reclose.notRun', { reason: lastReclose.error })}`
+                                                    : t('pnow.reclose.unknown', { time: clock(lastReclose.at) })}
+                                            </p>
+                                        )}
                                     </div>
                                     {problem.action.kind === 'start_service' ? (
                                         <Button
@@ -334,6 +453,10 @@ export function ProblemsNow({
                                             onClick={() => void start(problem)}
                                         >
                                             {t('pnow.service_stopped.action')}
+                                        </Button>
+                                    ) : problem.action.kind === 'reclose' ? (
+                                        <Button className="shrink-0 self-start" onClick={() => void reclose(problem)} data-problem-reclose="">
+                                            {t(`pnow.${problem.kind}.action` as TranslationKey)}
                                         </Button>
                                     ) : showLink ? (
                                         <Link to={problem.action.to as string} className="shrink-0 self-start text-sm font-semibold text-primary max-sm:min-h-11" data-problem-link="">

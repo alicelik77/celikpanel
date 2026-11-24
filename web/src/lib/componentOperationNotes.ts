@@ -16,7 +16,8 @@ type Translate = (key: string, params?: Record<string, string | number>) => stri
 // Panel carries the Agent's per-tool problems in the operation result.
 // Bu kurulumdan sonra ilgi isteyen PHP aracı; işlem sonucunda taşınır.
 const PHP_TOOL_NAMES = { webmail: 'Roundcube', phpmyadmin: 'phpMyAdmin', phppgadmin: 'phpPgAdmin' } as const;
-type PHPToolProblem = { tool: keyof typeof PHP_TOOL_NAMES; version: string; kind: 'version_gone' | 'extensions_failed' };
+type PHPToolProblem = { tool: keyof typeof PHP_TOOL_NAMES; version: string; kind: 'version_gone' | 'extensions_failed' | 'own_account_failed' | 'own_account_not_served' };
+const PROBLEM_KINDS = ['version_gone', 'extensions_failed', 'own_account_failed', 'own_account_not_served'];
 
 export function decodePHPToolProblems(result: unknown): PHPToolProblem[] {
     if (!result || typeof result !== 'object') return [];
@@ -27,8 +28,8 @@ export function decodePHPToolProblems(result: unknown): PHPToolProblem[] {
         const p = item as Record<string, unknown> | null;
         if (!p || typeof p !== 'object' || typeof p.tool !== 'string' || !(p.tool in PHP_TOOL_NAMES)
             || typeof p.version !== 'string' || !/^[0-9]{1,2}\.[0-9]{1,2}$/.test(p.version)
-            || (p.kind !== 'version_gone' && p.kind !== 'extensions_failed')) continue;
-        out.push({ tool: p.tool as PHPToolProblem['tool'], version: p.version, kind: p.kind });
+            || typeof p.kind !== 'string' || !PROBLEM_KINDS.includes(p.kind)) continue;
+        out.push({ tool: p.tool as PHPToolProblem['tool'], version: p.version, kind: p.kind as PHPToolProblem['kind'] });
     }
     return out;
 }
@@ -211,7 +212,12 @@ export function installedNotes({ result, name, fallbackOnly, t }: { result: unkn
     // Another PHP tool needing attention does not fail this install
     // (alpha.104 review): it is said as a warning that names the tool.
     for (const problem of decodePHPToolProblems(result)) {
-        const text = said(t, problem.kind === 'version_gone' ? 'services.phpToolProblem.versionGone' : 'services.phpToolProblem.extensionsFailed', {
+        // S4 R1 fix round: a tool that could not be given its own account;
+        // second fix round: one that is then not served at all.
+        const key = problem.kind === 'version_gone' ? 'services.phpToolProblem.versionGone'
+            : problem.kind === 'own_account_failed' ? 'services.phpToolProblem.ownAccountFailed'
+            : problem.kind === 'own_account_not_served' ? 'services.phpToolProblem.ownAccountNotServed' : 'services.phpToolProblem.extensionsFailed';
+        const text = said(t, key, {
             tool: PHP_TOOL_NAMES[problem.tool],
             version: problem.version,
         });

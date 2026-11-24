@@ -49,6 +49,7 @@ const (
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
 	serviceMutationStepCleanPGLeftovers         serviceMutationStepMethod = "Agent.PostgreSQLLeftoverCleanupV1"
+	serviceMutationStepCloseSideDoors           serviceMutationStepMethod = "Agent.CloseSideDoorsV1"
 	serviceMutationStepRemovePGLeftover         serviceMutationStepMethod = "Agent.RemovePostgreSQLLeftoverV1"
 	serviceMutationStepSetPanelListen           serviceMutationStepMethod = "Agent.SetPanelListenPortV1"
 	serviceMutationStepCopyPGDatabase           serviceMutationStepMethod = "Agent.CopyPostgreSQLDatabaseV1"
@@ -329,6 +330,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// made, in one job; one target, no qualifier.
 		return claim.target == pgLeftoversMutationTarget && claim.packageName == "" && claim.action == "clean" &&
 			serviceMutationJobMatches(job, "pg_leftover_cleanup", pgLeftoversMutationTarget, "")
+
+	case serviceMutationStepCloseSideDoors:
+		// S4 R1: the tools to their own accounts and the stock PHP-FPM pool
+		// off, once after each Panel start, in its own job.
+		return claim.target == sideDoorsMutationTarget && claim.packageName == "" && claim.action == "close" &&
+			serviceMutationJobMatches(job, "side_doors_close", sideDoorsMutationTarget, "")
 
 	case serviceMutationStepRemovePGLeftover:
 		// alpha.130: one leftover cluster archived and removed, by the

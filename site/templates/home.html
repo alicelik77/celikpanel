@@ -48,8 +48,8 @@
 <caption>{{t "common.table"}} 3 · {{t "home.sep.caption"}}</caption>
 <thead><tr><th scope="col">{{t "home.sep.what"}}</th><th scope="col">{{t "home.sep.status"}}</th><th scope="col">{{t "home.sep.since"}}</th></tr></thead>
 <tbody>
-{{- $state := dict "account" "ok" "sandbox" "ok" "logins" "ok" "names" "ok" "links" "ok" "restore" "ok" "postgres" "ok" "signing" "part" "webmaildoor" "ok" "mail" "no" "php" "warn" "limits" "warn" "visible" "warn" "webgroup" "warn" "mailmaps" "warn" "pgmove" "warn"}}
-{{- range $k := (list "account" "sandbox" "logins" "names" "links" "restore" "postgres" "signing" "webmaildoor" "mail" "php" "limits" "visible" "webgroup" "mailmaps" "pgmove")}}
+{{- $state := dict "account" "ok" "sandbox" "ok" "logins" "ok" "names" "ok" "links" "ok" "restore" "ok" "postgres" "ok" "signing" "part" "webmaildoor" "ok" "tools" "ok" "at" "ok" "stockpool" "ok" "mail" "no" "php" "warn" "limits" "warn" "visible" "warn" "webgroup" "warn" "mailmaps" "warn" "pgmove" "warn"}}
+{{- range $k := (list "account" "sandbox" "logins" "names" "links" "restore" "postgres" "signing" "webmaildoor" "tools" "at" "stockpool" "mail" "php" "limits" "visible" "webgroup" "mailmaps" "pgmove")}}
 {{- $s := index $state $k}}
 <tr><td data-k="{{t "home.sep.what"}}">{{t (print "sep." $k)}}</td><td data-k="{{t "home.sep.status"}}"><span class="tag {{if eq $s "part"}}ok{{else}}{{$s}}{{end}}">{{if eq $s "ok"}}{{t "sep.yes"}}{{else if eq $s "part"}}{{t "sep.yes.notarch"}}{{else if eq $s "no"}}{{t "common.optional"}}{{else}}{{t "sep.no"}}{{end}}</span></td><td class="v" data-k="{{t "home.sep.since"}}">{{t (print "sep." $k ".since")}}</td></tr>
 {{- end}}

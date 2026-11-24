@@ -1,0 +1,92 @@
+{
+  "version": "v0.1.0-alpha.147",
+  "published": "",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:5",
+    "says": "A security release with one correction."
+  },
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "phpMyAdmin, phpPgAdmin and webmail run under system accounts of their own instead of the web server’s shared account, which can read every site; webmail needs a file system with access-control lists for this.",
+        "tr": "phpMyAdmin, phpPgAdmin ve web posta, her siteyi okuyabilen web sunucusunun ortak hesabı yerine kendi sistem hesaplarıyla çalışır; web posta bunun için erişim listelerini destekleyen bir dosya sistemi ister."
+      },
+      "case": "CP-2026-18",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:39",
+        "says": "Now each has a system account of its own"
+      }
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "Site accounts can no longer schedule jobs with the system’s at; an at.allow the owner wrote is kept and the site accounts it names are shown to the administrator.",
+        "tr": "Site hesapları artık sistemin at komutuyla iş zamanlayamaz; sahibin yazdığı bir at.allow korunur ve andığı site hesapları yöneticiye gösterilir."
+      },
+      "case": "CP-2026-19",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:63",
+        "says": "Site accounts can no longer schedule jobs with"
+      }
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "The distribution’s shared PHP pool, which runs as the web server’s account, is switched off where nothing uses it; where something still uses it, it is kept and Problems now names what.",
+        "tr": "Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmıyorsa kapatılır; bir şey hâlâ kullanıyorsa açık tutulur ve Şu anki sorunlar neyin kullandığını söyler."
+      },
+      "case": "CP-2026-20",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:76",
+        "says": "shared PHP pool is switched off where nothing uses"
+      }
+    },
+    {
+      "kind": "new",
+      "text": {
+        "en": "Crontab lines a site adds outside the panel are marked on its Scheduled tasks list; they can be deleted, and the administrator may keep them.",
+        "tr": "Bir sitenin panel dışında eklediği crontab satırları Zamanlanmış görevler listesinde işaretlenir; silinebilir, yönetici onları tutabilir."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:71",
+        "says": "Crontab lines a site adds outside the panel are shown."
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "A longer change no longer stays “in progress” when the panel loses touch with its agent for a moment: the panel reads what the server did and records the result by itself.",
+        "tr": "Uzun süren bir değişiklik, panel ajanıyla bağlantısını bir an kaybettiğinde artık “sürüyor” diye kalmaz: panel sunucunun ne yaptığını okur ve sonucu kendisi kaydeder."
+      },
+      "case": "CP-2026-17",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:111",
+        "says": "Now the panel reads what the server did and records the result by"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "On Arch Linux the tools stay on the web server’s account and the PHP pool is not switched off; at and the site crontabs are handled on every system.",
+        "tr": "Arch Linux’ta araçlar web sunucusu hesabında kalır ve PHP havuzu kapatılmaz; at ve site crontab’ları her sistemde ele alınır."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:187",
+        "says": "On Arch Linux"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A site account can still add lines to its own crontab; they are shown, can be deleted and, by the administrator, kept.",
+        "tr": "Bir site hesabı kendi crontab’ına hâlâ satır ekleyebilir; satırlar görünür, silinebilir ve yönetici tarafından tutulabilir."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:190",
+        "says": "A site account can still add lines to its own crontab."
+      }
+    }
+  ]
+}

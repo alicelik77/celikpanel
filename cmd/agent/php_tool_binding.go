@@ -71,6 +71,7 @@ const (
 	errCodePHPToolProbeFailed       = "PHP_TOOL_PROBE_FAILED"
 	errCodePHPToolUnsupported       = "PHP_TOOL_UNSUPPORTED"
 	errCodePHPToolConfigOwnerEdited = "PHP_TOOL_CONFIG_OWNER_EDITED"
+	errCodePHPToolAccountFailed     = "PHP_TOOL_ACCOUNT_FAILED"
 )
 
 var phpTools = []string{phpToolPHPMyAdmin, phpToolPHPPgAdmin, phpToolWebmail}
@@ -86,6 +87,7 @@ var (
 	phpToolCheckScriptPath     = "/var/lib/celikpanel-php-check/check.php"
 	phpFallbackSocketGlobs     = []string{"/run/php-fpm/php-fpm.sock", "/var/run/php-fpm/php-fpm.sock"}
 	versionedFPMSocketName     = regexp.MustCompile(`^php([0-9]{1,2}\.[0-9]{1,2})-fpm\.sock$`)
+	versionedSiteSocketName    = regexp.MustCompile(`^php([0-9]{1,2}\.[0-9]{1,2})-fpm-[A-Za-z0-9_.-]+\.sock$`)
 	phpCLIVersionedName        = regexp.MustCompile(`^php([0-9]{1,2}\.[0-9]{1,2})$`)
 	phpVersionText             = regexp.MustCompile(`^[0-9]{1,2}\.[0-9]{1,2}$`)
 	fastcgiPassUnix            = regexp.MustCompile(`fastcgi_pass\s+unix:([^;\s]+)\s*;`)
@@ -150,9 +152,13 @@ func phpToolDisplayName(tool string) string {
 }
 
 // fpmSocketVersion returns the PHP version a versioned socket path names
-// ("/run/php/php8.4-fpm.sock" → "8.4"), or "".
+// ("/run/php/php8.4-fpm.sock" → "8.4"; a tool's own pool,
+// "/run/php/php8.4-fpm-celikpanel-webmail.sock" → "8.4"), or "".
 func fpmSocketVersion(path string) string {
 	if match := versionedFPMSocketName.FindStringSubmatch(filepath.Base(path)); match != nil {
+		return match[1]
+	}
+	if match := phpToolPoolSocketName.FindStringSubmatch(filepath.Base(path)); match != nil {
 		return match[1]
 	}
 	return ""
@@ -386,6 +392,11 @@ func resolvedSocketVersion(socket string) string {
 	if resolved, err := filepath.EvalSymlinks(socket); err == nil {
 		return fpmSocketVersion(resolved)
 	}
+	// The alias of a version whose stock pool is off points at a socket
+	// that is not there: the name still says the version.
+	if target := followSymlinks(socket); target != "" {
+		return fpmSocketVersion(target)
+	}
 	return ""
 }
 
@@ -422,14 +433,50 @@ func comparePHPVersions(a, b string) int {
 	return 0
 }
 
-// versionedFPMSockets lists the existing versioned sockets, numerically
-// newest first (8.10 is newer than 8.9; a lexical sort said otherwise).
+// phpFPMRunning: a PHP-FPM version listens on any socket in the run
+// directory: its stock pool's, a site's or a tool's own. Since S4 R1 the
+// stock pool can be off (side_doors.go), so its socket alone no longer says
+// whether the version runs.
+// Bir PHP-FPM sürümü herhangi bir soketinde dinliyorsa çalışıyordur.
+func phpFPMRunning(version string) bool {
+	if !phpVersionText.MatchString(version) {
+		return false
+	}
+	if pathExists(versionedFPMSocketPath(version)) {
+		return true
+	}
+	matches, _ := filepath.Glob(filepath.Join(phpFPMRunDir, "php"+version+"-fpm-*.sock"))
+	return len(matches) > 0
+}
+
+// phpFPMSocketReady: the version behind a socket name runs (any of its
+// sockets); a socket that names no version must exist itself.
+func phpFPMSocketReady(socket string) bool {
+	if version := fpmSocketVersion(socket); version != "" {
+		return phpFPMRunning(version)
+	}
+	return pathExists(socket)
+}
+
+// versionedFPMSockets lists the versioned stock socket names of the running
+// versions, numerically newest first (8.10 is newer than 8.9; a lexical sort
+// said otherwise). A version whose stock pool is off is listed by the same
+// name: it is a version name here, converted to a tool's own pool by
+// ownSocketForUnboundTool.
 func versionedFPMSockets() []string {
-	matches, _ := filepath.Glob(filepath.Join(phpFPMRunDir, "php*-fpm.sock"))
+	matches, _ := filepath.Glob(filepath.Join(phpFPMRunDir, "php*-fpm*.sock"))
 	sockets := []string{}
+	seen := map[string]bool{}
 	for _, match := range matches {
-		if fpmSocketVersion(match) != "" {
-			sockets = append(sockets, match)
+		version := fpmSocketVersion(match)
+		if version == "" {
+			if site := versionedSiteSocketName.FindStringSubmatch(filepath.Base(match)); site != nil {
+				version = site[1]
+			}
+		}
+		if version != "" && !seen[version] {
+			seen[version] = true
+			sockets = append(sockets, versionedFPMSocketPath(version))
 		}
 	}
 	sort.Slice(sockets, func(i, j int) bool {
@@ -486,21 +533,21 @@ func phpToolHasExtensionPackages(tool, version string) bool {
 func defaultFPMSocket(tool string) string {
 	// 1. The distribution's default PHP, from its meta packages.
 	if version := phpDefaultVersionFromMetas(); version != "" {
-		if socket := versionedFPMSocketPath(version); pathExists(socket) {
-			return socket
+		if phpFPMRunning(version) {
+			return versionedFPMSocketPath(version)
 		}
 	}
 	// 2. The php-fpm.sock alternative.
 	if version := resolvedSocketVersion(filepath.Join(phpFPMRunDir, "php-fpm.sock")); version != "" {
-		if socket := versionedFPMSocketPath(version); pathExists(socket) {
-			return socket
+		if phpFPMRunning(version) {
+			return versionedFPMSocketPath(version)
 		}
 	}
 	// 3. The php command's alternative (/usr/bin/php → php8.4).
 	if resolved, err := filepath.EvalSymlinks(phpCLIAlternative); err == nil {
 		if match := phpCLIVersionedName.FindStringSubmatch(filepath.Base(resolved)); match != nil {
-			if socket := versionedFPMSocketPath(match[1]); pathExists(socket) {
-				return socket
+			if phpFPMRunning(match[1]) {
+				return versionedFPMSocketPath(match[1])
 			}
 		}
 	}
@@ -1115,6 +1162,16 @@ type phpToolBindOps struct {
 	nginxReload      func(context.Context) error
 	httpProbe        func(context.Context, string, string) error
 	writeRecord      func(tool, version string) error
+	// ownPool gives the tool its own account and pool on the version (S4 R1)
+	// and returns their socket and the undo of what it changed; nil keeps
+	// the version's stock socket (tests of the move alone).
+	// served is the socket the tool's web server configuration names now:
+	// a tool already served by its own pool keeps its files with the account
+	// whatever the move does (php_tool_files.go).
+	ownPool func(ctx context.Context, tool, version, served string) (string, func(context.Context) error, error)
+	// afterBound runs once the tool answers on the version: its pools on
+	// other versions go. Its error is a warning.
+	afterBound func(ctx context.Context, tool, version string) error
 }
 
 // phpToolBindError is a typed failure of a rebind.
@@ -1143,9 +1200,10 @@ type phpToolBindResult struct {
 }
 
 // bindPHPToolWith moves a tool to a PHP version and proves it answers
-// there; when the proof fails, the previous configuration comes back.
-func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version string) (phpToolBindResult, error) {
-	var result phpToolBindResult
+// there; when the proof fails, the previous configuration comes back. Since
+// S4 R1 the tool runs there under its own account (ops.ownPool); what that
+// changed is put back too when the move fails.
+func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version string) (result phpToolBindResult, bindErr error) {
 	// The first error among the arguments is the cause, said on its own as
 	// Detail so a screen can quote it without repeating the sentence; Cause
 	// says the same in a form a screen translates.
@@ -1203,6 +1261,34 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 		return fail(errCodePHPToolExtensionsFailed, phpToolCauseOf(err, "other", version), "%v; %s still runs on PHP %s", err, name, orUnknown(result.Previous))
 	}
 
+	// 1b. Its own account and pool on this version (S4 R1). Whatever this
+	// changed is put back, after the previous web server configuration, when
+	// a later step fails.
+	// Kendi hesabı ve havuzu; sonraki adım başarısız olursa geri alınır.
+	if ops.ownPool != nil {
+		own, undo, err := ops.ownPool(ctx, tool, version, ops.state(tool).Socket)
+		if err != nil {
+			return fail(errCodePHPToolAccountFailed, kind("own_account_failed"),
+				"%s could not be given its own account on PHP %s (%v); it still runs as before", name, version, err)
+		}
+		socket = own
+		if undo != nil {
+			defer func() {
+				if bindErr == nil {
+					return
+				}
+				undoCtx, cancel := detachedUndoContext(ctx)
+				defer cancel()
+				if undoErr := undo(undoCtx); undoErr != nil {
+					var typed *phpToolBindError
+					if errors.As(bindErr, &typed) {
+						typed.Message += fmt.Sprintf("; its own account's pool and files could not all be put back (%v); the server administrator checks %s", undoErr, phpToolPoolPath(tool, version))
+					}
+				}
+			}()
+		}
+	}
+
 	// 2. The new configuration, validated before nginx reloads it. A
 	// configuration changed outside CelikPanel is not overwritten.
 	path, content, err := ops.render(tool, socket)
@@ -1231,24 +1317,38 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 		if err := ops.writeRecord(tool, version); err != nil {
 			result.RecordWarning = err.Error()
 		}
+		phpToolAfterBound(ctx, ops, &result, tool, version)
 		return result, nil
 	}
 	// restore puts the previous file back (mode and owner kept) and, when
 	// nginx already loaded the new one, checks and reloads; it says which
 	// step failed, so the message never claims a restore that happened.
+	//
+	// The test and reload run detached from the step's cancellation (alpha.147
+	// review, finding 1): a move whose lease ended after nginx loaded the new
+	// file still reloads the previous one before its own pool is removed, so
+	// nginx never hands PHP to a socket that is gone.
 	restore := func(reload bool) (string, error) {
 		if err := ops.restoreConf(previous); err != nil {
 			return "file", err
 		}
 		if reload {
-			if err := ops.nginxTest(ctx); err != nil {
+			undoCtx, cancel := detachedUndoContext(ctx)
+			defer cancel()
+			if err := ops.nginxTest(undoCtx); err != nil {
 				return "test", err
 			}
-			if err := ops.nginxReload(ctx); err != nil {
+			if err := ops.nginxReload(undoCtx); err != nil {
 				return "reload", err
 			}
 		}
 		return "", nil
+	}
+	// interrupted says what a step that failed because the move was cut
+	// (the step's context ended) means, instead of blaming nginx or the tool.
+	interrupted := func() bool { return ctx.Err() != nil }
+	interruptedSentence := func() string {
+		return fmt.Sprintf("the move of %s to PHP %s was interrupted (%v: the contact with the panel ended)", name, version, ctx.Err())
 	}
 	restoreSentence := func(step string, restoreErr error) string {
 		switch step {
@@ -1267,6 +1367,12 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 		return fail(errCodePHPToolConfigRejected, kind("config_write_failed"), "the configuration for %s could not be written: %v; the previous one is kept", name, err)
 	}
 	if err := ops.nginxTest(ctx); err != nil {
+		if interrupted() {
+			if step, restoreErr := restore(false); restoreErr != nil {
+				return fail(errCodePHPToolConfigRejected, kind("other"), "%s; %s", interruptedSentence(), restoreSentence(step, restoreErr))
+			}
+			return fail(errCodePHPToolConfigRejected, kind("other"), "%s; the previous configuration was put back and %s still runs on PHP %s", interruptedSentence(), name, orUnknown(result.Previous))
+		}
 		if step, restoreErr := restore(false); restoreErr != nil {
 			return fail(errCodePHPToolConfigRejected, kind("nginx_rejected"), "nginx rejected the new configuration (%v); %s", err, restoreSentence(step, restoreErr))
 		}
@@ -1276,6 +1382,12 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 		step, restoreErr := restore(true)
 		result.MutationApplied = true
 		result.Restored = restoreErr == nil
+		if interrupted() {
+			if restoreErr != nil {
+				return fail(errCodePHPToolConfigRejected, kind("other"), "%s; %s", interruptedSentence(), restoreSentence(step, restoreErr))
+			}
+			return fail(errCodePHPToolConfigRejected, kind("other"), "%s; the previous configuration was restored", interruptedSentence())
+		}
 		if restoreErr != nil {
 			return fail(errCodePHPToolConfigRejected, kind("nginx_reload_failed"), "nginx did not reload (%v); %s", err, restoreSentence(step, restoreErr))
 		}
@@ -1286,6 +1398,14 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 	// 3. Proof: the tool answers as itself on the new version.
 	if err := ops.httpProbe(ctx, tool, version); err != nil {
 		cause := phpToolCauseOf(err, "other", version)
+		if interrupted() {
+			step, restoreErr := restore(true)
+			result.Restored = restoreErr == nil
+			if restoreErr != nil {
+				return fail(errCodePHPToolProbeFailed, kind("other"), "%s; %s", interruptedSentence(), restoreSentence(step, restoreErr))
+			}
+			return fail(errCodePHPToolProbeFailed, kind("other"), "%s and put back on PHP %s", interruptedSentence(), orUnknown(result.Previous))
+		}
 		if step, restoreErr := restore(true); restoreErr != nil {
 			return fail(errCodePHPToolProbeFailed, cause, "%s did not work on PHP %s (%v); %s", name, version, err, restoreSentence(step, restoreErr))
 		}
@@ -1295,7 +1415,21 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 	if err := ops.writeRecord(tool, version); err != nil {
 		result.RecordWarning = err.Error()
 	}
+	phpToolAfterBound(ctx, ops, &result, tool, version)
 	return result, nil
+}
+
+// phpToolAfterBound runs ops.afterBound; its error joins the warning.
+func phpToolAfterBound(ctx context.Context, ops phpToolBindOps, result *phpToolBindResult, tool, version string) {
+	if ops.afterBound == nil {
+		return
+	}
+	if err := ops.afterBound(ctx, tool, version); err != nil {
+		if result.RecordWarning != "" {
+			result.RecordWarning += "; "
+		}
+		result.RecordWarning += err.Error()
+	}
 }
 
 func orUnknown(version string) string {
@@ -1325,10 +1459,13 @@ func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 		}
 		return phpToolWebmailConfPath, []byte(renderWebmailNginxConfig(webmailSocket, roundcubeRootDir(), socket)), nil
 	}
-	tools, roots := installedDBToolRoots()
+	installed, roots := installedDBToolRoots()
 	sockets := map[string]string{}
 	for _, state := range phpToolStates() {
-		if state.Tool == tool || roots[state.Tool] == "" {
+		// Only the other tools the configuration serves now keep their line
+		// (S4 R1, second fix round, B3): a tool left out because nothing
+		// would answer for it is not added back by another tool's move.
+		if state.Tool == tool || roots[state.Tool] == "" || state.Source != "config" {
 			continue
 		}
 		current, err := phpToolSocket(state.Tool, state.Socket)
@@ -1338,6 +1475,12 @@ func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 		sockets[state.Tool] = current
 	}
 	sockets[tool] = socket
+	tools := make([]string, 0, len(installed))
+	for _, id := range installed {
+		if sockets[id] != "" {
+			tools = append(tools, id)
+		}
+	}
 	return phpToolDBToolsConfPath, []byte(renderDBToolsConfig(tools, roots, sockets)), nil
 }
 
@@ -1498,7 +1641,7 @@ func hostPHPToolBindOps() phpToolBindOps {
 		toolInstalled:    phpToolInstalledCheck,
 		state:            phpToolStateFor,
 		targetSocket:     bindPHPToolSocket,
-		socketReady:      pathExists,
+		socketReady:      phpFPMSocketReady,
 		packageInstalled: phpToolPackageInstalled,
 		installPackages: func(ctx context.Context, packages []string) error {
 			_, err := installPackagesContext(ctx, "apt", packages)
@@ -1534,6 +1677,25 @@ func hostPHPToolBindOps() phpToolBindOps {
 			return retryPHPToolProbe(ctx, tool, version, probePHPToolHTTP, phpToolProbeSettle, time.Second)
 		},
 		writeRecord: writePHPToolBinding,
+		ownPool: func(ctx context.Context, tool, version, served string) (string, func(context.Context) error, error) {
+			_, servedOwn := phpToolOwnSocket(served)
+			return ownPHPToolPoolWith(ctx, hostPHPToolPoolOps(), tool, version, servedOwn)
+		},
+		afterBound: func(ctx context.Context, tool, version string) error {
+			var errs []error
+			if err := retirePHPToolPoolsWith(ctx, hostPHPToolPoolOps(), tool, version); err != nil {
+				errs = append(errs, err)
+			}
+			if err := writePHPToolAccountFailure(tool, version, ""); err != nil {
+				errs = append(errs, err)
+			}
+			// The tool answers on its own pool: its files are the account's
+			// for good, and the record of how they were goes.
+			if err := clearPHPToolFileJournal(tool); err != nil {
+				errs = append(errs, err)
+			}
+			return errors.Join(errs...)
+		},
 	}
 }
 

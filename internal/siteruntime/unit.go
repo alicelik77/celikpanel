@@ -33,6 +33,10 @@ type UnitParams struct {
 	DropInDir string
 	// Python is the Python kind's part (nil for an uploaded program).
 	Python *PythonUnit
+	// SiteID and InSlice keep the unit in its site's slice where a later
+	// release placed it (sitesandbox.Profile).
+	SiteID  int
+	InSlice bool
 }
 
 var domainPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,62}\.)+[a-z0-9-]{1,63}$`)
@@ -42,7 +46,7 @@ func (p UnitParams) Profile() sitesandbox.Profile {
 	return sitesandbox.Profile{
 		Kind: SandboxKind(p.Kind), Unit: UnitName(p.AppID), User: p.User, Group: p.Group, AppDir: p.Layout.Root, Port: p.Port,
 		Limits: sitesandbox.Limits{MemoryMB: p.Limits.MemoryMB, CPUPercent: p.Limits.CPUPercent, Tasks: p.Limits.Tasks, NOFILE: 8192},
-		Level:  p.Level,
+		Level:  p.Level, SiteID: p.SiteID, InSlice: p.InSlice,
 	}
 }
 

@@ -50,6 +50,6 @@ export const trComponentInstallScreens: Record<ComponentInstallScreenKey, string
     'cinst.bindFailed': '{tool} kuruldu ama PHP {version} sürümüne taşınamadı{why}; bu yüzden PHP {previous} ile çalışıyor. Yapacak olan: siz. Sonraki adım: {tool} aracının Yönet penceresinde PHP {version} sürümünü yeniden seçin ya da PHP {previous} ile bırakın.',
     'dashboard.audit.action.service.install.together': '{target} bileşenini gerekenleriyle birlikte kurdu',
     'dashboard.audit.action.service.install.together.failed': '{target} bileşenini gerekenleriyle birlikte kurmayı bitiremedi',
-    'dashboard.audit.action.service.install.together.recovered': '{target} bileşeninin birlikte kurulumunu yeniden başlatmadan sonra bitirdi',
-    'dashboard.audit.action.service.install.together.recovered.failed': '{target} bileşeninin birlikte kurulumunu yeniden başlatmadan sonra bitiremedi',
+    'dashboard.audit.action.service.install.together.recovered': '{target} bileşeninin birlikte kurulumunu kesintiden sonra bitirdi',
+    'dashboard.audit.action.service.install.together.recovered.failed': '{target} bileşeninin birlikte kurulumunu kesintiden sonra bitiremedi',
 };

@@ -72,7 +72,79 @@ func listCronJobsFor(username string, resp *ListCronJobsResponse) error {
 		resp.Jobs = []CronJob{}
 	}
 	resp.Version = cronVersion(content)
+	markCronOutside(username, content, resp)
 	return nil
+}
+
+// markCronOutside marks the tasks CelikPanel did not make (enabled or paused)
+// and lists the other lines it did not make (site_crontab_record.go). The
+// rows of parseCrontab follow the task lines in order, so each row is marked
+// by its own line: of two identical lines, the one the record accounts for
+// stays unmarked and only the other is marked.
+func markCronOutside(username, content string, resp *ListCronJobsResponse) {
+	classes := cronClassifyLines(username, content)
+	row := 0
+	for _, class := range classes {
+		if _, _, isJob := cronJobText(class.Line); isJob {
+			if class.Outside && row < len(resp.Jobs) {
+				resp.Jobs[row].OutsidePanel = true
+			}
+			row++
+			continue
+		}
+		if class.Outside {
+			resp.OtherLines = append(resp.OtherLines, transport.CronOtherLine{ID: cronOtherLineID(class.Line), Line: class.Line})
+		}
+	}
+	for _, class := range classes {
+		if class.Outside {
+			resp.OutsideLines++
+		}
+	}
+}
+
+// cronOtherLineID names a line that is not a task by its exact bytes; it
+// cannot equal a task's ID for the same text.
+func cronOtherLineID(line string) string {
+	return generateCronID("other:" + line)
+}
+
+// cronOutsideLineID is the ID a list shows for a line not made in
+// CelikPanel: a task's ID, or the other line's.
+func cronOutsideLineID(line string) string {
+	if text, _, isJob := cronJobText(line); isJob {
+		return generateCronID(text)
+	}
+	return cronOtherLineID(line)
+}
+
+// cronOutsideOtherLine finds the line with this ID among the lines not made
+// in CelikPanel that are not tasks. Identical lines are one line twice:
+// removing either leaves the same crontab, so the last is removed.
+func cronOutsideOtherLine(username, content string, lines []string, id string) (int, error) {
+	allowed := false
+	for _, line := range cronOutsideLines(username, content) {
+		if _, _, isJob := cronJobText(line); !isJob && cronOtherLineID(line) == id {
+			allowed = true
+		}
+	}
+	if !allowed {
+		return -1, fmt.Errorf("cron line not found: %s", id)
+	}
+	var found []int
+	for i, line := range lines {
+		if !cronRecordedLine(line) || cronOtherLineID(line) != id {
+			continue
+		}
+		if _, _, isJob := cronJobText(line); isJob {
+			continue
+		}
+		found = append(found, i)
+	}
+	if len(found) == 0 {
+		return -1, fmt.Errorf("cron line not found: %s", id)
+	}
+	return found[len(found)-1], nil
 }
 
 // AddCronJob adds a new cron job
@@ -144,7 +216,8 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 	}
 	newCrontab += newEntry + "\n"
 
-	return setCrontab(username, withSiteCronMailto(username, newCrontab))
+	written, header := withSiteCronMailtoLines(username, newCrontab)
+	return setSiteCrontab(username, existing, written, append(header, cronSplitLines(newEntry)...))
 }
 
 // UpdateCronJob updates an existing cron job
@@ -195,6 +268,13 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 	if err != nil {
 		return err
 	}
+	// S4 R1, second fix round (B9): a line not made in CelikPanel is not
+	// edited or enabled, whoever asks (the screen offers neither): editing
+	// it would make it CelikPanel's. The administrator keeps it first
+	// (KeepCronLineV1); anyone may delete it.
+	if cronLineOutsideAt(username, existing, lines, index) {
+		return errors.New(transport.CronJobOutsidePanel)
+	}
 	wanted := strings.Join(strings.Fields(req.Schedule+" "+req.Command), " ")
 	for i, line := range lines {
 		if text, _, ok := cronJobText(line); ok && i != index && strings.Join(strings.Fields(text), " ") == wanted {
@@ -223,7 +303,8 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 		lines = append(lines[:index], append([]string{"# " + req.Comment}, lines[index:]...)...)
 	}
 
-	return setCrontab(username, withSiteCronMailto(username, strings.Join(lines, "\n")))
+	written, header := withSiteCronMailtoLines(username, strings.Join(lines, "\n"))
+	return setSiteCrontab(username, existing, written, append(header, newLine))
 }
 
 // DeleteCronJob deletes a cron job
@@ -262,21 +343,37 @@ func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
 	// Yalnız görevin kendi satırı gider. Üstündeki satır ne ise kalır: sahibin
 	// yorumu ya da başka, devre dışı bir görev olabilir.
 	index, err := cronJobLine(lines, req.ID)
+	if err != nil && err.Error() == transport.CronJobAmbiguous {
+		// S4 R1 fix round: the same line standing twice, byte for byte (a
+		// task and a copy planted beside it), is one line twice: removing
+		// either leaves the same crontab, so the last one goes.
+		if last, identical := cronIdenticalJobLines(lines, req.ID); identical {
+			index, err = last, nil
+		}
+	}
 	if err != nil {
-		return err
+		// A line not made in CelikPanel that is not a task (an @reboot line,
+		// an environment setting) is removed by its own ID, the way a task is.
+		other, otherErr := cronOutsideOtherLine(username, existing, lines, req.ID)
+		if otherErr != nil {
+			return err
+		}
+		index = other
 	}
 	lines = append(lines[:index], lines[index+1:]...)
 
-	return setCrontab(username, strings.Join(lines, "\n"))
+	return setSiteCrontab(username, existing, strings.Join(lines, "\n"), nil)
 }
 
 // cronJobText returns the job a crontab line holds: the line itself, or for a
 // job the Panel disabled the text after `# DISABLED:`. A blank line, an
-// environment assignment and an ordinary comment are not jobs.
+// environment assignment and an ordinary comment are not jobs. Only blanks
+// and tabs are trimmed (S4 R1 fix round): a trailing carriage return is part
+// of the line cron runs, so such a line is a different task with its own ID.
 // cronJobText, bir crontab satırının tuttuğu görevi döndürür: satırın kendisi
 // ya da Panel'in devre dışı bıraktığı görevde `# DISABLED:` sonrasındaki metin.
 func cronJobText(line string) (text string, disabled, ok bool) {
-	trimmed := strings.TrimSpace(line)
+	trimmed := strings.Trim(line, " \t")
 	if trimmed == "" {
 		return "", false, false
 	}
@@ -285,7 +382,10 @@ func cronJobText(line string) (text string, disabled, ok bool) {
 		if !isDisabled {
 			return "", false, false
 		}
-		trimmed, disabled = strings.TrimSpace(rest), true
+		trimmed, disabled = strings.Trim(rest, " \t"), true
+	}
+	if strings.TrimSpace(trimmed) == "" {
+		return "", false, false
 	}
 	if parseCronLine(trimmed) == nil {
 		return "", false, false
@@ -318,6 +418,43 @@ func cronJobLine(lines []string, id string) (int, error) {
 	return found, nil
 }
 
+// cronLineOutsideAt: the line at index is one CelikPanel does not account
+// for (site_crontab_record.go).
+func cronLineOutsideAt(username, content string, lines []string, index int) bool {
+	classes := cronClassifyLines(username, content)
+	recorded := 0
+	for i, line := range lines {
+		if !cronRecordedLine(line) {
+			continue
+		}
+		if i == index {
+			return recorded < len(classes) && classes[recorded].Outside
+		}
+		recorded++
+	}
+	return false
+}
+
+// cronIdenticalJobLines: every line that is the job with this ID has the same
+// bytes; it returns the last of them.
+func cronIdenticalJobLines(lines []string, id string) (int, bool) {
+	last, first := -1, ""
+	for i, line := range lines {
+		text, _, ok := cronJobText(line)
+		if !ok || generateCronID(text) != id {
+			continue
+		}
+		if last >= 0 && line != first {
+			return -1, false
+		}
+		if last < 0 {
+			first = line
+		}
+		last = i
+	}
+	return last, last >= 0
+}
+
 // cronPlainCommentAt reports whether the line is an ordinary comment: not a
 // blank line, not a job and not a job the Panel disabled.
 // cronPlainCommentAt, satırın sıradan bir yorum olup olmadığını bildirir.
@@ -341,8 +478,10 @@ func parseCrontab(content string) []CronJob {
 	var currentComment string
 
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
+		// Blanks and tabs only: a carriage return stays part of the line, as
+		// in cronJobText (S4 R1 fix round).
+		trimmed := strings.Trim(line, " \t")
+		if strings.TrimSpace(trimmed) == "" {
 			continue
 		}
 
@@ -722,4 +861,45 @@ var cronInstallCrontab = func(username, content string) error {
 		return fmt.Errorf("crontab: %s", strings.TrimSpace(string(out)))
 	}
 	return nil
+}
+
+// KeepCronLineV1 is the administrator's Keep on a line not made in
+// CelikPanel (S4 R1 fix round, 21 Nov 2026): the line is added to CelikPanel's
+// record of the site's crontab, so it is no longer listed or marked. The
+// crontab itself is not changed. The Panel offers it to the administrator
+// only; a customer may only delete such a line.
+// Yöneticinin "Kalsın"ı: satır kayda eklenir; crontab değişmez.
+func (a *Agent) KeepCronLineV1(req *transport.KeepCronLineRequest, resp *bool) error {
+	username, err := cronTenantUser(req.CronTenant)
+	if err != nil {
+		return err
+	}
+	if err := requireCronInstalled(); err != nil {
+		return err
+	}
+	if err := keepCronLineFor(username, req.ID, req.Version); err != nil {
+		return err
+	}
+	*resp = true
+	return nil
+}
+
+// keepCronLineFor adds the first line not made in CelikPanel with this ID to
+// the record of the crontab read at version.
+func keepCronLineFor(username, id, version string) error {
+	if !validSiteCrontabRecordName(username) {
+		return errors.New("not a site account name")
+	}
+	cronMu.Lock()
+	defer cronMu.Unlock()
+	existing, err := readCrontabForChange(username, version)
+	if err != nil {
+		return err
+	}
+	for _, line := range cronOutsideLines(username, existing) {
+		if cronOutsideLineID(line) == id {
+			return writeSiteCrontabRecord(username, siteCrontabRecordAfter(username, existing, existing, []string{line}))
+		}
+	}
+	return fmt.Errorf("cron line not found: %s", id)
 }

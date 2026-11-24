@@ -373,6 +373,24 @@ const screenPartBudgets = {
   // as "errors" is full; set with at least 25% headroom from its Turkish
   // file: 1.78 / 0.75 KiB.
   nameRule: kib(2.5, 1.1),
+  // 20 Nov 2026 (S4 R1): the Problems now lines of the side doors step
+  // (pnow.tool_account_*, pnow.stock_pool_*). A new part, as the monitoring
+  // part is nearly full; set with at least 25% headroom from its Turkish
+  // file.
+  sideDoors: kib(2.6, 1.05),
+  // 21 Nov 2026 (S4 R1): jobs a site's own code can make outside CelikPanel
+  // (pnow.site_crontab_outside, pnow.site_at_jobs, pnow.at_*, cron.outside.*,
+  // the at.allow audit words). A new part beside sideDoors, which has no
+  // room; set with at least 25% headroom from its Turkish file.
+  siteJobs: kib(5.2, 1.85),
+  // 21 Nov 2026 (S4 R1 fix round): the side doors step's further lines (a
+  // tool that does not answer, the stock pool not put back, failed or
+  // unreadable, the server owner's undo and its "close it again", a crontab
+  // that cannot be read), the administrator's Keep and a tool without its
+  // own account at its install. A new part beside sideDoors and siteJobs,
+  // which have no room; set with at least 25% headroom from its Turkish
+  // file: 5.23 / 1.78 KiB.
+  sideDoorsUndo: kib(7, 2.4),
   // 20 Nov 2026 (security lane S1b): the PostgreSQL databases every account
   // of the server can enter, closing them and the undo (pgpub.). A new part;
   // set with at least 25% headroom from its Turkish file.

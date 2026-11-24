@@ -322,10 +322,11 @@ func (a *Agent) installRoundcubeWith(ctx context.Context, resp *InstallRoundcube
 		return
 	}
 
-	// The FPM pool that serves /webmail/ (the default www pool) must READ the
-	// tree and WRITE the db dir (sqlite + its journal), temp and logs. Give the
-	// tree to the web group; make exactly those three dirs group-writable —
-	// never world.
+	// The FPM pool that serves /webmail/ must READ the tree and WRITE the db
+	// dir (sqlite + its journal), temp and logs. The staging tree is given to
+	// the web group, exactly those three dirs group-writable — never world;
+	// since S4 R1 ConfigureWebmail then gives it to webmail's own account
+	// (php_tool_pool.go), whose pool serves it.
 	// /webmail/'i sunan FPM havuzu (varsayılan www havuzu) ağacı OKUMALI ve db
 	// dizinine (sqlite + journal'ı), temp'e ve logs'a YAZMALIDIR. Ağacı web
 	// grubuna ver; tam o üç dizini grup-yazılabilir yap — asla herkese değil.
@@ -910,15 +911,20 @@ func applyWebmailNginxMutation(
 
 	rollback := func(cause error, restoreRuntime bool) error {
 		var rollbackErrs []error
+		// The put-back's test and reload run detached from the caller's
+		// cancellation (alpha.147 review): a write cut after nginx reloaded
+		// still reloads the file it puts back.
+		undoCtx, cancel := detachedUndoContext(ctx)
+		defer cancel()
 		if err := restoreMailFile(snapshot); err != nil {
 			rollbackErrs = append(rollbackErrs, err)
 		} else if restoreRuntime {
-			if out, err := run(ctx, "nginx", "-t"); err != nil {
+			if out, err := run(undoCtx, "nginx", "-t"); err != nil {
 				rollbackErrs = append(rollbackErrs, fmt.Errorf(
 					"validate restored nginx configuration: %s",
 					commandFailureDetail("nginx -t", out, err),
 				))
-			} else if out, err := run(ctx, "systemctl", "reload", "nginx"); err != nil {
+			} else if out, err := run(undoCtx, "systemctl", "reload", "nginx"); err != nil {
 				rollbackErrs = append(rollbackErrs, fmt.Errorf(
 					"reload restored nginx configuration: %s",
 					commandFailureDetail("systemctl reload nginx", out, err),
@@ -1107,6 +1113,9 @@ func (a *Agent) ConfigureWebmail(req *WebmailMutationRequest, resp *ConfigureWeb
 		return nil
 	}
 	defer finishStep()
+	// A read of the side doors waits for the rewrite (S4 R1, fourth fix round).
+	sideDoorsMu.Lock()
+	defer sideDoorsMu.Unlock()
 	a.configureWebmailWith(ctx, resp)
 	return nil
 }
@@ -1150,6 +1159,10 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 		// alpha.145: CelikPanel's text beside an owner's local server file
 		// goes with webmail.
 		removeWebmailLocalServerPending()
+		// Its own account and pools go with it (S4 R1).
+		if err := retireUninstalledPHPTool(ctx, phpToolWebmail); err != nil {
+			log.Printf("retire webmail account: %v", err)
+		}
 		resp.Configured = true
 		resp.Present = false
 		return
@@ -1175,10 +1188,26 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 	// while that version is installed; nothing bound yet → the default PHP.
 	// A bound version that is gone leaves the configuration unchanged.
 	// Web postası, yapılandırmasının adını verdiği PHP sürümünde kalır.
-	socket, err := phpToolSocket(phpToolWebmail, phpToolStateFor(phpToolWebmail).Socket)
+	webmailState := phpToolStateFor(phpToolWebmail)
+	socket, err := phpToolSocket(phpToolWebmail, webmailState.Socket)
 	if err != nil {
 		resp.Error = err.Error()
 		return
+	}
+	// S4 R1: webmail with nothing bound yet runs under its own account. One
+	// that could not get it says so (D-024); when the socket it would be
+	// handed to does not exist (that version's stock pool is off), nothing is
+	// pointed at it and the answer is a refusal, never a success.
+	if own, warning := ownSocketForUnboundTool(ctx, webmailState, socket); warning != "" {
+		log.Printf("configure webmail: %s", warning)
+		stop, problem := webmailOwnAccountOutcome(socket, warning, pathExists)
+		if stop != "" {
+			resp.Error = stop
+			return
+		}
+		resp.ToolProblems = append(resp.ToolProblems, problem)
+	} else {
+		socket = own
 	}
 	webmailSocket, err := webmailSocketPathForNginx()
 	if err != nil {
@@ -1218,4 +1247,16 @@ func (a *Agent) configureWebmailWith(ctx context.Context, resp *ConfigureWebmail
 	if warning := refreshWebmailAddresses(ctx, runServiceMutationCombinedOutput, socket); warning != "" {
 		log.Printf("configure webmail: %s", warning)
 	}
+}
+
+// webmailOwnAccountOutcome: webmail could not be given its own account
+// (warning). With the socket it would be handed to missing (that version's
+// stock pool is off) the configuration stops with the warning as its
+// refusal; otherwise it goes on and the answer carries the problem for the
+// screen (S4 R1 fix round, D-024).
+func webmailOwnAccountOutcome(socket, warning string, exists func(string) bool) (string, transport.PHPToolProblem) {
+	if !exists(socket) {
+		return warning, transport.PHPToolProblem{}
+	}
+	return "", transport.PHPToolProblem{Tool: phpToolWebmail, Version: fpmSocketVersion(socket), Kind: "own_account_failed"}
 }

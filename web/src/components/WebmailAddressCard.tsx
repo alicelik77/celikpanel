@@ -34,6 +34,7 @@ import {
 } from '../lib/webmailAddress';
 import { sayCheck, sayOutcome } from '../lib/webmailAddressText';
 import { useWebmailAddressOperation } from '../lib/webmailAddressFlow';
+import { settlePhaseKey } from '../lib/componentOperationGuidance';
 import { confirmAddToZone, confirmAskPeer, RECHECK_EVERY_MS, RECHECK_FOR_MS, type RecordsAdded } from '../lib/webmailAddressRecords';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -236,6 +237,7 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
     }
     const workingHost = shown && (shown.status === 'queued' || shown.status === 'running') ? shown.package_name ?? '' : pending?.host ?? '';
     const workingRemove = shown && (shown.status === 'queued' || shown.status === 'running') ? shown.kind === 'webmail_address_remove' : pending?.remove === true;
+    const workingSettle = shown && (shown.status === 'queued' || shown.status === 'running') ? settlePhaseKey(shown.phase) : null;
 
     const known = checkState.phase === 'known' ? checkState : null;
     const check = known?.check ?? null;
@@ -253,6 +255,8 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
             {working && (
                 <LifeLine tone="info" attr="webmail-address-working">
                     {t(workingRemove ? 'life.addr.removing' : 'life.addr.working', { host: workingHost })}
+                    {/* alpha.145 lab, D1: a row being recorded, or one that could not be, says so. */}
+                    {workingSettle ? ` ${t(workingSettle)}` : ''}
                 </LifeLine>
             )}
             {flow.notice && (

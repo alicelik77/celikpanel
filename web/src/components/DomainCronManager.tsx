@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Clock, Plus, Trash2, Edit2, RefreshCw,
-    Play, Pause, Save, X, Info, AlertTriangle,
+    Play, Pause, Save, X, Info, AlertTriangle, Check,
 } from 'lucide-react';
 import { showToast } from './Toast';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
@@ -14,6 +14,7 @@ import { confirmAction } from '../lib/confirmAction';
 import { AdminInstallLink } from './AdminInstallLink';
 import { useLeaveGuard } from './kit/save/leaveGuard';
 import { useSaveWords } from './kit/save/words';
+import { useAuth } from '../auth/AuthContext';
 
 interface CronJob {
     id: string;
@@ -21,6 +22,14 @@ interface CronJob {
     command: string;
     enabled: boolean;
     comment: string;
+    /** S4 R1: the line was not made in CelikPanel. */
+    outside_panel?: boolean;
+}
+
+/** S4 R1: a crontab line not made in CelikPanel that is not a task. */
+interface CronOtherLine {
+    id: string;
+    line: string;
 }
 
 interface DomainCronManagerProps {
@@ -61,6 +70,10 @@ const unreadableCauses: Record<string, TranslationKey> = {
 export function DomainCronManager({ domainId, readOnly = false }: DomainCronManagerProps) {
     const { t } = useI18n();
     const say = useSaveWords();
+    // S4 R1 fix round: only the administrator keeps a line not made in
+    // CelikPanel; a customer may only delete it.
+    const { role } = useAuth();
+    const canKeep = role === 'admin' && !readOnly;
     const [jobs, setJobs] = useState<CronJob[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -97,6 +110,11 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
     // loaded. The form keeps what was typed; the notice says how to go on.
     // Sunucu, liste yüklendikten sonra crontab değiştiği için reddetti.
     const [stale, setStale] = useState(false);
+    // S4 R1 (21 Nov 2026): lines of the crontab not made in CelikPanel that
+    // are not tasks (an @reboot line, a setting for every task). Tasks not
+    // made in CelikPanel carry their own mark in the list.
+    // CelikPanel'de yapılmamış ve görev olmayan crontab satırları.
+    const [otherLines, setOtherLines] = useState<CronOtherLine[]>([]);
 
     // refused reads the coded API error once. A stale change becomes the
     // on-screen reload notice and the cron-missing answer the on-screen
@@ -119,13 +137,16 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
 
     const loadJobs = async () => {
         setLoading(true);
-        const next = await readCurrent<{ jobs?: CronJob[] | null; version?: string }>(`/api/v1/domains/${domainId}/cron`);
+        const next = await readCurrent<{ jobs?: CronJob[] | null; version?: string; other_lines?: CronOtherLine[] | null }>(`/api/v1/domains/${domainId}/cron`);
         const missing = next.state === 'unknown' && next.error.code === 'CRON_NOT_INSTALLED';
         // The list is proven empty only by an answer that carries it: `jobs` as a
         // list, or the `null` the server writes for a list with no rows.
         // Liste, ancak onu taşıyan yanıtla boş sayılır.
         const list = next.state === 'known' && (next.value.jobs === null || Array.isArray(next.value.jobs)) ? next.value.jobs ?? [] : null;
         setJobs(list ?? []);
+        setOtherLines(list && next.state === 'known' && Array.isArray(next.value.other_lines)
+            ? next.value.other_lines.filter((o) => !!o && typeof o.id === 'string' && typeof o.line === 'string')
+            : []);
         setListed(list ? { value: list, observedAt: Date.now() } : null);
         setVersion(next.state === 'known' && list ? next.value.version || '' : '');
         setBlocked(missing ? apiErrorText(next.error, t) : '');
@@ -220,13 +241,18 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         }
     };
 
-    const deleteJob = async (job: CronJob) => {
+    const deleteJob = (job: CronJob) => removeLine(job.id, job.command, 'cron.deleteConfirm', 'cron.deleted');
+
+    // A task, or a line not made in CelikPanel that is not a task, goes the
+    // same way: by its ID, against the crontab the list was read from.
+    // Görev de, CelikPanel'de yapılmamış görev dışı satır da aynı yoldan gider.
+    const removeLine = async (id: string, text: string, confirmKey: TranslationKey, doneKey: TranslationKey) => {
         if (readOnly) return;
-        await confirmAction({ message: `${t('cron.deleteConfirm')}\n${job.command}`, confirmLabel: t('common.delete'), tone: 'danger',
+        await confirmAction({ message: `${t(confirmKey)}\n${text}`, confirmLabel: t('common.delete'), tone: 'danger',
             action: async () => {
                 try {
                     const res = await fetch(
-                        `/api/v1/domains/${domainId}/cron?id=${encodeURIComponent(job.id)}&version=${encodeURIComponent(version)}`,
+                        `/api/v1/domains/${domainId}/cron?id=${encodeURIComponent(id)}&version=${encodeURIComponent(version)}`,
                         { method: 'DELETE' },
                     );
                     if (!res.ok) {
@@ -235,10 +261,39 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                     }
                     const data = await res.json();
                     if (!data.success) throw new Error();
-                    showToast('success', t('cron.deleted'));
+                    showToast('success', t(doneKey));
                     loadJobs();
                 } catch {
                     showToast('error', t('common.error'));
+                }
+            },
+        });
+    };
+
+    // The administrator's Keep (S4 R1 fix round): the line stays in the
+    // crontab and is added to CelikPanel's record, so it is no longer marked.
+    // Asked in the panel's own window; the list reads itself again after.
+    // Yöneticinin "Kalsın"ı; satır kayda eklenir, liste kendiliğinden yenilenir.
+    const keepLine = async (id: string, text: string) => {
+        if (!canKeep) return;
+        await confirmAction({ message: `${t('cron.outside.keepConfirm')}\n${text}`, confirmLabel: t('cron.outside.keep'),
+            action: async () => {
+                try {
+                    const res = await fetch(
+                        `/api/v1/domains/${domainId}/cron?keep=${encodeURIComponent(id)}&version=${encodeURIComponent(version)}`,
+                        { method: 'POST' },
+                    );
+                    if (!res.ok) {
+                        await refused(res);
+                        return;
+                    }
+                    const data = await res.json();
+                    if (!data.success) throw new Error();
+                    showToast('success', t('cron.outside.kept'));
+                } catch {
+                    showToast('error', t('common.error'));
+                } finally {
+                    loadJobs();
                 }
             },
         });
@@ -388,6 +443,16 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
 
                 {stale && <StaleNotice textKey="cron.stale" actionKey="cron.reload" onReload={loadJobs} busy={loading} />}
 
+                {/* S4 R1: lines not made in CelikPanel are said before the
+                    list, with what to do; each carries its mark below.
+                    CelikPanel'de yapılmamış satırlar listeden önce söylenir. */}
+                {!loading && !unknown && (otherLines.length > 0 || jobs.some((job) => job.outside_panel)) && (
+                    <div data-cron-outside-notice="" className="mb-3 flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm leading-relaxed text-fg">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                        <p className="min-w-0 max-w-[75ch] break-words">{t('cron.outside.notice')}</p>
+                    </div>
+                )}
+
                 {/* Reading and "could not read" come before any list: neither
                     is "no scheduled tasks".
                     Okunuyor ve "okunamadı", her listeden önce gelir. */}
@@ -399,9 +464,9 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                     <KnownEmpty of={listed} icon={Clock} title={t('cron.empty')} hint={t('cron.emptyHint')} />
                 ) : (
                     <div className="space-y-2">
-                        {jobs.map((job) => (
+                        {jobs.map((job, index) => (
                             <div
-                                key={job.id}
+                                key={`${job.id}:${index}`}
                                 className={`rounded-xl border border-border bg-surface p-4 ${job.enabled ? '' : 'opacity-60'}`}
                             >
                                 <div className="flex items-start justify-between gap-3">
@@ -419,10 +484,41 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                                     {t('cron.disabledBadge')}
                                                 </span>
                                             )}
+                                            {job.outside_panel && (
+                                                <span data-cron-outside="" className="rounded bg-warning/15 px-1.5 py-0.5 text-warning">
+                                                    {t('cron.outside.badge')}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {!readOnly && (
+                                    {/* A task not made in CelikPanel, enabled or paused, is
+                                        only removed here; the administrator may keep it.
+                                        CelikPanel'de yapılmamış görev yalnız kaldırılır; yönetici tutabilir. */}
+                                    {!readOnly && job.outside_panel && (
+                                        <div className="flex items-center gap-0.5">
+                                            {canKeep && (
+                                                <button
+                                                    onClick={() => void keepLine(job.id, job.command)}
+                                                    title={t('cron.outside.keep')}
+                                                    aria-label={t('cron.outside.keep')}
+                                                    data-cron-keep=""
+                                                    className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-fg"
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => deleteJob(job)}
+                                                title={t('cron.delete')}
+                                                aria-label={t('cron.delete')}
+                                                className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-danger"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {!readOnly && !job.outside_panel && (
                                         <div className="flex items-center gap-0.5">
                                             <button
                                                 onClick={() => toggleJob(job)}
@@ -450,6 +546,48 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                 </div>
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {!loading && !unknown && otherLines.length > 0 && (
+                    <div className="mt-4" data-cron-other-lines="">
+                        <h4 className="text-sm font-semibold text-fg">{t('cron.outside.otherTitle')}</h4>
+                        <p className="mb-2 mt-1 text-xs text-fg-muted">{t('cron.outside.otherHint')}</p>
+                        <div className="space-y-2">
+                            {otherLines.map((other, index) => (
+                                <div key={`${other.id}:${index}`} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="break-all font-mono text-sm text-fg">{other.line}</p>
+                                        <span className="mt-2 inline-block rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">
+                                            {t('cron.outside.badge')}
+                                        </span>
+                                    </div>
+                                    {!readOnly && (
+                                        <div className="flex items-center gap-0.5">
+                                            {canKeep && (
+                                                <button
+                                                    onClick={() => void keepLine(other.id, other.line)}
+                                                    title={t('cron.outside.keep')}
+                                                    aria-label={t('cron.outside.keep')}
+                                                    data-cron-keep=""
+                                                    className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-fg"
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => void removeLine(other.id, other.line, 'cron.outside.deleteConfirm', 'cron.outside.deleted')}
+                                                title={t('cron.delete')}
+                                                aria-label={t('cron.delete')}
+                                                className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-danger"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </section>

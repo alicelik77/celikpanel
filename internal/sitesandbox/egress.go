@@ -100,7 +100,11 @@ table inet ` + EgressTable + ` {
 // "nft flush ruleset" or restarted nftables.service), then adds the cgroup
 // of every running sandboxed unit whose helper loads the block (its
 // ExecStartPre runs the helper's egress-add) again. A unit whose cgroup is not
-// /system.slice/<unit> is named in the journal and left out. A finished
+// /system.slice/<unit> or /celiksite_<site id>.slice/<unit> (its site's slice,
+// where the next release places it) is named in the journal and left out.
+// Each release writes the guard in its own text at its first sandboxed write
+// (ensureSandboxEgress); this text covers every unit form the next release
+// creates. A finished
 // install step that stays "active (exited)" has no cgroup and is skipped
 // (alpha.127 lab: after a Node.js "Install packages and build" the guard
 // failed every 30 seconds on celikappinst-N, "runs in , not ...").
@@ -124,12 +128,27 @@ for unit in $(systemctl list-units --type=service --state=active,activating,relo
 	# A finished install step (RemainAfterExit, "active (exited)") has no
 	# cgroup any more: nothing runs there, so there is nothing to block.
 	[ -n "$cgroup" ] || continue
-	if [ "$cgroup" != "/system.slice/$unit" ]; then
-		echo "celikpanel-egress: $unit runs in $cgroup, not /system.slice/$unit; it is not blocked"
+	# The system slice, or the site's own slice celiksite_<site id>.slice where
+	# a later release places it (docs/SITE-SANDBOX.md section 3): both are depth
+	# two, as the set matches.
+	allowed=no
+	case "$cgroup" in
+		"/system.slice/$unit") allowed=yes ;;
+		/celiksite_*.slice/"$unit")
+			site=${cgroup#/celiksite_}
+			site=${site%%.slice/*}
+			case "$site" in
+				''|0*|*[!0-9]*) ;;
+				*) [ "$cgroup" = "/celiksite_$site.slice/$unit" ] && allowed=yes ;;
+			esac
+			;;
+	esac
+	if [ "$allowed" != yes ]; then
+		echo "celikpanel-egress: $unit runs in $cgroup, not /system.slice/$unit or its site's slice; it is not blocked"
 		status=1
 		continue
 	fi
-	"$nft" add element inet ` + EgressTable + ` ` + EgressSet + ` "{ \"system.slice/$unit\" }" || { echo "celikpanel-egress: $unit could not be added"; status=1; }
+	"$nft" add element inet ` + EgressTable + ` ` + EgressSet + ` "{ \"${cgroup#/}\" }" || { echo "celikpanel-egress: $unit could not be added"; status=1; }
 done
 exit $status
 `
@@ -211,9 +230,20 @@ func ParseSetElements(output string) []string {
 	return out
 }
 
-// InSet reports whether unit's cgroup is among the elements.
+// InSet reports whether unit's cgroup in the system slice is among the
+// elements.
 func InSet(elements []string, unit string) bool {
-	want := cgroupElement(unit)
+	return InSetCgroup(elements, "/"+cgroupElement(unit))
+}
+
+// InSetCgroup reports whether a unit's cgroup (its ControlGroup=, with the
+// leading "/") is among the elements (S4 R2a: the system slice or the site's
+// slice).
+func InSetCgroup(elements []string, cgroup string) bool {
+	want := strings.TrimPrefix(cgroup, "/")
+	if want == "" {
+		return false
+	}
 	for _, e := range elements {
 		if e == want || e == "/"+want {
 			return true

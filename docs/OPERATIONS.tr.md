@@ -348,8 +348,8 @@ Frankfurt'a dokunmayın:
 6. salt-okur servis işlemi ve mutasyon-ledger kontrolleri idle durumdadır.
 
 Yalnız bundan sonra ilgili update modunu **Frankfurt** üzerinde tekrarlayın ve
-aynı kontrolleri uygulayın. Herhangi bir kontrol başarısızsa dağıtımı durdurun;
-peer'ı denemeden önce güncellenen sunucuyu geri alın.
+aynı kontrolleri uygulayın. Herhangi bir kontrol başarısızsa peer'ı denemeden
+dağıtımı durdurun; tamamlanmış bir güncelleme geri alınmaz (aşağıya bakın).
 
 Kayıtlı [bağımsız kurtarma ortamı](RECOVERY-RUNTIME.tr.md) varsa, mevcut kalıcı
 işlemi sürdürmek için `sudo /usr/libexec/celikpanel/recovery recover` kullanın.
@@ -367,6 +367,10 @@ eski seçili okuyucuyu da kesintiden önce reddedebilir. Değişmemiş tarihsel 
 scriptlerin yolu ayrıdır. Yeni işlem kabulü henüz uygulanmadı; token değiştirmeyin,
 kayıt kopyalamayın veya başka sürüm üzerinden tekrar denemeyin.
 
+Güncel bir update, hiçbir şeyi uygulamadan önce yedeği için kurtarma verisi yazar; bu yüzden geri
+alma komutu yazmaz: saklanan yedeği adlandırır ve tamamlanmış bir güncellemenin elle geri
+alınmasının desteklenmediğini söyler; o sürümün `rollback.sh` dosyası da yedeği hiçbir şeyi
+durdurmadan reddeder.
 Eski saklanan-sürüm yolu için yalnız update çıktısında verilen root tarafından
 güvenilen rollback scriptini ve `VERIFIED_SNAPSHOT` değerini kullanın. Yer tutucuyu çıktıda verilen kesin
 release diziniyle değiştirin; checkout kopyasını veya başka bir release'in

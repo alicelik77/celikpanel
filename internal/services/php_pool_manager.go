@@ -217,11 +217,20 @@ func (pm *PHPPoolManager) DeletePoolByName(phpVersion, poolName string) error {
 	if _, err := BackupUnlessManaged(path, ManagedHeaderPrefixINI, legacy); err != nil {
 		return fmt.Errorf("keep a copy of the edited pool before removing it: %w", err)
 	}
-	err := deleteManagedConfigLocked(path, 0o644,
+	// S4 R1 fix round: the last site of a version whose stock pool CelikPanel
+	// turned off puts that pool back first (stock_pool_keep.go).
+	undoKeep, err := KeepAPoolBeside(path)
+	if err != nil {
+		return err
+	}
+	err = deleteManagedConfigLocked(path, 0o644,
 		func() error { return phpFPMConfigTest(phpVersion) },
 		func() error { return reloadPHPFPM(phpVersion) })
 	if errors.Is(err, os.ErrNotExist) {
 		err = nil
+	}
+	if err != nil && undoKeep != nil {
+		err = errors.Join(err, undoKeep())
 	}
 	if err == nil {
 		removeStalePending(path)

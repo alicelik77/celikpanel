@@ -101,6 +101,10 @@ type UnitParams struct {
 	// DropInDir is the owner's place (<unit>.service.d); CelikPanel never
 	// writes or removes it.
 	DropInDir string
+	// SiteID and InSlice keep the unit in its site's slice where a later
+	// release placed it (sitesandbox.Profile).
+	SiteID  int
+	InSlice bool
 }
 
 var (
@@ -226,6 +230,7 @@ func RenderUnit(p UnitParams) (string, error) {
 	}
 	name := UnitName(p.InstallID)
 	profile := SandboxProfile(name+".service", p.Layout, p.User, p.Group, p.Limits, p.Limits.MemoryMB, p.Port, p.AuxPort, p.Caps)
+	profile.SiteID, profile.InSlice = p.SiteID, p.InSlice
 	sandbox, err := SandboxDirectives(profile, p.Caps)
 	if err != nil {
 		return "", err

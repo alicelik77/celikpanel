@@ -224,8 +224,8 @@
     ],
     "home.sep.caption": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:5",
-        "says": "Published** on 2026-11-23"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:5",
+        "says": "A security release with one correction."
       }
     ],
     "home.sep.note": [
@@ -924,6 +924,50 @@
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42",
         "says": "Now the door answers only what CelikPanel"
+      }
+    ],
+    "sep.tools": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:39",
+        "says": "Now each has a system account of its own"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:58",
+        "says": "Webmail needs a file system with"
+      }
+    ],
+    "sep.tools.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:1",
+        "says": "# v0.1.0-alpha.147"
+      }
+    ],
+    "sep.at": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:63",
+        "says": "Site accounts can no longer schedule jobs with"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:71",
+        "says": "Crontab lines a site adds outside the panel are shown."
+      }
+    ],
+    "sep.at.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:1",
+        "says": "# v0.1.0-alpha.147"
+      }
+    ],
+    "sep.stockpool": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:76",
+        "says": "shared PHP pool is switched off where nothing uses"
+      }
+    ],
+    "sep.stockpool.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:1",
+        "says": "# v0.1.0-alpha.147"
       }
     ],
     "sep.yes.notarch": [

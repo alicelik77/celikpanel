@@ -9425,3 +9425,72 @@ until the backup reports ready.
   the "cannot send" reading skips an owner's own certificate options and
   `/* */` comments; an owner's own block proxying to the socket gets only
   the sign-in page and style sheets. **No P0 item is closed.**
+
+### Branch fix/d1-stuck-operation (a durable operation whose Finish failed is settled by the running panel; the heartbeat stops before the lease can end; no schema change; constitution 2 and 3; invariants 2 and 4; P0.2; D-024; D-025; 2026-11-23, after the alpha.145 lab)
+
+- **The defect (alpha.145 lab, D1).** One unanswered lease renewal stopped
+  an operation's worker while its Agent step ran on; the Agent refused
+  Finish while the step was active, and the Panel returned without settling
+  its row. The row stayed `running` and every component or setup change was
+  refused until `celikpanel-panel` restarted.
+- **Invariant 2 (a timeout is not proof of failure, success or permission
+  to start again).** The running panel now reads the Agent's job, changing
+  nothing, until the job has ended, then settles the one row with the code
+  startup recovery runs (`reconcileInterruptedServiceOperationLocked`, one
+  function for both). A job the Agent has no record of is unknown, not
+  ended: the row is left unsettled. An Agent that answers no read for two
+  minutes leaves the row unsettled and the process lock released. While
+  the interrupted job is still active, the Agent refuses every other lease,
+  so no two privileged steps run at once; once it has ended, firewall,
+  DNS, mail TLS and similar standalone changes are admitted again (they
+  take the lock, not the row) before the interrupted install is run again
+  at the panel's next start, and may run beside a half-finished component.
+  What the administrator sees meanwhile: component and setup changes are
+  refused with the unsettled words (check the Agent, then restart the
+  panel's web process); while the old job is active, a standalone change
+  gets the Agent's "another change is still running" refusal. Not gated by
+  design: a half-finished install must not block a firewall change.
+- **Invariant 4 (retrying a transient read is not re-running a mutation
+  whose outcome is unknown).** What changes: an install, install-together,
+  remove-together, mail profile, runtime or setup install whose job ended
+  `service_mutation_lease_expired` (its step may have succeeded) is run
+  again from its start by the running panel about 20 s after the Agent
+  hiccup, instead of after a person's restart. The bound: once per row and
+  running panel, held in memory; every restart allows one more, as before.
+  The assumption it rests on: the install steps are safe to repeat (the
+  startup design already assumed it). A webmail update or address is only
+  read. The settle's retry loop asks again only errors raised before the
+  first privileged sync. A run again the Agent refuses because the host is
+  busy is asked again for two minutes, then left unsettled in a running
+  panel; at startup, where there is no further step, the row ends with
+  what is true ("could not be run again because the server stayed busy;
+  what its first run did is not known"; the administrator checks the
+  component) and other changes are admitted again. Never "not started".
+- **Heartbeat.** The worker is stopped on the Agent's definite answer, or
+  15 s after the last renewal the Agent answered (counted from when it was
+  sent). A renewal may wait for the whole time that remains, an unanswered
+  one is asked again about a second later, and the first one is scheduled
+  from when the lease was asked for: the stop comes at the latest 5 s before
+  the Agent's 20-second lease can end, and is logged with its cause. The rule governs every standalone
+  mutation too (firewall, DNS, mail TLS, certificates, VPN, webmail). The
+  Agent's lease rules are unchanged.
+- **Schema or version transition.** None. The settling phases and refusal
+  reasons live in memory (laid over reads); rows are written with existing
+  phases and codes. The one new stored value is the alert kind
+  `service_operation_unsettled`, which the previous release shows with its
+  general alert line. A setup install's row also keeps its accepted point
+  updates in `operation_data` (an additive key the previous release
+  ignores).
+- **Recovery behaviour.** Startup recovery is the same function; a row that
+  cannot be settled is named on its screen, in every refusal and in
+  Problems now (the server owner checks the Agent, then restarts the
+  panel's web process).
+- **Evidence.** `cmd/panel/d1_stuck_operation_test.go` (a step-counting
+  fake Agent: no overlap, a restart during the second run, webmail update
+  and address, install, mail profile, the bounds, the heartbeat stop
+  measured against a scaled lease), `web/tests/d1-stuck-operation.test.mjs`.
+- **Open.** No real-system proof yet (lab steps L1–L8 in the pull
+  request); whether every install path is truly safe to repeat after a
+  successful first run is observed in the lab (L3), not proved; P0.2 is
+  advanced for an Agent unavailable mid-operation, not closed. **No P0
+  item is closed.**

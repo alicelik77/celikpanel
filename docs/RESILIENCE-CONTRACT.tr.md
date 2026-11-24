@@ -8633,3 +8633,74 @@ bağlantıyı tutar.
   "gönderemiyor" okuması sahibin kendi sertifika seçeneklerini ve `/* */`
   yorumlarını atlar; sokete ileten sahibin kendi bloğu yalnız oturum açma
   sayfasını ve stil dosyalarını alır. **Hiçbir P0 işi kapanmadı.**
+
+### Dal fix/d1-stuck-operation (Finish'i başarısız olan kalıcı işlemi çalışan panel kapatır; kalp atışı kira bitmeden durur; şema değişmez; anayasa 2 ve 3; ilke 2 ve 4; P0.2; D-024; D-025; 23 Kasım 2026, alpha.145 laboratuvarından sonra)
+
+- **Kusur (alpha.145 laboratuvarı, D1).** Yanıtsız kalan tek bir kira
+  yenilemesi, Agent adımı sürerken işlemin işçisini durdurdu; Agent adım
+  sürerken Finish'i reddetti ve Panel satırını kapatmadan döndü. Satır
+  `running` kaldı ve `celikpanel-panel` yeniden başlayana dek her bileşen ve
+  kurulum değişikliği reddedildi.
+- **İlke 2 (zaman aşımı başarısızlığın, başarının ya da yeniden başlatma
+  izninin kanıtı değildir).** Çalışan panel artık Agent'ın işini hiçbir şey
+  değiştirmeden iş bitene dek okur, sonra tek satırı başlangıç kurtarmasının
+  çalıştırdığı kodla kapatır (`reconcileInterruptedServiceOperationLocked`,
+  ikisi için tek işlev). Agent'ın kaydı olmayan iş bilinmiyordur, bitmiş
+  değildir: satır kapatılamamış kalır. İki dakika boyunca hiçbir okumayı
+  yanıtlamayan Agent satırı kapatılamamış bırakır ve süreç kilidi bırakılır.
+  Yarıda kalan iş hâlâ etkinken Agent başka her kirayı reddeder, bu yüzden iki
+  ayrıcalıklı adım aynı anda çalışmaz; iş bittikten sonra güvenlik duvarı,
+  DNS, posta TLS ve benzeri tek başına değişiklikler yeniden kabul edilir
+  (kilidi alırlar, satırı değil), yarıda kalan kurulum panelin bir sonraki
+  açılışında yeniden çalıştırılmadan önce, yarım kalmış bir bileşenin yanında
+  çalışabilirler. Yöneticinin bu sırada gördüğü: bileşen ve kurulum
+  değişiklikleri kapatılamamış satırın sözleriyle reddedilir (önce Agent'ı
+  denetleyin, sonra panelin web işlemini yeniden başlatın); eski iş etkinken
+  tek başına bir değişiklik Agent'ın "başka bir değişiklik hâlâ sürüyor"
+  reddini alır. Tasarım gereği engellenmez: yarım bir kurulum bir güvenlik
+  duvarı değişikliğini engellememelidir.
+- **İlke 4 (geçici bir okumayı yinelemek, sonucu bilinmeyen bir değişikliği
+  yeniden çalıştırmak değildir).** Değişen: işi
+  `service_mutation_lease_expired` ile biten (adımı başarılı olmuş olabilir)
+  bir kurulum, birlikte kurma, birlikte kaldırma, posta profili, çalışma
+  ortamı ya da kurulum adımı, bir kişinin yeniden başlatmasından sonra değil,
+  Agent'taki aksaklıktan yaklaşık 20 saniye sonra çalışan panel tarafından
+  baştan yeniden çalıştırılır. Sınır: satır ve çalışan panel başına bir kez,
+  bellekte tutulur; her yeniden başlatma, önceden olduğu gibi, bir kez daha
+  izin verir. Dayandığı varsayım: kurulum adımlarının yinelenmesi zararsızdır
+  (başlangıç tasarımı bunu zaten varsayıyordu). Web postası güncellemesi ya
+  da adresi yalnız okunur. Kapatmanın yeniden deneme döngüsü yalnız ilk
+  ayrıcalıklı eşitlemeden önce çıkan hataları yeniden sorar. Sunucu meşgul
+  olduğu için Agent'ın reddettiği yeniden çalıştırma iki dakika boyunca
+  yeniden istenir, sonra çalışan panelde kapatılamamış bırakılır;
+  başka adımı olmayan başlangıçta satır doğru olanla biter ("sunucu meşgul
+  kaldığı için yeniden çalıştırılamadı; ilk çalışmasının ne yaptığı
+  bilinmiyor"; yönetici bileşeni denetler) ve başka değişiklikler yeniden
+  kabul edilir. Asla "başlatılamadı" denmez.
+- **Kalp atışı.** İşçi Agent'ın kesin yanıtıyla ya da Agent'ın yanıtladığı
+  son yenilemeden (gönderildiği andan sayılarak) 15 saniye sonra durdurulur;
+  bir yenileme kalan sürenin tamamı kadar bekleyebilir, yanıtsız kalan
+  yaklaşık bir saniye sonra yeniden istenir ve ilki kiranın istendiği andan
+  sayılarak planlanır: durma en geç Agent'ın 20 saniyelik kirası bitebilmeden
+  5 saniye önce gelir ve nedeniyle günlüğe yazılır. Kural her tek başına değişikliği de yönetir
+  (güvenlik duvarı, DNS, posta TLS, sertifikalar, VPN, web postası). Agent'ın
+  kira kuralları değişmedi.
+- **Şema ya da sürüm geçişi.** Yok. Kapatma aşamaları ve ret nedenleri
+  bellektedir (okumaların üstüne konur); satırlar var olan aşama ve kodlarla
+  yazılır. Saklanan tek yeni değer `service_operation_unsettled` uyarı
+  türüdür; önceki sürüm onu genel uyarı satırıyla gösterir. Bir kurulum
+  adımının satırı kabul edilen nokta güncellemelerini de `operation_data`
+  içinde tutar (önceki sürümün yok saydığı ek bir anahtar).
+- **Kurtarma davranışı.** Başlangıç kurtarması aynı işlevdir; kapatılamayan
+  satır kendi ekranında, her retteki ve Şu anki sorunlar'da adlandırılır
+  (sunucu sahibi önce Agent'ı denetler, sonra panelin web işlemini yeniden
+  başlatır).
+- **Kanıt.** `cmd/panel/d1_stuck_operation_test.go` (adım sayan sahte Agent:
+  çakışma yok, ikinci çalışma sırasında yeniden başlatma, web postası
+  güncellemesi ve adresi, kurulum, posta profili, sınırlar, ölçeklenmiş bir
+  kiraya göre ölçülen kalp atışı durması), `web/tests/d1-stuck-operation.test.mjs`.
+- **Açık.** Henüz gerçek sistem kanıtı yok (laboratuvar adımları L1–L8 PR'da);
+  her kurulum yolunun başarılı ilk çalışmadan sonra yinelenmesinin gerçekten
+  zararsız olduğu laboratuvarda gözlenir (L3), kanıtlanmadı; P0.2 işlem
+  ortasında ulaşılamayan Agent için ilerledi, kapanmadı. **Hiçbir P0 işi
+  kapanmadı.**

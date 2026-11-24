@@ -557,6 +557,56 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "node_port_reserved":
 		return fmt.Sprintf("The Node.js site %s sends its visitors to port %s, which a service of this server uses. Open the domain and save its Node.js settings again: the site gets a free port, and its program must listen on that port.", subject, n),
 			fmt.Sprintf("%s Node.js sitesi ziyaretçilerini bu sunucunun bir hizmetinin kullandığı %s numaralı porta gönderiyor. Alan adını açıp Node.js ayarlarını yeniden kaydedin: site boş bir port alır; programı o portu dinlemelidir.", subject, n)
+	// S4 R1 (side_doors.go).
+	case "tool_account_failed":
+		return fmt.Sprintf("%s still runs under the web server's account, which can read every site. Open it under Components and choose its PHP version again to move it to its own account.", name),
+			fmt.Sprintf("%s hâlâ her siteyi okuyabilen web sunucusu hesabıyla çalışıyor. Bileşenler'de açıp PHP sürümünü yeniden seçerek kendi hesabına taşıyın.", name)
+	case "tool_account_owner_config":
+		return fmt.Sprintf("%s still runs under the web server's account because %s was changed on the server; CelikPanel keeps it.", name, subject),
+			fmt.Sprintf("%s, %s sunucuda değiştirildiği için hâlâ web sunucusu hesabıyla çalışıyor; CelikPanel dosyayı korur.", name, subject)
+	case "stock_pool_in_use", "stock_pool_owner_changed":
+		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is kept on: Monitoring says why.", name),
+			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu açık bırakıldı; nedeni İzleme'de.", name)
+	// S4 R1 (side_doors_jobs.go).
+	case "site_crontab_outside":
+		return fmt.Sprintf("%s scheduled task lines were added outside CelikPanel (%s); the sites' task limits were not checked for them. Each site's Scheduled tasks list marks them.", n, subject),
+			fmt.Sprintf("CelikPanel dışında %s zamanlanmış görev satırı eklendi (%s); sitelerin görev sınırları onlar için denetlenmedi. Her sitenin Zamanlanmış görevler listesi onları işaretler.", n, subject)
+	case "site_at_jobs":
+		return fmt.Sprintf("%s at jobs of website accounts, made outside CelikPanel, are waiting to run: %s. Monitoring says how to remove them.", n, subject),
+			fmt.Sprintf("Web sitesi hesaplarının CelikPanel dışında kurulmuş %s at işi çalışmayı bekliyor: %s. Nasıl kaldırılacağı İzleme'de.", n, subject)
+	case "at_allow_lists_sites":
+		return fmt.Sprintf("/etc/at.allow on this server lets website accounts use at: %s.", subject),
+			fmt.Sprintf("Bu sunucudaki /etc/at.allow web sitesi hesaplarının at kullanmasına izin veriyor: %s.", subject)
+	case "at_directory_accounts":
+		return "Website accounts can still use at on this server: its accounts come from a directory service, so CelikPanel did not write /etc/at.allow.",
+			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: hesaplar bir dizin hizmetinden geldiği için CelikPanel /etc/at.allow dosyasını yazmadı."
+	// S4 R1 fix round (side_doors.go, side_doors_jobs.go).
+	case "tool_down":
+		return fmt.Sprintf("%s does not answer on PHP %s. Open it under Components and choose its PHP version again; Monitoring says why.", name, subject),
+			fmt.Sprintf("%s PHP %s üzerinde yanıt vermiyor. Bileşenler'de açıp PHP sürümünü yeniden seçin; nedeni İzleme'de.", name, subject)
+	case "stock_pool_not_put_back":
+		return fmt.Sprintf("The distribution's PHP %s pool could not be put back after turning it off failed. Monitoring says how to put it back.", name),
+			fmt.Sprintf("Dağıtımın PHP %s havuzu kapatılamadı ve geri de konamadı. Nasıl geri konacağı İzleme'de.", name)
+	case "stock_pool_unknown":
+		// Second fix round (B10): it may not be readable at all; "still on"
+		// is not said.
+		return fmt.Sprintf("What the distribution's PHP %s pool is could not be read, so CelikPanel changed nothing: Monitoring says why.", name),
+			fmt.Sprintf("Dağıtımın PHP %s havuzunun durumu okunamadı; CelikPanel hiçbir şeyi değiştirmedi. Nedeni İzleme'de.", name)
+	case "stock_pool_failed":
+		return fmt.Sprintf("The distribution's PHP %s pool, which runs as the web server's account, is still on: Monitoring says why.", name),
+			fmt.Sprintf("Web sunucusu hesabıyla çalışan dağıtımın PHP %s havuzu hâlâ açık; nedeni İzleme'de.", name)
+	case "stock_pool_owner_restored":
+		return fmt.Sprintf("The distribution's PHP %s pool was put back on the server and runs as the web server's account. Monitoring offers to turn it off again.", name),
+			fmt.Sprintf("Dağıtımın PHP %s havuzu sunucuda geri açıldı ve web sunucusu hesabıyla çalışıyor. İzleme yeniden kapatmayı önerir.", name)
+	case "at_owner_removed":
+		return "/etc/at.allow was deleted on this server, so website accounts can use at again. Monitoring offers to close it again.",
+			"Bu sunucuda /etc/at.allow silindi; web sitesi hesapları yeniden at kullanabiliyor. İzleme yeniden kapatmayı önerir."
+	case "site_crontab_unreadable":
+		return fmt.Sprintf("The crontab of %s could not be read, so lines added to it outside CelikPanel cannot be seen. Monitoring says why.", subject),
+			fmt.Sprintf("%s crontab'ı okunamadı; CelikPanel dışında eklenen satırları görülemiyor. Nedeni İzleme'de.", subject)
+	case "at_not_closed":
+		return "Website accounts can still use at on this server: CelikPanel could not write /etc/at.allow. It tries again at the panel's next start.",
+			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: CelikPanel /etc/at.allow dosyasını yazamadı. Panelin bir sonraki başlangıcında yeniden dener."
 	case "postgresql_databases_open":
 		if item.value == 1 {
 			// alpha.144 (alpha.143 lab): one database, in the singular.
@@ -635,6 +685,11 @@ func alertLine(item pendingAlertMail) (string, string) {
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),
 			fmt.Sprintf("%s kutusunun otomatik yanıtı hâlâ artık bu kutunun olmayan bir adresten yanıt veriyor ve CelikPanel bunu sunucuda değiştiremedi. İzleme'yi açın: yapılacak adımı söyler; CelikPanel her saat yeniden dener.", item.name)
+	case "service_operation_unsettled":
+		// alpha.145 lab, D1: the panel's web process restarts; its start
+		// records what the change did.
+		return "The panel could not record the end of a server change, so other component and setup changes are refused. The server owner first checks the server agent (sudo systemctl status celikpanel-agent; starts it if it is stopped), then runs sudo systemctl restart celikpanel-panel: only the panel's web process restarts (websites, mail and DNS keep running). At its start the panel reads what was done: a webmail update or address is only read; an install, removal or mail profile is run once more from its start.",
+			"Panel bir sunucu değişikliğinin sonunu kaydedemedi; bu yüzden diğer bileşen ve kurulum değişiklikleri reddediliyor. Sunucu sahibi önce sunucu ajanını denetler (sudo systemctl status celikpanel-agent; durmuşsa başlatır), sonra sudo systemctl restart celikpanel-panel komutunu çalıştırır: yalnız panelin web işlemi yeniden başlar (web siteleri, posta ve DNS çalışmayı sürdürür). Panel açılışta yapılanı okur: web postası güncellemesi ya da adresi yalnız okunur; kurulum, kaldırma ya da posta profili baştan bir kez daha çalıştırılır."
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

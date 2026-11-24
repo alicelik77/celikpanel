@@ -127,6 +127,28 @@ var problemKindOrder = map[string]int{
 	"webmail_address_refused": 20,
 	// alpha.145: webmail's configuration that still cannot send.
 	"webmail_cannot_send": 21,
+	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
+	"tool_account_failed":       22,
+	"tool_account_owner_config": 23,
+	"stock_pool_in_use":         24,
+	"stock_pool_owner_changed":  25,
+	// S4 R1: jobs a site's own code can make.
+	"site_crontab_outside":  26,
+	"site_at_jobs":          27,
+	"at_allow_lists_sites":  28,
+	"at_directory_accounts": 29,
+	"at_not_closed":         30,
+	// S4 R1 fix round.
+	"tool_down":                 31,
+	"stock_pool_not_put_back":   32,
+	"stock_pool_failed":         33,
+	"stock_pool_unknown":        34,
+	"stock_pool_owner_restored": 35,
+	"at_owner_removed":          36,
+	"site_crontab_unreadable":   37,
+	// alpha.145 lab, D1: a server change whose end the panel could not
+	// record; every other server change waits for it.
+	"service_operation_unsettled": 38,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -185,6 +207,10 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// Security release (20 November 2026): names and Node.js ports an
 	// existing installation holds that the one name rule refuses today.
 	add(p.namespaceProblems(ctx))
+	// S4 R1: what the side doors step left for someone (side_doors.go).
+	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
+	// S4 R1: site crontab lines not made in CelikPanel and at (side_doors_jobs.go).
+	add(p.siteJobsProblems(ctx, db), nil)
 	// S1b: PostgreSQL databases made before alpha.141 still open to other
 	// accounts, from the last round (postgresql_public_access.go).
 	add(pgPublicProblems(ctx, db), nil)
@@ -197,6 +223,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// alpha.144: webmail's address that still gives out plugin files
 	// (webmail_address_problem.go).
 	add(p.webmailAddressProblems(ctx), nil)
+	// alpha.145 lab, D1: a server change whose end this panel process could
+	// not record (service_operation_settle.go).
+	add(p.serviceOperationUnsettledProblems(ctx), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

@@ -236,6 +236,10 @@ const (
 	// Crontab'ın iki satırı aynı görevdir; bir değişikliğin hangisini
 	// kastettiği bilinemez.
 	CronJobAmbiguous = "two lines of the crontab are the same cron job; nothing was changed"
+	// S4 R1, second fix round: the task is a line not made in CelikPanel;
+	// it is not edited or enabled until the administrator keeps it.
+	// CelikPanel'de yapılmamış satır, yönetici tutmadan değiştirilmez.
+	CronJobOutsidePanel = "the cron job is a line not made in CelikPanel; it is kept or deleted, not changed; nothing was changed"
 )
 
 // Cron RPC contracts.
@@ -245,6 +249,18 @@ type CronJob struct {
 	Command  string `json:"command"`
 	Enabled  bool   `json:"enabled"`
 	Comment  string `json:"comment,omitempty"`
+	// OutsidePanel: the line was not made in CelikPanel (S4 R1, 21 Nov 2026):
+	// a program of the site or someone on the server added it to the crontab.
+	// Additive on the wire.
+	OutsidePanel bool `json:"outside_panel,omitempty"`
+}
+
+// CronOtherLine is a crontab line not made in CelikPanel that is not a task
+// (an @reboot or @daily line, an environment setting). It is removed by its
+// ID like a task.
+type CronOtherLine struct {
+	ID   string `json:"id"`
+	Line string `json:"line"`
 }
 
 type ListCronJobsRequest struct {
@@ -258,6 +274,10 @@ type ListCronJobsResponse struct {
 	// Version, Jobs'un okunduğu crontab baytlarını tanımlar. Her değişiklik
 	// onu geri taşır. Tel üzerinde eklemelidir.
 	Version string `json:"version,omitempty"`
+	// OtherLines and OutsideLines (S4 R1): the lines not made in CelikPanel
+	// that are not tasks, and how many lines in all were not made in it.
+	OtherLines   []CronOtherLine `json:"other_lines,omitempty"`
+	OutsideLines int             `json:"outside_lines,omitempty"`
 }
 
 // CronTenant identifies WHOSE crontab an operation targets. It carries the
@@ -313,6 +333,15 @@ type DeleteCronJobRequest struct {
 	CronTenant
 	ID      string `json:"id"`
 	Version string `json:"version,omitempty"`
+}
+
+// KeepCronLineRequest (S4 R1 fix round): the administrator keeps a line not
+// made in CelikPanel (ID as the list shows it, of the crontab read at
+// Version); it is added to CelikPanel's record and no longer listed.
+type KeepCronLineRequest struct {
+	CronTenant
+	ID      string `json:"id"`
+	Version string `json:"version"`
 }
 
 // File manager RPC contracts.

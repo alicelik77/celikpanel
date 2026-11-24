@@ -1593,6 +1593,9 @@ func main() {
 	// alpha.130: a removed PostgreSQL major's cluster that holds only what
 	// initdb made is removed once after the start (postgresql_leftovers.go).
 	panel.startPGLeftoverCleanup()
+	// S4 R1: the tools to their own accounts and the untouched stock PHP-FPM
+	// pool off, once after the start (side_doors.go).
+	panel.startSideDoorsClose()
 
 	// Purge expired sessions on startup and then hourly.
 	// Başlangıçta ve sonra saatlik olarak süresi dolmuş oturumları temizle.
@@ -1758,6 +1761,9 @@ func main() {
 	http.HandleFunc("/api/v1/metrics/alerts", panel.handleMonitoringAlerts)
 	http.HandleFunc("/api/v1/metrics/alerts/settings", panel.handleMonitoringAlertSettings)
 	http.HandleFunc("/api/v1/metrics/alerts/seen", panel.handleMonitoringAlertsSeen)
+	// S4 R1 fix round: the administrator closes again what the server owner
+	// undid (side_doors.go); administrator only through the prefix.
+	http.HandleFunc("/api/v1/metrics/side-doors/reclose", panel.handleSideDoorsReClose)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()

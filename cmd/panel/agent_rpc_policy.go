@@ -171,6 +171,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 		Agent.DeletionHoldingInventoryV1 Agent.LeftMailFoldersV1
 		Agent.MailboxOnServerV1 Agent.WebmailAddressFormsV1
+		Agent.ReadSideDoorsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -184,6 +185,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.InstallRoundcube Agent.InstallService Agent.RemoveRoundcube Agent.UninstallService
 		Agent.BindPHPToolV1 Agent.ProvePHPToolV1 Agent.ConfineRepoV1 Agent.WriteVendorUpdateOriginsV1 Agent.SetOSUpdatesModeV1 Agent.EnableVendorLaneV1 Agent.InstallJailToolsV1
 		Agent.UpdateRoundcubeV1 Agent.MoveAppFilesOwnerV1 Agent.EnableWebmailAddressV1 Agent.RemoveWebmailAddressV1
+		Agent.CloseSideDoorsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
@@ -253,7 +255,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.MalwareQuarantineV1 Agent.MalwareRestoreV1 Agent.MalwareDeleteQuarantinedV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCron, `
-		Agent.AddCronJob Agent.DeleteCronJob Agent.UpdateCronJob
+		Agent.AddCronJob Agent.DeleteCronJob Agent.UpdateCronJob Agent.KeepCronLineV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityBackup, `
 		Agent.CreateBackup Agent.DeleteBackup Agent.ExtractCpmoveFiles Agent.RestoreBackup
@@ -448,6 +450,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RetireSiteCertificateLineagesV1": agentRPCMutationTimeout,
 	"Agent.DeleteBackup":                    agentRPCMutationTimeout,
 	"Agent.DeleteCronJob":                   agentRPCMutationTimeout,
+	"Agent.KeepCronLineV1":                  agentRPCMutationTimeout,
 	"Agent.DeleteFileOrDir":                 agentRPCMutationTimeout,
 	"Agent.DeleteMailAccount":               agentRPCMutationTimeout,
 	"Agent.DeleteMailDomain":                agentRPCMutationTimeout,
@@ -598,6 +601,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetupVPN":                    agentRPCDeploymentTimeout,
 	"Agent.UninstallService":            agentRPCDeploymentTimeout,
 	"Agent.BindPHPToolV1":               agentRPCDeploymentTimeout,
+	"Agent.CloseSideDoorsV1":            agentRPCDeploymentTimeout,
 	"Agent.ProvePHPToolV1":              agentRPCDeploymentTimeout,
 	"Agent.ConfineRepoV1":               agentRPCDeploymentTimeout,
 	"Agent.WriteVendorUpdateOriginsV1":  agentRPCDeploymentTimeout,
@@ -606,6 +610,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.OSUpdatesStatusV1":           agentRPCNetworkReadTimeout,
 	"Agent.RoundcubeUpdateCheckV1":      agentRPCNetworkReadTimeout,
 	"Agent.WebmailProofV1":              agentRPCNetworkReadTimeout,
+	"Agent.ReadSideDoorsV1":             agentRPCNetworkReadTimeout,
 	"Agent.WebmailAddressStatusV1":      agentRPCNetworkReadTimeout,
 	"Agent.EnableWebmailAddressV1":      agentRPCDeploymentTimeout,
 	"Agent.RemoveWebmailAddressV1":      agentRPCDeploymentTimeout,

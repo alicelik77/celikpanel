@@ -73,7 +73,9 @@ func secureSetMailFileMetadata(path string, mode os.FileMode, uid, gid int) erro
 	if err := unix.Fchown(fd, uid, gid); err != nil {
 		return fmt.Errorf("set mail file ownership %s: %w", path, err)
 	}
-	if err := unix.Fchmod(fd, uint32(mode.Perm())); err != nil {
+	// Set-user-id, set-group-id and sticky are kept when the mode asks for
+	// them (S4 R1, second fix round); chown has just cleared them.
+	if err := unix.Fchmod(fd, unixModeBits(mode)); err != nil {
 		return fmt.Errorf("set mail file mode %s: %w", path, err)
 	}
 	return nil
@@ -101,7 +103,9 @@ func secureSetMailDirectoryMetadata(path string, mode os.FileMode, uid, gid int)
 	if err := unix.Fchown(fd, uid, gid); err != nil {
 		return fmt.Errorf("set mail directory ownership %s: %w", path, err)
 	}
-	if err := unix.Fchmod(fd, uint32(mode.Perm())); err != nil {
+	// Set-user-id, set-group-id and sticky are kept when the mode asks for
+	// them (S4 R1, second fix round); chown has just cleared them.
+	if err := unix.Fchmod(fd, unixModeBits(mode)); err != nil {
 		return fmt.Errorf("set mail directory mode %s: %w", path, err)
 	}
 	return nil

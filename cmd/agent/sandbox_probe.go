@@ -283,6 +283,8 @@ func serviceAppSandboxProof(ctx context.Context, sc serviceAppContext, req *tran
 	}
 	unit := serviceapps.UnitName(req.Target.InstallID) + ".service"
 	profile := serviceapps.SandboxProfile(unit, sc.layout, sc.account.Name, sc.account.Group, limits, limits.MemoryMB, req.Port, aux, caps)
+	// The unit may run in its site's slice, where a later release placed it.
+	profile.SiteID = req.Target.SiteID
 	result := sandboxProof(ctx, unit, profile, caps, &listen)
 	return &transport.SandboxProof{OK: result.OK, Code: result.Code, Detail: result.Detail}
 }

@@ -113,7 +113,7 @@
   "home.install.systems": "Her sistemde neler var, güncellemeler nasıl işler",
   "home.sep.title": "Müşterileri birbirinden ayırma",
   "home.sep.text": "Bir hesabın başka bir hesaba ulaşmasını önleyen önlemler ve kapsamadıkları.",
-  "home.sep.caption": "Hesaplar arası ayırma, 0.1.0-alpha.145’e kadarki sürüm notlarına göre",
+  "home.sep.caption": "Hesaplar arası ayırma, 0.1.0-alpha.147’ye kadarki sürüm notlarına göre",
   "home.sep.what": "Önlem",
   "home.sep.status": "Durum",
   "home.sep.since": "İlk sürüm",
@@ -473,5 +473,11 @@
   "changelog.kind.removed": "Kaldırıldı",
   "problems.note": "Not:",
   "sep.webmaildoor": "Web postanın sunucudaki yerel kapısı yalnız CelikPanel’in kendi denetimlerine cevap verir, Roundcube’un dosyalarını isteyen başka hesaplara değil",
-  "sep.webmaildoor.since": "alpha.145"
+  "sep.webmaildoor.since": "alpha.145",
+  "sep.tools": "phpMyAdmin, phpPgAdmin ve web postası, her siteyi okuyabilen web sunucusu hesabıyla değil, kendi sistem hesaplarıyla çalışır (web postası erişim listelerini destekleyen bir dosya sistemi ister; yoksa web sunucusu hesabında kalır ve panel bunu söyler)",
+  "sep.tools.since": "alpha.147",
+  "sep.at": "Site hesapları at ile iş zamanlayamaz (sahibin yazdığı bir at.allow korunur ve andığı site hesapları yöneticiye gösterilir); panel dışında eklenen crontab satırları yönetici için işaretlenir",
+  "sep.at.since": "alpha.147",
+  "sep.stockpool": "Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmıyorsa kapatılır",
+  "sep.stockpool.since": "alpha.147"
 }

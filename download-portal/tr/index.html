@@ -139,7 +139,7 @@ sh celikpanel-install.sh</code></pre>
 <div>
 <div class="table">
 <table class="stack">
-<caption>Tablo 3 · Hesaplar arası ayırma, 0.1.0-alpha.145’e kadarki sürüm notlarına göre</caption>
+<caption>Tablo 3 · Hesaplar arası ayırma, 0.1.0-alpha.147’ye kadarki sürüm notlarına göre</caption>
 <thead><tr><th scope="col">Önlem</th><th scope="col">Durum</th><th scope="col">İlk sürüm</th></tr></thead>
 <tbody>
 <tr><td data-k="Önlem">Her sitenin kendi sistem hesabı vardır; sitenin PHP’si bu hesapla çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.82 ya da öncesi</td></tr>
@@ -151,6 +151,9 @@ sh celikpanel-install.sh</code></pre>
 <tr><td data-k="Önlem">PostgreSQL veritabanları başka hesaplara kapalıdır: yeniler baştan; eskiler, başka bir hesabın kullandığı görülmeyen bir günün ardından panel tarafından, aksi hâlde yönetici PostgreSQL sayfasında kapattığında</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
 <tr><td data-k="Önlem">Giden posta yalnız gönderenin kendi alan adı için imzalanır (Arch Linux hariç: oradaki OpenDKIM imzayı girişe bağlayamıyor)</td><td data-k="Durum"><span class="tag ok">Var, Arch Linux hariç</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
 <tr><td data-k="Önlem">Web postanın sunucudaki yerel kapısı yalnız CelikPanel’in kendi denetimlerine cevap verir, Roundcube’un dosyalarını isteyen başka hesaplara değil</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.145</td></tr>
+<tr><td data-k="Önlem">phpMyAdmin, phpPgAdmin ve web postası, her siteyi okuyabilen web sunucusu hesabıyla değil, kendi sistem hesaplarıyla çalışır (web postası erişim listelerini destekleyen bir dosya sistemi ister; yoksa web sunucusu hesabında kalır ve panel bunu söyler)</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.147</td></tr>
+<tr><td data-k="Önlem">Site hesapları at ile iş zamanlayamaz (sahibin yazdığı bir at.allow korunur ve andığı site hesapları yöneticiye gösterilir); panel dışında eklenen crontab satırları yönetici için işaretlenir</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.147</td></tr>
+<tr><td data-k="Önlem">Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmıyorsa kapatılır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.147</td></tr>
 <tr><td data-k="Önlem">Posta kutusu, alan adı ve hosting hesabı başına giden posta sınırları (isteğe bağlı; yönetici açana kadar kapalı)</td><td data-k="Durum"><span class="tag no">İsteğe bağlı</span></td><td class="v" data-k="İlk sürüm">alpha.128</td></tr>
 <tr><td data-k="Önlem">PHP’nin ve zamanlanmış görevlerin sitenin kendi kum havuzunda çalışması</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
 <tr><td data-k="Önlem">Her hesabın bütün programları için işlemci ve bellek sınırı (bugün: site başına PHP belleği, çalışma süresi ve işlem sayısı)</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
