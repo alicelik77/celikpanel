@@ -168,12 +168,12 @@ export function putBackSplit(answer: MoveAnswer): { back: string[]; left: string
     return { back, left };
 }
 
-/** The programs a kept move record left, with their state: failed (stopped), unknown, starting. */
-export function keptUnits(view: SiteLimitsView): { unit: string; state: 'failed' | 'unknown' | 'starting' }[] {
+/** The programs a kept move record left, with their state: failed (stopped), unknown, starting, waiting (not restarted yet). */
+export function keptUnits(view: SiteLimitsView): { unit: string; state: 'failed' | 'unknown' | 'starting' | 'waiting' }[] {
     const record = view.move_interrupted;
     if (!record?.kept) return [];
     return Object.entries(record.units ?? {})
-        .filter((e): e is [string, 'failed' | 'unknown' | 'starting'] => e[1] === 'failed' || e[1] === 'unknown' || e[1] === 'starting')
+        .filter((e): e is [string, 'failed' | 'unknown' | 'starting' | 'waiting'] => ['failed', 'unknown', 'starting', 'waiting'].includes(e[1]))
         .map(([unit, state]) => ({ unit, state }))
         .sort((a, b) => a.unit.localeCompare(b.unit));
 }

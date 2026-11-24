@@ -21,4 +21,5 @@ export const trSiteLimitsApplyScreens: Record<SiteLimitsApplyScreenKey, string> 
     'slim.kept.failed': 'durdu, yeniden başlamadı',
     'slim.kept.unknown': 'yeri bilinmiyor, yeniden başlatılmadı',
     'slim.kept.starting': 'hâlâ başlıyor',
+    'slim.kept.waiting': 'henüz yeniden başlatılmadı',
 };

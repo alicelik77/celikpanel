@@ -27,6 +27,7 @@ export const enSiteLimitsApplyScreens = {
     'slim.kept.failed': 'stopped, did not start again',
     'slim.kept.unknown': 'place not known, not restarted',
     'slim.kept.starting': 'still starting',
+    'slim.kept.waiting': 'not restarted yet',
 };
 
 export type SiteLimitsApplyScreenKey = keyof typeof enSiteLimitsApplyScreens;

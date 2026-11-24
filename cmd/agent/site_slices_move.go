@@ -66,7 +66,8 @@ import (
 // and ledger digest, or no file where there was none); otherwise it stays. A
 // move or recovery whose put-back did not complete keeps its record (third
 // fix round, review N2: a failed restart or daemon-reload, a place systemd
-// could not tell, a start still running at its wait): no site is moved until
+// could not tell, a start still running at its wait, a restart the Agent's
+// bounded start did not send - alpha.148 fix round): no site is moved until
 // the next start, the next move's attempt or the administrator's "Try again"
 // (MoveSiteSliceRequest.Recover) finishes it, and the card names each
 // program left. What the Agent did is kept for the site's card
@@ -312,6 +313,21 @@ var (
 	siteMoveMargin = 5 * time.Second
 	siteSlicePoll  = 500 * time.Millisecond
 
+	// siteMoveStartBudget bounds what a kept or interrupted move's recovery
+	// does at the Agent's start (alpha.148 fix round, review finding 5): it
+	// runs before the Agent's socket opens, and the update waits about 12
+	// seconds for that socket after starting the Agent (update.sh
+	// wait_for_fresh_active_agent: 40 x 0.3 s; finalize-pending-update.sh 50
+	// x 0.2 s), so the whole recovery, its reads, reload and restarts, stays
+	// within 4 seconds. A put-back restart is sent only while
+	// siteMoveStartMinWait is left and waits at most what is left (a start
+	// still running then is "starting": systemd keeps its job); one that
+	// does not fit is not sent at this start ("waiting"). Either keeps the
+	// record, its Problems now line and Try again, which has no such bound
+	// (nor has the next move's attempt).
+	siteMoveStartBudget  = 4 * time.Second
+	siteMoveStartMinWait = time.Second
+
 	siteSliceListening = func(unit string) map[int]bool {
 		listeners, pids, err := nodeSiteListeners(unit)
 		if err != nil {
@@ -485,7 +501,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 	// complete, is resolved before anything new; while it stays, nothing new
 	// is moved (review N2).
 	if _, err := os.Stat(siteMoveJournalPath); err == nil {
-		kept := recoverSiteSliceMove()
+		kept := recoverSiteSliceMove(0)
 		if _, err := os.Stat(siteMoveJournalPath); err == nil {
 			site := "a site"
 			if kept != nil {
@@ -907,10 +923,12 @@ func putBackSiteUnit(m siteMoveUnit, journal *siteMoveJournal) (string, error) {
 // recoverSiteSlicesAtStartup resolves what an Agent stop left in the middle:
 // an interrupted move (by the table above) and the runtime settings a limit
 // change pushes for a moment (site_slices_runtime.go). Before the RPC service
-// starts, so nothing else changes these units meanwhile.
+// starts, so nothing else changes these units meanwhile; bounded by
+// siteMoveStartBudget, so a program that is slow to start never holds up the
+// Agent's start (what does not fit stays in the kept record).
 func recoverSiteSlicesAtStartup() {
 	cleanupSiteSliceRuntime()
-	recoverSiteSliceMove()
+	recoverSiteSliceMove(siteMoveStartBudget)
 }
 
 // siteSliceNamedByUnitFile: a unit file names the site's slice.
@@ -978,7 +996,7 @@ func recoverKeptSiteSliceMove(resp *transport.MoveSiteSliceResponse) {
 		}
 		defer siteMu.Unlock()
 	}
-	recovered := recoverSiteSliceMove()
+	recovered := recoverSiteSliceMove(0)
 	if recovered != nil {
 		record := recovered.record
 		resp.Recovery = &record
@@ -1007,7 +1025,20 @@ func recoverKeptSiteSliceMove(resp *transport.MoveSiteSliceResponse) {
 // start wait ("starting"). The slice file is put back only once every unit
 // is settled. It returns what it did (nil: no record, or one that could not
 // be read).
-func recoverSiteSliceMove() *siteMoveRecovered {
+//
+// budget (alpha.148 fix round, review finding 5): above 0 (the Agent's start,
+// siteMoveStartBudget) the whole recovery keeps within it: a put-back
+// restart is sent only while siteMoveStartMinWait is left, and waits at most
+// what is left ("starting" when its start runs on); the restarts that do not
+// fit are not sent ("waiting": its pre-move file is back, it ran before and
+// does not run in the system slice now). Both keep the record. 0: each
+// restart waits its own start wait (the administrator's Try again, a move's
+// attempt).
+func recoverSiteSliceMove(budget time.Duration) *siteMoveRecovered {
+	var deadline time.Time
+	if budget > 0 {
+		deadline = time.Now().Add(budget)
+	}
 	journal, err := readSiteMoveJournal()
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -1083,8 +1114,20 @@ func recoverSiteSliceMove() *siteMoveRecovered {
 		}
 	}
 	for _, u := range restart {
-		unlock := siteUnitLock(u.Unit)
 		wait := siteMoveJournalWait(u)
+		if budget > 0 {
+			left := time.Until(deadline)
+			if left < siteMoveStartMinWait {
+				log.Printf("site slice: %s was put back and is not restarted at this start (the Agent's start does not wait for it); the next start, a move's attempt or Try again restarts it", u.Unit)
+				outcomes[u.Unit] = transport.SiteMoveWaiting
+				complete = false
+				continue
+			}
+			if left < wait {
+				wait = left
+			}
+		}
+		unlock := siteUnitLock(u.Unit)
 		_, _ = appUnitSystemctl(systemctlArgs("reset-failed", u.Unit)...)
 		if out, err := siteUnitRestart(u.Unit, wait); err != nil {
 			state, why := siteUnitRestartFailure(u.Unit, wait, out, err)

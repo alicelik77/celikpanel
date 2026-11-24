@@ -99,7 +99,8 @@ type SiteSliceUnit struct {
 // (its file was changed meanwhile and is left as it is) and, while Kept,
 // "failed" (its pre-move bytes are back but it did not start again: it is
 // stopped), "unknown" (where it runs could not be read, so it was not
-// restarted) or "starting" (its start was still running at its start wait).
+// restarted), "starting" (its start was still running at its start wait) or
+// "waiting" (not restarted yet: the Agent's start does not wait for it).
 type SiteSliceMoveRecovery struct {
 	At    string            `json:"at"`
 	Units map[string]string `json:"units"`
@@ -117,6 +118,12 @@ const (
 	SiteMoveUnknown = "unknown"
 	// SiteMoveStarting: its start was still running at its start wait.
 	SiteMoveStarting = "starting"
+	// SiteMoveWaiting (alpha.148 fix round): its pre-move bytes are back, it
+	// ran before and does not run in the system slice now, and the Agent's
+	// start did not restart it (the start's recovery is bounded so that it
+	// never holds up the Agent); the next start, a move's attempt or Try
+	// again restarts it.
+	SiteMoveWaiting = "waiting"
 )
 
 // Kernel states of a running slice (SiteSliceStatus.KernelState).
