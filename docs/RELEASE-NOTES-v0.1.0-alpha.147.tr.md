@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.147.md)
 
+> **Yayımlandı**, 24 Kasım 2026 (UTC): sürüm commit'i `eef8fe894`, GitHub ön sürümü 04:31:04Z, indirme portalı yaklaşık 04:35Z (dış denetim 27/27).
+
 **Bir düzeltme de içeren bir güvenlik sürümü.** Veritabanı araçları ve web
 postası artık web sunucusunun ortak hesabıyla çalışmıyor, site hesapları
 sistemin `at` komutuyla iş zamanlayamıyor ve dağıtımın ortak PHP havuzu

@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.147.tr.md)
 
+> **Published** on 2026-11-24 (UTC): release commit `eef8fe894`, GitHub pre-release at 04:31:04Z, download portal at about 04:35Z (public check 27/27).
+
 **A security release with one correction.** The database tools and webmail
 no longer run under the web server's shared account, site accounts can no
 longer schedule jobs with the system's `at`, and the distribution's shared
