@@ -63,7 +63,9 @@ günceller.**
   sitesinin sınırlarına girer. Çalışan bir program sıradan bir kaydetmede ya
   da yeniden başlatmada çalıştığı yerde kalır; böylece kimseden habersiz
   hiçbir şey yeniden başlatılmaz. Bir sitenin çalışan programlarını yöneticinin
-  **Sınırların içine taşı** işlemi içeri alır.
+  **Sınırların içine taşı** işlemi içeri alır. Sınırlarının içindeki bir
+  program, sistem o an nerede çalıştığını söyleyemese de her kaydetmede
+  içeride kalır.
 - **Sınırlar ve onları kim koyar.** Üç plan anahtarı: bir sitenin
   programlarının birlikte belleği, işlem sayısı ve işlemcisi. Hiçbir ayar
   yoksa bir site 512 işlem, bir işlemci çekirdeğinin %200'ü ve bellek olarak

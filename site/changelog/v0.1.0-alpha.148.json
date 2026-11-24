@@ -26,7 +26,7 @@
         "tr": "Planlar, bayi planları ve hesaplar bir sitenin belleğini, işlem sayısını ve işlemcisini belirler; ayar yoksa bir site 512 işlem, iki işlemci çekirdeği ve 3072 MB ile sunucu belleğinin %75’inden küçük olanını alır. Bir sınırı sitenin kullandığının altına düşürmek önce o siteyi listeler."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:64",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:65",
         "says": "The limits and who sets them."
       }
     },
@@ -37,7 +37,7 @@
         "tr": "Veritabanı kullanıcılarına varsayılan bir en uzun komut süresi ve PostgreSQL’de tek oturumun geçici dosyaları için kesin bir sınır konabilir; geri yüklemeler ve içe aktarmalar sınırı korur, sunucu sahibinin elle koyduğu bir değer korunur."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:80",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:81",
         "says": "Database users.** Three optional keys"
       }
     },
@@ -48,7 +48,7 @@
         "tr": "Güncellemeden önce çalışan programlar, yönetici siteyi taşıyana kadar sitesinin sınırlarının dışında kalır; taşıma sitenin çalışan her programını bir kez yeniden başlatır."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:161",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:162",
         "says": "Programs that ran before the update stay outside their site's limits"
       }
     },
@@ -59,7 +59,7 @@
         "tr": "Bir sitenin PHP’si ve zamanlanmış görevleri sitenin sınırlarının dışındadır; PHP site başına kendi sınırlarını korur."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:164",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:165",
         "says": "Outside a site's limits:"
       }
     }

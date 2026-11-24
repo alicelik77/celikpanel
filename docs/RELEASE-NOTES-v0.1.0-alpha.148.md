@@ -60,7 +60,8 @@ screen.**
   site's limits. A program that runs stays where it runs at an ordinary
   save or restart, so nothing is restarted behind anyone's back; the
   administrator's **Move into the limits** brings a site's running programs
-  in.
+  in. A program inside its limits stays inside at every save, also when the
+  system cannot say at that moment where it runs.
 - **The limits and who sets them.** Three plan keys: memory, processes and
   processor of a site's programs together. Without any setting a site gets
   512 processes, 200 % of one processor core and, for memory, the smaller of
