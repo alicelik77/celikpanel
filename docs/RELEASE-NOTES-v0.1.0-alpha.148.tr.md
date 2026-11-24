@@ -139,9 +139,9 @@ günceller.**
 - **Güncellemeden önce çalışan programlar, yönetici siteyi taşıyana kadar
   sitesinin sınırlarının dışında kalır;** böyle bir program taşınana kadar
   sunucunun her yeniden başlatılmasından sonra yine dışarıda başlar.
-- **Henüz bir sitenin sınırlarının içinde olmayanlar:** PHP'si (her sitenin
-  PHP-FPM havuzu; eskisi gibi kendi PHP sınırlarıyla), zamanlanmış görevleri
-  ve bir site hesabının açık tuttuğu kullanıcı yöneticileri.
+- **Bir sitenin sınırlarının dışında kalanlar:** PHP'si (kendi PHP
+  sınırlarını koruyan, her sitenin PHP-FPM havuzu), zamanlanmış görevleri ve
+  bir site hesabının açık tuttuğu kullanıcı yöneticileri.
 - **Taşıma sitenin çalışan her programını bir kez yeniden başlatır** ve onun
   başlama süresi içinde (program başkasını koymadıkça 90 saniye, en az 20, en
   çok 300) sınırların içinde çalışıp yeniden yanıt vermesini bekler; vermeyen

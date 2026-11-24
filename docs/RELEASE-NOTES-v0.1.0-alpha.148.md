@@ -134,9 +134,9 @@ screen.**
 - **Programs that ran before the update stay outside their site's limits
   until the administrator moves the site,** and such a program starts
   outside them again after every restart of the server until it is moved.
-- **Not inside a site's limits yet:** its PHP (each site's PHP-FPM pool, as
-  before with its own PHP limits), its scheduled tasks, and user managers a
-  site account keeps running.
+- **Outside a site's limits:** its PHP (each site's PHP-FPM pool, which
+  keeps its own PHP limits), its scheduled tasks, and user managers a site
+  account keeps running.
 - **The move restarts each running program of the site once** and needs it
   to run and answer again inside the limits within its start time (90
   seconds unless the program sets another, at least 20 and at most 300);
