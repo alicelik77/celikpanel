@@ -284,6 +284,13 @@ func (p *Panel) sessionIdleCheck(w http.ResponseWriter, r *http.Request, token s
 	access := p.panelAccess(r.Context())
 	if !session.LastSeen.IsZero() && now.Sub(session.LastSeen) > access.idle {
 		_ = p.sessions.Delete(r.Context(), token)
+		// An idle "Log in as" session also ends the operator's session kept
+		// in the return cookie, once it is proved to be that operator's, as
+		// at sign-out; the return cookie is removed either way.
+		if session.ImpersonatorID > 0 {
+			_ = p.endKeptOperatorSession(r, session.ImpersonatorID)
+		}
+		p.expireReturnCookieSent(w, r)
 		writeCodedError(w, http.StatusUnauthorized, errCodeSessionIdle,
 			"You were signed out because this session was not used for "+strconv.Itoa(access.idleMin)+
 				" minutes. Nothing was lost on the server; sign in again to continue.", "")

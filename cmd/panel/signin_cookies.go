@@ -50,6 +50,10 @@ const (
 	// transition does not carry. Like SIGNIN_COOKIES_DUPLICATE it is a 401
 	// whose reason the sign-in page shows (web/src/auth/signinRefusal.ts).
 	errCodeSigninFromBeforeUpdate = "SIGNIN_FROM_BEFORE_UPDATE"
+	// errCodeLogInAsEnded ends a "Log in as" session that is still valid but
+	// may no longer be used (endRefusedLogInAs), with the operator's kept
+	// session. A 401 whose reason the sign-in page shows.
+	errCodeLogInAsEnded = "LOG_IN_AS_ENDED"
 )
 
 const (
@@ -59,6 +63,8 @@ const (
 	crossSiteRequestMessage = "This request came from another website, not from the panel's own pages, so it was refused and nothing was changed. " +
 		"Open the panel at its own address and do it there."
 	legacySigninRefusedMessage = "This sign-in is from before the panel's last update. Sign in again; nothing on the server was changed."
+	logInAsEndedMessage        = "The account you were signed in as with \"Log in as\" can no longer be used that way, so you were signed out of it and of your own account. " +
+		"Sign in again with your own account; nothing on the server was changed."
 )
 
 // panelCookieNames are every name the panel has used for its own cookies,
@@ -226,6 +232,15 @@ func (p *Panel) expireImpersonatorCookieSent(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// expireReturnCookieSent removes the "Log in as" return cookie under every
+// name the request carried it, and nothing else.
+func (p *Panel) expireReturnCookieSent(w http.ResponseWriter, r *http.Request) {
+	p.expireImpersonatorCookieSent(w, r)
+	if p.secureCookies && len(cookieValues(r, impersonatorCookieName)) > 0 {
+		http.SetCookie(w, p.plainCookie(impersonatorCookieName))
+	}
+}
+
 // clearSessionCookie removes the session cookie under every name it had.
 func (p *Panel) clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, p.sessionCookie("", time.Unix(0, 0)))
@@ -385,10 +400,35 @@ func (p *Panel) legacySigninAccepted(session auth.SessionIdentity, now time.Time
 
 // refuseLegacySignin answers a plain-named session the transition does not
 // carry: the plain names are removed and the person signs in again.
-func (p *Panel) refuseLegacySignin(w http.ResponseWriter) {
+func (p *Panel) refuseLegacySignin(w http.ResponseWriter, r *http.Request) {
 	p.expirePlainSigninCookies(w)
+	p.expireImpersonatorCookieSent(w, r)
 	w.Header().Set("Cache-Control", "no-store")
 	writeCodedError(w, http.StatusUnauthorized, errCodeSigninFromBeforeUpdate, legacySigninRefusedMessage, "")
+}
+
+// endRefusedLogInAs answers a "Log in as" session that is still valid but may
+// no longer be used: its account is suspended, deleted or inactive, or its
+// operator may no longer manage that account (second look at PR #368, A).
+// The "Log in as" session ends, and so does the operator's session kept in the
+// return cookie once it is proved to be that operator's own, as at sign-out
+// (endKeptOperatorSession); both cookies are removed under every name, and
+// the sign-in page says why (LOG_IN_AS_ENDED). The operator signs in again.
+// The browser holds no token either way; a session that could not be ended
+// is logged and is held by no browser.
+func (p *Panel) endRefusedLogInAs(w http.ResponseWriter, r *http.Request, token string, session auth.SessionIdentity) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
+	defer cancel()
+	if err := p.sessions.Delete(ctx, token); err != nil {
+		log.Printf("[signin-cookies] a refused \"Log in as\" session of operator %d could not be ended: %v", session.ImpersonatorID, err)
+	}
+	if err := p.endKeptOperatorSession(r.WithContext(ctx), session.ImpersonatorID); err != nil {
+		log.Printf("[signin-cookies] the kept session of operator %d could not be ended: %v", session.ImpersonatorID, err)
+	}
+	p.clearSessionCookie(w)
+	p.clearImpersonatorCookie(w)
+	w.Header().Set("Cache-Control", "no-store")
+	writeCodedError(w, http.StatusUnauthorized, errCodeLogInAsEnded, logInAsEndedMessage, "")
 }
 
 type sessionTokenKey struct{}

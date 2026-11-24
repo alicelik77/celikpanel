@@ -36,6 +36,7 @@ const signinRefusalText = {
     duplicate: 'accessHold.signinDuplicate',
     beforeUpdate: 'accessHold.signinBeforeUpdate',
     notKept: 'accessHold.signinNotKept',
+    logInAsEnded: 'accessHold.signinLogInAsEnded',
 } as const;
 
 /**

@@ -744,6 +744,216 @@ func TestSigninReturnCookieBesideAnOrdinarySessionLeadsNowhere(t *testing.T) {
 	}
 }
 
+// tokenHash is how the sessions table names a token.
+func tokenHash(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+// Second look at PR #368, finding A: when a "Log in as" session ends in a way
+// other than "Return" or "Sign out", no cookie in the browser may still hold a
+// token the server accepts (the return cookie holds the operator's own
+// session). Every case runs the real handlers behind requireAuth over HTTPS
+// with a cookie jar.
+func TestSigninLogInAsEndedAnyOtherWayLeavesNoUsableTokenInTheBrowser(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// end ends or refuses the "Log in as" session the way the case names.
+		end func(t *testing.T, fixture *signinFixture, impersonated string)
+		// code is the refusal the next request gets; ended: the panel proves
+		// and ends the operator's kept session too.
+		code  string
+		ended bool
+	}{
+		{
+			// Ended from a sessions list. The row is gone: nothing tells the
+			// panel which session the return cookie kept.
+			name: "revoked elsewhere",
+			end: func(t *testing.T, fixture *signinFixture, impersonated string) {
+				if err := fixture.panel.sessions.Delete(context.Background(), impersonated); err != nil {
+					t.Fatal(err)
+				}
+			},
+			code: errCodeAuthRequired,
+		},
+		{
+			// The panel's own suspension ends the customer's sessions.
+			name: "customer suspended by the panel",
+			end: func(t *testing.T, fixture *signinFixture, impersonated string) {
+				users := repositories.NewPostgresUserRepository(fixture.panel.db.GetDB())
+				customer, err := users.GetByID(context.Background(), signinCustomerID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				customer.Status = "suspended"
+				if err := users.UpdateAndRevokeSessions(context.Background(), customer); err != nil {
+					t.Fatal(err)
+				}
+			},
+			code: errCodeAuthRequired,
+		},
+		{
+			// The account is suspended while the "Log in as" session is still
+			// valid (the reviewer's proof): it was 403, and "Sign out" was 403.
+			name: "customer suspended, session still valid",
+			end: func(t *testing.T, fixture *signinFixture, impersonated string) {
+				if _, err := fixture.panel.db.GetDB().Exec(`UPDATE users SET status = 'suspended' WHERE id = ?`, signinCustomerID); err != nil {
+					t.Fatal(err)
+				}
+			},
+			code:  errCodeLogInAsEnded,
+			ended: true,
+		},
+		{
+			name: "customer deleted",
+			end: func(t *testing.T, fixture *signinFixture, impersonated string) {
+				if _, err := fixture.panel.db.GetDB().Exec(`DELETE FROM subscriptions WHERE owner_id = ?`, signinCustomerID); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := fixture.panel.db.GetDB().Exec(`DELETE FROM users WHERE id = ?`, signinCustomerID); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			// The operator may no longer manage the customer (a reseller
+			// manages only its own customers).
+			name: "operator no longer allowed",
+			end: func(t *testing.T, fixture *signinFixture, impersonated string) {
+				if _, err := fixture.panel.db.GetDB().Exec(`UPDATE users SET role = 'reseller' WHERE id = ?`, signinAdminID); err != nil {
+					t.Fatal(err)
+				}
+			},
+			code:  errCodeLogInAsEnded,
+			ended: true,
+		},
+		{
+			// requireAuth has read the "Log in as" session, so it knows the
+			// operator and proves the kept session is theirs.
+			name: "idle",
+			end: func(t *testing.T, fixture *signinFixture, impersonated string) {
+				if _, err := fixture.panel.db.GetDB().Exec(`UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?`,
+					time.Now().Add(-23*time.Hour).UTC().Format(time.RFC3339), tokenHash(impersonated)); err != nil {
+					t.Fatal(err)
+				}
+			},
+			code:  errCodeSessionIdle,
+			ended: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := newSigninFixture(t, time.Now().Add(-time.Hour))
+			browser := newSigninBrowser(t, fixture)
+			sessions := fixture.panel.sessions
+			browser.signIn("signin-admin")
+			operator := browser.cookie(hostSessionCookieName)
+			if response, body := browser.send(http.MethodPost, "/api/v1/test/log-in-as-customer", ""); response.StatusCode != http.StatusOK {
+				t.Fatalf("log in as: %d %s", response.StatusCode, body)
+			}
+			impersonated := browser.cookie(hostSessionCookieName)
+			if operator == "" || browser.cookie(hostImpersonatorCookieName) != operator || impersonated == operator {
+				t.Fatal("the browser is not in Log in as with the operator's session kept")
+			}
+
+			tc.end(t, fixture, impersonated)
+			response, body := browser.send(http.MethodGet, signinTestMeRoute, "")
+			if response.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("/me after the end: %d %s", response.StatusCode, body)
+			}
+			var refusal struct {
+				Code string `json:"code"`
+			}
+			_ = json.Unmarshal([]byte(body), &refusal)
+			if tc.code != "" && refusal.Code != tc.code {
+				t.Fatalf("/me after the end: code %q, want %q (%s)", refusal.Code, tc.code, body)
+			}
+
+			// No cookie in the browser holds a token the server accepts.
+			target, _ := url.Parse(browser.server.URL)
+			for _, cookie := range browser.client.Jar.Cookies(target) {
+				if _, err := sessions.Validate(context.Background(), cookie.Value); err != auth.ErrSessionInvalid {
+					t.Fatalf("the browser keeps %s, a token the server accepts (%v)", cookie.Name, err)
+				}
+			}
+			if browser.cookie(hostImpersonatorCookieName) != "" {
+				t.Fatal("the return cookie is still in the browser")
+			}
+			if _, err := sessions.Validate(context.Background(), impersonated); err != auth.ErrSessionInvalid {
+				t.Fatalf("the Log in as session is still valid: %v", err)
+			}
+			if _, err := sessions.Validate(context.Background(), operator); tc.ended && err != auth.ErrSessionInvalid {
+				t.Fatalf("the operator's kept session is still valid on the server: %v", err)
+			}
+
+			// Signing out and signing in again work from here.
+			if response, body := browser.send(http.MethodPost, "/api/v1/auth/logout", ""); response.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("sign out after the end: %d %s", response.StatusCode, body)
+			}
+			if _, err := fixture.panel.db.GetDB().Exec(`UPDATE users SET role = 'admin' WHERE id = ?`, signinAdminID); err != nil {
+				t.Fatal(err)
+			}
+			browser.signIn("signin-admin")
+			if status, identity := browser.me(); status != http.StatusOK || identity.Username != "signin-admin" || identity.Impersonating {
+				t.Fatalf("/me after signing in again: %d %+v", status, identity)
+			}
+		})
+	}
+}
+
+// A session refused for another reason does not keep a left-over return
+// cookie either; a refusal of one request that leaves the "Log in as"
+// session usable keeps it, so "Return" still works.
+func TestSigninRefusalsAndTheReturnCookie(t *testing.T) {
+	fixture := newSigninFixture(t, time.Now().Add(-time.Hour))
+	operator := fixture.tokens[signinAdminID]
+	withReturn := func(session string, plain bool) []*http.Cookie {
+		cookies := []*http.Cookie{{Name: hostImpersonatorCookieName, Value: operator}}
+		if plain {
+			cookies = append(cookies, &http.Cookie{Name: impersonatorCookieName, Value: operator})
+		}
+		if session != "" {
+			cookies = append(cookies, &http.Cookie{Name: hostSessionCookieName, Value: session})
+		}
+		return cookies
+	}
+	removed := func(t *testing.T, recorder *httptest.ResponseRecorder, names ...string) {
+		t.Helper()
+		for _, name := range names {
+			if cookie := cookieNamed(recorder, name); cookie == nil || cookie.Value != "" || cookie.MaxAge >= 0 {
+				t.Fatalf("%s not removed (status %d): %+v", name, recorder.Code, cookie)
+			}
+		}
+	}
+
+	// No session cookie, an invalid one, a suspended ordinary account.
+	removed(t, fixture.do(t, http.MethodGet, signinTestMeRoute, withReturn("", false), nil), hostImpersonatorCookieName)
+	removed(t, fixture.do(t, http.MethodGet, signinTestMeRoute, withReturn("not-a-session", true), nil), hostImpersonatorCookieName, impersonatorCookieName)
+	if _, err := fixture.panel.db.GetDB().Exec(`UPDATE users SET status = 'suspended' WHERE id = ?`, signinAdmin2ID); err != nil {
+		t.Fatal(err)
+	}
+	recorder := fixture.do(t, http.MethodGet, signinTestMeRoute, withReturn(fixture.tokens[signinAdmin2ID], false), nil)
+	if recorder.Code != http.StatusForbidden || signinErrorCode(t, recorder) != errCodeAccountSuspended {
+		t.Fatalf("suspended ordinary account: %d %s", recorder.Code, recorder.Body.String())
+	}
+	removed(t, recorder, hostImpersonatorCookieName)
+	if _, err := fixture.panel.sessions.Validate(context.Background(), operator); err != nil {
+		t.Fatalf("a cookie that is not proved to be kept by a Log in as session ended a session: %v", err)
+	}
+
+	// A "Log in as" request another site sends is refused, and the way back stays.
+	impersonated, err := fixture.panel.sessions.CreateImpersonation(context.Background(), signinCustomerID, signinAdminID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder = fixture.do(t, http.MethodGet, signinTestMeRoute, withReturn(impersonated, false), map[string]string{"Sec-Fetch-Site": "cross-site"})
+	if recorder.Code != http.StatusForbidden || cookieNamed(recorder, hostImpersonatorCookieName) != nil {
+		t.Fatalf("another site's request: %d, return cookie %+v", recorder.Code, cookieNamed(recorder, hostImpersonatorCookieName))
+	}
+	if recorder = fixture.do(t, http.MethodGet, signinTestMeRoute, withReturn(impersonated, false), nil); recorder.Code != http.StatusNoContent || fixture.seenCaller != signinCustomerID {
+		t.Fatalf("the Log in as session after another site's request: %d", recorder.Code)
+	}
+}
+
 func TestDBToolProxyStripsPanelCredentialsBothWays(t *testing.T) {
 	var seenCookie, seenAuthorization string
 	tool := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

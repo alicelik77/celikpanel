@@ -716,6 +716,37 @@ test('the sign-in page shows the reason a 401 names and a sign-in the browser di
   assert.match(value('screens/setup/tr', 'accessHold.signinBeforeUpdate'), /güncellemeden önce açılmıştı\. Devam etmek için yeniden giriş yapın/);
 });
 
+// Second look at PR #368, finding A: a "Log in as" session the Panel ends because its account may no longer be used
+// that way (LOG_IN_AS_ENDED) shows why on the sign-in page, opened fresh or from a page in use.
+test('the sign-in page says that a "Log in as" session was ended and the operator signs in with their own account', async () => {
+  const notice = () => tree.root.findAllByProps({ role: 'status' }).map(node => node.props.children);
+  const replies = {
+    me: async (signal, onUnauthorized) => { await onUnauthorized(problem(401, 'LOG_IN_AS_ENDED')); return null; },
+    availability: async () => available('ready'),
+    management: async () => Response.json({}),
+  };
+  mounts = 0;
+  try {
+    await gate(replies);
+    assert.deepEqual(notice(), ['accessHold.signinLogInAsEnded']);
+    await act(async () => tree.root.findByType(Login).props.onSuccess(admin));
+    await act(async () => {});
+    assert.equal(tree.root.findAllByType('main').length, 1);
+    replies.management = async () => problem(401, 'LOG_IN_AS_ENDED');
+    await act(async () => { await fetch('/api/v1/domains'); });
+    await act(async () => {});
+    assert.equal(tree.root.findByType(Login).props.sessionEnded, true);
+    assert.deepEqual(notice(), ['accessHold.signinLogInAsEnded']);
+  } finally { await clean(); }
+  const value = (file, key) => source(`../src/i18n/${file}.ts`).match(new RegExp(`'${key.replace('.', '\\.')}': "([^"]+)",`))?.[1];
+  const key = 'accessHold.signinLogInAsEnded';
+  for (const shell of ['en', 'tr']) assert.equal(value(shell, key), undefined, `${key} must not grow the boot payload`);
+  assert.match(value('screens/setup/en', key), /signed in as with “Log in as” can no longer be used that way.*Sign in again with your own account; nothing on the server was changed\./s);
+  assert.match(value('screens/setup/tr', key), /“Farklı giriş yap” ile girdiğiniz hesap artık bu yolla kullanılamıyor.*Kendi hesabınızla yeniden giriş yapın; sunucuda hiçbir şey değişmedi\./s);
+  // The recovery page's own check counts the answer as "the panel answers".
+  assert.match(source('../src/offline/page.ts'), /'LOG_IN_AS_ENDED'\]\.includes\(value\?\.code\)/);
+});
+
 test('a part that fails to load after an update says so before the page reloads; with nothing drawn it reloads at once', async () => {
   fixture();
   try {

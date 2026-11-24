@@ -5,11 +5,12 @@
  *
  * Giriş formunun neden gösterildiği (Panel söylediyse): giriş sayfası bunu bildiriminde gösterir.
  */
-export type SigninRefusal = 'duplicate' | 'beforeUpdate' | 'notKept';
+export type SigninRefusal = 'duplicate' | 'beforeUpdate' | 'notKept' | 'logInAsEnded';
 
 const byCode = new Map<unknown, SigninRefusal>([
     ['SIGNIN_COOKIES_DUPLICATE', 'duplicate'],
     ['SIGNIN_FROM_BEFORE_UPDATE', 'beforeUpdate'],
+    ['LOG_IN_AS_ENDED', 'logInAsEnded'],
 ]);
 
 let current: SigninRefusal | null = null;
