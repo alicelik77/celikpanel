@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useI18n } from '../i18n';
+import type { SigninRefusal } from '../auth/signinRefusal';
 import { Button, Dialog } from './ui';
 
 // Loaded ahead of need by lib/accessGuidance.ts; never imported statically, so
@@ -31,10 +32,19 @@ export function accessHoldCopy(t: Translate, cause: AccessHoldCause, waiting: bo
     };
 }
 
-/** Above the sign-in form after the server confirmed that the session of a page in use is over. */
-export function SessionEndedNotice() {
+const signinRefusalText = {
+    duplicate: 'accessHold.signinDuplicate',
+    beforeUpdate: 'accessHold.signinBeforeUpdate',
+    notKept: 'accessHold.signinNotKept',
+} as const;
+
+/**
+ * Above the sign-in form after the server confirmed that the session of a page in use is over, or with the reason
+ * the Panel gave for asking to sign in (auth/signinRefusal.ts): the reason and what to do in place of the general text.
+ */
+export function SessionEndedNotice({ reason = null }: { reason?: SigninRefusal | null }) {
     const { t } = useI18n();
-    return <p role="status" className="mb-5 rounded-lg border border-border bg-surface-2 p-4 text-sm leading-relaxed text-fg">{t('accessHold.sessionEnded')}</p>;
+    return <p role="status" className="mb-5 rounded-lg border border-border bg-surface-2 p-4 text-sm leading-relaxed text-fg">{t(reason ? signinRefusalText[reason] : 'accessHold.sessionEnded')}</p>;
 }
 
 // Shown for the moment before the page reloads to load the current version: the

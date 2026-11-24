@@ -41,6 +41,10 @@ const (
 
 	errCodeSigninCookiesDuplicate = "SIGNIN_COOKIES_DUPLICATE"
 	errCodeCrossSiteRequest       = "CROSS_SITE_REQUEST_REFUSED"
+	// errCodeSigninFromBeforeUpdate refuses a plain-named session the
+	// transition does not carry. Like SIGNIN_COOKIES_DUPLICATE it is a 401
+	// whose reason the sign-in page shows (web/src/auth/signinRefusal.ts).
+	errCodeSigninFromBeforeUpdate = "SIGNIN_FROM_BEFORE_UPDATE"
 )
 
 const (
@@ -378,7 +382,8 @@ func (p *Panel) legacySigninAccepted(session auth.SessionIdentity, now time.Time
 // carry: the plain names are removed and the person signs in again.
 func (p *Panel) refuseLegacySignin(w http.ResponseWriter) {
 	p.expirePlainSigninCookies(w)
-	writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, legacySigninRefusedMessage, "")
+	w.Header().Set("Cache-Control", "no-store")
+	writeCodedError(w, http.StatusUnauthorized, errCodeSigninFromBeforeUpdate, legacySigninRefusedMessage, "")
 }
 
 type sessionTokenKey struct{}

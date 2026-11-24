@@ -489,9 +489,13 @@ class API {
 
     // me returns the current user, or null when unauthenticated (401).
     // me, mevcut kullanıcıyı döndürür; kimlik doğrulanmamışsa (401) null.
-    async me(signal?: AbortSignal): Promise<CurrentUser | null> {
+    // onUnauthorized reads the 401 before null is returned (the sign-in page shows the reason it names).
+    async me(signal?: AbortSignal, onUnauthorized?: (response: Response) => Promise<void>): Promise<CurrentUser | null> {
         const res = await fetch(`${API_BASE}/auth/me`, { signal, cache: 'no-store' });
-        if (res.status === 401) return null;
+        if (res.status === 401) {
+            await onUnauthorized?.(res);
+            return null;
+        }
         // The status is kept: the recovery page names the answer that was read.
         if (!res.ok) throw new ApiResponseError(res);
         return parseCurrentUser(await res.json());

@@ -34,7 +34,7 @@ const stub = dataModule(`import React from '${reactURL}';
  export const useAuth = () => fixture().auth;
  export const useNavigate = () => fixture().navigate;
  export const useLocation = () => ({ pathname: fixture().pathname || '/settings' });
- export const api = { me: signal => fixture().me(signal), demoAccounts: async () => [] };
+ export const api = { me: (signal, onUnauthorized) => fixture().me(signal, onUnauthorized), demoAccounts: async () => [] };
  export const createPortal = node => node;
  export const Button = props => React.createElement('button', props);
  export const Spinner = () => null;
@@ -54,8 +54,10 @@ const accessURL = dataModule(compile('../src/lib/accessObservation.ts'));
 const quietURL = link('../src/lib/quietRead.ts', () => stub);
 const observationURL = dataModule(compile('../src/lib/recoveryObservation.ts'));
 const apiErrorURL = dataModule(compile('../src/lib/apiError.ts'));
+// The sign-in page's reason (security lane A1) is one real module shared by the session reads, the gate and the form.
+const refusalURL = dataModule(compile('../src/auth/signinRefusal.ts'));
 const real = (specifier, otherwise) => specifier.endsWith('/quietRead') ? quietURL : specifier.endsWith('/recoveryObservation') ? observationURL
-  : specifier.endsWith('/apiError') ? apiErrorURL : otherwise(specifier);
+  : specifier.endsWith('/apiError') ? apiErrorURL : specifier.endsWith('/signinRefusal') ? refusalURL : otherwise(specifier);
 const guidanceURL = link('../src/components/AccessGuidance.tsx', () => stub);
 const loaderURL = link('../src/lib/accessGuidance.ts', specifier => specifier.endsWith('/AccessGuidance') ? guidanceURL : stub);
 const withGuidance = specifier => real(specifier, item => item.endsWith('/accessGuidance') ? loaderURL : stub);
@@ -82,6 +84,7 @@ const gateURL = dataModule(`import React, { useCallback, useState, useEffect, us
  import { Login } from '${loginURL}';
  import { sendIdentified } from '${identityURL}';
  import { useUpdateRestartStarting } from '${startingURL}';
+ import { refusalOf, setSigninRefusal } from '${refusalURL}';
  const fixture = () => globalThis.holdTest;
  const RecoveryAccess = props => React.createElement('aside', { cause: props.cause, checking: props.checking, user: props.user }, 'recovery');
  const AuthProvider = ({ user, onLogout, children }) => { fixture().logout = onLogout; return React.createElement('section', { 'data-user': user.username }, children); };
@@ -100,6 +103,7 @@ const { UpdateReloadNotice, UPDATE_RELOAD_EVENT, UPDATE_RELOAD_DELAY_MS } = awai
 const { UpdateReloadNotice: BareUpdateReloadNotice } = await import(bareNoticeURL);
 const { loadAccessGuidance } = await import(loaderURL);
 const { AuthGate } = await import(gateURL);
+const refusal = await import(refusalURL);
 const guidance = await loadAccessGuidance();
 
 const realTimeout = setTimeout;
@@ -127,6 +131,7 @@ function fixture(extra = {}) {
 async function clean() {
   if (tree) await act(async () => tree.unmount());
   tree = undefined; globalThis.fetch = originalFetch; delete globalThis.holdTest;
+  refusal.setSigninRefusal(null);
 }
 const fire = async ms => { const due = timers.filter(timer => timer.live && timer.ms === ms); for (const timer of due) timer.live = false; await act(async () => { for (const timer of due) timer.fn(); }); return due.length; };
 const show = async state => { document.visibilityState = state; await act(async () => document.dispatchEvent(new Event('visibilitychange'))); };
@@ -519,7 +524,7 @@ test('before the first positive decision nothing is mounted: a first read in fli
 // fetch interception, and the sign-in form.
 function Routes() { return React.createElement(Page); }
 async function gate(replies) {
-  fixture({ Routes, me: () => replies.me(), reads: 0 });
+  fixture({ Routes, me: (signal, onUnauthorized) => replies.me(signal, onUnauthorized), reads: 0 });
   globalThis.fetch = (url, options) => { globalThis.holdTest.requests = [...(globalThis.holdTest.requests ?? []), [String(url), options?.method ?? 'GET']]; return String(url).includes('/panel/availability') ? replies.availability() : replies.management(String(url)); };
   await act(async () => { tree = Renderer.create(React.createElement(AuthGate)); });
   await act(async () => {});
@@ -648,6 +653,67 @@ test('a session that really ended shows sign-in with the reason and returns to t
   assert.doesNotMatch(gateSource, /navigate\(|useNavigate|location\.(assign|replace|href)/);
   assert.doesNotMatch(source('../src/components/Login.tsx'), /useNavigate|navigate\(|location\.(assign|replace|href)/);
   assert.match(gateSource, /<Login onSuccess=\{transitionAuthentication\} sessionEnded=\{sessionEnded\.current\} \/>/);
+});
+
+// Review of PR #368, finding 4: the sign-in page says why the Panel asked for a sign-in, in the notice it already
+// has, with what to do; a sign-in the browser did not keep is named instead of the form silently coming back.
+test('the sign-in page shows the reason a 401 names and a sign-in the browser did not keep; nothing stale after a sign-in or a sign-out', async () => {
+  const notice = () => tree.root.findAllByProps({ role: 'status' }).map(node => node.props.children);
+  const replies = {
+    me: async (signal, onUnauthorized) => { await onUnauthorized(problem(401, 'SIGNIN_FROM_BEFORE_UPDATE')); return null; },
+    availability: async () => problem(401, 'AUTH_REQUIRED'),
+    management: async () => Response.json({}),
+  };
+  mounts = 0;
+  try {
+    // Opening the panel with a sign-in from before the update: the reason, not a bare form.
+    await gate(replies);
+    assert.equal(tree.root.findAllByType(Login).length, 1);
+    assert.deepEqual(notice(), ['accessHold.signinBeforeUpdate']);
+    // The sign-in answers, the next read has no session: the browser did not keep it.
+    await act(async () => tree.root.findByType(Login).props.onSuccess(admin));
+    await act(async () => {});
+    assert.equal(tree.root.findAllByType(Login).length, 1);
+    assert.deepEqual(notice(), ['accessHold.signinNotKept']);
+    // A sign-in that is kept clears the reason and opens the pages.
+    replies.availability = async () => available('ready');
+    await act(async () => tree.root.findByType(Login).props.onSuccess(admin));
+    await act(async () => {});
+    assert.equal(tree.root.findAllByType('main').length, 1);
+    assert.equal(refusal.signinRefusal(), null);
+    // A page in use is refused because the sign-in cookie arrived twice: that reason takes the notice's place.
+    replies.management = async () => problem(401, 'SIGNIN_COOKIES_DUPLICATE');
+    await act(async () => { await fetch('/api/v1/domains'); });
+    await act(async () => {});
+    assert.equal(tree.root.findByType(Login).props.sessionEnded, true);
+    assert.deepEqual(notice(), ['accessHold.signinDuplicate']);
+    // Signing in and then out: the owner's own act gives no reason, also not a stale one.
+    replies.management = async () => Response.json({});
+    await act(async () => tree.root.findByType(Login).props.onSuccess(admin));
+    await act(async () => {});
+    await act(async () => globalThis.holdTest.logout());
+    assert.equal(tree.root.findByType(Login).props.sessionEnded, false);
+    assert.deepEqual(notice(), []);
+    // An ordinary 401 without a reason of its own still gives the general text.
+    await act(async () => tree.root.findByType(Login).props.onSuccess(admin));
+    await act(async () => {});
+    replies.management = async () => problem(401, 'AUTH_REQUIRED');
+    await act(async () => { await fetch('/api/v1/domains'); });
+    await act(async () => {});
+    assert.deepEqual(notice(), ['accessHold.sessionEnded']);
+  } finally { await clean(); }
+  // The wording: both languages, in the screen half, the reason and what to do.
+  const value = (file, key) => source(`../src/i18n/${file}.ts`).match(new RegExp(`'${key.replace('.', '\\.')}': "([^"]+)",`))?.[1];
+  for (const key of ['signinDuplicate', 'signinBeforeUpdate', 'signinNotKept'].map(name => `accessHold.${name}`)) {
+    assert.ok(value('screens/setup/en', key) && value('screens/setup/tr', key), `${key} is missing from the screen half`);
+    for (const shell of ['en', 'tr']) assert.equal(value(shell, key), undefined, `${key} must not grow the boot payload`);
+  }
+  assert.match(value('screens/setup/en', 'accessHold.signinNotKept'), /did not keep it.*in front of the panel.*changes the panel's cookies.*own HTTPS address and sign in again/s);
+  assert.match(value('screens/setup/tr', 'accessHold.signinNotKept'), /oturumu saklamadı.*panelin önündeki.*çerezlerini değiştirmesidir.*kendi HTTPS adresinden açıp yeniden giriş yapın/s);
+  assert.match(value('screens/setup/en', 'accessHold.signinDuplicate'), /sent the panel's sign-in twice.*Sign in again/s);
+  assert.match(value('screens/setup/tr', 'accessHold.signinDuplicate'), /iki kez gönderdiği.*yeniden giriş yapın/s);
+  assert.match(value('screens/setup/en', 'accessHold.signinBeforeUpdate'), /from before the update\. Sign in again/);
+  assert.match(value('screens/setup/tr', 'accessHold.signinBeforeUpdate'), /güncellemeden önce açılmıştı\. Devam etmek için yeniden giriş yapın/);
 });
 
 test('a part that fails to load after an update says so before the page reloads; with nothing drawn it reloads at once', async () => {

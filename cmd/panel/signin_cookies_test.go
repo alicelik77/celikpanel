@@ -384,7 +384,7 @@ func TestSigninTransitionRefusals(t *testing.T) {
 			fixture.openedAt(t, testCase.user, base.Add(testCase.opened))
 			recorder := fixture.do(t, http.MethodGet, signinTestMeRoute,
 				[]*http.Cookie{{Name: sessionCookieName, Value: fixture.tokens[testCase.user]}}, nil)
-			if recorder.Code != http.StatusUnauthorized || signinErrorCode(t, recorder) != errCodeAuthRequired || fixture.seenCaller != -1 {
+			if recorder.Code != http.StatusUnauthorized || signinErrorCode(t, recorder) != errCodeSigninFromBeforeUpdate || fixture.seenCaller != -1 {
 				t.Fatalf("status = %d code = %q body = %s", recorder.Code, signinErrorCode(t, recorder), recorder.Body.String())
 			}
 			if cookieNamed(recorder, hostSessionCookieName) != nil {
@@ -412,7 +412,7 @@ func TestSigninTransitionRefusals(t *testing.T) {
 		// Refused by the transition itself (its message, the plain name
 		// removed), not only by the later "Log in as" checks, which refuse
 		// administrator → administrator anyway.
-		if !strings.Contains(recorder.Body.String(), legacySigninRefusedMessage) {
+		if signinErrorCode(t, recorder) != errCodeSigninFromBeforeUpdate || !strings.Contains(recorder.Body.String(), legacySigninRefusedMessage) {
 			t.Fatalf("not the transition's refusal: %s", recorder.Body.String())
 		}
 		if plain := cookieNamed(recorder, sessionCookieName); plain == nil || plain.MaxAge >= 0 {

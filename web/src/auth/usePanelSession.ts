@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type CurrentUser } from '../lib/api';
 import { accessWaitClock, beginAccessWait, beginAccessWaitAt, endAccessWait } from '../lib/quietRead';
+import { refusalOf, setSigninRefusal } from './signinRefusal';
 
 export type PanelSessionState = 'checking' | 'unauthenticated' | 'auth_unavailable' | 'availability_unavailable' | 'starting' | 'ready';
 
@@ -36,6 +37,11 @@ export function usePanelSession() {
     const [limitHit, setLimitHit] = useState(false);
     const limitHitRef = useRef(false);
     const readBegan = useRef(0);
+    // The generation a sign-in began, until a read of it has answered: a 401 to a request of that generation means
+    // the browser did not keep the sign-in the Panel had just given it (auth/signinRefusal.ts).
+    const signedInGeneration = useRef(0);
+    const signinUnconfirmed = useCallback((requestGeneration: number) =>
+        signedInGeneration.current !== 0 && signedInGeneration.current === requestGeneration, []);
     const reachedLimit = useCallback(() => {
         if (answered.current) beginAccessWaitAt(readBegan.current);
         limitHitRef.current = true; setLimitHit(true);
@@ -45,15 +51,19 @@ export function usePanelSession() {
         limitHitRef.current = false; setLimitHit(false);
         answered.current = true; setFailure(read);
     }, []);
-    const availability = useCallback(async (identity: CurrentUser, request: AbortController, sequence: number) => {
+    // signedIn: the read right after a sign-in. A 401 there without a reason of its own means the browser did not
+    // keep the sign-in the Panel had just given it; the sign-in page says so (auth/signinRefusal.ts).
+    const availability = useCallback(async (identity: CurrentUser, request: AbortController, sequence: number, signedIn = false) => {
         const owned = () => generation.current === sequence && !request.signal.aborted;
         let read: AccessReadFailure;
         try {
             const response = await fetch('/api/v1/panel/availability', { signal: request.signal, cache: 'no-store' });
             if (response.status === 401) {
-                if (owned()) { settle(null); setUser(null); setState('unauthenticated'); }
+                const reason = (await refusalOf(response)) ?? (signedIn ? 'notKept' : null);
+                if (owned()) { if (reason) setSigninRefusal(reason); settle(null); setUser(null); setState('unauthenticated'); }
                 return;
             }
+            if (signedInGeneration.current === sequence) signedInGeneration.current = 0;
             if (!response.ok) read = { kind: 'status', status: response.status };
             else {
                 const result = await response.json();
@@ -78,7 +88,11 @@ export function usePanelSession() {
         const timeout = window.setTimeout(() => request.abort(), 15000);
         let authenticated = false;
         try {
-            const identity = await api.me(request.signal);
+            // A 401 that names its reason is shown on the sign-in page (auth/signinRefusal.ts).
+            const identity = await api.me(request.signal, async (response) => {
+                const reason = await refusalOf(response);
+                if (reason && generation.current === sequence) setSigninRefusal(reason);
+            });
             if (generation.current !== sequence || request.signal.aborted) return;
             if (!identity) { settle(null); setUser(null); setState('unauthenticated'); return; }
             authenticated = true; setUser(identity);
@@ -105,6 +119,9 @@ export function usePanelSession() {
         pending.current?.abort(); pending.current = null;
         const sequence = ++generation.current;
         setUser(identity); setFailure(null);
+        // A sign-in or a sign-out ends any earlier reason; a refusal that ends a session names its own afterwards.
+        setSigninRefusal(null);
+        signedInGeneration.current = identity ? sequence : 0;
         // A sign-in starts a new access check and so a new wait; a sign-out ends any wait.
         endAccessWait(); answered.current = !identity;
         limitHitRef.current = false; setLimitHit(false);
@@ -113,7 +130,7 @@ export function usePanelSession() {
         const request = new AbortController(); pending.current = request;
         readBegan.current = accessWaitClock.now();
         const timeout = window.setTimeout(() => request.abort(), 15000);
-        void availability(identity, request, sequence).finally(() => {
+        void availability(identity, request, sequence, true).finally(() => {
             window.clearTimeout(timeout);
             if (pending.current === request) {
                 pending.current = null; setChecking(false);
@@ -153,5 +170,5 @@ export function usePanelSession() {
     const unknownState = state === 'auth_unavailable' || state === 'availability_unavailable';
     const unanswered = unknownState && (!answered.current || limitHit);
     const afterAnswer = unanswered && answered.current;
-    return { user, state, checking, unanswered, afterAnswer, failure, generation, retry, transitionAuthentication, markUnavailable };
+    return { user, state, checking, unanswered, afterAnswer, failure, generation, retry, transitionAuthentication, markUnavailable, signinUnconfirmed };
 }
