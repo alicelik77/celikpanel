@@ -74,8 +74,12 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 			err error
 		}
 		done := make(chan answer, 1)
+		// The fake and its arguments are taken now: a restart still running
+		// when the test ends must not read the package's seams while the
+		// test's cleanup puts them back (the race detector's finding).
+		ctl, args := appUnitSystemctl, systemctlArgs("restart", unit)
 		go func() {
-			out, err := appUnitSystemctl(systemctlArgs("restart", unit)...)
+			out, err := ctl(args...)
 			done <- answer{out, err}
 		}()
 		select {
