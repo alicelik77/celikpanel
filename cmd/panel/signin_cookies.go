@@ -17,7 +17,7 @@ import (
 // Over HTTPS the session and "Log in as" cookies carry the __Host- prefix. A
 // browser keeps such a cookie only when it is Secure, has Path=/ and no
 // Domain, and it never sends one that another host set: a website on another
-// address under the panel's registrable domain (shop.example.com beside
+// host name under the panel's registrable domain (shop.example.com beside
 // panel.example.com) can no longer plant a cookie under the panel's name with
 // Domain=example.com or shadow it with a longer path. Cookies do not separate
 // ports, so this does not separate services on the panel's own host name: a
