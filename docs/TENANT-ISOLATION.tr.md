@@ -586,17 +586,19 @@ art arda iki deneme başarısız olunca çalışmıyor sayar.
   de artık hiçbir şey önlemez: varsayılan havuz kapalıyken bir sürümün son diğer havuzunu kaldırmak
   PHP-FPM'in başlamamasına yol açar (önce varsayılan havuzu geri koyun).
 
-**Önceki sürüme dönmek (alpha.146).** Ürünün kendi geri dönüş yolu (`rollback.sh`) önceki sürümü
-yalnız agent'ın sunucu değişiklikleri kaydı güncellemenin sakladığıyla aynıyken geri koyar.
-Güncellemeden sonra herhangi bir sunucu değişikliği kaydedilir kaydedilmez reddeder ve şunu yazar:
-`!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
-Yan kapılar adımı böyle bir değişikliktir ve her panel açılışından yaklaşık üç dakika sonra
-kendiliğinden çalışır; bu yüzden geri dönüş pratikte yalnız güncellemeden sonraki o ilk dakikalarda
-kabul edilir. Başarısız bir güncellemenin otomatik geri dönüşü yeni panel açılmadan önce olur ve R1'in
-değişikliklerine hiç rastlamaz. Adım çalıştıktan sonra önceki sürüm ürünle geri konamaz. Yöneticinin
-elinde bunun yerine bu sürümün kendi geri alması vardır: kapatılmış bir varsayılan havuz adı geri
-verilerek açılır (yukarıda; CelikPanel onu sonra açık bırakır), `at`, `/etc/at.allow` silinerek
-yeniden açılır ve araçlar yukarıdaki adımlarla web sunucusu hesabına geri alınır.
+**Önceki sürüme dönmek (alpha.146).** Başarısız bir güncellemenin otomatik geri dönüşü yalnız
+yeni panel başlatılmadan önce olur (yeni panelin açılış denetimi de o ana kadardır); o sırada R1'in
+değişikliklerinin hiçbiri yoktur, çünkü yan kapılar adımı yeni panelin açılışından yaklaşık üç
+dakika sonra çalışır. Yeni panel başlatıldıktan sonra güncelleme sonuna kadar götürülür, geri
+alınmaz. Tamamlanmış bir güncellemeyi ürün geri almaz: güncelleme yedeği için kurtarma verisi
+yazar ve sürümün `rollback.sh` dosyası böyle bir yedeği hiçbir şeyi durdurmadan, adımdan önce de
+sonra da, şu satırla reddeder:
+`!! a new rollback cannot reuse an earlier transaction's recovery material; preserve the snapshot and use a supported recovery plan`.
+`sudo /usr/libexec/celikpanel/recovery recover` yalnız yarıda kalmış bir işlemi tamamlar.
+Yöneticinin elinde bunun yerine bu sürümün kendi geri alması vardır: kapatılmış bir varsayılan
+havuz adı geri verilerek açılır (yukarıda; CelikPanel onu sonra açık bırakır) ve `at`,
+`/etc/at.allow` silinerek yeniden açılır; araçları web sunucusu hesabına geri koyan bir panel işlemi
+yoktur (yukarıdaki elle adımlar laboratuvarda denenmedi).
 
 Yalnız eksiksiz olsun diye, alpha.146'nın (alpha.144 ve alpha.145 gibi) bu değişikliğin çalıştığı
 bir sunucuda çalışsaydı neyi korumayacağı: bir aracın kendi soketini tanımaz; bu yüzden aracın

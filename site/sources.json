@@ -928,11 +928,11 @@
     ],
     "sep.tools": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:36",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:39",
         "says": "Now each has a system account of its own"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:55",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:58",
         "says": "Webmail needs a file system with"
       }
     ],
@@ -944,11 +944,11 @@
     ],
     "sep.at": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:60",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:63",
         "says": "Site accounts can no longer schedule jobs with"
       },
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:68",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:71",
         "says": "Crontab lines a site adds outside the panel are shown."
       }
     ],
@@ -960,7 +960,7 @@
     ],
     "sep.stockpool": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:73",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:76",
         "says": "shared PHP pool is switched off where nothing uses"
       }
     ],

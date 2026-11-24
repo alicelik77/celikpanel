@@ -694,20 +694,21 @@ in a row failed.
   other pool makes PHP-FPM refuse to start (rename the stock pool back
   first).
 
-**Going back to the release before (alpha.146).** The product's own way back
-(`rollback.sh`) restores the release before only while the agent's record of
-server changes is still the one the update saved. It refuses as soon as any
-server change was recorded after the update, and prints:
-`!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
-The side doors step is such a change and runs by itself about three minutes
-after every panel start, so in practice the way back is admitted only in
-those first minutes after the update; an automatic rollback of a failed
-update happens before the new panel starts and never meets R1's changes.
-After the step has run, the earlier release cannot be put back by the
-product. What the administrator has instead is this release's own undo: a
+**Going back to the release before (alpha.146).** The automatic rollback of a
+failed update happens only before the new panel is started (the new panel's
+start check is within that time); none of R1's changes exist then, because
+the side doors step runs about three minutes after the new panel's start.
+From the new panel's start on, the update is carried to its end, not rolled
+back. A completed update is not taken back by the product: the update writes
+recovery material for its snapshot, and the release's `rollback.sh` refuses
+such a snapshot before it stops anything, before the step as after it, with:
+`!! a new rollback cannot reuse an earlier transaction's recovery material; preserve the snapshot and use a supported recovery plan`.
+`sudo /usr/libexec/celikpanel/recovery recover` only finishes an interrupted
+operation. What the administrator has instead is this release's own undo: a
 switched-off stock pool goes back on by renaming it (above; CelikPanel then
-leaves it on), `at` is reopened by deleting `/etc/at.allow`, and the tools go
-back on the web server's account by the steps above.
+leaves it on) and `at` is reopened by deleting `/etc/at.allow`; no panel
+action puts the tools back on the web server's account (the hand steps above
+have not been run in the lab).
 
 For completeness only, what alpha.146 (as alpha.144 and alpha.145) would not
 guard if it ran on a server where this change ran: it does not know a

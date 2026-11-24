@@ -15,16 +15,19 @@ screen.**
 
 1. Update from the panel's own update screen, as before.
 2. **The panel's database layout does not change** (it stays schema 81).
-   Going back to alpha.146 with the product's rollback is admitted only
-   until the first server change after the update; see "Going back to
+   An update that fails before the new panel has started returns to
+   alpha.146 by itself. A completed update is not taken back: each change of
+   this release is undone on alpha.147 instead; see "Going back to
    alpha.146" below.
-3. About three minutes after the panel's first start, when the server is
-   quiet, the panel runs one step by itself, in its own job: it moves the
-   database tools and webmail to their own accounts, switches off the
-   distribution's PHP pool where nothing uses it, closes `at` to site
+3. About three minutes after the panel's first start, once no other server
+   change is running, the panel runs one step by itself, in its own job: it
+   moves the database tools and webmail to their own accounts, switches off
+   the distribution's PHP pool where nothing uses it, closes `at` to site
    accounts and takes note of the site crontabs (see "Security: customers
    are kept further apart"). There is nothing to press. What it cannot do is
-   a line in **Problems now** with who acts and the step.
+   a line in **Problems now** with who acts and the step. PHP sites and
+   webmail can answer with an error for a few seconds while this step
+   reloads PHP; to choose that moment, update at a quiet hour.
 
 ## Security: customers are kept further apart
 
@@ -136,41 +139,51 @@ asks systemd, as before.
 
 ## Going back to alpha.146
 
-- **The way back is open only until the first server change after the
-  update.** The product's rollback (`rollback.sh`) puts the release before
-  back only while the agent's record of server changes is still the one the
-  update saved. Once any change has been recorded after the update, it
-  refuses and prints
-  `!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
-  The step that moves the tools is such a change and runs about three
-  minutes after the panel's start, so in practice the way back is admitted
-  only in those first minutes. An update that fails is rolled back by itself
-  before the new panel starts, so none of this release's changes exist then.
-- **After that, this release's own undo is the way back for each part:**
-  a switched-off shared pool goes back on when it is renamed back (CelikPanel
-  then leaves it on):
+- **An update that fails returns to alpha.146 by itself.** The new panel's
+  start check runs before the new panel is started; when it fails, or the
+  update stops at any point before that start, the update puts alpha.146
+  and its database back by itself. None of this release's changes exist
+  then: the step that moves the tools runs only about three minutes after
+  the new panel has started.
+- **A completed update is not taken back.** From the moment the new panel is
+  started the update is carried to its end, also when that start fails. The
+  panel offers no way back to the release before, and the release's
+  `rollback.sh` refuses a completed update before it stops anything, with:
+  `!! a new rollback cannot reuse an earlier transaction's recovery material; preserve the snapshot and use a supported recovery plan`.
+  The update keeps its snapshot. `sudo /usr/libexec/celikpanel/recovery recover`
+  finishes an update or rollback that was interrupted; after a completed
+  update it has nothing to do.
+- **Each change of this release is undone on alpha.147:**
+  - The distribution's shared PHP pool: rename it back and reload PHP-FPM.
+    CelikPanel leaves it on and shows "The distribution's PHP … pool was put
+    back on the server" in **Problems now**, with "Turn it off again".
 
-  ```bash
-  sudo mv /etc/php/<version>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<version>/fpm/pool.d/www.conf
-  sudo systemctl reload php<version>-fpm
-  ```
+    ```bash
+    sudo mv /etc/php/<version>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<version>/fpm/pool.d/www.conf
+    sudo systemctl reload php<version>-fpm
+    ```
 
-  `at` is reopened by deleting `/etc/at.allow`; the tools go back on the web
-  server's account by the ordered steps in `docs/TENANT-ISOLATION.md` §7
-  (the shared pool back first, the files back to the web server's group,
-  the web server files back to the shared socket, the own pools removed, the
-  accounts last). The panel itself has no button for the tools' way back.
-- **For completeness only**, what alpha.146 would not guard on a server where
-  this release ran: it does not know a tool's own pool, so it would not
-  refuse removing the PHP version a tool runs on, and the tools' Manage
-  windows would show no PHP version; webmail's own update would fail and put
-  the old folder back; deleting or moving the last site of a PHP version
-  whose shared pool is switched off would be refused (alpha.146 does not put
-  the pool back); this release's lines in **Problems now** would not be
-  shown.
+  - `at` for site accounts: delete `/etc/at.allow`. CelikPanel does not write
+    it again by itself and shows "Website accounts can use at again", with
+    "Close again".
+  - The database tools and webmail stay on their own accounts: the panel has
+    no action that puts them back on the web server's account (choosing a
+    tool's PHP version in its Manage window keeps its own account).
 
 ## Known limits
 
+- **A completed update is not taken back** (see "Going back to alpha.146");
+  this release's changes are undone on alpha.147, and the database tools
+  and webmail stay on their own accounts.
+- **A few seconds of errors when the step runs.** About three minutes after
+  the update the panel moves the tools and reloads PHP, all within a few
+  seconds. At that moment PHP sites and webmail can answer with an error
+  for a few seconds (in the lab: up to four seconds, a handful of
+  requests). An administrator who wants to choose the moment updates at a
+  quiet hour.
+- **If the panel is held up exactly when that step ends**, the step is
+  complete on the server, but its lines in **Problems now** appear only
+  after the panel's next start.
 - **On Arch Linux** the tools stay on the web server's account and the PHP
   pool is not switched off: this release moves them on Debian and Ubuntu.
   `at` and the site crontabs are handled on every system.
@@ -204,25 +217,130 @@ asks systemd, as before.
 
 ## Checked in the lab
 
-**Open.** The lab run on the pair of test servers (Debian 13 and Ubuntu
-24.04) has not been made yet. Its steps are, in this order: the nine steps
-of the per-site-limits preparation (the first: the firewall must refuse a
-place that does not exist; if it accepts one, this release is not
-published), then the ten steps of the "in progress" correction, then the
-security part's steps (pull request #348): webmail and the database tools
-watched every second through the update and the move, a move cut by a
-stalled or restarted panel, a failed update's automatic rollback, the way
-back before and after the move, and the moves, the pool, `at` and the
-crontab lines on both servers.
+Lab check finished: one run on the pair of test servers, a Debian 13 main
+server with mail, webmail on its own address, phpMyAdmin and phpPgAdmin,
+and an Ubuntu 24.04 server with phpMyAdmin and webmail (24 November 2026,
+UTC 00:25 to about 02:17 with the clean-up). Both servers started from
+alpha.146's code and were updated through the panel's own update page to
+this release's code (`1c605428d`, under the lab-only label
+v0.1.0-alpha.155). On each server one customer's site account played the
+other side. Everything was done through the panel's own pages except where
+it says the lab did it. No hard failure; what the lab met is in "Known
+limits".
+
+- **Before the update** (alpha.146's code), on both servers: phpMyAdmin,
+  phpPgAdmin and webmail ran as the web server's account, which read
+  webmail's configuration and database, phpMyAdmin's secret files and
+  every site's files. A site account could not read webmail's folder or
+  phpMyAdmin's secret files, and could schedule an `at` job.
+- **Both servers updated through the panel's own update page by
+  themselves**, each in about a minute and a half. No schema step (it stays
+  81); one panel and one agent ran on each server; no failed service. A
+  check every second saw webmail, the database tools and a site answer
+  throughout the update on both servers.
+- **The step, about three minutes after the start**, ran by itself on both
+  servers: the tools moved to their own accounts and PHP pools, the web
+  server's files for the tools and for webmail's own address hand PHP to
+  those pools, the distribution's pool was switched off (the package's file
+  kept unchanged under its new name), and `/etc/at.allow` was written with
+  the accounts that could use `at` before, without any site account, extra
+  FTP login or tool account. While it ran, PHP requests of sites on that
+  PHP version were answered with an error for up to about four seconds,
+  and webmail on the main server for about two seconds (see "Known
+  limits").
+- **The security change, as a site account**, on both servers: its PHP and
+  its scheduled tasks still read nothing of the tools' files, and `at` was
+  refused, also for an extra FTP login sharing the site's account; the
+  owner's own account could still use `at`. The tools' own accounts could
+  not read a site's files, and the web server's account no longer read
+  webmail's configuration or database or phpMyAdmin's secret files.
+  Through webmail's local door the site account got the sign-in page and
+  "not found" for a plugin's backup copy and configuration files.
+- **The tools work after the move:** on the main server a mailbox signed in
+  on webmail's own address and sent a message with an attachment (it
+  arrived signed for its domain and is in Sent), and a database user signed
+  in to phpMyAdmin and ran a query. After a reboot of the main server
+  phpMyAdmin, phpPgAdmin and webmail answered and the moves were kept.
+- **Problems now**, in Turkish and English: the site accounts' waiting `at`
+  jobs with number, account and time (no command), and the crontab lines
+  not made in CelikPanel with the site and their number; on the site's
+  Scheduled tasks the `@reboot` line the lab had added was listed under the
+  other lines, with Keep and delete.
+- **The owner's undo and closing again** (Ubuntu server): after the lab, as
+  the owner, deleted `/etc/at.allow` and renamed the distribution's pool
+  back, CelikPanel left both so after a panel restart and showed "Website
+  accounts can use at again" with "Close again" and "The distribution's PHP
+  8.3 pool was put back on the server" with "Turn it off again". While an
+  owner's site still used that pool, "Turn it off again" kept it on and
+  named the site's file; "Close again" wrote `/etc/at.allow` again with the
+  same names. Once the owner's site was gone the pool stayed on until "Turn
+  it off again" was pressed, which turned off only that pool with one
+  reload; webmail, phpMyAdmin and the site kept answering.
+- **The "in progress" correction:** a webmail update with the agent paused
+  for 30 seconds finished and was recorded by itself, without a restart; a
+  ten-second pause did not stop an install; a long install with the agent
+  paused for 30 seconds mid-install was not cut, was run once more and
+  recorded by itself, never with two package runs at once; with the agent
+  stopped for three minutes during an install, a DNS save and a firewall
+  change were answered at once with the reason and nothing hung, the page
+  named the agent check first and the panel restart second, no other
+  install could be started, and after the panel restart the install ran
+  once more and succeeded; with the panel stopped mid-install and started
+  while the package manager was held for three minutes, the change ended
+  with its "the server stayed busy" words.
+- **The per-site-limits preparation:** the firewall refused a place that
+  does not exist on both servers, and again after the update on the main
+  server; on Debian
+  13 the helper sees the program's own place; on a server without per-site
+  limits a program stayed in the mail block through a restart, a kill, a
+  redeploy and a reboot, with ports 25, 465 and 587 refused from inside it;
+  a program the lab put into its site's limits by hand kept the block, also
+  after a redeploy, and went back when that file was removed.
+- **Going back:** the release's `rollback.sh` was refused right after the
+  update, on the Ubuntu server before the step and on the main server after
+  it, with the line in "Going back to alpha.146"; nothing was stopped or
+  changed.
+- The usual pages on both servers loaded without a script error.
+
+**Where the lab left the page's path.** As root on the lab servers, the lab
+installed `at`, made an owner account, queued an `at` job and added
+crontab lines as a site account, planted copies and a link in webmail's
+plugin folder, paused and stopped the agent and the panel, held the
+package manager's lock, deleted `/etc/at.allow`, renamed the distribution's
+pool back, wrote an owner's site that used it, restarted the panel,
+rebooted the main server, put a program into its site's limits by hand,
+ran `rollback.sh`, and cleaned up at the end. Its own certificate authority
+was trusted on both servers during the run.
+
+**Not checked:**
+
+- The automatic return through a failed start check of the new panel.
+- A move cut by a panel restart (only a pause was tried), and a restart
+  during an install's second run.
+- The server setup steps with a paused agent.
+- What needs a second PHP version, a file system without access-control
+  lists, XFS or Btrfs, Apache, lighttpd or a reverse-proxy site: a tool
+  that cannot get its own account, a site deleted while a tool moves, the
+  agent killed in a move, the owner removing webmail's entry, a power loss
+  in a move, the "in use" cases of other spellings, the hourly read with a
+  slow tool.
+- In the per-site-limits preparation: systemd under stress, the previous
+  helper with a program in a site's limits, the limits rows, the firewall
+  flush and the reboot with a program in its site's limits, and program
+  kinds other than a plain program.
+- Nothing was tried on Arch Linux.
 
 ## What to expect after updating
 
-- No schema step: the layout stays schema 81. The product's way back to
-  alpha.146 is admitted only in the first minutes after the update, before
-  the step that moves the tools runs (see "Going back to alpha.146").
-- About three minutes after the first start: each tool's own pool starts and
-  the web server reloads once per moved tool; PHP-FPM reloads once per
-  version whose shared pool is switched off; `/etc/at.allow` appears where
+- No schema step: the layout stays schema 81. A completed update is not
+  taken back; each change of this release is undone on alpha.147 (see
+  "Going back to alpha.146").
+- About three minutes after the first start the panel moves the tools to
+  their own accounts and switches off the shared pool where nothing uses
+  it: PHP-FPM and the web server are reloaded, all within a few seconds.
+  **PHP sites and webmail can answer with an error for a few seconds at that
+  moment** (in the lab: up to four seconds, a handful of requests); to
+  choose the moment, update at a quiet hour. `/etc/at.allow` appears where
   `at` is installed and the owner had none.
 - phpMyAdmin, phpPgAdmin and webmail sign in and work as before. If one of
   them does not answer, **Problems now** says so, with the step.

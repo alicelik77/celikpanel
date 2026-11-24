@@ -13,17 +13,20 @@ günceller.**
 ## alpha.146'dan güncelleme
 
 1. Panelin kendi güncelleme ekranından, eskisi gibi güncelleyin.
-2. **Panelin veritabanı düzeni değişmez** (şema 81 olarak kalır). Ürünün
-   geri dönüşüyle alpha.146'ya dönmek yalnız güncellemeden sonraki ilk sunucu
-   değişikliğine kadar kabul edilir; aşağıdaki "alpha.146'ya dönmek"
+2. **Panelin veritabanı düzeni değişmez** (şema 81 olarak kalır). Yeni panel
+   açılmadan önce başarısız olan bir güncelleme kendiliğinden alpha.146'ya
+   döner. Tamamlanmış bir güncelleme geri alınmaz; bunun yerine bu sürümün
+   her değişikliği alpha.147'de geri alınır; aşağıdaki "alpha.146'ya dönmek"
    bölümüne bakın.
-3. Panelin ilk açılışından yaklaşık üç dakika sonra, sunucu sakinken, panel
-   kendi işinde tek bir adımı kendiliğinden çalıştırır: veritabanı araçlarını
-   ve web postasını kendi hesaplarına taşır, dağıtımın PHP havuzunu hiçbir şey
-   kullanmıyorsa kapatır, `at` komutunu site hesaplarına kapatır ve site
+3. Panelin ilk açılışından yaklaşık üç dakika sonra, başka bir sunucu
+   değişikliği sürmüyorsa, panel kendi işinde tek bir adımı kendiliğinden
+   çalıştırır: veritabanı araçlarını ve web postasını kendi hesaplarına
+   taşır, dağıtımın PHP havuzunu hiçbir şey kullanmıyorsa kapatır, `at` komutunu site hesaplarına kapatır ve site
    crontab'larını kayda alır (bkz. "Güvenlik: müşteriler birbirinden daha iyi
    ayrılıyor"). Basılacak bir şey yoktur. Yapamadığı her şey **Şu anki
-   sorunlar**'da, kimin ne yapacağıyla birlikte bir satırdır.
+   sorunlar**'da, kimin ne yapacağıyla birlikte bir satırdır. Bu adım PHP'yi
+   yeniden yüklerken PHP siteleri ve web postası birkaç saniye hata
+   verebilir; bu anı seçmek için güncellemeyi sakin bir saatte yapın.
 
 ## Güvenlik: müşteriler birbirinden daha iyi ayrılıyor
 
@@ -133,41 +136,52 @@ sistemin kendisinden okur, sonra eskisi gibi systemd'ye sorar.
 
 ## alpha.146'ya dönmek
 
-- **Geri dönüş yalnız güncellemeden sonraki ilk sunucu değişikliğine kadar
-  açıktır.** Ürünün geri dönüşü (`rollback.sh`) önceki sürümü yalnız agent'ın
-  sunucu değişiklikleri kaydı güncellemenin sakladığıyla aynıyken geri koyar.
-  Güncellemeden sonra herhangi bir değişiklik kaydedildiğinde reddeder ve şunu
+- **Başarısız olan bir güncelleme kendiliğinden alpha.146'ya döner.** Yeni
+  panelin açılış denetimi yeni panel başlatılmadan önce çalışır; bu denetim
+  başarısız olursa ya da güncelleme o açılıştan önce herhangi bir yerde
+  durursa, güncelleme alpha.146'yı ve veritabanını kendisi geri koyar. O
+  sırada bu sürümün değişikliklerinin hiçbiri yoktur: araçları taşıyan adım
+  yeni panel açıldıktan ancak yaklaşık üç dakika sonra çalışır.
+- **Tamamlanmış bir güncelleme geri alınmaz.** Yeni panel başlatıldığı andan
+  itibaren güncelleme, bu açılış başarısız olsa da sonuna kadar götürülür.
+  Panel önceki sürüme dönüş sunmaz; sürümün `rollback.sh` dosyası da
+  tamamlanmış bir güncellemeyi hiçbir şeyi durdurmadan reddeder ve şunu
   yazar:
-  `!! current agent ledger differs from the verified snapshot; rollback would forget host mutations`.
-  Araçları taşıyan adım böyle bir değişikliktir ve panelin açılışından
-  yaklaşık üç dakika sonra çalışır; bu yüzden geri dönüş pratikte yalnız o ilk
-  dakikalarda kabul edilir. Başarısız olan bir güncelleme yeni panel açılmadan
-  önce kendiliğinden geri alınır; o sırada bu sürümün değişikliklerinin hiçbiri
-  yoktur.
-- **Sonrasında her bölüm için geri dönüş bu sürümün kendi geri almasıdır:**
-  kapatılmış bir ortak havuz adı geri verildiğinde yeniden açılır (CelikPanel
-  onu sonra açık bırakır):
+  `!! a new rollback cannot reuse an earlier transaction's recovery material; preserve the snapshot and use a supported recovery plan`.
+  Güncelleme kendi yedeğini saklar. `sudo /usr/libexec/celikpanel/recovery recover`
+  yarıda kalmış bir güncellemeyi ya da geri dönüşü tamamlar; tamamlanmış bir
+  güncellemeden sonra yapacağı bir şey yoktur.
+- **Bu sürümün her değişikliği alpha.147'de geri alınır:**
+  - Dağıtımın ortak PHP havuzu: adını geri verin ve PHP-FPM'i yeniden
+    yükleyin. CelikPanel onu açık bırakır ve **Şu anki sorunlar**'da
+    "Dağıtımın PHP … havuzu sunucuda geri açıldı" satırını "Yeniden kapat"
+    düğmesiyle gösterir.
 
-  ```bash
-  sudo mv /etc/php/<sürüm>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<sürüm>/fpm/pool.d/www.conf
-  sudo systemctl reload php<sürüm>-fpm
-  ```
+    ```bash
+    sudo mv /etc/php/<sürüm>/fpm/pool.d/www.conf.off-by-celikpanel /etc/php/<sürüm>/fpm/pool.d/www.conf
+    sudo systemctl reload php<sürüm>-fpm
+    ```
 
-  `at`, `/etc/at.allow` silinerek yeniden açılır; araçlar
-  `docs/TENANT-ISOLATION.tr.md` §7'deki sıralı adımlarla web sunucusu hesabına
-  geri alınır (önce ortak havuz, dosyalar web sunucusunun grubuna, web sunucusu
-  dosyaları ortak sokete, kendi havuzlar kaldırılır, hesaplar en son). Panelin
-  kendisinde araçları geri almak için bir düğme yoktur.
-- **Yalnız eksiksiz olsun diye**, bu sürümün çalıştığı bir sunucuda
-  alpha.146'nın neyi korumayacağı: bir aracın kendi havuzunu tanımaz; bu yüzden
-  aracın çalıştığı PHP sürümünün kaldırılmasını reddetmez ve araçların Yönet
-  pencerelerinde PHP sürümü görünmez; web postasının kendi güncellemesi
-  başarısız olur ve eski klasörü geri koyar; ortak havuzu kapalı bir PHP
-  sürümünün son sitesini silmek ya da taşımak reddedilir (alpha.146 havuzu geri
-  koymaz); bu sürümün **Şu anki sorunlar** satırları görünmez.
+  - Site hesapları için `at`: `/etc/at.allow` dosyasını silin. CelikPanel onu
+    kendiliğinden yeniden yazmaz ve "Web sitesi hesapları yeniden at
+    kullanabiliyor" satırını "Yeniden kapat" düğmesiyle gösterir.
+  - Veritabanı araçları ve web postası kendi hesaplarında kalır: panelde
+    onları web sunucusu hesabına geri koyan bir işlem yoktur (bir aracın
+    Yönet penceresinde PHP sürümünü seçmek kendi hesabını korur).
 
 ## Bilinen sınırlar
 
+- **Tamamlanmış bir güncelleme geri alınmaz** (bkz. "alpha.146'ya dönmek");
+  bu sürümün değişiklikleri alpha.147'de geri alınır, veritabanı araçları ve
+  web postası kendi hesaplarında kalır.
+- **Adım çalışırken birkaç saniyelik hatalar.** Güncellemeden yaklaşık üç
+  dakika sonra panel araçları taşır ve PHP'yi yeniden yükler; hepsi birkaç
+  saniye içinde olur. O anda PHP siteleri ve web postası birkaç saniye hata
+  verebilir (laboratuvarda: en çok dört saniye, birkaç istek). Bu anı
+  seçmek isteyen yönetici güncellemeyi sakin bir saatte yapar.
+- **Panel tam o adım biterken takılırsa** adım sunucuda tamamlanmıştır, ama
+  **Şu anki sorunlar**'daki satırları ancak panelin bir sonraki açılışından
+  sonra görünür.
 - **Arch Linux'ta** araçlar web sunucusu hesabında kalır ve PHP havuzu
   kapatılmaz: bu sürüm onları Debian ve Ubuntu'da taşır. `at` ve site
   crontab'ları her sistemde ele alınır.
@@ -201,25 +215,136 @@ sistemin kendisinden okur, sonra eskisi gibi systemd'ye sorar.
 
 ## Laboratuvarda denenenler
 
-**Açık.** Test sunucusu çiftindeki (Debian 13 ve Ubuntu 24.04) laboratuvar
-turu henüz yapılmadı. Adımları bu sıradadır: site başına sınırlar
-hazırlığının dokuz adımı (ilki: güvenlik duvarı var olmayan bir yeri
-reddetmeli; kabul ederse bu sürüm yayımlanmaz), sonra "sürüyor" düzeltmesinin
-on adımı, sonra güvenlik bölümünün adımları (#348 numaralı istek): güncelleme ve
-taşıma boyunca her saniye izlenen web postası ve veritabanı araçları, takılan ya da
-yeniden başlatılan bir panelin kestiği bir taşıma, başarısız bir güncellemenin
-kendiliğinden geri alınması, taşımadan önce ve sonra geri dönüş, ve iki sunucuda
-taşımalar, havuz, `at` ve crontab satırları.
+Laboratuvar denetimi bitti: test sunucusu çiftinde tek bir tur; posta, kendi
+adresinde web postası, phpMyAdmin ve phpPgAdmin bulunan bir Debian 13 ana
+sunucu ve phpMyAdmin ile web postası bulunan bir Ubuntu 24.04 sunucu
+(24 Kasım 2026, UTC 00:25'ten temizlikle birlikte yaklaşık 02:17'ye kadar).
+İki sunucu da alpha.146'nın koduyla başladı ve panelin kendi güncelleme
+sayfasından bu sürümün koduna güncellendi (`1c605428d`, yalnız laboratuvar
+için verilen v0.1.0-alpha.155 etiketiyle). Her sunucuda bir müşterinin site
+hesabı karşı tarafı oynadı. Laboratuvarın yaptığı yazanlar dışında her şey
+panelin kendi sayfalarından yapıldı. Ağır bir hata yok; laboratuvarın
+karşılaştığı şeyler "Bilinen sınırlar"da.
+
+- **Güncellemeden önce** (alpha.146'nın kodu), iki sunucuda da: phpMyAdmin,
+  phpPgAdmin ve web postası, web postasının yapılandırmasını ve
+  veritabanını, phpMyAdmin'in gizli dosyalarını ve her sitenin dosyalarını
+  okuyan web sunucusu hesabıyla çalışıyordu. Bir site hesabı web postasının
+  klasörünü ya da phpMyAdmin'in gizli dosyalarını okuyamıyordu ve bir `at`
+  işi zamanlayabiliyordu.
+- **İki sunucu da panelin kendi güncelleme sayfasından kendiliğinden
+  güncellendi**, her biri yaklaşık bir buçuk dakikada. Şema adımı yok (81
+  kalır); her sunucuda bir panel ve bir agent çalıştı; başarısız hizmet yok.
+  Her saniye yapılan bir denetim, iki sunucuda da güncelleme boyunca web
+  postasının, veritabanı araçlarının ve bir sitenin yanıt verdiğini gördü.
+- **Açılıştan yaklaşık üç dakika sonraki adım** iki sunucuda da
+  kendiliğinden çalıştı: araçlar kendi hesaplarına ve PHP havuzlarına
+  taşındı, web sunucusunun araçlar ve web postasının kendi adresi için
+  dosyaları PHP'yi bu havuzlara verir oldu, dağıtımın havuzu kapatıldı
+  (paketin dosyası yeni adıyla değişmeden duruyor) ve `/etc/at.allow`, daha
+  önce `at` kullanabilen hesaplarla, hiçbir site hesabı, ek FTP girişi ya da
+  araç hesabı olmadan yazıldı. Adım çalışırken o PHP sürümündeki sitelerin
+  PHP istekleri en çok yaklaşık dört saniye, ana sunucuda web postası
+  yaklaşık iki saniye hatayla yanıtlandı (bkz. "Bilinen sınırlar").
+- **Site hesabı olarak güvenlik değişikliği**, iki sunucuda da: PHP'si ve
+  zamanlanmış görevleri araçların dosyalarından yine hiçbir şey okuyamadı ve
+  `at` reddedildi, sitenin hesabını paylaşan ek bir FTP girişi için de;
+  sahibin kendi hesabı `at` kullanmayı sürdürdü. Araçların kendi hesapları
+  bir sitenin dosyalarını okuyamadı; web sunucusu hesabı da artık web
+  postasının yapılandırmasını ya da veritabanını ve phpMyAdmin'in gizli
+  dosyalarını okumuyor. Web postasının yerel kapısından site hesabı giriş
+  sayfasını aldı; bir eklentinin yedek kopyası ve yapılandırma dosyaları
+  için "bulunamadı" yanıtı aldı.
+- **Araçlar taşımadan sonra çalışıyor:** ana sunucuda bir posta kutusu web
+  postasının kendi adresinde oturum açıp ekli bir ileti gönderdi (ileti kendi
+  alan adı için imzalı ulaştı ve Gönderilenler'de); bir veritabanı kullanıcısı
+  phpMyAdmin'de oturum açıp bir sorgu çalıştırdı. Ana sunucu yeniden
+  başlatıldıktan sonra phpMyAdmin, phpPgAdmin ve web postası yanıt verdi ve
+  taşımalar korundu.
+- **Şu anki sorunlar**, Türkçe ve İngilizce: site hesaplarının bekleyen `at`
+  işleri numara, hesap ve zamanla (komut olmadan) ve CelikPanel'de yapılmamış
+  crontab satırları site ve sayılarıyla; sitenin Zamanlanmış görevler
+  bölümünde laboratuvarın eklediği `@reboot` satırı diğer satırların altında,
+  Kalsın ve silme ile listelendi.
+- **Sahibin geri alması ve yeniden kapatma** (Ubuntu sunucu): laboratuvar
+  sahip olarak `/etc/at.allow` dosyasını silip dağıtımın havuzunun adını geri
+  verdikten sonra CelikPanel, panel yeniden başlatıldığında ikisini de öyle
+  bıraktı ve "Web sitesi hesapları yeniden at kullanabiliyor" satırını
+  "Yeniden kapat" ile, "Dağıtımın PHP 8.3 havuzu sunucuda geri açıldı"
+  satırını "Yeniden kapat" ile gösterdi. Sahibin bir sitesi o havuzu hâlâ
+  kullanırken havuzun "Yeniden kapat" düğmesi onu açık tuttu ve sitenin
+  dosyasını andı; `at` için "Yeniden kapat" `/etc/at.allow` dosyasını aynı
+  adlarla yeniden yazdı. Sahibin sitesi kaldırıldıktan sonra havuz, "Yeniden
+  kapat"a basılana kadar açık kaldı; basılınca yalnız o havuz tek bir
+  yeniden yüklemeyle kapatıldı; web postası, phpMyAdmin ve site yanıt
+  vermeyi sürdürdü.
+- **"Sürüyor" düzeltmesi:** agent 30 saniye duraklatılırken bir web postası
+  güncellemesi bitti ve yeniden başlatma olmadan kendiliğinden kaydedildi;
+  on saniyelik bir duraklama bir kurulumu durdurmadı; kurulumun ortasında
+  agent 30 saniye duraklatılınca uzun bir kurulum kesilmedi, bir kez daha
+  çalıştırıldı ve kendiliğinden kaydedildi, hiçbir zaman iki paket işlemi
+  aynı anda olmadı; bir kurulum sırasında agent üç dakika durdurulunca bir
+  DNS kaydı ve bir güvenlik duvarı değişikliği nedeniyle birlikte hemen
+  yanıtlandı ve hiçbir şey asılı kalmadı, sayfa önce agent denetimini, sonra
+  panelin yeniden başlatılmasını söyledi, başka bir kurulum başlatılamadı ve
+  panel yeniden başlatıldıktan sonra kurulum bir kez daha çalışıp başarılı
+  oldu; kurulumun ortasında durdurulan panel, paket yöneticisi üç dakika
+  tutulurken açılınca değişiklik "sunucu meşgul kaldı" sözleriyle bitti.
+- **Site başına sınırlar hazırlığı:** güvenlik duvarı var olmayan bir yeri
+  iki sunucuda da reddetti, ana sunucuda güncellemeden sonra yine reddetti;
+  Debian 13'te yardımcı programın kendi yerini görüyor; site başına sınırları
+  olmayan bir sunucuda bir program yeniden başlatmada, öldürülmede, yeniden
+  yayında ve sunucunun yeniden başlatılmasında posta engelinde kaldı, içinden
+  25, 465 ve 587 numaralı kapılar reddedildi; laboratuvarın elle sitesinin
+  sınırlarına koyduğu bir program engeli korudu, yeniden yayından sonra da;
+  o dosya kaldırılınca eski yerine döndü.
+- **Geri dönüş:** sürümün `rollback.sh` dosyası güncellemeden hemen sonra,
+  Ubuntu sunucuda adımdan önce, ana sunucuda adımdan sonra, "alpha.146'ya
+  dönmek" bölümündeki satırla reddedildi; hiçbir şey durdurulmadı ya da
+  değiştirilmedi.
+- İki sunucuda da olağan sayfalar betik hatası olmadan açıldı.
+
+**Laboratuvarın sayfanın yolundan ayrıldığı yerler.** Laboratuvar sunucularında
+root olarak laboratuvar `at` kurdu, bir sahip hesabı açtı, bir site hesabı
+olarak bir `at` işi zamanladı ve crontab satırları ekledi, web postasının
+eklenti klasörüne kopyalar ve bir bağlantı koydu, agent'ı ve paneli
+duraklattı ve durdurdu, paket yöneticisinin kilidini tuttu, `/etc/at.allow`
+dosyasını sildi, dağıtımın havuzunun adını geri verdi, onu kullanan bir sahip
+sitesi yazdı, paneli yeniden başlattı, ana sunucuyu yeniden başlattı, bir
+programı elle sitesinin sınırlarına koydu, `rollback.sh` çalıştırdı ve sonda
+temizlik yaptı. Tur boyunca iki sunucuda da laboratuvarın kendi sertifika
+yetkilisine güvenildi.
+
+**Denenmeyenler:**
+
+- Yeni panelin açılış denetiminin başarısız olmasıyla kendiliğinden dönüş.
+- Panelin yeniden başlatılmasıyla kesilen bir taşıma (yalnız duraklatma
+  denendi) ve bir kurulumun ikinci çalışması sırasında yeniden başlatma.
+- Agent duraklatılırken sunucu kurulum adımları.
+- İkinci bir PHP sürümü, erişim listesi olmayan bir dosya sistemi, XFS ya da
+  Btrfs, Apache, lighttpd ya da ters vekil bir site gerektirenler: kendi
+  hesabını alamayan bir araç, bir araç taşınırken silinen bir site, bir
+  taşımada öldürülen agent, sahibin web postasının girdisini kaldırması, bir
+  taşımada elektrik kesilmesi, başka yazılışların "kullanılıyor" durumları,
+  yavaş bir araçla saatlik okuma.
+- Site başına sınırlar hazırlığında: yük altında systemd, sitesinin
+  sınırlarındaki bir programla önceki yardımcı, sınır satırları, sitesinin
+  sınırlarındaki bir programla güvenlik duvarının boşaltılması ve yeniden
+  başlatma, ve düz bir program dışındaki program türleri.
+- Arch Linux'ta hiçbir şey denenmedi.
 
 ## Güncellemeden sonra ne beklenir
 
-- Şema adımı yok: düzen şema 81 olarak kalır. Ürünün alpha.146'ya geri
-  dönüşü yalnız güncellemeden sonraki ilk dakikalarda, araçları taşıyan adım
-  çalışmadan önce kabul edilir (bkz. "alpha.146'ya dönmek").
-- İlk açılıştan yaklaşık üç dakika sonra: her aracın kendi havuzu başlar ve
-  taşınan her araç için web sunucusu bir kez yeniden yüklenir; ortak havuzu
-  kapatılan her sürüm için PHP-FPM bir kez yeniden yüklenir; `at` kurulu olan
-  ve sahibin dosyası bulunmayan yerde `/etc/at.allow` belirir.
+- Şema adımı yok: düzen şema 81 olarak kalır. Tamamlanmış bir güncelleme
+  geri alınmaz; bu sürümün her değişikliği alpha.147'de geri alınır (bkz.
+  "alpha.146'ya dönmek").
+- İlk açılıştan yaklaşık üç dakika sonra panel araçları kendi hesaplarına
+  taşır ve ortak havuzu hiçbir şey kullanmıyorsa kapatır: PHP-FPM ve web
+  sunucusu yeniden yüklenir, hepsi birkaç saniye içinde. **O anda PHP
+  siteleri ve web postası birkaç saniye hata verebilir** (laboratuvarda: en
+  çok dört saniye, birkaç istek); bu anı seçmek için güncellemeyi sakin bir
+  saatte yapın. `at` kurulu olan ve sahibin dosyası bulunmayan yerde
+  `/etc/at.allow` belirir.
 - phpMyAdmin, phpPgAdmin ve web postası eskisi gibi oturum açar ve çalışır.
   Biri yanıt vermezse **Şu anki sorunlar** bunu adımıyla birlikte söyler.
 - **Şu anki sorunlar** sahibi gerektiren satırlar gösterebilir: bir şey
