@@ -419,9 +419,12 @@ görevler ve açık kalan kullanıcı yöneticileri R2b'dir.
 birim `/celiksite_7.slice/<birim>` olur: `/system.slice/<birim>` gibi ikinci düzey. Bu yüzden SMTP
 engelinin kümesi (`typeof socket cgroupv2 level 2`, §3) birimi iki yerde de tabloda hiçbir
 değişiklik olmadan yakalar. Yardımcının `egress-add` komutu birimin gerçekten çalıştığı cgroup'un
-(`ControlGroup=`) öğesini ekler, yalnız sistem dilimini ya da bir sitenin dilimini kabul eder ve
-başka her yeri reddeder; sahibin eklemesiyle başka yere taşınan birim (önceden olduğu gibi)
-başlamaz. Bekçi zamanlayıcısı birimleri iki yerde de yeniden ekler.
+öğesini ekler; bu yeri §3'teki sırayla bulur (önce kendi cgroup satırı, sonra systemd'nin
+`ControlGroup=` değeri, sonra sistem dilimi; birim başka yerde çalışıyorsa nft bu yolu kabul etmez).
+Yalnız sistem dilimini ya da bir sitenin dilimini kabul eder ve başka her yeri reddeder; sahibin
+eklemesiyle başka yere taşınan birim (önceden olduğu gibi) başlamaz. Ajan bir programın nerede
+çalıştığını aynı kuralla okur (`sitesandbox.UnitControlGroupAllowed`). Bekçi zamanlayıcısı birimleri
+iki yerde de yeniden ekler.
 
 **Sınırlar.** Dilim sitenin etkin `site.memory_mb`, `site.tasks` ve `site.cpu_percent` değerlerini
 alır (docs/SITE-LIMITS.md §4a). systemd bir birimle üst dilimlerinin en sıkı sınırını uygular
@@ -749,36 +752,36 @@ yerde bırakıp yalnız bir sınırı kaldırmak için yukarıdaki ekleme dosyas
 
 ### 8.8 Önceki bir sürüme geri dönmek
 
-Ürünün geri alması tam olarak bundan önce kurulu olan sürüme döner (güncellemenin anlık görüntüsü
-götürdüğü sürüme bağlıdır; `rollback.sh`) ve bugünkü anlık görüntülerle panelin veritabanını da
-güncellemeden önceki haline getirir. Bundan önceki sürümün geri dönmek için güvenli bir yer olması
-gerekir ve yalnız **site dilimleri için uyumluluk değişikliğini taşıyan** bir sürüm öyledir: onun
-koruma yardımcısı, SMTP bekçisi ve kanıtı `celiksite_<kimlik>.slice` altında çalışan programı kabul
-eder (taşınan programlar posta engelinin içinde başlamaya devam eder), bir planı ya da hesabı
-kaydetmesi tanımadığı sınır anahtarlarını korur ve bir birimi yeniden yazması, o dilimin dosyası
-durdukça `Slice=celiksite_<kimlik>.slice` satırını korur. Bu sürümden geri dönmenin güvenli olduğu en
-eski sürüm odur (numarası kendi sürüm notlarında). Daha eski bir sürüm bunların hiçbirini yapmaz: ona
-dönmek taşınan programları bir sonraki başlangıçlarında durdurur ya da posta engeli olmadan başlatır.
+**Başarısız bir güncelleme kendiliğinden geri döner; o anda bu bölümün hiçbir şeyi yoktur.**
+Güncellemenin kendiliğinden geri dönüşü, yeni panelin salt okur açılış denetimine kadarki bir
+hatayı kapsar; güncellemenin tamamlandı işareti bu denetimden sonra, yeni Ajan ve panel
+başlatılmadan önce konur. Bu sürüm güncellemenin içinde hiçbir şey yapmaz: veritabanı geçişi yoktur
+(yapı şema 81'de kalır), güncelleyici hiçbir programın birimini yeniden yazmaz ve sürüm arşivi
+yardımcı kurmaz (Ajan, koruma yardımcısının kendi kopyasını ve bekçiyi açılıştan sonraki ilk
+program yazmasında yerine koyar). Bu yüzden kendiliğinden geri dönüş ne dilim dosyası, ne taşınmış
+program, ne bu sürümün yazdığı bir `site.*` ya da `db.*` değeri, ne de Ajan'ın bu bölümdeki
+kayıtlarından birini bulur.
 
-**Önceki sürüm bu sürümün durumuyla ne yapar, ne yapmaz.** Dilim dosyası yazmaz, sınır uygulamaz,
-program taşımaz, site sınırları kartını göstermez ve taşıma günlüğünü okumaz. Dilim dosyaları kalır ve
-birimi onları adlandıran programları sınırlamaya devam eder (yeniden başlatmalardan sonra da); birim
-satırları kalır; Ajan'ın kayıtları, `.pending` ve `aside` kopyaları kullanılmadan geride kalır. Bu
-sürümün koruduğu bir taşıma günlüğünü önceki sürüm bitirmez: **geri dönmeden önce bitmeyen her taşımayı
-çözün** (sitesinin kartı, Tekrar dene). Bu sürümde konan sınırlar veritabanındadır ve geri alma
-veritabanını güncellemeden önceki haline getirir: geri dönünce giderler; yeniden ileri güncellemeden
-sonra siteler bir sonraki değişiklikte planlarının o anki sınırlarını (konmamışsa varsayılanları)
-alır; taşımadan ya da sınır değiştirmeden önce onları yeniden koyun.
+**Tamamlanmış bir güncelleme geri alınmaz.** Yeni Ajan ve panel başlatıldığı andan sonra
+güncelleme sonuna kadar götürülür; o başlatma başarısız olsa da. Panel önceki sürüme dönmek için
+bir yol sunmaz; sürümün `rollback.sh` betiği tamamlanmış bir güncellemeyi hiçbir şeyi durdurmadan
+reddeder:
+`!! a new rollback cannot reuse an earlier transaction's recovery material; preserve the snapshot and use a supported recovery plan`;
+`sudo /usr/libexec/celikpanel/recovery recover` ise yalnız yarıda kalmış bir güncellemeyi ya da
+geri almayı bitirir. Bu yüzden ürünün hiçbir yolu, bu sürümü çalıştırmış bir sunucuya önceki
+sürümü (ya da daha eskisini) geri getirmez. Önceki sürüm alpha.147 sitesinin diliminde çalışan bir
+programı zaten kabul eder (yardımcısı, bekçisi ve kanıtı), bir planı ya da hesabı kaydederken
+tanımadığı sınır anahtarlarını korur ve o dilimin dosyası durdukça bir birimin
+`Slice=celiksite_<kimlik>.slice` satırını korur; bu bir hazırlıktır, geri dönüş yolu değildir.
 
-**O sürümden daha geriye elle dönmek.** Ürünün geri alması daha geriye dönmeden önce ne reddeder ne
-uyarır (yalnız bildiği DNS ve posta uyumluluğunu denetler). Uyumluluk sürümündeyken, onun kendi geri
-almasından önce **önce her siteyi geri koyun**: her site için `celiksite_<kimlik>.slice` dosyasını
-silin ve `daemon-reload` çalıştırın, sitenin her programını kendi sayfasında kaydedin (o sürüm birimi
-dilim satırı olmadan yazar) ve yeniden başlatın; her program için `systemctl show -P ControlGroup
-<birim>` çıktısının `/system.slice/<birim>` olduğunu denetleyin; ancak sonra geri dönün. Doğrudan
-daha eski bir sürümün üstüne kurulan bu sürümün (uyumluluk sürümü atlanmışsa) geri alma hedefi o eski
-sürümdür. Bu sürümde bir programı dilimden çıkaran bir işlem yoktur; bu yüzden böyle bir geri almadan
-önce adımlar elle yapılır: taşınan her programın birim dosyasında `Slice=celiksite_<kimlik>.slice`
-satırını `Slice=system.slice` yapın (panel dosyayı sunucuda değiştirilmiş olarak gösterir ve korur),
-`celiksite_*.slice` dosyalarını silin, `daemon-reload` çalıştırın, her programı yeniden başlatın,
-`ControlGroup` değerini yukarıdaki gibi denetleyin; sonra geri dönün.
+**Bu sürümün yaptıkları bu sürümde geri alınır:**
+
+- Bir sitenin sınırları panel olmadan sahibin ek ayar dosyasıyla kaldırılır ya da değiştirilir
+  (§8.7, "Sahibin bağımsızlığı"); planda, hesapta ya da sunucunun sınırlarında bir `site.*`
+  anahtarını boşaltmak siteyi varsayılana döndürür.
+- Programlar sitelerinin diliminden elle çıkarılır (§8.7, "Sınırları elle kaldırmak için"): panelde
+  bunun için bir işlem yoktur.
+- Bir veritabanı kullanıcısının süre ve geçici dosya sınırları: `db.*` anahtarını konduğu yerde
+  boşaltmak, panelin kendi yazdığı değeri (ve yalnız onu) kaldırmasını sağlar; sunucu sahibinin
+  elle koyduğu bir değeri sahibi kaldırır (`ALTER ROLE … RESET …`, MariaDB için
+  `ALTER USER … WITH MAX_STATEMENT_TIME 0`).

@@ -532,10 +532,13 @@ would be a child of `celiksite.slice`). Without one the slice sits below the roo
 and a unit in it is `/celiksite_7.slice/<unit>`: depth two, like
 `/system.slice/<unit>`. The SMTP block's set (`typeof socket cgroupv2 level 2`, §3)
 therefore matches a unit in either place with no change to the table. The helper's
-`egress-add` adds the element of the cgroup the unit really runs in (its
-`ControlGroup=`), accepts only the system slice or a site's slice, and refuses any
-other place, so a unit an owner's drop-in moved elsewhere does not start (as
-before). The guard timer re-adds units in either place.
+`egress-add` adds the element of the cgroup the unit really runs in, found in the
+order of §3 (its own cgroup line, then systemd's `ControlGroup=`, then the system
+slice, which nft refuses for a unit that runs elsewhere), accepts only the system
+slice or a site's slice, and refuses any other place, so a unit an owner's drop-in
+moved elsewhere does not start (as before). The Agent reads where a program runs
+by the same rule (`sitesandbox.UnitControlGroupAllowed`). The guard timer re-adds
+units in either place.
 
 **Limits.** The slice gets the site's effective `site.memory_mb`, `site.tasks` and
 `site.cpu_percent` (docs/SITE-LIMITS.md §4a). systemd applies the most stringent
@@ -889,39 +892,37 @@ above.
 
 ### 8.8 Going back to an earlier release
 
-The product's rollback goes back to exactly the release installed before this one (the
-update's snapshot is bound to the release it led into; `rollback.sh`), and with the current
-snapshots it also puts the panel's database back as it was before the update. The release
-before this one has to be a safe place to come back to, and only a release that **carries
-the compatibility change for site slices** is: its sandbox helper, SMTP guard and proof take
-a program that runs under `celiksite_<id>.slice` (so moved programs keep starting, inside the
-mail block), its save of a plan or account keeps limit keys it does not know, and its rewrite
-of a unit keeps a `Slice=celiksite_<id>.slice` line while that slice's file exists. That
-release is the earliest one it is safe to go back to from this one (its number is in its
-release notes). An earlier release does none of this: going back to it stops the moved
-programs at their next start, or starts them without the mail block.
+**An update that fails returns by itself, before anything of this section exists.** The
+update's automatic return covers a failure up to the new panel's read-only start check; the
+update's completion mark is set after that check and before the new Agent and panel are
+started. This release does nothing inside the update itself: it has no database migration
+(the layout stays schema 81), the updater rewrites no program's unit, and the release
+archive installs no helper (the Agent puts its own copy of the sandbox helper and the guard
+in place at the first program write after its start). An automatic return therefore finds
+no slice file, no moved program, no `site.*` or `db.*` value written by this release and
+none of the Agent's records of this section.
 
-**What the earlier release does and does not do with this release's state.** It writes no
-slice file, applies and pushes no limits, moves no program, shows no site limits card and
-reads no move journal. The slice files stay and keep limiting the programs whose unit
-names them (also across reboots); the unit lines stay; the Agent's records, `.pending` and
-`aside` copies stay behind unused. A move journal kept by this release is not finished by
-the earlier one: **settle every unfinished move (its site's card, Try again) before going
-back.** The limits set on this release live in the database, which the rollback puts back
-as it was before the update: they are gone after going back, and after updating forward
-again the sites take the limits of their plans as they are then (the defaults where none is
-set) at the next change; set them again before moving or changing limits.
+**A completed update is not taken back.** From the moment the new Agent and panel are
+started the update is carried to its end, also when that start fails. The panel offers no
+way back to the release before; the release's `rollback.sh` refuses a completed update
+before it stops anything, with
+`!! a new rollback cannot reuse an earlier transaction's recovery material; preserve the snapshot and use a supported recovery plan`;
+and `sudo /usr/libexec/celikpanel/recovery recover` only finishes an update or rollback
+that was interrupted. So no product path brings the release before (or an earlier one)
+back onto a server that has run this one. The release before, alpha.147, already accepts a
+program that runs in its site's slice (its helper, guard and proof), keeps limit keys it
+does not know when it saves a plan or account, and keeps a unit's
+`Slice=celiksite_<id>.slice` line while that slice's file exists; that is preparation, not
+a way back.
 
-**Going back further than that release, by hand.** The product's rollback neither refuses nor
-warns before going back further (it checks only the DNS and mail compatibility it knows).
-On the compatibility release, before its own rollback: **put every site back first**: for each
-site, remove its `celiksite_<id>.slice` file and `daemon-reload`, save each of its programs
-on its page (that release then writes the unit without the slice line) and restart it;
-check that `systemctl show -P ControlGroup <unit>` reads `/system.slice/<unit>` for every
-program; only then go back. This release installed directly over an older one (skipping the
-compatibility release) has that older one as its rollback target. This release has no
-action that takes a program out of its slice, so before such a rollback the steps are by
-hand: in each moved program's unit file change `Slice=celiksite_<id>.slice` to
-`Slice=system.slice` (the panel then shows the file as changed on the server and keeps it),
-remove the `celiksite_*.slice` files, `daemon-reload`, restart each program, check
-`ControlGroup` as above; then go back.
+**What this release did is undone on this release:**
+
+- A site's limits are lifted or changed without the panel by the owner's drop-in (§8.7,
+  "Owner independence"); clearing a `site.*` key in the plan, the account or the server's
+  limits brings the site back to the default.
+- Programs are taken out of their site's slice by hand (§8.7, "To remove the limits by
+  hand"): the panel has no action for it.
+- A database user's time and temporary-file limits: clearing the `db.*` key where it is
+  set makes the panel remove the value it wrote itself (and only that); a value the server
+  owner set by hand is the owner's to remove (`ALTER ROLE … RESET …`, or for MariaDB
+  `ALTER USER … WITH MAX_STATEMENT_TIME 0`).

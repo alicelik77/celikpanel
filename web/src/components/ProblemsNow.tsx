@@ -121,8 +121,6 @@ const KINDS: readonly ProblemKind[] = [
     'webmail_address_kept', 'webmail_address_refused',
     // alpha.145 lab, D1: a server change whose end the panel could not record.
     'service_operation_unsettled',
-    // alpha.145: webmail's configuration still sends without encryption.
-    'webmail_cannot_send',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
     // S4 R2a: sites whose programs still run outside their limits (a to-do).
@@ -134,6 +132,8 @@ const KINDS: readonly ProblemKind[] = [
     'site_limits_unapplied', 'site_memory_default',
     // S4 R2a third fix round: a move whose put-back did not complete.
     'site_move_kept',
+    // alpha.145: webmail's configuration still sends without encryption.
+    'webmail_cannot_send',
 ];
 // The doors the administrator may close again after the server owner undid them.
 // The action of a site's default memory limit fixed for the server's earlier memory (S4 R2a).
