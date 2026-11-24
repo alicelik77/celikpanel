@@ -243,7 +243,7 @@ export const enLifecycleScreens = {
     'life.app.rolledBack': 'It did not work, so it was put back and runs as the shared web user again: {reason}',
     'life.app.failed': 'The application was not moved: {reason}',
     'life.app.unknown': 'The answer did not arrive, so whether the application moved is not known; it is read again.',
-    'life.isolation.tools': 'Webmail, phpMyAdmin and phpPgAdmin share one PHP-FPM pool under the web server’s user; each site runs under its own user, separate from them.',
+    'life.isolation.tools': 'Once CelikPanel has moved them, webmail, phpMyAdmin and phpPgAdmin each run under an account and PHP-FPM pool of their own; a tool not moved shares one PHP-FPM pool under the web server’s user. Each site runs under its own user, separate from them.',
     'life.isolation.mail': 'All mailboxes are stored under one system user (vmail); mail domains are kept apart by the mail server’s own accounts, not by separate system users.',
     // ---- Node.js patch notices (D-038 §9) ----
     'life.node.newer': 'A newer patch on the same line exists: Node.js {newest} (installed: {installed}). The operating system never updates Node.js installed by CelikPanel.',

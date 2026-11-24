@@ -229,7 +229,7 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     'life.app.rolledBack': 'Çalışmadı; bu yüzden geri kondu ve yine ortak web kullanıcısıyla çalışıyor: {reason}',
     'life.app.failed': 'Uygulama taşınmadı: {reason}',
     'life.app.unknown': 'Yanıt gelmedi; uygulamanın taşınıp taşınmadığı bilinmiyor. Yeniden okunuyor.',
-    'life.isolation.tools': 'Web postası, phpMyAdmin ve phpPgAdmin web sunucusunun kullanıcısıyla tek bir PHP-FPM havuzunu paylaşır; her site onlardan ayrı, kendi kullanıcısıyla çalışır.',
+    'life.isolation.tools': 'CelikPanel taşıdıktan sonra web postası, phpMyAdmin ve phpPgAdmin her biri kendi hesabı ve kendi PHP-FPM havuzuyla çalışır; taşınmamış bir araç web sunucusunun kullanıcısıyla tek bir PHP-FPM havuzunu paylaşır. Her site onlardan ayrı, kendi kullanıcısıyla çalışır.',
     'life.isolation.mail': 'Bütün posta kutuları tek bir sistem kullanıcısı (vmail) altında saklanır; posta alan adları ayrı sistem kullanıcılarıyla değil, posta sunucusunun kendi hesaplarıyla ayrılır.',
     'life.node.newer': 'Aynı hatta daha yeni bir yama var: Node.js {newest} (kurulu: {installed}). İşletim sistemi CelikPanel’in kurduğu Node.js’i asla güncellemez.',
     'life.node.install': '{newest} sürümünü kur…',
