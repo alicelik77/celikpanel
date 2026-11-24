@@ -452,6 +452,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "mail/accounts/empty":
 		// alpha.128 (G20): remove every message of one mailbox.
 		match.kind, match.methods = "mail", []string{http.MethodPost}
+	case "mail/accounts/adopt":
+		// alpha.144: the administrator records a mailbox found on the server
+		// without a row in the panel (its mail is not touched).
+		match.kind, match.methods = "mail", []string{http.MethodPost}
 	case "mail/accounts":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/quota", "mail/rbl", "mail/setup", "mail/auth":
@@ -1627,6 +1631,8 @@ func main() {
 			if err := sweepMailboxRecoveryLinks(context.Background(), panel.db.GetDB()); err != nil {
 				log.Printf("[mailbox-recovery] old links could not be removed: %v", err)
 			}
+			// alpha.144: alias records whose zone's publication waited.
+			panel.republishAliasZones(context.Background())
 		}
 	}()
 

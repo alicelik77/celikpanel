@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
@@ -69,6 +69,10 @@ export type ProblemKind =
     | 'mail_signing'
     | 'mail_autoresponder_foreign'
     | 'postgresql_databases_unreadable'
+    | 'webmail_address_kept'
+    | 'webmail_address_refused'
+    | 'webmail_cannot_send'
+    | 'service_operation_unsettled'
     | 'site_memory_repeated'
     | 'site_tasks_repeated'
     | 'disk_limits_counted'
@@ -81,6 +85,9 @@ export type ProblemKind =
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
 const RECLOSE_URL = '/api/v1/metrics/side-doors/reclose';
+// Third fix round: the panel keeps the last result with its time, also over
+// a restart; one a restart cut is "unknown".
+type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; unknown?: boolean; error_kind?: string; error?: string; at?: string };
 const RECLOSE_POLL_MS = 2000;
 const RECLOSE_FOLLOW_MS = 25 * 60 * 1000;
 
@@ -109,6 +116,13 @@ const KINDS: readonly ProblemKind[] = [
     'mail_autoresponder_foreign',
     // 22 Nov 2026: PostgreSQL databases the hourly checks could not read.
     'postgresql_databases_unreadable',
+    // alpha.144: webmail's address still in its earlier form (owner's file,
+    // or a rewrite nginx's test put back).
+    'webmail_address_kept', 'webmail_address_refused',
+    // alpha.145 lab, D1: a server change whose end the panel could not record.
+    'service_operation_unsettled',
+    // alpha.145: webmail's configuration still sends without encryption.
+    'webmail_cannot_send',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
     // S4 R2a: sites whose programs still run outside their limits (a to-do).
@@ -149,7 +163,7 @@ export function problemVars(
 const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
 
 /** The catalogue key of a problem's body. */
-export function problemBodyKey(problem: { kind: string; name?: string; subject?: string }): TranslationKey {
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
     if (problem.kind === 'mail_signing') {
         return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
     }
@@ -158,12 +172,34 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
         const step = ['agent_unreachable', 'agent_build', 'agent_failed'].includes(problem.subject ?? '') ? problem.subject : 'agent_failed';
         return `pnow.mail_autoresponder_foreign.${step}` as TranslationKey;
     }
+    // alpha.144 (alpha.143 lab): one database is said in the singular.
+    if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
+        return `pnow.${problem.kind}.body_one` as TranslationKey;
+    }
+    // alpha.144: nginx's test named no file.
+    // alpha.145 (security): no address: webmail's local server.
+    if (problem.kind === 'webmail_address_refused' && !problem.subject) return (problem.name ? 'pnow.webmail_local_server.refused' : 'pnow.webmail_local_server.refused_unnamed') as TranslationKey;
+    if (problem.kind === 'webmail_address_kept' && !problem.subject) return ((problem.name ?? '').endsWith('.celikpanel-pending') ? 'pnow.webmail_local_server.kept' : 'pnow.webmail_local_server.kept_no_text') as TranslationKey;
+    if (problem.kind === 'webmail_address_refused' && !problem.name) return 'pnow.webmail_address_refused.body_unnamed' as TranslationKey;
+    // CelikPanel's text is named only when it lies beside the owner's file.
+    if (problem.kind === 'webmail_address_kept' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_address_kept.body_no_text' as TranslationKey;
+    // alpha.145 (review of PR #357, finding 2): CelikPanel's own earlier text
+    // that it could not rewrite: the journal and a restart, never a hand edit.
+    if (problem.kind === 'webmail_cannot_send' && problem.subject === 'rewrite_failed') return 'pnow.webmail_cannot_send.body_rewrite_failed' as TranslationKey;
+    // alpha.145: CelikPanel's text is named only when it lies beside the configuration.
+    if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
 /** The catalogue key of a problem's title (22 Nov 2026: one signing state signs nothing). */
-export function problemTitleKey(problem: { kind: string; name?: string }): TranslationKey {
+export function problemTitleKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
+    // alpha.145 (security): no address: webmail's local server.
+    if ((problem.kind === 'webmail_address_kept' || problem.kind === 'webmail_address_refused') && !problem.subject) return 'pnow.webmail_local_server.title' as TranslationKey;
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
+    // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
+    if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
+        return `pnow.${problem.kind}.title_one` as TranslationKey;
+    }
     return `pnow.${problem.kind}.title` as TranslationKey;
 }
 
@@ -239,6 +275,18 @@ export function ProblemsNow({
     const [starting, setStarting] = useState<string | null>(null);
     const [outcome, setOutcome] = useState<ApiError | null>(null);
     const [failed, setFailed] = useState<{ key: string; text: string } | null>(null);
+    // The last close-again's result when it did not close the door (failed,
+    // or cut by a panel restart): read once when a line offers it (reads only).
+    const [lastReclose, setLastReclose] = useState<RecloseStatus | null>(null);
+    const listed = handle.remote.state === 'known' ? handle.remote.value : handle.remote.state === 'unknown' ? handle.remote.previous?.value : undefined;
+    const offersReclose = (listed?.problems ?? []).some((p: Problem) => p.action.kind === 'reclose');
+    const readLastReclose = useCallback(async () => {
+        const read = await readRemote(RECLOSE_URL, (raw) => raw as RecloseStatus);
+        if (read.state === 'known') setLastReclose(read.value);
+    }, []);
+    useEffect(() => {
+        if (offersReclose) void readLastReclose();
+    }, [offersReclose, readLastReclose]);
 
     const clock = (iso?: string) => {
         if (!iso) return '';
@@ -310,7 +358,6 @@ export function ProblemsNow({
             progressTitle: t('pnow.reclose.progress'),
             action: async (report) => {
                 report.steps([{ id: 'reclose', label: t('pnow.reclose.step'), state: 'running', since: Date.now() }]);
-                type RecloseStatus = { target?: string; version?: string; running?: boolean; closed?: boolean; error?: string };
                 const unknown = { state: 'unknown' as const, reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
                 try {
                     const response = await fetch(RECLOSE_URL, {
@@ -339,13 +386,14 @@ export function ProblemsNow({
                         lastRead = again.state;
                         if (again.state === 'known') status = again.value;
                     }
-                    if (lastRead === 'unknown' || status?.running || status?.target !== target || (status?.version ?? '') !== version) return unknown;
-                    if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: status.error };
+                    if (lastRead === 'unknown' || status?.running || status?.unknown || status?.target !== target || (status?.version ?? '') !== version) return unknown;
+                    if (status.error) return { state: 'failed', title: t('pnow.reclose.failed'), reason: t('pnow.reclose.notRun', { reason: status.error }) };
                     return status.closed ? { state: 'done', message: t('pnow.reclose.done') } : { state: 'blocked', reason: t('pnow.reclose.still') };
                 } catch {
                     return unknown;
                 } finally {
                     void handle.retry();
+                    void readLastReclose();
                 }
             },
         });
@@ -437,7 +485,9 @@ export function ProblemsNow({
                             const when = problem.since
                                 ? t('pnow.since', { time: clock(problem.since) })
                                 : problem.kind === 'service_stopped' && problem.observed_at ? t('pnow.seen', { time: clock(problem.observed_at) }) : '';
-                            const showLink = problem.action.kind === 'open' && problem.action.to !== here;
+                            // alpha.145: webmail's local-server line (no address) offers no link: Roundcube's page has nothing for it.
+                            const localWebmailLine = (problem.kind === 'webmail_address_kept' || problem.kind === 'webmail_address_refused') && !problem.subject;
+                            const showLink = problem.action.kind === 'open' && problem.action.to !== here && !localWebmailLine;
                             return (
                                 <li key={problem.key} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start" data-problem={problem.kind} data-severity={problem.severity}>
                                     <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`} aria-hidden="true" />
@@ -451,6 +501,15 @@ export function ProblemsNow({
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}
                                         {failed?.key === problem.key && <p className="mt-1 text-sm text-danger" role="alert">{failed.text}</p>}
+                                        {problem.action.kind === 'reclose' && lastReclose && !lastReclose.running && (lastReclose.error || lastReclose.unknown)
+                                            && lastReclose.target === problem.action.to
+                                            && (lastReclose.version ?? '') === (problem.action.to === 'stock_pool' ? problem.name ?? '' : '') && (
+                                            <p className="mt-1 text-sm text-fg" data-problem-reclose-last="">
+                                                {lastReclose.error
+                                                    ? `${t('pnow.reclose.lastFailed', { time: clock(lastReclose.at) })} ${t('pnow.reclose.notRun', { reason: lastReclose.error })}`
+                                                    : t('pnow.reclose.unknown', { time: clock(lastReclose.at) })}
+                                            </p>
+                                        )}
                                     </div>
                                     {problem.action.kind === 'start_service' ? (
                                         <Button

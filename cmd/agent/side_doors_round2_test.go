@@ -54,7 +54,7 @@ func TestTheStockPoolInUseCheckFailsOnlyInTheSafeDirection(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := stockPoolUsers(tc.dump, listen, "", nil)
+			got := stockPoolUsers(tc.dump, listen, "", nil, nil)
 			if len(got) != len(tc.used) || (len(got) > 0 && !reflect.DeepEqual(got, tc.used)) {
 				t.Fatalf("users %v, want %v", got, tc.used)
 			}

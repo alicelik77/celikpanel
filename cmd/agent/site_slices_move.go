@@ -548,7 +548,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 			continue
 		}
 		running := siteUnitRunningStates[props["ActiveState"]]
-		if already && (!running || props["ControlGroup"] == "/"+sitesandbox.SliceName(s.SiteID)+"/"+u) {
+		if already && (!running || sitesandbox.UnitInSiteSlice(props["ControlGroup"], u, s.SiteID)) {
 			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: u, Outcome: transport.SiteMoveAlready})
 			continue
 		}
@@ -813,13 +813,12 @@ func moveOneSiteUnit(m siteMoveUnit, siteID int, journal *siteMoveJournal) (outc
 	if siteMoveKilled(m.unit, "restarted") {
 		return "", "", nil, true
 	}
-	want := "/" + sitesandbox.SliceName(siteID) + "/" + m.unit
 	for {
 		props := map[string]string{}
 		if out, err := appUnitSystemctl(systemctlArgs("show", m.unit, "--property=ActiveState,ControlGroup")...); err == nil {
 			props = parseShow(string(out))
 		}
-		inSlice := props["ActiveState"] == "active" && props["ControlGroup"] == want
+		inSlice := props["ActiveState"] == "active" && sitesandbox.UnitInSiteSlice(props["ControlGroup"], m.unit, siteID)
 		listening := true
 		if inSlice && len(m.ports) > 0 {
 			now := siteSliceListening(m.unit)
@@ -841,8 +840,8 @@ func moveOneSiteUnit(m siteMoveUnit, siteID int, journal *siteMoveJournal) (outc
 			switch {
 			case props["ActiveState"] != "active":
 				return "", "restart", fmt.Errorf("it is %s %d seconds after the restart (journalctl -u %s says why)", strings.TrimSpace(props["ActiveState"]+" "), seconds, m.unit), false
-			case props["ControlGroup"] != want:
-				return "", "cgroup", fmt.Errorf("it runs in %s, not %s", props["ControlGroup"], want), false
+			case !sitesandbox.UnitInSiteSlice(props["ControlGroup"], m.unit, siteID):
+				return "", "cgroup", fmt.Errorf("it runs in %s, not /%s/%s", props["ControlGroup"], sitesandbox.SliceName(siteID), m.unit), false
 			}
 			return "", "answer", fmt.Errorf("%d seconds after the restart it does not listen on every port it listened on before (%s)", seconds, siteSlicePorts(m.ports)), false
 		}
@@ -947,7 +946,7 @@ func siteUnitRunsInSystemSlice(unit string) (runs, known bool) {
 	if props["ActiveState"] == "" {
 		return false, false
 	}
-	return props["ActiveState"] == "active" && props["ControlGroup"] == "/"+sitesandbox.SystemSlice+"/"+unit, true
+	return props["ActiveState"] == "active" && sitesandbox.UnitInSystemSlice(props["ControlGroup"], unit), true
 }
 
 // siteMoveRecovered is what one recovery did: the site whose record it was

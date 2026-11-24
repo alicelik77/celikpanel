@@ -292,12 +292,35 @@ ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=<
 
 The helper runs `nft -f /usr/lib/celikpanel-sandbox/egress.nft` and
 `nft add element inet celikpanel_egress smtp_blocked '{ "<slice>/<unit>" }'`
-for the cgroup the unit runs in, read from systemd (with an empty
-environment), and `nft delete element …` after the stop. This fails closed. If
-nft cannot load the table, or the unit's cgroup is neither
-`/system.slice/<unit>` nor its site's `/celiksite_<id>.slice/<unit>` (§8; for
-example, an owner's drop-in moved it to another slice), the unit does not
-start.
+for the cgroup the unit runs in (with an empty environment), and
+`nft delete element …` after the stop. It finds that cgroup in this order:
+its own cgroup in `/proc/self/cgroup` (it runs inside the unit), when that is
+exactly `/system.slice/<unit>` or `/celiksite_<id>.slice/<unit>`; otherwise
+systemd's `ControlGroup` of the unit; and when systemd cannot be asked or
+names no place, the system slice, as before. When its own cgroup line is not
+used, one journal line of the unit says why, which step decided and the place
+taken. The SMTP helper so adds no dependency on systemd answering; the bind
+unit's own read of the unit's settings, unchanged from earlier releases, still
+stops a start while systemd does not answer. This fails closed. The unit does not start when nft
+cannot load the table, when systemd names another place (for example, an
+owner's drop-in moved the unit to another slice), or when the unit's place
+cannot be established: nft refuses a cgroup path that does not exist, so the
+system slice's element is not taken for a unit that runs elsewhere. The
+journal then says what was being established, that the server's
+administrator acts, and the command that shows the place:
+`systemctl show -p ControlGroup,Slice <unit>`.
+
+The site's slice is where this release places a site's programs (§8: a
+program written while it does not run goes into it; a running one stays where
+it runs until the administrator moves the site). When a program's unit is
+written while the site's limits cannot be applied (this host cannot hold
+them, §8, or the request's limits are out of range), a unit file that
+already names its site's slice keeps its `Slice=celiksite_<id>.slice` line,
+as the release before this one does, only when all of these hold: it is the
+last `Slice=` line of the main unit file (drop-ins are not read), it names the
+slice of the unit's own site, and `/etc/systemd/system/celiksite_<id>.slice`
+is a regular file (not a link or a folder). Otherwise such a write gives the
+unit `Slice=system.slice`, as before.
 
 `celikpanel-egress-guard.timer` runs every 30 seconds. If someone ran
 `nft flush ruleset` or restarted `nftables.service`, the guard loads the table

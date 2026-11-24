@@ -113,6 +113,13 @@ export const enOpstepsScreens = {
     'opstep.adminRemove.check': 'Checking CelikPanel’s account',
     'opstep.adminRemove.remove': 'Removing CelikPanel’s account from the database server',
     'opstep.userDelete.delete': 'Checking {name} owns nothing and deleting the account',
+
+    // alpha.145 lab, D1: a server change whose end the panel could not record
+    // at once (cmd/panel/service_operation_settle.go). What is true while it
+    // is settled, and the owner's step when it cannot be.
+    'services.operation.phase.settling_contact': 'The panel could not record the end of this change on its agent; the change may still be running on the server. The panel is reading what the server did. Nothing is needed from you: this ends by itself. Then a webmail update or address is only read; an install, removal or mail profile is run once more from its start, after the first run has ended, and relies on its steps being safe to repeat, so it may take as long again.',
+    'services.operation.phase.settling_recording': 'The change has ended on the server. The panel is reading what it did and recording the result: a webmail update or address is only read; an install, removal or mail profile is run once more from its start and relies on its steps being safe to repeat, so it may take as long again. Nothing is needed from you.',
+    'services.operation.phase.unsettled': 'The panel could not record the end of this change, so other component and setup changes wait. You, the server owner: first check the server agent with sudo systemctl status celikpanel-agent and start it if it is stopped (sudo systemctl start celikpanel-agent); then run sudo systemctl restart celikpanel-panel. Only the panel’s web process restarts (websites, mail and DNS keep running). At its start the panel reads what was done: a webmail update or address is only read; an install, removal or mail profile is run once more from its start and relies on its steps being safe to repeat.',
 } as const;
 
 export type OpstepsScreenKey = keyof typeof enOpstepsScreens;

@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Agent struct {
@@ -767,6 +768,30 @@ func main() {
 	// or put back from its record before any request is served
 	// (site_slices_move.go, site_slices_runtime.go).
 	recoverSiteSlicesAtStartup()
+	// alpha.144 (security): webmail's own address files in an earlier form
+	// served every file of Roundcube's linked folders; once after the update
+	// they get the current form (an owner's file is kept, the text goes
+	// beside it). Before the RPC service starts, so no webmail change races it.
+	{
+		webmailCtx, cancelWebmail := context.WithTimeout(context.Background(), 2*time.Minute)
+		for _, line := range reconcileWebmailAddressesAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
+			log.Printf("[webmail] address %s", line)
+		}
+		// alpha.145 (security): webmail's local server answers only
+		// CelikPanel's own checks (one more configuration test and reload
+		// when its file changes; a failure puts it back and the start goes on).
+		for _, line := range reconcileWebmailLocalServerAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
+			log.Printf("[webmail] local server %s", line)
+		}
+		cancelWebmail()
+	}
+	// alpha.145: webmail's configuration in CelikPanel's earlier text could
+	// not send (no encryption to the submission service); once after the
+	// update it gets the current text (an owner's file is kept, the text goes
+	// beside it).
+	for _, line := range reconcileRoundcubeConfigAtStartup() {
+		log.Printf("[webmail] configuration %s", line)
+	}
 	// alpha.130: the automatic removal's archives of leftover PostgreSQL
 	// clusters expire after 30 days (pg_leftovers.go).
 	if pruned := pruneExpiredPGAutoArchives(); len(pruned) > 0 {
@@ -802,6 +827,10 @@ func main() {
 	// per-site files at the earlier 0644 become 0640 and the hosting base
 	// 0711, before any site write races it (tenant_file_modes.go).
 	tightenTenantVisibleModesOnce()
+	// alpha.144: CelikPanel's log folder becomes passable for nginx's
+	// workers once (log_root_modes_linux.go), so they reopen the traffic logs
+	// after a rotation.
+	passLogRootOnce()
 
 	// Initialize PHP-FPM Manager
 	phpMgr, err := services.NewPHPFPMManager()

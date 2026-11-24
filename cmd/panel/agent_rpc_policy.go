@@ -170,6 +170,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 		Agent.DeletionHoldingInventoryV1 Agent.LeftMailFoldersV1
+		Agent.MailboxOnServerV1 Agent.WebmailAddressFormsV1
 		Agent.ReadSideDoorsV1
 		Agent.SiteSlicesStatusV1
 	`),
@@ -398,6 +399,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DeletionHoldingInventoryV1":    agentRPCStandardReadTimeout,
 	"Agent.RemoveHeldItemV1":              agentRPCMutationTimeout,
 	"Agent.LeftMailFoldersV1":             agentRPCStandardReadTimeout,
+	"Agent.MailboxOnServerV1":             agentRPCQuickReadTimeout,
+	"Agent.WebmailAddressFormsV1":         agentRPCQuickReadTimeout,
 	"Agent.HoldLeftMailFolderV1":          agentRPCMutationTimeout,
 	"Agent.ReadBackupChunk":               agentRPCStandardReadTimeout,
 	"Agent.ReadSystemSQLiteSnapshotChunk": agentRPCStandardReadTimeout,

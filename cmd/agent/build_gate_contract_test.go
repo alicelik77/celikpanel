@@ -67,6 +67,14 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SitePageCacheClearV1(&transport.SitePageCacheClearRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.144: reading a mailbox found on the server without a record.
+		{name: "MailboxOnServerV1", run: func(expected string) string {
+			var response transport.MailboxOnServerResponse
+			if err := agent.MailboxOnServerV1(&transport.MailboxOnServerRequest{ExpectedBuildCommit: expected, Email: "old@example.com"}, &response); err != nil {
+				return err.Error()
+			}
+			return ""
+		}},
 		// alpha.135: removing one item of what deletions left.
 		{name: "RemoveHeldItemV1", run: func(expected string) string {
 			var response transport.RemoveHeldItemResponse

@@ -101,8 +101,9 @@ table inet ` + EgressTable + ` {
 // of every running sandboxed unit whose helper loads the block (its
 // ExecStartPre runs the helper's egress-add) again. A unit whose cgroup is not
 // /system.slice/<unit> or /celiksite_<site id>.slice/<unit> (its site's slice,
-// S4 R2a) is named in the journal and left out. A finished
-// install step that stays "active (exited)" has no cgroup and is skipped
+// S4 R2a) is named in the journal and left out. Each release writes the
+// guard in its own text at its first sandboxed write (ensureSandboxEgress).
+// A finished install step that stays "active (exited)" has no cgroup and is skipped
 // (alpha.127 lab: after a Node.js "Install packages and build" the guard
 // failed every 30 seconds on celikappinst-N, "runs in , not ...").
 //

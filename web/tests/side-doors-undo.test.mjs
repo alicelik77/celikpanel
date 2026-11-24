@@ -74,3 +74,26 @@ test('a tool without its own account at its install is said with who acts', asyn
   const notes = installedNotes({ result, name: 'Roundcube', fallbackOnly: false, t: say });
   assert.ok(notes.some((note) => note.kind === 'warning' && /own account on PHP 8\.4/.test(note.text)), JSON.stringify(notes));
 });
+
+// Third fix round (finding 5): the panel keeps the last close-again with its
+// time over a restart; a run a restart cut is said as not known, and a line
+// that offers the action shows a last result that did not close the door.
+test('the last close-again is shown again when the page is opened, a cut one as not known', () => {
+  const source = read('../src/components/ProblemsNow.tsx');
+  assert.match(source, /status\?\.running \|\| status\?\.unknown \|\|/, 'a run cut by a restart is not known');
+  assert.match(source, /if \(offersReclose\) void readLastReclose\(\);/, 'read once when a line offers it');
+  assert.match(source, /lastReclose\.error \|\| lastReclose\.unknown/, 'only a result that did not close it');
+  // Fourth fix round: the page's own sentence first, the server's words quoted after it.
+  assert.match(source, /t\('pnow\.reclose\.lastFailed', \{ time: clock\(lastReclose\.at\) \}\)\} \$\{t\('pnow\.reclose\.notRun', \{ reason: lastReclose\.error \}\)/);
+  assert.match(source, /reason: t\('pnow\.reclose\.notRun', \{ reason: status\.error \}\)/, 'the window too');
+  for (const words of [en, tr]) {
+    assert.ok(!words['pnow.reclose.lastFailed'].includes('{reason}'), 'no server words inside the sentence');
+    assert.match(words['pnow.reclose.notRun'], /\{reason\}$/, 'the server words come last');
+  }
+  assert.equal(tr['pnow.reclose.lastFailed'], '{time} saatindeki yeniden kapatma başarısız oldu.');
+  assert.match(source, /t\('pnow\.reclose\.unknown', \{ time: clock\(lastReclose\.at\) \}\)/);
+  for (const key of ['pnow.reclose.lastFailed', 'pnow.reclose.unknown']) {
+    assert.ok(en[key].includes('{time}') && tr[key].includes('{time}'), key);
+  }
+  assert.match(en['pnow.reclose.unknown'], /press the button again/, 'says what to do');
+});

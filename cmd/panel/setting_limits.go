@@ -249,21 +249,61 @@ func loadSettingCeilings(ctx context.Context, q rowQueryer, ownerKind string, ow
 	return out, rows.Err()
 }
 
-// saveSettingCeilings replaces one owner's ceilings.
+// saveSettingCeilings replaces one owner's ceilings of the keys this release
+// knows (and of any key in ceilings). A row of a key this release does not
+// know is left as it is - not deleted, shown or validated: a later release
+// wrote it (the site limits site.* and db.* of S4 R2a), and going back one
+// release must not drop it at the first plan or account save (D-025). The
+// release that knows the key reads it again unchanged.
 func saveSettingCeilings(ctx context.Context, tx sqlExecer, ownerKind string, ownerID int, ceilings map[string]int) error {
-	if _, err := tx.ExecContext(ctx, `DELETE FROM setting_ceilings WHERE owner_kind = ? AND owner_id = ?`, ownerKind, ownerID); err != nil {
-		return fmt.Errorf("replace setting ceilings: %w", err)
+	replace := map[string]bool{}
+	for _, key := range settingKeyOrder {
+		replace[key] = true
 	}
 	keys := make([]string, 0, len(ceilings))
 	for key := range ceilings {
 		keys = append(keys, key)
+		replace[key] = true
 	}
 	sort.Strings(keys)
+	known := make([]string, 0, len(replace))
+	for key := range replace {
+		known = append(known, key)
+	}
+	sort.Strings(known)
+	args := []any{ownerKind, ownerID}
+	for _, key := range known {
+		args = append(args, key)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM setting_ceilings WHERE owner_kind = ? AND owner_id = ? AND key IN (?`+
+		strings.Repeat(", ?", len(known)-1)+`)`, args...); err != nil {
+		return fmt.Errorf("replace setting ceilings: %w", err)
+	}
 	for _, key := range keys {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO setting_ceilings (owner_kind, owner_id, key, value) VALUES (?, ?, ?, ?)`,
 			ownerKind, ownerID, key, ceilings[key]); err != nil {
 			return fmt.Errorf("save setting ceiling %s: %w", key, err)
 		}
+	}
+	return nil
+}
+
+// copyUnknownSettingCeilings copies the rows of keys this release does not
+// know from one owner to another, as they are (a plan's or reseller plan's
+// that an account leaves: Custom starts as a copy, and the later release that
+// wrote those keys finds them on the account as it would have copied them).
+func copyUnknownSettingCeilings(ctx context.Context, tx sqlExecer, fromKind string, fromID int, toKind string, toID int) error {
+	args := []any{toKind, toID, fromKind, fromID}
+	for _, key := range settingKeyOrder {
+		args = append(args, key)
+	}
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO setting_ceilings (owner_kind, owner_id, key, value)
+		SELECT ?, ?, key, value FROM setting_ceilings
+		WHERE owner_kind = ? AND owner_id = ? AND key NOT IN (?`+strings.Repeat(", ?", len(settingKeyOrder)-1)+`)
+		ON CONFLICT(owner_kind, owner_id, key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`, args...)
+	if err != nil {
+		return fmt.Errorf("keep the setting ceilings this release does not know: %w", err)
 	}
 	return nil
 }

@@ -97,8 +97,9 @@ func (p *Panel) readSideDoorsOnce() error {
 	if response.State == nil {
 		return nil
 	}
-	p.recordSideDoorsState(ctx, response.State)
-	p.recordSiteCrontabsOutside(ctx, siteJobsCheckedAt(response.State), response.State.SiteCrontabs)
+	if p.recordSideDoorsState(ctx, response.State) {
+		p.recordSiteCrontabsOutside(ctx, siteJobsCheckedAt(response.State), response.State.SiteCrontabs)
+	}
 	return nil
 }
 
@@ -187,9 +188,11 @@ var sideDoorsStateMu sync.Mutex
 
 // recordSideDoorsState keeps the Agent's latest answer, merged with what is
 // kept by the answer's scope (mergeSideDoorsState).
-func (p *Panel) recordSideDoorsState(ctx context.Context, state *transport.SideDoorsState) {
+// It answers false when a read's answer was older than the kept one and
+// nothing was taken from it.
+func (p *Panel) recordSideDoorsState(ctx context.Context, state *transport.SideDoorsState) bool {
 	if state == nil {
-		return
+		return false
 	}
 	sideDoorsStateMu.Lock()
 	defer sideDoorsStateMu.Unlock()
@@ -197,13 +200,17 @@ func (p *Panel) recordSideDoorsState(ctx context.Context, state *transport.SideD
 	if raw := p.setting(ctx, settingSideDoorsState); raw != "" {
 		_ = json.Unmarshal([]byte(raw), &previous)
 	}
+	if state.Scope == transport.SideDoorsScopeRead && sideDoorsAnswerOlder(state.CheckedAt, previous.CheckedAt) {
+		return false
+	}
 	raw, err := json.Marshal(mergeSideDoorsState(previous, *state))
 	if err != nil {
-		return
+		return false
 	}
 	if err := p.setSetting(ctx, settingSideDoorsState, string(raw)); err != nil {
 		log.Printf("side doors: state not recorded: %v", err)
 	}
+	return true
 }
 
 // mergeSideDoorsState: the whole step's answer replaces what is kept; the
@@ -238,9 +245,26 @@ func mergeSideDoorsState(previous, fresh transport.SideDoorsState) transport.Sid
 		}
 		return out
 	case transport.SideDoorsScopeRead:
+		// S4 R1, third fix round: a read never replaces a newer answer (one
+		// that began before the step or a move and ended after it).
+		if sideDoorsAnswerOlder(fresh.CheckedAt, previous.CheckedAt) {
+			return previous
+		}
 		out := previous
 		out.CheckedAt = fresh.CheckedAt
-		out.Tools = fresh.Tools
+		// A tool whose answer the read could not have keeps what was known.
+		out.Tools = make([]transport.SideDoorsTool, 0, len(fresh.Tools))
+		for _, row := range fresh.Tools {
+			if row.State == "" {
+				for _, kept := range previous.Tools {
+					if kept.Tool == row.Tool {
+						out.Tools = append(out.Tools, kept)
+					}
+				}
+				continue
+			}
+			out.Tools = append(out.Tools, row)
+		}
 		pools := []transport.SideDoorsStockPool{}
 		for _, row := range fresh.StockPools {
 			if row.State == "" {
@@ -267,6 +291,21 @@ func mergeSideDoorsState(previous, fresh transport.SideDoorsState) transport.Sid
 		return out
 	}
 	return previous
+}
+
+// sideDoorsAnswerOlder: the answer's time is before the kept one's (both
+// RFC 3339, to the second before the third fix round, to the millisecond
+// since); an unreadable time is not older.
+func sideDoorsAnswerOlder(fresh, kept string) bool {
+	freshAt, err := time.Parse(time.RFC3339Nano, fresh)
+	if err != nil {
+		return false
+	}
+	keptAt, err := time.Parse(time.RFC3339Nano, kept)
+	if err != nil {
+		return false
+	}
+	return freshAt.Before(keptAt)
 }
 
 // sideDoorsToolComponent is the component page of a tool.
@@ -392,7 +431,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(sideDoorsRecloseStatus())
+		_ = json.NewEncoder(w).Encode(p.recloseStatus(r.Context()))
 		return
 	case http.MethodPost:
 	default:
@@ -431,7 +470,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		details["api_token"] = c.APIToken.label()
 	}
 	auditDone := auditRecord{UserID: uid, ActingAs: actingAs, ResourceType: "service", IP: ip, UserAgent: agent, Details: auditDetailsText(details)}
-	started, running := beginSideDoorsReclose(request.Target, request.Version)
+	started, running := p.beginSideDoorsReclose(r.Context(), request.Target, request.Version)
 	if !started {
 		if running.Target == request.Target && running.Version == request.Version {
 			w.Header().Set("Content-Type", "application/json")
@@ -448,7 +487,7 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		response, err := closeSideDoorsThroughAgent(p, ctx, request.Target, request.Version)
 		if err != nil {
 			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
-			endSideDoorsReclose(false, "", "the side doors step could not run now: "+auditReason(err.Error()))
+			p.endSideDoorsReclose(context.Background(), false, "", sideDoorsRecloseNotRun, auditReason(err.Error()))
 			return
 		}
 		p.applySideDoorsAnswer(ctx, response.State)
@@ -458,27 +497,39 @@ func (p *Panel) handleSideDoorsReClose(w http.ResponseWriter, r *http.Request) {
 		} else {
 			p.recordAudit(auditRecord{UserID: auditDone.UserID, ActingAs: auditDone.ActingAs, Action: "side_doors.reclose.failed:" + request.Target, ResourceType: auditDone.ResourceType, IP: auditDone.IP, UserAgent: auditDone.UserAgent, Details: auditDone.Details})
 		}
-		endSideDoorsReclose(closed, sideDoorState(response.State, request.Target, request.Version), "")
+		p.endSideDoorsReclose(context.Background(), closed, sideDoorState(response.State, request.Target, request.Version), "", "")
 	}()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(sideDoorsRecloseStatus())
 }
 
-// sideDoorsReclose is the last "close it again" (one at a time).
+// sideDoorsReclose is the last "close it again" (one at a time). It is kept
+// in panel_settings with its time (S4 R1, third fix round), so the result
+// is still there after a Panel restart; one that was running when the Panel
+// stopped is said as not known (Unknown), never as closed or as still open.
 type sideDoorsReclose struct {
 	Target  string `json:"target,omitempty"`
 	Version string `json:"version,omitempty"`
 	Running bool   `json:"running"`
 	Closed  bool   `json:"closed"`
+	Unknown bool   `json:"unknown,omitempty"`
 	State   string `json:"state,omitempty"`
-	Error   string `json:"error,omitempty"`
-	At      string `json:"at,omitempty"`
+	// ErrorKind says in which way it failed ("not_run": the step could not
+	// run now), for the page's own sentence; Error is the server's own
+	// message, quoted after it (fourth fix round).
+	ErrorKind string `json:"error_kind,omitempty"`
+	Error     string `json:"error,omitempty"`
+	At        string `json:"at,omitempty"`
 }
+
+const settingSideDoorsReclose = "side_doors_reclose_v1"
 
 var (
 	sideDoorsRecloseMu   sync.Mutex
 	sideDoorsRecloseLast sideDoorsReclose
+	// sideDoorsRecloseLoaded: the kept result was read in this process.
+	sideDoorsRecloseLoaded bool
 )
 
 func sideDoorsRecloseStatus() sideDoorsReclose {
@@ -487,23 +538,72 @@ func sideDoorsRecloseStatus() sideDoorsReclose {
 	return sideDoorsRecloseLast
 }
 
-// beginSideDoorsReclose starts one unless one runs (then it returns that one).
-func beginSideDoorsReclose(target, version string) (bool, sideDoorsReclose) {
+// recloseStatus is the last result, read from panel_settings once per
+// process.
+func (p *Panel) recloseStatus(ctx context.Context) sideDoorsReclose {
 	sideDoorsRecloseMu.Lock()
 	defer sideDoorsRecloseMu.Unlock()
+	p.loadSideDoorsRecloseLocked(ctx)
+	return sideDoorsRecloseLast
+}
+
+func (p *Panel) loadSideDoorsRecloseLocked(ctx context.Context) {
+	if sideDoorsRecloseLoaded {
+		return
+	}
+	sideDoorsRecloseLoaded = true
+	raw := p.setting(ctx, settingSideDoorsReclose)
+	if raw == "" {
+		return
+	}
+	var kept sideDoorsReclose
+	if json.Unmarshal([]byte(raw), &kept) != nil {
+		return
+	}
+	if kept.Running {
+		// The Panel stopped while it ran: its end was never seen here.
+		kept.Running, kept.Closed, kept.Unknown, kept.ErrorKind, kept.Error = false, false, true, "", ""
+		sideDoorsRecloseLast = kept
+		p.saveSideDoorsRecloseLocked(ctx)
+		return
+	}
+	sideDoorsRecloseLast = kept
+}
+
+func (p *Panel) saveSideDoorsRecloseLocked(ctx context.Context) {
+	raw, err := json.Marshal(sideDoorsRecloseLast)
+	if err != nil {
+		return
+	}
+	if err := p.setSetting(ctx, settingSideDoorsReclose, string(raw)); err != nil {
+		log.Printf("side doors: the close-again result was not kept: %v", err)
+	}
+}
+
+// beginSideDoorsReclose starts one unless one runs (then it returns that one).
+func (p *Panel) beginSideDoorsReclose(ctx context.Context, target, version string) (bool, sideDoorsReclose) {
+	sideDoorsRecloseMu.Lock()
+	defer sideDoorsRecloseMu.Unlock()
+	p.loadSideDoorsRecloseLocked(ctx)
 	if sideDoorsRecloseLast.Running {
 		return false, sideDoorsRecloseLast
 	}
 	sideDoorsRecloseLast = sideDoorsReclose{Target: target, Version: version, Running: true, At: time.Now().UTC().Format(time.RFC3339)}
+	p.saveSideDoorsRecloseLocked(ctx)
 	return true, sideDoorsRecloseLast
 }
 
-func endSideDoorsReclose(closed bool, state, failure string) {
+// sideDoorsRecloseNotRun: the step could not run now (the Agent did not
+// answer, or another change held the server).
+const sideDoorsRecloseNotRun = "not_run"
+
+func (p *Panel) endSideDoorsReclose(ctx context.Context, closed bool, state, failureKind, failure string) {
 	sideDoorsRecloseMu.Lock()
 	defer sideDoorsRecloseMu.Unlock()
-	sideDoorsRecloseLast.Running, sideDoorsRecloseLast.Closed = false, closed
-	sideDoorsRecloseLast.State, sideDoorsRecloseLast.Error = state, failure
+	sideDoorsRecloseLast.Running, sideDoorsRecloseLast.Closed, sideDoorsRecloseLast.Unknown = false, closed, false
+	sideDoorsRecloseLast.State, sideDoorsRecloseLast.ErrorKind, sideDoorsRecloseLast.Error = state, failureKind, failure
 	sideDoorsRecloseLast.At = time.Now().UTC().Format(time.RFC3339)
+	p.saveSideDoorsRecloseLocked(ctx)
 }
 
 var sideDoorsPHPVersion = regexp.MustCompile(`^[0-9]{1,2}\.[0-9]{1,2}$`)

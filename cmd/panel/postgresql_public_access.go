@@ -227,6 +227,9 @@ type pgPublicEntry struct {
 	FailedAt    string `json:"failed_at,omitempty"`
 	Failure     string `json:"failure,omitempty"`
 	FailureCode string `json:"failure_code,omitempty"`
+	// FailureKind (alpha.144, alpha.143 lab): the kind of cause the database
+	// server's message names, for the page's own words (pgPublicFailureKind).
+	FailureKind string `json:"failure_kind,omitempty"`
 	// UndoStatements: the plain statements of an undo, for an owner without
 	// the panel (run as the postgres account).
 	UndoStatements []string `json:"undo_statements,omitempty"`
@@ -932,6 +935,9 @@ func pgPublicFailureOf(entry *pgPublicEntry, marker *pgPublicMarker, fingerprint
 		return false
 	}
 	entry.FailedAt, entry.Failure, entry.FailureCode = marker.FailedAt, marker.Failure, marker.FailureCode
+	if marker.FailureCode == "server" {
+		entry.FailureKind = pgPublicFailureKind(marker.Failure)
+	}
 	entry.Found = append([]string{"close_failed"}, entry.Found...)
 	return true
 }
@@ -1190,6 +1196,37 @@ func pgPublicFailureFrom(detail string, refusal bool, agentError string) (string
 	}
 	log.Printf("postgresql databases: a close was refused before it was sent: %s", boundedAgentDiagnostic(agentError))
 	return "", "refused"
+}
+
+// pgPublicFailureKind is the kind of cause a database server's message
+// names (alpha.144, alpha.143 lab item 3), so the page says it in its own
+// language before the quoted message: in_use (a lock was not granted in
+// time), timeout, connection (the connection was lost), rights, missing
+// (something it names does not exist), or refused (any other refusal).
+func pgPublicFailureKind(detail string) string {
+	text := strings.ToLower(detail)
+	has := func(parts ...string) bool {
+		for _, part := range parts {
+			if strings.Contains(text, part) {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case has("lock timeout", "could not obtain lock", "deadlock detected", "lock not available"):
+		return "in_use"
+	case has("statement timeout", "idle-in-transaction timeout", "transaction timeout"):
+		return "timeout"
+	case has("server closed the connection", "terminating connection", "could not connect", "connection to server",
+		"connection refused", "no connection to the server", "the database system is shutting down", "the database system is starting up"):
+		return "connection"
+	case has("permission denied", "must be owner", "must be superuser", "must have admin option", "must be able to set role"):
+		return "rights"
+	case has("does not exist"):
+		return "missing"
+	}
+	return "refused"
 }
 
 // pgPublicRights is what PUBLIC held in a database's rights: the untouched
@@ -1587,6 +1624,15 @@ func (p *Panel) pgPublicAct(ctx context.Context, record pgPublicRecord, action, 
 			writeCodedError(w, status, code, message, "")
 		}}
 	}
+	// failed is a verified failure with the database server's own message:
+	// the reason names its kind, the message follows quoted (alpha.144).
+	failed := func(message, detail string) (int, pgPublicAnswer) {
+		return http.StatusBadGateway, pgPublicAnswer{write: func(w http.ResponseWriter) {
+			w.WriteHeader(http.StatusBadGateway)
+			_ = json.NewEncoder(w).Encode(apiErrorBody{Error: message, Code: errCodePGPublicFailed, Reason: pgPublicFailureKind(detail),
+				Details: []string{"“" + detail + "”"}})
+		}}
+	}
 	serverError := func(err error) (int, pgPublicAnswer) {
 		log.Printf("postgresql databases: %s: %v", record.name, err)
 		return coded(http.StatusInternalServerError, "INTERNAL_ERROR", "The panel could not keep its record of this database. Read the list again.")
@@ -1642,7 +1688,7 @@ func (p *Panel) pgPublicAct(ctx context.Context, record pgPublicRecord, action, 
 		if marker == nil || marker.State != pgPublicClosed {
 			return coded(http.StatusConflict, errCodePGPublicChanged, "CelikPanel did not close this database, so there is nothing of its own to undo. Nothing was changed.")
 		}
-		return p.pgPublicUndo(ctx, record, marker, coded, serverError)
+		return p.pgPublicUndo(ctx, record, marker, coded, failed, serverError)
 	}
 	if publicClosed {
 		// Closed already: by the round just now, or another administrator.
@@ -1669,7 +1715,7 @@ func (p *Panel) pgPublicAct(ctx context.Context, record pgPublicRecord, action, 
 		// Only the database server's own message goes with it, quoted; the
 		// page words every other reason (the list shows it).
 		if closed.FailureCode == "server" && closed.Failure != "" {
-			return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not close it. Nothing was changed. Its message is below; it stays on the list with it.", "“"+closed.Failure+"”")
+			return failed("The database server did not close it. Nothing was changed. Its message is below; it stays on the list with it.", closed.Failure)
 		}
 		return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not close it. Nothing was changed. The reason is on the list.")
 	}
@@ -1678,7 +1724,7 @@ func (p *Panel) pgPublicAct(ctx context.Context, record pgPublicRecord, action, 
 
 // pgPublicUndo undoes one close; its record is never deleted (an unknown
 // answer is settled from the engine).
-func (p *Panel) pgPublicUndo(ctx context.Context, record pgPublicRecord, marker *pgPublicMarker, coded pgPublicCoded, serverError func(error) (int, pgPublicAnswer)) (int, pgPublicAnswer) {
+func (p *Panel) pgPublicUndo(ctx context.Context, record pgPublicRecord, marker *pgPublicMarker, coded pgPublicCoded, failed func(message, detail string) (int, pgPublicAnswer), serverError func(error) (int, pgPublicAnswer)) (int, pgPublicAnswer) {
 	req := &transport.PostgreSQLPublicAccessUndoRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), Port: record.port, Name: record.name,
 		ExpectACL: marker.AfterACL, PublicConnect: marker.PublicConnect, PublicTemporary: marker.PublicTemporary, Added: marker.Added}
 	var resp transport.PostgreSQLPublicAccessUndoResponse
@@ -1691,7 +1737,7 @@ func (p *Panel) pgPublicUndo(ctx context.Context, record pgPublicRecord, marker 
 		return coded(http.StatusConflict, errCodePGPublicChanged, "The database's rights were changed since CelikPanel closed it, so the undo would not be exact. Nothing was changed. The statements under the database say what the close changed.")
 	case err == nil && !resp.Undone && !resp.Unknown:
 		if strings.TrimSpace(resp.Detail) != "" {
-			return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not open it again. Nothing was changed. Its message is below.", "“"+boundedAgentDiagnostic(resp.Detail)+"”")
+			return failed("The database server did not open it again. Nothing was changed. Its message is below.", boundedAgentDiagnostic(resp.Detail))
 		}
 		log.Printf("postgresql databases: %s: the undo was not done: %s", record.name, boundedAgentDiagnostic(resp.Error))
 		return coded(http.StatusBadGateway, errCodePGPublicFailed, "The database server did not open it again. Nothing was changed.")

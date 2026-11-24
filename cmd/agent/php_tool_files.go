@@ -28,9 +28,11 @@ import (
 // given to the account and before the web server was switched leaves webmail
 // unreadable for the stock pool; the next start's retry then puts back what
 // the FIRST attempt recorded, not what it finds. A path is put back only
-// while it is still exactly as CelikPanel set it (or already as it was): one
-// that changed since (a Roundcube update, the server owner's own edit) is
-// kept as it is and named as changed outside the move. Whether a move's
+// while it is still exactly as CelikPanel set it (or already as it was); a
+// file the move itself created is removed while it holds exactly what the
+// move wrote; one that is gone has nothing to put back; one that changed
+// since (a Roundcube update, the server owner's own edit) is kept as it is
+// and named as changed outside the move. Whether a move's
 // failure puts the files back is decided from what serves the tool now (the
 // socket its web server configuration names), never from a file's group: a
 // tool already served by its own pool keeps its files with the account (a
@@ -277,21 +279,32 @@ func (e *errChangedOutsideTheMove) Error() string {
 }
 
 // undo puts every recorded path back, the last changed first: a path still
-// as CelikPanel set it gets its earlier state, one already as it was is left,
-// and one that changed since is kept and named (never overwritten with an
-// earlier state). The record goes when nothing failed.
+// as CelikPanel set it gets its earlier state (a file the move itself wrote
+// is removed while it still holds exactly what the move wrote), one already
+// as it was is left, one that is gone now has nothing to put back (said as
+// already gone, not as changed), and one that changed since is kept and
+// named (never overwritten with an earlier state). The record goes when
+// nothing failed.
 func (j *phpToolFileJournal) undo() error {
 	var errs []error
 	kept := &errChangedOutsideTheMove{}
+	var gone []string
 	for i := len(j.before) - 1; i >= 0; i-- {
 		state := j.before[i]
 		if state.After != nil {
-			current, err := currentPHPToolFileState(state.Path, state.HasContent, state.After.ACLSet)
+			// The content is read whenever CelikPanel wrote some, also for a
+			// file the move created (S4 R1, third fix round).
+			withContent := state.HasContent || state.After.ContentSHA != ""
+			current, err := currentPHPToolFileState(state.Path, withContent, state.After.ACLSet)
 			if err != nil {
 				errs = append(errs, err)
 				continue
 			}
 			if state.asBefore(current) {
+				continue
+			}
+			if state.Existed && !current.Existed {
+				gone = append(gone, state.Path)
 				continue
 			}
 			if !state.asSet(current) {
@@ -307,6 +320,10 @@ func (j *phpToolFileJournal) undo() error {
 		if err := clearPHPToolFileJournal(j.tool); err != nil {
 			errs = append(errs, err)
 		}
+	}
+	if len(gone) > 0 {
+		// Routine for webmail's temp/ files and SQLite journal: nothing is lost.
+		log.Printf("%s's files: %s already gone, nothing to put back", phpToolDisplayName(j.tool), strings.Join(gone, ", "))
 	}
 	if len(kept.paths) > 0 {
 		log.Printf("%s's files: %s", phpToolDisplayName(j.tool), kept.Error())
@@ -456,13 +473,20 @@ var roundcubeWalkTree = filepath.Walk
 //     named in notes;
 //   - the tree's root stays closed to others (S4 R1, second fix round): only
 //     webmail's own account gets through it, by the access-control-list
-//     entry "user:<account>:--x". No website account enters the tree at all,
-//     so nothing below it (nested plugin configurations, .bak or ~ copies,
-//     a plugin folder that is a link) is reachable for them.
+//     entry "user:<account>:--x". No website account enters the tree on
+//     the file system, so nothing below it (nested plugin configurations,
+//     .bak or ~ copies, a plugin folder that is a link) can be opened by
+//     them directly.
 //
 // The web server keeps reaching public_html through the root's group (the
 // web group, as the install leaves it). Nothing else changes: the published
 // code keeps the owner, group and modes it has.
+//
+// Webmail's server on the panel's local socket (/run/celikpanel-webmail.sock,
+// mode 0666 as nginx creates it, so every local account can connect) answers
+// only CelikPanel's own checks since alpha.145 (renderWebmailNginxConfig):
+// /webmail/, the style sheets under /webmail/skins/ and the PHP check; with
+// this move that PHP runs in webmail's own pool.
 func roundcubeOwnAccountPlan(baseDir string, uid, gid, webGID int) ([]roundcubeMetaChange, []string, error) {
 	var plan []roundcubeMetaChange
 	var notes []string

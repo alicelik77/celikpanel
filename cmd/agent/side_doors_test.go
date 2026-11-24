@@ -28,7 +28,7 @@ type fakeStockHost struct {
 	dump     string
 	dumpErr  error
 	alias    string
-	apache   []string
+	apache   []stockPoolConfigText
 	testErr  error
 	active   bool
 	steps    []string
@@ -78,7 +78,7 @@ func (h *fakeStockHost) ops() stockPoolOps {
 			return h.packaged, h.known
 		},
 		nginxDump: func(context.Context) (string, error) { return h.dump, h.dumpErr },
-		apacheRefs: func(string) []string {
+		apacheFiles: func() []stockPoolConfigText {
 			return h.apache
 		},
 		aliasFor: func(string) string { return h.alias },
@@ -150,7 +150,8 @@ func TestStockPoolKeptWhileAConfigurationUsesIt(t *testing.T) {
 			h.dump += "# configuration file /etc/nginx/snippets/fastcgi-php.conf:\n    fastcgi_pass unix:/run/php/php-fpm.sock;\n"
 		}, []string{"/etc/nginx/snippets/fastcgi-php.conf"}},
 		{"an Apache configuration", func(h *fakeStockHost) {
-			h.apache = []string{"/etc/apache2/conf-enabled/php8.4-fpm.conf"}
+			h.apache = []stockPoolConfigText{{Name: "/etc/apache2/conf-enabled/php8.4-fpm.conf",
+				Text: "<FilesMatch \".+\\.ph(?:ar|p|tml)$\">\n    SetHandler \"proxy:unix:/run/php/php8.4-fpm.sock|fcgi://localhost\"\n</FilesMatch>\n"}}
 		}, []string{"/etc/apache2/conf-enabled/php8.4-fpm.conf"}},
 	}
 	for _, tc := range cases {

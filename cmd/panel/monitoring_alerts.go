@@ -608,10 +608,19 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return "Website accounts can still use at on this server: CelikPanel could not write /etc/at.allow. It tries again at the panel's next start.",
 			"Bu sunucuda web sitesi hesapları hâlâ at kullanabiliyor: CelikPanel /etc/at.allow dosyasını yazamadı. Panelin bir sonraki başlangıcında yeniden dener."
 	case "postgresql_databases_open":
+		if item.value == 1 {
+			// alpha.144 (alpha.143 lab): one database, in the singular.
+			return fmt.Sprintf("1 PostgreSQL database made before alpha.141 is still open to this server's other accounts (%s): every account may connect to it, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close it; it can be undone.", name),
+				fmt.Sprintf("alpha.141'den önce açılan 1 PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap buna bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve kapatın; geri alınabilir.", name)
+		}
 		return fmt.Sprintf("%s PostgreSQL databases made before alpha.141 are still open to this server's other accounts (%s): every account may connect to them, or make temporary tables where it may already connect. Open the PostgreSQL page, read what was found and close each one; it can be undone.", n, name),
 			fmt.Sprintf("alpha.141'den önce açılan %s PostgreSQL veritabanı hâlâ bu sunucunun diğer hesaplarına açık (%s): her hesap bunlara bağlanabilir ya da zaten bağlanabildiği yerde geçici tablo açabilir. PostgreSQL sayfasını açın, bulunanı okuyun ve her birini kapatın; geri alınabilir.", n, name)
 	case "postgresql_databases_unreadable":
 		// 22 Nov 2026 (B5): item.name names each database with its reason.
+		if item.value == 1 {
+			return fmt.Sprintf("Whether other accounts can enter this PostgreSQL database is not known: it could not be read at the last hourly checks (%s). Open the PostgreSQL page, correct what the reason names, then press Read again.", name),
+				fmt.Sprintf("Bu PostgreSQL veritabanına başka hesapların girip giremediği bilinmiyor: son saatlik denetimlerde okunamadı (%s). PostgreSQL sayfasını açın, nedenin söylediğini düzeltin, sonra Yeniden oku'ya basın.", name)
+		}
 		return fmt.Sprintf("Whether other accounts can enter these PostgreSQL databases is not known: they could not be read at the last hourly checks (%s). Open the PostgreSQL page, correct what the reason names, then press Read again.", name),
 			fmt.Sprintf("Bu PostgreSQL veritabanlarına başka hesapların girip giremediği bilinmiyor: son saatlik denetimlerde okunamadılar (%s). PostgreSQL sayfasını açın, nedenin söylediğini düzeltin, sonra Yeniden oku'ya basın.", name)
 	case "mail_signing":
@@ -623,6 +632,55 @@ func alertLine(item pendingAlertMail) (string, string) {
 		}
 		return "This server may still sign mail for a hosted domain other than the sender's own. Monitoring says which setting and what the server owner does.",
 			"Bu sunucu postayı hâlâ göndericininkinden başka bir alan adı adına imzalayabilir. İzleme hangi ayar olduğunu ve sunucu sahibinin ne yapacağını söyler."
+	case "webmail_address_kept":
+		// alpha.144: item.subject is the address, item.name CelikPanel's text
+		// beside it, or the owner's file when no text lies beside it.
+		// alpha.145 (security): no subject: webmail's local server; the
+		// branches follow the screen's (second review of PR #357, finding 2).
+		if item.subject == "" {
+			if !strings.HasSuffix(item.name, ".celikpanel-pending") {
+				return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: its web server file %s was changed by hand and kept. The server owner writes CelikPanel's rules into it (only /webmail/, /webmail/index.php and style sheets under /webmail/skins/ answer, everything else is not found), then runs sudo nginx -t and sudo systemctl reload nginx.", item.name),
+					fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: %s web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi dosyaya CelikPanel'in kurallarını yazar (yalnız /webmail/, /webmail/index.php ve /webmail/skins/ altındaki stil dosyaları yanıt verir, gerisi bulunamaz), ardından sudo nginx -t ve sudo systemctl reload nginx çalıştırır.", item.name)
+			}
+			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: its web server file was changed by hand and kept. The server owner copies CelikPanel's text from %s over the file, then runs sudo nginx -t and sudo systemctl reload nginx.", item.name),
+				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini dosyanın üzerine kopyalar, ardından sudo nginx -t ve sudo systemctl reload nginx çalıştırır.", item.name)
+		}
+		if !strings.HasSuffix(item.name, ".celikpanel-pending") {
+			return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: its web server file %s was changed by hand and kept. To take CelikPanel's text, the server owner moves that file away and presses Set up again for the address on Roundcube's page.", subject, item.name),
+				fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: %s web sunucusu dosyası elle değiştirilmiş ve korunmuş. CelikPanel'in metnini almak için sunucu sahibi o dosyayı kaldırır ve Roundcube sayfasında adres için Yeniden kur'a basar.", subject, item.name)
+		}
+		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: its web server file was changed by hand and kept. The server owner takes CelikPanel's text from %s (or adds its rules) and reloads nginx.", subject, item.name),
+			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: web sunucusu dosyası elle değiştirilmiş ve korunmuş. Sunucu sahibi CelikPanel'in %s içindeki metnini alır (ya da kurallarını ekler) ve nginx'i yeniden yükler.", subject, item.name)
+	case "webmail_address_refused":
+		// alpha.144: item.name is the file nginx's test named ("" when none).
+		if item.subject == "" {
+			// Second review of PR #357, findings 1, 2 and 6: CelikPanel
+			// writes the file at the Agent's start, so the step ends with a
+			// restart; without a named file the cause is in the journal.
+			if item.name == "" {
+				return "Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: CelikPanel could not rewrite its file (the reason is in sudo journalctl -u celikpanel-agent, for example nginx not running: sudo systemctl status nginx). The server owner removes that cause and runs sudo systemctl restart celikpanel-agent; CelikPanel writes the new text at that start.",
+					"Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: CelikPanel dosyasını yeniden yazamadı (nedeni sudo journalctl -u celikpanel-agent çıktısında; örneğin nginx çalışmıyor: sudo systemctl status nginx). Sunucu sahibi bu nedeni giderir ve sudo systemctl restart celikpanel-agent çalıştırır; CelikPanel yeni metni o açılışta yazar."
+			}
+			return fmt.Sprintf("Webmail's local server still gives every account of this server Roundcube's files and runs their PHP: nginx's configuration test failed in %s, so its new text was put back. The server owner corrects what the test names, then runs sudo systemctl restart celikpanel-agent; CelikPanel writes the new text at that start.", item.name),
+				fmt.Sprintf("Web postasının yerel sunucusu Roundcube dosyalarını hâlâ bu sunucunun her hesabına veriyor ve PHP'lerini çalıştırıyor: nginx yapılandırma denetimi %s dosyasında başarısız oldu, bu yüzden yeni metni geri alındı. Sunucu sahibi denetimin gösterdiğini düzeltir, ardından sudo systemctl restart celikpanel-agent çalıştırır; CelikPanel yeni metni o açılışta yazar.", item.name)
+		}
+		return fmt.Sprintf("Webmail's address %s still gives out files of Roundcube's plugin folders that are not part of its pages: nginx's configuration test failed (%s), so its new text was put back. Correct that file; CelikPanel writes the new text at its next start.", subject, item.name),
+			fmt.Sprintf("Web postasının %s adresi Roundcube eklenti klasörlerinin sayfalarına ait olmayan dosyalarını hâlâ veriyor: nginx yapılandırma denetimi başarısız oldu (%s), bu yüzden yeni metni geri alındı. O dosyayı düzeltin; CelikPanel yeni metni bir sonraki açılışında yazar.", subject, item.name)
+	case "webmail_cannot_send":
+		// alpha.145: item.name is CelikPanel's text beside the configuration,
+		// or the configuration itself when no text lies beside it; subject
+		// "rewrite_failed": CelikPanel's own earlier text whose rewrite did
+		// not happen (review of PR #357, finding 2: never a hand edit).
+		if item.subject == "rewrite_failed" {
+			return fmt.Sprintf("Webmail cannot send: its configuration %s is still CelikPanel's earlier text, which CelikPanel could not rewrite when its Agent started (the reason is in sudo journalctl -u celikpanel-agent). The server owner removes that cause and runs sudo systemctl restart celikpanel-agent; CelikPanel then rewrites the file by itself. Do not edit the file by hand.", item.name),
+				fmt.Sprintf("Web postası gönderemiyor: %s yapılandırması hâlâ CelikPanel'in önceki metni ve CelikPanel Agent açılırken onu yeniden yazamadı (nedeni sudo journalctl -u celikpanel-agent çıktısında). Sunucu sahibi bu nedeni giderir ve sudo systemctl restart celikpanel-agent komutunu çalıştırır; CelikPanel dosyayı kendisi yeniden yazar. Dosyayı elle düzenlemeyin.", item.name)
+		}
+		if strings.HasSuffix(item.name, ".celikpanel-pending") {
+			return fmt.Sprintf("Webmail cannot send: its configuration was changed by hand and kept, and it does not hand mail to this server's sending service with encryption and the certificate settings for 127.0.0.1. The server owner copies CelikPanel's text from %s (or its two sending lines) into the file.", item.name),
+				fmt.Sprintf("Web postası gönderemiyor: yapılandırması elle değiştirilmiş ve korunmuş; postayı bu sunucunun gönderim hizmetine şifreli ve 127.0.0.1 için sertifika ayarlarıyla vermiyor. Sunucu sahibi CelikPanel'in %s içindeki metnini (ya da iki gönderim satırını) dosyaya kopyalar.", item.name)
+		}
+		return fmt.Sprintf("Webmail cannot send: %s does not hand mail to this server's sending service with encryption and the certificate settings for 127.0.0.1. The server owner writes these two lines in it: %s and %s", item.name, webmailSendingHostLine, webmailSendingOptionsLine),
+			fmt.Sprintf("Web postası gönderemiyor: %s postayı bu sunucunun gönderim hizmetine şifreli ve 127.0.0.1 için sertifika ayarlarıyla vermiyor. Sunucu sahibi içine şu iki satırı yazar: %s ve %s", item.name, webmailSendingHostLine, webmailSendingOptionsLine)
 	case "mail_autoresponder_foreign":
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),
@@ -652,6 +710,11 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "disk_limits_counted":
 		return "Disk limits are counted, not enforced: the hosting file system has no project quotas. Monitoring says what that means.",
 			"Disk sınırları sayılıyor ama dosya sistemi tarafından uygulanmıyor: barındırma dosya sisteminde proje kotası yok. Ne anlama geldiği İzleme'de."
+	case "service_operation_unsettled":
+		// alpha.145 lab, D1: the panel's web process restarts; its start
+		// records what the change did.
+		return "The panel could not record the end of a server change, so other component and setup changes are refused. The server owner first checks the server agent (sudo systemctl status celikpanel-agent; starts it if it is stopped), then runs sudo systemctl restart celikpanel-panel: only the panel's web process restarts (websites, mail and DNS keep running). At its start the panel reads what was done: a webmail update or address is only read; an install, removal or mail profile is run once more from its start.",
+			"Panel bir sunucu değişikliğinin sonunu kaydedemedi; bu yüzden diğer bileşen ve kurulum değişiklikleri reddediliyor. Sunucu sahibi önce sunucu ajanını denetler (sudo systemctl status celikpanel-agent; durmuşsa başlatır), sonra sudo systemctl restart celikpanel-panel komutunu çalıştırır: yalnız panelin web işlemi yeniden başlar (web siteleri, posta ve DNS çalışmayı sürdürür). Panel açılışta yapılanı okur: web postası güncellemesi ya da adresi yalnız okunur; kurulum, kaldırma ya da posta profili baştan bir kez daha çalıştırılır."
 	default:
 		return "A monitored problem lasts. Open Monitoring for details.", "Bir izleme sorunu sürüyor. Ayrıntı için İzleme'yi açın."
 	}

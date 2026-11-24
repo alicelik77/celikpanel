@@ -192,6 +192,9 @@ export const securityEmergencyURL = compileSource('lib/securityEmergency.ts', un
 export const removalOperationURL = compileSource('lib/removalOperation.ts', unexpected('lib/removalOperation.ts'));
 // alpha.124: what a component needs, read by the install window.
 export const installPlanURL = compileSource('lib/installPlan.ts', unexpected('lib/installPlan.ts'));
+// alpha.145 lab, D1: the words of a running change's phase, read by the
+// webmail update row and the webmail address card (no imports of its own).
+export const componentOperationGuidanceURL = compileSource('lib/componentOperationGuidance.ts', unexpected('lib/componentOperationGuidance.ts'));
 
 // 6 Nov 2026: the product's own confirmation (lib/confirmAction.ts) is the
 // shipped module. A mounted test has no ConfirmHost, so the fixture registers
@@ -284,6 +287,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/securityEmergency': securityEmergencyURL,
     '/lib/removalOperation': removalOperationURL,
     '/lib/installPlan': installPlanURL,
+    '/lib/componentOperationGuidance': componentOperationGuidanceURL,
     '/lib/confirmAction': confirmActionURL,
     '/lib/useRefusal': useRefusalURL,
     '/lib/requestProgress': requestProgressURL,

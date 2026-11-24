@@ -1,0 +1,138 @@
+{{define "lead" -}}
+<div class="lead">
+<div class="wrap">
+<h1>{{t "home.h1"}}</h1>
+<p class="def">{{t "home.def"}}</p>
+<div class="actions">
+<a class="btn primary" href="{{link "download"}}">{{t "home.install"}}</a>
+<a class="btn plain" href="{{link "pricing"}}">{{t "home.licence"}}</a>
+</div>
+<div class="sheet">
+<dl class="spec" aria-label="{{t "spec.label"}}">
+{{- range $k := (list "systems" "web" "mail" "dns" "databases" "backups" "users" "licence")}}
+<div><dt>{{t (print "spec." $k)}}</dt><dd>{{th (print "spec." $k ".v_html")}}</dd></div>
+{{- end}}
+<div><dt>{{t "spec.release"}}</dt><dd><a class="mono" href="{{link "releases"}}">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time>; {{t "spec.release.signed"}}</dd></div>
+<div><dt>{{t "spec.status"}}</dt><dd>{{t "spec.status.v"}}</dd></div>
+</dl>
+{{template "figure" (dict "Name" "domain" "Num" "1" "Caption" (t "fig.domain.caption") "Alt" (t "fig.domain.alt") "Eager" true)}}
+</div>
+</div>
+</div>
+{{- end}}
+
+{{define "main" -}}
+<section class="part" aria-labelledby="h-screens">
+{{template "head" (dict "Num" "2" "ID" "h-screens" "Title" (t "home.screens.title") "Text" (t "home.screens.text"))}}
+<div class="figs">
+{{template "figure" (dict "Name" "domains" "Num" "2" "Caption" (t "fig.domains.caption") "Alt" (t "fig.domains.alt"))}}
+{{template "figure" (dict "Name" "databases" "Num" "3" "Caption" (t "fig.databases.caption") "Alt" (t "fig.databases.alt"))}}
+</div>
+</section>
+
+<section class="part" id="{{t "home.install.id"}}" aria-labelledby="h-install">
+{{template "head" (dict "Num" "3" "ID" "h-install" "Title" (t "home.install.title") "Text" (t "home.install.text"))}}
+<div>
+{{template "steps" (dict "Num" "1")}}
+{{template "command" (dict "ID" "home")}}
+{{template "systems-table" (dict "Num" "2")}}
+<p class="more"><a href="{{link "systems"}}">{{t "home.install.systems"}}</a></p>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-separation">
+{{template "head" (dict "Num" "4" "ID" "h-separation" "Title" (t "home.sep.title") "Text" (t "home.sep.text"))}}
+<div>
+<div class="table">
+<table class="stack">
+<caption>{{t "common.table"}} 3 · {{t "home.sep.caption"}}</caption>
+<thead><tr><th scope="col">{{t "home.sep.what"}}</th><th scope="col">{{t "home.sep.status"}}</th><th scope="col">{{t "home.sep.since"}}</th></tr></thead>
+<tbody>
+{{- $state := dict "account" "ok" "sandbox" "ok" "logins" "ok" "names" "ok" "links" "ok" "restore" "ok" "postgres" "ok" "signing" "part" "webmaildoor" "ok" "tools" "ok" "at" "ok" "stockpool" "ok" "mail" "no" "php" "warn" "limits" "warn" "visible" "warn" "webgroup" "warn" "mailmaps" "warn" "pgmove" "warn"}}
+{{- range $k := (list "account" "sandbox" "logins" "names" "links" "restore" "postgres" "signing" "webmaildoor" "tools" "at" "stockpool" "mail" "php" "limits" "visible" "webgroup" "mailmaps" "pgmove")}}
+{{- $s := index $state $k}}
+<tr><td data-k="{{t "home.sep.what"}}">{{t (print "sep." $k)}}</td><td data-k="{{t "home.sep.status"}}"><span class="tag {{if eq $s "part"}}ok{{else}}{{$s}}{{end}}">{{if eq $s "ok"}}{{t "sep.yes"}}{{else if eq $s "part"}}{{t "sep.yes.notarch"}}{{else if eq $s "no"}}{{t "common.optional"}}{{else}}{{t "sep.no"}}{{end}}</span></td><td class="v" data-k="{{t "home.sep.since"}}">{{t (print "sep." $k ".since")}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+<p class="note">{{t "home.sep.note"}}</p>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-stops">
+{{template "head" (dict "Num" "5" "ID" "h-stops" "Title" (t "home.stops.title") "Text" (t "home.stops.text"))}}
+<div>
+<div class="split">
+<div><h3>{{t "home.stops.runs"}}</h3><ul class="plain">
+{{- range $k := (list "1" "2" "3" "4" "5" "6")}}
+<li>{{t (print "home.stops.runs." $k)}}</li>
+{{- end}}
+</ul></div>
+<div><h3>{{t "home.stops.needs"}}</h3><ul class="plain">
+{{- range $k := (list "1" "2" "3" "4" "5")}}
+<li>{{t (print "home.stops.needs." $k)}}</li>
+{{- end}}
+</ul></div>
+</div>
+<p class="note">{{t "home.stops.note"}} <a href="{{guide "without-panel"}}">{{t "home.stops.guide"}}</a></p>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-measured">
+{{template "head" (dict "Num" "6" "ID" "h-measured" "Title" (t "home.measured.title") "Text" (t "home.measured.text"))}}
+<div>
+<div class="table">
+<table class="stack">
+<caption>{{t "common.table"}} 4 · {{t "home.measured.caption"}}</caption>
+<thead><tr><th scope="col">{{t "home.measured.what"}}</th><th scope="col">{{t "home.measured.value"}}</th><th scope="col">{{t "home.measured.condition"}}</th><th scope="col">{{t "home.measured.date"}}</th></tr></thead>
+<tbody>
+{{- range $k := (list "restore" "age" "bind" "power")}}
+<tr><th scope="row">{{t (print "measured." $k)}}</th><td class="v" data-k="{{t "home.measured.value"}}">{{t (print "measured." $k ".value")}}</td><td data-k="{{t "home.measured.condition"}}">{{t (print "measured." $k ".condition")}}</td><td class="v" data-k="{{t "home.measured.date"}}">{{t (print "measured." $k ".date")}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+<p class="note">{{t "home.measured.note"}} <a href="{{repo "docs/RISK-REGISTER.md"}}">{{t "home.measured.register"}}</a></p>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-licence">
+{{template "head" (dict "Num" "7" "ID" "h-licence" "Title" (t "home.licence.title") "Text" (t "home.licence.text"))}}
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>{{t "common.table"}} 5 · {{t "home.licence.caption"}}</caption>
+<thead><tr><th scope="col">{{t "licence.term"}}</th><th scope="col">{{t "licence.today"}}</th><th scope="col">{{t "licence.from"}}</th></tr></thead>
+<tbody>
+{{- range $k := (list "price" "period" "offline" "ends" "trial" "payment")}}
+<tr><th scope="row">{{t (print "licence." $k)}}</th><td data-k="{{t "licence.today"}}">{{t (print "licence." $k ".today")}}</td><td data-k="{{t "licence.from"}}">{{t (print "licence." $k ".from")}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+<p class="more"><a href="{{link "pricing"}}">{{t "home.licence.more"}}</a></p>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-release">
+{{template "head" (dict "Num" "8" "ID" "h-release" "Title" (t "home.release.title") "Text" (t "home.release.text"))}}
+<div class="split">
+<div>
+<h3>{{t "home.release.current"}} <span class="mono">@@CP_RELEASE_VERSION@@</span>, <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time></h3>
+<p>{{t "home.release.about"}}</p>
+<p>{{t "home.release.update"}}</p>
+<p><a href="{{link "releases"}}">{{t "home.release.link"}}</a></p>
+<p><a href="{{link "changelog"}}">{{t "home.release.changelog"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{link "problems"}}">{{t "home.release.problems"}}</a></p>
+</div>
+<div>
+<h3>{{t "limits.title"}}</h3>
+<ul class="plain">
+{{- range $k := (list "1" "2" "3" "4" "5")}}
+<li>{{t (print "limits." $k)}}</li>
+{{- end}}
+</ul>
+</div>
+</div>
+</section>
+{{- end}}

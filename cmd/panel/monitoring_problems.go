@@ -122,41 +122,49 @@ var problemKindOrder = map[string]int{
 	"mail_autoresponder_foreign": 17,
 	// 22 Nov 2026 (B5): PostgreSQL databases the rounds could not read.
 	"postgresql_databases_unreadable": 18,
+	// alpha.144: webmail's address still in its earlier form.
+	"webmail_address_kept":    19,
+	"webmail_address_refused": 20,
+	// alpha.145: webmail's configuration that still cannot send.
+	"webmail_cannot_send": 21,
 	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
-	"tool_account_failed":       19,
-	"tool_account_owner_config": 20,
-	"stock_pool_in_use":         21,
-	"stock_pool_owner_changed":  22,
+	"tool_account_failed":       22,
+	"tool_account_owner_config": 23,
+	"stock_pool_in_use":         24,
+	"stock_pool_owner_changed":  25,
 	// S4 R1: jobs a site's own code can make.
-	"site_crontab_outside":  23,
-	"site_at_jobs":          24,
-	"at_allow_lists_sites":  25,
-	"at_directory_accounts": 26,
-	"at_not_closed":         27,
+	"site_crontab_outside":  26,
+	"site_at_jobs":          27,
+	"at_allow_lists_sites":  28,
+	"at_directory_accounts": 29,
+	"at_not_closed":         30,
 	// S4 R1 fix round.
-	"tool_down":                 28,
-	"stock_pool_not_put_back":   29,
-	"stock_pool_failed":         30,
-	"stock_pool_unknown":        31,
-	"stock_pool_owner_restored": 32,
-	"at_owner_removed":          33,
-	"site_crontab_unreadable":   34,
+	"tool_down":                 31,
+	"stock_pool_not_put_back":   32,
+	"stock_pool_failed":         33,
+	"stock_pool_unknown":        34,
+	"stock_pool_owner_restored": 35,
+	"at_owner_removed":          36,
+	"site_crontab_unreadable":   37,
+	// alpha.145 lab, D1: a server change whose end the panel could not
+	// record; every other server change waits for it.
+	"service_operation_unsettled": 38,
 	// S4 R2a: a site that keeps reaching its limits; disk limits counted
 	// but not enforced (site_limits_view.go).
-	"site_memory_repeated": 35,
-	"site_tasks_repeated":  36,
-	"disk_limits_counted":  37,
+	"site_memory_repeated": 39,
+	"site_tasks_repeated":  40,
+	"disk_limits_counted":  41,
 	// S4 R2a: sites whose programs still run outside their limits (a to-do).
-	"site_programs_outside": 38,
+	"site_programs_outside": 42,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
-	"site_limits_unsupported": 39,
+	"site_limits_unsupported": 43,
 	// S4 R2a second fix round: a change of limits that did not reach every
 	// site; a default memory limit fixed for the host's earlier memory.
-	"site_limits_unapplied": 40,
-	"site_memory_default":   41,
+	"site_limits_unapplied": 44,
+	"site_memory_default":   45,
 	// S4 R2a third fix round: a move whose put-back did not complete (a
 	// program may be stopped; no site is moved until it is settled).
-	"site_move_kept": 42,
+	"site_move_kept": 46,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -228,6 +236,12 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// 22 Nov 2026: an out-of-office reply whose address that is no longer the
 	// mailbox's own could not be taken off the server (mail_autoresponder_own.go).
 	add(autoresponderForeignProblems(ctx, db), nil)
+	// alpha.144: webmail's address that still gives out plugin files
+	// (webmail_address_problem.go).
+	add(p.webmailAddressProblems(ctx), nil)
+	// alpha.145 lab, D1: a server change whose end this panel process could
+	// not record (service_operation_settle.go).
+	add(p.serviceOperationUnsettledProblems(ctx), nil)
 	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
 	add(p.siteLimitProblems(ctx, now), nil)
 	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)

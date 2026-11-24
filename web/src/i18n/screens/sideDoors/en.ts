@@ -17,7 +17,7 @@ export const enSideDoorsScreens = {
     'pnow.tool_account_owner_config.body': '{domain} was changed on the server, so CelikPanel keeps it and does not move {name} to an account of its own. The server administrator moves those changes to another file in /etc/nginx/conf.d and deletes this one; CelikPanel writes it again and moves {name} after the panel’s next start.',
     'pnow.tool_account_owner_config.action': 'Open it',
     'pnow.stock_pool_in_use.title': 'The distribution’s PHP {name} pool is still on',
-    'pnow.stock_pool_in_use.body': 'It runs as the web server’s account, which can read every site, and {domain} still hands PHP to it, so CelikPanel keeps it. The server administrator gives that configuration a pool of its own or moves the site into CelikPanel; the pool is turned off after the panel’s next start.',
+    'pnow.stock_pool_in_use.body': 'It runs as the web server’s account, which can read every site, and {domain} may still hand PHP to it, so CelikPanel keeps it. The server administrator gives that configuration a pool of its own or moves the site into CelikPanel. Then the pool is turned off after the panel’s next start; a pool someone put back on the server stays on until the administrator chooses Turn it off again.',
     'pnow.stock_pool_in_use.action': 'Open PHP-FPM',
     'pnow.stock_pool_owner_changed.title': 'The distribution’s PHP {name} pool is still on',
     'pnow.stock_pool_owner_changed.body': '{domain} was changed on the server, so CelikPanel keeps it. It runs as the web server’s account, which can read every site. If nothing needs it, the server administrator renames it to www.conf.off and reloads PHP-FPM {name}.',

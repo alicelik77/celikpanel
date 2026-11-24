@@ -21,7 +21,8 @@ func TestSiteSliceNameIsDepthOne(t *testing.T) {
 			t.Errorf("%s = %d %v", name, id, ok)
 		}
 	}
-	for _, bad := range []string{"celiksite-7.slice", "celiksite_0.slice", "celiksite_07.slice", "celiksite_7", "system.slice", "celiksite_7.slice/x", "celiksite_.slice"} {
+	for _, bad := range []string{"celiksite-7.slice", "celiksite_0.slice", "celiksite_07.slice", "celiksite_7", "system.slice", "celiksite_7.slice/x", "celiksite_.slice",
+		"celiksite_7.slice.d", "celiksite_12345678901.slice", "celiksite_9999999999.slice", "x/celiksite_7.slice"} {
 		if _, ok := ParseSliceName(bad); ok {
 			t.Errorf("%q accepted", bad)
 		}
@@ -36,10 +37,18 @@ func TestUnitInSiteSliceRendersItsSlice(t *testing.T) {
 	if err != nil || !has(lines, "Slice=system.slice") {
 		t.Fatalf("not placed: %v %v", err, lines)
 	}
-	p.SiteID, p.InSlice = 12, true
+	before := strings.Join(lines, "\n")
+	p.SiteID = 12
+	if lines, err := Directives(p, fullCaps(257)); err != nil || strings.Join(lines, "\n") != before {
+		t.Fatalf("a site identity alone changed the unit: %v\n%v", err, lines)
+	}
+	p.InSlice = true
 	lines, err = Directives(p, fullCaps(257))
 	if err != nil || !has(lines, "Slice=celiksite_12.slice") || has(lines, "Slice=system.slice") {
 		t.Fatalf("placed: %v %v", err, lines)
+	}
+	if got := strings.Replace(strings.Join(lines, "\n"), "Slice=celiksite_12.slice", "Slice=system.slice", 1); got != before {
+		t.Fatalf("placing the unit changed another line:\n%s", got)
 	}
 	transient, err := TransientDirectives(p, fullCaps(255))
 	if err != nil || !has(transient, "Slice=celiksite_12.slice") {
@@ -124,6 +133,11 @@ func TestEgressElementFollowsTheUnitsCgroup(t *testing.T) {
 	if _, err := CgroupElementFor("/system.slice/nginx.service", "nginx.service"); err == nil {
 		t.Fatal("a unit that is not sandboxed got an element")
 	}
+	// The system slice's element is exactly the one earlier releases added.
+	element, _ := CgroupElement("celikapp-12.service")
+	if got, _ := CgroupElementFor("/system.slice/celikapp-12.service", "celikapp-12.service"); got != element {
+		t.Fatalf("system slice element %q, earlier %q", got, element)
+	}
 	elements := []string{"celiksite_12.slice/celikapp-12.service", "system.slice/celikrt-3.service"}
 	if !InSetCgroup(elements, "/celiksite_12.slice/celikapp-12.service") || !InSetCgroup(elements, "/system.slice/celikrt-3.service") ||
 		InSetCgroup(elements, "/system.slice/celikapp-12.service") || InSetCgroup(elements, "") {
@@ -198,6 +212,61 @@ func TestProofAcceptsTheSitesSlice(t *testing.T) {
 	stale.SetElements = []string{"system.slice/celikrt-5.service"}
 	if r := Prove(stale); r.Code != ProofNotInSet {
 		t.Fatalf("set element of the old place: %+v", r)
+	}
+	// Without the site's identity only the system slice proves, as before.
+	unknown := in
+	unknown.Profile.SiteID, unknown.Profile.InSlice = 0, false
+	if r := Prove(unknown); r.Code != ProofCgroup {
+		t.Fatalf("a slice proved without the site's identity: %+v", r)
+	}
+}
+
+// TestUnitFileSlice: the Slice= line a unit file names (the last one, as
+// systemd reads it).
+func TestUnitFileSlice(t *testing.T) {
+	for text, want := range map[string]string{
+		"[Unit]\nDescription=x\n\n[Service]\nSlice=celiksite_7.slice\nUser=a\n": "celiksite_7.slice",
+		"[Service]\nSlice=system.slice\n":                                       "system.slice",
+		"[Service]\nSlice=system.slice\nSlice=celiksite_7.slice\n":              "celiksite_7.slice",
+		"[Service]\n  Slice = celiksite_7.slice \n":                             "",
+		"[Service]\nUser=a\n":                                                   "",
+		"":                                                                      "",
+	} {
+		if got := UnitFileSlice(text); got != want {
+			t.Errorf("%q = %q, want %q", text, got, want)
+		}
+	}
+}
+
+// TestTheAgentsPlaceReadingIsTheHelpers: UnitInSiteSlice and
+// UnitInSystemSlice are UnitControlGroupAllowed (the one definition of a
+// unit's two places, the SMTP helper's too): exactly the unit's own leaf in
+// its site's slice or the system slice, nothing nested, no other unit.
+func TestTheAgentsPlaceReadingIsTheHelpers(t *testing.T) {
+	unit := "celikrt-5.service"
+	for _, tc := range []struct {
+		cgroup         string
+		site, inSystem bool
+	}{
+		{"/celiksite_7.slice/celikrt-5.service", true, false},
+		{"/system.slice/celikrt-5.service", false, true},
+		{"/celiksite_8.slice/celikrt-5.service", false, false},
+		{"/celiksite_07.slice/celikrt-5.service", false, false},
+		{"/celiksite_7.slice/celikrt-5.service/.control", false, false},
+		{"/celiksite_7.slice/celikrt-6.service", false, false},
+		{"/system.slice/celikrt-6.service", false, false},
+		{"/", false, false},
+		{"", false, false},
+	} {
+		if got := UnitInSiteSlice(tc.cgroup, unit, 7); got != tc.site {
+			t.Errorf("site slice %q = %v", tc.cgroup, got)
+		}
+		if got := UnitInSystemSlice(tc.cgroup, unit); got != tc.inSystem {
+			t.Errorf("system slice %q = %v", tc.cgroup, got)
+		}
+	}
+	if UnitInSiteSlice("/celiksite_7.slice/nginx.service", "nginx.service", 7) || UnitInSiteSlice("/celiksite_7.slice/celikrt-5.service", unit, 0) {
+		t.Fatal("a unit that is not sandboxed, or no site, was placed")
 	}
 }
 

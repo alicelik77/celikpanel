@@ -297,8 +297,11 @@ func runtimeAppUnitParams(rc runtimeAppContext, target transport.RuntimeAppTarge
 		Limits: siteruntime.Limits{MemoryMB: spec.Limits.MemoryMB, CPUPercent: spec.Limits.CPUPercent, Tasks: spec.Limits.TasksMax},
 		Level:  level, Caps: caps, DropInDir: path + ".d", Python: runtimePythonUnit(spec),
 		// S4 R2a: into the site's slice when it does not run now (or already
-		// runs there); a running app moves with its site.
-		SiteID: target.SiteID, InSlice: siteUnitEntersSlice(siteruntime.UnitName(target.AppID), slice, false),
+		// runs there); a running app moves with its site. Without the site's
+		// limits a slice the file names is kept (site_slice_keep.go).
+		SiteID: target.SiteID, InSlice: siteUnitInSlice(siteruntime.UnitName(target.AppID), slice, false, func() bool {
+			return unitFileKeepsSiteSlice(path, target.SiteID)
+		}),
 	}, nil
 }
 

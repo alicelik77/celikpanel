@@ -153,6 +153,22 @@ func UnitControlGroupAllowed(cgroup, unit string) (int, bool) {
 	return ParseSliceName(slice)
 }
 
+// UnitInSiteSlice reports whether cgroup (a unit's ControlGroup= as systemd
+// shows it) is the unit's place in site siteID's slice. The Agent's reading
+// of where a program runs goes through UnitControlGroupAllowed, the one
+// definition of a unit's two places that the SMTP helper uses too.
+func UnitInSiteSlice(cgroup, unit string, siteID int) bool {
+	id, ok := UnitControlGroupAllowed(cgroup, unit)
+	return ok && siteID > 0 && id == siteID
+}
+
+// UnitInSystemSlice reports whether cgroup is the unit's place in the system
+// slice, where every unit ran before it was moved into its site's slice.
+func UnitInSystemSlice(cgroup, unit string) bool {
+	id, ok := UnitControlGroupAllowed(cgroup, unit)
+	return ok && id == 0
+}
+
 // CgroupElementFor is the SMTP set's element for a unit running in cgroup
 // (the unit's ControlGroup= as systemd shows it): '{ "<slice>/<unit>" }'. A
 // cgroup that is not the system slice or a site's slice is refused: the set
@@ -298,4 +314,16 @@ func ParseSliceCounters(f SliceCgroupFiles) SliceCounters {
 	c.CPUThrottledUSec, _ = cgroupValue(f.CPUStat, "throttled_usec")
 	c.CPUPeriods, _ = cgroupValue(f.CPUStat, "nr_periods")
 	return c
+}
+
+// UnitFileSlice reads the slice a unit file's text names (its last Slice=
+// line, as systemd reads it; "" when it names none).
+func UnitFileSlice(text string) string {
+	slice := ""
+	for _, line := range strings.Split(text, "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "Slice="); ok {
+			slice = strings.TrimSpace(rest)
+		}
+	}
+	return slice
 }

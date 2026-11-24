@@ -45,6 +45,9 @@ func (a *Agent) BindPHPToolV1(req *transport.BindPHPToolRequest, resp *transport
 		return nil
 	}
 	defer finishStep()
+	// A read of the side doors waits for the move (S4 R1, third fix round).
+	sideDoorsMu.Lock()
+	defer sideDoorsMu.Unlock()
 	result, err := bindPHPToolWith(ctx, hostPHPToolBindOps(), tool, version)
 	resp.Previous = result.Previous
 	resp.InstalledPackages = result.InstalledPackages

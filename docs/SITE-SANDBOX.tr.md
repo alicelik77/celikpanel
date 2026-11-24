@@ -223,12 +223,30 @@ tablosuna asla girmez.
   ağ ad alanında ölçüldü.
 
 Engeli tutabilen sunucuda her korumalı birim yardımcıyı (§1a) çalıştırır:
-`ExecStartPre=+… sandbox-helper egress-add --unit=<birim>` tabloyu yükler ve birimin systemd'den
-okunan gerçek cgroup'unu (`'{ "<dilim>/<birim>" }'`) kümeye ekler; `ExecStopPost=-+… egress-remove`
-durduktan sonra çıkarır. nft boş bir ortamla çalışır. nft tabloyu yükleyemezse ya da birimin
-cgroup'u ne `/system.slice/<birim>` ne de sitesinin `/celiksite_<id>.slice/<birim>` dilimiyse
-(§8; örneğin sahibin bir ek ayar dosyası birimi başka bir dilime taşıdıysa) birim başlamaz; engel
-kapalı kalacağına program hiç çalışmaz.
+`ExecStartPre=+… sandbox-helper egress-add --unit=<birim>` tabloyu yükler ve birimin gerçek
+cgroup'unu (`'{ "<dilim>/<birim>" }'`) kümeye ekler; `ExecStopPost=-+… egress-remove` durduktan
+sonra çıkarır. nft boş bir ortamla çalışır. Yardımcı cgroup'u şu sırayla bulur: birimin içinde
+çalıştığı için önce kendi `/proc/self/cgroup` satırı (tam olarak `/system.slice/<birim>` ya da
+`/celiksite_<id>.slice/<birim>` ise); değilse systemd'nin söylediği `ControlGroup`; systemd'ye
+sorulamazsa ya da bir yer söylemezse eskisi gibi sistem dilimi. Kendi cgroup satırı
+kullanılmadığında birimin günlüğüne tek satır yazılır: nedeni, hangi adımın karar verdiği ve alınan
+yer. Böylece posta engeli yardımcısı systemd'nin yanıt vermesine bağlı kalmaz; bağlama biriminin
+önceki sürümlerden beri aynı kalan kendi okuması ise systemd yanıt vermediği sürece başlatmayı yine
+durdurur. Birim şu durumlarda başlamaz: nft tabloyu yükleyemezse,
+systemd başka bir yer söylerse (örneğin sahibin bir ek ayar dosyası birimi başka bir dilime
+taşıdıysa) ya da birimin yeri belirlenemezse. nft var olmayan bir cgroup yolunu kabul etmediği
+için, başka yerde çalışan bir birime sistem diliminin öğesi verilemez; engel kapalı kalacağına
+program hiç çalışmaz. Günlükte neyin belirlenemediği, sunucu yöneticisinin ne yapacağı ve yeri
+gösteren komut yazar: `systemctl show -p ControlGroup,Slice <birim>`.
+
+Sitenin dilimi, bu sürümün bir sitenin programlarını koyduğu yerdir (§8: çalışmıyorken yazılan
+program dilime girer; çalışan program, yönetici siteyi taşıyana kadar çalıştığı yerde kalır). Bir
+programın birim dosyası sitenin sınırları uygulanamazken yazılırsa (bu sunucu sınırları tutamıyorsa,
+§8, ya da istekteki sınırlar aralık dışındaysa), zaten kendi sitesinin dilimini gösteren birim
+dosyası `Slice=celiksite_<id>.slice` satırını bir önceki sürümdeki gibi yalnız şu durumda korur: ana
+birim dosyasındaki son `Slice=` satırıdır (ek ayar dosyaları okunmaz), birimin kendi sitesinin
+dilimidir ve `/etc/systemd/system/celiksite_<id>.slice` sıradan bir dosyadır (bağlantı ya da klasör
+değil). Yoksa böyle bir yazma birime eskisi gibi `Slice=system.slice` verir.
 
 `celikpanel-egress-guard.timer` 30 saniyede bir çalışır. Biri `nft flush ruleset`
 çalıştırdıysa ya da `nftables.service` yeniden başlatıldıysa tabloyu yeniden yükler ve çalışan

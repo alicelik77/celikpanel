@@ -8527,3 +8527,180 @@ bağlantıyı tutar.
   laboratuvarda denenmedi; kapatma yalnız PostgreSQL 17'de çalıştırıldı;
   taşıma müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla
   çalıştırır. **Hiçbir P0 maddesi kapanmadı.**
+
+### fix/a144-lab-corrections dalı (alpha.143 laboratuvarının altı bulgusu ve web postası adresinin bir güvenlik düzeltmesi; şema değişikliği yok; anayasa 1 ve 3; ilke 2, 3 ve 4; D-022; D-024; D-025; 2026-11-22, aday alpha.144)
+
+- **Sayfadan uzun yaşayan değişiklikler.** Yöneticinin PostgreSQL kapatması ya
+  da geri alması, yeni posta kutusu ve otomatik yanıt tarayıcının bağlantısında
+  çalışıyordu; sayfadan çıkmak Panel'i Agent'ın işi ile kaydı arasında
+  kesiyordu. Artık istek kimliğiyle (D-029), rotanın süre sınırıyla, ayrık bir
+  bağlamda çalışırlar. Sayfadan çıkmak hiçbir şey bırakmaz; Panel'in durması
+  istek satırını "bilinmiyor" bırakır, kapatma kaydı motordan uzlaştırılır,
+  satırı olmayan posta kutusu açıkça söylenir ve yönetici onu alabilir.
+- **Alma.** Panel yalnız CelikPanel'in kendi biçimindeki ve içinde ileti
+  olmayan kutuyu alır; posta kilidi altında var olan bir satıra yeniden
+  bakar; satır kaydedilmeden önce parolayı değiştirir; gerisi
+  sahibin kalır (D-022).
+- **Takma ad DNS'i.** CelikPanel'in eklediği kayıtlar `alias_dns_v1:<takma ad>`
+  notunda, kayıtlarla aynı işlemde tutulur; kaldırma yalnız onları siler, o
+  da bölge şu an takma adın alan adının şu anki hesabına aitken (abonelik
+  devrinden sonra ikisi birlikte geçmiştir ve kayıtlar gider; başka hesabın
+  bölgesinde hiçbir şey silinmez, not temizlenir ve Panel'in günlüğü kaydı
+  adlandırır). Bitmeyen yayın bölgeyi işaretler, saatlik tur yayımlar; alan
+  adı silmeyi asla durdurmaz; bölgesinin DNS kipi okunamayan işaret sonraki
+  tura kalır.
+- **Web postası adresi.** Yalnız `index.php` çalışır; bağlı klasörler yalnız
+  durağan dosya verir; nokta dosyaları ve yedek görünümlü adlar reddedilir.
+  Önceki biçimdeki dosyalar Agent'ın ilk açılışında bir kez yeniden yazılır;
+  sahibin dosyası korunur, metin yanına konur; ikisi de dosya yeni biçime
+  geçene dek Şimdiki sorunlar'da bir satırdır. alpha.143'e otomatik geri dönüş
+  yeni dosyayı sahibinki sayar ve korur: web postası çalışmaya devam eder,
+  hiçbir şey yeniden açılmaz.
+- **Gece döndürmeden sonra trafik günlükleri.** nginx işçileri (`www-data`)
+  `/var/log/celikpanel` klasöründen geçemiyordu; her döndürmeden sonra hata
+  yazıp döndürülen dosyaya yazmayı sürdürüyorlardı. Agent'ın açılışında bir
+  kez: CelikPanel'in ürettiği kipteki kök sahipli klasör 0700 → 0711 ya da
+  0750 → 0751; trafik klasörü 0755 → 0710, sahibi root ve grubu web
+  sunucusunun grubu (yalnız çalışan süreçler geçer; hiçbir sitenin hesabı
+  başka sitenin günlüğünü açamaz); diğerlerinin okuyabildiği trafik
+  günlükleri 0644 → 0640; sertifika aracının günlük klasörü 0700 kalır;
+  başka kip (sahibi ve grubuyla), grubu ne web sunucusunun ne de
+  CelikPanel'in verdiği (root, celikpanel) olan 0710 kipli trafik klasörü,
+  bağlantı ya da başka sahip korunur ve adlandırılır. Yeni kurulumlar günlük
+  klasörünü 0711, trafik klasörünü o grupla 0710 açar ve bir sitenin ilk
+  günlüğünü 0640 oluşturur; web sunucusunun hesabına yalnız bunları
+  oluştururken bakılır (bakılamazsa sitenin trafik ayarı olduğu gibi kalır,
+  günlükte tek satır). CelikPanel'in döndürme dosyası her yeni günlüğü o
+  hesap için 0640 oluşturur (yönetilen metin: sahibin değiştirdiği dosya
+  korunur). Web sunucusunun kendi ortak hesabıyla çalışan programlar (henüz
+  kendi hesabına taşınmamış Node.js siteleri, açıksa dağıtımın varsayılan
+  PHP havuzu) günlükleri hâlâ okuyabilir: günlükler zaman ve bayt sayısı
+  tutar, adres tutmaz; o programlar her sitenin sunulan dosyalarını zaten
+  okur.
+- **Laboratuvar.** 22 Kasım 2026'da bir deneme (PowerDNS'li Debian 13 ana ve
+  BIND'li Ubuntu 24.04 yedek; ikisi de alpha.143 durumundan panelin kendi
+  güncelleme sayfasıyla güncellendi; `6ed1f94a0`'dan yapılan, yalnız
+  laboratuvara ait alpha.152 etiketi): ağır hata yok; web postası adresi
+  düzeltmesi, ayrılan yollar, alma retleri, takma ad kayıtları ve trafik
+  klasörü kipleri yukarıda yazıldığı gibi davrandı (bkz. sürüm notlarının
+  "Laboratuvarda denetlenenler" bölümü). Web postasının posta
+  gönderemediğini (yapılandırması postayı STARTTLS olmadan 587 numaralı
+  porta veriyor; bu daldan eski) ve iki görünüm bulgusunu buldu; alpha.145'e
+  planlandı.
+- **Açık.** Tarayıcı bağlamını Agent değişikliğine
+  veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
+  takma ad hâlâ DNS kaydı almaz; laboratuvarın denetlemedikleri sürüm
+  notlarında listeli. **Hiçbir P0 işi kapanmadı.**
+
+### fix/a145-webmail-send dalı (web postasının yerel kapısı kapandı; web postası gönderebilir; alpha.144 laboratuvarının iki görünüm bulgusu; şema değişikliği yok; anayasa 1 ve 3; ilke 2 ve 4; D-022; D-024; D-025; 2026-11-23, aday alpha.145)
+
+- **Web postasının yerel kapısı (anayasa 1).** `/run/celikpanel-webmail.sock`
+  soketi 0666'dır (nginx öyle açar): sunucudaki her hesap Roundcube'un
+  `public_html` altındaki her dosyayı (eklentiler, temalar, `program/`)
+  okuyabiliyor ve oradaki her `.php` dosyasını çalıştırabiliyordu. Artık
+  kapalı bir liste yanıt verir (`/webmail/`, `/webmail/index.php`,
+  `/webmail/skins/` altındaki stil dosyaları, CelikPanel'in PHP denetimi);
+  Panel'in hazırlık denetimi ve Agent'ın PHP aracı kanıtı yalnız bunları
+  sorar. Önceki biçimler CelikPanel'indir (tam metin) ve RPC hizmetinden önce
+  Agent'ın açılışında bir kez yeniden yazılır (`nginx -t`, tek yeniden
+  yükleme, hata olursa önceki dosya geri konur, açılış sürer); sahibin
+  dosyası, CelikPanel'in metni yanında ve Şu anki sorunlar satırıyla korunur
+  (adressiz adres türleri); yanındaki metin web postasıyla birlikte adıyla
+  silinir. Soket taşınmaz, kipi değişmez.
+- **Web postasının yapılandırması (ilke 4: yeniden yazma bir değişikliktir).**
+  CelikPanel'in önceki metnindeki `config.inc.php` (adres satırlarıyla ya da
+  onlarsız, tam eşitlik) Agent'ın açılışında bir kez yeniden yazılır; sahip ve
+  kip yeni dosyaya yeniden adlandırmadan önce verilir, `des_key` korunur;
+  başarısız yazma dosyayı olduğu gibi bırakır, "yeniden yazılamadı" diye
+  söylenir (neden ve yeniden başlatma, asla elle düzenleme) ve bir sonraki
+  açılışta yeniden denenir. Sahibin dosyası korunur, CelikPanel'in metni
+  yanında (0600), gönderemediği sürece tek bir Şu anki sorunlar satırı (canlı
+  okunur; kendiliğinden kalkar).
+- **Takma ad DNS'i (ilke 2).** Bir bölgenin takma ad bekleme işareti yalnız
+  bölgenin şimdiki kayıtlarının bir yayını yayın kilitleri altında
+  tamamlanınca silinir (bekletilen yeniden yayın, bekleyen bir yayından sonraki
+  izleyen yayın ya da saatlik turun adımıyla yeni bir yayın); sonradan
+  kaydedilen bir kayıt işaretini korur.
+- **Geri alma.** alpha.144'e dönüşte web postası göndermeyi sürdürür ve yerel
+  kapı kapalı kalır; alpha.144 iki yeni metni sahibin değiştirdiği dosyalar
+  sayar (web postasının yapılandırma adımı, PHP taşıması ve adres satırları
+  güncelleme yeniden yapılana dek reddedilir).
+- **Kanıt.** `TestA145*` (agent ve panel), `web/tests/a145-webmail-send-lab.test.mjs`;
+  dağıtım yapılandırma matrisi yeni yerel kapı dosyasını işler ve nginx ile
+  denetler; bağımsız bir inceleme onu gerçek bir nginx üzerinde çalıştırdı.
+- **Laboratuvar.** Açık (liste PR #357'de).
+- **Açık.** Web postası gönderemezken Webmail kartı Onar'ı yine sunar;
+  "gönderemiyor" okuması sahibin kendi sertifika seçeneklerini ve `/* */`
+  yorumlarını atlar; sokete ileten sahibin kendi bloğu yalnız oturum açma
+  sayfasını ve stil dosyalarını alır. **Hiçbir P0 işi kapanmadı.**
+
+### Dal fix/d1-stuck-operation (Finish'i başarısız olan kalıcı işlemi çalışan panel kapatır; kalp atışı kira bitmeden durur; şema değişmez; anayasa 2 ve 3; ilke 2 ve 4; P0.2; D-024; D-025; 23 Kasım 2026, alpha.145 laboratuvarından sonra)
+
+- **Kusur (alpha.145 laboratuvarı, D1).** Yanıtsız kalan tek bir kira
+  yenilemesi, Agent adımı sürerken işlemin işçisini durdurdu; Agent adım
+  sürerken Finish'i reddetti ve Panel satırını kapatmadan döndü. Satır
+  `running` kaldı ve `celikpanel-panel` yeniden başlayana dek her bileşen ve
+  kurulum değişikliği reddedildi.
+- **İlke 2 (zaman aşımı başarısızlığın, başarının ya da yeniden başlatma
+  izninin kanıtı değildir).** Çalışan panel artık Agent'ın işini hiçbir şey
+  değiştirmeden iş bitene dek okur, sonra tek satırı başlangıç kurtarmasının
+  çalıştırdığı kodla kapatır (`reconcileInterruptedServiceOperationLocked`,
+  ikisi için tek işlev). Agent'ın kaydı olmayan iş bilinmiyordur, bitmiş
+  değildir: satır kapatılamamış kalır. İki dakika boyunca hiçbir okumayı
+  yanıtlamayan Agent satırı kapatılamamış bırakır ve süreç kilidi bırakılır.
+  Yarıda kalan iş hâlâ etkinken Agent başka her kirayı reddeder, bu yüzden iki
+  ayrıcalıklı adım aynı anda çalışmaz; iş bittikten sonra güvenlik duvarı,
+  DNS, posta TLS ve benzeri tek başına değişiklikler yeniden kabul edilir
+  (kilidi alırlar, satırı değil), yarıda kalan kurulum panelin bir sonraki
+  açılışında yeniden çalıştırılmadan önce, yarım kalmış bir bileşenin yanında
+  çalışabilirler. Yöneticinin bu sırada gördüğü: bileşen ve kurulum
+  değişiklikleri kapatılamamış satırın sözleriyle reddedilir (önce Agent'ı
+  denetleyin, sonra panelin web işlemini yeniden başlatın); eski iş etkinken
+  tek başına bir değişiklik Agent'ın "başka bir değişiklik hâlâ sürüyor"
+  reddini alır. Tasarım gereği engellenmez: yarım bir kurulum bir güvenlik
+  duvarı değişikliğini engellememelidir.
+- **İlke 4 (geçici bir okumayı yinelemek, sonucu bilinmeyen bir değişikliği
+  yeniden çalıştırmak değildir).** Değişen: işi
+  `service_mutation_lease_expired` ile biten (adımı başarılı olmuş olabilir)
+  bir kurulum, birlikte kurma, birlikte kaldırma, posta profili, çalışma
+  ortamı ya da kurulum adımı, bir kişinin yeniden başlatmasından sonra değil,
+  Agent'taki aksaklıktan yaklaşık 20 saniye sonra çalışan panel tarafından
+  baştan yeniden çalıştırılır. Sınır: satır ve çalışan panel başına bir kez,
+  bellekte tutulur; her yeniden başlatma, önceden olduğu gibi, bir kez daha
+  izin verir. Dayandığı varsayım: kurulum adımlarının yinelenmesi zararsızdır
+  (başlangıç tasarımı bunu zaten varsayıyordu). Web postası güncellemesi ya
+  da adresi yalnız okunur. Kapatmanın yeniden deneme döngüsü yalnız ilk
+  ayrıcalıklı eşitlemeden önce çıkan hataları yeniden sorar. Sunucu meşgul
+  olduğu için Agent'ın reddettiği yeniden çalıştırma iki dakika boyunca
+  yeniden istenir, sonra çalışan panelde kapatılamamış bırakılır;
+  başka adımı olmayan başlangıçta satır doğru olanla biter ("sunucu meşgul
+  kaldığı için yeniden çalıştırılamadı; ilk çalışmasının ne yaptığı
+  bilinmiyor"; yönetici bileşeni denetler) ve başka değişiklikler yeniden
+  kabul edilir. Asla "başlatılamadı" denmez.
+- **Kalp atışı.** İşçi Agent'ın kesin yanıtıyla ya da Agent'ın yanıtladığı
+  son yenilemeden (gönderildiği andan sayılarak) 15 saniye sonra durdurulur;
+  bir yenileme kalan sürenin tamamı kadar bekleyebilir, yanıtsız kalan
+  yaklaşık bir saniye sonra yeniden istenir ve ilki kiranın istendiği andan
+  sayılarak planlanır: durma en geç Agent'ın 20 saniyelik kirası bitebilmeden
+  5 saniye önce gelir ve nedeniyle günlüğe yazılır. Kural her tek başına değişikliği de yönetir
+  (güvenlik duvarı, DNS, posta TLS, sertifikalar, VPN, web postası). Agent'ın
+  kira kuralları değişmedi.
+- **Şema ya da sürüm geçişi.** Yok. Kapatma aşamaları ve ret nedenleri
+  bellektedir (okumaların üstüne konur); satırlar var olan aşama ve kodlarla
+  yazılır. Saklanan tek yeni değer `service_operation_unsettled` uyarı
+  türüdür; önceki sürüm onu genel uyarı satırıyla gösterir. Bir kurulum
+  adımının satırı kabul edilen nokta güncellemelerini de `operation_data`
+  içinde tutar (önceki sürümün yok saydığı ek bir anahtar).
+- **Kurtarma davranışı.** Başlangıç kurtarması aynı işlevdir; kapatılamayan
+  satır kendi ekranında, her retteki ve Şu anki sorunlar'da adlandırılır
+  (sunucu sahibi önce Agent'ı denetler, sonra panelin web işlemini yeniden
+  başlatır).
+- **Kanıt.** `cmd/panel/d1_stuck_operation_test.go` (adım sayan sahte Agent:
+  çakışma yok, ikinci çalışma sırasında yeniden başlatma, web postası
+  güncellemesi ve adresi, kurulum, posta profili, sınırlar, ölçeklenmiş bir
+  kiraya göre ölçülen kalp atışı durması), `web/tests/d1-stuck-operation.test.mjs`.
+- **Açık.** Henüz gerçek sistem kanıtı yok (laboratuvar adımları L1–L8 PR'da);
+  her kurulum yolunun başarılı ilk çalışmadan sonra yinelenmesinin gerçekten
+  zararsız olduğu laboratuvarda gözlenir (L3), kanıtlanmadı; P0.2 işlem
+  ortasında ulaşılamayan Agent için ilerledi, kapanmadı. **Hiçbir P0 işi
+  kapanmadı.**

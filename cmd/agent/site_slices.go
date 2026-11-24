@@ -317,7 +317,7 @@ func siteUnitEntersSlice(unit string, s *transport.SiteSlice, move bool) bool {
 	if !siteUnitRunningStates[props["ActiveState"]] {
 		return true
 	}
-	return props["ControlGroup"] == "/"+sitesandbox.SliceName(s.SiteID)+"/"+unit
+	return sitesandbox.UnitInSiteSlice(props["ControlGroup"], unit, s.SiteID)
 }
 
 // siteSliceTaskUnitPattern: a scheduled task's service of the next release
@@ -330,24 +330,18 @@ var siteSliceTaskUnitPattern = regexp.MustCompile(`^celikcron-([1-9][0-9]{0,9})-
 
 // siteSliceNamedBy reads which site's slice a unit file in the unit folder
 // names (0: none, or not a unit that may name one): a site's program, or a
-// task's service naming its own site's slice.
+// task's service naming its own site's slice. The file's slice is read as
+// systemd reads it (its last Slice= line, sitesandbox.UnitFileSlice).
 func siteSliceNamedBy(dir, name string) int {
 	task := siteSliceTaskUnitPattern.FindStringSubmatch(name)
 	if task == nil && !siteSliceUnitPattern.MatchString(name) {
 		return 0
 	}
-	for _, line := range strings.Split(readSmallFile(filepath.Join(dir, name)), "\n") {
-		rest, ok := strings.CutPrefix(strings.TrimSpace(line), "Slice=")
-		if !ok {
-			continue
-		}
-		id, ok := sitesandbox.ParseSliceName(strings.TrimSpace(rest))
-		if !ok || (task != nil && task[1] != strconv.Itoa(id)) {
-			continue
-		}
-		return id
+	id, ok := sitesandbox.ParseSliceName(sitesandbox.UnitFileSlice(readSmallFile(filepath.Join(dir, name))))
+	if !ok || (task != nil && task[1] != strconv.Itoa(id)) {
+		return 0
 	}
-	return 0
+	return id
 }
 
 // siteSlicesNamed reads the unit folder once: the sites whose slice a unit
@@ -597,10 +591,8 @@ func siteUnitDropInSlice(dropInPaths string) string {
 		if !strings.HasSuffix(p, ".conf") {
 			continue
 		}
-		for _, line := range strings.Split(readSmallFile(p), "\n") {
-			if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "Slice="); ok {
-				slice = strings.TrimSpace(rest)
-			}
+		if named := sitesandbox.UnitFileSlice(readSmallFile(p)); named != "" {
+			slice = named
 		}
 	}
 	return slice
@@ -722,9 +714,9 @@ func siteSliceUnitStatus(siteID int, unit string, props map[string]string) trans
 		out.Placement = transport.SiteUnitAbsent
 	case !siteUnitRunningStates[props["ActiveState"]]:
 		out.Placement = transport.SiteUnitStopped
-	case props["ControlGroup"] == "/"+sitesandbox.SliceName(siteID)+"/"+unit:
+	case sitesandbox.UnitInSiteSlice(props["ControlGroup"], unit, siteID):
 		out.Placement, out.Slice = transport.SiteUnitInSlice, sitesandbox.SliceName(siteID)
-	case props["ControlGroup"] == "/"+sitesandbox.SystemSlice+"/"+unit:
+	case sitesandbox.UnitInSystemSlice(props["ControlGroup"], unit):
 		out.Placement, out.Slice = transport.SiteUnitOutside, sitesandbox.SystemSlice
 	default:
 		out.Placement = transport.SiteUnitElsewhere

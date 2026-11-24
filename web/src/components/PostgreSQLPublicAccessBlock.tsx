@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
+import type { TranslationKey } from '../i18n/en';
 import { Button, Card, RemoteGate } from './ui';
 import { Guidance } from './kit/rows/Guidance';
 import { useInvalidation, useRefreshEvery, useRemote } from '../lib/remote';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { confirmAction, type OperationEnd } from '../lib/confirmAction';
+import { confirmAction, type OperationEnd, type OperationReport } from '../lib/confirmAction';
 
 // PostgreSQL databases made before alpha.141 that every account of the
 // server can enter (security lane S1b, 20 November 2026; corrected in the
@@ -53,6 +54,8 @@ export interface PGPublicEntry {
     failure?: string;
     /** alpha.143 lab: why a close failed, worded here (server: failure is the database server's own message). */
     failure_code?: string;
+    /** alpha.144: the kind of cause the database server's message names (failure_code server). */
+    failure_kind?: string;
     undo_statements?: string[];
     reason?: string;
 }
@@ -64,6 +67,9 @@ export interface PGPublicView {
     reopened: PGPublicEntry[];
     unknown: PGPublicEntry[];
 }
+
+// alpha.144: the kinds of cause worded on the list (others read as a refusal).
+const SERVER_KINDS = ['in_use', 'timeout', 'connection', 'rights', 'missing'];
 
 const FOUND = ['observing', 'close_failed', 'unknown_result', 'changed_rights', 'rights_default', 'other_roles', 'other_sessions', 'missing_users', 'monitoring_roles', 'replication_roles'] as const;
 
@@ -95,6 +101,14 @@ export function decodePGPublic(raw: unknown): PGPublicView {
         reopened: entries(Array.isArray(body.reopened) ? body.reopened : []),
         unknown: entries(body.unknown),
     };
+}
+
+/** The progress window's title once a close or its undo ended (alpha.145, alpha.144 lab O2). */
+export function pgPublicEndTitle(action: 'close' | 'undo', state: OperationEnd['state']): TranslationKey {
+    if (action === 'close') {
+        return state === 'done' ? 'pgpub.end.closed' : state === 'unknown' ? 'pgpub.end.unknown' : 'pgpub.end.notClosed';
+    }
+    return state === 'done' ? 'pgpub.undo.end.opened' : state === 'unknown' ? 'pgpub.undo.end.unknown' : 'pgpub.undo.end.notOpened';
 }
 
 export function PostgreSQLPublicAccessBlock() {
@@ -137,7 +151,7 @@ export function PostgreSQLPublicAccessBlock() {
         }
     };
 
-    const send = async (entry: PGPublicEntry, action: 'close' | 'undo'): Promise<OperationEnd> => {
+    const send = async (entry: PGPublicEntry, action: 'close' | 'undo', report?: OperationReport): Promise<OperationEnd> => {
         const vars = { name: entry.name };
         let end: OperationEnd;
         try {
@@ -158,6 +172,16 @@ export function PostgreSQLPublicAccessBlock() {
             }
         } catch {
             end = { state: 'unknown', reason: t('pgpub.unknown', vars) };
+        }
+        // alpha.145 (alpha.144 lab O2): the window's title follows the
+        // outcome, never "Closing …" above "Not completed".
+        end.title = t(pgPublicEndTitle(action, end.state), vars);
+        // alpha.144 (alpha.143 lab): the window ends on a step that says what
+        // happened, never on "Working on the server…" with a red mark.
+        if (end.state !== 'done') {
+            report?.steps([end.state === 'unknown'
+                ? { id: 'result', label: t('pgpub.step.unknown'), state: 'waiting' }
+                : { id: 'result', label: t('pgpub.step.notDone'), state: 'failed' }]);
         }
         setSaid({ id: entry.database_id, tone: end.state === 'done' ? 'ok' : 'bad', text: end.state === 'done' ? end.message ?? '' : end.reason });
         // Whatever came of it, the list is read again: it says what holds now.
@@ -183,7 +207,7 @@ export function PostgreSQLPublicAccessBlock() {
                 lost,
                 kept: [t('pgpub.confirm.kept', vars), t('pgpub.confirm.keptUndo')],
                 progressTitle: t('pgpub.progress', vars),
-                action: () => send(entry, 'close'),
+                action: (report) => send(entry, 'close', report),
             });
         } finally {
             setBusy(null);
@@ -204,7 +228,7 @@ export function PostgreSQLPublicAccessBlock() {
                 lost: [t('pgpub.undo.lost', vars)],
                 kept: [t('pgpub.undo.kept')],
                 progressTitle: t('pgpub.undo.progress', vars),
-                action: () => send(entry, 'undo'),
+                action: (report) => send(entry, 'undo', report),
             });
         } finally {
             setBusy(null);
@@ -219,7 +243,7 @@ export function PostgreSQLPublicAccessBlock() {
     // own message is shown as it came, quoted (alpha.143 lab).
     const failureWhy = (entry: PGPublicEntry) => {
         switch (entry.failure_code) {
-            case 'server': return t('pgpub.why.server', { detail: entry.failure ?? '' });
+            case 'server': return t(SERVER_KINDS.includes(entry.failure_kind ?? '') ? `pgpub.why.server.${entry.failure_kind}` as TranslationKey : 'pgpub.why.server', { detail: entry.failure ?? '' });
             case 'lost': return t('pgpub.why.lost');
             case 'cluster': return t('pgpub.why.cluster');
             case 'refused': return t('pgpub.why.refused');

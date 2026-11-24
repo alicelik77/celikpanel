@@ -890,9 +890,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := p.ensureHSTSAllowsHostnameRemoval(ctx, domainID); err != nil {
-		if message, guarded := hstsRemovalConflictMessage(err, "the domain"); guarded {
-			writeClientError(w, http.StatusConflict, message)
-		} else {
+		if !writeHSTSRemovalRefusal(w, err, "the domain") {
 			writeServerError(w, err)
 		}
 		return

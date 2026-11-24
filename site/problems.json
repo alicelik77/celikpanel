@@ -1,0 +1,444 @@
+{
+  "about": "Known problems shown on problems.html / tr/sorunlar.html. One case per problem: our number CP-<year>-<n> (never reused), the day it was first stated, its state (looking, accepted, fixed, not-defect), the release that fixed it, a one-sentence summary in our own words in both languages, what to do meanwhile or why it is not a defect, and the release-notes or lab lines that prove it, each as {\"cite\": path:line, \"says\": a phrase of that line} (the phrase rule of site/sources.go). Never a reporter's name, server, domain or own words. A security problem is added only after the release that closes it is published. site.TestProblemsAndChangelog checks every field.",
+  "cases": [
+    {
+      "id": "CP-2026-1",
+      "opened": "2026-11-20",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.141",
+      "summary": {
+        "en": "SQL from a backup, a copy or an import ran with the database server administrator’s rights.",
+        "tr": "Yedekten, kopyadan ya da içe aktarmadan gelen SQL, veritabanı sunucusunun yönetici yetkisiyle çalışıyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.141.md:28",
+          "says": "SQL from a backup, a copy or an"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-2",
+      "opened": "2026-11-21",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.142",
+      "summary": {
+        "en": "A customer or reseller could take a name, a site account, a server port or files that belong to another account.",
+        "tr": "Bir müşteri ya da bayi, başka bir hesaba ait bir adı, site hesabını, sunucu portunu ya da dosyaları alabiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:32",
+          "says": "A name of another account or of"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:53",
+          "says": "A link that made the web server"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-3",
+      "opened": "2026-11-21",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "A customer whose domain lies under one of the server’s own names could not add a subdomain of it.",
+        "tr": "Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adına alt alan adı ekleyemiyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:236",
+          "says": "A customer whose domain lies under"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:208",
+          "says": "A subdomain inside your own domain."
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-4",
+      "opened": "2026-11-21",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "A Node.js site whose application had failed could not be deleted.",
+        "tr": "Uygulaması başarısız olmuş bir Node.js sitesi silinemiyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.142.md:247",
+          "says": "A Node.js site whose application"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:223",
+          "says": "A Node.js site whose application failed"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-5",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "Outgoing mail could be signed with another customer’s domain.",
+        "tr": "Giden posta başka bir müşterinin alan adıyla imzalanabiliyordu."
+      },
+      "note": {
+        "en": "Fixed on Debian and Ubuntu; on Arch Linux, mail sent with a login can still be signed for another hosted domain.",
+        "tr": "Debian ve Ubuntu’da düzeltildi; Arch Linux’ta girişle gönderilen posta hâlâ başka bir barındırılan alan adı için imzalanabilir."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:41",
+          "says": "Mail signed with another customer's"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:233",
+          "says": "Arch Linux's OpenDKIM package cannot"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-6",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.143",
+      "summary": {
+        "en": "PostgreSQL databases made before alpha.141 were open to every account’s sign-in.",
+        "tr": "alpha.141’den önce oluşturulan PostgreSQL veritabanları her hesabın girişine açıktı."
+      },
+      "note": {
+        "en": "The administrator closes the ones the panel does not close by itself; databases made by hand are not touched.",
+        "tr": "Panelin kendiliğinden kapatmadıklarını yönetici kapatır; elle oluşturulan veritabanlarına dokunulmaz."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:50",
+          "says": "Older PostgreSQL databases open"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:160",
+          "says": "Every other such database the panel"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:262",
+          "says": "example made by hand) are not touched."
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-7",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "An alias inside a customer’s own domain got no DNS record.",
+        "tr": "Bir müşterinin kendi alan adının içindeki takma ad DNS kaydı almıyordu."
+      },
+      "note": {
+        "en": "Aliases made before alpha.144 get their record once removed and added again.",
+        "tr": "alpha.144’ten önce eklenen takma adlar, kaldırılıp yeniden eklenince kaydını alır."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:434",
+          "says": "An alias inside a customer's own"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126",
+          "says": "An alias that lies inside a domain"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:148",
+          "says": "before this release gets its record"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-8",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Leaving the page while a mailbox was being created could leave the mailbox without its record, and creating it again failed.",
+        "tr": "Posta kutusu oluşturulurken sayfadan ayrılmak kutuyu kaydı olmadan bırakabiliyor, yeniden oluşturmak da başarısız oluyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:449",
+          "says": "Older than this release, seen on"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:66",
+          "says": "A mailbox created while you leave"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-9",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Leaving the PostgreSQL page while a database was being closed to other accounts left its result shown as not confirmed.",
+        "tr": "Bir veritabanı başka hesaplara kapatılırken PostgreSQL sayfasından ayrılmak, sonucunu onaylanmamış olarak gösteriyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:437",
+          "says": "When the administrator leaves the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83",
+          "says": "A PostgreSQL close whose page was"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-10",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Some alias and certificate refusals were shown in English on the Turkish page.",
+        "tr": "Bazı takma ad ve sertifika retleri Türkçe sayfada İngilizce gösteriliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.143.md:446",
+          "says": "One refusal (an alias whose certificate"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:93",
+          "says": "Refusals in the page's language."
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-11",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.144",
+      "summary": {
+        "en": "Webmail’s own address gave out files of its plugins that are not part of its pages.",
+        "tr": "Web postanın kendi adresi, eklentilerinin sayfalarına ait olmayan dosyalarını veriyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31",
+          "says": "Webmail's own address gave out"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-12",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.145",
+      "summary": {
+        "en": "Webmail could not send mail; reading mail, attachments and settings worked.",
+        "tr": "Web posta e-posta gönderemiyordu; okuma, ekler ve ayarlar çalışıyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:180",
+          "says": "Webmail cannot send mail** (reading"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:332",
+          "says": "Webmail cannot send mail.** Sending"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:340",
+          "says": "not established. Until alpha.145"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:64",
+          "says": "Sending from webmail never worked"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:68",
+          "says": "Now webmail switches encryption"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-13",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.145",
+      "summary": {
+        "en": "After a backup DNS server (an optional second server) came back, an alias could keep saying “waiting to be published” until the next hourly round, although it already answered.",
+        "tr": "Yedek DNS sunucusu (isteğe bağlı ikinci sunucu) geri geldikten sonra bir takma ad, zaten cevap verdiği hâlde bir sonraki saatlik tura kadar “yayımlanmayı bekliyor” diyebiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:342",
+          "says": "After the backup server came back"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:95",
+          "says": "An alias's \"waiting to be published\""
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-14",
+      "opened": "2026-11-22",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.145",
+      "summary": {
+        "en": "The window of a failed PostgreSQL close kept its in-progress title above “Not completed”.",
+        "tr": "Başarısız bir PostgreSQL kapatmasının penceresi, “Tamamlanmadı” yazısının üstünde sürmekte olan başlığını koruyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:347",
+          "says": "The window of a failed PostgreSQL"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:100",
+          "says": "The window of a PostgreSQL close"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-15",
+      "opened": "2026-11-22",
+      "state": "accepted",
+      "summary": {
+        "en": "Some changes still run on the browser’s request: if you leave the page while the server works, the change can finish without the panel’s record, or only its answer is lost.",
+        "tr": "Bazı değişiklikler hâlâ tarayıcının isteğiyle çalışır: sunucu çalışırken sayfadan ayrılırsanız değişiklik panelin kaydı olmadan bitebilir ya da yalnız cevabı kaybolur."
+      },
+      "meanwhile": {
+        "en": "Stay on the page until the change says it has finished.",
+        "tr": "Değişiklik bittiğini söyleyene kadar sayfada kalın."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:157",
+          "says": "Other changes still run on the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:158",
+          "says": "other changes that still run on"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-16",
+      "opened": "2026-11-23",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.145",
+      "summary": {
+        "en": "Webmail’s local door on the server answered every account of the server: any of them could read Roundcube’s files through it and run plugin scripts (not from the network).",
+        "tr": "Web postanın sunucudaki yerel kapısı sunucunun her hesabına cevap veriyordu: herhangi biri oradan Roundcube’un dosyalarını okuyabiliyor ve eklenti betiklerini çalıştırabiliyordu (ağdan değil)."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:29",
+          "says": "Webmail's local door answered every"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:38",
+          "says": "scripts directly. It was **not"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:42",
+          "says": "Now the door answers only what"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-17",
+      "opened": "2026-11-23",
+      "state": "fixed",
+      "summary": {
+        "en": "A longer change (a webmail update, a component or mail profile install) can stay shown as “in progress” after the panel loses contact with its agent for a moment, although it finished on the server; other server changes are then refused.",
+        "tr": "Uzun süren bir değişiklik (web posta güncellemesi, bileşen ya da posta profili kurulumu), panel ajanıyla bağlantısını bir an kaybedince sunucuda bitmiş olsa da “sürüyor” görünmeye devam edebilir; o sırada başka sunucu değişiklikleri reddedilir."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:128",
+          "says": "A longer change can stay \"in progress\""
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:135",
+          "says": "end by itself). Nothing on the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:137",
+          "says": "as in progress for more than about"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:139",
+          "says": "the server. It restarts only the"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.145.md:141",
+          "says": "webmail update is only read, nothing"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:113",
+          "says": "Now the panel reads what the server did and records the result by"
+        }
+      ],
+      "fixed_in": "v0.1.0-alpha.147"
+    },
+    {
+      "id": "CP-2026-18",
+      "opened": "2026-11-24",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.147",
+      "summary": {
+        "en": "phpMyAdmin, phpPgAdmin and webmail ran under the web server’s shared account, whose group can read every site’s folder: a fault in one of them could read every site.",
+        "tr": "phpMyAdmin, phpPgAdmin ve web posta, grubu her sitenin klasörünü okuyabilen web sunucusunun ortak hesabıyla çalışıyordu: birindeki bir hata her siteyi okuyabilirdi."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:36",
+          "says": "The database tools and webmail ran under the web server's shared"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:41",
+          "says": "Now each has a system account of its own"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-19",
+      "opened": "2026-11-24",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.147",
+      "summary": {
+        "en": "Site accounts could schedule jobs with the system’s at, outside the panel and its limits, and nothing showed them.",
+        "tr": "Site hesapları sistemin at komutuyla, panelin ve sınırlarının dışında iş zamanlayabiliyordu ve hiçbir şey bunları göstermiyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:65",
+          "says": "Site accounts can no longer schedule jobs with"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-20",
+      "opened": "2026-11-24",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.147",
+      "summary": {
+        "en": "The distribution’s shared PHP pool, which runs as the web server’s account, stayed on even where nothing used it.",
+        "tr": "Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmadığı yerde bile açık kalıyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:78",
+          "says": "shared PHP pool is switched off where nothing uses"
+        }
+      ]
+    }
+  ]
+}
