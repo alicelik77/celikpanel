@@ -388,7 +388,7 @@ func (p *Panel) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.describeNewSession(r, token)
-	http.SetCookie(w, p.sessionCookie(token, time.Now().Add(auth.SessionDuration)))
+	p.setSessionCookie(w, r, token, time.Now().Add(auth.SessionDuration))
 	if usedRecovery {
 		p.auditAs(r, pending.userID, "auth.login.2fa.recovery", "", 0)
 	} else {

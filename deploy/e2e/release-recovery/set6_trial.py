@@ -92,7 +92,7 @@ LOOPBACK = ("127.0.0.1", "::1")
 HSTS = "Strict-Transport-Security"
 HSTS_CANDIDATE = "max-age=31536000"                       # cmd/panel/security.go at 72b879eea (D-030)
 HSTS_ALPHA81 = "max-age=31536000; includeSubDomains"      # cmd/panel/security.go at v0.1.0-alpha.81
-SESSION_COOKIE = "celikpanel_session"
+SESSION_COOKIE = "celikpanel_session"                   # the name before the sign-in cookie change
 PANEL_PORT = 2083
 
 SECTIONS = (
@@ -596,7 +596,10 @@ class Lab6:
 
     def header_reading(self, label: str, expected: str, expected_commit: str | None) -> dict:
         cookie = self.session_cookie()
-        script = ("python3 -I - " + shlex.join([SESSION_COOKIE, str(PANEL_PORT), f"panel-{self.node_name}.upd1-infra.test"])
+        # The name the panel set the session under (the pair driver's client
+        # learns it: __Host-celikpanel_session since the sign-in cookie change).
+        cookie_name = getattr(self.client, "cookie_name", None) or SESSION_COOKIE
+        script = ("python3 -I - " + shlex.join([cookie_name, str(PANEL_PORT), f"panel-{self.node_name}.upd1-infra.test"])
                   + " <<'CP_SET6_HEADERS'\n" + HEADER_SCRIPT.replace("@@COOKIE@@", json.dumps(cookie or ""))
                   + "\nCP_SET6_HEADERS\n")
         reading = json.loads(self.guest(script, timeout=300).stdout)

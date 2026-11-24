@@ -88,9 +88,13 @@ type Panel struct {
 	users         repositories.UserRepository
 	secrets       *secrets.Box
 	secureCookies bool
-	loginLimiter  *rateLimiter
-	demoMode      bool
-	startupGate   *panelHTTPStartupGate
+	// signinCookieNamesSince is when this installation first ran a panel
+	// that sets the __Host- sign-in cookie names (signin_cookies.go); zero
+	// when unknown, which carries no plain-named session over.
+	signinCookieNamesSince time.Time
+	loginLimiter           *rateLimiter
+	demoMode               bool
+	startupGate            *panelHTTPStartupGate
 	// Screens' last-known DNS proofs (alpha.127, display_checks.go).
 	displayChecks displayChecks
 	// Site disk measurements run once per site (alpha.127, domain_usage_handlers.go).
@@ -1282,6 +1286,10 @@ func main() {
 	} else if n == 0 {
 		log.Fatal("No users exist. Create the first admin with:  ./bin/panel --create-admin")
 	}
+	// Before any request: when this installation first ran the __Host-
+	// sign-in cookie names, so the transition is counted from one moment
+	// that a restart does not move (signin_cookies.go).
+	panel.loadSigninCookieNamesSince(context.Background())
 
 	// Bind and serve TLS before durable mutation recovery. Certificate
 	// activation restarts the panel and then verifies the published leaf over

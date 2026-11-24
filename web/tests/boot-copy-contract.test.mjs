@@ -60,6 +60,8 @@ const eagerModules = [
   'src/App.tsx',
   'src/components/LicenseOnboarding.tsx',
   'src/auth/usePanelSession.ts',
+  // Security lane A1: why the sign-in page is shown (no copy of its own).
+  'src/auth/signinRefusal.ts',
   'src/components/RecoveryAccess.tsx',
   'src/components/AccessHold.tsx',
   'src/components/UpdateReloadNotice.tsx',

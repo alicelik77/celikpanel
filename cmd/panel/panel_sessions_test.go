@@ -30,7 +30,7 @@ func throughAuth(panel *Panel, method, path, remote, token string) *httptest.Res
 	request := httptest.NewRequest(method, path, nil)
 	request.RemoteAddr = remote
 	if token != "" {
-		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+		request.AddCookie(&http.Cookie{Name: panel.sessionCookieNameInUse(), Value: token})
 	}
 	recorder := httptest.NewRecorder()
 	panel.requireAuth(reached).ServeHTTP(recorder, request)
@@ -240,8 +240,8 @@ func TestOwnSessionsListEndAndEndOthers(t *testing.T) {
 	third, _ := panel.sessions.Create(ctx, authHandlerTestUserID)
 	call := func(handler http.HandlerFunc, method, path, body string) *httptest.ResponseRecorder {
 		request := httptest.NewRequest(method, path, strings.NewReader(body))
-		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
-		request = request.WithContext(context.WithValue(request.Context(), callerKey, &Caller{ID: authHandlerTestUserID, Role: roleAdmin}))
+		// As requireAuth leaves it: the caller and the admitted session token.
+		request = withSessionToken(request.WithContext(context.WithValue(request.Context(), callerKey, &Caller{ID: authHandlerTestUserID, Role: roleAdmin})), token)
 		recorder := httptest.NewRecorder()
 		handler(recorder, request)
 		return recorder
@@ -313,8 +313,7 @@ func TestResellerSeesAndEndsOnlyTheirCustomersSessions(t *testing.T) {
 	}
 	call := func(handler http.HandlerFunc, method, path, body string, caller *Caller) *httptest.ResponseRecorder {
 		request := httptest.NewRequest(method, path, strings.NewReader(body))
-		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: resellerToken})
-		request = request.WithContext(context.WithValue(request.Context(), callerKey, caller))
+		request = withSessionToken(request.WithContext(context.WithValue(request.Context(), callerKey, caller)), resellerToken)
 		recorder := httptest.NewRecorder()
 		handler(recorder, request)
 		return recorder

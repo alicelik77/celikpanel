@@ -131,7 +131,7 @@ func (p *Panel) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	p.describeNewSession(r, token)
 
-	http.SetCookie(w, p.sessionCookie(token, time.Now().Add(auth.SessionDuration)))
+	p.setSessionCookie(w, r, token, time.Now().Add(auth.SessionDuration))
 
 	// Record the sign-in against the user (the session is fresh, so the
 	// caller-based audit cannot resolve them yet).
@@ -151,12 +151,24 @@ func (p *Panel) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var deleteErr error
-	if cookie, err := r.Cookie(sessionCookieName); err == nil {
-		deleteErr = p.sessions.Delete(r.Context(), cookie.Value)
+	// The token requireAuth admitted; the cookie is not read a second time.
+	if token := currentSessionToken(r); token != "" {
+		deleteErr = p.sessions.Delete(r.Context(), token)
 	}
-	// An already-expired cookie tells the browser to drop it.
+	// Signing out of a "Log in as" session also ends the operator's own
+	// session kept in the return cookie, once it is proved to be that
+	// operator's: no usable token of the operator stays in this browser for
+	// the next person who signs in on it.
+	// "Farklı giriş yap" içinden çıkış, dönüş çerezindeki operatör oturumunu da
+	// (operatörün olduğu doğrulanınca) sonlandırır.
+	if c := currentCaller(r); deleteErr == nil && c != nil && c.ImpersonatorID > 0 {
+		deleteErr = p.endKeptOperatorSession(r, c.ImpersonatorID)
+	}
+	// An already-expired cookie tells the browser to drop it, under every
+	// name the session cookie and the "Log in as" return cookie had.
 	// Süresi geçmiş bir çerez, tarayıcıya onu bırakmasını söyler.
-	http.SetCookie(w, p.sessionCookie("", time.Unix(0, 0)))
+	p.clearSessionCookie(w)
+	p.clearImpersonatorCookie(w)
 	if deleteErr != nil {
 		// The browser token is still cleared, but do not claim a complete
 		// logout when the server-side credential could not be revoked.
@@ -166,6 +178,29 @@ func (p *Panel) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// endKeptOperatorSession ends the session the "Log in as" return cookie holds
+// when it is the given operator's own session. A cookie naming anything else
+// is not ended (it is only removed from the browser by the caller): it is not
+// this operator's to end. A return cookie that is absent or no longer valid
+// needs nothing.
+func (p *Panel) endKeptOperatorSession(r *http.Request, operatorID int) error {
+	kept, err := p.impersonatorCookieValue(r)
+	if err != nil {
+		return nil
+	}
+	original, err := p.sessions.ValidateIdentity(r.Context(), kept)
+	if errors.Is(err, auth.ErrSessionInvalid) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if original.UserID != operatorID || original.ImpersonatorID != 0 {
+		return nil
+	}
+	return p.sessions.Delete(r.Context(), kept)
 }
 
 // handleMe returns the current user, used by the SPA to decide whether to
@@ -200,14 +235,15 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Tell the SPA when this session is an impersonation so it can show the
-	// "return to my account" banner.
+	// "return to my account" banner. Only the session itself says so: a
+	// return cookie beside an ordinary session is left over from someone
+	// else's "Log in as" and is removed, never offered as a way back.
 	// Bu oturum bir taklit oturumuysa SPA'ya söyle; "hesabıma dön" şeridini
-	// gösterebilsin.
-	impersonating := false
-	if _, err := r.Cookie(impersonatorCookieName); err == nil {
-		impersonating = true
+	// gösterebilsin. Bunu yalnız oturumun kendisi söyler.
+	if caller.ImpersonatorID == 0 {
+		p.expireImpersonatorCookieSent(w, r)
 	}
-	response := p.identityResponse(r.Context(), identity, impersonating || caller.ImpersonatorID > 0)
+	response := p.identityResponse(r.Context(), identity, caller.ImpersonatorID > 0)
 	// The banner names the real person too (alpha.114): "Viewing as X —
 	// signed in as Y". A failed read leaves only the account's own name.
 	// Şerit gerçek kişiyi de adlandırır; okunamazsa yalnız hesabın adı kalır.
@@ -227,22 +263,6 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
-}
-
-// sessionCookie builds the session cookie with security attributes. Secure
-// is set when the request/response is served over TLS in production; we
-// default it on and rely on SameSite for the HTTP dev case.
-// sessionCookie, güvenlik nitelikleriyle oturum çerezini oluşturur.
-func (p *Panel) sessionCookie(value string, expires time.Time) *http.Cookie {
-	return &http.Cookie{
-		Name:     sessionCookieName,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   p.secureCookies,
-		Expires:  expires,
-	}
 }
 
 // dummyHash is a valid argon2id hash of a random password nobody knows.

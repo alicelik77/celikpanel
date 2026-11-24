@@ -16,6 +16,7 @@ import {
 import { Login } from './components/Login';
 import { LicenseOnboarding } from './components/LicenseOnboarding';
 import { usePanelSession } from './auth/usePanelSession';
+import { refusalOf, setSigninRefusal } from './auth/signinRefusal';
 import { useUpdateRestartStarting } from './lib/useUpdateRestartStarting';
 import { RecoveryAccess } from './components/RecoveryAccess';
 import { AccessHold } from './components/AccessHold';
@@ -366,7 +367,7 @@ function AppRoutes() {
 // da çıkış. Yalnızca bilinmeyen oturum ya da hazır olma yanıtı sayfaları bağlı ve
 // erişilmez tutar; tam kurtarma sayfası uygulamanın hiç başlayamadığı yükleme içindir.
 function AuthGate() {
-  const { user, state, checking, unanswered, afterAnswer, failure, generation: authGenerationRef, retry, transitionAuthentication, markUnavailable } = usePanelSession();
+  const { user, state, checking, unanswered, afterAnswer, failure, generation: authGenerationRef, retry, transitionAuthentication, markUnavailable, signinUnconfirmed } = usePanelSession();
   // When the last suspension answer made the gate read who the person is again.
   const suspensionRead = useRef(0);
   const [observationRecovery, setObservationRecovery] = useState(false);
@@ -418,7 +419,16 @@ function AuthGate() {
         && url.includes('/api/')
         && !url.includes('/auth/login')
         && shouldApplyUnauthorizedResponse(requestGeneration, authGenerationRef.current)) {
+        // The sign-in page shows the reason the 401 names, or that the browser did
+        // not keep a sign-in it had just been given (auth/signinRefusal.ts),
+        // unless something else has happened since.
+        const notKept = signinUnconfirmed(requestGeneration);
         transitionAuthentication(null);
+        const ended = authGenerationRef.current;
+        void refusalOf(res).then(reason => {
+          const shown = reason ?? (notKept ? 'notKept' : null);
+          if (shown && authGenerationRef.current === ended) setSigninRefusal(shown);
+        });
       }
       if ((res.status === 403 || res.status === 503) && url.includes('/api/')
         && shouldApplyUnauthorizedResponse(requestGeneration, authGenerationRef.current)) {
@@ -446,7 +456,7 @@ function AuthGate() {
       return res;
     };
     return () => { window.fetch = originalFetch; };
-  }, [transitionAuthentication, markUnavailable, authGenerationRef, updateRestartStarting, retry]);
+  }, [transitionAuthentication, markUnavailable, authGenerationRef, updateRestartStarting, retry, signinUnconfirmed]);
 
   // The router keeps the address while the sign-in form is shown, so signing in
   // again opens the same route. What was typed on that page is not kept.

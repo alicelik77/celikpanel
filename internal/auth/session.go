@@ -133,6 +133,26 @@ type SessionIdentity struct {
 	// LastSeen is when the session was last used (alpha.128, migration
 	// 069); zero for a session not used since this release (never idle).
 	LastSeen time.Time
+	// CreatedAt is when the session was opened (the row's created_at, UTC);
+	// zero when the stored value cannot be read. ExpiresAt is its fixed end.
+	// The sign-in cookie names' transition reads both (cmd/panel
+	// signin_cookies.go): a zero CreatedAt is never "before" anything.
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+// sessionTimeLayouts are the forms a sessions.created_at value takes:
+// SQLite's datetime('now') and RFC 3339.
+var sessionTimeLayouts = []string{"2006-01-02 15:04:05", time.RFC3339, time.RFC3339Nano}
+
+// parseSessionTime reads a stored session time as UTC; zero when unreadable.
+func parseSessionTime(value string) time.Time {
+	for _, layout := range sessionTimeLayouts {
+		if at, err := time.ParseInLocation(layout, value, time.UTC); err == nil {
+			return at.UTC()
+		}
+	}
+	return time.Time{}
 }
 
 // ValidateIdentity is Validate plus the session's impersonator.
@@ -144,11 +164,11 @@ func (s *SessionStore) ValidateIdentity(ctx context.Context, token string) (Sess
 	var identity SessionIdentity
 	var impersonator sql.NullInt64
 	var expiresAt string
-	var lastSeen sql.NullString
+	var lastSeen, createdAt sql.NullString
 	err := s.db.QueryRowContext(ctx,
-		"SELECT user_id, impersonator_id, expires_at, last_seen_at FROM sessions WHERE token_hash = ?",
+		"SELECT user_id, impersonator_id, expires_at, last_seen_at, created_at FROM sessions WHERE token_hash = ?",
 		hashToken(token),
-	).Scan(&identity.UserID, &impersonator, &expiresAt, &lastSeen)
+	).Scan(&identity.UserID, &impersonator, &expiresAt, &lastSeen, &createdAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SessionIdentity{}, ErrSessionInvalid
 	}
@@ -159,6 +179,10 @@ func (s *SessionStore) ValidateIdentity(ctx context.Context, token string) (Sess
 	if err != nil || time.Now().After(exp) {
 		_ = s.Delete(ctx, token)
 		return SessionIdentity{}, ErrSessionInvalid
+	}
+	identity.ExpiresAt = exp.UTC()
+	if createdAt.Valid {
+		identity.CreatedAt = parseSessionTime(createdAt.String)
 	}
 	if impersonator.Valid {
 		identity.ImpersonatorID = int(impersonator.Int64)
