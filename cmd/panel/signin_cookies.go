@@ -16,10 +16,15 @@ import (
 //
 // Over HTTPS the session and "Log in as" cookies carry the __Host- prefix. A
 // browser keeps such a cookie only when it is Secure, has Path=/ and no
-// Domain, and it never sends one that another host set: a website under the
-// panel's registrable domain (shop.example.com beside panel.example.com) can
-// no longer plant a cookie under the panel's name with Domain=example.com or
-// shadow it with a longer path. The plain names are kept only for development
+// Domain, and it never sends one that another host set: a website on another
+// address under the panel's registrable domain (shop.example.com beside
+// panel.example.com) can no longer plant a cookie under the panel's name with
+// Domain=example.com or shadow it with a longer path. Cookies do not separate
+// ports, so this does not separate services on the panel's own host name: a
+// service there, on any port (also a website the administrator places on
+// exactly that name), receives these cookies and can set them. That is the
+// next lane's subject (a sign-in binding, so that the cookie alone is not
+// enough). The plain names are kept only for development
 // over plain HTTP (--insecure-cookies), and the plain session name is read in
 // a bounded transition so that an update the administrator follows on the
 // update page ends there without a sign-in (signin_cookies.go,
