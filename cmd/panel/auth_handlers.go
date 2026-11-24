@@ -131,7 +131,7 @@ func (p *Panel) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	p.describeNewSession(r, token)
 
-	http.SetCookie(w, p.sessionCookie(token, time.Now().Add(auth.SessionDuration)))
+	p.setSessionCookie(w, r, token, time.Now().Add(auth.SessionDuration))
 
 	// Record the sign-in against the user (the session is fresh, so the
 	// caller-based audit cannot resolve them yet).
@@ -151,12 +151,14 @@ func (p *Panel) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var deleteErr error
-	if cookie, err := r.Cookie(sessionCookieName); err == nil {
-		deleteErr = p.sessions.Delete(r.Context(), cookie.Value)
+	// The token requireAuth admitted; the cookie is not read a second time.
+	if token := currentSessionToken(r); token != "" {
+		deleteErr = p.sessions.Delete(r.Context(), token)
 	}
-	// An already-expired cookie tells the browser to drop it.
+	// An already-expired cookie tells the browser to drop it, under every
+	// name the session cookie had.
 	// Süresi geçmiş bir çerez, tarayıcıya onu bırakmasını söyler.
-	http.SetCookie(w, p.sessionCookie("", time.Unix(0, 0)))
+	p.clearSessionCookie(w)
 	if deleteErr != nil {
 		// The browser token is still cleared, but do not claim a complete
 		// logout when the server-side credential could not be revoked.
@@ -204,7 +206,7 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 	// Bu oturum bir taklit oturumuysa SPA'ya söyle; "hesabıma dön" şeridini
 	// gösterebilsin.
 	impersonating := false
-	if _, err := r.Cookie(impersonatorCookieName); err == nil {
+	if _, err := p.impersonatorCookieValue(r); err == nil {
 		impersonating = true
 	}
 	response := p.identityResponse(r.Context(), identity, impersonating || caller.ImpersonatorID > 0)
@@ -227,22 +229,6 @@ func (p *Panel) handleMe(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
-}
-
-// sessionCookie builds the session cookie with security attributes. Secure
-// is set when the request/response is served over TLS in production; we
-// default it on and rely on SameSite for the HTTP dev case.
-// sessionCookie, güvenlik nitelikleriyle oturum çerezini oluşturur.
-func (p *Panel) sessionCookie(value string, expires time.Time) *http.Cookie {
-	return &http.Cookie{
-		Name:     sessionCookieName,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   p.secureCookies,
-		Expires:  expires,
-	}
 }
 
 // dummyHash is a valid argon2id hash of a random password nobody knows.

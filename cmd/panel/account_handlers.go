@@ -636,8 +636,6 @@ func (p *Panel) deleteUserWhenEmpty(ctx context.Context, userID int) (
 	return dependencies, true, nil
 }
 
-const impersonatorCookieName = "celikpanel_impersonator"
-
 // handleImpersonate switches the session to the target account while
 // keeping the original session in a second HttpOnly cookie so the operator
 // can come back. Plesk's "log in as customer" — the support killer-feature.
@@ -673,10 +671,11 @@ func (p *Panel) handleImpersonate(w http.ResponseWriter, r *http.Request, c *Cal
 
 	// Preserve the operator's own session for the way back.
 	// Operatörün kendi oturumunu dönüş yolu için sakla.
-	if orig, err := r.Cookie(sessionCookieName); err == nil {
-		http.SetCookie(w, p.cookie(impersonatorCookieName, orig.Value, 0))
+	if orig := currentSessionToken(r); orig != "" {
+		p.setImpersonatorCookie(w, orig)
 	}
-	http.SetCookie(w, p.cookie(sessionCookieName, token, 0))
+	http.SetCookie(w, p.cookie(p.sessionCookieNameInUse(), token, 0))
+	p.expirePlainSigninCookiesSent(w, r)
 
 	log.Printf("[audit] user %d (%s) impersonated user %d (%s)", c.ID, c.Role, target.ID, target.Username)
 	json.NewEncoder(w).Encode(map[string]any{"success": true, "username": target.Username, "role": target.Role})
@@ -691,28 +690,32 @@ func (p *Panel) handleUnimpersonate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imp, err := r.Cookie(impersonatorCookieName)
+	impValue, err := p.impersonatorCookieValue(r)
+	if errors.Is(err, errSigninCookieDuplicate) {
+		p.refuseDuplicateSigninCookies(w)
+		return
+	}
 	if err != nil {
 		writeClientError(w, http.StatusBadRequest, "not impersonating")
 		return
 	}
-	cur, err := r.Cookie(sessionCookieName)
-	if err != nil {
-		http.SetCookie(w, p.sessionCookie("", time.Unix(0, 0)))
-		http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
+	curValue := currentSessionToken(r)
+	if curValue == "" {
+		p.clearSessionCookie(w)
+		p.clearImpersonatorCookie(w)
 		writeClientError(w, http.StatusUnauthorized, "impersonated session missing; sign in again")
 		return
 	}
-	if cur.Value == imp.Value {
+	if curValue == impValue {
 		// A duplicated cookie is not an impersonation state. Preserve the valid
 		// operator session and remove only the bogus return-path marker.
-		http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
+		p.clearImpersonatorCookie(w)
 		writeClientError(w, http.StatusBadRequest, "not impersonating")
 		return
 	}
 	// The stored token must still be a valid session.
 	// Saklanan token hâlâ geçerli bir oturum olmalı.
-	original, err := p.sessions.ValidateIdentity(r.Context(), imp.Value)
+	original, err := p.sessions.ValidateIdentity(r.Context(), impValue)
 	// The way back leads only to the operator who opened this session.
 	// Dönüş yolu yalnız bu oturumu açan operatöre çıkar.
 	if c := currentCaller(r); err == nil && c != nil && c.ImpersonatorID > 0 && original.UserID != c.ImpersonatorID {
@@ -725,10 +728,10 @@ func (p *Panel) handleUnimpersonate(w http.ResponseWriter, r *http.Request) {
 		}
 
 		revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
-		revokeErr := p.sessions.Delete(revokeCtx, cur.Value)
+		revokeErr := p.sessions.Delete(revokeCtx, curValue)
 		cancel()
-		http.SetCookie(w, p.sessionCookie("", time.Unix(0, 0)))
-		http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
+		p.clearSessionCookie(w)
+		p.clearImpersonatorCookie(w)
 		if revokeErr != nil {
 			writeServerError(w, fmt.Errorf("revoke impersonated session after original session expired: %w", revokeErr))
 			return
@@ -740,21 +743,21 @@ func (p *Panel) handleUnimpersonate(w http.ResponseWriter, r *http.Request) {
 	// Drop the impersonated session, restore the original.
 	// Taklit oturumu bırak, aslını geri yükle.
 	revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
-	revokeErr := p.sessions.Delete(revokeCtx, cur.Value)
+	revokeErr := p.sessions.Delete(revokeCtx, curValue)
 	cancel()
 	if revokeErr != nil {
 		// The browser must not keep a token whose server-side revocation is
 		// uncertain. Do not claim that the original session was restored.
-		http.SetCookie(w, p.sessionCookie("", time.Unix(0, 0)))
-		http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
+		p.clearSessionCookie(w)
+		p.clearImpersonatorCookie(w)
 		writeServerError(w, fmt.Errorf("revoke impersonated session: %w", revokeErr))
 		return
 	}
 	if c := currentCaller(r); c != nil && c.ImpersonatorID > 0 {
 		p.audit(r, "impersonate.stop", "user", c.ID)
 	}
-	http.SetCookie(w, p.cookie(sessionCookieName, imp.Value, 0))
-	http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
+	http.SetCookie(w, p.cookie(p.sessionCookieNameInUse(), impValue, 0))
+	p.clearImpersonatorCookie(w)
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
@@ -812,23 +815,7 @@ func (p *Panel) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request) 
 	revokePendingLogins(user.ID)
 	// The transaction revokes this request's session too. Clear the browser
 	// cookies so the client immediately returns to sign-in.
-	http.SetCookie(w, p.sessionCookie("", time.Unix(0, 0)))
-	http.SetCookie(w, p.cookie(impersonatorCookieName, "", -1))
+	p.clearSessionCookie(w)
+	p.clearImpersonatorCookie(w)
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
-}
-
-// cookie builds a session-style cookie consistent with the login handler's
-// flags (HttpOnly, SameSite=Lax, Secure per deployment).
-// cookie, giriş işleyicisinin bayraklarıyla tutarlı (HttpOnly, SameSite=Lax,
-// dağıtıma göre Secure) oturum tarzı bir çerez üretir.
-func (p *Panel) cookie(name, value string, maxAge int) *http.Cookie {
-	return &http.Cookie{
-		Name:     name,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   p.secureCookies,
-		MaxAge:   maxAge,
-	}
 }

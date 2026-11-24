@@ -147,7 +147,8 @@ func TestPanelProcessPreservesHTTPSAndAuthenticationWhileAgentAbsent(t *testing.
 	}
 	var cookie *http.Cookie
 	for _, c := range response.Cookies() {
-		if c.Name == sessionCookieName {
+		// Over HTTPS the session cookie carries the __Host- name (signin_cookies.go).
+		if c.Name == hostSessionCookieName {
 			cookie = c
 		}
 	}

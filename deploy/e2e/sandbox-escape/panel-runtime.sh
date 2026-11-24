@@ -14,15 +14,19 @@
 # mode, the upload of the probe as the site's own account.
 #
 #   ./run.sh build                       # once, on a machine with Go
-#   LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> \
+#   LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<__Host-celikpanel_session> \
 #     DOMAIN_ID=<id> [UPLOAD=local|sftp|none] ./panel-runtime.sh
 #
 # Environment:
 #   LAB_ONLY=yes      required: you confirm the panel is a lab VM
 #   PANEL_URL         https://host:port of the lab panel
-#   COOKIE            the value of the celikpanel_session cookie of an account
-#                     that owns the domain (the panel has no API tokens; log in
-#                     with a browser and copy the cookie)
+#   COOKIE            the value of the session cookie of an account that owns
+#                     the domain (log in with a browser and copy the cookie:
+#                     __Host-celikpanel_session over HTTPS; a panel before the
+#                     sign-in cookie change named it celikpanel_session)
+#   COOKIE_NAME       the session cookie's name (default
+#                     __Host-celikpanel_session; celikpanel_session for an
+#                     older panel or one run with --insecure-cookies)
 #   DOMAIN_ID         the lab domain (it needs a website and a certificate)
 #   KIND              program (default: the Go probe) or python (the Python
 #                     probe as a WSGI app; the administrator offers
@@ -85,7 +89,9 @@ case "$UPLOAD" in local|sftp|none) ;; *) die "UPLOAD is local, sftp or none" ;; 
 # The session cookie goes through a private curl config file, never on the
 # command line (other users could read it in the process list).
 umask 077
-printf 'header = "Cookie: celikpanel_session=%s"\nheader = "Origin: %s"\n' "$COOKIE" "$PANEL_URL" > "$WORK/curl.cfg"
+COOKIE_NAME="${COOKIE_NAME:-__Host-celikpanel_session}"
+case "$COOKIE_NAME" in __Host-celikpanel_session|celikpanel_session) ;; *) die "COOKIE_NAME is __Host-celikpanel_session or celikpanel_session" ;; esac
+printf 'header = "Cookie: %s=%s"\nheader = "Origin: %s"\n' "$COOKIE_NAME" "$COOKIE" "$PANEL_URL" > "$WORK/curl.cfg"
 CURL=(curl -sS --max-time 60 -K "$WORK/curl.cfg")
 [ "${CURL_INSECURE:-}" = 1 ] && CURL+=(-k)
 BASE="$PANEL_URL/api/v1/domains/$DOMAIN_ID/runtime-apps"

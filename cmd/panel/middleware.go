@@ -5,15 +5,12 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/repositories"
 )
-
-// sessionCookieName is the cookie carrying the raw session token.
-// sessionCookieName, ham oturum jetonunu taşıyan çerezdir.
-const sessionCookieName = "celikpanel_session"
 
 type contextKey string
 
@@ -55,9 +52,27 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		cookie, err := r.Cookie(sessionCookieName)
+		// The sign-in cookies are read through one rule (signin_cookies.go):
+		// a name sent more than once is refused and removed.
+		cookie, present, err := p.readSessionCookie(r)
+		if err == nil {
+			_, err = p.impersonatorCookieValue(r)
+			if errors.Is(err, http.ErrNoCookie) {
+				err = nil
+			}
+		}
 		if err != nil {
+			p.refuseDuplicateSigninCookies(w)
+			return
+		}
+		if !present {
+			p.expirePlainSigninCookiesSent(w, r)
 			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+			return
+		}
+		// A signed-in browser's /api/ call from another site or another
+		// origin of the same site is refused (fetch metadata).
+		if refuseCrossSiteAPIRequest(w, r) {
 			return
 		}
 
@@ -65,24 +80,35 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			writeAuthStatusUnavailable(w)
 			return
 		}
-		session, err := p.sessions.ValidateIdentity(r.Context(), cookie.Value)
+		session, err := p.sessions.ValidateIdentity(r.Context(), cookie.token)
 		userID := session.UserID
 		if err != nil {
 			if errors.Is(err, auth.ErrSessionInvalid) {
+				p.expirePlainSigninCookiesSent(w, r)
 				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
 			} else {
 				writeAuthStatusUnavailable(w)
 			}
 			return
 		}
+		// The transition: a session from before the new names, presented
+		// under the plain name (legacySigninAccepted).
+		if cookie.legacy && !p.legacySigninAccepted(session, time.Now()) {
+			p.refuseLegacySignin(w)
+			return
+		}
 		// alpha.128 (G4): a session unused for the idle timeout ends here;
 		// otherwise its use is recorded (at most once a minute).
-		if !p.sessionIdleCheck(w, r, cookie.Value, session) {
+		if !p.sessionIdleCheck(w, r, cookie.token, session) {
 			return
 		}
 
 		c, u, ok := p.admitAccountIdentity(w, r, userID)
 		if !ok {
+			return
+		}
+		if cookie.legacy && !c.hasAccountRole(roleAdmin) {
+			p.refuseLegacySignin(w)
 			return
 		}
 		// A "Log in as" session lives only while its operator is active and
@@ -112,7 +138,15 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 		if !ok {
 			return
 		}
-		next.ServeHTTP(w, r)
+		if cookie.legacy {
+			// Carried over: the same session under the name in use from now
+			// on; the plain names are removed.
+			p.setSessionCookie(w, r, cookie.token, session.ExpiresAt)
+		} else {
+			// A plain-named cookie beside the name in use is never read.
+			p.expirePlainSigninCookiesSent(w, r)
+		}
+		next.ServeHTTP(w, withSessionToken(r, cookie.token))
 	})
 }
 

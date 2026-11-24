@@ -338,8 +338,8 @@ type sessionsReport struct {
 }
 
 func currentSessionHandle(r *http.Request) string {
-	if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
-		return auth.SessionHandle(cookie.Value)
+	if token := currentSessionToken(r); token != "" {
+		return auth.SessionHandle(token)
 	}
 	return ""
 }
