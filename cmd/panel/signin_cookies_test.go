@@ -307,6 +307,49 @@ func TestSigninTransitionCarriesAPreUpdateAdministratorSessionOnce(t *testing.T)
 	}
 }
 
+// Review of PR #368, finding 5: the carry-over's Set-Cookie holds the session
+// token, so it happens only on an /api/ answer marked no-store, never on a
+// tool's cacheable response.
+func TestSigninTransitionCarriesOverOnlyOnAPIAndNeverCached(t *testing.T) {
+	since := time.Now().Add(-10 * time.Minute)
+	fixture := newSigninFixture(t, since)
+	fixture.openedAt(t, signinAdminID, since.Add(-2*time.Hour))
+	token := fixture.tokens[signinAdminID]
+	reached := false
+	mux := http.NewServeMux()
+	mux.HandleFunc("/dbtool/phpmyadmin/app.js", func(w http.ResponseWriter, r *http.Request) {
+		reached = true
+		w.Header().Set("Cache-Control", "public, max-age=31536000")
+		_, _ = io.WriteString(w, "tool script")
+	})
+	mux.HandleFunc(signinTestMeRoute, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	handler := fixture.panel.requireAuth(mux)
+	send := func(path string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		return recorder
+	}
+
+	tool := send("/dbtool/phpmyadmin/app.js")
+	if tool.Code != http.StatusUnauthorized || reached || tool.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("a tool's response under the plain name: status %d, reached %v, Cache-Control %q", tool.Code, reached, tool.Header().Get("Cache-Control"))
+	}
+	if cookies := tool.Result().Cookies(); len(cookies) != 0 {
+		t.Fatalf("a tool's response changed the sign-in cookies: %v", cookies)
+	}
+	// The plain cookie was left in place: the next /api/ call carries it over.
+	api := send(signinTestMeRoute)
+	carried := cookieNamed(api, hostSessionCookieName)
+	if api.Code != http.StatusNoContent || carried == nil || carried.Value != token {
+		t.Fatalf("the next /api/ call: status %d, carried %+v", api.Code, carried)
+	}
+	if value := api.Header().Get("Cache-Control"); value != "no-store" {
+		t.Fatalf("the carry-over answer has Cache-Control %q", value)
+	}
+}
+
 func TestSigninTransitionRefusals(t *testing.T) {
 	now := time.Now()
 	for _, testCase := range []struct {

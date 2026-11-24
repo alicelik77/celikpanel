@@ -70,6 +70,16 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
 			return
 		}
+		// The transition carries a plain-named session over only on an /api/
+		// request (the update page's own polling is one), never on a response
+		// another component makes and may let a cache keep (/dbtool/). Such a
+		// request is answered 401 with the plain cookie left in place, so the
+		// next /api/ call still carries the session over.
+		if cookie.legacy && !strings.HasPrefix(r.URL.Path, "/api/") {
+			w.Header().Set("Cache-Control", "no-store")
+			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+			return
+		}
 		// A signed-in browser's /api/ call from another site or another
 		// origin of the same site is refused (fetch metadata).
 		if refuseCrossSiteAPIRequest(w, r) {
@@ -140,7 +150,9 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 		}
 		if cookie.legacy {
 			// Carried over: the same session under the name in use from now
-			// on; the plain names are removed.
+			// on; the plain names are removed. The answer carries the session
+			// token in Set-Cookie, so no cache may keep it.
+			w.Header().Set("Cache-Control", "no-store")
 			p.setSessionCookie(w, r, cookie.token, session.ExpiresAt)
 		} else {
 			// A plain-named cookie beside the name in use is never read.
