@@ -1,0 +1,67 @@
+{
+  "version": "v0.1.0-alpha.148",
+  "published": "",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:5",
+    "says": "A security release."
+  },
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "Each site’s programs (uploaded programs, Python apps, the Node.js application, service apps, and their install, build and deploy steps) run inside one memory, process and processor limit of their own, so one site can no longer take the whole server from the other customers.",
+        "tr": "Her sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) kendilerine ait tek bir bellek, işlem ve işlemci sınırının içinde çalışır; böylece bir site artık sunucunun tamamını öteki müşterilerden alamaz."
+      },
+      "case": "CP-2026-21",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:42",
+        "says": "Now every program CelikPanel starts for a site runs in that site's own"
+      }
+    },
+    {
+      "kind": "new",
+      "text": {
+        "en": "Plans, reseller plans and accounts set a site’s memory, processes and processor; without a setting a site gets 512 processes, two processor cores and the smaller of 3072 MB and 75 % of the server’s memory. Lowering a limit below what a site uses lists that site first.",
+        "tr": "Planlar, bayi planları ve hesaplar bir sitenin belleğini, işlem sayısını ve işlemcisini belirler; ayar yoksa bir site 512 işlem, iki işlemci çekirdeği ve 3072 MB ile sunucu belleğinin %75’inden küçük olanını alır. Bir sınırı sitenin kullandığının altına düşürmek önce o siteyi listeler."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:56",
+        "says": "The limits and who sets them."
+      }
+    },
+    {
+      "kind": "new",
+      "text": {
+        "en": "Database users can get a default longest statement and, on PostgreSQL, a firm limit on one session’s temporary files; restores and imports keep the limit, and a value the server owner set by hand is kept.",
+        "tr": "Veritabanı kullanıcılarına varsayılan bir en uzun komut süresi ve PostgreSQL’de tek oturumun geçici dosyaları için kesin bir sınır konabilir; geri yüklemeler ve içe aktarmalar sınırı korur, sunucu sahibinin elle koyduğu bir değer korunur."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:72",
+        "says": "Database users.** Three optional keys"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "Programs that ran before the update stay outside their site’s limits until the administrator moves the site; the move restarts each of its running programs once.",
+        "tr": "Güncellemeden önce çalışan programlar, yönetici siteyi taşıyana kadar sitesinin sınırlarının dışında kalır; taşıma sitenin çalışan her programını bir kez yeniden başlatır."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:134",
+        "says": "Programs that ran before the update stay outside their site's limits"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A site’s PHP and its scheduled tasks are outside the site’s limits; PHP keeps its own limits per site.",
+        "tr": "Bir sitenin PHP’si ve zamanlanmış görevleri sitenin sınırlarının dışındadır; PHP site başına kendi sınırlarını korur."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:137",
+        "says": "Outside a site's limits:"
+      }
+    }
+  ]
+}

@@ -113,7 +113,7 @@
   "home.install.systems": "What each system offers, and how its updates work",
   "home.sep.title": "Separation between customers",
   "home.sep.text": "What keeps one account from reaching another, and what it does not cover.",
-  "home.sep.caption": "Separation between accounts, as the release notes up to 0.1.0-alpha.147 state it",
+  "home.sep.caption": "Separation between accounts, as the release notes up to 0.1.0-alpha.148 state it",
   "home.sep.what": "Measure",
   "home.sep.status": "Status",
   "home.sep.since": "Since",
@@ -140,7 +140,7 @@
   "sep.mail.since": "alpha.128",
   "sep.php": "PHP and scheduled tasks in the site’s own sandbox",
   "sep.php.since": "—",
-  "sep.limits": "Processor and memory limits per account for all of its programs (today: PHP memory, run time and process count per site)",
+  "sep.limits": "Processor and memory limits for a whole hosting account, its sites’ PHP and scheduled tasks included (today: each site’s programs have limits of their own; PHP has memory, run time and process count per site)",
   "sep.limits.since": "—",
   "sep.visible": "Hiding which other sites exist: account names and processes are still visible to a site account",
   "sep.visible.since": "—",
@@ -479,5 +479,7 @@
   "sep.at": "Site accounts cannot schedule jobs with at (an at.allow the owner wrote is kept, and the site accounts it names are shown to the administrator); crontab lines added outside the panel are marked for the administrator",
   "sep.at.since": "alpha.147",
   "sep.stockpool": "The distribution’s shared PHP pool, which runs as the web server’s account, is turned off where nothing uses it",
-  "sep.stockpool.since": "alpha.147"
+  "sep.stockpool.since": "alpha.147",
+  "sep.sitelimits": "A site’s programs (the Node.js application, Python apps, uploaded programs, service apps and their install, build and deploy steps) share one memory, process and processor limit, so one site cannot take the whole server; programs that ran before join it when the administrator moves the site",
+  "sep.sitelimits.since": "alpha.148"
 }

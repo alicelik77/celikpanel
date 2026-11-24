@@ -48,6 +48,25 @@
 </div>
 </div>
 <div class="wrap">
+<section class="part" id="v0.1.0-alpha.148" aria-labelledby="h-v0.1.0-alpha.148">
+<header><span class="num">@@CP_RELEASE_DAY@@</span><h2 id="h-v0.1.0-alpha.148">v0.1.0-alpha.148</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.148</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">Each site’s programs (uploaded programs, Python apps, the Node.js application, service apps, and their install, build and deploy steps) run inside one memory, process and processor limit of their own, so one site can no longer take the whole server from the other customers.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-21">CP-2026-21</a></td></tr>
+<tr><th scope="row">New</th><td data-k="Change">Plans, reseller plans and accounts set a site’s memory, processes and processor; without a setting a site gets 512 processes, two processor cores and the smaller of 3072 MB and 75 % of the server’s memory. Lowering a limit below what a site uses lists that site first.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">New</th><td data-k="Change">Database users can get a default longest statement and, on PostgreSQL, a firm limit on one session’s temporary files; restores and imports keep the limit, and a value the server owner set by hand is kept.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">Programs that ran before the update stay outside their site’s limits until the administrator moves the site; the move restarts each of its running programs once.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A site’s PHP and its scheduled tasks are outside the site’s limits; PHP keeps its own limits per site.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.148.md">Full release notes of v0.1.0-alpha.148</a></p>
+</div>
+</section>
 <section class="part" id="v0.1.0-alpha.147" aria-labelledby="h-v0.1.0-alpha.147">
 <header><span class="num">2026-11-24</span><h2 id="h-v0.1.0-alpha.147">v0.1.0-alpha.147</h2></header>
 <div>

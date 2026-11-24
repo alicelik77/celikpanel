@@ -224,8 +224,8 @@
     ],
     "home.sep.caption": [
       {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:7",
-        "says": "A security release with one correction."
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:5",
+        "says": "A security release."
       }
     ],
     "home.sep.note": [
@@ -760,6 +760,14 @@
         "says": "Each site's PHP-FPM pool and scheduled"
       },
       {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:137",
+        "says": "Outside a site's limits:"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:42",
+        "says": "Now every program CelikPanel starts for a site runs in that site's own"
+      },
+      {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.128.md:26",
         "says": "PHP per site:** memory, run time,"
       }
@@ -968,6 +976,22 @@
       {
         "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.147.md:1",
         "says": "# v0.1.0-alpha.147"
+      }
+    ],
+    "sep.sitelimits": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:42",
+        "says": "Now every program CelikPanel starts for a site runs in that site's own"
+      },
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:134",
+        "says": "Programs that ran before the update stay outside their site's limits"
+      }
+    ],
+    "sep.sitelimits.since": [
+      {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:1",
+        "says": "# v0.1.0-alpha.148"
       }
     ],
     "sep.yes.notarch": [
