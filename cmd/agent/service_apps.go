@@ -917,6 +917,17 @@ func serviceAppListenProof(unit string, port int) (serviceapps.ListenProof, erro
 	return serviceapps.ProveListening(serviceapps.ParseSS(string(out)), pids, port), nil
 }
 
+// serviceAppUnitInSlice is where ServiceAppActivateV1 writes the app's unit
+// (S4 R2a): into the site's slice when the app does not run now (or already
+// runs there); a running app moves with its site. A slice the file at path
+// names is kept, also when where the app runs cannot be read
+// (site_slice_keep.go).
+func serviceAppUnitInSlice(sc serviceAppContext, installID int, path string) bool {
+	return siteUnitInSlice(serviceapps.UnitName(installID)+".service", sc.slice, false, func() bool {
+		return unitFileKeepsSiteSlice(path, sc.siteID)
+	})
+}
+
 // ServiceAppActivateV1 writes the long-running unit of an installed version
 // and starts it. A unit the owner changed is kept and not overwritten
 // (D-022); the owner's own settings belong in the drop-in directory.
@@ -967,12 +978,7 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 	if !serviceAppSandboxReady(sc, caps, resp) {
 		return nil
 	}
-	// S4 R2a: into the site's slice when the app does not run now (or
-	// already runs there); a running app moves with its site. Without the
-	// site's limits a slice the file names is kept (site_slice_keep.go).
-	inSlice := siteUnitInSlice(serviceapps.UnitName(req.Target.InstallID)+".service", sc.slice, false, func() bool {
-		return unitFileKeepsSiteSlice(path, sc.siteID)
-	})
+	inSlice := serviceAppUnitInSlice(sc, req.Target.InstallID, path)
 	text, err := serviceapps.RenderUnit(serviceapps.UnitParams{
 		InstallID: req.Target.InstallID, App: sc.app, Version: req.Version, Domain: req.Target.Domain,
 		User: sc.account.Name, Group: sc.account.Group, Layout: sc.layout, Port: req.Port, AuxPort: req.AuxPort,

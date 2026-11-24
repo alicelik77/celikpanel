@@ -136,8 +136,8 @@ func planNodeSite(ctx context.Context, req *AppApplyRequest, unitPath string) (n
 		// S4 R2a: into the site's slice when the application does not run
 		// now (or already runs there), or with the administrator's sandbox
 		// move, which restarts it and puts the earlier unit back on failure.
-		// Without the site's limits a slice the file names is kept
-		// (site_slice_keep.go).
+		// A slice the file names is kept, also when where the application
+		// runs cannot be read (site_slice_keep.go).
 		InSlice: siteUnitInSlice(appUnitName(req.SiteID)+".service", siteSliceFor(req.Slice, req.SiteID), req.SandboxMove, func() bool {
 			return exists && unitKeepsSiteSlice(text, req.SiteID, filepath.Dir(unitPath))
 		}),

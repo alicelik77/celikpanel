@@ -21,9 +21,19 @@ import (
 // siteUnitInSlice is the InSlice of a unit written now: siteUnitEntersSlice
 // when the request carries the site's limits (s from siteSliceFor), else
 // keep (unitKeepsSiteSlice / unitFileKeepsSiteSlice of the file written over).
+//
+// With the limits too, keep holds (alpha.148 fix round, review finding 1): a
+// reading that cannot be made never moves a program OUT of its limits.
+// siteUnitEntersSlice answers false when systemd does not answer, or a
+// running unit shows an empty or unrecognised ControlGroup; the file written
+// over may already name the site's slice (its file present), and writing
+// Slice=system.slice then would take the program out of its limits at its
+// next restart with no administrator acting and nothing shown before. Keeping
+// the line the file already names changes nothing about where the program
+// starts next.
 func siteUnitInSlice(unit string, s *transport.SiteSlice, move bool, keep func() bool) bool {
 	if s != nil {
-		return siteUnitEntersSlice(unit, s, move)
+		return siteUnitEntersSlice(unit, s, move) || (keep != nil && keep())
 	}
 	return keep != nil && keep()
 }
