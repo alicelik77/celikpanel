@@ -361,8 +361,11 @@ func (p *Panel) loadSigninCookieNamesSince(ctx context.Context) {
 // name again. A plain-named cookie beside one under the name in use is never
 // read and is removed.
 func (p *Panel) legacySigninAccepted(session auth.SessionIdentity, now time.Time) bool {
+	if p == nil || !p.secureCookies {
+		return false
+	}
 	since := p.signinCookieNamesSince
-	if p == nil || !p.secureCookies || since.IsZero() || session.CreatedAt.IsZero() {
+	if since.IsZero() || session.CreatedAt.IsZero() {
 		return false
 	}
 	if !session.CreatedAt.Before(since) || !now.Before(since.Add(auth.SessionDuration)) {

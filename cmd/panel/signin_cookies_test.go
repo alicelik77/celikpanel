@@ -159,15 +159,26 @@ func TestSigninCookiesUseHostPrefixOverHTTPS(t *testing.T) {
 			t.Fatalf("%s attributes = Secure:%v Path:%q Domain:%q HttpOnly:%v SameSite:%v", cookie.Name, cookie.Secure, cookie.Path, cookie.Domain, cookie.HttpOnly, cookie.SameSite)
 		}
 	}
-	// What a website under the same domain would have to send to plant a
-	// session under the new name: a browser refuses every one of these.
-	for _, planted := range []*http.Cookie{
-		{Name: hostSessionCookieName, Value: "x", Path: "/", Domain: "example.com", Secure: true},
-		{Name: hostSessionCookieName, Value: "x", Path: "/api", Secure: true},
-		{Name: hostSessionCookieName, Value: "x", Path: "/"},
-	} {
-		if hostPrefixAccepted(planted) {
-			t.Fatalf("planted %+v would be stored", planted)
+	// What the panel itself sends, header by header: the attributes a
+	// browser requires before it keeps a __Host- cookie (Secure, Path=/, no
+	// Domain). A cookie another host sets for the parent domain must carry a
+	// Domain, so a browser never keeps one under these names.
+	headers := recorder.Header().Values("Set-Cookie")
+	for _, prefix := range []string{hostSessionCookieName + "=token-1;", hostImpersonatorCookieName + "=token-0;"} {
+		var header string
+		for _, value := range headers {
+			if strings.HasPrefix(value, prefix) {
+				header = value
+			}
+		}
+		attributes := map[string]bool{}
+		for _, part := range strings.Split(header, ";")[1:] {
+			name, _, _ := strings.Cut(strings.TrimSpace(part), "=")
+			attributes[strings.ToLower(name)] = true
+		}
+		if header == "" || !attributes["secure"] || !attributes["httponly"] || attributes["domain"] ||
+			!strings.Contains(header, "; Path=/;") || !strings.Contains(header, "; SameSite=Lax") {
+			t.Fatalf("Set-Cookie %q (all: %q): want Secure, HttpOnly, Path=/, SameSite=Lax and no Domain", header, headers)
 		}
 	}
 
@@ -398,7 +409,32 @@ func TestSigninTransitionRefusals(t *testing.T) {
 		if recorder.Code != http.StatusUnauthorized || fixture.seenCaller != -1 {
 			t.Fatalf("a pre-update Log in as session was carried: %d", recorder.Code)
 		}
+		// Refused by the transition itself (its message, the plain name
+		// removed), not only by the later "Log in as" checks, which refuse
+		// administrator → administrator anyway.
+		if !strings.Contains(recorder.Body.String(), legacySigninRefusedMessage) {
+			t.Fatalf("not the transition's refusal: %s", recorder.Body.String())
+		}
+		if plain := cookieNamed(recorder, sessionCookieName); plain == nil || plain.MaxAge >= 0 {
+			t.Fatalf("plain name not removed: %+v", plain)
+		}
 	})
+
+	// The rule alone: the same pre-update administrator session is carried
+	// as itself and refused as a "Log in as" session.
+	panel := &Panel{secureCookies: true, signinCookieNamesSince: now.Add(-time.Hour)}
+	session := auth.SessionIdentity{UserID: signinAdminID, CreatedAt: now.Add(-2 * time.Hour)}
+	if !panel.legacySigninAccepted(session, now) {
+		t.Fatal("a pre-update administrator session is not carried")
+	}
+	session.ImpersonatorID = signinAdmin2ID
+	if panel.legacySigninAccepted(session, now) {
+		t.Fatal("a pre-update Log in as session is carried")
+	}
+	var absent *Panel
+	if absent.legacySigninAccepted(session, now) {
+		t.Fatal("no panel carries nothing")
+	}
 }
 
 func TestSigninPlainCookieBesideTheNewNameIsIgnoredAndCleared(t *testing.T) {
