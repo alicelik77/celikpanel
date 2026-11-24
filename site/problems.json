@@ -446,17 +446,17 @@
       "state": "fixed",
       "fixed_in": "v0.1.0-alpha.148",
       "summary": {
-        "en": "A site’s programs were bounded only one by one: a site with several programs, or one that kept starting new ones, could use all of the server’s memory, processes or processor time, and the other customers’ sites had to wait or were stopped for lack of memory.",
-        "tr": "Bir sitenin programları yalnız tek tek sınırlanıyordu: birkaç programı olan ya da durmadan yeni program başlatan bir site sunucunun bütün belleğini, işlem sayısını ya da işlemci süresini kullanabiliyordu; öteki müşterilerin siteleri beklemek zorunda kalıyor ya da bellek yetmediği için durduruluyordu."
+        "en": "A site’s programs (uploaded programs, Python apps, the Node.js application and service apps) were bounded only one by one: together, a site’s programs could use all of the server’s memory, processes or processor time, and the other customers’ sites had to wait or were stopped for lack of memory.",
+        "tr": "Bir sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması ve hizmet uygulamaları) yalnız tek tek sınırlanıyordu: bir sitenin programları birlikte sunucunun bütün belleğini, işlem sayısını ya da işlemci süresini kullanabiliyordu; öteki müşterilerin siteleri beklemek zorunda kalıyor ya da bellek yetmediği için durduruluyordu."
       },
       "sources": [
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:34",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:39",
           "says": "Until now a site's programs were bounded only one by one."
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:42",
-          "says": "Now every program CelikPanel starts for a site runs in that site's own"
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:47",
+          "says": "Now a site's programs run inside that site's own limits"
         }
       ]
     }

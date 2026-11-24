@@ -2,12 +2,18 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.148.md)
 
-**Bir güvenlik sürümü.** Her müşteri sitesinin programları artık kendi
-sınırlarının içinde çalışıyor: hepsi birlikte yalnız sitesine verilen belleği,
-işlem sayısını ve işlemci süresini kullanabilir; böylece bir site artık
-sunucunun tamamını öteki müşterilerden alamaz. Veritabanı kullanıcılarına
-süre sınırları ve PostgreSQL'de geçici dosyalar için kesin bir sınır
-konabilir. Panelin veritabanı düzeni değişmez.
+**Bir güvenlik sürümü.** Bir müşteri sitesinin programları (yüklenen
+programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve
+bunların kurulum, derleme ve dağıtım adımları) artık kendi sınırlarının
+içinde çalışıyor: hepsi birlikte yalnız sitesine verilen belleği, işlem
+sayısını ve işlemci süresini kullanabilir; böylece bir sitenin programları
+artık sunucunun tamamını öteki müşterilerden alamaz. Bir sitenin PHP'si
+eskisi gibi site başına kendi sınırlarını korur ve sitenin sınırlarının
+içinde değildir; zamanlanmış görevleri bu sürümde bu sınırların içinde
+değildir; güncellemeden önce çalışan programlar yönetici siteyi taşıyınca
+içeri girer. Veritabanı kullanıcılarına süre sınırları ve PostgreSQL'de
+geçici dosyalar için kesin bir sınır konabilir. Panelin veritabanı düzeni
+değişmez.
 **Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
 günceller.**
 
@@ -29,7 +35,7 @@ günceller.**
    zamanda yapılır: sitenin çalışan programlarını bir kez yeniden başlatır
    (bkz. "Güncellemeden sonra ne beklenir").
 
-## Güvenlik: bir site artık sunucunun tamamını alamaz
+## Güvenlik: bir sitenin programları kendi sınırlarının içinde
 
 - **Şimdiye kadar bir sitenin programları yalnız tek tek sınırlanıyordu.**
   Bir müşterinin yüklediği programlar, Python uygulamaları, Node.js
@@ -40,14 +46,18 @@ günceller.**
   işlemci süresini kullanabiliyordu; öteki müşterilerin siteleri ve sunucunun
   kendisi beklemek zorunda kalıyor ya da bellek yetmediği için
   durduruluyordu.
-- **Artık CelikPanel'in bir site için başlattığı her program o sitenin kendi
-  sınırlarında çalışır**: yerel bir systemd dilimi,
-  `celiksite_<site kimliği>.slice`; sitenin bütün programları için birlikte
-  bir bellek sınırı (takas yok), bir işlem sınırı ve bir işlemci sınırı.
-  Programlar bellek sınırına ulaşınca sistem içlerinden birini durdurur;
-  işlem sınırında yeni işlem başlamaz, çalışanlar sürer; işlemci sınırında
-  yavaşlatılırlar. Öteki siteler ve sunucu kendilerinin olanı korur. Bir
-  programın kendi sınırları olduğu gibi kalır; sitenin sınırları dış sınırdır.
+- **Artık bir sitenin programları o sitenin kendi sınırlarında çalışır**:
+  yüklenen programları, Python uygulamaları, Node.js uygulaması ve hizmet
+  uygulamaları ile bunların kurulum, derleme ve dağıtım adımları yerel bir
+  systemd diliminde, `celiksite_<site kimliği>.slice` içinde çalışır; hepsi
+  için birlikte bir bellek sınırı (takas yok), bir işlem sınırı ve bir
+  işlemci sınırı. Programlar bellek sınırına ulaşınca sistem içlerinden
+  birini durdurur; işlem sınırında yeni işlem başlamaz, çalışanlar sürer;
+  işlemci sınırında yavaşlatılırlar. Öteki siteler ve sunucu kendilerinin
+  olanı korur. Bir programın kendi sınırları olduğu gibi kalır; sitenin
+  sınırları dış sınırdır. Bir sitenin PHP-FPM havuzu eskisi gibi kendi PHP
+  sınırlarını korur ve sitenin sınırlarının içinde değildir; zamanlanmış
+  görevleri bu sürümde bu sınırların içinde değildir.
 - **Bir program nereye gider.** Çalışmıyorken yazılan bir program (yeni bir
   program, durmuş bir program ve her kurulum, derleme ya da dağıtım adımı)
   sitesinin sınırlarına girer. Çalışan bir program sıradan bir kaydetmede ya
@@ -57,8 +67,9 @@ günceller.**
 - **Sınırlar ve onları kim koyar.** Üç plan anahtarı: bir sitenin
   programlarının birlikte belleği, işlem sayısı ve işlemcisi. Hiçbir ayar
   yoksa bir site 512 işlem, bir işlemci çekirdeğinin %200'ü ve bellek olarak
-  3072 MB ile sunucu belleğinin %75'inden küçük olanını alır; böylece hiçbir
-  site varsayılan olarak sunucunun tamamını almaz. Bu bellek varsayılanı
+  3072 MB ile sunucu belleğinin %75'inden küçük olanını alır; böylece
+  varsayılan olarak bir sitenin programları sunucunun bütün belleğini hiçbir
+  zaman almaz. Bu bellek varsayılanı
   panelin ilk açılışında sabitlenir; sunucunun belleği sonradan değişirse
   **Şu anki sorunlar** bunu söyler ve yeni varsayılanı önizlemeyle sunar.
   Yönetici anahtarları planlarda, bayi planlarında, bir hesabın kendi
@@ -93,10 +104,15 @@ günceller.**
   sınırlanmaz ve **Şu anki sorunlar** neyin eksik olduğunu söyler. Sınırlar
   yerel systemd dosyalarıdır: panel durdurulsa, kaldırılsa ya da lisanssız
   kalsa da, yeniden başlatmalardan sonra da çalışmayı sürdürür. Sunucu
-  sahibinin değiştirdiği bir dilim dosyası olduğu gibi korunur ve sahibin
-  kendi eklemelerine
-  (`/etc/systemd/system/celiksite_<site kimliği>.slice.d/*.conf`) hiç
-  dokunulmaz; sitenin kartı onları adlarıyla gösterir.
+  sahibinin değiştirdiği bir dilim dosyası ve sahibin kendi eklemeleri
+  (`/etc/systemd/system/celiksite_<site kimliği>.slice.d/*.conf`) site var
+  oldukça hiç değiştirilmez; sitenin kartı onları adlarıyla gösterir. Site
+  silinince ya da yeni bir site, dosyalarını CelikPanel'in bilmediği önceki
+  bir sitenin kimliğini alınca, bunlar aynı klasörde systemd'nin yüklemediği
+  adlarla kenara konur
+  (`celiksite_<site kimliği>.slice.celikpanel-aside-<UTC zamanı>` ve
+  `celiksite_<site kimliği>.slice.d.celikpanel-aside-<UTC zamanı>`); silme
+  işlemi onları etkinlik listesinde adlarıyla gösterir.
 
 ## alpha.147'ye dönmek
 
@@ -122,12 +138,26 @@ günceller.**
     için sunucu sahibi kendi dosyasını ekler, örneğin
     `/etc/systemd/system/celiksite_<site kimliği>.slice.d/owner.conf`
     içinde `[Slice]` ve `MemoryMax=infinity`, sonra
-    `sudo systemctl daemon-reload` çalıştırır; Debian 13'te yeni değer
-    çalışan programlara içlerinden biri başladığında ulaşır.
+    `sudo systemctl daemon-reload` çalıştırır. `sudo systemctl daemon-reload`
+    sonrasında sahibin değişikliği çalışan programlara Ubuntu 24.04'te hemen,
+    Debian 13'te hiçbir program başlamadan yaklaşık bir buçuk dakika sonra
+    ulaşır; bir programın başlaması onu hemen uygular.
   - Sitesinin sınırlarının içindeki bir program: panelde onu dışarı çıkaran
-    bir işlem yoktur. Sunucu sahibi bunu `docs/SITE-SANDBOX.tr.md` (bölüm
-    8.7) anlattığı gibi elle yapar: programın biriminde `Slice=system.slice`,
-    sonra `sudo systemctl daemon-reload` ve programın yeniden başlatılması.
+    bir işlem yoktur. Sunucu sahibi programın biriminin yanına kendi
+    dosyasını ekler; Debian 13'te ve Ubuntu 24.04'te aynıdır:
+    `/etc/systemd/system/<birim>.service.d/slice.conf` içinde iki satır,
+    `[Service]` ve `Slice=system.slice`, sonra
+    `sudo systemctl daemon-reload` ve `sudo systemctl restart <birim>`
+    (`<birim>` programın kartındaki adıdır, örneğin `celikrt-12`). Panel
+    programı yönetmeyi sürdürür: sitenin kartı yöneticiye programı sunucu
+    sahibinin kendi eklemesiyle yerleştirdiğini söyler, taşıma onu olduğu
+    yerde bırakır, panelden kaydetmek ya da güncellemek o dosyayı hiçbir
+    zaman değiştirmez. Dosyayı silip aynı iki komutu çalıştırmak programı
+    yeniden içeri alır. Bunun için CelikPanel'in kendi birim dosyasını
+    değiştirmeyin: değişen bir birim dosyası sunucu sahibininki olarak
+    korunur ve panel o programın birimini artık yazmaz (bir hizmet
+    uygulamasının bir sonraki güncellemesi, değişiklik böyle bir dosyaya
+    taşınana kadar reddedilir).
   - Bir veritabanı kullanıcısının sınırları: anahtarı boşaltmak panelin kendi
     yazdığı değeri kaldırmasını sağlar; sahibin elle koyduğu bir değer
     sahibinin olarak kalır.
@@ -150,12 +180,18 @@ günceller.**
   değişiklikleri bekler ya da "değiştiriliyor" yanıtını alır. Dosyasını
   sunucu sahibinin değiştirdiği programlar, önceki bir korumadaki programlar
   ve sahibin bir dosyasının başka yere koyduğu programlar taşınmaz; kart
-  onları ve kimin ne yapacağını söyler.
-- **Debian 13'te değişen bir dilim dosyası çalışan programlara yalnız panelin
-  kendi adımıyla ya da bir programın başlamasıyla ulaşır.** Sahip dosyayı
-  elle değiştirdikten sonra `sudo systemctl daemon-reload` gerekir ve
-  çekirdeğin onu tutması yaklaşık iki dakikayı bulabilir; o zamana kadar kart
-  "yazıldı, henüz yürürlükte değil" der.
+  onları ve kimin ne yapacağını söyler. Panelin ajanının durmasıyla yarıda
+  kalan bir taşıma, ajan yeniden açılınca tamamlanır ya da geri konur; geri
+  konan ve birkaç saniye içinde yeniden çalışmayan bir program sitenin
+  kartında **Tekrar dene** ile adlandırılır, böylece ajanın açılışı onu hiç
+  beklemez.
+- **Debian 13'te sahibin elle değiştirdiği bir dilim dosyası çalışan
+  programlara hemen ulaşmaz** (panelin kendi değişiklikleri aynı adımda
+  ulaşır). `sudo systemctl daemon-reload` sonrasında sahibin değişikliği
+  çalışan programlara Ubuntu 24.04'te hemen, Debian 13'te hiçbir program
+  başlamadan yaklaşık bir buçuk dakika sonra ulaşır; bir programın
+  başlaması onu hemen uygular. O zamana kadar kart "yazıldı, henüz
+  yürürlükte değil" der.
 - **Sunucunun kendi sınırlar ekranı**, düşürülen bir site sınırını
   önizlemez: sunucunun bir site anahtarındaki tavanını ya da varsayılanını
   düşürmek, durduracağı sitelerin listesi gösterilmeden uygulanır.
@@ -171,8 +207,8 @@ günceller.**
 
 ## Laboratuvarda denenenler
 
-**Açık.** Deneme sunucusu çiftindeki (Debian 13 ve Ubuntu 24.04)
-laboratuvar çalışması henüz yapılmadı.
+**Açık:** deneme sunucusu çiftindeki (Debian 13 ve Ubuntu 24.04)
+çalışma.
 
 ## Güncellemeden sonra ne beklenir
 
@@ -239,7 +275,13 @@ Bölüm bölüm testler:
   `TestTheMovesRestartIsBoundedByItsStartWait`,
   `TestAMoveTakesEachProgramsLockAndLosesNothing`,
   `TestAMoveReadsDropInsAndWaitsAsTheUnitDoes`,
-  `TestAKeptMoveIsOneLineAndCanBeTriedAgain`.
+  `TestAKeptMoveIsOneLineAndCanBeTriedAgain`,
+  `TestAKeptMoveNeverHoldsUpTheAgentsStart`.
+- systemd bir programın nerede çalıştığını söyleyemezken kaydedilen
+  programın gittiği yer:
+  `TestARuntimeAppSavedWhileItsPlaceIsUnknownKeepsItsLimits`,
+  `TestANodeSiteSavedWhileItsPlaceIsUnknownKeepsItsLimits`,
+  `TestAServiceAppSavedWhileItsPlaceIsUnknownKeepsItsLimits`.
 - Sınırları uygulamak: `TestALoweredSiteLimitAsksFirst`,
   `TestALoweringWithoutTheListIsRefused`,
   `TestARunningSliceTakesTheNewLimitAtOnce`,
@@ -257,7 +299,4 @@ Bölüm bölüm testler:
   `TestR2aPostgreSQLTemporaryFileLimitHoldsDuringARestore` ve
   `TestR2aMariaDBStatementTimeDoesNotCutARestore`; web
   `site-limits-r2a.test.mjs`, `site-limits-round2.test.mjs`,
-  `site-limits-round3.test.mjs`.
-
-Güvenlik bölümü üç bağımsız incelemeden ve üç düzeltme turundan geçti;
-sürüm çekme isteğinin her denetimi CI'da geçti.
+  `site-limits-round3.test.mjs`, `site-limits-a148.test.mjs`.

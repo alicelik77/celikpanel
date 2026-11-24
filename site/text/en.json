@@ -480,6 +480,6 @@
   "sep.at.since": "alpha.147",
   "sep.stockpool": "The distribution’s shared PHP pool, which runs as the web server’s account, is turned off where nothing uses it",
   "sep.stockpool.since": "alpha.147",
-  "sep.sitelimits": "A site’s programs (the Node.js application, Python apps, uploaded programs, service apps and their install, build and deploy steps) share one memory, process and processor limit, so one site cannot take the whole server; programs that ran before join it when the administrator moves the site",
+  "sep.sitelimits": "A site’s programs (the Node.js application, Python apps, uploaded programs, service apps and their install, build and deploy steps) share one memory, process and processor limit; the site’s PHP keeps its own limits and its scheduled tasks are not inside it; programs that ran before join it when the administrator moves the site",
   "sep.sitelimits.since": "alpha.148"
 }

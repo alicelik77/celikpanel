@@ -480,6 +480,6 @@
   "sep.at.since": "alpha.147",
   "sep.stockpool": "Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmıyorsa kapatılır",
   "sep.stockpool.since": "alpha.147",
-  "sep.sitelimits": "Bir sitenin programları (Node.js uygulaması, Python uygulamaları, yüklenen programlar, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) tek bir bellek, işlem ve işlemci sınırını paylaşır; böylece bir site sunucunun tamamını alamaz; önceden çalışan programlar yönetici siteyi taşıyınca bu sınıra girer",
+  "sep.sitelimits": "Bir sitenin programları (Node.js uygulaması, Python uygulamaları, yüklenen programlar, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) tek bir bellek, işlem ve işlemci sınırını paylaşır; sitenin PHP’si kendi sınırlarını korur, zamanlanmış görevleri bu sınırın içinde değildir; önceden çalışan programlar yönetici siteyi taşıyınca bu sınıra girer",
   "sep.sitelimits.since": "alpha.148"
 }

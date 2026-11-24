@@ -2,11 +2,16 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.148.tr.md)
 
-**A security release.** Each customer site's programs now run inside limits
-of their own: together they can use only the memory, processes and
-processor time their site is given, so one site can no longer take the whole
-server from the other customers. Database users can get time limits and,
-on PostgreSQL, a firm limit on temporary files. The panel's database layout
+**A security release.** A customer site's programs (uploaded programs,
+Python apps, the Node.js application, service apps, and their install, build
+and deploy steps) now run inside limits of their own: together they can use
+only the memory, processes and processor time their site is given, so a
+site's programs can no longer take the whole server from the other
+customers. A site's PHP keeps its own limits per site, as before, and is not
+inside the site's limits; its scheduled tasks are not inside them in this
+release; programs that ran before the update are inside once the
+administrator moves the site. Database users can get time limits and, on
+PostgreSQL, a firm limit on temporary files. The panel's database layout
 does not change.
 **Only the owner updates installed panels, from the panel's own update
 screen.**
@@ -29,7 +34,7 @@ screen.**
    restarts the site's running programs once (see "What to expect after
    updating").
 
-## Security: one site can no longer take the whole server
+## Security: a site's programs inside limits of their own
 
 - **Until now a site's programs were bounded only one by one.** A
   customer's uploaded programs, Python apps, Node.js application and
@@ -39,14 +44,17 @@ screen.**
   of the server's memory, processes or processor time, and the other
   customers' sites and the server itself had to wait or were stopped for
   lack of memory.
-- **Now every program CelikPanel starts for a site runs in that site's own
-  limits**: a native systemd slice, `celiksite_<site id>.slice`, with a
-  memory limit (no swap), a process limit and a processor limit for all of
-  the site's programs together. When they reach the memory limit the system
-  stops one of them; at the process limit no new process starts and the
-  running ones go on; at the processor limit they are slowed down. Other
-  sites and the server keep what is theirs. A program's own limits stay as
-  they were; the site's limits are the outer bound.
+- **Now a site's programs run inside that site's own limits**: its uploaded
+  programs, Python apps, Node.js application and service apps, and their
+  install, build and deploy steps, run in a native systemd slice,
+  `celiksite_<site id>.slice`, with a memory limit (no swap), a process limit
+  and a processor limit for all of them together. When they reach the memory
+  limit the system stops one of them; at the process limit no new process
+  starts and the running ones go on; at the processor limit they are slowed
+  down. Other sites and the server keep what is theirs. A program's own
+  limits stay as they were; the site's limits are the outer bound. A site's
+  PHP-FPM pool keeps its own PHP limits, as before, and is not inside the
+  site's limits; its scheduled tasks are not inside them in this release.
 - **Where a program goes.** A program written while it does not run (a new
   one, a stopped one, and every install, build or deploy step) goes into its
   site's limits. A program that runs stays where it runs at an ordinary
@@ -56,8 +64,8 @@ screen.**
 - **The limits and who sets them.** Three plan keys: memory, processes and
   processor of a site's programs together. Without any setting a site gets
   512 processes, 200 % of one processor core and, for memory, the smaller of
-  3072 MB and 75 % of the server's memory, so no site takes the whole server
-  by default. That memory default is fixed at the panel's first start; if
+  3072 MB and 75 % of the server's memory, so by default a site's programs
+  never get all of the server's memory. That memory default is fixed at the panel's first start; if
   the server's memory changes later, **Problems now** says so and offers the
   new default after a preview. The administrator sets the keys in plans,
   reseller plans, an account's own limits and the server's limits; a
@@ -91,9 +99,15 @@ screen.**
   limited, and **Problems now** says what is missing. The limits are native
   systemd files: they keep working with the panel stopped, removed or
   without a licence, also across reboots. A slice file the server owner
-  changed is kept as it is, and the owner's own additions
+  changed and the owner's own additions
   (`/etc/systemd/system/celiksite_<site id>.slice.d/*.conf`) are never
-  touched; the site's card names them.
+  changed while the site exists; the site's card names them. When the site
+  is deleted, or a new site gets the id of an earlier site whose files
+  CelikPanel does not know, they are moved aside in the same folder under
+  names systemd does not load
+  (`celiksite_<site id>.slice.celikpanel-aside-<UTC time>` and
+  `celiksite_<site id>.slice.d.celikpanel-aside-<UTC time>`); a deletion
+  names them in the activity list.
 
 ## Going back to alpha.147
 
@@ -118,12 +132,25 @@ screen.**
     server owner adds a file of their own, for example
     `/etc/systemd/system/celiksite_<site id>.slice.d/owner.conf` with
     `[Slice]` and `MemoryMax=infinity`, and runs
-    `sudo systemctl daemon-reload`; on Debian 13 the new value reaches
-    running programs when one of them starts.
+    `sudo systemctl daemon-reload`. After `sudo systemctl daemon-reload`, an
+    owner's change reaches running programs at once on Ubuntu 24.04 and
+    about a minute and a half later on Debian 13, without any program
+    starting; a program's start applies it at once.
   - A program inside its site's limits: the panel has no action that takes
-    it out. The server owner does it by hand, as `docs/SITE-SANDBOX.md`
-    (section 8.7) describes: `Slice=system.slice` in the program's unit,
-    then `sudo systemctl daemon-reload` and a restart of the program.
+    it out. The server owner adds a file of their own beside the program's
+    unit, the same on Debian 13 and Ubuntu 24.04:
+    `/etc/systemd/system/<unit>.service.d/slice.conf` with the two lines
+    `[Service]` and `Slice=system.slice`, then
+    `sudo systemctl daemon-reload` and `sudo systemctl restart <unit>`
+    (`<unit>` is the program's name on its card, such as `celikrt-12`). The
+    panel keeps managing the program: the site's card tells the
+    administrator that the server owner placed it with an addition of their
+    own, a move leaves it where it is, and saving or updating it in the
+    panel never changes that file. Removing the file, then the same two
+    commands, brings it back inside. Do not change CelikPanel's own unit
+    file for this: a changed unit file is kept as the server owner's, and
+    the panel then no longer writes that program's unit (a service app's
+    next update is refused until the change is moved into such a file).
   - A database user's limits: clearing the key makes the panel remove the
     value it wrote itself; a value the owner set by hand stays the owner's.
 
@@ -145,12 +172,17 @@ screen.**
   moved, changes to that site wait or are answered "being changed".
   Programs whose file the server owner changed, programs of an earlier
   protection and programs an owner's file places elsewhere are not moved;
-  the card names them and who acts.
-- **On Debian 13 a changed slice file reaches running programs only through
-  the panel's own step or a program's start.** After the owner edits the
-  file by hand, `sudo systemctl daemon-reload` and up to about two minutes
-  pass before the kernel holds it; the card says "written, not in force yet"
-  until then.
+  the card names them and who acts. A move that a stop of the panel's agent
+  interrupted is finished or put back when the agent starts again; a
+  put-back program that is not running again within a few seconds is named
+  on the site's card with **Try again**, so the agent's start never waits
+  for it.
+- **On Debian 13 a slice file the owner changes by hand does not reach
+  running programs at once** (the panel's own changes do, in the same
+  step). After `sudo systemctl daemon-reload`, an owner's change reaches
+  running programs at once on Ubuntu 24.04 and about a minute and a half
+  later on Debian 13, without any program starting; a program's start
+  applies it at once. The card says "written, not in force yet" until then.
 - **The server's own limits screen does not preview** a lowered site limit:
   lowering the server's ceiling or default of a site key applies without the
   list of sites it would stop.
@@ -165,8 +197,8 @@ screen.**
 
 ## Checked in the lab
 
-**Open.** The lab run on the pair of test servers (Debian 13 and Ubuntu
-24.04) has not been made yet.
+**Open:** the run on the pair of test servers (Debian 13 and Ubuntu
+24.04).
 
 ## What to expect after updating
 
@@ -229,7 +261,12 @@ Tests by part:
   `TestTheMovesRestartIsBoundedByItsStartWait`,
   `TestAMoveTakesEachProgramsLockAndLosesNothing`,
   `TestAMoveReadsDropInsAndWaitsAsTheUnitDoes`,
-  `TestAKeptMoveIsOneLineAndCanBeTriedAgain`.
+  `TestAKeptMoveIsOneLineAndCanBeTriedAgain`,
+  `TestAKeptMoveNeverHoldsUpTheAgentsStart`.
+- Where a saved program goes when systemd cannot say where it runs:
+  `TestARuntimeAppSavedWhileItsPlaceIsUnknownKeepsItsLimits`,
+  `TestANodeSiteSavedWhileItsPlaceIsUnknownKeepsItsLimits`,
+  `TestAServiceAppSavedWhileItsPlaceIsUnknownKeepsItsLimits`.
 - Applying limits: `TestALoweredSiteLimitAsksFirst`,
   `TestALoweringWithoutTheListIsRefused`,
   `TestARunningSliceTakesTheNewLimitAtOnce`,
@@ -247,7 +284,4 @@ Tests by part:
   `TestR2aPostgreSQLTemporaryFileLimitHoldsDuringARestore` and
   `TestR2aMariaDBStatementTimeDoesNotCutARestore`; web
   `site-limits-r2a.test.mjs`, `site-limits-round2.test.mjs`,
-  `site-limits-round3.test.mjs`.
-
-The security part went through three independent reviews and three fix
-rounds; every check of the release pull request passed in CI.
+  `site-limits-round3.test.mjs`, `site-limits-a148.test.mjs`.

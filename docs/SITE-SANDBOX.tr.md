@@ -526,8 +526,11 @@ ve her site yenilerini alınca satır kaybolur. Sitenin kartı, ikisi farklı ol
 bunlar eşitse ve systemd diskteki dosyayı okumuşsa (`FragmentPath` dolu, `NeedDaemonReload=no`)
 söyler. Değilse yönetici "yazıldı, henüz geçerli değil" okur ve geçerli olanlar olarak çekirdeğin
 değerleri gösterilir: systemd 257'de değişen dosya çalışan dilime yalnız CelikPanel'in kendi
-uygulamasıyla ya da bir programın başlamasıyla ulaşır; sahibin elle değişikliğinden sonra
-`daemon-reload` ve iki dakikaya kadar bekleme gerekir (ölçüldü, A7/N4 gerçekleri). Okunamayan cgroup
+uygulamasıyla ya da bir programın başlamasıyla ulaşır; sahibin elle değişikliği ise bir
+`daemon-reload` ve biraz zaman sonra. `sudo systemctl daemon-reload` sonrasında sahibin değişikliği
+çalışan programlara Ubuntu 24.04'te hemen, Debian 13'te hiçbir program başlamadan yaklaşık bir buçuk
+dakika sonra ulaşır; bir programın başlaması onu hemen uygular (ölçüldü, A7/N4 gerçekleri).
+Okunamayan cgroup
 dosyası "bilinmiyor"dur, hiçbir zaman "geçerli" değil; çalışmayan dilim dosyayı bir program
 başladığında alır. Uygulamanın kendisi, çalışan bir dilimin sınırlarını neden tutmadığını site site
 bildirir (systemd okunamadı, uygulamanın kaydı yazılamadı, `set-property` başarısız oldu ya da
@@ -557,6 +560,10 @@ Değişen `Slice=` çalışan bir birime ancak bir sonraki başlangıcında ula�
   yazılır;
 - çalışan bir birim her sıradan yazmada (ayar değişikliği, güncelleme, müşterinin yeniden
   başlatması) çalıştığı dilimde kalır;
+- dosyası zaten sitesinin dilimini adlandıran bir birim, o dilimin dosyası durdukça, systemd
+  nerede çalıştığını söyleyemese de (yanıt vermez ya da boş veya bilinmeyen bir yer gösterir;
+  alpha.148 düzeltme turu) her yazmada o satırı korur: yapılamayan bir okuma bir programı hiçbir
+  zaman sınırlarının dışına çıkarmaz, içine de almaz;
 - yöneticinin Node.js sitesi için koruma taşıması (§6a) zaten yeniden başlatır ve onu kanıtı ve geri
   koymasıyla dilime alır.
 
@@ -637,10 +644,16 @@ defteri özeti, ya da önceden yoksa dosya yok); yoksa kalır.
 dosya; systemd'nin yerini söyleyemediği birim (başarısız durum okuması "bilinmiyor"dur: buna göre
 hiçbir şey yeniden başlatılmaz, hiçbir zaman "çalışmıyor, yeniden başlat" sayılmaz); başarısız
 `daemon-reload` (systemd hâlâ taşınmış metni tutar, bu yüzden hiçbir birim yeniden başlatılmaz);
-başarısız yeniden başlatma (program durmuştur) ya da başlama süresinin sonunda hâlâ süren başlangıç.
+başarısız yeniden başlatma (program durmuştur) ya da başlama süresinin sonunda hâlâ süren başlangıç;
+Ajan'ın açılışında, açılışın kendi süresine sığmayan bir geri koyma yeniden başlatması (alpha.148
+düzeltme turu: Ajan'ın açılışındaki bütün kurtarma 4 saniye içinde kalır, çünkü Ajan'ın soketi
+açılmadan önce çalışır ve bir güncelleme o soketi yaklaşık 12 saniye bekler; bir yeniden başlatma
+ancak en az 1 saniye kalmışsa gönderilir ve en çok kalan süre kadar beklenir, sürerse "hâlâ
+başlıyor" olur; sığmayan bu açılışta gönderilmez, "henüz yeniden başlatılmadı").
 Günlük korunduğu sürece hiçbir site taşınmaz: yeni taşıma, taşıması bitmeyen site adıyla reddedilir.
 Sitenin kartı (yönetici) son taşımanın bitmediğini ve kalan her program için durumunu (durdu,
-yeniden başlamadı; yeri bilinmiyor, yeniden başlatılmadı; hâlâ başlıyor), nedeni için `journalctl -u
+yeniden başlamadı; yeri bilinmiyor, yeniden başlatılmadı; hâlâ başlıyor; henüz yeniden
+başlatılmadı), nedeni için `journalctl -u
 <birim>` komutunu ve elle yapılacak adımı (kendi sayfasından ya da `systemctl start <birim>` ile
 başlatmak) söyler; **Tekrar dene** düğmesi (`POST …/site-limits/move {request_id, recover: true}`,
 denetim kaydına `recover` ile `site.limits_move` olarak yazılır) geri koymayı hemen çalıştırır ve
@@ -727,9 +740,28 @@ silmenin başarısız adımı, bir programın kendi yazması için Ajan'ın kayd
 lisanssız kalsa da onlar ve sınırları çalışmaya devam eder. Bir sitenin sınırlarını panel olmadan
 kaldırmak ya da değiştirmek için sahip bir ekleme dosyası yazar
 (`/etc/systemd/system/celiksite_<kimlik>.slice.d/owner.conf`, örneğin `[Slice]` ve
-`MemoryMax=infinity` ile) ve `systemctl daemon-reload` çalıştırır (systemd 257'de yeni değer çalışan
-programlara onlardan biri başladığında ya da `systemctl set-property --runtime` ile ulaşır);
+`MemoryMax=infinity` ile) ve `systemctl daemon-reload` çalıştırır. `sudo systemctl daemon-reload`
+sonrasında sahibin değişikliği çalışan programlara Ubuntu 24.04'te hemen, Debian 13'te hiçbir
+program başlamadan yaklaşık bir buçuk dakika sonra ulaşır; bir programın başlaması onu hemen
+uygular.
 CelikPanel onu hiçbir zaman yazmaz ya da silmez.
+
+**Panel kalırken tek bir programı sitesinin sınırlarının dışına almak.** Panelde bunun için bir
+işlem yoktur. Sahip programın biriminin yanına bir ekleme dosyası yazar; Debian 13'te ve Ubuntu
+24.04'te aynıdır: `/etc/systemd/system/<birim>.service.d/slice.conf` içinde `[Service]` ve
+`Slice=system.slice`, sonra `sudo systemctl daemon-reload` ve `sudo systemctl restart <birim>`.
+CelikPanel bir birimin ekleme dosyalarını hiçbir zaman yazmaz ya da silmez ve sonrasında panelin
+hiçbir yeri programı reddetmez: durum okuması ekleme dosyasının `Slice=` satırını `DropInPaths`
+üzerinden okur (`siteUnitDropInSlice`); yöneticinin kartı programı sınırların dışında, "sunucu
+sahibi onu kendi eklemesiyle yerleştirdi; orada kalır" diye gösterir ve "dışarıda" satırı onu
+saymaz; taşıma onu yeniden başlatmadan bırakır (`owner_slice`); bir kaydetme CelikPanel'in kendi
+birim dosyasını her zamanki gibi yazar (§8.3'ün kuralıyla korunan `Slice=` satırını ekleme dosyası
+geçersiz kılar), bu yüzden ne `unit_edited` ne de korunan bir dosya oluşur; posta engelinin
+yardımcısı ve kanıtı sistem dilimini kabul eder. Ekleme dosyasını silip aynı iki komutu çalıştırmak
+programı yeniden içeri alır. Bunun yerine CelikPanel'in birim dosyasını değiştirmek onu sahibinin
+yapar (D-031): bir hizmet uygulamasının bir sonraki etkinleştirmesi `unit_edited` ile reddedilir,
+bir programın ya da Node.js sitesinin yazmaları yanında `.celikpanel-pending` olarak korunur;
+böylece panel o birimi artık yönetmez.
 
 **Panel kaldırılınca sunucuda kalanlar.** Sınırlar yeniden başlatmalardan sonra da çalışmaya devam
 eder: systemd her açılışta dilim dosyasını, birimi onu adlandıran programlara uygular (dosya
@@ -744,9 +776,10 @@ yerindeyken bir yeniden başlatmada ölçüldü, N4 gerçekleri). Geride kalanla
 - yalnız Ajan bir uygulamanın ortasında durduysa: `/run/systemd/system.control/celiksite_<kimlik>.slice.d/`
   içindeki denetim eklemeleri; bir sonraki açılışta giderler.
 
-Sınırları elle kaldırmak için: her programın birim dosyasında `Slice=celiksite_<kimlik>.slice`
-satırını `Slice=system.slice` yapın (ya da `[Service]` ve `Slice=system.slice` içeren bir
-`<birim>.d/slice.conf` ekleme dosyası yazın), `celiksite_*.slice` dosyalarını ve `.d` klasörlerini
+Panel kaldırıldıktan sonra sınırları elle kaldırmak için: her programa yukarıdaki ekleme dosyasını
+yazın (`[Service]` ve `Slice=system.slice` içeren `<birim>.service.d/slice.conf`) ya da birim
+dosyasında `Slice=celiksite_<kimlik>.slice` satırını `Slice=system.slice` yapın,
+`celiksite_*.slice` dosyalarını ve `.d` klasörlerini
 silin, `systemctl daemon-reload` çalıştırın ve her programı yeniden başlatın. Programları oldukları
 yerde bırakıp yalnız bir sınırı kaldırmak için yukarıdaki ekleme dosyasını kullanın.
 
@@ -779,8 +812,9 @@ tanımadığı sınır anahtarlarını korur ve o dilimin dosyası durdukça bir
 - Bir sitenin sınırları panel olmadan sahibin ek ayar dosyasıyla kaldırılır ya da değiştirilir
   (§8.7, "Sahibin bağımsızlığı"); planda, hesapta ya da sunucunun sınırlarında bir `site.*`
   anahtarını boşaltmak siteyi varsayılana döndürür.
-- Programlar sitelerinin diliminden elle çıkarılır (§8.7, "Sınırları elle kaldırmak için"): panelde
-  bunun için bir işlem yoktur.
+- Bir program sitesinin diliminden sahibin ekleme dosyasıyla çıkarılır (§8.7, "Panel kalırken tek
+  bir programı sitesinin sınırlarının dışına almak"): panelde bunun için bir işlem yoktur ve panel
+  programı yönetmeyi sürdürür.
 - Bir veritabanı kullanıcısının süre ve geçici dosya sınırları: `db.*` anahtarını konduğu yerde
   boşaltmak, panelin kendi yazdığı değeri (ve yalnız onu) kaldırmasını sağlar; sunucu sahibinin
   elle koyduğu bir değeri sahibi kaldırır (`ALTER ROLE … RESET …`, MariaDB için

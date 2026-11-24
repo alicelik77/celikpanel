@@ -10,13 +10,13 @@
     {
       "kind": "security",
       "text": {
-        "en": "Each site’s programs (uploaded programs, Python apps, the Node.js application, service apps, and their install, build and deploy steps) run inside one memory, process and processor limit of their own, so one site can no longer take the whole server from the other customers.",
-        "tr": "Her sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) kendilerine ait tek bir bellek, işlem ve işlemci sınırının içinde çalışır; böylece bir site artık sunucunun tamamını öteki müşterilerden alamaz."
+        "en": "Each site’s programs (uploaded programs, Python apps, the Node.js application, service apps, and their install, build and deploy steps) run inside one memory, process and processor limit of their own, so together they can no longer take the whole server from the other customers; a site’s PHP keeps its own limits and its scheduled tasks are not inside them.",
+        "tr": "Her sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) kendilerine ait tek bir bellek, işlem ve işlemci sınırının içinde çalışır; böylece birlikte artık sunucunun tamamını öteki müşterilerden alamazlar; sitenin PHP’si kendi sınırlarını korur, zamanlanmış görevleri bu sınırların içinde değildir."
       },
       "case": "CP-2026-21",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:42",
-        "says": "Now every program CelikPanel starts for a site runs in that site's own"
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:47",
+        "says": "Now a site's programs run inside that site's own limits"
       }
     },
     {
@@ -26,7 +26,7 @@
         "tr": "Planlar, bayi planları ve hesaplar bir sitenin belleğini, işlem sayısını ve işlemcisini belirler; ayar yoksa bir site 512 işlem, iki işlemci çekirdeği ve 3072 MB ile sunucu belleğinin %75’inden küçük olanını alır. Bir sınırı sitenin kullandığının altına düşürmek önce o siteyi listeler."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:56",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:64",
         "says": "The limits and who sets them."
       }
     },
@@ -37,7 +37,7 @@
         "tr": "Veritabanı kullanıcılarına varsayılan bir en uzun komut süresi ve PostgreSQL’de tek oturumun geçici dosyaları için kesin bir sınır konabilir; geri yüklemeler ve içe aktarmalar sınırı korur, sunucu sahibinin elle koyduğu bir değer korunur."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:72",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:80",
         "says": "Database users.** Three optional keys"
       }
     },
@@ -48,7 +48,7 @@
         "tr": "Güncellemeden önce çalışan programlar, yönetici siteyi taşıyana kadar sitesinin sınırlarının dışında kalır; taşıma sitenin çalışan her programını bir kez yeniden başlatır."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:134",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:161",
         "says": "Programs that ran before the update stay outside their site's limits"
       }
     },
@@ -59,7 +59,7 @@
         "tr": "Bir sitenin PHP’si ve zamanlanmış görevleri sitenin sınırlarının dışındadır; PHP site başına kendi sınırlarını korur."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:137",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:164",
         "says": "Outside a site's limits:"
       }
     }
