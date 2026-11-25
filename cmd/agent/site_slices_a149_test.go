@@ -118,8 +118,9 @@ func TestAStartPutBackIsCheckedLikeTheMove(t *testing.T) {
 // unit systemd is starting again by itself (activating, auto-restart, no
 // cgroup) does not run; it is never "where the server owner placed it".
 func TestAProgramInSystemdsRestartCycleIsNotTheOwnersPlace(t *testing.T) {
-	useSliceTestHost(t)
+	host := useSliceTestHost(t)
 	unit := "celikrt-5.service"
+	writeTestUnit(t, host, unit, sealedTestUnit(unit, sliceTestHome+"/app"))
 	for _, props := range []map[string]string{
 		{"Id": unit, "LoadState": "loaded", "ActiveState": "activating", "SubState": "auto-restart", "ControlGroup": "", "Slice": "system.slice"},
 		{"Id": unit, "LoadState": "loaded", "ActiveState": "activating", "SubState": "auto-restart-queued", "ControlGroup": "", "Slice": "system.slice"},
