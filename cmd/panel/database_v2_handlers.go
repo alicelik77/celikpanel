@@ -723,13 +723,6 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userCreated = true
-		// alpha.128 (G5): the new user's connection limit, from its limits.
-		if err := p.applyNewUserConnectionLimit(ctx, server, driver, subscriptionID, selectedUser.Username); err != nil {
-			writeDatabaseCreateFailure(w, r, server, driver, dbName, selectedUser.Username,
-				fmt.Errorf("set the database user's connection limit: %w", err),
-				compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, true))
-			return
-		}
 		newUser = &core.DatabaseUser{
 			ServerID:       serverID,
 			SubscriptionID: subscriptionID,
@@ -817,6 +810,12 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	if err := tx.Commit(); err != nil {
 		failMetadata(fmt.Errorf("commit database metadata transaction: %w", err))
 		return
+	}
+	// alpha.128 (G5), alpha.149: the new user's database limits, once it is
+	// recorded (the Agent changes only a role the panel recorded), by the one
+	// function; a user they do not reach is named in Problems now.
+	if userCreated {
+		p.applyNewDatabaseUserLimits(ctx, subscriptionID, serverID, selectedUser.Username)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1079,13 +1078,6 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
-	// alpha.128 (G5): the new user's connection limit, from its limits; a
-	// user the engine did not take the limit for is removed again.
-	if err := p.applyNewUserConnectionLimit(ctx, server, driver, subscriptionID, username); err != nil {
-		writeDatabaseEngineErrorFor(w, r, server, errors.Join(fmt.Errorf("set the database user's connection limit: %w", err), driver.DeleteUser(username)))
-		return
-	}
-
 	// Store user
 	userRepo := repositories.NewPostgresDatabaseUserRepository(p.db.GetDB())
 	user := &core.DatabaseUser{
@@ -1109,6 +1101,10 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		))
 		return
 	}
+	// alpha.128 (G5), alpha.149: the new user's database limits, once it is
+	// recorded, by the one function; a user they do not reach is named in
+	// Problems now.
+	p.applyNewDatabaseUserLimits(ctx, subscriptionID, serverID, username)
 
 	// A password the caller sent is not sent back (11 Oct 2026); one this
 	// request minted is returned, exactly once.

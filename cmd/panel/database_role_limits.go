@@ -106,6 +106,17 @@ func planDBRoleWrites(keys []string, current services.RoleSettings, user *dbRole
 // under the rule above. fresh: the user was just created (an earlier record
 // of the same name is forgotten).
 func (p *Panel) applyDBRoleLimits(ctx context.Context, limiter services.RoleLimiter, serverID int, username string, desired services.RoleLimits, fresh bool) error {
+	current, err := limiter.ReadUserRoleSettings(username)
+	if err != nil {
+		return err
+	}
+	return p.applyDBRoleLimitsFrom(ctx, limiter, serverID, username, desired, fresh, current)
+}
+
+// applyDBRoleLimitsFrom is applyDBRoleLimits with the user's current values
+// already read (alpha.149: read before anything is written, so a state that
+// cannot be read writes nothing at all).
+func (p *Panel) applyDBRoleLimitsFrom(ctx context.Context, limiter services.RoleLimiter, serverID int, username string, desired services.RoleLimits, fresh bool, current services.RoleSettings) error {
 	dbRoleRecordMu.Lock()
 	defer dbRoleRecordMu.Unlock()
 	record := p.loadDBRoleRecord(ctx)
@@ -122,10 +133,6 @@ func (p *Panel) applyDBRoleLimits(ctx context.Context, limiter services.RoleLimi
 		user.Panel = map[string]dbRoleWritten{}
 	}
 	keys := limiter.RoleKeysSupported()
-	current, err := limiter.ReadUserRoleSettings(username)
-	if err != nil {
-		return err
-	}
 	writes, owner := planDBRoleWrites(keys, current, user, desired)
 	changed := len(owner) != len(user.Owner)
 	for k, v := range owner {
@@ -149,14 +156,23 @@ func (p *Panel) applyDBRoleLimits(ctx context.Context, limiter services.RoleLimi
 		}
 		after, err := limiter.ReadUserRoleSettings(username)
 		if err != nil && firstErr == nil {
-			firstErr = err
+			// alpha.149: the writes were accepted; what the engine holds now
+			// was not read, so the result is not known.
+			firstErr = &dbLimitError{state: dbLimitUnknown, err: fmt.Errorf("read back: %w", err)}
 		}
 		for k, v := range writes {
 			if v == 0 {
 				delete(user.Panel, k)
-			} else {
-				user.Panel[k] = dbRoleWritten{Value: v, Raw: after[k]}
+				continue
 			}
+			raw := after[k]
+			if err != nil {
+				// alpha.149: never an empty text for a value the engine
+				// accepted, which the next round would take for the owner's;
+				// the engines keep it as written ("<n>s", "<n>MB").
+				raw = dbRoleWrittenText(k, v)
+			}
+			user.Panel[k] = dbRoleWritten{Value: v, Raw: raw}
 		}
 		changed = true
 	}

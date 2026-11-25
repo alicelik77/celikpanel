@@ -165,12 +165,9 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 		writeServerError(w, errors.Join(err, undoErr))
 		return
 	}
-	// alpha.128 (G5): the subscription's connection limit applies to it too.
-	if limit, err := p.dbConnectionLimit(ctx, target.domain.SubscriptionID); err != nil {
-		log.Printf("database connection limit of %s: %v", username, err)
-	} else if limit > 0 {
-		p.reapplyDBConnectionLimits([]int{target.domain.SubscriptionID})
-	}
+	// alpha.128 (G5), alpha.149 (lab D9): every database limit of the
+	// subscription applies to it too, by the one function.
+	p.applyNewDatabaseUserLimits(ctx, target.domain.SubscriptionID, target.serverID, username)
 	p.auditDetailed(r, "database.user.add:"+username, "database_user", userID,
 		map[string]any{"database": target.identity.Name, "access": req.Access})
 	_ = json.NewEncoder(w).Encode(map[string]any{"id": userID, "username": username, "access": req.Access})

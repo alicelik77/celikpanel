@@ -710,6 +710,9 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 		return
 	}
 	reportOperationStep(ctx, "records")
+	// alpha.149 (lab D9): the copy's database user gets its subscription's
+	// database limits, by the one function.
+	p.applyNewDatabaseUserLimits(ctx, source.domain.SubscriptionID, source.serverID, dbUser)
 	p.audit(r, "database.copy:"+source.identity.Name+"->"+dbName, "domain", domainID)
 	p.requestDiskMeasurement(ctx, source.domain.SubscriptionID)
 	_ = json.NewEncoder(w).Encode(map[string]any{"status": "success", "id": newID, "name": dbName, "user": dbUser, "type": source.identity.Type})

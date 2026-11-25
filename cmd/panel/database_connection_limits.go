@@ -34,43 +34,6 @@ func (p *Panel) dbConnectionLimit(ctx context.Context, subscriptionID int) (int,
 	return limits.ceilingValue(settingDBConnections), nil
 }
 
-// applyNewUserConnectionLimit writes the limit for a user just created on
-// server through driver; a subscription without a limit writes nothing. A
-// PostgreSQL limit goes to the role's own running cluster
-// (connectionLimiterFor), never to whichever cluster answers.
-func (p *Panel) applyNewUserConnectionLimit(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver, subscriptionID int, username string) error {
-	limit, err := p.dbConnectionLimit(ctx, subscriptionID)
-	if err != nil {
-		return fmt.Errorf("read the connection limit: %w", err)
-	}
-	// S4 R2a: the time and temporary-file limits, off unless set.
-	roleLimits, err := p.dbRoleLimits(ctx, subscriptionID)
-	if err != nil {
-		return fmt.Errorf("read the time limits: %w", err)
-	}
-	if limit == 0 && roleLimits == (services.RoleLimits{}) {
-		return nil
-	}
-	limiter, ok, err := p.connectionLimiterFor(ctx, server, driver, p.pgClustersOnce(ctx))
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return nil // an engine without per-user connection limits
-	}
-	if limit != 0 {
-		if err := limiter.SetUserConnectionLimit(username, limit); err != nil {
-			return err
-		}
-	}
-	if roleLimiter, ok := limiter.(services.RoleLimiter); ok && roleLimits != (services.RoleLimits{}) {
-		// S4 R2a: a new user; only the keys the plan sets are written and
-		// recorded as the panel's (database_role_limits.go).
-		return p.applyDBRoleLimits(ctx, roleLimiter, server.ID, username, roleLimits, true)
-	}
-	return nil
-}
-
 // pgClustersOnce reads this server's PostgreSQL clusters at most once, when
 // a PostgreSQL limit is first written.
 func (p *Panel) pgClustersOnce(ctx context.Context) func() transport.PostgreSQLClustersResponse {
@@ -100,21 +63,18 @@ func (p *Panel) pgClustersOnce(ctx context.Context) func() transport.PostgreSQLC
 // hiçbir şey yazılmaz.
 func (p *Panel) connectionLimiterFor(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver, clusters func() transport.PostgreSQLClustersResponse) (services.ConnectionLimiter, bool, error) {
 	if dbDriverTypeFor(server) == "postgresql" && databaseEngineIsOnThisMachine(server.Host) {
+		port := server.Port
 		if read := clusters(); read.Supported {
-			port, err := p.pgRoleClusterPort(ctx, server, read.Clusters)
+			placed, err := p.pgRoleClusterPort(ctx, server, read.Clusters)
 			if err != nil {
 				return nil, false, err
 			}
-			if port != server.Port || driver == nil {
-				placed := *server
-				placed.Port = port
-				placedDriver, err := p.dbDriverFor(&placed)
-				if err != nil {
-					return nil, false, err
-				}
-				driver = placedDriver
-			}
+			port = placed
 		}
+		// alpha.149 (lab D10): this machine's PostgreSQL through the Agent,
+		// as the postgres superuser, by one narrow call; never through the
+		// panel's own account, which gains no right for it.
+		return &pgAgentRoleLimiter{p: p, ctx: ctx, port: port}, true, nil
 	}
 	if driver == nil {
 		recordDriver, err := p.dbDriverFor(server)
@@ -145,9 +105,9 @@ func (p *Panel) pgRoleClusterPort(ctx context.Context, server *core.DatabaseServ
 	return cluster.Port, nil
 }
 
-// reapplyDBConnectionLimits writes the current limit for every database
-// user of the given subscriptions, in the background. A user whose server
-// cannot be reached keeps its limit until the next change; it is logged.
+// reapplyDBConnectionLimits writes the current limits for every database
+// user of the given subscriptions, in the background. A user they do not
+// reach is recorded and named in Problems now (database_user_limits.go).
 func (p *Panel) reapplyDBConnectionLimits(subscriptionIDs []int) {
 	if len(subscriptionIDs) == 0 {
 		return
@@ -156,77 +116,81 @@ func (p *Panel) reapplyDBConnectionLimits(subscriptionIDs []int) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		if err := p.reapplyDBConnectionLimitsNow(ctx, ids); err != nil {
+		if _, err := p.reapplyDBConnectionLimitsNow(ctx, ids, nil); err != nil {
 			log.Printf("database connection limits: %v", err)
 		}
 	}()
 }
 
-// reapplyDBConnectionLimitsNow is the work of reapplyDBConnectionLimits.
-func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionIDs []int) error {
-	if p.db == nil || p.secrets == nil {
-		return nil // no engine credentials to reach a server with
-	}
-	db := p.db.GetDB()
-	serverRepo := repositories.NewPostgresDatabaseServerRepository(db)
-	clusters := p.pgClustersOnce(ctx)
+// dbLimitUser is one recorded database user.
+type dbLimitUser struct {
+	subscription int
+	server       int
+	username     string
+}
+
+// dbLimitUsersOf lists the recorded users of the subscriptions.
+func (p *Panel) dbLimitUsersOf(ctx context.Context, subscriptionIDs []int) ([]dbLimitUser, error) {
+	users := []dbLimitUser{}
 	for _, subID := range subscriptionIDs {
-		limit, err := p.dbConnectionLimit(ctx, subID)
+		rows, err := p.db.GetDB().QueryContext(ctx, `SELECT server_id, username FROM database_users WHERE subscription_id = ? ORDER BY id`, subID)
 		if err != nil {
-			log.Printf("database connection limits of subscription %d: %v", subID, err)
-			continue
+			return nil, err
 		}
-		roleLimits, err := p.dbRoleLimits(ctx, subID)
-		if err != nil {
-			log.Printf("database time limits of subscription %d: %v", subID, err)
-			continue
-		}
-		rows, err := db.QueryContext(ctx, `SELECT server_id, username FROM database_users WHERE subscription_id = ? ORDER BY id`, subID)
-		if err != nil {
-			return err
-		}
-		type user struct {
-			server   int
-			username string
-		}
-		users := []user{}
 		for rows.Next() {
-			var u user
+			u := dbLimitUser{subscription: subID}
 			if err := rows.Scan(&u.server, &u.username); err != nil {
 				rows.Close()
-				return err
+				return nil, err
 			}
 			users = append(users, u)
 		}
+		err = rows.Err()
 		rows.Close()
-		for _, u := range users {
-			server, err := serverRepo.GetByID(ctx, u.server)
-			if err != nil {
-				log.Printf("database connection limit of %s: server %d: %v", u.username, u.server, err)
-				continue
-			}
-			limiter, ok, err := p.connectionLimiterFor(ctx, server, nil, clusters)
-			if err != nil {
-				log.Printf("database connection limit of %s stays as it was until the next change: %v", u.username, err)
-				continue
-			}
-			if !ok {
-				continue
-			}
-			if err := limiter.SetUserConnectionLimit(u.username, limit); err != nil {
-				log.Printf("database connection limit of %s stays as it was until the next change: %v", u.username, err)
-			}
-			// S4 R2a: only a value the panel wrote itself is changed, and only
-			// when the plan's value differs; the owner's are kept
-			// (database_role_limits.go).
-			if roleLimiter, ok := limiter.(services.RoleLimiter); ok {
-				if err := p.applyDBRoleLimits(ctx, roleLimiter, server.ID, u.username, roleLimits, false); err != nil {
-					log.Printf("database time limits of %s stay as they were until the next change: %v", u.username, err)
-				}
-			}
+		if err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return users, nil
+}
+
+// reapplyDBConnectionLimitsNow is the work of reapplyDBConnectionLimits:
+// every user through the one function, each outcome sent to report (may be
+// nil) as it comes. It answers the outcomes.
+func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionIDs []int, report func(dbLimitOutcome)) ([]dbLimitOutcome, error) {
+	if p.db == nil || p.secrets == nil {
+		return nil, nil // no engine credentials to reach a server with
+	}
+	users, err := p.dbLimitUsersOf(ctx, subscriptionIDs)
+	if err != nil {
+		return nil, err
+	}
+	return p.applyDBLimitsToUsers(ctx, users, report), nil
+}
+
+// applyDBLimitsToUsers applies the limits of each user (not fresh: values
+// the panel wrote may be changed or removed).
+func (p *Panel) applyDBLimitsToUsers(ctx context.Context, users []dbLimitUser, report func(dbLimitOutcome)) []dbLimitOutcome {
+	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
+	clusters := p.pgClustersOnce(ctx)
+	outcomes := make([]dbLimitOutcome, 0, len(users))
+	for _, u := range users {
+		var outcome dbLimitOutcome
+		server, err := serverRepo.GetByID(ctx, u.server)
+		if err != nil {
+			outcome = dbLimitOutcome{ServerID: u.server, SubscriptionID: u.subscription, User: u.username, State: dbLimitFailed,
+				Reason: boundedAgentDiagnostic("the database server record could not be read: " + err.Error())}
+			log.Printf("database user limits of %s: %s", u.username, outcome.Reason)
+			p.noteDBLimitOutcome(ctx, outcome)
+		} else {
+			outcome = p.applyDatabaseUserLimits(ctx, u.subscription, server, nil, u.username, false, clusters)
+		}
+		outcomes = append(outcomes, outcome)
+		if report != nil {
+			report(outcome)
+		}
+	}
+	return outcomes
 }
 
 // subscriptionsReachedBy lists the subscriptions whose limits follow an

@@ -588,10 +588,16 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			p.reapplyPlanSiteLimits(id)
 		}
 		// alpha.128 (G5): database users follow a changed connection limit.
-		p.reapplyDBConnectionLimitsAfter(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter)
+		// alpha.149: the answer says which users did not get the plan's
+		// database limits (database_limits_problems.go).
+		dbLimits := p.reapplyDBLimitsAfterAnswer(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter)
 		// alpha.128 (integration): outgoing mail follows the mail keys.
 		p.requestOutgoingApply()
-		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
+		answer := map[string]any{"success": true}
+		if dbLimits != nil {
+			answer["db_limits"] = dbLimits
+		}
+		if err := json.NewEncoder(w).Encode(answer); err != nil {
 			log.Printf("encode service plan update: %v", err)
 		}
 

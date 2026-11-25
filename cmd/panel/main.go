@@ -1788,6 +1788,9 @@ func main() {
 	// S4 R1 fix round: the administrator closes again what the server owner
 	// undid (side_doors.go); administrator only through the prefix.
 	http.HandleFunc("/api/v1/metrics/side-doors/reclose", panel.handleSideDoorsReClose)
+	// alpha.149: Apply again for database users the limits did not reach
+	// (database_limits_problems.go); administrator only through the prefix.
+	http.HandleFunc("/api/v1/metrics/database-limits/apply", panel.handleDatabaseLimitsApply)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()

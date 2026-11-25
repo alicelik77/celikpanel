@@ -701,6 +701,18 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "site_limits_unapplied":
 		return fmt.Sprintf("A change of limits (%s) did not reach %s sites yet; they keep their earlier limits. CelikPanel tries again every hour. Monitoring says why.", subject, n),
 			fmt.Sprintf("Bir sınır değişikliği (%s) henüz %s siteye ulaşmadı; o siteler önceki sınırlarını koruyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, n)
+	case "database_limits_unapplied":
+		// alpha.149: item.name is the kind of outcome, item.subject the first users.
+		switch item.name {
+		case dbLimitPrerequisite:
+			return fmt.Sprintf("The database limits did not reach %s database users (%s): their database server was not running. The server owner starts it; then Apply again in Monitoring.", n, subject),
+				fmt.Sprintf("Veritabanı sınırları %s veritabanı kullanıcısına ulaşmadı (%s): veritabanı sunucuları çalışmıyordu. Sunucu sahibi onu başlatır; sonra İzleme'de Yeniden uygula.", n, subject)
+		case dbLimitUnknown:
+			return fmt.Sprintf("Whether the database limits reached %s database users is not known (%s): the answer was lost. Monitoring offers Apply again.", n, subject),
+				fmt.Sprintf("Veritabanı sınırlarının %s veritabanı kullanıcısına ulaşıp ulaşmadığı bilinmiyor (%s): yanıt alınamadı. İzleme Yeniden uygula'yı sunar.", n, subject)
+		}
+		return fmt.Sprintf("The database limits did not reach %s database users (%s); they keep their earlier values. Monitoring says why and offers Apply again.", n, subject),
+			fmt.Sprintf("Veritabanı sınırları %s veritabanı kullanıcısına ulaşmadı (%s); önceki değerlerini koruyorlar. Nedeni İzleme'de; Yeniden uygula oradadır.", n, subject)
 	case "site_move_kept":
 		return fmt.Sprintf("A move of %s into its limits did not finish: a program may be stopped, and no site is moved until it is settled. The site's page names the program and has Try again.", subject),
 			fmt.Sprintf("%s sitesinin sınırlarına taşınması bitmedi: bir program durmuş olabilir; bu çözülene kadar hiçbir site taşınmaz. Sitenin sayfası programı söyler ve Tekrar dene düğmesini sunar.", subject)

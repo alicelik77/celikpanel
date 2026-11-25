@@ -105,6 +105,7 @@ import type { SideDoorsUndoScreenKey } from './screens/sideDoorsUndo/en';
 import type { PgPublicScreenKey } from './screens/pgPublic/en';
 import type { SiteLimitsScreenKey } from './screens/siteLimits/en';
 import type { SiteLimitsApplyScreenKey } from './screens/siteLimitsApply/en';
+import type { DbLimitsScreenKey } from './screens/dbLimits/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -637,5 +638,6 @@ export type ScreenKey =
     | SideDoorsUndoScreenKey
     | PgPublicScreenKey
     | SiteLimitsScreenKey
-    | SiteLimitsApplyScreenKey;
+    | SiteLimitsApplyScreenKey
+    | DbLimitsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

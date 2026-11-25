@@ -165,6 +165,8 @@ var problemKindOrder = map[string]int{
 	// S4 R2a third fix round: a move whose put-back did not complete (a
 	// program may be stopped; no site is moved until it is settled).
 	"site_move_kept": 46,
+	// alpha.149: database users the database limits did not reach.
+	"database_limits_unapplied": 47,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -245,6 +247,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
 	add(p.siteLimitProblems(ctx, now), nil)
 	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)
+	// alpha.149: database users a plan's database limits did not reach
+	// (database_limits_problems.go).
+	add(p.databaseLimitsProblems(ctx), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

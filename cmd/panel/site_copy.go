@@ -414,6 +414,9 @@ func (p *Panel) siteCopyCreateDatabase(ctx context.Context, target wordpressSite
 		}
 		return nil, err
 	}
+	// alpha.149 (lab D9): the copy's database user gets the target
+	// subscription's database limits, by the one function.
+	p.applyNewDatabaseUserLimits(ctx, target.SubscriptionID, serverID, created.User)
 	return created, nil
 }
 

@@ -12,7 +12,7 @@ import { startVisibleReads } from '../lib/visibleReads';
 import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
 import { showToast } from './Toast';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation } from '../lib/confirmAction';
 
 // "Problems now" (alpha.126, Monitoring stage 1; D-024). One list at the top
 // of Monitoring and on the Dashboard, computed on the server only from what
@@ -80,7 +80,8 @@ export type ProblemKind =
     | 'site_limits_unsupported'
     | 'site_limits_unapplied'
     | 'site_memory_default'
-    | 'site_move_kept';
+    | 'site_move_kept'
+    | 'database_limits_unapplied';
 
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
@@ -132,9 +133,14 @@ const KINDS: readonly ProblemKind[] = [
     'site_limits_unapplied', 'site_memory_default',
     // S4 R2a third fix round: a move whose put-back did not complete.
     'site_move_kept',
+    // alpha.149: database users the database limits did not reach.
+    'database_limits_unapplied',
     // alpha.145: webmail's configuration still sends without encryption.
     'webmail_cannot_send',
 ];
+// alpha.149: Apply again for those users; the panel runs it apart from the page.
+const DB_LIMITS_URL = '/api/v1/metrics/database-limits/apply';
+const DB_LIMITS_STATES = ['failed', 'prerequisite', 'unknown'];
 // The doors the administrator may close again after the server owner undid them.
 // The action of a site's default memory limit fixed for the server's earlier memory (S4 R2a).
 const SITE_MEMORY_DEFAULT_URL = '/api/v1/rights/site-memory-default';
@@ -188,6 +194,8 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_cannot_send' && problem.subject === 'rewrite_failed') return 'pnow.webmail_cannot_send.body_rewrite_failed' as TranslationKey;
     // alpha.145: CelikPanel's text is named only when it lies beside the configuration.
     if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
+    // alpha.149: worded per outcome; one this screen does not know reads as a failure.
+    if (problem.kind === 'database_limits_unapplied') return `pnow.database_limits_unapplied.${DB_LIMITS_STATES.includes(problem.name ?? '') ? problem.name : 'failed'}` as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
@@ -220,7 +228,7 @@ export interface Problem {
     value: number;
     since?: string;
     observed_at?: string;
-    action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default'; to?: string };
+    action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default' | 'apply_db_limits'; to?: string };
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
     holding_count?: number;
     holding_bytes?: number;
@@ -242,7 +250,8 @@ export function decodeProblems(raw: unknown): ProblemsReport {
         && (p.severity === 'warning' || p.severity === 'critical') && typeof p.value === 'number'
         && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
             : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'apply_default' ? p.kind === 'site_memory_default'
-                : p.action.kind === 'start_service' && typeof p.unit === 'string')
+                : p.action.kind === 'apply_db_limits' ? p.kind === 'database_limits_unapplied'
+                    : p.action.kind === 'start_service' && typeof p.unit === 'string')
     ));
     const unknown = body.unknown.filter((u): u is ProblemsReport['unknown'][number] => (
         !!u && SOURCES.includes(u.source) && REASONS.includes(u.reason)
@@ -444,6 +453,39 @@ export function ProblemsNow({
         });
     };
 
+    // alpha.149: Apply again for database users the limits did not reach. The
+    // panel runs it apart from this page (202); this window follows it with
+    // reads only, and a second press while it runs follows the same run.
+    const applyDbLimits = async (problem: Problem) => {
+        const vars = problemVars(problem, t);
+        await followOperation({
+            progressTitle: t('pnow.database_limits_unapplied.action'),
+            action: async (report) => {
+                report.steps([{ id: 'apply', label: t('pnow.database_limits_unapplied.step'), state: 'running', since: Date.now() }]);
+                const unknown = { state: 'unknown' as const, reason: t('pnow.database_limits_unapplied.unknown') };
+                type Run = { running?: boolean; not_applied?: number };
+                try {
+                    const response = await fetch(DB_LIMITS_URL, { method: 'POST' });
+                    if (!response.ok) return { state: 'failed', title: t(problemTitleKey(problem), vars), reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
+                    let run = await response.json() as Run;
+                    const until = Date.now() + RECLOSE_FOLLOW_MS;
+                    while (run.running && Date.now() < until) {
+                        await new Promise((resolve) => setTimeout(resolve, RECLOSE_POLL_MS));
+                        const again = await readRemote(DB_LIMITS_URL, (raw) => raw as Run);
+                        if (again.state === 'known') run = again.value;
+                    }
+                    if (run.running) return unknown;
+                    return (run.not_applied ?? 0) === 0 ? { state: 'done', message: t('pnow.database_limits_unapplied.done') }
+                        : { state: 'failed', title: t(problemTitleKey(problem), vars), reason: t('pnow.database_limits_unapplied.still', { n: run.not_applied ?? 0 }) };
+                } catch {
+                    return unknown;
+                } finally {
+                    void handle.retry();
+                }
+            },
+        });
+    };
+
     const remote = handle.remote;
     if (remote.state === 'loading') {
         return quiet ? null : <p className="mb-4 text-sm text-fg-muted" data-problems-now="checking">{t('pnow.checking')}</p>;
@@ -524,6 +566,10 @@ export function ProblemsNow({
                                     ) : problem.action.kind === 'apply_default' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void applyDefault(problem)} data-problem-apply-default="">
                                             {t('pnow.site_memory_default.action')}
+                                        </Button>
+                                    ) : problem.action.kind === 'apply_db_limits' ? (
+                                        <Button className="shrink-0 self-start" onClick={() => void applyDbLimits(problem)} data-problem-apply-db-limits="">
+                                            {t('pnow.database_limits_unapplied.action')}
                                         </Button>
                                     ) : problem.action.kind === 'reclose' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void reclose(problem)} data-problem-reclose="">

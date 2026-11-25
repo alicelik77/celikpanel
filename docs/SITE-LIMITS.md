@@ -215,6 +215,22 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   only logged. The paragraphs above describe the design, not what alpha.148 delivers for
   those users.
 
+  **Since the alpha.149 fix round B (code; lab still open).** One function
+  (`cmd/panel/database_user_limits.go`, `applyDatabaseUserLimits`) decides and writes a
+  user's connection limit, time limits and temporary-file limit, and every path that
+  creates or re-creates a database user calls it whenever any of these keys is set
+  (`TestEveryPathThatCreatesADatabaseUserAppliesItsLimits` lists them). It reads the
+  user's values first; a user whose values cannot be read gets nothing written and is
+  reported. This machine's PostgreSQL is reached through the Agent as the `postgres`
+  superuser by one narrow call (`Agent.SetPostgreSQLRoleLimitsV1`,
+  `cmd/agent/database_role_limits_rpc.go`): a role the panel recorded on this machine's
+  cluster, never a superuser or a role with CREATEROLE, REPLICATION or BYPASSRLS (or a
+  member of one), and only the four settings as integers in fixed ranges; the panel's own
+  account gains no right. A MariaDB user's remote copies carry its `MAX_STATEMENT_TIME`.
+  A user the limits did not reach is named in Problems now (a verified failure, the
+  database server not running, or an unknown result) with Apply again, and a plan's Save
+  names them. The connection limit stays the panel's own, as since alpha.128.
+
   **Loads and the user's limits.** Customers start restores of their own sites' backups
   (also from their own remote destinations), database copies, site copies and imports;
   the administrator also moves databases and imports cPanel archives. Every one of them

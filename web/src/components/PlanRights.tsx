@@ -171,6 +171,10 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
             setPending(null);
             const over = (result.body as { over_limit?: unknown } | null)?.over_limit;
             showToast('success', isNew ? t('plans.created') : Array.isArray(over) && over.length > 0 ? t('plans.updatedOver') : t('plans.updated'));
+            // alpha.149: which database users did not get the plan's database limits.
+            const db = (result.body as { db_limits?: { not_applied?: { user: string }[]; not_applied_count?: number; running?: number } } | null)?.db_limits;
+            if (db?.not_applied_count) showToast('warning', t('plans.dbLimits.notApplied', { n: db.not_applied_count, users: (db.not_applied ?? []).map((u) => u.user).join(', ') }));
+            else if (db?.running) showToast('warning', t('plans.dbLimits.running', { n: db.running }));
             invalidate('plans', 'rights', 'users');
             onClose();
         } finally {
