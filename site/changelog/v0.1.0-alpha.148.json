@@ -1,9 +1,9 @@
 {
   "version": "v0.1.0-alpha.148",
-  "published": "",
+  "published": "2026-11-25",
   "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md",
   "source": {
-    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:5",
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:7",
     "says": "A security release."
   },
   "lines": [
@@ -15,7 +15,7 @@
       },
       "case": "CP-2026-21",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:53",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:55",
         "says": "Now a site's programs run inside that site's own limits"
       }
     },
@@ -27,7 +27,7 @@
       },
       "case": "CP-2026-22",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:133",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:135",
         "says": "Now the panel's sign-in cookies carry names a browser keeps only for the"
       }
     },
@@ -39,7 +39,7 @@
       },
       "case": "CP-2026-23",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:150",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:152",
         "says": "also ends the administrator's own session in that browser"
       }
     },
@@ -50,7 +50,7 @@
         "tr": "Planlar, bayi planları ve hesaplar bir sitenin belleğini, işlem sayısını ve işlemcisini belirler; ayar yoksa bir site 512 işlem, iki işlemci çekirdeği ve 3072 MB ile sunucu belleğinin %75’inden küçük olanını alır. Bir sınırı sitenin kullandığının altına düşürmek önce o siteyi listeler."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:74",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:76",
         "says": "The limits and who sets them."
       }
     },
@@ -61,7 +61,7 @@
         "tr": "Güncellemeden önce çalışan programlar, yönetici siteyi taşıyana kadar sitesinin sınırlarının dışında kalır; taşıma sitenin çalışan her programını bir kez yeniden başlatır."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:235",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:237",
         "says": "Programs that ran before the update stay outside their site's limits"
       }
     },
@@ -72,7 +72,7 @@
         "tr": "Bir sitenin PHP’si ve zamanlanmış görevleri sitenin sınırlarının dışındadır; PHP site başına kendi sınırlarını korur."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:240",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:242",
         "says": "Outside a site's limits:"
       }
     },
@@ -83,7 +83,7 @@
         "tr": "Güncelleme sırasında oturumu açık olan bayiler, müşteriler ve ekip üyeleri bir kez yeniden giriş yapar. Panelin kendi ana makine adındaki bütün hizmetler, bağlantı noktası ne olursa olsun, onun çerezlerini paylaşır; bu nedenle bu ana makine adı yalnız panel için kullanılmalıdır."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:178",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:180",
         "says": "name shares its cookies, whatever the port, so that host name should serve"
       }
     }

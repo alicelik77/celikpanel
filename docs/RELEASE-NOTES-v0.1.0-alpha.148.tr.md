@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.148.md)
 
+> **Yayımlandı**, 25 Kasım 2026 (UTC): sürüm commit'i `0c07d0281`, GitHub ön sürümü 21:34:14Z, indirme portalı yaklaşık 21:38Z (dış denetim 27/27).
+
 **Bir güvenlik sürümü.** Bir müşteri sitesinin programları (yüklenen
 programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve
 bunların kurulum, derleme ve dağıtım adımları) artık kendi sınırlarının
