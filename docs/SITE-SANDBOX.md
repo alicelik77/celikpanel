@@ -678,10 +678,14 @@ server owner's additions apply", and an edited file as kept.
 A changed `Slice=` reaches a running unit only at its next start (F1). So:
 
 - a unit that does not run (a new one, a stopped one, every install or build step)
-  is written into its site's slice; starting a stopped program from its page writes
-  nothing, so a program stopped before the update and started again that way runs where
-  its file says (`system.slice`) until it is deployed again or the site is moved, and is
-  counted outside (alpha.148 lab);
+  is written into its site's slice. Since alpha.149 (the alpha.148 lab's O2) this includes
+  a **Start from the panel** of a program that does not run (an uploaded program, a Node.js
+  site, an AI or automation app, and a Restart of one that does not run): its unit is
+  written into the slice first (the site's slice file is put in place, CelikPanel's own
+  unchanged text gets `Slice=celiksite_<id>.slice`, systemd reloads), then it starts
+  there. Not a unit an owner changed or placed with a drop-in, not one of an earlier
+  protection, not one a move's kept record names, and nothing when systemd cannot say
+  whether it runs;
 - a running unit keeps the slice it runs in on every ordinary write (a settings
   change, an update, a restart by the customer);
 - a unit whose file already names its site's slice, while that slice's file exists, keeps
@@ -825,9 +829,10 @@ so however often a card is read, the record does not grow with it; the counts st
 whole.
 
 - "The site's own limit" (memory, processes) is only what §8.1 proves. The card then
-  says what happened and when, the limit in force (the number reached: what systemd
-  applies, which is the plan's value unless an owner's drop-in, an edited file or a
-  change not yet written sets another) and, where it is the plan's, who can raise it:
+  says what happened and when, the limit that held then (alpha.149, the alpha.148 lab's
+  CHECK 2: recorded with the event from the kernel's value at that reading; an event
+  recorded earlier is shown without a number, never with today's value) and, where the
+  limit in force is the plan's, who can raise it:
   "your provider" for a customer, "you, in the customer's plan within your own limits"
   for a reseller, the plan or reseller by name for the administrator. A site that
   reached its own memory or process limit at two or more readings in a day is a line
@@ -855,6 +860,48 @@ the sites whose own programs run, or would start, outside their limits and that 
 move can take (their number and the first five names). It opens the first site, is
 a warning (a to-do), and goes away by itself when no site is left (`panel_settings`
 `site_limit_outside_v1`, written only when the list changes).
+
+### 8.6a What alpha.149 changed (the alpha.148 lab)
+
+- **A put-back is checked like the move** (D6). After its restart a put-back program must
+  run where it ran (active, in the system slice) and listen again on every port it
+  listened on before, within its start time, as the move's own step checks the slice. A
+  program whose restart succeeded but that does not run there (a `Type=simple` unit's
+  restart succeeds as soon as its process starts) is **not** "put back": the journal is
+  kept with it as stopped, still starting or not answering. At the Agent's start the same
+  check runs within the start's 4 seconds; what cannot be seen in that time is kept as
+  "not known yet" (neither a failure nor a success); the journal now also records each
+  program's ports (an earlier journal has none and is checked without them). The card and
+  Problems now say that the program is not running now, that the administrator acts, the
+  next step (its own log, `sudo journalctl -u <unit>`, then **Try again** or start it) and
+  that nothing else was changed.
+- **A program inside systemd's automatic restart cycle** (`activating`/`auto-restart`, no
+  cgroup) is shown as not running, never as placed by the server owner; it is not counted
+  for the move.
+- **Reasons in the page's language** (D7, O3). The Agent answers a move's failure, its
+  put-back and a whole move it refused as a code with its values (`not_running`,
+  `still_starting`, `not_in_slice`, `not_listening` with the ports, `restart_failed`,
+  `another_move`, `site_busy`…); the page words them in English or Turkish, and a code it
+  does not know is a general sentence pointing to the Agent's journal, where the English
+  detail is written. The plan preview's site lines ("memory 215 MB in use, new limit
+  128 MB") are sent as values and worded by the page; one site and one account are said
+  in the singular.
+- **The unapplied-limits line is true** (O3). On every way out of a push the Agent reads
+  the running slice's kernel values again before it answers: a site whose kernel holds its
+  effective values has its limits whatever step failed; one whose values could not be
+  compared is "not known" (its own Problems now wording), never "does not have the limits".
+  The recorded reason is a code (`kernel_differs`, `unchecked`, `write_failed`, …).
+- **A reached process limit on Ubuntu 24.04** (D3). Without `pids.events.local` the slice's
+  own `pids.peak` reaching its `pids.max` since the last reading is also "reached its
+  process limit" (seen at that reading; the kernel does not count how often), because a
+  unit's counters go with its cgroup when the program restarts.
+- **The reseller's bound** (CHECK 2). Where neither the server nor the reseller sets a
+  ceiling, the server's default bounds a reseller's customer; the card names it as that
+  default ("which also bounds the reseller"), not as a limit the administrator set.
+- **No update during a move** (D5). While a site's programs are being moved, the panel's own
+  update is not started: the panel and the Agent both refuse it, and the update page says
+  to wait for the move's window and press update again. The Agent's start writes one
+  journal line per startup step with its time (`agent start: <step> took …`).
 
 ### 8.7 A deleted site's slice
 

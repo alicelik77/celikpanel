@@ -557,10 +557,13 @@ diyerek gösterir; değiştirilmiş dosyayı korunuyor diye anar.
 Değişen `Slice=` çalışan bir birime ancak bir sonraki başlangıcında ulaşır (F1). Bu yüzden:
 
 - çalışmayan bir birim (yeni, durdurulmuş, her kurulum ya da derleme adımı) sitesinin dilimine
-  yazılır; durdurulmuş bir programı sayfasından başlatmak hiçbir şey yazmaz, bu yüzden
-  güncellemeden önce durdurulmuş olup böyle yeniden başlatılan bir program yeniden dağıtılana ya
-  da site taşınana kadar dosyasının söylediği yerde (`system.slice`) çalışır ve dışarıda sayılır
-  (alpha.148 laboratuvarı);
+  yazılır. alpha.149'dan beri (alpha.148 laboratuvarının O2'si) buna çalışmayan bir programın
+  **panelden başlatılması** da girer (yüklenen program, Node.js sitesi, yapay zekâ ya da otomasyon
+  uygulaması ve çalışmayan birinin Yeniden başlat'ı): birimi önce dilime yazılır (sitenin dilim
+  dosyası yerine konur, CelikPanel'in değişmemiş kendi metni `Slice=celiksite_<id>.slice` alır,
+  systemd yeniden yüklenir), sonra orada başlar. Sahibin değiştirdiği ya da kendi eklemesiyle
+  yerleştirdiği, önceki bir korumadaki, tutulan bir taşıma kaydının adını verdiği birim yazılmaz;
+  systemd çalışıp çalışmadığını söyleyemediğinde hiçbir şey yazılmaz;
 - çalışan bir birim her sıradan yazmada (ayar değişikliği, güncelleme, müşterinin yeniden
   başlatması) çalıştığı dilimde kalır;
 - dosyası zaten sitesinin dilimini adlandıran bir birim, o dilimin dosyası durdukça, systemd
@@ -695,9 +698,10 @@ her tür için beş dakikada en fazla bir ulaşma anı ve hiçbir zaman bir gün
 kart ne kadar sık okunursa okunsun kayıt bununla büyümez; sayılar eksiksiz kalır.
 
 - "Sitenin kendi sınırı" (bellek, işlem) yalnız §8.1'in kanıtladığıdır. Kart o zaman ne olduğunu ve
-  ne zaman olduğunu, geçerli sınırı (ulaşılan sayı: systemd'nin uyguladığı; sahibin eklemesi,
-  değiştirilmiş dosya ya da henüz yazılmamış bir değişiklik başkasını koymadıkça planın değeri) ve
-  planınki ise kimin yükseltebileceğini söyler: müşteriye "hizmet sağlayıcınız", bayiye "kendi
+  ne zaman olduğunu, o zaman geçerli olan sınırı (alpha.149, alpha.148 laboratuvarının CHECK 2'si:
+  olayla birlikte o okumadaki çekirdek değerinden kaydedilir; daha önce kaydedilmiş bir olay sayısız
+  gösterilir, hiçbir zaman bugünkü değerle değil) ve geçerli sınır planınki ise kimin
+  yükseltebileceğini söyler: müşteriye "hizmet sağlayıcınız", bayiye "kendi
   sınırlarınız içinde müşterinin planında siz", yöneticiye planın ya da bayinin adı. Bir günde iki ya
   da daha fazla okumada kendi bellek ya da işlem sınırına ulaşan site Şu anki sorunlar'da bir satırdır.
 - **Ne sayılır.** Sitenin kendi bellek sınırına bir kez ulaşılması, o sınıra ulaşılmışken çekirdeğin
@@ -720,6 +724,46 @@ kart ne kadar sık okunursa okunsun kayıt bununla büyümez; sayılar eksiksiz 
 programları sınırlarının dışında çalışan ya da orada başlayacak olan ve taşımanın alabileceği siteler
 (sayıları ve ilk beş adı). İlk siteyi açar, bir uyarıdır (yapılacak iş) ve hiç site kalmayınca
 kendiliğinden kaybolur (`panel_settings` `site_limit_outside_v1`, yalnız liste değişince yazılır).
+
+### 8.6a alpha.149'un değiştirdikleri (alpha.148 laboratuvarı)
+
+- **Geri koyma, taşıma gibi denetlenir** (D6). Geri konan program yeniden başlatıldıktan sonra kendi
+  başlama süresi içinde çalıştığı yerde (etkin, sistem diliminde) çalışmalı ve önceden dinlediği her
+  portta yeniden dinlemelidir; taşımanın kendi adımı dilimi böyle denetler. Yeniden başlatması başarılı
+  olduğu hâlde orada çalışmayan program (`Type=simple` birimin yeniden başlatması süreci başlar
+  başlamaz başarılı sayılır) "geri kondu" **sayılmaz**: kayıt onunla birlikte durmuş, hâlâ başlıyor ya
+  da yanıt vermiyor olarak tutulur. Ajan'ın açılışında aynı denetim açılışın 4 saniyesi içinde yapılır;
+  o sürede görülemeyen "henüz bilinmiyor" olarak tutulur (ne hata ne başarı); kayıt artık her
+  programın portlarını da yazar (önceki bir kayıtta yoktur, onlarsız denetlenir). Kart ve Şu anki
+  sorunlar programın şu an çalışmadığını, yöneticinin işlem yapacağını, sonraki adımı (kendi günlüğü,
+  `sudo journalctl -u <birim>`, sonra **Tekrar dene** ya da başlatmak) ve başka hiçbir şeyin
+  değiştirilmediğini söyler.
+- **systemd'nin kendiliğinden yeniden başlatma döngüsündeki program** (`activating`/`auto-restart`,
+  denetim grubu yok) çalışmıyor olarak gösterilir, hiçbir zaman sunucu sahibinin koyduğu yerde
+  olarak değil; taşıma için sayılmaz.
+- **Nedenler sayfanın dilinde** (D7, O3). Ajan taşımanın hatasını, geri koymasını ve hiç
+  yapmadığı bir taşımayı değerleriyle bir kod olarak bildirir (`not_running`, `still_starting`,
+  `not_in_slice`, portlarıyla `not_listening`, `restart_failed`, `another_move`, `site_busy`…);
+  sayfa bunları Türkçe ya da İngilizce söyler; tanımadığı bir kod, İngilizce ayrıntının yazıldığı
+  Ajan günlüğünü gösteren genel bir cümledir. Plan önizlemesinin site satırları ("kullanılan bellek
+  215 MB, yeni sınır 128 MB") değer olarak gönderilir ve sayfa tarafından söylenir; bir site ve bir
+  hesap tekil söylenir.
+- **Uygulanmayan sınırlar satırı doğrudur** (O3). Ajan bir itmenin her çıkış yolunda yanıtlamadan
+  önce çalışan dilimin çekirdek değerlerini yeniden okur: çekirdeği etkin değerleri tutan site, hangi
+  adım başarısız olursa olsun sınırlarına sahiptir; değerleri karşılaştırılamayan site "bilinmiyor"
+  olur (Şu anki sorunlar'da kendi sözüyle), hiçbir zaman "sınırlara sahip değil" değil. Kaydedilen
+  neden bir koddur (`kernel_differs`, `unchecked`, `write_failed`, …).
+- **Ubuntu 24.04'te ulaşılan işlem sınırı** (D3). `pids.events.local` olmayan çekirdekte dilimin
+  kendi `pids.peak` değerinin son okumadan beri `pids.max` değerine ulaşması da "işlem sınırına
+  ulaştı" sayılır (o okumada görüldü; çekirdek kaç kez olduğunu saymaz), çünkü bir birimin sayaçları
+  program yeniden başlayınca denetim grubuyla birlikte gider.
+- **Bayinin sınırı** (CHECK 2). Ne sunucu ne bayi bir tavan koymadığında sunucunun varsayılanı bayinin
+  müşterisini sınırlar; kart onu o varsayılan olarak adlandırır ("bayiyi de sınırlar"), yöneticinin
+  koyduğu bir sınır olarak değil.
+- **Taşıma sürerken güncelleme yok** (D5). Bir sitenin programları taşınırken panelin kendi
+  güncellemesi başlatılmaz: panel ve Ajan ikisi de reddeder, güncelleme sayfası taşımanın penceresini
+  bekleyip güncellemeye yeniden basmayı söyler. Ajan'ın açılışı her açılış adımı için süresiyle bir
+  günlük satırı yazar (`agent start: <adım> took …`).
 
 ### 8.7 Silinen sitenin dilimi
 
