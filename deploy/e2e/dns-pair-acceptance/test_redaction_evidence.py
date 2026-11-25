@@ -34,6 +34,16 @@ class RedactionTest(unittest.TestCase):
                      "password_required", "totp_enabled", "state"):
             self.assertFalse(secret_key(name), name)
 
+    def test_confirmation_tokens_the_client_sends_back_stay_readable(self) -> None:
+        # alpha.149: the lab read a lowered limit's preview token through this
+        # redactor and sent the placeholder back; such tokens are public.
+        preview = {"preview": {"sites_stopped_count": 1, "stopped_token": "9c1f2e3d4a5b6c7d"}, "confirm_stopped": "9c1f2e3d4a5b6c7d"}
+        self.assertEqual(self.redactor.value(preview), preview)
+        self.assertFalse(secret_key("stopped_token"))
+        # Other tokens stay secret.
+        for name in ("pending_token", "token", "csrf_token", "download_token", "preview_token"):
+            self.assertTrue(secret_key(name), name)
+
     def test_json_structure_is_kept_and_scalars_redacted(self) -> None:
         value = {
             "username": "s1-admin",
