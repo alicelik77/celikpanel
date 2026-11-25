@@ -699,9 +699,21 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return "This server cannot enforce the limits of sites' programs (missing: " + subject + "). Monitoring says what that means.",
 			"Bu sunucu sitelerin programlarının sınırlarını uygulayamıyor (eksik: " + subject + "). Ne anlama geldiği İzleme'de."
 	case "site_limits_unapplied":
+		if item.name == "unchecked" {
+			// alpha.149 (lab O3): the kernel could not be read, so it is not
+			// said that the sites lack the limits.
+			return fmt.Sprintf("After a change of limits (%s), whether the running programs of %s sites have the new limits could not be read. CelikPanel checks again every hour. Monitoring says more.", subject, n),
+				fmt.Sprintf("Bir sınır değişikliğinden (%s) sonra %s sitenin çalışan programlarının yeni sınırları alıp almadığı okunamadı. CelikPanel her saat yeniden denetler. Ayrıntı İzleme'de.", subject, n)
+		}
 		return fmt.Sprintf("A change of limits (%s) did not reach %s sites yet; they keep their earlier limits. CelikPanel tries again every hour. Monitoring says why.", subject, n),
 			fmt.Sprintf("Bir sınır değişikliği (%s) henüz %s siteye ulaşmadı; o siteler önceki sınırlarını koruyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, n)
 	case "site_move_kept":
+		if item.name != "" {
+			// alpha.149 (lab D6): item.name names the programs that were put
+			// back with their earlier file but do not run.
+			return fmt.Sprintf("After a move of %s into its limits did not finish, %s is not running: it was put back where it ran but did not start again. The server's administrator reads its log (sudo journalctl -u with its name), then presses Try again on the site's page or starts it. Nothing else was changed; no site is moved until it is settled.", subject, item.name),
+				fmt.Sprintf("%s sitesinin sınırlarına taşınması bitmedi ve %s çalışmıyor: çalıştığı yere geri kondu ama yeniden başlamadı. Sunucunun yöneticisi günlüğünü okur (adıyla sudo journalctl -u), sonra sitenin sayfasında Tekrar dene'ye basar ya da programı başlatır. Başka hiçbir şey değiştirilmedi; bu çözülene kadar hiçbir site taşınmaz.", subject, item.name)
+		}
 		return fmt.Sprintf("A move of %s into its limits did not finish: a program may be stopped, and no site is moved until it is settled. The site's page names the program and has Try again.", subject),
 			fmt.Sprintf("%s sitesinin sınırlarına taşınması bitmedi: bir program durmuş olabilir; bu çözülene kadar hiçbir site taşınmaz. Sitenin sayfası programı söyler ve Tekrar dene düğmesini sunar.", subject)
 	case "site_memory_default":

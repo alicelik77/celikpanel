@@ -80,6 +80,9 @@ type NodeSandboxResult struct {
 type AppControlRequest struct {
 	SiteID int    `json:"site_id"`
 	Action string `json:"action"`
+	// Slice (alpha.149, additive): the site's slice and its limits; a start
+	// of a unit that does not run writes it into the slice first.
+	Slice *SiteSlice `json:"slice,omitempty"`
 }
 
 type AppStatusResponse struct {

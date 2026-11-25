@@ -524,6 +524,11 @@ func (a *Agent) ControlAppUnit(req *AppControlRequest, resp *AppApplyResponse) e
 		// A sandboxed unit stops being restarted after five starts in five
 		// minutes (alpha.127); a start pressed afterwards is a new attempt.
 		_, _ = appUnitSystemctl(systemctlArgs("reset-failed", name)...)
+		// alpha.149 (lab O2): a program that does not run starts inside its
+		// site's limits (site_slice_start.go); a running one is not moved.
+		if req.Slice != nil && req.Slice.SiteID == req.SiteID {
+			siteUnitIntoSliceBeforeStart(name, req.Slice)
+		}
 	}
 	if out, err := exec.Command("systemctl", systemctlArgs(req.Action, name)...).CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("%v: %s", err, strings.TrimSpace(string(out)))

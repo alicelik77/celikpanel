@@ -35,6 +35,11 @@ const (
 	SiteUnitElsewhere = "elsewhere"
 	// SiteUnitAbsent: no unit of that name on this server.
 	SiteUnitAbsent = "absent"
+	// SiteUnitRestarting (alpha.149, lab D6): the unit does not run now and
+	// systemd is starting it again by itself (ActiveState activating with
+	// SubState auto-restart, or a start without a cgroup yet): a program
+	// failing to start, never "where the server owner placed it".
+	SiteUnitRestarting = "restarting"
 )
 
 // SiteSliceQuery asks for one site's slice and units.
@@ -71,6 +76,11 @@ type SiteSliceCounters struct {
 	CPUThrottled     int64  `json:"cpu_throttled"`
 	CPUThrottledUSec int64  `json:"cpu_throttled_usec"`
 	CPUPeriods       int64  `json:"cpu_periods"`
+	// TasksPeakAtLimit (alpha.149, lab D3): on a kernel without
+	// pids.events.local, the slice's pids.peak has reached its pids.max: the
+	// site's programs reached their process limit at some time since the
+	// slice's cgroup was made; how often is not counted.
+	TasksPeakAtLimit bool `json:"tasks_peak_at_limit,omitempty"`
 }
 
 // SiteSliceUnit is one unit of a site.
@@ -124,7 +134,30 @@ const (
 	// never holds up the Agent); the next start, a move's attempt or Try
 	// again restarts it.
 	SiteMoveWaiting = "waiting"
+	// SiteMoveUnverified (alpha.149, lab D6): its pre-move bytes are back and
+	// it was started again at the Agent's start, but whether it runs was not
+	// known before the start's bound ended (not a failure, not a success);
+	// the next start, a move's attempt or Try again checks it.
+	SiteMoveUnverified = "unverified"
+	// SiteMoveNotAnswering (alpha.149): it runs where it ran but does not
+	// listen again on every port it listened on before.
+	SiteMoveNotAnswering = "not_answering"
 )
+
+// SiteMoveReason (alpha.149, lab D7) is the code of a move's failure with its
+// values, for the page's own language; Detail and Error keep the English text
+// for the journal and the audit record. Codes of a program's step:
+// not_running (State: what systemd shows, Seconds), not_in_slice (Seconds),
+// not_listening (Seconds, Ports), still_starting (Seconds), restart_failed,
+// write_failed, record_failed, changed; of the whole move: unsupported,
+// another_move, site_busy, kept_earlier, prepare_failed, limits_failed,
+// bad_request, build, not_finished.
+type SiteMoveReason struct {
+	Code    string `json:"code"`
+	State   string `json:"state,omitempty"`
+	Seconds int    `json:"seconds,omitempty"`
+	Ports   []int  `json:"ports,omitempty"`
+}
 
 // Kernel states of a running slice (SiteSliceStatus.KernelState).
 const (
@@ -205,6 +238,12 @@ type SiteSliceApplied struct {
 	Outcome     string `json:"outcome"`
 	PendingPath string `json:"pending_path,omitempty"`
 	Detail      string `json:"detail,omitempty"`
+	// Reason (alpha.149, lab O3) is the code of a failed outcome: kernel_differs
+	// (the file is written, the running slice's kernel values were read after
+	// the push and still differ), unchecked (the file is written; what the
+	// running slice holds could not be read), write_failed, refused,
+	// out_of_range. Detail keeps the English text for the journal.
+	Reason string `json:"reason,omitempty"`
 }
 
 // ApplySiteSlicesResponse answers ApplySiteSlicesV1 (Unsupported: as in
@@ -278,6 +317,11 @@ type SiteSliceMoved struct {
 	Step    string `json:"step,omitempty"`
 	PutBack bool   `json:"put_back,omitempty"`
 	Detail  string `json:"detail,omitempty"`
+	// Reason (alpha.149) is the code of Detail's failure; Back the code of a
+	// put-back that did not complete (not_running, still_starting,
+	// not_listening, restart_failed, write_failed, unknown, changed).
+	Reason *SiteMoveReason `json:"reason,omitempty"`
+	Back   *SiteMoveReason `json:"back,omitempty"`
 }
 
 // MoveSiteSliceResponse answers MoveSiteSliceV1. Done: every unit of the
@@ -302,4 +346,6 @@ type MoveSiteSliceResponse struct {
 	// the outcome of a Recover request (or of the kept record).
 	Kept     bool                   `json:"kept,omitempty"`
 	Recovery *SiteSliceMoveRecovery `json:"recovery,omitempty"`
+	// Reason (alpha.149) is the code of Error, for the page's language.
+	Reason *SiteMoveReason `json:"reason,omitempty"`
 }

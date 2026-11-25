@@ -114,6 +114,19 @@ type siteMoveJournalUnit struct {
 	// recovery waits at most this long (0 in an earlier record: systemd's
 	// default).
 	WaitSeconds int `json:"wait_seconds,omitempty"`
+	// Ports (alpha.149, additive; an earlier record has none) are the ports
+	// it listened on before the move: a put-back at the Agent's start checks
+	// that it listens on them again, as the move does.
+	Ports []int `json:"ports,omitempty"`
+}
+
+// siteMoveJournalPorts is a recorded unit's ports as a set.
+func siteMoveJournalPorts(u siteMoveJournalUnit) map[int]bool {
+	out := map[int]bool{}
+	for _, p := range u.Ports {
+		out[p] = true
+	}
+	return out
 }
 
 // siteMoveJournalWait is a recorded unit's start wait.
@@ -376,12 +389,79 @@ var errSiteUnitStillStarting = errors.New("still starting")
 
 // siteUnitRestartFailure says why a restart did not answer and which
 // recovery outcome that is: "starting" for a start still running at its
-// wait, "failed" (it is stopped) otherwise.
-func siteUnitRestartFailure(unit string, wait time.Duration, out []byte, err error) (string, error) {
+// wait, "failed" (it is stopped) otherwise; with the reason's code.
+func siteUnitRestartFailure(unit string, wait time.Duration, out []byte, err error) (string, *transport.SiteMoveReason, error) {
 	if errors.Is(err, errSiteUnitStillStarting) {
-		return transport.SiteMoveStarting, fmt.Errorf("it was still starting %d seconds after the restart (journalctl -u %s says why)", int(wait/time.Second), unit)
+		return transport.SiteMoveStarting, &transport.SiteMoveReason{Code: "still_starting", Seconds: int(wait / time.Second)},
+			fmt.Errorf("it was still starting %d seconds after the restart (journalctl -u %s says why)", int(wait/time.Second), unit)
 	}
-	return transport.SiteMoveFailed, fmt.Errorf("systemctl restart: %v: %s", err, strings.TrimSpace(string(out)))
+	return transport.SiteMoveFailed, &transport.SiteMoveReason{Code: "restart_failed"},
+		fmt.Errorf("systemctl restart: %v: %s", err, strings.TrimSpace(string(out)))
+}
+
+// What the wait for a restarted unit found (alpha.149, lab D6/D7).
+const (
+	siteRunVerdictRuns         = "runs"
+	siteRunVerdictNotRunning   = "not_running"
+	siteRunVerdictStarting     = "still_starting"
+	siteRunVerdictNotInPlace   = "not_in_slice"
+	siteRunVerdictNotListening = "not_listening"
+	siteRunVerdictUnread       = "unread"
+)
+
+// waitSiteUnitRuns polls a restarted unit until deadline the way the move's
+// own step always did, and since alpha.149 the put-back too (lab D6: a
+// Type=simple unit's restart succeeds as soon as its process is executed, so
+// systemctl's exit status alone never proves that the program runs): it is
+// active, in the place inPlace accepts (its ControlGroup) and listens again
+// on every port it listened on before. It answers the verdict and the last
+// reading. A unit that does not run when the time is up is "not_running"
+// (failed, stopped, or inside systemd's automatic restart cycle: SubState
+// auto-restart, no process), one still in its first start "still_starting".
+func waitSiteUnitRuns(unit string, inPlace func(cgroup string) bool, ports map[int]bool, deadline time.Time) (string, map[string]string) {
+	for {
+		props := map[string]string{}
+		if out, err := appUnitSystemctl(systemctlArgs("show", unit, "--property=ActiveState,ControlGroup,SubState")...); err == nil {
+			props = parseShow(string(out))
+		}
+		state := props["ActiveState"]
+		placed := state == "active" && inPlace(props["ControlGroup"])
+		listening := true
+		if placed && len(ports) > 0 {
+			now := siteSliceListening(unit)
+			for port := range ports {
+				listening = listening && now[port]
+			}
+		}
+		if placed && listening {
+			return siteRunVerdictRuns, props
+		}
+		if !time.Now().Before(deadline) {
+			switch {
+			case state == "":
+				return siteRunVerdictUnread, props
+			case state == "active" && !placed:
+				return siteRunVerdictNotInPlace, props
+			case state == "active":
+				return siteRunVerdictNotListening, props
+			case state == "activating" && !siteUnitAutoRestart(props):
+				return siteRunVerdictStarting, props
+			}
+			return siteRunVerdictNotRunning, props
+		}
+		time.Sleep(siteSlicePoll)
+	}
+}
+
+// siteUnitAutoRestart: systemd waits to start the unit again by itself (its
+// program exited; nothing of it runs now).
+func siteUnitAutoRestart(props map[string]string) bool {
+	return strings.HasPrefix(props["SubState"], "auto-restart")
+}
+
+// siteUnitStateWords is what systemd showed, for the reason's State.
+func siteUnitStateWords(props map[string]string) string {
+	return strings.TrimSpace(props["ActiveState"] + " " + props["SubState"])
 }
 
 // siteSliceStartWait is a unit's start wait from its TimeoutStartUSec.
@@ -458,12 +538,28 @@ const siteMoveShowProperties = "--property=ActiveState,ControlGroup,DropInPaths,
 // drop-in, is kept and listed.
 func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *transport.MoveSiteSliceResponse) error {
 	resp.Units = []transport.SiteSliceMoved{}
+	// alpha.149 (lab D7): every answer that is not done carries the code of
+	// its reason for the page's language; the English text is the journal's.
+	defer func() {
+		if resp.Error == "" {
+			return
+		}
+		if resp.Reason == nil {
+			resp.Reason = &transport.SiteMoveReason{Code: "not_finished"}
+		}
+		if !resp.RolledBack && !resp.Kept {
+			log.Printf("site slice: a move into a site's limits did not run: %s", resp.Error)
+		}
+	}()
+	refuse := func(code, text string) {
+		resp.Error, resp.Reason = text, &transport.SiteMoveReason{Code: code}
+	}
 	if req == nil {
-		resp.Error = "a request is required"
+		refuse("bad_request", "a request is required")
 		return nil
 	}
 	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "moving a site into its limits"); err != nil {
-		resp.Error = err.Error()
+		refuse("build", err.Error())
 		return nil
 	}
 	if req.Recover {
@@ -471,29 +567,29 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		return nil
 	}
 	if reason := siteSliceHostSupport(); reason != "" {
-		resp.Error = "this server cannot hold a site's limits (missing: " + reason + "); nothing was moved"
+		refuse("unsupported", "this server cannot hold a site's limits (missing: "+reason+"); nothing was moved")
 		return nil
 	}
 	s := siteSliceFor(&req.Site, req.Site.SiteID)
 	home, homeErr := hostingpath.SiteHome(req.SubscriptionID, req.DomainID)
 	if s == nil || homeErr != nil || len(req.Units) == 0 || len(req.Units) > siteSliceMaxUnits {
-		resp.Error = "the site, its home and up to 64 of its units are required"
+		refuse("bad_request", "the site, its home and up to 64 of its units are required")
 		return nil
 	}
 	for _, u := range req.Units {
 		if !siteSliceUnitPattern.MatchString(u) {
-			resp.Error = "not a site's unit: " + u
+			refuse("bad_request", "not a site's unit: "+u)
 			return nil
 		}
 	}
 	if !siteMoveRunning.TryLock() {
-		resp.Error = "another move into a site's limits is running; nothing was changed"
+		refuse("another_move", "another move into a site's limits is running; nothing was changed")
 		return nil
 	}
 	defer siteMoveRunning.Unlock()
 	siteMu := siteMutationMutex(s.SiteID)
 	if !siteMu.TryLock() {
-		resp.Error = "the site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute"
+		refuse("site_busy", "the site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute")
 		return nil
 	}
 	defer siteMu.Unlock()
@@ -507,7 +603,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 			if kept != nil {
 				site = "site " + strconv.Itoa(kept.siteID)
 			}
-			resp.Error = "an earlier move of " + site + " could not be put back completely; its page names each program left and the next step. Nothing new was moved until that is settled"
+			refuse("kept_earlier", "an earlier move of "+site+" could not be put back completely; its page names each program left and the next step. Nothing new was moved until that is settled")
 			resp.Kept = true
 			return nil
 		}
@@ -516,7 +612,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 	// release's copy adds only system-slice cgroups to the SMTP block, so a
 	// unit in its site's slice would not start with it.
 	if err := siteMovePrepare(); err != nil {
-		resp.Error = "the site sandbox's helper and SMTP block could not be put in place: " + err.Error() + "; nothing was moved"
+		refuse("prepare_failed", "the site sandbox's helper and SMTP block could not be put in place: "+err.Error()+"; nothing was moved")
 		return nil
 	}
 
@@ -583,7 +679,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 	// slice file's (or that there is none) with its ledger digest.
 	ledger, err := loadSandboxLedger()
 	if err != nil {
-		resp.Error = err.Error() + "; nothing was moved"
+		refuse("limits_failed", err.Error()+"; nothing was moved")
 		return nil
 	}
 	sliceFile, _ := siteSliceFile(s.SiteID)
@@ -597,10 +693,10 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 	}
 	for _, m := range plan {
 		journal.Units = append(journal.Units, siteMoveJournalUnit{Unit: m.unit, File: m.file, Mode: uint32(m.mode), Before: m.before,
-			After: m.after, Running: m.running, Step: siteMoveStepPlanned, WaitSeconds: int(m.wait / time.Second)})
+			After: m.after, Running: m.running, Step: siteMoveStepPlanned, WaitSeconds: int(m.wait / time.Second), Ports: siteSlicePortList(m.ports)})
 	}
 	if err := journal.save(); err != nil {
-		resp.Error = "the move's record could not be written in the Agent's folder (" + err.Error() + "); nothing was moved"
+		refuse("record_failed", "the move's record could not be written in the Agent's folder ("+err.Error()+"); nothing was moved")
 		return nil
 	}
 	if siteMoveKilled("", "journal") {
@@ -636,11 +732,11 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		// Nothing else is written; the slice file stays (no unit uses it, and
 		// it is CelikPanel's text with the site's limits), and the record that
 		// is on disk keeps the original for a later recovery.
-		resp.Error = "the move's record could not be written after the site's limits file (" + recordErr.Error() + "); no program was moved"
+		refuse("record_failed", "the move's record could not be written after the site's limits file ("+recordErr.Error()+"); no program was moved")
 		return nil
 	}
 	if err != nil || result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused {
-		resp.Error = fmt.Sprintf("the site's limits could not be written (%s %s): nothing was moved", result.Outcome, strings.TrimSpace(result.Reason+" "+result.Detail))
+		refuse("limits_failed", fmt.Sprintf("the site's limits could not be written (%s %s): nothing was moved", result.Outcome, strings.TrimSpace(result.Reason+" "+result.Detail)))
 		if err != nil {
 			resp.Error = "the site's limits could not be written: " + err.Error() + "; nothing was moved"
 		}
@@ -666,7 +762,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 				resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: rest.unit, Outcome: transport.SiteMoveNotTried,
 					Detail: "the move's time ran out before this program; the next move continues with it"})
 			}
-			resp.TimeUp = true
+			resp.TimeUp, resp.Reason = true, &transport.SiteMoveReason{Code: "time_up"}
 			resp.Error = "the move's time ran out: " + strconv.Itoa(len(done)) + " program(s) moved (" + strings.Join(moved, ", ") +
 				") stay inside the limits; press the move again to continue with the rest"
 			_ = os.Remove(siteMoveJournalPath)
@@ -686,12 +782,14 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		// Put this unit back, then every unit of the site moved before it.
 		// "Put back" is said only of what was confirmed back (review W1).
 		left := map[string]string{} // units whose put-back did not complete -> recovery outcome
-		failed := transport.SiteSliceMoved{Unit: m.unit, Outcome: transport.SiteMoveFailed, Step: step, Detail: err.Error()}
-		switch back, backErr := putBackSiteUnit(m, journal); {
+		failed := transport.SiteSliceMoved{Unit: m.unit, Outcome: transport.SiteMoveFailed, Step: step, Detail: err.Error(), Reason: siteMoveReasonOf(step, err)}
+		switch back, backReason, backErr := putBackSiteUnit(m, journal); {
 		case backErr != nil:
 			left[m.unit] = back
+			failed.Back = backReason
 			failed.Detail += "; putting it back did not complete: " + backErr.Error()
 		case back == transport.SiteMoveChanged:
+			failed.Back = &transport.SiteMoveReason{Code: transport.SiteMoveChanged}
 			failed.Detail += "; its file was changed meanwhile and is left as it is"
 		default:
 			failed.PutBack = true
@@ -699,10 +797,10 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		resp.Units = append(resp.Units, failed)
 		for j := len(done) - 1; j >= 0; j-- {
 			back := transport.SiteSliceMoved{Unit: done[j].unit, Outcome: transport.SiteMovePutBack, PutBack: true}
-			switch outcome, backErr := putBackSiteUnit(done[j], journal); {
+			switch outcome, backReason, backErr := putBackSiteUnit(done[j], journal); {
 			case backErr != nil:
 				left[done[j].unit] = outcome
-				back.PutBack, back.Detail = false, "putting it back did not complete: "+backErr.Error()
+				back.PutBack, back.Back, back.Detail = false, backReason, "putting it back did not complete: "+backErr.Error()
 			case outcome == transport.SiteMoveChanged:
 				back.Outcome, back.PutBack, back.Detail = transport.SiteMoveChanged, false, "its file was changed meanwhile and is left as it is"
 			}
@@ -716,9 +814,11 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 			resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: rest.unit, Outcome: transport.SiteMoveNotTried})
 		}
 		resp.RolledBack = true
+		resp.Reason = failed.Reason
 		resp.Error = fmt.Sprintf("%s could not be moved into the site's limits (%s): %s", m.unit, step, err.Error())
 		if len(left) == 0 {
 			resp.Error += "; the site was put back as it was"
+			log.Printf("site slice: the move of site %d: %s", s.SiteID, resp.Error)
 			_ = os.Remove(siteMoveJournalPath)
 			return nil
 		}
@@ -732,6 +832,7 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 		}
 		sort.Strings(names)
 		resp.Error += "; putting back did not complete for " + strings.Join(names, ", ") + ": the site's page names the next step, and no site is moved until it is settled"
+		log.Printf("site slice: the move of site %d: %s", s.SiteID, resp.Error)
 		resp.Kept = true
 		record := transport.SiteSliceMoveRecovery{At: time.Now().UTC().Format(time.RFC3339), Units: map[string]string{}, Kept: true}
 		for _, u := range resp.Units {
@@ -823,46 +924,66 @@ func moveOneSiteUnit(m siteMoveUnit, siteID int, journal *siteMoveJournal) (outc
 	deadline := time.Now().Add(m.wait)
 	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", m.unit)...)
 	if out, err := siteUnitRestart(m.unit, m.wait); err != nil {
-		_, why := siteUnitRestartFailure(m.unit, m.wait, out, err)
-		return "", "restart", why, false
+		_, reason, why := siteUnitRestartFailure(m.unit, m.wait, out, err)
+		return "", "restart", &siteMoveError{reason: reason, err: why}, false
 	}
 	if siteMoveKilled(m.unit, "restarted") {
 		return "", "", nil, true
 	}
-	for {
-		props := map[string]string{}
-		if out, err := appUnitSystemctl(systemctlArgs("show", m.unit, "--property=ActiveState,ControlGroup")...); err == nil {
-			props = parseShow(string(out))
+	verdict, props := waitSiteUnitRuns(m.unit, func(cgroup string) bool { return sitesandbox.UnitInSiteSlice(cgroup, m.unit, siteID) }, m.ports, deadline)
+	if verdict == siteRunVerdictRuns {
+		if err := record(siteMoveStepMoved); err != nil {
+			return "", "record", err, false
 		}
-		inSlice := props["ActiveState"] == "active" && sitesandbox.UnitInSiteSlice(props["ControlGroup"], m.unit, siteID)
-		listening := true
-		if inSlice && len(m.ports) > 0 {
-			now := siteSliceListening(m.unit)
-			for port := range m.ports {
-				listening = listening && now[port]
-			}
+		if siteMoveKilled(m.unit, siteMoveStepMoved) {
+			return "", "", nil, true
 		}
-		if inSlice && listening {
-			if err := record(siteMoveStepMoved); err != nil {
-				return "", "record", err, false
-			}
-			if siteMoveKilled(m.unit, siteMoveStepMoved) {
-				return "", "", nil, true
-			}
-			return transport.SiteMoveMoved, "", nil, false
-		}
-		if time.Now().After(deadline) {
-			seconds := int(m.wait / time.Second)
-			switch {
-			case props["ActiveState"] != "active":
-				return "", "restart", fmt.Errorf("it is %s %d seconds after the restart (journalctl -u %s says why)", strings.TrimSpace(props["ActiveState"]+" "), seconds, m.unit), false
-			case !sitesandbox.UnitInSiteSlice(props["ControlGroup"], m.unit, siteID):
-				return "", "cgroup", fmt.Errorf("it runs in %s, not /%s/%s", props["ControlGroup"], sitesandbox.SliceName(siteID), m.unit), false
-			}
-			return "", "answer", fmt.Errorf("%d seconds after the restart it does not listen on every port it listened on before (%s)", seconds, siteSlicePorts(m.ports)), false
-		}
-		time.Sleep(siteSlicePoll)
+		return transport.SiteMoveMoved, "", nil, false
 	}
+	seconds := int(m.wait / time.Second)
+	reason := &transport.SiteMoveReason{Code: verdict, State: siteUnitStateWords(props), Seconds: seconds}
+	switch verdict {
+	case siteRunVerdictNotInPlace:
+		return "", "cgroup", &siteMoveError{reason: reason, err: fmt.Errorf("it runs in %s, not /%s/%s", props["ControlGroup"], sitesandbox.SliceName(siteID), m.unit)}, false
+	case siteRunVerdictNotListening:
+		reason.Ports = siteSlicePortList(m.ports)
+		return "", "answer", &siteMoveError{reason: reason, err: fmt.Errorf("%d seconds after the restart it does not listen on every port it listened on before (%s)", seconds, siteSlicePorts(m.ports))}, false
+	}
+	return "", "restart", &siteMoveError{reason: reason, err: fmt.Errorf("it is %s %d seconds after the restart (journalctl -u %s says why)", siteUnitStateWords(props), seconds, m.unit)}, false
+}
+
+// siteMoveError is a step's failure with its reason's code (alpha.149, lab
+// D7): Error() is the English text the journal and the audit record keep.
+type siteMoveError struct {
+	reason *transport.SiteMoveReason
+	err    error
+}
+
+func (e *siteMoveError) Error() string { return e.err.Error() }
+
+// siteMoveReasonOf is the code of a step's failure: its own, or the one its
+// kind of step names ("record", "write").
+func siteMoveReasonOf(step string, err error) *transport.SiteMoveReason {
+	var coded *siteMoveError
+	if errors.As(err, &coded) && coded.reason != nil {
+		return coded.reason
+	}
+	switch step {
+	case "record":
+		return &transport.SiteMoveReason{Code: "record_failed"}
+	case "write":
+		return &transport.SiteMoveReason{Code: "write_failed"}
+	}
+	return &transport.SiteMoveReason{Code: "not_finished"}
+}
+
+func siteSlicePortList(ports map[int]bool) []int {
+	list := make([]int, 0, len(ports))
+	for p := range ports {
+		list = append(list, p)
+	}
+	sort.Ints(list)
+	return list
 }
 
 func siteSlicePorts(ports map[int]bool) string {
@@ -879,14 +1000,17 @@ func siteSlicePorts(ports map[int]bool) string {
 }
 
 // putBackSiteUnit writes the unit's pre-move text under its lock and, if it
-// ran, restarts it where it ran before (waiting at most its start wait).
-// Only the move's own text is put back over: a changed or removed file is
-// left ("changed"), so a customer's change is never lost and a deleted
-// site's unit is never re-created. A put-back that did not complete answers
-// an error with the recovery outcome it leaves: "unknown" (the file or
-// systemd's reading of it), "failed" (it did not start again) or
-// "starting".
-func putBackSiteUnit(m siteMoveUnit, journal *siteMoveJournal) (string, error) {
+// ran, restarts it where it ran before and waits, within its start wait, for
+// it to run there and listen again on its ports (alpha.149, lab D6: as the
+// move's own step does; a restart's exit status is not proof). Only the
+// move's own text is put back over: a changed or removed file is left
+// ("changed"), so a customer's change is never lost and a deleted site's
+// unit is never re-created. A put-back that did not complete answers an
+// error, its reason's code and the recovery outcome it leaves: "unknown"
+// (the file or systemd's reading of it), "failed" (it does not run where it
+// ran: it did not start again, or failed right after), "starting" or
+// "not_answering". Nothing else is changed by it.
+func putBackSiteUnit(m siteMoveUnit, journal *siteMoveJournal) (string, *transport.SiteMoveReason, error) {
 	unlock := siteUnitLock(m.unit)
 	defer unlock()
 	current, _, _, err := siteUnitText(m.unit)
@@ -894,28 +1018,52 @@ func putBackSiteUnit(m siteMoveUnit, journal *siteMoveJournal) (string, error) {
 		if journal != nil {
 			_ = journal.step(m.unit, siteMoveStepChanged)
 		}
-		return transport.SiteMoveChanged, nil
+		return transport.SiteMoveChanged, nil, nil
 	}
 	wrote := current == m.after
 	if wrote {
 		if err := writeUnitBytes(m.file, m.before, m.mode); err != nil {
-			return transport.SiteMoveUnknown, err
+			return transport.SiteMoveUnknown, &transport.SiteMoveReason{Code: "write_failed"}, err
 		}
 		if err := siteSliceDaemonReload(); err != nil {
-			return transport.SiteMoveUnknown, err
+			return transport.SiteMoveUnknown, &transport.SiteMoveReason{Code: "write_failed"}, err
 		}
 	}
 	// A unit whose file the move never changed was never restarted either.
 	if m.running && wrote {
+		deadline := time.Now().Add(m.wait)
 		_, _ = appUnitSystemctl(systemctlArgs("reset-failed", m.unit)...)
 		if out, err := siteUnitRestart(m.unit, m.wait); err != nil {
 			return siteUnitRestartFailure(m.unit, m.wait, out, err)
+		}
+		verdict, props := waitSiteUnitRuns(m.unit, func(cgroup string) bool { return sitesandbox.UnitInSystemSlice(cgroup, m.unit) }, m.ports, deadline)
+		if verdict != siteRunVerdictRuns {
+			state, reason, why := siteUnitPutBackFailure(m.unit, verdict, props, m.wait, m.ports)
+			log.Printf("site slice: %s was put back with its earlier file but %v", m.unit, why)
+			return state, reason, why
 		}
 	}
 	if journal != nil {
 		_ = journal.step(m.unit, siteMoveStepPutBack)
 	}
-	return transport.SiteMovePutBack, nil
+	return transport.SiteMovePutBack, nil, nil
+}
+
+// siteUnitPutBackFailure turns a put-back's verdict into the recovery
+// outcome kept for the card, its reason's code and the journal's words.
+func siteUnitPutBackFailure(unit, verdict string, props map[string]string, wait time.Duration, ports map[int]bool) (string, *transport.SiteMoveReason, error) {
+	seconds := int(wait / time.Second)
+	reason := &transport.SiteMoveReason{Code: verdict, State: siteUnitStateWords(props), Seconds: seconds}
+	switch verdict {
+	case siteRunVerdictStarting:
+		return transport.SiteMoveStarting, reason, fmt.Errorf("it was still starting %d seconds after the restart (journalctl -u %s says why)", seconds, unit)
+	case siteRunVerdictNotListening:
+		reason.Ports = siteSlicePortList(ports)
+		return transport.SiteMoveNotAnswering, reason, fmt.Errorf("%d seconds after the restart it does not listen on every port it listened on before (%s)", seconds, siteSlicePorts(ports))
+	case siteRunVerdictNotInPlace, siteRunVerdictUnread:
+		return transport.SiteMoveUnknown, reason, fmt.Errorf("where it runs %d seconds after the restart is not known (%s)", seconds, props["ControlGroup"])
+	}
+	return transport.SiteMoveFailed, reason, fmt.Errorf("it is not running: %s %d seconds after the restart (journalctl -u %s says why)", siteUnitStateWords(props), seconds, unit)
 }
 
 // --- At the Agent's start ------------------------------------------------------
@@ -979,7 +1127,7 @@ type siteMoveRecovered struct {
 // record's site lock; nothing new is moved. Done: the record is gone.
 func recoverKeptSiteSliceMove(resp *transport.MoveSiteSliceResponse) {
 	if !siteMoveRunning.TryLock() {
-		resp.Error = "a move into a site's limits is running; nothing was changed"
+		resp.Error, resp.Reason = "a move into a site's limits is running; nothing was changed", &transport.SiteMoveReason{Code: "another_move"}
 		return
 	}
 	defer siteMoveRunning.Unlock()
@@ -991,7 +1139,7 @@ func recoverKeptSiteSliceMove(resp *transport.MoveSiteSliceResponse) {
 	if err == nil {
 		siteMu := siteMutationMutex(journal.SiteID)
 		if !siteMu.TryLock() {
-			resp.Error = "the site is being changed right now; nothing was changed. Read its page again in a minute"
+			resp.Error, resp.Reason = "the site is being changed right now; nothing was changed. Read its page again in a minute", &transport.SiteMoveReason{Code: "site_busy"}
 			return
 		}
 		defer siteMu.Unlock()
@@ -1115,6 +1263,7 @@ func recoverSiteSliceMove(budget time.Duration) *siteMoveRecovered {
 	}
 	for _, u := range restart {
 		wait := siteMoveJournalWait(u)
+		cut := false // the start's bound, not the unit's own wait, ends the wait
 		if budget > 0 {
 			left := time.Until(deadline)
 			if left < siteMoveStartMinWait {
@@ -1124,14 +1273,33 @@ func recoverSiteSliceMove(budget time.Duration) *siteMoveRecovered {
 				continue
 			}
 			if left < wait {
-				wait = left
+				wait, cut = left, true
 			}
 		}
 		unlock := siteUnitLock(u.Unit)
+		started := time.Now()
 		_, _ = appUnitSystemctl(systemctlArgs("reset-failed", u.Unit)...)
 		if out, err := siteUnitRestart(u.Unit, wait); err != nil {
-			state, why := siteUnitRestartFailure(u.Unit, wait, out, err)
+			state, _, why := siteUnitRestartFailure(u.Unit, wait, out, err)
 			log.Printf("site slice: %s was put back but did not start again: %v", u.Unit, why)
+			outcomes[u.Unit] = state
+			complete = false
+			unlock()
+			continue
+		}
+		// alpha.149 (lab D6): verified as the move verifies, within the same
+		// wait: a program that does not run where it ran is not "put back".
+		// Within the start's bound, what cannot be seen yet is "unverified"
+		// (not known: neither a failure nor a success).
+		verdict, props := waitSiteUnitRuns(u.Unit, func(cgroup string) bool { return sitesandbox.UnitInSystemSlice(cgroup, u.Unit) },
+			siteMoveJournalPorts(u), started.Add(wait))
+		if verdict != siteRunVerdictRuns {
+			state, _, why := siteUnitPutBackFailure(u.Unit, verdict, props, wait, siteMoveJournalPorts(u))
+			if cut {
+				state = transport.SiteMoveUnverified
+				why = fmt.Errorf("whether it runs again was not known before the Agent's start went on (%v)", why)
+			}
+			log.Printf("site slice: %s was put back with its earlier file but %v", u.Unit, why)
 			outcomes[u.Unit] = state
 			complete = false
 		}

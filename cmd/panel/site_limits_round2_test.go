@@ -129,7 +129,7 @@ func TestALimitChangeThatDidNotReachEverySiteIsALine(t *testing.T) {
 	}
 	lines := siteLimitApplyProblem(f.panel.setting(ctx, settingSiteLimitApply))
 	if len(lines) != 1 || lines[0].Kind != "site_limits_unapplied" || lines[0].Value != 1 || lines[0].Subject != "Lean" ||
-		!strings.Contains(lines[0].Name, "did not answer") || lines[0].Actor != "administrator" {
+		lines[0].Name != "agent_unreachable" || lines[0].Actor != "administrator" { // alpha.149: a code the page words
 		t.Fatalf("lines = %+v", lines)
 	}
 	problems := f.panel.siteLimitProblems(ctx, time.Now())
@@ -145,7 +145,7 @@ func TestALimitChangeThatDidNotReachEverySiteIsALine(t *testing.T) {
 		return transport.ApplySiteSlicesResponse{Sites: []transport.SiteSliceApplied{{SiteID: siteID, Outcome: transport.SiteFileOutcomeFailed, Detail: "verify"}}}, nil
 	}
 	f.panel.retrySiteLimitApply(ctx)
-	if lines := siteLimitApplyProblem(f.panel.setting(ctx, settingSiteLimitApply)); len(lines) != 1 || !strings.Contains(lines[0].Name, "verify") {
+	if lines := siteLimitApplyProblem(f.panel.setting(ctx, settingSiteLimitApply)); len(lines) != 1 || lines[0].Name != "failed" { // an Agent without a code
 		t.Fatalf("a failed write: %+v", lines)
 	}
 	// The hourly round reaches it: the line goes.

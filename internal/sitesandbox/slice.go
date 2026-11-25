@@ -229,6 +229,14 @@ type SliceCounters struct {
 	CPUThrottled     int64 `json:"cpu_throttled"`
 	CPUThrottledUSec int64 `json:"cpu_throttled_usec"`
 	CPUPeriods       int64 `json:"cpu_periods"`
+	// TasksPeakAtLimit (alpha.149, lab D3): under the "units" rule, the
+	// slice's own pids.peak has reached its pids.max. A unit's counters go
+	// with its cgroup when the program restarts (lab, Ubuntu 24.04 kernel
+	// 6.8: the refusals were counted in a unit cgroup that was gone before
+	// any reading), the slice's peak stays while the slice exists: the site's
+	// programs reached their process limit at some time since the slice's
+	// cgroup was made. How often is not known.
+	TasksPeakAtLimit bool `json:"tasks_peak_at_limit,omitempty"`
 }
 
 // SliceCgroupFiles are the texts of the slice cgroup's files ("" for a file
@@ -242,6 +250,10 @@ type SliceCgroupFiles struct {
 	HasPidsEventsLocal bool
 	CPUStat            string
 	Units              []UnitPidsFiles
+	// SlicePidsPeak and SlicePidsMax: the slice's own pids.peak and pids.max
+	// (read where it has no pids.events.local).
+	SlicePidsPeak string
+	SlicePidsMax  string
 }
 
 // UnitPidsFiles are one unit cgroup's process files.
@@ -297,6 +309,9 @@ func ParseSliceCounters(f SliceCgroupFiles) SliceCounters {
 		}
 	} else {
 		c.TasksRule = "units"
+		if limit, peak := cgroupLimit(f.SlicePidsMax), cgroupLimit(f.SlicePidsPeak); limit > 0 && peak >= limit {
+			c.TasksPeakAtLimit = true
+		}
 		for _, u := range f.Units {
 			n, _ := cgroupValue(u.Events, "max")
 			if n == 0 {

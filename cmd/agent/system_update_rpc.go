@@ -408,6 +408,15 @@ func (a *Agent) StartSystemUpdate(request *transport.SystemUpdateStartRequest, r
 		return errors.New("system update start response is required")
 	}
 	*reply = transport.SystemUpdateStartResponse{}
+	// alpha.149 (lab D5): never while a site's programs are being moved into
+	// their limits: the update would stop this Agent in the middle of the
+	// move. The panel refuses it first; this is the server's own refusal.
+	if !siteMoveRunning.TryLock() {
+		reply.Error = "a site's programs are being moved into their limits; the update was not started. Wait until the move's window has finished, then press the update again"
+		reply.Reason = transport.HostMutationReasonSiteMove
+		return nil
+	}
+	siteMoveRunning.Unlock()
 	service, err := agentSystemUpdateService()
 	if err == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)

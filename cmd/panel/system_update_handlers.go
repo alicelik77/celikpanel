@@ -516,6 +516,13 @@ func writePanelUpdateAgentFailure(w http.ResponseWriter, err error) {
 // PANEL_UPDATE_START_REFUSED. No update record exists for either (upd9 F2).
 // Paket yöneticisi etkin diye reddedilen başlatma, diğer değişikliklerle aynı
 // kodu, nedeni ve cümleyi alır; yalnız agent'ın tipli nedeni bunu seçer.
+// writePanelUpdateSiteMoveRunning: the update was not started because a
+// site's programs are being moved into their limits (alpha.149, lab D5).
+func writePanelUpdateSiteMoveRunning(w http.ResponseWriter) {
+	writeCodedError(w, http.StatusConflict, "PANEL_UPDATE_SITE_MOVE_RUNNING",
+		"a site's programs are being moved into their limits; the update was not started. Wait until the move's window has finished, then press the update again", "")
+}
+
 func writePanelUpdateStartHostBusy(w http.ResponseWriter, reply transport.SystemUpdateStartResponse) bool {
 	if reply.Accepted || reply.Reason != transport.HostMutationReasonPackageManager {
 		return false
@@ -638,6 +645,14 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusBadRequest, "PANEL_UPDATE_INVALID_CONFIRMATION", "the exact discovered update must be confirmed", "")
 		return
 	}
+	// alpha.149 (lab D5): never while a site's programs are being moved into
+	// their limits (the update would stop the agent in the middle of the
+	// move). Nothing is started; pressing update again after the move's
+	// window has ended starts it. The agent refuses it too.
+	if siteMoveBusy() {
+		writePanelUpdateSiteMoveRunning(w)
+		return
+	}
 	if !p.serviceMutationMu.TryLock() {
 		writeCodedError(w, http.StatusConflict, "PANEL_UPDATE_BUSY", "another server operation is active", "")
 		return
@@ -682,6 +697,10 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 	if !reply.Accepted || strings.TrimSpace(reply.Error) != "" ||
 		(reply.Status != "queued" && reply.Status != "running") {
 		log.Printf("[panel-update] agent refused start: %s", sanitizePanelUpdateSummary(reply.Error))
+		if reply.Reason == transport.HostMutationReasonSiteMove {
+			writePanelUpdateSiteMoveRunning(w)
+			return
+		}
 		if writePanelUpdateStartHostBusy(w, reply) {
 			return
 		}

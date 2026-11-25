@@ -41,6 +41,9 @@ type sliceTestUnit struct {
 	dropIns string
 	// slowShows: how many reads after a restart it still shows "activating".
 	slowShows int
+	// failEverywhere (alpha.149): a restart leaves it failed wherever it
+	// starts, the system slice too (its program exits at once).
+	failEverywhere bool
 }
 
 type sliceTestHost struct {
@@ -146,7 +149,7 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 			if u.slowShows > 0 {
 				u.active = "activating"
 			}
-			if u.failStart && slice != sitesandbox.SystemSlice {
+			if u.failEverywhere || (u.failStart && slice != sitesandbox.SystemSlice) {
 				u.active, u.cgroup = "failed", ""
 			}
 		case args[0] == "show" && len(args) == 3 && strings.HasPrefix(args[2], "--property=ActiveState,ControlGroup"):

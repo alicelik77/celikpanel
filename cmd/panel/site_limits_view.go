@@ -237,13 +237,39 @@ const (
 // "tasks_other" are a program of the site stopped or refused where the
 // kernel does not prove the site's limit (a program's own smaller limit, a
 // host-wide shortage): the screens then never blame the plan.
-var siteLimitEventKinds = []string{"memory", "memory_other", "tasks", "tasks_other", "cpu"}
+//
+// "tasks_peak" (alpha.149, lab D3): on a kernel without pids.events.local the
+// slice's own pids.peak reached its pids.max since the last reading (the
+// site's process limit, proved by the slice itself; how often is not known,
+// so its count stays 0).
+var siteLimitEventKinds = []string{"memory", "memory_other", "tasks", "tasks_peak", "tasks_other", "cpu"}
 
 type siteLimitEvent struct {
 	Count   int64    `json:"count"`
 	FirstAt string   `json:"first_at"`
 	LastAt  string   `json:"last_at"`
 	Hits    []string `json:"hits,omitempty"`
+	// Limit (alpha.149, lab CHECK 2 W3) is the site's limit for the event's
+	// key that held at its last time (the kernel's value when it was read,
+	// else what systemd applied; 0: not known or no limit). The card shows an
+	// event with this value, or without one, never with today's.
+	Limit int `json:"limit,omitempty"`
+}
+
+// siteLimitHeld is the site's limit of an event kind's key as the reading
+// found it in force (0: not known or no limit).
+func siteLimitHeld(status transport.SiteSliceStatus, kind string) int {
+	held := status.Live
+	if status.KernelState == transport.SiteSliceInForce || status.KernelState == transport.SiteSlicePending {
+		held = status.Kernel
+	}
+	switch {
+	case strings.HasPrefix(kind, "memory"):
+		return held.MemoryMB
+	case strings.HasPrefix(kind, "tasks"):
+		return held.Tasks
+	}
+	return held.CPUPercent
 }
 
 type siteLimitRecord struct {
@@ -321,14 +347,17 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 			// Programs stopped for lack of memory, not at the site's limit.
 			rises["memory_other"] = kills
 		}
+		// alpha.149 (lab D3): the slice's own peak reached its limit since the
+		// last reading (a unit's counters may be gone with its cgroup).
+		peak := current.TasksPeakAtLimit && !before.TasksPeakAtLimit && rises["tasks"] == 0
 		cpuWait := delta(current.CPUThrottledUSec, before.CPUThrottledUSec)
 		if cpuWait >= siteLimitCPUSeconds*1_000_000 {
 			rises["cpu"] = 1
 		}
-		rose := reset
+		rose := reset || current.TasksPeakAtLimit != before.TasksPeakAtLimit
 		for _, kind := range siteLimitEventKinds {
 			n := rises[kind]
-			if n <= 0 {
+			if n <= 0 && !(kind == "tasks_peak" && peak) {
 				continue
 			}
 			rose = true
@@ -340,7 +369,10 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 				event = &siteLimitEvent{FirstAt: at}
 				previous.Events[kind] = event
 			}
-			event.Count += n
+			if n > 0 {
+				event.Count += n
+			}
+			event.Limit = siteLimitHeld(status, kind)
 			// Review B7: at most one hit per kind every siteLimitHitEvery,
 			// and never more than siteLimitMaxHits kept: the record's size
 			// does not grow with how often a card is read (the count stays
@@ -408,11 +440,18 @@ type siteLimitEventView struct {
 	FirstAt  string `json:"first_at"`
 	LastAt   string `json:"last_at"`
 	Repeated bool   `json:"repeated,omitempty"`
+	// Limit (alpha.149): the limit that held then (0: not known).
+	Limit int `json:"limit,omitempty"`
 }
 
 // siteUnitStoppedOutside: a stopped unit whose effective Slice= is the
 // system slice (it would start outside the limits).
 const siteUnitStoppedOutside = "stopped_outside"
+
+// siteLimitSetByResellerBound (alpha.149): the server's default, which bounds
+// the reseller's customers where neither the server nor the reseller set a
+// ceiling (siteLimitsWithResellerBound).
+const siteLimitSetByResellerBound = "server_default_bound"
 
 type siteLimitUnitView struct {
 	siteLimitUnit
@@ -498,8 +537,16 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 	admin := caller.Role == roleAdmin
 	reseller := caller.Role == roleReseller
 	view := siteLimitsView{Domain: site.Domain, Admin: admin, Reseller: reseller, Limits: []siteLimitValue{}, Events: []siteLimitEventView{}}
+	policy, policyErr := loadSettingPolicy(ctx, p.db.GetDB())
 	for _, key := range siteSliceKeys {
 		value := siteLimitValueOf(limits, key)
+		// alpha.149 (lab CHECK 2 W4): under a reseller the server's default
+		// bounds the reseller's field as a "server" ceiling
+		// (siteLimitsWithResellerBound); nobody set it. Named as the server's
+		// default bounding the reseller, not as the administrator's own limit.
+		if policyErr == nil && value.SetBy == settingSetByServer && policy[key].ServerCeiling == nil {
+			value.SetBy, value.SetByName = siteLimitSetByResellerBound, ""
+		}
 		if !admin && !reseller {
 			value.SetByName = ""
 		}
@@ -691,7 +738,7 @@ func siteLimitEventViews(record *siteLimitRecord, now time.Time) []siteLimitEven
 			}
 		}
 		out = append(out, siteLimitEventView{Kind: kind, Count: event.Count, FirstAt: event.FirstAt, LastAt: event.LastAt,
-			Repeated: recent >= siteLimitRepeatHits})
+			Repeated: recent >= siteLimitRepeatHits, Limit: event.Limit})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].LastAt > out[j].LastAt })
 	return out
@@ -900,7 +947,7 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 		}
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
-	problems = append(problems, siteMoveKeptProblem(kept, names)...)
+	problems = append(problems, siteMoveKeptProblem(kept, p.setting(ctx, settingSiteMoveStopped), names)...)
 	problems = append(problems, siteLimitHostProblem(host)...)
 	problems = append(problems, extra...)
 	return append(problems, siteLimitOutsideProblem(outside, names)...)
@@ -932,12 +979,38 @@ func (p *Panel) noteSiteMoveKept(ctx context.Context, statuses []transport.SiteS
 			next[k] = v
 		}
 	}
+	stoppedRaw := p.setting(ctx, settingSiteMoveStopped)
+	stoppedBefore := map[string]string{}
+	if stoppedRaw != "" {
+		_ = json.Unmarshal([]byte(stoppedRaw), &stoppedBefore)
+	}
+	stopped := map[string]string{}
+	if !whole {
+		for k, v := range stoppedBefore {
+			stopped[k] = v
+		}
+	}
 	for _, status := range statuses {
 		key := strconv.Itoa(status.SiteID)
+		delete(stopped, key)
 		if status.MoveInterrupted != nil && status.MoveInterrupted.Kept {
 			next[key] = status.MoveInterrupted.At
+			if units := siteMoveStoppedUnits(status.MoveInterrupted); units != "" {
+				stopped[key] = units
+			}
 		} else {
 			delete(next, key)
+		}
+	}
+	if !reflect.DeepEqual(stopped, stoppedBefore) {
+		value := ""
+		if len(stopped) > 0 {
+			if encoded, err := json.Marshal(stopped); err == nil {
+				value = string(encoded)
+			}
+		}
+		if err := p.setSetting(ctx, settingSiteMoveStopped, value); err != nil {
+			log.Printf("site limits: the programs not running after a move were not recorded: %v", err)
 		}
 	}
 	if reflect.DeepEqual(next, previous) {
@@ -956,11 +1029,31 @@ func (p *Panel) noteSiteMoveKept(ctx context.Context, statuses []transport.SiteS
 	}
 }
 
+// settingSiteMoveStopped (alpha.149, lab D6) keeps, per site whose move
+// record is kept, its programs that were put back with their earlier file but
+// do not run (recovery outcome "failed"): site id -> unit names (comma
+// separated). Written only when it changes.
+const settingSiteMoveStopped = "site_move_stopped_v1"
+
+// siteMoveStoppedUnits names a kept record's programs that do not run.
+func siteMoveStoppedUnits(record *transport.SiteSliceMoveRecovery) string {
+	var units []string
+	for unit, state := range record.Units {
+		if state == transport.SiteMoveFailed {
+			units = append(units, unit)
+		}
+	}
+	sort.Strings(units)
+	return strings.Join(units, ", ")
+}
+
 // siteMoveKeptProblem is ONE line, for the administrator, while the Agent
 // keeps a move's record: a program may be stopped and no site is moved until
 // it is settled; it opens the site, whose card names each program left, the
-// next step and "Try again".
-func siteMoveKeptProblem(raw string, names map[string]string) []monitoringProblem {
+// next step and "Try again". alpha.149 (lab D6): where a program was put back
+// but does not run, the line names it (Name: the programs), so it says that
+// it is not running now, who acts and the next step.
+func siteMoveKeptProblem(raw, stoppedRaw string, names map[string]string) []monitoringProblem {
 	if raw == "" {
 		return nil
 	}
@@ -968,7 +1061,12 @@ func siteMoveKeptProblem(raw string, names map[string]string) []monitoringProble
 	if err := json.Unmarshal([]byte(raw), &kept); err != nil {
 		return nil
 	}
-	var sites []string
+	stopped := map[string]string{}
+	if stoppedRaw != "" {
+		_ = json.Unmarshal([]byte(stoppedRaw), &stopped)
+	}
+	var sites, programs []string
+	first := ""
 	since := ""
 	for key, at := range kept {
 		if name := names[key]; name != "" {
@@ -976,16 +1074,27 @@ func siteMoveKeptProblem(raw string, names map[string]string) []monitoringProble
 			if since == "" || at < since {
 				since = at
 			}
+			if units := stopped[key]; units != "" {
+				programs = append(programs, units)
+				if first == "" || name < first {
+					first = name
+				}
+			}
 		}
 	}
 	if len(sites) == 0 {
 		return nil
 	}
 	sort.Strings(sites)
+	sort.Strings(programs)
+	open := sites[0]
+	if first != "" {
+		open = first // the site of a program that does not run first
+	}
 	return []monitoringProblem{{
 		Key: "site_move_kept", Kind: "site_move_kept", Severity: "warning", Actor: "administrator",
-		Subject: strings.Join(sites, ", "), Name: sites[0], Value: float64(len(sites)), Since: since, ObservedAt: since,
-		Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(sites[0])},
+		Subject: strings.Join(sites, ", "), Name: strings.Join(programs, ", "), Value: float64(len(sites)), Since: since, ObservedAt: since,
+		Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(open)},
 	}}
 }
 

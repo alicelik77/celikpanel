@@ -680,12 +680,15 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 		return nil
 	}
 	all := req.Sites
-	missed := func(sites []transport.SiteSlice, why string) {
+	// alpha.149 (lab O3): the recorded reason is a code the page words in its
+	// own language; the English detail goes to the journal.
+	missed := func(sites []transport.SiteSlice, code, why string) {
 		for _, s := range sites {
 			notApplied[subOf[s.SiteID]]++
 		}
+		log.Printf("site limits: %d sites keep their earlier limits for now: %s", len(sites), why)
 		if reason == "" {
-			reason = why
+			reason = code
 		}
 	}
 	defer siteLimitApplying.set(0, 0)
@@ -701,7 +704,7 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 		cancel()
 		if err != nil {
 			// The rest is not sent: the hourly round writes it.
-			missed(all[start:], "the server did not answer: "+err.Error())
+			missed(all[start:], "agent_unreachable", "the server did not answer: "+err.Error())
 			break
 		}
 		if resp.Unsupported != "" {
@@ -712,7 +715,7 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 			// The Agent refused the batch, or wrote it but systemd did not
 			// take it (daemon-reload failed): its sites keep the earlier
 			// limits.
-			missed(all[start:end], resp.Error)
+			missed(all[start:end], "agent_refused", resp.Error)
 			continue
 		}
 		for _, s := range resp.Sites {
@@ -721,8 +724,12 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 				log.Printf("site limits: the slice of site %d was changed on the server and is kept; CelikPanel's text is in %s", s.SiteID, s.PendingPath)
 			case transport.SiteFileOutcomeFailed, transport.SiteFileOutcomeRefused:
 				notApplied[subOf[s.SiteID]]++
+				log.Printf("site limits: site %d keeps its earlier limits for now: %s", s.SiteID, strings.TrimSpace(s.Outcome+" "+s.Detail))
 				if reason == "" {
-					reason = strings.TrimSpace(s.Outcome + " " + s.Detail)
+					reason = s.Reason
+					if reason == "" {
+						reason = "failed" // an Agent before alpha.149
+					}
 				}
 			}
 		}
@@ -792,31 +799,48 @@ func (p *Panel) previewSiteLimitsLowered(ctx context.Context, preview *rightsPre
 		names[s.SiteID] = s.Domain
 	}
 	var lines []string
+	var items []siteStoppedItem
 	for _, status := range statuses {
 		if !status.Active {
 			continue
 		}
 		var parts []string
+		item := siteStoppedItem{Domain: names[status.SiteID]}
 		if limit, ok := lowered[settingSiteMemoryMB]; ok && status.MemoryCurrentMB > int64(limit) {
 			parts = append(parts, fmt.Sprintf("memory %d MB in use, new limit %d MB", status.MemoryCurrentMB, limit))
+			item.MemoryMB, item.MemoryLimitMB = status.MemoryCurrentMB, limit
 		}
 		if limit, ok := lowered[settingSiteTasks]; ok && status.TasksCurrent > int64(limit) {
 			parts = append(parts, fmt.Sprintf("%d processes, new limit %d", status.TasksCurrent, limit))
+			item.Tasks, item.TasksLimit = status.TasksCurrent, limit
 		}
 		if len(parts) > 0 {
 			lines = append(lines, names[status.SiteID]+": "+strings.Join(parts, "; "))
+			items = append(items, item)
 		}
 	}
 	sort.Strings(lines)
+	sort.Slice(items, func(i, j int) bool { return items[i].Domain < items[j].Domain })
 	preview.SitesStoppedCount = len(lines)
 	preview.StoppedToken = siteLimitsStoppedToken(lines)
 	if len(lines) > 40 {
 		lines = append(lines[:40], fmt.Sprintf("+%d more", len(lines)-40))
+		items = items[:40]
 	}
-	preview.SitesStopped = lines
+	preview.SitesStopped, preview.SitesStoppedItems = lines, items
 	if preview.SitesStoppedCount > 0 {
 		preview.Message += fmt.Sprintf(" The programs of %d site(s) use more now than a lowered site limit: when this is saved, a program over the memory limit is stopped at once; at the process limit new processes are refused and running ones keep running.", preview.SitesStoppedCount)
 	}
+}
+
+// siteStoppedItem is one site of the list (alpha.149): what its programs use
+// now against a lowered limit (0: that key is not lowered below its use).
+type siteStoppedItem struct {
+	Domain        string `json:"domain"`
+	MemoryMB      int64  `json:"memory_mb,omitempty"`
+	MemoryLimitMB int    `json:"memory_limit_mb,omitempty"`
+	Tasks         int64  `json:"tasks,omitempty"`
+	TasksLimit    int    `json:"tasks_limit,omitempty"`
 }
 
 // siteLimitsStoppedToken names one list of affected sites (review finding 9
