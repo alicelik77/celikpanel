@@ -203,6 +203,18 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   the owner's. Role settings for one database (`ALTER ROLE … IN DATABASE …`) are never
   written or reset by the panel. A restore or copy never touches a user's settings.
 
+  **What reaches whom in alpha.148 (lab of 25 November 2026 and the code).** The time
+  limits reach a site's MariaDB users that exist when the plan's limit is set; a user
+  created afterwards through a site's Databases section (or added to a database, or made by
+  an app, a copy or an import) gets none until the plan's database keys change again: those
+  paths apply only the connection limit, and only when it is set. On PostgreSQL the panel's
+  `celikpanel_admin` record is not a superuser, so `ALTER ROLE` on roles the Agent created
+  as `postgres` (every site database user) is refused (SQLSTATE 42501) and
+  `temp_file_limit` needs superuser or `SET` on the parameter: the time limits and the
+  temporary-file limit do not reach sites' PostgreSQL users in this release; the failure is
+  only logged. The paragraphs above describe the design, not what alpha.148 delivers for
+  those users.
+
   **Loads and the user's limits.** Customers start restores of their own sites' backups
   (also from their own remote destinations), database copies, site copies and imports;
   the administrator also moves databases and imports cPanel archives. Every one of them

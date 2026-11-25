@@ -557,7 +557,10 @@ diyerek gösterir; değiştirilmiş dosyayı korunuyor diye anar.
 Değişen `Slice=` çalışan bir birime ancak bir sonraki başlangıcında ulaşır (F1). Bu yüzden:
 
 - çalışmayan bir birim (yeni, durdurulmuş, her kurulum ya da derleme adımı) sitesinin dilimine
-  yazılır;
+  yazılır; durdurulmuş bir programı sayfasından başlatmak hiçbir şey yazmaz, bu yüzden
+  güncellemeden önce durdurulmuş olup böyle yeniden başlatılan bir program yeniden dağıtılana ya
+  da site taşınana kadar dosyasının söylediği yerde (`system.slice`) çalışır ve dışarıda sayılır
+  (alpha.148 laboratuvarı);
 - çalışan bir birim her sıradan yazmada (ayar değişikliği, güncelleme, müşterinin yeniden
   başlatması) çalıştığı dilimde kalır;
 - dosyası zaten sitesinin dilimini adlandıran bir birim, o dilimin dosyası durdukça, systemd
@@ -742,8 +745,8 @@ kaldırmak ya da değiştirmek için sahip bir ekleme dosyası yazar
 (`/etc/systemd/system/celiksite_<kimlik>.slice.d/owner.conf`, örneğin `[Slice]` ve
 `MemoryMax=infinity` ile) ve `systemctl daemon-reload` çalıştırır. `sudo systemctl daemon-reload`
 sonrasında sahibin değişikliği çalışan programlara Ubuntu 24.04'te hemen, Debian 13'te hiçbir
-program başlamadan yaklaşık bir buçuk dakika sonra ulaşır; bir programın başlaması onu hemen
-uygular.
+program başlamadan birkaç saniye ile yaklaşık bir buçuk dakika arasında ulaşır (alpha.148
+laboratuvarı: 15 saniye içinde); bir programın başlaması onu hemen uygular.
 CelikPanel onu hiçbir zaman yazmaz ya da silmez.
 
 **Panel kalırken tek bir programı sitesinin sınırlarının dışına almak.** Panelde bunun için bir

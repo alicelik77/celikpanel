@@ -678,7 +678,10 @@ server owner's additions apply", and an edited file as kept.
 A changed `Slice=` reaches a running unit only at its next start (F1). So:
 
 - a unit that does not run (a new one, a stopped one, every install or build step)
-  is written into its site's slice;
+  is written into its site's slice; starting a stopped program from its page writes
+  nothing, so a program stopped before the update and started again that way runs where
+  its file says (`system.slice`) until it is deployed again or the site is moved, and is
+  counted outside (alpha.148 lab);
 - a running unit keeps the slice it runs in on every ordinary write (a settings
   change, an update, a restart by the customer);
 - a unit whose file already names its site's slice, while that slice's file exists, keeps
@@ -879,8 +882,8 @@ change a site's limits without the panel, the owner adds a drop-in
 (`/etc/systemd/system/celiksite_<id>.slice.d/owner.conf` with, for example,
 `[Slice]` and `MemoryMax=infinity`) and runs `systemctl daemon-reload`. After `sudo
 systemctl daemon-reload`, an owner's change reaches running programs at once on Ubuntu 24.04
-and about a minute and a half later on Debian 13, without any program starting; a program's
-start applies it at once. CelikPanel never writes or removes it.
+and within seconds to about a minute and a half on Debian 13 (alpha.148 lab: within 15 s),
+without any program starting; a program's start applies it at once. CelikPanel never writes or removes it.
 
 **Taking one program out of its site's limits, the panel staying.** The panel has no action
 for it. The owner adds a drop-in beside the program's unit, the same on Debian 13 and Ubuntu
