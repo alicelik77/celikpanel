@@ -275,6 +275,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.149: a site database role's limits, as the superuser.
+			name: "SetPostgreSQLRoleLimitsV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLRoleLimitsResponse
+				_ = agent.SetPostgreSQLRoleLimitsV1(&transport.PostgreSQLRoleLimitsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.129: a database's added users.
 			name: "CreateDatabaseAccessUserV1",
 			run: func(expected string) string {
