@@ -119,6 +119,10 @@ type fakeMariaDB struct {
 	// copies as the fake engine holds them: limit and lock, and grants
 	copyAuth   map[string]string
 	copyGrants map[string][]string
+	// alpha.149: max_statement_time of the local account and of the copies
+	// ("0.000000" by default).
+	statementTime     string
+	copyStatementTime string
 }
 
 // fakeCopyHost answers the host of "... Host = '<host>'" or "'user'@'<host>'".
@@ -182,15 +186,15 @@ func (f *fakeMariaDB) query(statement string) (string, error) {
 		}
 		return strings.Join(rows, "\n"), nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'") && fakeCopyHost(statement) == "localhost":
-		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0") + "\t\n", nil
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0") + "\t\t" + orDefault(f.statementTime, "0.000000") + "\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'"):
 		state, ok := f.copyAuth["shop_u@"+fakeCopyHost(statement)]
 		if !ok {
 			return "", nil
 		}
-		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + state + "\tANY\n", nil
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + state + "\tANY\t" + orDefault(f.copyStatementTime, "0.000000") + "\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'boss'"):
-		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t0\t0\t\n", nil
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t0\t0\t\t0.000000\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin"):
 		return "", nil
 	case strings.HasPrefix(statement, "SHOW GRANTS FOR 'shop_u'@'localhost'"):
@@ -258,7 +262,9 @@ func withFakeMariaDB(t *testing.T, f *fakeMariaDB) map[string][]byte {
 }
 
 func TestMariaDBRemoteApplyCreatesTLSAccountsAndRefusesOthers(t *testing.T) {
-	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true, "shop_u@198.51.100.9": true}, limit: "15"}
+	// alpha.149 (lab D9): the local account has a plan's statement time; a
+	// remote copy made now carries it, as it carries the connection limit.
+	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true, "shop_u@198.51.100.9": true}, limit: "15", statementTime: "5.000000"}
 	files := withFakeMariaDB(t, f)
 	target, err := dbremote.Target{Engine: "mysql", Port: 3306, Rules: []dbremote.Rule{
 		{Database: "shop", User: "shop_u", Address: "203.0.113.7"},
@@ -288,7 +294,7 @@ func TestMariaDBRemoteApplyCreatesTLSAccountsAndRefusesOthers(t *testing.T) {
 		t.Fatalf("recorded accounts = %v", ts.Accounts)
 	}
 	joined := strings.Join(f.executed, "\n")
-	if !strings.Contains(joined, "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL WITH MAX_USER_CONNECTIONS 15 ACCOUNT UNLOCK;") ||
+	if !strings.Contains(joined, "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL WITH MAX_USER_CONNECTIONS 15 MAX_STATEMENT_TIME 5.000000 ACCOUNT UNLOCK;") ||
 		!strings.Contains(joined, "GRANT ALL PRIVILEGES ON `shop`.* TO 'shop_u'@'203.0.113.7';") {
 		t.Fatalf("statements:\n%s", joined)
 	}

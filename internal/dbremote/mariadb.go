@@ -97,8 +97,14 @@ type MariaDBCredential struct {
 	Plugin             string
 	Auth               string
 	MaxUserConnections int
-	Locked             bool
+	// MaxStatementTime is the local account's MAX_STATEMENT_TIME as MariaDB
+	// prints it ("0.000000": none). alpha.149 (lab D9): a remote copy made
+	// after a plan's time limit was set had none. "" leaves it out.
+	MaxStatementTime string
+	Locked           bool
 }
+
+var mariadbStatementTimeText = regexp.MustCompile(`^[0-9]{1,7}(\.[0-9]{1,6})?$`)
 
 // Validate refuses a credential that cannot be copied safely.
 func (c MariaDBCredential) Validate() error {
@@ -110,6 +116,9 @@ func (c MariaDBCredential) Validate() error {
 	}
 	if c.MaxUserConnections < 0 || c.MaxUserConnections > 1000000 {
 		return errors.New("the local account's connection limit is out of range")
+	}
+	if c.MaxStatementTime != "" && !mariadbStatementTimeText.MatchString(c.MaxStatementTime) {
+		return errors.New("the local account's statement time limit could not be read")
 	}
 	return nil
 }
@@ -175,8 +184,12 @@ func mariadbIdentified(verb, user, host string, credential MariaDBCredential) (s
 	if credential.Locked {
 		lock = "ACCOUNT LOCK"
 	}
-	return fmt.Sprintf("%s %s IDENTIFIED VIA %s USING %s REQUIRE SSL WITH MAX_USER_CONNECTIONS %d %s;",
-		verb, name, credential.Plugin, mysqlString(credential.Auth), credential.MaxUserConnections, lock), nil
+	statementTime := ""
+	if credential.MaxStatementTime != "" {
+		statementTime = " MAX_STATEMENT_TIME " + credential.MaxStatementTime
+	}
+	return fmt.Sprintf("%s %s IDENTIFIED VIA %s USING %s REQUIRE SSL WITH MAX_USER_CONNECTIONS %d%s %s;",
+		verb, name, credential.Plugin, mysqlString(credential.Auth), credential.MaxUserConnections, statementTime, lock), nil
 }
 
 // DropMariaDBAccount removes a remote account.
