@@ -16,6 +16,8 @@ import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr
 import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
 import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import { decodeMoveAnswer, decodeSiteLimits, keptUnits, putBackSplit } from '../src/lib/siteLimits.ts';
+import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
+import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const words = (key) => [
@@ -63,13 +65,15 @@ test('the rolled-back message says put back only for what was confirmed back and
   });
   assert.equal(answer.kept, true);
   assert.deepEqual(putBackSplit(answer), { back: ['celikrt-4.service'], left: ['celikrt-5.service', 'celikrt-6.service'] });
-  for (const text of words('slim.move.rolledBack')) {
-    assert.ok(!/every program|bütün programları/.test(text), text);
-    assert.match(text, /\{back\}/);
+  // alpha.149 (the alpha.148 lab's D6/D7): "put back" says running again; each of the
+  // rest is named with its reason in the page's words (route-scoped lane copy).
+  for (const words of [enSiteLimitsLane, trSiteLimitsLane]) {
+    assert.ok(!/every program|bütün programları/.test(words['slim.move.back']), words['slim.move.back']);
+    assert.match(words['slim.move.back'], /\{list\}/);
+    assert.match(words['slim.move.backNot'], /\{unit\}[\s\S]*\{reason\}/);
   }
-  for (const text of words('slim.move.notBack')) assert.match(text, /\{list\}/);
   const card = read('../src/components/SiteLimitsCard.tsx');
-  assert.match(card, /const \{ back, left \} = putBackSplit\(answer\)[\s\S]*slim\.move\.rolledBack[\s\S]*left\.length > 0 \? t\('slim\.move\.notBack'/);
+  assert.match(card, /const \{ back, left \} = putBackSplit\(answer\)[\s\S]*slim\.move\.backNot[\s\S]*slim\.move\.failedUnit[\s\S]*slim\.move\.back/);
 });
 
 test('in force is the kernel’s; a customer reads one neutral state', () => {

@@ -13,6 +13,7 @@ import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
 import { showToast } from './Toast';
 import { confirmAction } from '../lib/confirmAction';
+import { siteStoppedLines, sitesStoppedTitle, withSiteLimitsLane, type SiteStoppedItem } from '../i18n/siteLimitsLane';
 
 // "Problems now" (alpha.126, Monitoring stage 1; D-024). One list at the top
 // of Monitoring and on the Dashboard, computed on the server only from what
@@ -146,13 +147,21 @@ export function problemVars(
     problem: { kind: string; subject?: string; name?: string; value: number },
     t: ReturnType<typeof useI18n>['t'],
 ): Record<string, string | number> {
-    return {
+    const vars: Record<string, string | number> = {
         name: componentName({ id: problem.subject ?? '', name: problem.name }, t),
         domain: problem.subject ?? '',
         other: problem.name ?? '',
         days: Math.max(problem.value, 0),
         value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? t('monitoring.pct', { n: Math.round(problem.value) }) : problem.value,
     };
+    // alpha.149 (lab O3): a change of limits that did not reach every site names
+    // its reason by code, in the page's words; a reason this page has no words for
+    // (an earlier release's text) is the general sentence pointing to the journal.
+    if (problem.kind === 'site_limits_unapplied') {
+        const code = ['kernel_differs', 'write_failed', 'refused', 'out_of_range', 'agent_unreachable', 'agent_refused'].includes(problem.name ?? '') ? problem.name : 'other';
+        vars.other = t(`slim.applyReason.${code}` as TranslationKey);
+    }
+    return vars;
 }
 
 // 21 Nov 2026: mail signing is worded per state, each with its concrete step
@@ -188,6 +197,11 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_cannot_send' && problem.subject === 'rewrite_failed') return 'pnow.webmail_cannot_send.body_rewrite_failed' as TranslationKey;
     // alpha.145: CelikPanel's text is named only when it lies beside the configuration.
     if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
+    // alpha.149 (lab D6): a program put back with its earlier file that does not run is named.
+    if (problem.kind === 'site_move_kept' && problem.name) return 'pnow.site_move_kept.body_stopped' as TranslationKey;
+    // alpha.149 (lab O3): what the running programs hold could not be read; one site in the singular.
+    if (problem.kind === 'site_limits_unapplied' && problem.name === 'unchecked') return 'pnow.site_limits_unapplied.body_unchecked' as TranslationKey;
+    if (problem.kind === 'site_limits_unapplied' && problem.value === 1) return 'pnow.site_limits_unapplied.body_one' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
@@ -196,6 +210,9 @@ export function problemTitleKey(problem: { kind: string; name?: string; subject?
     // alpha.145 (security): no address: webmail's local server.
     if ((problem.kind === 'webmail_address_kept' || problem.kind === 'webmail_address_refused') && !problem.subject) return 'pnow.webmail_local_server.title' as TranslationKey;
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
+    // alpha.149 (lab O3).
+    if (problem.kind === 'site_limits_unapplied' && problem.name === 'unchecked') return 'pnow.site_limits_unapplied.title_unchecked' as TranslationKey;
+    if (problem.kind === 'site_limits_unapplied' && problem.value === 1) return 'pnow.site_limits_unapplied.title_one' as TranslationKey;
     // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
     if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
         return `pnow.${problem.kind}.title_one` as TranslationKey;
@@ -262,7 +279,9 @@ export function ProblemsNow({
     /** Dashboard: nothing while reading, when clear or when the list cannot be read. */
     quiet?: boolean;
 }) {
-    const { t, locale } = useI18n();
+    const { t: screenT, locale } = useI18n();
+    // alpha.149: the site limits lane's words (route-scoped) before the screen catalogue.
+    const t = withSiteLimitsLane(locale, screenT);
     const handle = useRemote(PROBLEMS_URL, decodeProblems);
     const reread = handle.retry;
     useEffect(() => {
@@ -409,7 +428,7 @@ export function ProblemsNow({
         const send = (body: Record<string, unknown>) => fetch(SITE_MEMORY_DEFAULT_URL, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
         });
-        let preview: { sites_stopped?: string[]; sites_stopped_count?: number; stopped_token?: string } = {};
+        let preview: { sites_stopped?: string[]; sites_stopped_count?: number; stopped_token?: string; sites_stopped_items?: SiteStoppedItem[] } = {};
         try {
             const response = await send({ action: 'preview' });
             if (!response.ok) {
@@ -424,7 +443,8 @@ export function ProblemsNow({
         const stopped = preview.sites_stopped_count ?? 0;
         await confirmAction({
             title: t('pnow.site_memory_default.title', vars),
-            message: [t('pnow.site_memory_default.confirm', vars), stopped > 0 ? t('limits.preview.sitesStopped', { n: stopped }) : '', ...(preview.sites_stopped ?? [])].filter(Boolean).join('\n'),
+            // alpha.149 (lab CHECK 2): each site's line in the page's own words.
+            message: [t('pnow.site_memory_default.confirm', vars), stopped > 0 ? sitesStoppedTitle(stopped, t) : '', ...siteStoppedLines(preview, t)].filter(Boolean).join('\n'),
             confirmLabel: t('pnow.site_memory_default.action'),
             progressTitle: t('pnow.site_memory_default.step'),
             action: async (report) => {

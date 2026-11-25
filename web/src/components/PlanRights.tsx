@@ -1,3 +1,4 @@
+import { siteLimitsLaneTranslation } from '../i18n/siteLimitsLane';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { Copy, Layers, Lock, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useNavigate } from '../router';
@@ -83,7 +84,7 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
     grantorIsReseller: boolean;
     onClose: () => void;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const say = useSaveWords();
     const isNew = initial.id === 0;
     const [plan, setPlan] = useState(initial);
@@ -153,7 +154,11 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
             if (result.kind === 'refused') {
                 const code = result.error.code;
                 if (code === 'PLAN_NARROWING_CONFIRM' && result.preview) {
-                    const sentence = t(kind === 'reseller' ? 'rights.plan.narrowingReseller' : 'rights.plan.narrowing', { n: result.preview.subscriptions ?? 0 });
+                    // alpha.149 (lab CHECK 2): one account or reseller in the singular.
+                    const followers = result.preview.subscriptions ?? 0;
+                    const sentence = followers === 1
+                        ? siteLimitsLaneTranslation(locale, kind === 'reseller' ? 'rights.plan.narrowingReseller.one' : 'rights.plan.narrowing.one') ?? ''
+                        : t(kind === 'reseller' ? 'rights.plan.narrowingReseller' : 'rights.plan.narrowing', { n: followers });
                     setPending({ preview: result.preview, sentence, body: bodyText });
                     return;
                 }
