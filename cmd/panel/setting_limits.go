@@ -331,6 +331,14 @@ func serverSettingLimits(ctx context.Context, q rowQueryer) (settingLimits, erro
 		if row.ServerDefault != nil {
 			d := *row.ServerDefault
 			limit.Default = &d
+		} else if d, ok := siteSliceCodeDefaults[key]; ok {
+			// S4 R2a: a site's slice always has limits; without the
+			// server's own default, CelikPanel's applies (site_limits.go;
+			// memory bound to the host).
+			if key == settingSiteMemoryMB {
+				d = siteMemoryCodeDefault()
+			}
+			limit.Default = &d
 		}
 		out[key] = limit
 	}
@@ -400,7 +408,7 @@ func resellerSettingLimits(ctx context.Context, q rowQueryer, resellerID int) (s
 	}
 	var name string
 	_ = q.QueryRowContext(ctx, `SELECT username FROM users WHERE id = ?`, resellerID).Scan(&name)
-	return limits.withLevel(layer, settingSetByReseller, name).settled(), nil
+	return siteLimitsWithResellerBound(limits.withLevel(layer, settingSetByReseller, name)).settled(), nil
 }
 
 // subscriptionSettingLimits is the effective limit of every key for the
@@ -429,7 +437,7 @@ func subscriptionSettingLimits(ctx context.Context, q rowQueryer, subID int) (se
 		}
 		var name string
 		_ = q.QueryRowContext(ctx, `SELECT username FROM users WHERE id = ?`, resellerID).Scan(&name)
-		limits = limits.withLevel(layer, settingSetByReseller, name)
+		limits = siteLimitsWithResellerBound(limits.withLevel(layer, settingSetByReseller, name))
 	}
 	switch own.State {
 	case rightsStatePlan:

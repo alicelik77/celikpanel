@@ -1,0 +1,91 @@
+{
+  "version": "v0.1.0-alpha.148",
+  "published": "",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:5",
+    "says": "A security release."
+  },
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "Each site’s programs (uploaded programs, Python apps, the Node.js application, service apps, and their install, build and deploy steps) run inside one memory, process and processor limit of their own, so together they can no longer take the whole server from the other customers; a site’s PHP keeps its own limits and its scheduled tasks are not inside them.",
+        "tr": "Her sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) kendilerine ait tek bir bellek, işlem ve işlemci sınırının içinde çalışır; böylece birlikte artık sunucunun tamamını öteki müşterilerden alamazlar; sitenin PHP’si kendi sınırlarını korur, zamanlanmış görevleri bu sınırların içinde değildir."
+      },
+      "case": "CP-2026-21",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:53",
+        "says": "Now a site's programs run inside that site's own limits"
+      }
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "The panel’s sign-in cookies carry names a browser keeps only for the panel’s own host name, so a website on another host name under the same domain can no longer set, shadow or replace the panel’s sign-in; the database tools reached through the panel’s address no longer receive it.",
+        "tr": "Panelin giriş çerezleri, tarayıcının yalnız panelin kendi ana makine adı için sakladığı adları taşır; böylece aynı alan adı altında başka bir ana makine adındaki bir web sitesi panelin girişini artık koyamaz, gölgeleyemez ya da değiştiremez; panelin adresi üzerinden ulaşılan veritabanı araçları artık onu almaz."
+      },
+      "case": "CP-2026-22",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:133",
+        "says": "Now the panel's sign-in cookies carry names a browser keeps only for the"
+      }
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "Signing out after “Log in as” also ends the administrator’s own session in that browser, so nobody who signs in there afterwards can return to it; when a “Log in as” session ends any other way, the browser no longer keeps the administrator’s sign-in.",
+        "tr": "“Farklı giriş yap”tan sonra çıkış yapmak yöneticinin o tarayıcıdaki kendi oturumunu da kapatır; orada sonradan giriş yapan hiç kimse o oturuma dönemez; bir “Farklı giriş yap” oturumu başka bir yolla sona erdiğinde tarayıcı yöneticinin girişini artık saklamaz."
+      },
+      "case": "CP-2026-23",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:150",
+        "says": "also ends the administrator's own session in that browser"
+      }
+    },
+    {
+      "kind": "new",
+      "text": {
+        "en": "Plans, reseller plans and accounts set a site’s memory, processes and processor; without a setting a site gets 512 processes, two processor cores and the smaller of 3072 MB and 75 % of the server’s memory. Lowering a limit below what a site uses lists that site first.",
+        "tr": "Planlar, bayi planları ve hesaplar bir sitenin belleğini, işlem sayısını ve işlemcisini belirler; ayar yoksa bir site 512 işlem, iki işlemci çekirdeği ve 3072 MB ile sunucu belleğinin %75’inden küçük olanını alır. Bir sınırı sitenin kullandığının altına düşürmek önce o siteyi listeler."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:74",
+        "says": "The limits and who sets them."
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "Programs that ran before the update stay outside their site’s limits until the administrator moves the site; the move restarts each of its running programs once.",
+        "tr": "Güncellemeden önce çalışan programlar, yönetici siteyi taşıyana kadar sitesinin sınırlarının dışında kalır; taşıma sitenin çalışan her programını bir kez yeniden başlatır."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:235",
+        "says": "Programs that ran before the update stay outside their site's limits"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A site’s PHP and its scheduled tasks are outside the site’s limits; PHP keeps its own limits per site.",
+        "tr": "Bir sitenin PHP’si ve zamanlanmış görevleri sitenin sınırlarının dışındadır; PHP site başına kendi sınırlarını korur."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:240",
+        "says": "Outside a site's limits:"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "Resellers, customers and team members who were signed in at the time of the update sign in once. Every service on the panel’s own host name shares its cookies, whatever the port, so that host name should serve the panel alone.",
+        "tr": "Güncelleme sırasında oturumu açık olan bayiler, müşteriler ve ekip üyeleri bir kez yeniden giriş yapar. Panelin kendi ana makine adındaki bütün hizmetler, bağlantı noktası ne olursa olsun, onun çerezlerini paylaşır; bu nedenle bu ana makine adı yalnız panel için kullanılmalıdır."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:178",
+        "says": "name shares its cookies, whatever the port, so that host name should serve"
+      }
+    }
+  ]
+}

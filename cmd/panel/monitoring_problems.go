@@ -149,6 +149,22 @@ var problemKindOrder = map[string]int{
 	// alpha.145 lab, D1: a server change whose end the panel could not
 	// record; every other server change waits for it.
 	"service_operation_unsettled": 38,
+	// S4 R2a: a site that keeps reaching its limits; disk limits counted
+	// but not enforced (site_limits_view.go).
+	"site_memory_repeated": 39,
+	"site_tasks_repeated":  40,
+	"disk_limits_counted":  41,
+	// S4 R2a: sites whose programs still run outside their limits (a to-do).
+	"site_programs_outside": 42,
+	// S4 R2a review: this host cannot enforce a site's limits at all.
+	"site_limits_unsupported": 43,
+	// S4 R2a second fix round: a change of limits that did not reach every
+	// site; a default memory limit fixed for the host's earlier memory.
+	"site_limits_unapplied": 44,
+	"site_memory_default":   45,
+	// S4 R2a third fix round: a move whose put-back did not complete (a
+	// program may be stopped; no site is moved until it is settled).
+	"site_move_kept": 46,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -226,6 +242,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// alpha.145 lab, D1: a server change whose end this panel process could
 	// not record (service_operation_settle.go).
 	add(p.serviceOperationUnsettledProblems(ctx), nil)
+	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
+	add(p.siteLimitProblems(ctx, now), nil)
+	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

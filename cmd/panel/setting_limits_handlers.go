@@ -144,9 +144,15 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 		// alpha.128 (integration): outgoing mail follows the mail keys.
 		p.requestOutgoingApply()
 		// alpha.128 (G5): every database user follows the server's limit.
-		if req.Key == settingDBConnections {
+		// S4 R2a: the database time limits too, and the sites' slices.
+		if req.Key == settingDBConnections || dbConnectionLimitChanged(map[string]int{}, map[string]int{req.Key: 0}) {
 			if subs, err := p.subscriptionsReachedBy(ctx, "server", 0); err == nil {
 				p.reapplyDBConnectionLimits(subs)
+			}
+		}
+		if siteLimitsChanged(map[string]int{}, map[string]int{req.Key: 0}) {
+			if subs, err := p.subscriptionsReachedBy(ctx, "server", 0); err == nil {
+				p.reapplySiteSlices(req.Key, subs)
 			}
 		}
 		p.auditDetailed(r, "settings.limit:"+req.Key, "settings", 0, map[string]any{

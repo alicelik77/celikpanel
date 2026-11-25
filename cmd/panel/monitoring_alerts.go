@@ -685,6 +685,31 @@ func alertLine(item pendingAlertMail) (string, string) {
 		// 22 Nov 2026 (B3): item.name is the mailbox.
 		return fmt.Sprintf("The out-of-office reply of %s still answers from an address that is no longer this mailbox's own, and CelikPanel could not change it on the server. Open Monitoring: it says the step; CelikPanel tries again every hour.", item.name),
 			fmt.Sprintf("%s kutusunun otomatik yanıtı hâlâ artık bu kutunun olmayan bir adresten yanıt veriyor ve CelikPanel bunu sunucuda değiştiremedi. İzleme'yi açın: yapılacak adımı söyler; CelikPanel her saat yeniden dener.", item.name)
+	// S4 R2a (site_limits_view.go).
+	case "site_tasks_repeated":
+		return fmt.Sprintf("The programs of %s keep reaching their process limit (%s times in a day). The site's page says what its plan allows.", subject, n),
+			fmt.Sprintf("%s sitesinin programları işlem sınırına tekrar tekrar ulaşıyor (bir günde %s kez). Sitenin sayfası planın neye izin verdiğini söyler.", subject, n)
+	case "site_memory_repeated":
+		return fmt.Sprintf("The programs of %s keep using all their memory (%s times in a day). The site's page says what its plan allows.", subject, n),
+			fmt.Sprintf("%s sitesinin programları belleğin tamamını tekrar tekrar kullanıyor (bir günde %s kez). Sitenin sayfası planın neye izin verdiğini söyler.", subject, n)
+	case "site_programs_outside":
+		return fmt.Sprintf("The programs of %s sites still run outside their limits (%s). \"Move into the limits\" on each site's Overview restarts them once inside.", n, subject),
+			fmt.Sprintf("%s sitenin programları hâlâ sınırlarının dışında çalışıyor (%s). Her sitenin Genel Bakış sayfasındaki \"Sınırların içine taşı\" onları bir kez yeniden başlatıp içeri alır.", n, subject)
+	case "site_limits_unsupported":
+		return "This server cannot enforce the limits of sites' programs (missing: " + subject + "). Monitoring says what that means.",
+			"Bu sunucu sitelerin programlarının sınırlarını uygulayamıyor (eksik: " + subject + "). Ne anlama geldiği İzleme'de."
+	case "site_limits_unapplied":
+		return fmt.Sprintf("A change of limits (%s) did not reach %s sites yet; they keep their earlier limits. CelikPanel tries again every hour. Monitoring says why.", subject, n),
+			fmt.Sprintf("Bir sınır değişikliği (%s) henüz %s siteye ulaşmadı; o siteler önceki sınırlarını koruyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, n)
+	case "site_move_kept":
+		return fmt.Sprintf("A move of %s into its limits did not finish: a program may be stopped, and no site is moved until it is settled. The site's page names the program and has Try again.", subject),
+			fmt.Sprintf("%s sitesinin sınırlarına taşınması bitmedi: bir program durmuş olabilir; bu çözülene kadar hiçbir site taşınmaz. Sitenin sayfası programı söyler ve Tekrar dene düğmesini sunar.", subject)
+	case "site_memory_default":
+		return "The server's memory changed: the default memory limit of a site is still the one set for the earlier memory. Monitoring offers the new default after a preview.",
+			"Sunucunun belleği değişti: bir sitenin varsayılan bellek sınırı hâlâ önceki belleğe göre konan sınır. İzleme yeni varsayılanı önizlemeyle sunar."
+	case "disk_limits_counted":
+		return "Disk limits are counted, not enforced: the hosting file system has no project quotas. Monitoring says what that means.",
+			"Disk sınırları sayılıyor ama dosya sistemi tarafından uygulanmıyor: barındırma dosya sisteminde proje kotası yok. Ne anlama geldiği İzleme'de."
 	case "service_operation_unsettled":
 		// alpha.145 lab, D1: the panel's web process restarts; its start
 		// records what the change did.

@@ -131,6 +131,8 @@ type GitDeployParams struct {
 	Build       bool
 	Clean       bool
 	Caps        sitesandbox.Caps
+	// InSlice runs the deploy in the site's slice (S4 R2a).
+	InSlice bool
 }
 
 // Profile is the deploy's sandbox profile: the install step's, without a
@@ -140,7 +142,9 @@ func (p GitDeployParams) Profile() sitesandbox.Profile {
 	if p.Build {
 		version = p.NodeVersion
 	}
-	return profile(sitesandbox.KindNode, GitUnitName(p.SiteID), p.User, p.Group, p.AppDir, version, 0, InstallLimits, p.Caps)
+	prof := profile(sitesandbox.KindNode, GitUnitName(p.SiteID), p.User, p.Group, p.AppDir, version, 0, InstallLimits, p.Caps)
+	prof.SiteID, prof.InSlice = p.SiteID, p.InSlice
+	return prof
 }
 
 // GitDeploySteps are the command lines in order.

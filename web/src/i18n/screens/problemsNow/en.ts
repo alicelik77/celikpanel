@@ -97,6 +97,15 @@ export const enProblemsNowScreens = {
     'pnow.mail_signing.failed': 'A signing change was put back, or OpenDKIM did not start again. Mail is delivered. Check that OpenDKIM runs on its component page, then restart the panel.',
     'pnow.mail_signing.unknown': 'The last mail change could not confirm how mail is signed. Restart the panel to check again.',
     'pnow.mail_signing.action': 'Open the mail server',
+    // S4 R2a (moved here from "siteLimitsApply" in the third fix round, which
+    // has no room): a change of limits that did not reach every site.
+    'pnow.site_limits_unapplied.title': 'New site limits have not reached {value} sites yet',
+    'pnow.site_limits_unapplied.body': 'After a change of limits ({domain}), {value} sites still have their earlier limits ({other}). CelikPanel tries again every hour; this line goes away when every site has the new ones.',
+    'pnow.site_limits_unapplied.action': 'Open Plans',
+    // S4 R2a third fix round: a move into a site's limits whose put-back did not complete.
+    'pnow.site_move_kept.title': 'A move into a site’s limits did not finish: {domain}',
+    'pnow.site_move_kept.body': 'A program may be stopped; no site is moved until this is settled. The site’s card says what to do.',
+    'pnow.site_move_kept.action': 'Open the site',
 } as const;
 
 export type ProblemsNowScreenKey = keyof typeof enProblemsNowScreens;

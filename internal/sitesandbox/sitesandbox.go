@@ -108,11 +108,12 @@ type Profile struct {
 	// that assesses below it is refused (Permit).
 	Level Level
 	// SiteID is the site the unit belongs to (sites.id; 0: the caller did
-	// not say). InSlice keeps the unit in that site's slice (SliceName),
-	// where a later release placed it (slice.go): this release sets it only
-	// when the unit file it writes over already names that slice and the
-	// slice's file exists; false writes Slice=system.slice, where every unit
-	// of this release runs.
+	// not say). InSlice places the unit in that site's slice (SliceName),
+	// whose limits bound everything of the site together; false keeps
+	// Slice=system.slice, where every unit ran before S4 R2a. The unit's own
+	// Limits are not lowered to the slice's: systemd applies the most
+	// stringent of the unit and its slice (EffectiveMemoryMax=,
+	// systemd.resource-control(5)), docs/SITE-SANDBOX.md §8.
 	SiteID  int
 	InSlice bool
 }

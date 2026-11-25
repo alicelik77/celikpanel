@@ -1114,6 +1114,13 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 				p.recordDomainDeletionStageFailure(ctx, domainID, domain.Name, domainDeletionStageSite, err, false))
 			return
 		}
+		// S4 R2a: a limits file of the site the server owner had changed is
+		// moved aside, not removed; the audit log names where it is.
+		if len(agentResp.SliceFilesAside) > 0 {
+			p.auditDetailed(r, "site.limits_file_aside", "domain", domainID, map[string]any{
+				"site": domain.Name, "files": agentResp.SliceFilesAside,
+			})
+		}
 		// alpha.135: the domain's backups on this server join the holding
 		// list (30 days); remote backup targets are never touched.
 		if backups := agentResp.KeptBackups; backups != nil {

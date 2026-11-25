@@ -205,10 +205,10 @@ func Prove(in ProofInput) ProofResult {
 	if paths := sitePathsOnHost(props); len(paths) > 0 {
 		return refuse(ProofSitePath, "%s: systemd reads %s on the host; a link there would be followed as root", in.Unit, strings.Join(paths, ", "))
 	}
-	// The unit runs in the system slice or in its site's slice, where a
-	// later release placed it (slice.go): both are depth two, where the SMTP
-	// set matches. Which one the caller rendered does not decide; the set
-	// element below is read from the cgroup the unit really runs in.
+	// The unit runs in its site's slice or, not moved yet, in the system
+	// slice (S4 R2a): both are depth two, where the SMTP set matches. Which
+	// one the caller rendered does not decide; the set element below is
+	// read from the cgroup the unit really runs in.
 	cgroup, ok := props["ControlGroup"]
 	allowed := false
 	for _, candidate := range AllowedControlGroups(in.Profile.SiteID, in.Unit) {

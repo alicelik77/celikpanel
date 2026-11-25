@@ -174,6 +174,8 @@ func (p *Panel) handleDomainGitDeploy(w http.ResponseWriter, r *http.Request, do
 			ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: body.RequestID, SiteID: state.SiteID,
 			Domain: state.DomainName, WorkDir: state.DocumentRoot, RunAsUser: services.SiteUsername(state.DomainName),
 			RepoURL: settings.RepoURL, Branch: settings.Branch,
+			// S4 R2a: the deploy runs in the site's slice.
+			Slice: p.siteSliceForDomain(ctx, domainID),
 		}
 		if settings.Build && canBuild {
 			req.Build, req.NodeVersion = true, state.RuntimeVersion.String

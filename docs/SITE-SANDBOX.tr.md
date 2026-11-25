@@ -239,15 +239,14 @@ için, başka yerde çalışan bir birime sistem diliminin öğesi verilemez; en
 program hiç çalışmaz. Günlükte neyin belirlenemediği, sunucu yöneticisinin ne yapacağı ve yeri
 gösteren komut yazar: `systemctl show -p ControlGroup,Slice <birim>`.
 
-Sitenin dilimi, site başına sınırları getiren sonraki sürümün bir sitenin programlarını koyduğu
-yerdir. Bu sürüm dilim oluşturmaz. Sonraki sürümün oraya koyduğu programı kabul eder; böylece bir
-önceki sürüme dönüldüğünde program yine posta engelinin içinde başlar. Bu sürüm böyle bir programın
-birim dosyasını yeniden yazarsa `Slice=celiksite_<id>.slice` satırını yalnız şu durumda korur:
-ana birim dosyasındaki son `Slice=` satırıdır (ek ayar dosyaları okunmaz), birimin kendi sitesinin
+Sitenin dilimi, bu sürümün bir sitenin programlarını koyduğu yerdir (§8: çalışmıyorken yazılan
+program dilime girer; çalışan program, yönetici siteyi taşıyana kadar çalıştığı yerde kalır). Bir
+programın birim dosyası sitenin sınırları uygulanamazken yazılırsa (bu sunucu sınırları tutamıyorsa,
+§8, ya da istekteki sınırlar aralık dışındaysa), zaten kendi sitesinin dilimini gösteren birim
+dosyası `Slice=celiksite_<id>.slice` satırını bir önceki sürümdeki gibi yalnız şu durumda korur: ana
+birim dosyasındaki son `Slice=` satırıdır (ek ayar dosyaları okunmaz), birimin kendi sitesinin
 dilimidir ve `/etc/systemd/system/celiksite_<id>.slice` sıradan bir dosyadır (bağlantı ya da klasör
-değil). Yoksa birim eskisi gibi `Slice=system.slice` alır. Sahibin değiştirdiği birim dosyası olduğu
-gibi kalır; yönetici dosyayı yeniden CelikPanel'e devralırsa, sahibin kendi sitesinin dilimi için
-elle eklediği `Slice=` satırı da aynı koşullarla korunur.
+değil). Yoksa böyle bir yazma birime eskisi gibi `Slice=system.slice` verir.
 
 `celikpanel-egress-guard.timer` 30 saniyede bir çalışır. Biri `nft flush ruleset`
 çalıştırdıysa ya da `nftables.service` yeniden başlatıldıysa tabloyu yeniden yükler ve çalışan
@@ -387,3 +386,439 @@ eksiğin söylediği gibi başarısız oldu (o sunucuda posta engeli yok). Labor
 kalanlar: beş sistem, çıkış tablosu yüklüyken joker Node.js dinleyicisine dışarıdan ulaşılamadığı
 (10. madde) ve her sistemde yöneticinin işlemiyle taşınan gerçek bir Node.js uygulaması (Express,
 Next.js).
+
+## 8. Sitenin dilimi: bir sitenin bütün programları için tek sınır takımı
+
+*21 Kasım 2026, ikinci düzeltme turu 22 Kasım 2026, üçüncüsü 23 Kasım 2026 · Kaynakta var ve bileşen testleriyle
+denendi; aşağıdaki gerçekler geçici Debian 13 ve Ubuntu 24.04 makinelerinde ölçüldü; panelin iki
+sistemdeki laboratuvar turu açık (adımlar çekme isteğinde).*
+
+CelikPanel'in bir site için systemd birimi olarak başlattığı her program o sitenin dilimi
+`celiksite_<site kimliği>.slice` içinde çalışır. Dilimin `MemoryMax=`, `MemorySwapMax=0`,
+`TasksMax=` ve `CPUQuota=` değerleri bu programların **hepsini birlikte** sınırlar:
+
+| Birim | Ne | Dilimde mi |
+|---|---|---|
+| `celikapp-<site kimliği>` | Node.js uygulaması | evet |
+| `celikrt-<uygulama kimliği>` | yüklenmiş bir program ya da Python uygulaması | evet |
+| `celiksvc-<kurulum kimliği>` | bir hizmet uygulaması (n8n) | evet |
+| `celikappinst-`, `celikgit-<site kimliği>` | Node.js kurulum adımı, Git ile dağıtım | evet (her seferinde yeni birim) |
+| `celikrtbuild-`, `celiksvcinst-<kimlik>` | Python derlemesi, bir hizmet uygulamasının kurulumu | evet (her seferinde yeni birim) |
+| sitenin PHP-FPM havuzu, zamanlanmış görevleri | | henüz değil: PHP ve görevler sonraki adımlarda dilime girer |
+| `celikpanel-sandbox@…`, `celikpanel-ftp@…` | root'un bağlama birimleri | hayır: müşteri kodu çalıştırmazlar |
+
+**Bu sürümden sonra henüz sınırlanmayanlar.** Açıkça: bir sitenin diliminin dışında çalışan
+programları (bu sürümden önce yazılmış her program, yönetici siteyi taşıyana kadar; böyle bir
+program, taşınana kadar sunucunun her yeniden başlatılmasından sonra yine), sitenin PHP'si (PHP-FPM
+havuzu), zamanlanmış görevleri ve bir site hesabının açık tutabildiği kullanıcı yöneticileri
+("lingering", polkitd olan Ubuntu) sitenin sınırlarıyla sınırlanmaz. PHP R3'tür; zamanlanmış
+görevler ve açık kalan kullanıcı yöneticileri R2b'dir.
+
+**Ad.** systemd için dilim adındaki tire iç içe geçme demektir (`celiksite-7.slice`,
+`celiksite.slice`'ın alt dilimi olurdu). Tire olmayınca dilim kökün hemen altındadır ve içindeki
+birim `/celiksite_7.slice/<birim>` olur: `/system.slice/<birim>` gibi ikinci düzey. Bu yüzden SMTP
+engelinin kümesi (`typeof socket cgroupv2 level 2`, §3) birimi iki yerde de tabloda hiçbir
+değişiklik olmadan yakalar. Yardımcının `egress-add` komutu birimin gerçekten çalıştığı cgroup'un
+öğesini ekler; bu yeri §3'teki sırayla bulur (önce kendi cgroup satırı, sonra systemd'nin
+`ControlGroup=` değeri, sonra sistem dilimi; birim başka yerde çalışıyorsa nft bu yolu kabul etmez).
+Yalnız sistem dilimini ya da bir sitenin dilimini kabul eder ve başka her yeri reddeder; sahibin
+eklemesiyle başka yere taşınan birim (önceden olduğu gibi) başlamaz. Ajan bir programın nerede
+çalıştığını aynı kuralla okur (`sitesandbox.UnitControlGroupAllowed`). Bekçi zamanlayıcısı birimleri
+iki yerde de yeniden ekler.
+
+**Sınırlar.** Dilim sitenin etkin `site.memory_mb`, `site.tasks` ve `site.cpu_percent` değerlerini
+alır (docs/SITE-LIMITS.md §4a). systemd bir birimle üst dilimlerinin en sıkı sınırını uygular
+("EffectiveMemoryMax= … is the most stringent limit of the unit and parent slices",
+systemd.resource-control(5), systemd 257 ve 255). Birim kendi sınırlarını dosyasında tutar (Node.js
+uygulaması 1536 MB, n8n 1536 MB); dilim dış sınırdır. Hiçbir düzey sınır koymamışsa dilim 512
+işlem, %200 ve bellek için **3072 MB ile sunucu belleğinin %75'inden küçük olanı** alır
+(`/proc/meminfo` içindeki `MemTotal`, tam MB'ye aşağı yuvarlanır, hiçbir zaman 64 MB'den az değil);
+böylece tek bir site varsayılanla bütün sunucuyu alamaz. Bu bellek varsayılanı **ilk
+hesaplandığında sabitlenir** (panelin bu sürümle ilk açılışında; hesaplandığı sunucu belleğiyle
+birlikte `panel_settings` `site_memory_default_v1` içine yazılır). Sunucu belleği sonradan
+değişirse kendiliğinden hiçbir şey değişmez: yönetici Şu anki sorunlar'da tek satır okur ("varsayılan
+önceki belleğe göre konmuştu", iki büyüklükle) ve o satırın tek işlemi, düşürülen her sınırda olduğu
+gibi, daha düşük bir varsayılanın durduracağı siteleri önce gösterir ve ancak o liste onaylanınca
+uygular.
+
+**Bir bayi varsayılanla sunucuyu tüketemez.** Yönetici bir `site.*` anahtarı için tavan koymadıysa
+(ne sunucunun sınırları ne bayinin kendi planı ya da Özel takımı), bayinin planları, müşterilerinin
+Özel takımları ve altındaki her site o anahtarın sunucu varsayılanıyla sınırlanır (bellek için
+sabitlenmiş, sunucuya bağlı varsayılan). Bayinin formu bu sınırı "sınırı koyan: sunucu yöneticisi"
+diye gösterir; yönetici bayiye (bayi planına ya da Özel takımına) bir tavan vererek onu yükseltir.
+Yöneticinin kendi planları varsayılanla sınırlanmaz.
+
+**Sınır uygulayamayan sunucu.** Birleşik cgroup düzeni (`/sys/fs/cgroup/cgroup.controllers`) ya da
+onun `memory`, `pids` ve `cpu` denetleyicileri yoksa sınırlıyormuş gibi görünen hiçbir şey yazılmaz:
+dilim dosyası yazılmaz, hiçbir birim bir dilimi adlandırmaz, taşıma reddedilir, her sitenin kartı
+sınırların geçerli olmadığını söyler ve Şu anki sorunlar'da yönetici için eksik olanı adlandıran
+tek satır olur.
+
+### 8.1 Gerçek sistemlerde ölçülen gerçekler (21 Kasım 2026)
+
+Temel imajlardan başlatılan iki geçici makinede düz `systemctl` ve cgroup dosyaları: Debian 13
+(çekirdek 6.12.105, systemd 257.13) ve Ubuntu 24.04.4 (çekirdek 6.8.0-138, systemd 255.4); ikisi
+de `cpu memory pids` ile birleşik düzeni kullanıyor.
+
+| | Soru | Debian 13 / systemd 257 | Ubuntu 24.04 / systemd 255 |
+|---|---|---|---|
+| F1 | Çalışan bir birimin dosyası `Slice=system.slice`'tan `Slice=celiksite_1.slice`'a değişir; `daemon-reload`, sonra `systemctl restart` | yeniden yüklemeden sonra `Slice=` yeni dilimi gösterir ama süreç `/system.slice/u.service`'te kalır; yeniden başlatmadan sonra `/celiksite_1.slice/u.service`'te çalışır | aynı |
+| F1 | Bir ekleme dosyası `Slice=` koyar | ekleme iki yönde de dosyanın önüne geçer (etkin yer `systemctl show -p Slice`) | aynı |
+| F2 | Dilimin `TasksMax=30` sınırına ulaşılır (tek birim ya da dilimi paylaşan iki birim) | dilimin `pids.events.local` dosyası `max 1`; birimin `max 0` | `pids.events.local` yok; dilimin `pids.events` dosyası `max 0` kalır; çatallanan birimin `pids.events` dosyası `max 1`, `pids.peak` değeri (31, 11) kendi `pids.max` değerinin altında |
+| F2 | Birimin kendi `TasksMax=10` sınırına dilimin içinde ulaşılır | dilimin `pids.events` dosyası `max 1` ama `pids.events.local` `max 0`; birimin yerel dosyası `max 1` | birimin `pids.events` dosyası `max 1`, `pids.peak` 10 = kendi `pids.max` 10; dilimin `pids.peak` değeri 30'da 10 |
+| F3 | Dilimin `MemoryMax=128M` sınırı aşılır | dilimin `memory.events.local` dosyası `max 25 oom 1 oom_kill 0`; `memory.events` dosyası `oom_kill 1` | aynı (`max 35 oom 1`) |
+| F3 | 512M dilim içinde birimin kendi `MemoryMax=96M` sınırı | dilimin `memory.events` dosyası `max 36 oom 1 oom_kill 1`; `memory.events.local` hep 0 | aynı (`max 42`) |
+| F3 | Bütün sunucuda bellek darlığı (2G makinede 8G dilim sınırı, çekirdek kaydında `global_oom`) | dilimin `memory.events` dosyası `oom 0 oom_kill 1`; `memory.events.local` hep 0 | aynı |
+| F4 | İçinde birim çalışırken dilim dosyası değişir (512M → 300M); `daemon-reload` | **çekirdek 512M'de kalır** (altı saniye sonra `memory.max` 536870912, `daemon-reexec` ile de); yeni değer, dilimin bir birimi başladığında ya da `systemctl set-property --runtime` ile cgroup'a ulaşır | yeniden yükleme hemen uygular |
+| F4 | Sahip dilim dosyasını siler; `daemon-reload` | eski sınırlar dilimin bir birimi yeniden başlayana kadar kalır, sonra hiç sınır yok | sınırlar hemen kalkar (`memory.max` `max`) |
+| F4 | 200M kullanım varken 512M → 100M düşürme | bir sonraki başlangıca kadar hiçbir şey | program hemen durdurulur (`oom` 10576) |
+
+Yani sitenin kendi bellek sınırını dilimin `memory.events.local` dosyasındaki `oom` kanıtlar;
+kendi işlem sınırını, varsa (Debian'ın 6.12'si, 6.13 ve sonrası) dilimin `pids.events.local`
+dosyasındaki `max`, yoksa (6.8) bir birimin `pids.events` dosyasındaki `max` kanıtlar — o birimin
+`pids.peak` değeri kendi `pids.max` değerinin altında kaldıysa (sınırı olan tek diğer düzey
+dilimdir). `memory.peak` durumları ayırt etmez.
+
+### 8.2 Dosya ve bir değişikliğin çalışan programlara ulaşması
+
+`/etc/systemd/system/celiksite_<kimlik>.slice`, D-031 kuralıyla ve CelikPanel başlığıyla yazılır:
+olmayan dosya yazılır, CelikPanel'in değişmemiş metni değiştirilir, sahibin değiştirdiği dosya
+korunur ve CelikPanel'in metni yanına `<dosya>.celikpanel-pending` olarak bırakılır (geçerli olan
+dosyanın kendi değerleridir). Sahibin eklemeleri `celiksite_<kimlik>.slice.d/*.conf` içine gider;
+CelikPanel onları hiçbir zaman yazmaz ya da silmez.
+
+Değişen sınır dilimlere yazılır (`Agent.ApplySiteSlicesV1`, çağrı başına en çok 100 site; büyük bir
+değişiklik parti parti gider, böylece bir müşterinin program değişikliği en fazla bir parti bekler;
+sürerken yöneticinin site kartı "Yeni sınırlar sitelere yazılıyor: N siteden n tanesi" der).
+systemd 257 değişen dilim dosyasını çalışan dilime uygulamadığı için (F4) Ajan sonra çekirdeğin
+uyguladığını (`memory.max`, `memory.swap.max`, `pids.max`, `cpu.max`) systemd'nin dilim için
+bildirdiği **etkin** değerle (`systemctl show`: dosya ve bütün eklemeler; sahibin eklemesi kendi
+sayısını korur) karşılaştırır ve yalnız farklı olan anahtar için `systemctl set-property --runtime
+<dilim> <anahtar>=<o değer>` çalıştırır. systemd bunu bir denetim eklemesi olarak yazar
+(`/run/systemd/system.control/<dilim>.d/50-<anahtar>.conf`); bu `/etc`'nin önüne geçer. Ajan o
+çağrının yaptığı dosyaları tam olarak siler ve yeniden yükler; geçerli ayarlar yine yalnız dilim
+dosyası ve sahibin eklemeleri olur. Denetim eklemesi zaten var olan anahtara (sahibin kendi anlık
+ayarı) hiç dokunulmaz. systemd 255'te yeniden yükleme değerleri zaten uygulamıştır ve hiçbir şey
+yapılmaz. Hiçbir şey yeniden başlatılmaz ve müşterinin diliminde hiçbir süreç başlatılmaz.
+Yapılacak dosyalar önce Ajan'ın özel klasörüne kaydedilir ve aynı adımda, adımdan her çıkışta
+silinir. Yalnız çağrı ile silme arasında Ajan durursa kalırlar: o anda dilimin etkin değerlerini
+taşıdıkları için sahip için o an hiçbir şey değişmez; ama **silinene kadar o anahtarlar için
+sahibin kendi eklemelerinin** (`/etc/systemd/system/<dilim>.d/*.conf`) **önüne geçerler**: sahibin
+bu arada böyle bir anahtar için eklediği ya da değiştirdiği ekleme ancak Ajan'ın bir sonraki
+başlangıcından sonra (Ajan onları örnek kilidini alır almaz, sınırları okuyan hiçbir şeyden önce
+siler) ya da bir sonraki açılıştan sonra (`/run` boşalır) geçerli olur. Sahibin o arada aynı anahtar
+için kendisinin çalıştırdığı `systemctl set-property --runtime` de onlarla birlikte silinir.
+**Düşürülen sınır bu yüzden iki sistemde de hemen geçerli olur**; bu nedenle önce sorulur (§8.5).
+
+**Her siteye ulaşmayan değişiklik.** Sınır değişiklikleri birer birer yazılır (ikinci değişiklik
+bekler, sonra sınırları o anki haliyle okur; iki değişiklik hiç iç içe geçmez); 100 sitelik her
+partinin kendi süre sınırı vardır. Ajan'ın yanıt vermediği parti (ve ondan sonrakiler), reddettiği
+ya da systemd'ye aldıramadığı parti (başarısız `daemon-reload`, okunamayan kayıt defteri) ve dosyası
+yazılamayan site önceki sınırlarını korur ve bu kaydedilir (`panel_settings` `site_limit_apply_v1`):
+yönetici Şu anki sorunlar'da değişikliği, kaç sitede hâlâ önceki sınırların geçerli olduğunu ve
+nedenini söyleyen TEK satır okur; panel her saat o siteleri sınırların o anki haliyle yeniden yazar
+ve her site yenilerini alınca satır kaybolur. Sitenin kartı, ikisi farklı olduğunda geçerli sınırı
+(systemd'nin uyguladığını) planın değerinin yanında gösterir.
+
+**"Geçerli" çekirdeğin söylediğidir** (üçüncü düzeltme turu). Durum okuması çalışan dilimin
+`memory.max`, `pids.max` ve `cpu.max` dosyalarını da okur ve systemd'nin uyguladığıyla karşılaştırır
+(bellekte çekirdeğin tam sayfaya yuvarlamasına izin vererek). Kart sınırların geçerli olduğunu ancak
+bunlar eşitse ve systemd diskteki dosyayı okumuşsa (`FragmentPath` dolu, `NeedDaemonReload=no`)
+söyler. Değilse yönetici "yazıldı, henüz geçerli değil" okur ve geçerli olanlar olarak çekirdeğin
+değerleri gösterilir: systemd 257'de değişen dosya çalışan dilime yalnız CelikPanel'in kendi
+uygulamasıyla ya da bir programın başlamasıyla ulaşır; sahibin elle değişikliği ise bir
+`daemon-reload` ve biraz zaman sonra. `sudo systemctl daemon-reload` sonrasında sahibin değişikliği
+çalışan programlara Ubuntu 24.04'te hemen, Debian 13'te hiçbir program başlamadan yaklaşık bir buçuk
+dakika sonra ulaşır; bir programın başlaması onu hemen uygular (ölçüldü, A7/N4 gerçekleri).
+Okunamayan cgroup
+dosyası "bilinmiyor"dur, hiçbir zaman "geçerli" değil; çalışmayan dilim dosyayı bir program
+başladığında alır. Uygulamanın kendisi, çalışan bir dilimin sınırlarını neden tutmadığını site site
+bildirir (systemd okunamadı, uygulamanın kaydı yazılamadı, `set-property` başarısız oldu ya da
+çekirdeğin dosyaları sonrasında hâlâ farklı): böyle bir site değişikliğin başarısız sonucudur, hiçbir
+zaman "yazıldı" değil; bu yüzden yukarıdaki kayda, onun Şu anki sorunlar satırına ve dosya
+değişmemiş olsa da yeniden uygulayan saatlik tura girer. Bir programın kendi yazmasından sonraki ya
+da taşımanın içindeki uygulama yalnız kayda geçer: dilimde başlayan her program systemd'nin dosyayı
+uygulamasını sağlar ve kart çekirdeği okur.
+
+**Eksik dosya.** Dosyası olmayan dilimin sınırı yoktur (F4). Kart üç durumu ayırır. Güncellemeden
+hemen sonra var olan her sitenin dilim dosyası yoktur, çünkü programları hiç taşınmadı: hiçbir birim
+dilimi adlandırmaz; kart programların sınırların dışında çalıştığını söyler ve taşımayı sunar. Bir
+birim dilimi adlandırıyor ya da içinde çalışıyorken dosya gitmişse (sahip sildi) kart dosyanın eksik
+olduğunu ve sınırların bir sonraki değişikliğinin onu yeniden yazacağını söyler; site "dışarıda"
+satırına sayılır ve yöneticinin kartı dosyayı yazan taşımayı sunar. CelikPanel'in yazdığı ve sahibin
+geri vermek için sildiği dosya, hiçbir birim dilimi adlandırmasa da bir sonraki değişiklikle yeniden
+yazılır.
+
+**Yöneticinin kartı** sahibin eklemelerini dosya adıyla ve "sunucu sahibinin eklemeleri geçerli"
+diyerek gösterir; değiştirilmiş dosyayı korunuyor diye anar.
+
+### 8.3 Bir birim yazıldığında nereye gider
+
+Değişen `Slice=` çalışan bir birime ancak bir sonraki başlangıcında ulaşır (F1). Bu yüzden:
+
+- çalışmayan bir birim (yeni, durdurulmuş, her kurulum ya da derleme adımı) sitesinin dilimine
+  yazılır; durdurulmuş bir programı sayfasından başlatmak hiçbir şey yazmaz, bu yüzden
+  güncellemeden önce durdurulmuş olup böyle yeniden başlatılan bir program yeniden dağıtılana ya
+  da site taşınana kadar dosyasının söylediği yerde (`system.slice`) çalışır ve dışarıda sayılır
+  (alpha.148 laboratuvarı);
+- çalışan bir birim her sıradan yazmada (ayar değişikliği, güncelleme, müşterinin yeniden
+  başlatması) çalıştığı dilimde kalır;
+- dosyası zaten sitesinin dilimini adlandıran bir birim, o dilimin dosyası durdukça, systemd
+  nerede çalıştığını söyleyemese de (yanıt vermez ya da boş veya bilinmeyen bir yer gösterir;
+  alpha.148 düzeltme turu) her yazmada o satırı korur: yapılamayan bir okuma bir programı hiçbir
+  zaman sınırlarının dışına çıkarmaz, içine de almaz;
+- yöneticinin Node.js sitesi için koruma taşıması (§6a) zaten yeniden başlatır ve onu kanıtı ve geri
+  koymasıyla dilime alır.
+
+**Sunucu yeniden başladıktan sonra.** systemd açılışta her birimi kendi dosyasından, `Slice=`
+satırının adlandırdığı dilimde başlatır. Bu sürümden önce yazılmış her programın ve çalışırken
+yazılmış her programın dosyası `Slice=system.slice` der. **Bu yüzden sitenin var olan programı
+yeniden başlatmadan sonra, önceden olduğu gibi, sitenin sınırlarının dışında başlar ve yöneticinin
+taşımasına kadar dışarıda kalır.** Dosyası çalışmıyorken yazılan ya da taşınan program sitesinin
+dilimini adlandırır ve onun içinde başlar.
+
+### 8.4 Yöneticinin taşıması
+
+Sitenin Genel Bakış sayfası yöneticiye her programın nerede çalıştığını ve tek bir işlemi gösterir:
+`POST /api/v1/domains/{id}/site-limits/move {request_id}` (`Agent.MoveSiteSliceV1`). Panel genelinde
+aynı anda bir taşıma; yinelenen `request_id` ilk yanıtı alır; denetim kaydına `site.limits_move`
+olarak yazılır.
+
+- Taşıma sitenin kilidini beklemeden alır: tam o sırada silinen ya da değiştirilen site taşınmaz
+  ("site şu an değiştiriliyor; bir dakika sonra sayfasını yeniden okuyun") ve taşıma silinmiş bir
+  sitenin hiçbir şeyini yeniden yaratmaz.
+- Önce her birimi okur: dosyasını sahibin değiştirdiği birim, eski bir korumadaki birim ve sahibin
+  eklemesinin yerleştirdiği birim (eklemedeki `Slice=`, bir şey yeniden başlamadan önce okunur)
+  taşınmaz ve yeniden başlatılmaz; kart onları kimin ne yapacağıyla adlandırır ve "dışarıda" satırına
+  sayılmazlar.
+- İlk yazmadan önce günlüğü kaydeder (aşağıda). Sonra dilim, sonra sırayla her birim, **o programın
+  kendi değişiklik kilidiyle** (programın her başka değişikliğinin aldığı kilit; her programın kendi
+  kilidi, başka hiçbir program ya da siteyle paylaşılmaz): dosya taşımanın planladığı metin olmalıdır
+  (değilse arada yapılmış bir değişikliktir: korunur, "değiştirildi"), CelikPanel'in değişmemiş metni
+  `Slice=celiksite_<kimlik>.slice` alır (yeniden mühürlenir), systemd yeniden yüklenir ve çalışan birim
+  bir kez yeniden başlar; **kendi başlama süresi içinde** dilimde çalışmalı ve önceden dinlediği her
+  bağlantı noktasını yeniden dinlemelidir: birimin kendi `TimeoutStartUSec` değeri (bu birimler koymaz,
+  yani systemd'nin 90 saniyesi), hiçbir zaman 20 saniyeden az, 300 saniyeden çok değil. Yeniden
+  başlatmanın kendisi de, birimin kendi `TimeoutStartSec` değeri ne derse desin (`infinity` bile),
+  aynı süreyle sınırlıdır: o sırada hâlâ süren başlangıç "hâlâ başlıyor" olur (systemd başlatma
+  işini sürdürür; yalnız taşıma beklemeyi bırakır) ve birim geri konur. Ne neyi
+  bekler: taşınan programın bir değişikliği onun adımını bekler (en fazla başlama süresinin iki katı:
+  yeniden başlatma ve bir geri koyma); taşıma siteyi tutarken aynı sitenin bir değişikliği reddedilir
+  ("değiştiriliyor"), site değiştirilirken taşımanın reddedildiği gibi; başka programlar ve başka
+  siteler hiç beklemez.
+- **Taşımanın süre kuralı.** Taşımanın 11 dakikası vardır. Çalışan bir program ancak kalan süre onun
+  kendi başlama süresini, kendi geri koymasını (o süreyi yeniden alabilen bir yeniden başlatma),
+  ondan önce taşınan her programın geri koymasını ve 5 saniyeyi tutuyorsa yeniden başlatılır; böylece
+  ilk program, en uzun başlama süresi olan 300 saniyeyle bile her zaman sığar ve geri koymalar dahil
+  bütün taşıma panelin çağrı için koyduğu 12 dakikanın altında kalır. Süre yüzünden duran taşıma bunu
+  söyler: taşıdığı programlar sınırların içinde kalır ve tamamlandı olarak işaretlenir, başlatmadıkları
+  "denenmedi" olur ve bir sonraki taşıma onlarla sürer.
+- Bir birim başarısız olursa o ve sitenin ondan önce taşınan her birimi taşıma öncesi baytlarına
+  geri konur, ama yalnız taşımanın kendi metninin üstüne: arada değiştirilen ya da silinen dosya
+  olduğu gibi bırakılır. Diğer sitelere hiç dokunulmaz. Yanıt "geri kondu" demeyi yalnız geri
+  konduğu doğrulanan programlar için söyler; geri koyması tamamlanmayanları adıyla sayar.
+
+**Günlük** (Ajan'ın özel klasöründe `site-slice-move.json`) **her yazmadan önce** yazılır ve diske
+işlenir: ilk yazmadan önce taşımanın değiştireceği her birim dosyasının taşıma öncesi baytları ve
+kipi, dilim dosyasının baytları ve kipi (ya da olmadığı) ile kayıt defterindeki özeti ve her birimin
+adımı; bir birim dosyası yazılmadan önce adımı "yazılıyor" olur; dilim dosyası yazılır yazılmaz yeni
+baytları. Yazılamayan günlük başarısız bir adımdır: başka hiçbir şey yazılmaz ve yazılan geri konur.
+Ajan başlarken yalnız adımın adına hiç güvenilmez: her birimin dosyası kaydedilen taşıma öncesi
+baytlarla ve taşımanın yazmak istediği metinle karşılaştırılır:
+
+| Birim dosyasında olan | Ajan'ın bir sonraki başlangıcında |
+|---|---|
+| taşıma öncesi baytlar, adım "planlandı" ya da "yazılıyor" | dokunulmaz ("denenmedi") |
+| taşıma öncesi baytlar, daha sonraki bir adım | zaten geri kondu; önceden çalışıyorsa ve şimdi sistem diliminde çalışmıyorsa yeniden başlatılır ("geri kondu") |
+| taşımanın metni, durdurulmuş birim | korunur: dosyası dilimi adlandırır, orada başlar ("yeniden yazıldı") |
+| taşımanın metni, çalışan birim, adım "taşındı" (dilimde çalıştı ve yanıt verdi) | korunur ("taşındı") |
+| taşımanın metni, çalışan birim, başka her adım | taşıma öncesi baytlar geri, daemon-reload ve hâlâ sistem diliminde çalışmıyorsa yeniden başlatma ("geri kondu") |
+| başka bir şey ya da dosya yok | olduğu gibi bırakılır ("değiştirildi") |
+
+Birim dosyaları, yönetilen her başka dosyanın kullandığı yazıcıyla yazılır ve geri konur (metin
+yeniden adlandırmadan önce, klasör ondan sonra diske işlenir); böylece bir yazmanın hemen ardından
+elektrik kesilse de boş bir birim kalmaz.
+
+Dilim dosyası: her birim sonuçlanmışsa, bundan sonra hiçbir birim dilimi adlandırmıyorsa ve dosya tam
+olarak taşımanın yazdığı baytları tutuyorsa kaydedilen asıl geri gelir (önceki baytları ve kayıt
+defteri özeti, ya da önceden yoksa dosya yok); yoksa kalır.
+
+**Tamamlanmayan geri koyma günlüğü korur** (üçüncü düzeltme turu). Bunlar: yazılamayan taşıma öncesi
+dosya; systemd'nin yerini söyleyemediği birim (başarısız durum okuması "bilinmiyor"dur: buna göre
+hiçbir şey yeniden başlatılmaz, hiçbir zaman "çalışmıyor, yeniden başlat" sayılmaz); başarısız
+`daemon-reload` (systemd hâlâ taşınmış metni tutar, bu yüzden hiçbir birim yeniden başlatılmaz);
+başarısız yeniden başlatma (program durmuştur) ya da başlama süresinin sonunda hâlâ süren başlangıç;
+Ajan'ın açılışında, açılışın kendi süresine sığmayan bir geri koyma yeniden başlatması (alpha.148
+düzeltme turu: Ajan'ın açılışındaki bütün kurtarma 4 saniye içinde kalır, çünkü Ajan'ın soketi
+açılmadan önce çalışır ve bir güncelleme o soketi yaklaşık 12 saniye bekler; bir yeniden başlatma
+ancak en az 1 saniye kalmışsa gönderilir ve en çok kalan süre kadar beklenir, sürerse "hâlâ
+başlıyor" olur; sığmayan bu açılışta gönderilmez, "henüz yeniden başlatılmadı").
+Günlük korunduğu sürece hiçbir site taşınmaz: yeni taşıma, taşıması bitmeyen site adıyla reddedilir.
+Sitenin kartı (yönetici) son taşımanın bitmediğini ve kalan her program için durumunu (durdu,
+yeniden başlamadı; yeri bilinmiyor, yeniden başlatılmadı; hâlâ başlıyor; henüz yeniden
+başlatılmadı), nedeni için `journalctl -u
+<birim>` komutunu ve elle yapılacak adımı (kendi sayfasından ya da `systemctl start <birim>` ile
+başlatmak) söyler; **Tekrar dene** düğmesi (`POST …/site-limits/move {request_id, recover: true}`,
+denetim kaydına `recover` ile `site.limits_move` olarak yazılır) geri koymayı hemen çalıştırır ve
+yeni hiçbir şey taşımaz. Bu arada elle başlatılan program sistem diliminde çalışır bulunur ve günlük
+gider; bir program durmuşken günlüğü unutturan bir düğme yoktur. Günlük korunduğu sürece Şu anki
+sorunlar'da yönetici için TEK satır vardır (`site_move_kept`, siteyi açar). Ajan'ın bir sonraki
+başlangıcı ve bir sonraki taşıma girişimi de aynı geri koymayı dener. Tamamlanınca kart, sitenin bir
+sonraki taşımasına kadar son taşımanın yarıda kesildiğini ve her programın tamamlandığını, geri
+konduğunu ya da arada değiştirildiyse olduğu gibi bırakıldığını söyler.
+
+### 8.5 Sınırı sitenin kullandığının altına düşürmek
+
+`site.memory_mb` değerini sitenin programlarının şu an kullandığının altına düşürmek çekirdeğin
+onlardan birini hemen durdurmasına yol açar (F4); `site.tasks` değerini tuttukları işlem sayısının
+altına düşürmek yeni işlemleri reddeder, çalışanlardan hiçbirini durdurmaz. Bu yüzden plan formu,
+bayi planı ve bir hesabın kendi sınırları, değişiklik onaylanmadan önceki önizlemesinde (panelin
+kendi onayı) programları yeni değerden fazlasını kullanan siteleri gösterir ve tam olarak şunu söyler:
+bellek sınırını aşan program hemen durdurulur; işlem sınırında yeni işlem başlamaz, çalışanlar sürer.
+**Önizlemeyi ekran değil sunucu uygular:** sınırı sitelerin şu an kullandığının altına düşüren istek
+ancak sunucunun o anda verdiği listenin işaretiyle (`confirm_stopped`, önizlemenin `stopped_token`
+değeri) kaydedilir; API'den bu işaret olmadan ya da önceki bir listenin işaretiyle gelen istek
+(sitelerin kullanımı bu arada değişti) güncel listeyle reddedilir. Önceki belleğe göre sabitlenmiş
+varsayılanın işlemi için de aynısı geçerlidir (§8 "Sınırlar"). Sınırların uygulanmasında başka hiçbir
+şey değişmez. Sunucunun kendi sınırlar ekranı onları listelemez (bilinen bir açık: bir `site.*`
+anahtarının düşürülen sunucu tavanı ya da varsayılanı önizlemesiz uygulanır).
+
+### 8.6 Bir sınıra ulaşıldığında insanların okuduğu (D-024)
+
+Ajan dilimin sayaçlarını sitenin durum okumasıyla ve program çalıştıran bütün siteler için arka
+planda en fazla beş dakikada bir okur (en çok 1000 site ve 4000 programlık sayfalarla; bir sitenin
+istediği kadar programı olabilir; hiçbir okuma site ya da program sayısı yüzünden reddedilmez; kayıt
+defteri her okumada bir kez okunur). Panel bir sayacın ne zaman arttığını kaydeder (`panel_settings`
+`site_limit_events_v1`; bir sitenin ilk okuması başlangıç noktasıdır; yalnız bir sınıra
+ulaşıldığında, bir sayaç yeniden başladığında ya da bir site gittiğinde yazılır). Kayıt sınırlıdır:
+her tür için beş dakikada en fazla bir ulaşma anı ve hiçbir zaman bir günlükten (288) fazlası tutulur;
+kart ne kadar sık okunursa okunsun kayıt bununla büyümez; sayılar eksiksiz kalır.
+
+- "Sitenin kendi sınırı" (bellek, işlem) yalnız §8.1'in kanıtladığıdır. Kart o zaman ne olduğunu ve
+  ne zaman olduğunu, geçerli sınırı (ulaşılan sayı: systemd'nin uyguladığı; sahibin eklemesi,
+  değiştirilmiş dosya ya da henüz yazılmamış bir değişiklik başkasını koymadıkça planın değeri) ve
+  planınki ise kimin yükseltebileceğini söyler: müşteriye "hizmet sağlayıcınız", bayiye "kendi
+  sınırlarınız içinde müşterinin planında siz", yöneticiye planın ya da bayinin adı. Bir günde iki ya
+  da daha fazla okumada kendi bellek ya da işlem sınırına ulaşan site Şu anki sorunlar'da bir satırdır.
+- **Ne sayılır.** Sitenin kendi bellek sınırına bir kez ulaşılması, o sınıra ulaşılmışken çekirdeğin
+  durdurduğu bir programdır: dilimin kendi `memory.events.local` `oom` değerinin arttığı bir okumada
+  dilimin `oom_kill` artışı (en az bir); her başarısız geri kazanmayı sayan ham `oom` sayısı hiçbir
+  zaman sayılmaz (F4: durdurulan tek program için `oom 10576`). Sitenin sınırında reddedilen işlemde
+  her reddedilen başlatma sayılır.
+- Sitenin sınırı olmadan bellek yetmediği için durdurulan (kendi daha küçük sınırı ya da bütün
+  sunucunun darlığı) ya da çekirdeğin sitenin sınırına bağlamadığı bir işlem reddi yaşayan (programın
+  kendi sınırı ya da 6.8'de birimin bunu söyleyecek `pids.peak` değeri olmadığında) program yalnız bu
+  kadarıyla söylenir ("bu sitenin bir programı yeni işlem başlatamadı; çekirdek bunun sitenin sınırı
+  olduğunu göstermiyor"): plan hiçbir zaman suçlanmaz ve Şu anki sorunlar satırı çıkmaz.
+- Sınırların geçerli olmadığı yerde (bütün programlar dışarıda, dilim dosyası yok, sınırları
+  uygulayamayan sunucu, yazıldı ama henüz geçerli değil, bilinmiyor) kart "sınırlarının içinde
+  kaldı" yerine bunu söyler. **Müşteri ya da bayi bunların hiçbiri için bir şey yapamaz**; bu
+  yüzden tek ve yansız bir cümle okurlar ("bu sınırlar henüz uygulanmıyor; bununla sunucunun
+  yöneticisi ilgilenir; sizden bir şey gerekmez"); yönetici nedeni ve adımı okur.
+
+**Henüz taşınacak siteler.** Şu anki sorunlar'da yalnız yönetici için bir satır vardır: kendi
+programları sınırlarının dışında çalışan ya da orada başlayacak olan ve taşımanın alabileceği siteler
+(sayıları ve ilk beş adı). İlk siteyi açar, bir uyarıdır (yapılacak iş) ve hiç site kalmayınca
+kendiliğinden kaybolur (`panel_settings` `site_limit_outside_v1`, yalnız liste değişince yazılır).
+
+### 8.7 Silinen sitenin dilimi
+
+Bir site silinince CelikPanel'in değişmemiş dilim dosyası gider ve kayıt defteri onu unutur; sahibin
+değiştirdiği dosya ve sahibin ekleme klasörü systemd'nin yüklemediği adlarla kenara konur
+(`<dosya>.celikpanel-aside-<UTC zamanı>`) ve denetim kaydında adlandırılır (`site.limits_file_aside`).
+**Bir site yaratılırken** (henüz hiçbir şeyi yok: ev klasörü ve hesabı yeni), onun kimliğine ait olup
+Ajan'ın kayıt defterinin tanımadığı dilim dosyası (önceki bir kurulumda aynı kimliğe sahip bir site)
+**ekleme klasörüyle birlikte** aynı biçimde kenara konur; yeni müşterinin sitesi ikisini de devralmaz;
+Ajan'ın kaydında adlandırılır. Böyle bir dosya ya da klasör varsa ve sınıflandırılamıyorsa (kayıt
+defteri okunamıyor) ya da kenara konamıyorsa **site reddedilir**: hiçbir şeyi yapılmadan, dosya ve
+nedeniyle ("bu ad için sunucuda zaten bir yapılandırma dosyası var"; sunucu sahibi onu kaldırır,
+sonra site yeniden yaratılır); böyle bir dosya yoksa yaratma kayıt defterinden bağımsız sürer. Var
+olan bir site için sonraki bir yazma sahibin dosyasını ya da eklemesini hiçbir zaman kenara koymaz. Kayıt defterinin tanıdığı dilim dosyası (aynı kurulumun,
+silinmesi çalışmamış önceki bir sitesi) olduğu gibi bırakılır. **Okunamayan kayıt defteri** bir
+hatadır, hiçbir zaman boş bir kayıt defteri değildir: o okumayla hiçbir şey yazılmaz, silinmez ya da
+kenara konmaz ve çağıran bunu söyler (sınır değişikliğinin Şu anki sorunlar satırı, taşımanın yanıtı,
+silmenin başarısız adımı, bir programın kendi yazması için Ajan'ın kaydı).
+
+**Sahibin bağımsızlığı (D-022).** Dilimler yerel birimlerdir. Panel durdurulsa, kaldırılsa ya da
+lisanssız kalsa da onlar ve sınırları çalışmaya devam eder. Bir sitenin sınırlarını panel olmadan
+kaldırmak ya da değiştirmek için sahip bir ekleme dosyası yazar
+(`/etc/systemd/system/celiksite_<kimlik>.slice.d/owner.conf`, örneğin `[Slice]` ve
+`MemoryMax=infinity` ile) ve `systemctl daemon-reload` çalıştırır. `sudo systemctl daemon-reload`
+sonrasında sahibin değişikliği çalışan programlara Ubuntu 24.04'te hemen, Debian 13'te hiçbir
+program başlamadan birkaç saniye ile yaklaşık bir buçuk dakika arasında ulaşır (alpha.148
+laboratuvarı: 15 saniye içinde); bir programın başlaması onu hemen uygular.
+CelikPanel onu hiçbir zaman yazmaz ya da silmez.
+
+**Panel kalırken tek bir programı sitesinin sınırlarının dışına almak.** Panelde bunun için bir
+işlem yoktur. Sahip programın biriminin yanına bir ekleme dosyası yazar; Debian 13'te ve Ubuntu
+24.04'te aynıdır: `/etc/systemd/system/<birim>.service.d/slice.conf` içinde `[Service]` ve
+`Slice=system.slice`, sonra `sudo systemctl daemon-reload` ve `sudo systemctl restart <birim>`.
+CelikPanel bir birimin ekleme dosyalarını hiçbir zaman yazmaz ya da silmez ve sonrasında panelin
+hiçbir yeri programı reddetmez: durum okuması ekleme dosyasının `Slice=` satırını `DropInPaths`
+üzerinden okur (`siteUnitDropInSlice`); yöneticinin kartı programı sınırların dışında, "sunucu
+sahibi onu kendi eklemesiyle yerleştirdi; orada kalır" diye gösterir ve "dışarıda" satırı onu
+saymaz; taşıma onu yeniden başlatmadan bırakır (`owner_slice`); bir kaydetme CelikPanel'in kendi
+birim dosyasını her zamanki gibi yazar (§8.3'ün kuralıyla korunan `Slice=` satırını ekleme dosyası
+geçersiz kılar), bu yüzden ne `unit_edited` ne de korunan bir dosya oluşur; posta engelinin
+yardımcısı ve kanıtı sistem dilimini kabul eder. Ekleme dosyasını silip aynı iki komutu çalıştırmak
+programı yeniden içeri alır. Bunun yerine CelikPanel'in birim dosyasını değiştirmek onu sahibinin
+yapar (D-031): bir hizmet uygulamasının bir sonraki etkinleştirmesi `unit_edited` ile reddedilir,
+bir programın ya da Node.js sitesinin yazmaları yanında `.celikpanel-pending` olarak korunur;
+böylece panel o birimi artık yönetmez.
+
+**Panel kaldırılınca sunucuda kalanlar.** Sınırlar yeniden başlatmalardan sonra da çalışmaya devam
+eder: systemd her açılışta dilim dosyasını, birimi onu adlandıran programlara uygular (dosya
+yerindeyken bir yeniden başlatmada ölçüldü, N4 gerçekleri). Geride kalanlar:
+
+- `/etc/systemd/system/celiksite_<kimlik>.slice`, sahibin `celiksite_<kimlik>.slice.d/`
+  klasörleri ve varsa `celiksite_<kimlik>.slice.celikpanel-pending` ile
+  `….celikpanel-aside-<zaman>` kopyaları;
+- taşınan her programın birim dosyasındaki `Slice=celiksite_<kimlik>.slice` satırı;
+- Ajan'ın özel klasöründeki kendi kayıtları (kayıt defteri, `site-slice-move.json`,
+  `site-slice-move-outcomes.json`, `site-slice-runtime.json`): Ajan olmadan hiçbir şey yapmazlar;
+- yalnız Ajan bir uygulamanın ortasında durduysa: `/run/systemd/system.control/celiksite_<kimlik>.slice.d/`
+  içindeki denetim eklemeleri; bir sonraki açılışta giderler.
+
+Panel kaldırıldıktan sonra sınırları elle kaldırmak için: her programa yukarıdaki ekleme dosyasını
+yazın (`[Service]` ve `Slice=system.slice` içeren `<birim>.service.d/slice.conf`) ya da birim
+dosyasında `Slice=celiksite_<kimlik>.slice` satırını `Slice=system.slice` yapın,
+`celiksite_*.slice` dosyalarını ve `.d` klasörlerini
+silin, `systemctl daemon-reload` çalıştırın ve her programı yeniden başlatın. Programları oldukları
+yerde bırakıp yalnız bir sınırı kaldırmak için yukarıdaki ekleme dosyasını kullanın.
+
+### 8.8 Önceki bir sürüme geri dönmek
+
+**Başarısız bir güncelleme kendiliğinden geri döner; o anda bu bölümün hiçbir şeyi yoktur.**
+Güncellemenin kendiliğinden geri dönüşü, yeni panelin salt okur açılış denetimine kadarki bir
+hatayı kapsar; güncellemenin tamamlandı işareti bu denetimden sonra, yeni Ajan ve panel
+başlatılmadan önce konur. Bu sürüm güncellemenin içinde hiçbir şey yapmaz: veritabanı geçişi yoktur
+(yapı şema 81'de kalır), güncelleyici hiçbir programın birimini yeniden yazmaz ve sürüm arşivi
+yardımcı kurmaz (Ajan, koruma yardımcısının kendi kopyasını ve bekçiyi açılıştan sonraki ilk
+program yazmasında yerine koyar). Bu yüzden kendiliğinden geri dönüş ne dilim dosyası, ne taşınmış
+program, ne bu sürümün yazdığı bir `site.*` ya da `db.*` değeri, ne de Ajan'ın bu bölümdeki
+kayıtlarından birini bulur.
+
+**Tamamlanmış bir güncelleme geri alınmaz.** Yeni Ajan ve panel başlatıldığı andan sonra
+güncelleme sonuna kadar götürülür; o başlatma başarısız olsa da. Panel önceki sürüme dönmek için
+bir yol sunmaz; sürümün `rollback.sh` betiği tamamlanmış bir güncellemeyi hiçbir şeyi durdurmadan
+reddeder:
+`!! a new rollback cannot reuse an earlier transaction's recovery material; preserve the snapshot and use a supported recovery plan`;
+`sudo /usr/libexec/celikpanel/recovery recover` ise yalnız yarıda kalmış bir güncellemeyi ya da
+geri almayı bitirir. Bu yüzden ürünün hiçbir yolu, bu sürümü çalıştırmış bir sunucuya önceki
+sürümü (ya da daha eskisini) geri getirmez. Önceki sürüm alpha.147 sitesinin diliminde çalışan bir
+programı zaten kabul eder (yardımcısı, bekçisi ve kanıtı), bir planı ya da hesabı kaydederken
+tanımadığı sınır anahtarlarını korur ve o dilimin dosyası durdukça bir birimin
+`Slice=celiksite_<kimlik>.slice` satırını korur; bu bir hazırlıktır, geri dönüş yolu değildir.
+
+**Bu sürümün yaptıkları bu sürümde geri alınır:**
+
+- Bir sitenin sınırları panel olmadan sahibin ek ayar dosyasıyla kaldırılır ya da değiştirilir
+  (§8.7, "Sahibin bağımsızlığı"); planda, hesapta ya da sunucunun sınırlarında bir `site.*`
+  anahtarını boşaltmak siteyi varsayılana döndürür.
+- Bir program sitesinin diliminden sahibin ekleme dosyasıyla çıkarılır (§8.7, "Panel kalırken tek
+  bir programı sitesinin sınırlarının dışına almak"): panelde bunun için bir işlem yoktur ve panel
+  programı yönetmeyi sürdürür.
+- Bir veritabanı kullanıcısının süre ve geçici dosya sınırları: `db.*` anahtarını konduğu yerde
+  boşaltmak, panelin kendi yazdığı değeri (ve yalnız onu) kaldırmasını sağlar; sunucu sahibinin
+  elle koyduğu bir değeri sahibi kaldırır (`ALTER ROLE … RESET …`, MariaDB için
+  `ALTER USER … WITH MAX_STATEMENT_TIME 0`).

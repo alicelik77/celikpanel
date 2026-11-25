@@ -25,22 +25,22 @@ func TestStartupRecoveryServesExistingAuthenticationAndStaticShellWithoutAgent(t
 	p.startupGate = gate
 	gate.recovery = p.startupRecoveryHandler(web, "", "")
 	for _, path := range []string{"/", "/setup", "/activate"} {
-		rr := requestWithToken(gate, http.MethodGet, path, "")
+		rr := requestWithHostToken(gate, http.MethodGet, path, "")
 		if rr.Code != 200 || !strings.Contains(rr.Body.String(), "recovery shell fixture") {
 			t.Fatalf("shell %s: %d %s", path, rr.Code, rr.Body)
 		}
 	}
 	for _, path := range []string{"/api/v1/auth/me", panelAvailabilityPath, panelRecoveryStatusPath + "?request_id=" + recoveryHTTPTestID} {
-		rr := requestWithToken(gate, http.MethodGet, path, token)
+		rr := requestWithHostToken(gate, http.MethodGet, path, token)
 		if rr.Code != 200 {
 			t.Fatalf("read %s: %d %s", path, rr.Code, rr.Body)
 		}
 	}
-	rr := requestWithToken(gate, http.MethodGet, panelAvailabilityPath, token)
+	rr := requestWithHostToken(gate, http.MethodGet, panelAvailabilityPath, token)
 	if !strings.Contains(rr.Body.String(), `"state":"starting"`) || rr.Header().Get("Cache-Control") != "no-store" {
 		t.Fatal(rr.Body.String())
 	}
-	rr = requestWithToken(gate, http.MethodGet, panelAvailabilityPath, "")
+	rr = requestWithHostToken(gate, http.MethodGet, panelAvailabilityPath, "")
 	if rr.Code != 401 {
 		t.Fatalf("anonymous availability %d", rr.Code)
 	}
@@ -49,7 +49,7 @@ func TestStartupRecoveryServesExistingAuthenticationAndStaticShellWithoutAgent(t
 		t.Fatal("early recovery reached normal management")
 	}
 	gate.Open()
-	rr = requestWithToken(gate, http.MethodGet, "/api/v1/domains", token)
+	rr = requestWithHostToken(gate, http.MethodGet, "/api/v1/domains", token)
 	if rr.Code != 204 || calls != 1 || p.panelAvailabilityState() != "ready" {
 		t.Fatal("explicit startup admission did not open normal handler")
 	}
@@ -60,14 +60,14 @@ func TestStartupRecoveryNeverReachesManagementMutationsOrProxies(t *testing.T) {
 	handler := p.startupRecoveryHandler(t.TempDir(), "", "")
 	for _, path := range []string{"/api/v1/domains", "/api/v1/system/update/start", "/api/v1/server/setup", "/api/v1/panel/license", "/api/v1/recovery/status/retry", "/api/v1/auth/change-password", "/dbtool/phpmyadmin/", "/webmail/"} {
 		for _, method := range []string{"GET", "POST", "PUT", "DELETE", "HEAD"} {
-			rr := requestWithToken(handler, method, path, token)
+			rr := requestWithHostToken(handler, method, path, token)
 			if rr.Code != 503 || rr.Header().Get("Retry-After") != "3" || rr.Header().Get("Cache-Control") != "no-store" {
 				t.Fatalf("%s %s: %d %s", method, path, rr.Code, rr.Body)
 			}
 		}
 	}
 	for _, method := range []string{"POST", "PUT", "DELETE"} {
-		rr := requestWithToken(handler, method, panelRecoveryStatusPath+"?request_id="+recoveryHTTPTestID, token)
+		rr := requestWithHostToken(handler, method, panelRecoveryStatusPath+"?request_id="+recoveryHTTPTestID, token)
 		if rr.Code != 503 {
 			t.Fatalf("recovery mutation %s: %d", method, rr.Code)
 		}
@@ -131,10 +131,10 @@ func TestRecoveryWaitingHTTPRemainsAnExactAdminRead(t *testing.T) {
 	}
 	handler := p.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { p.serveRecoveryStatus(w, r, read) }))
 	path := panelRecoveryStatusPath + "?request_id=" + recoveryHTTPTestID
-	if rr := requestWithToken(handler, "GET", path, ""); rr.Code != 401 || calls != 0 {
+	if rr := requestWithHostToken(handler, "GET", path, ""); rr.Code != 401 || calls != 0 {
 		t.Fatal("anonymous wait read")
 	}
-	rr := requestWithToken(handler, "GET", path, token)
+	rr := requestWithHostToken(handler, "GET", path, token)
 	var body map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
@@ -156,10 +156,10 @@ func TestRecoveryAutomaticPauseHTTPRemainsAnExactAdminRead(t *testing.T) {
 	}
 	handler := p.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { p.serveRecoveryStatus(w, r, read) }))
 	path := panelRecoveryStatusPath + "?request_id=" + recoveryHTTPTestID
-	if rr := requestWithToken(handler, "GET", path, ""); rr.Code != 401 || calls != 0 {
+	if rr := requestWithHostToken(handler, "GET", path, ""); rr.Code != 401 || calls != 0 {
 		t.Fatal("anonymous wait read")
 	}
-	rr := requestWithToken(handler, "GET", path, token)
+	rr := requestWithHostToken(handler, "GET", path, token)
 	var body map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)

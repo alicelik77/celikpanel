@@ -51,7 +51,9 @@ func TestARestoreNeverLoadsAFileThroughTheAdministratorsClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"/usr/bin/mariadb", "--no-defaults", "--sandbox", "--batch", "--protocol=socket",
-		"--user=shop_user", "--database=shop", "--default-character-set=utf8mb4", "--max-allowed-packet=1073741824"}
+		"--user=shop_user", "--database=shop", "--default-character-set=utf8mb4", "--max-allowed-packet=1073741824",
+		// S4 R2a: the user's statement time does not cut the restore.
+		mariadbLoadInitCommand}
 	if user != "shop_test" || strings.Join(argv, " ") != strings.Join(want, " ") || strings.Join(env, " ") != "MYSQL_PWD=pw" {
 		t.Fatalf("client %q %v %v", user, argv, env)
 	}

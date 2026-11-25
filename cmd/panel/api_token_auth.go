@@ -158,8 +158,7 @@ func apiTokenRequestWithoutSession(r *http.Request) bool {
 	if _, present := apiTokenCredential(r); !present {
 		return false
 	}
-	_, err := r.Cookie(sessionCookieName)
-	return err != nil
+	return !requestCarriesSigninCookie(r)
 }
 
 // parseAPIToken splits cpk_<id>_<secret> by position (the secret's alphabet
@@ -535,11 +534,8 @@ func apiTokenNotPermittedMessage(grantor apiGrantor) string {
 // on, or writes the refusal. See the top of this file for the order.
 func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, credential string, next http.Handler) {
 	w.Header().Set("Cache-Control", "no-store")
-	if _, err := r.Cookie(sessionCookieName); err == nil {
-		writeCodedError(w, http.StatusBadRequest, errCodeAPITokenWithSession, apiTokenWithSessionMessage, "")
-		return
-	}
-	if _, err := r.Cookie(impersonatorCookieName); err == nil {
+	// Any sign-in cookie, under any name the panel has used (signin_cookies.go).
+	if requestCarriesSigninCookie(r) {
 		writeCodedError(w, http.StatusBadRequest, errCodeAPITokenWithSession, apiTokenWithSessionMessage, "")
 		return
 	}

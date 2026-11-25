@@ -113,7 +113,7 @@
   "home.install.systems": "Her sistemde neler var, güncellemeler nasıl işler",
   "home.sep.title": "Müşterileri birbirinden ayırma",
   "home.sep.text": "Bir hesabın başka bir hesaba ulaşmasını önleyen önlemler ve kapsamadıkları.",
-  "home.sep.caption": "Hesaplar arası ayırma, 0.1.0-alpha.147’ye kadarki sürüm notlarına göre",
+  "home.sep.caption": "Hesaplar arası ayırma, 0.1.0-alpha.148’e kadarki sürüm notlarına göre",
   "home.sep.what": "Önlem",
   "home.sep.status": "Durum",
   "home.sep.since": "İlk sürüm",
@@ -140,7 +140,7 @@
   "sep.mail.since": "alpha.128",
   "sep.php": "PHP’nin ve zamanlanmış görevlerin sitenin kendi kum havuzunda çalışması",
   "sep.php.since": "—",
-  "sep.limits": "Her hesabın bütün programları için işlemci ve bellek sınırı (bugün: site başına PHP belleği, çalışma süresi ve işlem sayısı)",
+  "sep.limits": "Bütün bir barındırma hesabı için, sitelerinin PHP’si ve zamanlanmış görevleri de içinde, işlemci ve bellek sınırı (bugün: her sitenin programlarının kendi sınırları var; PHP’de site başına bellek, çalışma süresi ve işlem sayısı)",
   "sep.limits.since": "—",
   "sep.visible": "Başka hangi sitelerin olduğunu gizleme: hesap adları ve işlemler bir site hesabına hâlâ görünür",
   "sep.visible.since": "—",
@@ -479,5 +479,7 @@
   "sep.at": "Site hesapları at ile iş zamanlayamaz (sahibin yazdığı bir at.allow korunur ve andığı site hesapları yöneticiye gösterilir); panel dışında eklenen crontab satırları yönetici için işaretlenir",
   "sep.at.since": "alpha.147",
   "sep.stockpool": "Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmıyorsa kapatılır",
-  "sep.stockpool.since": "alpha.147"
+  "sep.stockpool.since": "alpha.147",
+  "sep.sitelimits": "Bir sitenin programları (Node.js uygulaması, Python uygulamaları, yüklenen programlar, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) tek bir bellek, işlem ve işlemci sınırını paylaşır; sitenin PHP’si kendi sınırlarını korur, zamanlanmış görevleri bu sınırın içinde değildir; önceden çalışan programlar yönetici siteyi taşıyınca bu sınıra girer",
+  "sep.sitelimits.since": "alpha.148"
 }

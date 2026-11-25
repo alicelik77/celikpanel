@@ -5,15 +5,12 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/repositories"
 )
-
-// sessionCookieName is the cookie carrying the raw session token.
-// sessionCookieName, ham oturum jetonunu taşıyan çerezdir.
-const sessionCookieName = "celikpanel_session"
 
 type contextKey string
 
@@ -55,9 +52,46 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		cookie, err := r.Cookie(sessionCookieName)
+		// The sign-in cookies are read through one rule (signin_cookies.go):
+		// a name sent more than once is refused and removed.
+		cookie, present, err := p.readSessionCookie(r)
+		if err == nil {
+			_, err = p.impersonatorCookieValue(r)
+			if errors.Is(err, http.ErrNoCookie) {
+				err = nil
+			}
+		}
 		if err != nil {
+			p.refuseDuplicateSigninCookies(w)
+			return
+		}
+		// Every refusal of the session below also removes a "Log in as" return
+		// cookie the request carried: it holds the operator's own session, and
+		// a browser whose session is refused must not keep it (second look at
+		// PR #368, A). A refusal of one request that leaves the session
+		// usable (another site's request, an administrator-only path, a team
+		// member's scope, a suspended subscription's screen, the licence, the
+		// administrator address list) keeps it, so "Return" still works.
+		if !present {
+			p.expirePlainSigninCookiesSent(w, r)
+			p.expireImpersonatorCookieSent(w, r)
 			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+			return
+		}
+		// The transition carries a plain-named session over only on an /api/
+		// request (the update page's own polling is one), never on a response
+		// another component makes and may let a cache keep (/dbtool/). Such a
+		// request is answered 401 with the plain cookie left in place, so the
+		// next /api/ call still carries the session over.
+		if cookie.legacy && !strings.HasPrefix(r.URL.Path, "/api/") {
+			p.expireReturnCookieSent(w, r)
+			w.Header().Set("Cache-Control", "no-store")
+			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+			return
+		}
+		// A signed-in browser's /api/ call from another site or another
+		// origin of the same site is refused (fetch metadata).
+		if refuseCrossSiteAPIRequest(w, r) {
 			return
 		}
 
@@ -65,24 +99,51 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			writeAuthStatusUnavailable(w)
 			return
 		}
-		session, err := p.sessions.ValidateIdentity(r.Context(), cookie.Value)
+		session, err := p.sessions.ValidateIdentity(r.Context(), cookie.token)
 		userID := session.UserID
 		if err != nil {
 			if errors.Is(err, auth.ErrSessionInvalid) {
+				// Ended elsewhere (revoked, expired) or never valid. Nothing on
+				// the server says any more whether it was a "Log in as" session
+				// or which session the return cookie kept, so only the cookie
+				// is removed here (endKeptOperatorSession needs the operator).
+				p.expirePlainSigninCookiesSent(w, r)
+				p.expireImpersonatorCookieSent(w, r)
 				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
 			} else {
 				writeAuthStatusUnavailable(w)
 			}
 			return
 		}
+		// The transition: a session from before the new names, presented
+		// under the plain name (legacySigninAccepted).
+		if cookie.legacy && !p.legacySigninAccepted(session, time.Now()) {
+			p.refuseLegacySignin(w, r)
+			return
+		}
 		// alpha.128 (G4): a session unused for the idle timeout ends here;
 		// otherwise its use is recorded (at most once a minute).
-		if !p.sessionIdleCheck(w, r, cookie.Value, session) {
+		if !p.sessionIdleCheck(w, r, cookie.token, session) {
 			return
 		}
 
-		c, u, ok := p.admitAccountIdentity(w, r, userID)
-		if !ok {
+		c, u, refusal := p.readAccountIdentity(r.Context(), userID)
+		if c == nil {
+			// A still-valid "Log in as" session whose account may no longer be
+			// used (suspended, deleted, inactive) ends here with the
+			// operator's kept session (endRefusedLogInAs).
+			if session.ImpersonatorID > 0 && refusal.refusesIdentity() {
+				p.endRefusedLogInAs(w, r, cookie.token, session)
+				return
+			}
+			if refusal.refusesIdentity() {
+				p.expireReturnCookieSent(w, r)
+			}
+			refusal.write(w)
+			return
+		}
+		if cookie.legacy && !c.hasAccountRole(roleAdmin) {
+			p.refuseLegacySignin(w, r)
 			return
 		}
 		// A "Log in as" session lives only while its operator is active and
@@ -96,7 +157,7 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 				return
 			}
 			if !allowed {
-				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+				p.endRefusedLogInAs(w, r, cookie.token, session)
 				return
 			}
 			c.ImpersonatorID = session.ImpersonatorID
@@ -108,11 +169,21 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		r, ok = p.admitCallerGates(w, r, c)
+		r, ok := p.admitCallerGates(w, r, c)
 		if !ok {
 			return
 		}
-		next.ServeHTTP(w, r)
+		if cookie.legacy {
+			// Carried over: the same session under the name in use from now
+			// on; the plain names are removed. The answer carries the session
+			// token in Set-Cookie, so no cache may keep it.
+			w.Header().Set("Cache-Control", "no-store")
+			p.setSessionCookie(w, r, cookie.token, session.ExpiresAt)
+		} else {
+			// A plain-named cookie beside the name in use is never read.
+			p.expirePlainSigninCookiesSent(w, r)
+		}
+		next.ServeHTTP(w, withSessionToken(r, cookie.token))
 	})
 }
 
@@ -125,6 +196,44 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 // admitAccountIdentity, kimlik bilgisinin adlandırdığı hesabı okur ve
 // çağıranı kurar; oturum ve API jetonu aynı denetimi paylaşır.
 func (p *Panel) admitAccountIdentity(w http.ResponseWriter, r *http.Request, userID int) (*Caller, *core.User, bool) {
+	c, u, refusal := p.readAccountIdentity(r.Context(), userID)
+	if c == nil {
+		refusal.write(w)
+		return nil, nil, false
+	}
+	return c, u, true
+}
+
+// accountRefusal is why readAccountIdentity admitted no caller: a refusal of
+// the account (401, 403) or an account that could not be read (503).
+type accountRefusal struct {
+	status  int
+	code    string
+	message string
+}
+
+var (
+	accountRefusedAuthRequired = accountRefusal{http.StatusUnauthorized, errCodeAuthRequired, "authentication required"}
+	accountRefusedSuspended    = accountRefusal{http.StatusForbidden, errCodeAccountSuspended, "account suspended"}
+	accountReadUnavailable     = accountRefusal{status: http.StatusServiceUnavailable}
+)
+
+// refusesIdentity: the account was read and may not be used (not a failed read).
+func (refusal accountRefusal) refusesIdentity() bool {
+	return refusal.status == http.StatusUnauthorized || refusal.status == http.StatusForbidden
+}
+
+func (refusal accountRefusal) write(w http.ResponseWriter) {
+	if !refusal.refusesIdentity() {
+		writeAuthStatusUnavailable(w)
+		return
+	}
+	writeCodedError(w, refusal.status, refusal.code, refusal.message, "")
+}
+
+// readAccountIdentity is admitAccountIdentity without writing: the caller, or
+// (nil and) why there is none.
+func (p *Panel) readAccountIdentity(ctx context.Context, userID int) (*Caller, *core.User, accountRefusal) {
 	// Attach the caller (id + role) so handlers can enforce ownership.
 	// Suspended accounts are cut off immediately, whatever session they
 	// still hold.
@@ -133,28 +242,23 @@ func (p *Panel) admitAccountIdentity(w http.ResponseWriter, r *http.Request, use
 	// olursa olsun anında kesilir.
 	// A failed read blocks admission without inventing an invalid session.
 	// Okuma hatası erişimi durdurur; oturumu geçersiz saymaz.
-	u, err := p.users.GetByID(r.Context(), userID)
+	u, err := p.users.GetByID(ctx, userID)
 	if err != nil || u == nil {
 		if errors.Is(err, repositories.ErrUserNotFound) {
-			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-		} else {
-			writeAuthStatusUnavailable(w)
+			return nil, nil, accountRefusedAuthRequired
 		}
-		return nil, nil, false
+		return nil, nil, accountReadUnavailable
 	}
 	if u.Status == "suspended" {
-		writeCodedError(w, http.StatusForbidden, errCodeAccountSuspended, "account suspended", "")
-		return nil, nil, false
+		return nil, nil, accountRefusedSuspended
 	}
 	if u.Status != "active" {
-		writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-		return nil, nil, false
+		return nil, nil, accountRefusedAuthRequired
 	}
 
 	identity, ok := u.EffectiveIdentity()
 	if !ok || identity.UserID != userID {
-		writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-		return nil, nil, false
+		return nil, nil, accountRefusedAuthRequired
 	}
 
 	accountType := u.AccountType
@@ -167,18 +271,15 @@ func (p *Panel) admitAccountIdentity(w http.ResponseWriter, r *http.Request, use
 	// repository on every authenticated request so a deleted, suspended or
 	// retyped parent immediately revokes the member's effective identity.
 	if accountType == core.AccountTypeAdditionalUser {
-		parent, parentErr := p.users.GetByID(r.Context(), identity.CustomerID)
+		parent, parentErr := p.users.GetByID(ctx, identity.CustomerID)
 		if parentErr != nil || parent == nil {
 			if errors.Is(parentErr, repositories.ErrUserNotFound) {
-				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-			} else {
-				writeAuthStatusUnavailable(w)
+				return nil, nil, accountRefusedAuthRequired
 			}
-			return nil, nil, false
+			return nil, nil, accountReadUnavailable
 		}
 		if parent.Status == "suspended" {
-			writeCodedError(w, http.StatusForbidden, errCodeAccountSuspended, "account suspended", "")
-			return nil, nil, false
+			return nil, nil, accountRefusedSuspended
 		}
 		parentIdentity, parentOK := parent.EffectiveIdentity()
 		parentType := parent.AccountType
@@ -190,8 +291,7 @@ func (p *Panel) admitAccountIdentity(w http.ResponseWriter, r *http.Request, use
 			parentIdentity.UserID != identity.CustomerID ||
 			parentIdentity.CustomerID != identity.CustomerID ||
 			parentIdentity.Role != roleCustomer {
-			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-			return nil, nil, false
+			return nil, nil, accountRefusedAuthRequired
 		}
 	}
 
@@ -202,10 +302,9 @@ func (p *Panel) admitAccountIdentity(w http.ResponseWriter, r *http.Request, use
 		CustomerID:  identity.CustomerID,
 	}
 	if !c.validAuthorizationIdentity() {
-		writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-		return nil, nil, false
+		return nil, nil, accountRefusedAuthRequired
 	}
-	return c, u, true
+	return c, u, accountRefusal{}
 }
 
 // admitCallerGates applies the gates every authenticated request passes once

@@ -194,6 +194,7 @@ def client_for(cell: str, node: str, rec: Recorder, st: dict) -> PanelClient:
     c = PanelClient(node, f"https://{ip}:{port}", watching, rec.redactor, record)
     if st.get("cookie"):
         c.cookie = st["cookie"]
+        c.cookie_name = st.get("cookie_name")
     return c
 
 
@@ -272,6 +273,7 @@ def cmd_login(a) -> dict:
     c = client_for(a.cell, a.node, rec, st)
     identity = c.login(st["username"], st["password"])
     st["cookie"] = c.cookie
+    st["cookie_name"] = c.cookie_name
     save_state(a.cell, a.node, st)
     out = {"identity_role": identity.get("role"), "pin": st["pin"]}
     lic = c.get("/api/v1/panel/license").json()

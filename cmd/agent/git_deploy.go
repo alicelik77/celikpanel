@@ -242,6 +242,9 @@ func (a *Agent) GitDeployV1(req *transport.GitDeployRequest, resp *transport.Git
 		AppDir: req.WorkDir, RepoURL: req.RepoURL, Branch: req.Branch, KeyFile: keyFile,
 		NodeVersion: req.NodeVersion, Build: req.Build, Clean: nodeInstallFileKind(req.WorkDir, "package-lock.json") == "file", Caps: caps,
 	}
+	// S4 R2a: the deploy is a new unit every time; it runs in the site's slice.
+	deploySlice := siteSliceFor(req.Slice, req.SiteID)
+	params.InSlice = deploySlice != nil
 	args, err := nodesite.GitDeployRunArgs(params)
 	if err != nil {
 		gitRefuse(resp, transport.RuntimeAppVerifiedFailure, "unit_render", err.Error())
@@ -262,6 +265,7 @@ func (a *Agent) GitDeployV1(req *transport.GitDeployRequest, resp *transport.Git
 		gitRefuse(resp, transport.RuntimeAppUnknown, "deploy_record", err.Error())
 		return nil
 	}
+	ensureSiteSlice(deploySlice)
 	if out, err := serviceAppRun(ctx, "systemd-run", args...); err != nil {
 		record.Phase, record.Class, record.Reason = nodesite.InstallFailed, transport.RuntimeAppVerifiedFailure, "deploy_not_started"
 		record.Detail = "the deploy could not be started: " + siteruntime.RedactBuildLine(strings.TrimSpace(string(out)))

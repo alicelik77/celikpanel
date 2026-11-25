@@ -88,9 +88,13 @@ type Panel struct {
 	users         repositories.UserRepository
 	secrets       *secrets.Box
 	secureCookies bool
-	loginLimiter  *rateLimiter
-	demoMode      bool
-	startupGate   *panelHTTPStartupGate
+	// signinCookieNamesSince is when this installation first ran a panel
+	// that sets the __Host- sign-in cookie names (signin_cookies.go); zero
+	// when unknown, which carries no plain-named session over.
+	signinCookieNamesSince time.Time
+	loginLimiter           *rateLimiter
+	demoMode               bool
+	startupGate            *panelHTTPStartupGate
 	// Screens' last-known DNS proofs (alpha.127, display_checks.go).
 	displayChecks displayChecks
 	// Site disk measurements run once per site (alpha.127, domain_usage_handlers.go).
@@ -365,6 +369,12 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "php/settings":
 		// alpha.128: the site's own PHP values within the plan's ceilings.
 		match.kind, match.methods = "php-settings", []string{http.MethodGet, http.MethodPut}
+	case "site-limits":
+		// S4 R2a: the site's limits and when it reached them (read only).
+		match.kind, match.methods = "site-limits", []string{http.MethodGet}
+	case "site-limits/move":
+		// S4 R2a: the administrator's move of the site's programs into its limits.
+		match.kind, match.methods = "site-limits-move", []string{http.MethodPost}
 	case "general":
 		match.kind, match.methods = "general", getPost
 	case "aliases":
@@ -633,6 +643,10 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainPHPPool(w, r)
 	case "php-settings":
 		p.handleDomainPHPLimits(w, r, match.domainID)
+	case "site-limits":
+		p.handleDomainSiteLimits(w, r, match.domainID)
+	case "site-limits-move":
+		p.handleDomainSiteLimitsMove(w, r, match.domainID)
 	case "general":
 		p.handleDomainGeneralSettings(w, r)
 	case "aliases":
@@ -1272,6 +1286,10 @@ func main() {
 	} else if n == 0 {
 		log.Fatal("No users exist. Create the first admin with:  ./bin/panel --create-admin")
 	}
+	// Before any request: when this installation first ran the __Host-
+	// sign-in cookie names, so the transition is counted from one moment
+	// that a restart does not move (signin_cookies.go).
+	panel.loadSigninCookieNamesSince(context.Background())
 
 	// Bind and serve TLS before durable mutation recovery. Certificate
 	// activation restarts the panel and then verifies the published leaf over
@@ -1596,6 +1614,12 @@ func main() {
 	// S4 R1: the tools to their own accounts and the untouched stock PHP-FPM
 	// pool off, once after the start (side_doors.go).
 	panel.startSideDoorsClose()
+	// S4 R2a second fix round: a site's default memory limit is fixed when
+	// first computed (never moved by a later change of the host's memory),
+	// and the sites a change of limits did not reach are written again every
+	// hour (site_limits.go).
+	panel.freezeSiteMemoryDefault(context.Background())
+	panel.startSiteLimitApplyRound()
 
 	// Purge expired sessions on startup and then hourly.
 	// Başlangıçta ve sonra saatlik olarak süresi dolmuş oturumları temizle.

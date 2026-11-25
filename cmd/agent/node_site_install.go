@@ -213,6 +213,9 @@ func (a *Agent) NodeSiteInstallV1(req *transport.NodeSiteInstallRequest, resp *t
 		AppDir: req.WorkDir, NodeVersion: req.NodeVersion, Clean: nodeInstallFileKind(req.WorkDir, "package-lock.json") == "file",
 		Build: req.Build && req.Script == "", Script: req.Script, Caps: caps,
 	}
+	// S4 R2a: the step is a new unit every time; it runs in the site's slice.
+	installSlice := siteSliceFor(req.Slice, req.SiteID)
+	params.InSlice = installSlice != nil
 	args, err := nodesite.InstallRunArgs(params)
 	if err != nil {
 		nodeInstallRefuse(resp, transport.RuntimeAppVerifiedFailure, "unit_render", err.Error())
@@ -239,6 +242,7 @@ func (a *Agent) NodeSiteInstallV1(req *transport.NodeSiteInstallRequest, resp *t
 		nodeInstallRefuse(resp, transport.RuntimeAppUnknown, "install_record", err.Error())
 		return nil
 	}
+	ensureSiteSlice(installSlice)
 	if out, err := serviceAppRun(ctx, "systemd-run", args...); err != nil {
 		record.Phase, record.Class, record.Reason = nodesite.InstallFailed, transport.RuntimeAppVerifiedFailure, "install_not_started"
 		record.Detail = "the install step could not be started: " + siteruntime.RedactBuildLine(strings.TrimSpace(string(out)))

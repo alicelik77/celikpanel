@@ -45,7 +45,7 @@ async function check() {
         const value = await response.json();
         // This proves only a response, never an update result or authorization.
         reachable = response.ok && value?.schema === 'celikpanel-panel-availability/v1' && ['starting', 'ready'].includes(value.state)
-            || response.status === 401 && value?.code === 'AUTH_REQUIRED';
+            || response.status === 401 && ['AUTH_REQUIRED', 'SIGNIN_COOKIES_DUPLICATE', 'SIGNIN_FROM_BEFORE_UPDATE', 'LOG_IN_AS_ENDED'].includes(value?.code);
     } catch { reachable = false; }
     finally { window.clearTimeout(timeout); pending = null; checking = false; render(); }
 }

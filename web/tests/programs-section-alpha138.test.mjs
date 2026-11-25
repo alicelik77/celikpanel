@@ -474,6 +474,8 @@ let overviewURL = shared.compile('components/domain/sections/OverviewSection.tsx
   '/kit/words': dataModule('export const siteKindWord = (t, code) => "kind(" + code + ")";'),
   '/lib/domainSectionIcons': compileSource('lib/domainSectionIcons.ts', (specifier) => (specifier.endsWith('/sections') ? sectionsURL : stub)),
 });
+// S4 R2a: the site limits' card reads its own address; not this test's.
+overviewURL = replaceLazyImport(overviewURL, '../../SiteLimitsCard', dataModule('export const SiteLimitsCard = () => null;'));
 const { OverviewSection } = await import(overviewURL);
 
 test('mounted: the Overview has a Programs tile; on a program or app site it says what runs there and opens Programs', async () => {

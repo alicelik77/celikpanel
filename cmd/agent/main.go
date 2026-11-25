@@ -713,6 +713,11 @@ func main() {
 	if instanceLock != nil {
 		defer instanceLock.Close()
 	}
+	// S4 R2a: a limit pushed to a running site slice for a moment
+	// (site_slices_runtime.go) that an Agent stop left in /run outranks the
+	// owner's own drop-ins until it is gone: removed first, before anything
+	// else reads or writes limits.
+	cleanupSiteSliceRuntime()
 
 	// A ledger that cannot be brought up is a reason to refuse mutations, not a
 	// reason to leave the host without an agent. Exiting here is what turned a
@@ -758,6 +763,11 @@ func main() {
 	// service starts, so a deletion re-checked after the update already
 	// meets the new tool.
 	reconcileDNSPeerInspectorToolsAtStartup()
+	// S4 R2a: a move of a site's programs into its limits, or a limit
+	// pushed to running slices, that an Agent stop interrupted is finished
+	// or put back from its record before any request is served
+	// (site_slices_move.go, site_slices_runtime.go).
+	recoverSiteSlicesAtStartup()
 	// alpha.144 (security): webmail's own address files in an earlier form
 	// served every file of Roundcube's linked folders; once after the update
 	// they get the current form (an owner's file is kept, the text goes

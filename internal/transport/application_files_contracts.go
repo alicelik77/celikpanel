@@ -37,6 +37,10 @@ type AppApplyRequest struct {
 	// change nothing about whether the application runs (a stopped
 	// application moved by the administrator stays stopped).
 	NoStart bool `json:"no_start,omitempty"`
+	// Slice (S4 R2a, additive): the site's slice and its limits. A unit
+	// that is not running (or SandboxMove's restart) goes into it; a
+	// running unit stays where it runs until the site is moved.
+	Slice *SiteSlice `json:"slice,omitempty"`
 }
 
 type AppApplyResponse struct {
@@ -109,6 +113,8 @@ type NodeSiteInstallRequest struct {
 	// Script (alpha.128, additive): run only this package.json script
 	// (npm run <script>) in the same sandbox, no install.
 	Script string `json:"script,omitempty"`
+	// Slice (S4 R2a, additive): the step runs in the site's slice.
+	Slice *SiteSlice `json:"slice,omitempty"`
 }
 
 // NodeSiteInstallStatusRequest reads a site's install step (read-only).

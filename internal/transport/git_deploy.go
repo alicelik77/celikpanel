@@ -35,6 +35,8 @@ type GitDeployRequest struct {
 	// after the files are in place (NodeVersion is the site's).
 	Build       bool   `json:"build,omitempty"`
 	NodeVersion string `json:"node_version,omitempty"`
+	// Slice (S4 R2a, additive): the deploy runs in the site's slice.
+	Slice *SiteSlice `json:"slice,omitempty"`
 }
 
 // GitDeployStatusRequest reads a site's last deploy and its key (read only).

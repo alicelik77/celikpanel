@@ -64,6 +64,13 @@ const (
 	HelperName = "sandbox-helper"
 	// HelperPath is where the Agent installs the helper.
 	HelperPath = EgressDir + "/" + HelperName
+	// TaskHelperName and TaskHelperPath: the helper under a second name,
+	// which only sites' scheduled tasks (celikcron-*) of the next release
+	// (R2b) call. This release installs and calls nothing there; its egress
+	// guard accepts units that call it (S4 R2a third fix round), so a return
+	// from that release keeps its tasks under the SMTP block.
+	TaskHelperName = "sandbox-task-helper"
+	TaskHelperPath = EgressDir + "/" + TaskHelperName
 	// MountRoot holds one root-only folder per running unit.
 	MountRoot = "/run/celikpanel-sandbox"
 	// BindTemplate is the bind unit's template file name.

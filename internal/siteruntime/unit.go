@@ -33,8 +33,8 @@ type UnitParams struct {
 	DropInDir string
 	// Python is the Python kind's part (nil for an uploaded program).
 	Python *PythonUnit
-	// SiteID and InSlice keep the unit in its site's slice where a later
-	// release placed it (sitesandbox.Profile).
+	// SiteID and InSlice place the unit in its site's slice (S4 R2a,
+	// sitesandbox.Profile).
 	SiteID  int
 	InSlice bool
 }

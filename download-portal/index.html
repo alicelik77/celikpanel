@@ -139,7 +139,7 @@ sh celikpanel-install.sh</code></pre>
 <div>
 <div class="table">
 <table class="stack">
-<caption>Table 3 · Separation between accounts, as the release notes up to 0.1.0-alpha.147 state it</caption>
+<caption>Table 3 · Separation between accounts, as the release notes up to 0.1.0-alpha.148 state it</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Status</th><th scope="col">Since</th></tr></thead>
 <tbody>
 <tr><td data-k="Measure">Each site has its own system account, and its PHP runs as that account</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.82 or earlier</td></tr>
@@ -154,9 +154,10 @@ sh celikpanel-install.sh</code></pre>
 <tr><td data-k="Measure">phpMyAdmin, phpPgAdmin and webmail run under their own system accounts, not as the web server’s account, which can read every site (webmail needs a file system with access-control lists; without them it stays on the web server’s account and the panel says so)</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.147</td></tr>
 <tr><td data-k="Measure">Site accounts cannot schedule jobs with at (an at.allow the owner wrote is kept, and the site accounts it names are shown to the administrator); crontab lines added outside the panel are marked for the administrator</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.147</td></tr>
 <tr><td data-k="Measure">The distribution’s shared PHP pool, which runs as the web server’s account, is turned off where nothing uses it</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.147</td></tr>
+<tr><td data-k="Measure">A site’s programs (the Node.js application, Python apps, uploaded programs, service apps and their install, build and deploy steps) share one memory, process and processor limit; the site’s PHP keeps its own limits and its scheduled tasks are not inside it; programs that ran before join it when the administrator moves the site</td><td data-k="Status"><span class="tag ok">Yes</span></td><td class="v" data-k="Since">alpha.148</td></tr>
 <tr><td data-k="Measure">Outgoing mail limits per mailbox, domain and hosting account (optional; off until the administrator turns them on)</td><td data-k="Status"><span class="tag no">Optional</span></td><td class="v" data-k="Since">alpha.128</td></tr>
 <tr><td data-k="Measure">PHP and scheduled tasks in the site’s own sandbox</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
-<tr><td data-k="Measure">Processor and memory limits per account for all of its programs (today: PHP memory, run time and process count per site)</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
+<tr><td data-k="Measure">Processor and memory limits for a whole hosting account, its sites’ PHP and scheduled tasks included (today: each site’s programs have limits of their own; PHP has memory, run time and process count per site)</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
 <tr><td data-k="Measure">Hiding which other sites exist: account names and processes are still visible to a site account</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
 <tr><td data-k="Measure">Each site with its own web-server group (today the web server’s group can read every site’s folder; the link rule is the barrier)</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>
 <tr><td data-k="Measure">Mail address lists hidden from other accounts</td><td data-k="Status"><span class="tag warn">No</span></td><td class="v" data-k="Since">—</td></tr>

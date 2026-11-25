@@ -128,8 +128,8 @@ type Params struct {
 	// site has no environment variables) writes no line, so the unit is
 	// exactly what it was.
 	EnvFile string
-	// InSlice keeps the unit in the site's slice where a later release
-	// placed it (sitesandbox.Profile.InSlice).
+	// InSlice places the unit in the site's slice (S4 R2a): a unit that
+	// does not run when it is written, or the administrator's move.
 	InSlice bool
 }
 

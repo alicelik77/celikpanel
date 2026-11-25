@@ -790,6 +790,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SetMailPasswordIfUnchangedV1(&transport.SetMailPasswordIfUnchangedRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// S4 R2a: a site's slice limits and the administrator's move into them.
+		{name: "ApplySiteSlicesV1", run: func(expected string) string {
+			var response transport.ApplySiteSlicesResponse
+			_ = agent.ApplySiteSlicesV1(&transport.ApplySiteSlicesRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MoveSiteSliceV1", run: func(expected string) string {
+			var response transport.MoveSiteSliceResponse
+			_ = agent.MoveSiteSliceV1(&transport.MoveSiteSliceRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 	}
 }
 

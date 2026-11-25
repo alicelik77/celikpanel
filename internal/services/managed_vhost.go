@@ -427,6 +427,24 @@ func atomicWriteSiteFile(path string, content []byte, mode os.FileMode, ownershi
 	return syncDirectory(directory)
 }
 
+// WriteFileDurably replaces path with content through atomicWriteSiteFile,
+// the writer of every managed site file: a new file beside it with the given
+// mode and the previous file's owner and group (the caller's own for a new
+// one), synced before the rename, and its folder synced after it. The
+// Agent's move of a site's units into its slice writes and puts back unit
+// files with it (S4 R2a third fix round, review N4).
+func WriteFileDurably(path string, content []byte, mode os.FileMode) error {
+	var ownership managedFileOwnership
+	if info, err := os.Lstat(path); err == nil && info.Mode().IsRegular() {
+		owner, err := managedOwnershipFromInfo(info)
+		if err != nil {
+			return err
+		}
+		ownership = owner
+	}
+	return atomicWriteSiteFile(path, content, mode, ownership)
+}
+
 // managedSiteFileNewMode is the mode of an nginx or PHP-FPM site file
 // CelikPanel creates, and of every pending file (20 Nov 2026, tenant
 // isolation; 0644 before): 0640, so root and the Agent's group (celikpanel,

@@ -37,8 +37,10 @@ import (
 	"github.com/alicelik/celikpanel/internal/hostingpath"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"github.com/alicelik/celikpanel/internal/mailrenewalkit"
+	"github.com/alicelik/celikpanel/internal/nodesite"
 	"github.com/alicelik/celikpanel/internal/pdnsmanagedconf"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -1499,6 +1501,42 @@ func renderMatrixSystemd(t *testing.T, h *matrixHost) {
 		c.File(f.Path, []byte(data), 0o644)
 		h.write(t, c)
 	}
+	renderMatrixSiteSlice(t, h, dir)
+}
+
+// renderMatrixSiteSlice (S4 R2a): a site's slice, and a sandboxed Node.js
+// application placed in it with its bind unit's template, as the Agent
+// writes them (systemd 255's directive set, which every supported release
+// accepts).
+func renderMatrixSiteSlice(t *testing.T, h *matrixHost, dir string) {
+	slice := &transport.SiteSlice{SiteID: 42, Domain: "example.test", MemoryMB: 1024, Tasks: 256, CPUPercent: 150}
+	managed, err := siteSliceManaged(slice, transport.SiteFileTriggerCreate, "")
+	if err != nil {
+		h.renderFailure(t, "systemd.site-slice", "systemd", "a site's slice", "internal/sitesandbox/slice.go SliceUnitText via cmd/agent/site_slices.go siteSliceManaged", err)
+		return
+	}
+	sliceText := []byte(services.SealManagedTextWith(managed.HeaderPrefix, managed.Body))
+	sliceTarget := filepath.Join(dir, sitesandbox.SliceName(42))
+	c := &configmatrix.Case{ID: "systemd.site-slice", Program: "systemd", Variant: "a site's slice with its limits",
+		Validator: "systemd-unit", Source: "internal/sitesandbox/slice.go SliceUnitText via cmd/agent/site_slices.go siteSliceManaged", Target: sliceTarget}
+	c.File(sliceTarget, sliceText, 0o644)
+	h.write(t, c)
+
+	caps := sitesandbox.Caps{SystemdVersion: 255, BPFFramework: true, CgroupV2: true, NFTSocketCgroup: true}
+	unit, err := nodesite.RenderUnit(nodesite.Params{SiteID: 42, Domain: "example.test", User: "example_test", Group: "example_test",
+		AppDir: "/var/www/celikpanel/subscriptions/7/sites/19/public_html", Port: 3001, NodeVersion: "22.11.0", Command: "node server.js",
+		Caps: caps, DropInDir: filepath.Join(dir, "celikapp-42.service.d"), InSlice: true})
+	if err != nil {
+		h.renderFailure(t, "systemd.site-unit-in-slice", "systemd", "a Node.js application in its site's slice", "internal/nodesite/nodesite.go RenderUnit", err)
+		return
+	}
+	target := filepath.Join(dir, "celikapp-42.service")
+	c = &configmatrix.Case{ID: "systemd.site-unit-in-slice", Program: "systemd", Variant: "a sandboxed Node.js application in its site's slice",
+		Validator: "systemd-unit", Source: "internal/nodesite/nodesite.go RenderUnit (InSlice)", Target: target}
+	c.File(target, []byte(services.SealManagedTextWith(services.ManagedHeaderPrefixHash, unit)), 0o644)
+	c.File(sliceTarget, sliceText, 0o644)
+	c.File(filepath.Join(dir, sitesandbox.BindTemplate), []byte(sitesandbox.BindTemplateText()), 0o644)
+	h.write(t, c)
 }
 
 // ---------------------------------------------------------------- hooks ---

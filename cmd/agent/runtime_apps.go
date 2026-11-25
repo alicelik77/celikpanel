@@ -17,7 +17,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -54,7 +53,7 @@ var (
 	runtimeAppStateRoot = filepath.Join(hostingpath.ServiceMutationStateRoot(), "runtime-apps")
 	runtimeAppEnvDir    = siteruntime.EnvDir
 	runtimeAppOperation = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{7,63}$`)
-	runtimeAppLocks     [64]sync.Mutex
+	runtimeAppLocks     perIDMutex
 	// runtimeAppHostArch is this server's ELF machine.
 	runtimeAppHostArch = siteruntime.MachineFor(runtime.GOARCH)
 	// runtimeAppCgroupRoot is where a unit's cgroup files are read.
@@ -69,7 +68,7 @@ var (
 )
 
 func lockRuntimeApp(appID int) func() {
-	lock := &runtimeAppLocks[uint(appID)%uint(len(runtimeAppLocks))]
+	lock := runtimeAppLocks.of(appID)
 	lock.Lock()
 	return lock.Unlock
 }
@@ -291,13 +290,19 @@ func runtimeAppUnitParams(rc runtimeAppContext, target transport.RuntimeAppTarge
 	if spec.Level == string(sitesandbox.LevelReduced) {
 		level = sitesandbox.LevelReduced
 	}
+	slice := siteSliceFor(target.Slice, target.SiteID)
 	return siteruntime.UnitParams{
 		AppID: target.AppID, Kind: rc.kind, Domain: target.Domain, User: rc.account.Name, Group: rc.account.Group,
 		Layout: rc.layout, Entry: spec.Entry, Args: spec.Args, Port: spec.Port,
 		Limits: siteruntime.Limits{MemoryMB: spec.Limits.MemoryMB, CPUPercent: spec.Limits.CPUPercent, Tasks: spec.Limits.TasksMax},
 		Level:  level, Caps: caps, DropInDir: path + ".d", Python: runtimePythonUnit(spec),
-		// A later release's site slice is kept (site_slice_keep.go).
-		SiteID: target.SiteID, InSlice: unitFileKeepsSiteSlice(path, target.SiteID),
+		// S4 R2a: into the site's slice when it does not run now (or already
+		// runs there); a running app moves with its site. A slice the file
+		// names is kept, also when where it runs cannot be read
+		// (site_slice_keep.go).
+		SiteID: target.SiteID, InSlice: siteUnitInSlice(siteruntime.UnitName(target.AppID), slice, false, func() bool {
+			return unitFileKeepsSiteSlice(path, target.SiteID)
+		}),
 	}, nil
 }
 
@@ -384,6 +389,9 @@ func (a *Agent) RuntimeAppRenderV1(req *transport.RuntimeAppRenderRequest, resp 
 	if err := ensureSandboxEgress(caps); err != nil {
 		runtimeStep(step, transport.RuntimeAppUnknown, "sandbox_egress", err.Error())
 		return nil
+	}
+	if params.InSlice {
+		ensureSiteSlice(siteSliceFor(req.Target.Slice, req.Target.SiteID))
 	}
 	managed, err := runtimeAppManagedUnit(req.Target.AppID, body)
 	if err != nil {
@@ -571,8 +579,8 @@ func (a *Agent) RuntimeAppStatusV1(req *transport.RuntimeAppStatusRequest, resp 
 	if mem, err := strconv.ParseInt(props["MemoryCurrent"], 10, 64); err == nil && mem > 0 {
 		resp.MemoryMB = mem / (1 << 20)
 	}
-	// The unit's own cgroup: the system slice, or its site's slice where a
-	// later release placed it (S4 R2a).
+	// The unit's own cgroup: the system slice, or its site's slice once it
+	// was moved there (S4 R2a).
 	cgroupDir := filepath.Join(runtimeAppCgroupRoot, name)
 	if siteID, ok := sitesandbox.UnitControlGroupAllowed(props["ControlGroup"], name); ok && siteID > 0 {
 		cgroupDir = filepath.Join(filepath.Dir(runtimeAppCgroupRoot), sitesandbox.SliceName(siteID), name)

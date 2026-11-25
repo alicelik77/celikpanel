@@ -212,6 +212,12 @@ export function RightsPreviewBox({ preview, sentence, id }: { preview: RightsPre
                     <ul className="mt-1 list-disc pl-5">{(preview.sites_above ?? []).map((line) => <li key={line}>{line}</li>)}</ul>
                 </div>
             )}
+            {(preview.sites_stopped_count ?? 0) > 0 && (
+                <div className="mt-2" data-rights-sites-stopped="">
+                    <p className="font-semibold">{t('limits.preview.sitesStopped', { n: preview.sites_stopped_count ?? 0 })}</p>
+                    <ul className="mt-1 list-disc pl-5">{(preview.sites_stopped ?? []).map((line) => <li key={line}>{line}</li>)}</ul>
+                </div>
+            )}
             {preview.sites_unread && <p className="mt-2">{t('limits.preview.sitesUnread')}</p>}
             {preview.installed_unknown && <p className="mt-2 text-xs text-fg-muted">{t('rights.installedUnknown')}</p>}
         </section>

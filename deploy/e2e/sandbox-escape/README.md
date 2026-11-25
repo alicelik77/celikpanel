@@ -121,18 +121,21 @@ has a website and a certificate, and no other program.
 ./run.sh build          # on a machine with Go: bin/goprobe (static)
 
 # On the lab server as root (uploads as the site's account; also reads the SMTP counter):
-sudo LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> \
+sudo LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<__Host-celikpanel_session> \
   DOMAIN_ID=<id> OTHER_SITE_FILE=<a 0644 file of another lab site> \
   CURL_INSECURE=1 REMOVE=1 ./panel-runtime.sh
 
 # From elsewhere, uploading over the domain's SFTP account (key authentication):
-LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> DOMAIN_ID=<id> \
+LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<__Host-celikpanel_session> DOMAIN_ID=<id> \
   UPLOAD=sftp SFTP_TARGET=<sftp user>@lab-vm SFTP_IDENTITY=~/.ssh/lab_key ./panel-runtime.sh
 ```
 
 - **Authentication.** The panel has no API tokens. Sign in to the lab panel
   in a browser as the domain's owner (or the administrator) and copy the
-  value of the `celikpanel_session` cookie into `COOKIE`. The script passes
+  value of the `__Host-celikpanel_session` cookie into `COOKIE` (a panel
+  before the sign-in cookie change, or one run with `--insecure-cookies`,
+  names it `celikpanel_session`: then also set
+  `COOKIE_NAME=celikpanel_session`). The script passes
   it through a private curl config file, not on the command line, and sends
   `Origin: $PANEL_URL` (the panel refuses a write without it).
 - **Upload.** `UPLOAD=local` (the default as root) copies the probe with
@@ -158,7 +161,7 @@ LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> DOMAIN_ID
   `component:python:<minor>`; the plan grants `python_apps`.
 
   ```sh
-  sudo LAB_ONLY=yes KIND=python PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session>     DOMAIN_ID=<id> OTHER_SITE_FILE=<a 0644 file of another lab site> CURL_INSECURE=1 ./panel-runtime.sh
+  sudo LAB_ONLY=yes KIND=python PANEL_URL=https://lab-vm:1923 COOKIE=<__Host-celikpanel_session>     DOMAIN_ID=<id> OTHER_SITE_FILE=<a 0644 file of another lab site> CURL_INSECURE=1 ./panel-runtime.sh
   ```
 - **One operation id.** The deploy is posted with one operation id. If no
   answer arrives, the same id is posted again (the panel's lost-answer

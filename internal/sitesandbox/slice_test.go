@@ -1,14 +1,13 @@
 package sitesandbox
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
 )
 
-// Forward compatibility with the site's slice of S4 R2a (slice.go): this
-// release accepts and keeps a unit a later release placed in
-// celiksite_<id>.slice. The tests are R2a's own, for the parts ported here.
+// S4 R2a: the site's slice (docs/SITE-SANDBOX.md section 8).
 
 // TestSiteSliceNameIsDepthOne: the slice's name has no dash, so systemd puts
 // it directly below the root and a unit in it is at depth two, where the SMTP
@@ -22,17 +21,16 @@ func TestSiteSliceNameIsDepthOne(t *testing.T) {
 			t.Errorf("%s = %d %v", name, id, ok)
 		}
 	}
-	for _, bad := range []string{"celiksite_0.slice", "celiksite_07.slice", "celiksite-7.slice", "celiksite_7.slice.d", "celiksite_.slice",
-		"system.slice", "celiksite_12345678901.slice", "celiksite_9999999999.slice", "x/celiksite_7.slice"} {
-		if id, ok := ParseSliceName(bad); ok {
-			t.Errorf("%s accepted as %d", bad, id)
+	for _, bad := range []string{"celiksite-7.slice", "celiksite_0.slice", "celiksite_07.slice", "celiksite_7", "system.slice", "celiksite_7.slice/x", "celiksite_.slice",
+		"celiksite_7.slice.d", "celiksite_12345678901.slice", "celiksite_9999999999.slice", "x/celiksite_7.slice"} {
+		if _, ok := ParseSliceName(bad); ok {
+			t.Errorf("%q accepted", bad)
 		}
 	}
 }
 
-// TestUnitInSiteSliceRendersItsSlice: a unit kept in its site's slice
-// renders that slice; every other unit renders the system slice, exactly as
-// before.
+// TestUnitInSiteSliceRendersItsSlice: a unit placed in its site's slice says
+// so; a unit not placed keeps the system slice, byte for byte as before.
 func TestUnitInSiteSliceRendersItsSlice(t *testing.T) {
 	p := programProfile()
 	lines, err := Directives(p, fullCaps(257))
@@ -50,7 +48,16 @@ func TestUnitInSiteSliceRendersItsSlice(t *testing.T) {
 		t.Fatalf("placed: %v %v", err, lines)
 	}
 	if got := strings.Replace(strings.Join(lines, "\n"), "Slice=celiksite_12.slice", "Slice=system.slice", 1); got != before {
-		t.Fatalf("keeping the slice changed another line:\n%s", got)
+		t.Fatalf("placing the unit changed another line:\n%s", got)
+	}
+	transient, err := TransientDirectives(p, fullCaps(255))
+	if err != nil || !has(transient, "Slice=celiksite_12.slice") {
+		t.Fatalf("transient: %v %v", err, transient)
+	}
+	for _, line := range transient {
+		if refusal := TransientPropertyRefusal(line, 249); refusal != "" {
+			t.Errorf("systemd-run 249 would refuse %q: %s", line, refusal)
+		}
 	}
 	// A unit's own limits stay its own: the slice bounds them in the kernel.
 	if !has(lines, "MemoryMax=512M") || !has(lines, "TasksMax=128") {
@@ -62,20 +69,42 @@ func TestUnitInSiteSliceRendersItsSlice(t *testing.T) {
 	}
 }
 
-// TestUnitFileSlice: the Slice= line a unit file names (the last one, as
-// systemd reads it).
-func TestUnitFileSlice(t *testing.T) {
-	for text, want := range map[string]string{
-		"[Unit]\nDescription=x\n\n[Service]\nSlice=celiksite_7.slice\nUser=a\n": "celiksite_7.slice",
-		"[Service]\nSlice=system.slice\n":                                       "system.slice",
-		"[Service]\nSlice=system.slice\nSlice=celiksite_7.slice\n":              "celiksite_7.slice",
-		"[Service]\n  Slice = celiksite_7.slice \n":                             "",
-		"[Service]\nUser=a\n":                                                   "",
-		"":                                                                      "",
+// TestSiteSliceUnitText: the native slice carries the three limits, the
+// owner's drop-in place and a way to read it without CelikPanel.
+func TestSiteSliceUnitText(t *testing.T) {
+	text, err := SliceUnitText(12, "shop.example.com", "/etc/systemd/system", SliceLimits{MemoryMB: 1024, Tasks: 256, CPUPercent: 150})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"[Slice]\n", "MemoryMax=1024M\n", "MemorySwapMax=0\n", "TasksMax=256\n", "CPUQuota=150%\n",
+		"Description=CelikPanel site limits: shop.example.com (site 12)\n",
+		"/etc/systemd/system/celiksite_12.slice.d/*.conf", "systemctl status celiksite_12.slice",
 	} {
-		if got := UnitFileSlice(text); got != want {
-			t.Errorf("%q = %q, want %q", text, got, want)
+		if !strings.Contains(text, want) {
+			t.Errorf("slice text lacks %q:\n%s", want, text)
 		}
+	}
+	// No line systemd would expand or a person could inject.
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
+			continue
+		}
+		if strings.ContainsAny(line, "$\\\"'") || (strings.Contains(line, "%") && !strings.HasPrefix(line, "CPUQuota=")) {
+			t.Errorf("unsafe line %q", line)
+		}
+	}
+	odd, err := SliceUnitText(12, "bad name\nMemoryMax=infinity", "/etc/systemd/system", SliceLimits{MemoryMB: 1024, Tasks: 256, CPUPercent: 150})
+	if err != nil || strings.Contains(odd, "infinity") || !strings.Contains(odd, "Description=CelikPanel site limits: site 12\n") {
+		t.Fatalf("an odd domain reached the text: %v\n%s", err, odd)
+	}
+	for _, bad := range []SliceLimits{{MemoryMB: 32, Tasks: 256, CPUPercent: 100}, {MemoryMB: 512, Tasks: 8, CPUPercent: 100}, {MemoryMB: 512, Tasks: 256, CPUPercent: 5}, {MemoryMB: 70000, Tasks: 256, CPUPercent: 100}} {
+		if _, err := SliceUnitText(12, "", "/etc/systemd/system", bad); err == nil {
+			t.Errorf("limits %+v accepted", bad)
+		}
+	}
+	if _, err := SliceUnitText(0, "", "/etc/systemd/system", SliceLimits{MemoryMB: 512, Tasks: 256, CPUPercent: 100}); err == nil {
+		t.Fatal("a slice without a site was rendered")
 	}
 }
 
@@ -104,7 +133,7 @@ func TestEgressElementFollowsTheUnitsCgroup(t *testing.T) {
 	if _, err := CgroupElementFor("/system.slice/nginx.service", "nginx.service"); err == nil {
 		t.Fatal("a unit that is not sandboxed got an element")
 	}
-	// The system slice's element is exactly the one this release always added.
+	// The system slice's element is exactly the one earlier releases added.
 	element, _ := CgroupElement("celikapp-12.service")
 	if got, _ := CgroupElementFor("/system.slice/celikapp-12.service", "celikapp-12.service"); got != element {
 		t.Fatalf("system slice element %q, earlier %q", got, element)
@@ -153,9 +182,9 @@ func TestGuardReaddsUnitsInTheirSitesSlice(t *testing.T) {
 	}
 }
 
-// TestProofAcceptsTheSitesSlice: a unit in its site's slice proves; one in
-// another site's slice or anywhere else does not, and the set element is
-// checked for the cgroup it really runs in.
+// TestProofAcceptsTheSitesSlice: a unit moved into its site's slice proves;
+// one in another site's slice or anywhere else does not, and the set element
+// is checked for the cgroup it really runs in.
 func TestProofAcceptsTheSitesSlice(t *testing.T) {
 	p := programProfile()
 	p.SiteID, p.InSlice = 7, true
@@ -167,8 +196,8 @@ func TestProofAcceptsTheSitesSlice(t *testing.T) {
 	if r := Prove(in); !r.OK {
 		t.Fatalf("moved unit: %+v", r)
 	}
-	// The caller rendered it in the system slice; a status read still proves
-	// the unit where it runs.
+	// The caller rendered it in the slice; a status read whose request does
+	// not know yet still proves the unit where it runs.
 	notYet := in
 	notYet.Profile.InSlice = false
 	if r := Prove(notYet); !r.OK {
@@ -189,5 +218,116 @@ func TestProofAcceptsTheSitesSlice(t *testing.T) {
 	unknown.Profile.SiteID, unknown.Profile.InSlice = 0, false
 	if r := Prove(unknown); r.Code != ProofCgroup {
 		t.Fatalf("a slice proved without the site's identity: %+v", r)
+	}
+}
+
+// TestUnitFileSlice: the Slice= line a unit file names (the last one, as
+// systemd reads it).
+func TestUnitFileSlice(t *testing.T) {
+	for text, want := range map[string]string{
+		"[Unit]\nDescription=x\n\n[Service]\nSlice=celiksite_7.slice\nUser=a\n": "celiksite_7.slice",
+		"[Service]\nSlice=system.slice\n":                                       "system.slice",
+		"[Service]\nSlice=system.slice\nSlice=celiksite_7.slice\n":              "celiksite_7.slice",
+		"[Service]\n  Slice = celiksite_7.slice \n":                             "",
+		"[Service]\nUser=a\n":                                                   "",
+		"":                                                                      "",
+	} {
+		if got := UnitFileSlice(text); got != want {
+			t.Errorf("%q = %q, want %q", text, got, want)
+		}
+	}
+}
+
+// TestTheAgentsPlaceReadingIsTheHelpers: UnitInSiteSlice and
+// UnitInSystemSlice are UnitControlGroupAllowed (the one definition of a
+// unit's two places, the SMTP helper's too): exactly the unit's own leaf in
+// its site's slice or the system slice, nothing nested, no other unit.
+func TestTheAgentsPlaceReadingIsTheHelpers(t *testing.T) {
+	unit := "celikrt-5.service"
+	for _, tc := range []struct {
+		cgroup         string
+		site, inSystem bool
+	}{
+		{"/celiksite_7.slice/celikrt-5.service", true, false},
+		{"/system.slice/celikrt-5.service", false, true},
+		{"/celiksite_8.slice/celikrt-5.service", false, false},
+		{"/celiksite_07.slice/celikrt-5.service", false, false},
+		{"/celiksite_7.slice/celikrt-5.service/.control", false, false},
+		{"/celiksite_7.slice/celikrt-6.service", false, false},
+		{"/system.slice/celikrt-6.service", false, false},
+		{"/", false, false},
+		{"", false, false},
+	} {
+		if got := UnitInSiteSlice(tc.cgroup, unit, 7); got != tc.site {
+			t.Errorf("site slice %q = %v", tc.cgroup, got)
+		}
+		if got := UnitInSystemSlice(tc.cgroup, unit); got != tc.inSystem {
+			t.Errorf("system slice %q = %v", tc.cgroup, got)
+		}
+	}
+	if UnitInSiteSlice("/celiksite_7.slice/nginx.service", "nginx.service", 7) || UnitInSiteSlice("/celiksite_7.slice/celikrt-5.service", unit, 0) {
+		t.Fatal("a unit that is not sandboxed, or no site, was placed")
+	}
+}
+
+// TestSliceCountersAreRead: the slice cgroup's counters, as the kernel
+// writes them.
+func TestSliceCountersAreRead(t *testing.T) {
+	c := ParseSliceCounters(SliceCgroupFiles{
+		MemoryEvents:      "low 0\nhigh 0\nmax 41\noom 3\noom_kill 2\noom_group_kill 0\n",
+		MemoryEventsLocal: "low 0\nhigh 0\nmax 41\noom 3\noom_kill 0\noom_group_kill 0\n",
+		PidsEventsLocal:   "max 17\n", HasPidsEventsLocal: true,
+		CPUStat: "usage_usec 900\nuser_usec 600\nsystem_usec 300\nnr_periods 100\nnr_throttled 12\nthrottled_usec 345000\n"})
+	if c.OOMKills != 2 || c.MemoryLimitHits != 3 || c.MemoryMaxHits != 41 || c.TasksLimitHits != 17 || c.CPUThrottled != 12 ||
+		c.CPUThrottledUSec != 345000 || c.CPUPeriods != 100 {
+		t.Fatalf("counters = %+v", c)
+	}
+	if z := ParseSliceCounters(SliceCgroupFiles{}); z != (SliceCounters{TasksRule: "units"}) {
+		t.Fatalf("unreadable files = %+v", z)
+	}
+}
+
+// TestSliceCountersTellTheSitesLimitApart: the files a real kernel wrote
+// (21 Nov 2026, Debian 13 kernel 6.12.105 and Ubuntu 24.04 kernel 6.8.0;
+// scratch facts F2 and F3, quoted in docs/SITE-SANDBOX.md section 8). Only
+// the site's own limit counts as the site's limit; a program's own smaller
+// limit and a host-wide shortage never do.
+func TestSliceCountersTellTheSitesLimitApart(t *testing.T) {
+	mem := func(max, oom, kill int) string {
+		return fmt.Sprintf("low 0\nhigh 0\nmax %d\noom %d\noom_kill %d\noom_group_kill 0\n", max, oom, kill)
+	}
+	cases := []struct {
+		name               string
+		files              SliceCgroupFiles
+		memLimit, memAll   int64
+		kills, tasks, othr int64
+	}{
+		// F3a, both kernels: slice MemoryMax=128M reached.
+		{"slice memory limit", SliceCgroupFiles{MemoryEvents: mem(25, 1, 1), MemoryEventsLocal: mem(25, 1, 0)}, 1, 1, 1, 0, 0},
+		// F3b: the unit's own MemoryMax=96M inside a 512M slice.
+		{"program's own memory limit", SliceCgroupFiles{MemoryEvents: mem(36, 1, 1), MemoryEventsLocal: mem(0, 0, 0)}, 0, 1, 1, 0, 0},
+		// F3d: global OOM (slice limit 8G on a 2G VM).
+		{"host-wide shortage", SliceCgroupFiles{MemoryEvents: mem(0, 0, 1), MemoryEventsLocal: mem(0, 0, 0)}, 0, 0, 1, 0, 0},
+		// F2a, Debian 6.12: slice TasksMax=30 reached; the slice's local file counts it.
+		{"6.12 slice process limit", SliceCgroupFiles{HasPidsEventsLocal: true, PidsEventsLocal: "max 1\n",
+			Units: []UnitPidsFiles{{Events: "max 0\n", EventsLocal: "max 0\n", Peak: "31\n", Max: "2338\n"}}}, 0, 0, 0, 1, 0},
+		// F2b, Debian 6.12: the unit's own TasksMax=10.
+		{"6.12 program's own process limit", SliceCgroupFiles{HasPidsEventsLocal: true, PidsEventsLocal: "max 0\n",
+			Units: []UnitPidsFiles{{Events: "max 1\n", EventsLocal: "max 1\n", Peak: "10\n", Max: "10\n"}}}, 0, 0, 0, 0, 1},
+		// F2a, Ubuntu 6.8: no local file; the forking unit counts it, its peak below its own max.
+		{"6.8 slice process limit", SliceCgroupFiles{
+			Units: []UnitPidsFiles{{Events: "max 1\n", Peak: "31\n", Max: "2314\n"}}}, 0, 0, 0, 1, 0},
+		// F2c, Ubuntu 6.8: two units share the slice; the second one forks into its limit.
+		{"6.8 slice limit shared by two units", SliceCgroupFiles{Units: []UnitPidsFiles{
+			{Events: "max 0\n", Peak: "20\n", Max: "2314\n"}, {Events: "max 1\n", Peak: "11\n", Max: "2314\n"}}}, 0, 0, 0, 1, 0},
+		// F2b, Ubuntu 6.8: the unit's own TasksMax=10 (peak equals its own max).
+		{"6.8 program's own process limit", SliceCgroupFiles{
+			Units: []UnitPidsFiles{{Events: "max 1\n", Peak: "10\n", Max: "10\n"}}}, 0, 0, 0, 0, 1},
+	}
+	for _, tc := range cases {
+		c := ParseSliceCounters(tc.files)
+		if c.MemoryLimitHits != tc.memLimit || c.MemoryOOMAll != tc.memAll || c.OOMKills != tc.kills || c.TasksLimitHits != tc.tasks || c.TasksOtherHits != tc.othr {
+			t.Errorf("%s: %+v", tc.name, c)
+		}
 	}
 }

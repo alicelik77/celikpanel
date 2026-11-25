@@ -174,7 +174,16 @@ func loadDatabaseSQL(ctx context.Context, target databaseLoadTarget, r io.Reader
 			return pgLoadSessionRefusal(database, target.Account, err)
 		}
 		defer conn.Close(context.Background())
+		// S4 R2a: the user's time defaults do not cut the load; its
+		// temporary-file limit stays (database_load_limits.go).
+		if err := pgLoadLiftSessionLimits(ctx, conn); err != nil {
+			return pgLoadSessionDefaultsError(err)
+		}
+		limit, source := pgLoadTempFileLimit(ctx, conn)
 		if err := pgLoadTransaction(ctx, conn, r, pgEmptyFirst); err != nil {
+			if pgTempFileLimitReached(err) {
+				return fmt.Errorf("ERROR: %s", pgLoadTempFileLimitText(target.Account.User, limit, source))
+			}
 			return pgLoadErrorText(err)
 		}
 		return nil
@@ -297,9 +306,11 @@ func pgLoadErrorText(err error) error {
 // mariadbLoadArgv is the client's command line: no option file (a file on
 // the system could undo the sandbox), sandbox mode, the database's own user.
 func mariadbLoadArgv(client, database, user string) []string {
-	return []string{client, "--no-defaults", "--sandbox", "--batch", "--protocol=socket",
+	// S4 R2a: the user's statement time does not cut the load
+	// (database_load_limits.go).
+	return mariadbLoadArgvWithLimits([]string{client, "--no-defaults", "--sandbox", "--batch", "--protocol=socket",
 		"--user=" + user, "--database=" + database, "--default-character-set=utf8mb4",
-		"--max-allowed-packet=1073741824"}
+		"--max-allowed-packet=1073741824"})
 }
 
 // mariadbSafeClient is the client to load files with, or the refusal.

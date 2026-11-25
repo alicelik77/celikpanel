@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -109,26 +110,78 @@ type sandboxLedgerEntry struct {
 	WrittenAt    string `json:"written_at"`
 }
 
+// sandboxLedgerMu is the ONE lock of the ledger file (S4 R2a review 12):
+// every change is a read-modify-write of the file under it, so a writer never
+// drops another writer's entry.
+var sandboxLedgerMu sync.Mutex
+
+// readSandboxLedger is the ledger for a read that writes nothing (a status
+// read): a file that cannot be read reads as no entries. Every path that
+// writes or moves a file uses loadSandboxLedger instead.
 func readSandboxLedger() map[string]sandboxLedgerEntry {
-	ledger := map[string]sandboxLedgerEntry{}
-	if raw, err := os.ReadFile(sandboxLedgerPath); err == nil {
-		_ = json.Unmarshal(raw, &ledger)
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		return map[string]sandboxLedgerEntry{}
 	}
 	return ledger
 }
 
-func writeSandboxLedger(ledger map[string]sandboxLedgerEntry) error {
-	if err := os.MkdirAll(filepath.Dir(sandboxLedgerPath), 0o700); err != nil {
+// loadSandboxLedger reads the ledger for a write (S4 R2a second fix round,
+// review B4): no file is an empty ledger; a file that cannot be read or is
+// not the ledger's JSON is an error, never an empty ledger, so nothing is
+// written or moved aside on that reading and the caller reports it.
+func loadSandboxLedger() (map[string]sandboxLedgerEntry, error) {
+	ledger := map[string]sandboxLedgerEntry{}
+	raw, err := os.ReadFile(sandboxLedgerPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return ledger, nil
+	}
+	if err == nil {
+		err = json.Unmarshal(raw, &ledger)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("the Agent's record of its files (%s) could not be read: %v; nothing was written. The server owner checks or removes that file", sandboxLedgerPath, err)
+	}
+	return ledger, nil
+}
+
+// updateSandboxLedger changes the ledger file under its lock: change gets
+// the file's current entries and reports whether it changed them. A ledger
+// that cannot be read is never written over.
+func updateSandboxLedger(change func(map[string]sandboxLedgerEntry) bool) error {
+	sandboxLedgerMu.Lock()
+	defer sandboxLedgerMu.Unlock()
+	ledger, err := loadSandboxLedger()
+	if err != nil {
 		return err
 	}
+	if !change(ledger) {
+		return nil
+	}
+	return writeSandboxLedger(ledger)
+}
+
+// setSandboxLedgerEntry records one file's digest.
+func setSandboxLedgerEntry(path, kind, digest string) error {
+	return updateSandboxLedger(func(l map[string]sandboxLedgerEntry) bool {
+		if l[path].RenderSHA256 == digest && l[path].Kind == kind {
+			return false
+		}
+		l[path] = sandboxLedgerEntry{Kind: kind, RenderSHA256: digest, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
+		return true
+	})
+}
+
+// writeSandboxLedger writes the whole file; only updateSandboxLedger calls
+// it, under sandboxLedgerMu.
+func writeSandboxLedger(ledger map[string]sandboxLedgerEntry) error {
 	raw, err := json.MarshalIndent(ledger, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(sandboxLedgerPath+".tmp", raw, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(sandboxLedgerPath+".tmp", sandboxLedgerPath)
+	// Synced before and after the rename (review B4): a crash leaves the
+	// earlier ledger or the new one, never an empty file.
+	return writePrivateFile(sandboxLedgerPath, raw)
 }
 
 var sandboxEgressMu sync.Mutex
@@ -153,6 +206,7 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 	}
 	ledger := readSandboxLedger()
 	changed := false
+	record := map[string]sandboxLedgerEntry{}
 	for _, f := range files {
 		result, err := services.ApplyManagedSiteFile(f.managed(ledger[f.Path].RenderSHA256), nil, nil)
 		if err != nil {
@@ -161,10 +215,10 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		switch result.Outcome {
 		case transport.SiteFileOutcomeWritten, transport.SiteFileOutcomeRecreated, transport.SiteFileOutcomeTaken:
 			changed = true
-			ledger[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
+			record[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256}
 		case transport.SiteFileOutcomeUnchanged:
 			if ledger[f.Path].RenderSHA256 != result.RenderSHA256 {
-				ledger[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256, WrittenAt: time.Now().UTC().Format(time.RFC3339)}
+				record[f.Path] = sandboxLedgerEntry{Kind: f.Kind, RenderSHA256: result.RenderSHA256}
 				changed = true
 			}
 		case transport.SiteFileOutcomeKept:
@@ -174,8 +228,10 @@ func ensureSandboxEgress(caps sitesandbox.Caps) error {
 		}
 	}
 	if changed {
-		if err := writeSandboxLedger(ledger); err != nil {
-			log.Printf("site sandbox: record the native files: %v", err)
+		for path, entry := range record {
+			if err := setSandboxLedgerEntry(path, entry.Kind, entry.RenderSHA256); err != nil {
+				log.Printf("site sandbox: record the native files: %v", err)
+			}
 		}
 		if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 			return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
@@ -283,8 +339,8 @@ func serviceAppSandboxProof(ctx context.Context, sc serviceAppContext, req *tran
 	}
 	unit := serviceapps.UnitName(req.Target.InstallID) + ".service"
 	profile := serviceapps.SandboxProfile(unit, sc.layout, sc.account.Name, sc.account.Group, limits, limits.MemoryMB, req.Port, aux, caps)
-	// The unit may run in its site's slice, where a later release placed it.
-	profile.SiteID = req.Target.SiteID
+	// S4 R2a: the unit may run in its site's slice.
+	profile.SiteID = sc.siteID
 	result := sandboxProof(ctx, unit, profile, caps, &listen)
 	return &transport.SandboxProof{OK: result.OK, Code: result.Code, Detail: result.Detail}
 }

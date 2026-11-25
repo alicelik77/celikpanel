@@ -1,7 +1,13 @@
 """Panel HTTP API client that behaves like the web UI.
 
 * Same endpoints and bodies as ``web/src`` (see README "API sequence").
-* Session: the ``celikpanel_session`` cookie from ``POST /api/v1/auth/login``.
+* Session: the session cookie from ``POST /api/v1/auth/login``:
+  ``__Host-celikpanel_session`` over HTTPS since the sign-in cookie change,
+  ``celikpanel_session`` before it (and over plain HTTP). The client keeps the
+  name the panel set and sends that one; with only a restored value it sends
+  the value under both names (an older panel reads the plain one, a newer the
+  ``__Host-`` one). A panel that carries a session over to the new name answers
+  with the new name and the plain one removed; the client follows.
 * CSRF: the Panel has no token; unsafe methods must carry an ``Origin`` equal
   to the request host (``cmd/panel/security.go`` ``csrfProtect``), exactly
   what a browser sends.
@@ -36,7 +42,9 @@ from typing import Any, Callable, Iterator
 
 from redaction import Redactor
 
-SESSION_COOKIE = "celikpanel_session"
+SESSION_COOKIE = "__Host-celikpanel_session"
+PLAIN_SESSION_COOKIE = "celikpanel_session"
+SESSION_COOKIES = (SESSION_COOKIE, PLAIN_SESSION_COOKIE)
 REQUEST_ID_HEADER = "X-CelikPanel-Request-Id"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -158,6 +166,8 @@ class PanelClient:
         self.clock = clock
         self.sleep = sleep
         self.cookie: str | None = None
+        # The name the panel set the session cookie under (SESSION_COOKIES).
+        self.cookie_name: str | None = None
         self._polling = 0
         self.mutations: list[dict[str, Any]] = []
         self.last_poll: dict[str, Any] = {}
@@ -171,23 +181,35 @@ class PanelClient:
         if method in UNSAFE_METHODS:
             headers["Origin"] = self.origin
         if self.cookie:
-            headers["Cookie"] = f"{SESSION_COOKIE}={self.cookie}"
+            names = [self.cookie_name] if getattr(self, "cookie_name", None) else list(SESSION_COOKIES)
+            headers["Cookie"] = "; ".join(f"{name}={self.cookie}" for name in names)
         return headers
 
     def _capture_cookie(self, response: Response) -> None:
+        seen: dict[str, str] = {}
         for raw in response.header("Set-Cookie"):
             cookie = SimpleCookie()
             try:
                 cookie.load(raw)
             except Exception:  # noqa: BLE001 - malformed cookies are simply not adopted
                 continue
-            if SESSION_COOKIE in cookie:
-                value = cookie[SESSION_COOKIE].value
-                if value:
-                    self.redactor.register(value)
-                    self.cookie = value
-                else:
-                    self.cookie = None
+            for name in SESSION_COOKIES:
+                if name in cookie:
+                    seen[name] = cookie[name].value
+        for name in SESSION_COOKIES:
+            if seen.get(name):
+                self.redactor.register(seen[name])
+                self.cookie, self.cookie_name = seen[name], name
+                return
+        held = getattr(self, "cookie_name", None)
+        if held is not None and held in seen:
+            self.cookie, self.cookie_name = None, None
+        elif held is None and SESSION_COOKIE in seen:
+            self.cookie = None
+        elif held is None and PLAIN_SESSION_COOKIE in seen:
+            # Only the plain name removed while both were sent: a newer panel
+            # tidying up; the name it reads is the __Host- one.
+            self.cookie_name = SESSION_COOKIE
 
     def request(
         self,

@@ -101,13 +101,20 @@ table inet ` + EgressTable + ` {
 // of every running sandboxed unit whose helper loads the block (its
 // ExecStartPre runs the helper's egress-add) again. A unit whose cgroup is not
 // /system.slice/<unit> or /celiksite_<site id>.slice/<unit> (its site's slice,
-// where the next release places it) is named in the journal and left out.
-// Each release writes the guard in its own text at its first sandboxed write
-// (ensureSandboxEgress); this text covers every unit form the next release
-// creates. A finished
-// install step that stays "active (exited)" has no cgroup and is skipped
+// S4 R2a) is named in the journal and left out. Each release writes the
+// guard in its own text at its first sandboxed write (ensureSandboxEgress).
+// A finished install step that stays "active (exited)" has no cgroup and is skipped
 // (alpha.127 lab: after a Node.js "Install packages and build" the guard
 // failed every 30 seconds on celikappinst-N, "runs in , not ...").
+//
+// S4 R2a third fix round: the text is the next release's (R2b, sites'
+// scheduled tasks as celikcron-<site>-<n> units) byte for byte, so that a
+// return from that release to this one rewrites nothing and a site's tasks
+// and what a finished task left running stay under the block after an
+// "nft flush ruleset": it also takes celikcron-* units, their own helper
+// path (TaskHelperPath) and every task cgroup in a site's slice that still
+// holds a process. This release makes no task unit, so with none present
+// those parts do nothing.
 func EgressGuardScriptText() string {
 	return `# CelikPanel site sandbox: SMTP egress guard (docs/SITE-SANDBOX.md).
 # Run by ` + EgressGuardUnit + ` every 30 seconds; works without CelikPanel.
@@ -118,19 +125,18 @@ if ! "$nft" list chain inet ` + EgressTable + ` output 2>/dev/null | grep -q '@`
 	"$nft" -f ` + EgressFile + ` || { echo "celikpanel-egress: nft could not load the SMTP block"; exit 1; }
 fi
 status=0
-for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' 'celikapp-*.service' 'celikappinst-*.service' 'celikgit-*.service' | awk '{print $1}'); do
+for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' 'celikapp-*.service' 'celikappinst-*.service' 'celikgit-*.service' 'celikcron-*.service' | awk '{print $1}'); do
 	case "$unit" in
-		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service|celikapp-[0-9]*.service|celikappinst-[0-9]*.service|celikgit-[0-9]*.service) ;;
+		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service|celikapp-[0-9]*.service|celikappinst-[0-9]*.service|celikgit-[0-9]*.service|celikcron-[0-9]*-[0-9]*.service) ;;
 		*) continue ;;
 	esac
-	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue
+	systemctl show -P ExecStartPre "$unit" | grep -q -F -e 'argv[]=` + HelperPath + ` egress-add ' -e 'argv[]=` + TaskHelperPath + ` egress-add ' || continue
 	cgroup=$(systemctl show -P ControlGroup "$unit")
 	# A finished install step (RemainAfterExit, "active (exited)") has no
 	# cgroup any more: nothing runs there, so there is nothing to block.
 	[ -n "$cgroup" ] || continue
-	# The system slice, or the site's own slice celiksite_<site id>.slice where
-	# a later release places it (docs/SITE-SANDBOX.md section 3): both are depth
-	# two, as the set matches.
+	# The system slice, or the site's own slice celiksite_<site id>.slice
+	# (docs/SITE-SANDBOX.md section 8): both are depth two, as the set matches.
 	allowed=no
 	case "$cgroup" in
 		"/system.slice/$unit") allowed=yes ;;
@@ -149,6 +155,33 @@ for unit in $(systemctl list-units --type=service --state=active,activating,relo
 		continue
 	fi
 	"$nft" add element inet ` + EgressTable + ` ` + EgressSet + ` "{ \"${cgroup#/}\" }" || { echo "celikpanel-egress: $unit could not be added"; status=1; }
+done
+# A site's task whose run ended can leave processes running in its cgroup
+# (KillMode=process, as under cron); the unit is inactive then, so the loop
+# above does not see it. Every task cgroup in a site's slice that still holds
+# a process is added too, by its path alone: celikcron-<site>-<n>.service in
+# celiksite_<site>.slice can only be a task's, also after its unit file was
+# removed (systemd then shows no ExecStartPre for it).
+for dir in /sys/fs/cgroup/celiksite_*.slice/celikcron-*-*.service; do
+	[ -d "$dir" ] || continue
+	read -r first 2>/dev/null < "$dir/cgroup.procs" || continue
+	[ -n "$first" ] || continue
+	unit=${dir##*/}
+	slice=${dir%/*}
+	slice=${slice##*/}
+	site=${slice#celiksite_}
+	site=${site%.slice}
+	case "$site" in
+		''|0*|*[!0-9]*) continue ;;
+	esac
+	case "$unit" in
+		celikcron-"$site"-[0-9]*.service) ;;
+		*) continue ;;
+	esac
+	case "${unit#celikcron-$site-}" in
+		*[!0-9]*.service|0*) continue ;;
+	esac
+	"$nft" add element inet ` + EgressTable + ` ` + EgressSet + ` "{ \"$slice/$unit\" }" || { echo "celikpanel-egress: the processes $unit left could not be added"; status=1; }
 done
 exit $status
 `

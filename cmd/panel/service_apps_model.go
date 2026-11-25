@@ -315,6 +315,8 @@ func (n panelServiceAppNative) probe(ctx context.Context) (transport.ServiceAppP
 
 func (n panelServiceAppNative) prepare(ctx context.Context, req transport.ServiceAppPrepareRequest) (transport.ServiceAppStepResponse, error) {
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	// S4 R2a: the install runs in the site's slice.
+	req.Target.Slice = n.p.siteSliceForSubscription(ctx, req.Target.SiteID, req.Target.SubscriptionID, req.Target.Domain)
 	var resp transport.ServiceAppStepResponse
 	return resp, n.call(ctx, "Agent.ServiceAppPrepareV1", &req, &resp)
 }
@@ -326,6 +328,8 @@ func (n panelServiceAppNative) status(ctx context.Context, req transport.Service
 
 func (n panelServiceAppNative) activate(ctx context.Context, req transport.ServiceAppActivateRequest) (transport.ServiceAppStepResponse, error) {
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	// S4 R2a: the site's slice and its limits.
+	req.Target.Slice = n.p.siteSliceForSubscription(ctx, req.Target.SiteID, req.Target.SubscriptionID, req.Target.Domain)
 	var resp transport.ServiceAppStepResponse
 	return resp, n.call(ctx, "Agent.ServiceAppActivateV1", &req, &resp)
 }

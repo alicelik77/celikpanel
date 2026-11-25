@@ -72,7 +72,15 @@ export type ProblemKind =
     | 'webmail_address_kept'
     | 'webmail_address_refused'
     | 'webmail_cannot_send'
-    | 'service_operation_unsettled';
+    | 'service_operation_unsettled'
+    | 'site_memory_repeated'
+    | 'site_tasks_repeated'
+    | 'disk_limits_counted'
+    | 'site_programs_outside'
+    | 'site_limits_unsupported'
+    | 'site_limits_unapplied'
+    | 'site_memory_default'
+    | 'site_move_kept';
 
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
@@ -113,10 +121,23 @@ const KINDS: readonly ProblemKind[] = [
     'webmail_address_kept', 'webmail_address_refused',
     // alpha.145 lab, D1: a server change whose end the panel could not record.
     'service_operation_unsettled',
+    // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
+    'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
+    // S4 R2a: sites whose programs still run outside their limits (a to-do).
+    'site_programs_outside',
+    // S4 R2a: this server cannot enforce a site's limits at all.
+    'site_limits_unsupported',
+    // S4 R2a second fix round: a change of limits that did not reach every
+    // site; a default memory limit fixed for the server's earlier memory.
+    'site_limits_unapplied', 'site_memory_default',
+    // S4 R2a third fix round: a move whose put-back did not complete.
+    'site_move_kept',
     // alpha.145: webmail's configuration still sends without encryption.
     'webmail_cannot_send',
 ];
 // The doors the administrator may close again after the server owner undid them.
+// The action of a site's default memory limit fixed for the server's earlier memory (S4 R2a).
+const SITE_MEMORY_DEFAULT_URL = '/api/v1/rights/site-memory-default';
 const RECLOSE = ['at', 'stock_pool'];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
@@ -199,7 +220,7 @@ export interface Problem {
     value: number;
     since?: string;
     observed_at?: string;
-    action: { kind: 'start_service' | 'open' | 'reclose'; to?: string };
+    action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default'; to?: string };
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
     holding_count?: number;
     holding_bytes?: number;
@@ -220,7 +241,8 @@ export function decodeProblems(raw: unknown): ProblemsReport {
         !!p && typeof p === 'object' && KINDS.includes(p.kind) && typeof p.key === 'string'
         && (p.severity === 'warning' || p.severity === 'critical') && typeof p.value === 'number'
         && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
-            : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'start_service' && typeof p.unit === 'string')
+            : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'apply_default' ? p.kind === 'site_memory_default'
+                : p.action.kind === 'start_service' && typeof p.unit === 'string')
     ));
     const unknown = body.unknown.filter((u): u is ProblemsReport['unknown'][number] => (
         !!u && SOURCES.includes(u.source) && REASONS.includes(u.reason)
@@ -377,6 +399,51 @@ export function ProblemsNow({
         });
     };
 
+    // S4 R2a second fix round: a site's default memory limit fixed for the
+    // server's earlier memory. The server's preview first (the sites whose
+    // programs use more than the new default, as for any lowered limit), the
+    // panel's own question with that list, then the apply with the list's
+    // token: a list that changed meanwhile is refused and asked again.
+    const applyDefault = async (problem: Problem) => {
+        const vars = problemVars(problem, t);
+        const send = (body: Record<string, unknown>) => fetch(SITE_MEMORY_DEFAULT_URL, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        let preview: { sites_stopped?: string[]; sites_stopped_count?: number; stopped_token?: string } = {};
+        try {
+            const response = await send({ action: 'preview' });
+            if (!response.ok) {
+                setFailed({ key: problem.key, text: apiErrorText(await readApiError(response), t, 'pnow.site_memory_default.failed') });
+                return;
+            }
+            preview = ((await response.json()) as { preview?: typeof preview }).preview ?? {};
+        } catch {
+            showToast('warning', t('pnow.unknownResult', { name: vars.name ?? '' }));
+            return;
+        }
+        const stopped = preview.sites_stopped_count ?? 0;
+        await confirmAction({
+            title: t('pnow.site_memory_default.title', vars),
+            message: [t('pnow.site_memory_default.confirm', vars), stopped > 0 ? t('limits.preview.sitesStopped', { n: stopped }) : '', ...(preview.sites_stopped ?? [])].filter(Boolean).join('\n'),
+            confirmLabel: t('pnow.site_memory_default.action'),
+            progressTitle: t('pnow.site_memory_default.step'),
+            action: async (report) => {
+                report.steps([{ id: 'apply', label: t('pnow.site_memory_default.step'), state: 'running', since: Date.now() }]);
+                try {
+                    const response = await send({ action: 'apply', confirm_stopped: preview.stopped_token ?? '' });
+                    if (!response.ok) {
+                        return { state: 'failed', title: t('pnow.site_memory_default.failed'), reason: apiErrorText(await readApiError(response), t, 'pnow.site_memory_default.failed') };
+                    }
+                    return { state: 'done', message: t('pnow.site_memory_default.done') };
+                } catch {
+                    return { state: 'unknown', reason: t('pnow.unknownResult', { name: vars.name ?? '' }) };
+                } finally {
+                    void handle.retry();
+                }
+            },
+        });
+    };
+
     const remote = handle.remote;
     if (remote.state === 'loading') {
         return quiet ? null : <p className="mb-4 text-sm text-fg-muted" data-problems-now="checking">{t('pnow.checking')}</p>;
@@ -453,6 +520,10 @@ export function ProblemsNow({
                                             onClick={() => void start(problem)}
                                         >
                                             {t('pnow.service_stopped.action')}
+                                        </Button>
+                                    ) : problem.action.kind === 'apply_default' ? (
+                                        <Button className="shrink-0 self-start" onClick={() => void applyDefault(problem)} data-problem-apply-default="">
+                                            {t('pnow.site_memory_default.action')}
                                         </Button>
                                     ) : problem.action.kind === 'reclose' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void reclose(problem)} data-problem-reclose="">
