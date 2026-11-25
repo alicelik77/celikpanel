@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.148.tr.md)
 
+> **Published** on 2026-11-25 (UTC): release commit `0c07d0281`, GitHub pre-release at 21:34:14Z, download portal at about 21:38Z (public check 27/27).
+
 **A security release.** A customer site's programs (uploaded programs,
 Python apps, the Node.js application, service apps, and their install, build
 and deploy steps) now run inside limits of their own: together they can use
