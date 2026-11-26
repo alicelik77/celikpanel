@@ -198,6 +198,21 @@ function updaterReason(message: string): string {
     return reason === GENERIC_UPDATER_REASON || !/[A-Za-z0-9]/.test(reason) ? '' : reason;
 }
 
+// The updater's own last line says its release transaction had begun, so the
+// server's recovery may still take the request over: the summary with
+// state=recovery_required (update.sh report_update_failure, printed by its exit
+// handler), or one of the fixed last lines of the two exit handlers that finish
+// an earlier transaction before that handler exists (pending_finalization_exit
+// and scheduler_recovery_exit; the installed Agent drops the Turkish line's
+// non-ASCII letters, so only its ASCII words are matched). No such line, as
+// when the updater stopped before its exit handler (alpha.149 lab: the
+// foundation monotonic preflight) or was killed, says nothing about it.
+// Güncelleyicinin son satırı işlemin başladığını söylüyorsa kurtarma gelebilir.
+const UPDATER_TRANSACTION_BEGAN = /(?:^|: )!! (?:CELIKPANEL_UPDATE_FAILURE code=[a-z_]{1,64} state=recovery_required |Pending update finalization failed; marker preserved|Bekleyen [^;]*; marker korundu ve iki koordinat|Runtime completion (?:is exact and|remains) durable;|Certbot scheduler restoration was verified, but durable marker cleanup|Scheduler recovery evidence is missing or changed;)/;
+function updaterTransactionBegan(message: string): boolean {
+    return UPDATER_TRANSACTION_BEGAN.test(message);
+}
+
 export function failedUpdateGuidance(observation: RecoveryObservation | null, input: Input): FailedUpdateGuidance {
     const product = input.message !== '' && input.productMessages.includes(input.message);
     // upd4 O7: never the raw line; omitted when a reviewed translation says it.
@@ -378,13 +393,18 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // recovery follows, and the owner's next step (recovery.next.failed)
         // is theirs. Said as such, the notice can be closed and updates checked
         // again; closing starts nothing and the server still refuses a second
-        // update while a transaction is open.
+        // update while a transaction is open. An updater whose last line says
+        // its transaction had begun keeps the alpha.149 notice (progress, the
+        // recovery's guidance, no close) however long it lasts: its recovery
+        // may still start. The next observation always decides again.
         // Nedeni yazılmamış ve kurtarmanın üstlenmediği başarısız güncelleme:
         // süre dolunca bildirim kapatılabilir; kapatmak hiçbir şey başlatmaz.
+        // İşlemin başladığını söyleyen güncelleyici satırında kapatılamaz.
         const unattendedFailure = phase === 'failed' && observation.terminal_proof === 'none'
             && !observation.automatic_recovery && !observation.waiting_for
             && recoveryFailureGuidanceKey(observation) === undefined
-            && !input.reading && input.withinLimit !== true;
+            && !input.reading && input.withinLimit !== true
+            && !updaterTransactionBegan(input.message);
         // Red only when the owner must act: a paused recovery, a recovery
         // that could not finish, or a failure no recovery took over. Everything
         // the server still handles is progress.

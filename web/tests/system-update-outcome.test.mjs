@@ -16,7 +16,7 @@ const compile = (path) => ts.transpileModule(readFileSync(new URL(path, import.m
 }).outputText;
 const recoveryURL = dataModule(compile('../src/lib/recoveryObservation.ts'));
 const failureURL = dataModule(compile('../src/lib/systemUpdateFailure.ts'));
-const { parseRecoveryObservation, recoveryFailureGuidanceKey } = await import(recoveryURL);
+const { parseRecoveryObservation, recoveryFailureGuidanceKey, reconcileRecoveryObservation } = await import(recoveryURL);
 const { withoutInternalTokens, systemUpdatePreflightStop } = await import(failureURL);
 const { failedUpdateGuidance, decodePreviousUpdateAttempt, previousAttemptStopped, RECOVERY_LOG_COMMAND, preflightSteps, preflightReasonClasses,
     systemUpdateWithinLimit, systemUpdateFailureClosable } = await import(dataModule(
@@ -492,11 +492,15 @@ test('a refused mail/DNS state says nothing changed, who acts and that the same 
 // the recovery timer may still take the request over it is progress; past the
 // page's limit no recovery follows, the owner's next step is theirs, and the
 // notice can be closed (red, the close button and the acknowledgement).
+// The lab's own message: the updater stopped before its exit handler, so no
+// summary line follows its die line.
+const monotonicPreflight = 'reviewed updater failed: exit status 1: !! release recovery foundation monotonic preflight failed';
 test('a failed update no recovery took over becomes the owner\'s after the limit, closable', () => {
     const unattended = observed('failed');
-    assert.equal(failedUpdateGuidance(unattended, input({ withinLimit: true })).tone, 'progress');
-    assert.equal(failedUpdateGuidance(unattended, input({ reading: true })).tone, 'progress');
-    const after = failedUpdateGuidance(unattended, input({ withinLimit: false }));
+    const lab = { message: monotonicPreflight };
+    assert.equal(failedUpdateGuidance(unattended, input({ ...lab, withinLimit: true })).tone, 'progress');
+    assert.equal(failedUpdateGuidance(unattended, input({ ...lab, reading: true })).tone, 'progress');
+    const after = failedUpdateGuidance(unattended, input({ ...lab, withinLimit: false }));
     assert.equal(after.tone, 'danger');
     assert.equal(after.state, 'recovery');
     assert.equal(after.title.key, 'recovery.phase.failed');
@@ -518,11 +522,54 @@ test('a failed update no recovery took over becomes the owner\'s after the limit
     // Only a red, amber or neutral notice has the close button; progress has none.
     for (const tone of ['danger', 'warning', 'neutral']) assert.equal(systemUpdateFailureClosable(tone), true, tone);
     for (const tone of ['progress', 'success', null]) assert.equal(systemUpdateFailureClosable(tone), false, String(tone));
-    // End to end: a minute after the failure it is progress (no close); after
+    // End to end: a minute after the failure it is progress (no close); at
     // the limit it is the owner's and closable.
-    const at = (age) => systemUpdateFailureClosable(failedUpdateGuidance(unattended, input({ withinLimit: systemUpdateWithinLimit(now - age, now) })).tone);
+    const at = (age, message = monotonicPreflight, observation = unattended) => systemUpdateFailureClosable(
+        failedUpdateGuidance(observation, input({ message, withinLimit: systemUpdateWithinLimit(now - age, now) })).tone);
     assert.equal(at(60_000), false);
+    assert.equal(at(120_000), true);
     assert.equal(at(121_000), true);
+    // No server line at all (a killed updater, or no message): closable at the limit.
+    assert.equal(at(60_000, ''), false);
+    assert.equal(at(120_000, ''), true);
+    // The updater said nothing changed: as before, closable at the limit.
+    const unchanged = 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=unchanged reason=cannot read the candidate manifest detail=';
+    assert.equal(at(60_000, unchanged), false);
+    assert.equal(at(120_000, unchanged), true);
+    // The updater said its transaction had begun: alpha.149's notice exactly,
+    // progress with the recovery's guidance and no close, at the limit and at
+    // ten minutes (its recovery may still start).
+    const began = 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped detail=';
+    for (const message of [began, summary,
+        // The fixed last lines of the exit handlers that finish an earlier
+        // transaction (no summary line follows them); the Turkish one as the
+        // installed Agent passes it (non-ASCII letters dropped) and whole.
+        'reviewed updater failed: exit status 1: !! Bekleyen gncelleme sonulandrmas baarsz; marker korundu ve iki koordinatr durduruldu.',
+        'reviewed updater failed: exit status 1: !! Bekleyen güncelleme sonuçlandırması başarısız; marker korundu ve iki koordinatör durduruldu.',
+        'reviewed updater failed: exit status 1: !! Pending update finalization failed; marker preserved and both coordinators stopped.',
+        'reviewed updater failed: exit status 1: !! Runtime completion is exact and durable; Certbot scheduler restoration is safely retryable.',
+        'reviewed updater failed: exit status 1: !! Runtime completion remains durable; exact Certbot scheduler restoration is safely retryable.',
+        'reviewed updater failed: exit status 1: !! Certbot scheduler restoration was verified, but durable marker cleanup reported an error.',
+        'reviewed updater failed: exit status 1: !! Scheduler recovery evidence is missing or changed; both coordinators were stopped.',
+    ]) {
+        for (const age of [60_000, 120_000, 600_000]) {
+            const guidance = failedUpdateGuidance(unattended, input({ message, withinLimit: systemUpdateWithinLimit(now - age, now) }));
+            assert.equal(guidance.tone, 'progress', `${age} ${message}`);
+            assert.equal(guidance.title.key, 'recovery.phase.failed');
+            assert.deepEqual(guidance.lines.map((line) => line.key), ['recovery.next.failed', 'panelUpdate.outcome.followsRecovery']);
+            assert.equal(systemUpdateFailureClosable(guidance.tone), false);
+        }
+    }
+    // A recovery that takes the request over after the notice turned red: the
+    // next observation (reconciled as the tracker does) decides again, and the
+    // notice is progress with no close button.
+    assert.equal(at(600_000), true);
+    const takenOver = reconcileRecoveryObservation(unattended, observed('recovering', { observed_at: '2026-09-30T15:55:00Z' })).record;
+    assert.equal(takenOver.phase, 'recovering');
+    const following = failedUpdateGuidance(takenOver, input({ ...lab, withinLimit: false }));
+    assert.equal(following.tone, 'progress');
+    assert.equal(following.title.key, 'recovery.phase.recovering');
+    assert.equal(at(600_000, monotonicPreflight, takenOver), false);
     // The tracker computes both through these functions.
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
     assert.match(tracker, /withinLimit: systemUpdateWithinLimit\(displayedTerminal\.completedAt, Date\.now\(\)\),/);
