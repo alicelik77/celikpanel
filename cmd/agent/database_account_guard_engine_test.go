@@ -69,7 +69,7 @@ func TestTheAccountGuardOnRealEngines(t *testing.T) {
 			return databaseAccountRefusalOf(readGuardState(run, "SELECT 'guard=' || "+pgDatabaseOwnerStateExpr("'ag_admin'", true)+";", "ag_admin"))
 		}
 		guarded := func() error {
-			_, err := run("BEGIN;\n" + pgGuardBlockOf(pgDatabaseOwnerStateExpr("'ag_admin'", true)) + "\nCOMMIT;")
+			_, err := run("BEGIN;\n" + pgGuardBlockOf(pgDatabaseOwnerStateExpr("'ag_admin'", true), "'ag_admin'") + "\nCOMMIT;")
 			return err
 		}
 		if got := adminState(); got != "" || guarded() != nil {

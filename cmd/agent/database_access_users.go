@@ -156,6 +156,13 @@ func (a *Agent) RemoveDatabaseAccessUserV1(req *transport.DatabaseAccessUserRequ
 	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
+	// Second review of PR #370, finding 9: a refusal names its account; on a
+	// removal that is the user itself unless the database's owner refused.
+	defer func() {
+		if resp.AccountRefused != "" && resp.AccountRefusedName == "" {
+			resp.AccountRefusedName = req.Username
+		}
+	}()
 	if req.Engine == "mysql" {
 		removeMySQLAccessUser(req, resp)
 		return nil
@@ -896,7 +903,7 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	// (database_account_guard.go), read now and again in the grants' own
 	// transaction.
 	if err := readDatabaseOwnerState(run, owner); err != nil {
-		resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+		resp.AccountRefused, resp.AccountRefusedName, resp.Error = databaseAccountRefusalOf(err), databaseAccountRefusedName(err), err.Error()
 		if resp.AccountRefused == "" {
 			resp.Error += "; nothing was changed"
 		}
@@ -929,7 +936,9 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	guards := []string{ownerGuard}
 	for _, name := range append(append([]string{}, writers...), readers...) {
 		if err := readDatabaseAccountState("postgresql", run, name, pgAccountOrdinary, false); err != nil {
-			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+			// Second review of PR #370, finding 9: the refused writer or
+			// reader is named, not the new user.
+			resp.AccountRefused, resp.AccountRefusedName, resp.Error = databaseAccountRefusalOf(err), name, err.Error()
 			return
 		}
 		guard, err := pgAccountGuardBlock(name, pgAccountOrdinary)
@@ -955,8 +964,11 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	if output, err := run(grants); err != nil {
 		failure := hostcmd.Fail("the database server did not give the new user its rights", output, err, databaseClientMeaning).Error()
 		if code := databaseAccountWriteRefusal(output); code != "" {
-			resp.AccountRefused = code
+			resp.AccountRefused, resp.AccountRefusedName = code, databaseAccountRefusedNameIn(output)
 			failure = "the database's owner or one of its other users is no longer an ordinary database user, so the new user was not given its rights"
+			if resp.AccountRefusedName != "" {
+				failure = databaseAccountRefusalText(resp.AccountRefusedName, code) + "; the new user was not given its rights"
+			}
 		}
 		if _, dropErr := run("DROP ROLE IF EXISTS " + ident + ";"); dropErr != nil {
 			resp.CleanupIncomplete = true
@@ -999,7 +1011,7 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	// dropped on the panel's word; the same test runs again in the
 	// transaction of each write.
 	if err := readDatabaseAccountState("postgresql", run, req.Username, pgAccountOrdinary, false); err != nil {
-		resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+		resp.AccountRefused, resp.AccountRefusedName, resp.Error = databaseAccountRefusalOf(err), req.Username, err.Error()
 		return
 	}
 	guard, err := pgAccountGuardBlock(req.Username, pgAccountOrdinary)
@@ -1009,7 +1021,13 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	}
 	refused := func(output []byte) bool {
 		if code := databaseAccountWriteRefusal(output); code != "" {
-			resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.Username, code)
+			// Second review of PR #370, finding 9: the user or the
+			// database's owner, as the guard that refused names it.
+			name := databaseAccountRefusedNameIn(output)
+			if name == "" {
+				name = req.Username
+			}
+			resp.AccountRefused, resp.AccountRefusedName, resp.Error = code, name, databaseAccountRefusalText(name, code)
 			return true
 		}
 		return false
@@ -1026,7 +1044,7 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		// user made is handed to the owner only while the owner passes the
 		// rule, read now and again in the REASSIGN's own transaction.
 		if err := readDatabaseOwnerState(run, owner); err != nil {
-			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+			resp.AccountRefused, resp.AccountRefusedName, resp.Error = databaseAccountRefusalOf(err), databaseAccountRefusedName(err), err.Error()
 			if resp.AccountRefused == "" {
 				resp.Error += "; nothing was changed"
 			}

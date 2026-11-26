@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 	"testing"
@@ -171,5 +172,63 @@ func TestTheOwnerRuleOfCelikPanelsOwnAccount(t *testing.T) {
 	}
 	if _, err := pgDatabaseOwnerExpr("Owner-With-Dash"); err == nil {
 		t.Error("an owner name CelikPanel cannot test was accepted")
+	}
+}
+
+// Second review of PR #370, finding 9: a refusal names the account it is
+// about - the refused writer or reader, the database's owner, the role a
+// write-time guard names - never the new user on a create.
+func TestARefusalNamesTheRefusedAccount(t *testing.T) {
+	answers := func(grants func(string) ([]byte, error)) func(string) ([]byte, error) {
+		return func(statement string) ([]byte, error) {
+			switch {
+			case strings.HasPrefix(statement, "SELECT 'roles='"):
+				return []byte("roles=0\nowner=app_user\n"), nil
+			case strings.HasPrefix(statement, "SELECT 'role='"):
+				return []byte("role=boss\n"), nil
+			case strings.Contains(statement, "ALTER DEFAULT PRIVILEGES") && grants != nil:
+				return grants(statement)
+			}
+			return nil, nil
+		}
+	}
+	create := func(states map[string]string, grants func(string) ([]byte, error)) transport.DatabaseAccessUserResponse {
+		e := &namedGuardEngine{states: states, other: answers(grants)}
+		installNamedGuardEngine(t, e)
+		var resp transport.DatabaseAccessUserResponse
+		req := &transport.DatabaseAccessUserRequest{Engine: "postgresql", Database: "app", Username: "app_x", Password: "Zq7xN2kLp9Vt4RmW",
+			Access: transport.DatabaseAccessWrite, Writers: []string{"boss"}}
+		if err := (&Agent{}).CreateDatabaseAccessUserV1(req, &resp); err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+	for states, want := range map[string]map[string]string{"boss": {"boss": "privileged"}, "app_user": {"app_user": "privileged"}} {
+		resp := create(want, nil)
+		if resp.AccountRefusedName != states || !strings.Contains(resp.Error, states) || strings.Contains(resp.Error, "app_x") {
+			t.Fatalf("read-time refusal of %s: %+v", states, resp)
+		}
+	}
+	// The writer became privileged after the read: the guard in the grants'
+	// transaction names it.
+	resp := create(nil, func(string) ([]byte, error) {
+		return []byte("ERROR:  celikpanel-refused:privileged:boss\nCONTEXT:  PL/pgSQL function inline_code_block line 5 at RAISE\n"), errors.New("exit status 3")
+	})
+	if resp.Applied || resp.AccountRefused != transport.DatabaseAccountRefusedPrivileged || resp.AccountRefusedName != "boss" ||
+		!strings.Contains(resp.Error, "boss") || strings.Contains(resp.Error, "app_x holds") {
+		t.Fatalf("write-time refusal: %+v", resp)
+	}
+	// A removal names the user itself.
+	e := &namedGuardEngine{states: map[string]string{"app_x": "privileged"}, other: pgAccessAnswers(true, "app_user")}
+	installNamedGuardEngine(t, e)
+	var removed transport.DatabaseAccessUserResponse
+	if err := (&Agent{}).RemoveDatabaseAccessUserV1(&transport.DatabaseAccessUserRequest{Engine: "postgresql", Database: "app", Username: "app_x"}, &removed); err != nil {
+		t.Fatal(err)
+	}
+	if removed.AccountRefusedName != "app_x" {
+		t.Fatalf("removal: %+v", removed)
+	}
+	if got := databaseAccountRefusedNameIn([]byte("ERROR:  celikpanel-refused:member:shop_u\n")); got != "shop_u" {
+		t.Fatalf("name read from a refusal: %q", got)
 	}
 }

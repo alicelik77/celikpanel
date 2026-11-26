@@ -95,6 +95,10 @@ type DatabaseAccessUserResponse struct {
 	// database is the engine's own system database
 	// (DatabaseAccountRefused*); nothing was changed. Additive.
 	AccountRefused string `json:"account_refused,omitempty"`
+	// AccountRefusedName (second review of PR #370, finding 9): the account
+	// the refusal is about - the database's owner, one of its other users
+	// or the user itself - so the sentence names THAT account. Additive.
+	AccountRefusedName string `json:"account_refused_name,omitempty"`
 }
 
 // DroppedRightKept is a right in the raw (pattern) form of a deleted

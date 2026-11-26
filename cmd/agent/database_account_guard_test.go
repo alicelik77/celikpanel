@@ -100,7 +100,7 @@ func TestTheAccountRuleCoversEveryPrivilege(t *testing.T) {
 		}
 	}
 	block, err := pgAccountGuardBlock("shop_user", pgAccountOrdinary)
-	if err != nil || !strings.Contains(block, "RAISE EXCEPTION 'celikpanel-refused:%', state") {
+	if err != nil || !strings.Contains(block, "RAISE EXCEPTION 'celikpanel-refused:%:%', state, 'shop_user';") {
 		t.Fatalf("guard block = %q, %v", block, err)
 	}
 	compound, err := mysqlGuarded("shop_user", false, "ALTER USER 'shop_user'@'localhost' ACCOUNT LOCK;")

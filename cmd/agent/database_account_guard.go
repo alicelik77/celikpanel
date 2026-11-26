@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/services"
@@ -151,16 +152,39 @@ func pgAccountGuardBlock(username string, rule pgAccountRule) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pgGuardBlockOf(pgAccountStateExpr(literal, rule)), nil
+	return pgGuardBlockOf(pgAccountStateExpr(literal, rule), literal), nil
 }
 
-// pgGuardBlockOf is the DO block that raises celikpanel-refused:<state>
-// unless the state expression answers 'ok'.
-func pgGuardBlockOf(stateExpr string) string {
+// pgGuardBlockOf is the DO block that raises celikpanel-refused:<state>:<name>
+// unless the state expression answers 'ok'. The name (a validated
+// identifier, as a literal) tells which of several guarded roles in one
+// transaction refused (second review of PR #370, finding 9).
+func pgGuardBlockOf(stateExpr, literal string) string {
 	return "DO $celikpanel_account_guard$\nDECLARE state pg_catalog.text;\nBEGIN\n" +
 		"  state := " + stateExpr + ";\n" +
-		"  IF state OPERATOR(pg_catalog.<>) 'ok' THEN RAISE EXCEPTION 'celikpanel-refused:%', state; END IF;\n" +
+		"  IF state OPERATOR(pg_catalog.<>) 'ok' THEN RAISE EXCEPTION 'celikpanel-refused:%:%', state, " + literal + "; END IF;\n" +
 		"END\n$celikpanel_account_guard$;"
+}
+
+// refusedNameRe reads the role a guard named in its refusal.
+var refusedNameRe = regexp.MustCompile(`celikpanel-refused:[a-z_]+:([A-Za-z_][A-Za-z0-9_]*)`)
+
+// databaseAccountRefusedNameIn answers the role a write-time refusal names,
+// "" when it names none.
+func databaseAccountRefusedNameIn(output []byte) string {
+	if match := refusedNameRe.FindSubmatch(output); match != nil {
+		return string(match[1])
+	}
+	return ""
+}
+
+// databaseAccountRefusedName answers the account a refusal error is about.
+func databaseAccountRefusedName(err error) string {
+	var refused *errDatabaseAccountRefused
+	if errors.As(err, &refused) {
+		return refused.username
+	}
+	return ""
 }
 
 // The owner of a database a call adds a user to or removes one from
@@ -219,7 +243,8 @@ func pgDatabaseOwnerGuardBlock(owner string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return pgGuardBlockOf(expr), nil
+	literal, _ := pgAccountLiteral(owner)
+	return pgGuardBlockOf(expr, literal), nil
 }
 
 // pgGuarded runs body in one transaction after the guard of username.

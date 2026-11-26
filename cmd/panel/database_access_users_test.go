@@ -147,9 +147,14 @@ type fakeDatabaseAccessNative struct {
 	// rightsFrom: the grantees a removal step says it took rights from
 	// (alpha.134).
 	rightsFrom []string
+	// refused, when set, is the Agent's answer to every call (alpha.149).
+	refused *transport.DatabaseAccessUserResponse
 }
 
 func (f *fakeDatabaseAccessNative) create(_ context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
+	if f.refused != nil {
+		return *f.refused, nil
+	}
 	if f.exists {
 		return transport.DatabaseAccessUserResponse{Exists: true, Error: "exists"}, nil
 	}
@@ -158,6 +163,9 @@ func (f *fakeDatabaseAccessNative) create(_ context.Context, req transport.Datab
 }
 
 func (f *fakeDatabaseAccessNative) remove(_ context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
+	if f.refused != nil {
+		return *f.refused, nil
+	}
 	if f.failRemove {
 		return transport.DatabaseAccessUserResponse{Error: "engine said no"}, nil
 	}
