@@ -79,6 +79,20 @@ günceller.**
   yöneticinin elle kaldırdığı bir veritabanı bundan sonra panelden
   silinebilir.
 
+**Eklenmiş bir veritabanı kullanıcısını kaldırmak, onun yaptıklarını artık
+panelin kendi veritabanı hesabına vermez.** Şimdiye kadar CelikPanel'in kendi
+veritabanı hesabına ait bir PostgreSQL veritabanına eklenmiş bir kullanıcıyı
+kaldırmak, o kullanıcının yaptığı tabloları, işlevleri ve öteki nesneleri bu
+hesaba veriyordu; böylece bir müşterinin yazdığı kod sonradan o hesabın
+yetkileriyle çalışabiliyordu. Artık böyle bir kullanıcı, o veritabanında
+tabloları ya da başka nesneleri olduğu sürece kaldırılmaz: hiçbir şey
+değiştirilmez; sunucunun yöneticisi önce bunları sunucuda veritabanının
+kendi kullanıcısına verir (komutu kullanım kılavuzunun Veritabanları bölümü
+verir), sonra kullanıcıyı panelden yeniden kaldırır. Hiçbir şeyi olmayan bir
+kullanıcı eskisi gibi kaldırılır; bir sitenin kendi kullanıcısına ait bir
+veritabanında kaldırılan kullanıcının yaptıkları eskisi gibi o kullanıcıya
+geçer.
+
 ## Veritabanı sınırları
 
 - **Planın veritabanı sınırları artık PostgreSQL'e ulaşıyor.** En uzun
@@ -208,6 +222,15 @@ günceller.**
   Sunucu sahibinin tek tek ayarlar, tek tek yönetici işlevleri ya da bir
   veritabanı sunucusu yöneticisinin çalıştırdığı nesneler üzerinde elle
   verdiği yetkilere bakmaz.
+- **Önceki sürümlerin, eklenmiş bir kullanıcı kaldırılırken CelikPanel'in
+  kendi veritabanı hesabına verdiği nesneler** olduğu gibi kalır.
+  Veritabanı kullanıcılarının belgesi (`docs/DATABASE-USERS.md`) yöneticiye
+  bunları bir sitenin veritabanında listeleyen sorguyu ve her birini
+  veritabanının kendi kullanıcısına nasıl vereceğini söyler.
+- **Bir PostgreSQL veritabanına eklenen kullanıcı, veritabanının kendi
+  şemalarındaki her tablo, dizi ve işlev üzerinde yetki alır;** sunucunun
+  yöneticisinin oraya kurduğu şeyler de dahil (örneğin bir sitenin
+  veritabanındaki bir eklenti); yönetici eklentilerini başka bir yere kurun.
 - **MariaDB'nin yerindeki yerel bir MySQL sunucusu yönetilmez** (bkz.
   "Güvenlik").
 - **Bir veritabanını başka bir PostgreSQL kümesine taşımak,** gereken
@@ -290,7 +313,7 @@ AÇIK.
 Şema değişikliği yok: `internal/db/migrations/` altında hiçbir dosya
 değişmez; düzen 81 olarak kalır. Yeni ve eklemeli olanlar: ajan çağrısı
 `SetPostgreSQLRoleLimitsV1`; ret kodları `absent`, `privileged`, `member`,
-`unreadable`, `system_database` ve `unsupported_engine`
+`owns_objects`, `unreadable`, `system_database` ve `unsupported_engine`
 (`DATABASE_ACCOUNT_REFUSED`, 409); `POST /api/v1/metrics/database-limits/apply`
 yolu (yönetici) ve denetim eylemi `database.limits.apply_again`; Şu anki
 sorunlar türü 47 (`database_limits_unapplied`); panel ayarları
@@ -307,6 +330,8 @@ Bölüme göre testler:
   `TestRemovingAnAddedUserNeverTouchesAPrivilegedAccount`,
   `TestAddingAUserRefusesADatabaseOwnedByAPrivilegedRole`,
   `TestRemovingAUserNeverHandsItsObjectsToAPrivilegedOwner`,
+  `TestRemovingAUserNeverHandsAnythingToCelikPanelsOwnAccount`,
+  `TestARefusalIsReadOnlyFromTheClientsOwnErrorLine`,
   `TestTheOwnerRuleOfCelikPanelsOwnAccount`,
   `TestNoAgentCallDropsOrEmptiesASystemDatabase`,
   `TestAMariaDBCreateNeverMakesAnAccountBesideOneOfTheSameName`,

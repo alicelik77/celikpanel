@@ -75,6 +75,19 @@ screen.**
   whose user the administrator removed by hand can then be deleted from the
   panel.
 
+**Removing an added database user no longer hands what it made to the
+panel's own database account.** Until now, removing a user added to a
+PostgreSQL database that belongs to CelikPanel's own database account handed
+the tables, functions and other objects that user had made to that account,
+so code a customer wrote could later run with that account's rights. Now
+such a user is not removed while it owns tables or other objects in that
+database: nothing is changed, and the server's administrator first hands
+them to the database's own user on the server (the user guide's Databases
+chapter gives the command), then removes the user again from the panel. A
+user that owns nothing is removed as before, and on a database that belongs
+to a site's own user, what the removed user made goes to that user, as
+before.
+
 ## Database limits
 
 - **The plan's database limits now reach PostgreSQL.** The longest
@@ -201,6 +214,15 @@ screen.**
   roles.** It does not look at rights the server owner granted by hand on
   single settings, on single administrator functions, or on objects a
   database server administrator runs.
+- **Objects that earlier releases already handed to CelikPanel's own
+  database account** when an added user was removed stay as they are. The
+  database users' documentation (`docs/DATABASE-USERS.md`) gives the
+  administrator the query that lists them in a site's database, and how to
+  hand each to the database's own user.
+- **A user added to a PostgreSQL database gets rights on every table,
+  sequence and function of the database's own schemas,** including what the
+  server's administrator installed there (for example an extension in a
+  site's database); install administrator extensions elsewhere.
 - **A local MySQL server in MariaDB's place is not managed** (see
   "Security").
 - **Moving a database to another PostgreSQL cluster** recreates the roles
@@ -276,7 +298,8 @@ OPEN.
 No schema change: no file under `internal/db/migrations/` changes; the
 layout stays 81. New and additive: the agent call
 `SetPostgreSQLRoleLimitsV1`; the refusal codes `absent`, `privileged`,
-`member`, `unreadable`, `system_database` and `unsupported_engine`
+`member`, `owns_objects`, `unreadable`, `system_database` and
+`unsupported_engine`
 (`DATABASE_ACCOUNT_REFUSED`, 409); the route
 `POST /api/v1/metrics/database-limits/apply` (administrator) with the audit
 action `database.limits.apply_again`; Problems now kind 47
@@ -294,6 +317,8 @@ Tests by part:
   `TestRemovingAnAddedUserNeverTouchesAPrivilegedAccount`,
   `TestAddingAUserRefusesADatabaseOwnedByAPrivilegedRole`,
   `TestRemovingAUserNeverHandsItsObjectsToAPrivilegedOwner`,
+  `TestRemovingAUserNeverHandsAnythingToCelikPanelsOwnAccount`,
+  `TestARefusalIsReadOnlyFromTheClientsOwnErrorLine`,
   `TestTheOwnerRuleOfCelikPanelsOwnAccount`,
   `TestNoAgentCallDropsOrEmptiesASystemDatabase`,
   `TestAMariaDBCreateNeverMakesAnAccountBesideOneOfTheSameName`,

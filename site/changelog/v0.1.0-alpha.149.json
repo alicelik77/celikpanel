@@ -20,6 +20,18 @@
       }
     },
     {
+      "kind": "security",
+      "text": {
+        "en": "Removing a user added to a PostgreSQL database no longer hands what that user made to the panel’s own database account; such a user is not removed while it owns objects there, and the server’s administrator hands them to the database’s own user first.",
+        "tr": "Bir PostgreSQL veritabanına eklenmiş bir kullanıcıyı kaldırmak, o kullanıcının yaptıklarını artık panelin kendi veritabanı hesabına vermez; böyle bir kullanıcı orada nesneleri olduğu sürece kaldırılmaz, sunucunun yöneticisi önce bunları veritabanının kendi kullanıcısına verir."
+      },
+      "case": "CP-2026-30",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:78",
+        "says": "Removing an added database user no longer hands what it made to the"
+      }
+    },
+    {
       "kind": "fixed",
       "text": {
         "en": "The plan’s database limits reach the PostgreSQL users of sites and every newly created database user; the server owner’s own values are kept, and Problems now names a user the limits did not reach, with Apply again.",
@@ -27,7 +39,7 @@
       },
       "case": "CP-2026-25",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:80",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:93",
         "says": "The plan's database limits now reach PostgreSQL."
       }
     },
@@ -39,7 +51,7 @@
       },
       "case": "CP-2026-26",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:112",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:125",
         "says": "The move says what is true."
       }
     },
@@ -50,7 +62,7 @@
         "tr": "Panelden başlatılan durmuş bir program sitesinin sınırlarının içinde başlar."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:135",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:148",
         "says": "A stopped program started from the panel starts inside its site's"
       }
     },
@@ -62,7 +74,7 @@
       },
       "case": "CP-2026-27",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:147",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:160",
         "says": "No update while a site is being moved, and no move while the update"
       }
     },
