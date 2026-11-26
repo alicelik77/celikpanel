@@ -557,7 +557,7 @@ func TestEveryAccountTheAgentOrADriverCreatesIsAccountedFor(t *testing.T) {
 		// A remote copy carries the local account's limits.
 		"../../internal/dbremote/mariadb.go": 1,
 		// The Database Servers screen (driver.CreateUser, the contract above).
-		"../../internal/services/mariadb_driver.go": 1,
+		"../../internal/services/mariadb_driver.go":    1,
 		"../../internal/services/postgresql_driver.go": 1,
 	}
 	found := map[string]int{}
