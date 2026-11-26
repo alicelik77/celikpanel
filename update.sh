@@ -40,6 +40,8 @@ RELEASE_RECOVERY_MANIFEST="$RELEASE_STATE_DIR/recovery-foundation.v1"
 RELEASE_RECOVERY_AGENT_DROPIN="$UNIT_DIR/celikpanel-agent.service.d/10-release-transaction-guard.conf"
 RELEASE_RECOVERY_PANEL_DROPIN="$UNIT_DIR/celikpanel-panel.service.d/10-release-transaction-guard.conf"
 SYSTEMCTL_BIN=/usr/bin/systemctl
+KERNEL_BOOT_ID_FILE=/proc/sys/kernel/random/boot_id
+FIREWALL_POLICY_FILE=/etc/celikpanel/firewall.nft
 TIMEOUT_BIN=/usr/bin/timeout
 PREFLIGHT_PANEL="${CELIKPANEL_PREFLIGHT_PANEL:-$BIN_DIR/panel}"
 PREFLIGHT_AGENT="${CELIKPANEL_PREFLIGHT_AGENT:-$BIN_DIR/agent}"
@@ -2102,6 +2104,7 @@ load_saved_service_states() {
        ! service_state_is_active_like "${saved_active_states[celikpanel-agent.service]}"; then
         die "saved runtime state is inconsistent: an active panel requires an active agent"
     fi
+    load_saved_service_states_boot "$ledger"
 }
 
 verify_saved_enablement() {
@@ -2113,6 +2116,67 @@ verify_saved_enablement() {
     done
 }
 
+# A server restart inside an update's or a return's pending window (alpha.150;
+# alpha.149 lab, step 33 B). celikpanel-firewall-restore.service is a boot
+# oneshot: on a server that has not restarted since its policy file first
+# existed it is inactive when the states are saved, and the next boot runs it.
+# Its "saved inactive-like, now active" refusal protects one thing: the update
+# or the return never applies a firewall policy itself. The saved states name
+# the kernel boot they were read in (service-states.boot-id beside the ledger;
+# a clock change cannot forge it). Only for this unit, only after a boot, and
+# only when the boot's own run is what made it active is the change accepted.
+# No record (a ledger an earlier release wrote) keeps the strict rule.
+# Bekleyen pencerede yeniden başlatma: güvenlik duvarı birimini açılış çalıştırdıysa
+# (kayıttan sonra yeni bir açılış, birimin kendi başarılı çalışması, kayıtlı ve
+# şimdiki "enabled", politika dosyası var, açılış bitmeden etkin) kabul edilir.
+# Kayıt yoksa eski katı kural geçerlidir; ajan ve panel denetimi değişmez.
+SERVICE_STATES_BOOT_RECORD=service-states.boot-id
+saved_service_states_boot_id=
+firewall_boot_activation_reported=0
+
+# Load the optional boot record beside a service-state ledger. Absent means no
+# boot is proved; present but not exactly one boot id line is refused.
+# Defterin yanındaki isteğe bağlı açılış kaydını oku; bozuk kayıt reddedilir.
+load_saved_service_states_boot() {
+    local record line
+    saved_service_states_boot_id=
+    record=$(dirname -- "$1")/$SERVICE_STATES_BOOT_RECORD
+    [[ -e $record || -L $record ]] || return 0
+    [[ -f $record && ! -L $record && $(stat -Lc '%s' -- "$record") -eq 37 ]] \
+        || die "service-state boot record is unsafe: $record"
+    line=$(<"$record")
+    [[ $line =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] &&
+        printf '%s\n' "$line" | cmp -s - "$record" \
+        || die "service-state boot record is not canonical: $record"
+    saved_service_states_boot_id=$line
+}
+
+# True only when a boot happened since the states were saved and that boot's own
+# run of the firewall restore unit made it active: a recorded boot id differs
+# from the running kernel's, the unit is enabled as saved, its policy file
+# exists, its run ended in success (oneshot, exited), and it became active
+# before this boot's startup finished, so no recovery run started it.
+# Kayıttan sonra açılış oldu ve birimi açılışın kendi başarılı çalışması etkinleştirdi.
+firewall_restore_activated_by_boot() {
+    local unit=celikpanel-firewall-restore.service boot value entered finished
+    [[ -n $saved_service_states_boot_id ]] || return 1
+    read -r boot 2>/dev/null < "$KERNEL_BOOT_ID_FILE" || return 1
+    [[ $boot =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ &&
+       $boot != "$saved_service_states_boot_id" ]] || return 1
+    [[ ${saved_enabled_states[$unit]:-} == enabled ]] || return 1
+    value=$(systemctl is-enabled "$unit" 2>/dev/null) || return 1
+    [[ $value == enabled ]] || return 1
+    [[ -f $FIREWALL_POLICY_FILE ]] || return 1
+    value=$(systemctl show --property=Result --value "$unit" 2>/dev/null) || return 1
+    [[ $value == success ]] || return 1
+    value=$(systemctl show --property=SubState --value "$unit" 2>/dev/null) || return 1
+    [[ $value == exited ]] || return 1
+    entered=$(systemctl show --property=ActiveEnterTimestampMonotonic --value "$unit" 2>/dev/null) || return 1
+    finished=$(systemctl show --property=FinishTimestampMonotonic --value 2>/dev/null) || return 1
+    [[ $entered =~ ^[1-9][0-9]{0,17}$ && $finished =~ ^[1-9][0-9]{0,17}$ ]] || return 1
+    (( 10#$entered <= 10#$finished ))
+}
+
 verify_saved_runtime_states() {
     local unit state
     for unit in celikpanel-agent.service celikpanel-panel.service celikpanel-firewall-restore.service; do
@@ -2121,6 +2185,12 @@ verify_saved_runtime_states() {
             systemctl is-active --quiet "$unit" \
                 || die "saved active-like service is not active: $unit"
         elif systemctl is-active --quiet "$unit"; then
+            if [[ $unit == celikpanel-firewall-restore.service ]] && firewall_restore_activated_by_boot; then
+                [[ $firewall_boot_activation_reported -eq 1 ]] ||
+                    printf '%s\n' "==> $unit was started by a boot after the service states were saved (its own successful boot run); accepted"
+                firewall_boot_activation_reported=1
+                continue
+            fi
             die "saved inactive-like service became active: $unit"
         fi
     done
@@ -3766,6 +3836,16 @@ else
         esac
         printf '%s\t%s\t%s\n' "$unit" "$enabled_state" "$active_state" >> "$tmp_snap/service-states.tsv"
     done
+    # The kernel boot these states were read in (alpha.150): a later pending
+    # finalization tells a restart's own firewall restore run from a start.
+    # Bu durumların okunduğu çekirdek açılışı; sonraki sonuçlandırma için.
+    read -r saved_states_boot < "$KERNEL_BOOT_ID_FILE" \
+        || die "cannot read the kernel boot id for the service-state ledger"
+    [[ $saved_states_boot =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] \
+        || die "kernel boot id is not canonical"
+    printf '%s\n' "$saved_states_boot" > "$tmp_snap/$SERVICE_STATES_BOOT_RECORD"
+    chown root:root -- "$tmp_snap/$SERVICE_STATES_BOOT_RECORD"
+    chmod 0600 -- "$tmp_snap/$SERVICE_STATES_BOOT_RECORD"
     printf '%s\n' "$snapshot_schema" > "$tmp_snap/snapshot-transition.state"
     chown root:root -- "$tmp_snap/snapshot-transition.state"
     chmod 0600 -- "$tmp_snap/snapshot-transition.state"
@@ -3779,7 +3859,7 @@ else
     release_txn_validate_update_snapshot_stage "$SNAP_ROOT" "$snapshot_name" "$stage_root" \
         || die "new snapshot staging recovery material is not canonical"
     sync -f -- "$tmp_snap/service-states.tsv" "$tmp_snap/quiesce-coordinators.tsv" \
-        "$tmp_snap/snapshot-transition.state" \
+        "$tmp_snap/$SERVICE_STATES_BOOT_RECORD" "$tmp_snap/snapshot-transition.state" \
         "$tmp_snap" "$stage_root" "$SNAP_ROOT" \
         || die "snapshot recovery material could not be made durable"
 
