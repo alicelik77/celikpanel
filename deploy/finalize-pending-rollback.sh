@@ -994,13 +994,15 @@ verify_pending_evidence() {
     verify_saved_enablement
 }
 
+# At most 300 polls 0.2 s apart (about 60 s), as update.sh: a healthy agent
+# opened its socket in up to 14 s on the lab's servers.
 wait_for_agent_ready() {
     local _
     [[ ! -e "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]] \
         || die "agent socket exists before the controlled agent start"
     systemctl start celikpanel-agent.service \
         || die "restored rollback agent could not be started"
-    for _ in $(seq 1 50); do
+    for _ in $(seq 1 300); do
         if systemctl is-active --quiet celikpanel-agent.service &&
            [[ -S "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]]; then
             return 0

@@ -115,6 +115,16 @@ require_function_sequence() {
     done
 }
 
+# The whole function, byte for byte: a shorter bound, a looser readiness test or
+# a removed fail-fast must change this test together with the reviewed loop.
+require_function_exact() {
+    local file=$1 function_name=$2 expected=$3 source
+    source=$(extract_function_source "$file" "$function_name") \
+        || die "$(basename "$file") has no complete function: $function_name"
+    [[ "$source" == "$expected" ]] \
+        || die "$function_name differs from the reviewed loop (bound, readiness test or fail-fast)"
+}
+
 require_function_sequence "$RELEASE_RECOVERY_FOUNDATION" \
     release_recovery_verify_systemd_definition \
     '--property=LoadState' \
@@ -2829,6 +2839,29 @@ require_sequence "$UPDATE" \
     'wait_for_fresh_active_agent() {' \
     '[[ ! -L $socket ]]' \
     '[[ $state == active && -S $socket ]]'
+# alpha.149: a healthy agent opened its socket in up to 14 s on the lab's
+# servers; the wait is 200 polls 0.3 s apart (about 60 s) and a failed unit
+# still ends it at once.
+require_function_exact "$UPDATE" wait_for_fresh_active_agent "$(cat <<'EOF'
+wait_for_fresh_active_agent() {
+    local socket=/run/celikpanel/agent.sock state _
+    for _ in $(seq 1 200); do
+        state=$(systemctl show -p ActiveState --value celikpanel-agent.service) \
+            || die 'cannot inspect agent during controlled start'
+        [[ ! -L $socket ]] || die 'agent socket became a symbolic link during controlled start'
+        if [[ -e $socket && ! -S $socket ]]; then
+            die 'agent socket path became unsafe during controlled start'
+        fi
+        if [[ $state == active && -S $socket ]]; then
+            return 0
+        fi
+        [[ $state != failed ]] || die 'agent failed during controlled start'
+        sleep 0.3
+    done
+    die 'agent did not become active with a fresh socket'
+}
+EOF
+)"
 
 # A distro maintenance timer may briefly acquire apt/dnf/pacman after
 # daemon-reload. The updater may wait only in the stopped, externally locked
@@ -3069,6 +3102,27 @@ require_function_sequence "$ROLLBACK" wait_for_fresh_active_agent \
     '[[ ! -L "$socket" ]]' \
     '[[ "$state" == active && -S "$socket" ]]' \
     '[[ "$state" != failed ]]'
+require_function_exact "$ROLLBACK" wait_for_fresh_active_agent "$(cat <<'EOF'
+wait_for_fresh_active_agent() {
+    local socket=/run/celikpanel/agent.sock state _
+    for _ in $(seq 1 200); do
+        state=$(systemctl show -p ActiveState --value celikpanel-agent.service) \
+            || die "cannot inspect restored agent during controlled start"
+        [[ ! -L "$socket" ]] \
+            || die "restored-agent socket became a symbolic link during controlled start"
+        if [[ -e "$socket" && ! -S "$socket" ]]; then
+            die "restored-agent socket path became unsafe during controlled start"
+        fi
+        if [[ "$state" == active && -S "$socket" ]]; then
+            return 0
+        fi
+        [[ "$state" != failed ]] || die "restored agent failed during controlled start"
+        sleep 0.3
+    done
+    die "restored agent did not become active with a fresh socket"
+}
+EOF
+)"
 require_function_sequence "$ROLLBACK" verify_restored_agent_idle_under_release_lock \
     '[[ -n "${MUTATION_LOCK_FD:-}" ]]' \
     'normal)' \

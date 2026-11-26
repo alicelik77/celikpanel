@@ -979,6 +979,8 @@ verify_running_unit_executable() {
         || die "$unit running executable digest does not match the reviewed previous release"
 }
 
+# At most 300 polls 0.2 s apart (about 60 s), as update.sh: a healthy agent
+# opened its socket in up to 14 s on the lab's servers.
 wait_for_agent_ready() {
     local _
     verify_mutation_lock_held
@@ -986,7 +988,7 @@ wait_for_agent_ready() {
         || die "agent socket exists before the controlled markerless start"
     systemctl start celikpanel-agent.service \
         || die "reviewed previous-release agent could not be started"
-    for _ in $(seq 1 50); do
+    for _ in $(seq 1 300); do
         if systemctl is-active --quiet celikpanel-agent.service &&
            [[ -S "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]]; then
             verify_mutation_lock_held
