@@ -3,7 +3,7 @@ import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
 
-import { refusalActor } from '../src/lib/apiError.ts';
+import { refusalActor } from '../src/lib/refusalActor.ts';
 import { operationEndLine } from '../src/lib/confirmAction.ts';
 import { enProblemsScreens } from '../src/i18n/screens/problems/en.ts';
 import { trProblemsScreens } from '../src/i18n/screens/problems/tr.ts';
@@ -12,7 +12,7 @@ import { trDataTools as trData } from '../src/i18n/dataTools/tr.ts';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
 
 // alpha.149 lab W1: the progress window said "Waiting for someone to act" over
-// a reason that names the server's administrator. One rule (lib/apiError.ts
+// a reason that names the server's administrator. One rule (lib/refusalActor.ts
 // refusalActor): the heading names the administrator for a refusal about an
 // existing account whose reason names them, read by the administrator; making
 // a new account, and every other viewer, keep the general heading (review of

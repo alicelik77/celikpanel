@@ -73,7 +73,7 @@ export type OperationEnd =
         actor?: OperationActor;
     };
 
-/** The actors a refusal's reason can name (lib/apiError.ts refusalActor). */
+/** The actors a refusal's reason can name (lib/refusalActor.ts). */
 export type OperationActor = 'administrator';
 
 const OPERATION_END_WORD = {

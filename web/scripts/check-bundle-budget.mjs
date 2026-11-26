@@ -310,8 +310,10 @@ const screenPartBudgets = {
   // of "mailDatabases" when the plain reasons of a refused save took it over
   // its ceiling (Turkish 46.04 / 12.83 KiB; 34.27 / 9.82 KiB after). A new
   // part, set with at least 25% headroom from its Turkish file: 11.81 / 3.70
-  // KiB.
-  dbConfig: kib(17.5, 5.5),
+  // KiB. Raised with alpha.150 (who acts when a database deletion's users
+  // were refused, err.DATABASE_DELETE_USERS_LEFT.refused*) to keep 25%
+  // headroom over 19.79 / 5.27 KiB.
+  dbConfig: kib(25, 6.75),
   // v0.1.0-alpha.130: a removed PostgreSQL version's leftover cluster and its
   // "Archive and remove", and the PostgreSQL page's cluster choice
   // (pgc.leftover., pgc.pick., opstep.pgLeftover.), split out of

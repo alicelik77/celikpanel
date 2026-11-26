@@ -203,6 +203,8 @@ export const componentOperationGuidanceURL = compileSource('lib/componentOperati
 // text it is given is the request's message, or its title when it has none.
 // A confirmed request's action runs before the answer, as in the dialogue.
 export const confirmActionURL = compileSource('lib/confirmAction.ts', unexpected('lib/confirmAction.ts'));
+// alpha.150: who acts on a refused database account (the shipped rule).
+export const refusalActorURL = compileSource('lib/refusalActor.ts', unexpected('lib/refusalActor.ts'));
 const confirmActionModule = await import(confirmActionURL);
 // The steps an action reports and how it ended are kept on
 // globalThis.operationSteps / globalThis.operationEnds for the test to read; an
@@ -304,6 +306,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/installPlan': installPlanURL,
     '/lib/componentOperationGuidance': componentOperationGuidanceURL,
     '/lib/confirmAction': confirmActionURL,
+    '/lib/refusalActor': refusalActorURL,
     '/lib/useRefusal': useRefusalURL,
     '/lib/requestProgress': requestProgressURL,
     // alpha.123: ServiceList sends the removal's own request identity header.
