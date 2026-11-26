@@ -484,3 +484,31 @@ test('a refused mail/DNS state says nothing changed, who acts and that the same 
     const other = failedUpdateGuidance(stop, input({ message: refusedSummary('bind_compatibility', 'check_failed', 'x') }));
     assert.deepEqual(other.lines.slice(-2).map((value) => value.key), ['panelUpdate.outcome.stoppedNext', 'panelUpdate.outcome.stoppedResume']);
 });
+
+// alpha.149 lab O3: an update refused before it started without a typed
+// cause (phase=failed terminal_proof=none, the foundation preflight) kept an
+// open tab locked with no close button until another browser signed in. While
+// the recovery timer may still take the request over it is progress; past the
+// page's limit no recovery follows, the owner's next step is theirs, and the
+// notice can be closed (red, the close button and the acknowledgement).
+test('a failed update no recovery took over becomes the owner\'s after the limit, closable', () => {
+    const unattended = observed('failed');
+    assert.equal(failedUpdateGuidance(unattended, input({ withinLimit: true })).tone, 'progress');
+    assert.equal(failedUpdateGuidance(unattended, input({ reading: true })).tone, 'progress');
+    const after = failedUpdateGuidance(unattended, input({ withinLimit: false }));
+    assert.equal(after.tone, 'danger');
+    assert.equal(after.state, 'recovery');
+    assert.equal(after.title.key, 'recovery.phase.failed');
+    assert.equal(after.lines[0].key, 'recovery.next.failed');
+    // A typed cause the server's recovery acts on keeps its own progress wording.
+    for (const code of ['candidate_panel_startup_check_failed', 'panel_start_unverified']) {
+        assert.equal(failedUpdateGuidance(observed('failed', { failure_code: code }), input({ withinLimit: false })).tone, 'progress');
+    }
+    // Recovery that has taken the request over is never made closable by time.
+    assert.equal(failedUpdateGuidance(observed('recovering'), input({ withinLimit: false })).tone, 'progress');
+    assert.equal(failedUpdateGuidance(observed('recovering', { waiting_for: 'starting' }), input({ withinLimit: false })).tone, 'progress');
+    // The tracker shows the close button for a red notice and keeps polling it.
+    const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
+    assert.match(tracker, /const realFailure = displayedTerminal\?\.kind === 'failed'\n\s+&& \(failureTone === 'danger' \|\| failureTone === 'warning' \|\| failureTone === 'neutral'\);/);
+    assert.match(tracker, /withinLimit: displayedTerminal\.completedAt !== undefined\n\s+&& Date\.now\(\) - displayedTerminal\.completedAt < SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS,/);
+});

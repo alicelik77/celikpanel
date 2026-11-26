@@ -353,11 +353,27 @@ export function failedUpdateGuidance(observation: RecoveryObservation | null, in
         // upd4 O9: a verified update shows no failure, and the server's
         // failure line of the earlier attempt is not shown.
         if (!succeeded) lines.push({ key: 'panelUpdate.outcome.followsRecovery' });
-        // Red only when the owner must act: a paused recovery or a recovery
-        // that could not finish. Everything the server still handles is progress.
+        // alpha.149 lab O3: the update failed with no typed cause and the
+        // server's recovery has not taken it over (an update refused before it
+        // started, observed as phase=failed terminal_proof=none). The native
+        // recovery timer runs every 30 seconds: past the page's limit no
+        // recovery follows, and the owner's next step (recovery.next.failed)
+        // is theirs. Said as such, the notice can be closed and updates checked
+        // again; closing starts nothing and the server still refuses a second
+        // update while a transaction is open.
+        // Nedeni yazılmamış ve kurtarmanın üstlenmediği başarısız güncelleme:
+        // süre dolunca bildirim kapatılabilir; kapatmak hiçbir şey başlatmaz.
+        const unattendedFailure = phase === 'failed' && observation.terminal_proof === 'none'
+            && !observation.automatic_recovery && !observation.waiting_for
+            && recoveryFailureGuidanceKey(observation) === undefined
+            && !input.reading && input.withinLimit !== true;
+        // Red only when the owner must act: a paused recovery, a recovery
+        // that could not finish, or a failure no recovery took over. Everything
+        // the server still handles is progress.
         const tone: SystemUpdateOutcomeTone = succeeded ? 'success'
             : observation.automatic_recovery === 'paused_retry_limit'
-                || (phase === 'recovery_required' && !observation.automatic_recovery) ? 'danger'
+                || (phase === 'recovery_required' && !observation.automatic_recovery)
+                || unattendedFailure ? 'danger'
                 : phase === 'recovered' ? 'warning' : 'progress';
         return { state: succeeded ? 'succeeded' : 'recovery', tone, title, lines, command, serverMessage: succeeded ? undefined : serverMessage };
     }
