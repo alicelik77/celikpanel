@@ -38,12 +38,13 @@ func keptRecordOf(t *testing.T, host *sliceTestHost, units []string) {
 	}
 }
 
-// TestTheAgentsStartIsBoundedByItsReadsAndOneReload (F1): 64 programs in a
-// kept record and every systemd call slow. The start's added time is its
-// calls and nothing else: ONE reading of the programs, ONE daemon-reload, one
-// reset-failed and a restart requested with --no-block per program; no
-// restart that waits, no polling, no port reading. Every outcome is
-// "unverified" and the record stays.
+// TestTheAgentsStartIsBoundedByItsReadsAndOneReload (F1; second fix round
+// R5): 64 programs in a kept record and every systemd call slow. The start's
+// added time is its calls and nothing else, and they are at most FOUR
+// whatever the number of programs: ONE reading of the programs, ONE
+// daemon-reload, ONE reset-failed and ONE restart request with --no-block
+// naming every program; no restart that waits, no polling, no port reading.
+// Every outcome is "unverified" and the record stays.
 func TestTheAgentsStartIsBoundedByItsReadsAndOneReload(t *testing.T) {
 	host := useSliceTestHost(t)
 	var units []string
@@ -52,7 +53,7 @@ func TestTheAgentsStartIsBoundedByItsReadsAndOneReload(t *testing.T) {
 	}
 	keptRecordOf(t, host, units)
 	listened := 0
-	siteSliceListening = func(string) map[int]bool { listened++; return nil }
+	siteSliceListening = func(string) (map[int]bool, bool) { listened++; return nil, false }
 	const delay = 15 * time.Millisecond
 	host.mu.Lock()
 	host.delay, host.calls, host.reloads = delay, nil, 0
@@ -65,7 +66,7 @@ func TestTheAgentsStartIsBoundedByItsReadsAndOneReload(t *testing.T) {
 	host.mu.Lock()
 	calls, reloads := append([]string(nil), host.calls...), host.reloads
 	host.mu.Unlock()
-	shows, resets, requested := 0, 0, 0
+	shows, resets, requests, named := 0, 0, 0, 0
 	for _, c := range calls {
 		switch {
 		case strings.HasPrefix(c, "show"):
@@ -73,15 +74,16 @@ func TestTheAgentsStartIsBoundedByItsReadsAndOneReload(t *testing.T) {
 		case strings.HasPrefix(c, "reset-failed"):
 			resets++
 		case strings.HasPrefix(c, "restart --no-block "):
-			requested++
+			requests++
+			named += len(strings.Fields(c)) - 2
 		case strings.HasPrefix(c, "restart"):
 			t.Fatalf("a restart that waits at the Agent's start: %s", c)
 		}
 	}
-	if shows != 1 || reloads != 1 || resets != 1 || requested != len(units) || listened != 0 {
-		t.Fatalf("shows=%d reloads=%d resets=%d requested=%d ports read=%d", shows, reloads, resets, requested, listened)
+	if len(calls) > 4 || shows != 1 || reloads != 1 || resets != 1 || requests != 1 || named != len(units) || listened != 0 {
+		t.Fatalf("calls=%d shows=%d reloads=%d resets=%d requests=%d programs named=%d ports read=%d", len(calls), shows, reloads, resets, requests, named, listened)
 	}
-	if bound := time.Duration(len(calls))*delay + 750*time.Millisecond; took > bound {
+	if bound := 4*delay + 750*time.Millisecond; took > bound {
 		t.Fatalf("the start took %v for %d calls of %v (bound %v)", took, len(calls), delay, bound)
 	}
 	outcomes := readSiteMoveOutcomes()["7"]
@@ -161,6 +163,7 @@ func TestNotKnownYetIsResolvedByReadingOnly(t *testing.T) {
 	host.mu.Lock()
 	host.units[unit].active, host.units[unit].cgroup = "active", "/system.slice/"+unit
 	host.mu.Unlock()
+	host.advance(90 * time.Second) // up for its start wait (second fix round, R1)
 	if s := round3Status(t, 7); s.MoveInterrupted == nil || s.MoveInterrupted.Kept || s.MoveInterrupted.Units[unit] != transport.SiteMovePutBack {
 		t.Fatalf("running where it ran: %+v", s.MoveInterrupted)
 	}
@@ -279,12 +282,14 @@ func TestAMoveIsRefusedWhileTheUpdateRuns(t *testing.T) {
 	before := sealedTestUnit(unit, sliceTestHome+"/app")
 	writeTestUnit(t, host, unit, before)
 	host.units[unit] = &sliceTestUnit{active: "active", cgroup: "/system.slice/" + unit}
-	siteMoveUpdateActive = func() bool { return true }
-	for _, req := range []*transport.MoveSiteSliceRequest{moveRequest(unit), {RequestID: "r-fix-upd", Recover: true}} {
-		var resp transport.MoveSiteSliceResponse
-		_ = (&Agent{}).MoveSiteSliceV1(req, &resp)
-		if resp.Done || resp.Reason == nil || resp.Reason.Code != "update_running" || !strings.Contains(resp.Error, "update is in progress") {
-			t.Fatalf("during the update: %+v", resp)
+	for _, state := range []string{"update_running", "update_unreadable"} {
+		siteMoveUpdateState = func() string { return state }
+		for _, req := range []*transport.MoveSiteSliceRequest{moveRequest(unit), {RequestID: "r-fix-upd", Recover: true}} {
+			var resp transport.MoveSiteSliceResponse
+			_ = (&Agent{}).MoveSiteSliceV1(req, &resp)
+			if resp.Done || resp.Reason == nil || resp.Reason.Code != state || !strings.Contains(resp.Error, "nothing was moved") {
+				t.Fatalf("during the update (%s): %+v", state, resp)
+			}
 		}
 	}
 	if unitText(t, filepath.Join(host.dir, unit)) != before || host.called("daemon-reload") {
@@ -295,22 +300,69 @@ func TestAMoveIsRefusedWhileTheUpdateRuns(t *testing.T) {
 	}
 	// The reader of the update's records.
 	root := t.TempDir()
-	if systemUpdateRecordsActive(root) || systemUpdateRecordsActive(filepath.Join(root, "missing")) {
+	now := time.Now()
+	if systemUpdateRecordsState(root, now) != "" || systemUpdateRecordsState(filepath.Join(root, "missing"), now) != "" {
 		t.Fatal("no record is an update in progress")
 	}
-	write := func(id, status string) {
-		raw := fmt.Sprintf(`{"version":%d,"request_id":%q,"status":%q}`, systemUpdateStateVersion, id, status)
-		if err := os.WriteFile(filepath.Join(root, id+".json"), []byte(raw), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	write(strings.Repeat("a", 32), systemUpdateSucceeded)
-	if systemUpdateRecordsActive(root) {
+	writeUpdateRecord(t, root, strings.Repeat("a", 32), systemUpdateSucceeded, now.Add(-time.Minute))
+	if systemUpdateRecordsState(root, now) != "" {
 		t.Fatal("a finished update is not in progress")
 	}
-	write(strings.Repeat("b", 32), systemUpdateRunning)
-	if !systemUpdateRecordsActive(root) {
+	writeUpdateRecord(t, root, strings.Repeat("b", 32), systemUpdateRunning, now.Add(-time.Minute))
+	if systemUpdateRecordsState(root, now) != "update_running" {
 		t.Fatal("a running update is not seen")
+	}
+}
+
+// writeUpdateRecord writes a panel update record as the update's store does.
+func writeUpdateRecord(t *testing.T, root, id, status string, created time.Time) {
+	t.Helper()
+	at := created.UTC().Format(time.RFC3339Nano)
+	raw := fmt.Sprintf(`{"version":%d,"request_id":%q,"status":%q,"created_at":%q,"updated_at":%q}`, systemUpdateStateVersion, id, status, at, at)
+	if err := os.WriteFile(filepath.Join(root, id+".json"), []byte(raw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestAStaleUpdateRecordNeverRefusesMovesForGood (second fix round, R2): a
+// record left "running" by a dead worker refuses moves only while it can
+// still be a live update (created within systemUpdateRecoveryGrace); after
+// that it stops refusing by itself, with no Agent restart and nothing
+// written. A record that cannot be read refuses (the safe side) with its own
+// code, and also stops by itself once it has not changed for the grace.
+func TestAStaleUpdateRecordNeverRefusesMovesForGood(t *testing.T) {
+	root := t.TempDir()
+	id := strings.Repeat("c", 32)
+	created := time.Now().Add(-time.Minute)
+	writeUpdateRecord(t, root, id, systemUpdateRunning, created)
+	raw, _ := os.ReadFile(filepath.Join(root, id+".json"))
+	if got := systemUpdateRecordsState(root, created.Add(time.Minute)); got != "update_running" {
+		t.Fatalf("a running update a minute old: %q", got)
+	}
+	// The worker died: nothing reconciles the record. Past the grace it is
+	// no longer an update in progress, and the record is untouched.
+	if got := systemUpdateRecordsState(root, created.Add(systemUpdateRecoveryGrace+time.Minute)); got != "" {
+		t.Fatalf("a running record %v old still refuses moves: %q", systemUpdateRecoveryGrace+time.Minute, got)
+	}
+	if after, _ := os.ReadFile(filepath.Join(root, id+".json")); string(after) != string(raw) {
+		t.Fatal("the update's record was changed by a move's check")
+	}
+	// A record from a clock ahead of this one is not a live update either.
+	if got := systemUpdateRecordsState(root, created.Add(-time.Hour)); got != "" {
+		t.Fatalf("a record created in the future: %q", got)
+	}
+	// An unreadable record: refused while it changed recently, not after.
+	root = t.TempDir()
+	bad := filepath.Join(root, strings.Repeat("d", 32)+".json")
+	if err := os.WriteFile(bad, []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stale := created.Add(systemUpdateRecoveryGrace + time.Hour)
+	if got := systemUpdateRecordsState(root, time.Now()); got != "update_unreadable" {
+		t.Fatalf("an unreadable fresh record: %q", got)
+	}
+	if got := systemUpdateRecordsState(root, stale); got != "" {
+		t.Fatalf("an unreadable record that has not changed for the grace still refuses: %q", got)
 	}
 }
 
@@ -335,11 +387,11 @@ func TestAPutBackThatRunsOnAChangedPortRuns(t *testing.T) {
 			host.ports[unit] = map[int]bool{30010: true}
 			listening, restarted := c.ports, false
 			host.onRestart = func(string) { restarted = true }
-			siteSliceListening = func(u string) map[int]bool {
+			siteSliceListening = func(u string) (map[int]bool, bool) {
 				if !restarted {
-					return map[int]bool{30010: true} // before the move
+					return map[int]bool{30010: true}, true // before the move
 				}
-				return listening
+				return listening, true
 			}
 			var resp transport.MoveSiteSliceResponse
 			_ = (&Agent{}).MoveSiteSliceV1(moveRequest(unit), &resp)

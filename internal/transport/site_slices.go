@@ -360,4 +360,10 @@ type MoveSiteSliceResponse struct {
 	Recovery *SiteSliceMoveRecovery `json:"recovery,omitempty"`
 	// Reason (alpha.149) is the code of Error, for the page's language.
 	Reason *SiteMoveReason `json:"reason,omitempty"`
+	// RunsNoPort (alpha.149 second fix round, R8; additive, only a Recover
+	// request sets it): programs the administrator's Try again restarted once
+	// more after they were "not answering", which then ran where they ran
+	// without a break for their start wait but listen on no port. They are
+	// put back (their entries are closed); the page names them.
+	RunsNoPort []string `json:"runs_no_port,omitempty"`
 }

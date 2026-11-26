@@ -255,7 +255,14 @@ func setAsideEarlierSiteSlice(siteID int) ([]string, error) {
 }
 
 func siteSliceDaemonReload() error {
-	if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
+	return siteSliceDaemonReloadWith(appUnitSystemctl)
+}
+
+// siteSliceDaemonReloadWith is the daemon-reload through the given systemctl
+// (a bounded one at the Agent's start and in a status read; alpha.149 second
+// fix round, R5/R6).
+func siteSliceDaemonReloadWith(systemctl func(args ...string) ([]byte, error)) error {
+	if out, err := systemctl(systemctlArgs("daemon-reload")...); err != nil {
 		return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
@@ -392,8 +399,11 @@ const (
 	siteSliceShowList     = 400
 )
 
+// siteSliceShowProperties: ActiveEnterTimestampMonotonic (alpha.149 second
+// fix round, R1) is read in the same reading as the state, so a status read
+// knows how long a kept program has run without a break.
 var siteSliceShowProperties = []string{"Id", "LoadState", "ActiveState", "SubState", "ControlGroup", "Slice", "MemoryMax", "TasksMax",
-	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent", "DropInPaths", "FragmentPath", "NeedDaemonReload"}
+	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent", "DropInPaths", "FragmentPath", "NeedDaemonReload", "ActiveEnterTimestampMonotonic"}
 
 // siteSliceKernelState reads what a running slice's cgroup enforces
 // (memory.max, pids.max, cpu.max) and compares it with what systemd applies
@@ -451,6 +461,12 @@ func siteSliceKernelState(dir string, props map[string]string, file string) (tra
 // showUnits asks systemd about many units in as few calls as possible
 // (systemctl show prints one block per unit, separated by a blank line).
 func showUnits(names []string) (map[string]map[string]string, error) {
+	return showUnitsWith(appUnitSystemctl, names)
+}
+
+// showUnitsWith is showUnits through the given systemctl (the Agent's start
+// passes one bounded by its context; alpha.149 second fix round, R5).
+func showUnitsWith(systemctl func(args ...string) ([]byte, error), names []string) (map[string]map[string]string, error) {
 	out := map[string]map[string]string{}
 	for start := 0; start < len(names); start += siteSliceShowList {
 		end := start + siteSliceShowList
@@ -458,7 +474,7 @@ func showUnits(names []string) (map[string]map[string]string, error) {
 			end = len(names)
 		}
 		args := append([]string{"show", "--property=" + strings.Join(siteSliceShowProperties, ",")}, names[start:end]...)
-		raw, err := appUnitSystemctl(systemctlArgs(args...)...)
+		raw, err := systemctl(systemctlArgs(args...)...)
 		if err != nil {
 			return nil, fmt.Errorf("systemctl show: %v: %s", err, strings.TrimSpace(string(raw)))
 		}

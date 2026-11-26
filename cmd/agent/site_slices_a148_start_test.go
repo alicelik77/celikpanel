@@ -71,10 +71,11 @@ func TestAKeptMoveNeverHoldsUpTheAgentsStart(t *testing.T) {
 	if reloads != 1 {
 		t.Fatalf("%d daemon-reloads at the start, want one for all: %v", reloads, calls)
 	}
-	requested := 0
+	requests, requested := 0, 0
 	for i, c := range calls {
 		if strings.HasPrefix(c, "restart --no-block ") {
-			requested++
+			requests++
+			requested += len(strings.Fields(c)) - 2 // second fix round (R5): one request for all
 			for _, later := range calls[i:] {
 				if strings.HasPrefix(later, "show") {
 					t.Fatalf("the start read a program after requesting its restart (polling): %v", calls)
@@ -82,7 +83,7 @@ func TestAKeptMoveNeverHoldsUpTheAgentsStart(t *testing.T) {
 			}
 		}
 	}
-	if requested != 2 {
+	if requests != 1 || requested != 2 {
 		t.Fatalf("restarts requested: %v", calls)
 	}
 	if _, err := os.Stat(siteMoveJournalPath); err != nil {
@@ -96,7 +97,15 @@ func TestAKeptMoveNeverHoldsUpTheAgentsStart(t *testing.T) {
 			t.Fatalf("%s after the start: %q", u, got)
 		}
 	}
-	// The status read sees both running where they ran: the record goes.
+	// Right after the restarts, running where they ran is not enough (second
+	// fix round, R1): a program in systemd's restart cycle reads so too.
+	if status := round3Status(t, 7); status.MoveInterrupted == nil || !status.MoveInterrupted.Kept ||
+		status.MoveInterrupted.Units[first] != transport.SiteMoveUnverified {
+		t.Fatalf("a status read closed the record before the programs ran for their start wait: %+v", status.MoveInterrupted)
+	}
+	// The status read sees both running where they ran for their start wait:
+	// the record goes.
+	host.advance(300 * time.Second)
 	status := round3Status(t, 7)
 	if status.MoveInterrupted == nil || status.MoveInterrupted.Kept ||
 		status.MoveInterrupted.Units[first] != transport.SiteMovePutBack || status.MoveInterrupted.Units[second] != transport.SiteMovePutBack {

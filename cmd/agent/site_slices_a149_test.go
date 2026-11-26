@@ -87,7 +87,7 @@ func TestAStartPutBackIsCheckedLikeTheMove(t *testing.T) {
 		want    string
 	}{
 		{"the Agent's start", recoverSiteSliceMoveAtStart, transport.SiteMoveUnverified},
-		{"Try again", recoverSiteSliceMove, transport.SiteMoveFailed},
+		{"Try again", func() *siteMoveRecovered { return recoverSiteSliceMove(time.Now().Add(siteMoveBudget), true) }, transport.SiteMoveFailed},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			host, running, before := round3Interrupted(t)
@@ -154,12 +154,12 @@ func TestAMoveThatDoesNotListenSaysSoInCodes(t *testing.T) {
 	host.units[unit] = &sliceTestUnit{active: "active", cgroup: "/system.slice/" + unit}
 	host.ports[unit] = map[int]bool{30010: true}
 	inner := siteSliceListening
-	siteSliceListening = func(u string) map[int]bool {
+	siteSliceListening = func(u string) (map[int]bool, bool) {
 		host.mu.Lock()
 		inSlice := strings.HasPrefix(host.units[u].cgroup, "/celiksite_")
 		host.mu.Unlock()
 		if inSlice {
-			return map[int]bool{} // it runs in the slice but no longer answers
+			return map[int]bool{}, true // it runs in the slice but no longer answers
 		}
 		return inner(u)
 	}

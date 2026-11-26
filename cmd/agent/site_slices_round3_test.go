@@ -58,10 +58,12 @@ func round3Status(t *testing.T, siteID int) transport.SiteSliceStatus {
 }
 
 // TestARecoveryThatCannotRestartKeepsItsRecord (N2): the put-back's restart
-// cannot even be requested at the Agent's start: the record stays, the
-// program is "waiting" (not restarted) on the card (kept), the next move of
-// any site is refused with that reason; "Try again" restarts it ("failed"
-// while it cannot start) and, once it can, finishes it and the record goes.
+// request fails at the Agent's start: the record stays, the program is "not
+// known yet" on the card (kept; alpha.149 second fix round R5: whatever the
+// one request's exit code, every program it named is "unverified" and the
+// status read sorts them out), the next move of any site is refused with
+// that reason; "Try again" restarts it ("failed" while it cannot start) and,
+// once it can, finishes it and the record goes.
 func TestARecoveryThatCannotRestartKeepsItsRecord(t *testing.T) {
 	host, running, before := round3Interrupted(t)
 	broken := true
@@ -75,8 +77,8 @@ func TestARecoveryThatCannotRestartKeepsItsRecord(t *testing.T) {
 		t.Fatalf("the pre-move bytes are not back:\n%s", got)
 	}
 	status := round3Status(t, 7)
-	if status.MoveInterrupted == nil || !status.MoveInterrupted.Kept || status.MoveInterrupted.Units[running] != transport.SiteMoveWaiting {
-		t.Fatalf("the card is not told the program was not restarted: %+v", status.MoveInterrupted)
+	if status.MoveInterrupted == nil || !status.MoveInterrupted.Kept || status.MoveInterrupted.Units[running] != transport.SiteMoveUnverified {
+		t.Fatalf("the card is not told the program's state is not known yet: %+v", status.MoveInterrupted)
 	}
 	// The next move of any site is refused while the record stays.
 	other := moveRequest(running)
