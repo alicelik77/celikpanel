@@ -1445,6 +1445,16 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 		}
 		defer release()
 	}
+	// alpha.150 fix round (F7): never while a move record of this site is
+	// kept (its Try again settles the site's tasks first), also in the preview;
+	// a record that cannot be read counts as this site's.
+	if _, statErr := os.Stat(siteMoveJournalPath); statErr == nil {
+		if journal, err := readSiteMoveJournal(); err != nil || journal.SiteID == target.SiteID {
+			resp.Refusal = transport.SiteMoveRefusalKept
+			resp.Error = "a move of this site into its limits was not settled; its card names it with Try again. Nothing was changed; the task file is rebuilt once that is settled"
+			return nil
+		}
+	}
 	cronMu.Lock()
 	defer cronMu.Unlock()
 	source, err := readSiteTaskSource(target.SiteID)

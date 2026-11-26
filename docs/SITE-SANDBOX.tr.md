@@ -1365,7 +1365,9 @@ da cron'dan).
   | awk '{print $1}') && sudo rm -f <adı söylenen dosyalar> && sudo systemctl daemon-reload`;
   ekranın yanıtı dosyaları adlandırır).
   Yeniden kurma birim yazar ve systemd'yi yeniden yükler; bu yüzden panelin güncellemesi ya da bir
-  taşıma sürerken reddedilir, o sürerken de güncelleme (§9.3).
+  taşıma sürerken reddedilir, o sürerken de güncelleme (§9.3); sitenin bir taşıma kaydı dururken de
+  kendisi ve ön izlemesi reddedilir: o kaydın Tekrar dene'si önce sitenin görevlerini çözer
+  (alpha.150 düzeltme turu).
 - **Yerel olarak, birimlerde.** Değiştirilmiş bir `celikcron-*` birimi korunur (D-031) ve ekran onu
   adlandırır. Sahibin durdurduğu ya da kapattığı bir zamanlayıcı (`systemctl disable --now`) öyle
   kalır: değişen bir görev zamanlayıcısını yalnız çalışıyorsa yeniden başlatır; geri alma da

@@ -474,3 +474,25 @@ func TestANewSiteKeepsCronWhenCronAllowCannotBeWritten(t *testing.T) {
 		t.Fatal("the new site was not moved")
 	}
 }
+
+// TestTheRebuildIsRefusedWhileTheSitesMoveRecordIsKept (F7): rebuilding a
+// site's task file (and its preview) is refused while a move record of the
+// site is kept; Try again settles the site's tasks first.
+func TestTheRebuildIsRefusedWhileTheSitesMoveRecordIsKept(t *testing.T) {
+	host := useTaskTestHost(t)
+	stoppedMove(t, host, moveTaskCrontab, siteTasksStepEnabled)
+	if err := os.Remove(sitecron.SourcePath(taskTestSite)); err != nil {
+		t.Fatal(err)
+	}
+	host.resetCalls()
+	for _, preview := range []bool{true, false} {
+		var resp transport.SiteTaskSourceResponse
+		_ = (&Agent{}).RebuildSiteTaskSourceV1(&transport.SiteTasksMoveRequest{CronTenant: transport.CronTenant{SiteID: taskTestSite}, Preview: preview}, &resp)
+		if resp.Refusal != transport.SiteMoveRefusalKept || resp.Outcome != transport.SiteTasksRefused {
+			t.Fatalf("preview %v: %+v", preview, resp)
+		}
+	}
+	if _, err := os.Stat(sitecron.SourcePath(taskTestSite)); !os.IsNotExist(err) || len(host.systemdCalls()) != 0 {
+		t.Fatalf("something changed: %v %v", err, host.systemdCalls())
+	}
+}

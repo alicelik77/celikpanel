@@ -14,6 +14,7 @@ export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
     'stasks.rebuild.empty': '(satır yok)',
     'stasks.rebuild.done': 'Görev dosyası geri geldi; bu ekrandaki değişiklikler yeniden çalışıyor.',
     'stasks.rebuild.busy': 'Hiçbir şey yeniden kurulmadı: panelin güncellemesi sürüyor ya da bir site sınırlarına taşınıyor. Bu bitince yeniden basın.',
+    'stasks.rebuild.kept': 'Bu sitenin sınırlarına taşınması bitmedi; sitenin Genel Bakış sayfasındaki kartı onu Tekrar dene ile gösterir. Hiçbir şey değiştirilmedi: görev dosyası bu çözülünce yeniden kurulur.',
     'stasks.rebuild.unknown': 'Ne olduğu bilinmiyor. Bu sayfayı yeniden okuyun.',
     'stasks.reappeared': 'Bu sitenin hesabı için yeniden bir crontab yapılmış ({n} satır). Bunu yalnız root (sunucu sahibi) yapabilirdi; sitenin sınırlarının dışında çalışır:',
     'stasks.reappearedSite': 'Bu sitenin hesabının yeniden bir crontab’ı var ({n} satır) ve sitenin sınırlarının dışında çalışıyor. Cron bu hesaba izin verdi, yani sitenin kendi kodu yapmış olabilir:',

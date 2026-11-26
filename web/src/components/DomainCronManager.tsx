@@ -176,6 +176,11 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
             showToast('error', t('stasks.rebuild.busy'));
             return;
         }
+        // alpha.150 fix round (F7): a move of this site was not settled (its card has Try again).
+        if (preview.refusal === 'kept_earlier') {
+            showToast('error', t('stasks.rebuild.kept'));
+            return;
+        }
         if (preview.outcome !== 'preview') {
             showToast('error', preview.error || t('stasks.rebuild.unknown'));
             return;
@@ -197,6 +202,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                     if (answer.outcome === 'rebuilt') return { state: 'done', message: t('stasks.rebuild.done') };
                     // alpha.150: refused while the panel's update runs or a site is being moved.
                     if (REBUILD_BUSY.includes(answer.refusal ?? '')) return { state: 'blocked', reason: t('stasks.rebuild.busy') };
+                    if (answer.refusal === 'kept_earlier') return { state: 'blocked', reason: t('stasks.rebuild.kept') };
                     if (answer.outcome === 'refused') return { state: 'blocked', reason: answer.error || '' };
                     return { state: 'unknown', reason: answer.error || t('stasks.rebuild.unknown') };
                 } catch {

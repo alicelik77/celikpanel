@@ -1522,8 +1522,10 @@ and Problems now say how the tasks run (not running, or from cron).
   that the tasks run from the crontab again and names the timer files left behind, which the
   server owner removes (`sudo systemctl disable --now $(systemctl list-unit-files --no-legend
   'celikcron-<id>-*.timer' | awk '{print $1}') && sudo rm -f <the files named> && sudo
-  systemctl daemon-reload`; the screen's answer names the files). The rebuild writes units and reloads systemd, so it is refused
-  while the panel's update runs or a move runs, and the update while it runs (§9.3).
+  systemctl daemon-reload`; the screen's answer names the files). The rebuild writes units
+  and reloads systemd, so it is refused while the panel's update runs or a move runs, and the
+  update while it runs (§9.3); it and its preview are also refused while a move record of the
+  site is kept, whose Try again settles the site's tasks first (alpha.150 fix round).
 - **Natively, in the units.** A changed `celikcron-*` unit is kept (D-031) and the screen
   names it. A timer the owner stopped or disabled (`systemctl disable --now`) stays so: a
   changed task restarts its timer only when it runs, and the undo puts a disabled one's task back

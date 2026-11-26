@@ -91,6 +91,10 @@ test('the rebuild of a task file words the update’s and the move’s refusal',
   assert.match(screen, /REBUILD_BUSY: readonly string\[\] = \['update_running', 'update_unreadable', 'another_move'\]/);
   assert.match(screen, /REBUILD_BUSY\.includes\(answer\.refusal \?\? ''\)\) return \{ state: 'blocked', reason: t\('stasks\.rebuild\.busy'\) \}/);
   for (const words of [enSiteTasksScreens, trSiteTasksScreens]) assert.ok(words['stasks.rebuild.busy']);
+  // Fix round F7: refused while a move record of the site is kept.
+  assert.match(screen, /preview\.refusal === 'kept_earlier'\) \{\s*showToast\('error', t\('stasks\.rebuild\.kept'\)\)/);
+  assert.match(screen, /answer\.refusal === 'kept_earlier'\) return \{ state: 'blocked', reason: t\('stasks\.rebuild\.kept'\) \}/);
+  for (const words of [enSiteTasksScreens, trSiteTasksScreens]) assert.ok(words['stasks.rebuild.kept']);
 });
 
 test('fix round F6: the undo names the tasks that came back paused, in both languages', () => {

@@ -22,6 +22,7 @@ export const enSiteTasksScreens = {
     'stasks.rebuild.empty': '(no lines)',
     'stasks.rebuild.done': 'The task file is back; changes on this screen work again.',
     'stasks.rebuild.busy': 'Nothing was rebuilt: the panel’s update is in progress, or a site is being moved into its limits. Press Rebuild again when that has finished.',
+    'stasks.rebuild.kept': 'A move of this site into its limits did not finish; its card on the site’s Overview names it with Try again. Nothing was changed: the task file is rebuilt once that is settled.',
     'stasks.rebuild.unknown': 'What happened is not known. Read this page again.',
     'stasks.reappeared': 'A crontab was made again for this site’s account ({n} lines). Only root could make it (the server owner), and it runs outside the site’s limits:',
     'stasks.reappearedSite': 'A crontab exists again for this site’s account ({n} lines) and runs outside the site’s limits. Cron let this account in, so the site’s own code can have made it:',
