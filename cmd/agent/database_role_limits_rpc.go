@@ -159,8 +159,12 @@ func pgRoleRecordedIn(ctx context.Context, path, role string, port int, clusters
 	}
 	done := make(chan answer, 1)
 	go func() {
-		defer func() { <-panelRecordRead }()
-		found, err := pgRoleRecordedInFile(path, role, port, clusters)
+		// The slot is released before the answer is sent, so a caller that
+		// has its answer never meets its own read as one still running.
+		found, err := func() (bool, error) {
+			defer func() { <-panelRecordRead }()
+			return pgRoleRecordedInFile(path, role, port, clusters)
+		}()
 		done <- answer{found, err}
 	}()
 	timer := time.NewTimer(panelRecordReadTimeout)

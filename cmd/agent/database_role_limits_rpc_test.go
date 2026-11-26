@@ -280,6 +280,13 @@ func TestPGRoleRecordedByThePanelsOwnDatabase(t *testing.T) {
 	if _, err := pgRoleRecordedIn(ctx, filepath.Join(t.TempDir(), "missing.db"), "shop_u", 5432, clusters); err == nil {
 		t.Fatal("a missing panel database was read as no record")
 	}
+	// One read at a time, but a read that has answered never holds the next
+	// one (the slot goes before the answer).
+	for i := 0; i < 200; i++ {
+		if _, err := pgRoleRecordedIn(ctx, path, "shop_u", 5432, clusters); err != nil {
+			t.Fatalf("read %d: %v", i, err)
+		}
+	}
 
 	// alpha.149 (review of PR #370, finding 2): read as root, the file goes
 	// through the managed-file checks - a symbolic link, a FIFO or a file of
