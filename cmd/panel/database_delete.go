@@ -735,6 +735,9 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 		return nil, recordsLeft(fmt.Errorf("commit the removal of database %s: %w", deletion.Name, err))
 	}
 	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
+	// alpha.149 (review of PR #370, findings 5 and 12): the removed users'
+	// limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 	return deletion, nil
 }
 

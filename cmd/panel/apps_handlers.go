@@ -510,7 +510,12 @@ func (p *Panel) removeAppDatabaseLedger(ledger *appDatabaseLedger) error {
 	`, ledger.UserID, ledger.UserID); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	// alpha.149: the removed user's limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(cleanupCtx))
+	return nil
 }
 
 // compensateAppDatabase removes a physical database only when the agent can

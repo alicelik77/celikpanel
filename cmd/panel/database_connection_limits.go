@@ -62,7 +62,12 @@ func (p *Panel) pgClustersOnce(ctx context.Context) func() transport.PostgreSQLC
 // PostgreSQL sınırı rolün kendi çalışan kümesine gider; o küme çalışmıyorsa
 // hiçbir şey yazılmaz.
 func (p *Panel) connectionLimiterFor(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver, clusters func() transport.PostgreSQLClustersResponse) (services.ConnectionLimiter, bool, error) {
-	if dbDriverTypeFor(server) == "postgresql" && databaseEngineIsOnThisMachine(server.Host) {
+	// alpha.149 (review of PR #370, finding 8): the Agent's superuser path is
+	// for CelikPanel's own local engine only (its record uses the panel's own
+	// account). A PostgreSQL the administrator registered with an account of
+	// their own - in a container on 127.0.0.1, a source build, another socket
+	// directory, an older superuser record - keeps that account, as before.
+	if dbDriverTypeFor(server) == "postgresql" && databaseRecordIsOurLocalEngine(server) {
 		port := server.Port
 		if read := clusters(); read.Supported {
 			placed, err := p.pgRoleClusterPort(ctx, server, read.Clusters)
@@ -165,6 +170,12 @@ func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionID
 	if err != nil {
 		return nil, err
 	}
+	// alpha.149 (review of PR #370, finding 6): the run's users are written
+	// as pending first, so a restart leaves them "not known yet".
+	run := dbLimitsRunID()
+	beginDBLimitsLiveRun(run)
+	defer endDBLimitsLiveRun(run)
+	p.markDBLimitsPending(ctx, users, run)
 	return p.applyDBLimitsToUsers(ctx, users, report), nil
 }
 

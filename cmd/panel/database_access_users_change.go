@@ -303,6 +303,8 @@ func (p *Panel) handleRemoveDatabaseAccessUser(w http.ResponseWriter, r *http.Re
 		writeServerError(w, err)
 		return
 	}
+	// alpha.149 (review of PR #370, findings 5 and 12): its limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 	// alpha.129: its remote access rules went with the user's row; the next
 	// apply closes their addresses (the Agent already dropped the copies).
 	kickDatabaseRemoteSync()

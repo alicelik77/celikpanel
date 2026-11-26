@@ -231,6 +231,24 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   database server not running, or an unknown result) with Apply again, and a plan's Save
   names them. The connection limit stays the panel's own, as since alpha.128.
 
+  **Its fix round (review of PR #370).** The Agent's superuser path serves CelikPanel's own
+  local PostgreSQL only; a record of the administrator's own account keeps that account.
+  The Agent refuses, in the same transaction as the writes, a role that is a superuser,
+  has CREATEROLE, CREATEDB, REPLICATION or BYPASSRLS, is a member of such a role or of a
+  `pg_*` role, or (for limits) a member of any role. On PostgreSQL the connection limit
+  follows the record rule of the role settings: the server owner's hand-set value is kept,
+  and the panel writes the limit only when the plan's value changed or for a user without
+  one. A write whose answer was lost stays the panel's value until a read-back confirms
+  it; a run's users are recorded as pending first, so a restart leaves them "not known
+  yet"; Problems now names the outcome actually known (the Agent not reachable, the server
+  not running, a refused connection, a refused user, a refused statement, not known) and
+  its reason, and the hourly round tries them again. A statement time or idle-transaction
+  time found on a user and not written by the panel was changed on the user itself (by the
+  owner or by the user, which the panel cannot tell apart); it is a default the user may
+  change by design and is never imposed again. The notes may say: "A database user's own
+  statement time, changed on the user itself, is kept; the temporary-file and connection
+  limits are firm limits the user cannot change."
+
   **Loads and the user's limits.** Customers start restores of their own sites' backups
   (also from their own remote destinations), database copies, site copies and imports;
   the administrator also moves databases and imports cPanel archives. Every one of them

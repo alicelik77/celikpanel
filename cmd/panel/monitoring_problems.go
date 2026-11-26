@@ -69,9 +69,12 @@ type monitoringProblem struct {
 	Severity string `json:"severity"`
 	// Actor: administrator (acts in the panel) or server_owner (acts on the
 	// server; the panel cannot do it for them).
-	Actor      string                  `json:"actor"`
-	Subject    string                  `json:"subject,omitempty"`
-	Name       string                  `json:"name,omitempty"`
+	Actor   string `json:"actor"`
+	Subject string `json:"subject,omitempty"`
+	Name    string `json:"name,omitempty"`
+	// Reason (alpha.149, database_limits_unapplied): the stored reason as a
+	// code the screen words; the journal holds the detail.
+	Reason     string                  `json:"reason,omitempty"`
 	Unit       string                  `json:"unit,omitempty"`
 	Value      float64                 `json:"value"`
 	Since      string                  `json:"since,omitempty"`

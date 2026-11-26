@@ -186,8 +186,9 @@ func TestAPostgreSQLConnectionLimitGoesToTheRolesOwnRunningCluster(t *testing.T)
 	}
 	// Record 9961 names 18/main but still carries the old port 5432; record
 	// 9962 names the removed 16/main (a stale port 5431 stored with it).
-	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, cluster, root_password_encrypted, status) VALUES (9961, 9802, ?, 'pg18', '18', '127.0.0.1', 5432, '18/main', ?, 'active')`, typeID, sealed)
-	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, cluster, root_password_encrypted, status) VALUES (9962, 9802, ?, 'pg16', '16', '127.0.0.1', 5431, '16/main', ?, 'active')`, typeID, sealed)
+	// CelikPanel's own records (its own account; alpha.149 finding 8).
+	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, cluster, root_password_encrypted, admin_username, status) VALUES (9961, 9802, ?, 'pg18', '18', '127.0.0.1', 5432, '18/main', ?, 'celikpanel_admin', 'active')`, typeID, sealed)
+	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, cluster, root_password_encrypted, admin_username, status) VALUES (9962, 9802, ?, 'pg16', '16', '127.0.0.1', 5431, '16/main', ?, 'celikpanel_admin', 'active')`, typeID, sealed)
 	f.exec(t, `INSERT INTO database_users (server_id, subscription_id, username, password) VALUES (9961, 9802, 'sub9802_pg18', 'x')`)
 	f.exec(t, `INSERT INTO database_users (server_id, subscription_id, username, password) VALUES (9962, 9802, 'sub9802_pg16', 'x')`)
 	f.exec(t, `UPDATE setting_policy SET server_ceiling = 12 WHERE key = 'db.max_user_connections'`)

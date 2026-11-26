@@ -300,7 +300,7 @@ func TestMariaDBRemoteApplyCreatesTLSAccountsAndRefusesOthers(t *testing.T) {
 		t.Fatalf("recorded accounts = %v", ts.Accounts)
 	}
 	joined := strings.Join(f.executed, "\n")
-	if !strings.Contains(joined, "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL WITH MAX_USER_CONNECTIONS 15 MAX_STATEMENT_TIME 5.000000 ACCOUNT UNLOCK;") ||
+	if !strings.Contains(joined, "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL WITH MAX_USER_CONNECTIONS 15 MAX_STATEMENT_TIME 5 ACCOUNT UNLOCK;") ||
 		!strings.Contains(joined, "GRANT ALL PRIVILEGES ON `shop`.* TO 'shop_u'@'203.0.113.7';") {
 		t.Fatalf("statements:\n%s", joined)
 	}

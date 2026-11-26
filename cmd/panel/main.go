@@ -1641,6 +1641,9 @@ func main() {
 			}
 			// alpha.144: alias records whose zone's publication waited.
 			panel.republishAliasZones(context.Background())
+			// alpha.149: database users the database limits did not reach
+			// are tried again (one bounded run, never two at once).
+			panel.retryDBLimitsRound(context.Background())
 		}
 	}()
 

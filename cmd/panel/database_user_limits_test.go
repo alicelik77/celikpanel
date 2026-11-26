@@ -117,7 +117,9 @@ func dbLimitsFixture(t *testing.T) (rightsFixture, *limitsEngine, *pgAgentReques
 	_ = db.QueryRow(`SELECT id FROM database_server_types WHERE name = 'mariadb'`).Scan(&maria)
 	_ = db.QueryRow(`SELECT id FROM database_server_types WHERE name = 'postgresql'`).Scan(&pg)
 	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, root_password_encrypted, status) VALUES (9941, 9802, ?, 'maria', '11.8', '127.0.0.1', 3306, ?, 'active')`, maria, sealed)
-	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, root_password_encrypted, status) VALUES (9961, 9802, ?, 'pg17', '17', '127.0.0.1', 5432, ?, 'active')`, pg, sealed)
+	// CelikPanel's own local PostgreSQL record (its own account, alpha.149
+	// finding 8: only such a record goes through the Agent).
+	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, root_password_encrypted, admin_username, status) VALUES (9961, 9802, ?, 'pg17', '17', '127.0.0.1', 5432, ?, 'celikpanel_admin', 'active')`, pg, sealed)
 	f.exec(t, `INSERT INTO service_plans (id, name, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb) VALUES (9951, 'DB', 0, 0, 0, 0, 0)`)
 	f.exec(t, `UPDATE subscriptions SET plan_id = 9951 WHERE id = 9802`)
 	return f, engine, agent
@@ -190,11 +192,13 @@ func TestAnUnreadableUserWritesNothingAndIsReported(t *testing.T) {
 	if engine.connCalls != 0 || len(engine.roleCalls) != 0 {
 		t.Fatalf("an unreadable user was written: %d %v", engine.connCalls, engine.roleCalls)
 	}
-	if len(outcomes) != 1 || outcomes[0].State != dbLimitFailed {
+	// alpha.149 (finding 7): a refused credential is the server refusing
+	// the connection, its own outcome, with its reason code on the line.
+	if len(outcomes) != 1 || outcomes[0].State != dbLimitConnection || outcomes[0].Code != dbReasonConnection {
 		t.Fatalf("outcomes %+v", outcomes)
 	}
 	problems := f.panel.databaseLimitsProblems(ctx)
-	if len(problems) != 1 || problems[0].Kind != "database_limits_unapplied" || problems[0].Name != dbLimitFailed ||
+	if len(problems) != 1 || problems[0].Kind != "database_limits_unapplied" || problems[0].Name != dbLimitConnection || problems[0].Reason != dbReasonConnection ||
 		problems[0].Subject != "shop_old" || problems[0].Value != 1 || problems[0].Action.Kind != "apply_db_limits" {
 		t.Fatalf("Problems now: %+v", problems)
 	}
@@ -224,6 +228,11 @@ func TestDatabaseLimitOutcomesAreToldApart(t *testing.T) {
 		{errors.New("invalid connection: broken pipe"), dbLimitUnknown},
 		{errors.New("Error 1227 (42000): Access denied; you need (at least one of) the SUPER privilege(s)"), dbLimitFailed},
 		{errors.New("ERROR: permission denied to alter role (SQLSTATE 42501)"), dbLimitFailed},
+		// alpha.149 (review of PR #370, finding 7): what is actually known.
+		{errors.New("Error 1045 (28000): Access denied for user 'celikpanel_admin'@'localhost' (using password: YES)"), dbLimitConnection},
+		{errors.New("Error 1040: Too many connections"), dbLimitConnection},
+		{&dbLimitError{state: dbLimitAgent, code: dbReasonAgent, err: errors.New("x")}, dbLimitAgent},
+		{&dbLimitError{state: dbLimitRefused, code: dbReasonPrivileged, err: errors.New("x")}, dbLimitRefused},
 	} {
 		if got := dbLimitStateOf(c.err); got != c.want {
 			t.Errorf("%v: %s, want %s", c.err, got, c.want)
@@ -324,8 +333,9 @@ func TestAPlansSaveNamesTheUsersTheLimitsDidNotReach(t *testing.T) {
 	before := map[string]int{}
 	setPlanDBLimit(t, f, settingDBStatementSeconds, 5)
 	answer := f.panel.reapplyDBLimitsAfterAnswer(ctx, rightsOwnerPlan, 9951, before, map[string]int{settingDBStatementSeconds: 5})
+	// alpha.149 (finding 7): the Agent's refusal is its own outcome.
 	if answer == nil || answer.Users != 2 || answer.Running != 0 || answer.NotAppliedCount != 1 ||
-		len(answer.NotApplied) != 1 || answer.NotApplied[0].User != "pg_u" || answer.NotApplied[0].State != dbLimitFailed {
+		len(answer.NotApplied) != 1 || answer.NotApplied[0].User != "pg_u" || answer.NotApplied[0].State != dbLimitRefused {
 		t.Fatalf("answer %+v", answer)
 	}
 	if engine.settings["shop_u"][services.RoleKeyStatementSeconds] != "5s" {
@@ -365,7 +375,20 @@ func TestAClusterMoveCarriesThePanelsLimits(t *testing.T) {
 	// The move copied the role with its settings to the other cluster: the
 	// Agent's role there holds the same value (one in-memory role here).
 	setPlanDBLimit(t, f, settingDBStatementSeconds, 9)
+	// alpha.149 (finding 11): the users follow in a run apart from the
+	// switch; here the run is waited for.
+	var runs []func()
+	previous := startDBLimitsRun
+	startDBLimitsRun = func(run func()) { runs = append(runs, run) }
+	t.Cleanup(func() { startDBLimitsRun = previous })
 	f.panel.dbLimitsFollowSwitch(ctx, 99711, 9961, 9962)
+	if len(runs) != 1 {
+		t.Fatalf("the switch did not hand its users to one run: %d", len(runs))
+	}
+	if agent.settings["mv_u"][services.RoleKeyStatementSeconds] == "9s" {
+		t.Fatal("the switch waited for its users' limits")
+	}
+	runs[0]()
 	if agent.settings["mv_u"][services.RoleKeyStatementSeconds] != "9s" {
 		t.Fatalf("the moved role kept the earlier value as the owner's: %v", agent.settings)
 	}
@@ -484,7 +507,11 @@ func TestEveryPathThatCreatesADatabaseUserAppliesItsLimits(t *testing.T) {
 			t.Errorf("%s (for %s) does not call %s", applier, key, call)
 		}
 	}
-	// Each creating handler applies the limits after the user is recorded.
+	// Each creating handler applies the limits after the user is recorded
+	// (alpha.149, review of PR #370 finding 14: every path the source shows
+	// it for; the cluster move records in pgSwitchRecord inside the switch's
+	// transaction, before dbLimitsFollowSwitch, which the call order in
+	// handlePGMoveAction shows below). Every apply call must follow the record.
 	for _, c := range []struct{ fn, record string }{
 		{"Panel.handleCreateDatabase", "tx.Commit()"},
 		{"Panel.handleCreateDatabaseV2", "tx.Commit()"},
@@ -492,10 +519,78 @@ func TestEveryPathThatCreatesADatabaseUserAppliesItsLimits(t *testing.T) {
 		{"Panel.handleAddDatabaseAccessUser", "p.recordDatabaseAccessUser("},
 		{"Panel.siteCopyCreateDatabase", "tx.Commit()"},
 		{"Panel.handleDatabaseCopy", "p.insertDatabaseToolsCopyRecords("},
+		// One-click apps record the user with the operation before the Agent
+		// creates it (the review read storeCatalogAppOperation's body, not its
+		// call, which comes first).
+		{"Panel.handleCatalogAppInstall", "p.storeCatalogAppOperation("},
+		{"Panel.handleAppInstall", "p.storeAppDatabase("},
+		{"Panel.runWordPressClone", "p.storeAppDatabase("},
 	} {
 		body := bodies[c.fn]
-		if record, apply := strings.Index(body, c.record), strings.Index(body, "applyNewDatabaseUserLimits("); record < 0 || apply < record {
+		record := strings.Index(body, c.record)
+		if record < 0 || strings.Count(body, "applyNewDatabaseUserLimits(") == 0 || strings.Index(body, "applyNewDatabaseUserLimits(") < record {
 			t.Errorf("%s applies the limits before it records the user", c.fn)
+		}
+	}
+	if move := bodies["Panel.handlePGMoveAction"]; !strings.Contains(move, "dbLimitsFollowSwitch(") {
+		t.Error("the cluster move does not hand its users' limits to the one function")
+	}
+}
+
+// alpha.149 (review of PR #370, finding 14): the users the Agent and the
+// drivers create. Every string literal in cmd/agent, internal/services and
+// internal/dbremote that creates an account is on this list with why its
+// user gets the limits (or is no site user); a new one fails until it is.
+func TestEveryAccountTheAgentOrADriverCreatesIsAccountedFor(t *testing.T) {
+	allowed := map[string]int{
+		// The site's database user: the panel records it, then applies.
+		"../agent/database_rpc.go": 3,
+		// An added user: the panel records it, then applies.
+		"../agent/database_access_users.go": 2,
+		// cPanel import: a temporary load account, dropped after the load.
+		"../agent/cpmove_rpc.go": 1,
+		// CelikPanel's own account, no site user.
+		"../agent/database_admin_account.go": 2,
+		// The cluster move re-creates a role as the source defines it
+		// (dbLimitsFollowSwitch).
+		"../agent/pg_move.go": 2,
+		// A remote copy carries the local account's limits.
+		"../../internal/dbremote/mariadb.go": 1,
+		// The Database Servers screen (driver.CreateUser, the contract above).
+		"../../internal/services/mariadb_driver.go": 1,
+		"../../internal/services/postgresql_driver.go": 1,
+	}
+	found := map[string]int{}
+	for _, dir := range []string{"../agent", "../../internal/services", "../../internal/dbremote"} {
+		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range files {
+			if strings.HasSuffix(name, "_test.go") {
+				continue
+			}
+			file, err := parser.ParseFile(token.NewFileSet(), name, nil, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ast.Inspect(file, func(n ast.Node) bool {
+				if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING &&
+					(strings.Contains(lit.Value, "CREATE USER") || strings.Contains(lit.Value, "CREATE ROLE")) {
+					found[filepath.ToSlash(name)]++
+				}
+				return true
+			})
+		}
+	}
+	for name, count := range found {
+		if allowed[name] != count {
+			t.Errorf("%s creates accounts in %d places, %d accounted for: add the new path to the limits (and here)", name, count, allowed[name])
+		}
+	}
+	for name := range allowed {
+		if found[name] == 0 {
+			t.Errorf("%s is accounted for but creates no account any more", name)
 		}
 	}
 }

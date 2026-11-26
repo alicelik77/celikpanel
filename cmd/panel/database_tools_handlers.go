@@ -774,6 +774,8 @@ func (p *Panel) dropDatabaseToolsCopy(source databaseToolsTarget, dbName, dbUser
 	_, _ = pool.ExecContext(ctx, "DELETE FROM databases_v2 WHERE id = ?", dbID)
 	_, _ = pool.ExecContext(ctx, `DELETE FROM database_users WHERE server_id = ? AND username = ?
 		AND NOT EXISTS (SELECT 1 FROM database_user_grants g WHERE g.user_id = database_users.id)`, source.serverID, dbUser)
+	// alpha.149: the removed user's limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 	return nil
 }
 

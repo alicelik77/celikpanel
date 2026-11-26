@@ -1187,6 +1187,8 @@ func (p *Panel) handleDeleteDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		writeServerError(w, err)
 		return
 	}
+	// alpha.149 (review of PR #370, findings 5 and 12): its limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 
 	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	w.WriteHeader(http.StatusOK)

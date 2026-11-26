@@ -451,6 +451,8 @@ func (p *Panel) siteCopyRemoveDatabase(ctx context.Context, created *siteCopyNew
 	}
 	if created.UserID > 0 {
 		_, _ = db.ExecContext(ctx, `DELETE FROM database_users WHERE id = ?`, created.UserID)
+		// alpha.149: the removed user's limits records go.
+		p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 	}
 	return true
 }

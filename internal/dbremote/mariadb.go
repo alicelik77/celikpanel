@@ -106,6 +106,25 @@ type MariaDBCredential struct {
 
 var mariadbStatementTimeText = regexp.MustCompile(`^[0-9]{1,7}(\.[0-9]{1,6})?$`)
 
+// MariaDBStatementTimeLiteral writes a MAX_STATEMENT_TIME value in the
+// integer form (alpha.149, review of PR #370 finding 19). MariaDB prints the
+// value with six decimals ("5.000000"); its documentation (CREATE USER,
+// 10.6 to 11.8) names the option "MAX_STATEMENT_TIME time" in seconds and
+// does not say a decimal is accepted there, so the statement carries whole
+// seconds: "5.000000" is written 5, and a fraction an owner set is rounded
+// up (never a shorter limit than the local account's). Checked in the lab.
+func MariaDBStatementTimeLiteral(text string) string {
+	whole, fraction, _ := strings.Cut(text, ".")
+	seconds, err := strconv.Atoi(whole)
+	if err != nil {
+		return "0"
+	}
+	if strings.Trim(fraction, "0") != "" {
+		seconds++
+	}
+	return strconv.Itoa(seconds)
+}
+
 // Validate refuses a credential that cannot be copied safely.
 func (c MariaDBCredential) Validate() error {
 	if !mariadbPlugins[c.Plugin] {
@@ -186,7 +205,7 @@ func mariadbIdentified(verb, user, host string, credential MariaDBCredential) (s
 	}
 	statementTime := ""
 	if credential.MaxStatementTime != "" {
-		statementTime = " MAX_STATEMENT_TIME " + credential.MaxStatementTime
+		statementTime = " MAX_STATEMENT_TIME " + MariaDBStatementTimeLiteral(credential.MaxStatementTime)
 	}
 	return fmt.Sprintf("%s %s IDENTIFIED VIA %s USING %s REQUIRE SSL WITH MAX_USER_CONNECTIONS %d%s %s;",
 		verb, name, credential.Plugin, mysqlString(credential.Auth), credential.MaxUserConnections, statementTime, lock), nil
