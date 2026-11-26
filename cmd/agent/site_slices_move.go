@@ -822,6 +822,33 @@ func siteUnitStateWords(props map[string]string) string {
 	return strings.TrimSpace(props["ActiveState"] + " " + props["SubState"])
 }
 
+// siteUnitPlainState is the unit's state in one plain word for the move's
+// English answer (journal and audit record): systemd's two words repeat one
+// another ("failed failed", alpha.149 lab W2). The reason's State keeps them.
+// Birimin durumu tek düz sözcükle; gerekçenin State alanı systemd'nin sözünü korur.
+func siteUnitPlainState(props map[string]string) string {
+	switch props["ActiveState"] {
+	case "failed":
+		return "failed"
+	case "inactive":
+		return "stopped"
+	case "activating":
+		if siteUnitAutoRestart(props) {
+			return "restarting"
+		}
+		return "starting"
+	case "deactivating":
+		return "stopping"
+	case "active":
+		return "running"
+	case "reloading":
+		return "reloading"
+	case "maintenance":
+		return "in maintenance"
+	}
+	return "in an unknown state"
+}
+
 // siteSliceStartWait is a unit's start wait from its TimeoutStartUSec.
 func siteSliceStartWait(timeoutStart string) time.Duration {
 	wait := siteSliceSettleDefault
@@ -1451,7 +1478,7 @@ func moveOneSiteUnit(m siteMoveUnit, siteID int, journal *siteMoveJournal) (outc
 		reason.Ports = siteSlicePortList(m.ports)
 		return "", "answer", &siteMoveError{reason: reason, err: fmt.Errorf("%d seconds after the restart whether it listens on its ports (%s) could not be read (ss)", seconds, siteSlicePorts(m.ports))}, false
 	}
-	return "", "restart", &siteMoveError{reason: reason, err: fmt.Errorf("it is %s %d seconds after the restart (journalctl -u %s says why)", siteUnitStateWords(props), seconds, m.unit)}, false
+	return "", "restart", &siteMoveError{reason: reason, err: fmt.Errorf("it is %s %d seconds after the restart (journalctl -u %s says why)", siteUnitPlainState(props), seconds, m.unit)}, false
 }
 
 // siteMoveError is a step's failure with its reason's code (alpha.149, lab
@@ -1573,7 +1600,7 @@ func siteUnitPutBackFailure(unit, verdict string, props map[string]string, wait 
 		reason.Ports = siteSlicePortList(ports)
 		return transport.SiteMoveUnverified, reason, fmt.Errorf("it runs where it ran %d seconds after the restart, but whether it listens on a port could not be read (ss)", seconds)
 	}
-	return transport.SiteMoveFailed, reason, fmt.Errorf("it is not running: %s %d seconds after the restart (journalctl -u %s says why)", siteUnitStateWords(props), seconds, unit)
+	return transport.SiteMoveFailed, reason, fmt.Errorf("it is not running: %s %d seconds after the restart (journalctl -u %s says why)", siteUnitPlainState(props), seconds, unit)
 }
 
 // --- At the Agent's start ------------------------------------------------------
