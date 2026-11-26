@@ -1295,7 +1295,13 @@ Ubuntu's cron 3.0pl1 keep them as plain settings (its program has no such name).
 keep only the setting, so the schedule could change silently; which cron a server runs cannot be
 told apart reliably, so such a line keeps the whole crontab in cron at the move (named, with
 why) and a save of a task file holding one is refused, on every server. The server owner
-deletes the line and gives the time in each task's own schedule.
+deletes the line and gives the time in each task's own schedule. **So are the names the Go
+runtime reads (alpha.150 fix round):** `GODEBUG`, `GOGC`, `GOMAXPROCS`, `GOMEMLIMIT`,
+`GOTRACEBACK` and `GORACE`. The site's settings file is also the environment of the task's
+helper lines, which run as root (`ExecStartPre=+`); the helper is a static Go program that clears
+its environment first thing, but its runtime reads these before that. Such a line is refused (it
+keeps the crontab in cron at the move and is shown as not running), never written into the
+settings file; a task that needs one sets it in its command (`GOGC=off ./job`).
 
 **A cron job and a timer task: what differs.**
 

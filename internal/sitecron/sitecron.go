@@ -69,7 +69,18 @@ const (
 	// a host runs cannot be told apart reliably, so the line is refused on
 	// every host.
 	ReasonCronSetting = "cron_setting"
+	// ReasonHelperSetting: a setting the Go runtime reads when a program
+	// starts (GODEBUG, GOGC, GOMAXPROCS, GOMEMLIMIT, GOTRACEBACK, GORACE).
+	// The task's settings file is also the environment of the task's root
+	// helper (its ExecStartPre= "+" lines, a static Go program that clears
+	// its environment first thing, but only after the runtime read these),
+	// so such a line never reaches that file (alpha.150 fix round, F7).
+	ReasonHelperSetting = "helper_setting"
 )
+
+// helperSettings are the environment names the Go runtime reads before a
+// program's own code runs (ReasonHelperSetting).
+var helperSettings = map[string]bool{"GODEBUG": true, "GOGC": true, "GOMAXPROCS": true, "GOMEMLIMIT": true, "GOTRACEBACK": true, "GORACE": true}
 
 // scheduleSettings are the setting names some crons read as part of the
 // schedule (ReasonCronSetting).
@@ -187,8 +198,11 @@ func Parse(text string) Crontab {
 					e.Kind, e.Reason, e.Detail = KindInvalid, ReasonMailto, "MAILTO with an address: cron mails the output, a timer keeps it in the journal"
 				}
 			default:
-				if scheduleSettings[e.Name] {
+				switch {
+				case scheduleSettings[e.Name]:
 					e.Kind, e.Reason, e.Detail = KindInvalid, ReasonCronSetting, e.Name+" is part of the schedule for some crons (cronie); a timer would keep only the setting"
+				case helperSettings[e.Name]:
+					e.Kind, e.Reason, e.Detail = KindInvalid, ReasonHelperSetting, e.Name+" would also reach the server's own helper program; set it in the command instead (NAME=value command)"
 				}
 			}
 			if e.Kind == KindEnv {

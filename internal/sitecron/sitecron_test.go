@@ -163,6 +163,9 @@ func TestParseLines(t *testing.T) {
 		"CRON_TZ=Europe/Berlin\n":  ReasonCronSetting,
 		"RANDOM_DELAY=30\n":        ReasonCronSetting,
 		"START_HOURS_RANGE=3-22\n": ReasonCronSetting,
+		// alpha.150 fix round (F7): read by the Go runtime of the root helper.
+		"GODEBUG=x509sha1=1\n": ReasonHelperSetting,
+		"GOMAXPROCS=1\n":       ReasonHelperSetting,
 	}
 	for line, reason := range refused {
 		bad := Parse(line).Untranslatable()
@@ -336,5 +339,25 @@ func TestUnitTexts(t *testing.T) {
 		if _, err := ServiceText(v); err == nil {
 			t.Errorf("not refused: %+v", v)
 		}
+	}
+}
+
+// TestTheHelpersRuntimeSettingsNeverReachTheSettingsFile (alpha.150 fix
+// round, F7): the task's settings file is also the environment of its root
+// helper; the names the Go runtime reads before the helper clears its
+// environment are refused lines and never written there.
+func TestTheHelpersRuntimeSettingsNeverReachTheSettingsFile(t *testing.T) {
+	c := Parse("PATH=/usr/bin:/bin\nGODEBUG=madvdontneed=1\nGOGC=off\nGOMAXPROCS=1\nGOMEMLIMIT=1\nGOTRACEBACK=crash\nGORACE=log_path=/tmp/x\nGOPATH=/home/x/go\n* * * * * date\n")
+	body := c.EnvFileBody()
+	for _, name := range []string{"GODEBUG", "GOGC", "GOMAXPROCS", "GOMEMLIMIT", "GOTRACEBACK", "GORACE"} {
+		if strings.Contains(body, name+"=") {
+			t.Fatalf("%s reaches the settings file:\n%s", name, body)
+		}
+	}
+	if !strings.Contains(body, "GOPATH='/home/x/go'") || !strings.Contains(body, "PATH='/usr/bin:/bin'") {
+		t.Fatalf("other settings were dropped:\n%s", body)
+	}
+	if n := len(c.Untranslatable()); n != 6 {
+		t.Fatalf("%d refused lines", n)
 	}
 }

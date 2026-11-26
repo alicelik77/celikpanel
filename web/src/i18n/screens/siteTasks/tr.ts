@@ -26,6 +26,7 @@ export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
     'stasks.reason.carriage': 'satırda gizli bir denetim karakteri var',
     'stasks.reason.empty': 'komutu olmayan bir zaman',
     'stasks.reason.invalid_env': 'geçerli bir ayar değil',
+    'stasks.reason.helper_setting': 'her görevi başlatan sunucunun kendi yardımcı programına da ulaşırdı; onun yerine komutun içinde verin (AD=değer komut)',
     'stasks.reason.cron_setting': 'bazı cron programlarında görevlerin ne zaman çalıştığını değiştirir, zamanlayıcı bunu tutamaz; satırı silin ve saati her görevin zamanlamasında verin',
     'stasks.reason.too_long': 'cron’un çalıştırdığından uzun (en çok 998 bayt)',
     'stasks.state.off': 'Sunucuda kapatıldı',

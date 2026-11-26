@@ -35,6 +35,7 @@ export const enSiteTasksScreens = {
     'stasks.reason.empty': 'a time without a command',
     'stasks.reason.invalid_env': 'not a valid setting',
     'stasks.reason.too_long': 'longer than cron runs (998 bytes at most)',
+    'stasks.reason.helper_setting': 'would also reach the server’s own helper program that starts each task; set it in the command instead (NAME=value command)',
     'stasks.reason.cron_setting': 'changes when tasks run for some cron programs, which a timer cannot keep; delete the line and set the time in each task’s schedule',
     'stasks.state.off': 'Turned off on the server',
     'stasks.state.at_boot': 'Runs after each start of the server',

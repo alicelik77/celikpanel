@@ -1138,7 +1138,13 @@ sayılar, 99'dan büyük adımlar, `fri-sun` gibi geriye giden bir gün aralığ
 değişebilirdi; bir sunucunun hangi cron'u çalıştırdığı güvenilir biçimde ayırt edilemediği için böyle
 bir satır taşımada bütün crontab'ı cron'da tutar (adı ve nedeni söylenerek) ve böyle bir satır tutan
 görev dosyasının kaydı her sunucuda reddedilir. Sunucu sahibi satırı siler ve saati her görevin
-kendi zamanlamasında verir.
+kendi zamanlamasında verir. **Go çalışma ortamının okuduğu adlar da öyledir (alpha.150 düzeltme
+turu):** `GODEBUG`, `GOGC`, `GOMAXPROCS`, `GOMEMLIMIT`, `GOTRACEBACK` ve `GORACE`. Sitenin ayar
+dosyası görevin root olarak çalışan yardımcı satırlarının (`ExecStartPre=+`) da ortamıdır; yardımcı,
+ortamını ilk iş olarak temizleyen durağan bir Go programıdır, ama çalışma ortamı bunları ondan önce
+okur. Böyle bir satır reddedilir (taşımada crontab'ı cron'da tutar ve çalışmıyor diye gösterilir),
+ayar dosyasına hiçbir zaman yazılmaz; buna ihtiyaç duyan bir görev onu komutunda verir
+(`GOGC=off ./is`).
 
 **Bir cron işi ile bir zamanlayıcı görevi: farklar.**
 
