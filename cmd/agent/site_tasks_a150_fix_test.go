@@ -432,3 +432,22 @@ func TestCrontabProcessesFailTowardsOneRunning(t *testing.T) {
 		}
 	})
 }
+
+// TestRemovingASitesTasksReportsAFailedSwitchOff (F7): removing a site's
+// tasks (its deletion, a put-back or an undo's last step) reports a failed
+// `systemctl disable --now` of its timers instead of only logging it.
+func TestRemovingASitesTasksReportsAFailedSwitchOff(t *testing.T) {
+	host := useTaskTestHost(t)
+	host.startWith(t, moveTaskCrontab)
+	if resp := moveTasks(t); resp.Outcome != transport.SiteTasksMoved {
+		t.Fatalf("move %+v", resp)
+	}
+	on := true
+	failCalls(t, "disable", &on)
+	cronMu.Lock()
+	_, err := removeSiteTasksLocked(taskTestSite, true)
+	cronMu.Unlock()
+	if err == nil || !strings.Contains(err.Error(), "systemctl disable --now celikcron-7-") {
+		t.Fatalf("removal answered %v", err)
+	}
+}

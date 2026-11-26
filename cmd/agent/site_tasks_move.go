@@ -1653,8 +1653,11 @@ func removeSiteTasksWith(siteID int, aside bool, call siteTaskCall) ([]string, e
 	}
 	sort.Strings(timers)
 	if len(timers) > 0 {
+		// alpha.150 fix round (F7): a switch-off that failed is reported, not
+		// only logged (a timer may still be on).
 		if out, err := call(append([]string{"disable", "--now"}, timers...)...); err != nil {
 			log.Printf("site tasks: %s: %v: %s", strings.Join(timers, " "), err, strings.TrimSpace(string(out)))
+			failures = append(failures, fmt.Sprintf("systemctl disable --now %s: %v: %s", strings.Join(timers, " "), err, strings.TrimSpace(string(out))))
 		}
 	}
 	for n := range units {
