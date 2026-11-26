@@ -1378,8 +1378,11 @@ timers off has answered success: a batched `systemctl enable --now` that failed 
 have left some of them on, and a crontab beside them would run every task twice. When that is
 not confirmed, or the crontab cannot be written back, the record, the task file and the units
 stay (the timers the record names switched on again where the site's limits allow), so
-nothing is lost and nothing runs twice. After the move, the move never answers "moved" while
-a crontab exists for the account.
+nothing is lost and nothing runs twice. The put-back never switches the timers on again
+beside a crontab it wrote but could not read back the same (alpha.150 fix round): the recorded
+crontab in the spool counts as back; anything else there, or a spool that cannot be read,
+keeps the timers off and the record (the tasks run from cron). After the move, the move never
+answers "moved" while a crontab exists for the account.
 
 **One record, one line, Try again (alpha.150, on alpha.149's move record).** The tasks' move
 and undo keep the same one record as the programs' move (§8.4). While it is kept:

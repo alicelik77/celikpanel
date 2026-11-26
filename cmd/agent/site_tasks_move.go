@@ -758,7 +758,7 @@ func crontabBackFromJournal(siteID int, j *siteTasksJournal, mayWrite bool) (boo
 		return false, err
 	}
 	if len(files) > 0 {
-		if !spoolHolds(files[0], j.Crontab) {
+		if !spoolHoldsRecorded(files, j.Crontab) {
 			log.Printf("site tasks: the crontab of %s changed during the move; it is left as it is", j.Account)
 		}
 		return true, nil
@@ -810,6 +810,25 @@ func crontabBackFromJournal(siteID int, j *siteTasksJournal, mayWrite bool) (boo
 func putBackSiteTasks(siteID int, j *siteTasksJournal, call siteTaskCall) (running string, err error) {
 	disableErr := disableSiteTaskTimers(j, call)
 	back, backErr := crontabBackFromJournal(siteID, j, disableErr == nil)
+	if !back {
+		// alpha.150 fix round (F2): a crontab written whose reading back
+		// failed or differed is never given timers beside it. The spool is
+		// read again: the recorded crontab there is back; anything else
+		// there, or a spool that cannot be read, keeps the timers off.
+		files, spoolErr := accountSpoolFiles(j.Account)
+		back = spoolErr == nil && spoolHoldsRecorded(files, j.Crontab)
+		if !back && (spoolErr != nil || len(files) > 0) {
+			reason := "the crontab is not confirmed back"
+			if backErr != nil {
+				reason = backErr.Error()
+			}
+			refreshCronAllow() // the task file stays: the account stays out
+			if disableErr == nil && spoolErr == nil {
+				running = transport.SiteTasksRunCron
+			}
+			return running, errors.New(reason + "; a crontab is there (or the spool cannot be read), so the timers are not switched on again beside it")
+		}
+	}
 	if !back {
 		reason := "the crontab is not back"
 		if backErr != nil {
@@ -951,6 +970,26 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 		log.Printf("site tasks: remove the move's record: %v", err)
 	}
 	return &siteMoveRecovered{siteID: journal.SiteID, record: record}
+}
+
+// spoolHoldsRecorded: the account's one spool file holds the record's
+// crontab - as `crontab -l` printed it before the move, or as the task file
+// holds it (the card's way back by hand installs
+// /etc/celikpanel-cron/<id>.crontab whole: CelikPanel's header and intro
+// lines are comments above the same crontab).
+func spoolHoldsRecorded(files []spoolFile, crontab string) bool {
+	if len(files) != 1 {
+		return false
+	}
+	if spoolHolds(files[0], crontab) {
+		return true
+	}
+	for _, view := range []string{crontabListView(files[0].Raw), files[0].Raw} {
+		if body, _ := splitSiteTaskSource([]byte(view)); body == crontab {
+			return true
+		}
+	}
+	return false
 }
 
 // recoverSiteTasksUndo resolves an interrupted undo: never the crontab and

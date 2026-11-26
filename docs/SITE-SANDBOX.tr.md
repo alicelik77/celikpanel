@@ -1217,8 +1217,11 @@ ancak zamanlayıcıları kapatan çağrı başarı yanıtı verdikten sonra geri
 olan toplu bir `systemctl enable --now` bazılarını açık bırakmış olabilir ve yanlarındaki bir crontab
 her görevi iki kez çalıştırırdı. Bu doğrulanamazsa ya da crontab geri yazılamazsa kayıt, görev
 dosyası ve birimler kalır (kaydın adlandırdığı zamanlayıcılar sitenin sınırları izin veriyorsa
-yeniden açılır); hiçbir şey kaybolmaz, hiçbir şey iki kez çalışmaz. Taşıma, hesap için bir crontab
-varken hiçbir zaman "taşındı" demez.
+yeniden açılır); hiçbir şey kaybolmaz, hiçbir şey iki kez çalışmaz. Geri koyma, yazdığı ama aynı
+biçimde geri okuyamadığı bir crontab'ın yanında zamanlayıcıları hiçbir zaman yeniden açmaz (alpha.150
+düzeltme turu): biriktirme dosyasındaki kayıtlı crontab geri gelmiş sayılır; orada başka bir şey ya
+da okunamayan bir dosya zamanlayıcıları kapalı ve kaydı yerinde tutar (görevler cron'dan çalışır).
+Taşıma, hesap için bir crontab varken hiçbir zaman "taşındı" demez.
 
 **Tek kayıt, tek satır, Tekrar dene (alpha.150, alpha.149'un taşıma kaydının üstünde).** Görevlerin
 taşıması ve geri alması programların taşımasıyla aynı tek kaydı tutar (§8.4). Kayıt dururken:
