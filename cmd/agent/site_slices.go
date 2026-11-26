@@ -255,7 +255,14 @@ func setAsideEarlierSiteSlice(siteID int) ([]string, error) {
 }
 
 func siteSliceDaemonReload() error {
-	if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
+	return siteSliceDaemonReloadWith(appUnitSystemctl)
+}
+
+// siteSliceDaemonReloadWith is the daemon-reload through the given systemctl
+// (a bounded one at the Agent's start and in a status read; alpha.149 second
+// fix round, R5/R6).
+func siteSliceDaemonReloadWith(systemctl func(args ...string) ([]byte, error)) error {
+	if out, err := systemctl(systemctlArgs("daemon-reload")...); err != nil {
 		return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
@@ -392,8 +399,11 @@ const (
 	siteSliceShowList     = 400
 )
 
-var siteSliceShowProperties = []string{"Id", "LoadState", "ActiveState", "ControlGroup", "Slice", "MemoryMax", "TasksMax",
-	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent", "DropInPaths", "FragmentPath", "NeedDaemonReload"}
+// siteSliceShowProperties: ActiveEnterTimestampMonotonic (alpha.149 second
+// fix round, R1) is read in the same reading as the state, so a status read
+// knows how long a kept program has run without a break.
+var siteSliceShowProperties = []string{"Id", "LoadState", "ActiveState", "SubState", "ControlGroup", "Slice", "MemoryMax", "TasksMax",
+	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent", "DropInPaths", "FragmentPath", "NeedDaemonReload", "ActiveEnterTimestampMonotonic"}
 
 // siteSliceKernelState reads what a running slice's cgroup enforces
 // (memory.max, pids.max, cpu.max) and compares it with what systemd applies
@@ -451,6 +461,12 @@ func siteSliceKernelState(dir string, props map[string]string, file string) (tra
 // showUnits asks systemd about many units in as few calls as possible
 // (systemctl show prints one block per unit, separated by a blank line).
 func showUnits(names []string) (map[string]map[string]string, error) {
+	return showUnitsWith(appUnitSystemctl, names)
+}
+
+// showUnitsWith is showUnits through the given systemctl (the Agent's start
+// passes one bounded by its context; alpha.149 second fix round, R5).
+func showUnitsWith(systemctl func(args ...string) ([]byte, error), names []string) (map[string]map[string]string, error) {
 	out := map[string]map[string]string{}
 	for start := 0; start < len(names); start += siteSliceShowList {
 		end := start + siteSliceShowList
@@ -458,7 +474,7 @@ func showUnits(names []string) (map[string]map[string]string, error) {
 			end = len(names)
 		}
 		args := append([]string{"show", "--property=" + strings.Join(siteSliceShowProperties, ",")}, names[start:end]...)
-		raw, err := appUnitSystemctl(systemctlArgs(args...)...)
+		raw, err := systemctl(systemctlArgs(args...)...)
 		if err != nil {
 			return nil, fmt.Errorf("systemctl show: %v: %s", err, strings.TrimSpace(string(raw)))
 		}
@@ -648,7 +664,7 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 		}
 	}
 	ledger := readSandboxLedger() // read-only here: nothing is written
-	moves := siteMoveOutcomesNow()
+	moves := siteMoveOutcomesNow(show)
 	named := siteSlicesNamed()
 	for i, q := range sites {
 		slice := sitesandbox.SliceName(q.SiteID)
@@ -680,6 +696,9 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			}
 			if _, err := os.Stat(filepath.Join(dir, "pids.events.local")); err == nil {
 				files.HasPidsEventsLocal, files.PidsEventsLocal = true, readSmallFile(filepath.Join(dir, "pids.events.local"))
+			} else {
+				// alpha.149 (lab D3): the slice's own peak against its limit.
+				files.SlicePidsPeak, files.SlicePidsMax = readSmallFile(filepath.Join(dir, "pids.peak")), readSmallFile(filepath.Join(dir, "pids.max"))
 			}
 			for _, u := range status.Units {
 				if u.Placement != transport.SiteUnitInSlice {
@@ -694,7 +713,7 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			status.CountersRead = true
 			status.Counters = transport.SiteSliceCounters{MemoryLimitHits: c.MemoryLimitHits, MemoryOOMAll: c.MemoryOOMAll, OOMKills: c.OOMKills,
 				MemoryMaxHits: c.MemoryMaxHits, TasksLimitHits: c.TasksLimitHits, TasksOtherHits: c.TasksOtherHits, TasksRule: c.TasksRule,
-				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods}
+				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods, SlicePidsPeak: c.SlicePidsPeak, SlicePidsMax: c.SlicePidsMax}
 		}
 		resp.Sites = append(resp.Sites, status)
 	}
@@ -714,6 +733,11 @@ func siteSliceUnitStatus(siteID int, unit string, props map[string]string) trans
 		out.Placement = transport.SiteUnitAbsent
 	case !siteUnitRunningStates[props["ActiveState"]]:
 		out.Placement = transport.SiteUnitStopped
+	case props["ActiveState"] == "activating" && (siteUnitAutoRestart(props) || strings.TrimSpace(props["ControlGroup"]) == ""):
+		// alpha.149 (lab D6): systemd is starting it again by itself (its
+		// program exited; no process, no cgroup): not running, never "where
+		// the server owner placed it".
+		out.Placement = transport.SiteUnitRestarting
 	case sitesandbox.UnitInSiteSlice(props["ControlGroup"], unit, siteID):
 		out.Placement, out.Slice = transport.SiteUnitInSlice, sitesandbox.SliceName(siteID)
 	case sitesandbox.UnitInSystemSlice(props["ControlGroup"], unit):
@@ -769,7 +793,7 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 		s := &req.Sites[i]
 		applied := transport.SiteSliceApplied{SiteID: s.SiteID}
 		if siteSliceFor(s, s.SiteID) == nil {
-			applied.Outcome, applied.Detail = transport.SiteFileOutcomeFailed, "the site's limits are out of range"
+			applied.Outcome, applied.Detail, applied.Reason = transport.SiteFileOutcomeFailed, "the site's limits are out of range", "out_of_range"
 			resp.Sites = append(resp.Sites, applied)
 			continue
 		}
@@ -787,11 +811,13 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 		applied.Outcome, applied.PendingPath = result.Outcome, result.PendingPath
 		switch {
 		case err != nil:
-			applied.Outcome, applied.Detail = transport.SiteFileOutcomeFailed, err.Error()
+			applied.Outcome, applied.Detail, applied.Reason = transport.SiteFileOutcomeFailed, err.Error(), "write_failed"
 		case result.Outcome == transport.SiteFileOutcomeMissing:
 			applied.Outcome = transport.SiteFileAbsent
-		case result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused:
-			applied.Detail = strings.TrimSpace(result.Reason + " " + result.Detail)
+		case result.Outcome == transport.SiteFileOutcomeFailed:
+			applied.Detail, applied.Reason = strings.TrimSpace(result.Reason+" "+result.Detail), "write_failed"
+		case result.Outcome == transport.SiteFileOutcomeRefused:
+			applied.Detail, applied.Reason = strings.TrimSpace(result.Reason+" "+result.Detail), "refused"
 		}
 		if didWrite {
 			written = append(written, s.SiteID)
@@ -815,7 +841,15 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 		if why == "" || resp.Sites[i].Outcome == transport.SiteFileOutcomeFailed || resp.Sites[i].Outcome == transport.SiteFileOutcomeRefused {
 			continue
 		}
-		resp.Sites[i].Outcome, resp.Sites[i].Detail = transport.SiteFileOutcomeFailed, "the limits file is written, but the running programs do not have the limits yet: "+why
+		// alpha.149 (lab O3): the push read the kernel again before this
+		// answer; only a slice whose kernel values differ is "does not have
+		// the limits"; one that could not be read is "unchecked".
+		reason, text := "kernel_differs", "the limits file is written, but the running programs do not have the limits yet: "
+		if strings.HasPrefix(why, siteSliceUncheckedPrefix) {
+			reason, text = "unchecked", "the limits file is written; whether the running programs have the limits could not be read: "
+		}
+		resp.Sites[i].Outcome, resp.Sites[i].Detail, resp.Sites[i].Reason = transport.SiteFileOutcomeFailed, text+why, reason
+		log.Printf("site slice: %s: %s", sitesandbox.SliceName(resp.Sites[i].SiteID), resp.Sites[i].Detail)
 	}
 	return nil
 }

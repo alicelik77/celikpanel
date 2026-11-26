@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -57,9 +58,12 @@ func round3Status(t *testing.T, siteID int) transport.SiteSliceStatus {
 }
 
 // TestARecoveryThatCannotRestartKeepsItsRecord (N2): the put-back's restart
-// fails at the Agent's start: the record stays, the program is "failed" on
-// the card (kept), the next move of any site is refused with that reason;
-// "Try again" after the program can start finishes it and the record goes.
+// request fails at the Agent's start: the record stays, the program is "not
+// known yet" on the card (kept; alpha.149 second fix round R5: whatever the
+// one request's exit code, every program it named is "unverified" and the
+// status read sorts them out), the next move of any site is refused with
+// that reason; "Try again" restarts it ("failed" while it cannot start) and,
+// once it can, finishes it and the record goes.
 func TestARecoveryThatCannotRestartKeepsItsRecord(t *testing.T) {
 	host, running, before := round3Interrupted(t)
 	broken := true
@@ -73,8 +77,8 @@ func TestARecoveryThatCannotRestartKeepsItsRecord(t *testing.T) {
 		t.Fatalf("the pre-move bytes are not back:\n%s", got)
 	}
 	status := round3Status(t, 7)
-	if status.MoveInterrupted == nil || !status.MoveInterrupted.Kept || status.MoveInterrupted.Units[running] != transport.SiteMoveFailed {
-		t.Fatalf("the card is not told the program is stopped: %+v", status.MoveInterrupted)
+	if status.MoveInterrupted == nil || !status.MoveInterrupted.Kept || status.MoveInterrupted.Units[running] != transport.SiteMoveUnverified {
+		t.Fatalf("the card is not told the program's state is not known yet: %+v", status.MoveInterrupted)
 	}
 	// The next move of any site is refused while the record stays.
 	other := moveRequest(running)
@@ -117,7 +121,8 @@ func TestAnUnknownPlaceOrAFailedReloadRestartsNothing(t *testing.T) {
 		fail func(running string, args []string) bool
 	}{
 		{"status read fails", func(running string, args []string) bool {
-			return args[0] == "show" && len(args) == 3 && args[1] == running
+			// One unit's reading, or the start's one reading of several.
+			return args[0] == "show" && slices.Contains(args, running)
 		}},
 		{"daemon-reload fails", func(running string, args []string) bool { return args[0] == "daemon-reload" }},
 	} {
@@ -128,7 +133,7 @@ func TestAnUnknownPlaceOrAFailedReloadRestartsNothing(t *testing.T) {
 			host.calls = nil
 			host.mu.Unlock()
 			recoverSiteSlicesAtStartup()
-			if host.called("restart " + running) {
+			if host.called("restart "+running) || host.called("restart --no-block "+running) {
 				t.Fatalf("a program was restarted on an unknown reading: %v", host.calls)
 			}
 			if _, err := os.Stat(siteMoveJournalPath); err != nil {

@@ -1,3 +1,4 @@
+import { siteStoppedLines, sitesStoppedTitle, withSiteLimitsLane } from '../i18n/siteLimitsLane';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { inputClass } from './ui';
@@ -178,7 +179,8 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
  * limit. `sentence` is the screen's own words for this change.
  */
 export function RightsPreviewBox({ preview, sentence, id }: { preview: RightsPreview; sentence: string; id: string }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
+    const laneT = withSiteLimitsLane(locale, t);
     const list = (items: string[]) => items.map((item) => itemLabel(item, t)).join(', ');
     return (
         <section id={id} tabIndex={-1} role="alert" className="rounded-lg border border-warning-mark/50 bg-warning-mark/15 p-4 text-sm leading-6 text-fg focus:outline-none" data-rights-preview={preview.leaves_plan ? 'leaves-plan' : 'change'}>
@@ -213,9 +215,10 @@ export function RightsPreviewBox({ preview, sentence, id }: { preview: RightsPre
                 </div>
             )}
             {(preview.sites_stopped_count ?? 0) > 0 && (
+                // alpha.149 (lab CHECK 2): each site's line in the page's own words, one site in the singular.
                 <div className="mt-2" data-rights-sites-stopped="">
-                    <p className="font-semibold">{t('limits.preview.sitesStopped', { n: preview.sites_stopped_count ?? 0 })}</p>
-                    <ul className="mt-1 list-disc pl-5">{(preview.sites_stopped ?? []).map((line) => <li key={line}>{line}</li>)}</ul>
+                    <p className="font-semibold">{sitesStoppedTitle(preview.sites_stopped_count ?? 0, laneT)}</p>
+                    <ul className="mt-1 list-disc pl-5">{siteStoppedLines(preview, laneT).map((line) => <li key={line}>{line}</li>)}</ul>
                 </div>
             )}
             {preview.sites_unread && <p className="mt-2">{t('limits.preview.sitesUnread')}</p>}

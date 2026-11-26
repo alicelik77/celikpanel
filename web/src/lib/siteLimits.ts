@@ -15,19 +15,25 @@ export interface SiteLimitValue {
 }
 
 export interface SiteLimitEvent {
-    /** memory, tasks: the site's own limit; *_other: a program of the site, not proved at the site's limit. */
-    kind: 'memory' | 'tasks' | 'cpu' | 'memory_other' | 'tasks_other';
+    /**
+     * memory, tasks: the site's own limit; *_other: a program of the site, not proved at the site's limit;
+     * tasks_peak (alpha.149): the slice's own peak reached its process limit (a count is not known).
+     */
+    kind: 'memory' | 'tasks' | 'tasks_peak' | 'cpu' | 'memory_other' | 'tasks_other';
     count: number;
     first_at: string;
     last_at: string;
     repeated?: boolean;
+    /** alpha.149: the limit that held then (absent: not known; never today's). */
+    limit?: number;
 }
 
 export interface SiteLimitUnit {
     unit: string;
     kind: string;
     label: string;
-    placement: 'in_slice' | 'outside' | 'stopped' | 'stopped_outside' | 'elsewhere' | 'absent';
+    /** restarting (alpha.149): not running; systemd is starting it again by itself. */
+    placement: 'in_slice' | 'outside' | 'stopped' | 'stopped_outside' | 'elsewhere' | 'absent' | 'restarting';
     own_memory_mb?: number;
     lower?: boolean;
     /** Why the move cannot take it: edited, older, owner_slice. */
@@ -66,8 +72,8 @@ export interface SiteLimitsView {
 }
 
 const KEYS: readonly string[] = ['site.memory_mb', 'site.tasks', 'site.cpu_percent'];
-const EVENTS: readonly string[] = ['memory', 'tasks', 'cpu', 'memory_other', 'tasks_other'];
-const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_outside', 'elsewhere', 'absent'];
+const EVENTS: readonly string[] = ['memory', 'tasks', 'tasks_peak', 'cpu', 'memory_other', 'tasks_other'];
+const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_outside', 'elsewhere', 'absent', 'restarting'];
 
 /** Reads the answer; an answer of another shape is not a card. */
 export function decodeSiteLimits(raw: unknown): SiteLimitsView {
@@ -125,13 +131,54 @@ export function lowerUnits(view: SiteLimitsView): SiteLimitUnit[] {
     return (view.units ?? []).filter((u) => u.placement === 'outside' && u.lower === true);
 }
 
+/** The code of a move's failure with its values (alpha.149): the page words it in its own language. */
+export interface MoveReason {
+    code: string;
+    state?: string;
+    seconds?: number;
+    ports?: number[];
+}
+
 /** What happened to one unit of a move, for the sentence that lists the ones not moved. */
 export interface MoveOutcome {
     unit: string;
     outcome: string;
     step?: string;
     put_back?: boolean;
+    /** The agent's English words: kept for its journal and the audit record, never shown. */
     detail?: string;
+    reason?: MoveReason;
+    /** Why its put-back did not complete. */
+    back?: MoveReason;
+    /** Fix round W1: it ran when the move began (put back and running again), else put back as it was. */
+    ran?: boolean;
+}
+
+const REASONS: readonly string[] = ['not_running', 'still_starting', 'not_in_slice', 'not_listening', 'no_port', 'restart_failed', 'write_failed', 'record_failed', 'unread', 'ports_unread'];
+
+/**
+ * A step's reason as a catalogue key and its values (alpha.149, lab D7): never the agent's English
+ * text; a code this page does not know is the general sentence that points to the agent's journal.
+ * Ports by count (fix round W4): one port "on port 3000"; several "on all of its ports" (the move's
+ * step) or "on none of its ports" (a put-back, F10).
+ */
+export function moveReasonWords(reason: MoveReason | undefined): { key: string; values: Record<string, string | number> } {
+    const ports = reason?.ports ?? [];
+    const values = { seconds: reason?.seconds ?? 0, ports: ports.join(', ') };
+    if (!reason || !REASONS.includes(reason.code)) return { key: 'slim.reason.other', values };
+    if (reason.code === 'not_running' && (reason.state ?? '').includes('auto-restart')) return { key: 'slim.reason.restarting', values };
+    if (reason.code === 'not_listening' || reason.code === 'no_port') {
+        if (ports.length <= 1) return { key: 'slim.reason.not_listening', values };
+        return { key: reason.code === 'no_port' ? 'slim.reason.no_port_many' : 'slim.reason.not_listening_many', values };
+    }
+    return { key: `slim.reason.${reason.code}`, values };
+}
+
+const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running', 'update_unreadable'];
+
+/** Why a whole move did not run, as a catalogue key (the general sentence for every other code). */
+export function moveWhyKey(reason: MoveReason | undefined): string {
+    return reason && WHYS.includes(reason.code) ? `slim.why.${reason.code}` : 'slim.why.other';
 }
 
 export interface MoveAnswer {
@@ -142,7 +189,11 @@ export interface MoveAnswer {
     /** The put-back did not complete: the record is kept and no site is moved until it is settled. */
     kept?: boolean;
     units: MoveOutcome[];
+    /** The agent's English words (journal and audit record only). */
     error?: string;
+    reason?: MoveReason;
+    /** Second fix round (R8): put back by Try again, running where they ran, listening on no port. */
+    runs_no_port?: string[];
 }
 
 export function decodeMoveAnswer(raw: unknown): MoveAnswer {
@@ -151,29 +202,37 @@ export function decodeMoveAnswer(raw: unknown): MoveAnswer {
     return {
         done: body.done, rolled_back: body.rolled_back === true, time_up: body.time_up === true, kept: body.kept === true,
         units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error,
+        reason: body.reason && typeof body.reason.code === 'string' ? body.reason : undefined,
+        runs_no_port: Array.isArray(body.runs_no_port) ? body.runs_no_port.filter((u): u is string => typeof u === 'string') : [],
     };
 }
 
 /**
- * After a failed move, the programs confirmed back where they ran and the ones whose put-back did not
- * complete: "put back" is said only of the first (review W1).
+ * After a failed move, the programs confirmed back where they ran and running again, the ones put back
+ * as they were (they did not run before the move; fix round W1), and the ones whose put-back did not
+ * complete: "put back" is said only of the first two (review W1).
  */
-export function putBackSplit(answer: MoveAnswer): { back: string[]; left: string[] } {
+export function putBackSplit(answer: MoveAnswer): { back: string[]; asWere: string[]; left: string[] } {
     const back: string[] = [];
+    const asWere: string[] = [];
     const left: string[] = [];
     for (const u of answer.units) {
         if (u.outcome !== 'failed' && u.outcome !== 'put_back') continue;
-        (u.put_back ? back : left).push(u.unit);
+        (!u.put_back ? left : u.ran === true ? back : asWere).push(u.unit);
     }
-    return { back, left };
+    return { back, asWere, left };
 }
 
-/** The programs a kept move record left, with their state: failed (stopped), unknown, starting, waiting (not restarted yet). */
-export function keptUnits(view: SiteLimitsView): { unit: string; state: 'failed' | 'unknown' | 'starting' | 'waiting' }[] {
+/** A kept record's state of one program (alpha.149: unverified, not_answering). */
+export type KeptState = 'failed' | 'unknown' | 'starting' | 'waiting' | 'unverified' | 'not_answering';
+const KEPT: readonly string[] = ['failed', 'unknown', 'starting', 'waiting', 'unverified', 'not_answering'];
+
+/** The programs a kept move record left, with their state: failed (put back, not running), unknown, starting, waiting (not restarted yet), unverified, not_answering. */
+export function keptUnits(view: SiteLimitsView): { unit: string; state: KeptState }[] {
     const record = view.move_interrupted;
     if (!record?.kept) return [];
     return Object.entries(record.units ?? {})
-        .filter((e): e is [string, 'failed' | 'unknown' | 'starting' | 'waiting'] => ['failed', 'unknown', 'starting', 'waiting'].includes(e[1]))
+        .filter((e): e is [string, KeptState] => KEPT.includes(e[1]))
         .map(([unit, state]) => ({ unit, state }))
         .sort((a, b) => a.unit.localeCompare(b.unit));
 }
@@ -194,17 +253,18 @@ export interface MoveStep {
  * program that ran outside them, and the check. A program put back after a
  * later one failed is a failed step; one not tried stays pending.
  */
-export function moveSteps(answer: MoveAnswer, units: SiteLimitUnit[], words: { write: string; restart: string; check: string }): MoveStep[] {
+export function moveSteps(answer: MoveAnswer, units: SiteLimitUnit[], words: { write: string; restart: string; check: string; reason: (r: MoveReason) => string; why: string }): MoveStep[] {
     const label = (unit: string) => units.find((u) => u.unit === unit)?.label ?? unit;
     const wrote = answer.done || answer.units.length > 0;
-    const steps: MoveStep[] = [{ id: 'write', label: words.write, state: wrote ? 'done' : 'failed', note: wrote ? undefined : answer.error }];
+    const steps: MoveStep[] = [{ id: 'write', label: words.write, state: wrote ? 'done' : 'failed', note: wrote ? undefined : words.why }];
     for (const u of answer.units) {
         if (u.outcome === 'absent' || u.outcome === 'refused') continue;
         let state: MoveStep['state'] = 'done';
         if (u.outcome === 'failed' || u.outcome === 'put_back') state = 'failed';
         else if (u.outcome === 'not_tried') state = 'pending';
         else if (notMovedReason(u.outcome)) state = 'waiting';
-        steps.push({ id: u.unit, label: `${words.restart}: ${label(u.unit)}`, state, note: state === 'failed' ? u.detail : undefined });
+        // alpha.149 (lab D7): the reason in the page's words, never the agent's English detail.
+        steps.push({ id: u.unit, label: `${words.restart}: ${label(u.unit)}`, state, note: state === 'failed' && u.reason ? words.reason(u.reason) : undefined });
     }
     steps.push({ id: 'check', label: words.check, state: answer.done ? 'done' : 'failed' });
     return steps;

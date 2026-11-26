@@ -395,6 +395,11 @@ func (n panelRuntimeAppNative) render(ctx context.Context, req transport.Runtime
 
 func (n panelRuntimeAppNative) control(ctx context.Context, req transport.RuntimeAppControlRequest) (transport.RuntimeAppStepResponse, error) {
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	// alpha.149 (lab O2): a start of a program that does not run writes it
+	// into its site's limits first (the Agent never moves a running one).
+	if req.Action != "stop" {
+		req.Target.Slice = n.p.siteSliceForSubscription(ctx, req.Target.SiteID, req.Target.SubscriptionID, req.Target.Domain)
+	}
 	var resp transport.RuntimeAppStepResponse
 	return resp, n.call(ctx, "Agent.RuntimeAppControlV1", &req, &resp)
 }

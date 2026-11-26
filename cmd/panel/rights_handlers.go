@@ -116,6 +116,10 @@ type rightsPreview struct {
 	// at once when the change is saved.
 	SitesStopped      []string `json:"sites_stopped,omitempty"`
 	SitesStoppedCount int      `json:"sites_stopped_count,omitempty"`
+	// SitesStoppedItems (alpha.149, lab CHECK 2 W1): the same sites as values
+	// the page words in its own language (SitesStopped stays the English
+	// lines the token names).
+	SitesStoppedItems []siteStoppedItem `json:"sites_stopped_items,omitempty"`
 	// StoppedToken names that list; a save sends it back as confirm_stopped.
 	StoppedToken string `json:"stopped_token,omitempty"`
 	Message      string `json:"message"`

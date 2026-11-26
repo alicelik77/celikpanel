@@ -229,6 +229,18 @@ type SliceCounters struct {
 	CPUThrottled     int64 `json:"cpu_throttled"`
 	CPUThrottledUSec int64 `json:"cpu_throttled_usec"`
 	CPUPeriods       int64 `json:"cpu_periods"`
+	// SlicePidsPeak and SlicePidsMax (alpha.149, lab D3; fix round F7):
+	// under the "units" rule, the slice's own pids.peak and the pids.max it
+	// was read with (both 0: not read, or no limit). A unit's counters go
+	// with its cgroup when the program restarts (lab, Ubuntu 24.04 kernel
+	// 6.8: the refusals were counted in a unit cgroup that was gone before
+	// any reading); the slice's peak stays while the slice exists. pids.peak
+	// is a high-water mark that writing pids.max does not reset, so only
+	// readings compared under an unchanged limit can say that the peak
+	// reached it since the last one (the Panel's ledger does that). Whether a
+	// new process was refused is not known from them.
+	SlicePidsPeak int64 `json:"slice_pids_peak,omitempty"`
+	SlicePidsMax  int64 `json:"slice_pids_max,omitempty"`
 }
 
 // SliceCgroupFiles are the texts of the slice cgroup's files ("" for a file
@@ -242,6 +254,10 @@ type SliceCgroupFiles struct {
 	HasPidsEventsLocal bool
 	CPUStat            string
 	Units              []UnitPidsFiles
+	// SlicePidsPeak and SlicePidsMax: the slice's own pids.peak and pids.max
+	// (read where it has no pids.events.local).
+	SlicePidsPeak string
+	SlicePidsMax  string
 }
 
 // UnitPidsFiles are one unit cgroup's process files.
@@ -297,6 +313,9 @@ func ParseSliceCounters(f SliceCgroupFiles) SliceCounters {
 		}
 	} else {
 		c.TasksRule = "units"
+		if limit, peak := cgroupLimit(f.SlicePidsMax), cgroupLimit(f.SlicePidsPeak); limit > 0 && peak >= 0 {
+			c.SlicePidsPeak, c.SlicePidsMax = peak, limit
+		}
 		for _, u := range f.Units {
 			n, _ := cgroupValue(u.Events, "max")
 			if n == 0 {

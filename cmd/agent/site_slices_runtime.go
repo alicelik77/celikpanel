@@ -182,12 +182,16 @@ func logSiteSlicePushFailures(failed map[int]string) {
 	}
 }
 
+// siteSliceRuntimeJournalWrite writes the push's record (a seam: tests make
+// it fail as a read-only folder would).
+var siteSliceRuntimeJournalWrite = writePrivateFile
+
 func saveSiteSliceRuntimeJournal(files []string) error {
 	raw, err := json.Marshal(siteSliceRuntimeJournal{Files: files})
 	if err != nil {
 		return err
 	}
-	return writePrivateFile(siteSliceRuntimeJournalPath, raw)
+	return siteSliceRuntimeJournalWrite(siteSliceRuntimeJournalPath, raw)
 }
 
 // pushSiteSlicesToKernel makes the running slices of these sites enforce
@@ -218,22 +222,19 @@ func pushSiteSlicesToKernel(siteIDs []int) map[int]string {
 	if len(names) == 0 {
 		return failed
 	}
-	args := []string{"show", "--property=Id,MemoryMax,MemorySwapMax,TasksMax,CPUQuotaPerSecUSec"}
-	raw, err := appUnitSystemctl(systemctlArgs(append(args, names...)...)...)
+	effective, err := readSiteSliceEffective(names)
 	if err != nil {
-		why := "systemd's running limits could not be read: " + strings.TrimSpace(err.Error()+" "+string(raw))
+		why := siteSliceUncheckedPrefix + "systemd's running limits could not be read: " + err.Error()
 		for _, name := range names {
 			fail(name, why)
 		}
 		return failed
 	}
-	effective := map[string]map[string]string{}
-	for _, block := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n\n") {
-		props := parseShow(block)
-		if id := props["Id"]; id != "" {
-			effective[id] = props
-		}
-	}
+	// alpha.149 (lab O3): on every way out the answer is what the kernel holds
+	// then. A site whose push failed (its record, set-property) keeps its
+	// failure only when its kernel values still differ from systemd's
+	// effective ones (the file's write and reload may have applied them).
+	defer settleSiteSlicePushFailures(failed, effective)
 	plan := map[string][]string{}
 	var files []string
 	for _, name := range names {
@@ -277,13 +278,65 @@ func pushSiteSlicesToKernel(siteIDs []int) map[int]string {
 	}
 	// What the kernel holds now is the answer, not what was asked.
 	for name := range plan {
-		for _, k := range siteSliceKernelKeys {
-			if siteSliceAssignment(k, effective[name][k.property], readSmallFile(filepath.Join(siteSliceCgroupRoot, name, k.file))) != "" {
-				fail(name, "the kernel still holds the earlier "+k.file)
-			}
+		if file := siteSliceKernelDiffers(name, effective[name]); file != "" {
+			fail(name, "the kernel still holds the earlier "+file)
 		}
 	}
 	return failed
+}
+
+// siteSliceUncheckedPrefix starts a push failure whose kernel values could
+// not be compared (systemd's effective values were not read): "unchecked",
+// never "does not have the limits".
+const siteSliceUncheckedPrefix = "not checked: "
+
+// readSiteSliceEffective reads systemd's effective limits of running slices.
+func readSiteSliceEffective(names []string) (map[string]map[string]string, error) {
+	args := []string{"show", "--property=Id,MemoryMax,MemorySwapMax,TasksMax,CPUQuotaPerSecUSec"}
+	raw, err := appUnitSystemctl(systemctlArgs(append(args, names...)...)...)
+	if err != nil {
+		return nil, errors.New(strings.TrimSpace(err.Error() + " " + string(raw)))
+	}
+	effective := map[string]map[string]string{}
+	for _, block := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n\n") {
+		props := parseShow(block)
+		if id := props["Id"]; id != "" {
+			effective[id] = props
+		}
+	}
+	return effective, nil
+}
+
+// siteSliceKernelDiffers names the first cgroup file of a running slice whose
+// value differs from systemd's effective one ("" when they all agree or a
+// pair cannot be read and compared: siteSliceAssignment's rule).
+func siteSliceKernelDiffers(name string, props map[string]string) string {
+	for _, k := range siteSliceKernelKeys {
+		if siteSliceAssignment(k, props[k.property], readSmallFile(filepath.Join(siteSliceCgroupRoot, name, k.file))) != "" {
+			return k.file
+		}
+	}
+	return ""
+}
+
+// settleSiteSlicePushFailures reads the kernel of every failed site again
+// (alpha.149, lab O3): a slice that holds its effective values now has its
+// limits, whatever step failed; one systemd did not report stays
+// "unchecked".
+func settleSiteSlicePushFailures(failed map[int]string, effective map[string]map[string]string) {
+	for id, why := range failed {
+		name := sitesandbox.SliceName(id)
+		props := effective[name]
+		switch {
+		case props == nil:
+			if !strings.HasPrefix(why, siteSliceUncheckedPrefix) {
+				failed[id] = siteSliceUncheckedPrefix + why
+			}
+		case siteSliceKernelDiffers(name, props) == "":
+			log.Printf("site slice: %s holds its limits although a step of their push failed (%s)", name, why)
+			delete(failed, id)
+		}
+	}
 }
 
 // cleanupSiteSliceRuntime removes the control drop-ins the Agent recorded

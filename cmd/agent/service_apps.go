@@ -1115,6 +1115,11 @@ func (a *Agent) ServiceAppControlV1(req *transport.ServiceAppControlRequest, res
 		serviceAppStep(resp, transport.ServiceAppPrerequisite, "unit_missing", "the unit file is missing; install the application again")
 		return nil
 	}
+	// alpha.149 (lab O2): a program that does not run starts inside its
+	// site's limits (site_slice_start.go); a running one is not moved.
+	if req.Action != "stop" {
+		siteUnitIntoSliceBeforeStart(name, req.Target.Slice)
+	}
 	for _, step := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(step...)...); err != nil {
 			// A start the sandbox helper refused: name the app folder's

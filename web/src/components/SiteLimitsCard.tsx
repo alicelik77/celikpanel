@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { AlertTriangle, ArrowRightLeft, CheckCircle2, Gauge } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
+import { withSiteLimitsLane, type SiteLimitsLaneKey } from '../i18n/siteLimitsLane';
 import { formatDateTime } from '../lib/dateFormat';
 import { readApiError, apiErrorText } from '../lib/apiError';
 import { confirmAction, followOperation, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 import { useRemote } from '../lib/remote';
 import { unitText, whoText } from '../lib/settingLimits';
 import {
-    appliedOf, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveSteps, newMoveRequestID, notMovedReason,
-    putBackSplit, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
+    appliedOf, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
+    newMoveRequestID, notMovedReason, putBackSplit, type MoveReason, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
 import { Button, Checking, CouldNotCheck } from './ui';
 
@@ -35,7 +36,8 @@ const ORDER: { key: SiteLimitKey; label: TranslationKey }[] = [
 ];
 
 export function SiteLimitsCard({ domainId }: { domainId: number }) {
-    const { t, locale } = useI18n();
+    const { t: screenT, locale } = useI18n();
+    const t = withSiteLimitsLane(locale, screenT);
     const url = `/api/v1/domains/${domainId}/site-limits`;
     const handle = useRemote(url, decodeSiteLimits);
     const remote = handle.remote;
@@ -54,7 +56,9 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
     const valueText = (limit: SiteLimitValue | undefined) => (limit ? amountText(limit.key, limit.value) : '');
     const who = (limit: SiteLimitValue | undefined) => {
         if (!limit) return '';
-        return limit.set_by === 'server_default' || limit.set_by === 'default' ? t('slim.who.default') : whoText(t, limit.set_by, limit.set_by_name);
+        // alpha.149 (lab CHECK 2): the server's default bounding the reseller, which nobody set.
+        if (limit.set_by === 'server_default_bound') return t(view.admin ? 'slim.who.bound' : 'slim.who.boundReseller');
+        return limit.set_by === 'server_default' || limit.set_by === 'default' ? t('slim.who.default') : whoText(screenT, limit.set_by, limit.set_by_name);
     };
     const memory = limitOf(view, 'site.memory_mb');
     const provider = view.admin || view.reseller === true;
@@ -120,12 +124,13 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
                         // plan's, raising the plan would not change it, so no fix names it.
                         const applied = appliedOf(view, key);
                         const atLimit = eventAtSiteLimit(event.kind) && applied === undefined;
+                        // alpha.149 (lab CHECK 2): the limit that held then, or none; never today's.
+                        const then = atLimit || eventAtSiteLimit(event.kind) ? event.limit : undefined;
                         return (
                             <li key={event.kind} className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-fg" data-site-limit-event={event.kind}>
                                 <p>
-                                    {t(`slim.event.${event.kind}` as TranslationKey, {
-                                        time: formatDateTime(event.last_at, locale), count: event.count, limit: applied !== undefined ? amountText(key, applied) : valueText(limit),
-                                    })}
+                                    {t(`slim.event.${event.kind}` as TranslationKey, { time: formatDateTime(event.last_at, locale), count: event.count })}
+                                    {then !== undefined && then > 0 && <> {t('slim.event.limitThen', { limit: amountText(key, then) })}</>}
                                     {event.repeated && <> {t('slim.event.repeated')}</>}
                                 </p>
                                 {atLimit && <p className="mt-1 text-fg-muted">{t(fix as TranslationKey, { who: who(limit) })}</p>}
@@ -141,7 +146,13 @@ export function SiteLimitsCard({ domainId }: { domainId: number }) {
 }
 
 function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view: SiteLimitsView; memory: number; onDone: () => void }) {
-    const { t, locale } = useI18n();
+    const { t: screenT, locale } = useI18n();
+    const t = withSiteLimitsLane(locale, screenT);
+    // alpha.149 (lab D7): a reason in the page's own words, never the agent's English text.
+    const reasonText = (reason: MoveReason | undefined) => {
+        const words = moveReasonWords(reason);
+        return t(words.key as SiteLimitsLaneKey, words.values);
+    };
     const [working, setWorking] = useState(false);
     // A lost answer keeps the request id, so pressing again returns the first
     // answer instead of starting a second move.
@@ -188,6 +199,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     setRequestID(newMoveRequestID());
                     report.steps(moveSteps(answer, units, {
                         write: t('slim.move.step.write'), restart: t('slim.move.step.restart'), check: t('slim.move.step.check'),
+                        reason: reasonText, why: t(moveWhyKey(answer.reason) as SiteLimitsLaneKey),
                     }).map((s) => step(s.id, s.label, s.state, s.note)));
                     const notMoved = answer.units.flatMap((u) => {
                         const reason = notMovedReason(u.outcome);
@@ -197,16 +209,22 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     const failed = answer.units.find((u) => u.outcome === 'failed');
                     if (answer.time_up) return { state: 'failed', reason: t('slim.move.timeUp') };
                     if (answer.rolled_back && failed) {
-                        // "Put back" only for what was confirmed back; the rest is named (review W1).
-                        const { back, left } = putBackSplit(answer);
-                        const list = (names: string[]) => names.map((u) => labelOf(units, u)).join(', ') || '—';
+                        // "Put back" only for what was confirmed back and running again; each of
+                        // the rest is named with why (review W1; alpha.149, lab D6/D7).
+                        const { back, asWere, left } = putBackSplit(answer);
+                        const notBack = left.map((name) => {
+                            const u = answer.units.find((x) => x.unit === name);
+                            return u?.back?.code === 'changed' ? `${labelOf(units, name)} (${t('slim.move.changed')})`
+                                : t('slim.move.backNot', { unit: labelOf(units, name), reason: reasonText(u?.back) });
+                        });
                         return {
                             state: 'failed',
-                            reason: [t('slim.move.rolledBack', { unit: labelOf(units, failed.unit), detail: failed.detail ?? '', back: list(back) }),
-                                left.length > 0 ? t('slim.move.notBack', { list: list(left) }) : ''].filter(Boolean).join(' '),
+                            reason: [t('slim.move.failedUnit', { unit: labelOf(units, failed.unit), reason: reasonText(failed.reason), name: failed.unit }),
+                                back.length > 0 ? t('slim.move.back', { list: back.map((u) => labelOf(units, u)).join(', ') }) : '',
+                                asWere.length > 0 ? t('slim.move.backStopped', { list: asWere.map((u) => labelOf(units, u)).join(', ') }) : '', ...notBack].filter(Boolean).join(' '),
                         };
                     }
-                    if (!answer.done) return { state: 'failed', reason: answer.error || t('slim.move.unknown') };
+                    if (!answer.done) return { state: 'failed', reason: answer.kept ? t('slim.why.kept_earlier') : t(moveWhyKey(answer.reason) as SiteLimitsLaneKey) };
                     return { state: 'done', message: [t('slim.move.done'), notMoved.length > 0 ? t('slim.move.notMoved', { list: notMoved.join('; ') }) : ''].filter(Boolean).join(' ') };
                 },
             });
@@ -241,8 +259,10 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                         return { state: 'unknown', reason: t('slim.move.unknown') };
                     }
                     setRequestID(newMoveRequestID());
-                    if (answer.done) return { state: 'done' };
-                    return { state: 'failed', reason: answer.kept ? t('slim.kept', { time: formatDateTime(view.move_interrupted?.at ?? '', locale) }) : answer.error || t('slim.move.unknown') };
+                    // Second fix round (R8): a program Try again put back that runs but listens on no port is named.
+                    const silent = answer.runs_no_port ?? [];
+                    if (answer.done) return silent.length > 0 ? { state: 'done', message: t('slim.kept.runsNoPort', { list: silent.map((u) => labelOf(units, u)).join(', ') }) } : { state: 'done' };
+                    return { state: 'failed', reason: answer.kept ? t('slim.kept', { time: formatDateTime(view.move_interrupted?.at ?? '', locale) }) : t(moveWhyKey(answer.reason) as SiteLimitsLaneKey) };
                 },
             });
         } finally {
@@ -262,7 +282,12 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     <p>{t('slim.kept', { time: formatDateTime(view.move_interrupted.at, locale) })}</p>
                     {kept.map((k) => (
                         <p key={k.unit} data-site-limits-kept-unit={k.state}>
-                            {t('slim.kept.unit', { unit: labelOf(units, k.unit), state: t(`slim.kept.${k.state}` as TranslationKey), name: k.unit })}
+                            {/* alpha.149 (lab D6): put back but not running: said so, who acts, the next step. */}
+                            {/* Fix round W3: not known yet, or running but not answering: look first, never "start it". */}
+                            {k.state === 'failed'
+                                ? t('slim.kept.notRunning', { unit: labelOf(units, k.unit), name: k.unit })
+                                : t(k.state === 'unverified' || k.state === 'not_answering' ? 'slim.kept.look' : 'slim.kept.unit',
+                                    { unit: labelOf(units, k.unit), state: t(`slim.kept.${k.state}` as TranslationKey), name: k.unit })}
                         </p>
                     ))}
                     <Button loading={working} disabled={working || view.busy === true} onClick={() => void retry()}>{t('pnow.retry')}</Button>
@@ -275,7 +300,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     <ul className="mt-1 space-y-1 text-sm">
                         {units.map((u) => (
                             <li key={u.unit} className="text-fg-muted" data-site-limit-unit={u.placement}>
-                                <span className="font-medium text-fg">{u.label}</span> ({u.unit}): {t(`slim.place.${u.placement}` as TranslationKey)}
+                                <span className="font-medium text-fg">{u.label}</span> ({u.unit}): {t(`slim.place.${u.placement}` as TranslationKey, { name: u.unit })}
                                 {u.blocked && <span className="block text-xs text-warning" data-site-limit-blocked={u.blocked}>{t(`slim.blocked.${u.blocked}` as TranslationKey)}</span>}
                                 {u.lower && u.placement === 'outside' && !u.blocked && (
                                     <span className="block text-xs text-warning">{t('slim.lower', { own: unitText(t, 'mb', u.own_memory_mb ?? 0), site: unitText(t, 'mb', memory) })}</span>
