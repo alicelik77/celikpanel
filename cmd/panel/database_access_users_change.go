@@ -325,12 +325,14 @@ type panelDatabaseAccessNative struct{ p *Panel }
 func (n panelDatabaseAccessNative) create(ctx context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
 	var resp transport.DatabaseAccessUserResponse
 	err := n.p.callAgentContext(ctx, "Agent.CreateDatabaseAccessUserV1", &req, &resp)
+	resp.Error = withDatabaseAccountRefusal(resp.AccountRefused, req.Username, resp.Error)
 	return resp, err
 }
 
 func (n panelDatabaseAccessNative) remove(ctx context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
 	var resp transport.DatabaseAccessUserResponse
 	err := n.p.callAgentContext(ctx, "Agent.RemoveDatabaseAccessUserV1", &req, &resp)
+	resp.Error = withDatabaseAccountRefusal(resp.AccountRefused, req.Username, resp.Error)
 	return resp, err
 }
 
