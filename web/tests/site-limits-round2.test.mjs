@@ -16,6 +16,8 @@ import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr
 import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
 import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import { appliedOf, decodeMoveAnswer, decodeSiteLimits } from '../src/lib/siteLimits.ts';
+import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
+import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -53,16 +55,17 @@ test('the card shows the limit in force beside the plan’s, and an event names 
   assert.equal(appliedOf({ ...view, live: undefined }, 'site.memory_mb'), undefined, 'not known: nothing is claimed');
   const card = read('../src/components/SiteLimitsCard.tsx');
   assert.match(card, /data-site-limit-applied=""[^\n]*slim\.applied/, 'the tile says the value in force');
-  assert.match(card, /limit: applied !== undefined \? amountText\(key, applied\) : valueText\(limit\)/, 'the event names the number reached');
+  // alpha.149 (the alpha.148 lab's CHECK 2): the number that held when it happened, never today's.
+  assert.match(card, /t\('slim\.event\.limitThen', \{ limit: amountText\(key, then\) \}\)/, 'the event names the number that held then');
   assert.match(card, /const atLimit = eventAtSiteLimit\(event\.kind\) && applied === undefined/, 'no fix names the plan when the plan did not set it');
   for (const kind of ['memory', 'tasks', 'cpu']) {
-    for (const words of [enSiteLimitsScreens, trSiteLimitsScreens]) assert.ok(!/plan/i.test(words[`slim.event.${kind}`]) && !/Plan/.test(words[`slim.event.${kind}`]), `${kind} does not call the number the plan’s`);
+    for (const words of [enSiteLimitsLane, trSiteLimitsLane]) assert.ok(!/plan/i.test(words[`slim.event.${kind}`]) && !/Plan/.test(words[`slim.event.${kind}`]), `${kind} does not call the number the plan’s`);
   }
 });
 
 test('one memory "time" is a program stopped, and an unattributed process refusal blames no limit', () => {
-  assert.match(enSiteLimitsScreens['slim.event.memory'], /stopped a program \{count\} times/);
-  assert.match(trSiteLimitsScreens['slim.event.memory'], /\{count\} kez bir programı durdurdu/);
+  assert.match(enSiteLimitsLane['slim.event.memory'], /stopped a program \{count\} times/);
+  assert.match(trSiteLimitsLane['slim.event.memory'], /\{count\} kez bir programı durdurdu/);
   assert.match(enSiteLimitsScreens['slim.event.tasks_other'], /does not show that it was this site’s limit/);
   assert.ok(!/at its own limit/.test(enSiteLimitsScreens['slim.event.tasks_other']));
 });

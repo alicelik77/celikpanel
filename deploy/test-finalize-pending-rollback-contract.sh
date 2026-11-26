@@ -132,4 +132,33 @@ assert_before "$mark_scheduler" "$remove_completion" "scheduler obligation must 
 assert_before "$remove_completion" "$terminal_unlock" "completion marker must be removed before releasing the mutation lock"
 assert_before "$terminal_unlock" "$restore_scheduler" "scheduler restoration must happen only after terminal mutation-lock release"
 
+# alpha.149: the restored agent's start waits 300 polls 0.2 s apart (about
+# 60 s); a healthy agent opened its socket in up to 14 s on the lab's servers.
+# The whole function is pinned: a shorter bound or a looser readiness test fails.
+expected_agent_wait=$(cat <<'EOF'
+wait_for_agent_ready() {
+    local _
+    [[ ! -e "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]] \
+        || die "agent socket exists before the controlled agent start"
+    systemctl start celikpanel-agent.service \
+        || die "restored rollback agent could not be started"
+    for _ in $(seq 1 300); do
+        if systemctl is-active --quiet celikpanel-agent.service &&
+           [[ -S "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]]; then
+            return 0
+        fi
+        sleep 0.2
+    done
+    die "restored rollback agent did not become active with its exact socket"
+}
+EOF
+)
+actual_agent_wait=$(awk -v signature='wait_for_agent_ready() {' '
+    $0 == signature { inside=1 }
+    inside { print }
+    inside && $0 == "}" { exit }
+' "$candidate")
+[[ "$actual_agent_wait" == "$expected_agent_wait" ]] \
+    || fail "wait_for_agent_ready differs from the reviewed loop (bound or readiness test)"
+
 printf 'PASS: pending rollback finalizer contract\n'

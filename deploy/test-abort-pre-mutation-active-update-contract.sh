@@ -289,4 +289,39 @@ require_guard_text 'sync -f -- "$root"' \
 require_guard_text 'pre-mutation active transaction marker still exists' \
     "terminal primitive does not prove marker absence before returning"
 
+# alpha.149: the previous release's agent start waits 300 polls 0.2 s apart
+# (about 60 s); a healthy agent opened its socket in up to 14 s on the lab's
+# servers. The whole function is pinned: a shorter bound, a looser readiness
+# test or a dropped lock or executable proof fails.
+expected_agent_wait=$(cat <<'EOF'
+wait_for_agent_ready() {
+    local _
+    verify_mutation_lock_held
+    [[ ! -e "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]] \
+        || die "agent socket exists before the controlled markerless start"
+    systemctl start celikpanel-agent.service \
+        || die "reviewed previous-release agent could not be started"
+    for _ in $(seq 1 300); do
+        if systemctl is-active --quiet celikpanel-agent.service &&
+           [[ -S "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]]; then
+            verify_mutation_lock_held
+            verify_running_unit_executable \
+                celikpanel-agent.service "$BIN_DIR/agent" \
+                "$PREVIOUS_AGENT_SHA256"
+            return 0
+        fi
+        sleep 0.2
+    done
+    die "reviewed previous-release agent did not become active with its exact socket"
+}
+EOF
+)
+actual_agent_wait=$(awk -v signature='wait_for_agent_ready() {' '
+    $0 == signature { inside=1 }
+    inside { print }
+    inside && $0 == "}" { exit }
+' "$candidate")
+[[ "$actual_agent_wait" == "$expected_agent_wait" ]] \
+    || fail "wait_for_agent_ready differs from the reviewed loop (bound or readiness test)"
+
 printf 'PASS: pre-mutation active update abort contract\n'

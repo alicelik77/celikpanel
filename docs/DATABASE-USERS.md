@@ -46,7 +46,10 @@ same rules.
     and every writer's later objects; a new writer gives its later objects to
     every reader and every other writer. When a writer is removed its objects
     become the owner's (`REASSIGN OWNED`) and keep their grants, so readers
-    go on reading them.
+    go on reading them - except on a database owned by CelikPanel's own
+    account (`celikpanel_admin`), which never receives them: there a user
+    that owns anything is not removed (see "Privileged database accounts and
+    the Agent" below).
   - Not covered: objects made later by a role that is not the owner or an
     added user (for example the owner's administrator account), objects in a
     schema the owner makes with explicit `REVOKE`s, and schemas or objects
@@ -61,7 +64,9 @@ same rules.
   Removal takes away the user and its rights and never the database: MariaDB
   `DROP USER` on every host; PostgreSQL `REASSIGN OWNED BY` the user to the
   database's owner, `DROP OWNED BY`, `DROP ROLE` (a table the user made stays,
-  owned by the owner). The user made with the database goes only with it.
+  owned by the owner; on a database owned by `celikpanel_admin` no `REASSIGN`
+  at all - `DROP OWNED BY` only, or a refusal when the user owns something
+  there). The user made with the database goes only with it.
   Open (alpha.133): when something else still uses the user, its account
   stays on the engine with no rights, yet the result says the user was
   removed; a hand-made account of that name keeps its rights on the live
@@ -502,6 +507,96 @@ there.
   Problems now shows (with the rounds each unread database was not read).
 - Not covered: registered PostgreSQL servers on other machines (their own
   administrator's), and the `postgres`/`template1` databases.
+
+## Privileged database accounts and the Agent (alpha.149)
+
+The Agent runs as root and, on the engines, as their superuser; the panel is
+the less trusted side. No Agent call changes a database account the panel
+names (a password, a lock, a drop, a revoke, limits, a database's owner as the
+owner and recipient of objects) unless the Agent itself finds it an ordinary
+account, read before the write and again in the write's own transaction
+(PostgreSQL) or compound statement (MariaDB); a state that cannot be read
+refuses. The rule is in `cmd/agent/database_account_guard.go`. A database's
+owner passes the same rule; the one exception is CelikPanel's own
+`celikpanel_admin` (DATABASE-ADMIN-ACCOUNT.md), while it is not a superuser,
+has neither `REPLICATION` nor `BYPASSRLS`, and is a member of no `pg_*` role
+and no superuser role. Even then nothing is ever handed to it: removing a user
+added to a database `celikpanel_admin` owns sends no `REASSIGN OWNED`; in the
+same transaction, before `DROP OWNED`, the Agent refuses (`owns_objects`,
+rolled back, the user as it was) when the user owns anything there that
+`REASSIGN OWNED` would move - every `pg_shdepend` owner row of the user in
+that database or among shared objects, except default-privilege entries and
+user mappings, which `REASSIGN OWNED` skips and `DROP OWNED` removes. A site
+user's function given to `celikpanel_admin` would run as `celikpanel_admin`
+(SECURITY DEFINER, or from an index expression). The server's administrator
+hands the objects to the database's own user, then removes the user again
+(the user guide's Databases chapter):
+`sudo -u postgres psql -d <database> -c 'REASSIGN OWNED BY "<user>" TO "<the database's own user>";'`.
+A database owned by a site's own role keeps `REASSIGN OWNED` to that role,
+which passed the rule. No Agent call drops,
+empties, loads into, gives a user or opens or closes the engine's own system
+databases (MariaDB `mysql`, `information_schema`, `performance_schema`,
+`sys`; PostgreSQL `postgres`, `template0`, `template1`). A MariaDB database
+is not made with a user whose name already exists on any host or as a role.
+
+A refusal answers its reason as a code (`absent`, `privileged`, `member`,
+`unreadable`, `system_database`, `unsupported_engine`, `owns_objects`); nothing was changed,
+the server's administrator decides, and the Databases screens say it in the
+person's language (`DATABASE_ACCOUNT_REFUSED`).
+
+What this boundary is worth:
+
+- On PostgreSQL 16 and later it is a real boundary against a taken-over
+  panel: the panel's own account (`celikpanel_admin`, CREATEDB CREATEROLE)
+  cannot make itself or another role privileged there, and the Agent will not
+  do it on the panel's word.
+- On MariaDB, and on PostgreSQL 15 or older, the panel's own database account
+  already holds rights of that weight (MariaDB: `ALL PRIVILEGES ON *.* WITH
+  GRANT OPTION`; PostgreSQL 15 or older: CREATEROLE can grant itself the
+  `pg_*` roles). There the refusal guards against mistakes, not against a
+  taken-over panel.
+- A database of another site is protected by the panel's own checks only;
+  the Agent does not check which site a database belongs to.
+
+Limits of the rule:
+
+- The PostgreSQL rule looks at role attributes and memberships. It does not
+  look at parameter privileges (PostgreSQL 15 and later, `GRANT ALTER SYSTEM
+  ON PARAMETER`), at EXECUTE granted directly on administrator functions
+  (`pg_read_file`, `lo_import`, `lo_export`), or at roles that own objects a
+  superuser runs. Each needs the server owner to have made such a grant by
+  hand.
+- Adding a PostgreSQL user grants it rights on every table, sequence and
+  (read and write) function of the database's non-system schemas
+  (`GRANT … ON ALL … IN SCHEMA`, run by the Agent as the superuser),
+  including objects the server's administrator installed there: an
+  extension put into a site database's `public` gives the new user EXECUTE
+  on its functions, even one whose EXECUTE the extension took from `PUBLIC`
+  on purpose (`dblink_connect_u`, adminpack's `pg_file_write`). Such an
+  extension needs the administrator's own installation into the site's
+  database; install administrator extensions elsewhere.
+- Objects that earlier releases already handed to `celikpanel_admin` when an
+  added user was removed stay as they are. The server's administrator can
+  list what `celikpanel_admin` owns in a site's database (default-privilege
+  entries left out):
+
+  ```
+  sudo -u postgres psql -d <database> -c "SELECT pg_catalog.pg_describe_object(d.classid, d.objid, d.objsubid) FROM pg_catalog.pg_shdepend d WHERE d.dbid = (SELECT oid FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database()) AND d.deptype = 'o' AND d.refobjid = 'celikpanel_admin'::pg_catalog.regrole AND d.classid <> 'pg_catalog.pg_default_acl'::pg_catalog.regclass;"
+  ```
+
+  and hand each to the database's own user (`ALTER TABLE … OWNER TO`,
+  `ALTER FUNCTION … OWNER TO` and so on). Not `REASSIGN OWNED BY
+  celikpanel_admin`: that would also hand over every database
+  `celikpanel_admin` owns on the server.
+- A local MySQL server running in MariaDB's place is not managed: MySQL has
+  no `mysql.global_priv`, so the rule cannot be read there and every account
+  change is refused as `unsupported_engine` ("this server runs MySQL in
+  MariaDB's place; CelikPanel manages database accounts on MariaDB only").
+  The server's administrator makes the change on the server itself. An
+  account the administrator removed by hand counts as gone, so deleting the
+  database or the site then goes through; rights that name a deleted database
+  are then removed by the engine's rule for every grantee, without taking the
+  account names from the panel.
 
 ## Connecting
 

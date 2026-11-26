@@ -154,7 +154,11 @@ func pgRemoteRoles(port int, rules []dbremote.Rule) ([]dbremote.Rule, []transpor
 		sort.Strings(list)
 		return strings.Join(list, ",")
 	}
-	out, err := databaseRemotePGQuery(port, `SELECT concat_ws(chr(31), rolname, (rolsuper OR rolreplication OR rolbypassrls)::text, coalesce(rolpassword LIKE 'SCRAM-SHA-256$%', false)::text, rolcanlogin::text) FROM pg_authid WHERE rolname IN (`+quoteList(users)+`) UNION ALL SELECT 'db' || chr(31) || datname FROM pg_database WHERE datname IN (`+quoteList(databases)+`);`)
+	// alpha.149 (security, review of PR #370 finding 1): "privileged" is the
+	// shared account rule (database_account_guard.go): superuser, CREATEROLE,
+	// CREATEDB, REPLICATION, BYPASSRLS, or a member of a role that has one or
+	// of a predefined pg_* role. Such a role is never reachable from outside.
+	out, err := databaseRemotePGQuery(port, `SELECT concat_ws(chr(31), celikpanel_r.rolname, `+pgAccountPrivilegedExpr("celikpanel_r")+`::text, coalesce(celikpanel_r.rolpassword LIKE 'SCRAM-SHA-256$%', false)::text, celikpanel_r.rolcanlogin::text) FROM pg_authid celikpanel_r WHERE celikpanel_r.rolname IN (`+quoteList(users)+`) UNION ALL SELECT 'db' || chr(31) || datname FROM pg_database WHERE datname IN (`+quoteList(databases)+`);`)
 	if err != nil {
 		return nil, nil, err
 	}

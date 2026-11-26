@@ -306,7 +306,7 @@ test('editing a plan: who follows it, what keeps running, who is over a new limi
     assert.equal(view.calls[0].url, '/api/v1/plans/4');
     assert.deepEqual(view.calls[0].body.rights.software, ['component:php-fpm:8.3']);
     const page = view.text();
-    assert.ok(page.includes('3 account(s) follow this plan. What is taken away keeps running where it is used, but cannot be chosen again. Save?'), page);
+    assert.ok(page.includes('3 accounts follow this plan. What is taken away keeps running where it is used, but cannot be chosen again. Save?'), page);
     assert.ok(page.includes('In use now (keeps running, cannot be chosen again):') && page.includes('PHP 8.5: 3 site(s)'));
     assert.ok(page.includes('bob (Basic, #7): Domains: 5 in use, the limit is 3'));
     const confirm = view.tree.root.findByProps({ 'data-plan-confirm': '' });

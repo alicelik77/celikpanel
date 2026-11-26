@@ -215,6 +215,79 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   only logged. The paragraphs above describe the design, not what alpha.148 delivers for
   those users.
 
+  **Since the alpha.149 fix round B (code; lab still open).** One function
+  (`cmd/panel/database_user_limits.go`, `applyDatabaseUserLimits`) decides and writes a
+  user's connection limit, time limits and temporary-file limit, and every path that
+  creates or re-creates a database user calls it whenever any of these keys is set
+  (`TestEveryPathThatCreatesADatabaseUserAppliesItsLimits` lists them). It reads the
+  user's values first; a user whose values cannot be read gets nothing written and is
+  reported. This machine's PostgreSQL is reached through the Agent as the `postgres`
+  superuser by one narrow call (`Agent.SetPostgreSQLRoleLimitsV1`,
+  `cmd/agent/database_role_limits_rpc.go`): a role the panel recorded on this machine's
+  cluster, never a superuser or a role with CREATEROLE, REPLICATION or BYPASSRLS (or a
+  member of one), and only the four settings as integers in fixed ranges; the panel's own
+  account gains no right. A MariaDB user's remote copies carry its `MAX_STATEMENT_TIME`.
+  A user the limits did not reach is named in Problems now (a verified failure, the
+  database server not running, or an unknown result) with Apply again, and a plan's Save
+  names them. The connection limit stays the panel's own, as since alpha.128.
+
+  **Its fix round (review of PR #370).** The Agent's superuser path serves CelikPanel's own
+  local PostgreSQL only; a record of the administrator's own account keeps that account.
+  The Agent refuses, in the same transaction as the writes, a role that is a superuser,
+  has CREATEROLE, CREATEDB, REPLICATION or BYPASSRLS, is a member of such a role or of a
+  `pg_*` role, or (for limits) a member of any role. On PostgreSQL the connection limit
+  follows the record rule of the role settings: the server owner's hand-set value is kept,
+  and the panel writes the limit only when the plan's value changed or for a user without
+  one. A write whose answer was lost stays the panel's value until a read-back confirms
+  it; a run's users are recorded as pending first, so a restart leaves them "not known
+  yet"; Problems now names the outcome actually known (the Agent not reachable, the server
+  not running, a refused connection, a refused user, a refused statement, not known) and
+  its reason, and the hourly round tries them again. A statement time or idle-transaction
+  time found on a user and not written by the panel was changed on the user itself (by the
+  owner or by the user, which the panel cannot tell apart); it is a default the user may
+  change by design and is never imposed again. The notes may say: "A database user's own
+  statement time, changed on the user itself, is kept; the temporary-file and connection
+  limits are firm limits the user cannot change."
+
+  **Its second fix round (second review of PR #370).** alpha.128 to 148 wrote the
+  PostgreSQL connection limit without a record through `celikpanel_admin` (PostgreSQL 15
+  or older, and on 16 and later on roles `celikpanel_admin` made itself). Every change that
+  can move a subscription's connection limit - a plan's or a reseller plan's Save, a
+  subscription moved to another plan, to Custom or to Unlimited, a reseller's limits, the
+  server's limit - reads each affected subscription's limit before it is saved; a user
+  without a record whose current limit equals that previous value is the panel's and gets
+  the new value. A value that equals neither is the owner's and is kept. What stays: such a
+  user is reached only by such a change. Apply again and the hourly round carry no previous
+  value, so a user whose unrecorded value is an older plan value (the plan changed again
+  before alpha.149, or its write then failed) is kept as the owner's; and a value the owner
+  set by hand that happens to equal the previous plan value is taken as the panel's.
+
+  Stated limits, not built:
+  - The Agent's read of the panel's file for the limits call holds one slot. A file the
+    panel's own account swaps for a FIFO between the pin and SQLite's open keeps that slot,
+    and every later limits call is refused until the Agent restarts: a taken-over panel can
+    deny itself this call, nothing more. The `-wal`/`-shm` companions are checked at pin
+    time only.
+  - A site role its owner made a member of another role, or privileged, stays named in
+    Problems now and is tried again by the hourly round; lifting the plan's limits does not
+    clear it. The line ends when the role's membership or privilege is removed, or the user
+    is removed from CelikPanel.
+  - A large Save writes every user of the affected subscriptions as pending into one row,
+    and each outcome rewrites it (quadratic in the number of users); a very large reseller
+    plan can outlast the run's 10 minutes, and the users not reached read "not known yet".
+  - The Problems now line of the database limits stays hidden until its words have loaded,
+    and if they fail to load.
+  - Suspension, password changes and the added-user calls still run psql and mysql without
+    a lock wait limit or a time bound (the limits call has both), under the same Agent lock
+    as the limits call: a role the owner holds locked blocks them, and a limits call then
+    waits until the panel's call times out ("not known yet").
+  - The site's limits card can wait for a running limits run (more than 10 seconds when the
+    run meets lock waits).
+  - The record rule of the connection limit holds for CelikPanel's own local PostgreSQL,
+    through the Agent. A PostgreSQL the administrator registered with an account of their
+    own keeps the alpha.128 rule for the connection limit: a hand-set value is written over
+    on every rewrite.
+
   **Loads and the user's limits.** Customers start restores of their own sites' backups
   (also from their own remote destinations), database copies, site copies and imports;
   the administrator also moves databases and imports cPanel archives. Every one of them

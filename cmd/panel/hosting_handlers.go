@@ -215,7 +215,13 @@ func (p *Panel) handleDomainApp(w http.ResponseWriter, r *http.Request, domainID
 			return
 		}
 		var resp transport.AppApplyResponse
-		if err := p.callAgent("Agent.ControlAppUnit", &transport.AppControlRequest{SiteID: siteID, Action: action}, &resp); err != nil {
+		// alpha.149 (lab O2): a start of a program that does not run writes it
+		// into its site's limits first (the Agent never moves a running one).
+		control := &transport.AppControlRequest{SiteID: siteID, Action: action}
+		if action != "stop" {
+			control.Slice = p.siteSliceForDomain(r.Context(), domainID)
+		}
+		if err := p.callAgent("Agent.ControlAppUnit", control, &resp); err != nil {
 			writeServerError(w, err)
 			return
 		}

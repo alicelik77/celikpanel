@@ -991,6 +991,8 @@ func (p *Panel) handlePGMoveAction(w http.ResponseWriter, r *http.Request, id in
 			return
 		}
 		kickDatabaseRemoteSync() // alpha.131: the database's remote access follows it to the other cluster
+		// alpha.149: its users' database limits follow it too.
+		p.dbLimitsFollowSwitch(ctx, *move.DatabaseID, from, to)
 		auditName := "postgresql.database.switch"
 		if action == "switch-back" {
 			auditName = "postgresql.database.switch_back"

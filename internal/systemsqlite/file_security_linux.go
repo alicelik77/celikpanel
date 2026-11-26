@@ -12,7 +12,9 @@ import (
 )
 
 func openPinnedManagedFile(path string, writable bool) (*os.File, error) {
-	flags := unix.O_RDONLY | unix.O_CLOEXEC | unix.O_NOFOLLOW
+	// O_NONBLOCK (alpha.149): a FIFO swapped in after the Lstat can never
+	// hold the open; on a regular file it changes nothing.
+	flags := unix.O_RDONLY | unix.O_CLOEXEC | unix.O_NOFOLLOW | unix.O_NONBLOCK
 	if writable {
 		flags = unix.O_RDWR | unix.O_CLOEXEC | unix.O_NOFOLLOW
 	}

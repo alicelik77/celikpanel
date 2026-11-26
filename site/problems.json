@@ -499,6 +499,150 @@
           "says": "also ends the administrator's own session in that browser"
         }
       ]
+    },
+    {
+      "id": "CP-2026-24",
+      "opened": "2026-11-26",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.149",
+      "summary": {
+        "en": "The panel’s agent changed, locked or dropped the database account it was given without asking what that account could do, so an account with administrator rights on the database server could be changed, and it dropped or emptied any database it was named, the database server’s own system databases included.",
+        "tr": "Panelin ajanı kendisine verilen veritabanı hesabını, o hesabın neler yapabildiğini sormadan değiştiriyor, kilitliyor ya da siliyordu; böylece veritabanı sunucusunda yönetici yetkisi olan bir hesap değiştirilebiliyordu; ayrıca adı verilen her veritabanını, veritabanı sunucusunun kendi sistem veritabanları da dahil, siliyor ya da boşaltıyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:35",
+          "says": "Until now the panel's agent acted on the account and the database it"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:48",
+          "says": "Now the agent asks the database server itself before it changes an"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-25",
+      "opened": "2026-11-25",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.149",
+      "summary": {
+        "en": "The plan’s database limits did not reach the PostgreSQL users of sites, and a database user created after a limit was set did not get it.",
+        "tr": "Planın veritabanı sınırları sitelerin PostgreSQL kullanıcılarına ulaşmıyordu; bir sınır belirlendikten sonra oluşturulan bir veritabanı kullanıcısı onu almıyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:286",
+          "says": "The plan's database time limits reach a site's MariaDB users that exist"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:93",
+          "says": "The plan's database limits now reach PostgreSQL."
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-26",
+      "opened": "2026-11-25",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.149",
+      "summary": {
+        "en": "When a move into the limits did not complete, its window said a program was put back even when that program did not start again where it ran, and it could give the reason in English.",
+        "tr": "Sınırların içine taşıma tamamlanmadığında, penceresi bir programın geri konduğunu, o program çalıştığı yerde yeniden başlamasa bile söylüyordu ve nedeni İngilizce verebiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:254",
+          "says": "If a put-back program cannot start where it ran either,"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:270",
+          "says": "When a move does not complete, its window may give the system's reason"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:125",
+          "says": "The move says what is true."
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-27",
+      "opened": "2026-11-25",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.149",
+      "summary": {
+        "en": "An update started while a site was being moved into its limits could stop, because the panel’s agent needed longer to start than the update waited for it.",
+        "tr": "Bir site sınırlarının içine taşınırken başlatılan bir güncelleme durabiliyordu, çünkü panelin ajanının açılması güncellemenin onu beklediğinden uzun sürüyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:265",
+          "says": "While a site is being moved into its limits, do not start an update of"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:160",
+          "says": "No update while a site is being moved, and no move while the update"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:173",
+          "says": "The update now gives the panel's agent about a minute to start"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-28",
+      "opened": "2026-11-25",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.149",
+      "summary": {
+        "en": "On Ubuntu 24.04 the site’s card did not say when the site’s programs reached their process limit.",
+        "tr": "Ubuntu 24.04’te sitenin kartı, sitenin programlarının işlem sınırına ulaştığını söylemiyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:278",
+          "says": "On Ubuntu 24.04 the site's card may not say that the site's programs"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:152",
+          "says": "The card says when the site's programs reached their process limit on"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-29",
+      "opened": "2026-11-25",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.149",
+      "summary": {
+        "en": "When the panel’s agent could not record a change of limits, Problems now could say for up to an hour that sites did not have the new limits, even when they did.",
+        "tr": "Panelin ajanı bir sınır değişikliğini kaydedemediğinde, Şu anki sorunlar siteler yeni sınırlara sahip olsa bile bir saate kadar sahip olmadıklarını söyleyebiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.148.md:280",
+          "says": "If the panel's agent cannot record a limit change, Problems now may say"
+        },
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:155",
+          "says": "The line about limits that did not reach every site says which sites"
+        }
+      ]
+    },
+    {
+      "id": "CP-2026-30",
+      "opened": "2026-11-26",
+      "state": "fixed",
+      "fixed_in": "v0.1.0-alpha.149",
+      "summary": {
+        "en": "Removing a user added to a PostgreSQL database that belongs to CelikPanel’s own database account handed what that user had made to that account, so code a customer wrote could later run with that account’s rights.",
+        "tr": "CelikPanel’in kendi veritabanı hesabına ait bir PostgreSQL veritabanına eklenmiş bir kullanıcıyı kaldırmak, o kullanıcının yaptıklarını bu hesaba veriyordu; böylece bir müşterinin yazdığı kod sonradan o hesabın yetkileriyle çalışabiliyordu."
+      },
+      "sources": [
+        {
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:78",
+          "says": "Removing an added database user no longer hands what it made to the"
+        }
+      ]
     }
   ]
 }

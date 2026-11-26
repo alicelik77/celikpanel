@@ -524,8 +524,42 @@ type siteLimitApplyState struct {
 	Change string `json:"change"`
 	// Pending: subscription id -> its sites that still have the earlier limits.
 	Pending map[string]int `json:"pending"`
-	Reason  string         `json:"reason"`
-	At      string         `json:"at"`
+	// Reason is the first site's reason code (what alpha.148 reads).
+	Reason string `json:"reason"`
+	At     string `json:"at"`
+	// Reasons (alpha.149 fix round, F9): subscription id -> reason code ->
+	// its sites with that reason, so each site is worded by its own reason.
+	Reasons map[string]map[string]int `json:"reasons,omitempty"`
+}
+
+// siteLimitApplyLacking are the reason codes of sites that are known to lack
+// the new limits (the file was not written, or the kernel was read and
+// still holds the earlier values); every other code is "not known".
+var siteLimitApplyLacking = map[string]bool{"kernel_differs": true, "write_failed": true, "refused": true, "out_of_range": true}
+
+// siteLimitApplyCounts reads the unapplied line's Name: "code:n,code:n"
+// (alpha.149 fix round, F9), or one code for every site (earlier records).
+// It answers the sites known to lack the limits and the ones not known.
+func siteLimitApplyCounts(name string, total int) (lacking, unknown int) {
+	if !strings.Contains(name, ":") {
+		if siteLimitApplyLacking[name] {
+			return total, 0
+		}
+		return 0, total
+	}
+	for _, part := range strings.Split(name, ",") {
+		code, count, _ := strings.Cut(part, ":")
+		n, err := strconv.Atoi(count)
+		if err != nil || n <= 0 {
+			continue
+		}
+		if siteLimitApplyLacking[code] {
+			lacking += n
+		} else {
+			unknown += n
+		}
+	}
+	return lacking, unknown
 }
 
 func (p *Panel) loadSiteLimitApply(ctx context.Context) siteLimitApplyState {
@@ -540,21 +574,31 @@ func (p *Panel) loadSiteLimitApply(ctx context.Context) siteLimitApplyState {
 // notApplied counts, per subscription the write covered, the sites that kept
 // their earlier limits (0: all have the new ones). Subscriptions the write
 // did not cover keep what an earlier change left.
-func (p *Panel) noteSiteLimitApply(ctx context.Context, change string, covered []int, notApplied map[int]int, reason string, now time.Time) {
+func (p *Panel) noteSiteLimitApply(ctx context.Context, change string, covered []int, notApplied map[int]int, reason string, reasons map[int]map[string]int, now time.Time) {
 	state := p.loadSiteLimitApply(ctx)
-	next := siteLimitApplyState{Change: state.Change, Pending: map[string]int{}, Reason: state.Reason, At: state.At}
+	next := siteLimitApplyState{Change: state.Change, Pending: map[string]int{}, Reason: state.Reason, At: state.At, Reasons: map[string]map[string]int{}}
 	for k, v := range state.Pending {
 		next.Pending[k] = v
+		if codes := state.Reasons[k]; len(codes) > 0 {
+			next.Reasons[k] = codes
+		}
 	}
 	for _, id := range covered {
 		delete(next.Pending, strconv.Itoa(id))
+		delete(next.Reasons, strconv.Itoa(id))
 	}
 	missed := 0
 	for id, n := range notApplied {
 		if n > 0 {
 			next.Pending[strconv.Itoa(id)] = n
+			if codes := reasons[id]; len(codes) > 0 {
+				next.Reasons[strconv.Itoa(id)] = codes
+			}
 			missed += n
 		}
+	}
+	if len(next.Reasons) == 0 {
+		next.Reasons = nil
 	}
 	if missed > 0 {
 		next.Change, next.Reason, next.At = change, reason, metricsTime(now)
@@ -586,15 +630,38 @@ func siteLimitApplyProblem(raw string) []monitoringProblem {
 		return nil
 	}
 	sites := 0
-	for _, n := range state.Pending {
+	codes := map[string]int{}
+	for sub, n := range state.Pending {
 		sites += n
+		// alpha.149 fix round (F9): each site by its own reason; a
+		// subscription recorded without them (an earlier record) counts
+		// under the first site's reason.
+		counted := 0
+		for code, k := range state.Reasons[sub] {
+			if k > 0 {
+				codes[code] += k
+				counted += k
+			}
+		}
+		if counted < n {
+			code := state.Reason
+			if code == "" {
+				code = "failed"
+			}
+			codes[code] += n - counted
+		}
 	}
 	if sites == 0 {
 		return nil
 	}
+	parts := make([]string, 0, len(codes))
+	for code, k := range codes {
+		parts = append(parts, code+":"+strconv.Itoa(k))
+	}
+	sort.Strings(parts)
 	return []monitoringProblem{{
 		Key: "site_limits_unapplied", Kind: "site_limits_unapplied", Severity: "warning", Actor: "administrator",
-		Subject: state.Change, Name: state.Reason, Value: float64(sites), Since: state.At, ObservedAt: state.At,
+		Subject: state.Change, Name: strings.Join(parts, ","), Value: float64(sites), Since: state.At, ObservedAt: state.At,
 		Action: monitoringProblemAction{Kind: "open", To: "/plans"},
 	}}
 }
@@ -676,16 +743,36 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 		rows.Close()
 	}
 	if len(req.Sites) == 0 {
-		p.noteSiteLimitApply(ctx, change, covered, nil, "", time.Now())
+		p.noteSiteLimitApply(ctx, change, covered, nil, "", nil, time.Now())
 		return nil
 	}
-	all := req.Sites
-	missed := func(sites []transport.SiteSlice, why string) {
-		for _, s := range sites {
-			notApplied[subOf[s.SiteID]]++
+	// alpha.149 fix round (F9): subscription -> reason code -> its sites.
+	reasons := map[int]map[string]int{}
+	count := func(siteID int, code string) {
+		sub := subOf[siteID]
+		notApplied[sub]++
+		if reasons[sub] == nil {
+			reasons[sub] = map[string]int{}
 		}
+		reasons[sub][code]++
+	}
+	all := req.Sites
+	// alpha.149 fix round (F8): what happened until now is recorded with the
+	// limit that held, before the change is pushed.
+	ids := make([]int, 0, len(all))
+	for _, s := range all {
+		ids = append(ids, s.SiteID)
+	}
+	p.observeSiteLimitsBeforeChange(ctx, ids)
+	// alpha.149 (lab O3): the recorded reason is a code the page words in its
+	// own language; the English detail goes to the journal.
+	missed := func(sites []transport.SiteSlice, code, why string) {
+		for _, s := range sites {
+			count(s.SiteID, code)
+		}
+		log.Printf("site limits: %d sites keep their earlier limits for now: %s", len(sites), why)
 		if reason == "" {
-			reason = why
+			reason = code
 		}
 	}
 	defer siteLimitApplying.set(0, 0)
@@ -701,7 +788,7 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 		cancel()
 		if err != nil {
 			// The rest is not sent: the hourly round writes it.
-			missed(all[start:], "the server did not answer: "+err.Error())
+			missed(all[start:], "agent_unreachable", "the server did not answer: "+err.Error())
 			break
 		}
 		if resp.Unsupported != "" {
@@ -712,7 +799,7 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 			// The Agent refused the batch, or wrote it but systemd did not
 			// take it (daemon-reload failed): its sites keep the earlier
 			// limits.
-			missed(all[start:end], resp.Error)
+			missed(all[start:end], "agent_refused", resp.Error)
 			continue
 		}
 		for _, s := range resp.Sites {
@@ -720,9 +807,14 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 			case transport.SiteFileOutcomeKept:
 				log.Printf("site limits: the slice of site %d was changed on the server and is kept; CelikPanel's text is in %s", s.SiteID, s.PendingPath)
 			case transport.SiteFileOutcomeFailed, transport.SiteFileOutcomeRefused:
-				notApplied[subOf[s.SiteID]]++
+				code := s.Reason
+				if code == "" {
+					code = "failed" // an Agent before alpha.149
+				}
+				count(s.SiteID, code)
+				log.Printf("site limits: site %d does not have the new limits for now (%s): %s", s.SiteID, code, strings.TrimSpace(s.Outcome+" "+s.Detail))
 				if reason == "" {
-					reason = strings.TrimSpace(s.Outcome + " " + s.Detail)
+					reason = code
 				}
 			}
 		}
@@ -730,8 +822,64 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscri
 			log.Printf("site limits: %d of %d sites written", end, len(all))
 		}
 	}
-	p.noteSiteLimitApply(ctx, change, covered, notApplied, reason, time.Now())
+	p.noteSiteLimitApply(ctx, change, covered, notApplied, reason, reasons, time.Now())
 	return nil
+}
+
+// observeSiteLimitsBeforeChange reads, once, the counters of the sites a
+// change of limits is about to reach, before it is pushed (alpha.149 fix
+// round, F8): events from before the change are recorded with the limit
+// that held then. A site whose counters cannot be read now is marked
+// (LimitChanged), so the events its next reading finds carry no limit value,
+// never the new one.
+func (p *Panel) observeSiteLimitsBeforeChange(ctx context.Context, siteIDs []int) {
+	unread := map[int]bool{}
+	for _, id := range siteIDs {
+		unread[id] = true
+	}
+	if !siteLimitReadNeedsAgent || p.agentClient != nil {
+		if all, err := p.siteLimitSites(ctx, 0); err == nil {
+			var sites []siteLimitSite
+			for _, s := range all {
+				if unread[s.SiteID] && len(s.Units) > 0 {
+					sites = append(sites, s)
+				}
+			}
+			if len(sites) > 0 {
+				readCtx, cancel := context.WithTimeout(ctx, siteSliceBatchTimeout)
+				statuses, err := p.readSiteSlicesPaged(readCtx, sites)
+				cancel()
+				if err == nil {
+					p.noteSiteSlices(ctx, statuses, false, time.Now())
+					for _, s := range statuses {
+						if s.CountersRead {
+							delete(unread, s.SiteID)
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(unread) == 0 {
+		return
+	}
+	siteLimitLedgerMu.Lock()
+	defer siteLimitLedgerMu.Unlock()
+	ledger := p.loadSiteLimitLedger(ctx)
+	changed := false
+	for id := range unread {
+		if record := ledger[strconv.Itoa(id)]; record != nil && !record.LimitChanged {
+			record.LimitChanged, changed = true, true
+		}
+	}
+	if !changed {
+		return
+	}
+	if raw, err := json.Marshal(ledger); err == nil {
+		if err := p.setSetting(ctx, settingSiteLimitEvents, string(raw)); err != nil {
+			log.Printf("site limits: the change of limits was not noted for the sites' events: %v", err)
+		}
+	}
 }
 
 // --- A lowered limit below what a site uses now asks first ----------------------
@@ -792,31 +940,48 @@ func (p *Panel) previewSiteLimitsLowered(ctx context.Context, preview *rightsPre
 		names[s.SiteID] = s.Domain
 	}
 	var lines []string
+	var items []siteStoppedItem
 	for _, status := range statuses {
 		if !status.Active {
 			continue
 		}
 		var parts []string
+		item := siteStoppedItem{Domain: names[status.SiteID]}
 		if limit, ok := lowered[settingSiteMemoryMB]; ok && status.MemoryCurrentMB > int64(limit) {
 			parts = append(parts, fmt.Sprintf("memory %d MB in use, new limit %d MB", status.MemoryCurrentMB, limit))
+			item.MemoryMB, item.MemoryLimitMB = status.MemoryCurrentMB, limit
 		}
 		if limit, ok := lowered[settingSiteTasks]; ok && status.TasksCurrent > int64(limit) {
 			parts = append(parts, fmt.Sprintf("%d processes, new limit %d", status.TasksCurrent, limit))
+			item.Tasks, item.TasksLimit = status.TasksCurrent, limit
 		}
 		if len(parts) > 0 {
 			lines = append(lines, names[status.SiteID]+": "+strings.Join(parts, "; "))
+			items = append(items, item)
 		}
 	}
 	sort.Strings(lines)
+	sort.Slice(items, func(i, j int) bool { return items[i].Domain < items[j].Domain })
 	preview.SitesStoppedCount = len(lines)
 	preview.StoppedToken = siteLimitsStoppedToken(lines)
 	if len(lines) > 40 {
 		lines = append(lines[:40], fmt.Sprintf("+%d more", len(lines)-40))
+		items = items[:40]
 	}
-	preview.SitesStopped = lines
+	preview.SitesStopped, preview.SitesStoppedItems = lines, items
 	if preview.SitesStoppedCount > 0 {
 		preview.Message += fmt.Sprintf(" The programs of %d site(s) use more now than a lowered site limit: when this is saved, a program over the memory limit is stopped at once; at the process limit new processes are refused and running ones keep running.", preview.SitesStoppedCount)
 	}
+}
+
+// siteStoppedItem is one site of the list (alpha.149): what its programs use
+// now against a lowered limit (0: that key is not lowered below its use).
+type siteStoppedItem struct {
+	Domain        string `json:"domain"`
+	MemoryMB      int64  `json:"memory_mb,omitempty"`
+	MemoryLimitMB int    `json:"memory_limit_mb,omitempty"`
+	Tasks         int64  `json:"tasks,omitempty"`
+	TasksLimit    int    `json:"tasks_limit,omitempty"`
 }
 
 // siteLimitsStoppedToken names one list of affected sites (review finding 9

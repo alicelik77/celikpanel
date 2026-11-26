@@ -751,6 +751,9 @@ func (p *Panel) runWordPressClone(ctx context.Context, operationID string, sourc
 		fail(status, "", "the copy's database could not be created: "+boundedAgentDiagnostic(created.Error))
 		return
 	}
+	// alpha.149 (lab D9): the copy's database user gets its subscription's
+	// database limits, by the one function.
+	p.applyNewDatabaseUserLimits(ctx, target.SubscriptionID, serverID, databaseUser)
 	_ = p.setAppInstallStatus(operationID, "database_ready", "")
 	_ = p.setAppInstallStatus(operationID, "files_installing", "")
 	request := transport.WordPressCloneRequest{

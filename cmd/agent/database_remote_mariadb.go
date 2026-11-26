@@ -31,6 +31,12 @@ var databaseRemoteMySQLQuery = func(statement string) (string, error) {
 	return "", errors.New("MariaDB is not reachable on this platform")
 }
 
+// databaseRemoteMySQLRunner is databaseRemoteMySQLQuery as a statement runner.
+func databaseRemoteMySQLRunner(statement string) ([]byte, error) {
+	out, err := databaseRemoteMySQLQuery(statement)
+	return []byte(out), err
+}
+
 // databaseRemoteFiles is the file side (option file, jail), swapped by tests.
 var databaseRemoteFiles = struct {
 	read   func(path string) ([]byte, error)
@@ -184,8 +190,10 @@ func mariadbReadAccount(user, host string) (mariadbAccountState, error) {
 		return mariadbAccountState{}, errors.New("not a host CelikPanel reads")
 	}
 	quoted, hostQuoted := "'"+user+"'", "'"+host+"'" // checked identifier and host
+	// alpha.149 (lab D9): max_statement_time too, so a remote copy carries
+	// the plan's time limit as it carries the connection limit.
 	out, err := databaseRemoteMySQLQuery("SELECT plugin, authentication_string, max_user_connections, " +
-		"IF(JSON_VALUE(Priv, '$.account_locked') IN ('true', '1'), 1, 0), ssl_type FROM mysql.global_priv " +
+		"IF(JSON_VALUE(Priv, '$.account_locked') IN ('true', '1'), 1, 0), ssl_type, max_statement_time FROM mysql.global_priv " +
 		"JOIN mysql.user USING (User, Host) WHERE User = " + quoted + " AND Host = " + hostQuoted + ";")
 	if err != nil {
 		return mariadbAccountState{}, err
@@ -195,7 +203,7 @@ func mariadbReadAccount(user, host string) (mariadbAccountState, error) {
 		return mariadbAccountState{}, errMariaDBUserMissing
 	}
 	fields := strings.Split(rows[0], "\t")
-	if len(fields) != 5 {
+	if len(fields) != 6 {
 		return mariadbAccountState{}, errors.New("MariaDB's answer about the account could not be read")
 	}
 	limit, err := strconv.Atoi(fields[2])
@@ -203,7 +211,8 @@ func mariadbReadAccount(user, host string) (mariadbAccountState, error) {
 		return mariadbAccountState{}, errors.New("MariaDB's answer about the account's connection limit could not be read")
 	}
 	state := mariadbAccountState{
-		credential: dbremote.MariaDBCredential{Plugin: fields[0], Auth: fields[1], MaxUserConnections: limit, Locked: fields[3] == "1"},
+		credential: dbremote.MariaDBCredential{Plugin: fields[0], Auth: fields[1], MaxUserConnections: limit, Locked: fields[3] == "1",
+			MaxStatementTime: strings.TrimSpace(fields[5])},
 		requireSSL: fields[4] == "ANY",
 	}
 	grantsOut, err := databaseRemoteMySQLQuery("SHOW GRANTS FOR " + quoted + "@" + hostQuoted + ";")
@@ -478,6 +487,18 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 			continue
 		case grants.Global:
 			refuseAll(transport.DatabaseRemotePrivilegedUser, "the user "+account.User+" has server-wide rights and is never reachable from outside")
+			continue
+		}
+		// alpha.149 (security, review of PR #370 finding 1): the shared
+		// account rule (database_account_guard.go) too - a role, a PROXY
+		// right or a right on the mysql database, which SHOW GRANTS' global
+		// line does not show, keeps the account local.
+		if err := readDatabaseAccountState("mysql", databaseRemoteMySQLRunner, account.User, pgAccountOrdinary, false); err != nil {
+			if databaseAccountRefusalOf(err) == transport.DatabaseAccountRefusedPrivileged {
+				refuseAll(transport.DatabaseRemotePrivilegedUser, "the user "+account.User+" has server-wide rights and is never reachable from outside")
+			} else {
+				refuseAll(transport.DatabaseRemoteFailed, "the user "+account.User+" could not be read: "+err.Error())
+			}
 			continue
 		}
 		if err := credential.Validate(); err != nil {

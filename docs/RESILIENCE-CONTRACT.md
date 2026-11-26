@@ -9494,3 +9494,42 @@ until the backup reports ready.
   successful first run is observed in the lab (L3), not proved; P0.2 is
   advanced for an Agent unavailable mid-operation, not closed. **No P0
   item is closed.**
+
+### Branch fix/a149-db-limits (the Agent changes no privileged database account on the panel's word; database users' limits through the Agent; no schema change; constitution 1; invariant 4; D-022; D-024; D-025; 2026-11-26, candidate alpha.149)
+
+- **Why it is here.** It changes an access gate of the privileged Agent:
+  every Agent call that acts on a database account the panel names (a
+  password, a lock, a drop, a revoke, limits, a database's owner as owner and
+  recipient of objects) or drops, empties, loads into or opens a database.
+- **Contract.** The Agent itself reads what the account holds and refuses,
+  nothing changed, unless it is an ordinary account; the same test runs again
+  in the write's own transaction (PostgreSQL) or compound statement
+  (MariaDB); a state that cannot be read refuses
+  (`cmd/agent/database_account_guard.go`, docs/DATABASE-USERS.md). A
+  database's owner passes the same rule (only `celikpanel_admin` while it is
+  not a superuser and a member of no `pg_*` role). No Agent call touches the
+  engine's own system databases. A refusal is a code the screens word.
+- **The trust boundary this gives.** On PostgreSQL 16 and later it is a real
+  boundary against a taken-over panel. On MariaDB and on PostgreSQL 15 or
+  older the panel's own database account already holds rights of that weight
+  (DATABASE-ADMIN-ACCOUNT.md: `ALL PRIVILEGES ON *.* WITH GRANT OPTION`;
+  CREATEROLE before 16 can grant itself the `pg_*` roles), so there the
+  refusal guards against mistakes, not against a taken-over panel. A database
+  of another site is protected by the panel's checks only.
+- **Schema / version transition.** None. Additive answer fields
+  (`account_refused`, `account_refused_name`) and records in
+  `panel_settings` (`db_role_limits_v1` gains `connections`, `unknown`,
+  `prev`; `db_limits_unapplied_v1`), which alpha.148 ignores. Going back to
+  alpha.148 restores the earlier calls; the refusal keeps no state.
+- **Recovery.** A refusal changed nothing; the server's administrator acts on
+  the server itself. A local MySQL in MariaDB's place is not managed
+  (`unsupported_engine`); an account the administrator removed by hand counts
+  as gone, so a deletion then goes through.
+- **Evidence.** Unit tests per call and engine in `cmd/agent` (the guard,
+  the owner, system databases, MySQL in MariaDB's place) and `cmd/panel`
+  (limits records); the real-engine test
+  `database_account_guard_engine_test.go` (a lab step).
+- **Open.** No lab run yet (the pull request's lab list). The PostgreSQL rule
+  does not look at parameter privileges, direct EXECUTE grants on
+  administrator functions or roles that own objects a superuser runs.
+  **No P0 item is closed.**

@@ -452,4 +452,17 @@ func TestCreateDatabaseNamesWhatIsTakenOnRealMariaDB(t *testing.T) {
 	if got := mustRun(t, "no user", e.maria("", "", "SELECT COUNT(*) FROM mysql.user WHERE User = 'a129mtake_user';")); got != "0" {
 		t.Fatal("a user was made for a foreign database")
 	}
+	// alpha.149 (second review, finding 5): an account of the name on another
+	// host: nothing is made beside it.
+	twinCleanup := "DROP DATABASE IF EXISTS a149twin; DROP USER IF EXISTS 'a149twin_user'@'%'; DROP USER IF EXISTS 'a149twin_user'@'localhost';"
+	mustRun(t, "clean twin", e.maria("", "", twinCleanup))
+	t.Cleanup(func() { _ = e.maria("", "", twinCleanup) })
+	mustRun(t, "twin", e.maria("", "", "CREATE USER 'a149twin_user'@'%' IDENTIFIED BY 'x1-Long-enough';"))
+	resp = createDatabaseOn(t, CreateDatabaseRequest{Type: "mysql", Name: "a149twin", User: "a149twin_user", Password: "Panel-Passw0rd!123"})
+	if resp.Success || resp.NameTaken != "user" {
+		t.Fatalf("twin account: %+v", resp)
+	}
+	if got := mustRun(t, "nothing made", e.maria("", "", "SELECT (SELECT COUNT(*) FROM mysql.user WHERE User = 'a149twin_user') + (SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'a149twin');")); got != "1" {
+		t.Fatalf("something was made beside the twin: %s", got)
+	}
 }

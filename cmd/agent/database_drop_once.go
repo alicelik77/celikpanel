@@ -154,6 +154,11 @@ func (a *Agent) DropDatabaseOnceV1(req *transport.DropDatabaseOnceRequest, resp 
 		resp.Error = "invalid database name; nothing was changed"
 		return nil
 	}
+	// alpha.149 (security, second review of PR #370 finding 2).
+	if systemDatabaseName(req.Type, req.Name) {
+		resp.Error = systemDatabaseRefusal
+		return nil
+	}
 	if req.Identity == "" && !req.ByName {
 		// A later press without an identity: what is there now cannot be
 		// told from what the deletion was asked for.

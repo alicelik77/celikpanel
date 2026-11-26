@@ -48,6 +48,27 @@
 </div>
 </div>
 <div class="wrap">
+<section class="part" id="v0.1.0-alpha.149" aria-labelledby="h-v0.1.0-alpha.149">
+<header><span class="num">@@CP_RELEASE_DAY@@</span><h2 id="h-v0.1.0-alpha.149">v0.1.0-alpha.149</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Changes in v0.1.0-alpha.149</caption>
+<thead><tr><th scope="col">Kind</th><th scope="col">Change</th><th scope="col">Case</th></tr></thead>
+<tbody>
+<tr><th scope="row">Security</th><td data-k="Change">The panel’s agent asks the database server itself before it changes a database account, and refuses an account with administrator rights; it never drops or empties one of the database server’s own system databases. Nothing changes for the database users the panel makes for sites.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-24">CP-2026-24</a></td></tr>
+<tr><th scope="row">Security</th><td data-k="Change">Removing a user added to a PostgreSQL database no longer hands what that user made to the panel’s own database account; such a user is not removed while it owns objects there, and the server’s administrator hands them to the database’s own user first.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-30">CP-2026-30</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">The plan’s database limits reach the PostgreSQL users of sites and every newly created database user; the server owner’s own values are kept, and Problems now names a user the limits did not reach, with Apply again.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-25">CP-2026-25</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">When a move into the limits does not complete, a program that does not start again where it ran is reported as not running, with Try again; the move’s window and its reasons are in the page’s language.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-26">CP-2026-26</a></td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">A stopped program started from the panel starts inside its site’s limits.</td><td class="v" data-k="Case">—</td></tr>
+<tr><th scope="row">Fixed</th><td data-k="Change">No update starts while a site is being moved into its limits, and no site is moved while the update runs; the update gives the panel’s agent about a minute to start.</td><td class="v" data-k="Case"><a href="problems.html#CP-2026-27">CP-2026-27</a></td></tr>
+<tr><th scope="row">Known limit</th><td data-k="Change">A local MySQL server running in MariaDB’s place is not managed: the server’s administrator changes its database accounts on the server itself.</td><td class="v" data-k="Case">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RELEASE-NOTES-v0.1.0-alpha.149.md">Full release notes of v0.1.0-alpha.149</a></p>
+</div>
+</section>
 <section class="part" id="v0.1.0-alpha.148" aria-labelledby="h-v0.1.0-alpha.148">
 <header><span class="num">2026-11-25</span><h2 id="h-v0.1.0-alpha.148">v0.1.0-alpha.148</h2></header>
 <div>

@@ -104,6 +104,13 @@ PUBLIC_KEYS = frozenset(
         "requires_otp",
         "private_ip",
         "private_network",
+        # Confirmation tokens the client has to send back (alpha.149, the
+        # alpha.148 lab's D4): a lowered site limit is saved only with the
+        # token of the list of sites its preview named (stopped_token, sent
+        # back as confirm_stopped). It is a digest of site names and usage,
+        # not a secret; redacting it made the lab send "[REDACTED]" back.
+        "stopped_token",
+        "confirm_stopped",
     }
 )
 

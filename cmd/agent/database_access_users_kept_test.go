@@ -33,6 +33,9 @@ func recordMySQL(t *testing.T, answer func(string) string) *[]string {
 	var got []string
 	mysqlExecStatement = func(statement string) ([]byte, error) {
 		got = append(got, statement)
+		if out, ok := ordinaryAccountGuard(statement); ok {
+			return out, nil
+		}
 		// MariaDB has its role table unless a test says otherwise.
 		if strings.Contains(statement, "TABLE_NAME = 'roles_mapping'") {
 			if out := answer(statement); out != "" {
@@ -140,6 +143,9 @@ func pgRemoval(t *testing.T, answer func(string) ([]byte, error)) (transport.Dat
 	var got []string
 	run := func(statement string) ([]byte, error) {
 		got = append(got, statement)
+		if out, ok := ordinaryAccountGuard(statement); ok {
+			return out, nil
+		}
 		return answer(statement)
 	}
 	var resp transport.DatabaseAccessUserResponse
@@ -163,7 +169,7 @@ func TestPostgreSQLRoleWithRightsElsewhereIsKeptNotRetriedForever(t *testing.T) 
 		t.Fatalf("resp = %+v", resp)
 	}
 	for _, statement := range got {
-		if strings.HasPrefix(statement, "DROP ROLE") {
+		if strings.Contains(statement, "DROP ROLE") {
 			t.Fatalf("a role with rights elsewhere was dropped: %v", got)
 		}
 	}
@@ -175,7 +181,7 @@ func TestPostgreSQLRoleWithRightsElsewhereIsKeptNotRetriedForever(t *testing.T) 
 			return []byte("roles=1\nowner=\n"), nil
 		case strings.HasPrefix(statement, "SELECT 'deps='"):
 			return []byte("deps=0\n"), nil
-		case strings.HasPrefix(statement, "DROP ROLE"):
+		case strings.Contains(statement, "DROP ROLE"):
 			return []byte(`ERROR:  role "shop_user" cannot be dropped because some objects depend on it`), errors.New("exit status 3")
 		}
 		return nil, nil
@@ -194,7 +200,9 @@ func TestPostgreSQLRoleWithRightsElsewhereIsKeptNotRetriedForever(t *testing.T) 
 		}
 		return nil, nil
 	})
-	if !resp.Applied || resp.Kept || got[len(got)-1] != `DROP ROLE "shop_user";` {
+	// alpha.149 (security): behind the account guard, in one transaction.
+	if !resp.Applied || resp.Kept || !strings.HasPrefix(got[len(got)-1], "BEGIN;\nDO $celikpanel_account_guard$") ||
+		!strings.HasSuffix(got[len(got)-1], "\nDROP ROLE \"shop_user\";\nCOMMIT;") {
 		t.Fatalf("resp = %+v statements %v", resp, got)
 	}
 }
@@ -243,7 +251,15 @@ func TestMySQLRightsCheckCountsRoutinesElsewhereOnlyAndSurvivesMySQL(t *testing.
 	var resp transport.DatabaseAccessUserResponse
 	removeMySQLAccessUser(&transport.DatabaseAccessUserRequest{Engine: "mysql", Database: "shop", Username: "shop_user"}, &resp)
 	all := strings.Join(*got, "\n")
-	if !resp.Applied || resp.Kept || strings.Contains(all, "mysql.roles_mapping WHERE") {
+	// The rights check itself (not the account guard of alpha.149, which is
+	// MariaDB's like suspension and refuses where it cannot be read).
+	rightsCheck := ""
+	for _, statement := range *got {
+		if !isAccountGuardRead(statement) && !strings.HasPrefix(statement, "DELIMITER ;;") {
+			rightsCheck += statement + "\n"
+		}
+	}
+	if !resp.Applied || resp.Kept || strings.Contains(rightsCheck, "mysql.roles_mapping WHERE") {
 		t.Fatalf("resp = %+v statements %v", resp, *got)
 	}
 	if !strings.Contains(all, "FROM mysql.procs_priv WHERE User = 'shop_user' AND Host IN ('localhost') AND Db <> 'shop'") {

@@ -35,6 +35,11 @@ const (
 	SiteUnitElsewhere = "elsewhere"
 	// SiteUnitAbsent: no unit of that name on this server.
 	SiteUnitAbsent = "absent"
+	// SiteUnitRestarting (alpha.149, lab D6): the unit does not run now and
+	// systemd is starting it again by itself (ActiveState activating with
+	// SubState auto-restart, or a start without a cgroup yet): a program
+	// failing to start, never "where the server owner placed it".
+	SiteUnitRestarting = "restarting"
 )
 
 // SiteSliceQuery asks for one site's slice and units.
@@ -71,6 +76,15 @@ type SiteSliceCounters struct {
 	CPUThrottled     int64  `json:"cpu_throttled"`
 	CPUThrottledUSec int64  `json:"cpu_throttled_usec"`
 	CPUPeriods       int64  `json:"cpu_periods"`
+	// SlicePidsPeak and SlicePidsMax (alpha.149, lab D3; fix round F7): on a
+	// kernel without pids.events.local, the slice's own pids.peak and the
+	// pids.max it was read with (0: not read, or no limit). The Panel says
+	// that the site's programs reached their process limit only when the
+	// limit is unchanged since its previous reading, that reading was below
+	// it and the peak now reached it; how often, or whether a new process was
+	// refused, is not known from them.
+	SlicePidsPeak int64 `json:"slice_pids_peak,omitempty"`
+	SlicePidsMax  int64 `json:"slice_pids_max,omitempty"`
 }
 
 // SiteSliceUnit is one unit of a site.
@@ -124,7 +138,34 @@ const (
 	// never holds up the Agent); the next start, a move's attempt or Try
 	// again restarts it.
 	SiteMoveWaiting = "waiting"
+	// SiteMoveUnverified (alpha.149, lab D6; fix round F1/F3): its pre-move
+	// bytes are back and it was started again (at the Agent's start the
+	// restart is only requested, never waited for), but where it runs is not
+	// known yet (not a failure, not a success). The status read checks it,
+	// read only: running where it ran closes it, not running makes it
+	// "failed"; Try again or a move's attempt check it too.
+	SiteMoveUnverified = "unverified"
+	// SiteMoveNotAnswering (alpha.149; fix round F10): it runs where it ran
+	// but, having had ports, listens on none (a changed port is not this).
+	SiteMoveNotAnswering = "not_answering"
 )
+
+// SiteMoveReason (alpha.149, lab D7) is the code of a move's failure with its
+// values, for the page's own language; Detail and Error keep the English text
+// for the journal and the audit record. Codes of a program's step:
+// not_running (State: what systemd shows, Seconds), not_in_slice (Seconds),
+// not_listening (Seconds, Ports: the move's step, not every port), no_port
+// (Seconds, Ports: a put-back that listens on none), still_starting
+// (Seconds), restart_failed, write_failed, record_failed, changed; of the
+// whole move: unsupported, another_move, update_running (the panel's update
+// is in progress), site_busy, kept_earlier, prepare_failed, limits_failed,
+// bad_request, build, not_finished.
+type SiteMoveReason struct {
+	Code    string `json:"code"`
+	State   string `json:"state,omitempty"`
+	Seconds int    `json:"seconds,omitempty"`
+	Ports   []int  `json:"ports,omitempty"`
+}
 
 // Kernel states of a running slice (SiteSliceStatus.KernelState).
 const (
@@ -205,6 +246,12 @@ type SiteSliceApplied struct {
 	Outcome     string `json:"outcome"`
 	PendingPath string `json:"pending_path,omitempty"`
 	Detail      string `json:"detail,omitempty"`
+	// Reason (alpha.149, lab O3) is the code of a failed outcome: kernel_differs
+	// (the file is written, the running slice's kernel values were read after
+	// the push and still differ), unchecked (the file is written; what the
+	// running slice holds could not be read), write_failed, refused,
+	// out_of_range. Detail keeps the English text for the journal.
+	Reason string `json:"reason,omitempty"`
 }
 
 // ApplySiteSlicesResponse answers ApplySiteSlicesV1 (Unsupported: as in
@@ -278,6 +325,15 @@ type SiteSliceMoved struct {
 	Step    string `json:"step,omitempty"`
 	PutBack bool   `json:"put_back,omitempty"`
 	Detail  string `json:"detail,omitempty"`
+	// Reason (alpha.149) is the code of Detail's failure; Back the code of a
+	// put-back that did not complete (not_running, still_starting, no_port,
+	// not_in_slice, unread, restart_failed, write_failed, unknown, changed).
+	Reason *SiteMoveReason `json:"reason,omitempty"`
+	Back   *SiteMoveReason `json:"back,omitempty"`
+	// Ran (alpha.149 fix round, W1): it ran when the move began, so a
+	// put-back that completed has it running again where it ran; a program
+	// that did not run was put back as it was (not running).
+	Ran bool `json:"ran,omitempty"`
 }
 
 // MoveSiteSliceResponse answers MoveSiteSliceV1. Done: every unit of the
@@ -302,4 +358,12 @@ type MoveSiteSliceResponse struct {
 	// the outcome of a Recover request (or of the kept record).
 	Kept     bool                   `json:"kept,omitempty"`
 	Recovery *SiteSliceMoveRecovery `json:"recovery,omitempty"`
+	// Reason (alpha.149) is the code of Error, for the page's language.
+	Reason *SiteMoveReason `json:"reason,omitempty"`
+	// RunsNoPort (alpha.149 second fix round, R8; additive, only a Recover
+	// request sets it): programs the administrator's Try again restarted once
+	// more after they were "not answering", which then ran where they ran
+	// without a break for their start wait but listen on no port. They are
+	// put back (their entries are closed); the page names them.
+	RunsNoPort []string `json:"runs_no_port,omitempty"`
 }

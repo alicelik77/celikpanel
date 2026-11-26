@@ -458,6 +458,11 @@ func (a *Agent) RuntimeAppControlV1(req *transport.RuntimeAppControlRequest, res
 		runtimeStep(resp, transport.RuntimeAppPrerequisite, "unit_missing", "the app's unit is not on the server; deploy the app again")
 		return nil
 	}
+	// alpha.149 (lab O2): a program that does not run starts inside its
+	// site's limits (site_slice_start.go); a running one is not moved.
+	if req.Action != "stop" {
+		siteUnitIntoSliceBeforeStart(name, req.Target.Slice)
+	}
 	// A stop of a unit systemd does not know (an app that was never
 	// deployed, or whose unit is gone): nothing of it runs, so the stop is
 	// already done. systemctl would answer "Unit … not loaded" (alpha.119

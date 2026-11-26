@@ -454,6 +454,7 @@ func (n panelRotationNative) rotateDatabaseUser(ctx context.Context, req transpo
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
 	var resp transport.RotateDatabaseUserPasswordResponse
 	err := n.p.callAgentContext(ctx, "Agent.RotateDatabaseUserPasswordV1", &req, &resp)
+	resp.Error = withDatabaseAccountRefusal(resp.AccountRefused, req.User.Username, resp.Error)
 	return resp, err
 }
 

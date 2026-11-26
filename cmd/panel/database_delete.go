@@ -91,7 +91,9 @@ var databaseDropOnceAgent = func(p *Panel, ctx context.Context, req transport.Dr
 // a deleted database from every grantee on this machine's MariaDB
 // (alpha.134); tests replace it.
 var databaseDroppedRightsAgent = func(p *Panel, ctx context.Context, req transport.DroppedDatabaseRightsRequest, resp *transport.DroppedDatabaseRightsResponse) error {
-	return p.callAgentContext(ctx, "Agent.RemoveDroppedDatabaseRightsV1", &req, resp)
+	err := p.callAgentContext(ctx, "Agent.RemoveDroppedDatabaseRightsV1", &req, resp)
+	resp.Error = withDatabaseAccountRefusal(resp.AccountRefused, strings.Join(req.Owners, ", "), resp.Error)
+	return err
 }
 
 // databaseDroppedRightsElsewhere takes the same rights away on a MariaDB
@@ -733,6 +735,9 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 		return nil, recordsLeft(fmt.Errorf("commit the removal of database %s: %w", deletion.Name, err))
 	}
 	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
+	// alpha.149 (review of PR #370, findings 5 and 12): the removed users'
+	// limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 	return deletion, nil
 }
 

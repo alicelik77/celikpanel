@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -568,15 +567,12 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		failRecords(err)
 		return
 	}
-	// alpha.128 (G5): the user created here gets its subscription's
-	// connection limit too, on its own server (for PostgreSQL its own
-	// running cluster), through the same path as a changed limit. No limit
-	// writes nothing.
-	if limit, err := p.dbConnectionLimit(ctx, domain.SubscriptionID); err != nil {
-		log.Printf("database connection limit of %s: %v", dbUser, err)
-	} else if limit > 0 {
-		p.reapplyDBConnectionLimits([]int{domain.SubscriptionID})
-	}
+	// alpha.128 (G5), alpha.149 (lab D9): the user created here gets every
+	// database limit of its subscription (connection, time, temporary
+	// files), on its own server (for PostgreSQL its own running cluster,
+	// through the Agent), by the one function. No limit writes nothing; a
+	// user the limits do not reach is named in Problems now.
+	p.applyNewDatabaseUserLimits(ctx, domain.SubscriptionID, serverID, dbUser)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "success",

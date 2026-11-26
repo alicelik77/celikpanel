@@ -1,0 +1,93 @@
+{
+  "version": "v0.1.0-alpha.149",
+  "published": "",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:5",
+    "says": "A security and correction release."
+  },
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "The panel’s agent asks the database server itself before it changes a database account, and refuses an account with administrator rights; it never drops or empties one of the database server’s own system databases. Nothing changes for the database users the panel makes for sites.",
+        "tr": "Panelin ajanı bir veritabanı hesabını değiştirmeden önce veritabanı sunucusunun kendisine sorar ve yönetici yetkisi olan bir hesabı reddeder; veritabanı sunucusunun kendi sistem veritabanlarından birini hiçbir zaman silmez ya da boşaltmaz. Panelin siteler için yaptığı veritabanı kullanıcıları için hiçbir şey değişmez."
+      },
+      "case": "CP-2026-24",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:48",
+        "says": "Now the agent asks the database server itself before it changes an"
+      }
+    },
+    {
+      "kind": "security",
+      "text": {
+        "en": "Removing a user added to a PostgreSQL database no longer hands what that user made to the panel’s own database account; such a user is not removed while it owns objects there, and the server’s administrator hands them to the database’s own user first.",
+        "tr": "Bir PostgreSQL veritabanına eklenmiş bir kullanıcıyı kaldırmak, o kullanıcının yaptıklarını artık panelin kendi veritabanı hesabına vermez; böyle bir kullanıcı orada nesneleri olduğu sürece kaldırılmaz, sunucunun yöneticisi önce bunları veritabanının kendi kullanıcısına verir."
+      },
+      "case": "CP-2026-30",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:78",
+        "says": "Removing an added database user no longer hands what it made to the"
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "The plan’s database limits reach the PostgreSQL users of sites and every newly created database user; the server owner’s own values are kept, and Problems now names a user the limits did not reach, with Apply again.",
+        "tr": "Planın veritabanı sınırları sitelerin PostgreSQL kullanıcılarına ve yeni oluşturulan her veritabanı kullanıcısına ulaşır; sunucu sahibinin kendi değerleri korunur, Şu anki sorunlar sınırların ulaşmadığı bir kullanıcıyı Yeniden uygula ile birlikte adıyla söyler."
+      },
+      "case": "CP-2026-25",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:93",
+        "says": "The plan's database limits now reach PostgreSQL."
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "When a move into the limits does not complete, a program that does not start again where it ran is reported as not running, with Try again; the move’s window and its reasons are in the page’s language.",
+        "tr": "Sınırların içine taşıma tamamlanmadığında, çalıştığı yerde yeniden başlamayan bir program Tekrar dene ile birlikte çalışmıyor olarak bildirilir; taşımanın penceresi ve nedenleri sayfanın dilindedir."
+      },
+      "case": "CP-2026-26",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:125",
+        "says": "The move says what is true."
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "A stopped program started from the panel starts inside its site’s limits.",
+        "tr": "Panelden başlatılan durmuş bir program sitesinin sınırlarının içinde başlar."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:148",
+        "says": "A stopped program started from the panel starts inside its site's"
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "No update starts while a site is being moved into its limits, and no site is moved while the update runs; the update gives the panel’s agent about a minute to start.",
+        "tr": "Bir site sınırlarının içine taşınırken güncelleme başlamaz, güncelleme çalışırken hiçbir site taşınmaz; güncelleme panelin ajanına açılması için yaklaşık bir dakika verir."
+      },
+      "case": "CP-2026-27",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:160",
+        "says": "No update while a site is being moved, and no move while the update"
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "A local MySQL server running in MariaDB’s place is not managed: the server’s administrator changes its database accounts on the server itself.",
+        "tr": "MariaDB’nin yerinde çalışan yerel bir MySQL sunucusu yönetilmez: veritabanı hesaplarını sunucunun yöneticisi sunucunun kendisinde değiştirir."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:71",
+        "says": "A local MySQL server running in MariaDB's place is not managed."
+      }
+    }
+  ]
+}

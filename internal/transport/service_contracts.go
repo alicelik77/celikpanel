@@ -152,6 +152,11 @@ const (
 	HostMutationReasonHostLock        = "host_lock_busy"
 	HostMutationReasonPackageManager  = "package_manager_active"
 	HostMutationReasonStateUnverified = "state_unverified"
+	// HostMutationReasonSiteMove (alpha.149, lab D5): a site's programs are
+	// being moved into their limits; the panel's own update is not started
+	// until the move's window has ended (its agent would be stopped in the
+	// middle of the move).
+	HostMutationReasonSiteMove = "site_move_running"
 )
 
 // HostMutationReadinessResponse is an advisory, read-only snapshot for

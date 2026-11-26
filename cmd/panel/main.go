@@ -1641,6 +1641,9 @@ func main() {
 			}
 			// alpha.144: alias records whose zone's publication waited.
 			panel.republishAliasZones(context.Background())
+			// alpha.149: database users the database limits did not reach
+			// are tried again (one bounded run, never two at once).
+			panel.retryDBLimitsRound(context.Background())
 		}
 	}()
 
@@ -1788,6 +1791,9 @@ func main() {
 	// S4 R1 fix round: the administrator closes again what the server owner
 	// undid (side_doors.go); administrator only through the prefix.
 	http.HandleFunc("/api/v1/metrics/side-doors/reclose", panel.handleSideDoorsReClose)
+	// alpha.149: Apply again for database users the limits did not reach
+	// (database_limits_problems.go); administrator only through the prefix.
+	http.HandleFunc("/api/v1/metrics/database-limits/apply", panel.handleDatabaseLimitsApply)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()

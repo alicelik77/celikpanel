@@ -1,3 +1,4 @@
+import type { SiteStoppedItem } from '../i18n/siteLimitsLane';
 import type { TranslationKey } from '../i18n/en';
 import type { ServicePlan } from './api';
 import type { ApiError } from './apiError';
@@ -325,6 +326,8 @@ export interface RightsPreview {
     sites_stopped_count?: number;
     /** S4 R2a second fix round: names that list; a save sends it back (confirm_stopped). */
     stopped_token?: string;
+    /** alpha.149: the same sites as values, worded by the page (i18n/siteLimitsLane.ts). */
+    sites_stopped_items?: SiteStoppedItem[];
     message: string;
 }
 
@@ -485,6 +488,8 @@ export function decodePreview(raw: unknown): RightsPreview {
         sites_stopped: Array.isArray(raw.sites_stopped) ? strings(raw.sites_stopped) : undefined,
         sites_stopped_count: typeof raw.sites_stopped_count === 'number' ? raw.sites_stopped_count : undefined,
         stopped_token: typeof raw.stopped_token === 'string' ? raw.stopped_token : undefined,
+        // Checked where it is worded (i18n/siteLimitsLane.ts); this module is on the boot path.
+        sites_stopped_items: raw.sites_stopped_items as SiteStoppedItem[] | undefined,
         sites_unread: raw.sites_unread === true || undefined,
         message: typeof raw.message === 'string' ? raw.message : '',
     };

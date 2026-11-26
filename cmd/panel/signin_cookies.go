@@ -57,8 +57,12 @@ const (
 )
 
 const (
-	signinCookiesDuplicateMessage = "This browser sent the panel's sign-in cookie more than once, so none of them was used and they were removed. " +
-		"Sign in again. If this happens again, a website under the same domain name is setting cookies with the panel's name: " +
+	// alpha.149 (lab D2): the panel's deletions are host-only, so a cookie
+	// another website set for the whole domain stays in the browser; the
+	// panel ignores it once a sign-in of its own exists. Text only.
+	signinCookiesDuplicateMessage = "This browser sent the panel's sign-in cookie more than once, so the panel used none of them. " +
+		"Sign in again. A cookie with the panel's name that a website under the same domain name set for the whole domain stays in the browser " +
+		"and is ignored once you are signed in, so this can come back after you sign out: " +
 		"tell the server administrator, and open the panel only at its own address."
 	crossSiteRequestMessage = "This request came from another website, not from the panel's own pages, so it was refused and nothing was changed. " +
 		"Open the panel at its own address and do it there."

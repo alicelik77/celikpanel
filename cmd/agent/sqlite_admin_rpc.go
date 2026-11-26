@@ -20,9 +20,8 @@ const (
 	systemSQLiteOptimizeTimeout = 30 * time.Second
 )
 
-func systemSQLiteDefinitions() []systemsqlite.Definition {
-	roundcubeWriterUID, roundcubeWriterGID, roundcubeWriterIdentitySet :=
-		systemSQLiteWebWriterIdentity()
+// panelDatabasePath is the panel's own database file on this machine.
+func panelDatabasePath() string {
 	panelPath := os.Getenv("CELIKPANEL_PANEL_DB")
 	if panelPath == "" {
 		if dataDir := os.Getenv("CELIKPANEL_DATA_DIR"); dataDir != "" {
@@ -31,6 +30,13 @@ func systemSQLiteDefinitions() []systemsqlite.Definition {
 			panelPath = "/var/lib/celikpanel/celikpanel.db"
 		}
 	}
+	return panelPath
+}
+
+func systemSQLiteDefinitions() []systemsqlite.Definition {
+	roundcubeWriterUID, roundcubeWriterGID, roundcubeWriterIdentitySet :=
+		systemSQLiteWebWriterIdentity()
+	panelPath := panelDatabasePath()
 	catalogPath := os.Getenv("CELIKPANEL_COMPONENT_CATALOG")
 	if catalogPath == "" {
 		catalogPath = manifestv2.DefaultCatalogPath
