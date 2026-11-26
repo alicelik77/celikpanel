@@ -594,6 +594,15 @@ panel ve Ajan tarafından reddedilir ("panelin güncellemesi sürüyor; siteyi g
 taşıyın"; düzeltme turu F6) ve bir taşıma sürerken güncelleme reddedilir (§8.6a). Bunu yalnız gerçekten
 süren bir taşıma yapar: Ajan taşımanın bütün süresince kendi işaretini tutar; bir durum okumasının bir
 anlığına aldığı kilit hiçbir zaman güncellemeyi ya da bir taşımayı reddettirmez (düzeltme turu F5).
+Ajan bunun için güncellemenin kendi kayıtlarını yalnız okur: sırada ya da süren bir kayıt ancak hâlâ
+canlı bir güncelleme olabildiği sürece, yani 31 dakikadan kısa süre önce oluşturulduysa sayılır
+(güncellemenin işçisi ve kurtarması ayrı ayrı 15 dakikayla sınırlıdır; güncellemenin kendi uzlaştırması
+daha eski kaydı başarısız sayar); böylece ölmüş bir işçinin "sürüyor" bıraktığı kayıt taşımaları hiçbir
+zaman kalıcı olarak reddettirmez (ikinci düzeltme turu, R2). Okunamayan bir kayıt taşımayı güvenli
+tarafta kalarak kendi sözleriyle ("panelin güncellemesinin sürüp sürmediği bilinmiyor") reddeder ve son
+değişmesinden 31 dakika sonra kendiliğinden reddetmeyi bırakır. Güncellemenin kapısı yalnız bu denetim
+ve taşımanın işaretinin konması için tutulur, taşıma kaydının kilidini beklerken hiçbir zaman (R7):
+güncellemenin kabulü hiçbir zaman bir durum okumasının arkasında beklemez.
 
 - Taşıma sitenin kilidini beklemeden alır: tam o sırada silinen ya da değiştirilen site taşınmaz
   ("site şu an değiştiriliyor; bir dakika sonra sayfasını yeniden okuyun") ve taşıma silinmiş bir
@@ -623,7 +632,9 @@ anlığına aldığı kilit hiçbir zaman güncellemeyi ya da bir taşımayı re
   ilk program, en uzun başlama süresi olan 300 saniyeyle bile her zaman sığar ve geri koymalar dahil
   bütün taşıma panelin çağrı için koyduğu 12 dakikanın altında kalır. Süre yüzünden duran taşıma bunu
   söyler: taşıdığı programlar sınırların içinde kalır ve tamamlandı olarak işaretlenir, başlatmadıkları
-  "denenmedi" olur ve bir sonraki taşıma onlarla sürer.
+  "denenmedi" olur ve bir sonraki taşıma onlarla sürer. **Bir basış, bir son süre** (ikinci düzeltme
+  turu, R4): taşıma önce kendi sitesinin korunan kaydını sonuçlandırıyorsa, bu ve taşıma basıştan
+  itibaren sayılan aynı 11 dakikayı paylaşır; artık sığmayan başlatılmaz ve bu söylenir.
 - Bir birim başarısız olursa o ve sitenin ondan önce taşınan her birimi taşıma öncesi baytlarına
   geri konur, ama yalnız taşımanın kendi metninin üstüne: arada değiştirilen ya da silinen dosya
   olduğu gibi bırakılır. Diğer sitelere hiç dokunulmaz. Yanıt "geri kondu" demeyi yalnız geri
@@ -644,26 +655,46 @@ kayıt yalnız okunur ve dosyalarla uzlaştırılır:
 | Birim dosyasında olan | Ajan'ın bir sonraki başlangıcında |
 |---|---|
 | taşıma öncesi baytlar, adım "planlandı" ya da "yazılıyor" | dokunulmaz ("denenmedi") |
-| taşıma öncesi baytlar, daha sonraki bir adım | zaten geri kondu: çalışsın ya da çalışmasın tam olduğu gibi bırakılır (sahibinin durdurduğu program durmuş kalır); sonucu bu taşımanın kendi kaydının söylediğidir, geri koyma yarıda kaldıysa tek bir okuma: sistem diliminde çalışıyorsa "geri kondu", değilse "henüz yeniden başlatılmadı" |
+| taşıma öncesi baytlar, daha sonraki bir adım | zaten geri kondu: çalışsın ya da çalışmasın tam olduğu gibi bırakılır (sahibinin durdurduğu program durmuş kalır); sonucu bu taşımanın kendi kaydının söylediğidir, geri koyma yarıda kaldıysa tek bir okuma: sistem diliminde başlama süresi boyunca kesintisiz çalışıyorsa (ve portu yoksa: açılış port okumaz) "geri kondu", orada başka türlü çalışıyorsa "henüz bilinmiyor", çalışmıyorsa "henüz yeniden başlatılmadı" |
 | taşımanın metni, durdurulmuş birim | korunur: dosyası dilimi adlandırır, orada başlar ("yeniden yazıldı") |
 | taşımanın metni, çalışan birim, adım "taşındı" (dilimde çalıştı ve yanıt verdi) | korunur ("taşındı") |
-| taşımanın metni, çalışan birim, başka her adım | taşıma öncesi baytlar geri, hepsi için TEK daemon-reload ve hâlâ sistem diliminde çalışmıyorsa işi beklenmeden istenen bir yeniden başlatma (`systemctl restart --no-block`): "henüz bilinmiyor" |
+| taşımanın metni, çalışan birim, başka her adım | taşıma öncesi baytlar geri, hepsi için TEK daemon-reload ve hâlâ sistem diliminde çalışmıyorsa hepsi için işleri beklenmeden istenen TEK bir yeniden başlatma (`systemctl restart --no-block b1 … bN`): "henüz bilinmiyor" |
 | başka bir şey ya da dosya yok | olduğu gibi bırakılır ("değiştirildi") |
 
-Böylece açılışın systemd çağrıları şunlardır: yeri ne olacağına karar veren programların tek bir
-okuması, bir daemon-reload, bir reset-failed ve taşıma başladığında çalışan her program için bir
-yeniden başlatma isteği; yoklama, port okuması ve bekleme yoktur. Sonuçları "henüz bilinmiyor"dur ve
-kayıt kalır. **"Henüz bilinmiyor" açılışın dışında, yalnız okunarak çözülür** (düzeltme turu F3): sitenin
-durum okuması (kart ve Şu anki sorunlar'ın arkasındaki beş dakikalık arka plan okuması) her böyle programı
-denetler: sistem diliminde etkin olan kaydındaki satırını kapatır (başka bir şey kalmadıysa kaydı da;
-dilim dosyası o zaman aşağıdaki gibi geri gelir); durmuş, başarısız ya da systemd'nin yeniden başlatma
-döngüsünde olan "çalışmıyor" olur ve kartta ve Şu anki sorunlar'da yöneticinin yapacağı işle adlandırılır;
-başka her durum "henüz bilinmiyor" kalır. Bir okuma hiçbir şeyi başlatmaz ya da yeniden başlatmaz. Tekrar
+Böylece açılışın systemd çağrıları program sayısı ne olursa olsun en fazla dörttür: yeri ne olacağına
+karar veren programların tek bir okuması, bir daemon-reload, bir reset-failed ve taşıma başladığında
+çalışan her programı adlandıran tek bir yeniden başlatma isteği. Yoklama, port okuması ve bekleme
+yoktur. Bu çağrılar **15 saniyelik tek bir toplam sınırı** paylaşır (ikinci düzeltme turu, R5); süre
+dolunca başka hiçbir şey istenmez, yanıt vermeyen okuma ya da yeniden yükleme "bilinmiyor", gönderilmeyen
+istek "henüz yeniden başlatılmadı" bırakır ve Ajan açılmayı sürdürür. Tek isteğin çıkış kodu ne olursa
+olsun adlandırdığı her program "henüz bilinmiyor"dur ve kayıt kalır. **"Henüz bilinmiyor" açılışın
+dışında, yalnız okunarak çözülür** (düzeltme turu F3, ikinci düzeltme turu R1/R3): sitenin durum okuması
+(kart ve Şu anki sorunlar'ın arkasındaki beş dakikalık arka plan okuması) "henüz bilinmiyor", "çalışmıyor",
+"henüz yeniden başlatılmadı" ya da "hâlâ başlıyor" bırakılan her programı denetler. Satırı yalnız TEK bir
+okuma programı sistem diliminde etkin ve çalışır, en az başlama süresi boyunca (hiçbir zaman 20 saniyeden
+az değil; systemd'nin `ActiveEnterTimestampMonotonic` değeri) kesintisiz açık gösterdiğinde, dosyası
+önceki baytlarını tuttuğunda ve taşımadan önce portlarda dinlediyse şimdi bir portta dinlediğinde
+kapatılır. systemd'nin yeniden başlatma döngüsündeki bir program tek bir şanslı okumayla hiçbir zaman
+kapatılmaz. "Henüz bilinmiyor" bırakılan ve durmuş, başarısız ya da yeniden başlatma döngüsünde olan
+program "çalışmıyor" olur ve kartta ve Şu anki sorunlar'da yöneticinin yapacağı işle adlandırılır; başka
+her durum olduğu gibi kalır. Böylece yöneticinin sayfasından başlattığı ya da systemd'nin geçici bir
+andan sonra yeniden kaldırdığı program, başlama süresi boyunca çalıştıktan sonraki ilk okumada kapatılır
+ve Şu anki sorunlar'daki satır kendiliğinden gider. Hiçbir şey kalmadığında kayıt kapatılır ve dilim
+dosyası aşağıdaki gibi geri gelir; bu yalnız dilim kilidi hemen alınabiliyorsa yapılır (R6; değilse bir
+sonraki okuma kapatır). Bir okuma hiçbir şeyi başlatmaz ya da yeniden başlatmaz. Tekrar
 dene ve aynı sitenin bir taşıma girişimi aynı tabloyu kullanır, ama önceden çalışan ve çalıştığı yerde
 çalışmayan programı yeniden başlatır ve başlama süresi içinde denetler; bunlar taşımanın kendi 11
 dakikasıyla sınırlıdır (düzeltme turu F4: yeniden başlatma ancak kalan süre başlama süresini ve 5 saniyeyi
 tutuyorsa gönderilir; kalanlar "henüz yeniden başlatılmadı" olur). **Başka** bir sitenin taşıması kaydı
 bulur ve ilk sitenin hiçbir şeyi yeniden başlatılmadan hemen reddedilir.
+
+**"Yanıt vermiyor"un bir çıkışı var ve o yöneticinin basışıdır** (ikinci düzeltme turu, R8). Taşımanın
+kendi geri koyması bugünkü gibi "yanıt vermiyor, bakın" demeyi sürdürür. Tekrar dene böyle bir programı
+bir kez daha yeniden başlatır (yönetici istedi), başlama süresi kadar bekler ve program o süre boyunca
+sistem diliminde kesintisiz çalışırsa, hiçbir portta dinlemese de satırı geri kondu olarak kapatılır;
+yanıt onu adıyla söyler ("çalışıyor, hiçbir portta dinlemiyor"), böylece yöneticiye iki kez söylenmiş
+olur. O süre içinde durup yeniden kalkan program "yanıt vermiyor" kalır. Okunamayan dinleyici tablosu
+(`ss` başarısız) "henüz bilinmiyor"dur, hiçbir zaman "hiçbir portta dinlemiyor" değil.
 
 Birim dosyaları, yönetilen her başka dosyanın kullandığı yazıcıyla yazılır ve geri konur (metin
 yeniden adlandırmadan önce, klasör ondan sonra diske işlenir); böylece bir yazmanın hemen ardından
@@ -671,7 +702,8 @@ elektrik kesilse de boş bir birim kalmaz.
 
 Dilim dosyası: her birim sonuçlanmışsa, bundan sonra hiçbir birim dilimi adlandırmıyorsa ve dosya tam
 olarak taşımanın yazdığı baytları tutuyorsa kaydedilen asıl geri gelir (önceki baytları ve kayıt
-defteri özeti, ya da önceden yoksa dosya yok); yoksa kalır.
+defteri özeti, ya da önceden yoksa dosya yok); yoksa kalır. Bu, sınır değişikliklerinin aldığı dilim
+kilidi altında, taşıma kaydının kilidinden sonra yapılır (ikinci düzeltme turu, R6).
 
 **Tamamlanmayan geri koyma günlüğü korur** (üçüncü düzeltme turu). Bunlar: yazılamayan taşıma öncesi
 dosya; systemd'nin yerini söyleyemediği birim (başarısız durum okuması "bilinmiyor"dur: buna göre
@@ -679,8 +711,8 @@ hiçbir şey yeniden başlatılmaz, hiçbir zaman "çalışmıyor, yeniden başl
 `daemon-reload` (systemd hâlâ taşınmış metni tutar, bu yüzden hiçbir birim yeniden başlatılmaz);
 başarısız yeniden başlatma (program durmuştur) ya da başlama süresinin sonunda hâlâ süren başlangıç;
 yeniden başlatılan ama yeri söylenemeyen program ("henüz bilinmiyor", hiçbir zaman "yeniden
-başlatılmadı" değil); Ajan'ın açılışında, yalnız istediği ("henüz bilinmiyor", yukarıda) ya da
-isteyemediği ("henüz yeniden başlatılmadı") her yeniden başlatma.
+başlatılmadı" değil); Ajan'ın açılışında, istediği ("henüz bilinmiyor", yukarıda) ya da sınırı
+dolmadan gönderemediği ("henüz yeniden başlatılmadı") her yeniden başlatma.
 Günlük korunduğu sürece hiçbir site taşınmaz: yeni taşıma, taşıması bitmeyen site adıyla reddedilir.
 Sitenin kartı (yönetici) son taşımanın bitmediğini ve kalan her program için durumunu (geri kondu ama
 çalışmıyor; yeri bilinmiyor, yeniden başlatılmadı; hâlâ başlıyor; henüz yeniden başlatılmadı; yeniden
@@ -765,7 +797,9 @@ kendiliğinden kaybolur (`panel_settings` `site_limit_outside_v1`, yalnız liste
   başlatması süreci başlar başlamaz başarılı sayılır) "geri kondu" **sayılmaz**: kayıt onunla birlikte
   durmuş, hâlâ başlıyor ya da yanıt vermiyor olarak tutulur. Ajan'ın açılışı bu denetimi yapmaz
   (düzeltme turu F1): yalnız yeniden başlatmayı ister ve programı "henüz bilinmiyor" (ne hata ne başarı)
-  olarak tutar; bunu durum okuması okuyarak çözer (§8.4). Kayıt her programın portlarını da yazar
+  olarak tutar; bunu durum okuması okuyarak çözer (§8.4: yalnız başlama süresi boyunca kesintisiz
+  çalışan program için, ikinci düzeltme turu R1). Okunamayan dinleyici tablosu "henüz bilinmiyor"dur,
+  hiçbir zaman "hiçbir portta dinlemiyor" değil (R8). Kayıt her programın portlarını da yazar
   (önceki bir kayıtta yoktur, onlarsız denetlenir). Kart ve Şu anki sorunlar programın şu an
   çalışmadığını, yöneticinin işlem yapacağını, sonraki adımı (kendi günlüğü, `sudo journalctl -u
   <birim>`, sonra **Tekrar dene** ya da başlatmak) ve başka hiçbir şeyin değiştirilmediğini söyler.
@@ -810,7 +844,8 @@ kendiliğinden kaybolur (`panel_settings` `site_limit_outside_v1`, yalnız liste
   bekleyip güncellemeye yeniden basmayı söyler. Bunu yalnız gerçekten süren bir taşıma yapar (düzeltme
   turu F5: Ajan'ın kendi "taşıma sürüyor" işareti, hiçbir zaman bir durum okumasının aldığı kilit değil).
   Tersine, güncelleme kabul edilmiş ya da sürüyorken taşıma ve Tekrar dene reddedilir (düzeltme turu
-  F6). Ajan'ın açılışı her açılış adımı için süresiyle bir günlük satırı yazar (`agent start: <adım>
+  F6); eskimiş bir güncelleme kaydı reddetmeyi kendiliğinden bırakır (ikinci düzeltme turu, R2, §8.4).
+  Ajan'ın açılışı her açılış adımı için süresiyle bir günlük satırı yazar (`agent start: <adım>
   took …`).
 
 ### 8.7 Silinen sitenin dilimi

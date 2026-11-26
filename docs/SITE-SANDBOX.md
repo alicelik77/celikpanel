@@ -717,7 +717,16 @@ panel's own update is admitted or running, by the panel and by the Agent ("the p
 update is in progress; move the site after the update has finished"; fix round F6), and the
 update is refused while a move runs (§8.6a). Only a move in flight does that: the Agent
 keeps a flag of its own for the move's whole run, and the lock a status read takes for a
-moment never makes the update or a move refuse (fix round F5).
+moment never makes the update or a move refuse (fix round F5). The Agent reads the update's
+own records for this, read only: a queued or running record counts only while it can still
+be a live update, created less than 31 minutes ago (the update's worker and its recovery are
+each bounded to 15 minutes; the update's own reconciliation fails an older record), so a
+record a dead worker left "running" never refuses moves for good (second fix round, R2). A
+record that cannot be read refuses the move, on the safe side, with its own words ("it is not
+known whether the panel's update is in progress"), and stops refusing by itself 31 minutes
+after it last changed. The update's gate is held only for that check and the setting of the
+move's flag, never while the move waits for its record's lock (R7): the update's admission
+never waits behind a status read.
 
 - The move holds the site's lock without waiting for it: a site being deleted or
   changed right now is not moved ("being changed; read its page again in a
@@ -749,7 +758,9 @@ moment never makes the update or a move refuse (fix round F5).
   and the whole move, put-backs included, stays below the panel's 12-minute bound of the
   call. A move that stops for time says so: the programs it moved stay inside the limits
   and are marked done, the ones it did not start are "not tried", and the next move
-  continues with them.
+  continues with them. **One press, one deadline** (second fix round, R4): when the move
+  first settles its own site's kept record, that and the move share the same 11 minutes,
+  counted from the press; what no longer fits is not started and is told as such.
 - If a unit fails, it and every unit of the site moved before it are put back to
   their pre-move bytes, but only over the move's own text: a file changed or removed
   meanwhile is left as it is. Other sites are never touched. The answer says "put back"
@@ -772,27 +783,47 @@ program. At the start the record is only read and reconciled with the files:
 | The unit file holds | At the Agent's next start |
 |---|---|
 | the pre-move bytes, step "planned" or "writing" | not touched ("not tried") |
-| the pre-move bytes, a later step | already put back: left exactly as it is, running or not (a program its owner stopped stays stopped); its outcome is what this move's own record said, or, where the put-back was cut short, one reading: running in the system slice is "put back", otherwise "not restarted yet" |
+| the pre-move bytes, a later step | already put back: left exactly as it is, running or not (a program its owner stopped stays stopped); its outcome is what this move's own record said, or, where the put-back was cut short, one reading: running in the system slice without a break for its start time (and without ports: the start reads none) is "put back", running there otherwise "not known yet", not running "not restarted yet" |
 | the move's text, stopped unit | kept: its file names the slice, it starts there ("rewritten") |
 | the move's text, running unit, step "moved" (it ran and answered in the slice) | kept ("moved") |
-| the move's text, running unit, any other step | pre-move bytes back, ONE daemon-reload for all, and, unless it still runs in the system slice, a restart requested without waiting for its job (`systemctl restart --no-block`): "not known yet" |
+| the move's text, running unit, any other step | pre-move bytes back, ONE daemon-reload for all, and, unless it still runs in the system slice, ONE restart request for all of them without waiting for the jobs (`systemctl restart --no-block u1 … uN`): "not known yet" |
 | anything else, or no file | left as it is ("changed") |
 
-The start's calls to systemd are therefore one reading of the programs whose place decides
-what happens to them, one daemon-reload, one reset-failed and one restart request per
-program that ran when the move began: no polling, no reading of ports, no wait. Its outcomes
-are "not known yet" and the record stays. **"Not known yet" is resolved outside the start,
-by reading only** (fix round F3): the site's status read (the card, and the five-minute
-background reading behind Problems now) checks each such program: active in the system slice
-closes its entry (and the record with it once nothing else is left; the slice file then comes
-back as below); stopped, failed or inside systemd's restart cycle is "not running", named on
-the card and in Problems now with the administrator's action; anything else stays "not known
-yet". A read never starts or restarts anything. Try again and a move's attempt on the same site
+The start's calls to systemd are therefore at most four whatever the number of programs: one
+reading of the programs whose place decides what happens to them, one daemon-reload, one
+reset-failed and one restart request naming every program that ran when the move began. No
+polling, no reading of ports, no wait. They share **one total bound of 15 seconds** (second fix
+round, R5); when it runs out nothing further is requested, a reading or reload that did not
+answer leaves "not known", a request not sent "not restarted yet", and the Agent goes on
+starting. Whatever the one request's exit code, each program it named is "not known yet" and
+the record stays. **"Not known yet" is resolved outside the start, by reading only** (fix
+round F3, second fix round R1/R3): the site's status read (the card, and the five-minute
+background reading behind Problems now) checks each program left "not known yet", "not
+running", "not restarted yet" or "still starting". Its entry is closed only when ONE reading
+shows the program active and running in the system slice, up without a break for at least its
+start time (never under 20 seconds; systemd's `ActiveEnterTimestampMonotonic`), its file holds
+its earlier bytes and, if it listened on ports before the move, it listens on a port now. A
+program in systemd's restart cycle is never closed by one lucky reading. A program left "not
+known yet" that is stopped, failed or inside the restart cycle becomes "not running", named on
+the card and in Problems now with the administrator's action; anything else stays as it is. So
+a program the administrator starts on its page, or one systemd brings up again after a passing
+moment, is closed by the next read once it has run for its start time, and the line in Problems
+now goes away by itself. When nothing is left, the record is closed and the slice file comes
+back as below, only while the slice lock can be had at once (R6; otherwise the next read closes
+it). A read never starts or restarts anything. Try again and a move's attempt on the same site
 use the same table but restart a program that ran before and does not run where it ran, and
 check it within its start time; they are bounded by the move's own 11 minutes (fix round F4:
 a restart is sent only while what is left holds its start time and 5 seconds; the rest are "not
 restarted yet"). A move of **another** site finds the record and is refused at once, before
 anything of the first site is restarted.
+
+**"Not answering" has an exit, and it is the administrator's press** (second fix round, R8). The
+move's own put-back keeps saying "not answering, look at it". Try again restarts such a program
+once more (the administrator asked), waits its start time, and if it then runs in the system
+slice without a break for that time, its entry is closed as put back even though it listens on
+no port; the answer names it ("runs, listens on no port"), so the administrator has been told
+twice. One that went down and came up again within that time stays "not answering". A listener
+table that cannot be read (`ss` fails) is "not known yet", never "listens on no port".
 
 Unit files are written and put back through the writer every other managed file uses
 (the text synced before the rename, the folder after it), so a power loss right after a
@@ -800,7 +831,9 @@ write never leaves an empty unit.
 
 The slice file: when every unit is settled, no unit names the slice after this and the file
 still holds exactly the bytes the move wrote, the recorded original comes back (its earlier
-bytes and ledger digest, or no file where there was none); otherwise it stays.
+bytes and ledger digest, or no file where there was none); otherwise it stays. This is done
+under the slice lock that changes of limits take, after the move record's lock (second fix
+round, R6).
 
 **A put-back that does not complete keeps the journal** (third fix round). That is: a
 pre-move file that cannot be written; a unit whose place systemd cannot tell (a failed
@@ -808,8 +841,8 @@ status read is "not known": nothing is restarted on it, never "not running, so r
 a `daemon-reload` that fails (systemd would still hold the moved text, so no unit is
 restarted); a restart that fails (the program is stopped) or is still starting at its start
 time; a program that was restarted but whose place could not be told ("not known yet", never
-"not restarted"); at the Agent's start, every restart it only requested ("not known yet",
-above) or could not request ("not restarted yet"). While the journal is kept, no site is moved: a new move is refused with the
+"not restarted"); at the Agent's start, every restart it requested ("not known yet",
+above) or did not send before its bound ran out ("not restarted yet"). While the journal is kept, no site is moved: a new move is refused with the
 site whose move is unfinished. The site's card (administrator) says the last move did not
 finish and, per program left, its state (put back but not running; place not known, not
 restarted; still starting; not restarted yet; started again, not known yet; runs but no longer
@@ -904,7 +937,9 @@ a warning (a to-do), and goes away by itself when no site is left (`panel_settin
   back": the journal is kept with it as stopped, still starting or not answering. The
   Agent's start does not run this check (fix round F1): it only requests the restart and
   keeps the program as "not known yet" (neither a failure nor a success), which the status
-  read resolves by reading (§8.4). The journal also records each program's ports (an earlier
+  read resolves by reading (§8.4: only for a program that runs without a break for its start
+  time, second fix round R1). A listener table that cannot be read is "not known yet", never
+  "listens on no port" (R8). The journal also records each program's ports (an earlier
   journal has none and is checked without them). The card and Problems now say that the
   program is not running now, that the administrator acts, the next step (its own log,
   `sudo journalctl -u <unit>`, then **Try again** or start it) and that nothing else was
@@ -950,8 +985,9 @@ a warning (a to-do), and goes away by itself when no site is left (`panel_settin
   to wait for the move's window and press update again. Only a move really in flight does
   that (fix round F5: the Agent's own in-flight flag, never the lock a status read takes).
   The other way round, a move or Try again is refused while the update is admitted or
-  running (fix round F6). The Agent's start writes one journal line per startup step with
-  its time (`agent start: <step> took …`).
+  running (fix round F6); a stale update record stops refusing by itself (second fix round,
+  R2, §8.4). The Agent's start writes one journal line per startup step with its time
+  (`agent start: <step> took …`).
 
 ### 8.7 A deleted site's slice
 
