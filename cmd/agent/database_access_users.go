@@ -147,6 +147,13 @@ func (a *Agent) RemoveDatabaseAccessUserV1(req *transport.DatabaseAccessUserRequ
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
+	// alpha.149 (security, second review of PR #370 finding 1): as the
+	// create, never in the engine's own system database.
+	if systemDatabaseName(req.Engine, req.Database) {
+		resp.AccountRefused = transport.DatabaseAccountRefusedSystemDatabase
+		resp.Error = databaseAccountRefusalText(req.Username, resp.AccountRefused)
+		return nil
+	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
 	if req.Engine == "mysql" {
@@ -857,6 +864,22 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		resp.Error = "database " + req.Database + " does not exist on this server; nothing was changed"
 		return
 	}
+	// alpha.149 (security, second review of PR #370 finding 1): the grants
+	// change the owner's default privileges; the owner must pass the rule
+	// (database_account_guard.go), read now and again in the grants' own
+	// transaction.
+	if err := readDatabaseOwnerState(run, owner); err != nil {
+		resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+		if resp.AccountRefused == "" {
+			resp.Error += "; nothing was changed"
+		}
+		return
+	}
+	ownerGuard, err := pgDatabaseOwnerGuardBlock(owner)
+	if err != nil {
+		resp.Error = err.Error() + "; nothing was changed"
+		return
+	}
 	readers, err := postgreSQLExistingRoles(run, req.Readers, owner, req.Username)
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
@@ -876,7 +899,7 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	// and the grants change their default privileges (what a writer makes
 	// becomes the new user's). Each must be an ordinary role, read now and
 	// tested again in the grants' own transaction.
-	var guards []string
+	guards := []string{ownerGuard}
 	for _, name := range append(append([]string{}, writers...), readers...) {
 		if err := readDatabaseAccountState("postgresql", run, name, pgAccountOrdinary, false); err != nil {
 			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
@@ -889,9 +912,7 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		}
 		guards = append(guards, guard)
 	}
-	if len(guards) > 0 {
-		grants = strings.Replace(grants, "\nBEGIN;\n", "\nBEGIN;\n"+strings.Join(guards, "\n")+"\n", 1)
-	}
+	grants = strings.Replace(grants, "\nBEGIN;\n", "\nBEGIN;\n"+strings.Join(guards, "\n")+"\n", 1)
 	ident, _ := services.QuotePGIdentifier(req.Username)
 	secret, err := services.QuotePGStringLiteral(req.Password)
 	if err != nil {
@@ -908,7 +929,7 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		failure := hostcmd.Fail("the database server did not give the new user its rights", output, err, databaseClientMeaning).Error()
 		if code := databaseAccountWriteRefusal(output); code != "" {
 			resp.AccountRefused = code
-			failure = "one of the database's other users is no longer an ordinary database user, so the new user was not given its rights"
+			failure = "the database's owner or one of its other users is no longer an ordinary database user, so the new user was not given its rights"
 		}
 		if _, dropErr := run("DROP ROLE IF EXISTS " + ident + ";"); dropErr != nil {
 			resp.CleanupIncomplete = true
@@ -974,9 +995,24 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 			resp.Error = fmt.Sprintf("the database's owner %q is not a name CelikPanel manages; nothing was changed", owner)
 			return
 		}
+		// alpha.149 (security, second review of PR #370 finding 1): what the
+		// user made is handed to the owner only while the owner passes the
+		// rule, read now and again in the REASSIGN's own transaction.
+		if err := readDatabaseOwnerState(run, owner); err != nil {
+			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+			if resp.AccountRefused == "" {
+				resp.Error += "; nothing was changed"
+			}
+			return
+		}
+		ownerGuard, err := pgDatabaseOwnerGuardBlock(owner)
+		if err != nil {
+			resp.Error = err.Error() + "; nothing was changed"
+			return
+		}
 		// What the user made in the database becomes the owner's; then its
 		// rights there go. No table or row is removed.
-		script := strings.Join([]string{`\connect ` + db, "BEGIN;", guard,
+		script := strings.Join([]string{`\connect ` + db, "BEGIN;", guard, ownerGuard,
 			"REASSIGN OWNED BY " + ident + " TO " + own + ";",
 			"DROP OWNED BY " + ident + ";", "COMMIT;"}, "\n")
 		if output, err := run(script); err != nil {

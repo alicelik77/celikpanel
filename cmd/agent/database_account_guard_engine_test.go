@@ -52,6 +52,37 @@ func TestTheAccountGuardOnRealEngines(t *testing.T) {
 		if got := mustRun(t, "unchanged", e.pg("", "", "", "SELECT rolconnlimit FROM pg_roles WHERE rolname = 'ag_db';")); got != "-1" {
 			t.Errorf("a refused role was changed: %s", got)
 		}
+		// Second review, finding 1: a database's owner. The shared rule for
+		// any owner; CelikPanel's own account (here ag_admin, LOGIN CREATEDB
+		// CREATEROLE as celikpanel_admin is) passes until it is a superuser or
+		// a member of a pg_* role.
+		if got := databaseAccountRefusalOf(readDatabaseOwnerState(run, "postgres")); got != "privileged" {
+			t.Errorf("a superuser owner: %q", got)
+		}
+		if got := databaseAccountRefusalOf(readDatabaseOwnerState(run, "ag_site")); got != "" {
+			t.Errorf("a site role owner: %q", got)
+		}
+		adminCleanup := "DROP ROLE IF EXISTS ag_admin;"
+		mustRun(t, "admin", e.pg("", "", "", adminCleanup+"\nCREATE ROLE ag_admin LOGIN CREATEDB CREATEROLE;"))
+		t.Cleanup(func() { _ = e.pg("", "", "", adminCleanup) })
+		adminState := func() string {
+			return databaseAccountRefusalOf(readGuardState(run, "SELECT 'guard=' || "+pgDatabaseOwnerStateExpr("'ag_admin'", true)+";", "ag_admin"))
+		}
+		guarded := func() error {
+			_, err := run("BEGIN;\n" + pgGuardBlockOf(pgDatabaseOwnerStateExpr("'ag_admin'", true)) + "\nCOMMIT;")
+			return err
+		}
+		if got := adminState(); got != "" || guarded() != nil {
+			t.Errorf("the panel's own account as it is made: %q", got)
+		}
+		mustRun(t, "admin member", e.pg("", "", "", "GRANT pg_read_server_files TO ag_admin;"))
+		if got := adminState(); got != "privileged" || guarded() == nil {
+			t.Errorf("the panel's own account in pg_read_server_files: %q", got)
+		}
+		mustRun(t, "admin superuser", e.pg("", "", "", "REVOKE pg_read_server_files FROM ag_admin;\nALTER ROLE ag_admin SUPERUSER;"))
+		if got := adminState(); got != "privileged" || guarded() == nil {
+			t.Errorf("the panel's own account as a superuser: %q", got)
+		}
 	}
 
 	accounts := []string{"ag_site", "ag_global", "ag_grant", "ag_role", "ag_mysqldb"}

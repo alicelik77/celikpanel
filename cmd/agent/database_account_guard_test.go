@@ -291,19 +291,20 @@ func TestAddingAUserNeverUsesASystemDatabaseOrAPrivilegedWriter(t *testing.T) {
 		}
 		return nil, nil
 	}
-	e := &guardEngine{state: "privileged", other: answer}
-	installGuardEngine(t, e)
+	// The owner passes; only the writer is privileged.
+	named := &namedGuardEngine{states: map[string]string{"boss": "privileged"}, other: answer}
+	installNamedGuardEngine(t, named)
 	var resp transport.DatabaseAccessUserResponse
 	req := &transport.DatabaseAccessUserRequest{Engine: "postgresql", Database: "shop", Username: "shop_reader", Password: "Zq7xN2kLp9Vt4RmW",
 		Access: transport.DatabaseAccessWrite, Writers: []string{"boss"}}
 	if err := (&Agent{}).CreateDatabaseAccessUserV1(req, &resp); err != nil {
 		t.Fatal(err)
 	}
-	if resp.Applied || resp.AccountRefused != transport.DatabaseAccountRefusedPrivileged || strings.Contains(strings.Join(e.statements, "\n"), "CREATE ROLE") {
-		t.Fatalf("privileged writer: %+v %q", resp, e.statements)
+	if resp.Applied || resp.AccountRefused != transport.DatabaseAccountRefusedPrivileged || strings.Contains(named.all(), "CREATE ROLE") {
+		t.Fatalf("privileged writer: %+v %q", resp, named.statements)
 	}
 	// An ordinary writer: the user is made and the grants carry its guard.
-	e = &guardEngine{state: "ok", other: answer}
+	e := &guardEngine{state: "ok", other: answer}
 	installGuardEngine(t, e)
 	resp = transport.DatabaseAccessUserResponse{}
 	if err := (&Agent{}).CreateDatabaseAccessUserV1(req, &resp); err != nil {

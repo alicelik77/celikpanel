@@ -148,10 +148,75 @@ func pgAccountGuardBlock(username string, rule pgAccountRule) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return pgGuardBlockOf(pgAccountStateExpr(literal, rule)), nil
+}
+
+// pgGuardBlockOf is the DO block that raises celikpanel-refused:<state>
+// unless the state expression answers 'ok'.
+func pgGuardBlockOf(stateExpr string) string {
 	return "DO $celikpanel_account_guard$\nDECLARE state pg_catalog.text;\nBEGIN\n" +
-		"  state := " + pgAccountStateExpr(literal, rule) + ";\n" +
+		"  state := " + stateExpr + ";\n" +
 		"  IF state OPERATOR(pg_catalog.<>) 'ok' THEN RAISE EXCEPTION 'celikpanel-refused:%', state; END IF;\n" +
-		"END\n$celikpanel_account_guard$;", nil
+		"END\n$celikpanel_account_guard$;"
+}
+
+// The owner of a database a call adds a user to or removes one from
+// (alpha.149, second review of PR #370 finding 1). The added-user calls write
+// ALTER DEFAULT PRIVILEGES FOR ROLE <owner> and REASSIGN OWNED BY <user> TO
+// <owner>; with the owner a superuser, a compromised panel could add a user
+// to the server owner's own database, let it create a SECURITY DEFINER
+// function, and have the removal hand that function to the superuser. So the
+// owner read from the engine must pass the shared rule too. The one exception
+// is exactly CelikPanel's own account (celikpanel_admin, which owns the
+// databases made through it and holds CREATEDB and CREATEROLE by design), and
+// only while it is not a superuser and is a member - through any chain - of
+// no predefined pg_* role and of no superuser role.
+//
+// Veritabanının sahibi de sıradan bir rol olmalıdır; tek istisna, süper
+// kullanıcı olmadığı ve hiçbir pg_* rolünün üyesi olmadığı sürece
+// CelikPanel'in kendi celikpanel_admin hesabıdır.
+
+// pgDatabaseOwnerStateExpr is the owner's state expression: the shared rule,
+// or for celikpanel_admin the narrower test above.
+func pgDatabaseOwnerStateExpr(literal string, admin bool) string {
+	if !admin {
+		return pgAccountStateExpr(literal, pgAccountOrdinary)
+	}
+	return "COALESCE((SELECT CASE WHEN celikpanel_r.rolsuper" +
+		" OR EXISTS (SELECT 1 FROM pg_catalog.pg_roles celikpanel_held WHERE celikpanel_held.oid OPERATOR(pg_catalog.<>) celikpanel_r.oid" +
+		" AND (celikpanel_held.rolsuper OR (pg_catalog.starts_with(celikpanel_held.rolname::pg_catalog.text, 'pg_')" +
+		" AND celikpanel_held.rolname OPERATOR(pg_catalog.<>) 'pg_database_owner'))" +
+		" AND pg_catalog.pg_has_role(celikpanel_r.oid, celikpanel_held.oid, 'MEMBER'))" +
+		" THEN 'privileged' ELSE 'ok' END FROM pg_catalog.pg_roles celikpanel_r WHERE celikpanel_r.rolname OPERATOR(pg_catalog.=) " + literal + "), 'absent')"
+}
+
+// pgDatabaseOwnerExpr answers the owner's state expression, or an error for a
+// name CelikPanel cannot test.
+func pgDatabaseOwnerExpr(owner string) (string, error) {
+	literal, err := pgAccountLiteral(owner)
+	if err != nil {
+		return "", fmt.Errorf("the database's owner %q is not a name CelikPanel manages", owner)
+	}
+	return pgDatabaseOwnerStateExpr(literal, owner == databaseAdminAccountName), nil
+}
+
+// readDatabaseOwnerState reads the owner's state as readDatabaseAccountState
+// does: nil for an owner that passes, else the refusal.
+func readDatabaseOwnerState(run func(string) ([]byte, error), owner string) error {
+	expr, err := pgDatabaseOwnerExpr(owner)
+	if err != nil {
+		return err
+	}
+	return readGuardState(run, "SELECT 'guard=' || "+expr+";", owner)
+}
+
+// pgDatabaseOwnerGuardBlock is the owner's test in the write's transaction.
+func pgDatabaseOwnerGuardBlock(owner string) (string, error) {
+	expr, err := pgDatabaseOwnerExpr(owner)
+	if err != nil {
+		return "", err
+	}
+	return pgGuardBlockOf(expr), nil
 }
 
 // pgGuarded runs body in one transaction after the guard of username.
@@ -256,6 +321,12 @@ func readDatabaseAccountState(engine string, run func(string) ([]byte, error), u
 	if err != nil {
 		return err
 	}
+	return readGuardState(run, query, username)
+}
+
+// readGuardState runs one "guard=" read and answers nil for 'ok' or the
+// refusal it names (unreadable for anything else).
+func readGuardState(run func(string) ([]byte, error), query, username string) error {
 	output, runErr := run(query)
 	state, ok := markerValue(output, "guard")
 	if runErr != nil || !ok {
