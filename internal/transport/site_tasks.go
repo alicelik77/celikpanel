@@ -175,6 +175,10 @@ type SiteTasksMoveResponse struct {
 	// undo left its record kept (Outcome unknown): the site's card shows it
 	// with Try again.
 	Recovery *SiteSliceMoveRecovery `json:"recovery,omitempty"`
+	// Paused (alpha.150 fix round, F6): the undo's tasks whose timer was
+	// switched off on the server; they came back into the crontab paused
+	// ("# DISABLED: "), each under one comment (Detail: the timer's name).
+	Paused []SiteTaskLine `json:"paused,omitempty"`
 }
 
 // SiteTaskSourceResponse answers the administrator's rebuild of a missing
@@ -215,6 +219,10 @@ const (
 	SiteTasksRefusalSource    = "source_owner"
 	SiteTasksRefusalCrontab   = "crontab_changed"
 	SiteTasksRefusalLimits    = "limits"
+	// SiteTasksRefusalTimers (alpha.150 fix round, F6): the undo could not
+	// read the state of the site's timers, so it cannot tell which tasks the
+	// server owner switched off; nothing was changed.
+	SiteTasksRefusalTimers = "timers_unread"
 )
 
 // SiteTasksMovedRequest asks which sites run their tasks as timers (SiteIDs

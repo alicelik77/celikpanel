@@ -82,10 +82,12 @@ export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
     'slim.tasks.running.cron': 'Sitenin zamanlanmış görevleri şu an eskisi gibi cron’dan çalışıyor; sitenin geride kalan zamanlayıcı dosyaları kapalı.',
     'slim.tasks.undo.button': 'Görevleri cron’a geri koy',
     'slim.tasks.undo.confirm': 'Bu sitenin görevleri cron’a geri konsun mu?',
-    'slim.tasks.undo.body': 'Sitenin crontab’ı görevleri şu anki halleriyle aynen geri alır ve zamanlayıcıları kaldırılır. Görevler yine sitenin sınırlarının dışında çalışır ve sitenin kendi kodu crontab’ına yeniden iş ekleyebilir.',
+    'slim.tasks.undo.body': 'Sitenin crontab’ı görevleri şu anki halleriyle aynen geri alır ve zamanlayıcıları kaldırılır; zamanlayıcısı sunucuda kapatılmış bir görev duraklatılmış olarak geri gelir. Görevler yine sitenin sınırlarının dışında çalışır ve sitenin kendi kodu crontab’ına yeniden iş ekleyebilir.',
     'slim.tasks.undo.go': 'Geri koy',
     'slim.tasks.undo.step': 'Zamanlayıcılar kapanıyor, cron açılıyor, crontab yazılıp denetleniyor, sonra zamanlayıcılar kaldırılıyor',
     'slim.tasks.undo.done': 'Görevler yeniden cron’da çalışıyor.',
+    'slim.tasks.undo.paused': 'Şu görevler duraklatılmış olarak geri geldi, çünkü zamanlayıcıları sunucuda kapatılmıştı; Zamanlanmış görevler ekranında yeniden başlatılırlar:',
+    'slim.tasks.undoWhy.timers_unread': 'Hiçbir şey değiştirilmedi: sitenin zamanlayıcılarının durumu okunamadı, bu yüzden sunucuda hangi görevlerin kapatıldığı bilinmiyor. Bir dakika sonra bu sayfayı yeniden okuyup yeniden basın; nedenini ajanın günlüğü söyler (sudo journalctl -u celikpanel-agent).',
     'slim.tasks.undo.title': 'Görevler cron’a geri konuyor',
 
 

@@ -107,6 +107,8 @@ export interface TasksAnswer {
     mail_submission?: string;
     error?: string;
     refusal?: string;
+    /** The undo's tasks whose timer was switched off on the server: back in cron paused (alpha.150 fix round, F6). */
+    paused: TaskLine[];
 }
 
 const OUTCOMES: readonly string[] = ['moved', 'already', 'stayed', 'put_back', 'preview', 'undone', 'refused', 'no_cron', 'unknown', 'crontab_back'];
@@ -122,13 +124,14 @@ export function decodeTasksAnswer(raw: unknown): TasksAnswer {
         mail_submission: typeof body.mail_submission === 'string' ? body.mail_submission : undefined,
         error: typeof body.error === 'string' ? body.error : undefined,
         refusal: typeof body.refusal === 'string' ? body.refusal : undefined,
+        paused: decodeTaskLines(body.paused),
     };
 }
 
 /** The claim's refusals a tasks move, undo or rebuild shares with the programs' move (main's codes). */
 const MOVE_WHYS: readonly string[] = ['kept_earlier', 'update_running', 'update_unreadable', 'another_move', 'site_busy'];
 /** The tasks' own refusal codes (transport.SiteTasksRefusal*). */
-const TASK_WHYS: readonly string[] = ['cron_allow_owner', 'source_owner', 'crontab_changed', 'limits'];
+const TASK_WHYS: readonly string[] = ['cron_allow_owner', 'source_owner', 'crontab_changed', 'limits', 'timers_unread'];
 
 /**
  * The words of a tasks answer that did not end as asked (alpha.150, main's

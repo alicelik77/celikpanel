@@ -74,7 +74,8 @@ import (
 // crontab again. It is journaled the same way; the crontab and the timers
 // are never both on and never both gone:
 //
-//	undo_planned     the crontab to write (the task file's bytes) and the timers that are on
+//	undo_planned     the crontab to write (the task file's bytes; a task whose timer was
+//	                 switched off on the server comes back paused, F6) and the timers that are on
 //	timers_disabled  those timers are disabled (a running task is not stopped)
 //	cron_opened      CelikPanel's cron.allow lets the account in again
 //	crontab_written  the crontab is written and checked (`crontab -l` gives the bytes back)
@@ -1119,10 +1120,18 @@ func (a *Agent) UndoSiteTasksMoveV1(req *transport.SiteTasksMoveRequest, resp *t
 	return nil
 }
 
-// enabledSiteTimers are the site's timers that are on now (enabled), and
-// the @reboot ones among them (from the task file).
-func enabledSiteTimers(siteID int, crontab string) ([]string, map[string]bool) {
-	units, _ := siteTaskUnits(siteID)
+// undoSiteTimers reads the site's timers for the undo: the ones that are on
+// now (enabled), the @reboot ones among them, and (alpha.150 fix round, F6,
+// D-022) the crontab's job lines whose timer is not on - switched off on the
+// server (`systemctl disable`), not one CelikPanel wrote and could not switch
+// on yet (its "to enable" list) - by line number with the timer's name. err:
+// the state of a timer of the site could not be read; the undo is then
+// refused, as it cannot tell which tasks the server owner switched off.
+func undoSiteTimers(siteID int, crontab string) (on []string, atBoot map[string]bool, off map[int]string, err error) {
+	units, err := siteTaskUnits(siteID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	var timers []string
 	for n, u := range units {
 		if u.Timer {
@@ -1131,14 +1140,33 @@ func enabledSiteTimers(siteID int, crontab string) ([]string, map[string]bool) {
 	}
 	sort.Strings(timers)
 	props := siteTaskShow(timers, siteTaskShowTimerProps)
-	var on []string
-	atBoot := map[string]bool{}
-	reboot := map[string]bool{}
+	for _, timer := range timers {
+		if props[timer]["UnitFileState"] == "" {
+			return nil, nil, nil, fmt.Errorf("the state of %s could not be read", timer)
+		}
+	}
+	pending := readSiteTimersToEnable()[strconv.Itoa(siteID)]
+	atBoot, off = map[string]bool{}, map[int]string{}
 	jobs := sitecron.Parse(crontab).Jobs()
 	keys := siteTaskKeys(jobs)
+	byKey := map[string]int{}
+	for n, u := range units {
+		if u.TaskKey != "" {
+			byKey[u.TaskKey] = n
+		}
+	}
+	reboot := map[string]bool{}
 	for i, job := range jobs {
 		if job.Spec.Reboot {
 			reboot[keys[i]] = true
+		}
+		n, ok := byKey[keys[i]]
+		if !ok || !units[n].Timer {
+			continue
+		}
+		timer := sitecron.UnitBase(siteID, n) + ".timer"
+		if _, waiting := pending[timer]; !waiting && props[timer]["UnitFileState"] != "enabled" {
+			off[job.Line] = timer
 		}
 	}
 	for _, timer := range timers {
@@ -1152,7 +1180,35 @@ func enabledSiteTimers(siteID int, crontab string) ([]string, map[string]bool) {
 			}
 		}
 	}
-	return on, atBoot
+	return on, atBoot, off, nil
+}
+
+// undoSiteTasksOffNote is the one comment above a task the undo writes back
+// paused because its timer was switched off on the server (F6).
+const undoSiteTasksOffNote = "# CelikPanel: this task's timer (%s) was switched off on the server, so it stays paused in cron; resume it on the Scheduled tasks screen.\n"
+
+// crontabWithTasksOff is the crontab the undo writes: the task file's
+// crontab byte for byte, except that each job line whose timer was switched
+// off on the server comes back as CelikPanel's paused line ("# DISABLED: "),
+// under one comment that says why (F6, D-022: the undo never starts again
+// what the server owner switched off). paused names those lines.
+func crontabWithTasksOff(crontab string, off map[int]string) (string, []transport.SiteTaskLine) {
+	if len(off) == 0 {
+		return crontab, nil
+	}
+	var b strings.Builder
+	var paused []transport.SiteTaskLine
+	for i, line := range strings.SplitAfter(crontab, "\n") {
+		timer, ok := off[i+1]
+		if !ok {
+			b.WriteString(line)
+			continue
+		}
+		fmt.Fprintf(&b, undoSiteTasksOffNote, timer)
+		b.WriteString("# DISABLED: " + line)
+		paused = append(paused, transport.SiteTaskLine{Line: i + 1, Text: strings.TrimSuffix(line, "\n"), Detail: timer})
+	}
+	return b.String(), paused
 }
 
 func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteTasksMoveResponse {
@@ -1186,9 +1242,14 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	} else if len(files) > 0 {
 		return refused(transport.SiteTasksRefusalCrontab, "the account has a crontab again ("+files[0].Path+", running outside the site's limits); it is never overwritten, so nothing was changed. The server owner merges it into Scheduled tasks or removes it first")
 	}
-	// Byte for byte: the task file's crontab, nothing added.
-	written := source.Crontab
-	timers, atBoot := enabledSiteTimers(target.SiteID, written)
+	// Byte for byte: the task file's crontab, nothing added - except that a
+	// task whose timer the server owner switched off comes back paused
+	// (alpha.150 fix round, F6); a timer state that cannot be read refuses.
+	timers, atBoot, off, timersErr := undoSiteTimers(target.SiteID, source.Crontab)
+	if timersErr != nil {
+		return refused(transport.SiteTasksRefusalTimers, "the state of the site's timers could not be read ("+timersErr.Error()+"), so it is not known which tasks the server owner switched off; nothing was changed")
+	}
+	written, paused := crontabWithTasksOff(source.Crontab, off)
 	journal := &siteMoveJournal{Version: siteTasksJournalVersion, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339),
 		Tasks: &siteTasksJournal{Undo: true, Account: username, UID: target.UID, Crontab: written, Step: siteTasksStepUndoPlanned, Timers: timers, AtBoot: atBoot}}
 	if err := journal.save(); err != nil {
@@ -1294,7 +1355,7 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	forgetSiteMoveOutcome(target.SiteID)
 	forgetCronClosed(map[string]bool{username: true})
 	refreshCronAllow()
-	return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUndone}
+	return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUndone, Paused: paused}
 }
 
 // SiteTasksMovedV1 lists the sites whose tasks run as timers, the crontabs

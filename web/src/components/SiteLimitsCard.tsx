@@ -239,7 +239,12 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                         return { state: 'unknown', reason: t('slim.move.unknown') };
                     }
                     setUndoID(newMoveRequestID());
-                    if (answer.outcome === 'undone') return { state: 'done', message: t('slim.tasks.undo.done') };
+                    // alpha.150 fix round (F6): tasks whose timer was switched off on the server came back paused.
+                    if (answer.outcome === 'undone') {
+                        return answer.paused.length > 0
+                            ? { state: 'done', message: t('slim.tasks.undo.done'), kept: { title: t('slim.tasks.undo.paused'), rows: answer.paused.map((l) => `${l.line}: ${l.text}`) } }
+                            : { state: 'done', message: t('slim.tasks.undo.done') };
+                    }
                     if (answer.outcome === 'unknown') return { state: 'unknown', reason: t(tasksAnswerKey(answer, true) as TranslationKey) };
                     if (answer.refusal === KEPT_MOVE) return { state: 'blocked', reason: t('slim.why.kept_earlier') };
                     return { state: answer.outcome === 'refused' ? 'blocked' : 'failed', reason: t(tasksAnswerKey(answer, true) as TranslationKey) };

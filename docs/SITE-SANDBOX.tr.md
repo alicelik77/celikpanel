@@ -1303,13 +1303,21 @@ sürüyor diye reddedilir.
 
 **Geri alma** ("Görevleri cron'a geri koy", yönetici): sunucu sahibinin kendi `/etc/cron.allow`
 dosyası hesabı dışarıda bırakıyorsa (ya da `/etc/cron.deny` onu adlandırıyorsa), görev dosyası elle
-değiştirilmişse (ya da yoksa) veya hesabın yeniden bir crontab'ı varsa, hiçbir şey değişmeden
-reddedilir. Yoksa adım adım günlüğe yazılır; crontab ile zamanlayıcılar hiçbir zaman ikisi birden
-açık ya da ikisi birden yok olmaz:
+değiştirilmişse (ya da yoksa), hesabın yeniden bir crontab'ı varsa ya da sitenin zamanlayıcılarının
+durumu okunamıyorsa (sunucu sahibinin hangi görevleri kapattığı bilinemezdi), hiçbir şey değişmeden
+reddedilir. **Geri alma, sunucu sahibinin kapattığını yeniden başlatmaz (alpha.150 düzeltme turu,
+D-022):** geri alma çalıştığında zamanlayıcısı etkin olmayan bir görev - sunucuda kapatılmış
+(`systemctl disable --now`), CelikPanel'in yazıp henüz açamadığı değil - crontab'a CelikPanel'in
+duraklatılmış satırı olarak (`# DISABLED: <satır>`), zamanlayıcısını adlandıran ve nedenini
+söyleyen tek bir yorumun altında geri gelir; yanıt bu görevleri adlandırır, Zamanlanmış görevler
+ekranı birini yeniden başlatır. Ekranda duraklatılmış bir görev görev dosyasında zaten böyle bir
+satırdır ve olduğu gibi geri gelir. Bunun dışında crontab baytı baytına görev dosyasınınkidir. Geri
+alma adım adım günlüğe yazılır; crontab ile zamanlayıcılar hiçbir zaman ikisi birden açık ya da
+ikisi birden yok olmaz:
 
 | Ulaşılan adım | Anlamı | Ajan'ın açılışında |
 |---|---|---|
-| undo_planned | yazılacak crontab (görev dosyasının baytları, hiçbir şey eklenmeden) ve açık zamanlayıcılar kaydedildi | kaydedilen zamanlayıcılar yeniden açılır, cron yeniden kapatılır ("denenmedi") |
+| undo_planned | yazılacak crontab (görev dosyasının baytları, sunucuda kapatılmış görevler duraklatılmış) ve açık zamanlayıcılar kaydedildi | kaydedilen zamanlayıcılar yeniden açılır, cron yeniden kapatılır ("denenmedi") |
 | timers_disabled | bu zamanlayıcılar kapatıldı (çalışan bir görev durdurulmaz) | aynısı |
 | cron_opened | CelikPanel'in `cron.allow` dosyası hesaba yeniden izin veriyor | biriktirme dosyası kaydedilen crontab'ı tutuyorsa tamamlanır ("geri alındı"); yoksa yukarıdaki gibi geri döner |
 | crontab_written | crontab yazıldı ve denetlendi: `crontab -l` taşımadan önce verdiği baytların tam aynısını verir | tamamlanır: zamanlayıcılar ve dosyalar kaldırılır ("geri alındı") |
@@ -1347,7 +1355,8 @@ da cron'dan).
   taşıma sürerken reddedilir, o sürerken de güncelleme (§9.3).
 - **Yerel olarak, birimlerde.** Değiştirilmiş bir `celikcron-*` birimi korunur (D-031) ve ekran onu
   adlandırır. Sahibin durdurduğu ya da kapattığı bir zamanlayıcı (`systemctl disable --now`) öyle
-  kalır: değişen bir görev zamanlayıcısını yalnız çalışıyorsa yeniden başlatır.
+  kalır: değişen bir görev zamanlayıcısını yalnız çalışıyorsa yeniden başlatır; geri alma da
+  kapatılmış birinin görevini cron'a duraklatılmış olarak geri koyar (§9.3).
 - **Yeniden bir crontab.** Taşınmış bir hesap için var olan bir crontab her açılışta ve ekranın ve
   kartın her okumasında doğrudan biriktirme klasöründen okunur (Debian ve Ubuntu'da
   `/var/spool/cron/crontabs/<hesap>`, Arch'ta cronie ile `/var/spool/cron/<hesap>`) ve satırları

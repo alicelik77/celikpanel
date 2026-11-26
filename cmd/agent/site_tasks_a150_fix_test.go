@@ -267,3 +267,83 @@ func TestAScheduleSettingIsRefusedNotSilentlyChanged(t *testing.T) {
 		}
 	}
 }
+
+// TestTheUndoKeepsWhatTheOwnerSwitchedOff (F6, D-022): a task whose timer
+// the server owner switched off (systemctl disable --now) comes back into
+// the crontab paused, under one comment that says why, and the answer names
+// it; a timer CelikPanel could not switch on yet comes back as it is; a
+// timer whose state cannot be read refuses the undo before anything changes.
+func TestTheUndoKeepsWhatTheOwnerSwitchedOff(t *testing.T) {
+	const crontab = moveTaskCrontab + "*/10 * * * * php ten.php\n"
+	moved := func(t *testing.T) *taskTestHost {
+		t.Helper()
+		host := useTaskTestHost(t)
+		host.startWith(t, crontab)
+		if resp := moveTasks(t); resp.Outcome != transport.SiteTasksMoved {
+			t.Fatalf("move %+v", resp)
+		}
+		return host
+	}
+	timerOf := func(t *testing.T, text string) string {
+		t.Helper()
+		units, _ := siteTaskUnits(taskTestSite)
+		for n, u := range units {
+			if u.TaskKey == generateCronID(text) {
+				return sitecron.UnitBase(taskTestSite, n) + ".timer"
+			}
+		}
+		t.Fatalf("no timer for %q", text)
+		return ""
+	}
+	t.Run("switched_off_comes_back_paused", func(t *testing.T) {
+		host := moved(t)
+		timer := timerOf(t, "17 3 * * * php report.php")
+		host.mu.Lock()
+		delete(host.enabled, timer)
+		delete(host.active, timer)
+		host.mu.Unlock()
+		resp := undoTasks(t)
+		if resp.Outcome != transport.SiteTasksUndone || len(resp.Paused) != 1 || resp.Paused[0].Text != "17 3 * * * php report.php" || resp.Paused[0].Detail != timer {
+			t.Fatalf("undo %+v", resp)
+		}
+		want := strings.Replace(crontab, "17 3 * * * php report.php\n",
+			"# CelikPanel: this task's timer ("+timer+") was switched off on the server, so it stays paused in cron; resume it on the Scheduled tasks screen.\n# DISABLED: 17 3 * * * php report.php\n", 1)
+		if got, _ := host.crontab(taskTestAccount); got != want {
+			t.Fatalf("crontab:\n%s\nwant:\n%s", got, want)
+		}
+		jobs := sitecron.Parse(want).Jobs()
+		if len(jobs) != 1 || jobs[0].Text != "*/10 * * * * php ten.php" {
+			t.Fatalf("what cron runs now: %+v", jobs)
+		}
+	})
+	t.Run("not_switched_on_yet_comes_back_as_it_is", func(t *testing.T) {
+		host := moved(t)
+		timer := timerOf(t, "17 3 * * * php report.php")
+		host.mu.Lock()
+		delete(host.enabled, timer)
+		delete(host.active, timer)
+		host.mu.Unlock()
+		setSiteTimersToEnable(taskTestSite, map[string]bool{timer: false})
+		if resp := undoTasks(t); resp.Outcome != transport.SiteTasksUndone || len(resp.Paused) != 0 {
+			t.Fatalf("undo %+v", resp)
+		}
+		if got, _ := host.crontab(taskTestAccount); got != crontab {
+			t.Fatalf("crontab %q", got)
+		}
+	})
+	t.Run("state_unreadable_refuses", func(t *testing.T) {
+		host := moved(t)
+		on := true
+		failCalls(t, "show", &on)
+		resp := undoTasks(t)
+		if resp.Outcome != transport.SiteTasksRefused || resp.Refusal != transport.SiteTasksRefusalTimers {
+			t.Fatalf("undo %+v", resp)
+		}
+		if _, has := host.crontab(taskTestAccount); has || len(host.timersOn()) != 2 {
+			t.Fatalf("something changed: timers %v", host.timersOn())
+		}
+		if _, err := os.Stat(siteMoveJournalPath); !os.IsNotExist(err) {
+			t.Fatal("a record was written")
+		}
+	})
+}

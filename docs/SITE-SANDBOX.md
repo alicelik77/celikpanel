@@ -1465,12 +1465,20 @@ refused as another move running.
 **The undo** ("Put the tasks back into cron", administrator): refused before anything
 changes when the server owner's own `/etc/cron.allow` leaves the account out (or
 `/etc/cron.deny` names it), when the task file was changed by hand (or is missing), or when
-the account has a crontab again. Otherwise it is journaled step by step, and the crontab and
-the timers are never both on and never both gone:
+the account has a crontab again, and when the state of the site's timers cannot be read (it
+would not be known which tasks the server owner switched off). **The undo does not start again
+what the server owner switched off (alpha.150 fix round, D-022):** a task whose timer is not
+enabled when the undo runs - switched off on the server (`systemctl disable --now`), not one
+CelikPanel wrote and could not switch on yet - comes back into the crontab as CelikPanel's
+paused line (`# DISABLED: <the line>`) under one comment that names its timer and says why;
+the answer names those tasks, and the Scheduled tasks screen resumes one. A task paused on the
+screen is already such a line in the task file and comes back as it is. Otherwise the crontab is
+the task file's, byte for byte. The undo is journaled step by step, and the crontab and the
+timers are never both on and never both gone:
 
 | Step reached | What it means | At the Agent's start |
 |---|---|---|
-| undo_planned | the crontab to write (the task file's bytes, nothing added) and the timers that are on are recorded | the recorded timers on again, cron closed again ("not tried") |
+| undo_planned | the crontab to write (the task file's bytes, the tasks switched off on the server paused) and the timers that are on are recorded | the recorded timers on again, cron closed again ("not tried") |
 | timers_disabled | those timers are switched off (a running task is not stopped) | the same |
 | cron_opened | CelikPanel's `cron.allow` lets the account in again | finished when the spool holds the recorded crontab ("undone"); otherwise rolled back as above |
 | crontab_written | the crontab is written and checked: `crontab -l` gives back exactly the bytes `crontab -l` gave before the move | finished: the timers and files removed ("undone") |
@@ -1507,7 +1515,8 @@ and Problems now say how the tasks run (not running, or from cron).
   while the panel's update runs or a move runs, and the update while it runs (§9.3).
 - **Natively, in the units.** A changed `celikcron-*` unit is kept (D-031) and the screen
   names it. A timer the owner stopped or disabled (`systemctl disable --now`) stays so: a
-  changed task restarts its timer only when it runs.
+  changed task restarts its timer only when it runs, and the undo puts a disabled one's task back
+  into cron paused (§9.3).
 - **A crontab again.** A crontab that exists for a moved account is read straight from the
   spool (`/var/spool/cron/crontabs/<account>` on Debian and Ubuntu, `/var/spool/cron/<account>`
   with cronie on Arch) at each start and on each read of the screen and the card, and its

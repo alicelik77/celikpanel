@@ -12,7 +12,7 @@ import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
 import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
 import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
 import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';
-import { keptTasksRunningKey, tasksAnswerKey } from '../src/lib/siteTasks.ts';
+import { decodeTasksAnswer, keptTasksRunningKey, tasksAnswerKey } from '../src/lib/siteTasks.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const answer = (outcome, refusal) => ({ outcome, refusal, rows: [], blocking: [], mail: false, error: 'english text of the agent' });
@@ -35,6 +35,8 @@ test('a tasks answer is a code worded by the page, in both languages, never the 
     [answer('crontab_back'), false, 'slim.tasks.done.back'],
     [answer('refused', 'something new'), false, 'slim.tasks.why.other'],
     [answer('refused'), true, 'slim.tasks.undoWhy.other'],
+    // Fix round F6: the undo cannot read the timers' state.
+    [answer('refused', 'timers_unread'), true, 'slim.tasks.undoWhy.timers_unread'],
   ];
   for (const [a, undo, key] of cases) {
     assert.equal(tasksAnswerKey(a, undo), key, `${a.outcome} ${a.refusal} ${undo}`);
@@ -89,4 +91,13 @@ test('the rebuild of a task file words the update’s and the move’s refusal',
   assert.match(screen, /REBUILD_BUSY: readonly string\[\] = \['update_running', 'update_unreadable', 'another_move'\]/);
   assert.match(screen, /REBUILD_BUSY\.includes\(answer\.refusal \?\? ''\)\) return \{ state: 'blocked', reason: t\('stasks\.rebuild\.busy'\) \}/);
   for (const words of [enSiteTasksScreens, trSiteTasksScreens]) assert.ok(words['stasks.rebuild.busy']);
+});
+
+test('fix round F6: the undo names the tasks that came back paused, in both languages', () => {
+  const undone = decodeTasksAnswer({ outcome: 'undone', paused: [{ line: 4, text: '17 3 * * * php report.php', reason: '', detail: 'celikcron-7-1.timer' }, { bad: true }] });
+  assert.deepEqual(undone.paused, [{ line: 4, text: '17 3 * * * php report.php', reason: '', detail: 'celikcron-7-1.timer' }]);
+  assert.deepEqual(decodeTasksAnswer({ outcome: 'undone' }).paused, []);
+  for (const words of [enSiteTasksScreens, trSiteTasksScreens]) assert.ok(words['slim.tasks.undo.paused'], 'slim.tasks.undo.paused');
+  const card = read('../src/components/SiteLimitsCard.tsx');
+  assert.match(card, /answer\.paused\.length > 0[\s\S]*t\('slim\.tasks\.undo\.paused'\)/);
 });

@@ -90,10 +90,12 @@ export const enSiteTasksScreens = {
     'slim.tasks.running.cron': 'The site’s scheduled tasks run from cron now, as before; the timer files left of the site are off.',
     'slim.tasks.undo.button': 'Put the tasks back into cron',
     'slim.tasks.undo.confirm': 'Put this site’s tasks back into cron?',
-    'slim.tasks.undo.body': 'The site’s crontab gets its tasks back exactly as they are now, and their timers are removed. They then run outside the site’s limits again, and the site’s own code can add jobs to its crontab again.',
+    'slim.tasks.undo.body': 'The site’s crontab gets its tasks back exactly as they are now, and their timers are removed; a task whose timer was switched off on the server comes back paused. They then run outside the site’s limits again, and the site’s own code can add jobs to its crontab again.',
     'slim.tasks.undo.go': 'Put them back',
     'slim.tasks.undo.step': 'Timers off, cron open, crontab written and checked, then the timers removed',
     'slim.tasks.undo.done': 'The tasks run in cron again.',
+    'slim.tasks.undo.paused': 'These tasks came back paused, because their timers were switched off on the server; they are resumed on the Scheduled tasks screen:',
+    'slim.tasks.undoWhy.timers_unread': 'Nothing was changed: the state of the site’s timers could not be read, so it is not known which tasks were switched off on the server. Read this page again in a minute and press again; the agent’s journal says why (sudo journalctl -u celikpanel-agent).',
     'slim.tasks.undo.title': 'Putting the tasks back into cron',
 
 
