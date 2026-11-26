@@ -413,13 +413,12 @@ const screenPartBudgets = {
   // room; set with at least 25% headroom from its Turkish file: 1.65 / 0.74
   // KiB.
   siteLimitsApply: kib(2.3, 1.0),
-  // alpha.149 fix round B: the Problems now line of database users the
-  // database limits did not reach, its Apply again and what a plan's Save
-  // says about them (pnow.database_limits_unapplied.*, plans.dbLimits.*). A
-  // new part, as "problemsNow" and "siteLimitsApply" have no room; no
-  // existing part's budget is raised. Set with at least 25% headroom from its
-  // Turkish file: 1.93 / 0.73 KiB.
-  dbLimits: kib(2.5, 1.0),
+  // alpha.149 fix round B: only the audit list's name of Apply again, which
+  // the audit lists of every screen read; the rest of this lane's words are
+  // fetched with the screens that show them (src/i18n/dbLimitsWords, below;
+  // review of PR #370, finding 18). Lowered from 2.5 / 1.0 KiB; no other
+  // part's budget is raised.
+  dbLimits: kib(0.6, 0.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
@@ -436,6 +435,12 @@ const namedChunkBudgets = {
     [`src/i18n/screens/${part}/en.ts`, limit],
     [`src/i18n/screens/${part}/tr.ts`, limit],
   ])),
+  // alpha.149 (review of PR #370, finding 18): the database limits' words,
+  // fetched only by Problems now when it has such a line and by a plan's
+  // editor when a database limit changes (src/i18n/dbLimits.ts); their own
+  // chunk per language, held to the async ceiling like the help texts.
+  'src/i18n/dbLimitsWords/en.ts': budgets.async,
+  'src/i18n/dbLimitsWords/tr.ts': budgets.async,
   // The help texts are fetched when a help drawer is opened. As a static part
   // of every page that carries the Help button they had brought the Settings
   // route to 0.29 KiB of its limit (2026-10-09).

@@ -24,8 +24,8 @@ import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
 import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
 import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr.ts';
-import { enDbLimitsScreens } from '../src/i18n/screens/dbLimits/en.ts';
-import { trDbLimitsScreens } from '../src/i18n/screens/dbLimits/tr.ts';
+import { enDbLimitsWords } from '../src/i18n/dbLimitsWords/en.ts';
+import { trDbLimitsWords } from '../src/i18n/dbLimitsWords/tr.ts';
 import { enWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/en.ts';
 import { trWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/tr.ts';
 
@@ -44,9 +44,10 @@ test('every kind the list shows has a title, body and action in English and Turk
   // alpha.143 (merged): its lines' words are in the mailDatabases and
   // pgLeftovers parts; alpha.144 (merged): its webmail address lines' words
   // are in the webmailAddress part; the site limits lines (S4 R2a) in
-  // siteLimits and siteLimitsApply; alpha.149's database limits line in dbLimits.
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens, ...enWebmailAddressScreens, ...enSiteLimitsScreens, ...enSiteLimitsApplyScreens, ...enDbLimitsScreens };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens, ...trWebmailAddressScreens, ...trSiteLimitsScreens, ...trSiteLimitsApplyScreens, ...trDbLimitsScreens };
+  // siteLimits and siteLimitsApply; alpha.149's database limits line in its
+  // own words fetched with the line (src/i18n/dbLimitsWords).
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens, ...enWebmailAddressScreens, ...enSiteLimitsScreens, ...enSiteLimitsApplyScreens, ...enDbLimitsWords };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens, ...trWebmailAddressScreens, ...trSiteLimitsScreens, ...trSiteLimitsApplyScreens, ...trDbLimitsWords };
   for (const kind of shown) {
     // alpha.143: mail_signing and mail_autoresponder_foreign have one body
     // per state instead of one body (their own tests check them).

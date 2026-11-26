@@ -21,6 +21,7 @@ import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/sa
 import { useSaveWords } from './kit/save/words';
 import { useLeaveGuard } from './kit/save/leaveGuard';
 import type { OutsideField } from './PlanLimitsSection';
+import { useDbLimitsWords } from '../i18n/dbLimits';
 
 // The offered applications (alpha.118) are their own chunk, fetched with the tab.
 // alpha.128: the plan's limits of site settings, a chunk of its own.
@@ -41,6 +42,11 @@ const OfferedAppsSection = lazy(() => import('./OfferedAppsSection').then((modul
 // sabit satırlardır.
 
 type Say = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+// alpha.149: the plan's database limits (changed fields "ceiling:<key>") and
+// what a Save answers about the database users they did not reach.
+const DB_LIMIT_CEILINGS = ['db.max_user_connections', 'db.statement_seconds', 'db.idle_in_transaction_seconds', 'db.temp_file_mb'].map((key) => `ceiling:${key}`);
+type PlanDBLimits = { not_applied?: { user: string }[]; not_applied_count?: number; running?: number };
 
 const sameItems = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join('\n') === [...b].sort().join('\n');
 
@@ -135,13 +141,52 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
         onClose();
     };
 
+    // alpha.149 (review of PR #370, findings 11 and 16): a Save that changes
+    // a database limit waits while the panel gives the database users the
+    // limits; the window is locked and says the step (never a bare loading
+    // button). Its words come with the editor when such a key changed.
+    const dbChanged = !isNew && changes.some((change) => DB_LIMIT_CEILINGS.includes(change));
+    const dbWords = useDbLimitsWords(dbChanged);
+    const dbSentence = (db: PlanDBLimits | undefined): string => {
+        if (!db) return '';
+        if (db.not_applied_count) {
+            return dbWords.say(grantorIsReseller ? 'plans.dbLimits.notAppliedReseller' : 'plans.dbLimits.notApplied',
+                { n: db.not_applied_count, users: (db.not_applied ?? []).map((u) => u.user).join(', ') });
+        }
+        return db.running ? dbWords.say(grantorIsReseller ? 'plans.dbLimits.runningReseller' : 'plans.dbLimits.running', { n: db.running }) : '';
+    };
+    let stepsShown = false;
+    const sendWithSteps = async (send: () => ReturnType<typeof sendRights>): ReturnType<typeof sendRights> => {
+        if (!dbChanged || !dbWords.ready) return send();
+        let result: Awaited<ReturnType<typeof sendRights>> | undefined;
+        stepsShown = true;
+        const shownSteps = await followOperation({
+            progressTitle: dbWords.say('plans.dbLimits.title'),
+            action: async (report) => {
+                report.steps([{ id: 'db-limits', label: dbWords.say('plans.dbLimits.step'), state: 'running', since: Date.now() }]);
+                result = await send();
+                if (result.kind === 'lost') return { state: 'unknown', reason: dbWords.say('plans.dbLimits.lost') };
+                if (result.kind === 'refused') {
+                    const code = result.error.code;
+                    return code === 'PLAN_NARROWING_CONFIRM' || code === 'PLAN_BELOW_USAGE'
+                        ? { state: 'blocked', reason: dbWords.say('plans.dbLimits.confirmFirst') }
+                        : { state: 'failed', reason: refusalText(readableRefusal(result.error, t), t, 'plans.saveFailed') };
+                }
+                const sentence = dbSentence((result.body as { db_limits?: PlanDBLimits } | null)?.db_limits);
+                return { state: 'done', message: sentence || dbWords.say('plans.dbLimits.saved') };
+            },
+        });
+        if (!shownSteps || !result) stepsShown = false;
+        return result ?? send();
+    };
+
     const save = async (confirm: boolean) => {
         if (busy) return;
         setBusy(true);
         setRefusal(null);
         try {
             const overUsage = confirm && (shown?.preview.over_limit.length ?? 0) > 0;
-            const result = await sendRights(url, isNew ? 'POST' : 'PUT', planBody(kind, plan, chosen, { narrowing: confirm, overUsage, stoppedToken: shown?.preview.stopped_token }));
+            const result = await sendWithSteps(() => sendRights(url, isNew ? 'POST' : 'PUT', planBody(kind, plan, chosen, { narrowing: confirm, overUsage, stoppedToken: shown?.preview.stopped_token })));
             if (result.kind === 'lost') {
                 // Not known whether it was saved: nothing is sent again
                 // until the list has been read again.
@@ -171,10 +216,10 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
             setPending(null);
             const over = (result.body as { over_limit?: unknown } | null)?.over_limit;
             showToast('success', isNew ? t('plans.created') : Array.isArray(over) && over.length > 0 ? t('plans.updatedOver') : t('plans.updated'));
-            // alpha.149: which database users did not get the plan's database limits.
-            const db = (result.body as { db_limits?: { not_applied?: { user: string }[]; not_applied_count?: number; running?: number } } | null)?.db_limits;
-            if (db?.not_applied_count) showToast('warning', t('plans.dbLimits.notApplied', { n: db.not_applied_count, users: (db.not_applied ?? []).map((u) => u.user).join(', ') }));
-            else if (db?.running) showToast('warning', t('plans.dbLimits.running', { n: db.running }));
+            // alpha.149: which database users did not get the plan's database
+            // limits (the step window said it when it was shown).
+            const sentence = dbWords.ready ? dbSentence((result.body as { db_limits?: PlanDBLimits } | null)?.db_limits) : '';
+            if (sentence && !stepsShown) showToast('warning', sentence);
             invalidate('plans', 'rights', 'users');
             onClose();
         } finally {

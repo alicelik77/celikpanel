@@ -13,6 +13,8 @@ import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
 import { showToast } from './Toast';
 import { confirmAction, followOperation } from '../lib/confirmAction';
+import { useDbLimitsWords, type DbLimitsSay } from '../i18n/dbLimits';
+import type { DbLimitsWordKey } from '../i18n/dbLimitsWords/en';
 
 // "Problems now" (alpha.126, Monitoring stage 1; D-024). One list at the top
 // of Monitoring and on the Dashboard, computed on the server only from what
@@ -140,7 +142,23 @@ const KINDS: readonly ProblemKind[] = [
 ];
 // alpha.149: Apply again for those users; the panel runs it apart from the page.
 const DB_LIMITS_URL = '/api/v1/metrics/database-limits/apply';
-const DB_LIMITS_STATES = ['failed', 'prerequisite', 'unknown'];
+// The outcomes the panel tells apart (review of PR #370, finding 7).
+const DB_LIMITS_STATES = ['agent', 'prerequisite', 'connection', 'refused', 'failed', 'unknown'];
+// The reason codes a line words (finding 15); the journal holds the detail.
+const DB_LIMITS_REASONS = ['agent_unreachable', 'server_not_running', 'connection_refused', 'refused_privileged', 'refused_member', 'refused_not_recorded',
+    'refused_absent', 'engine_refused', 'result_unknown', 'not_known_yet', 'server_record_unreadable', 'record_unreadable'];
+
+/** The database limits line's title, body and reason (their own words, ../i18n/dbLimits.ts). */
+export function dbLimitsLine(problem: { name?: string; reason?: string; value: number; subject?: string }, say: DbLimitsSay): { title: string; body: string; why: string } {
+    const state = DB_LIMITS_STATES.includes(problem.name ?? '') ? problem.name : 'failed';
+    const reason = DB_LIMITS_REASONS.includes(problem.reason ?? '') ? problem.reason : '';
+    return {
+        title: problem.reason === 'record_unreadable' ? say('pnow.database_limits_unapplied.title_record')
+            : say('pnow.database_limits_unapplied.title', { value: problem.value, domain: problem.subject ?? '' }),
+        body: say(`pnow.database_limits_unapplied.${state}` as DbLimitsWordKey),
+        why: reason ? say('pnow.database_limits_unapplied.why', { reason: say(`pnow.database_limits_unapplied.reason.${reason}` as DbLimitsWordKey) }) : '',
+    };
+}
 // The doors the administrator may close again after the server owner undid them.
 // The action of a site's default memory limit fixed for the server's earlier memory (S4 R2a).
 const SITE_MEMORY_DEFAULT_URL = '/api/v1/rights/site-memory-default';
@@ -194,8 +212,6 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_cannot_send' && problem.subject === 'rewrite_failed') return 'pnow.webmail_cannot_send.body_rewrite_failed' as TranslationKey;
     // alpha.145: CelikPanel's text is named only when it lies beside the configuration.
     if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
-    // alpha.149: worded per outcome; one this screen does not know reads as a failure.
-    if (problem.kind === 'database_limits_unapplied') return `pnow.database_limits_unapplied.${DB_LIMITS_STATES.includes(problem.name ?? '') ? problem.name : 'failed'}` as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
@@ -229,6 +245,8 @@ export interface Problem {
     since?: string;
     observed_at?: string;
     action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default' | 'apply_db_limits'; to?: string };
+    /** alpha.149 (database_limits_unapplied): the stored reason as a code. */
+    reason?: string;
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
     holding_count?: number;
     holding_bytes?: number;
@@ -289,6 +307,8 @@ export function ProblemsNow({
     const [lastReclose, setLastReclose] = useState<RecloseStatus | null>(null);
     const listed = handle.remote.state === 'known' ? handle.remote.value : handle.remote.state === 'unknown' ? handle.remote.previous?.value : undefined;
     const offersReclose = (listed?.problems ?? []).some((p: Problem) => p.action.kind === 'reclose');
+    // alpha.149 (finding 18): the database limits' words come with such a line.
+    const dbWords = useDbLimitsWords((listed?.problems ?? []).some((p: Problem) => p.kind === 'database_limits_unapplied'));
     const readLastReclose = useCallback(async () => {
         const read = await readRemote(RECLOSE_URL, (raw) => raw as RecloseStatus);
         if (read.state === 'known') setLastReclose(read.value);
@@ -457,26 +477,31 @@ export function ProblemsNow({
     // panel runs it apart from this page (202); this window follows it with
     // reads only, and a second press while it runs follows the same run.
     const applyDbLimits = async (problem: Problem) => {
-        const vars = problemVars(problem, t);
+        const say = dbWords.say;
+        const title = dbLimitsLine(problem, say).title;
         await followOperation({
-            progressTitle: t('pnow.database_limits_unapplied.action'),
+            progressTitle: say('pnow.database_limits_unapplied.action'),
             action: async (report) => {
-                report.steps([{ id: 'apply', label: t('pnow.database_limits_unapplied.step'), state: 'running', since: Date.now() }]);
-                const unknown = { state: 'unknown' as const, reason: t('pnow.database_limits_unapplied.unknown') };
-                type Run = { running?: boolean; not_applied?: number };
+                report.steps([{ id: 'apply', label: say('pnow.database_limits_unapplied.step'), state: 'running', since: Date.now() }]);
+                const unknown = { state: 'unknown' as const, reason: say('pnow.database_limits_unapplied.unknown') };
+                type Run = { id?: string; running?: boolean; not_applied?: number };
                 try {
                     const response = await fetch(DB_LIMITS_URL, { method: 'POST' });
-                    if (!response.ok) return { state: 'failed', title: t(problemTitleKey(problem), vars), reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
+                    if (!response.ok) return { state: 'failed', title, reason: apiErrorText(await readApiError(response), t, 'pnow.reclose.failed') };
                     let run = await response.json() as Run;
+                    const started = run.id ?? '';
                     const until = Date.now() + RECLOSE_FOLLOW_MS;
                     while (run.running && Date.now() < until) {
                         await new Promise((resolve) => setTimeout(resolve, RECLOSE_POLL_MS));
                         const again = await readRemote(DB_LIMITS_URL, (raw) => raw as Run);
                         if (again.state === 'known') run = again.value;
                     }
+                    // A run this window no longer sees (the panel restarted,
+                    // finding 6) is never said to be done: not known yet.
+                    if (!started || (run.id ?? '') !== started) return { state: 'unknown', reason: say('pnow.database_limits_unapplied.notKnownYet') };
                     if (run.running) return unknown;
-                    return (run.not_applied ?? 0) === 0 ? { state: 'done', message: t('pnow.database_limits_unapplied.done') }
-                        : { state: 'failed', title: t(problemTitleKey(problem), vars), reason: t('pnow.database_limits_unapplied.still', { n: run.not_applied ?? 0 }) };
+                    return (run.not_applied ?? 0) === 0 ? { state: 'done', message: say('pnow.database_limits_unapplied.done') }
+                        : { state: 'failed', title, reason: say('pnow.database_limits_unapplied.still', { n: run.not_applied ?? 0 }) };
                 } catch {
                     return unknown;
                 } finally {
@@ -501,7 +526,8 @@ export function ProblemsNow({
             </div>
         );
     }
-    const problems = report.problems.filter((p) => !omit.includes(p.kind));
+    // The database limits line waits for its own words (finding 18).
+    const problems = report.problems.filter((p) => !omit.includes(p.kind) && (p.kind !== 'database_limits_unapplied' || dbWords.ready));
     const unknown = report.unknown.filter((u) => !(omit.includes('service_stopped') && u.source === 'services'));
     if (problems.length === 0 && unknown.length === 0 && !outcome) {
         if (quiet) return null;
@@ -524,6 +550,7 @@ export function ProblemsNow({
                             const critical = problem.severity === 'critical';
                             const Icon = critical ? XCircle : AlertTriangle;
                             const vars = problemVars(problem, t);
+                            const dbLine = problem.kind === 'database_limits_unapplied' ? dbLimitsLine(problem, dbWords.say) : null;
                             const when = problem.since
                                 ? t('pnow.since', { time: clock(problem.since) })
                                 : problem.kind === 'service_stopped' && problem.observed_at ? t('pnow.seen', { time: clock(problem.observed_at) }) : '';
@@ -535,10 +562,11 @@ export function ProblemsNow({
                                     <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`} aria-hidden="true" />
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold text-fg">
-                                            {t(problemTitleKey(problem), vars)}
+                                            {dbLine ? dbLine.title : t(problemTitleKey(problem), vars)}
                                             {when && <span className="ml-2 text-xs font-normal text-fg-subtle">{when}</span>}
                                         </p>
-                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{t(problemBodyKey(problem), vars)}</p>
+                                        <p className="mt-1 text-sm leading-6 text-fg-muted">{dbLine ? dbLine.body : t(problemBodyKey(problem), vars)}</p>
+                                        {dbLine?.why && <p className="mt-1 text-sm leading-6 text-fg" data-problem-db-limits-why="">{dbLine.why}</p>}
                                         {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 && (
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
                                         )}
@@ -569,7 +597,7 @@ export function ProblemsNow({
                                         </Button>
                                     ) : problem.action.kind === 'apply_db_limits' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void applyDbLimits(problem)} data-problem-apply-db-limits="">
-                                            {t('pnow.database_limits_unapplied.action')}
+                                            {dbWords.say('pnow.database_limits_unapplied.action')}
                                         </Button>
                                     ) : problem.action.kind === 'reclose' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void reclose(problem)} data-problem-reclose="">

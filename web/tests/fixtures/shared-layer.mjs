@@ -250,6 +250,8 @@ export const updateOriginsURL = compileSource('lib/updateOrigins.ts', unexpected
 // alpha.127: the owner's password rule, read by every password field and form.
 export const passwordPolicyURL = compileSource('lib/passwordPolicy.ts', unexpected('lib/passwordPolicy.ts'));
 
+const dbLimitsWordsStubURL = dataModule('export const useDbLimitsWords = () => ({ ready: false, say: (key) => key }); export const loadDbLimitsWords = () => new Promise(() => {});');
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
@@ -300,6 +302,10 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/updateOrigins': updateOriginsURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
+    // alpha.149: the database limits' words are fetched with the screens that
+    // show them; a mounted screen gets them as not fetched (its own test,
+    // db-limits-a149.test.mjs, checks the loader).
+    '/i18n/dbLimits': dbLimitsWordsStubURL,
     // alpha.132: the shared kit (row actions, guidance block, words) is the shipped code.
     ...kitTable(stubURL, uiURL),
     ...extra,
