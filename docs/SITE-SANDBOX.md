@@ -685,7 +685,11 @@ A changed `Slice=` reaches a running unit only at its next start (F1). So:
   unchanged text gets `Slice=celiksite_<id>.slice`, systemd reloads), then it starts
   there. Not a unit an owner changed or placed with a drop-in, not one of an earlier
   protection, not one a move's kept record names, and nothing when systemd cannot say
-  whether it runs;
+  whether it runs. Before that write the Start puts this release's sandbox helper and SMTP
+  block in place, as the move does (fix round F2: before alpha.147 the helper added only
+  system-slice cgroups to the SMTP block, so a unit in its site's slice was refused at its
+  `ExecStartPre`); when that cannot be done nothing is written and the program starts where
+  it started before, outside the limits;
 - a running unit keeps the slice it runs in on every ordinary write (a settings
   change, an update, a restart by the customer);
 - a unit whose file already names its site's slice, while that slice's file exists, keeps
@@ -708,7 +712,12 @@ starts inside it.
 The site's Overview shows the administrator where each program runs and one action,
 `POST /api/v1/domains/{id}/site-limits/move {request_id}` (`Agent.MoveSiteSliceV1`).
 One move at a time across the panel; a repeated `request_id` answers the first
-answer; it is audited as `site.limits_move`.
+answer; it is audited as `site.limits_move`. A move (and Try again) is refused while the
+panel's own update is admitted or running, by the panel and by the Agent ("the panel's
+update is in progress; move the site after the update has finished"; fix round F6), and the
+update is refused while a move runs (§8.6a). Only a move in flight does that: the Agent
+keeps a flag of its own for the move's whole run, and the lock a status read takes for a
+moment never makes the update or a move refuse (fix round F5).
 
 - The move holds the site's lock without waiting for it: a site being deleted or
   changed right now is not moved ("being changed; read its page again in a
@@ -754,16 +763,36 @@ was none) with its ledger digest, and each unit's step; before a unit file is wr
 step becomes "writing"; right after the slice file is written, its new bytes. A journal
 write that fails is a failed step: nothing further is written, and what was written is put
 back. At the Agent's start the step name alone is never trusted: each unit's file is
-compared with the recorded pre-move bytes and with the text the move intended:
+compared with the recorded pre-move bytes and with the text the move intended. **The
+Agent's start never starts, restarts or waits for a site's program** (fix round F1): an
+update waits only a limited time for the fresh Agent (about a minute from alpha.149, about
+twelve seconds before), so nothing on the Agent's start path may wait for a customer's
+program. At the start the record is only read and reconciled with the files:
 
 | The unit file holds | At the Agent's next start |
 |---|---|
 | the pre-move bytes, step "planned" or "writing" | not touched ("not tried") |
-| the pre-move bytes, a later step | already put back; restarted if it ran before and does not run in the system slice now ("put back") |
+| the pre-move bytes, a later step | already put back: left exactly as it is, running or not (a program its owner stopped stays stopped); its outcome is what this move's own record said, or, where the put-back was cut short, one reading: running in the system slice is "put back", otherwise "not restarted yet" |
 | the move's text, stopped unit | kept: its file names the slice, it starts there ("rewritten") |
 | the move's text, running unit, step "moved" (it ran and answered in the slice) | kept ("moved") |
-| the move's text, running unit, any other step | pre-move bytes back, daemon-reload, and a restart unless it still runs in the system slice ("put back") |
+| the move's text, running unit, any other step | pre-move bytes back, ONE daemon-reload for all, and, unless it still runs in the system slice, a restart requested without waiting for its job (`systemctl restart --no-block`): "not known yet" |
 | anything else, or no file | left as it is ("changed") |
+
+The start's calls to systemd are therefore one reading of the programs whose place decides
+what happens to them, one daemon-reload, one reset-failed and one restart request per
+program that ran when the move began: no polling, no reading of ports, no wait. Its outcomes
+are "not known yet" and the record stays. **"Not known yet" is resolved outside the start,
+by reading only** (fix round F3): the site's status read (the card, and the five-minute
+background reading behind Problems now) checks each such program: active in the system slice
+closes its entry (and the record with it once nothing else is left; the slice file then comes
+back as below); stopped, failed or inside systemd's restart cycle is "not running", named on
+the card and in Problems now with the administrator's action; anything else stays "not known
+yet". A read never starts or restarts anything. Try again and a move's attempt on the same site
+use the same table but restart a program that ran before and does not run where it ran, and
+check it within its start time; they are bounded by the move's own 11 minutes (fix round F4:
+a restart is sent only while what is left holds its start time and 5 seconds; the rest are "not
+restarted yet"). A move of **another** site finds the record and is refused at once, before
+anything of the first site is restarted.
 
 Unit files are written and put back through the writer every other managed file uses
 (the text synced before the rename, the folder after it), so a power loss right after a
@@ -778,22 +807,23 @@ pre-move file that cannot be written; a unit whose place systemd cannot tell (a 
 status read is "not known": nothing is restarted on it, never "not running, so restart it");
 a `daemon-reload` that fails (systemd would still hold the moved text, so no unit is
 restarted); a restart that fails (the program is stopped) or is still starting at its start
-time; at the Agent's start, a put-back restart that does not fit the start's own time
-(alpha.148 fix round: the whole recovery at the Agent's start keeps within 4 seconds,
-because it runs before the Agent's socket opens and an update waits about 12 seconds for
-that socket; a restart is sent only while 1 second is left and waits at most what is left,
-"still starting" when it runs on, and one that does not fit is not sent at this start, "not
-restarted yet"). While the journal is kept, no site is moved: a new move is refused with the
+time; a program that was restarted but whose place could not be told ("not known yet", never
+"not restarted"); at the Agent's start, every restart it only requested ("not known yet",
+above) or could not request ("not restarted yet"). While the journal is kept, no site is moved: a new move is refused with the
 site whose move is unfinished. The site's card (administrator) says the last move did not
-finish and, per program left, its state (stopped and did not start again; place not known,
-not restarted; still starting; not restarted yet), `journalctl -u <unit>` for why, and the
-by-hand step (start it on its page or with `systemctl start <unit>`); its **Try again**
+finish and, per program left, its state (put back but not running; place not known, not
+restarted; still starting; not restarted yet; started again, not known yet; runs but no longer
+answers where it listened before), `journalctl -u <unit>` for why, and the next step: for a
+program that is not running or was not restarted, start it on its page or with `systemctl start
+<unit>`; for one not known yet or not answering, look first (`systemctl status <unit>` and its
+log), never "start it" (fix round W3); its **Try again**
 button (`POST …/site-limits/move {request_id, recover: true}`, audited as `site.limits_move`
 with `recover`) runs the put-back now and moves nothing new. A program started by hand
 meanwhile is found running in the system slice and the journal goes; there is no button that
 forgets the journal while a program stays stopped. Problems now has ONE administrator line
-while the journal is kept (`site_move_kept`, opening the site). The Agent's next start and
-the next move's attempt try the same put-back. Once it completes, the card says the last
+while the journal is kept (`site_move_kept`, opening the site). The status read settles what
+it can see by reading, and Try again and the next move's attempt of that site try the same
+put-back; the Agent's start only reconciles the record (above). Once it completes, the card says the last
 move was interrupted and each program was finished, put back, or left as changed meanwhile,
 until the site's next move.
 
@@ -864,17 +894,22 @@ a warning (a to-do), and goes away by itself when no site is left (`panel_settin
 ### 8.6a What alpha.149 changed (the alpha.148 lab)
 
 - **A put-back is checked like the move** (D6). After its restart a put-back program must
-  run where it ran (active, in the system slice) and listen again on every port it
-  listened on before, within its start time, as the move's own step checks the slice. A
-  program whose restart succeeded but that does not run there (a `Type=simple` unit's
-  restart succeeds as soon as its process starts) is **not** "put back": the journal is
-  kept with it as stopped, still starting or not answering. At the Agent's start the same
-  check runs within the start's 4 seconds; what cannot be seen in that time is kept as
-  "not known yet" (neither a failure nor a success); the journal now also records each
-  program's ports (an earlier journal has none and is checked without them). The card and
-  Problems now say that the program is not running now, that the administrator acts, the
-  next step (its own log, `sudo journalctl -u <unit>`, then **Try again** or start it) and
-  that nothing else was changed.
+  run where it ran (active, in the system slice) within its start time, as the move's own
+  step checks the slice; one that had ports must listen on a port again (fix round F10: a
+  program put back where it ran that answers on a changed port runs and keeps no record;
+  "not answering" is only a program that had ports and listens on none after its start
+  time; a program without ports runs as soon as it is active in its place; Try again uses
+  the same check). A program whose restart succeeded but that does not run there (a
+  `Type=simple` unit's restart succeeds as soon as its process starts) is **not** "put
+  back": the journal is kept with it as stopped, still starting or not answering. The
+  Agent's start does not run this check (fix round F1): it only requests the restart and
+  keeps the program as "not known yet" (neither a failure nor a success), which the status
+  read resolves by reading (§8.4). The journal also records each program's ports (an earlier
+  journal has none and is checked without them). The card and Problems now say that the
+  program is not running now, that the administrator acts, the next step (its own log,
+  `sudo journalctl -u <unit>`, then **Try again** or start it) and that nothing else was
+  changed. The move's window says "put back where they ran, running again" only of programs
+  that ran before the move, and "put back as they were" of the others (fix round W1).
 - **A program inside systemd's automatic restart cycle** (`activating`/`auto-restart`, no
   cgroup) is shown as not running, never as placed by the server owner; it is not counted
   for the move.
@@ -890,18 +925,33 @@ a warning (a to-do), and goes away by itself when no site is left (`panel_settin
   the running slice's kernel values again before it answers: a site whose kernel holds its
   effective values has its limits whatever step failed; one whose values could not be
   compared is "not known" (its own Problems now wording), never "does not have the limits".
-  The recorded reason is a code (`kernel_differs`, `unchecked`, `write_failed`, …).
+  The recorded reason is a code (`kernel_differs`, `unchecked`, `write_failed`, …), kept per
+  subscription with the number of sites for each (fix round F9): the one line words each site
+  by its own reason. Only sites whose limits file was not written or whose kernel still holds
+  the earlier values are said to keep the earlier limits; for the others (not read, the Agent
+  did not answer or did not take the change) it says that it is not known.
 - **A reached process limit on Ubuntu 24.04** (D3). Without `pids.events.local` the slice's
-  own `pids.peak` reaching its `pids.max` since the last reading is also "reached its
-  process limit" (seen at that reading; the kernel does not count how often), because a
-  unit's counters go with its cgroup when the program restarts.
+  own `pids.peak` is read with the `pids.max` it was read under. `pids.peak` is a high-water
+  mark that a changed limit does not reset, so the card says "reached their process limit"
+  only when the limit is unchanged since the previous reading, that reading had the peak and
+  was below the limit, and the peak now reached it (fix round F7): a limit lowered below an
+  earlier peak, or the first reading after the update, is not a reached limit. The kernel
+  there does not count how often, nor whether a new process was refused, and the card says
+  so (it never says that new processes could not start).
+- **The limit then** (fix round F8). Before a change of limits is pushed, the panel reads the
+  affected sites' counters once, so that what happened before the change is recorded with the
+  limit that held. When that reading cannot be made, the events the next reading finds carry
+  no limit value (they may be from before the change), never the new one.
 - **The reseller's bound** (CHECK 2). Where neither the server nor the reseller sets a
   ceiling, the server's default bounds a reseller's customer; the card names it as that
   default ("which also bounds the reseller"), not as a limit the administrator set.
 - **No update during a move** (D5). While a site's programs are being moved, the panel's own
   update is not started: the panel and the Agent both refuse it, and the update page says
-  to wait for the move's window and press update again. The Agent's start writes one
-  journal line per startup step with its time (`agent start: <step> took …`).
+  to wait for the move's window and press update again. Only a move really in flight does
+  that (fix round F5: the Agent's own in-flight flag, never the lock a status read takes).
+  The other way round, a move or Try again is refused while the update is admitted or
+  running (fix round F6). The Agent's start writes one journal line per startup step with
+  its time (`agent start: <step> took …`).
 
 ### 8.7 A deleted site's slice
 
