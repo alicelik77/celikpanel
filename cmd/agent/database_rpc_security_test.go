@@ -30,6 +30,9 @@ func captureMySQLStatements(
 		case isAccountGuardRead(statement):
 			// alpha.149: the account guard's read; an ordinary site account.
 			return []byte("guard=ok\n"), nil
+		case strings.HasPrefix(statement, "SELECT CONCAT('accounts=', COUNT(*)) FROM mysql.user WHERE User = "):
+			// alpha.149 (second review, finding 5): no account of the name yet.
+			return []byte("accounts=0\nothers=0\n"), nil
 		}
 		*statements = append(*statements, statement)
 		return executor(len(*statements)-1, statement)
@@ -128,6 +131,56 @@ func TestWordPressUserCollisionCleansOnlyDatabaseCreatedByThisCall(t *testing.T)
 	}
 	if strings.Contains((*statements)[2], "DROP USER") {
 		t.Fatal("pre-existing user was targeted for deletion")
+	}
+}
+
+// alpha.149 (second review of PR #370, finding 5): an account of the name on
+// any host ('u'@'%', the server owner's own perhaps) or a role of the name:
+// nothing is written, and the answer names the taken user.
+func TestAMariaDBCreateNeverMakesAnAccountBesideOneOfTheSameName(t *testing.T) {
+	for _, existing := range []string{"accounts=1\nothers=1\n", "accounts=2\nothers=1\n"} {
+		var statements []string
+		previous := mysqlExecStatement
+		mysqlExecStatement = func(statement string) ([]byte, error) {
+			statements = append(statements, statement)
+			if strings.HasPrefix(statement, "SELECT CONCAT('accounts=', COUNT(*)) FROM mysql.user WHERE User = 'tenant_shop';") &&
+				strings.Contains(statement, "AND Host <> 'localhost'") {
+				return []byte(existing), nil
+			}
+			return nil, nil
+		}
+		for _, req := range []CreateDatabaseRequest{
+			{Type: "mysql", Name: "tenant_shop", User: "tenant_shop", Password: "secret-password"},
+			wordpressCreateDatabaseRequest(), // a resumed operation too
+		} {
+			statements = nil
+			req.User = "tenant_shop"
+			var response CreateDatabaseResponse
+			if err := (&Agent{}).CreateDatabase(req, &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Success || response.NameTaken != "user" || len(statements) != 1 || !strings.Contains(response.Error, "nothing was changed") {
+				t.Fatalf("existing %q: %+v %q", existing, response, statements)
+			}
+		}
+		mysqlExecStatement = previous
+	}
+	// The name only on localhost, without an operation: refused before
+	// anything is written as well (no database made and dropped again).
+	statements := captureMySQLStatements(t, func(int, string) ([]byte, error) { return nil, nil })
+	previous := mysqlExecStatement
+	mysqlExecStatement = func(statement string) ([]byte, error) {
+		if strings.HasPrefix(statement, "SELECT CONCAT('accounts=', COUNT(*))") {
+			return []byte("accounts=1\nothers=0\n"), nil
+		}
+		return previous(statement)
+	}
+	var response CreateDatabaseResponse
+	if err := (&Agent{}).CreateDatabase(CreateDatabaseRequest{Type: "mysql", Name: "tenant_shop", User: "tenant_shop", Password: "secret-password"}, &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Success || response.NameTaken != "user" || len(*statements) != 0 {
+		t.Fatalf("localhost twin: %+v %q", response, *statements)
 	}
 }
 

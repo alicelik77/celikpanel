@@ -226,6 +226,29 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		return nil
 	}
 
+	// alpha.149 (security; second review of PR #370, finding 5, decision 4 of
+	// the second round): the account is made as 'name'@'localhost' only, and
+	// never beside an existing account of the same name on any host
+	// ('name'@'%', which may be the server owner's own) or a role of that
+	// name: the owner's local sign-ins would then match the new account,
+	// whose password the panel chose. Asked before anything is written; a
+	// resumed operation goes on only on its own marked database and with
+	// no other host of the name.
+	// Aynı adda başka bir hesap ya da rol varsa hiçbir şey yazılmadan reddedilir.
+	names, err := mysqlExecStatement("SELECT CONCAT('accounts=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + "; " +
+		"SELECT CONCAT('others=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + " AND Host <> 'localhost';")
+	accounts, okAccounts := markerValue(names, "accounts")
+	others, okOthers := markerValue(names, "others")
+	if err != nil || !okAccounts || !okOthers {
+		resp.Error = "the database server could not be asked whether a database user named " + req.User + " exists; nothing was changed"
+		return nil
+	}
+	if others != "0" || (accounts != "0" && !(hasOperation && verifyMySQLOwnership(dbIdent, req.OperationID, req.CleanupToken))) {
+		resp.NameTaken = "user"
+		resp.Error = "a database user or role named " + req.User + " already exists on this server (on some host); nothing was changed"
+		return nil
+	}
+
 	databaseCreated := false
 	userCreated := false
 	if _, err := mysqlExecStatement(fmt.Sprintf("CREATE DATABASE %s;", dbIdent)); err != nil {
