@@ -150,22 +150,31 @@ export interface MoveOutcome {
     reason?: MoveReason;
     /** Why its put-back did not complete. */
     back?: MoveReason;
+    /** Fix round W1: it ran when the move began (put back and running again), else put back as it was. */
+    ran?: boolean;
 }
 
-const REASONS: readonly string[] = ['not_running', 'still_starting', 'not_in_slice', 'not_listening', 'restart_failed', 'write_failed', 'record_failed', 'unread'];
+const REASONS: readonly string[] = ['not_running', 'still_starting', 'not_in_slice', 'not_listening', 'no_port', 'restart_failed', 'write_failed', 'record_failed', 'unread'];
 
 /**
  * A step's reason as a catalogue key and its values (alpha.149, lab D7): never the agent's English
  * text; a code this page does not know is the general sentence that points to the agent's journal.
+ * Ports by count (fix round W4): one port "on port 3000"; several "on all of its ports" (the move's
+ * step) or "on none of its ports" (a put-back, F10).
  */
 export function moveReasonWords(reason: MoveReason | undefined): { key: string; values: Record<string, string | number> } {
-    const values = { seconds: reason?.seconds ?? 0, ports: (reason?.ports ?? []).join(', ') };
+    const ports = reason?.ports ?? [];
+    const values = { seconds: reason?.seconds ?? 0, ports: ports.join(', ') };
     if (!reason || !REASONS.includes(reason.code)) return { key: 'slim.reason.other', values };
     if (reason.code === 'not_running' && (reason.state ?? '').includes('auto-restart')) return { key: 'slim.reason.restarting', values };
+    if (reason.code === 'not_listening' || reason.code === 'no_port') {
+        if (ports.length <= 1) return { key: 'slim.reason.not_listening', values };
+        return { key: reason.code === 'no_port' ? 'slim.reason.no_port_many' : 'slim.reason.not_listening_many', values };
+    }
     return { key: `slim.reason.${reason.code}`, values };
 }
 
-const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported'];
+const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running'];
 
 /** Why a whole move did not run, as a catalogue key (the general sentence for every other code). */
 export function moveWhyKey(reason: MoveReason | undefined): string {
@@ -196,17 +205,19 @@ export function decodeMoveAnswer(raw: unknown): MoveAnswer {
 }
 
 /**
- * After a failed move, the programs confirmed back where they ran and the ones whose put-back did not
- * complete: "put back" is said only of the first (review W1).
+ * After a failed move, the programs confirmed back where they ran and running again, the ones put back
+ * as they were (they did not run before the move; fix round W1), and the ones whose put-back did not
+ * complete: "put back" is said only of the first two (review W1).
  */
-export function putBackSplit(answer: MoveAnswer): { back: string[]; left: string[] } {
+export function putBackSplit(answer: MoveAnswer): { back: string[]; asWere: string[]; left: string[] } {
     const back: string[] = [];
+    const asWere: string[] = [];
     const left: string[] = [];
     for (const u of answer.units) {
         if (u.outcome !== 'failed' && u.outcome !== 'put_back') continue;
-        (u.put_back ? back : left).push(u.unit);
+        (!u.put_back ? left : u.ran === true ? back : asWere).push(u.unit);
     }
-    return { back, left };
+    return { back, asWere, left };
 }
 
 /** A kept record's state of one program (alpha.149: unverified, not_answering). */

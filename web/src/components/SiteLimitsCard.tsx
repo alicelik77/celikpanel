@@ -211,7 +211,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     if (answer.rolled_back && failed) {
                         // "Put back" only for what was confirmed back and running again; each of
                         // the rest is named with why (review W1; alpha.149, lab D6/D7).
-                        const { back, left } = putBackSplit(answer);
+                        const { back, asWere, left } = putBackSplit(answer);
                         const notBack = left.map((name) => {
                             const u = answer.units.find((x) => x.unit === name);
                             return u?.back?.code === 'changed' ? `${labelOf(units, name)} (${t('slim.move.changed')})`
@@ -220,7 +220,8 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                         return {
                             state: 'failed',
                             reason: [t('slim.move.failedUnit', { unit: labelOf(units, failed.unit), reason: reasonText(failed.reason), name: failed.unit }),
-                                back.length > 0 ? t('slim.move.back', { list: back.map((u) => labelOf(units, u)).join(', ') }) : '', ...notBack].filter(Boolean).join(' '),
+                                back.length > 0 ? t('slim.move.back', { list: back.map((u) => labelOf(units, u)).join(', ') }) : '',
+                                asWere.length > 0 ? t('slim.move.backStopped', { list: asWere.map((u) => labelOf(units, u)).join(', ') }) : '', ...notBack].filter(Boolean).join(' '),
                         };
                     }
                     if (!answer.done) return { state: 'failed', reason: answer.kept ? t('slim.why.kept_earlier') : t(moveWhyKey(answer.reason) as SiteLimitsLaneKey) };
@@ -280,9 +281,11 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     {kept.map((k) => (
                         <p key={k.unit} data-site-limits-kept-unit={k.state}>
                             {/* alpha.149 (lab D6): put back but not running: said so, who acts, the next step. */}
+                            {/* Fix round W3: not known yet, or running but not answering: look first, never "start it". */}
                             {k.state === 'failed'
                                 ? t('slim.kept.notRunning', { unit: labelOf(units, k.unit), name: k.unit })
-                                : t('slim.kept.unit', { unit: labelOf(units, k.unit), state: t(`slim.kept.${k.state}` as TranslationKey), name: k.unit })}
+                                : t(k.state === 'unverified' || k.state === 'not_answering' ? 'slim.kept.look' : 'slim.kept.unit',
+                                    { unit: labelOf(units, k.unit), state: t(`slim.kept.${k.state}` as TranslationKey), name: k.unit })}
                         </p>
                     ))}
                     <Button loading={working} disabled={working || view.busy === true} onClick={() => void retry()}>{t('pnow.retry')}</Button>

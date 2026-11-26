@@ -68,6 +68,48 @@ export function siteStoppedLines(
         return `${item.domain}: ${parts.join('; ')}`;
     });
     const more = (preview.sites_stopped_count ?? items.length) - items.length;
-    if (more > 0) lines.push(`+${more}`);
+    if (more > 0) lines.push(t('limits.preview.more', { n: more }));
     return lines;
+}
+
+// The unapplied-limits line of Problems now (alpha.149 fix round, F9): the
+// server names each reason with its sites ("kernel_differs:2,unchecked:1"; an
+// earlier record one code for all). Only the sites whose limits file was not
+// written or whose kernel still holds the earlier values are said to have the
+// earlier limits; for every other reason it is not known.
+const APPLY_LACKING: readonly string[] = ['kernel_differs', 'write_failed', 'refused', 'out_of_range'];
+const APPLY_REASONS: readonly string[] = [...APPLY_LACKING, 'unchecked', 'agent_unreachable', 'agent_refused'];
+
+export function unappliedCounts(name: string | undefined, total: number): { lacking: number; unknown: number; lackingCodes: string[]; unknownCodes: string[] } {
+    const raw = name ?? '';
+    const parts: [string, number][] = raw.includes(':') ? raw.split(',').map((p) => [p.split(':')[0], Number(p.split(':')[1])]) : [[raw, total]];
+    const out = { lacking: 0, unknown: 0, lackingCodes: [] as string[], unknownCodes: [] as string[] };
+    for (const [code, n] of parts) {
+        if (!(n > 0)) continue;
+        if (APPLY_LACKING.includes(code)) {
+            out.lacking += n;
+            out.lackingCodes.push(code);
+        } else {
+            out.unknown += n;
+            out.unknownCodes.push(code);
+        }
+    }
+    return out;
+}
+
+/** The line's title or body key by what is known of its sites. */
+export function unappliedKey(problem: { name?: string; value?: number }, part: 'title' | 'body'): string {
+    const c = unappliedCounts(problem.name, problem.value ?? 0);
+    if (c.lacking === 0) return part === 'title' ? 'pnow.site_limits_unapplied.title_unchecked' : 'pnow.site_limits_unapplied.body_unknown';
+    if (c.unknown > 0) return `pnow.site_limits_unapplied.${part}_mixed`;
+    return c.lacking === 1 ? `pnow.site_limits_unapplied.${part}_one` : `pnow.site_limits_unapplied.${part}`;
+}
+
+/** The line's values: each group's sites and reasons in the page's words. */
+export function unappliedVars(problem: { name?: string; value: number }, t: (key: string, values?: Values) => string): Values {
+    const c = unappliedCounts(problem.name, problem.value);
+    const words = (codes: string[]) =>
+        [...new Set(codes.map((code) => t(`slim.applyReason.${APPLY_REASONS.includes(code) ? code : 'other'}`)))].join('; ');
+    const sites = (n: number) => (n === 1 ? t('slim.sites.one') : t('slim.sites.many', { n }));
+    return { other: words(c.lackingCodes), why: words(c.unknownCodes), lacking: sites(c.lacking), unknown: sites(c.unknown), value: c.unknown === 0 ? c.lacking : problem.value };
 }

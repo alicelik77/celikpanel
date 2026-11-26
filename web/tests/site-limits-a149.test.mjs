@@ -11,7 +11,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
 import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';
-import { siteLimitsLaneTranslation, siteStoppedLines, sitesStoppedTitle, withSiteLimitsLane } from '../src/i18n/siteLimitsLane.ts';
+import { siteLimitsLaneTranslation, siteStoppedLines, sitesStoppedTitle, unappliedCounts, unappliedKey, unappliedVars, withSiteLimitsLane } from '../src/i18n/siteLimitsLane.ts';
+import { enRightsScreens } from '../src/i18n/screens/rights/en.ts';
 import { enErrorsScreens } from '../src/i18n/screens/errors/en.ts';
 import { trErrorsScreens } from '../src/i18n/screens/errors/tr.ts';
 import { enSetupScreens } from '../src/i18n/screens/setup/en.ts';
@@ -108,7 +109,9 @@ test('the preview’s sites are worded by the page, one site and one account in 
     sites_stopped_items: [{ domain: 'kx1.dr.test', memory_mb: 215, memory_limit_mb: 128 }] };
   assert.deepEqual(siteStoppedLines(preview, tr), ['kx1.dr.test: kullanılan bellek 215 MB, yeni sınır 128 MB']);
   assert.deepEqual(siteStoppedLines(preview, en), ['kx1.dr.test: memory 215 MB in use, new limit 128 MB']);
-  assert.deepEqual(siteStoppedLines({ ...preview, sites_stopped_count: 41 }, en).slice(-1), ['+40']);
+  // Fix round (W4): the "+n" line keeps its word.
+  assert.deepEqual(siteStoppedLines({ ...preview, sites_stopped_count: 41 }, en).slice(-1), ['+40 more']);
+  assert.deepEqual(siteStoppedLines({ ...preview, sites_stopped_count: 41 }, tr).slice(-1), ['+40 site daha']);
   assert.match(sitesStoppedTitle(1, en), /^The programs of 1 site use/);
   assert.match(sitesStoppedTitle(3, en), /3 sites/);
   assert.match(enSiteLimitsLane['rights.plan.narrowing.one'], /^1 account follows this plan/);
@@ -116,15 +119,57 @@ test('the preview’s sites are worded by the page, one site and one account in 
   assert.match(read('../src/components/ProblemsNow.tsx'), /siteStoppedLines\(preview, t\)/);
 });
 
-test('the unapplied line words its reason by code and says "not known" when the kernel was not read', () => {
+test('the unapplied line words each site by its own reason and says "not known" when that is all that is known', () => {
   const problems = read('../src/components/ProblemsNow.tsx');
-  assert.match(problems, /problem\.kind === 'site_limits_unapplied'[\s\S]*slim\.applyReason\./);
-  assert.match(problems, /problem\.name === 'unchecked'\) return 'pnow\.site_limits_unapplied\.title_unchecked'/);
-  assert.match(problems, /problem\.name === 'unchecked'\) return 'pnow\.site_limits_unapplied\.body_unchecked'/);
-  for (const code of ['kernel_differs', 'write_failed', 'refused', 'out_of_range', 'agent_unreachable', 'agent_refused', 'other']) {
+  assert.match(problems, /problem\.kind === 'site_limits_unapplied'\) Object\.assign\(vars, unappliedVars\(/);
+  assert.match(problems, /problem\.kind === 'site_limits_unapplied'\) return unappliedKey\(problem, 'title'\)/);
+  assert.match(problems, /problem\.kind === 'site_limits_unapplied'\) return unappliedKey\(problem, 'body'\)/);
+  for (const code of ['kernel_differs', 'write_failed', 'refused', 'out_of_range', 'unchecked', 'agent_unreachable', 'agent_refused', 'other']) {
     assert.ok(enSiteLimitsLane[`slim.applyReason.${code}`] && trSiteLimitsLane[`slim.applyReason.${code}`], code);
   }
   assert.match(enSiteLimitsLane['pnow.site_limits_unapplied.title_one'], /1 site yet/);
+  // Fix round (F9): a batch of one kernel that differs and two not read is both, each by its count.
+  const mixed = { kind: 'site_limits_unapplied', name: 'kernel_differs:1,unchecked:2', value: 3 };
+  assert.deepEqual(unappliedCounts(mixed.name, 3), { lacking: 1, unknown: 2, lackingCodes: ['kernel_differs'], unknownCodes: ['unchecked'] });
+  assert.equal(unappliedKey(mixed, 'title'), 'pnow.site_limits_unapplied.title_mixed');
+  const en = withSiteLimitsLane('en', (key) => key);
+  const body = en(unappliedKey(mixed, 'body'), { domain: 'Lean', ...unappliedVars(mixed, en) });
+  assert.equal(body, 'After a change of limits (Lean), the earlier limits still hold for 1 site (the kernel still holds the earlier values); for 2 sites it is not known whether the new ones arrived (what their running programs hold could not be read). CelikPanel tries again every hour; this line goes away when every site has the new ones.');
+  // Only not known: never "earlier limits".
+  const unknown = { kind: 'site_limits_unapplied', name: 'agent_unreachable:2', value: 2 };
+  assert.equal(unappliedKey(unknown, 'title'), 'pnow.site_limits_unapplied.title_unchecked');
+  assert.ok(!/earlier limits/.test(en(unappliedKey(unknown, 'body'), unappliedVars(unknown, en))));
+  // Only lacking, one site: the singular; an earlier record's single code counts for all.
+  assert.equal(unappliedKey({ name: 'write_failed:1', value: 1 }, 'body'), 'pnow.site_limits_unapplied.body_one');
+  assert.equal(unappliedKey({ name: 'kernel_differs', value: 4 }, 'title'), 'pnow.site_limits_unapplied.title');
+  assert.equal(unappliedKey({ name: 'unchecked', value: 4 }, 'title'), 'pnow.site_limits_unapplied.title_unchecked');
+});
+
+test('fix round: put-back words are true (W1–W4), the peak says only what is known (W5), the update refuses a move (F6)', () => {
+  // W1: "running again" only for programs that ran before; the others are put back as they were.
+  for (const words of [enSiteLimitsLane, trSiteLimitsLane]) assert.match(words['slim.move.backStopped'], /\{list\}/);
+  assert.match(enSiteLimitsLane['slim.move.backStopped'], /not running/);
+  // W2: "not known yet" never says "not restarted"; "unknown" is only for what was not restarted.
+  assert.ok(!/not restarted|agent started/.test(enSiteLimitsLane['slim.kept.unverified']));
+  // W3: for unverified and not answering the action is to look, never "start it".
+  const card = read('../src/components/SiteLimitsCard.tsx');
+  assert.match(card, /k\.state === 'unverified' \|\| k\.state === 'not_answering' \? 'slim\.kept\.look' : 'slim\.kept\.unit'/);
+  for (const words of [enSiteLimitsLane, trSiteLimitsLane]) assert.ok(!/start it|başlatın\.|systemctl start/.test(words['slim.kept.look']), words['slim.kept.look']);
+  assert.match(enSiteLimitsLane['slim.kept.look'], /systemctl status \{name\}[\s\S]*Try again/);
+  // W4: ports by count.
+  assert.equal(moveReasonWords({ code: 'not_listening', seconds: 20, ports: [3000] }).key, 'slim.reason.not_listening');
+  assert.equal(moveReasonWords({ code: 'not_listening', seconds: 20, ports: [3000, 3001] }).key, 'slim.reason.not_listening_many');
+  assert.equal(moveReasonWords({ code: 'no_port', seconds: 20, ports: [3000, 3001] }).key, 'slim.reason.no_port_many');
+  assert.equal(moveReasonWords({ code: 'no_port', seconds: 20, ports: [3000] }).key, 'slim.reason.not_listening');
+  assert.match(enSiteLimitsLane['slim.reason.not_listening_many'], /ports \(\{ports\}\)/);
+  assert.equal(enRightsScreens['rights.plan.narrowing'].startsWith('{n} accounts follow'), true);
+  assert.equal(enRightsScreens['rights.plan.narrowingReseller'].startsWith('{n} resellers follow'), true);
+  // W5: a peak at the limit never claims a refused process.
+  for (const words of [enSiteLimitsLane, trSiteLimitsLane]) assert.ok(!/could not start|başlayamadı/.test(words['slim.event.tasks_peak']), words['slim.event.tasks_peak']);
+  // F6: the move is refused during the update, in the page's words (agent code and panel refusal).
+  assert.equal(moveWhyKey({ code: 'update_running' }), 'slim.why.update_running');
+  assert.equal(siteLimitsLaneTranslation('tr', 'err.SERVICE_APP.site_limits_update_running'), trSiteLimitsLane['err.SERVICE_APP.site_limits_update_running']);
+  assert.match(enSiteLimitsLane['slim.why.update_running'], /update is in progress[\s\S]*after the update/);
 });
 
 test('an update is not started during a move, and the page says what to do', () => {

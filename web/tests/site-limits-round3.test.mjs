@@ -58,13 +58,14 @@ test('the rolled-back message says put back only for what was confirmed back and
   const answer = decodeMoveAnswer({
     done: false, rolled_back: true, kept: true, units: [
       { unit: 'celikrt-5.service', outcome: 'failed', put_back: false, detail: 'did not start' },
-      { unit: 'celikrt-4.service', outcome: 'put_back', put_back: true },
+      { unit: 'celikrt-4.service', outcome: 'put_back', put_back: true, ran: true },
       { unit: 'celikrt-6.service', outcome: 'put_back', put_back: false },
       { unit: 'celikrt-7.service', outcome: 'not_tried' },
     ],
   });
   assert.equal(answer.kept, true);
-  assert.deepEqual(putBackSplit(answer), { back: ['celikrt-4.service'], left: ['celikrt-5.service', 'celikrt-6.service'] });
+  // alpha.149 fix round (W1): a program that did not run before is put back as it was.
+  assert.deepEqual(putBackSplit(answer), { back: ['celikrt-4.service'], asWere: [], left: ['celikrt-5.service', 'celikrt-6.service'] });
   // alpha.149 (the alpha.148 lab's D6/D7): "put back" says running again; each of the
   // rest is named with its reason in the page's words (route-scoped lane copy).
   for (const words of [enSiteLimitsLane, trSiteLimitsLane]) {
@@ -73,7 +74,7 @@ test('the rolled-back message says put back only for what was confirmed back and
     assert.match(words['slim.move.backNot'], /\{unit\}[\s\S]*\{reason\}/);
   }
   const card = read('../src/components/SiteLimitsCard.tsx');
-  assert.match(card, /const \{ back, left \} = putBackSplit\(answer\)[\s\S]*slim\.move\.backNot[\s\S]*slim\.move\.failedUnit[\s\S]*slim\.move\.back/);
+  assert.match(card, /const \{ back, asWere, left \} = putBackSplit\(answer\)[\s\S]*slim\.move\.backNot[\s\S]*slim\.move\.failedUnit[\s\S]*slim\.move\.back[\s\S]*slim\.move\.backStopped/);
 });
 
 test('in force is the kernel’s; a customer reads one neutral state', () => {
