@@ -497,4 +497,28 @@ assert_finalizer_runtime_stopped "invalid scheduler-only marker"
 [[ -e "$TRANSACTION_ROOT/scheduler-restore.pending" ]] \
     || fail "invalid scheduler-only marker was removed"
 
+# alpha.149: the controlled agent start waits 300 polls 0.2 s apart (about
+# 60 s); a healthy agent opened its socket in up to 14 s on the lab's servers.
+# The whole function is pinned: a shorter bound or a looser readiness test fails.
+expected_agent_wait=$(cat <<'EOF'
+wait_for_agent_ready() {
+    local _
+    [[ ! -e "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]] \
+        || die "agent socket exists before the controlled agent start"
+    systemctl start celikpanel-agent.service \
+        || die "pending-target agent could not be started"
+    for _ in $(seq 1 300); do
+        if systemctl is-active --quiet celikpanel-agent.service &&
+           [[ -S "$AGENT_SOCKET" && ! -L "$AGENT_SOCKET" ]]; then
+            return 0
+        fi
+        sleep 0.2
+    done
+    die "pending-target agent did not become active with its exact socket"
+}
+EOF
+)
+[[ "$(extract_function wait_for_agent_ready)" == "$expected_agent_wait" ]] \
+    || fail "wait_for_agent_ready differs from the reviewed loop (bound or readiness test)"
+
 printf 'pending-update finalizer contract: PASS\n'
