@@ -131,9 +131,13 @@ before.
   starting again is shown as not running. The move's window, the line about
   limits that did not reach every site and the plan's preview give their
   reasons in the page's language.
-- **A program counts as running again only once it has run** without a
-  break for its start time (90 seconds unless the program sets another, at
-  least 20), where it ran, and, if it had ports, listens on one.
+- **When a program counts as running again.** In the move's own window and
+  at **Try again**, a program counts as running as soon as it runs where it
+  should and, if it had ports, listens again. A record that is closed
+  afterwards, by a reading of the card or of **Problems now**, closes only
+  once the program has run without a break for its start time (90 seconds
+  unless the program sets another, at least 20), where it ran, and, if it
+  had ports, listens on one.
 - **How a kept record ends.** **Try again** puts back and checks what is
   still not running; a program that runs where it ran but listens on no
   port is settled by **Try again** and named. Starting the program on its
@@ -262,12 +266,211 @@ before.
 - **A status reading can say "not running" of a program that was just
   restarting;** a later reading closes the record once the program has run
   for its start time.
+- **A program that starts, answers and stops a moment later** is reported
+  by the move's window as moved, and by **Try again** as put back; the
+  site's card then shows that the program is not running.
+- **Restarting the server while an update is in progress.** On a server
+  that has not been restarted since CelikPanel's firewall rules were first
+  saved on it, a restart of the server during the update leaves the update
+  unfinished: the panel and its agent stay stopped, neither the automatic
+  recovery nor the recovery command finishes it, and hosted sites, mail and
+  DNS keep running. Do not restart the server until the update's page says
+  that the update has finished.
+- **An update page left open through an update that was refused before it
+  started** can stay locked in that browser; the update is offered again
+  after signing in from another browser.
 - The open list of alpha.148 stays open where this release does not close
   it ([alpha.148 release notes](RELEASE-NOTES-v0.1.0-alpha.148.md)).
 
 ## Checked in the lab
 
-OPEN.
+Lab check finished: one run on the pair of test servers, a Debian 13
+server (PostgreSQL 17, MariaDB 11.8) and an Ubuntu 24.04 server (MariaDB
+10.11, and PostgreSQL 16 installed for this run from the panel's Components
+page), on 26 November 2026, UTC 07:45 to about 11:20 with the clean-up.
+Both servers started from alpha.148's code and were updated through the
+panel's own update page to this release's code (`578b98e6f`, under the
+lab-only labels v0.1.0-alpha.158 to v0.1.0-alpha.160). The updates, the
+refusal windows and the usual pages were done on the pages themselves;
+database and limit actions were sent as the panel's pages send them, as the
+administrator. What the lab did by hand on the servers is said below. What
+the lab met is in "Known limits".
+
+- **Both servers updated through the panel's own update page by themselves
+  while the panel's agent was held back for 20 seconds at its start** (the
+  lab held it): the update waited for the agent, which answered 20.2 and
+  20.6 seconds after its start; the page showed only the update's steps and
+  then "updated" by itself, about 2 minutes 12 seconds on each server, with
+  the administrator signed in throughout. No recovery attempt. No schema
+  step (it stays 81); one panel and one agent on each server; no new failed
+  service. Nothing of a customer's was restarted or reloaded: every program
+  kept its process, the web server and PHP kept theirs, a PostgreSQL and a
+  MariaDB session held open across the update on each server stayed
+  connected with their settings, no database user was changed, and a check
+  every second saw the sites, the mail port and DNS answer throughout. Two
+  more updates of the Debian 13 server, between labels of the same code,
+  completed the same way without the hold (the agent answered within a
+  tenth of a second of its start).
+- **An update that fails returned to alpha.148 by itself, on both
+  servers.** The lab offered a release whose new panel cannot pass its
+  start check, and held alpha.148's agent back for 20 seconds: the return
+  waited for it (20.7 and 20.1 seconds) and completed; the page said by
+  itself that the update was not completed and that the earlier release was
+  put back, with the administrator signed in; every program kept its
+  process and the sites answered throughout. On Debian 13 the first
+  automatic attempt stopped because the system's own package update had
+  just started; the second, half a minute later, completed the return.
+- **An agent that does not start within its minute** (Ubuntu 24.04, held
+  back for 70 seconds at every start): the update stopped the agent safely
+  after 63 seconds; the page said that the panel does not answer and that
+  an update may be restarting it, never that the update failed; the
+  automatic recovery tried three times, about a minute each, then paused
+  and named the owner's command. Sites, mail and DNS answered every second
+  throughout. With the hold removed, the named command
+  (`sudo /usr/libexec/celikpanel/recovery recover --retry --snapshot …`)
+  finished the update.
+- **Ordinary database actions, on MariaDB and PostgreSQL, on both
+  servers:** creating a database with its user, adding and removing a
+  user, changing a password, suspending and resuming the subscription,
+  deleting the database with its user. All succeeded; none was refused.
+- **The refusal on MariaDB (11.8 and 10.11).** The lab, as the database
+  server's root, gave a site's database user in turn a server-wide right, a
+  right on the `mysql` database, a role, and an account of the same name
+  from any host that holds a server-wide right. Each time the password
+  change was refused, naming the user and saying that nothing was changed,
+  and the stored password was unchanged; the suspension left that account
+  unlocked and said so, while the subscription's other users were locked
+  and unlocked as usual; deleting the database removed the database, kept
+  the account and said so. After the lab took the right back, each action
+  went through. A new database whose user's name already existed as an
+  account from another host was refused as a name already taken.
+- **The refusal on PostgreSQL (16 and 17).** A site's database user was
+  given in turn the right to create databases, membership of
+  `pg_read_server_files`, membership without inheritance of a role that may
+  create roles, and a chain of memberships ending in
+  `pg_read_server_files`. Each time the password change, the suspension
+  and the limits were refused for that user by name, and deleting its
+  database removed the database and kept the user; its password, its right
+  to sign in and its settings were unchanged. After the lab took the right
+  back, each went through, and a user without such rights was never
+  refused.
+- **A database owned by a database server administrator** (the lab made
+  `postgres` the owner of a site's database, as a restore that keeps owners
+  does): adding a user was refused, naming `postgres`; no user was made and
+  no default right was written. The same when the lab gave CelikPanel's own
+  database account `pg_read_server_files`: refused, naming that account;
+  after the lab took it back, adding and removing a user worked.
+- **Removing an added user that owns objects** (PostgreSQL 16 and 17, in a
+  database made on the Database Servers page and owned by CelikPanel's own
+  database account): the added user made a function that runs with its
+  owner's rights, and a table with an index that calls a function of its
+  own. The removal was refused in the removal's window, in Turkish and in
+  English: the user owns objects, nothing was changed, and the server's
+  administrator hands them over with the guide's command. Afterwards every
+  object still belonged to the added user, CelikPanel's own account owned
+  nothing in the database, and the function and the index's function ran as
+  the added user. After the administrator ran the guide's command, the
+  removal went through and the objects belonged to the database's own user.
+  An added user that had made nothing was removed at once. The database
+  server's statement log of the whole check held one `REASSIGN OWNED`: the
+  administrator's own. In a database owned by the site's own user, removing
+  an added user that had made a table gave the table to that owner as
+  before, with its rows.
+- **CelikPanel's own PostgreSQL account** after all of this, on both
+  servers: not a superuser, no replication right, no membership of any
+  `pg_*` role, no right on single server settings.
+- **Database limits reach PostgreSQL users,** on both servers: a plan saved
+  with a longest statement of 5 seconds, 60 seconds idle in a transaction,
+  64 MB of temporary files and 7 connections wrote all four to the site's
+  PostgreSQL users, and a session signed in as such a user read
+  `temp_file_limit` as 64MB. On Ubuntu 24.04 a plan's connection limit
+  saved under alpha.148 (it had reached the MariaDB user only) and changed
+  from 10 to 20 after the update reached the PostgreSQL user (20, before:
+  none) and the MariaDB user. A user created afterwards had the plan's
+  limits from the start. A user the lab made a member of another role was
+  left out and named, and the other users got their values.
+- **The server owner's own values stay,** on both servers: a statement time
+  of 30 seconds set by hand on a PostgreSQL user and on a MariaDB user, and
+  a connection limit of 25 set by hand, stayed through saves that changed
+  those limits for the other users; the site's card named each as the
+  owner's.
+- **When the limits cannot be given** (Ubuntu 24.04): with PostgreSQL
+  stopped by the lab, the save said which users the limits did not reach
+  and **Problems now** said that the database server is not running and
+  that the server owner acts; with the panel's agent stopped, it named the
+  administrator. After each, **Apply again** cleared the line. With a
+  database user held locked by an open transaction of the lab, the limits
+  call gave up after 5 seconds and the save said so; another subscription's
+  suspension completed in 4 seconds meanwhile, and the user's settings were
+  unchanged.
+- **The panel's database file** stayed the panel's own, with owner and
+  access rights unchanged, while the agent read it; saves worked after a
+  restart of the panel.
+- **A stopped program started from the panel** (uploaded programs, both
+  servers) started inside its site's limits, with its mail block. With the
+  server owner's own override file, or with a unit file edited by hand, it
+  started where the owner had placed it, the files stayed as they were, and
+  the card gave the reason.
+- **A move that did not complete, and the agent's start** (Debian 13). With
+  a program the lab made unable to start, the move answered after the
+  program's start time that it was not completed and that the program is
+  not running; the record was kept and the card said so. Three restarts
+  of the agent with that record: it answered after 2.6 to 2.9 seconds each
+  time, its look at the record took 14 to 25 thousandths of a second, and
+  it started nothing. An update with the record kept completed by itself,
+  and the record was still kept afterwards. Once the lab let the program
+  start, **Try again** closed the record. With a program that takes 30
+  seconds to listen, the agent was restarted 12 seconds into the move: one
+  reload and one restart of the program, the agent answered 1.5 seconds
+  after its start, and the card kept the record as not yet known until the
+  program had run for 90 seconds, then closed it by itself.
+- **No move while the update runs** (Debian 13): **Move** and **Try again**
+  were refused with the reason while an update ran; the cards could be read
+  throughout; after the update the move answered.
+- **The limit an event happened under** (Debian 13): a plan's site memory
+  was lowered to 128 MB, the kernel stopped a program over it, and the
+  default was restored before anyone read the card; the card showed the
+  event with 128 MB, for the administrator and for the customer's account.
+- After the updates the usual pages loaded on both servers, and the
+  database tools opened through the panel.
+
+**Where the lab left the page's path.** As root on the lab servers, the lab
+gave and took back database rights and roles, changed a database's owner,
+set database values by hand, turned the database server's statement log on
+and off, held a database user locked, held the panel's agent back at its
+start, restarted and stopped the agent, the panel and PostgreSQL, copied
+its test program into the sites' folders and made it unable or slow to
+start, wrote the server owner's override file and edited a unit file,
+restarted the Ubuntu 24.04 server during an update, ran the recovery
+command, returned the Ubuntu 24.04 server to its saved alpha.148 state
+three times, and cleaned up at the end.
+
+**Not checked on real servers:**
+
+- Copying a database between two MariaDB servers (remote database access
+  was off on the lab servers).
+- A connection limit that alpha.148 wrote for a user made on the Database
+  Servers page, at the next change of that limit.
+- Starting a stopped Node.js site or service app from the panel.
+- A move that does not complete, and the agent's start with a kept record,
+  on Ubuntu 24.04.
+- Pressing the update while a move runs, a restart of the server during a
+  move, and the agent restarted during the move of a program that keeps
+  stopping.
+- A program started on its own page while a record is kept; the words for
+  a program that systemd keeps starting again; a program that listens on
+  another port, on IPv6 only, or on no port after a move that did not
+  complete.
+- The line about limits that did not reach every site, with one site whose
+  limits are not known.
+- Database limits refused by PostgreSQL's own access rules; the panel
+  restarted in the middle of a large save; the hourly round.
+- The process-limit event on Ubuntu 24.04, the sign-in page's new words
+  about a sign-in sent twice, and a start with limits smaller than the
+  program needs.
+- alpha.148 started on this release's panel database.
+- Webmail after the update.
+- Nothing was tried on Arch Linux.
 
 ## What to expect after updating
 
@@ -288,7 +491,8 @@ OPEN.
   limit refuses new connections over it without ending open ones.
 - **The update itself:** while it runs the panel is not available, for up to
   about a minute longer than before when the panel's agent starts slowly.
-  Hosted sites, mail, DNS and databases keep running throughout.
+  Hosted sites, mail, DNS and databases keep running throughout. Do not
+  restart the server while the update runs (see "Known limits").
 - A status reading that closes a kept move record puts the site's earlier
   limits file back and reloads systemd's configuration; no program is
   restarted by it.

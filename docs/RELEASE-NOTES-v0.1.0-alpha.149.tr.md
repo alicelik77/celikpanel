@@ -138,9 +138,13 @@ geçer.
   başlattığı bir program çalışmıyor olarak gösterilir. Taşımanın penceresi,
   sınırların her siteye ulaşmadığını söyleyen satır ve planın önizlemesi
   nedenlerini sayfanın dilinde verir.
-- **Bir program ancak çalıştıktan sonra yeniden çalışıyor sayılır:**
-  başlama süresi boyunca (program başkasını belirtmedikçe 90 saniye, en az
-  20) kesintisiz, çalıştığı yerde ve portları varsa birinden dinleyerek.
+- **Bir program ne zaman yeniden çalışıyor sayılır.** Taşımanın kendi
+  penceresinde ve **Tekrar dene**'de bir program, olması gereken yerde
+  çalıştığı ve portları varsa yeniden dinlediği anda çalışıyor sayılır.
+  Sonradan, kartın ya da **Şu anki sorunlar**'ın bir okumasıyla kapanan bir
+  kayıt ise ancak program başlama süresi boyunca (program başkasını
+  belirtmedikçe 90 saniye, en az 20) kesintisiz, çalıştığı yerde çalıştıktan
+  ve portları varsa birinden dinledikten sonra kapanır.
 - **Tutulan bir kayıt nasıl kapanır.** **Tekrar dene** hâlâ çalışmayanı
   geri koyar ve denetler; çalıştığı yerde çalışan ama hiçbir porttan
   dinlemeyen bir program **Tekrar dene** ile kapatılır ve adı söylenir.
@@ -274,12 +278,217 @@ geçer.
 - **Bir durum okuması, o sırada yeniden başlamakta olan bir program için
   "çalışmıyor" diyebilir;** program başlama süresi boyunca çalışınca sonraki
   bir okuma kaydı kapatır.
+- **Başlayan, yanıt veren ve bir an sonra duran bir program** taşımanın
+  penceresinde taşındı, **Tekrar dene**'de geri kondu olarak bildirilir;
+  sitenin kartı sonra programın çalışmadığını gösterir.
+- **Güncelleme sürerken sunucuyu yeniden başlatmak.** CelikPanel'in güvenlik
+  duvarı kuralları ilk kez kaydedildiğinden beri yeniden başlatılmamış bir
+  sunucuda, güncelleme sırasında sunucunun yeniden başlatılması güncellemeyi
+  yarım bırakır: panel ve ajanı durmuş kalır, onu ne kendiliğinden kurtarma
+  ne de kurtarma komutu tamamlar; barındırılan siteler, posta ve DNS
+  çalışmayı sürdürür. Güncellemenin sayfası güncellemenin bittiğini
+  söyleyene kadar sunucuyu yeniden başlatmayın.
+- **Başlamadan reddedilen bir güncelleme boyunca açık kalmış bir güncelleme
+  sayfası** o tarayıcıda kilitli kalabilir; başka bir tarayıcıdan giriş
+  yapınca güncelleme yeniden sunulur.
 - alpha.148'in açık listesi, bu sürümün kapatmadığı yerlerde açık kalır
   ([alpha.148 sürüm notları](RELEASE-NOTES-v0.1.0-alpha.148.tr.md)).
 
 ## Laboratuvarda denenenler
 
-AÇIK.
+Laboratuvar denemesi bitti: deneme sunucusu çiftinde, bir Debian 13
+sunucusu (PostgreSQL 17, MariaDB 11.8) ile bir Ubuntu 24.04 sunucusunda
+(MariaDB 10.11 ve bu deneme için panelin Bileşenler sayfasından kurulan
+PostgreSQL 16) tek bir çalışma: 26 Kasım 2026, UTC 07:45'ten temizlikle
+birlikte yaklaşık 11:20'ye kadar. İki sunucu da alpha.148'in koduyla başladı
+ve panelin kendi güncelleme sayfasından bu sürümün koduna (`578b98e6f`,
+yalnız laboratuvarda kullanılan v0.1.0-alpha.158 ile v0.1.0-alpha.160
+arasındaki etiketlerle) güncellendi. Güncellemeler, ret pencereleri ve
+olağan sayfalar sayfaların kendisinde yapıldı; veritabanı ve sınır işlemleri
+yönetici olarak, panelin sayfalarının gönderdiği biçimde gönderildi.
+Laboratuvarın sunucularda elle yaptıkları aşağıda söylenir. Laboratuvarın
+karşılaştıkları "Bilinen sınırlar"dadır.
+
+- **İki sunucu da, panelin ajanı açılışında 20 saniye bekletilirken, panelin
+  kendi güncelleme sayfasından kendiliğinden güncellendi** (bekleten
+  laboratuvardı): güncelleme ajanı bekledi, ajan açılışından 20,2 ve 20,6
+  saniye sonra yanıt verdi; sayfa yalnız güncellemenin adımlarını, sonra
+  kendiliğinden "güncellendi" yazısını gösterdi; her sunucuda yaklaşık 2
+  dakika 12 saniye, yönetici baştan sona oturumu açık olarak. Kurtarma
+  denemesi olmadı. Şema adımı yok (81 olarak kalır); her sunucuda bir panel
+  ve bir ajan; yeni başarısız hizmet yok. Bir müşterinin hiçbir şeyi yeniden
+  başlatılmadı ya da yeniden yüklenmedi: her program işlemini korudu, web
+  sunucusu ve PHP kendilerininkini korudu, her sunucuda güncelleme boyunca
+  açık tutulan bir PostgreSQL ve bir MariaDB oturumu ayarlarıyla bağlı kaldı,
+  hiçbir veritabanı kullanıcısı değiştirilmedi ve saniyede bir yapılan bir
+  denetim sitelerin, posta portunun ve DNS'in baştan sona yanıt verdiğini
+  gördü. Debian 13 sunucusunun, aynı kodun etiketleri arasındaki iki
+  güncellemesi daha, bekletme olmadan aynı biçimde tamamlandı (ajan
+  açılışından sonra saniyenin onda biri içinde yanıt verdi).
+- **Başarısız olan bir güncelleme iki sunucuda da kendiliğinden alpha.148'e
+  döndü.** Laboratuvar, yeni paneli açılış denetimini geçemeyen bir sürüm
+  sundu ve alpha.148'in ajanını 20 saniye bekletti: dönüş onu bekledi (20,7
+  ve 20,1 saniye) ve tamamlandı; sayfa kendiliğinden, güncellemenin
+  tamamlanmadığını ve önceki sürümün geri konduğunu söyledi, yöneticinin
+  oturumu açıktı; her program işlemini korudu ve siteler baştan sona yanıt
+  verdi. Debian 13'te kendiliğinden ilk deneme, sistemin kendi paket
+  güncellemesi tam o sırada başladığı için durdu; yarım dakika sonraki
+  ikincisi dönüşü tamamladı.
+- **Dakikası içinde açılmayan bir ajan** (Ubuntu 24.04, her açılışında 70
+  saniye bekletildi): güncelleme ajanı 63 saniye sonra güvenle durdurdu;
+  sayfa panelin yanıt vermediğini ve bir güncellemenin onu yeniden başlatıyor
+  olabileceğini söyledi, güncellemenin başarısız olduğunu hiç söylemedi;
+  kendiliğinden kurtarma her biri yaklaşık bir dakika süren üç deneme yaptı,
+  sonra durdu ve sahibin komutunu adıyla verdi. Siteler, posta ve DNS bu
+  süre boyunca her saniye yanıt verdi. Bekletme kaldırılınca adı verilen
+  komut (`sudo /usr/libexec/celikpanel/recovery recover --retry --snapshot …`)
+  güncellemeyi tamamladı.
+- **Olağan veritabanı işlemleri, MariaDB'de ve PostgreSQL'de, iki sunucuda
+  da:** kullanıcısıyla veritabanı oluşturmak, kullanıcı eklemek ve
+  kaldırmak, parola değiştirmek, aboneliği askıya almak ve sürdürmek,
+  veritabanını kullanıcısıyla silmek. Hepsi başarılı oldu; hiçbiri
+  reddedilmedi.
+- **MariaDB'de ret (11.8 ve 10.11).** Laboratuvar, veritabanı sunucusunun
+  root'u olarak bir sitenin veritabanı kullanıcısına sırayla sunucu genelinde
+  bir hak, `mysql` veritabanında bir hak, bir rol ve herhangi bir adresten
+  bağlanan, sunucu genelinde hak tutan aynı adlı bir hesap verdi. Her
+  seferinde parola değişikliği, kullanıcının adı verilerek ve hiçbir şeyin
+  değiştirilmediği söylenerek reddedildi; kayıtlı parola değişmedi; askıya
+  alma o hesabı kilitlemeden bıraktı ve bunu söyledi, aboneliğin öteki
+  kullanıcıları ise her zamanki gibi kilitlendi ve açıldı; veritabanını
+  silmek veritabanını kaldırdı, hesabı bıraktı ve bunu söyledi. Laboratuvar
+  hakkı geri alınca her işlem tamamlandı. Kullanıcısının adı başka bir
+  adresten bağlanan bir hesap olarak zaten bulunan yeni bir veritabanı,
+  alınmış ad olarak reddedildi.
+- **PostgreSQL'de ret (16 ve 17).** Bir sitenin veritabanı kullanıcısına
+  sırayla veritabanı oluşturma hakkı, `pg_read_server_files` üyeliği, rol
+  oluşturabilen bir role devralmasız üyelik ve `pg_read_server_files` ile
+  biten bir üyelik zinciri verildi. Her seferinde parola değişikliği, askıya
+  alma ve sınırlar o kullanıcı için adı verilerek reddedildi; veritabanını
+  silmek veritabanını kaldırdı ve kullanıcıyı bıraktı; kullanıcının parolası,
+  giriş hakkı ve ayarları değişmedi. Laboratuvar hakkı geri alınca her biri
+  tamamlandı; böyle hakları olmayan bir kullanıcı hiç reddedilmedi.
+- **Sahibi veritabanı sunucusu yöneticisi olan bir veritabanı**
+  (laboratuvar, sahipleri koruyan bir geri yüklemenin yaptığı gibi, bir
+  sitenin veritabanının sahibini `postgres` yaptı): kullanıcı eklemek
+  `postgres` adı verilerek reddedildi; hiçbir kullanıcı oluşturulmadı ve
+  hiçbir varsayılan hak yazılmadı. Laboratuvar CelikPanel'in kendi veritabanı
+  hesabına `pg_read_server_files` verdiğinde de aynısı oldu: o hesabın adı
+  verilerek reddedildi; laboratuvar bunu geri alınca kullanıcı eklemek ve
+  kaldırmak çalıştı.
+- **Nesneleri olan eklenmiş bir kullanıcıyı kaldırmak** (PostgreSQL 16 ve
+  17; Veritabanı Sunucuları sayfasından oluşturulan, sahibi CelikPanel'in
+  kendi veritabanı hesabı olan bir veritabanında): eklenen kullanıcı,
+  sahibinin haklarıyla çalışan bir işlev ve kendi işlevini çağıran bir
+  dizini olan bir tablo yaptı. Kaldırma, kaldırmanın penceresinde Türkçe ve
+  İngilizce reddedildi: kullanıcının nesneleri var, hiçbir şey
+  değiştirilmedi ve sunucunun yöneticisi onları kılavuzdaki komutla devreder.
+  Sonrasında her nesne hâlâ eklenen kullanıcınındı, CelikPanel'in kendi
+  hesabının veritabanında hiçbir nesnesi yoktu, işlev ve dizinin işlevi
+  eklenen kullanıcı olarak çalıştı. Yönetici kılavuzdaki komutu çalıştırınca
+  kaldırma tamamlandı ve nesneler veritabanının kendi kullanıcısının oldu.
+  Hiçbir şey yapmamış eklenmiş bir kullanıcı hemen kaldırıldı. Veritabanı
+  sunucusunun bütün deneme boyunca tuttuğu komut kaydında tek bir
+  `REASSIGN OWNED` vardı: yöneticinin kendi komutu. Sahibi sitenin kendi
+  kullanıcısı olan bir veritabanında, tablo yapmış eklenmiş bir kullanıcıyı
+  kaldırmak tabloyu eskisi gibi, satırlarıyla o sahibe verdi.
+- **CelikPanel'in kendi PostgreSQL hesabı,** bütün bunlardan sonra iki
+  sunucuda da: süper kullanıcı değil, çoğaltma hakkı yok, hiçbir `pg_*`
+  rolüne üye değil, tek tek sunucu ayarlarında hakkı yok.
+- **Veritabanı sınırları PostgreSQL kullanıcılarına ulaşıyor,** iki sunucuda
+  da: en uzun sorgu 5 saniye, boşta açık işlem 60 saniye, geçici dosyalar
+  64 MB ve 7 bağlantı ile kaydedilen bir plan dördünü de sitenin PostgreSQL
+  kullanıcılarına yazdı; böyle bir kullanıcı olarak açılan bir oturum
+  `temp_file_limit` değerini 64MB olarak okudu. Ubuntu 24.04'te, alpha.148
+  altında kaydedilmiş (yalnız MariaDB kullanıcısına ulaşmış olan) ve
+  güncellemeden sonra 10'dan 20'ye değiştirilen bir plan bağlantı sınırı
+  PostgreSQL kullanıcısına (20; önce: yok) ve MariaDB kullanıcısına ulaştı.
+  Sonradan oluşturulan bir kullanıcı planın sınırlarını baştan aldı.
+  Laboratuvarın başka bir role üye yaptığı bir kullanıcı dışarıda bırakıldı
+  ve adı söylendi; öteki kullanıcılar değerlerini aldı.
+- **Sunucu sahibinin kendi değerleri korunur,** iki sunucuda da: bir
+  PostgreSQL kullanıcısına ve bir MariaDB kullanıcısına elle verilen 30
+  saniyelik sorgu süresi ile elle verilen 25 bağlantılık sınır, bu sınırları
+  öteki kullanıcılar için değiştiren kayıtlardan sonra da kaldı; sitenin
+  kartı her birini sahibin değeri olarak adlandırdı.
+- **Sınırlar verilemediğinde** (Ubuntu 24.04): PostgreSQL laboratuvarca
+  durdurulmuşken kayıt, sınırların hangi kullanıcılara ulaşmadığını söyledi;
+  **Şu anki sorunlar** veritabanı sunucusunun çalışmadığını ve işin sunucu
+  sahibinde olduğunu söyledi; panelin ajanı durdurulmuşken yöneticiyi
+  gösterdi. Her birinden sonra **Yeniden uygula** satırı kaldırdı.
+  Laboratuvarın açık bir işlemiyle kilitli tutulan bir veritabanı
+  kullanıcısında sınır çağrısı 5 saniye sonra vazgeçti ve kayıt bunu
+  söyledi; o sırada başka bir aboneliğin askıya alınması 4 saniyede
+  tamamlandı ve kullanıcının ayarları değişmedi.
+- **Panelin veritabanı dosyası,** ajan onu okurken de sahibi ve erişim
+  hakları değişmeden panelin kendisinin kaldı; panel yeniden başlatıldıktan
+  sonra kayıtlar çalıştı.
+- **Panelden başlatılan durmuş bir program** (yüklenmiş programlar, iki
+  sunucu) sitesinin sınırları içinde, posta engeliyle başladı. Sunucu
+  sahibinin kendi ek ayar dosyasıyla ya da elle düzenlenmiş bir birim
+  dosyasıyla, sahibin koyduğu yerde başladı; dosyalar olduğu gibi kaldı ve
+  kart nedenini söyledi.
+- **Tamamlanmayan bir taşıma ve ajanın açılışı** (Debian 13).
+  Laboratuvarın başlayamaz hâle getirdiği bir programla taşıma, programın
+  başlama süresinden sonra, tamamlanmadığını ve programın çalışmadığını
+  yanıtladı; kayıt tutuldu ve kart bunu söyledi. O kayıtla ajanın üç yeniden
+  başlatılması: her seferinde 2,6 ile 2,9 saniye sonra yanıt verdi, kayda
+  bakması saniyenin binde 14 ile 25'i kadar sürdü ve hiçbir şey başlatmadı.
+  Kayıt tutulurken yapılan bir güncelleme kendiliğinden tamamlandı ve kayıt
+  sonrasında da tutuluyordu. Laboratuvar programın başlamasına izin verince
+  **Tekrar dene** kaydı kapattı. Dinlemeye 30 saniyede başlayan bir programla
+  ajan, taşımanın 12. saniyesinde yeniden başlatıldı: bir yeniden yükleme ve
+  programın bir yeniden başlatılması, ajan açılışından 1,5 saniye sonra yanıt
+  verdi; kart kaydı, program 90 saniye çalışana kadar henüz bilinmiyor olarak
+  tuttu, sonra kendiliğinden kapattı.
+- **Güncelleme sürerken taşıma yok** (Debian 13): bir güncelleme sürerken
+  taşıma ve **Tekrar dene** nedeniyle birlikte reddedildi; kartlar baştan
+  sona okunabildi; güncellemeden sonra taşıma yanıt verdi.
+- **Bir olayın gerçekleştiği sınır** (Debian 13): bir planın site belleği
+  128 MB'a indirildi, çekirdek bunu aşan bir programı durdurdu ve kimse kartı
+  okumadan varsayılan geri kondu; kart olayı 128 MB ile gösterdi, yönetici
+  için de müşterinin hesabı için de.
+- Güncellemelerden sonra iki sunucuda da olağan sayfalar açıldı ve
+  veritabanı araçları panelden açıldı.
+
+**Laboratuvarın sayfanın yolundan ayrıldığı yerler.** Laboratuvar, deneme
+sunucularında root olarak veritabanı hakları ve rolleri verip geri aldı, bir
+veritabanının sahibini değiştirdi, veritabanı değerlerini elle verdi,
+veritabanı sunucusunun komut kaydını açıp kapattı, bir veritabanı
+kullanıcısını kilitli tuttu, panelin ajanını açılışında bekletti, ajanı,
+paneli ve PostgreSQL'i yeniden başlattı ve durdurdu, deneme programını
+sitelerin klasörlerine kopyaladı ve onu başlayamaz ya da yavaş başlar hâle
+getirdi, sunucu sahibinin ek ayar dosyasını yazdı ve bir birim dosyasını
+düzenledi, bir güncelleme sırasında Ubuntu 24.04 sunucusunu yeniden
+başlattı, kurtarma komutunu çalıştırdı, Ubuntu 24.04 sunucusunu üç kez
+kayıtlı alpha.148 durumuna döndürdü ve sonunda temizlik yaptı.
+
+**Gerçek sunucularda denenmeyenler:**
+
+- İki MariaDB sunucusu arasında veritabanı kopyalamak (deneme sunucularında
+  veritabanlarına uzaktan erişim kapalıydı).
+- alpha.148'in, Veritabanı Sunucuları sayfasından oluşturulmuş bir kullanıcı
+  için yazdığı bağlantı sınırı, o sınırın bir sonraki değişikliğinde.
+- Durmuş bir Node.js sitesini ya da hizmet uygulamasını panelden başlatmak.
+- Ubuntu 24.04'te tamamlanmayan bir taşıma ve tutulan bir kayıtla ajanın
+  açılışı.
+- Bir taşıma sürerken güncellemeye basmak, bir taşıma sırasında sunucunun
+  yeniden başlatılması ve durup duran bir programın taşınması sırasında
+  ajanın yeniden başlatılması.
+- Bir kayıt tutulurken programın kendi sayfasından başlatılması; systemd'nin
+  durmadan yeniden başlattığı bir program için yazılanlar; tamamlanmayan bir
+  taşımadan sonra başka bir porttan, yalnız IPv6'dan dinleyen ya da hiçbir
+  porttan dinlemeyen bir program.
+- Sınırların her siteye ulaşmadığını söyleyen satır, sınırları bilinmeyen
+  bir siteyle.
+- PostgreSQL'in kendi erişim kurallarının reddettiği veritabanı sınırları;
+  büyük bir kaydın ortasında panelin yeniden başlatılması; saatlik tur.
+- Ubuntu 24.04'te işlem sınırı olayı, giriş sayfasının iki kez gönderilen
+  giriş için yeni yazısı ve programın gereksindiğinden küçük sınırlarla bir
+  başlangıç.
+- alpha.148'in bu sürümün panel veritabanıyla başlatılması.
+- Güncellemeden sonra web postası.
+- Arch Linux'ta hiçbir şey denenmedi.
 
 ## Güncellemeden sonra ne beklenir
 
@@ -303,7 +512,8 @@ AÇIK.
 - **Güncellemenin kendisi:** o çalışırken panel kullanılamaz; panelin ajanı
   yavaş açılırsa öncekinden yaklaşık bir dakikaya kadar daha uzun.
   Barındırılan siteler, posta, DNS ve veritabanları baştan sona çalışmayı
-  sürdürür.
+  sürdürür. Güncelleme sürerken sunucuyu yeniden başlatmayın (bkz. "Bilinen
+  sınırlar").
 - Tutulan bir taşıma kaydını kapatan bir durum okuması sitenin önceki sınır
   dosyasını geri koyar ve systemd'nin yapılandırmasını yeniden yükler; bunun
   için hiçbir program yeniden başlatılmaz.
