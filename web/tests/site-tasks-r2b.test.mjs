@@ -124,7 +124,8 @@ test('"Move all" skips a site that cannot move and stops only when a started mov
   seen.length = 0;
   const stopped = await moveSitesInTurn(sites, async (site) => { seen.push(site.domain); return answers[site.domain_id]; }, () => {});
   assert.deepEqual(seen, ['a-stays.test', 'b.test'], 'nothing after the failed move is touched');
-  assert.deepEqual(stopped.stop, { domain: 'b.test', reason: 'the program did not start', unknown: false });
+  // alpha.150 fix round: the reason is a code the page words, never the agent's English.
+  assert.deepEqual(stopped.stop, { domain: 'b.test', reason: 'slim.why.other', unknown: false });
   const unknown = await moveSitesInTurn([sites[1]], async () => null, () => {});
   assert.equal(unknown.stop.unknown, true);
 

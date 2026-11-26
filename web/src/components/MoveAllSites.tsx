@@ -136,7 +136,7 @@ export function MoveAllSites({ onDone }: { onDone: () => void }) {
                     }, (i, state, note) => {
                         steps[i] = step(chosen[i], state, note);
                         report.steps([...steps]);
-                    });
+                    }, (key) => t(key as TranslationKey));
                     for (const l of outcome.notMoved) left.push({ domain: l.domain, reason: l.partial ? t('moveall.partial', { reason: l.reason }) : l.reason });
                     if (outcome.stop) {
                         const reason = outcome.stop.unknown ? t('moveall.unknown', { domain: outcome.stop.domain })

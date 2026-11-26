@@ -5,6 +5,8 @@
 // Sitenin zamanlanmış görevleri kendi sınırları içinde; ekranların okuduğu
 // yanıtlar tek yerde çözülür.
 
+import { moveWhyKey } from './siteLimits.ts';
+
 /** A task's last run as the server reads it. */
 export interface TaskRun {
     /** skipped (second fix round): systemd skipped the run because the site's limits file was missing. */
@@ -182,7 +184,13 @@ export type SiteMoveEnd = { kind: 'moved'; note: string } | { kind: 'skipped' | 
 /** The refusal every move and undo answers while a move record is kept (alpha.150: one record for programs and tasks). */
 export const KEPT_MOVE = 'kept_earlier';
 
-export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; kept?: boolean; reason?: { code?: string }; units?: unknown[]; tasks?: unknown }): SiteMoveEnd {
+/**
+ * word turns a key of the page's words into text (alpha.150 fix round: every
+ * reason here is a code the page words, never the agent's English; without
+ * it the keys themselves are returned).
+ */
+export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; kept?: boolean; reason?: { code?: string }; units?: unknown[]; tasks?: unknown },
+    word: (key: string) => string = (key) => key): SiteMoveEnd {
     let tasks: TasksAnswer | undefined;
     try {
         tasks = answer.tasks ? decodeTasksAnswer(answer.tasks) : undefined;
@@ -191,13 +199,16 @@ export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; err
     }
     // Second fix round: an earlier move that could not be resolved stops the
     // run (nothing else is moved until it is).
-    if (answer.kept === true || answer.reason?.code === KEPT_MOVE || tasks?.refusal === KEPT_MOVE) return { kind: 'stop', reason: tasks?.error ?? answer.error ?? '', unresolved: true };
-    if (answer.rolled_back || answer.done === false) return { kind: 'stop', reason: answer.error ?? '' };
-    if (!tasks || tasks.outcome === 'put_back' || tasks.outcome === 'unknown') return { kind: 'stop', reason: tasks?.error ?? '' };
+    if (answer.kept === true || answer.reason?.code === KEPT_MOVE || tasks?.refusal === KEPT_MOVE) return { kind: 'stop', reason: word('slim.why.kept_earlier'), unresolved: true };
+    if (answer.rolled_back || answer.done === false) {
+        return { kind: 'stop', reason: word(moveWhyKey(answer.reason?.code ? { code: answer.reason.code } : undefined)) };
+    }
+    if (!tasks) return { kind: 'stop', reason: word('slim.tasks.why.unknown') };
+    if (tasks.outcome === 'put_back' || tasks.outcome === 'unknown') return { kind: 'stop', reason: word(tasksAnswerKey(tasks, false)) };
     if (tasks.outcome === 'moved' || tasks.outcome === 'already') return { kind: 'moved', note: '' };
-    if (tasks.outcome === 'crontab_back') return { kind: 'moved', note: tasks.error ?? '' };
+    if (tasks.outcome === 'crontab_back') return { kind: 'moved', note: word('slim.tasks.done.back') };
     // Nothing of the tasks changed (stayed, refused, no cron).
-    const reason = tasks.outcome === 'stayed' ? lineList(tasks.blocking) : tasks.error ?? tasks.outcome;
+    const reason = tasks.outcome === 'stayed' ? lineList(tasks.blocking) : word(tasksAnswerKey(tasks, false));
     return { kind: Array.isArray(answer.units) && answer.units.length > 0 ? 'partial' : 'skipped', reason };
 }
 
@@ -230,6 +241,7 @@ export type SiteMoveCall = (site: OutsideSite) => Promise<{ status: number; body
 export async function moveSitesInTurn(
     sites: OutsideSite[], move: SiteMoveCall,
     onStep: (index: number, state: 'running' | 'done' | 'failed', note?: string) => void,
+    word: (key: string) => string = (key) => key,
 ): Promise<MoveAllOutcome> {
     const out: MoveAllOutcome = { moved: 0, notMoved: [] };
     for (let i = 0; i < sites.length; i++) {
@@ -256,7 +268,7 @@ export async function moveSitesInTurn(
             out.stop = { domain: site.domain, reason: '', unknown: true };
             return out;
         }
-        const end = siteMoveEnd(sent.body as Parameters<typeof siteMoveEnd>[0]);
+        const end = siteMoveEnd(sent.body as Parameters<typeof siteMoveEnd>[0], word);
         switch (end.kind) {
             case 'stop':
                 onStep(i, 'failed', end.reason);
