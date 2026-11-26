@@ -230,7 +230,8 @@ type databaseDeleteError struct {
 	// refused (alpha.150): accounts the Agent refused to change after the
 	// drop for a reason only the server's administrator can lift (see
 	// databaseDeleteRefusalNamesAdministrator). Pressing Delete again meets
-	// the same refusal, so the answer says who acts instead.
+	// the same refusal (an unreadable account's may pass by itself), so the
+	// answer says who acts instead.
 	refused []databaseDeleteRefusal
 	// unrefusedLeft: a user was left for another reason (no answer from the
 	// Agent, or a plain answer that it was not done). The refused answer is
@@ -286,10 +287,14 @@ func databaseDeleteRefusedReason(refused []databaseDeleteRefusal) string {
 // (the screens' err.DATABASE_DELETE_USERS_LEFT.refused* say the same): the
 // database was deleted, which accounts were left and why, that the server's
 // administrator acts, and that Delete finishes after that. Never "press
-// Delete again": a press meets the same refusal.
+// Delete again" where a press meets the same refusal; only an unreadable
+// account's refusal can pass by itself (the database server did not answer
+// the read), so that one says a press may finish it and, if it is refused
+// again, the administrator checks the database server.
 func databaseDeleteRefusedSentence(reason, name, accounts string) string {
 	why := "CelikPanel refused to change them (an administrator account, a member of another role, an account that owns objects, or one whose rights could not be read)"
 	act := "decides about these accounts on the database server"
+	until := name + " stays in this list until"
 	switch reason {
 	case "refused_" + transport.DatabaseAccountRefusedPrivileged:
 		why, act = "they hold administrator rights there, and CelikPanel does not change such an account", "removes these accounts or takes those rights away on the database server"
@@ -299,11 +304,12 @@ func databaseDeleteRefusedSentence(reason, name, accounts string) string {
 		why, act = "they own tables or other objects on the database server", "hands those objects to another account or removes them on the database server"
 	case "refused_" + transport.DatabaseAccountRefusedUnreadable:
 		why, act = "what they hold on the database server could not be read, and CelikPanel does not change an account it cannot check", "checks that the database server answers"
+		until = "This can pass by itself: press Delete again. If it is refused again, " + until
 	case "refused_" + transport.DatabaseAccountRefusedUnsupportedEngine:
 		why, act = "this server runs MySQL in MariaDB's place and CelikPanel manages database accounts on MariaDB only", "removes these accounts on the server itself"
 	}
 	return "The database " + name + " was deleted. Its users " + accounts + " were left on the database server because " + why + ". " +
-		name + " stays in this list until the server's administrator " + act + "; then Delete finishes."
+		until + " the server's administrator " + act + "; then Delete finishes."
 }
 
 func (e *databaseDeleteError) Error() string { return e.cause.Error() }

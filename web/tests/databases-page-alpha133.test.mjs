@@ -291,8 +291,9 @@ test('a deletion that left something says per group what is still to do, in the 
 // role member, owned objects, unreadable rights, MySQL in MariaDB's place):
 // another press meets the same refusal, so the sentence says the database was
 // deleted, which users were left and why, that the server's administrator
-// acts and that Delete finishes after that - never "press Delete again".
-test('a deletion whose users were refused says who acts, never another press', async () => {
+// acts and that Delete finishes after that - "press Delete again" only where
+// the refusal can pass by itself (unreadable rights).
+test('a deletion whose users were refused says who acts, another press only where it can help', async () => {
   try {
     await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST)) }, {
       '/api/v1/databases/3': () => Response.json({ error: 'raw english', code: 'DATABASE_DELETE_USERS_LEFT', reason: 'refused_privileged', partial_success: true, mutation_applied: true,
@@ -316,10 +317,19 @@ test('a deletion whose users were refused says who acts, never another press', a
     assert.equal(holes(turkish), 'name,name,refused', key);
     assert.match(english, /^\{name\} was deleted\. /, key);
     assert.match(english, /until the server’s administrator .*; then Delete finishes\.$/, key);
-    assert.doesNotMatch(english, /again/i, key);
     assert.match(turkish, /^\{name\} silindi\. /, key);
-    assert.match(turkish, /Sunucunun yöneticisi .* kadar \{name\} bu listede durur; ondan sonra Sil silmeyi tamamlar\.$/, key);
-    assert.doesNotMatch(turkish, /yeniden|tekrar/i, key);
+    assert.match(turkish, /unucunun yöneticisi .* kadar \{name\} bu listede durur; ondan sonra Sil silmeyi tamamlar\.$/, key);
+    // Only the unreadable refusal can pass by itself (the database server did
+    // not answer the read): it says Delete can be pressed again and who acts
+    // if it is refused again. For the rest a press meets the same refusal.
+    if (reason === 'refused_unreadable') {
+      assert.match(english, /\. This can pass by itself: press Delete again\. If it is refused again, \{name\} stays in this list until the server’s administrator checks that the database server answers; then Delete finishes\.$/, key);
+      assert.match(turkish, /\. Bu kendiliğinden geçebilir: Sil’e yeniden basın\. Yine reddedilirse, sunucunun yöneticisi veritabanı sunucusunun yanıt verdiğini denetleyene kadar \{name\} bu listede durur; ondan sonra Sil silmeyi tamamlar\.$/, key);
+    } else {
+      assert.doesNotMatch(english, /again/i, key);
+      assert.match(turkish, /\. Sunucunun yöneticisi /, key);
+      assert.doesNotMatch(turkish, /yeniden|tekrar|yine/i, key);
+    }
   }
 });
 

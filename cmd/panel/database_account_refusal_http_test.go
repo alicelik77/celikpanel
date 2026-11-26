@@ -113,7 +113,14 @@ func TestDatabaseDeleteWithARefusedUserSaysWhoActs(t *testing.T) {
 		if c.reason != "mixed" {
 			if answer.Vars["refused"] != "cust_user, wp_user" || !strings.Contains(answer.Error, "customer_matrix_test_shop was deleted.") ||
 				!strings.Contains(answer.Error, "cust_user, wp_user were left") || !strings.Contains(answer.Error, "the server's administrator") ||
-				!strings.HasSuffix(answer.Error, "; then Delete finishes.") || strings.Contains(strings.ToLower(answer.Error), "again") {
+				!strings.HasSuffix(answer.Error, "; then Delete finishes.") {
+				t.Fatalf("%s: %s", c.code, got.Body.String())
+			}
+			// Only an unreadable account's refusal can pass by itself: that
+			// one says Delete can be pressed again and who acts if it is
+			// refused again; for the rest a press meets the same refusal.
+			if again := strings.Contains(strings.ToLower(answer.Error), "again"); again != (c.reason == "refused_unreadable") ||
+				(again && !strings.Contains(answer.Error, "This can pass by itself: press Delete again. If it is refused again, customer_matrix_test_shop stays in this list until the server's administrator checks that the database server answers")) {
 				t.Fatalf("%s: %s", c.code, got.Body.String())
 			}
 		} else if _, ok := answer.Vars["refused"]; ok {
