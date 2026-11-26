@@ -45,6 +45,11 @@ test('the rule: an existing account, a reason that names the administrator, the 
         assert.doesNotMatch(enData[`err.DATABASE_ACCOUNT_REFUSED.${reason}`], /administrator/, reason);
         assert.doesNotMatch(trData[`err.DATABASE_ACCOUNT_REFUSED.${reason}`], /yönetici/, reason);
     }
+    // A reason added later (its sentence not known to name the administrator)
+    // keeps the general heading: the rule is an allow-list (review 2, F5).
+    for (const reason of ['a_later_code', 'privileged_extra', 'Privileged', ' privileged']) {
+        assert.equal(refusalActor(refused(reason), 'admin', 'existing'), undefined, reason);
+    }
     assert.equal(refusalActor({ message: 'x', code: 'OTHER' }, 'admin', 'existing'), undefined);
     assert.equal(refusalActor(null, 'admin', 'existing'), undefined);
 });
