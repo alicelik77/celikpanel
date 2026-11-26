@@ -9,8 +9,8 @@ import { confirmAction, followOperation, type OperationEnd, type OperationStep }
 import { useRemote } from '../lib/remote';
 import { unitText, whoText } from '../lib/settingLimits';
 import {
-    appliedOf, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
-    newMoveRequestID, notMovedReason, putBackSplit, type MoveReason, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
+    appliedOf, dbOwnerByOrigin, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
+    newMoveRequestID, notMovedReason, putBackSplit, type DbOwnerSetting, type MoveReason, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
 import { Button, Checking, CouldNotCheck } from './ui';
 
@@ -160,7 +160,12 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
     const units = view.units ?? [];
     const lower = lowerUnits(view);
     const edited = view.slice_file === 'owner_edited' || view.slice_file === 'foreign' || view.slice_file === 'unknown_origin';
-    const owner = (view.db_owner ?? []).map((s) => `${s.user} (${t(`limits.key.${s.key}` as TranslationKey)}: ${s.value || '—'})`);
+    // alpha.149 (review of PR #370, finding 13): the server owner's firm limits and the defaults changed on
+    // the database user itself are two sentences; neither is imposed again.
+    const dbValue = (s: DbOwnerSetting) => `${s.user} (${t(`limits.key.${s.key}` as TranslationKey)}: ${s.value || '—'})`;
+    const dbByOrigin = dbOwnerByOrigin(view);
+    const owner = dbByOrigin.owner.map(dbValue);
+    const onUser = dbByOrigin.onUser.map(dbValue);
 
     // The product's own question and progress window: the page stays locked
     // with the steps until the server answers, then says how it ended.
@@ -294,6 +299,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                 </div>
             ) : view.move_interrupted && <p className="mb-2 text-sm text-warning" data-site-limits-interrupted="">{t('slim.interrupted', { time: formatDateTime(view.move_interrupted.at, locale) })}</p>}
             {owner.length > 0 && <p className="mb-2 text-sm text-fg-muted" data-site-limits-dbowner="">{t('slim.dbOwner', { list: owner.join('; ') })}</p>}
+            {onUser.length > 0 && <p className="mb-2 text-sm text-fg-muted" data-site-limits-dbonuser="">{t('slim.dbOnUser', { list: onUser.join('; ') })}</p>}
             {units.length > 0 && (
                 <>
                     <h3 className="text-xs font-semibold text-fg">{t('slim.units.title')}</h3>

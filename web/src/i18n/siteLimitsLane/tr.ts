@@ -15,6 +15,8 @@ export const trSiteLimitsLane: Record<SiteLimitsLaneKey, string> = {
     'slim.kept.not_answering': 'çalıştığı yerde çalışıyor ama önceden dinlediği yerden artık yanıt vermiyor',
     'slim.kept.look': '{unit}: {state}. Önce bakın: sudo systemctl status {name} ve günlüğü, sudo journalctl -u {name}. Sonra Tekrar dene’ye basın: yeniden denetler ve yalnız çalıştığı yerde çalışmayan bir programı yeniden başlatır.',
     'slim.kept.runsNoPort': 'Çalıştıkları yere geri kondu ve orada çalışıyor, ama önceki geri koymanın söylediği gibi hiçbir porttan dinlemiyor: {list}. Bir programın bir porttan yanıt vermesi gerekiyorsa kendi günlüğünü okuyun (adıyla sudo journalctl -u).',
+    // alpha.149 (joined with PR #370's origin field): a default changed on the database user itself.
+    'slim.dbOnUser': 'Varsayılanı kullanıcının kendisinde değiştirilmiş veritabanı kullanıcıları (sunucu sahibi ya da kullanıcının kendi oturumu; CelikPanel yeniden dayatmaz): {list}.',
     'slim.kept.notRunning': '{unit} şu an çalışmıyor: önceki dosyasıyla çalıştığı yere geri kondu ama orada yeniden başlamadı. Kendi günlüğünü okuyun (sudo journalctl -u {name}), sonra Tekrar dene’ye basın ya da sayfasından başlatın. Başka hiçbir şey değiştirilmedi.',
     'slim.move.failedUnit': '{unit} sınırların içinde çalışmadı: {reason}. Nedeni günlüğünde: sudo journalctl -u {name}.',
     'slim.move.back': 'Çalıştıkları yere geri kondu, yeniden çalışıyor: {list}.',

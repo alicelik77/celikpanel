@@ -57,7 +57,13 @@ export interface SiteLimitsView {
     drop_ins?: string[];
     /** kept: the put-back did not complete; no site is moved until it is settled ("Try again"). */
     move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean };
-    db_owner?: { user: string; key: string; value: string }[];
+    /**
+     * Database users' values the panel did not write (alpha.149): origin `owner` for a firm limit only an
+     * administrator account can set (temporary files, the connection limit); `on_user` for a default changed on
+     * the database user itself (statement time, idle transaction time), by the server owner or the user's own
+     * session. An item without a known origin is read as the owner's.
+     */
+    db_owner?: DbOwnerSetting[];
     apply_done?: number;
     apply_total?: number;
     live?: { memory_mb: number; tasks: number; cpu_percent: number };
@@ -69,6 +75,19 @@ export interface SiteLimitsView {
     units?: SiteLimitUnit[];
     needs_move?: number;
     busy?: boolean;
+}
+
+export interface DbOwnerSetting {
+    user: string;
+    key: string;
+    value: string;
+    origin?: 'owner' | 'on_user';
+}
+
+/** The card's two sentences: the server owner's firm limits, and defaults changed on the database user itself. */
+export function dbOwnerByOrigin(view: SiteLimitsView): { owner: DbOwnerSetting[]; onUser: DbOwnerSetting[] } {
+    const items = (view.db_owner ?? []).filter((s): s is DbOwnerSetting => !!s && typeof s.user === 'string' && typeof s.key === 'string');
+    return { owner: items.filter((s) => s.origin !== 'on_user'), onUser: items.filter((s) => s.origin === 'on_user') };
 }
 
 const KEYS: readonly string[] = ['site.memory_mb', 'site.tasks', 'site.cpu_percent'];

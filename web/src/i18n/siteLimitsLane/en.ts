@@ -23,6 +23,8 @@ export const enSiteLimitsLane = {
     'slim.kept.not_answering': 'runs where it ran but no longer answers where it listened before',
     'slim.kept.look': '{unit}: {state}. Look first: sudo systemctl status {name} and its log, sudo journalctl -u {name}. Then press Try again: it checks again and restarts only a program that does not run where it ran.',
     'slim.kept.runsNoPort': 'Put back where they ran and running there, but listening on no port, as the earlier put-back said: {list}. If a program should answer on a port, read its own log (sudo journalctl -u with its name).',
+    // alpha.149 (joined with PR #370's origin field): a default changed on the database user itself.
+    'slim.dbOnUser': 'Database users whose own default was changed on the user itself (by the server owner or the user’s own session; CelikPanel does not impose it again): {list}.',
     'slim.kept.notRunning': '{unit} is not running now: it was put back where it ran, with its earlier file, but did not start again there. Read its own log (sudo journalctl -u {name}), then press Try again or start it on its page. Nothing else was changed.',
     'slim.move.failedUnit': '{unit} did not run inside the limits: {reason}. Its log says why: sudo journalctl -u {name}.',
     'slim.move.back': 'Put back where they ran, running again: {list}.',
