@@ -53,6 +53,29 @@ EXPECTED_STAGE_DATABASE_SHA256=
 verify_exact_preledger_stage_payload "$child" \
     || fail "legacy exact three-file payload was rejected"
 
+# A stage written from alpha.150 on also holds the saved states' boot record.
+boot_record=$child/service-states.boot-id
+printf '%s\n' 0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0 > "$boot_record"
+verify_exact_preledger_stage_payload "$child" \
+    || fail "legacy payload with the saved states' boot record was rejected"
+rm -- "$boot_record"
+ln -s -- "$child/service-states.tsv" "$boot_record"
+if (verify_exact_preledger_stage_payload "$child") >/dev/null 2>&1; then
+    fail "a symbolic-link boot record was accepted"
+fi
+rm -- "$boot_record"
+mkdir -- "$boot_record"
+if (verify_exact_preledger_stage_payload "$child") >/dev/null 2>&1; then
+    fail "a directory boot record was accepted"
+fi
+rmdir -- "$boot_record"
+printf 'unexpected\n' > "$child/service-states.boot-id.tmp"
+printf '%s\n' 0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0 > "$boot_record"
+if (verify_exact_preledger_stage_payload "$child") >/dev/null 2>&1; then
+    fail "an extra entry beside the boot record was accepted"
+fi
+rm -- "$child/service-states.boot-id.tmp" "$boot_record"
+
 printf 'standalone snapshot bytes\n' > "$child/celikpanel.db"
 chmod 0600 -- "$child/celikpanel.db"
 if (verify_exact_preledger_stage_payload "$child") >/dev/null 2>&1; then
@@ -64,6 +87,10 @@ EXPECTED_STAGE_DATABASE_SHA256=$(sha256sum "$child/celikpanel.db" | awk '{print 
 stage_database_identity=
 verify_exact_preledger_stage_payload "$child" \
     || fail "database-snapshot exact four-file payload was rejected"
+printf '%s\n' 0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0 > "$boot_record"
+(stage_database_identity=; verify_exact_preledger_stage_payload "$child") \
+    || fail "database-snapshot payload with the saved states' boot record was rejected"
+rm -- "$boot_record"
 
 EXPECTED_STAGE_DATABASE_SHA256=$(printf wrong | sha256sum | awk '{print $1}')
 if (stage_database_identity=; verify_exact_preledger_stage_payload "$child") >/dev/null 2>&1; then

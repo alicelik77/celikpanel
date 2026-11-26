@@ -1249,8 +1249,11 @@ printf '%s\t%s\t%s\n' \
 write_quiesce_coordinator_ledger "$recovery_child"
 printf 'normal\n' > "$recovery_child/snapshot-transition.state"
 printf 'partial\n' > "$recovery_child/.partial-payload"
+# alpha.150: the boot the saved states were read in stays with them.
+printf '%s\n' 0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0 > "$recovery_child/service-states.boot-id"
 chmod 0600 -- "$recovery_child/service-states.tsv" \
-    "$recovery_child/snapshot-transition.state" "$recovery_child/.partial-payload"
+    "$recovery_child/snapshot-transition.state" "$recovery_child/.partial-payload" \
+    "$recovery_child/service-states.boot-id"
 sync -f -- "$recovery_child/service-states.tsv" \
     "$recovery_child/quiesce-coordinators.tsv" "$recovery_child/snapshot-transition.state" "$recovery_child" \
     "$recovery_stage" "$snapshot_root"
@@ -1287,6 +1290,8 @@ release_txn_reset_update_snapshot_stage \
     || fail "SIGKILL recovery left a partial payload"
 printf 'normal\n' | cmp -s - "$recovery_child/snapshot-transition.state" \
     || fail "SIGKILL recovery changed the transition mode"
+printf '%s\n' 0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0 | cmp -s - "$recovery_child/service-states.boot-id" \
+    || fail "SIGKILL recovery removed or changed the saved states' boot record"
 printf '%s\t%s\t%s\n' \
     celikpanel-agent.service enabled active \
     celikpanel-panel.service enabled active \

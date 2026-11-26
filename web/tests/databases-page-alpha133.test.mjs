@@ -287,6 +287,52 @@ test('a deletion that left something says per group what is still to do, in the 
   }
 });
 
+// alpha.150: users the Agent refused to change (an administrator account, a
+// role member, owned objects, unreadable rights, MySQL in MariaDB's place):
+// another press meets the same refusal, so the sentence says the database was
+// deleted, which users were left and why, that the server's administrator
+// acts and that Delete finishes after that - "press Delete again" only where
+// the refusal can pass by itself (unreadable rights).
+test('a deletion whose users were refused says who acts, another press only where it can help', async () => {
+  try {
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST)) }, {
+      '/api/v1/databases/3': () => Response.json({ error: 'raw english', code: 'DATABASE_DELETE_USERS_LEFT', reason: 'refused_privileged', partial_success: true, mutation_applied: true,
+        vars: { name: 'kahvedukkani_dr_test_magaza', users: 'kahve_app', pending: 'kahve_app', rights: '', refused: 'kahve_app' } }, { status: 409 }),
+    });
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    assert.ok(has('err.DATABASE_DELETE_USERS_LEFT.refused_privileged{"name":"kahvedukkani_dr_test_magaza","users":"kahve_app","pending":"kahve_app","rights":"","refused":"kahve_app"}'), text());
+    assert.ok(!has('raw english'));
+  } finally {
+    await cleanup();
+  }
+  const holes = (value) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',');
+  for (const reason of ['refused', 'refused_privileged', 'refused_member', 'refused_owns_objects', 'refused_unreadable', 'refused_unsupported_engine']) {
+    const key = `err.DATABASE_DELETE_USERS_LEFT.${reason}`;
+    const english = enScreens[key];
+    const turkish = trScreens[key];
+    assert.ok(english && turkish, key);
+    assert.equal(holes(english), 'name,name,refused', key);
+    assert.equal(holes(turkish), 'name,name,refused', key);
+    assert.match(english, /^\{name\} was deleted\. /, key);
+    assert.match(english, /until the server’s administrator .*; then Delete finishes\.$/, key);
+    assert.match(turkish, /^\{name\} silindi\. /, key);
+    assert.match(turkish, /unucunun yöneticisi .* kadar \{name\} bu listede durur; ondan sonra Sil silmeyi tamamlar\.$/, key);
+    // Only the unreadable refusal can pass by itself (the database server did
+    // not answer the read): it says Delete can be pressed again and who acts
+    // if it is refused again. For the rest a press meets the same refusal.
+    if (reason === 'refused_unreadable') {
+      assert.match(english, /\. This can pass by itself: press Delete again\. If it is refused again, \{name\} stays in this list until the server’s administrator checks that the database server answers; then Delete finishes\.$/, key);
+      assert.match(turkish, /\. Bu kendiliğinden geçebilir: Sil’e yeniden basın\. Yine reddedilirse, sunucunun yöneticisi veritabanı sunucusunun yanıt verdiğini denetleyene kadar \{name\} bu listede durur; ondan sonra Sil silmeyi tamamlar\.$/, key);
+    } else {
+      assert.doesNotMatch(english, /again/i, key);
+      assert.match(turkish, /\. Sunucunun yöneticisi /, key);
+      assert.doesNotMatch(turkish, /yeniden|tekrar|yine/i, key);
+    }
+  }
+});
+
 test('a database made again on the server is said as never deleted by another press; a shared user on its own server stays untouched', async () => {
   try {
     const list = ADMIN_LIST.map((item) => (item.id === 3 ? { ...item, users: [{ id: 31, username: 'kahve_app', stays: 'server_shared' }] } : item));

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock, HelpCircle, Loader2, XCircle } from 'lucide-react';
 import { Button, Dialog } from './ui';
 import { useI18n } from '../i18n';
-import type { OperationEnd, OperationStep } from '../lib/confirmAction';
+import { operationEndLine, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 
 // The progress window of a confirmed operation (owner's firm order, 6 Nov
 // 2026): "while work runs in the background the user must never wait blankly;
@@ -34,12 +34,6 @@ function StepMark({ state }: { state: OperationStep['state'] }) {
 }
 
 const END_ICON = { done: CheckCircle2, failed: XCircle, blocked: AlertTriangle, unknown: HelpCircle } as const;
-const END_TITLE = {
-    done: 'operation.completed',
-    failed: 'operation.failed',
-    blocked: 'operation.blocked',
-    unknown: 'operation.unknown',
-} as const;
 
 export default function OperationProgress({ title, tone, steps, startedAt, end: said, onClose }: {
     title: string;
@@ -66,9 +60,10 @@ export default function OperationProgress({ title, tone, steps, startedAt, end: 
     // the server, with the time it has taken so far.
     const shown: OperationStep[] = steps ?? [{ id: 'server', label: t('operation.working'), state: end ? (end.state === 'done' ? 'done' : 'failed') : 'running', since: startedAt }];
     const current = shown.find((step) => step.state === 'running' || step.state === 'waiting');
-    // The line under the title: the state's word, or the ending's own when
-    // that word would not be true (a wait nobody needs to act on).
-    const endLine = end ? (end.state !== 'done' && end.subtitle) || t(END_TITLE[end.state]) : '';
+    // The line under the title (lib/confirmAction.ts operationEndLine): the
+    // state's word, the ending's own when that word would not be true, or the
+    // actor a blocked ending's reason names (alpha.149 lab W1).
+    const endLine = end ? operationEndLine(end, t) : '';
     const announcement = end
         ? endLine
         : current ? (current.note ? `${current.label}. ${current.note}` : current.label) : t('operation.working');

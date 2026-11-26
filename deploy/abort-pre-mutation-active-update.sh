@@ -613,6 +613,17 @@ verify_expected_stage_database() {
 verify_exact_preledger_stage_payload() {
     local child=$1 entries expected_entries
     entries=$(find "$child" -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)
+    # A stage written from alpha.150 on also holds the boot its saved states
+    # were read in; an earlier release's stage does not. Either is accepted,
+    # the record only as a regular file. This tool never reads it.
+    # alpha.150'den itibaren yazılan aşama, kayıtlı durumların okunduğu açılışı
+    # da tutar; önceki sürümünkü tutmaz. İkisi de kabul edilir, kayıt yalnız
+    # düz dosya olarak. Bu araç onu okumaz.
+    if [[ -e "$child/service-states.boot-id" || -L "$child/service-states.boot-id" ]]; then
+        [[ -f "$child/service-states.boot-id" && ! -L "$child/service-states.boot-id" ]] \
+            || die "pre-ledger stage boot record is not a regular file"
+        entries=$(printf '%s\n' "$entries" | grep -Fxv 'service-states.boot-id' || true)
+    fi
     expected_entries=$'quiesce-coordinators.tsv\nservice-states.tsv\nsnapshot-transition.state'
     if [[ "$RECOVERY_PROFILE" == preledger-database-snapshot ]]; then
         expected_entries=$'celikpanel.db\nquiesce-coordinators.tsv\nservice-states.tsv\nsnapshot-transition.state'
