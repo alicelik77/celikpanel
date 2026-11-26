@@ -699,14 +699,27 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return "This server cannot enforce the limits of sites' programs (missing: " + subject + "). Monitoring says what that means.",
 			"Bu sunucu sitelerin programlarının sınırlarını uygulayamıyor (eksik: " + subject + "). Ne anlama geldiği İzleme'de."
 	case "site_limits_unapplied":
-		if item.name == "unchecked" {
-			// alpha.149 (lab O3): the kernel could not be read, so it is not
-			// said that the sites lack the limits.
-			return fmt.Sprintf("After a change of limits (%s), whether the running programs of %s sites have the new limits could not be read. CelikPanel checks again every hour. Monitoring says more.", subject, n),
-				fmt.Sprintf("Bir sınır değişikliğinden (%s) sonra %s sitenin çalışan programlarının yeni sınırları alıp almadığı okunamadı. CelikPanel her saat yeniden denetler. Ayrıntı İzleme'de.", subject, n)
+		// alpha.149 (lab O3; fix round F9): each site by its own reason; only
+		// the sites known to lack the limits are said to keep the earlier ones.
+		lacking, unknown := siteLimitApplyCounts(item.name, int(item.value))
+		sites := func(k int) (string, string) {
+			if k == 1 {
+				return "1 site", "1 site"
+			}
+			return strconv.Itoa(k) + " sites", strconv.Itoa(k) + " site"
 		}
-		return fmt.Sprintf("A change of limits (%s) did not reach %s sites yet; they keep their earlier limits. CelikPanel tries again every hour. Monitoring says why.", subject, n),
-			fmt.Sprintf("Bir sınır değişikliği (%s) henüz %s siteye ulaşmadı; o siteler önceki sınırlarını koruyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, n)
+		lackEN, lackTR := sites(lacking)
+		unknownEN, unknownTR := sites(unknown)
+		switch {
+		case lacking == 0:
+			return fmt.Sprintf("After a change of limits (%s), it is not known whether the new limits reached %s. CelikPanel checks again every hour. Monitoring says why.", subject, unknownEN),
+				fmt.Sprintf("Bir sınır değişikliğinden (%s) sonra yeni sınırların %s için ulaşıp ulaşmadığı bilinmiyor. CelikPanel her saat yeniden denetler. Nedeni İzleme'de.", subject, unknownTR)
+		case unknown == 0:
+			return fmt.Sprintf("A change of limits (%s) did not reach %s yet; the earlier limits still hold there. CelikPanel tries again every hour. Monitoring says why.", subject, lackEN),
+				fmt.Sprintf("Bir sınır değişikliği (%s) henüz %s için geçerli değil; orada önceki sınırlar sürüyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, lackTR)
+		}
+		return fmt.Sprintf("After a change of limits (%s), the earlier limits still hold for %s, and for %s it is not known whether the new ones arrived. CelikPanel tries again every hour. Monitoring says why.", subject, lackEN, unknownEN),
+			fmt.Sprintf("Bir sınır değişikliğinden (%s) sonra %s için önceki sınırlar sürüyor, %s için yenilerinin ulaşıp ulaşmadığı bilinmiyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, lackTR, unknownTR)
 	case "site_move_kept":
 		if item.name != "" {
 			// alpha.149 (lab D6): item.name names the programs that were put

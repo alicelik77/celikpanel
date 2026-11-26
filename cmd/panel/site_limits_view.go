@@ -276,6 +276,10 @@ type siteLimitRecord struct {
 	Counters transport.SiteSliceCounters `json:"counters"`
 	ReadAt   string                      `json:"read_at"`
 	Events   map[string]*siteLimitEvent  `json:"events,omitempty"`
+	// LimitChanged (alpha.149 fix round, F8): the site's limits were changed
+	// when its counters could not be read first, so the next reading's
+	// events carry no limit value (they may be from before the change).
+	LimitChanged bool `json:"limit_changed,omitempty"`
 }
 
 type siteLimitLedger map[string]*siteLimitRecord
@@ -347,14 +351,29 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 			// Programs stopped for lack of memory, not at the site's limit.
 			rises["memory_other"] = kills
 		}
-		// alpha.149 (lab D3): the slice's own peak reached its limit since the
-		// last reading (a unit's counters may be gone with its cgroup).
-		peak := current.TasksPeakAtLimit && !before.TasksPeakAtLimit && rises["tasks"] == 0
+		// alpha.149 (lab D3; fix round F7): the slice's own peak reached its
+		// limit since the last reading (a unit's counters may be gone with
+		// its cgroup). pids.peak is a high-water mark that a changed limit
+		// does not reset, so only when the limit is unchanged since that
+		// reading, which had the field and was below the limit.
+		peakRead := func(c transport.SiteSliceCounters) bool { return c.SlicePidsMax > 0 }
+		peakAt := func(c transport.SiteSliceCounters) bool { return peakRead(c) && c.SlicePidsPeak >= c.SlicePidsMax }
+		peak := peakRead(before) && peakRead(current) && current.SlicePidsMax == before.SlicePidsMax &&
+			!peakAt(before) && peakAt(current) && rises["tasks"] == 0
 		cpuWait := delta(current.CPUThrottledUSec, before.CPUThrottledUSec)
 		if cpuWait >= siteLimitCPUSeconds*1_000_000 {
 			rises["cpu"] = 1
 		}
-		rose := reset || current.TasksPeakAtLimit != before.TasksPeakAtLimit
+		// A changed limit, or a peak that reached it or fell below it (the
+		// slice made anew), is the new baseline.
+		rose := reset || peakRead(current) != peakRead(before) || current.SlicePidsMax != before.SlicePidsMax || peakAt(current) != peakAt(before)
+		// alpha.149 fix round (F8): the limits changed without a reading at
+		// that moment: what this reading finds may be from before the change,
+		// so it carries no limit value (never today's).
+		limitUnsure := previous.LimitChanged
+		if limitUnsure {
+			previous.LimitChanged, changed = false, true
+		}
 		for _, kind := range siteLimitEventKinds {
 			n := rises[kind]
 			if n <= 0 && !(kind == "tasks_peak" && peak) {
@@ -372,7 +391,15 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 			if n > 0 {
 				event.Count += n
 			}
-			event.Limit = siteLimitHeld(status, kind)
+			switch {
+			case kind == "tasks_peak":
+				// The limit the peak reached, unchanged since the last reading.
+				event.Limit = int(current.SlicePidsMax)
+			case limitUnsure:
+				event.Limit = 0
+			default:
+				event.Limit = siteLimitHeld(status, kind)
+			}
 			// Review B7: at most one hit per kind every siteLimitHitEvery,
 			// and never more than siteLimitMaxHits kept: the record's size
 			// does not grow with how often a card is read (the count stays
@@ -759,6 +786,13 @@ func siteMoveBusy() bool {
 	return siteMoveRunning
 }
 
+// siteMoveUpdateInProgress (alpha.149 fix round, F6): an update this panel
+// admitted is still queued or running by the agent's own status (a seam for
+// tests).
+var siteMoveUpdateInProgress = func(p *Panel, ctx context.Context) bool {
+	return p.admittedPanelUpdateInProgress(ctx)
+}
+
 // moveSiteSliceCall is the Agent call (tests replace it).
 var moveSiteSliceCall = func(p *Panel, ctx context.Context, req *transport.MoveSiteSliceRequest) (transport.MoveSiteSliceResponse, error) {
 	var resp transport.MoveSiteSliceResponse
@@ -804,6 +838,15 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()
+	// alpha.149 fix round (F6): never while the panel's own update is
+	// admitted or running (it would stop the agent in the middle of the
+	// move). The update refuses itself while this move runs (siteMoveBusy);
+	// the agent refuses both ways too.
+	if siteMoveUpdateInProgress(p, ctx) {
+		writeServiceAppRefusal(w, http.StatusConflict, "site_limits_update_running",
+			"Nothing was moved: the panel's update is in progress. Move the site after the update has finished.", nil)
+		return
+	}
 	sites, err := p.siteLimitSites(ctx, domainID)
 	if err != nil || len(sites) != 1 {
 		writeClientError(w, http.StatusNotFound, "site not found for domain")

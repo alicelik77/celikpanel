@@ -78,27 +78,58 @@ func TestAnEventKeepsTheLimitThatHeldThen(t *testing.T) {
 	}
 }
 
-// TestAReachedProcessLimitSeenByThePeak (D3, decision 5): on a kernel without
-// pids.events.local the slice's peak reaching its limit since the last
-// reading is a "tasks_peak" event without a count; a peak that stays at the
-// limit is not counted again.
+// TestAReachedProcessLimitSeenByThePeak (D3, decision 5; fix round F7): on a
+// kernel without pids.events.local the slice's peak reaching its limit since
+// the last reading is a "tasks_peak" event without a count, with the limit it
+// reached; only when that limit is unchanged since the last reading and that
+// reading was below it. A peak that stays at the limit is not counted again;
+// a lowered limit below an earlier peak is not a reached limit; the first
+// reading that carries the peak (after the update from alpha.148) is only a
+// baseline; once the peak falls below the limit (the slice made anew), the
+// next reach is seen again.
 func TestAReachedProcessLimitSeenByThePeak(t *testing.T) {
 	ledger := siteLimitLedger{}
 	now := time.Date(2026, 11, 26, 9, 0, 0, 0, time.UTC)
+	at := func(i int) time.Time { return now.Add(time.Duration(i) * time.Minute) }
 	status := siteLimitsStatus(7, 0, 0).Sites[0]
 	status.Counters.TasksRule = "units"
 	status.Kernel, status.KernelState = transport.SiteSliceLimitsRead{MemoryMB: 256, Tasks: 64, CPUPercent: 50}, transport.SiteSliceInForce
-	observeSiteSlices(ledger, []transport.SiteSliceStatus{status}, true, now)
-	status.Counters.TasksPeakAtLimit = true
-	if !observeSiteSlices(ledger, []transport.SiteSliceStatus{status}, true, now.Add(time.Minute)) {
+	observe := func(i int, peak, max int64) bool {
+		status.Counters.SlicePidsPeak, status.Counters.SlicePidsMax = peak, max
+		return observeSiteSlices(ledger, []transport.SiteSliceStatus{status}, true, at(i))
+	}
+	events := func() *siteLimitEvent { return ledger["7"].Events["tasks_peak"] }
+	observe(0, 0, 0) // the baseline, as alpha.148's ledger has it: no peak field
+	// The first reading with the field, already at the limit: a baseline only.
+	if !observe(1, 64, 64) || events() != nil {
+		t.Fatalf("an old peak became a new event: %+v", events())
+	}
+	// Raised to 100: a new baseline below the limit; reaching it is an event.
+	observe(2, 64, 100)
+	if events() != nil {
+		t.Fatal("a raised limit is a reached limit")
+	}
+	if !observe(3, 100, 100) {
 		t.Fatal("the peak at the limit was not recorded")
 	}
-	event := ledger["7"].Events["tasks_peak"]
-	if event == nil || event.Count != 0 || event.Limit != 64 || event.LastAt == "" {
+	event := events()
+	if event == nil || event.Count != 0 || event.Limit != 100 || event.LastAt == "" {
 		t.Fatalf("the reached process limit: %+v", event)
 	}
-	if observeSiteSlices(ledger, []transport.SiteSliceStatus{status}, true, now.Add(2*time.Minute)) {
+	if observe(4, 100, 100) {
 		t.Fatal("a peak that stays at the limit was counted again")
+	}
+	// Lowered to 40 below the earlier peak (lab step 8): not reached.
+	last := event.LastAt
+	observe(5, 100, 40)
+	observe(6, 100, 40)
+	if events().LastAt != last {
+		t.Fatalf("a lowered limit below an earlier peak was said to be reached: %+v", events())
+	}
+	// The slice made anew (peak below the limit), then reached again.
+	observe(7, 3, 40)
+	if !observe(8, 40, 40) || events().LastAt == last || events().Limit != 40 {
+		t.Fatalf("a later reach was not seen: %+v", events())
 	}
 }
 
@@ -178,7 +209,7 @@ func TestTheUnappliedLineCarriesACode(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := siteLimitApplyProblem(f.panel.setting(ctx, settingSiteLimitApply))
-	if len(lines) != 1 || lines[0].Name != "kernel_differs" {
+	if len(lines) != 1 || lines[0].Name != "kernel_differs:1" {
 		t.Fatalf("lines = %+v", lines)
 	}
 }
