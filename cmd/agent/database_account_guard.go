@@ -100,6 +100,10 @@ func databaseAccountRefusalText(username, code string) string {
 	case transport.DatabaseAccountRefusedUnsupportedEngine:
 		return "this server runs MySQL in MariaDB's place, and CelikPanel manages database accounts on MariaDB only, so it did not change the database user " +
 			username + "; nothing was changed. The server's administrator makes the change on the server itself"
+	case transport.DatabaseAccountRefusedOwnsObjects:
+		return "the database user " + username + " owns tables or other objects in this database, so it was not removed; nothing was changed. " +
+			"The server's administrator first hands them to the database's own user on the server (the user guide's Databases chapter gives the command), " +
+			"then removes the user again from the panel"
 	}
 	return "what the database user " + username + " holds on this server's database engine could not be read, so CelikPanel did not change it; nothing was changed"
 }
@@ -166,16 +170,58 @@ func pgGuardBlockOf(stateExpr, literal string) string {
 		"END\n$celikpanel_account_guard$;"
 }
 
-// refusedNameRe reads the role a guard named in its refusal.
-var refusedNameRe = regexp.MustCompile(`celikpanel-refused:[a-z_]+:([A-Za-z_][A-Za-z0-9_]*)`)
+// A guard's refusal is read only from the client's own error line (third
+// review of PR #370, I1): the first line of the output that is an error
+// line, and only when the whole line is the refusal - psql's
+// "ERROR:  celikpanel-refused:<code>[:<name>]" (with psql's
+// "psql:<file>:<line>: " locus when it reads a file), or MariaDB's SIGNAL
+// "ERROR 1644 (45000) at line <n>: celikpanel-refused:<code>". Before, the
+// marker was looked for anywhere in the output, so a site user could name
+// an object "celikpanel-refused:privileged:postgres" and, when a later
+// statement's error quoted it, turn the answer into a refusal naming
+// another account. Both clients stop at the first error (ON_ERROR_STOP,
+// MariaDB without --force), so the first error line is the one that ended
+// the run; an identifier with a line break in it can only follow it.
+var (
+	databaseErrorLineRe   = regexp.MustCompile(`^(?:psql:[^ ]*:[0-9]+: )?ERROR[: ]`)
+	databaseRefusalLineRe = regexp.MustCompile(`^(?:psql:[^ ]*:[0-9]+: )?(?:ERROR:[ \t]+|ERROR 1644 \(45000\)(?: at line [0-9]+)?: )` +
+		`celikpanel-refused:([a-z_]+)(?::([A-Za-z_][A-Za-z0-9_]*))?[ \t]*$`)
+)
+
+// databaseAccountRefusalLine answers the code and the name (or "") of the
+// refusal on the output's first error line; "" and "" when that line is no
+// refusal or there is none.
+func databaseAccountRefusalLine(output []byte) (code, name string) {
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimRight(line, "\r")
+		if !databaseErrorLineRe.MatchString(line) {
+			continue
+		}
+		if match := databaseRefusalLineRe.FindStringSubmatch(line); match != nil {
+			return match[1], match[2]
+		}
+		return "", ""
+	}
+	return "", ""
+}
 
 // databaseAccountRefusedNameIn answers the role a write-time refusal names,
 // "" when it names none.
 func databaseAccountRefusedNameIn(output []byte) string {
-	if match := refusedNameRe.FindSubmatch(output); match != nil {
-		return string(match[1])
+	if code, name := databaseAccountRefusalLine(output); databaseAccountGuardCode(code) {
+		return name
 	}
 	return ""
+}
+
+// databaseAccountGuardCode: a code the write-time guards raise.
+func databaseAccountGuardCode(code string) bool {
+	switch code {
+	case transport.DatabaseAccountRefusedAbsent, transport.DatabaseAccountRefusedPrivileged, transport.DatabaseAccountRefusedMember,
+		transport.DatabaseAccountRefusedOwnsObjects:
+		return true
+	}
+	return false
 }
 
 // databaseAccountRefusedName answers the account a refusal error is about.
@@ -196,8 +242,10 @@ func databaseAccountRefusedName(err error) string {
 // owner read from the engine must pass the shared rule too. The one exception
 // is exactly CelikPanel's own account (celikpanel_admin, which owns the
 // databases made through it and holds CREATEDB and CREATEROLE by design), and
-// only while it is not a superuser and is a member - through any chain - of
-// no predefined pg_* role and of no superuser role.
+// only while it is not a superuser, has neither REPLICATION nor BYPASSRLS, and
+// is a member - through any chain - of no predefined pg_* role and of no
+// superuser role. Even then a removal never hands it anything (third review
+// of PR #370, H1; pgOwnsObjectsGuardBlock).
 //
 // Veritabanının sahibi de sıradan bir rol olmalıdır; tek istisna, süper
 // kullanıcı olmadığı ve hiçbir pg_* rolünün üyesi olmadığı sürece
@@ -209,7 +257,9 @@ func pgDatabaseOwnerStateExpr(literal string, admin bool) string {
 	if !admin {
 		return pgAccountStateExpr(literal, pgAccountOrdinary)
 	}
-	return "COALESCE((SELECT CASE WHEN celikpanel_r.rolsuper" +
+	// Third review of PR #370, I2: its own REPLICATION or BYPASSRLS fails it
+	// too (an administrator may have given it either by hand).
+	return "COALESCE((SELECT CASE WHEN celikpanel_r.rolsuper OR celikpanel_r.rolreplication OR celikpanel_r.rolbypassrls" +
 		" OR EXISTS (SELECT 1 FROM pg_catalog.pg_roles celikpanel_held WHERE celikpanel_held.oid OPERATOR(pg_catalog.<>) celikpanel_r.oid" +
 		" AND (celikpanel_held.rolsuper OR (pg_catalog.starts_with(celikpanel_held.rolname::pg_catalog.text, 'pg_')" +
 		" AND celikpanel_held.rolname OPERATOR(pg_catalog.<>) 'pg_database_owner'))" +
@@ -245,6 +295,52 @@ func pgDatabaseOwnerGuardBlock(owner string) (string, error) {
 	}
 	literal, _ := pgAccountLiteral(owner)
 	return pgGuardBlockOf(expr, literal), nil
+}
+
+// pgOwnsObjectsGuardBlock (third review of PR #370, H1) raises
+// celikpanel-refused:owns_objects:<user> when the role owns anything that
+// REASSIGN OWNED, run in the current database, would hand to another role.
+// Removing a user added to a database owned by CelikPanel's own account
+// (celikpanel_admin) runs it, in the same transaction, instead of REASSIGN
+// OWNED ... TO celikpanel_admin: a site user's function, SECURITY DEFINER or
+// called from an index expression, given to celikpanel_admin would run as
+// celikpanel_admin, which holds CREATEROLE (and on PostgreSQL 16 and later
+// ADMIN on every role it made).
+//
+// What it reads is exactly the set REASSIGN OWNED walks (shdepReassignOwned):
+// pg_shdepend rows of the role with deptype 'o' (owner) whose dbid is the
+// current database or 0 (shared objects: a database or tablespace the role
+// owns). That covers relations of every kind in every schema (tables, views,
+// sequences, materialized views, foreign tables; indexes and TOAST tables
+// follow their table), functions and procedures, types and domains,
+// operators, operator classes and families, collations, conversions, text
+// search objects, extended statistics, schemas, large objects, languages,
+// extensions, publications, subscriptions, foreign data wrappers and servers,
+// event triggers. Two classes are left out because REASSIGN OWNED skips them
+// and only DROP OWNED removes them: default-ACL entries (pg_default_acl; every
+// read-and-write user has its own, ALTER DEFAULT PRIVILEGES FOR ROLE <user>)
+// and user mappings (pg_user_mapping).
+//
+// Kaldırılan kullanıcının bu veritabanında nesnesi varsa celikpanel_admin'e
+// devredilmez; kaldırma hiçbir şey değiştirmeden reddedilir.
+func pgOwnsObjectsGuardBlock(username string) (string, error) {
+	literal, err := pgAccountLiteral(username)
+	if err != nil {
+		return "", err
+	}
+	return "DO $celikpanel_owned_guard$\nBEGIN\n" +
+		"  IF EXISTS (SELECT 1 FROM pg_catalog.pg_shdepend celikpanel_d" +
+		" WHERE celikpanel_d.refclassid OPERATOR(pg_catalog.=) 'pg_catalog.pg_authid'::pg_catalog.regclass::pg_catalog.oid" +
+		" AND celikpanel_d.refobjid OPERATOR(pg_catalog.=) (SELECT celikpanel_r.oid FROM pg_catalog.pg_roles celikpanel_r" +
+		" WHERE celikpanel_r.rolname OPERATOR(pg_catalog.=) " + literal + ")" +
+		" AND celikpanel_d.deptype OPERATOR(pg_catalog.=) 'o'" +
+		" AND (celikpanel_d.dbid OPERATOR(pg_catalog.=) 0::pg_catalog.oid" +
+		" OR celikpanel_d.dbid OPERATOR(pg_catalog.=) (SELECT celikpanel_db.oid FROM pg_catalog.pg_database celikpanel_db" +
+		" WHERE celikpanel_db.datname OPERATOR(pg_catalog.=) pg_catalog.current_database()))" +
+		" AND celikpanel_d.classid OPERATOR(pg_catalog.<>) 'pg_catalog.pg_default_acl'::pg_catalog.regclass::pg_catalog.oid" +
+		" AND celikpanel_d.classid OPERATOR(pg_catalog.<>) 'pg_catalog.pg_user_mapping'::pg_catalog.regclass::pg_catalog.oid)" +
+		" THEN RAISE EXCEPTION 'celikpanel-refused:" + transport.DatabaseAccountRefusedOwnsObjects + ":%', " + literal + "; END IF;\n" +
+		"END\n$celikpanel_owned_guard$;", nil
 }
 
 // pgGuarded runs body in one transaction after the guard of username.
@@ -320,13 +416,12 @@ func mysqlAccountLiteral(username string) (string, error) {
 
 // --- Both ------------------------------------------------------------------
 
-// databaseAccountRefusalIn reads a guard's refusal from a client's output.
+// databaseAccountRefusalIn reads a guard's refusal from a client's output:
+// the code on its first error line (databaseAccountRefusalLine), "" for
+// none or a code no guard raises.
 func databaseAccountRefusalIn(output []byte) string {
-	text := string(output)
-	for _, code := range []string{transport.DatabaseAccountRefusedAbsent, transport.DatabaseAccountRefusedPrivileged, transport.DatabaseAccountRefusedMember} {
-		if strings.Contains(text, "celikpanel-refused:"+code) {
-			return code
-		}
+	if code, _ := databaseAccountRefusalLine(output); databaseAccountGuardCode(code) {
+		return code
 	}
 	return ""
 }

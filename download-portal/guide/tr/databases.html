@@ -37,6 +37,11 @@
 <h2 id="passwords">Parolalar</h2>
 <p>CelikPanel veritabanı parolalarını saklamaz ve yeniden gösteremez. Birini kaybettiyseniz kullanıcıya yeni parola verin ve onu uygulamanızın yapılandırma dosyasına yazın. Planınızdaki veritabanı sayısı ya da disk dolunca yeni veritabanı reddedilir; bkz. <a href="limits.html#disk">Sınırlar ve askıya alma</a>.</p>
 <aside class="guide-callout guide-warning"><p class="guide-callout-label">Uyarı</p><p>Veritabanını silmek bütün verisini siler. Önce alan adının <strong>Yedekler</strong> bölümünden yedek alın.</p></aside>
+<h2 id="user-owns-objects">Tabloları olan kullanıcı</h2>
+<p>PostgreSQL'de bir veritabanına eklediğiniz kullanıcıyı kaldırmak reddedilebilir: kullanıcının bu veritabanında tabloları ya da başka nesneleri vardır, bu yüzden kaldırılmamış ve hiçbir şey değiştirilmemiştir. Bu, CelikPanel'in kendi veritabanı hesabına ait veritabanlarında olur; o hesap bir kullanıcının yaptıklarını hiçbir zaman devralmaz.</p>
+<p>Sunucunun yöneticisi önce bu nesneleri sunucuda tek bir komutla veritabanının kendi kullanıcısına, yani veritabanıyla birlikte açılan kullanıcıya (<code>example_com_magaza</code> için <code>example_com_magaza_user</code>) devreder, sonra kullanıcıyı panelden yeniden kaldırır. <code>example_com_magaza_okur</code> kullanıcısı için:</p>
+<pre class="guide-code"><code>sudo -u postgres psql -d example_com_magaza -c 'REASSIGN OWNED BY &quot;example_com_magaza_okur&quot; TO &quot;example_com_magaza_user&quot;;'</code></pre>
+<p>Müşteri ya da bayi bunu sunucunun yöneticisinden ister.</p>
 <nav class="guide-pager" aria-label="Bölümler"><a rel="prev" href="mail.html"><span>Önceki</span>E-posta ve web postası</a><a rel="next" href="apps-wordpress.html"><span>Sonraki</span>Uygulamalar, WordPress araçları ve zararlı yazılım taraması</a></nav>
 </article></div>
 </main><footer class="site-footer"><div class="container footer-main">

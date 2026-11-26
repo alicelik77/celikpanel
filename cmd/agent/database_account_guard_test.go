@@ -361,6 +361,19 @@ func TestDroppedRightsAndGrantFormsRefusePrivilegedAccounts(t *testing.T) {
 	if converted.Outcome != "" || converted.AccountRefused != transport.DatabaseAccountRefusedPrivileged || len(e.writes()) != 0 {
 		t.Fatalf("grant form: %+v %q", converted, e.writes())
 	}
+	// Third review of PR #370, L2: a system database name (sys, which not
+	// every MariaDB has, among them) is refused before anything is sent.
+	for _, database := range []string{"sys", "SYS", "mysql", "information_schema", "performance_schema"} {
+		e = &guardEngine{state: "ok"}
+		installGuardEngine(t, e)
+		dropped = transport.DroppedDatabaseRightsResponse{}
+		if err := (&Agent{}).RemoveDroppedDatabaseRightsV1(&transport.DroppedDatabaseRightsRequest{Database: database, Owners: []string{"shop_user"}}, &dropped); err != nil {
+			t.Fatal(err)
+		}
+		if dropped.Applied || dropped.AccountRefused != transport.DatabaseAccountRefusedSystemDatabase || len(e.statements) != 0 {
+			t.Fatalf("dropped rights on %s: %+v %q", database, dropped, e.statements)
+		}
+	}
 	// An owner already gone (its user was removed first) is no refusal.
 	e = &guardEngine{state: "absent", other: func(string) ([]byte, error) { return nil, errors.New("stop here") }}
 	installGuardEngine(t, e)

@@ -74,6 +74,7 @@ const guide: GuideIndex = {
     [6,"databases-page","The Databases page",""],
     [6,"web-tools","phpMyAdmin and phpPgAdmin",""],
     [6,"passwords","Passwords",""],
+    [6,"user-owns-objects","A user that owns tables",""],
     [7,"","Applications, WordPress tools and malware scan","wordpress prestashop nextcloud drupal joomla mediawiki install plugin update staging malware virus clamav quarantine"],
     [7,"catalogue","Installing an application",""],
     [7,"password-once","The administrator password, shown once",""],

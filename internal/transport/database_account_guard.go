@@ -34,4 +34,11 @@ const (
 	// Nothing was changed; the server's administrator makes the change on
 	// the server itself. An account already gone is answered as absent.
 	DatabaseAccountRefusedUnsupportedEngine = "unsupported_engine"
+	// DatabaseAccountRefusedOwnsObjects (third review of PR #370, H1): a
+	// PostgreSQL user added to a database owned by CelikPanel's own account
+	// (celikpanel_admin) owns tables or other objects there, and CelikPanel
+	// never hands them to its own account; the user was not removed. The
+	// server's administrator hands them to the database's own user on the
+	// server, then the user is removed again.
+	DatabaseAccountRefusedOwnsObjects = "owns_objects"
 )

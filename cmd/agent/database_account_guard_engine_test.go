@@ -83,6 +83,17 @@ func TestTheAccountGuardOnRealEngines(t *testing.T) {
 		if got := adminState(); got != "privileged" || guarded() == nil {
 			t.Errorf("the panel's own account as a superuser: %q", got)
 		}
+		// Third review, I2: its own REPLICATION or BYPASSRLS fails it too.
+		for _, attribute := range []string{"REPLICATION", "BYPASSRLS"} {
+			mustRun(t, "admin "+attribute, e.pg("", "", "", "ALTER ROLE ag_admin NOSUPERUSER NOREPLICATION NOBYPASSRLS;\nALTER ROLE ag_admin "+attribute+";"))
+			if got := adminState(); got != "privileged" || guarded() == nil {
+				t.Errorf("the panel's own account with %s: %q", attribute, got)
+			}
+		}
+	}
+
+	if e.pgPort != "" {
+		nothingGoesToCelikPanelsOwnAccount(t, e)
 	}
 
 	accounts := []string{"ag_site", "ag_global", "ag_grant", "ag_role", "ag_mysqldb"}
@@ -118,5 +129,70 @@ func TestTheAccountGuardOnRealEngines(t *testing.T) {
 	}
 	if got := mustRun(t, "unchanged", e.maria("", "", "SELECT max_user_connections FROM mysql.user WHERE User = 'ag_global';")); strings.TrimSpace(got) != "0" {
 		t.Errorf("a refused account was changed: %s", got)
+	}
+}
+
+// nothingGoesToCelikPanelsOwnAccount is the third review's H1 probe on a real
+// PostgreSQL: a database owned by celikpanel_admin (as releases before the
+// Agent-side create made them), a read-and-write user added to it that makes
+// a SECURITY DEFINER function and a table with an index on an expression
+// calling its own function. Removing that user is refused (owns_objects) and
+// every object is still the user's; after the administrator's REASSIGN to the
+// database's own user the removal goes through, as it does for a user that
+// owns nothing.
+func nothingGoesToCelikPanelsOwnAccount(t *testing.T, e testEngines) {
+	t.Helper()
+	installTestEngines(t, e)
+	cleanup := "DROP DATABASE IF EXISTS h1shop;\nDROP ROLE IF EXISTS h1shop_maker;\nDROP ROLE IF EXISTS h1shop_idle;\nDROP ROLE IF EXISTS h1shop_user;\nDROP ROLE IF EXISTS celikpanel_admin;"
+	mustRun(t, "h1 clean", e.pg("", "", "", cleanup))
+	t.Cleanup(func() { _ = e.pg("", "", "", cleanup) })
+	mustRun(t, "h1 roles", e.pg("", "", "", "CREATE ROLE celikpanel_admin LOGIN CREATEDB CREATEROLE;\nCREATE ROLE h1shop_user LOGIN PASSWORD '"+engineOwnerPassword+"';"))
+	mustRun(t, "h1 database", e.pg("", "", "", "CREATE DATABASE h1shop OWNER celikpanel_admin;"))
+	base := transport.DatabaseAccessUserRequest{Engine: "postgresql", Port: 5432, Database: "h1shop"}
+	for _, user := range []string{"h1shop_maker", "h1shop_idle"} {
+		req := base
+		req.Username, req.Password, req.Access = user, engineWritePassword, transport.DatabaseAccessWrite
+		if resp := accessUser(t, true, req); !resp.Applied {
+			t.Fatalf("add %s: %+v", user, resp)
+		}
+	}
+	mustRun(t, "h1 objects", e.pg("h1shop_maker", engineWritePassword, "h1shop",
+		"CREATE FUNCTION public.h1_definer() RETURNS int LANGUAGE sql SECURITY DEFINER AS 'SELECT 1';\n"+
+			"CREATE FUNCTION public.h1_key(int) RETURNS int LANGUAGE sql IMMUTABLE AS 'SELECT $1';\n"+
+			"CREATE TABLE public.h1_items (v int);\nCREATE INDEX h1_items_key ON public.h1_items (public.h1_key(v));"))
+	owners := func() string {
+		return mustRun(t, "h1 owners", e.pg("", "", "h1shop", "SELECT string_agg(pg_catalog.pg_get_userbyid(o), ',') FROM ("+
+			"SELECT proowner AS o FROM pg_catalog.pg_proc WHERE proname IN ('h1_definer', 'h1_key')"+
+			" UNION ALL SELECT relowner FROM pg_catalog.pg_class WHERE relname IN ('h1_items', 'h1_items_key')) s;"))
+	}
+	roleCount := func(role string) string {
+		return mustRun(t, "h1 role", e.pg("", "", "", "SELECT count(*) FROM pg_catalog.pg_roles WHERE rolname = '"+role+"';"))
+	}
+	req := base
+	req.Username = "h1shop_maker"
+	if resp := accessUser(t, false, req); resp.Applied || resp.AccountRefused != transport.DatabaseAccountRefusedOwnsObjects || resp.AccountRefusedName != "h1shop_maker" {
+		t.Fatalf("removing a user that owns objects in celikpanel_admin's database: %+v", resp)
+	}
+	if got := owners(); got != "h1shop_maker,h1shop_maker,h1shop_maker,h1shop_maker" || roleCount("h1shop_maker") != "1" {
+		t.Fatalf("a refused removal changed something: owners %q", got)
+	}
+	// The administrator's command from the user guide, then the removal again.
+	mustRun(t, "h1 hand over", e.pg("", "", "h1shop", `REASSIGN OWNED BY "h1shop_maker" TO "h1shop_user";`))
+	if resp := accessUser(t, false, req); !resp.Applied || resp.AccountRefused != "" || roleCount("h1shop_maker") != "0" {
+		t.Fatalf("removal after the administrator handed the objects over: %+v", resp)
+	}
+	if got := owners(); got != "h1shop_user,h1shop_user,h1shop_user,h1shop_user" {
+		t.Fatalf("owners after the hand-over: %q", got)
+	}
+	// A user that owns nothing there (only its default privileges) is removed.
+	req.Username = "h1shop_idle"
+	if resp := accessUser(t, false, req); !resp.Applied || resp.AccountRefused != "" || roleCount("h1shop_idle") != "0" {
+		t.Fatalf("removing a user that owns nothing: %+v", resp)
+	}
+	// celikpanel_admin received nothing.
+	if got := mustRun(t, "h1 admin objects", e.pg("", "", "h1shop", "SELECT count(*) FROM pg_catalog.pg_shdepend d JOIN pg_catalog.pg_database db ON db.oid = d.dbid"+
+		" WHERE db.datname = 'h1shop' AND d.deptype = 'o' AND d.refobjid = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'celikpanel_admin')"+
+		" AND d.classid <> 'pg_catalog.pg_default_acl'::pg_catalog.regclass;")); got != "0" {
+		t.Fatalf("celikpanel_admin owns %s objects in the database", got)
 	}
 }

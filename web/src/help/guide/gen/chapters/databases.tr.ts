@@ -22,6 +22,11 @@ const chapter = {
     ["h",2,"passwords","Parolalar"],
     ["p",["CelikPanel veritabanı parolalarını saklamaz ve yeniden gösteremez. Birini kaybettiyseniz kullanıcıya yeni parola verin ve onu uygulamanızın yapılandırma dosyasına yazın. Planınızdaki veritabanı sayısı ya da disk dolunca yeni veritabanı reddedilir; bkz. ",["g","limits","disk","Sınırlar ve askıya alma"],"."]],
     ["warn",[["p",["Veritabanını silmek bütün verisini siler. Önce alan adının ",["b","Yedekler"]," bölümünden yedek alın."]]]],
+    ["h",2,"user-owns-objects","Tabloları olan kullanıcı"],
+    ["p","PostgreSQL'de bir veritabanına eklediğiniz kullanıcıyı kaldırmak reddedilebilir: kullanıcının bu veritabanında tabloları ya da başka nesneleri vardır, bu yüzden kaldırılmamış ve hiçbir şey değiştirilmemiştir. Bu, CelikPanel'in kendi veritabanı hesabına ait veritabanlarında olur; o hesap bir kullanıcının yaptıklarını hiçbir zaman devralmaz."],
+    ["p",["Sunucunun yöneticisi önce bu nesneleri sunucuda tek bir komutla veritabanının kendi kullanıcısına, yani veritabanıyla birlikte açılan kullanıcıya (",["c","example_com_magaza"]," için ",["c","example_com_magaza_user"],") devreder, sonra kullanıcıyı panelden yeniden kaldırır. ",["c","example_com_magaza_okur"]," kullanıcısı için:"]],
+    ["pre","sudo -u postgres psql -d example_com_magaza -c 'REASSIGN OWNED BY \"example_com_magaza_okur\" TO \"example_com_magaza_user\";'"],
+    ["p","Müşteri ya da bayi bunu sunucunun yöneticisinden ister."],
   ],
 } as unknown as GuideChapter;
 

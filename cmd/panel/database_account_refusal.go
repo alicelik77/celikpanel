@@ -29,6 +29,10 @@ func databaseAccountRefusalSentence(code, username string) string {
 			"Nothing was changed. The server's administrator makes the change on the server itself (" + code + ")."
 	case transport.DatabaseAccountRefusedSystemDatabase:
 		return "CelikPanel never changes the database server's own system database. Nothing was changed (" + code + ")."
+	case transport.DatabaseAccountRefusedOwnsObjects:
+		return "The database user " + username + " owns tables or other objects in this database, so it was not removed. Nothing was changed. " +
+			"The server's administrator first hands them to the database's own user on the server (the user guide's Databases chapter gives the command), " +
+			"then removes the user again from the panel (" + code + ")."
 	}
 	return "What the database user " + username + " holds on the database server could not be read, so CelikPanel did not change it. " +
 		"Nothing was changed. The server's administrator checks that the database server answers, then the step can be repeated (" + code + ")."
