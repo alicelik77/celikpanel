@@ -118,13 +118,13 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 	oldList, oldInstall, oldRemove, oldLook, oldKilled, oldSupport := cronListCrontab, cronInstallCrontab, cronRemoveCrontab, cronLookPath, siteTasksMoveKilled, siteSliceHostSupport
 	oldMoveJournal, oldOutcomes, oldRecords := siteMoveJournalPath, siteMoveOutcomesPath, siteCrontabRecordDir
 	oldAllow, oldDeny, oldAllowRecord, oldPasswd, oldNSS, oldSpool, oldTarget := cronAllowPath, cronDenyPath, cronAllowRecordPath, sideDoorsPasswd, sideDoorsNSSwitch, siteCronSpoolDirs, siteTasksTenantTarget
-	oldEnd, oldLoaded := siteTaskEndCrontabs, siteSliceLoaded
+	oldEnd, oldLoaded, oldCheck := siteTaskEndCrontabs, siteSliceLoaded, siteTaskCheckCrontabs
 	keep(func() {
 		siteTaskSystemctl, appUnitSystemctl, siteTaskVerify, siteTaskChown, siteTaskCaps, siteTaskJournal, siteTaskLookup = oldSystemctl, oldAppCtl, oldVerify, oldChown, oldCaps, oldJournal, oldLookup
 		cronListCrontab, cronInstallCrontab, cronRemoveCrontab, cronLookPath, siteTasksMoveKilled, siteSliceHostSupport = oldList, oldInstall, oldRemove, oldLook, oldKilled, oldSupport
 		siteMoveJournalPath, siteMoveOutcomesPath, siteCrontabRecordDir = oldMoveJournal, oldOutcomes, oldRecords
 		cronAllowPath, cronDenyPath, cronAllowRecordPath, sideDoorsPasswd, sideDoorsNSSwitch, siteCronSpoolDirs, siteTasksTenantTarget = oldAllow, oldDeny, oldAllowRecord, oldPasswd, oldNSS, oldSpool, oldTarget
-		siteTaskEndCrontabs, siteSliceLoaded = oldEnd, oldLoaded
+		siteTaskEndCrontabs, siteSliceLoaded, siteTaskCheckCrontabs = oldEnd, oldLoaded, oldCheck
 	})
 	t.Cleanup(func() {
 		for i := len(saved) - 1; i >= 0; i-- {
@@ -173,6 +173,7 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 		host.calls = append(host.calls, fmt.Sprintf("end-crontabs %d refused=%v", uid, host.refused(taskTestAccount)))
 		return 0, nil
 	}
+	siteTaskCheckCrontabs = func(int) error { return nil }
 	cronLookPath = func(string) (string, error) { return "/usr/bin/crontab", nil }
 	cronListCrontab = func(username string) ([]byte, string, int, error) {
 		if host.onCrontabRead != nil {

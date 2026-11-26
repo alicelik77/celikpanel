@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -326,7 +327,32 @@ func pruneCronClosed() {
 // passed crontab's access check before, and could still install a crontab.
 var siteTaskEndCrontabs = endCrontabProcesses
 
-func endCrontabProcesses(uid int) (int, error) {
+// siteTaskCheckCrontabs lists the uid's crontab processes without ending
+// any (a test seam): the move runs it before anything changes, so that a
+// process list it could not read refuses the move then (alpha.150 fix
+// round, F7) rather than after cron.allow closed.
+var siteTaskCheckCrontabs = func(uid int) error {
+	_, err := scanCrontabProcesses(uid, false)
+	return err
+}
+
+// siteTaskKill sends SIGKILL to a process (a test seam).
+var siteTaskKill = func(pid int) error {
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	return p.Kill()
+}
+
+func endCrontabProcesses(uid int) (int, error) { return scanCrontabProcesses(uid, true) }
+
+// scanCrontabProcesses finds (and with kill, ends) every crontab process
+// running as the uid. alpha.150 fix round (F7): it fails towards "one may be
+// running" - a process of the uid whose program cannot be read, or whose end
+// fails, is an error, never skipped; only a process that is gone (or a zombie,
+// whose program reads as missing and which installs nothing) is passed over.
+func scanCrontabProcesses(uid int, kill bool) (int, error) {
 	if uid < 1 {
 		return 0, nil
 	}
@@ -341,6 +367,7 @@ func endCrontabProcesses(uid int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	gone := func(err error) bool { return errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ESRCH) }
 	ended := 0
 	for _, e := range entries {
 		pid, err := strconv.Atoi(e.Name())
@@ -348,16 +375,32 @@ func endCrontabProcesses(uid int) (int, error) {
 			continue
 		}
 		status, err := os.ReadFile(filepath.Join(procRoot, e.Name(), "status"))
-		if err != nil || procRealUID(string(status)) != uid {
+		if err != nil {
+			if gone(err) {
+				continue
+			}
+			return ended, fmt.Errorf("process %d could not be read: %w", pid, err)
+		}
+		if procRealUID(string(status)) != uid {
 			continue
 		}
 		exe, err := os.Readlink(filepath.Join(procRoot, e.Name(), "exe"))
-		if err != nil || strings.TrimSuffix(exe, " (deleted)") != program {
+		if err != nil {
+			if gone(err) {
+				continue
+			}
+			return ended, fmt.Errorf("the program of process %d could not be read: %w", pid, err)
+		}
+		if strings.TrimSuffix(exe, " (deleted)") != program {
 			continue
 		}
-		if p, err := os.FindProcess(pid); err == nil && p.Kill() == nil {
-			ended++
+		if !kill {
+			continue
 		}
+		if err := siteTaskKill(pid); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			return ended, fmt.Errorf("crontab process %d could not be ended: %w", pid, err)
+		}
+		ended++
 	}
 	return ended, nil
 }

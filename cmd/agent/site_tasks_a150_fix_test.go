@@ -4,7 +4,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -341,6 +343,89 @@ func TestTheUndoKeepsWhatTheOwnerSwitchedOff(t *testing.T) {
 		}
 		if _, has := host.crontab(taskTestAccount); has || len(host.timersOn()) != 2 {
 			t.Fatalf("something changed: timers %v", host.timersOn())
+		}
+		if _, err := os.Stat(siteMoveJournalPath); !os.IsNotExist(err) {
+			t.Fatal("a record was written")
+		}
+	})
+}
+
+// TestCrontabProcessesFailTowardsOneRunning (F7): ending the account's
+// crontab processes fails - never skips - when one of its processes' program
+// cannot be read or a kill fails; a process that is gone (or a zombie) is
+// passed over. The move lists them before anything changes and is refused
+// then when the list cannot be read.
+func TestCrontabProcessesFailTowardsOneRunning(t *testing.T) {
+	fakeProc := func(t *testing.T) (string, string) {
+		t.Helper()
+		root := t.TempDir()
+		program := filepath.Join(root, "bin", "crontab")
+		writeTaskFile(t, program, "")
+		oldRoot, oldLook, oldKill := procRoot, cronLookPath, siteTaskKill
+		t.Cleanup(func() { procRoot, cronLookPath, siteTaskKill = oldRoot, oldLook, oldKill })
+		procRoot = filepath.Join(root, "proc")
+		cronLookPath = func(string) (string, error) { return program, nil }
+		return procRoot, program
+	}
+	process := func(t *testing.T, proc, pid string, uid int, exe string) {
+		t.Helper()
+		writeTaskFile(t, filepath.Join(proc, pid, "status"), "Name:\tcrontab\nUid:\t"+strconv.Itoa(uid)+"\t"+strconv.Itoa(uid)+"\t0\t0\n")
+		if exe != "" {
+			if err := os.Symlink(exe, filepath.Join(proc, pid, "exe")); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	t.Run("ended", func(t *testing.T) {
+		proc, program := fakeProc(t)
+		process(t, proc, "4001", 1500, program)
+		process(t, proc, "4002", 1500, "/usr/bin/php")
+		process(t, proc, "4003", 1501, program)
+		process(t, proc, "4004", 1500, "") // a zombie: no program, installs nothing
+		var killed []int
+		siteTaskKill = func(pid int) error { killed = append(killed, pid); return nil }
+		if n, err := endCrontabProcesses(1500); err != nil || n != 1 || len(killed) != 1 || killed[0] != 4001 {
+			t.Fatalf("%d %v %v", n, err, killed)
+		}
+		if err := siteTaskCheckCrontabs(1500); err != nil || len(killed) != 1 {
+			t.Fatalf("the listing ended something: %v %v", err, killed)
+		}
+	})
+	t.Run("kill_fails", func(t *testing.T) {
+		proc, program := fakeProc(t)
+		process(t, proc, "4001", 1500, program)
+		siteTaskKill = func(int) error { return syscall.EPERM }
+		if _, err := endCrontabProcesses(1500); err == nil {
+			t.Fatal("a failed kill was not an error")
+		}
+		siteTaskKill = func(int) error { return os.ErrProcessDone }
+		if _, err := endCrontabProcesses(1500); err != nil {
+			t.Fatalf("a process that ended meanwhile is an error: %v", err)
+		}
+	})
+	t.Run("program_unreadable", func(t *testing.T) {
+		proc, _ := fakeProc(t)
+		process(t, proc, "4001", 1500, "")
+		// Not a link: reading it fails with something else than "gone".
+		writeTaskFile(t, filepath.Join(proc, "4001", "exe"), "")
+		siteTaskKill = func(int) error { t.Fatal("killed"); return nil }
+		if _, err := endCrontabProcesses(1500); err == nil {
+			t.Fatal("an unreadable program was skipped")
+		}
+		if err := siteTaskCheckCrontabs(1500); err == nil {
+			t.Fatal("the listing skipped an unreadable program")
+		}
+	})
+	t.Run("the_move_refuses_before_anything_changes", func(t *testing.T) {
+		host := useTaskTestHost(t)
+		host.startWith(t, moveTaskCrontab)
+		siteTaskCheckCrontabs = func(int) error { return errors.New("readlink /proc/4001/exe: permission denied") }
+		resp := moveTasks(t)
+		if resp.Outcome != transport.SiteTasksRefused || !strings.Contains(resp.Error, "nothing was moved") {
+			t.Fatalf("move %+v", resp)
+		}
+		if got, _ := host.crontab(taskTestAccount); got != moveTaskCrontab || host.refused(taskTestAccount) || len(host.unitFiles(t)) != 0 || len(host.systemdCalls()) != 0 {
+			t.Fatalf("something changed: crontab %q, units %v, calls %v", got, host.unitFiles(t), host.systemdCalls())
 		}
 		if _, err := os.Stat(siteMoveJournalPath); !os.IsNotExist(err) {
 			t.Fatal("a record was written")

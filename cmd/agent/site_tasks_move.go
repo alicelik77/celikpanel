@@ -486,6 +486,14 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 			return out
 		}
 	}
+	// alpha.150 fix round (F7): the account's crontab processes must be
+	// listable, or the move is refused here, before anything changes (they
+	// are listed again and ended once cron.allow has closed).
+	if err := siteTaskCheckCrontabs(target.UID); err != nil {
+		out := refused("", "the crontab processes of "+username+" could not be listed ("+err.Error()+"), so one started before cron closes could still install a crontab; nothing was moved")
+		out.Rows = resp.Rows
+		return out
+	}
 	journal := &siteMoveJournal{Version: siteTasksJournalVersion, SiteID: target.SiteID, StartedAt: time.Now().UTC().Format(time.RFC3339),
 		Tasks: &siteTasksJournal{Account: username, UID: target.UID, Crontab: crontab, Step: siteTasksStepPlanned}}
 	if err := journal.save(); err != nil {
