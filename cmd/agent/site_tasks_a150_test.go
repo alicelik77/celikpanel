@@ -218,6 +218,14 @@ func TestTheAgentsStartWithATasksRecordMakesAtMostFourSystemdCalls(t *testing.T)
 			on := true
 			failCalls(t, "daemon-reload", &on)
 		}},
+		// Fix round F3: the move's own enable ran before the Agent stopped
+		// (the record still says crontab_emptied) and the limits file is gone
+		// at the start: the timers are switched off anyway.
+		tc{name: "enabled_before_the_stop_limits_missing", kept: true, running: transport.SiteTasksRunNone, prepare: func(t *testing.T, host *taskTestHost) {
+			stoppedMove(t, host, rebootTaskCrontab, "act:"+siteTasksStepEnabled)
+			slice, _ := siteSlicePathOf(taskTestSite)
+			_ = os.Remove(slice)
+		}},
 	)
 	for _, c := range cases {
 		t.Run(strings.ReplaceAll(c.name, ":", "_"), func(t *testing.T) {

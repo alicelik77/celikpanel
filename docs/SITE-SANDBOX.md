@@ -1365,7 +1365,7 @@ version 3 with a `tasks` part; a programs' move writes version 2): the crontab's
 | source_written | the task file holds the crontab | put back (below) |
 | units_written | every timer and service written and checked by systemd, none started | put back |
 | cron_closed | `/etc/cron.allow` leaves the account out (checked), and every `crontab` process of its uid started before that is ended (it passed crontab's check before and could still install a file); when those processes cannot be listed, the move fails here and is put back, nothing removed (second fix round) | put back |
-| crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | finished: the timers switched on ("moved"). If they cannot be, the record stays for Try again and is not put back there (that would take more calls than the start makes); timers a failed call may have switched on are switched off again, so the site's tasks are known not to run until Try again |
+| crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | finished: the timers switched on ("moved"). If they cannot be, the record stays for Try again and is not put back there (that would take more calls than the start makes); the timers are switched off again in one call - always, also when the site's limits file looks missing (an enable sent before the Agent stopped can have switched some on) - so the site's tasks are known not to run until Try again |
 | enabled | the timers enabled and started | finished ("moved") |
 
 There is no moment in which the site's own code can put a crontab back: the account leaves

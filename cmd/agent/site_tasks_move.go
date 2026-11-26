@@ -731,12 +731,6 @@ func siteSliceLoadedVia(call siteTaskCall, siteID int, path string) bool {
 	return err == nil && strings.TrimSpace(string(out)) == path
 }
 
-// siteTasksLimitsMissing: enableSiteTaskTimers refused before any enable was
-// sent (the site's limits file is not in place).
-func siteTasksLimitsMissing(err error) bool {
-	return err != nil && strings.HasPrefix(err.Error(), transport.SiteTasksLimitsMissing)
-}
-
 // disableSiteTaskTimers disables and stops the journal's timers in one call
 // (a running task is not stopped: only its timer).
 func disableSiteTaskTimers(j *siteTasksJournal, call siteTaskCall) error {
@@ -925,12 +919,13 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 				// switched off again in one call (at most the fourth), so
 				// that the state is known: no task runs until Try again.
 				log.Printf("site tasks: the interrupted move of site %d could not be finished at the Agent's start (%v); its record stays for Try again", journal.SiteID, err)
+				// Fix round (F3): always, also when the site's limits look
+				// missing - an enable sent before the Agent stopped can have
+				// switched some timers on.
 				outcome, done, running = transport.SiteTasksUnknown, false, transport.SiteTasksRunNone
-				if !siteTasksLimitsMissing(err) {
-					if offErr := disableSiteTaskTimers(j, call); offErr != nil {
-						log.Printf("site tasks: the timers of site %d could not be switched off again: %v", journal.SiteID, offErr)
-						running = ""
-					}
+				if offErr := disableSiteTaskTimers(j, call); offErr != nil {
+					log.Printf("site tasks: the timers of site %d could not be switched off again: %v", journal.SiteID, offErr)
+					running = ""
 				}
 				if !siteTasksSpoolEmpty(j.Account) {
 					running = ""
