@@ -184,9 +184,22 @@ func (p *Panel) applyDBRoleLimits(ctx context.Context, limiter services.RoleLimi
 // when the plan sets one (a new user among them). A value equal to the
 // plan's that no record names (alpha.128 wrote it on PostgreSQL 15 or older)
 // is taken as the panel's without a write.
+//
+// Second review of PR #370 (finding 4): alpha.128 to 148 also wrote the
+// limit without a record through celikpanel_admin (PostgreSQL 15 or older,
+// and on 16 and later the roles celikpanel_admin made itself). After the
+// update the first write is usually the administrator's next change of the
+// limit, when the current value is the PREVIOUS plan value, not the new one.
+// So a change passes the subscription's previous effective limit along
+// (prev): a value without a record that equals it is the panel's too, and
+// gets the new value. A value that equals neither is the owner's and kept.
 type dbConnectionStep struct {
 	current int // rolconnlimit read before anything is written (-1: none)
 	want    int // the plan's limit (0: none)
+	// prev, when hasPrev: the subscription's effective limit before the
+	// change that started this run (0: none).
+	prev    int
+	hasPrev bool
 	// set writes limit and answers the value read back in the same call.
 	set func(limit int) (int, error)
 }
@@ -232,6 +245,13 @@ func (p *Panel) applyDBRoleLimitsFrom(ctx context.Context, limiter services.Role
 	if conn != nil {
 		text := strconv.Itoa(conn.current)
 		written, recorded := user.Panel[dbRoleKeyConnections]
+		if !recorded && conn.hasPrev && conn.prev > 0 && conn.current == conn.prev {
+			// The previous plan value, written without a record by alpha.128
+			// to 148: the panel's (second review of PR #370, finding 4).
+			written, recorded = dbRoleWritten{Value: conn.prev, Raw: text}, true
+			user.Panel[dbRoleKeyConnections] = written
+			changed = true
+		}
 		write, ownerValue, isOwner := planDBRecordedKey(text, dbConnectionNone, written, recorded, conn.want)
 		switch {
 		case !recorded && conn.want > 0 && conn.current == conn.want:

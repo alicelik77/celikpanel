@@ -175,7 +175,7 @@ func TestARestartLeavesARunsUsersNotKnownYet(t *testing.T) {
 	f.exec(t, `INSERT INTO database_users (server_id, subscription_id, username, password) VALUES (9941, 9802, 'p1_u', 'x'), (9941, 9802, 'p2_u', 'x')`)
 	run := dbLimitsRunID()
 	beginDBLimitsLiveRun(run)
-	f.panel.markDBLimitsPending(ctx, []dbLimitUser{{9802, 9941, "p1_u"}, {9802, 9941, "p2_u"}}, run)
+	f.panel.markDBLimitsPending(ctx, []dbLimitUser{{subscription: 9802, server: 9941, username: "p1_u"}, {subscription: 9802, server: 9941, username: "p2_u"}}, run)
 	if problems := f.panel.databaseLimitsProblems(ctx); len(problems) != 0 {
 		t.Fatalf("a running run's users were listed: %+v", problems)
 	}

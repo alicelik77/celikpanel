@@ -332,7 +332,7 @@ func TestAPlansSaveNamesTheUsersTheLimitsDidNotReach(t *testing.T) {
 	}
 	before := map[string]int{}
 	setPlanDBLimit(t, f, settingDBStatementSeconds, 5)
-	answer := f.panel.reapplyDBLimitsAfterAnswer(ctx, rightsOwnerPlan, 9951, before, map[string]int{settingDBStatementSeconds: 5})
+	answer := f.panel.reapplyDBLimitsAfterAnswer(ctx, rightsOwnerPlan, 9951, before, map[string]int{settingDBStatementSeconds: 5}, nil)
 	// alpha.149 (finding 7): the Agent's refusal is its own outcome.
 	if answer == nil || answer.Users != 2 || answer.Running != 0 || answer.NotAppliedCount != 1 ||
 		len(answer.NotApplied) != 1 || answer.NotApplied[0].User != "pg_u" || answer.NotApplied[0].State != dbLimitRefused {
@@ -341,7 +341,7 @@ func TestAPlansSaveNamesTheUsersTheLimitsDidNotReach(t *testing.T) {
 	if engine.settings["shop_u"][services.RoleKeyStatementSeconds] != "5s" {
 		t.Fatalf("the MariaDB user: %v", engine.settings)
 	}
-	if f.panel.reapplyDBLimitsAfterAnswer(ctx, rightsOwnerPlan, 9951, map[string]int{settingPHPMemoryMB: 1}, map[string]int{settingPHPMemoryMB: 1}) != nil {
+	if f.panel.reapplyDBLimitsAfterAnswer(ctx, rightsOwnerPlan, 9951, map[string]int{settingPHPMemoryMB: 1}, map[string]int{settingPHPMemoryMB: 1}, nil) != nil {
 		t.Fatal("an unchanged plan answered about its database users")
 	}
 	// The plan's handler sends it.

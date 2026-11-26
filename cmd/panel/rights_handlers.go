@@ -369,6 +369,9 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 	if planned.state != rightsStateUnlimited && owner != nil && p.refuseOverselling(w, ctx, owner.ID, subID, nextLimits) {
 		return
 	}
+	// Second review of PR #370 (finding 4): the subscription's connection
+	// limit before it moves (to another plan, Custom or Unlimited).
+	prevConnections := p.dbConnectionLimitsNow(ctx, []int{subID})
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
 		writeServerError(w, err)
@@ -398,7 +401,7 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 	}
 	// alpha.128 (G5): the subscription's limits may have changed with its
 	// state or its own ceilings; its database users follow.
-	p.reapplyDBConnectionLimits([]int{subID})
+	p.reapplyDBConnectionLimitsFrom([]int{subID}, prevConnections)
 	// S4 R2a: and its sites' slices.
 	p.reapplySiteSlices(p.siteLimitChangeLabel(ctx, rightsOwnerSubscription, subID), []int{subID})
 	// alpha.128 (integration): outgoing mail follows the mail keys.
@@ -701,6 +704,12 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 			return
 		}
 	}
+	// Second review of PR #370 (finding 4): the tree's connection limits
+	// before the reseller's limits change.
+	var prevConnections map[int]int
+	if tree, err := treeSubscriptionIDs(ctx, p.db.GetDB(), target.ID); err == nil {
+		prevConnections = p.dbConnectionLimitsNow(ctx, tree)
+	}
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
 		writeServerError(w, err)
@@ -730,7 +739,7 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 	}
 	// alpha.128 (G5): the reseller's tree follows its limits.
 	if tree, err := treeSubscriptionIDs(ctx, p.db.GetDB(), target.ID); err == nil {
-		p.reapplyDBConnectionLimits(tree)
+		p.reapplyDBConnectionLimitsFrom(tree, prevConnections)
 		// S4 R2a: and the sites' slices.
 		p.reapplySiteSlices(p.siteLimitChangeLabel(ctx, rightsOwnerReseller, target.ID), tree)
 	}

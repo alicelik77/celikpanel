@@ -293,10 +293,18 @@ var dbLimitsApplyMu sync.Mutex
 // limit writes nothing; an earlier record of the name is forgotten). driver
 // may be nil (the record's own is opened).
 func (p *Panel) applyDatabaseUserLimits(ctx context.Context, subscriptionID int, server *core.DatabaseServer, driver services.DatabaseDriver, username string, fresh bool, clusters func() transport.PostgreSQLClustersResponse) dbLimitOutcome {
+	return p.applyDatabaseUserLimitsAfter(ctx, subscriptionID, server, driver, username, fresh, clusters, nil)
+}
+
+// applyDatabaseUserLimitsAfter is applyDatabaseUserLimits for a run a change
+// of the limits started: prev, when not nil, is the subscription's effective
+// connection limit before that change (second review of PR #370, finding 4;
+// dbConnectionStep).
+func (p *Panel) applyDatabaseUserLimitsAfter(ctx context.Context, subscriptionID int, server *core.DatabaseServer, driver services.DatabaseDriver, username string, fresh bool, clusters func() transport.PostgreSQLClustersResponse, prev *int) dbLimitOutcome {
 	dbLimitsApplyMu.Lock()
 	defer dbLimitsApplyMu.Unlock()
 	outcome := dbLimitOutcome{ServerID: server.ID, SubscriptionID: subscriptionID, User: username, State: dbLimitApplied}
-	err := p.applyDatabaseUserLimitsLocked(ctx, subscriptionID, server, driver, username, fresh, clusters)
+	err := p.applyDatabaseUserLimitsLocked(ctx, subscriptionID, server, driver, username, fresh, clusters, prev)
 	if err != nil {
 		outcome.State, outcome.Code = dbLimitClassOf(err)
 		outcome.Reason = boundedAgentDiagnostic(err.Error())
@@ -306,7 +314,7 @@ func (p *Panel) applyDatabaseUserLimits(ctx context.Context, subscriptionID int,
 	return outcome
 }
 
-func (p *Panel) applyDatabaseUserLimitsLocked(ctx context.Context, subscriptionID int, server *core.DatabaseServer, driver services.DatabaseDriver, username string, fresh bool, clusters func() transport.PostgreSQLClustersResponse) error {
+func (p *Panel) applyDatabaseUserLimitsLocked(ctx context.Context, subscriptionID int, server *core.DatabaseServer, driver services.DatabaseDriver, username string, fresh bool, clusters func() transport.PostgreSQLClustersResponse, prev *int) error {
 	limit, err := p.dbConnectionLimit(ctx, subscriptionID)
 	if err != nil {
 		return fmt.Errorf("read the connection limit: %w", err)
@@ -340,6 +348,9 @@ func (p *Panel) applyDatabaseUserLimitsLocked(ctx context.Context, subscriptionI
 		step := &dbConnectionStep{current: connection, want: limit, set: func(value int) (int, error) {
 			return agentLimiter.setConnectionLimit(username, value)
 		}}
+		if prev != nil {
+			step.prev, step.hasPrev = *prev, true
+		}
 		return p.applyDBRoleLimitsFrom(ctx, agentLimiter, server.ID, username, roleLimits, fresh, current, step)
 	}
 	roleLimiter, hasRoles := limiter.(services.RoleLimiter)

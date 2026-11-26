@@ -114,6 +114,15 @@ func (p *Panel) pgRoleClusterPort(ctx context.Context, server *core.DatabaseServ
 // user of the given subscriptions, in the background. A user they do not
 // reach is recorded and named in Problems now (database_user_limits.go).
 func (p *Panel) reapplyDBConnectionLimits(subscriptionIDs []int) {
+	p.reapplyDBConnectionLimitsFrom(subscriptionIDs, nil)
+}
+
+// reapplyDBConnectionLimitsFrom is reapplyDBConnectionLimits after a change
+// of the limits: prev holds each subscription's effective connection limit
+// before the change (dbConnectionLimitsNow; nil: not known), so the limits
+// alpha.128 to 148 wrote without a record still follow the change (second
+// review of PR #370, finding 4).
+func (p *Panel) reapplyDBConnectionLimitsFrom(subscriptionIDs []int, prev map[int]int) {
 	if len(subscriptionIDs) == 0 {
 		return
 	}
@@ -121,10 +130,42 @@ func (p *Panel) reapplyDBConnectionLimits(subscriptionIDs []int) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		if _, err := p.reapplyDBConnectionLimitsNow(ctx, ids, nil); err != nil {
+		if _, err := p.reapplyDBConnectionLimitsNowFrom(ctx, ids, nil, prev); err != nil {
 			log.Printf("database connection limits: %v", err)
 		}
 	}()
+}
+
+// dbConnectionLimitsNow reads each subscription's effective connection limit
+// now - called before a change of the limits is saved. A subscription whose
+// limit cannot be read is left out (its users keep the rule without prev).
+func (p *Panel) dbConnectionLimitsNow(ctx context.Context, subscriptionIDs []int) map[int]int {
+	out := map[int]int{}
+	if p.db == nil {
+		return out
+	}
+	for _, id := range subscriptionIDs {
+		if limit, err := p.dbConnectionLimit(ctx, id); err == nil {
+			out[id] = limit
+		}
+	}
+	return out
+}
+
+// dbConnectionLimitsBefore is dbConnectionLimitsNow for the subscriptions an
+// owner's ceilings reach, read only when the edit changes the connection
+// limit (before the edit is saved); nil otherwise.
+func (p *Panel) dbConnectionLimitsBefore(ctx context.Context, ownerKind string, ownerID int, before, after map[string]int) map[int]int {
+	b, hadB := before[settingDBConnections]
+	a, hadA := after[settingDBConnections]
+	if p.db == nil || (hadB == hadA && b == a) {
+		return nil
+	}
+	subs, err := p.subscriptionsReachedBy(ctx, ownerKind, ownerID)
+	if err != nil {
+		return nil
+	}
+	return p.dbConnectionLimitsNow(ctx, subs)
 }
 
 // dbLimitUser is one recorded database user.
@@ -132,6 +173,18 @@ type dbLimitUser struct {
 	subscription int
 	server       int
 	username     string
+	// prev: the subscription's effective connection limit before the change
+	// that started the run, when known (finding 4 of the second review).
+	prev *int
+}
+
+// withPrevConnection sets each user's prev from the subscriptions' values.
+func withPrevConnection(users []dbLimitUser, prev map[int]int) {
+	for i := range users {
+		if value, ok := prev[users[i].subscription]; ok {
+			users[i].prev = &value
+		}
+	}
 }
 
 // dbLimitUsersOf lists the recorded users of the subscriptions.
@@ -163,6 +216,12 @@ func (p *Panel) dbLimitUsersOf(ctx context.Context, subscriptionIDs []int) ([]db
 // every user through the one function, each outcome sent to report (may be
 // nil) as it comes. It answers the outcomes.
 func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionIDs []int, report func(dbLimitOutcome)) ([]dbLimitOutcome, error) {
+	return p.reapplyDBConnectionLimitsNowFrom(ctx, subscriptionIDs, report, nil)
+}
+
+// reapplyDBConnectionLimitsNowFrom is reapplyDBConnectionLimitsNow with the
+// subscriptions' previous connection limits (reapplyDBConnectionLimitsFrom).
+func (p *Panel) reapplyDBConnectionLimitsNowFrom(ctx context.Context, subscriptionIDs []int, report func(dbLimitOutcome), prev map[int]int) ([]dbLimitOutcome, error) {
 	if p.db == nil || p.secrets == nil {
 		return nil, nil // no engine credentials to reach a server with
 	}
@@ -170,6 +229,7 @@ func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionID
 	if err != nil {
 		return nil, err
 	}
+	withPrevConnection(users, prev)
 	// alpha.149 (review of PR #370, finding 6): the run's users are written
 	// as pending first, so a restart leaves them "not known yet".
 	run := dbLimitsRunID()
@@ -194,7 +254,7 @@ func (p *Panel) applyDBLimitsToUsers(ctx context.Context, users []dbLimitUser, r
 			log.Printf("database user limits of %s: %s", u.username, outcome.Reason)
 			p.noteDBLimitOutcome(ctx, outcome)
 		} else {
-			outcome = p.applyDatabaseUserLimits(ctx, u.subscription, server, nil, u.username, false, clusters)
+			outcome = p.applyDatabaseUserLimitsAfter(ctx, u.subscription, server, nil, u.username, false, clusters, u.prev)
 		}
 		outcomes = append(outcomes, outcome)
 		if report != nil {
@@ -273,7 +333,9 @@ func dbConnectionLimitChanged(before, after map[string]int) bool {
 
 // reapplyDBConnectionLimitsAfter starts the rewrite for an owner whose
 // ceilings changed the database users' keys and (S4 R2a) the sites' slices.
-func (p *Panel) reapplyDBConnectionLimitsAfter(ctx context.Context, ownerKind string, ownerID int, before, after map[string]int) {
+// prev: the subscriptions' connection limits before the change
+// (dbConnectionLimitsBefore; nil: not known).
+func (p *Panel) reapplyDBConnectionLimitsAfter(ctx context.Context, ownerKind string, ownerID int, before, after map[string]int, prev map[int]int) {
 	dbChanged, siteChanged := dbConnectionLimitChanged(before, after), siteLimitsChanged(before, after)
 	if !dbChanged && !siteChanged {
 		return
@@ -284,7 +346,7 @@ func (p *Panel) reapplyDBConnectionLimitsAfter(ctx context.Context, ownerKind st
 		return
 	}
 	if dbChanged {
-		p.reapplyDBConnectionLimits(subs)
+		p.reapplyDBConnectionLimitsFrom(subs, prev)
 	}
 	if siteChanged {
 		p.reapplySiteSlices(p.siteLimitChangeLabel(ctx, ownerKind, ownerID), subs)

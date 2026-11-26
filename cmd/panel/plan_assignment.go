@@ -206,6 +206,9 @@ func (p *Panel) handleAssignPlan(w http.ResponseWriter, r *http.Request, c *Call
 			"", over)
 		return
 	}
+	// Second review of PR #370 (finding 4): the subscription's connection
+	// limit before it moves to the plan.
+	prevConnections := p.dbConnectionLimitsNow(ctx, []int{subID})
 	// Binding a plan ends a Custom set (D-042 P3: identical to the plan).
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -221,6 +224,9 @@ func (p *Panel) handleAssignPlan(w http.ResponseWriter, r *http.Request, c *Call
 		writeServerError(w, err)
 		return
 	}
+	// Its database users follow the plan's database limits (this route did
+	// not start the rewrite before; the subscriptions/{id}/rights route does).
+	p.reapplyDBConnectionLimitsFrom([]int{subID}, prevConnections)
 	details := map[string]any{"plan": plan.Name, "plan_id": plan.ID}
 	if fromPlanID.Valid {
 		details["from_plan_id"] = fromPlanID.Int64

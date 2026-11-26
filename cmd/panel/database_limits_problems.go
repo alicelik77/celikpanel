@@ -308,7 +308,9 @@ type dbLimitOutcomeView struct {
 // reapplyDBLimitsAfterAnswer is reapplyDBConnectionLimitsAfter for a Save
 // that answers: the site slices as before, the database users waited for up
 // to dbLimitsSaveWait. nil when the database keys did not change.
-func (p *Panel) reapplyDBLimitsAfterAnswer(ctx context.Context, ownerKind string, ownerID int, before, after map[string]int) *dbLimitsSaveAnswer {
+// prev: the subscriptions' connection limits before the Save
+// (dbConnectionLimitsBefore; second review of PR #370, finding 4).
+func (p *Panel) reapplyDBLimitsAfterAnswer(ctx context.Context, ownerKind string, ownerID int, before, after map[string]int, prev map[int]int) *dbLimitsSaveAnswer {
 	dbChanged, siteChanged := dbConnectionLimitChanged(before, after), siteLimitsChanged(before, after)
 	if !dbChanged && !siteChanged {
 		return nil
@@ -324,13 +326,13 @@ func (p *Panel) reapplyDBLimitsAfterAnswer(ctx context.Context, ownerKind string
 	if !dbChanged {
 		return nil
 	}
-	return p.applyDBLimitsAnswering(subs, dbLimitsSaveWait)
+	return p.applyDBLimitsAnswering(subs, dbLimitsSaveWait, prev)
 }
 
 // applyDBLimitsAnswering applies the limits to the subscriptions' users in
 // the background and answers what it knows after at most wait. The users are
 // written as pending first (finding 6).
-func (p *Panel) applyDBLimitsAnswering(subscriptionIDs []int, wait time.Duration) *dbLimitsSaveAnswer {
+func (p *Panel) applyDBLimitsAnswering(subscriptionIDs []int, wait time.Duration, prev map[int]int) *dbLimitsSaveAnswer {
 	answer := &dbLimitsSaveAnswer{NotApplied: []dbLimitOutcomeView{}}
 	if p.db == nil || p.secrets == nil {
 		return answer
@@ -343,9 +345,10 @@ func (p *Panel) applyDBLimitsAnswering(subscriptionIDs []int, wait time.Duration
 		// background, and Problems now names one they do not reach.
 		log.Printf("database user limits: the users could not be listed now: %v", err)
 		answer.Unknown = true
-		p.reapplyDBConnectionLimits(subscriptionIDs)
+		p.reapplyDBConnectionLimitsFrom(subscriptionIDs, prev)
 		return answer
 	}
+	withPrevConnection(users, prev)
 	answer.Users = len(users)
 	if len(users) == 0 {
 		return answer
