@@ -1453,7 +1453,13 @@ cron again, so sites can be moved again.
 **four systemd calls** under one 15-second bound (the slice's reading, the timers on or off,
 one reload), counted by a test on every step and failure; it never starts, stops or waits for
 a task or a timer. A call that does not answer in time is left to systemd and counts as not
-known; nothing further is sent. A record the start cannot settle stays for Try again.
+known; nothing further is sent. A record the start cannot settle stays for Try again. **A call
+given up at the bound is not cancelled** (alpha.150 fix round, as it is): systemd keeps it and
+may still carry it out after the record was written - an enable given up there can switch timers
+on later, and could overtake the switch-off of a later Try again. This needs systemd to hang past
+the bound; the record then says that it is not known how the tasks run, and a Try again once
+systemd answers again reads the state anew. The same bound covers only systemd's calls: the
+`crontab` command and the writes of `cron.allow` are not cut by it.
 
 **The panel's update.** The tasks' move, its undo and "Rebuild the task file" (§9.4) take the
 same claim as the programs' move: each is refused while the panel's update is queued or

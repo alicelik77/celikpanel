@@ -1295,7 +1295,13 @@ altında en çok **dört systemd çağrısıyla** çözülür (dilimin okunması
 kapanması, bir yeniden yükleme); bu, her adım ve her hata için bir testle sayılır; açılış hiçbir
 görevi ya da zamanlayıcıyı başlatmaz, durdurmaz, beklemez. Zamanında yanıt vermeyen bir çağrı
 systemd'ye bırakılır ve bilinmiyor sayılır; ardından hiçbir şey gönderilmez. Açılışın çözemediği
-kayıt Tekrar dene için kalır.
+kayıt Tekrar dene için kalır. **Sınırda bırakılan bir çağrı iptal edilmez** (alpha.150 düzeltme
+turu, olduğu gibi): systemd onu tutar ve kayıt yazıldıktan sonra da yerine getirebilir - orada
+bırakılan bir açma zamanlayıcıları sonradan açabilir ve sonraki bir Tekrar dene'nin kapatmasını
+geçebilir. Bunun için systemd'nin sınırı aşacak kadar takılması gerekir; kayıt o zaman görevlerin
+nasıl çalıştığının bilinmediğini söyler ve systemd yeniden yanıt verdiğinde bir Tekrar dene durumu
+yeniden okur. Aynı sınır yalnız systemd çağrılarını kapsar: `crontab` komutu ve `cron.allow`
+yazımları onunla kesilmez.
 
 **Panelin güncellemesi.** Görevlerin taşıması, geri alması ve "Görev dosyasını yeniden kur" (§9.4)
 programların taşımasıyla aynı hakkı alır: panelin güncellemesi sırada ya da sürüyorken
