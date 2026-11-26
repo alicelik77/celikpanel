@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -13,12 +12,13 @@ import (
 
 // alpha.148 fix round: the Agent's start with a kept move record.
 
-// TestAKeptMoveNeverHoldsUpTheAgentsStart (review finding 5): an interrupted
-// move whose put-back restarts take long is recovered at the Agent's start
-// within siteMoveStartBudget: the first restart waits only what is left of
-// it ("starting"), the second is not sent ("waiting"), the record stays, so
-// the site's card and the Problems now line (site_move_kept) name both; the
-// administrator's Try again then finishes it without that bound.
+// TestAKeptMoveNeverHoldsUpTheAgentsStart (review finding 5; alpha.149 fix
+// round F1): an interrupted move whose two programs were restarted in the
+// slice is recovered at the Agent's start without waiting for either: their
+// earlier files come back, systemd is reloaded once, and each restart is only
+// requested (--no-block): no restart that waits, no reading after them. Both
+// are "unverified" and the record stays; the status read then sees both
+// running where they ran and settles the record (F3).
 func TestAKeptMoveNeverHoldsUpTheAgentsStart(t *testing.T) {
 	host := useSliceTestHost(t)
 	first, second := "celikrt-5.service", "celiksvc-6.service"
@@ -46,56 +46,63 @@ func TestAKeptMoveNeverHoldsUpTheAgentsStart(t *testing.T) {
 			host.mu.Unlock()
 			u.Step = siteMoveStepRestarting
 		}
-		u.WaitSeconds = 0 // systemd's default start wait, set below
+		u.WaitSeconds = 300 // the longest start wait: the start must not take any of it
 	}
 	if err := journal.save(); err != nil {
 		t.Fatal(err)
 	}
-	// Each restart takes far longer than the start's budget.
-	siteSliceSettleDefault = 30 * time.Second
-	siteMoveStartBudget, siteMoveStartMinWait = 400*time.Millisecond, 100*time.Millisecond
-	release := make(chan struct{})
-	var once sync.Once
-	letThemStart := func() { once.Do(func() { close(release) }) }
-	t.Cleanup(letThemStart)
-	host.onRestart = func(string) { <-release }
+	var waited []string
+	host.onRestart = func(unit string) { waited = append(waited, unit) } // only a restart that waits calls it
+	host.mu.Lock()
+	host.calls, host.reloads = nil, 0
+	host.mu.Unlock()
 
 	started := time.Now()
 	recoverSiteSlicesAtStartup()
-	if took := time.Since(started); took > 1500*time.Millisecond {
-		t.Fatalf("the Agent's start waited %v for the put-back restarts (budget %v)", took, siteMoveStartBudget)
+	if took := time.Since(started); took > 500*time.Millisecond {
+		t.Fatalf("the Agent's start took %v with a kept record", took)
+	}
+	if len(waited) != 0 {
+		t.Fatalf("the start waited for a restart: %v", waited)
+	}
+	host.mu.Lock()
+	calls, reloads := append([]string(nil), host.calls...), host.reloads
+	host.mu.Unlock()
+	if reloads != 1 {
+		t.Fatalf("%d daemon-reloads at the start, want one for all: %v", reloads, calls)
+	}
+	requested := 0
+	for i, c := range calls {
+		if strings.HasPrefix(c, "restart --no-block ") {
+			requested++
+			for _, later := range calls[i:] {
+				if strings.HasPrefix(later, "show") {
+					t.Fatalf("the start read a program after requesting its restart (polling): %v", calls)
+				}
+			}
+		}
+	}
+	if requested != 2 {
+		t.Fatalf("restarts requested: %v", calls)
 	}
 	if _, err := os.Stat(siteMoveJournalPath); err != nil {
-		t.Fatal("the record was removed although the put-back did not finish")
+		t.Fatal("the record was removed before anyone saw the programs run")
 	}
 	for _, u := range []string{first, second} {
 		if !strings.Contains(unitText(t, filepath.Join(host.dir, u)), "Slice=system.slice") {
 			t.Fatalf("%s: the pre-move file is not back", u)
 		}
+		if got := readSiteMoveOutcomes()["7"].Units[u]; got != transport.SiteMoveUnverified {
+			t.Fatalf("%s after the start: %q", u, got)
+		}
 	}
+	// The status read sees both running where they ran: the record goes.
 	status := round3Status(t, 7)
-	if status.MoveInterrupted == nil || !status.MoveInterrupted.Kept ||
-		status.MoveInterrupted.Units[first] != transport.SiteMoveStarting || status.MoveInterrupted.Units[second] != transport.SiteMoveWaiting {
-		t.Fatalf("the card is not told what is left: %+v", status.MoveInterrupted)
-	}
-	if host.called("restart " + second) {
-		t.Fatal("a restart that did not fit the start's budget was sent")
-	}
-	// The administrator's Try again, once the programs start: done, record gone.
-	letThemStart()
-	var done transport.MoveSiteSliceResponse
-	_ = (&Agent{}).MoveSiteSliceV1(&transport.MoveSiteSliceRequest{RequestID: "r-a148", Recover: true}, &done)
-	if !done.Done || done.Kept {
-		t.Fatalf("try again: %+v", done)
+	if status.MoveInterrupted == nil || status.MoveInterrupted.Kept ||
+		status.MoveInterrupted.Units[first] != transport.SiteMovePutBack || status.MoveInterrupted.Units[second] != transport.SiteMovePutBack {
+		t.Fatalf("the status read did not settle it: %+v", status.MoveInterrupted)
 	}
 	if _, err := os.Stat(siteMoveJournalPath); !os.IsNotExist(err) {
-		t.Fatal("the record stayed after the put-back finished")
-	}
-	host.mu.Lock()
-	defer host.mu.Unlock()
-	for _, u := range []string{first, second} {
-		if host.units[u].cgroup != "/system.slice/"+u {
-			t.Fatalf("%s runs in %s", u, host.units[u].cgroup)
-		}
+		t.Fatal("the record stayed after both programs were seen running where they ran")
 	}
 }

@@ -58,6 +58,8 @@ type sliceTestHost struct {
 	onRestart func(unit string)
 	// setProperty applies a set-property call (nil: recorded only).
 	setProperty func(args []string)
+	// delay (alpha.149 fix round): every systemctl call takes this long.
+	delay time.Duration
 }
 
 func useSliceTestHost(t *testing.T) *sliceTestHost {
@@ -68,7 +70,8 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 	oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare := appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare
 	oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport := siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport
 	oldJournal, oldOutcomes, oldRuntime, oldControl := siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir
-	oldRestart := siteUnitRestart
+	oldRestart, oldUpdate := siteUnitRestart, siteMoveUpdateActive
+	siteMoveUpdateActive = func() bool { return false } // never the test machine's own update records
 	// The bounded restart goes through the fake systemctl, with the same
 	// bound: an answer later than wait is "still starting".
 	siteUnitRestart = func(unit string, wait time.Duration) ([]byte, error) {
@@ -93,7 +96,7 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 		}
 	}
 	t.Cleanup(func() {
-		siteUnitRestart = oldRestart
+		siteUnitRestart, siteMoveUpdateActive = oldRestart, oldUpdate
 		appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare = oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare
 		siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport = oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport
 		siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir = oldJournal, oldOutcomes, oldRuntime, oldControl
@@ -120,7 +123,14 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 		return out
 	}
 	appUnitSystemctl = func(args ...string) ([]byte, error) {
-		if args[0] == "restart" && host.onRestart != nil {
+		host.mu.Lock()
+		delay := host.delay
+		host.mu.Unlock()
+		time.Sleep(delay)
+		// restart --no-block (alpha.149 fix round): systemd queues the job and
+		// the caller does not wait for it; the fake applies it at once.
+		noBlock := args[0] == "restart" && len(args) == 3 && args[1] == "--no-block"
+		if args[0] == "restart" && !noBlock && host.onRestart != nil {
 			host.onRestart(args[1])
 		}
 		if args[0] == "set-property" && host.setProperty != nil {
@@ -132,19 +142,20 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 		switch {
 		case args[0] == "daemon-reload":
 			host.reloads++
-		case args[0] == "restart" && len(args) == 2:
-			u := host.units[args[1]]
+		case args[0] == "restart" && (len(args) == 2 || noBlock):
+			name := args[len(args)-1]
+			u := host.units[name]
 			if u == nil {
 				return []byte("Unit not found."), errors.New("exit status 5")
 			}
-			raw, _ := os.ReadFile(filepath.Join(host.dir, args[1]))
+			raw, _ := os.ReadFile(filepath.Join(host.dir, name))
 			slice := sitesandbox.SystemSlice
 			for _, line := range strings.Split(string(raw), "\n") {
 				if rest, ok := strings.CutPrefix(line, "Slice="); ok {
 					slice = rest
 				}
 			}
-			u.cgroup = "/" + slice + "/" + args[1]
+			u.cgroup = "/" + slice + "/" + name
 			u.active = "active"
 			if u.slowShows > 0 {
 				u.active = "activating"

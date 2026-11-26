@@ -76,11 +76,15 @@ type SiteSliceCounters struct {
 	CPUThrottled     int64  `json:"cpu_throttled"`
 	CPUThrottledUSec int64  `json:"cpu_throttled_usec"`
 	CPUPeriods       int64  `json:"cpu_periods"`
-	// TasksPeakAtLimit (alpha.149, lab D3): on a kernel without
-	// pids.events.local, the slice's pids.peak has reached its pids.max: the
-	// site's programs reached their process limit at some time since the
-	// slice's cgroup was made; how often is not counted.
-	TasksPeakAtLimit bool `json:"tasks_peak_at_limit,omitempty"`
+	// SlicePidsPeak and SlicePidsMax (alpha.149, lab D3; fix round F7): on a
+	// kernel without pids.events.local, the slice's own pids.peak and the
+	// pids.max it was read with (0: not read, or no limit). The Panel says
+	// that the site's programs reached their process limit only when the
+	// limit is unchanged since its previous reading, that reading was below
+	// it and the peak now reached it; how often, or whether a new process was
+	// refused, is not known from them.
+	SlicePidsPeak int64 `json:"slice_pids_peak,omitempty"`
+	SlicePidsMax  int64 `json:"slice_pids_max,omitempty"`
 }
 
 // SiteSliceUnit is one unit of a site.
@@ -134,13 +138,15 @@ const (
 	// never holds up the Agent); the next start, a move's attempt or Try
 	// again restarts it.
 	SiteMoveWaiting = "waiting"
-	// SiteMoveUnverified (alpha.149, lab D6): its pre-move bytes are back and
-	// it was started again at the Agent's start, but whether it runs was not
-	// known before the start's bound ended (not a failure, not a success);
-	// the next start, a move's attempt or Try again checks it.
+	// SiteMoveUnverified (alpha.149, lab D6; fix round F1/F3): its pre-move
+	// bytes are back and it was started again (at the Agent's start the
+	// restart is only requested, never waited for), but where it runs is not
+	// known yet (not a failure, not a success). The status read checks it,
+	// read only: running where it ran closes it, not running makes it
+	// "failed"; Try again or a move's attempt check it too.
 	SiteMoveUnverified = "unverified"
-	// SiteMoveNotAnswering (alpha.149): it runs where it ran but does not
-	// listen again on every port it listened on before.
+	// SiteMoveNotAnswering (alpha.149; fix round F10): it runs where it ran
+	// but, having had ports, listens on none (a changed port is not this).
 	SiteMoveNotAnswering = "not_answering"
 )
 
@@ -148,9 +154,11 @@ const (
 // values, for the page's own language; Detail and Error keep the English text
 // for the journal and the audit record. Codes of a program's step:
 // not_running (State: what systemd shows, Seconds), not_in_slice (Seconds),
-// not_listening (Seconds, Ports), still_starting (Seconds), restart_failed,
-// write_failed, record_failed, changed; of the whole move: unsupported,
-// another_move, site_busy, kept_earlier, prepare_failed, limits_failed,
+// not_listening (Seconds, Ports: the move's step, not every port), no_port
+// (Seconds, Ports: a put-back that listens on none), still_starting
+// (Seconds), restart_failed, write_failed, record_failed, changed; of the
+// whole move: unsupported, another_move, update_running (the panel's update
+// is in progress), site_busy, kept_earlier, prepare_failed, limits_failed,
 // bad_request, build, not_finished.
 type SiteMoveReason struct {
 	Code    string `json:"code"`
@@ -318,10 +326,14 @@ type SiteSliceMoved struct {
 	PutBack bool   `json:"put_back,omitempty"`
 	Detail  string `json:"detail,omitempty"`
 	// Reason (alpha.149) is the code of Detail's failure; Back the code of a
-	// put-back that did not complete (not_running, still_starting,
-	// not_listening, restart_failed, write_failed, unknown, changed).
+	// put-back that did not complete (not_running, still_starting, no_port,
+	// not_in_slice, unread, restart_failed, write_failed, unknown, changed).
 	Reason *SiteMoveReason `json:"reason,omitempty"`
 	Back   *SiteMoveReason `json:"back,omitempty"`
+	// Ran (alpha.149 fix round, W1): it ran when the move began, so a
+	// put-back that completed has it running again where it ran; a program
+	// that did not run was put back as it was (not running).
+	Ran bool `json:"ran,omitempty"`
 }
 
 // MoveSiteSliceResponse answers MoveSiteSliceV1. Done: every unit of the

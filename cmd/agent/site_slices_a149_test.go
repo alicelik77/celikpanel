@@ -74,33 +74,27 @@ func TestAPutBackThatDoesNotRunIsNotPutBack(t *testing.T) {
 	}
 }
 
-// TestAStartPutBackIsCheckedLikeTheMove (D6, decision 1): an interrupted
-// move's put-back at the Agent's start is checked as the move checks: a
-// program that does not run where it ran keeps the record as "failed"; one
-// whose check the start's bound cut is "unverified" (not known: neither a
-// failure nor a success); the start stays within its bound.
+// TestAStartPutBackIsCheckedLikeTheMove (D6, decision 1; fix round F1, F3):
+// an interrupted move's put-back is checked as the move checks. At the
+// Agent's start its restart is only requested: "unverified" (not known:
+// neither a failure nor a success), the record kept; the status read then
+// sees that it does not run where it ran and says "failed" (F3, read only).
+// Try again (the full recovery) checks it within its start wait: "failed".
 func TestAStartPutBackIsCheckedLikeTheMove(t *testing.T) {
 	for _, c := range []struct {
-		name   string
-		budget time.Duration
-		want   string
+		name    string
+		recover func() *siteMoveRecovered
+		want    string
 	}{
-		{"its own wait", time.Minute, transport.SiteMoveFailed},
-		{"cut by the start's bound", 30 * time.Millisecond, transport.SiteMoveUnverified},
+		{"the Agent's start", recoverSiteSliceMoveAtStart, transport.SiteMoveUnverified},
+		{"Try again", recoverSiteSliceMove, transport.SiteMoveFailed},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			host, running, before := round3Interrupted(t)
 			host.mu.Lock()
 			host.units[running].failEverywhere = true
 			host.mu.Unlock()
-			oldMin := siteMoveStartMinWait
-			t.Cleanup(func() { siteMoveStartMinWait = oldMin })
-			siteMoveStartMinWait = 5 * time.Millisecond
-			started := time.Now()
-			recovered := recoverSiteSliceMove(c.budget)
-			if c.budget < time.Second && time.Since(started) > time.Second {
-				t.Fatalf("the start waited %v (bound %v)", time.Since(started), c.budget)
-			}
+			recovered := c.recover()
 			if recovered == nil || !recovered.record.Kept || recovered.record.Units[running] != c.want {
 				t.Fatalf("want %q kept, got %+v", c.want, recovered)
 			}
@@ -109,6 +103,19 @@ func TestAStartPutBackIsCheckedLikeTheMove(t *testing.T) {
 			}
 			if _, err := os.Stat(siteMoveJournalPath); err != nil {
 				t.Fatal("the record was removed although the program was not seen running")
+			}
+			// The status read: not running where it ran is "failed" (read only).
+			host.mu.Lock()
+			host.calls = nil
+			host.mu.Unlock()
+			status := round3Status(t, 7)
+			if status.MoveInterrupted == nil || !status.MoveInterrupted.Kept || status.MoveInterrupted.Units[running] != transport.SiteMoveFailed {
+				t.Fatalf("the status read: %+v", status.MoveInterrupted)
+			}
+			for _, call := range host.calls {
+				if strings.HasPrefix(call, "restart") || strings.HasPrefix(call, "start") || strings.HasPrefix(call, "reset-failed") {
+					t.Fatalf("a status read changed a program: %v", host.calls)
+				}
 			}
 		})
 	}
@@ -174,10 +181,10 @@ func TestAMoveThatDoesNotListenSaysSoInCodes(t *testing.T) {
 // all answers a code too.
 func TestARefusedMoveAnswersACode(t *testing.T) {
 	useSliceTestHost(t)
-	siteMoveRunning.Lock()
+	siteMoveInFlight.Store(true) // another move runs
 	var resp transport.MoveSiteSliceResponse
 	_ = (&Agent{}).MoveSiteSliceV1(moveRequest("celikrt-5.service"), &resp)
-	siteMoveRunning.Unlock()
+	siteMoveInFlight.Store(false)
 	if resp.Error == "" || resp.Reason == nil || resp.Reason.Code != "another_move" {
 		t.Fatalf("refusal: %+v", resp)
 	}
@@ -266,10 +273,10 @@ func TestAppliedLimitsAnswerReasonCodes(t *testing.T) {
 // TestAnUpdateDoesNotStartDuringAMove (D5, decision 8b): the agent refuses
 // its own update while a site's programs are being moved into their limits.
 func TestAnUpdateDoesNotStartDuringAMove(t *testing.T) {
-	siteMoveRunning.Lock()
+	siteMoveInFlight.Store(true)
 	var reply transport.SystemUpdateStartResponse
 	err := (&Agent{}).StartSystemUpdate(&transport.SystemUpdateStartRequest{RequestID: "a149-move"}, &reply)
-	siteMoveRunning.Unlock()
+	siteMoveInFlight.Store(false)
 	if err != nil || reply.Accepted || reply.Reason != transport.HostMutationReasonSiteMove || reply.Error == "" {
 		t.Fatalf("an update during a move: %v %+v", err, reply)
 	}

@@ -648,7 +648,7 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 		}
 	}
 	ledger := readSandboxLedger() // read-only here: nothing is written
-	moves := siteMoveOutcomesNow()
+	moves := siteMoveOutcomesNow(show)
 	named := siteSlicesNamed()
 	for i, q := range sites {
 		slice := sitesandbox.SliceName(q.SiteID)
@@ -697,7 +697,7 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			status.CountersRead = true
 			status.Counters = transport.SiteSliceCounters{MemoryLimitHits: c.MemoryLimitHits, MemoryOOMAll: c.MemoryOOMAll, OOMKills: c.OOMKills,
 				MemoryMaxHits: c.MemoryMaxHits, TasksLimitHits: c.TasksLimitHits, TasksOtherHits: c.TasksOtherHits, TasksRule: c.TasksRule,
-				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods, TasksPeakAtLimit: c.TasksPeakAtLimit}
+				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods, SlicePidsPeak: c.SlicePidsPeak, SlicePidsMax: c.SlicePidsMax}
 		}
 		resp.Sites = append(resp.Sites, status)
 	}

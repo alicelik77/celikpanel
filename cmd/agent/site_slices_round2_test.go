@@ -58,6 +58,15 @@ func TestTheMoveIsRecordedBeforeEveryWrite(t *testing.T) {
 			}
 			siteMoveKilled = func(string, string) bool { return false }
 			recoverSiteSlicesAtStartup()
+			if _, err := os.Stat(siteMoveJournalPath); err == nil && p.step == "restarted" {
+				// alpha.149 fix round (F1, F3): the start only requested the
+				// put-back's restart ("unverified"); the next status read sees
+				// it running where it ran and settles the record.
+				if got := readSiteMoveOutcomes()["7"].Units[running]; got != transport.SiteMoveUnverified {
+					t.Fatalf("after the start: %q", got)
+				}
+				round3Status(t, 7)
+			}
 			if _, err := os.Stat(siteMoveJournalPath); !os.IsNotExist(err) {
 				t.Fatal("the record stayed after a complete recovery")
 			}
