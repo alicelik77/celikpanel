@@ -46,7 +46,7 @@ export interface TaskLine {
     reason: string;
 }
 
-export const TASK_REASONS = ['schedule', 'mailto', 'home', 'shell', 'env_value', 'carriage', 'empty', 'invalid_env', 'too_long', 'not_made_here'] as const;
+export const TASK_REASONS = ['schedule', 'mailto', 'home', 'shell', 'env_value', 'carriage', 'empty', 'invalid_env', 'too_long', 'not_made_here', 'cron_setting'] as const;
 
 export function decodeTaskLines(raw: unknown): TaskLine[] {
     if (!Array.isArray(raw)) return [];

@@ -240,3 +240,30 @@ func TestAPutBackWhoseCrontabIsNotReadBackNeverSwitchesTimersOn(t *testing.T) {
 		})
 	}
 }
+
+// TestAScheduleSettingIsRefusedNotSilentlyChanged (F5): CRON_TZ=,
+// RANDOM_DELAY= and START_HOURS_RANGE= change when jobs run under cronie and
+// a timer would keep only the setting: the screen's save of a moved site's
+// tasks refuses a task file holding one (the move's refusal is in
+// TestTasksMoveKeepsTheWholeCrontabForOneLine), and such a line never
+// reaches the settings file.
+func TestAScheduleSettingIsRefusedNotSilentlyChanged(t *testing.T) {
+	host := useTaskTestHost(t)
+	host.startWith(t, moveTaskCrontab)
+	if resp := moveTasks(t); resp.Outcome != transport.SiteTasksMoved {
+		t.Fatalf("move %+v", resp)
+	}
+	before := readTaskFile(t, sitecron.SourcePath(taskTestSite))
+	for _, line := range []string{"CRON_TZ=Europe/Berlin", "RANDOM_DELAY=30", "START_HOURS_RANGE=3-22"} {
+		err := siteTaskStore(taskTestTarget()).write(moveTaskCrontab, line+"\n"+moveTaskCrontab, nil)
+		if err == nil || err.Error() != transport.SiteTasksCronSetting {
+			t.Fatalf("%s: %v", line, err)
+		}
+		if got := readTaskFile(t, sitecron.SourcePath(taskTestSite)); got != before {
+			t.Fatalf("%s: the task file changed", line)
+		}
+		if strings.Contains(sitecron.Parse(line+"\n").EnvFileBody(), line[:5]) {
+			t.Fatalf("%s reaches the settings file", line)
+		}
+	}
+}

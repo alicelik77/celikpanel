@@ -35,6 +35,7 @@ export const enSiteTasksScreens = {
     'stasks.reason.empty': 'a time without a command',
     'stasks.reason.invalid_env': 'not a valid setting',
     'stasks.reason.too_long': 'longer than cron runs (998 bytes at most)',
+    'stasks.reason.cron_setting': 'changes when tasks run for some cron programs, which a timer cannot keep; delete the line and set the time in each task’s schedule',
     'stasks.state.off': 'Turned off on the server',
     'stasks.state.at_boot': 'Runs after each start of the server',
     'stasks.state.kept': 'Its file was changed on the server and is kept',
@@ -98,6 +99,7 @@ export const enSiteTasksScreens = {
 
     'err.SITE_TASKS_SOURCE_MISSING': 'This site’s task file is missing on the server while its tasks still run as timers, so nothing was changed: a change now would remove every other task. The administrator rebuilds the file on this screen; then change the task again.',
     'err.CRON_COMMAND_TOO_LONG': 'The command is longer than cron runs (998 bytes at most), so nothing was saved. Put the command into a script file and run the script from the task.',
+    'err.SITE_TASKS_CRON_SETTING': 'A setting of this site’s task file (CRON_TZ, RANDOM_DELAY or START_HOURS_RANGE) changes when tasks run for some cron programs, and a timer cannot keep that, so nothing was saved. The server owner removes that line of the task file and sets the time in each task’s schedule; then save again.',
     'err.SITE_TASKS_ENV_VALUE': 'A setting of this site’s task file holds a value the server cannot read, so nothing was saved. The server owner corrects that line of the task file; then save again.',
     'err.SITE_TASKS_LIMITS_MISSING': 'The task was saved, but it does not run yet: this site’s limits file is not in place on the server, and no task runs outside the site’s limits. The administrator opens the subscription’s limits and saves them; then save the task again.',
 

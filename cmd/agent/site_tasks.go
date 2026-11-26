@@ -1319,8 +1319,12 @@ func siteTaskStore(t siteTaskTarget) cronStore {
 			// A setting systemd cannot read would fail every task of the site:
 			// such a file is never written by a save.
 			for _, bad := range sitecron.Parse(after).Untranslatable() {
-				if bad.Reason == sitecron.ReasonEnvValue {
+				switch bad.Reason {
+				case sitecron.ReasonEnvValue:
 					return errSiteTasksEnvValue
+				case sitecron.ReasonCronSetting:
+					// alpha.150 fix round (F5): refused, never silently changed.
+					return errSiteTasksCronSetting
 				}
 			}
 			// An owner's edit is kept and used; this change is written beside
@@ -1361,6 +1365,8 @@ var errSiteTasksSourceOwner = errors.New(transport.SiteTasksSourceHeld)
 var (
 	errSiteTasksSourceGone = errors.New(transport.SiteTasksSourceGone)
 	errSiteTasksEnvValue   = errors.New(transport.SiteTasksEnvValue)
+	// errSiteTasksCronSetting: alpha.150 fix round (F5).
+	errSiteTasksCronSetting = errors.New(transport.SiteTasksCronSetting)
 )
 
 // listSiteTasks answers ListCronJobs for a moved site.

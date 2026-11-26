@@ -1288,7 +1288,14 @@ noncharacter, a quote mark, a backslash, a control character) is a line that can
 translated: it keeps a crontab in cron at the move, is never written into the settings file,
 and a save of a task file holding one is refused. cron accepts a few forms the translation
 refuses (numbers with more than two digits such as `007`, steps over 99, a backwards weekday
-range such as `fri-sun`); those are shown with their reason.
+range such as `fri-sun`); those are shown with their reason. **A setting that is part of the
+schedule for some crons is refused (alpha.150 fix round):** `CRON_TZ=`, `RANDOM_DELAY=` and
+`START_HOURS_RANGE=` change when jobs run under cronie (and systemd-cron), while Debian's and
+Ubuntu's cron 3.0pl1 keep them as plain settings (its program has no such name). A timer would
+keep only the setting, so the schedule could change silently; which cron a server runs cannot be
+told apart reliably, so such a line keeps the whole crontab in cron at the move (named, with
+why) and a save of a task file holding one is refused, on every server. The server owner
+deletes the line and gives the time in each task's own schedule.
 
 **A cron job and a timer task: what differs.**
 

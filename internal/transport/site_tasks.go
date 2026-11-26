@@ -82,6 +82,11 @@ const (
 	// systemd cannot read (not UTF-8, a quote mark, a backslash, a control
 	// character); a save is refused until it is corrected.
 	SiteTasksEnvValue = "site_tasks_env_value: a setting of the site's task file holds a value systemd cannot read; nothing was changed"
+	// SiteTasksCronSetting (alpha.150 fix round, F5): a setting line of the
+	// task file is one some crons read as part of the schedule (CRON_TZ=,
+	// RANDOM_DELAY=, START_HOURS_RANGE=); a timer would not keep its meaning,
+	// so a save is refused until it is removed.
+	SiteTasksCronSetting = "site_tasks_cron_setting: a setting of the site's task file changes the schedule for some crons (CRON_TZ, RANDOM_DELAY, START_HOURS_RANGE), which a timer cannot keep; nothing was changed"
 )
 
 // Mail submission as the SMTP block sees it (S4 R2b fix round;

@@ -62,7 +62,18 @@ const (
 	ReasonEmpty      = "empty"       // a schedule without a command
 	ReasonInvalidEnv = "invalid_env" // a NAME=value line with a name cron does not take
 	ReasonTooLong    = "too_long"    // a command (or setting) longer than cron reads (MAX_COMMAND, MAX_ENVSTR)
+	// ReasonCronSetting: CRON_TZ=, RANDOM_DELAY= or START_HOURS_RANGE=, which
+	// cronie (and systemd-cron) read as part of the schedule and Debian's cron
+	// 3.0pl1 keeps as a plain setting (alpha.150 fix round, F5). A timer would
+	// keep only the setting, so the schedule could change silently; which cron
+	// a host runs cannot be told apart reliably, so the line is refused on
+	// every host.
+	ReasonCronSetting = "cron_setting"
 )
+
+// scheduleSettings are the setting names some crons read as part of the
+// schedule (ReasonCronSetting).
+var scheduleSettings = map[string]bool{"CRON_TZ": true, "RANDOM_DELAY": true, "START_HOURS_RANGE": true}
 
 // MaxCommand is cron 3.0pl1's MAX_COMMAND: load_entry reads the command
 // with get_string(cmd, MAX_COMMAND, ...) and refuses the line (e_cmd_len)
@@ -174,6 +185,10 @@ func Parse(text string) Crontab {
 			case "MAILTO":
 				if e.Value != "" {
 					e.Kind, e.Reason, e.Detail = KindInvalid, ReasonMailto, "MAILTO with an address: cron mails the output, a timer keeps it in the journal"
+				}
+			default:
+				if scheduleSettings[e.Name] {
+					e.Kind, e.Reason, e.Detail = KindInvalid, ReasonCronSetting, e.Name+" is part of the schedule for some crons (cronie); a timer would keep only the setting"
 				}
 			}
 			if e.Kind == KindEnv {

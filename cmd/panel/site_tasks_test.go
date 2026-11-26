@@ -290,6 +290,7 @@ func TestFixRoundProblemsAndRefusals(t *testing.T) {
 		errCodeSiteTasksSourceMissing: rpc.ServerError(transport.SiteTasksSourceGone),
 		errCodeCronCommandTooLong:     rpc.ServerError(transport.CronCommandTooLong),
 		errCodeSiteTasksEnvValue:      rpc.ServerError(transport.SiteTasksEnvValue),
+		errCodeSiteTasksCronSetting:   rpc.ServerError(transport.SiteTasksCronSetting),
 		errCodeSiteTasksLimitsMissing: rpc.ServerError(transport.SiteTasksLimitsMissing + ": /etc/systemd/system/celiksite_4.slice is not there"),
 	} {
 		recorder := httptest.NewRecorder()

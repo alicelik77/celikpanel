@@ -26,6 +26,7 @@ export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
     'stasks.reason.carriage': 'satırda gizli bir denetim karakteri var',
     'stasks.reason.empty': 'komutu olmayan bir zaman',
     'stasks.reason.invalid_env': 'geçerli bir ayar değil',
+    'stasks.reason.cron_setting': 'bazı cron programlarında görevlerin ne zaman çalıştığını değiştirir, zamanlayıcı bunu tutamaz; satırı silin ve saati her görevin zamanlamasında verin',
     'stasks.reason.too_long': 'cron’un çalıştırdığından uzun (en çok 998 bayt)',
     'stasks.state.off': 'Sunucuda kapatıldı',
     'stasks.state.at_boot': 'Sunucu her açıldığında çalışır',
@@ -90,6 +91,7 @@ export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
 
     'err.SITE_TASKS_SOURCE_MISSING': 'Bu sitenin görev dosyası sunucuda yok, ama görevleri hâlâ zamanlayıcı olarak çalışıyor; bu yüzden hiçbir şey değiştirilmedi: şimdi yapılacak bir değişiklik öteki bütün görevleri silerdi. Yönetici dosyayı bu ekrandan yeniden kurar; sonra görevi yeniden değiştirin.',
     'err.CRON_COMMAND_TOO_LONG': 'Komut, cron’un çalıştırdığından uzun (en çok 998 bayt); bu yüzden hiçbir şey kaydedilmedi. Komutu bir betik dosyasına koyun ve görevden o betiği çalıştırın.',
+    'err.SITE_TASKS_CRON_SETTING': 'Bu sitenin görev dosyasındaki bir ayar (CRON_TZ, RANDOM_DELAY ya da START_HOURS_RANGE) bazı cron programlarında görevlerin ne zaman çalıştığını değiştirir ve zamanlayıcı bunu tutamaz; bu yüzden hiçbir şey kaydedilmedi. Sunucu sahibi görev dosyasının o satırını siler ve saati her görevin zamanlamasında verir; sonra yeniden kaydedin.',
     'err.SITE_TASKS_ENV_VALUE': 'Bu sitenin görev dosyasındaki bir ayarın değeri sunucunun okuyabileceği bir metin değil; bu yüzden hiçbir şey kaydedilmedi. Sunucu sahibi görev dosyasının o satırını düzeltir; sonra yeniden kaydedin.',
     'err.SITE_TASKS_LIMITS_MISSING': 'Görev kaydedildi ama henüz çalışmıyor: bu sitenin sınır dosyası sunucuda yerinde değil ve hiçbir görev sitenin sınırları dışında çalışmaz. Yönetici aboneliğin sınırlarını açıp kaydeder; sonra görevi yeniden kaydedin.',
 

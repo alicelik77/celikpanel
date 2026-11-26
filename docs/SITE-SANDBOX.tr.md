@@ -1131,6 +1131,14 @@ noktası, tırnak işareti, ters eğik çizgi, denetim karakteri) çevrilemeyen 
 crontab'ı cron'da tutar, ayar dosyasına asla yazılmaz ve böyle bir satır taşıyan görev dosyasının
 kaydı reddedilir. cron'un kabul edip çevirinin reddettiği birkaç biçim (`007` gibi ikiden çok basamaklı
 sayılar, 99'dan büyük adımlar, `fri-sun` gibi geriye giden bir gün aralığı) nedeniyle gösterilir.
+**Bazı cron'lar için zamanlamanın parçası olan bir ayar reddedilir (alpha.150 düzeltme turu):**
+`CRON_TZ=`, `RANDOM_DELAY=` ve `START_HOURS_RANGE=` cronie'de (ve systemd-cron'da) işlerin ne zaman
+çalıştığını değiştirir; Debian'ın ve Ubuntu'nun cron 3.0pl1'i ise onları sıradan ayar olarak tutar
+(programında böyle bir ad yoktur). Bir zamanlayıcı yalnız ayarı tutardı, yani zamanlama sessizce
+değişebilirdi; bir sunucunun hangi cron'u çalıştırdığı güvenilir biçimde ayırt edilemediği için böyle
+bir satır taşımada bütün crontab'ı cron'da tutar (adı ve nedeni söylenerek) ve böyle bir satır tutan
+görev dosyasının kaydı her sunucuda reddedilir. Sunucu sahibi satırı siler ve saati her görevin
+kendi zamanlamasında verir.
 
 **Bir cron işi ile bir zamanlayıcı görevi: farklar.**
 

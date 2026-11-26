@@ -151,6 +151,10 @@ func writeCronAgentError(w http.ResponseWriter, err error, reason string) {
 	case agentAnsweredExactly(err, transport.SiteTasksEnvValue):
 		writeCodedError(w, http.StatusConflict, errCodeSiteTasksEnvValue, siteTasksEnvValueMessage, "")
 		return
+	case agentAnsweredExactly(err, transport.SiteTasksCronSetting):
+		// alpha.150 fix round (F5).
+		writeCodedError(w, http.StatusConflict, errCodeSiteTasksCronSetting, siteTasksCronSettingMessage, "")
+		return
 	case agentAnsweredWithPrefix(err, transport.SiteTasksLimitsMissing):
 		log.Printf("[409][cron] saved, but the site's limits file is not in place: %s", boundedAgentDiagnostic(err.Error()))
 		writeCodedError(w, http.StatusConflict, errCodeSiteTasksLimitsMissing, siteTasksLimitsMissingMessage, "")
@@ -193,6 +197,8 @@ const (
 	cronCommandTooLongMessage     = "The command is longer than cron runs (998 bytes at most), so nothing was saved. Put the command into a script file and run the script from the task."
 	errCodeSiteTasksEnvValue      = "SITE_TASKS_ENV_VALUE"
 	siteTasksEnvValueMessage      = "A setting of this site's task file holds a value the server cannot read (not plain UTF-8 text, a quote mark, a backslash or a control character), so nothing was saved. The server owner corrects that line of the task file; then save again."
+	errCodeSiteTasksCronSetting   = "SITE_TASKS_CRON_SETTING"
+	siteTasksCronSettingMessage   = "A setting of this site's task file (CRON_TZ, RANDOM_DELAY or START_HOURS_RANGE) changes when tasks run for some cron programs, and a timer cannot keep that, so nothing was saved. The server owner removes that line of the task file (and sets the time in each task's schedule instead); then save again."
 	errCodeSiteTasksLimitsMissing = "SITE_TASKS_LIMITS_MISSING"
 	siteTasksLimitsMissingMessage = "The task was saved, but it does not run yet: this site's limits file is not in place on the server, and no task runs outside the site's limits. The administrator opens the subscription's limits and saves them (or the server owner checks /etc/systemd/system); then save the task again."
 )
