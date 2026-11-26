@@ -246,13 +246,26 @@ export function refusalParts(e: ApiError, t: T, sentenceKey?: TranslationKey): {
 const SERVER_INTERNALS = /[/`]|\.(service|timer)\b|\b(sudo|systemctl|journalctl|apt)\b/;
 export const serverTextForEveryone = (raw: string) => !SERVER_INTERNALS.test(raw);
 
-// Who acts, when a coded refusal's own words name them (alpha.149 lab W1): a
-// database account the Agent refused is the server's administrator's to
-// decide, except an absent account or the system database, whose sentences
-// name no one. The progress window's heading then names that actor.
-// Kodlu reddin sözü kimin işlem yapacağını adlandırıyorsa o kişi.
+// Who acts, when a coded refusal's own words name them (alpha.149 lab W1):
+// the progress window's heading then names that actor instead of "Waiting for
+// someone to act". One rule for every flow that shows the Agent's refusal of
+// a database account (DATABASE_ACCOUNT_REFUSED; the panel answers it for
+// adding, removing and setting the password of a database user). The
+// server's administrator is named only when all three hold:
+// - the refusal is about an account that exists (removing it, its password).
+//   Making a new account names no one: the person's next step may simply be
+//   another name;
+// - the reason's own sentence names the administrator (not an absent account
+//   or the system database, whose sentences name no one);
+// - the viewer is the administrator. The sentence others read names the
+//   administrator but does not tell them to ask their provider, so their
+//   heading stays the general one, as before.
+// Kodlu red mevcut bir hesap içinse, nedeni yöneticiyi adlandırıyorsa ve
+// okuyan yöneticiyse başlık yöneticiyi adlandırır; diğer durumlar genel kalır.
 const ADMINISTRATOR_SILENT_ACCOUNT_REFUSALS: readonly string[] = ['absent', 'system_database'];
-export function refusalActor(e: ApiError | null): 'administrator' | undefined {
+export type RefusedAccountChange = 'existing' | 'new';
+export function refusalActor(e: ApiError | null, viewerRole: string | undefined, change: RefusedAccountChange): 'administrator' | undefined {
+    if (change !== 'existing' || viewerRole !== 'admin') return undefined;
     if (e?.code === 'DATABASE_ACCOUNT_REFUSED' && !ADMINISTRATOR_SILENT_ACCOUNT_REFUSALS.includes(e.reason ?? '')) return 'administrator';
     return undefined;
 }

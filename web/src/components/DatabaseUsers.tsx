@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyRound, Plus, Trash2 } from 'lucide-react';
 import { useDataToolsWords } from './dataToolsWords';
+import { useAuth } from '../auth/AuthContext';
 import { invalidate } from '../lib/remote';
 import type { DatabaseUserInfo } from '../lib/domainDatabases';
 import { readApiError, refusalActor, refusalText } from '../lib/apiError';
@@ -30,6 +31,7 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
     readOnly: boolean;
 }) {
     const { t } = useDataToolsWords();
+    const { role } = useAuth();
     const [passwordFor, setPasswordFor] = useState<DatabaseUserInfo | null>(null);
     const [adding, setAdding] = useState(false);
     const [name, setName] = useState('');
@@ -55,7 +57,7 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     invalidate('databases');
                     if (!res.ok) {
                         const problem = await readApiError(res);
-                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.addFailed'), actor: refusalActor(problem) };
+                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.addFailed'), actor: refusalActor(problem, role, 'new') };
                     }
                     setAdding(false);
                     setName('');
@@ -83,7 +85,7 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     invalidate('databases');
                     if (!res.ok) {
                         const problem = await readApiError(res);
-                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.removeFailed'), actor: refusalActor(problem) };
+                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.removeFailed'), actor: refusalActor(problem, role, 'existing') };
                     }
                     return { state: 'done', message: t('dbu.removed', { user: user.username, database: databaseName }) };
                 } catch {
