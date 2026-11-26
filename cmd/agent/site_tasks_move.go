@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/sitecron"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -337,6 +338,7 @@ func tasksMoveTarget(req *transport.SiteTasksMoveRequest) (siteTaskTarget, strin
 // says what would become what and changes nothing).
 func (a *Agent) MoveSiteTasksV1(req *transport.SiteTasksMoveRequest, resp *transport.SiteTasksMoveResponse) error {
 	*resp = transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused}
+	defer logSiteTasksAnswer("move", req, resp)
 	if req != nil && !req.Preview {
 		if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "moving a site's tasks into its limits"); err != nil {
 			resp.Error = err.Error()
@@ -403,6 +405,16 @@ func (a *Agent) MoveSiteTasksV1(req *transport.SiteTasksMoveRequest, resp *trans
 	defer cronMu.Unlock()
 	*resp = moveSiteTasksLocked(target, username)
 	return nil
+}
+
+// logSiteTasksAnswer puts a tasks move's or undo's refusal or failure in the
+// Agent's journal (alpha.150: the screens word its code and send the
+// administrator here for the detail, never the Agent's English).
+func logSiteTasksAnswer(what string, req *transport.SiteTasksMoveRequest, resp *transport.SiteTasksMoveResponse) {
+	if req == nil || req.Preview || resp == nil || resp.Error == "" {
+		return
+	}
+	log.Printf("site tasks: the %s of site %d (%s %s): %s", what, req.SiteID, resp.Outcome, resp.Refusal, resp.Error)
 }
 
 // siteTasksKeptRefusal is main's rule for a kept move record (alpha.149 fix
@@ -480,10 +492,10 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 		out := resp
 		out.Outcome = transport.SiteTasksPutBack
 		out.Error = fmt.Sprintf("the tasks could not be moved (%s): %v; the crontab is as it was and no timer was left", step, cause)
-		if backErr := putBackSiteTasks(target.SiteID, journal.Tasks, siteTaskSystemctl); backErr != nil {
+		if running, backErr := putBackSiteTasks(target.SiteID, journal.Tasks, siteTaskSystemctl); backErr != nil {
 			out.Outcome = transport.SiteTasksUnknown
 			out.Error = fmt.Sprintf("the tasks could not be moved (%s): %v; putting them back did not complete (%v). Nothing is lost: the record, the task file and the timers are kept; Try again on the site's card, or the Agent's next start, finishes or puts it back", step, cause, backErr)
-			out.Recovery = keptTasksRecovery(recordSiteTasksOutcome(target.SiteID, journal.Tasks, transport.SiteTasksUnknown, true))
+			out.Recovery = keptTasksRecovery(recordSiteTasksOutcome(target.SiteID, journal.Tasks, transport.SiteTasksUnknown, true, running))
 			return out
 		}
 		removeSiteMoveRecord()
@@ -658,8 +670,11 @@ func boundedSiteTaskCall(deadline time.Time) siteTaskCall {
 			err error
 		}
 		answered := make(chan answer, 1)
+		// The call is taken now: one still answering past the bound must not
+		// read the package's seam later (as main's bounded restart does).
+		ctl := siteTaskSystemctl
 		go func() {
-			out, err := siteTaskSystemctl(args...)
+			out, err := ctl(args...)
 			answered <- answer{out, err}
 		}()
 		timer := time.NewTimer(left)
@@ -674,9 +689,10 @@ func boundedSiteTaskCall(deadline time.Time) siteTaskCall {
 }
 
 // enableSiteTaskTimers enables (and starts) the journal's timers, only while
-// the site's limits file is in place and loaded: one call for the timers
-// that start now and one for the @reboot ones (only enabled), so that a
-// recovery stays within its few calls (alpha.150).
+// the site's limits file is in place and loaded: one reading of the slice,
+// one call for the timers that start now and one for the @reboot ones (only
+// enabled), each through the given call, so that a recovery stays within
+// its few calls and its one bound (alpha.150: the reading too).
 func enableSiteTaskTimers(siteID int, j *siteTasksJournal, call siteTaskCall) error {
 	if len(j.Timers) == 0 {
 		return nil
@@ -685,7 +701,7 @@ func enableSiteTaskTimers(siteID int, j *siteTasksJournal, call siteTaskCall) er
 	if err != nil {
 		return err
 	}
-	if info, err := os.Lstat(path); err != nil || !info.Mode().IsRegular() || !siteSliceLoaded(siteID, path) {
+	if info, err := os.Lstat(path); err != nil || !info.Mode().IsRegular() || !siteSliceLoadedVia(call, siteID, path) {
 		return fmt.Errorf("%s: %s is not in place", transport.SiteTasksLimitsMissing, path)
 	}
 	now, atBoot := []string{"enable", "--now"}, []string{"enable"}
@@ -707,6 +723,20 @@ func enableSiteTaskTimers(siteID int, j *siteTasksJournal, call siteTaskCall) er
 	return nil
 }
 
+// siteSliceLoadedVia is siteSliceLoaded through a tasks recovery's call
+// (bounded; an answer that does not come counts as "not loaded", so no
+// timer is switched on).
+func siteSliceLoadedVia(call siteTaskCall, siteID int, path string) bool {
+	out, err := call("show", sitesandbox.SliceName(siteID), "--property=FragmentPath", "--value")
+	return err == nil && strings.TrimSpace(string(out)) == path
+}
+
+// siteTasksLimitsMissing: enableSiteTaskTimers refused before any enable was
+// sent (the site's limits file is not in place).
+func siteTasksLimitsMissing(err error) bool {
+	return err != nil && strings.HasPrefix(err.Error(), transport.SiteTasksLimitsMissing)
+}
+
 // disableSiteTaskTimers disables and stops the journal's timers in one call
 // (a running task is not stopped: only its timer).
 func disableSiteTaskTimers(j *siteTasksJournal, call siteTaskCall) error {
@@ -724,8 +754,11 @@ func disableSiteTaskTimers(j *siteTasksJournal, call siteTaskCall) error {
 // as it is when the spool holds a crontab (the recorded one, or one changed
 // by someone else, which is never overwritten); written back and checked
 // when it is gone (cron.allow lets the account in first). back: a crontab is
-// in place now (or none was there to begin with).
-func crontabBackFromJournal(siteID int, j *siteTasksJournal) (bool, error) {
+// in place now (or none was there to begin with). mayWrite: the timers are
+// confirmed off; without it a crontab that is gone is not written back
+// (alpha.150: beside a timer that may still be on, every task would run
+// twice), and back is false.
+func crontabBackFromJournal(siteID int, j *siteTasksJournal, mayWrite bool) (bool, error) {
 	files, err := accountSpoolFiles(j.Account)
 	if err != nil {
 		return false, err
@@ -744,6 +777,9 @@ func crontabBackFromJournal(siteID int, j *siteTasksJournal) (bool, error) {
 		// the crontab back to.
 		log.Printf("site tasks: %s no longer exists; its crontab is not written back", j.Account)
 		return true, nil
+	}
+	if !mayWrite {
+		return false, errors.New("the timers could not be confirmed off, so the crontab is not written back beside them (a task would run twice)")
 	}
 	if err := allowCronFor(j.Account, siteID); err != nil {
 		return false, err
@@ -769,19 +805,35 @@ func crontabBackFromJournal(siteID int, j *siteTasksJournal) (bool, error) {
 // the caller keeps the record. Its systemd calls are at most four (the
 // timers off, the limits read and the two enables; or the timers off, the
 // units' timers off and one daemon-reload).
-func putBackSiteTasks(siteID int, j *siteTasksJournal, call siteTaskCall) error {
+//
+// alpha.150: the crontab is written back only once the call that switches
+// the record's timers off has answered success. A batched enable that
+// failed half-way can have left some of them on; when switching them off is
+// not confirmed, the crontab stays gone and the timers are switched on again
+// (the record knows every one of them), so no task runs from both. running
+// says how the tasks run when an error keeps the record
+// (transport.SiteTasksRun*; "" not known).
+func putBackSiteTasks(siteID int, j *siteTasksJournal, call siteTaskCall) (running string, err error) {
 	disableErr := disableSiteTaskTimers(j, call)
-	back, err := crontabBackFromJournal(siteID, j)
+	back, backErr := crontabBackFromJournal(siteID, j, disableErr == nil)
 	if !back {
 		reason := "the crontab is not back"
-		if err != nil {
-			reason = err.Error()
+		if backErr != nil {
+			reason = backErr.Error()
+		}
+		if disableErr != nil {
+			reason += " (" + disableErr.Error() + ")"
 		}
 		refreshCronAllow() // the task file stays: the account stays out
 		if enableErr := enableSiteTaskTimers(siteID, j, call); enableErr != nil {
 			reason += "; the timers could not be switched on again either (" + enableErr.Error() + ")"
+			if disableErr == nil && siteTasksSpoolEmpty(j.Account) {
+				running = transport.SiteTasksRunNone
+			}
+		} else if len(j.Timers) > 0 {
+			running = transport.SiteTasksRunTimers
 		}
-		return errors.New(reason)
+		return running, errors.New(reason)
 	}
 	var failures []string
 	if disableErr != nil {
@@ -794,18 +846,31 @@ func putBackSiteTasks(siteID int, j *siteTasksJournal, call siteTaskCall) error 
 	if len(failures) > 0 {
 		// The crontab is back; a timer that could not be removed is disabled
 		// (or named here): no task runs twice.
-		return errors.New(strings.Join(failures, "; "))
+		if disableErr == nil {
+			running = transport.SiteTasksRunCron
+		}
+		return running, errors.New(strings.Join(failures, "; "))
 	}
-	return nil
+	return "", nil
+}
+
+// siteTasksSpoolEmpty: the account has no crontab now (read; a spool that
+// cannot be read is not empty).
+func siteTasksSpoolEmpty(account string) bool {
+	files, err := accountSpoolFiles(account)
+	return err == nil && len(files) == 0
 }
 
 // recordSiteTasksOutcome keeps what happened to a site's tasks move or undo
 // in the move's one outcome record (alpha.150: the record the programs'
 // move keeps, siteMoveOutcomesPath; kept while the move's record stays, so
 // the site's card, Problems now and Try again are the programs' ones).
-func recordSiteTasksOutcome(siteID int, j *siteTasksJournal, outcome string, kept bool) transport.SiteSliceMoveRecovery {
+func recordSiteTasksOutcome(siteID int, j *siteTasksJournal, outcome string, kept bool, running string) transport.SiteSliceMoveRecovery {
 	record := transport.SiteSliceMoveRecovery{At: time.Now().UTC().Format(time.RFC3339), Units: map[string]string{},
 		Kept: kept, Tasks: outcome, TasksStep: j.Step, TasksSite: siteID, TasksAccount: j.Account}
+	if kept {
+		record.TasksRunning = running
+	}
 	changeSiteMoveOutcomes(func(all map[string]transport.SiteSliceMoveRecovery) bool {
 		all[strconv.Itoa(siteID)] = record
 		return true
@@ -828,17 +893,18 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 	call := boundedSiteTaskCall(deadline)
 	cronMu.Lock()
 	defer cronMu.Unlock()
-	outcome, done := "", true
+	outcome, done, running := "", true, ""
 	putBack := func() {
 		outcome = transport.SiteTasksPutBack
-		if err := putBackSiteTasks(journal.SiteID, j, call); err != nil {
+		var err error
+		if running, err = putBackSiteTasks(journal.SiteID, j, call); err != nil {
 			log.Printf("site tasks: the interrupted move of site %d could not be put back: %v", journal.SiteID, err)
 			outcome, done = transport.SiteTasksUnknown, false
 		}
 	}
 	switch {
 	case j.Undo:
-		outcome, done = recoverSiteTasksUndo(journal.SiteID, j, call)
+		outcome, done, running = recoverSiteTasksUndo(journal.SiteID, j, call)
 	case j.Step == siteTasksStepPlanned:
 		// Stopped between writing the task file and recording it: what was
 		// written goes (the crontab was never touched).
@@ -854,9 +920,21 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 			if atStart {
 				// A put-back would take more calls than the start makes: the
 				// record stays, and Try again (or the next move's attempt)
-				// finishes or puts it back.
+				// finishes or puts it back. alpha.150: an enable that was sent
+				// and failed can have switched some timers on; they are all
+				// switched off again in one call (at most the fourth), so
+				// that the state is known: no task runs until Try again.
 				log.Printf("site tasks: the interrupted move of site %d could not be finished at the Agent's start (%v); its record stays for Try again", journal.SiteID, err)
-				outcome, done = transport.SiteTasksUnknown, false
+				outcome, done, running = transport.SiteTasksUnknown, false, transport.SiteTasksRunNone
+				if !siteTasksLimitsMissing(err) {
+					if offErr := disableSiteTaskTimers(j, call); offErr != nil {
+						log.Printf("site tasks: the timers of site %d could not be switched off again: %v", journal.SiteID, offErr)
+						running = ""
+					}
+				}
+				if !siteTasksSpoolEmpty(j.Account) {
+					running = ""
+				}
 			} else {
 				log.Printf("site tasks: the interrupted move of site %d could not be finished (%v); it is put back", journal.SiteID, err)
 				putBack()
@@ -868,7 +946,7 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 		outcome = transport.SiteTasksMoved
 		refreshCronAllow()
 	}
-	record := recordSiteTasksOutcome(journal.SiteID, j, outcome, !done)
+	record := recordSiteTasksOutcome(journal.SiteID, j, outcome, !done, running)
 	if !done {
 		log.Printf("site tasks: the interrupted tasks move of site %d (step %s) is not settled; its record stays (%s) and no site is moved until it is (Try again on the site's card, or the Agent's next start)", journal.SiteID, j.Step, siteMoveJournalPath)
 		return &siteMoveRecovered{siteID: journal.SiteID, record: record}
@@ -881,24 +959,30 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 }
 
 // recoverSiteTasksUndo resolves an interrupted undo: never the crontab and
-// the timers both on, never both gone.
-func recoverSiteTasksUndo(siteID int, j *siteTasksJournal, call siteTaskCall) (string, bool) {
-	finish := func() (string, bool) {
+// the timers both on, never both gone. running: how the tasks run when the
+// record stays (transport.SiteTasksRun*; "" not known).
+func recoverSiteTasksUndo(siteID int, j *siteTasksJournal, call siteTaskCall) (string, bool, string) {
+	finish := func() (string, bool, string) {
 		if _, err := removeSiteTasksWith(siteID, false, call); err != nil {
 			log.Printf("site tasks: the interrupted undo of site %d: %v", siteID, err)
 			refreshCronAllow()
-			return transport.SiteTasksUnknown, false
+			return transport.SiteTasksUnknown, false, transport.SiteTasksRunCron
 		}
 		refreshCronAllow()
-		return transport.SiteTasksUndone, true
+		return transport.SiteTasksUndone, true, ""
 	}
-	rollback := func() (string, bool) {
+	rollback := func() (string, bool, string) {
 		refreshCronAllow() // the task file is there: the account is kept out again
 		if err := enableSiteTaskTimers(siteID, j, call); err != nil {
 			log.Printf("site tasks: the interrupted undo of site %d could not switch its timers on again: %v", siteID, err)
-			return transport.SiteTasksUnknown, false
+			// Before timers_disabled the timers were never switched off.
+			running := ""
+			if j.Step != siteTasksStepUndoPlanned && siteTasksSpoolEmpty(j.Account) {
+				running = transport.SiteTasksRunNone
+			}
+			return transport.SiteTasksUnknown, false, running
 		}
-		return transport.SiteMoveNotTried, true
+		return transport.SiteMoveNotTried, true, ""
 	}
 	switch j.Step {
 	case siteTasksStepCrontabWritten:
@@ -906,7 +990,7 @@ func recoverSiteTasksUndo(siteID int, j *siteTasksJournal, call siteTaskCall) (s
 	case siteTasksStepCronOpened:
 		files, err := accountSpoolFiles(j.Account)
 		if err != nil {
-			return transport.SiteTasksUnknown, false
+			return transport.SiteTasksUnknown, false, ""
 		}
 		if (j.Crontab == "" && len(files) == 0) || (len(files) == 1 && spoolHolds(files[0], j.Crontab)) {
 			return finish()
@@ -922,6 +1006,7 @@ func recoverSiteTasksUndo(siteID int, j *siteTasksJournal, call siteTaskCall) (s
 // UndoSiteTasksMoveV1 puts a moved site's tasks back into its crontab.
 func (a *Agent) UndoSiteTasksMoveV1(req *transport.SiteTasksMoveRequest, resp *transport.SiteTasksMoveResponse) error {
 	*resp = transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused}
+	defer logSiteTasksAnswer("undo", req, resp)
 	if req == nil {
 		resp.Error = "a request is required"
 		return nil
@@ -1043,8 +1128,13 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	rollback := func(text string) transport.SiteTasksMoveResponse {
 		refreshCronAllow()
 		if err := enableSiteTaskTimers(target.SiteID, journal.Tasks, siteTaskSystemctl); err != nil {
+			// The timers are off only once their switch-off was recorded.
+			running := ""
+			if journal.Tasks.Step != siteTasksStepUndoPlanned && siteTasksSpoolEmpty(username) {
+				running = transport.SiteTasksRunNone
+			}
 			return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown,
-				Recovery: keptTasksRecovery(recordSiteTasksOutcome(target.SiteID, journal.Tasks, transport.SiteTasksUnknown, true)),
+				Recovery: keptTasksRecovery(recordSiteTasksOutcome(target.SiteID, journal.Tasks, transport.SiteTasksUnknown, true, running)),
 				Error:    text + "; the timers could not be switched on again (" + err.Error() + "). The record is kept: Try again on the site's card, or the Agent's next start, finishes it"}
 		}
 		removeSiteMoveRecord()
@@ -1123,7 +1213,7 @@ func undoSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	if _, err := removeSiteTasksLocked(target.SiteID, false); err != nil {
 		refreshCronAllow()
 		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown,
-			Recovery: keptTasksRecovery(recordSiteTasksOutcome(target.SiteID, journal.Tasks, transport.SiteTasksUnknown, true)),
+			Recovery: keptTasksRecovery(recordSiteTasksOutcome(target.SiteID, journal.Tasks, transport.SiteTasksUnknown, true, transport.SiteTasksRunCron)),
 			Error:    "the crontab is back, but not every timer could be removed (" + err.Error() + "); they are switched off, so no task runs twice. Try again on the site's card, or the Agent's next start, removes them"}
 	}
 	removeSiteMoveRecord()
@@ -1197,6 +1287,18 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 	if err != nil {
 		resp.Error = err.Error()
 		return nil
+	}
+	// alpha.150: rebuilding writes the site's units and reloads systemd, so
+	// it takes the move's claim (claimSiteMove): refused while the panel's
+	// update is in progress or a move runs, with main's codes and words, and
+	// the update is refused while it runs. The preview changes nothing.
+	if !req.Preview {
+		refusal, release := claimSiteMove()
+		if refusal != "" {
+			resp.Refusal, resp.Error = refusal, siteMoveRefusalText(refusal)
+			return nil
+		}
+		defer release()
 	}
 	cronMu.Lock()
 	defer cronMu.Unlock()

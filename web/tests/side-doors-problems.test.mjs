@@ -28,8 +28,13 @@ import { enDbLimitsWords } from '../src/i18n/dbLimitsWords/en.ts';
 import { trDbLimitsWords } from '../src/i18n/dbLimitsWords/tr.ts';
 import { enWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/en.ts';
 import { trWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/tr.ts';
-import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
-import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
+import { enSiteTasksScreens as enSiteTasksPart } from '../src/i18n/screens/siteTasks/en.ts';
+import { enSiteTasksProblemsScreens as enSiteTasksSplit } from '../src/i18n/screens/siteTasksProblems/en.ts';
+// alpha.150: the part siteTasksProblems holds the words split out of this part.
+const enSiteTasksScreens = { ...enSiteTasksPart, ...enSiteTasksSplit };
+import { trSiteTasksScreens as trSiteTasksPart } from '../src/i18n/screens/siteTasks/tr.ts';
+import { trSiteTasksProblemsScreens as trSiteTasksSplit } from '../src/i18n/screens/siteTasksProblems/tr.ts';
+const trSiteTasksScreens = { ...trSiteTasksPart, ...trSiteTasksSplit };
 
 const kinds = ['tool_account_failed', 'tool_account_owner_config', 'stock_pool_in_use', 'stock_pool_owner_changed'];
 

@@ -111,6 +111,34 @@ export function decodeTasksAnswer(raw: unknown): TasksAnswer {
     };
 }
 
+/** The claim's refusals a tasks move, undo or rebuild shares with the programs' move (main's codes). */
+const MOVE_WHYS: readonly string[] = ['kept_earlier', 'update_running', 'update_unreadable', 'another_move', 'site_busy'];
+/** The tasks' own refusal codes (transport.SiteTasksRefusal*). */
+const TASK_WHYS: readonly string[] = ['cron_allow_owner', 'source_owner', 'crontab_changed', 'limits'];
+
+/**
+ * The words of a tasks answer that did not end as asked (alpha.150, main's
+ * rule: a code worded by the page, never the agent's English; the agent's
+ * journal holds the detail). undo: the answer of "Put the tasks back into cron".
+ */
+export function tasksAnswerKey(answer: TasksAnswer, undo: boolean): string {
+    const refusal = answer.refusal ?? '';
+    if (MOVE_WHYS.includes(refusal)) return `slim.why.${refusal}`;
+    if (TASK_WHYS.includes(refusal)) return `slim.tasks.${undo ? 'undoWhy' : 'why'}.${refusal}`;
+    switch (answer.outcome) {
+        case 'put_back': return 'slim.tasks.why.put_back';
+        case 'unknown': return undo ? 'slim.tasks.undoWhy.unknown' : 'slim.tasks.why.unknown';
+        case 'no_cron': return 'slim.tasks.why.no_cron';
+        case 'crontab_back': return 'slim.tasks.done.back';
+    }
+    return undo ? 'slim.tasks.undoWhy.other' : 'slim.tasks.why.other';
+}
+
+/** How a kept tasks record's tasks run now (SiteSliceMoveRecovery.tasks_running), or '' when it is not known. */
+export function keptTasksRunningKey(running: string | undefined): string {
+    return running === 'none' || running === 'timers' || running === 'cron' ? `slim.tasks.running.${running}` : '';
+}
+
 /** The tasks that become timers in a preview (not settings, not paused ones). */
 export function movedTaskCount(answer: TasksAnswer): number {
     return answer.rows.filter((r) => !!r.unit).length;

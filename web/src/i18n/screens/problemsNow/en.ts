@@ -103,20 +103,6 @@ export const enProblemsNowScreens = {
     'pnow.site_limits_unapplied.body': 'After a change of limits ({domain}), {value} sites still have their earlier limits ({other}). CelikPanel tries again every hour; this line goes away when every site has the new ones.',
     'pnow.site_limits_unapplied.action': 'Open Plans',
     // S4 R2a third fix round: a move into a site's limits whose put-back did not complete.
-    'pnow.site_move_kept.title': 'A move into a site’s limits did not finish: {domain}',
-    'pnow.site_move_kept.body': 'A program may be stopped, or the site’s scheduled tasks may not run; no site is moved until this is settled. The site’s card says what to do.',
-    'pnow.site_move_kept.action': 'Open the site',
-    // S4 R2b (sites' scheduled tasks inside their limits; the second fix round
-    // moved these lines here from the "siteTasks" part).
-    'pnow.site_tasks_held.title': 'Scheduled tasks held: {value} sites',
-    'pnow.site_tasks_held.body': 'The scheduled tasks of these sites do not run while their limits file is missing ({other}), also after a restart of the server: {domain}. The administrator saves the subscription’s limits; the tasks run again at their next time once the file is back. A file put back by hand needs sudo systemctl daemon-reload too.',
-    'pnow.site_tasks_held.action': 'Open Monitoring',
-    'pnow.site_lingering.title': 'Site accounts keep their own programs running',
-    'pnow.site_lingering.body': 'These accounts linger, so programs they started keep running outside their limits: {domain}. The server owner ends it with: {other}',
-    'pnow.site_lingering.action': 'Open Monitoring',
-    'pnow.site_user_manager_open.title': 'Site accounts can start their own service manager',
-    'pnow.site_user_manager_open.body': 'When these accounts sign in with SFTP, their own service manager can start and run programs outside their limits: {domain}. The server owner closes it with: sudo systemctl mask {other}',
-    'pnow.site_user_manager_open.action': 'Open Monitoring',
 } as const;
 
 export type ProblemsNowScreenKey = keyof typeof enProblemsNowScreens;

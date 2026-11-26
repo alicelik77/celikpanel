@@ -59,7 +59,8 @@ func TestEgressGuardKeepsWhatATaskLeftRunning(t *testing.T) {
 	for _, want := range []string{
 		"'celikcron-*.service'", "celikcron-[0-9]*-[0-9]*.service)",
 		"for dir in /sys/fs/cgroup/celiksite_*.slice/celikcron-*-*.service; do",
-		`read -r first 2>/dev/null < "$dir/cgroup.procs" || continue`,
+		`if ! procs=$(cat "$dir/cgroup.procs" 2>/dev/null); then`,
+		`[ -n "$procs" ] || continue`,
 		`celikcron-"$site"-[0-9]*.service) ;;`,
 		`"{ \"$slice/$unit\" }"`,
 	} {

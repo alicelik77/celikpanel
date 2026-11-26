@@ -157,8 +157,9 @@ test('a lowered limit lists the sites whose programs would be stopped, in the ch
 test('sites whose programs run outside their limits are one administrator line with words in both languages', async () => {
   // S4 R2b: the line counts a site's programs or its scheduled tasks and its
   // action opens "Move all" (siteTasks part).
-  const { enSiteTasksScreens } = await import('../src/i18n/screens/siteTasks/en.ts');
-  const { trSiteTasksScreens } = await import('../src/i18n/screens/siteTasks/tr.ts');
+  // alpha.150: these lines are in the part siteTasksProblems.
+  const { enSiteTasksProblemsScreens: enSiteTasksScreens } = await import('../src/i18n/screens/siteTasksProblems/en.ts');
+  const { trSiteTasksProblemsScreens: trSiteTasksScreens } = await import('../src/i18n/screens/siteTasksProblems/tr.ts');
   const problems = read('../src/components/ProblemsNow.tsx');
   const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
   assert.ok(list && list[1].includes("'site_limits_outside'"), 'the list shows the kind');

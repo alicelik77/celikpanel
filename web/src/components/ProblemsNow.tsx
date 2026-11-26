@@ -217,7 +217,7 @@ export function problemVars(
 const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
 
 /** The catalogue key of a problem's body. */
-export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number; reason?: string }): TranslationKey {
     if (problem.kind === 'mail_signing') {
         return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
     }
@@ -244,6 +244,8 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
     // alpha.149 (lab D6): a program put back with its earlier file that does not run is named.
     if (problem.kind === 'site_move_kept' && problem.name) return 'pnow.site_move_kept.body_stopped' as TranslationKey;
+    // alpha.150: a kept record of a site's scheduled tasks says how they run now, when the agent knows it.
+    if (problem.kind === 'site_move_kept' && ['tasks_none', 'tasks_timers', 'tasks_cron'].includes(problem.reason ?? '')) return `pnow.site_move_kept.body_${problem.reason}` as TranslationKey;
     // alpha.149 (lab O3; fix round F9): each site by its own reason; "not known" never "earlier limits"; one site in the singular.
     if (problem.kind === 'site_limits_unapplied') return unappliedKey(problem, 'body') as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;

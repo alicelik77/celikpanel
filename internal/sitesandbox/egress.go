@@ -156,14 +156,19 @@ table inet ` + EgressTable + ` {
 // (alpha.127 lab: after a Node.js "Install packages and build" the guard
 // failed every 30 seconds on celikappinst-N, "runs in , not ...").
 //
-// S4 R2a third fix round: the text is the next release's (R2b, sites'
-// scheduled tasks as celikcron-<site>-<n> units) byte for byte, so that a
-// return from that release to this one rewrites nothing and a site's tasks
-// and what a finished task left running stay under the block after an
-// "nft flush ruleset": it also takes celikcron-* units, their own helper
-// path (TaskHelperPath) and every task cgroup in a site's slice that still
-// holds a process. This release makes no task unit, so with none present
-// those parts do nothing.
+// It also takes sites' scheduled tasks (celikcron-* units, their own helper
+// path TaskHelperPath) and every task cgroup in a site's slice that still
+// holds a process (S4 R2a third fix round wrote those parts into alpha.148's
+// and alpha.149's guard already).
+//
+// alpha.150 (S4 R2b): every reading that decides "not in use, leave it out"
+// fails towards "in use, keep it blocked": a unit whose ExecStartPre cannot
+// be read is added as if its helper loaded the block, and a task cgroup whose
+// cgroup.procs cannot be read is added as if a process ran there (an empty
+// one is not). A list of units or a place that cannot be read is said in the
+// journal and fails the run, so it is seen; nothing already in the set is
+// ever taken out by the guard. A return to alpha.149 writes that release's
+// guard back (it differs only in those readings).
 func EgressGuardScriptText() string {
 	return `# CelikPanel site sandbox: SMTP egress guard (docs/SITE-SANDBOX.md).
 # Run by ` + EgressGuardUnit + ` every 30 seconds; works without CelikPanel.
@@ -174,13 +179,25 @@ if ! "$nft" list chain inet ` + EgressTable + ` output 2>/dev/null | grep -q '@`
 	"$nft" -f ` + EgressFile + ` || { echo "celikpanel-egress: nft could not load the SMTP block"; exit 1; }
 fi
 status=0
-for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' 'celikapp-*.service' 'celikappinst-*.service' 'celikgit-*.service' 'celikcron-*.service' | awk '{print $1}'); do
+# A list that cannot be read is said and fails the run; what is in the set stays.
+if ! listed=$(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' 'celikapp-*.service' 'celikappinst-*.service' 'celikgit-*.service' 'celikcron-*.service'); then
+	echo "celikpanel-egress: the running sandboxed units could not be listed; those already in the SMTP block stay in it"
+	status=1
+fi
+for unit in $(printf '%s\n' "$listed" | awk '{print $1}'); do
 	case "$unit" in
 		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service|celikapp-[0-9]*.service|celikappinst-[0-9]*.service|celikgit-[0-9]*.service|celikcron-[0-9]*-[0-9]*.service) ;;
 		*) continue ;;
 	esac
-	systemctl show -P ExecStartPre "$unit" | grep -q -F -e 'argv[]=` + HelperPath + ` egress-add ' -e 'argv[]=` + TaskHelperPath + ` egress-add ' || continue
-	cgroup=$(systemctl show -P ControlGroup "$unit")
+	# Whether its helper loads the block: a reading that fails counts as yes.
+	if pre=$(systemctl show -P ExecStartPre "$unit"); then
+		printf '%s\n' "$pre" | grep -q -F -e 'argv[]=` + HelperPath + ` egress-add ' -e 'argv[]=` + TaskHelperPath + ` egress-add ' || continue
+	fi
+	if ! cgroup=$(systemctl show -P ControlGroup "$unit"); then
+		echo "celikpanel-egress: where $unit runs could not be read; it is added at the next run"
+		status=1
+		continue
+	fi
 	# A finished install step (RemainAfterExit, "active (exited)") has no
 	# cgroup any more: nothing runs there, so there is nothing to block.
 	[ -n "$cgroup" ] || continue
@@ -213,8 +230,13 @@ done
 # removed (systemd then shows no ExecStartPre for it).
 for dir in /sys/fs/cgroup/celiksite_*.slice/celikcron-*-*.service; do
 	[ -d "$dir" ] || continue
-	read -r first 2>/dev/null < "$dir/cgroup.procs" || continue
-	[ -n "$first" ] || continue
+	# Its processes; a list that cannot be read counts as "one runs there"
+	# (unless the cgroup has gone meanwhile), an empty one as none.
+	if ! procs=$(cat "$dir/cgroup.procs" 2>/dev/null); then
+		[ -d "$dir" ] || continue
+		procs=unreadable
+	fi
+	[ -n "$procs" ] || continue
 	unit=${dir##*/}
 	slice=${dir%/*}
 	slice=${slice##*/}

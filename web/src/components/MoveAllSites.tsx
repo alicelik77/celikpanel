@@ -5,7 +5,9 @@ import { Link } from '../router';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { confirmAction, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 import { newMoveRequestID } from '../lib/siteLimits';
-import { lineList, movedTaskCount, moveSitesInTurn, readOutsideSites, readTasksPreview, type OutsideSite, type TasksAnswer } from '../lib/siteTasks';
+import { lineList, movedTaskCount, moveSitesInTurn, readOutsideSites, readTasksPreview, tasksAnswerKey, type OutsideSite, type TasksAnswer } from '../lib/siteTasks';
+import type { TranslationKey } from '../i18n/en';
+import { withSiteLimitsLane } from '../i18n/siteLimitsLane';
 import { Button } from './ui';
 
 // "Move all" (S4 R2b, fix round): the sites whose programs or scheduled tasks
@@ -36,7 +38,8 @@ interface NotMoved {
 }
 
 export function MoveAllSites({ onDone }: { onDone: () => void }) {
-    const { t } = useI18n();
+    const { t: screenT, locale } = useI18n();
+    const t = withSiteLimitsLane(locale, screenT);
     const [working, setWorking] = useState(false);
     const [notMoved, setNotMoved] = useState<NotMoved[]>([]);
 
@@ -58,7 +61,8 @@ export function MoveAllSites({ onDone }: { onDone: () => void }) {
                 } else if (preview.outcome === 'stayed') {
                     stay = lineList(preview.blocking);
                 } else if (preview.outcome !== 'already') {
-                    stay = preview.error || preview.outcome;
+                    // alpha.150 (main's rule): a code worded here, never the agent's English.
+                    stay = t(tasksAnswerKey(preview, false) as TranslationKey);
                 }
             }
         }

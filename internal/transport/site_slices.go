@@ -133,7 +133,24 @@ type SiteSliceMoveRecovery struct {
 	TasksStep    string `json:"tasks_step,omitempty"`
 	TasksSite    int    `json:"tasks_site,omitempty"`
 	TasksAccount string `json:"tasks_account,omitempty"`
+	// TasksRunning (alpha.150; additive): while a tasks record is Kept, how
+	// the site's scheduled tasks run now, as far as the Agent knows it
+	// (SiteTasksRunNone, SiteTasksRunTimers, SiteTasksRunCron; "" when it is
+	// not known), so that the screens say it instead of "may".
+	TasksRunning string `json:"tasks_running,omitempty"`
 }
+
+// How a site's scheduled tasks run while a tasks record is kept
+// (SiteSliceMoveRecovery.TasksRunning).
+const (
+	// SiteTasksRunNone: the crontab is gone and the timers are off; no task
+	// runs until Try again.
+	SiteTasksRunNone = "none"
+	// SiteTasksRunTimers: the tasks run as timers inside the site's limits.
+	SiteTasksRunTimers = "timers"
+	// SiteTasksRunCron: the tasks run from the crontab; timers left are off.
+	SiteTasksRunCron = "cron"
+)
 
 // Recovery outcomes of a unit whose put-back did not complete (the record
 // is kept).

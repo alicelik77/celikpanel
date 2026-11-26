@@ -942,6 +942,26 @@ func claimSiteMove() (refusal string, release func()) {
 // (tests only).
 var siteMoveClaimed func()
 
+// siteMovePressDeadline is the deadline of a press's programs part (S4 R2b,
+// alpha.150: one press, one deadline). budgetSeconds is what the Panel says
+// is left of the press after the site's scheduled tasks moved first: absent
+// or 0 means the Agent's own budget; a value is never allowed to give more
+// than that budget; a negative one (never sent) fails towards the smaller,
+// nothing left. No multiplication can overflow: a value above the budget is
+// the budget.
+func siteMovePressDeadline(now time.Time, budgetSeconds int) time.Time {
+	own := now.Add(siteMoveBudget)
+	switch {
+	case budgetSeconds == 0:
+		return own
+	case budgetSeconds < 0:
+		return now
+	case int64(budgetSeconds) >= int64(siteMoveBudget/time.Second):
+		return own
+	}
+	return now.Add(time.Duration(budgetSeconds) * time.Second)
+}
+
 // siteMoveUpdateRefusal is the English text of the update_running refusal;
 // siteMoveUpdateUnreadable of update_unreadable (second fix round, R2).
 const (
@@ -1078,14 +1098,9 @@ func (a *Agent) MoveSiteSliceV1(req *transport.MoveSiteSliceRequest, resp *trans
 	// Second fix round (R4): one press, one deadline. Settling this site's
 	// own kept record and the move that follows share the move's budget,
 	// which stays below the Panel's bound of the call.
-	deadline := time.Now().Add(siteMoveBudget)
 	// S4 R2b (alpha.150): when the site's scheduled tasks moved first in the
 	// same press, the Panel sends what is left of the press's deadline.
-	if req.BudgetSeconds > 0 {
-		if press := time.Now().Add(time.Duration(req.BudgetSeconds) * time.Second); press.Before(deadline) {
-			deadline = press
-		}
-	}
+	deadline := siteMovePressDeadline(time.Now(), req.BudgetSeconds)
 	siteMu := siteMutationMutex(s.SiteID)
 	if !siteMu.TryLock() {
 		refuse("site_busy", "the site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute")

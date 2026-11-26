@@ -7,8 +7,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
-import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
+import { enSiteTasksScreens as enSiteTasksPart } from '../src/i18n/screens/siteTasks/en.ts';
+import { enSiteTasksProblemsScreens as enSiteTasksSplit } from '../src/i18n/screens/siteTasksProblems/en.ts';
+// alpha.150: the part siteTasksProblems holds the words split out of this part.
+const enSiteTasksScreens = { ...enSiteTasksPart, ...enSiteTasksSplit };
+import { trSiteTasksScreens as trSiteTasksPart } from '../src/i18n/screens/siteTasks/tr.ts';
+import { trSiteTasksProblemsScreens as trSiteTasksSplit } from '../src/i18n/screens/siteTasksProblems/tr.ts';
+const trSiteTasksScreens = { ...trSiteTasksPart, ...trSiteTasksSplit };
 import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
 import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import {

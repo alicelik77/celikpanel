@@ -59,7 +59,7 @@ export interface SiteLimitsView {
     drop_ins?: string[];
     /** kept: the put-back did not complete; no site is moved until it is settled ("Try again"). */
     /** tasks* (S4 R2b, alpha.150): the kept record is of the site's scheduled tasks. */
-    move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean; tasks?: string; tasks_step?: string; tasks_site?: number; tasks_account?: string };
+    move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean; tasks?: string; tasks_step?: string; tasks_site?: number; tasks_account?: string; tasks_running?: string };
     /**
      * Database users' values the panel did not write (alpha.149): origin `owner` for a firm limit only an
      * administrator account can set (temporary files, the connection limit); `on_user` for a default changed on

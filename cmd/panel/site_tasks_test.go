@@ -171,12 +171,24 @@ func TestAnUnresolvedTasksMoveStartsNoProgramsMove(t *testing.T) {
 	if recovers != 1 || programs != 0 {
 		t.Fatalf("Try again: recovers %d programs %d", recovers, programs)
 	}
-	// The kept tasks record is main's one line, opening that site.
-	f.panel.noteSiteMoveKept(context.Background(), []transport.SiteSliceStatus{{SiteID: siteID, MoveInterrupted: kept}}, true)
-	lines := siteMoveKeptProblem(f.panel.setting(context.Background(), settingSiteMoveKept), f.panel.setting(context.Background(), settingSiteMoveStopped),
-		map[string]string{itoa(siteID): "customer.test"})
-	if len(lines) != 1 || lines[0].Kind != "site_move_kept" || lines[0].Subject != "customer.test" || lines[0].Actor != "administrator" {
-		t.Fatalf("problem %+v", lines)
+	// The kept tasks record is main's one line, opening that site. alpha.150:
+	// it says how the tasks run now, as the Agent said it ("unknown" when it
+	// did not), instead of "may".
+	for running, reason := range map[string]string{"": "tasks_unknown", transport.SiteTasksRunNone: "tasks_none",
+		transport.SiteTasksRunTimers: "tasks_timers", transport.SiteTasksRunCron: "tasks_cron"} {
+		record := *kept
+		record.TasksRunning = running
+		f.panel.noteSiteMoveKept(context.Background(), []transport.SiteSliceStatus{{SiteID: siteID, MoveInterrupted: &record}}, true)
+		lines := siteMoveKeptProblem(f.panel.setting(context.Background(), settingSiteMoveKept), f.panel.setting(context.Background(), settingSiteMoveStopped),
+			f.panel.setting(context.Background(), settingSiteMoveTasks), map[string]string{itoa(siteID): "customer.test"})
+		if len(lines) != 1 || lines[0].Kind != "site_move_kept" || lines[0].Subject != "customer.test" || lines[0].Actor != "administrator" || lines[0].Reason != reason {
+			t.Fatalf("running %q: problem %+v", running, lines)
+		}
+	}
+	// Settled: no line, nothing kept of how the tasks ran.
+	f.panel.noteSiteMoveKept(context.Background(), []transport.SiteSliceStatus{{SiteID: siteID}}, true)
+	if f.panel.setting(context.Background(), settingSiteMoveTasks) != "" || f.panel.setting(context.Background(), settingSiteMoveKept) != "" {
+		t.Fatal("a settled record left its line")
 	}
 	if _, ordered := problemKindOrder["site_move_unresolved"]; ordered {
 		t.Error("site_move_unresolved is gone: one record, one line (site_move_kept)")

@@ -224,6 +224,14 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 			delete(host.active, args[1])
 		case len(args) == 2 && args[0] == "start":
 			host.active[args[1]] = true
+		case len(args) == 4 && args[0] == "show" && args[2] == "--property=FragmentPath":
+			// alpha.150: a recovery reads whether the site's slice is loaded
+			// through its own bounded call; loaded while its file is there.
+			path := filepath.Join(host.unitDir, args[1])
+			if _, err := os.Stat(path); err != nil {
+				return []byte("\n"), nil
+			}
+			return []byte(path + "\n"), nil
 		case args[0] == "show":
 			var b strings.Builder
 			for _, name := range args[3:] {

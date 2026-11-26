@@ -809,18 +809,36 @@ var siteMoveUpdateInProgress = func(p *Panel, ctx context.Context) bool {
 }
 
 // siteMovePressBudget is the Agent's own budget of one press (its
-// siteMoveBudget); siteMovePressBudgetLeft is what is left of it once the
-// site's scheduled tasks moved first in the same press (alpha.150: one
-// press, one deadline). At least one second: the Agent's own time rule then
-// moves no program and says that the time ran out.
+// siteMoveBudget); siteMovePressBudgetLeft is what is left of it, in whole
+// seconds, once the site's scheduled tasks moved first in the same press
+// (alpha.150: one press, one deadline). It is never more than what is left;
+// with less than a second left it is 0 and the programs part is not started
+// (the press answers that the time ran out, as the Agent's own time rule
+// does).
 const siteMovePressBudget = 11 * time.Minute
 
+// siteMovePressNow is the press's clock (tests move it on).
+var siteMovePressNow = time.Now
+
 func siteMovePressBudgetLeft(started time.Time) int {
-	left := int((siteMovePressBudget - time.Since(started)) / time.Second)
-	if left < 1 {
-		left = 1
+	left := siteMovePressBudget - siteMovePressNow().Sub(started)
+	if left < time.Second {
+		return 0
 	}
-	return left
+	return int(left / time.Second)
+}
+
+// siteMovePressTimeUp is the answer of a press whose scheduled tasks took
+// all of its time: no program was started (each is named, for the next
+// press), as the Agent answers when its own time runs out first.
+func siteMovePressTimeUp(units []string) transport.MoveSiteSliceResponse {
+	resp := transport.MoveSiteSliceResponse{Units: []transport.SiteSliceMoved{}, TimeUp: true, Reason: &transport.SiteMoveReason{Code: "time_up"},
+		Error: "the move's time ran out before any program was moved (the scheduled tasks' move took it); press the move again to continue"}
+	for _, unit := range units {
+		resp.Units = append(resp.Units, transport.SiteSliceMoved{Unit: unit, Outcome: transport.SiteMoveNotTried,
+			Detail: "the move's time ran out before this program; the next move continues with it"})
+	}
+	return resp
 }
 
 // siteMoveClaimRefusal: a refusal of the tasks part that came before
@@ -919,7 +937,7 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 		// half-moved), then its programs. A site without programs moves its
 		// tasks only. One press, one deadline (alpha.150): the programs part
 		// gets what is left of the move's budget.
-		pressStarted := time.Now()
+		pressStarted := siteMovePressNow()
 		var tasksErr error
 		tasks, tasksErr = p.moveSiteTasks(ctx, site, req.RequestID, false)
 		if tasksErr != nil {
@@ -947,6 +965,12 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 				BudgetSeconds: siteMovePressBudgetLeft(pressStarted)}
 			for _, u := range site.Units {
 				move.Units = append(move.Units, u.Unit)
+			}
+			if move.BudgetSeconds == 0 {
+				// Nothing is left of the press: the programs part is not
+				// started (0 would mean the Agent's whole budget).
+				resp = siteMovePressTimeUp(move.Units)
+				break
 			}
 			var err error
 			if resp, err = moveSiteSliceCall(p, ctx, move); err != nil {
@@ -1083,7 +1107,7 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 		}
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
-	problems = append(problems, siteMoveKeptProblem(kept, p.setting(ctx, settingSiteMoveStopped), names)...)
+	problems = append(problems, siteMoveKeptProblem(kept, p.setting(ctx, settingSiteMoveStopped), p.setting(ctx, settingSiteMoveTasks), names)...)
 	problems = append(problems, siteLimitHostProblem(host)...)
 	problems = append(problems, extra...)
 	return append(problems, siteLimitsOutsideProblem(outside, names)...)
@@ -1126,16 +1150,42 @@ func (p *Panel) noteSiteMoveKept(ctx context.Context, statuses []transport.SiteS
 			stopped[k] = v
 		}
 	}
+	tasksRaw := p.setting(ctx, settingSiteMoveTasks)
+	tasksBefore := map[string]string{}
+	if tasksRaw != "" {
+		_ = json.Unmarshal([]byte(tasksRaw), &tasksBefore)
+	}
+	tasks := map[string]string{}
+	if !whole {
+		for k, v := range tasksBefore {
+			tasks[k] = v
+		}
+	}
 	for _, status := range statuses {
 		key := strconv.Itoa(status.SiteID)
 		delete(stopped, key)
+		delete(tasks, key)
 		if status.MoveInterrupted != nil && status.MoveInterrupted.Kept {
 			next[key] = status.MoveInterrupted.At
 			if units := siteMoveStoppedUnits(status.MoveInterrupted); units != "" {
 				stopped[key] = units
 			}
+			if status.MoveInterrupted.Tasks != "" {
+				tasks[key] = siteMoveTasksRunning(status.MoveInterrupted.TasksRunning)
+			}
 		} else {
 			delete(next, key)
+		}
+	}
+	if !reflect.DeepEqual(tasks, tasksBefore) {
+		value := ""
+		if len(tasks) > 0 {
+			if encoded, err := json.Marshal(tasks); err == nil {
+				value = string(encoded)
+			}
+		}
+		if err := p.setSetting(ctx, settingSiteMoveTasks, value); err != nil {
+			log.Printf("site limits: how a kept tasks move's tasks run was not recorded: %v", err)
 		}
 	}
 	if !reflect.DeepEqual(stopped, stoppedBefore) {
@@ -1171,6 +1221,20 @@ func (p *Panel) noteSiteMoveKept(ctx context.Context, statuses []transport.SiteS
 // separated). Written only when it changes.
 const settingSiteMoveStopped = "site_move_stopped_v1"
 
+// settingSiteMoveTasks (alpha.150) keeps, per site whose kept record is of
+// its scheduled tasks, how they run now as the Agent said it: "none",
+// "timers", "cron", or "unknown". Written only when it changes.
+const settingSiteMoveTasks = "site_move_tasks_v1"
+
+// siteMoveTasksRunning is the stored word of a kept tasks record's state.
+func siteMoveTasksRunning(running string) string {
+	switch running {
+	case transport.SiteTasksRunNone, transport.SiteTasksRunTimers, transport.SiteTasksRunCron:
+		return running
+	}
+	return "unknown"
+}
+
 // siteMoveStoppedUnits names a kept record's programs that do not run.
 func siteMoveStoppedUnits(record *transport.SiteSliceMoveRecovery) string {
 	var units []string
@@ -1188,8 +1252,11 @@ func siteMoveStoppedUnits(record *transport.SiteSliceMoveRecovery) string {
 // it is settled; it opens the site, whose card names each program left, the
 // next step and "Try again". alpha.149 (lab D6): where a program was put back
 // but does not run, the line names it (Name: the programs), so it says that
-// it is not running now, who acts and the next step.
-func siteMoveKeptProblem(raw, stoppedRaw string, names map[string]string) []monitoringProblem {
+// it is not running now, who acts and the next step. alpha.150: where the
+// kept record is of a site's scheduled tasks, Reason says how they run now
+// ("tasks_none", "tasks_timers", "tasks_cron"; "tasks_unknown"), so the line
+// says it rather than "may".
+func siteMoveKeptProblem(raw, stoppedRaw, tasksRaw string, names map[string]string) []monitoringProblem {
 	if raw == "" {
 		return nil
 	}
@@ -1200,6 +1267,10 @@ func siteMoveKeptProblem(raw, stoppedRaw string, names map[string]string) []moni
 	stopped := map[string]string{}
 	if stoppedRaw != "" {
 		_ = json.Unmarshal([]byte(stoppedRaw), &stopped)
+	}
+	tasks := map[string]string{}
+	if tasksRaw != "" {
+		_ = json.Unmarshal([]byte(tasksRaw), &tasks)
 	}
 	var sites, programs []string
 	first := ""
@@ -1227,10 +1298,16 @@ func siteMoveKeptProblem(raw, stoppedRaw string, names map[string]string) []moni
 	if first != "" {
 		open = first // the site of a program that does not run first
 	}
+	reason := ""
+	for key := range kept {
+		if names[key] == open && tasks[key] != "" {
+			reason = "tasks_" + tasks[key]
+		}
+	}
 	return []monitoringProblem{{
 		Key: "site_move_kept", Kind: "site_move_kept", Severity: "warning", Actor: "administrator",
 		Subject: strings.Join(sites, ", "), Name: strings.Join(programs, ", "), Value: float64(len(sites)), Since: since, ObservedAt: since,
-		Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(open)},
+		Reason: reason, Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(open)},
 	}}
 }
 

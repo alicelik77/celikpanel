@@ -75,6 +75,9 @@ const schedulePresets: { labelKey: TranslationKey; value: string }[] = [
 // that names no cause.
 // Sunucunun kendisinin doğruladığı okunamayan-crontab nedenleri. Her biri
 // sunucu sahibinin koyduğu bir kuraldır, bozulan bir şey değil.
+// alpha.150: the rebuild takes the move's claim; these refusals wait for the update or the move.
+const REBUILD_BUSY: readonly string[] = ['update_running', 'update_unreadable', 'another_move'];
+
 const unreadableCauses: Record<string, TranslationKey> = {
     cron_allow: 'cron.unknown.cron_allow',
     cron_deny: 'cron.unknown.cron_deny',
@@ -169,6 +172,10 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
             showToast('error', t('stasks.source.crontab', { units: (preview.left_units ?? []).join(', ') || 'celikcron-*' }));
             return;
         }
+        if (REBUILD_BUSY.includes(preview.refusal ?? '')) {
+            showToast('error', t('stasks.rebuild.busy'));
+            return;
+        }
         if (preview.outcome !== 'preview') {
             showToast('error', preview.error || t('stasks.rebuild.unknown'));
             return;
@@ -186,8 +193,10 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                         body: JSON.stringify({ request_id: newMoveRequestID() }),
                     });
                     if (!sent.ok) return { state: 'failed', reason: apiErrorText(await readApiError(sent), t) };
-                    const answer = await sent.json() as { outcome?: string; error?: string };
+                    const answer = await sent.json() as { outcome?: string; error?: string; refusal?: string };
                     if (answer.outcome === 'rebuilt') return { state: 'done', message: t('stasks.rebuild.done') };
+                    // alpha.150: refused while the panel's update runs or a site is being moved.
+                    if (REBUILD_BUSY.includes(answer.refusal ?? '')) return { state: 'blocked', reason: t('stasks.rebuild.busy') };
                     if (answer.outcome === 'refused') return { state: 'blocked', reason: answer.error || '' };
                     return { state: 'unknown', reason: answer.error || t('stasks.rebuild.unknown') };
                 } catch {

@@ -12,7 +12,7 @@ import {
     appliedOf, dbOwnerByOrigin, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
     newMoveRequestID, notMovedReason, putBackSplit, type DbOwnerSetting, type MoveReason, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
-import { decodeTasksAnswer, lineList, movedTaskCount, privilegedList, readTasksPreview, unresolvedSteps, KEPT_MOVE, type TasksAnswer } from '../lib/siteTasks';
+import { decodeTasksAnswer, keptTasksRunningKey, lineList, movedTaskCount, privilegedList, readTasksPreview, tasksAnswerKey, unresolvedSteps, KEPT_MOVE, type TasksAnswer } from '../lib/siteTasks';
 import { Button, Checking, CouldNotCheck } from './ui';
 
 // The limits of a site's programs together (S4 R2a, docs/SITE-SANDBOX.md
@@ -202,12 +202,12 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
     const tasksResult = (answer: TasksAnswer | undefined): string => {
         if (!answer) return '';
         if (answer.refusal === KEPT_MOVE) return t('slim.why.kept_earlier');
+        // alpha.150 (main's rule): a code worded here, never the agent's English.
         switch (answer.outcome) {
             case 'moved': return t('slim.tasks.done.moved');
-            case 'crontab_back': return t('slim.tasks.done.back', { detail: answer.error ?? '' });
             case 'already': return '';
             case 'stayed': return t('slim.tasks.done.stayed', { list: lineList(answer.blocking) });
-            default: return t('slim.tasks.done.failed', { detail: answer.error ?? answer.outcome });
+            default: return t(tasksAnswerKey(answer, false) as TranslationKey);
         }
     };
 
@@ -240,9 +240,9 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     }
                     setUndoID(newMoveRequestID());
                     if (answer.outcome === 'undone') return { state: 'done', message: t('slim.tasks.undo.done') };
-                    if (answer.outcome === 'unknown') return { state: 'unknown', reason: answer.error || t('slim.move.unknown') };
+                    if (answer.outcome === 'unknown') return { state: 'unknown', reason: t(tasksAnswerKey(answer, true) as TranslationKey) };
                     if (answer.refusal === KEPT_MOVE) return { state: 'blocked', reason: t('slim.why.kept_earlier') };
-                    return { state: answer.outcome === 'refused' ? 'blocked' : 'failed', reason: answer.error || answer.outcome };
+                    return { state: answer.outcome === 'refused' ? 'blocked' : 'failed', reason: t(tasksAnswerKey(answer, true) as TranslationKey) };
                 },
             });
         } finally {
@@ -395,8 +395,10 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     <p>{t('slim.kept', { time: formatDateTime(view.move_interrupted.at, locale) })}</p>
                     {view.move_interrupted.tasks && (
                         // S4 R2b (alpha.150): the kept record is of the site's scheduled tasks.
-                        <p data-site-limits-kept-tasks={view.move_interrupted.tasks_step ?? ''}>
-                            {t('slim.tasks.unresolved', { step: view.move_interrupted.tasks_step ?? '', steps: unresolvedSteps(view.move_interrupted) })}
+                        // alpha.150: how the tasks run now, when the agent knows it, comes first.
+                        <p data-site-limits-kept-tasks={view.move_interrupted.tasks_step ?? ''} data-site-limits-kept-tasks-running={view.move_interrupted.tasks_running ?? ''}>
+                            {[keptTasksRunningKey(view.move_interrupted.tasks_running) ? t(keptTasksRunningKey(view.move_interrupted.tasks_running) as TranslationKey) : '',
+                                t('slim.tasks.unresolved', { step: view.move_interrupted.tasks_step ?? '', steps: unresolvedSteps(view.move_interrupted) })].filter(Boolean).join(' ')}
                         </p>
                     )}
                     {kept.map((k) => (
