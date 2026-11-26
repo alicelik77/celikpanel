@@ -10,6 +10,7 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "operation.completed": "Tamamlandı",
     "operation.failed": "Tamamlanmadı",
     "operation.blocked": "Birinin bir şey yapması bekleniyor",
+    "operation.blocked.administrator": "Sunucunun yöneticisinin bir şey yapması bekleniyor",
     "operation.unknown": "Sonuç bilinmiyor",
     "operation.ok": "Tamam",
     "problem.details": "Ayrıntı",

@@ -68,7 +68,11 @@ export default function OperationProgress({ title, tone, steps, startedAt, end: 
     const current = shown.find((step) => step.state === 'running' || step.state === 'waiting');
     // The line under the title: the state's word, or the ending's own when
     // that word would not be true (a wait nobody needs to act on).
-    const endLine = end ? (end.state !== 'done' && end.subtitle) || t(END_TITLE[end.state]) : '';
+    // A blocked ending whose reason names who acts says that actor (alpha.149
+    // lab W1: "Waiting for someone to act" over a reason that names the
+    // server's administrator).
+    const endLine = end ? (end.state !== 'done' && end.subtitle)
+        || t(end.state === 'blocked' && end.actor === 'administrator' ? 'operation.blocked.administrator' : END_TITLE[end.state]) : '';
     const announcement = end
         ? endLine
         : current ? (current.note ? `${current.label}. ${current.note}` : current.label) : t('operation.working');

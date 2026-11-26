@@ -3,7 +3,7 @@ import { KeyRound, Plus, Trash2 } from 'lucide-react';
 import { useDataToolsWords } from './dataToolsWords';
 import { invalidate } from '../lib/remote';
 import type { DatabaseUserInfo } from '../lib/domainDatabases';
-import { readApiError, refusalText } from '../lib/apiError';
+import { readApiError, refusalActor, refusalText } from '../lib/apiError';
 import { confirmAction, followOperation, type OperationEnd } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { passwordAcceptable } from '../lib/passwordPolicy';
@@ -53,7 +53,10 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     const res = await sendWithSteps(report, flowSteps(t, 'dbUserAdd', ['check!', 'create', 'records'], { user }), t, `dbUserAdd.${databaseId}`,
                         (headers) => fetch(base, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body }));
                     invalidate('databases');
-                    if (!res.ok) return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(await readApiError(res), t, 'dbu.addFailed') };
+                    if (!res.ok) {
+                        const problem = await readApiError(res);
+                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.addFailed'), actor: refusalActor(problem) };
+                    }
                     setAdding(false);
                     setName('');
                     setPassword('');
@@ -78,7 +81,10 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     const res = await sendWithSteps(report, flowSteps(t, 'dbUserRemove', ['check!', 'delete', 'records'], { user: user.username }), t, `dbUserRemove.${user.id}`,
                         (headers) => fetch(`${base}/${user.id}`, { method: 'DELETE', headers }));
                     invalidate('databases');
-                    if (!res.ok) return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(await readApiError(res), t, 'dbu.removeFailed') };
+                    if (!res.ok) {
+                        const problem = await readApiError(res);
+                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.removeFailed'), actor: refusalActor(problem) };
+                    }
                     return { state: 'done', message: t('dbu.removed', { user: user.username, database: databaseName }) };
                 } catch {
                     invalidate('databases');

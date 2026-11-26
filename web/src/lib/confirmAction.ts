@@ -69,7 +69,12 @@ export type OperationEnd =
         state: 'failed' | 'blocked' | 'unknown'; reason: string; fix?: { label: string; run: () => void }; title?: string;
         /** The line under the title in place of the state's own word, when that word would not be true (alpha.133: a blocked ending that nobody needs to act on). */
         subtitle?: string;
+        /** Who acts, when the reason names them (alpha.149 lab W1): a blocked ending's line then names that actor. */
+        actor?: OperationActor;
     };
+
+/** The actors a refusal's reason can name (lib/apiError.ts refusalActor). */
+export type OperationActor = 'administrator';
 
 /** What a running action can tell the window. */
 export interface OperationReport {

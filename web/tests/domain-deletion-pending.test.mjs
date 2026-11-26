@@ -463,7 +463,8 @@ test('a deletion re-checked by itself does not say that someone needs to act', a
   // itself (follow_up automatic) does the window say nobody needs to act.
   assert.match(read('components/Domains.tsx'), /if \(continuesByItself\(reason, next\?\.followUp\)\) \{[\s\S]{0,400}return \{ state: 'blocked', subtitle: t\('domains\.step\.rechecksAlone'\)/);
   const progress = read('components/OperationProgress.tsx');
-  assert.match(progress, /const endLine = end \? \(end\.state !== 'done' && end\.subtitle\) \|\| t\(END_TITLE\[end\.state\]\) : '';/);
+  // The subtitle still comes first; alpha.150 (lab W1) only names the actor in the state's own word.
+  assert.match(progress, /const endLine = end \? \(end\.state !== 'done' && end\.subtitle\)\n\s+\|\| t\(end\.state === 'blocked' && end\.actor === 'administrator' \? 'operation\.blocked\.administrator' : END_TITLE\[end\.state\]\) : '';/);
   assert.match(progress, /description=\{end \? endLine : t\('operation\.wait'\)\}/);
   assert.match(enScreens['domains.step.rechecksAlone'], /Nobody needs to act/);
   assert.match(trScreens['domains.step.rechecksAlone'], /Kimsenin bir şey yapması gerekmiyor/);

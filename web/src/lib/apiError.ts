@@ -246,6 +246,17 @@ export function refusalParts(e: ApiError, t: T, sentenceKey?: TranslationKey): {
 const SERVER_INTERNALS = /[/`]|\.(service|timer)\b|\b(sudo|systemctl|journalctl|apt)\b/;
 export const serverTextForEveryone = (raw: string) => !SERVER_INTERNALS.test(raw);
 
+// Who acts, when a coded refusal's own words name them (alpha.149 lab W1): a
+// database account the Agent refused is the server's administrator's to
+// decide, except an absent account or the system database, whose sentences
+// name no one. The progress window's heading then names that actor.
+// Kodlu reddin sözü kimin işlem yapacağını adlandırıyorsa o kişi.
+const ADMINISTRATOR_SILENT_ACCOUNT_REFUSALS: readonly string[] = ['absent', 'system_database'];
+export function refusalActor(e: ApiError | null): 'administrator' | undefined {
+    if (e?.code === 'DATABASE_ACCOUNT_REFUSED' && !ADMINISTRATOR_SILENT_ACCOUNT_REFUSALS.includes(e.reason ?? '')) return 'administrator';
+    return undefined;
+}
+
 // refusalText: what a refused change says in one string (a toast, a progress
 // window's reason). The screen's sentence keeps the server's reason beside it
 // (owner feedback 2026-10-31); a coded refusal with words says them.

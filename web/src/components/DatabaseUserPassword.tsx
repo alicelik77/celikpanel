@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import { useDataToolsWords } from './dataToolsWords';
-import { readApiError, refusalText } from '../lib/apiError';
+import { readApiError, refusalActor, refusalText } from '../lib/apiError';
 import { followOperation, type OperationEnd } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { passwordAcceptable } from '../lib/passwordPolicy';
@@ -49,7 +49,7 @@ export function DatabaseUserPassword({ url, user, onClose, onSettled }: Database
                     onSettled?.();
                     if (!res.ok) {
                         const problem = await readApiError(res);
-                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.failed') };
+                        return { state: res.status < 500 ? 'blocked' : 'failed', reason: refusalText(problem, t, 'dbu.failed'), actor: refusalActor(problem) };
                     }
                     setPassword('');
                     onClose();
