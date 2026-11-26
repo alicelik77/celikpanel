@@ -62,8 +62,13 @@ type PostgreSQLRoleLimitsResponse struct {
 	Refused string `json:"refused,omitempty"`
 	// Refusal: the role's cluster does not run; nothing ran.
 	Refusal *DatabaseClusterRefusal `json:"refusal,omitempty"`
-	// Prerequisite: the database server could not be reached; nothing ran.
+	// Prerequisite: the database server does not run (the Agent read its
+	// service state or its socket); nothing ran.
 	Prerequisite bool `json:"prerequisite,omitempty"`
+	// Connection (alpha.149): the database server runs but refused the
+	// connection (authentication, too many connections, starting up);
+	// nothing ran. Additive.
+	Connection bool `json:"connection,omitempty"`
 	// Unknown: the statements were sent and their end could not be read.
 	Unknown bool   `json:"unknown,omitempty"`
 	Error   string `json:"error,omitempty"`

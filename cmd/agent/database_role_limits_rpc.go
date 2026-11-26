@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/systemsqlite"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -107,12 +110,92 @@ func validPGRoleLimitsRequest(req *transport.PostgreSQLRoleLimitsRequest) (strin
 // on a PostgreSQL server record of this machine whose cluster is the one at
 // port (a variable for tests). An unreadable file is an error: the role is
 // then not touched.
+//
+// What this check is, and is not (alpha.149, review of PR #370 finding 2):
+// the panel writes that file, so a record in it guards against the panel's
+// own mistakes (a name it never made, another cluster's role) - not against
+// a compromised panel, which can write any record. The boundary against a
+// compromised panel is the engine-side account rule in the same transaction
+// as the writes (database_account_guard.go). The file is read as root, so it
+// is opened through the managed-file checks (internal/systemsqlite: no
+// symbolic link, a regular file with one link, never a FIFO, owned by the
+// panel's account or root), within a time limit, one read at a time.
+//
+// Panelin kaydı panelin kendi hatalarına karşıdır, ele geçirilmiş panele
+// karşı değil; sınır motor tarafındaki hesap kuralıdır.
 var pgRoleRecordedByPanel = func(ctx context.Context, role string, port int) (bool, error) {
 	return pgRoleRecordedIn(ctx, panelDatabasePath(), role, port, pgStatementClusters)
 }
 
+// panelRecordReadTimeout bounds one read of the panel's database file.
+const panelRecordReadTimeout = 5 * time.Second
+
+// panelRecordRead lets one read of the panel's file run at a time, so a read
+// that SQLite's own open could hold (a file swapped after the checks) never
+// piles up: the next call is refused until it ends.
+var panelRecordRead = make(chan struct{}, 1)
+
+// panelDatabaseOwnerUIDs are the accounts that may own the panel's database
+// file: the panel's service account and root (a variable for tests).
+var panelDatabaseOwnerUIDs = func() []uint32 {
+	owners := []uint32{0}
+	if account, err := user.Lookup("celikpanel"); err == nil {
+		if uid, err := strconv.ParseUint(account.Uid, 10, 32); err == nil {
+			owners = append(owners, uint32(uid))
+		}
+	}
+	return owners
+}
+
 func pgRoleRecordedIn(ctx context.Context, path, role string, port int, clusters func() ([]transport.PostgreSQLCluster, bool)) (bool, error) {
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?mode=ro&_busy_timeout=5000")
+	select {
+	case panelRecordRead <- struct{}{}:
+	default:
+		return false, errors.New("an earlier read of CelikPanel's own database has not ended")
+	}
+	type answer struct {
+		found bool
+		err   error
+	}
+	done := make(chan answer, 1)
+	go func() {
+		defer func() { <-panelRecordRead }()
+		found, err := pgRoleRecordedInFile(path, role, port, clusters)
+		done <- answer{found, err}
+	}()
+	timer := time.NewTimer(panelRecordReadTimeout)
+	defer timer.Stop()
+	select {
+	case got := <-done:
+		return got.found, got.err
+	case <-timer.C:
+		return false, errors.New("CelikPanel's own database did not answer in time")
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+}
+
+func pgRoleRecordedInFile(path, role string, port int, clusters func() ([]transport.PostgreSQLCluster, bool)) (bool, error) {
+	pinned, err := systemsqlite.OpenPinnedReadOnly(path, panelDatabaseOwnerUIDs()...)
+	if err != nil {
+		return false, err
+	}
+	defer pinned.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), panelRecordReadTimeout)
+	defer cancel()
+	found, err := pgRoleRecordedInDatabase(ctx, pinned.Path(), role, port, clusters)
+	if err != nil {
+		return false, err
+	}
+	// The name still holds the file that passed the checks.
+	if err := pinned.Verify(); err != nil {
+		return false, err
+	}
+	return found, nil
+}
+
+func pgRoleRecordedInDatabase(ctx context.Context, path, role string, port int, clusters func() ([]transport.PostgreSQLCluster, bool)) (bool, error) {
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?mode=ro&_pragma=busy_timeout(3000)")
 	if err != nil {
 		return false, err
 	}
@@ -162,6 +245,50 @@ func pgRoleRecordedIn(ctx context.Context, path, role string, port int, clusters
 		}
 	}
 	return false, nil
+}
+
+// The bounds of one limits call (review of PR #370, finding 9): a role lock
+// is waited on at most 5 s, one statement runs at most 15 s, and the client
+// is ended 30 s after it starts (it gives up connecting after 10 s,
+// pgAdminPSQLArgsFor).
+const (
+	pgRoleLimitsApplication   = "celikpanel-role-limits"
+	pgRoleLimitsBound         = 30 * time.Second
+	pgRoleLimitsSessionBounds = "SET lock_timeout = '5s';\nSET statement_timeout = '15s';\n"
+)
+
+// pgRoleLimitsRun runs the script on the cluster at port, bounded (a
+// variable for tests).
+var pgRoleLimitsRun = func(port int, script string) ([]byte, error) {
+	return pgBoundedRun(port, pgRoleLimitsApplication, time.Now().Add(pgRoleLimitsBound), script)
+}
+
+// pgClientDidNotConnect: psql's own report that it made no connection (its
+// "psql: error:" line comes before any statement).
+func pgClientDidNotConnect(output []byte) bool {
+	lowered := strings.ToLower(string(output))
+	return strings.Contains(lowered, "psql: error: connection to server") || strings.Contains(lowered, "could not connect to server")
+}
+
+// pgServerRunning establishes whether the cluster at port runs, from its
+// service state (pg_lsclusters) or, where that cannot be read, from its
+// socket; known is false when neither answers (a variable for tests).
+var pgServerRunning = func(port int) (running, known bool) {
+	if clusters, ok := pgStatementClusters(); ok {
+		for _, cluster := range clusters {
+			if cluster.Port == port {
+				return cluster.Online, true
+			}
+		}
+	}
+	info, err := os.Stat(filepath.Join("/var/run/postgresql", ".s.PGSQL."+strconv.Itoa(port)))
+	switch {
+	case err == nil:
+		return info.Mode()&os.ModeSocket != 0, true
+	case errors.Is(err, os.ErrNotExist):
+		return false, true
+	}
+	return false, false
 }
 
 // pgRoleLimitsScript is the whole statement: the role's check and the writes
@@ -273,7 +400,7 @@ func (a *Agent) SetPostgreSQLRoleLimitsV1(req *transport.PostgreSQLRoleLimitsReq
 	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
-	run, err := postgreSQLStatementFor(req.Port)
+	port, err := pgStatementPortFor(req.Port)
 	if err != nil {
 		resp.Error = err.Error()
 		// The role's cluster does not run: nothing ran.
@@ -281,7 +408,12 @@ func (a *Agent) SetPostgreSQLRoleLimitsV1(req *transport.PostgreSQLRoleLimitsReq
 		outcome = "cluster refused"
 		return nil
 	}
-	output, runErr := run(script)
+	// alpha.149 (review of PR #370, finding 9): a role the owner holds locked
+	// in an open transaction never holds this call - and with it every
+	// suspension and password change, which wait on the same lock - for
+	// longer than the bounds: lock_timeout and statement_timeout before the
+	// block, and the client itself ended at its deadline.
+	output, runErr := pgRoleLimitsRun(port, pgRoleLimitsSessionBounds+script)
 	if runErr != nil {
 		if code := pgRoleLimitsRefusalIn(output); code != "" {
 			resp.Refused, resp.Error = code, pgRoleLimitsRefusalText(req.Role, code)
@@ -289,18 +421,34 @@ func (a *Agent) SetPostgreSQLRoleLimitsV1(req *transport.PostgreSQLRoleLimitsReq
 			return nil
 		}
 		failure := hostcmd.Fail("the database user's limits could not be changed", output, runErr, databaseClientMeaning)
-		lowered := strings.ToLower(string(output))
+		var ended *pgClientEndedError
 		switch {
-		case strings.Contains(lowered, "psql: error: connection to server") || strings.Contains(lowered, "could not connect to server"):
-			// psql could not connect: no statement ran.
-			resp.Prerequisite = true
-			outcome = "database server unreachable"
+		case errors.As(runErr, &ended):
+			// The client was ended at its deadline: what the engine did
+			// with a block it may have received is not known.
+			resp.Unknown = true
+			outcome = "result unknown (time ran out)"
+		case pgClientDidNotConnect(output):
+			// alpha.149 (finding 7): psql made no connection, so nothing
+			// ran. Whether the server runs is established from its service
+			// state or its socket, never from psql's words: not running is
+			// an unmet prerequisite; running, it refused the connection
+			// (authentication, too many connections, starting up).
+			if running, known := pgServerRunning(port); known && !running {
+				resp.Prerequisite = true
+				outcome = "database server not running"
+			} else {
+				resp.Connection = true
+				outcome = "database server refused the connection"
+			}
 		case strings.Contains(string(output), "ERROR:"):
-			// The server refused a statement: the DO block is one
-			// transaction, so nothing of it was kept.
+			// The server refused a statement (a lock or statement timeout
+			// among them): the DO block is one transaction, so nothing of it
+			// was kept.
 			outcome = "engine refused"
 		default:
-			resp.Unknown = len(req.Writes) > 0
+			// A lost answer: unknown, also for a read (nothing was refused).
+			resp.Unknown = true
 			outcome = "result unknown"
 		}
 		resp.Error = failure.Error()
@@ -316,8 +464,9 @@ func (a *Agent) SetPostgreSQLRoleLimitsV1(req *transport.PostgreSQLRoleLimitsReq
 		settings[key] = value
 	}
 	if !okConn || convErr != nil || !okSettings {
-		// The writes committed; what the role holds now was not read.
-		resp.Unknown = len(req.Writes) > 0
+		// The writes committed (or, for a read, the answer was lost); what
+		// the role holds now was not read.
+		resp.Unknown = true
 		resp.Error = "the database user's limits were sent, but PostgreSQL's answer about them could not be read"
 		outcome = "read back unreadable"
 		return nil

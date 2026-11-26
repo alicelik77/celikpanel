@@ -4,26 +4,39 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
+
+func syscallMkfifo(path string) error { return syscall.Mkfifo(path, 0o600) }
 
 // alpha.149 fix round B (lab D10): a site role's limits through the Agent, as
 // the superuser, by one narrow call.
 
 func withPGRoleLimitsStubs(t *testing.T, recorded bool, run func(port int, statement string) ([]byte, error)) *[]string {
 	t.Helper()
-	restoreRecorded, restoreRun, restoreDefault, restoreClusters := pgRoleRecordedByPanel, postgreSQLExecStatementOnPort, postgreSQLExecStatement, pgStatementClusters
+	restoreRecorded, restoreRun, restoreDefault, restoreClusters := pgRoleRecordedByPanel, pgRoleLimitsRun, postgreSQLExecStatement, pgStatementClusters
+	restoreRunning := pgServerRunning
 	t.Cleanup(func() {
-		pgRoleRecordedByPanel, postgreSQLExecStatementOnPort, postgreSQLExecStatement, pgStatementClusters = restoreRecorded, restoreRun, restoreDefault, restoreClusters
+		pgRoleRecordedByPanel, pgRoleLimitsRun, postgreSQLExecStatement, pgStatementClusters = restoreRecorded, restoreRun, restoreDefault, restoreClusters
+		pgServerRunning = restoreRunning
 	})
 	pgStatementClusters = func() ([]transport.PostgreSQLCluster, bool) { return nil, false }
 	pgRoleRecordedByPanel = func(context.Context, string, int) (bool, error) { return recorded, nil }
+	// alpha.149: the server runs unless a test says otherwise.
+	pgServerRunning = func(int) (bool, bool) { return true, true }
 	ran := []string{}
-	postgreSQLExecStatementOnPort = func(port int, statement string) ([]byte, error) {
+	pgRoleLimitsRun = func(port int, statement string) ([]byte, error) {
+		// alpha.149 (finding 9): the session's bounds come first.
+		if !strings.HasPrefix(statement, "SET lock_timeout = '5s';\nSET statement_timeout = '15s';\nDO $celikpanel_role_limits$") {
+			t.Errorf("the script does not start with its bounds: %q", statement)
+		}
 		ran = append(ran, statement)
 		return run(port, statement)
 	}
@@ -170,8 +183,38 @@ func TestPGRoleLimitsOutcomes(t *testing.T) {
 		t.Fatalf("an absent role: %+v", resp)
 	}
 	answer = []byte("psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5433\" failed: No such file or directory\n")
-	if resp = roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433, Writes: write}); !resp.Prerequisite || resp.Unknown || resp.Applied {
+	pgServerRunning = func(int) (bool, bool) { return false, true }
+	if resp = roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433, Writes: write}); !resp.Prerequisite || resp.Connection || resp.Unknown || resp.Applied {
 		t.Fatalf("a server that does not run: %+v", resp)
+	}
+	// alpha.149 (finding 7): a running server that refuses the connection
+	// is not "not running", whatever psql's words.
+	pgServerRunning = func(int) (bool, bool) { return true, true }
+	for _, refused := range []string{
+		"psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5433\" failed: FATAL:  Peer authentication failed for user \"postgres\"\n",
+		"psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5433\" failed: FATAL:  sorry, too many clients already\n",
+		"psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5433\" failed: FATAL:  the database system is starting up\n",
+	} {
+		answer = []byte(refused)
+		if resp = roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433, Writes: write}); !resp.Connection || resp.Prerequisite || resp.Unknown || resp.Applied {
+			t.Fatalf("a running server that refused the connection: %+v", resp)
+		}
+	}
+	// A lost answer on a read is unknown, not a refusal or a failure.
+	answer = []byte("server closed the connection unexpectedly\n")
+	if resp = roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433}); !resp.Unknown || resp.Applied || resp.Refused != "" {
+		t.Fatalf("a lost answer on a read: %+v", resp)
+	}
+	// The client ended at its deadline: unknown.
+	answer, answerErr = []byte("Cancel request sent\n"), &pgClientEndedError{}
+	if resp = roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433, Writes: write}); !resp.Unknown || resp.Applied {
+		t.Fatalf("a client ended at its deadline: %+v", resp)
+	}
+	answerErr = errors.New("exit status 3")
+	// A lock timeout is the engine's refusal of the block: nothing kept.
+	answer = []byte("ERROR:  canceling statement due to lock timeout\n")
+	if resp = roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433, Writes: write}); resp.Unknown || resp.Applied || resp.Error == "" {
+		t.Fatalf("a lock timeout: %+v", resp)
 	}
 	answer = []byte("ERROR:  permission denied to alter role\n")
 	if resp = roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433, Writes: write}); resp.Prerequisite || resp.Unknown || resp.Applied || resp.Error == "" {
@@ -191,6 +234,9 @@ func TestPGRoleLimitsOutcomes(t *testing.T) {
 // the cluster's port or the cluster it names; never MariaDB's, never another
 // machine's.
 func TestPGRoleRecordedByThePanelsOwnDatabase(t *testing.T) {
+	restoreOwners := panelDatabaseOwnerUIDs
+	t.Cleanup(func() { panelDatabaseOwnerUIDs = restoreOwners })
+	panelDatabaseOwnerUIDs = func() []uint32 { return []uint32{uint32(os.Geteuid())} }
 	path := filepath.Join(t.TempDir(), "celikpanel.db")
 	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
 	if err != nil {
@@ -233,5 +279,30 @@ func TestPGRoleRecordedByThePanelsOwnDatabase(t *testing.T) {
 	}
 	if _, err := pgRoleRecordedIn(ctx, filepath.Join(t.TempDir(), "missing.db"), "shop_u", 5432, clusters); err == nil {
 		t.Fatal("a missing panel database was read as no record")
+	}
+
+	// alpha.149 (review of PR #370, finding 2): read as root, the file goes
+	// through the managed-file checks - a symbolic link, a FIFO or a file of
+	// an unexpected owner is an error (nothing is touched), and a FIFO never
+	// holds the call.
+	dir := t.TempDir()
+	link := filepath.Join(dir, "celikpanel.db")
+	if err := os.Symlink(path, link); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pgRoleRecordedIn(ctx, link, "shop_u", 5432, clusters); err == nil {
+		t.Fatal("a symbolic link was followed")
+	}
+	fifo := filepath.Join(t.TempDir(), "celikpanel.db")
+	if err := syscallMkfifo(fifo); err != nil {
+		t.Skipf("no FIFO here: %v", err)
+	}
+	started := time.Now()
+	if _, err := pgRoleRecordedIn(ctx, fifo, "shop_u", 5432, clusters); err == nil || time.Since(started) > 3*time.Second {
+		t.Fatalf("a FIFO: %v after %s", err, time.Since(started))
+	}
+	panelDatabaseOwnerUIDs = func() []uint32 { return []uint32{uint32(os.Geteuid()) + 1} }
+	if _, err := pgRoleRecordedIn(ctx, path, "shop_u", 5432, clusters); err == nil || !strings.Contains(err.Error(), "unexpected account") {
+		t.Fatalf("a file of another owner: %v", err)
 	}
 }
