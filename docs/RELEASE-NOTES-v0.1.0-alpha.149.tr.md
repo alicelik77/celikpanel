@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.149.md)
 
+> **Yayımlandı**, 26 Kasım 2026 (UTC): sürüm commit'i `c04064161`, GitHub ön sürümü 14:21:27Z, indirme portalı yaklaşık 14:26Z (dış denetim 27/27).
+
 **Bir güvenlik ve düzeltme sürümü.** Panelin ajanı, yani sunucudaki
 yardımcısı, kendisine hangi ad verilirse verilsin artık veritabanı
 sunucusunun bir yönetici hesabını değiştirmez, veritabanı sunucusunun kendi
