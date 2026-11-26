@@ -289,8 +289,9 @@ func (p *Panel) applyDBRoleLimitsFrom(ctx context.Context, limiter services.Role
 		after, err := limiter.ReadUserRoleSettings(username)
 		if err != nil && firstErr == nil {
 			// alpha.149: the writes were accepted; what the engine holds now
-			// was not read, so the result is not known.
-			firstErr = &dbLimitError{state: dbLimitUnknown, err: fmt.Errorf("read back: %w", err)}
+			// was not read, so the result is not known (second review of PR
+			// #370, finding 8: with its code, so the line says "not known yet").
+			firstErr = &dbLimitError{state: dbLimitUnknown, code: dbReasonUnknown, err: fmt.Errorf("read back: %w", err)}
 		}
 		for k, v := range writes {
 			if v == 0 {
