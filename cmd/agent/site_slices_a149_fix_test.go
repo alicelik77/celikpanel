@@ -83,7 +83,11 @@ func TestTheAgentsStartIsBoundedByItsReadsAndOneReload(t *testing.T) {
 	if len(calls) > 4 || shows != 1 || reloads != 1 || resets != 1 || requests != 1 || named != len(units) || listened != 0 {
 		t.Fatalf("calls=%d shows=%d reloads=%d resets=%d requests=%d programs named=%d ports read=%d", len(calls), shows, reloads, resets, requests, named, listened)
 	}
-	if bound := 4*delay + 750*time.Millisecond; took > bound {
+	// The count of calls above is the proof; the clock only catches a wait
+	// that makes no call. Its slack holds the 64 unit files' own reads and
+	// writes on a loaded machine (833 ms was measured against an earlier
+	// 750 ms) and stays under the shortest wait there ever was (4 s).
+	if bound := 4*delay + 3*time.Second; took > bound {
 		t.Fatalf("the start took %v for %d calls of %v (bound %v)", took, len(calls), delay, bound)
 	}
 	outcomes := readSiteMoveOutcomes()["7"]
