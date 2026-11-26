@@ -112,72 +112,90 @@ func TestSiteTasksMoveIsPartOfTheMoveAndUndoIsTheAdministrators(t *testing.T) {
 }
 
 // TestAnUnresolvedTasksMoveStartsNoProgramsMove (S4 R2b second fix round,
-// review N1): a tasks part whose result is unknown, or that was refused for
-// an unresolved earlier move, does not start the programs part of the same
-// request; the answer says why; an unresolved move is ONE administrator line
-// in Problems now with the steps by hand, and the card of that site shows it.
-// On 6db8cd368 the programs part ran (and deleted the tasks' journal).
+// review N1; alpha.150: main's one kept record): a tasks part whose result
+// is unknown, or that was refused before it began (a kept record, the
+// panel's update, another move), does not start the programs part of the
+// same press; the answer carries main's code. A kept tasks record is main's
+// ONE site_move_kept line (from the status read), and Try again goes to the
+// Agent's one Try again (Recover), which settles a tasks record too.
 func TestAnUnresolvedTasksMoveStartsNoProgramsMove(t *testing.T) {
 	useHostMemory(t, 8192)
 	f := newRightsFixture(t)
 	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
 	var siteID int
 	_ = f.panel.db.GetDB().QueryRow(`SELECT id FROM sites WHERE domain_id = 9902`).Scan(&siteID)
-	oldMove, oldSlice, oldMoved := moveSiteTasksCall, moveSiteSliceCall, siteTasksMovedCall
-	t.Cleanup(func() { moveSiteTasksCall, moveSiteSliceCall, siteTasksMovedCall = oldMove, oldSlice, oldMoved })
-	unresolved := &transport.SiteMoveUnresolved{SiteID: siteID, Kind: transport.SiteMoveUnresolvedTasksMove, Step: "crontab_emptied", Account: "customer_test",
-		StartedAt: "2026-11-23T10:00:00Z"}
-	answer := transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "putting them back did not complete"}
+	oldMove, oldSlice := moveSiteTasksCall, moveSiteSliceCall
+	t.Cleanup(func() { moveSiteTasksCall, moveSiteSliceCall = oldMove, oldSlice })
+	kept := &transport.SiteSliceMoveRecovery{At: "2026-11-23T10:00:00Z", Units: map[string]string{}, Kept: true, Tasks: transport.SiteTasksUnknown,
+		TasksStep: "crontab_emptied", TasksSite: siteID, TasksAccount: "customer_test"}
+	answer := transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "putting them back did not complete", Recovery: kept}
 	moveSiteTasksCall = func(p *Panel, ctx context.Context, method string, req *transport.SiteTasksMoveRequest) (transport.SiteTasksMoveResponse, error) {
 		return answer, nil
 	}
-	siteTasksMovedCall = func(p *Panel, ctx context.Context, req *transport.SiteTasksMovedRequest) (transport.SiteTasksMovedResponse, error) {
-		return transport.SiteTasksMovedResponse{Moved: []int{}, Unresolved: unresolved}, nil
-	}
-	programs := 0
+	programs, recovers := 0, 0
 	moveSiteSliceCall = func(p *Panel, ctx context.Context, req *transport.MoveSiteSliceRequest) (transport.MoveSiteSliceResponse, error) {
+		if req.Recover {
+			recovers++
+			return transport.MoveSiteSliceResponse{Done: true, Recovery: &transport.SiteSliceMoveRecovery{Tasks: transport.SiteTasksPutBack}}, nil
+		}
 		programs++
 		return transport.MoveSiteSliceResponse{Done: true}, nil
 	}
 	handler := siteLimitsMux(f)
-	for i, tasks := range []transport.SiteTasksMoveResponse{
-		answer,
-		{Outcome: transport.SiteTasksRefused, Refusal: transport.SiteMoveRefusalUnresolved, Error: "an earlier move of site 7's scheduled tasks ... could not be finished"},
+	for i, tc := range []struct {
+		tasks    transport.SiteTasksMoveResponse
+		code     string
+		wantKept bool
+	}{
+		{answer, "not_finished", true},
+		{transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: transport.SiteMoveRefusalKept, Error: "an earlier move of site 7 could not be put back completely"}, transport.SiteMoveRefusalKept, true},
+		{transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: "update_running", Error: "the panel's update is in progress"}, "update_running", false},
+		{transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: "another_move", Error: "another move into a site's limits is running"}, "another_move", false},
 	} {
-		answer = tasks
+		answer = tc.tasks
 		move := siteLimitsCall(t, f, handler, authzMatrixAdminID, http.MethodPost, "/api/v1/domains/9902/site-limits/move", `{"request_id":"move-001`+itoa(i)+`"}`)
 		wantStatus(t, move, http.StatusOK, "")
 		var resp transport.MoveSiteSliceResponse
 		_ = json.Unmarshal(move.Body.Bytes(), &resp)
-		if resp.Done || resp.Error == "" || resp.Tasks == nil || resp.Refusal != tasks.Refusal {
-			t.Fatalf("answer %s", move.Body.String())
+		if resp.Done || resp.Error == "" || resp.Tasks == nil || resp.Reason == nil || resp.Reason.Code != tc.code || resp.Kept != tc.wantKept {
+			t.Fatalf("answer %d %s", i, move.Body.String())
 		}
 	}
 	if programs != 0 {
-		t.Fatalf("the programs part ran %d times after an unknown tasks part", programs)
+		t.Fatalf("the programs part ran %d times after a tasks part that did not begin or whose result is unknown", programs)
 	}
-	raw := f.panel.setting(context.Background(), settingSiteLimitOutside)
-	lines := siteMoveUnresolvedProblem(raw, map[string]string{itoa(siteID): "customer.test"})
-	if len(lines) != 1 || lines[0].Kind != "site_move_unresolved" || lines[0].Subject != "customer.test" || lines[0].Actor != "administrator" ||
-		!strings.Contains(lines[0].Name, "sudo systemctl disable --now 'celikcron-"+itoa(siteID)+"-*.timer'") || !strings.Contains(lines[0].Name, "sudo crontab -u customer_test ") {
-		t.Fatalf("problem %+v (setting %s)", lines, raw)
+	// Try again: the one Recover call; no tasks call.
+	answer = transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksMoved}
+	again := siteLimitsCall(t, f, handler, authzMatrixAdminID, http.MethodPost, "/api/v1/domains/9902/site-limits/move", `{"request_id":"move-0019","recover":true}`)
+	wantStatus(t, again, http.StatusOK, "")
+	if recovers != 1 || programs != 0 {
+		t.Fatalf("Try again: recovers %d programs %d", recovers, programs)
 	}
-	if view := f.panel.siteTasksViewOf(context.Background(), siteID); view.Unresolved == nil || view.Unresolved.SiteID != siteID {
-		t.Fatalf("the card does not show it: %+v", view)
+	// The kept tasks record is main's one line, opening that site.
+	f.panel.noteSiteMoveKept(context.Background(), []transport.SiteSliceStatus{{SiteID: siteID, MoveInterrupted: kept}}, true)
+	lines := siteMoveKeptProblem(f.panel.setting(context.Background(), settingSiteMoveKept), f.panel.setting(context.Background(), settingSiteMoveStopped),
+		map[string]string{itoa(siteID): "customer.test"})
+	if len(lines) != 1 || lines[0].Kind != "site_move_kept" || lines[0].Subject != "customer.test" || lines[0].Actor != "administrator" {
+		t.Fatalf("problem %+v", lines)
 	}
-	// Resolved: the line goes by itself.
-	unresolved = nil
-	f.panel.refreshSiteMoveUnresolved(context.Background())
-	if lines := siteMoveUnresolvedProblem(f.panel.setting(context.Background(), settingSiteLimitOutside), nil); len(lines) != 0 {
-		t.Fatalf("still shown: %+v", lines)
+	if _, ordered := problemKindOrder["site_move_unresolved"]; ordered {
+		t.Error("site_move_unresolved is gone: one record, one line (site_move_kept)")
 	}
-	for _, kind := range []string{"site_move_unresolved", "site_user_manager_open"} {
+	for _, kind := range []string{"site_move_kept", "site_user_manager_open"} {
 		if _, ordered := problemKindOrder[kind]; !ordered {
 			t.Errorf("%s has no place in the problem order", kind)
 		}
 		if en, tr := alertLine(pendingAlertMail{kind: kind, subject: "shop.example.com", name: "x", value: 2}); strings.HasPrefix(en, "A monitored problem") || tr == "" {
 			t.Errorf("%s has no alert line", kind)
 		}
+	}
+	// Problems-now kinds keep unique order numbers.
+	seen := map[int]string{}
+	for kind, n := range problemKindOrder {
+		if other, dup := seen[n]; dup {
+			t.Errorf("%s and %s share order %d", kind, other, n)
+		}
+		seen[n] = kind
 	}
 }
 

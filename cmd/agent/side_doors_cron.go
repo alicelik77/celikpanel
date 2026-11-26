@@ -187,6 +187,15 @@ func cronAllowOurs(ops siteCronOps, current []byte) bool {
 // closeSiteCronWith decides and, where allowed, writes /etc/cron.allow;
 // exceptSite is a site being put back into cron (its account is allowed).
 func closeSiteCronWith(ops siteCronOps, exceptSite int) *transport.SideDoorsCron {
+	return closeSiteCronFor(ops, exceptSite, false)
+}
+
+// closeSiteCronFor is closeSiteCronWith; reclose is the administrator's
+// explicit "close it again" (alpha.150, R1's re-close design): the owner's
+// deletion of CelikPanel's file is not taken as standing, and its record
+// stays until the file is written again, so a cut or refused attempt never
+// makes a later start write it by itself.
+func closeSiteCronFor(ops siteCronOps, exceptSite int, reclose bool) *transport.SideDoorsCron {
 	if !ops.installed() {
 		return &transport.SideDoorsCron{State: transport.SideDoorsAtNotInstalled}
 	}
@@ -268,8 +277,8 @@ func closeSiteCronWith(ops siteCronOps, exceptSite int) *transport.SideDoorsCron
 		out.State, out.Detail = transport.SideDoorsAtFailed, err.Error()
 		return out
 	}
-	// The owner's undo stands (D-022).
-	if _, recordErr := ops.readFile(cronAllowRecordPath); recordErr == nil {
+	// The owner's undo stands (D-022), unless the administrator closes it again.
+	if _, recordErr := ops.readFile(cronAllowRecordPath); recordErr == nil && !reclose {
 		out.State = transport.SideDoorsAtOwnerRemoved
 		return out
 	}
@@ -455,6 +464,13 @@ func hostSiteLingerOps() siteLingerOps {
 // closeSiteLingerWith writes the rules file where polkitd is installed and
 // lists the site accounts that linger now.
 func closeSiteLingerWith(ops siteLingerOps) *transport.SideDoorsLinger {
+	return closeSiteLingerFor(ops, false)
+}
+
+// closeSiteLingerFor is closeSiteLingerWith; reclose is the administrator's
+// explicit "close it again" (alpha.150): a rules file the owner deleted is
+// written anew, and its record stays until it is.
+func closeSiteLingerFor(ops siteLingerOps, reclose bool) *transport.SideDoorsLinger {
 	out := &transport.SideDoorsLinger{}
 	entries, _, _ := readPasswd(sideDoorsPasswd)
 	websiteUIDs := map[int]bool{}
@@ -487,7 +503,7 @@ func closeSiteLingerWith(ops siteLingerOps) *transport.SideDoorsLinger {
 	out.Groups = existingGroups(string(groupText), lingerAdminGroups)
 	ledger := readSandboxLedger()
 	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
-		if _, known := ledger[path]; known {
+		if _, known := ledger[path]; known && !reclose {
 			out.State = transport.SideDoorsAtOwnerRemoved
 			return out
 		}
@@ -520,17 +536,4 @@ func closeSiteLingerWith(ops siteLingerOps) *transport.SideDoorsLinger {
 		}
 	}
 	return out
-}
-
-// forgetLingerRule is the explicit re-close of lingering: the record of the
-// rules file goes, so a missing file is written as at a first start.
-func forgetLingerRule() error {
-	path := filepath.Join(polkitRulesDir, lingerRuleName)
-	return updateSandboxLedger(func(l map[string]sandboxLedgerEntry) bool {
-		if _, ok := l[path]; !ok {
-			return false
-		}
-		delete(l, path)
-		return true
-	})
 }

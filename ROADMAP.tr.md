@@ -1,6 +1,6 @@
 # CelikPanel Yol Haritası
 
-*Son güncelleme: 7 Kasım 2026 · [English](ROADMAP.md)*
+*Son güncelleme: 25 Kasım 2026 · [English](ROADMAP.md)*
 
 ---
 
@@ -76,21 +76,85 @@ bu bölümde öyle yazılır.
 
 ### Neredeyiz
 
-- **Son sürüm:** v0.1.0-alpha.142 (satır 65), 21 Kasım 2026'da yayımlandı,
-  bir güvenlik sürümü: bir müşteri ya da bayi, başka bir hesabın adına ya da
-  sunucunun kendi adlarına eşit, onların altında ya da üstünde bir adı,
-  başka bir sitenin sistem hesabını, sunucunun kendi hizmetlerinden birinin
-  portunu ya da bir bağlantı üzerinden başka bir hesabın dosyalarını alamaz;
-  siteye özel yapılandırma dosyalarını artık her hesap okuyamaz. Panelin
-  veritabanı yapısı değişir (şema 80)
-  ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.142.tr.md)).
-- **Sahibin sunucuları:** son salt-okur doğrulamada (13 Kasım 2026)
-  Frankfurt ve Boston alpha.133'teydi; alpha.134 sahibi bekliyor. Onları
-  yalnız sahip, panelin kendi güncelleme ekranından günceller.
+- **Son sürüm:** v0.1.0-alpha.148 (satır 71), 25 Kasım 2026'da yayımlandı:
+  müşteri ayırma R2a: bir sitenin programları o sitenin kendi bellek,
+  işlem ve işlemci sınırlarının içinde çalışır (site başına tek bir yerel systemd dilimi; PHP-FPM havuzu ve
+  zamanlanmış görevler bu sınırların dışında);
+  mevcut programlar yönetici siteyi taşıyınca sitelerinin sınırlarına girer
+  (her biri bir kez yeniden başlar). İkinci bölümü giriş çerezleridir
+  (güvenlik şeridi A1, PR #368, sürüm PR'ına birleştirildi): aynı alan adı
+  altında başka bir ana makine adındaki bir web sitesi panelin girişini
+  artık koyamaz, gölgeleyemez ya da değiştiremez; "Farklı giriş yap"tan
+  sonra çıkış yapmak (ya da oturumun başka bir yolla sona ermesi) yöneticinin
+  girişini artık tarayıcıda bırakmaz; veritabanı araçları panelin girişini
+  artık almaz. Şema değişikliği yok (81 olarak kalır). Bir laboratuvar denemesi
+  (25 Kasım 2026, bir Debian 13 ve bir Ubuntu 24.04 deneme sunucusu,
+  ikisi de panelin kendi sayfasından güncellendi ve güncelleme yönetici
+  oturumu açıkken kendiliğinden bitti): sınırlar bir müşterinin kendi
+  programına karşı tuttu, taşıma ve giriş çerezi düzeltmeleri çalıştı; sürüm
+  notları yalnız laboratuvarın doğruladığını ya da kodun kesinleştirdiğini
+  söyler, kalanı bilinen sınırlardadır
+  ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.148.tr.md)). Laboratuvardan
+  çıkan sonraki işler: veritabanı süre ve geçici dosya sınırlarının sitelerin
+  PostgreSQL kullanıcılarına ve bir planın sınırı konduktan sonra
+  oluşturulan veritabanı kullanıcılarına ulaşması; geri konduktan sonra
+  çalışmayan bir programı taşımanın doğru söylemesi; kartın ve taşıma
+  penceresinin nedenlerinin sayfanın dilinde olması; güncelleme sırasında
+  açık olan sayfalar için giriş nedeni.
+- **Aday:** v0.1.0-alpha.149 (satır 72), alpha.148 üzerinde yeni özellik
+  içermeyen bir düzeltme turu. Panelin ajanı, panel ona hangi adı verirse
+  versin, artık veritabanı sunucusunun bir yönetici hesabını değiştirmez, bir
+  sistem veritabanını silmez ya da boşaltmaz (PostgreSQL 16 ve sonrasında
+  gerçek bir sınır; MariaDB'de ve eski PostgreSQL'de panelin kendi hesabı
+  zaten bu ağırlıkta yetkiler taşır); planın veritabanı sınırları sitelerin
+  PostgreSQL kullanıcılarına ve her yeni veritabanı kullanıcısına ulaşır,
+  sahibin kendi değerleri korunur; bir sitenin sınırlarının içine taşıma,
+  geri konduktan sonra çalışmayan bir programı doğru söyler, panelden
+  başlatılan durmuş bir program sitesinin sınırlarının içinde başlar, bir
+  taşıma sırasında güncelleme başlamaz; güncelleme ajanı yaklaşık bir dakika
+  bekler. Şema değişikliği yok (81 olarak kalır). Laboratuvar: açık
+  ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.149.tr.md)).
+- **Sahibin 23 Kasım 2026'da ürünle ilgili kararları:** herkese açık site ve
+  sürüm notları ürünün ne olduğunu ve ne yaptığını söyler, iç soruları ya da
+  süreci asla söylemez, ürünün sınırlarını sade sözlerle yazar; lisans
+  koşulları D-047'de değiştirildiği gibidir (`docs/DECISIONS.tr.md`).
+- **Sahip, site hakkında, 23 Kasım 2026:** teknik bilgi sayfası tasarımını
+  onayladı ve "yayınla" dedi; düzeltilen bir sorunun düzeltildi olarak
+  göründüğü bir hata bildirimi bölümü ve sürümlere göre değişiklik listesi
+  istedi. Site ikisini de depodan üretilen sabit sayfalar olarak gösterir.
+  Bildirim formu (siteden ve panellerden gönderilen bildirimler) ile üyelik
+  ve abonelik hizmeti kendi yollarıdır (PR #361; önce Stripe); site yalnız
+  bugün var olanı söyler.
+- **Sahibin 23 Kasım 2026 yönü:** "üründe bilinen güvenlik açığı olmamalı" ve
+  "ilk beta bir an önce". Bu yüzden müşteri ayırma dilimleri ilk betadan önce
+  ZORUNLUDUR ve artık onun onayını beklemez: R1 (PR #348), R2a (PR #349) ve
+  R2b (PR #353) kendi dallarında yapıldı ve incelendi; her biri bağımsız
+  incelemelerinden ve kendi laboratuvar denemesinden sonra kendi sürümü
+  olarak, birer birer çıkar ve her biri sahibe sade sözlerle anlatılır
+  (her güncellemeyi kendisi kurar); R3 ve R4 tasarlandı, yapılmadı. R1
+  alpha.147'de yayımlandı; R2a alpha.148'de yayımlandı; alpha.149 bir düzeltme turudur (aday);
+  sırada alpha.150 olarak R2b (PR #353) vardır. İlk betadan
+  önceki bilinen güvenlik açıklarının tek listesi aşağıda tutulur
+  ("alpha.145'ten sonraki plan").
+- **Sahibin sunucuları:** son salt-okur doğrulamada (22 Kasım 2026)
+  Frankfurt ve Boston alpha.144'teydi. Onları yalnız sahip, panelin kendi
+  güncelleme ekranından günceller.
 - **Laboratuvar kapsamı:** alpha.142 bir laboratuvar sunucusu çiftinde
   (Debian 13 ve Ubuntu 24.04, 21 Kasım 2026) bir denemeden ağır hatasız
-  geçti; dört bulgusu alpha.143'e planlandı. alpha.141'in bulguları
-  taşınanlar listesinde (alpha.149); şablonları SQL_ASCII olan bir
+  geçti; dört bulgusu alpha.143'te düzeltildi. alpha.143 aynı çiftte
+  iki denemeden geçti (21–22 Kasım 2026): ikisinde de ağır hata yok;
+  birinci denemenin beş kusuru son kodda düzeltildi, altı bulgusu alpha.144'te
+  düzeltildi. alpha.144 aynı çiftte, web postası adresli ilk deneme
+  olan bir denemeden geçti (22 Kasım 2026): ağır hata yok; üç bulgusu
+  alpha.145'te düzeltildi. alpha.145 aynı çiftte bir denemeden geçti (23
+  Kasım 2026): ağır hata yok; karşılaştığı sınır bilinen sınır olarak
+  yazıldı. alpha.146 (site) aynı çiftte bir denemeden geçti (23 Kasım
+  2026): ağır hata yok. alpha.147 aynı çiftte bir denemeden geçti (24
+  Kasım 2026): ağır hata yok; karşılaştıkları bilinen sınır olarak
+  yazıldı. alpha.148 aynı çiftte bir denemeden geçti (25 Kasım 2026):
+  sınırlar, taşıma ve giriş çerezi düzeltmeleri çalıştı; karşılaştıkları
+  bilinen sınır olarak yazıldı. alpha.141'in
+  bulguları taşınanlar listesinde; şablonları SQL_ASCII olan bir
   PostgreSQL sunucusu hâlâ denetlenmedi (hiçbir laboratuvar sunucusunda
   yok). Hiçbir denemenin bakmadığı işler sürüm notlarında yazılı.
 
@@ -232,43 +296,305 @@ bir hesabın hiçbir şeyine ulaşılamadı (bağlantı üzerinden dosya, ad, or
 güncellendi (yaklaşık 1,5 ve 3 dakika), şema 79 → 80 zaten var olan bir çakışmayla uygulandı.
 Dört bulgusu alpha.143'e gider.
 
-**alpha.143 — Posta yalnız gönderenin kendi alan adı için imzalanır; küme taşıma ve eski PostgreSQL veritabanları**
+**alpha.143 — Posta yalnız gönderenin kendi alan adı için imzalanır; eski PostgreSQL veritabanları (22 Kasım 2026'da yayımlandı)**
+Bir güvenlik sürümü (sahip, 20 Kasım 2026). Bkz. satır 66.
 1. Giden posta yalnız gönderen hesabın kendi alan adı için imzalanır (`security/s3b-mail-signing`,
-   sürüyor).
-2. Bir veritabanını başka bir PostgreSQL kümesine taşımak onu veritabanının kendi haklarıyla
-   yükler; alpha.141'den önce açılan PostgreSQL veritabanları başka hesaplara kapatılır
-   (`security/s1b-pg-leftovers`, sürüyor).
-3. alpha.142 laboratuvarının dört bulgusu (hiçbiri güvenlik ya da veri kaybı değil): alan adı
-   sunucunun kendi adlarından birinin altında olan bir müşteri onun alt alan adlarını ekleyebilir
-   ve "Şu anki sorunlar" böyle bir alan adını artık sunucunun adlarıyla çakışıyor diye listelemez;
+   PR #346, bağımsız incelemeden sonra `fix/a143-mail`'de düzeltildi): girişle gönderilen posta
+   girişin alan adı için imzalanır, 25. port hiç imzalamaz, otomatik yanıt yalnız kutunun kendi
+   adreslerinden verilir (önceki yanıtlar ilk açılışta yabancı adresi kaybeder, bir kez söylenir) ve
+   site hesapları girişsiz posta teslim edebildiği sürece imza yerinde gösterilmez.
+2. alpha.141'den önce açılan PostgreSQL veritabanları başka hesaplara kapatılır
+   (`security/s1b-pg-leftovers`, bağımsız incelemeden sonra `fix/a143-pg`'de düzeltildi). Bir
+   veritabanını sahiplerinin haklarıyla başka bir PostgreSQL kümesine taşımak bu sürümden çıkarıldı
+   (güvenlik dizisi 6. madde).
+3. alpha.142 laboratuvarının dört bulgusu (hiçbiri güvenlik ya da veri kaybı değil;
+   `fix/a143-lab-corrections`, PR #350): alan adı sunucunun kendi adlarından birinin ya da
+   yöneticinin tuttuğu bir adın altında olan bir müşteri onun alt alan adlarını ekleyebilir (böyle
+   bir alan adı "Şu anki sorunlar"da hâlâ sunucunun adlarıyla çakışıyor diye listelenir: sahibe
+   açık bir soru);
    yöneticinin başka bir hesaba ad yerleştirme reddi o hesabın daha yakın adını söyler;
-   uygulaması hatalı durumdaki bir Node.js sitesi silinir (bugün: root olarak
+   uygulaması hatalı durumdaki bir Node.js sitesi tek basışta silinir (önceden: root olarak
    `systemctl reset-failed celikapp-<id>.service`, ardından yeniden Sil); aracının günlüğü,
    sahibin değiştirdiği ve korunan dosya kipini sayar ve adlandırır.
 
-Kum havuzu dilimleri (sahip, 21 Kasım 2026: R2, R3 ve R4'ün hepsi ilk betadan ve lisans 1.
-aşamadan önce gelir), her biri bir sürüm:
+Laboratuvar denemesi bitti (PowerDNS'li Debian 13 ana ve BIND'li Ubuntu 24.04 yedek sunucuda iki
+deneme; ikisi de alpha.142 durumundan panelin kendi sayfasıyla güncellendi): ikisinde de ağır hata
+yok. Birinci deneme (21–22 Kasım 2026, ilk düzeltme turundan sonraki kod) dört görünüm ve ifade
+kusuru ile kalkmayan bir durum buldu; ikinci düzeltme turu bunları düzeltti ve ikinci deneme (22 Kasım
+2026, son kod) beşinin de düzeldiğini buldu. Son kodda iki güncelleme de kendiliğinden, her biri
+yaklaşık üç dakikada bitti; şema 80 → 81 altı ad kuralıyla, hizmetler yanıt veriyor, yeni hatalı birim
+yok. Kanıtlanan: alpha.142'nin kodunda açık olan her yol kapalı (başka bir müşterinin "Kimden"iyle
+yapılan giriş yalnız girişin kendi alan adı için imzalanır; 25. port girişsiz imzalanmaz; başka bir
+müşterinin adresinden yanıt veren yanıt o adresi ilk açılışta kaybetti, bir kez söylendi ve onu yeniden
+kaydetmek kimin olduğu söylenmeden reddedilir); yanıtlar, adlandırdıkları ad gidince aynı istekte
+yeniden yazılır, bu yapılamazsa kapatılır ve söylenir; sahibin düzenlediği imza dosyası korunur ve
+"Şu anki sorunlar" satırı giriş ayarı dosyaya girince kendiliğinden kalkar; eski PostgreSQL
+veritabanları bir gün izlenir (bu arada başka hesaplar hâlâ bağlanabilir), sonra kendiliğinden
+kapatılır ve Geri al hemen gösterilir, geri alınan yeniden kapatılmaz, sahibin beklettiği kapatma
+yaklaşık yarım dakikada "hiçbir şey değiştirilmedi" diye yanıtlanır ve yeniden gönderilmez; kendi alan
+adının içindeki alt alan adı yanıt verir, diğer hesaplar tek ret cümlesini almaya devam eder, hata
+veren Node.js sitesi silinir. Altı bulgusu alpha.144'e gider.
 
-**alpha.144 — Kum havuzu R1: yan kapılar (PR #348)**
-Veritabanı araçları ve web postası kendi hesaplarında, kullanılmayan hazır PHP-FPM havuzu kapalı,
-`at` site hesaplarına kapalı, CelikPanel dışında eklenen zamanlanmış görev satırları gösterilir.
+**alpha.144 — Web postasının adresi; alpha.143 laboratuvarının düzeltmeleri (22 Kasım 2026'da yayımlandı)**
+Küçük bir sürüm (düzeltme şeridi `fix/a144-lab-corrections`, PR #355, sürüm PR'ı). Bkz. satır 67.
+1. Güvenlik: web postasının kendi adresi alpha.110'dan beri bir Roundcube eklentisinin klasöründeki
+   PHP olmayan her dosyayı veriyor (örneğin bir eklentinin yapılandırmasının bir kopyası) ve
+   eklentilerin PHP dosyalarını doğrudan çalıştırıyordu; artık yalnız Roundcube'un giriş noktasını
+   çalıştırır ve yalnız sayfalarının yüklediği durağan dosyaları verir. Var olan sunucular aracının
+   ilk açılışında düzeltilir (`nginx -t`, yeniden yükleme, başarısızlıkta önceki dosya geri konur);
+   sahibin düzenlediği adres dosyası korunur, CelikPanel'in metni yanına konur; korunan bir dosya ya
+   da geri alınan bir yeniden yazma "Şu anki sorunlar"da tek satırdır.
+2. alpha.143 laboratuvarının altı bulgusu: sayfadan ayrılırken oluşturulan posta kutusu ya da
+   kaydedilen otomatik yanıt panel kaydını korur (yollar istek kimliği korumasının işlem
+   adımlarıdır); sunucuda kaydı olmadan bulunan posta kutusu açıkça söylenir ve yönetici onu yalnız
+   içinde posta yokken, her zaman yeni bir parolayla alabilir; sayfası bırakılan bir PostgreSQL
+   kapatması kaybolmuş diye kaydedilmez; başarısız kapatmanın penceresi "Yapılmadı — hiçbir şey
+   değiştirilmedi" adımında biter ve nedenin türünü söyler; takma ad ve sertifika retleri sayfanın
+   dilinde söylenir; tek veritabanı tekil söylenir.
+3. Trafik rakamları her gece günlük döndürmesinden sonra web sunucusunun bir sonraki yeniden
+   yüklenmesine dek eksik sayılıyordu (çalışan süreçleri `/var/log/celikpanel` içinden
+   geçemiyordu); klasör ilk açılışta bir kez geçilebilir olur, `traffic` klasörü yalnız geçilebilir,
+   sahibin seçtiği kip korunur ve adlandırılır.
+4. Yeni, küçük: aynı hesabın, DNS'ini bu sunucunun tuttuğu bir alan adının içindeki takma ad o
+   bölgede sitenin adres kayıtlarını alır (önceki hiçbir sürüm yapmıyordu); o addaki sahibin kaydı
+   asla değiştirilmez ve yanına bir şey eklenmez; bekleyen bir yayın her saat yeniden denenir ve bir
+   alan adı silmesini asla durdurmaz. Kendi başına bir alan adı olan takma ad bölge almaz (sahibin
+   kararı); önceden oluşturulan takma adlar kaydını kaldırılıp yeniden eklenince alır.
 
-**alpha.145 — Kum havuzu R2: site başına sınırlar; zamanlayıcı olarak zamanlanmış görevler**
-Her sitenin bellek, işlem ve işlemci sınırlarıyla kendi dilimi; zamanlanmış görevler onun içinde
-zamanlayıcı olarak çalışır.
+Laboratuvar denemesi bitti (bir deneme, 22 Kasım 2026, PowerDNS'li Debian 13 ana ve BIND'li Ubuntu
+24.04 yedek sunucuda; ikisi de alpha.143 durumundan panelin kendi sayfasıyla güncellendi): ağır hata
+yok. İki güncelleme de kendiliğinden, her biri yaklaşık bir buçuk dakikada bitti; şema adımı yok (81'de
+kalır), yeni hatalı birim yok, güncelleme boyunca siteler ve web postası yanıt verdi (web postası adresi
+olan sunucuda web sunucusu bir kez yeniden yüklendi). Kanıtlanan: alpha.143'ün kodunda web postasının
+adresi konan bir yedek kopyayı ve metin dosyasını içerikleriyle verdi ve bir eklentinin PHP dosyasını
+çalıştırdı; güncellemeden sonra bunlar, bir `config.inc.php.dist`, `composer.json` ve `.sql`/`.log`/`.md`
+dosyaları "bulunamadı" yanıtı verir, nokta ile başlayan dosyalar reddedilir; web postasının betikleri,
+stilleri, resimleri ve giriş noktası yanıt vermeyi sürdürür; web postası müşteri olarak baştan sona
+kullanıldı (oturum açma, listeleme, iki ekli bir ileti, düzenleyici, bir ayar, bir eklentinin ayarları,
+kişiler), başarısız istek ya da konsol hatası yok; sahibin düzenlediği adres dosyası birebir korundu,
+"Şu anki sorunlar"daki tek satır sahip metni alınca kalktı; başka bir web sunucusu dosyası bozukken
+önceki dosya aynen geri kondu ve satır bozuk dosyayı adlandırdı. Posta: sayfadan ayrılırken
+oluşturulan posta kutusu ve kaydedilen yanıt kaydedilir; sunucuda kaydı olmadan bulunan posta kutusu
+müşteriye açıkça söylenir ve yönetici onu yeni bir parolayla alır (eskisi artık oturum açmaz); içinde
+posta olan reddedilir ve parolası korunur; başka bir hesabın alan adı reddedilir ("bulunamadı"). Takma
+adlar: iki sunucudan yanıt verdi ve kaldırınca çekildi; sahibin kendi kaydı olduğu gibi bırakıldı;
+geçersiz ve yinelenen adlar sayfanın dilinde reddedildi; yedek sunucuya ulaşılamazken takma ad bekledi
+ve sunucu dönünce kısa süre sonra yayımlandı. PostgreSQL: sayfası bırakılan kapatma, sahip bir kilit
+tutarken de gerçek sonucunu gösterdi ("hiçbir şey değiştirilmedi" ve nedeni); başarısız kapatma
+"Yapılmadı — hiçbir şey değiştirilmedi" adımında nedenin türü ve sunucunun tırnak içindeki iletisiyle
+biter. Trafik günlükleri: klasör kipleri tasarlandığı gibi, elle konan klasör grubu korundu ve
+adlandırıldı, yeni bir sitenin ilk günlüğü kapalı, döndürme dosyası bir kez yeniden yazıldı; bir
+sitenin kendi hesabı zorla yapılan bir döndürmeden önce de sonra da başka bir sitenin günlüğünü
+okuyamadı ve klasörü listeleyemedi; döndürmeden sonra "Permission denied" satırı yok. Hiçbiri güvenlik
+ya da veri kaybı olmayan üç bulgu alpha.145'e gider (aşağıda). Denetlenmeyenler: tekil "Şu anki
+sorunlar" satırı (ulaşılamayan durum; testler), sayfası bırakılan Geri al ve Yeniden oku, döndürmeden
+sonraki trafik rakamı, yedek sunucuya ulaşılamazken silinen alan adı, abonelik taşımasından sonra takma
+ad, sertifikalı takma ad, ikinci sunucuda web postası, veritabanı web araçları, diğer PostgreSQL
+sürümleri. Hiçbir P0 işi kapanmadı.
 
-**alpha.146 — Kum havuzu R3: site başına bir PHP ana süreci**
-PHP sitenin korumalı alanının içinde çalışır (yeni sitelerde ve seçildiğinde var olan sitelerde).
+**alpha.145 — Web postasının yerel kapısı kapandı; web postası gönderebilir; alpha.144 laboratuvarının iki görünüm düzeltmesi (23 Kasım 2026'da yayımlandı)**
+Küçük bir sürüm (düzeltme şeridi `fix/a145-webmail-send`, PR #357, sürüm PR'ı), iki bağımsız salt-okur
+incelemeden sonra düzeltildi. Satır 68'e bakın.
+1. Güvenlik: web postasının yerel kapısı (`/run/celikpanel-webmail.sock`, `/run` altında 0666: ağa
+   değil, sunucudaki her hesaba açık) alpha.13'ten beri (alpha.1–12'de 127.0.0.1'de) web postasının
+   herkese açık klasöründeki her dosyayı (eklenti ve tema klasörleri: eklenti ayarlarının artık
+   kopyaları, nokta dosyaları, `composer.json`, SQL dosyaları) veriyor ve eklenti betiklerini
+   çalıştırıyordu. Artık yalnız CelikPanel'in kendi denetimlerini yanıtlar (oturum açma sayfası, stil
+   dosyaları, PHP denetimi); kurulu sunucular Agent'ın ilk açılışında düzeltilir (`nginx -t`,
+   yeniden yükleme, hata olursa önceki dosya geri konur); sahibin değiştirdiği dosya, CelikPanel'in
+   metni yanında ve Şu anki sorunlar'da tek satırla korunur.
+2. Web postası gönderebilir: hiç gönderemiyordu (gönderim hizmetiyle şifresiz konuşuyordu; hizmet
+   girişi yalnız şifreli bağlantıda kabul eder). Şifreleme açık, yalnız 127.0.0.1'e; orada
+   sertifikanın adı ve zinciri denetlenmez; başka hiçbir adres için hiçbir şey gevşetilmez. İlk
+   açılışta kendiliğinden düzeltilir; sahibin değiştirdiği yapılandırma CelikPanel'in metni yanında ve
+   Şu anki sorunlar'da tek satırla korunur; CelikPanel'in yeniden yazamadığı kendi önceki metni,
+   nedeni giderip Agent'ı yeniden başlatmayı söyler; web postası gönderemezken Webmail kartı
+   "doğrulanmış" demez.
+3. alpha.144 laboratuvarının iki görünüm bulgusu: takma adın beklemesi bölgesi yayımlanınca
+   (bekletilen ya da bekleyen yayın) biter ve bölgenin uyarısı değişikliği yeniden yapmayı istemez;
+   PostgreSQL kapatma penceresinin başlığı sonucu söyler.
 
-**alpha.147 — Kum havuzu R4: erişim ve adlar**
-Bir site sunucunun kendi üzerinde yalnız gerekene ulaşır; bir sitenin gördüğü sistem hesap listesi
-süzülür; yeni sitelerin hesapları numarayla adlandırılır.
+Laboratuvar denetimi: yapıldı (tek deneme, 23 Kasım 2026 UTC 05:21 ile yaklaşık 06:50 arası; posta ve
+web postasının kendi adresi olan PowerDNS'li Debian 13 ana sunucu ile BIND'li Ubuntu 24.04 yedek
+sunucu, ikisi de alpha.144'ün kodundan panelin kendi sayfasıyla `e10c2ddb6`'ya, laboratuvara özel
+alpha.153 etiketiyle güncellendi): ağır hata yok. İki güncelleme kendiliğinden (yaklaşık 4,5 ve 4
+dk), şema adımı yok, her birinde bir yeniden yükleme. Yerel kapı güncellemeden önce bir site hesabına
+konan eklenti kopyasını verdi ve konan PHP'yi çalıştırdı, güncellemeden sonra iki sunucuda da
+"bulunamadı" dedi; web postası 127.0.0.1:587 üzerinden şifreli ve posta kutusunun girişiyle gönderdi,
+göndericinin alan adı adına imzalandı; yabancı kimlik reddedildi; 587 ve 465 değişmedi; yeniden
+başlatma hiçbir şeyi değiştirmedi; sahibin değiştirdiği kapı dosyası ve yapılandırma korundu, her biri
+için Şu anki sorunlar'da tek satır çıktı ve kendiliğinden gitti; çeşitlemeler tasarlandığı gibi;
+takma ad beklemesi bekletilen değişiklik yayımlanınca bitti; PostgreSQL başlıkları sonucu söylüyor.
+Bir kez karşılaşılan, bu sürümden eski: bir Roundcube güncellemesi sunucuda bitti ama panel onu bir
+panel yeniden başlatmasına dek "güncelleniyor" gösterdi (bilinen sınır). Yapılmayanlar: kendi imzalı
+sertifika durumu, başka bir ad için zincir reddi (yalnız ad denetimi), Ubuntu sunucusunda gönderim
+(orada posta hizmeti yok), gönderemezken Webmail kartı, yavaş yedek yolunda takma ad beklemesi,
+"yeniden yazılamadı" satırının ekranı, yeniden kurulum kanıtı, Geri al penceresinin "bilinmiyor"
+sonucu, Arch Linux. Hiçbir P0 işi kapanmadı.
 
-**alpha.148 — lisans 1. aşama (PR #327, sahibin laboratuvar kararını bekliyor)**
-Süresi geçmiş ya da doğrulanamayan lisans hiçbir güvenlik işlemini ve başka bir sunucunun işini
-engellemez; süre bitimi uyarıları (D-047).
+**alpha.147 — Müşteri ayırma R1; uzun değişiklikler artık "sürüyor" diye kalmıyor; site başına sınırlara hazırlık (24 Kasım 2026'da yayımlandı)**
+Sürüm PR'ı PR #348'dir (`security/s4-r1-side-doors`); içine PR #358 (site dilimleri için ileriye
+uyumluluk) ve PR #366 (takılan işlem düzeltmesi) birleştirildi; R1 dört, diğer ikisi ikişer bağımsız
+incelemeden geçti. Bkz. satır 70.
+1. Güvenlik, müşteri ayırma R1: phpMyAdmin, phpPgAdmin ve web postası kendi sistem hesaplarıyla
+   çalışır (`celikpanel-<araç>`, kendi PHP-FPM havuzu, kendi veri klasörü); panelin yan kapılar adımı
+   ilk açılıştan sonra onları Yönet penceresinin doğrulanmış taşımasıyla taşır, başarısızlıkta geri
+   koyar; web postasının ağacı her site hesabına kapalı, onun hesabı tek bir erişim listesi
+   girdisiyle geçer (erişim listesi olmayan dosya sisteminde web postası web hesabında kalır ve Şu
+   anki sorunlar nedenini söyler); `at`, CelikPanel'in olmadığı yerde yazdığı bir `/etc/at.allow` ile
+   site hesaplarına kapalı; panel dışında eklenen crontab satırları işaretlenir, agent onları
+   tutulana kadar değiştirmez ya da etkinleştirmez; dağıtımın `www` havuzu yalnız dokunulmamışsa,
+   yanında başka bir havuz varsa ve bir web sunucusunun yüklediği hiçbir şey kullanmıyorsa kapatılır
+   (başka web sunucuları ve Apache'nin `.htaccess` izinleri onu açık tutar); sahibin geri alması
+   geçerlidir, her biri için tek bir "yeniden kapat" eylemi vardır. Debian ve Ubuntu; Arch Linux'ta
+   araçlar ve havuz olduğu gibi kalır.
+2. Düzeltme (PR #366): sonunu panelin kaydedemediği uzun bir değişikliği çalışan panelin kendisi
+   sonuçlandırır (web postası güncellemesi ya da adresi yalnız okunur, yarıda kalan kurulum bir kez
+   daha baştan çalıştırılır); tek bir geç yanıt artık bir değişikliği durdurmaz; sonuçlanamayan,
+   agent denetimi ve panelin yeniden başlatılmasıyla anılır.
+3. Arka planda (PR #358): bu sürüm, site başına sınırları getiren sürümden geri dönülebilecek güvenli
+   bir sürümdür (posta engeli yardımcısının yer sırası, sınır satırları korunur, birimin dilim satırı
+   korunur).
 
-**alpha.149 — taşınanlar**
+Laboratuvar denetimi: 24 Kasım 2026'da Debian 13 ve Ubuntu 24.04 çiftinde bitti, ağır hata yok;
+neyin denetlendiği, neyin denetlenmediği ve laboratuvarın karşılaştıkları sürüm notlarında. Hiçbir P0 işi kapanmadı.
+
+**alpha.148 — Müşteri ayırma R2a: bir sitenin programları kendi sınırlarının içinde; giriş çerezleri (25 Kasım 2026'da yayımlandı)**
+Sürüm PR'ı PR #349'dur (`security/s4-r2a-site-slice`), yayımlanmış alpha.147 üzerinde; üç bağımsız
+incelemeden ve üç düzeltme turundan geçti. PR #368 (giriş çerezleri) ona birleştirildi ve yayından
+sonra kapatılır. Bkz. satır 71.
+1. Güvenlik, müşteri ayırma R2a: bir sitenin programları (yüklenen
+   programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları, bunların kurulum, derleme
+   ve dağıtım adımları) sitenin kendi systemd dilimi `celiksite_<kimlik>.slice` içinde çalışır; dilimin
+   bellek (takas yok), işlem ve işlemci sınırları hepsini birlikte sınırlar; plan anahtarları
+   `site.memory_mb`, `site.tasks`, `site.cpu_percent` (varsayılan 512 işlem, %200, bellek 3072 MB ile
+   sunucu belleğinin %75'inden küçük olanı, ilk açılışta sabitlenir; bayi sunucunun varsayılanıyla
+   sınırlı); çalışan bir program yöneticinin taşımasına kadar çalıştığı yerde kalır (program başına
+   bir yeniden başlatma; yarıda kalan bir taşımayı bitiren ya da geri koyan bir günlük); kullanımın
+   altına düşürülen bir sınır ancak durduracağı sitelerin listesiyle kaydedilir; "yürürlükte" ancak
+   çekirdeğin tuttuğudur; sahibin dilim değişiklikleri ve ek dosyaları korunur (D-031), dilimler panel
+   olmadan çalışır (D-022).
+2. Veritabanı kullanıcıları: isteğe bağlı `db.statement_seconds` ve `db.idle_in_transaction_seconds`
+   (kullanıcının oturumunun değiştirebildiği varsayılanlar) ve `db.temp_file_mb` (PostgreSQL). Bu
+   sürümde bir sitenin sınır konduğunda var olan MariaDB kullanıcılarına ulaşırlar; sonradan
+   oluşturulan bir kullanıcı onları planın veritabanı anahtarlarının bir sonraki değişikliğinde alır;
+   sitelerin PostgreSQL kullanıcılarına ulaşmazlar (laboratuvar ve kod, 25 Kasım 2026).
+3. Bu sürümde bir sitenin sınırlarının içinde olmayanlar: PHP-FPM havuzu (R3), zamanlanmış görevleri ve
+   açık kalan kullanıcı yöneticileri (R2b) ve güncellemeden önce çalışan programlar, taşınana kadar.
+4. Güvenlik, giriş çerezleri (güvenlik şeridi A1, PR #368; iki bağımsız incelemeden ve iki düzeltme
+   turundan sonra sürüm PR'ına birleştirildi): HTTPS üzerinden `__Host-` çerez adları; böylece aynı alan
+   adı altında başka bir ana makine adındaki bir web sitesi panelin girişini artık koyamaz,
+   gölgeleyemez ya da değiştiremez; iki kez gönderilen bir ad reddedilir (başka bir web sitesinin
+   bütün alan adı için koyduğu çerez tarayıcıda kalır, panel onu yok sayar); oturumu açık bir
+   tarayıcıdan başka bir siteden gelen `/api/` isteği reddedilir; "Farklı giriş yap"tan sonra çıkış
+   ya da "Farklı giriş yap" oturumunun başka bir yolla sona ermesi tarayıcıda yönetici girişi
+   bırakmaz; `/dbtool/` aracısı panelin çerezlerini ya da `Authorization` başlığını iletmez; giriş
+   sayfası iki kez gönderilen bir girişin ve güncellemeden önceki bir girişle yeni açılan bir sayfanın
+   nedenini söyler; yöneticinin güncellemeden önceki oturumu
+   güncelleme sayfasında taşınır, öteki herkes bir kez yeniden giriş yapar. Panelin kendi ana makine
+   adındaki bütün hizmetler, bağlantı noktası ne olursa olsun, onun çerezlerini paylaşır.
+
+Laboratuvar denetimi: 25 Kasım 2026'da Debian 13 ve Ubuntu 24.04 çiftinde bitti (laboratuvar etiketi
+156, baş `83d6e043c`); neyin denendiği, neyin denenmediği ve laboratuvarın karşılaştıkları sürüm
+notlarındadır. Ondan çıkan sonraki işler: veritabanı sınırlarının sitelerin PostgreSQL kullanıcılarına ve
+bir planın sınırı konduktan sonra oluşturulan kullanıcılara ulaşması; geri konduktan sonra çalışmayan
+bir programı taşımanın doğru söylemesi; kartın ve taşıma penceresinin nedenlerinin sayfanın dilinde
+olması; güncelleme sırasında açık olan sayfalar için giriş nedeni. Hiçbir P0 işi kapanmadı.
+
+**alpha.149 — Ajan veritabanı sunucusunun yönetici hesaplarını reddeder; veritabanı sınırları PostgreSQL'e ulaşır; taşıma doğruyu söyler (Aday)**
+Yayımlanmış alpha.148 üzerinde yeni özellik içermeyen bir düzeltme turu: sürüm PR'ına
+(`release/v0.1.0-alpha.149`) birleştirme commit'leriyle katılan üç şerit: PR #372
+(`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) ve PR #370 (`fix/a149-db-limits`); her biri kendi
+bağımsız incelemelerinden ve düzeltme turlarından sonra; üç PR yayından sonra kapatılır. Bkz. satır 72.
+1. Güvenlik (burada kapanan daha eski bir bulgu): hiçbir ajan çağrısı, panelin adını verdiği bir
+   veritabanı hesabını (parola, kilit, silme, yetki geri alma, sınırlar, nesnelerin sahibi ve alıcısı
+   olarak bir veritabanının sahibi) ajan onu kendisi sıradan bulmadıkça değiştirmez; yazmadan önce ve
+   yazmanın kendi işleminde (PostgreSQL) ya da bileşik ifadesinde (MariaDB 10.1+) yeniden okunur;
+   yönetici yetkisi taşımadığı sürece `celikpanel_admin` tek sahip istisnasıdır; hiçbir ajan çağrısı bir
+   sistem veritabanını silmez, boşaltmaz, içine yüklemez, vermez ya da açmaz; bir MariaDB veritabanı
+   başka bir ana makinedeki aynı adlı bir hesabın yanında yapılmaz. PostgreSQL 16+'da gerçek bir sınır;
+   MariaDB'de ve PostgreSQL 15 ya da öncesinde yanlışlıklara karşı bir koruma. MariaDB'nin yerindeki
+   yerel bir MySQL yönetilmez (`unsupported_engine`). `celikpanel_admin`'in sahibi olduğu bir veritabanında
+   nesneleri olan eklenmiş bir PostgreSQL kullanıcısı kaldırılmaz (`owns_objects`; panelin hesabına REASSIGN
+   yok; yönetici önce onları verir).
+2. Veritabanı sınırları: veritabanı kullanıcısı oluşturan her yol için tek işlev; PostgreSQL sınırları
+   kayıtlı, sıradan site rollerine dar ajan çağrısı `SetPostgreSQLRoleLimitsV1` ile; sahibin değerleri
+   korunur (PostgreSQL bağlantı sınırı dahil); sonuçlar Şu anki sorunlar'da nedenine göre (tür 47),
+   Yeniden uygula ve sınırlı bir saatlik turla.
+3. Site başına sınırlar: geri koyma doğrulanır (bir program ancak başlama beklemesinden sonra, yerinde,
+   portları varsa dinlerken çalışıyor sayılır); ajanın açılışı bir müşterinin programını hiçbir zaman
+   beklemez (tek bir 15 s sınırı altında en çok dört systemd çağrısı); bir durum okuması tutulan
+   kayıtları yalnız okuyarak çözer; her basışa tek süre sınırı; panelden başlatılan durmuş bir program
+   diliminde başlar; Ubuntu 24.04 işlem sınırı tepesi; nedenine göre uygulanmamış satırı; taşıma
+   sırasında güncelleme ve güncelleme sırasında taşıma yok (eskimiş bir güncelleme kaydı 31 dakika
+   sonra reddetmeyi bırakır).
+4. Güncellemeler: güncellemenin ve kurtarmasının beş ajan açılış beklemesi 10–14 s yerine yaklaşık bir
+   dakikadır (200 × 0,3 s, 300 × 0,2 s); sınırdan sonraki güvenli duruş değişmedi.
+
+Laboratuvar denemesi: açık. Hiçbir P0 işi kapanmadı.
+
+**alpha.145'ten sonraki plan (sahip, 22 ve 23 Kasım 2026)**
+Sahip 22 Kasım'da sunucularına riskli hiçbir değişikliğin gönderilmemesini, 23 Kasım'da üründe
+bilinen güvenlik açığı olmamasını ve ilk betanın bir an önce çıkmasını istedi. Aşağıdakiler için söz
+verilen bir sürüm numarası ya da tarih yoktur.
+
+- **Müşteri ayırma — ilk betadan önce ZORUNLU.** R1, yan kapılar (PR #348: veritabanı araçları ve
+  web postası kendi hesaplarında, kullanılmayan hazır PHP-FPM havuzu kapalı, `at` site hesaplarına
+  kapalı, CelikPanel dışında eklenen zamanlanmış görev satırları gösterilir), R2a, plan sınırları ve
+  veritabanı süre sınırlarıyla site başına bir dilim (PR #349), ve R2b, bir sitenin zamanlanmış
+  görevleri sınırlarının içinde zamanlayıcı olarak (PR #353), kendi dallarında yapıldı ve bağımsız
+  olarak incelendi. Birer birer, her biri bağımsız incelemelerinden ve kendi laboratuvar denemesinden
+  sonra kendi sürümü olarak çıkar; her biri öncesinde sahibe sade sözlerle anlatılır (her güncellemeyi
+  kendisi kurar). R3 (site başına bir PHP hizmeti, sitenin korumalı alanının içinde) ve R4 (siteler
+  arasında sunucunun iç adresi üzerinden erişim yok; diğer sitelerin hesap adları görünmez)
+  tasarlandı, yapılmadı.
+- **İlk betadan önce bilinen güvenlik açıklarının tek listesi (açık).** İlk beta bilinen güvenlik
+  açığı olmadan çıkar; bu liste önce kapanır ya da her maddesi sahibe anlatılır. Her biri nerede
+  planlandığıyla:
+  - müşteri ayırma dilimleri: R1 — alpha.147'de yayımlandı; R2a (PR #349) — alpha.148'de yayımlandı; R2b
+    (PR #353) — yapıldı ve incelendi, sırada, kendi sürümü olarak (alpha.150); R3, R4 — tasarlandı,
+    yapılmadı;
+  - panelin ajanının, panelin sözüyle bir veritabanı yönetici hesabını değiştirmesi, kaldırılan bir
+    kullanıcının nesnelerini yönetici bir sahibe ya da panelin kendi veritabanı hesabına vermesi ya da bir
+    sistem veritabanını silmesi — aday alpha.149
+    (PR #370, sürüm PR'ına katıldı);
+  - aynı alan adı altında başka bir ana makine adındaki bir web sitesinin koyabildiği, gölgeleyebildiği
+    ya da değiştirebildiği giriş çerezleri; "Farklı giriş yap" ve "Çıkış yap"tan (ya da oturumun başka
+    bir yolla sona ermesinden) sonra tarayıcıda kalan yönetici girişi; veritabanı araçlarına iletilen
+    panel girişi — alpha.148'de yayımlandı (PR #368, PR #349'a birleştirildi);
+  - çerez tek başına yetmez: girişin çerezinden fazlasına bağlanması, böylece panelin kendi ana makine
+    adındaki (hangi bağlantı noktasında olursa olsun) bir hizmet onu kullanamaz ya da değiştiremez —
+    tasarlandı, yapılmadı;
+  - veritabanı araçları, panelin ana makine adını paylaşmayan kendi kökenlerinde — tasarlandı,
+    yapılmadı;
+  - sahiplerinin haklarıyla PostgreSQL sunucu taşıması — şerit açık, planlanmadı;
+  - diğer hesapların okuyabildiği posta arama dosyaları — planlanmadı;
+  - yedek hedefi denemesi (birinin adına bir hedefe ulaşmak) — planlanmadı;
+  - tek bir ağı paylaşan VPN eşleri — planlanmadı;
+  - eski MariaDB joker hakları — planlanmadı;
+  - çalışma ortamları klasörü — planlanmadı;
+  - iç gönderim adresi ve web postasının yerel kapısı üzerinden parola denemesi (istemci adresine göre
+    çalışan bir sınır bunu görmez) — planlanmadı;
+  - ortak web hesabında kalan programların trafik günlüklerini okuması — R1/R2a'da planlandı.
+- **PostgreSQL sunucu taşıması — şerit açık.** Bir veritabanını sahiplerinin haklarıyla başka bir
+  PostgreSQL kümesine taşımak (aşağıda güvenlik dizisi 6. madde, kabul listesi açık).
+- **Lisans 1. aşama ve yeni site — sahibi bekliyor.** Lisans 1. aşama (PR #327): süresi geçmiş ya
+  da doğrulanamayan lisans hiçbir güvenlik işlemini ve başka bir sunucunun işini engellemez; süre
+  bitimi uyarıları (D-047); sahibin laboratuvar kararını bekliyor. Yeni celikpanel.net sitesi
+  (PR #333) sahibin yayımla demesini bekliyor.
+- **Açık: hâlâ tarayıcının isteğiyle çalışan değişiklikler.** alpha.144'ün ayırdığı dört yolun
+  dışında başka panel değişiklikleri tarayıcının isteğini hâlâ aracının işine geçirir: sunucu
+  çalışırken sayfadan ayrılınırsa değişiklik sunucuda panelin kaydı olmadan bitebilir ya da yalnız
+  yanıtı kaybolur (zamanlanmış görevler, posta yönlendiricileri ve her şeyi yakalayan adres, bir posta
+  kutusunun parolası, boyut sınırı ve silinmesi, DKIM, bir sitenin SSL ve PHP ayarları, dosya
+  erişimi, DNS kurulumu ve DNSSEC, VPN, bir yedeği silmek, katalog uygulamaları, veritabanı içe
+  aktarma ve diğerleri). İşleyiciye göre, geride ne kaldığıyla birlikte liste PR #355'te ("6c");
+  her biri kendi sınırına dek, istek kimliği başına bir kez çalışacak (D-029).
+- **Karar verildi, planlandı, yapılmadı (sahip, 22 Kasım 2026): sunucunun kendi alan adının altındaki
+  adlar.** Bir sunucu müşterilere kendi alan adının altında ad yalnız yöneticinin açık izniyle
+  verebilir.
+
+**Taşınanlar (sürüm atanmadı)**
 1. PostgreSQL şablonları SQL_ASCII olan (sahibin Ubuntu 24.04 sunucusu gibi C yerel ayarıyla
    kurulmuş) bir sunucuda laboratuvar denemesi: sayfadan oluşturulan UTF-8 veritabanı, bir
    SQL_ASCII veritabanının kartındaki uyarı ve UTF-8 olmayan bir baytta durmasıyla UTF-8'e
@@ -409,6 +735,13 @@ engellemez; süre bitimi uyarıları (D-047).
 51. Site hesapları alan adıyla değil numarayla adlandırılır (alpha.142, S2 ve S3 hatları).
 52. PHP ve zamanlanmış görevler site korumalı alanının içinde, hesap başına sınırlarla (S4).
 53. Postfix'in adres eşlemelerini yalnız posta hizmetleri okur (alpha.142, S3 hattı).
+54. Arch Linux'ta posta kutusu girişiyle gönderilen posta, OpenDKIM paketinde `SenderMacro`
+    olmadığından, "Kimden" satırında geçen barındırılan her alan adı için hâlâ imzalanıyor; orada
+    imzayı girişe bağlayan başka bir yol (alpha.143, S3b hattı). Şu anki sorunlar bunu orada söyler ve
+    seçeneği asla önermez (alpha.143 incelemesi).
+55. Bir sunucu adının ya da yöneticinin bir adının altındaki müşteri alan adının ve içinde açılan
+    alt alan adlarının "Şu anki sorunlar"da sunucunun adlarıyla çakışıyor diye listelenmeye devam
+    edip etmeyeceği: sahibin kararı (alpha.143 laboratuvar düzeltmeleri).
 
 **Güvenlik dizisi (sahip, 20 Kasım 2026: root yalnız yöneticidedir; her hesap kendi korumalı alanında)**
 1. Bir dosyadan gelen SQL veritabanı sahibinin haklarıyla çalışır; yöneticinin PostgreSQL oturumları
@@ -418,36 +751,56 @@ engellemez; süre bitimi uyarıları (D-047).
 3. Dosyalar ve web: bağlantılar, siteye özel dosya kipleri ve müşteri yönergeleri her hesabın
    dosyalarını o hesapta tutar (S3 1-2. bölümler, alpha.142).
 4. E-posta: her hesabın postası o hesapta kalır; yalnız gönderenin kendi alan adı için imzalama
-   alpha.143'te gelir (S3, açık).
-5. Sınırlar: hesap başına işlem, bellek, disk ve veritabanı kullanımı sınırları (S4, açık; R1-R4
-   dilimleri alpha.144-147'de).
+   alpha.143'te (S3b; OpenDKIM'i bunu yapamayan Arch Linux'ta hâlâ açık).
+5. Sınırlar: hesap başına işlem, bellek, disk ve veritabanı kullanımı sınırları (S4, açık; R1, R2a
+   ve R2b dilimleri kendi dallarında yapıldı ve incelendi, sahibin onayını bekliyor, hiçbiri bir
+   sürüme konmadı; R3 ve R4 yapılmadı).
+6. Bir veritabanını başka bir PostgreSQL kümesine taşımak kopyayı sahiplerinin haklarıyla yükler
+   (açık; `security/s1b-pg-leftovers` şeridi, bağımsız incelemeden sonra 21 Kasım 2026'da alpha.143
+   adayından çıkarıldı; değişikliği onu ele alacak şerit için yama olarak saklanır). O zamana dek
+   taşıma müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla çalıştırır; taşımayı yalnız
+   yönetici başlatabilir (alpha.141'in bilinen sınırı). Kabul, incelemenin bulgularından, hepsi
+   açık: (1) hiçbir tablo ya da alan kısıtı, satırlardan sonra geri yüklenen başka hiçbir şey de,
+   müşterinin kodunu yöneticinin haklarıyla çalıştırmaz; (2) yükleme rolü aynı anda birden çok
+   sahibin üyeliğini taşımaz, müşteri kodu onu değiştiremez, saklayamaz, yeniden kullanamaz; silinemeyen
+   rol girişsiz, parolasız ve üyeliksiz kalır; (3) müşterinin örtük dönüşümü üzerinden yabancı anahtar
+   doğrulaması yönetici olarak çalışmaz (önce bir laboratuvar denemesi); (8) veritabanı hakları
+   PostgreSQL varsayılanı olan bir kaynak kopyada da onları korur ve her ret hedefe bir şey yazılmadan
+   önce gelir; (10) yükleme rolünün parolası sunucuya hiç düz metin olarak ulaşmaz; (11) hedefte
+   yönetici olup kaynakta olmayan bir rol reddedilir; (12) hedefin en düşük sürümleri CVE-2023-39417
+   düzeltmesini içerir.
+
+Dizinin kalıcı kuralı (21 Kasım 2026): her güvenlik şeridi bir sürüme katılmadan önce bağımsız olarak
+incelenir. Dört incelemenin (korumalı alan R1 ve R2a, alpha.143'ün posta imzası ve PostgreSQL
+şeritleri) her biri testlerin ve CI'ın geçirdiği kusurlar bulduktan sonra karar verildi.
 
 Ardından gelen tasarım sürümleri, onaylanan sırayla (sahip, 12 Kasım 2026). Her biri kendi
-bölümlerinin içini onaylı çizimlere göre yeniden tasarlar; küçük sürümler, hazır olunca yayımlanır.
+bölümlerinin içini onaylı çizimlere göre yeniden tasarlar; küçük sürümler, hazır olunca yayımlanır;
+hiçbir sürüm numarası söz verilmez.
 
-**alpha.150 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
+**Tasarım sürümü 1 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
 Alan adının Genel Bakış'ı, alan adı listesi ve müşterinin ana sayfası çizildiği gibi; her birinin
 gereken özet ve sağlık bilgileri satır başına değil tek istekte okunur.
 
-**alpha.151 — E-posta**
+**Tasarım sürümü 2 — E-posta**
 E-posta bölümü çizildiği gibi.
 
-**alpha.152 — Veritabanları bölümü**
+**Tasarım sürümü 3 — Veritabanları bölümü**
 Alan adının Veritabanları bölümü çizildiği gibi; dışarıdan bağlantı, yönetici sunucu anahtarını
 açtığında orada onaylı tek bir yeniden başlatmayla hazırlanır; daha anlaşılır PostgreSQL ayarları
 (geçerli değerler, CelikPanel'in satırları işaretli).
 
-**alpha.153 — Alan adı ve DNS, Güvenlik**
+**Tasarım sürümü 4 — Alan adı ve DNS, Güvenlik**
 Kayıt düzenleme ve Alan adı ve DNS bölümü çizildiği gibi; Güvenlik bölümü (sertifika, korumalı
 klasörler, zararlı yazılım taraması) çizildiği gibi.
 
-**alpha.154 — Site ve Dosyalar**
+**Tasarım sürümü 5 — Site ve Dosyalar**
 Site ve Dosyalar bölümleri çizildiği gibi.
 
-**alpha.155 — Yedekler ve Gelişmiş**
+**Tasarım sürümü 6 — Yedekler ve Gelişmiş**
 Yedekler ve Gelişmiş bölümleri çizildiği gibi; gerektirdikleri sunucu ayarı taşımalarıyla.
 
-**alpha.156 — Yönetici, bayi ve hesap sayfaları**
+**Tasarım sürümü 7 — Yönetici, bayi ve hesap sayfaları**
 İkinci onaylı önerinin sayfaları (sahip, 12 Kasım 2026).
 
 Önceki alpha.132 planından da taşınanlar, dokundukları ekranların sürümüne yerleşir: Mağaza
@@ -2566,6 +2919,13 @@ kabul işi açık kalır.
 | 63 | `v0.1.0-alpha.140` sürüm incelemesi. **Yayımlandı, 20 Kasım 2026 (sürüm commit'i `feef6da42`; ön sürüm 12:56:56Z; portal yaklaşık 13:00Z, dış denetim 27/27).** Taşınan dört işin küçük düzeltme sürümü (alpha.138 ve alpha.139 laboratuvarları; önceki listenin 1, 2, 3, 12 ve 30. maddeleri), yayımlanmış alpha.139 üzerinde iki kulvar: `fix/ai-apps-truthful` (PR #338, birleştirme commit'iyle içine alındı) ve `fix/db-delete-once` (sürüm PR'ı, #339). (1) Veritabanı silme, silinmesi istenen veritabanını bir kez siler. Önceden her basış `DROP DATABASE IF EXISTS <ad>` gönderiyordu; kayıtlar silmenin ardından gelmediğinde (kaybolan yanıt, kaldırılamayan kullanıcı ya da haklar, yazılamayan kayıtlar) kayıt listede kalıyordu ve arada aynı adla açılmış bir veritabanı (silme bitene dek o ada tam adlı haklarını koruyan müşterinin kendi kullanıcısıyla, elle, bir geri yüklemeyle ya da bir kurulumla) sonraki basışla içindekilerle birlikte siliniyordu; alan adının veritabanlarını silmesi istenen alan adı silme de yeniden denemesinde aynısını yapıyordu. Şimdi silme önce veritabanının kimliğini okur (PostgreSQL'in oid'i; bu makinenin MariaDB'sinde veritabanı dizininin aygıtı, düğüm numarası, düğüm kuşağı ve doğum zamanı; Agent'ın yeni `DatabaseIdentityV1`'i) ve hiçbir şey silinmeden önce kaydın bir işaretinde saklar (`panel_settings` `database_delete_v1:<id>`); `DropDatabaseOnceV1` yalnız motor o kimliği gösterirken siler (silindi, yok, başkası; istemcisi hata veren silme ifadesi yeniden okunur). Ondan sonraki basışlar yalnız kullanıcıları ve kayıtları bitirir; arada açılmış veritabanı kullanıcılarıyla bırakılır ("exists"); kimlik yoksa ayırt edilemeyen hiçbir şey silinmez (`DATABASE_DELETE_UNVERIFIED`, yönetici sunucuda karar verir). Doğrulanmış bir ret işareti siler, bilinmeyen sonuç işareti tutar, kayıtların işlemi onu kaldırır. Şema değişikliği yok. (2) Yedek DNS sunucusunun bölge listesi onayını bekleyen alan adı silme, yedek onayı çoktan verdiği ve kurulu uzlaştırıcı kaldırmayı sonraki denetiminde yayımladığı halde "durdu … yeniden silin" diyordu (alpha.138 laboratuvarında 51 sn); uzlaştırıcı kuruluyken hazır bir yayımlayıcı artık aynı beklemedir (`dns_peer_catching_up`, çift yoksa `dns_removal_waiting`); "incomplete" yalnız onu kendiliğinden yayımlayan bir şey yoksa. (3) "Ekle…"nin meşgul sonu ilk adımı tamamlanmış gösterir ("{server} sunucusu yanıt verdi"). (4) Yapay zekâ ve otomasyon uygulamaları: sürümle kurulan bir bileşen (Node.js) için genel kurulum isteği hiçbir şey sıraya girmeden reddedilir; "henüz kurulamaz" satırı yapılandırılmış olgulardan okuyanın dilinde kurulur (uygulamanın ihtiyacı, sunucuda olan, sonraki adım); yöneticinin eylemi Bileşenler → Node.js'i ya da Bileşenler → Python'u açar; sunucunun işletim sisteminin çalıştıramadığı bir uygulama müşterilere ve bayilere gösterilmez ve sunulamaz. alpha.138 notlarındaki "Debian 13 ve Ubuntu 24.04'te yapay zekâ uygulamaları kurulamaz" cümlesi alpha.140'ın notlarında düzeltildi. Laboratuvar denemesi (bir deneme, 20 Kasım 2026, alpha.139 durumundan PowerDNS'li Debian 13 ana ve BIND'li Ubuntu 24.04 yedek, `06fcfae31`'den derlenen yalnız laboratuvara ait alpha.147 etiketi), ağır hata yok: iki güncelleme panelin kendi sayfasından (ikisi de günlük paket işini bekledi); MariaDB ve PostgreSQL'de düz veritabanı silme; kesilen bir yanıttan sonra yeni satırlarla aynı adlı bir veritabanı (Ubuntu 24.04'te müşterinin kendi kullanıcısıyla, Debian 13'te elle açılan) MariaDB'de (iki sistemde) ve PostgreSQL'de TR ve EN yeniden basılan Sil'den sağ çıktı, sayfa nedenini söyledi, elle silindikten sonra Sil bitirdi; kimlik hiç boş değildi (MariaDB düğüm numarasını yeniden kullandı; kuşak ve doğum zamanı ayırdı; PostgreSQL oid ile); her kesilen yanıt silme yapılmış, kullanıcılar ya da haklar kalmış olarak bitti; bir MariaDB ve bir PostgreSQL veritabanıyla alan adı silme; kurulumdan önce Debian 13'te yapay zekâ uygulamaları (Türkçe satırlar, Node.js sürüm listesi, Open WebUI sunulamaz ve müşterilere görünmez); genel Node.js kurulumu reddedildi, hiçbir şey sıraya girmedi; sayfadan Node.js 24 ve n8n (9 dk 24 sn, yaklaşık 3 GB, HTTPS, yeniden başlatmadan sağ çıktı); Ubuntu 24.04'te Python onarımı (python3-venv, python3.12-venv) ve sayfadan Open WebUI, her yerde ilk kurulumu (6 dk 18 sn, klasör 8,3 GB, dururken yaklaşık 2 GB bellek; pip sırasında kök dosya sistemi 23 GB'ın %96'sına çıktı); 390 px'te TR ve EN "Ekle…"nin meşgul sonu. Denetlenmeyenler: "yedek DNS sunucusunu bekliyor" cümlesi (iki alan adı silme de 12-14 sn'de bitti, çünkü yedek silme sırasında onayladı; "durdu … yeniden silin" de görünmedi); müşterinin "Node.js'i yönetici kurar" satırı; tek alan adında bir program ve bir yapay zekâ uygulaması (süre). Bulunan ve alpha.145'e taşınanlar (hiçbiri güvenlik ya da veri kaybı değil): yapay zekâ uygulaması kurulumunu durdurmanın yolu ve öncesinde boş disk denetimi yok; Debian 13 Programlar bölümünde Open WebUI için "Katalog yönetiminde sunun" (Open WebUI'ın kaldırılmasıyla ortadan kalkar: sahip 20 Kasım 2026'da Open WebUI'ı geri çekti, alpha.141 onu katalogdan çıkarır); Python onarımının ön izlemesi paket adlandırmıyor; MariaDB kullanıcıyı zaten kaldırmışken "kullanıcılarına dokunulmadı"; alan adı silme sırasında yaklaşık 9 sn "İşlenecek veritabanı yoktu"; aynı adlı veritabanı durumu kırmızı hata renginde; son hizmet işlemi eski, başarısız bir genel Node.js kurulumu; sertifika onayı her zaman Let's Encrypt diyor. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.140.tr.md). | Yayımlandı |
 | 64 | `v0.1.0-alpha.141` sürüm incelemesi. **Yayımlandı, 20 Kasım 2026 (sürüm commit'i `cccb08fab`; ön sürüm 19:46:26Z; portal yaklaşık 19:49Z, dış denetim 27/27).** Bir güvenlik sürümü (sahip, 20 Kasım 2026: root yalnız yöneticidedir); yayımlanmış alpha.140 üzerinde üç hat: `security/s1-sql-rights` (sürüm PR'ı, #343), `fix/pg-utf8` (PR #340) ve `fix/withdraw-open-webui` (PR #341), birleştirme commit'leriyle katıldı. (1) Bir dosyadan gelen SQL (bir yedeğin dökümü, bu sunucudan ya da müşterinin yönettiği uzak bir hedeften; başarısız bir geri yüklemeden sonra geri konan güvenlik kopyası; veritabanı, site ve WordPress kopyaları; cPanel içe aktarması; müşterinin içe aktarması) yalnız hedef veritabanının kendi hesabıyla yüklenir: MariaDB'de korumalı kipteki istemciyle, veritabanının kendi kullanıcısı olarak ve sitenin hesabı altında (tanımlayıcılar yükleyen kullanıcı olarak yazılır; korumalı kipi olmayan istemci reddedilir, yerine başkası konmaz; hiçbir şey yüklenmeden önce ikili günlük kapısı denetlenir), PostgreSQL'de protokol üzerinden sahip rolüyle tek işlemde (yönetici rolü ya da sahip olmayan rol reddedilir); cPanel içe aktarması yalnız yeni veritabanında hakkı olan, sonra kaldırılan geçici bir hesapla. Önceden geri yükleme ve kopya bunu motorun yöneticisi olarak çalıştırıyordu (`mysql` korumalı kip olmadan root olarak, `psql` postgres olarak). Panel her veritabanının kayıtlı hesabını geri yükleme ve kopyayla gönderir; eksik ya da reddedilen hesap güvenlik yedeğinden önce reddedilir (`BACKUP_RESTORE_DATABASE_ACCOUNT`, `BACKUP_RESTORE_CLIENT_UNSAFE`, `BACKUP_RESTORE_NEEDS_ADMINISTRATOR`; uzakta `DATABASE_ACCOUNT`, `DATABASE_CLIENT_UNSAFE`, `DATABASE_NEEDS_ADMINISTRATOR`). (2) Yöneticinin her PostgreSQL oturumu (psql, pg_dump, pg_restore; postgres ya da bir kümenin sahibi olarak) tek bir yardımcıyla `pg_catalog, pg_temp` arama yoluyla başlar; başka her başlatmada bir koruma testi düşer. (3) Panelin oluşturduğu PostgreSQL veritabanları template0'dan UTF-8'dir (17'den itibaren yerleşik C.UTF-8), oluşturduğu kümeler UTF-8'dir, var olan kümeler asla değiştirilmez; veritabanı kartı her veritabanının metin kodlamasını tek bir uyarı ve çıkış yoluyla (Kopyala) gösterir; bir dökümün SQL_ASCII istemci kodlaması her yüklemede denetlenir; yeni bir veritabanı başka hesaplara kapalıdır (`ALLOW_CONNECTIONS false`, `REVOKE ALL … FROM PUBLIC`, sonra açılır, geri okunur); önceden açılmış veritabanları sonraki bir sürüme dek başka hesapların oturum açmasına açık kalır. (4) Open WebUI katalogdan çıkarıldı (sahip, 20 Kasım 2026); bir alan adının zaten tuttuğu kurulum görünür kalır, çalışır ve kaldırılabilir. Sürüm sırası 140 → 141; şema 079'da kalır. Laboratuvar denetimi (tek deneme, 20 Kasım 2026, UTC 15:25'ten yaklaşık 16:55'e, alpha.140 durumundan PowerDNS'li Debian 13 ana ve BIND'li Ubuntu 24.04 yedek, `68b8d1d20`'den derlenen yalnız laboratuvara ait alpha.148 etiketi), ağır hata yok: iki güncelleme de panelin kendi sayfasından, kendiliğinden (yaklaşık 2 ve 2,5 dk, hatalı birim yok, DNS yanıtları önce ve sonra aynı); Debian 13'te müşterinin kendi uzak hedefinde değiştirilmiş bir paket (istemci komutları, her hakkı ya da yönetici niteliğini veren bir komut, kimin çalıştırdığını kaydeden bir satır; sonra yalnız SQL), MariaDB ve PostgreSQL'de, güncelleme öncesi ve yeni: her geri yükleme reddedildi, işaret dosyası yok, kazanılan hak yok, öbür müşterinin satırları değişmedi, güvenlik yedeği geri kondu; veritabanının arama yolu onlara çevrilmiş PostgreSQL işlevleri ve işleçleri yöneticinin oturumlarınca çalıştırılmadı (Denetle, Dışa aktar, kart bilgisi; her oturum sabit arama yoluyla başladı; sahibin kendi oturumu onları çalıştırdı); güncellemeden önce alınmış yerel bir yedek ve yeni bir yedek iki motorda da Türkçe harflerle geri yüklendi; iki motorda Kopyala (PostgreSQL kopyası UTF-8 ve yalnız kendi kullanıcısına açık); parola panelin dışında değiştirildikten sonra geri yükleme hiçbir şey yazılmadan reddedildi, Yeni parola ver… ile geri yüklendi; yeni bir PostgreSQL veritabanı başka hesabın yeni ve eski kullanıcısını reddetti, sahibi bağlandı, önceden açılmış bir veritabanı öbür kullanıcıyı hâlâ içeri aldı (bilinen sınır); yeni veritabanları Türkçe gidiş-dönüşle UTF-8 ve kartta "Metin: UTF-8"; Open WebUI katalogdan ve Programlar'dan kalktı, sunma ve kurma reddedildi, kuyruğa bir şey girmedi. Denetlenmeyenler: şablonları SQL_ASCII olan bir PostgreSQL sunucusu (iki laboratuvar sunucusunda da yoktu: Debian 13'ün 17'si de, bu denemede alpha.140'ın koduyla Bileşenler'den PGDG'den kurulan Ubuntu 24.04'ün 16'sı da UTF-8 C.UTF-8 idi), bu yüzden orada UTF-8 oluşturma, kartın uyarısı ve SQL_ASCII'den Kopyala yalnız özel motorlarda çalıştı; Ubuntu 24.04'te değiştirilmiş paketle MariaDB; site kopyası, İçe aktar, WordPress kopyası, cPanel içe aktarması; eklenen kullanıcıların kapalı bir veritabanına bağlanması; var olan bir Open WebUI kurulumu. Bulunan ve Taşınanlar: bir veritabanını başka bir PostgreSQL kümesine taşımak müşterinin işlevlerini hâlâ yöneticinin haklarıyla çalıştırıyor (alpha.143); alpha.145'e: SQL_ASCII bir kümede laboratuvar denemesi (ilk madde); PostgreSQL'de bir veritabanına eklenen kullanıcılar geri yüklemenin yeniden kurduğu nesnelerdeki haklarını yitiriyor; MariaDB olayları yedeklerde yok; laboratuvardan (hiçbiri güvenlik ya da veri kaybı değil): reddedilen değiştirilmiş paket genel bir hata gibi okunuyor; uzak geri yükleme indirilen paketi yerel listede bırakıyor ve aynı adlı geri yüklemeyi engelliyor; Türkçe parola reddinin altında İngilizce teknik satır; "bu sitenin yedeğinin neleri içereceği okunamadı"; PostgreSQL'i kaldırmak ikinci basış istedi; alan adı silinirken yine "işlenecek veritabanı yoktu". **Hiçbir P0 maddesi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.141.tr.md). | Yayımlandı |
 | 65 | `v0.1.0-alpha.142` sürüm incelemesi. **Yayımlandı, 21 Kasım 2026 (sürüm commit'i `7e51e951a`; ön sürüm 12:51:06Z; portal yaklaşık 12:54Z, dış denetim 27/27).** Bir güvenlik sürümü (sahip, 20 Kasım 2026: root yalnız yöneticidedir; bir bayi ya da müşteri başka bir müşterinin ya da sunucunun hiçbir şeyine ulaşamaz); yayımlanmış alpha.141 üzerinde iki hat: `security/s2-names` (sürüm PR'ı, #344) ve `security/s3-files-mail` (PR #345, birleştirme commit'iyle katıldı). (1) Tek ad kuralı, panelde (`cmd/panel/hostname_claim.go`) aboneliğe ad veren her yolda (oluşturma, takma ad, cPanel içe aktarma, abonelik devri) ve yeniden veritabanında (göç 080, altı tetikleyici): başka bir hesabın adına ya da sunucunun kendi adlarından birine (altyapı bölgeleri, alan adı olmayan bölgeler, panelin, makinenin, ad sunucularının, postanın ve web postasının adları, eş sunucunun adları, ana alan adı) eşit, onun altında ya da üstünde bir ad, bir müşterinin ya da bayinin aboneliği için reddedilir; yöneticinin kendi aboneliği bilerek tutabilir; sıradan bir hesap adı kim tutarsa tutsun tek yanıt alır (`HOSTNAME_NOT_AVAILABLE`), yönetici nedeni görür; var olan bir bölge hiçbir zaman bir müşterinin alan adına verilmez; adlarını alacak hesabın tutamayacağı devirler reddedilir (`TRANSFER_NAME_OVERLAP`); Alan adı ekle, adı geçen aboneliği erişim denetiminden sonra okur. (2) Türetilen sistem hesabı başka bir sitede ya da sistemde olan alan adı oluşturmadan önce reddedilir; Agent `site_identity_exists` yanıtını verir ve hesabın adıyla yapılan her adımdan önce ev dizinini kanıtlar (crontab, FTP girişleri, dosya erişimi, süreçler, hesap; WordPress araçları ve katalog kurulumu). (3) Bir Node.js sitesinin portu 3001-3999 arasından gelir ve hiçbir zaman panelin, hizmetlerinin ya da hizmet uygulaması ve program aralığının portu olmaz; Agent böyle bir portu yeniden reddeder (`APP_PORT_NOT_ALLOWED`). (4) Bir sitenin dosyalarını sunan her blokta `disable_symlinks if_not_owner` (sahibin kendi ayarı korunur); siteye özel vhost, ek ve PHP-FPM havuz dosyaları 0640, barındırma kökü 0711, bir kez düzeltilir, sahibin değiştirdiği kipler korunur; müşteri yönergeleri bağlantı kuralını kaldıramaz, klasör listeleyemez, PHP ayarlarını değiştiremez, nginx'e root olarak dosya okutamaz; kullanılan bir FTP giriş adı tek yanıt alır. (5) "Şu anki sorunlar", bir kurulumun zaten tuttuğu ve kuralın reddettiği adları ve Node.js portlarını listeler (`name_overlap`, `name_server_reserved`, `node_port_reserved`); var olan hiçbir şey değiştirilmez. Sürüm sırası 141 → 142; şema 079 → 080 (yalnız tetikleyiciler; çakışma tutan veritabanı da geçer ve çalışır; sürüm kurtarma laboratuvarı 80'i sabitler). Laboratuvar denetimi (tek deneme, 21 Kasım 2026, UTC 09:07'den yaklaşık 10:57'ye, alpha.141 durumundan PowerDNS'li Debian 13 ana ve BIND'li Ubuntu 24.04 yedek, `9377f1cc8`'den derlenen yalnız laboratuvara ait alpha.149 etiketi; aynı bayinin ayrı hesaplardaki iki müşterisi), ağır hata yok: güncellemeden önce (alpha.141'in kodu) ikinci müşterinin birinci müşterinin alan adı altındaki adı iki sunucuda da DNS'te yanıt verdi ve zamanlanmış görevinin onun dosyalarına ve web grubunun okuyabildiği bir sunucu dosyasına koyduğu bağlantılar içerikleriyle sunuldu; iki güncelleme de panelin kendi sayfasından, kendiliğinden (yaklaşık 1,5 ve 3 dk), şema 79 → 80 o çakışma dururken uygulandı ve panel onu listeledi (`name_overlap`), yeni hatalı birim yok, web, posta portları, DNS (iki sunucudan aynı yanıtlar), MariaDB ve PostgreSQL önceki gibi yanıt verdi, certbot deneme çalıştırmaları başarılı; güncellemeden sonra bağlantı üzerinden dosya yok (onun dosyalarına ya da sunucu dosyasına giden her bağlantı kendi sayfasını, 404'ü ya da 403'ü verdi; korunan bir klasörün içinde ve bağlantıyla değiştirilen bir site klasöründe de; onun dosyasını gösteren hata sayfası kaydedilirken reddedildi; kendi dosyasına giden bağlantı sunulmayı sürdürdü; Günlükler ekranının cümlesi TR ve EN), ad yok (onun alan adlarının ve sunucunun adlarının altında, onlara eşit ve üstünde, alan adı ve takma ad olarak: kimseyi adlandırmayan aynı cümle, hiçbir şey oluşturulmadı, hiçbir DNS yanıtı değişmedi; çakışma sayfadan silindi ve "Şu anki sorunlar" satırı kalktı), ortak bir sistem hesabı üzerinden zamanlanmış görev ya da FTP girişi yok (hiçbir şey yapılmadan reddedildi; onun hesapları, crontab'ları ve FTP girişleri değişmedi ve oturum açıyor; tek bir hesaba varan iki uzun ad için de aynı; kullanılan bir FTP giriş adı kimin tuttuğu söylenmeden yanıtlandı), sunucu portu yok (yeni bir Node.js sitesi 3001'i aldı; 8306, 11334, 3306, bir programın portu, 34000 ve başka bir sitenin portu `APP_PORT_NOT_ALLOWED` ile reddedildi, vhost'lar değişmedi); iki sunucuda siteye özel vhost ve havuzlar 0640, barındırma kökü 0711, sahibin değiştirdiği kip korundu, öbür müşterinin site hesabı barındırma kökünü listeleyemedi ve onun dosyalarını okuyamadı; yönetici bir alan adı oluşturdu, takma ad ekledi ve sildi; olağan sayfalar. Sayfanın yolu dışında: port retleri ve yöneticinin başka bir hesaba ad yerleştirmesi API'den; konan dosyalar, sahibin değiştirdiği kip, certbot'un laboratuvar sertifika yetkilisine kaydı ve iki `reset-failed` çağrısı root olarak. Denetlenmeyenler: güncellemeden sonra bir sunucu portundaki var olan Node.js sitesi ve Node.js genel klasöründeki bağlantı (alpha.141 böyle bir site açmayı zaten reddetti, durum hazırlanamadı); müşteri yönergesinin ekrandaki reddi (laboratuvarın müşterilerine yönergeler kutusu sunulmadı; yalnız testler); güncellemeden sonra web postası ve veritabanı web aracı (açılmadı); bir müşterinin ikinci sunucuda denediği adlar (orada hesabı yok). Bulunan, alpha.143'e planlananlar (hiçbiri güvenlik ya da veri kaybı değil): sunucunun adlarından birinin altındaki bir müşteri alan adına alt alan adı eklenemiyor (kimseyi adlandırmayan ret) ve bu alan adı "Şu anki sorunlar"da sunucunun adlarıyla çakışıyor diye listeleniyor (bu arada yönetici alt alan adını kendi hesabında ekleyebilir); yöneticinin reddi, adı tutan hesabın daha yakın adı yerine sunucunun adını söylüyor; uygulaması hatalı bir Node.js sitesi silinmiyor ve "Silinmeyi bekliyor"da kalıyor (çıkış yolu: root olarak `systemctl reset-failed celikapp-<id>.service`, ardından yeniden Sil; önceki sürümlerin de öyle davranıp davranmadığı belirlenmedi); aracının günlüğü, sahibin değiştirdiği kip korunduğu hâlde "0 kept" diyor. **Hiçbir P0 maddesi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.142.tr.md). | Yayımlandı |
+| 66 | `v0.1.0-alpha.143` sürüm incelemesi. **Yayımlandı, 22 Kasım 2026 (sürüm commit'i `462c854fb`; ön sürüm 07:21:01Z; portal yaklaşık 07:24Z, dış denetim 27/27).** Bir güvenlik sürümü (sahip, 20 Kasım 2026: root yalnız yöneticidedir; bir bayi ya da müşteri başka bir müşterinin ya da sunucunun hiçbir şeyine ulaşamaz), yayımlanmış alpha.142 üzerinde üç şerit, `release/v0.1.0-alpha.143` sürüm dalına katıldı: `security/s3b-mail-signing` (PR #346, üç commit'i; bağımsız incelemeden sonra `fix/a143-mail`'de düzeltildi), `security/s1b-pg-leftovers` (çekme isteği yok; kendi değişikliği tek commit; küme taşıması çıkarıldı ve eski veritabanlarını kapatması bağımsız incelemeden sonra `fix/a143-pg`'de düzeltildi) ve `fix/a143-lab-corrections` (PR #350, tek commit'e indirildi). (1) Giden posta yalnız göndericinin kendi alan adı için imzalanır: `opendkim.conf` içindeki `SenderMacro {auth_authen}` imza anahtarını posta kutusu girişine bağlar (gönderim giriş ister; giriş posta kutusunun tam adresidir); sunucuda girişsiz oluşan posta (panel bildirimleri, root'un zamanlanmış işleri, otomatik yanıtlar; bu yolla yalnız root ve vmail posta teslim edebilir) eskisi gibi `From:` ile imzalanır ve `authorized_submit_users` `root, vmail` değilken imza yerinde gösterilmez; otomatik yanıt yalnız kutunun kendi adresinden ya da aynı hesabın alan adlarından ona yönlendirilmiş bir adresten verilir (panel ve aracı denetler; önceki yanıtlar ilk açılışta yabancı adresi kaybeder, yanıt penceresinde bir kez söylenir ve denetim kaydına yazılır); 25. port smtpd'si `main.cf` süzgeç listesini OpenDKIM'siz alır, her açılışta yeniden hesaplanır (sahibin süzgeçleri kalır; `main.cf` listesi değişken kullanırken korunur ve adıyla söylenir) ve OpenDKIM artık kurulu değilken sonraki açılışta ya da posta bağlamasında silinir, böylece OpenDKIM orada gelen imzaları artık denetlemez; otomatik yanıt, bir adı kimin tuttuğunu ya da bir adresin nereye teslim edildiğini değiştiren her işlemin içinde yeniden denetlenir, yeniden yazılamayan yanıt kapatılır ya da Şu anki sorunlar'da adıyla söylenir; yeni `opendkim.conf` önce `opendkim -n` ile denetlenir, OpenDKIM onunla çalışmazsa geri konur, yeniden başlatması dosya yerine konmadan önce borç olarak kaydedilir ve bir kesintiden sonraki açılışta yapılır, Postfix yazmaları hatada ters sırayla geri alınır, varsayılanında olan ayarlar yeniden silinir; imzayı değiştiren her yol durumunu kaydeder (erken dönüş bilinmeyendir, asla önceki "yerinde" değil); sahibin düzenlediği `opendkim.conf`, `main.cf` süzgeç listesi ya da 25. port süzgeç ayarı korunur (CelikPanel'in metni yanında `opendkim.conf.celikpanel-pending` olarak) ve "Şu anki sorunlar"da adlandırılır (`mail_signing`, her durum için sahibin somut adımıyla bir cümle); `SenderMacro`'suz derleme (Arch Linux paketi) önceki yapılandırmayı korur, bunu söyler ve ona seçenek asla önerilmez. (2) Küme taşımasının sahip haklarıyla yüklemesi bağımsız incelemeden sonra çıkarıldı: taşıma alpha.142'deki gibi davranır ve müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla çalıştırır (güvenlik dizisi 6. madde, kabul listesi açık). (3) alpha.141'den önce açılan PostgreSQL veritabanları başka hesaplara kapatılır: panelin kendisi (`PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`, sürüme bağlı; açılıştaki sakin dakikalardan, doğrulanmış güncellemeden ve sakin sunucudan sonra, ardından saatte bir) yalnız dokunulmamış varsayılan haklarda, içinde hiçbir izi olan kayıt dışı rol yokken (her nesne türünün sahipleri ve hakları, sütun hakları, veritabanına özel ayarlar, ilke rolleri, kullanıcı eşlemeleri, yayınlar, abonelikler), kayıtlı her kullanıcının rolü varken, kümede izleme ya da çoğaltma rolü yokken ve bir günlük izlemeden sonra kapatır (başladıktan en az 24 saat ve en az 24 denetim sonraki ilk denetim; bir değişiklik onu yeniden başlatır; kayıt dışı bir rolün bir kez bağlı görülmesi onu bitirir); kapatma kendini motorun içinde sınırlar (kilit 30 sn, komut 60 sn) ve ajan bir istemciyi 3 dakika sonra sonlandırır; bilinmeyen ya da kaybolan yanıt kaydı korur, hiçbir şeyi yeniden göndermez ve ancak ajan o kapatmanın hiçbir parçasının çalışmadığını doğruladıktan sonra motorun durumundan uzlaştırılır, başarısız kapatma nedeniyle gösterilir ve her saat yeniden denenmez, bir veritabanının kapatmaları sıraya konur (her veritabanına bir kilit); yöneticinin oturumları sahibin veritabanı ayarlarına karşı PostgreSQL'in varsayılanlarını sabitler; üç denetimden fazla okunamayan veritabanı Şu anki sorunlar'da listelenir (`postgresql_databases_unreadable`); diğer her biri "Şu anki sorunlar"da (`postgresql_databases_open`) ve PostgreSQL sayfasında, bulunanla ve onaylı tek kapatmayla listelenir; her kapatmanın tam geri alması var (panel ve düz SQL); bir yöneticinin yeniden açtığı veritabanı sayfada o tercih olarak kalır, "Şu anki sorunlar"dan çıkar, bir daha kendiliğinden kapatılmaz; küme başına tek tarama oturumu, sayfa son taramayı okur; MariaDB değişmez; başka makinelerde kayıtlı sunuculara dokunulmaz. (4) alpha.142 laboratuvarının dört bulgusu: alan adı bir sunucu adının ya da yöneticinin tuttuğu bir adın altında olan müşteri, onun içinde yeniden alt alan adı ve takma ad ekleyebilir (panelde `checkHostnameClaim`, devir denetimi ve göç 081; diğer her şey reddedilmeye devam eder; böyle adlar "Şu anki sorunlar"da hâlâ listelenir, sahibe açık bir soru); yöneticiye en yakın sahip söylenir; `RemoveAppUnit` tam o birim için `systemctl reset-failed` çalıştırır, böylece uygulaması hata veren Node.js sitesi tek basışta silinir; tek seferlik kip düzeltmesi korunan her sahip kipini adlandırır ve sayar. Sürüm sırası 142 → 143; şema 080 → 081 (yalnız tetikleyiciler; sürüm kurtarma laboratuvarı 81'i sabitler). Laboratuvar denetimi (PowerDNS'li Debian 13 ana ve BIND'li Ubuntu 24.04 yedekte iki deneme; her biri alpha.142 durumundan panelin kendi sayfasıyla güncellendi; aynı bayinin ayrı hesaplardaki iki müşterisi), ikisinde de ağır hata yok: birinci deneme (21 Kasım 2026 UTC 22:30'dan 22 Kasım yaklaşık 01:40'a, `c012e3eac`'den derlenen yalnız laboratuvara ait alpha.150 etiketi, ilk düzeltme turundan sonraki kod) dört görünüm ve ifade kusuru (bir denetimin kendi kapatması Yeniden oku olmadan gösterilmiyordu, geri almanın açıkça yazdığı varsayılana "CelikPanel dışında değiştirilmiş" deniyordu, başarısız kapatmanın cümlesi "hiçbir şey değiştirilmedi" ile "bilinmiyor"u birlikte ve Türkçe sayfada İngilizce söylüyordu, yanıt penceresi tek adres için çoğul diyordu) ve kalkmayan bir durum (`SenderMacro {auth_authen}` içeren sahip imza dosyası "Şu anki sorunlar"da adlandırılmaya devam ediyordu) buldu; ikinci düzeltme turu bunları düzeltti ve ikinci deneme (22 Kasım 2026 UTC 03:38'den yaklaşık 05:24'e, `1d3d8801a`'den derlenen yalnız laboratuvara ait alpha.151 etiketi, son kod) beşinin de düzeldiğini buldu. Son deneme: iki güncelleme de kendiliğinden (her biri yaklaşık 3 dk), şema 80 → 81 altı tetikleyiciyle, hizmetler ve iki sunucudan DNS yanıt veriyor, yeni hatalı birim yok. Güncellemeden önce (alpha.142'nin kodu, birinci deneme) ikinci müşterinin, birinci müşterinin `From:`u ile yaptığı giriş onun alan adıyla `d=` imzalandı ve doğrulandı, sitesinin 127.0.0.1:25'e postası onun alan adı için imzalandı ve onun adresli yanıtı kabul edilip onun adına imzalandı. Sonra: o giriş yalnız kendi alan adı için imzalandı; girişsiz 25. port geri döngüde ve genel adreste imzasız; yabancı yanıt adresi ilk açılışta çıkarıldı (günlük ve denetim `mail.autoresponder.addresses_removed`), tekil olarak bir kez söylendi, yeniden kaydetmek kimin olduğu söylenmeden reddedildi (TR, EN); olağan posta imzalandı ve doğrulandı; yönlendirilen sahte ileti eklenmiş imza almadı (birinci deneme); bir yanıtın adlandırdığı yönlendirmeyi kaldırmak ve alan adını silmek yanıtı aynı istekte yeniden yazdı, Dovecot durmuşken yanıt kapatıldı ve bu söylendi; sahibin `opendkim.conf`u yanında bekleyen metinle ve tek `mail_signing` satırıyla birebir korundu, sahip `SenderMacro {auth_authen}` ekleyince satır (bekleyen dosyayla birlikte) kendiliğinden kalktı, yeni bir alan adı anahtarını aldığında da dosya sahibinin kaldı (alpha.142'nin kodu o yolda onu değiştirmişti); açık `authorized_submit_users` ve tutulan 8891 portu her biri adlandırıldı; 25. port sahibin süzgecine uydu (birinci deneme). PostgreSQL: izleme tarihleriyle gösterildi (birinci deneme); izleme günü boyunca hiçbir şey kapatılmadı, bu sırada başka bir hesap hâlâ bağlandı; bağlı görülen kayıtsız bir rol izlemeyi bitirdi ve adlandırıldı (birinci deneme); izleme kaydı bir gün geri alınınca (her denemede yazılı tek yazma) sonraki saatlik denetim veritabanını kapattı, başka hesap reddedildi, kendi kullanıcıları girdi, sayfa kapatmayı Yeniden oku olmadan Geri al ile gösterdi, Geri al önceki hakları geri verdi ("CelikPanel dışında değiştirilmiş" denmedi) ve sonraki denetim yeniden kapatmadı; sahip veritabanının satırını tutarken yapılan kapatma yaklaşık 31 sn'de "hiçbir şey değiştirilmedi" (kilit zaman aşımı) diye yanıtlandı, istemci kalmadı, yeniden gönderilmedi; başarısız kapatma nedenini sayfanın dilinde, sunucunun iletisini tırnak içinde söyler; sahibin veritabanı ayarları (salt okunur, rol, lock_timeout 0) engel olmadı; silinen veritabanının kaydı onunla gitti; güncellemeden sonra açılan veritabanı baştan kapalı (birinci deneme). Düzeltmeler: sunucu bölgesi altındaki kendi alan adının içinde bir alt alan adı iki sunucudan yanıt verdi (birinci deneme); diğer müşteri sunucu bölgesi, onun altında bir ad, panel ve posta adları ve bir takma adın altındaki ad için aynı cümleyle reddedildi; yöneticiye en yakın sahip söylendi (birinci deneme, API); uygulaması hata veren Node.js sitesi tek basışta silindi. Sayfanın yolu dışında: posta sunucusunun ve OpenDKIM'in dosyalarında sahip gibi değişiklikler, elle konan yeniden başlatma işareti (birinci deneme), Dovecot ve OpenDKIM'i durdurup başlatma, 8891'de sahte bir dinleyici, ikinci müşterinin sitesine konan bir posta betiği, dışarıdan deneme postası, certbot'un laboratuvar sertifika yetkilisine kaydı, veritabanlarını alpha.141 öncesi duruma getiren veritabanı yöneticisi adımları (varsayılan ACL, sütun hakkı olan bir raporlama rolü, silinen kayıtlı kullanıcı rolü), sahibin veritabanı ayarları ve açık tutulan işlem, saatlik denetimi öne almak için panel yeniden başlatmaları, her denemede laboratuvar panelinin veritabanına bir izleme kaydını bir gün geri alan tek yazma, yöneticinin API ile yerleştirmesi. Denetlenmeyenler: web postası ve veritabanı web araçları (web postası adresi yok, araçlar kurulu değil; alpha.142'den taşındı, açık); bir yanıt alan adını adlandırırken abonelik devri (yalnız istek ve onay; testler); anahtarı olmayan alan adının girişi (her alan adı bir anahtar alır); panel bildiriminin imzası (göndermenin yolu bulunamadı; testler); sahibin ayarlarıyla bir veritabanının yedeklenmesi ve geri yüklenmesi (süre); kapatmanın kaydından hemen sonra istemciyi sonlandırmak (motor testleri); yabancı yanıtla ilk açılışta aracının durmuş olması (ikinci bir yazma gerekirdi); korunan kip günlük satırı (tek seferlik düzeltme zaten çalışmıştı); sağlıklı bir Node.js sitesinin açılıp silinmesi (süre); 17 dışındaki PostgreSQL; SQL_ASCII şablonlar; küme taşıması (bu sürümde değil). Bulunan, alpha.144'e planlananlar (hiçbiri güvenlik ya da veri kaybı değil): müşterinin kendi alan adının içindeki takma ad laboratuvar çiftinde DNS kaydı almadı (önceki sürümler belirlenmedi); kapatma sürerken PostgreSQL sayfasından ayrılan yönetici, kapatma bittiği hâlde yanıtı "kaybolmuş" yapıyor ("gönderildi, henüz doğrulanmadı", yeniden gönderilmez, Geri al olmadan asla kapalı gösterilmez); başarısız kapatmanın penceresi "sunucuda çalışılıyor"u kırmızı işaretle tutuyor ve sayfanın dilinde yalnız genel bir neden veriyor; bir takma ad sertifika reddi Türkçe sayfada İngilizce; İngilizce "Problems now" satırı "1 PostgreSQL databases" diyor; alpha.143'ten eski (alpha.142'nin kodu, birinci deneme, yeniden denenmedi): posta kutusu oluşturulurken sayfadan ayrılmak onu sunucuda panel satırı olmadan bırakabiliyor ve yeniden oluşturmak iç hatayla yanıtlanıyor (çıkış yolu: sunucuda kaldırmak ya da başka ad kullanmak). **Hiçbir P0 maddesi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.143.tr.md). | Yayımlandı |
+| 67 | `v0.1.0-alpha.144` sürüm incelemesi. **Yayımlandı, 22 Kasım 2026 (sürüm commit'i `99e65fc3d`; ön sürüm 22:55:55Z; portal yaklaşık 22:59Z, dış denetim 27/27).** Küçük bir sürüm (sahip, 22 Kasım 2026: sunucularına riskli hiçbir değişiklik gönderilmez; kum havuzu dilimleri R1, R2a ve R2b, PR #348, #349 ve #353, onun onayını bekler ve bu sürümde yoktur), yayımlanmış alpha.143 üzerinde bir şerit: `fix/a144-lab-corrections` (PR #355, sürüm PR'ı), bağımsız salt-okur bir incelemeden sonra düzeltildi. (1) Güvenlik: web postasının kendi adresi (`celikpanel-webmail-origin-<host>.conf`, kökü Roundcube'un `public_html`'i, alpha.110'dan beri) bir eklentinin klasöründeki PHP olmayan her dosyayı veriyordu (bir eklentinin `config.inc.php.bak`'ı, doldurulmuş bir `config.inc.php.dist`, `.sql`, `.log`, `.ini`, `.yml`, `composer.json`) ve her eklentinin PHP dosyasını doğrudan çalıştırıyordu; Roundcube'un `program/include` ve `program/localization` klasörlerine ulaşılamıyordu. Artık PHP yalnız `= /index.php` için çalışır; `/plugins/`, `/skins/` ve `/program/` altında yalnız Roundcube sayfalarının yüklediği durağan türler (ve `/skins/` altındaki `.html`) verilir; nokta dosyaları ve yedek, döküm, günlük ve ayar adları her yerde reddedilir; geri kalan her şey 404 yanıtı verir. Aracı, CelikPanel'in önceki biçimini ilk açılışında, RPC hizmetinden önce bir kez yeniden yazar (yaz → `nginx -t` → yeniden yükle, başarısızlıkta önceki dosya bayt bayt geri konur); sahibin düzenlediği dosya korunur, yanına `<dosya>.celikpanel-pending` konur; korunan bir dosya ya da geri alınan bir yeniden yazma (nginx denetiminin adlandırdığı dosyayla) kendiliğinden kalkan bir "Şu anki sorunlar" satırıdır (`webmail_address_kept`, `webmail_address_refused`, `Agent.WebmailAddressFormsV1` ile okunur). Unix soketli web postası sunucusuna ağdan ulaşılamaz ve değişmedi. (2) alpha.143 laboratuvarının altı bulgusu: posta kutusu oluşturma, otomatik yanıt kaydı ve yöneticinin PostgreSQL kapatma, geri alma ve Yeniden oku işlemleri istek kimliği korumasının işlem adımı yollarıdır (D-029; ayrılmış, kendi sınırına dek, kimlik başına bir kez; saklanan özet parolayı dışarıda bırakır), böylece sayfadan ayrılmak artık satırı olmayan bir posta kutusu ya da kaybolmuş diye kaydedilen bir kapatma bırakmaz; aracının "zaten var" yanıtı `MAIL_ACCOUNT_ON_SERVER_ONLY`'dir (409): müşteriye yöneticiye sorması söylenir, yönetici yalnız CelikPanel'in kendi biçimindeki ve içinde posta olmayan bir kutuyu alabilir (`POST …/mail/accounts/adopt`, yalnız yönetici; derlemeye bağlı ve salt-okur `Agent.MailboxOnServerV1` iki satırı posta kilidi altında okur ve klasördeki iletileri sayar), posta kilidi altında var olan bir satıra yeniden bakılır, parolası her zaman parola adımıyla değiştirilir (`MAIL_ACCOUNT_ADOPT_REFUSED`: `gone`, `incomplete`, `elsewhere`, `mail_found`, `folder_unknown`; denetim kaydı `mail.account.adopt`); başarısız kapatmanın penceresi "Yapılmadı — hiçbir şey değiştirilmedi" adımında biter ve nedeni, tırnak içindeki iletiden önce nedenin türünü söyler (`in_use`, `timeout`, `connection`, `rights`, `missing`, `refused`; sunucunun İngilizce iletisinden eşlenir); takma ad ve sertifika retleri EN/TR metinlerle kodlandı, durum kodları değişmedi (`ALIAS_INVALID`, `ALIAS_CONFLICT`, `ALIAS_NOT_FOUND`, `ALIAS_CERTIFICATE_REISSUE_FAILED`, `ALIAS_CERTIFICATE_NOT_COVERING`, `HSTS_REMOVAL_BLOCKED`, `SSL_NO_ACTIVE_CERTIFICATE`); tek veritabanı "Şu anki sorunlar"da ve uyarı postasında tekil söylenir. (3) Trafik günlükleri: root aracısı `/var/log/celikpanel` klasörünü `UMask=0027` altında 0700 ya da 0750 oluşturuyordu; bu yüzden nginx'in çalışan süreçleri (`www-data`, `celikpanel` grubunun dışında) her gece döndürmesinden sonra günlüklerini yeniden açamıyor (çalışan süreç ve günlük başına bir `[emerg] … Permission denied`) ve bir sonraki yeniden yüklemeye dek döndürülen `.log.1`'e yazmayı sürdürüyordu: trafik eksik sayılıyordu. Aracının açılışındaki bir kezlik düzeltme (makbuz `log-root-modes-v2.done`) klasörü 0711 (0700'den) ya da 0751 (0750'den), `traffic` klasörünü sahibi root ve grubu web sunucusunun grubu olan 0710 (0755'ten) yapar; böylece yalnız web sunucusunun çalışan süreçleri geçer ve hiçbir sitenin hesabı başka bir sitenin trafik günlüğünü açamaz (web sunucusunun ortak hesabıyla hâlâ çalışan programlar — henüz kendi hesabına taşınmamış Node.js siteleri, açıksa dağıtımın varsayılan PHP havuzu — onları okuyabilir: zaman ve bayt sayıları, adres yok; her sitenin sunulan dosyalarını zaten okurlar); diğerlerinin okuyabildiği trafik günlükleri 0640 olur, bir sitenin ilk günlüğü web sunucusu açmadan önce 0640 oluşturulur ve döndürme dosyası (yönetilen metin, sahibin değiştirdiği korunur) her yeni günlüğü web sunucusunun hesabı için 0640 oluşturur; web sunucusunun hesabına yalnız klasörü ya da ilk günlüğü oluştururken bakılır ve bakılamazsa sitenin trafik ayarı olduğu gibi kalır; sertifika aracının klasörü 0700 kalır; başka her kip (sahibi ve grubuyla), grubu ne web sunucusunun ne root'un ne de celikpanel'in olan 0710 kipli bir `traffic` klasörü, bir bağlantı ya da başka bir sahip korunur ve günlükte adlandırılır; yeni kurulumlar günlük klasörünü 0711, trafik klasörünü o grupla 0710 yapar. Yeniden yükleme yapılmaz: güncellemeden sonraki ilk geceden itibaren çalışan süreçler yol üzerinden yeniden açar. (4) Yeni, küçük: bu sunucunun aynı hesap için tuttuğu bir bölgenin (sahibin aboneliklerinin en uzun üst düzey alan adı, DNS yerel) içindeki takma ad o bölgede sitenin A/AAAA kayıtlarını alır, bölgeyle yayımlanır (ikincil sunucuya bölgenin aktarımıyla), sertifika yeniden verilirken verilmeden önce, takma ad eklenmezse geri çekilir; yalnız CelikPanel'in eklediği not edilir (`panel_settings` `alias_dns_v1:<takma ad>`, aynı işlemde) ve kaldırılır, alan adı silindiğinde de, kendi DNS kipi ne olursa olsun, abonelik devrinden sonra da, bölge şu an takma adın alan adının şu anki hesabına aitken (başka hesabın bölgesinde hiçbir şey kaldırılmaz, not temizlenir ve Panel'in günlüğü kaydı adlandırır); DNS kipi okunamayan bekleyen bölge işaretini sonraki tura saklar; CelikPanel'in eklemediği herhangi bir adres kaydı olan ad `kept` yanıtını verir ve hiçbir şey yazılmaz; bitmeyen bir yayın bölgeyi bekliyor diye işaretler, saatlik tur onu yayımlar, takma ad satırı bunu söyler ve alan adı silmesi asla bunda durmaz. Önceki hiçbir sürüm takma ad için DNS yayımlamadı; kendi başına bölge olan takma ad almaz (sahibin kararı); önceden oluşturulan takma adlar kaydını yeniden eklenince alır. Sürüm sırası 143 → 144; şema 081'de kalır (göç yok). Laboratuvar denemesi (bir deneme, 22 Kasım 2026 UTC 19:02'den yaklaşık 20:30'a, PowerDNS'li Debian 13 ana ve BIND'li Ubuntu 24.04 yedek; ikisi de alpha.143 durumundan panelin kendi sayfasıyla `6ed1f94a0`'a, yalnız laboratuvara ait alpha.152 etiketiyle güncellendi; web postası adresli ilk deneme, adres güncellemeden önce sayfadan verildi): ağır hata yok. İki güncelleme de kendiliğinden (her biri yaklaşık 1,5 dk), şema adımı yok, yeni hatalı birim yok, her birinde bir panel ve bir aracı; ana sunucuda nginx bir kez yeniden yüklendi ve bir site ile web postası boyunca her saniye yanıt verdi; yedek sunucu yeniden yüklenmedi. Güncellemeden önce (alpha.143'ün kodu) adres, konan `plugins/archive/config.inc.php.bak` ve metin dosyasını içerikleriyle ve `composer.json`'ı verdi, `plugins/archive/archive.php`'yi PHP-FPM'e verdi; sonra günlük "rewritten in the current form" dedi, bunlar, `config.inc.php.dist`, `composer.json`, `.sql`, `.log` ve `.md` 404, `.htaccess`, `.env` ve `.git/config` 403 yanıtı verir; `app.min.js`, stil dosyaları, resimler, `blank.tiff`, bir temanın sayfası ve `index.php` 200 verir; web postası tarayıcıda müşteri olarak baştan sona kullanıldı (oturum açma, listeleme, iki eki de indirilen PDF ve metin ekli bir ileti, düzenleyici, kaydedilip geri okunan bir ayar, arşiv eklentisinin ayarları, kişiler): 0 yanıt ≥ 400, 0 başarısız istek, 0 konsol hatası; sahibin düzenlediği adres dosyası yanında `.celikpanel-pending` ile birebir korundu ve tek `webmail_address_kept` satırı (TR, EN), sahip metni dosyanın yerine alıp nginx'i yeniden yükleyince kendiliğinden kalktı; başka bir `conf.d` dosyası bozukken önceki dosya birebir geri kondu, siteler ve web postası yanıt vermeyi sürdürdü ve `webmail_address_refused` satırı o dosyayı adlandırdı. Posta: sayfadan hemen ayrılırken oluşturulan posta kutusu ve kaydedilen otomatik yanıtın satırları var (kutu oturum açar); `MAIL_ACCOUNT_ON_SERVER_ONLY` müşteriye açıkça söylendi (TR, EN); yöneticinin alması yeni bir parola koydu (yenisi oturum açar, eskisi reddedilir); içinde ileti olan kutu reddedildi (`mail_found`), parolası değiştirilmedi ve iletisi korundu; başka bir hesabın alan adı üzerinden alma 404, başka bir alan adının adresi 400 yanıtı verir. Takma adlar: ilk bakışta iki sunucudan yanıt, kaldırınca ikisinde NXDOMAIN; müşterinin kendi A kaydı olan ad korundu (hiçbir şey eklenmedi, not yok) ve söylendi; geçersiz ve yinelenen adlar Türkçe reddedildi; yedek sunucuya ulaşılamazken takma ad bekliyor diye işaretlendi ve sunucu döndükten yaklaşık 15 sn sonra yayımlandı. PostgreSQL: sayfası bırakılan kapatma gerçek sonucunu gösterdi; sahibin kilidine takılan ve sayfası aracı yanıt vermeden bırakılan kapatma "kapatılamadı … hiçbir şey değişmedi" sonucunu nedenin türü ve sunucunun iletisiyle gösterdi, yeniden gönderilmedi; sayfadan Geri al hakları geri verdi; başarısız kapatma (kayıtlı bir rol silinmişken) "Yapılmadı — hiçbir şey değiştirilmedi" adımında bitti, tür `missing`, sunucu iletisi tırnak içinde (TR, EN). Trafik günlükleri: `/var/log/celikpanel` 0750 → 0751, `traffic` 0755 → 0710 root:www-data, certbot 0700 korundu, günlükte tek blok, makbuz `log-root-modes-v2.done`, döndürme dosyası bir kez `create 0640 www-data www-data` olarak yeniden yazıldı; yedek sunucuda grubunu laboratuvarın elle koyduğu 0710 kipli `traffic` klasörü korundu ve adlandırıldı; yeni bir sitenin ilk günlüğü 0640 www-data; başka bir sitenin hesabı, zorla yapılan bir döndürmeden önce ve sonra günlüğü okuyamadı ve klasörü listeleyemedi; sonra yeni `[emerg]` satırı yok ve yeni istekler yeni dosyada. Laboratuvarın sayfanın yolundan ayrıldığı yerler: web postası ağacına konan dosyalar, adres dosyasının ve başka bir nginx dosyasının sahip biçiminde düzenlenmesi ve aracının yeniden başlatılması, panel durmuşken iki posta kutusunun panel satırlarını silen tek yazma (alpha.143'ün kodunda sayfadan ayrılan iki deneme açığı yeniden üretmemişti), veritabanı yöneticisinin adımı (eski durum hakları, silinen kayıtlı rol) ve sahibin kilidi, elle konan klasör grubu, zorla döndürme, ulaşılamaz yapılan yedek sunucu, sunucuda teslim edilen deneme iletileri, API'den gönderilen hesaplar arası iki alma reddi. Denetlenmeyenler: tekil "Şu anki sorunlar" satırı (izlenen veritabanları açık sayılmaz; yalnız test), sayfası bırakılan Geri al ve Yeniden oku, döndürmeden sonraki trafik rakamı, yedek sunucuya ulaşılamazken silinen alan adı, abonelik devrinden sonra takma ad kaldırma (istek ve onay akışı), sertifikalı takma ad ve Türkçe sertifika ve HSTS retleri, Günlükler sayfası, yedek sunucuda web postası, veritabanı web araçları, 17 dışındaki ya da İngilizce olmayan iletili PostgreSQL, SQL_ASCII şablonlar. Bulunanlar (hiçbiri güvenlik ya da veri kaybı değil), alpha.145'e planlandı: web postası gönderemiyor (Roundcube'un `smtp_host` değeri `tls://` olmadan `localhost:587`, gönderim hizmeti ise AUTH'u yalnız STARTTLS'den sonra sunuyor; aynı metin alpha.143'te de var; hangi sürümden beri olduğu belirlenmedi); bir takma ad satırı kayıt yayımlandıktan sonra saatlik tura dek (yaklaşık 29 dk) "yayımlanmayı bekliyor" dedi, bu arada bölgenin bildirimi değişikliği yeniden yapmayı söylüyordu; başarısız kapatmanın penceresi "Tamamlanmadı"nın üstünde sürmekte olan başlığını tutuyor. Açık: PostgreSQL başarısızlık türleri İngilizce ileti metninden eşlenir (SQLSTATE sonra); tarayıcının isteğini hâlâ bir aracı değişikliğine geçiren diğer işleyiciler (PR #355'te listeli, "6c"); güncellemeden sonraki ilk gece hâlâ eski dosya tanıtıcılarıyla geçer; Unix soketli web postası sunucusu önceki konumlarını korur. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.144.tr.md). | Yayımlandı |
+| 68 | `v0.1.0-alpha.145` sürüm incelemesi. **Yayımlandı, 23 Kasım 2026 (sürüm commit'i `2584a566e`; ön sürüm 08:56:20Z; portal yaklaşık 09:00Z, dış denetim 27/27).** Küçük bir sürüm (sahip, 23 Kasım 2026: "üründe bilinen güvenlik açığı olmamalı", "ilk beta bir an önce"; müşteri ayırma dilimleri R1, R2a, R2b, PR #348, #349 ve #353, ilk betadan önce zorunludur ve kendi sürümleri olarak birer birer çıkar; bu sürümde yoktur), yayımlanmış alpha.144 üzerinde bir şerit: `fix/a145-webmail-send` (PR #357, sürüm PR'ı), iki bağımsız salt-okur incelemeden sonra düzeltildi (ikincisi yeni yerel kapı dosyasını gerçek bir nginx üzerinde çalıştırdı). (1) Güvenlik: web postasının yerel kapısı (`/run/celikpanel-webmail.sock`; nginx onu `/run` altında 0666 açar, bu yüzden sunucudaki her hesap bağlanabiliyordu; ağ değil) alpha.13'ten beri (alpha.1–12'de 127.0.0.1'de) Roundcube'un `public_html` altındaki her dosyayı (bağlı `plugins`/`skins` ve `program/`: eklenti ayarlarının artık kopyaları, nokta dosyaları, `composer.json`, SQL dosyaları) veriyor ve oradaki her `.php` dosyasını çalıştırıyordu; artık kapalı bir liste: `= /webmail/`, `= /webmail/index.php` (tek PHP), `/webmail/skins/` altındaki stil dosyaları, CelikPanel'in PHP denetimi; gerisi 404. Çağıranlar (Panel'in hazırlık denetimi, Agent'ın PHP aracı kanıtı: denetim, sayfa ve stil dosyası) yalnız bunlara ihtiyaç duyar. Agent'ın ilk açılışında `applyWebmailNginxMutation` ile düzeltilir (`nginx -t`, tek yeniden yükleme, hata olursa önceki dosya geri konur, açılış sürer); sahibin değiştirdiği dosya yanında `.celikpanel-pending` ve Şu anki sorunlar'da tek satırla korunur (adressiz adres türleri). (2) Web postası gönderebilir: Roundcube 1.6 STARTTLS'i yalnız `tls://` adı için başlatır (`rcube_smtp.php` 97–99, 163–171, 196); panel `localhost:587` yazıyordu ve gönderim hizmeti şifreleme istiyor (alpha.1'den beri: hiç çalışmadı). Artık `tls://127.0.0.1:587`, yalnız 127.0.0.1 anahtarlı `smtp_conn_options` ile (orada zincir ve ad denetlenmez; başka her ad tam denetimi korur). Önceki metin ilk açılışta yeniden yazılır (kip, sahip, `des_key` korunur); sahibin değiştirdiği yapılandırma `config.inc.php.celikpanel-pending` ve Şu anki sorunlar'da tek satır `webmail_cannot_send` ile korunur (iki satır aynen; CelikPanel'in yeniden yazamadığı kendi metni: neden ve yeniden başlatma, asla elle düzenleme); web postası gönderemezken Webmail profili tamam sayılmaz. (3) Takma adın beklemesi bölgesinin bekletilen ya da bekleyen yayını tamamlanınca biter; bölgenin uyarısı kayıtların kendiliğinden yayımlanacağını söyler; PostgreSQL kapatma penceresinin başlığı sonucu söyler. Şema değişikliği yok (81'de kalır); yalnız ekleme alanlar. Laboratuvar denetimi: tek deneme, 23 Kasım 2026, ağır hata yok (alpha.145 bölümüne bakın). Açık: web postası gönderemezken Webmail kartı Onar'ı yine sunar; "gönderemiyor" okuması sahibin kendi sertifika seçeneklerini ve `/* */` yorumlarını atlar; sokete ileten sahibin kendi bloğu yalnız oturum açma sayfasını ve stil dosyalarını alır; alpha.144'e dönüşte iki yeni metin sahibin değiştirdiği sayılır. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.145.tr.md). | Yayımlandı |
+| 69 | `v0.1.0-alpha.146` sürüm incelemesi. **Yayımlandı, 23 Kasım 2026 (sürüm commit'i `8917ed407`; ön sürüm 13:27:13Z; portal yaklaşık 13:31Z, dış denetim 27/27).** Kendi küçük sürümü olarak yeni herkese açık site (sahip, 23 Kasım 2026: teknik bilgi sayfası tasarımı onaylandı, "yayınla"; düzeltilen sorunların düzeltildi göründüğü bir hata bildirimi bölümü; sürümlere göre değişiklikler), yayımlanmış alpha.145 üzerinde tek yol: `site/datasheet` (PR #359, sürüm PR'ı), sitedeki her ifadenin bağımsız doğruluk incelemesinden sonra. Sitenin üreticisi (`site/`, Go, PHP yok) sayfaları `download-portal/` içine yazar: ana sayfa (gerçek bir ekranın yanında özellik listesi), kurulum, sistemler, lisans, sürümler, alpha.141'den itibaren sürümlere göre değişiklikler (`site/changelog/<sürüm>.json`) ve bilinen sorunlar (`site/problems.json`, CP-2026-1'den 17'ye kadar vakalar, kendi sözlerimizle, durumları ve onları düzelten sürüm, sorun bildirme yolu); her sayı, testlerin denetlediği alıntılanmış bir ifadeyle bir depo satırına dayanır. Panelin ve ajanın kodunda hiçbir şey değişmez; site dışında yalnız portalın hazırlanması, yayımlanması ve dışarıdan denetimi (`deploy/build-download-portal.sh`, `promote-download-portal.py`, `verify-download-portal-public.py`), bunların sözleşme testleri ve sürüm sabitlemeleri farklıdır. Şema değişikliği yok (81 olarak kalır). **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.146.tr.md). | Yayımlandı |
+| 70 | `v0.1.0-alpha.147` sürüm incelemesi. **Yayımlandı, 24 Kasım 2026 (sürüm commit'i `eef8fe894`; ön sürüm 04:31:04Z; portal yaklaşık 04:35Z, dış denetim 27/27).** Sürüm PR'ına iki başka parça birleştirilmiş müşteri ayırma R1 (PR #348, dal `security/s4-r1-side-doors`): PR #358, site dilimleri için ileriye uyumluluk, ve PR #366, takılan işlem düzeltmesi; yayımlanmış alpha.146 üzerinde. R1: veritabanı araçları ve web postası kendi sistem hesaplarında ve PHP-FPM havuzlarında (web postasının ağacı tek bir erişim listesi girdisiyle her site hesabına kapalı), `at` site hesaplarına kapalı, panel dışında eklenen crontab satırları görünür ve tutulana kadar değiştirilemez, dağıtımın kullanılmayan `www` havuzu sahibin geri alması gözetilerek kapalı; dört bağımsız incelemeden ve dört düzeltme turundan sonra. PR #366: çalışan panel yarıda kalan bir işlemin kaydını kendisi sonuçlandırır; yenileme kuralı son yanıtlanan yenilemeden sayar ve tek başına değişikliklere de uygulanır. PR #358: site başına sınırlar sürümünden geri dönülecek sürüm. Şema değişikliği yok (81 olarak kalır). Laboratuvar denemesi 24 Kasım 2026'da bitti, ağır hata yok (neyin denetlendiği ve denetlenmediği: sürüm notları). **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.147.tr.md). | Yayımlandı |
+| 71 | `v0.1.0-alpha.148` sürüm incelemesi. **Yayımlandı, 25 Kasım 2026 (sürüm commit'i `0c07d0281`; ön sürüm 21:34:14Z; portal yaklaşık 21:38Z, dış denetim 27/27).** Yayımlanmış alpha.147 üzerinde müşteri ayırma R2a (PR #349, dal `security/s4-r2a-site-slice`): bir sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve adımları; PHP-FPM havuzu ve zamanlanmış görevleri değil), sitenin kendi systemd dilimi `celiksite_<kimlik>.slice` içinde, hepsi için birlikte bellek, işlem ve işlemci sınırlarıyla çalışır (plan anahtarları `site.*`, ilk açılışta sabitlenen ve sunucunun belleğine bağlı bir bellek varsayılanı, sunucunun varsayılanıyla sınırlı bayi); çalışan programlar yöneticinin taşımasıyla girer (her biri bir kez yeniden başlar; yarıda kalan bir taşımayı bitiren ya da geri koyan bir günlükle); kullanımın altına düşürülen bir sınır ancak durduracağı sitelerin listesiyle kaydedilir; kart "yürürlükte" sözünü yalnız çekirdeğin kendi değerlerinden söyler; veritabanı kullanıcıları için isteğe bağlı süre ve geçici dosya sınırları (`db.*`); bunlar bu sürümde bir sitenin sınır konduğunda var olan MariaDB kullanıcılarına ulaşır, sitelerin PostgreSQL kullanıcılarına ulaşmaz; posta engeli yardımcısının yer sırası main'in alpha.147'den beri taşıdığı sıradır. Üç bağımsız incelemeden ve üç düzeltme turundan sonra. Bir sitenin sınırlarının içinde olmayanlar: PHP'si (R3), zamanlanmış görevleri ve açık kalan kullanıcı yöneticileri (R2b). Sürüm PR'ına birleştirilen ikinci bölüm: güvenlik şeridi A1, giriş çerezleri (PR #368, dal `security/signin-cookies`, iki bağımsız incelemeden ve iki düzeltme turundan sonra): HTTPS üzerinden `__Host-` adlı giriş çerezleri, böylece aynı alan adı altında başka bir ana makine adındaki bir web sitesi onları artık koyamaz, gölgeleyemez ya da değiştiremez; iki kez gönderilen bir çerez adı reddedilir (başka bir web sitesinin bütün alan adı için koyduğu çerez tarayıcıda kalır, panel onu yok sayar); oturumu açık bir tarayıcıdan başka bir siteden gelen `/api/` isteği reddedilir (fetch metadata); "Farklı giriş yap"tan sonra "Çıkış yap" ya da "Farklı giriş yap" oturumunun başka bir yolla sona ermesi tarayıcıda operatör girişi bırakmaz; `/dbtool/` aracısı panelin çerezlerini ya da `Authorization` başlığını iletmez ve hiçbir aracın onları koymasına ya da silmesine izin vermez; yöneticinin güncellemeden önceki oturumu 24 saat içinde güncelleme sayfasının kendi `/api/` istekleriyle bir kez taşınır, öteki herkes bir kez yeniden giriş yapar. Şema değişikliği yok (81 olarak kalır; tek bir `panel_settings` satırı). Laboratuvar denemesi 25 Kasım 2026'da bitti (etiket 156, baş `83d6e043c`, Debian 13 ve Ubuntu 24.04): iki güncelleme de yönetici oturumu açıkken kendiliğinden bitti ve bir müşterinin hiçbir şeyi yeniden başlatılmadı; sınırlar bir müşterinin kendi programına karşı, panel durdurulmuşken ve yeniden başlatmadan sonra da tuttu; taşıma, sahibin elle komutları ve giriş çerezi düzeltmeleri çalıştı; notlar yalnız laboratuvarın doğruladığını ya da kodun kesinleştirdiğini söyler (denenmeyenler ve bilinen sınırlar: sürüm notları). Sonraki işler: veritabanı sınırlarının sitelerin PostgreSQL kullanıcılarına ve bir planın sınırı konduktan sonra oluşturulan kullanıcılara ulaşması; geri konduktan sonra çalışmayan bir programı taşımanın doğru söylemesi; kartın nedenlerinin sayfanın dilinde olması; güncelleme sırasında açık olan sayfalar için giriş nedeni. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.148.tr.md). | Yayımlandı |
+| 72 | `v0.1.0-alpha.149` sürüm incelemesi. **Aday.** Yayımlanmış alpha.148 üzerinde bir düzeltme turu (yeni özellik yok); `release/v0.1.0-alpha.149` sürüm PR'ında birleştirme commit'leriyle katılan üç şerit: PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) ve PR #370 (`fix/a149-db-limits`), her biri bağımsız incelemelerden ve düzeltme turlarından sonra. (1) Güvenlik, daha eski bir bulgu: hiçbir ajan çağrısı, panelin adını verdiği bir veritabanı hesabını değiştirmez, bir veritabanının sahibini de nesnelerin sahibi ve alıcısı olarak kullanmaz, ajan onu sıradan bir hesap bulmadıkça (PostgreSQL'de süper kullanıcı, CREATEROLE, CREATEDB, REPLICATION, BYPASSRLS yok, `pg_*` ya da yetkili üyelik yok; MariaDB'de genel yetki, rol, PROXY ya da `mysql` üzerinde yetki yok); önce ve yazmanın işleminde ya da bileşik ifadesinde yeniden okunur; yetkisiz olduğu sürece `celikpanel_admin` tek sahip istisnası; sistem veritabanları hiçbir zaman silinmez, boşaltılmaz, içine yüklenmez, verilmez, açılmaz ya da kapatılmaz; bir MariaDB veritabanı başka bir ana makinedeki aynı adlı bir hesabın yanında hiçbir zaman yapılmaz; retler kod olarak (`DATABASE_ACCOUNT_REFUSED`), TR ve EN sözlerle; MariaDB'nin yerindeki yerel bir MySQL `unsupported_engine` yanıtını alır; `celikpanel_admin`'in sahibi olduğu bir veritabanında nesneleri olan eklenmiş bir PostgreSQL kullanıcısı kaldırılmaz (`owns_objects`, panelin hesabına REASSIGN yok). PostgreSQL 16+'da gerçek bir sınır, MariaDB'de ve PostgreSQL 15 ya da öncesinde yanlışlıklara karşı bir koruma. (2) Planın veritabanı sınırları veritabanı kullanıcısı oluşturan her yola ve `SetPostgreSQLRoleLimitsV1` ile (PostgreSQL süper kullanıcısı olarak, yalnız kayıtlı, üyeliği olmayan sıradan site rollerine, dört sınırlı ayar) sitelerin PostgreSQL kullanıcılarına ulaşır; sahibin değerleri panelin kaydıyla korunur (PostgreSQL bağlantı sınırı dahil; önceki sürümlerin yazdığı bir sınır bir sonraki değişikliği izler); sonuçlar Şu anki sorunlar'da nedenine göre (tür 47, `db_limits_unapplied_v1`), Yeniden uygula ve saatlik sınırlı bir çalışmayla. (3) alpha.148 laboratuvarından sonra site başına sınırlar: doğrulanan geri koyma; ajanın açılışı sınırlı (en çok dört systemd çağrısı, 15 s) ve hiçbir programı beklemez; tutulan kayıtların dilim kilidi altında yalnız okuyarak çözülmesi; her basışa tek süre sınırı; durmuş bir programın diliminin içinde başlatılması; Ubuntu 24.04 tepesi; nedenine göre uygulanmamış satırı; taşıma sırasında güncelleme ve güncelleme sırasında taşıma yok. (4) Güncellemenin ve kurtarmasının beş ajan açılış beklemesi yaklaşık bir dakika. Sürüm sırası 148 → 149; şema 81 olarak kalır (göç yok). Laboratuvar: açık. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.149.tr.md). | Aday |
 
 **Açık iş (alpha.95, 17 Ekim 2026): her bileşen için kurulu paket sürümünü okumak.** Bileşen taraması bir sürümü yalnız PHP-FPM ve Node.js için doldurur (çalışma ortamı örneklerinden). Agent'ın birim başına ikili yoklaması bir paket sürümü değildir, birkaç birim için güvenilmezdir ve birimi olmayan araçları kapsamaz; bu yüzden Bileşenler satırları sürümü yalnız bilindiği yerde söyler. Gerçek yanıt yeni bir Agent RPC'si ya da genişletilmiş `dpkg`/`pacman` sorguları ister; henüz hiçbir sürümün parçası değildir ([D-034 değişikliği](docs/DECISIONS.tr.md)). **Güncelleme 2026-10-21: v0.1.0-alpha.97 adayı için kaynakta uygulandı** ([D-036](docs/DECISIONS.tr.md)): bileşen taraması başına paket veritabanının salt-okur bir Agent sorgusu, Bileşenler satırlarında ve her bileşen sayfasında gösterilir; bilinmeyen, bilinmeyen olarak kalır. **Hâlâ açık:** hiçbir kurulu sunucuda ölçülmedi; açık iş ancak sahip Boston ve Frankfurt'ta gerçek sürümleri gördüğünde kapanır. **Güncelleme 2026-10-22: Boston ölçüldü.** Sahibin ekran görüntüsü, Boston'un alpha.97'de olduğunu ve Bileşenler'de gerçek sürümlerin göründüğünü gösterir (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0): D-036'nın kurulu bir sunucudaki ilk ölçümü. **Bundan sonra hâlâ açık:** Frankfurt'un alpha.97 durumu bildirilmedi, bu yüzden açık iş kapanmaz; tek bir sunucunun tek bir ekran görüntüsü de her bileşenin, meşgul bir paket yöneticisinin ya da korunan bir okumanın denetimi değildir. **Güncelleme 22 Ekim 2026 (alpha.98):** sahip Frankfurt'un alpha.98'de olduğunu bildirdi, ama Bileşenler'deki sürümlerini bildirmedi; bu yüzden açık iş açık kalır. **Güncelleme 22 Ekim 2026 (alpha.100; alpha.101 adayıyla kaydedildi):** sahibin Frankfurt ekranı Bileşenler'de paket sürümlerini gösterdi; phpMyAdmin'in kısa biçimi "5.2.2-really…" okunuyordu, çünkü Debian'daki bir "really" sürümü gerçekte dağıtılan sürüme kısaltılmıyordu. Bu, v0.1.0-alpha.101 adayı için kaynakta düzeltildi ([D-036 notu](docs/DECISIONS.tr.md)). Açık iş açık kalır: düzeltilmiş kısa biçim henüz hiçbir kurulu sunucuda görülmedi.
 

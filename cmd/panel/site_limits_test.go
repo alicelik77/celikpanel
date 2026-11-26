@@ -51,8 +51,10 @@ func TestSiteLimitKeysJoinTheChain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The subscription is a reseller's customer: the default bounds it as the
+	// administrator's bound (second fix round), said as set by the server.
 	for key, want := range map[string]int{settingSiteMemoryMB: 3072, settingSiteTasks: 512, settingSiteCPUPercent: 200} {
-		if got := siteLimitValueOf(limits, key); got.Value != want || got.SetBy != "server_default" || limits[key].Default == nil || *limits[key].Default != want {
+		if got := siteLimitValueOf(limits, key); got.Value != want || got.SetBy != settingSetByServer || limits[key].Default == nil || *limits[key].Default != want {
 			t.Errorf("%s = %+v, want %d from the default", key, got, want)
 		}
 	}
@@ -82,7 +84,7 @@ func TestSiteLimitKeysJoinTheChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	limits, _ = subscriptionSettingLimits(ctx, db, 9802)
-	if got := siteLimitValueOf(limits, settingSiteCPUPercent); got.Value != 100 || got.SetBy != "server_default" {
+	if got := siteLimitValueOf(limits, settingSiteCPUPercent); got.Value != 100 || got.SetBy != settingSetByServer {
 		t.Fatalf("server default: %+v", got)
 	}
 	// A key out of range is refused as every key is.

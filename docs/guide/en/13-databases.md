@@ -6,7 +6,7 @@ topics: [domain.databases#domain-databases, databases#databases-page]
 keywords: [database, mysql, mariadb, postgresql, user, password, phpmyadmin, phppgadmin, privileges]
 ---
 
-A website such as WordPress keeps its content in a database. CelikPanel creates MariaDB (MySQL) and PostgreSQL databases on the server, with a user for each.
+A website such as WordPress keeps its content in a database. CelikPanel creates MariaDB (MySQL) and PostgreSQL databases on the server, with a user for each. A local MySQL server running in MariaDB's place is not managed: CelikPanel does not change its database accounts, and the server's administrator does that on the server itself.
 
 ## In the domain's Databases section {#domain-databases}
 
@@ -43,3 +43,15 @@ CelikPanel does not keep database passwords and cannot show them again. If you l
 :::warning
 Deleting a database deletes all its data. Take a backup first in the domain's **Backups** section.
 :::
+
+## A user that owns tables {#user-owns-objects}
+
+On PostgreSQL, removing a user you added to a database can be refused: the user owns tables or other objects in this database, so it was not removed and nothing was changed. This happens on databases that belong to CelikPanel's own database account, which never takes over what a user made.
+
+The server's administrator first hands those objects to the database's own user, the one created with the database (for `example_com_shop`, `example_com_shop_user`), with one command on the server, then removes the user again from the panel. For the user `example_com_shop_reader`:
+
+```
+sudo -u postgres psql -d example_com_shop -c 'REASSIGN OWNED BY "example_com_shop_reader" TO "example_com_shop_user";'
+```
+
+A customer or a reseller asks the server's administrator to do it.

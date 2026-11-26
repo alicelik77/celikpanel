@@ -327,7 +327,7 @@ class Driver:
         self.blockers: list[dict[str, Any]] = []
         self.passwords: dict[str, str] = {}
         self.pins: dict[str, str] = {}
-        self.cookies: dict[str, str | None] = {}
+        self.cookies: dict[str, tuple[str | None, str | None]] = {}
         self.request_ids: dict[str, str] = {}
         self.executions: dict[str, dict[str, Any]] = {}
         self.domain_id: int | None = None
@@ -426,11 +426,11 @@ class Driver:
     @contextlib.contextmanager
     def panel(self, role: topo.Role) -> Iterator[PanelClient]:
         with self.panel_factory(self, role.node) as client:
-            client.cookie = self.cookies.get(role.node)
+            client.cookie, client.cookie_name = self.cookies.get(role.node, (None, None))
             try:
                 yield client
             finally:
-                self.cookies[role.node] = client.cookie
+                self.cookies[role.node] = (client.cookie, client.cookie_name)
 
     def role(self, name: str) -> topo.Role:
         return self.topology.primary if name == "primary" else self.topology.secondary

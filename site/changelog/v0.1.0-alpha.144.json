@@ -1,0 +1,94 @@
+{
+  "version": "v0.1.0-alpha.144",
+  "published": "2026-11-22",
+  "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md",
+  "source": {
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:5",
+    "says": "Published** on 2026-11-22 (UTC)"
+  },
+  "lines": [
+    {
+      "kind": "security",
+      "text": {
+        "en": "Webmail’s own address gives out only the files its pages load, no longer every file of its plugins.",
+        "tr": "Web postanın kendi adresi artık eklentilerinin her dosyasını değil, yalnız sayfalarının yüklediği dosyaları verir."
+      },
+      "case": "CP-2026-11",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:31",
+        "says": "Webmail's own address gave out"
+      }
+    },
+    {
+      "kind": "new",
+      "text": {
+        "en": "An alias inside a domain of the same account whose DNS this server keeps now answers in DNS; aliases made earlier do so once removed and added again.",
+        "tr": "Bu sunucunun DNS’ini tuttuğu, aynı hesaba ait bir alan adının içindeki takma ad artık DNS’te cevap verir; daha önce eklenmiş takma adlar kaldırılıp yeniden eklenince."
+      },
+      "case": "CP-2026-7",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:126",
+        "says": "An alias that lies inside a domain"
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "A mailbox created while you leave the page is created completely, with its record.",
+        "tr": "Siz sayfadan ayrılırken oluşturulan posta kutusu, kaydıyla birlikte eksiksiz oluşturulur."
+      },
+      "case": "CP-2026-8",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:66",
+        "says": "A mailbox created while you leave"
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "Closing a PostgreSQL database to other accounts shows its real result even when the page was left.",
+        "tr": "Bir PostgreSQL veritabanını başka hesaplara kapatmak, sayfadan ayrılsanız da gerçek sonucunu gösterir."
+      },
+      "case": "CP-2026-9",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:83",
+        "says": "A PostgreSQL close whose page was"
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "Alias and certificate refusals are said in the page’s language.",
+        "tr": "Takma ad ve sertifika retleri sayfanın dilinde söylenir."
+      },
+      "case": "CP-2026-10",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:93",
+        "says": "Refusals in the page's language."
+      }
+    },
+    {
+      "kind": "fixed",
+      "text": {
+        "en": "Traffic figures are complete again after the nightly log rotation.",
+        "tr": "Trafik rakamları gece yapılan günlük dosyası döndürmesinden sonra yeniden eksiksizdir."
+      },
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:101",
+        "says": "Traffic figures after the nightly log rotation."
+      }
+    },
+    {
+      "kind": "limits",
+      "text": {
+        "en": "Webmail cannot send mail; reading mail, attachments and settings work. Until a fix, send from a mail program.",
+        "tr": "Web posta e-posta gönderemiyor; okuma, ekler ve ayarlar çalışıyor. Düzeltilene kadar bir posta programından gönderin."
+      },
+      "case": "CP-2026-12",
+      "source": {
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.144.md:180",
+        "says": "Webmail cannot send mail** (reading"
+      }
+    }
+  ]
+}

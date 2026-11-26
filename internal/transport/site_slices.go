@@ -35,6 +35,11 @@ const (
 	SiteUnitElsewhere = "elsewhere"
 	// SiteUnitAbsent: no unit of that name on this server.
 	SiteUnitAbsent = "absent"
+	// SiteUnitRestarting (alpha.149, lab D6): the unit does not run now and
+	// systemd is starting it again by itself (ActiveState activating with
+	// SubState auto-restart, or a start without a cgroup yet): a program
+	// failing to start, never "where the server owner placed it".
+	SiteUnitRestarting = "restarting"
 )
 
 // SiteSliceQuery asks for one site's slice and units.
@@ -71,6 +76,15 @@ type SiteSliceCounters struct {
 	CPUThrottled     int64  `json:"cpu_throttled"`
 	CPUThrottledUSec int64  `json:"cpu_throttled_usec"`
 	CPUPeriods       int64  `json:"cpu_periods"`
+	// SlicePidsPeak and SlicePidsMax (alpha.149, lab D3; fix round F7): on a
+	// kernel without pids.events.local, the slice's own pids.peak and the
+	// pids.max it was read with (0: not read, or no limit). The Panel says
+	// that the site's programs reached their process limit only when the
+	// limit is unchanged since its previous reading, that reading was below
+	// it and the peak now reached it; how often, or whether a new process was
+	// refused, is not known from them.
+	SlicePidsPeak int64 `json:"slice_pids_peak,omitempty"`
+	SlicePidsMax  int64 `json:"slice_pids_max,omitempty"`
 }
 
 // SiteSliceUnit is one unit of a site.
@@ -91,16 +105,91 @@ type SiteSliceUnit struct {
 	DropInSlice string `json:"drop_in_slice,omitempty"`
 }
 
-// SiteSliceMoveRecovery is what the Agent did at its start with a move of
-// the site that an Agent stop interrupted (site_slices_move.go): per unit
-// "moved" (it had come up in the slice and stays), "put_back" (its pre-move
-// bytes are back and it runs where it ran), "rewritten" (stopped; its file
-// names the slice), "not_tried", or "changed" (its file was changed meanwhile
-// and is left as it is).
+// SiteSliceMoveRecovery is what the Agent did with a move of the site that an
+// Agent stop interrupted or whose put-back did not complete
+// (site_slices_move.go): per unit "moved" (it had come up in the slice and
+// stays), "put_back" (its pre-move bytes are back and it runs where it ran),
+// "rewritten" (stopped; its file names the slice), "not_tried", "changed"
+// (its file was changed meanwhile and is left as it is) and, while Kept,
+// "failed" (its pre-move bytes are back but it did not start again: it is
+// stopped), "unknown" (where it runs could not be read, so it was not
+// restarted), "starting" (its start was still running at its start wait) or
+// "waiting" (not restarted yet: the Agent's start does not wait for it).
 type SiteSliceMoveRecovery struct {
 	At    string            `json:"at"`
 	Units map[string]string `json:"units"`
+	// Kept (S4 R2a third fix round, review N2): the put-back did not
+	// complete, so the move's record stays and no site is moved until it is
+	// settled (MoveSiteSliceRequest.Recover tries again).
+	Kept bool `json:"kept,omitempty"`
+	// Tasks and TasksStep (S4 R2b, alpha.150; additive): the record is of
+	// the site's scheduled tasks moving into timers or back into cron, not
+	// of its programs (Units is then empty). Tasks is what the Agent did or
+	// found (moved, put_back, undone, not_tried; unknown while Kept), and
+	// TasksStep the step the record had reached.
+	// TasksSite and TasksAccount name the site and its account for the
+	// server owner's two steps by hand, should Try again not settle it.
+	Tasks        string `json:"tasks,omitempty"`
+	TasksStep    string `json:"tasks_step,omitempty"`
+	TasksSite    int    `json:"tasks_site,omitempty"`
+	TasksAccount string `json:"tasks_account,omitempty"`
 }
+
+// Recovery outcomes of a unit whose put-back did not complete (the record
+// is kept).
+const (
+	// SiteMoveUnknown: where the unit runs could not be read; it was not
+	// restarted.
+	SiteMoveUnknown = "unknown"
+	// SiteMoveStarting: its start was still running at its start wait.
+	SiteMoveStarting = "starting"
+	// SiteMoveWaiting (alpha.148 fix round): its pre-move bytes are back, it
+	// ran before and does not run in the system slice now, and the Agent's
+	// start did not restart it (the start's recovery is bounded so that it
+	// never holds up the Agent); the next start, a move's attempt or Try
+	// again restarts it.
+	SiteMoveWaiting = "waiting"
+	// SiteMoveUnverified (alpha.149, lab D6; fix round F1/F3): its pre-move
+	// bytes are back and it was started again (at the Agent's start the
+	// restart is only requested, never waited for), but where it runs is not
+	// known yet (not a failure, not a success). The status read checks it,
+	// read only: running where it ran closes it, not running makes it
+	// "failed"; Try again or a move's attempt check it too.
+	SiteMoveUnverified = "unverified"
+	// SiteMoveNotAnswering (alpha.149; fix round F10): it runs where it ran
+	// but, having had ports, listens on none (a changed port is not this).
+	SiteMoveNotAnswering = "not_answering"
+)
+
+// SiteMoveReason (alpha.149, lab D7) is the code of a move's failure with its
+// values, for the page's own language; Detail and Error keep the English text
+// for the journal and the audit record. Codes of a program's step:
+// not_running (State: what systemd shows, Seconds), not_in_slice (Seconds),
+// not_listening (Seconds, Ports: the move's step, not every port), no_port
+// (Seconds, Ports: a put-back that listens on none), still_starting
+// (Seconds), restart_failed, write_failed, record_failed, changed; of the
+// whole move: unsupported, another_move, update_running (the panel's update
+// is in progress), site_busy, kept_earlier, prepare_failed, limits_failed,
+// bad_request, build, not_finished.
+type SiteMoveReason struct {
+	Code    string `json:"code"`
+	State   string `json:"state,omitempty"`
+	Seconds int    `json:"seconds,omitempty"`
+	Ports   []int  `json:"ports,omitempty"`
+}
+
+// Kernel states of a running slice (SiteSliceStatus.KernelState).
+const (
+	// SiteSliceInForce: the slice's cgroup holds the values systemd applies
+	// (memory.max, pids.max, cpu.max).
+	SiteSliceInForce = "in_force"
+	// SiteSlicePending: the values are written but the kernel (or systemd,
+	// which has not read the file) does not hold them yet.
+	SiteSlicePending = "pending"
+	// SiteSliceKernelUnknown: the slice runs but its cgroup files could not
+	// be read: never "in force".
+	SiteSliceKernelUnknown = "unknown"
+)
 
 // SiteSliceStatus is one site's slice.
 type SiteSliceStatus struct {
@@ -124,6 +213,20 @@ type SiteSliceStatus struct {
 	// MoveInterrupted: an Agent stop interrupted the last move of this site
 	// and the Agent finished or put it back at its start.
 	MoveInterrupted *SiteSliceMoveRecovery `json:"move_interrupted,omitempty"`
+	// Named (S4 R2a second fix round, review B2): a unit file names the
+	// site's slice or a unit runs in it. An absent file is then a file that
+	// was there and is gone (the next change of limits writes it again);
+	// without it, the site's programs were never moved into their limits.
+	Named bool `json:"named,omitempty"`
+	// UnitsUnread (review B9): units of this site the read did not take
+	// (above the request's bound); the rest were read.
+	UnitsUnread int `json:"units_unread,omitempty"`
+	// Kernel is what the slice's cgroup enforces (memory.max, pids.max,
+	// cpu.max; 0: no limit) and KernelState compares it with Live (S4 R2a
+	// third fix round, review N3): in_force, pending, unknown, or "" when the
+	// slice does not run (systemd applies the file when a program starts).
+	Kernel      SiteSliceLimitsRead `json:"kernel"`
+	KernelState string              `json:"kernel_state,omitempty"`
 }
 
 // SiteSlicesStatusResponse answers SiteSlicesStatusV1. Unsupported says why
@@ -140,23 +243,26 @@ type SiteSlicesStatusResponse struct {
 // ApplySiteSlicesRequest writes changed limits into the slices (a plan, a
 // reseller's limits or the server's changed), at most 100 sites per request
 // (the Panel sends a large change in batches). A site without a slice file
-// gets one when one of its units names the slice or runs in it, or when its
-// first unit goes into it.
+// gets one when one of its units names the slice or runs in it, when
+// CelikPanel wrote the file before, or when its first unit goes into it.
 type ApplySiteSlicesRequest struct {
 	ExpectedBuildCommit string      `json:"expected_build_commit"`
 	Sites               []SiteSlice `json:"sites"`
 }
 
 // SiteSliceApplied is what happened to one slice: written, unchanged,
-// absent (nothing uses it yet), kept (an owner's edit), failed. MovedAside
-// names an earlier site's changed file of the same id that was moved aside
-// before the new one was written.
+// absent (nothing uses it yet), kept (an owner's edit), failed, refused.
 type SiteSliceApplied struct {
 	SiteID      int    `json:"site_id"`
 	Outcome     string `json:"outcome"`
 	PendingPath string `json:"pending_path,omitempty"`
-	MovedAside  string `json:"moved_aside,omitempty"`
 	Detail      string `json:"detail,omitempty"`
+	// Reason (alpha.149, lab O3) is the code of a failed outcome: kernel_differs
+	// (the file is written, the running slice's kernel values were read after
+	// the push and still differ), unchecked (the file is written; what the
+	// running slice holds could not be read), write_failed, refused,
+	// out_of_range. Detail keeps the English text for the journal.
+	Reason string `json:"reason,omitempty"`
 }
 
 // ApplySiteSlicesResponse answers ApplySiteSlicesV1 (Unsupported: as in
@@ -178,6 +284,16 @@ type MoveSiteSliceRequest struct {
 	SubscriptionID      int       `json:"subscription_id"`
 	DomainID            int       `json:"domain_id"`
 	Units               []string  `json:"units"`
+	// Recover (S4 R2a third fix round, review N2): the administrator's "Try
+	// again" for a move whose put-back did not complete. The Agent runs the
+	// put-back of the kept record now and moves nothing new; only RequestID
+	// and ExpectedBuildCommit are read.
+	Recover bool `json:"recover,omitempty"`
+	// BudgetSeconds (S4 R2b, alpha.150; additive): what is left of the
+	// press's one deadline when the site's scheduled tasks moved first in the
+	// same press; the Agent's move then takes the smaller of it and its own
+	// budget (0: its own budget).
+	BudgetSeconds int `json:"budget_seconds,omitempty"`
 }
 
 // Outcomes of one unit in a move.
@@ -225,6 +341,15 @@ type SiteSliceMoved struct {
 	Step    string `json:"step,omitempty"`
 	PutBack bool   `json:"put_back,omitempty"`
 	Detail  string `json:"detail,omitempty"`
+	// Reason (alpha.149) is the code of Detail's failure; Back the code of a
+	// put-back that did not complete (not_running, still_starting, no_port,
+	// not_in_slice, unread, restart_failed, write_failed, unknown, changed).
+	Reason *SiteMoveReason `json:"reason,omitempty"`
+	Back   *SiteMoveReason `json:"back,omitempty"`
+	// Ran (alpha.149 fix round, W1): it ran when the move began, so a
+	// put-back that completed has it running again where it ran; a program
+	// that did not run was put back as it was (not running).
+	Ran bool `json:"ran,omitempty"`
 }
 
 // MoveSiteSliceResponse answers MoveSiteSliceV1. Done: every unit of the
@@ -236,14 +361,28 @@ type MoveSiteSliceResponse struct {
 	// WaitSeconds is how long the move waited at most for each program to
 	// run and answer again (the unit's own start timeout, at least 20 and
 	// at most 300 seconds; systemd's default of 90 for these units).
-	WaitSeconds int              `json:"wait_seconds,omitempty"`
-	SliceFile   string           `json:"slice_file,omitempty"`
-	Units       []SiteSliceMoved `json:"units"`
-	Error       string           `json:"error,omitempty"`
-	// Refusal (S4 R2b second fix round): SiteMoveRefusalUnresolved when an
-	// earlier move could not be resolved and nothing was changed.
-	Refusal string `json:"refusal,omitempty"`
+	WaitSeconds int `json:"wait_seconds,omitempty"`
+	// TimeUp (review B8): the move's time ran out; the units it moved stay
+	// moved ("moved", "rewritten") and the ones it did not start are
+	// "not_tried", for the next move to continue with.
+	TimeUp    bool             `json:"time_up,omitempty"`
+	SliceFile string           `json:"slice_file,omitempty"`
+	Units     []SiteSliceMoved `json:"units"`
+	Error     string           `json:"error,omitempty"`
+	// Kept (review N2): the move's record stays after this call (a put-back
+	// did not complete); no site is moved until it is settled. Recovery is
+	// the outcome of a Recover request (or of the kept record).
+	Kept     bool                   `json:"kept,omitempty"`
+	Recovery *SiteSliceMoveRecovery `json:"recovery,omitempty"`
+	// Reason (alpha.149) is the code of Error, for the page's language.
+	Reason *SiteMoveReason `json:"reason,omitempty"`
+	// RunsNoPort (alpha.149 second fix round, R8; additive, only a Recover
+	// request sets it): programs the administrator's Try again restarted once
+	// more after they were "not answering", which then ran where they ran
+	// without a break for their start wait but listen on no port. They are
+	// put back (their entries are closed); the page names them.
+	RunsNoPort []string `json:"runs_no_port,omitempty"`
 	// Tasks (S4 R2b) is the Panel's answer for the site's scheduled tasks,
-	// moved by the same action (the Agent's MoveSiteTasksV1).
+	// moved by the same action first (the Agent's MoveSiteTasksV1).
 	Tasks *SiteTasksMoveResponse `json:"tasks,omitempty"`
 }

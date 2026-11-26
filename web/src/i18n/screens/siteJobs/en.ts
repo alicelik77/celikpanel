@@ -23,7 +23,7 @@ export const enSiteJobsScreens = {
     'pnow.at_directory_accounts.body': 'This server takes its accounts from a directory service, so CelikPanel cannot safely list who may use at today and did not write {domain}. A website can plant at jobs that CelikPanel neither shows nor limits. The server administrator writes {domain} with the accounts that need at, one name per line, leaving website accounts out.',
     'pnow.at_directory_accounts.action': 'Open Monitoring',
     'pnow.at_not_closed.title': 'Website accounts can still use at',
-    'pnow.at_not_closed.body': 'CelikPanel could not write {domain}, so a website can plant at jobs that CelikPanel neither shows nor limits. Nothing was changed; CelikPanel tries again after the panel’s next start. If it keeps failing, the server administrator checks that /etc can be written and that /etc/at.deny can be read.',
+    'pnow.at_not_closed.body': 'CelikPanel could not write {domain}, so a website can plant at jobs that CelikPanel neither shows nor limits. Nothing was changed; CelikPanel tries again after the panel’s next start. If it keeps failing, the server administrator reads the exact reason in Monitoring: /etc must be writable, and /etc/at.deny, /etc/passwd and CelikPanel’s record of the file readable.',
     'pnow.at_not_closed.action': 'Open Monitoring',
     'cron.outside.badge': 'Not made in CelikPanel',
     'cron.outside.notice': 'Some lines of this site’s crontab were not made in CelikPanel: a program of the site or someone working on the server added them. They run like the other tasks, but the site’s limits on tasks were not checked for them. Remove any line nobody asked for. A line the server owner put there on purpose can be kept by the administrator with Keep; it is then no longer marked.',

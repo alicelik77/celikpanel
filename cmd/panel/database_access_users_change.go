@@ -142,6 +142,12 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 		writeCodedError(w, http.StatusConflict, errCodeDatabaseUserExists,
 			"A database user named "+username+" already exists on this database server (made outside CelikPanel). Choose another name; nothing was changed.", "")
 		return
+	case resp.AccountRefused != "":
+		// alpha.149 (second review of PR #370, findings 9 and 16): the
+		// account the Agent refused (the database's owner or one of its
+		// other users, never the new user), as the refusal's code.
+		writeDatabaseAccountRefusal(w, resp.AccountRefused, resp.AccountRefusedName)
+		return
 	case !resp.Applied:
 		writeDatabaseUserEngineFailure(w, resp, "The database server did not make the user "+username+"; nothing was changed. Try again; if it fails again, the administrator finds the reason in the panel's log.")
 		return
@@ -165,12 +171,9 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 		writeServerError(w, errors.Join(err, undoErr))
 		return
 	}
-	// alpha.128 (G5): the subscription's connection limit applies to it too.
-	if limit, err := p.dbConnectionLimit(ctx, target.domain.SubscriptionID); err != nil {
-		log.Printf("database connection limit of %s: %v", username, err)
-	} else if limit > 0 {
-		p.reapplyDBConnectionLimits([]int{target.domain.SubscriptionID})
-	}
+	// alpha.128 (G5), alpha.149 (lab D9): every database limit of the
+	// subscription applies to it too, by the one function.
+	p.applyNewDatabaseUserLimits(ctx, target.domain.SubscriptionID, target.serverID, username)
 	p.auditDetailed(r, "database.user.add:"+username, "database_user", userID,
 		map[string]any{"database": target.identity.Name, "access": req.Access})
 	_ = json.NewEncoder(w).Encode(map[string]any{"id": userID, "username": username, "access": req.Access})
@@ -282,6 +285,11 @@ func (p *Panel) handleRemoveDatabaseAccessUser(w http.ResponseWriter, r *http.Re
 		writeDatabaseClusterRefusal(w, r, resp.Refusal)
 		return
 	}
+	if resp.AccountRefused != "" {
+		// alpha.149 (second review of PR #370, findings 9 and 16).
+		writeDatabaseAccountRefusal(w, resp.AccountRefused, refusedAccountName(resp, user.Username))
+		return
+	}
 	if !resp.Applied {
 		writeDatabaseUserEngineFailure(w, resp, "The database server did not remove the user "+user.Username+"; it is still listed and the database was not changed. Try again; if it fails again, the administrator finds the reason in the panel's log.")
 		return
@@ -306,6 +314,8 @@ func (p *Panel) handleRemoveDatabaseAccessUser(w http.ResponseWriter, r *http.Re
 		writeServerError(w, err)
 		return
 	}
+	// alpha.149 (review of PR #370, findings 5 and 12): its limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 	// alpha.129: its remote access rules went with the user's row; the next
 	// apply closes their addresses (the Agent already dropped the copies).
 	kickDatabaseRemoteSync()
@@ -328,13 +338,30 @@ type panelDatabaseAccessNative struct{ p *Panel }
 func (n panelDatabaseAccessNative) create(ctx context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
 	var resp transport.DatabaseAccessUserResponse
 	err := n.p.callAgentContext(ctx, "Agent.CreateDatabaseAccessUserV1", &req, &resp)
+	// Second review of PR #370, finding 9: a refusal on a create is about the
+	// database's owner or one of its other users, never the new user (which
+	// does not exist); without the refused account's name the Agent's own
+	// sentence stays.
+	if name := resp.AccountRefusedName; name != "" || resp.AccountRefused == transport.DatabaseAccountRefusedSystemDatabase {
+		resp.Error = withDatabaseAccountRefusal(resp.AccountRefused, name, resp.Error)
+	}
 	return resp, err
 }
 
 func (n panelDatabaseAccessNative) remove(ctx context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
 	var resp transport.DatabaseAccessUserResponse
 	err := n.p.callAgentContext(ctx, "Agent.RemoveDatabaseAccessUserV1", &req, &resp)
+	resp.Error = withDatabaseAccountRefusal(resp.AccountRefused, refusedAccountName(resp, req.Username), resp.Error)
 	return resp, err
+}
+
+// refusedAccountName is the account an Agent refusal is about (finding 9 of
+// the second review): the one the Agent named, else fallback.
+func refusedAccountName(resp transport.DatabaseAccessUserResponse, fallback string) string {
+	if resp.AccountRefusedName != "" {
+		return resp.AccountRefusedName
+	}
+	return fallback
 }
 
 func (p *Panel) databaseAccessNativeOps() databaseAccessNative {

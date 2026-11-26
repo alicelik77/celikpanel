@@ -176,6 +176,25 @@ hiçbir site sınırlanmaz). Posta kotasını durdurmak için: `90-celikpanel-qu
 dosyasını kenara alın ve `check_policy_service` öğesini çıkarın; sonra Dovecot ve
 Postfix'i yeniden yükleyin.
 
+## Müşteri ayırma R1: araçların hesapları, ortak PHP havuzu, `at` (alpha.147)
+
+Bileşen testleriyle kaynak aşaması; yerel laboratuvar turu bekliyor. Debian ve Ubuntu (Arch
+Linux'ta araçlar ve havuz olduğu gibi kalır).
+
+| Ne | Ne yapar | CelikPanel olmadan |
+|---|---|---|
+| `/etc/php/<s>/fpm/pool.d/celikpanel-<araç>.conf` ve `celikpanel-webmail`, `celikpanel-phpmyadmin`, `celikpanel-phppgadmin` hesapları | Her aracın kendi sistem hesabıyla kendi PHP-FPM havuzu; verileri `/var/lib/celikpanel-php-tools/<araç>/` içinde | Çalışmayı sürdürür; PHP-FPM havuzu diğerleri gibi okur |
+| `/etc/nginx/conf.d/celikpanel-webmail.conf`, `celikpanel-dbtools.conf`, `celikpanel-webmail-origin-*.conf` | Her aracın PHP'sini kendi havuzunun soketine verir | Aynı |
+| `/var/lib/celikpanel-webmail` üzerindeki `user:celikpanel-webmail:--x` erişim listesi girdisi | Web postasının kendi hesabının ağacın kapalı kökünden geçmesini sağlar | Kalır; `getfacl` okur, `setfacl -x` kaldırır |
+| `/etc/php/<s>/fpm/pool.d/www.conf.off-by-celikpanel` | Adı değiştirilerek kapatılmış dağıtım havuzu (dpkg yükseltmelerde öyle tutar) | Kapalı kalır; açmak için adını yeniden `www.conf` yapın |
+| `/etc/at.allow` | Site hesapları dışındaki her hesap için `at` | Son yazıldığı gibi kalır: sonradan açılan bir hesap, sahip onu eklemeden `at` kullanamaz |
+
+Panelle birlikte giden: bir PHP sürümünün son havuzunu asla kaybetmemesi kuralı. Varsayılan havuz
+kapalıyken bir sürümün son diğer havuzunu kaldırmak PHP-FPM'in başlamamasına yol açar; önce varsayılan
+havuzu geri koyun. Araçları elle, doğru sırayla web sunucusu hesabına geri almak (önce varsayılan
+havuz, dosyalar web grubuna, web sunucusu dosyaları varsayılan soketlere, kendi havuzlar kaldırılır,
+hesaplar en son) [TENANT-ISOLATION.tr.md §7](TENANT-ISOLATION.tr.md) içindedir.
+
 ## Kanıt
 
 [Yerel doğrulama](validation/native-dns-independence-20260912/README.tr.md),

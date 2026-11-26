@@ -7,7 +7,7 @@ const chapter = {
   id: "databases",
   title: "Databases",
   blocks: [
-    ["p","A website such as WordPress keeps its content in a database. CelikPanel creates MariaDB (MySQL) and PostgreSQL databases on the server, with a user for each."],
+    ["p","A website such as WordPress keeps its content in a database. CelikPanel creates MariaDB (MySQL) and PostgreSQL databases on the server, with a user for each. A local MySQL server running in MariaDB's place is not managed: CelikPanel does not change its database accounts, and the server's administrator does that on the server itself."],
     ["h",2,"domain-databases","In the domain's Databases section"],
     ["p",["The quickest way is from the domain itself. Open the domain, then its ",["b","Databases"]," section, and press ",["b","Create database"],":"]],
     ["ol",[["Type a ",["b","Database name"],". The panel puts the domain in front of it: for ",["c","example.com"]," and ",["c","shop"],", the full name is ",["c","example_com_shop"],"."],["Choose the ",["b","Database engine"],"."],["Choose a ",["b","Password"],"."],["Press ",["b","Create database"],"."]]],
@@ -22,6 +22,11 @@ const chapter = {
     ["h",2,"passwords","Passwords"],
     ["p",["CelikPanel does not keep database passwords and cannot show them again. If you lost one, give the user a new password and put it into your application's configuration file. When your plan's database count or the disk is full, new databases are refused; see ",["g","limits","disk","Limits and suspension"],"."]],
     ["warn",[["p",["Deleting a database deletes all its data. Take a backup first in the domain's ",["b","Backups"]," section."]]]],
+    ["h",2,"user-owns-objects","A user that owns tables"],
+    ["p","On PostgreSQL, removing a user you added to a database can be refused: the user owns tables or other objects in this database, so it was not removed and nothing was changed. This happens on databases that belong to CelikPanel's own database account, which never takes over what a user made."],
+    ["p",["The server's administrator first hands those objects to the database's own user, the one created with the database (for ",["c","example_com_shop"],", ",["c","example_com_shop_user"],"), with one command on the server, then removes the user again from the panel. For the user ",["c","example_com_shop_reader"],":"]],
+    ["pre","sudo -u postgres psql -d example_com_shop -c 'REASSIGN OWNED BY \"example_com_shop_reader\" TO \"example_com_shop_user\";'"],
+    ["p","A customer or a reseller asks the server's administrator to do it."],
   ],
 } as unknown as GuideChapter;
 

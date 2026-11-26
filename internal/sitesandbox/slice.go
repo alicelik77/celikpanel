@@ -153,6 +153,22 @@ func UnitControlGroupAllowed(cgroup, unit string) (int, bool) {
 	return ParseSliceName(slice)
 }
 
+// UnitInSiteSlice reports whether cgroup (a unit's ControlGroup= as systemd
+// shows it) is the unit's place in site siteID's slice. The Agent's reading
+// of where a program runs goes through UnitControlGroupAllowed, the one
+// definition of a unit's two places that the SMTP helper uses too.
+func UnitInSiteSlice(cgroup, unit string, siteID int) bool {
+	id, ok := UnitControlGroupAllowed(cgroup, unit)
+	return ok && siteID > 0 && id == siteID
+}
+
+// UnitInSystemSlice reports whether cgroup is the unit's place in the system
+// slice, where every unit ran before it was moved into its site's slice.
+func UnitInSystemSlice(cgroup, unit string) bool {
+	id, ok := UnitControlGroupAllowed(cgroup, unit)
+	return ok && id == 0
+}
+
 // CgroupElementFor is the SMTP set's element for a unit running in cgroup
 // (the unit's ControlGroup= as systemd shows it): '{ "<slice>/<unit>" }'. A
 // cgroup that is not the system slice or a site's slice is refused: the set
@@ -213,6 +229,18 @@ type SliceCounters struct {
 	CPUThrottled     int64 `json:"cpu_throttled"`
 	CPUThrottledUSec int64 `json:"cpu_throttled_usec"`
 	CPUPeriods       int64 `json:"cpu_periods"`
+	// SlicePidsPeak and SlicePidsMax (alpha.149, lab D3; fix round F7):
+	// under the "units" rule, the slice's own pids.peak and the pids.max it
+	// was read with (both 0: not read, or no limit). A unit's counters go
+	// with its cgroup when the program restarts (lab, Ubuntu 24.04 kernel
+	// 6.8: the refusals were counted in a unit cgroup that was gone before
+	// any reading); the slice's peak stays while the slice exists. pids.peak
+	// is a high-water mark that writing pids.max does not reset, so only
+	// readings compared under an unchanged limit can say that the peak
+	// reached it since the last one (the Panel's ledger does that). Whether a
+	// new process was refused is not known from them.
+	SlicePidsPeak int64 `json:"slice_pids_peak,omitempty"`
+	SlicePidsMax  int64 `json:"slice_pids_max,omitempty"`
 }
 
 // SliceCgroupFiles are the texts of the slice cgroup's files ("" for a file
@@ -226,6 +254,10 @@ type SliceCgroupFiles struct {
 	HasPidsEventsLocal bool
 	CPUStat            string
 	Units              []UnitPidsFiles
+	// SlicePidsPeak and SlicePidsMax: the slice's own pids.peak and pids.max
+	// (read where it has no pids.events.local).
+	SlicePidsPeak string
+	SlicePidsMax  string
 }
 
 // UnitPidsFiles are one unit cgroup's process files.
@@ -281,6 +313,9 @@ func ParseSliceCounters(f SliceCgroupFiles) SliceCounters {
 		}
 	} else {
 		c.TasksRule = "units"
+		if limit, peak := cgroupLimit(f.SlicePidsMax), cgroupLimit(f.SlicePidsPeak); limit > 0 && peak >= 0 {
+			c.SlicePidsPeak, c.SlicePidsMax = peak, limit
+		}
 		for _, u := range f.Units {
 			n, _ := cgroupValue(u.Events, "max")
 			if n == 0 {
@@ -298,4 +333,16 @@ func ParseSliceCounters(f SliceCgroupFiles) SliceCounters {
 	c.CPUThrottledUSec, _ = cgroupValue(f.CPUStat, "throttled_usec")
 	c.CPUPeriods, _ = cgroupValue(f.CPUStat, "nr_periods")
 	return c
+}
+
+// UnitFileSlice reads the slice a unit file's text names (its last Slice=
+// line, as systemd reads it; "" when it names none).
+func UnitFileSlice(text string) string {
+	slice := ""
+	for _, line := range strings.Split(text, "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "Slice="); ok {
+			slice = strings.TrimSpace(rest)
+		}
+	}
+	return slice
 }

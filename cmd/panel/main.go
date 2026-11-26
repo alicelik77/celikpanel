@@ -88,9 +88,13 @@ type Panel struct {
 	users         repositories.UserRepository
 	secrets       *secrets.Box
 	secureCookies bool
-	loginLimiter  *rateLimiter
-	demoMode      bool
-	startupGate   *panelHTTPStartupGate
+	// signinCookieNamesSince is when this installation first ran a panel
+	// that sets the __Host- sign-in cookie names (signin_cookies.go); zero
+	// when unknown, which carries no plain-named session over.
+	signinCookieNamesSince time.Time
+	loginLimiter           *rateLimiter
+	demoMode               bool
+	startupGate            *panelHTTPStartupGate
 	// Screens' last-known DNS proofs (alpha.127, display_checks.go).
 	displayChecks displayChecks
 	// Site disk measurements run once per site (alpha.127, domain_usage_handlers.go).
@@ -461,6 +465,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete}
 	case "mail/accounts/empty":
 		// alpha.128 (G20): remove every message of one mailbox.
+		match.kind, match.methods = "mail", []string{http.MethodPost}
+	case "mail/accounts/adopt":
+		// alpha.144: the administrator records a mailbox found on the server
+		// without a row in the panel (its mail is not touched).
 		match.kind, match.methods = "mail", []string{http.MethodPost}
 	case "mail/accounts":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
@@ -1296,6 +1304,10 @@ func main() {
 	} else if n == 0 {
 		log.Fatal("No users exist. Create the first admin with:  ./bin/panel --create-admin")
 	}
+	// Before any request: when this installation first ran the __Host-
+	// sign-in cookie names, so the transition is counted from one moment
+	// that a restart does not move (signin_cookies.go).
+	panel.loadSigninCookieNamesSince(context.Background())
 
 	// Bind and serve TLS before durable mutation recovery. Certificate
 	// activation restarts the panel and then verifies the published leaf over
@@ -1610,6 +1622,9 @@ func main() {
 		activationCancel()
 		milterWiringDeferred = panel.wireMailFiltersSynchronouslyAtStartup()
 	}
+	// 21 Nov 2026: out-of-office replies saved before name only the
+	// mailbox's own addresses after this start (mail_autoresponder_own.go).
+	panel.startAutoresponderAddressReconcile()
 
 	// alpha.130: a removed PostgreSQL major's cluster that holds only what
 	// initdb made is removed once after the start (postgresql_leftovers.go).
@@ -1617,6 +1632,12 @@ func main() {
 	// S4 R1: the tools to their own accounts and the untouched stock PHP-FPM
 	// pool off, once after the start (side_doors.go).
 	panel.startSideDoorsClose()
+	// S4 R2a second fix round: a site's default memory limit is fixed when
+	// first computed (never moved by a later change of the host's memory),
+	// and the sites a change of limits did not reach are written again every
+	// hour (site_limits.go).
+	panel.freezeSiteMemoryDefault(context.Background())
+	panel.startSiteLimitApplyRound()
 
 	// Purge expired sessions on startup and then hourly.
 	// Başlangıçta ve sonra saatlik olarak süresi dolmuş oturumları temizle.
@@ -1636,6 +1657,11 @@ func main() {
 			if err := sweepMailboxRecoveryLinks(context.Background(), panel.db.GetDB()); err != nil {
 				log.Printf("[mailbox-recovery] old links could not be removed: %v", err)
 			}
+			// alpha.144: alias records whose zone's publication waited.
+			panel.republishAliasZones(context.Background())
+			// alpha.149: database users the database limits did not reach
+			// are tried again (one bounded run, never two at once).
+			panel.retryDBLimitsRound(context.Background())
 		}
 	}()
 
@@ -1785,6 +1811,9 @@ func main() {
 	// S4 R1 fix round: the administrator closes again what the server owner
 	// undid (side_doors.go); administrator only through the prefix.
 	http.HandleFunc("/api/v1/metrics/side-doors/reclose", panel.handleSideDoorsReClose)
+	// alpha.149: Apply again for database users the limits did not reach
+	// (database_limits_problems.go); administrator only through the prefix.
+	http.HandleFunc("/api/v1/metrics/database-limits/apply", panel.handleDatabaseLimitsApply)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()
@@ -2007,6 +2036,8 @@ func main() {
 	// alpha.134: the administrator's view of the rights rewritten to exact
 	// database names (read only).
 	http.HandleFunc(databaseGrantFormsPath, panel.handleDatabaseGrantForms)
+	// S1b: PostgreSQL databases closed to other accounts (postgresql_public_access.go).
+	http.HandleFunc(pgPublicPath, panel.handlePostgreSQLPublicAccess)
 
 	// Database operations
 	http.HandleFunc("/api/v1/databases/", func(w http.ResponseWriter, r *http.Request) {
@@ -2096,6 +2127,9 @@ func main() {
 	panel.startDatabaseRemoteSync(discoveryCtx)
 	// alpha.134: database rights by exact name (database_grant_forms.go).
 	panel.startDatabaseGrantForms(discoveryCtx)
+	// S1b: PostgreSQL databases made before alpha.141 closed to other
+	// accounts, behind the same admission (postgresql_public_access.go).
+	panel.startPostgreSQLPublicAccess(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.
@@ -2184,13 +2218,18 @@ func (p *Panel) wireMailFiltersOnce() (transport.WireMailFiltersResponse, error)
 			request := transport.ServiceMutationRequest{
 				ServiceMutationBinding: binding,
 			}
-			if err := p.callAgentContext(
+			callErr := p.callAgentContext(
 				callCtx,
 				"Agent.WireMailFilters",
 				&request,
 				&response,
-			); err != nil {
-				return err
+			)
+			// 20 Nov 2026: whether mail is signed only for the sender's own
+			// domain, for Monitoring → Problems now (mail_signing_problem.go);
+			// an answer that did not arrive is recorded as unknown.
+			p.recordMailSigningCall(ctx, response.Signing, callErr)
+			if callErr != nil {
+				return callErr
 			}
 			if response.Error != "" {
 				// R-056. The ledger's own words for a failed host mutation say
@@ -2222,6 +2261,9 @@ func (p *Panel) mailFilterWiringHasSubject() bool {
 	present, detail := p.mailFilterWiringSubject()
 	if !present {
 		log.Printf("milter chain: nothing to wire at startup: %s", detail)
+		// No mail server here: nothing signs mail, and an earlier state does
+		// not stand (review of alpha.143, finding 5).
+		p.recordMailSigningState(context.Background(), &transport.MailSigningState{State: "no_dkim"})
 	}
 	return present
 }

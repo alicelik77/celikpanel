@@ -13,6 +13,7 @@ import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
 import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import {
   decodeOutsideSites, decodeTaskRun, decodeTasksAnswer, decodeTasksPlacement, lineList, movedTaskCount, moveSitesInTurn, privilegedList, siteMoveEnd,
+  unresolvedSteps,
 } from '../src/lib/siteTasks.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -139,11 +140,15 @@ test('"Move all" skips a site that cannot move and stops only when a started mov
   }
   const noBody = await moveSitesInTurn([sites[0], sites[1]], async () => ({ status: 200 }), () => {});
   assert.equal(noBody.stop.unknown, true, 'a success without a readable body is unknown');
-  // Review N1: an earlier move that is unresolved stops the run (nothing else is moved).
-  const unresolved = await moveSitesInTurn(sites, async (site) => ({ status: 200, body: { done: false, refusal: 'unresolved_move', units: [],
-    tasks: { outcome: 'refused', refusal: 'unresolved_move', error: 'an earlier move of site 7' } } }), () => {});
+  // Review N1 (alpha.150: main's one kept record): a kept move record stops the run (nothing
+  // else is moved), whether the tasks part or the programs part answered it.
+  const unresolved = await moveSitesInTurn(sites, async (site) => ({ status: 200, body: { done: false, kept: true, reason: { code: 'kept_earlier' }, units: [],
+    tasks: { outcome: 'refused', refusal: 'kept_earlier', error: 'an earlier move of site 7' } } }), () => {});
   assert.equal(unresolved.stop.unresolved, true);
   assert.equal(unresolved.moved, 0);
+  const keptByPrograms = await moveSitesInTurn(sites, async () => ({ status: 200, body: { done: false, kept: true, reason: { code: 'kept_earlier' }, units: [],
+    tasks: { outcome: 'moved' } } }), () => {});
+  assert.equal(keptByPrograms.stop.unresolved, true);
   assert.match(read('../src/components/MoveAllSites.tsx'), /t\('moveall\.unresolved'\)/);
 
   const all = read('../src/components/MoveAllSites.tsx');
@@ -157,12 +162,13 @@ test('"Move all" skips a site that cannot move and stops only when a started mov
 test('the Problems now lines are known kinds with words, and the two re-closes are offered', () => {
   const problems = read('../src/components/ProblemsNow.tsx');
   const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
-  // Second fix round: the held, lingering, unresolved-move and service-manager lines live in
-  // the "problemsNow" part (the "siteTasks" part had no room left); either part may hold them.
+  // Second fix round: the held, lingering and service-manager lines live in the "problemsNow"
+  // part (the "siteTasks" part had no room left); either part may hold them. A move that could
+  // not be settled is main's site_move_kept line (alpha.150: one record, one line).
   const en = { ...enSiteTasksScreens, ...enProblemsNowScreens };
   const tr = { ...trSiteTasksScreens, ...trProblemsNowScreens };
   for (const kind of ['site_limits_outside', 'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned', 'site_lingering', 'linger_owner_removed', 'linger_not_closed', 'site_crontab_by_site', 'site_tasks_held',
-    'site_move_unresolved', 'site_user_manager_open']) {
+    'site_move_kept', 'site_user_manager_open']) {
     assert.ok(list && list[1].includes(`'${kind}'`), `${kind} is a known kind`);
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English ${kind}.${part}`);
@@ -177,7 +183,8 @@ test('the Problems now lines are known kinds with words, and the two re-closes a
   // restart) and gives the reload a file put back by hand needs.
   assert.match(en['pnow.site_tasks_held.body'], /daemon-reload/);
   assert.match(tr['pnow.site_tasks_held.body'], /daemon-reload/);
-  assert.match(en['pnow.site_move_unresolved.body'], /\{other\}/, 'the unresolved line gives the steps by hand');
+  assert.match(en['pnow.site_move_kept.body'], /scheduled tasks/, "the kept line covers a site's scheduled tasks too");
+  assert.match(tr['pnow.site_move_kept.body'], /zamanlanmış görevleri/);
   assert.match(en['pnow.site_user_manager_open.body'], /systemctl mask \{other\}/);
 });
 
@@ -188,14 +195,17 @@ test('second fix round: what the screens say about a skipped run, a timer not on
   }
   assert.doesNotMatch(enSiteTasksScreens['stasks.run.skipped'], /fail/i, 'a skipped run is not called failed');
   assert.match(enSiteTasksScreens['stasks.differences'], /sendmail/, 'the differences name the server\'s sendmail');
-  const placement = decodeTasksPlacement({ moved: true, unresolved: { site_id: 7, kind: 'tasks_move', step: 'crontab_emptied', account: 'shop_test' } });
-  assert.equal(placement.unresolved.site_id, 7);
+  assert.equal(decodeTasksPlacement({ moved: true }).moved, true);
+  // alpha.150: a kept tasks record is on the card's kept block, with the two steps by hand.
+  assert.equal(unresolvedSteps({ tasks_site: 7, tasks_account: 'shop_test' }),
+    "sudo systemctl disable --now 'celikcron-7-*.timer' ; sudo crontab -u shop_test /etc/celikpanel-cron/7.crontab");
   const cron = read('../src/components/DomainCronManager.tsx');
   assert.match(cron, /'crontab_again'/);
   assert.match(cron, /preview\.refusal === 'crontab_exists'/, 'the rebuild is refused while the account has a crontab');
   assert.match(cron, /t\('stasks\.run\.skipped'/);
   const card = read('../src/components/SiteLimitsCard.tsx');
-  assert.match(card, /t\('slim\.tasks\.unresolved'/);
+  assert.match(card, /view\.move_interrupted\.tasks && \(/, 'the kept block names a tasks record');
+  assert.match(card, /t\('slim\.tasks\.unresolved', \{ step: view\.move_interrupted\.tasks_step/);
   assert.match(card, /'owner_file'/);
 });
 

@@ -37,9 +37,11 @@ import (
 //   - Problems now: a site that reached its OWN memory or process limit at
 //     two or more readings in the last day; one line, for the administrator,
 //     naming the sites whose programs still run outside their limits; one
-//     line when this host cannot enforce a site's limits at all; and, once
-//     for the server, that disk limits are counted but not enforced where the
-//     hosting file system has no project quota.
+//     line when this host cannot enforce a site's limits at all; one line
+//     when a change of limits did not reach every site (site_limits.go); one
+//     line when a site's default memory limit was fixed for the host's
+//     earlier memory; and, once for the server, that disk limits are counted
+//     but not enforced where the hosting file system has no project quota.
 //
 // Sitenin sınırları: herkes sınırları, uygulanıp uygulanmadığını ve ne zaman
 // aşıldığını okur; yönetici hangi programların sınır içinde olduğunu da görür
@@ -161,8 +163,15 @@ func siteSliceQueries(sites []siteLimitSite) *transport.SiteSlicesStatusRequest 
 
 // siteSliceReadPage is the number of sites per status read: well under the
 // Agent's bound, so no reading is ever refused or cut for the number of
-// sites (review finding 12).
-const siteSliceReadPage = 1000
+// sites (review finding 12). siteSliceReadPageUnits bounds the programs of
+// one page (review B9): a site may have any number of programs; a page
+// closes before it would pass the bound, and a site larger than the bound
+// alone gets a page of its own (the Agent reads up to its own bound of
+// 20000 and counts the rest as unread, never refusing the read).
+const (
+	siteSliceReadPage      = 1000
+	siteSliceReadPageUnits = 4000
+)
 
 // readSiteSlicesPaged reads the sites' slices in pages and joins the
 // answers. The host's Unsupported reason comes back with the statuses.
@@ -173,12 +182,15 @@ func (p *Panel) readSiteSlicesPaged(ctx context.Context, sites []siteLimitSite) 
 
 func (p *Panel) readSiteSlicesAll(ctx context.Context, sites []siteLimitSite) (transport.SiteSlicesStatusResponse, error) {
 	out := transport.SiteSlicesStatusResponse{Sites: []transport.SiteSliceStatus{}}
-	for start := 0; start < len(sites); start += siteSliceReadPage {
-		end := start + siteSliceReadPage
-		if end > len(sites) {
-			end = len(sites)
+	for start := 0; start < len(sites); {
+		end, units := start, 0
+		for end < len(sites) && end-start < siteSliceReadPage && (end == start || units+len(sites[end].Units) <= siteSliceReadPageUnits) {
+			units += len(sites[end].Units)
+			end++
 		}
-		resp, err := readSiteSlicesCall(p, ctx, siteSliceQueries(sites[start:end]))
+		page := sites[start:end]
+		start = end
+		resp, err := readSiteSlicesCall(p, ctx, siteSliceQueries(page))
 		if err == nil && resp.Error != "" {
 			err = errorString(resp.Error)
 		}
@@ -213,6 +225,11 @@ const siteLimitCPUSeconds = 30
 const (
 	siteLimitRepeatWindow = 24 * time.Hour
 	siteLimitRepeatHits   = 2
+	// siteLimitHitEvery and siteLimitMaxHits bound the record (review B7):
+	// at most one hit per kind every five minutes, so at most 288 a day, and
+	// never more than that are kept.
+	siteLimitHitEvery = 5 * time.Minute
+	siteLimitMaxHits  = 288
 )
 
 // Event kinds. Only "memory" and "tasks" are the site's own limit (proved
@@ -220,19 +237,49 @@ const (
 // "tasks_other" are a program of the site stopped or refused where the
 // kernel does not prove the site's limit (a program's own smaller limit, a
 // host-wide shortage): the screens then never blame the plan.
-var siteLimitEventKinds = []string{"memory", "memory_other", "tasks", "tasks_other", "cpu"}
+//
+// "tasks_peak" (alpha.149, lab D3): on a kernel without pids.events.local the
+// slice's own pids.peak reached its pids.max since the last reading (the
+// site's process limit, proved by the slice itself; how often is not known,
+// so its count stays 0).
+var siteLimitEventKinds = []string{"memory", "memory_other", "tasks", "tasks_peak", "tasks_other", "cpu"}
 
 type siteLimitEvent struct {
 	Count   int64    `json:"count"`
 	FirstAt string   `json:"first_at"`
 	LastAt  string   `json:"last_at"`
 	Hits    []string `json:"hits,omitempty"`
+	// Limit (alpha.149, lab CHECK 2 W3) is the site's limit for the event's
+	// key that held at its last time (the kernel's value when it was read,
+	// else what systemd applied; 0: not known or no limit). The card shows an
+	// event with this value, or without one, never with today's.
+	Limit int `json:"limit,omitempty"`
+}
+
+// siteLimitHeld is the site's limit of an event kind's key as the reading
+// found it in force (0: not known or no limit).
+func siteLimitHeld(status transport.SiteSliceStatus, kind string) int {
+	held := status.Live
+	if status.KernelState == transport.SiteSliceInForce || status.KernelState == transport.SiteSlicePending {
+		held = status.Kernel
+	}
+	switch {
+	case strings.HasPrefix(kind, "memory"):
+		return held.MemoryMB
+	case strings.HasPrefix(kind, "tasks"):
+		return held.Tasks
+	}
+	return held.CPUPercent
 }
 
 type siteLimitRecord struct {
 	Counters transport.SiteSliceCounters `json:"counters"`
 	ReadAt   string                      `json:"read_at"`
 	Events   map[string]*siteLimitEvent  `json:"events,omitempty"`
+	// LimitChanged (alpha.149 fix round, F8): the site's limits were changed
+	// when its counters could not be read first, so the next reading's
+	// events carry no limit value (they may be from before the change).
+	LimitChanged bool `json:"limit_changed,omitempty"`
 }
 
 type siteLimitLedger map[string]*siteLimitRecord
@@ -281,6 +328,18 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 		}
 		memory := delta(current.MemoryLimitHits, before.MemoryLimitHits)
 		kills := delta(current.OOMKills, before.OOMKills)
+		// Review C3: one "time" of the site's own memory limit is one
+		// program the kernel stopped while that limit was reached: the
+		// rise of the slice's oom_kill over a reading in which its own
+		// memory.events.local oom rose (at least one), never the raw
+		// oom count, which counts every failed reclaim (F3c: oom 10576
+		// for one stopped program).
+		if memory > 0 {
+			memory = kills
+			if memory < 1 {
+				memory = 1
+			}
+		}
 		rises := map[string]int64{
 			"memory": memory,
 			"tasks":  delta(current.TasksLimitHits, before.TasksLimitHits),
@@ -292,14 +351,32 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 			// Programs stopped for lack of memory, not at the site's limit.
 			rises["memory_other"] = kills
 		}
+		// alpha.149 (lab D3; fix round F7): the slice's own peak reached its
+		// limit since the last reading (a unit's counters may be gone with
+		// its cgroup). pids.peak is a high-water mark that a changed limit
+		// does not reset, so only when the limit is unchanged since that
+		// reading, which had the field and was below the limit.
+		peakRead := func(c transport.SiteSliceCounters) bool { return c.SlicePidsMax > 0 }
+		peakAt := func(c transport.SiteSliceCounters) bool { return peakRead(c) && c.SlicePidsPeak >= c.SlicePidsMax }
+		peak := peakRead(before) && peakRead(current) && current.SlicePidsMax == before.SlicePidsMax &&
+			!peakAt(before) && peakAt(current) && rises["tasks"] == 0
 		cpuWait := delta(current.CPUThrottledUSec, before.CPUThrottledUSec)
 		if cpuWait >= siteLimitCPUSeconds*1_000_000 {
 			rises["cpu"] = 1
 		}
-		rose := reset
+		// A changed limit, or a peak that reached it or fell below it (the
+		// slice made anew), is the new baseline.
+		rose := reset || peakRead(current) != peakRead(before) || current.SlicePidsMax != before.SlicePidsMax || peakAt(current) != peakAt(before)
+		// alpha.149 fix round (F8): the limits changed without a reading at
+		// that moment: what this reading finds may be from before the change,
+		// so it carries no limit value (never today's).
+		limitUnsure := previous.LimitChanged
+		if limitUnsure {
+			previous.LimitChanged, changed = false, true
+		}
 		for _, kind := range siteLimitEventKinds {
 			n := rises[kind]
-			if n <= 0 {
+			if n <= 0 && !(kind == "tasks_peak" && peak) {
 				continue
 			}
 			rose = true
@@ -311,9 +388,33 @@ func observeSiteSlices(ledger siteLimitLedger, statuses []transport.SiteSliceSta
 				event = &siteLimitEvent{FirstAt: at}
 				previous.Events[kind] = event
 			}
-			event.Count += n
+			if n > 0 {
+				event.Count += n
+			}
+			switch {
+			case kind == "tasks_peak":
+				// The limit the peak reached, unchanged since the last reading.
+				event.Limit = int(current.SlicePidsMax)
+			case limitUnsure:
+				event.Limit = 0
+			default:
+				event.Limit = siteLimitHeld(status, kind)
+			}
+			// Review B7: at most one hit per kind every siteLimitHitEvery,
+			// and never more than siteLimitMaxHits kept: the record's size
+			// does not grow with how often a card is read (the count stays
+			// whole: every rise adds to it).
+			last := time.Time{}
+			if len(event.Hits) > 0 {
+				last, _ = time.Parse(time.RFC3339, event.Hits[len(event.Hits)-1])
+			}
 			event.LastAt = at
-			event.Hits = append(event.Hits, at)
+			if last.IsZero() || now.Sub(last) >= siteLimitHitEvery {
+				event.Hits = append(event.Hits, at)
+			}
+			if len(event.Hits) > siteLimitMaxHits {
+				event.Hits = event.Hits[len(event.Hits)-siteLimitMaxHits:]
+			}
 		}
 		if !rose {
 			// Nothing reached: the earlier counters stay the baseline (the
@@ -366,11 +467,18 @@ type siteLimitEventView struct {
 	FirstAt  string `json:"first_at"`
 	LastAt   string `json:"last_at"`
 	Repeated bool   `json:"repeated,omitempty"`
+	// Limit (alpha.149): the limit that held then (0: not known).
+	Limit int `json:"limit,omitempty"`
 }
 
 // siteUnitStoppedOutside: a stopped unit whose effective Slice= is the
 // system slice (it would start outside the limits).
 const siteUnitStoppedOutside = "stopped_outside"
+
+// siteLimitSetByResellerBound (alpha.149): the server's default, which bounds
+// the reseller's customers where neither the server nor the reseller set a
+// ceiling (siteLimitsWithResellerBound).
+const siteLimitSetByResellerBound = "server_default_bound"
 
 type siteLimitUnitView struct {
 	siteLimitUnit
@@ -392,6 +500,13 @@ const (
 	siteLimitsOutside     = "outside"     // every program runs, or would start, outside them
 	siteLimitsNoFile      = "no_file"     // the slice file is absent: nothing is enforced
 	siteLimitsUnsupported = "unsupported" // this host cannot enforce them
+	// Third fix round (review N3): "in force" is what the kernel says.
+	siteLimitsPending = "pending" // written, but the running slice does not hold them yet
+	siteLimitsUnknown = "unknown" // the running slice's cgroup could not be read
+	// siteLimitsNotYet (review W1) is the one state a customer or reseller
+	// reads for every state they cannot act on; the administrator reads the
+	// reason and the step.
+	siteLimitsNotYet = "not_yet"
 )
 
 type siteLimitsView struct {
@@ -406,8 +521,9 @@ type siteLimitsView struct {
 	// Applies: yes, outside, no_file, unsupported (Unsupported says why).
 	Applies     string `json:"applies,omitempty"`
 	Unsupported string `json:"unsupported,omitempty"`
-	// Live is what systemd applies now (nil: no program of the site runs in
-	// its limits yet); usage now.
+	// Live is what systemd applies now (the file and every drop-in; nil where
+	// the limits do not apply); the card shows it beside the plan's value
+	// when they differ. Usage now (when a program runs in the slice).
 	Live            *transport.SiteSliceLimitsRead `json:"live,omitempty"`
 	MemoryCurrentMB int64                          `json:"memory_current_mb,omitempty"`
 	TasksCurrent    int64                          `json:"tasks_current,omitempty"`
@@ -451,8 +567,16 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 	admin := caller.Role == roleAdmin
 	reseller := caller.Role == roleReseller
 	view := siteLimitsView{Domain: site.Domain, Admin: admin, Reseller: reseller, Limits: []siteLimitValue{}, Events: []siteLimitEventView{}}
+	policy, policyErr := loadSettingPolicy(ctx, p.db.GetDB())
 	for _, key := range siteSliceKeys {
 		value := siteLimitValueOf(limits, key)
+		// alpha.149 (lab CHECK 2 W4): under a reseller the server's default
+		// bounds the reseller's field as a "server" ceiling
+		// (siteLimitsWithResellerBound); nobody set it. Named as the server's
+		// default bounding the reseller, not as the administrator's own limit.
+		if policyErr == nil && value.SetBy == settingSetByServer && policy[key].ServerCeiling == nil {
+			value.SetBy, value.SetByName = siteLimitSetByResellerBound, ""
+		}
 		if !admin && !reseller {
 			value.SetByName = ""
 		}
@@ -481,10 +605,24 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 	if resp.Unsupported != "" {
 		view.Unsupported = resp.Unsupported
 	}
-	if status.Active && view.Applies == siteLimitsApply {
+	switch view.Applies {
+	case siteLimitsApply:
+		// What systemd applies (the file and every drop-in): the card shows
+		// it beside the plan's value when they differ (review B3, C6).
 		live := status.Live
 		view.Live = &live
-		view.MemoryCurrentMB, view.TasksCurrent = status.MemoryCurrentMB, status.TasksCurrent
+		if status.Active {
+			view.MemoryCurrentMB, view.TasksCurrent = status.MemoryCurrentMB, status.TasksCurrent
+		}
+	case siteLimitsPending:
+		// Review N3: what the kernel holds now, not the values written.
+		kernel := status.Kernel
+		view.Live = &kernel
+	}
+	if !admin && view.Applies != siteLimitsApply {
+		// Review W1: a customer or reseller cannot act on any of these; they
+		// read one neutral state, the administrator the reason and the step.
+		view.Applies, view.Unsupported, view.Live = siteLimitsNotYet, "", nil
 	}
 	if admin {
 		view.SliceFile, view.Slice, view.DropIns, view.MoveInterrupted = status.File, status.Slice, status.DropIns, status.MoveInterrupted
@@ -501,11 +639,11 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 				unit.Blocked = siteUnitBlocked(found)
 			}
 			unit.Lower = found.Own.MemoryMB > memory || (found.Own.MemoryMB == 0 && unit.Placement != transport.SiteUnitAbsent && unit.Placement != transport.SiteUnitInSlice)
-			if siteUnitNeedsMove(unit.Placement, unit.Blocked) {
-				view.NeedsMove++
-			}
 			view.Units = append(view.Units, unit)
 		}
+		// The move brings these programs in, or (the file gone) writes the
+		// file again: the action the card offers does what it says.
+		view.NeedsMove = siteUnitsOutside(status)
 		view.Busy = siteMoveBusy()
 		if resp.Unsupported == "" {
 			view.Tasks = p.siteTasksViewOf(ctx, site.SiteID)
@@ -523,29 +661,55 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 	// A reader's reading keeps the administrator's Problems now line current
 	// (written only when the list changed).
 	p.noteSiteLimitOutside(ctx, resp.Sites, false, time.Now())
+	p.noteSiteMoveKept(ctx, resp.Sites, false)
 	writeRightsJSON(w, http.StatusOK, view)
 }
 
 // siteLimitsApplies says whether a site's limits hold for its programs: the
 // host can enforce them, the slice file is there (an absent file means
 // systemd runs the slice without limits), and at least one program runs or
-// would start inside them.
+// would start inside them. Review B2: an absent file is "no_file" (the file
+// was there and is gone; the next change of limits, and the move, write it
+// again) only when a unit names the slice or runs in it; otherwise the
+// site's programs were never moved into their limits (every existing site
+// right after the update): "outside".
 func siteLimitsApplies(status transport.SiteSliceStatus, unsupported string) string {
 	if unsupported != "" {
 		return siteLimitsUnsupported
 	}
 	if status.File == transport.SiteFileAbsent {
-		return siteLimitsNoFile
+		if status.Named {
+			return siteLimitsNoFile
+		}
+		return siteLimitsOutside
 	}
+	inSlice, stopped := false, false
 	for _, u := range status.Units {
-		switch placement := siteUnitPlacement(u, status.Slice); placement {
+		switch siteUnitPlacement(u, status.Slice) {
 		case transport.SiteUnitInSlice:
-			return siteLimitsApply
+			inSlice = true
 		case transport.SiteUnitStopped:
-			return siteLimitsApply // it starts inside them
+			stopped = true // it starts inside them
 		}
 	}
-	return siteLimitsOutside
+	if !inSlice && !stopped {
+		return siteLimitsOutside
+	}
+	// Review N3: where the slice runs, the limits are in force only when its
+	// cgroup holds what systemd applies; a slice that does not run takes the
+	// file when a program starts. Anything not read is not "in force".
+	switch status.KernelState {
+	case transport.SiteSliceInForce:
+		return siteLimitsApply
+	case transport.SiteSlicePending:
+		return siteLimitsPending
+	case transport.SiteSliceKernelUnknown:
+		return siteLimitsUnknown
+	}
+	if inSlice {
+		return siteLimitsUnknown // a program runs in the slice but its cgroup was not read
+	}
+	return siteLimitsApply
 }
 
 // siteUnitPlacement is where a unit runs as the card says it; a stopped unit
@@ -585,11 +749,17 @@ func siteUnitNeedsMove(placement, blocked string) bool {
 	return blocked == "" && (placement == transport.SiteUnitOutside || placement == siteUnitStoppedOutside)
 }
 
-// siteUnitsOutside counts a site's programs the move would bring in.
+// siteUnitsOutside counts a site's programs outside its limits that the
+// move takes care of: the ones it brings in and, where the slice file is
+// gone while units use the slice (nothing limits them; review B2), the ones
+// inside the slice too (the move writes the file again).
 func siteUnitsOutside(status transport.SiteSliceStatus) int {
 	n := 0
+	noFile := status.File == transport.SiteFileAbsent && status.Named
 	for _, u := range status.Units {
-		if siteUnitNeedsMove(siteUnitPlacement(u, status.Slice), siteUnitBlocked(u)) {
+		placement := siteUnitPlacement(u, status.Slice)
+		if siteUnitNeedsMove(placement, siteUnitBlocked(u)) ||
+			(noFile && (placement == transport.SiteUnitInSlice || placement == transport.SiteUnitStopped)) {
 			n++
 		}
 	}
@@ -610,7 +780,7 @@ func siteLimitEventViews(record *siteLimitRecord, now time.Time) []siteLimitEven
 			}
 		}
 		out = append(out, siteLimitEventView{Kind: kind, Count: event.Count, FirstAt: event.FirstAt, LastAt: event.LastAt,
-			Repeated: recent >= siteLimitRepeatHits})
+			Repeated: recent >= siteLimitRepeatHits, Limit: event.Limit})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].LastAt > out[j].LastAt })
 	return out
@@ -631,6 +801,40 @@ func siteMoveBusy() bool {
 	return siteMoveRunning
 }
 
+// siteMoveUpdateInProgress (alpha.149 fix round, F6): an update this panel
+// admitted is still queued or running by the agent's own status (a seam for
+// tests).
+var siteMoveUpdateInProgress = func(p *Panel, ctx context.Context) bool {
+	return p.admittedPanelUpdateInProgress(ctx)
+}
+
+// siteMovePressBudget is the Agent's own budget of one press (its
+// siteMoveBudget); siteMovePressBudgetLeft is what is left of it once the
+// site's scheduled tasks moved first in the same press (alpha.150: one
+// press, one deadline). At least one second: the Agent's own time rule then
+// moves no program and says that the time ran out.
+const siteMovePressBudget = 11 * time.Minute
+
+func siteMovePressBudgetLeft(started time.Time) int {
+	left := int((siteMovePressBudget - time.Since(started)) / time.Second)
+	if left < 1 {
+		left = 1
+	}
+	return left
+}
+
+// siteMoveClaimRefusal: a refusal of the tasks part that came before
+// anything was changed and that the programs part would answer the same way
+// (alpha.150: main's codes for a kept record, the panel's update, another
+// move and a site being changed).
+func siteMoveClaimRefusal(code string) bool {
+	switch code {
+	case transport.SiteMoveRefusalKept, "update_running", "update_unreadable", "another_move", "site_busy":
+		return true
+	}
+	return false
+}
+
 // moveSiteSliceCall is the Agent call (tests replace it).
 var moveSiteSliceCall = func(p *Panel, ctx context.Context, req *transport.MoveSiteSliceRequest) (transport.MoveSiteSliceResponse, error) {
 	var resp transport.MoveSiteSliceResponse
@@ -646,6 +850,9 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 	}
 	var req struct {
 		RequestID string `json:"request_id"`
+		// Recover (review N2): "Try again" for a move whose put-back did not
+		// complete; the Agent runs the put-back now and moves nothing new.
+		Recover bool `json:"recover"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil || !refreshRequestIDPattern.MatchString(req.RequestID) {
 		writeClientError(w, http.StatusBadRequest, "a request id is required")
@@ -673,62 +880,95 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()
+	// alpha.149 fix round (F6): never while the panel's own update is
+	// admitted or running (it would stop the agent in the middle of the
+	// move). The update refuses itself while this move runs (siteMoveBusy);
+	// the agent refuses both ways too.
+	if siteMoveUpdateInProgress(p, ctx) {
+		writeServiceAppRefusal(w, http.StatusConflict, "site_limits_update_running",
+			"Nothing was moved: the panel's update is in progress. Move the site after the update has finished.", nil)
+		return
+	}
 	sites, err := p.siteLimitSites(ctx, domainID)
 	if err != nil || len(sites) != 1 {
 		writeClientError(w, http.StatusNotFound, "site not found for domain")
 		return
 	}
 	site := sites[0]
-	slice := p.siteSliceForSubscription(ctx, site.SiteID, site.SubscriptionID, site.Domain)
-	if slice == nil {
-		writeServiceAppRefusal(w, http.StatusConflict, "site_limits_nothing",
-			"Nothing was changed: this site's limits could not be read.", nil)
-		return
-	}
-	// S4 R2b: the site's scheduled tasks first (no restart; nothing
-	// half-moved), then its programs. A site without programs moves its
-	// tasks only.
-	tasks, tasksErr := p.moveSiteTasks(ctx, site, req.RequestID, false)
-	if tasksErr != nil {
-		tasks = &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "the server did not answer about the scheduled tasks; read this page again"}
-	}
 	resp := transport.MoveSiteSliceResponse{Units: []transport.SiteSliceMoved{}, Done: true}
-	// S4 R2b second fix round: a tasks part whose result is unknown (it may
-	// have left its journal), or that was refused for an earlier move that
-	// is unresolved, does not start the programs part: a new move would
-	// overwrite or delete the only record of the crontab.
-	tasksUnresolved := tasks.Outcome == transport.SiteTasksUnknown || tasks.Refusal == transport.SiteMoveRefusalUnresolved
-	if tasksUnresolved {
-		resp.Done, resp.Refusal = false, tasks.Refusal
-		resp.Error = tasks.Error
-		if resp.Error == "" {
-			resp.Error = "the result of the scheduled tasks' move is not known, so the programs were not moved; read this page again"
-		}
-	}
-	if len(site.Units) > 0 && !tasksUnresolved {
-		move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID,
-			Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID}
-		for _, u := range site.Units {
-			move.Units = append(move.Units, u.Unit)
-		}
+	var tasks *transport.SiteTasksMoveResponse
+	if req.Recover {
+		// Try again (review N2; alpha.150 one record): the Agent settles the
+		// kept record, of the site's programs or of its scheduled tasks, and
+		// moves nothing new.
+		move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID, Recover: true}
 		var err error
-		resp, err = moveSiteSliceCall(p, ctx, move)
-		if err != nil {
+		if resp, err = moveSiteSliceCall(p, ctx, move); err != nil {
 			writeServiceAppRefusal(w, http.StatusServiceUnavailable, "agent_unreachable",
 				"The server did not answer, so the result is unknown. Read this page again before you try again.", nil)
 			return
 		}
+	} else {
+		slice := p.siteSliceForSubscription(ctx, site.SiteID, site.SubscriptionID, site.Domain)
+		if slice == nil {
+			writeServiceAppRefusal(w, http.StatusConflict, "site_limits_nothing",
+				"Nothing was changed: this site's limits could not be read.", nil)
+			return
+		}
+		// S4 R2b: the site's scheduled tasks first (no restart; nothing
+		// half-moved), then its programs. A site without programs moves its
+		// tasks only. One press, one deadline (alpha.150): the programs part
+		// gets what is left of the move's budget.
+		pressStarted := time.Now()
+		var tasksErr error
+		tasks, tasksErr = p.moveSiteTasks(ctx, site, req.RequestID, false)
+		if tasksErr != nil {
+			tasks = &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "the server did not answer about the scheduled tasks; read this page again"}
+		}
+		// A tasks part whose result is unknown (it may have left its record),
+		// or that was refused before it began (a kept record, the panel's
+		// update, another move, the site being changed), does not start the
+		// programs part: it would be refused the same way, or overwrite the
+		// only record of the crontab.
+		switch {
+		case tasks.Outcome == transport.SiteTasksUnknown:
+			resp.Done, resp.Kept = false, tasks.Recovery != nil
+			resp.Recovery, resp.Reason = tasks.Recovery, &transport.SiteMoveReason{Code: "not_finished"}
+			resp.Error = tasks.Error
+			if resp.Error == "" {
+				resp.Error = "the result of the scheduled tasks' move is not known, so the programs were not moved; read this page again"
+			}
+		case siteMoveClaimRefusal(tasks.Refusal):
+			resp.Done, resp.Kept = false, tasks.Refusal == transport.SiteMoveRefusalKept
+			resp.Reason, resp.Error = &transport.SiteMoveReason{Code: tasks.Refusal}, tasks.Error
+		case len(site.Units) > 0:
+			move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID,
+				Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID,
+				BudgetSeconds: siteMovePressBudgetLeft(pressStarted)}
+			for _, u := range site.Units {
+				move.Units = append(move.Units, u.Unit)
+			}
+			var err error
+			if resp, err = moveSiteSliceCall(p, ctx, move); err != nil {
+				writeServiceAppRefusal(w, http.StatusServiceUnavailable, "agent_unreachable",
+					"The server did not answer, so the result is unknown. Read this page again before you try again.", nil)
+				return
+			}
+		}
+		resp.Tasks = tasks
+		switch tasks.Outcome {
+		case transport.SiteTasksMoved, transport.SiteTasksAlready, transport.SiteTasksCrontabBack:
+			p.noteSiteTasksOutside(ctx, nil, map[int]bool{site.SiteID: true}, time.Now())
+		}
 	}
-	resp.Tasks = tasks
-	switch tasks.Outcome {
-	case transport.SiteTasksMoved, transport.SiteTasksAlready, transport.SiteTasksCrontabBack:
-		p.noteSiteTasksOutside(ctx, nil, map[int]bool{site.SiteID: true}, time.Now())
+	tasksOutcome, tasksError, tasksBlocking := "", "", 0
+	if tasks != nil {
+		tasksOutcome, tasksError, tasksBlocking = tasks.Outcome, tasks.Error, len(tasks.Blocking)
 	}
-	p.refreshSiteMoveUnresolved(ctx)
 	p.auditDetailed(r, "site.limits_move", "domain", domainID, map[string]any{
 		"request_id": req.RequestID, "site": site.Domain, "done": resp.Done, "rolled_back": resp.RolledBack,
-		"units": resp.Units, "error": resp.Error, "wait_seconds": resp.WaitSeconds,
-		"tasks": tasks.Outcome, "tasks_error": tasks.Error, "tasks_blocking": len(tasks.Blocking),
+		"units": resp.Units, "error": resp.Error, "wait_seconds": resp.WaitSeconds, "recover": req.Recover, "kept": resp.Kept,
+		"recovery": resp.Recovery, "tasks": tasksOutcome, "tasks_error": tasksError, "tasks_blocking": tasksBlocking,
 	})
 	siteMoveMu.Lock()
 	siteMoveAnswers[req.RequestID] = resp
@@ -797,8 +1037,12 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	siteLimitLedgerMu.Unlock()
 	outside := p.setting(ctx, settingSiteLimitOutside)
 	host := p.setting(ctx, settingSiteLimitHost)
-	if len(ledger) == 0 && outside == "" && host == "" {
-		return nil
+	kept := p.setting(ctx, settingSiteMoveKept)
+	// Review B3 and B5: a change of limits that did not reach every site,
+	// and a default memory limit fixed for the host's earlier memory.
+	extra := append(siteLimitApplyProblem(p.setting(ctx, settingSiteLimitApply)), p.siteMemoryDefaultProblem(ctx)...)
+	if len(ledger) == 0 && outside == "" && host == "" && kept == "" {
+		return extra
 	}
 	names := map[string]string{}
 	if rows, err := p.db.GetDB().QueryContext(ctx, `SELECT s.id, d.name FROM sites s JOIN domains d ON d.id = s.domain_id`); err == nil {
@@ -839,9 +1083,155 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 		}
 	}
 	sort.Slice(problems, func(i, j int) bool { return problems[i].Key < problems[j].Key })
+	problems = append(problems, siteMoveKeptProblem(kept, p.setting(ctx, settingSiteMoveStopped), names)...)
 	problems = append(problems, siteLimitHostProblem(host)...)
-	problems = append(problems, siteMoveUnresolvedProblem(outside, names)...)
+	problems = append(problems, extra...)
 	return append(problems, siteLimitsOutsideProblem(outside, names)...)
+}
+
+// --- A move whose put-back did not complete (review N2) ----------------------------
+
+// settingSiteMoveKept keeps the sites whose move record the Agent keeps (its
+// put-back did not complete; no site is moved until it is settled), as the
+// last reading said: site id -> since when (panel_settings; no schema
+// change). Written only when the list changes.
+const settingSiteMoveKept = "site_move_kept_v1"
+
+var siteMoveKeptMu sync.Mutex
+
+// noteSiteMoveKept records a reading: whole (the background reading of every
+// site) replaces the list; one site's card changes that site only.
+func (p *Panel) noteSiteMoveKept(ctx context.Context, statuses []transport.SiteSliceStatus, whole bool) {
+	siteMoveKeptMu.Lock()
+	defer siteMoveKeptMu.Unlock()
+	raw := p.setting(ctx, settingSiteMoveKept)
+	previous := map[string]string{}
+	if raw != "" {
+		_ = json.Unmarshal([]byte(raw), &previous)
+	}
+	next := map[string]string{}
+	if !whole {
+		for k, v := range previous {
+			next[k] = v
+		}
+	}
+	stoppedRaw := p.setting(ctx, settingSiteMoveStopped)
+	stoppedBefore := map[string]string{}
+	if stoppedRaw != "" {
+		_ = json.Unmarshal([]byte(stoppedRaw), &stoppedBefore)
+	}
+	stopped := map[string]string{}
+	if !whole {
+		for k, v := range stoppedBefore {
+			stopped[k] = v
+		}
+	}
+	for _, status := range statuses {
+		key := strconv.Itoa(status.SiteID)
+		delete(stopped, key)
+		if status.MoveInterrupted != nil && status.MoveInterrupted.Kept {
+			next[key] = status.MoveInterrupted.At
+			if units := siteMoveStoppedUnits(status.MoveInterrupted); units != "" {
+				stopped[key] = units
+			}
+		} else {
+			delete(next, key)
+		}
+	}
+	if !reflect.DeepEqual(stopped, stoppedBefore) {
+		value := ""
+		if len(stopped) > 0 {
+			if encoded, err := json.Marshal(stopped); err == nil {
+				value = string(encoded)
+			}
+		}
+		if err := p.setSetting(ctx, settingSiteMoveStopped, value); err != nil {
+			log.Printf("site limits: the programs not running after a move were not recorded: %v", err)
+		}
+	}
+	if reflect.DeepEqual(next, previous) {
+		return
+	}
+	value := ""
+	if len(next) > 0 {
+		encoded, err := json.Marshal(next)
+		if err != nil {
+			return
+		}
+		value = string(encoded)
+	}
+	if err := p.setSetting(ctx, settingSiteMoveKept, value); err != nil {
+		log.Printf("site limits: the unfinished move was not recorded: %v", err)
+	}
+}
+
+// settingSiteMoveStopped (alpha.149, lab D6) keeps, per site whose move
+// record is kept, its programs that were put back with their earlier file but
+// do not run (recovery outcome "failed"): site id -> unit names (comma
+// separated). Written only when it changes.
+const settingSiteMoveStopped = "site_move_stopped_v1"
+
+// siteMoveStoppedUnits names a kept record's programs that do not run.
+func siteMoveStoppedUnits(record *transport.SiteSliceMoveRecovery) string {
+	var units []string
+	for unit, state := range record.Units {
+		if state == transport.SiteMoveFailed {
+			units = append(units, unit)
+		}
+	}
+	sort.Strings(units)
+	return strings.Join(units, ", ")
+}
+
+// siteMoveKeptProblem is ONE line, for the administrator, while the Agent
+// keeps a move's record: a program may be stopped and no site is moved until
+// it is settled; it opens the site, whose card names each program left, the
+// next step and "Try again". alpha.149 (lab D6): where a program was put back
+// but does not run, the line names it (Name: the programs), so it says that
+// it is not running now, who acts and the next step.
+func siteMoveKeptProblem(raw, stoppedRaw string, names map[string]string) []monitoringProblem {
+	if raw == "" {
+		return nil
+	}
+	kept := map[string]string{}
+	if err := json.Unmarshal([]byte(raw), &kept); err != nil {
+		return nil
+	}
+	stopped := map[string]string{}
+	if stoppedRaw != "" {
+		_ = json.Unmarshal([]byte(stoppedRaw), &stopped)
+	}
+	var sites, programs []string
+	first := ""
+	since := ""
+	for key, at := range kept {
+		if name := names[key]; name != "" {
+			sites = append(sites, name)
+			if since == "" || at < since {
+				since = at
+			}
+			if units := stopped[key]; units != "" {
+				programs = append(programs, units)
+				if first == "" || name < first {
+					first = name
+				}
+			}
+		}
+	}
+	if len(sites) == 0 {
+		return nil
+	}
+	sort.Strings(sites)
+	sort.Strings(programs)
+	open := sites[0]
+	if first != "" {
+		open = first // the site of a program that does not run first
+	}
+	return []monitoringProblem{{
+		Key: "site_move_kept", Kind: "site_move_kept", Severity: "warning", Actor: "administrator",
+		Subject: strings.Join(sites, ", "), Name: strings.Join(programs, ", "), Value: float64(len(sites)), Since: since, ObservedAt: since,
+		Action: monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(open)},
+	}}
 }
 
 // --- A host that cannot enforce a site's limits -------------------------------------
@@ -907,9 +1297,6 @@ type siteLimitOutside struct {
 	Sites     map[string]int `json:"sites,omitempty"`
 	// Tasks (S4 R2b): sites whose scheduled tasks still run in cron.
 	Tasks map[string]bool `json:"tasks,omitempty"`
-	// Unresolved (S4 R2b second fix round): a move the Agent could not
-	// resolve; every new move and undo is refused until it is.
-	Unresolved *transport.SiteMoveUnresolved `json:"unresolved,omitempty"`
 }
 
 var siteLimitOutsideMu sync.Mutex
@@ -986,6 +1373,11 @@ func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
 	p.noteSiteLimitHost(ctx, resp.Unsupported, now)
 	p.noteSiteSlices(ctx, resp.Sites, true, now)
 	p.noteSiteLimitOutside(ctx, resp.Sites, true, now)
+	if resp.Partial == "" {
+		p.noteSiteMoveKept(ctx, resp.Sites, true)
+	} else {
+		p.noteSiteMoveKept(ctx, resp.Sites, false)
+	}
 	p.readAllSiteTasks(ctx, all, resp.Unsupported, now)
 	return true
 }

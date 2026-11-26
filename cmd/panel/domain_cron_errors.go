@@ -51,6 +51,13 @@ const cronJobDuplicateMessage = "A scheduled task with the same schedule and com
 const cronJobAmbiguousMessage = "This task stands twice in the crontab, so CelikPanel cannot tell which line to change and changed nothing. " +
 	"The server owner removes one of the two lines on the server (sudo crontab -u <site user> -e), then reloads this list."
 
+// A task that is a line not made in CelikPanel is not edited or enabled
+// (S4 R1, second fix round): the administrator keeps it first; anyone may
+// delete it.
+// CelikPanel'de yapılmamış satır değiştirilmez; yönetici önce tutar.
+const cronJobOutsidePanelMessage = "This task was not made in CelikPanel, so it is not changed or enabled here. " +
+	"The administrator keeps it first (Keep) if it is meant to stay; anyone may delete it."
+
 // agentReportedCronNotInstalled matches the Agent's exact answer. Older Agents
 // returned the same text from AddCronJob, so they are classified too.
 // agentReportedCronNotInstalled, Agent'ın tam yanıtını eşler.
@@ -118,6 +125,10 @@ func writeCronAgentError(w http.ResponseWriter, err error, reason string) {
 	case agentAnsweredExactly(err, transport.CronJobDuplicate):
 		log.Printf("[409][cron] duplicate task refused")
 		writeCodedError(w, http.StatusConflict, errCodeCronJobDuplicate, cronJobDuplicateMessage, "")
+		return
+	case agentAnsweredExactly(err, transport.CronJobOutsidePanel):
+		log.Printf("[409][cron] a line not made in CelikPanel was not changed")
+		writeCodedError(w, http.StatusConflict, errCodeCronJobOutsidePanel, cronJobOutsidePanelMessage, "")
 		return
 	case agentAnsweredExactly(err, transport.SiteTasksSourceHeld):
 		// S4 R2b: the server owner changed the site's task file by hand; it

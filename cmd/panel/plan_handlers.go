@@ -51,6 +51,11 @@ type planPayload struct {
 	// ConfirmNarrowing confirms an edit that takes items away from the
 	// subscriptions on the plan (PLAN_NARROWING_CONFIRM shows them first).
 	ConfirmNarrowing bool `json:"confirm_narrowing,omitempty"`
+	// ConfirmStopped (S4 R2a second fix round) is the preview's
+	// stopped_token: a lowered site limit below what sites use now is saved
+	// only with the token of the list the server answers now
+	// (site_limits.go siteLimitsStoppedToken).
+	ConfirmStopped string `json:"confirm_stopped,omitempty"`
 	// Ceilings (alpha.128, setting_limits.go): the plan's limits of site
 	// settings, key -> value; absent keys are "up to the level above".
 	// Absent on a create: none; absent on an edit: unchanged.
@@ -484,11 +489,10 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// S4 R2a: and a lowered site limit below what a site's programs use
-		// now (the system stops them at once).
-		if action == "preview" || !pl.ConfirmNarrowing {
-			if subs, err := subscriptionsOnPlan(r.Context(), p.db.GetDB(), id); err == nil {
-				p.previewSiteLimitsLowered(r.Context(), &preview, subs, ceilingsBefore, ceilingsAfter)
-			}
+		// now, read on every request that lowers one: the list is enforced
+		// by the server (its token), not only shown.
+		if subs, err := subscriptionsOnPlan(r.Context(), p.db.GetDB(), id); err == nil {
+			p.previewSiteLimitsLowered(r.Context(), &preview, subs, ceilingsBefore, ceilingsAfter)
 		}
 		if action == "preview" {
 			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
@@ -496,7 +500,8 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		}
 		// Taking items away is shown first (6.4, P7); so is a lowered
 		// ceiling that sites of the plan are above (alpha.128).
-		if (len(preview.Removed) > 0 || preview.SitesAboveCount > 0 || preview.SitesUnread || preview.SitesStoppedCount > 0) && !pl.ConfirmNarrowing {
+		if ((len(preview.Removed) > 0 || preview.SitesAboveCount > 0 || preview.SitesUnread || preview.SitesStoppedCount > 0) && !pl.ConfirmNarrowing) ||
+			!siteLimitsStoppedConfirmed(preview, pl.ConfirmStopped) {
 			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
 			return
 		}
@@ -513,6 +518,10 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 				"", over)
 			return
 		}
+		// Second review of PR #370 (finding 4): the subscriptions' connection
+		// limits before the Save, so the limits earlier releases wrote without
+		// a record follow it.
+		prevConnections := p.dbConnectionLimitsBefore(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter)
 		tx, err := p.db.GetDB().BeginTx(r.Context(), nil)
 		if err != nil {
 			writeServerError(w, fmt.Errorf("begin service plan update: %w", err))
@@ -583,10 +592,16 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			p.reapplyPlanSiteLimits(id)
 		}
 		// alpha.128 (G5): database users follow a changed connection limit.
-		p.reapplyDBConnectionLimitsAfter(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter)
+		// alpha.149: the answer says which users did not get the plan's
+		// database limits (database_limits_problems.go).
+		dbLimits := p.reapplyDBLimitsAfterAnswer(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter, prevConnections)
 		// alpha.128 (integration): outgoing mail follows the mail keys.
 		p.requestOutgoingApply()
-		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
+		answer := map[string]any{"success": true}
+		if dbLimits != nil {
+			answer["db_limits"] = dbLimits
+		}
+		if err := json.NewEncoder(w).Encode(answer); err != nil {
 			log.Printf("encode service plan update: %v", err)
 		}
 

@@ -1,0 +1,107 @@
+{{define "masthead" -}}
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="{{link "home"}}"{{if current "home"}} aria-current="page"{{end}}><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> {{t "nav.home"}}</span></a>
+<span class="docid">{{t "common.docid"}} · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time></span>
+<nav aria-label="{{t "nav.label"}}"><ul>
+<li><a href="{{link "systems"}}"{{if current "systems"}} aria-current="page"{{end}}>{{t "nav.systems"}}</a></li>
+<li><a href="{{link "download"}}"{{if current "download"}} aria-current="page"{{end}}>{{t "nav.download"}}</a></li>
+<li><a href="{{link "pricing"}}"{{if current "pricing"}} aria-current="page"{{end}}>{{t "nav.pricing"}}</a></li>
+<li><a href="{{link "releases"}}"{{if current "releases"}} aria-current="page"{{end}}>{{t "nav.releases"}}</a></li>
+<li><a href="{{guide ""}}">{{t "nav.guide"}}</a></li>
+<li><a href="{{account "login"}}">{{t "nav.signin"}}</a></li>
+{{- range langs}}{{if ne . $.Lang}}
+<li><a href="{{in .}}" hreflang="{{.}}" lang="{{.}}" data-set-lang="{{.}}" aria-label="{{if eq . "en"}}English{{else}}Türkçe{{end}}">{{if eq . "en"}}EN{{else}}TR{{end}}</a></li>
+{{- end}}{{end}}
+</ul></nav>
+</div>
+</header>
+{{- end}}
+
+{{define "footer" -}}
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>{{t "footer.tagline"}}</p><p>{{t "footer.copyright"}}</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">{{t "footer.product"}}</h2><ul>
+<li><a href="{{link "systems"}}">{{t "nav.systems"}}</a></li>
+<li><a href="{{link "download"}}">{{t "nav.download"}}</a></li>
+<li><a href="{{link "pricing"}}">{{t "nav.pricing"}}</a></li>
+<li><a href="{{link "releases"}}">{{t "nav.releases"}}</a></li>
+<li><a href="{{link "changelog"}}">{{t "footer.changelog"}}</a></li>
+<li><a href="{{guide ""}}">{{t "footer.guide"}}</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">{{t "footer.account"}}</h2><ul>
+<li><a href="{{account "login"}}">{{t "nav.signin"}}</a></li>
+<li><a href="{{account "register"}}">{{t "footer.register"}}</a></li>
+<li><a href="{{account "terms"}}">{{t "footer.terms"}}</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">{{t "footer.help"}}</h2><ul>
+<li><a href="{{feedback "security"}}">{{t "footer.security"}}</a></li>
+<li><a href="{{link "problems"}}">{{t "footer.problems"}}</a></li>
+<li><a href="{{feedback "bug"}}">{{t "footer.bug"}}</a></li>
+<li><a href="{{feedback "feature"}}">{{t "footer.feature"}}</a></li>
+</ul></nav>
+</div>
+</footer>
+{{- end}}
+
+{{/* A part's side heading: number, title and one plain sentence. */}}
+{{define "head" -}}
+<header>{{if .Num}}<span class="num">{{.Num}}</span>{{end}}<h2 id="{{.ID}}">{{.Title}}</h2>{{if .Text}}<p>{{.Text}}</p>{{end}}</header>
+{{- end}}
+
+{{/* Screen frame. A screen is one name in site.go's shots; its captures are
+   assets/shots/<name>-<lang>-<light|dark>[-2x|-phone].webp, so a new capture
+   replaces files and changes no template. */}}
+{{define "figure" -}}
+{{$s := shot .Name}}
+<figure class="fig">
+<picture>
+<source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="{{$s.dark.Phone}}" width="780" height="1688">
+<source media="(max-width: 640px)" srcset="{{$s.light.Phone}}" width="780" height="1688">
+<source media="(prefers-color-scheme: dark)" srcset="{{$s.dark.One}} 1280w, {{$s.dark.Two}} 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="{{$s.Width}}" height="{{$s.Height}}">
+<img src="{{$s.light.One}}" srcset="{{$s.light.One}} 1280w, {{$s.light.Two}} 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="{{$s.Width}}" height="{{$s.Height}}" alt="{{.Alt}}"{{if not .Eager}} loading="lazy"{{end}} decoding="async">
+</picture>
+<figcaption><b>{{t "common.fig"}} {{.Num}}.</b> {{.Caption}}</figcaption>
+</figure>
+{{- end}}
+
+{{define "command" -}}
+<div class="cmd">
+<div class="cmd-head"><h3 id="cmd-title-{{.ID}}">{{t "install.command.title"}}</h3><button class="copy" type="button" hidden data-copy="cmd-{{.ID}}" data-copied="{{t "install.command.copied"}}" data-failed="{{t "install.command.failed"}}">{{t "install.command.copy"}}</button></div>
+<pre tabindex="0" aria-labelledby="cmd-title-{{.ID}}"><code id="cmd-{{.ID}}">timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+sh celikpanel-install.sh</code></pre>
+<p class="note">{{t "install.command.note"}}</p>
+<p class="sr-only" role="status" data-copy-status></p>
+</div>
+{{- end}}
+
+{{define "steps" -}}
+<div class="table">
+<table class="stack">
+<caption>{{t "common.table"}} {{.Num}} · {{t "install.steps.caption"}}</caption>
+<thead><tr><th scope="col" class="n">{{t "install.steps.step"}}</th><th scope="col">{{t "install.steps.what"}}</th><th scope="col">{{t "install.steps.where"}}</th></tr></thead>
+<tbody>
+{{- range $i, $k := (list "account" "server" "run" "wizard")}}
+<tr><td class="v" data-k="{{t "install.steps.step"}}">{{index (list "1" "2" "3" "4") $i}}</td><td data-k="{{t "install.steps.what"}}">{{t (print "install.step." $k)}}</td><td data-k="{{t "install.steps.where"}}">{{t (print "install.step." $k ".where")}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+{{- end}}
+
+{{define "systems-table" -}}
+<div class="table">
+<table class="stack">
+<caption>{{t "common.table"}} {{.Num}} · {{t "systems.table.caption"}}</caption>
+<thead><tr><th scope="col">{{t "systems.table.system"}}</th><th scope="col">{{t "systems.table.status"}}</th><th scope="col">{{t "systems.table.until"}}</th><th scope="col">{{t "systems.table.updates"}}</th></tr></thead>
+<tbody>
+{{- range $k := (list "debian13" "ubuntu2404" "debian12" "ubuntu2204" "arch")}}
+<tr><th scope="row">{{t (print "systems." $k ".name")}} <span class="code-name">{{t (print "systems." $k ".code")}}</span></th><td data-k="{{t "systems.table.status"}}"><span class="tag {{if or (eq $k "debian13") (eq $k "ubuntu2404")}}ok{{else}}no{{end}}">{{if or (eq $k "debian13") (eq $k "ubuntu2404")}}{{t "systems.tested"}}{{else if eq $k "arch"}}{{t "systems.development"}}{{else}}{{t "systems.supported"}}{{end}}</span></td><td{{if ne $k "arch"}} class="v"{{end}} data-k="{{t "systems.table.until"}}">{{t (print "systems." $k ".until")}}</td><td data-k="{{t "systems.table.updates"}}">{{if eq $k "arch"}}{{t "systems.updates.arch"}}{{else}}{{t "systems.updates.choice"}}{{end}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+<p class="note">{{t "systems.table.note"}}</p>
+{{- end}}

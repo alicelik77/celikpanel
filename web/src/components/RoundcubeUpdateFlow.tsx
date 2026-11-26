@@ -20,6 +20,7 @@ import { LifeLine, type Tone } from './LifeLine';
 import { invalidate } from '../lib/remote';
 import { readWebmailUpdateOperation as readOperation, ROUNDCUBE_UPDATE_URL, webmailUpdateOutcome, type WebmailUpdateOperation } from '../lib/roundcubeUpdate';
 import { isWebmailAddressURL } from '../lib/webmailAddress';
+import { settlePhaseKey } from '../lib/componentOperationGuidance';
 
 export interface RoundcubeUpdateOutcome {
     tone: Tone;
@@ -124,7 +125,7 @@ export function useRoundcubeUpdate({ current, latest, lastUpdate, onChanged }: {
                 return;
             }
             const raw = await res.text();
-            let body: { operation?: WebmailUpdateOperation; error?: string | { code?: string; message?: string }; code?: string } = {};
+            let body: { operation?: WebmailUpdateOperation; error?: string | { code?: string; message?: string }; code?: string; reason?: string } = {};
             try {
                 body = JSON.parse(raw);
             } catch {
@@ -137,7 +138,13 @@ export function useRoundcubeUpdate({ current, latest, lastUpdate, onChanged }: {
             }
             const code = typeof body.error === 'object' ? body.error?.code : body.code;
             if (res.status === 409 && (code === 'service_operation_busy' || code === 'server_setup_busy')) {
-                setNotice({ tone: 'info', text: t('life.webmail.busy') });
+                // alpha.145 lab, D1: an earlier change being recorded, or one
+                // that could not be, says so and who acts.
+                const settle = code === 'service_operation_busy' && (body.reason === 'settling' || body.reason === 'unsettled') ? body.reason : '';
+                const text = settle === 'unsettled'
+                    ? t('err.service_operation_busy.unsettled')
+                    : settle === 'settling' ? t('err.service_operation_busy.settling') : t('life.webmail.busy');
+                setNotice({ tone: settle === 'unsettled' ? 'warn' : 'info', text });
                 return;
             }
             const reason = typeof body.error === 'object' ? body.error?.message ?? '' : body.error ?? '';
@@ -155,7 +162,10 @@ export function useRoundcubeUpdate({ current, latest, lastUpdate, onChanged }: {
     let phase = '';
     const running = following || (shown !== null && (shown.status === 'queued' || shown.status === 'running'));
     if (shown && running) {
-        phase = shown.phase === 'scanning' ? t('life.webmail.phaseScanning') : '';
+        // alpha.145 lab, D1: a row being recorded after the panel lost contact
+        // with its agent says so, never a bare "updating" without an end.
+        const settle = settlePhaseKey(shown.phase);
+        phase = settle ? t(settle) : shown.phase === 'scanning' ? t('life.webmail.phaseScanning') : '';
     } else if (shown && !notice) {
         const said = webmailUpdateOutcome(shown);
         const ownTerminal = operation !== null;

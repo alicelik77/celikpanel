@@ -50,6 +50,13 @@ func validateDatabaseIdentity(database backupspec.DatabaseIdentity) (backupspec.
 	default:
 		return backupspec.DatabaseIdentity{}, errors.New("unsupported database type")
 	}
+	// alpha.149 (security, second review of PR #370 finding 2): every caller
+	// (backup, restore, import with "empty first", export, copy, the
+	// database tools) acts on a site's database; the engine's own system
+	// database is never one.
+	if systemDatabaseName(database.Type, database.Name) {
+		return backupspec.DatabaseIdentity{}, errSystemDatabase
+	}
 	if err := validDatabaseCluster(database); err != nil {
 		return backupspec.DatabaseIdentity{}, err
 	}

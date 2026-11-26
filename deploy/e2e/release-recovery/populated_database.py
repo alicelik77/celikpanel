@@ -129,6 +129,11 @@ MIGRATIONS = {
     # triggers on domains, domain_aliases and subscriptions; no table,
     # column or row added or changed).
     80: '23da9e62270719c0aa8654b113f8ef3290508af097aca1201cdd5ecc740a85e4',
+    # Fix round after the alpha.142 lab (21 November 2026): 81 the six
+    # triggers of 80 again, with one's own subdomain under a server name or an
+    # administrator's name let through (no table, column or row added or
+    # changed).
+    81: 'cb26749769585736fc7a37382a9d091fd98d579a460474ae074b68af78f1a984',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -173,6 +178,7 @@ SCHEMAS = {
     78: 'b37c7ec8ab2efff1fedf38d1af06c2ee44188147eb0a3fbcdf46e5bdca2cb1f3',
     79: 'e31f87ac1a3919eb50864c32987db5e374cf6aafa078a7e29ff38022cffd8168',
     80: 'b802ecd673e5ebb7352c569d8c1bf8a49677403239c13d930ae832171170a66c',
+    81: '49075dff80f3cfd6bdaac60c998d65a9e497a80e3c77691f66b0eeb480d0b16d',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -233,6 +239,8 @@ NEW_TABLES_78 = NEW_TABLES_77
 NEW_TABLES_79 = NEW_TABLES_78 | {'database_grant_forms', 'database_grant_form_engines'}
 # Migration 80 adds no table: triggers only (the one name rule).
 NEW_TABLES_80 = NEW_TABLES_79
+# Migration 81 adds no table: the triggers of 80 again.
+NEW_TABLES_81 = NEW_TABLES_80
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -269,7 +277,7 @@ NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_T
               70: NEW_TABLES_70, 71: NEW_TABLES_71,
               72: NEW_TABLES_72, 73: NEW_TABLES_73, 74: NEW_TABLES_74,
               75: NEW_TABLES_75, 76: NEW_TABLES_76, 77: NEW_TABLES_77, 78: NEW_TABLES_78,
-              79: NEW_TABLES_79, 80: NEW_TABLES_80}
+              79: NEW_TABLES_79, 80: NEW_TABLES_80, 81: NEW_TABLES_81}
 # Migration 57 resets bandwidth_quota_mb of these old tables to 0. The old
 # value is only inside the sealed row digest, so a reset row is accepted only
 # when its digest is reproduced with one of these old values (NULL in 001's

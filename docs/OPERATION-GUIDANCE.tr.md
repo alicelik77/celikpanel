@@ -11241,3 +11241,197 @@ yüklenir). Testler: `cmd/panel/webmail_address_dns_record_test.go`,
 üzerinden), `web/tests/webmail-dns-add-alpha135.test.mjs`. Açık: gerçek bir
 çiftte lab denemesi henüz yok; kartın görünmesi için yedek sunucuda Roundcube
 kurulu olmalıdır.
+
+### alpha.143 laboratuvarının düzeltmeleri (alpha.144, 22 Kasım 2026)
+
+Bileşen testleri ve bir laboratuvar denemesi (22 Kasım 2026; neyi
+kanıtladığı ve neyi denetlemediği için alpha.144 sürüm notlarının
+"Laboratuvarda denetlenenler" bölümüne bakın).
+
+- **Sayfadan çıkıldı diye değişiklik kaybolmaz.** Yöneticinin başka hesapların
+  girebildiği bir PostgreSQL veritabanını kapatması ya da geri alması (ve
+  "Yeniden oku"), posta kutusu oluşturma ve otomatik yanıtı kaydetme, sayfanın
+  istek kimliğiyle (D-029), tarayıcının iptal edemediği bir bağlamda, kendi
+  süre sınırına kadar çalışır. Sayfayı yeniden açan sonucu okur; aynı istek
+  yeniden gelirse kaydından yanıtlanır, asla iki kez çalışmaz. Yeni bir basış
+  yeni istektir: değişikliği yapılmış bulur.
+- **Başarısız kapatma ne olduğunu söyler.** Penceresi "Yapılmadı — hiçbir şey
+  değiştirilmedi" adımıyla biter; doğrulanmamış sonuç "Sonuç henüz
+  doğrulanmadı — yeniden gönderilmez" adımıyla. Neden satırı önce nedenin
+  türünü söyler (kilit zamanında verilmedi, süre aşıldı, bağlantı koptu, yetki
+  eksik, adı geçen şey yok, sunucu reddetti), sonra veritabanı sunucusunun
+  iletisini tırnak içinde verir.
+- **Panelde satırı olmadan sunucuda bulunan posta kutusu** asla iç hata
+  değildir. Yöneticiye **Bu alan adına al** sunulur; yalnız kutunun klasöründe
+  ileti yokken (hiçbir `cur/` ya da `new/` klasöründe dosya yokken) izin
+  verilir: sunucunun bu adres için tuttuğu satırları okur, oradaki boyut
+  sınırıyla satırı yazar ve parolayı alma penceresinde yazılanla değiştirir;
+  önceki hiçbir parola çalışmaz. Sonra her posta kutusu gibi tutulur ya da
+  silinir. Başkasına yöneticiye sorması söylenir; cümle yalnız istenen adresi,
+  kişinin kendi alan adında adlandırır. Sunucu kutuyu artık tutmuyorsa, iki
+  satırından yalnız birini tutuyorsa (sunucu sahibi kalan satırı siler) ya da
+  CelikPanel'in yazmadığı bir biçimde tutuyorsa (sunucu sahibine bırakılır) ya
+  da içinde posta varsa (sunucu sahibi sunucuda karar verir) alma reddedilir.
+- **Takma ad DNS'te yanıt verir.** Aynı hesabın bu sunucuda tutulan bir
+  bölgesinin içindeki takma ad oraya sitenin adreslerini alır (yayımlanmadıysa
+  panelin saatlik turu yayımlar ve satırda "yayımlanmayı bekliyor" yazar; adda
+  CelikPanel'in eklemediği bir adres kaydı varsa hiçbir şey eklenmez). Kayıtlar takma adla birlikte, yalnız CelikPanel'in eklediği
+  kadarıyla kalkar.
+- **Retler sayfanın dilinde:** takma adın sertifikası yeniden alınamadı,
+  sertifika takma adı kapsamıyor, geçersiz ad, takma ad artık yok, HSTS
+  kaldırmayı engelliyor, etkin sertifika yok.
+- **Önceki biçimdeki web postası adresi** Şimdiki sorunlar'da bir satırdır
+  (sahibin dosyası korundu, CelikPanel'in metni yanında; ya da nginx denetimi
+  başarısız oldu, adını verdiği dosyayla). Dosya yeni biçime geçince
+  kendiliğinden kalkar; Agent her açılışta yeniden dener.
+- **Tek veritabanı** Şimdiki sorunlar'da ve uyarı e-postasında tekil söylenir.
+
+### alpha.144 laboratuvarının düzeltmeleri (alpha.145, 23 Kasım 2026)
+
+- **Güvenlik: web postasının yerel sunucusu yalnız CelikPanel'in kendi
+  denetimlerini yanıtlar.** `/run/celikpanel-webmail.sock` soketi 0666'dır
+  (nginx öyle açar); bu yüzden sunucudaki her hesap ona bağlanabilir (ağ
+  değil). alpha.144'e dek Roundcube ağacının bütün dosyalarını, bağlı eklenti
+  ve tema klasörleriyle (nokta dosyaları, `.bak` gibi kopyalar, ayar dosyaları)
+  veriyor ve oradaki her `.php` dosyasını çalıştırıyordu. Artık yalnız
+  `/webmail/` (Roundcube'un giriş noktası, çalışan tek PHP), `/webmail/skins/`
+  altındaki stil dosyaları ve CelikPanel'in PHP denetimi yanıt verir; gerisi
+  bulunamaz. Panel'in hazırlık denetimi ve Agent'ın kanıtı (PHP denetimi,
+  sayfa ve stil dosyası) yalnız bunları sorar. CelikPanel'in önceki metni
+  güncellemeden sonra Agent'ın ilk açılışında yeniden yazılır (yapılandırma
+  denetimi, tek yeniden yükleme; hata olursa dosya geri konur ve açılış
+  sürer); sahibin dosyası korunur, CelikPanel'in metni yanına
+  `celikpanel-webmail.conf.celikpanel-pending` olarak konur ve Şu anki
+  sorunlar'da adres satırının adressiz biçimi çıkar (kim yapar: sunucu
+  sahibi). PHP denetimi soran kişiye yalnız hangi PHP sürümünün çalıştığını
+  ve web postasının hangi uzantılarının eksik olduğunu söyler.
+- **Web postası gönderir.** İlk sürümden beri Roundcube yapılandırması postayı
+  bu sunucunun 587'deki gönderim hizmetine şifresiz veriyordu
+  (`smtp_host 'localhost:587'`); hizmet ise girişi yalnız şifreli bağlantıda
+  kabul ediyor, bu yüzden her ileti "kimlik doğrulanamadı" ile kalıyordu.
+  Yapılandırma artık `tls://127.0.0.1:587` ve kutunun kendi girişini
+  kullanır; yalnız 127.0.0.1 için sertifikanın adı ve zinciri denetlenmez
+  (bağlantı sunucudan çıkmaz; hizmet posta adının sertifikasını ya da o yokken
+  kendi imzalı bir sertifikayı gösterebilir). Başka her ad tam denetimi korur.
+- **Kurulu sunucularda** dosya CelikPanel'in kendi metniyse (adres satırlarıyla
+  ya da onlarsız) güncellemeden sonra Agent'ın ilk açılışında düzeltilir; kipi
+  ve sahibi korunur; yeni dosya yerine konmadan önce son sahibini ve kipini
+  alır. Sahibin değiştirdiği dosya korunur; web postası onunla gönderemiyorsa
+  CelikPanel'in şimdiki metni (dosyanın kendi `des_key` değeriyle, yalnız root
+  okuyabilir) yanına `config.inc.php.celikpanel-pending` olarak konur ve Şu
+  anki sorunlar'da tek satır çıkar (`webmail_cannot_send`, kim yapar: sunucu
+  sahibi); satır bu metni, metin konamadıysa dosyanın kendisini ve yazılacak
+  iki satırı söyler. "Gönderemiyor" şu demektir: yerel döngü adı
+  (`localhost`, `127.0.0.1`, `[::1]`) `tls://` ya da `ssl://` olmadan 587'de
+  ya da kapısız; ya da `tls://`/`ssl://` ile ama dosyada hiç
+  `smtp_conn_options` ataması yokken. Bu durum kalkınca satır kendiliğinden
+  kalkar; sahibin kendi gönderim ayarı (başka bir ad, kendi
+  `smtp_conn_options` ayarı, CelikPanel'in okuyamadığı bir değer, eski
+  `smtp_server` anahtarı) adlandırılmaz. Bilinen açık: `/* … */` yorum
+  bloğunun içindeki bir atama etkin sayılır. Bekleyen metin dosyası
+  CelikPanel'indir; gerekmeyince adıyla silinir.
+- **Yeniden yazılamayan önceki CelikPanel metni** (salt okunur dosya sistemi,
+  değiştirilemez işareti, dolu disk) aynı satırdır ama kendi sözleriyle: neden
+  Agent günlüğündedir; sunucu sahibi nedeni giderir ve Agent'ı yeniden
+  başlatır, Agent dosyayı kendisi yeniden yazar. Dosya elle düzenlenmemeli:
+  yoksa sahibin dosyası sayılır ve CelikPanel onu bir daha yazmaz.
+- Son bileşen denetimi gönderemediğini okuduğu sürece Webmail profili "kurulu
+  ve doğrulanmış" görünmez; Onar düğmesi yine sunulur ama dosyayı düzeltemez
+  (profil Şu anki sorunlar'a bakmayı söyler).
+- **alpha.144'e geri dönülürse** web postası göndermeyi sürdürür, ama
+  alpha.144 yeni metni tanımaz: yapılandırmayı sahibin değiştirdiği dosya sayar
+  ve sunucu yeniden güncellenene dek web postasının kendi adres satırlarını
+  açıp kapatamaz.
+- **Bekleyen takma ad DNS kaydı**, bölgenin bekletilen değişikliği
+  yayımlanınca ya da bölgenin kendi bekleyen yayını (yedeğin yetişmesi)
+  tamamlanınca — o zaman saatlik turun kendi adımıyla, bölgenin yeniden
+  yayımlanmasıyla — beklemeyi bırakır, bir sonraki saatlik turu beklemez;
+  beklerken bölgenin uyarısı değişikliği yeniden yapmayı istemez, takma ad
+  kayıtlarının kendiliğinden yayımlanacağını söyler.
+- **PostgreSQL kapatma ya da geri alma** penceresi sonucu söyleyen bir
+  başlıkla biter (kapatıldı, kapatılamadı, bilinmiyor); sürmekte olan
+  "… kapatılıyor" başlığıyla bitmez.
+
+Kod: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
+`cmd/panel/webmail_address_problem.go`, `mail_profiles.go`, `alias_dns.go`,
+`dns_pending_publication.go`. Testler: `cmd/agent/webmail_sending_test.go`,
+`cmd/panel/a145_webmail_send_test.go`, `web/tests/a145-webmail-send-lab.test.mjs`.
+
+### Uzun bir değişiklik sonsuza dek "sürüyor" kalmaz (alpha.145 laboratuvarı, D1, 23 Kasım 2026)
+
+alpha.145 laboratuvarında bir web postası güncellemesi panelde "sürüyor"
+olarak kaldı ve panelin web işlemi yeniden başlatılana dek her bileşen ve
+kurulum değişikliği "başka bir işlem sürüyor" diye reddedildi. Panel, Agent
+kirasının tek bir yenilemesi yanıtsız kalınca güncellemenin işçisini
+durdurmuştu; Agent adımı yine de bitirdi, adım sürerken Panel'in Finish
+isteğini reddetti ve Panel 15 saniye sonra işlemin sonunu kaydetmeden
+vazgeçti. Bileşen kurulumu, birlikte kurma, birlikte kaldırma, posta
+profilleri, Node.js çalışma ortamları, kurulum adımları ve web postası
+adresleri de aynı yoldan geçiyordu.
+
+- **Satırı çalışan panel kapatır.** Finish reddedilir ya da yanıtı kaybolursa
+  aynı goroutine Agent'ın işini hiçbir şey değiştirmeden iş bitene dek okur
+  (sınır işin kendi son tarihi), sonra bu tek satır için başlangıç
+  kurtarmasının uzlaştırmasını çalıştırır: başarılı iş başarılı, başarısız
+  iş nedeniyle kaydedilir; yarıda kalan iş yeniden başlatmadaki gibi ele
+  alınır. Web postası güncellemesi ya da adresi yalnız yeniden okunur.
+  Kurulum, kaldırma ya da posta profili ilk çalışma bittikten sonra baştan
+  bir kez daha çalıştırılır ve adımlarının yinelenmesinin zararsız olmasına
+  dayanır; bir o kadar daha sürebilir. Süreç kilidi baştan sona tutulur, bu
+  yüzden iki adım çakışmaz; çalışan panel bir satırı en çok bir kez yeniden
+  çalıştırır (her yeniden başlatma, önceden olduğu gibi, bir kez daha izin
+  verir).
+- **Bu sırada ekranın söyledikleri.** İşlem "panel bu değişikliğin sonunu
+  sunucu ajanına kaydedemedi; sunucunun ne yaptığını okuyor", sonra
+  "değişiklik sunucuda bitti; panel sonucu kaydediyor" olarak görünür; her
+  biri türüne göre ardından ne olacağını söyler. Kim yapar: kimse;
+  kendiliğinden biter. Bu sırada reddedilen değişiklik de aynısını söyler
+  (`service_operation_busy`, neden `settling`).
+- **Kapatılamazsa** — Agent iki dakika boyunca hiçbir okumayı yanıtlamaz,
+  Agent'ın işe dair kaydı yoktur (sonucu bilinmiyor), işin son tarihi geçer,
+  yeniden çalıştırma sunucu meşgul olduğu için iki dakika boyunca reddedilir
+  ya da panelin veritabanı yazmayı reddeder — işlem bunu söyler, süreç
+  kilidi bırakılır (yarıda kalan iş hâlâ etkinken Agent başka her kirayı
+  reddeder; iş bittikten sonra güvenlik duvarı, DNS ve posta TLS
+  değişiklikleri, kurulum bir sonraki açılışta yeniden çalıştırılmadan önce
+  yeniden kabul edilir), reddedilen değişiklik sunucu sahibinin adımlarını adlandırır
+  (neden `unsettled`) ve Şu anki sorunlar'da tek satır çıkar
+  (`service_operation_unsettled`, kim yapar: sunucu sahibi): önce Agent'ı
+  denetleyin (`sudo systemctl status celikpanel-agent`, durmuşsa başlatın),
+  sonra `sudo systemctl restart celikpanel-panel`; bu yalnız panelin web
+  işlemini yeniden başlatır ve açılıştaki kurtarma yapılanı kaydeder (web
+  postası güncellemesi ya da adresi yalnız okunur; kurulum, kaldırma ya da
+  posta profili baştan bir kez daha çalıştırılır). Kilit tutulduğu sürece
+  (en çok Agent'ın iki dakikalık sessizlik sınırı ya da iş bitene dek) DNS,
+  güvenlik duvarı ve posta TLS değişiklikleri onu bekler.
+- **Tek bir geç yenileme, kaybolmuş bir Agent değildir.** İşçi Agent'ın kesin
+  yanıtıyla (kira kaybedildi ya da başkasının, iş bitti) ya da Agent'ın
+  yanıtladığı son yenilemeden, gönderildiği andan sayılarak 15 saniye sonra
+  durdurulur. Bir yenileme kalan sürenin tamamı kadar bekleyebilir (zamanında
+  gelen geç bir yanıt adımı korur), yanıtsız kalan yaklaşık bir saniye sonra
+  yeniden istenir ve ilki kiranın istendiği andan sayılarak planlanır; bu
+  yüzden durma en geç Agent'ın 20 saniyelik kirası bitebilmeden 5 saniye önce
+  gelir ve panelin günlüğünde ne zaman ve neden durduğunu söyleyen bir satır
+  çıkar ("worker stopped: no lease renewal answered for …"). Kural her
+  tek başına değişikliği de yönetir (güvenlik duvarı, DNS, posta TLS,
+  sertifikalar, VPN, web postası). Agent'ın kira kuralları değişmedi.
+- Başlangıçta, sunucunun meşgul diye (iki dakika) reddetmeyi sürdürdüğü bir
+  yeniden çalıştırma satırı bitirir, çünkü başka adım yoktur: "sunucu meşgul
+  kaldığı için yeniden çalıştırılamadı; ilk çalışmasının ne yaptığı
+  bilinmiyor" (web postası güncellemesi ya da adresi için: "sonucu
+  okunamadı"); kim yapar: yönetici bileşeni kendi sayfasında denetler,
+  gerekirse değişikliği yeniden başlatır; başka değişiklikler yeniden kabul
+  edilir.
+- Bir kurulum adımı kabul edilen nokta güncellemelerini satırında tutar; bu
+  yüzden yeniden çalıştırma, incelemenin kabul ettiği gibi istenir.
+- Yarıda kalan web postası güncellemesinin ya da adresinin sonuç cümleleri
+  ve kesintiden sonra biten işlemlerin denetim satırları artık "panel yeniden
+  başladıktan sonra" demez: işlemin yarıda kaldığını söyler.
+- **D-025.** Dayanıklılık sözleşmesinin 2. ve 4. ilkeleri; neyin değiştiği,
+  sınır, varsayım, (olmayan) şema geçişi ve açık kalanlar orada kayıtlıdır
+  (fix/d1-stuck-operation dalı).
+
+Kod: `cmd/panel/service_operation_settle.go`, `service_operations.go`
+(`reconcileInterruptedServiceOperationLocked`, başlangıç kurtarmasıyla
+ortak), `service_mutation_agent.go`. Testler:
+`cmd/panel/d1_stuck_operation_test.go`, `web/tests/d1-stuck-operation.test.mjs`.

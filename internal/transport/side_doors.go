@@ -13,9 +13,10 @@ package transport
 // SideDoorsRequest is Agent.CloseSideDoorsV1's request. ReClose (S4 R1 fix
 // round) is the administrator's explicit "close it again" for something the
 // server owner undid: "at" (CelikPanel's /etc/at.allow deleted) or
-// "stock_pool" (the stock pool of Version put back under its own name). The
-// step forgets that the owner undid it and then decides as at a first start.
-// Empty at each Panel start: an owner's undo is then never redone.
+// "stock_pool" (the stock pool of Version put back under its own name). Only
+// that one door is decided and changed, as at a first start (second fix
+// round); the owner's undo stays recorded until it is closed again. Empty at
+// each Panel start: an owner's undo is then never redone.
 type SideDoorsRequest struct {
 	ServiceMutationBinding
 	ReClose string `json:"reclose,omitempty"`
@@ -38,9 +39,24 @@ type SideDoorsResponse struct {
 	Error string          `json:"error,omitempty"`
 }
 
+// SideDoorsReadRequest is Agent.ReadSideDoorsV1's request (S4 R1, second
+// fix round): read the states again, change nothing.
+type SideDoorsReadRequest struct{}
+
+// SideDoorsState scopes: what an answer covers. Empty: the whole step.
+const (
+	// The administrator's "close it again": only At, or only the one row of
+	// StockPools.
+	SideDoorsScopeReClose = "reclose"
+	// Agent.ReadSideDoorsV1: Tools whole; a StockPools row or At whose State
+	// is empty was not read again (the step's answer stands for it).
+	SideDoorsScopeRead = "read"
+)
+
 // SideDoorsState is what the step found.
 type SideDoorsState struct {
 	CheckedAt  string               `json:"checked_at"`
+	Scope      string               `json:"scope,omitempty"`
 	Tools      []SideDoorsTool      `json:"tools"`
 	StockPools []SideDoorsStockPool `json:"stock_pools"`
 	// S4 R1 (21 Nov 2026): `at` closed to site accounts, and site crontabs

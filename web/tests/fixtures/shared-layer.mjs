@@ -46,6 +46,9 @@ const alpha128LazyParts = {
   // alpha.134: database rights by exact name on the MariaDB page (its own
   // chunk and its own mounted tests).
   './DatabaseGrantFormsBlock': ['DatabaseGrantFormsBlock'],
+  // 20 Nov 2026 (S1b): the PostgreSQL databases every account can enter, on
+  // the PostgreSQL page (its own chunk and its own tests).
+  './PostgreSQLPublicAccessBlock': ['PostgreSQLPublicAccessBlock'],
 };
 
 export function compileSource(path, resolve) {
@@ -189,6 +192,9 @@ export const securityEmergencyURL = compileSource('lib/securityEmergency.ts', un
 export const removalOperationURL = compileSource('lib/removalOperation.ts', unexpected('lib/removalOperation.ts'));
 // alpha.124: what a component needs, read by the install window.
 export const installPlanURL = compileSource('lib/installPlan.ts', unexpected('lib/installPlan.ts'));
+// alpha.145 lab, D1: the words of a running change's phase, read by the
+// webmail update row and the webmail address card (no imports of its own).
+export const componentOperationGuidanceURL = compileSource('lib/componentOperationGuidance.ts', unexpected('lib/componentOperationGuidance.ts'));
 
 // 6 Nov 2026: the product's own confirmation (lib/confirmAction.ts) is the
 // shipped module. A mounted test has no ConfirmHost, so the fixture registers
@@ -244,6 +250,21 @@ export const updateOriginsURL = compileSource('lib/updateOrigins.ts', unexpected
 // alpha.127: the owner's password rule, read by every password field and form.
 export const passwordPolicyURL = compileSource('lib/passwordPolicy.ts', unexpected('lib/passwordPolicy.ts'));
 
+// alpha.149: the site limits lane's route-scoped words (i18n/siteLimitsLane.ts)
+// are the shipped module in every mounted test, as the screens import them.
+const siteLimitsLaneEnURL = compileSource('i18n/siteLimitsLane/en.ts', unexpected('i18n/siteLimitsLane/en.ts'));
+const siteLimitsLaneTrURL = compileSource('i18n/siteLimitsLane/tr.ts', (specifier) => (
+  specifier.endsWith('/en.ts') ? siteLimitsLaneEnURL : unexpected('i18n/siteLimitsLane/tr.ts')(specifier)
+));
+const settingLimitsURL = compileSource('lib/settingLimits.ts', unexpected('lib/settingLimits.ts'));
+export const siteLimitsLaneURL = compileSource('i18n/siteLimitsLane.ts', (specifier) => {
+  if (specifier.endsWith('/siteLimitsLane/en.ts')) return siteLimitsLaneEnURL;
+  if (specifier.endsWith('/siteLimitsLane/tr.ts')) return siteLimitsLaneTrURL;
+  if (specifier.endsWith('/settingLimits.ts')) return settingLimitsURL;
+  return unexpected('i18n/siteLimitsLane.ts')(specifier);
+});
+const dbLimitsWordsStubURL = dataModule('export const useDbLimitsWords = () => ({ ready: false, say: (key) => key }); export const loadDbLimitsWords = () => new Promise(() => {});');
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
@@ -281,6 +302,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/securityEmergency': securityEmergencyURL,
     '/lib/removalOperation': removalOperationURL,
     '/lib/installPlan': installPlanURL,
+    '/lib/componentOperationGuidance': componentOperationGuidanceURL,
     '/lib/confirmAction': confirmActionURL,
     '/lib/useRefusal': useRefusalURL,
     '/lib/requestProgress': requestProgressURL,
@@ -293,6 +315,11 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/updateOrigins': updateOriginsURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
+    '/i18n/siteLimitsLane': siteLimitsLaneURL,
+    // alpha.149: the database limits' words are fetched with the screens that
+    // show them; a mounted screen gets them as not fetched (its own test,
+    // db-limits-a149.test.mjs, checks the loader).
+    '/i18n/dbLimits': dbLimitsWordsStubURL,
     // alpha.132: the shared kit (row actions, guidance block, words) is the shipped code.
     ...kitTable(stubURL, uiURL),
     ...extra,

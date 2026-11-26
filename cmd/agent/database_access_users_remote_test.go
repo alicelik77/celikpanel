@@ -24,6 +24,9 @@ func TestRemoveMySQLAccessUserTakesItsRemoteCopiesOutOfTheRecord(t *testing.T) {
 	var engine []string
 	mysqlExecStatement = func(statement string) ([]byte, error) {
 		engine = append(engine, statement)
+		if out, ok := ordinaryAccountGuard(statement); ok {
+			return out, nil
+		}
 		if strings.HasPrefix(statement, "SELECT CONCAT('host=', Host)") {
 			return []byte("host=203.0.113.7\nhost=localhost\n"), nil
 		}

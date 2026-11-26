@@ -8391,3 +8391,357 @@ bağlantıyı tutar.
   kuralıdır); hesap adları alan adlarından türetilir; posta, barındırılan
   her alan adı için imzalanır (sonraki sürüm). **Hiçbir P0 maddesi
   kapanmadı.**
+
+### security/s3b-mail-signing, security/s1b-pg-leftovers ve fix/a143-lab-corrections dalları (posta yalnız göndericinin kendi alan adı için imzalanır, bağımsız incelemeden sonra fix/a143-mail'de düzeltildi; alpha.141'den önce açılan PostgreSQL veritabanları, bağımsız incelemeden sonra fix/a143-pg'de düzeltildi, küme taşıması çıkarıldı; alpha.142 laboratuvarının dört düzeltmesi; şema 80 -> 81, yalnız tetikleyiciler; anayasa 1; ilke 1, 2, 3 ve 4; D-022; D-024; D-025; 2026-11-21, aday alpha.143)
+
+- **Neden burada.** Panelin açılışındaki posta onarım adımı doğal OpenDKIM
+  ve Postfix ayarlarını yazar; PostgreSQL döngüsü doğal veritabanı haklarını
+  değiştirir; veritabanı tetikleyicisi bir şema geçişidir; site
+  silmenin uygulama birimi temizliği ve tek seferlik kip düzeltmesi yaşam
+  döngüsü adımlarıdır: anayasa 1 (her işlem tam kendi kaynakları için
+  yetkilendirilir), ilke 1 (sahibin düzenlediği `opendkim.conf`, süzgeç
+  ayarları ve dosya kipleri korunur), ilke 2 (iddiadan önce doğrulanmış
+  durum: her kapatma ve geri alma sonucunu geri okur; işlem başladıktan sonra
+  kaybolan yanıt bilinmeyendir ve motordan uzlaştırılır, hiçbir zaman
+  "değişmedi" sayılmaz), ilke 3 (durum sorgusu ikinci bir değişiklik
+  başlatmaz: PostgreSQL sayfasını ya da "Şu anki sorunlar"ı okumak hiçbir
+  şeyi değiştirmez; kapatmalar sıraya konur, başarısız olan her saat yeniden
+  denenmez) ve ilke 4 (retler hiçbir
+  şey yapılmadan verilir).
+- **Kusurlar (her biri düzeltmeden önce bir testle gösterildi).** OpenDKIM,
+  `From:` satırında barındırılan bir alan adı geçen her iletiyi, kimliği
+  doğrulanmış ve yerel istemciler için ve 25. portta imzalıyordu; böylece
+  başka bir müşterinin adresini taşıyan posta o müşterinin imzasıyla
+  çıkıyordu (ilk sürümün bağımsız incelemesi şunları buldu: otomatik yanıt
+  başka bir hesabın adresinden imzalı yanıt verebiliyordu; site postası,
+  `authorized_submit_users` panelinki değilken `From:` satırına göre
+  imzalanıyor, yine de yerinde gösteriliyordu; 25. port listesi sahibin
+  sonradan eklediği süzgeçlerin önüne geçiyor ve OpenDKIM'den sonra da
+  kalıyordu; yeniden adlandırmadan sonra kaçırılan yeniden başlatma hiç
+  yapılmıyordu; durum yalnız açılışta kaydediliyordu; Arch'a OpenDKIM'inin
+  reddettiği bir satır öneriliyordu; geri alma varsayılanları dosyaya
+  yazıyordu); alpha.141'den önce açılan PostgreSQL veritabanları PUBLIC'in
+  CONNECT ve TEMPORARY haklarını koruyordu (ilk sürümün bağımsız incelemesi
+  şunları buldu: COMMIT'ten sonra kaybolan yanıt geri almanın kaydını
+  siliyordu, başarısız kapatma saatte bir yeniden deneniyor ve gizleniyordu,
+  hiçbir şeyin sahibi olmadan veritabanını kullanan roller görülmüyordu, bir
+  rol adı koruma bloğunun dolar tırnaklı gövdesini bitirebiliyordu, tarama
+  sayfayla büyüyordu ve yöneticinin yeniden açtığı veritabanı sonsuza dek
+  uyarıyordu); alpha.142 laboratuvarından: bir müşterinin
+  sunucu ya da yönetici adının altındaki kendi alan adının içinde alt alan
+  adı reddediliyordu, yöneticiye uzak bir sahip söyleniyordu, hata veren bir
+  Node.js birimi sitesinin silinmesini engelliyordu ve korunan sahip
+  kipleri adlandırılmıyordu.
+- **Sözleşme.** `SenderMacro {auth_authen}` imza anahtarını girişe bağlar;
+  25. port smtpd'si `main.cf` süzgeç listesini OpenDKIM'siz alır, liste her
+  açılışta ve posta süzgeci adımında yeniden hesaplanır ve OpenDKIM artık
+  kurulu ya da listede değilken bunların ilkinde silinir (`$değişken` ya da
+  `{ }` grubu içeren bir `main.cf` listesi CelikPanel'in önceki 25. port
+  değerini korur ve bunu söyler, `port25_variable_own`, ya da
+  `port25_variable` bildirir); otomatik yanıt yalnız kutunun kendi
+  adresinden ya da aynı hesabın alan adlarından ona yönlendirilmiş bir
+  adresten verilir (panel ve Agent; önceki yanıtlar yabancı adres olmadan
+  yeniden yazılır, bir kez söylenir ve denetim kaydına geçer; bu her
+  açılışta, her saat ve bir adın kimde olduğunu ya da bir adresin nereye
+  teslim edildiğini değiştiren her işlemden hemen sonra, posta kilidi
+  altında olur; yapılamayan yeniden yazma yanıtı kapatır, o da
+  uygulanamazsa kutu başına saatlik yeniden denenen bir "Şu anki sorunlar"
+  satırıdır); imza yalnız `authorized_submit_users` `root, vmail`
+  olduğunda yerinde gösterilir ve imzayı değiştiren her yol durumunu
+  kaydeder (erken dönüş bilinmeyendir); `SenderMacro`'suz bir derleme önceki
+  yapılandırmayı korur, bunu söyler ve ona seçenek asla önerilmez.
+  Eski bir veritabanı kendiliğinden yalnız dokunulmamış varsayılan
+  haklarda, içinde hiçbir izi olan kayıt dışı rol yokken, kayıtlı her
+  kullanıcının rolü varken, kümesinde izleme ya da çoğaltma rolü yokken ve
+  bir günlük izlemeden sonra kapatılır (izleme başladıktan en az 24 saat ve
+  en az 24 denetim sonraki ilk denetim; haklarının, içindeki rollerin,
+  sahibinin ya da kayıtlı kullanıcılarının değişmesi onu yeniden başlatır;
+  kayıt dışı bir rolün bir kez bağlı görülmesi onu bitirir); aksi hâlde
+  onaylı tek kapatmayla listelenir. Kapatma "kapatıldı", "doğrulanmış olarak
+  kapatılmadı" ya da "bilinmiyor" diye yanıtlanır; bilinmeyen kaydı korur ve
+  her şeyden önce motorun durumundan uzlaştırılır; başarısız kapatma
+  nedenini korur ve yalnız olgular değişince ya da yönetici basınca yeniden
+  denenir; kapatmalar sıraya konur. Her kapatmanın tam bir geri alması
+  vardır (panel ve düz SQL); yöneticinin yeniden açtığı veritabanı sayfada o
+  tercih olarak kalır, "Şu anki sorunlar"dan çıkar, bir daha kendiliğinden
+  kapatılmaz. Küme taşıması alpha.142'deki gibidir (sahip haklarıyla
+  yüklemesi çıkarıldı; ROADMAP güvenlik dizisi 6. madde).
+  Ad kuralı, alan hesap N'nin altında olduğu bir R tutuyorsa ve R bir sunucu
+  adının ya da yöneticinin tuttuğu bir adın altındaysa N'yi muaf tutar;
+  diğer her şey panelde ve göç 081'de reddedilmeye devam eder.
+  `RemoveAppUnit`, değişmeyen kanıtından önce tam o birim için `systemctl
+  reset-failed` çalıştırır; kip düzeltmesi korunan her kipi adlandırır.
+- **Şema / sürüm geçişi.** 80 -> 81: göç 081, 080'in altı tetikleyicisini
+  aynı adlarla kaldırıp yeniden oluşturur; tablo, sütun ya da satır yok,
+  bu yüzden çakışma tutan bir veritabanında da uygulanır; eski sürüm kaydı
+  reddeder, alpha.142'ye dönüş güncellemeden önceki anlık görüntünün geri
+  yüklenmesidir. Eklemeli: `WireMailFiltersResponse.signing`, "Şu anki
+  sorunlar" türleri `mail_signing` ve `postgresql_databases_open`, sürüme
+  bağlı Agent çağrıları `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`
+  (`unknown`, `missing`, `replication` yanıtları),
+  panel_settings satırları `postgresql_public_v1:<kimlik>` ve
+  `postgresql_public_list_v1`.
+- **Kurtarma.** Yeni bir `opendkim.conf`, yeniden adlandırmadan önce
+  `opendkim -n` ile denetlenir ve OpenDKIM onunla çalışmazsa geri konur
+  (açılışta ve ikinci incelemeden beri `ConfigureDKIMSigning`'de de);
+  Postfix yazmaları herhangi bir hatada ters sırayla geri alınır (varsayılanında
+  olan ayar yeniden silinir) ve Postfix yeniden yüklenir; OpenDKIM'in yeniden
+  başlatılması yeniden adlandırmadan önce borç olarak kaydedilir ve bir
+  kesintiden sonraki açılışta yapılır; yeniden başlatma sırasında iki
+  süzgeç listesi de CelikPanel'inse posta imzasız geçer
+  (`milter_default_action = accept`), biri sahibinkiyse sahibin
+  `milter_default_action` değeri ya da Postfix'in varsayılanı `tempfail`
+  geçerlidir (gönderen sunucu yeniden dener; 587'deki kişi yeniden gönderir). Herhangi bir yerde kesilen kapatma
+  veritabanını dokunulmamış ya da haklarıyla kapatılmış bırakır, panelin
+  kaydını da motor hangisi olduğunu gösterene dek korur; veritabanı o zamandan beri değişmişse geri alma reddedilir ve
+  hiçbir şey değiştirmez. Hepsi panel olmadan da çalışan doğal yapılandırma
+  ve haklardır; sahip bunları `docs/TENANT-ISOLATION.tr.md` ve
+  `docs/DATABASE-USERS.md` içinde adı geçen düz ayar ya da komutlarla geri
+  alır.
+- **Kanıt.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` ve dağıtım
+  matrisinde Debian 12/13 ve Ubuntu 22.04/24.04'ün gerçek OpenDKIM'i;
+  posta düzeltme turunun `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart` testleri ve matrisin
+  gerçek `postconf` durumları;
+  özel PostgreSQL 17.12'de
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` ve düzeltme
+  turunun `TestS1bFix*` testleri (COMMIT'ten sonra kaybolan yanıt, sütun
+  hakları, ayarlar, ilkeler ve kullanıcı eşlemeleri, dolar tırnaklı gövdeyi
+  bitirecek adlı bir rol, rolü olmayan kayıtlı kullanıcı, mantıksal
+  çoğaltma abonesi, tek tarama oturumunda 300 veritabanı), panelin
+  `TestPGPublic*` testleri;
+  `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
+  `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
+  `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
+  `TestAppUnitRemovalForgetsAFailedUnit`,
+  `TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner`; sürüm
+  kurtarma laboratuvarı şema 81'i sabitler.
+- **Açık.** Henüz laboratuvar çalışması yok. Arch Linux'un OpenDKIM'inde
+  `SenderMacro` yok: orada girişle gönderilen posta, `From:` satırında
+  geçen barındırılan her alan adı için hâlâ imzalanır; panelin kaydetmediği
+  veritabanlarına dokunulmaz; istisnayla açılan alt alan adı "Şu anki
+  sorunlar"da hâlâ listelenir; SQL_ASCII bir PostgreSQL sunucusu hâlâ
+  laboratuvarda denenmedi; kapatma yalnız PostgreSQL 17'de çalıştırıldı;
+  taşıma müşterilerin veritabanı kodunu hâlâ yöneticinin haklarıyla
+  çalıştırır. **Hiçbir P0 maddesi kapanmadı.**
+
+### fix/a144-lab-corrections dalı (alpha.143 laboratuvarının altı bulgusu ve web postası adresinin bir güvenlik düzeltmesi; şema değişikliği yok; anayasa 1 ve 3; ilke 2, 3 ve 4; D-022; D-024; D-025; 2026-11-22, aday alpha.144)
+
+- **Sayfadan uzun yaşayan değişiklikler.** Yöneticinin PostgreSQL kapatması ya
+  da geri alması, yeni posta kutusu ve otomatik yanıt tarayıcının bağlantısında
+  çalışıyordu; sayfadan çıkmak Panel'i Agent'ın işi ile kaydı arasında
+  kesiyordu. Artık istek kimliğiyle (D-029), rotanın süre sınırıyla, ayrık bir
+  bağlamda çalışırlar. Sayfadan çıkmak hiçbir şey bırakmaz; Panel'in durması
+  istek satırını "bilinmiyor" bırakır, kapatma kaydı motordan uzlaştırılır,
+  satırı olmayan posta kutusu açıkça söylenir ve yönetici onu alabilir.
+- **Alma.** Panel yalnız CelikPanel'in kendi biçimindeki ve içinde ileti
+  olmayan kutuyu alır; posta kilidi altında var olan bir satıra yeniden
+  bakar; satır kaydedilmeden önce parolayı değiştirir; gerisi
+  sahibin kalır (D-022).
+- **Takma ad DNS'i.** CelikPanel'in eklediği kayıtlar `alias_dns_v1:<takma ad>`
+  notunda, kayıtlarla aynı işlemde tutulur; kaldırma yalnız onları siler, o
+  da bölge şu an takma adın alan adının şu anki hesabına aitken (abonelik
+  devrinden sonra ikisi birlikte geçmiştir ve kayıtlar gider; başka hesabın
+  bölgesinde hiçbir şey silinmez, not temizlenir ve Panel'in günlüğü kaydı
+  adlandırır). Bitmeyen yayın bölgeyi işaretler, saatlik tur yayımlar; alan
+  adı silmeyi asla durdurmaz; bölgesinin DNS kipi okunamayan işaret sonraki
+  tura kalır.
+- **Web postası adresi.** Yalnız `index.php` çalışır; bağlı klasörler yalnız
+  durağan dosya verir; nokta dosyaları ve yedek görünümlü adlar reddedilir.
+  Önceki biçimdeki dosyalar Agent'ın ilk açılışında bir kez yeniden yazılır;
+  sahibin dosyası korunur, metin yanına konur; ikisi de dosya yeni biçime
+  geçene dek Şimdiki sorunlar'da bir satırdır. alpha.143'e otomatik geri dönüş
+  yeni dosyayı sahibinki sayar ve korur: web postası çalışmaya devam eder,
+  hiçbir şey yeniden açılmaz.
+- **Gece döndürmeden sonra trafik günlükleri.** nginx işçileri (`www-data`)
+  `/var/log/celikpanel` klasöründen geçemiyordu; her döndürmeden sonra hata
+  yazıp döndürülen dosyaya yazmayı sürdürüyorlardı. Agent'ın açılışında bir
+  kez: CelikPanel'in ürettiği kipteki kök sahipli klasör 0700 → 0711 ya da
+  0750 → 0751; trafik klasörü 0755 → 0710, sahibi root ve grubu web
+  sunucusunun grubu (yalnız çalışan süreçler geçer; hiçbir sitenin hesabı
+  başka sitenin günlüğünü açamaz); diğerlerinin okuyabildiği trafik
+  günlükleri 0644 → 0640; sertifika aracının günlük klasörü 0700 kalır;
+  başka kip (sahibi ve grubuyla), grubu ne web sunucusunun ne de
+  CelikPanel'in verdiği (root, celikpanel) olan 0710 kipli trafik klasörü,
+  bağlantı ya da başka sahip korunur ve adlandırılır. Yeni kurulumlar günlük
+  klasörünü 0711, trafik klasörünü o grupla 0710 açar ve bir sitenin ilk
+  günlüğünü 0640 oluşturur; web sunucusunun hesabına yalnız bunları
+  oluştururken bakılır (bakılamazsa sitenin trafik ayarı olduğu gibi kalır,
+  günlükte tek satır). CelikPanel'in döndürme dosyası her yeni günlüğü o
+  hesap için 0640 oluşturur (yönetilen metin: sahibin değiştirdiği dosya
+  korunur). Web sunucusunun kendi ortak hesabıyla çalışan programlar (henüz
+  kendi hesabına taşınmamış Node.js siteleri, açıksa dağıtımın varsayılan
+  PHP havuzu) günlükleri hâlâ okuyabilir: günlükler zaman ve bayt sayısı
+  tutar, adres tutmaz; o programlar her sitenin sunulan dosyalarını zaten
+  okur.
+- **Laboratuvar.** 22 Kasım 2026'da bir deneme (PowerDNS'li Debian 13 ana ve
+  BIND'li Ubuntu 24.04 yedek; ikisi de alpha.143 durumundan panelin kendi
+  güncelleme sayfasıyla güncellendi; `6ed1f94a0`'dan yapılan, yalnız
+  laboratuvara ait alpha.152 etiketi): ağır hata yok; web postası adresi
+  düzeltmesi, ayrılan yollar, alma retleri, takma ad kayıtları ve trafik
+  klasörü kipleri yukarıda yazıldığı gibi davrandı (bkz. sürüm notlarının
+  "Laboratuvarda denetlenenler" bölümü). Web postasının posta
+  gönderemediğini (yapılandırması postayı STARTTLS olmadan 587 numaralı
+  porta veriyor; bu daldan eski) ve iki görünüm bulgusunu buldu; alpha.145'e
+  planlandı.
+- **Açık.** Tarayıcı bağlamını Agent değişikliğine
+  veren diğer işleyiciler sonraki bir iş için listelendi; kendi bölgesi olan
+  takma ad hâlâ DNS kaydı almaz; laboratuvarın denetlemedikleri sürüm
+  notlarında listeli. **Hiçbir P0 işi kapanmadı.**
+
+### fix/a145-webmail-send dalı (web postasının yerel kapısı kapandı; web postası gönderebilir; alpha.144 laboratuvarının iki görünüm bulgusu; şema değişikliği yok; anayasa 1 ve 3; ilke 2 ve 4; D-022; D-024; D-025; 2026-11-23, aday alpha.145)
+
+- **Web postasının yerel kapısı (anayasa 1).** `/run/celikpanel-webmail.sock`
+  soketi 0666'dır (nginx öyle açar): sunucudaki her hesap Roundcube'un
+  `public_html` altındaki her dosyayı (eklentiler, temalar, `program/`)
+  okuyabiliyor ve oradaki her `.php` dosyasını çalıştırabiliyordu. Artık
+  kapalı bir liste yanıt verir (`/webmail/`, `/webmail/index.php`,
+  `/webmail/skins/` altındaki stil dosyaları, CelikPanel'in PHP denetimi);
+  Panel'in hazırlık denetimi ve Agent'ın PHP aracı kanıtı yalnız bunları
+  sorar. Önceki biçimler CelikPanel'indir (tam metin) ve RPC hizmetinden önce
+  Agent'ın açılışında bir kez yeniden yazılır (`nginx -t`, tek yeniden
+  yükleme, hata olursa önceki dosya geri konur, açılış sürer); sahibin
+  dosyası, CelikPanel'in metni yanında ve Şu anki sorunlar satırıyla korunur
+  (adressiz adres türleri); yanındaki metin web postasıyla birlikte adıyla
+  silinir. Soket taşınmaz, kipi değişmez.
+- **Web postasının yapılandırması (ilke 4: yeniden yazma bir değişikliktir).**
+  CelikPanel'in önceki metnindeki `config.inc.php` (adres satırlarıyla ya da
+  onlarsız, tam eşitlik) Agent'ın açılışında bir kez yeniden yazılır; sahip ve
+  kip yeni dosyaya yeniden adlandırmadan önce verilir, `des_key` korunur;
+  başarısız yazma dosyayı olduğu gibi bırakır, "yeniden yazılamadı" diye
+  söylenir (neden ve yeniden başlatma, asla elle düzenleme) ve bir sonraki
+  açılışta yeniden denenir. Sahibin dosyası korunur, CelikPanel'in metni
+  yanında (0600), gönderemediği sürece tek bir Şu anki sorunlar satırı (canlı
+  okunur; kendiliğinden kalkar).
+- **Takma ad DNS'i (ilke 2).** Bir bölgenin takma ad bekleme işareti yalnız
+  bölgenin şimdiki kayıtlarının bir yayını yayın kilitleri altında
+  tamamlanınca silinir (bekletilen yeniden yayın, bekleyen bir yayından sonraki
+  izleyen yayın ya da saatlik turun adımıyla yeni bir yayın); sonradan
+  kaydedilen bir kayıt işaretini korur.
+- **Geri alma.** alpha.144'e dönüşte web postası göndermeyi sürdürür ve yerel
+  kapı kapalı kalır; alpha.144 iki yeni metni sahibin değiştirdiği dosyalar
+  sayar (web postasının yapılandırma adımı, PHP taşıması ve adres satırları
+  güncelleme yeniden yapılana dek reddedilir).
+- **Kanıt.** `TestA145*` (agent ve panel), `web/tests/a145-webmail-send-lab.test.mjs`;
+  dağıtım yapılandırma matrisi yeni yerel kapı dosyasını işler ve nginx ile
+  denetler; bağımsız bir inceleme onu gerçek bir nginx üzerinde çalıştırdı.
+- **Laboratuvar.** Açık (liste PR #357'de).
+- **Açık.** Web postası gönderemezken Webmail kartı Onar'ı yine sunar;
+  "gönderemiyor" okuması sahibin kendi sertifika seçeneklerini ve `/* */`
+  yorumlarını atlar; sokete ileten sahibin kendi bloğu yalnız oturum açma
+  sayfasını ve stil dosyalarını alır. **Hiçbir P0 işi kapanmadı.**
+
+### Dal fix/d1-stuck-operation (Finish'i başarısız olan kalıcı işlemi çalışan panel kapatır; kalp atışı kira bitmeden durur; şema değişmez; anayasa 2 ve 3; ilke 2 ve 4; P0.2; D-024; D-025; 23 Kasım 2026, alpha.145 laboratuvarından sonra)
+
+- **Kusur (alpha.145 laboratuvarı, D1).** Yanıtsız kalan tek bir kira
+  yenilemesi, Agent adımı sürerken işlemin işçisini durdurdu; Agent adım
+  sürerken Finish'i reddetti ve Panel satırını kapatmadan döndü. Satır
+  `running` kaldı ve `celikpanel-panel` yeniden başlayana dek her bileşen ve
+  kurulum değişikliği reddedildi.
+- **İlke 2 (zaman aşımı başarısızlığın, başarının ya da yeniden başlatma
+  izninin kanıtı değildir).** Çalışan panel artık Agent'ın işini hiçbir şey
+  değiştirmeden iş bitene dek okur, sonra tek satırı başlangıç kurtarmasının
+  çalıştırdığı kodla kapatır (`reconcileInterruptedServiceOperationLocked`,
+  ikisi için tek işlev). Agent'ın kaydı olmayan iş bilinmiyordur, bitmiş
+  değildir: satır kapatılamamış kalır. İki dakika boyunca hiçbir okumayı
+  yanıtlamayan Agent satırı kapatılamamış bırakır ve süreç kilidi bırakılır.
+  Yarıda kalan iş hâlâ etkinken Agent başka her kirayı reddeder, bu yüzden iki
+  ayrıcalıklı adım aynı anda çalışmaz; iş bittikten sonra güvenlik duvarı,
+  DNS, posta TLS ve benzeri tek başına değişiklikler yeniden kabul edilir
+  (kilidi alırlar, satırı değil), yarıda kalan kurulum panelin bir sonraki
+  açılışında yeniden çalıştırılmadan önce, yarım kalmış bir bileşenin yanında
+  çalışabilirler. Yöneticinin bu sırada gördüğü: bileşen ve kurulum
+  değişiklikleri kapatılamamış satırın sözleriyle reddedilir (önce Agent'ı
+  denetleyin, sonra panelin web işlemini yeniden başlatın); eski iş etkinken
+  tek başına bir değişiklik Agent'ın "başka bir değişiklik hâlâ sürüyor"
+  reddini alır. Tasarım gereği engellenmez: yarım bir kurulum bir güvenlik
+  duvarı değişikliğini engellememelidir.
+- **İlke 4 (geçici bir okumayı yinelemek, sonucu bilinmeyen bir değişikliği
+  yeniden çalıştırmak değildir).** Değişen: işi
+  `service_mutation_lease_expired` ile biten (adımı başarılı olmuş olabilir)
+  bir kurulum, birlikte kurma, birlikte kaldırma, posta profili, çalışma
+  ortamı ya da kurulum adımı, bir kişinin yeniden başlatmasından sonra değil,
+  Agent'taki aksaklıktan yaklaşık 20 saniye sonra çalışan panel tarafından
+  baştan yeniden çalıştırılır. Sınır: satır ve çalışan panel başına bir kez,
+  bellekte tutulur; her yeniden başlatma, önceden olduğu gibi, bir kez daha
+  izin verir. Dayandığı varsayım: kurulum adımlarının yinelenmesi zararsızdır
+  (başlangıç tasarımı bunu zaten varsayıyordu). Web postası güncellemesi ya
+  da adresi yalnız okunur. Kapatmanın yeniden deneme döngüsü yalnız ilk
+  ayrıcalıklı eşitlemeden önce çıkan hataları yeniden sorar. Sunucu meşgul
+  olduğu için Agent'ın reddettiği yeniden çalıştırma iki dakika boyunca
+  yeniden istenir, sonra çalışan panelde kapatılamamış bırakılır;
+  başka adımı olmayan başlangıçta satır doğru olanla biter ("sunucu meşgul
+  kaldığı için yeniden çalıştırılamadı; ilk çalışmasının ne yaptığı
+  bilinmiyor"; yönetici bileşeni denetler) ve başka değişiklikler yeniden
+  kabul edilir. Asla "başlatılamadı" denmez.
+- **Kalp atışı.** İşçi Agent'ın kesin yanıtıyla ya da Agent'ın yanıtladığı
+  son yenilemeden (gönderildiği andan sayılarak) 15 saniye sonra durdurulur;
+  bir yenileme kalan sürenin tamamı kadar bekleyebilir, yanıtsız kalan
+  yaklaşık bir saniye sonra yeniden istenir ve ilki kiranın istendiği andan
+  sayılarak planlanır: durma en geç Agent'ın 20 saniyelik kirası bitebilmeden
+  5 saniye önce gelir ve nedeniyle günlüğe yazılır. Kural her tek başına değişikliği de yönetir
+  (güvenlik duvarı, DNS, posta TLS, sertifikalar, VPN, web postası). Agent'ın
+  kira kuralları değişmedi.
+- **Şema ya da sürüm geçişi.** Yok. Kapatma aşamaları ve ret nedenleri
+  bellektedir (okumaların üstüne konur); satırlar var olan aşama ve kodlarla
+  yazılır. Saklanan tek yeni değer `service_operation_unsettled` uyarı
+  türüdür; önceki sürüm onu genel uyarı satırıyla gösterir. Bir kurulum
+  adımının satırı kabul edilen nokta güncellemelerini de `operation_data`
+  içinde tutar (önceki sürümün yok saydığı ek bir anahtar).
+- **Kurtarma davranışı.** Başlangıç kurtarması aynı işlevdir; kapatılamayan
+  satır kendi ekranında, her retteki ve Şu anki sorunlar'da adlandırılır
+  (sunucu sahibi önce Agent'ı denetler, sonra panelin web işlemini yeniden
+  başlatır).
+- **Kanıt.** `cmd/panel/d1_stuck_operation_test.go` (adım sayan sahte Agent:
+  çakışma yok, ikinci çalışma sırasında yeniden başlatma, web postası
+  güncellemesi ve adresi, kurulum, posta profili, sınırlar, ölçeklenmiş bir
+  kiraya göre ölçülen kalp atışı durması), `web/tests/d1-stuck-operation.test.mjs`.
+- **Açık.** Henüz gerçek sistem kanıtı yok (laboratuvar adımları L1–L8 PR'da);
+  her kurulum yolunun başarılı ilk çalışmadan sonra yinelenmesinin gerçekten
+  zararsız olduğu laboratuvarda gözlenir (L3), kanıtlanmadı; P0.2 işlem
+  ortasında ulaşılamayan Agent için ilerledi, kapanmadı. **Hiçbir P0 işi
+  kapanmadı.**
+
+### Dal fix/a149-db-limits (Agent panelin sözüyle hiçbir ayrıcalıklı veritabanı hesabını değiştirmez; veritabanı kullanıcılarının sınırları Agent üzerinden; şema değişmez; anayasa 1; ilke 4; D-022; D-024; D-025; 26 Kasım 2026, aday alpha.149)
+
+- **Neden burada.** Ayrıcalıklı Agent'ın bir erişim kapısını değiştirir:
+  panelin adını verdiği bir veritabanı hesabına dokunan (parola, kilit,
+  silme, hak geri alma, sınırlar, nesnelerin sahibi ve alıcısı olarak
+  veritabanı sahibi) ya da bir veritabanını silen, boşaltan, içine yükleyen
+  veya açan her Agent çağrısı.
+- **Sözleşme.** Agent hesabın nelere sahip olduğunu kendisi okur ve sıradan
+  bir hesap değilse hiçbir şeyi değiştirmeden reddeder; aynı denetim yazının
+  kendi işleminde (PostgreSQL) ya da bileşik ifadesinde (MariaDB) yinelenir;
+  okunamayan durum reddedilir (`cmd/agent/database_account_guard.go`,
+  docs/DATABASE-USERS.md). Veritabanının sahibi de aynı kurala uyar (yalnız
+  süper kullanıcı olmadığı ve hiçbir `pg_*` rolünün üyesi olmadığı sürece
+  `celikpanel_admin` istisnadır). Hiçbir Agent çağrısı motorun kendi sistem
+  veritabanlarına dokunmaz. Ret, ekranların kişinin dilinde söylediği bir
+  koddur.
+- **Bunun verdiği güven sınırı.** PostgreSQL 16 ve sonrasında ele geçirilmiş
+  bir panele karşı gerçek bir sınırdır. MariaDB'de ve PostgreSQL 15 ya da
+  daha eskisinde panelin kendi veritabanı hesabı zaten bu ağırlıkta haklara
+  sahiptir (DATABASE-ADMIN-ACCOUNT.md: `ALL PRIVILEGES ON *.* WITH GRANT
+  OPTION`; 16'dan önce CREATEROLE kendine `pg_*` rollerini verebilir); orada
+  ret ele geçirilmiş bir panele karşı değil, yanlışlıklara karşı korur.
+  Başka bir sitenin veritabanını yalnız panelin kendi denetimleri korur.
+- **Şema / sürüm geçişi.** Yok. Eklemeli yanıt alanları (`account_refused`,
+  `account_refused_name`) ve `panel_settings` kayıtları (`db_role_limits_v1`
+  içinde `connections`, `unknown`, `prev`; `db_limits_unapplied_v1`);
+  alpha.148 bunları yok sayar. alpha.148'e dönmek önceki çağrıları geri
+  getirir; ret hiçbir durum tutmaz.
+- **Kurtarma.** Ret hiçbir şeyi değiştirmedi; sunucunun yöneticisi işlemi
+  sunucunun kendisinde yapar. MariaDB yerine çalışan yerel MySQL yönetilmez
+  (`unsupported_engine`); yöneticinin elle kaldırdığı hesap yok sayılır, bu
+  yüzden silme o zaman tamamlanır.
+- **Kanıt.** `cmd/agent` içinde çağrı ve motor başına birim testleri
+  (denetim, veritabanı sahibi, sistem veritabanları, MariaDB yerine MySQL) ve
+  `cmd/panel` (sınır kayıtları); gerçek motor testi
+  `database_account_guard_engine_test.go` (bir laboratuvar adımı).
+- **Açık.** Henüz laboratuvar çalışması yok (pull request'teki laboratuvar
+  listesi). PostgreSQL kuralı parametre ayrıcalıklarına, yönetici
+  işlevlerine doğrudan verilmiş EXECUTE haklarına ve süper kullanıcının
+  çalıştırdığı nesnelere sahip rollere bakmaz. **Hiçbir P0 işi kapanmadı.**

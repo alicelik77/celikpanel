@@ -164,6 +164,15 @@ func SealManagedTextWith(prefix, body string) string {
 	return prefix + sha256Hex([]byte(body)) + "\n" + body
 }
 
+// SealedUnchanged says whether content is CelikPanel's sealed nginx text as
+// it was written: the render header's digest is the body's (S4 R1, third fix
+// round: the stock pool's "in use" check trusts the generator's own lines
+// only in such a file).
+func SealedUnchanged(content []byte) bool {
+	declared, body, ok := splitManagedHeader(content)
+	return ok && sha256Hex(body) == declared
+}
+
 // splitManagedHeader returns the digest the first line declares and the body
 // after it. A first line ending in CR (an editor that wrote CRLF) is still read
 // as the header, so the edit is "owner-edited", not "foreign".
@@ -416,6 +425,24 @@ func atomicWriteSiteFile(path string, content []byte, mode os.FileMode, ownershi
 	}
 	published = true
 	return syncDirectory(directory)
+}
+
+// WriteFileDurably replaces path with content through atomicWriteSiteFile,
+// the writer of every managed site file: a new file beside it with the given
+// mode and the previous file's owner and group (the caller's own for a new
+// one), synced before the rename, and its folder synced after it. The
+// Agent's move of a site's units into its slice writes and puts back unit
+// files with it (S4 R2a third fix round, review N4).
+func WriteFileDurably(path string, content []byte, mode os.FileMode) error {
+	var ownership managedFileOwnership
+	if info, err := os.Lstat(path); err == nil && info.Mode().IsRegular() {
+		owner, err := managedOwnershipFromInfo(info)
+		if err != nil {
+			return err
+		}
+		ownership = owner
+	}
+	return atomicWriteSiteFile(path, content, mode, ownership)
 }
 
 // managedSiteFileNewMode is the mode of an nginx or PHP-FPM site file

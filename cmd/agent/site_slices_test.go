@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -23,7 +25,34 @@ import (
 // says otherwise (TestNothingIsWrittenOnAHostWithoutLimits).
 var realSiteSliceHostSupport = siteSliceHostSupport
 
-func init() { siteSliceHostSupport = func() string { return "" } }
+func init() {
+	siteSliceHostSupport = func() string { return "" }
+	// No test restarts a real unit of the machine it runs on.
+	siteUnitRestart = func(string, time.Duration) ([]byte, error) {
+		return nil, errors.New("tests do not restart units of this machine")
+	}
+	// The bounded systemctl of the Agent's start (alpha.149 second fix round,
+	// R5) goes through the package's fake systemctl, with the same bound: a
+	// call still running when its context ends answers the context's error.
+	siteMoveSystemctl = func(ctx context.Context, args ...string) ([]byte, error) {
+		type answer struct {
+			out []byte
+			err error
+		}
+		done := make(chan answer, 1)
+		ctl := appUnitSystemctl
+		go func() {
+			out, err := ctl(args...)
+			done <- answer{out, err}
+		}()
+		select {
+		case a := <-done:
+			return a.out, a.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
 
 // sliceTestUnit is one unit as the fake systemd sees it.
 type sliceTestUnit struct {
@@ -35,6 +64,39 @@ type sliceTestUnit struct {
 	dropIns string
 	// slowShows: how many reads after a restart it still shows "activating".
 	slowShows int
+	// failEverywhere (alpha.149): a restart leaves it failed wherever it
+	// starts, the system slice too (its program exits at once).
+	failEverywhere bool
+	// sub (alpha.149 second fix round): the SubState shown ("" follows the
+	// ActiveState: running, start, failed, dead); enter: its
+	// ActiveEnterTimestampMonotonic (0: 1 while active, as long before the
+	// host's clock; a restart sets it to the host's clock).
+	sub   string
+	enter uint64
+}
+
+// shownSub is the SubState the fake shows.
+func (u *sliceTestUnit) shownSub() string {
+	if u.sub != "" {
+		return u.sub
+	}
+	switch u.active {
+	case "active":
+		return "running"
+	case "activating":
+		return "start"
+	case "failed":
+		return "failed"
+	}
+	return "dead"
+}
+
+// shownEnter is the ActiveEnterTimestampMonotonic the fake shows.
+func (u *sliceTestUnit) shownEnter() string {
+	if u.enter == 0 && u.active == "active" {
+		return "1"
+	}
+	return strconv.FormatUint(u.enter, 10)
 }
 
 type sliceTestHost struct {
@@ -49,17 +111,59 @@ type sliceTestHost struct {
 	onRestart func(unit string)
 	// setProperty applies a set-property call (nil: recorded only).
 	setProperty func(args []string)
+	// delay (alpha.149 fix round): every systemctl call takes this long.
+	delay time.Duration
+	// now (second fix round): the monotonic clock in microseconds.
+	now uint64
+}
+
+// advance moves the host's monotonic clock on.
+func (host *sliceTestHost) advance(d time.Duration) {
+	host.mu.Lock()
+	defer host.mu.Unlock()
+	host.now += uint64(d / time.Microsecond)
 }
 
 func useSliceTestHost(t *testing.T) *sliceTestHost {
 	t.Helper()
 	useSandboxHost(t, true)
 	dir, _ := sandboxUnitDir()
-	host := &sliceTestHost{dir: dir, units: map[string]*sliceTestUnit{}, slices: map[string]string{}, ports: map[string]map[int]bool{}}
+	host := &sliceTestHost{dir: dir, units: map[string]*sliceTestUnit{}, slices: map[string]string{}, ports: map[string]map[int]bool{}, now: 1e12}
 	oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare := appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare
 	oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport := siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport
 	oldJournal, oldOutcomes, oldRuntime, oldControl := siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir
+	oldRestart, oldUpdate, oldClock, oldBound, oldClaimed := siteUnitRestart, siteMoveUpdateState, siteMonotonicNow, siteMoveStartBound, siteMoveClaimed
+	siteMoveUpdateState = func() string { return "" } // never the test machine's own update records
+	siteMonotonicNow = func() (uint64, bool) {
+		host.mu.Lock()
+		defer host.mu.Unlock()
+		return host.now, true
+	}
+	// The bounded restart goes through the fake systemctl, with the same
+	// bound: an answer later than wait is "still starting".
+	siteUnitRestart = func(unit string, wait time.Duration) ([]byte, error) {
+		type answer struct {
+			out []byte
+			err error
+		}
+		done := make(chan answer, 1)
+		// The fake and its arguments are taken now: a restart still running
+		// when the test ends must not read the package's seams while the
+		// test's cleanup puts them back (the race detector's finding).
+		ctl, args := appUnitSystemctl, systemctlArgs("restart", unit)
+		go func() {
+			out, err := ctl(args...)
+			done <- answer{out, err}
+		}()
+		select {
+		case a := <-done:
+			return a.out, a.err
+		case <-time.After(wait):
+			return nil, errSiteUnitStillStarting
+		}
+	}
 	t.Cleanup(func() {
+		siteUnitRestart, siteMoveUpdateState, siteMonotonicNow, siteMoveStartBound, siteMoveClaimed = oldRestart, oldUpdate, oldClock, oldBound, oldClaimed
 		appUnitSystemctl, appUnitVerify, siteSliceCgroupRoot, siteSliceListening, siteSlicePoll, siteMovePrepare = oldCtl, oldVerify, oldRoot, oldListen, oldPoll, oldPrepare
 		siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteMoveBudget, siteMoveKilled, siteSliceHostSupport = oldMin, oldDefault, oldMax, oldBudget, oldKilled, oldSupport
 		siteMoveJournalPath, siteMoveOutcomesPath, siteSliceRuntimeJournalPath, siteSliceControlDir = oldJournal, oldOutcomes, oldRuntime, oldControl
@@ -74,7 +178,7 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 	siteSliceCgroupRoot = t.TempDir()
 	siteSliceSettleMin, siteSliceSettleDefault, siteSliceSettleMax, siteSlicePoll = 50*time.Millisecond, 50*time.Millisecond, 50*time.Millisecond, time.Millisecond
 	siteMoveBudget = time.Minute
-	siteSliceListening = func(unit string) map[int]bool {
+	siteSliceListening = func(unit string) (map[int]bool, bool) {
 		host.mu.Lock()
 		defer host.mu.Unlock()
 		out := map[int]bool{}
@@ -83,10 +187,18 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 				out[p] = true
 			}
 		}
-		return out
+		return out, true
 	}
 	appUnitSystemctl = func(args ...string) ([]byte, error) {
-		if args[0] == "restart" && host.onRestart != nil {
+		host.mu.Lock()
+		delay := host.delay
+		host.mu.Unlock()
+		time.Sleep(delay)
+		// restart --no-block (alpha.149 fix round): systemd queues a job per
+		// unit (second fix round R5: one call for all) and the caller does not
+		// wait for them; the fake applies them at once.
+		noBlock := args[0] == "restart" && len(args) >= 3 && args[1] == "--no-block"
+		if args[0] == "restart" && !noBlock && host.onRestart != nil {
 			host.onRestart(args[1])
 		}
 		if args[0] == "set-property" && host.setProperty != nil {
@@ -98,25 +210,36 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 		switch {
 		case args[0] == "daemon-reload":
 			host.reloads++
-		case args[0] == "restart" && len(args) == 2:
-			u := host.units[args[1]]
-			if u == nil {
-				return []byte("Unit not found."), errors.New("exit status 5")
+		case args[0] == "restart" && (len(args) == 2 || noBlock):
+			names := args[1:]
+			if noBlock {
+				names = args[2:]
 			}
-			raw, _ := os.ReadFile(filepath.Join(host.dir, args[1]))
-			slice := sitesandbox.SystemSlice
-			for _, line := range strings.Split(string(raw), "\n") {
-				if rest, ok := strings.CutPrefix(line, "Slice="); ok {
-					slice = rest
+			missing := false
+			for _, name := range names {
+				u := host.units[name]
+				if u == nil {
+					missing = true
+					continue
+				}
+				raw, _ := os.ReadFile(filepath.Join(host.dir, name))
+				slice := sitesandbox.SystemSlice
+				for _, line := range strings.Split(string(raw), "\n") {
+					if rest, ok := strings.CutPrefix(line, "Slice="); ok {
+						slice = rest
+					}
+				}
+				u.cgroup = "/" + slice + "/" + name
+				u.active, u.sub, u.enter = "active", "", host.now
+				if u.slowShows > 0 {
+					u.active = "activating"
+				}
+				if u.failEverywhere || (u.failStart && slice != sitesandbox.SystemSlice) {
+					u.active, u.cgroup = "failed", ""
 				}
 			}
-			u.cgroup = "/" + slice + "/" + args[1]
-			u.active = "active"
-			if u.slowShows > 0 {
-				u.active = "activating"
-			}
-			if u.failStart && slice != sitesandbox.SystemSlice {
-				u.active, u.cgroup = "failed", ""
+			if missing {
+				return []byte("Unit not found."), errors.New("exit status 5")
 			}
 		case args[0] == "show" && len(args) == 3 && strings.HasPrefix(args[2], "--property=ActiveState,ControlGroup"):
 			u := host.units[args[1]]
@@ -128,7 +251,8 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 					u.active = "active"
 				}
 			}
-			return []byte("ActiveState=" + u.active + "\nControlGroup=" + u.cgroup + "\nDropInPaths=" + u.dropIns + "\n"), nil
+			return []byte("ActiveState=" + u.active + "\nSubState=" + u.shownSub() + "\nControlGroup=" + u.cgroup + "\nDropInPaths=" + u.dropIns +
+				"\nActiveEnterTimestampMonotonic=" + u.shownEnter() + "\n"), nil
 		case args[0] == "show" && strings.HasPrefix(args[1], "--property=Id,"):
 			var blocks []string
 			for _, name := range args[2:] {
@@ -137,8 +261,8 @@ func useSliceTestHost(t *testing.T) *sliceTestHost {
 					continue
 				}
 				if u := host.units[name]; u != nil {
-					blocks = append(blocks, "Id="+name+"\nLoadState=loaded\nActiveState="+u.active+"\nControlGroup="+u.cgroup+
-						"\nSlice=system.slice\nMemoryMax=1610612736\nTasksMax=512\nCPUQuotaPerSecUSec=1s\n")
+					blocks = append(blocks, "Id="+name+"\nLoadState=loaded\nActiveState="+u.active+"\nSubState="+u.shownSub()+"\nControlGroup="+u.cgroup+
+						"\nSlice=system.slice\nMemoryMax=1610612736\nTasksMax=512\nCPUQuotaPerSecUSec=1s\nActiveEnterTimestampMonotonic="+u.shownEnter()+"\n")
 					continue
 				}
 				blocks = append(blocks, "Id="+name+"\nLoadState=not-found\nActiveState=inactive\n")
@@ -397,13 +521,13 @@ func TestMoveSiteSliceAnswerCheck(t *testing.T) {
 	writeTestUnit(t, host, unit, text)
 	host.units[unit] = &sliceTestUnit{active: "active", cgroup: "/system.slice/" + unit}
 	host.ports[unit] = map[int]bool{30010: true}
-	siteSliceListening = func(u string) map[int]bool {
+	siteSliceListening = func(u string) (map[int]bool, bool) {
 		host.mu.Lock()
 		defer host.mu.Unlock()
 		if strings.HasPrefix(host.units[u].cgroup, "/celiksite_") {
-			return map[int]bool{}
+			return map[int]bool{}, true
 		}
-		return map[int]bool{30010: true}
+		return map[int]bool{30010: true}, true
 	}
 	var resp transport.MoveSiteSliceResponse
 	_ = (&Agent{}).MoveSiteSliceV1(moveRequest(unit), &resp)

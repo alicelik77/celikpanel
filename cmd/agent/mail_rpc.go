@@ -274,7 +274,8 @@ func (a *Agent) AddMailAccount(req *MailAccount, resp *transport.MailMutationRes
 		return err
 	}
 	if mailFileHasKey(users, email) || mailFileHasKey(vboxes, email) {
-		return fmt.Errorf("mail account already exists")
+		// The exact answer the Panel recognizes (alpha.144).
+		return errors.New(transport.MailAccountExistsOnServer)
 	}
 
 	users = upsertMailLine(users, email, fmt.Sprintf("%s:%s::::::%s", email, hash, dovecotQuotaFields(req.QuotaMB)))

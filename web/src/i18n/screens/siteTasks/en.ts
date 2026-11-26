@@ -58,7 +58,7 @@ export const enSiteTasksScreens = {
     'slim.tasks.mailOwner': 'Tasks and programs of sites cannot send mail through this server: port 465 or 587 is the server owner’s own mail service (or another program listens there), so CelikPanel does not open it to them. They send through an outside mail service, or the server owner gives those ports back to CelikPanel’s mail service.',
     'slim.tasks.mailAbsent': 'Tasks and programs of sites cannot send mail through this server: it has no mail sending service set up. Setting up mail on this server opens it to them, with a mailbox’s password.',
     'slim.tasks.mailOwnerFile': 'The server owner changed the outgoing mail block’s file and it is kept; that file decides whether sites can send mail through this server.',
-    'slim.tasks.unresolved': 'A move of this site’s tasks could not be finished or put back (step {step}); its record keeps the crontab, so nothing is lost, and no site is moved until it is resolved. CelikPanel tries again at its next start; if it cannot, the server owner runs: {steps}',
+    'slim.tasks.unresolved': 'It is this site’s scheduled tasks (step {step}): their record keeps the crontab, so nothing is lost. The administrator presses Try again; CelikPanel also tries at its next start. If that cannot finish it, the server owner runs: {steps}',
     'slim.tasks.recovery': 'A move of the site’s tasks was interrupted; at the agent’s start it ended as “{outcome}” ({time}).',
     'slim.tasks.rows': 'The site’s {n} tasks become timers inside the limits; settings and paused tasks come with them. Nothing restarts and no running task stops.',
     'slim.tasks.none': 'The site has no scheduled tasks now; from now on its tasks run inside its limits.',
@@ -98,7 +98,7 @@ export const enSiteTasksScreens = {
     'moveall.optionRow': '{domain}: its programs move; its tasks stay in cron',
     'moveall.previewUnknown': 'what its move would do could not be read',
     'moveall.notMoved': 'Not moved',
-    'moveall.unresolved': 'An earlier move is unresolved, so no site is moved until it is. Problems now says what to do.',
+    'moveall.unresolved': 'An earlier move could not be put back completely, so no site is moved until it is settled. That site’s card has Try again.',
     'moveall.partial': 'its programs moved; its tasks stayed in cron ({reason})',
 
     'err.SITE_TASKS_SOURCE_MISSING': 'This site’s task file is missing on the server while its tasks still run as timers, so nothing was changed: a change now would remove every other task. The administrator rebuilds the file on this screen; then change the task again.',

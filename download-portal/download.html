@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" data-page="download">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install · CelikPanel</title>
+<meta name="description" content="Install CelikPanel on a clean Linux server with one command: the signed release, the supported systems, the setup wizard and how the panel changes your server.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="assets/favicon-v2.svg">
+<link rel="preload" href="assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/public.css">
+<link rel="stylesheet" href="assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/download.html">
+<link rel="alternate" hreflang="en" href="download.html">
+<link rel="alternate" hreflang="tr" href="tr/indir.html">
+<link rel="alternate" hreflang="x-default" href="download.html">
+<script src="assets/boot.js"></script>
+<script src="assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> home</span></a>
+<span class="docid">Datasheet · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time></span>
+<nav aria-label="Main"><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html" aria-current="page">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="guide/en/">Guide</a></li>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="tr/indir.html" hreflang="tr" lang="tr" data-set-lang="tr" aria-label="Türkçe">TR</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Install CelikPanel</h1>
+<p class="def">One command on a clean Linux server downloads the signed release, checks it and installs the panel. Go, Node.js or Git are not needed.</p>
+<dl class="spec" aria-label="The release this page installs">
+<div><dt>Release</dt><dd><a class="mono" href="releases.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_EN@@</time>; signed with Ed25519</dd></div>
+<div><dt>Package</dt><dd>One archive for Linux amd64, with its SHA-256 and a signed manifest</dd></div>
+<div><dt>Systems</dt><dd>Debian 13, Ubuntu 24.04 <small>(tried on every release candidate)</small><br>Debian 12, Ubuntu 22.04 <small>(supported)</small><br>Arch Linux <small>(development level, not tried on every release)</small><br>amd64</dd></div>
+<div><dt>Status</dt><dd>Alpha: for test servers; not ready for production</dd></div>
+</dl>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-steps">
+<header><span class="num">1</span><h2 id="h-steps">Steps</h2><p>Start on a clean test server you can reinstall.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 1 · Installation steps</caption>
+<thead><tr><th scope="col" class="n">Step</th><th scope="col">What to do</th><th scope="col">Where</th></tr></thead>
+<tbody>
+<tr><td class="v" data-k="Step">1</td><td data-k="What to do">Create an account and take a licence for the server</td><td data-k="Where">celikpanel.net</td></tr>
+<tr><td class="v" data-k="Step">2</td><td data-k="What to do">Prepare a clean server with a supported system</td><td data-k="Where">Your server provider</td></tr>
+<tr><td class="v" data-k="Step">3</td><td data-k="What to do">Run the install command; the installer checks the release’s signature and SHA-256 before it installs anything</td><td data-k="Where">The server’s root terminal</td></tr>
+<tr><td class="v" data-k="Step">4</td><td data-k="What to do">Sign in at the address the installer shows and enter your licence key; the setup wizard then asks for your domain and where DNS lives</td><td data-k="Where">The panel, in a browser</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="cmd-title-download">Install command</h3><button class="copy" type="button" hidden data-copy="cmd-download" data-copied="Copied" data-failed="Select the text to copy it">Copy</button></div>
+<pre tabindex="0" aria-labelledby="cmd-title-download"><code id="cmd-download">timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+sh celikpanel-install.sh</code></pre>
+<p class="note">Run the three lines together in the server’s root terminal. The first line turns on clock synchronisation.</p>
+<p class="sr-only" role="status" data-copy-status></p>
+</div>
+</div>
+</section>
+<section class="part" aria-labelledby="h-systems">
+<header><span class="num">2</span><h2 id="h-systems">Systems</h2><p>Tried on every release candidate, or supported.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Table 2 · Operating systems (distribution dates checked on 24 October 2026)</caption>
+<thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Patched by the distribution until</th><th scope="col">System updates</th></tr></thead>
+<tbody>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2030-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Status"><span class="tag ok">Tested</span></td><td class="v" data-k="Patched by the distribution until">2029-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2028-06-30</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Status"><span class="tag no">Supported</span></td><td class="v" data-k="Patched by the distribution until">2027-05</td><td data-k="System updates">Automatic or by hand, your choice</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">rolling release</span></th><td data-k="Status"><span class="tag no">Development level</span></td><td data-k="Patched by the distribution until">No end date</td><td data-k="System updates">By hand, as a full upgrade</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Tested: every release candidate is run on it before it is published. Supported: CelikPanel installs and runs on it; release candidates are not run on it. Development level (Arch Linux): CelikPanel is built for it and runs on it as it is today, but release candidates are not tried on it and a rolling update can change what works. Debian dates include Debian LTS; Ubuntu dates are standard support, without ESM. The release package is built for amd64.</p>
+<p class="more"><a href="systems.html">What each system offers, and how its updates work</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-wizard">
+<header><span class="num">3</span><h2 id="h-wizard">Setup wizard</h2><p>On first sign-in it asks for the main domain and where DNS lives. It shows its plan and changes nothing until you start it.</p></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Table 3 · Where DNS lives</caption>
+<thead><tr><th scope="col">Choice</th><th scope="col">What happens</th></tr></thead>
+<tbody>
+<tr><th scope="row">This server</th><td data-k="What happens">The server keeps its own DNS, with BIND or PowerDNS. One server is enough.</td></tr>
+<tr><th scope="row">An outside DNS provider</th><td data-k="What happens">No DNS software is installed. The panel shows the records to add at your provider and what the internet answers for each; it does not write to the provider.</td></tr>
+<tr><th scope="row">Two servers (optional)</th><td data-k="What happens">The second server keeps a copy of the DNS. It joins with a code that is shown once and is valid for 24 hours. Each server has its own licence.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section class="part" id="how" aria-labelledby="h-how">
+<header><span class="num">4</span><h2 id="h-how">How CelikPanel changes your server</h2><p>The rules every change follows.</p></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Table 4 · Rules for changes</caption>
+<thead><tr><th scope="col">Rule</th><th scope="col">What it means</th></tr></thead>
+<tbody>
+<tr><th scope="row">Confirmation first</th><td data-k="What it means">Server changes (installing components, the setup wizard, updates) show what they will do and wait for your confirmation.</td></tr>
+<tr><th scope="row">Once only</th><td data-k="What it means">A repeated click or a resent request never runs a change twice.</td></tr>
+<tr><th scope="row">One at a time</th><td data-k="What it means">Server-wide changes (installs, setup, updates) run one at a time; another waits or is refused until the first ends.</td></tr>
+<tr><th scope="row">The system’s own services</th><td data-k="What it means">Sites, mail, DNS and databases run as the system’s own services and keep running when the panel stops.</td></tr>
+<tr><th scope="row">Your edits are kept</th><td data-k="What it means">A configuration file you changed by hand is kept; CelikPanel puts its own text beside it and tells you.</td></tr>
+<tr><th scope="row">Two services</th><td data-k="What it means">The web-facing panel never runs as root. Only the local agent may change the system.</td></tr>
+<tr><th scope="row">Your password stays on your server</th><td data-k="What it means">The first administrator is created on your server; the password is never sent to this website.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section class="part" aria-labelledby="h-installed">
+<header><span class="num">5</span><h2 id="h-installed">Already installed?</h2></header>
+<div>
+<p>Update from inside your panel, under Settings, CelikPanel updates. Only the owner starts it; nothing installs by itself. If an update fails after it has replaced the installed version, the panel puts back the previous version and its database by itself (changes made in the panel after the update are lost); if it stops earlier, nothing was changed. The update screen says which happened.</p>
+<p class="more"><a href="releases.html">Release notes and files</a><span class="sep" aria-hidden="true">·</span><a href="guide/en/panel-settings.html">How updates work</a></p>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>A hosting control panel for Linux servers.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Product</h2><ul>
+<li><a href="systems.html">Systems</a></li>
+<li><a href="download.html">Install</a></li>
+<li><a href="pricing.html">Licence</a></li>
+<li><a href="releases.html">Releases</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+<li><a href="guide/en/">User guide</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Account</h2><ul>
+<li><a href="account/?action=login&amp;lang=en">Sign in</a></li>
+<li><a href="account/?action=register&amp;lang=en">Create an account</a></li>
+<li><a href="account/?action=terms&amp;lang=en">Terms and data notice</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">Contact</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Private security report</a></li>
+<li><a href="problems.html">Known problems</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_en.yml">Report a bug</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_en.yml">Suggest a feature</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

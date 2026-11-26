@@ -119,6 +119,7 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 	// Araçlar PHP'dir. Her biri bağlı olduğu PHP sürümünde, o sürüm kurulu
 	// kaldıkça kalır; sessizce taşınmaz.
 	sockets := make(map[string]string, len(tools))
+	leftOut := map[string]bool{}
 	var problems []string
 	for _, state := range phpToolStates() {
 		if installedRoots[state.Tool] == "" {
@@ -139,6 +140,14 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 			var warning string
 			if socket, warning = ownSocketForUnboundTool(ctx, state, socket); warning != "" {
 				problems = append(problems, warning)
+				// S4 R1, second fix round (B3): never pointed at a socket
+				// nobody answers on (that version's stock pool is off): the
+				// tool is left out of the configuration, as the warning says.
+				if dbToolLeftOut(socket, warning, pathExists) {
+					leftOut[state.Tool] = true
+					resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: version, Kind: "own_account_not_served"})
+					continue
+				}
 				resp.ToolProblems = append(resp.ToolProblems, transport.PHPToolProblem{Tool: state.Tool, Version: version, Kind: "own_account_failed"})
 			}
 			if err := ensurePHPToolExtensions(ctx, state.Tool, version); err != nil {
@@ -159,6 +168,7 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 		resp.Error = err.Error()
 		return
 	}
+	tools = dbToolsServed(tools, leftOut)
 	conf := renderDBToolsConfig(tools, installedRoots, sockets)
 
 	// Atomic publication, and the previous file kept to put back when nginx
@@ -206,4 +216,22 @@ func configureDBToolsWith(ctx context.Context, resp *ConfigureDBToolsResponse) {
 		resp.Warning = strings.Join(problems, "; ")
 	}
 	return
+}
+
+// dbToolLeftOut: a database tool that could not get its own account
+// (warning) and whose stock socket does not exist is left out of the web
+// server's configuration rather than pointed at nothing (B3).
+func dbToolLeftOut(socket, warning string, exists func(string) bool) bool {
+	return warning != "" && !exists(socket)
+}
+
+// dbToolsServed are the installed tools the configuration serves.
+func dbToolsServed(tools []string, leftOut map[string]bool) []string {
+	served := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		if !leftOut[tool] {
+			served = append(served, tool)
+		}
+	}
+	return served
 }

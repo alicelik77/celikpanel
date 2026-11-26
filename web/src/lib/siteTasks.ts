@@ -63,29 +63,18 @@ export interface TasksPlacement {
     mail_submission?: string;
     recovery?: string;
     unknown?: boolean;
-    /** Second fix round: a move of this site that could not be finished or put back. */
-    unresolved?: UnresolvedMove;
 }
 
-/** A move the server could not resolve: no site is moved until it is. */
-export interface UnresolvedMove {
-    site_id: number;
-    kind: string;
-    step?: string;
-    account?: string;
-}
-
-/** The server owner's two steps by hand for an unresolved tasks move (timers off first). */
-export function unresolvedSteps(u: UnresolvedMove): string {
-    if (!u.account) return '';
-    return `sudo systemctl disable --now 'celikcron-${u.site_id}-*.timer' ; sudo crontab -u ${u.account} /etc/celikpanel-cron/${u.site_id}.crontab`;
+/** The server owner's two steps by hand for a kept tasks move record that Try again cannot settle (timers off first). */
+export function unresolvedSteps(u: { tasks_site?: number; tasks_account?: string }): string {
+    if (!u.tasks_account || !u.tasks_site) return '';
+    return `sudo systemctl disable --now 'celikcron-${u.tasks_site}-*.timer' ; sudo crontab -u ${u.tasks_account} /etc/celikpanel-cron/${u.tasks_site}.crontab`;
 }
 
 export function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
     const body = raw as Partial<TasksPlacement> | null;
     if (!body || typeof body !== 'object' || typeof body.moved !== 'boolean') return undefined;
-    const u = body.unresolved as Partial<UnresolvedMove> | undefined;
-    const placement: TasksPlacement = {
+    return {
         moved: body.moved,
         reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined,
         by_site: body.by_site === true,
@@ -93,10 +82,6 @@ export function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
         recovery: typeof body.recovery === 'string' ? body.recovery : undefined,
         unknown: body.unknown === true,
     };
-    if (u && typeof u === 'object' && typeof u.site_id === 'number' && typeof u.kind === 'string') {
-        placement.unresolved = { site_id: u.site_id, kind: u.kind, step: typeof u.step === 'string' ? u.step : undefined, account: typeof u.account === 'string' ? u.account : undefined };
-    }
-    return placement;
 }
 
 /** What a tasks move did or would do (the preview, the move, the undo). */
@@ -149,10 +134,10 @@ export function privilegedList(answer: TasksAnswer): string {
  */
 export type SiteMoveEnd = { kind: 'moved'; note: string } | { kind: 'skipped' | 'partial' | 'stop'; reason: string; unresolved?: boolean };
 
-/** The refusal every move and undo answers while an earlier move is unresolved. */
-export const UNRESOLVED_MOVE = 'unresolved_move';
+/** The refusal every move and undo answers while a move record is kept (alpha.150: one record for programs and tasks). */
+export const KEPT_MOVE = 'kept_earlier';
 
-export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; refusal?: string; units?: unknown[]; tasks?: unknown }): SiteMoveEnd {
+export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; kept?: boolean; reason?: { code?: string }; units?: unknown[]; tasks?: unknown }): SiteMoveEnd {
     let tasks: TasksAnswer | undefined;
     try {
         tasks = answer.tasks ? decodeTasksAnswer(answer.tasks) : undefined;
@@ -161,7 +146,7 @@ export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; err
     }
     // Second fix round: an earlier move that could not be resolved stops the
     // run (nothing else is moved until it is).
-    if (answer.refusal === UNRESOLVED_MOVE || tasks?.refusal === UNRESOLVED_MOVE) return { kind: 'stop', reason: tasks?.error ?? answer.error ?? '', unresolved: true };
+    if (answer.kept === true || answer.reason?.code === KEPT_MOVE || tasks?.refusal === KEPT_MOVE) return { kind: 'stop', reason: tasks?.error ?? answer.error ?? '', unresolved: true };
     if (answer.rolled_back || answer.done === false) return { kind: 'stop', reason: answer.error ?? '' };
     if (!tasks || tasks.outcome === 'put_back' || tasks.outcome === 'unknown') return { kind: 'stop', reason: tasks?.error ?? '' };
     if (tasks.outcome === 'moved' || tasks.outcome === 'already') return { kind: 'moved', note: '' };

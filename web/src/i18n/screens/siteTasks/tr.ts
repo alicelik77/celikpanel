@@ -50,7 +50,7 @@ export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
     'slim.tasks.mailOwner': 'Sitelerin görevleri ve programları bu sunucu üzerinden e-posta gönderemez: 465 ya da 587 numaralı port sunucu sahibinin kendi posta hizmeti (ya da orada başka bir program dinliyor), bu yüzden CelikPanel onu sitelere açmaz. Siteler dışarıdaki bir posta hizmetiyle gönderir ya da sunucu sahibi bu portları CelikPanel’in posta hizmetine geri verir.',
     'slim.tasks.mailAbsent': 'Sitelerin görevleri ve programları bu sunucu üzerinden e-posta gönderemez: sunucuda kurulu bir posta gönderme hizmeti yok. Bu sunucuda posta kurulunca, posta kutusu parolasıyla onlara açılır.',
     'slim.tasks.mailOwnerFile': 'Giden posta engelinin dosyasını sunucu sahibi değiştirdi ve dosya korunuyor; sitelerin bu sunucu üzerinden e-posta gönderip gönderemeyeceğine o dosya karar verir.',
-    'slim.tasks.unresolved': 'Bu sitenin görevlerinin bir taşınması ne tamamlanabildi ne geri alınabildi ({step} adımı); kaydı crontab’ı tutuyor, hiçbir şey kaybolmadı ve bu çözülene kadar hiçbir site taşınmaz. CelikPanel bir sonraki açılışında yeniden dener; olmazsa sunucu sahibi şunu çalıştırır: {steps}',
+    'slim.tasks.unresolved': 'Bu sitenin zamanlanmış görevleri ({step} adımı): kaydı crontab’ı tutuyor, hiçbir şey kaybolmadı. Yönetici Tekrar dene’ye basar; CelikPanel bir sonraki açılışında da dener. Bu yetmezse sunucu sahibi şunu çalıştırır: {steps}',
     'slim.tasks.recovery': 'Sitenin görevlerinin bir taşınması yarıda kesildi; ajan açılırken “{outcome}” olarak sonuçlandı ({time}).',
     'slim.tasks.rows': 'Sitenin {n} görevi sınırların içinde zamanlayıcıya dönüşür; ayarlar ve duraklatılmış görevler de onlarla gelir. Hiçbir şey yeniden başlamaz, çalışan bir görev durmaz.',
     'slim.tasks.none': 'Sitenin şu an zamanlanmış görevi yok; bundan sonra görevleri sınırları içinde çalışır.',
@@ -90,7 +90,7 @@ export const trSiteTasksScreens: Record<SiteTasksScreenKey, string> = {
     'moveall.optionRow': '{domain}: programları taşınır; görevleri cron’da kalır',
     'moveall.previewUnknown': 'taşımanın ne yapacağı okunamadı',
     'moveall.notMoved': 'Taşınmayanlar',
-    'moveall.unresolved': 'Daha önceki bir taşıma çözülmedi; o çözülene kadar hiçbir site taşınmaz. Ne yapılacağı Şu anki sorunlar’da.',
+    'moveall.unresolved': 'Daha önceki bir taşıma tamamen geri konamadı; çözülene kadar hiçbir site taşınmaz. O sitenin kartında Tekrar dene var.',
     'moveall.partial': 'programları taşındı; görevleri cron’da kaldı ({reason})',
 
     'err.SITE_TASKS_SOURCE_MISSING': 'Bu sitenin görev dosyası sunucuda yok, ama görevleri hâlâ zamanlayıcı olarak çalışıyor; bu yüzden hiçbir şey değiştirilmedi: şimdi yapılacak bir değişiklik öteki bütün görevleri silerdi. Yönetici dosyayı bu ekrandan yeniden kurar; sonra görevi yeniden değiştirin.',

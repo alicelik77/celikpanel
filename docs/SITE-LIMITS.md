@@ -33,7 +33,7 @@ Storage (migration 066, additive):
 | Table / column | Meaning |
 |---|---|
 | `setting_policy(key, server_ceiling, server_default, customer_editable)` | The server level. Seeded with the owner's ceilings: 512 MB memory, 300 s, 256 MB upload, 10000 input fields, 20 PHP processes; scheduled tasks at least 5 minutes apart; no ceiling for database connections and task counts. |
-| `setting_ceilings(owner_kind, owner_id, key, value)` | Ceilings of a plan, reseller plan, Custom subscription or Custom reseller; removed with the owner by triggers. |
+| `setting_ceilings(owner_kind, owner_id, key, value)` | Ceilings of a plan, reseller plan, Custom subscription or Custom reseller; removed with the owner by triggers. A save replaces only the keys this release knows: a row of a key a later release wrote (kept after going back one release) stays as it is, unread and unshown, and goes along when an account leaves its plan for Custom. |
 | `service_plans` / `subscriptions`: `overuse_policy`, `notify_percent_disk`, `notify_percent_traffic` | G10. |
 | `reseller_plans` / `reseller_pools`: `overselling` | G17. |
 | `rights_set_items` | `permission:php_settings` and `permission:php_version` added to every listed set, so nobody loses what they could do before. |
@@ -205,6 +205,91 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   the owner's. Role settings for one database (`ALTER ROLE … IN DATABASE …`) are never
   written or reset by the panel. A restore or copy never touches a user's settings.
 
+  **What reaches whom in alpha.148 (lab of 25 November 2026 and the code).** The time
+  limits reach a site's MariaDB users that exist when the plan's limit is set; a user
+  created afterwards through a site's Databases section (or added to a database, or made by
+  an app, a copy or an import) gets none until the plan's database keys change again: those
+  paths apply only the connection limit, and only when it is set. On PostgreSQL the panel's
+  `celikpanel_admin` record is not a superuser, so `ALTER ROLE` on roles the Agent created
+  as `postgres` (every site database user) is refused (SQLSTATE 42501) and
+  `temp_file_limit` needs superuser or `SET` on the parameter: the time limits and the
+  temporary-file limit do not reach sites' PostgreSQL users in this release; the failure is
+  only logged. The paragraphs above describe the design, not what alpha.148 delivers for
+  those users.
+
+  **Since the alpha.149 fix round B (code; lab still open).** One function
+  (`cmd/panel/database_user_limits.go`, `applyDatabaseUserLimits`) decides and writes a
+  user's connection limit, time limits and temporary-file limit, and every path that
+  creates or re-creates a database user calls it whenever any of these keys is set
+  (`TestEveryPathThatCreatesADatabaseUserAppliesItsLimits` lists them). It reads the
+  user's values first; a user whose values cannot be read gets nothing written and is
+  reported. This machine's PostgreSQL is reached through the Agent as the `postgres`
+  superuser by one narrow call (`Agent.SetPostgreSQLRoleLimitsV1`,
+  `cmd/agent/database_role_limits_rpc.go`): a role the panel recorded on this machine's
+  cluster, never a superuser or a role with CREATEROLE, REPLICATION or BYPASSRLS (or a
+  member of one), and only the four settings as integers in fixed ranges; the panel's own
+  account gains no right. A MariaDB user's remote copies carry its `MAX_STATEMENT_TIME`.
+  A user the limits did not reach is named in Problems now (a verified failure, the
+  database server not running, or an unknown result) with Apply again, and a plan's Save
+  names them. The connection limit stays the panel's own, as since alpha.128.
+
+  **Its fix round (review of PR #370).** The Agent's superuser path serves CelikPanel's own
+  local PostgreSQL only; a record of the administrator's own account keeps that account.
+  The Agent refuses, in the same transaction as the writes, a role that is a superuser,
+  has CREATEROLE, CREATEDB, REPLICATION or BYPASSRLS, is a member of such a role or of a
+  `pg_*` role, or (for limits) a member of any role. On PostgreSQL the connection limit
+  follows the record rule of the role settings: the server owner's hand-set value is kept,
+  and the panel writes the limit only when the plan's value changed or for a user without
+  one. A write whose answer was lost stays the panel's value until a read-back confirms
+  it; a run's users are recorded as pending first, so a restart leaves them "not known
+  yet"; Problems now names the outcome actually known (the Agent not reachable, the server
+  not running, a refused connection, a refused user, a refused statement, not known) and
+  its reason, and the hourly round tries them again. A statement time or idle-transaction
+  time found on a user and not written by the panel was changed on the user itself (by the
+  owner or by the user, which the panel cannot tell apart); it is a default the user may
+  change by design and is never imposed again. The notes may say: "A database user's own
+  statement time, changed on the user itself, is kept; the temporary-file and connection
+  limits are firm limits the user cannot change."
+
+  **Its second fix round (second review of PR #370).** alpha.128 to 148 wrote the
+  PostgreSQL connection limit without a record through `celikpanel_admin` (PostgreSQL 15
+  or older, and on 16 and later on roles `celikpanel_admin` made itself). Every change that
+  can move a subscription's connection limit - a plan's or a reseller plan's Save, a
+  subscription moved to another plan, to Custom or to Unlimited, a reseller's limits, the
+  server's limit - reads each affected subscription's limit before it is saved; a user
+  without a record whose current limit equals that previous value is the panel's and gets
+  the new value. A value that equals neither is the owner's and is kept. What stays: such a
+  user is reached only by such a change. Apply again and the hourly round carry no previous
+  value, so a user whose unrecorded value is an older plan value (the plan changed again
+  before alpha.149, or its write then failed) is kept as the owner's; and a value the owner
+  set by hand that happens to equal the previous plan value is taken as the panel's.
+
+  Stated limits, not built:
+  - The Agent's read of the panel's file for the limits call holds one slot. A file the
+    panel's own account swaps for a FIFO between the pin and SQLite's open keeps that slot,
+    and every later limits call is refused until the Agent restarts: a taken-over panel can
+    deny itself this call, nothing more. The `-wal`/`-shm` companions are checked at pin
+    time only.
+  - A site role its owner made a member of another role, or privileged, stays named in
+    Problems now and is tried again by the hourly round; lifting the plan's limits does not
+    clear it. The line ends when the role's membership or privilege is removed, or the user
+    is removed from CelikPanel.
+  - A large Save writes every user of the affected subscriptions as pending into one row,
+    and each outcome rewrites it (quadratic in the number of users); a very large reseller
+    plan can outlast the run's 10 minutes, and the users not reached read "not known yet".
+  - The Problems now line of the database limits stays hidden until its words have loaded,
+    and if they fail to load.
+  - Suspension, password changes and the added-user calls still run psql and mysql without
+    a lock wait limit or a time bound (the limits call has both), under the same Agent lock
+    as the limits call: a role the owner holds locked blocks them, and a limits call then
+    waits until the panel's call times out ("not known yet").
+  - The site's limits card can wait for a running limits run (more than 10 seconds when the
+    run meets lock waits).
+  - The record rule of the connection limit holds for CelikPanel's own local PostgreSQL,
+    through the Agent. A PostgreSQL the administrator registered with an account of their
+    own keeps the alpha.128 rule for the connection limit: a hand-set value is written over
+    on every rewrite.
+
   **Loads and the user's limits.** Customers start restores of their own sites' backups
   (also from their own remote destinations), database copies, site copies and imports;
   the administrator also moves databases and imports cPanel archives. Every one of them
@@ -216,14 +301,19 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   - **`temp_file_limit` is never lifted** for a role the customer signs in with, at any
     time; it is the user's limit during the load and for every other session the role
     opens meanwhile. A load that needs more temporary space stops, is rolled back whole
-    (one transaction) and says so: "the load needed more temporary space than the
-    database user … may use (…): the hosting plan's "Temporary files of one database
-    session" limit. Nothing was changed. The administrator, or the reseller within their
-    own limits, raises it in the plan; then start the load again". Because nothing is
-    lifted, an Agent stopped in the middle of a load leaves nothing lifted. A loader with
-    a temporary account of its own (the server move of a PostgreSQL database on
-    `security/s1b-pg-leftovers`, coming with alpha.143) gets the server's default for that
-    account's own session, never the customer's role.
+    (one transaction) and names the limit actually in force, by where PostgreSQL says it
+    comes from (`pg_settings.source`): the user's own setting is "the user's own limit, the
+    hosting plan's "Temporary files of one database session" or a value the server owner set
+    by hand … The administrator, or the reseller within their own limits, raises it in the
+    plan, the server owner their own setting"; a setting of the database, or the server's
+    own `temp_file_limit`, is named as the server owner's, not the plan's, and the server
+    owner raises it. Every answer says that nothing was changed and to start the load
+    again. Because nothing is lifted, an Agent stopped in the middle of a load leaves
+    nothing lifted. The administrator's move of a PostgreSQL database to another cluster
+    (`pg_move.go`, as published with alpha.143) restores with `pg_restore` as the target
+    cluster's administrator account (an administrator session, `pg_admin_session.go`), so a
+    customer role's temporary-file limit does not apply to it and nothing is lifted for any
+    role; a `temp_file_limit` the owner set on the database itself would apply to it.
   - Dumps run as the engine's administrator, whose sessions do not read a customer role's
     settings.
 
@@ -241,7 +331,16 @@ The slice gets the effective ceiling, else the server's default (`setting_policy
 else CelikPanel's default above. For memory that is the smaller of 3072 MB (the largest a
 site's own program had before R2a: an n8n or Open WebUI install) and 75 % of the host's memory
 (`MemTotal` in `/proc/meminfo`, rounded down to a whole MB, never under 64 MB), so one site
-never takes the whole host by default. No schema change: a key without a `setting_policy` row
+never takes the whole host by default. That memory default is fixed when it is first
+computed (`panel_settings` `site_memory_default_v1`, with the host memory it was computed
+for); a later change of the host's memory moves nothing by itself: the administrator reads
+one Problems now line and its one action previews and applies the new default
+(`POST /api/v1/rights/site-memory-default` `{"action":"preview"}`, then `{"action":"apply",
+"confirm_stopped":"<token>"}`). **A reseller is bounded by the default:** where the
+administrator set no ceiling for a `site.*` key (server or the reseller's own level), the
+reseller's plans, its customers' Custom sets and their sites stay within the server's default
+for that key, shown on the reseller's form as set by the server administrator, who raises it
+by giving the reseller a ceiling. No schema change: a key without a `setting_policy` row
 has no server ceiling or default, and the server level writes its row when the administrator
 first saves it. Plans, reseller plans, Custom sets and the server's limits edit the keys where
 every other key is edited; a reseller can never set a site's limit above its own ceiling (the
@@ -249,8 +348,15 @@ plan and the account's own limits are both refused above it). A changed value is
 the slices in the background in batches of 100 sites (`Agent.ApplySiteSlicesV1`) and applies
 to running programs at once on Debian 13 and Ubuntu 24.04 alike, so **lowering a limit below
 what a site uses now asks first**: the change's preview (plans, reseller plans, an account's
-own limits) lists the sites whose programs use more than the new value and that the system
-stops them at once when it is saved. The keys `db.statement_seconds` and
+own limits) lists the sites whose programs use more than the new value and says what
+happens when it is saved (a program over the memory limit is stopped at once; at the process
+limit new processes are refused and running ones keep running). The server enforces it: such
+a change is saved only with the token of the list it answers at that moment
+(`confirm_stopped`), and a request through the API without it, or with an earlier list's, is
+refused with the current list. A change that does not reach every site is one Problems now
+line (which change, how many sites, why), and the panel writes those sites again every hour.
+The server's own limits screen does not preview a lowered `site.*` key (declared). The keys
+`db.statement_seconds` and
 `db.idle_in_transaction_seconds` are defaults a user's own session can change; the form says
 so, and `db.temp_file_mb` is a firm limit. **Since S4 R2b (22 November 2026) a moved site's
 scheduled tasks run as timers in the same slice**, under the same three limits (new sites from

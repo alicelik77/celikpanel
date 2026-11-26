@@ -83,6 +83,10 @@ type CreateDatabaseResponse struct {
 	// Refusal, ifadenin gidecegi PostgreSQL kumesi onu alamadigi icin hicbir
 	// sey calismadiginda doludur: dogrulanmis onkosul, motor hatasi degil.
 	Refusal *DatabaseClusterRefusal `json:"refusal,omitempty"`
+	// AccountRefused (alpha.149, security): a resumed operation's user is an
+	// administrator account, or what it holds could not be read
+	// (DatabaseAccountRefused*); nothing was changed. Additive.
+	AccountRefused string `json:"account_refused,omitempty"`
 }
 
 // DatabaseClusterRefusal says why a PostgreSQL cluster cannot take a
@@ -123,6 +127,10 @@ type DeleteDatabaseResponse struct {
 	Error   string `json:"error,omitempty"`
 	// Refusal: as CreateDatabaseResponse.Refusal (alpha.127).
 	Refusal *DatabaseClusterRefusal `json:"refusal,omitempty"`
+	// AccountRefused (alpha.149, security): the named user is an
+	// administrator account, or what it holds could not be read
+	// (DatabaseAccountRefused*); nothing was changed. Additive.
+	AccountRefused string `json:"account_refused,omitempty"`
 }
 
 type ChangeDatabasePasswordRequest struct {

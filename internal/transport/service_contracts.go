@@ -152,6 +152,11 @@ const (
 	HostMutationReasonHostLock        = "host_lock_busy"
 	HostMutationReasonPackageManager  = "package_manager_active"
 	HostMutationReasonStateUnverified = "state_unverified"
+	// HostMutationReasonSiteMove (alpha.149, lab D5): a site's programs are
+	// being moved into their limits; the panel's own update is not started
+	// until the move's window has ended (its agent would be stopped in the
+	// middle of the move).
+	HostMutationReasonSiteMove = "site_move_running"
 )
 
 // HostMutationReadinessResponse is an advisory, read-only snapshot for
@@ -466,6 +471,10 @@ type ConfigureDKIMSigningResponse struct {
 	Domains    int    `json:"domains"`
 	Detail     string `json:"detail,omitempty"`
 	Error      string `json:"error,omitempty"`
+	// Signing (21 Nov 2026, additive): the signing state after this step, so
+	// every path that changes OpenDKIM records it. Nil when the Agent refused
+	// the step before it changed anything.
+	Signing *MailSigningState `json:"signing,omitempty"`
 }
 
 // ConfigureMailStackRequest (2 Nov 2026): MailHostname is the mail name the
@@ -493,12 +502,41 @@ type ConfigureMailStackResponse struct {
 	// MailHostCertificateDefault. Empty from an older Agent (additive).
 	HostCertificate string `json:"host_certificate,omitempty"`
 	Error           string `json:"error,omitempty"`
+	// Signing (21 Nov 2026, additive): the mail signing state after the milter
+	// chain this step writes. Nil when the step did not reach it.
+	Signing *MailSigningState `json:"signing,omitempty"`
 }
 
 type WireMailFiltersResponse struct {
 	Wired  bool   `json:"wired"`
 	Detail string `json:"detail,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// Signing (20 Nov 2026, additive) says whether outgoing mail is signed
+	// only for the sender's own domain on this server. Nil from an older
+	// Agent.
+	Signing *MailSigningState `json:"signing,omitempty"`
+}
+
+// MailSigningState is the outcome of binding DKIM signing to the sender
+// (cmd/agent/mail_signing_bind.go). State: bound (in place), no_dkim (DKIM
+// signing is not set up here), conf_kept (the server owner's opendkim.conf
+// was kept), port25_kept (the owner's milter setting for port 25 was kept),
+// failed (a change was refused or undone, or OpenDKIM did not run again with
+// the new file; Detail says which and what runs), unsupported (this OpenDKIM
+// cannot choose the key by the login), and since 21 Nov 2026 submit_open
+// (authorized_submit_users lets other accounts than root and vmail use the
+// sendmail command) and unknown (the signing step did not run or its result
+// is not known), and since 22 Nov 2026 port25_variable (main.cf's
+// smtpd_milters cannot be read entry by entry and port 25 follows it) and
+// port25_variable_own (the same list, with CelikPanel's own earlier port-25
+// value still in force). Detail is the Agent's English sentence for the log
+// and the administrator. Subject (additive) names the file or master.cf entry
+// the administrator's step is about (conf_kept, port25_kept,
+// port25_variable_own).
+type MailSigningState struct {
+	State   string `json:"state"`
+	Detail  string `json:"detail,omitempty"`
+	Subject string `json:"subject,omitempty"`
 }
 
 // MailFilterWiringStateResponse answers, read-only, whether this host has the
@@ -557,7 +595,10 @@ type ConfigureWebmailResponse struct {
 	Error      string `json:"error,omitempty"`
 	// ToolProblems (S4 R1 fix round): webmail could not be given its own
 	// account and runs under the web server's account (kind
-	// "own_account_failed"); said as a warning by the screen.
+	// "own_account_failed"); said as a warning by the screen. A database
+	// tool that could not get it while its version's stock pool is off is
+	// left out of the configuration (kind "own_account_not_served", second
+	// fix round); webmail is then refused instead.
 	ToolProblems []PHPToolProblem `json:"tool_problems,omitempty"`
 }
 

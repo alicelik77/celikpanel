@@ -16,8 +16,18 @@ import { enSiteJobsScreens } from '../src/i18n/screens/siteJobs/en.ts';
 import { trSiteJobsScreens } from '../src/i18n/screens/siteJobs/tr.ts';
 import { enSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/en.ts';
 import { trSideDoorsUndoScreens } from '../src/i18n/screens/sideDoorsUndo/tr.ts';
+import { enMailDatabasesScreens } from '../src/i18n/screens/mailDatabases/en.ts';
+import { trMailDatabasesScreens } from '../src/i18n/screens/mailDatabases/tr.ts';
+import { enPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/en.ts';
+import { trPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/tr.ts';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
+import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
+import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr.ts';
+import { enDbLimitsWords } from '../src/i18n/dbLimitsWords/en.ts';
+import { trDbLimitsWords } from '../src/i18n/dbLimitsWords/tr.ts';
+import { enWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/en.ts';
+import { trWebmailAddressScreens } from '../src/i18n/screens/webmailAddress/tr.ts';
 import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
 import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
 
@@ -30,12 +40,25 @@ test('every kind the list shows has a title, body and action in English and Turk
   const shown = [...list[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
   for (const kind of kinds) assert.ok(shown.includes(kind), `${kind} is shown`);
   // 21 Nov 2026: the site jobs lines have their words in the siteJobs part,
-  // the site limits lines (S4 R2a) in the siteLimits part.
-  // Since alpha.142 the shared lines' words are in the problemsNow part;
-  // S4 R2b's lines (tasks, cron.allow, lingering) in the siteTasks part.
-  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enSiteLimitsScreens, ...enSiteTasksScreens };
-  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trSiteLimitsScreens, ...trSiteTasksScreens };
+  // the site limits lines (S4 R2a) in the siteLimits part, and those of its
+  // second fix round in the siteLimitsApply part.
+  // Since alpha.142 the shared lines' words are in the problemsNow part.
+  // alpha.143 (merged): its lines' words are in the mailDatabases and
+  // pgLeftovers parts; alpha.144 (merged): its webmail address lines' words
+  // are in the webmailAddress part; the site limits lines (S4 R2a) in
+  // siteLimits and siteLimitsApply; alpha.149's database limits line in its
+  // own words fetched with the line (src/i18n/dbLimitsWords); S4 R2b's lines
+  // (tasks, cron.allow, lingering) in the siteTasks part.
+  const en = { ...enMonitoringScreens, ...enProblemsNowScreens, ...enSideDoorsScreens, ...enSiteJobsScreens, ...enSideDoorsUndoScreens, ...enMailDatabasesScreens, ...enPgLeftoversScreens, ...enWebmailAddressScreens, ...enSiteLimitsScreens, ...enSiteLimitsApplyScreens, ...enDbLimitsWords, ...enSiteTasksScreens };
+  const tr = { ...trMonitoringScreens, ...trProblemsNowScreens, ...trSideDoorsScreens, ...trSiteJobsScreens, ...trSideDoorsUndoScreens, ...trMailDatabasesScreens, ...trPgLeftoversScreens, ...trWebmailAddressScreens, ...trSiteLimitsScreens, ...trSiteLimitsApplyScreens, ...trDbLimitsWords, ...trSiteTasksScreens };
   for (const kind of shown) {
+    // alpha.143: mail_signing and mail_autoresponder_foreign have one body
+    // per state instead of one body (their own tests check them).
+    const perState = (words) => Object.keys(words).some((key) => key.startsWith(`pnow.${kind}.`) && !/\.(title|action|body)$/.test(key));
+    if (!en[`pnow.${kind}.body`] && perState(en) && perState(tr)) {
+      assert.ok(en[`pnow.${kind}.title`] && tr[`pnow.${kind}.title`], `pnow.${kind}.title`);
+      continue;
+    }
     for (const part of ['title', 'body', 'action']) {
       assert.ok(en[`pnow.${kind}.${part}`], `English pnow.${kind}.${part}`);
       assert.ok(tr[`pnow.${kind}.${part}`], `Turkish pnow.${kind}.${part}`);

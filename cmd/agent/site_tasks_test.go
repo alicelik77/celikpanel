@@ -116,13 +116,13 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 	}
 	oldSystemctl, oldAppCtl, oldVerify, oldChown, oldCaps, oldJournal, oldLookup := siteTaskSystemctl, appUnitSystemctl, siteTaskVerify, siteTaskChown, siteTaskCaps, siteTaskJournal, siteTaskLookup
 	oldList, oldInstall, oldRemove, oldLook, oldKilled, oldSupport := cronListCrontab, cronInstallCrontab, cronRemoveCrontab, cronLookPath, siteTasksMoveKilled, siteSliceHostSupport
-	oldMoveJournal, oldOutcomes, oldRecords, oldTasksOutcomes := siteMoveJournalPath, siteMoveOutcomesPath, siteCrontabRecordDir, siteTasksOutcomesPath
+	oldMoveJournal, oldOutcomes, oldRecords := siteMoveJournalPath, siteMoveOutcomesPath, siteCrontabRecordDir
 	oldAllow, oldDeny, oldAllowRecord, oldPasswd, oldNSS, oldSpool, oldTarget := cronAllowPath, cronDenyPath, cronAllowRecordPath, sideDoorsPasswd, sideDoorsNSSwitch, siteCronSpoolDirs, siteTasksTenantTarget
 	oldEnd, oldLoaded := siteTaskEndCrontabs, siteSliceLoaded
 	keep(func() {
 		siteTaskSystemctl, appUnitSystemctl, siteTaskVerify, siteTaskChown, siteTaskCaps, siteTaskJournal, siteTaskLookup = oldSystemctl, oldAppCtl, oldVerify, oldChown, oldCaps, oldJournal, oldLookup
 		cronListCrontab, cronInstallCrontab, cronRemoveCrontab, cronLookPath, siteTasksMoveKilled, siteSliceHostSupport = oldList, oldInstall, oldRemove, oldLook, oldKilled, oldSupport
-		siteMoveJournalPath, siteMoveOutcomesPath, siteCrontabRecordDir, siteTasksOutcomesPath = oldMoveJournal, oldOutcomes, oldRecords, oldTasksOutcomes
+		siteMoveJournalPath, siteMoveOutcomesPath, siteCrontabRecordDir = oldMoveJournal, oldOutcomes, oldRecords
 		cronAllowPath, cronDenyPath, cronAllowRecordPath, sideDoorsPasswd, sideDoorsNSSwitch, siteCronSpoolDirs, siteTasksTenantTarget = oldAllow, oldDeny, oldAllowRecord, oldPasswd, oldNSS, oldSpool, oldTarget
 		siteTaskEndCrontabs, siteSliceLoaded = oldEnd, oldLoaded
 	})
@@ -137,7 +137,7 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 	keep(func() { siteTimersToEnablePath, siteTimersHeldPath = oldToEnable, oldHeld })
 	siteTimersToEnablePath, siteTimersHeldPath = filepath.Join(private, "to-enable.json"), filepath.Join(private, "held.json")
 	siteMoveJournalPath, siteMoveOutcomesPath = filepath.Join(private, "move.json"), filepath.Join(private, "outcomes.json")
-	siteTasksOutcomesPath, siteCrontabRecordDir = filepath.Join(private, "tasks-outcomes.json"), filepath.Join(private, "site-crontabs")
+	siteCrontabRecordDir = filepath.Join(private, "site-crontabs")
 	etc := t.TempDir()
 	cronAllowPath, cronDenyPath, cronAllowRecordPath = filepath.Join(etc, "cron.allow"), filepath.Join(etc, "cron.deny"), filepath.Join(private, "cron-allow.sha256")
 	sideDoorsPasswd, sideDoorsNSSwitch = filepath.Join(etc, "passwd"), filepath.Join(etc, "nsswitch.conf")
@@ -205,14 +205,21 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 		host.calls = append(host.calls, strings.Join(args, " "))
 		switch {
 		case len(args) >= 2 && args[0] == "enable":
-			unit := args[len(args)-1]
-			host.enabled[unit] = true
-			if args[1] == "--now" {
-				host.active[unit] = true
+			// alpha.150: one call names every timer.
+			for _, unit := range args[1:] {
+				if unit == "--now" {
+					continue
+				}
+				host.enabled[unit] = true
+				if args[1] == "--now" {
+					host.active[unit] = true
+				}
 			}
 		case len(args) >= 3 && args[0] == "disable":
-			delete(host.enabled, args[2])
-			delete(host.active, args[2])
+			for _, unit := range args[2:] {
+				delete(host.enabled, unit)
+				delete(host.active, unit)
+			}
 		case len(args) == 2 && args[0] == "stop":
 			delete(host.active, args[1])
 		case len(args) == 2 && args[0] == "start":
@@ -467,7 +474,7 @@ func TestTasksMoveSurvivesAnAgentStopAtEveryPoint(t *testing.T) {
 				t.Fatalf("cron.allow refuses the account: %v", host.refused(taskTestAccount))
 			}
 			if tc.point != siteTasksStepPlanned {
-				if got := readSiteTasksOutcomes()["7"]; !strings.HasSuffix(got, " "+tc.wantOutcome) {
+				if got := readSiteMoveOutcomes()["7"].Tasks; got != tc.wantOutcome {
 					t.Fatalf("recorded outcome %q, want %s", got, tc.wantOutcome)
 				}
 			}
@@ -622,7 +629,7 @@ func TestTasksUndoSurvivesAnAgentStopAtEveryPoint(t *testing.T) {
 			if host.refused(taskTestAccount) == tc.wantCrontab {
 				t.Fatalf("cron.allow: refused=%v", host.refused(taskTestAccount))
 			}
-			if got := readSiteTasksOutcomes()["7"]; !strings.HasSuffix(got, " "+tc.wantOutcome) {
+			if got := readSiteMoveOutcomes()["7"].Tasks; got != tc.wantOutcome {
 				t.Fatalf("recorded outcome %q, want %s", got, tc.wantOutcome)
 			}
 		})
@@ -688,7 +695,8 @@ func TestTasksMoveAndUndoKeepTheCrontabByteForByte(t *testing.T) {
 // review finding 4b): the timers cannot be switched on after the crontab was
 // emptied, and the crontab cannot be written back either. Nothing is lost:
 // the journal, the task file and the units stay (the crontab's bytes with
-// them), and the next start tries again.
+// them); the next start keeps it within its few calls, and Try again puts it
+// back (alpha.150).
 func TestTasksPutBackKeepsEverythingWhenTheCrontabCannotComeBack(t *testing.T) {
 	host := useTaskTestHost(t)
 	host.startWith(t, moveTaskCrontab)
@@ -711,9 +719,23 @@ func TestTasksPutBackKeepsEverythingWhenTheCrontabCannotComeBack(t *testing.T) {
 	if _, err := os.Stat(sitecron.SourcePath(7)); err != nil || len(host.unitFiles(t)) == 0 {
 		t.Fatal("the task file or the units were removed")
 	}
-	// The next start, with crontab working again: the crontab comes back.
+	// The next start, with crontab working again but the timers still not
+	// switching on (alpha.150): the start makes only its few bounded calls,
+	// so it does not put the move back; the record stays kept for Try again.
 	host.installFails = false
 	recoverSiteSlicesAtStartup()
+	if _, err := os.Stat(siteMoveJournalPath); err != nil {
+		t.Fatal("the start dropped the record it could not settle")
+	}
+	if record := readSiteMoveOutcomes()["7"]; !record.Kept || record.TasksStep != siteTasksStepCrontabEmptied {
+		t.Fatalf("not kept for Try again: %+v", record)
+	}
+	// The administrator's Try again puts it back: the crontab comes back.
+	var again transport.MoveSiteSliceResponse
+	_ = (&Agent{}).MoveSiteSliceV1(&transport.MoveSiteSliceRequest{Recover: true}, &again)
+	if !again.Done || again.Recovery == nil || again.Recovery.Tasks != transport.SiteTasksPutBack {
+		t.Fatalf("Try again %+v", again)
+	}
 	if got, _ := host.crontab(taskTestAccount); got != moveTaskCrontab || len(host.unitFiles(t)) != 0 {
 		t.Fatalf("crontab %q, units %v", got, host.unitFiles(t))
 	}
@@ -798,7 +820,7 @@ func TestTasksMoveRacesATaskChangeAndADeletion(t *testing.T) {
 	lock.Lock()
 	resp = moveTasks(t)
 	lock.Unlock()
-	if resp.Refusal != transport.SiteTasksRefusalBusy || len(host.unitFiles(t)) != 0 {
+	if resp.Refusal != "site_busy" || len(host.unitFiles(t)) != 0 {
 		t.Fatalf("moved a site being deleted: %+v", resp)
 	}
 
@@ -1327,10 +1349,8 @@ func TestLingerRuleAndAccounts(t *testing.T) {
 	if out := closeSiteLingerWith(ops); out.State != transport.SideDoorsAtOwnerRemoved {
 		t.Fatalf("owner removed: %+v", out)
 	}
-	if err := forgetLingerRule(); err != nil {
-		t.Fatal(err)
-	}
-	if out := closeSiteLingerWith(ops); out.State != transport.SideDoorsAtWritten {
+	// The administrator's "close it again" (alpha.150, R1's re-close design).
+	if out := closeSiteLingerFor(ops, true); out.State != transport.SideDoorsAtWritten {
 		t.Fatalf("re-close: %+v", out)
 	}
 	if out := closeSiteLingerWith(siteLingerOps{installed: func() bool { return false }, readFile: os.ReadFile}); out.State != transport.SideDoorsAtNotInstalled || len(out.Accounts) != 1 {

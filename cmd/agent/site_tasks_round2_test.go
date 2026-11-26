@@ -29,12 +29,15 @@ func failEnables(t *testing.T, on *bool) {
 	}
 }
 
-// TestUnresolvedMoveBlocksEveryMoveAndUndo (review N1): a move whose
-// put-back fails keeps its journal (the only copy of the crontab). Every new
-// move and undo - the same site's programs, another site's tasks, an undo -
-// is then refused before anything changes, the journal stays byte for byte,
-// and the Agent's next start resolves it. On 6db8cd368 the programs part of
-// the same request resolved nothing, wrote its own journal and deleted it.
+// TestUnresolvedMoveBlocksEveryMoveAndUndo (review N1; alpha.150: main's one
+// kept record): a move whose put-back fails keeps its record (the only copy
+// of the crontab), and the site's outcome is kept with the tasks' step and
+// account (the card, Problems now and Try again read it). Every new move and
+// undo - the same site's programs (which first try to settle it), another
+// site's tasks, an undo - is then refused with kept_earlier, the record
+// stays byte for byte, and the Agent's next start resolves it. On 6db8cd368
+// the programs part of the same request resolved nothing, wrote its own
+// journal and deleted it.
 func TestUnresolvedMoveBlocksEveryMoveAndUndo(t *testing.T) {
 	host := useTaskTestHost(t)
 	host.startWith(t, moveTaskCrontab)
@@ -48,10 +51,10 @@ func TestUnresolvedMoveBlocksEveryMoveAndUndo(t *testing.T) {
 	if err != nil {
 		t.Fatal("the journal is gone")
 	}
-	var moved transport.SiteTasksMovedResponse
-	_ = (&Agent{}).SiteTasksMovedV1(&transport.SiteTasksMovedRequest{SiteIDs: []int{99}}, &moved)
-	if u := moved.Unresolved; u == nil || u.SiteID != taskTestSite || u.Kind != transport.SiteMoveUnresolvedTasksMove || u.Account != taskTestAccount {
-		t.Fatalf("the unresolved move is not reported: %+v", moved.Unresolved)
+	record := siteMoveOutcomesNow(nil)["7"]
+	if !record.Kept || record.Tasks != transport.SiteTasksUnknown || record.TasksStep != siteTasksStepCrontabEmptied ||
+		record.TasksAccount != taskTestAccount || record.TasksSite != taskTestSite {
+		t.Fatalf("the kept record is not reported: %+v", record)
 	}
 	// The same site's programs, in the same request.
 	var programs transport.MoveSiteSliceResponse
@@ -59,8 +62,8 @@ func TestUnresolvedMoveBlocksEveryMoveAndUndo(t *testing.T) {
 		Site:           transport.SiteSlice{SiteID: taskTestSite, Domain: "shop.example.test", MemoryMB: 512, Tasks: 128, CPUPercent: 100},
 		SubscriptionID: 2, DomainID: 9, Units: []string{"celikrt-12.service"},
 	}, &programs)
-	if programs.Refusal != transport.SiteMoveRefusalUnresolved || !strings.Contains(programs.Error, "site 7") ||
-		!strings.Contains(programs.Error, "systemctl disable --now 'celikcron-7-*.timer'") || programs.Done {
+	if programs.Reason == nil || programs.Reason.Code != transport.SiteMoveRefusalKept || !programs.Kept ||
+		!strings.Contains(programs.Error, "site 7") || programs.Done {
 		t.Fatalf("programs %+v", programs)
 	}
 	// Another site's tasks.
@@ -69,10 +72,10 @@ func TestUnresolvedMoveBlocksEveryMoveAndUndo(t *testing.T) {
 	siteTasksTenantTarget = func(*transport.SiteTasksMoveRequest) (siteTaskTarget, string, error) {
 		return other, other.Account, nil
 	}
-	if resp := moveTasks(t); resp.Outcome != transport.SiteTasksRefused || resp.Refusal != transport.SiteMoveRefusalUnresolved {
+	if resp := moveTasks(t); resp.Outcome != transport.SiteTasksRefused || resp.Refusal != transport.SiteMoveRefusalKept {
 		t.Fatalf("another site's move %+v", resp)
 	}
-	if resp := undoTasks(t); resp.Outcome != transport.SiteTasksRefused || resp.Refusal != transport.SiteMoveRefusalUnresolved {
+	if resp := undoTasks(t); resp.Outcome != transport.SiteTasksRefused || resp.Refusal != transport.SiteMoveRefusalKept {
 		t.Fatalf("an undo %+v", resp)
 	}
 	if now, _ := os.ReadFile(siteMoveJournalPath); string(now) != string(kept) {
@@ -91,10 +94,8 @@ func TestUnresolvedMoveBlocksEveryMoveAndUndo(t *testing.T) {
 	if _, has := host.crontab(taskTestAccount); has || !host.enabled["celikcron-7-1.timer"] {
 		t.Fatalf("crontab %v, timers %v", has, host.enabled)
 	}
-	moved = transport.SiteTasksMovedResponse{}
-	_ = (&Agent{}).SiteTasksMovedV1(&transport.SiteTasksMovedRequest{}, &moved)
-	if moved.Unresolved != nil {
-		t.Fatalf("still unresolved: %+v", moved.Unresolved)
+	if record := siteMoveOutcomesNow(nil)["7"]; record.Kept || record.Tasks != transport.SiteTasksMoved {
+		t.Fatalf("still kept: %+v", record)
 	}
 }
 

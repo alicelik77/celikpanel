@@ -236,6 +236,9 @@ func (p *Panel) handleAppInstall(w http.ResponseWriter, r *http.Request, domainI
 		writeServerError(w, err)
 		return
 	}
+	// alpha.149 (lab D9): the application's database user gets its
+	// subscription's database limits, by the one function.
+	p.applyNewDatabaseUserLimits(r.Context(), target.SubscriptionID, serverID, databaseUser)
 	if err := p.setAppInstallStatus(operationID, "database_ready", ""); err != nil {
 		writeServerError(w, fmt.Errorf("persist application database state: %w", err))
 		return
@@ -507,7 +510,12 @@ func (p *Panel) removeAppDatabaseLedger(ledger *appDatabaseLedger) error {
 	`, ledger.UserID, ledger.UserID); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	// alpha.149: the removed user's limits records go.
+	p.pruneDBLimitRecords(context.WithoutCancel(cleanupCtx))
+	return nil
 }
 
 // compensateAppDatabase removes a physical database only when the agent can

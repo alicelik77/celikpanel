@@ -37,16 +37,30 @@ import (
 
 var systemdUserMode = os.Getenv("CELIKPANEL_SYSTEMD_USER") == "1"
 
-const appUnitMutationLockStripes = 256
+// perIDMutex holds one mutex per id, made on first use (S4 R2a second fix
+// round, review B10): a program's or a site's lock is its own, never shared
+// with another id that happens to fall in the same stripe, so a long step of
+// one program (the move's restart and start wait) holds only that program's
+// changes, never another site's. A mutex is a few bytes; ids are bounded by
+// the panel's own rows.
+type perIDMutex struct{ locks sync.Map }
 
-var appUnitMutationLocks [appUnitMutationLockStripes]sync.Mutex
+func (p *perIDMutex) of(id int) *sync.Mutex {
+	if m, ok := p.locks.Load(id); ok {
+		return m.(*sync.Mutex)
+	}
+	m, _ := p.locks.LoadOrStore(id, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
+
+var appUnitMutationLocks perIDMutex
 
 // net/rpc cannot cancel a method that was already dispatched. If the panel
 // times out and starts compensation, the original method may therefore still
 // be running. Serializing mutations for the same site makes the compensation
 // deterministically run after that original method, rather than racing it.
 func lockAppUnitMutation(siteID int) func() {
-	lock := &appUnitMutationLocks[siteID%appUnitMutationLockStripes]
+	lock := appUnitMutationLocks.of(siteID)
 	lock.Lock()
 	return lock.Unlock
 }
@@ -510,6 +524,11 @@ func (a *Agent) ControlAppUnit(req *AppControlRequest, resp *AppApplyResponse) e
 		// A sandboxed unit stops being restarted after five starts in five
 		// minutes (alpha.127); a start pressed afterwards is a new attempt.
 		_, _ = appUnitSystemctl(systemctlArgs("reset-failed", name)...)
+		// alpha.149 (lab O2): a program that does not run starts inside its
+		// site's limits (site_slice_start.go); a running one is not moved.
+		if req.Slice != nil && req.Slice.SiteID == req.SiteID {
+			siteUnitIntoSliceBeforeStart(name, req.Slice)
+		}
 	}
 	if out, err := exec.Command("systemctl", systemctlArgs(req.Action, name)...).CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("%v: %s", err, strings.TrimSpace(string(out)))
@@ -619,6 +638,15 @@ func (a *Agent) RemoveAppUnit(req *AppControlRequest, resp *AppApplyResponse) er
 	if output, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 		intermediateFailures = append(intermediateFailures, fmt.Errorf("daemon-reload: %v: %s", err, strings.TrimSpace(string(output))))
 	}
+	// A unit whose application failed (a start that exited with an error, a
+	// sandbox proof that stopped it) stays in systemd's memory as "failed"
+	// after its file is removed and systemd reloaded: neither stop, disable
+	// nor daemon-reload clears that state, so the proof below never saw
+	// "inactive" and the site's deletion stopped (alpha.142 lab). Forgetting
+	// the failed state of this exact unit is the last cleanup step; systemd
+	// answers an error when it holds nothing for the name, and the proof
+	// below decides either way.
+	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", name)...)
 
 	var finalFailures []error
 	if _, err := os.Lstat(unitPath); err == nil {

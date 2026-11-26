@@ -633,6 +633,14 @@ func importCpmoveDatabase(req *CpmoveImportDBRequest, resp *CpmoveImportDBRespon
 		resp.Error = "invalid target database name"
 		return nil
 	}
+	// alpha.149 (security): the dump is loaded by a temporary account with
+	// ALL on the target; on a system database (mysql.*) that account, and
+	// the archive's statements, would own the whole server.
+	// Sistem veritabanına içe aktarma yapılmaz.
+	if systemDatabaseName("mysql", req.TargetDB) {
+		resp.Error = databaseAccountRefusalText("", transport.DatabaseAccountRefusedSystemDatabase)
+		return nil
+	}
 	if err := services.ValidateSQLIdentifier(req.DumpName); err != nil {
 		resp.Error = "invalid dump name"
 		return nil

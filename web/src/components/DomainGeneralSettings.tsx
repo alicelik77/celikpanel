@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Plus, Trash2, Globe } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import type { TranslationKey } from '../i18n/en';
 import { Button, FormSection, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { decodeList, lastKnown, useRemote } from '../lib/remote';
@@ -22,6 +23,8 @@ interface GeneralSettings {
     redirect_www: boolean;
     redirect_www_available: boolean;
     aliases: string[];
+    /** alpha.144: aliases whose DNS records wait for their zone's publication. */
+    aliases_dns_pending: string[];
 }
 
 // The general settings of one domain. The form below is built from these and
@@ -47,6 +50,7 @@ function decodeGeneralSettings(raw: unknown): GeneralSettings {
         redirect_www: body.redirect_www,
         redirect_www_available: body.redirect_www_available,
         aliases: decodeList<string>(body.aliases),
+        aliases_dns_pending: Array.isArray(body.aliases_dns_pending) ? decodeList<string>(body.aliases_dns_pending) : [],
     };
 }
 
@@ -155,6 +159,9 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                 }
             }
             showToast('success', t('general.aliasAdded', { name: alias }));
+            // alpha.144: whether the alias answers in DNS now.
+            const dns = await aliasDNSOutcome(res);
+            if (dns === 'pending' || dns === 'kept' || dns === 'failed') showToast('warning', t(`general.aliasDNS.${dns}` as TranslationKey, { name: alias }));
             if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
             const notRunAddress = await aliasValidationNotRunAddress(res);
             if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
@@ -189,13 +196,16 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                         }
                         if (!res.ok) {
                             showToast('error', apiErrorText(apiError, t));
-                            if (apiError.code === 'ALIAS_CERTIFICATE_ACTIVATION_PENDING') {
+                            if (apiError.code === 'ALIAS_CERTIFICATE_ACTIVATION_PENDING' || apiError.code === 'ALIAS_NOT_FOUND') {
                                 await general.retry();
                             }
                             return;
                         }
                     }
                     showToast('success', t('general.aliasDeleted', { name: alias }));
+                    // alpha.144: whether its DNS records went from this server.
+                    const dnsRemoved = await aliasDNSOutcome(res);
+                    if (dnsRemoved === 'pending' || dnsRemoved === 'failed') showToast('warning', t(`general.aliasDNS.removed.${dnsRemoved}` as TranslationKey, { name: alias }));
                     if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
                     const notRunAddress = await aliasValidationNotRunAddress(res);
                     if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
@@ -315,6 +325,9 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                                             <span className="flex min-w-0 items-center gap-2 break-all font-mono text-sm text-fg">
                                                 <Globe className="h-4 w-4 shrink-0 text-fg-subtle" />
                                                 {alias}
+                                                {settings.aliases_dns_pending.includes(alias) && (
+                                                    <span className="font-sans text-xs text-warning" data-alias-dns="pending">{t('general.aliasDNS.waiting')}</span>
+                                                )}
                                             </span>
                                             <button
                                                 onClick={() => handleDeleteAlias(alias)}
@@ -352,6 +365,16 @@ async function issuedWaitingForOwner(res: Response): Promise<boolean> {
 
 // The alias change's certificate request went ahead without the probe
 // (set11 cell A6): the address, or ''.
+// alpha.144: what became of the alias's DNS records ('' when not said).
+async function aliasDNSOutcome(res: Response): Promise<string> {
+    try {
+        const body = (await res.clone().json()) as { dns?: unknown } | null;
+        return typeof body?.dns === 'string' ? body.dns : '';
+    } catch {
+        return '';
+    }
+}
+
 async function aliasValidationNotRunAddress(res: Response): Promise<string> {
     try {
         return validationNotRunAddress((await res.clone().json()) as IssuedAnswer | null);

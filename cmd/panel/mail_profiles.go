@@ -217,6 +217,8 @@ const (
 	mailProfileWarningWebmailUnverified   mailProfileTextCode = "webmail_unverified"
 	mailProfileWarningRoundcubeNotReady   mailProfileTextCode = "roundcube_not_ready"
 	mailProfileWarningPartlyPresent       mailProfileTextCode = "partly_present"
+	// alpha.145: webmail's configuration still sends without encryption.
+	mailProfileWarningWebmailCannotSend mailProfileTextCode = "webmail_cannot_send"
 )
 
 // mailProfilePlatformName names a package ecosystem for the typed
@@ -251,6 +253,7 @@ var mailProfileTextCodes = []mailProfileTextCode{
 	mailProfileWarningWebmailUnverified,
 	mailProfileWarningRoundcubeNotReady,
 	mailProfileWarningPartlyPresent,
+	mailProfileWarningWebmailCannotSend,
 }
 
 // The English sentences of the codes that carry no values. None asks the
@@ -261,6 +264,7 @@ const (
 	mailProfileCatalogueIncompleteText = "The server profile catalogue is incomplete."
 	mailProfileWebmailUnverifiedText   = "Webmail runtime readiness is not verified yet; the next component check verifies it."
 	mailProfileRoundcubeNotReadyText   = "Roundcube is installed, but its Unix-socket runtime is not ready."
+	mailProfileWebmailCannotSendText   = "Webmail cannot send: its configuration still hands mail to this server's sending service without encryption. Problems now names the file and the step."
 	mailProfilePartlyPresentText       = "Some components are already present. Installing this profile will reconcile the full plan without removing completed services."
 )
 
@@ -662,7 +666,9 @@ func (p *Panel) runMailProfileInstall(
 	}
 	var mailStack transport.ConfigureMailStackResponse
 	mailStackRequest := p.configureMailStackRequest(ctx, binding)
-	if err := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailStackRequest, &mailStack); err != nil {
+	mailStackErr := p.callAgentContext(ctx, "Agent.ConfigureMailStack", &mailStackRequest, &mailStack)
+	p.recordMailSigningCall(ctx, mailStack.Signing, mailStackErr)
+	if err := mailStackErr; err != nil {
 		return result, mailProfileInstallFailure(fmt.Errorf("final mail stack configuration: %w", err))
 	}
 	if mailStack.Error != "" {
@@ -706,6 +712,7 @@ func (p *Panel) runMailProfileInstall(
 	}
 	var signing transport.ConfigureDKIMSigningResponse
 	signingErr := p.callAgentContext(ctx, "Agent.ConfigureDKIMSigning", &mutationRequest, &signing)
+	p.recordMailSigningCall(ctx, signing.Signing, signingErr)
 	switch {
 	case signingErr != nil:
 		result["dkim_signing"] = false
@@ -995,6 +1002,25 @@ func componentPlanBlock(check []string, projected map[string]bool, packageFamily
 // componentReady, bir bileşenin taramadaki hazır oluşudur.
 func componentReady(id string, services []ManagedServiceResponse) bool {
 	return verifyMailProfileReady(mailProfileDefinition{Services: []string{id}}, services) == nil
+}
+
+// withWebmailSending (alpha.145): webmail whose own configuration still
+// hands mail to the submission service without encryption, as the Agent read
+// it at the last component check, is not complete: nothing can be sent from
+// it. The profile says why; Problems now names the file and the step.
+// Web postası yapılandırması şifresiz gönderiyorsa profil tamam sayılmaz.
+func withWebmailSending(profiles []MailProfileResponse, cannotSend bool) []MailProfileResponse {
+	if !cannotSend {
+		return profiles
+	}
+	for i := range profiles {
+		if profiles[i].ID == "webmail" && profiles[i].Status == mailProfileStatusComplete {
+			profiles[i].Status = mailProfileStatusPartial
+			profiles[i].Verified = false
+			profiles[i].Warning, profiles[i].WarningCode = mailProfileWebmailCannotSendText, mailProfileWarningWebmailCannotSend
+		}
+	}
+	return profiles
 }
 
 func mailProfilesView(

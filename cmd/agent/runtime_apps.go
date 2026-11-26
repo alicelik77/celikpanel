@@ -17,7 +17,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -54,7 +53,7 @@ var (
 	runtimeAppStateRoot = filepath.Join(hostingpath.ServiceMutationStateRoot(), "runtime-apps")
 	runtimeAppEnvDir    = siteruntime.EnvDir
 	runtimeAppOperation = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{7,63}$`)
-	runtimeAppLocks     [64]sync.Mutex
+	runtimeAppLocks     perIDMutex
 	// runtimeAppHostArch is this server's ELF machine.
 	runtimeAppHostArch = siteruntime.MachineFor(runtime.GOARCH)
 	// runtimeAppCgroupRoot is where a unit's cgroup files are read.
@@ -69,7 +68,7 @@ var (
 )
 
 func lockRuntimeApp(appID int) func() {
-	lock := &runtimeAppLocks[uint(appID)%uint(len(runtimeAppLocks))]
+	lock := runtimeAppLocks.of(appID)
 	lock.Lock()
 	return lock.Unlock
 }
@@ -298,8 +297,12 @@ func runtimeAppUnitParams(rc runtimeAppContext, target transport.RuntimeAppTarge
 		Limits: siteruntime.Limits{MemoryMB: spec.Limits.MemoryMB, CPUPercent: spec.Limits.CPUPercent, Tasks: spec.Limits.TasksMax},
 		Level:  level, Caps: caps, DropInDir: path + ".d", Python: runtimePythonUnit(spec),
 		// S4 R2a: into the site's slice when it does not run now (or already
-		// runs there); a running app moves with its site.
-		SiteID: target.SiteID, InSlice: siteUnitEntersSlice(siteruntime.UnitName(target.AppID), slice, false),
+		// runs there); a running app moves with its site. A slice the file
+		// names is kept, also when where it runs cannot be read
+		// (site_slice_keep.go).
+		SiteID: target.SiteID, InSlice: siteUnitInSlice(siteruntime.UnitName(target.AppID), slice, false, func() bool {
+			return unitFileKeepsSiteSlice(path, target.SiteID)
+		}),
 	}, nil
 }
 
@@ -454,6 +457,11 @@ func (a *Agent) RuntimeAppControlV1(req *transport.RuntimeAppControlRequest, res
 	if req.Action != "stop" && runtimeAppUnitFileState(req.Target.AppID) == transport.SiteFileAbsent {
 		runtimeStep(resp, transport.RuntimeAppPrerequisite, "unit_missing", "the app's unit is not on the server; deploy the app again")
 		return nil
+	}
+	// alpha.149 (lab O2): a program that does not run starts inside its
+	// site's limits (site_slice_start.go); a running one is not moved.
+	if req.Action != "stop" {
+		siteUnitIntoSliceBeforeStart(name, req.Target.Slice)
 	}
 	// A stop of a unit systemd does not know (an app that was never
 	// deployed, or whose unit is gone): nothing of it runs, so the stop is

@@ -67,9 +67,11 @@ const (
 	// TaskHelperName and TaskHelperPath (S4 R2b second fix round): the same
 	// program under a second name, which only sites' scheduled tasks
 	// (celikcron-*) call. A release before R2b manages and overwrites
-	// HelperPath with its own copy, which does not know the task units'
-	// names; it never touches this file, so after a return to such a
-	// release the tasks still start (docs/SITE-SANDBOX.md section 9.4).
+	// HelperPath with its own copy; it never touches this file, and the
+	// egress guard of alpha.148 and alpha.149 already accepts units that
+	// call it (S4 R2a third fix round), so after a return to such a release
+	// the tasks still start under the SMTP block (docs/SITE-SANDBOX.md
+	// section 9.4).
 	TaskHelperName = "sandbox-task-helper"
 	TaskHelperPath = EgressDir + "/" + TaskHelperName
 	// MountRoot holds one root-only folder per running unit.

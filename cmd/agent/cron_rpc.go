@@ -380,6 +380,13 @@ func updateCronJobIn(store cronStore, username string, req *UpdateCronJobRequest
 	if err != nil {
 		return err
 	}
+	// S4 R1, second fix round (B9): a line not made in CelikPanel is not
+	// edited or enabled, whoever asks (the screen offers neither): editing
+	// it would make it CelikPanel's. The administrator keeps it first
+	// (KeepCronLineV1); anyone may delete it.
+	if cronLineOutsideAt(username, existing, lines, index) {
+		return errors.New(transport.CronJobOutsidePanel)
+	}
 	wanted := strings.Join(strings.Fields(req.Schedule+" "+req.Command), " ")
 	for i, line := range lines {
 		if text, _, ok := cronJobText(line); ok && i != index && strings.Join(strings.Fields(text), " ") == wanted {
@@ -536,6 +543,23 @@ func cronJobLine(lines []string, id string) (int, error) {
 		return -1, fmt.Errorf("cron job not found: %s", id)
 	}
 	return found, nil
+}
+
+// cronLineOutsideAt: the line at index is one CelikPanel does not account
+// for (site_crontab_record.go).
+func cronLineOutsideAt(username, content string, lines []string, index int) bool {
+	classes := cronClassifyLines(username, content)
+	recorded := 0
+	for i, line := range lines {
+		if !cronRecordedLine(line) {
+			continue
+		}
+		if i == index {
+			return recorded < len(classes) && classes[recorded].Outside
+		}
+		recorded++
+	}
+	return false
 }
 
 // cronIdenticalJobLines: every line that is the job with this ID has the same

@@ -84,9 +84,6 @@ type siteTasksView struct {
 	Recovery string `json:"recovery,omitempty"`
 	// Unknown: the Agent did not answer (an older Agent, or none).
 	Unknown bool `json:"unknown,omitempty"`
-	// Unresolved (second fix round): a move or undo of THIS site the Agent
-	// could not resolve; no site is moved until it is.
-	Unresolved *transport.SiteMoveUnresolved `json:"unresolved,omitempty"`
 }
 
 // siteTasksViewOf reads one site's tasks state.
@@ -106,77 +103,7 @@ func (p *Panel) siteTasksViewOf(ctx context.Context, siteID int) *siteTasksView 
 	view.BySite = resp.ReappearedBySite[key]
 	view.Recovery = resp.Recovery[key]
 	view.MailSubmission = resp.MailSubmission
-	if u := resp.Unresolved; u != nil && u.SiteID == siteID {
-		view.Unresolved = u
-	}
-	p.noteSiteMoveUnresolved(ctx, resp.Unresolved)
 	return view
-}
-
-// --- One unresolved move (second fix round) ------------------------------------
-
-// refreshSiteMoveUnresolved asks the Agent whether a move is unresolved
-// (after a move or undo) and records it for Problems now.
-func (p *Panel) refreshSiteMoveUnresolved(ctx context.Context) {
-	resp, err := siteTasksMovedCall(p, ctx, &transport.SiteTasksMovedRequest{SiteIDs: []int{0}})
-	if err != nil || resp.Error != "" {
-		return
-	}
-	p.noteSiteMoveUnresolved(ctx, resp.Unresolved)
-}
-
-// noteSiteMoveUnresolved records the Agent's answer when it changed.
-func (p *Panel) noteSiteMoveUnresolved(ctx context.Context, u *transport.SiteMoveUnresolved) {
-	if p == nil || p.db == nil {
-		return
-	}
-	siteLimitOutsideMu.Lock()
-	defer siteLimitOutsideMu.Unlock()
-	raw := p.setting(ctx, settingSiteLimitOutside)
-	state := siteLimitOutside{}
-	if raw != "" {
-		_ = json.Unmarshal([]byte(raw), &state)
-	}
-	before, _ := json.Marshal(state.Unresolved)
-	after, _ := json.Marshal(u)
-	if string(before) == string(after) {
-		return
-	}
-	state.Unresolved = u
-	if next, err := json.Marshal(state); err == nil {
-		_ = p.setSetting(ctx, settingSiteLimitOutside, string(next))
-	}
-}
-
-// siteMoveUnresolvedProblem is ONE line (administrator) while a move is
-// unresolved: what, that CelikPanel tries again at its next start, and the
-// server owner's two steps by hand if it cannot (Name).
-func siteMoveUnresolvedProblem(raw string, names map[string]string) []monitoringProblem {
-	if raw == "" {
-		return nil
-	}
-	var state siteLimitOutside
-	if err := json.Unmarshal([]byte(raw), &state); err != nil || state.Unresolved == nil {
-		return nil
-	}
-	u := state.Unresolved
-	site := strconv.Itoa(u.SiteID)
-	subject := names[site]
-	if subject == "" {
-		subject = "site " + site
-	}
-	steps := ""
-	if u.Account != "" {
-		steps = "sudo systemctl disable --now 'celikcron-" + site + "-*.timer' ; sudo crontab -u " + u.Account + " /etc/celikpanel-cron/" + site + ".crontab"
-	}
-	action := monitoringProblemAction{Kind: "open", To: "/monitoring"}
-	if names[site] != "" {
-		action = monitoringProblemAction{Kind: "open", To: "/domains/" + url.PathEscape(names[site])}
-	}
-	return []monitoringProblem{{
-		Key: "site_move_unresolved", Kind: "site_move_unresolved", Severity: "critical", Actor: "administrator",
-		Subject: subject, Name: steps, Value: float64(u.SiteID), ObservedAt: u.StartedAt, Action: action,
-	}}
 }
 
 // handleDomainSiteTaskSource: GET (what it would contain) or POST
@@ -404,7 +331,6 @@ func (p *Panel) readAllSiteTasks(ctx context.Context, all []siteLimitSite, unsup
 	if err != nil || resp.Error != "" {
 		return // an older Agent: nothing to say about tasks yet
 	}
-	p.noteSiteMoveUnresolved(ctx, resp.Unresolved)
 	moved := map[int]bool{}
 	for _, id := range resp.Moved {
 		moved[id] = true

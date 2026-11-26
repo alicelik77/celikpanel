@@ -1050,6 +1050,10 @@ func (a *Agent) ProvePHPToolV1(req *transport.ProvePHPToolRequest, resp *transpo
 		return nil
 	}
 	defer finishStep()
+	// Its fallback may move the tool: a read of the side doors waits (S4 R1,
+	// fourth fix round).
+	sideDoorsMu.Lock()
+	defer sideDoorsMu.Unlock()
 	*resp = provePHPToolWith(ctx, hostPHPToolProveOps(), tool, req.AllowFallback)
 	// alpha.127: right after its install, phpPgAdmin's server list names
 	// the running PostgreSQL clusters (never over the owner's edit).

@@ -9,7 +9,8 @@ import { componentName } from '../lib/componentName';
 import { useRemote, type RemoteHandle } from '../lib/remote';
 import { startVisibleReads } from '../lib/visibleReads';
 import { Button, inputClass, RemoteGate } from './ui';
-import { ALERTS_URL, isProblemKind, problemVars } from './ProblemsNow';
+import { ALERTS_URL, isProblemKind, problemTitleKey, problemVars } from './ProblemsNow';
+import { siteLimitsLaneTranslation } from '../i18n/siteLimitsLane';
 
 // Monitoring stages 2 and 3 (alpha.127): the alerts with their one settings
 // block, the services, and the website checks. Every list is the server's
@@ -33,7 +34,8 @@ function sendJSON(url: string, body: unknown, method = 'POST'): Promise<Response
 /** The I18nProvider's words with this page's own copy in front (route-scoped, no boot cost). */
 export function useMonitoringWords() {
     const i18n = useI18n();
-    return { ...i18n, t: (key: TranslationKey, values?: Record<string, string | number>) => monitoringAlertsTranslation(i18n.locale, key, values) ?? i18n.t(key, values) };
+    // alpha.149: the site limits lane's problem words too (route-scoped).
+    return { ...i18n, t: (key: TranslationKey, values?: Record<string, string | number>) => monitoringAlertsTranslation(i18n.locale, key, values) ?? siteLimitsLaneTranslation(i18n.locale, key, values) ?? i18n.t(key, values) };
 }
 const SERVICES_URL = '/api/v1/metrics/services';
 const SITES_URL = '/api/v1/metrics/sites';
@@ -178,7 +180,7 @@ export function AlertsSection() {
                                             <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${tone}`} aria-hidden="true" />
                                             <div className="min-w-0 flex-1 text-sm">
                                                 <p className={open ? 'font-medium text-fg' : 'text-fg-muted'}>
-                                                    {t(`pnow.${alert.kind}.title` as TranslationKey, problemVars(alert, t))}
+                                                    {t(problemTitleKey(alert), problemVars(alert, t))}
                                                     {!alert.seen && <span className="ml-2 text-xs font-semibold text-warning">•</span>}
                                                 </p>
                                                 <p className="text-xs text-fg-subtle">

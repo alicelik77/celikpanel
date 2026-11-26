@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="tr" data-page="problems">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bilinen sorunlar · CelikPanel</title>
+<meta name="description" content="CelikPanel’de kabul ettiğimiz sorunlar, o sırada ne yapılacağı ve onları düzelten sürüm; bir sorunu nasıl bildireceğiniz.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/public.css">
+<link rel="stylesheet" href="../assets/pages.css">
+<link rel="canonical" href="https://celikpanel.net/tr/sorunlar.html">
+<link rel="alternate" hreflang="en" href="../problems.html">
+<link rel="alternate" hreflang="tr" href="sorunlar.html">
+<link rel="alternate" hreflang="x-default" href="../problems.html">
+<script src="../assets/boot.js"></script>
+<script src="../assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">İçeriğe geç</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<nav aria-label="Ana menü"><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="../guide/tr/">Kılavuz</a></li>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../problems.html" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Bilinen sorunlar</h1>
+<p class="def">Kabul ettiğimiz sorunlar, kendi sözlerimizle; o sırada ne yapılacağı ve onları düzelten sürümle. Bir güvenlik sorunu burada ancak onu kapatan sürüm yayımlandıktan sonra listelenir.</p>
+<div class="actions">
+<a class="btn primary" href="#bildir">Sorun bildir</a>
+<a class="btn plain" href="degisiklikler.html">Değişiklikler</a>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-cases">
+<header><span class="num">1</span><h2 id="h-cases">Vakalar</h2><p>En yenisi önce. Düzeltilmiş bir vaka, onu düzelten sürümün değişikliklerine bağlanır.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 1 · Bilinen sorunlar</caption>
+<thead><tr><th scope="col">Numara</th><th scope="col">Sorun</th><th scope="col">Durum</th></tr></thead>
+<tbody>
+<tr id="CP-2026-30"><td class="v" data-k="Numara">CP-2026-30</td><td data-k="Sorun">CelikPanel’in kendi veritabanı hesabına ait bir PostgreSQL veritabanına eklenmiş bir kullanıcıyı kaldırmak, o kullanıcının yaptıklarını bu hesaba veriyordu; böylece bir müşterinin yazdığı kod sonradan o hesabın yetkileriyle çalışabiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.149">v0.1.0-alpha.149</a></td></tr>
+<tr id="CP-2026-29"><td class="v" data-k="Numara">CP-2026-29</td><td data-k="Sorun">Panelin ajanı bir sınır değişikliğini kaydedemediğinde, Şu anki sorunlar siteler yeni sınırlara sahip olsa bile bir saate kadar sahip olmadıklarını söyleyebiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.149">v0.1.0-alpha.149</a></td></tr>
+<tr id="CP-2026-28"><td class="v" data-k="Numara">CP-2026-28</td><td data-k="Sorun">Ubuntu 24.04’te sitenin kartı, sitenin programlarının işlem sınırına ulaştığını söylemiyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.149">v0.1.0-alpha.149</a></td></tr>
+<tr id="CP-2026-27"><td class="v" data-k="Numara">CP-2026-27</td><td data-k="Sorun">Bir site sınırlarının içine taşınırken başlatılan bir güncelleme durabiliyordu, çünkü panelin ajanının açılması güncellemenin onu beklediğinden uzun sürüyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.149">v0.1.0-alpha.149</a></td></tr>
+<tr id="CP-2026-26"><td class="v" data-k="Numara">CP-2026-26</td><td data-k="Sorun">Sınırların içine taşıma tamamlanmadığında, penceresi bir programın geri konduğunu, o program çalıştığı yerde yeniden başlamasa bile söylüyordu ve nedeni İngilizce verebiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.149">v0.1.0-alpha.149</a></td></tr>
+<tr id="CP-2026-25"><td class="v" data-k="Numara">CP-2026-25</td><td data-k="Sorun">Planın veritabanı sınırları sitelerin PostgreSQL kullanıcılarına ulaşmıyordu; bir sınır belirlendikten sonra oluşturulan bir veritabanı kullanıcısı onu almıyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.149">v0.1.0-alpha.149</a></td></tr>
+<tr id="CP-2026-24"><td class="v" data-k="Numara">CP-2026-24</td><td data-k="Sorun">Panelin ajanı kendisine verilen veritabanı hesabını, o hesabın neler yapabildiğini sormadan değiştiriyor, kilitliyor ya da siliyordu; böylece veritabanı sunucusunda yönetici yetkisi olan bir hesap değiştirilebiliyordu; ayrıca adı verilen her veritabanını, veritabanı sunucusunun kendi sistem veritabanları da dahil, siliyor ya da boşaltıyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.149">v0.1.0-alpha.149</a></td></tr>
+<tr id="CP-2026-23"><td class="v" data-k="Numara">CP-2026-23</td><td data-k="Sorun">“Farklı giriş yap”tan sonra “Çıkış yap”, yöneticinin kendi girişini tarayıcıda bırakıyordu: o tarayıcıda, tarayıcı kapanmadan giriş yapan bir sonraki kişi “Hesabıma dön” düğmesine basıp yönetici olarak devam edebiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.148">v0.1.0-alpha.148</a></td></tr>
+<tr id="CP-2026-22"><td class="v" data-k="Numara">CP-2026-22</td><td data-k="Sorun">Panelin giriş çerezlerinin adları sıradandı: aynı alan adı altında başka bir ana makine adındaki bir web sitesi, bir ziyaretçinin tarayıcısına kendi seçtiği bir girişi koyabiliyordu; panel bunu kendi girişinden önce okuyordu; ya da “Hesabıma dön” düğmesinin arkasına bir giriş koyabiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.148">v0.1.0-alpha.148</a></td></tr>
+<tr id="CP-2026-21"><td class="v" data-k="Numara">CP-2026-21</td><td data-k="Sorun">Bir sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması ve hizmet uygulamaları) yalnız tek tek sınırlanıyordu: bir sitenin programları birlikte sunucunun bütün belleğini, işlem sayısını ya da işlemci süresini kullanabiliyordu; öteki müşterilerin siteleri beklemek zorunda kalıyor ya da bellek yetmediği için durduruluyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.148">v0.1.0-alpha.148</a></td></tr>
+<tr id="CP-2026-20"><td class="v" data-k="Numara">CP-2026-20</td><td data-k="Sorun">Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmadığı yerde bile açık kalıyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.147">v0.1.0-alpha.147</a></td></tr>
+<tr id="CP-2026-19"><td class="v" data-k="Numara">CP-2026-19</td><td data-k="Sorun">Site hesapları sistemin at komutuyla, panelin ve sınırlarının dışında iş zamanlayabiliyordu ve hiçbir şey bunları göstermiyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.147">v0.1.0-alpha.147</a></td></tr>
+<tr id="CP-2026-18"><td class="v" data-k="Numara">CP-2026-18</td><td data-k="Sorun">phpMyAdmin, phpPgAdmin ve web posta, grubu her sitenin klasörünü okuyabilen web sunucusunun ortak hesabıyla çalışıyordu: birindeki bir hata her siteyi okuyabilirdi.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.147">v0.1.0-alpha.147</a></td></tr>
+<tr id="CP-2026-17"><td class="v" data-k="Numara">CP-2026-17</td><td data-k="Sorun">Uzun süren bir değişiklik (web posta güncellemesi, bileşen ya da posta profili kurulumu), panel ajanıyla bağlantısını bir an kaybedince sunucuda bitmiş olsa da “sürüyor” görünmeye devam edebilir; o sırada başka sunucu değişiklikleri reddedilir.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.147">v0.1.0-alpha.147</a></td></tr>
+<tr id="CP-2026-16"><td class="v" data-k="Numara">CP-2026-16</td><td data-k="Sorun">Web postanın sunucudaki yerel kapısı sunucunun her hesabına cevap veriyordu: herhangi biri oradan Roundcube’un dosyalarını okuyabiliyor ve eklenti betiklerini çalıştırabiliyordu (ağdan değil).</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-15"><td class="v" data-k="Numara">CP-2026-15</td><td data-k="Sorun">Bazı değişiklikler hâlâ tarayıcının isteğiyle çalışır: sunucu çalışırken sayfadan ayrılırsanız değişiklik panelin kaydı olmadan bitebilir ya da yalnız cevabı kaybolur.<br><small>O zamana kadar: Değişiklik bittiğini söyleyene kadar sayfada kalın.</small></td><td data-k="Durum"><span class="tag warn">Kabul edildi, düzeltilecek</span></td></tr>
+<tr id="CP-2026-14"><td class="v" data-k="Numara">CP-2026-14</td><td data-k="Sorun">Başarısız bir PostgreSQL kapatmasının penceresi, “Tamamlanmadı” yazısının üstünde sürmekte olan başlığını koruyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-13"><td class="v" data-k="Numara">CP-2026-13</td><td data-k="Sorun">Yedek DNS sunucusu (isteğe bağlı ikinci sunucu) geri geldikten sonra bir takma ad, zaten cevap verdiği hâlde bir sonraki saatlik tura kadar “yayımlanmayı bekliyor” diyebiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-12"><td class="v" data-k="Numara">CP-2026-12</td><td data-k="Sorun">Web posta e-posta gönderemiyordu; okuma, ekler ve ayarlar çalışıyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.145">v0.1.0-alpha.145</a></td></tr>
+<tr id="CP-2026-11"><td class="v" data-k="Numara">CP-2026-11</td><td data-k="Sorun">Web postanın kendi adresi, eklentilerinin sayfalarına ait olmayan dosyalarını veriyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-10"><td class="v" data-k="Numara">CP-2026-10</td><td data-k="Sorun">Bazı takma ad ve sertifika retleri Türkçe sayfada İngilizce gösteriliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-9"><td class="v" data-k="Numara">CP-2026-9</td><td data-k="Sorun">Bir veritabanı başka hesaplara kapatılırken PostgreSQL sayfasından ayrılmak, sonucunu onaylanmamış olarak gösteriyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-8"><td class="v" data-k="Numara">CP-2026-8</td><td data-k="Sorun">Posta kutusu oluşturulurken sayfadan ayrılmak kutuyu kaydı olmadan bırakabiliyor, yeniden oluşturmak da başarısız oluyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-7"><td class="v" data-k="Numara">CP-2026-7</td><td data-k="Sorun">Bir müşterinin kendi alan adının içindeki takma ad DNS kaydı almıyordu.<br><small>Not: alpha.144’ten önce eklenen takma adlar, kaldırılıp yeniden eklenince kaydını alır.</small></td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.144">v0.1.0-alpha.144</a></td></tr>
+<tr id="CP-2026-6"><td class="v" data-k="Numara">CP-2026-6</td><td data-k="Sorun">alpha.141’den önce oluşturulan PostgreSQL veritabanları her hesabın girişine açıktı.<br><small>Not: Panelin kendiliğinden kapatmadıklarını yönetici kapatır; elle oluşturulan veritabanlarına dokunulmaz.</small></td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-5"><td class="v" data-k="Numara">CP-2026-5</td><td data-k="Sorun">Giden posta başka bir müşterinin alan adıyla imzalanabiliyordu.<br><small>Not: Debian ve Ubuntu’da düzeltildi; Arch Linux’ta girişle gönderilen posta hâlâ başka bir barındırılan alan adı için imzalanabilir.</small></td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-4"><td class="v" data-k="Numara">CP-2026-4</td><td data-k="Sorun">Uygulaması başarısız olmuş bir Node.js sitesi silinemiyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-3"><td class="v" data-k="Numara">CP-2026-3</td><td data-k="Sorun">Alan adı sunucunun kendi adlarından birinin altında olan bir müşteri, bu alan adına alt alan adı ekleyemiyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.143">v0.1.0-alpha.143</a></td></tr>
+<tr id="CP-2026-2"><td class="v" data-k="Numara">CP-2026-2</td><td data-k="Sorun">Bir müşteri ya da bayi, başka bir hesaba ait bir adı, site hesabını, sunucu portunu ya da dosyaları alabiliyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.142">v0.1.0-alpha.142</a></td></tr>
+<tr id="CP-2026-1"><td class="v" data-k="Numara">CP-2026-1</td><td data-k="Sorun">Yedekten, kopyadan ya da içe aktarmadan gelen SQL, veritabanı sunucusunun yönetici yetkisiyle çalışıyordu.</td><td data-k="Durum"><span class="tag ok">Düzeltildi</span><br><a class="mono nowrap" href="degisiklikler.html#v0.1.0-alpha.141">v0.1.0-alpha.141</a></td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Her vaka yayımlanmış sürüm notlarından alınır. Bir bildirim burada yalnız kendi özetimizle gösterilir: bildirenin adı, sunucusu, alan adı ya da kendi sözleri hiçbir zaman gösterilmez.</p>
+</div>
+</section>
+<section class="part" id="bildir" aria-labelledby="h-report">
+<header><span class="num">2</span><h2 id="h-report">Sorun bildirmek</h2><p>Nasıl bildirilir, neler yazılır, sonra ne olur.</p></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Tablo 2 · Sorun bildirme</caption>
+<tbody>
+<tr><th scope="row">Bir güvenlik sorunu</th><td>Herkese açık bir kayıtta değil, gizli olarak bildirin: <a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">GitHub’da gizli güvenlik bildirimi</a></td></tr>
+<tr><th scope="row">Başka bir sorun</th><td>GitHub’daki geri bildirim depomuzda bir bildirim açın. Oraya yayımlamayacağınız hiçbir şey yazmayın. <a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">GitHub’da hata bildir</a></td></tr>
+<tr><th scope="row">Neler yazılmalı</th><td>CelikPanel sürümü, işletim sistemi, neye bastığınız ve ekranın ne dediği.</td></tr>
+<tr><th scope="row">Asla gönderilmemesi gerekenler</th><td>Parolalar, anahtarlar, erişim jetonları ya da kimsenin kişisel verisi.</td></tr>
+<tr><th scope="row">Sonra ne olur</th><td>Bir bildirimi kabul ettiğimizde bu sayfada bir numara alır, ardından durumu, düzeltildiğinde de onu düzelten sürüm yazılır.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section class="part" aria-labelledby="h-states">
+<header><span class="num">3</span><h2 id="h-states">Durumların anlamı</h2></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Tablo 3 · Bir vakanın durumları</caption>
+<tbody>
+<tr><th scope="row">Bildirildi, inceleniyor</th><td>Bildirim elimizde; ne olduğunu ve nedenini araştırıyoruz.</td></tr>
+<tr><th scope="row">Kabul edildi, düzeltilecek</th><td>Bu bir hatadır ve bir sürüm onu düzeltecek; vaka o zamana kadar ne yapılacağını söyler.</td></tr>
+<tr><th scope="row">Düzeltildi</th><td>Adı geçen sürüm düzeltti; panelin kendi güncelleme ekranından o sürüme güncelleyin.</td></tr>
+<tr><th scope="row">Hata değil</th><td>Panel tasarlandığı gibi çalışıyor; vaka nedenini söyler.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>Linux sunucular için hosting kontrol paneli.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="degisiklikler.html">Değişiklikler</a></li>
+<li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Koşullar ve veri bildirimi</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">İletişim</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+<li><a href="sorunlar.html">Bilinen sorunlar</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Özellik öner</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

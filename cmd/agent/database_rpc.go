@@ -108,10 +108,7 @@ var postgreSQLExecStatementOnPort = func(port int, statement string) ([]byte, er
 // (pgClusterRefusalError), and 0 resolves to the running cluster where the
 // clusters can be read (pg_statement_target.go).
 func postgreSQLStatementFor(port int) (func(string) ([]byte, error), error) {
-	if port < 0 || port > 65535 {
-		return nil, fmt.Errorf("invalid PostgreSQL port %d", port)
-	}
-	port, err := resolvePGStatementPort(port)
+	port, err := pgStatementPortFor(port)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +116,16 @@ func postgreSQLStatementFor(port int) (func(string) ([]byte, error), error) {
 		return postgreSQLExecStatement, nil
 	}
 	return func(statement string) ([]byte, error) { return postgreSQLExecStatementOnPort(port, statement) }, nil
+}
+
+// pgStatementPortFor checks and resolves a request's port as
+// postgreSQLStatementFor does (0: psql's own choice where the clusters
+// cannot be read).
+func pgStatementPortFor(port int) (int, error) {
+	if port < 0 || port > 65535 {
+		return 0, fmt.Errorf("invalid PostgreSQL port %d", port)
+	}
+	return resolvePGStatementPort(port)
 }
 
 // Database Management RPC Methods
@@ -137,6 +144,13 @@ type DeleteDatabaseResponse = transport.DeleteDatabaseResponse
 
 // CreateDatabase creates a new MySQL or PostgreSQL database
 func (a *Agent) CreateDatabase(req CreateDatabaseRequest, resp *CreateDatabaseResponse) error {
+	// alpha.149 (security, second review of PR #370 finding 2): a new user
+	// is never given the engine's own system database.
+	if systemDatabaseName(req.Type, req.Name) {
+		resp.Success = false
+		resp.AccountRefused, resp.Error = transport.DatabaseAccountRefusedSystemDatabase, systemDatabaseRefusal
+		return nil
+	}
 	if req.Type == "mysql" {
 		return a.createMySQLDatabase(req, resp)
 	} else if req.Type == "postgresql" {
@@ -150,6 +164,13 @@ func (a *Agent) CreateDatabase(req CreateDatabaseRequest, resp *CreateDatabaseRe
 
 // DeleteDatabase deletes a MySQL or PostgreSQL database
 func (a *Agent) DeleteDatabase(req DeleteDatabaseRequest, resp *DeleteDatabaseResponse) error {
+	// alpha.149 (security, second review of PR #370 finding 2): never the
+	// engine's own system database, whatever the panel names.
+	if systemDatabaseName(req.Type, req.Name) {
+		resp.Success = false
+		resp.AccountRefused, resp.Error = transport.DatabaseAccountRefusedSystemDatabase, systemDatabaseRefusal
+		return nil
+	}
 	if req.Type == "mysql" {
 		return a.deleteMySQLDatabase(req, resp)
 	} else if req.Type == "postgresql" {
@@ -205,6 +226,29 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		return nil
 	}
 
+	// alpha.149 (security; second review of PR #370, finding 5, decision 4 of
+	// the second round): the account is made as 'name'@'localhost' only, and
+	// never beside an existing account of the same name on any host
+	// ('name'@'%', which may be the server owner's own) or a role of that
+	// name: the owner's local sign-ins would then match the new account,
+	// whose password the panel chose. Asked before anything is written; a
+	// resumed operation goes on only on its own marked database and with
+	// no other host of the name.
+	// Aynı adda başka bir hesap ya da rol varsa hiçbir şey yazılmadan reddedilir.
+	names, err := mysqlExecStatement("SELECT CONCAT('accounts=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + "; " +
+		"SELECT CONCAT('others=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + " AND Host <> 'localhost';")
+	accounts, okAccounts := markerValue(names, "accounts")
+	others, okOthers := markerValue(names, "others")
+	if err != nil || !okAccounts || !okOthers {
+		resp.Error = "the database server could not be asked whether a database user named " + req.User + " exists; nothing was changed"
+		return nil
+	}
+	if others != "0" || (accounts != "0" && !(hasOperation && verifyMySQLOwnership(dbIdent, req.OperationID, req.CleanupToken))) {
+		resp.NameTaken = "user"
+		resp.Error = "a database user or role named " + req.User + " already exists on this server (on some host); nothing was changed"
+		return nil
+	}
+
 	databaseCreated := false
 	userCreated := false
 	if _, err := mysqlExecStatement(fmt.Sprintf("CREATE DATABASE %s;", dbIdent)); err != nil {
@@ -217,7 +261,13 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		}
 		// A matching marker is written only after this operation exclusively
 		// created both the database and user. A lost response can therefore
-		// safely resume at the idempotent grant step.
+		// safely resume at the idempotent grant step - and (alpha.149,
+		// security) only while the user is an ordinary account.
+		if stateErr := readDatabaseAccountState("mysql", mysqlExecStatement, req.User, pgAccountOrdinary, false); stateErr != nil {
+			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(stateErr), stateErr.Error()
+			resp.CleanupIncomplete = true
+			return nil
+		}
 		userCreated = true
 	} else {
 		databaseCreated = true
@@ -391,7 +441,32 @@ func (a *Agent) deleteMySQLDatabase(req DeleteDatabaseRequest, resp *DeleteDatab
 				return nil
 			}
 		} else {
-			_, dropErr := mysqlExecStatement(fmt.Sprintf("DROP USER IF EXISTS %s@'localhost';", userLiteral))
+			// alpha.149 (security, review of PR #370 finding 1): the user
+			// is dropped only when the Agent finds it an ordinary account;
+			// an administrator account, or one whose rights cannot be read,
+			// refuses the whole deletion before anything is dropped. An
+			// absent user leaves nothing to drop.
+			// Yönetici hesabı silinmez; silme hiçbir şeyi değiştirmeden durur.
+			stateErr := readDatabaseAccountState("mysql", mysqlExecStatement, req.User, pgAccountOrdinary, false)
+			absent := databaseAccountRefusalOf(stateErr) == transport.DatabaseAccountRefusedAbsent
+			if stateErr != nil && !absent {
+				resp.AccountRefused, resp.Error = databaseAccountRefusalOf(stateErr), stateErr.Error()
+				return nil
+			}
+			var dropErr error
+			if !absent {
+				var drop string
+				var output []byte
+				if drop, dropErr = mysqlGuarded(req.User, false, fmt.Sprintf("DROP USER IF EXISTS %s@'localhost';", userLiteral)); dropErr == nil {
+					output, dropErr = mysqlExecStatement(drop)
+				}
+				if code := databaseAccountWriteRefusal(output); dropErr != nil && code != "" && code != transport.DatabaseAccountRefusedAbsent {
+					resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.User, code)
+					return nil
+				} else if code == transport.DatabaseAccountRefusedAbsent {
+					dropErr = nil
+				}
+			}
 			if dropErr == nil {
 				// alpha.129: its remote copies go with it.
 				if err := databaseRemoteFollowMariaDBUser(req.User, true); err != nil {
@@ -551,6 +626,15 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		return nil
 	}
 
+	// alpha.149 (security): a resumed operation's role is given the database
+	// only while the Agent finds it an ordinary role.
+	if resumed {
+		if stateErr := readDatabaseAccountState("postgresql", run, req.User, pgAccountOrdinary, false); stateErr != nil {
+			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(stateErr), stateErr.Error()
+			return nil
+		}
+	}
+
 	roleCreated := false
 	if !resumed {
 		statement := "SET password_encryption = 'scram-sha-256';\nCREATE ROLE " + userIdent + " LOGIN PASSWORD " + pwLiteral + ";"
@@ -650,6 +734,24 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 		return nil
 	}
 
+	// alpha.149 (security, review of PR #370 finding 1): the named role is
+	// dropped only when the Agent finds it an ordinary one; an administrator
+	// role, or one whose rights cannot be read, refuses the whole deletion
+	// before anything is dropped.
+	dropUser := ""
+	if services.ValidateSQLIdentifier(req.User) == nil {
+		stateErr := readDatabaseAccountState("postgresql", run, req.User, pgAccountOrdinary, false)
+		switch code := databaseAccountRefusalOf(stateErr); {
+		case stateErr == nil:
+			userIdent, _ := services.QuotePGIdentifier(req.User)
+			dropUser, _ = pgGuarded(req.User, pgAccountOrdinary, fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent))
+		case code == transport.DatabaseAccountRefusedAbsent:
+		default:
+			resp.AccountRefused, resp.Error = code, stateErr.Error()
+			return nil
+		}
+	}
+
 	// Drop database. alpha.133 round 5: the sessions open on it are ended
 	// first, in the same psql run, as the panel's own driver always did
 	// (internal/services/postgresql_driver.go DeleteDatabase); a plain DROP
@@ -669,10 +771,9 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 		return nil
 	}
 
-	// Drop user
-	if userIdent, err := services.QuotePGIdentifier(req.User); err == nil {
-		// Don't fail if user doesn't exist
-		_, _ = run(fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent))
+	// Drop user (behind the guard; a failure is not the deletion's).
+	if dropUser != "" {
+		_, _ = run(dropUser)
 	}
 
 	resp.Success = true

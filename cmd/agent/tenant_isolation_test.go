@@ -75,7 +75,11 @@ func TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner(t *testing.T) {
 	base := filepath.Join(dir, "celikpanel")
 	subscriptions := filepath.Join(base, "subscriptions")
 	ownerDir := filepath.Join(dir, "owners")
-	for path, mode := range map[string]os.FileMode{base: 0o755, subscriptions: 0o755, ownerDir: 0o775} {
+	// The owner's mode that already keeps others from listing (alpha.142
+	// lab: such a choice was kept but not named), and one at the new mode.
+	ownerPrivate := filepath.Join(dir, "private")
+	current := filepath.Join(dir, "current")
+	for path, mode := range map[string]os.FileMode{base: 0o755, subscriptions: 0o755, ownerDir: 0o775, ownerPrivate: 0o750, current: 0o711} {
 		if err := os.MkdirAll(path, mode); err != nil {
 			t.Fatal(err)
 		}
@@ -88,7 +92,7 @@ func TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner(t *testing.T) {
 			{Path: "/etc/nginx/sites-available/b.test.conf", Kept: true, Why: "mode 0664 is the owner's"}}
 	}
 	now := func() time.Time { return time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC) }
-	lines, ran := tightenTenantVisibleModes(receipt, files, []string{base, subscriptions, ownerDir}, now)
+	lines, ran := tightenTenantVisibleModes(receipt, files, []string{base, subscriptions, ownerDir, ownerPrivate, current}, now)
 	if !ran {
 		t.Fatalf("did not run: %v", lines)
 	}
@@ -99,15 +103,18 @@ func TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner(t *testing.T) {
 		}
 		return info.Mode().Perm()
 	}
-	if mode(base) != 0o711 || mode(subscriptions) != 0o711 || mode(ownerDir) != 0o775 {
-		t.Fatalf("modes base %04o subscriptions %04o owner's %04o\n%s", mode(base), mode(subscriptions), mode(ownerDir), strings.Join(lines, "\n"))
+	if mode(base) != 0o711 || mode(subscriptions) != 0o711 || mode(ownerDir) != 0o775 || mode(ownerPrivate) != 0o750 || mode(current) != 0o711 {
+		t.Fatalf("modes base %04o subscriptions %04o owner's %04o %04o\n%s", mode(base), mode(subscriptions), mode(ownerDir), mode(ownerPrivate), strings.Join(lines, "\n"))
 	}
 	joined := strings.Join(lines, "\n")
 	for _, want := range []string{"0644 -> 0640 /etc/nginx/sites-available/a.test.conf", "kept /etc/nginx/sites-available/b.test.conf",
-		"0755 -> 0711 " + base, "kept " + ownerDir, "3 changed, 2 kept"} {
+		"0755 -> 0711 " + base, "kept " + ownerDir, "kept " + ownerPrivate + ": mode 0750 is the owner's choice", "3 changed, 3 kept"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("log lacks %q:\n%s", want, joined)
 		}
+	}
+	if strings.Contains(joined, current) {
+		t.Errorf("a folder already at 0711 was named:\n%s", joined)
 	}
 	// The owner opens the base again; the next start leaves it.
 	if err := os.Chmod(base, 0o755); err != nil {

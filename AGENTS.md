@@ -136,14 +136,26 @@ The owner approved the paid yearly licence direction in D-047 (docs/DECISIONS.md
 design and for implementation in small releases. Before touching licence states, the
 licence gate, the licence file format or `portal-membership/`, read D-047 and
 docs/LICENCE-SUBSCRIPTION-DESIGN.md. A lapsed, unverifiable or unpaid licence never
-stops hosted workloads and never blocks security actions. The payment provider is not
-chosen. This does not authorize contacting the live licence service, changing the live
-portal, or updating installed panels from the assistant's side.
+stops hosted workloads. Changed by the owner on 23 November 2026 ("lisans yoksa panel
+çalışmaz. sunucu çalışır bizi ilgilendirmez"; the earlier "and never blocks security
+actions" was his approval of 14 November): without a licence the panel's own screens,
+security screens included, are closed until a licence is entered again, and the server's
+owner does such work on the server itself; entering or renewing a licence and installing
+the panel's own updates stay possible. The owner chose Stripe as the first payment method
+on 23 November 2026 (D-047's amendment of that date). This does not authorize contacting
+the live licence service, changing the live portal, or updating installed panels from the
+assistant's side.
 
 Sahip, ücretli yıllık lisans yönünü D-047'de (docs/DECISIONS.tr.md) tasarım ve küçük
 sürümlerle uygulama için onayladı. Lisans durumlarına, lisans kapısına, lisans dosyası
 biçimine ya da `portal-membership/` dizinine dokunmadan önce D-047 ve
 docs/LICENCE-SUBSCRIPTION-DESIGN.md okunur. Süresi biten, doğrulanamayan ya da ödenmeyen
-lisans barındırılan hizmetleri asla durdurmaz ve güvenlik işlemlerini asla engellemez.
-Ödeme sağlayıcısı seçilmedi. Bu onay canlı lisans hizmetine bağlanmaya, canlı portalı
-değiştirmeye ya da kurulu panelleri asistan tarafından güncellemeye izin vermez.
+lisans barındırılan hizmetleri asla durdurmaz. Sahip 23 Kasım 2026'da değiştirdi ("lisans
+yoksa panel çalışmaz. sunucu çalışır bizi ilgilendirmez"; önceki "ve güvenlik işlemlerini
+asla engellemez" ifadesi onun 14 Kasım onayıydı): lisans yokken panelin kendi ekranları,
+güvenlik ekranları dahil, yeniden lisans girilene kadar kapalıdır; bu işleri sunucunun
+sahibi sunucunun kendisinde yapar. Lisans girmek ya da yenilemek ve panelin kendi
+güncellemelerini kurmak açık kalır. Sahip 23 Kasım 2026'da ilk ödeme yöntemi olarak
+Stripe'ı seçti (D-047'nin o tarihli değişikliği). Bu onay canlı lisans hizmetine
+bağlanmaya, canlı portalı değiştirmeye ya da kurulu panelleri asistan tarafından
+güncellemeye izin vermez.

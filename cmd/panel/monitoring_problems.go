@@ -69,9 +69,12 @@ type monitoringProblem struct {
 	Severity string `json:"severity"`
 	// Actor: administrator (acts in the panel) or server_owner (acts on the
 	// server; the panel cannot do it for them).
-	Actor      string                  `json:"actor"`
-	Subject    string                  `json:"subject,omitempty"`
-	Name       string                  `json:"name,omitempty"`
+	Actor   string `json:"actor"`
+	Subject string `json:"subject,omitempty"`
+	Name    string `json:"name,omitempty"`
+	// Reason (alpha.149, database_limits_unapplied): the stored reason as a
+	// code the screen words; the journal holds the detail.
+	Reason     string                  `json:"reason,omitempty"`
 	Unit       string                  `json:"unit,omitempty"`
 	Value      float64                 `json:"value"`
 	Since      string                  `json:"since,omitempty"`
@@ -114,53 +117,79 @@ var problemKindOrder = map[string]int{
 	"name_server_reserved":       12,
 	"name_overlap":               13,
 	"node_port_reserved":         14,
+	// S1b: PostgreSQL databases left open to other accounts.
+	"postgresql_databases_open": 15,
+	"mail_signing":              16,
+	// 22 Nov 2026: an out-of-office reply that still answers from an address
+	// that is no longer the mailbox's own.
+	"mail_autoresponder_foreign": 17,
+	// 22 Nov 2026 (B5): PostgreSQL databases the rounds could not read.
+	"postgresql_databases_unreadable": 18,
+	// alpha.144: webmail's address still in its earlier form.
+	"webmail_address_kept":    19,
+	"webmail_address_refused": 20,
+	// alpha.145: webmail's configuration that still cannot send.
+	"webmail_cannot_send": 21,
 	// S4 R1: the tools' accounts and the stock PHP-FPM pool.
-	"tool_account_failed":       15,
-	"tool_account_owner_config": 16,
-	"stock_pool_in_use":         17,
-	"stock_pool_owner_changed":  18,
+	"tool_account_failed":       22,
+	"tool_account_owner_config": 23,
+	"stock_pool_in_use":         24,
+	"stock_pool_owner_changed":  25,
 	// S4 R1: jobs a site's own code can make.
-	"site_crontab_outside":  19,
-	"site_at_jobs":          20,
-	"at_allow_lists_sites":  21,
-	"at_directory_accounts": 22,
-	"at_not_closed":         23,
+	"site_crontab_outside":  26,
+	"site_at_jobs":          27,
+	"at_allow_lists_sites":  28,
+	"at_directory_accounts": 29,
+	"at_not_closed":         30,
 	// S4 R1 fix round.
-	"tool_down":                 24,
-	"stock_pool_not_put_back":   25,
-	"stock_pool_failed":         26,
-	"stock_pool_unknown":        27,
-	"stock_pool_owner_restored": 28,
-	"at_owner_removed":          29,
-	"site_crontab_unreadable":   30,
+	"tool_down":                 31,
+	"stock_pool_not_put_back":   32,
+	"stock_pool_failed":         33,
+	"stock_pool_unknown":        34,
+	"stock_pool_owner_restored": 35,
+	"at_owner_removed":          36,
+	"site_crontab_unreadable":   37,
+	// alpha.145 lab, D1: a server change whose end the panel could not
+	// record; every other server change waits for it.
+	"service_operation_unsettled": 38,
 	// S4 R2a: a site that keeps reaching its limits; disk limits counted
 	// but not enforced (site_limits_view.go).
-	"site_memory_repeated": 31,
-	"site_tasks_repeated":  32,
-	"disk_limits_counted":  33,
-	// S4 R2a: sites whose programs still run outside their limits (a to-do);
-	// S4 R2b: their programs or scheduled tasks (site_limits_outside).
-	"site_programs_outside": 34,
-	"site_limits_outside":   34,
+	"site_memory_repeated": 39,
+	"site_tasks_repeated":  40,
+	"disk_limits_counted":  41,
+	// S4 R2a: sites whose programs still run outside their limits (a to-do).
+	// S4 R2b replaces it with site_limits_outside (their programs or
+	// scheduled tasks); the kind stays known for an earlier line.
+	"site_programs_outside": 42,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
-	"site_limits_unsupported": 35,
+	"site_limits_unsupported": 43,
+	// S4 R2a second fix round: a change of limits that did not reach every
+	// site; a default memory limit fixed for the host's earlier memory.
+	"site_limits_unapplied": 44,
+	"site_memory_default":   45,
+	// S4 R2a third fix round: a move whose put-back did not complete (a
+	// program may be stopped; no site is moved until it is settled).
+	"site_move_kept": 46,
+	// alpha.149: database users the database limits did not reach.
+	"database_limits_unapplied": 47,
+	// S4 R2b: sites whose programs or scheduled tasks still run outside
+	// their limits (site_tasks.go).
+	"site_limits_outside": 48,
 	// S4 R2b: cron.allow, crontabs that came back, lingering (site_tasks.go).
-	"cron_allow_lists_sites": 36,
-	"cron_not_closed":        37,
-	"cron_owner_removed":     38,
-	"site_crontab_returned":  39,
-	"site_lingering":         40,
-	"linger_owner_removed":   41,
-	"linger_not_closed":      42,
+	"cron_allow_lists_sites": 49,
+	"cron_not_closed":        50,
+	"cron_owner_removed":     51,
+	"site_crontab_returned":  52,
+	"site_lingering":         53,
+	"linger_owner_removed":   54,
+	"linger_not_closed":      55,
 	// S4 R2b fix round: a crontab the site's own code can have made; moved
 	// sites whose timers are held for want of their limits file.
-	"site_crontab_by_site": 43,
-	"site_tasks_held":      44,
-	// S4 R2b second fix round: a move the Agent could not resolve (every new
-	// move waits for it); site accounts whose own service manager can still
-	// start at an SFTP login.
-	"site_move_unresolved":   45,
-	"site_user_manager_open": 46,
+	"site_crontab_by_site": 56,
+	"site_tasks_held":      57,
+	// S4 R2b second fix round: site accounts whose own service manager can
+	// still start at an SFTP login.
+	"site_user_manager_open": 58,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -223,9 +252,27 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	add(sideDoorsProblems(p.setting(ctx, settingSideDoorsState)), nil)
 	// S4 R1: site crontab lines not made in CelikPanel and at (side_doors_jobs.go).
 	add(p.siteJobsProblems(ctx, db), nil)
+	// S1b: PostgreSQL databases made before alpha.141 still open to other
+	// accounts, from the last round (postgresql_public_access.go).
+	add(pgPublicProblems(ctx, db), nil)
+	// 20 Nov 2026: mail signed only for the sender's own domain, as the
+	// Agent said at the Panel's last start (mail_signing_problem.go).
+	add(mailSigningProblems(p.setting(ctx, settingMailSigningState)), nil)
+	// 22 Nov 2026: an out-of-office reply whose address that is no longer the
+	// mailbox's own could not be taken off the server (mail_autoresponder_own.go).
+	add(autoresponderForeignProblems(ctx, db), nil)
+	// alpha.144: webmail's address that still gives out plugin files
+	// (webmail_address_problem.go).
+	add(p.webmailAddressProblems(ctx), nil)
+	// alpha.145 lab, D1: a server change whose end this panel process could
+	// not record (service_operation_settle.go).
+	add(p.serviceOperationUnsettledProblems(ctx), nil)
 	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
 	add(p.siteLimitProblems(ctx, now), nil)
 	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)
+	// alpha.149: database users a plan's database limits did not reach
+	// (database_limits_problems.go).
+	add(p.databaseLimitsProblems(ctx), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

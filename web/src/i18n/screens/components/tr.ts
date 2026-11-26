@@ -479,6 +479,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.mailProfiles.code.repair_to_verify': 'Bileşenler çalışıyor. Posta TLS’i ve kimlik doğrulamalı gönderim dahil posta profilinin tamamını doğrulamak ve uzlaştırmak için Onar’ı çalıştırın.',
     'services.mailProfiles.code.webmail_unverified': 'Webmail çalışma ortamının hazır olduğu henüz doğrulanmadı; bir sonraki bileşen kontrolü bunu doğrular.',
     'services.mailProfiles.code.roundcube_not_ready': 'Roundcube kurulu, ancak Unix soketli çalışma ortamı hazır değil.',
+    'services.mailProfiles.code.webmail_cannot_send': 'Webmail gönderemiyor: yapılandırması postayı bu sunucunun gönderim hizmetine şifreli ve sertifika ayarlarıyla vermiyor. Şu anki sorunlar dosyayı ve adımı gösterir.',
     'services.mailProfiles.code.partly_present': 'Bazı bileşenler zaten kurulu. Bu profili kurmak, yerinde olan hizmetleri kaldırmadan planın tamamını tamamlar.',
     'services.mailProfiles.attemptError': 'Son deneme şunu bildirdi: {error}',
     'services.mailProfiles.plan.title.install': '{name} kur',

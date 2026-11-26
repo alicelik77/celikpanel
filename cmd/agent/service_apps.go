@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -53,13 +52,13 @@ import (
 var (
 	serviceAppStateRoot = filepath.Join(hostingpath.ServiceMutationStateRoot(), "service-apps")
 	serviceAppOperation = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{7,63}$`)
-	serviceAppLocks     [64]sync.Mutex
+	serviceAppLocks     perIDMutex
 	// serviceAppGeneratedValue is a key made on the server (randomHex).
 	serviceAppGeneratedValue = regexp.MustCompile(`^[0-9a-f]{32,128}$`)
 )
 
 func lockServiceApp(installID int) func() {
-	lock := &serviceAppLocks[uint(installID)%uint(len(serviceAppLocks))]
+	lock := serviceAppLocks.of(installID)
 	lock.Lock()
 	return lock.Unlock
 }
@@ -918,6 +917,17 @@ func serviceAppListenProof(unit string, port int) (serviceapps.ListenProof, erro
 	return serviceapps.ProveListening(serviceapps.ParseSS(string(out)), pids, port), nil
 }
 
+// serviceAppUnitInSlice is where ServiceAppActivateV1 writes the app's unit
+// (S4 R2a): into the site's slice when the app does not run now (or already
+// runs there); a running app moves with its site. A slice the file at path
+// names is kept, also when where the app runs cannot be read
+// (site_slice_keep.go).
+func serviceAppUnitInSlice(sc serviceAppContext, installID int, path string) bool {
+	return siteUnitInSlice(serviceapps.UnitName(installID)+".service", sc.slice, false, func() bool {
+		return unitFileKeepsSiteSlice(path, sc.siteID)
+	})
+}
+
 // ServiceAppActivateV1 writes the long-running unit of an installed version
 // and starts it. A unit the owner changed is kept and not overwritten
 // (D-022); the owner's own settings belong in the drop-in directory.
@@ -968,9 +978,7 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 	if !serviceAppSandboxReady(sc, caps, resp) {
 		return nil
 	}
-	// S4 R2a: into the site's slice when the app does not run now (or
-	// already runs there); a running app moves with its site.
-	inSlice := siteUnitEntersSlice(serviceapps.UnitName(req.Target.InstallID)+".service", sc.slice, false)
+	inSlice := serviceAppUnitInSlice(sc, req.Target.InstallID, path)
 	text, err := serviceapps.RenderUnit(serviceapps.UnitParams{
 		InstallID: req.Target.InstallID, App: sc.app, Version: req.Version, Domain: req.Target.Domain,
 		User: sc.account.Name, Group: sc.account.Group, Layout: sc.layout, Port: req.Port, AuxPort: req.AuxPort,
@@ -1106,6 +1114,11 @@ func (a *Agent) ServiceAppControlV1(req *transport.ServiceAppControlRequest, res
 	if req.Action != "stop" && serviceAppUnitFileState(req.Target.InstallID) == "absent" {
 		serviceAppStep(resp, transport.ServiceAppPrerequisite, "unit_missing", "the unit file is missing; install the application again")
 		return nil
+	}
+	// alpha.149 (lab O2): a program that does not run starts inside its
+	// site's limits (site_slice_start.go); a running one is not moved.
+	if req.Action != "stop" {
+		siteUnitIntoSliceBeforeStart(name, req.Target.Slice)
 	}
 	for _, step := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(step...)...); err != nil {

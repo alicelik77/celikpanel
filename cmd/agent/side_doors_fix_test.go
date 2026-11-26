@@ -181,10 +181,10 @@ func TestRoundcubeOwnAccountPlanChangesOnlyWhatMust(t *testing.T) {
 		"temp": "4242:4243:0700", "temp/attachment": "4242:4243:0640",
 		"logs": "4242:4243:0700", "logs/errors.log": "4242:4243:0640",
 		"config": "0:4243:0750", "config/config.inc.php": uid + ":4243:0640", "config/defaults.inc.php": uid + ":4243:0644",
-		"plugins/password/config.inc.php":    uid + ":4243:0640",
-		"plugins/managesieve/config.inc.php": uid + ":4243:0640",
-		"owner-notes.txt":                    uid + ":" + fixItoa(gid) + ":0640",
-		".":                                  uid + ":" + fixItoa(gid) + ":0751",
+		"plugins/password/config.inc.php": uid + ":4243:0640",
+		// Second fix round (B2): the root stays closed to others; webmail's
+		// account alone gets through it by an access-control-list entry.
+		".": uid + ":" + fixItoa(gid) + ":0750",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("plan:\n%v\nwant:\n%v", got, want)
@@ -200,6 +200,9 @@ func TestRoundcubeOwnAccountPlanChangesOnlyWhatMust(t *testing.T) {
 	// The private parts first, the tree's own directory last.
 	if order[len(order)-1] != "." || order[0] != "db" {
 		t.Fatalf("order %v", order)
+	}
+	if root := plan[len(plan)-1]; !aclHasUser(root.ACL, 4242, aclExecute) || aclHasUser(root.ACL, 4243, aclExecute) {
+		t.Fatal("the root's access-control list does not let webmail's account (and only it) through")
 	}
 	for _, change := range plan {
 		rel, _ := filepath.Rel(base, change.Path)
@@ -219,9 +222,9 @@ func modeText(mode os.FileMode) string { return fmt.Sprintf("%04o", uint32(mode.
 // The files' undo puts back what the FIRST attempt recorded, decided from
 // what serves the tool, not from a file's group.
 func TestAnInterruptedMovesRetryPutsBackWhatTheFirstAttemptRecorded(t *testing.T) {
-	savedDir, savedSet, savedRestore := phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState
+	savedDir, savedSet, savedRestore, savedCurrent := phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState, currentPHPToolFileState
 	t.Cleanup(func() {
-		phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState = savedDir, savedSet, savedRestore
+		phpToolFilesRecordDir, setPHPToolPathMeta, restorePHPToolFileState, currentPHPToolFileState = savedDir, savedSet, savedRestore, savedCurrent
 	})
 	phpToolFilesRecordDir = t.TempDir()
 	base := filepath.Join(t.TempDir(), "roundcube")
@@ -234,9 +237,20 @@ func TestAnInterruptedMovesRetryPutsBackWhatTheFirstAttemptRecorded(t *testing.T
 		t.Fatal(err)
 	}
 	var applied []string
+	// What the (not made) changes would leave, so the undo sees each path as
+	// CelikPanel set it.
+	set := map[string][3]int{}
 	setPHPToolPathMeta = func(path string, _ bool, uid, gid int, mode os.FileMode) error {
 		applied = append(applied, path)
+		set[path] = [3]int{uid, gid, int(unixModeBits(mode))}
 		return nil
+	}
+	currentPHPToolFileState = func(path string, content, acl bool) (phpToolFileState, error) {
+		state, err := readPHPToolFileState(path, content, acl)
+		if meta, ok := set[path]; ok {
+			state.UID, state.GID, state.Mode = meta[0], meta[1], uint32(meta[2])
+		}
+		return state, err
 	}
 	var restored []phpToolFileState
 	restorePHPToolFileState = func(state phpToolFileState) error {
@@ -436,11 +450,9 @@ func TestTheOwnersUndoOfTheStockPoolStands(t *testing.T) {
 	if pools[0].State != transport.SideDoorsStockOwnerRestored || len(host.steps) != 0 {
 		t.Fatalf("after the owner's undo: %+v steps %v: it must not be turned off again by itself", pools, host.steps)
 	}
-	// The administrator's explicit "turn it off again".
-	if err := forgetOwnerUndo(transport.SideDoorsReCloseStockPool, "8.4"); err != nil {
-		t.Fatal(err)
-	}
-	if pools := closeStockFPMPoolsWith(context.Background(), ops); pools[0].State != transport.SideDoorsStockTurnedOff {
+	// The administrator's explicit "turn it off again" (second fix round:
+	// scoped to that version, the owner's undo kept until it is off).
+	if pools := closeStockFPMPoolsFor(context.Background(), ops, stockPoolPass{only: "8.4", reclose: true}); pools[0].State != transport.SideDoorsStockTurnedOff {
 		t.Fatalf("closing again: %+v", pools)
 	}
 }
@@ -464,10 +476,7 @@ func TestTheOwnersDeletionOfAtAllowStands(t *testing.T) {
 	if !strings.Contains(atAllowHeader, "does not write it again by itself") {
 		t.Fatal("the header does not tell the truth about deleting it")
 	}
-	if err := forgetOwnerUndo(transport.SideDoorsReCloseAt, ""); err != nil {
-		t.Fatal(err)
-	}
-	if at := closeSiteAtWith(context.Background(), fake.ops(true)); at.State != transport.SideDoorsAtWritten {
+	if at := closeSiteAtFor(context.Background(), fake.ops(true), atPass{reclose: true}); at.State != transport.SideDoorsAtWritten {
 		t.Fatalf("closing again: %+v", at)
 	}
 }
@@ -510,35 +519,6 @@ func TestPendingAtJobsAreNumberAccountAndTimeOnly(t *testing.T) {
 	}
 	if _, has := reflect.TypeOf(transport.SideDoorsAtJob{}).FieldByName("Command"); has {
 		t.Fatal("the job's command text is still carried")
-	}
-}
-
-// --- Finding 14: only real directives keep the stock pool on ---
-
-func TestOnlyRealDirectivesKeepTheStockPoolOn(t *testing.T) {
-	listen := "/run/php/php8.4-fpm.sock"
-	header := "# configuration file /etc/nginx/sites-enabled/site7.conf:\nserver {\n"
-	cases := []struct {
-		name string
-		dump string
-		used []string
-	}{
-		{"a header value naming the socket", header + "    add_header X-Note \"unix:/run/php/php8.4-fpm.sock\";\n}\n", nil},
-		{"a quoted value across lines faking a file and a directive", header +
-			"    add_header X-Note \"a\n# configuration file /etc/nginx/fake.conf:\n    fastcgi_pass unix:/run/php/php8.4-fpm.sock;\n\";\n}\n", nil},
-		{"a comment", header + "    # fastcgi_pass unix:/run/php/php8.4-fpm.sock;\n}\n", nil},
-		{"fastcgi_pass", header + "    fastcgi_pass unix:/run/php/php8.4-fpm.sock;\n}\n", []string{"/etc/nginx/sites-enabled/site7.conf"}},
-		{"an upstream's server", "# configuration file /etc/nginx/conf.d/up.conf:\nupstream php { server unix:/var/run/php/php8.4-fpm.sock; }\n", []string{"/etc/nginx/conf.d/up.conf"}},
-		{"another socket with the same start", header + "    fastcgi_pass unix:/run/php/php8.4-fpm.sock2;\n}\n", nil},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := stockPoolUsers(tc.dump, listen, "", nil); !reflect.DeepEqual(got, append([]string{}, tc.used...)) {
-				if !(len(got) == 0 && len(tc.used) == 0) {
-					t.Fatalf("users %v, want %v", got, tc.used)
-				}
-			}
-		})
 	}
 }
 

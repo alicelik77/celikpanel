@@ -710,6 +710,36 @@ v_sshd() {
     [[ -n "$out" ]] && { printf 'sshd -T: %s\n' "$out"; return 2; }
     return 0
 }
+# OpenDKIM (20 Nov 2026, mail_signing_bind.go): the release's own OpenDKIM
+# must accept CelikPanel's configuration (opendkim -n), and where miltertest is
+# installed OpenDKIM runs with it and signs each test message for exactly the
+# domain the script expects: the login's own, never the From: of another
+# customer.
+v_opendkim() {
+    local out pid rc
+    out=$(opendkim -n -x "$TARGET" 2>&1) || { printf 'opendkim -n refused the configuration: %s\n' "$out"; return 1; }
+    if [[ "${DKIM_SENDER_MACRO:-}" != yes ]]; then
+        printf 'this OpenDKIM build has no SenderMacro: CelikPanel writes its earlier configuration here, so submitted mail is still signed by its From: header\n'
+        return 2
+    fi
+    command -v miltertest >/dev/null 2>&1 || { printf 'no miltertest on this release: the signing domain was not measured\n'; return 2; }
+    # What the package's unit gives OpenDKIM (RuntimeDirectory) for its PidFile.
+    mkdir -p /run/opendkim && chown opendkim /run/opendkim 2>/dev/null
+    opendkim -f -x "$TARGET" >/run/matrix-opendkim.log 2>&1 &
+    pid=$!
+    sleep 2
+    if ! kill -0 "$pid" 2>/dev/null; then
+        printf 'OpenDKIM did not start with the configuration: %s\n' "$(tr '\n' ' ' </run/matrix-opendkim.log)"
+        return 1
+    fi
+    out=$(miltertest -s "$DKIM_SCRIPT" 2>&1); rc=$?
+    kill "$pid" 2>/dev/null
+    wait "$pid" 2>/dev/null
+    pkill -9 -f "opendkim -f -x $TARGET" 2>/dev/null
+    printf '%s\n' "$out"
+    [[ $rc -eq 0 ]] && return 0
+    return 1
+}
 v_apt() {
     local out
     out=$(apt-cache policy 2>&1 >/dev/null)
@@ -742,7 +772,7 @@ for dir in "$cases"/*/; do
     [[ -f "$dir/case.env" ]] || continue
     CASE_ID=$(basename "$dir")
     unset PROGRAM VARIANT VALIDATOR SOURCE TARGET REASON OWNERS RESTORE_DIRS PDNS_USER USERS PHP_VERSION ZONES PRECREATE MAIL_USERS MAIL_PASSWORD MAIL_ROOT MAIL_UID MAIL_GID SIEVE_USER NOTE \
-        KNOWN_NAME EXPECT_DEFAULT TLS_SNI_EXPECT TLS_RENEW_LINEAGE TLS_RENEW_EXPECT
+        KNOWN_NAME EXPECT_DEFAULT TLS_SNI_EXPECT TLS_RENEW_LINEAGE TLS_RENEW_EXPECT DKIM_SENDER_MACRO DKIM_SCRIPT
     # shellcheck disable=SC1090,SC1091
     . "$dir/case.env"
     case "$VALIDATOR" in

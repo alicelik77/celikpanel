@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,12 +84,20 @@ func (e testEngines) pg(user, password, database, statement string) engineResult
 // engines for one test.
 func installTestEngines(t *testing.T, e testEngines) {
 	t.Helper()
-	oldMySQL, oldPG, oldClusters := mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters
+	oldMySQL, oldPG, oldClusters, oldBounded := mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters, pgBoundedCommand
 	mysqlExecStatement = func(statement string) ([]byte, error) { r := e.maria("", "", statement); return r.out, r.err }
 	postgreSQLExecStatementOnPort = func(_ int, statement string) ([]byte, error) { r := e.pg("", "", "", statement); return r.out, r.err }
 	pgStatementClusters = func() ([]transport.PostgreSQLCluster, bool) { return nil, false }
+	// The bounded clients (pg_public_access.go) with the administrator
+	// session's own options, name and connect timeout, as through sudo.
+	pgBoundedCommand = func(ctx context.Context, _ int, application string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, filepath.Join(e.dir, "root/usr/lib/postgresql/17/bin/psql"), "-h", filepath.Join(e.dir, "run"), "-p", e.pgPort, "-U", "postgres",
+			"--no-psqlrc", "--set", "ON_ERROR_STOP=on")
+		cmd.Env = append(e.env(), pgAdminSessionEnv, "PGAPPNAME="+application, "PGCONNECT_TIMEOUT=10")
+		return cmd
+	}
 	t.Cleanup(func() {
-		mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters = oldMySQL, oldPG, oldClusters
+		mysqlExecStatement, postgreSQLExecStatementOnPort, pgStatementClusters, pgBoundedCommand = oldMySQL, oldPG, oldClusters, oldBounded
 	})
 }
 
@@ -442,5 +451,18 @@ func TestCreateDatabaseNamesWhatIsTakenOnRealMariaDB(t *testing.T) {
 	}
 	if got := mustRun(t, "no user", e.maria("", "", "SELECT COUNT(*) FROM mysql.user WHERE User = 'a129mtake_user';")); got != "0" {
 		t.Fatal("a user was made for a foreign database")
+	}
+	// alpha.149 (second review, finding 5): an account of the name on another
+	// host: nothing is made beside it.
+	twinCleanup := "DROP DATABASE IF EXISTS a149twin; DROP USER IF EXISTS 'a149twin_user'@'%'; DROP USER IF EXISTS 'a149twin_user'@'localhost';"
+	mustRun(t, "clean twin", e.maria("", "", twinCleanup))
+	t.Cleanup(func() { _ = e.maria("", "", twinCleanup) })
+	mustRun(t, "twin", e.maria("", "", "CREATE USER 'a149twin_user'@'%' IDENTIFIED BY 'x1-Long-enough';"))
+	resp = createDatabaseOn(t, CreateDatabaseRequest{Type: "mysql", Name: "a149twin", User: "a149twin_user", Password: "Panel-Passw0rd!123"})
+	if resp.Success || resp.NameTaken != "user" {
+		t.Fatalf("twin account: %+v", resp)
+	}
+	if got := mustRun(t, "nothing made", e.maria("", "", "SELECT (SELECT COUNT(*) FROM mysql.user WHERE User = 'a149twin_user') + (SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'a149twin');")); got != "1" {
+		t.Fatalf("something was made beside the twin: %s", got)
 	}
 }

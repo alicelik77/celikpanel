@@ -80,6 +80,9 @@ type NodeSandboxResult struct {
 type AppControlRequest struct {
 	SiteID int    `json:"site_id"`
 	Action string `json:"action"`
+	// Slice (alpha.149, additive): the site's slice and its limits; a start
+	// of a unit that does not run writes it into the slice first.
+	Slice *SiteSlice `json:"slice,omitempty"`
 }
 
 type AppStatusResponse struct {
@@ -242,6 +245,10 @@ const (
 	// Crontab'ın iki satırı aynı görevdir; bir değişikliğin hangisini
 	// kastettiği bilinemez.
 	CronJobAmbiguous = "two lines of the crontab are the same cron job; nothing was changed"
+	// S4 R1, second fix round: the task is a line not made in CelikPanel;
+	// it is not edited or enabled until the administrator keeps it.
+	// CelikPanel'de yapılmamış satır, yönetici tutmadan değiştirilmez.
+	CronJobOutsidePanel = "the cron job is a line not made in CelikPanel; it is kept or deleted, not changed; nothing was changed"
 )
 
 // Cron RPC contracts.

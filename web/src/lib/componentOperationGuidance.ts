@@ -65,6 +65,11 @@ const phaseKeys: Record<string, TranslationKey> = {
     firewall_waiting: 'services.operation.phase.firewall_waiting',
     panel_busy: 'services.operation.phase.panel_busy',
     panel_stayed_busy: 'services.operation.phase.panel_stayed_busy',
+    // alpha.145 lab, D1: the row of a change whose end the panel is recording
+    // after it lost contact with its agent, or could not record.
+    settling_contact: 'services.operation.phase.settling_contact',
+    settling_recording: 'services.operation.phase.settling_recording',
+    unsettled: 'services.operation.phase.unsettled',
     finalizing: 'services.operation.phase.finalizing',
     'mail-stack': 'services.operation.phase.configuring',
     submission: 'services.operation.phase.configuring',
@@ -79,6 +84,22 @@ export function componentOperationPhaseKey(phase: string): TranslationKey {
     return Object.prototype.hasOwnProperty.call(phaseKeys, key) ? phaseKeys[key] : 'services.operation.running';
 }
 
+// alpha.145 lab, D1: the sentence of a row that is being settled after the
+// panel lost contact with its agent (it ends by itself), or that could not be
+// (the server owner's step); null for every other phase. Every screen that
+// follows a server change says it instead of a bare "in progress".
+// Ayarlanan ya da ayarlanamayan satırın cümlesi; başka aşamada null.
+export function settlePhaseKey(phase: string | undefined | null): TranslationKey | null {
+    switch (phase) {
+        case 'settling_contact':
+        case 'settling_recording':
+        case 'unsettled':
+            return phaseKeys[phase];
+        default:
+            return null;
+    }
+}
+
 // alpha.123 (D-045): the server-side remove-together operation, as its lock
 // says it: the step it is on ("removing:phppgadmin"), who acts (nobody) and
 // how it resumes (it goes on on the server, and after a restart by itself).
@@ -88,6 +109,8 @@ export const REMOVE_TOGETHER_KIND = 'service_remove_together';
 export const INSTALL_TOGETHER_KIND = 'service_install_together';
 
 export function removalOperationPhase(phase: string): { key: TranslationKey; name: string } {
+    const settle = settlePhaseKey(phase);
+    if (settle) return { key: settle, name: '' };
     if (phase.startsWith('removing:')) return { key: 'services.operation.phase.removing', name: phase.slice(9) };
     if (phase === 'setting:malware_schedule') return { key: 'services.operation.phase.removeSetting', name: '' };
     if (phase.startsWith('firewall')) return { key: 'services.operation.phase.syncing', name: '' };

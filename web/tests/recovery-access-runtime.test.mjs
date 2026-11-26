@@ -19,6 +19,7 @@ const {parseAccessObservation} = await import(accessURL);
 const {parseRecoveryObservation,savedRecoveryRequestId,reconcileRecoveryObservation,recoveryFailureGuidanceKey} = await import(recoveryURL);
 const stub = dataModule(`import React from '${reactURL}';
  export const api = {me:signal=>globalThis.recoveryFixture.me(signal)};
+ export const refusalOf = async () => null, setSigninRefusal = () => {};
  export const useI18n=()=>({t:key=>key,locale:'en'});
  export const BrandMark=()=>null,LanguageSwitcher=()=>null,Spinner=()=>null;
  export const Button=props=>React.createElement('button',props);

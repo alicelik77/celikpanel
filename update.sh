@@ -2520,9 +2520,12 @@ prepare_fresh_agent_socket_start() {
     [[ ! -e $socket && ! -L $socket ]] || die 'agent socket path is not absent before controlled start'
 }
 
+# At most 200 polls 0.3 s apart (about 60 s): a healthy agent opened its socket
+# in up to 14 s on the lab's servers. A failed unit still ends the wait at once.
+# En çok 200 yoklama, 0,3 sn arayla (yaklaşık 60 sn); başarısız birim hemen biter.
 wait_for_fresh_active_agent() {
     local socket=/run/celikpanel/agent.sock state _
-    for _ in $(seq 1 40); do
+    for _ in $(seq 1 200); do
         state=$(systemctl show -p ActiveState --value celikpanel-agent.service) \
             || die 'cannot inspect agent during controlled start'
         [[ ! -L $socket ]] || die 'agent socket became a symbolic link during controlled start'

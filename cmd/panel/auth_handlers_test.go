@@ -87,8 +87,13 @@ func TestSessionCookieSecurityAttributes(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			panel := &Panel{secureCookies: testCase.secureCookies}
 			cookie := panel.sessionCookie("raw-session-token", expires)
+			// Over HTTPS the name carries the __Host- prefix (signin_cookies.go).
+			wantName := sessionCookieName
+			if testCase.secureCookies {
+				wantName = hostSessionCookieName
+			}
 
-			if cookie.Name != sessionCookieName || cookie.Value != "raw-session-token" {
+			if cookie.Name != wantName || cookie.Value != "raw-session-token" {
 				t.Fatalf("cookie identity = %q/%q", cookie.Name, cookie.Value)
 			}
 			if cookie.Path != "/" || cookie.Domain != "" {
@@ -112,8 +117,8 @@ func TestSessionCookieSecurityAttributes(t *testing.T) {
 
 func TestHandleLogoutRevokesSessionAndClearsCookie(t *testing.T) {
 	panel, token := newAuthHandlerTestPanel(t, true)
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	// As requireAuth leaves it: the admitted session token in the context.
+	request := withSessionToken(httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil), token)
 	recorder := httptest.NewRecorder()
 
 	panel.handleLogout(recorder, request)
@@ -125,11 +130,18 @@ func TestHandleLogoutRevokesSessionAndClearsCookie(t *testing.T) {
 		t.Fatalf("session remains valid after logout: %v", err)
 	}
 	cookies := recorder.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("logout cookies = %d, want 1", len(cookies))
+	// The __Host- name and the plain name of the release before, for the
+	// session and for the "Log in as" return cookie.
+	if len(cookies) != 4 || cookies[1].Name != sessionCookieName || cookies[1].Value != "" || cookies[1].MaxAge >= 0 {
+		t.Fatalf("logout cookies = %#v, want the session cookie under both names cleared", cookies)
+	}
+	for index, name := range []string{hostImpersonatorCookieName, impersonatorCookieName} {
+		if cookie := cookies[2+index]; cookie.Name != name || cookie.Value != "" || cookie.MaxAge >= 0 {
+			t.Fatalf("logout cookie %d = %#v, want %s removed", 2+index, cookie, name)
+		}
 	}
 	cleared := cookies[0]
-	if cleared.Name != sessionCookieName || cleared.Value != "" {
+	if cleared.Name != hostSessionCookieName || cleared.Value != "" {
 		t.Fatalf("cleared cookie identity = %q/%q", cleared.Name, cleared.Value)
 	}
 	if !cleared.HttpOnly || !cleared.Secure || cleared.SameSite != http.SameSiteLaxMode {
@@ -150,7 +162,8 @@ func TestHandleLogoutIsIdempotentWithoutCookie(t *testing.T) {
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusNoContent)
 	}
-	if cookies := recorder.Result().Cookies(); len(cookies) != 1 || cookies[0].Name != sessionCookieName {
+	if cookies := recorder.Result().Cookies(); len(cookies) != 4 || cookies[0].Name != hostSessionCookieName || cookies[1].Name != sessionCookieName ||
+		cookies[2].Name != hostImpersonatorCookieName || cookies[3].Name != impersonatorCookieName {
 		t.Fatalf("idempotent logout did not clear the browser cookie: %#v", cookies)
 	}
 }
@@ -178,8 +191,7 @@ func TestHandleLogoutDoesNotClaimSuccessWhenRevocationFails(t *testing.T) {
 	panel, token := newAuthHandlerTestPanel(t, true)
 	panel.db.Close()
 
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	request := withSessionToken(httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil), token)
 	recorder := httptest.NewRecorder()
 
 	panel.handleLogout(recorder, request)
@@ -188,21 +200,21 @@ func TestHandleLogoutDoesNotClaimSuccessWhenRevocationFails(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusInternalServerError)
 	}
 	cookies := recorder.Result().Cookies()
-	if len(cookies) != 1 || cookies[0].Name != sessionCookieName || cookies[0].Value != "" {
+	if len(cookies) != 4 || cookies[0].Name != hostSessionCookieName || cookies[0].Value != "" || cookies[2].Name != hostImpersonatorCookieName {
 		t.Fatalf("failed revocation did not clear the browser cookie: %#v", cookies)
 	}
 }
 
 func TestHandleUnimpersonateRevokesCurrentSessionAndRestoresOriginal(t *testing.T) {
 	panel, originalToken := newAuthHandlerTestPanel(t, true)
-	impersonatedToken, err := panel.sessions.Create(context.Background(), authHandlerTestUserID)
+	impersonatedToken, err := impersonationForTest(panel)
 	if err != nil {
 		t.Fatalf("create impersonated session: %v", err)
 	}
 
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/unimpersonate", nil)
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: impersonatedToken})
-	request.AddCookie(&http.Cookie{Name: impersonatorCookieName, Value: originalToken})
+	request.AddCookie(&http.Cookie{Name: hostImpersonatorCookieName, Value: originalToken})
+	request = asImpersonation(request, impersonatedToken)
 	recorder := httptest.NewRecorder()
 
 	panel.handleUnimpersonate(recorder, request)
@@ -221,7 +233,7 @@ func TestHandleUnimpersonateRevokesCurrentSessionAndRestoresOriginal(t *testing.
 
 func TestHandleUnimpersonateDoesNotClaimSuccessWhenRevocationFails(t *testing.T) {
 	panel, originalToken := newAuthHandlerTestPanel(t, true)
-	impersonatedToken, err := panel.sessions.Create(context.Background(), authHandlerTestUserID)
+	impersonatedToken, err := impersonationForTest(panel)
 	if err != nil {
 		t.Fatalf("create impersonated session: %v", err)
 	}
@@ -236,8 +248,8 @@ func TestHandleUnimpersonateDoesNotClaimSuccessWhenRevocationFails(t *testing.T)
 	}
 
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/unimpersonate", nil)
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: impersonatedToken})
-	request.AddCookie(&http.Cookie{Name: impersonatorCookieName, Value: originalToken})
+	request.AddCookie(&http.Cookie{Name: hostImpersonatorCookieName, Value: originalToken})
+	request = asImpersonation(request, impersonatedToken)
 	recorder := httptest.NewRecorder()
 
 	panel.handleUnimpersonate(recorder, request)
@@ -253,7 +265,7 @@ func TestHandleUnimpersonateDoesNotClaimSuccessWhenRevocationFails(t *testing.T)
 
 func TestHandleUnimpersonateRevokesCurrentSessionWhenOriginalExpired(t *testing.T) {
 	panel, originalToken := newAuthHandlerTestPanel(t, true)
-	impersonatedToken, err := panel.sessions.Create(context.Background(), authHandlerTestUserID)
+	impersonatedToken, err := impersonationForTest(panel)
 	if err != nil {
 		t.Fatalf("create impersonated session: %v", err)
 	}
@@ -262,8 +274,8 @@ func TestHandleUnimpersonateRevokesCurrentSessionWhenOriginalExpired(t *testing.
 	}
 
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/unimpersonate", nil)
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: impersonatedToken})
-	request.AddCookie(&http.Cookie{Name: impersonatorCookieName, Value: originalToken})
+	request.AddCookie(&http.Cookie{Name: hostImpersonatorCookieName, Value: originalToken})
+	request = asImpersonation(request, impersonatedToken)
 	recorder := httptest.NewRecorder()
 
 	panel.handleUnimpersonate(recorder, request)
@@ -280,8 +292,8 @@ func TestHandleUnimpersonateRevokesCurrentSessionWhenOriginalExpired(t *testing.
 func TestHandleUnimpersonateRejectsDuplicatedSessionCookieWithoutRevokingIt(t *testing.T) {
 	panel, token := newAuthHandlerTestPanel(t, true)
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/unimpersonate", nil)
-	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
-	request.AddCookie(&http.Cookie{Name: impersonatorCookieName, Value: token})
+	request.AddCookie(&http.Cookie{Name: hostImpersonatorCookieName, Value: token})
+	request = asImpersonation(request, token)
 	recorder := httptest.NewRecorder()
 
 	panel.handleUnimpersonate(recorder, request)
@@ -290,7 +302,8 @@ func TestHandleUnimpersonateRejectsDuplicatedSessionCookieWithoutRevokingIt(t *t
 		t.Fatalf("status = %d, want %d; body=%s", recorder.Code, http.StatusBadRequest, recorder.Body.String())
 	}
 	cookies := recorder.Result().Cookies()
-	if len(cookies) != 1 || cookies[0].Name != impersonatorCookieName || cookies[0].Value != "" || cookies[0].MaxAge >= 0 {
+	if len(cookies) != 2 || cookies[0].Name != hostImpersonatorCookieName || cookies[0].Value != "" || cookies[0].MaxAge >= 0 ||
+		cookies[1].Name != impersonatorCookieName || cookies[1].MaxAge >= 0 {
 		t.Fatalf("duplicated-state cookies = %#v", cookies)
 	}
 	if _, err := panel.sessions.Validate(context.Background(), token); err != nil {
@@ -298,26 +311,58 @@ func TestHandleUnimpersonateRejectsDuplicatedSessionCookieWithoutRevokingIt(t *t
 	}
 }
 
+const authHandlerTestCustomerID = 7602
+
+// impersonationForTest opens a real "Log in as" session of the test
+// administrator on a customer account.
+func impersonationForTest(panel *Panel) (string, error) {
+	if _, err := panel.db.GetDB().Exec(`
+		INSERT OR IGNORE INTO users (id, username, password_hash, email, role, status)
+		VALUES (?, 'session-customer', 'unused', 'customer@example.test', 'customer', 'active')
+	`, authHandlerTestCustomerID); err != nil {
+		return "", err
+	}
+	return panel.sessions.CreateImpersonation(context.Background(), authHandlerTestCustomerID, authHandlerTestUserID)
+}
+
+// asImpersonation is the request as requireAuth leaves it for that session:
+// its token and the caller with the operator named.
+func asImpersonation(request *http.Request, token string) *http.Request {
+	request = withSessionToken(request, token)
+	return request.WithContext(context.WithValue(request.Context(), callerKey, &Caller{
+		ID: authHandlerTestCustomerID, Role: roleCustomer, AccountType: core.AccountTypeAccount,
+		CustomerID: authHandlerTestCustomerID, ImpersonatorID: authHandlerTestUserID,
+	}))
+}
+
+// assertUnimpersonateCookies checks the exact cookies of a "Return" answer
+// over HTTPS, in order: restored, the session under its __Host- name and the
+// return cookie removed under both names; refused, every sign-in cookie
+// removed under both names.
 func assertUnimpersonateCookies(t *testing.T, recorder *httptest.ResponseRecorder, restoredToken string) {
 	t.Helper()
+	type want struct {
+		name, value string
+	}
+	expected := []want{{hostSessionCookieName, restoredToken}, {hostImpersonatorCookieName, ""}, {impersonatorCookieName, ""}}
+	if restoredToken == "" {
+		expected = []want{{hostSessionCookieName, ""}, {sessionCookieName, ""}, {hostImpersonatorCookieName, ""}, {impersonatorCookieName, ""}}
+	}
 	cookies := recorder.Result().Cookies()
-	if len(cookies) != 2 {
-		t.Fatalf("unimpersonate cookies = %d, want 2: %#v", len(cookies), cookies)
+	if len(cookies) != len(expected) {
+		t.Fatalf("unimpersonate cookies = %d, want %d: %#v", len(cookies), len(expected), cookies)
 	}
-	byName := make(map[string]*http.Cookie, len(cookies))
-	for _, cookie := range cookies {
-		byName[cookie.Name] = cookie
-	}
-	sessionCookie := byName[sessionCookieName]
-	if sessionCookie == nil || sessionCookie.Value != restoredToken {
-		t.Fatalf("session cookie = %#v, want value %q", sessionCookie, restoredToken)
-	}
-	if restoredToken == "" && !sessionCookie.Expires.Before(time.Now()) {
-		t.Fatalf("cleared session expiry = %v, want past time", sessionCookie.Expires)
-	}
-	impersonatorCookie := byName[impersonatorCookieName]
-	if impersonatorCookie == nil || impersonatorCookie.Value != "" || impersonatorCookie.MaxAge >= 0 {
-		t.Fatalf("impersonator cookie was not cleared: %#v", impersonatorCookie)
+	for index, cookie := range cookies {
+		if cookie.Name != expected[index].name || cookie.Value != expected[index].value {
+			t.Fatalf("cookie %d = %s=%q, want %s=%q", index, cookie.Name, cookie.Value, expected[index].name, expected[index].value)
+		}
+		removed := cookie.MaxAge < 0 || (!cookie.Expires.IsZero() && cookie.Expires.Before(time.Now()))
+		if (cookie.Value == "") != removed {
+			t.Fatalf("cookie %s: value %q, removed %v", cookie.Name, cookie.Value, removed)
+		}
+		if !cookie.HttpOnly || !cookie.Secure || cookie.Path != "/" || cookie.Domain != "" {
+			t.Fatalf("cookie %s attributes = %#v", cookie.Name, cookie)
+		}
 	}
 }
 
@@ -326,19 +371,23 @@ func TestHandleMeReturnsAuthenticatedProfileAndImpersonationState(t *testing.T) 
 
 	for _, testCase := range []struct {
 		name              string
+		impersonatorID    int
 		impersonatorToken string
 		wantImpersonating bool
 	}{
 		{name: "ordinary session"},
-		{name: "impersonated session", impersonatorToken: "operator-session", wantImpersonating: true},
+		{name: "impersonated session", impersonatorID: 7699, impersonatorToken: "operator-session", wantImpersonating: true},
+		// Only the session says "Log in as": a return cookie beside an
+		// ordinary session (left by someone else's sign-out) is no way back.
+		{name: "return cookie beside an ordinary session", impersonatorToken: "operator-session"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 			request = request.WithContext(context.WithValue(
-				request.Context(), callerKey, &Caller{ID: authHandlerTestUserID, Role: roleAdmin},
+				request.Context(), callerKey, &Caller{ID: authHandlerTestUserID, Role: roleAdmin, ImpersonatorID: testCase.impersonatorID},
 			))
 			if testCase.impersonatorToken != "" {
-				request.AddCookie(&http.Cookie{Name: impersonatorCookieName, Value: testCase.impersonatorToken})
+				request.AddCookie(&http.Cookie{Name: hostImpersonatorCookieName, Value: testCase.impersonatorToken})
 			}
 			recorder := httptest.NewRecorder()
 
@@ -360,6 +409,14 @@ func TestHandleMeReturnsAuthenticatedProfileAndImpersonationState(t *testing.T) 
 			}
 			if teamMembers, ok := response.Features["team_members"]; !ok || teamMembers {
 				t.Fatalf("/me team_members feature = %v, present=%v; want false and present", teamMembers, ok)
+			}
+			cookies := recorder.Result().Cookies()
+			if testCase.impersonatorToken != "" && !testCase.wantImpersonating {
+				if len(cookies) != 1 || cookies[0].Name != hostImpersonatorCookieName || cookies[0].Value != "" || cookies[0].MaxAge >= 0 {
+					t.Fatalf("a left-over return cookie was not removed: %#v", cookies)
+				}
+			} else if len(cookies) != 0 {
+				t.Fatalf("/me changed cookies: %#v", cookies)
 			}
 		})
 	}

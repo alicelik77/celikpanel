@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Agent struct {
@@ -700,6 +701,8 @@ func main() {
 	// One Agent per server, held for the process lifetime and taken before
 	// any manager, reconciliation or the socket: a second one leaves the
 	// running Agent's socket alone.
+	// alpha.149 (lab D5): one journal line per startup step with its time.
+	startClock := newAgentStartClock()
 	socketPath := transport.AgentSocketPath()
 	instanceLock, lockPath, err := acquireAgentInstanceLock(filepath.Dir(socketPath))
 	if errors.Is(err, errAgentAlreadyRunning) {
@@ -712,6 +715,13 @@ func main() {
 	if instanceLock != nil {
 		defer instanceLock.Close()
 	}
+	startClock.step("instance lock")
+	// S4 R2a: a limit pushed to a running site slice for a moment
+	// (site_slices_runtime.go) that an Agent stop left in /run outranks the
+	// owner's own drop-ins until it is gone: removed first, before anything
+	// else reads or writes limits.
+	cleanupSiteSliceRuntime()
+	startClock.step("site limits pushed for a moment, cleaned up")
 
 	// A ledger that cannot be brought up is a reason to refuse mutations, not a
 	// reason to leave the host without an agent. Exiting here is what turned a
@@ -748,25 +758,56 @@ func main() {
 			err,
 		)
 	}
+	startClock.step("mutation ledger")
 	if err := reconcileSystemUpdatesAtStartup(); err != nil {
 		log.Fatalf("Failed to reconcile system update state: %v", err)
 	}
+	startClock.step("system update state")
 	// 6 Nov 2026: the backup's DNS check tool is CelikPanel's helper; this
 	// release's copy is put in place once per start, only over a shipped or
 	// missing file (dns_peer_inspector_tool_linux.go). Before the RPC
 	// service starts, so a deletion re-checked after the update already
 	// meets the new tool.
 	reconcileDNSPeerInspectorToolsAtStartup()
+	startClock.step("DNS check tool")
 	// S4 R2a: a move of a site's programs into its limits, or a limit
 	// pushed to running slices, that an Agent stop interrupted is finished
 	// or put back from its record before any request is served
 	// (site_slices_move.go, site_slices_runtime.go).
 	recoverSiteSlicesAtStartup()
+	startClock.step("site limits move recovery")
+	// alpha.144 (security): webmail's own address files in an earlier form
+	// served every file of Roundcube's linked folders; once after the update
+	// they get the current form (an owner's file is kept, the text goes
+	// beside it). Before the RPC service starts, so no webmail change races it.
+	{
+		webmailCtx, cancelWebmail := context.WithTimeout(context.Background(), 2*time.Minute)
+		for _, line := range reconcileWebmailAddressesAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
+			log.Printf("[webmail] address %s", line)
+		}
+		// alpha.145 (security): webmail's local server answers only
+		// CelikPanel's own checks (one more configuration test and reload
+		// when its file changes; a failure puts it back and the start goes on).
+		for _, line := range reconcileWebmailLocalServerAtStartup(webmailCtx, runServiceMutationCombinedOutput) {
+			log.Printf("[webmail] local server %s", line)
+		}
+		cancelWebmail()
+	}
+	startClock.step("webmail addresses and local server")
+	// alpha.145: webmail's configuration in CelikPanel's earlier text could
+	// not send (no encryption to the submission service); once after the
+	// update it gets the current text (an owner's file is kept, the text goes
+	// beside it).
+	for _, line := range reconcileRoundcubeConfigAtStartup() {
+		log.Printf("[webmail] configuration %s", line)
+	}
+	startClock.step("webmail configuration")
 	// alpha.130: the automatic removal's archives of leftover PostgreSQL
 	// clusters expire after 30 days (pg_leftovers.go).
 	if pruned := pruneExpiredPGAutoArchives(); len(pruned) > 0 {
 		log.Printf("postgresql leftovers: removed expired archives %v", pruned)
 	}
+	startClock.step("PostgreSQL leftover archives")
 
 	go runMailHostCertificateRenewalWorker()
 	// alpha.118 (D-044): read the per-site traffic logs every minute.
@@ -783,6 +824,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create nginx generator: %v", err)
 	}
+	startClock.step("nginx generator")
 	// alpha.127: empty owner include directories that a site deletion left
 	// before alpha.126 (a deletion stuck on alpha.125). Only empty, real
 	// directories no site file refers to; before the RPC service starts, so
@@ -797,12 +839,18 @@ func main() {
 	// per-site files at the earlier 0644 become 0640 and the hosting base
 	// 0711, before any site write races it (tenant_file_modes.go).
 	tightenTenantVisibleModesOnce()
+	// alpha.144: CelikPanel's log folder becomes passable for nginx's
+	// workers once (log_root_modes_linux.go), so they reopen the traffic logs
+	// after a rotation.
+	passLogRootOnce()
+	startClock.step("site include folders and file modes")
 
 	// Initialize PHP-FPM Manager
 	phpMgr, err := services.NewPHPFPMManager()
 	if err != nil {
 		log.Fatalf("Failed to create PHP-FPM manager: %v", err)
 	}
+	startClock.step("PHP-FPM manager")
 
 	// Initialize User Manager
 	userMgr := services.NewUserManager()
@@ -817,6 +865,7 @@ func main() {
 	} else {
 		defer sqliteAdmin.Close()
 	}
+	startClock.step("SQLite manager")
 
 	// Initialize Agent
 	agent := &Agent{
@@ -850,6 +899,7 @@ func main() {
 	if err := alignAgentSocketGroup(socketPath); err != nil {
 		log.Printf("Warning: the agent socket's group could not be matched to its directory: %v", err)
 	}
+	startClock.step("RPC service and socket")
 	log.Printf("Agent listening on unix socket %s", socketPath)
 	startPanelCertificateActivationReconciler(mutationManager)
 	// alpha.130 (D6): the panel firewall comes back after `nft flush ruleset`.

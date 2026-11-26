@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -188,29 +189,54 @@ func planTrafficFormat() (*plannedTrafficFile, bool, error) {
 	return &plannedTrafficFile{path: path, sealed: sealed, inspected: inspected}, true, nil
 }
 
-// ensureTrafficLogDir makes the log directory (0755: nginx's workers reopen
-// the logs after a rotation). nginx -t opens every log, so it must exist
-// before a site names its log.
+// ensureTrafficLogDir makes the log directory (0710 with the web server's
+// group: nginx's workers reopen the logs by name after a rotation, so they
+// pass through it and through CelikPanel's log folder above it; nobody else
+// passes; log_root.go). nginx -t opens every log,
+// so it must exist before a site names its log. The web server's group is
+// looked up only when the folder has to be made (independent review of the
+// last commit, B4): an existing folder needs no lookup.
 func ensureTrafficLogDir() error {
 	dir := TrafficLogDir()
-	if info, err := os.Lstat(dir); err == nil {
-		if !info.IsDir() {
-			return fmt.Errorf("%s exists and is not a directory; it was left alone", dir)
+	if filepath.Dir(dir) == celikPanelLogRoot {
+		if err := EnsureCelikPanelLogRoot(); err != nil {
+			return err
 		}
-		return nil
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	gid := -1
+	if _, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) && !nginxDevMode() {
+		_, webGID, ok := webServerIDs()
+		if !ok {
+			return fmt.Errorf("%w (to make the traffic folder)", errWebServerAccountUnknown)
+		}
+		gid = webGID
+	}
+	_, err := ensureLogFolder(dir, TrafficLogDirMode, gid)
+	return err
+}
+
+// prepareTrafficLog makes the folder, then the site's log itself before
+// nginx opens it (closed to other accounts from its first line;
+// log_root.go). A seam for tests.
+var prepareTrafficLog = func(domainID int) error {
+	if err := ensureTrafficLogDir(); err != nil {
 		return err
 	}
-	return os.Chmod(dir, 0o755)
+	return ensureTrafficLogFile(TrafficLogPath(domainID))
 }
 
 // planTrafficInclude writes one site's setting when absent or CelikPanel's
-// other text; a kept file is left alone.
+// other text; a kept file is left alone. When the web server's account
+// cannot be read to make the folder or the site's first log, the setting is
+// left as it was (counting goes on as before; one journal line), never
+// rewritten without its log line.
 func planTrafficInclude(domain string, item TrafficLogItem, formatOK bool) (*plannedTrafficFile, string, error) {
 	counted := item.Counted && formatOK
 	if counted {
-		if err := ensureTrafficLogDir(); err != nil {
+		if err := prepareTrafficLog(item.DomainID); errors.Is(err, errWebServerAccountUnknown) {
+			log.Printf("[traffic] %s: %v; its traffic setting is left as it was", domain, err)
+			return nil, transport.SiteFileChallengeFailed, nil
+		} else if err != nil {
 			counted = false
 		}
 	}

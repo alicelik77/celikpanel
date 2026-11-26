@@ -139,6 +139,16 @@ export const enDataTools = {
     'err.DATABASE_USER_ENGINE_FAILED': 'The database server did not do it; nothing in the list changed. Try again; if it fails again, the administrator finds the reason in the panel\'s log.',
     'err.DATABASE_USER_MADE_WITH_DATABASE': 'This user was made with the database and goes only with it: deleting the database removes it. Nothing was changed.',
     'err.DATABASE_USER_USED_ELSEWHERE': 'This user also has access to another database, so it is not removed from here. Nothing was changed; take its access away in the domain’s Databases section first.',
+    // alpha.149 (second review of PR #370, finding 16): the Agent's refusal of
+    // a database account, as its code (reason) and the account it names.
+    'err.DATABASE_ACCOUNT_REFUSED': 'CelikPanel did not change this database account. Nothing was changed. The server\'s administrator decides about it.',
+    'err.DATABASE_ACCOUNT_REFUSED.privileged': 'The database user {user} holds administrator rights on the database server, so CelikPanel did not change it. Nothing was changed. The server\'s administrator decides about this account.',
+    'err.DATABASE_ACCOUNT_REFUSED.member': 'The database user {user} is a member of another PostgreSQL role, which no database user CelikPanel makes is, so CelikPanel did not change it. Nothing was changed. The server\'s administrator decides about this account.',
+    'err.DATABASE_ACCOUNT_REFUSED.absent': 'The database user {user} is not on the database server. Nothing was changed.',
+    'err.DATABASE_ACCOUNT_REFUSED.unreadable': 'What the database user {user} holds on the database server could not be read, so CelikPanel did not change it. Nothing was changed. The server\'s administrator checks that the database server answers; then the step can be repeated.',
+    'err.DATABASE_ACCOUNT_REFUSED.system_database': 'CelikPanel never changes the database server\'s own system database. Nothing was changed.',
+    'err.DATABASE_ACCOUNT_REFUSED.unsupported_engine': 'This server runs MySQL in MariaDB\'s place; CelikPanel manages database accounts on MariaDB only, so it did not change the database user {user}. Nothing was changed. The server\'s administrator makes the change on the server itself.',
+    'err.DATABASE_ACCOUNT_REFUSED.owns_objects': 'The database user {user} owns tables or other objects in this database, so it was not removed. Nothing was changed. The server\'s administrator first hands them to the database\'s own user on the server (the user guide\'s Databases chapter gives the command), then removes the user again here.',
     'dbt.fromSite': 'For the site on this server',
     'dbt.fromComputer': 'From your computer',
     'dbt.tunnelIntro': 'The database accepts connections only from this server, so a desktop tool (pgAdmin, DBeaver, HeidiSQL) connects through an SSH tunnel. Fill in the SSH part of the connection, then the database part:',

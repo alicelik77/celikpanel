@@ -95,7 +95,7 @@ func TestStartupHandlerLetsOnlyRemoteAccessClosingThrough(t *testing.T) {
 		{http.MethodDelete, "/api/v1/domains/1", false},
 		{http.MethodPut, "/api/v1/database-remote/rules/abc", false},
 	} {
-		rr := requestWithToken(handler, c.method, c.path, token)
+		rr := requestWithHostToken(handler, c.method, c.path, token)
 		if (rr.Code != http.StatusServiceUnavailable) != c.through {
 			t.Errorf("%s %s: %d (through %v)", c.method, c.path, rr.Code, c.through)
 		}

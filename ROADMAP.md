@@ -1,6 +1,6 @@
 # CelikPanel Roadmap
 
-*Last updated: November 7, 2026 · [Türkçe](ROADMAP.tr.md)*
+*Last updated: November 25, 2026 · [Türkçe](ROADMAP.tr.md)*
 
 ---
 
@@ -76,21 +76,84 @@ back, it moves to the next one and is written down here.
 
 ### Where we are
 
-- **Latest release:** v0.1.0-alpha.142 (row 65), published on 21 November
-  2026, a security release: a customer or reseller never takes a name equal
-  to, under or above another account's name or the server's own names, nor
-  another site's system account, a port of the server's own services, or
-  another account's files through a link; per-site configuration files are
-  no longer readable by every account. The panel's database layout changes
-  (schema 80)
-  ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.142.md)).
-- **The owner's servers:** Frankfurt and Boston ran alpha.133 at the last
-  read-only check (13 November 2026); alpha.134 waits for the owner. Only
-  the owner updates them, from the panel's own update screen.
+- **Latest release:** v0.1.0-alpha.148 (row 71), published on 25 November
+  2026: customer separation R2a: a site's programs run inside that site's
+  own memory, process and processor limits (one native systemd slice per
+  site; its PHP-FPM pool and scheduled tasks are not inside them); existing
+  programs join their site's limits when the administrator moves the site
+  (one restart of each). Its second part is the sign-in cookies (security
+  lane A1, PR #368, merged into the release PR): a website on another host
+  name under the same domain can no longer set, shadow or replace the
+  panel's sign-in, "Log in as" followed by "Sign out" (or the session ending
+  any other way) no longer leaves the administrator's sign-in in the
+  browser, and the database tools no longer receive the panel's sign-in.
+  No schema change (stays 81). One lab run (25 November 2026, a Debian 13
+  and an Ubuntu 24.04 lab server, both updated through the panel's own
+  page, ending by themselves with the administrator signed in): the limits
+  held against a customer's own program, the move and the sign-in cookie
+  fixes worked, and the release notes say only what the lab confirmed or
+  the code makes certain, with known limits for the rest
+  ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.148.md)). Work that
+  follows from the lab: the database time and temporary-file limits for the
+  PostgreSQL users of sites, and for database users created after a plan's
+  limit was set; the move saying truthfully when a program is not running
+  after it was put back; the card's and the move window's reasons in the
+  page's language; the sign-in reason for pages that were open during an
+  update.
+- **Candidate:** v0.1.0-alpha.149 (row 72), a fix round on alpha.148 with no
+  new feature. The panel's agent no longer changes an administrator account
+  of the database server, nor drops or empties a system database, whatever
+  name the panel gives it (a real boundary on PostgreSQL 16 and later; on
+  MariaDB and older PostgreSQL the panel's own account already holds rights
+  of that weight); the plan's database limits reach the PostgreSQL users of
+  sites and every new database user, the owner's own values kept; the move
+  into a site's limits says truthfully when a program does not run after it
+  was put back, a stopped program started from the panel starts inside its
+  site's limits, no update starts during a move; the update waits about a
+  minute for the agent. No schema change (stays 81). Lab: open
+  ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.149.md)).
+- **The owner's decisions of 23 November 2026 about the product:** the
+  public site and the release notes state what the product is and does,
+  never open internal questions or process, and product limits in plain
+  words; the licence terms as amended in D-047 (`docs/DECISIONS.md`).
+- **The owner on the website, 23 November 2026:** he approved the datasheet
+  design and said "yayınla" (publish); he asked for a bug-report section in
+  which a fixed problem is shown as fixed, and for a changelog by version.
+  The site shows both as static pages from the repository. The reporting
+  form (reports sent from the site and from panels) and the member and
+  subscription service are their own lanes (PR #361; Stripe first); the site
+  says only what exists today.
+- **The owner's direction of 23 November 2026:** "the product must have no
+  known security hole" and "the first beta as soon as possible". The
+  customer-separation slices are therefore REQUIRED before the first beta
+  and no longer wait for his approval: R1 (PR #348), R2a (PR #349) and R2b
+  (PR #353) are built and reviewed on their branches and go out one by one,
+  each as its own release after its independent reviews and its own lab
+  run, each explained to the owner in plain words (he installs every update
+  himself); R3 and R4 are designed and not built. R1 is published in
+  alpha.147; R2a is published in alpha.148; alpha.149 is a fix round (candidate); R2b (PR #353)
+  is next, as alpha.150. One list of known security
+  gaps before the first beta is kept below ("The plan after alpha.145").
+- **The owner's servers:** Frankfurt and Boston ran alpha.144 at the last
+  read-only check (22 November 2026). Only the owner updates them, from the
+  panel's own update screen.
 - **Lab coverage:** alpha.142 had one lab run on a pair of lab servers (a
   Debian 13 and an Ubuntu 24.04 server, 21 November 2026): no hard failure;
-  its four findings are planned for alpha.143. alpha.141's findings are in
-  the carried-over list (alpha.149); a PostgreSQL server with SQL_ASCII
+  its four findings are corrected in alpha.143. alpha.143 had
+  two lab runs on the same pair (21–22 November 2026): no hard failure in
+  either; the first run's five defects are corrected in the final code, and
+  its six findings are corrected in alpha.144. alpha.144 had
+  one lab run on the same pair (22 November 2026), the first with a webmail
+  address: no hard failure; its three findings are corrected in alpha.145.
+  alpha.145 had one lab run on the same pair (23 November 2026): no hard
+  failure; the limit it met is kept as a known limit. alpha.146 (the
+  website) had one lab run on the same pair (23 November 2026): no hard
+  failure. alpha.147 had one lab run on the same pair (24 November 2026):
+  no hard failure; what it met is kept as known limits. alpha.148 had one
+  lab run on the same pair (25 November 2026): the limits, the move and the
+  sign-in cookie fixes worked; what it met is kept as known limits.
+  alpha.141's findings are in
+  the carried-over list; a PostgreSQL server with SQL_ASCII
   templates is still not checked (no lab server has one). What no run
   checked is listed in the release notes.
 
@@ -226,43 +289,285 @@ another account was reached (no file through a link, no name, no scheduled task 
 through a shared system account, no server port); both servers updated by themselves (about 1.5
 and 3 minutes), schema 79 → 80 with an overlap already present. Its four findings go to alpha.143.
 
-**alpha.143 — Mail signed only for the sender's own domain; the cluster move and older PostgreSQL databases**
+**alpha.143 — Mail signed only for the sender's own domain; older PostgreSQL databases (Published 22 November 2026)**
+A security release (owner, 20 November 2026). See row 66.
 1. Outgoing mail is signed only for the sending account's own domain (`security/s3b-mail-signing`,
-   in progress).
-2. Moving a database to another PostgreSQL cluster loads it with the database's own rights, and
-   PostgreSQL databases made before alpha.141 are closed to other accounts
-   (`security/s1b-pg-leftovers`, in progress).
-3. The four findings of the alpha.142 lab (none security or data loss): a customer whose domain
-   lies under one of the server's own names can add subdomains of it, and Problems now no longer
-   lists such a domain as meeting the server's names; the administrator's refusal for placing a
+   PR #346, corrected after the independent review in `fix/a143-mail`): mail sent with a login is
+   signed for the login's domain, port 25 never signs, an out-of-office reply answers only from the
+   mailbox's own addresses (earlier replies lose a foreign address at the first start, said once), and
+   signing is not shown as in place while site accounts may hand mail over without a login.
+2. PostgreSQL databases made before alpha.141 are closed to other accounts (`security/s1b-pg-leftovers`,
+   corrected after the independent review in `fix/a143-pg`). Moving a database to another PostgreSQL
+   cluster with its owners' rights was taken out of this release (security series item 6).
+3. The four findings of the alpha.142 lab (none security or data loss; `fix/a143-lab-corrections`,
+   PR #350): a customer whose domain lies under one of the server's own names or under a name the
+   administrator holds can add subdomains of it (such a domain is still listed in Problems now as
+   meeting the server's names: an open question to the owner); the administrator's refusal for placing a
    name into another account names that account's nearer name; a Node.js site whose application
-   is in the failed state is deleted (today: `systemctl reset-failed celikapp-<id>.service` as
-   root, then Delete again); the agent's journal counts and names a file mode the owner changed
+   is in the failed state is deleted in one press (before: `systemctl reset-failed
+   celikapp-<id>.service` as root, then Delete again); the agent's journal counts and names a file mode the owner changed
    and that was kept.
 
-The sandbox slices (owner, 21 November 2026: R2, R3 and R4 all come before the first beta and
-before licence stage 1), one release each:
+Lab check finished (two runs on a Debian 13 PowerDNS main and an Ubuntu 24.04 BIND backup, both
+updated from the alpha.142 state through the panel's own page): no hard failure in either. The first
+run (21–22 November 2026, the code after the first fix round) found four display and wording defects
+and one state that did not clear; the second fix round corrected them, and the second run (22
+November 2026, the final code) found all five corrected. On the final code both updates finished by
+themselves in about three minutes each, schema 80 → 81 with the six name rules, services answering,
+no new failed unit. Proven: every way open on alpha.142's code is closed (a login with another
+customer's "From" signed for the login's own domain only; port 25 without a login not signed; a reply
+answering from another customer's address lost it at the first start, said once, and saving it again
+is refused without saying whose it is); replies are rewritten in the same request when a name they
+name goes, and turned off and said when that cannot be done; an owner-edited signing file is kept and
+its Problems now line goes by itself once the login setting is in it; older PostgreSQL databases are
+watched for a day (other accounts can still connect meanwhile), then closed by themselves with Undo
+shown at once, an Undo is not closed again, a close held up by the owner is answered "nothing was
+changed" in about half a minute and not sent again; a subdomain inside one's own domain answers, other
+accounts still get the one refusal, a failed Node.js site is deleted. Its six findings go to alpha.144.
 
-**alpha.144 — Sandbox R1: the side doors (PR #348)**
-The database tools and webmail under their own accounts, the unused stock PHP-FPM pool off, `at`
-closed to site accounts, scheduled-task lines made outside CelikPanel shown.
+**alpha.144 — Webmail's address; the alpha.143 lab's corrections (Published 22 November 2026)**
+A small release (fix lane `fix/a144-lab-corrections`, PR #355, the release PR). See row 67.
+1. Security: webmail's own address gave out every file of a Roundcube plugin's folder that is not
+   PHP (for example a copy of a plugin's configuration) and ran plugins' PHP files directly, since
+   alpha.110; now it runs only Roundcube's entry point and gives out only the static files its pages
+   load. Existing servers are corrected at the agent's first start (`nginx -t`, reload, the earlier
+   file put back on failure); an owner-edited address file is kept with CelikPanel's text beside it,
+   and a file kept or a rewrite put back is one line in Problems now.
+2. The alpha.143 lab's six findings: a mailbox created or an out-of-office reply saved while the page
+   is left keeps its panel record (the routes are operation steps of the request-identity guard); a
+   mailbox found on the server without a record is said plainly, and the administrator may adopt it
+   only when it holds no mail, always with a new password; a PostgreSQL close whose page was left
+   is not recorded as lost; a failed close's window ends on "Not done — nothing was changed" and
+   names the kind of cause; the alias and certificate refusals are said in the page's language; one
+   database is said in the singular.
+3. Traffic figures were under-counted after each nightly log rotation until the web server's next
+   reload (its workers could not pass through `/var/log/celikpanel`); the folder becomes passable
+   once at the first start, its `traffic` folder pass-only, a mode the owner chose kept and named.
+4. New, small: an alias inside a domain of the same account whose DNS this server keeps gets the
+   site's address records in that zone (no earlier release did); an owner's record at that name is
+   never replaced and nothing is added beside it; a publication that waits is retried every hour and
+   never stops a domain deletion. An alias that is a domain of its own gets no zone (owner's
+   decision); aliases made before get their record when removed and added again.
 
-**alpha.145 — Sandbox R2: per-site limits; scheduled tasks as timers**
-Each site's own slice with its memory, process and CPU limits; scheduled tasks run as timers inside
-it.
+Lab check finished (one run, 22 November 2026, on a Debian 13 PowerDNS main and an Ubuntu 24.04
+BIND backup, both updated from the alpha.143 state through the panel's own page): no hard failure.
+Both updates finished by themselves in about a minute and a half each, no schema step (stays 81), no
+new failed unit, sites and webmail answering during the update (the web server reloaded once on the
+server with a webmail address). Proven: on alpha.143's code webmail's address gave out a planted
+backup copy and text file with their content and ran a plugin's PHP file; after the update these, a
+`config.inc.php.dist`, `composer.json` and `.sql`/`.log`/`.md` files answer "not found" and dot-files
+are refused while webmail's scripts, styles, pictures and entry point still answer; webmail walked
+through as a customer (sign in, list, a message with two attachments, the editor, a setting, a
+plugin's settings, contacts) with no failed request or console error; an owner-edited address file
+kept byte for byte with one Problems now line that went once the owner took the text; with another
+web server file broken the earlier file was put back exactly and the line named the broken file. Mail:
+a mailbox created and a reply saved while the page is left are recorded; a mailbox on the server
+without a record is said plainly to a customer and adopted by the administrator with a new password
+(the old one no longer signs in); one holding mail is refused and its password kept; another
+account's domain is refused ("not found"). Aliases: answered from both servers and withdrawn on
+removal; an owner's own record left as it was; invalid and duplicate names refused in the page's
+language; with the backup unreachable the alias waited and was published shortly after it came back.
+PostgreSQL: a close whose page was left showed its real result, also while the owner held a lock
+("nothing was changed" and why); a failed close ends on "Not done — nothing was changed" with the
+kind of cause and the quoted server message. Traffic logs: folder modes as designed, a hand-set
+folder group kept and named, a new site's first log closed, the rotation file rewritten once; a site's
+own account could neither read another site's log nor list the folder, before and after a forced
+rotation, with no "Permission denied" line after it. Three findings, none security or data loss, go
+to alpha.145 (below). Not checked: the singular Problems now line (unreachable state; tests), Undo and
+Read again with the page left, the traffic figure after the rotation, a domain deleted with the backup
+unreachable, an alias after a subscription move, an alias with a certificate, webmail on the second
+server, the database web tools, other PostgreSQL versions. No P0 item is closed.
 
-**alpha.146 — Sandbox R3: one PHP master per site**
-PHP runs inside the site's sandbox (for new sites, and existing sites when chosen).
+**alpha.145 — Webmail's local door closed; webmail can send; the alpha.144 lab's two display corrections (Published 23 November 2026)**
+A small release (fix lane `fix/a145-webmail-send`, PR #357, the release PR), corrected after two
+independent read-only reviews. See row 68.
+1. Security: webmail's local door (`/run/celikpanel-webmail.sock`, 0666 under `/run`: every account
+   of the server, not the network) gave out every file of webmail's public folder (plugin and skin
+   folders: leftover copies of plugin settings, dot-files, `composer.json`, SQL files) and ran plugin
+   scripts, since alpha.13 (alpha.1–12 on 127.0.0.1). Now it answers only CelikPanel's own checks
+   (the sign-in page, style sheets, the PHP check); existing servers are corrected at the agent's
+   first start (`nginx -t`, reload, the earlier file put back on failure); an owner-edited file is
+   kept with CelikPanel's text beside it and one line in Problems now.
+2. Webmail can send: it never could (it spoke to the submission service without encryption, which
+   takes a login only on an encrypted connection). Encryption on, to 127.0.0.1 only, where the
+   certificate's name and chain are not checked; nothing relaxed for any other address. Corrected by
+   itself at the first start; an owner-edited configuration kept with CelikPanel's text beside it
+   and one line in Problems now; CelikPanel's own earlier text that cannot be rewritten says to
+   remove the cause and restart the agent; the Webmail card is not "verified" while it cannot send.
+3. The alpha.144 lab's two display findings: an alias's wait ends when its zone publishes (held or
+   pending), and the zone's notice no longer asks to repeat the change; a PostgreSQL close's window
+   title says the outcome.
 
-**alpha.147 — Sandbox R4: reach and names**
-A site reaches only what it needs on the server itself; the system's account list a site sees is
-filtered; new sites' accounts are named by number.
+Lab check: checked (one run, 23 November 2026 UTC 05:21 to about 06:50, the Debian 13 PowerDNS main
+with mail and webmail's own address and the Ubuntu 24.04 BIND backup, both updated from alpha.144's
+code through the panel's own page to `e10c2ddb6`, lab-only label alpha.153): no hard failure. Both
+updates by themselves (about 4.5 and 4 min), no schema step, one reload each. The local door gave a
+site account a planted plugin copy and ran planted PHP before the update and answered "not found"
+after it on both servers; webmail sent through 127.0.0.1:587 with encryption and the mailbox's login,
+signed for the sender's domain; a foreign identity refused; 587 and 465 unchanged; a restart changed
+nothing; the owner-edited door file and configuration kept with one Problems now line each, which
+went by themselves; the variants as designed; the alias wait ended when the held change was
+published; the PostgreSQL titles say the outcome. Met once, older than this release: a Roundcube
+update finished on the server while the panel kept it "updating" until a panel restart (known limit).
+Not run: the self-signed certificate state, the chain refusal for another host (only the name check),
+sending on the Ubuntu server (no mail service there), the Webmail card while it cannot send, the alias
+wait on the slow-backup path, the screen of the "could not be rewritten" line, the reinstall proof,
+the Undo window's "not known" outcome, Arch Linux. No P0 item is closed.
 
-**alpha.148 — licence stage 1 (PR #327, waits for the owner's lab decision)**
-A lapsed or unverifiable licence never blocks a security action or another server's work, with
-expiry warnings (D-047).
+**alpha.147 — Customer separation R1; longer changes no longer left "in progress"; prepared for per-site limits (Published 24 November 2026)**
+The release PR is PR #348 (`security/s4-r1-side-doors`), with PR #358 (forward compatibility for the
+site slices) and PR #366 (the stuck-operation fix) merged into it; R1 went through four independent
+reviews, the other two through two each. See row 70.
+1. Security, customer separation R1: phpMyAdmin, phpPgAdmin and webmail run under their own system
+   accounts (`celikpanel-<tool>`, own PHP-FPM pool, own data folder), moved by the panel's side doors
+   step after its first start by the verified Manage-window move, put back on failure; webmail's tree
+   closed to every site account, its account through one access-control-list entry (no file system
+   with access-control lists: webmail stays on the web account and Problems now says why); `at`
+   closed to site accounts by an `/etc/at.allow` CelikPanel writes where none exists; crontab lines
+   made outside the panel marked, the agent refusing to edit or enable them until kept; the
+   distribution's `www` pool switched off only when untouched, beside another pool, and unused by
+   anything a web server loads (other web servers and Apache's `.htaccess` overrides keep it on);
+   the owner's undo stands, with one "close it again" action each. Debian and Ubuntu; on Arch Linux
+   the tools and the pool stay as they were.
+2. Correction (PR #366): a longer change whose end the panel could not record is settled by the
+   running panel itself (a webmail update or address only read, an interrupted install run once more
+   from its start); one late answer no longer stops a change; what cannot be settled is named with
+   the agent check and the panel restart.
+3. Under the hood (PR #358): this release is a safe one to come back to from the release that brings
+   per-site limits (the mail-block helper's place order, limits rows kept, a unit's slice line kept).
 
-**alpha.149 — carried over**
+Lab check: finished on 24 November 2026 on the Debian 13 and Ubuntu 24.04 pair, with no hard failure;
+what was checked, what was not and what the lab met are in the release notes. No P0 item is closed.
+
+**alpha.148 — Customer separation R2a: a site's programs inside limits of their own; sign-in cookies (Published 25 November 2026)**
+The release PR is PR #349 (`security/s4-r2a-site-slice`), on the published alpha.147; it went through
+three independent reviews and three fix rounds. PR #368 (sign-in cookies) is merged into it and is
+closed after publication. See row 71.
+1. Security, customer separation R2a: a site's programs (uploaded programs,
+   Python apps, the Node.js application, service apps, their install, build and deploy steps) run in
+   the site's own systemd slice `celiksite_<id>.slice`, whose memory (no swap), process and processor
+   limits bound them together; plan keys `site.memory_mb`, `site.tasks`, `site.cpu_percent` (default
+   512 processes, 200 %, memory the smaller of 3072 MB and 75 % of the host's, fixed at the first
+   start; a reseller bounded by the server's default); a running program stays where it runs until the
+   administrator's move (one restart per program, a journal that finishes or puts back an interrupted
+   move); a lowered limit below use is saved only with the list of sites it stops; "in force" is what
+   the kernel holds; the owner's slice edits and drop-ins kept (D-031), the slices working without the
+   panel (D-022).
+2. Database users: optional `db.statement_seconds` and `db.idle_in_transaction_seconds` (defaults the
+   user's session can change) and `db.temp_file_mb` (PostgreSQL). In this release they reach a site's
+   MariaDB users that exist when the limit is set; a user created later gets them at the next change
+   of the plan's database keys; they do not reach the PostgreSQL users of sites (lab and code,
+   25 November 2026).
+3. Not inside a site's limits in this release: its PHP-FPM pool (R3), its scheduled tasks and lingering
+   user managers (R2b), and programs that ran before the update until they are moved.
+4. Security, sign-in cookies (security lane A1, PR #368, merged into the release PR after two
+   independent reviews and two fix rounds): `__Host-` cookie names over HTTPS, so a website on another
+   host name under the same domain can no longer set, shadow or replace the panel's sign-in; a name
+   sent twice refused (a cookie another website set for the whole domain stays in the browser, ignored
+   by the panel); a signed-in browser's `/api/` request from another site refused;
+   "Log in as" then "Sign out", or a "Log in as" session ending any other way, leaves no operator
+   sign-in in the browser; the `/dbtool/` proxy passes on none of the panel's cookies or
+   `Authorization`; the sign-in page gives the reason for a sign-in sent twice and for a page opened
+   fresh with a sign-in from before the update; an administrator's pre-update session is carried over
+   on the update page, everyone else signs in once. Every service on the panel's own host name shares
+   its cookies, whatever the port.
+
+Lab check: finished on 25 November 2026 on the Debian 13 and Ubuntu 24.04 pair (lab label 156, head
+`83d6e043c`); what was checked, what was not and what the lab met are in the release notes. Work that
+follows from it: the database limits for the PostgreSQL users of sites and for users created after a
+plan's limit was set; the move saying truthfully when a program is not running after it was put back;
+the card's and the move window's reasons in the page's language; the sign-in reason for pages that were
+open during an update. No P0 item is closed.
+
+**alpha.149 — The agent refuses the database server's administrator accounts; database limits reach PostgreSQL; the move says what is true (Candidate)**
+A fix round on the published alpha.148, no new feature: three lanes joined with merge commits into the
+release PR (`release/v0.1.0-alpha.149`): PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`)
+and PR #370 (`fix/a149-db-limits`), each after its own independent reviews and fix rounds; the three
+PRs are closed after publication. See row 72.
+1. Security (an older finding, closed here): no agent call changes a database account the panel names
+   (password, lock, drop, revoke, limits, a database's owner as owner and recipient of objects) unless
+   the agent itself finds it ordinary, read before the write and again in the write's own transaction
+   (PostgreSQL) or compound statement (MariaDB 10.1+); `celikpanel_admin` is the one owner exception
+   while it holds no administrator rights; no agent call drops, empties, loads into, grants or opens a
+   system database; a MariaDB database is not made beside an account of the same name on another host.
+   A real boundary on PostgreSQL 16+; on MariaDB and PostgreSQL 15 or older a guard against mistakes.
+   A local MySQL in MariaDB's place is not managed (`unsupported_engine`). An added PostgreSQL user that
+   owns objects in a database owned by `celikpanel_admin` is not removed (`owns_objects`; no REASSIGN to
+   the panel's account; the administrator hands them over first).
+2. Database limits: one function for every path that creates a database user; PostgreSQL limits through
+   the narrow agent call `SetPostgreSQLRoleLimitsV1` on recorded, ordinary site roles; the owner's
+   values kept (the PostgreSQL connection limit included); outcomes by reason in Problems now (kind 47)
+   with Apply again and a bounded hourly round.
+3. Per-site limits: a put-back is verified (a program counts as running only after its start wait, in
+   place, listening when it had ports); the agent's start never waits for a customer's program (at most
+   four systemd calls under one 15 s bound); a status read settles kept records by reading only; one
+   deadline per press; a stopped program started from the panel starts in its slice; the Ubuntu 24.04
+   process-limit peak; the unapplied line by reason; no update during a move and no move during an
+   update (a stale update record stops refusing after 31 minutes).
+4. Updates: the five agent-start waits of the update and its recovery are about a minute (200 × 0.3 s,
+   300 × 0.2 s) instead of 10 to 14 s; the fail-closed result after the bound is unchanged.
+
+Lab check: open. No P0 item is closed.
+
+**The plan after alpha.145 (owner, 22 and 23 November 2026)**
+The owner asked on 22 November that no risky change be pushed to his servers, and on 23 November
+that the product have no known security hole and that the first beta come as soon as possible.
+What follows has no promised release number or date.
+
+- **Customer separation — REQUIRED before the first beta.** R1, the side doors (PR #348: the
+  database tools and webmail under their own accounts, the unused stock PHP-FPM pool off, `at` closed
+  to site accounts, scheduled-task lines made outside CelikPanel shown), R2a, one slice per site with
+  plan limits and database time limits (PR #349), and R2b, a site's scheduled tasks as timers inside
+  its limits (PR #353), are built and independently reviewed on their branches. They go out one by
+  one, each as its own release after its independent reviews and its own lab run, each explained to
+  the owner in plain words before it (he installs every update himself). R3 (one PHP service per
+  site, inside the site's sandbox) and R4 (no reach between sites over the server's inside address;
+  account names of other sites not visible) are designed and not built.
+- **One list of known security gaps before the first beta (open).** The first beta ships with no
+  known security gap; this list is closed or each item explained to the owner first. Each with
+  where it is planned:
+  - the customer-separation slices: R1 — published in alpha.147; R2a (PR #349) — published in
+    alpha.148; R2b (PR #353) — built and reviewed, next, as its own release (alpha.150); R3, R4 —
+    designed, not built;
+  - the panel's agent changing a database administrator account, handing a removed user's objects to
+    an administrator owner or to the panel's own database account, or dropping a system database on the
+    panel's word — candidate alpha.149
+    (PR #370, joined into the release PR);
+  - sign-in cookies a website on another host name under the same domain could set, shadow or
+    replace; the operator's sign-in left in the browser after "Log in as" and "Sign out" (or the
+    session ending any other way); the panel's sign-in passed to the database tools — published in
+    alpha.148 (PR #368, merged into PR #349);
+  - the cookie alone is not enough: a sign-in bound to more than its cookie, so that a service on the
+    panel's own host name (any port) cannot use or replace it — designed, not built;
+  - the database tools on an origin of their own, not sharing the panel's host name — designed, not
+    built;
+  - the PostgreSQL server move with its owners' rights — lane open, not scheduled;
+  - mail lookup files readable by other accounts — not scheduled;
+  - the backup destination test (reaching a destination on someone's behalf) — not scheduled;
+  - VPN peers sharing one network — not scheduled;
+  - old MariaDB wildcard rights — not scheduled;
+  - the runtimes folder — not scheduled;
+  - password guessing over the inside sending address and webmail's local door (no limit keyed to a
+    client address sees it) — not scheduled;
+  - programs still on the shared web account reading traffic logs — planned in R1/R2a.
+- **The PostgreSQL server move — lane open.** Moving a database to another PostgreSQL cluster with
+  its owners' rights (security series item 6 below, its acceptance list open).
+- **Licence stage 1 and the new site — waiting for the owner.** Licence stage 1 (PR #327): a lapsed
+  or unverifiable licence never blocks a security action or another server's work, with expiry
+  warnings (D-047); it waits for the owner's lab decision. The new celikpanel.net site (PR #333)
+  waits for the owner's word to publish it.
+- **Open: changes that still run on the browser's request.** Besides the four routes alpha.144
+  detaches, other panel changes still pass the browser's request into the Agent's work: if the page
+  is left while the server works, the change can finish on the server without the panel's record, or
+  only its answer is lost (scheduled tasks, mail forwarders and the catch-all, a mailbox's password,
+  size limit and deletion, DKIM, a site's SSL and PHP settings, file access, DNS setup and DNSSEC,
+  the VPN, deleting a backup, catalogue applications, a database import and others). The list, by
+  handler and with what is left behind, is in PR #355 ("6c"); each is to run to its own limit, once
+  per request identity (D-029).
+- **Decided, planned, not built (owner, 22 November 2026): names under a server's own domain.** A
+  server may give customers names under its own domain only by the administrator's explicit grant.
+
+**Carried over (no release assigned)**
 1. A lab run on a server whose PostgreSQL templates are SQL_ASCII (initialised with the C
    locale, as the owner's Ubuntu 24.04 server): a UTF-8 database created through the page, the
    warning on a SQL_ASCII database's card, and Copy to UTF-8 with its stop on a byte that is not
@@ -400,6 +705,13 @@ expiry warnings (D-047).
 51. Site accounts named by id rather than by the domain name (alpha.142 lanes S2 and S3).
 52. PHP and scheduled tasks inside the site sandbox, with per-account limits (S4).
 53. Postfix's address maps readable only by the mail services (alpha.142 lane S3).
+54. On Arch Linux, mail sent with a mailbox login is still signed for any hosted domain its "From"
+    line names, as its OpenDKIM package has no `SenderMacro`; another way to tie signing to the
+    login there (alpha.143 lane S3b). Problems now says so there and never advises the option
+    (alpha.143 review).
+55. Whether a customer's domain under a server name or an administrator's name, and the subdomains
+    made inside it, stay listed in Problems now as meeting the server's names: the owner's decision
+    (alpha.143 lab corrections).
 
 **Security series (owner, 20 November 2026: only the administrator has root; every account in its own sandbox)**
 1. SQL from a file runs with the database owner's rights; the administrator's PostgreSQL sessions
@@ -408,37 +720,57 @@ expiry warnings (D-047).
    account or ports (S2, alpha.142).
 3. Files and web: links, per-site file modes and customer directives keep each account's files to
    that account (S3 parts 1-2, alpha.142).
-4. Mail: each account's mail kept to that account; signing only for the sender's own domain comes
-   in alpha.143 (S3, open).
-5. Limits: per-account limits on processes, memory, disk and database use (S4, open; slices R1-R4
-   in alpha.144-147).
+4. Mail: each account's mail kept to that account; signing only for the sender's own domain is in
+   alpha.143 (S3b; on Arch Linux, whose OpenDKIM cannot do it, still open).
+5. Limits: per-account limits on processes, memory, disk and database use (S4, open; slices R1,
+   R2a and R2b built and reviewed on their branches, waiting for the owner's approval, none
+   scheduled; R3 and R4 not built).
+6. Moving a database to another PostgreSQL cluster loads the copy with its owners' rights (open;
+   lane `security/s1b-pg-leftovers`, taken out of the alpha.143 candidate on 21 November 2026 after
+   the independent review; its change is kept as a patch for the lane that takes it up). Until then
+   a move still runs customers' database code with the administrator's rights; only the administrator
+   can start one (alpha.141's known limit). Acceptance, from the review's findings, all open:
+   (1) no table or domain constraint, nor anything else restored after the rows, runs a customer's
+   code with the administrator's rights; (2) the loading role never holds more than one owner's
+   membership at once, cannot be changed, kept or reused by customer code, and a role that cannot be
+   dropped is left without login, password or memberships; (3) foreign-key validation through a
+   customer's implicit cast does not run as the administrator (a lab case first); (8) a source whose
+   database rights are PostgreSQL's default keeps them on the copy, and every refusal comes before
+   anything is written on the target; (10) the loading role's password never reaches the server in
+   plain text; (11) a role that is an administrator on the target but not on the source is refused;
+   (12) the target's minimum versions include the fix of CVE-2023-39417.
+
+Standing rule of the series (21 November 2026): every security lane is reviewed independently before
+it is folded into a release. Decided after four reviews (sandbox R1 and R2a, the alpha.143 mail
+signing and PostgreSQL lanes) each found defects that the tests and CI had passed.
 
 The design releases that follow, in the approved order (owner, 12 November 2026). Each redesigns
-the insides of its sections from the approved drawings; small releases, published when ready.
+the insides of its sections from the approved drawings; small releases, published when ready, with no
+release number promised.
 
-**alpha.150 — Overview, the domain list and the customer's home**
+**Design release 1 — Overview, the domain list and the customer's home**
 The domain's Overview, the domain list and the customer's home page as drawn, with the summary
 and health facts each needs read in one request rather than one per row.
 
-**alpha.151 — Mail**
+**Design release 2 — Mail**
 The Mail section as drawn.
 
-**alpha.152 — Databases section**
+**Design release 3 — Databases section**
 A domain's Databases section as drawn; connections from outside are prepared when the
 administrator turns them on at the server switch, with one confirmed restart there; the clearer
 PostgreSQL settings (effective values, CelikPanel's lines marked).
 
-**alpha.153 — Domain & DNS, Security**
+**Design release 4 — Domain & DNS, Security**
 Record editing and the Domain & DNS section as drawn; the Security section (certificate,
 protected folders, malware scan) as drawn.
 
-**alpha.154 — Site and Files**
+**Design release 5 — Site and Files**
 The Site and Files sections as drawn.
 
-**alpha.155 — Backups and Advanced**
+**Design release 6 — Backups and Advanced**
 The Backups and Advanced sections as drawn, with the server-settings moves they need.
 
-**alpha.156 — Administrator, reseller and account pages**
+**Design release 7 — Administrator, reseller and account pages**
 The pages of the second approved proposal (owner, 12 November 2026).
 
 Also carried from the earlier alpha.132 plan, placed in the release whose screens they touch:
@@ -2596,6 +2928,13 @@ above and below stays open.
 | 63 | Release review of `v0.1.0-alpha.140`. **Published 2026-11-20 (release commit `feef6da42`; pre-release at 12:56:56Z; portal at about 13:00Z, public check 27/27).** A small fix release of four carried items (alpha.138 and alpha.139 labs, carried items 1, 2, 3, 12 and 30 of the former list), two lanes on the published alpha.139: `fix/ai-apps-truthful` (PR #338, folded in with a merge commit) and `fix/db-delete-once` (the release PR, #339). (1) A database deletion drops the database it was asked for, once. Before, every press sent `DROP DATABASE IF EXISTS <name>`; the record stayed listed whenever the records did not follow the drop (a lost answer, users or rights not all removed, records not written), and a database of the same name made meanwhile (by the customer's own user, which keeps its exact-name rights until the deletion finishes; by hand; by a restore or an installer) was dropped by the next press with its content; a domain deletion asked to delete the domain's databases did the same on its retry. Now the deletion reads the database's identity first (PostgreSQL's oid; on this machine's MariaDB the database directory's device, inode, inode generation and birth time; the Agent's new `DatabaseIdentityV1`) and keeps it in a marker of the record (`panel_settings` `database_delete_v1:<id>`) before anything is dropped; `DropDatabaseOnceV1` drops only while the engine shows that identity (dropped, absent, replaced; a drop statement whose client failed is read again). After that, later presses only finish users and records; a database made meanwhile is left with its users ("exists"); without an identity nothing is dropped that cannot be told apart (`DATABASE_DELETE_UNVERIFIED`, the administrator acts on the server). A verified refusal clears the marker, an unknown result keeps it, the records' transaction removes it. No schema change. (2) A domain deletion held for the backup DNS server's zone-list confirmation said "stopped … delete again" while the backup had already confirmed and the armed reconciler published the removal at its next check (51 s in the alpha.138 lab); a ready publisher with the reconciler armed is now the same wait (`dns_peer_catching_up`, `dns_removal_waiting` without a pair), "incomplete" only when nothing publishes it by itself. (3) The busy end of "Add…" shows the first step done ("{server} answered"). (4) AI and automation apps: the generic install request for a component installed by version (Node.js) is refused before anything is queued; the "cannot be installed yet" line is built in the reader's language from structured facts (what the app needs, what this server has, the next step); the administrator's action opens Components → Node.js or Components → Python; an app the server's operating system cannot run is not shown to customers and resellers and cannot be offered. The alpha.138 notes' "AI apps cannot be installed on Debian 13 and Ubuntu 24.04" is corrected in alpha.140's notes. Lab check (one run, 20 November 2026, a Debian 13 PowerDNS main and an Ubuntu 24.04 BIND backup from the alpha.139 state, lab-only label alpha.147 built from `06fcfae31`), no hard failure: both updates through the panel's own page (each waited for the daily package run); plain database deletion on MariaDB and PostgreSQL; a cut answer, then a database of the same name with new rows (made by the customer's own user on Ubuntu 24.04, by hand on Debian 13) survived Delete pressed again in TR and EN on MariaDB (both systems) and PostgreSQL, the page saying why, and Delete finished once it was dropped by hand; the identity was never empty (MariaDB reused the inode number; generation and birth time told them apart; PostgreSQL by oid); every cut answer ended with the drop done and users or rights left; a domain deletion with a MariaDB and a PostgreSQL database; Debian 13 AI apps before install (Turkish lines, the Node.js version list, Open WebUI not offerable and not shown to customers); the generic Node.js install refused, nothing queued; Node.js 24 and n8n through the page (9 min 24 s, about 3 GB, HTTPS, survives a restart); on Ubuntu 24.04 the Python repair (python3-venv, python3.12-venv) and Open WebUI through the page, its first install anywhere (6 min 18 s, folder 8.3 GB, about 2 GB memory at rest; the root file system peaked at 96 % of 23 GB during pip); the busy end of "Add…" at 390 px TR and EN. Not checked: the "waits for the backup DNS server" sentence (both domain deletions finished in 12–14 s because the backup confirmed during the deletion; "stopped … delete again" did not appear either); the customer's "the administrator installs Node.js" line; a program and an AI app on one domain (time). Found and carried to alpha.145 (none security or data loss): no way to stop an AI app's install and no free-disk check before it; Open WebUI "offer it in Catalog management" on Debian 13's Programs section (goes away with Open WebUI's removal: the owner withdrew Open WebUI on 20 November 2026, alpha.141 takes it out of the catalogue); the Python repair's preview names no package; "its users were left as they are" after MariaDB already removed the user; "no database to process" for about 9 s during a domain deletion; the same-named-database state in the red error colour; the latest service operation is an old failed generic Node.js install; the certificate confirmation always says Let's Encrypt. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.140.md). | Published |
 | 64 | Release review of `v0.1.0-alpha.141`. **Published 2026-11-20 (release commit `cccb08fab`; pre-release at 19:46:26Z; portal at about 19:49Z, public check 27/27).** A security release (owner, 20 November 2026: only the administrator has root), three lanes on the published alpha.140: `security/s1-sql-rights` (the release PR, #343), `fix/pg-utf8` (PR #340) and `fix/withdraw-open-webui` (PR #341), folded in with merge commits. (1) SQL that comes from a file (a backup's dump, from this server or from a remote destination the customer controls; the safety copy put back after a failed restore; database, site and WordPress copies; the cPanel import; a customer's import) is loaded with the target database's own account only: on MariaDB by the client in sandbox mode, signed in as the database's own user and run under the site's account (definers written as the loading user; a client without sandbox mode refused, never replaced; a binary-log gate checked before anything is loaded), on PostgreSQL over the protocol as the owner role in one transaction (an administrator role or a role that is not the owner refused); the cPanel import through a temporary account with rights on the new database only, removed afterwards. Before, a restore and a copy ran it as the engine's administrator (`mysql` as root without sandbox mode, `psql` as postgres). The panel sends each database's stored account with a restore and a copy; a missing or refused one is refused before the safety backup (`BACKUP_RESTORE_DATABASE_ACCOUNT`, `BACKUP_RESTORE_CLIENT_UNSAFE`, `BACKUP_RESTORE_NEEDS_ADMINISTRATOR`; remote `DATABASE_ACCOUNT`, `DATABASE_CLIENT_UNSAFE`, `DATABASE_NEEDS_ADMINISTRATOR`). (2) Every PostgreSQL session of the administrator (psql, pg_dump, pg_restore; as postgres or a cluster's owner) starts with search_path `pg_catalog, pg_temp` through one helper; a guard test fails on any other launch. (3) PostgreSQL databases the panel creates are UTF-8 from template0 (builtin C.UTF-8 from 17), clusters it creates are UTF-8, existing clusters are never changed; the database card shows each database's text encoding with one warning and its way out (Copy); a dump's SQL_ASCII client encoding is checked on every load; a new database is closed to other accounts (`ALLOW_CONNECTIONS false`, `REVOKE ALL … FROM PUBLIC`, then open, read back); databases made before stay open to other accounts' sign-in until a later release. (4) Open WebUI is withdrawn from the catalogue (owner, 20 November 2026); an install a domain already holds stays visible, runs and can be removed. Release sequence 140 → 141; schema stays 079. Lab check (one run, 20 November 2026, UTC 15:25 to about 16:55, a Debian 13 PowerDNS main and an Ubuntu 24.04 BIND backup from the alpha.140 state, lab-only label alpha.148 built from `68b8d1d20`), no hard failure: both updates through the panel's own page by themselves (about 2 and 2.5 min, no failed unit, DNS answers identical before and after); on Debian 13 a package changed at the customer's own remote destination (client commands, a grant of every right or the administrator attribute, a line recording who ran it; then SQL only), on MariaDB and PostgreSQL, before-update and fresh: every restore refused, no marker file, no right gained, the other customer's rows unchanged, the safety copy put back; planted PostgreSQL functions and operators with the database's search path pointed at them were not run by the administrator's sessions (Check, Export, card information; every session started with the fixed search path; the owner's own session ran them); a local backup made before the update and a fresh backup restored on both engines with Turkish letters; Copy on both engines (the PostgreSQL copy UTF-8 and open only to its own user); a restore after the password was changed outside the panel refused before anything was written, then restored after New password…; a new PostgreSQL database refused another account's new and old user, its owner connected, a database made before still let the other user in (the known limit); new databases UTF-8 with the Turkish round trip and "Text: UTF-8" on the card; Open WebUI gone from the catalogue and Programs, offer and install refused, nothing queued. Not checked: a PostgreSQL server with SQL_ASCII templates (neither lab server had one: Debian 13's 17, and Ubuntu 24.04's 16 installed in this run through Components on alpha.140's code from PGDG, were UTF-8 C.UTF-8), so the UTF-8 creation there, the card's warning and Copy from SQL_ASCII ran only on private engines; MariaDB on Ubuntu 24.04 with a changed package; site copy, Import, WordPress copy, cPanel import; added users connecting to a closed database; an existing Open WebUI install. Found and carried on: moving a database to another PostgreSQL cluster still runs the customer's functions with the administrator's rights (alpha.143); to alpha.145: a lab run on a SQL_ASCII cluster (first item); the users added to a PostgreSQL database lose their rights on what a restore makes again; MariaDB events are not in backups; from the lab (none security or data loss): a refused changed package reads as a general failure; a remote restore leaves the downloaded package in the local list and blocks a same-named restore; an English technical line under the Turkish password refusal; "what this site's backup will contain could not be read"; removing PostgreSQL took a second press; "no database to process" during a domain deletion again. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.141.md). | Published |
 | 65 | Release review of `v0.1.0-alpha.142`. **Published 2026-11-21 (release commit `7e51e951a`; pre-release at 12:51:06Z; portal at about 12:54Z, public check 27/27).** A security release (owner, 20 November 2026: only the administrator has root; a reseller or a customer never reaches anything of another customer or of the server), two lanes on the published alpha.141: `security/s2-names` (the release PR, #344) and `security/s3-files-mail` (PR #345, folded in with a merge commit). (1) One name rule, in the panel (`cmd/panel/hostname_claim.go`) for every path that gives a subscription a name (create, alias, cPanel import, subscription transfer) and again in the database (migration 080, six triggers): a name equal to, under or above a name of another account or one of the server's own names (infrastructure zones, zones without a domain, panel, machine, nameserver, mail and webmail names, the paired server's names, the main domain) is refused for a customer's or reseller's subscription; an administrator's own subscription may hold it on purpose; an ordinary account gets one answer whoever holds the name (`HOSTNAME_NOT_AVAILABLE`), the administrator the reason; an existing zone is never handed to a customer's domain; transfers whose names the receiver may not hold are refused (`TRANSFER_NAME_OVERLAP`); Add domain reads a named subscription only after the access check. (2) A domain whose derived system account another site or the system has is refused before creation; the Agent answers `site_identity_exists` and proves an account's home before every step keyed by its name (crontab, FTP logins, file access, processes, account; WordPress tools and catalog setup). (3) A Node.js site's port comes from 3001-3999 and is never a port of the panel, its services or the service-app and program range; the Agent refuses such a port again (`APP_PORT_NOT_ALLOWED`). (4) `disable_symlinks if_not_owner` in every block that serves a site's files (an owner's own setting kept); per-site vhosts, includes and PHP-FPM pools 0640 and the hosting base 0711, corrected once with owner-changed modes kept; customer directives may not lift the link rule, list folders, change PHP settings or make nginx read files as root; an FTP login name in use gets one answer. (5) Problems now lists names and Node.js ports an installation already holds that the rule refuses (`name_overlap`, `name_server_reserved`, `node_port_reserved`); nothing existing is changed. Release sequence 141 → 142; schema 079 → 080 (triggers only; a database holding overlaps migrates and keeps working; the release-recovery lab pins 80). Lab check (one run, 21 November 2026, UTC 09:07 to about 10:57, a Debian 13 PowerDNS main and an Ubuntu 24.04 BIND backup from the alpha.141 state, lab-only label alpha.149 built from `9377f1cc8`; two customers of one reseller in separate accounts), no hard failure: before the update (alpha.141's code) the second customer's name under the first customer's domain answered in DNS on both servers and links his scheduled task placed to her files and to a web-group-readable server file were served with their content; both updates through the panel's own page by themselves (about 1.5 and 3 min), schema 79 → 80 applied with that overlap present and the panel listing it (`name_overlap`), no new failed unit, web, mail ports, DNS (identical answers from both), MariaDB and PostgreSQL answering as before, certbot dry runs succeeding; after it no file through a link (every link to her files or the server's file gave his own page, 404 or 403, also inside a protected folder and through a site folder replaced by a link; an error page pointing at her file refused when saved; a link to his own file still served; the Logs screen's sentence in TR and EN), no name (under, equal to and above her domains and the server's names, as domain and as alias: the same sentence naming nobody, nothing created, no DNS answer changed; the overlap deleted through the page and its Problems now line gone), no scheduled task or FTP login through a shared system account (refused before anything was made; her accounts, crontabs and FTP logins unchanged and signing in; two long names leading to one account the same; a taken FTP login name answered without saying who), no server port (a new Node.js site got 3001; 8306, 11334, 3306, a program's port, 34000 and another site's port refused with `APP_PORT_NOT_ALLOWED`, vhosts unchanged); per-site vhosts and pools 0640 and the hosting base 0711 on both, an owner-changed mode kept, the other customer's site account unable to list the hosting base or read her files; a domain created, aliased and deleted by the administrator; smoke pages. Off the page's path: the port refusals and the administrator's placing of a name into another account through the API; planted files, the owner-changed mode, certbot registration with the lab CA and two `reset-failed` calls as root. Not checked: an existing Node.js site on a server port after the update and a link in a Node.js public folder (alpha.141 already refused making such a site, so the state could not be prepared); the on-screen refusal of a customer's directive (no directives box offered to the lab's customers; tests only); webmail and the database web tool after the update (not opened); names tried by a customer on the second server (no account there). Found, planned for alpha.143 (none security or data loss): a customer domain under one of the server's names cannot get subdomains (the neutral refusal) and is listed in Problems now as meeting the server's names (the administrator can add the subdomain in the administrator's own account meanwhile); the administrator's refusal names the server's name instead of the holding account's nearer name; a Node.js site whose application failed is not deleted and stays "waiting for deletion" (way out: `systemctl reset-failed celikapp-<id>.service` as root, then Delete again; whether earlier releases behave the same was not established); the agent's journal says "0 kept" although an owner-changed mode was kept. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.142.md). | Published |
+| 66 | Release review of `v0.1.0-alpha.143`. **Published 2026-11-22 (release commit `462c854fb`; pre-release at 07:21:01Z; portal at about 07:24Z, public check 27/27).** A security release (owner, 20 November 2026: only the administrator has root; a reseller or a customer never reaches anything of another customer or of the server), three lanes on the published alpha.142, folded into the release branch `release/v0.1.0-alpha.143`: `security/s3b-mail-signing` (PR #346, its three commits; corrected after the independent review in `fix/a143-mail`), `security/s1b-pg-leftovers` (no pull request; its own change as one commit; its cluster move taken out and its closing of older databases corrected after the independent review in `fix/a143-pg`) and `fix/a143-lab-corrections` (PR #350, squashed). (1) Outgoing mail is signed only for the sender's own domain: `SenderMacro {auth_authen}` in `opendkim.conf` ties the signing key to the mailbox login (submission requires a login, which is the mailbox's full address); mail made on the server without a login (panel notices, root's scheduled jobs, out-of-office replies; only root and vmail may hand mail over so) is signed by its `From:` as before, and signing is not shown as in place while `authorized_submit_users` is not `root, vmail`; an out-of-office reply answers only from the mailbox's own address or a forwarder to it from the same account's domains (checked by the panel and the Agent; earlier replies lose a foreign address at the first start, said once in the reply's window and audited); the smtpd on port 25 gets `main.cf`'s milter list without OpenDKIM, recomputed at every start (the owner's filters stay; kept and named while `main.cf`'s list uses variables) and removed at the next start or mail wiring after OpenDKIM is no longer set up, so OpenDKIM no longer checks arriving signatures there; an out-of-office reply is checked again inside every operation that changes who holds a name or where an address delivers, and one that cannot be rewritten is turned off or named in Problems now; a new `opendkim.conf` is checked with `opendkim -n` first and put back if OpenDKIM does not run with it, its restart is recorded as owed before the file is put in place and made at the next start after an interruption, Postfix writes are undone in reverse order on failure, settings that were at their defaults removed again; every path that changes signing records its state (an early return is unknown, never an earlier "in place"); an owner-edited `opendkim.conf`, `main.cf` milter list or port-25 milter setting is kept (CelikPanel's text beside it as `opendkim.conf.celikpanel-pending`) and named in Problems now (`mail_signing`, one sentence per state with the owner's concrete step); a build without `SenderMacro` (Arch Linux's package) keeps the earlier configuration, says so and is never advised the option. (2) The cluster move's owner-rights load was taken out after the independent review: a move behaves as in alpha.142 and still runs customers' database code with the administrator's rights (security series item 6, its acceptance list open). (3) PostgreSQL databases made before alpha.141 are closed to other accounts: by the panel itself (`PostgreSQLPublicAccessScanV1/CloseV1/UndoV1`, build-gated; after the start's quiet minutes, a verified update and a quiet server, then hourly) only with untouched default rights, no unrecorded role with any footprint inside (owners and rights of every object kind, column rights, per-database settings, policy roles, user mappings, publications, subscriptions), every recorded user's role present, no monitoring or replication role on the cluster, and after a day's watch (the first round at least 24 hours and at least 24 rounds after it began; a change starts it again; a role outside the records seen connected once ends it); a close bounds itself inside the engine (lock 30 s, statement 60 s) and the Agent ends a client after 3 minutes; an unknown or lost answer keeps the record, sends nothing again and is settled from the engine's state only after the Agent confirms nothing of that close still runs, a failed close is shown with its reason and not retried every hour, closes of one database are serialised (one lock per database); the administrator's sessions pin PostgreSQL's defaults against the owner's database settings; a database unread for more than three rounds is listed in Problems now (`postgresql_databases_unreadable`); every other one listed in Problems now (`postgresql_databases_open`) and on the PostgreSQL page with what was found and one confirmed close; every close with an exact undo (panel and plain SQL); a database an administrator opened again stays on the page as that choice, out of Problems now, never closed by itself; one scan session per cluster, the page reads the last scan; MariaDB unchanged; registered servers on other machines untouched. (4) The alpha.142 lab's four findings: a customer whose domain lies under a server name or an administrator-held name can add subdomains and aliases inside it again (panel `checkHostnameClaim`, the transfer check and migration 081; everything else stays refused; such names are still listed in Problems now, an open question to the owner); the administrator is told the nearest holder; `RemoveAppUnit` runs `systemctl reset-failed` for the exact unit, so a Node.js site whose application failed is deleted in one press; the one-time mode correction names and counts every kept owner mode. Release sequence 142 → 143; schema 080 → 081 (triggers only; the release-recovery lab pins 81). Lab check (two runs on a Debian 13 PowerDNS main and an Ubuntu 24.04 BIND backup, each from the alpha.142 state and updated through the panel's own page; two customers of one reseller in separate accounts), no hard failure in either: the first run (21 November 2026 UTC 22:30 to 22 November about 01:40, lab-only label alpha.150 built from `c012e3eac`, the code after the first fix round) found four display and wording defects (a round's own close not shown without Read again, an undo's written-out default called "changed outside CelikPanel", a failed close's sentence saying "nothing was changed" and "not known" at once with English on the Turkish page, the reply window's plural for one address) and one state that did not clear (an owner's signing file with `SenderMacro {auth_authen}` stayed named in Problems now); the second fix round corrected them, and the second run (22 November 2026 UTC 03:38 to about 05:24, lab-only label alpha.151 built from `1d3d8801a`, the final code) found all five corrected. Final run: both updates by themselves (about 3 min each), schema 80 → 81 with the six triggers, services and DNS answering from both, no new failed unit. Before the update (alpha.142's code, first run) the second customer's login with the first customer's `From:` was signed `d=` her domain and verified, his site's mail to 127.0.0.1:25 was signed for her domain, and his reply with her address was accepted and signed as her. After it: that login signed for his own domain only; port 25 without a login unsigned on loopback and the public address; the foreign reply address removed at the first start (journal and audit `mail.autoresponder.addresses_removed`), said once in the singular, saving it again refused without naming whose (TR, EN); legitimate mail signed and verified; a forwarded forged message got no added signature (first run); removing a forwarder and deleting a domain a reply names rewrote the reply in the same request, and with Dovecot stopped the reply was turned off and said so; the owner's `opendkim.conf` kept byte for byte with the pending text beside it and one `mail_signing` line, which went by itself (and the pending file with it) once the owner added `SenderMacro {auth_authen}`, his file staying his also when a new domain got its key (alpha.142's code had replaced it on that path); an open `authorized_submit_users` and a held port 8891 each named; port 25 followed an owner's filter (first run). PostgreSQL: the watch shown with its dates (first run); nothing closed during the day of watching, during which another account still connected; an unrecorded role seen connected ended the watch and was named (first run); with the watch record set back a day (the one stated write per run) the next hourly round closed the database, another account refused, its own users in, the page showing the close with Undo without Read again, Undo giving the earlier rights back (not called changed outside CelikPanel) and the next round not closing it again; a close while the owner held the database's row answered in about 31 s "nothing was changed" (lock timeout), no client left, not sent again; a failed close says why in the page's language with the server's quoted message; the owner's database settings (read-only, role, lock_timeout 0) did not get in the way; a deleted database's record went with it; a database made after the update closed from the start (first run). Corrections: a subdomain inside one's own domain under the server zone answered from both servers (first run); the other customer refused with the same sentence for the server zone, a name under it, the panel and mail names and a name under an alias; the administrator told the nearest holder (first run, API); a Node.js site whose application failed deleted in one press. Off the page's path: owner-style changes to the mail server's and OpenDKIM's files, a hand-placed restart marker (first run), stopping and starting Dovecot and OpenDKIM, a dummy listener on 8891, a mail script planted in the second customer's site, outside test mail, certbot registered with the lab CA, the database administrator's steps that put databases into the pre-alpha.141 state (default ACL, a reporting role with a column right, a recorded user's role dropped), the owner's database settings and held transaction, panel restarts to bring an hourly round forward, one write per run to the lab panel's database that set a watch record back by a day, the administrator's placement through the API. Not checked: webmail and the database web tools (no webmail address, tools not installed; carried from alpha.142, open); a subscription transfer with a reply naming its domain (request and approval only; tests); a login whose domain has no key (every domain gets one); a panel notice's signature (no way to send one found; tests); backup and restore of a database with the owner's settings (time); ending the client right after a close's commit (engine tests); the Agent stopped at the first start with a foreign reply (needed a second write); the kept-mode journal line (the one-time correction had already run); a healthy Node.js site created and deleted (time); PostgreSQL other than 17; SQL_ASCII templates; the cluster move (not in this release). Found, planned for alpha.144 (none security or data loss): an alias inside a customer's own domain got no DNS record on the lab pair (earlier releases not established); an administrator leaving the PostgreSQL page during a close makes its answer "lost" although the close finished ("sent, not yet confirmed", not sent again, never shown closed without Undo); a failed close's window keeps "working on the server" with a red mark and gives only a general reason in the page's language; one alias certificate refusal in English on the Turkish page; the English Problems now line says "1 PostgreSQL databases"; older than alpha.143 (alpha.142's code, first run, not retried): leaving the page while a mailbox is created can leave it on the server without a panel row, and creating it again answers with an internal error (way out: remove it on the server or use another name). **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.143.md). | Published |
+| 67 | Release review of `v0.1.0-alpha.144`. **Published 2026-11-22 (release commit `99e65fc3d`; pre-release at 22:55:55Z; portal at about 22:59Z, public check 27/27).** A small release (owner, 22 November 2026: no risky change pushed to his servers; the sandbox slices R1, R2a and R2b, PRs #348, #349 and #353, wait for his approval and are not in it), one lane on the published alpha.143: `fix/a144-lab-corrections` (PR #355, the release PR), corrected after an independent read-only review. (1) Security: webmail's own address (`celikpanel-webmail-origin-<host>.conf`, root Roundcube's `public_html`, since alpha.110) gave out every non-PHP file of a plugin's folder (a plugin's `config.inc.php.bak`, a filled-in `config.inc.php.dist`, `.sql`, `.log`, `.ini`, `.yml`, `composer.json`) and ran every plugin's PHP file directly; Roundcube's `program/include` and `program/localization` were not reachable. Now PHP runs only for `= /index.php`; under `/plugins/`, `/skins/` and `/program/` only the static types Roundcube's pages load (and `.html` under `/skins/`) are served; dot-files and backup, dump, log and settings names are refused everywhere; everything else answers 404. The Agent rewrites CelikPanel's earlier form once at its first start, before RPC serving (write → `nginx -t` → reload, the earlier file put back byte for byte on failure); an owner-edited file is kept with `<file>.celikpanel-pending` beside it; a kept file or a rewrite put back (the file nginx's test named) is a Problems now line (`webmail_address_kept`, `webmail_address_refused`, read through `Agent.WebmailAddressFormsV1`) that goes by itself. The Unix-socket webmail server is not reachable from the network and is unchanged. (2) The alpha.143 lab's six findings: mailbox creation, the out-of-office save and the administrator's PostgreSQL close, undo and Read again are operation-step routes of the request-identity guard (D-029; detached, to their own limit, once per identity; the stored digest leaves the password out), so leaving the page no longer leaves a mailbox without its row or a close recorded as lost; the Agent's "already exists" answer is `MAIL_ACCOUNT_ON_SERVER_ONLY` (409): a customer is told to ask the administrator, the administrator may adopt (`POST …/mail/accounts/adopt`, administrator only; `Agent.MailboxOnServerV1`, build-gated and read-only, reads the two lines under the mail lock and counts the messages in the folder) only a mailbox in CelikPanel's own form that holds no mail, looking for an existing row again under the mail lock, always replacing its password through the password step (`MAIL_ACCOUNT_ADOPT_REFUSED`: `gone`, `incomplete`, `elsewhere`, `mail_found`, `folder_unknown`; audit `mail.account.adopt`); a failed close's window ends on "Not done — nothing was changed" and its reason names the kind of cause (`in_use`, `timeout`, `connection`, `rights`, `missing`, `refused`, matched on the server's English message) before the quoted message; the alias and certificate refusals are coded with EN/TR texts, statuses unchanged (`ALIAS_INVALID`, `ALIAS_CONFLICT`, `ALIAS_NOT_FOUND`, `ALIAS_CERTIFICATE_REISSUE_FAILED`, `ALIAS_CERTIFICATE_NOT_COVERING`, `HSTS_REMOVAL_BLOCKED`, `SSL_NO_ACTIVE_CERTIFICATE`); one database is said in the singular in Problems now and the alert mail. (3) Traffic logs: the root Agent made `/var/log/celikpanel` 0700 or 0750 under `UMask=0027`, so nginx's workers (`www-data`, outside group `celikpanel`) could not reopen their logs after each nightly rotation (one `[emerg] … Permission denied` per worker and log) and kept writing into the rotated `.log.1` until the next reload: traffic under-counted. A one-time correction at the Agent's start (receipt `log-root-modes-v2.done`) makes the folder 0711 (from 0700) or 0751 (from 0750) and its `traffic` folder 0710 owned by root and the web server's group (from 0755), so only the web server's workers pass and no site account can open another site's traffic log (programs that still run as the web server's shared account — Node.js sites not yet moved into their own account, the distribution's default PHP pool where it is on — can read them: time and byte counts, no addresses, as they already read every site's served files); traffic logs readable by others go to 0640, a site's first log is made 0640 before the web server opens it, and the rotation file (managed text, an owner-edited one kept) makes each new log 0640 for the web server's account; the web server's account is looked up only to make the folder or a first log, and a failed lookup leaves a site's traffic setting as it was; the certificate tool's folder stays 0700; any other mode (with its owner and group), a `traffic` folder at 0710 whose group is neither the web server's nor root's or celikpanel's, a link or another owner is kept and named in the journal; new installations make the log folder 0711 and the traffic folder 0710 with that group. No reload is made: from the first night after the update the workers reopen by path. (4) New, small: an alias inside a zone this server keeps for the same account (the longest top-level domain of the owner's subscriptions, DNS local) gets the site's A/AAAA in that zone, published with it (the secondary by the zone's transfer), before issuance when a certificate is reissued and withdrawn if the alias is not added; only what CelikPanel added is noted (`panel_settings` `alias_dns_v1:<alias>`, same transaction) and removed, also when the domain is deleted whatever its own DNS mode and after a subscription transfer, while the zone belongs now to the account of the alias's domain now (in another account's zone nothing is removed, the note is cleared and the Panel's log names the record); a waiting zone whose DNS mode cannot be read keeps its mark for the next round; a name with any address record CelikPanel did not add answers `kept` and nothing is written; a publication that does not finish marks the zone waiting, the hourly round publishes it, the alias row says so and a domain deletion never stops on it. No release before published DNS for an alias; an alias that is a zone of its own gets none (owner's decision); aliases made before get their record when added again. Release sequence 143 → 144; schema stays 081 (no migration). Lab check (one run, 22 November 2026 UTC 19:02 to about 20:30, a Debian 13 PowerDNS main and an Ubuntu 24.04 BIND backup, both from the alpha.143 state updated through the panel's own page to `6ed1f94a0` under the lab-only label alpha.152; the first run with a webmail address, given through the page before the update): no hard failure. Both updates by themselves (about 1.5 min each), no schema step, no new failed unit, one panel and one agent each; on the main server nginx reloaded once and a site and webmail answered every second throughout; the backup server not reloaded. Before the update (alpha.143's code) the address gave out a planted `plugins/archive/config.inc.php.bak` and text file with their content and `composer.json`, and handed `plugins/archive/archive.php` to PHP-FPM; after it the journal said "rewritten in the current form", those, `config.inc.php.dist`, `composer.json`, `.sql`, `.log` and `.md` answer 404, `.htaccess`, `.env` and `.git/config` 403, while `app.min.js`, style sheets, images, `blank.tiff`, a skin's page and `index.php` answer 200; webmail walked through in a browser as a customer (sign in, list, a message with a PDF and a text attachment both downloaded, the editor, a setting saved and read back, the archive plugin's settings, contacts) with 0 responses ≥ 400, 0 failed requests and 0 console errors; an owner-edited address file kept byte for byte with `.celikpanel-pending` beside it and one `webmail_address_kept` line (TR, EN) that went by itself once the owner moved the text over it and reloaded nginx; with another `conf.d` file broken the earlier file was put back byte for byte, sites and webmail kept answering, and the `webmail_address_refused` line named that file. Mail: a mailbox created and an out-of-office reply saved with the page left at once have their rows (the mailbox signs in); `MAIL_ACCOUNT_ON_SERVER_ONLY` said plainly to a customer (TR, EN); the administrator's adoption set a new password (the new one signs in, the old one is refused); a mailbox holding a message refused (`mail_found`), its password not replaced and its message kept; adoption through another account's domain answers 404, another domain's address 400. Aliases: answered from both servers at the first look and NXDOMAIN on both after removal; a name with the customer's own A record kept (nothing added, no note) and said so; invalid and duplicate names refused in Turkish; with the backup unreachable the alias was marked waiting and published about 15 s after it came back. PostgreSQL: a close with the page left showed its real result; a close held by the owner's lock with the page left before the Agent answered showed "not closed … nothing changed" with the kind of cause and the server's message, not sent again; Undo through the page gave the rights back; a failed close (a recorded role dropped) ended on "Not done — nothing was changed", kind `missing`, server message quoted (TR, EN). Traffic logs: `/var/log/celikpanel` 0750 → 0751, `traffic` 0755 → 0710 root:www-data, certbot 0700 kept, one journal block, receipt `log-root-modes-v2.done`, the rotation file rewritten once to `create 0640 www-data www-data`; on the backup a `traffic` folder at 0710 with a group the lab set by hand kept and named; a new site's first log 0640 www-data; another site's account refused reading the log and listing the folder before and after a forced rotation; after it no new `[emerg]` line and new requests in the new file. Where the lab left the page's path: planted files in the webmail tree, the owner-style edits of the address file and of another nginx file with Agent restarts, one write with the panel stopped that removed two mailboxes' panel rows (two page-leaving tries on alpha.143's code had not reproduced the gap), the database administrator's step (old-state rights, a recorded role dropped) and the owner's lock, the hand-set folder group, the forced rotation, the backup made unreachable, test messages handed over on the server, the two cross-account adoption refusals through the API. Not checked: the singular Problems now line (watched databases do not count as open; test only), Undo and Read again with the page left, the traffic figure after the rotation, a domain deleted with the backup unreachable, alias removal after a subscription transfer (request-and-approval flow), an alias with a certificate and the TR certificate and HSTS refusals, the Logs page, webmail on the backup, the database web tools, PostgreSQL other than 17 or with non-English messages, SQL_ASCII templates. Found, none security or data loss, planned for alpha.145: webmail cannot send (Roundcube's `smtp_host` `localhost:587` without `tls://`, while submission offers AUTH only after STARTTLS; the same text in alpha.143; since which release not established); an alias row kept "waiting to be published" until the hourly round (about 29 min) after the record was published, while the zone's notice said to make the change again; a failed close's window keeps its in-progress title above "Not completed". Open: PostgreSQL failure kinds matched on English message text (SQLSTATE later); the other handlers that still pass the browser's request into an Agent change (listed in PR #355, "6c"); the first night after the update still runs on the old file descriptors; the Unix-socket webmail server keeps its earlier locations. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.144.md). | Published |
+| 68 | Release review of `v0.1.0-alpha.145`. **Published 2026-11-23 (release commit `2584a566e`; pre-release at 08:56:20Z; portal at about 09:00Z, public check 27/27).** A small release (owner, 23 November 2026: "the product must have no known security hole", "the first beta as soon as possible"; the customer-separation slices R1, R2a, R2b, PRs #348, #349 and #353, are required before the first beta and go out one by one as their own releases; they are not in this one), one lane on the published alpha.144: `fix/a145-webmail-send` (PR #357, the release PR), corrected after two independent read-only reviews (the second ran the new local-door file on a real nginx). (1) Security: webmail's local door (`/run/celikpanel-webmail.sock`, which nginx makes 0666 under `/run`, so every account of the server could connect; not the network) gave out every file under Roundcube's `public_html` (the linked `plugins`/`skins` and `program/`: leftover copies of plugin settings, dot-files, `composer.json`, SQL files) and ran any `.php` there, since alpha.13 (alpha.1–12 on 127.0.0.1); now a closed list: `= /webmail/`, `= /webmail/index.php` (the only PHP), style sheets under `/webmail/skins/`, CelikPanel's PHP check; everything else 404. The callers (the Panel's readiness check, the Agent's PHP-tool proof: the check, the page and its style sheet) need only those. Corrected at the agent's first start through `applyWebmailNginxMutation` (`nginx -t`, one reload, the earlier file put back on failure, the start goes on); an owner-edited file kept with `.celikpanel-pending` beside it and one Problems now line (the address kinds with no address). (2) Webmail can send: Roundcube 1.6 starts STARTTLS only for a `tls://` host (`rcube_smtp.php` 97–99, 163–171, 196) while the panel wrote `localhost:587` and submission requires encryption (since alpha.1: never worked). Now `tls://127.0.0.1:587` with `smtp_conn_options` keyed to 127.0.0.1 only (chain and name not checked there; any other host keeps the full check). The earlier text is rewritten at the first start (mode, owner, `des_key` kept); an owner-edited configuration kept with `config.inc.php.celikpanel-pending` and one Problems now line `webmail_cannot_send` (the two lines literally; CelikPanel's own text that cannot be rewritten: the cause and a restart, never a hand edit); the Webmail profile is not complete while it cannot send. (3) An alias's wait ends when its zone's held or pending publication completes; the zone's notice says the records are published by themselves; a PostgreSQL close's window title says the outcome. No schema change (stays 81); additive fields only. Lab check: one run, 23 November 2026, no hard failure (see the alpha.145 block). Open: the Webmail card still offers Repair while it cannot send; the "cannot send" reading skips an owner's own certificate options and `/* */` comments; an owner's own block proxying to the socket gets only the sign-in page and style sheets; going back to alpha.144 treats both new texts as owner-edited. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.145.md). | Published |
+| 69 | Release review of `v0.1.0-alpha.146`. **Published 2026-11-23 (release commit `8917ed407`; pre-release at 13:27:13Z; portal at about 13:31Z, public check 27/27).** The new public website as its own small release (owner, 23 November 2026: the datasheet design approved, "yayınla"; a bug-report section where fixed problems show as fixed; a changelog by version), one lane on the published alpha.145: `site/datasheet` (PR #359, the release PR), after an independent truth review of every statement on the site. The site's generator (`site/`, Go, no PHP) writes the pages into `download-portal/`: home (a specification list beside a real screen), install, systems, licence, releases, the changelog by version from alpha.141 (`site/changelog/<version>.json`) and known problems (`site/problems.json`, cases CP-2026-1 to 17 in our own words, their state and the release that fixed them, how to report a problem); every number cites a repository line with a quoted phrase the tests check. Nothing in the panel's or the agent's code changes; outside the site only the portal's build, publication and outside check (`deploy/build-download-portal.sh`, `promote-download-portal.py`, `verify-download-portal-public.py`), their contract tests and the version pins differ. No schema change (stays 81). **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.146.md). | Published |
+| 70 | Release review of `v0.1.0-alpha.147`. **Published 2026-11-24 (release commit `eef8fe894`; pre-release at 04:31:04Z; portal at about 04:35Z, public check 27/27).** Customer separation R1 with two other parts merged into its release PR (PR #348, branch `security/s4-r1-side-doors`): PR #358, forward compatibility for the site slices, and PR #366, the stuck-operation fix, on the published alpha.146. R1: the database tools and webmail under their own system accounts and PHP-FPM pools (webmail's tree closed to every site account by one access-control-list entry), `at` closed to site accounts, crontab lines made outside the panel shown and refused for edit until kept, the distribution's unused `www` pool switched off with the owner's undo respected; after four independent reviews and four fix rounds. PR #366: the running panel settles an interrupted operation's row itself, the renewal rule counts from the last answered renewal and governs standalone changes. PR #358: the release to come back to from the per-site-limits release. No schema change (stays 81). Lab run finished on 24 November 2026 with no hard failure (what was checked and what was not: the release notes). **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.147.md). | Published |
+| 71 | Release review of `v0.1.0-alpha.148`. **Published 2026-11-25 (release commit `0c07d0281`; pre-release at 21:34:14Z; portal at about 21:38Z, public check 27/27).** Customer separation R2a (PR #349, branch `security/s4-r2a-site-slice`) on the published alpha.147: a site's programs (uploaded programs, Python apps, the Node.js application, service apps and their steps; not its PHP-FPM pool or scheduled tasks) run in the site's own systemd slice `celiksite_<id>.slice` with memory, process and processor limits for all of them together (plan keys `site.*`, a host-bound memory default fixed at the first start, a reseller bounded by the server's default); running programs join at the administrator's move (one restart each, with a journal that finishes or puts back an interrupted move); a limit lowered below use is saved only with the list of sites it stops; the card says "in force" only from the kernel's own values; optional time and temporary-file limits for database users (`db.*`), which in this release reach a site's MariaDB users that exist when the limit is set and not the PostgreSQL users of sites; the mail-block helper's place order is the one main carries since alpha.147. After three independent reviews and three fix rounds. Not inside a site's limits: its PHP (R3), its scheduled tasks and lingering user managers (R2b). Second part, merged into the release PR: security lane A1, sign-in cookies (PR #368, branch `security/signin-cookies`, after two independent reviews and two fix rounds): the sign-in cookies under `__Host-` names over HTTPS, so a website on another host name under the same domain can no longer set, shadow or replace them; a cookie name sent twice refused (a cookie another website set for the whole domain stays in the browser, ignored by the panel); a signed-in browser's `/api/` request from another site refused (fetch metadata); "Log in as" followed by "Sign out", or a "Log in as" session ending any other way, leaves no operator sign-in in the browser; the `/dbtool/` proxy passes on none of the panel's cookies or `Authorization` and lets no tool set or clear them; an administrator's pre-update session carried over once on the update page's own `/api/` requests within 24 hours, everyone else signs in once. No schema change (stays 81; one `panel_settings` row). Lab run finished on 25 November 2026 (label 156, head `83d6e043c`, Debian 13 and Ubuntu 24.04): both updates ended by themselves with the administrator signed in and nothing of a customer restarted; the limits held against a customer's own program, also with the panel stopped and after a reboot; the move, the owner's by-hand commands and the sign-in cookie fixes worked; the notes say only what the lab confirmed or the code makes certain (what was not checked and the known limits: the release notes). Work that follows: the database limits for the PostgreSQL users of sites and for users created after a plan's limit was set; the move saying truthfully when a program is not running after it was put back; the card's reasons in the page's language; the sign-in reason for pages that were open during an update. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.148.md). | Published |
+| 72 | Release review of `v0.1.0-alpha.149`. **Candidate.** A fix round on the published alpha.148 (no new feature), three lanes joined with merge commits in the release PR `release/v0.1.0-alpha.149`: PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) and PR #370 (`fix/a149-db-limits`), each after independent reviews and fix rounds. (1) Security, an older finding: no agent call changes a database account the panel names, nor uses a database's owner as owner and recipient of objects, unless the agent finds it an ordinary account (no superuser, CREATEROLE, CREATEDB, REPLICATION, BYPASSRLS, no `pg_*` or privileged membership on PostgreSQL; no global privilege, role, PROXY or right on `mysql` on MariaDB), read first and again in the write's transaction or compound statement; `celikpanel_admin` the one owner exception while unprivileged; system databases never dropped, emptied, loaded into, granted, opened or closed; a MariaDB database never made beside a same-named account on another host; refusals as codes (`DATABASE_ACCOUNT_REFUSED`) worded in TR and EN; a local MySQL in MariaDB's place answered `unsupported_engine`; an added PostgreSQL user owning objects in a database `celikpanel_admin` owns is not removed (`owns_objects`, no REASSIGN to the panel's account). A real boundary on PostgreSQL 16+, a guard against mistakes on MariaDB and PostgreSQL 15 or older. (2) The plan's database limits reach every database-user creating path and, through `SetPostgreSQLRoleLimitsV1` (as the PostgreSQL superuser, only recorded ordinary site roles with no membership, four bounded settings), the PostgreSQL users of sites; the owner's values kept by the panel's record (the PostgreSQL connection limit included; a limit earlier releases wrote follows the next change); outcomes by reason in Problems now (kind 47, `db_limits_unapplied_v1`) with Apply again and an hourly bounded run. (3) Per-site limits after alpha.148's lab: a verified put-back; the agent's start bounded (at most four systemd calls, 15 s) and never waiting for a program; read-only settling of kept records under the slice lock; one deadline per press; Start of a stopped program inside its slice; the Ubuntu 24.04 peak; the unapplied line by reason; no update during a move and no move during an update. (4) The five agent-start waits of the update and its recovery about a minute. Release sequence 148 → 149; schema stays 81 (no migration). Lab: open. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.149.md). | Candidate |
 
 **Open item (alpha.95, 2026-10-17): read installed package versions for every component.** The component scan fills a version only for PHP-FPM and Node.js (from runtime instances). The Agent's per-unit binary probe is not a package version, is unreliable for several units and does not cover tools without a unit, so the Components rows say a version only where it is known. A real answer needs a new Agent RPC or extended `dpkg`/`pacman` queries; it is not part of any release yet ([D-034 amendment](docs/DECISIONS.md)). **Update 2026-10-21: implemented in source for the v0.1.0-alpha.97 candidate** ([D-036](docs/DECISIONS.md)): a read-only Agent query of the package database per component scan, shown on the Components rows and every component page; unknown stays unknown. **Still open:** measured on no installed server; the item is closed only when the owner sees real versions on Boston and Frankfurt. **Update 2026-10-22: Boston measured.** The owner's screenshot shows Boston on alpha.97 with real versions on Components (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0): the first measurement of D-036 on an installed server. **Still open after that:** Frankfurt's alpha.97 state was not reported, so the item is not closed; one screenshot of one server is also not a check of every component, of a busy package manager or of a kept reading. **Update 2026-10-22 (alpha.98):** the owner reported Frankfurt on alpha.98, but not its Components versions, so the item stays open. **Update 2026-10-22 (alpha.100, recorded with the alpha.101 candidate):** the owner's Frankfurt screen showed package versions on Components; phpMyAdmin's short form read "5.2.2-really…", because a Debian "really" version was not shortened to the version actually shipped. That is corrected in source for the v0.1.0-alpha.101 candidate ([D-036 note](docs/DECISIONS.md)). The item stays open: the corrected short form is seen on no installed server yet.
 

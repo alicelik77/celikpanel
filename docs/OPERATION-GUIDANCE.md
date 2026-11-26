@@ -11351,3 +11351,218 @@ page). Tests: `cmd/panel/webmail_address_dns_record_test.go`,
 receiver), `web/tests/webmail-dns-add-alpha135.test.mjs`. Open: no lab run on a
 real pair yet; Roundcube must be installed on the backup server for the card
 to show.
+
+### Corrections from the alpha.143 lab (alpha.144, 22 November 2026)
+
+Component tests and one lab run (22 November 2026, see the alpha.144
+release notes' "Checked in the lab" for what it proved and did not check).
+
+- **A change is not lost because the page was left.** An administrator's
+  close or undo of a PostgreSQL database other accounts can enter (and its
+  "Read again"), creating a mailbox and saving an out-of-office reply run
+  under the page's request identity (D-029) on a context the browser cannot
+  cancel, to their own time limit. Whoever opens the page again reads the
+  result; the same request arriving again is answered from its record and
+  never runs twice. A new press is a new request: it finds the change made
+  (closed already; "the mailbox already exists").
+- **A failed close says what happened.** Its window ends on the step "Not
+  done — nothing was changed" (TR "Yapılmadı — hiçbir şey değiştirilmedi");
+  an unconfirmed result ends on "Result not confirmed yet — not sent again"
+  (TR "Sonuç henüz doğrulanmadı — yeniden gönderilmez"). The reason names
+  the kind of cause, then the database server's message quoted:
+  `err.POSTGRESQL_PUBLIC_FAILED.<kind>` with kind `in_use` (a lock was not
+  granted in time), `timeout`, `connection`, `rights`, `missing`, `refused`;
+  the list's `pgpub.why.server.<kind>` says the same.
+- **A mailbox on the server without a row in the panel** (a creation whose
+  record could not be written) is never an internal error:
+  `MAIL_ACCOUNT_ON_SERVER_ONLY`. The administrator (reason `admin`) is
+  offered **Adopt into this domain**, allowed only while the mailbox's
+  folder holds no message (no file in any `cur/` or `new/` folder of it):
+  it reads the server's lines for the address, writes the row with the size
+  limit found there and replaces the password with the one typed in the
+  adoption window (the password change's own step), so no earlier password
+  works; the domain's signing key and the first-day sending limit then
+  apply as for a new mailbox. Afterwards it is kept or deleted like any
+  other. Anybody else is told to ask the administrator; the
+  sentence names only the address asked for, in the person's own domain.
+  The adoption refuses (`MAIL_ACCOUNT_ADOPT_REFUSED`) when the server no
+  longer holds it (`gone`), holds one of its two lines only (`incomplete`:
+  the server owner removes the line that is left), or holds it in a form
+  CelikPanel does not write (`elsewhere`: another folder, account, shell or
+  no size limit — left to the server owner), `mail_found` (mail is in
+  it: the server owner decides on the server) or `folder_unknown`.
+- **An alias answers in DNS.** An alias inside a zone this server keeps for
+  the same account gets the site's addresses there (`dns`: `published`;
+  `pending` when the zone's publication did not finish — the Panel's hourly
+  round publishes it, and the alias row says "waiting to be published —
+  retried every hour, nothing to do"; `kept` when the name already has an
+  address record CelikPanel did not add (nothing of either type is added);
+  `elsewhere` when no zone of the account here holds it). The records go
+  with the alias; only those CelikPanel added. A removal whose publication
+  waits is shown the same way and never stops a domain's deletion.
+- **Webmail's address in its earlier form** is a Problems-now line
+  (`webmail_address_kept`: the owner's file is kept, CelikPanel's text lies
+  beside it as `.celikpanel-pending`; `webmail_address_refused`: the
+  rewrite was put back because nginx's test failed, naming the file it
+  named). Who acts: the server owner. It goes by itself once the file is in
+  the current form; the Agent tries again at each start.
+- **Refusals in the page's language:** `ALIAS_CERTIFICATE_REISSUE_FAILED`
+  (reasons `untrusted_source`, `not_acme`, `mail_name`),
+  `ALIAS_CERTIFICATE_NOT_COVERING` (reason `custom`), `ALIAS_INVALID`,
+  `ALIAS_NOT_FOUND`, `HSTS_REMOVAL_BLOCKED` (reasons `enabled`, `retiring`
+  with `until`), `SSL_NO_ACTIVE_CERTIFICATE`. Texts in
+  `web/src/i18n/screens/errors`.
+- **One database** is said in the singular in Problems now and in the alert
+  mail.
+
+Code: `cmd/panel/operation_step_routes.go`, `postgresql_public_access.go`,
+`mail_adopt_handlers.go`, `alias_dns.go`, `alias_certificates.go`,
+`cmd/agent/mail_adopt.go`. Tests: `cmd/panel/a144_*_test.go`,
+`cmd/agent/mail_adopt_test.go`.
+
+### Corrections from the alpha.144 lab (alpha.145, 23 November 2026)
+
+- **Security: webmail's local server answers only CelikPanel's own checks.**
+  Its socket `/run/celikpanel-webmail.sock` is 0666 (nginx makes it so), so
+  every account of the server can connect to it (not the network). Until
+  alpha.144 it gave out every file of the Roundcube tree, with the linked
+  plugins and skins folders (dot-files, copies such as `.bak`, settings), and
+  ran every `.php` there. It now answers only `/webmail/` (Roundcube's entry
+  point, the only PHP), style sheets under `/webmail/skins/` and CelikPanel's
+  PHP check; everything else is not found. The Panel's readiness check and
+  the Agent's proof (the PHP check, the page and its style sheet) ask only
+  those. CelikPanel's earlier text is rewritten at the Agent's first start
+  after the update (configuration test, one reload; a failure puts the file
+  back and the start goes on); an owner's file is kept, CelikPanel's text lies
+  beside it as `celikpanel-webmail.conf.celikpanel-pending`, and Problems now
+  has the address line's variant with no address (who acts: the server
+  owner). The PHP check tells a caller which PHP version runs and which of
+  webmail's extensions are missing, nothing else.
+- **Webmail sends.** From the first release Roundcube's configuration handed
+  mail to this server's submission service on 587 without encryption
+  (`smtp_host 'localhost:587'`), and the service takes a login only with
+  encryption, so every message failed with "authentication failed". The
+  configuration now says `tls://127.0.0.1:587` with the mailbox's own login;
+  for 127.0.0.1 only, the certificate's name and chain are not checked (the
+  connection never leaves the server, and the service may present the mail
+  host's certificate or, before one exists, a self-signed one). Any other
+  host keeps the full check.
+- **Existing installations** are corrected at the Agent's first start after
+  the update when the file is CelikPanel's own text (with or without the
+  address lines; mode and owner kept; the new file has its final owner and
+  mode before it is put in place). A file the owner changed is kept; when
+  webmail cannot send with it, CelikPanel's current text (with the file's own
+  `des_key`, readable by root only) lies beside it as
+  `config.inc.php.celikpanel-pending`, and Problems now has one line
+  (`webmail_cannot_send`, who acts: the server owner) naming that text, or the
+  file itself with the two lines to write when no text could be put there.
+  "Cannot send" means: a loopback host (`localhost`, `127.0.0.1`, `[::1]`)
+  without `tls://` or `ssl://` on 587 or no port, or with `tls://`/`ssl://`
+  while the file has no `smtp_conn_options` assignment at all. The line goes
+  by itself once that is no longer so; an owner's own sending setting
+  (another host, any `smtp_conn_options` of theirs, a value CelikPanel cannot
+  read, the legacy key `smtp_server`) is not named. Known gap: an assignment
+  inside a `/* … */` block comment is read as active. The pending file is
+  CelikPanel's own and is removed by name once it is no longer needed.
+- **CelikPanel's own earlier text that could not be rewritten** (a read-only
+  file system, an immutable flag, a full disk) is the same Problems-now line
+  with its own words: the cause is in the Agent's journal; the server owner
+  removes it and restarts the Agent, which then rewrites the file by itself.
+  The file must not be edited by hand: it would then be the owner's for good.
+- The webmail profile is not "installed and verified" while the last
+  component check reads that webmail cannot send; its Repair stays offered and
+  cannot correct the file (the profile says to look at Problems now).
+- **Going back to alpha.144** keeps webmail sending, but alpha.144 does not
+  know the new text: it treats the configuration as changed by the owner and
+  cannot switch webmail's own address lines until the server is updated
+  again.
+- **An alias's DNS record that waited** stops waiting when the zone's held
+  change is published, or when the zone's own pending publication (the backup
+  catching up) completes — then by the hourly round's own step, a fresh
+  publication of the zone — not at the next hourly round; while it waits, the
+  zone's notice says the alias records are published by themselves instead
+  of asking to make the change again.
+- **A PostgreSQL close or its undo** ends with a title that says the outcome
+  (closed, not closed, not known), never the running "Closing …".
+
+Code: `cmd/agent/webmail_sending.go`, `webmail_rpc.go`,
+`cmd/panel/webmail_address_problem.go`, `mail_profiles.go`, `alias_dns.go`,
+`dns_pending_publication.go`. Tests: `cmd/agent/webmail_sending_test.go`,
+`cmd/panel/a145_webmail_send_test.go`, `web/tests/a145-webmail-send-lab.test.mjs`.
+
+### A longer change never stays "in progress" for ever (alpha.145 lab, D1, 23 November 2026)
+
+In the alpha.145 lab a webmail update stayed "in progress" on the panel and
+every component and setup change was refused as "another operation is
+running" until the panel's web process was restarted. The Panel had stopped
+the update's worker after one renewal of its Agent lease went unanswered;
+the Agent finished the step anyway, refused the Panel's Finish while the
+step still ran, and the Panel gave up after 15 seconds without recording
+the operation's end. The same path served component installs,
+install-together, remove-together, mail profiles, Node.js runtimes, setup
+steps and webmail addresses.
+
+- **The row is settled by the running panel.** After a refused or lost
+  Finish the same goroutine reads the Agent's job, changing nothing, until
+  it has ended (bounded by the job's own deadline), then runs for that one
+  row the reconciliation startup recovery runs: a succeeded job is recorded
+  as succeeded, a failed one with its reason, and an interrupted one is
+  handled as at a restart. A webmail update or address is only read again.
+  An install, removal or mail profile is run once more from its start,
+  after the first run has ended, and relies on its steps being safe to
+  repeat; it may take as long again. The process lock is held throughout,
+  so no two steps overlap, and a running panel runs a row again at most
+  once (each restart allows one more, as before).
+- **What the screen says meanwhile.** The operation reads "the panel could
+  not record the end of this change on its agent; it is reading what the
+  server did", then "the change has ended on the server; the panel is
+  recording the result", each with what follows for its kind. Who acts:
+  nobody; it ends by itself. A change refused meanwhile says the same
+  (`service_operation_busy`, reason `settling`).
+- **When it cannot be settled** — the Agent answers no read for two
+  minutes, the Agent has no record of the job (its result is not known),
+  the job's deadline passes, a run again stays refused because the host is
+  busy for two minutes, or the panel's database refuses the write — the
+  operation says so, the process lock is released (while the interrupted
+  job is still active the Agent refuses every other lease; once it has
+  ended, firewall, DNS and mail TLS changes are admitted again before the
+  install is run again at the next start), a refused change names the server
+  owner's steps (reason `unsettled`), and Problems now has one line
+  (`service_operation_unsettled`, who acts: the server owner): first check
+  the Agent (`sudo systemctl status celikpanel-agent`, start it if it is
+  stopped), then `sudo systemctl restart celikpanel-panel`, which restarts
+  only the panel's web process; its startup recovery records what was done
+  (a webmail update or address is only read; an install, removal or mail
+  profile is run once more from its start). While the lock is held (at most
+  the Agent's silence bound of two minutes, or until the job ends), DNS,
+  firewall and mail TLS changes wait for it.
+- **One slow renewal is not a lost Agent.** The worker is stopped on the
+  Agent's definite answer (lease lost or owned by another, job ended), or
+  15 seconds after the last renewal the Agent answered, counted from when
+  it was sent. A renewal may wait for the whole time that remains (a slow
+  answer that comes in time keeps the step), an unanswered one is asked
+  again about a second later, and the first one is scheduled from when the
+  lease was asked for; so the stop comes at the latest 5 seconds before
+  the Agent's 20-second lease can end, and one line in the panel's journal
+  says when and why ("worker stopped: no lease renewal answered for …"). The
+  rule governs every standalone mutation too (firewall, DNS, mail TLS,
+  certificates, VPN, webmail). The Agent's lease rules are unchanged.
+- At startup a run again the host keeps refusing as busy (two minutes)
+  ends the row, since there is no further step: "could not be run again
+  because the server stayed busy; what its first run did is not known"
+  (for a webmail update or address: "its result could not be read"); who
+  acts: the administrator checks the component on its page and starts the
+  change again if needed; other changes are admitted again.
+- A setup install keeps its accepted point updates in its row, so a run
+  again is asked as the review accepted it.
+- The outcome sentences of an interrupted webmail update or address and the
+  audit lines of operations finished after an interruption no longer say
+  "after a panel restart": they say the operation was interrupted.
+- **D-025.** Invariants 2 and 4 of the resilience contract; what changes,
+  the bound, the assumption, the (absent) schema transition and what stays
+  open are recorded there (branch fix/d1-stuck-operation).
+
+Code: `cmd/panel/service_operation_settle.go`, `service_operations.go`
+(`reconcileInterruptedServiceOperationLocked`, shared with startup
+recovery), `service_mutation_agent.go`. Tests:
+`cmd/panel/d1_stuck_operation_test.go`, `web/tests/d1-stuck-operation.test.mjs`.

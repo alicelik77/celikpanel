@@ -41,6 +41,8 @@ type resellerPlanPayload struct {
 	TrafficQuotaMB   int            `json:"traffic_quota_mb"`
 	Rights           *rightsPayload `json:"rights,omitempty"`
 	ConfirmNarrowing bool           `json:"confirm_narrowing,omitempty"`
+	// ConfirmStopped: as for a customer plan (plan_handlers.go).
+	ConfirmStopped string `json:"confirm_stopped,omitempty"`
 	// alpha.128: limits of site settings for the reseller's tree (nil:
 	// none on a create, unchanged on an edit) and the overselling choice
 	// ("allowed" is K2, the default; "" keeps it).
@@ -313,18 +315,20 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 		if len(preview.CeilingsLowered) > 0 {
 			preview.Message += " Lowered limits of site settings reach every site of these resellers at its next write; a site above one runs at the new limit."
 		}
-		// S4 R2a: a lowered site limit below what a site's programs use now.
-		if action == "preview" || !pl.ConfirmNarrowing {
-			p.previewSiteLimitsLowered(ctx, &preview, tree, ceilingsBefore, ceilingsAfter)
-		}
+		// S4 R2a: a lowered site limit below what a site's programs use now,
+		// enforced by its token.
+		p.previewSiteLimitsLowered(ctx, &preview, tree, ceilingsBefore, ceilingsAfter)
 		if action == "preview" {
 			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
 			return
 		}
-		if (len(preview.Removed) > 0 || preview.SitesStoppedCount > 0 || preview.SitesUnread) && !pl.ConfirmNarrowing {
+		if ((len(preview.Removed) > 0 || preview.SitesStoppedCount > 0 || preview.SitesUnread) && !pl.ConfirmNarrowing) ||
+			!siteLimitsStoppedConfirmed(preview, pl.ConfirmStopped) {
 			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
 			return
 		}
+		// Second review of PR #370 (finding 4): the connection limits before.
+		prevConnections := p.dbConnectionLimitsBefore(ctx, rightsOwnerResellerPlan, id, ceilingsBefore, ceilingsAfter)
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			writeServerError(w, err)
@@ -364,7 +368,7 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// alpha.128 (G5): database users follow a changed connection limit.
-		p.reapplyDBConnectionLimitsAfter(ctx, rightsOwnerResellerPlan, id, ceilingsBefore, ceilingsAfter)
+		p.reapplyDBConnectionLimitsAfter(ctx, rightsOwnerResellerPlan, id, ceilingsBefore, ceilingsAfter, prevConnections)
 		// alpha.128 (integration): outgoing mail follows the mail keys.
 		p.requestOutgoingApply()
 		p.auditDetailed(r, "reseller_plan.update:"+pl.Name, "reseller_plan", id, map[string]any{
@@ -425,6 +429,10 @@ func (p *Panel) handleRightsRoutes(w http.ResponseWriter, r *http.Request) {
 		p.handleOfferedOptInPermissions(w, r)
 	case rest == "setting-limits":
 		p.handleSettingLimits(w, r)
+	case rest == "site-memory-default":
+		// S4 R2a second fix round: a site's default memory limit fixed for
+		// the host's earlier memory, previewed and applied (site_limits.go).
+		p.handleSiteMemoryDefault(w, r)
 	case rest == "password-level":
 		p.handlePasswordLevel(w, r)
 	case rest == "notices":

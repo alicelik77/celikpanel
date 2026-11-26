@@ -1277,7 +1277,9 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 				if bindErr == nil {
 					return
 				}
-				if undoErr := undo(context.WithoutCancel(ctx)); undoErr != nil {
+				undoCtx, cancel := detachedUndoContext(ctx)
+				defer cancel()
+				if undoErr := undo(undoCtx); undoErr != nil {
 					var typed *phpToolBindError
 					if errors.As(bindErr, &typed) {
 						typed.Message += fmt.Sprintf("; its own account's pool and files could not all be put back (%v); the server administrator checks %s", undoErr, phpToolPoolPath(tool, version))
@@ -1321,19 +1323,32 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 	// restore puts the previous file back (mode and owner kept) and, when
 	// nginx already loaded the new one, checks and reloads; it says which
 	// step failed, so the message never claims a restore that happened.
+	//
+	// The test and reload run detached from the step's cancellation (alpha.147
+	// review, finding 1): a move whose lease ended after nginx loaded the new
+	// file still reloads the previous one before its own pool is removed, so
+	// nginx never hands PHP to a socket that is gone.
 	restore := func(reload bool) (string, error) {
 		if err := ops.restoreConf(previous); err != nil {
 			return "file", err
 		}
 		if reload {
-			if err := ops.nginxTest(ctx); err != nil {
+			undoCtx, cancel := detachedUndoContext(ctx)
+			defer cancel()
+			if err := ops.nginxTest(undoCtx); err != nil {
 				return "test", err
 			}
-			if err := ops.nginxReload(ctx); err != nil {
+			if err := ops.nginxReload(undoCtx); err != nil {
 				return "reload", err
 			}
 		}
 		return "", nil
+	}
+	// interrupted says what a step that failed because the move was cut
+	// (the step's context ended) means, instead of blaming nginx or the tool.
+	interrupted := func() bool { return ctx.Err() != nil }
+	interruptedSentence := func() string {
+		return fmt.Sprintf("the move of %s to PHP %s was interrupted (%v: the contact with the panel ended)", name, version, ctx.Err())
 	}
 	restoreSentence := func(step string, restoreErr error) string {
 		switch step {
@@ -1352,6 +1367,12 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 		return fail(errCodePHPToolConfigRejected, kind("config_write_failed"), "the configuration for %s could not be written: %v; the previous one is kept", name, err)
 	}
 	if err := ops.nginxTest(ctx); err != nil {
+		if interrupted() {
+			if step, restoreErr := restore(false); restoreErr != nil {
+				return fail(errCodePHPToolConfigRejected, kind("other"), "%s; %s", interruptedSentence(), restoreSentence(step, restoreErr))
+			}
+			return fail(errCodePHPToolConfigRejected, kind("other"), "%s; the previous configuration was put back and %s still runs on PHP %s", interruptedSentence(), name, orUnknown(result.Previous))
+		}
 		if step, restoreErr := restore(false); restoreErr != nil {
 			return fail(errCodePHPToolConfigRejected, kind("nginx_rejected"), "nginx rejected the new configuration (%v); %s", err, restoreSentence(step, restoreErr))
 		}
@@ -1361,6 +1382,12 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 		step, restoreErr := restore(true)
 		result.MutationApplied = true
 		result.Restored = restoreErr == nil
+		if interrupted() {
+			if restoreErr != nil {
+				return fail(errCodePHPToolConfigRejected, kind("other"), "%s; %s", interruptedSentence(), restoreSentence(step, restoreErr))
+			}
+			return fail(errCodePHPToolConfigRejected, kind("other"), "%s; the previous configuration was restored", interruptedSentence())
+		}
 		if restoreErr != nil {
 			return fail(errCodePHPToolConfigRejected, kind("nginx_reload_failed"), "nginx did not reload (%v); %s", err, restoreSentence(step, restoreErr))
 		}
@@ -1371,6 +1398,14 @@ func bindPHPToolWith(ctx context.Context, ops phpToolBindOps, tool, version stri
 	// 3. Proof: the tool answers as itself on the new version.
 	if err := ops.httpProbe(ctx, tool, version); err != nil {
 		cause := phpToolCauseOf(err, "other", version)
+		if interrupted() {
+			step, restoreErr := restore(true)
+			result.Restored = restoreErr == nil
+			if restoreErr != nil {
+				return fail(errCodePHPToolProbeFailed, kind("other"), "%s; %s", interruptedSentence(), restoreSentence(step, restoreErr))
+			}
+			return fail(errCodePHPToolProbeFailed, kind("other"), "%s and put back on PHP %s", interruptedSentence(), orUnknown(result.Previous))
+		}
 		if step, restoreErr := restore(true); restoreErr != nil {
 			return fail(errCodePHPToolProbeFailed, cause, "%s did not work on PHP %s (%v); %s", name, version, err, restoreSentence(step, restoreErr))
 		}
@@ -1424,10 +1459,13 @@ func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 		}
 		return phpToolWebmailConfPath, []byte(renderWebmailNginxConfig(webmailSocket, roundcubeRootDir(), socket)), nil
 	}
-	tools, roots := installedDBToolRoots()
+	installed, roots := installedDBToolRoots()
 	sockets := map[string]string{}
 	for _, state := range phpToolStates() {
-		if state.Tool == tool || roots[state.Tool] == "" {
+		// Only the other tools the configuration serves now keep their line
+		// (S4 R1, second fix round, B3): a tool left out because nothing
+		// would answer for it is not added back by another tool's move.
+		if state.Tool == tool || roots[state.Tool] == "" || state.Source != "config" {
 			continue
 		}
 		current, err := phpToolSocket(state.Tool, state.Socket)
@@ -1437,6 +1475,12 @@ func renderPHPToolConfig(tool, socket string) (string, []byte, error) {
 		sockets[state.Tool] = current
 	}
 	sockets[tool] = socket
+	tools := make([]string, 0, len(installed))
+	for _, id := range installed {
+		if sockets[id] != "" {
+			tools = append(tools, id)
+		}
+	}
 	return phpToolDBToolsConfPath, []byte(renderDBToolsConfig(tools, roots, sockets)), nil
 }
 
@@ -1561,7 +1605,8 @@ func managedWebmailConfig(content string) bool {
 	if listen == nil {
 		return false
 	}
-	return content == renderWebmailNginxConfig(listen[1], alias[1], fpm) || content == legacyRenderWebmailNginxConfig(listen[1], alias[1], fpm)
+	return content == renderWebmailNginxConfig(listen[1], alias[1], fpm) || content == alpha144RenderWebmailNginxConfig(listen[1], alias[1], fpm) ||
+		content == legacyRenderWebmailNginxConfig(listen[1], alias[1], fpm)
 }
 
 // refuseOwnerEditedConfig returns errPHPToolConfigOwnerEdited when the file

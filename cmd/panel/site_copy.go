@@ -414,6 +414,9 @@ func (p *Panel) siteCopyCreateDatabase(ctx context.Context, target wordpressSite
 		}
 		return nil, err
 	}
+	// alpha.149 (lab D9): the copy's database user gets the target
+	// subscription's database limits, by the one function.
+	p.applyNewDatabaseUserLimits(ctx, target.SubscriptionID, serverID, created.User)
 	return created, nil
 }
 
@@ -448,6 +451,8 @@ func (p *Panel) siteCopyRemoveDatabase(ctx context.Context, created *siteCopyNew
 	}
 	if created.UserID > 0 {
 		_, _ = db.ExecContext(ctx, `DELETE FROM database_users WHERE id = ?`, created.UserID)
+		// alpha.149: the removed user's limits records go.
+		p.pruneDBLimitRecords(context.WithoutCancel(ctx))
 	}
 	return true
 }

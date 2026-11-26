@@ -58,8 +58,8 @@ export const enRemovalRuleScreens = {
     'rmrule.emergencyTitle': 'What requires it (the emergency removal goes ahead; these stop or lose it)',
     'dashboard.audit.action.service.uninstall.together': 'removed {target} together with what only it used',
     'dashboard.audit.action.service.uninstall.together.failed': 'could not finish removing {target} together',
-    'dashboard.audit.action.service.uninstall.together.recovered': 'finished removing {target} together after a restart',
-    'dashboard.audit.action.service.uninstall.together.recovered.failed': 'could not finish removing {target} together after a restart',
+    'dashboard.audit.action.service.uninstall.together.recovered': 'finished removing {target} together after an interruption',
+    'dashboard.audit.action.service.uninstall.together.recovered.failed': 'could not finish removing {target} together after an interruption',
     'rmrule.needs': '{name} needs {needs}, which is not installed, so it cannot work. Who acts: you. Next: install the {needs} with the button here; {name} keeps its settings.',
     'err.REMOVAL_NEEDS_TOGETHER': 'Some components can only be removed together with it: nothing else uses them and they cannot work without it. Nothing was removed. Who acts: you. Next: leave them ticked in the removal window and press Remove again.',
 } as const;

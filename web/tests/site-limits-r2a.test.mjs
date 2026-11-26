@@ -9,6 +9,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
+import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
+import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
+import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';
 import { decodeMoveAnswer, decodeSiteLimits, eventKey, lowerUnits, moveSteps, newMoveRequestID, notMovedReason } from '../src/lib/siteLimits.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -39,13 +42,16 @@ test('every limit key the server registers is named for the plan form', () => {
 });
 
 test('a reached limit says when, what the plan allows and who can raise it', () => {
+  // alpha.149 (the alpha.148 lab's CHECK 2): the event says when; the limit is
+  // the one that held then, in its own sentence, never today's (route-scoped).
   for (const kind of ['memory', 'tasks', 'cpu']) {
-    for (const words of [enSiteLimitsScreens, trSiteLimitsScreens]) {
+    for (const words of [enSiteLimitsLane, trSiteLimitsLane]) {
       const sentence = words[`slim.event.${kind}`];
       assert.match(sentence, /\{time\}/, `${kind} says when`);
-      assert.match(sentence, /\{limit\}/, `${kind} says what the plan allows`);
+      assert.ok(!/\{limit\}/.test(sentence), `${kind} names no limit of today`);
     }
   }
+  for (const words of [enSiteLimitsLane, trSiteLimitsLane]) assert.match(words['slim.event.limitThen'], /\{limit\}/);
   assert.match(enSiteLimitsScreens['slim.fix.customer'], /provider/, 'the customer is told who raises it');
   assert.match(enSiteLimitsScreens['slim.fix.admin'], /\{who\}/, 'the administrator is told where it is set');
   assert.equal(eventKey('memory'), 'site.memory_mb');
@@ -88,10 +94,15 @@ test('the card shows the move only to the administrator, in the panel’s own wi
     { unit: 'celikrt-3.service', outcome: 'put_back', put_back: true },
     { unit: 'celiksvc-4.service', outcome: 'failed', step: 'restart', detail: 'it is failed after the restart' },
     { unit: 'celikapp-7.service', outcome: 'not_tried' },
-  ] }, [{ unit: 'celiksvc-4.service', kind: 'service_app', label: 'n8n', placement: 'outside' }], { write: 'W', restart: 'R', check: 'C' });
+  ] }, [{ unit: 'celiksvc-4.service', kind: 'service_app', label: 'n8n', placement: 'outside' }], { write: 'W', restart: 'R', check: 'C', reason: (r) => `reason:${r.code}`, why: 'Y' });
   assert.deepEqual(steps.map((s) => [s.id, s.state]), [['write', 'done'], ['celikrt-3.service', 'failed'], ['celiksvc-4.service', 'failed'], ['celikapp-7.service', 'pending'], ['check', 'failed']]);
   assert.equal(steps[2].label, 'R: n8n');
-  assert.equal(steps[2].note, 'it is failed after the restart');
+  // alpha.149 (lab D7): never the agent's English detail; its code in the page's words.
+  assert.equal(steps[2].note, undefined);
+  const coded = moveSteps({ done: false, rolled_back: true, units: [
+    { unit: 'celiksvc-4.service', outcome: 'failed', step: 'restart', detail: 'it is failed after the restart', reason: { code: 'not_running', seconds: 90 } },
+  ] }, [], { write: 'W', restart: 'R', check: 'C', reason: (r) => `reason:${r.code}`, why: 'Y' });
+  assert.equal(coded[1].note, 'reason:not_running');
   const overview = read('../src/components/domain/sections/OverviewSection.tsx');
   assert.match(overview, /lazy\(\(\) => import\('\.\.\/\.\.\/SiteLimitsCard'\)/, 'the card is fetched only when it is drawn');
 });
@@ -132,9 +143,12 @@ test('the card never promises limits that do not apply, never blames the plan fo
 test('a lowered limit lists the sites whose programs would be stopped, in the change preview', () => {
   const box = read('../src/components/RightsSetEditor.tsx');
   assert.match(box, /preview\.sites_stopped_count/);
-  assert.match(box, /limits\.preview\.sitesStopped/);
+  // alpha.149: the heading and each site's line in the page's words (i18n/siteLimitsLane.ts).
+  assert.match(box, /sitesStoppedTitle\(/);
+  assert.match(box, /siteStoppedLines\(preview, laneT\)/);
   assert.match(read('../src/lib/rights.ts'), /sites_stopped: Array\.isArray\(raw\.sites_stopped\)/);
-  assert.match(enSiteLimitsScreens['limits.preview.sitesStopped'], /stops them at once/);
+  // Second fix round: the sentence moved to its own part and says what each lowered limit does.
+  assert.match(enSiteLimitsApplyScreens['limits.preview.sitesStopped'], /memory limit is stopped at once; at the process limit no new process starts and running ones go on/);
   const problems = read('../src/components/ProblemsNow.tsx');
   assert.ok(problems.includes("'site_limits_unsupported'"), 'the host line is a known kind');
   for (const part of ['title', 'body', 'action']) assert.ok(trSiteLimitsScreens[`pnow.site_limits_unsupported.${part}`]);

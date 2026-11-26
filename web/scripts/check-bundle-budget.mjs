@@ -391,6 +391,10 @@ const screenPartBudgets = {
   // which have no room; set with at least 25% headroom from its Turkish
   // file: 5.23 / 1.78 KiB.
   sideDoorsUndo: kib(7, 2.4),
+  // 20 Nov 2026 (security lane S1b): the PostgreSQL databases every account
+  // of the server can enter, closing them and the undo (pgpub.). A new part;
+  // set with at least 25% headroom from its Turkish file.
+  pgPublic: kib(6, 2.6),
   // 21 Nov 2026 (S4 R2a): the limits of a site's programs together on the
   // domain's Overview, the plan keys of those limits and of the database
   // users' time limits, the administrator's move into the limits and the
@@ -399,6 +403,22 @@ const screenPartBudgets = {
   // part, so no existing part's budget is raised; set with at least 25%
   // headroom from its Turkish file.
   siteLimits: kib(9, 3.1),
+  // 22 Nov 2026 (S4 R2a second fix round): the limit in force on a site's
+  // card, a move that ran out of time, the preview of a lowered site limit
+  // (moved here from siteLimits) and the Problems now lines of a limit change
+  // that did not reach every site and of a default memory limit set for the
+  // server's earlier memory (slim.applied, slim.move.timeUp,
+  // limits.preview.sitesStopped, pnow.site_limits_unapplied.*,
+  // pnow.site_memory_default.*). A new part beside siteLimits, which has no
+  // room; set with at least 25% headroom from its Turkish file: 1.65 / 0.74
+  // KiB.
+  siteLimitsApply: kib(2.3, 1.0),
+  // alpha.149 fix round B: only the audit list's name of Apply again, which
+  // the audit lists of every screen read; the rest of this lane's words are
+  // fetched with the screens that show them (src/i18n/dbLimitsWords, below;
+  // review of PR #370, finding 18). Lowered from 2.5 / 1.0 KiB; no other
+  // part's budget is raised.
+  dbLimits: kib(0.6, 0.5),
   // 22 Nov 2026 (S4 R2b): a site's scheduled tasks inside its limits - each
   // task's last run on the Scheduled tasks screen (stasks.), the
   // administrator's move of the crontab and its undo (slim.tasks.), "Move all"
@@ -422,6 +442,12 @@ const namedChunkBudgets = {
     [`src/i18n/screens/${part}/en.ts`, limit],
     [`src/i18n/screens/${part}/tr.ts`, limit],
   ])),
+  // alpha.149 (review of PR #370, finding 18): the database limits' words,
+  // fetched only by Problems now when it has such a line and by a plan's
+  // editor when a database limit changes (src/i18n/dbLimits.ts); their own
+  // chunk per language, held to the async ceiling like the help texts.
+  'src/i18n/dbLimitsWords/en.ts': budgets.async,
+  'src/i18n/dbLimitsWords/tr.ts': budgets.async,
   // The help texts are fetched when a help drawer is opened. As a static part
   // of every page that carries the Help button they had brought the Settings
   // route to 0.29 KiB of its limit (2026-10-09).

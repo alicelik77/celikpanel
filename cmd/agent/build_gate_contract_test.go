@@ -67,6 +67,14 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SitePageCacheClearV1(&transport.SitePageCacheClearRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.144: reading a mailbox found on the server without a record.
+		{name: "MailboxOnServerV1", run: func(expected string) string {
+			var response transport.MailboxOnServerResponse
+			if err := agent.MailboxOnServerV1(&transport.MailboxOnServerRequest{ExpectedBuildCommit: expected, Email: "old@example.com"}, &response); err != nil {
+				return err.Error()
+			}
+			return ""
+		}},
 		// alpha.135: removing one item of what deletions left.
 		{name: "RemoveHeldItemV1", run: func(expected string) string {
 			var response transport.RemoveHeldItemResponse
@@ -267,6 +275,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.149: a site database role's limits, as the superuser.
+			name: "SetPostgreSQLRoleLimitsV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLRoleLimitsResponse
+				_ = agent.SetPostgreSQLRoleLimitsV1(&transport.PostgreSQLRoleLimitsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.129: a database's added users.
 			name: "CreateDatabaseAccessUserV1",
 			run: func(expected string) string {
@@ -280,6 +297,40 @@ func protectedBuildGateOperations() []buildGateOperation {
 			run: func(expected string) string {
 				var response transport.DatabaseAccessUserResponse
 				_ = agent.RemoveDatabaseAccessUserV1(&transport.DatabaseAccessUserRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// S1b (20 Nov 2026): old PostgreSQL databases closed to other accounts.
+			name: "PostgreSQLPublicAccessScanV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessScanResponse
+				_ = agent.PostgreSQLPublicAccessScanV1(&transport.PostgreSQLPublicAccessScanRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "PostgreSQLPublicAccessCloseV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessCloseResponse
+				_ = agent.PostgreSQLPublicAccessCloseV1(&transport.PostgreSQLPublicAccessCloseRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "PostgreSQLPublicAccessUndoV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessUndoResponse
+				_ = agent.PostgreSQLPublicAccessUndoV1(&transport.PostgreSQLPublicAccessUndoRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// Second review of alpha.143 (B1): whether a close still runs.
+			name: "PostgreSQLPublicAccessRunningV1",
+			run: func(expected string) string {
+				var response transport.PostgreSQLPublicAccessRunningResponse
+				_ = agent.PostgreSQLPublicAccessRunningV1(&transport.PostgreSQLPublicAccessRunningRequest{ExpectedBuildCommit: expected, Name: "shop"}, &response)
 				return response.Error
 			},
 		},

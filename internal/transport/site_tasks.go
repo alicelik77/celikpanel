@@ -162,9 +162,14 @@ type SiteTasksMoveResponse struct {
 	// Refusal is a code for Error (cron_allow_owner: cron's access files
 	// would let the account install its own jobs after the move, or leave it
 	// out for an undo; source_owner: the task file was changed by hand;
-	// busy: another move runs; limits: the site's limits file is not in
-	// place).
+	// limits: the site's limits file is not in place; and, as the programs'
+	// move answers them (alpha.150), kept_earlier: a move record is kept;
+	// another_move, update_running, update_unreadable, site_busy).
 	Refusal string `json:"refusal,omitempty"`
+	// Recovery (alpha.150): the move's one outcome record when this move or
+	// undo left its record kept (Outcome unknown): the site's card shows it
+	// with Try again.
+	Recovery *SiteSliceMoveRecovery `json:"recovery,omitempty"`
 }
 
 // SiteTaskSourceResponse answers the administrator's rebuild of a missing
@@ -203,7 +208,6 @@ const SiteTasksSourceHeld = "site_tasks_source_held: the server owner changed th
 const (
 	SiteTasksRefusalCronAllow = "cron_allow_owner"
 	SiteTasksRefusalSource    = "source_owner"
-	SiteTasksRefusalBusy      = "busy"
 	SiteTasksRefusalCrontab   = "crontab_changed"
 	SiteTasksRefusalLimits    = "limits"
 )
@@ -230,31 +234,13 @@ type SiteTasksMovedResponse struct {
 	// ("" when it has not, or the host holds no block).
 	MailSubmission string `json:"mail_submission,omitempty"`
 	Error          string `json:"error,omitempty"`
-	// Unresolved (second fix round): a move or undo the Agent could not
-	// resolve; until it is, every new move and undo is refused (any site).
-	// Whatever SiteIDs asked for.
-	Unresolved *SiteMoveUnresolved `json:"unresolved,omitempty"`
 }
 
-// SiteMoveUnresolved is the move journal that is still there after the
-// Agent tried to resolve it (one file for every site and kind of move).
-type SiteMoveUnresolved struct {
-	SiteID    int    `json:"site_id"`
-	Kind      string `json:"kind"`
-	Step      string `json:"step,omitempty"`
-	Account   string `json:"account,omitempty"`
-	StartedAt string `json:"started_at,omitempty"`
-}
-
-// Kinds of an unresolved move, and the refusal every new move and undo
-// answers meanwhile (SiteTasksMoveResponse.Refusal, MoveSiteSliceResponse.Refusal).
-const (
-	SiteMoveUnresolvedTasksMove  = "tasks_move"
-	SiteMoveUnresolvedTasksUndo  = "tasks_undo"
-	SiteMoveUnresolvedPrograms   = "programs_move"
-	SiteMoveUnresolvedUnreadable = "unreadable"
-	SiteMoveRefusalUnresolved    = "unresolved_move"
-)
+// SiteMoveRefusalKept is the refusal every new move and undo answers while a
+// move record is kept (alpha.150: the programs' move's kept_earlier, one
+// record for programs and tasks; SiteTasksMoveResponse.Refusal, and
+// MoveSiteSliceResponse.Reason's code).
+const SiteMoveRefusalKept = "kept_earlier"
 
 // --- The side doors step: cron.allow and lingering -------------------------
 

@@ -21,11 +21,13 @@ import (
 
 const siteMutationLockStripeCount = 256
 
-var siteMutationLockStripes [siteMutationLockStripeCount]sync.Mutex
+// siteMutationLocks: one lock per site (S4 R2a review B10: not striped, so
+// a site being moved never makes an unrelated site's change wait).
+var siteMutationLocks perIDMutex
 var siteUsernameLockStripes [siteMutationLockStripeCount]sync.Mutex
 
 func siteMutationMutex(siteID int) *sync.Mutex {
-	return &siteMutationLockStripes[uint(siteID)%siteMutationLockStripeCount]
+	return siteMutationLocks.of(siteID)
 }
 
 func siteUsernameMutex(username string) *sync.Mutex {
@@ -92,6 +94,10 @@ type siteLifecycleOps struct {
 	// masked (a new account's written, a deleted account's removed;
 	// side_doors_user_manager.go). Nil skips it.
 	syncUserManagers func() error
+	// S4 R2a second fix round (review B4): an earlier installation's slice
+	// file and drop-in folder of the new site's id, moved aside together
+	// before anything of the new site exists. Nil skips it.
+	setAsideSiteSlice func(int) ([]string, error)
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -136,13 +142,14 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return file.Close()
 		},
-		removeSiteSlice:  removeSiteSlice,
-		createSiteTasks:  createSiteTasks,
-		removeSiteTasks:  removeSiteTasks,
-		syncUserManagers: syncSiteUserManagers,
-		applyLayout:      applyHostingLayout,
-		applyVhost:       a.nginxGen.ApplyVhost,
-		applySiteVhost:   a.nginxGen.ApplyManagedVhost,
+		removeSiteSlice:   removeSiteSlice,
+		setAsideSiteSlice: setAsideEarlierSiteSlice,
+		createSiteTasks:   createSiteTasks,
+		removeSiteTasks:   removeSiteTasks,
+		syncUserManagers:  syncSiteUserManagers,
+		applyLayout:       applyHostingLayout,
+		applyVhost:        a.nginxGen.ApplyVhost,
+		applySiteVhost:    a.nginxGen.ApplyManagedVhost,
 		removeVhost: func(domain string) error {
 			backup, err := a.nginxGen.RemoveSiteVhost(domain)
 			if backup != "" {
@@ -450,6 +457,23 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 	} else if !unknownSiteUser(lookupErr) {
 		failCreateSite(reply, req.Domain, "site identity preflight", lookupErr, nil)
 		return nil
+	}
+	// S4 R2a: nothing of this site exists yet (its home and account are
+	// new), so a limits file or drop-in folder of its id that the Agent's
+	// ledger does not know is an earlier installation's: moved aside, never
+	// inherited (site_slices.go). Where such a file is there and could not
+	// be classified or moved aside, the site is refused here with the file
+	// and the reason (third fix round), before anything of it is made: the
+	// new customer's site never starts with an earlier site's limits.
+	if ops.setAsideSiteSlice != nil {
+		if _, err := ops.setAsideSiteSlice(req.SiteID); err != nil {
+			log.Printf("CreateSite %s: refused: an earlier site's limits file is in the way: %v", req.Domain, err)
+			reply.Success = false
+			reply.ErrorMessage = "site provisioning refused: an earlier site's limits file of the same number is on the server and could not be set aside"
+			reply.ErrorCode = transport.SiteConfigExists
+			reply.ErrorDetail = err.Error()
+			return nil
+		}
 	}
 	// The web server and the site users must be able to reach the hosting
 	// base. An owner's directory that blocks them refuses the site here,

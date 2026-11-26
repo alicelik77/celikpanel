@@ -305,6 +305,21 @@ func (p *Panel) removeDomainDNSForDeletion(
 	if err != nil {
 		return err
 	}
+	// alpha.144: the records CelikPanel added for the domain's aliases in
+	// zones kept here go first, whatever the domain's own DNS (review of
+	// PR #355, finding 7); those in its own zone go with the zone (the
+	// infrastructure zone and a subdomain's parent zone stay, so theirs are
+	// removed). A publication that waits after the removal does not stop
+	// the deletion: it is retried every hour (finding 1).
+	ownZone := domain
+	if mode != setupDNSModeLocal || parentDomain != "" {
+		ownZone = ""
+	} else if infrastructure, err := p.isInfrastructureDNSZone(ctx, domain); err != nil || infrastructure {
+		ownZone = ""
+	}
+	if err := p.withdrawDomainAliasesDNS(ctx, domain, ownZone); err != nil {
+		return fmt.Errorf("remove the records of the domain's aliases: %w", err)
+	}
 	if mode == setupDNSModeExternal {
 		// Provider records belong to the operator. Local site removal must not
 		// publish a DNS deletion or claim that external records were removed.

@@ -164,33 +164,20 @@ func moveSliceFileAside(path string) (string, error) {
 }
 
 // writeSiteSlice applies the slice file and records CelikPanel's digest. The
-// caller holds siteSliceMu and reloads systemd when written is true. A slice
-// file the ledger does not know (a site deleted under an earlier
-// installation, whose id is used again) is treated as a leftover first: an
-// owner's edit of it is moved aside (named in the answer and the log),
-// CelikPanel's unchanged text is replaced as usual.
-func writeSiteSlice(s *transport.SiteSlice, trigger string, ledger map[string]sandboxLedgerEntry) (transport.SiteFileResult, bool, string, error) {
+// caller holds siteSliceMu, read the ledger with loadSandboxLedger (never
+// one that could not be read) and reloads systemd when written is true. An
+// earlier site's leftover file of the same id is not this function's: it is
+// moved aside when the new site is created (setAsideEarlierSiteSlice), so a
+// write for an existing site never moves an owner's file or drop-in aside.
+func writeSiteSlice(s *transport.SiteSlice, trigger string, ledger map[string]sandboxLedgerEntry) (transport.SiteFileResult, bool, error) {
 	f, err := siteSliceManaged(s, trigger, "")
 	if err != nil {
-		return transport.SiteFileResult{}, false, "", err
+		return transport.SiteFileResult{}, false, err
 	}
 	f.RecordedSHA256 = ledger[f.Path].RenderSHA256
-	aside := ""
-	if _, known := ledger[f.Path]; !known {
-		inspected, _, _ := services.InspectManagedSiteFile(f)
-		switch inspected.State {
-		case transport.SiteFileOwnerEdited, transport.SiteFileForeign, transport.SiteFileUnknownOrigin:
-			moved, err := moveSliceFileAside(f.Path)
-			if err != nil {
-				return inspected, false, "", fmt.Errorf("an earlier site's limits file %s could not be moved aside: %v", f.Path, err)
-			}
-			aside = moved
-			log.Printf("site slice: %s belonged to an earlier site with the same id and was changed on this server; it is kept as %s (systemd does not load it)", f.Path, moved)
-		}
-	}
 	result, err := services.ApplyManagedSiteFile(f, func() error { return siteSliceVerify(f.Path) }, nil)
 	if err != nil {
-		return result, false, aside, err
+		return result, false, err
 	}
 	written := false
 	switch result.Outcome {
@@ -207,11 +194,75 @@ func writeSiteSlice(s *transport.SiteSlice, trigger string, ledger map[string]sa
 	case transport.SiteFileOutcomeKept:
 		log.Printf("site slice: %s was changed on this server and is kept (%s); CelikPanel's text is in %s", f.Path, result.State, result.PendingPath)
 	}
-	return result, written, aside, nil
+	return result, written, nil
+}
+
+// setAsideEarlierSiteSlice runs when a site is created (CreateSite; S4 R2a
+// second fix round, review B4): a slice file of the new site's id that the
+// ledger does not know belongs to an earlier site of an earlier installation
+// with the same id. The file AND its drop-in folder are moved aside together
+// under names systemd does not load, so the new customer's site inherits
+// neither; their new names are returned (and logged). A file the ledger
+// knows, and a site that has no such file, are left alone. Third fix round
+// (the review's B4 residue): where such a file or folder is there and could
+// not be classified (a ledger that cannot be read) or moved aside, the error
+// is returned and CreateSite refuses the site with it, before anything of
+// the site is made; a site with neither proceeds whatever the ledger.
+func setAsideEarlierSiteSlice(siteID int) ([]string, error) {
+	file, err := siteSliceFile(siteID)
+	if err != nil {
+		return nil, err
+	}
+	siteSliceMu.Lock()
+	defer siteSliceMu.Unlock()
+	present := false
+	for _, p := range []string{file, file + ".d"} {
+		if _, err := os.Lstat(p); err == nil {
+			present = true
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("%s could not be read: %v", p, err)
+		}
+	}
+	if !present {
+		return nil, nil
+	}
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		return nil, fmt.Errorf("%s is on the server and CelikPanel's record of its own files could not be read (%v), so it is not known whether an earlier site left it", file, err)
+	}
+	if _, known := ledger[file]; known {
+		return nil, nil
+	}
+	var aside []string
+	for _, p := range []string{file, file + ".d"} {
+		if _, err := os.Lstat(p); err != nil {
+			continue
+		}
+		moved, err := moveSliceFileAside(p)
+		if err != nil {
+			return aside, fmt.Errorf("an earlier site's %s could not be moved aside: %v", p, err)
+		}
+		aside = append(aside, moved)
+		log.Printf("site slice: %s belonged to an earlier site with the id %d; it is kept as %s (systemd does not load it)", p, siteID, moved)
+	}
+	if len(aside) > 0 {
+		_ = os.Remove(file + ".celikpanel-pending")
+		if err := siteSliceDaemonReload(); err != nil {
+			log.Printf("site slice: %v", err)
+		}
+	}
+	return aside, nil
 }
 
 func siteSliceDaemonReload() error {
-	if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
+	return siteSliceDaemonReloadWith(appUnitSystemctl)
+}
+
+// siteSliceDaemonReloadWith is the daemon-reload through the given systemctl
+// (a bounded one at the Agent's start and in a status read; alpha.149 second
+// fix round, R5/R6).
+func siteSliceDaemonReloadWith(systemctl func(args ...string) ([]byte, error)) error {
+	if out, err := systemctl(systemctlArgs("daemon-reload")...); err != nil {
 		return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
@@ -229,7 +280,12 @@ func ensureSiteSlice(s *transport.SiteSlice) {
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
-	result, written, _, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, readSandboxLedger())
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		log.Printf("site slice: %s was not written: %v", sitesandbox.SliceName(s.SiteID), err)
+		return
+	}
+	result, written, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, ledger)
 	if err != nil || result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused {
 		log.Printf("site slice: %s could not be written (%s %s %s): %v", sitesandbox.SliceName(s.SiteID), result.Outcome, result.Reason, result.Detail, err)
 		return
@@ -239,7 +295,7 @@ func ensureSiteSlice(s *transport.SiteSlice) {
 			log.Printf("site slice: %v", err)
 			return
 		}
-		pushSiteSlicesToKernel([]int{s.SiteID})
+		logSiteSlicePushFailures(pushSiteSlicesToKernel([]int{s.SiteID}))
 	}
 }
 
@@ -268,26 +324,46 @@ func siteUnitEntersSlice(unit string, s *transport.SiteSlice, move bool) bool {
 	if !siteUnitRunningStates[props["ActiveState"]] {
 		return true
 	}
-	return props["ControlGroup"] == "/"+sitesandbox.SliceName(s.SiteID)+"/"+unit
+	return sitesandbox.UnitInSiteSlice(props["ControlGroup"], unit, s.SiteID)
+}
+
+// siteSliceTaskUnitPattern: a scheduled task's service of the next release
+// (R2b: celikcron-<site id>-<n>.service in its site's slice). This release
+// makes none; a server that comes back to it from that release has them, and
+// such a unit file naming its own site's slice counts as naming it (S4 R2a
+// third fix round), so the slice file and its limits stay managed and a
+// recovery never removes a slice the tasks run in.
+var siteSliceTaskUnitPattern = regexp.MustCompile(`^celikcron-([1-9][0-9]{0,9})-[1-9][0-9]{0,3}\.service$`)
+
+// siteSliceNamedBy reads which site's slice a unit file in the unit folder
+// names (0: none, or not a unit that may name one): a site's program, or a
+// task's service naming its own site's slice. The file's slice is read as
+// systemd reads it (its last Slice= line, sitesandbox.UnitFileSlice).
+func siteSliceNamedBy(dir, name string) int {
+	task := siteSliceTaskUnitPattern.FindStringSubmatch(name)
+	if task == nil && !siteSliceUnitPattern.MatchString(name) {
+		return 0
+	}
+	id, ok := sitesandbox.ParseSliceName(sitesandbox.UnitFileSlice(readSmallFile(filepath.Join(dir, name))))
+	if !ok || (task != nil && task[1] != strconv.Itoa(id)) {
+		return 0
+	}
+	return id
 }
 
 // siteSlicesNamed reads the unit folder once: the sites whose slice a unit
-// file names (Slice=celiksite_<id>.slice) or whose slice cgroup exists (a
-// unit runs in it).
+// file names (Slice=celiksite_<id>.slice; siteSliceNamedBy) or whose slice
+// cgroup exists (a unit runs in it).
 func siteSlicesNamed() map[int]bool {
 	out := map[int]bool{}
 	if dir, err := sandboxUnitDir(); err == nil {
 		if entries, err := os.ReadDir(dir); err == nil {
 			for _, e := range entries {
-				if !siteSliceUnitPattern.MatchString(e.Name()) || !e.Type().IsRegular() {
+				if !e.Type().IsRegular() {
 					continue
 				}
-				for _, line := range strings.Split(readSmallFile(filepath.Join(dir, e.Name())), "\n") {
-					if rest, ok := strings.CutPrefix(line, "Slice="); ok {
-						if id, ok := sitesandbox.ParseSliceName(strings.TrimSpace(rest)); ok {
-							out[id] = true
-						}
-					}
+				if id := siteSliceNamedBy(dir, e.Name()); id > 0 {
+					out[id] = true
 				}
 			}
 		}
@@ -313,16 +389,84 @@ const (
 	// below it; a larger request is read up to the bound and says so
 	// (Partial), never refused as a whole.
 	siteSliceMaxSites = 5000
+	// siteSliceMaxUnits bounds one move (its units each restart in turn).
 	siteSliceMaxUnits = 64
-	siteSliceShowList = 400
+	// siteSliceMaxReadUnits bounds the units of one status request (review
+	// B9): a site may have any number of programs; the Panel pages its
+	// reads by units too, and a request above the bound is read up to it,
+	// the rest counted per site as unread, never refused as a whole.
+	siteSliceMaxReadUnits = 20000
+	siteSliceShowList     = 400
 )
 
-var siteSliceShowProperties = []string{"Id", "LoadState", "ActiveState", "ControlGroup", "Slice", "MemoryMax", "TasksMax",
-	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent", "DropInPaths"}
+// siteSliceShowProperties: ActiveEnterTimestampMonotonic (alpha.149 second
+// fix round, R1) is read in the same reading as the state, so a status read
+// knows how long a kept program has run without a break.
+var siteSliceShowProperties = []string{"Id", "LoadState", "ActiveState", "SubState", "ControlGroup", "Slice", "MemoryMax", "TasksMax",
+	"CPUQuotaPerSecUSec", "MemoryCurrent", "TasksCurrent", "DropInPaths", "FragmentPath", "NeedDaemonReload", "ActiveEnterTimestampMonotonic"}
+
+// siteSliceKernelState reads what a running slice's cgroup enforces
+// (memory.max, pids.max, cpu.max) and compares it with what systemd applies
+// (S4 R2a third fix round, review N3): "in_force" only when all three equal
+// systemd's values and systemd has read the file that is on disk; "pending"
+// when they differ (on systemd 257 a changed file reaches a running slice
+// only by CelikPanel's own push, a program's start, or, after an owner's
+// edit and daemon-reload, up to about two minutes later) or systemd has not
+// read the file (FragmentPath empty, NeedDaemonReload=yes); "unknown" when a
+// file cannot be read; "" when the slice does not run (systemd applies the
+// file when a program starts). Anything that cannot be read is never "in
+// force".
+func siteSliceKernelState(dir string, props map[string]string, file string) (transport.SiteSliceLimitsRead, string) {
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		return transport.SiteSliceLimitsRead{}, ""
+	}
+	memory := kernelBytes(readSmallFile(filepath.Join(dir, "memory.max")))
+	tasks := kernelBytes(readSmallFile(filepath.Join(dir, "pids.max")))
+	cpu := kernelCPUPercent(readSmallFile(filepath.Join(dir, "cpu.max")))
+	if memory == -2 || tasks == -2 || cpu == -2 {
+		return transport.SiteSliceLimitsRead{}, transport.SiteSliceKernelUnknown
+	}
+	read := transport.SiteSliceLimitsRead{}
+	if memory >= 0 {
+		read.MemoryMB = int(memory >> 20)
+	}
+	if tasks >= 0 && tasks <= math.MaxInt32 {
+		read.Tasks = int(tasks)
+	}
+	if cpu >= 0 {
+		read.CPUPercent = int(cpu)
+	}
+	if props == nil {
+		return read, transport.SiteSliceKernelUnknown
+	}
+	if fragment, shown := props["FragmentPath"]; file != transport.SiteFileAbsent && ((shown && fragment == "") || props["NeedDaemonReload"] == "yes") {
+		return read, transport.SiteSlicePending // systemd has not read the file on disk
+	}
+	wantMemory, wantTasks := systemdBytes(props["MemoryMax"]), systemdBytes(props["TasksMax"])
+	wantCPU := int64(-2)
+	if usec, limited := systemdTimespanUSec(props["CPUQuotaPerSecUSec"]); limited {
+		wantCPU = int64(math.Round(usec / 1e4))
+	} else if strings.TrimSpace(props["CPUQuotaPerSecUSec"]) == "infinity" {
+		wantCPU = -1
+	}
+	if wantMemory == -2 || wantTasks == -2 || wantCPU == -2 {
+		return read, transport.SiteSliceKernelUnknown
+	}
+	if !siteSliceSameBytes(wantMemory, memory) || wantTasks != tasks || wantCPU != cpu {
+		return read, transport.SiteSlicePending
+	}
+	return read, transport.SiteSliceInForce
+}
 
 // showUnits asks systemd about many units in as few calls as possible
 // (systemctl show prints one block per unit, separated by a blank line).
 func showUnits(names []string) (map[string]map[string]string, error) {
+	return showUnitsWith(appUnitSystemctl, names)
+}
+
+// showUnitsWith is showUnits through the given systemctl (the Agent's start
+// passes one bounded by its context; alpha.149 second fix round, R5).
+func showUnitsWith(systemctl func(args ...string) ([]byte, error), names []string) (map[string]map[string]string, error) {
 	out := map[string]map[string]string{}
 	for start := 0; start < len(names); start += siteSliceShowList {
 		end := start + siteSliceShowList
@@ -330,7 +474,7 @@ func showUnits(names []string) (map[string]map[string]string, error) {
 			end = len(names)
 		}
 		args := append([]string{"show", "--property=" + strings.Join(siteSliceShowProperties, ",")}, names[start:end]...)
-		raw, err := appUnitSystemctl(systemctlArgs(args...)...)
+		raw, err := systemctl(systemctlArgs(args...)...)
 		if err != nil {
 			return nil, fmt.Errorf("systemctl show: %v: %s", err, strings.TrimSpace(string(raw)))
 		}
@@ -463,10 +607,8 @@ func siteUnitDropInSlice(dropInPaths string) string {
 		if !strings.HasSuffix(p, ".conf") {
 			continue
 		}
-		for _, line := range strings.Split(readSmallFile(p), "\n") {
-			if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "Slice="); ok {
-				slice = strings.TrimSpace(rest)
-			}
+		if named := sitesandbox.UnitFileSlice(readSmallFile(p)); named != "" {
+			slice = named
 		}
 	}
 	return slice
@@ -488,9 +630,11 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 		resp.Partial = fmt.Sprintf("only the first %d of %d sites were read in this request", siteSliceMaxSites, len(req.Sites))
 	}
 	var names []string
-	for _, q := range sites {
-		if q.SiteID <= 0 || len(q.Units) > siteSliceMaxUnits {
-			resp.Error = "a site identity and at most 64 units per site are required"
+	unread := map[int]int{}
+	taken := 0
+	for i, q := range sites {
+		if q.SiteID <= 0 {
+			resp.Error = "a site identity is required"
 			return nil
 		}
 		names = append(names, sitesandbox.SliceName(q.SiteID))
@@ -499,8 +643,17 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 				resp.Error = "not a site's unit: " + u
 				return nil
 			}
-			names = append(names, u)
 		}
+		if room := siteSliceMaxReadUnits - taken; len(q.Units) > room {
+			if room < 0 {
+				room = 0
+			}
+			unread[i] = len(q.Units) - room
+			sites[i].Units = q.Units[:room]
+			resp.Partial = fmt.Sprintf("only the first %d programs were read in this request", siteSliceMaxReadUnits)
+		}
+		taken += len(sites[i].Units)
+		names = append(names, sites[i].Units...)
 	}
 	show := map[string]map[string]string{}
 	if len(names) > 0 {
@@ -510,12 +663,13 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			return nil
 		}
 	}
-	ledger := readSandboxLedger()
-	moves := readSiteMoveOutcomes()
-	for _, q := range sites {
+	ledger := readSandboxLedger() // read-only here: nothing is written
+	moves := siteMoveOutcomesNow(show)
+	named := siteSlicesNamed()
+	for i, q := range sites {
 		slice := sitesandbox.SliceName(q.SiteID)
 		props := show[slice]
-		status := transport.SiteSliceStatus{SiteID: q.SiteID, Slice: slice, Units: []transport.SiteSliceUnit{}}
+		status := transport.SiteSliceStatus{SiteID: q.SiteID, Slice: slice, Units: []transport.SiteSliceUnit{}, Named: named[q.SiteID], UnitsUnread: unread[i]}
 		status.File, status.DropIns = siteSliceFileState(q.SiteID, ledger)
 		status.Active = siteUnitRunningStates[props["ActiveState"]]
 		status.Live = transport.SiteSliceLimitsRead{MemoryMB: systemdBytesMB(props["MemoryMax"]), Tasks: systemdCount(props["TasksMax"]),
@@ -534,6 +688,7 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			status.Units = append(status.Units, siteSliceUnitStatus(q.SiteID, u, show[u]))
 		}
 		dir := filepath.Join(siteSliceCgroupRoot, slice)
+		status.Kernel, status.KernelState = siteSliceKernelState(dir, props, status.File)
 		if info, err := os.Stat(dir); err == nil && info.IsDir() {
 			files := sitesandbox.SliceCgroupFiles{
 				MemoryEvents: readSmallFile(filepath.Join(dir, "memory.events")), MemoryEventsLocal: readSmallFile(filepath.Join(dir, "memory.events.local")),
@@ -541,6 +696,9 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			}
 			if _, err := os.Stat(filepath.Join(dir, "pids.events.local")); err == nil {
 				files.HasPidsEventsLocal, files.PidsEventsLocal = true, readSmallFile(filepath.Join(dir, "pids.events.local"))
+			} else {
+				// alpha.149 (lab D3): the slice's own peak against its limit.
+				files.SlicePidsPeak, files.SlicePidsMax = readSmallFile(filepath.Join(dir, "pids.peak")), readSmallFile(filepath.Join(dir, "pids.max"))
 			}
 			for _, u := range status.Units {
 				if u.Placement != transport.SiteUnitInSlice {
@@ -555,7 +713,7 @@ func (a *Agent) SiteSlicesStatusV1(req *transport.SiteSlicesStatusRequest, resp 
 			status.CountersRead = true
 			status.Counters = transport.SiteSliceCounters{MemoryLimitHits: c.MemoryLimitHits, MemoryOOMAll: c.MemoryOOMAll, OOMKills: c.OOMKills,
 				MemoryMaxHits: c.MemoryMaxHits, TasksLimitHits: c.TasksLimitHits, TasksOtherHits: c.TasksOtherHits, TasksRule: c.TasksRule,
-				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods}
+				CPUThrottled: c.CPUThrottled, CPUThrottledUSec: c.CPUThrottledUSec, CPUPeriods: c.CPUPeriods, SlicePidsPeak: c.SlicePidsPeak, SlicePidsMax: c.SlicePidsMax}
 		}
 		resp.Sites = append(resp.Sites, status)
 	}
@@ -575,9 +733,14 @@ func siteSliceUnitStatus(siteID int, unit string, props map[string]string) trans
 		out.Placement = transport.SiteUnitAbsent
 	case !siteUnitRunningStates[props["ActiveState"]]:
 		out.Placement = transport.SiteUnitStopped
-	case props["ControlGroup"] == "/"+sitesandbox.SliceName(siteID)+"/"+unit:
+	case props["ActiveState"] == "activating" && (siteUnitAutoRestart(props) || strings.TrimSpace(props["ControlGroup"]) == ""):
+		// alpha.149 (lab D6): systemd is starting it again by itself (its
+		// program exited; no process, no cgroup): not running, never "where
+		// the server owner placed it".
+		out.Placement = transport.SiteUnitRestarting
+	case sitesandbox.UnitInSiteSlice(props["ControlGroup"], unit, siteID):
 		out.Placement, out.Slice = transport.SiteUnitInSlice, sitesandbox.SliceName(siteID)
-	case props["ControlGroup"] == "/"+sitesandbox.SystemSlice+"/"+unit:
+	case sitesandbox.UnitInSystemSlice(props["ControlGroup"], unit):
 		out.Placement, out.Slice = transport.SiteUnitOutside, sitesandbox.SystemSlice
 	default:
 		out.Placement = transport.SiteUnitElsewhere
@@ -593,10 +756,11 @@ func siteSliceUnitStatus(siteID int, unit string, props map[string]string) trans
 const siteSliceApplyBatch = 100
 
 // ApplySiteSlicesV1 writes changed limits into the slices. A site without a
-// slice file gets one when one of its units names the slice or runs in it
-// (the owner deleted the file: no limit would apply otherwise); a site
-// nothing of which uses the slice gets one when its first unit goes into
-// it. The running slices take the new limits at once (one daemon-reload per
+// slice file gets one when one of its units names the slice or runs in it,
+// or CelikPanel wrote the file before (the owner deleted it: no limit would
+// apply otherwise); a site nothing of which uses the slice gets one when its
+// first unit goes into it. A ledger that cannot be read writes nothing and
+// answers why (Error). The running slices take the new limits at once (one daemon-reload per
 // request, then pushSiteSlicesToKernel); nothing is restarted.
 func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *transport.ApplySiteSlicesResponse) error {
 	resp.Sites = []transport.SiteSliceApplied{}
@@ -618,32 +782,42 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
-	ledger := readSandboxLedger()
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		resp.Error = err.Error() // nothing was written
+		return nil
+	}
 	named := siteSlicesNamed()
-	var written []int
+	var written, accepted []int
 	for i := range req.Sites {
 		s := &req.Sites[i]
 		applied := transport.SiteSliceApplied{SiteID: s.SiteID}
 		if siteSliceFor(s, s.SiteID) == nil {
-			applied.Outcome, applied.Detail = transport.SiteFileOutcomeFailed, "the site's limits are out of range"
+			applied.Outcome, applied.Detail, applied.Reason = transport.SiteFileOutcomeFailed, "the site's limits are out of range", "out_of_range"
 			resp.Sites = append(resp.Sites, applied)
 			continue
 		}
+		accepted = append(accepted, s.SiteID)
 		trigger := transport.SiteFileTriggerChange
-		if named[s.SiteID] {
-			// A unit names the slice or runs in it: an absent file is written
-			// again (systemd would otherwise run the slice without limits).
+		path, _ := siteSliceFile(s.SiteID)
+		if _, wrote := ledger[path]; named[s.SiteID] || wrote {
+			// A unit names the slice or runs in it, or CelikPanel wrote the
+			// file before (the owner deleted it to give it back): an absent
+			// file is written again (systemd would otherwise run the slice
+			// without limits).
 			trigger = transport.SiteFileTriggerCreate
 		}
-		result, didWrite, aside, err := writeSiteSlice(s, trigger, ledger)
-		applied.Outcome, applied.PendingPath, applied.MovedAside = result.Outcome, result.PendingPath, aside
+		result, didWrite, err := writeSiteSlice(s, trigger, ledger)
+		applied.Outcome, applied.PendingPath = result.Outcome, result.PendingPath
 		switch {
 		case err != nil:
-			applied.Outcome, applied.Detail = transport.SiteFileOutcomeFailed, err.Error()
+			applied.Outcome, applied.Detail, applied.Reason = transport.SiteFileOutcomeFailed, err.Error(), "write_failed"
 		case result.Outcome == transport.SiteFileOutcomeMissing:
 			applied.Outcome = transport.SiteFileAbsent
-		case result.Outcome == transport.SiteFileOutcomeFailed || result.Outcome == transport.SiteFileOutcomeRefused:
-			applied.Detail = strings.TrimSpace(result.Reason + " " + result.Detail)
+		case result.Outcome == transport.SiteFileOutcomeFailed:
+			applied.Detail, applied.Reason = strings.TrimSpace(result.Reason+" "+result.Detail), "write_failed"
+		case result.Outcome == transport.SiteFileOutcomeRefused:
+			applied.Detail, applied.Reason = strings.TrimSpace(result.Reason+" "+result.Detail), "refused"
 		}
 		if didWrite {
 			written = append(written, s.SiteID)
@@ -655,7 +829,27 @@ func (a *Agent) ApplySiteSlicesV1(req *transport.ApplySiteSlicesRequest, resp *t
 			resp.Error = err.Error()
 			return nil
 		}
-		pushSiteSlicesToKernel(written)
+	}
+	// Review N3: every running slice of the request is compared with what
+	// systemd applies, also one whose file did not change now (an earlier
+	// push failed: the hourly round sends it again), and a site whose
+	// running slice does not hold its limits afterwards is a failed outcome,
+	// never "written".
+	failed := pushSiteSlicesToKernel(accepted)
+	for i := range resp.Sites {
+		why := failed[resp.Sites[i].SiteID]
+		if why == "" || resp.Sites[i].Outcome == transport.SiteFileOutcomeFailed || resp.Sites[i].Outcome == transport.SiteFileOutcomeRefused {
+			continue
+		}
+		// alpha.149 (lab O3): the push read the kernel again before this
+		// answer; only a slice whose kernel values differ is "does not have
+		// the limits"; one that could not be read is "unchecked".
+		reason, text := "kernel_differs", "the limits file is written, but the running programs do not have the limits yet: "
+		if strings.HasPrefix(why, siteSliceUncheckedPrefix) {
+			reason, text = "unchecked", "the limits file is written; whether the running programs have the limits could not be read: "
+		}
+		resp.Sites[i].Outcome, resp.Sites[i].Detail, resp.Sites[i].Reason = transport.SiteFileOutcomeFailed, text+why, reason
+		log.Printf("site slice: %s: %s", sitesandbox.SliceName(resp.Sites[i].SiteID), resp.Sites[i].Detail)
 	}
 	return nil
 }
@@ -673,8 +867,12 @@ func removeSiteSlice(siteID int) ([]string, error) {
 	}
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
+	ledger, err := loadSandboxLedger()
+	if err != nil {
+		return nil, err // nothing is removed or moved aside on that reading
+	}
 	var aside []string
-	state, _ := siteSliceFileState(siteID, readSandboxLedger())
+	state, _ := siteSliceFileState(siteID, ledger)
 	switch state {
 	case transport.SiteFileAbsent:
 	case transport.SiteFileManagedUnchanged:
@@ -816,23 +1014,14 @@ func siteUnitMovedBody(body string, siteID int) (string, bool, error) {
 	return strings.Join(lines, "\n"), already, nil
 }
 
-// writeUnitBytes replaces a unit file with text (a new file beside it,
-// renamed into place).
+// writeUnitBytes replaces a unit file (or a slice file the move puts back)
+// with text through the writer every other managed site file uses
+// (services.WriteFileDurably: a new file beside it, synced before the
+// rename, its folder synced after it; S4 R2a third fix round, review N4), so
+// a power loss right after the move's write never leaves an empty unit.
 func writeUnitBytes(file, text string, mode os.FileMode) error {
 	if mode == 0 {
 		mode = 0o644
 	}
-	tmp := file + ".celikpanel-partial"
-	if err := os.WriteFile(tmp, []byte(text), mode); err != nil {
-		return err
-	}
-	if err := os.Chmod(tmp, mode); err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	if err := os.Rename(tmp, file); err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	return nil
+	return services.WriteFileDurably(file, []byte(text), mode)
 }

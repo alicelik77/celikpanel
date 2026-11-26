@@ -341,8 +341,8 @@ Deploy **Boston first**. Do not touch Frankfurt until all Boston checks pass:
 6. read-only service-operation and mutation-ledger checks are idle.
 
 Only then repeat the applicable update mode on **Frankfurt** and run the same
-checks. If any check fails, stop the rollout and roll back the already-updated
-server before attempting the peer.
+checks. If any check fails, stop the rollout before attempting the peer; an
+update that has completed is not rolled back (see below).
 
 When an enrolled [independent recovery runtime](RECOVERY-RUNTIME.md) is present,
 use `sudo /usr/libexec/celikpanel/recovery recover` to resume an existing durable
@@ -361,6 +361,10 @@ historical retained scripts have their separate legacy path. New-operation
 admission remains unimplemented; do not substitute tokens, copy receipts or retry
 through another release.
 
+A current update writes recovery material for its snapshot before it applies
+anything, so it prints no rollback command: it names the retained snapshot and
+says that a manual rollback of a completed update is not supported, and that
+release's `rollback.sh` refuses the snapshot before it stops anything.
 For the legacy retained-release path, use only the root-trusted rollback script
 and `VERIFIED_SNAPSHOT` value printed by the update. Substitute the exact printed release directory; never use a
 checkout copy or a rollback script from another release:

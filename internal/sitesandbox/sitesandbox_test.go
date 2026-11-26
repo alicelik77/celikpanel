@@ -232,6 +232,8 @@ func TestEgressFileAndLines(t *testing.T) {
 		}
 	}
 	guard := EgressGuardScriptText()
+	// S4 R2a third fix round: the guard also takes the next release's task
+	// units by their own helper path (the same text as that release's).
 	if !strings.Contains(guard, "/system.slice/$unit") || !strings.Contains(guard, EgressFile) || strings.Contains(guard, "flush ruleset") ||
 		!strings.Contains(guard, "grep -q -F -e 'argv[]="+HelperPath+" egress-add ' -e 'argv[]="+TaskHelperPath+" egress-add '") {
 		t.Fatalf("guard script:\n%s", guard)

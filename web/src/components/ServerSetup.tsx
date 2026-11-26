@@ -113,6 +113,9 @@ const codeKey: Record<string, TranslationKey> = {
     server_setup_pdns_untested_system: 'setup.v5.wait.server_setup_pdns_untested_system',
     server_setup_host_busy: 'setup.v5.wait.server_setup_host_busy',
     server_setup_host_stayed_busy: 'setup.v5.wait.server_setup_host_stayed_busy',
+    // D1 review, finding 5: a setup step ended at the panel's start because
+    // the busy host kept refusing its run again: setup's own next step.
+    service_operation_rerun_host_busy: 'setup.v5.wait.service_operation_rerun_host_busy',
     mail_tls_sync_host_busy: 'setup.v5.wait.mail_tls_sync_host_busy',
     server_setup_agent_not_answering: 'setup.v5.wait.server_setup_agent_not_answering',
     server_setup_peer_dkim_removed: 'setup.v5.wait.server_setup_peer_dkim_removed',

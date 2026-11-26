@@ -79,6 +79,33 @@ export const enProblemsNowScreens = {
     'pnow.node_port_reserved.title': 'The Node.js site {domain} uses port {value} of a server service',
     'pnow.node_port_reserved.body': 'Its visitors are passed to port {value}, which a service of this server uses, so that service may be reachable from the internet. Nothing was changed. Save the site’s Node.js settings again: it gets a free port, and its program must listen on that port.',
     'pnow.node_port_reserved.action': 'Open the domain',
+    // alpha.143 (lane S1b): PostgreSQL databases made before alpha.141 that
+    // every account of the server can still enter.
+    'pnow.postgresql_databases_open.title': '{value} PostgreSQL databases are still open to the server’s other accounts',
+    'pnow.postgresql_databases_open.body': 'Made before alpha.141: {name}. Every account of the server may connect to them, or make temporary tables where it may already connect. CelikPanel found something there it does not decide by itself, or its close failed. On the PostgreSQL page, read what was found, then close each one; it can be undone.',
+    'pnow.postgresql_databases_open.action': 'Review and close',
+    // alpha.144: one database, in the singular.
+    'pnow.postgresql_databases_open.title_one': '1 PostgreSQL database is still open to the server’s other accounts',
+    'pnow.postgresql_databases_open.body_one': 'Made before alpha.141: {name}. Every account of the server may connect to it, or make temporary tables where it may already connect. CelikPanel found something there it does not decide by itself, or its close failed. On the PostgreSQL page, read what was found, then close it; it can be undone.',
+    // alpha.143 (lane S3b): mail signed only for the sender's own domain.
+    'pnow.mail_signing.title': 'Mail may still be signed for another customer’s domain',
+    // 21 Nov 2026: one body per state, each with the server owner's concrete step.
+    'pnow.mail_signing.conf_kept': '{domain} was changed by hand and kept. The server owner adds the line SenderMacro {auth_authen} to it (the panel’s full text is in {domain}.celikpanel-pending) and restarts OpenDKIM.',
+    'pnow.mail_signing.port25_kept': 'The port 25 milter setting ({domain}) was changed by hand and can still sign arriving mail. The server owner takes OpenDKIM out of it, or removes it so the panel writes it, and restarts the panel.',
+    'pnow.mail_signing.submit_open': 'Programs of sites can send mail signed for any domain on this server. The server owner sets authorized_submit_users = root, vmail in /etc/postfix/main.cf and reloads Postfix.',
+    'pnow.mail_signing.unsupported': 'This server’s OpenDKIM cannot sign by the mailbox login, so mail sent with a mailbox password is signed by its From: line. No setting here changes that.',
+    'pnow.mail_signing.failed': 'A signing change was put back, or OpenDKIM did not start again. Mail is delivered. Check that OpenDKIM runs on its component page, then restart the panel.',
+    'pnow.mail_signing.unknown': 'The last mail change could not confirm how mail is signed. Restart the panel to check again.',
+    'pnow.mail_signing.action': 'Open the mail server',
+    // S4 R2a (moved here from "siteLimitsApply" in the third fix round, which
+    // has no room): a change of limits that did not reach every site.
+    'pnow.site_limits_unapplied.title': 'New site limits have not reached {value} sites yet',
+    'pnow.site_limits_unapplied.body': 'After a change of limits ({domain}), {value} sites still have their earlier limits ({other}). CelikPanel tries again every hour; this line goes away when every site has the new ones.',
+    'pnow.site_limits_unapplied.action': 'Open Plans',
+    // S4 R2a third fix round: a move into a site's limits whose put-back did not complete.
+    'pnow.site_move_kept.title': 'A move into a site’s limits did not finish: {domain}',
+    'pnow.site_move_kept.body': 'A program may be stopped, or the site’s scheduled tasks may not run; no site is moved until this is settled. The site’s card says what to do.',
+    'pnow.site_move_kept.action': 'Open the site',
     // S4 R2b (sites' scheduled tasks inside their limits; the second fix round
     // moved these lines here from the "siteTasks" part).
     'pnow.site_tasks_held.title': 'Scheduled tasks held: {value} sites',
@@ -87,9 +114,6 @@ export const enProblemsNowScreens = {
     'pnow.site_lingering.title': 'Site accounts keep their own programs running',
     'pnow.site_lingering.body': 'These accounts linger, so programs they started keep running outside their limits: {domain}. The server owner ends it with: {other}',
     'pnow.site_lingering.action': 'Open Monitoring',
-    'pnow.site_move_unresolved.title': 'A move into the limits is unresolved: {domain}',
-    'pnow.site_move_unresolved.body': 'A move of {domain} could not be finished or put back; its record keeps the crontab, so nothing is lost. No site is moved and no move is undone until it is resolved. CelikPanel tries again at its next start. If it cannot, the server owner switches the site’s timers off, lets the account into /etc/cron.allow, and gives the crontab back: {other}',
-    'pnow.site_move_unresolved.action': 'Open the site',
     'pnow.site_user_manager_open.title': 'Site accounts can start their own service manager',
     'pnow.site_user_manager_open.body': 'When these accounts sign in with SFTP, their own service manager can start and run programs outside their limits: {domain}. The server owner closes it with: sudo systemctl mask {other}',
     'pnow.site_user_manager_open.action': 'Open Monitoring',

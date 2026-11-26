@@ -446,8 +446,18 @@ func trafficSourceFor(domain transport.TrafficDomain, formatState string, gaps m
 // renderTrafficLogrotate is CelikPanel's logrotate file for the traffic logs:
 // daily, three days kept, never more than 100 MB before rotating. nginx is
 // told to reopen its logs with its own signal through systemd, which works
-// whatever nginx's pid file is called.
-func renderTrafficLogrotate() string {
+// whatever nginx's pid file is called. account is the web server's account
+// (also its group's name): each new log is made 0640 for it, closed to
+// other accounts even when nginx itself had made the earlier one at 0644
+// (independent review of the last commit, B2). "" (not readable) keeps
+// logrotate's plain create, which copies the earlier log's mode and owner.
+// The file is CelikPanel's managed text: one the owner changed is kept; the
+// earlier unchanged text is replaced at the next check.
+func renderTrafficLogrotate(account string) string {
+	create := "    create\n"
+	if account != "" {
+		create = "    create 0640 " + account + " " + account + "\n"
+	}
 	return "# The small per-site traffic logs nginx writes for CelikPanel's monthly\n" +
 		"# traffic limit. Rotated by the operating system, with or without CelikPanel.\n" +
 		"# CelikPanel writes this file only while it is CelikPanel's unchanged text.\n" +
@@ -460,7 +470,7 @@ func renderTrafficLogrotate() string {
 		"    notifempty\n" +
 		"    compress\n" +
 		"    delaycompress\n" +
-		"    create\n" +
+		create +
 		"    sharedscripts\n" +
 		"    postrotate\n" +
 		"        systemctl kill --kill-who=main --signal=USR1 nginx.service >/dev/null 2>&1 || true\n" +
@@ -504,7 +514,7 @@ func reconcileTrafficLogrotate(now time.Time) string {
 		trafficLastLogrotateState = "missing_tool"
 		return trafficLastLogrotateState
 	}
-	state, err := services.ReconcileManagedFile(trafficLogrotatePath, renderTrafficLogrotate())
+	state, err := services.ReconcileManagedFile(trafficLogrotatePath, renderTrafficLogrotate(services.WebServerAccountName()))
 	if err != nil {
 		log.Printf("[traffic] logrotate file: %v", err)
 		trafficLastLogrotateState = "failed"

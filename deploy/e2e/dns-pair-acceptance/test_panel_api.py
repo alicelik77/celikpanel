@@ -73,6 +73,44 @@ class PanelClientTest(unittest.TestCase):
             headers=[("Set-Cookie", f"celikpanel_session={COOKIE}; Path=/; HttpOnly; Secure; SameSite=Lax")]))
         self.script.on("GET", "/api/v1/auth/me", ok({"username": "owner", "role": "admin", "effective_role": "admin"}))
 
+    def test_session_cookie_follows_the_name_the_panel_sets(self) -> None:
+        # A panel after the sign-in cookie change: the __Host- name over HTTPS.
+        self.script.on("POST", "/api/v1/auth/login", ok(
+            {"username": "owner", "role": "admin"},
+            headers=[("Set-Cookie", f"__Host-celikpanel_session={COOKIE}; Path=/; HttpOnly; Secure; SameSite=Lax")]))
+        self.script.on("GET", "/api/v1/auth/me", ok({"username": "owner", "role": "admin", "effective_role": "admin"}))
+        self.client.login("owner", PASSWORD)
+        self.assertEqual(self.script.calls[1][2]["Cookie"], f"__Host-celikpanel_session={COOKIE}")
+        self.assertNotIn(COOKIE, json.dumps(self.captured))
+
+    def test_session_cookie_carried_over_after_an_update(self) -> None:
+        # Signed in on a panel before the change (plain name); after the update
+        # the panel answers with the same session under the __Host- name and
+        # the plain name removed. The client follows; nothing is dropped.
+        self.login_ok()
+        self.client.login("owner", PASSWORD)
+        self.script.rules.clear()
+        self.script.on("GET", "/api/v1/panel/availability", ok({"state": "available"}, headers=[
+            ("Content-Type", "application/json"),
+            ("Set-Cookie", f"__Host-celikpanel_session={COOKIE}; Path=/; HttpOnly; Secure; SameSite=Lax"),
+            ("Set-Cookie", "celikpanel_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax")]))
+        self.client.request("GET", "/api/v1/panel/availability")
+        self.assertEqual(self.client.cookie, COOKIE)
+        self.assertEqual(self.client.cookie_name, "__Host-celikpanel_session")
+        self.script.on("GET", "/api/v1/auth/me", ok({"username": "owner"}, headers=[
+            ("Content-Type", "application/json"),
+            ("Set-Cookie", "celikpanel_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax")]))
+        self.client.request("GET", "/api/v1/auth/me")
+        self.assertEqual(self.script.calls[-1][2]["Cookie"], f"__Host-celikpanel_session={COOKIE}")
+        self.assertEqual(self.client.cookie, COOKIE)
+
+    def test_restored_session_value_is_sent_under_both_names(self) -> None:
+        self.client.cookie = COOKIE
+        self.script.on("GET", "/api/v1/auth/me", ok({"username": "owner"}))
+        self.client.request("GET", "/api/v1/auth/me")
+        self.assertEqual(self.script.calls[-1][2]["Cookie"],
+                         f"__Host-celikpanel_session={COOKIE}; celikpanel_session={COOKIE}")
+
     def test_login_headers_and_redaction(self) -> None:
         self.login_ok()
         identity = self.client.login("owner", PASSWORD)

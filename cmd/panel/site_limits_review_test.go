@@ -182,7 +182,12 @@ func TestALoweredSiteLimitAsksFirst(t *testing.T) {
 	if !strings.Contains(refused.Body.String(), `"sites_stopped":["customer.matrix.test: memory 900 MB in use, new limit 512 MB"]`) || applied != 0 {
 		t.Fatalf("refusal: %s (applied %d)", refused.Body.String(), applied)
 	}
-	wantStatus(t, f.call(t, authzMatrixAdminID, http.MethodPut, "/api/v1/plans/"+itoa(plan), body+`,"confirm_narrowing":true}`), http.StatusOK, "")
+	// The confirmation names the list it confirms (second fix round).
+	var refusal struct {
+		Preview rightsPreview `json:"preview"`
+	}
+	_ = json.Unmarshal(refused.Body.Bytes(), &refusal)
+	wantStatus(t, f.call(t, authzMatrixAdminID, http.MethodPut, "/api/v1/plans/"+itoa(plan), body+`,"confirm_narrowing":true,"confirm_stopped":"`+refusal.Preview.StoppedToken+`"}`), http.StatusOK, "")
 	if applied != 1 {
 		t.Fatalf("the confirmed change was not applied (%d)", applied)
 	}
@@ -218,13 +223,19 @@ func TestTheCardTellsWhetherTheLimitsApply(t *testing.T) {
 		}
 		return view
 	}
-	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsOutside || view.Live != nil {
+	// Third fix round (review W1): the customer reads one neutral state for
+	// everything it cannot act on; the administrator reads the reason.
+	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsNotYet || view.Live != nil {
 		t.Fatalf("programs outside the limits: %+v", view)
 	}
+	if view := get(authzMatrixAdminID); view.Applies != siteLimitsOutside || view.Live != nil {
+		t.Fatalf("programs outside the limits (administrator): %+v", view)
+	}
 	reading.Sites[0].File = transport.SiteFileAbsent
+	reading.Sites[0].Named = true // a unit runs in the slice: the file was there
 	reading.Sites[0].DropIns = []string{"owner.conf"}
 	reading.Sites[0].Units[0].Placement, reading.Sites[0].Units[0].Slice = transport.SiteUnitInSlice, reading.Sites[0].Slice
-	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsNoFile || view.Live != nil || len(view.DropIns) != 0 {
+	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsNotYet || view.Live != nil || len(view.DropIns) != 0 {
 		t.Fatalf("no slice file: %+v", view)
 	}
 	admin := get(authzMatrixAdminID)
@@ -232,16 +243,20 @@ func TestTheCardTellsWhetherTheLimitsApply(t *testing.T) {
 		t.Fatalf("administrator: %+v", admin)
 	}
 	reseller := get(authzMatrixResellerID)
-	if !reseller.Reseller || reseller.Admin {
+	if !reseller.Reseller || reseller.Admin || reseller.Applies != siteLimitsNotYet {
 		t.Fatalf("reseller: %+v", reseller)
 	}
 	reading.Sites[0].File = transport.SiteFileManagedUnchanged
+	reading.Sites[0].KernelState = transport.SiteSliceInForce // review N3: the kernel holds them
 	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsApply || view.Live == nil {
 		t.Fatalf("inside the limits: %+v", view)
 	}
 	reading.Unsupported = "cgroup v2"
-	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsUnsupported || view.Unsupported != "cgroup v2" {
+	if view := get(authzMatrixCustomerID); view.Applies != siteLimitsNotYet || view.Unsupported != "" {
 		t.Fatalf("unsupported host: %+v", view)
+	}
+	if view := get(authzMatrixAdminID); view.Applies != siteLimitsUnsupported || view.Unsupported != "cgroup v2" {
+		t.Fatalf("unsupported host (administrator): %+v", view)
 	}
 }
 
@@ -397,7 +412,7 @@ func TestFiveThousandSitesAreReadAndWritten(t *testing.T) {
 		}
 		return transport.ApplySiteSlicesResponse{}, nil
 	}
-	if err := f.panel.reapplySiteSlicesNow(context.Background(), []int{9802}); err != nil {
+	if err := f.panel.reapplySiteSlicesNow(context.Background(), "test", []int{9802}); err != nil {
 		t.Fatal(err)
 	}
 	if batches != 51 || biggest > siteSliceApplyBatch {

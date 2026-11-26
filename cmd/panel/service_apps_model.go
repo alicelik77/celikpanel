@@ -342,6 +342,11 @@ func (n panelServiceAppNative) finalize(ctx context.Context, req transport.Servi
 
 func (n panelServiceAppNative) control(ctx context.Context, req transport.ServiceAppControlRequest) (transport.ServiceAppStepResponse, error) {
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	// alpha.149 (lab O2): a start of a program that does not run writes it
+	// into its site's limits first (the Agent never moves a running one).
+	if req.Action != "stop" {
+		req.Target.Slice = n.p.siteSliceForSubscription(ctx, req.Target.SiteID, req.Target.SubscriptionID, req.Target.Domain)
+	}
 	var resp transport.ServiceAppStepResponse
 	return resp, n.call(ctx, "Agent.ServiceAppControlV1", &req, &resp)
 }

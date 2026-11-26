@@ -38,11 +38,19 @@ import (
 // setting) is never touched. On systemd 255 the kernel already holds the
 // new values after the reload, so nothing is pushed.
 //
-// An Agent stop between set-property and the removal leaves those control
-// drop-ins with the same effective values the slice had: harmless, and gone
-// at the next reboot anyway (/run). The files the Agent is about to make are
-// recorded first (siteSliceRuntimeJournalPath) and removed at the Agent's
-// next start (cleanupSiteSliceRuntime).
+// The files the Agent is about to make are recorded first
+// (siteSliceRuntimeJournalPath), and removed in the same step on every way
+// out of it (a deferred cleanup after the record). Only an Agent stop
+// between set-property and the removal leaves them (review B6): they carry
+// the effective values the slice had at that moment, so nothing changes for
+// the owner then, but until they are removed they outrank the owner's own
+// drop-ins in /etc/systemd/system/<slice>.d for those keys: a drop-in the
+// owner adds or changes for such a key meanwhile does not apply until the
+// Agent's next start removes the file (cleanupSiteSliceRuntime, the first
+// thing the Agent does after taking its instance lock, before anything
+// reads limits) or the next reboot (/run is emptied). An owner's own
+// `systemctl set-property --runtime` of the same key made in that window is
+// removed with them.
 //
 // Değişen sınır çalışan dilime hemen ulaşır: systemd 257 dosyayı yeniden
 // yüklemede uygulamadığı için yalnız farklı olan anahtar, systemd'nin
@@ -145,6 +153,9 @@ func siteSliceAssignment(k siteSliceKernelKey, effective, kernel string) string 
 		if want == -2 || have == -2 || want == have {
 			return ""
 		}
+		if strings.HasPrefix(k.file, "memory.") && siteSliceSameBytes(want, have) {
+			return "" // the kernel's page rounding of the same value
+		}
 		if want < 0 {
 			return k.assign + "=infinity"
 		}
@@ -152,20 +163,54 @@ func siteSliceAssignment(k siteSliceKernelKey, effective, kernel string) string 
 	}
 }
 
+// siteSliceSameBytes: a memory value systemd applies and the one the kernel
+// shows are the same (-1: no limit). The kernel keeps memory.max in whole
+// pages, rounding a value down by less than one page (64 KiB at most).
+func siteSliceSameBytes(want, have int64) bool {
+	if want < 0 || have < 0 {
+		return want == have
+	}
+	return have <= want && want-have < 64<<10
+}
+
+// logSiteSlicePushFailures logs a push's failures where no record follows
+// (a program's write, the move: each program started in the slice makes
+// systemd apply the file, and the card reads the kernel's values).
+func logSiteSlicePushFailures(failed map[int]string) {
+	for id, why := range failed {
+		log.Printf("site slice: %s keeps its earlier running limits until a program of the site starts: %s", sitesandbox.SliceName(id), why)
+	}
+}
+
+// siteSliceRuntimeJournalWrite writes the push's record (a seam: tests make
+// it fail as a read-only folder would).
+var siteSliceRuntimeJournalWrite = writePrivateFile
+
 func saveSiteSliceRuntimeJournal(files []string) error {
 	raw, err := json.Marshal(siteSliceRuntimeJournal{Files: files})
 	if err != nil {
 		return err
 	}
-	return writePrivateFile(siteSliceRuntimeJournalPath, raw)
+	return siteSliceRuntimeJournalWrite(siteSliceRuntimeJournalPath, raw)
 }
 
 // pushSiteSlicesToKernel makes the running slices of these sites enforce
 // their effective limits now (the rules above). The caller has written the
-// slice files and reloaded systemd.
-func pushSiteSlicesToKernel(siteIDs []int) {
+// slice files and reloaded systemd. It answers, per site, why its running
+// slice does not hold them (S4 R2a third fix round, review N3): systemd
+// could not be read, the record could not be written, set-property failed,
+// or the kernel's files still differ after it. ApplySiteSlicesV1 turns these
+// into failed outcomes, which the Panel records for its hourly round and
+// its Problems now line.
+func pushSiteSlicesToKernel(siteIDs []int) map[int]string {
+	failed := map[int]string{}
 	if systemdUserMode || len(siteIDs) == 0 {
-		return
+		return failed
+	}
+	fail := func(name, why string) {
+		if id, ok := sitesandbox.ParseSliceName(name); ok && failed[id] == "" {
+			failed[id] = why
+		}
 	}
 	var names []string
 	for _, id := range siteIDs {
@@ -175,26 +220,27 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 		}
 	}
 	if len(names) == 0 {
-		return
+		return failed
 	}
-	args := []string{"show", "--property=Id,MemoryMax,MemorySwapMax,TasksMax,CPUQuotaPerSecUSec"}
-	raw, err := appUnitSystemctl(systemctlArgs(append(args, names...)...)...)
+	effective, err := readSiteSliceEffective(names)
 	if err != nil {
-		log.Printf("site slice: the running limits could not be read: %v: %s", err, strings.TrimSpace(string(raw)))
-		return
-	}
-	effective := map[string]map[string]string{}
-	for _, block := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n\n") {
-		props := parseShow(block)
-		if id := props["Id"]; id != "" {
-			effective[id] = props
+		why := siteSliceUncheckedPrefix + "systemd's running limits could not be read: " + err.Error()
+		for _, name := range names {
+			fail(name, why)
 		}
+		return failed
 	}
+	// alpha.149 (lab O3): on every way out the answer is what the kernel holds
+	// then. A site whose push failed (its record, set-property) keeps its
+	// failure only when its kernel values still differ from systemd's
+	// effective ones (the file's write and reload may have applied them).
+	defer settleSiteSlicePushFailures(failed, effective)
 	plan := map[string][]string{}
 	var files []string
 	for _, name := range names {
 		props := effective[name]
 		if props == nil {
+			fail(name, "systemd did not report the slice's running limits")
 			continue
 		}
 		for _, k := range siteSliceKernelKeys {
@@ -211,22 +257,86 @@ func pushSiteSlicesToKernel(siteIDs []int) {
 		}
 	}
 	if len(files) == 0 {
-		return // systemd already applied them (systemd 255), or nothing changed
+		return failed // systemd already applied them (systemd 255), or nothing changed
 	}
 	if err := saveSiteSliceRuntimeJournal(files); err != nil {
-		log.Printf("site slice: the running limits were not pushed (their record could not be written: %v); they apply when a program of the site next starts", err)
-		return
+		for name := range plan {
+			fail(name, "the running limits were not pushed: their record could not be written ("+err.Error()+")")
+		}
+		return failed
 	}
+	// The control drop-ins go again in this same step, on every way out.
+	defer cleanupSiteSliceRuntime()
 	for _, name := range names {
 		if len(plan[name]) == 0 {
 			continue
 		}
 		out, err := appUnitSystemctl(systemctlArgs(append([]string{"set-property", "--runtime", name}, plan[name]...)...)...)
 		if err != nil {
-			log.Printf("site slice: %s keeps its earlier running limits until a program of the site starts: %v: %s", name, err, strings.TrimSpace(string(out)))
+			fail(name, "systemctl set-property: "+strings.TrimSpace(err.Error()+" "+string(out)))
 		}
 	}
-	cleanupSiteSliceRuntime()
+	// What the kernel holds now is the answer, not what was asked.
+	for name := range plan {
+		if file := siteSliceKernelDiffers(name, effective[name]); file != "" {
+			fail(name, "the kernel still holds the earlier "+file)
+		}
+	}
+	return failed
+}
+
+// siteSliceUncheckedPrefix starts a push failure whose kernel values could
+// not be compared (systemd's effective values were not read): "unchecked",
+// never "does not have the limits".
+const siteSliceUncheckedPrefix = "not checked: "
+
+// readSiteSliceEffective reads systemd's effective limits of running slices.
+func readSiteSliceEffective(names []string) (map[string]map[string]string, error) {
+	args := []string{"show", "--property=Id,MemoryMax,MemorySwapMax,TasksMax,CPUQuotaPerSecUSec"}
+	raw, err := appUnitSystemctl(systemctlArgs(append(args, names...)...)...)
+	if err != nil {
+		return nil, errors.New(strings.TrimSpace(err.Error() + " " + string(raw)))
+	}
+	effective := map[string]map[string]string{}
+	for _, block := range strings.Split(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n\n") {
+		props := parseShow(block)
+		if id := props["Id"]; id != "" {
+			effective[id] = props
+		}
+	}
+	return effective, nil
+}
+
+// siteSliceKernelDiffers names the first cgroup file of a running slice whose
+// value differs from systemd's effective one ("" when they all agree or a
+// pair cannot be read and compared: siteSliceAssignment's rule).
+func siteSliceKernelDiffers(name string, props map[string]string) string {
+	for _, k := range siteSliceKernelKeys {
+		if siteSliceAssignment(k, props[k.property], readSmallFile(filepath.Join(siteSliceCgroupRoot, name, k.file))) != "" {
+			return k.file
+		}
+	}
+	return ""
+}
+
+// settleSiteSlicePushFailures reads the kernel of every failed site again
+// (alpha.149, lab O3): a slice that holds its effective values now has its
+// limits, whatever step failed; one systemd did not report stays
+// "unchecked".
+func settleSiteSlicePushFailures(failed map[int]string, effective map[string]map[string]string) {
+	for id, why := range failed {
+		name := sitesandbox.SliceName(id)
+		props := effective[name]
+		switch {
+		case props == nil:
+			if !strings.HasPrefix(why, siteSliceUncheckedPrefix) {
+				failed[id] = siteSliceUncheckedPrefix + why
+			}
+		case siteSliceKernelDiffers(name, props) == "":
+			log.Printf("site slice: %s holds its limits although a step of their push failed (%s)", name, why)
+			delete(failed, id)
+		}
+	}
 }
 
 // cleanupSiteSliceRuntime removes the control drop-ins the Agent recorded
@@ -261,7 +371,7 @@ func cleanupSiteSliceRuntime() {
 		if err := os.Remove(clean); err == nil {
 			removed = true
 		} else if !errors.Is(err, os.ErrNotExist) {
-			log.Printf("site slice: %s could not be removed: %v (it holds the same limits and is gone at the next reboot)", clean, err)
+			log.Printf("site slice: %s could not be removed: %v (it holds the limits in force when it was made; until it is removed or the next reboot it outranks the owner's own drop-ins for that key)", clean, err)
 		}
 		_ = os.Remove(filepath.Dir(clean)) // only when empty
 	}

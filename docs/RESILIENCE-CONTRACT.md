@@ -9169,3 +9169,367 @@ until the backup reports ready.
   site folder (the link rule is the barrier until one group per site);
   account names are derived from domain names; mail is signed for any
   hosted domain (the next release). **No P0 item is closed.**
+
+### Branches security/s3b-mail-signing, security/s1b-pg-leftovers and fix/a143-lab-corrections (mail signed only for the sender's own domain, corrected after the independent review in fix/a143-mail; PostgreSQL databases made before alpha.141, corrected after the independent review in fix/a143-pg, the cluster move taken out; the alpha.142 lab's four corrections; schema 80 -> 81, triggers only; constitution 1; invariants 1, 2, 3 and 4; D-022; D-024; D-025; 2026-11-21, candidate alpha.143)
+
+- **Why it is here.** The mail repair step at the panel's start writes
+  native OpenDKIM and Postfix settings; the PostgreSQL loop changes native
+  database rights; a database trigger is a schema
+  transition; a site deletion's application-unit cleanup and the one-time
+  mode correction are lifecycle steps: constitution 1 (authorize each action
+  for its exact resources) and invariants 1 (owner authority: owner-edited
+  `opendkim.conf`, milter settings and file modes are kept), 2 (verified
+  state before claims: every close and undo reads its result back; an
+  answer lost after the transaction began is unknown and settled from the
+  engine, never taken as nothing changed), 3 (no duplicate mutation from
+  polling: reading the PostgreSQL page or Problems now changes nothing;
+  closes are serialised and a failed one is not retried every hour) and 4
+  (refusals decided before anything is made).
+- **Defects (each shown before the fix by a test).** OpenDKIM signed any
+  message whose `From:` named a hosted domain, for authenticated and local
+  clients and on port 25, so mail with another customer's address left with
+  that customer's signature (the independent review of the first version
+  found: an out-of-office reply could answer, signed, from another account's
+  address; site mail was signed by its `From:` while `authorized_submit_users`
+  was not the panel's, yet shown as in place; the port-25 list overrode the
+  owner's later filters and outlived OpenDKIM; a restart missed after the
+  rename was never made; the state was recorded only at the start; Arch was
+  advised a line its OpenDKIM refuses; rollback wrote defaults out);
+  PostgreSQL databases made before alpha.141 kept
+  PUBLIC's CONNECT and TEMPORARY (the independent review of the first
+  version found: an answer lost after COMMIT deleted the undo's record, a
+  failing close was retried hourly and hidden, roles using a database
+  without owning anything were not seen, a role name could end a guard's
+  dollar-quoted body, the scan grew with the page, and a database an
+  administrator opened again warned forever); from the alpha.142 lab: a customer's
+  subdomain inside its own domain under a server or administrator name was
+  refused, the administrator was told a far holder, a failed Node.js unit
+  blocked its site's deletion, and kept owner modes were not named.
+- **Contract.** `SenderMacro {auth_authen}` ties the signing key to the
+  login; the port-25 smtpd gets `main.cf`'s milter list without OpenDKIM,
+  recomputed at every start and mail filter step and removed at the first of
+  them after OpenDKIM is no longer set up or listed (a `main.cf` list with
+  `$variables` or `{ }` groups keeps CelikPanel's earlier port-25 value and
+  says so, `port25_variable_own`, or reports `port25_variable`); an
+  out-of-office reply answers only from the mailbox's own address or a
+  forwarder to it from the same account's domains (panel and Agent; earlier
+  replies are rendered again without a foreign address, said once and
+  audited, at every start, every hour and right after every operation that
+  changes who holds a name or where an address delivers, under the mail lock;
+  a rewrite that cannot be made turns the reply off, or, where that cannot be
+  applied either, is a Problems-now line per mailbox retried hourly); signing is shown as in
+  place only when `authorized_submit_users` is `root, vmail`, and every path
+  that changes signing records its state (an early return is unknown); a
+  build without `SenderMacro` keeps the earlier configuration, says so and is
+  never advised the option.
+  An older database is closed by itself only with untouched default rights,
+  no unrecorded role with any footprint inside it, every recorded user's role
+  present, no monitoring or replication role on its cluster, and after a
+  day's watch (the first round at least 24 hours and at least 24 rounds after
+  the watch began; a change of its rights, roles inside, owner or recorded
+  users starts it again; a role outside the records seen connected once ends
+  it); otherwise listed with one confirmed close. A close answers closed,
+  verified not closed, or unknown; unknown keeps the record and is settled
+  from the engine's state before anything else; a failed close keeps its
+  reason and is tried again only when the facts change or the administrator
+  presses; closes are serialised. Every close has an exact undo (panel and
+  plain SQL); a database an administrator opened again stays on the page as
+  that choice, out of Problems now, never closed by itself. The cluster move
+  is unchanged from alpha.142 (its owner-rights load was taken out; ROADMAP
+  security series item 6). The name rule exempts N when the receiving
+  account holds R with N under R and R under a server name or an
+  administrator-held name; everything else stays refused, in the panel and
+  in migration 081. `RemoveAppUnit` runs `systemctl reset-failed` for the
+  exact unit before its unchanged proof; the mode correction names every
+  kept mode.
+- **Schema / version transition.** 80 -> 81: migration 081 drops and
+  recreates the six triggers of 080 under the same names; no table, column
+  or row, so it applies on a database that holds overlaps; an older release
+  refuses the ledger and going back to alpha.142 is the pre-update snapshot
+  restore. Additive: `WireMailFiltersResponse.signing`, the Problems-now
+  kinds `mail_signing` and `postgresql_databases_open`, the build-gated Agent
+  calls `PostgreSQLPublicAccessScanV1/CloseV1/UndoV1` (answers `unknown`,
+  `missing`, `replication`), panel_settings rows
+  `postgresql_public_v1:<id>` and `postgresql_public_list_v1`.
+- **Recovery.** A new `opendkim.conf` is checked with `opendkim -n` before
+  the rename and put back if OpenDKIM does not run with it, at the start and
+  (since the second review) in `ConfigureDKIMSigning`; Postfix writes
+  are undone in reverse order on any failure (a setting that was at its
+  default is removed again) and Postfix reloaded; an OpenDKIM restart is
+  recorded as owed before the rename and made at the next start after an
+  interruption; during a restart mail passes unsigned where both milter
+  lists are CelikPanel's (`milter_default_action = accept`), and where either
+  is the owner's his `milter_default_action` or Postfix's default
+  `tempfail` applies (a sending server retries; a person on 587 sends again). A close interrupted anywhere leaves the database untouched or closed with
+  its grants, and the panel's record of it until the engine shows which; an undo whose database changed since is refused
+  and changes nothing. Everything is native configuration and rights that
+  work without the panel; the owner undoes them with the plain settings or
+  statements named in `docs/TENANT-ISOLATION.md` and `docs/DATABASE-USERS.md`.
+- **Evidence.** `TestMailSigningKeyFollowsTheLoginNotTheFromHeader` and the
+  distribution matrix's real OpenDKIM on Debian 12/13 and Ubuntu 22.04/24.04;
+  the mail fix round's `TestMailAutoresponderRefusesAnotherAccountsAddress`,
+  `TestMailAutoresponderStoredForeignAddressIsRemovedAtStart`,
+  `TestMailSigningLocalSubmitDecidesTheState`,
+  `TestMailSigningPort25FollowsTheOwnersLaterMainList`,
+  `TestMailSigningOwedRestartIsMadeAtTheNextStart` and the matrix's real
+  `postconf` cases;
+  `TestS1bClosingAnOldDatabaseKeepsItsUsersAndRefusesOthers` and the fix
+  round's `TestS1bFix*` on a private PostgreSQL 17.12 (an answer lost after
+  COMMIT, column rights, settings, policies and user mappings, a role named
+  to end a dollar-quoted body, a recorded user without its role, a logical
+  replication subscriber, 300 databases in one scan session), the panel's
+  `TestPGPublic*`; `TestOwnSubdomainUnder*RuleAndTriggersAgree`,
+  `TestSchema80DatabaseWithServerZoneOverlapsUpgradesAndLetsOwnSubdomainsIn`,
+  `TestOlderReleaseRefusesALedgerWithTheOwnSubdomainEntry`,
+  `TestAppUnitRemovalForgetsAFailedUnit`,
+  `TestTenantIsolationModesAreTightenedOnceThenLeftToTheOwner`; the
+  release-recovery lab pins schema 81.
+- **Open.** No lab run yet. Arch Linux's OpenDKIM has no `SenderMacro`:
+  mail sent with a login is still signed for any hosted domain its `From:`
+  names there; databases the panel does not record are not touched; a
+  subdomain made under the exemption is still listed in Problems now; a
+  SQL_ASCII PostgreSQL server is still unchecked in a lab; the closing was
+  run on PostgreSQL 17 only; a move still runs customers' database code with
+  the administrator's rights. **No P0 item is closed.**
+
+### Branch fix/a144-lab-corrections (the alpha.143 lab's six findings and one security correction of webmail's address; no schema change; constitution 1 and 3; invariants 2, 3 and 4; D-022; D-024; D-025; 2026-11-22, candidate alpha.144)
+
+- **Changes that outlive the page (invariant 4, constitution 3: refresh and
+  timeout never authorize duplicate work).** An administrator's PostgreSQL
+  close or undo, a new mailbox and an out-of-office reply ran on the
+  browser's connection: leaving the page cut the Panel between the Agent's
+  work and its record (lab: "sent, not yet confirmed" for a close that had
+  finished; a mailbox on the server without a row). They now run under the
+  request identity (D-029) on a detached context with their route's limit.
+  What each interruption leaves: the page left — nothing (the change and
+  its record complete); the Panel stopped mid-change — the request row
+  `interrupted` (answered "not known"), a close's record `sending` settled
+  from the engine once the Agent confirms nothing of it runs, a mailbox
+  possibly on the server without a row (now said plainly, with the
+  administrator's adoption); who acts: nobody for the first, the
+  administrator reads the page again for the second.
+- **Adoption.** `Agent.MailboxOnServerV1` reads, changing nothing,
+  Dovecot's users file, Postfix's map and the message count of the folder
+  under the mail lock; the Panel adopts only CelikPanel's own form (the
+  address's own folder, no uid/gid/home/shell, a size limit) with no
+  message, looks for an existing row again under the mail lock, and
+  replaces the password through `Agent.UpdateMailPassword` before the row
+  is committed; everything else stays the owner's (D-022).
+- **Alias DNS (invariant 2).** What CelikPanel added for an alias is kept in
+  `panel_settings` `alias_dns_v1:<alias>` (version 1, zone and records),
+  written in the same transaction as the records; removal deletes exactly
+  those, while the zone belongs now to the account of the alias's domain now
+  (after a subscription transfer both moved, and the records go; in a zone
+  held by another account nothing is removed, the note is cleared and the
+  Panel's log names the record). A publication that does not finish marks the zone
+  (`alias_dns_unpublished_v1:<zone>`) and the Panel's hourly round publishes
+  it; it never stops a domain's deletion, also for a domain whose own DNS
+  is managed elsewhere; a mark whose zone's DNS mode cannot be read is kept
+  for the next round. Aliases made before alpha.144 have no such note and
+  get no record until they are added again.
+- **Webmail's address (constitution 1).** Only `index.php` runs; the linked
+  folders give out static files only; dot-files and backup-looking names
+  are refused. Earlier address files are CelikPanel's own form, read as
+  stale, and rewritten once at the Agent's start (nginx -t, reload, the
+  earlier file put back on failure); an owner's file is kept with the text
+  beside it. Either outcome is a Problems-now line until the file is in the
+  current form (`Agent.WebmailAddressFormsV1`). An automatic rollback to
+  alpha.143 treats the new file as the owner's and keeps it: webmail keeps
+  serving, nothing is reopened, and later webmail address changes are
+  refused as owner-edited until the update is made again.
+- **Traffic logs after the nightly rotation (invariant 4, constitution 2:
+  permission normalization is a mutation).** nginx's workers (`www-data`)
+  could not pass through `/var/log/celikpanel` (0750 `root:celikpanel` on the
+  owner's server, read on 22 November 2026), so after each rotation they
+  logged `[emerg] … (13: Permission denied)` and kept writing into the
+  rotated file. Once at the Agent's start (receipt `log-root-modes-v2.done`):
+  the folder, root-owned at a mode CelikPanel produced, 0700 → 0711 or
+  0750 → 0751; its traffic folder 0755 → 0710 owned by root and the web
+  server's group (only the workers pass; no site account opens another
+  site's log); traffic logs readable by others 0644 → 0640; the certificate
+  tool's log folder stays 0700; any other mode (kept with its owner and
+  group), a traffic folder at 0710 whose group is neither the web server's
+  nor one CelikPanel gave it (root, celikpanel), a link or another owner is
+  kept and named. New installations make the log folder 0711 and the
+  traffic folder 0710 with that group whatever the umask, and a site's
+  first log 0640 before nginx opens it; the web server's account is looked
+  up only to make them (a failed lookup leaves the site's traffic setting
+  as it was, one journal line). CelikPanel's rotation file makes each new
+  log 0640 for that account (managed text: an owner-edited file is kept).
+  No reload: the workers reach the current files at the next rotation.
+  Still readable by programs that run as the web server's own shared
+  account (Node.js sites not yet moved into their own account, the
+  distribution's default PHP pool where it is on): the logs hold time and
+  byte counts, no addresses, and those programs already read every site's
+  served files.
+- **Evidence.** `TestA144*` (panel), `TestMailboxOnServerReadsOnlyCelikPanelsOwnForm`,
+  `TestLogRootIsMadePassableWhateverTheUmask`, `TestLogRootBecomesPassableOnceAndKeepsTheOwnersModes`,
+  `TestTrafficLogsReachOnlyTheWebServerWorkers`,
+  `TestTrafficFolderAt0710WithTheOwnersGroupIsKept`,
+  `TestTrafficLogrotateMakesEachNewLogClosed`, `TestTrafficLogNeedsTheWebServerAccountOnlyToMakeIt`,
+  `TestTrafficSettingStaysWhenTheWebServerAccountCannotBeRead`,
+  `TestWebmailAddress*` (agent); the detached tests fail with the guard
+  removed (the lab's "sending/lost" record, no mailbox row, no reply copy).
+- **Lab.** One run on 22 November 2026 (a Debian 13 PowerDNS main and an
+  Ubuntu 24.04 BIND backup, both updated from the alpha.143 state through
+  the panel's own update page; lab-only label alpha.152 built from
+  `6ed1f94a0`): no hard failure; the webmail address correction, the
+  detached routes, the adoption refusals, the alias records and the
+  traffic folder modes behaved as stated above (see the release notes'
+  "Checked in the lab"). It found that webmail cannot send mail (its
+  configuration hands mail to port 587 without STARTTLS; older than this
+  branch) and two display findings, planned for alpha.145.
+- **Open.** The other Panel handlers that pass the browser's
+  context into an Agent change are listed in the pull request for a later
+  lane; an alias that is a zone of its own still gets no DNS (no zone is
+  created for it); the lab's not-checked items are listed in the release
+  notes. **No P0 item is closed.**
+
+### Branch fix/a145-webmail-send (webmail's local door closed; webmail can send; the alpha.144 lab's two display findings; no schema change; constitution 1 and 3; invariants 2 and 4; D-022; D-024; D-025; 2026-11-23, candidate alpha.145)
+
+- **Webmail's local door (constitution 1).** The socket
+  `/run/celikpanel-webmail.sock` is 0666 (nginx makes it so): every account
+  of the server could read every file of Roundcube's `public_html` (plugins,
+  skins, `program/`) and run any `.php` there. It now answers a closed list
+  (`/webmail/`, `/webmail/index.php`, style sheets under `/webmail/skins/`,
+  CelikPanel's PHP check), which is all the Panel's readiness check and the
+  Agent's PHP-tool proof ask. Earlier forms are CelikPanel's own (exact
+  text) and rewritten once at the Agent's start before the RPC service
+  (`nginx -t`, one reload, the earlier file put back on failure, the start
+  goes on); an owner's file is kept with CelikPanel's text beside it and a
+  Problems-now line (the address kinds with no address); the text beside it
+  goes by name with webmail. The socket is not moved and its mode is not
+  changed.
+- **Webmail's configuration (invariant 4: a rewrite is a mutation).**
+  `config.inc.php` in CelikPanel's earlier text (exact equality, with or
+  without the address lines) is rewritten once at the Agent's start, owner
+  and mode set on the new file before the rename, `des_key` kept; a failed
+  write leaves the file as it was, is said as "rewrite failed" (the cause
+  and a restart, never a hand edit) and is tried again at the next start.
+  An owner's file is kept, CelikPanel's text beside it (0600), one
+  Problems-now line while it cannot send (read live; goes by itself).
+- **Alias DNS (invariant 2).** A zone's alias wait mark is cleared only
+  after a publication of the zone's current ledger completes under the
+  publication locks (the held republish, the follow-up after a pending
+  publication, or a fresh publication by the hourly round's step); a record
+  saved later keeps its mark.
+- **Rollback.** Going back to alpha.144 keeps webmail sending and the local
+  door closed; alpha.144 treats both new texts as owner-edited (webmail's
+  configure step, its PHP move and the address lines are refused until the
+  update is made again).
+- **Evidence.** `TestA145*` (agent and panel), `web/tests/a145-webmail-send-lab.test.mjs`;
+  the distribution configuration matrix renders the new local-door file and
+  checks it with nginx; an independent review ran it on a real nginx.
+- **Lab.** Open (the list is in PR #357).
+- **Open.** The Webmail card still offers Repair while webmail cannot send;
+  the "cannot send" reading skips an owner's own certificate options and
+  `/* */` comments; an owner's own block proxying to the socket gets only
+  the sign-in page and style sheets. **No P0 item is closed.**
+
+### Branch fix/d1-stuck-operation (a durable operation whose Finish failed is settled by the running panel; the heartbeat stops before the lease can end; no schema change; constitution 2 and 3; invariants 2 and 4; P0.2; D-024; D-025; 2026-11-23, after the alpha.145 lab)
+
+- **The defect (alpha.145 lab, D1).** One unanswered lease renewal stopped
+  an operation's worker while its Agent step ran on; the Agent refused
+  Finish while the step was active, and the Panel returned without settling
+  its row. The row stayed `running` and every component or setup change was
+  refused until `celikpanel-panel` restarted.
+- **Invariant 2 (a timeout is not proof of failure, success or permission
+  to start again).** The running panel now reads the Agent's job, changing
+  nothing, until the job has ended, then settles the one row with the code
+  startup recovery runs (`reconcileInterruptedServiceOperationLocked`, one
+  function for both). A job the Agent has no record of is unknown, not
+  ended: the row is left unsettled. An Agent that answers no read for two
+  minutes leaves the row unsettled and the process lock released. While
+  the interrupted job is still active, the Agent refuses every other lease,
+  so no two privileged steps run at once; once it has ended, firewall,
+  DNS, mail TLS and similar standalone changes are admitted again (they
+  take the lock, not the row) before the interrupted install is run again
+  at the panel's next start, and may run beside a half-finished component.
+  What the administrator sees meanwhile: component and setup changes are
+  refused with the unsettled words (check the Agent, then restart the
+  panel's web process); while the old job is active, a standalone change
+  gets the Agent's "another change is still running" refusal. Not gated by
+  design: a half-finished install must not block a firewall change.
+- **Invariant 4 (retrying a transient read is not re-running a mutation
+  whose outcome is unknown).** What changes: an install, install-together,
+  remove-together, mail profile, runtime or setup install whose job ended
+  `service_mutation_lease_expired` (its step may have succeeded) is run
+  again from its start by the running panel about 20 s after the Agent
+  hiccup, instead of after a person's restart. The bound: once per row and
+  running panel, held in memory; every restart allows one more, as before.
+  The assumption it rests on: the install steps are safe to repeat (the
+  startup design already assumed it). A webmail update or address is only
+  read. The settle's retry loop asks again only errors raised before the
+  first privileged sync. A run again the Agent refuses because the host is
+  busy is asked again for two minutes, then left unsettled in a running
+  panel; at startup, where there is no further step, the row ends with
+  what is true ("could not be run again because the server stayed busy;
+  what its first run did is not known"; the administrator checks the
+  component) and other changes are admitted again. Never "not started".
+- **Heartbeat.** The worker is stopped on the Agent's definite answer, or
+  15 s after the last renewal the Agent answered (counted from when it was
+  sent). A renewal may wait for the whole time that remains, an unanswered
+  one is asked again about a second later, and the first one is scheduled
+  from when the lease was asked for: the stop comes at the latest 5 s before
+  the Agent's 20-second lease can end, and is logged with its cause. The rule governs every standalone
+  mutation too (firewall, DNS, mail TLS, certificates, VPN, webmail). The
+  Agent's lease rules are unchanged.
+- **Schema or version transition.** None. The settling phases and refusal
+  reasons live in memory (laid over reads); rows are written with existing
+  phases and codes. The one new stored value is the alert kind
+  `service_operation_unsettled`, which the previous release shows with its
+  general alert line. A setup install's row also keeps its accepted point
+  updates in `operation_data` (an additive key the previous release
+  ignores).
+- **Recovery behaviour.** Startup recovery is the same function; a row that
+  cannot be settled is named on its screen, in every refusal and in
+  Problems now (the server owner checks the Agent, then restarts the
+  panel's web process).
+- **Evidence.** `cmd/panel/d1_stuck_operation_test.go` (a step-counting
+  fake Agent: no overlap, a restart during the second run, webmail update
+  and address, install, mail profile, the bounds, the heartbeat stop
+  measured against a scaled lease), `web/tests/d1-stuck-operation.test.mjs`.
+- **Open.** No real-system proof yet (lab steps L1–L8 in the pull
+  request); whether every install path is truly safe to repeat after a
+  successful first run is observed in the lab (L3), not proved; P0.2 is
+  advanced for an Agent unavailable mid-operation, not closed. **No P0
+  item is closed.**
+
+### Branch fix/a149-db-limits (the Agent changes no privileged database account on the panel's word; database users' limits through the Agent; no schema change; constitution 1; invariant 4; D-022; D-024; D-025; 2026-11-26, candidate alpha.149)
+
+- **Why it is here.** It changes an access gate of the privileged Agent:
+  every Agent call that acts on a database account the panel names (a
+  password, a lock, a drop, a revoke, limits, a database's owner as owner and
+  recipient of objects) or drops, empties, loads into or opens a database.
+- **Contract.** The Agent itself reads what the account holds and refuses,
+  nothing changed, unless it is an ordinary account; the same test runs again
+  in the write's own transaction (PostgreSQL) or compound statement
+  (MariaDB); a state that cannot be read refuses
+  (`cmd/agent/database_account_guard.go`, docs/DATABASE-USERS.md). A
+  database's owner passes the same rule (only `celikpanel_admin` while it is
+  not a superuser and a member of no `pg_*` role). No Agent call touches the
+  engine's own system databases. A refusal is a code the screens word.
+- **The trust boundary this gives.** On PostgreSQL 16 and later it is a real
+  boundary against a taken-over panel. On MariaDB and on PostgreSQL 15 or
+  older the panel's own database account already holds rights of that weight
+  (DATABASE-ADMIN-ACCOUNT.md: `ALL PRIVILEGES ON *.* WITH GRANT OPTION`;
+  CREATEROLE before 16 can grant itself the `pg_*` roles), so there the
+  refusal guards against mistakes, not against a taken-over panel. A database
+  of another site is protected by the panel's checks only.
+- **Schema / version transition.** None. Additive answer fields
+  (`account_refused`, `account_refused_name`) and records in
+  `panel_settings` (`db_role_limits_v1` gains `connections`, `unknown`,
+  `prev`; `db_limits_unapplied_v1`), which alpha.148 ignores. Going back to
+  alpha.148 restores the earlier calls; the refusal keeps no state.
+- **Recovery.** A refusal changed nothing; the server's administrator acts on
+  the server itself. A local MySQL in MariaDB's place is not managed
+  (`unsupported_engine`); an account the administrator removed by hand counts
+  as gone, so a deletion then goes through.
+- **Evidence.** Unit tests per call and engine in `cmd/agent` (the guard,
+  the owner, system databases, MySQL in MariaDB's place) and `cmd/panel`
+  (limits records); the real-engine test
+  `database_account_guard_engine_test.go` (a lab step).
+- **Open.** No lab run yet (the pull request's lab list). The PostgreSQL rule
+  does not look at parameter privileges, direct EXECUTE grants on
+  administrator functions or roles that own objects a superuser runs.
+  **No P0 item is closed.**

@@ -235,6 +235,10 @@ func (a *Agent) UpdateRoundcubeV1(req *transport.RoundcubeUpdateRequest, resp *t
 		return nil
 	}
 	defer finishStep()
+	// A read of the side doors waits for the tree swap and its proof (S4 R1,
+	// fourth fix round).
+	sideDoorsMu.Lock()
+	defer sideDoorsMu.Unlock()
 	*resp = updateRoundcubeTo(ctx, version, hostRoundcubeUpdateOps())
 	return nil
 }

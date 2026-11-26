@@ -53,3 +53,8 @@ internal/mailrenewalkit/legacy-deploy-hook text eol=lf
 *.asc text eol=lf
 deploy/recovery/*.sources text eol=lf
 download-portal/guide/** text eol=lf
+
+# The public site: generated pages and assets are listed with their digests
+# (go run ./site); the product screens are images.
+download-portal/site.sha256 text eol=lf
+download-portal/assets/shots/*.webp binary

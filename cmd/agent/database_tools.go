@@ -483,7 +483,7 @@ func importPostgreSQL(ctx context.Context, database backupspec.DatabaseIdentity,
 		resp.Code, resp.Error = transport.DBImportCodeLoadFailed, boundedText(pgLoadSessionDefaultsError(err).Error()+"; nothing was changed", 400)
 		return
 	}
-	limit := pgLoadTempFileLimit(ctx, conn)
+	limit, source := pgLoadTempFileLimit(ctx, conn)
 	loadErr := pgLoadTransaction(ctx, conn, reader, req.EmptyFirst)
 	if loadErr == nil {
 		resp.Success = true
@@ -491,7 +491,7 @@ func importPostgreSQL(ctx context.Context, database backupspec.DatabaseIdentity,
 	}
 	resp.RolledBack = true
 	if pgTempFileLimitReached(loadErr) {
-		resp.Code, resp.Error = transport.DBImportCodeLoadFailed, boundedText(pgLoadTempFileLimitText(req.User, limit), 400)
+		resp.Code, resp.Error = transport.DBImportCodeLoadFailed, boundedText(pgLoadTempFileLimitText(req.User, limit, source), 400)
 		return
 	}
 	var refusal *pgLoadRefusal
@@ -542,6 +542,11 @@ func mariadbImportBlocker() string {
 var mariadbEmptyDatabase = func(name string) error {
 	if err := services.ValidateSQLIdentifier(name); err != nil {
 		return err
+	}
+	// alpha.149 (security, second review of PR #370 finding 2): it runs as
+	// the administrator.
+	if systemDatabaseName("mysql", name) {
+		return errSystemDatabase
 	}
 	drop := func(kind, filter string) string {
 		return fmt.Sprintf("SELECT GROUP_CONCAT(CONCAT('`', REPLACE(table_name, '`', '``'), '`') SEPARATOR ', ') INTO @celik_names "+

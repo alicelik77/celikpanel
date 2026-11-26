@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -76,19 +80,245 @@ var hostMemoryMB = func() int {
 	return 0
 }
 
-// siteMemoryCodeDefault is a site's memory limit when no level sets one: the
-// smaller of 3072 MB and 75 % of the host's memory (rounded down to a whole
-// MB), never under 64 MB. One site can then never take the whole host by
-// default; a plan sets more where wanted.
-func siteMemoryCodeDefault() int {
+// siteMemoryHostDefault is the host-bound memory default for this much host
+// memory: the smaller of 3072 MB and 75 % of it (rounded down to a whole MB),
+// never under 64 MB. One site can then never take the whole host by default;
+// a plan sets more where wanted.
+func siteMemoryHostDefault(host int) int {
 	value := siteSliceCodeDefaults[settingSiteMemoryMB]
-	if host := hostMemoryMB(); host > 0 && host*3/4 < value {
+	if host > 0 && host*3/4 < value {
 		value = host * 3 / 4
 	}
 	if value < 64 {
 		value = 64
 	}
 	return value
+}
+
+// The host-bound default is FIXED when it is first computed (review B5):
+// stored in panel_settings (site_memory_default_v1, no schema change) with
+// the host memory it was computed for, and read from there afterwards. A
+// later change of the host's memory moves nothing by itself: the
+// administrator reads one Problems now line (the default was computed for X,
+// the host now has Y) whose one action applies the new default through the
+// same preview and confirmation as any lowered limit
+// (handleSiteMemoryDefault).
+const settingSiteMemoryDefault = "site_memory_default_v1"
+
+type siteMemoryDefaultState struct {
+	Value  int    `json:"value"`
+	HostMB int    `json:"host_mb"`
+	At     string `json:"at"`
+}
+
+var (
+	siteMemoryFrozenMu sync.Mutex
+	siteMemoryFrozen   int // 0: not fixed yet (computed from the host)
+)
+
+// siteMemoryCodeDefault is a site's memory limit when no level sets one: the
+// fixed value, or before it is fixed the host-bound value now.
+func siteMemoryCodeDefault() int {
+	siteMemoryFrozenMu.Lock()
+	frozen := siteMemoryFrozen
+	siteMemoryFrozenMu.Unlock()
+	if frozen > 0 {
+		return frozen
+	}
+	return siteMemoryHostDefault(hostMemoryMB())
+}
+
+func setSiteMemoryFrozen(value int) {
+	siteMemoryFrozenMu.Lock()
+	siteMemoryFrozen = value
+	siteMemoryFrozenMu.Unlock()
+}
+
+// freezeSiteMemoryDefault runs once at the Panel's start: the stored default
+// is used; the first start of a release with it computes and stores it.
+func (p *Panel) freezeSiteMemoryDefault(ctx context.Context) {
+	if p == nil || p.db == nil {
+		return
+	}
+	var state siteMemoryDefaultState
+	if raw := p.setting(ctx, settingSiteMemoryDefault); raw != "" && json.Unmarshal([]byte(raw), &state) == nil && state.Value >= 64 {
+		setSiteMemoryFrozen(state.Value)
+		return
+	}
+	host := hostMemoryMB()
+	if host <= 0 {
+		return // not known: computed again at the next start
+	}
+	state = siteMemoryDefaultState{Value: siteMemoryHostDefault(host), HostMB: host, At: metricsTime(time.Now())}
+	raw, err := json.Marshal(state)
+	if err != nil {
+		return
+	}
+	if err := p.setSetting(ctx, settingSiteMemoryDefault, string(raw)); err != nil {
+		log.Printf("site limits: the default memory limit was not stored: %v", err)
+		return
+	}
+	setSiteMemoryFrozen(state.Value)
+}
+
+// siteMemoryDefaultProblem: ONE line, for the administrator, when the host's
+// memory now gives another default than the fixed one, and only while the
+// default is CelikPanel's (no server default of the administrator's own).
+func (p *Panel) siteMemoryDefaultProblem(ctx context.Context) []monitoringProblem {
+	state, next, ok := p.siteMemoryDefaultChange(ctx)
+	if !ok {
+		return nil
+	}
+	return []monitoringProblem{{
+		Key: "site_memory_default", Kind: "site_memory_default", Severity: "warning", Actor: "administrator",
+		Subject: strconv.Itoa(state.Value), Name: fmt.Sprintf("%d MB → %d MB", state.HostMB, hostMemoryMB()), Value: float64(next),
+		ObservedAt: state.At, Action: monitoringProblemAction{Kind: "apply_default"},
+	}}
+}
+
+// siteMemoryDefaultChange: the fixed default, the one the host's memory gives
+// now, and whether they differ while CelikPanel's default applies.
+func (p *Panel) siteMemoryDefaultChange(ctx context.Context) (siteMemoryDefaultState, int, bool) {
+	var state siteMemoryDefaultState
+	raw := p.setting(ctx, settingSiteMemoryDefault)
+	if raw == "" || json.Unmarshal([]byte(raw), &state) != nil || state.Value < 64 {
+		return state, 0, false
+	}
+	host := hostMemoryMB()
+	if host <= 0 {
+		return state, 0, false
+	}
+	policy, err := loadSettingPolicy(ctx, p.db.GetDB())
+	if err != nil || policy[settingSiteMemoryMB].ServerDefault != nil {
+		return state, 0, false
+	}
+	next := siteMemoryHostDefault(host)
+	return state, next, next != state.Value
+}
+
+// errCodeSiteMemoryDefaultCurrent: the default already fits the host.
+const errCodeSiteMemoryDefaultCurrent = "SITE_MEMORY_DEFAULT_CURRENT"
+
+// handleSiteMemoryDefault is the action of the Problems now line of a
+// default fixed for the host's earlier memory (review B5):
+//
+//	POST /api/v1/rights/site-memory-default {"action": "preview"}
+//	POST /api/v1/rights/site-memory-default {"action": "apply", "confirm_stopped": "<token>"}
+//
+// Administrator only. The preview lists, as for any lowered limit, the sites
+// whose memory limit comes from the default and whose programs use more now
+// than the new one; "apply" with that list's token fixes the new default
+// (for the host's memory now) and writes it into those sites' slices. A
+// request without the token of the list the server answers now is refused
+// with the list.
+func (p *Panel) handleSiteMemoryDefault(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		rejectRouteMethod(w, []string{http.MethodPost})
+		return
+	}
+	ctx := r.Context()
+	if c := currentCaller(r); c == nil || !c.hasAccountRole(roleAdmin) {
+		writeCodedError(w, http.StatusForbidden, errCodeAdminOnly, "only the administrator sets the server's limits", "")
+		return
+	}
+	var req struct {
+		Action         string `json:"action"`
+		ConfirmStopped string `json:"confirm_stopped"`
+	}
+	if err := decodeStrictJSON(w, r, &req); err != nil || (req.Action != "preview" && req.Action != "apply") {
+		writeClientError(w, http.StatusBadRequest, "action is preview or apply")
+		return
+	}
+	state, next, ok := p.siteMemoryDefaultChange(ctx)
+	if !ok {
+		writeCodedError(w, http.StatusConflict, errCodeSiteMemoryDefaultCurrent,
+			"Nothing was changed: the default memory limit of a site already fits the server's memory, or the administrator set a default of their own.", "")
+		return
+	}
+	db := p.db.GetDB()
+	rows, err := db.QueryContext(ctx, `SELECT id FROM subscriptions ORDER BY id`)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	var all []int
+	for rows.Next() {
+		var id int
+		if rows.Scan(&id) == nil {
+			all = append(all, id)
+		}
+	}
+	rows.Close()
+	policy, err := loadSettingPolicy(ctx, db)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	var subs []int
+	for _, id := range all {
+		limits, err := subscriptionSettingLimits(ctx, db, id)
+		if err == nil && siteMemoryFromDefault(limits, policy) {
+			subs = append(subs, id)
+		}
+	}
+	preview := rightsPreview{Message: fmt.Sprintf("Sites without a memory limit of their own get %d MB instead of %d MB.", next, state.Value)}
+	if next < state.Value {
+		p.previewSiteLimitsLowered(ctx, &preview, subs, map[string]int{settingSiteMemoryMB: state.Value}, map[string]int{settingSiteMemoryMB: next})
+	}
+	if req.Action == "preview" {
+		writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
+		return
+	}
+	if !siteLimitsStoppedConfirmed(preview, req.ConfirmStopped) {
+		writeRightsPreviewRefusal(w, errCodeRightsConfirm, preview)
+		return
+	}
+	host := hostMemoryMB()
+	raw, err := json.Marshal(siteMemoryDefaultState{Value: next, HostMB: host, At: metricsTime(time.Now())})
+	if err == nil {
+		err = p.setSetting(ctx, settingSiteMemoryDefault, string(raw))
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	setSiteMemoryFrozen(next)
+	p.reapplySiteSlices(settingSiteMemoryMB, subs)
+	p.auditDetailed(r, "settings.limit:"+settingSiteMemoryMB, "settings", 0, map[string]any{
+		"key": settingSiteMemoryMB, "fixed_default": next, "was": state.Value, "host_mb": host, "was_host_mb": state.HostMB,
+		"sites_stopped": preview.SitesStoppedCount,
+	})
+	writeRightsJSON(w, http.StatusOK, map[string]any{"success": true, "default": next})
+}
+
+// siteMemoryFromDefault: a subscription's site memory limit is the default:
+// no level sets a ceiling, or the only one is the reseller's default bound
+// (siteLimitsWithResellerBound; no server ceiling exists).
+func siteMemoryFromDefault(limits settingLimits, policy map[string]settingPolicyRow) bool {
+	limit, ok := limits[settingSiteMemoryMB]
+	if !ok || limit.Ceiling == nil {
+		return true
+	}
+	return limit.SetBy == settingSetByServer && policy[settingSiteMemoryMB].ServerCeiling == nil
+}
+
+// siteLimitsWithResellerBound (review: a reseller cannot starve the server
+// by default): where neither the server nor the reseller's own level sets a
+// ceiling for a site.* key, the reseller's field, and every plan, Custom set
+// and site below it, is bounded by the server's default for that key (the
+// host-bound one for memory). The administrator raises it for a reseller by
+// giving the reseller (its reseller plan or Custom set) a ceiling; the bound
+// reads "set by the server administrator".
+func siteLimitsWithResellerBound(limits settingLimits) settingLimits {
+	for _, key := range siteSliceKeys {
+		limit, ok := limits[key]
+		if !ok || limit.Ceiling != nil || limit.Default == nil {
+			continue
+		}
+		limit.tighten(*limit.Default, settingSetByServer, "")
+		limits[key] = limit
+	}
+	return limits
 }
 
 func init() {
@@ -205,18 +435,50 @@ var applySiteSlicesCall = func(p *Panel, ctx context.Context, req *transport.App
 // startSiteSliceApply runs a rewrite in the background (tests run it at once).
 var startSiteSliceApply = func(run func()) { go run() }
 
+// siteLimitApplyMu serialises the writes of changed limits (review B3): a
+// second change waits until the first is written, then reads the limits as
+// they are at that moment, so two changes never interleave their batches.
+var siteLimitApplyMu sync.Mutex
+
+// siteSliceBatchTimeout bounds one batch of 100 sites (the Agent's verify
+// of each written file, one reload and the runtime push): the deadline is
+// per batch, so a change of many sites is never cut by one overall clock.
+var siteSliceBatchTimeout = 2 * time.Minute
+
+// siteLimitChangeLabel names a change of limits for the administrator's
+// Problems now line: the plan's or reseller plan's name, the reseller's
+// name, the subscription's first domain, or the server key.
+func (p *Panel) siteLimitChangeLabel(ctx context.Context, ownerKind string, ownerID int) string {
+	db := p.db.GetDB()
+	var name string
+	switch ownerKind {
+	case rightsOwnerPlan:
+		_ = db.QueryRowContext(ctx, `SELECT name FROM service_plans WHERE id = ?`, ownerID).Scan(&name)
+	case rightsOwnerResellerPlan:
+		_ = db.QueryRowContext(ctx, `SELECT name FROM reseller_plans WHERE id = ?`, ownerID).Scan(&name)
+	case rightsOwnerReseller:
+		_ = db.QueryRowContext(ctx, `SELECT username FROM users WHERE id = ?`, ownerID).Scan(&name)
+	case rightsOwnerSubscription:
+		_ = db.QueryRowContext(ctx, `SELECT name FROM domains WHERE subscription_id = ? ORDER BY id LIMIT 1`, ownerID).Scan(&name)
+	}
+	if name == "" {
+		return ownerKind + " " + strconv.Itoa(ownerID)
+	}
+	return name
+}
+
 // reapplySiteSlices writes the current limits into the slices of every site
-// of the given subscriptions, in the background. A site without a slice
-// file yet gets one when its first program goes into it.
-func (p *Panel) reapplySiteSlices(subscriptionIDs []int) {
+// of the given subscriptions, in the background, one change at a time. A
+// site without a slice file yet gets one when its first program goes into
+// it. change names the change for the Problems now line when it does not
+// reach every site.
+func (p *Panel) reapplySiteSlices(change string, subscriptionIDs []int) {
 	if len(subscriptionIDs) == 0 || (siteLimitReadNeedsAgent && p.agentClient == nil) {
 		return
 	}
 	ids := append([]int(nil), subscriptionIDs...)
 	startSiteSliceApply(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		if err := p.reapplySiteSlicesNow(ctx, ids); err != nil {
+		if err := p.reapplySiteSlicesNow(context.Background(), change, ids); err != nil {
 			log.Printf("site limits: %v", err)
 		}
 	})
@@ -249,20 +511,219 @@ func (a *siteLimitApplyProgress) read() (int, int) {
 	return a.Done, a.Total
 }
 
-// reapplySiteSlicesNow is the work of reapplySiteSlices: the sites in
-// batches, with the progress recorded and logged.
-func (p *Panel) reapplySiteSlicesNow(ctx context.Context, subscriptionIDs []int) error {
+// --- A change that did not reach every site (review B3) -----------------------
+
+// settingSiteLimitApply keeps the subscriptions whose sites still have their
+// earlier limits after a change of limits, how many sites, why, and which
+// change it was (panel_settings; no schema change). It is cleared when every
+// site has the new limits. The administrator reads it as one Problems now
+// line; the hourly round (startSiteLimitApplyRound) writes those sites again.
+const settingSiteLimitApply = "site_limit_apply_v1"
+
+type siteLimitApplyState struct {
+	Change string `json:"change"`
+	// Pending: subscription id -> its sites that still have the earlier limits.
+	Pending map[string]int `json:"pending"`
+	// Reason is the first site's reason code (what alpha.148 reads).
+	Reason string `json:"reason"`
+	At     string `json:"at"`
+	// Reasons (alpha.149 fix round, F9): subscription id -> reason code ->
+	// its sites with that reason, so each site is worded by its own reason.
+	Reasons map[string]map[string]int `json:"reasons,omitempty"`
+}
+
+// siteLimitApplyLacking are the reason codes of sites that are known to lack
+// the new limits (the file was not written, or the kernel was read and
+// still holds the earlier values); every other code is "not known".
+var siteLimitApplyLacking = map[string]bool{"kernel_differs": true, "write_failed": true, "refused": true, "out_of_range": true}
+
+// siteLimitApplyCounts reads the unapplied line's Name: "code:n,code:n"
+// (alpha.149 fix round, F9), or one code for every site (earlier records).
+// It answers the sites known to lack the limits and the ones not known.
+func siteLimitApplyCounts(name string, total int) (lacking, unknown int) {
+	if !strings.Contains(name, ":") {
+		if siteLimitApplyLacking[name] {
+			return total, 0
+		}
+		return 0, total
+	}
+	for _, part := range strings.Split(name, ",") {
+		code, count, _ := strings.Cut(part, ":")
+		n, err := strconv.Atoi(count)
+		if err != nil || n <= 0 {
+			continue
+		}
+		if siteLimitApplyLacking[code] {
+			lacking += n
+		} else {
+			unknown += n
+		}
+	}
+	return lacking, unknown
+}
+
+func (p *Panel) loadSiteLimitApply(ctx context.Context) siteLimitApplyState {
+	state := siteLimitApplyState{}
+	if raw := p.setting(ctx, settingSiteLimitApply); raw != "" {
+		_ = json.Unmarshal([]byte(raw), &state)
+	}
+	return state
+}
+
+// noteSiteLimitApply records what one write of changed limits reached:
+// notApplied counts, per subscription the write covered, the sites that kept
+// their earlier limits (0: all have the new ones). Subscriptions the write
+// did not cover keep what an earlier change left.
+func (p *Panel) noteSiteLimitApply(ctx context.Context, change string, covered []int, notApplied map[int]int, reason string, reasons map[int]map[string]int, now time.Time) {
+	state := p.loadSiteLimitApply(ctx)
+	next := siteLimitApplyState{Change: state.Change, Pending: map[string]int{}, Reason: state.Reason, At: state.At, Reasons: map[string]map[string]int{}}
+	for k, v := range state.Pending {
+		next.Pending[k] = v
+		if codes := state.Reasons[k]; len(codes) > 0 {
+			next.Reasons[k] = codes
+		}
+	}
+	for _, id := range covered {
+		delete(next.Pending, strconv.Itoa(id))
+		delete(next.Reasons, strconv.Itoa(id))
+	}
+	missed := 0
+	for id, n := range notApplied {
+		if n > 0 {
+			next.Pending[strconv.Itoa(id)] = n
+			if codes := reasons[id]; len(codes) > 0 {
+				next.Reasons[strconv.Itoa(id)] = codes
+			}
+			missed += n
+		}
+	}
+	if len(next.Reasons) == 0 {
+		next.Reasons = nil
+	}
+	if missed > 0 {
+		next.Change, next.Reason, next.At = change, reason, metricsTime(now)
+	}
+	raw := ""
+	if len(next.Pending) > 0 {
+		encoded, err := json.Marshal(next)
+		if err != nil {
+			return
+		}
+		raw = string(encoded)
+	}
+	if raw == p.setting(ctx, settingSiteLimitApply) {
+		return
+	}
+	if err := p.setSetting(ctx, settingSiteLimitApply, raw); err != nil {
+		log.Printf("site limits: what a change of limits reached was not recorded: %v", err)
+	}
+}
+
+// siteLimitApplyProblem is ONE line, for the administrator: which change did
+// not reach every site, how many sites still have the earlier limits, why.
+func siteLimitApplyProblem(raw string) []monitoringProblem {
+	if raw == "" {
+		return nil
+	}
+	var state siteLimitApplyState
+	if err := json.Unmarshal([]byte(raw), &state); err != nil {
+		return nil
+	}
+	sites := 0
+	codes := map[string]int{}
+	for sub, n := range state.Pending {
+		sites += n
+		// alpha.149 fix round (F9): each site by its own reason; a
+		// subscription recorded without them (an earlier record) counts
+		// under the first site's reason.
+		counted := 0
+		for code, k := range state.Reasons[sub] {
+			if k > 0 {
+				codes[code] += k
+				counted += k
+			}
+		}
+		if counted < n {
+			code := state.Reason
+			if code == "" {
+				code = "failed"
+			}
+			codes[code] += n - counted
+		}
+	}
+	if sites == 0 {
+		return nil
+	}
+	parts := make([]string, 0, len(codes))
+	for code, k := range codes {
+		parts = append(parts, code+":"+strconv.Itoa(k))
+	}
+	sort.Strings(parts)
+	return []monitoringProblem{{
+		Key: "site_limits_unapplied", Kind: "site_limits_unapplied", Severity: "warning", Actor: "administrator",
+		Subject: state.Change, Name: strings.Join(parts, ","), Value: float64(sites), Since: state.At, ObservedAt: state.At,
+		Action: monitoringProblemAction{Kind: "open", To: "/plans"},
+	}}
+}
+
+// startSiteLimitApplyRound writes, every hour, the sites a change of limits
+// did not reach (with the limits as they are then).
+func (p *Panel) startSiteLimitApplyRound() {
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			p.retrySiteLimitApply(context.Background())
+		}
+	}()
+}
+
+// retrySiteLimitApply writes the pending subscriptions' sites again.
+func (p *Panel) retrySiteLimitApply(ctx context.Context) {
+	if p.db == nil || (siteLimitReadNeedsAgent && p.agentClient == nil) {
+		return
+	}
+	state := p.loadSiteLimitApply(ctx)
+	var ids []int
+	for key := range state.Pending {
+		if id, err := strconv.Atoi(key); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	sort.Ints(ids)
+	if err := p.reapplySiteSlicesNow(ctx, state.Change, ids); err != nil {
+		log.Printf("site limits: the hourly round: %v", err)
+	}
+}
+
+// reapplySiteSlicesNow is the work of reapplySiteSlices: one change at a
+// time (siteLimitApplyMu); the limits are read once the change's turn has
+// come; the sites go in batches with their own deadline; what did not reach
+// a site (a failed or refused write, a batch the Agent did not answer or
+// could not apply, the batches after it) is recorded for the Problems now
+// line and the hourly round, never only logged.
+func (p *Panel) reapplySiteSlicesNow(ctx context.Context, change string, subscriptionIDs []int) error {
 	if p.db == nil {
 		return nil
 	}
+	siteLimitApplyMu.Lock()
+	defer siteLimitApplyMu.Unlock()
 	db := p.db.GetDB()
 	req := &transport.ApplySiteSlicesRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit)}
+	subOf := map[int]int{}
+	covered := []int{}
+	notApplied := map[int]int{}
+	reason := ""
 	for _, subID := range subscriptionIDs {
 		limits, err := subscriptionSettingLimits(ctx, db, subID)
 		if err != nil {
 			log.Printf("site limits of subscription %d: %v", subID, err)
 			continue
 		}
+		covered = append(covered, subID)
 		rows, err := db.QueryContext(ctx, `SELECT s.id, d.name FROM sites s JOIN domains d ON d.id = s.domain_id WHERE d.subscription_id = ? ORDER BY s.id`, subID)
 		if err != nil {
 			return err
@@ -276,14 +737,44 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, subscriptionIDs []int)
 			}
 			if s := siteSliceFromLimits(siteID, name, limits); s != nil {
 				req.Sites = append(req.Sites, *s)
+				subOf[siteID] = subID
 			}
 		}
 		rows.Close()
 	}
 	if len(req.Sites) == 0 {
+		p.noteSiteLimitApply(ctx, change, covered, nil, "", nil, time.Now())
 		return nil
 	}
+	// alpha.149 fix round (F9): subscription -> reason code -> its sites.
+	reasons := map[int]map[string]int{}
+	count := func(siteID int, code string) {
+		sub := subOf[siteID]
+		notApplied[sub]++
+		if reasons[sub] == nil {
+			reasons[sub] = map[string]int{}
+		}
+		reasons[sub][code]++
+	}
 	all := req.Sites
+	// alpha.149 fix round (F8): what happened until now is recorded with the
+	// limit that held, before the change is pushed.
+	ids := make([]int, 0, len(all))
+	for _, s := range all {
+		ids = append(ids, s.SiteID)
+	}
+	p.observeSiteLimitsBeforeChange(ctx, ids)
+	// alpha.149 (lab O3): the recorded reason is a code the page words in its
+	// own language; the English detail goes to the journal.
+	missed := func(sites []transport.SiteSlice, code, why string) {
+		for _, s := range sites {
+			count(s.SiteID, code)
+		}
+		log.Printf("site limits: %d sites keep their earlier limits for now: %s", len(sites), why)
+		if reason == "" {
+			reason = code
+		}
+	}
 	defer siteLimitApplying.set(0, 0)
 	for start := 0; start < len(all); start += siteSliceApplyBatch {
 		end := start + siteSliceApplyBatch
@@ -292,33 +783,103 @@ func (p *Panel) reapplySiteSlicesNow(ctx context.Context, subscriptionIDs []int)
 		}
 		siteLimitApplying.set(start, len(all))
 		batch := &transport.ApplySiteSlicesRequest{ExpectedBuildCommit: req.ExpectedBuildCommit, Sites: all[start:end]}
-		resp, err := applySiteSlicesCall(p, ctx, batch)
+		batchCtx, cancel := context.WithTimeout(ctx, siteSliceBatchTimeout)
+		resp, err := applySiteSlicesCall(p, batchCtx, batch)
+		cancel()
 		if err != nil {
-			return fmt.Errorf("after %d of %d sites: %w", start, len(all), err)
+			// The rest is not sent: the hourly round writes it.
+			missed(all[start:], "agent_unreachable", "the server did not answer: "+err.Error())
+			break
 		}
 		if resp.Unsupported != "" {
 			log.Printf("site limits: nothing was written: %s", resp.Unsupported)
-			return nil
+			return nil // its own Problems now line says why
+		}
+		if resp.Error != "" {
+			// The Agent refused the batch, or wrote it but systemd did not
+			// take it (daemon-reload failed): its sites keep the earlier
+			// limits.
+			missed(all[start:end], "agent_refused", resp.Error)
+			continue
 		}
 		for _, s := range resp.Sites {
 			switch s.Outcome {
 			case transport.SiteFileOutcomeKept:
 				log.Printf("site limits: the slice of site %d was changed on the server and is kept; CelikPanel's text is in %s", s.SiteID, s.PendingPath)
 			case transport.SiteFileOutcomeFailed, transport.SiteFileOutcomeRefused:
-				log.Printf("site limits: the slice of site %d stays as it was until the next change: %s", s.SiteID, s.Detail)
+				code := s.Reason
+				if code == "" {
+					code = "failed" // an Agent before alpha.149
+				}
+				count(s.SiteID, code)
+				log.Printf("site limits: site %d does not have the new limits for now (%s): %s", s.SiteID, code, strings.TrimSpace(s.Outcome+" "+s.Detail))
+				if reason == "" {
+					reason = code
+				}
 			}
-			if s.MovedAside != "" {
-				log.Printf("site limits: an earlier site's changed limits file of site id %d was moved aside as %s", s.SiteID, s.MovedAside)
-			}
-		}
-		if resp.Error != "" {
-			log.Printf("site limits: %s", resp.Error)
 		}
 		if len(all) > siteSliceApplyBatch {
 			log.Printf("site limits: %d of %d sites written", end, len(all))
 		}
 	}
+	p.noteSiteLimitApply(ctx, change, covered, notApplied, reason, reasons, time.Now())
 	return nil
+}
+
+// observeSiteLimitsBeforeChange reads, once, the counters of the sites a
+// change of limits is about to reach, before it is pushed (alpha.149 fix
+// round, F8): events from before the change are recorded with the limit
+// that held then. A site whose counters cannot be read now is marked
+// (LimitChanged), so the events its next reading finds carry no limit value,
+// never the new one.
+func (p *Panel) observeSiteLimitsBeforeChange(ctx context.Context, siteIDs []int) {
+	unread := map[int]bool{}
+	for _, id := range siteIDs {
+		unread[id] = true
+	}
+	if !siteLimitReadNeedsAgent || p.agentClient != nil {
+		if all, err := p.siteLimitSites(ctx, 0); err == nil {
+			var sites []siteLimitSite
+			for _, s := range all {
+				if unread[s.SiteID] && len(s.Units) > 0 {
+					sites = append(sites, s)
+				}
+			}
+			if len(sites) > 0 {
+				readCtx, cancel := context.WithTimeout(ctx, siteSliceBatchTimeout)
+				statuses, err := p.readSiteSlicesPaged(readCtx, sites)
+				cancel()
+				if err == nil {
+					p.noteSiteSlices(ctx, statuses, false, time.Now())
+					for _, s := range statuses {
+						if s.CountersRead {
+							delete(unread, s.SiteID)
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(unread) == 0 {
+		return
+	}
+	siteLimitLedgerMu.Lock()
+	defer siteLimitLedgerMu.Unlock()
+	ledger := p.loadSiteLimitLedger(ctx)
+	changed := false
+	for id := range unread {
+		if record := ledger[strconv.Itoa(id)]; record != nil && !record.LimitChanged {
+			record.LimitChanged, changed = true, true
+		}
+	}
+	if !changed {
+		return
+	}
+	if raw, err := json.Marshal(ledger); err == nil {
+		if err := p.setSetting(ctx, settingSiteLimitEvents, string(raw)); err != nil {
+			log.Printf("site limits: the change of limits was not noted for the sites' events: %v", err)
+		}
+	}
 }
 
 // --- A lowered limit below what a site uses now asks first ----------------------
@@ -379,30 +940,68 @@ func (p *Panel) previewSiteLimitsLowered(ctx context.Context, preview *rightsPre
 		names[s.SiteID] = s.Domain
 	}
 	var lines []string
+	var items []siteStoppedItem
 	for _, status := range statuses {
 		if !status.Active {
 			continue
 		}
 		var parts []string
+		item := siteStoppedItem{Domain: names[status.SiteID]}
 		if limit, ok := lowered[settingSiteMemoryMB]; ok && status.MemoryCurrentMB > int64(limit) {
 			parts = append(parts, fmt.Sprintf("memory %d MB in use, new limit %d MB", status.MemoryCurrentMB, limit))
+			item.MemoryMB, item.MemoryLimitMB = status.MemoryCurrentMB, limit
 		}
 		if limit, ok := lowered[settingSiteTasks]; ok && status.TasksCurrent > int64(limit) {
 			parts = append(parts, fmt.Sprintf("%d processes, new limit %d", status.TasksCurrent, limit))
+			item.Tasks, item.TasksLimit = status.TasksCurrent, limit
 		}
 		if len(parts) > 0 {
 			lines = append(lines, names[status.SiteID]+": "+strings.Join(parts, "; "))
+			items = append(items, item)
 		}
 	}
 	sort.Strings(lines)
+	sort.Slice(items, func(i, j int) bool { return items[i].Domain < items[j].Domain })
 	preview.SitesStoppedCount = len(lines)
+	preview.StoppedToken = siteLimitsStoppedToken(lines)
 	if len(lines) > 40 {
 		lines = append(lines[:40], fmt.Sprintf("+%d more", len(lines)-40))
+		items = items[:40]
 	}
-	preview.SitesStopped = lines
+	preview.SitesStopped, preview.SitesStoppedItems = lines, items
 	if preview.SitesStoppedCount > 0 {
-		preview.Message += fmt.Sprintf(" The programs of %d site(s) use more now than a lowered site limit; when this is saved the system stops them at once.", preview.SitesStoppedCount)
+		preview.Message += fmt.Sprintf(" The programs of %d site(s) use more now than a lowered site limit: when this is saved, a program over the memory limit is stopped at once; at the process limit new processes are refused and running ones keep running.", preview.SitesStoppedCount)
 	}
+}
+
+// siteStoppedItem is one site of the list (alpha.149): what its programs use
+// now against a lowered limit (0: that key is not lowered below its use).
+type siteStoppedItem struct {
+	Domain        string `json:"domain"`
+	MemoryMB      int64  `json:"memory_mb,omitempty"`
+	MemoryLimitMB int    `json:"memory_limit_mb,omitempty"`
+	Tasks         int64  `json:"tasks,omitempty"`
+	TasksLimit    int    `json:"tasks_limit,omitempty"`
+}
+
+// siteLimitsStoppedToken names one list of affected sites (review finding 9
+// leftovers): a change that lowers a site limit below what sites use now is
+// saved only with the token of the list the server answers at that moment
+// (confirm_stopped), so the confirmation is always the one that named the
+// sites; a request without it, or with an earlier list's, is refused with
+// the current list. The preview is enforced by the server, not only by the
+// screen.
+func siteLimitsStoppedToken(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+	return hex.EncodeToString(sum[:8])
+}
+
+// siteLimitsStoppedConfirmed: the request may save what its preview showed.
+func siteLimitsStoppedConfirmed(preview rightsPreview, token string) bool {
+	return preview.SitesStoppedCount == 0 || (token != "" && token == preview.StoppedToken)
 }
 
 // --- Database role limits -------------------------------------------------------

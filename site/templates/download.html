@@ -1,0 +1,74 @@
+{{define "lead" -}}
+<div class="lead">
+<div class="wrap">
+<h1>{{t "download.h1"}}</h1>
+<p class="def">{{t "download.def"}}</p>
+<dl class="spec" aria-label="{{t "download.spec.label"}}">
+<div><dt>{{t "spec.release"}}</dt><dd><a class="mono" href="{{link "releases"}}">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">{{t "release.date"}}</time>; {{t "spec.release.signed"}}</dd></div>
+<div><dt>{{t "download.spec.package"}}</dt><dd>{{t "download.spec.package.v"}}</dd></div>
+<div><dt>{{t "spec.systems"}}</dt><dd>{{th "spec.systems.v_html"}}</dd></div>
+<div><dt>{{t "spec.status"}}</dt><dd>{{t "spec.status.v"}}</dd></div>
+</dl>
+</div>
+</div>
+{{- end}}
+
+{{define "main" -}}
+<section class="part" aria-labelledby="h-steps">
+{{template "head" (dict "Num" "1" "ID" "h-steps" "Title" (t "download.steps.title") "Text" (t "download.steps.text"))}}
+<div>
+{{template "steps" (dict "Num" "1")}}
+{{template "command" (dict "ID" "download")}}
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-systems">
+{{template "head" (dict "Num" "2" "ID" "h-systems" "Title" (t "download.systems.title") "Text" (t "download.systems.text"))}}
+<div>
+{{template "systems-table" (dict "Num" "2")}}
+<p class="more"><a href="{{link "systems"}}">{{t "download.systems.more"}}</a></p>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-wizard">
+{{template "head" (dict "Num" "3" "ID" "h-wizard" "Title" (t "download.wizard.title") "Text" (t "download.wizard.text"))}}
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>{{t "common.table"}} 3 · {{t "download.wizard.caption"}}</caption>
+<thead><tr><th scope="col">{{t "download.wizard.choice"}}</th><th scope="col">{{t "download.wizard.does"}}</th></tr></thead>
+<tbody>
+{{- range $k := (list "own" "outside" "two")}}
+<tr><th scope="row">{{t (print "download.wizard." $k)}}</th><td data-k="{{t "download.wizard.does"}}">{{t (print "download.wizard." $k ".text")}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section class="part" id="{{t "download.how.id"}}" aria-labelledby="h-how">
+{{template "head" (dict "Num" "4" "ID" "h-how" "Title" (t "download.how.title") "Text" (t "download.how.text"))}}
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>{{t "common.table"}} 4 · {{t "download.how.caption"}}</caption>
+<thead><tr><th scope="col">{{t "download.how.rule"}}</th><th scope="col">{{t "download.how.means"}}</th></tr></thead>
+<tbody>
+{{- range $k := (list "confirm" "once" "one" "native" "kept" "split" "password")}}
+<tr><th scope="row">{{t (print "download.how." $k)}}</th><td data-k="{{t "download.how.means"}}">{{t (print "download.how." $k ".text")}}</td></tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section class="part" aria-labelledby="h-installed">
+{{template "head" (dict "Num" "5" "ID" "h-installed" "Title" (t "download.installed.title") "Text" "")}}
+<div>
+<p>{{t "download.installed.text"}}</p>
+<p class="more"><a href="{{link "releases"}}">{{t "download.installed.releases"}}</a><span class="sep" aria-hidden="true">·</span><a href="{{guide "panel-settings"}}">{{t "download.installed.guide"}}</a></p>
+</div>
+</section>
+{{- end}}

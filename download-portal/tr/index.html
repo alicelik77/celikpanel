@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="tr" data-page="home">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CelikPanel · Linux sunucular için hosting kontrol paneli</title>
+<meta name="description" content="CelikPanel, Linux sunucular için hosting kontrol panelidir: web siteleri, e-posta, DNS, veritabanları ve yedekler, sistemin kendi hizmetleriyle. Sistemler, müşteri ayırma, ölçümler, lisans ve sürüm tek sayfada.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1528" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon-v2.svg">
+<link rel="preload" href="../assets/fonts/overpass-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/public.css">
+<link rel="stylesheet" href="../assets/home.css">
+<link rel="canonical" href="https://celikpanel.net/tr/">
+<link rel="alternate" hreflang="en" href="../">
+<link rel="alternate" hreflang="tr" href="./">
+<link rel="alternate" hreflang="x-default" href="../">
+<script src="../assets/boot.js"></script>
+<script src="../assets/public.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">İçeriğe geç</a>
+<header class="doc">
+<div class="wrap">
+<a class="brand" href="./" aria-current="page"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M11 3H29V10H14L10 14V18L14 22H29V29H11L3 21V11Z M20 13H29V19H20Z"/></svg><span>CelikPanel</span><span class="sr-only"> ana sayfa</span></a>
+<span class="docid">Teknik bilgi sayfası · @@CP_RELEASE_VERSION@@ · <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></span>
+<nav aria-label="Ana menü"><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="../guide/tr/">Kılavuz</a></li>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../" hreflang="en" lang="en" data-set-lang="en" aria-label="English">EN</a></li>
+</ul></nav>
+</div>
+</header>
+<main id="main">
+<div class="lead">
+<div class="wrap">
+<h1>Linux sunucular için hosting kontrol paneli</h1>
+<p class="def">Web sitelerini, e-postayı, DNS’i, veritabanlarını ve yedekleri sunucunun kendi hizmetleriyle yönetir; bu yüzden siteler, e-posta, DNS ve veritabanları panel durduğunda da çalışır.</p>
+<div class="actions">
+<a class="btn primary" href="indir.html">Deneme sunucusuna kur</a>
+<a class="btn plain" href="fiyat.html">Lisans koşulları</a>
+</div>
+<div class="sheet">
+<dl class="spec" aria-label="Özellikler">
+<div><dt>Sistemler</dt><dd>Debian 13, Ubuntu 24.04 <small>(her sürüm adayında denenir)</small><br>Debian 12, Ubuntu 22.04 <small>(desteklenir)</small><br>Arch Linux <small>(geliştirme düzeyi, her sürümde denenmez)</small><br>amd64</dd></div>
+<div><dt>Web</dt><dd>Nginx; site başına seçilen PHP sürümüyle PHP-FPM; statik siteler; Node.js ve Python uygulamaları (isteğe bağlı)</dd></div>
+<div><dt>E-posta</dt><dd>Postfix, Dovecot, Rspamd; Roundcube web posta</dd></div>
+<div><dt>DNS</dt><dd>Bu sunucuda BIND ya da PowerDNS, ya da dış bir sağlayıcı; DNS’in kopyasını tutan ikinci sunucu isteğe bağlıdır</dd></div>
+<div><dt>Veritabanı</dt><dd>MariaDB, PostgreSQL</dd></div>
+<div><dt>Yedek</dt><dd>Elle ya da zamanlanmış site yedekleri, sunucuda saklanır; uzak kopya (S3 uyumlu depolama ya da SFTP) isteğe bağlıdır</dd></div>
+<div><dt>Kullanıcılar</dt><dd>Yönetici, bayi, müşteri ve müşterinin ekip üyeleri; sınırları olan planlar</dd></div>
+<div><dt>Lisans</dt><dd>Sunucu başına, yıllık. 1.0 sürümüne kadar ücretsiz; 1.0 sürümünden itibaren 99 USD</dd></div>
+<div><dt>Sürüm</dt><dd><a class="mono" href="surumler.html">@@CP_RELEASE_VERSION@@</a>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time>; Ed25519 ile imzalı</dd></div>
+<div><dt>Durum</dt><dd>Alfa: deneme sunucuları için; canlı kullanıma hazır değil</dd></div>
+</dl>
+<figure class="fig">
+<picture>
+<source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="../assets/shots/domain-tr-dark-phone.webp" width="780" height="1688">
+<source media="(max-width: 640px)" srcset="../assets/shots/domain-tr-light-phone.webp" width="780" height="1688">
+<source media="(prefers-color-scheme: dark)" srcset="../assets/shots/domain-tr-dark.webp 1280w, ../assets/shots/domain-tr-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
+<img src="../assets/shots/domain-tr-light.webp" srcset="../assets/shots/domain-tr-light.webp 1280w, ../assets/shots/domain-tr-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="example.com alan adının Genel Bakış sekmesi: bağlı, DNS bu sunucudan sunuluyor; ad sunucuları ve çözüldüğü adres; sertifika 78 gün daha geçerli; posta gönderimi ve kimlik doğrulaması tamam; son yedek bugün." decoding="async">
+</picture>
+<figcaption><b>Şekil 1.</b> Bir alan adının genel bakışı. Gerçek panel, örnek veriler; ekran 19 Kasım 2026’da, alpha.141’den önce alındı; güncel sürümde ayrıntılar farklı olabilir.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="wrap">
+<section class="part" aria-labelledby="h-screens">
+<header><span class="num">2</span><h2 id="h-screens">Ekranlar</h2><p>Panelin kendi ekranları, değiştirilmeden.</p></header>
+<div class="figs">
+<figure class="fig">
+<picture>
+<source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="../assets/shots/domains-tr-dark-phone.webp" width="780" height="1688">
+<source media="(max-width: 640px)" srcset="../assets/shots/domains-tr-light-phone.webp" width="780" height="1688">
+<source media="(prefers-color-scheme: dark)" srcset="../assets/shots/domains-tr-dark.webp 1280w, ../assets/shots/domains-tr-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
+<img src="../assets/shots/domains-tr-light.webp" srcset="../assets/shots/domains-tr-light.webp 1280w, ../assets/shots/domains-tr-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="Alan Adları sayfası: altı örnek alan adı; türü, PHP sürümü, disk kullanımı, aylık trafiği ve durumu." loading="lazy" decoding="async">
+</picture>
+<figcaption><b>Şekil 2.</b> Alan Adları: tür, PHP sürümü, disk ve aylık trafik. Örnek veriler.</figcaption>
+</figure>
+<figure class="fig">
+<picture>
+<source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="../assets/shots/databases-tr-dark-phone.webp" width="780" height="1688">
+<source media="(max-width: 640px)" srcset="../assets/shots/databases-tr-light-phone.webp" width="780" height="1688">
+<source media="(prefers-color-scheme: dark)" srcset="../assets/shots/databases-tr-dark.webp 1280w, ../assets/shots/databases-tr-dark-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680">
+<img src="../assets/shots/databases-tr-light.webp" srcset="../assets/shots/databases-tr-light.webp 1280w, ../assets/shots/databases-tr-light-2x.webp 2560w" sizes="(max-width: 1100px) 100vw, 980px" width="1280" height="680" alt="Veritabanları sayfası: beş örnek MariaDB ve PostgreSQL veritabanı; sahibi, bayisi, alan adı, türü ve boyutu." loading="lazy" decoding="async">
+</picture>
+<figcaption><b>Şekil 3.</b> Veritabanları: sahibi, bayisi, motoru ve boyutu. Örnek veriler.</figcaption>
+</figure>
+</div>
+</section>
+<section class="part" id="kurulum" aria-labelledby="h-install">
+<header><span class="num">3</span><h2 id="h-install">Kurulum ve sistemler</h2><p>Temiz bir sunucuda tek komut. Go, Node.js ya da Git gerekmez.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 1 · Kurulum adımları</caption>
+<thead><tr><th scope="col" class="n">Adım</th><th scope="col">Yapılacak</th><th scope="col">Nerede</th></tr></thead>
+<tbody>
+<tr><td class="v" data-k="Adım">1</td><td data-k="Yapılacak">Hesap oluşturun ve sunucu için lisans alın</td><td data-k="Nerede">celikpanel.net</td></tr>
+<tr><td class="v" data-k="Adım">2</td><td data-k="Yapılacak">Desteklenen bir sistemle temiz bir sunucu hazırlayın</td><td data-k="Nerede">Sunucu sağlayıcınız</td></tr>
+<tr><td class="v" data-k="Adım">3</td><td data-k="Yapılacak">Kurulum komutunu çalıştırın; kurucu, hiçbir şey kurmadan önce sürümün imzasını ve SHA-256 özetini denetler</td><td data-k="Nerede">Sunucunun root terminalinde</td></tr>
+<tr><td class="v" data-k="Adım">4</td><td data-k="Yapılacak">Kurucunun gösterdiği adresten giriş yapın ve lisans anahtarınızı girin; ardından kurulum sihirbazı alan adınızı ve DNS’in nerede olacağını sorar</td><td data-k="Nerede">Panel, tarayıcıda</td></tr>
+</tbody>
+</table>
+</div>
+<div class="cmd">
+<div class="cmd-head"><h3 id="cmd-title-home">Kurulum komutu</h3><button class="copy" type="button" hidden data-copy="cmd-home" data-copied="Kopyalandı" data-failed="Kopyalamak için metni seçin">Kopyala</button></div>
+<pre tabindex="0" aria-labelledby="cmd-title-home"><code id="cmd-home">timedatectl set-ntp true
+curl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &amp;&amp;
+sh celikpanel-install.sh</code></pre>
+<p class="note">Üç satırı birlikte sunucunun root terminalinde çalıştırın. İlk satır saat eşitlemesini açar.</p>
+<p class="sr-only" role="status" data-copy-status></p>
+</div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 2 · İşletim sistemleri (dağıtım tarihleri 24 Ekim 2026’da kontrol edildi)</caption>
+<thead><tr><th scope="col">Sistem</th><th scope="col">Durum</th><th scope="col">Dağıtımın güvenlik desteği bitişi</th><th scope="col">Sistem güncellemeleri</th></tr></thead>
+<tbody>
+<tr><th scope="row">Debian 13 <span class="code-name">trixie</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2030-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 24.04 LTS <span class="code-name">noble</span></th><td data-k="Durum"><span class="tag ok">Her sürümde denenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2029-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Debian 12 <span class="code-name">bookworm</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2028-06-30</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Ubuntu 22.04 LTS <span class="code-name">jammy</span></th><td data-k="Durum"><span class="tag no">Desteklenen</span></td><td class="v" data-k="Dağıtımın güvenlik desteği bitişi">2027-05</td><td data-k="Sistem güncellemeleri">Otomatik ya da elle, sizin seçiminiz</td></tr>
+<tr><th scope="row">Arch Linux <span class="code-name">sürekli sürüm</span></th><td data-k="Durum"><span class="tag no">Geliştirme düzeyi</span></td><td data-k="Dağıtımın güvenlik desteği bitişi">Bitiş tarihi yok</td><td data-k="Sistem güncellemeleri">Elle, tam yükseltme olarak</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Her sürümde denenen: her sürüm adayı yayımlanmadan önce orada çalıştırılır. Desteklenen: CelikPanel orada kurulur ve çalışır; sürüm adayları orada çalıştırılmaz. Geliştirme düzeyi (Arch Linux): CelikPanel onun için de hazırlanır ve bugünkü hâliyle çalışır, ama sürüm adayları orada denenmez ve sürekli güncellemeler çalışanı değiştirebilir. Debian tarihleri Debian LTS’i içerir; Ubuntu tarihleri ESM olmadan standart destektir. Sürüm paketi amd64 için hazırlanır.</p>
+<p class="more"><a href="sistemler.html">Her sistemde neler var, güncellemeler nasıl işler</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-separation">
+<header><span class="num">4</span><h2 id="h-separation">Müşterileri birbirinden ayırma</h2><p>Bir hesabın başka bir hesaba ulaşmasını önleyen önlemler ve kapsamadıkları.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 3 · Hesaplar arası ayırma, 0.1.0-alpha.148’e kadarki sürüm notlarına göre</caption>
+<thead><tr><th scope="col">Önlem</th><th scope="col">Durum</th><th scope="col">İlk sürüm</th></tr></thead>
+<tbody>
+<tr><td data-k="Önlem">Her sitenin kendi sistem hesabı vardır; sitenin PHP’si bu hesapla çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.82 ya da öncesi</td></tr>
+<tr><td data-k="Önlem">Node.js siteleri, Python uygulamaları ve yüklenen programlar (isteğe bağlı programlar) sitenin kendi hesabıyla bir kum havuzunda çalışır; mevcut Node.js sitelerini yönetici taşıdığında içeri girerler</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.127</td></tr>
+<tr><td data-k="Önlem">Ek FTP ve SFTP girişleri sitelerinin yalnız bir klasörünü görür, komut satırı açamaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.128</td></tr>
+<tr><td data-k="Önlem">Hiçbir müşteri ya da bayi başka bir hesabın alan adını ya da site hesabını, sunucunun kendi hizmetlerinin portlarını alamaz (alpha.142’den önce çakışmış adlar yöneticiye listelenir)</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.142</td></tr>
+<tr><td data-k="Önlem">Bir sitenin klasöründeki bağlantı, başka bir hesabın dosyalarını sunmaz</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.142</td></tr>
+<tr><td data-k="Önlem">Yedekten, kopyadan ya da içe aktarmadan gelen SQL, yöneticinin değil veritabanı sahibinin yetkisiyle çalışır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.141</td></tr>
+<tr><td data-k="Önlem">PostgreSQL veritabanları başka hesaplara kapalıdır: yeniler baştan; eskiler, başka bir hesabın kullandığı görülmeyen bir günün ardından panel tarafından, aksi hâlde yönetici PostgreSQL sayfasında kapattığında</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
+<tr><td data-k="Önlem">Giden posta yalnız gönderenin kendi alan adı için imzalanır (Arch Linux hariç: oradaki OpenDKIM imzayı girişe bağlayamıyor)</td><td data-k="Durum"><span class="tag ok">Var, Arch Linux hariç</span></td><td class="v" data-k="İlk sürüm">alpha.143</td></tr>
+<tr><td data-k="Önlem">Web postanın sunucudaki yerel kapısı yalnız CelikPanel’in kendi denetimlerine cevap verir, Roundcube’un dosyalarını isteyen başka hesaplara değil</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.145</td></tr>
+<tr><td data-k="Önlem">phpMyAdmin, phpPgAdmin ve web postası, her siteyi okuyabilen web sunucusu hesabıyla değil, kendi sistem hesaplarıyla çalışır (web postası erişim listelerini destekleyen bir dosya sistemi ister; yoksa web sunucusu hesabında kalır ve panel bunu söyler)</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.147</td></tr>
+<tr><td data-k="Önlem">Site hesapları at ile iş zamanlayamaz (sahibin yazdığı bir at.allow korunur ve andığı site hesapları yöneticiye gösterilir); panel dışında eklenen crontab satırları yönetici için işaretlenir</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.147</td></tr>
+<tr><td data-k="Önlem">Dağıtımın web sunucusu hesabıyla çalışan ortak PHP havuzu, hiçbir şey kullanmıyorsa kapatılır</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.147</td></tr>
+<tr><td data-k="Önlem">Bir sitenin programları (Node.js uygulaması, Python uygulamaları, yüklenen programlar, hizmet uygulamaları ve bunların kurulum, derleme ve dağıtım adımları) tek bir bellek, işlem ve işlemci sınırını paylaşır; sitenin PHP’si kendi sınırlarını korur, zamanlanmış görevleri bu sınırın içinde değildir; önceden çalışan programlar yönetici siteyi taşıyınca bu sınıra girer</td><td data-k="Durum"><span class="tag ok">Var</span></td><td class="v" data-k="İlk sürüm">alpha.148</td></tr>
+<tr><td data-k="Önlem">Posta kutusu, alan adı ve hosting hesabı başına giden posta sınırları (isteğe bağlı; yönetici açana kadar kapalı)</td><td data-k="Durum"><span class="tag no">İsteğe bağlı</span></td><td class="v" data-k="İlk sürüm">alpha.128</td></tr>
+<tr><td data-k="Önlem">PHP’nin ve zamanlanmış görevlerin sitenin kendi kum havuzunda çalışması</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Bütün bir barındırma hesabı için, sitelerinin PHP’si ve zamanlanmış görevleri de içinde, işlemci ve bellek sınırı (bugün: her sitenin programlarının kendi sınırları var; PHP’de site başına bellek, çalışma süresi ve işlem sayısı)</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Başka hangi sitelerin olduğunu gizleme: hesap adları ve işlemler bir site hesabına hâlâ görünür</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Her site için ayrı web sunucusu grubu (bugün web sunucusunun grubu her sitenin klasörünü okuyabilir; aradaki engel bağlantı kuralıdır)</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Posta adres listelerinin diğer hesaplardan gizlenmesi</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+<tr><td data-k="Önlem">Bir veritabanını başka bir PostgreSQL sürümüne sahibinin yetkisiyle taşımak (bugün: yöneticinin)</td><td data-k="Durum"><span class="tag warn">Yok</span></td><td class="v" data-k="İlk sürüm">—</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Yok: güncel sürümde bulunmaz.</p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-stops">
+<header><span class="num">5</span><h2 id="h-stops">Panel durduğunda</h2><p>Hizmetler sistemin kendi hizmetleridir; CelikPanel onları yönetir.</p></header>
+<div>
+<div class="split">
+<div><h3>Çalışmaya devam eder</h3><ul class="plain">
+<li>Web siteleri ve Node.js uygulamaları</li>
+<li>E-posta ve web posta</li>
+<li>DNS, isteğe bağlı yedek DNS sunucusundaki kopya dahil</li>
+<li>Veritabanları</li>
+<li>Zamanlanmış görevler</li>
+<li>Site sertifikalarının yenilenmesi, sistemin kendi certbot zamanlayıcısıyla</li>
+</ul></div>
+<div><h3>Hâlâ panele bağlı</h3><ul class="plain">
+<li>Panelin ve posta sunucusunun kendi sertifikalarının yenilenmesi</li>
+<li>Eski sürümlerden kalan site sertifikaları, yeniden alınana kadar</li>
+<li>Açılışta güvenlik duvarının geri yüklenmesi</li>
+<li>Zamanlanmış uzak yedeklerin gönderilmesi (isteğe bağlı bir özellik)</li>
+<li>İzleme uyarıları</li>
+</ul></div>
+</div>
+<p class="note">CelikPanel’i bir sunucudan kaldırmak desteklenmiyor. <a href="../guide/tr/without-panel.html">Sunucuyu panelsiz yönetmek</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-measured">
+<header><span class="num">6</span><h2 id="h-measured">Ölçümler</h2><p>Gerçek makinelerde, gösterilen koşulda ölçüldü. O denemeleri anlatır; her sunucu için garanti değildir.</p></header>
+<div>
+<div class="table">
+<table class="stack">
+<caption>Tablo 4 · Eylül 2026 derlemeleriyle kurtarma denemeleri</caption>
+<thead><tr><th scope="col">Ölçüm</th><th scope="col">Değer</th><th scope="col">Koşul</th><th scope="col">Tarih</th></tr></thead>
+<tbody>
+<tr><th scope="row">Çöken bir sunucudan panelin yeniden hizmet vermesine (DNS 15 sn sonra cevap verdi)</th><td class="v" data-k="Değer">105 sn</td><td data-k="Koşul">Birinci sunucu elektrik kesintisiyle durdu; yeni bir makine açılıp mühürlü tek bir arşivden geri yüklendi</td><td class="v" data-k="Tarih">2026-09-05</td></tr>
+<tr><th scope="row">Kesinti anında arşivin yaşı, kaybolan veri</th><td class="v" data-k="Değer">40,9 sn · 0</td><td data-k="Koşul">O aralıkta hiçbir şey yazılmamıştı; hiçbir şey kaybolmadı</td><td class="v" data-k="Tarih">2026-09-05</td></tr>
+<tr><th scope="row">Çalışan bir BIND devralınırken cevapsız kalan sorgu</th><td class="v" data-k="Değer">0 / 2508</td><td data-k="Koşul">Debian 13’te kendi bölgesini cevaplayan, elle kurulmuş bir BIND, panelden devralındı</td><td class="v" data-k="Tarih">2026-09-04</td></tr>
+<tr><th scope="row">Elektrik kesintisinden sonra yarım kalan işin sonuçlanma süresi</th><td class="v" data-k="Değer">≤ 7 sn</td><td data-k="Koşul">Gerçek bir sanal makinede dört kesinti; her defasında iş kimse dokunmadan tamamlandı ya da geri alındı</td><td class="v" data-k="Tarih">2026-09-04</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">Koşullar ve açık riskler depoda kayıtlıdır. <a href="https://github.com/alicelik77/celikpanel/blob/main/docs/RISK-REGISTER.md">Risk kaydı</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-licence">
+<header><span class="num">7</span><h2 id="h-licence">Lisans</h2><p>Sunucu başına bir lisans. Hesap, alan adı ve site sayılmaz.</p></header>
+<div>
+<div class="table">
+<table class="stack kv">
+<caption>Tablo 5 · Bugünkü ve 1.0 sürümünden itibaren geçerli lisans</caption>
+<thead><tr><th scope="col">Konu</th><th scope="col">Bugün (alfa)</th><th scope="col">1.0 sürümünden itibaren</th></tr></thead>
+<tbody>
+<tr><th scope="row">Fiyat</th><td data-k="Bugün (alfa)">Ücretsiz</td><td data-k="1.0 sürümünden itibaren">Sunucu başına yıllık 99 USD</td></tr>
+<tr><th scope="row">Süre</th><td data-k="Bugün (alfa)">Oluşturulduğundan itibaren bir yıl; hesabınızdan ücretsiz yenilenir</td><td data-k="1.0 sürümünden itibaren">Bir yıl; bitiş tarihinden önce yenilediğiniz sürece fiyatınız artmaz</td></tr>
+<tr><th scope="row">celikpanel.net’e ulaşılamazsa</th><td data-k="Bugün (alfa)">Yönetim en çok 7 gün açık kalır</td><td data-k="1.0 sürümünden itibaren">Panel en çok 30 gün çalışmaya devam eder</td></tr>
+<tr><th scope="row">Lisans biterse</th><td data-k="Bugün (alfa)">Panelin ekranları lisans yenilenene kadar kapanır; siteler, posta, DNS ve veritabanları çalışmaya devam eder</td><td data-k="1.0 sürümünden itibaren">Bugünkü gibi; bitiş tarihinden 30, 7 ve 1 gün önce hatırlatmayla</td></tr>
+<tr><th scope="row">Deneme</th><td data-k="Bugün (alfa)">—</td><td data-k="1.0 sürümünden itibaren">İlk seferde 30 gün, kart istenmez</td></tr>
+<tr><th scope="row">Ödeme</th><td data-k="Bugün (alfa)">Yok</td><td data-k="1.0 sürümünden itibaren">Stripe üzerinden kartla</td></tr>
+</tbody>
+</table>
+</div>
+<p class="more"><a href="fiyat.html">Lisans koşullarının tamamı</a></p>
+</div>
+</section>
+<section class="part" aria-labelledby="h-release">
+<header><span class="num">8</span><h2 id="h-release">Sürüm ve sınırlar</h2><p>Kurulu paneli yalnız sahibi, panelin kendi güncelleme ekranından günceller.</p></header>
+<div class="split">
+<div>
+<h3>Son sürüm: <span class="mono">@@CP_RELEASE_VERSION@@</span>, <time datetime="@@CP_RELEASE_DATETIME@@">@@CP_RELEASE_DATE_TR@@</time></h3>
+<p>Ed25519 ile imzalı. Sürüm notları sürümün commit’ini, laboratuvarda neyin denendiğini, neyin denenmediğini ve bilinen sınırları yazar.</p>
+<p>Güncelleme kurulu sürümü değiştirdikten sonra başarısız olursa panel önceki sürümü ve veritabanını kendisi geri koyar (güncellemeden sonra panelde yapılanlar kaybolur); daha önce durursa hiçbir şey değişmemiştir. Hangisinin olduğunu güncelleme ekranı söyler.</p>
+<p><a href="surumler.html">Sürüm notları, dosyalar ve nasıl denetlenecekleri</a></p>
+<p><a href="degisiklikler.html">Sürümlere göre değişiklikler</a><span class="sep" aria-hidden="true">·</span><a href="sorunlar.html">Bilinen sorunlar ve sorun bildirmek</a></p>
+</div>
+<div>
+<h3>Kapsamda olmayanlar</h3>
+<ul class="plain">
+<li>Apache ve Exim: CelikPanel Nginx ve Postfix kullanır</li>
+<li>Panelde sunucunun tamamının yedeği: sistem için sağlayıcınızın anlık görüntülerini kullanın</li>
+<li>Paneli bir sunucudan kaldırmak</li>
+<li>Hesap başına işlemci ve bellek sınırları</li>
+<li>amd64 dışındaki işlemciler</li>
+</ul>
+</div>
+</div>
+</section>
+</div>
+</main>
+<footer class="foot">
+<div class="wrap">
+<div><p class="foot-name">CelikPanel</p><p>Linux sunucular için hosting kontrol paneli.</p><p>© 2026 CELIKBROS</p></div>
+<nav aria-labelledby="f-product"><h2 id="f-product">Ürün</h2><ul>
+<li><a href="sistemler.html">Sistemler</a></li>
+<li><a href="indir.html">Kurulum</a></li>
+<li><a href="fiyat.html">Lisans</a></li>
+<li><a href="surumler.html">Sürümler</a></li>
+<li><a href="degisiklikler.html">Değişiklikler</a></li>
+<li><a href="../guide/tr/">Kullanım kılavuzu</a></li>
+</ul></nav>
+<nav aria-labelledby="f-account"><h2 id="f-account">Hesap</h2><ul>
+<li><a href="../account/?action=login&amp;lang=tr">Giriş yap</a></li>
+<li><a href="../account/?action=register&amp;lang=tr">Hesap oluştur</a></li>
+<li><a href="../account/?action=terms&amp;lang=tr">Koşullar ve veri bildirimi</a></li>
+</ul></nav>
+<nav aria-labelledby="f-help"><h2 id="f-help">İletişim</h2><ul>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/security/advisories/new">Gizli güvenlik bildirimi</a></li>
+<li><a href="sorunlar.html">Bilinen sorunlar</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=bug_tr.yml">Hata bildir</a></li>
+<li><a href="https://github.com/alicelik77/celikpanel-feedback/issues/new?template=feature_tr.yml">Özellik öner</a></li>
+</ul></nav>
+</div>
+</footer>
+</body>
+</html>

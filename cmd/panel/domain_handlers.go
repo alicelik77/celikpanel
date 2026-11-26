@@ -702,6 +702,9 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.audit(r, "domain.create", "domain", result.DomainID)
+	// 22 Nov 2026 (B2): a reply of another account that still names this
+	// name (left from before it was deleted elsewhere) is rewritten now.
+	p.reconcileAutoresponderAddressesAfter(context.WithoutCancel(r.Context()), "domain_added")
 	// A domain that can send mail from this server gets its DKIM key,
 	// signing and (where this server keeps the zone) its record by itself,
 	// after this request has published the zone (domain_dkim_automatic.go).
@@ -887,9 +890,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := p.ensureHSTSAllowsHostnameRemoval(ctx, domainID); err != nil {
-		if message, guarded := hstsRemovalConflictMessage(err, "the domain"); guarded {
-			writeClientError(w, http.StatusConflict, message)
-		} else {
+		if !writeHSTSRemovalRefusal(w, err, "the domain") {
 			writeServerError(w, err)
 		}
 		return
@@ -1032,6 +1033,12 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	// runtime for this domain on this server (domain_delete_mail_stage.go).
 	step(domainDeletionStageMailRuntime)
 	mailRan, keptMail, err := p.runDomainDeletionMailStageLocked(ctx, domainID, domain.Name)
+	// 22 Nov 2026 (second review of alpha.143, B2): from the deletion marker
+	// on, the domain's forwarders and catch-all no longer count, so an
+	// out-of-office reply elsewhere that names an address of this domain is
+	// rewritten now, under the same mail lock, whether or not the stage
+	// finished (mail_autoresponder_own.go).
+	p.reconcileAutoresponderAddressesLocked(context.WithoutCancel(ctx), "domain_deleted")
 	if err != nil {
 		p.mailMutationMu.Unlock()
 		pending(domainDeletionStageMailRuntime, err)

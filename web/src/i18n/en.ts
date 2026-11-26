@@ -102,7 +102,10 @@ import type { DbEncodingScreenKey } from './screens/dbEncoding/en';
 import type { SideDoorsScreenKey } from './screens/sideDoors/en';
 import type { SiteJobsScreenKey } from './screens/siteJobs/en';
 import type { SideDoorsUndoScreenKey } from './screens/sideDoorsUndo/en';
+import type { PgPublicScreenKey } from './screens/pgPublic/en';
 import type { SiteLimitsScreenKey } from './screens/siteLimits/en';
+import type { SiteLimitsApplyScreenKey } from './screens/siteLimitsApply/en';
+import type { DbLimitsScreenKey } from './screens/dbLimits/en';
 import type { SiteTasksScreenKey } from './screens/siteTasks/en';
 
 export const en = {
@@ -634,6 +637,9 @@ export type ScreenKey =
     | SideDoorsScreenKey
     | SiteJobsScreenKey
     | SideDoorsUndoScreenKey
+    | PgPublicScreenKey
     | SiteLimitsScreenKey
+    | SiteLimitsApplyScreenKey
+    | DbLimitsScreenKey
     | SiteTasksScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

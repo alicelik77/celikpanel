@@ -211,7 +211,7 @@ func siteSlicePathOf(siteID int) (string, error) {
 func ensureSiteSliceStrict(s *transport.SiteSlice) error {
 	siteSliceMu.Lock()
 	defer siteSliceMu.Unlock()
-	result, written, _, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, readSandboxLedger())
+	result, written, err := writeSiteSlice(s, transport.SiteFileTriggerCreate, readSandboxLedger())
 	if err != nil {
 		return err
 	}
@@ -1523,7 +1523,7 @@ func removeSiteTasks(siteID int) ([]string, error) {
 		_, account = splitSiteTaskSource(raw)
 	}
 	aside, err := removeSiteTasksLocked(siteID, true)
-	forgetSiteTasksUndo(siteID)
+	forgetSiteMoveOutcome(siteID)
 	_ = os.Remove(siteTaskRenderedPath(siteID))
 	if account != "" {
 		forgetCronClosed(map[string]bool{account: true})
