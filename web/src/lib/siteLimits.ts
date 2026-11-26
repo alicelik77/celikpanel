@@ -154,7 +154,7 @@ export interface MoveOutcome {
     ran?: boolean;
 }
 
-const REASONS: readonly string[] = ['not_running', 'still_starting', 'not_in_slice', 'not_listening', 'no_port', 'restart_failed', 'write_failed', 'record_failed', 'unread'];
+const REASONS: readonly string[] = ['not_running', 'still_starting', 'not_in_slice', 'not_listening', 'no_port', 'restart_failed', 'write_failed', 'record_failed', 'unread', 'ports_unread'];
 
 /**
  * A step's reason as a catalogue key and its values (alpha.149, lab D7): never the agent's English
@@ -174,7 +174,7 @@ export function moveReasonWords(reason: MoveReason | undefined): { key: string; 
     return { key: `slim.reason.${reason.code}`, values };
 }
 
-const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running'];
+const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running', 'update_unreadable'];
 
 /** Why a whole move did not run, as a catalogue key (the general sentence for every other code). */
 export function moveWhyKey(reason: MoveReason | undefined): string {
@@ -192,6 +192,8 @@ export interface MoveAnswer {
     /** The agent's English words (journal and audit record only). */
     error?: string;
     reason?: MoveReason;
+    /** Second fix round (R8): put back by Try again, running where they ran, listening on no port. */
+    runs_no_port?: string[];
 }
 
 export function decodeMoveAnswer(raw: unknown): MoveAnswer {
@@ -201,6 +203,7 @@ export function decodeMoveAnswer(raw: unknown): MoveAnswer {
         done: body.done, rolled_back: body.rolled_back === true, time_up: body.time_up === true, kept: body.kept === true,
         units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error,
         reason: body.reason && typeof body.reason.code === 'string' ? body.reason : undefined,
+        runs_no_port: Array.isArray(body.runs_no_port) ? body.runs_no_port.filter((u): u is string => typeof u === 'string') : [],
     };
 }
 

@@ -259,7 +259,9 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                         return { state: 'unknown', reason: t('slim.move.unknown') };
                     }
                     setRequestID(newMoveRequestID());
-                    if (answer.done) return { state: 'done' };
+                    // Second fix round (R8): a program Try again put back that runs but listens on no port is named.
+                    const silent = answer.runs_no_port ?? [];
+                    if (answer.done) return silent.length > 0 ? { state: 'done', message: t('slim.kept.runsNoPort', { list: silent.map((u) => labelOf(units, u)).join(', ') }) } : { state: 'done' };
                     return { state: 'failed', reason: answer.kept ? t('slim.kept', { time: formatDateTime(view.move_interrupted?.at ?? '', locale) }) : t(moveWhyKey(answer.reason) as SiteLimitsLaneKey) };
                 },
             });
