@@ -1359,7 +1359,8 @@ file so CelikPanel writes its own), CelikPanel's own file was deleted by the own
 administrator presses "Close it again" in Problems now), or accounts come from a directory
 service (the owner keeps the account out with their own file). `/etc/cron.deny` naming the
 account is enough. The preview says so too, and a new site whose account would stay allowed
-keeps cron.
+keeps cron - checked again once CelikPanel's `cron.allow` was brought up to date, so a write
+that failed keeps the new site in cron too (alpha.150 fix round).
 
 **The record** (the move's one record, `site-slice-move.json` in the Agent's private folder:
 version 3 with a `tasks` part; a programs' move writes version 2): the crontab's exact bytes

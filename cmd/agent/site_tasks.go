@@ -1505,6 +1505,21 @@ func createSiteTasks(siteID int, domain, username string, slice *transport.SiteS
 		log.Printf("site tasks: %s was already there and changed on this server (an earlier site with the same id); it is kept", sitecron.SourcePath(siteID))
 	}
 	refreshCronAllow()
+	// alpha.150 fix round (F7): checked again once cron.allow was written. A
+	// write that failed leaves the account able to install its own jobs, so
+	// the new site keeps cron, as above: its empty task file goes. Problems
+	// now then names the site among those outside their limits (and, while
+	// other sites are moved, cron.allow as not closed); its move is refused
+	// or put back until the file can be written.
+	if !cronRefusesAccount(username) {
+		log.Printf("site tasks: site %d keeps cron: %s does not keep %s out after it was brought up to date", siteID, cronAllowPath, username)
+		if result.Outcome == transport.SiteFileOutcomeWritten || result.Outcome == transport.SiteFileOutcomeRecreated {
+			if _, err := removeSiteTasksLocked(siteID, false); err != nil {
+				log.Printf("site tasks: the task file of new site %d could not be taken away again: %v", siteID, err)
+			}
+		}
+		return nil
+	}
 	// A new account never had a crontab: from now on one found for it was
 	// made by root, while CelikPanel's own cron.allow keeps it out.
 	if cronKeptOutByUs(username) {

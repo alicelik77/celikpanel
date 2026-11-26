@@ -1200,7 +1200,9 @@ sunucu sahibinin kendi `/etc/cron.allow` dosyası onu adlandırıyorsa (sahip ad
 CelikPanel kendi dosyasını yazsın diye dosyayı siler), CelikPanel'in dosyasını sahip sildiyse
 (yönetici Şu anki sorunlar'da "Yeniden kapat"a basar) ya da hesaplar bir dizin hizmetinden geliyorsa
 (sahip hesabı kendi dosyasıyla dışarıda tutar). Hesabı adlandıran bir `/etc/cron.deny` yeter. Ön
-izleme de bunu söyler; hesabı izinli kalacak yeni bir site cron'da kalır.
+izleme de bunu söyler; hesabı izinli kalacak yeni bir site cron'da kalır - CelikPanel'in
+`cron.allow` dosyası güncellendikten sonra yeniden denetlenir, böylece başarısız bir yazma da yeni
+siteyi cron'da tutar (alpha.150 düzeltme turu).
 
 **Kayıt** (taşımanın tek kaydı, Ajan'ın özel klasöründe `site-slice-move.json`: `tasks` bölümüyle
 sürüm 3; programların taşıması sürüm 2 yazar): crontab'ın tam baytları (`crontab -l`'nin yazdığı

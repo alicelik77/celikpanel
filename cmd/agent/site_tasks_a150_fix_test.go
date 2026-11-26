@@ -451,3 +451,26 @@ func TestRemovingASitesTasksReportsAFailedSwitchOff(t *testing.T) {
 		t.Fatalf("removal answered %v", err)
 	}
 }
+
+// TestANewSiteKeepsCronWhenCronAllowCannotBeWritten (F7): a new site's
+// account is checked again once cron.allow was brought up to date; when
+// the file could not be written the account could install its own jobs, so
+// the site keeps cron (no task file), as when cron's files refuse it first.
+func TestANewSiteKeepsCronWhenCronAllowCannotBeWritten(t *testing.T) {
+	useTaskTestHost(t)
+	cronAllowPath = filepath.Join(t.TempDir(), "no-such-folder", "cron.allow")
+	if err := createSiteTasks(taskTestSite, "shop.example.test", taskTestAccount, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(sitecron.SourcePath(taskTestSite)); !os.IsNotExist(err) || siteTasksMoved(taskTestSite) {
+		t.Fatalf("the new site was moved although cron.allow could not be written: %v", err)
+	}
+	// Written: the new site is moved from the start.
+	cronAllowPath = filepath.Join(t.TempDir(), "cron.allow")
+	if err := createSiteTasks(taskTestSite, "shop.example.test", taskTestAccount, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !siteTasksMoved(taskTestSite) || !cronRefusesAccount(taskTestAccount) {
+		t.Fatal("the new site was not moved")
+	}
+}
