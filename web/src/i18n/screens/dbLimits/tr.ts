@@ -12,5 +12,6 @@ export const trDbLimitsScreens: Record<DbLimitsScreenKey, string> = {
     'pnow.database_limits_unapplied.done': 'Listelenen veritabanı kullanıcıları artık sınırlarını taşıyor.',
     'pnow.database_limits_unapplied.still': '{n} veritabanı kullanıcısı hâlâ sınırlarını almadı; satır nedenini söyler.',
     'plans.dbLimits.notApplied': 'Kaydedildi. Planın veritabanı sınırları {n} veritabanı kullanıcısına ulaşmadı ({users}); önceki sınırlarını koruyorlar. Şu anki sorunlar onları Yeniden uygula ile birlikte gösterir.',
+    'dashboard.audit.action.database.limits.apply_again': 'veritabanı sınırlarını ulaşmadıkları veritabanı kullanıcılarına yeniden uyguladı',
     'plans.dbLimits.running': 'Kaydedildi. {n} veritabanı kullanıcısına planın veritabanı sınırları hâlâ veriliyor; ulaşmadığı olursa Şu anki sorunlar gösterir.',
 };

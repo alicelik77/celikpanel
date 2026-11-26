@@ -418,8 +418,8 @@ const screenPartBudgets = {
   // says about them (pnow.database_limits_unapplied.*, plans.dbLimits.*). A
   // new part, as "problemsNow" and "siteLimitsApply" have no room; no
   // existing part's budget is raised. Set with at least 25% headroom from its
-  // Turkish file: 1.78 / 0.68 KiB.
-  dbLimits: kib(2.3, 1.0),
+  // Turkish file: 1.93 / 0.73 KiB.
+  dbLimits: kib(2.5, 1.0),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

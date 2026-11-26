@@ -17,6 +17,7 @@ export const enDbLimitsScreens = {
     'pnow.database_limits_unapplied.done': 'The listed database users have their limits now.',
     'pnow.database_limits_unapplied.still': '{n} database users still do not have their limits; the line says why.',
     'plans.dbLimits.notApplied': 'Saved. The plan’s database limits did not reach {n} database users ({users}); they keep their earlier limits. Problems now names them, with Apply again.',
+    'dashboard.audit.action.database.limits.apply_again': 'applied the database limits again to the database users they had not reached',
     'plans.dbLimits.running': 'Saved. {n} database users are still being given the plan’s database limits; Problems now names any they do not reach.',
 };
 
