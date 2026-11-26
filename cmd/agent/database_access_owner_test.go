@@ -127,18 +127,20 @@ func TestRemovingAUserNeverHandsItsObjectsToAPrivilegedOwner(t *testing.T) {
 	if resp.Applied || resp.AccountRefused != transport.DatabaseAccountRefusedPrivileged || strings.Contains(e.all(), "REASSIGN") {
 		t.Fatalf("privileged celikpanel_admin: %+v %q", resp, e.statements)
 	}
-	for _, owner := range []string{"app_user", databaseAdminAccountName} {
-		e, resp = remove("app", owner, nil)
-		var reassign string
-		for _, statement := range e.statements {
-			if strings.Contains(statement, "REASSIGN OWNED BY") {
-				reassign = statement
-			}
+	// A site role's database: what the user made goes to that owner, tested
+	// again in the REASSIGN's own transaction. (celikpanel_admin's database:
+	// TestRemovingAUserNeverHandsAnythingToCelikPanelsOwnAccount.)
+	e, resp = remove("app", "app_user", nil)
+	var reassign string
+	for _, statement := range e.statements {
+		if strings.Contains(statement, "REASSIGN OWNED BY") {
+			reassign = statement
 		}
-		at := strings.Index(reassign, "celikpanel_r.rolname OPERATOR(pg_catalog.=) '"+owner+"'")
-		if !resp.Applied || at < 0 || at > strings.Index(reassign, "REASSIGN OWNED BY") || !strings.Contains(reassign, "TO \""+owner+"\"") {
-			t.Fatalf("owner %s: %+v %q", owner, resp, e.statements)
-		}
+	}
+	at := strings.Index(reassign, "celikpanel_r.rolname OPERATOR(pg_catalog.=) 'app_user'")
+	if !resp.Applied || at < 0 || at > strings.Index(reassign, "REASSIGN OWNED BY") || !strings.Contains(reassign, "TO \"app_user\"") ||
+		strings.Contains(reassign, "$celikpanel_owned_guard$") {
+		t.Fatalf("owner app_user: %+v %q", resp, e.statements)
 	}
 	// The engine's own system database is refused before anything runs.
 	for engine, database := range map[string]string{"postgresql": "postgres", "mysql": "mysql"} {
@@ -154,9 +156,98 @@ func TestRemovingAUserNeverHandsItsObjectsToAPrivilegedOwner(t *testing.T) {
 	}
 }
 
+// Third review of PR #370, H1 (security): removing a user added to a
+// database owned by celikpanel_admin never hands anything to celikpanel_admin.
+// No REASSIGN OWNED is sent at all; in the same transaction, before DROP
+// OWNED, a user that owns anything there is refused (owns_objects, naming the
+// user), and one that owns nothing is removed as before.
+func TestRemovingAUserNeverHandsAnythingToCelikPanelsOwnAccount(t *testing.T) {
+	remove := func(ownsObjects bool) (*namedGuardEngine, transport.DatabaseAccessUserResponse) {
+		answers := pgAccessAnswers(true, databaseAdminAccountName)
+		e := &namedGuardEngine{other: func(statement string) ([]byte, error) {
+			// The engine: the user owns a function in the database, so the
+			// owned-objects guard raises (psql's own error line, then stop).
+			if ownsObjects && strings.Contains(statement, "$celikpanel_owned_guard$") {
+				return []byte("You are now connected to database \"app\" as user \"postgres\".\nBEGIN\nDO\nDO\n" +
+					"ERROR:  celikpanel-refused:owns_objects:app_x\nCONTEXT:  PL/pgSQL function inline_code_block line 3 at RAISE\n"), errors.New("exit status 3")
+			}
+			return answers(statement)
+		}}
+		installNamedGuardEngine(t, e)
+		var resp transport.DatabaseAccessUserResponse
+		if err := (&Agent{}).RemoveDatabaseAccessUserV1(&transport.DatabaseAccessUserRequest{Engine: "postgresql", Database: "app", Username: "app_x"}, &resp); err != nil {
+			t.Fatal(err)
+		}
+		return e, resp
+	}
+	scriptOf := func(e *namedGuardEngine) string {
+		for _, statement := range e.statements {
+			if strings.Contains(statement, "DROP OWNED BY") {
+				return statement
+			}
+		}
+		return ""
+	}
+
+	// The user owns a function: refused, nothing handed over, the role stays.
+	e, resp := remove(true)
+	script := scriptOf(e)
+	if resp.Applied || resp.AccountRefused != transport.DatabaseAccountRefusedOwnsObjects || resp.AccountRefusedName != "app_x" ||
+		!strings.Contains(resp.Error, "app_x owns tables or other objects") || strings.Contains(e.all(), "REASSIGN") || strings.Contains(e.all(), "DROP ROLE") {
+		t.Fatalf("owns a function: %+v %q", resp, e.statements)
+	}
+	// The guard runs inside the transaction, after the user's and the owner's
+	// guards and before DROP OWNED.
+	guard := strings.Index(script, "$celikpanel_owned_guard$")
+	if guard < 0 || guard < strings.Index(script, "BEGIN;") || guard < strings.Index(script, "celikpanel_r.rolname OPERATOR(pg_catalog.=) '"+databaseAdminAccountName+"'") ||
+		guard > strings.Index(script, "DROP OWNED BY") || !strings.HasSuffix(script, "COMMIT;") {
+		t.Fatalf("the owned-objects guard is not in the removal's transaction before DROP OWNED: %q", script)
+	}
+
+	// The user owns nothing: removed, still no REASSIGN sent.
+	e, resp = remove(false)
+	script = scriptOf(e)
+	if !resp.Applied || resp.AccountRefused != "" || strings.Contains(e.all(), "REASSIGN") || !strings.Contains(script, "$celikpanel_owned_guard$") ||
+		!strings.Contains(e.all(), "DROP ROLE \"app_x\"") {
+		t.Fatalf("owns nothing: %+v %q", resp, e.statements)
+	}
+}
+
+// The owned-objects guard reads exactly what REASSIGN OWNED would move: the
+// user's owner rows in pg_shdepend for this database and for shared objects,
+// leaving out default-ACL entries and user mappings (REASSIGN OWNED skips
+// them; DROP OWNED removes them).
+func TestTheOwnedObjectsGuardReadsWhatReassignWouldMove(t *testing.T) {
+	block, err := pgOwnsObjectsGuardBlock("app_x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"FROM pg_catalog.pg_shdepend celikpanel_d",
+		"celikpanel_d.refclassid OPERATOR(pg_catalog.=) 'pg_catalog.pg_authid'::pg_catalog.regclass::pg_catalog.oid",
+		"WHERE celikpanel_r.rolname OPERATOR(pg_catalog.=) 'app_x')",
+		"celikpanel_d.deptype OPERATOR(pg_catalog.=) 'o'",
+		"celikpanel_d.dbid OPERATOR(pg_catalog.=) 0::pg_catalog.oid",
+		"celikpanel_db.datname OPERATOR(pg_catalog.=) pg_catalog.current_database()",
+		"celikpanel_d.classid OPERATOR(pg_catalog.<>) 'pg_catalog.pg_default_acl'::pg_catalog.regclass::pg_catalog.oid",
+		"celikpanel_d.classid OPERATOR(pg_catalog.<>) 'pg_catalog.pg_user_mapping'::pg_catalog.regclass::pg_catalog.oid",
+		"RAISE EXCEPTION 'celikpanel-refused:owns_objects:%', 'app_x';",
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("the owned-objects guard lacks %q: %s", want, block)
+		}
+	}
+	for _, hostile := range []string{"x'; DROP ROLE postgres; --", `a"b`, ""} {
+		if _, err := pgOwnsObjectsGuardBlock(hostile); err == nil {
+			t.Errorf("the owned-objects guard accepted %q", hostile)
+		}
+	}
+}
+
 func TestTheOwnerRuleOfCelikPanelsOwnAccount(t *testing.T) {
 	admin := pgDatabaseOwnerStateExpr("'celikpanel_admin'", true)
-	for _, want := range []string{"celikpanel_r.rolsuper", "celikpanel_held.rolsuper", "pg_catalog.starts_with(celikpanel_held.rolname::pg_catalog.text, 'pg_')",
+	// Third review of PR #370, I2: its own REPLICATION or BYPASSRLS too.
+	for _, want := range []string{"celikpanel_r.rolsuper", "celikpanel_r.rolreplication", "celikpanel_r.rolbypassrls", "celikpanel_held.rolsuper", "pg_catalog.starts_with(celikpanel_held.rolname::pg_catalog.text, 'pg_')",
 		"'pg_database_owner'", "pg_catalog.pg_has_role(celikpanel_r.oid, celikpanel_held.oid, 'MEMBER')", "'absent'"} {
 		if !strings.Contains(admin, want) {
 			t.Errorf("the celikpanel_admin rule lacks %q", want)

@@ -43,3 +43,15 @@ CelikPanel veritabanı parolalarını saklamaz ve yeniden gösteremez. Birini ka
 :::warning
 Veritabanını silmek bütün verisini siler. Önce alan adının **Yedekler** bölümünden yedek alın.
 :::
+
+## Tabloları olan kullanıcı {#user-owns-objects}
+
+PostgreSQL'de bir veritabanına eklediğiniz kullanıcıyı kaldırmak reddedilebilir: kullanıcının bu veritabanında tabloları ya da başka nesneleri vardır, bu yüzden kaldırılmamış ve hiçbir şey değiştirilmemiştir. Bu, CelikPanel'in kendi veritabanı hesabına ait veritabanlarında olur; o hesap bir kullanıcının yaptıklarını hiçbir zaman devralmaz.
+
+Sunucunun yöneticisi önce bu nesneleri sunucuda tek bir komutla veritabanının kendi kullanıcısına, yani veritabanıyla birlikte açılan kullanıcıya (`example_com_magaza` için `example_com_magaza_user`) devreder, sonra kullanıcıyı panelden yeniden kaldırır. `example_com_magaza_okur` kullanıcısı için:
+
+```
+sudo -u postgres psql -d example_com_magaza -c 'REASSIGN OWNED BY "example_com_magaza_okur" TO "example_com_magaza_user";'
+```
+
+Müşteri ya da bayi bunu sunucunun yöneticisinden ister.

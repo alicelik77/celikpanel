@@ -37,6 +37,11 @@
 <h2 id="passwords">Passwords</h2>
 <p>CelikPanel does not keep database passwords and cannot show them again. If you lost one, give the user a new password and put it into your application's configuration file. When your plan's database count or the disk is full, new databases are refused; see <a href="limits.html#disk">Limits and suspension</a>.</p>
 <aside class="guide-callout guide-warning"><p class="guide-callout-label">Warning</p><p>Deleting a database deletes all its data. Take a backup first in the domain's <strong>Backups</strong> section.</p></aside>
+<h2 id="user-owns-objects">A user that owns tables</h2>
+<p>On PostgreSQL, removing a user you added to a database can be refused: the user owns tables or other objects in this database, so it was not removed and nothing was changed. This happens on databases that belong to CelikPanel's own database account, which never takes over what a user made.</p>
+<p>The server's administrator first hands those objects to the database's own user, the one created with the database (for <code>example_com_shop</code>, <code>example_com_shop_user</code>), with one command on the server, then removes the user again from the panel. For the user <code>example_com_shop_reader</code>:</p>
+<pre class="guide-code"><code>sudo -u postgres psql -d example_com_shop -c 'REASSIGN OWNED BY &quot;example_com_shop_reader&quot; TO &quot;example_com_shop_user&quot;;'</code></pre>
+<p>A customer or a reseller asks the server's administrator to do it.</p>
 <nav class="guide-pager" aria-label="Chapters"><a rel="prev" href="mail.html"><span>Previous</span>Mail and webmail</a><a rel="next" href="apps-wordpress.html"><span>Next</span>Applications, WordPress tools and malware scan</a></nav>
 </article></div>
 </main><footer class="site-footer"><div class="container footer-main">

@@ -142,6 +142,7 @@ export const trDataTools: Record<DataToolsKey, string> = {
     'err.DATABASE_ACCOUNT_REFUSED.unreadable': '{user} veritabanı kullanıcısının veritabanı sunucusunda nelere sahip olduğu okunamadı; bu yüzden CelikPanel onu değiştirmedi. Hiçbir şey değiştirilmedi. Sunucunun yöneticisi veritabanı sunucusunun yanıt verdiğini denetler; sonra adım yinelenebilir.',
     'err.DATABASE_ACCOUNT_REFUSED.system_database': 'CelikPanel veritabanı sunucusunun kendi sistem veritabanını hiçbir zaman değiştirmez. Hiçbir şey değiştirilmedi.',
     'err.DATABASE_ACCOUNT_REFUSED.unsupported_engine': 'Bu sunucuda MariaDB yerine MySQL çalışıyor; CelikPanel veritabanı hesaplarını yalnız MariaDB\'de yönetir, bu yüzden {user} veritabanı kullanıcısını değiştirmedi. Hiçbir şey değiştirilmedi. Değişikliği sunucunun yöneticisi sunucunun kendisinde yapar.',
+    'err.DATABASE_ACCOUNT_REFUSED.owns_objects': '{user} veritabanı kullanıcısının bu veritabanında tabloları ya da başka nesneleri var; bu yüzden kaldırılmadı. Hiçbir şey değiştirilmedi. Sunucunun yöneticisi önce bunları sunucuda veritabanının kendi kullanıcısına devreder (komut kullanım kılavuzunun Veritabanları bölümünde), sonra kullanıcıyı buradan yeniden kaldırır.',
     'dbt.fromSite': 'Bu sunucudaki site için',
     'dbt.fromComputer': 'Kendi bilgisayarınızdan',
     'dbt.tunnelIntro': 'Veritabanı yalnız bu sunucudan bağlantı kabul eder; masaüstü aracı (pgAdmin, DBeaver, HeidiSQL) bir SSH tüneliyle bağlanır. Bağlantının önce SSH bölümünü, sonra veritabanı bölümünü doldurun:',

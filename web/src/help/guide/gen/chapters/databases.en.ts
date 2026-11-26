@@ -22,6 +22,11 @@ const chapter = {
     ["h",2,"passwords","Passwords"],
     ["p",["CelikPanel does not keep database passwords and cannot show them again. If you lost one, give the user a new password and put it into your application's configuration file. When your plan's database count or the disk is full, new databases are refused; see ",["g","limits","disk","Limits and suspension"],"."]],
     ["warn",[["p",["Deleting a database deletes all its data. Take a backup first in the domain's ",["b","Backups"]," section."]]]],
+    ["h",2,"user-owns-objects","A user that owns tables"],
+    ["p","On PostgreSQL, removing a user you added to a database can be refused: the user owns tables or other objects in this database, so it was not removed and nothing was changed. This happens on databases that belong to CelikPanel's own database account, which never takes over what a user made."],
+    ["p",["The server's administrator first hands those objects to the database's own user, the one created with the database (for ",["c","example_com_shop"],", ",["c","example_com_shop_user"],"), with one command on the server, then removes the user again from the panel. For the user ",["c","example_com_shop_reader"],":"]],
+    ["pre","sudo -u postgres psql -d example_com_shop -c 'REASSIGN OWNED BY \"example_com_shop_reader\" TO \"example_com_shop_user\";'"],
+    ["p","A customer or a reseller asks the server's administrator to do it."],
   ],
 } as unknown as GuideChapter;
 

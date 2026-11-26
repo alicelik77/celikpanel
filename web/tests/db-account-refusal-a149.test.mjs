@@ -13,7 +13,7 @@ import { trDataTools } from '../src/i18n/dataTools/tr.ts';
 // route-scoped copy (loaded with the Databases screens), never the shell.
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const reasons = ['privileged', 'member', 'absent', 'unreadable', 'system_database', 'unsupported_engine'];
+const reasons = ['privileged', 'member', 'absent', 'unreadable', 'system_database', 'unsupported_engine', 'owns_objects'];
 
 const say = (words) => (key, vars) => {
   let text = words[key] ?? key;
@@ -37,6 +37,11 @@ test('a Turkish screen says the refusal in Turkish, naming the refused account',
   assert.match(en, /The database user app_owner holds administrator rights/);
   const mysql = apiErrorText({ ...problem, reason: 'unsupported_engine' }, say(trDataTools));
   assert.match(mysql, /MariaDB yerine MySQL çalışıyor/);
+  // Third review of PR #370, H1: a user that owns objects in a database of
+  // CelikPanel's own account is not removed; the words say who acts.
+  const owns = { ...problem, reason: 'owns_objects', vars: { user: 'shop_reader' } };
+  assert.match(apiErrorText(owns, say(trDataTools)), /^shop_reader veritabanı kullanıcısının bu veritabanında tabloları/);
+  assert.match(apiErrorText(owns, say(enDataTools)), /^The database user shop_reader owns tables or other objects in this database, so it was not removed\. Nothing was changed\./);
   // A reason this release has no words for falls back to the code's sentence.
   assert.equal(apiErrorText({ ...problem, reason: 'later' }, say(trDataTools)), trDataTools['err.DATABASE_ACCOUNT_REFUSED']);
 });

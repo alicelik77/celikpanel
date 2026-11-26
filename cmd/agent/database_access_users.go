@@ -1042,7 +1042,8 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		}
 		// alpha.149 (security, second review of PR #370 finding 1): what the
 		// user made is handed to the owner only while the owner passes the
-		// rule, read now and again in the REASSIGN's own transaction.
+		// rule, read now and again in the REASSIGN's own transaction; never
+		// to celikpanel_admin (third review, H1, below).
 		if err := readDatabaseOwnerState(run, owner); err != nil {
 			resp.AccountRefused, resp.AccountRefusedName, resp.Error = databaseAccountRefusalOf(err), databaseAccountRefusedName(err), err.Error()
 			if resp.AccountRefused == "" {
@@ -1057,9 +1058,24 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		}
 		// What the user made in the database becomes the owner's; then its
 		// rights there go. No table or row is removed.
-		script := strings.Join([]string{`\connect ` + db, "BEGIN;", guard, ownerGuard,
-			"REASSIGN OWNED BY " + ident + " TO " + own + ";",
-			"DROP OWNED BY " + ident + ";", "COMMIT;"}, "\n")
+		statements := []string{`\connect ` + db, "BEGIN;", guard, ownerGuard}
+		if owner == databaseAdminAccountName {
+			// Third review of PR #370, H1 (security): nothing is ever handed
+			// to CelikPanel's own account. A user that owns anything here is
+			// refused in this transaction (rolled back, the user as it was;
+			// the server's administrator hands the objects to the database's
+			// own user); one that owns nothing loses its rights, default
+			// privileges and user mappings by DROP OWNED alone.
+			owned, err := pgOwnsObjectsGuardBlock(req.Username)
+			if err != nil {
+				resp.Error = err.Error() + "; nothing was changed"
+				return
+			}
+			statements = append(statements, owned)
+		} else {
+			statements = append(statements, "REASSIGN OWNED BY "+ident+" TO "+own+";")
+		}
+		script := strings.Join(append(statements, "DROP OWNED BY "+ident+";", "COMMIT;"), "\n")
 		if output, err := run(script); err != nil {
 			if refused(output) {
 				return

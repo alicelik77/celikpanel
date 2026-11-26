@@ -50,12 +50,18 @@ func TestADatabaseAccountRefusalTravelsAsItsCodeAndNamesTheRefusedAccount(t *tes
 	for _, c := range []struct{ name, want, code string }{
 		{"", "customer_matrix_test_shop_reader", transport.DatabaseAccountRefusedUnsupportedEngine},
 		{"postgres", "postgres", transport.DatabaseAccountRefusedPrivileged},
+		// Third review of PR #370, H1: the user owns objects in a database
+		// of celikpanel_admin; the sentence says so, not "could not be read".
+		{"customer_matrix_test_shop_reader", "customer_matrix_test_shop_reader", transport.DatabaseAccountRefusedOwnsObjects},
 	} {
 		native.refused = &transport.DatabaseAccessUserResponse{AccountRefused: c.code, AccountRefusedName: c.name, Error: "refused"}
 		got := f.call(t, authzMatrixCustomerID, http.MethodDelete, path+"/"+strconv.Itoa(userID), "")
 		answer := decode(t, got.Body.String())
 		if got.Code != http.StatusConflict || answer.Code != errCodeDatabaseAccountRefused || answer.Reason != c.code || answer.Vars["user"] != c.want {
 			t.Fatalf("remove (%q): %d %s", c.name, got.Code, got.Body.String())
+		}
+		if c.code == transport.DatabaseAccountRefusedOwnsObjects && (!strings.Contains(answer.Error, "owns tables or other objects") || strings.Contains(answer.Error, "could not be read")) {
+			t.Fatalf("owns objects: %s", answer.Error)
 		}
 	}
 	// Nothing was removed from CelikPanel's list.

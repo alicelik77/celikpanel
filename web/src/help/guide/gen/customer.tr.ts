@@ -73,6 +73,7 @@ const guide: GuideIndex = {
     [6,"databases-page","Veritabanları sayfası",""],
     [6,"web-tools","phpMyAdmin ve phpPgAdmin",""],
     [6,"passwords","Parolalar",""],
+    [6,"user-owns-objects","Tabloları olan kullanıcı",""],
     [7,"","Uygulamalar, WordPress araçları ve zararlı yazılım taraması","wordpress prestashop nextcloud drupal joomla mediawiki kurulum eklenti guncelleme deneme sitesi zararli yazilim virus clamav karantina"],
     [7,"catalogue","Uygulama kurmak",""],
     [7,"password-once","Bir kez gösterilen yönetici parolası",""],
