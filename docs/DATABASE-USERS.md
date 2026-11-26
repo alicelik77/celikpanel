@@ -566,6 +566,28 @@ Limits of the rule:
   (`pg_read_file`, `lo_import`, `lo_export`), or at roles that own objects a
   superuser runs. Each needs the server owner to have made such a grant by
   hand.
+- Adding a PostgreSQL user grants it rights on every table, sequence and
+  (read and write) function of the database's non-system schemas
+  (`GRANT … ON ALL … IN SCHEMA`, run by the Agent as the superuser),
+  including objects the server's administrator installed there: an
+  extension put into a site database's `public` gives the new user EXECUTE
+  on its functions, even one whose EXECUTE the extension took from `PUBLIC`
+  on purpose (`dblink_connect_u`, adminpack's `pg_file_write`). Such an
+  extension needs the administrator's own installation into the site's
+  database; install administrator extensions elsewhere.
+- Objects that earlier releases already handed to `celikpanel_admin` when an
+  added user was removed stay as they are. The server's administrator can
+  list what `celikpanel_admin` owns in a site's database (default-privilege
+  entries left out):
+
+  ```
+  sudo -u postgres psql -d <database> -c "SELECT pg_catalog.pg_describe_object(d.classid, d.objid, d.objsubid) FROM pg_catalog.pg_shdepend d WHERE d.dbid = (SELECT oid FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database()) AND d.deptype = 'o' AND d.refobjid = 'celikpanel_admin'::pg_catalog.regrole AND d.classid <> 'pg_catalog.pg_default_acl'::pg_catalog.regclass;"
+  ```
+
+  and hand each to the database's own user (`ALTER TABLE … OWNER TO`,
+  `ALTER FUNCTION … OWNER TO` and so on). Not `REASSIGN OWNED BY
+  celikpanel_admin`: that would also hand over every database
+  `celikpanel_admin` owns on the server.
 - A local MySQL server running in MariaDB's place is not managed: MySQL has
   no `mysql.global_priv`, so the rule cannot be read there and every account
   change is refused as `unsupported_engine` ("this server runs MySQL in
