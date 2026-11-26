@@ -19,7 +19,9 @@ import (
 // run: CelikPanel's own unchanged text gets Slice=celiksite_<id>.slice (the
 // move's own rewrite, siteUnitMovedBody), the site's slice file is put in
 // place first, and systemd reloads; the Start's own restart then starts it
-// inside. The rule of the lane stays: a RUNNING program is never moved here
+// inside. Before the write, this release's sandbox helper and SMTP block are
+// put in place as the move does (fix round F2); if that cannot be done,
+// nothing is written. The rule of the lane stays: a RUNNING program is never moved here
 // (only the administrator's move restarts a running one into its limits);
 // nor is a unit whose file the server owner changed, one an owner's drop-in
 // places, one of an earlier protection, one a move's record names (its
@@ -67,6 +69,16 @@ func siteUnitIntoSliceBeforeStart(unit string, slice *transport.SiteSlice) bool 
 	}
 	moved, already, err := siteUnitMovedBody(body, s.SiteID)
 	if err != nil || already {
+		return false
+	}
+	// alpha.149 fix round (F2): the same preparation as the move's. An
+	// earlier release's sandbox helper adds only system-slice cgroups to the
+	// SMTP block, so a unit in its site's slice would be refused at its
+	// ExecStartPre with it (helpers before alpha.147). Without this
+	// release's helper and SMTP block in place nothing is written, and the
+	// program starts where it started before.
+	if err := siteMovePrepare(); err != nil {
+		log.Printf("site slice: %s starts where it started before (outside its limits): the sandbox's helper and SMTP block could not be put in place: %v", unit, err)
 		return false
 	}
 	ensureSiteSlice(s)
