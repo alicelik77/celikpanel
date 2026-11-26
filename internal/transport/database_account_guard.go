@@ -28,4 +28,10 @@ const (
 	// information_schema, performance_schema, sys; PostgreSQL postgres,
 	// template0, template1).
 	DatabaseAccountRefusedSystemDatabase = "system_database"
+	// DatabaseAccountRefusedUnsupportedEngine (second review of PR #370,
+	// finding 7): the server runs MySQL in MariaDB's place, so the rule
+	// cannot be read; CelikPanel manages database accounts on MariaDB only.
+	// Nothing was changed; the server's administrator makes the change on
+	// the server itself. An account already gone is answered as absent.
+	DatabaseAccountRefusedUnsupportedEngine = "unsupported_engine"
 )

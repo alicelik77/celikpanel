@@ -37,6 +37,10 @@ type suspensionDatabaseStatements struct {
 	// local account (alpha.129 review M1). Empty for PostgreSQL, whose one
 	// role is the remote access too.
 	copies string
+	// mysqlUser (MariaDB only): the account an inspection that could not be
+	// read asks about again, to tell a MySQL server in MariaDB's place
+	// (second review of PR #370, finding 7; mysqlEngineRefusal).
+	mysqlUser string
 }
 
 // suspensionReservedDatabaseUsers are engine and CelikPanel accounts that
@@ -91,6 +95,7 @@ func suspensionDatabaseSQL(engine, username string) (suspensionDatabaseStatement
 			disconnect: disconnect,
 			unlock:     unlock,
 			copies:     "SELECT Host FROM mysql.user WHERE User = " + literal + " AND Host <> 'localhost';",
+			mysqlUser:  username,
 		}, nil
 	case "postgresql":
 		ident, err := services.QuotePGIdentifier(username)
@@ -168,10 +173,23 @@ func readSuspensionDatabaseUserState(
 	statements suspensionDatabaseStatements,
 ) (transport.DatabaseUserState, error) {
 	output, err := run(statements.inspect)
+	var state transport.DatabaseUserState
 	if err != nil {
-		return transport.DatabaseUserState{}, hostcmd.Fail("the database account could not be inspected", output, err, databaseClientMeaning)
+		err = hostcmd.Fail("the database account could not be inspected", output, err, databaseClientMeaning)
+	} else {
+		state, err = parseSuspensionDatabaseState(output)
 	}
-	return parseSuspensionDatabaseState(output)
+	if err != nil && !errors.Is(err, errSuspensionDatabaseUserPrivileged) && statements.mysqlUser != "" {
+		// MySQL in MariaDB's place (second review of PR #370, finding 7): an
+		// account already gone is absent; any other is unsupported_engine.
+		switch refused := mysqlEngineRefusal(run, statements.mysqlUser, false); databaseAccountRefusalOf(refused) {
+		case transport.DatabaseAccountRefusedAbsent:
+			return transport.DatabaseUserState{}, nil
+		case transport.DatabaseAccountRefusedUnsupportedEngine:
+			return transport.DatabaseUserState{}, refused
+		}
+	}
+	return state, err
 }
 
 // databaseAccountWriteRefusal reads a guard's refusal from a write's output

@@ -6,7 +6,7 @@ topics: [domain.databases#domain-databases, databases#databases-page]
 keywords: [veritabanı, mysql, mariadb, postgresql, kullanıcı, parola, phpmyadmin, phppgadmin, izin]
 ---
 
-WordPress gibi bir site içeriğini veritabanında tutar. CelikPanel sunucuda MariaDB (MySQL) ve PostgreSQL veritabanları ve her biri için bir kullanıcı oluşturur.
+WordPress gibi bir site içeriğini veritabanında tutar. CelikPanel sunucuda MariaDB (MySQL) ve PostgreSQL veritabanları ve her biri için bir kullanıcı oluşturur. MariaDB yerine çalışan yerel bir MySQL sunucusu yönetilmez: CelikPanel onun veritabanı hesaplarını değiştirmez; bunu sunucunun yöneticisi sunucunun kendisinde yapar.
 
 ## Alan adının Veritabanları bölümünde {#domain-databases}
 

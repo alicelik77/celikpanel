@@ -24,6 +24,9 @@ func databaseAccountRefusalSentence(code, username string) string {
 			"Nothing was changed. The server's administrator decides about this account (" + code + ")."
 	case transport.DatabaseAccountRefusedAbsent:
 		return "The database user " + username + " is not on the database server. Nothing was changed (" + code + ")."
+	case transport.DatabaseAccountRefusedUnsupportedEngine:
+		return "This server runs MySQL in MariaDB's place; CelikPanel manages database accounts on MariaDB only, so it did not change the database user " + username + ". " +
+			"Nothing was changed. The server's administrator makes the change on the server itself (" + code + ")."
 	case transport.DatabaseAccountRefusedSystemDatabase:
 		return "CelikPanel never changes the database server's own system database. Nothing was changed (" + code + ")."
 	}

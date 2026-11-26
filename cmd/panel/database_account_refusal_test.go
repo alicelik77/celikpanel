@@ -23,6 +23,12 @@ func TestADatabaseAccountRefusalIsOnePlainSentence(t *testing.T) {
 			t.Errorf("%s: %q", code, got)
 		}
 	}
+	// Second review of PR #370, finding 7: MySQL in MariaDB's place is said as
+	// such, never as "could not be read ... check that the server answers".
+	if got := withDatabaseAccountRefusal(transport.DatabaseAccountRefusedUnsupportedEngine, "boss", "x"); !strings.Contains(got, "runs MySQL in MariaDB's place") ||
+		!strings.Contains(got, "MariaDB only") || !strings.Contains(got, "Nothing was changed.") || strings.Contains(got, "answers") {
+		t.Errorf("unsupported_engine: %q", got)
+	}
 	if got := withDatabaseAccountRefusal("", "boss", "the engine's own words"); got != "the engine's own words" {
 		t.Fatalf("an answer without a refusal changed: %q", got)
 	}

@@ -525,6 +525,7 @@ func TestSuspensionDatabaseSQL(t *testing.T) {
 		disconnect: myGuarded("KILL CONNECTION USER 'shop_user';"),
 		unlock:     myGuarded("ALTER USER 'shop_user'@'localhost' ACCOUNT UNLOCK;"),
 		copies:     "SELECT Host FROM mysql.user WHERE User = 'shop_user' AND Host <> 'localhost';",
+		mysqlUser:  "shop_user",
 	}
 	if mysql != wantMySQL {
 		t.Fatalf("mysql statements = %+v", mysql)

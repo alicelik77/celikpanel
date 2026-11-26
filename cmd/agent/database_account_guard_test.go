@@ -26,7 +26,14 @@ func ordinaryAccountGuard(statement string) ([]byte, bool) {
 }
 
 func isAccountGuardRead(statement string) bool {
-	return strings.HasPrefix(statement, "SELECT 'guard=' || ") || strings.HasPrefix(statement, "SELECT CONCAT('guard=', ")
+	return strings.HasPrefix(statement, "SELECT 'guard=' || ") || strings.HasPrefix(statement, "SELECT CONCAT('guard=', ") ||
+		isEngineProbe(statement)
+}
+
+// isEngineProbe: the read that tells MySQL in MariaDB's place after the rule
+// could not be read (second review of PR #370, finding 7).
+func isEngineProbe(statement string) bool {
+	return strings.HasPrefix(statement, "SELECT CONCAT('engine=', IF(VERSION() LIKE '%MariaDB%', 'mariadb', 'other')); ")
 }
 
 // guardEngine answers the rule's read with state ("" = unreadable) and every

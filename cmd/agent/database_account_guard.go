@@ -96,6 +96,9 @@ func databaseAccountRefusalText(username, code string) string {
 			"so CelikPanel does not change its limits; nothing was changed. The server's administrator decides"
 	case transport.DatabaseAccountRefusedSystemDatabase:
 		return systemDatabaseRefusal
+	case transport.DatabaseAccountRefusedUnsupportedEngine:
+		return "this server runs MySQL in MariaDB's place, and CelikPanel manages database accounts on MariaDB only, so it did not change the database user " +
+			username + "; nothing was changed. The server's administrator makes the change on the server itself"
 	}
 	return "what the database user " + username + " holds on this server's database engine could not be read, so CelikPanel did not change it; nothing was changed"
 }
@@ -321,7 +324,42 @@ func readDatabaseAccountState(engine string, run func(string) ([]byte, error), u
 	if err != nil {
 		return err
 	}
-	return readGuardState(run, query, username)
+	err = readGuardState(run, query, username)
+	if engine == "mysql" && databaseAccountRefusalOf(err) == transport.DatabaseAccountRefusedUnreadable {
+		if refused := mysqlEngineRefusal(run, username, anyHost); refused != nil {
+			return refused
+		}
+	}
+	return err
+}
+
+// mysqlEngineRefusal tells, after the MariaDB rule could not be read, a
+// MySQL server in MariaDB's place (second review of PR #370, finding 7: MySQL
+// has no mysql.global_priv, so the rule fails there on every press and the
+// answer used to say "could not be read ... check that the database server
+// answers", which it does). It asks the engine's name and, as mysql.user is
+// there on both, whether the account exists: an account already gone is
+// absent (so a deletion the administrator prepared by removing it by hand
+// goes through), any other is unsupported_engine. It answers nil on MariaDB
+// or when the engine cannot be told (the caller keeps "unreadable").
+func mysqlEngineRefusal(run func(string) ([]byte, error), username string, anyHost bool) error {
+	literal, err := mysqlAccountLiteral(username)
+	if err != nil {
+		return nil
+	}
+	where := "User = " + literal
+	if !anyHost {
+		where += " AND Host = 'localhost'"
+	}
+	output, runErr := run("SELECT CONCAT('engine=', IF(VERSION() LIKE '%MariaDB%', 'mariadb', 'other')); " +
+		"SELECT CONCAT('present=', COUNT(*)) FROM mysql.user WHERE " + where + ";")
+	if engine, ok := markerValue(output, "engine"); runErr != nil || !ok || engine != "other" {
+		return nil
+	}
+	if present, ok := markerValue(output, "present"); ok && present == "0" {
+		return &errDatabaseAccountRefused{code: transport.DatabaseAccountRefusedAbsent, username: username}
+	}
+	return &errDatabaseAccountRefused{code: transport.DatabaseAccountRefusedUnsupportedEngine, username: username}
 }
 
 // readGuardState runs one "guard=" read and answers nil for 'ok' or the

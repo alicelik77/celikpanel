@@ -270,7 +270,23 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	// account (any host of the name), or one whose rights cannot be read, is
 	// neither dropped nor has rights taken away on the panel's word.
 	if err := readDatabaseAccountState("mysql", mysqlExecStatement, req.Username, pgAccountOrdinary, true); err != nil {
-		resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+		code := databaseAccountRefusalOf(err)
+		if code == transport.DatabaseAccountRefusedUnsupportedEngine && req.RightsOnly && req.DatabaseDropped {
+			// MySQL in MariaDB's place (second review of PR #370, finding
+			// 7): a user another database uses stays; the rights that name
+			// the dropped database go by the engine-decided rule, without
+			// naming this account (its own pattern rows that reach another
+			// database are kept and reported).
+			result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+			if err != nil {
+				mysqlDroppedRightsAnswer(resp, req.Database, err)
+				return
+			}
+			mysqlDroppedRightsInto(resp, result)
+			resp.Applied = true
+			return
+		}
+		resp.AccountRefused, resp.Error = code, err.Error()
 		return
 	}
 	if req.RightsOnly && req.DatabaseDropped {
@@ -552,14 +568,25 @@ func (a *Agent) RemoveDroppedDatabaseRightsV1(req *transport.DroppedDatabaseRigh
 	// reaches another database; only ordinary accounts (or ones already
 	// gone) are taken on the panel's word. Every other grantee keeps the
 	// engine-decided rule.
+	var owners []string
 	for _, owner := range req.Owners {
 		err := readDatabaseAccountState("mysql", mysqlExecStatement, owner, pgAccountOrdinary, true)
-		if code := databaseAccountRefusalOf(err); err != nil && code != transport.DatabaseAccountRefusedAbsent {
+		switch code := databaseAccountRefusalOf(err); {
+		case err == nil, code == transport.DatabaseAccountRefusedAbsent:
+			owners = append(owners, owner)
+		case code == transport.DatabaseAccountRefusedUnsupportedEngine:
+			// MySQL in MariaDB's place (second review of PR #370, finding
+			// 7): what the account holds cannot be read, so it is not taken
+			// on the panel's word; it keeps the engine-decided rule every
+			// other grantee has (rows naming the dropped database go, a
+			// pattern that reaches another database stays), so the deletion
+			// does not stop here for good.
+		default:
 			resp.AccountRefused, resp.Error = code, err.Error()
 			return nil
 		}
 	}
-	result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database, req.Owners...)
+	result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database, owners...)
 	var left *mariadbgrant.RightsLeftError
 	switch {
 	case errors.Is(err, mariadbgrant.ErrDatabaseExists):
