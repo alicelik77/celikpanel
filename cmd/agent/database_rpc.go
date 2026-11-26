@@ -144,6 +144,13 @@ type DeleteDatabaseResponse = transport.DeleteDatabaseResponse
 
 // CreateDatabase creates a new MySQL or PostgreSQL database
 func (a *Agent) CreateDatabase(req CreateDatabaseRequest, resp *CreateDatabaseResponse) error {
+	// alpha.149 (security, second review of PR #370 finding 2): a new user
+	// is never given the engine's own system database.
+	if systemDatabaseName(req.Type, req.Name) {
+		resp.Success = false
+		resp.AccountRefused, resp.Error = transport.DatabaseAccountRefusedSystemDatabase, systemDatabaseRefusal
+		return nil
+	}
 	if req.Type == "mysql" {
 		return a.createMySQLDatabase(req, resp)
 	} else if req.Type == "postgresql" {
@@ -157,6 +164,13 @@ func (a *Agent) CreateDatabase(req CreateDatabaseRequest, resp *CreateDatabaseRe
 
 // DeleteDatabase deletes a MySQL or PostgreSQL database
 func (a *Agent) DeleteDatabase(req DeleteDatabaseRequest, resp *DeleteDatabaseResponse) error {
+	// alpha.149 (security, second review of PR #370 finding 2): never the
+	// engine's own system database, whatever the panel names.
+	if systemDatabaseName(req.Type, req.Name) {
+		resp.Success = false
+		resp.AccountRefused, resp.Error = transport.DatabaseAccountRefusedSystemDatabase, systemDatabaseRefusal
+		return nil
+	}
 	if req.Type == "mysql" {
 		return a.deleteMySQLDatabase(req, resp)
 	} else if req.Type == "postgresql" {

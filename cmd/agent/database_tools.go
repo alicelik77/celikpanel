@@ -543,6 +543,11 @@ var mariadbEmptyDatabase = func(name string) error {
 	if err := services.ValidateSQLIdentifier(name); err != nil {
 		return err
 	}
+	// alpha.149 (security, second review of PR #370 finding 2): it runs as
+	// the administrator.
+	if systemDatabaseName("mysql", name) {
+		return errSystemDatabase
+	}
 	drop := func(kind, filter string) string {
 		return fmt.Sprintf("SELECT GROUP_CONCAT(CONCAT('`', REPLACE(table_name, '`', '``'), '`') SEPARATOR ', ') INTO @celik_names "+
 			"FROM information_schema.tables WHERE table_schema = '%s' AND %s; "+

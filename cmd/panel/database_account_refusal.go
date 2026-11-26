@@ -25,7 +25,7 @@ func databaseAccountRefusalSentence(code, username string) string {
 	case transport.DatabaseAccountRefusedAbsent:
 		return "The database user " + username + " is not on the database server. Nothing was changed (" + code + ")."
 	case transport.DatabaseAccountRefusedSystemDatabase:
-		return "The database server's own system database is never given to a database user. Nothing was changed (" + code + ")."
+		return "CelikPanel never changes the database server's own system database. Nothing was changed (" + code + ")."
 	}
 	return "What the database user " + username + " holds on the database server could not be read, so CelikPanel did not change it. " +
 		"Nothing was changed. The server's administrator checks that the database server answers, then the step can be repeated (" + code + ")."

@@ -95,7 +95,7 @@ func databaseAccountRefusalText(username, code string) string {
 		return "the database user " + username + " is a member of another PostgreSQL role, which no site database user CelikPanel makes is, " +
 			"so CelikPanel does not change its limits; nothing was changed. The server's administrator decides"
 	case transport.DatabaseAccountRefusedSystemDatabase:
-		return "the database server's own system database is never given to a database user by CelikPanel; nothing was changed"
+		return systemDatabaseRefusal
 	}
 	return "what the database user " + username + " holds on this server's database engine could not be read, so CelikPanel did not change it; nothing was changed"
 }
@@ -341,17 +341,25 @@ func readGuardState(run func(string) ([]byte, error), query, username string) er
 	return &errDatabaseAccountRefused{code: transport.DatabaseAccountRefusedUnreadable, username: username}
 }
 
-// systemDatabaseName: the engine's own system databases, never given to a
-// database user by CelikPanel.
+// systemDatabaseName: the engine's own system databases. No Agent call gives
+// a database user rights on one, drops, empties or loads into one, or
+// changes who may enter one (alpha.149; second review of PR #370, finding
+// 2: dropping MariaDB's mysql removes every account, dropping PostgreSQL's
+// postgres breaks the Agent's own psql). Every caller acts on a site's
+// database, which never has such a name. engine: "mysql" (also "mariadb")
+// or "postgresql".
+//
+// Motorun kendi sistem veritabanı hiçbir Agent çağrısıyla silinmez,
+// boşaltılmaz, içine yüklenmez ve erişimi değiştirilmez.
 func systemDatabaseName(engine, name string) bool {
 	lowered := strings.ToLower(name)
 	switch engine {
-	case "mysql":
+	case "mysql", "mariadb":
 		switch lowered {
 		case "mysql", "information_schema", "performance_schema", "sys":
 			return true
 		}
-	case "postgresql":
+	case "postgresql", "postgres":
 		switch lowered {
 		case "postgres", "template0", "template1":
 			return true
@@ -359,3 +367,11 @@ func systemDatabaseName(engine, name string) bool {
 	}
 	return false
 }
+
+// systemDatabaseRefusal is the answer's sentence when a call names a system
+// database.
+const systemDatabaseRefusal = "CelikPanel never changes the database server's own system database " +
+	"(it is never given to a database user, dropped, emptied, loaded into, or opened or closed to other accounts); nothing was changed"
+
+// errSystemDatabase is that refusal as an error.
+var errSystemDatabase = errors.New(systemDatabaseRefusal)
