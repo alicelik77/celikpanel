@@ -46,8 +46,10 @@ import (
 //
 // There is no moment in which the site's own code can put a crontab back:
 // the account is out of cron.allow before the crontab goes. No minute runs
-// twice and none is lost: the timers start only after cron has no line any
-// more. At the Agent's start an interrupted move is resolved by its step:
+// twice: the timers start only after cron has no line any more. One run can
+// be missed (alpha.150 fix round): a minute can begin between the crontab's
+// removal and the timers' start, and a task due then runs at its next time.
+// At the Agent's start an interrupted move is resolved by its step:
 //
 //	planned                                   nothing to do ("not_tried")
 //	source_written, units_written, cron_closed put back (below)

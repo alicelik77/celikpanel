@@ -1376,6 +1376,10 @@ version 3 with a `tasks` part; a programs' move writes version 2): the crontab's
 | crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | the account's spool is read first (below); with no crontab: finished, the timers switched on ("moved"). If they cannot be, the record stays for Try again and is not put back there (that would take more calls than the start makes); the timers are switched off again in one call - always, also when the site's limits file looks missing (an enable sent before the Agent stopped can have switched some on) - so the site's tasks are known not to run until Try again |
 | enabled | the timers enabled and started | the account's spool is read first (below); with no crontab: finished ("moved") |
 
+**One run can be missed at the moment of the move, none runs twice** (alpha.150 fix round): the
+timers start only after the crontab is gone, and a minute can begin in between (cron has no line
+any more, the timer is not on yet), so a task due in that minute runs at its next time instead.
+
 There is no moment in which the site's own code can put a crontab back: the account leaves
 cron before its crontab goes. The crontab must still be the one recorded when it goes: a
 change made meanwhile is never lost (the move is put back and says so). **Putting back**

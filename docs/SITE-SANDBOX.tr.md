@@ -1218,6 +1218,11 @@ crontab görev dosyasında da durur.
 | crontab_emptied | kaydedilen crontab'ı tuttuğu denetlenen biriktirme dosyası doğrudan silindi (root yapabilir; `crontab -u` artık reddedilir) ve gittiği denetlendi | önce hesabın biriktirme dosyası okunur (aşağıda); crontab yoksa tamamlanır: zamanlayıcılar açılır ("taşındı"). Açılamazlarsa kayıt Tekrar dene için kalır ve açılışta geri konmaz (bu, açılışın yaptığından çok çağrı isterdi); zamanlayıcılar tek çağrıyla yeniden kapatılır - her zaman, sitenin sınır dosyası yok görünse de (Ajan durmadan önce gönderilmiş bir açma bazılarını açmış olabilir) - böylece sitenin görevlerinin Tekrar dene'ye kadar çalışmadığı bilinir |
 | enabled | zamanlayıcılar etkinleştirildi ve başlatıldı | önce hesabın biriktirme dosyası okunur (aşağıda); crontab yoksa tamamlanır ("taşındı") |
 
+**Taşıma anında bir çalışma kaçabilir, hiçbiri iki kez çalışmaz** (alpha.150 düzeltme turu):
+zamanlayıcılar ancak crontab gittikten sonra başlar ve arada yeni bir dakika başlayabilir (cron'da
+satır artık yok, zamanlayıcı henüz açık değil); o dakikada çalışacak bir görev bir sonraki zamanında
+çalışır.
+
 Sitenin kendi kodunun crontab'ı geri koyabileceği bir an yoktur: hesap, crontab'ı gitmeden önce
 cron'un dışına çıkar. Crontab giderken hâlâ kaydedilen crontab olmalıdır: arada yapılan bir
 değişiklik hiçbir zaman kaybolmaz (taşıma geri konur ve bunu söyler). **Geri koyma** taşımanın
