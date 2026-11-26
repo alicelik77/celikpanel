@@ -1446,7 +1446,14 @@ while one of them runs (§8.4).
 **One press, one deadline.** A press moves the site's scheduled tasks first, then its
 programs, within the move's 11 minutes: the programs part gets what the tasks part left of
 them, never more. With less than a second left it is not started, and the press says that the
-time ran out and names each program for the next press.
+time ran out and names each program for the next press. **The tasks part itself is not cut by
+that deadline** (alpha.150 fix round): its steps, its systemd calls and its checks of every
+written unit (`systemd-analyze verify`, two per task) run to their end. One deadline holds for
+what follows the tasks part. When the tasks part alone takes longer than the panel waits for
+the press (12 minutes, which only a very large crontab on a slow systemd reaches), the press
+answers that the result is not known while the Agent still finishes the tasks part and holds the
+move's claim: the page says to read it again before pressing again, and a press meanwhile is
+refused as another move running.
 
 **The undo** ("Put the tasks back into cron", administrator): refused before anything
 changes when the server owner's own `/etc/cron.allow` leaves the account out (or

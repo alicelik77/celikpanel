@@ -1284,7 +1284,14 @@ sürerken (`another_move`) aynı sözlerle reddedilir; biri sürerken de güncel
 **Tek basış, tek süre.** Bir basış önce sitenin zamanlanmış görevlerini, sonra programlarını
 taşımanın 11 dakikası içinde taşır: programlar bölümü görevler bölümünün bıraktığını alır, hiçbir
 zaman fazlasını değil. Bir saniyeden az kaldıysa başlatılmaz; basış sürenin dolduğunu söyler ve bir
-sonraki basış için her programı adlandırır.
+sonraki basış için her programı adlandırır. **Görevler bölümünün kendisi bu süreyle kesilmez**
+(alpha.150 düzeltme turu): adımları, systemd çağrıları ve yazılan her birimin denetimi
+(`systemd-analyze verify`, görev başına iki) sonuna kadar çalışır. Tek süre görevler bölümünden
+sonra gelenler için geçerlidir. Görevler bölümü tek başına panelin basış için beklediğinden
+(12 dakika; buna yalnız yavaş bir systemd'de çok büyük bir crontab ulaşır) uzun sürerse basış
+sonucun bilinmediğini söyler, Ajan ise görevler bölümünü bitirmeyi sürdürür ve taşımanın hakkını
+tutar: sayfa yeniden basmadan önce yeniden okunmasını söyler; o arada bir basış başka bir taşıma
+sürüyor diye reddedilir.
 
 **Geri alma** ("Görevleri cron'a geri koy", yönetici): sunucu sahibinin kendi `/etc/cron.allow`
 dosyası hesabı dışarıda bırakıyorsa (ya da `/etc/cron.deny` onu adlandırıyorsa), görev dosyası elle

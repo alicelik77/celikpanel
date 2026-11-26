@@ -77,7 +77,7 @@ export const enSiteTasksScreens = {
     'slim.tasks.why.limits': 'Nothing was moved: the site’s limits file could not be put in place on the server. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press the move again.',
     'slim.tasks.why.put_back': 'The scheduled tasks could not be moved; the crontab is as it was and no timer was left. The agent’s journal names the step (sudo journalctl -u celikpanel-agent).',
     'slim.tasks.why.no_cron': 'The site’s crontab could not be read (cron is not installed, or it refused the reading); nothing was changed.',
-    'slim.tasks.why.unknown': 'Whether the scheduled tasks moved is not known yet. Read this page again: if the move was not settled, the card names it with Try again, and its record keeps the crontab, so nothing is lost.',
+    'slim.tasks.why.unknown': 'Whether the scheduled tasks moved is not known yet. Read this page again before you press the move again: if the move was not settled, the card names it with Try again, and its record keeps the crontab, so nothing is lost.',
     'slim.tasks.undoWhy.unknown': 'Whether the tasks are back in cron is not known yet. Read this page again: if it was not settled, the card names it with Try again; the crontab and the timers are never both on.',
     'slim.tasks.why.other': 'The scheduled tasks were not moved; nothing was changed. The agent’s journal says why (sudo journalctl -u celikpanel-agent).',
     'slim.tasks.undoWhy.cron_allow_owner': 'Nothing was changed: the server’s own cron settings would keep the site’s account out of cron (the server owner’s /etc/cron.allow does not list it, or /etc/cron.deny names it). The server owner changes that, then this can be pressed again.',
