@@ -69,3 +69,56 @@ func TestADatabaseAccountRefusalTravelsAsItsCodeAndNamesTheRefusedAccount(t *tes
 		t.Fatal("a refused removal removed the record")
 	}
 }
+
+// alpha.150: deleting a database whose users the Agent refuses for a reason
+// only the server's administrator can lift. The database is deleted; the
+// answer names the accounts left and why, says that the server's
+// administrator acts and that Delete finishes after that, and never asks for
+// another press (it would meet the same refusal). The records stay, so the
+// database stays listed. An absent account or the system database is not
+// such a refusal: the answer is the earlier one.
+func TestDatabaseDeleteWithARefusedUserSaysWhoActs(t *testing.T) {
+	for _, c := range []struct {
+		code, reason, words string
+		sweepRefused        bool
+	}{
+		{transport.DatabaseAccountRefusedPrivileged, "refused_privileged", "they hold administrator rights there", false},
+		// The sweep of the rights naming it is refused for the same owners.
+		{transport.DatabaseAccountRefusedPrivileged, "refused_privileged", "takes those rights away", true},
+		{transport.DatabaseAccountRefusedMember, "refused_member", "members of another PostgreSQL role", false},
+		{transport.DatabaseAccountRefusedOwnsObjects, "refused_owns_objects", "own tables or other objects", false},
+		{transport.DatabaseAccountRefusedUnreadable, "refused_unreadable", "checks that the database server answers", false},
+		{transport.DatabaseAccountRefusedUnsupportedEngine, "refused_unsupported_engine", "runs MySQL in MariaDB's place", false},
+		{"a_later_code", "refused", "refused to change them", false},
+		{transport.DatabaseAccountRefusedAbsent, "mixed", "press Delete again", false},
+	} {
+		f := newVisibleDatabasesFixture(t)
+		drops := recordDatabaseDrops(t)
+		if c.sweepRefused {
+			drops.sweepAnswer = func(resp *transport.DroppedDatabaseRightsResponse) error {
+				resp.AccountRefused, resp.Error = c.code, "refused"
+				return nil
+			}
+		}
+		f.panel.databaseAccessNative = &fakeDatabaseAccessNative{refused: &transport.DatabaseAccessUserResponse{AccountRefused: c.code, Error: "refused"}}
+		got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
+		var answer apiErrorBody
+		_ = json.Unmarshal(got.Body.Bytes(), &answer)
+		if got.Code != http.StatusConflict || answer.Code != errCodeDatabaseDeleteUsersLeft || answer.Reason != c.reason || !answer.PartialSuccess ||
+			answer.Vars["name"] != "customer_matrix_test_shop" || !strings.Contains(answer.Error, c.words) {
+			t.Fatalf("%s: %d %s", c.code, got.Code, got.Body.String())
+		}
+		if c.reason != "mixed" {
+			if answer.Vars["refused"] != "cust_user, wp_user" || !strings.Contains(answer.Error, "customer_matrix_test_shop was deleted.") ||
+				!strings.Contains(answer.Error, "cust_user, wp_user were left") || !strings.Contains(answer.Error, "the server's administrator") ||
+				!strings.HasSuffix(answer.Error, "; then Delete finishes.") || strings.Contains(strings.ToLower(answer.Error), "again") {
+				t.Fatalf("%s: %s", c.code, got.Body.String())
+			}
+		} else if _, ok := answer.Vars["refused"]; ok {
+			t.Fatalf("%s: %s", c.code, got.Body.String())
+		}
+		if f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = 9961`) != 1 || len(drops.requests) != 1 {
+			t.Fatalf("%s: the record went or the drop did not run once", c.code)
+		}
+	}
+}

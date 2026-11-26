@@ -227,6 +227,11 @@ type databaseDeleteError struct {
 	// sweepLeft (alpha.134): rights naming the dropped database could not all
 	// be taken from every grantee (sweepUnknown: no answer came back).
 	sweepLeft, sweepUnknown bool
+	// refused (alpha.150): accounts the Agent refused to change after the
+	// drop for a reason only the server's administrator can lift (see
+	// databaseDeleteRefusalNamesAdministrator). Pressing Delete again meets
+	// the same refusal, so the answer says who acts instead.
+	refused []databaseDeleteRefusal
 	// recordsLeft: the engine is done; the records were not removed.
 	recordsLeft bool
 	// unverified (alpha.140): an earlier press of this deletion got no
@@ -240,6 +245,61 @@ type databaseDeleteError struct {
 	server   *core.DatabaseServer
 	deletion *databaseDeletion
 	cause    error
+}
+
+// databaseDeleteRefusal is one account the Agent refused to change after the
+// drop, with the refusal's code (transport.DatabaseAccountRefused*).
+type databaseDeleteRefusal struct{ account, code string }
+
+// databaseDeleteRefusalNamesAdministrator: a refusal whose cause stays until
+// the server's administrator acts on the database server (every code whose
+// sentence names the administrator). An absent account counts as removed, and
+// the system database is never a deletion's: neither is such a refusal.
+// Yalnız sunucu yöneticisinin kaldırabileceği ret; yeniden Sil onu bitiremez.
+func databaseDeleteRefusalNamesAdministrator(code string) bool {
+	return code != "" && code != transport.DatabaseAccountRefusedAbsent && code != transport.DatabaseAccountRefusedSystemDatabase
+}
+
+// databaseDeleteRefusedReason is the answer's reason for the refused
+// accounts: the code when they share one the screen has words for, else the
+// general "refused".
+func databaseDeleteRefusedReason(refused []databaseDeleteRefusal) string {
+	code := refused[0].code
+	for _, have := range refused[1:] {
+		if have.code != code {
+			return "refused"
+		}
+	}
+	switch code {
+	case transport.DatabaseAccountRefusedPrivileged, transport.DatabaseAccountRefusedMember, transport.DatabaseAccountRefusedUnreadable,
+		transport.DatabaseAccountRefusedOwnsObjects, transport.DatabaseAccountRefusedUnsupportedEngine:
+		return "refused_" + code
+	}
+	return "refused"
+}
+
+// databaseDeleteRefusedSentence is the English answer for refused accounts
+// (the screens' err.DATABASE_DELETE_USERS_LEFT.refused* say the same): the
+// database was deleted, which accounts were left and why, that the server's
+// administrator acts, and that Delete finishes after that. Never "press
+// Delete again": a press meets the same refusal.
+func databaseDeleteRefusedSentence(reason, name, accounts string) string {
+	why := "CelikPanel refused to change them (an administrator account, a member of another role, an account that owns objects, or one whose rights could not be read)"
+	act := "decides about these accounts on the database server"
+	switch reason {
+	case "refused_" + transport.DatabaseAccountRefusedPrivileged:
+		why, act = "they hold administrator rights there, and CelikPanel does not change such an account", "removes these accounts or takes those rights away on the database server"
+	case "refused_" + transport.DatabaseAccountRefusedMember:
+		why, act = "they are members of another PostgreSQL role, which no database user CelikPanel makes is, and CelikPanel does not change such an account", "removes these accounts or that membership on the database server"
+	case "refused_" + transport.DatabaseAccountRefusedOwnsObjects:
+		why, act = "they own tables or other objects on the database server", "hands those objects to another account or removes them on the database server"
+	case "refused_" + transport.DatabaseAccountRefusedUnreadable:
+		why, act = "what they hold on the database server could not be read, and CelikPanel does not change an account it cannot check", "checks that the database server answers"
+	case "refused_" + transport.DatabaseAccountRefusedUnsupportedEngine:
+		why, act = "this server runs MySQL in MariaDB's place and CelikPanel manages database accounts on MariaDB only", "removes these accounts on the server itself"
+	}
+	return "The database " + name + " was deleted. Its users " + accounts + " were left on the database server because " + why + ". " +
+		name + " stays in this list until the server's administrator " + act + "; then Delete finishes."
 }
 
 func (e *databaseDeleteError) Error() string { return e.cause.Error() }
@@ -758,6 +818,7 @@ func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *co
 	engine, port := databaseAgentEngine(server)
 	kept := map[string]string{}
 	var left, rightsLeft []string
+	var refused []databaseDeleteRefusal
 	unknown, exists := false, false
 	// remove: the user goes unless the Agent finds rights its owner gave by
 	// hand. shared: the user stays; only its rights on the dropped database go
@@ -796,6 +857,12 @@ func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *co
 			}
 			if answer.RightsLeft || (s.rightsOnly && !answer.DatabaseExists) {
 				rightsLeft = append(rightsLeft, s.user.Username)
+			}
+			if databaseDeleteRefusalNamesAdministrator(answer.AccountRefused) {
+				account := refusedAccountName(answer, s.user.Username)
+				if !slices.ContainsFunc(refused, func(have databaseDeleteRefusal) bool { return have.account == account }) {
+					refused = append(refused, databaseDeleteRefusal{account: account, code: answer.AccountRefused})
+				}
 			}
 			log.Printf("[409][database] %s %s: user %s: %s", errCodeDatabaseDeleteUsersLeft, name, s.user.Username, boundedAgentDiagnostic(answer.Error))
 		case answer.Kept:
@@ -837,7 +904,7 @@ func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *co
 	}
 	if len(left) > 0 || sweepLeft || exists {
 		return kept, &databaseDeleteError{unknown: unknown, databaseGone: true, usersLeft: left, rightsLeft: rightsLeft, databaseExists: exists,
-			sweepLeft: sweepLeft, sweepUnknown: sweepUnknown,
+			sweepLeft: sweepLeft, sweepUnknown: sweepUnknown, refused: refused,
 			cause: fmt.Errorf("database %s was dropped; for its users %s or the rights naming it not everything was done", name, strings.Join(left, ", "))}
 	}
 	return kept, nil
@@ -1012,6 +1079,17 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 			body.Error = "The database " + name + " was deleted, but a database with this name is on the database server again, made after the deletion. " +
 				"CelikPanel does not delete it, and its users (" + strings.Join(failed.usersLeft, ", ") + ") were left as they are, because that database may use them. " +
 				"It stays in the list until that database is gone; the server administrator decides about it on the database server, then Delete finishes."
+		case len(failed.refused) > 0:
+			// alpha.150: an account the Agent refused (administrator rights,
+			// a role member, owned objects, unreadable rights, MySQL): a
+			// press meets the same refusal, so the answer names who acts.
+			var accounts []string
+			for _, have := range failed.refused {
+				accounts = append(accounts, have.account)
+			}
+			body.Reason = databaseDeleteRefusedReason(failed.refused)
+			body.Vars["refused"] = strings.Join(accounts, ", ")
+			body.Error = databaseDeleteRefusedSentence(body.Reason, name, body.Vars["refused"])
 		case len(failed.usersLeft) == 0 && failed.sweepUnknown:
 			// alpha.134: only the rights naming it on other accounts are left.
 			body.Reason = "sweep_unknown"
