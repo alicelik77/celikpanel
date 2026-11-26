@@ -428,11 +428,12 @@ func TestTasksMoveUndoAndRebuildKeepTheUpdateGate(t *testing.T) {
 		host := useTaskTestHost(t)
 		host.startWith(t, moveTaskCrontab)
 		siteMoveUpdateState = func() string { return "" }
-		var refused []string
+		var refused, words []string
 		siteMoveClaimed = func() {
 			var reply transport.SystemUpdateStartResponse
 			_ = (&Agent{}).StartSystemUpdate(&transport.SystemUpdateStartRequest{}, &reply)
 			refused = append(refused, reply.Reason)
+			words = append(words, reply.Error)
 		}
 		if resp := moveTasks(t); resp.Outcome != transport.SiteTasksMoved {
 			t.Fatalf("move %+v", resp)
@@ -451,9 +452,13 @@ func TestTasksMoveUndoAndRebuildKeepTheUpdateGate(t *testing.T) {
 		if len(refused) != 3 {
 			t.Fatalf("the claim was taken %d times, want 3 (move, rebuild, undo)", len(refused))
 		}
-		for _, reason := range refused {
+		for i, reason := range refused {
 			if reason != transport.HostMutationReasonSiteMove {
 				t.Fatalf("the update was not refused while a tasks change ran: %v", refused)
+			}
+			// Fix round: the words name the tasks change, not "programs".
+			if !strings.Contains(words[i], "its scheduled tasks are being changed") || strings.Contains(words[i], "programs") {
+				t.Fatalf("the update's refusal: %q", words[i])
 			}
 		}
 		// A preview takes no claim.

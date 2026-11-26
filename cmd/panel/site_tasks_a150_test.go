@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,5 +71,17 @@ func TestOnePressGivesTheProgramsOnlyWhatIsLeft(t *testing.T) {
 		if len(budgets) != 1 || budgets[0] != c.budget {
 			t.Fatalf("%v: the programs part got %v seconds, want %d", c.took, budgets, c.budget)
 		}
+	}
+}
+
+// TestTheUpdatesRefusalNamesATasksChange (R2b fix round): while a tasks
+// move, undo or rebuild holds the move's claim, the update's refusal says a
+// site is being moved or its scheduled tasks are being changed, not
+// "programs".
+func TestTheUpdatesRefusalNamesATasksChange(t *testing.T) {
+	writer := httptest.NewRecorder()
+	writePanelUpdateSiteMoveRunning(writer)
+	if body := writer.Body.String(); !strings.Contains(body, "its scheduled tasks are being changed") || strings.Contains(body, "programs") {
+		t.Fatalf("refusal %s", body)
 	}
 }

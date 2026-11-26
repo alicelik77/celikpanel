@@ -517,10 +517,12 @@ func writePanelUpdateAgentFailure(w http.ResponseWriter, err error) {
 // Paket yöneticisi etkin diye reddedilen başlatma, diğer değişikliklerle aynı
 // kodu, nedeni ve cümleyi alır; yalnız agent'ın tipli nedeni bunu seçer.
 // writePanelUpdateSiteMoveRunning: the update was not started because a
-// site's programs are being moved into their limits (alpha.149, lab D5).
+// site is being moved into its limits (alpha.149, lab D5) or its scheduled
+// tasks are being changed (alpha.150: their move, undo and rebuild hold the
+// same claim).
 func writePanelUpdateSiteMoveRunning(w http.ResponseWriter) {
 	writeCodedError(w, http.StatusConflict, "PANEL_UPDATE_SITE_MOVE_RUNNING",
-		"a site's programs are being moved into their limits; the update was not started. Wait until the move's window has finished, then press the update again", "")
+		"a site is being moved into its limits or its scheduled tasks are being changed; the update was not started. Wait until that has finished, then press the update again", "")
 }
 
 func writePanelUpdateStartHostBusy(w http.ResponseWriter, reply transport.SystemUpdateStartResponse) bool {

@@ -173,8 +173,10 @@ test('fix round: put-back words are true (W1–W4), the peak says only what is k
 });
 
 test('an update is not started during a move, and the page says what to do', () => {
-  assert.match(enErrorsScreens['err.PANEL_UPDATE_SITE_MOVE_RUNNING'], /being moved[\s\S]*Wait until the move’s window has finished[\s\S]*again/);
-  assert.match(trErrorsScreens['err.PANEL_UPDATE_SITE_MOVE_RUNNING'], /taşınıyor[\s\S]*bekleyin[\s\S]*yeniden/);
+  // alpha.150 (R2b fix round): the claim is also a site's scheduled tasks being changed.
+  assert.match(enErrorsScreens['err.PANEL_UPDATE_SITE_MOVE_RUNNING'], /being moved[\s\S]*scheduled tasks are being changed[\s\S]*Wait until it has finished[\s\S]*again/);
+  assert.doesNotMatch(enErrorsScreens['err.PANEL_UPDATE_SITE_MOVE_RUNNING'], /programs/);
+  assert.match(trErrorsScreens['err.PANEL_UPDATE_SITE_MOVE_RUNNING'], /taşınıyor[\s\S]*zamanlanmış görevleri değiştiriliyor[\s\S]*bekleyin[\s\S]*yeniden/);
 });
 
 test('the duplicate sign-in says what is true: neither is used, a whole-domain cookie stays and is ignored', () => {
