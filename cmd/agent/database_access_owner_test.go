@@ -248,24 +248,26 @@ func TestTheOwnedObjectsGuardReadsWhatReassignWouldMove(t *testing.T) {
 // error line, never from an object name a site user chose that some other
 // error or notice quotes.
 func TestARefusalIsReadOnlyFromTheClientsOwnErrorLine(t *testing.T) {
-	for output, want := range map[string][2]string{
-		"BEGIN\nDO\nERROR:  celikpanel-refused:privileged:boss\nCONTEXT:  PL/pgSQL function inline_code_block line 5 at RAISE\n": {"privileged", "boss"},
-		"psql:<stdin>:4: ERROR:  celikpanel-refused:owns_objects:shop_x\n":                                                       {"owns_objects", "shop_x"},
-		"ERROR:  celikpanel-refused:absent\n":                         {"absent", ""},
-		"ERROR 1644 (45000) at line 2: celikpanel-refused:privileged": {"privileged", ""},
+	// Each case: the client's output, the code and the name it must give.
+	for _, c := range [][3]string{
+		{"BEGIN\nDO\nERROR:  celikpanel-refused:privileged:boss\nCONTEXT:  PL/pgSQL function inline_code_block line 5 at RAISE\n", "privileged", "boss"},
+		{"psql:<stdin>:4: ERROR:  celikpanel-refused:owns_objects:shop_x\n", "owns_objects", "shop_x"},
+		{"ERROR:  celikpanel-refused:absent\n", "absent", ""},
+		{"ERROR 1644 (45000) at line 2: celikpanel-refused:privileged", "privileged", ""},
 		// Forged: the marker inside an object's name that an error quotes.
-		"ERROR:  cannot drop function \"celikpanel-refused:privileged:postgres\"() because other objects depend on it\n": {"", ""},
-		"ERROR 1142 (42000) at line 1: SELECT command denied for table 'celikpanel-refused:privileged'":                  {"", ""},
+		{"ERROR:  cannot drop function \"celikpanel-refused:privileged:postgres\"() because other objects depend on it\n", "", ""},
+		{"ERROR 1142 (42000) at line 1: SELECT command denied for table 'celikpanel-refused:privileged'", "", ""},
 		// Forged: in a notice before the real error, or after it on a line of
 		// a quoted name that carries a line break.
-		"NOTICE:  celikpanel-refused:privileged:postgres\nERROR:  permission denied\n":            {"", ""},
-		"ERROR:  relation \"x\nERROR:  celikpanel-refused:privileged:postgres\" does not exist\n": {"", ""},
-		"celikpanel-refused:privileged:postgres\n":                                                {"", ""},
-		"ERROR:  celikpanel-refused:privileged:postgres\" does not exist\n":                       {"", ""},
-		"ERROR:  celikpanel-refused:later:postgres\n":                                             {"", ""},
+		{"NOTICE:  celikpanel-refused:privileged:postgres\nERROR:  permission denied\n", "", ""},
+		{"ERROR:  relation \"x\nERROR:  celikpanel-refused:privileged:postgres\" does not exist\n", "", ""},
+		{"celikpanel-refused:privileged:postgres\n", "", ""},
+		{"ERROR:  celikpanel-refused:privileged:postgres\" does not exist\n", "", ""},
+		{"ERROR:  celikpanel-refused:later:postgres\n", "", ""},
 	} {
-		if code, name := databaseAccountRefusalIn([]byte(output)), databaseAccountRefusedNameIn([]byte(output)); code != want[0] || name != want[1] {
-			t.Errorf("%q: code %q name %q, want %q %q", output, code, name, want[0], want[1])
+		output := []byte(c[0])
+		if code, name := databaseAccountRefusalIn(output), databaseAccountRefusedNameIn(output); code != c[1] || name != c[2] {
+			t.Errorf("%q: code %q name %q, want %q %q", c[0], code, name, c[1], c[2])
 		}
 	}
 	// Through a removal: REASSIGN fails with an error that quotes an object
