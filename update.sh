@@ -2151,6 +2151,18 @@ load_saved_service_states_boot() {
     saved_service_states_boot_id=$line
 }
 
+# True only when the saved states name a kernel boot other than the running
+# one, so no process of the boot they were read in can exist any more. No
+# record, or a running boot id that cannot be read, proves nothing (false).
+# Kayıtlı açılış şimdikinden farklıysa doğru; kayıt yoksa ya da okunamazsa yanlış.
+saved_states_from_earlier_boot() {
+    local boot
+    [[ -n $saved_service_states_boot_id ]] || return 1
+    read -r boot 2>/dev/null < "$KERNEL_BOOT_ID_FILE" || return 1
+    [[ $boot =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ &&
+       $boot != "$saved_service_states_boot_id" ]]
+}
+
 # True only when a boot happened since the states were saved and that boot's own
 # run of the firewall restore unit made it active: a recorded boot id differs
 # from the running kernel's, the unit is enabled as saved, its policy file
@@ -2158,11 +2170,8 @@ load_saved_service_states_boot() {
 # before this boot's startup finished, so no recovery run started it.
 # Kayıttan sonra açılış oldu ve birimi açılışın kendi başarılı çalışması etkinleştirdi.
 firewall_restore_activated_by_boot() {
-    local unit=celikpanel-firewall-restore.service boot value entered finished
-    [[ -n $saved_service_states_boot_id ]] || return 1
-    read -r boot 2>/dev/null < "$KERNEL_BOOT_ID_FILE" || return 1
-    [[ $boot =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ &&
-       $boot != "$saved_service_states_boot_id" ]] || return 1
+    local unit=celikpanel-firewall-restore.service value entered finished
+    saved_states_from_earlier_boot || return 1
     [[ ${saved_enabled_states[$unit]:-} == enabled ]] || return 1
     value=$(systemctl is-enabled "$unit" 2>/dev/null) || return 1
     [[ $value == enabled ]] || return 1

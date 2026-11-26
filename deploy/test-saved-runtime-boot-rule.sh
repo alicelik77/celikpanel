@@ -17,7 +17,8 @@ work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 
 scripts=(update.sh deploy/finalize-pending-update.sh deploy/finalize-pending-rollback.sh)
-functions=(load_saved_service_states_boot firewall_restore_activated_by_boot verify_saved_runtime_states)
+functions=(load_saved_service_states_boot saved_states_from_earlier_boot firewall_restore_activated_by_boot verify_saved_runtime_states)
+finalizers=(deploy/finalize-pending-update.sh deploy/finalize-pending-rollback.sh)
 extract() {
     awk -v header="$2() {" '$0 == header { inside=1 } inside { print } inside && $0 == "}" { exit }' "$1"
 }
@@ -54,6 +55,38 @@ sync_line=$(awk -v start="${write_line:-0}" 'NR > start && index($0, "\"$tmp_sna
 # A resumed stage keeps the record with the ledger it belongs to.
 grep -Fq 'service-states.boot-id) [[ -f $entry && ! -L $entry ]] && continue ;;' \
     "$repo_root/deploy/release-transaction-guard.sh" || fail "stage reset does not keep the boot record"
+# The finalizers load the pending snapshot's ledger (and with it the boot record
+# beside it) before any check: the one load is in the snapshot validator, which
+# runs once at top level before every verify_saved_runtime_states, and the
+# coordinator identities are loaded after it (their start time check reads the
+# boot record). No check runs inside another function or before the load.
+# Sonlandırıcılar kayıt defterini (ve yanındaki açılış kaydını) her denetimden önce yükler.
+call_order() {
+    awk -v validator="$2" '
+        /^[[:space:]]*#/ { next }
+        /^[A-Za-z_][A-Za-z0-9_]*\(\) \{$/ { fn = substr($0, 1, index($0, "(") - 1); next }
+        /^}$/ { fn = ""; next }
+        fn == validator && $0 == "    ledger=$pending_snapshot_path/service-states.tsv" { ledger = NR }
+        fn == validator && $0 == "    load_saved_service_states \"$ledger\"" { load = NR }
+        fn == validator && $0 == "    load_quiesce_coordinator_identities \"$identity_ledger\"" { quiesce = NR }
+        /load_saved_service_states / { loads++ }
+        fn == "" && $0 == validator " \"$pending_snapshot\"" { top = NR; tops++ }
+        /verify_saved_runtime_states/ { checks++; if (fn != "") inner++; else if (!top) early++ }
+        END {
+            ok = ledger && load && quiesce && ledger < load && load < quiesce && loads == 1 &&
+                tops == 1 && checks > 0 && !inner && !early
+            print ok ? "ok" : "ledger=" ledger " load=" load " quiesce=" quiesce " loads=" loads " tops=" tops " checks=" checks " inner=" inner " early=" early
+        }' "$1"
+}
+for script in "${finalizers[@]}"; do
+    validator=validate_pending_update_snapshot
+    [[ $script == *rollback* ]] && validator=validate_pending_rollback_snapshot
+    order=$(call_order "$repo_root/$script" "$validator")
+    [[ $order == ok ]] || fail "$script: the ledger is not loaded before every runtime check ($order)"
+done
+[[ $(extract "$repo_root/${finalizers[0]}" load_quiesce_coordinator_identities) == \
+   "$(extract "$repo_root/${finalizers[1]}" load_quiesce_coordinator_identities)" ]] ||
+    fail "the finalizers' coordinator identity loaders differ"
 
 saved_boot=11111111-2222-4333-8444-555555555555
 other_boot=99999999-8888-4777-8666-555555555555
@@ -167,5 +200,65 @@ for script in "${scripts[@]}"; do
     run_case "$script" record-uppercase refuse 'service-state boot record is not canonical' FX_RECORD_RAW='11111111-2222-4333-8444-55555555555A\n'
     run_case "$script" record-symlink refuse 'service-state boot record is unsafe' FX_RECORD=symlink
     printf 'PASS: %s saved runtime boot rule\n' "$script"
+done
+
+# The finalizers' coordinator identities (review of PR #374, F3): a live
+# process with the captured number and start time refuses, except after a
+# restart since the identities were saved (a recorded boot other than the
+# running one), where no process of theirs can exist and a match is chance.
+# Without a record, with the same boot or an unreadable boot id: as before.
+# Yeniden başlatmadan sonra süreç numarası ve başlangıç zamanı eşleşmesi rastlantıdır.
+run_identity_case() {
+    local script=$1 name=$2 want=$3
+    shift 3
+    local status=0
+    (
+        set -euo pipefail
+        FX_BOOT=$other_boot FX_RECORD=$saved_boot FX_LIVE_START=5678
+        for assignment in "$@"; do declare "$assignment"; done
+        case_root=$work/identity-$name.${script//\//_}
+        mkdir -p -- "$case_root/snapshot"
+        die() { printf '!! %s\n' "$*" >&2; exit 1; }
+        service_state_is_active_like() { case "$1" in active|activating|reloading|refreshing) return 0 ;; *) return 1 ;; esac; }
+        validate_service_active_state() { :; }
+        # The captured agent (pid 1234) and panel (pid 2345) numbers are live
+        # again; FX_LIVE_START is their start time now ('' = not running).
+        coordinator_process_start_time() { [[ -n $FX_LIVE_START ]] && printf '%s\n' "$FX_LIVE_START"; }
+        KERNEL_BOOT_ID_FILE=$case_root/boot_id
+        SERVICE_STATES_BOOT_RECORD=service-states.boot-id
+        printf '%s\n' "$FX_BOOT" > "$KERNEL_BOOT_ID_FILE"
+        [[ $FX_RECORD == none ]] || printf '%s\n' "$FX_RECORD" > "$case_root/snapshot/service-states.boot-id"
+        : > "$case_root/snapshot/service-states.tsv"
+        printf 'celikpanel-agent.service\tactive\t1234\t5678\ncelikpanel-panel.service\tactive\t2345\t5678\n' \
+            > "$case_root/snapshot/quiesce-coordinators.tsv"
+        declare -A saved_active_states=([celikpanel-agent.service]=active [celikpanel-panel.service]=active)
+        declare -A quiesce_active_states=() quiesce_main_pids=() quiesce_start_times=()
+        for fn in load_saved_service_states_boot saved_states_from_earlier_boot load_quiesce_coordinator_identities; do
+            eval "$(extract "$repo_root/$script" "$fn")"
+        done
+        load_saved_service_states_boot "$case_root/snapshot/service-states.tsv"
+        load_quiesce_coordinator_identities "$case_root/snapshot/quiesce-coordinators.tsv"
+        [[ ${quiesce_main_pids[celikpanel-agent.service]} == 1234 && ${quiesce_start_times[celikpanel-panel.service]} == 5678 ]]
+    ) > "$work/out" 2> "$work/err" || status=$?
+    if [[ $want == accept ]]; then
+        [[ $status == 0 ]] || fail "$script identity $name: refused ($status): $(cat "$work/err")"
+    else
+        [[ $status != 0 ]] || fail "$script identity $name: accepted, want refusal"
+        grep -Fq 'captured coordinator process still exists outside its stopped unit: celikpanel-agent.service' "$work/err" ||
+            fail "$script identity $name: wrong refusal: $(cat "$work/err")"
+    fi
+}
+for script in "${finalizers[@]}"; do
+    # After a restart since the save: no process of that boot exists.
+    run_identity_case "$script" restarted accept
+    # The same boot: the captured process may still be running.
+    run_identity_case "$script" same-boot refuse FX_BOOT=$saved_boot
+    # No record (an earlier release's ledger) or an unreadable boot id: as before.
+    run_identity_case "$script" no-record refuse FX_RECORD=none
+    run_identity_case "$script" boot-unreadable refuse FX_BOOT=not-a-boot-id
+    # The same boot, but the number belongs to another process now.
+    run_identity_case "$script" same-boot-other-process accept FX_BOOT=$saved_boot FX_LIVE_START=9999
+    run_identity_case "$script" same-boot-not-running accept FX_BOOT=$saved_boot FX_LIVE_START=
+    printf 'PASS: %s coordinator identities after a restart\n' "$script"
 done
 printf 'saved runtime boot rule: PASS\n'
