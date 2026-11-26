@@ -249,6 +249,45 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   statement time, changed on the user itself, is kept; the temporary-file and connection
   limits are firm limits the user cannot change."
 
+  **Its second fix round (second review of PR #370).** alpha.128 to 148 wrote the
+  PostgreSQL connection limit without a record through `celikpanel_admin` (PostgreSQL 15
+  or older, and on 16 and later on roles `celikpanel_admin` made itself). Every change that
+  can move a subscription's connection limit - a plan's or a reseller plan's Save, a
+  subscription moved to another plan, to Custom or to Unlimited, a reseller's limits, the
+  server's limit - reads each affected subscription's limit before it is saved; a user
+  without a record whose current limit equals that previous value is the panel's and gets
+  the new value. A value that equals neither is the owner's and is kept. What stays: such a
+  user is reached only by such a change. Apply again and the hourly round carry no previous
+  value, so a user whose unrecorded value is an older plan value (the plan changed again
+  before alpha.149, or its write then failed) is kept as the owner's; and a value the owner
+  set by hand that happens to equal the previous plan value is taken as the panel's.
+
+  Stated limits, not built:
+  - The Agent's read of the panel's file for the limits call holds one slot. A file the
+    panel's own account swaps for a FIFO between the pin and SQLite's open keeps that slot,
+    and every later limits call is refused until the Agent restarts: a taken-over panel can
+    deny itself this call, nothing more. The `-wal`/`-shm` companions are checked at pin
+    time only.
+  - A site role its owner made a member of another role, or privileged, stays named in
+    Problems now and is tried again by the hourly round; lifting the plan's limits does not
+    clear it. The line ends when the role's membership or privilege is removed, or the user
+    is removed from CelikPanel.
+  - A large Save writes every user of the affected subscriptions as pending into one row,
+    and each outcome rewrites it (quadratic in the number of users); a very large reseller
+    plan can outlast the run's 10 minutes, and the users not reached read "not known yet".
+  - The Problems now line of the database limits stays hidden until its words have loaded,
+    and if they fail to load.
+  - Suspension, password changes and the added-user calls still run psql and mysql without
+    a lock wait limit or a time bound (the limits call has both), under the same Agent lock
+    as the limits call: a role the owner holds locked blocks them, and a limits call then
+    waits until the panel's call times out ("not known yet").
+  - The site's limits card can wait for a running limits run (more than 10 seconds when the
+    run meets lock waits).
+  - The record rule of the connection limit holds for CelikPanel's own local PostgreSQL,
+    through the Agent. A PostgreSQL the administrator registered with an account of their
+    own keeps the alpha.128 rule for the connection limit: a hand-set value is written over
+    on every rewrite.
+
   **Loads and the user's limits.** Customers start restores of their own sites' backups
   (also from their own remote destinations), database copies, site copies and imports;
   the administrator also moves databases and imports cPanel archives. Every one of them

@@ -503,6 +503,60 @@ there.
 - Not covered: registered PostgreSQL servers on other machines (their own
   administrator's), and the `postgres`/`template1` databases.
 
+## Privileged database accounts and the Agent (alpha.149)
+
+The Agent runs as root and, on the engines, as their superuser; the panel is
+the less trusted side. No Agent call changes a database account the panel
+names (a password, a lock, a drop, a revoke, limits, a database's owner as the
+owner and recipient of objects) unless the Agent itself finds it an ordinary
+account, read before the write and again in the write's own transaction
+(PostgreSQL) or compound statement (MariaDB); a state that cannot be read
+refuses. The rule is in `cmd/agent/database_account_guard.go`. A database's
+owner passes the same rule; the one exception is CelikPanel's own
+`celikpanel_admin` (DATABASE-ADMIN-ACCOUNT.md), while it is not a superuser
+and a member of no `pg_*` role and no superuser role. No Agent call drops,
+empties, loads into, gives a user or opens or closes the engine's own system
+databases (MariaDB `mysql`, `information_schema`, `performance_schema`,
+`sys`; PostgreSQL `postgres`, `template0`, `template1`). A MariaDB database
+is not made with a user whose name already exists on any host or as a role.
+
+A refusal answers its reason as a code (`absent`, `privileged`, `member`,
+`unreadable`, `system_database`, `unsupported_engine`); nothing was changed,
+the server's administrator decides, and the Databases screens say it in the
+person's language (`DATABASE_ACCOUNT_REFUSED`).
+
+What this boundary is worth:
+
+- On PostgreSQL 16 and later it is a real boundary against a taken-over
+  panel: the panel's own account (`celikpanel_admin`, CREATEDB CREATEROLE)
+  cannot make itself or another role privileged there, and the Agent will not
+  do it on the panel's word.
+- On MariaDB, and on PostgreSQL 15 or older, the panel's own database account
+  already holds rights of that weight (MariaDB: `ALL PRIVILEGES ON *.* WITH
+  GRANT OPTION`; PostgreSQL 15 or older: CREATEROLE can grant itself the
+  `pg_*` roles). There the refusal guards against mistakes, not against a
+  taken-over panel.
+- A database of another site is protected by the panel's own checks only;
+  the Agent does not check which site a database belongs to.
+
+Limits of the rule:
+
+- The PostgreSQL rule looks at role attributes and memberships. It does not
+  look at parameter privileges (PostgreSQL 15 and later, `GRANT ALTER SYSTEM
+  ON PARAMETER`), at EXECUTE granted directly on administrator functions
+  (`pg_read_file`, `lo_import`, `lo_export`), or at roles that own objects a
+  superuser runs. Each needs the server owner to have made such a grant by
+  hand.
+- A local MySQL server running in MariaDB's place is not managed: MySQL has
+  no `mysql.global_priv`, so the rule cannot be read there and every account
+  change is refused as `unsupported_engine` ("this server runs MySQL in
+  MariaDB's place; CelikPanel manages database accounts on MariaDB only").
+  The server's administrator makes the change on the server itself. An
+  account the administrator removed by hand counts as gone, so deleting the
+  database or the site then goes through; rights that name a deleted database
+  are then removed by the engine's rule for every grantee, without taking the
+  account names from the panel.
+
 ## Connecting
 
 Databases listen on the server only. "Connection details" gives the site's
