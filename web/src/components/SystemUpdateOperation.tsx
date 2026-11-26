@@ -1,6 +1,6 @@
 import { prepareRecoveryShell } from '../lib/recoveryShell';
 import { systemUpdateFailureMessage, systemUpdatePackageManagerBusy, systemUpdateRecoveryPreparationUnconfirmed } from '../lib/systemUpdateFailure';
-import { failedUpdateGuidance, SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS, type OutcomeText, type SystemUpdateOutcomeTone } from '../lib/systemUpdateOutcome';
+import { failedUpdateGuidance, systemUpdateFailureClosable, systemUpdateWithinLimit, type OutcomeText, type SystemUpdateOutcomeTone } from '../lib/systemUpdateOutcome';
 import { isPreflightStop, parseRecoveryObservation, reconcileRecoveryObservation, UPDATE_MARKER_KEY, type RecoveryFailureCode, type RecoveryObservation } from '../lib/recoveryObservation';
 import {
     createContext,
@@ -2129,8 +2129,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
                 reading: !observed?.settled,
                 // Read on every render (the recovery reads re-render): an
                 // unreadable outcome becomes the owner's to look at after its limit.
-                withinLimit: displayedTerminal.completedAt !== undefined
-                    && Date.now() - displayedTerminal.completedAt < SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS,
+                withinLimit: systemUpdateWithinLimit(displayedTerminal.completedAt, Date.now()),
                 locale,
             });
         })()
@@ -2148,8 +2147,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     // A failure the owner must read and close; everything the server still
     // handles by itself keeps the calm view without a close button.
     const failureTone: SystemUpdateOutcomeTone | null = failureGuidance?.tone ?? null;
-    const realFailure = displayedTerminal?.kind === 'failed'
-        && (failureTone === 'danger' || failureTone === 'warning' || failureTone === 'neutral');
+    const realFailure = displayedTerminal?.kind === 'failed' && systemUpdateFailureClosable(failureTone);
     // Boston 2026-10-23: while this notice was open the update card showed
     // neither the offer nor the earlier attempt, because the card hid both
     // whenever the update lock was held. A request that ended unchanged or

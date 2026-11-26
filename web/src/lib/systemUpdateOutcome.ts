@@ -147,6 +147,24 @@ type Input = {
 
 /** How long an unreadable outcome is still said as "being checked". */
 export const SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS = 2 * 60 * 1000;
+
+/**
+ * Input.withinLimit for a failed request: true while this browser's own record
+ * of the failure (completedAt, kept in its stored record, so a reload or a
+ * second tab does not restart it) is younger than the limit. A record without
+ * that time is past it.
+ */
+export function systemUpdateWithinLimit(completedAt: number | undefined, now: number): boolean {
+    return completedAt !== undefined && now - completedAt < SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS;
+}
+
+/**
+ * A failure notice the owner reads and closes (red, amber or neutral); a
+ * progress notice is the server's to finish and has no close button.
+ */
+export function systemUpdateFailureClosable(tone: SystemUpdateOutcomeTone | null): boolean {
+    return tone === 'danger' || tone === 'warning' || tone === 'neutral';
+}
 /** The native recovery timer admits at most three automatic attempts. */
 const RECOVERY_MAX_ATTEMPTS = 3;
 

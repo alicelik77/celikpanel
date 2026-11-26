@@ -18,7 +18,8 @@ const recoveryURL = dataModule(compile('../src/lib/recoveryObservation.ts'));
 const failureURL = dataModule(compile('../src/lib/systemUpdateFailure.ts'));
 const { parseRecoveryObservation, recoveryFailureGuidanceKey } = await import(recoveryURL);
 const { withoutInternalTokens, systemUpdatePreflightStop } = await import(failureURL);
-const { failedUpdateGuidance, decodePreviousUpdateAttempt, previousAttemptStopped, RECOVERY_LOG_COMMAND, preflightSteps, preflightReasonClasses } = await import(dataModule(
+const { failedUpdateGuidance, decodePreviousUpdateAttempt, previousAttemptStopped, RECOVERY_LOG_COMMAND, preflightSteps, preflightReasonClasses,
+    systemUpdateWithinLimit, systemUpdateFailureClosable } = await import(dataModule(
     compile('../src/lib/systemUpdateOutcome.ts')
         .replace(/from ['"]\.\/recoveryObservation['"]/g, `from '${recoveryURL}'`)
         .replace(/from ['"]\.\/systemUpdateFailure['"]/g, `from '${failureURL}'`)));
@@ -507,8 +508,23 @@ test('a failed update no recovery took over becomes the owner\'s after the limit
     // Recovery that has taken the request over is never made closable by time.
     assert.equal(failedUpdateGuidance(observed('recovering'), input({ withinLimit: false })).tone, 'progress');
     assert.equal(failedUpdateGuidance(observed('recovering', { waiting_for: 'starting' }), input({ withinLimit: false })).tone, 'progress');
-    // The tracker shows the close button for a red notice and keeps polling it.
+    // The page's limit, from this browser's own record of the failure.
+    const now = Date.parse('2026-11-26T12:00:00Z');
+    assert.equal(systemUpdateWithinLimit(now - 1_000, now), true);
+    assert.equal(systemUpdateWithinLimit(now - 119_999, now), true);
+    assert.equal(systemUpdateWithinLimit(now - 120_000, now), false);
+    assert.equal(systemUpdateWithinLimit(now - 600_000, now), false);
+    assert.equal(systemUpdateWithinLimit(undefined, now), false);
+    // Only a red, amber or neutral notice has the close button; progress has none.
+    for (const tone of ['danger', 'warning', 'neutral']) assert.equal(systemUpdateFailureClosable(tone), true, tone);
+    for (const tone of ['progress', 'success', null]) assert.equal(systemUpdateFailureClosable(tone), false, String(tone));
+    // End to end: a minute after the failure it is progress (no close); after
+    // the limit it is the owner's and closable.
+    const at = (age) => systemUpdateFailureClosable(failedUpdateGuidance(unattended, input({ withinLimit: systemUpdateWithinLimit(now - age, now) })).tone);
+    assert.equal(at(60_000), false);
+    assert.equal(at(121_000), true);
+    // The tracker computes both through these functions.
     const tracker = readFileSync(new URL('../src/components/SystemUpdateOperation.tsx', import.meta.url), 'utf8');
-    assert.match(tracker, /const realFailure = displayedTerminal\?\.kind === 'failed'\n\s+&& \(failureTone === 'danger' \|\| failureTone === 'warning' \|\| failureTone === 'neutral'\);/);
-    assert.match(tracker, /withinLimit: displayedTerminal\.completedAt !== undefined\n\s+&& Date\.now\(\) - displayedTerminal\.completedAt < SYSTEM_UPDATE_UNKNOWN_OUTCOME_LIMIT_MS,/);
+    assert.match(tracker, /withinLimit: systemUpdateWithinLimit\(displayedTerminal\.completedAt, Date\.now\(\)\),/);
+    assert.match(tracker, /const realFailure = displayedTerminal\?\.kind === 'failed' && systemUpdateFailureClosable\(failureTone\);/);
 });

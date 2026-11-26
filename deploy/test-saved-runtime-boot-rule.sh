@@ -111,22 +111,25 @@ run_case() {
         # Fixture defaults; each case overrides with name=value arguments.
         FX_BOOT=$other_boot FX_RECORD=$saved_boot FX_SAVED_FW_ENABLED=enabled FX_SAVED_FW_STATE=inactive
         FX_FW_ENABLED=enabled FX_FW_ACTIVE=1 FX_RESULT=success FX_SUB=exited FX_ENTERED=4200000 FX_FINISHED=9100000
-        FX_POLICY=1 FX_SAVED_AGENT=active FX_AGENT_ACTIVE=1 FX_RECORD_RAW= FX_CALLS=1
+        FX_POLICY=1 FX_SAVED_AGENT=active FX_AGENT_ACTIVE=1 FX_RECORD_RAW= FX_CALLS=1 FX_FAIL=
         for assignment in "$@"; do declare "$assignment"; done
         case_root=$work/$name.${script//\//_}
         mkdir -p -- "$case_root/snapshot"
         die() { printf '!! %s\n' "$*" >&2; exit 1; }
         service_state_is_active_like() { case "$1" in active|activating|reloading|refreshing) return 0 ;; *) return 1 ;; esac; }
+        # FX_FAIL names one query that prints the accepted value but exits
+        # non-zero (systemctl could not answer it): the rule must refuse.
+        answer() { printf '%s\n' "$2"; [[ $FX_FAIL != "$1" ]]; }
         systemctl() {
             case "$*" in
                 'is-active --quiet celikpanel-agent.service') [[ $FX_AGENT_ACTIVE == 1 ]] ;;
                 'is-active --quiet celikpanel-panel.service') return 0 ;;
                 'is-active --quiet celikpanel-firewall-restore.service') [[ $FX_FW_ACTIVE == 1 ]] ;;
-                'is-enabled celikpanel-firewall-restore.service') printf '%s\n' "$FX_FW_ENABLED"; [[ $FX_FW_ENABLED == enabled ]] ;;
-                'show --property=Result --value celikpanel-firewall-restore.service') printf '%s\n' "$FX_RESULT" ;;
-                'show --property=SubState --value celikpanel-firewall-restore.service') printf '%s\n' "$FX_SUB" ;;
-                'show --property=ActiveEnterTimestampMonotonic --value celikpanel-firewall-restore.service') printf '%s\n' "$FX_ENTERED" ;;
-                'show --property=FinishTimestampMonotonic --value') printf '%s\n' "$FX_FINISHED" ;;
+                'is-enabled celikpanel-firewall-restore.service') answer is-enabled "$FX_FW_ENABLED" && [[ $FX_FW_ENABLED == enabled ]] ;;
+                'show --property=Result --value celikpanel-firewall-restore.service') answer Result "$FX_RESULT" ;;
+                'show --property=SubState --value celikpanel-firewall-restore.service') answer SubState "$FX_SUB" ;;
+                'show --property=ActiveEnterTimestampMonotonic --value celikpanel-firewall-restore.service') answer ActiveEnter "$FX_ENTERED" ;;
+                'show --property=FinishTimestampMonotonic --value') answer Finish "$FX_FINISHED" ;;
                 *) printf 'unexpected systemctl %s\n' "$*" >&2; return 99 ;;
             esac
         }
@@ -191,8 +194,24 @@ for script in "${scripts[@]}"; do
     # Started after this boot's startup finished (by anything, a recovery run
     # included), or while startup has not finished: not the boot's own run.
     run_case "$script" started-after-boot refuse "$inactive_refusal" FX_ENTERED=9100001
+    # The boundary: entered active in the same microsecond the manager recorded
+    # that startup finished is still the boot's own run. The finish stamp is
+    # taken when the boot transaction's last job completes, which can be this
+    # unit's; a start requested after that has to queue a new job and run the
+    # unit's ExecStart (a process), which cannot complete in the same
+    # microsecond, so its stamp is strictly later.
+    run_case "$script" entered-as-boot-finished accept "$accepted" FX_ENTERED=9100000
+    # The manager's startup has not finished (0): refused.
     run_case "$script" boot-unfinished refuse "$inactive_refusal" FX_FINISHED=0
     run_case "$script" never-entered refuse "$inactive_refusal" FX_ENTERED=0
+    # systemctl could not answer one of the queries (non-zero exit, even with
+    # the accepted value printed): refused.
+    for query in is-enabled Result SubState ActiveEnter Finish; do
+        run_case "$script" "query-$query-failed" refuse "$inactive_refusal" FX_FAIL=$query
+    done
+    # Saved as enabled-runtime: runtime links vanish at a boot, so the boot did
+    # not run it from that state; refused (only "enabled" as saved counts).
+    run_case "$script" saved-enabled-runtime refuse "$inactive_refusal" FX_SAVED_FW_ENABLED=enabled-runtime
     # An unreadable boot id proves nothing.
     run_case "$script" boot-unreadable refuse "$inactive_refusal" FX_BOOT=not-a-boot-id
     # Unchanged rules: saved inactive and still inactive passes; saved active
