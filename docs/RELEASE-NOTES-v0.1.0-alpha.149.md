@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.149.tr.md)
 
+> **Published** on 2026-11-26 (UTC): release commit `c04064161`, GitHub pre-release at 14:21:27Z, download portal at about 14:26Z (public check 27/27).
+
 **A security and correction release.** The panel's agent, its helper on
 the server, no longer changes an administrator account of the database
 server, nor drops or empties one of the database server's own system

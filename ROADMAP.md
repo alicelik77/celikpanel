@@ -76,41 +76,27 @@ back, it moves to the next one and is written down here.
 
 ### Where we are
 
-- **Latest release:** v0.1.0-alpha.148 (row 71), published on 25 November
-  2026: customer separation R2a: a site's programs run inside that site's
-  own memory, process and processor limits (one native systemd slice per
-  site; its PHP-FPM pool and scheduled tasks are not inside them); existing
-  programs join their site's limits when the administrator moves the site
-  (one restart of each). Its second part is the sign-in cookies (security
-  lane A1, PR #368, merged into the release PR): a website on another host
-  name under the same domain can no longer set, shadow or replace the
-  panel's sign-in, "Log in as" followed by "Sign out" (or the session ending
-  any other way) no longer leaves the administrator's sign-in in the
-  browser, and the database tools no longer receive the panel's sign-in.
-  No schema change (stays 81). One lab run (25 November 2026, a Debian 13
-  and an Ubuntu 24.04 lab server, both updated through the panel's own
-  page, ending by themselves with the administrator signed in): the limits
-  held against a customer's own program, the move and the sign-in cookie
-  fixes worked, and the release notes say only what the lab confirmed or
-  the code makes certain, with known limits for the rest
-  ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.148.md)). Work that
-  follows from the lab: the database time and temporary-file limits for the
-  PostgreSQL users of sites, and for database users created after a plan's
-  limit was set; the move saying truthfully when a program is not running
-  after it was put back; the card's and the move window's reasons in the
-  page's language; the sign-in reason for pages that were open during an
-  update.
-- **Candidate:** v0.1.0-alpha.149 (row 72), a fix round on alpha.148 with no
-  new feature. The panel's agent no longer changes an administrator account
-  of the database server, nor drops or empties a system database, whatever
-  name the panel gives it (a real boundary on PostgreSQL 16 and later; on
-  MariaDB and older PostgreSQL the panel's own account already holds rights
-  of that weight); the plan's database limits reach the PostgreSQL users of
-  sites and every new database user, the owner's own values kept; the move
-  into a site's limits says truthfully when a program does not run after it
-  was put back, a stopped program started from the panel starts inside its
-  site's limits, no update starts during a move; the update waits about a
-  minute for the agent. No schema change (stays 81). Lab: open
+- **Latest release:** v0.1.0-alpha.149 (row 72), published on 26 November
+  2026: a fix round on alpha.148 with no new feature. The panel's agent no
+  longer changes an administrator account of the database server, nor
+  drops or empties a system database, whatever name the panel gives it (a
+  real boundary on PostgreSQL 16 and later; on MariaDB and older PostgreSQL
+  the panel's own account already holds rights of that weight); the plan's
+  database limits reach the PostgreSQL users of sites and every new
+  database user, the owner's own values kept; the move into a site's limits
+  says truthfully when a program does not run after it was put back, a
+  stopped program started from the panel starts inside its site's limits,
+  no update starts during a move; the update waits about a minute for the
+  agent. No schema change (stays 81). One lab run (26 November 2026, a
+  Debian 13 and an Ubuntu 24.04 lab server, both updated through the
+  panel's own page, ending by themselves with the administrator signed in,
+  also with the agent held back 20 seconds at its start): the refusals on
+  MariaDB and PostgreSQL, the database limits on PostgreSQL users with the
+  owner's own values kept, the move's truthful answer and the return of a
+  failed update to alpha.148 worked; what the lab met is in the release
+  notes' known limits, among them that a restart of the server during an
+  update can leave the update unfinished on a server not restarted since
+  CelikPanel's firewall rules were first saved on it
   ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.149.md)).
 - **The owner's decisions of 23 November 2026 about the product:** the
   public site and the release notes state what the product is and does,
@@ -131,7 +117,7 @@ back, it moves to the next one and is written down here.
   each as its own release after its independent reviews and its own lab
   run, each explained to the owner in plain words (he installs every update
   himself); R3 and R4 are designed and not built. R1 is published in
-  alpha.147; R2a is published in alpha.148; alpha.149 is a fix round (candidate); R2b (PR #353)
+  alpha.147; R2a is published in alpha.148; alpha.149, a fix round, is published; R2b (PR #353)
   is next, as alpha.150. One list of known security
   gaps before the first beta is kept below ("The plan after alpha.145").
 - **The owner's servers:** Frankfurt and Boston ran alpha.144 at the last
@@ -152,6 +138,9 @@ back, it moves to the next one and is written down here.
   no hard failure; what it met is kept as known limits. alpha.148 had one
   lab run on the same pair (25 November 2026): the limits, the move and the
   sign-in cookie fixes worked; what it met is kept as known limits.
+  alpha.149 had one lab run on the same pair (26 November 2026): the
+  updates, the return of a failed update, the database refusals and limits
+  and the move worked; what it met is kept as known limits.
   alpha.141's findings are in
   the carried-over list; a PostgreSQL server with SQL_ASCII
   templates is still not checked (no lab server has one). What no run
@@ -479,7 +468,7 @@ plan's limit was set; the move saying truthfully when a program is not running a
 the card's and the move window's reasons in the page's language; the sign-in reason for pages that were
 open during an update. No P0 item is closed.
 
-**alpha.149 — The agent refuses the database server's administrator accounts; database limits reach PostgreSQL; the move says what is true (Candidate)**
+**alpha.149 — The agent refuses the database server's administrator accounts; database limits reach PostgreSQL; the move says what is true (Published 26 November 2026)**
 A fix round on the published alpha.148, no new feature: three lanes joined with merge commits into the
 release PR (`release/v0.1.0-alpha.149`): PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`)
 and PR #370 (`fix/a149-db-limits`), each after its own independent reviews and fix rounds; the three
@@ -507,7 +496,9 @@ PRs are closed after publication. See row 72.
 4. Updates: the five agent-start waits of the update and its recovery are about a minute (200 × 0.3 s,
    300 × 0.2 s) instead of 10 to 14 s; the fail-closed result after the bound is unchanged.
 
-Lab check: open. No P0 item is closed.
+Lab check: finished on 26 November 2026 on the Debian 13 and Ubuntu 24.04 pair (lab labels 158 to 160,
+head `578b98e6f`); what was checked, what was not and what the lab met are in the release notes. No P0
+item is closed.
 
 **The plan after alpha.145 (owner, 22 and 23 November 2026)**
 The owner asked on 22 November that no risky change be pushed to his servers, and on 23 November
@@ -531,7 +522,7 @@ What follows has no promised release number or date.
     designed, not built;
   - the panel's agent changing a database administrator account, handing a removed user's objects to
     an administrator owner or to the panel's own database account, or dropping a system database on the
-    panel's word — candidate alpha.149
+    panel's word — published in alpha.149
     (PR #370, joined into the release PR);
   - sign-in cookies a website on another host name under the same domain could set, shadow or
     replace; the operator's sign-in left in the browser after "Log in as" and "Sign out" (or the
@@ -2934,7 +2925,7 @@ above and below stays open.
 | 69 | Release review of `v0.1.0-alpha.146`. **Published 2026-11-23 (release commit `8917ed407`; pre-release at 13:27:13Z; portal at about 13:31Z, public check 27/27).** The new public website as its own small release (owner, 23 November 2026: the datasheet design approved, "yayınla"; a bug-report section where fixed problems show as fixed; a changelog by version), one lane on the published alpha.145: `site/datasheet` (PR #359, the release PR), after an independent truth review of every statement on the site. The site's generator (`site/`, Go, no PHP) writes the pages into `download-portal/`: home (a specification list beside a real screen), install, systems, licence, releases, the changelog by version from alpha.141 (`site/changelog/<version>.json`) and known problems (`site/problems.json`, cases CP-2026-1 to 17 in our own words, their state and the release that fixed them, how to report a problem); every number cites a repository line with a quoted phrase the tests check. Nothing in the panel's or the agent's code changes; outside the site only the portal's build, publication and outside check (`deploy/build-download-portal.sh`, `promote-download-portal.py`, `verify-download-portal-public.py`), their contract tests and the version pins differ. No schema change (stays 81). **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.146.md). | Published |
 | 70 | Release review of `v0.1.0-alpha.147`. **Published 2026-11-24 (release commit `eef8fe894`; pre-release at 04:31:04Z; portal at about 04:35Z, public check 27/27).** Customer separation R1 with two other parts merged into its release PR (PR #348, branch `security/s4-r1-side-doors`): PR #358, forward compatibility for the site slices, and PR #366, the stuck-operation fix, on the published alpha.146. R1: the database tools and webmail under their own system accounts and PHP-FPM pools (webmail's tree closed to every site account by one access-control-list entry), `at` closed to site accounts, crontab lines made outside the panel shown and refused for edit until kept, the distribution's unused `www` pool switched off with the owner's undo respected; after four independent reviews and four fix rounds. PR #366: the running panel settles an interrupted operation's row itself, the renewal rule counts from the last answered renewal and governs standalone changes. PR #358: the release to come back to from the per-site-limits release. No schema change (stays 81). Lab run finished on 24 November 2026 with no hard failure (what was checked and what was not: the release notes). **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.147.md). | Published |
 | 71 | Release review of `v0.1.0-alpha.148`. **Published 2026-11-25 (release commit `0c07d0281`; pre-release at 21:34:14Z; portal at about 21:38Z, public check 27/27).** Customer separation R2a (PR #349, branch `security/s4-r2a-site-slice`) on the published alpha.147: a site's programs (uploaded programs, Python apps, the Node.js application, service apps and their steps; not its PHP-FPM pool or scheduled tasks) run in the site's own systemd slice `celiksite_<id>.slice` with memory, process and processor limits for all of them together (plan keys `site.*`, a host-bound memory default fixed at the first start, a reseller bounded by the server's default); running programs join at the administrator's move (one restart each, with a journal that finishes or puts back an interrupted move); a limit lowered below use is saved only with the list of sites it stops; the card says "in force" only from the kernel's own values; optional time and temporary-file limits for database users (`db.*`), which in this release reach a site's MariaDB users that exist when the limit is set and not the PostgreSQL users of sites; the mail-block helper's place order is the one main carries since alpha.147. After three independent reviews and three fix rounds. Not inside a site's limits: its PHP (R3), its scheduled tasks and lingering user managers (R2b). Second part, merged into the release PR: security lane A1, sign-in cookies (PR #368, branch `security/signin-cookies`, after two independent reviews and two fix rounds): the sign-in cookies under `__Host-` names over HTTPS, so a website on another host name under the same domain can no longer set, shadow or replace them; a cookie name sent twice refused (a cookie another website set for the whole domain stays in the browser, ignored by the panel); a signed-in browser's `/api/` request from another site refused (fetch metadata); "Log in as" followed by "Sign out", or a "Log in as" session ending any other way, leaves no operator sign-in in the browser; the `/dbtool/` proxy passes on none of the panel's cookies or `Authorization` and lets no tool set or clear them; an administrator's pre-update session carried over once on the update page's own `/api/` requests within 24 hours, everyone else signs in once. No schema change (stays 81; one `panel_settings` row). Lab run finished on 25 November 2026 (label 156, head `83d6e043c`, Debian 13 and Ubuntu 24.04): both updates ended by themselves with the administrator signed in and nothing of a customer restarted; the limits held against a customer's own program, also with the panel stopped and after a reboot; the move, the owner's by-hand commands and the sign-in cookie fixes worked; the notes say only what the lab confirmed or the code makes certain (what was not checked and the known limits: the release notes). Work that follows: the database limits for the PostgreSQL users of sites and for users created after a plan's limit was set; the move saying truthfully when a program is not running after it was put back; the card's reasons in the page's language; the sign-in reason for pages that were open during an update. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.148.md). | Published |
-| 72 | Release review of `v0.1.0-alpha.149`. **Candidate.** A fix round on the published alpha.148 (no new feature), three lanes joined with merge commits in the release PR `release/v0.1.0-alpha.149`: PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) and PR #370 (`fix/a149-db-limits`), each after independent reviews and fix rounds. (1) Security, an older finding: no agent call changes a database account the panel names, nor uses a database's owner as owner and recipient of objects, unless the agent finds it an ordinary account (no superuser, CREATEROLE, CREATEDB, REPLICATION, BYPASSRLS, no `pg_*` or privileged membership on PostgreSQL; no global privilege, role, PROXY or right on `mysql` on MariaDB), read first and again in the write's transaction or compound statement; `celikpanel_admin` the one owner exception while unprivileged; system databases never dropped, emptied, loaded into, granted, opened or closed; a MariaDB database never made beside a same-named account on another host; refusals as codes (`DATABASE_ACCOUNT_REFUSED`) worded in TR and EN; a local MySQL in MariaDB's place answered `unsupported_engine`; an added PostgreSQL user owning objects in a database `celikpanel_admin` owns is not removed (`owns_objects`, no REASSIGN to the panel's account). A real boundary on PostgreSQL 16+, a guard against mistakes on MariaDB and PostgreSQL 15 or older. (2) The plan's database limits reach every database-user creating path and, through `SetPostgreSQLRoleLimitsV1` (as the PostgreSQL superuser, only recorded ordinary site roles with no membership, four bounded settings), the PostgreSQL users of sites; the owner's values kept by the panel's record (the PostgreSQL connection limit included; a limit earlier releases wrote follows the next change); outcomes by reason in Problems now (kind 47, `db_limits_unapplied_v1`) with Apply again and an hourly bounded run. (3) Per-site limits after alpha.148's lab: a verified put-back; the agent's start bounded (at most four systemd calls, 15 s) and never waiting for a program; read-only settling of kept records under the slice lock; one deadline per press; Start of a stopped program inside its slice; the Ubuntu 24.04 peak; the unapplied line by reason; no update during a move and no move during an update. (4) The five agent-start waits of the update and its recovery about a minute. Release sequence 148 → 149; schema stays 81 (no migration). Lab: open. **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.149.md). | Candidate |
+| 72 | Release review of `v0.1.0-alpha.149`. **Published 2026-11-26 (release commit `c04064161`; pre-release at 14:21:27Z; portal at about 14:26Z, public check 27/27).** A fix round on the published alpha.148 (no new feature), three lanes joined with merge commits in the release PR `release/v0.1.0-alpha.149`: PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) and PR #370 (`fix/a149-db-limits`), each after independent reviews and fix rounds. (1) Security, an older finding: no agent call changes a database account the panel names, nor uses a database's owner as owner and recipient of objects, unless the agent finds it an ordinary account (no superuser, CREATEROLE, CREATEDB, REPLICATION, BYPASSRLS, no `pg_*` or privileged membership on PostgreSQL; no global privilege, role, PROXY or right on `mysql` on MariaDB), read first and again in the write's transaction or compound statement; `celikpanel_admin` the one owner exception while unprivileged; system databases never dropped, emptied, loaded into, granted, opened or closed; a MariaDB database never made beside a same-named account on another host; refusals as codes (`DATABASE_ACCOUNT_REFUSED`) worded in TR and EN; a local MySQL in MariaDB's place answered `unsupported_engine`; an added PostgreSQL user owning objects in a database `celikpanel_admin` owns is not removed (`owns_objects`, no REASSIGN to the panel's account). A real boundary on PostgreSQL 16+, a guard against mistakes on MariaDB and PostgreSQL 15 or older. (2) The plan's database limits reach every database-user creating path and, through `SetPostgreSQLRoleLimitsV1` (as the PostgreSQL superuser, only recorded ordinary site roles with no membership, four bounded settings), the PostgreSQL users of sites; the owner's values kept by the panel's record (the PostgreSQL connection limit included; a limit earlier releases wrote follows the next change); outcomes by reason in Problems now (kind 47, `db_limits_unapplied_v1`) with Apply again and an hourly bounded run. (3) Per-site limits after alpha.148's lab: a verified put-back; the agent's start bounded (at most four systemd calls, 15 s) and never waiting for a program; read-only settling of kept records under the slice lock; one deadline per press; Start of a stopped program inside its slice; the Ubuntu 24.04 peak; the unapplied line by reason; no update during a move and no move during an update. (4) The five agent-start waits of the update and its recovery about a minute. Release sequence 148 → 149; schema stays 81 (no migration). Lab run finished on 26 November 2026 (labels 158 to 160, head `578b98e6f`, Debian 13 and Ubuntu 24.04): both updates ended by themselves with the administrator signed in, also with the agent held back 20 s at its start, and nothing of a customer restarted; a failed update returned to alpha.148 by itself on both; an agent held back 70 s was stopped safely and the owner's recovery command finished the update; the refusals on MariaDB 11.8/10.11 and PostgreSQL 16/17, the limits on PostgreSQL users with the owner's values kept, the refused removal of an added user owning objects, a stopped program started inside its slice and the move's truthful answer worked (what was not checked and the known limits, among them a server restart during an update on a server not restarted since its firewall rules were first saved: the release notes). **No P0 item is closed.** [Release notes](docs/RELEASE-NOTES-v0.1.0-alpha.149.md). | Published |
 
 **Open item (alpha.95, 2026-10-17): read installed package versions for every component.** The component scan fills a version only for PHP-FPM and Node.js (from runtime instances). The Agent's per-unit binary probe is not a package version, is unreliable for several units and does not cover tools without a unit, so the Components rows say a version only where it is known. A real answer needs a new Agent RPC or extended `dpkg`/`pacman` queries; it is not part of any release yet ([D-034 amendment](docs/DECISIONS.md)). **Update 2026-10-21: implemented in source for the v0.1.0-alpha.97 candidate** ([D-036](docs/DECISIONS.md)): a read-only Agent query of the package database per component scan, shown on the Components rows and every component page; unknown stays unknown. **Still open:** measured on no installed server; the item is closed only when the owner sees real versions on Boston and Frankfurt. **Update 2026-10-22: Boston measured.** The owner's screenshot shows Boston on alpha.97 with real versions on Components (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0): the first measurement of D-036 on an installed server. **Still open after that:** Frankfurt's alpha.97 state was not reported, so the item is not closed; one screenshot of one server is also not a check of every component, of a busy package manager or of a kept reading. **Update 2026-10-22 (alpha.98):** the owner reported Frankfurt on alpha.98, but not its Components versions, so the item stays open. **Update 2026-10-22 (alpha.100, recorded with the alpha.101 candidate):** the owner's Frankfurt screen showed package versions on Components; phpMyAdmin's short form read "5.2.2-really…", because a Debian "really" version was not shortened to the version actually shipped. That is corrected in source for the v0.1.0-alpha.101 candidate ([D-036 note](docs/DECISIONS.md)). The item stays open: the corrected short form is seen on no installed server yet.
 

@@ -76,32 +76,8 @@ bu bölümde öyle yazılır.
 
 ### Neredeyiz
 
-- **Son sürüm:** v0.1.0-alpha.148 (satır 71), 25 Kasım 2026'da yayımlandı:
-  müşteri ayırma R2a: bir sitenin programları o sitenin kendi bellek,
-  işlem ve işlemci sınırlarının içinde çalışır (site başına tek bir yerel systemd dilimi; PHP-FPM havuzu ve
-  zamanlanmış görevler bu sınırların dışında);
-  mevcut programlar yönetici siteyi taşıyınca sitelerinin sınırlarına girer
-  (her biri bir kez yeniden başlar). İkinci bölümü giriş çerezleridir
-  (güvenlik şeridi A1, PR #368, sürüm PR'ına birleştirildi): aynı alan adı
-  altında başka bir ana makine adındaki bir web sitesi panelin girişini
-  artık koyamaz, gölgeleyemez ya da değiştiremez; "Farklı giriş yap"tan
-  sonra çıkış yapmak (ya da oturumun başka bir yolla sona ermesi) yöneticinin
-  girişini artık tarayıcıda bırakmaz; veritabanı araçları panelin girişini
-  artık almaz. Şema değişikliği yok (81 olarak kalır). Bir laboratuvar denemesi
-  (25 Kasım 2026, bir Debian 13 ve bir Ubuntu 24.04 deneme sunucusu,
-  ikisi de panelin kendi sayfasından güncellendi ve güncelleme yönetici
-  oturumu açıkken kendiliğinden bitti): sınırlar bir müşterinin kendi
-  programına karşı tuttu, taşıma ve giriş çerezi düzeltmeleri çalıştı; sürüm
-  notları yalnız laboratuvarın doğruladığını ya da kodun kesinleştirdiğini
-  söyler, kalanı bilinen sınırlardadır
-  ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.148.tr.md)). Laboratuvardan
-  çıkan sonraki işler: veritabanı süre ve geçici dosya sınırlarının sitelerin
-  PostgreSQL kullanıcılarına ve bir planın sınırı konduktan sonra
-  oluşturulan veritabanı kullanıcılarına ulaşması; geri konduktan sonra
-  çalışmayan bir programı taşımanın doğru söylemesi; kartın ve taşıma
-  penceresinin nedenlerinin sayfanın dilinde olması; güncelleme sırasında
-  açık olan sayfalar için giriş nedeni.
-- **Aday:** v0.1.0-alpha.149 (satır 72), alpha.148 üzerinde yeni özellik
+- **Son sürüm:** v0.1.0-alpha.149 (satır 72), 26 Kasım 2026'da yayımlandı:
+  alpha.148 üzerinde yeni özellik
   içermeyen bir düzeltme turu. Panelin ajanı, panel ona hangi adı verirse
   versin, artık veritabanı sunucusunun bir yönetici hesabını değiştirmez, bir
   sistem veritabanını silmez ya da boşaltmaz (PostgreSQL 16 ve sonrasında
@@ -112,7 +88,18 @@ bu bölümde öyle yazılır.
   geri konduktan sonra çalışmayan bir programı doğru söyler, panelden
   başlatılan durmuş bir program sitesinin sınırlarının içinde başlar, bir
   taşıma sırasında güncelleme başlamaz; güncelleme ajanı yaklaşık bir dakika
-  bekler. Şema değişikliği yok (81 olarak kalır). Laboratuvar: açık
+  bekler. Şema değişikliği yok (81 olarak kalır). Bir laboratuvar denemesi
+  (26 Kasım 2026, bir Debian 13 ve bir Ubuntu 24.04 deneme sunucusu, ikisi
+  de panelin kendi sayfasından güncellendi ve güncelleme, ajan başlangıçta
+  20 saniye bekletildiğinde de, yönetici oturumu açıkken kendiliğinden
+  bitti): MariaDB ve PostgreSQL'deki retler, sahibin kendi değerleri
+  korunarak PostgreSQL kullanıcılarına ulaşan veritabanı sınırları,
+  taşımanın doğru yanıtı ve başarısız bir güncellemenin alpha.148'e
+  dönüşü çalıştı; laboratuvarın karşılaştıkları sürüm notlarının bilinen
+  sınırlarındadır, aralarında CelikPanel'in güvenlik duvarı kuralları ilk
+  kaydedildiğinden beri yeniden başlatılmamış bir sunucuda güncelleme
+  sırasında sunucuyu yeniden başlatmanın güncellemeyi yarım bırakabilmesi
+  de var
   ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.149.tr.md)).
 - **Sahibin 23 Kasım 2026'da ürünle ilgili kararları:** herkese açık site ve
   sürüm notları ürünün ne olduğunu ve ne yaptığını söyler, iç soruları ya da
@@ -132,7 +119,7 @@ bu bölümde öyle yazılır.
   incelemelerinden ve kendi laboratuvar denemesinden sonra kendi sürümü
   olarak, birer birer çıkar ve her biri sahibe sade sözlerle anlatılır
   (her güncellemeyi kendisi kurar); R3 ve R4 tasarlandı, yapılmadı. R1
-  alpha.147'de yayımlandı; R2a alpha.148'de yayımlandı; alpha.149 bir düzeltme turudur (aday);
+  alpha.147'de yayımlandı; R2a alpha.148'de yayımlandı; bir düzeltme turu olan alpha.149 yayımlandı;
   sırada alpha.150 olarak R2b (PR #353) vardır. İlk betadan
   önceki bilinen güvenlik açıklarının tek listesi aşağıda tutulur
   ("alpha.145'ten sonraki plan").
@@ -153,6 +140,9 @@ bu bölümde öyle yazılır.
   Kasım 2026): ağır hata yok; karşılaştıkları bilinen sınır olarak
   yazıldı. alpha.148 aynı çiftte bir denemeden geçti (25 Kasım 2026):
   sınırlar, taşıma ve giriş çerezi düzeltmeleri çalıştı; karşılaştıkları
+  bilinen sınır olarak yazıldı. alpha.149 aynı çiftte bir denemeden geçti
+  (26 Kasım 2026): güncellemeler, başarısız bir güncellemenin geri dönüşü,
+  veritabanı retleri ve sınırları ve taşıma çalıştı; karşılaştıkları
   bilinen sınır olarak yazıldı. alpha.141'in
   bulguları taşınanlar listesinde; şablonları SQL_ASCII olan bir
   PostgreSQL sunucusu hâlâ denetlenmedi (hiçbir laboratuvar sunucusunda
@@ -501,7 +491,7 @@ bir planın sınırı konduktan sonra oluşturulan kullanıcılara ulaşması; g
 bir programı taşımanın doğru söylemesi; kartın ve taşıma penceresinin nedenlerinin sayfanın dilinde
 olması; güncelleme sırasında açık olan sayfalar için giriş nedeni. Hiçbir P0 işi kapanmadı.
 
-**alpha.149 — Ajan veritabanı sunucusunun yönetici hesaplarını reddeder; veritabanı sınırları PostgreSQL'e ulaşır; taşıma doğruyu söyler (Aday)**
+**alpha.149 — Ajan veritabanı sunucusunun yönetici hesaplarını reddeder; veritabanı sınırları PostgreSQL'e ulaşır; taşıma doğruyu söyler (26 Kasım 2026'da yayımlandı)**
 Yayımlanmış alpha.148 üzerinde yeni özellik içermeyen bir düzeltme turu: sürüm PR'ına
 (`release/v0.1.0-alpha.149`) birleştirme commit'leriyle katılan üç şerit: PR #372
 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) ve PR #370 (`fix/a149-db-limits`); her biri kendi
@@ -531,7 +521,9 @@ bağımsız incelemelerinden ve düzeltme turlarından sonra; üç PR yayından 
 4. Güncellemeler: güncellemenin ve kurtarmasının beş ajan açılış beklemesi 10–14 s yerine yaklaşık bir
    dakikadır (200 × 0,3 s, 300 × 0,2 s); sınırdan sonraki güvenli duruş değişmedi.
 
-Laboratuvar denemesi: açık. Hiçbir P0 işi kapanmadı.
+Laboratuvar denetimi: 26 Kasım 2026'da Debian 13 ve Ubuntu 24.04 çiftinde bitti (laboratuvar etiketleri
+158 ile 160 arası, baş `578b98e6f`); neyin denendiği, neyin denenmediği ve laboratuvarın karşılaştıkları
+sürüm notlarındadır. Hiçbir P0 işi kapanmadı.
 
 **alpha.145'ten sonraki plan (sahip, 22 ve 23 Kasım 2026)**
 Sahip 22 Kasım'da sunucularına riskli hiçbir değişikliğin gönderilmemesini, 23 Kasım'da üründe
@@ -556,7 +548,7 @@ verilen bir sürüm numarası ya da tarih yoktur.
     yapılmadı;
   - panelin ajanının, panelin sözüyle bir veritabanı yönetici hesabını değiştirmesi, kaldırılan bir
     kullanıcının nesnelerini yönetici bir sahibe ya da panelin kendi veritabanı hesabına vermesi ya da bir
-    sistem veritabanını silmesi — aday alpha.149
+    sistem veritabanını silmesi — alpha.149'da yayımlandı
     (PR #370, sürüm PR'ına katıldı);
   - aynı alan adı altında başka bir ana makine adındaki bir web sitesinin koyabildiği, gölgeleyebildiği
     ya da değiştirebildiği giriş çerezleri; "Farklı giriş yap" ve "Çıkış yap"tan (ya da oturumun başka
@@ -2925,7 +2917,7 @@ kabul işi açık kalır.
 | 69 | `v0.1.0-alpha.146` sürüm incelemesi. **Yayımlandı, 23 Kasım 2026 (sürüm commit'i `8917ed407`; ön sürüm 13:27:13Z; portal yaklaşık 13:31Z, dış denetim 27/27).** Kendi küçük sürümü olarak yeni herkese açık site (sahip, 23 Kasım 2026: teknik bilgi sayfası tasarımı onaylandı, "yayınla"; düzeltilen sorunların düzeltildi göründüğü bir hata bildirimi bölümü; sürümlere göre değişiklikler), yayımlanmış alpha.145 üzerinde tek yol: `site/datasheet` (PR #359, sürüm PR'ı), sitedeki her ifadenin bağımsız doğruluk incelemesinden sonra. Sitenin üreticisi (`site/`, Go, PHP yok) sayfaları `download-portal/` içine yazar: ana sayfa (gerçek bir ekranın yanında özellik listesi), kurulum, sistemler, lisans, sürümler, alpha.141'den itibaren sürümlere göre değişiklikler (`site/changelog/<sürüm>.json`) ve bilinen sorunlar (`site/problems.json`, CP-2026-1'den 17'ye kadar vakalar, kendi sözlerimizle, durumları ve onları düzelten sürüm, sorun bildirme yolu); her sayı, testlerin denetlediği alıntılanmış bir ifadeyle bir depo satırına dayanır. Panelin ve ajanın kodunda hiçbir şey değişmez; site dışında yalnız portalın hazırlanması, yayımlanması ve dışarıdan denetimi (`deploy/build-download-portal.sh`, `promote-download-portal.py`, `verify-download-portal-public.py`), bunların sözleşme testleri ve sürüm sabitlemeleri farklıdır. Şema değişikliği yok (81 olarak kalır). **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.146.tr.md). | Yayımlandı |
 | 70 | `v0.1.0-alpha.147` sürüm incelemesi. **Yayımlandı, 24 Kasım 2026 (sürüm commit'i `eef8fe894`; ön sürüm 04:31:04Z; portal yaklaşık 04:35Z, dış denetim 27/27).** Sürüm PR'ına iki başka parça birleştirilmiş müşteri ayırma R1 (PR #348, dal `security/s4-r1-side-doors`): PR #358, site dilimleri için ileriye uyumluluk, ve PR #366, takılan işlem düzeltmesi; yayımlanmış alpha.146 üzerinde. R1: veritabanı araçları ve web postası kendi sistem hesaplarında ve PHP-FPM havuzlarında (web postasının ağacı tek bir erişim listesi girdisiyle her site hesabına kapalı), `at` site hesaplarına kapalı, panel dışında eklenen crontab satırları görünür ve tutulana kadar değiştirilemez, dağıtımın kullanılmayan `www` havuzu sahibin geri alması gözetilerek kapalı; dört bağımsız incelemeden ve dört düzeltme turundan sonra. PR #366: çalışan panel yarıda kalan bir işlemin kaydını kendisi sonuçlandırır; yenileme kuralı son yanıtlanan yenilemeden sayar ve tek başına değişikliklere de uygulanır. PR #358: site başına sınırlar sürümünden geri dönülecek sürüm. Şema değişikliği yok (81 olarak kalır). Laboratuvar denemesi 24 Kasım 2026'da bitti, ağır hata yok (neyin denetlendiği ve denetlenmediği: sürüm notları). **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.147.tr.md). | Yayımlandı |
 | 71 | `v0.1.0-alpha.148` sürüm incelemesi. **Yayımlandı, 25 Kasım 2026 (sürüm commit'i `0c07d0281`; ön sürüm 21:34:14Z; portal yaklaşık 21:38Z, dış denetim 27/27).** Yayımlanmış alpha.147 üzerinde müşteri ayırma R2a (PR #349, dal `security/s4-r2a-site-slice`): bir sitenin programları (yüklenen programlar, Python uygulamaları, Node.js uygulaması, hizmet uygulamaları ve adımları; PHP-FPM havuzu ve zamanlanmış görevleri değil), sitenin kendi systemd dilimi `celiksite_<kimlik>.slice` içinde, hepsi için birlikte bellek, işlem ve işlemci sınırlarıyla çalışır (plan anahtarları `site.*`, ilk açılışta sabitlenen ve sunucunun belleğine bağlı bir bellek varsayılanı, sunucunun varsayılanıyla sınırlı bayi); çalışan programlar yöneticinin taşımasıyla girer (her biri bir kez yeniden başlar; yarıda kalan bir taşımayı bitiren ya da geri koyan bir günlükle); kullanımın altına düşürülen bir sınır ancak durduracağı sitelerin listesiyle kaydedilir; kart "yürürlükte" sözünü yalnız çekirdeğin kendi değerlerinden söyler; veritabanı kullanıcıları için isteğe bağlı süre ve geçici dosya sınırları (`db.*`); bunlar bu sürümde bir sitenin sınır konduğunda var olan MariaDB kullanıcılarına ulaşır, sitelerin PostgreSQL kullanıcılarına ulaşmaz; posta engeli yardımcısının yer sırası main'in alpha.147'den beri taşıdığı sıradır. Üç bağımsız incelemeden ve üç düzeltme turundan sonra. Bir sitenin sınırlarının içinde olmayanlar: PHP'si (R3), zamanlanmış görevleri ve açık kalan kullanıcı yöneticileri (R2b). Sürüm PR'ına birleştirilen ikinci bölüm: güvenlik şeridi A1, giriş çerezleri (PR #368, dal `security/signin-cookies`, iki bağımsız incelemeden ve iki düzeltme turundan sonra): HTTPS üzerinden `__Host-` adlı giriş çerezleri, böylece aynı alan adı altında başka bir ana makine adındaki bir web sitesi onları artık koyamaz, gölgeleyemez ya da değiştiremez; iki kez gönderilen bir çerez adı reddedilir (başka bir web sitesinin bütün alan adı için koyduğu çerez tarayıcıda kalır, panel onu yok sayar); oturumu açık bir tarayıcıdan başka bir siteden gelen `/api/` isteği reddedilir (fetch metadata); "Farklı giriş yap"tan sonra "Çıkış yap" ya da "Farklı giriş yap" oturumunun başka bir yolla sona ermesi tarayıcıda operatör girişi bırakmaz; `/dbtool/` aracısı panelin çerezlerini ya da `Authorization` başlığını iletmez ve hiçbir aracın onları koymasına ya da silmesine izin vermez; yöneticinin güncellemeden önceki oturumu 24 saat içinde güncelleme sayfasının kendi `/api/` istekleriyle bir kez taşınır, öteki herkes bir kez yeniden giriş yapar. Şema değişikliği yok (81 olarak kalır; tek bir `panel_settings` satırı). Laboratuvar denemesi 25 Kasım 2026'da bitti (etiket 156, baş `83d6e043c`, Debian 13 ve Ubuntu 24.04): iki güncelleme de yönetici oturumu açıkken kendiliğinden bitti ve bir müşterinin hiçbir şeyi yeniden başlatılmadı; sınırlar bir müşterinin kendi programına karşı, panel durdurulmuşken ve yeniden başlatmadan sonra da tuttu; taşıma, sahibin elle komutları ve giriş çerezi düzeltmeleri çalıştı; notlar yalnız laboratuvarın doğruladığını ya da kodun kesinleştirdiğini söyler (denenmeyenler ve bilinen sınırlar: sürüm notları). Sonraki işler: veritabanı sınırlarının sitelerin PostgreSQL kullanıcılarına ve bir planın sınırı konduktan sonra oluşturulan kullanıcılara ulaşması; geri konduktan sonra çalışmayan bir programı taşımanın doğru söylemesi; kartın nedenlerinin sayfanın dilinde olması; güncelleme sırasında açık olan sayfalar için giriş nedeni. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.148.tr.md). | Yayımlandı |
-| 72 | `v0.1.0-alpha.149` sürüm incelemesi. **Aday.** Yayımlanmış alpha.148 üzerinde bir düzeltme turu (yeni özellik yok); `release/v0.1.0-alpha.149` sürüm PR'ında birleştirme commit'leriyle katılan üç şerit: PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) ve PR #370 (`fix/a149-db-limits`), her biri bağımsız incelemelerden ve düzeltme turlarından sonra. (1) Güvenlik, daha eski bir bulgu: hiçbir ajan çağrısı, panelin adını verdiği bir veritabanı hesabını değiştirmez, bir veritabanının sahibini de nesnelerin sahibi ve alıcısı olarak kullanmaz, ajan onu sıradan bir hesap bulmadıkça (PostgreSQL'de süper kullanıcı, CREATEROLE, CREATEDB, REPLICATION, BYPASSRLS yok, `pg_*` ya da yetkili üyelik yok; MariaDB'de genel yetki, rol, PROXY ya da `mysql` üzerinde yetki yok); önce ve yazmanın işleminde ya da bileşik ifadesinde yeniden okunur; yetkisiz olduğu sürece `celikpanel_admin` tek sahip istisnası; sistem veritabanları hiçbir zaman silinmez, boşaltılmaz, içine yüklenmez, verilmez, açılmaz ya da kapatılmaz; bir MariaDB veritabanı başka bir ana makinedeki aynı adlı bir hesabın yanında hiçbir zaman yapılmaz; retler kod olarak (`DATABASE_ACCOUNT_REFUSED`), TR ve EN sözlerle; MariaDB'nin yerindeki yerel bir MySQL `unsupported_engine` yanıtını alır; `celikpanel_admin`'in sahibi olduğu bir veritabanında nesneleri olan eklenmiş bir PostgreSQL kullanıcısı kaldırılmaz (`owns_objects`, panelin hesabına REASSIGN yok). PostgreSQL 16+'da gerçek bir sınır, MariaDB'de ve PostgreSQL 15 ya da öncesinde yanlışlıklara karşı bir koruma. (2) Planın veritabanı sınırları veritabanı kullanıcısı oluşturan her yola ve `SetPostgreSQLRoleLimitsV1` ile (PostgreSQL süper kullanıcısı olarak, yalnız kayıtlı, üyeliği olmayan sıradan site rollerine, dört sınırlı ayar) sitelerin PostgreSQL kullanıcılarına ulaşır; sahibin değerleri panelin kaydıyla korunur (PostgreSQL bağlantı sınırı dahil; önceki sürümlerin yazdığı bir sınır bir sonraki değişikliği izler); sonuçlar Şu anki sorunlar'da nedenine göre (tür 47, `db_limits_unapplied_v1`), Yeniden uygula ve saatlik sınırlı bir çalışmayla. (3) alpha.148 laboratuvarından sonra site başına sınırlar: doğrulanan geri koyma; ajanın açılışı sınırlı (en çok dört systemd çağrısı, 15 s) ve hiçbir programı beklemez; tutulan kayıtların dilim kilidi altında yalnız okuyarak çözülmesi; her basışa tek süre sınırı; durmuş bir programın diliminin içinde başlatılması; Ubuntu 24.04 tepesi; nedenine göre uygulanmamış satırı; taşıma sırasında güncelleme ve güncelleme sırasında taşıma yok. (4) Güncellemenin ve kurtarmasının beş ajan açılış beklemesi yaklaşık bir dakika. Sürüm sırası 148 → 149; şema 81 olarak kalır (göç yok). Laboratuvar: açık. **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.149.tr.md). | Aday |
+| 72 | `v0.1.0-alpha.149` sürüm incelemesi. **Yayımlandı, 26 Kasım 2026 (sürüm commit'i `c04064161`; ön sürüm 14:21:27Z; portal yaklaşık 14:26Z, dış denetim 27/27).** Yayımlanmış alpha.148 üzerinde bir düzeltme turu (yeni özellik yok); `release/v0.1.0-alpha.149` sürüm PR'ında birleştirme commit'leriyle katılan üç şerit: PR #372 (`fix/a149-agent-wait`), PR #371 (`fix/a149-limits`) ve PR #370 (`fix/a149-db-limits`), her biri bağımsız incelemelerden ve düzeltme turlarından sonra. (1) Güvenlik, daha eski bir bulgu: hiçbir ajan çağrısı, panelin adını verdiği bir veritabanı hesabını değiştirmez, bir veritabanının sahibini de nesnelerin sahibi ve alıcısı olarak kullanmaz, ajan onu sıradan bir hesap bulmadıkça (PostgreSQL'de süper kullanıcı, CREATEROLE, CREATEDB, REPLICATION, BYPASSRLS yok, `pg_*` ya da yetkili üyelik yok; MariaDB'de genel yetki, rol, PROXY ya da `mysql` üzerinde yetki yok); önce ve yazmanın işleminde ya da bileşik ifadesinde yeniden okunur; yetkisiz olduğu sürece `celikpanel_admin` tek sahip istisnası; sistem veritabanları hiçbir zaman silinmez, boşaltılmaz, içine yüklenmez, verilmez, açılmaz ya da kapatılmaz; bir MariaDB veritabanı başka bir ana makinedeki aynı adlı bir hesabın yanında hiçbir zaman yapılmaz; retler kod olarak (`DATABASE_ACCOUNT_REFUSED`), TR ve EN sözlerle; MariaDB'nin yerindeki yerel bir MySQL `unsupported_engine` yanıtını alır; `celikpanel_admin`'in sahibi olduğu bir veritabanında nesneleri olan eklenmiş bir PostgreSQL kullanıcısı kaldırılmaz (`owns_objects`, panelin hesabına REASSIGN yok). PostgreSQL 16+'da gerçek bir sınır, MariaDB'de ve PostgreSQL 15 ya da öncesinde yanlışlıklara karşı bir koruma. (2) Planın veritabanı sınırları veritabanı kullanıcısı oluşturan her yola ve `SetPostgreSQLRoleLimitsV1` ile (PostgreSQL süper kullanıcısı olarak, yalnız kayıtlı, üyeliği olmayan sıradan site rollerine, dört sınırlı ayar) sitelerin PostgreSQL kullanıcılarına ulaşır; sahibin değerleri panelin kaydıyla korunur (PostgreSQL bağlantı sınırı dahil; önceki sürümlerin yazdığı bir sınır bir sonraki değişikliği izler); sonuçlar Şu anki sorunlar'da nedenine göre (tür 47, `db_limits_unapplied_v1`), Yeniden uygula ve saatlik sınırlı bir çalışmayla. (3) alpha.148 laboratuvarından sonra site başına sınırlar: doğrulanan geri koyma; ajanın açılışı sınırlı (en çok dört systemd çağrısı, 15 s) ve hiçbir programı beklemez; tutulan kayıtların dilim kilidi altında yalnız okuyarak çözülmesi; her basışa tek süre sınırı; durmuş bir programın diliminin içinde başlatılması; Ubuntu 24.04 tepesi; nedenine göre uygulanmamış satırı; taşıma sırasında güncelleme ve güncelleme sırasında taşıma yok. (4) Güncellemenin ve kurtarmasının beş ajan açılış beklemesi yaklaşık bir dakika. Sürüm sırası 148 → 149; şema 81 olarak kalır (göç yok). Laboratuvar denemesi 26 Kasım 2026'da bitti (etiketler 158 ile 160 arası, baş `578b98e6f`, Debian 13 ve Ubuntu 24.04): iki güncelleme de, ajan başlangıçta 20 sn bekletildiğinde de, yönetici oturumu açıkken kendiliğinden bitti ve bir müşterinin hiçbir şeyi yeniden başlamadı; başarısız bir güncelleme ikisinde de kendiliğinden alpha.148'e döndü; 70 sn bekletilen bir ajan güvenle durduruldu ve sahibin kurtarma komutu güncellemeyi bitirdi; MariaDB 11.8/10.11 ve PostgreSQL 16/17'deki retler, sahibin değerleri korunarak PostgreSQL kullanıcılarına ulaşan sınırlar, nesne sahibi eklenmiş bir kullanıcının reddedilen kaldırılması, durmuş bir programın diliminin içinde başlaması ve taşımanın doğru yanıtı çalıştı (denenmeyenler ve bilinen sınırlar, aralarında güvenlik duvarı kuralları ilk kaydedildiğinden beri yeniden başlatılmamış bir sunucuda güncelleme sırasında sunucunun yeniden başlatılması: sürüm notları). **Hiçbir P0 işi kapanmadı.** [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.149.tr.md). | Yayımlandı |
 
 **Açık iş (alpha.95, 17 Ekim 2026): her bileşen için kurulu paket sürümünü okumak.** Bileşen taraması bir sürümü yalnız PHP-FPM ve Node.js için doldurur (çalışma ortamı örneklerinden). Agent'ın birim başına ikili yoklaması bir paket sürümü değildir, birkaç birim için güvenilmezdir ve birimi olmayan araçları kapsamaz; bu yüzden Bileşenler satırları sürümü yalnız bilindiği yerde söyler. Gerçek yanıt yeni bir Agent RPC'si ya da genişletilmiş `dpkg`/`pacman` sorguları ister; henüz hiçbir sürümün parçası değildir ([D-034 değişikliği](docs/DECISIONS.tr.md)). **Güncelleme 2026-10-21: v0.1.0-alpha.97 adayı için kaynakta uygulandı** ([D-036](docs/DECISIONS.tr.md)): bileşen taraması başına paket veritabanının salt-okur bir Agent sorgusu, Bileşenler satırlarında ve her bileşen sayfasında gösterilir; bilinmeyen, bilinmeyen olarak kalır. **Hâlâ açık:** hiçbir kurulu sunucuda ölçülmedi; açık iş ancak sahip Boston ve Frankfurt'ta gerçek sürümleri gördüğünde kapanır. **Güncelleme 2026-10-22: Boston ölçüldü.** Sahibin ekran görüntüsü, Boston'un alpha.97'de olduğunu ve Bileşenler'de gerçek sürümlerin göründüğünü gösterir (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0): D-036'nın kurulu bir sunucudaki ilk ölçümü. **Bundan sonra hâlâ açık:** Frankfurt'un alpha.97 durumu bildirilmedi, bu yüzden açık iş kapanmaz; tek bir sunucunun tek bir ekran görüntüsü de her bileşenin, meşgul bir paket yöneticisinin ya da korunan bir okumanın denetimi değildir. **Güncelleme 22 Ekim 2026 (alpha.98):** sahip Frankfurt'un alpha.98'de olduğunu bildirdi, ama Bileşenler'deki sürümlerini bildirmedi; bu yüzden açık iş açık kalır. **Güncelleme 22 Ekim 2026 (alpha.100; alpha.101 adayıyla kaydedildi):** sahibin Frankfurt ekranı Bileşenler'de paket sürümlerini gösterdi; phpMyAdmin'in kısa biçimi "5.2.2-really…" okunuyordu, çünkü Debian'daki bir "really" sürümü gerçekte dağıtılan sürüme kısaltılmıyordu. Bu, v0.1.0-alpha.101 adayı için kaynakta düzeltildi ([D-036 notu](docs/DECISIONS.tr.md)). Açık iş açık kalır: düzeltilmiş kısa biçim henüz hiçbir kurulu sunucuda görülmedi.
 
