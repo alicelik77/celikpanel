@@ -232,6 +232,10 @@ type databaseDeleteError struct {
 	// databaseDeleteRefusalNamesAdministrator). Pressing Delete again meets
 	// the same refusal, so the answer says who acts instead.
 	refused []databaseDeleteRefusal
+	// unrefusedLeft: a user was left for another reason (no answer from the
+	// Agent, or a plain answer that it was not done). The refused answer is
+	// then not the whole truth, and the earlier answer stays.
+	unrefusedLeft bool
 	// recordsLeft: the engine is done; the records were not removed.
 	recordsLeft bool
 	// unverified (alpha.140): an earlier press of this deletion got no
@@ -819,7 +823,7 @@ func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *co
 	kept := map[string]string{}
 	var left, rightsLeft []string
 	var refused []databaseDeleteRefusal
-	unknown, exists := false, false
+	unknown, exists, unrefusedLeft := false, false, false
 	// remove: the user goes unless the Agent finds rights its owner gave by
 	// hand. shared: the user stays; only its rights on the dropped database go
 	// (RightsOnly). Both tell the Agent the database is dropped; it checks
@@ -842,7 +846,7 @@ func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *co
 		})
 		switch {
 		case err != nil:
-			unknown = true
+			unknown, unrefusedLeft = true, true
 			left = append(left, s.user.Username)
 			if s.rightsOnly {
 				// It stays by design; what is not known is whether its
@@ -863,6 +867,8 @@ func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *co
 				if !slices.ContainsFunc(refused, func(have databaseDeleteRefusal) bool { return have.account == account }) {
 					refused = append(refused, databaseDeleteRefusal{account: account, code: answer.AccountRefused})
 				}
+			} else {
+				unrefusedLeft = true
 			}
 			log.Printf("[409][database] %s %s: user %s: %s", errCodeDatabaseDeleteUsersLeft, name, s.user.Username, boundedAgentDiagnostic(answer.Error))
 		case answer.Kept:
@@ -904,7 +910,7 @@ func (p *Panel) deleteDatabaseUsersOnThisMachine(ctx context.Context, server *co
 	}
 	if len(left) > 0 || sweepLeft || exists {
 		return kept, &databaseDeleteError{unknown: unknown, databaseGone: true, usersLeft: left, rightsLeft: rightsLeft, databaseExists: exists,
-			sweepLeft: sweepLeft, sweepUnknown: sweepUnknown, refused: refused,
+			sweepLeft: sweepLeft, sweepUnknown: sweepUnknown, refused: refused, unrefusedLeft: unrefusedLeft,
 			cause: fmt.Errorf("database %s was dropped; for its users %s or the rights naming it not everything was done", name, strings.Join(left, ", "))}
 	}
 	return kept, nil
@@ -1079,10 +1085,12 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 			body.Error = "The database " + name + " was deleted, but a database with this name is on the database server again, made after the deletion. " +
 				"CelikPanel does not delete it, and its users (" + strings.Join(failed.usersLeft, ", ") + ") were left as they are, because that database may use them. " +
 				"It stays in the list until that database is gone; the server administrator decides about it on the database server, then Delete finishes."
-		case len(failed.refused) > 0:
+		case len(failed.refused) > 0 && !failed.unrefusedLeft && !failed.unknown && !failed.sweepUnknown:
 			// alpha.150: an account the Agent refused (administrator rights,
 			// a role member, owned objects, unreadable rights, MySQL): a
 			// press meets the same refusal, so the answer names who acts.
+			// Only when every user left was refused and nothing is unknown
+			// (D-024: unknown is not failed); otherwise the earlier answer.
 			var accounts []string
 			for _, have := range failed.refused {
 				accounts = append(accounts, have.account)

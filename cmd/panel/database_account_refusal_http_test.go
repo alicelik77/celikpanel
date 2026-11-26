@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -119,6 +121,72 @@ func TestDatabaseDeleteWithARefusedUserSaysWhoActs(t *testing.T) {
 		}
 		if f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = 9961`) != 1 || len(drops.requests) != 1 {
 			t.Fatalf("%s: the record went or the drop did not run once", c.code)
+		}
+	}
+}
+
+// perUserDatabaseAccessNative answers each user's removal on its own: a
+// refusal, no answer from the Agent (an error), or a plain "not done".
+type perUserDatabaseAccessNative struct {
+	answers map[string]func() (transport.DatabaseAccessUserResponse, error)
+}
+
+func (f *perUserDatabaseAccessNative) create(context.Context, transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
+	return transport.DatabaseAccessUserResponse{Applied: true}, nil
+}
+
+func (f *perUserDatabaseAccessNative) remove(_ context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
+	return f.answers[req.Username]()
+}
+
+// Review 2 finding 3: the refused answer ("the server's administrator acts;
+// then Delete finishes") is the whole truth only when every user left was
+// refused and nothing is unknown. One privileged user plus one user the Agent
+// gave no answer for (or a plain "not done" for) keeps the earlier answer:
+// what happened to that user is not known, and pressing Delete again may
+// finish it (D-024: unknown is not failed).
+func TestDatabaseDeleteWithARefusedUserAndAnUnknownOneKeepsTheEarlierAnswer(t *testing.T) {
+	refused := func() (transport.DatabaseAccessUserResponse, error) {
+		return transport.DatabaseAccessUserResponse{AccountRefused: transport.DatabaseAccountRefusedPrivileged, Error: "refused"}, nil
+	}
+	agentError := func() (transport.DatabaseAccessUserResponse, error) {
+		return transport.DatabaseAccessUserResponse{}, errors.New("agent unavailable")
+	}
+	notDone := func() (transport.DatabaseAccessUserResponse, error) {
+		return transport.DatabaseAccessUserResponse{Error: "engine said no"}, nil
+	}
+	for _, c := range []struct {
+		name            string
+		cust, wp        func() (transport.DatabaseAccessUserResponse, error)
+		unknown         bool
+		refusedAnswered bool
+	}{
+		{"privileged and agent error", refused, agentError, true, false},
+		{"agent error and privileged", agentError, refused, true, false},
+		{"privileged and not done", refused, notDone, false, false},
+		{"both privileged", refused, refused, false, true},
+	} {
+		f := newVisibleDatabasesFixture(t)
+		drops := recordDatabaseDrops(t)
+		f.panel.databaseAccessNative = &perUserDatabaseAccessNative{answers: map[string]func() (transport.DatabaseAccessUserResponse, error){
+			"cust_user": c.cust, "wp_user": c.wp,
+		}}
+		got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
+		var answer apiErrorBody
+		_ = json.Unmarshal(got.Body.Bytes(), &answer)
+		if got.Code != http.StatusConflict || answer.Code != errCodeDatabaseDeleteUsersLeft || !answer.PartialSuccess ||
+			answer.Vars["users"] == "" || f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = 9961`) != 1 || len(drops.requests) != 1 {
+			t.Fatalf("%s: %d %s", c.name, got.Code, got.Body.String())
+		}
+		_, named := answer.Vars["refused"]
+		switch {
+		case c.refusedAnswered:
+			if answer.Reason != "refused_privileged" || !named || strings.Contains(answer.Error, "again") {
+				t.Fatalf("%s: %s", c.name, got.Body.String())
+			}
+		case named || strings.HasPrefix(answer.Reason, "refused") || !strings.Contains(answer.Error, "press Delete again to finish.") ||
+			strings.HasPrefix(answer.Reason, "unknown") != c.unknown:
+			t.Fatalf("%s: %s", c.name, got.Body.String())
 		}
 	}
 }
