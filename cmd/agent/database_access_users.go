@@ -568,6 +568,14 @@ func (a *Agent) RemoveDroppedDatabaseRightsV1(req *transport.DroppedDatabaseRigh
 		resp.Error = "invalid database name; nothing was changed"
 		return nil
 	}
+	// Third review of PR #370, L2: the engine's own system databases are
+	// refused before anything is sent, as by every other database call
+	// (MariaDB's sys is not present on every server, so "no database of that
+	// name" alone did not cover it).
+	if systemDatabaseName("mysql", req.Database) {
+		resp.AccountRefused, resp.Error = transport.DatabaseAccountRefusedSystemDatabase, systemDatabaseRefusal
+		return nil
+	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
 	// alpha.149 (security): the accounts the panel names as the deleted
