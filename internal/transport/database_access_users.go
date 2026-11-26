@@ -90,6 +90,11 @@ type DatabaseAccessUserResponse struct {
 	// database. The panel adds them to the deletion's answer. Additive.
 	RightsRemovedFrom []string           `json:"rights_removed_from,omitempty"`
 	RightsKept        []DroppedRightKept `json:"rights_kept,omitempty"`
+	// AccountRefused (alpha.149, security): a named account is an
+	// administrator account, what it holds could not be read, or the
+	// database is the engine's own system database
+	// (DatabaseAccountRefused*); nothing was changed. Additive.
+	AccountRefused string `json:"account_refused,omitempty"`
 }
 
 // DroppedRightKept is a right in the raw (pattern) form of a deleted
@@ -131,6 +136,10 @@ type DroppedDatabaseRightsResponse struct {
 	// again continues.
 	RightsLeft bool   `json:"rights_left,omitempty"`
 	Error      string `json:"error,omitempty"`
+	// AccountRefused (alpha.149, security): an account named in Owners is an
+	// administrator account, or what it holds could not be read; nothing was
+	// changed. Additive.
+	AccountRefused string `json:"account_refused,omitempty"`
 }
 
 // DatabaseGrantFormsScanRequest (alpha.134) reads the machine's own MariaDB
@@ -163,4 +172,6 @@ type DatabaseGrantFormConvertResponse struct {
 	Outcome       string `json:"outcome,omitempty"`
 	BuildMismatch bool   `json:"build_mismatch,omitempty"`
 	Error         string `json:"error,omitempty"`
+	// AccountRefused (alpha.149, security): as DatabaseAccessUserResponse.
+	AccountRefused string `json:"account_refused,omitempty"`
 }

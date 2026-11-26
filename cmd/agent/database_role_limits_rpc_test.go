@@ -106,8 +106,13 @@ func TestPGRoleLimitsScriptIsBuiltByTheAgent(t *testing.T) {
 	}
 	for _, want := range []string{
 		"WHERE rolname OPERATOR(pg_catalog.=) 'shop_u'",
-		"IF target.rolsuper OR target.rolcreaterole OR target.rolreplication OR target.rolbypassrls THEN",
-		"pg_catalog.pg_has_role(target.oid, a.oid, 'MEMBER')",
+		// alpha.149 (security): the shared account rule, CREATEDB and the
+		// pg_* roles included, and for this call a member of no role.
+		"state := " + pgAccountStateExpr("'shop_u'", pgAccountNoMembership) + ";",
+		"celikpanel_r.rolcreatedb",
+		"pg_catalog.pg_has_role(celikpanel_r.oid, celikpanel_held.oid, 'MEMBER')",
+		"pg_catalog.pg_auth_members celikpanel_m",
+		"IF state OPERATOR(pg_catalog.<>) 'ok' THEN RAISE EXCEPTION 'celikpanel-refused:%', state; END IF;",
 		"EXECUTE pg_catalog.format('ALTER ROLE %I CONNECTION LIMIT -1', target.rolname);",
 		"EXECUTE pg_catalog.format('ALTER ROLE %I SET statement_timeout = %L', target.rolname, '5s');",
 		"EXECUTE pg_catalog.format('ALTER ROLE %I RESET idle_in_transaction_session_timeout', target.rolname);",
@@ -118,11 +123,24 @@ func TestPGRoleLimitsScriptIsBuiltByTheAgent(t *testing.T) {
 			t.Errorf("the script lacks %q:\n%s", want, script)
 		}
 	}
-	if strings.Count(script, "shop_u") != 5 || strings.Contains(script, `"shop_u"`) {
+	if strings.Count(script, "shop_u") != 6 || strings.Contains(script, `"shop_u"`) {
 		t.Fatalf("the role's name appears other than as the checked literal:\n%s", script)
 	}
-	if strings.Index(script, "RAISE EXCEPTION 'celikpanel-refused:privileged'") > strings.Index(script, "ALTER ROLE") {
+	if strings.Index(script, "RAISE EXCEPTION 'celikpanel-refused:%'") > strings.Index(script, "ALTER ROLE") {
 		t.Fatal("a write comes before the role's check")
+	}
+}
+
+// alpha.149 (review of PR #370, finding 2): a role that is a member of any
+// role is refused with its own code, nothing changed.
+func TestPGRoleLimitsRefuseAMemberOfAnyRole(t *testing.T) {
+	withPGRoleLimitsStubs(t, true, func(int, string) ([]byte, error) {
+		return []byte("ERROR:  celikpanel-refused:member\nCONTEXT:  PL/pgSQL function inline_code_block line 6 at RAISE\n"), errors.New("exit status 3")
+	})
+	resp := roleLimitsCall(t, transport.PostgreSQLRoleLimitsRequest{Role: "shop_u", Port: 5433,
+		Writes: []transport.PostgreSQLRoleLimitWrite{{Key: transport.PGRoleLimitStatementSeconds, Value: 5}}})
+	if resp.Refused != transport.PGRoleLimitRefusedMember || resp.Applied || resp.Unknown || !strings.Contains(resp.Error, "nothing was changed") {
+		t.Fatalf("a member: %+v", resp)
 	}
 }
 

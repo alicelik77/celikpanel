@@ -108,6 +108,14 @@ func (a *Agent) CreateDatabaseAccessUserV1(req *transport.DatabaseAccessUserRequ
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
+	// alpha.149 (security): a new user is never given rights on the engine's
+	// own system database (ALL on mysql.* is the whole server).
+	// Sistem veritabanı hiçbir kullanıcıya verilmez.
+	if systemDatabaseName(req.Engine, req.Database) {
+		resp.AccountRefused = transport.DatabaseAccountRefusedSystemDatabase
+		resp.Error = databaseAccountRefusalText(req.Username, resp.AccountRefused)
+		return nil
+	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
 	if req.Engine == "mysql" {
@@ -251,6 +259,13 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		}
 		return
 	}
+	// alpha.149 (security, review of PR #370 finding 1): an administrator
+	// account (any host of the name), or one whose rights cannot be read, is
+	// neither dropped nor has rights taken away on the panel's word.
+	if err := readDatabaseAccountState("mysql", mysqlExecStatement, req.Username, pgAccountOrdinary, true); err != nil {
+		resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+		return
+	}
 	if req.RightsOnly && req.DatabaseDropped {
 		// A user another database uses: it stays; only the rights that name
 		// the dropped database go.
@@ -352,7 +367,16 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 				if !ok {
 					continue
 				}
-				output, err := mysqlExecStatement("REVOKE ALL PRIVILEGES ON " + target + ".* FROM " + user + "@" + literal + ";")
+				revoke, err := mysqlGuarded(req.Username, true, "REVOKE ALL PRIVILEGES ON "+target+".* FROM "+user+"@"+literal+";")
+				if err != nil {
+					resp.Error = err.Error() + "; nothing was changed"
+					return
+				}
+				output, err := mysqlExecStatement(revoke)
+				if code := databaseAccountWriteRefusal(output); err != nil && code != "" {
+					resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.Username, code)
+					return
+				}
 				if err != nil && !mysqlNoSuchGrant(output) {
 					resp.Error = hostcmd.Fail("the database server did not take the user's rights on "+req.Database+" away", output, err, databaseClientMeaning).Error()
 					return
@@ -378,7 +402,16 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		}
 		accounts = append(accounts, user+"@"+literal)
 	}
-	if output, err := mysqlExecStatement("DROP USER " + strings.Join(accounts, ", ") + "; FLUSH PRIVILEGES;"); err != nil {
+	drop, err := mysqlGuarded(req.Username, true, "DROP USER "+strings.Join(accounts, ", ")+"; FLUSH PRIVILEGES;")
+	if err != nil {
+		resp.Error = err.Error() + "; nothing was changed"
+		return
+	}
+	if output, err := mysqlExecStatement(drop); err != nil {
+		if code := databaseAccountWriteRefusal(output); code != "" {
+			resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.Username, code)
+			return
+		}
 		resp.Error = hostcmd.Fail("the database server did not remove the user", output, err, databaseClientMeaning).Error()
 		return
 	}
@@ -507,6 +540,18 @@ func (a *Agent) RemoveDroppedDatabaseRightsV1(req *transport.DroppedDatabaseRigh
 	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
+	// alpha.149 (security): the accounts the panel names as the deleted
+	// database's own lose its rights in both forms, even a pattern form that
+	// reaches another database; only ordinary accounts (or ones already
+	// gone) are taken on the panel's word. Every other grantee keeps the
+	// engine-decided rule.
+	for _, owner := range req.Owners {
+		err := readDatabaseAccountState("mysql", mysqlExecStatement, owner, pgAccountOrdinary, true)
+		if code := databaseAccountRefusalOf(err); err != nil && code != transport.DatabaseAccountRefusedAbsent {
+			resp.AccountRefused, resp.Error = code, err.Error()
+			return nil
+		}
+	}
 	result, err := mysqlRemoveRightsOnDroppedDatabase(req.Database, req.Owners...)
 	var left *mariadbgrant.RightsLeftError
 	switch {
@@ -827,6 +872,26 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		resp.Error = err.Error() + "; nothing was changed"
 		return
 	}
+	// alpha.149 (security): the database's other users come from the panel,
+	// and the grants change their default privileges (what a writer makes
+	// becomes the new user's). Each must be an ordinary role, read now and
+	// tested again in the grants' own transaction.
+	var guards []string
+	for _, name := range append(append([]string{}, writers...), readers...) {
+		if err := readDatabaseAccountState("postgresql", run, name, pgAccountOrdinary, false); err != nil {
+			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+			return
+		}
+		guard, err := pgAccountGuardBlock(name, pgAccountOrdinary)
+		if err != nil {
+			resp.Error = err.Error() + "; nothing was changed"
+			return
+		}
+		guards = append(guards, guard)
+	}
+	if len(guards) > 0 {
+		grants = strings.Replace(grants, "\nBEGIN;\n", "\nBEGIN;\n"+strings.Join(guards, "\n")+"\n", 1)
+	}
 	ident, _ := services.QuotePGIdentifier(req.Username)
 	secret, err := services.QuotePGStringLiteral(req.Password)
 	if err != nil {
@@ -841,6 +906,10 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	}
 	if output, err := run(grants); err != nil {
 		failure := hostcmd.Fail("the database server did not give the new user its rights", output, err, databaseClientMeaning).Error()
+		if code := databaseAccountWriteRefusal(output); code != "" {
+			resp.AccountRefused = code
+			failure = "one of the database's other users is no longer an ordinary database user, so the new user was not given its rights"
+		}
 		if _, dropErr := run("DROP ROLE IF EXISTS " + ident + ";"); dropErr != nil {
 			resp.CleanupIncomplete = true
 			resp.Error = failure + "; the user it had just made could not be taken back either"
@@ -877,6 +946,26 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		resp.Absent, resp.Applied = true, true
 		return
 	}
+	// alpha.149 (security, review of PR #370 finding 1): an administrator
+	// role, or one whose rights cannot be read, is neither stripped nor
+	// dropped on the panel's word; the same test runs again in the
+	// transaction of each write.
+	if err := readDatabaseAccountState("postgresql", run, req.Username, pgAccountOrdinary, false); err != nil {
+		resp.AccountRefused, resp.Error = databaseAccountRefusalOf(err), err.Error()
+		return
+	}
+	guard, err := pgAccountGuardBlock(req.Username, pgAccountOrdinary)
+	if err != nil {
+		resp.Error = err.Error() + "; nothing was changed"
+		return
+	}
+	refused := func(output []byte) bool {
+		if code := databaseAccountWriteRefusal(output); code != "" {
+			resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.Username, code)
+			return true
+		}
+		return false
+	}
 	ident, _ := services.QuotePGIdentifier(req.Username)
 	if owner != "" {
 		db, _ := services.QuotePGIdentifier(req.Database)
@@ -887,10 +976,13 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		}
 		// What the user made in the database becomes the owner's; then its
 		// rights there go. No table or row is removed.
-		script := strings.Join([]string{`\connect ` + db, "BEGIN;",
+		script := strings.Join([]string{`\connect ` + db, "BEGIN;", guard,
 			"REASSIGN OWNED BY " + ident + " TO " + own + ";",
 			"DROP OWNED BY " + ident + ";", "COMMIT;"}, "\n")
 		if output, err := run(script); err != nil {
+			if refused(output) {
+				return
+			}
 			resp.Error = hostcmd.Fail("the database server did not take the user's rights in "+req.Database+" away; nothing was changed", output, err, databaseClientMeaning).Error()
 			return
 		}
@@ -915,7 +1007,10 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		resp.Applied, resp.Kept, resp.KeptReason = true, true, transport.DatabaseAccessKeptOtherRights
 		return
 	}
-	if output, err := run("DROP ROLE " + ident + ";"); err != nil {
+	if output, err := run("BEGIN;\n" + guard + "\nDROP ROLE " + ident + ";\nCOMMIT;"); err != nil {
+		if refused(output) {
+			return
+		}
 		if postgreSQLRoleHasDependents(output) {
 			resp.Applied, resp.Kept, resp.KeptReason = true, true, transport.DatabaseAccessKeptOtherRights
 			return

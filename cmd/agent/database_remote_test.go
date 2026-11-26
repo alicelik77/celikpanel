@@ -123,6 +123,9 @@ type fakeMariaDB struct {
 	// ("0.000000" by default).
 	statementTime     string
 	copyStatementTime string
+	// alpha.149 (security): the shared account rule's answer per user
+	// ("ok" when not named).
+	guardStates map[string]string
 }
 
 // fakeCopyHost answers the host of "... Host = '<host>'" or "'user'@'<host>'".
@@ -172,6 +175,9 @@ func (f *fakeMariaDB) query(statement string) (string, error) {
 	f.executed = append(f.executed, statement)
 	f.record(statement)
 	switch {
+	case strings.HasPrefix(statement, "SELECT CONCAT('guard='"):
+		rest := statement[strings.Index(statement, "User = '")+len("User = '"):]
+		return "guard=" + orDefault(f.guardStates[rest[:strings.Index(rest, "'")]], "ok") + "\n", nil
 	case strings.HasPrefix(statement, "SELECT @@bind_address"):
 		return "127.0.0.1\t0\t" + orDefault(f.haveSSL, "YES") + "\t3306\t" + f.logError + "\t2\t/var/lib/mysql/\t" + orDefault(f.nameLookup, "1") + "\n", nil
 	case statement == "SELECT User, Host FROM mysql.user;":

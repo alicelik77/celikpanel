@@ -59,24 +59,37 @@ func suspensionDatabaseSQL(engine, username string) (suspensionDatabaseStatement
 	if suspensionReservedDatabaseUser(username) {
 		return suspensionDatabaseStatements{}, fmt.Errorf("database user %s is an engine or CelikPanel account and is never suspended", username)
 	}
+	// alpha.149 (security, review of PR #370 finding 1): the inspection also
+	// reads whether the account is privileged ("state=privileged",
+	// database_account_guard.go), and every write runs behind the same test
+	// in the same transaction or compound statement, so a lock, an unlock or
+	// the end of the sessions never reaches an administrator account.
+	// Yönetici hesabına kilit, kilit açma ya da oturum kapatma uygulanmaz.
 	switch engine {
 	case "mysql":
 		literal, err := services.QuoteMySQLStringLiteral(username)
 		if err != nil {
 			return suspensionDatabaseStatements{}, fmt.Errorf("invalid database user name: %w", err)
 		}
+		guarded := func(body string) (string, error) { return mysqlGuarded(username, false, body) }
+		lock, err := guarded("ALTER USER " + literal + "@'localhost' ACCOUNT LOCK;")
+		if err != nil {
+			return suspensionDatabaseStatements{}, err
+		}
+		unlock, _ := guarded("ALTER USER " + literal + "@'localhost' ACCOUNT UNLOCK;")
+		disconnect, _ := guarded("KILL CONNECTION USER " + literal + ";")
 		// Panel-created MariaDB accounts are 'name'@'localhost'. MariaDB
 		// (10.4+) keeps the lock in mysql.global_priv as account_locked;
 		// JSON_VALUE answers 'true' on some versions and '1' on others
 		// (11.8 on Debian 13, lab run 1 of alpha.117), so both mean locked.
 		// KILL ... USER 'name' (host %) ends every session of that name.
 		return suspensionDatabaseStatements{
-			inspect: "SELECT CONCAT('state=', CASE WHEN COUNT(*) = 0 THEN 'absent' " +
-				"WHEN MAX(JSON_VALUE(Priv, '$.account_locked')) IN ('true', '1') THEN 'locked' ELSE 'open' END) " +
-				"FROM mysql.global_priv WHERE User = " + literal + " AND Host = 'localhost';",
-			lock:       "ALTER USER " + literal + "@'localhost' ACCOUNT LOCK;",
-			disconnect: "KILL CONNECTION USER " + literal + ";",
-			unlock:     "ALTER USER " + literal + "@'localhost' ACCOUNT UNLOCK;",
+			inspect: "SELECT CONCAT('state=', CASE WHEN " + mysqlAccountAbsentExpr(literal, false) + " THEN 'absent' " +
+				"WHEN " + mysqlAccountPrivilegedExpr(literal) + " THEN 'privileged' " +
+				"WHEN (SELECT MAX(JSON_VALUE(Priv, '$.account_locked')) FROM mysql.global_priv WHERE User = " + literal + " AND Host = 'localhost') IN ('true', '1') THEN 'locked' ELSE 'open' END);",
+			lock:       lock,
+			disconnect: disconnect,
+			unlock:     unlock,
 			copies:     "SELECT Host FROM mysql.user WHERE User = " + literal + " AND Host <> 'localhost';",
 		}, nil
 	case "postgresql":
@@ -88,17 +101,26 @@ func suspensionDatabaseSQL(engine, username string) (suspensionDatabaseStatement
 		if err != nil {
 			return suspensionDatabaseStatements{}, fmt.Errorf("invalid database user name: %w", err)
 		}
+		guarded := func(body string) string {
+			statement, _ := pgGuarded(username, pgAccountOrdinary, body)
+			return statement
+		}
 		return suspensionDatabaseStatements{
-			inspect: "SELECT 'state=' || COALESCE((SELECT CASE WHEN rolcanlogin THEN 'open' ELSE 'locked' END " +
-				"FROM pg_catalog.pg_roles WHERE rolname = " + literal + "), 'absent') AS celikpanel_state;",
-			lock: "ALTER ROLE " + ident + " NOLOGIN;",
-			disconnect: "SELECT count(pg_catalog.pg_terminate_backend(pid)) FROM pg_catalog.pg_stat_activity " +
-				"WHERE usename = " + literal + ";",
-			unlock: "ALTER ROLE " + ident + " LOGIN;",
+			inspect: "SELECT 'state=' || COALESCE((SELECT CASE WHEN " + pgAccountPrivilegedExpr("celikpanel_role") + " THEN 'privileged' " +
+				"WHEN celikpanel_role.rolcanlogin THEN 'open' ELSE 'locked' END " +
+				"FROM pg_catalog.pg_roles celikpanel_role WHERE celikpanel_role.rolname = " + literal + "), 'absent') AS celikpanel_state;",
+			lock: guarded("ALTER ROLE " + ident + " NOLOGIN;"),
+			disconnect: guarded("SELECT count(pg_catalog.pg_terminate_backend(pid)) FROM pg_catalog.pg_stat_activity " +
+				"WHERE usename = " + literal + ";"),
+			unlock: guarded("ALTER ROLE " + ident + " LOGIN;"),
 		}, nil
 	}
 	return suspensionDatabaseStatements{}, fmt.Errorf("unknown database engine %q; expected mysql or postgresql", engine)
 }
+
+// errSuspensionDatabaseUserPrivileged: the inspection found an administrator
+// account; nothing is changed.
+var errSuspensionDatabaseUserPrivileged = errors.New("database user is privileged")
 
 // suspensionDatabaseRunner is the existing superuser statement runner of the
 // engine: mysql as root over the socket, psql as postgres; both on stdin.
@@ -135,6 +157,8 @@ func parseSuspensionDatabaseState(output []byte) (transport.DatabaseUserState, e
 		return transport.DatabaseUserState{Present: true}, nil
 	case "locked":
 		return transport.DatabaseUserState{Present: true, Locked: true}, nil
+	case transport.DatabaseAccountRefusedPrivileged:
+		return transport.DatabaseUserState{}, errSuspensionDatabaseUserPrivileged
 	}
 	return transport.DatabaseUserState{}, errors.New("the database engine's answer about the account could not be read")
 }
@@ -148,6 +172,28 @@ func readSuspensionDatabaseUserState(
 		return transport.DatabaseUserState{}, hostcmd.Fail("the database account could not be inspected", output, err, databaseClientMeaning)
 	}
 	return parseSuspensionDatabaseState(output)
+}
+
+// databaseAccountWriteRefusal reads a guard's refusal from a write's output
+// (the account changed between the inspection and the write): the code, ""
+// when the write failed for another reason.
+func databaseAccountWriteRefusal(output []byte) string {
+	return databaseAccountRefusalIn(output)
+}
+
+// suspensionAccountRefused fills a refusal of the account into the answer's
+// code and sentence; true when err is one.
+func suspensionAccountRefused(err error, username string, code *string, message *string) bool {
+	switch {
+	case errors.Is(err, errSuspensionDatabaseUserPrivileged):
+		*code = transport.DatabaseAccountRefusedPrivileged
+	case databaseAccountRefusalOf(err) != "":
+		*code = databaseAccountRefusalOf(err)
+	default:
+		return false
+	}
+	*message = databaseAccountRefusalText(username, *code)
+	return true
 }
 
 func prepareSuspensionDatabaseUser(target transport.SuspensionDatabaseUser) (func(string) ([]byte, error), suspensionDatabaseStatements, error) {
@@ -204,6 +250,9 @@ func (a *Agent) SetDatabaseUserSuspensionV1(
 	defer suspensionDatabaseMutex.Unlock()
 
 	current, err := readSuspensionDatabaseUserState(run, statements)
+	if suspensionAccountRefused(err, req.User.Username, &resp.AccountRefused, &resp.Error) {
+		return nil
+	}
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
@@ -246,6 +295,12 @@ func (a *Agent) SetDatabaseUserSuspensionV1(
 			statement = statements.unlock
 		}
 		output, runErr := run(statement)
+		if code := databaseAccountWriteRefusal(output); runErr != nil && code != "" {
+			// The account changed after the inspection: the guard in the
+			// same statement refused, so nothing was changed.
+			resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.User.Username, code)
+			return nil
+		}
 		if runErr != nil {
 			resp.Error = hostcmd.Fail("the database account's lock could not be changed", output, runErr, databaseClientMeaning).Error()
 			if after, readErr := readSuspensionDatabaseUserState(run, statements); readErr == nil {
@@ -260,6 +315,7 @@ func (a *Agent) SetDatabaseUserSuspensionV1(
 	// The remote copies follow the local account's lock, also on a retry,
 	// before the sessions are ended so none comes back through a copy.
 	if err := lockSuspensionRemoteCopies(run, statements, req.User.Username, target.Locked); err != nil {
+		resp.AccountRefused = databaseAccountRefusalOf(err)
 		resp.Error = err.Error()
 		return nil
 	}
@@ -270,6 +326,10 @@ func (a *Agent) SetDatabaseUserSuspensionV1(
 	var disconnectErr error
 	if req.Suspend {
 		if output, runErr := run(statements.disconnect); runErr != nil {
+			if code := databaseAccountWriteRefusal(output); code != "" {
+				resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.User.Username, code)
+				return nil
+			}
 			disconnectErr = hostcmd.Fail("the database account is locked but its open sessions could not be ended", output, runErr, databaseClientMeaning)
 		}
 	}
@@ -330,7 +390,16 @@ func lockSuspensionRemoteCopies(run func(string) ([]byte, error), statements sus
 	if len(batch) == 0 {
 		return nil
 	}
-	if output, err := run(strings.Join(batch, "\n")); err != nil {
+	// alpha.149 (security): the copies share the account's name, so they
+	// change only behind the same guard as the local account.
+	statement, err := mysqlGuarded(username, false, strings.Join(batch, "\n"))
+	if err != nil {
+		return err
+	}
+	if output, err := run(statement); err != nil {
+		if code := databaseAccountWriteRefusal(output); code != "" {
+			return &errDatabaseAccountRefused{code: code, username: username}
+		}
 		verb := "unlocked"
 		if locked {
 			verb = "locked"

@@ -508,11 +508,22 @@ func TestSuspensionDatabaseSQL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// alpha.149 (security): every write runs behind the account guard in the
+	// same compound statement (MariaDB) or transaction (PostgreSQL).
+	myGuarded := func(body string) string {
+		statement, err := mysqlGuarded("shop_user", false, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return statement
+	}
 	wantMySQL := suspensionDatabaseStatements{
-		inspect:    "SELECT CONCAT('state=', CASE WHEN COUNT(*) = 0 THEN 'absent' WHEN MAX(JSON_VALUE(Priv, '$.account_locked')) IN ('true', '1') THEN 'locked' ELSE 'open' END) FROM mysql.global_priv WHERE User = 'shop_user' AND Host = 'localhost';",
-		lock:       "ALTER USER 'shop_user'@'localhost' ACCOUNT LOCK;",
-		disconnect: "KILL CONNECTION USER 'shop_user';",
-		unlock:     "ALTER USER 'shop_user'@'localhost' ACCOUNT UNLOCK;",
+		inspect: "SELECT CONCAT('state=', CASE WHEN " + mysqlAccountAbsentExpr("'shop_user'", false) + " THEN 'absent' WHEN " +
+			mysqlAccountPrivilegedExpr("'shop_user'") + " THEN 'privileged' WHEN (SELECT MAX(JSON_VALUE(Priv, '$.account_locked')) FROM mysql.global_priv " +
+			"WHERE User = 'shop_user' AND Host = 'localhost') IN ('true', '1') THEN 'locked' ELSE 'open' END);",
+		lock:       myGuarded("ALTER USER 'shop_user'@'localhost' ACCOUNT LOCK;"),
+		disconnect: myGuarded("KILL CONNECTION USER 'shop_user';"),
+		unlock:     myGuarded("ALTER USER 'shop_user'@'localhost' ACCOUNT UNLOCK;"),
 		copies:     "SELECT Host FROM mysql.user WHERE User = 'shop_user' AND Host <> 'localhost';",
 	}
 	if mysql != wantMySQL {
@@ -522,14 +533,32 @@ func TestSuspensionDatabaseSQL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	pgGuard := func(body string) string {
+		statement, err := pgGuarded("shop_user", pgAccountOrdinary, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return statement
+	}
 	wantPG := suspensionDatabaseStatements{
-		inspect:    "SELECT 'state=' || COALESCE((SELECT CASE WHEN rolcanlogin THEN 'open' ELSE 'locked' END FROM pg_catalog.pg_roles WHERE rolname = 'shop_user'), 'absent') AS celikpanel_state;",
-		lock:       `ALTER ROLE "shop_user" NOLOGIN;`,
-		disconnect: "SELECT count(pg_catalog.pg_terminate_backend(pid)) FROM pg_catalog.pg_stat_activity WHERE usename = 'shop_user';",
-		unlock:     `ALTER ROLE "shop_user" LOGIN;`,
+		inspect: "SELECT 'state=' || COALESCE((SELECT CASE WHEN " + pgAccountPrivilegedExpr("celikpanel_role") + " THEN 'privileged' " +
+			"WHEN celikpanel_role.rolcanlogin THEN 'open' ELSE 'locked' END FROM pg_catalog.pg_roles celikpanel_role WHERE celikpanel_role.rolname = 'shop_user'), 'absent') AS celikpanel_state;",
+		lock:       pgGuard(`ALTER ROLE "shop_user" NOLOGIN;`),
+		disconnect: pgGuard("SELECT count(pg_catalog.pg_terminate_backend(pid)) FROM pg_catalog.pg_stat_activity WHERE usename = 'shop_user';"),
+		unlock:     pgGuard(`ALTER ROLE "shop_user" LOGIN;`),
 	}
 	if pg != wantPG {
 		t.Fatalf("postgresql statements = %+v", pg)
+	}
+	for _, statement := range []string{mysql.lock, mysql.unlock, mysql.disconnect} {
+		if !strings.HasPrefix(statement, "DELIMITER ;;\nBEGIN NOT ATOMIC\n") || !strings.Contains(statement, "celikpanel-refused:privileged") {
+			t.Fatalf("a MariaDB write is not behind the guard: %q", statement)
+		}
+	}
+	for _, statement := range []string{pg.lock, pg.unlock, pg.disconnect} {
+		if !strings.HasPrefix(statement, "BEGIN;\nDO $celikpanel_account_guard$") || !strings.HasSuffix(statement, "\nCOMMIT;") {
+			t.Fatalf("a PostgreSQL write is not behind the guard: %q", statement)
+		}
 	}
 
 	for _, hostile := range []string{"x'; DROP USER root; --", `a"b`, "a b", "", "root", "postgres", "Root", "pg_monitor", databaseAdminAccountName, strings.Repeat("a", 64)} {
@@ -570,6 +599,10 @@ type fakeDatabaseEngine struct {
 	statements      []string
 	failOn          string
 	copyHosts       string // the answer to the remote copies' host list
+	// privileged (alpha.149): the inspection finds an administrator
+	// account; writeRefused: the guard in the write refuses (the account
+	// changed after the inspection).
+	privileged, writeRefused bool
 }
 
 func (engine *fakeDatabaseEngine) run(statements suspensionDatabaseStatements) func(string) ([]byte, error) {
@@ -578,11 +611,16 @@ func (engine *fakeDatabaseEngine) run(statements suspensionDatabaseStatements) f
 		if engine.failOn != "" && statement == engine.failOn {
 			return []byte("ERROR 1227 (42000): Access denied"), errors.New("exit status 1")
 		}
+		if engine.writeRefused && statement != statements.inspect && statement != statements.copies {
+			return []byte("ERROR 1644 (45000) at line 2: celikpanel-refused:privileged"), errors.New("exit status 1")
+		}
 		switch statement {
 		case statements.inspect:
 			switch {
 			case !engine.present:
 				return []byte("state=absent\n"), nil
+			case engine.privileged:
+				return []byte("state=privileged\n"), nil
 			case engine.locked:
 				return []byte("state=locked\n"), nil
 			default:
@@ -596,7 +634,7 @@ func (engine *fakeDatabaseEngine) run(statements suspensionDatabaseStatements) f
 		case statements.copies:
 			return []byte(engine.copyHosts), nil
 		default:
-			if strings.HasPrefix(statement, "ALTER USER 'shop_user'@'") && strings.Contains(statement, " ACCOUNT ") {
+			if strings.HasPrefix(statement, "DELIMITER ;;\nBEGIN NOT ATOMIC\n") && strings.Contains(statement, "ALTER USER 'shop_user'@'") && strings.Contains(statement, " ACCOUNT ") {
 				return nil, nil
 			}
 			return nil, fmt.Errorf("unexpected statement %q", statement)
@@ -727,14 +765,23 @@ func TestDatabaseUserSuspensionLocksTheRemoteCopies(t *testing.T) {
 	if response := setDatabaseSuspension(t, "mysql", true, before); !response.Applied {
 		t.Fatalf("suspend = %+v", response)
 	}
-	lock := "ALTER USER 'shop_user'@'203.0.113.7' ACCOUNT LOCK;\nALTER USER 'shop_user'@'198.51.100.0/255.255.255.0' ACCOUNT LOCK;"
+	// alpha.149 (security): behind the account guard, as the local account.
+	guarded := func(body string) string {
+		statement, err := mysqlGuarded("shop_user", false, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return statement
+	}
+	plain := "ALTER USER 'shop_user'@'203.0.113.7' ACCOUNT LOCK;\nALTER USER 'shop_user'@'198.51.100.0/255.255.255.0' ACCOUNT LOCK;"
+	lock := guarded(plain)
 	if !containsString(engine.statements, lock) {
 		t.Fatalf("copies not locked: %q", engine.statements)
 	}
 	if response := setDatabaseSuspension(t, "mysql", false, before); !response.Applied {
 		t.Fatalf("restore = %+v", response)
 	}
-	if !containsString(engine.statements, strings.ReplaceAll(lock, "ACCOUNT LOCK", "ACCOUNT UNLOCK")) {
+	if !containsString(engine.statements, guarded(strings.ReplaceAll(plain, "ACCOUNT LOCK", "ACCOUNT UNLOCK"))) {
 		t.Fatalf("copies not unlocked: %q", engine.statements)
 	}
 	for _, s := range engine.statements {

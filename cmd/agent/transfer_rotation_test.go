@@ -46,6 +46,9 @@ type rotationEngine struct {
 	present    bool
 	statements []string
 	failSet    bool
+	// privileged (alpha.149): the inspection finds an administrator
+	// account; setRefused: the guard in the password's transaction refuses.
+	privileged, setRefused bool
 }
 
 func installRotationEngine(t *testing.T, engineName string, engine *rotationEngine) suspensionDatabaseStatements {
@@ -61,7 +64,12 @@ func installRotationEngine(t *testing.T, engineName string, engine *rotationEngi
 			if !engine.present {
 				return []byte("state=absent\n"), nil
 			}
+			if engine.privileged {
+				return []byte("state=privileged\n"), nil
+			}
 			return []byte("state=open\n"), nil
+		case engine.setRefused && (strings.Contains(statement, "PASSWORD") || strings.Contains(statement, "IDENTIFIED BY")):
+			return []byte("ERROR:  celikpanel-refused:privileged\nCONTEXT:  PL/pgSQL function inline_code_block"), errors.New("exit status 3")
 		case statement == statements.disconnect:
 			return nil, nil
 		case strings.HasPrefix(statement, "SELECT CONCAT('host='"):
@@ -110,8 +118,13 @@ func TestRotateDatabaseUserPasswordSetsPasswordAndEndsSessions(t *testing.T) {
 				if !strings.Contains(set, "'shop_user'@'127.0.0.1' IDENTIFIED BY '"+secret+"'") || !strings.Contains(set, "'shop_user'@'localhost' IDENTIFIED BY '"+secret+"'") {
 					t.Fatalf("hosts not all set: %q", set)
 				}
-			} else if !strings.HasPrefix(set, "SET password_encryption = 'scram-sha-256'; ALTER ROLE") {
+			} else if !strings.Contains(set, "SET password_encryption = 'scram-sha-256'; ALTER ROLE") {
 				t.Fatalf("not SCRAM: %q", set)
+			}
+			// alpha.149 (security): the password is set behind the account
+			// guard, in the same transaction or compound statement.
+			if !strings.Contains(set, "celikpanel-refused") {
+				t.Fatalf("the password is not set behind the account guard: %q", set)
 			}
 			if len(engine.statements) != want || engine.statements[0] != statements.inspect || engine.statements[want-1] != statements.disconnect ||
 				!strings.Contains(set, "'"+secret+"'") {

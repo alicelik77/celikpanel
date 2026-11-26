@@ -77,6 +77,16 @@ func (a *Agent) DatabaseGrantFormConvertV1(req *transport.DatabaseGrantFormConve
 	}
 	suspensionDatabaseMutex.Lock()
 	defer suspensionDatabaseMutex.Unlock()
+	// alpha.149 (security, review of PR #370 finding 1): the row is rewritten
+	// only for an ordinary account; an administrator account's grants, or one
+	// whose rights cannot be read, are left as they are. An absent account
+	// has no row to rewrite (Convert says so).
+	if err := readDatabaseAccountState("mysql", mysqlExecStatement, req.User, pgAccountOrdinary, true); err != nil {
+		if code := databaseAccountRefusalOf(err); code != transport.DatabaseAccountRefusedAbsent {
+			resp.AccountRefused, resp.Error = code, err.Error()
+			return nil
+		}
+	}
 	// One change of a remote copy's grants at a time: the remote access apply
 	// rewrites copies under the same lock (review of alpha.134). Taken after
 	// the suspension lock, the order every user removal takes them in.

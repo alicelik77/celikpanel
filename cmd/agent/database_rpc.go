@@ -224,7 +224,13 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		}
 		// A matching marker is written only after this operation exclusively
 		// created both the database and user. A lost response can therefore
-		// safely resume at the idempotent grant step.
+		// safely resume at the idempotent grant step - and (alpha.149,
+		// security) only while the user is an ordinary account.
+		if stateErr := readDatabaseAccountState("mysql", mysqlExecStatement, req.User, pgAccountOrdinary, false); stateErr != nil {
+			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(stateErr), stateErr.Error()
+			resp.CleanupIncomplete = true
+			return nil
+		}
 		userCreated = true
 	} else {
 		databaseCreated = true
@@ -398,7 +404,32 @@ func (a *Agent) deleteMySQLDatabase(req DeleteDatabaseRequest, resp *DeleteDatab
 				return nil
 			}
 		} else {
-			_, dropErr := mysqlExecStatement(fmt.Sprintf("DROP USER IF EXISTS %s@'localhost';", userLiteral))
+			// alpha.149 (security, review of PR #370 finding 1): the user
+			// is dropped only when the Agent finds it an ordinary account;
+			// an administrator account, or one whose rights cannot be read,
+			// refuses the whole deletion before anything is dropped. An
+			// absent user leaves nothing to drop.
+			// Yönetici hesabı silinmez; silme hiçbir şeyi değiştirmeden durur.
+			stateErr := readDatabaseAccountState("mysql", mysqlExecStatement, req.User, pgAccountOrdinary, false)
+			absent := databaseAccountRefusalOf(stateErr) == transport.DatabaseAccountRefusedAbsent
+			if stateErr != nil && !absent {
+				resp.AccountRefused, resp.Error = databaseAccountRefusalOf(stateErr), stateErr.Error()
+				return nil
+			}
+			var dropErr error
+			if !absent {
+				var drop string
+				var output []byte
+				if drop, dropErr = mysqlGuarded(req.User, false, fmt.Sprintf("DROP USER IF EXISTS %s@'localhost';", userLiteral)); dropErr == nil {
+					output, dropErr = mysqlExecStatement(drop)
+				}
+				if code := databaseAccountWriteRefusal(output); dropErr != nil && code != "" && code != transport.DatabaseAccountRefusedAbsent {
+					resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.User, code)
+					return nil
+				} else if code == transport.DatabaseAccountRefusedAbsent {
+					dropErr = nil
+				}
+			}
 			if dropErr == nil {
 				// alpha.129: its remote copies go with it.
 				if err := databaseRemoteFollowMariaDBUser(req.User, true); err != nil {
@@ -558,6 +589,15 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		return nil
 	}
 
+	// alpha.149 (security): a resumed operation's role is given the database
+	// only while the Agent finds it an ordinary role.
+	if resumed {
+		if stateErr := readDatabaseAccountState("postgresql", run, req.User, pgAccountOrdinary, false); stateErr != nil {
+			resp.AccountRefused, resp.Error = databaseAccountRefusalOf(stateErr), stateErr.Error()
+			return nil
+		}
+	}
+
 	roleCreated := false
 	if !resumed {
 		statement := "SET password_encryption = 'scram-sha-256';\nCREATE ROLE " + userIdent + " LOGIN PASSWORD " + pwLiteral + ";"
@@ -657,6 +697,24 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 		return nil
 	}
 
+	// alpha.149 (security, review of PR #370 finding 1): the named role is
+	// dropped only when the Agent finds it an ordinary one; an administrator
+	// role, or one whose rights cannot be read, refuses the whole deletion
+	// before anything is dropped.
+	dropUser := ""
+	if services.ValidateSQLIdentifier(req.User) == nil {
+		stateErr := readDatabaseAccountState("postgresql", run, req.User, pgAccountOrdinary, false)
+		switch code := databaseAccountRefusalOf(stateErr); {
+		case stateErr == nil:
+			userIdent, _ := services.QuotePGIdentifier(req.User)
+			dropUser, _ = pgGuarded(req.User, pgAccountOrdinary, fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent))
+		case code == transport.DatabaseAccountRefusedAbsent:
+		default:
+			resp.AccountRefused, resp.Error = code, stateErr.Error()
+			return nil
+		}
+	}
+
 	// Drop database. alpha.133 round 5: the sessions open on it are ended
 	// first, in the same psql run, as the panel's own driver always did
 	// (internal/services/postgresql_driver.go DeleteDatabase); a plain DROP
@@ -676,10 +734,9 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 		return nil
 	}
 
-	// Drop user
-	if userIdent, err := services.QuotePGIdentifier(req.User); err == nil {
-		// Don't fail if user doesn't exist
-		_, _ = run(fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent))
+	// Drop user (behind the guard; a failure is not the deletion's).
+	if dropUser != "" {
+		_, _ = run(dropUser)
 	}
 
 	resp.Success = true

@@ -33,9 +33,11 @@ import (
 //     PostgreSQL server record of this machine, at this cluster (its port,
 //     or the cluster the record names), read from the panel's own database
 //     file, read only;
-//   - on the engine, in the same transaction as the writes: the role exists,
-//     is not a superuser and has none of CREATEROLE, REPLICATION or
-//     BYPASSRLS, and is not a member of a role that has any of them;
+//   - on the engine, in the same transaction as the writes: the role passes
+//     the shared account rule (database_account_guard.go: not a superuser,
+//     none of CREATEROLE, CREATEDB, REPLICATION or BYPASSRLS, no membership
+//     of such a role or of a pg_* role) and, for this call, is a member of
+//     no role at all;
 //   - only CONNECTION LIMIT and the role-wide statement_timeout,
 //     idle_in_transaction_session_timeout and temp_file_limit, each an
 //     integer in a fixed range; the Agent builds every statement, the role's
@@ -169,16 +171,17 @@ func pgRoleLimitsScript(role string, writes []transport.PostgreSQLRoleLimitWrite
 	if err != nil {
 		return "", err
 	}
+	// alpha.149 (security): the shared account rule
+	// (database_account_guard.go), and for this call a member of no role at
+	// all - no site role CelikPanel makes is one (finding 2 of the review of
+	// PR #370: that covers the predefined pg_* roles and any group the owner
+	// made), in the same transaction as the writes.
 	var b strings.Builder
-	b.WriteString("DO $celikpanel_role_limits$\nDECLARE\n  target pg_catalog.pg_roles%ROWTYPE;\nBEGIN\n")
+	b.WriteString("DO $celikpanel_role_limits$\nDECLARE\n  target pg_catalog.pg_roles%ROWTYPE;\n  state pg_catalog.text;\nBEGIN\n")
+	b.WriteString("  state := " + pgAccountStateExpr(literal, pgAccountNoMembership) + ";\n")
+	b.WriteString("  IF state OPERATOR(pg_catalog.<>) 'ok' THEN RAISE EXCEPTION 'celikpanel-refused:%', state; END IF;\n")
 	b.WriteString("  SELECT * INTO target FROM pg_catalog.pg_roles WHERE rolname OPERATOR(pg_catalog.=) " + literal + ";\n")
 	b.WriteString("  IF NOT FOUND THEN RAISE EXCEPTION 'celikpanel-refused:absent'; END IF;\n")
-	b.WriteString("  IF target.rolsuper OR target.rolcreaterole OR target.rolreplication OR target.rolbypassrls THEN\n" +
-		"    RAISE EXCEPTION 'celikpanel-refused:privileged';\n  END IF;\n")
-	b.WriteString("  IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles a WHERE a.oid OPERATOR(pg_catalog.<>) target.oid\n" +
-		"      AND (a.rolsuper OR a.rolcreaterole OR a.rolreplication OR a.rolbypassrls)\n" +
-		"      AND pg_catalog.pg_has_role(target.oid, a.oid, 'MEMBER')) THEN\n" +
-		"    RAISE EXCEPTION 'celikpanel-refused:privileged';\n  END IF;\n")
 	for _, write := range writes {
 		limit := pgRoleLimitRange[write.Key]
 		switch {
@@ -209,13 +212,7 @@ func pgRoleLimitsScript(role string, writes []transport.PostgreSQLRoleLimitWrite
 
 // pgRoleLimitsRefusalIn reads the DO block's own refusal from psql's output.
 func pgRoleLimitsRefusalIn(output []byte) string {
-	text := string(output)
-	for _, code := range []string{transport.PGRoleLimitRefusedAbsent, transport.PGRoleLimitRefusedPrivileged} {
-		if strings.Contains(text, "celikpanel-refused:"+code) {
-			return code
-		}
-	}
-	return ""
+	return databaseAccountRefusalIn(output)
 }
 
 // pgRoleLimitsRefusalText is the answer's sentence for a refused role.
@@ -223,8 +220,8 @@ func pgRoleLimitsRefusalText(role, code string) string {
 	switch code {
 	case transport.PGRoleLimitRefusedAbsent:
 		return "the database user " + role + " does not exist on this server's PostgreSQL; nothing was changed"
-	case transport.PGRoleLimitRefusedPrivileged:
-		return "the database user " + role + " has administrator rights on PostgreSQL (or is a member of a role that has them), so CelikPanel does not change its limits; nothing was changed"
+	case transport.PGRoleLimitRefusedPrivileged, transport.PGRoleLimitRefusedMember:
+		return databaseAccountRefusalText(role, code)
 	case transport.PGRoleLimitRefusedNotRecorded:
 		return "the database user " + role + " is not one of CelikPanel's site database users on this PostgreSQL, so its limits are not changed here; nothing was changed"
 	}

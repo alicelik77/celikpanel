@@ -31,6 +31,12 @@ var databaseRemoteMySQLQuery = func(statement string) (string, error) {
 	return "", errors.New("MariaDB is not reachable on this platform")
 }
 
+// databaseRemoteMySQLRunner is databaseRemoteMySQLQuery as a statement runner.
+func databaseRemoteMySQLRunner(statement string) ([]byte, error) {
+	out, err := databaseRemoteMySQLQuery(statement)
+	return []byte(out), err
+}
+
 // databaseRemoteFiles is the file side (option file, jail), swapped by tests.
 var databaseRemoteFiles = struct {
 	read   func(path string) ([]byte, error)
@@ -481,6 +487,18 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 			continue
 		case grants.Global:
 			refuseAll(transport.DatabaseRemotePrivilegedUser, "the user "+account.User+" has server-wide rights and is never reachable from outside")
+			continue
+		}
+		// alpha.149 (security, review of PR #370 finding 1): the shared
+		// account rule (database_account_guard.go) too - a role, a PROXY
+		// right or a right on the mysql database, which SHOW GRANTS' global
+		// line does not show, keeps the account local.
+		if err := readDatabaseAccountState("mysql", databaseRemoteMySQLRunner, account.User, pgAccountOrdinary, false); err != nil {
+			if databaseAccountRefusalOf(err) == transport.DatabaseAccountRefusedPrivileged {
+				refuseAll(transport.DatabaseRemotePrivilegedUser, "the user "+account.User+" has server-wide rights and is never reachable from outside")
+			} else {
+				refuseAll(transport.DatabaseRemoteFailed, "the user "+account.User+" could not be read: "+err.Error())
+			}
 			continue
 		}
 		if err := credential.Validate(); err != nil {

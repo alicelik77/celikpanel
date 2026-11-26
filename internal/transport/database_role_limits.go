@@ -25,8 +25,11 @@ const (
 	PGRoleLimitRefusedInvalid     = "invalid"
 	PGRoleLimitRefusedReserved    = "reserved"
 	PGRoleLimitRefusedNotRecorded = "not_recorded"
-	PGRoleLimitRefusedAbsent      = "absent"
-	PGRoleLimitRefusedPrivileged  = "privileged"
+	PGRoleLimitRefusedAbsent      = DatabaseAccountRefusedAbsent
+	PGRoleLimitRefusedPrivileged  = DatabaseAccountRefusedPrivileged
+	// PGRoleLimitRefusedMember (alpha.149): the role is a member of another
+	// role, which no site role CelikPanel makes is.
+	PGRoleLimitRefusedMember = DatabaseAccountRefusedMember
 )
 
 // PostgreSQLRoleLimitWrite is one setting: the connection limit (0: none,

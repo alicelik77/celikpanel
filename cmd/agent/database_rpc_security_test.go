@@ -27,6 +27,9 @@ func captureMySQLStatements(
 			return []byte("v=11.8.6-MariaDB-0+deb13u1\n"), nil
 		case strings.HasPrefix(statement, "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = "):
 			return []byte("n=1\n"), nil
+		case isAccountGuardRead(statement):
+			// alpha.149: the account guard's read; an ordinary site account.
+			return []byte("guard=ok\n"), nil
 		}
 		*statements = append(*statements, statement)
 		return executor(len(*statements)-1, statement)
@@ -211,7 +214,8 @@ func TestWordPressDeleteWithMatchingOwnershipDropsUserThenDatabase(t *testing.T)
 	if !response.Success || len(*statements) != 3 {
 		t.Fatalf("response=%+v statements=%v", response, *statements)
 	}
-	if !strings.HasPrefix((*statements)[1], "DROP USER IF EXISTS ") ||
+	// alpha.149 (security): the user is dropped behind the account guard.
+	if !strings.HasPrefix((*statements)[1], "DELIMITER ;;\nBEGIN NOT ATOMIC\n") || !strings.Contains((*statements)[1], "\n  DROP USER IF EXISTS ") ||
 		!strings.HasPrefix((*statements)[2], "DROP DATABASE IF EXISTS ") {
 		t.Fatalf("cleanup order is unsafe: %v", *statements)
 	}

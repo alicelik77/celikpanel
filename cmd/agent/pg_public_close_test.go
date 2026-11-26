@@ -18,6 +18,9 @@ func closeAnswers(t *testing.T, roles, mark, owner string, close func() ([]byte,
 	previous := postgreSQLExecStatementOnPort
 	postgreSQLExecStatementOnPort = func(_ int, statement string) ([]byte, error) {
 		got = append(got, statement)
+		if out, ok := ordinaryAccountGuard(statement); ok {
+			return out, nil
+		}
 		switch {
 		case strings.HasPrefix(statement, "SELECT 'roles='"):
 			return []byte("roles=" + roles + "\nmark=" + mark + "\nowner=" + owner + "\nver=180001\n"), nil

@@ -57,6 +57,10 @@ type RotateDatabaseUserPasswordResponse struct {
 	// Absent: the user does not exist on the engine; nothing was changed.
 	Absent bool   `json:"absent,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// AccountRefused (alpha.149, security): the Agent found the account to be
+	// an administrator account, or could not read what it holds
+	// (DatabaseAccountRefused*); nothing was changed. Additive.
+	AccountRefused string `json:"account_refused,omitempty"`
 }
 
 // EndMailSessionsRequest ends a mailbox's open IMAP/POP3 sessions, so a
