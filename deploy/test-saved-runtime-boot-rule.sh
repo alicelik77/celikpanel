@@ -290,4 +290,79 @@ for script in "${finalizers[@]}"; do
     run_identity_case "$script" same-boot-not-running accept FX_BOOT=$saved_boot FX_LIVE_START=
     printf 'PASS: %s coordinator identities after a restart\n' "$script"
 done
+
+# update.sh's stopped proof of a captured coordinator (quiesce abort and the
+# active phase's recovery) takes the same rule. It reads the boot record of the
+# ledger loaded last, so every load of the identities must follow the load of
+# the ledger in the same directory (the fresh stage writes both, and the
+# record, once, in one process; a resumed stage never rewrites them).
+# update.sh'deki durmuş koordinatör kanıtı aynı kuralı izler.
+identity_dir_order=$(awk '
+    /^[[:space:]]*#/ || /\(\) \{$/ { next }
+    $1 == "ledger=$snapshot/service-states.tsv" { ledger_dir = "$snapshot" }
+    $1 == "identity_ledger=$snapshot/quiesce-coordinators.tsv" { identity_dir = "$snapshot" }
+    $1 == "load_saved_service_states" {
+        arg = $2; gsub(/"/, "", arg)
+        if (arg == "$ledger") loaded = ledger_dir; else { sub(/\/service-states\.tsv$/, "", arg); loaded = arg }
+        loads++
+    }
+    $1 == "load_quiesce_coordinator_identities" {
+        arg = $2; gsub(/"/, "", arg)
+        if (arg == "$identity_ledger") dir = identity_dir; else { sub(/\/quiesce-coordinators\.tsv$/, "", arg); dir = arg }
+        identities++
+        if (dir == "" || dir != loaded) bad = bad " " NR
+    }
+    END { print (identities >= 5 && loads >= identities && bad == "") ? "ok" : "identities=" identities " loads=" loads " bad=" bad }
+' "$update")
+[[ $identity_dir_order == ok ]] || fail "update.sh: coordinator identities are loaded without their ledger ($identity_dir_order)"
+[[ $(extract "$update" verify_quiesce_coordinator_stopped) == *'! saved_states_from_earlier_boot &&'* ]] ||
+    fail "update.sh: the stopped proof does not take the restart rule"
+run_stopped_case() {
+    local name=$1 want=$2
+    shift 2
+    local status=0
+    (
+        set -euo pipefail
+        FX_BOOT=$other_boot FX_RECORD=$saved_boot FX_LIVE_START=5678
+        for assignment in "$@"; do declare "$assignment"; done
+        case_root=$work/stopped-$name
+        mkdir -p -- "$case_root/snapshot"
+        die() { printf '!! %s\n' "$*" >&2; exit 1; }
+        # The unit is stopped, has no MainPID and an empty cgroup; the captured
+        # agent number (1234) is live again with FX_LIVE_START ('' = not running).
+        systemctl() {
+            case "$*" in
+                'show --property=ActiveState --value celikpanel-agent.service') printf 'inactive\n' ;;
+                'show --property=MainPID --value celikpanel-agent.service') printf '0\n' ;;
+                *) printf 'unexpected systemctl %s\n' "$*" >&2; return 99 ;;
+            esac
+        }
+        coordinator_cgroup_matches_pid() { [[ $1 == celikpanel-agent.service && $2 == 0 ]]; }
+        coordinator_process_start_time() { [[ $1 == 1234 && -n $FX_LIVE_START ]] && printf '%s\n' "$FX_LIVE_START"; }
+        KERNEL_BOOT_ID_FILE=$case_root/boot_id
+        SERVICE_STATES_BOOT_RECORD=service-states.boot-id
+        printf '%s\n' "$FX_BOOT" > "$KERNEL_BOOT_ID_FILE"
+        [[ $FX_RECORD == none ]] || printf '%s\n' "$FX_RECORD" > "$case_root/snapshot/service-states.boot-id"
+        declare -A quiesce_main_pids=([celikpanel-agent.service]=1234) quiesce_start_times=([celikpanel-agent.service]=5678)
+        for fn in load_saved_service_states_boot saved_states_from_earlier_boot verify_quiesce_coordinator_stopped; do
+            eval "$(extract "$update" "$fn")"
+        done
+        load_saved_service_states_boot "$case_root/snapshot/service-states.tsv"
+        verify_quiesce_coordinator_stopped celikpanel-agent.service
+    ) > "$work/out" 2> "$work/err" || status=$?
+    ! grep -Fq 'unexpected systemctl' "$work/err" || fail "update.sh stopped $name: unexpected systemctl call: $(cat "$work/err")"
+    if [[ $want == accept ]]; then
+        [[ $status == 0 ]] || fail "update.sh stopped $name: refused ($status): $(cat "$work/err")"
+    else
+        [[ $status != 0 ]] || fail "update.sh stopped $name: accepted, want refusal"
+    fi
+}
+# The same case table as the finalizers'.
+run_stopped_case restarted accept
+run_stopped_case same-boot refuse FX_BOOT=$saved_boot
+run_stopped_case no-record refuse FX_RECORD=none
+run_stopped_case boot-unreadable refuse FX_BOOT=not-a-boot-id
+run_stopped_case same-boot-other-process accept FX_BOOT=$saved_boot FX_LIVE_START=9999
+run_stopped_case same-boot-not-running accept FX_BOOT=$saved_boot FX_LIVE_START=
+printf 'PASS: update.sh stopped coordinator proof after a restart\n'
 printf 'saved runtime boot rule: PASS\n'

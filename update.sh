@@ -2015,7 +2015,16 @@ verify_quiesce_coordinator_stopped() {
     coordinator_cgroup_matches_pid "$unit" 0 || return 1
     prior_pid=${quiesce_main_pids[$unit]:-0}
     prior_start=${quiesce_start_times[$unit]:-0}
-    if [[ "$prior_pid" -gt 1 ]] && current_start=$(coordinator_process_start_time "$prior_pid" 2>/dev/null); then
+    # The captured process must not still run outside its stopped unit.
+    # After a restart since the identities were saved (the recorded boot is
+    # not the running one) no process of that boot exists, so a live process
+    # with the same number and start time is chance: no check. The identities
+    # and the boot record are written once, by the same process, in the fresh
+    # stage, and every load of the identities follows the load of the ledger
+    # beside them (deploy/test-saved-runtime-boot-rule.sh).
+    # Kayıttan sonra yeniden başlatıldıysa eski süreç olamaz; eşleşme rastlantıdır.
+    if [[ "$prior_pid" -gt 1 ]] && ! saved_states_from_earlier_boot &&
+       current_start=$(coordinator_process_start_time "$prior_pid" 2>/dev/null); then
         [[ "$current_start" != "$prior_start" ]] || return 1
     fi
 }
