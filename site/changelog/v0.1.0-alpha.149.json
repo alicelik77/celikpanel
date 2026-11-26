@@ -1,9 +1,9 @@
 {
   "version": "v0.1.0-alpha.149",
-  "published": "",
+  "published": "2026-11-26",
   "notes": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md",
   "source": {
-    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:5",
+    "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:7",
     "says": "A security and correction release."
   },
   "lines": [
@@ -15,7 +15,7 @@
       },
       "case": "CP-2026-24",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:48",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:50",
         "says": "Now the agent asks the database server itself before it changes an"
       }
     },
@@ -27,7 +27,7 @@
       },
       "case": "CP-2026-30",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:78",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:80",
         "says": "Removing an added database user no longer hands what it made to the"
       }
     },
@@ -39,7 +39,7 @@
       },
       "case": "CP-2026-25",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:93",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:95",
         "says": "The plan's database limits now reach PostgreSQL."
       }
     },
@@ -51,7 +51,7 @@
       },
       "case": "CP-2026-26",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:125",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:127",
         "says": "The move says what is true."
       }
     },
@@ -62,7 +62,7 @@
         "tr": "Panelden başlatılan durmuş bir program sitesinin sınırlarının içinde başlar."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:148",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:154",
         "says": "A stopped program started from the panel starts inside its site's"
       }
     },
@@ -74,7 +74,7 @@
       },
       "case": "CP-2026-27",
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:160",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:166",
         "says": "No update while a site is being moved, and no move while the update"
       }
     },
@@ -85,7 +85,7 @@
         "tr": "MariaDB’nin yerinde çalışan yerel bir MySQL sunucusu yönetilmez: veritabanı hesaplarını sunucunun yöneticisi sunucunun kendisinde değiştirir."
       },
       "source": {
-        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:71",
+        "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:73",
         "says": "A local MySQL server running in MariaDB's place is not managed."
       }
     }

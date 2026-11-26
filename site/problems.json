@@ -511,11 +511,11 @@
       },
       "sources": [
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:35",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:37",
           "says": "Until now the panel's agent acted on the account and the database it"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:48",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:50",
           "says": "Now the agent asks the database server itself before it changes an"
         }
       ]
@@ -535,7 +535,7 @@
           "says": "The plan's database time limits reach a site's MariaDB users that exist"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:93",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:95",
           "says": "The plan's database limits now reach PostgreSQL."
         }
       ]
@@ -559,7 +559,7 @@
           "says": "When a move does not complete, its window may give the system's reason"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:125",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:127",
           "says": "The move says what is true."
         }
       ]
@@ -579,11 +579,11 @@
           "says": "While a site is being moved into its limits, do not start an update of"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:160",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:166",
           "says": "No update while a site is being moved, and no move while the update"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:173",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:179",
           "says": "The update now gives the panel's agent about a minute to start"
         }
       ]
@@ -603,7 +603,7 @@
           "says": "On Ubuntu 24.04 the site's card may not say that the site's programs"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:152",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:158",
           "says": "The card says when the site's programs reached their process limit on"
         }
       ]
@@ -623,7 +623,7 @@
           "says": "If the panel's agent cannot record a limit change, Problems now may say"
         },
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:155",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:161",
           "says": "The line about limits that did not reach every site says which sites"
         }
       ]
@@ -639,7 +639,7 @@
       },
       "sources": [
         {
-          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:78",
+          "cite": "docs/RELEASE-NOTES-v0.1.0-alpha.149.md:80",
           "says": "Removing an added database user no longer hands what it made to the"
         }
       ]
