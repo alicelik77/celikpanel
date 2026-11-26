@@ -251,8 +251,8 @@ func TestARefusalIsReadOnlyFromTheClientsOwnErrorLine(t *testing.T) {
 	for output, want := range map[string][2]string{
 		"BEGIN\nDO\nERROR:  celikpanel-refused:privileged:boss\nCONTEXT:  PL/pgSQL function inline_code_block line 5 at RAISE\n": {"privileged", "boss"},
 		"psql:<stdin>:4: ERROR:  celikpanel-refused:owns_objects:shop_x\n":                                                       {"owns_objects", "shop_x"},
-		"ERROR:  celikpanel-refused:absent\n":                         {"absent", ""},
-		"ERROR 1644 (45000) at line 2: celikpanel-refused:privileged": {"privileged", ""},
+		"ERROR:  celikpanel-refused:absent\n":                                                                                    {"absent", ""},
+		"ERROR 1644 (45000) at line 2: celikpanel-refused:privileged":                                                            {"privileged", ""},
 		// Forged: the marker inside an object's name that an error quotes.
 		"ERROR:  cannot drop function \"celikpanel-refused:privileged:postgres\"() because other objects depend on it\n": {"", ""},
 		"ERROR 1142 (42000) at line 1: SELECT command denied for table 'celikpanel-refused:privileged'":                  {"", ""},
