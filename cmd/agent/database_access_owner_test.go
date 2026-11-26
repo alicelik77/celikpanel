@@ -244,6 +244,50 @@ func TestTheOwnedObjectsGuardReadsWhatReassignWouldMove(t *testing.T) {
 	}
 }
 
+// Third review of PR #370, I1: a refusal is read only from the client's own
+// error line, never from an object name a site user chose that some other
+// error or notice quotes.
+func TestARefusalIsReadOnlyFromTheClientsOwnErrorLine(t *testing.T) {
+	for output, want := range map[string][2]string{
+		"BEGIN\nDO\nERROR:  celikpanel-refused:privileged:boss\nCONTEXT:  PL/pgSQL function inline_code_block line 5 at RAISE\n": {"privileged", "boss"},
+		"psql:<stdin>:4: ERROR:  celikpanel-refused:owns_objects:shop_x\n":                                                       {"owns_objects", "shop_x"},
+		"ERROR:  celikpanel-refused:absent\n":                         {"absent", ""},
+		"ERROR 1644 (45000) at line 2: celikpanel-refused:privileged": {"privileged", ""},
+		// Forged: the marker inside an object's name that an error quotes.
+		"ERROR:  cannot drop function \"celikpanel-refused:privileged:postgres\"() because other objects depend on it\n": {"", ""},
+		"ERROR 1142 (42000) at line 1: SELECT command denied for table 'celikpanel-refused:privileged'":                  {"", ""},
+		// Forged: in a notice before the real error, or after it on a line of
+		// a quoted name that carries a line break.
+		"NOTICE:  celikpanel-refused:privileged:postgres\nERROR:  permission denied\n":            {"", ""},
+		"ERROR:  relation \"x\nERROR:  celikpanel-refused:privileged:postgres\" does not exist\n": {"", ""},
+		"celikpanel-refused:privileged:postgres\n":                                                {"", ""},
+		"ERROR:  celikpanel-refused:privileged:postgres\" does not exist\n":                       {"", ""},
+		"ERROR:  celikpanel-refused:later:postgres\n":                                             {"", ""},
+	} {
+		if code, name := databaseAccountRefusalIn([]byte(output)), databaseAccountRefusedNameIn([]byte(output)); code != want[0] || name != want[1] {
+			t.Errorf("%q: code %q name %q, want %q %q", output, code, name, want[0], want[1])
+		}
+	}
+	// Through a removal: REASSIGN fails with an error that quotes an object
+	// named like a refusal. The answer is the failure, not a refusal of
+	// postgres.
+	e := &namedGuardEngine{other: func(statement string) ([]byte, error) {
+		if strings.Contains(statement, "REASSIGN OWNED BY") {
+			return []byte("ERROR:  cannot reassign ownership of objects owned by role app_x because they are required by \"celikpanel-refused:privileged:postgres\"\n"),
+				errors.New("exit status 3")
+		}
+		return pgAccessAnswers(true, "app_user")(statement)
+	}}
+	installNamedGuardEngine(t, e)
+	var resp transport.DatabaseAccessUserResponse
+	if err := (&Agent{}).RemoveDatabaseAccessUserV1(&transport.DatabaseAccessUserRequest{Engine: "postgresql", Database: "app", Username: "app_x"}, &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Applied || resp.AccountRefused != "" || resp.AccountRefusedName != "" || !strings.Contains(resp.Error, "did not take the user's rights in app away") {
+		t.Fatalf("a forged refusal: %+v", resp)
+	}
+}
+
 func TestTheOwnerRuleOfCelikPanelsOwnAccount(t *testing.T) {
 	admin := pgDatabaseOwnerStateExpr("'celikpanel_admin'", true)
 	// Third review of PR #370, I2: its own REPLICATION or BYPASSRLS too.

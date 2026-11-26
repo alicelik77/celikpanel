@@ -170,16 +170,58 @@ func pgGuardBlockOf(stateExpr, literal string) string {
 		"END\n$celikpanel_account_guard$;"
 }
 
-// refusedNameRe reads the role a guard named in its refusal.
-var refusedNameRe = regexp.MustCompile(`celikpanel-refused:[a-z_]+:([A-Za-z_][A-Za-z0-9_]*)`)
+// A guard's refusal is read only from the client's own error line (third
+// review of PR #370, I1): the first line of the output that is an error
+// line, and only when the whole line is the refusal - psql's
+// "ERROR:  celikpanel-refused:<code>[:<name>]" (with psql's
+// "psql:<file>:<line>: " locus when it reads a file), or MariaDB's SIGNAL
+// "ERROR 1644 (45000) at line <n>: celikpanel-refused:<code>". Before, the
+// marker was looked for anywhere in the output, so a site user could name
+// an object "celikpanel-refused:privileged:postgres" and, when a later
+// statement's error quoted it, turn the answer into a refusal naming
+// another account. Both clients stop at the first error (ON_ERROR_STOP,
+// MariaDB without --force), so the first error line is the one that ended
+// the run; an identifier with a line break in it can only follow it.
+var (
+	databaseErrorLineRe   = regexp.MustCompile(`^(?:psql:[^ ]*:[0-9]+: )?ERROR[: ]`)
+	databaseRefusalLineRe = regexp.MustCompile(`^(?:psql:[^ ]*:[0-9]+: )?(?:ERROR:[ \t]+|ERROR 1644 \(45000\)(?: at line [0-9]+)?: )` +
+		`celikpanel-refused:([a-z_]+)(?::([A-Za-z_][A-Za-z0-9_]*))?[ \t]*$`)
+)
+
+// databaseAccountRefusalLine answers the code and the name (or "") of the
+// refusal on the output's first error line; "" and "" when that line is no
+// refusal or there is none.
+func databaseAccountRefusalLine(output []byte) (code, name string) {
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimRight(line, "\r")
+		if !databaseErrorLineRe.MatchString(line) {
+			continue
+		}
+		if match := databaseRefusalLineRe.FindStringSubmatch(line); match != nil {
+			return match[1], match[2]
+		}
+		return "", ""
+	}
+	return "", ""
+}
 
 // databaseAccountRefusedNameIn answers the role a write-time refusal names,
 // "" when it names none.
 func databaseAccountRefusedNameIn(output []byte) string {
-	if match := refusedNameRe.FindSubmatch(output); match != nil {
-		return string(match[1])
+	if code, name := databaseAccountRefusalLine(output); databaseAccountGuardCode(code) {
+		return name
 	}
 	return ""
+}
+
+// databaseAccountGuardCode: a code the write-time guards raise.
+func databaseAccountGuardCode(code string) bool {
+	switch code {
+	case transport.DatabaseAccountRefusedAbsent, transport.DatabaseAccountRefusedPrivileged, transport.DatabaseAccountRefusedMember,
+		transport.DatabaseAccountRefusedOwnsObjects:
+		return true
+	}
+	return false
 }
 
 // databaseAccountRefusedName answers the account a refusal error is about.
@@ -374,14 +416,12 @@ func mysqlAccountLiteral(username string) (string, error) {
 
 // --- Both ------------------------------------------------------------------
 
-// databaseAccountRefusalIn reads a guard's refusal from a client's output.
+// databaseAccountRefusalIn reads a guard's refusal from a client's output:
+// the code on its first error line (databaseAccountRefusalLine), "" for
+// none or a code no guard raises.
 func databaseAccountRefusalIn(output []byte) string {
-	text := string(output)
-	for _, code := range []string{transport.DatabaseAccountRefusedAbsent, transport.DatabaseAccountRefusedPrivileged, transport.DatabaseAccountRefusedMember,
-		transport.DatabaseAccountRefusedOwnsObjects} {
-		if strings.Contains(text, "celikpanel-refused:"+code) {
-			return code
-		}
+	if code, _ := databaseAccountRefusalLine(output); databaseAccountGuardCode(code) {
+		return code
 	}
 	return ""
 }
