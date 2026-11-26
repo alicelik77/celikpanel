@@ -206,7 +206,9 @@ function updaterReason(message: string): string {
 // and scheduler_recovery_exit; the installed Agent drops the Turkish line's
 // non-ASCII letters, so only its ASCII words are matched). No such line, as
 // when the updater stopped before its exit handler (alpha.149 lab: the
-// foundation monotonic preflight) or was killed, says nothing about it.
+// foundation monotonic preflight) or was killed, says nothing about it; for a
+// killed updater the Agent's worker adds the summary with
+// state=recovery_required while a release transaction marker exists.
 // Güncelleyicinin son satırı işlemin başladığını söylüyorsa kurtarma gelebilir.
 const UPDATER_TRANSACTION_BEGAN = /(?:^|: )!! (?:CELIKPANEL_UPDATE_FAILURE code=[a-z_]{1,64} state=recovery_required |Pending update finalization failed; marker preserved|Bekleyen [^;]*; marker korundu ve iki koordinat|Runtime completion (?:is exact and|remains) durable;|Certbot scheduler restoration was verified, but durable marker cleanup|Scheduler recovery evidence is missing or changed;)/;
 function updaterTransactionBegan(message: string): boolean {

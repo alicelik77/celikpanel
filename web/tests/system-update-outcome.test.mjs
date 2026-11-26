@@ -529,9 +529,13 @@ test('a failed update no recovery took over becomes the owner\'s after the limit
     assert.equal(at(60_000), false);
     assert.equal(at(120_000), true);
     assert.equal(at(121_000), true);
-    // No server line at all (a killed updater, or no message): closable at the limit.
+    // No server line at all (no message, or an updater killed while no
+    // release transaction marker existed): closable at the limit.
     assert.equal(at(60_000, ''), false);
     assert.equal(at(120_000, ''), true);
+    const killedOutside = 'reviewed updater failed: signal: killed: Checking the candidate release';
+    assert.equal(at(60_000, killedOutside), false);
+    assert.equal(at(120_000, killedOutside), true);
     // The updater said nothing changed: as before, closable at the limit.
     const unchanged = 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=unchanged reason=cannot read the candidate manifest detail=';
     assert.equal(at(60_000, unchanged), false);
@@ -541,6 +545,11 @@ test('a failed update no recovery took over becomes the owner\'s after the limit
     // ten minutes (its recovery may still start).
     const began = 'reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped detail=';
     for (const message of [began, summary,
+        // The Agent's worker for an updater killed (no last "!! " line) while
+        // a release transaction marker existed, or could not be read
+        // (cmd/agent system_update_worker_linux.go).
+        'reviewed updater failed: signal: killed: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=the updater stopped without its own summary while its release transaction was open detail=Stopping celikpanel services',
+        'reviewed updater failed: signal: killed: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=the updater stopped without its own summary and its release transaction could not be checked detail=Stopping celikpanel services',
         // The fixed last lines of the exit handlers that finish an earlier
         // transaction (no summary line follows them); the Turkish one as the
         // installed Agent passes it (non-ASCII letters dropped) and whole.
