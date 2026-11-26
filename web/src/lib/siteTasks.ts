@@ -65,10 +65,24 @@ export interface TasksPlacement {
     unknown?: boolean;
 }
 
-/** The server owner's two steps by hand for a kept tasks move record that Try again cannot settle (timers off first). */
+/**
+ * The server owner's way back into cron by hand for a kept tasks move record
+ * that Try again cannot settle (alpha.150 fix round, F1; run for real on
+ * systemd 257 with throw-away units): each step runs only if the one before
+ * worked. The site's timers are listed by name (`systemctl disable` takes no
+ * pattern) and switched off first; then the account is let into cron for
+ * the one `crontab` command and CelikPanel's /etc/cron.allow is put back
+ * byte for byte (also when the install fails), so it stays CelikPanel's and
+ * no other account is let in. The page then asks for Try again, which finds
+ * the crontab back and finishes the put-back.
+ */
 export function unresolvedSteps(u: { tasks_site?: number; tasks_account?: string }): string {
     if (!u.tasks_account || !u.tasks_site) return '';
-    return `sudo systemctl disable --now 'celikcron-${u.tasks_site}-*.timer' ; sudo crontab -u ${u.tasks_account} /etc/celikpanel-cron/${u.tasks_site}.crontab`;
+    const site = u.tasks_site;
+    const account = u.tasks_account;
+    return `sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-${site}-*.timer' | awk '{print $1}')`
+        + ` && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo ${account} | sudo tee -a /etc/cron.allow >/dev/null`
+        + ` && { sudo crontab -u ${account} /etc/celikpanel-cron/${site}.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }`;
 }
 
 export function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {

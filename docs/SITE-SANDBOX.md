@@ -1365,8 +1365,8 @@ version 3 with a `tasks` part; a programs' move writes version 2): the crontab's
 | source_written | the task file holds the crontab | put back (below) |
 | units_written | every timer and service written and checked by systemd, none started | put back |
 | cron_closed | `/etc/cron.allow` leaves the account out (checked), and every `crontab` process of its uid started before that is ended (it passed crontab's check before and could still install a file); when those processes cannot be listed, the move fails here and is put back, nothing removed (second fix round) | put back |
-| crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | finished: the timers switched on ("moved"). If they cannot be, the record stays for Try again and is not put back there (that would take more calls than the start makes); the timers are switched off again in one call - always, also when the site's limits file looks missing (an enable sent before the Agent stopped can have switched some on) - so the site's tasks are known not to run until Try again |
-| enabled | the timers enabled and started | finished ("moved") |
+| crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | the account's spool is read first (below); with no crontab: finished, the timers switched on ("moved"). If they cannot be, the record stays for Try again and is not put back there (that would take more calls than the start makes); the timers are switched off again in one call - always, also when the site's limits file looks missing (an enable sent before the Agent stopped can have switched some on) - so the site's tasks are known not to run until Try again |
+| enabled | the timers enabled and started | the account's spool is read first (below); with no crontab: finished ("moved") |
 
 There is no moment in which the site's own code can put a crontab back: the account leaves
 cron before its crontab goes. The crontab must still be the one recorded when it goes: a
@@ -1398,9 +1398,38 @@ and undo keep the same one record as the programs' move (§8.4). While it is kep
   Try again; running as timers inside the limits; or running from cron with switched-off
   timer files left. Only when the Agent could not tell does it say that they may not run.
 - **The site's card** says the same, the step the record reached, **Try again**, and the
-  server owner's two commands by hand should Try again not settle it.
+  server owner's way back into cron by hand should Try again not settle it (below).
 - **Try again** settles the record: it finishes the step or puts the move back, within the
   press's deadline. The Agent's start tries too, within its bound (below).
+
+**A crontab while the record is kept (alpha.150 fix round).** At `crontab_emptied` and
+`enabled` the account's spool is read first, at the Agent's start and at Try again (a file
+read, not a systemd call). A crontab there - the server owner put the tasks back by hand -
+or a spool that cannot be read **never gets the timers switched on beside it**: they are
+switched off in one call and the record stays; the card and Problems now say the tasks run
+from cron (or, when the spool cannot be read, that it is not known). At Try again a crontab
+that holds the recorded tasks - as `crontab -l` printed them before the move, or the task file
+installed whole - finishes the put-back: the timers and their files and the task file go, and
+cron lets the account in again. A crontab that holds anything else is left as it is and the
+record stays: the server owner compares it with the task file and keeps one.
+
+**The way back into cron by hand** (the card gives it with the site's id and account, should
+Try again not settle the record; run for real on systemd 257 with throw-away units; each step
+only if the one before worked):
+
+```sh
+sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<id>-*.timer' | awk '{print $1}') && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo <account> | sudo tee -a /etc/cron.allow >/dev/null && { sudo crontab -u <account> /etc/celikpanel-cron/<id>.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }
+```
+
+`systemctl disable` takes no pattern (`'celikcron-<id>-*.timer'` is refused as a unit name),
+so the site's timers are listed by name; with none listed the first step fails and nothing
+else runs. `crontab -u` is refused for an account `/etc/cron.allow` leaves out, also for root,
+so the account is let in for that one command, and the file is put back byte for byte
+afterwards - also when the install failed - so CelikPanel's file stays CelikPanel's and no
+other account is let in. Without `/etc/cron.allow` (an account `/etc/cron.deny` names) the
+server owner removes the name there instead. Then the administrator presses **Try again**: it
+finds the crontab back, removes the timer files left and the record, and lets the account use
+cron again, so sites can be moved again.
 
 **The Agent's start is bounded.** A tasks record is settled at the Agent's start with at most
 **four systemd calls** under one 15-second bound (the slice's reading, the timers on or off,
@@ -1458,8 +1487,9 @@ and Problems now say how the tasks run (not running, or from cron).
   put-back that left a unit file the owner changed), the tasks run from that crontab: the
   rebuild and its preview are refused (it would run every task twice), and the screen says
   that the tasks run from the crontab again and names the timer files left behind, which the
-  server owner removes (`systemctl disable --now 'celikcron-<id>-*.timer'`, delete the files,
-  `systemctl daemon-reload`). The rebuild writes units and reloads systemd, so it is refused
+  server owner removes (`sudo systemctl disable --now $(systemctl list-unit-files --no-legend
+  'celikcron-<id>-*.timer' | awk '{print $1}') && sudo rm -f <the files named> && sudo
+  systemctl daemon-reload`; the screen's answer names the files). The rebuild writes units and reloads systemd, so it is refused
   while the panel's update runs or a move runs, and the update while it runs (§9.3).
 - **Natively, in the units.** A changed `celikcron-*` unit is kept (D-031) and the screen
   names it. A timer the owner stopped or disabled (`systemctl disable --now`) stays so: a
@@ -1482,11 +1512,13 @@ and Problems now say how the tasks run (not running, or from cron).
   calls `/usr/lib/celikpanel-sandbox/sandbox-task-helper` first (the SMTP block, §3), so
   removing CelikPanel's files stops the tasks too: the owner who removes them puts the site
   back into cron first. To put a site back into cron by hand, **timers off first, then the
-  crontab** (never both on): `systemctl disable --now 'celikcron-<id>-*.timer'`, then, once
-  `/etc/cron.allow` lets the account in (add its name, or delete the file),
-  `crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (the first six `#|` lines and the
-  header line are CelikPanel's and may be deleted first), then remove the units, the folder
-  and the task file, and `systemctl daemon-reload`.
+  crontab** (never both on), each step only if the one before worked:
+  `sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<id>-*.timer'
+  | awk '{print $1}') && echo <account> | sudo tee -a /etc/cron.allow >/dev/null && sudo
+  crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (`/etc/cron.allow` must let the
+  account in for `crontab -u` to work, also for root; the first six `#|` lines and the header
+  line are CelikPanel's comments), then remove the units, the folder and the task file, and
+  `systemctl daemon-reload`.
 - **What stays after the panel is removed.** The timers of moved sites, held ones included
   (they stay held while the site's limits file is missing, §9.2); the SMTP block with its
   submission exception as last decided (§3); `/etc/cron.allow`, which keeps moved accounts
@@ -1524,11 +1556,12 @@ and Problems now say how the tasks run (not running, or from cron).
     nothing says any more that the site's move was not finished; a move stopped after the
     crontab was emptied leaves that site's tasks not running.
   - **By hand, per moved site** (as root; `<id>` is the site's id, `<account>` its account):
-    timers off first, then the crontab, never both on:
-    `systemctl disable --now 'celikcron-<id>-*.timer'`, then add `<account>` to
-    `/etc/cron.allow` (or delete the file), then
-    `crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (its first header line and six
-    `#|` lines are CelikPanel's comments). The recommended order is still to put every site's
+    timers off first, then the crontab, never both on, each step only if the one before
+    worked: `sudo systemctl disable --now $(systemctl list-unit-files --no-legend
+    'celikcron-<id>-*.timer' | awk '{print $1}') && echo <account> | sudo tee -a /etc/cron.allow
+    >/dev/null && sudo crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (its first
+    header line and six `#|` lines are CelikPanel's comments; without `/etc/cron.allow`, the
+    owner removes the account from `/etc/cron.deny` instead). The recommended order is still to put every site's
     tasks back into cron on this release first ("Put the tasks back into cron" on each site's
     Overview).
 

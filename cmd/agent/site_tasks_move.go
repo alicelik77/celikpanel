@@ -52,8 +52,14 @@ import (
 //	planned                                   nothing to do ("not_tried")
 //	source_written, units_written, cron_closed put back (below)
 //	crontab_emptied                           finished: the timers are enabled ("moved"); if
-//	                                          that fails, put back
+//	                                          that fails, kept (the start) or put back (Try again)
 //	enabled                                   finished ("moved")
+//
+// alpha.150 fix round (F1): at crontab_emptied and enabled the account's
+// spool is read first. A crontab there (or a spool that cannot be read)
+// never gets timers beside it: the timers are switched off and the record
+// stays with how the tasks run (cron); at Try again a crontab that holds the
+// recorded tasks (put back by hand) finishes the put-back.
 //
 // Putting back disables the move's timers, lets the account use cron again
 // and writes the recorded crontab back when it is gone, checks it, and only
@@ -927,38 +933,42 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 		}
 	case j.Step == siteTasksStepSourceWritten || j.Step == siteTasksStepUnitsWritten || j.Step == siteTasksStepCronClosed:
 		putBack()
-	case j.Step == siteTasksStepCrontabEmptied:
-		outcome = transport.SiteTasksMoved
-		if err := enableSiteTaskTimers(journal.SiteID, j, call); err != nil {
-			if atStart {
-				// A put-back would take more calls than the start makes: the
-				// record stays, and Try again (or the next move's attempt)
-				// finishes or puts it back. alpha.150: an enable that was sent
-				// and failed can have switched some timers on; they are all
-				// switched off again in one call (at most the fourth), so
-				// that the state is known: no task runs until Try again.
-				log.Printf("site tasks: the interrupted move of site %d could not be finished at the Agent's start (%v); its record stays for Try again", journal.SiteID, err)
-				// Fix round (F3): always, also when the site's limits look
-				// missing - an enable sent before the Agent stopped can have
-				// switched some timers on.
-				outcome, done, running = transport.SiteTasksUnknown, false, transport.SiteTasksRunNone
-				if offErr := disableSiteTaskTimers(j, call); offErr != nil {
-					log.Printf("site tasks: the timers of site %d could not be switched off again: %v", journal.SiteID, offErr)
-					running = ""
-				}
-				if !siteTasksSpoolEmpty(j.Account) {
-					running = ""
-				}
-			} else {
-				log.Printf("site tasks: the interrupted move of site %d could not be finished (%v); it is put back", journal.SiteID, err)
+	case j.Step == siteTasksStepCrontabEmptied || j.Step == siteTasksStepEnabled:
+		// alpha.150 fix round (F1): the account's spool is read first (a file
+		// read, no systemd call). Timers are never switched on beside a
+		// crontab, nor while the spool cannot be read: the server owner can
+		// have put the tasks back into cron by hand (the card's steps).
+		files, spoolErr := accountSpoolFiles(j.Account)
+		switch {
+		case spoolErr == nil && len(files) == 0 && j.Step == siteTasksStepEnabled:
+			outcome = transport.SiteTasksMoved
+			refreshCronAllow()
+		case spoolErr == nil && len(files) == 0:
+			var now bool
+			if outcome, done, running, now = recoverSiteTasksEmptied(journal.SiteID, j, call, atStart); now {
 				putBack()
 			}
-		} else {
-			noteCronClosed(j.Account, time.Now())
+		case spoolErr == nil && !atStart && spoolHoldsRecorded(files, j.Crontab):
+			// The crontab is back as recorded (put back by hand, the card's
+			// steps): Try again finishes the put-back - the timers off, their
+			// files and the task file removed, cron open for the account.
+			log.Printf("site tasks: the crontab of %s is back (site %d); the move is put back", j.Account, journal.SiteID)
+			putBack()
+		default:
+			// A crontab exists (at the start, or one that is not the recorded
+			// one), or the spool cannot be read: the timers are switched off
+			// in one call and the record stays; the card says how the tasks
+			// run and what the administrator does.
+			outcome, done, running = transport.SiteTasksUnknown, false, ""
+			offErr := disableSiteTaskTimers(j, call)
+			if offErr != nil {
+				log.Printf("site tasks: the timers of site %d could not be switched off beside its crontab: %v", journal.SiteID, offErr)
+			}
+			if spoolErr == nil && offErr == nil {
+				running = transport.SiteTasksRunCron
+			}
+			log.Printf("site tasks: site %d: a crontab exists for %s, or its spool cannot be read (%v); its timers are not switched on and the record stays", journal.SiteID, j.Account, spoolErr)
 		}
-	default: // enabled
-		outcome = transport.SiteTasksMoved
-		refreshCronAllow()
 	}
 	record := recordSiteTasksOutcome(journal.SiteID, j, outcome, !done, running)
 	if !done {
@@ -970,6 +980,36 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 		log.Printf("site tasks: remove the move's record: %v", err)
 	}
 	return &siteMoveRecovered{siteID: journal.SiteID, record: record}
+}
+
+// recoverSiteTasksEmptied finishes a move stopped at crontab_emptied whose
+// account has no crontab (read just before): the timers switched on. When
+// that fails, at the Agent's start the record stays (a put-back would take
+// more calls than the start makes) and the timers are switched off again in
+// one call - always, also when the site's limits look missing (alpha.150 fix
+// round, F3: an enable sent before the Agent stopped can have switched some
+// on) - so that the state is known: no task runs until Try again. At Try
+// again it is put back (putBackNow: the caller does that).
+func recoverSiteTasksEmptied(siteID int, j *siteTasksJournal, call siteTaskCall, atStart bool) (outcome string, done bool, running string, putBackNow bool) {
+	err := enableSiteTaskTimers(siteID, j, call)
+	if err == nil {
+		noteCronClosed(j.Account, time.Now())
+		return transport.SiteTasksMoved, true, "", false
+	}
+	if !atStart {
+		log.Printf("site tasks: the interrupted move of site %d could not be finished (%v); it is put back", siteID, err)
+		return "", true, "", true
+	}
+	log.Printf("site tasks: the interrupted move of site %d could not be finished at the Agent's start (%v); its record stays for Try again", siteID, err)
+	running = transport.SiteTasksRunNone
+	if offErr := disableSiteTaskTimers(j, call); offErr != nil {
+		log.Printf("site tasks: the timers of site %d could not be switched off again: %v", siteID, offErr)
+		running = ""
+	}
+	if !siteTasksSpoolEmpty(j.Account) {
+		running = ""
+	}
+	return transport.SiteTasksUnknown, false, running, false
 }
 
 // spoolHoldsRecorded: the account's one spool file holds the record's
@@ -1359,15 +1399,15 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 			return nil
 		}
 		resp.LeftUnits = siteTaskUnitPaths(target.SiteID)
-		resp.Error = "the account " + username + " has a crontab (" + files[0].Path + "), so the site's tasks run from it again; rebuilding the task file would switch the timers on beside it and run every task twice. Nothing was changed. The server owner removes the site's timer files (" +
-			strings.Join(resp.LeftUnits, ", ") + ": sudo systemctl disable --now 'celikcron-" + strconv.Itoa(target.SiteID) + "-*.timer', then delete them and run sudo systemctl daemon-reload); the tasks keep running from the crontab"
+		resp.Error = "the account " + username + " has a crontab (" + files[0].Path + "), so the site's tasks run from it again; rebuilding the task file would switch the timers on beside it and run every task twice. Nothing was changed. The server owner removes the site's timer files: " +
+			siteTimersOffCommand(target.SiteID) + " && sudo rm -f " + strings.Join(resp.LeftUnits, " ") + " && sudo systemctl daemon-reload; the tasks keep running from the crontab"
 		return nil
 	}
 	path := siteTaskRenderedPath(target.SiteID)
 	info, statErr := os.Stat(path)
 	raw, readErr := os.ReadFile(path)
 	if statErr != nil || readErr != nil || len(raw) > 1<<20 {
-		resp.Error = "no copy of what CelikPanel last made the timers from is kept for this site (" + path + "), so the file cannot be rebuilt here; the server owner puts the file back from a backup, or removes the site's timers (systemctl disable --now 'celikcron-" + strconv.Itoa(target.SiteID) + "-*.timer')"
+		resp.Error = "no copy of what CelikPanel last made the timers from is kept for this site (" + path + "), so the file cannot be rebuilt here; the server owner puts the file back from a backup, or switches the site's timers off (" + siteTimersOffCommand(target.SiteID) + ")"
 		return nil
 	}
 	resp.Crontab = string(raw)
@@ -1387,6 +1427,15 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 	}
 	resp.Outcome = transport.SiteTaskSourceRebuilt
 	return nil
+}
+
+// siteTimersOffCommand is the server owner's command that switches every
+// timer of a site off (alpha.150 fix round, F1): `systemctl disable` takes
+// no pattern, so the site's timers are listed by name first; with none
+// listed it fails, and a command joined after it with && does not run. Run
+// for real on systemd 257 with throw-away units.
+func siteTimersOffCommand(siteID int) string {
+	return "sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-" + strconv.Itoa(siteID) + "-*.timer' | awk '{print $1}')"
 }
 
 // movedSiteTaskSites are the moved sites (a task file, or timers whose file

@@ -397,8 +397,11 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                         // S4 R2b (alpha.150): the kept record is of the site's scheduled tasks.
                         // alpha.150: how the tasks run now, when the agent knows it, comes first.
                         <p data-site-limits-kept-tasks={view.move_interrupted.tasks_step ?? ''} data-site-limits-kept-tasks-running={view.move_interrupted.tasks_running ?? ''}>
+                            {/* alpha.150 fix round (F1): with a crontab there, the steps by hand would overwrite it: Try again decides. */}
                             {[keptTasksRunningKey(view.move_interrupted.tasks_running) ? t(keptTasksRunningKey(view.move_interrupted.tasks_running) as TranslationKey) : '',
-                                t('slim.tasks.unresolved', { step: view.move_interrupted.tasks_step ?? '', steps: unresolvedSteps(view.move_interrupted) })].filter(Boolean).join(' ')}
+                                view.move_interrupted.tasks_running === 'cron'
+                                    ? t('slim.tasks.cronBack', { site: view.move_interrupted.tasks_site ?? '' })
+                                    : t('slim.tasks.unresolved', { step: view.move_interrupted.tasks_step ?? '', steps: unresolvedSteps(view.move_interrupted) })].filter(Boolean).join(' ')}
                         </p>
                     )}
                     {kept.map((k) => (

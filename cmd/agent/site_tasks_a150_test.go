@@ -226,6 +226,29 @@ func TestTheAgentsStartWithATasksRecordMakesAtMostFourSystemdCalls(t *testing.T)
 			slice, _ := siteSlicePathOf(taskTestSite)
 			_ = os.Remove(slice)
 		}},
+		// Fix round F1: the crontab is back (put back by hand, the card's
+		// steps, with or without the timers switched off first), or the spool
+		// cannot be read: no timer is switched on beside it.
+		tc{name: "emptied_crontab_back_by_hand", kept: true, running: transport.SiteTasksRunCron, prepare: func(t *testing.T, host *taskTestHost) {
+			stoppedMove(t, host, rebootTaskCrontab, siteTasksStepCrontabEmptied)
+			host.putBackByHand(t, true)
+		}},
+		tc{name: "emptied_crontab_back_timers_left_on", kept: true, running: transport.SiteTasksRunCron, prepare: func(t *testing.T, host *taskTestHost) {
+			stoppedMove(t, host, rebootTaskCrontab, "act:"+siteTasksStepEnabled)
+			host.putBackByHand(t, false)
+		}},
+		tc{name: "enabled_crontab_back_by_hand", kept: true, running: transport.SiteTasksRunCron, prepare: func(t *testing.T, host *taskTestHost) {
+			stoppedMove(t, host, rebootTaskCrontab, siteTasksStepEnabled)
+			host.putBackByHand(t, false)
+		}},
+		tc{name: "emptied_spool_unreadable", kept: true, running: "", prepare: func(t *testing.T, host *taskTestHost) {
+			stoppedMove(t, host, rebootTaskCrontab, siteTasksStepCrontabEmptied)
+			unreadableSpool(t)
+		}},
+		tc{name: "enabled_spool_unreadable", kept: true, running: "", prepare: func(t *testing.T, host *taskTestHost) {
+			stoppedMove(t, host, rebootTaskCrontab, siteTasksStepEnabled)
+			unreadableSpool(t)
+		}},
 	)
 	for _, c := range cases {
 		t.Run(strings.ReplaceAll(c.name, ":", "_"), func(t *testing.T) {

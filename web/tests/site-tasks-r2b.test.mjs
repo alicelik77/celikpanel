@@ -201,9 +201,20 @@ test('second fix round: what the screens say about a skipped run, a timer not on
   assert.doesNotMatch(enSiteTasksScreens['stasks.run.skipped'], /fail/i, 'a skipped run is not called failed');
   assert.match(enSiteTasksScreens['stasks.differences'], /sendmail/, 'the differences name the server\'s sendmail');
   assert.equal(decodeTasksPlacement({ moved: true }).moved, true);
-  // alpha.150: a kept tasks record is on the card's kept block, with the two steps by hand.
+  // alpha.150: a kept tasks record is on the card's kept block, with the steps by hand
+  // (fix round F1: the exact line run on systemd 257 with throw-away units; the timers listed
+  // by name, never a pattern; joined with && so a failed step stops the rest; cron.allow put
+  // back byte for byte also when the install fails).
   assert.equal(unresolvedSteps({ tasks_site: 7, tasks_account: 'shop_test' }),
-    "sudo systemctl disable --now 'celikcron-7-*.timer' ; sudo crontab -u shop_test /etc/celikpanel-cron/7.crontab");
+    "sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-7-*.timer' | awk '{print $1}')"
+    + ' && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo shop_test | sudo tee -a /etc/cron.allow >/dev/null'
+    + ' && { sudo crontab -u shop_test /etc/celikpanel-cron/7.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }');
+  assert.doesNotMatch(unresolvedSteps({ tasks_site: 7, tasks_account: 'shop_test' }), /disable --now '|;\s*sudo crontab/, 'no pattern for disable, no step after a failed one');
+  for (const words of [enSiteTasksScreens, trSiteTasksScreens]) {
+    assert.match(words['slim.tasks.unresolved'], /\{steps\}[^]*(Try again|Tekrar dene)/, 'the last words after the steps ask for Try again');
+    assert.ok(words['slim.tasks.cronBack'] && words['slim.tasks.cronBack'].includes('{site}'));
+  }
+  assert.match(read('../src/components/SiteLimitsCard.tsx'), /tasks_running === 'cron'\s*\?\s*t\('slim\.tasks\.cronBack'/, 'with a crontab there the card gives no steps that would overwrite it');
   const cron = read('../src/components/DomainCronManager.tsx');
   assert.match(cron, /'crontab_again'/);
   assert.match(cron, /preview\.refusal === 'crontab_exists'/, 'the rebuild is refused while the account has a crontab');
