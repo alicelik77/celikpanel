@@ -993,9 +993,10 @@ tanımadığı sınır anahtarlarını korur ve o dilimin dosyası durdukça bir
 
 ## 9. Sitenin zamanlanmış görevleri kendi sınırları içinde (S4 R2b)
 
-*22 Kasım 2026 · Kaynakta var ve bileşen testleriyle denendi; aşağıdaki gerçekler geçici
-Debian 13 ve Ubuntu 24.04 makinelerinde ölçüldü; panelin iki sistemdeki laboratuvar turu açık
-(adımlar çekme isteğinde).*
+*22 Kasım 2026; 26 Kasım 2026'da alpha.149'un üstüne getirildi (programların taşımasındaki gibi
+tek taşıma kaydı, güncelleme kapısı ve her basışa tek süre, §8.4) · Kaynakta var ve bileşen
+testleriyle denendi; aşağıdaki gerçekler geçici Debian 13 ve Ubuntu 24.04 makinelerinde ölçüldü;
+panelin iki sistemdeki laboratuvar turu açık (adımlar çekme isteğinde).*
 
 Taşınmış bir sitenin zamanlanmış görevleri artık cron ile çalışmaz. Etkin her görev bir
 systemd zamanlayıcı ve hizmet çiftidir: `celikcron-<site kimliği>-<n>.timer` ve `.service`.
@@ -1068,7 +1069,11 @@ izlemesi böyle bir programı komut konumunda (komutun başında ya da `;`, `&&`
 planda başlattığı bir süreç (`nohup worker &`, `setsid ./queue &`) birimin cgroup'unda kalır, yani
 sitenin diliminde (bellek, süreç ve işlemci sınırları) ve SMTP engelinin altında: yardımcının
 `egress-remove` adımı, içinde kendisinden başka bir süreç oldukça cgroup'u kümede tutar; koruyucu da
-bir boşaltmadan sonra böyle cgroup'ları yeniden ekler (§3). Bir sonraki çalışma yine başlar. systemd
+bir boşaltmadan sonra böyle cgroup'ları yeniden ekler (§3). İkisi de engel yönünde yanılır: yardımcı
+görevin nerede çalıştığını ya da cgroup'unun süreçlerini okuyamazsa cgroup kümede kalır; koruyucu bir
+görev cgroup'unun süreçlerini okuyamazsa onu içinde süreç varmış gibi ekler, yardımcı satırı
+okunamayan çalışan bir birimi de yardımcısı engeli yüklüyormuş gibi ekler (alpha.150). Bir sonraki
+çalışma yine başlar. systemd
 çalışma bitince "Unit process <pid> (<ad>) remains running after unit stopped.", bir sonraki çalışma
 başlarken "Found left-over process <pid> (<ad>) in control group while starting unit. Ignoring."
 yazar; ikisi de beklenen satırlardır. Görevin hizmetini `systemctl stop` ile durdurmak onları
@@ -1189,37 +1194,65 @@ CelikPanel kendi dosyasını yazsın diye dosyayı siler), CelikPanel'in dosyas�
 (sahip hesabı kendi dosyasıyla dışarıda tutar). Hesabı adlandıran bir `/etc/cron.deny` yeter. Ön
 izleme de bunu söyler; hesabı izinli kalacak yeni bir site cron'da kalır.
 
-**Günlük** (programların taşıma günlüğü, `tasks` bölümüyle sürüm 2): crontab'ın tam baytları
-(`crontab -l`'nin yazdığı gibi) ve her adım, bir sonraki adım başlamadan yazılır.
+**Kayıt** (taşımanın tek kaydı, Ajan'ın özel klasöründe `site-slice-move.json`: `tasks` bölümüyle
+sürüm 3; programların taşıması sürüm 2 yazar): crontab'ın tam baytları (`crontab -l`'nin yazdığı
+gibi) ve her adım, bir sonraki adım başlamadan yazılır. `source_written` adımından sonra aynı
+crontab görev dosyasında da durur.
 
-| Ulaşılan adım | Anlamı | Ajan'ın bir sonraki açılışında |
+| Ulaşılan adım | Anlamı | Ajan'ın açılışında |
 |---|---|---|
 | planned | crontab'ın baytları kaydedildi | hiçbir şey ("denenmedi"); kaydından önce yazılmış bir görev dosyası kaldırılır |
 | source_written | görev dosyası crontab'ı tutuyor | geri konur (aşağıda) |
 | units_written | her zamanlayıcı ve hizmet yazıldı ve systemd'ce denetlendi, hiçbiri başlatılmadı | geri konur |
 | cron_closed | `/etc/cron.allow` hesabı dışarıda bırakıyor (denetlendi) ve uid'inin bundan önce başlamış her `crontab` süreci sonlandırıldı (crontab'ın denetiminden daha önce geçmişti, yine de bir dosya kurabilirdi); bu süreçler listelenemezse taşıma burada başarısız olur ve geri konur, hiçbir şey silinmez (ikinci düzeltme turu) | geri konur |
-| crontab_emptied | kaydedilen crontab'ı tuttuğu denetlenen biriktirme dosyası doğrudan silindi (root yapabilir; `crontab -u` artık reddedilir) ve gittiği denetlendi | tamamlanır: zamanlayıcılar etkinleştirilir ("taşındı"); bu başarısız olursa geri konur |
+| crontab_emptied | kaydedilen crontab'ı tuttuğu denetlenen biriktirme dosyası doğrudan silindi (root yapabilir; `crontab -u` artık reddedilir) ve gittiği denetlendi | tamamlanır: zamanlayıcılar açılır ("taşındı"). Açılamazlarsa kayıt Tekrar dene için kalır ve açılışta geri konmaz (bu, açılışın yaptığından çok çağrı isterdi); başarısız bir çağrının açmış olabileceği zamanlayıcılar yeniden kapatılır, böylece sitenin görevlerinin Tekrar dene'ye kadar çalışmadığı bilinir |
 | enabled | zamanlayıcılar etkinleştirildi ve başlatıldı | tamamlanır ("taşındı") |
 
 Sitenin kendi kodunun crontab'ı geri koyabileceği bir an yoktur: hesap, crontab'ı gitmeden önce
 cron'un dışına çıkar. Crontab giderken hâlâ kaydedilen crontab olmalıdır: arada yapılan bir
 değişiklik hiçbir zaman kaybolmaz (taşıma geri konur ve bunu söyler). **Geri koyma** taşımanın
 zamanlayıcılarını kapatır, hesaba yeniden cron izni verir, kaydedilen crontab'ı yoksa geri yazar,
-`crontab -l` ile denetler ve ancak ondan sonra zamanlayıcıları, dosyaları ve günlüğü kaldırır. Geri
-yazılamayan bir crontab günlüğü, görev dosyasını ve birimleri korur (sitenin sınırları izin
-veriyorsa yeniden açılır); hiçbir şey kaybolmaz, yanıt bunu söyler ve Ajan'ın bir sonraki açılışı
-yeniden dener. Taşıma, hesap için bir crontab varken hiçbir zaman "taşındı" demez. Yöneticinin kartı
-yarıda kesilen bir taşımanın sonucunu gösterir.
+`crontab -l` ile denetler ve ancak ondan sonra zamanlayıcıları, dosyaları ve kaydı kaldırır. Crontab
+ancak zamanlayıcıları kapatan çağrı başarı yanıtı verdikten sonra geri yazılır: yarıda başarısız
+olan toplu bir `systemctl enable --now` bazılarını açık bırakmış olabilir ve yanlarındaki bir crontab
+her görevi iki kez çalıştırırdı. Bu doğrulanamazsa ya da crontab geri yazılamazsa kayıt, görev
+dosyası ve birimler kalır (kaydın adlandırdığı zamanlayıcılar sitenin sınırları izin veriyorsa
+yeniden açılır); hiçbir şey kaybolmaz, hiçbir şey iki kez çalışmaz. Taşıma, hesap için bir crontab
+varken hiçbir zaman "taşındı" demez.
 
-**Çözülmemiş tek bir kayıt her yeni taşımayı durdurur (ikinci düzeltme turu).** Her site ve her
-taşıma türü (görevler, programlar, geri alma) için tek bir taşıma kaydı vardır. Her taşıma ve geri alma
-önce bulduğu kaydı Ajan'a çözdürür; kayıt bundan sonra da duruyorsa (geri yazılamayan bir crontab,
-yeniden açılamayan zamanlayıcılar), herhangi bir sitenin, görevlerin ya da programların her yeni
-taşıması ve geri alması, site ve çözülmeyen şey söylenerek, hiçbir şey değişmeden reddedilir; bir
-taşıma yalnız kendi yazdığı kaydı kaldırır. Panel, görevler bölümü "bilinmiyor" diyen ya da böyle
-reddedilen bir isteğin programlar bölümünü başlatmaz ve "Hepsini taşı" orada durur. Durum o sitenin
-kartında ve Şu anki sorunlar'da tek bir satırdır: neyin çözülmediği, CelikPanel'in bir sonraki
-açılışında yeniden deneyeceği ve olmazsa sunucu sahibinin elle yapacakları (§9.4).
+**Tek kayıt, tek satır, Tekrar dene (alpha.150, alpha.149'un taşıma kaydının üstünde).** Görevlerin
+taşıması ve geri alması programların taşımasıyla aynı tek kaydı tutar (§8.4). Kayıt dururken:
+
+- **Her yeni taşıma ve geri alma** hiçbir şey değişmeden **reddedilir** (`kept_earlier`): başka bir
+  sitenin kaydı hemen; aynı sitenin kaydı önce basışın kendi süresi içinde çözülür ve basış ancak
+  çözülürse sürer. Panel, görevler bölümü "bilinmiyor" diyen ya da başlamadan reddedilen bir basışın
+  programlar bölümünü başlatmaz ve "Hepsini taşı" orada durur.
+- **Şu anki sorunlar'da tek satır** ("Sınırlara taşıma bitmedi") siteyi açar. Görev kaydı için
+  sitenin zamanlanmış görevlerinin şu an nasıl çalıştığını Ajan'ın kaydettiği gibi söyler: yönetici
+  Tekrar dene'ye basana dek **çalışmıyor** (crontab boşaltıldı, zamanlayıcılar kapalı); sınırlar
+  içinde zamanlayıcı olarak çalışıyor; ya da geride kapalı zamanlayıcı dosyalarıyla cron'dan
+  çalışıyor. Yalnız Ajan bunu bilemediyse çalışmıyor olabileceklerini söyler.
+- **Sitenin kartı** aynısını, kaydın ulaştığı adımı, **Tekrar dene**'yi ve Tekrar dene çözemezse
+  sunucu sahibinin elle çalıştıracağı iki komutu söyler.
+- **Tekrar dene** kaydı çözer: adımı tamamlar ya da taşımayı geri koyar, basışın süresi içinde.
+  Ajan'ın açılışı da kendi sınırı içinde dener (aşağıda).
+
+**Ajan'ın açılışı sınırlıdır.** Bir görev kaydı Ajan'ın açılışında tek bir 15 saniyelik sınır
+altında en çok **dört systemd çağrısıyla** çözülür (dilimin okunması, zamanlayıcıların açılıp
+kapanması, bir yeniden yükleme); bu, her adım ve her hata için bir testle sayılır; açılış hiçbir
+görevi ya da zamanlayıcıyı başlatmaz, durdurmaz, beklemez. Zamanında yanıt vermeyen bir çağrı
+systemd'ye bırakılır ve bilinmiyor sayılır; ardından hiçbir şey gönderilmez. Açılışın çözemediği
+kayıt Tekrar dene için kalır.
+
+**Panelin güncellemesi.** Görevlerin taşıması, geri alması ve "Görev dosyasını yeniden kur" (§9.4)
+programların taşımasıyla aynı hakkı alır: panelin güncellemesi sırada ya da sürüyorken
+(`update_running`), bir güncelleme kaydı okunamazken (`update_unreadable`) ya da başka bir taşıma
+sürerken (`another_move`) aynı sözlerle reddedilir; biri sürerken de güncelleme reddedilir (§8.4).
+
+**Tek basış, tek süre.** Bir basış önce sitenin zamanlanmış görevlerini, sonra programlarını
+taşımanın 11 dakikası içinde taşır: programlar bölümü görevler bölümünün bıraktığını alır, hiçbir
+zaman fazlasını değil. Bir saniyeden az kaldıysa başlatılmaz; basış sürenin dolduğunu söyler ve bir
+sonraki basış için her programı adlandırır.
 
 **Geri alma** ("Görevleri cron'a geri koy", yönetici): sunucu sahibinin kendi `/etc/cron.allow`
 dosyası hesabı dışarıda bırakıyorsa (ya da `/etc/cron.deny` onu adlandırıyorsa), görev dosyası elle
@@ -1227,7 +1260,7 @@ değiştirilmişse (ya da yoksa) veya hesabın yeniden bir crontab'ı varsa, hi�
 reddedilir. Yoksa adım adım günlüğe yazılır; crontab ile zamanlayıcılar hiçbir zaman ikisi birden
 açık ya da ikisi birden yok olmaz:
 
-| Ulaşılan adım | Anlamı | Ajan'ın bir sonraki açılışında |
+| Ulaşılan adım | Anlamı | Ajan'ın açılışında |
 |---|---|---|
 | undo_planned | yazılacak crontab (görev dosyasının baytları, hiçbir şey eklenmeden) ve açık zamanlayıcılar kaydedildi | kaydedilen zamanlayıcılar yeniden açılır, cron yeniden kapatılır ("denenmedi") |
 | timers_disabled | bu zamanlayıcılar kapatıldı (çalışan bir görev durdurulmaz) | aynısı |
@@ -1237,7 +1270,10 @@ açık ya da ikisi birden yok olmaz:
 Cron açıkken sitenin kendi kodunun yaptığı bir crontab hiçbir zaman silinmez: geri dönüş onu bırakır
 ve sınırların dışında çalışıyor diye bildirilir (§9.4). Geri almanın yazdığı crontab doğrulanamazsa
 yalnız tam olarak geri almanın yazdığını tutan biriktirme dosyası yeniden kaldırılır; başka her dosya
-olduğu gibi bırakılır ve yanıtta adı söylenir (ikinci düzeltme turu).
+olduğu gibi bırakılır ve yanıtta adı söylenir (ikinci düzeltme turu). Bir geri dönüşte zamanlayıcılar
+yeniden açılamazsa ya da crontab geri geldikten sonra zamanlayıcı dosyaları kaldırılamazsa kayıt
+yukarıdaki gibi kalır; kart ve Şu anki sorunlar görevlerin nasıl çalıştığını söyler (çalışmıyor ya
+da cron'dan).
 
 ### 9.4 Sunucu sahibi ve görev dosyaları (D-022)
 
@@ -1258,6 +1294,8 @@ olduğu gibi bırakılır ve yanıtta adı söylenir (ikinci düzeltme turu).
   reddedilir (her görevi iki kez çalıştırırdı); ekran görevlerin yeniden crontab'dan çalıştığını
   söyler ve geride kalan zamanlayıcı dosyalarını adlandırır; sunucu sahibi onları kaldırır
   (`systemctl disable --now 'celikcron-<kimlik>-*.timer'`, dosyaları silmek, `systemctl daemon-reload`).
+  Yeniden kurma birim yazar ve systemd'yi yeniden yükler; bu yüzden panelin güncellemesi ya da bir
+  taşıma sürerken reddedilir, o sürerken de güncelleme (§9.3).
 - **Yerel olarak, birimlerde.** Değiştirilmiş bir `celikcron-*` birimi korunur (D-031) ve ekran onu
   adlandırır. Sahibin durdurduğu ya da kapattığı bir zamanlayıcı (`systemctl disable --now`) öyle
   kalır: değişen bir görev zamanlayıcısını yalnız çalışıyorsa yeniden başlatır.
@@ -1289,30 +1327,44 @@ olduğu gibi bırakılır ve yanıtta adı söylenir (ikinci düzeltme turu).
   verildiği gibi (§3); taşınmış hesapları ve sonradan açılan her hesabı, sahip adını ekleyene ya da
   dosyayı silene kadar dışarıda tutan `/etc/cron.allow`; kalıcı oturum kuralı; ve site hesaplarının
   hizmet yöneticisi maskeleri (§9.5).
-- **Önceki bir sürüme dönmek (sürüm geçişi, ikinci düzeltme turu).** Şema değişmez. Bundan önceki
-  bir sürüm (alpha.144 ya da öncesi), sitelerin taşındığı bir sunucuda şunları yapar:
-  - `celikcron-*` birimlerini, `/etc/celikpanel-cron` klasörünü ve taşıma kaydını tanımaz; onları ne
-    kaldırır ne değiştirir: **görevler sitelerin sınırları içinde zamanlayıcı olarak çalışmayı
-    sürdürür**. O anda yarıda kalan bir taşıma, bu sürüm (ya da sonraki biri) yeniden açılana kadar
-    olduğu gibi kalır.
-  - Ajan'ı bir programa ilk dokunduğunda `/usr/lib/celikpanel-sandbox/sandbox-helper`'ı kendi
-    kopyasıyla değiştirir; o kopya görev birimlerinin adlarını reddeder. Bu yüzden görev birimleri
-    kendi kopyalarını çağırır: `/usr/lib/celikpanel-sandbox/sandbox-task-helper`; daha önceki hiçbir
-    sürüm onu yönetmez ya da üzerine yazmaz. Bu sürüm onu programların kopyası gibi kurar, denetler ve
-    onarır (korumanın kayıt defterinde kendi kaydıyla) ve hiç kaldırmaz.
-  - SMTP engelinin dosyasını ve koruyucusunu yeniden yazdığında bu sürümün satırları olmadan yazar:
-    gönderim ayrığı gider (görevler bu sunucu üzerinden e-posta gönderemez) ve koruyucu bir `nft
-    flush`'tan sonra görev cgroup'larını artık yeniden eklemez (her çalışma kendi cgroup'unu yine
-    ekler).
-  - Zamanlanmış görevler ekranı taşınmış bir site için boş olan crontab'ı okur: **zamanlayıcıları
-    göstermez ve taşınmış bir hesaba görev ekleyemez**, kendi zamanında açılan bir siteye de:
-    `/etc/cron.allow` (CelikPanel'in dosyası; olduğu gibi bırakır) bu hesapları dışarıda tutar ve o
-    sürüm dosyayı hiç güncellemez. §9.5'in maskeleri kalır.
-  - Önerilen sıra: **önce her sitenin taşımasını geri alın** (her sitenin Genel Bakış sayfasında
-    "Görevleri cron'a geri koy"), sonra geri dönün. Bunu yapmadan dönüldüyse, taşınmış her site için:
-    `systemctl disable --now 'celikcron-<kimlik>-*.timer'`, ardından hesaba `/etc/cron.allow` içinde
-    izin verin (ya da dosyayı silin) ve `crontab -u <hesap> /etc/celikpanel-cron/<kimlik>.crontab`
-    çalıştırın.
+- **alpha.149'a dönmek (sürüm geçişi).** Şema değişmez (yerleşim 81).
+  - **Başarısız bir güncelleme, bu sürümün Ajan'ı başlamadan kendiliğinden geri döner** (§8.8):
+    güncelleme bu bölümün hiçbir görev birimini, görev dosyasını, `/etc/cron.allow` dosyasını,
+    kalıcı oturum kuralını, maskesini, görev yardımcısını ya da kaydını kurmaz (her birini Ajan
+    sonra yazar); geri dönüş bunların hiçbirini bulmaz.
+  - **Tamamlanmış bir güncelleme geri alınmaz** (§8.8): panel geri dönüş yolu sunmaz, sürümün
+    `rollback.sh` betiği tamamlanmış bir güncellemeyi reddeder ve kurtarma aracı yalnız yarıda
+    kalmış olanı bitirir. Aşağıdakiler, alpha.149 buna rağmen bu sürümün sitelerin görevlerini
+    taşıdığı bir sunucuya geri getirilseydi yapacaklarıdır.
+  - **Görevler sitelerin sınırları içinde zamanlayıcı olarak çalışmayı sürdürür.** alpha.149 hiçbir
+    `celikcron-*` birimini, `/etc/celikpanel-cron` dosyasını ya da görev kaydını tanımaz; onları ne
+    kaldırır ne değiştirir. Kendi sitesinin diliminde duran bir görev hizmeti alpha.149 için o dilimi
+    adlandırmış sayılır; dilim dosyası ve sınırları kalır. Görev birimleri kendi yardımcılarını
+    çağırır: `/usr/lib/celikpanel-sandbox/sandbox-task-helper`; alpha.149 onu ne yönetir ne kaldırır,
+    bu yüzden görevler SMTP engelinin altında başlar.
+  - **SMTP engeli ve koruyucusu.** alpha.149 ilk program yazışında kendi SMTP engeli dosyasını ve
+    koruyucusunu geri yazar: gönderim ayrığı gider (görevler bu sunucu üzerinden e-posta
+    gönderemez); koruyucusu bir `nft flush ruleset`'ten sonra görevleri ve bıraktıklarını yine ekler,
+    ama süreçlerini okuyamadığı bir görev cgroup'unu atlar.
+  - **Zamanlanmış görevler ekranı.** `/etc/cron.allow` (CelikPanel'in dosyası; alpha.149 onu ne
+    yazar ne siler) taşınmış hesapları ve sonra açılan her hesabı dışarıda tutar: alpha.149'un ekranı
+    `/etc/cron.allow` hesabı listelemediği için crontab'ın okunamadığını söyler, zamanlayıcıları
+    göstermez ve bu hesaplara görev ekleyemez. `/etc/celikpanel-cron/<kimlik>.crontab` dosyasını
+    düzenlemek artık hiçbir zamanlayıcıyı değiştirmez.
+  - **Kalıcı oturum kuralı** (`/etc/polkit-1/rules.d/49-celikpanel-linger.rules`) ve **site
+    hesaplarının hizmet yöneticisi maskeleri** kalır; alpha.149 bunları tanımaz.
+  - **O anda tutulan bir görev kaydını** alpha.149'un açılışı programsız bir taşıma olarak okur:
+    çözülmüş sayar ve siler. Crontab kaybolmaz - `source_written` adımından sonra görev dosyası onu
+    tutar, daha önce de biriktirme dosyası tutuyordu - ama sitenin taşımasının bitmediğini artık
+    hiçbir şey söylemez; crontab boşaltıldıktan sonra durmuş bir taşıma o sitenin görevlerini
+    çalışmaz hâlde bırakır.
+  - **Elle, taşınmış her site için** (root olarak; `<kimlik>` sitenin kimliği, `<hesap>` hesabı):
+    önce zamanlayıcılar, sonra crontab, hiçbir zaman ikisi birden açık değil:
+    `systemctl disable --now 'celikcron-<kimlik>-*.timer'`, ardından `<hesap>` adını
+    `/etc/cron.allow` dosyasına ekleyin (ya da dosyayı silin), sonra
+    `crontab -u <hesap> /etc/celikpanel-cron/<kimlik>.crontab` (ilk başlık satırı ve altı `#|`
+    satırı CelikPanel'in yorumlarıdır). Önerilen sıra yine önce bu sürümde her sitenin görevlerini
+    cron'a geri koymaktır (her sitenin Genel Bakış sayfasında "Görevleri cron'a geri koy").
 
 ### 9.5 Bir sitenin kendi işleri için son kapılar
 

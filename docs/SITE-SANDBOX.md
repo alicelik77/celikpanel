@@ -1149,9 +1149,10 @@ a way back.
 
 ## 9. A site's scheduled tasks inside its limits (S4 R2b)
 
-*22 November 2026 · In source and component-tested; the facts below were measured on
-throwaway Debian 13 and Ubuntu 24.04 machines; the panel's lab round on both is open
-(steps in the pull request).*
+*22 November 2026; brought onto alpha.149 on 26 November 2026 (one move record, the update
+gate and one deadline per press, as for the programs' move, §8.4) · In source and
+component-tested; the facts below were measured on throwaway Debian 13 and Ubuntu 24.04
+machines; the panel's lab round on both is open (steps in the pull request).*
 
 A moved site's scheduled tasks no longer run through cron. Each enabled task is a
 systemd timer and service pair, `celikcron-<site id>-<n>.timer` and `.service`, whose
@@ -1225,7 +1226,11 @@ command, or after `;`, `&&`, `||`, `|`), by the program's name.
 started in the background (`nohup worker &`, `setsid ./queue &`) stays in the unit's cgroup,
 so inside the site's slice (its memory, process and processor limits) and under the SMTP
 block: the helper's `egress-remove` keeps the cgroup in the set while any process other than
-itself is in it, and the guard re-adds such cgroups after a flush (§3). The next run still
+itself is in it, and the guard re-adds such cgroups after a flush (§3). Both fail towards the
+block: where the helper cannot tell where the task ran or read its cgroup's processes, the
+cgroup stays in the set; where the guard cannot read a task cgroup's processes, it adds the
+cgroup as if one ran there, and a running unit whose helper line cannot be read is added as if
+its helper loaded the block (alpha.150). The next run still
 starts. systemd logs "Unit process <pid> (<name>) remains running after unit stopped." when
 the run ends, and "Found left-over process <pid> (<name>) in control group while starting
 unit. Ignoring." when the next run starts; both are expected. `systemctl stop` of the task's
@@ -1349,17 +1354,18 @@ service (the owner keeps the account out with their own file). `/etc/cron.deny` 
 account is enough. The preview says so too, and a new site whose account would stay allowed
 keeps cron.
 
-**The journal** (the programs' move journal, version 2 with a `tasks` part): the
-crontab's exact bytes (as `crontab -l` printed them) and each step, written before the next
-step starts.
+**The record** (the move's one record, `site-slice-move.json` in the Agent's private folder:
+version 3 with a `tasks` part; a programs' move writes version 2): the crontab's exact bytes
+(as `crontab -l` printed them) and each step, written before the next step starts. From
+`source_written` on, the task file holds the same crontab too.
 
-| Step reached | What it means | At the Agent's next start |
+| Step reached | What it means | At the Agent's start |
 |---|---|---|
 | planned | the crontab's bytes are recorded | nothing ("not tried"); a task file written before its record is removed |
 | source_written | the task file holds the crontab | put back (below) |
 | units_written | every timer and service written and checked by systemd, none started | put back |
 | cron_closed | `/etc/cron.allow` leaves the account out (checked), and every `crontab` process of its uid started before that is ended (it passed crontab's check before and could still install a file); when those processes cannot be listed, the move fails here and is put back, nothing removed (second fix round) | put back |
-| crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | finished: the timers enabled ("moved"); if that fails, put back |
+| crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | finished: the timers switched on ("moved"). If they cannot be, the record stays for Try again and is not put back there (that would take more calls than the start makes); timers a failed call may have switched on are switched off again, so the site's tasks are known not to run until Try again |
 | enabled | the timers enabled and started | finished ("moved") |
 
 There is no moment in which the site's own code can put a crontab back: the account leaves
@@ -1367,22 +1373,48 @@ cron before its crontab goes. The crontab must still be the one recorded when it
 change made meanwhile is never lost (the move is put back and says so). **Putting back**
 switches the move's timers off, lets the account use cron again and writes the recorded
 crontab back when it is gone, checks it with `crontab -l`, and only then removes the timers,
-the files and the journal. A crontab that cannot be written back keeps the journal, the task
-file and the units (switched on again where the site's limits allow), so nothing is lost; the
-answer says so and the Agent's next start tries again. After the move, the move never
-answers "moved" while a crontab exists for the account. The administrator's card shows an
-interrupted move's outcome.
+the files and the record. The crontab is written back only after the call that switches the
+timers off has answered success: a batched `systemctl enable --now` that failed half-way can
+have left some of them on, and a crontab beside them would run every task twice. When that is
+not confirmed, or the crontab cannot be written back, the record, the task file and the units
+stay (the timers the record names switched on again where the site's limits allow), so
+nothing is lost and nothing runs twice. After the move, the move never answers "moved" while
+a crontab exists for the account.
 
-**One unresolved record stops every new move (second fix round).** There is one move record
-for every site and every kind of move (tasks, programs, undo). Each move and undo first lets
-the Agent resolve a record it finds; when the record is still there afterwards (a crontab
-that could not be written back, timers that could not be switched on again), every new move
-and undo - of any site, tasks or programs - is refused before anything changes, with the
-site and what is unresolved; a move removes only the record it wrote itself. The Panel does
-not start the programs part of a request whose tasks part answered "unknown" or was refused
-this way, and "Move all" stops there. The state is on that site's card and is one line in
-Problems now: what is unresolved, that CelikPanel tries again at its next start, and, if it
-cannot, the server owner's steps by hand (§9.4).
+**One record, one line, Try again (alpha.150, on alpha.149's move record).** The tasks' move
+and undo keep the same one record as the programs' move (§8.4). While it is kept:
+
+- **Every new move and undo is refused** before anything changes (`kept_earlier`): a record
+  of another site at once; a record of the same site is first settled within the press's own
+  deadline, and the press goes on only if it then is. The Panel does not start the programs
+  part of a press whose tasks part answered "unknown" or was refused before it began, and
+  "Move all" stops there.
+- **One line in Problems now** ("A move into a site's limits did not finish") opens the site.
+  For a tasks record it says how the site's scheduled tasks run now, as the Agent recorded
+  it: **not running** (the crontab emptied, the timers off) until the administrator presses
+  Try again; running as timers inside the limits; or running from cron with switched-off
+  timer files left. Only when the Agent could not tell does it say that they may not run.
+- **The site's card** says the same, the step the record reached, **Try again**, and the
+  server owner's two commands by hand should Try again not settle it.
+- **Try again** settles the record: it finishes the step or puts the move back, within the
+  press's deadline. The Agent's start tries too, within its bound (below).
+
+**The Agent's start is bounded.** A tasks record is settled at the Agent's start with at most
+**four systemd calls** under one 15-second bound (the slice's reading, the timers on or off,
+one reload), counted by a test on every step and failure; it never starts, stops or waits for
+a task or a timer. A call that does not answer in time is left to systemd and counts as not
+known; nothing further is sent. A record the start cannot settle stays for Try again.
+
+**The panel's update.** The tasks' move, its undo and "Rebuild the task file" (§9.4) take the
+same claim as the programs' move: each is refused while the panel's update is queued or
+running (`update_running`), while an update record cannot be read (`update_unreadable`) or
+while another move runs (`another_move`), with the same words, and the update is refused
+while one of them runs (§8.4).
+
+**One press, one deadline.** A press moves the site's scheduled tasks first, then its
+programs, within the move's 11 minutes: the programs part gets what the tasks part left of
+them, never more. With less than a second left it is not started, and the press says that the
+time ran out and names each program for the next press.
 
 **The undo** ("Put the tasks back into cron", administrator): refused before anything
 changes when the server owner's own `/etc/cron.allow` leaves the account out (or
@@ -1390,7 +1422,7 @@ changes when the server owner's own `/etc/cron.allow` leaves the account out (or
 the account has a crontab again. Otherwise it is journaled step by step, and the crontab and
 the timers are never both on and never both gone:
 
-| Step reached | What it means | At the Agent's next start |
+| Step reached | What it means | At the Agent's start |
 |---|---|---|
 | undo_planned | the crontab to write (the task file's bytes, nothing added) and the timers that are on are recorded | the recorded timers on again, cron closed again ("not tried") |
 | timers_disabled | those timers are switched off (a running task is not stopped) | the same |
@@ -1401,7 +1433,9 @@ A crontab the site's own code made in the moment cron was open is never removed:
 rollback leaves it, and it is reported as running outside the limits (§9.4). When the
 crontab the undo wrote cannot be confirmed, only a spool file that holds exactly what the
 undo wrote is taken away again; any other file is left as it is and named in the answer
-(second fix round).
+(second fix round). When the timers cannot be switched on again in a rollback, or the timer
+files cannot be removed after the crontab is back, the record stays as above, and the card
+and Problems now say how the tasks run (not running, or from cron).
 
 ### 9.4 The server owner and the task files (D-022)
 
@@ -1422,7 +1456,8 @@ undo wrote is taken away again; any other file is left as it is and named in the
   rebuild and its preview are refused (it would run every task twice), and the screen says
   that the tasks run from the crontab again and names the timer files left behind, which the
   server owner removes (`systemctl disable --now 'celikcron-<id>-*.timer'`, delete the files,
-  `systemctl daemon-reload`).
+  `systemctl daemon-reload`). The rebuild writes units and reloads systemd, so it is refused
+  while the panel's update runs or a move runs, and the update while it runs (§9.3).
 - **Natively, in the units.** A changed `celikcron-*` unit is kept (D-031) and the screen
   names it. A timer the owner stopped or disabled (`systemctl disable --now`) stays so: a
   changed task restarts its timer only when it runs.
@@ -1454,31 +1489,45 @@ undo wrote is taken away again; any other file is left as it is and named in the
   submission exception as last decided (§3); `/etc/cron.allow`, which keeps moved accounts
   out and any account created later as well until the owner adds it or deletes the file;
   the lingering rule; and the masks of the site accounts' service managers (§9.5).
-- **Going back to an earlier release (version transition, second fix round).** The schema
-  does not change. What a release before this one (alpha.144 or earlier) does on a server
-  where sites were moved:
-  - It does not know the `celikcron-*` units, `/etc/celikpanel-cron` or the move record,
-    and neither removes nor changes them: **the tasks keep running as timers, inside the
-    sites' limits**. A move interrupted at that moment stays as it is until this release (or
-    a later one) starts again.
-  - Its Agent replaces `/usr/lib/celikpanel-sandbox/sandbox-helper` with its own copy the
-    first time it touches a program, and that copy refuses the task units' names. So the task
-    units call their own copy, `/usr/lib/celikpanel-sandbox/sandbox-task-helper`, which no
-    earlier release manages or overwrites; this release installs, checks and repairs it like
-    the programs' copy (its own record in the sandbox ledger) and never removes it.
-  - When it writes the SMTP block's file and guard again, it writes them without this
-    release's lines: the submission exception goes (tasks cannot send mail through this
-    server), and the guard no longer re-adds task cgroups after an `nft flush` (each run still
-    adds its own cgroup).
-  - Its Scheduled tasks screen reads the crontab, which is empty for a moved site: **it does
-    not show the timers, and it cannot add a task for a moved account**, nor for a site created
-    under it: `/etc/cron.allow` (CelikPanel's file, which it leaves as it is) keeps those
-    accounts out, and it never brings the file up to date. The masks of §9.5 stay.
-  - Recommended order: **undo the move of every site first** ("Put the tasks back into cron"
-    on each site's Overview), then go back. After going back without that, per moved site:
-    `systemctl disable --now 'celikcron-<id>-*.timer'`, then let the account into
-    `/etc/cron.allow` (or delete the file) and run
-    `crontab -u <account> /etc/celikpanel-cron/<id>.crontab`.
+- **Going back to alpha.149 (version transition).** The schema does not change (layout 81).
+  - **An update that fails returns by itself before this release's Agent has started** (§8.8):
+    the update installs no task unit, task file, `/etc/cron.allow`, lingering rule, mask,
+    task helper or record of this section (the Agent writes each of them later), so the return
+    finds none of them.
+  - **A completed update is not taken back** (§8.8): the panel offers no way back, the
+    release's `rollback.sh` refuses a completed update, and the recovery tool only finishes an
+    interrupted one. What follows is what alpha.149 would do if it were nevertheless brought
+    back onto a server where this release moved sites' tasks.
+  - **The tasks keep running as timers, inside the sites' limits.** alpha.149 knows no
+    `celikcron-*` unit, `/etc/celikpanel-cron` file or tasks record, and neither removes nor
+    changes them. A task's service in its own site's slice counts for alpha.149 as naming that
+    slice, so the slice file and its limits stay. The task units call their own helper,
+    `/usr/lib/celikpanel-sandbox/sandbox-task-helper`, which alpha.149 neither manages nor
+    removes, so they start under the SMTP block.
+  - **The SMTP block and its guard.** At its first program write alpha.149 writes its own SMTP
+    block file and guard back: the submission exception goes (tasks cannot send mail through
+    this server), and its guard, which still re-adds tasks and what they left running after an
+    `nft flush ruleset`, skips a task cgroup whose processes it cannot read.
+  - **Scheduled tasks screen.** `/etc/cron.allow` (CelikPanel's file, which alpha.149 neither
+    writes nor removes) keeps moved accounts out, and any account created later: alpha.149's
+    screen says that the crontab could not be read because `/etc/cron.allow` does not list the
+    account, does not show the timers, and cannot add a task for those accounts. Editing
+    `/etc/celikpanel-cron/<id>.crontab` changes no timer any more.
+  - **The lingering rule** (`/etc/polkit-1/rules.d/49-celikpanel-linger.rules`) and **the masks
+    of the site accounts' service managers** stay; alpha.149 does not know them.
+  - **A tasks record kept at that moment** is read by alpha.149's start as a move without
+    programs: it counts it as settled and deletes it. The crontab is not lost - from
+    `source_written` on the task file holds it, and before that the spool still did - but
+    nothing says any more that the site's move was not finished; a move stopped after the
+    crontab was emptied leaves that site's tasks not running.
+  - **By hand, per moved site** (as root; `<id>` is the site's id, `<account>` its account):
+    timers off first, then the crontab, never both on:
+    `systemctl disable --now 'celikcron-<id>-*.timer'`, then add `<account>` to
+    `/etc/cron.allow` (or delete the file), then
+    `crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (its first header line and six
+    `#|` lines are CelikPanel's comments). The recommended order is still to put every site's
+    tasks back into cron on this release first ("Put the tasks back into cron" on each site's
+    Overview).
 
 ### 9.5 The last doors for a site's own jobs
 
