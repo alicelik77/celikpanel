@@ -86,6 +86,16 @@ func rotationPasswordStatement(engine, username, password string, hosts []string
 	return "", fmt.Errorf("unknown database engine %q; expected mysql or postgresql", engine)
 }
 
+// rotationGuarded puts the password statement behind the account guard
+// (database_account_guard.go): one transaction on PostgreSQL, one compound
+// statement on MariaDB.
+func rotationGuarded(engine, username, statement string) (string, error) {
+	if engine == "mysql" {
+		return mysqlGuarded(username, false, statement)
+	}
+	return pgGuarded(username, pgAccountOrdinary, statement)
+}
+
 // rotationMySQLHostsStatement lists every host of a MariaDB account name, one
 // "host=" line each.
 func rotationMySQLHostsStatement(username string) (string, error) {
@@ -186,7 +196,13 @@ func (a *Agent) RotateDatabaseUserPasswordV1(
 		}
 	}
 
+	// alpha.149 (security, review of PR #370 finding 1): the inspection says
+	// whether the account is an administrator account; such an account's
+	// password is never set on the panel's word.
 	current, err := readSuspensionDatabaseUserState(run, statements)
+	if suspensionAccountRefused(err, req.User.Username, &resp.AccountRefused, &resp.Error) {
+		return nil
+	}
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
@@ -211,11 +227,20 @@ func (a *Agent) RotateDatabaseUserPasswordV1(
 		hosts = parseRotationMySQLHosts(output)
 	}
 	setPassword, err := rotationPasswordStatement(req.User.Engine, req.User.Username, req.NewPassword, hosts)
+	if err == nil {
+		setPassword, err = rotationGuarded(req.User.Engine, req.User.Username, setPassword)
+	}
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
-	if _, runErr := run(setPassword); runErr != nil {
+	if output, runErr := run(setPassword); runErr != nil {
+		// The account changed after the inspection: the guard in the same
+		// transaction (statement) refused before the password was set.
+		if code := databaseAccountWriteRefusal(output); code != "" {
+			resp.AccountRefused, resp.Error = code, databaseAccountRefusalText(req.User.Username, code)
+			return nil
+		}
 		// The engine's words may quote the statement: never forwarded.
 		resp.Error = "the database engine did not accept the new password for " + req.User.Username + "; the old password may still be in effect"
 		return nil

@@ -263,6 +263,7 @@ export const siteLimitsLaneURL = compileSource('i18n/siteLimitsLane.ts', (specif
   if (specifier.endsWith('/settingLimits.ts')) return settingLimitsURL;
   return unexpected('i18n/siteLimitsLane.ts')(specifier);
 });
+const dbLimitsWordsStubURL = dataModule('export const useDbLimitsWords = () => ({ ready: false, say: (key) => key }); export const loadDbLimitsWords = () => new Promise(() => {});');
 
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
@@ -315,6 +316,10 @@ export function sharedLayer(stubURL, extra = {}) {
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
     '/i18n/siteLimitsLane': siteLimitsLaneURL,
+    // alpha.149: the database limits' words are fetched with the screens that
+    // show them; a mounted screen gets them as not fetched (its own test,
+    // db-limits-a149.test.mjs, checks the loader).
+    '/i18n/dbLimits': dbLimitsWordsStubURL,
     // alpha.132: the shared kit (row actions, guidance block, words) is the shipped code.
     ...kitTable(stubURL, uiURL),
     ...extra,

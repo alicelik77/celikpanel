@@ -194,6 +194,12 @@ func (p *Panel) applyDatabaseUserPassword(w http.ResponseWriter, r *http.Request
 			if !resp.PasswordChanged {
 				release()
 			}
+			if resp.AccountRefused != "" && !resp.PasswordChanged {
+				// alpha.149 (second review of PR #370, finding 16): the
+				// Agent's refusal of the account, as its code.
+				writeDatabaseAccountRefusal(w, resp.AccountRefused, user.Username)
+				return
+			}
 			writeCodedError(w, http.StatusConflict, errCodeDatabasePasswordInvalid, resp.Error, "")
 			return
 		}

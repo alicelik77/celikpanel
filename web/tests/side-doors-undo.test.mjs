@@ -36,7 +36,8 @@ test('the owner’s undo is closed again only by an explicit action, asked first
   assert.match(source, /while \(status\?\.running[\s\S]*?await readRemote\(RECLOSE_URL,/, 'followed with reads only');
   // S4 R2a second fix round: the site memory default's action has its own
   // sender (a preview, then the apply), outside the close-again's follow-up.
-  assert.equal((source.match(/method: 'POST'/g) ?? []).length, 3, 'one start request (and the service start, and the default’s sender), never one per read');
+  // alpha.149: Apply again of the database limits has its own one request.
+  assert.equal((source.match(/method: 'POST'/g) ?? []).length, 4, 'one start request (and the service start, the default’s sender and Apply again), never one per read');
   assert.equal((source.match(/fetch\(RECLOSE_URL/g) ?? []).length, 1, 'the close again is sent once');
   assert.match(source, /report\.steps\(/, 'the work is shown while it runs');
   assert.match(source, /handle\.retry\(\)/, 'the list reads itself again');

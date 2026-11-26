@@ -189,6 +189,10 @@ type SetDatabaseUserSuspensionRequest struct {
 type SetDatabaseUserSuspensionResponse struct {
 	SuspensionApplyResult
 	State DatabaseUserState `json:"state"`
+	// AccountRefused (alpha.149, security): the Agent found the account to be
+	// an administrator account (DatabaseAccountRefused*); nothing was
+	// changed. Additive.
+	AccountRefused string `json:"account_refused,omitempty"`
 }
 
 // SetAppUnitSuspensionRequest stops and disables (Suspend) a site's Node.js

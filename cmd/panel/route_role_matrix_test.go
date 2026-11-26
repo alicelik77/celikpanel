@@ -122,6 +122,8 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/metrics/alerts/settings":    gateAdmin,
 	"/api/v1/metrics/alerts/seen":        gateAdmin,
 	"/api/v1/metrics/side-doors/reclose": gateAdmin,
+	// alpha.149: Apply again for database users the limits did not reach.
+	"/api/v1/metrics/database-limits/apply": gateAdmin,
 
 	"/api/v1/my/subscription":       gateAccount, // own subscriptions only
 	"/api/v1/nginx/global":          gateAdmin,

@@ -724,6 +724,9 @@ func (p *Panel) handleCatalogAppInstall(w http.ResponseWriter, r *http.Request, 
 		writeAgentError(w, nil, firstNonEmpty(createResponse.Error, "the database could not be created"))
 		return
 	}
+	// alpha.149 (lab D9): the application's database user gets its
+	// subscription's database limits, by the one function.
+	p.applyNewDatabaseUserLimits(ctx, target.SubscriptionID, serverID, databaseUser)
 	if err := p.setCatalogAppStatus(operationID, appOpDatabaseReady, "", ""); err != nil {
 		writeServerError(w, err)
 		return

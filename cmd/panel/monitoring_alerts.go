@@ -720,6 +720,29 @@ func alertLine(item pendingAlertMail) (string, string) {
 		}
 		return fmt.Sprintf("After a change of limits (%s), the earlier limits still hold for %s, and for %s it is not known whether the new ones arrived. CelikPanel tries again every hour. Monitoring says why.", subject, lackEN, unknownEN),
 			fmt.Sprintf("Bir sınır değişikliğinden (%s) sonra %s için önceki sınırlar sürüyor, %s için yenilerinin ulaşıp ulaşmadığı bilinmiyor. CelikPanel her saat yeniden dener. Nedeni İzleme'de.", subject, lackTR, unknownTR)
+	case "database_limits_unapplied":
+		// alpha.149: item.name is the kind of outcome, item.subject the first users.
+		// alpha.149 (review of PR #370, findings 7 and 17): worded by what is
+		// actually known.
+		switch item.name {
+		case dbLimitAgent:
+			return fmt.Sprintf("The database limits did not reach %s database users (%s): CelikPanel's Agent did not answer, so nothing was sent. The administrator checks the Agent; then Apply again in Monitoring (the hourly round also tries again).", n, subject),
+				fmt.Sprintf("Veritabanı sınırları %s veritabanı kullanıcısına ulaşmadı (%s): CelikPanel Agent yanıt vermedi, hiçbir şey gönderilmedi. Yönetici Agent'ı denetler; sonra İzleme'de Yeniden uygula (saatlik tur da yeniden dener).", n, subject)
+		case dbLimitPrerequisite:
+			return fmt.Sprintf("The database limits did not reach %s database users (%s): their database server is not running, so nothing was changed. The server owner starts it; then Apply again in Monitoring (the hourly round also tries again).", n, subject),
+				fmt.Sprintf("Veritabanı sınırları %s veritabanı kullanıcısına ulaşmadı (%s): veritabanı sunucuları çalışmıyor, hiçbir şey değişmedi. Sunucu sahibi onu başlatır; sonra İzleme'de Yeniden uygula (saatlik tur da yeniden dener).", n, subject)
+		case dbLimitConnection:
+			return fmt.Sprintf("The database limits did not reach %s database users (%s): their database server is running but refused the connection, so nothing was changed. The administrator checks it; then Apply again in Monitoring.", n, subject),
+				fmt.Sprintf("Veritabanı sınırları %s veritabanı kullanıcısına ulaşmadı (%s): veritabanı sunucuları çalışıyor ama bağlantıyı reddetti, hiçbir şey değişmedi. Yönetici denetler; sonra İzleme'de Yeniden uygula.", n, subject)
+		case dbLimitRefused:
+			return fmt.Sprintf("The database limits did not reach %s database users (%s): CelikPanel's Agent did not change them, because they are not ordinary site database users; nothing was changed. The server's administrator decides about these accounts.", n, subject),
+				fmt.Sprintf("Veritabanı sınırları %s veritabanı kullanıcısına ulaşmadı (%s): CelikPanel Agent onları değiştirmedi, çünkü sıradan site veritabanı kullanıcıları değiller; hiçbir şey değişmedi. Bu hesaplar hakkında sunucunun yöneticisi karar verir.", n, subject)
+		case dbLimitUnknown:
+			return fmt.Sprintf("Whether the database limits reached %s database users is not known (%s). Monitoring offers Apply again; the line stays until the values are read back.", n, subject),
+				fmt.Sprintf("Veritabanı sınırlarının %s veritabanı kullanıcısına ulaşıp ulaşmadığı bilinmiyor (%s). İzleme Yeniden uygula'yı sunar; değerler geri okunana kadar satır kalır.", n, subject)
+		}
+		return fmt.Sprintf("The database limits did not reach %s database users (%s): the database server refused a limit, which was not written. Monitoring says why and offers Apply again.", n, subject),
+			fmt.Sprintf("Veritabanı sınırları %s veritabanı kullanıcısına ulaşmadı (%s): veritabanı sunucusu bir sınırı reddetti, o sınır yazılmadı. Nedeni İzleme'de; Yeniden uygula oradadır.", n, subject)
 	case "site_move_kept":
 		if item.name != "" {
 			// alpha.149 (lab D6): item.name names the programs that were put

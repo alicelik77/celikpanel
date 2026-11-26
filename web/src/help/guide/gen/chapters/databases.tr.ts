@@ -7,7 +7,7 @@ const chapter = {
   id: "databases",
   title: "Veritabanları",
   blocks: [
-    ["p","WordPress gibi bir site içeriğini veritabanında tutar. CelikPanel sunucuda MariaDB (MySQL) ve PostgreSQL veritabanları ve her biri için bir kullanıcı oluşturur."],
+    ["p","WordPress gibi bir site içeriğini veritabanında tutar. CelikPanel sunucuda MariaDB (MySQL) ve PostgreSQL veritabanları ve her biri için bir kullanıcı oluşturur. MariaDB yerine çalışan yerel bir MySQL sunucusu yönetilmez: CelikPanel onun veritabanı hesaplarını değiştirmez; bunu sunucunun yöneticisi sunucunun kendisinde yapar."],
     ["h",2,"domain-databases","Alan adının Veritabanları bölümünde"],
     ["p",["En kısa yol alan adının kendisidir. Alan adını, sonra ",["b","Veritabanları"]," bölümünü açıp ",["b","Veritabanı oluştur"]," düğmesine basın:"]],
     ["ol",[["Bir ",["b","Veritabanı adı"]," yazın. Panel adın önüne alan adını ekler: ",["c","example.com"]," ve ",["c","magaza"]," için tam ad ",["c","example_com_magaza"]," olur."],[["b","Veritabanı motoru"]," seçin."],["Bir ",["b","Parola"]," belirleyin."],[["b","Veritabanı oluştur"]," düğmesine basın."]]],

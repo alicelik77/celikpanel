@@ -201,7 +201,7 @@ func (a agentGrantForms) convert(ctx context.Context, req mariadbgrant.ConvertRe
 	case resp.BuildMismatch:
 		return "", errGrantFormsBuildMismatch
 	case resp.Error != "":
-		return "", errors.New(resp.Error)
+		return "", errors.New(withDatabaseAccountRefusal(resp.AccountRefused, req.User, resp.Error))
 	}
 	return resp.Outcome, nil
 }

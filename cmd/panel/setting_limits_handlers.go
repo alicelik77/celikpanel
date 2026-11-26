@@ -132,6 +132,14 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 		if editable {
 			boolInt = 1
 		}
+		// Second review of PR #370 (finding 4): every subscription's
+		// connection limit before the server's limit changes.
+		var prevConnections map[int]int
+		if req.Key == settingDBConnections {
+			if subs, err := p.subscriptionsReachedBy(ctx, "server", 0); err == nil {
+				prevConnections = p.dbConnectionLimitsNow(ctx, subs)
+			}
+		}
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO setting_policy (key, server_ceiling, server_default, customer_editable, updated_at)
 			VALUES (?, ?, ?, ?, datetime('now'))
@@ -147,7 +155,7 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 		// S4 R2a: the database time limits too, and the sites' slices.
 		if req.Key == settingDBConnections || dbConnectionLimitChanged(map[string]int{}, map[string]int{req.Key: 0}) {
 			if subs, err := p.subscriptionsReachedBy(ctx, "server", 0); err == nil {
-				p.reapplyDBConnectionLimits(subs)
+				p.reapplyDBConnectionLimitsFrom(subs, prevConnections)
 			}
 		}
 		if siteLimitsChanged(map[string]int{}, map[string]int{req.Key: 0}) {

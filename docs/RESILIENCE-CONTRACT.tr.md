@@ -8704,3 +8704,44 @@ bağlantıyı tutar.
   zararsız olduğu laboratuvarda gözlenir (L3), kanıtlanmadı; P0.2 işlem
   ortasında ulaşılamayan Agent için ilerledi, kapanmadı. **Hiçbir P0 işi
   kapanmadı.**
+
+### Dal fix/a149-db-limits (Agent panelin sözüyle hiçbir ayrıcalıklı veritabanı hesabını değiştirmez; veritabanı kullanıcılarının sınırları Agent üzerinden; şema değişmez; anayasa 1; ilke 4; D-022; D-024; D-025; 26 Kasım 2026, aday alpha.149)
+
+- **Neden burada.** Ayrıcalıklı Agent'ın bir erişim kapısını değiştirir:
+  panelin adını verdiği bir veritabanı hesabına dokunan (parola, kilit,
+  silme, hak geri alma, sınırlar, nesnelerin sahibi ve alıcısı olarak
+  veritabanı sahibi) ya da bir veritabanını silen, boşaltan, içine yükleyen
+  veya açan her Agent çağrısı.
+- **Sözleşme.** Agent hesabın nelere sahip olduğunu kendisi okur ve sıradan
+  bir hesap değilse hiçbir şeyi değiştirmeden reddeder; aynı denetim yazının
+  kendi işleminde (PostgreSQL) ya da bileşik ifadesinde (MariaDB) yinelenir;
+  okunamayan durum reddedilir (`cmd/agent/database_account_guard.go`,
+  docs/DATABASE-USERS.md). Veritabanının sahibi de aynı kurala uyar (yalnız
+  süper kullanıcı olmadığı ve hiçbir `pg_*` rolünün üyesi olmadığı sürece
+  `celikpanel_admin` istisnadır). Hiçbir Agent çağrısı motorun kendi sistem
+  veritabanlarına dokunmaz. Ret, ekranların kişinin dilinde söylediği bir
+  koddur.
+- **Bunun verdiği güven sınırı.** PostgreSQL 16 ve sonrasında ele geçirilmiş
+  bir panele karşı gerçek bir sınırdır. MariaDB'de ve PostgreSQL 15 ya da
+  daha eskisinde panelin kendi veritabanı hesabı zaten bu ağırlıkta haklara
+  sahiptir (DATABASE-ADMIN-ACCOUNT.md: `ALL PRIVILEGES ON *.* WITH GRANT
+  OPTION`; 16'dan önce CREATEROLE kendine `pg_*` rollerini verebilir); orada
+  ret ele geçirilmiş bir panele karşı değil, yanlışlıklara karşı korur.
+  Başka bir sitenin veritabanını yalnız panelin kendi denetimleri korur.
+- **Şema / sürüm geçişi.** Yok. Eklemeli yanıt alanları (`account_refused`,
+  `account_refused_name`) ve `panel_settings` kayıtları (`db_role_limits_v1`
+  içinde `connections`, `unknown`, `prev`; `db_limits_unapplied_v1`);
+  alpha.148 bunları yok sayar. alpha.148'e dönmek önceki çağrıları geri
+  getirir; ret hiçbir durum tutmaz.
+- **Kurtarma.** Ret hiçbir şeyi değiştirmedi; sunucunun yöneticisi işlemi
+  sunucunun kendisinde yapar. MariaDB yerine çalışan yerel MySQL yönetilmez
+  (`unsupported_engine`); yöneticinin elle kaldırdığı hesap yok sayılır, bu
+  yüzden silme o zaman tamamlanır.
+- **Kanıt.** `cmd/agent` içinde çağrı ve motor başına birim testleri
+  (denetim, veritabanı sahibi, sistem veritabanları, MariaDB yerine MySQL) ve
+  `cmd/panel` (sınır kayıtları); gerçek motor testi
+  `database_account_guard_engine_test.go` (bir laboratuvar adımı).
+- **Açık.** Henüz laboratuvar çalışması yok (pull request'teki laboratuvar
+  listesi). PostgreSQL kuralı parametre ayrıcalıklarına, yönetici
+  işlevlerine doğrudan verilmiş EXECUTE haklarına ve süper kullanıcının
+  çalıştırdığı nesnelere sahip rollere bakmaz. **Hiçbir P0 işi kapanmadı.**

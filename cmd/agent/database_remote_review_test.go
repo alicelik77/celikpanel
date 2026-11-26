@@ -443,7 +443,7 @@ func TestMariaDBRemoteCopyChangesApplyWhileTheRewriteIsHeld(t *testing.T) {
 	databaseRemoteMySQLQuery = func(statement string) (string, error) {
 		switch {
 		case strings.HasPrefix(statement, "SELECT plugin"):
-			return "mysql_native_password\t" + auth + "\t0\t0\tANY\n", nil
+			return "mysql_native_password\t" + auth + "\t0\t0\tANY\t\n", nil
 		case strings.HasPrefix(statement, "SHOW GRANTS FOR"):
 			return "GRANT USAGE ON *.* TO `s5_u`@`203.0.113.7`\nGRANT SELECT ON `s5_a`.* TO `s5_u`@`203.0.113.7`\nGRANT SELECT ON `s5_b`.* TO `s5_u`@`203.0.113.7`\n", nil
 		}

@@ -553,6 +553,11 @@ func (a *Agent) PostgreSQLPublicAccessCloseV1(req *transport.PostgreSQLPublicAcc
 		resp.Error, resp.BuildMismatch = err.Error(), true
 		return nil
 	}
+	// alpha.149 (security, second review of PR #370 finding 2).
+	if systemDatabaseName("postgresql", req.Name) {
+		resp.Error = systemDatabaseRefusal
+		return nil
+	}
 	script, err := pgPublicCloseScript(req)
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
@@ -805,6 +810,11 @@ func (a *Agent) PostgreSQLPublicAccessUndoV1(req *transport.PostgreSQLPublicAcce
 	*resp = transport.PostgreSQLPublicAccessUndoResponse{}
 	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "opening a PostgreSQL database again"); err != nil {
 		resp.Error, resp.BuildMismatch = err.Error(), true
+		return nil
+	}
+	// alpha.149 (security, second review of PR #370 finding 2).
+	if systemDatabaseName("postgresql", req.Name) {
+		resp.Error = systemDatabaseRefusal
 		return nil
 	}
 	script, err := pgPublicUndoScript(req)

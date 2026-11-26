@@ -279,6 +279,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
+		Agent.SetPostgreSQLRoleLimitsV1
 		Agent.RemoveDroppedDatabaseRightsV1 Agent.DatabaseGrantFormConvertV1
 		Agent.ApplyDatabaseRemoteV1 Agent.DropDatabaseOnceV1
 		Agent.PostgreSQLPublicAccessCloseV1 Agent.PostgreSQLPublicAccessUndoV1
@@ -497,6 +498,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RotateDatabaseUserPasswordV1": agentRPCMutationTimeout,
 	// alpha.129: a database's added users.
 	"Agent.CreateDatabaseAccessUserV1": agentRPCMutationTimeout,
+	// alpha.149: one site role's limits (one psql run).
+	"Agent.SetPostgreSQLRoleLimitsV1":  agentRPCStandardReadTimeout,
 	"Agent.RemoveDatabaseAccessUserV1": agentRPCMutationTimeout,
 	// alpha.134: the rights naming a deleted database, from every grantee.
 	"Agent.RemoveDroppedDatabaseRightsV1": agentRPCMutationTimeout,

@@ -95,6 +95,7 @@ func (n panelSuspensionNative) setDatabaseUser(ctx context.Context, req transpor
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
 	var resp transport.SetDatabaseUserSuspensionResponse
 	err := n.p.callAgentContext(ctx, "Agent.SetDatabaseUserSuspensionV1", &req, &resp)
+	resp.Error = withDatabaseAccountRefusal(resp.AccountRefused, req.User.Username, resp.Error)
 	return resp, err
 }
 

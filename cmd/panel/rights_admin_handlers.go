@@ -327,6 +327,8 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
 			return
 		}
+		// Second review of PR #370 (finding 4): the connection limits before.
+		prevConnections := p.dbConnectionLimitsBefore(ctx, rightsOwnerResellerPlan, id, ceilingsBefore, ceilingsAfter)
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			writeServerError(w, err)
@@ -366,7 +368,7 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// alpha.128 (G5): database users follow a changed connection limit.
-		p.reapplyDBConnectionLimitsAfter(ctx, rightsOwnerResellerPlan, id, ceilingsBefore, ceilingsAfter)
+		p.reapplyDBConnectionLimitsAfter(ctx, rightsOwnerResellerPlan, id, ceilingsBefore, ceilingsAfter, prevConnections)
 		// alpha.128 (integration): outgoing mail follows the mail keys.
 		p.requestOutgoingApply()
 		p.auditDetailed(r, "reseller_plan.update:"+pl.Name, "reseller_plan", id, map[string]any{

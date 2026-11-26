@@ -69,9 +69,12 @@ type monitoringProblem struct {
 	Severity string `json:"severity"`
 	// Actor: administrator (acts in the panel) or server_owner (acts on the
 	// server; the panel cannot do it for them).
-	Actor      string                  `json:"actor"`
-	Subject    string                  `json:"subject,omitempty"`
-	Name       string                  `json:"name,omitempty"`
+	Actor   string `json:"actor"`
+	Subject string `json:"subject,omitempty"`
+	Name    string `json:"name,omitempty"`
+	// Reason (alpha.149, database_limits_unapplied): the stored reason as a
+	// code the screen words; the journal holds the detail.
+	Reason     string                  `json:"reason,omitempty"`
 	Unit       string                  `json:"unit,omitempty"`
 	Value      float64                 `json:"value"`
 	Since      string                  `json:"since,omitempty"`
@@ -165,6 +168,8 @@ var problemKindOrder = map[string]int{
 	// S4 R2a third fix round: a move whose put-back did not complete (a
 	// program may be stopped; no site is moved until it is settled).
 	"site_move_kept": 46,
+	// alpha.149: database users the database limits did not reach.
+	"database_limits_unapplied": 47,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
@@ -245,6 +250,9 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// S4 R2a: the sites' limits and the disk's (site_limits_view.go).
 	add(p.siteLimitProblems(ctx, now), nil)
 	add(diskEnforcementProblems(p.setting(ctx, settingHostingProjectQuota)), nil)
+	// alpha.149: database users a plan's database limits did not reach
+	// (database_limits_problems.go).
+	add(p.databaseLimitsProblems(ctx), nil)
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {
