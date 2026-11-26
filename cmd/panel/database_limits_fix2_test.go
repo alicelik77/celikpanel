@@ -115,6 +115,16 @@ func TestALimitEarlierReleasesWroteFollowsAMoveToAnotherPlan(t *testing.T) {
 	if got := connOf(agent, "mv_u"); got != 30 {
 		t.Fatalf("after the move to a plan of 30: %d", got)
 	}
+	// The run in the background ends before the fixture goes.
+	for time.Now().Before(deadline) {
+		dbLimitsLiveRuns.Lock()
+		live := len(dbLimitsLiveRuns.runs)
+		dbLimitsLiveRuns.Unlock()
+		if live == 0 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 // Finding 8: a lost read-back carries the "unknown" reason code, so the
