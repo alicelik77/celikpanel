@@ -499,6 +499,10 @@ verify_saved_enablement() {
 # a clock change cannot forge it). Only for this unit, only after a boot, and
 # only when the boot's own run is what made it active is the change accepted.
 # No record (a ledger an earlier release wrote) keeps the strict rule.
+# The rule does not compare the policy file's content with the time of the
+# save; that holds today because nothing in an update or a return writes
+# /etc/celikpanel/firewall.nft (an update's installer only re-enables or disables
+# the unit, and the Agent, which can, is stopped in the pending window).
 # Bekleyen pencerede yeniden başlatma: güvenlik duvarı birimini açılış çalıştırdıysa
 # (kayıttan sonra yeni bir açılış, birimin kendi başarılı çalışması, kayıtlı ve
 # şimdiki "enabled", politika dosyası var, açılış bitmeden etkin) kabul edilir.

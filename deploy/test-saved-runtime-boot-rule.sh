@@ -32,6 +32,16 @@ for fn in "${functions[@]}"; do
             fail "$script: $fn differs from update.sh's"
     done
 done
+# The rule's comment (what it protects, and what it does not look at) too.
+rule_comment() {
+    awk '$0 == "# A server restart inside an update'"'"'s or a return'"'"'s pending window (alpha.150;" { inside=1 }
+        inside { print } inside && $0 == "SERVICE_STATES_BOOT_RECORD=service-states.boot-id" { exit }' "$1"
+}
+reference=$(rule_comment "$repo_root/${scripts[0]}")
+[[ $reference == *"does not compare the policy file's content"* ]] || fail "update.sh: the rule's comment is missing"
+for script in "${scripts[@]:1}"; do
+    [[ $(rule_comment "$repo_root/$script") == "$reference" ]] || fail "$script: the rule's comment differs from update.sh's"
+done
 for script in "${scripts[@]}"; do
     file=$repo_root/$script
     grep -Fxq 'KERNEL_BOOT_ID_FILE=/proc/sys/kernel/random/boot_id' "$file" || fail "$script: boot id path is not fixed"
