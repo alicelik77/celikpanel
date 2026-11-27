@@ -72,4 +72,6 @@ export const trSiteTasksProblemsScreens: Record<SiteTasksProblemsScreenKey, stri
     'pnow.linger_not_closed.title': 'Kalıcı oturum site hesaplarına kapatılmadı',
     'pnow.linger_not_closed.body': 'CelikPanel’in polkit kuralı yerinde değil ({domain}): sunucuda değiştirildi ya da yazılamadı ({other}). Site hesapları kendi programlarını sınırlarının dışında çalışır tutabilir. Sunucu sahibi dosyaya bakar.',
     'pnow.linger_not_closed.action': 'İzleme’yi aç',
+    // Tutulan görev kaydı için kartın elle cron'a dönüş yolu (düzeltme turu 4'te "siteTasks"tan taşındı).
+    'slim.tasks.unresolved': 'Bu sitenin zamanlanmış görevleri ({step} adımı): kaydı crontab’ı tutuyor, hiçbir şey kaybolmadı. Yönetici Tekrar dene’ye basar; CelikPanel bir sonraki açılışında da dener. Tekrar dene bunu bitiremezse sunucu sahibi görevleri elle cron’a geri koyar, her adım ancak öncekisi başarılıysa çalışır (önce zamanlayıcılar kapanır, sonra görev dosyası hesabın crontab’ı olur): {steps} Sonra yönetici Tekrar dene’ye basar: crontab’ı geri bulur, kalan zamanlayıcı dosyalarını ve kaydı kaldırır ve hesabın cron’u kullanmasına izin verir; böylece siteler yeniden taşınabilir.',
 };

@@ -3,7 +3,9 @@
 // now lines of sites' scheduled tasks and their side doors - cron.allow,
 // crontabs that came back, held tasks, lingering, a site account's own
 // service manager, a move into a site's limits that did not finish (pnow.) -
-// and "Move all", which their line opens (moveall.).
+// and "Move all", which their line opens (moveall.); since fix round 4 also
+// the site card's way back into cron by hand for a kept tasks move record
+// (slim.tasks.unresolved), which that line opens.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
@@ -70,6 +72,10 @@ export const enSiteTasksProblemsScreens = {
     'pnow.linger_not_closed.title': 'Lingering is not closed to site accounts',
     'pnow.linger_not_closed.body': 'CelikPanel’s polkit rule is not in place ({domain}): it was changed on the server, or could not be written ({other}). Site accounts may keep their own programs running outside their limits. The server owner checks the file.',
     'pnow.linger_not_closed.action': 'Open Monitoring',
+    // The site card's way back into cron by hand for a kept tasks move record
+    // (the record Problems now's site_move_kept line opens); moved here from
+    // "siteTasks" in fix round 4, whose Turkish file had no room left.
+    'slim.tasks.unresolved': 'It is this site’s scheduled tasks (step {step}): their record keeps the crontab, so nothing is lost. The administrator presses Try again; CelikPanel also tries at its next start. If Try again cannot finish it, the server owner puts the tasks back into cron by hand, each step only if the one before worked (the timers off, then the task file as the account’s crontab): {steps} Then the administrator presses Try again: it finds the crontab back, removes the timer files left and the record, and lets the account use cron, so sites can be moved again.',
 };
 
 export type SiteTasksProblemsScreenKey = keyof typeof enSiteTasksProblemsScreens;
