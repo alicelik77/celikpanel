@@ -214,6 +214,10 @@ source <(extract_function service_state_is_active_like)
 source <(extract_function coordinator_cgroup_matches_pid)
 source <(extract_function verify_quiesce_coordinator_identity)
 source <(extract_function verify_quiesce_coordinator_stopped)
+# No boot record is loaded here, so the stopped proof always compares the
+# captured process (its restart rule: deploy/test-saved-runtime-boot-rule.sh).
+source <(extract_function saved_states_from_earlier_boot)
+saved_service_states_boot_id=
 source <(extract_function wait_for_quiesce_coordinator_stopped)
 source <(extract_function reject_extra_service_cgroup_processes)
 source <(extract_function terminate_frozen_release_service)

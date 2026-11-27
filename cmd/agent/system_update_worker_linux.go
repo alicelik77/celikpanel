@@ -26,6 +26,9 @@ const systemUpdateRecoveryRunnerPath = "/usr/libexec/celikpanel/release-recovery
 var (
 	systemUpdateExecutableResolver = resolveFixedRootExecutable
 	systemUpdateCommandRunner      = runFixedSystemUpdateCommand
+	// The durable release-transaction markers that also hold the panel's
+	// and the Agent's units while an update or its recovery is open.
+	systemUpdateReleaseTransactionPresent = productionReleaseTransactionPresent
 )
 
 func runFixedSystemUpdateCommand(ctx context.Context, name string, args []string) ([]byte, error) {
@@ -272,9 +275,40 @@ func runSystemUpdateInstaller(ctx context.Context, state *systemUpdateState, tru
 	}
 	output, err := systemUpdateCommandRunner(ctx, installer, args)
 	if err != nil {
+		if summary := unsummarizedUpdaterTransaction(output); summary != "" {
+			return fmt.Errorf("reviewed updater failed: %w: %s", err, summary)
+		}
 		return fmt.Errorf("reviewed updater failed: %w: %s", err, reviewedUpdaterFailure(output))
 	}
 	return nil
+}
+
+// unsummarizedUpdaterTransaction answers for an updater that ended without
+// its own last "!! " line (killed, out of memory, the worker's time limit):
+// its exit handler never said whether its release transaction had begun.
+// While a durable transaction marker exists, automatic recovery owns the
+// request, so the record carries the summary update.sh itself prints after
+// the transaction began (state=recovery_required) and the update page keeps
+// showing progress and the recovery guidance. A marker that cannot be read
+// counts as present: a notice left open a little longer is the earlier
+// behaviour, a notice closed while recovery is queued is untrue. No marker:
+// "" and the record is the updater's own last line, as before.
+// Güncelleyici kendi son satırı olmadan bittiyse ve kalıcı işlem işareti
+// duruyorsa (ya da okunamıyorsa) kayıt "işlem başladı" özetini taşır.
+func unsummarizedUpdaterTransaction(output []byte) string {
+	last := sanitizedSystemUpdateError(errors.New(string(output)))
+	if strings.HasPrefix(last, "!! ") {
+		return ""
+	}
+	reason := "the updater stopped without its own summary while its release transaction was open"
+	present, err := systemUpdateReleaseTransactionPresent()
+	switch {
+	case err != nil:
+		reason = "the updater stopped without its own summary and its release transaction could not be checked"
+	case !present:
+		return ""
+	}
+	return "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=" + reason + " detail=" + last
 }
 
 func inspectInstalledSystemUpdateBuild(ctx context.Context) (string, string, error) {

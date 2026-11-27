@@ -14,6 +14,8 @@ export const enProblemsScreens = {
     "operation.completed": "Completed",
     "operation.failed": "Not completed",
     "operation.blocked": "Waiting for someone to act",
+    // alpha.149 lab W1: the reason names the server's administrator.
+    "operation.blocked.administrator": "Waiting for the server's administrator to act",
     "operation.unknown": "The result is not known",
     "operation.ok": "OK",
     "problem.details": "Details",

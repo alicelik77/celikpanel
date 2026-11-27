@@ -18,6 +18,8 @@ TRANSACTION_RUNTIME_ROOT=/run/celikpanel-release-transaction
 TRANSACTION_START_HELPER=/usr/libexec/celikpanel/release-transaction-start-guard
 UNIT_DIR=/etc/systemd/system
 SYSTEMCTL_BIN=/usr/bin/systemctl
+KERNEL_BOOT_ID_FILE=/proc/sys/kernel/random/boot_id
+FIREWALL_POLICY_FILE=/etc/celikpanel/firewall.nft
 MUTATION_LOCK=/run/celikpanel/service-mutation.lock
 AGENT_SOCKET=/run/celikpanel/agent.sock
 AGENT_STATE_DIR=/var/lib/celikpanel-agent-private
@@ -451,6 +453,7 @@ load_saved_service_states() {
        ! service_state_is_active_like "${saved_active_states[celikpanel-agent.service]}"; then
         die "saved runtime state is inconsistent: an active panel requires an active agent"
     fi
+    load_saved_service_states_boot "$ledger"
 }
 
 load_quiesce_coordinator_identities() {
@@ -474,7 +477,13 @@ load_quiesce_coordinator_identities() {
             [[ "$main_pid" =~ ^[0-9]+$ && "$main_pid" -gt 1 &&
                "$start_time" =~ ^[0-9]+$ && "$start_time" -gt 0 ]] \
                 || die "active quiesce coordinator identity is invalid: $unit"
-            if current_start=$(coordinator_process_start_time "$main_pid" 2>/dev/null); then
+            # The captured process must not still run outside its stopped unit.
+            # After a restart since the identities were saved (the recorded boot
+            # is not the running one) no process of that boot exists, so a live
+            # process with the same number and start time is chance: no check.
+            # Kayıttan sonra yeniden başlatıldıysa eski süreç olamaz; eşleşme rastlantıdır.
+            if ! saved_states_from_earlier_boot &&
+               current_start=$(coordinator_process_start_time "$main_pid" 2>/dev/null); then
                 [[ "$current_start" != "$start_time" ]] \
                     || die "captured coordinator process still exists outside its stopped unit: $unit"
             fi
@@ -499,6 +508,80 @@ verify_saved_enablement() {
     done
 }
 
+# A server restart inside an update's or a return's pending window (alpha.150;
+# alpha.149 lab, step 33 B). celikpanel-firewall-restore.service is a boot
+# oneshot: on a server that has not restarted since its policy file first
+# existed it is inactive when the states are saved, and the next boot runs it.
+# Its "saved inactive-like, now active" refusal protects one thing: the update
+# or the return never applies a firewall policy itself. The saved states name
+# the kernel boot they were read in (service-states.boot-id beside the ledger;
+# a clock change cannot forge it). Only for this unit, only after a boot, and
+# only when the boot's own run is what made it active is the change accepted.
+# No record (a ledger an earlier release wrote) keeps the strict rule.
+# The rule does not compare the policy file's content with the time of the
+# save; that holds today because nothing in an update or a return writes
+# /etc/celikpanel/firewall.nft (an update's installer only re-enables or disables
+# the unit, and the Agent, which can, is stopped in the pending window).
+# Bekleyen pencerede yeniden başlatma: güvenlik duvarı birimini açılış çalıştırdıysa
+# (kayıttan sonra yeni bir açılış, birimin kendi başarılı çalışması, kayıtlı ve
+# şimdiki "enabled", politika dosyası var, açılış bitmeden etkin) kabul edilir.
+# Kayıt yoksa eski katı kural geçerlidir; ajan ve panel denetimi değişmez.
+SERVICE_STATES_BOOT_RECORD=service-states.boot-id
+saved_service_states_boot_id=
+firewall_boot_activation_reported=0
+
+# Load the optional boot record beside a service-state ledger. Absent means no
+# boot is proved; present but not exactly one boot id line is refused.
+# Defterin yanındaki isteğe bağlı açılış kaydını oku; bozuk kayıt reddedilir.
+load_saved_service_states_boot() {
+    local record line
+    saved_service_states_boot_id=
+    record=$(dirname -- "$1")/$SERVICE_STATES_BOOT_RECORD
+    [[ -e $record || -L $record ]] || return 0
+    [[ -f $record && ! -L $record && $(stat -Lc '%s' -- "$record") -eq 37 ]] \
+        || die "service-state boot record is unsafe: $record"
+    line=$(<"$record")
+    [[ $line =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] &&
+        printf '%s\n' "$line" | cmp -s - "$record" \
+        || die "service-state boot record is not canonical: $record"
+    saved_service_states_boot_id=$line
+}
+
+# True only when the saved states name a kernel boot other than the running
+# one, so no process of the boot they were read in can exist any more. No
+# record, or a running boot id that cannot be read, proves nothing (false).
+# Kayıtlı açılış şimdikinden farklıysa doğru; kayıt yoksa ya da okunamazsa yanlış.
+saved_states_from_earlier_boot() {
+    local boot
+    [[ -n $saved_service_states_boot_id ]] || return 1
+    read -r boot 2>/dev/null < "$KERNEL_BOOT_ID_FILE" || return 1
+    [[ $boot =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ &&
+       $boot != "$saved_service_states_boot_id" ]]
+}
+
+# True only when a boot happened since the states were saved and that boot's own
+# run of the firewall restore unit made it active: a recorded boot id differs
+# from the running kernel's, the unit is enabled as saved, its policy file
+# exists, its run ended in success (oneshot, exited), and it became active
+# before this boot's startup finished, so no recovery run started it.
+# Kayıttan sonra açılış oldu ve birimi açılışın kendi başarılı çalışması etkinleştirdi.
+firewall_restore_activated_by_boot() {
+    local unit=celikpanel-firewall-restore.service value entered finished
+    saved_states_from_earlier_boot || return 1
+    [[ ${saved_enabled_states[$unit]:-} == enabled ]] || return 1
+    value=$(systemctl is-enabled "$unit" 2>/dev/null) || return 1
+    [[ $value == enabled ]] || return 1
+    [[ -f $FIREWALL_POLICY_FILE ]] || return 1
+    value=$(systemctl show --property=Result --value "$unit" 2>/dev/null) || return 1
+    [[ $value == success ]] || return 1
+    value=$(systemctl show --property=SubState --value "$unit" 2>/dev/null) || return 1
+    [[ $value == exited ]] || return 1
+    entered=$(systemctl show --property=ActiveEnterTimestampMonotonic --value "$unit" 2>/dev/null) || return 1
+    finished=$(systemctl show --property=FinishTimestampMonotonic --value 2>/dev/null) || return 1
+    [[ $entered =~ ^[1-9][0-9]{0,17}$ && $finished =~ ^[1-9][0-9]{0,17}$ ]] || return 1
+    (( 10#$entered <= 10#$finished ))
+}
+
 verify_saved_runtime_states() {
     local unit state
     for unit in celikpanel-agent.service celikpanel-panel.service celikpanel-firewall-restore.service; do
@@ -507,6 +590,12 @@ verify_saved_runtime_states() {
             systemctl is-active --quiet "$unit" \
                 || die "saved active-like service is not active: $unit"
         elif systemctl is-active --quiet "$unit"; then
+            if [[ $unit == celikpanel-firewall-restore.service ]] && firewall_restore_activated_by_boot; then
+                [[ $firewall_boot_activation_reported -eq 1 ]] ||
+                    printf '%s\n' "==> $unit was started by a boot after the service states were saved (its own successful boot run); accepted"
+                firewall_boot_activation_reported=1
+                continue
+            fi
             die "saved inactive-like service became active: $unit"
         fi
     done

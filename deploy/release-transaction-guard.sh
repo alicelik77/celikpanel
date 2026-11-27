@@ -320,12 +320,18 @@ release_txn_reset_update_snapshot_stage() {
     while IFS= read -r -d '' entry; do
         case "$(basename -- "$entry")" in
             service-states.tsv|quiesce-coordinators.tsv|snapshot-transition.state|panel-tls) continue ;;
+            # The boot the saved states were read in (alpha.150) belongs to them.
+            # Kayıtlı durumların okunduğu açılış onlara aittir.
+            service-states.boot-id) [[ -f $entry && ! -L $entry ]] && continue ;;
         esac
         removable+=("$entry")
     done < <(find "$child" -mindepth 1 -maxdepth 1 -print0)
     if [[ ${#removable[@]} -gt 0 ]]; then
         rm -rf -- "${removable[@]}" \
             || { _release_txn_fail "cannot reset resumable snapshot staging payload"; return 1; }
+    fi
+    if [[ -e "$child/service-states.boot-id" ]]; then
+        sync -f -- "$child/service-states.boot-id" || return 1
     fi
     if [[ -e "$child/panel-tls" || -L "$child/panel-tls" ]]; then
         [[ -d "$child/panel-tls" && ! -L "$child/panel-tls" ]] || return 1

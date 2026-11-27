@@ -69,7 +69,32 @@ export type OperationEnd =
         state: 'failed' | 'blocked' | 'unknown'; reason: string; fix?: { label: string; run: () => void }; title?: string;
         /** The line under the title in place of the state's own word, when that word would not be true (alpha.133: a blocked ending that nobody needs to act on). */
         subtitle?: string;
+        /** Who acts, when the reason names them (alpha.149 lab W1): a blocked ending's line then names that actor. */
+        actor?: OperationActor;
     };
+
+/** The actors a refusal's reason can name (lib/refusalActor.ts). */
+export type OperationActor = 'administrator';
+
+const OPERATION_END_WORD = {
+    done: 'operation.completed',
+    failed: 'operation.failed',
+    blocked: 'operation.blocked',
+    unknown: 'operation.unknown',
+} as const;
+export type OperationEndWord = typeof OPERATION_END_WORD[keyof typeof OPERATION_END_WORD] | 'operation.blocked.administrator';
+
+/**
+ * The line under a finished progress window's title: the ending's own
+ * subtitle when the state's word would not be true (a wait nobody needs to
+ * act on); for a blocked ending whose reason names the server's
+ * administrator, that actor (alpha.149 lab W1); otherwise the state's word.
+ */
+export function operationEndLine(end: OperationEnd, t: (key: OperationEndWord) => string): string {
+    if (end.state !== 'done' && end.subtitle) return end.subtitle;
+    if (end.state === 'blocked' && end.actor === 'administrator') return t('operation.blocked.administrator');
+    return t(OPERATION_END_WORD[end.state]);
+}
 
 /** What a running action can tell the window. */
 export interface OperationReport {

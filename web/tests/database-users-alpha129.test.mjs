@@ -24,6 +24,7 @@ const stub = dataModule(`
   const words = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => words;
   export const useDataToolsWords = () => words;
+  export const useAuth = () => ({ role: 'admin' });
   export const showToast = () => {};
 `);
 const shared = sharedLayer(stub);
