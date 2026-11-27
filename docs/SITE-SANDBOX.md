@@ -1399,7 +1399,12 @@ stay (the timers the record names switched on again where the site's limits allo
 nothing is lost and nothing runs twice. The put-back never switches the timers on again
 beside a crontab it wrote but could not read back the same (alpha.150 fix round): the recorded
 crontab in the spool counts as back; anything else there, or a spool that cannot be read,
-keeps the timers off and the record (the tasks run from cron). After the move, the move never
+keeps the timers off and the record (the tasks run from cron). **This holds for one pass** (a
+known limit, fix round 4): a later pass of a record kept at `source_written`, `units_written` or
+`cron_closed` (Try again, the Agent's start) takes any crontab it then finds as back and finishes
+the put-back - the timers, their files, the task file and the record go, and the crontab stays as
+it is, so the recorded crontab is then only in what that crontab holds. At `crontab_emptied` the
+spool check below keeps the record instead. After the move, the move never
 answers "moved" while a crontab exists for the account.
 
 **One record, one line, Try again (alpha.150, on alpha.149's move record).** The tasks' move

@@ -1242,6 +1242,11 @@ yeniden açılır); hiçbir şey kaybolmaz, hiçbir şey iki kez çalışmaz. Ge
 biçimde geri okuyamadığı bir crontab'ın yanında zamanlayıcıları hiçbir zaman yeniden açmaz (alpha.150
 düzeltme turu): biriktirme dosyasındaki kayıtlı crontab geri gelmiş sayılır; orada başka bir şey ya
 da okunamayan bir dosya zamanlayıcıları kapalı ve kaydı yerinde tutar (görevler cron'dan çalışır).
+**Bu bir geçiş için geçerlidir** (bilinen sınır, düzeltme turu 4): `source_written`, `units_written`
+ya da `cron_closed` adımında tutulan bir kaydın sonraki geçişi (Tekrar dene, Ajan'ın açılışı) o anda
+bulduğu her crontab'ı geri gelmiş sayar ve geri koymayı bitirir - zamanlayıcılar, dosyaları, görev
+dosyası ve kayıt gider, crontab olduğu gibi kalır; kayıttaki crontab o zaman yalnız o crontab'ın
+tuttuğu kadardır. `crontab_emptied` adımında aşağıdaki biriktirme dosyası denetimi kaydı tutar.
 Taşıma, hesap için bir crontab varken hiçbir zaman "taşındı" demez.
 
 **Tek kayıt, tek satır, Tekrar dene (alpha.150, alpha.149'un taşıma kaydının üstünde).** Görevlerin
