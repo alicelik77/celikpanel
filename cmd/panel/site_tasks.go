@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"path"
 	"sort"
 	"strconv"
@@ -21,20 +20,20 @@ import (
 //   - Every Scheduled tasks request names the site (CronTenant.SiteID) and
 //     carries its slice's limits; the Agent decides from its own files
 //     whether the site's tasks run as timers (a moved site) or in cron.
-//   - The administrator's "Move into the limits" on the site's Overview also
-//     moves the site's crontab (preview first, nothing half-moved), and
-//     "Put the tasks back into cron" undoes it; both are audited.
-//   - "Move all": the sites still outside their limits (programs or tasks),
-//     moved one after another by the screen with the same action.
+//   - The move of a site into its limits also moves the site's crontab
+//     (nothing half-moved); the panel's own worker moves every site by
+//     itself (site_auto_move.go, D-048), and "Put the tasks back into cron"
+//     undoes it on purpose (the worker then leaves the site alone until it
+//     is moved again from its card); both are audited.
 //   - Problems now (administrator): the server owner's cron.allow that lets a
 //     moved site's account use cron, the owner's deletion of CelikPanel's file
 //     (with "close it again"), cron.allow not written (directory service,
 //     failure), a crontab that came back for a moved site, site accounts that
 //     linger, and the lingering rule undone or not written.
 //
-// Görevler sitenin kendi sınırları içinde zamanlayıcı olarak çalışır;
-// yönetici taşır, geri alır, hepsini taşır; açık kalan kapılar Şu anki
-// sorunlar'da görünür.
+// Görevler sitenin kendi sınırları içinde zamanlayıcı olarak çalışır; panel
+// her siteyi kendiliğinden taşır, yönetici bilerek geri alabilir; açık kalan
+// kapılar Şu anki sorunlar'da görünür.
 
 // cronTenantFor is the tenant of a domain's Scheduled tasks with its site
 // and the site's slice (a domain without a site keeps SiteID 0: cron).
@@ -259,6 +258,9 @@ func (p *Panel) handleDomainSiteTasksUndo(w http.ResponseWriter, r *http.Request
 	siteMoveMu.Unlock()
 	if resp.Outcome == transport.SiteTasksUndone {
 		p.noteSiteTasksOutside(ctx, map[int]bool{site.SiteID: true}, nil, time.Now())
+		// Put back on purpose (D-048): the panel's worker leaves this site
+		// alone until the administrator moves it again from its card.
+		p.noteSitePutBack(ctx, site.SiteID, true)
 	}
 	_ = json.NewEncoder(w).Encode(resp)
 }
@@ -342,55 +344,6 @@ func (p *Panel) readAllSiteTasks(ctx context.Context, all []siteLimitSite, unsup
 		}
 	}
 	p.replaceSiteTasksOutside(ctx, outside, now)
-}
-
-// siteOutsideRow is one site still outside its limits (Move all).
-type siteOutsideRow struct {
-	DomainID int    `json:"domain_id"`
-	Domain   string `json:"domain"`
-	Programs int    `json:"programs,omitempty"`
-	Tasks    bool   `json:"tasks,omitempty"`
-}
-
-// handleSiteLimitsOutside: GET /api/v1/site-limits/outside (administrator):
-// the sites whose programs or tasks still run outside their limits, as the
-// last reading said, for "Move all".
-func (p *Panel) handleSiteLimitsOutside(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "private, no-store")
-	if r.Method != http.MethodGet {
-		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-	if c := currentCaller(r); c == nil || c.Role != roleAdmin {
-		writeClientError(w, http.StatusForbidden, "administrator access required")
-		return
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-	state := siteLimitOutside{}
-	if raw := p.setting(ctx, settingSiteLimitOutside); raw != "" {
-		_ = json.Unmarshal([]byte(raw), &state)
-	}
-	rows := []siteOutsideRow{}
-	if p.db != nil {
-		dbRows, err := p.db.GetDB().QueryContext(ctx, `SELECT s.id, d.id, d.name FROM sites s JOIN domains d ON d.id = s.domain_id ORDER BY d.name`)
-		if err == nil {
-			for dbRows.Next() {
-				var siteID, domainID int
-				var name string
-				if dbRows.Scan(&siteID, &domainID, &name) != nil {
-					continue
-				}
-				key := strconv.Itoa(siteID)
-				row := siteOutsideRow{DomainID: domainID, Domain: name, Programs: state.Sites[key], Tasks: state.Tasks[key]}
-				if row.Programs > 0 || row.Tasks {
-					rows = append(rows, row)
-				}
-			}
-			dbRows.Close()
-		}
-	}
-	writeRightsJSON(w, http.StatusOK, map[string]any{"checked_at": state.CheckedAt, "sites": rows})
 }
 
 // --- Problems now: cron.allow, crontabs that came back, lingering ----------------
@@ -542,45 +495,4 @@ func siteUserManagerProblems(state transport.SideDoorsState) []monitoringProblem
 	return []monitoringProblem{{Key: "site_user_manager_open", Kind: "site_user_manager_open", Severity: "warning", Actor: "server_owner",
 		Name: command, Subject: subject, Value: float64(total), ObservedAt: state.CheckedAt,
 		Action: monitoringProblemAction{Kind: "open", To: "/monitoring"}}}
-}
-
-// siteLimitsOutsideProblem is ONE line for the sites whose programs or tasks
-// still run outside their limits; its action opens "Move all".
-func siteLimitsOutsideProblem(raw string, names map[string]string) []monitoringProblem {
-	if raw == "" {
-		return nil
-	}
-	var state siteLimitOutside
-	if err := json.Unmarshal([]byte(raw), &state); err != nil {
-		return nil
-	}
-	set := map[string]bool{}
-	for key, n := range state.Sites {
-		if n > 0 && names[key] != "" {
-			set[names[key]] = true
-		}
-	}
-	for key, outside := range state.Tasks {
-		if outside && names[key] != "" {
-			set[names[key]] = true
-		}
-	}
-	if len(set) == 0 {
-		return nil
-	}
-	sites := make([]string, 0, len(set))
-	for name := range set {
-		sites = append(sites, name)
-	}
-	sort.Strings(sites)
-	listed := sites
-	if len(listed) > 5 {
-		listed = append(append([]string{}, sites[:5]...), "…")
-	}
-	subject := strings.Join(listed, ", ")
-	return []monitoringProblem{{
-		Key: "site_limits_outside", Kind: "site_limits_outside", Severity: "warning", Actor: "administrator",
-		Name: subject, Subject: subject, Value: float64(len(sites)), ObservedAt: state.CheckedAt,
-		Action: monitoringProblemAction{Kind: "move_all", To: "/domains/" + url.PathEscape(sites[0])},
-	}}
 }

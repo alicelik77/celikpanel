@@ -1632,6 +1632,10 @@ func main() {
 	// S4 R1: the tools to their own accounts and the untouched stock PHP-FPM
 	// pool off, once after the start (side_doors.go).
 	panel.startSideDoorsClose()
+	// alpha.150 (D-048): every site still outside its limits is moved into
+	// them by the panel itself, some minutes after the start, after the side
+	// doors step, never during the panel's update (site_auto_move.go).
+	panel.startSiteAutoMove()
 	// S4 R2a second fix round: a site's default memory limit is fixed when
 	// first computed (never moved by a later change of the host's memory),
 	// and the sites a change of limits did not reach are written again every
@@ -1799,8 +1803,6 @@ func main() {
 	http.HandleFunc("/api/v1/metrics/history", panel.handleMetricsHistory)
 	// alpha.126: "Problems now" (Monitoring and Dashboard), a read only.
 	http.HandleFunc("/api/v1/metrics/problems", panel.handleMonitoringProblems)
-	// S4 R2b: the sites still outside their limits, for "Move all".
-	http.HandleFunc("/api/v1/site-limits/outside", panel.handleSiteLimitsOutside)
 	// alpha.127: per-service health, site checks and alerts (administrator,
 	// through the /api/v1/metrics/ prefix). The reads serve stored results.
 	http.HandleFunc("/api/v1/metrics/services", panel.handleMonitoringServices)

@@ -450,7 +450,7 @@ CelikPanel'in bir site için systemd birimi olarak başlattığı her program o 
 | `celikpanel-sandbox@…`, `celikpanel-ftp@…` | root'un bağlama birimleri | hayır: müşteri kodu çalıştırmazlar |
 
 **Henüz sınırlanmayanlar.** Açıkça: bir sitenin diliminin dışında çalışan programları (R2a'dan
-önce yazılmış her program, yönetici siteyi taşıyana kadar; böyle bir program, taşınana kadar
+önce yazılmış her program, panel güncellemeden sonra siteyi kendiliğinden taşıyana kadar, §8.4; böyle bir program, taşınana kadar
 sunucunun her yeniden başlatılmasından sonra yine), sitenin PHP'si (PHP-FPM havuzu; R3), henüz
 taşınmamış bir sitenin crontab'ı (§9) ve bir site hesabının R2b'den önce açık tuttuğu kullanıcı
 yöneticisi ("kalıcı oturum", §9.5) sitenin sınırlarıyla sınırlanmaz.
@@ -583,10 +583,10 @@ uygulamasını sağlar ve kart çekirdeği okur.
 
 **Eksik dosya.** Dosyası olmayan dilimin sınırı yoktur (F4). Kart üç durumu ayırır. Güncellemeden
 hemen sonra var olan her sitenin dilim dosyası yoktur, çünkü programları hiç taşınmadı: hiçbir birim
-dilimi adlandırmaz; kart programların sınırların dışında çalıştığını söyler ve taşımayı sunar. Bir
+dilimi adlandırmaz; kart programların sınırların dışında çalıştığını söyler ve panel onları kendiliğinden taşır (§8.4). Bir
 birim dilimi adlandırıyor ya da içinde çalışıyorken dosya gitmişse (sahip sildi) kart dosyanın eksik
-olduğunu ve sınırların bir sonraki değişikliğinin onu yeniden yazacağını söyler; site "dışarıda"
-satırına sayılır ve yöneticinin kartı dosyayı yazan taşımayı sunar. CelikPanel'in yazdığı ve sahibin
+olduğunu ve sınırların bir sonraki değişikliğinin onu yeniden yazacağını söyler; site dışarıda
+sayılır ve panelin işçisi onu kurulu sürüm başına bir kez taşır (taşıma dosyayı yazar). CelikPanel'in yazdığı ve sahibin
 geri vermek için sildiği dosya, hiçbir birim dilimi adlandırmasa da bir sonraki değişiklikle yeniden
 yazılır.
 
@@ -621,15 +621,105 @@ Değişen `Slice=` çalışan bir birime ancak bir sonraki başlangıcında ula�
 **Sunucu yeniden başladıktan sonra.** systemd açılışta her birimi kendi dosyasından, `Slice=`
 satırının adlandırdığı dilimde başlatır. Bu sürümden önce yazılmış her programın ve çalışırken
 yazılmış her programın dosyası `Slice=system.slice` der. **Bu yüzden sitenin var olan programı
-yeniden başlatmadan sonra, önceden olduğu gibi, sitenin sınırlarının dışında başlar ve yöneticinin
-taşımasına kadar dışarıda kalır.** Dosyası çalışmıyorken yazılan ya da taşınan program sitesinin
-dilimini adlandırır ve onun içinde başlar.
+yeniden başlatmadan sonra, önceden olduğu gibi, sitenin sınırlarının dışında başlar ve taşınana
+kadar dışarıda kalır** (güncellemeden sonra panelin kendisi taşır, §8.4). Dosyası çalışmıyorken
+yazılan ya da taşınan program sitesinin dilimini adlandırır ve onun içinde başlar.
 
-### 8.4 Yöneticinin taşıması
+**Yeni bir site ve geri yüklenen bir site (alpha.150, D-048 için doğrulandı).** Bu sürümde açılan
+bir sitenin her programı ilk çalışmasından önce yazılır (Node.js sitesi, yüklenen program, Python
+uygulaması, n8n gibi bir hizmet uygulaması, her kurulum, derleme ve Git dağıtımı adımı), yani
+yukarıdaki kuralla dilime yazılır; zamanlanmış görevleri baştan zamanlayıcıdır (§9). Bir yedeğin geri
+yüklenmesi hiçbir birim ve crontab yazmaz (Ajan'ın geri yüklemesi dosyaları ve veritabanlarını geri
+koyar); geri yükleme için durdurulan program panelin Başlat'ıyla yeniden başlar ve Başlat çalışmayan bir
+programı önce dilime yazar. Sahibin kendi değişikliği olmadan yeni ya da geri yüklenen bir siteyi hâlâ
+dışarıda bırakabilecek olanlar: systemd çalışıp çalışmadığını söyleyemezken yazılan bir birim,
+yardımcısı ve SMTP engeli yerine konamayan bir Başlat (ikisi de yukarıda) ve CelikPanel'in
+`cron.allow` dosyası yazılamadığı için hesabını cron'un dosyalarının hâlâ içeri aldığı yeni bir site
+(§9.3). Panelin işçisi üçüncüsünü site açıldıktan bir dakika sonra ele alır; ilk ikisi işçinin bir
+sonraki çalışmasını bekler (panelin bir sonraki başlangıcı ya da açılan veya geri yüklenen bir sonraki
+site).
 
-Sitenin Genel Bakış sayfası yöneticiye her programın nerede çalıştığını ve tek bir işlemi gösterir:
-`POST /api/v1/domains/{id}/site-limits/move {request_id}` (`Agent.MoveSiteSliceV1`). Panel genelinde
-aynı anda bir taşıma; yinelenen `request_id` ilk yanıtı alır; denetim kaydına `site.limits_move`
+### 8.4 Sınırların içine taşıma, panelin kendisi yapar (alpha.150, D-048)
+
+alpha.149'a kadar var olan bir site ancak yönetici "Sınırların içine taşı"ya (ya da "Hepsini taşı"ya)
+basınca sınırlarının içine giriyordu; yöneticinin hiç basmadığı bir sunucuda var olan hiçbir site
+sınırlarının içinde değildi. Sahibin 27 Kasım 2026 tarihli sözleri: "zaten otomatik olarak sınırlarda
+olmalıydı. buton falan saçmalığına gerek yok. bu bir hataydı. bu hatayı hiç olmamış gibi düzelt ve bir
+daha olmasın." alpha.150'den beri **panel hâlâ sınırlarının dışında olan her siteyi kendiliğinden
+taşır**; aşağıdaki taşıma (kaydı, geri koyması, kanıtları, süre kuralı, kilitleri ve güncelleme kapısı)
+değişmedi; yalnız onu kimin başlattığı ve ekranların ne sunduğu değişti.
+
+**İşçi** (`cmd/panel/site_auto_move.go`). Panelin TEK bir işçisi:
+
+- **Ne zaman.** Panelin başlangıcından beş dakika sonra (yan kapılar adımından sonra) ve bir site
+  açıldıktan ya da geri yüklendikten bir dakika sonra. Hiçbir zaman bir sayfa okunduğu için değil
+  (D-024): kartı ya da Şu anki sorunlar'ı okumak hiçbir taşıma başlatmaz. İşçi çalışırken açılan ya da
+  geri yüklenen bir site bir tur daha ekler, ikinci bir işçi değil.
+- **Hangi siteler, hangi sırayla.** Önce her sitenin dilimini ve zamanlanmış görevlerini okur (Şu anki
+  sorunlar'ın arkasındaki arka plan okumasıyla aynı okuma) ve programları sınırlarının dışında çalışan
+  ya da orada başlayacak olan (taşımanın aldıkları: sunucu sahibinin değiştirdiği ya da kendi
+  eklemesiyle yerleştirdiği birim, önceki bir korumadaki birim değil) ya da görevleri hâlâ cron'da
+  çalışan siteleri, sitelerin kimlik sırasıyla, **her seferinde bir site**, iki site arasında 20 saniye
+  bekleyerek alır. Bir sitenin sınırlarını tutamayan sunucuda taşınacak bir yer yoktur.
+- **Nasıl.** Her site, yöneticinin işleminin kullandığı aynı basışla: önce zamanlanmış görevler
+  (§9.3), sonra programlar; her site için yeni bir istek kimliği (`auto-<rastgele>`); denetim kaydına
+  `site.limits_move` ve `automatic: true` olarak yazılır.
+- **Kapı.** Her siteden önce panelin kendi güncellemesi kabul edilmiş ya da sürüyorken (panelin kendi
+  bilgisi), sunucu başka bir değişiklikle meşgulken (Ajan'ın kendi hazır olma bilgisi: başka bir
+  değişiklik, paket yöneticisi işi) ve yöneticinin bastığı bir taşıma sürerken bekler. Ajan, bir
+  güncelleme kaydı kuyrukta ya da sürüyorken ve başka bir taşıma onun hakkını tutarken taşımayı reddeder;
+  panel yeniden başlasa da (hak Ajan'ındır, panelin bir değişkeni değil). Böyle bir nedenle reddedilmek
+  bir hata değildir: site turun sonuna gider ve bir dakika sonra, iki katına çıkarak en çok on dakika
+  arayla yeniden denenir; altı saat böyle reddedildikten sonra o nedenle başarısız işaretlenir.
+- **Her site, kurulu sürüm başına bir kez; asla bir döngü değil.** Taşıma gönderilmeden önce site
+  `panel_settings` içindeki `site_auto_move_v1` kaydında "başladı" diye işaretlenir (panelin sürümü ve
+  derlemesiyle; başka bir sürümün işaretleri yok sayılır, böylece her sürüm hâlâ dışarıdaki bir siteyi
+  bir kez dener). Şema adımı yok: panel sitelerin sınırlarıyla ilgili öteki kayıtlarını da
+  `panel_settings` içinde tutar. Yazılamayan bir işaret hiçbir şeyin gönderilmemesi demektir; okunamayan
+  bir kayıt hiçbir sitenin kendiliğinden taşınmaması demektir. Yanıttan sonra işaret ne olduğunu söyler:
+  taşındı; bırakıldı (programlar girdi, görevler sunucu sahibinin nedeniyle cron'da kaldı: zamanlayıcının
+  yeniden üretemediği ya da CelikPanel'de yapılmamış ve yöneticinin tutmadığı bir satır, sahibin kendi
+  `cron.allow` dosyası, cron yok); başarısız (reddedildi ya da geri kondu), süresi doldu, tutuldu ya da
+  bilinmiyor. **Bunların hiçbiri işçi tarafından yeniden denenmez.** Taşıması başarısız olan, süresi dolan,
+  sonucu bilinmeyen ya da sonradan çözülen bir kayıt bırakan ve hâlâ sınırlarının dışında olan her site,
+  Şu anki sorunlar'da site başına TEK satırdır (`site_auto_move_failed`, yönetici): nedeni ve **Tekrar
+  dene**, ki aynı taşımadır (`POST /api/v1/domains/{id}/site-limits/move`). Sunucu sahibinin nedeniyle
+  bırakılan site yapılacak iş değildir: kartı nedeni ve kimin yapacağını söyler, değiştiğinde için Tekrar
+  dene sunar; sahibin kendi satırları (`cron.allow`, burada yapılmamış bir crontab satırı) olduğu gibi
+  kalır. Yöneticinin kendi Tekrar dene'si de aynı biçimde kaydedilir; satır ve kart son denemeyi izler.
+- **Ortasında durdurulan panel.** Yeni bir panel sürecinin bulduğu "başladı" işareti (bir taşıma
+  sürerken panel durdu) yalnız okuyarak çözülür: sınırlarının içindeki site "taşındı", hâlâ dışarıdaki
+  "bilinmiyor" olur (satırı Tekrar dene sunar). Taşıma asla iki kez gönderilmez; Ajan ilkini hâlâ
+  yürütüyorsa onun hakkı işçinin bir sonraki taşımasını o arada reddeder.
+- **Tutulan bir kayıt turu durdurur**, bir basışı durdurduğu gibi: bir taşıma kaydı tutulurken işçi
+  sonraki siteyi taşımaz; var olan satır ve kart yöneticinin ne yapacağını söyler (o sitenin kartında
+  Tekrar dene) ve işçi beş dakikada bir (yalnız okuyarak) çözülüp çözülmediğine bakar, sonra kendiliğinden
+  sürer.
+- **Bilerek geri konan bir site.** Yönetici bir sitenin zamanlanmış görevlerini cron'a geri koyduğunda
+  ("Görevleri cron'a geri koy", §9.3) site işaretlenir (`site_tasks_put_back_v1`) ve işçi onu, sonraki
+  sürümlerde de, yönetici o sitenin kartından yeniden taşıyana kadar rahat bırakır: taşımanın bir hata
+  olmadan sunulduğu tek yer.
+- **İnsanların okuduğu.** İşçi siteleri taşırken yönetici Ana sayfada, Şu anki sorunlar'da ve her
+  sitenin kartında tek bir sakin satır okur: "Siteler sınırlarının içine alınıyor (3 / 12) — bir şey
+  yapmanız gerekmiyor" ("Sites are being moved into their limits (3 / 12) — you do not need to do
+  anything"); listeyle birlikte yeniden okunur ve tur bitince gider (tutulan bir kaydı beklerken
+  gösterilmez). Sınırlarının içindeki bir site bunu kartında söyler, o kadar. Müşteri ve bayi işçiden
+  hiçbir şey okumaz. Sağlıklı bir sitede "Sınırların içine taşı" ya da "Hepsini taşı" ve birine basmayı
+  isteyen bir satır yoktur.
+
+**Sitenin müşterisinin fark ettiği.** Sitenin çalışan her programı taşındığında bir kez yeniden başlar
+(yeniden başlama ve dilimde çalıştığının ve bağlantı noktalarında yeniden yanıt verdiğinin denetimi,
+başlama süresiyle sınırlı: bu birimler kendi süresini koymaz, yani systemd'nin 90 saniyesi, asla 20'nin
+altında ya da 300'ün üstünde değil; bu sürede ayağa kalkmayan program çalıştığı yere geri konur ve orada
+bir kez daha yeniden başlatılır). Zamanlanmış görevleri saatlerini korur; taşıma dakikasında bir
+çalışma atlanabilir (§9.3). Site hesabı için `crontab -e` kapanır (§9.5). Sınırlarının dışında N sitesi
+olan bir sunucu, işçi başladıktan sonra (panelin başlangıcından beş dakika sonra) yaklaşık N × (20 sn +
+sitenin kendi taşıması) içinde biter: programı olmayan bir site saniyeler sürer, programı olan bir site
+en yavaş programının yeniden başlayıp yanıt vermesi kadar.
+
+**alpha.149'a kadar ve o zamandan beri Tekrar dene olarak:**
+`POST /api/v1/domains/{id}/site-limits/move {request_id}` (`Agent.MoveSiteSliceV1`, görevlerin
+`Agent.MoveSiteTasksV1`'inden sonra). Panel genelinde aynı anda bir taşıma (işçi de aynı bayrağı alır); yinelenen `request_id` ilk yanıtı alır; denetim kaydına `site.limits_move`
 olarak yazılır. Panelin kendi güncellemesi kabul edilmiş ya da sürüyorken taşıma (ve Tekrar dene)
 panel ve Ajan tarafından reddedilir ("panelin güncellemesi sürüyor; siteyi güncelleme bittikten sonra
 taşıyın"; düzeltme turu F6) ve bir taşıma sürerken güncelleme reddedilir (§8.6a). Bunu yalnız gerçekten
@@ -991,6 +1081,27 @@ tanımadığı sınır anahtarlarını korur ve o dilimin dosyası durdukça bir
   elle koyduğu bir değeri sahibi kaldırır (`ALTER ROLE … RESET …`, MariaDB için
   `ALTER USER … WITH MAX_STATEMENT_TIME 0`).
 
+**alpha.150'den alpha.149'a geri dönmek ve panelin kendiliğinden yaptığı taşıma (D-048).**
+
+- **İşçinin hiçbir şeyi güncelleme tamamlanmadan çalışmaz.** Güncellemenin kendiliğinden geri dönüşü
+  yeni panel başlamadan önce olur (yukarıda) ve işçi yeni panelin parçasıdır: o panelin başlangıcından
+  beş dakika sonra başlar ve her siteden önce panelin güncellemesi kabul edilmiş ya da sürüyorken,
+  sunucu başka bir değişiklikle meşgulken (Ajan'ın kendi hazır olma bilgisi) ve Ajan `update_running`
+  (31 dakikadan kısa süre önce açılmış, kuyrukta ya da süren bir güncelleme kaydı) ya da
+  `update_unreadable` ile reddederken bekler. Bileşen testi `TestTheWorkerStartsOnlyAfterTheGate`
+  (`cmd/panel/site_auto_move_test.go`) bunlardan biri sürerken hiçbir şeyin gönderilmediğini ve hiçbir
+  sitenin işaretlenmediğini, panelin kendi kapısı çıkarıldığında aynı testin başarısız olduğunu kanıtlar.
+  Kendiliğinden geri dönüş bu yüzden işçinin taşıdığı hiçbir site ve hiçbir işaret bulmaz.
+- **Ürünün dışında geri alınan tamamlanmış bir güncelleme** (ürün yolu değil, yukarıda): işçinin taşıdığı
+  programlar birim dosyalarında `Slice=celiksite_<id>.slice` satırını korur; alpha.149 dilimi tanır
+  (alpha.148'inkidir), dilim dosyası durdukça bu satırı korur ve onları orada başlatır; kendi "Sınırların
+  içine taşı"sı onları "zaten" bulur. Zamanlanmış görevleri, yöneticinin taşıdığı bir site için §9.4'ün
+  söylediği gibidir (zamanlayıcı olarak çalışmayı sürdürürler; alpha.149'un Zamanlanmış görevler ekranı
+  onları okuyamaz). İşçinin işaretleri (`panel_settings` `site_auto_move_v1` ve `site_tasks_put_back_v1`)
+  alpha.149'un okumadığı ayarlardır: orada hiçbir şey yapmazlar; sonraki alpha.150 ya da daha yenisi
+  onları bulur (başka bir sürümün işaretleri yok sayılır). alpha.149 hâlâ dışarıdaki bir sitede düğmesini
+  yine sunar; orada hiçbir şey kendiliğinden taşınmaz.
+
 ## 9. Sitenin zamanlanmış görevleri kendi sınırları içinde (S4 R2b)
 
 *22 Kasım 2026; 26 Kasım 2026'da alpha.149'un üstüne getirildi (programların taşımasındaki gibi
@@ -1001,12 +1112,13 @@ panelin iki sistemdeki laboratuvar turu açık (adımlar çekme isteğinde).*
 Taşınmış bir sitenin zamanlanmış görevleri artık cron ile çalışmaz. Etkin her görev bir
 systemd zamanlayıcı ve hizmet çiftidir: `celikcron-<site kimliği>-<n>.timer` ve `.service`.
 Hizmet sitenin diliminde (§8), sitenin öteki programlarının ağ kurallarıyla çalışır. **Yeni
-siteler baştan taşınmıştır. Var olan bir site, yönetici onu taşıyana kadar cron'da kalır:**
-programlarıyla aynı "Sınırların içine taşı" işlemiyle (§8.4, §9.3) ya da hâlâ dışarıda olan
-bütün siteler için "Hepsini taşı" ile.
+siteler baştan taşınmıştır. Var olan bir siteyi panelin kendisi taşır** (alpha.150, D-048),
+programlarıyla birlikte, §8.4'ün işçisiyle; kimse bir şeye basmaz.
 
 **Bu adımdan sonra hâlâ sınırların dışında çalışanlar.** Açıkça: sitenin PHP'si (PHP-FPM
-havuzu; R3), henüz taşınmamış bir sitenin programları ve crontab'ı, R2a'dan önce yazılmış bir
+havuzu; R3), henüz taşınmamış bir sitenin programları ve crontab'ı (panelin işçisi güncellemeden
+sonra ona ulaşana kadar ya da taşıyamadığı bir site: Şu anki sorunlar onu Tekrar dene ile gösterir),
+R2a'dan önce yazılmış bir
 program (taşınana kadar sunucunun her yeniden başlatılmasından sonra yine, §8.3), taşınmış bir
 sitenin hesabı için yeniden yapılan bir crontab (bildirilir, §9.4) ve bu adımdan önce kalıcı oturum
 açmış bir site hesabının programları (§9.5).
@@ -1191,14 +1303,19 @@ Müşteri yalnız kendi sitesinin görevlerini görür. Biten bir çalışmanın
 kez okunur ve saklanır (sınırlı bir önbellek); listenin bir okuması en çok sekiz günlük okuyucu
 başlatır, henüz okunmamış çalışmaların satırları bir sonraki okumada görünür.
 
-### 9.3 Var olan bir sitenin crontab'ını taşımak ve geri almak
+### 9.3 Var olan bir sitenin crontab'ını panelin kendisi taşır; geri alma
 
-Yöneticinin sitenin Genel Bakış sayfasındaki "Sınırların içine taşı" işlemi önce bir **ön izleme**
+Panelin işçisi (§8.4, D-048) var olan her sitenin crontab'ını kendiliğinden zamanlayıcılara taşır;
+sitenin programlarından önce, aynı basışta. Crontab'ı olmayan bir site de taşınır: hesabı cron'dan
+çıkar (`crontab -e` onun için kapanır, §9.5) ve gelecekteki görevleri zamanlayıcıdır. Tekrar dene (siteyi
+içeri almayan bir taşımanın yanında) ve bilerek geri konan bir sitenin taşıması önce bir **ön izleme**
 okur (neyin neye dönüştüğü, birlikte gelen ayarlar ve duraklatılmış görevler, set-user-id bir
 program çağıran bir görev ve e-posta gönderen bir görev: taşımadan sonra yalnız bu sunucunun kendi
 gönderim hizmetiyle ya da bu sunucu üzerinden hiç gönderemez, §3). Çevrilemeyen bir satır ve
 CelikPanel'de yapılmamış, yöneticinin tutmadığı bir satır (S4 R1) **bütün** crontab'ı cron'da tutar
-ve adı söylenir; hiçbir şey yarım taşınmaz. Taşıma, programların taşınmasıyla aynı kilitleri (aynı
+ve adı söylenir; hiçbir şey yarım taşınmaz (işçi siteyi o zaman "bırakıldı" diye işaretler: programları
+girer, görevleri cron'da kalır ve kart satırları kimin yapacağıyla söyler; Şu anki sorunlar'da yapılacak
+iş olmaz). Taşıma, programların taşınmasıyla aynı kilitleri (aynı
 anda tek taşıma; sitenin kilidi beklemeden, böylece silinmekte olan bir site taşınmaz) ve sitenin
 görevlerinin her değişikliğinin kilidini tutar; hiçbir şeyi yeniden başlatmaz.
 
@@ -1258,7 +1375,7 @@ taşıması ve geri alması programların taşımasıyla aynı tek kaydı tutar 
 - **Her yeni taşıma ve geri alma** hiçbir şey değişmeden **reddedilir** (`kept_earlier`): başka bir
   sitenin kaydı hemen; aynı sitenin kaydı önce basışın kendi süresi içinde çözülür ve basış ancak
   çözülürse sürer. Panel, görevler bölümü "bilinmiyor" diyen ya da başlamadan reddedilen bir basışın
-  programlar bölümünü başlatmaz ve "Hepsini taşı" orada durur.
+  programlar bölümünü başlatmaz ve panelin işçisi turunu kayıt çözülene kadar orada durdurur (§8.4).
 - **Şu anki sorunlar'da tek satır** ("Sınırlara taşıma bitmedi") siteyi açar. Görev kaydı için
   sitenin zamanlanmış görevlerinin şu an nasıl çalıştığını Ajan'ın kaydettiği gibi söyler: yönetici
   Tekrar dene'ye basana dek **çalışmıyor** (crontab boşaltıldı, zamanlayıcılar kapalı); sınırlar

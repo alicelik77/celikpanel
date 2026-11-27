@@ -382,7 +382,7 @@ func (a *Agent) MoveSiteTasksV1(req *transport.SiteTasksMoveRequest, resp *trans
 		}
 		*resp = planSiteTasksMove(username, target.SiteID, crontab)
 		// A move that would be refused before anything changes says so in
-		// the preview too (Move all lists it as staying, with why).
+		// the preview too (Try again's question names it, with why).
 		if resp.Outcome == transport.SiteTasksPreview {
 			if why := cronMoveRefusal(username); why != "" {
 				resp.Outcome, resp.Refusal, resp.Error = transport.SiteTasksRefused, transport.SiteTasksRefusalCronAllow, why

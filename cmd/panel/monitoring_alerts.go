@@ -693,12 +693,14 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("The programs of %s keep using all their memory (%s times in a day). The site's page says what its plan allows.", subject, n),
 			fmt.Sprintf("%s sitesinin programları belleğin tamamını tekrar tekrar kullanıyor (bir günde %s kez). Sitenin sayfası planın neye izin verdiğini söyler.", subject, n)
 	case "site_programs_outside":
-		return fmt.Sprintf("The programs of %s sites still run outside their limits (%s). \"Move into the limits\" on each site's Overview restarts them once inside.", n, subject),
-			fmt.Sprintf("%s sitenin programları hâlâ sınırlarının dışında çalışıyor (%s). Her sitenin Genel Bakış sayfasındaki \"Sınırların içine taşı\" onları bir kez yeniden başlatıp içeri alır.", n, subject)
-	// S4 R2b (site_tasks.go).
-	case "site_limits_outside":
-		return fmt.Sprintf("The programs or scheduled tasks of %s sites still run outside their limits (%s). Problems now offers to move them all.", n, subject),
-			fmt.Sprintf("%s sitenin programları ya da zamanlanmış görevleri hâlâ sınırlarının dışında çalışıyor (%s). Şu anki sorunlar hepsini taşımayı önerir.", n, subject)
+		// An alert alpha.148 or alpha.149 opened; since alpha.150 the panel
+		// moves the sites by itself (D-048).
+		return fmt.Sprintf("The programs of %s sites ran outside their limits (%s). The panel moves them into their limits by itself; you do not need to do anything.", n, subject),
+			fmt.Sprintf("%s sitenin programları sınırlarının dışında çalışıyordu (%s). Panel onları kendiliğinden sınırlarının içine alır; bir şey yapmanız gerekmiyor.", n, subject)
+	// alpha.150 (site_auto_move.go, D-048).
+	case "site_auto_move_failed":
+		return fmt.Sprintf("%s could not be moved into its limits by itself; it still runs outside them. Problems now says why and offers Try again.", subject),
+			fmt.Sprintf("%s kendiliğinden sınırlarının içine alınamadı; hâlâ sınırlarının dışında çalışıyor. Nedeni Şu anki sorunlar'da, \"Tekrar dene\" ile.", subject)
 	case "cron_allow_lists_sites":
 		return fmt.Sprintf("The server owner's %s lets the accounts of sites whose tasks run in their limits use cron again (%s). Monitoring says what to change.", name, subject),
 			fmt.Sprintf("Sunucu sahibinin %s dosyası, görevleri sınırları içinde çalışan sitelerin hesaplarına yeniden cron izni veriyor (%s). Neyin değişeceği İzleme'de.", name, subject)

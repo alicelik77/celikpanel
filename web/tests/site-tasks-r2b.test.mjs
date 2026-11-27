@@ -1,8 +1,8 @@
 // S4 R2b (22 Nov 2026): a site's scheduled tasks as timers inside its own
 // limits. The Scheduled tasks screen says each task's last run and the two
 // halves of what a long run does; the administrator's move takes the site's
-// crontab too (preview first) and can be undone; "Move all" stops at the first
-// site that does not move; the Problems now lines have words in both
+// crontab too (preview first) and can be undone (alpha.150: the panel moves
+// every site by itself, D-048, and "Move all" is gone); the Problems now lines have words in both
 // languages, plain and without other companies' product names.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -17,8 +17,7 @@ const trSiteTasksScreens = { ...trSiteTasksPart, ...trSiteTasksSplit };
 import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
 import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
 import {
-  decodeOutsideSites, decodeTaskRun, decodeTasksAnswer, decodeTasksPlacement, lineList, movedTaskCount, moveSitesInTurn, privilegedList, siteMoveEnd,
-  unresolvedSteps,
+  decodeTaskRun, decodeTasksAnswer, decodeTasksPlacement, lineList, movedTaskCount, privilegedList, unresolvedSteps,
 } from '../src/lib/siteTasks.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -95,76 +94,6 @@ test('the move reads a preview first and nothing is half-moved', () => {
   assert.match(card, /t\('slim\.tasks\.mail'\)/);
 });
 
-test('"Move all" skips a site that cannot move and stops only when a started move fails (fix round)', async () => {
-  assert.deepEqual(siteMoveEnd({ done: true, units: [], tasks: { outcome: 'moved' } }), { kind: 'moved', note: '' });
-  assert.deepEqual(siteMoveEnd({ done: true, units: [], tasks: { outcome: 'already' } }), { kind: 'moved', note: '' });
-  assert.deepEqual(siteMoveEnd({ done: true, units: [], tasks: { outcome: 'stayed', blocking: [{ line: 3, text: 'x', reason: 'schedule' }] } }), { kind: 'skipped', reason: '3: x' });
-  assert.equal(siteMoveEnd({ done: true, units: [{ unit: 'celikapp-4.service' }], tasks: { outcome: 'refused', error: 'owner file' } }).kind, 'partial');
-  assert.equal(siteMoveEnd({ done: false, rolled_back: true, error: 'put back', tasks: { outcome: 'moved' } }).kind, 'stop');
-  assert.equal(siteMoveEnd({ done: true, tasks: { outcome: 'put_back', error: 'x' } }).kind, 'stop');
-  assert.equal(siteMoveEnd({ done: true }).kind, 'stop', 'an answer without the tasks part is not a success');
-  assert.deepEqual(decodeOutsideSites({ sites: [{ domain_id: 4, domain: 'a.test', tasks: true }, { domain: 'broken' }] }), [{ domain_id: 4, domain: 'a.test', tasks: true }]);
-
-  // The unmovable site sorts first (alphabetically); every site after it still moves.
-  const sites = [{ domain_id: 1, domain: 'a-stays.test', tasks: true }, { domain_id: 2, domain: 'b.test', tasks: true }, { domain_id: 3, domain: 'c.test', programs: 1 }];
-  const answers = {
-    1: { status: 200, body: { done: true, units: [], tasks: { outcome: 'stayed', blocking: [{ line: 6, text: 'MAILTO=me@x.test', reason: 'mailto' }] } } },
-    2: { status: 200, body: { done: true, units: [], tasks: { outcome: 'moved' } } },
-    3: { status: 200, body: { done: true, units: [{ unit: 'celikapp-3.service', outcome: 'moved' }], tasks: { outcome: 'already' } } },
-  };
-  const seen = [];
-  const outcome = await moveSitesInTurn(sites, async (site) => { seen.push(site.domain); return answers[site.domain_id]; }, () => {});
-  assert.deepEqual(seen, ['a-stays.test', 'b.test', 'c.test']);
-  assert.equal(outcome.moved, 2);
-  assert.deepEqual(outcome.notMoved, [{ domain: 'a-stays.test', reason: '6: MAILTO=me@x.test' }]);
-  assert.equal(outcome.stop, undefined);
-  // A refusal before anything changed (409) is skipped too; a started move that fails stops the run.
-  answers[1] = { status: 409, refusal: 'a site is being moved now' };
-  answers[2] = { status: 200, body: { done: false, rolled_back: true, error: 'the program did not start', tasks: { outcome: 'moved' } } };
-  seen.length = 0;
-  const stopped = await moveSitesInTurn(sites, async (site) => { seen.push(site.domain); return answers[site.domain_id]; }, () => {});
-  assert.deepEqual(seen, ['a-stays.test', 'b.test'], 'nothing after the failed move is touched');
-  // alpha.150 fix round: the reason is a code the page words, never the agent's English.
-  assert.deepEqual(stopped.stop, { domain: 'b.test', reason: 'slim.why.other', unknown: false });
-  const unknown = await moveSitesInTurn([sites[1]], async () => null, () => {});
-  assert.equal(unknown.stop.unknown, true);
-
-  // Second fix round (review N5): a 5xx (503 "the result is unknown", 504, 500), any other
-  // status that is not a refusal that changed nothing, and a success without a readable body
-  // all stop the run as unknown; only 400, 403, 404 and 409 are skipped.
-  for (const status of [500, 502, 503, 504, 401, 429]) {
-    seen.length = 0;
-    const answer = { status, refusal: 'The server did not answer, so the result is unknown.' };
-    const out = await moveSitesInTurn(sites, async (site) => { seen.push(site.domain); return site.domain_id === 1 ? answer : answers[2]; }, () => {});
-    assert.deepEqual(seen, ['a-stays.test'], `status ${status} stops the run`);
-    assert.equal(out.stop.unknown, true, `status ${status} is unknown`);
-  }
-  for (const status of [400, 403, 404, 409]) {
-    const out = await moveSitesInTurn([sites[0]], async () => ({ status, refusal: 'no' }), () => {});
-    assert.equal(out.stop, undefined, `status ${status} is a skip`);
-    assert.equal(out.notMoved.length, 1);
-  }
-  const noBody = await moveSitesInTurn([sites[0], sites[1]], async () => ({ status: 200 }), () => {});
-  assert.equal(noBody.stop.unknown, true, 'a success without a readable body is unknown');
-  // Review N1 (alpha.150: main's one kept record): a kept move record stops the run (nothing
-  // else is moved), whether the tasks part or the programs part answered it.
-  const unresolved = await moveSitesInTurn(sites, async (site) => ({ status: 200, body: { done: false, kept: true, reason: { code: 'kept_earlier' }, units: [],
-    tasks: { outcome: 'refused', refusal: 'kept_earlier', error: 'an earlier move of site 7' } } }), () => {});
-  assert.equal(unresolved.stop.unresolved, true);
-  assert.equal(unresolved.moved, 0);
-  const keptByPrograms = await moveSitesInTurn(sites, async () => ({ status: 200, body: { done: false, kept: true, reason: { code: 'kept_earlier' }, units: [],
-    tasks: { outcome: 'moved' } } }), () => {});
-  assert.equal(keptByPrograms.stop.unresolved, true);
-  assert.match(read('../src/components/MoveAllSites.tsx'), /t\('moveall\.unresolved'\)/);
-
-  const all = read('../src/components/MoveAllSites.tsx');
-  assert.match(all, /readTasksPreview\(site\.domain_id\)/, 'each site\'s preview is read before the run');
-  assert.match(all, /option: programsOnly\.length > 0/, 'programs-only sites move only when ticked');
-  assert.match(all, /t\('moveall\.failed'/);
-  assert.match(all, /<Link to=\{`\/domains\/\$\{encodeURIComponent\(l\.domain\)\}`\}/, 'each site not moved links to its page');
-  assert.match(read('../src/lib/siteTasks.ts'), /\/api\/v1\/site-limits\/outside/);
-});
-
 test('the Problems now lines are known kinds with words, and the two re-closes are offered', () => {
   const problems = read('../src/components/ProblemsNow.tsx');
   const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
@@ -173,7 +102,7 @@ test('the Problems now lines are known kinds with words, and the two re-closes a
   // not be settled is main's site_move_kept line (alpha.150: one record, one line).
   const en = { ...enSiteTasksScreens, ...enProblemsNowScreens };
   const tr = { ...trSiteTasksScreens, ...trProblemsNowScreens };
-  for (const kind of ['site_limits_outside', 'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned', 'site_lingering', 'linger_owner_removed', 'linger_not_closed', 'site_crontab_by_site', 'site_tasks_held',
+  for (const kind of ['cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned', 'site_lingering', 'linger_owner_removed', 'linger_not_closed', 'site_crontab_by_site', 'site_tasks_held',
     'site_move_kept', 'site_user_manager_open']) {
     assert.ok(list && list[1].includes(`'${kind}'`), `${kind} is a known kind`);
     for (const part of ['title', 'body', 'action']) {
@@ -183,7 +112,9 @@ test('the Problems now lines are known kinds with words, and the two re-closes a
   }
   for (const kind of ['cron_owner_removed', 'linger_owner_removed']) assert.ok(en[`pnow.${kind}.confirm`] && tr[`pnow.${kind}.confirm`]);
   assert.match(problems, /const RECLOSE = \['at', 'stock_pool', 'cron', 'linger'\];/);
-  assert.match(problems, /problem\.action\.kind === 'move_all' \?/);
+  // alpha.150 (D-048): no "Move all"; a site the panel could not move by itself has Try again.
+  assert.doesNotMatch(problems, /move_all|MoveAllSites/);
+  assert.match(problems, /problem\.action\.kind === 'retry_move' \?/);
   assert.match(en['pnow.site_lingering.body'], /\{other\}/, 'the lingering line gives the command');
   // Review N4: the held line says the tasks do not run while the file is missing (also after a
   // restart) and gives the reload a file put back by hand needs.
@@ -196,7 +127,7 @@ test('the Problems now lines are known kinds with words, and the two re-closes a
 
 test('second fix round: what the screens say about a skipped run, a timer not on yet, a crontab back and the mail file', () => {
   assert.equal(decodeTaskRun({ state: 'skipped', started_at: '2026-11-23T10:00:00Z' }).state, 'skipped');
-  for (const key of ['stasks.run.skipped', 'stasks.state.not_on_yet', 'stasks.source.crontab', 'slim.tasks.unresolved', 'slim.tasks.mailOwnerFile', 'moveall.unresolved']) {
+  for (const key of ['stasks.run.skipped', 'stasks.state.not_on_yet', 'stasks.source.crontab', 'slim.tasks.unresolved', 'slim.tasks.mailOwnerFile']) {
     assert.ok(enSiteTasksScreens[key] && trSiteTasksScreens[key], key);
   }
   assert.doesNotMatch(enSiteTasksScreens['stasks.run.skipped'], /fail/i, 'a skipped run is not called failed');

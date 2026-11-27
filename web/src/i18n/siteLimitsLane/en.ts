@@ -47,9 +47,9 @@ export const enSiteLimitsLane = {
     'slim.why.site_busy': 'The site is being changed right now (for example deleted); nothing was moved. Read its page again in a minute.',
     'slim.why.kept_earlier': 'An earlier move could not be put back completely, so nothing new was moved. That site’s card names each program left and the next step.',
     'slim.why.unsupported': 'This server cannot hold a site’s limits; nothing was moved.',
-    'slim.why.update_running': 'The panel’s update is in progress; nothing was moved. Move the site after the update has finished.',
+    'slim.why.update_running': 'The panel’s update is in progress; nothing was moved. Press Try again after the update has finished.',
     'slim.why.update_unreadable': 'It is not known whether the panel’s update is in progress: one of its records could not be read. Nothing was moved. This ends by itself at the latest 31 minutes after that record last changed; the agent’s journal names it (sudo journalctl -u celikpanel-agent).',
-    'err.SERVICE_APP.site_limits_update_running': 'The panel’s update is in progress; nothing was moved. Move the site after the update has finished.',
+    'err.SERVICE_APP.site_limits_update_running': 'The panel’s update is in progress; nothing was moved. Press Try again after the update has finished.',
     'slim.why.other': 'The move did not run; nothing was moved. The agent’s journal says why (sudo journalctl -u celikpanel-agent).',
     'limits.preview.sitesStopped.one': 'The programs of 1 site use more now than a lowered limit. On saving, a program over the memory limit is stopped at once; at the process limit no new process starts and running ones go on:',
     'limits.preview.part.memory': 'memory {used} in use, new limit {limit}',
@@ -77,6 +77,19 @@ export const enSiteLimitsLane = {
     'slim.applyReason.agent_unreachable': 'the panel’s agent did not answer',
     'slim.applyReason.agent_refused': 'the panel’s agent did not take the change',
     'slim.applyReason.other': 'the agent’s journal says why: sudo journalctl -u celikpanel-agent',
+    // alpha.150 (D-048): every site goes inside its limits by itself; words only next to a failure.
+    'slim.auto.running': 'Sites are being moved into their limits ({done} / {total}) — you do not need to do anything.',
+    'slim.auto.notMoved': 'The panel could not move this site into its limits by itself, so it still runs outside them, and it is not tried again by itself.',
+    'slim.auto.why.unknown': 'How its move ended is not known (the panel restarted during it, or the server did not answer). Nothing was moved a second time; press Try again.',
+    'slim.auto.why.kept': 'Its last move did not finish; it was settled since, and the site was left as it is now. Press Try again.',
+    'slim.auto.why.stayed': 'Its programs are inside its limits, but its scheduled tasks stay in cron: a line keeps the whole crontab there, and the site’s Scheduled tasks screen names it. Once that line is changed, press Try again.',
+    'slim.auto.why.failed': 'The move stopped and the site was put back as it was; nothing else was changed. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press Try again.',
+    'slim.auto.why.waited': 'The server stayed busy for hours (another change, the panel’s update or another move), so the site was not moved; nothing was changed. Press Try again.',
+    'slim.auto.why.limits_unread': 'This site’s limits could not be read in the panel, so nothing was changed. Press Try again.',
+    'slim.auto.putBack': 'Its scheduled tasks were put back into cron on purpose, so the panel leaves this site as it is until you move it again here.',
+    'pnow.site_auto_move_failed.title': '{domain} is not inside its limits',
+    'pnow.site_auto_move_failed.body': 'The panel could not move this site into its limits by itself; it is not tried again by itself. The administrator presses Try again once the reason below is dealt with.',
+    'pnow.site_auto_move_failed.action': 'Try again',
 } as const;
 
 export type SiteLimitsLaneKey = keyof typeof enSiteLimitsLane;

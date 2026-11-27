@@ -10,7 +10,7 @@
 
 export const enSiteLimitsApplyScreens = {
     'slim.applied': 'In force now: {value}.',
-    'slim.move.timeUp': 'The move’s time ran out. The programs marked done are inside the limits; press the move again for the rest.',
+    'slim.move.timeUp': 'The move’s time ran out. The programs marked done are inside the limits; press Try again for the rest.',
     'limits.preview.sitesStopped': 'The programs of {n} sites use more now than a lowered limit. On saving, a program over the memory limit is stopped at once; at the process limit no new process starts and running ones go on:',
     'pnow.site_memory_default.title': 'The server’s memory changed: the sites’ default memory limit is still {domain} MB',
     'pnow.site_memory_default.body': 'It was set for the server’s memory at the time, which changed ({other}). Nothing changes by itself. The new default would be {value} MB; applying it first shows the sites that use more now.',

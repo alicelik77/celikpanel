@@ -1,14 +1,15 @@
 // SCREEN catalogue part "siteTasks" (22 Nov 2026, S4 R2b and its fix round):
 // a site's scheduled tasks as timers inside its own limits - what the
 // Scheduled tasks screen says about each task's last run (stasks.), the
-// administrator's move of the site's crontab and its undo on the Overview
-// card (slim.tasks.). "Move all" (moveall.) and the Problems now lines
-// (pnow.) moved to the part "siteTasksProblems" in alpha.150.
+// site's crontab moved into timers (by the panel itself since alpha.150,
+// D-048; Try again next to a failure) and its undo on the Overview card
+// (slim.tasks.). The Problems now lines (pnow.) moved to the part
+// "siteTasksProblems" in alpha.150.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
 // EKRAN katalogu parçası "siteTasks": sitenin zamanlanmış görevleri kendi
-// sınırları içinde; son çalışma, taşıma, geri alma, hepsini taşıma.
+// sınırları içinde; son çalışma, taşıma, geri alma.
 
 export const enSiteTasksScreens = {
     'stasks.timers': 'These tasks run inside this site’s own limits. A task still running when its next time comes is not started a second time; if its time came while it ran, it starts once more right after it ends.',
@@ -55,7 +56,7 @@ export const enSiteTasksScreens = {
 
     'slim.tasks.title': 'Scheduled tasks',
     'slim.tasks.moved': 'The site’s scheduled tasks run inside these limits.',
-    'slim.tasks.cron': 'The site’s scheduled tasks still run in cron, outside these limits, and the site’s own code can add more there. The move takes them in too.',
+    'slim.tasks.cron': 'The site’s scheduled tasks still run in cron, outside these limits, and the site’s own code can add more there.',
     'slim.tasks.unknown': 'Where the site’s scheduled tasks run could not be read.',
     'slim.tasks.reappeared': 'A crontab was made again for this site’s account ({n} lines); it runs outside the limits. Only root could make it (the server owner); Scheduled tasks lists its lines.',
     'slim.tasks.reappearedSite': 'A crontab exists again for this site’s account ({n} lines) and runs outside the limits. Cron let this account in, so the site’s own code can have made it. The server owner removes it and keeps the account out of cron; Scheduled tasks lists its lines.',
@@ -75,13 +76,13 @@ export const enSiteTasksScreens = {
     'slim.tasks.done.moved': 'The scheduled tasks run inside the limits now.',
     'slim.tasks.done.stayed': 'The scheduled tasks stayed in cron: {list}.',
     'slim.tasks.done.back': 'The scheduled tasks run inside the limits now, but a crontab exists again for the site’s account and runs outside them. The server owner removes it or moves its lines into Scheduled tasks.',
-    'slim.tasks.why.cron_allow_owner': 'Nothing was moved: the server’s own cron settings would still let the site’s account use cron (the server owner’s /etc/cron.allow lists it, CelikPanel’s file was deleted, or accounts come from a directory service). The server owner changes that, then the move can be pressed again.',
-    'slim.tasks.why.crontab_changed': 'The site’s crontab changed while it was being moved, so nothing was moved and the crontab is as it is now. Press the move again.',
-    'slim.tasks.why.limits': 'Nothing was moved: the site’s limits file could not be put in place on the server. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press the move again.',
-    'slim.tasks.why.processes_unread': 'Nothing was moved: the agent could not tell the program of every process of the site’s account, so a crontab command among them could still install a crontab once cron is closed. The administrator looks at the account’s processes (sudo ps -fu followed by the account’s name) and ends the one the agent’s journal names (sudo journalctl -u celikpanel-agent); then press the move again.',
+    'slim.tasks.why.cron_allow_owner': 'Nothing was moved: the server’s own cron settings would still let the site’s account use cron (the server owner’s /etc/cron.allow lists it, CelikPanel’s file was deleted, or accounts come from a directory service). The server owner changes that, then Try again moves the site.',
+    'slim.tasks.why.crontab_changed': 'The site’s crontab changed while it was being moved, so nothing was moved and the crontab is as it is now. Press Try again.',
+    'slim.tasks.why.limits': 'Nothing was moved: the site’s limits file could not be put in place on the server. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press Try again.',
+    'slim.tasks.why.processes_unread': 'Nothing was moved: the agent could not tell the program of every process of the site’s account, so a crontab command among them could still install a crontab once cron is closed. The administrator looks at the account’s processes (sudo ps -fu followed by the account’s name) and ends the one the agent’s journal names (sudo journalctl -u celikpanel-agent); then press Try again.',
     'slim.tasks.why.put_back':'The scheduled tasks could not be moved; the crontab is as it was and no timer was left. The agent’s journal names the step (sudo journalctl -u celikpanel-agent).',
     'slim.tasks.why.no_cron': 'The site’s crontab could not be read (cron is not installed, or it refused the reading); nothing was changed.',
-    'slim.tasks.why.unknown': 'Whether the scheduled tasks moved is not known yet. Read this page again before you press the move again: if the move was not settled, the card names it with Try again, and its record keeps the crontab, so nothing is lost.',
+    'slim.tasks.why.unknown': 'Whether the scheduled tasks moved is not known yet. Read this page again before you press Try again: if the move was not settled, the card names it with Try again, and its record keeps the crontab, so nothing is lost.',
     'slim.tasks.undoWhy.unknown': 'Whether the tasks are back in cron is not known yet. Read this page again: if it was not settled, the card names it with Try again; the crontab and the timers are never both on.',
     'slim.tasks.why.other': 'The scheduled tasks were not moved; nothing was changed. The agent’s journal says why (sudo journalctl -u celikpanel-agent).',
     'slim.tasks.undoWhy.cron_allow_owner': 'Nothing was changed: the server’s own cron settings would keep the site’s account out of cron (the server owner’s /etc/cron.allow does not list it, or /etc/cron.deny names it). The server owner changes that, then this can be pressed again.',

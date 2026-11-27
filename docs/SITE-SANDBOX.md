@@ -362,7 +362,7 @@ administrator acts, and the command that shows the place:
 
 The site's slice is where this release places a site's programs (§8: a
 program written while it does not run goes into it; a running one stays where
-it runs until the administrator moves the site). When a program's unit is
+it runs until the site is moved, by the panel itself since alpha.150, §8.4). When a program's unit is
 written while the site's limits cannot be applied (this host cannot hold
 them, §8, or the request's limits are out of range), a unit file that
 already names its site's slice keeps its `Slice=celiksite_<id>.slice` line,
@@ -575,8 +575,9 @@ slice, `celiksite_<site id>.slice`, whose `MemoryMax=`, `MemorySwapMax=0`,
 | `celikpanel-sandbox@…`, `celikpanel-ftp@…` | root's bind units | no: they run no customer code |
 
 **What is not bounded yet.** Say it plainly: a site's programs that run outside its
-slice (every program written before R2a, until the administrator moves the site, and
-such a program again after each restart of the server until it is moved), the site's
+slice (every program written before R2a, until the panel has moved the site by itself
+after the update, §8.4, and such a program again after each restart of the server until
+it is moved), the site's
 PHP (its PHP-FPM pool; R3), the crontab of a site not yet moved (§9), and a user manager
 a site account already kept running before R2b ("lingering", §9.5) are not bounded by
 the site's limits.
@@ -718,10 +719,10 @@ makes systemd apply the file, and the card reads the kernel.
 **A missing file.** A slice without a file has no limits (F4). The card tells three states
 apart. Every existing site right after the update has no slice file because its programs
 were never moved: no unit names the slice, so the card says the programs run outside the
-limits and offers the move. Where a unit names the slice or runs in it and the file is gone
-(the owner removed it), the card says the file is missing and the next change of limits
-writes it again; the site counts in the "outside" line, and the administrator's card offers
-the move, which writes it. A file CelikPanel wrote that the owner deleted to give it back is
+limits, and the panel moves them by itself (§8.4). Where a unit names the slice or runs in it
+and the file is gone (the owner removed it), the card says the file is missing and the next
+change of limits writes it again; the site counts as outside, and the panel's worker moves it
+(the move writes the file) once per installed version. A file CelikPanel wrote that the owner deleted to give it back is
 written again by the next change even where no unit names it.
 
 **The card for the administrator** names the owner's drop-ins by file name with "the
@@ -757,15 +758,108 @@ A changed `Slice=` reaches a running unit only at its next start (F1). So:
 the slice its `Slice=` line names. The file of every program written before this
 release, and of every program written while it ran, says `Slice=system.slice`. **So
 a site's existing program starts outside its site's limits again after a restart,
-as before, and stays outside until the administrator's move.** A program whose file
-was written while it did not run, or that was moved, names its site's slice and
-starts inside it.
+as before, and stays outside until it is moved** (by the panel itself after the update,
+§8.4). A program whose file was written while it did not run, or that was moved, names
+its site's slice and starts inside it.
 
-### 8.4 The administrator's move
+**A new site, and a restored one (alpha.150, verified for D-048).** Every program of a site
+created on this release is written before it first runs (the Node.js site, an uploaded
+program, a Python app, a service app such as n8n, every install, build and Git deploy step),
+so it is written into the slice by the rule above; its scheduled tasks are timers from the
+start (§9). A backup's restore writes no unit and no crontab (the Agent's restore puts back
+files and databases), and the program it stopped for the restore starts again through the
+panel's Start, which writes a program that does not run into the slice first. What can still
+leave a new or restored site outside without an owner's own change: a unit written while
+systemd could not say whether it runs, a Start whose helper and SMTP block could not be put
+in place (both above), and a new site whose account cron's files would still let in because
+CelikPanel's `cron.allow` could not be written (§9.3). The panel's worker takes the third
+case one minute after the site is created; the first two wait for its next run (the next
+start of the panel, or the next site created or restored).
 
-The site's Overview shows the administrator where each program runs and one action,
-`POST /api/v1/domains/{id}/site-limits/move {request_id}` (`Agent.MoveSiteSliceV1`).
-One move at a time across the panel; a repeated `request_id` answers the first
+### 8.4 The move into the limits, made by the panel itself (alpha.150, D-048)
+
+Until alpha.149 an existing site went inside its limits only when the administrator pressed
+"Move into the limits" (or "Move all"); on a server whose administrator never pressed it, no
+existing site was inside its limits. The owner's words of 27 November 2026: "zaten otomatik
+olarak sınırlarda olmalıydı. buton falan saçmalığına gerek yok. bu bir hataydı. bu hatayı hiç
+olmamış gibi düzelt ve bir daha olmasın." Since alpha.150 **the panel moves every site still
+outside its limits by itself**; the move below (its record, put-back, proofs, time rule, locks
+and the update's gate) is unchanged, only who starts it and what the screens offer changed.
+
+**The worker** (`cmd/panel/site_auto_move.go`). ONE worker of the panel:
+
+- **When.** Five minutes after the panel's start (after the side doors step), and one minute
+  after a site is created or restored. Never because a page was read (D-024): reading the card
+  or Problems now starts no move. A site created or restored while it runs adds one more pass,
+  never a second worker.
+- **Which sites, in which order.** It first reads every site's slice and scheduled tasks (the
+  same reading as the background one behind Problems now) and takes the sites whose programs
+  run, or would start, outside their limits (the ones the move takes: not a unit the server
+  owner changed or placed with a drop-in, not one of an earlier protection) or whose tasks
+  still run in cron, in the order of the sites' ids, **one site at a time**, with 20 seconds
+  between two sites. A host that cannot hold a site's limits has nothing to move into.
+- **How.** Each site through the same press the administrator's action used: the scheduled
+  tasks first (§9.3), then the programs, with one fresh request id per site
+  (`auto-<random>`), audited as `site.limits_move` with `automatic: true`.
+- **The gate.** Before each site it waits while the panel's own update is admitted or running
+  (the panel's own word), while the server is busy with another change (the Agent's own readiness:
+  another change, package manager work), and while a move the
+  administrator pressed runs. The Agent refuses a move while an update record is queued or
+  running and while another move holds its claim, also across a restart of the panel (the
+  claim is the Agent's, never a variable of the panel). A refusal for such a reason is not a
+  failure: the site goes to the end of the run and is tried again after a minute, doubling up
+  to ten; after six hours of such refusals it is marked failed with that reason.
+- **Once per site per installed version, never a loop.** Before the move is sent the site is
+  marked "started" in `panel_settings` `site_auto_move_v1` (with the panel's version and build;
+  marks of another version count as none, so each version tries a site still outside once). No
+  schema step: the panel already keeps its other site-limit records in `panel_settings`. A mark
+  that cannot be written means nothing is sent; a record that cannot be read means no site is
+  moved by itself. After the answer the mark says what came of it: moved; left (the programs
+  went in, the tasks stayed in cron for the server owner's reason: a line the timers do not
+  reproduce or one not made in CelikPanel that the administrator has not kept, the owner's own
+  `cron.allow`, no cron); failed (refused or put back), stopped for its time, kept, or not known.
+  **None of these is tried again by the worker.** A site whose move failed, stopped for its time,
+  ended unknown or left a record that was settled since, and that is still outside its limits,
+  is ONE Problems now line per site (`site_auto_move_failed`, administrator): why, and **Try
+  again**, which is the same move (`POST /api/v1/domains/{id}/site-limits/move`). A site left for
+  the server owner's reason is no to-do: its card names the reason with who acts and offers Try
+  again for once it is changed, and the owner's own lines (`cron.allow`, a crontab line not made
+  here) stay as they were. The administrator's own Try again is recorded the same way, so the
+  line and the card follow the latest attempt.
+- **A panel stopped in the middle.** A mark "started" that a new panel process finds (the panel
+  stopped while a move ran) is settled by reading only: a site inside its limits is "moved",
+  one still outside is "not known" (its line offers Try again). The move is never sent twice;
+  if the Agent still runs the first one, its claim refuses the worker's next move meanwhile.
+- **A kept record stops the run**, as it stops a press: the worker does not move the next site
+  while a move record is kept; the existing line and card say what the administrator does
+  (Try again on that site's card), and the worker reads every five minutes (a reading only)
+  whether it was settled, then goes on by itself.
+- **A site put back on purpose.** When the administrator puts a site's scheduled tasks back
+  into cron ("Put the tasks back into cron", §9.3), the site is marked
+  (`site_tasks_put_back_v1`) and the worker leaves it alone, also in later versions, until the
+  administrator moves it again from that site's card: the one place the move stays offered
+  without a failure.
+- **What people read.** While the worker moves sites, the administrator reads one calm line on
+  Home, in Problems now and on each site's card: "Sites are being moved into their limits (3 /
+  12) — you do not need to do anything" ("Siteler sınırlarının içine alınıyor (3 / 12) — bir şey
+  yapmanız gerekmiyor"); it reads again with the list and goes when the run ends (not while it
+  waits for a kept record). A site inside its limits says so on its card and that is all. A
+  customer and a reseller read nothing of the worker. There is no "Move into the limits" or
+  "Move all" on a healthy site and no line asking to press one.
+
+**What the site's customer notices.** Each running program of the site restarts once when it is
+moved (the restart and the check that it runs in the slice and answers on its ports again,
+bounded by its start time: these units set none, so systemd's 90 seconds, never under 20 or over
+300; a program that does not come up in that time is put back where it ran and restarted there
+once more). Its scheduled tasks keep their times; one run can be missed at the minute of the move
+(§9.3). `crontab -e` for the site's account is closed (§9.5). A server with N sites outside their
+limits is done after about N × (20 s + the site's own move) once the worker starts, five minutes
+after the panel's start: a site without programs takes seconds, one with programs about as long
+as its slowest program takes to restart and answer.
+
+**Until alpha.149, and as Try again since:** `POST /api/v1/domains/{id}/site-limits/move
+{request_id}` (`Agent.MoveSiteSliceV1`, after the tasks' `Agent.MoveSiteTasksV1`). One move at a
+time across the panel (the worker takes the same flag); a repeated `request_id` answers the first
 answer; it is audited as `site.limits_move`. A move (and Try again) is refused while the
 panel's own update is admitted or running, by the panel and by the Agent ("the panel's
 update is in progress; move the site after the update has finished"; fix round F6), and the
@@ -1147,6 +1241,28 @@ a way back.
   owner set by hand is the owner's to remove (`ALTER ROLE … RESET …`, or for MariaDB
   `ALTER USER … WITH MAX_STATEMENT_TIME 0`).
 
+**Going back to alpha.149 from alpha.150, and the move made by the panel itself (D-048).**
+
+- **Nothing of the worker runs before the update is complete.** The update's automatic return
+  happens before the new panel starts (above), and the worker is part of the new panel: it
+  starts five minutes after that panel's start, and before each site it waits while the
+  panel's update is admitted or running, while the server is busy with another change (the Agent's own readiness) and
+  while the Agent refuses with `update_running` (an update record queued or running,
+  created less than 31 minutes ago) or `update_unreadable`. The component test
+  `TestTheWorkerStartsOnlyAfterTheGate` (`cmd/panel/site_auto_move_test.go`) proves that nothing
+  is sent and no site is marked while any of these holds, and that the same test fails when the
+  panel's own gate is taken out. An automatic return therefore finds no site moved by the
+  worker and no mark of it.
+- **A completed update undone outside the product** (not a product path, above): the programs
+  the worker moved keep `Slice=celiksite_<id>.slice` in their unit files; alpha.149 knows the
+  slice (it is alpha.148's), keeps that line while the slice file exists and starts them there,
+  and its own "Move into the limits" finds them "already". Their scheduled tasks are as §9.4
+  says for a site moved by the administrator (they keep running as timers; alpha.149's Scheduled
+  tasks screen cannot read them). The worker's marks (`panel_settings` `site_auto_move_v1`, and
+  `site_tasks_put_back_v1`) are settings alpha.149 does not read: they do nothing there, and a
+  later alpha.150 or newer finds them (marks of another version count as none). alpha.149 again
+  offers its button on a site still outside; nothing moves by itself there.
+
 ## 9. A site's scheduled tasks inside its limits (S4 R2b)
 
 *22 November 2026; brought onto alpha.149 on 26 November 2026 (one move record, the update
@@ -1157,12 +1273,14 @@ machines; the panel's lab round on both is open (steps in the pull request).*
 A moved site's scheduled tasks no longer run through cron. Each enabled task is a
 systemd timer and service pair, `celikcron-<site id>-<n>.timer` and `.service`, whose
 service runs in the site's slice (§8) under the network rules of the site's other
-programs. **New sites are moved from the start. An existing site keeps cron until the
-administrator moves it** with the same "Move into the limits" action as its programs
-(§8.4, §9.3), or with "Move all" for every site still outside.
+programs. **New sites are moved from the start. An existing site is moved by the panel
+itself** (alpha.150, D-048), with its programs, by the worker of §8.4; nobody presses
+anything.
 
 **What still runs outside the limits after this step.** Say it plainly: the site's PHP
-(its PHP-FPM pool; R3), the programs and the crontab of a site not yet moved, a program
+(its PHP-FPM pool; R3), the programs and the crontab of a site not yet moved (until the
+panel's worker reaches it after the update, or one it could not move: Problems now names
+it with Try again), a program
 written before R2a again after each restart of the server until it is moved (§8.3), a
 crontab made again for a moved site's account (reported, §9.4), and programs of a
 site account that already lingered before this step (§9.5).
@@ -1348,14 +1466,20 @@ only their own site's tasks. A finished run's last lines are read from the journ
 kept (a bounded cache); one reading of the list starts at most eight journal readers, and the
 runs it has not read yet show their lines at the next reading.
 
-### 9.3 Moving an existing site's crontab, and the undo
+### 9.3 An existing site's crontab moved by the panel itself, and the undo
 
-The administrator's "Move into the limits" on the site's Overview reads a **preview** first
+The panel's worker (§8.4, D-048) moves each existing site's crontab into timers by itself,
+before the site's programs, in the same press. A site that has no crontab is moved too: its
+account then leaves cron (`crontab -e` is closed for it, §9.5) and its future tasks are timers.
+Try again (next to a move that did not bring the site inside) and the move of a site put back on
+purpose read a **preview** first
 (what becomes what, the settings and paused tasks that come along, a task that calls a
 set-user-id program, and a task that sends mail: after the move it can send only through
 this server's own submission service, or not through this server at all, §3). A line that
 cannot be translated, and a line not made in CelikPanel that the administrator has not kept
-(S4 R1), keep the **whole** crontab in cron and are named; nothing is half-moved. The move
+(S4 R1), keep the **whole** crontab in cron and are named; nothing is half-moved (the
+worker then marks the site "left": its programs go in, its tasks stay in cron, and the card
+names the lines with who acts, never a Problems now to-do). The move
 holds the same locks as the programs' move (one move at a time; the site's lock without
 waiting, so a site being deleted is not moved) and the lock of every change of the site's
 tasks; it restarts nothing.
@@ -1417,7 +1541,7 @@ and undo keep the same one record as the programs' move (§8.4). While it is kep
   of another site at once; a record of the same site is first settled within the press's own
   deadline, and the press goes on only if it then is. The Panel does not start the programs
   part of a press whose tasks part answered "unknown" or was refused before it began, and
-  "Move all" stops there.
+  the panel's worker stops its run there until the record is settled (§8.4).
 - **One line in Problems now** ("A move into a site's limits did not finish") opens the site.
   For a tasks record it says how the site's scheduled tasks run now, as the Agent recorded
   it: **not running** (the crontab emptied, the timers off) until the administrator presses

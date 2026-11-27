@@ -4,7 +4,7 @@ import type { SiteLimitsApplyScreenKey } from './en';
 
 export const trSiteLimitsApplyScreens: Record<SiteLimitsApplyScreenKey, string> = {
     'slim.applied': 'Şu an geçerli olan: {value}.',
-    'slim.move.timeUp': 'Taşımanın süresi doldu. Tamamlandı işaretliler sınırların içinde; kalanlar için taşımaya yeniden basın.',
+    'slim.move.timeUp': 'Taşımanın süresi doldu. Tamamlandı işaretliler sınırların içinde; kalanlar için Tekrar dene’ye basın.',
     'limits.preview.sitesStopped': '{n} sitenin programları şu an düşürülen bir sınırdan fazlasını kullanıyor. Kaydedince bellek sınırını aşan program hemen durdurulur; işlem sınırında yeni işlem başlamaz, çalışanlar sürer:',
     'pnow.site_memory_default.title': 'Sunucunun belleği değişti: sitelerin varsayılan bellek sınırı hâlâ {domain} MB',
     'pnow.site_memory_default.body': 'Sınır o zamanki belleğe göre konmuştu; bellek değişti ({other}). Kendiliğinden hiçbir şey değişmez. Yeni varsayılan {value} MB olur; uygulamadan önce daha fazla kullanan siteler gösterilir.',

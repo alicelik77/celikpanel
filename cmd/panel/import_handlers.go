@@ -431,6 +431,8 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 	domainID, siteID := created.DomainID, created.SiteID
 	// 22 Nov 2026 (B2): as for a domain added on its own (domain_handlers.go).
 	p.reconcileAutoresponderAddressesAfter(context.WithoutCancel(ctx), "domain_added")
+	// alpha.150 (D-048): as for a domain added on its own.
+	p.pokeSiteAutoMove()
 	ok("domain", fmt.Sprintf("%s (id %d, site %d) → %s", req.Domain, domainID, siteID, created.DocumentRoot))
 
 	// 2. Site files.

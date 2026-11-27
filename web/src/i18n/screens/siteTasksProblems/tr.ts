@@ -2,13 +2,13 @@
 // "siteTasks" and "problemsNow" when their words filled them): the Problems
 // now lines of sites' scheduled tasks and their side doors - cron.allow,
 // crontabs that came back, held tasks, lingering, a site account's own
-// service manager, a move into a site's limits that did not finish (pnow.) -
-// and "Move all", which their line opens (moveall.).
+// service manager, a move into a site's limits that did not finish (pnow.;
+// alpha.150 removed "Move all": sites move by themselves, D-048).
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
 // EKRAN katalogu parçası "siteTasksProblems": sitelerin zamanlanmış
-// görevlerinin "Şu anki sorunlar" satırları ve "Hepsini taşı".
+// görevlerinin "Şu anki sorunlar" satırları.
 
 import type { SiteTasksProblemsScreenKey } from './en';
 
@@ -25,30 +25,6 @@ export const trSiteTasksProblemsScreens: Record<SiteTasksProblemsScreenKey, stri
     'pnow.site_user_manager_open.title': 'Site hesapları kendi hizmet yöneticilerini başlatabiliyor',
     'pnow.site_user_manager_open.body': 'Bu hesaplar SFTP ile girince kendi hizmet yöneticileri başlayabiliyor ve sınırlarının dışında program çalıştırabiliyor: {domain}. Sunucu sahibi bunu şu komutla kapatır: sudo systemctl mask {other}',
     'pnow.site_user_manager_open.action': 'İzleme’yi aç',
-    'moveall.unread': 'Sınırlarının dışındaki sitelerin listesi okunamadı, bu yüzden hiçbir şey taşınmaz. Bunu kapatıp yeniden basın.',
-    'moveall.button': 'Hepsini taşı',
-    'moveall.title': 'Her site sınırlarının içine taşınıyor',
-    'moveall.confirm': '{n} site sırayla sınırlarının içine taşınsın mı?',
-    'moveall.body': 'Her site, kendi “Sınırların içine taşı” işlemi gibi taşınır: önce görevleri, sonra çalışan programları sınırların içinde bir kez yeniden başlar. Taşınamayan bir site atlanır ve nedeni söylenir; iş yalnız başlamış bir taşıma başarısız olursa durur.',
-    'moveall.go': 'Hepsini taşı',
-    'moveall.cancel': 'Vazgeç',
-    'moveall.none': 'Şu an sınırlarının dışında site yok.',
-    'moveall.done': 'Bitti: {n} site taşındı.',
-    'moveall.failed': '{domain} taşınamadı: {reason}. Ondan sonraki sitelere dokunulmadı.',
-    'moveall.unknown': 'Sunucu {domain} için yanıt vermedi, sonucu bilinmiyor. Devam etmeden önce bu sayfayı yeniden okuyun.',
-    'moveall.programs': '{n} program sınırların içinde yeniden başlar',
-    'moveall.tasks': '{n} görev zamanlayıcıya dönüşür',
-    'moveall.skip': '{domain}: atlanır, {reason}',
-    'moveall.tasksStay': '{domain}: atlanır; görevleri cron’da kalır ({reason}), {n} programı taşınabilir',
-    'moveall.option': 'Görevleri cron’da kalan sitelerin programları da taşınsın ({n})',
-    'moveall.optionRow': '{domain}: programları taşınır; görevleri cron’da kalır',
-    'moveall.previewUnknown': 'taşımanın ne yapacağı okunamadı',
-    'moveall.notMoved': 'Taşınmayanlar',
-    'moveall.unresolved': 'Daha önceki bir taşıma tamamen geri konamadı; çözülene kadar hiçbir site taşınmaz. O sitenin kartında Tekrar dene var.',
-    'moveall.partial': 'programları taşındı; görevleri cron’da kaldı ({reason})',
-    'pnow.site_limits_outside.title': 'Sınırlarının dışındaki siteler: {value}',
-    'pnow.site_limits_outside.body': 'Bu sitelerin çalışan programları ya da zamanlanmış görevleri hâlâ sınırlarının dışında çalışıyor: {domain}. Taşıma, her sitenin programlarını sınırların içinde bir kez yeniden başlatır ve görevlerini orada zamanlayıcıya çevirir; hiçbir şey yarım taşınmaz. Bu satır kendiliğinden kaybolur.',
-    'pnow.site_limits_outside.action': 'Hepsini taşı',
     'pnow.cron_allow_lists_sites.title': 'Sınırları içindeki sitelere cron yeniden açık',
     'pnow.cron_allow_lists_sites.body': 'Sunucu sahibinin {other} dosyası şu hesaplara cron izni veriyor: {domain}. Ekledikleri işler sınırlarının dışında çalışır. Sunucu sahibi bu adları dosyadan çıkarır.',
     'pnow.cron_allow_lists_sites.action': 'İzleme’yi aç',

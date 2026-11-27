@@ -72,12 +72,6 @@ func TestSiteTasksMoveIsPartOfTheMoveAndUndoIsTheAdministrators(t *testing.T) {
 	if len(calls) != 0 {
 		t.Fatalf("a customer reached the Agent: %v", calls)
 	}
-	// The "Move all" list is the administrator's alone.
-	outside := http.NewServeMux()
-	outside.HandleFunc("/api/v1/site-limits/outside", f.panel.handleSiteLimitsOutside)
-	outsideHandler := f.panel.requireAuth(outside)
-	wantStatus(t, siteLimitsCall(t, f, outsideHandler, authzMatrixCustomerID, http.MethodGet, "/api/v1/site-limits/outside", ""), http.StatusForbidden, "")
-	wantStatus(t, siteLimitsCall(t, f, outsideHandler, authzMatrixAdminID, http.MethodGet, "/api/v1/site-limits/outside", ""), http.StatusOK, "")
 	preview := siteLimitsCall(t, f, handler, authzMatrixAdminID, http.MethodGet, "/api/v1/domains/9902/site-limits/preview", "")
 	wantStatus(t, preview, http.StatusOK, "")
 	if !strings.Contains(preview.Body.String(), `"celikcron-1-1"`) {
@@ -227,16 +221,10 @@ func TestUserManagerProblem(t *testing.T) {
 	}
 }
 
-// TestTheOutsideLineCountsProgramsAndTasks: ONE line for the sites whose
-// programs or tasks run outside their limits, opening "Move all"; a reading
-// of the programs keeps the tasks part.
-func TestTheOutsideLineCountsProgramsAndTasks(t *testing.T) {
-	names := map[string]string{"1": "a.test", "2": "b.test", "3": "c.test"}
-	raw, _ := json.Marshal(siteLimitOutside{CheckedAt: "2026-11-22T10:00:00Z", Sites: map[string]int{"1": 2}, Tasks: map[string]bool{"1": true, "2": true, "9": true}})
-	lines := siteLimitsOutsideProblem(string(raw), names)
-	if len(lines) != 1 || lines[0].Value != 2 || lines[0].Subject != "a.test, b.test" || lines[0].Action.Kind != "move_all" || lines[0].Kind != "site_limits_outside" {
-		t.Fatalf("%+v", lines)
-	}
+// TestTheOutsideRecordKeepsProgramsAndTasks: a reading of the programs keeps
+// the tasks part of the record the worker and its lines read (alpha.150: no
+// to-do line is made of it, D-048).
+func TestTheOutsideRecordKeepsProgramsAndTasks(t *testing.T) {
 	f := newRightsFixture(t)
 	f.panel.noteSiteTasksOutside(context.Background(), map[int]bool{5: true}, nil, time.Now())
 	f.panel.noteSiteLimitOutside(context.Background(), nil, true, time.Now())
@@ -245,7 +233,7 @@ func TestTheOutsideLineCountsProgramsAndTasks(t *testing.T) {
 	if !state.Tasks["5"] {
 		t.Fatalf("a programs reading dropped the tasks part: %+v", state)
 	}
-	for _, kind := range []string{"site_limits_outside", "cron_allow_lists_sites", "cron_not_closed", "cron_owner_removed", "site_crontab_returned", "site_lingering", "linger_owner_removed", "linger_not_closed"} {
+	for _, kind := range []string{"site_auto_move_failed", "cron_allow_lists_sites", "cron_not_closed", "cron_owner_removed", "site_crontab_returned", "site_lingering", "linger_owner_removed", "linger_not_closed"} {
 		if _, ordered := problemKindOrder[kind]; !ordered {
 			t.Errorf("%s has no place in the problem order", kind)
 		}

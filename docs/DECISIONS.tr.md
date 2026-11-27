@@ -19,6 +19,57 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-048 · Bir koruma var olan her siteye kendiliğinden ulaşır; bir işlem yalnız bir hatanın yanında sunulur
+
+*2026-11-28 · Sahibin 27 Kasım 2026 tarihli emri · alpha.150 için kaynakta var ve bileşen testleriyle denendi (`cmd/panel/site_auto_move.go`, [SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md) §8.4 ve §9.3); laboratuvar turu açık; kurulu hiçbir panel değiştirilmedi*
+
+**Bugünkü durum.** alpha.148 bir sitenin her yeni programını o sitenin sınırlarına (dilimine)
+koydu ve var olanlar için yöneticiye bir düğme verdi: "Sınırların içine taşı / Move into the
+limits"; alpha.150'nin ilk turu sitenin zamanlanmış görevlerini de aynı düğmeye ekledi ve dışarıdaki
+her site için "Hepsini taşı"yı getirdi. Sahip kendi sunucularında düğmeye hiç basmadı; bu yüzden
+oradaki var olan her site hâlâ sınırlarının dışındaydı. İsteğe bağlı bir koruma, kimsenin sahip
+olmadığı bir korumadır.
+
+**Sahibin sözleri** (27 Kasım 2026), düğme ve zamanlanmış görevler için basış üzerine: "neye
+basacağım. zaten otomatik olarak sınırlarda olmalıydı. buton falan saçmalığına gerek yok. bu bir
+hataydı. bu hatayı hiç olmamış gibi düzelt ve bir daha olmasın."
+
+**Karar.** Gelecek için kural: **bir koruma var olan her siteye kendiliğinden ulaşır; bir işlem
+yalnız bir hatanın yanında sunulur.** Sitenin sınırları için (alpha.150):
+
+- Panelin kendi işçisi hâlâ sınırlarının dışında olan her siteyi, her seferinde bir site, düğmenin
+  yaptığı aynı taşımayla (kaydı, geri koyması, kanıtları, süre kuralı ve kilitleri değişmeden) taşır;
+  panelin başlangıcından birkaç dakika sonra ve bir site açıldıktan ya da geri yüklendikten sonra
+  yeniden; panelin güncellemesi sırasında asla, bir sayfa okunduğu için asla (D-024).
+- Her site kurulu panel sürümü başına bir kez denenir, asla bir döngüde değil; işaret
+  `panel_settings` içindedir (şema adımı yok). Reddedilen, geri konan, süresi dolan ya da sonucu
+  bilinmeyen bir taşıma kendiliğinden yeniden denenmez: Şu anki sorunlar'da tek satır nedeni, kimin
+  yapacağını söyler ve Tekrar dene sunar (aynı taşıma). Kendiliğinden geçen bir neden (site
+  değiştiriliyor, panelin güncellemesi, başka bir taşıma) hata değildir. Tutulan bir taşıma kaydı, bir
+  basışı durdurduğu gibi, çözülene kadar turu durdurur.
+- Sunucu sahibinin olan sahibinde kalır (D-022): sahibin değiştirdiği ya da yerleştirdiği bir birim,
+  önceki bir koruma, zamanlayıcının yeniden üretemediği bir satırı olan crontab, sahibin kendi
+  `cron.allow` dosyası. Bunlar algılanır ve kimin yapacağıyla adlandırılır, asla üzerine yazılmaz ve
+  sağlıklı bir sitede yapılacak iş olarak gösterilmez.
+- Yöneticinin görevlerini bilerek cron'a geri koyduğu site, yönetici onu o sitenin kartından yeniden
+  taşıyana kadar rahat bırakılır: taşımanın bir hata olmadan sunulduğu tek yer.
+- Ekranlar: sağlıklı hiçbir durumda "Sınırların içine taşı" ve "Hepsini taşı" yok, basmayı isteyen bir
+  satır yok; işçi çalışırken tek bir sakin satır ("Siteler sınırlarının içine alınıyor (3 / 12) — bir
+  şey yapmanız gerekmiyor"); müşteri ve bayi bundan hiçbir şey okumaz.
+
+**Neden.** Bir basışı bekleyen koruma, koruma değildir: düğmeden haberi olmayan ya da vakti olmayan
+yöneticinin sunucusu her siteyi dışarıda tutar ve hiçbir şey ona bunu acil hissettiren bir biçimde
+söylemez. Taşıma zaten kimse izlemeden çalışmaya güvenliydi (her seferinde bir site, tutmadan önce
+kanıt, hatada geri koyma, güncelleme sırasında asla); bu yüzden bir basış istemek güvenlik eklemedi,
+risk ekledi (basış hiç olmadı). Bir basışın hâlâ gerektiği yer, bir şeyin başarısız olduğu yerdir; o
+zaman basış nedenin yanında durur.
+
+**Gelecek için değiştirdiği.** Var olan sitelerin yeni bir koruması (R3'ün sınırların içindeki PHP'si
+ya da sonraki herhangi biri) panelin kendiliğinden yaptığı kendi taşımasıyla gelir, aynı kurallarla:
+her seferinde bir site, sürüm başına bir kez, güncellemenin kapısı, sahibin değişiklikleri algılanır
+ve korunur, işlem yalnız bir hatanın yanında. Sağlıklı bir sunucunun korunmak için basması gereken bir
+düğme bir kusurdur.
+
 ## D-047 · Ücretli yıllık lisans: sunucu başına yılda tek fiyat; süresi biten lisans sunucuyu asla durdurmaz, yalnız büyüme kapanır
 
 *2026-11-14 · Sahibin lisans, abonelik ve ödeme yönünü onayı (14 Kasım 2026) · yalnız yön ve [teknik tasarım](LICENCE-SUBSCRIPTION-DESIGN.md); hiçbir şey uygulanmadı, kurulu panel ve canlı hizmet değiştirilmedi*

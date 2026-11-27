@@ -27,16 +27,19 @@ import (
 //     who sees the domain reads the limits and the events; the administrator
 //     and a reseller also read who sets each limit by name; the administrator
 //     alone reads which programs run inside the limits, the slice file and
-//     the owner's drop-ins, the database users' own settings and the one
-//     action that moves the rest. A reading writes the panel's record only
-//     when something in it changed.
-//   - POST /api/v1/domains/{id}/site-limits/move: the administrator's move of
-//     the site's running programs into its limits (Agent.MoveSiteSliceV1).
-//     One move at a time across the Panel; a repeated request id answers the
-//     first answer.
+//     the owner's drop-ins, the database users' own settings and, only next
+//     to a move that did not bring the site inside (or for a site whose
+//     tasks were put back on purpose), the move. A reading writes the
+//     panel's record only when something in it changed; it never moves.
+//   - POST /api/v1/domains/{id}/site-limits/move: the move of the site's
+//     scheduled tasks and running programs into its limits
+//     (Agent.MoveSiteTasksV1, Agent.MoveSiteSliceV1). The panel's own worker
+//     moves every site by itself (site_auto_move.go, D-048); the
+//     administrator uses it as Try again. One move at a time across the
+//     Panel; a repeated request id answers the first answer.
 //   - Problems now: a site that reached its OWN memory or process limit at
-//     two or more readings in the last day; one line, for the administrator,
-//     naming the sites whose programs still run outside their limits; one
+//     two or more readings in the last day; one line per site whose move did
+//     not bring it inside, with Try again; one
 //     line when this host cannot enforce a site's limits at all; one line
 //     when a change of limits did not reach every site (site_limits.go); one
 //     line when a site's default memory limit was fixed for the host's
@@ -542,6 +545,10 @@ type siteLimitsView struct {
 	// Tasks (S4 R2b, administrator only): whether the site's scheduled tasks
 	// run as timers in its limits.
 	Tasks *siteTasksView `json:"tasks,omitempty"`
+	// AutoMove (alpha.150, D-048, administrator only): the calm line while
+	// the panel moves sites into their limits by itself, and the one move
+	// action the card still offers (site_auto_move.go).
+	AutoMove *siteAutoMoveView `json:"auto_move,omitempty"`
 }
 
 func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -656,6 +663,9 @@ func (p *Panel) handleDomainSiteLimits(w http.ResponseWriter, r *http.Request, d
 				}
 				p.noteSiteTasksOutside(ctx, outside, inside, time.Now())
 			}
+			tasksOutside := !view.Tasks.Unknown && !view.Tasks.Moved
+			kept := status.MoveInterrupted != nil && status.MoveInterrupted.Kept
+			view.AutoMove = p.siteAutoMoveViewOf(ctx, site.SiteID, view.NeedsMove > 0 || tasksOutside, kept)
 		}
 	}
 	// A reader's reading keeps the administrator's Problems now line current
@@ -860,6 +870,77 @@ var moveSiteSliceCall = func(p *Panel, ctx context.Context, req *transport.MoveS
 	return resp, err
 }
 
+// siteMovePressOutcome says how a press ended before it had an answer to
+// give: it ran (the answer says how it ended), the site's limits could not be
+// read (nothing was changed), or the Agent did not answer the programs part
+// (the result is not known).
+type siteMovePressOutcome int
+
+const (
+	siteMovePressRan siteMovePressOutcome = iota
+	siteMovePressNoLimits
+	siteMovePressUnreachable
+)
+
+// pressSiteMove is one move of a site: its scheduled tasks first (no
+// restart; nothing half-moved), then its programs (S4 R2b). A site without
+// programs moves its tasks only. One press, one deadline (alpha.150): the
+// programs part gets what is left of the move's budget. The administrator's
+// press and the panel's own worker (site_auto_move.go, D-048) both move a
+// site through it, with the same Agent calls and the same request id rule.
+func (p *Panel) pressSiteMove(ctx context.Context, site siteLimitSite, requestID string) (transport.MoveSiteSliceResponse, *transport.SiteTasksMoveResponse, siteMovePressOutcome) {
+	resp := transport.MoveSiteSliceResponse{Units: []transport.SiteSliceMoved{}, Done: true}
+	slice := p.siteSliceForSubscription(ctx, site.SiteID, site.SubscriptionID, site.Domain)
+	if slice == nil {
+		return resp, nil, siteMovePressNoLimits
+	}
+	pressStarted := siteMovePressNow()
+	tasks, tasksErr := p.moveSiteTasks(ctx, site, requestID, false)
+	if tasksErr != nil {
+		tasks = &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "the server did not answer about the scheduled tasks; read this page again"}
+	}
+	// A tasks part whose result is unknown (it may have left its record),
+	// or that was refused before it began (a kept record, the panel's
+	// update, another move, the site being changed), does not start the
+	// programs part: it would be refused the same way, or overwrite the
+	// only record of the crontab.
+	switch {
+	case tasks.Outcome == transport.SiteTasksUnknown:
+		resp.Done, resp.Kept = false, tasks.Recovery != nil
+		resp.Recovery, resp.Reason = tasks.Recovery, &transport.SiteMoveReason{Code: "not_finished"}
+		resp.Error = tasks.Error
+		if resp.Error == "" {
+			resp.Error = "the result of the scheduled tasks' move is not known, so the programs were not moved; read this page again"
+		}
+	case siteMoveClaimRefusal(tasks.Refusal):
+		resp.Done, resp.Kept = false, tasks.Refusal == transport.SiteMoveRefusalKept
+		resp.Reason, resp.Error = &transport.SiteMoveReason{Code: tasks.Refusal}, tasks.Error
+	case len(site.Units) > 0:
+		move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: requestID,
+			Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID,
+			BudgetSeconds: siteMovePressBudgetLeft(pressStarted)}
+		for _, u := range site.Units {
+			move.Units = append(move.Units, u.Unit)
+		}
+		if move.BudgetSeconds == 0 {
+			// Nothing is left of the press: the programs part is not
+			// started (0 would mean the Agent's whole budget).
+			resp = siteMovePressTimeUp(move.Units)
+			break
+		}
+		var err error
+		if resp, err = moveSiteSliceCall(p, ctx, move); err != nil {
+			return resp, tasks, siteMovePressUnreachable
+		}
+	}
+	resp.Tasks = tasks
+	switch tasks.Outcome {
+	case transport.SiteTasksMoved, transport.SiteTasksAlready, transport.SiteTasksCrontabBack:
+		p.noteSiteTasksOutside(ctx, nil, map[int]bool{site.SiteID: true}, time.Now())
+	}
+	return resp, tasks, siteMovePressRan
+}
+
 func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Request, domainID int) {
 	w.Header().Set("Content-Type", "application/json")
 	if c := currentCaller(r); c == nil || c.Role != roleAdmin {
@@ -904,7 +985,7 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 	// the agent refuses both ways too.
 	if siteMoveUpdateInProgress(p, ctx) {
 		writeServiceAppRefusal(w, http.StatusConflict, "site_limits_update_running",
-			"Nothing was moved: the panel's update is in progress. Move the site after the update has finished.", nil)
+			"Nothing was moved: the panel's update is in progress. Press Try again after the update has finished.", nil)
 		return
 	}
 	sites, err := p.siteLimitSites(ctx, domainID)
@@ -927,63 +1008,23 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	} else {
-		slice := p.siteSliceForSubscription(ctx, site.SiteID, site.SubscriptionID, site.Domain)
-		if slice == nil {
+		var outcome siteMovePressOutcome
+		resp, tasks, outcome = p.pressSiteMove(ctx, site, req.RequestID)
+		switch outcome {
+		case siteMovePressNoLimits:
 			writeServiceAppRefusal(w, http.StatusConflict, "site_limits_nothing",
 				"Nothing was changed: this site's limits could not be read.", nil)
 			return
+		case siteMovePressUnreachable:
+			writeServiceAppRefusal(w, http.StatusServiceUnavailable, "agent_unreachable",
+				"The server did not answer, so the result is unknown. Read this page again before you try again.", nil)
+			return
 		}
-		// S4 R2b: the site's scheduled tasks first (no restart; nothing
-		// half-moved), then its programs. A site without programs moves its
-		// tasks only. One press, one deadline (alpha.150): the programs part
-		// gets what is left of the move's budget.
-		pressStarted := siteMovePressNow()
-		var tasksErr error
-		tasks, tasksErr = p.moveSiteTasks(ctx, site, req.RequestID, false)
-		if tasksErr != nil {
-			tasks = &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown, Error: "the server did not answer about the scheduled tasks; read this page again"}
-		}
-		// A tasks part whose result is unknown (it may have left its record),
-		// or that was refused before it began (a kept record, the panel's
-		// update, another move, the site being changed), does not start the
-		// programs part: it would be refused the same way, or overwrite the
-		// only record of the crontab.
-		switch {
-		case tasks.Outcome == transport.SiteTasksUnknown:
-			resp.Done, resp.Kept = false, tasks.Recovery != nil
-			resp.Recovery, resp.Reason = tasks.Recovery, &transport.SiteMoveReason{Code: "not_finished"}
-			resp.Error = tasks.Error
-			if resp.Error == "" {
-				resp.Error = "the result of the scheduled tasks' move is not known, so the programs were not moved; read this page again"
-			}
-		case siteMoveClaimRefusal(tasks.Refusal):
-			resp.Done, resp.Kept = false, tasks.Refusal == transport.SiteMoveRefusalKept
-			resp.Reason, resp.Error = &transport.SiteMoveReason{Code: tasks.Refusal}, tasks.Error
-		case len(site.Units) > 0:
-			move := &transport.MoveSiteSliceRequest{ExpectedBuildCommit: strings.TrimSpace(buildCommit), RequestID: req.RequestID,
-				Site: *slice, SubscriptionID: site.SubscriptionID, DomainID: site.DomainID,
-				BudgetSeconds: siteMovePressBudgetLeft(pressStarted)}
-			for _, u := range site.Units {
-				move.Units = append(move.Units, u.Unit)
-			}
-			if move.BudgetSeconds == 0 {
-				// Nothing is left of the press: the programs part is not
-				// started (0 would mean the Agent's whole budget).
-				resp = siteMovePressTimeUp(move.Units)
-				break
-			}
-			var err error
-			if resp, err = moveSiteSliceCall(p, ctx, move); err != nil {
-				writeServiceAppRefusal(w, http.StatusServiceUnavailable, "agent_unreachable",
-					"The server did not answer, so the result is unknown. Read this page again before you try again.", nil)
-				return
-			}
-		}
-		resp.Tasks = tasks
-		switch tasks.Outcome {
-		case transport.SiteTasksMoved, transport.SiteTasksAlready, transport.SiteTasksCrontabBack:
-			p.noteSiteTasksOutside(ctx, nil, map[int]bool{site.SiteID: true}, time.Now())
-		}
+		// alpha.150 (D-048): the administrator's own move (Try again, or the
+		// move of a site whose tasks were put back on purpose) is the site's
+		// latest attempt: its outcome is what Problems now and the card say,
+		// and a site moved again is no longer left alone by the worker.
+		p.noteSiteMoveAttempt(ctx, site, req.RequestID, resp, tasks)
 	}
 	tasksOutcome, tasksError, tasksBlocking := "", "", 0
 	if tasks != nil {
@@ -1027,8 +1068,9 @@ var startSiteLimitRead = func(run func()) { go run() }
 var siteLimitReadNeedsAgent = true
 
 // siteLimitProblems: a site that reached its own memory or process limit at
-// two or more readings in the last day, the sites still to move, and a host
-// that cannot enforce a site's limits. The reading itself starts in the
+// two or more readings in the last day, a site whose move into its limits did
+// not bring it inside (alpha.150), and a host that cannot enforce a site's
+// limits. The reading itself (a reading only, never a move) starts in the
 // background when the last one is older than five minutes.
 func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitoringProblem {
 	c := &siteLimitProblemReading
@@ -1110,7 +1152,9 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	problems = append(problems, siteMoveKeptProblem(kept, p.setting(ctx, settingSiteMoveStopped), p.setting(ctx, settingSiteMoveTasks), names)...)
 	problems = append(problems, siteLimitHostProblem(host)...)
 	problems = append(problems, extra...)
-	return append(problems, siteLimitsOutsideProblem(outside, names)...)
+	// alpha.150 (D-048): sites outside their limits are moved by themselves;
+	// only a move that did not bring a site inside is a line, with Try again.
+	return append(problems, p.siteAutoMoveProblems(ctx, names)...)
 }
 
 // --- A move whose put-back did not complete (review N2) ----------------------------

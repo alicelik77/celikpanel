@@ -1,11 +1,9 @@
 // A site's scheduled tasks as timers inside its own limits (S4 R2b,
 // docs/SITE-SANDBOX.md section 9): the answers the screens read, decoded in
-// one place, and what one site's move means for "Move all".
+// one place.
 //
 // Sitenin zamanlanmış görevleri kendi sınırları içinde; ekranların okuduğu
 // yanıtlar tek yerde çözülür.
-
-import { moveWhyKey } from './siteLimits.ts';
 
 /** A task's last run as the server reads it. */
 export interface TaskRun {
@@ -195,148 +193,12 @@ export function privilegedList(answer: TasksAnswer): string {
     return answer.rows.filter((r) => r.privileged).map((r) => `${r.line}: ${r.text}`).join('; ');
 }
 
-/**
- * How one site's move ended for "Move all" (fix round): moved; a site where
- * nothing changed (skipped, with why: the run goes on); a site whose programs
- * moved while its tasks stayed (goes on); or a move that started and failed,
- * or whose result is unknown (the run stops).
- */
-export type SiteMoveEnd = { kind: 'moved'; note: string } | { kind: 'skipped' | 'partial' | 'stop'; reason: string; unresolved?: boolean };
-
 /** The refusal every move and undo answers while a move record is kept (alpha.150: one record for programs and tasks). */
 export const KEPT_MOVE = 'kept_earlier';
-
-/**
- * word turns a key of the page's words into text (alpha.150 fix round: every
- * reason here is a code the page words, never the agent's English; without
- * it the keys themselves are returned).
- */
-export function siteMoveEnd(answer: { done?: boolean; rolled_back?: boolean; error?: string; kept?: boolean; reason?: { code?: string }; units?: unknown[]; tasks?: unknown },
-    word: (key: string) => string = (key) => key): SiteMoveEnd {
-    let tasks: TasksAnswer | undefined;
-    try {
-        tasks = answer.tasks ? decodeTasksAnswer(answer.tasks) : undefined;
-    } catch {
-        tasks = undefined;
-    }
-    // Second fix round: an earlier move that could not be resolved stops the
-    // run (nothing else is moved until it is).
-    if (answer.kept === true || answer.reason?.code === KEPT_MOVE || tasks?.refusal === KEPT_MOVE) return { kind: 'stop', reason: word('slim.why.kept_earlier'), unresolved: true };
-    if (answer.rolled_back || answer.done === false) {
-        return { kind: 'stop', reason: word(moveWhyKey(answer.reason?.code ? { code: answer.reason.code } : undefined)) };
-    }
-    if (!tasks) return { kind: 'stop', reason: word('slim.tasks.why.unknown') };
-    if (tasks.outcome === 'put_back' || tasks.outcome === 'unknown') return { kind: 'stop', reason: word(tasksAnswerKey(tasks, false)) };
-    if (tasks.outcome === 'moved' || tasks.outcome === 'already') return { kind: 'moved', note: '' };
-    if (tasks.outcome === 'crontab_back') return { kind: 'moved', note: word('slim.tasks.done.back') };
-    // Nothing of the tasks changed (stayed, refused, no cron).
-    const reason = tasks.outcome === 'stayed' ? lineList(tasks.blocking) : word(tasksAnswerKey(tasks, false));
-    return { kind: Array.isArray(answer.units) && answer.units.length > 0 ? 'partial' : 'skipped', reason };
-}
-
-/** How "Move all" ended (fix round). */
-export interface MoveAllOutcome {
-    moved: number;
-    /** Sites that did not (fully) move, with why; partial: its programs moved, its tasks stayed. */
-    notMoved: { domain: string; reason: string; partial?: boolean }[];
-    /** The move that started and failed (or whose result is unknown): the run stopped there. */
-    stop?: { domain: string; reason: string; unknown: boolean; unresolved?: boolean };
-}
-
-/**
- * Refusals that changed nothing (fix round 2, review N5): a bad request, no
- * right, no such site, a move already running or a conflict. Every other
- * answer that is not a success - a server error, a gateway timeout, an
- * answer without a readable body - is "result unknown": the run stops.
- */
-const SKIP_STATUSES: readonly number[] = [400, 403, 404, 409];
-
-/** One site's move as "Move all" sends it: the HTTP status and answer, or null when nothing readable came back. */
-export type SiteMoveCall = (site: OutsideSite) => Promise<{ status: number; body?: unknown; refusal?: string } | null>;
-
-/**
- * "Move all"'s run (fix round): each site in turn; a site refused before
- * anything changed, or whose move changed nothing, is skipped with why and
- * the run goes on; a move that started and failed, or whose result is not
- * known, stops it. onStep says each site's state as it goes.
- */
-export async function moveSitesInTurn(
-    sites: OutsideSite[], move: SiteMoveCall,
-    onStep: (index: number, state: 'running' | 'done' | 'failed', note?: string) => void,
-    word: (key: string) => string = (key) => key,
-): Promise<MoveAllOutcome> {
-    const out: MoveAllOutcome = { moved: 0, notMoved: [] };
-    for (let i = 0; i < sites.length; i++) {
-        const site = sites[i];
-        onStep(i, 'running');
-        const sent = await move(site);
-        if (!sent) {
-            onStep(i, 'failed');
-            out.stop = { domain: site.domain, reason: '', unknown: true };
-            return out;
-        }
-        if (sent.status < 200 || sent.status > 299) {
-            if (!SKIP_STATUSES.includes(sent.status)) {
-                onStep(i, 'failed', sent.refusal);
-                out.stop = { domain: site.domain, reason: sent.refusal ?? '', unknown: true };
-                return out;
-            }
-            onStep(i, 'failed', sent.refusal);
-            out.notMoved.push({ domain: site.domain, reason: sent.refusal ?? '' });
-            continue;
-        }
-        if (!sent.body || typeof sent.body !== 'object') {
-            onStep(i, 'failed');
-            out.stop = { domain: site.domain, reason: '', unknown: true };
-            return out;
-        }
-        const end = siteMoveEnd(sent.body as Parameters<typeof siteMoveEnd>[0], word);
-        switch (end.kind) {
-            case 'stop':
-                onStep(i, 'failed', end.reason);
-                out.stop = end.unresolved ? { domain: site.domain, reason: end.reason, unknown: false, unresolved: true }
-                    : { domain: site.domain, reason: end.reason, unknown: false };
-                return out;
-            case 'moved':
-                out.moved++;
-                onStep(i, 'done', end.note || undefined);
-                break;
-            case 'partial':
-                onStep(i, 'done', end.reason);
-                out.notMoved.push({ domain: site.domain, reason: end.reason, partial: true });
-                break;
-            default:
-                onStep(i, 'failed', end.reason);
-                out.notMoved.push({ domain: site.domain, reason: end.reason });
-        }
-    }
-    return out;
-}
-
-/** A site still outside its limits (GET /api/v1/site-limits/outside). */
-export interface OutsideSite {
-    domain_id: number;
-    domain: string;
-    programs?: number;
-    tasks?: boolean;
-}
-
-export function decodeOutsideSites(raw: unknown): OutsideSite[] {
-    const body = raw as { sites?: unknown } | null;
-    if (!body || typeof body !== 'object' || !Array.isArray(body.sites)) throw new Error('shape');
-    return body.sites.filter((s): s is OutsideSite => !!s && typeof s.domain_id === 'number' && typeof s.domain === 'string');
-}
 
 /** What the move would make of a site's crontab (read-only); throws when it cannot be read. */
 export async function readTasksPreview(domainId: number): Promise<TasksAnswer> {
     const sent = await fetch(`/api/v1/domains/${domainId}/site-limits/preview`, { credentials: 'same-origin' });
     if (!sent.ok) throw new Error(`preview ${sent.status}`);
     return decodeTasksAnswer(await sent.json());
-}
-
-/** The sites still outside their limits; throws when the list cannot be read. */
-export async function readOutsideSites(): Promise<OutsideSite[]> {
-    const sent = await fetch('/api/v1/site-limits/outside', { credentials: 'same-origin' });
-    if (!sent.ok) throw new Error(`outside ${sent.status}`);
-    return decodeOutsideSites(await sent.json());
 }

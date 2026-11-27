@@ -26,6 +26,31 @@ export function withSiteLimitsLane(locale: string | undefined, t: (key: Translat
 
 export type { SiteLimitsLaneKey };
 
+// alpha.150 (D-048): the words of a move that did not bring a site inside its limits. The panel's
+// worker, or the administrator's Try again, marked it with a state and a reason code (the card's
+// auto_move, Problems now's site_auto_move_failed); never the agent's English (its journal holds it).
+// Here, beside the lane's words, so that Problems now loads nothing more for it.
+const AUTO_TASK_WHYS: readonly string[] = ['cron_allow_owner', 'crontab_changed', 'limits', 'processes_unread', 'no_cron'];
+const AUTO_WAITED: readonly string[] = ['site_busy', 'another_move', 'update_running', 'update_unreadable', 'build', 'host_busy', 'marks_unreadable', 'mark_failed'];
+
+/** The catalogue key of why a site was not moved into its limits by itself. */
+export function autoMoveReasonKey(a: { state?: string; reason?: string }): string {
+    const reason = a.reason ?? '';
+    switch (a.state) {
+        case 'time_up': return 'slim.move.timeUp';
+        case 'unknown': return 'slim.auto.why.unknown';
+        case 'kept': return 'slim.auto.why.kept';
+    }
+    if (reason === 'stayed') return 'slim.auto.why.stayed';
+    if (reason === 'tasks_put_back') return 'slim.tasks.why.put_back';
+    if (reason === 'limits_unread') return 'slim.auto.why.limits_unread';
+    if (AUTO_TASK_WHYS.includes(reason)) return `slim.tasks.why.${reason}`;
+    // A reason that clears by itself and did not clear for hours (the worker then stopped waiting).
+    if (AUTO_WAITED.includes(reason)) return 'slim.auto.why.waited';
+    if (reason === 'kept_earlier' || reason === 'unsupported') return `slim.why.${reason}`;
+    return 'slim.auto.why.failed';
+}
+
 // The sites a lowered limit stops, in the page's own words (alpha.149, the
 // alpha.148 lab's CHECK 2: the Turkish window carried the server's English
 // "memory 215 MB in use, new limit 128 MB", and "The programs of 1 sites").

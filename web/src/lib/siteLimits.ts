@@ -80,6 +80,33 @@ export interface SiteLimitsView {
     busy?: boolean;
     /** S4 R2b (administrator): where the site's scheduled tasks run. */
     tasks?: TasksPlacement;
+    /** alpha.150 (D-048, administrator): the panel moving sites by itself; the card's one move action. */
+    auto_move?: AutoMove;
+}
+
+/**
+ * alpha.150 (D-048): every site goes inside its limits by itself. done/total: the run's progress (the calm
+ * line); offer: "retry" next to a move that did not bring this site inside (state, reason), "move" for a site
+ * whose scheduled tasks were put back into cron on purpose. A healthy site's card offers nothing.
+ */
+export interface AutoMove {
+    done?: number;
+    total?: number;
+    offer?: 'retry' | 'move';
+    state?: string;
+    reason?: string;
+}
+
+function decodeAutoMove(raw: unknown): AutoMove | undefined {
+    const body = raw as AutoMove | null;
+    if (!body || typeof body !== 'object') return undefined;
+    const num = (n: unknown) => (typeof n === 'number' && n >= 0 ? n : undefined);
+    return {
+        done: num(body.done), total: num(body.total),
+        offer: body.offer === 'retry' || body.offer === 'move' ? body.offer : undefined,
+        state: typeof body.state === 'string' ? body.state : undefined,
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+    };
 }
 
 export interface DbOwnerSetting {
@@ -123,6 +150,7 @@ export function decodeSiteLimits(raw: unknown): SiteLimitsView {
         events: body.events.filter((e): e is SiteLimitEvent => !!e && EVENTS.includes(e.kind) && typeof e.count === 'number' && typeof e.last_at === 'string'),
         units: Array.isArray(body.units) ? body.units.filter((u): u is SiteLimitUnit => !!u && typeof u.unit === 'string' && PLACES.includes(u.placement)) : undefined,
         tasks: decodeTasksPlacement(body.tasks),
+        auto_move: decodeAutoMove(body.auto_move),
     };
 }
 

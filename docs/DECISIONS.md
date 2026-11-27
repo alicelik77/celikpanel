@@ -19,6 +19,60 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-048 · A protection reaches every existing site by itself; an action is offered only next to a failure
+
+*2026-11-28 · Owner's order of 27 November 2026 · in source and component-tested for alpha.150 (`cmd/panel/site_auto_move.go`, [SITE-SANDBOX.md](SITE-SANDBOX.md) §8.4 and §9.3); its lab round is open; no installed panel changed*
+
+**Context.** alpha.148 put every new program of a site into that site's limits (its slice)
+and gave the administrator a button for the existing ones, "Sınırların içine taşı / Move into
+the limits"; alpha.150's first round added the site's scheduled tasks to the same button and
+"Move all" for every site outside. The owner never pressed it on his own servers, so every
+existing site there was still outside its limits. An opt-in protection is a protection nobody
+has.
+
+**The owner's words** (27 November 2026), about the button and the press for scheduled tasks:
+"neye basacağım. zaten otomatik olarak sınırlarda olmalıydı. buton falan saçmalığına gerek
+yok. bu bir hataydı. bu hatayı hiç olmamış gibi düzelt ve bir daha olmasın." ("What would I
+press? They should have been inside the limits automatically. There is no need for this button
+nonsense. This was a mistake. Fix it as if it had never happened, and never again.")
+
+**Decision.** The rule for the future: **a protection reaches every existing site by itself;
+an action is offered only next to a failure.** For the site's limits (alpha.150):
+
+- The panel's own worker moves every site still outside its limits, one at a time, with the
+  same move the button made (its record, put-back, proofs, time rule and locks unchanged), some
+  minutes after the panel's start and again after a site is created or restored; never during
+  the panel's update and never because a page was read (D-024).
+- Each site is tried once per installed panel version, never in a loop; the mark lives in
+  `panel_settings` (no schema step). A move that was refused, put back, stopped for its time or
+  whose end is not known is not tried again by itself: one Problems now line says why, who acts
+  and offers Try again (the same move). A reason that clears by itself (the site being changed,
+  the panel's update, another move) is not a failure. A kept move record stops the run until it
+  is settled, as it stops a press.
+- What is the server owner's stays the owner's (D-022): a unit the owner changed or placed, an
+  earlier protection, a crontab with a line the timers do not reproduce, the owner's own
+  `cron.allow`. They are detected and named with who acts, never overwritten and never shown as
+  a to-do on a healthy site.
+- A site whose tasks the administrator put back into cron on purpose is left alone until the
+  administrator moves it again from that site's card: the one place a move is offered without a
+  failure.
+- The screens: no "Move into the limits" and no "Move all" in any healthy state, no line asking
+  for a press; while the worker runs, one calm line ("Siteler sınırlarının içine alınıyor (3 /
+  12) — bir şey yapmanız gerekmiyor"); a customer and a reseller read nothing of it.
+
+**Why.** A protection that waits for a press is not a protection: the server whose
+administrator did not know of the button, or had no time, keeps every site outside, and nothing
+tells them so in a way that feels urgent. The move was already safe to run without anyone
+watching (one site at a time, proof before keeping it, put-back on failure, never during the
+update), so asking for a press added risk (it never happened) and no safety. Where a press is
+still needed, it is because something failed, and then the press stands next to the reason.
+
+**What this changes for the future.** A new protection of existing sites (R3's PHP inside the
+limits, or any later one) ships with its own move made by the panel itself, under the same
+rules: one at a time, once per version, the gate of the update, the owner's changes detected
+and kept, and an action only next to a failure. A button that a healthy server would need to
+press to be protected is a defect.
+
 ## D-047 · Paid yearly licences: one price per server per year; a licence that runs out never stops the server, only growth closes
 
 *2026-11-14 · Owner's approval of the licence, subscription and payment direction (14 November 2026) · direction and [technical design](LICENCE-SUBSCRIPTION-DESIGN.md) only; nothing implemented, no installed panel and no live service changed*

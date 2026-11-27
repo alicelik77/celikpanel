@@ -12,7 +12,7 @@ import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
 import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
 import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
 import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';
-import { decodeTasksAnswer, keptTasksRunningKey, moveSitesInTurn, siteMoveEnd, tasksAnswerKey } from '../src/lib/siteTasks.ts';
+import { decodeTasksAnswer, keptTasksRunningKey, tasksAnswerKey } from '../src/lib/siteTasks.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const answer = (outcome, refusal) => ({ outcome, refusal, rows: [], blocking: [], mail: false, error: 'english text of the agent' });
@@ -57,12 +57,9 @@ test('a tasks answer is a code worded by the page, in both languages, never the 
   assert.equal(tasksAnswerKey(answer('unknown'), false), 'slim.tasks.why.unknown');
   assert.equal(tasksAnswerKey(answer('unknown'), true), 'slim.tasks.undoWhy.unknown');
   for (const words of [enSiteTasksScreens, trSiteTasksScreens]) assert.ok(words['slim.tasks.why.unknown'] && words['slim.tasks.undoWhy.unknown']);
-  // The card, Move all and the undo never show a tasks answer's English.
+  // The card and the undo never show a tasks answer's English (alpha.150: Move all is gone, D-048).
   const card = read('../src/components/SiteLimitsCard.tsx');
   assert.ok(!/answer\.error|answer\?\.error/.test(card), 'the card shows no English text of the agent');
-  const moveAll = read('../src/components/MoveAllSites.tsx');
-  assert.ok(!/preview\.error/.test(moveAll), 'Move all words a tasks preview by its code');
-  assert.match(moveAll, /tasksAnswerKey\(preview, false\)/);
 });
 
 test('a kept tasks record says how the tasks run now, when the agent knows it; otherwise the line keeps “may”', () => {
@@ -112,31 +109,4 @@ test('fix round F6: the undo names the tasks that came back paused, in both lang
   for (const words of [enSiteTasksScreens, trSiteTasksScreens]) assert.ok(words['slim.tasks.undo.paused'], 'slim.tasks.undo.paused');
   const card = read('../src/components/SiteLimitsCard.tsx');
   assert.match(card, /answer\.paused\.length > 0[\s\S]*t\('slim\.tasks\.undo\.paused'\)/);
-});
-
-test('fix round: Move all words every reason by its code, never the agent’s English', async () => {
-  const english = 'english text of the agent';
-  const word = (key) => `<${key}>`;
-  const cases = [
-    [{ done: false, kept: true, error: english, units: [] }, 'stop', '<slim.why.kept_earlier>'],
-    [{ done: true, units: [], tasks: { outcome: 'refused', refusal: 'kept_earlier', error: english } }, 'stop', '<slim.why.kept_earlier>'],
-    [{ done: false, rolled_back: true, error: english, reason: { code: 'update_running' }, tasks: { outcome: 'moved' } }, 'stop', '<slim.why.update_running>'],
-    [{ done: false, error: english, tasks: { outcome: 'moved' } }, 'stop', '<slim.why.other>'],
-    [{ done: true, error: english }, 'stop', '<slim.tasks.why.unknown>'],
-    [{ done: true, units: [], tasks: { outcome: 'put_back', error: english } }, 'stop', '<slim.tasks.why.put_back>'],
-    [{ done: true, units: [], tasks: { outcome: 'unknown', error: english } }, 'stop', '<slim.tasks.why.unknown>'],
-    [{ done: true, units: [], tasks: { outcome: 'refused', refusal: 'cron_allow_owner', error: english } }, 'skipped', '<slim.tasks.why.cron_allow_owner>'],
-    [{ done: true, units: [{ unit: 'celikapp-4.service' }], tasks: { outcome: 'no_cron', error: english } }, 'partial', '<slim.tasks.why.no_cron>'],
-  ];
-  for (const [answer, kind, reason] of cases) {
-    const end = siteMoveEnd(answer, word);
-    assert.equal(end.kind, kind, JSON.stringify(answer));
-    assert.equal(end.reason, reason, JSON.stringify(answer));
-  }
-  assert.deepEqual(siteMoveEnd({ done: true, units: [], tasks: { outcome: 'crontab_back', error: english } }, word), { kind: 'moved', note: '<slim.tasks.done.back>' });
-  const notes = [];
-  const out = await moveSitesInTurn([{ domain_id: 1, domain: 'a.test' }], async () => ({ status: 200, body: { done: true, units: [], tasks: { outcome: 'put_back', error: english } } }),
-    (_i, _state, note) => notes.push(note), word);
-  assert.ok(!JSON.stringify([out, notes]).includes(english), 'no English of the agent reaches the summary or a step');
-  assert.match(read('../src/components/MoveAllSites.tsx'), /\(key\) => t\(key as TranslationKey\)\);/);
 });

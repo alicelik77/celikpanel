@@ -471,6 +471,10 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 	reportOperationStep(r.Context(), "finish")
 	p.audit(r, "backup.restore:"+inspection.Backup.Type, "domain", d.ID)
 	p.requestDiskMeasurement(r.Context(), d.SubscriptionID)
+	// alpha.150 (D-048): anything the restore left outside the site's limits
+	// is moved in by the panel's worker (a restore writes no unit and no
+	// crontab, and its program's start puts the program inside them).
+	p.pokeSiteAutoMove()
 	_ = json.NewEncoder(w).Encode(restoreAnswer{RestoreResponse: resp, Program: outcome})
 }
 

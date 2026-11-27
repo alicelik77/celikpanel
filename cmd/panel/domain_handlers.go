@@ -702,6 +702,10 @@ func (p *Panel) handleCreateDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.audit(r, "domain.create", "domain", result.DomainID)
+	// alpha.150 (D-048): a new site is inside its limits from its first
+	// start; one its account's cron files kept in cron (a cron.allow that
+	// could not be written) is moved by the panel's worker.
+	p.pokeSiteAutoMove()
 	// 22 Nov 2026 (B2): a reply of another account that still names this
 	// name (left from before it was deleted elsewhere) is rewritten now.
 	p.reconcileAutoresponderAddressesAfter(context.WithoutCancel(r.Context()), "domain_added")
