@@ -1432,22 +1432,44 @@ cron lets the account in again. A crontab that holds anything else is left as it
 record stays: the server owner compares it with the task file and keeps one.
 
 **The way back into cron by hand** (the card gives it with the site's id and account, should
-Try again not settle the record; run for real on systemd 257 with throw-away units; each step
+Try again not settle the record; run for real on systemd 257 with throw-away units, including
+a crontab already there and a second run after a stop at every step, fix round 4; each step
 only if the one before worked):
 
 ```sh
-sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<id>-*.timer' | awk '{print $1}') && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo <account> | sudo tee -a /etc/cron.allow >/dev/null && { sudo crontab -u <account> /etc/celikpanel-cron/<id>.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }
+{ [ ! -e /etc/cron.allow.celikpanel-before ] || sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow; } && { sudo test ! -e /var/spool/cron/crontabs/<account> && sudo test ! -e /var/spool/cron/<account> || { echo 'Stopped, nothing changed: <account> has a crontab. Press Try again.' >&2; false; }; } && sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<id>-*.timer' | awk '{print $1}') && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo <account> | sudo tee -a /etc/cron.allow >/dev/null && { sudo crontab -u <account> /etc/celikpanel-cron/<id>.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }
 ```
 
-`systemctl disable` takes no pattern (`'celikcron-<id>-*.timer'` is refused as a unit name),
-so the site's timers are listed by name; with none listed the first step fails and nothing
-else runs. `crontab -u` is refused for an account `/etc/cron.allow` leaves out, also for root,
-so the account is let in for that one command, and the file is put back byte for byte
-afterwards - also when the install failed - so CelikPanel's file stays CelikPanel's and no
-other account is let in. Without `/etc/cron.allow` (an account `/etc/cron.deny` names) the
-server owner removes the name there instead. Then the administrator presses **Try again**: it
-finds the crontab back, removes the timer files left and the record, and lets the account use
-cron again, so sites can be moved again.
+In order: (1) a backup of `/etc/cron.allow` that an earlier, stopped run left is put back;
+(2) **it stops, changing nothing, when the account has a crontab** - the spool is looked at
+directly (`/var/spool/cron/crontabs/<account>` on Debian and Ubuntu, `/var/spool/cron/<account>`
+with cronie), as `crontab -l` is refused for an account `/etc/cron.allow` leaves out, also for
+root - so it never overwrites one; (3) the site's timers are switched off, listed by name
+(`systemctl disable` takes no pattern: `'celikcron-<id>-*.timer'` is refused as a unit name;
+with none listed this step fails and nothing else runs); (4) `/etc/cron.allow` is copied aside;
+(5) the account is let in for the one `crontab` command (`crontab -u` is refused for an account
+`/etc/cron.allow` leaves out, also for root); (6) the task file **as it is now** is installed as
+the account's crontab, and the copy is put back byte for byte - also when the install failed -
+so CelikPanel's file stays CelikPanel's and no other account is let in. A task switched off on
+the server comes back as the task file has it (for the record of an undo too: the steps do not
+read which timers were off). Then the administrator presses **Try again**: it finds the
+crontab back, removes the timer files left and the record, and lets the account use cron
+again, so sites can be moved again.
+
+**Run again after a stop** (measured): stopped after (1) or (2) - nothing was changed, the
+second run starts afresh (or stops again at (2) while a crontab is there); after (3) - the
+timers are already off, the second run switches them off again and goes on to the end; after
+(4) - (1) puts the unchanged copy back and the run goes on to the end; after (5) - (1) takes the
+account out again and the run goes on to the end (the account is listed once, the file ends as
+CelikPanel's); after the install but before the copy went back - (1) puts `/etc/cron.allow` back
+and (2) stops because the crontab is there: the administrator presses Try again, which finds it
+back. Every run that reaches its end leaves `/etc/cron.allow` byte for byte as it was and no
+copy beside it. **Without `/etc/cron.allow`** (a host where `/etc/cron.deny` names the account)
+the command stops at (4) after the timers are off, and again at each later run; the server
+owner then removes the account's name from `/etc/cron.deny` and runs `sudo crontab -u <account>
+/etc/celikpanel-cron/<id>.crontab`, and the administrator presses Try again. Pressed without a
+crontab installed, Try again settles the record by its step instead (from `crontab_emptied` on:
+the timers switched on again, the table above).
 
 **The Agent's start is bounded.** A tasks record is settled at the Agent's start with at most
 **four systemd calls** under one 15-second bound (the slice's reading, the timers on or off,
@@ -1558,12 +1580,16 @@ and Problems now say how the tasks run (not running, or from cron).
   calls `/usr/lib/celikpanel-sandbox/sandbox-task-helper` first (the SMTP block, §3), so
   removing CelikPanel's files stops the tasks too: the owner who removes them puts the site
   back into cron first. To put a site back into cron by hand, **timers off first, then the
-  crontab** (never both on), each step only if the one before worked:
-  `sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<id>-*.timer'
-  | awk '{print $1}') && echo <account> | sudo tee -a /etc/cron.allow >/dev/null && sudo
-  crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (`/etc/cron.allow` must let the
-  account in for `crontab -u` to work, also for root; the first six `#|` lines and the header
-  line are CelikPanel's comments), then remove the units, the folder and the task file, and
+  crontab** (never both on), each step only if the one before worked, and nothing at all when
+  the account already has a crontab (fix round 4: it would be overwritten):
+  `sudo test ! -e /var/spool/cron/crontabs/<account> && sudo test ! -e /var/spool/cron/<account>
+  && sudo systemctl disable --now $(systemctl list-unit-files --no-legend
+  'celikcron-<id>-*.timer' | awk '{print $1}') && echo <account> | sudo tee -a /etc/cron.allow
+  >/dev/null && sudo crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (`/etc/cron.allow`
+  must let the account in for `crontab -u` to work, also for root, and keeps it in afterwards,
+  as the panel no longer closes cron; the first six `#|` lines and the header line are
+  CelikPanel's comments; without `/etc/cron.allow` the owner removes the account from
+  `/etc/cron.deny` instead), then remove the units, the folder and the task file, and
   `systemctl daemon-reload`.
 - **What stays after the panel is removed.** The timers of moved sites, held ones included
   (they stay held while the site's limits file is missing, §9.2); the SMTP block with its
@@ -1608,9 +1634,11 @@ and Problems now say how the tasks run (not running, or from cron).
     crontab was emptied leaves that site's tasks not running.
   - **By hand, per moved site** (as root; `<id>` is the site's id, `<account>` its account):
     timers off first, then the crontab, never both on, each step only if the one before
-    worked: `sudo systemctl disable --now $(systemctl list-unit-files --no-legend
-    'celikcron-<id>-*.timer' | awk '{print $1}') && echo <account> | sudo tee -a /etc/cron.allow
-    >/dev/null && sudo crontab -u <account> /etc/celikpanel-cron/<id>.crontab` (its first
+    worked, and nothing at all when the account already has a crontab: `sudo test ! -e
+    /var/spool/cron/crontabs/<account> && sudo test ! -e /var/spool/cron/<account> && sudo
+    systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<id>-*.timer' |
+    awk '{print $1}') && echo <account> | sudo tee -a /etc/cron.allow >/dev/null && sudo crontab
+    -u <account> /etc/celikpanel-cron/<id>.crontab` (its first
     header line and six `#|` lines are CelikPanel's comments; without `/etc/cron.allow`, the
     owner removes the account from `/etc/cron.deny` instead). The recommended order is still to put every site's
     tasks back into cron on this release first ("Put the tasks back into cron" on each site's

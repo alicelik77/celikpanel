@@ -75,7 +75,7 @@ export const enSiteTasksProblemsScreens = {
     // The site card's way back into cron by hand for a kept tasks move record
     // (the record Problems now's site_move_kept line opens); moved here from
     // "siteTasks" in fix round 4, whose Turkish file had no room left.
-    'slim.tasks.unresolved': 'It is this site’s scheduled tasks (step {step}): their record keeps the crontab, so nothing is lost. The administrator presses Try again; CelikPanel also tries at its next start. If Try again cannot finish it, the server owner puts the tasks back into cron by hand, each step only if the one before worked (the timers off, then the task file as the account’s crontab): {steps} Then the administrator presses Try again: it finds the crontab back, removes the timer files left and the record, and lets the account use cron, so sites can be moved again.',
+    'slim.tasks.unresolved': 'It is this site’s scheduled tasks (step {step}): their record keeps the crontab, so nothing is lost. The administrator presses Try again; CelikPanel also tries at its next start. If Try again cannot finish it, the server owner puts the tasks back into cron by hand, each step only if the one before worked (the timers off, then the task file as it is now as the account’s crontab, so a task switched off on the server comes back as the task file has it; it stops, changing nothing, while the account has a crontab, and can be run again after a stop): {steps} Then the administrator presses Try again: it finds the crontab back, removes the timer files left and the record, and lets the account use cron, so sites can be moved again.',
 };
 
 export type SiteTasksProblemsScreenKey = keyof typeof enSiteTasksProblemsScreens;

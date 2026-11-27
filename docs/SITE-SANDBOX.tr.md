@@ -1273,22 +1273,45 @@ yeniden izin verir. Başka bir şey tutan crontab olduğu gibi bırakılır ve k
 onu görev dosyasıyla karşılaştırır ve birini tutar.
 
 **Elle cron'a geri dönüş yolu** (Tekrar dene kaydı çözemezse kart onu sitenin kimliği ve hesabıyla
-verir; systemd 257'de atılacak birimlerle gerçekten çalıştırıldı; her adım yalnız bir öncekisi
-başarılıysa çalışır):
+verir; systemd 257'de atılacak birimlerle gerçekten çalıştırıldı, zaten var olan bir crontab ve her
+adımda durduktan sonra ikinci bir çalıştırma da dahil, düzeltme turu 4; her adım yalnız bir
+öncekisi başarılıysa çalışır):
 
 ```sh
-sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<kimlik>-*.timer' | awk '{print $1}') && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo <hesap> | sudo tee -a /etc/cron.allow >/dev/null && { sudo crontab -u <hesap> /etc/celikpanel-cron/<kimlik>.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }
+{ [ ! -e /etc/cron.allow.celikpanel-before ] || sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow; } && { sudo test ! -e /var/spool/cron/crontabs/<hesap> && sudo test ! -e /var/spool/cron/<hesap> || { echo 'Stopped, nothing changed: <hesap> has a crontab. Press Try again.' >&2; false; }; } && sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<kimlik>-*.timer' | awk '{print $1}') && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo <hesap> | sudo tee -a /etc/cron.allow >/dev/null && { sudo crontab -u <hesap> /etc/celikpanel-cron/<kimlik>.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }
 ```
 
-`systemctl disable` desen almaz (`'celikcron-<kimlik>-*.timer'` birim adı olarak reddedilir); bu
-yüzden sitenin zamanlayıcıları adlarıyla listelenir; hiçbiri listelenmezse ilk adım başarısız olur
-ve başka hiçbir şey çalışmaz. `/etc/cron.allow` dosyasının dışarıda bıraktığı bir hesap için
-`crontab -u` root'a da reddedilir; bu yüzden hesaba o tek komut için izin verilir ve dosya ardından
-- kurulum başarısız olsa da - baytı baytına geri konur; böylece CelikPanel'in dosyası
-CelikPanel'in kalır ve başka hiçbir hesaba izin verilmez. `/etc/cron.allow` yoksa (hesabı
-`/etc/cron.deny` adlandırıyorsa) sunucu sahibi adı onun yerine oradan çıkarır. Sonra yönetici
-**Tekrar dene**'ye basar: crontab'ı yerinde bulur, geride kalan zamanlayıcı dosyalarını ve kaydı
-kaldırır ve hesabın yeniden cron'u kullanmasına izin verir; böylece siteler yeniden taşınabilir.
+Sırasıyla: (1) daha önce yarıda kalmış bir çalıştırmanın bıraktığı `/etc/cron.allow` yedeği geri
+konur; (2) **hesabın bir crontab'ı varsa hiçbir şeyi değiştirmeden durur** - biriktirme dosyasına
+doğrudan bakılır (Debian ve Ubuntu'da `/var/spool/cron/crontabs/<hesap>`, cronie'de
+`/var/spool/cron/<hesap>`), çünkü `/etc/cron.allow` dosyasının dışarıda bıraktığı bir hesap için
+`crontab -l` root'a da reddedilir - böylece hiçbir crontab'ın üzerine yazılmaz; (3) sitenin
+zamanlayıcıları adlarıyla listelenip kapatılır (`systemctl disable` desen almaz:
+`'celikcron-<kimlik>-*.timer'` birim adı olarak reddedilir; hiçbiri listelenmezse bu adım başarısız
+olur ve başka hiçbir şey çalışmaz); (4) `/etc/cron.allow` bir kenara kopyalanır; (5) hesaba o tek
+`crontab` komutu için izin verilir (`/etc/cron.allow` dosyasının dışarıda bıraktığı bir hesap için
+`crontab -u` root'a da reddedilir); (6) görev dosyası **şimdiki hâliyle** hesabın crontab'ı olarak
+kurulur ve kopya - kurulum başarısız olsa da - baytı baytına geri konur; böylece CelikPanel'in
+dosyası CelikPanel'in kalır ve başka hiçbir hesaba izin verilmez. Sunucuda kapatılmış bir görev
+görev dosyasındaki gibi geri gelir (bir geri alma kaydı için de: adımlar hangi zamanlayıcıların
+kapalı olduğunu okumaz). Sonra yönetici **Tekrar dene**'ye basar: crontab'ı yerinde bulur, geride
+kalan zamanlayıcı dosyalarını ve kaydı kaldırır ve hesabın yeniden cron'u kullanmasına izin verir;
+böylece siteler yeniden taşınabilir.
+
+**Durduktan sonra yeniden çalıştırma** (ölçüldü): (1) ya da (2)'den sonra durduysa hiçbir şey
+değişmemiştir, ikinci çalıştırma baştan başlar (crontab varken (2)'de yine durur); (3)'ten sonra
+zamanlayıcılar zaten kapalıdır, ikinci çalıştırma onları yeniden kapatır ve sonuna kadar gider;
+(4)'ten sonra (1) değişmemiş kopyayı geri koyar ve çalıştırma sonuna kadar gider; (5)'ten sonra (1)
+hesabı yeniden çıkarır ve çalıştırma sonuna kadar gider (hesap bir kez listelenir, dosya
+CelikPanel'inki olarak biter); kurulumdan sonra ama kopya geri konmadan durduysa (1)
+`/etc/cron.allow`'u geri koyar ve crontab orada olduğu için (2) durur: yönetici Tekrar dene'ye
+basar, o da crontab'ı yerinde bulur. Sonuna kadar giden her çalıştırma `/etc/cron.allow`'u baytı
+baytına olduğu gibi ve yanında kopya olmadan bırakır. **`/etc/cron.allow` yoksa** (hesabı
+`/etc/cron.deny` adlandıran bir sunucu) komut zamanlayıcılar kapandıktan sonra (4)'te durur, sonraki
+her çalıştırmada da; sunucu sahibi o zaman hesabın adını `/etc/cron.deny`'den çıkarır ve `sudo
+crontab -u <hesap> /etc/celikpanel-cron/<kimlik>.crontab` komutunu çalıştırır, yönetici de Tekrar
+dene'ye basar. Crontab kurulmadan basılırsa Tekrar dene kaydı adımına göre çözer (`crontab_emptied`
+adımından sonra: zamanlayıcılar yeniden açılır, yukarıdaki tablo).
 
 **Ajan'ın açılışı sınırlıdır.** Bir görev kaydı Ajan'ın açılışında tek bir 15 saniyelik sınır
 altında en çok **dört systemd çağrısıyla** çözülür (dilimin okunması, zamanlayıcıların açılıp
@@ -1400,13 +1423,16 @@ da cron'dan).
   görevin çalışması önce `/usr/lib/celikpanel-sandbox/sandbox-task-helper`'ı çağırır (SMTP engeli,
   §3); CelikPanel'in dosyalarını kaldırmak görevleri de durdurur: onları kaldıran sahip önce siteyi
   cron'a geri koyar. Bir siteyi elle cron'a geri koymak için **önce zamanlayıcılar kapatılır, sonra
-  crontab yazılır** (ikisi asla birlikte açık olmaz), her adım yalnız bir öncekisi başarılıysa:
-  `sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<kimlik>-*.timer'
+  crontab yazılır** (ikisi asla birlikte açık olmaz), her adım yalnız bir öncekisi başarılıysa,
+  hesabın zaten bir crontab'ı varsa hiçbir şey yapılmaz (düzeltme turu 4: üzerine yazılırdı):
+  `sudo test ! -e /var/spool/cron/crontabs/<hesap> && sudo test ! -e /var/spool/cron/<hesap> &&
+  sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-<kimlik>-*.timer'
   | awk '{print $1}') && echo <hesap> | sudo tee -a /etc/cron.allow >/dev/null && sudo crontab -u
   <hesap> /etc/celikpanel-cron/<kimlik>.crontab` (`crontab -u`'nun root için de çalışması için
-  `/etc/cron.allow` hesaba izin vermelidir; ilk altı `#|` satırı ve başlık satırı CelikPanel'in
-  yorumlarıdır), sonra birimleri, klasörü ve görev dosyasını kaldırın ve `systemctl daemon-reload`
-  çalıştırın.
+  `/etc/cron.allow` hesaba izin vermelidir ve panel artık cron'u kapatmadığı için sonra da izin
+  verir; ilk altı `#|` satırı ve başlık satırı CelikPanel'in yorumlarıdır; `/etc/cron.allow` yoksa
+  sahip hesabı onun yerine `/etc/cron.deny`'den çıkarır), sonra birimleri, klasörü ve görev
+  dosyasını kaldırın ve `systemctl daemon-reload` çalıştırın.
 - **Panel kaldırıldıktan sonra kalanlar.** Taşınmış sitelerin zamanlayıcıları, bekletilenler de
   (sitenin sınır dosyası yokken bekletilmiş kalırlar, §9.2); SMTP engeli, gönderim ayrığıyla son
   verildiği gibi (§3); taşınmış hesapları ve sonradan açılan her hesabı, sahip adını ekleyene ya da
@@ -1450,9 +1476,11 @@ da cron'dan).
     çalışmaz hâlde bırakır.
   - **Elle, taşınmış her site için** (root olarak; `<kimlik>` sitenin kimliği, `<hesap>` hesabı):
     önce zamanlayıcılar, sonra crontab, hiçbir zaman ikisi birden açık değil, her adım yalnız bir
-    öncekisi başarılıysa: `sudo systemctl disable --now $(systemctl list-unit-files --no-legend
-    'celikcron-<kimlik>-*.timer' | awk '{print $1}') && echo <hesap> | sudo tee -a /etc/cron.allow
-    >/dev/null && sudo crontab -u <hesap> /etc/celikpanel-cron/<kimlik>.crontab` (ilk başlık satırı
+    öncekisi başarılıysa ve hesabın zaten bir crontab'ı varsa hiçbir şey yapılmadan: `sudo test !
+    -e /var/spool/cron/crontabs/<hesap> && sudo test ! -e /var/spool/cron/<hesap> && sudo systemctl
+    disable --now $(systemctl list-unit-files --no-legend 'celikcron-<kimlik>-*.timer' | awk
+    '{print $1}') && echo <hesap> | sudo tee -a /etc/cron.allow >/dev/null && sudo crontab -u
+    <hesap> /etc/celikpanel-cron/<kimlik>.crontab` (ilk başlık satırı
     ve altı `#|` satırı CelikPanel'in yorumlarıdır; `/etc/cron.allow` yoksa sahip hesabı onun yerine
     `/etc/cron.deny`'den çıkarır). Önerilen sıra yine önce bu sürümde her sitenin görevlerini
     cron'a geri koymaktır (her sitenin Genel Bakış sayfasında "Görevleri cron'a geri koy").

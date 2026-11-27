@@ -77,12 +77,22 @@ export interface TasksPlacement {
  * byte for byte (also when the install fails), so it stays CelikPanel's and
  * no other account is let in. The page then asks for Try again, which finds
  * the crontab back and finishes the put-back.
+ *
+ * Fix round 4 (fourth review N4, N5; run for real on systemd 257 with
+ * throw-away units, a second run after a stop at every step): it first puts
+ * back a cron.allow backup an earlier, stopped run left, then stops - nothing
+ * changed - when the account has a crontab (the spool is looked at directly:
+ * `crontab -l` is refused for an account cron.allow leaves out, also for
+ * root), so it never overwrites one; only then the timers, the backup, the
+ * account let in, the install and the put-back of cron.allow.
  */
 export function unresolvedSteps(u: { tasks_site?: number; tasks_account?: string }): string {
     if (!u.tasks_account || !u.tasks_site) return '';
     const site = u.tasks_site;
     const account = u.tasks_account;
-    return `sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-${site}-*.timer' | awk '{print $1}')`
+    return '{ [ ! -e /etc/cron.allow.celikpanel-before ] || sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow; }'
+        + ` && { sudo test ! -e /var/spool/cron/crontabs/${account} && sudo test ! -e /var/spool/cron/${account} || { echo 'Stopped, nothing changed: ${account} has a crontab. Press Try again.' >&2; false; }; }`
+        + ` && sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-${site}-*.timer' | awk '{print $1}')`
         + ` && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo ${account} | sudo tee -a /etc/cron.allow >/dev/null`
         + ` && { sudo crontab -u ${account} /etc/celikpanel-cron/${site}.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }`;
 }

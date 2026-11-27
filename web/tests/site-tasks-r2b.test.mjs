@@ -205,9 +205,12 @@ test('second fix round: what the screens say about a skipped run, a timer not on
   // alpha.150: a kept tasks record is on the card's kept block, with the steps by hand
   // (fix round F1: the exact line run on systemd 257 with throw-away units; the timers listed
   // by name, never a pattern; joined with && so a failed step stops the rest; cron.allow put
-  // back byte for byte also when the install fails).
+  // back byte for byte also when the install fails). Fix round 4 (N4, N5): first a backup an
+  // earlier, stopped run left is put back, then it stops while the account has a crontab.
   assert.equal(unresolvedSteps({ tasks_site: 7, tasks_account: 'shop_test' }),
-    "sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-7-*.timer' | awk '{print $1}')"
+    '{ [ ! -e /etc/cron.allow.celikpanel-before ] || sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow; }'
+    + " && { sudo test ! -e /var/spool/cron/crontabs/shop_test && sudo test ! -e /var/spool/cron/shop_test || { echo 'Stopped, nothing changed: shop_test has a crontab. Press Try again.' >&2; false; }; }"
+    + " && sudo systemctl disable --now $(systemctl list-unit-files --no-legend 'celikcron-7-*.timer' | awk '{print $1}')"
     + ' && sudo cp -p /etc/cron.allow /etc/cron.allow.celikpanel-before && echo shop_test | sudo tee -a /etc/cron.allow >/dev/null'
     + ' && { sudo crontab -u shop_test /etc/celikpanel-cron/7.crontab; ok=$?; sudo mv /etc/cron.allow.celikpanel-before /etc/cron.allow && [ $ok = 0 ]; }');
   assert.doesNotMatch(unresolvedSteps({ tasks_site: 7, tasks_account: 'shop_test' }), /disable --now '|;\s*sudo crontab/, 'no pattern for disable, no step after a failed one');
