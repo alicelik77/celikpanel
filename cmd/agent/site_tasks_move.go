@@ -61,7 +61,10 @@ import (
 // spool is read first. A crontab there (or a spool that cannot be read)
 // never gets timers beside it: the timers are switched off and the record
 // stays with how the tasks run (cron); at Try again a crontab that holds the
-// recorded tasks (put back by hand) finishes the put-back.
+// recorded tasks (put back by hand) finishes the put-back. A record at
+// enabled is saved as crontab_emptied before its timers are switched off
+// (fix round 4, N1), so once the crontab is gone again the timers are
+// switched on again, never left off under "moved".
 //
 // Putting back disables the move's timers, lets the account use cron again
 // and writes the recorded crontab back when it is gone, checks it, and only
@@ -971,6 +974,19 @@ func recoverSiteTasksRecord(journal *siteMoveJournal, deadline time.Time, atStar
 			// in one call and the record stays; the card says how the tasks
 			// run and what the administrator does.
 			outcome, done, running = transport.SiteTasksUnknown, false, ""
+			// alpha.150 fix round 4 (N1): a record at enabled is saved as
+			// crontab_emptied before its timers are switched off, so that a
+			// later pass that finds the spool empty switches them on again
+			// (recoverSiteTasksEmptied) instead of answering "moved" with
+			// every timer off. When the record cannot be written the timers
+			// are still switched off (a task never runs twice); the step stays
+			// changed in memory for this pass, and the failure is logged as the
+			// move's own later steps log theirs.
+			if j.Step == siteTasksStepEnabled {
+				if stepErr := journal.tasksStep(siteTasksStepCrontabEmptied); stepErr != nil {
+					log.Printf("site tasks: the move's record of site %d could not be written before its timers are switched off: %v", journal.SiteID, stepErr)
+				}
+			}
 			offErr := disableSiteTaskTimers(j, call)
 			if offErr != nil {
 				log.Printf("site tasks: the timers of site %d could not be switched off beside its crontab: %v", journal.SiteID, offErr)
