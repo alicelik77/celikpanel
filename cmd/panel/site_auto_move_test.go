@@ -467,17 +467,28 @@ func TestSingleFlight(t *testing.T) {
 	siteMoveMu.Lock()
 	siteMoveRunning = true
 	siteMoveMu.Unlock()
+	pressDone := false
+	x.tasksAnswer = func(int) (transport.SiteTasksMoveResponse, error) {
+		if !pressDone {
+			t.Error("the worker moved beside a press")
+		}
+		return transport.SiteTasksMoveResponse{}, nil
+	}
 	x.onSleep = func(d time.Duration) {
-		if d == siteAutoMoveRetryFirst {
+		if d == siteAutoMoveRetryFirst && !pressDone {
 			if len(x.calls) != 0 {
 				t.Fatal("the worker moved beside a press")
 			}
+			pressDone = true
 			siteMoveMu.Lock()
 			siteMoveRunning = false
 			siteMoveMu.Unlock()
 		}
 	}
 	queued[0]()
+	if !pressDone {
+		t.Fatal("the worker never waited for the press")
+	}
 	if got := strings.Join(x.calls, ","); got != "tasks:41,programs:41" {
 		t.Fatalf("calls %s", got)
 	}
