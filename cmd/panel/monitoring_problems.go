@@ -158,6 +158,8 @@ var problemKindOrder = map[string]int{
 	"site_tasks_repeated":  40,
 	"disk_limits_counted":  41,
 	// S4 R2a: sites whose programs still run outside their limits (a to-do).
+	// S4 R2b replaces it with site_limits_outside (their programs or
+	// scheduled tasks); the kind stays known for an earlier line.
 	"site_programs_outside": 42,
 	// S4 R2a review: this host cannot enforce a site's limits at all.
 	"site_limits_unsupported": 43,
@@ -170,6 +172,24 @@ var problemKindOrder = map[string]int{
 	"site_move_kept": 46,
 	// alpha.149: database users the database limits did not reach.
 	"database_limits_unapplied": 47,
+	// S4 R2b: sites whose programs or scheduled tasks still run outside
+	// their limits (site_tasks.go).
+	"site_limits_outside": 48,
+	// S4 R2b: cron.allow, crontabs that came back, lingering (site_tasks.go).
+	"cron_allow_lists_sites": 49,
+	"cron_not_closed":        50,
+	"cron_owner_removed":     51,
+	"site_crontab_returned":  52,
+	"site_lingering":         53,
+	"linger_owner_removed":   54,
+	"linger_not_closed":      55,
+	// S4 R2b fix round: a crontab the site's own code can have made; moved
+	// sites whose timers are held for want of their limits file.
+	"site_crontab_by_site": 56,
+	"site_tasks_held":      57,
+	// S4 R2b second fix round: site accounts whose own service manager can
+	// still start at an SFTP login.
+	"site_user_manager_open": 58,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

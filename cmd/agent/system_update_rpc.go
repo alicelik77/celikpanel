@@ -417,7 +417,9 @@ func (a *Agent) StartSystemUpdate(request *transport.SystemUpdateStartRequest, r
 	siteMoveUpdateGate.Lock()
 	defer siteMoveUpdateGate.Unlock()
 	if siteMoveInFlight.Load() {
-		reply.Error = "a site's programs are being moved into their limits; the update was not started. Wait until the move's window has finished, then press the update again"
+		// alpha.150 fix round: the claim is also held while a site's scheduled
+		// tasks are moved, put back or their task file rebuilt.
+		reply.Error = "a site is being moved into its limits or its scheduled tasks are being changed; the update was not started. Wait until that has finished, then press the update again"
 		reply.Reason = transport.HostMutationReasonSiteMove
 		return nil
 	}

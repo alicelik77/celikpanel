@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
@@ -84,7 +84,18 @@ export type ProblemKind =
     | 'site_limits_unapplied'
     | 'site_memory_default'
     | 'site_move_kept'
-    | 'database_limits_unapplied';
+    | 'database_limits_unapplied'
+    | 'site_limits_outside'
+    | 'cron_allow_lists_sites'
+    | 'cron_not_closed'
+    | 'cron_owner_removed'
+    | 'site_crontab_returned'
+    | 'site_crontab_by_site'
+    | 'site_tasks_held'
+    | 'site_lingering'
+    | 'linger_owner_removed'
+    | 'linger_not_closed'
+    | 'site_user_manager_open';
 
 // S4 R1 second fix round: the administrator's "close it again" runs on the
 // panel; the window follows it with reads only.
@@ -127,8 +138,9 @@ const KINDS: readonly ProblemKind[] = [
     'service_operation_unsettled',
     // S4 R2a: a site that keeps reaching its limits; disk limits counted, not enforced.
     'site_memory_repeated', 'site_tasks_repeated', 'disk_limits_counted',
-    // S4 R2a: sites whose programs still run outside their limits (a to-do).
-    'site_programs_outside',
+    // S4 R2a/R2b: sites whose programs or scheduled tasks still run outside
+    // their limits (a to-do; its action opens "Move all").
+    'site_limits_outside',
     // S4 R2a: this server cannot enforce a site's limits at all.
     'site_limits_unsupported',
     // S4 R2a second fix round: a change of limits that did not reach every
@@ -140,7 +152,18 @@ const KINDS: readonly ProblemKind[] = [
     'database_limits_unapplied',
     // alpha.145: webmail's configuration still sends without encryption.
     'webmail_cannot_send',
+    // S4 R2b: cron.allow, a crontab that came back, lingering.
+    'cron_allow_lists_sites', 'cron_not_closed', 'cron_owner_removed', 'site_crontab_returned',
+    // S4 R2b fix round: a crontab the site's own code can have made; tasks
+    // held for want of the site's limits file.
+    'site_crontab_by_site', 'site_tasks_held',
+    'site_lingering', 'linger_owner_removed', 'linger_not_closed',
+    // S4 R2b second fix round: site accounts whose own service manager can
+    // start (a move that could not be settled is site_move_kept, alpha.150).
+    'site_user_manager_open',
 ];
+// S4 R2b: "Move all" is fetched only when its line is shown.
+const MoveAllSites = lazy(() => import('./MoveAllSites').then((module) => ({ default: module.MoveAllSites })));
 // alpha.149: Apply again for those users; the panel runs it apart from the page.
 const DB_LIMITS_URL = '/api/v1/metrics/database-limits/apply';
 // The outcomes the panel tells apart (review of PR #370, finding 7).
@@ -163,7 +186,7 @@ export function dbLimitsLine(problem: { name?: string; reason?: string; value: n
 // The doors the administrator may close again after the server owner undid them.
 // The action of a site's default memory limit fixed for the server's earlier memory (S4 R2a).
 const SITE_MEMORY_DEFAULT_URL = '/api/v1/rights/site-memory-default';
-const RECLOSE = ['at', 'stock_pool'];
+const RECLOSE = ['at', 'stock_pool', 'cron', 'linger'];
 const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites', 'names'] as const;
 
 /** The words of a problem's title and body; alerts use the same (alpha.127). */
@@ -194,7 +217,7 @@ export function problemVars(
 const MAIL_SIGNING_STATES = ['conf_kept', 'port25_kept', 'port25_variable', 'port25_variable_own', 'submit_open', 'unsupported', 'failed', 'unknown'];
 
 /** The catalogue key of a problem's body. */
-export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number }): TranslationKey {
+export function problemBodyKey(problem: { kind: string; name?: string; subject?: string; value?: number; reason?: string }): TranslationKey {
     if (problem.kind === 'mail_signing') {
         return `pnow.mail_signing.${MAIL_SIGNING_STATES.includes(problem.name ?? '') ? problem.name : 'unknown'}` as TranslationKey;
     }
@@ -221,6 +244,8 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'webmail_cannot_send' && !(problem.name ?? '').endsWith('.celikpanel-pending')) return 'pnow.webmail_cannot_send.body_no_text' as TranslationKey;
     // alpha.149 (lab D6): a program put back with its earlier file that does not run is named.
     if (problem.kind === 'site_move_kept' && problem.name) return 'pnow.site_move_kept.body_stopped' as TranslationKey;
+    // alpha.150: a kept record of a site's scheduled tasks says how they run now, when the agent knows it.
+    if (problem.kind === 'site_move_kept' && ['tasks_none', 'tasks_timers', 'tasks_cron'].includes(problem.reason ?? '')) return `pnow.site_move_kept.body_${problem.reason}` as TranslationKey;
     // alpha.149 (lab O3; fix round F9): each site by its own reason; "not known" never "earlier limits"; one site in the singular.
     if (problem.kind === 'site_limits_unapplied') return unappliedKey(problem, 'body') as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
@@ -257,7 +282,7 @@ export interface Problem {
     value: number;
     since?: string;
     observed_at?: string;
-    action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default' | 'apply_db_limits'; to?: string };
+    action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default' | 'apply_db_limits' | 'move_all'; to?: string };
     /** alpha.149 (database_limits_unapplied): the stored reason as a code. */
     reason?: string;
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
@@ -279,7 +304,7 @@ export function decodeProblems(raw: unknown): ProblemsReport {
     const problems = body.problems.filter((p): p is Problem => (
         !!p && typeof p === 'object' && KINDS.includes(p.kind) && typeof p.key === 'string'
         && (p.severity === 'warning' || p.severity === 'critical') && typeof p.value === 'number'
-        && !!p.action && (p.action.kind === 'open' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
+        && !!p.action && (p.action.kind === 'open' || p.action.kind === 'move_all' ? typeof p.action.to === 'string' && p.action.to.startsWith('/')
             : p.action.kind === 'reclose' ? RECLOSE.includes(p.action.to ?? '') : p.action.kind === 'apply_default' ? p.kind === 'site_memory_default'
                 : p.action.kind === 'apply_db_limits' ? p.kind === 'database_limits_unapplied'
                     : p.action.kind === 'start_service' && typeof p.unit === 'string')
@@ -607,6 +632,8 @@ export function ProblemsNow({
                                         >
                                             {t('pnow.service_stopped.action')}
                                         </Button>
+                                    ) : problem.action.kind === 'move_all' ? (
+                                        <Suspense fallback={null}><MoveAllSites onDone={() => void handle.retry()} /></Suspense>
                                     ) : problem.action.kind === 'apply_default' ? (
                                         <Button className="shrink-0 self-start" onClick={() => void applyDefault(problem)} data-problem-apply-default="">
                                             {t('pnow.site_memory_default.action')}

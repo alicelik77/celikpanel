@@ -421,6 +421,24 @@ const screenPartBudgets = {
   // review of PR #370, finding 18). Lowered from 2.5 / 1.0 KiB; no other
   // part's budget is raised.
   dbLimits: kib(0.6, 0.5),
+  // 22 Nov 2026 (S4 R2b): a site's scheduled tasks inside its limits - each
+  // task's last run on the Scheduled tasks screen (stasks.), the
+  // administrator's move of the crontab and its undo (slim.tasks.), "Move all"
+  // (moveall.) and the Problems now lines of cron.allow, crontabs that came
+  // back and lingering (pnow.). A new part, so no existing part's budget is
+  // raised; set with at least 25% headroom from its Turkish file.
+  // alpha.150 fix round 4 (fourth review N3): raised from 16 to 17 KiB raw
+  // (gzip unchanged) for the card's two ways out of a kept tasks record
+  // whose account has a crontab that is not the recorded one; the way back
+  // by hand moved to siteTasksProblems first, and that part has no room for
+  // these words either. Only this part's ceiling; the entry file is unchanged.
+  siteTasks: kib(17, 5.2),
+  // alpha.150: split out of siteTasks and problemsNow when their words filled
+  // them (the Problems now lines of sites' tasks and their side doors, pnow.,
+  // and "Move all", moveall.). A new part, so no existing part's budget is
+  // raised; set with at least 25% headroom from its Turkish file (6.98 / 2.10
+  // KiB when it was made).
+  siteTasksProblems: kib(8.75, 2.65),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

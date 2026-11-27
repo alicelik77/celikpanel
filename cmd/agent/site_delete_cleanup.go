@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
@@ -87,12 +86,11 @@ func trafficLogFamily(domainID int) func(string) bool {
 func removeSiteCrontab(username string) error {
 	if _, err := user.Lookup(username); err == nil {
 		if _, lookErr := cronLookPath("crontab"); lookErr == nil {
-			cmd := exec.Command("crontab", "-u", username, "-r")
-			cmd.Env = append(os.Environ(), "LC_ALL=C", "LANGUAGE=C")
-			output, runErr := cmd.CombinedOutput()
-			said := strings.TrimSpace(string(output))
-			if runErr != nil && said != "no crontab for "+username {
-				return fmt.Errorf("crontab -r: %s", hostcmd.Bounded(strings.Join(strings.Fields(said), " "), 200))
+			// S4 R2b: a moved site's account is left out of /etc/cron.allow,
+			// and crontab refuses -r for it even as root (measured on Debian
+			// 13 and Ubuntu 24.04); its spool file is removed below instead.
+			if err := cronRemoveCrontab(username); err != nil && !cronRefusesUser.MatchString(err.Error()) {
+				return fmt.Errorf("%s", hostcmd.Bounded(strings.Join(strings.Fields(err.Error()), " "), 220))
 			}
 		}
 	}

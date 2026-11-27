@@ -117,7 +117,7 @@ func ProductionHelper(log io.Writer) Helper {
 	return Helper{
 		Plan: PlanFor, MountRoot: sitesandbox.MountRoot, RootUID: 0, Mounter: KernelMounter{},
 		LookupUser: lookupAccount, UnitInfo: readUnitInfo, SelfCgroup: readSelfCgroup, ControlGroup: readControlGroup,
-		CgroupExists: cgroupExists, NFT: runNFT, Log: log,
+		CgroupExists: cgroupExists, NFT: runNFT, Procs: ReadCgroupProcs, Log: log,
 	}
 }
 

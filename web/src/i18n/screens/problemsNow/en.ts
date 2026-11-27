@@ -103,9 +103,6 @@ export const enProblemsNowScreens = {
     'pnow.site_limits_unapplied.body': 'After a change of limits ({domain}), {value} sites still have their earlier limits ({other}). CelikPanel tries again every hour; this line goes away when every site has the new ones.',
     'pnow.site_limits_unapplied.action': 'Open Plans',
     // S4 R2a third fix round: a move into a site's limits whose put-back did not complete.
-    'pnow.site_move_kept.title': 'A move into a site’s limits did not finish: {domain}',
-    'pnow.site_move_kept.body': 'A program may be stopped; no site is moved until this is settled. The site’s card says what to do.',
-    'pnow.site_move_kept.action': 'Open the site',
 } as const;
 
 export type ProblemsNowScreenKey = keyof typeof enProblemsNowScreens;

@@ -183,6 +183,62 @@ func TestEgressRunsNFTOnly(t *testing.T) {
 	}
 }
 
+// TestEgressKeepsWhatATaskLeftRunning (S4 R2b fix round, review finding 3;
+// alpha.150 on main's place order): a site's task stops with
+// KillMode=process, so processes it left (`nohup worker &`) keep running in
+// its cgroup; its ExecStopPost (run inside that cgroup) keeps the cgroup in
+// the SMTP set while any process other than the helper itself is there, and
+// removes it once only the helper is left. The cgroup is the one main's
+// place order establishes (its own cgroup line first, then systemd). A list
+// that cannot be read, or a place that was not established, keeps the
+// cgroup in the set (the detection fails towards "in use"). A program's unit
+// (whose cgroup systemd empties before ExecStopPost) is removed as before.
+func TestEgressKeepsWhatATaskLeftRunning(t *testing.T) {
+	tr := newTree(t)
+	h := tr.helper(tr.uid)
+	cgroup := "/celiksite_9.slice/celikcron-9-2.service"
+	asked := 0
+	h.SelfCgroup = func() (string, error) { return cgroup, nil }
+	h.ControlGroup = func(string) (string, error) { asked++; return cgroup, nil }
+	procs, procsErr := []int{os.Getpid(), 4242}, error(nil)
+	h.Procs = func(got string) ([]int, error) {
+		if got != cgroup {
+			t.Fatalf("procs of %q", got)
+		}
+		return procs, procsErr
+	}
+	if err := h.EgressRemove("celikcron-9-2.service"); err != nil || len(tr.nft) != 0 || asked != 0 {
+		t.Fatalf("the set lost a cgroup a worker still runs in: %v %q asked=%d", err, tr.nft, asked)
+	}
+	procs, procsErr = nil, errors.New("cgroup.procs: permission denied")
+	if err := h.EgressRemove("celikcron-9-2.service"); err != nil || len(tr.nft) != 0 {
+		t.Fatalf("a list that cannot be read must keep the cgroup: %v %q", err, tr.nft)
+	}
+	procs, procsErr = []int{os.Getpid()}, nil
+	if err := h.EgressRemove("celikcron-9-2.service"); err != nil || len(tr.nft) != 1 ||
+		tr.nft[0] != `delete element inet celikpanel_egress smtp_blocked { "celiksite_9.slice/celikcron-9-2.service" }` {
+		t.Fatalf("the empty cgroup was not removed: %v %q", err, tr.nft)
+	}
+	// Its own cgroup line is not one of the two places and systemd does not
+	// answer: the place is not established, so nothing is removed.
+	tr.nft = nil
+	h.SelfCgroup = func() (string, error) { return "/user.slice/x.scope", nil }
+	h.ControlGroup = func(string) (string, error) { return "", errors.New("Failed to connect to bus") }
+	if err := h.EgressRemove("celikcron-9-2.service"); err != nil || len(tr.nft) != 0 {
+		t.Fatalf("a task whose place is not established must stay in the set: %v %q", err, tr.nft)
+	}
+	// ... while a program's unit is removed by the system slice's element, as before.
+	if err := h.EgressRemove("celiksvc-4.service"); err != nil || len(tr.nft) != 1 {
+		t.Fatalf("a program's unit: %v %q", err, tr.nft)
+	}
+	tr.nft = nil
+	h.SelfCgroup = func() (string, error) { return "/celiksite_9.slice/celiksvc-4.service", nil }
+	procs = []int{os.Getpid(), 4242}
+	if err := h.EgressRemove("celiksvc-4.service"); err != nil || len(tr.nft) != 1 {
+		t.Fatalf("a program's unit: %v %q", err, tr.nft)
+	}
+}
+
 // TestEgressFollowsTheSitesSlice (S4 R2a, kept for going back one release):
 // a unit in its site's slice celiksite_<id>.slice adds and removes the
 // element of the cgroup it really runs in; a unit an owner's drop-in moved

@@ -21,6 +21,10 @@ type SideDoorsRequest struct {
 	ServiceMutationBinding
 	ReClose string `json:"reclose,omitempty"`
 	Version string `json:"version,omitempty"`
+	// Slices (S4 R2b fix round): every site's slice with its limits, so the
+	// re-render of moved sites' timers at the start can put a missing limits
+	// file back before a timer runs (no task runs without the site's limits).
+	Slices []SiteSlice `json:"slices,omitempty"`
 }
 
 // ReClose targets.
@@ -59,6 +63,16 @@ type SideDoorsState struct {
 	// with lines not made in CelikPanel. Absent from an older Agent.
 	At           *SideDoorsAt           `json:"at,omitempty"`
 	SiteCrontabs []SideDoorsSiteCrontab `json:"site_crontabs,omitempty"`
+	// S4 R2b (22 Nov 2026): /etc/cron.allow for the sites whose tasks run as
+	// timers, crontabs that came back for them, and lingering.
+	Cron   *SideDoorsCron   `json:"cron,omitempty"`
+	Linger *SideDoorsLinger `json:"linger,omitempty"`
+	// TasksHeld (fix round): moved sites whose timers are held because their
+	// limits file is not in place and could not be written.
+	TasksHeld []SideDoorsTasksHeld `json:"tasks_held,omitempty"`
+	// UserManagers (second fix round): the site accounts' own service
+	// managers closed (masked) or still open, and why.
+	UserManagers *SideDoorsUserManagers `json:"user_managers,omitempty"`
 }
 
 // `at` states.

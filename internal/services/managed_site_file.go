@@ -496,8 +496,12 @@ func HeldPendingBody(path, headerPrefix string) (string, bool) {
 // pool is 0640 (20 Nov 2026: site accounts do not read other sites' pools;
 // PHP-FPM's master reads it as root); a systemd unit and the sandbox's files
 // stay 0644 (systemd tells every local user a unit's settings anyway).
+//
+// A site's task files (S4 R2b: its task file, command files and settings,
+// kinds starting with "site_task") are 0640 too: they hold the site's own
+// commands, which a crontab keeps from every other account.
 func (f ManagedSiteFile) newFileMode() os.FileMode {
-	if f.Kind == transport.SiteFileKindPHPPool {
+	if f.Kind == transport.SiteFileKindPHPPool || strings.HasPrefix(f.Kind, "site_task") {
 		return managedSiteFileNewMode
 	}
 	return 0o644
