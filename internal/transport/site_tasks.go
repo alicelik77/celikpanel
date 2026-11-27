@@ -223,6 +223,12 @@ const (
 	// read the state of the site's timers, so it cannot tell which tasks the
 	// server owner switched off; nothing was changed.
 	SiteTasksRefusalTimers = "timers_unread"
+	// SiteTasksRefusalProcesses (alpha.150 fix round 4, N2): the move could
+	// not identify the program of every process of the site's account (or
+	// list them), so a crontab process may be running that could still
+	// install a crontab after cron closes; nothing was moved (before
+	// anything changed, or the move was put back).
+	SiteTasksRefusalProcesses = "processes_unread"
 )
 
 // SiteTasksMovedRequest asks which sites run their tasks as timers (SiteIDs

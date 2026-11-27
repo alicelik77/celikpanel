@@ -495,7 +495,7 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	// listable, or the move is refused here, before anything changes (they
 	// are listed again and ended once cron.allow has closed).
 	if err := siteTaskCheckCrontabs(target.UID); err != nil {
-		out := refused("", "the crontab processes of "+username+" could not be listed ("+err.Error()+"), so one started before cron closes could still install a crontab; nothing was moved")
+		out := refused(transport.SiteTasksRefusalProcesses, "the crontab processes of "+username+" could not be listed ("+err.Error()+"), so one started before cron closes could still install a crontab; nothing was moved")
 		out.Rows = resp.Rows
 		return out
 	}
@@ -575,7 +575,14 @@ func moveSiteTasksLocked(target siteTaskTarget, username string) transport.SiteT
 	// the move fails here (second fix round) and cron opens again; nothing
 	// was removed.
 	if n, err := siteTaskEndCrontabs(target.UID); err != nil {
-		return fail("cron_closed", fmt.Errorf("the crontab processes of %s could not be listed, so one started before cron closed could still install a crontab: %v", username, err))
+		out := fail("cron_closed", fmt.Errorf("the crontab processes of %s could not be listed, so one started before cron closed could still install a crontab: %w", username, err))
+		// Fix round 4 (N2): a process whose program could not be identified
+		// is worded by its own code, as before anything changed (the move
+		// was put back; not when putting back did not complete).
+		if out.Outcome == transport.SiteTasksPutBack && errors.Is(err, errCrontabProcessUnknown) {
+			out.Refusal = transport.SiteTasksRefusalProcesses
+		}
+		return out
 	} else if n > 0 {
 		log.Printf("site tasks: %d crontab process(es) of %s started before cron.allow closed were ended", n, username)
 	}

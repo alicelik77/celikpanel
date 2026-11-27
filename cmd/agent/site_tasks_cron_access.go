@@ -347,11 +347,32 @@ var siteTaskKill = func(pid int) error {
 
 func endCrontabProcesses(uid int) (int, error) { return scanCrontabProcesses(uid, true) }
 
+// siteTaskStatExe reads the file a process runs (os.Stat of
+// /proc/<pid>/exe, which follows the kernel's link to the file itself
+// without printing its path; a test seam).
+var siteTaskStatExe = os.Stat
+
+// siteTaskReadExe reads the link's text (a test seam: the kernel answers
+// ENAMETOOLONG for a path it cannot print).
+var siteTaskReadExe = os.Readlink
+
+// errCrontabProcessUnknown marks a process of the account whose program
+// could not be identified (fix round 4, N2): the move is refused with its
+// own code (transport.SiteTasksRefusalProcesses).
+var errCrontabProcessUnknown = errors.New("the program of a process of the account could not be identified")
+
 // scanCrontabProcesses finds (and with kill, ends) every crontab process
 // running as the uid. alpha.150 fix round (F7): it fails towards "one may be
-// running" - a process of the uid whose program cannot be read, or whose end
-// fails, is an error, never skipped; only a process that is gone (or a zombie,
-// whose program reads as missing and which installs nothing) is passed over.
+// running" - a process of the uid whose program cannot be identified, or
+// whose end fails, is an error, never skipped; only a process that is gone
+// (or a zombie, whose program reads as missing and which installs nothing)
+// is passed over. Fix round 4 (N2): a process's program is compared by file
+// identity (the file /proc/<pid>/exe leads to against the crontab program),
+// not by the link's text, which the kernel cannot print for a program
+// started from a folder deeper than a path can be long - so a site account
+// cannot keep its own move refused that way; the text is read only for a
+// process whose file is not the crontab program's, to know a crontab
+// replaced since it started (" (deleted)", a package upgrade).
 func scanCrontabProcesses(uid int, kill bool) (int, error) {
 	if uid < 1 {
 		return 0, nil
@@ -362,6 +383,10 @@ func scanCrontabProcesses(uid int, kill bool) (int, error) {
 	}
 	if resolved, err := filepath.EvalSymlinks(program); err == nil {
 		program = resolved
+	}
+	programInfo, err := os.Stat(program)
+	if err != nil {
+		return 0, fmt.Errorf("%w: the crontab program %s could not be read: %v", errCrontabProcessUnknown, program, err)
 	}
 	entries, err := os.ReadDir(procRoot)
 	if err != nil {
@@ -384,15 +409,28 @@ func scanCrontabProcesses(uid int, kill bool) (int, error) {
 		if procRealUID(string(status)) != uid {
 			continue
 		}
-		exe, err := os.Readlink(filepath.Join(procRoot, e.Name(), "exe"))
+		exePath := filepath.Join(procRoot, e.Name(), "exe")
+		info, err := siteTaskStatExe(exePath)
 		if err != nil {
 			if gone(err) {
 				continue
 			}
-			return ended, fmt.Errorf("the program of process %d could not be read: %w", pid, err)
+			return ended, fmt.Errorf("%w: process %d: %v", errCrontabProcessUnknown, pid, err)
 		}
-		if strings.TrimSuffix(exe, " (deleted)") != program {
-			continue
+		if !os.SameFile(info, programInfo) {
+			// Not the crontab program's file. One replaced since it started
+			// (a package upgrade) still prints its old path, which is short.
+			exe, err := siteTaskReadExe(exePath)
+			switch {
+			case err == nil && strings.HasSuffix(exe, " (deleted)") && strings.TrimSuffix(exe, " (deleted)") == program:
+				// The crontab program as it was before an upgrade: ended too.
+			case err == nil, gone(err), errors.Is(err, syscall.ENAMETOOLONG):
+				// Another program (a path too long to print is never the
+				// crontab program's, whose path is short).
+				continue
+			default:
+				return ended, fmt.Errorf("%w: process %d: %v", errCrontabProcessUnknown, pid, err)
+			}
 		}
 		if !kill {
 			continue

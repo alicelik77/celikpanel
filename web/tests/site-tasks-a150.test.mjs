@@ -37,7 +37,15 @@ test('a tasks answer is a code worded by the page, in both languages, never the 
     [answer('refused'), true, 'slim.tasks.undoWhy.other'],
     // Fix round F6: the undo cannot read the timers' state.
     [answer('refused', 'timers_unread'), true, 'slim.tasks.undoWhy.timers_unread'],
+    // Fix round 4 (N2): a process of the account whose program could not be told,
+    // before anything changed and when the move was put back at cron_closed.
+    [answer('refused', 'processes_unread'), false, 'slim.tasks.why.processes_unread'],
+    [answer('put_back', 'processes_unread'), false, 'slim.tasks.why.processes_unread'],
   ];
+  for (const words of [enSiteTasksScreens, trSiteTasksScreens]) {
+    assert.match(words['slim.tasks.why.processes_unread'], /administrator|Yönetici/, 'it names who acts');
+    assert.match(words['slim.tasks.why.processes_unread'], /ps -fu/, 'it says what to look at');
+  }
   for (const [a, undo, key] of cases) {
     assert.equal(tasksAnswerKey(a, undo), key, `${a.outcome} ${a.refusal} ${undo}`);
     const lane = key.startsWith('slim.why.');
