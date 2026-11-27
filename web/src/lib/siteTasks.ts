@@ -163,6 +163,18 @@ export function tasksAnswerKey(answer: TasksAnswer, undo: boolean): string {
     return undo ? 'slim.tasks.undoWhy.other' : 'slim.tasks.why.other';
 }
 
+/**
+ * The card's words for a kept tasks record whose tasks run from cron (fix
+ * round 4, fourth review N3). At crontab_emptied and enabled the Agent found
+ * a crontab beside the move's timers: Try again finishes the put-back only
+ * when that crontab holds the recorded tasks, so the words give the server
+ * owner's two ways out (keep the timers, or keep cron with the recorded
+ * tasks). At every other step Try again finishes whatever the crontab holds.
+ */
+export function keptCronBackKey(step: string | undefined): string {
+    return step === 'crontab_emptied' || step === 'enabled' ? 'slim.tasks.cronBack' : 'slim.tasks.cronBackOther';
+}
+
 /** How a kept tasks record's tasks run now (SiteSliceMoveRecovery.tasks_running), or '' when it is not known. */
 export function keptTasksRunningKey(running: string | undefined): string {
     return running === 'none' || running === 'timers' || running === 'cron' ? `slim.tasks.running.${running}` : '';

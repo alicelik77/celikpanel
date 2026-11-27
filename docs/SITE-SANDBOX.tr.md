@@ -1269,8 +1269,16 @@ açılmaz**: tek çağrıyla kapatılırlar ve kayıt kalır; kart ve Şu anki s
 çalıştığını (dosya okunamıyorsa bunun bilinmediğini) söyler. Tekrar dene'de kayıttaki görevleri
 tutan bir crontab - taşımadan önce `crontab -l`'nin yazdığı gibi ya da görev dosyasının bütünüyle
 kurulmuş hâli - geri koymayı bitirir: zamanlayıcılar, dosyaları ve görev dosyası gider, cron hesaba
-yeniden izin verir. Başka bir şey tutan crontab olduğu gibi bırakılır ve kayıt kalır: sunucu sahibi
-onu görev dosyasıyla karşılaştırır ve birini tutar.
+yeniden izin verir. Başka bir şey tutan crontab olduğu gibi bırakılır ve kayıt kalır (karşılaştırma
+baytı baytınadır, yalnız "tutulur" yönüne yanılabilir); sunucu sahibi onu görev dosyasıyla
+karşılaştırır ve birini tutar, kart da nasıl yapılacağını söyler (düzeltme turu 4), sonra yönetici
+Tekrar dene'ye basar: **zamanlayıcıları tutmak için** sahip o crontab'ı siler (`sudo rm
+/var/spool/cron/crontabs/<hesap>`, cronie'de `/var/spool/cron/<hesap>`; hesap için `crontab -r`
+reddedilir) ve Tekrar dene zamanlayıcıları yeniden açar (`crontab_emptied` satırı); **kayıttaki
+görevlerle cron'u tutmak için** sahip onu aynı biçimde siler ve aşağıdaki elle dönüş yolunu
+çalıştırır, Tekrar dene de geri koymayı bitirir. Öteki adımlarda görevleri cron'dan çalışan bir
+kaydı Tekrar dene crontab ne tutarsa tutsun bitirir (geri koymanın ve geri almanın kendi
+satırları) ve kart yalnız bunu söyler.
 
 **Elle cron'a geri dönüş yolu** (Tekrar dene kaydı çözemezse kart onu sitenin kimliği ve hesabıyla
 verir; systemd 257'de atılacak birimlerle gerçekten çalıştırıldı, zaten var olan bir crontab ve her

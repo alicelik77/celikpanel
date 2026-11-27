@@ -1429,7 +1429,15 @@ from cron (or, when the spool cannot be read, that it is not known). At Try agai
 that holds the recorded tasks - as `crontab -l` printed them before the move, or the task file
 installed whole - finishes the put-back: the timers and their files and the task file go, and
 cron lets the account in again. A crontab that holds anything else is left as it is and the
-record stays: the server owner compares it with the task file and keeps one.
+record stays (the comparison is exact, byte for byte, so it can only fail towards "kept"); the
+server owner compares it with the task file and keeps one, and the card says how (fix round 4),
+then the administrator presses Try again: **to keep the timers**, the owner removes that
+crontab (`sudo rm /var/spool/cron/crontabs/<account>`, `/var/spool/cron/<account>` with cronie;
+`crontab -r` is refused for the account) and Try again switches the timers on again (the
+`crontab_emptied` row); **to keep cron with the recorded tasks**, the owner removes it the same
+way and runs the way back by hand below, and Try again finishes the put-back. At the other steps
+a record whose tasks run from cron is finished by Try again whatever the crontab holds (the
+put-back's and the undo's own rows), and the card says only that.
 
 **The way back into cron by hand** (the card gives it with the site's id and account, should
 Try again not settle the record; run for real on systemd 257 with throw-away units, including

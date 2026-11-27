@@ -12,7 +12,7 @@ import {
     appliedOf, dbOwnerByOrigin, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
     newMoveRequestID, notMovedReason, putBackSplit, type DbOwnerSetting, type MoveReason, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
-import { decodeTasksAnswer, keptTasksRunningKey, lineList, movedTaskCount, privilegedList, readTasksPreview, tasksAnswerKey, unresolvedSteps, KEPT_MOVE, type TasksAnswer } from '../lib/siteTasks';
+import { decodeTasksAnswer, keptCronBackKey, keptTasksRunningKey, lineList, movedTaskCount, privilegedList, readTasksPreview, tasksAnswerKey, unresolvedSteps, KEPT_MOVE, type TasksAnswer } from '../lib/siteTasks';
 import { Button, Checking, CouldNotCheck } from './ui';
 
 // The limits of a site's programs together (S4 R2a, docs/SITE-SANDBOX.md
@@ -405,7 +405,8 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                             {/* alpha.150 fix round (F1): with a crontab there, the steps by hand would overwrite it: Try again decides. */}
                             {[keptTasksRunningKey(view.move_interrupted.tasks_running) ? t(keptTasksRunningKey(view.move_interrupted.tasks_running) as TranslationKey) : '',
                                 view.move_interrupted.tasks_running === 'cron'
-                                    ? t('slim.tasks.cronBack', { site: view.move_interrupted.tasks_site ?? '' })
+                                    // Fix round 4 (N3): the way out when that crontab is not the recorded one.
+                                    ? t(keptCronBackKey(view.move_interrupted.tasks_step) as TranslationKey, { site: view.move_interrupted.tasks_site ?? '', account: view.move_interrupted.tasks_account ?? '', steps: unresolvedSteps(view.move_interrupted) })
                                     : t('slim.tasks.unresolved', { step: view.move_interrupted.tasks_step ?? '', steps: unresolvedSteps(view.move_interrupted) })].filter(Boolean).join(' ')}
                         </p>
                     )}

@@ -218,7 +218,9 @@ test('second fix round: what the screens say about a skipped run, a timer not on
     assert.match(words['slim.tasks.unresolved'], /\{steps\}[^]*(Try again|Tekrar dene)/, 'the last words after the steps ask for Try again');
     assert.ok(words['slim.tasks.cronBack'] && words['slim.tasks.cronBack'].includes('{site}'));
   }
-  assert.match(read('../src/components/SiteLimitsCard.tsx'), /tasks_running === 'cron'\s*\?\s*t\('slim\.tasks\.cronBack'/, 'with a crontab there the card gives no steps that would overwrite it');
+  // Fix round 4 (N3): with a crontab there the card says the way out; its steps start with the
+  // guard that stops them while a crontab is there (N4), so they never overwrite it.
+  assert.match(read('../src/components/SiteLimitsCard.tsx'), /tasks_running === 'cron'\s*\/\/[^\n]*\n\s*\?\s*t\(keptCronBackKey\(view\.move_interrupted\.tasks_step\)/, 'with a crontab there the card says the way out');
   const cron = read('../src/components/DomainCronManager.tsx');
   assert.match(cron, /'crontab_again'/);
   assert.match(cron, /preview\.refusal === 'crontab_exists'/, 'the rebuild is refused while the account has a crontab');

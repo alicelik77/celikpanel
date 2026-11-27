@@ -7,7 +7,7 @@ import { enSiteTasksScreens } from '../src/i18n/screens/siteTasks/en.ts';
 import { trSiteTasksScreens } from '../src/i18n/screens/siteTasks/tr.ts';
 import { enSiteTasksProblemsScreens } from '../src/i18n/screens/siteTasksProblems/en.ts';
 import { trSiteTasksProblemsScreens } from '../src/i18n/screens/siteTasksProblems/tr.ts';
-import { unresolvedSteps } from '../src/lib/siteTasks.ts';
+import { keptCronBackKey, unresolvedSteps } from '../src/lib/siteTasks.ts';
 
 const en = { ...enSiteTasksScreens, ...enSiteTasksProblemsScreens };
 const tr = { ...trSiteTasksScreens, ...trSiteTasksProblemsScreens };
@@ -47,4 +47,21 @@ test('N4, N5: the way back by hand never overwrites a crontab and can be run aga
   assert.match(tr['slim.tasks.unresolved'], /şimdiki hâliyle/);
   assert.match(tr['slim.tasks.unresolved'], /sunucuda kapatılmış bir görev görev dosyasındaki gibi geri gelir/);
   assert.match(tr['slim.tasks.unresolved'], /crontab’ı varken hiçbir şeyi değiştirmeden durur/);
+});
+
+test('N3: a crontab that is not the recorded one: the card says both ways out, in both languages', () => {
+  assert.equal(keptCronBackKey('crontab_emptied'), 'slim.tasks.cronBack');
+  assert.equal(keptCronBackKey('enabled'), 'slim.tasks.cronBack');
+  // At every other step Try again finishes whatever the crontab holds (put-back, undo).
+  for (const step of ['source_written', 'units_written', 'cron_closed', 'crontab_written', '', undefined]) {
+    assert.equal(keptCronBackKey(step), 'slim.tasks.cronBackOther', String(step));
+  }
+  for (const words of [en, tr]) {
+    assert.ok(words['slim.tasks.cronBackOther'], 'slim.tasks.cronBackOther');
+    for (const placeholder of ['{site}', '{account}', '{steps}']) assert.ok(words['slim.tasks.cronBack'].includes(placeholder), placeholder);
+    assert.match(words['slim.tasks.cronBack'], /sudo rm \/var\/spool\/cron\/crontabs\/\{account\}/);
+    assert.match(words['slim.tasks.cronBack'], /\{steps\}[^]*(Try again|Tekrar dene)/);
+  }
+  assert.match(en['slim.tasks.cronBack'], /To keep the timers[^]*switches them on again[^]*To keep cron with the recorded tasks/);
+  assert.match(tr['slim.tasks.cronBack'], /Zamanlayıcıları tutmak için[^]*yeniden açar[^]*Kayıttaki görevlerle cron’u tutmak için/);
 });
