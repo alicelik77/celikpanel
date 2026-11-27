@@ -5,6 +5,8 @@
 // Bir sitenin programlarının birlikte sınırları: sunucunun yanıtı ve kartın
 // ondan söyledikleri.
 
+import type { TasksPlacement } from './siteTasks';
+
 export type SiteLimitKey = 'site.memory_mb' | 'site.tasks' | 'site.cpu_percent';
 
 export interface SiteLimitValue {
@@ -56,7 +58,8 @@ export interface SiteLimitsView {
     unsupported?: string;
     drop_ins?: string[];
     /** kept: the put-back did not complete; no site is moved until it is settled ("Try again"). */
-    move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean };
+    /** tasks* (S4 R2b, alpha.150): the kept record is of the site's scheduled tasks. */
+    move_interrupted?: { at: string; units: Record<string, string>; kept?: boolean; tasks?: string; tasks_step?: string; tasks_site?: number; tasks_account?: string; tasks_running?: string };
     /**
      * Database users' values the panel did not write (alpha.149): origin `owner` for a firm limit only an
      * administrator account can set (temporary files, the connection limit); `on_user` for a default changed on
@@ -75,6 +78,8 @@ export interface SiteLimitsView {
     units?: SiteLimitUnit[];
     needs_move?: number;
     busy?: boolean;
+    /** S4 R2b (administrator): where the site's scheduled tasks run. */
+    tasks?: TasksPlacement;
 }
 
 export interface DbOwnerSetting {
@@ -94,6 +99,15 @@ const KEYS: readonly string[] = ['site.memory_mb', 'site.tasks', 'site.cpu_perce
 const EVENTS: readonly string[] = ['memory', 'tasks', 'tasks_peak', 'cpu', 'memory_other', 'tasks_other'];
 const PLACES: readonly string[] = ['in_slice', 'outside', 'stopped', 'stopped_outside', 'elsewhere', 'absent', 'restarting'];
 
+/** S4 R2b: the site's tasks placement (a type-only import keeps this module standalone). */
+function decodeTasksPlacement(raw: unknown): TasksPlacement | undefined {
+    const body = raw as Partial<TasksPlacement> | null;
+    if (!body || typeof body !== 'object' || typeof body.moved !== 'boolean') return undefined;
+    return { moved: body.moved, reappeared: typeof body.reappeared === 'number' ? body.reappeared : undefined, by_site: body.by_site === true,
+        mail_submission: typeof body.mail_submission === 'string' ? body.mail_submission : undefined,
+        recovery: typeof body.recovery === 'string' ? body.recovery : undefined, unknown: body.unknown === true };
+}
+
 /** Reads the answer; an answer of another shape is not a card. */
 export function decodeSiteLimits(raw: unknown): SiteLimitsView {
     const body = raw as Partial<SiteLimitsView> | null;
@@ -108,6 +122,7 @@ export function decodeSiteLimits(raw: unknown): SiteLimitsView {
         limits: body.limits.filter((l): l is SiteLimitValue => !!l && KEYS.includes(l.key) && typeof l.value === 'number' && typeof l.set_by === 'string'),
         events: body.events.filter((e): e is SiteLimitEvent => !!e && EVENTS.includes(e.kind) && typeof e.count === 'number' && typeof e.last_at === 'string'),
         units: Array.isArray(body.units) ? body.units.filter((u): u is SiteLimitUnit => !!u && typeof u.unit === 'string' && PLACES.includes(u.placement)) : undefined,
+        tasks: decodeTasksPlacement(body.tasks),
     };
 }
 

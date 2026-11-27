@@ -223,8 +223,13 @@ func TestSiteLimitsMoveIsTheAdministratorsOneAction(t *testing.T) {
 	useHostMemory(t, 8192)
 	f := newRightsFixture(t)
 	f.exec(t, `INSERT INTO sites (domain_id, document_root, project_type) VALUES (9902, '/srv/node', 'node')`)
-	old := moveSiteSliceCall
-	t.Cleanup(func() { moveSiteSliceCall = old })
+	old, oldTasks := moveSiteSliceCall, moveSiteTasksCall
+	t.Cleanup(func() { moveSiteSliceCall, moveSiteTasksCall = old, oldTasks })
+	// S4 R2b second fix round: the programs part runs only after a tasks
+	// part whose result is known.
+	moveSiteTasksCall = func(p *Panel, ctx context.Context, method string, req *transport.SiteTasksMoveRequest) (transport.SiteTasksMoveResponse, error) {
+		return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksMoved}, nil
+	}
 	calls := 0
 	var got *transport.MoveSiteSliceRequest
 	moveSiteSliceCall = func(p *Panel, ctx context.Context, req *transport.MoveSiteSliceRequest) (transport.MoveSiteSliceResponse, error) {
@@ -350,7 +355,7 @@ func TestSitesWithProgramsOutsideTheirLimitsAreOneLine(t *testing.T) {
 		siteLimitProblemReading = siteLimitReading{}
 		var out []monitoringProblem
 		for _, problem := range f.panel.siteLimitProblems(context.Background(), time.Now()) {
-			if problem.Kind == "site_programs_outside" {
+			if problem.Kind == "site_limits_outside" {
 				out = append(out, problem)
 			}
 		}
@@ -359,7 +364,7 @@ func TestSitesWithProgramsOutsideTheirLimitsAreOneLine(t *testing.T) {
 	// The background reading finds the running program outside the limits.
 	_ = lines()
 	got := lines()
-	if len(got) != 1 || got[0].Key != "site_programs_outside" || got[0].Subject != domain || got[0].Value != 1 ||
+	if len(got) != 1 || got[0].Key != "site_limits_outside" || got[0].Subject != domain || got[0].Value != 1 ||
 		got[0].Severity != "warning" || got[0].Actor != "administrator" || got[0].Action.To != "/domains/"+domain {
 		t.Fatalf("lines = %+v", got)
 	}
@@ -403,11 +408,11 @@ func TestSitesOutsideLineNamesTheFirstSites(t *testing.T) {
 	}
 	state.Sites["99"] = 2 // a site that is gone
 	raw, _ := json.Marshal(state)
-	got := siteLimitOutsideProblem(string(raw), names)
+	got := siteLimitsOutsideProblem(string(raw), names)
 	if len(got) != 1 || got[0].Value != 7 || got[0].Subject != "a.test, b.test, c.test, d.test, e.test, …" || got[0].Action.To != "/domains/a.test" {
 		t.Fatalf("line = %+v", got)
 	}
-	if siteLimitOutsideProblem(`{"checked_at":"x"}`, names) != nil || siteLimitOutsideProblem("", names) != nil {
+	if siteLimitsOutsideProblem(`{"checked_at":"x"}`, names) != nil || siteLimitsOutsideProblem("", names) != nil {
 		t.Fatal("a line without sites")
 	}
 }

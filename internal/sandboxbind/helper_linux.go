@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -51,7 +52,11 @@ type Helper struct {
 	CgroupExists func(path string) bool
 	// NFT runs nft with the given arguments (an empty environment).
 	NFT func(args ...string) error
-	Log io.Writer
+	// Procs lists the processes in a cgroup (its cgroup.procs; nil: never
+	// read). S4 R2b fix round: a site's task leaves its cgroup in the SMTP
+	// set while processes it started still run there.
+	Procs func(cgroup string) ([]int, error)
+	Log   io.Writer
 }
 
 var userName = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
@@ -211,32 +216,43 @@ func ParseSelfCgroup(content string) string {
 // step decided and the place taken, so every server shows which step it
 // uses. removing words that line for egress-remove.
 func (h Helper) egressElement(unit string, removing bool) (string, error) {
+	_, element, err := h.egressTarget(unit, removing)
+	return element, err
+}
+
+// egressTarget is egressElement with the cgroup it established (S4 R2b: the
+// removal of a site's task keeps a cgroup in which processes the task left
+// still run, so it needs the cgroup itself). cgroup is "" when the place was
+// not established (step 3: the system slice's element is used without
+// knowing where the unit runs).
+func (h Helper) egressTarget(unit string, removing bool) (cgroup, element string, err error) {
 	if !sitesandbox.ValidUnitName(unit) {
-		return "", errors.New("not a sandboxed unit name")
+		return "", "", errors.New("not a sandboxed unit name")
 	}
 	own := "not read"
 	if h.SelfCgroup != nil {
-		cgroup, err := h.SelfCgroup()
+		self, err := h.SelfCgroup()
 		if err == nil {
-			if _, ok := sitesandbox.UnitControlGroupAllowed(cgroup, unit); ok {
-				return sitesandbox.CgroupElementFor(cgroup, unit)
+			if _, ok := sitesandbox.UnitControlGroupAllowed(self, unit); ok {
+				element, err := sitesandbox.CgroupElementFor(self, unit)
+				return self, element, err
 			}
-			own = fmt.Sprintf("%q", cgroup)
+			own = fmt.Sprintf("%q", self)
 		} else {
 			own = "unreadable: " + err.Error()
 		}
 	}
 	reason := "systemd was not asked"
 	if h.ControlGroup != nil {
-		cgroup, err := h.ControlGroup(unit)
-		if err == nil && cgroup != "" {
-			element, err := sitesandbox.CgroupElementFor(cgroup, unit)
+		named, err := h.ControlGroup(unit)
+		if err == nil && named != "" {
+			element, err := sitesandbox.CgroupElementFor(named, unit)
 			if err != nil {
-				h.logf("celikpanel-sandbox: %s: its own cgroup line (%s) is not one of the two places; systemd says it runs in %q, which the SMTP block cannot hold", unit, own, cgroup)
-				return "", &PlaceError{Unit: unit, Detail: err.Error()}
+				h.logf("celikpanel-sandbox: %s: its own cgroup line (%s) is not one of the two places; systemd says it runs in %q, which the SMTP block cannot hold", unit, own, named)
+				return "", "", &PlaceError{Unit: unit, Detail: err.Error()}
 			}
-			h.logf("celikpanel-sandbox: %s: its own cgroup line (%s) is not one of the two places; systemd says it runs in %s, so the SMTP block uses %s", unit, own, cgroup, element)
-			return element, nil
+			h.logf("celikpanel-sandbox: %s: its own cgroup line (%s) is not one of the two places; systemd says it runs in %s, so the SMTP block uses %s", unit, own, named, element)
+			return named, element, nil
 		}
 		reason = "systemd named no place"
 		if err != nil {
@@ -248,7 +264,55 @@ func (h Helper) egressElement(unit string, removing bool) (string, error) {
 		action = "removes the system slice's element, as before"
 	}
 	h.logf("celikpanel-sandbox: %s: its own cgroup line (%s) is not one of the two places and %s; the SMTP block %s", unit, own, reason, action)
-	return sitesandbox.CgroupElement(unit)
+	element, err = sitesandbox.CgroupElement(unit)
+	return "", element, err
+}
+
+// taskProcessesRemain: a site's task unit (celikcron-*) whose cgroup may
+// still hold a process other than this helper (ExecStopPost runs in the
+// unit's own cgroup). Its run ended, but what it left keeps running there
+// (KillMode=process), so the cgroup stays in the SMTP set. It decides "no
+// process is left" only on a cgroup it established and could read; a place
+// not established (cgroup "") or a list that cannot be read keeps the cgroup
+// in the set (S4 R2b, alpha.150: a detection that says "not in use" may only
+// fail towards "in use"). A unit that is not a task answers false, as before.
+func (h Helper) taskProcessesRemain(unit, cgroup string) bool {
+	if !strings.HasPrefix(unit, "celikcron-") {
+		return false
+	}
+	if cgroup == "" || h.Procs == nil {
+		h.logf("celikpanel-sandbox: %s ended; where it ran was not established, so its cgroup stays in the SMTP block", unit)
+		return true
+	}
+	pids, err := h.Procs(cgroup)
+	if err != nil {
+		h.logf("celikpanel-sandbox: %s ended; the processes of %s could not be read (%v), so it stays in the SMTP block", unit, cgroup, err)
+		return true
+	}
+	self := os.Getpid()
+	for _, pid := range pids {
+		if pid != self {
+			h.logf("celikpanel-sandbox: %s ended, but processes it started still run in %s; they stay in the SMTP block", unit, cgroup)
+			return true
+		}
+	}
+	return false
+}
+
+// ReadCgroupProcs reads a cgroup's cgroup.procs under /sys/fs/cgroup.
+func ReadCgroupProcs(cgroup string) ([]int, error) {
+	clean := filepath.Clean("/" + cgroup)
+	raw, err := os.ReadFile(filepath.Join("/sys/fs/cgroup", clean, "cgroup.procs"))
+	if err != nil {
+		return nil, err
+	}
+	var pids []int
+	for _, field := range strings.Fields(string(raw)) {
+		if pid, err := strconv.Atoi(field); err == nil {
+			pids = append(pids, pid)
+		}
+	}
+	return pids, nil
 }
 
 func (h Helper) logf(format string, args ...any) {
@@ -305,9 +369,12 @@ func (h Helper) EgressAdd(unit string) error {
 
 // EgressRemove removes the unit's cgroup from the SMTP block.
 func (h Helper) EgressRemove(unit string) error {
-	element, err := h.egressElement(unit, true)
+	cgroup, element, err := h.egressTarget(unit, true)
 	if err != nil {
 		return err
+	}
+	if h.taskProcessesRemain(unit, cgroup) {
+		return nil // said in the journal by taskProcessesRemain
 	}
 	if err := h.NFT("delete", "element", "inet", sitesandbox.EgressTable, sitesandbox.EgressSet, element); err != nil {
 		// The table may be gone (nft flush ruleset); the guard re-adds

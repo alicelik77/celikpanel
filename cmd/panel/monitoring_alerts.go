@@ -695,6 +695,40 @@ func alertLine(item pendingAlertMail) (string, string) {
 	case "site_programs_outside":
 		return fmt.Sprintf("The programs of %s sites still run outside their limits (%s). \"Move into the limits\" on each site's Overview restarts them once inside.", n, subject),
 			fmt.Sprintf("%s sitenin programları hâlâ sınırlarının dışında çalışıyor (%s). Her sitenin Genel Bakış sayfasındaki \"Sınırların içine taşı\" onları bir kez yeniden başlatıp içeri alır.", n, subject)
+	// S4 R2b (site_tasks.go).
+	case "site_limits_outside":
+		return fmt.Sprintf("The programs or scheduled tasks of %s sites still run outside their limits (%s). Problems now offers to move them all.", n, subject),
+			fmt.Sprintf("%s sitenin programları ya da zamanlanmış görevleri hâlâ sınırlarının dışında çalışıyor (%s). Şu anki sorunlar hepsini taşımayı önerir.", n, subject)
+	case "cron_allow_lists_sites":
+		return fmt.Sprintf("The server owner's %s lets the accounts of sites whose tasks run in their limits use cron again (%s). Monitoring says what to change.", name, subject),
+			fmt.Sprintf("Sunucu sahibinin %s dosyası, görevleri sınırları içinde çalışan sitelerin hesaplarına yeniden cron izni veriyor (%s). Neyin değişeceği İzleme'de.", name, subject)
+	case "cron_not_closed":
+		return "The accounts of sites whose tasks run in their limits can still install their own cron jobs: CelikPanel did not write /etc/cron.allow. Monitoring says why.",
+			"Görevleri sınırları içinde çalışan sitelerin hesapları hâlâ kendi cron işlerini kurabiliyor: CelikPanel /etc/cron.allow dosyasını yazmadı. Nedeni İzleme'de."
+	case "cron_owner_removed":
+		return "/etc/cron.allow was deleted on this server, so the accounts of sites whose tasks run in their limits can use cron again. Monitoring offers to close it again.",
+			"Bu sunucuda /etc/cron.allow silindi; görevleri sınırları içinde çalışan sitelerin hesapları yeniden cron kullanabiliyor. İzleme yeniden kapatmayı önerir."
+	case "site_crontab_returned":
+		return fmt.Sprintf("A crontab was made again for sites whose tasks run in their limits (%s); its lines run outside the limits. Monitoring says what to do.", subject),
+			fmt.Sprintf("Görevleri sınırları içinde çalışan siteler için yeniden crontab yapılmış (%s); satırları sınırların dışında çalışıyor. Ne yapılacağı İzleme'de.", subject)
+	case "site_crontab_by_site":
+		return fmt.Sprintf("A crontab exists again for sites whose tasks run in their limits (%s) and runs outside them; cron let these accounts in, so the sites' own code can have made it. Monitoring says what to do.", subject),
+			fmt.Sprintf("Görevleri sınırları içinde çalışan siteler için yeniden crontab var (%s) ve sınırların dışında çalışıyor; cron bu hesaplara izin verdi, yani sitenin kendi kodu yapmış olabilir. Ne yapılacağı İzleme'de.", subject)
+	case "site_tasks_held":
+		return fmt.Sprintf("The scheduled tasks of %s sites are held: their limits file is not in place (%s), and they do not run until it is back. Monitoring says what to do.", n, subject),
+			fmt.Sprintf("%s sitenin zamanlanmış görevleri bekletiliyor: sınır dosyaları yerinde değil (%s); dosya geri gelene kadar çalışmazlar. Ne yapılacağı İzleme'de.", n, subject)
+	case "site_user_manager_open":
+		return fmt.Sprintf("Site accounts can still start their own service manager by signing in with SFTP, outside their limits (%s). Monitoring gives the command that closes it.", subject),
+			fmt.Sprintf("Site hesapları SFTP ile girince kendi hizmet yöneticilerini hâlâ sınırlarının dışında başlatabiliyor (%s). Bunu kapatan komut İzleme'de.", subject)
+	case "site_lingering":
+		return fmt.Sprintf("Site accounts keep their own programs running outside their limits (lingering: %s). Monitoring gives the command that ends it.", subject),
+			fmt.Sprintf("Site hesapları kendi programlarını sınırlarının dışında çalışır tutuyor (kalıcı oturum: %s). Bunu bitiren komut İzleme'de.", subject)
+	case "linger_owner_removed":
+		return "CelikPanel's lingering rule was deleted on this server, so site accounts can keep their own programs running again. Monitoring offers to close it again.",
+			"CelikPanel'in kalıcı oturum kuralı bu sunucuda silindi; site hesapları yeniden kendi programlarını çalışır tutabiliyor. İzleme yeniden kapatmayı önerir."
+	case "linger_not_closed":
+		return "Site accounts can still keep their own programs running (lingering): CelikPanel's polkit rule is not in place. Monitoring says why.",
+			"Site hesapları hâlâ kendi programlarını çalışır tutabiliyor (kalıcı oturum): CelikPanel'in polkit kuralı yerinde değil. Nedeni İzleme'de."
 	case "site_limits_unsupported":
 		return "This server cannot enforce the limits of sites' programs (missing: " + subject + "). Monitoring says what that means.",
 			"Bu sunucu sitelerin programlarının sınırlarını uygulayamıyor (eksik: " + subject + "). Ne anlama geldiği İzleme'de."

@@ -18,6 +18,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitecron"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -50,10 +51,94 @@ func (a *Agent) ListCronJobs(req *ListCronJobsRequest, resp *ListCronJobsRespons
 	if err != nil {
 		return err
 	}
+	// S4 R2b: a site whose tasks run as timers is read from its task file.
+	if target, moved, err := movedSiteTaskTarget(req.CronTenant, username); err != nil {
+		return err
+	} else if moved {
+		return listSiteTasks(target, resp)
+	}
 	if err := requireCronInstalled(); err != nil {
 		return err
 	}
 	return listCronJobsFor(username, resp)
+}
+
+// cronStore is where a site's tasks are read from and written to: the
+// account's crontab, or (S4 R2b) a moved site's task file, whose write also
+// renders its timers. Only the crontab gets MAILTO="" and the marking of
+// lines not made in CelikPanel: a task file is root's own.
+type cronStore struct {
+	read    func() (string, error)
+	write   func(before, after string, authored []string) error
+	crontab bool
+	// resolve (fix round) decides the store under cronMu: a change queued
+	// behind a move then writes where the site's tasks are after it, never
+	// a crontab for a moved account.
+	resolve func() (cronStore, error)
+}
+
+// resolved is the store to use; the caller holds cronMu.
+func (s cronStore) resolved() (cronStore, error) {
+	if s.resolve == nil {
+		return s, nil
+	}
+	return s.resolve()
+}
+
+func crontabStore(username string) cronStore {
+	return cronStore{
+		read: func() (string, error) { return readCrontab(username) },
+		write: func(before, after string, authored []string) error {
+			return setSiteCrontab(username, before, after, authored)
+		},
+		crontab: true,
+	}
+}
+
+// movedSiteTaskTarget: the tenant's site runs its tasks as timers; its
+// target then.
+func movedSiteTaskTarget(tenant transport.CronTenant, username string) (siteTaskTarget, bool, error) {
+	if tenant.SiteID < 1 || !siteTasksMoved(tenant.SiteID) {
+		return siteTaskTarget{}, false, nil
+	}
+	target, err := siteTaskTargetFor(tenant, username)
+	if err != nil {
+		return siteTaskTarget{}, false, err
+	}
+	return target, true, nil
+}
+
+// cronStoreFor is the tenant's store: a moved site's task file, or the
+// account's crontab (cron must then be installed). It is decided under
+// cronMu, when the change runs (resolve).
+func cronStoreFor(tenant transport.CronTenant, username string) (cronStore, error) {
+	decide := func() (cronStore, error) {
+		target, moved, err := movedSiteTaskTarget(tenant, username)
+		if err != nil {
+			return cronStore{}, err
+		}
+		if moved {
+			return siteTaskStore(target), nil
+		}
+		if err := requireCronInstalled(); err != nil {
+			return cronStore{}, err
+		}
+		return crontabStore(username), nil
+	}
+	if _, err := decide(); err != nil {
+		return cronStore{}, err
+	}
+	return cronStore{resolve: decide}, nil
+}
+
+// cronCommandFits: cron runs the command (fix round: cron 3.0pl1 refuses a
+// command of MAX_COMMAND-1 bytes or more; a task is saved only as cron
+// would run it).
+func cronCommandFits(command string) error {
+	if !sitecron.CommandFits(strings.TrimLeft(command, " \t")) {
+		return errors.New(transport.CronCommandTooLong)
+	}
+	return nil
 }
 
 // listCronJobsFor reads the proven user's crontab into resp.
@@ -153,10 +238,11 @@ func (a *Agent) AddCronJob(req *AddCronJobRequest, resp *bool) error {
 	if err != nil {
 		return err
 	}
-	if err := requireCronInstalled(); err != nil {
+	store, err := cronStoreFor(req.CronTenant, username)
+	if err != nil {
 		return err
 	}
-	if err := addCronJobFor(username, req); err != nil {
+	if err := addCronJobIn(store, username, req); err != nil {
 		return err
 	}
 	*resp = true
@@ -166,6 +252,10 @@ func (a *Agent) AddCronJob(req *AddCronJobRequest, resp *bool) error {
 // addCronJobFor appends one job to the proven user's crontab.
 // addCronJobFor, kanıtlanmış kullanıcının crontab'ına bir görev ekler.
 func addCronJobFor(username string, req *AddCronJobRequest) error {
+	return addCronJobIn(crontabStore(username), username, req)
+}
+
+func addCronJobIn(store cronStore, username string, req *AddCronJobRequest) error {
 	if err := rejectCrontabInjection(map[string]string{
 		"schedule": req.Schedule,
 		"command":  req.Command,
@@ -178,13 +268,20 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 	if !isValidCronSchedule(req.Schedule) {
 		return fmt.Errorf("invalid cron schedule: %s", req.Schedule)
 	}
+	if err := cronCommandFits(req.Command); err != nil {
+		return err
+	}
 
 	cronMu.Lock()
 	defer cronMu.Unlock()
+	store, err := store.resolved()
+	if err != nil {
+		return err
+	}
 
 	// The pre-image: never append to a crontab that was not read.
 	// Ön görüntü: okunmamış bir crontab'a asla ekleme yapılmaz.
-	existing, err := readCrontabForChange(username, req.Version)
+	existing, err := readForChange(store, req.Version)
 	if err != nil {
 		return err
 	}
@@ -194,7 +291,7 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 	// not tell them apart.
 	// Aynı zamanlama ve komut ikinci kez eklenmez: komutu iki kez çalıştırır ve
 	// iki satır tek kimliği paylaşır.
-	wanted := strings.Join(strings.Fields(req.Schedule+" "+req.Command), " ")
+	wanted := strings.Join(sitecron.SplitFields(req.Schedule+" "+req.Command), " ")
 	for _, job := range parseCrontab(existing) {
 		if job.Schedule+" "+job.Command == wanted {
 			return errors.New(transport.CronJobDuplicate)
@@ -209,15 +306,19 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 		newEntry = fmt.Sprintf("%s %s", req.Schedule, req.Command)
 	}
 
-	// Append new entry
-	newCrontab := existing
+	// Append new entry (the undo's paused notes are not written back: fix
+	// round 4, N7)
+	newCrontab := withoutCronPausedNotes(existing)
 	if newCrontab != "" && !strings.HasSuffix(newCrontab, "\n") {
 		newCrontab += "\n"
 	}
 	newCrontab += newEntry + "\n"
 
-	written, header := withSiteCronMailtoLines(username, newCrontab)
-	return setSiteCrontab(username, existing, written, append(header, cronSplitLines(newEntry)...))
+	written, header := newCrontab, []string(nil)
+	if store.crontab {
+		written, header = withSiteCronMailtoLines(username, newCrontab)
+	}
+	return store.write(existing, written, append(header, cronSplitLines(newEntry)...))
 }
 
 // UpdateCronJob updates an existing cron job
@@ -226,10 +327,11 @@ func (a *Agent) UpdateCronJob(req *UpdateCronJobRequest, resp *bool) error {
 	if err != nil {
 		return err
 	}
-	if err := requireCronInstalled(); err != nil {
+	store, err := cronStoreFor(req.CronTenant, username)
+	if err != nil {
 		return err
 	}
-	if err := updateCronJobFor(username, req); err != nil {
+	if err := updateCronJobIn(store, username, req); err != nil {
 		return err
 	}
 	*resp = true
@@ -239,6 +341,10 @@ func (a *Agent) UpdateCronJob(req *UpdateCronJobRequest, resp *bool) error {
 // updateCronJobFor rewrites one job in the proven user's crontab.
 // updateCronJobFor, kanıtlanmış kullanıcının crontab'ında bir görevi yeniden yazar.
 func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
+	return updateCronJobIn(crontabStore(username), username, req)
+}
+
+func updateCronJobIn(store cronStore, username string, req *UpdateCronJobRequest) error {
 	if err := rejectCrontabInjection(map[string]string{
 		"schedule": req.Schedule,
 		"command":  req.Command,
@@ -251,15 +357,25 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 	if !isValidCronSchedule(req.Schedule) {
 		return fmt.Errorf("invalid cron schedule: %s", req.Schedule)
 	}
+	if err := cronCommandFits(req.Command); err != nil {
+		return err
+	}
 
 	cronMu.Lock()
 	defer cronMu.Unlock()
-
-	existing, err := readCrontabForChange(username, req.Version)
+	store, err := store.resolved()
 	if err != nil {
 		return err
 	}
-	lines := strings.Split(existing, "\n")
+
+	existing, err := readForChange(store, req.Version)
+	if err != nil {
+		return err
+	}
+	// The undo's paused notes are not written back (fix round 4, N7): a
+	// resumed task keeps none, and the description above one stays the
+	// task's.
+	lines := strings.Split(withoutCronPausedNotes(existing), "\n")
 
 	// The job is the one line whose own text is this ID, enabled or disabled.
 	// Nothing else in the crontab is rewritten.
@@ -303,8 +419,11 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 		lines = append(lines[:index], append([]string{"# " + req.Comment}, lines[index:]...)...)
 	}
 
-	written, header := withSiteCronMailtoLines(username, strings.Join(lines, "\n"))
-	return setSiteCrontab(username, existing, written, append(header, newLine))
+	written, header := strings.Join(lines, "\n"), []string(nil)
+	if store.crontab {
+		written, header = withSiteCronMailtoLines(username, written)
+	}
+	return store.write(existing, written, append(header, newLine))
 }
 
 // DeleteCronJob deletes a cron job
@@ -313,10 +432,11 @@ func (a *Agent) DeleteCronJob(req *DeleteCronJobRequest, resp *bool) error {
 	if err != nil {
 		return err
 	}
-	if err := requireCronInstalled(); err != nil {
+	store, err := cronStoreFor(req.CronTenant, username)
+	if err != nil {
 		return err
 	}
-	if err := deleteCronJobFor(username, req); err != nil {
+	if err := deleteCronJobIn(store, username, req); err != nil {
 		return err
 	}
 	*resp = true
@@ -326,14 +446,22 @@ func (a *Agent) DeleteCronJob(req *DeleteCronJobRequest, resp *bool) error {
 // deleteCronJobFor removes one job from the proven user's crontab.
 // deleteCronJobFor, kanıtlanmış kullanıcının crontab'ından bir görevi çıkarır.
 func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
+	return deleteCronJobIn(crontabStore(username), username, req)
+}
+
+func deleteCronJobIn(store cronStore, username string, req *DeleteCronJobRequest) error {
 	cronMu.Lock()
 	defer cronMu.Unlock()
-
-	existing, err := readCrontabForChange(username, req.Version)
+	store, err := store.resolved()
 	if err != nil {
 		return err
 	}
-	lines := strings.Split(existing, "\n")
+
+	existing, err := readForChange(store, req.Version)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(withoutCronPausedNotes(existing), "\n") // fix round 4, N7: not written back
 
 	// Exactly the job's own line goes, enabled or disabled. The line above it
 	// stays whatever it is: it may be the owner's comment or another, disabled
@@ -351,6 +479,9 @@ func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
 			index, err = last, nil
 		}
 	}
+	if err != nil && !store.crontab {
+		return err
+	}
 	if err != nil {
 		// A line not made in CelikPanel that is not a task (an @reboot line,
 		// an environment setting) is removed by its own ID, the way a task is.
@@ -362,7 +493,7 @@ func deleteCronJobFor(username string, req *DeleteCronJobRequest) error {
 	}
 	lines = append(lines[:index], lines[index+1:]...)
 
-	return setSiteCrontab(username, existing, strings.Join(lines, "\n"), nil)
+	return store.write(existing, strings.Join(lines, "\n"), nil)
 }
 
 // cronJobText returns the job a crontab line holds: the line itself, or for a
@@ -472,6 +603,31 @@ func cronPlainCommentAt(lines []string, index int) bool {
 
 // Helper functions
 
+// cronPausedNote is the one fixed comment the undo of a site's move writes
+// above a task it puts back paused because its timer was switched off on the
+// server (alpha.150 fix round 4, N7). The panel's own crontab reader drops
+// it - it never becomes a task's description and never pushes one out - and
+// every save on the Scheduled tasks screen leaves it out, so it does not stay
+// once the task is resumed there and does not pile up over move and undo.
+// The screen shows such a task with its ordinary "paused" state.
+const cronPausedNote = "# CelikPanel: the task below stays paused, as its timer was switched off on the server."
+
+// withoutCronPausedNotes is the content without cronPausedNote lines (the
+// rest byte for byte).
+func withoutCronPausedNotes(content string) string {
+	if !strings.Contains(content, cronPausedNote) {
+		return content
+	}
+	lines := strings.Split(content, "\n")
+	kept := lines[:0]
+	for _, line := range lines {
+		if line != cronPausedNote {
+			kept = append(kept, line)
+		}
+	}
+	return strings.Join(kept, "\n")
+}
+
 func parseCrontab(content string) []CronJob {
 	var jobs []CronJob
 	lines := strings.Split(content, "\n")
@@ -482,6 +638,13 @@ func parseCrontab(content string) []CronJob {
 		// in cronJobText (S4 R1 fix round).
 		trimmed := strings.Trim(line, " \t")
 		if strings.TrimSpace(trimmed) == "" {
+			continue
+		}
+
+		// The undo's fixed note above a task it put back paused (fix round
+		// 4, N7): not a description, and the description above it stays the
+		// task's.
+		if line == cronPausedNote {
 			continue
 		}
 
@@ -526,8 +689,9 @@ func parseCrontab(content string) []CronJob {
 
 func parseCronLine(line string) []string {
 	// Cron format: min hour dom month dow command
-	// Need to extract first 5 fields and the rest is command
-	fields := strings.Fields(line)
+	// Need to extract first 5 fields and the rest is command. Fields are
+	// split at ASCII spaces and tabs only, as cron splits them.
+	fields := sitecron.SplitFields(line)
 	if len(fields) < 6 {
 		return nil
 	}
@@ -647,7 +811,13 @@ func rejectCrontabInjection(fields map[string]string) error {
 }
 
 func isValidCronSchedule(schedule string) bool {
-	fields := strings.Fields(schedule)
+	// Only ASCII spaces and tabs separate fields, as in cron (fix round): a
+	// no-break space or another Unicode blank is part of a field, so the
+	// field is refused here exactly as crontab would refuse the line.
+	if strings.ContainsAny(schedule, "\r\n\x00") {
+		return false
+	}
+	fields := sitecron.SplitFields(schedule)
 	if len(fields) != 5 {
 		return false
 	}
@@ -795,7 +965,12 @@ func cronVersion(content string) string {
 // istek hangi crontab'dan kurulduğunu söylemezse ya da o artık sunucudaki
 // crontab değilse reddeder.
 func readCrontabForChange(username, version string) (string, error) {
-	existing, err := readCrontab(username)
+	return readForChange(crontabStore(username), version)
+}
+
+// readForChange is readCrontabForChange for any store.
+func readForChange(store cronStore, version string) (string, error) {
+	existing, err := store.read()
 	if err != nil {
 		return "", err
 	}
@@ -873,6 +1048,12 @@ func (a *Agent) KeepCronLineV1(req *transport.KeepCronLineRequest, resp *bool) e
 	username, err := cronTenantUser(req.CronTenant)
 	if err != nil {
 		return err
+	}
+	// A moved site's task file is root's own: it has no line to keep.
+	if _, moved, err := movedSiteTaskTarget(req.CronTenant, username); err != nil {
+		return err
+	} else if moved {
+		return fmt.Errorf("cron line not found: %s", req.ID)
 	}
 	if err := requireCronInstalled(); err != nil {
 		return err

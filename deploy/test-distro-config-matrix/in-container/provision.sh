@@ -35,6 +35,9 @@ apt)
         # openssl s_client only: the validators' TLS clients (v_nginx_tls_default,
         # the mail SNI cases). The panel itself never needs the openssl command.
         openssl
+        # polkitd and a system bus: the lingering rule's check (S4 R2b,
+        # v_polkit_rules). Ubuntu 22.04 packages no polkitd (0.105 there).
+        polkitd dbus-daemon dbus
     )
     available=()
     for p in "${packages[@]}"; do
@@ -44,7 +47,7 @@ apt)
         || { tail -40 /var/log/matrix-provision.log >&2; exit 1; }
     ;;
 pacman)
-    pacman -Syu --noconfirm --needed nginx php php-fpm postfix opendkim dovecot pigeonhole bind powerdns nftables systemd sudo openssh mariadb diffutils openssl procps-ng \
+    pacman -Syu --noconfirm --needed nginx php php-fpm postfix opendkim dovecot pigeonhole bind powerdns nftables systemd sudo openssh mariadb diffutils openssl procps-ng polkit \
         >/var/log/matrix-provision.log 2>&1 || { tail -40 /var/log/matrix-provision.log >&2; exit 1; }
     ;;
 *) echo "unknown family: $family" >&2; exit 2 ;;

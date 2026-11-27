@@ -13,8 +13,13 @@ import { enSiteLimitsScreens } from '../src/i18n/screens/siteLimits/en.ts';
 import { trSiteLimitsScreens } from '../src/i18n/screens/siteLimits/tr.ts';
 import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
 import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr.ts';
-import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
-import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
+import { enProblemsNowScreens as enProblemsNowPart } from '../src/i18n/screens/problemsNow/en.ts';
+import { enSiteTasksProblemsScreens as enProblemsNowSplit } from '../src/i18n/screens/siteTasksProblems/en.ts';
+// alpha.150: the part siteTasksProblems holds the words split out of this part.
+const enProblemsNowScreens = { ...enProblemsNowPart, ...enProblemsNowSplit };
+import { trProblemsNowScreens as trProblemsNowPart } from '../src/i18n/screens/problemsNow/tr.ts';
+import { trSiteTasksProblemsScreens as trProblemsNowSplit } from '../src/i18n/screens/siteTasksProblems/tr.ts';
+const trProblemsNowScreens = { ...trProblemsNowPart, ...trProblemsNowSplit };
 import { decodeMoveAnswer, decodeSiteLimits, keptUnits, putBackSplit } from '../src/lib/siteLimits.ts';
 import { enSiteLimitsLane } from '../src/i18n/siteLimitsLane/en.ts';
 import { trSiteLimitsLane } from '../src/i18n/siteLimitsLane/tr.ts';

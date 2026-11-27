@@ -89,7 +89,4 @@ export const trProblemsNowScreens: Record<ProblemsNowScreenKey, string> = {
     'pnow.site_limits_unapplied.title': 'Yeni site sınırları henüz {value} siteye ulaşmadı',
     'pnow.site_limits_unapplied.body': '{value} sitede ({domain}) değişikliğinden önceki sınırlar sürüyor ({other}). Panel saatte bir yeniden dener; hepsi alınca satır gider.',
     'pnow.site_limits_unapplied.action': 'Planları aç',
-    'pnow.site_move_kept.title': 'Sınırlara taşıma bitmedi: {domain}',
-    'pnow.site_move_kept.body': 'Bir program durmuş olabilir; çözülene dek hiçbir site taşınmaz. Yapılacak iş sitenin kartında.',
-    'pnow.site_move_kept.action': 'Siteyi aç',
 };

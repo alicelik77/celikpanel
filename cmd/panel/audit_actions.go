@@ -421,6 +421,8 @@ var auditActionNames = []string{
 	"site.node_install",
 	"site.limits_move",
 	"site.limits_file_aside",
+	"site.tasks_undo",
+	"site.tasks_source_rebuild",
 	"site.node_version.failed",
 	"site.php_version",
 	"site.php_settings",

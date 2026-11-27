@@ -161,7 +161,7 @@ func TestCronHandlersAnswerCrontabProtectionRefusals(t *testing.T) {
 func TestCronListReportsAnUnreadableCrontabAndCarriesTheVersion(t *testing.T) {
 	panel := newCronMutationTestPanel(t, &cronMutationTestAgent{err: errors.New(transport.CronStateUnreadable)})
 	recorder := httptest.NewRecorder()
-	panel.handleListCronJobs(recorder, testCronTenant)
+	panel.handleListCronJobs(recorder, httptest.NewRequest(http.MethodGet, "/", nil), testCronTenant)
 	body := decodeAPIError(t, recorder)
 	if recorder.Code != http.StatusBadGateway || body.Code != errCodeCurrentSettingsUnreadable {
 		t.Fatalf("status/code = %d/%q", recorder.Code, body.Code)
@@ -172,7 +172,7 @@ func TestCronListReportsAnUnreadableCrontabAndCarriesTheVersion(t *testing.T) {
 
 	panel = newCronMutationTestPanel(t, &cronMutationTestAgent{listVersion: "ct1-abc"})
 	recorder = httptest.NewRecorder()
-	panel.handleListCronJobs(recorder, testCronTenant)
+	panel.handleListCronJobs(recorder, httptest.NewRequest(http.MethodGet, "/", nil), testCronTenant)
 	var list struct {
 		Jobs    []transport.CronJob `json:"jobs"`
 		Version string              `json:"version"`
@@ -196,7 +196,7 @@ func TestCronHandlersAnswerCronNotInstalledWithTypedGuidance(t *testing.T) {
 		call   func(*Panel, *httptest.ResponseRecorder)
 	}{
 		{"list", cronReasonRead, func(p *Panel, w *httptest.ResponseRecorder) {
-			p.handleListCronJobs(w, testCronTenant)
+			p.handleListCronJobs(w, httptest.NewRequest(http.MethodGet, "/", nil), testCronTenant)
 		}},
 		{"create", cronReasonWrite, func(p *Panel, w *httptest.ResponseRecorder) {
 			p.handleAddCronJob(w, httptest.NewRequest(http.MethodPost, "/api/v1/domains/34/cron", strings.NewReader(`{"schedule":"0 3 * * *","command":"true","version":"ct1-test"}`)), testCronTenant)
@@ -257,7 +257,7 @@ func TestCronNotInstalledClassificationIsExact(t *testing.T) {
 	}
 	panel := newCronMutationTestPanel(t, &cronMutationTestAgent{err: errors.New("crontab: secret detail")})
 	recorder := httptest.NewRecorder()
-	panel.handleListCronJobs(recorder, testCronTenant)
+	panel.handleListCronJobs(recorder, httptest.NewRequest(http.MethodGet, "/", nil), testCronTenant)
 	if recorder.Code != http.StatusInternalServerError || strings.Contains(recorder.Body.String(), "secret detail") {
 		t.Fatalf("unclassified failure must stay INTERNAL without detail: %d %q", recorder.Code, recorder.Body.String())
 	}

@@ -6,8 +6,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { enSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/en.ts';
 import { trSiteLimitsApplyScreens } from '../src/i18n/screens/siteLimitsApply/tr.ts';
-import { enProblemsNowScreens } from '../src/i18n/screens/problemsNow/en.ts';
-import { trProblemsNowScreens } from '../src/i18n/screens/problemsNow/tr.ts';
+import { enProblemsNowScreens as enProblemsNowPart } from '../src/i18n/screens/problemsNow/en.ts';
+import { enSiteTasksProblemsScreens as enProblemsNowSplit } from '../src/i18n/screens/siteTasksProblems/en.ts';
+// alpha.150: the part siteTasksProblems holds the words split out of this part.
+const enProblemsNowScreens = { ...enProblemsNowPart, ...enProblemsNowSplit };
+import { trProblemsNowScreens as trProblemsNowPart } from '../src/i18n/screens/problemsNow/tr.ts';
+import { trSiteTasksProblemsScreens as trProblemsNowSplit } from '../src/i18n/screens/siteTasksProblems/tr.ts';
+const trProblemsNowScreens = { ...trProblemsNowPart, ...trProblemsNowSplit };
 import { decodeSiteLimits, keptUnits } from '../src/lib/siteLimits.ts';
 
 test('a program the Agent’s start did not restart is named with its state', () => {

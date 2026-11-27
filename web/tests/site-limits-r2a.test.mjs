@@ -154,17 +154,21 @@ test('a lowered limit lists the sites whose programs would be stopped, in the ch
   for (const part of ['title', 'body', 'action']) assert.ok(trSiteLimitsScreens[`pnow.site_limits_unsupported.${part}`]);
 });
 
-test('sites whose programs run outside their limits are one administrator line with words in both languages', () => {
+test('sites whose programs run outside their limits are one administrator line with words in both languages', async () => {
+  // S4 R2b: the line counts a site's programs or its scheduled tasks and its
+  // action opens "Move all" (siteTasks part).
+  // alpha.150: these lines are in the part siteTasksProblems.
+  const { enSiteTasksProblemsScreens: enSiteTasksScreens } = await import('../src/i18n/screens/siteTasksProblems/en.ts');
+  const { trSiteTasksProblemsScreens: trSiteTasksScreens } = await import('../src/i18n/screens/siteTasksProblems/tr.ts');
   const problems = read('../src/components/ProblemsNow.tsx');
   const list = problems.match(/const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\];/);
-  assert.ok(list && list[1].includes("'site_programs_outside'"), 'the list shows the kind');
+  assert.ok(list && list[1].includes("'site_limits_outside'"), 'the list shows the kind');
   for (const part of ['title', 'body', 'action']) {
-    assert.ok(enSiteLimitsScreens[`pnow.site_programs_outside.${part}`], `English ${part}`);
-    assert.ok(trSiteLimitsScreens[`pnow.site_programs_outside.${part}`], `Turkish ${part}`);
+    assert.ok(enSiteTasksScreens[`pnow.site_limits_outside.${part}`], `English ${part}`);
+    assert.ok(trSiteTasksScreens[`pnow.site_limits_outside.${part}`], `Turkish ${part}`);
   }
-  // It names the sites and the one action on the site's page, in that action's own words.
-  assert.match(enSiteLimitsScreens['pnow.site_programs_outside.body'], /\{domain\}/);
-  assert.match(trSiteLimitsScreens['pnow.site_programs_outside.body'], /\{domain\}/);
-  assert.ok(enSiteLimitsScreens['pnow.site_programs_outside.body'].includes(`“${enSiteLimitsScreens['slim.move.button']}”`));
-  assert.ok(trSiteLimitsScreens['pnow.site_programs_outside.body'].includes(`“${trSiteLimitsScreens['slim.move.button']}”`));
+  assert.match(enSiteTasksScreens['pnow.site_limits_outside.body'], /\{domain\}/);
+  assert.match(trSiteTasksScreens['pnow.site_limits_outside.body'], /\{domain\}/);
+  assert.equal(enSiteTasksScreens['pnow.site_limits_outside.action'], enSiteTasksScreens['moveall.button']);
+  assert.equal(trSiteTasksScreens['pnow.site_limits_outside.action'], trSiteTasksScreens['moveall.button']);
 });

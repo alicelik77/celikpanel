@@ -21,7 +21,9 @@ const fill = (catalogue) => (key, vars) => catalogue[key] === undefined ? key : 
 
 test('D1: Problems now has a line for webmail that cannot send, worded with or without CelikPanel’s text beside the file', () => {
     const source = read('../src/components/ProblemsNow.tsx');
-    assert.match(source, /'webmail_cannot_send',\n\];/, 'a kind this screen knows');
+    // Among the kinds the screen knows (alpha.150: later kinds follow it).
+    const kinds = /const KINDS: readonly ProblemKind\[\] = \[([\s\S]*?)\n\];/.exec(source)?.[1] ?? '';
+    assert.match(kinds, /'webmail_cannot_send',/, 'a kind this screen knows');
     const body = /export function problemBodyKey[\s\S]*?\n}\n/.exec(source)?.[0] ?? '';
     const problemBodyKey = new Function('MAIL_SIGNING_STATES', `return ${body.replace(/^export function problemBodyKey\(problem[^)]*\): TranslationKey/, 'function (problem)').replace(/ as TranslationKey/g, '')}`)([]);
     assert.equal(problemBodyKey({ kind: 'webmail_cannot_send', name: '/var/lib/celikpanel-webmail/config/config.inc.php.celikpanel-pending' }), 'pnow.webmail_cannot_send.body');
