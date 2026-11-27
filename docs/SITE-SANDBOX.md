@@ -1487,8 +1487,12 @@ would not be known which tasks the server owner switched off). **The undo does n
 what the server owner switched off (alpha.150 fix round, D-022):** a task whose timer is not
 enabled when the undo runs - switched off on the server (`systemctl disable --now`), not one
 CelikPanel wrote and could not switch on yet - comes back into the crontab as CelikPanel's
-paused line (`# DISABLED: <the line>`) under one comment that names its timer and says why;
-the answer names those tasks, and the Scheduled tasks screen resumes one. A task paused on the
+paused line (`# DISABLED: <the line>`) under one fixed comment line, `# CelikPanel: the task
+below stays paused, as its timer was switched off on the server.` (fix round 4: never written
+twice above a line); the answer names those tasks and their timers, and the Scheduled tasks
+screen resumes one. The screen never shows that comment as a task's description (a description
+above it stays the task's) and shows the task as paused; every save on the screen leaves the
+comment out, so it goes once the task is resumed there. A task paused on the
 screen is already such a line in the task file and comes back as it is. Otherwise the crontab is
 the task file's, byte for byte. The undo is journaled step by step, and the crontab and the
 timers are never both on and never both gone:
@@ -1592,6 +1596,11 @@ and Problems now say how the tasks run (not running, or from cron).
     `/etc/celikpanel-cron/<id>.crontab` changes no timer any more.
   - **The lingering rule** (`/etc/polkit-1/rules.d/49-celikpanel-linger.rules`) and **the masks
     of the site accounts' service managers** stay; alpha.149 does not know them.
+  - **The undo's comment above a task it put back paused** (§9.3) is an ordinary comment for
+    alpha.149: its Scheduled tasks screen shows it, in English, as that paused task's description
+    (a description written above it is no longer shown), and keeps it when the task is resumed
+    there. The task itself stays paused and resumes as before; the server owner deletes the
+    comment line by hand.
   - **A tasks record kept at that moment** is read by alpha.149's start as a move without
     programs: it counts it as settled and deletes it. The crontab is not lost - from
     `source_written` on the task file holds it, and before that the spool still did - but

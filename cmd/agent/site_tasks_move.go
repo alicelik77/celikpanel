@@ -1216,28 +1216,33 @@ func undoSiteTimers(siteID int, crontab string) (on []string, atBoot map[string]
 	return on, atBoot, off, nil
 }
 
-// undoSiteTasksOffNote is the one comment above a task the undo writes back
-// paused because its timer was switched off on the server (F6).
-const undoSiteTasksOffNote = "# CelikPanel: this task's timer (%s) was switched off on the server, so it stays paused in cron; resume it on the Scheduled tasks screen.\n"
-
 // crontabWithTasksOff is the crontab the undo writes: the task file's
 // crontab byte for byte, except that each job line whose timer was switched
 // off on the server comes back as CelikPanel's paused line ("# DISABLED: "),
-// under one comment that says why (F6, D-022: the undo never starts again
-// what the server owner switched off). paused names those lines.
+// under the one fixed note that says why (F6, D-022: the undo never starts
+// again what the server owner switched off). Fix round 4 (N7): the note is
+// cronPausedNote (cron_rpc.go), which the Scheduled tasks screen never shows
+// as a description and every save there leaves out; it is not written twice
+// above one line. paused names those lines (the answer and the card name the
+// timer).
 func crontabWithTasksOff(crontab string, off map[int]string) (string, []transport.SiteTaskLine) {
 	if len(off) == 0 {
 		return crontab, nil
 	}
 	var b strings.Builder
 	var paused []transport.SiteTaskLine
+	previous := ""
 	for i, line := range strings.SplitAfter(crontab, "\n") {
 		timer, ok := off[i+1]
 		if !ok {
 			b.WriteString(line)
+			previous = line
 			continue
 		}
-		fmt.Fprintf(&b, undoSiteTasksOffNote, timer)
+		if previous != cronPausedNote+"\n" {
+			b.WriteString(cronPausedNote + "\n")
+		}
+		previous = line
 		b.WriteString("# DISABLED: " + line)
 		paused = append(paused, transport.SiteTaskLine{Line: i + 1, Text: strings.TrimSuffix(line, "\n"), Detail: timer})
 	}

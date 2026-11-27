@@ -1327,9 +1327,13 @@ durumu okunamıyorsa (sunucu sahibinin hangi görevleri kapattığı bilinemezdi
 reddedilir. **Geri alma, sunucu sahibinin kapattığını yeniden başlatmaz (alpha.150 düzeltme turu,
 D-022):** geri alma çalıştığında zamanlayıcısı etkin olmayan bir görev - sunucuda kapatılmış
 (`systemctl disable --now`), CelikPanel'in yazıp henüz açamadığı değil - crontab'a CelikPanel'in
-duraklatılmış satırı olarak (`# DISABLED: <satır>`), zamanlayıcısını adlandıran ve nedenini
-söyleyen tek bir yorumun altında geri gelir; yanıt bu görevleri adlandırır, Zamanlanmış görevler
-ekranı birini yeniden başlatır. Ekranda duraklatılmış bir görev görev dosyasında zaten böyle bir
+duraklatılmış satırı olarak (`# DISABLED: <satır>`), tek ve sabit bir yorum satırının, `# CelikPanel:
+the task below stays paused, as its timer was switched off on the server.`, altında geri gelir
+(düzeltme turu 4: bir satırın üstüne iki kez yazılmaz); yanıt bu görevleri ve zamanlayıcılarını
+adlandırır, Zamanlanmış görevler ekranı birini yeniden başlatır. Ekran bu yorumu hiçbir zaman bir
+görevin açıklaması olarak göstermez (üstündeki açıklama görevin açıklaması kalır) ve görevi
+duraklatılmış gösterir; ekrandaki her kaydetme yorumu dışarıda bırakır, görev orada yeniden
+başlatılınca yorum gider. Ekranda duraklatılmış bir görev görev dosyasında zaten böyle bir
 satırdır ve olduğu gibi geri gelir. Bunun dışında crontab baytı baytına görev dosyasınınkidir. Geri
 alma adım adım günlüğe yazılır; crontab ile zamanlayıcılar hiçbir zaman ikisi birden açık ya da
 ikisi birden yok olmaz:
@@ -1434,6 +1438,11 @@ da cron'dan).
     düzenlemek artık hiçbir zamanlayıcıyı değiştirmez.
   - **Kalıcı oturum kuralı** (`/etc/polkit-1/rules.d/49-celikpanel-linger.rules`) ve **site
     hesaplarının hizmet yöneticisi maskeleri** kalır; alpha.149 bunları tanımaz.
+  - **Geri almanın duraklatılmış olarak geri koyduğu görevin üstündeki yorum** (§9.3) alpha.149
+    için sıradan bir yorumdur: Zamanlanmış görevler ekranı onu İngilizce olarak o görevin açıklaması
+    diye gösterir (üstüne yazılmış açıklama artık görünmez) ve görev orada yeniden başlatılınca da
+    tutar. Görevin kendisi duraklatılmış kalır ve eskisi gibi yeniden başlatılır; yorum satırını
+    sunucu sahibi elle siler.
   - **O anda tutulan bir görev kaydını** alpha.149'un açılışı programsız bir taşıma olarak okur:
     çözülmüş sayar ve siler. Crontab kaybolmaz - `source_written` adımından sonra görev dosyası onu
     tutar, daha önce de biriktirme dosyası tutuyordu - ama sitenin taşımasının bitmediğini artık

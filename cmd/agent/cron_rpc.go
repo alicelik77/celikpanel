@@ -306,8 +306,9 @@ func addCronJobIn(store cronStore, username string, req *AddCronJobRequest) erro
 		newEntry = fmt.Sprintf("%s %s", req.Schedule, req.Command)
 	}
 
-	// Append new entry
-	newCrontab := existing
+	// Append new entry (the undo's paused notes are not written back: fix
+	// round 4, N7)
+	newCrontab := withoutCronPausedNotes(existing)
 	if newCrontab != "" && !strings.HasSuffix(newCrontab, "\n") {
 		newCrontab += "\n"
 	}
@@ -371,7 +372,10 @@ func updateCronJobIn(store cronStore, username string, req *UpdateCronJobRequest
 	if err != nil {
 		return err
 	}
-	lines := strings.Split(existing, "\n")
+	// The undo's paused notes are not written back (fix round 4, N7): a
+	// resumed task keeps none, and the description above one stays the
+	// task's.
+	lines := strings.Split(withoutCronPausedNotes(existing), "\n")
 
 	// The job is the one line whose own text is this ID, enabled or disabled.
 	// Nothing else in the crontab is rewritten.
@@ -457,7 +461,7 @@ func deleteCronJobIn(store cronStore, username string, req *DeleteCronJobRequest
 	if err != nil {
 		return err
 	}
-	lines := strings.Split(existing, "\n")
+	lines := strings.Split(withoutCronPausedNotes(existing), "\n") // fix round 4, N7: not written back
 
 	// Exactly the job's own line goes, enabled or disabled. The line above it
 	// stays whatever it is: it may be the owner's comment or another, disabled
@@ -599,6 +603,31 @@ func cronPlainCommentAt(lines []string, index int) bool {
 
 // Helper functions
 
+// cronPausedNote is the one fixed comment the undo of a site's move writes
+// above a task it puts back paused because its timer was switched off on the
+// server (alpha.150 fix round 4, N7). The panel's own crontab reader drops
+// it - it never becomes a task's description and never pushes one out - and
+// every save on the Scheduled tasks screen leaves it out, so it does not stay
+// once the task is resumed there and does not pile up over move and undo.
+// The screen shows such a task with its ordinary "paused" state.
+const cronPausedNote = "# CelikPanel: the task below stays paused, as its timer was switched off on the server."
+
+// withoutCronPausedNotes is the content without cronPausedNote lines (the
+// rest byte for byte).
+func withoutCronPausedNotes(content string) string {
+	if !strings.Contains(content, cronPausedNote) {
+		return content
+	}
+	lines := strings.Split(content, "\n")
+	kept := lines[:0]
+	for _, line := range lines {
+		if line != cronPausedNote {
+			kept = append(kept, line)
+		}
+	}
+	return strings.Join(kept, "\n")
+}
+
 func parseCrontab(content string) []CronJob {
 	var jobs []CronJob
 	lines := strings.Split(content, "\n")
@@ -609,6 +638,13 @@ func parseCrontab(content string) []CronJob {
 		// in cronJobText (S4 R1 fix round).
 		trimmed := strings.Trim(line, " \t")
 		if strings.TrimSpace(trimmed) == "" {
+			continue
+		}
+
+		// The undo's fixed note above a task it put back paused (fix round
+		// 4, N7): not a description, and the description above it stays the
+		// task's.
+		if line == cronPausedNote {
 			continue
 		}
 

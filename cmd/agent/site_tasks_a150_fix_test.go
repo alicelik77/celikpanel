@@ -309,7 +309,7 @@ func TestTheUndoKeepsWhatTheOwnerSwitchedOff(t *testing.T) {
 			t.Fatalf("undo %+v", resp)
 		}
 		want := strings.Replace(crontab, "17 3 * * * php report.php\n",
-			"# CelikPanel: this task's timer ("+timer+") was switched off on the server, so it stays paused in cron; resume it on the Scheduled tasks screen.\n# DISABLED: 17 3 * * * php report.php\n", 1)
+			cronPausedNote+"\n# DISABLED: 17 3 * * * php report.php\n", 1)
 		if got, _ := host.crontab(taskTestAccount); got != want {
 			t.Fatalf("crontab:\n%s\nwant:\n%s", got, want)
 		}

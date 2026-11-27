@@ -4,9 +4,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/sitecron"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -196,4 +198,112 @@ func TestACrontabProcessIsKnownByItsFileNotItsPath(t *testing.T) {
 			t.Fatalf("the crontab is not as it was: %q", got)
 		}
 	})
+}
+
+// TestTheUndosPausedNoteIsNeverADescription (N7): the note the undo writes
+// above a task whose timer was switched off on the server is never a task's
+// description on the Scheduled tasks screen, never pushes out the one the
+// customer wrote, goes when the task is resumed there, and does not pile up
+// over repeated move and undo rounds.
+func TestTheUndosPausedNoteIsNeverADescription(t *testing.T) {
+	const job = "17 3 * * * php report.php"
+	host := useTaskTestHost(t)
+	host.startWith(t, moveTaskCrontab)
+	switchOff := func(t *testing.T) {
+		t.Helper()
+		units, _ := siteTaskUnits(taskTestSite)
+		for n, u := range units {
+			if u.TaskKey == generateCronID(job) {
+				timer := sitecron.UnitBase(taskTestSite, n) + ".timer"
+				host.mu.Lock()
+				delete(host.enabled, timer)
+				delete(host.active, timer)
+				host.mu.Unlock()
+				return
+			}
+		}
+		t.Fatal("no timer for the task")
+	}
+	shown := func(t *testing.T, content string) CronJob {
+		t.Helper()
+		var found *CronJob
+		for _, j := range parseCrontab(content) {
+			if strings.Contains(j.Comment, "CelikPanel") || strings.Contains(j.Comment, "switched off") {
+				t.Fatalf("the note is shown as a description: %+v", j)
+			}
+			if j.ID == generateCronID(job) {
+				j := j
+				found = &j
+			}
+		}
+		if found == nil {
+			t.Fatalf("the task is not listed:\n%s", content)
+		}
+		return *found
+	}
+	for round := 1; round <= 2; round++ {
+		if resp := moveTasks(t); resp.Outcome != transport.SiteTasksMoved {
+			t.Fatalf("round %d: move %+v", round, resp)
+		}
+		switchOff(t)
+		if resp := undoTasks(t); resp.Outcome != transport.SiteTasksUndone || len(resp.Paused) != 1 {
+			t.Fatalf("round %d: undo %+v", round, resp)
+		}
+		got, _ := host.crontab(taskTestAccount)
+		if strings.Count(got, cronPausedNote) != 1 || !strings.Contains(got, "# nightly report\n"+cronPausedNote+"\n# DISABLED: "+job+"\n") {
+			t.Fatalf("round %d: crontab\n%s", round, got)
+		}
+		if j := shown(t, got); j.Enabled || j.Comment != "nightly report" {
+			t.Fatalf("round %d: shown %+v", round, j)
+		}
+		// Moved and put back again without resuming: the note stays once.
+		if resp := moveTasks(t); resp.Outcome != transport.SiteTasksMoved {
+			t.Fatalf("round %d: second move %+v", round, resp)
+		}
+		if resp := undoTasks(t); resp.Outcome != transport.SiteTasksUndone || len(resp.Paused) != 0 {
+			t.Fatalf("round %d: second undo %+v", round, resp)
+		}
+		if again, _ := host.crontab(taskTestAccount); again != got {
+			t.Fatalf("round %d: the crontab changed over a move and undo:\n%s\nwas:\n%s", round, again, got)
+		}
+		// Resumed on the screen: the note goes, the description stays.
+		existing, err := readCrontab(taskTestAccount)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := updateCronJobFor(taskTestAccount, &UpdateCronJobRequest{ID: generateCronID(job), Schedule: "17 3 * * *", Command: "php report.php",
+			Enabled: true, Comment: "nightly report", Version: cronVersion(existing)}); err != nil {
+			t.Fatalf("round %d: resume: %v", round, err)
+		}
+		resumed, _ := host.crontab(taskTestAccount)
+		if strings.Contains(resumed, cronPausedNote) || !strings.Contains(resumed, "# nightly report\n"+job+"\n") || strings.Count(resumed, "nightly report") != 1 {
+			t.Fatalf("round %d: after resume\n%s", round, resumed)
+		}
+		if j := shown(t, resumed); !j.Enabled || j.Comment != "nightly report" {
+			t.Fatalf("round %d: shown after resume %+v", round, j)
+		}
+	}
+}
+
+// TestTheScreensSavesLeaveThePausedNoteOut (N7): adding or deleting a task
+// on the Scheduled tasks screen does not write the undo's note back either,
+// and the screen never lists it.
+func TestTheScreensSavesLeaveThePausedNoteOut(t *testing.T) {
+	host := useTaskTestHost(t)
+	crontab := "# nightly report\n" + cronPausedNote + "\n# DISABLED: 17 3 * * * php report.php\n" + cronPausedNote + "\n# DISABLED: 5 4 * * * php other.php\n*/10 * * * * php ten.php\n"
+	host.startWith(t, crontab)
+	if jobs := parseCrontab(crontab); len(jobs) != 3 || jobs[0].Comment != "nightly report" || jobs[1].Comment != "" || jobs[2].Comment != "" {
+		t.Fatalf("listed %+v", jobs)
+	}
+	existing, err := readCrontab(taskTestAccount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := deleteCronJobFor(taskTestAccount, &DeleteCronJobRequest{ID: generateCronID("*/10 * * * * php ten.php"), Version: cronVersion(existing)}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := host.crontab(taskTestAccount)
+	if want := "# nightly report\n# DISABLED: 17 3 * * * php report.php\n# DISABLED: 5 4 * * * php other.php\n"; got != want {
+		t.Fatalf("after delete:\n%q\nwant:\n%q", got, want)
+	}
 }
