@@ -285,6 +285,34 @@ func TestTheUndosPausedNoteIsNeverADescription(t *testing.T) {
 	}
 }
 
+// TestTheRebuildsRefusalForAnUnreadableRecordSaysAMoveOnThisServer (N9): a
+// move record that cannot be read may be any site's; the rebuild's refusal
+// says "a move on this server", not "of this site", and changes nothing.
+func TestTheRebuildsRefusalForAnUnreadableRecordSaysAMoveOnThisServer(t *testing.T) {
+	host := useTaskTestHost(t)
+	host.startWith(t, moveTaskCrontab)
+	if resp := moveTasks(t); resp.Outcome != transport.SiteTasksMoved {
+		t.Fatalf("move %+v", resp)
+	}
+	if err := os.Remove(sitecron.SourcePath(taskTestSite)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(siteMoveJournalPath, []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	host.resetCalls()
+	for _, preview := range []bool{true, false} {
+		var resp transport.SiteTaskSourceResponse
+		_ = (&Agent{}).RebuildSiteTaskSourceV1(&transport.SiteTasksMoveRequest{CronTenant: transport.CronTenant{SiteID: taskTestSite}, Preview: preview}, &resp)
+		if resp.Refusal != transport.SiteMoveRefusalKept || !strings.Contains(resp.Error, "a move on this server") || strings.Contains(resp.Error, "of this site") {
+			t.Fatalf("preview %v: %+v", preview, resp)
+		}
+	}
+	if _, err := os.Stat(sitecron.SourcePath(taskTestSite)); !os.IsNotExist(err) || len(host.systemdCalls()) != 0 {
+		t.Fatalf("something changed: %v %v", err, host.systemdCalls())
+	}
+}
+
 // TestTheScreensSavesLeaveThePausedNoteOut (N7): adding or deleting a task
 // on the Scheduled tasks screen does not write the undo's note back either,
 // and the screen never lists it.

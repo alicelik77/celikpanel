@@ -65,3 +65,10 @@ test('N3: a crontab that is not the recorded one: the card says both ways out, i
   assert.match(en['slim.tasks.cronBack'], /To keep the timers[^]*switches them on again[^]*To keep cron with the recorded tasks/);
   assert.match(tr['slim.tasks.cronBack'], /Zamanlayıcıları tutmak için[^]*yeniden açar[^]*Kayıttaki görevlerle cron’u tutmak için/);
 });
+
+test('N9: the rebuild refused for a kept record says a move on this server, which may be another site’s', () => {
+  assert.match(en['stasks.rebuild.kept'], /A move on this server into a site’s limits/);
+  assert.doesNotMatch(en['stasks.rebuild.kept'], /of this site/);
+  assert.match(tr['stasks.rebuild.kept'], /Bu sunucuda bir sitenin/);
+  assert.doesNotMatch(tr['stasks.rebuild.kept'], /Bu sitenin/);
+});

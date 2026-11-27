@@ -1480,6 +1480,11 @@ func (a *Agent) RebuildSiteTaskSourceV1(req *transport.SiteTasksMoveRequest, res
 		if journal, err := readSiteMoveJournal(); err != nil || journal.SiteID == target.SiteID {
 			resp.Refusal = transport.SiteMoveRefusalKept
 			resp.Error = "a move of this site into its limits was not settled; its card names it with Try again. Nothing was changed; the task file is rebuilt once that is settled"
+			if err != nil {
+				// Fix round 4 (N9): a record that cannot be read may be any
+				// site's; the words do not say it is this one's.
+				resp.Error = "the record of a move on this server into a site's limits could not be read (" + err.Error() + "); Problems now names it with Try again. Nothing was changed; the task file is rebuilt once that is settled"
+			}
 			return nil
 		}
 	}

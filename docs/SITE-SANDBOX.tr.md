@@ -1138,7 +1138,10 @@ sayılar, 99'dan büyük adımlar, `fri-sun` gibi geriye giden bir gün aralığ
 değişebilirdi; bir sunucunun hangi cron'u çalıştırdığı güvenilir biçimde ayırt edilemediği için böyle
 bir satır taşımada bütün crontab'ı cron'da tutar (adı ve nedeni söylenerek) ve böyle bir satır tutan
 görev dosyasının kaydı her sunucuda reddedilir. Sunucu sahibi satırı siler ve saati her görevin
-kendi zamanlamasında verir. **Go çalışma ortamının okuduğu adlar da öyledir (alpha.150 düzeltme
+kendi zamanlamasında verir. systemd-cron'un bir işin zamanını değiştiren kendi adları
+(`PERSISTENT=`, `BATCH=`, `DELAY=`) **reddedilmez** (düzeltme turu 4, olduğu gibi): desteklenen
+sistemler kendi dağıtımlarının cron'unu çalıştırır, onun için bunlar sıradan ayardır; onun yerine
+systemd-cron çalıştıran bir sunucu böyle bir satırı yalnız ayar olarak tutar. **Go çalışma ortamının okuduğu adlar da öyledir (alpha.150 düzeltme
 turu):** `GODEBUG`, `GOGC`, `GOMAXPROCS`, `GOMEMLIMIT`, `GOTRACEBACK` ve `GORACE`. Sitenin ayar
 dosyası görevin root olarak çalışan yardımcı satırlarının (`ExecStartPre=+`) da ortamıdır; yardımcı,
 ortamını ilk iş olarak temizleyen durağan bir Go programıdır, ama çalışma ortamı bunları ondan önce
@@ -1220,7 +1223,7 @@ crontab görev dosyasında da durur.
 | planned | crontab'ın baytları kaydedildi | hiçbir şey ("denenmedi"); kaydından önce yazılmış bir görev dosyası kaldırılır |
 | source_written | görev dosyası crontab'ı tutuyor | geri konur (aşağıda) |
 | units_written | her zamanlayıcı ve hizmet yazıldı ve systemd'ce denetlendi, hiçbiri başlatılmadı | geri konur |
-| cron_closed | `/etc/cron.allow` hesabı dışarıda bırakıyor (denetlendi) ve uid'inin bundan önce başlamış her `crontab` süreci sonlandırıldı (crontab'ın denetiminden daha önce geçmişti, yine de bir dosya kurabilirdi); bu süreçler listelenemezse taşıma burada başarısız olur ve geri konur, hiçbir şey silinmez (ikinci düzeltme turu); programı okunamayan ya da sonlandırılamayan bir uid süreci de böyledir (alpha.150 düzeltme turu: hiçbir zaman atlanmaz) ve liste hiçbir şey değişmeden önce bir kez okunur, böylece okunamayan bir liste taşımayı o anda reddeder. Bir sürecin programı bağlantının metniyle değil dosyasıyla tanınır (`/proc/<pid>/exe`'nin götürdüğü dosya `crontab` programınınkiyle karşılaştırılır; düzeltme turu 4): çekirdek, bir yolun olabileceğinden derin bir klasörden başlatılmış programın yolunu yazamaz, ama böyle bir program sitenin taşınmasını reddettiremez. Dosyası okunamayan bir süreç yine reddeder ve kendi koduyla söylenir: yönetici hesabın süreçlerine bakar ve ajanın günlüğünün adını verdiği süreci sonlandırır | geri konur |
+| cron_closed | `/etc/cron.allow` hesabı dışarıda bırakıyor (denetlendi) ve uid'inin bundan önce başlamış her `crontab` süreci sonlandırıldı (crontab'ın denetiminden daha önce geçmişti, yine de bir dosya kurabilirdi); bu süreçler listelenemezse taşıma burada başarısız olur ve geri konur, hiçbir şey silinmez (ikinci düzeltme turu); programı okunamayan ya da sonlandırılamayan bir uid süreci de böyledir (alpha.150 düzeltme turu: hiçbir zaman atlanmaz) ve liste hiçbir şey değişmeden önce bir kez okunur, böylece okunamayan bir liste taşımayı o anda reddeder. Bir sürecin programı bağlantının metniyle değil dosyasıyla tanınır (`/proc/<pid>/exe`'nin götürdüğü dosya `crontab` programınınkiyle karşılaştırılır; düzeltme turu 4): çekirdek, bir yolun olabileceğinden derin bir klasörden başlatılmış programın yolunu yazamaz, ama böyle bir program sitenin taşınmasını reddettiremez. Dosyası okunamayan bir süreç yine reddeder ve kendi koduyla söylenir: yönetici hesabın süreçlerine bakar ve ajanın günlüğünün adını verdiği süreci sonlandırır. Bir `crontab` süreci SIGKILL ile sonlandırılır ve beklenmez (olduğu gibi): biriktirme dosyası ondan sonra, bir sonraki adımda okunur ve sonlanmadan önce kurduğu bir crontab taşımayı geri koymaya çevirir | geri konur |
 | crontab_emptied | kaydedilen crontab'ı tuttuğu denetlenen biriktirme dosyası doğrudan silindi (root yapabilir; `crontab -u` artık reddedilir) ve gittiği denetlendi | önce hesabın biriktirme dosyası okunur (aşağıda); crontab yoksa tamamlanır: zamanlayıcılar açılır ("taşındı"). Açılamazlarsa kayıt Tekrar dene için kalır ve açılışta geri konmaz (bu, açılışın yaptığından çok çağrı isterdi); zamanlayıcılar tek çağrıyla yeniden kapatılır - her zaman, sitenin sınır dosyası yok görünse de (Ajan durmadan önce gönderilmiş bir açma bazılarını açmış olabilir) - böylece sitenin görevlerinin Tekrar dene'ye kadar çalışmadığı bilinir |
 | enabled | zamanlayıcılar etkinleştirildi ve başlatıldı | önce hesabın biriktirme dosyası okunur (aşağıda); crontab yoksa tamamlanır ("taşındı"). Crontab varsa (ya da dosya okunamıyorsa) zamanlayıcılar kapatılmadan önce kayıt `crontab_emptied` olarak yazılır (alpha.150 düzeltme turu 4); böylece crontab kalkınca sonraki geçiş zamanlayıcıları üstteki satırdaki gibi yeniden açar, kapalıyken asla "taşındı" demez |
 
@@ -1366,7 +1369,11 @@ D-022):** geri alma çalıştığında zamanlayıcısı etkin olmayan bir görev
 duraklatılmış satırı olarak (`# DISABLED: <satır>`), tek ve sabit bir yorum satırının, `# CelikPanel:
 the task below stays paused, as its timer was switched off on the server.`, altında geri gelir
 (düzeltme turu 4: bir satırın üstüne iki kez yazılmaz); yanıt bu görevleri ve zamanlayıcılarını
-adlandırır, Zamanlanmış görevler ekranı birini yeniden başlatır. Ekran bu yorumu hiçbir zaman bir
+adlandırır, Zamanlanmış görevler ekranı birini yeniden başlatır. Sayılan, zamanlayıcının
+**etkin** olup olmadığıdır: etkin olup yalnız durdurulmuş (`systemctl stop`) bir zamanlayıcının
+görevi cron'a çalışır bir satır olarak geri gelir (düzeltme turu 4, olduğu gibi); yalnız bir sonraki
+açılışa kadar etkin (`enable --runtime`) ya da maskelenmiş olan kapatılmış sayılır ve duraklatılmış
+geri gelir. Ekran bu yorumu hiçbir zaman bir
 görevin açıklaması olarak göstermez (üstündeki açıklama görevin açıklaması kalır) ve görevi
 duraklatılmış gösterir; ekrandaki her kaydetme yorumu dışarıda bırakır, görev orada yeniden
 başlatılınca yorum gider. Ekranda duraklatılmış bir görev görev dosyasında zaten böyle bir
@@ -1413,7 +1420,8 @@ da cron'dan).
   Yeniden kurma birim yazar ve systemd'yi yeniden yükler; bu yüzden panelin güncellemesi ya da bir
   taşıma sürerken reddedilir, o sürerken de güncelleme (§9.3); sitenin bir taşıma kaydı dururken de
   kendisi ve ön izlemesi reddedilir: o kaydın Tekrar dene'si önce sitenin görevlerini çözer
-  (alpha.150 düzeltme turu).
+  (alpha.150 düzeltme turu). Okunamayan bir taşıma kaydı her sitenin yeniden kurulmasını reddeder
+  ve sözler bunun bu sitenin değil, bu sunucudaki bir taşımanın bitmediğini söyler (düzeltme turu 4).
 - **Yerel olarak, birimlerde.** Değiştirilmiş bir `celikcron-*` birimi korunur (D-031) ve ekran onu
   adlandırır. Sahibin durdurduğu ya da kapattığı bir zamanlayıcı (`systemctl disable --now`) öyle
   kalır: değişen bir görev zamanlayıcısını yalnız çalışıyorsa yeniden başlatır; geri alma da

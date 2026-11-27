@@ -1295,7 +1295,10 @@ Ubuntu's cron 3.0pl1 keep them as plain settings (its program has no such name).
 keep only the setting, so the schedule could change silently; which cron a server runs cannot be
 told apart reliably, so such a line keeps the whole crontab in cron at the move (named, with
 why) and a save of a task file holding one is refused, on every server. The server owner
-deletes the line and gives the time in each task's own schedule. **So are the names the Go
+deletes the line and gives the time in each task's own schedule. systemd-cron's own names that
+change a job's timing (`PERSISTENT=`, `BATCH=`, `DELAY=`) are **not** refused (fix round 4, as
+it is): the supported systems run their distribution's cron, for which they are plain settings,
+so a host that runs systemd-cron instead keeps such a line as a setting only. **So are the names the Go
 runtime reads (alpha.150 fix round):** `GODEBUG`, `GOGC`, `GOMAXPROCS`, `GOMEMLIMIT`,
 `GOTRACEBACK` and `GORACE`. The site's settings file is also the environment of the task's
 helper lines, which run as root (`ExecStartPre=+`); the helper is a static Go program that clears
@@ -1378,7 +1381,7 @@ version 3 with a `tasks` part; a programs' move writes version 2): the crontab's
 | planned | the crontab's bytes are recorded | nothing ("not tried"); a task file written before its record is removed |
 | source_written | the task file holds the crontab | put back (below) |
 | units_written | every timer and service written and checked by systemd, none started | put back |
-| cron_closed | `/etc/cron.allow` leaves the account out (checked), and every `crontab` process of its uid started before that is ended (it passed crontab's check before and could still install a file); when those processes cannot be listed, the move fails here and is put back, nothing removed (second fix round); so does a process of the uid whose program cannot be read, or one that cannot be ended (alpha.150 fix round: never skipped), and the list is read once before anything changes, so a list that cannot be read refuses the move then. A process's program is known by its file (the file `/proc/<pid>/exe` leads to, compared with the `crontab` program's), not by the link's text, which the kernel cannot print for a program started from a folder deeper than a path can be long (fix round 4): such a program cannot keep the site's move refused. A process whose file cannot be read still refuses, worded by its own code: the administrator looks at the account's processes and ends the one the Agent's journal names | put back |
+| cron_closed | `/etc/cron.allow` leaves the account out (checked), and every `crontab` process of its uid started before that is ended (it passed crontab's check before and could still install a file); when those processes cannot be listed, the move fails here and is put back, nothing removed (second fix round); so does a process of the uid whose program cannot be read, or one that cannot be ended (alpha.150 fix round: never skipped), and the list is read once before anything changes, so a list that cannot be read refuses the move then. A process's program is known by its file (the file `/proc/<pid>/exe` leads to, compared with the `crontab` program's), not by the link's text, which the kernel cannot print for a program started from a folder deeper than a path can be long (fix round 4): such a program cannot keep the site's move refused. A process whose file cannot be read still refuses, worded by its own code: the administrator looks at the account's processes and ends the one the Agent's journal names. A `crontab` process is ended with SIGKILL and not waited for (as it is): the spool is read after it, at the next step, and a crontab it installed before it ended changes the move into a put-back | put back |
 | crontab_emptied | the spool file, checked to hold the recorded crontab, is removed directly (root may; `crontab -u` is refused by now) and checked gone | the account's spool is read first (below); with no crontab: finished, the timers switched on ("moved"). If they cannot be, the record stays for Try again and is not put back there (that would take more calls than the start makes); the timers are switched off again in one call - always, also when the site's limits file looks missing (an enable sent before the Agent stopped can have switched some on) - so the site's tasks are known not to run until Try again |
 | enabled | the timers enabled and started | the account's spool is read first (below); with no crontab: finished ("moved"). With a crontab (or a spool that cannot be read) the record is saved as `crontab_emptied` before the timers are switched off (alpha.150 fix round 4), so once the crontab is gone the next pass switches the timers on again as in the row above, never "moved" with them off |
 
@@ -1525,7 +1528,10 @@ CelikPanel wrote and could not switch on yet - comes back into the crontab as Ce
 paused line (`# DISABLED: <the line>`) under one fixed comment line, `# CelikPanel: the task
 below stays paused, as its timer was switched off on the server.` (fix round 4: never written
 twice above a line); the answer names those tasks and their timers, and the Scheduled tasks
-screen resumes one. The screen never shows that comment as a task's description (a description
+screen resumes one. What counts is whether the timer is **enabled**: one that is enabled but
+only stopped (`systemctl stop`) comes back as a live cron line (fix round 4, as it is); one
+enabled only until the next start (`enable --runtime`) or masked counts as switched off and comes
+back paused. The screen never shows that comment as a task's description (a description
 above it stays the task's) and shows the task as paused; every save on the screen leaves the
 comment out, so it goes once the task is resumed there. A task paused on the
 screen is already such a line in the task file and comes back as it is. Otherwise the crontab is
@@ -1570,7 +1576,9 @@ and Problems now say how the tasks run (not running, or from cron).
   systemctl daemon-reload`; the screen's answer names the files). The rebuild writes units
   and reloads systemd, so it is refused while the panel's update runs or a move runs, and the
   update while it runs (§9.3); it and its preview are also refused while a move record of the
-  site is kept, whose Try again settles the site's tasks first (alpha.150 fix round).
+  site is kept, whose Try again settles the site's tasks first (alpha.150 fix round). A move
+  record that cannot be read refuses the rebuild of every site, and the words say a move on
+  this server did not finish, not that it is this site's (fix round 4).
 - **Natively, in the units.** A changed `celikcron-*` unit is kept (D-031) and the screen
   names it. A timer the owner stopped or disabled (`systemctl disable --now`) stays so: a
   changed task restarts its timer only when it runs, and the undo puts a disabled one's task back
