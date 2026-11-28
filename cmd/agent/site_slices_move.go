@@ -582,11 +582,16 @@ var (
 	siteMoveMargin = 5 * time.Second
 	siteSlicePoll  = 500 * time.Millisecond
 
-	// siteMoveUpdateState (alpha.149 fix round, F6; second fix round, R2):
-	// whether the panel's own update may be in progress, as its durable
-	// records say (read only): "" none, "update_running" or, for a record that
-	// cannot be read, "update_unreadable" (systemUpdateRecordsState).
-	siteMoveUpdateState = func() string { return systemUpdateRecordsState(systemUpdateStateRoot, time.Now()) }
+	// siteMoveUpdateState (alpha.149 fix round, F6; second fix round, R2;
+	// alpha.150 automatic move fix round, G1): whether the panel's own update
+	// may be in progress, read only: "" none, "update_running" or, for what
+	// cannot be read, "update_unreadable" (siteMoveUpdateStateOf).
+	siteMoveUpdateState = func() string {
+		return siteMoveUpdateStateOf(siteMoveReleaseTransactionRoot, systemUpdateStateRoot, time.Now())
+	}
+	// siteMoveReleaseTransactionRoot is the update's transaction folder
+	// (/var/lib/celikpanel-release-transaction; tests replace it).
+	siteMoveReleaseTransactionRoot = agentReleaseTransactionRoot
 
 	// siteMoveStartBound (second fix round, R5) is the one total bound of the
 	// systemd calls the Agent's start makes for a kept move record (the
@@ -990,12 +995,45 @@ func siteMovePressDeadline(now time.Time, budgetSeconds int) time.Time {
 }
 
 // siteMoveUpdateRefusal is the English text of the update_running refusal;
-// siteMoveUpdateUnreadable of update_unreadable (second fix round, R2).
+// siteMoveUpdateUnreadable of update_unreadable (second fix round, R2; G1:
+// also the update's transaction folder, which ends only when it can be read).
 const (
 	siteMoveUpdateRefusal    = "the panel's update is in progress; nothing was moved. Move the site after the update has finished"
 	siteMoveUpdateUnreadable = "a record of the panel's update could not be read, so it is not known whether an update is in progress; nothing was moved. " +
-		"This ends by itself at the latest 31 minutes after that record last changed; the Agent's journal names the file"
+		"The Agent's journal names the file; an update request's record stops counting by itself 31 minutes after it last changed"
 )
+
+// siteMoveUpdateStateOf (alpha.150 automatic move fix round, G1) is the
+// update's gate of every move, Try again, tasks move, undo and rebuild (they
+// all claim through claimSiteMove). It is a rule of the Agent's own, read
+// only, that fails towards "the update is not finished":
+//   - while any marker of the update's transaction exists in
+//     /var/lib/celikpanel-release-transaction (quiesce.pending, active,
+//     completion.pending, scheduler-restore.pending; written and removed by
+//     deploy/release-transaction-guard.sh for update.sh and the finalize
+//     scripts, a return's own markers included: a return takes over "active"
+//     as operation=rollback and finishes through completion.pending), the
+//     answer is "update_running": the update has not reached its completion
+//     mark, whether or not its scripts hold the server's change lock right
+//     now (a restart of the server in that window frees it between the
+//     finalizer's attempts);
+//   - a transaction folder or marker that cannot be inspected answers
+//     "update_unreadable" (it does not end until it can be read);
+//   - otherwise the update's request records (systemUpdateRecordsState).
+//
+// Güncellemenin işlem işaretçilerinden biri durdukça (tamamlanma işareti
+// konmadıkça) hiçbir taşıma başlamaz; okunamayan klasör de reddeder.
+func siteMoveUpdateStateOf(transactionRoot, recordsRoot string, now time.Time) string {
+	present, err := persistentReleaseTransactionPresent(transactionRoot)
+	if err != nil {
+		log.Printf("site slice: the panel's update transaction (%s) could not be read (%v); a move is refused until it can be read", transactionRoot, err)
+		return "update_unreadable"
+	}
+	if present {
+		return "update_running"
+	}
+	return systemUpdateRecordsState(recordsRoot, now)
+}
 
 // siteMoveRefusalText is the English text of a claim's refusal.
 func siteMoveRefusalText(refusal string) string {
