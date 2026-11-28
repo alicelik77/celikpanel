@@ -801,14 +801,25 @@ func siteLimitEventViews(record *siteLimitRecord, now time.Time) []siteLimitEven
 var (
 	siteMoveMu      sync.Mutex
 	siteMoveRunning bool
-	siteMoveAnswers = map[string]transport.MoveSiteSliceResponse{}
-	siteMoveOrder   []string
+	// siteMoveByWorker (alpha.150 fix round G3): siteMoveRunning is held by
+	// the panel's own worker (site_auto_move.go), not by an administrator's
+	// press.
+	siteMoveByWorker bool
+	siteMoveAnswers  = map[string]transport.MoveSiteSliceResponse{}
+	siteMoveOrder    []string
 )
 
 func siteMoveBusy() bool {
 	siteMoveMu.Lock()
 	defer siteMoveMu.Unlock()
 	return siteMoveRunning
+}
+
+// siteMoveBusyByWorker: a move runs, and it is the panel's own worker's.
+func siteMoveBusyByWorker() bool {
+	siteMoveMu.Lock()
+	defer siteMoveMu.Unlock()
+	return siteMoveRunning && siteMoveByWorker
 }
 
 // siteMoveUpdateInProgress (alpha.149 fix round, F6): an update this panel
@@ -1107,6 +1118,8 @@ func (p *Panel) siteLimitProblems(ctx context.Context, now time.Time) []monitori
 	// Review B3 and B5: a change of limits that did not reach every site,
 	// and a default memory limit fixed for the host's earlier memory.
 	extra := append(siteLimitApplyProblem(p.setting(ctx, settingSiteLimitApply)), p.siteMemoryDefaultProblem(ctx)...)
+	// alpha.150 fix round G2: the worker could not read the sites for an hour.
+	extra = append(extra, siteAutoMoveUnreadProblem(now)...)
 	if len(ledger) == 0 && outside == "" && host == "" && kept == "" {
 		return extra
 	}
@@ -1465,10 +1478,18 @@ func (p *Panel) noteSiteLimitOutside(ctx context.Context, statuses []transport.S
 // readAllSiteSlices reads the slice of every site that has programs, in
 // pages, and records it.
 func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
+	ok, _ := p.readAllSiteSlicesWhy(ctx)
+	return ok
+}
+
+// readAllSiteSlicesWhy is readAllSiteSlices that also says why a reading
+// failed: "sites" (the panel's own list of sites) or "agent" (the Agent's
+// answer).
+func (p *Panel) readAllSiteSlicesWhy(ctx context.Context) (bool, string) {
 	all, err := p.siteLimitSites(ctx, 0)
 	if err != nil {
 		log.Printf("site limits: the sites could not be read: %v", err)
-		return false
+		return false, "sites"
 	}
 	var sites []siteLimitSite
 	for _, s := range all {
@@ -1481,15 +1502,15 @@ func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
 		p.noteSiteSlices(ctx, nil, true, now)
 		p.noteSiteLimitOutside(ctx, nil, true, now)
 		p.readAllSiteTasks(ctx, all, "", now)
-		return true
+		return true, ""
 	}
 	resp, err := p.readSiteSlicesAll(ctx, sites)
 	if err != nil {
 		if strings.Contains(err.Error(), "can't find method") {
-			return true // an Agent older than this Panel: nothing to read until it is updated
+			return true, "" // an Agent older than this Panel: nothing to read until it is updated
 		}
 		log.Printf("site limits: the slices could not be read: %v", err)
-		return false
+		return false, "agent"
 	}
 	p.noteSiteLimitHost(ctx, resp.Unsupported, now)
 	p.noteSiteSlices(ctx, resp.Sites, true, now)
@@ -1500,7 +1521,7 @@ func (p *Panel) readAllSiteSlices(ctx context.Context) bool {
 		p.noteSiteMoveKept(ctx, resp.Sites, false)
 	}
 	p.readAllSiteTasks(ctx, all, resp.Unsupported, now)
-	return true
+	return true, ""
 }
 
 func errText(err error) string {

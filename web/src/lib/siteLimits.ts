@@ -92,9 +92,14 @@ export interface SiteLimitsView {
 export interface AutoMove {
     done?: number;
     total?: number;
+    /** Fix round G5: the run waits instead of moving, and why. */
+    waiting?: string;
     offer?: 'retry' | 'move';
     state?: string;
     reason?: string;
+    /** Fix round G5: which part ended the move, and whether it put the site back. */
+    part?: string;
+    put_back?: boolean;
 }
 
 function decodeAutoMove(raw: unknown): AutoMove | undefined {
@@ -106,7 +111,17 @@ function decodeAutoMove(raw: unknown): AutoMove | undefined {
         offer: body.offer === 'retry' || body.offer === 'move' ? body.offer : undefined,
         state: typeof body.state === 'string' ? body.state : undefined,
         reason: typeof body.reason === 'string' ? body.reason : undefined,
+        waiting: typeof body.waiting === 'string' ? body.waiting : undefined,
+        part: typeof body.part === 'string' ? body.part : undefined,
+        put_back: body.put_back === true,
     };
+}
+
+/** Fix round G5: the card follows the run by itself while the worker has work or the site is outside its limits. */
+export function followsAutoMove(view: SiteLimitsView | undefined): boolean {
+    if (!view?.admin) return false;
+    const tasksOutside = !!view.tasks && !view.tasks.unknown && !view.tasks.moved;
+    return (view.auto_move?.total ?? 0) > 0 || (view.needs_move ?? 0) > 0 || view.applies === 'outside' || tasksOutside;
 }
 
 export interface DbOwnerSetting {

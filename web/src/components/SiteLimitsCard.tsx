@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowRightLeft, CheckCircle2, Gauge, Undo2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { autoMoveReasonKey, withSiteLimitsLane, type SiteLimitsLaneKey, type SiteLimitsLaneT } from '../i18n/siteLimitsLane';
+import { autoMoveLeadKey, autoMoveLineKey, autoMoveReasonKey, withSiteLimitsLane, type SiteLimitsLaneKey, type SiteLimitsLaneT } from '../i18n/siteLimitsLane';
 import { formatDateTime } from '../lib/dateFormat';
 import { readApiError, apiErrorText } from '../lib/apiError';
 import { confirmAction, followOperation, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 import { readRemote, useRemote } from '../lib/remote';
+import { startVisibleReads } from '../lib/visibleReads';
 import { unitText, whoText } from '../lib/settingLimits';
 import {
-    appliedOf, dbOwnerByOrigin, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
+    appliedOf, dbOwnerByOrigin, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, followsAutoMove, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
     newMoveRequestID, notMovedReason, putBackSplit, type DbOwnerSetting, type MoveReason, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
 import {
@@ -47,6 +48,12 @@ export function SiteLimitsCard({ domainId, runsPrograms = true }: { domainId: nu
     const url = `/api/v1/domains/${domainId}/site-limits`;
     const handle = useRemote(url, decodeSiteLimits);
     const remote = handle.remote;
+    // alpha.150 fix round G5: while the panel moves sites (or this site is outside its limits) the card reads
+    // itself again about once a minute, and stops when there is nothing to follow. Reads only.
+    const shown = remote.state === 'known' ? remote.value : remote.state === 'unknown' ? (remote.previous?.value as SiteLimitsView | undefined) : undefined;
+    const follow = followsAutoMove(shown);
+    const reread = handle.retry;
+    useEffect(() => (follow ? startVisibleReads(reread, 60_000, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) }) : undefined), [follow, reread]);
     if (remote.state === 'loading') return <Checking label={t('slim.checking')} className="mb-4" />;
     if (remote.state === 'unknown' && !remote.previous) {
         return <div className="mb-4"><CouldNotCheck text={t('slim.unreadLimits')} onRetry={() => void handle.retry()} busy={handle.reading} /></div>;
@@ -353,12 +360,12 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
             {/* alpha.150 (D-048): while the panel moves sites by itself, one calm line; nothing to press. */}
             {(auto?.total ?? 0) > 0 && (
                 <p className="mt-2 text-sm text-fg-muted" role="status" data-site-limits-auto="running">
-                    {t('slim.auto.running', { done: auto?.done ?? 0, total: auto?.total ?? 0 })}
+                    {t(autoMoveLineKey(auto?.waiting) as SiteLimitsLaneKey, { done: auto?.done ?? 0, total: auto?.total ?? 0 })}
                 </p>
             )}
             {offer === 'retry' && auto && (
                 <div className="mt-3 space-y-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-fg" role="status" data-site-limits-auto="retry">
-                    <p>{t('slim.auto.notMoved')} {t(autoMoveReasonKey(auto) as SiteLimitsLaneKey)}</p>
+                    <p>{t(autoMoveLeadKey(auto) as SiteLimitsLaneKey)} {t(autoMoveReasonKey(auto) as SiteLimitsLaneKey)}</p>
                     <Button loading={working} disabled={working || view.busy === true} onClick={() => void ask()}>{t('pnow.retry')}</Button>
                 </div>
             )}

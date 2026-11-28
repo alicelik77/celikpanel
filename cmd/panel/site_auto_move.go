@@ -30,25 +30,48 @@ import (
 //     its locks, the update's gate) is the Agent's and does not change.
 //   - It starts some minutes after the panel's start (after the side doors
 //     step) and again after a site is created or restored, never because a
-//     page was read (D-024). Before each site it waits while the panel's
-//     update is admitted or running, while the server is busy with another
-//     change, or while a move the administrator pressed runs; the Agent's own
-//     claim refuses a second move and a move during the update, also across
-//     a restart of the panel (it never knows this process).
-//   - Once per site per installed panel version, never a loop: the mark is
-//     written before the move is sent (panel_settings site_auto_move_v1; no
-//     schema change). A move that was refused, put back, stopped for its time
-//     or whose end is not known is not tried again by the worker: one Problems
-//     now line per site says why, who acts and offers Try again. A refusal
-//     that clears by itself (the site being changed, another move, the
-//     panel's update, an Agent of another build) is not a failure: the site
-//     goes to the end of the run and is tried again later in the same run.
-//     A mark "started" whose end this process does not know (the panel
-//     stopped in the middle) is settled by reading only: inside its limits it
-//     is "moved", otherwise "unknown"; the move is never sent twice.
+//     page was read (D-024). What keeps it from moving anything before the
+//     panel's update is complete (fix round G1): first the Agent's own rule —
+//     its claim (every move, Try again, tasks move, undo and rebuild) refuses
+//     "update_running" while any marker of the update's transaction exists
+//     (/var/lib/celikpanel-release-transaction: completion.pending and the
+//     return's own markers) and "update_unreadable" while that folder cannot
+//     be read, whoever holds the server's change lock; then the server's
+//     change lock itself (the Agent's readiness says host_lock while the
+//     update's scripts hold it), the Agent's own update record (queued or
+//     running), and the first wait of five minutes. The panel's own word
+//     (an update this process admitted) closes it only in the process that
+//     admitted the update. A move the administrator pressed makes it wait.
+//   - Once per site per installed panel version for a site that is inside
+//     or left for the owner's reason, never a loop: the mark is written
+//     before the move is sent (panel_settings site_auto_move_v1; no schema
+//     change). A move that was refused, put back, stopped for its time or
+//     whose end is not known is not tried again by the worker, in this
+//     version or a later one (G4): one Problems now line per site says why,
+//     who acts and offers Try again. A refusal that clears by itself (the
+//     site being changed, another move, the panel's update, an Agent of
+//     another build) is not a failure: the site goes to the end of the run
+//     and is tried again later in the same run; after six hours it is marked
+//     failed with that reason (nothing was sent), which a later version tries
+//     again. A mark "started" whose end this process does not know (the
+//     panel stopped in the middle) is settled by reading only: inside its
+//     limits it is "moved", otherwise "unknown"; the move is never sent twice.
+//   - A site outside its limits while no run is scheduled, running or
+//     waiting, whatever its mark (moved, or none), is a line with Try again
+//     as well (G2); it is not moved again by itself in this version.
 //   - A kept move record stops the run (no next site is moved, as for a
 //     press); the existing line and card say what the administrator does, and
-//     the run goes on by itself once a reading finds the record settled.
+//     the run goes on by itself once a reading finds the record settled. A
+//     refusal for the site's OWN kept record is not "refused before anything
+//     changed": the Agent may first try to settle that record, which can
+//     restart the site's programs once; it waits like the other refusals and
+//     gives up after six hours, ending in the kept record's line, never in a
+//     second move.
+//   - An update the administrator asks for while the worker moves a site is
+//     refused with words that say when that site's move ends, and the worker
+//     then starts no further site for 30 minutes or until an update is
+//     admitted (G3; kept in memory: lost with the process, which only lets
+//     the worker go on, never moves anything twice).
 //   - A site whose tasks the administrator put back into cron on purpose is
 //     left alone until it is moved again from its own card
 //     (site_tasks_put_back_v1).
@@ -58,8 +81,13 @@ import (
 //
 // Her site kendi sınırlarının içine kendiliğinden girer: panelin tek bir
 // işçisi dışarıda kalan siteleri sırayla, aynı taşıma çağrısıyla taşır; her
-// site sürüm başına bir kez denenir, başarısız olan Şu anki sorunlar'da
-// "Tekrar dene" ile görünür; kimse bir düğmeye basmak zorunda değildir.
+// site sürüm başına bir kez denenir, başarısız olan sonraki sürümde de
+// kendiliğinden denenmez ve Şu anki sorunlar'da "Tekrar dene" ile görünür;
+// kimse bir düğmeye basmak zorunda değildir. Güncelleme tamamlanmadan hiçbir
+// şey taşınmaz: ajan, güncellemenin işlem işaretçilerinden biri durdukça
+// (tamamlanma işareti konmadıkça) her taşımayı reddeder; bunun ardından
+// sunucunun değişiklik kilidi, ajanın güncelleme kaydı ve ilk beş dakikalık
+// bekleme gelir.
 
 const (
 	// settingSiteAutoMove keeps the worker's marks for the installed panel
@@ -108,13 +136,54 @@ type siteAutoMark struct {
 	Reason    string `json:"reason,omitempty"`
 	At        string `json:"at"`
 	RequestID string `json:"request_id,omitempty"`
+	// Part (fix round G5) says which part of the press ended it: "tasks"
+	// (the scheduled tasks' part; the programs were not moved by this press
+	// or are inside), "tasks_moved" (the programs' part, after the tasks
+	// moved in the same press), "" (the programs' part; the tasks changed
+	// nothing in this press).
+	Part string `json:"part,omitempty"`
+	// PutBack: the part that ended it put what it had changed back as it was
+	// (the programs' put-back, or the tasks' own put-back into cron).
+	PutBack bool `json:"put_back,omitempty"`
+	// Waited: failed only because a reason that clears by itself did not
+	// clear for hours, or the panel's own record could not be read or
+	// written: nothing was sent, nothing restarted (G4: not carried).
+	Waited bool `json:"waited,omitempty"`
 }
 
-// siteAutoMarks are the marks of one installed panel version: marks of
-// another version count as none (each site is tried once per version).
+// siteAutoMarks are the marks of one installed panel version. Marks of
+// another version count as none, except the marks of a move that was
+// actually attempted and did not bring the site inside (G4: failed,
+// time_up, unknown, kept, and a "started" whose end was never read): they
+// are carried, so a failing site is not restarted at every update; they go
+// with the administrator's Try again or with the site. A record written
+// before fix round G4 (the same keys, no part/put_back/waited) reads the
+// same way; a later version reads this one's record by its own rule.
 type siteAutoMarks struct {
 	Version string                  `json:"version"`
 	Sites   map[string]siteAutoMark `json:"sites,omitempty"`
+}
+
+// siteAutoMarkCarries: a mark kept across versions (G4).
+func siteAutoMarkCarries(mark siteAutoMark) bool {
+	switch mark.State {
+	case siteAutoTimeUp, siteAutoUnknown, siteAutoKept, siteAutoStarted:
+		return true
+	case siteAutoFailed:
+		return !mark.Waited && !siteAutoWaitedReason(mark.Reason)
+	}
+	return false
+}
+
+// siteAutoWaitedReason: a failed mark's reason that records waiting or the
+// panel's own record, never a move that was sent (marks written before G4
+// carry no Waited flag).
+func siteAutoWaitedReason(code string) bool {
+	switch code {
+	case "host_busy", "marks_unreadable", "mark_failed", "limits_unread":
+		return true
+	}
+	return siteAutoClearsByItself(code)
 }
 
 // siteAutoMoveVersion is the installed panel's version and build.
@@ -141,8 +210,16 @@ func (p *Panel) readSiteAutoMarks(ctx context.Context) (siteAutoMarks, error) {
 	if err := json.Unmarshal([]byte(raw), &stored); err != nil {
 		return marks, err
 	}
-	if stored.Version == marks.Version {
-		for k, v := range stored.Sites {
+	for k, v := range stored.Sites {
+		if stored.Version == marks.Version {
+			marks.Sites[k] = v
+			continue
+		}
+		if siteAutoMarkCarries(v) {
+			if v.State == siteAutoStarted {
+				// Its end was never read in the version that sent it.
+				v.State, v.Reason = siteAutoUnknown, "unsettled"
+			}
 			marks.Sites[k] = v
 		}
 	}
@@ -244,12 +321,17 @@ func siteAutoTasksOwnerRefusal(code string) bool {
 // classifySiteMove says what one press of a site came to: a mark (moved,
 // left, failed, time_up, unknown, kept) with its reason code, or one of the
 // two waits (the site is tried again later in the run).
-func classifySiteMove(resp transport.MoveSiteSliceResponse, tasks *transport.SiteTasksMoveResponse, outcome siteMovePressOutcome) (string, string) {
+func classifySiteMove(resp transport.MoveSiteSliceResponse, tasks *transport.SiteTasksMoveResponse, outcome siteMovePressOutcome) siteAutoMark {
+	tasksMoved := tasks != nil && (tasks.Outcome == transport.SiteTasksMoved || tasks.Outcome == transport.SiteTasksCrontabBack)
+	part := ""
+	if tasksMoved {
+		part = "tasks_moved"
+	}
 	switch outcome {
 	case siteMovePressNoLimits:
-		return siteAutoFailed, "limits_unread"
+		return siteAutoMark{State: siteAutoFailed, Reason: "limits_unread", Waited: true}
 	case siteMovePressUnreachable:
-		return siteAutoUnknown, "agent_unreachable"
+		return siteAutoMark{State: siteAutoUnknown, Reason: "agent_unreachable", Part: part}
 	}
 	code := ""
 	if resp.Reason != nil {
@@ -257,51 +339,53 @@ func classifySiteMove(resp transport.MoveSiteSliceResponse, tasks *transport.Sit
 	}
 	if tasks != nil && tasks.Outcome == transport.SiteTasksUnknown {
 		if tasks.Recovery != nil {
-			return siteAutoKept, "tasks"
+			return siteAutoMark{State: siteAutoKept, Reason: "tasks", Part: "tasks"}
 		}
-		return siteAutoUnknown, "tasks_unknown"
+		return siteAutoMark{State: siteAutoUnknown, Reason: "tasks_unknown", Part: "tasks"}
 	}
 	if code == transport.SiteMoveRefusalKept && !resp.RolledBack {
-		return siteAutoWaitKept, code
+		return siteAutoMark{State: siteAutoWaitKept, Reason: code}
 	}
 	if resp.Kept {
-		return siteAutoKept, code
+		return siteAutoMark{State: siteAutoKept, Reason: code, Part: part}
 	}
 	if !resp.Done && !resp.RolledBack && !resp.TimeUp && siteAutoClearsByItself(code) {
-		return siteAutoWait, code
+		return siteAutoMark{State: siteAutoWait, Reason: code}
 	}
 	if resp.TimeUp {
-		return siteAutoTimeUp, "time_up"
+		return siteAutoMark{State: siteAutoTimeUp, Reason: "time_up", Part: part}
 	}
 	if resp.RolledBack || !resp.Done {
 		if code == "" {
 			code = "not_finished"
 		}
-		return siteAutoFailed, code
+		// Put back as it was only where the programs' part says so.
+		return siteAutoMark{State: siteAutoFailed, Reason: code, Part: part, PutBack: resp.RolledBack}
 	}
 	if tasks == nil {
-		return siteAutoMoved, ""
+		return siteAutoMark{State: siteAutoMoved}
 	}
 	switch tasks.Outcome {
 	case transport.SiteTasksStayed:
-		return siteAutoLeft, "stayed"
+		return siteAutoMark{State: siteAutoLeft, Reason: "stayed", Part: "tasks"}
 	case transport.SiteTasksNoCron:
-		return siteAutoLeft, "no_cron"
+		return siteAutoMark{State: siteAutoLeft, Reason: "no_cron", Part: "tasks"}
 	case transport.SiteTasksRefused:
 		if siteAutoTasksOwnerRefusal(tasks.Refusal) {
-			return siteAutoLeft, tasks.Refusal
+			return siteAutoMark{State: siteAutoLeft, Reason: tasks.Refusal, Part: "tasks"}
 		}
 		if tasks.Refusal == "" {
-			return siteAutoFailed, "tasks_refused"
+			return siteAutoMark{State: siteAutoFailed, Reason: "tasks_refused", Part: "tasks"}
 		}
-		return siteAutoFailed, tasks.Refusal
+		return siteAutoMark{State: siteAutoFailed, Reason: tasks.Refusal, Part: "tasks"}
 	case transport.SiteTasksPutBack:
+		// The tasks were moved and then put back into cron as they were.
 		if tasks.Refusal != "" {
-			return siteAutoFailed, tasks.Refusal
+			return siteAutoMark{State: siteAutoFailed, Reason: tasks.Refusal, Part: "tasks", PutBack: true}
 		}
-		return siteAutoFailed, "tasks_put_back"
+		return siteAutoMark{State: siteAutoFailed, Reason: "tasks_put_back", Part: "tasks", PutBack: true}
 	}
-	return siteAutoMoved, ""
+	return siteAutoMark{State: siteAutoMoved}
 }
 
 // noteSiteMoveAttempt records the administrator's own move of a site (Try
@@ -309,17 +393,18 @@ func classifySiteMove(resp transport.MoveSiteSliceResponse, tasks *transport.Sit
 // site's latest attempt: Problems now and the card say what it came to, and
 // a site whose tasks moved again is no longer left alone.
 func (p *Panel) noteSiteMoveAttempt(ctx context.Context, site siteLimitSite, requestID string, resp transport.MoveSiteSliceResponse, tasks *transport.SiteTasksMoveResponse) {
-	state, reason := classifySiteMove(resp, tasks, siteMovePressRan)
+	mark := classifySiteMove(resp, tasks, siteMovePressRan)
 	if tasks != nil {
 		switch tasks.Outcome {
 		case transport.SiteTasksMoved, transport.SiteTasksAlready, transport.SiteTasksCrontabBack:
 			p.noteSitePutBack(ctx, site.SiteID, false)
 		}
 	}
-	if state == siteAutoWait || state == siteAutoWaitKept {
+	if mark.State == siteAutoWait || mark.State == siteAutoWaitKept {
 		return // nothing changed: the earlier mark stays what it was
 	}
-	if err := p.setSiteAutoMark(ctx, site.SiteID, siteAutoMark{State: state, Reason: reason, At: metricsTime(time.Now()), RequestID: requestID}); err != nil {
+	mark.At, mark.RequestID = metricsTime(time.Now()), requestID
+	if err := p.setSiteAutoMark(ctx, site.SiteID, mark); err != nil {
 		log.Printf("site limits: the outcome of the move of %s was not recorded: %v", site.Domain, err)
 	}
 	p.readSiteLimitsOf(ctx, site)
@@ -351,6 +436,24 @@ type siteAutoMover struct {
 	// for a kept record. done of total sites of this run are settled.
 	moving      bool
 	done, total int
+	// waiting (fix round G5): why the run waits instead of moving now ("":
+	// it moves): update, wanted, host, move, site, record (siteAutoWaitingOf).
+	waiting string
+	// unreadSince, unreadWhy (G2): the run has not read the sites since then,
+	// and why ("agent": the Agent did not answer; "sites": the panel's own
+	// list of sites could not be read). Zero once a reading succeeds.
+	unreadSince time.Time
+	unreadWhy   string
+	// wantedAt (G3): the panel's update was refused because this worker was
+	// moving a site; it starts no further site for siteAutoMoveUpdateHold or
+	// until an update is admitted. Set only by that refusal, never by a page
+	// being read or a status poll (D-024); in memory: lost with the process,
+	// which only lets the worker go on (it never moves anything twice).
+	wantedAt time.Time
+	// uncleared (G5): sites whose "started" mark could not be taken away
+	// after a refusal before anything changed; such a mark is settled as
+	// that, never as a panel restart.
+	uncleared map[int]bool
 }
 
 var siteAutoMove siteAutoMover
@@ -374,10 +477,14 @@ var (
 	// siteAutoMoveKeptEvery: how often a run stopped by a kept record reads
 	// whether it was settled (a reading only).
 	siteAutoMoveKeptEvery = 5 * time.Minute
-	// siteAutoMoveReadAttempts: a run whose first reading the Agent does not
-	// answer tries again this many times (siteAutoMoveRetryMax apart), then
-	// waits for the next start, site creation or restore.
-	siteAutoMoveReadAttempts = 6
+	// A run whose reading of the sites fails tries again siteAutoMoveRetryMax
+	// apart, without end (G2: it never gives up); after
+	// siteAutoMoveUnreadLine without a reading, one Problems now line says so.
+	siteAutoMoveUnreadLine = time.Hour
+	// siteAutoMoveUpdateHold (G3): how long an update that was refused
+	// because the worker was moving a site holds the worker before its next
+	// site (unless an update is admitted first).
+	siteAutoMoveUpdateHold = 30 * time.Minute
 	// Seams for tests.
 	siteAutoMoveSleep    = time.Sleep
 	siteAutoMoveNow      = time.Now
@@ -391,24 +498,139 @@ var (
 type siteAutoMoveProgress struct {
 	Done  int `json:"done"`
 	Total int `json:"total"`
+	// Waiting (G5): the run waits instead of moving, and why (update: the
+	// panel's update; wanted: an update the administrator asked for; host:
+	// another change on the server; move: another site's move; site: the
+	// site is being changed; record: the panel's own record of the move).
+	Waiting string `json:"waiting,omitempty"`
 }
 
 // siteAutoMoveProgressNow is the worker's progress while it moves sites (nil
-// otherwise: nothing is shown).
+// otherwise, and while it waits for a kept record: that record's own line is
+// the one shown).
 func siteAutoMoveProgressNow() *siteAutoMoveProgress {
 	m := &siteAutoMove
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if !m.moving || m.total == 0 {
+	if !m.moving || m.total == 0 || m.waiting == "kept" {
 		return nil
 	}
-	return &siteAutoMoveProgress{Done: m.done, Total: m.total}
+	return &siteAutoMoveProgress{Done: m.done, Total: m.total, Waiting: m.waiting}
 }
 
 func (m *siteAutoMover) set(moving bool, done, total int) {
 	m.mu.Lock()
 	m.moving, m.done, m.total = moving, done, total
 	m.mu.Unlock()
+}
+
+func (m *siteAutoMover) setWaiting(why string) {
+	m.mu.Lock()
+	m.waiting = why
+	m.mu.Unlock()
+}
+
+// siteAutoWaitingOf is what the calm line says while a refusal that clears
+// by itself is waited for.
+func siteAutoWaitingOf(reason string) string {
+	switch reason {
+	case "update_running", "update_unreadable", "build":
+		return "update"
+	case "host_busy":
+		return "host"
+	case "another_move":
+		return "move"
+	case "site_busy":
+		return "site"
+	case "marks_unreadable", "mark_failed":
+		return "record"
+	case transport.SiteMoveRefusalKept:
+		return "kept"
+	}
+	return "host"
+}
+
+// siteAutoMoveIdle: no run is scheduled, running or waiting.
+func siteAutoMoveIdle() bool {
+	m := &siteAutoMove
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return !m.scheduled
+}
+
+// noteSiteAutoUpdateWanted (G3) records that the panel's update was refused
+// because the worker was moving a site. Only that refusal calls it.
+func noteSiteAutoUpdateWanted() {
+	m := &siteAutoMove
+	m.mu.Lock()
+	m.wantedAt = siteAutoMoveNow()
+	m.mu.Unlock()
+}
+
+// noteSiteAutoUpdateAdmitted (G3): an update was admitted; from now on the
+// update's own gate holds the worker.
+func noteSiteAutoUpdateAdmitted() {
+	m := &siteAutoMove
+	m.mu.Lock()
+	m.wantedAt = time.Time{}
+	m.mu.Unlock()
+}
+
+// siteAutoHoldForUpdate waits before the next site while an update the
+// administrator asked for may still be started (G3).
+func siteAutoHoldForUpdate() {
+	m := &siteAutoMove
+	for {
+		m.mu.Lock()
+		at := m.wantedAt
+		m.mu.Unlock()
+		if at.IsZero() {
+			return
+		}
+		left := siteAutoMoveUpdateHold - siteAutoMoveNow().Sub(at)
+		if left <= 0 {
+			m.mu.Lock()
+			if m.wantedAt.Equal(at) {
+				m.wantedAt = time.Time{}
+			}
+			m.mu.Unlock()
+			return
+		}
+		m.setWaiting("wanted")
+		siteAutoMoveSleep(min(left, siteAutoMoveRetryFirst))
+	}
+}
+
+func (m *siteAutoMover) noteRead(ok bool, why string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if ok {
+		m.unreadSince, m.unreadWhy = time.Time{}, ""
+		return
+	}
+	if m.unreadSince.IsZero() {
+		m.unreadSince = siteAutoMoveNow()
+	}
+	m.unreadWhy = why
+}
+
+func (m *siteAutoMover) noteUncleared(siteID int, uncleared bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.uncleared == nil {
+		m.uncleared = map[int]bool{}
+	}
+	if uncleared {
+		m.uncleared[siteID] = true
+	} else {
+		delete(m.uncleared, siteID)
+	}
+}
+
+func (m *siteAutoMover) wasUncleared(siteID int) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.uncleared[siteID]
 }
 
 // startSiteAutoMove schedules the run after the panel's start.
@@ -445,7 +667,7 @@ func (p *Panel) scheduleSiteAutoMove(wait time.Duration) {
 			p.siteAutoMovePass()
 			m.mu.Lock()
 			if !m.again {
-				m.scheduled, m.moving, m.done, m.total = false, false, 0, 0
+				m.scheduled, m.moving, m.done, m.total, m.waiting = false, false, 0, 0, ""
 				m.mu.Unlock()
 				return
 			}
@@ -461,23 +683,31 @@ type siteAutoItem struct {
 	notBefore time.Time
 	waiting   time.Duration // the next wait after a refusal that clears by itself
 	since     time.Time     // the first such refusal
+	reason    string        // the last such refusal's code
 }
 
 // siteAutoMoveRead reads every site's slice and scheduled tasks and records
 // them (the outside list, a kept record, the host), as the background
-// reading does. Bounded retries when the Agent does not answer.
-func (p *Panel) siteAutoMoveRead() bool {
-	for attempt := 0; attempt < siteAutoMoveReadAttempts; attempt++ {
+// reading does. It does not give up (fix round G2): a reading that fails is
+// tried again siteAutoMoveRetryMax later, and after siteAutoMoveUnreadLine
+// without one, Problems now has one line (siteAutoMoveUnreadProblem) that
+// goes by itself once a reading succeeds. A reading only, never a move.
+func (p *Panel) siteAutoMoveRead() {
+	m := &siteAutoMove
+	for logged := false; ; {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		ok := p.readAllSiteSlices(ctx)
+		ok, why := p.readAllSiteSlicesWhy(ctx)
 		cancel()
+		m.noteRead(ok, why)
 		if ok {
-			return true
+			return
+		}
+		if !logged {
+			logged = true
+			log.Printf("site limits: the sites could not be read for the move into their limits (%s); the panel reads them again every %s", why, siteAutoMoveRetryMax)
 		}
 		siteAutoMoveSleep(siteAutoMoveRetryMax)
 	}
-	log.Printf("site limits: the sites could not be read for the move into their limits; it runs again at the next start, or when a site is created or restored")
-	return false
 }
 
 // siteOutsideNow says whether a site's programs or tasks run outside its
@@ -505,9 +735,7 @@ func (p *Panel) siteOutsideNow(ctx context.Context) (outside map[int]bool, kept 
 func (p *Panel) siteAutoMovePass() {
 	m := &siteAutoMove
 	ctx := context.Background()
-	if !p.siteAutoMoveRead() {
-		return
-	}
+	p.siteAutoMoveRead()
 	marks, err := p.readSiteAutoMarks(ctx)
 	if err != nil {
 		log.Printf("site limits: the record of the sites already moved could not be read (%v); no site is moved by itself until it can be", err)
@@ -537,14 +765,22 @@ func (p *Panel) siteAutoMovePass() {
 		key := strconv.Itoa(s.SiteID)
 		mark, marked := marks.Sites[key]
 		if marked && mark.State == siteAutoStarted {
-			// The panel stopped while this site's move ran: its end is
-			// settled by reading only, never by moving it again.
-			state := siteAutoMoved
+			// The panel stopped while this site's move ran (or its mark
+			// could not be taken away after a refusal): its end is settled by
+			// reading only, never by moving it again.
+			state, reason := siteAutoMoved, "panel_restarted"
 			if outside[s.SiteID] {
-				state = siteAutoUnknown
+				state, reason = siteAutoUnknown, "unsettled"
 			}
-			mark.State, mark.Reason = state, "panel_restarted"
-			if err := p.setSiteAutoMark(ctx, s.SiteID, mark); err != nil {
+			if outside[s.SiteID] && m.wasUncleared(s.SiteID) {
+				// Refused before anything changed; only its mark stayed.
+				state, reason = siteAutoFailed, "mark_failed"
+				mark.Waited = true
+			}
+			mark.State, mark.Reason = state, reason
+			if err := p.setSiteAutoMark(ctx, s.SiteID, mark); err == nil {
+				m.noteUncleared(s.SiteID, false)
+			} else {
 				log.Printf("site limits: the move of %s was not settled: %v", s.Domain, err)
 			}
 			continue
@@ -575,8 +811,13 @@ func (p *Panel) siteAutoMovePass() {
 		item := queue[pick]
 		queue = append(queue[:pick:pick], queue[pick+1:]...)
 		if wait := item.notBefore.Sub(siteAutoMoveNow()); wait > 0 {
+			// Waiting, not moving: the calm line says why (G5).
+			m.setWaiting(siteAutoWaitingOf(item.reason))
 			siteAutoMoveSleep(wait)
 		}
+		// An update the administrator asked for while a site moved (G3).
+		siteAutoHoldForUpdate()
+		m.setWaiting("")
 		// A kept record stops the run until a reading finds it settled (the
 		// calm line is not shown meanwhile: the kept record's line is).
 		if _, kept, _ := p.siteOutsideNow(ctx); kept {
@@ -592,16 +833,24 @@ func (p *Panel) siteAutoMovePass() {
 			}
 			m.set(true, done, total)
 		}
-		state, reason := p.siteAutoMoveOne(ctx, item.site)
-		switch state {
+		ended := p.siteAutoMoveOne(ctx, item.site)
+		switch ended.State {
 		case siteAutoWait, siteAutoWaitKept:
 			now := siteAutoMoveNow()
 			if item.since.IsZero() {
 				item.since = now
 			}
-			if state == siteAutoWait && now.Sub(item.since) >= siteAutoMoveGiveUp {
-				// It did not clear in hours: a failure with its reason.
-				p.markSiteAuto(ctx, item.site, siteAutoMark{State: siteAutoFailed, Reason: reason, At: metricsTime(now)})
+			item.reason = ended.Reason
+			if now.Sub(item.since) >= siteAutoMoveGiveUp {
+				// It did not clear in hours. A refusal before anything changed
+				// is a failure with its reason (nothing was sent); one for the
+				// site's own kept record ends in that record's line, never in
+				// a second move (fix round G5).
+				giveUp := siteAutoMark{State: siteAutoFailed, Reason: ended.Reason, At: metricsTime(now), Waited: true}
+				if ended.State == siteAutoWaitKept {
+					giveUp = siteAutoMark{State: siteAutoKept, Reason: ended.Reason, At: metricsTime(now)}
+				}
+				p.markSiteAuto(ctx, item.site, giveUp)
 				done++
 				m.set(true, done, total)
 				continue
@@ -661,57 +910,67 @@ func (p *Panel) markSiteAuto(ctx context.Context, site siteLimitSite, mark siteA
 }
 
 // siteAutoMoveOne moves one site, or says why not now. It answers the mark
-// it wrote ("" when the site needed nothing or could not be checked, so it
-// was not moved), or one of the two waits.
-func (p *Panel) siteAutoMoveOne(ctx context.Context, site siteLimitSite) (string, string) {
+// it wrote (State "" when the site needed nothing or could not be checked,
+// so it was not moved), or one of the two waits.
+func (p *Panel) siteAutoMoveOne(ctx context.Context, site siteLimitSite) siteAutoMark {
+	wait := func(reason string) siteAutoMark { return siteAutoMark{State: siteAutoWait, Reason: reason} }
 	// The site as it is now: a site moved meanwhile (from its card, or put
 	// back on purpose) is not moved again.
 	if putBack, err := p.sitesPutBack(ctx); err != nil {
-		return siteAutoWait, "marks_unreadable"
+		return wait("marks_unreadable")
 	} else if _, left := putBack[strconv.Itoa(site.SiteID)]; left {
-		return "", ""
+		return siteAutoMark{}
 	}
 	if marks, err := p.readSiteAutoMarks(ctx); err != nil {
-		return siteAutoWait, "marks_unreadable"
+		return wait("marks_unreadable")
 	} else if _, marked := marks.Sites[strconv.Itoa(site.SiteID)]; marked {
-		return "", ""
+		return siteAutoMark{}
 	}
 	if outside, _, unsupported := p.siteOutsideNow(ctx); unsupported || !outside[site.SiteID] {
-		return "", ""
+		return siteAutoMark{}
 	}
-	// The gate: never while the panel's update is admitted or running, while
-	// the server is busy with another change, or while a move the
-	// administrator pressed runs. The Agent refuses both ways too.
+	// The gate (fix round G1): an update this panel process admitted; the
+	// server busy with another change, the update's scripts holding the
+	// server's change lock included (host_lock); a move the administrator
+	// pressed. Behind them the Agent's own rule refuses every move while a
+	// marker of the update's transaction exists or cannot be read, and while
+	// its own update record is queued or running (update_running /
+	// update_unreadable: a wait, never a failure).
 	if siteMoveUpdateInProgress(p, ctx) {
-		return siteAutoWait, "update_running"
+		return wait("update_running")
 	}
 	if !backgroundHostQuiet(p, ctx) {
-		return siteAutoWait, "host_busy"
+		return wait("host_busy")
 	}
 	siteMoveMu.Lock()
 	if siteMoveRunning {
 		siteMoveMu.Unlock()
-		return siteAutoWait, "another_move"
+		return wait("another_move")
 	}
-	siteMoveRunning = true
+	siteMoveRunning, siteMoveByWorker = true, true
 	siteMoveMu.Unlock()
-	defer func() {
-		siteMoveMu.Lock()
-		siteMoveRunning = false
-		siteMoveMu.Unlock()
-	}()
+	held := true
+	release := func() {
+		if held {
+			held = false
+			siteMoveMu.Lock()
+			siteMoveRunning, siteMoveByWorker = false, false
+			siteMoveMu.Unlock()
+		}
+	}
+	defer release()
 	// Before anything is sent: the mark. Without it written, nothing is moved
 	// (a restart could otherwise send the move a second time).
 	requestID := "auto-" + newAuditEventID()
 	started := siteAutoMark{State: siteAutoStarted, At: metricsTime(siteAutoMoveNow()), RequestID: requestID}
 	if err := p.setSiteAutoMark(ctx, site.SiteID, started); err != nil {
 		log.Printf("site limits: %s was not moved into its limits: its mark could not be written (%v)", site.Domain, err)
-		return siteAutoWait, "mark_failed"
+		return wait("mark_failed")
 	}
 	moveCtx, cancel := hostingDurableContext(context.Background())
 	resp, tasks, outcome := p.pressSiteMove(moveCtx, site, requestID)
 	cancel()
-	state, reason := classifySiteMove(resp, tasks, outcome)
+	mark := classifySiteMove(resp, tasks, outcome)
 	tasksOutcome, tasksError := "", ""
 	if tasks != nil {
 		tasksOutcome, tasksError = tasks.Outcome, tasks.Error
@@ -719,40 +978,79 @@ func (p *Panel) siteAutoMoveOne(ctx context.Context, site siteLimitSite) (string
 	p.recordAudit(auditRecord{Action: "site.limits_move", ResourceType: "domain", ResourceID: site.DomainID, Details: auditDetailsText(map[string]any{
 		"request_id": requestID, "site": site.Domain, "automatic": true, "done": resp.Done, "rolled_back": resp.RolledBack,
 		"kept": resp.Kept, "time_up": resp.TimeUp, "error": resp.Error, "units": len(resp.Units), "tasks": tasksOutcome, "tasks_error": tasksError,
-		"outcome": state, "reason": reason,
+		"outcome": mark.State, "reason": mark.Reason,
 	})})
-	switch state {
+	switch mark.State {
 	case siteAutoWait, siteAutoWaitKept:
-		// Refused before anything changed: no mark (it is tried again later).
+		// Refused before anything changed (or, for the site's own kept
+		// record, after the Agent tried to settle it): no mark, it is tried
+		// again later.
 		if err := p.setSiteAutoMark(ctx, site.SiteID, siteAutoMark{}); err != nil {
-			log.Printf("site limits: the mark of %s could not be taken away again (%v); it is not moved by itself until the next version", site.Domain, err)
-			return siteAutoUnknown, reason
+			// The "started" mark stays: settled as this, never as a restart
+			// of the panel (fix round G5); not moved by itself meanwhile.
+			log.Printf("site limits: the mark of %s could not be taken away again (%v); it is not moved by itself until that mark is settled", site.Domain, err)
+			siteAutoMove.noteUncleared(site.SiteID, true)
+			mark = siteAutoMark{State: siteAutoFailed, Reason: "mark_failed", Waited: true}
 		}
 	default:
-		p.markSiteAuto(ctx, site, siteAutoMark{State: state, Reason: reason, At: metricsTime(siteAutoMoveNow()), RequestID: requestID})
-		if state != siteAutoMoved {
-			log.Printf("site limits: %s was not moved into its limits by itself (%s %s): %s", site.Domain, state, reason, resp.Error)
+		mark.At, mark.RequestID = metricsTime(siteAutoMoveNow()), requestID
+		p.markSiteAuto(ctx, site, mark)
+		if mark.State != siteAutoMoved {
+			log.Printf("site limits: %s was not moved into its limits by itself (%s %s): %s", site.Domain, mark.State, mark.Reason, resp.Error)
 		}
 	}
+	// The move is over: the panel's update may be admitted from here on
+	// (fix round G3), before the reading that follows.
+	release()
 	readCtx, readCancel := context.WithTimeout(context.Background(), time.Minute)
 	p.readSiteLimitsOf(readCtx, site)
 	readCancel()
-	return state, reason
+	return mark
 }
 
 // --- What people read ------------------------------------------------------------------
 
 // siteAutoMoveView is the administrator's part of the card about the
-// worker: the calm line while it runs, and the one move action this card
-// still offers: Try again next to a move that did not bring the site inside
-// (offer "retry", with State and Reason), and the move of a site whose
-// scheduled tasks were put back into cron on purpose (offer "move").
+// worker: the calm line while it runs (Waiting: it waits, and why), and the
+// one move action this card still offers: Try again next to a move that did
+// not bring the site inside, or next to a site outside its limits that no
+// run is moving (offer "retry", with State, Reason, Part and PutBack), and
+// the move of a site whose scheduled tasks were put back into cron on
+// purpose (offer "move").
 type siteAutoMoveView struct {
-	Done   int    `json:"done,omitempty"`
-	Total  int    `json:"total,omitempty"`
-	Offer  string `json:"offer,omitempty"`
-	State  string `json:"state,omitempty"`
-	Reason string `json:"reason,omitempty"`
+	Done    int    `json:"done,omitempty"`
+	Total   int    `json:"total,omitempty"`
+	Waiting string `json:"waiting,omitempty"`
+	Offer   string `json:"offer,omitempty"`
+	State   string `json:"state,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Part    string `json:"part,omitempty"`
+	PutBack bool   `json:"put_back,omitempty"`
+}
+
+// siteAutoOutsideLine says what a site outside its limits, with no kept
+// record and not put back on purpose, shows (fix round G2): the mark of a
+// move that did not bring it inside; and, while no run is scheduled, running
+// or waiting, a site the panel is not moving (marked moved: it was inside
+// and is outside again; no mark; a "started" mark nobody settled). line is
+// false for a site the run will still take, or left for the owner's reason
+// (its card names that and offers Try again, no Problems now line).
+func siteAutoOutsideLine(mark siteAutoMark, marked, idle bool) (out siteAutoMark, line, card bool) {
+	switch {
+	case marked && mark.State == siteAutoLeft:
+		return mark, false, true
+	case marked && siteAutoMarkOffersRetry(mark.State):
+		return mark, true, true
+	case !idle:
+		return siteAutoMark{}, false, false
+	case marked && mark.State == siteAutoStarted:
+		return siteAutoMark{State: siteAutoUnknown, Reason: "unsettled", At: mark.At}, true, true
+	case marked && mark.State == siteAutoMoved:
+		return siteAutoMark{State: "outside", Reason: "outside_again", At: mark.At}, true, true
+	case !marked:
+		return siteAutoMark{State: "outside"}, true, true
+	}
+	return siteAutoMark{}, false, false
 }
 
 // siteAutoMoveViewOf is the card's part for one site ("outside": its
@@ -761,16 +1059,19 @@ type siteAutoMoveView struct {
 func (p *Panel) siteAutoMoveViewOf(ctx context.Context, siteID int, outside, kept bool) *siteAutoMoveView {
 	view := &siteAutoMoveView{}
 	if progress := siteAutoMoveProgressNow(); progress != nil {
-		view.Done, view.Total = progress.Done, progress.Total
+		view.Done, view.Total, view.Waiting = progress.Done, progress.Total, progress.Waiting
 	}
 	if outside && !kept {
 		key := strconv.Itoa(siteID)
-		putBack, _ := p.sitesPutBack(ctx)
+		putBack, putErr := p.sitesPutBack(ctx)
 		marks, err := p.readSiteAutoMarks(ctx)
 		if _, ok := putBack[key]; ok {
 			view.Offer = "move"
-		} else if mark, ok := marks.Sites[key]; err == nil && ok && siteAutoMarkOffersRetry(mark.State) {
-			view.Offer, view.State, view.Reason = "retry", mark.State, mark.Reason
+		} else if err == nil && putErr == nil {
+			mark, marked := marks.Sites[key]
+			if shown, _, card := siteAutoOutsideLine(mark, marked, siteAutoMoveIdle()); card {
+				view.Offer, view.State, view.Reason, view.Part, view.PutBack = "retry", shown.State, shown.Reason, shown.Part, shown.PutBack
+			}
 		}
 	}
 	if view.Total == 0 && view.Offer == "" {
@@ -787,26 +1088,31 @@ func siteAutoMarkOffersRetry(state string) bool {
 	return false
 }
 
-// siteAutoMoveProblems: ONE line per site whose move (the worker's, or the
-// administrator's Try again) did not bring it inside its limits, while it is
-// still outside and no record of it is kept (site_move_kept says that one):
-// why, the administrator acts, Try again. A site whose tasks stayed in cron
-// for the server owner's reason is named where it is today (its card, the
-// owner's lines), never as a to-do.
+// siteAutoMoveProblems: ONE line per site outside its limits that no move
+// is bringing inside, while no record of it is kept (site_move_kept says
+// that one): a move (the worker's, or the administrator's Try again) that
+// did not bring it inside, and, while no run is scheduled, running or
+// waiting, a site outside whatever its mark (siteAutoOutsideLine): why, the
+// administrator acts, Try again. A site whose tasks stayed in cron for the
+// server owner's reason is named where it is today (its card, the owner's
+// lines), never as a to-do.
 func (p *Panel) siteAutoMoveProblems(ctx context.Context, names map[string]string) []monitoringProblem {
 	marks, err := p.readSiteAutoMarks(ctx)
-	if err != nil || len(marks.Sites) == 0 {
+	if err != nil {
 		return nil
 	}
 	outside, _, unsupported := p.siteOutsideNow(ctx)
-	if unsupported {
+	if unsupported || len(outside) == 0 {
 		return nil
 	}
 	kept := map[string]string{}
 	if raw := p.setting(ctx, settingSiteMoveKept); raw != "" {
 		_ = json.Unmarshal([]byte(raw), &kept)
 	}
-	putBack, _ := p.sitesPutBack(ctx)
+	putBack, err := p.sitesPutBack(ctx)
+	if err != nil {
+		return nil
+	}
 	domains := map[string]int{}
 	if rows, err := p.db.GetDB().QueryContext(ctx, `SELECT s.id, d.id FROM sites s JOIN domains d ON d.id = s.domain_id`); err == nil {
 		for rows.Next() {
@@ -817,11 +1123,12 @@ func (p *Panel) siteAutoMoveProblems(ctx context.Context, names map[string]strin
 		}
 		rows.Close()
 	}
+	idle := siteAutoMoveIdle()
 	var out []monitoringProblem
-	for key, mark := range marks.Sites {
-		id, err := strconv.Atoi(key)
+	for id := range outside {
+		key := strconv.Itoa(id)
 		name := names[key]
-		if err != nil || name == "" || !outside[id] || mark.State == siteAutoLeft || !siteAutoMarkOffersRetry(mark.State) {
+		if name == "" {
 			continue
 		}
 		if _, ok := kept[key]; ok {
@@ -830,12 +1137,39 @@ func (p *Panel) siteAutoMoveProblems(ctx context.Context, names map[string]strin
 		if _, ok := putBack[key]; ok {
 			continue
 		}
+		mark, marked := marks.Sites[key]
+		shown, line, _ := siteAutoOutsideLine(mark, marked, idle)
+		if !line {
+			continue
+		}
 		out = append(out, monitoringProblem{
 			Key: "site_auto_move:" + key, Kind: "site_auto_move_failed", Severity: "warning", Actor: "administrator",
-			Subject: name, Name: mark.State, Reason: mark.Reason, Value: 1, Since: mark.At, ObservedAt: mark.At, DomainID: domains[key],
+			Subject: name, Name: shown.State, Reason: shown.Reason, Part: shown.Part, PutBack: shown.PutBack,
+			Value: 1, Since: shown.At, ObservedAt: shown.At, DomainID: domains[key],
 			Action: monitoringProblemAction{Kind: "retry_move", To: "/domains/" + url.PathEscape(name)},
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Subject < out[j].Subject })
 	return out
+}
+
+// siteAutoMoveUnreadProblem (fix round G2): ONE line once the worker has not
+// been able to read the sites for siteAutoMoveUnreadLine: the sites are not
+// yet inside their limits, why (Reason: "agent", the Agent did not answer;
+// "sites", the panel's own list of sites could not be read), the
+// administrator looks at the Agent, and the work continues by itself once a
+// reading succeeds (the line goes then).
+func siteAutoMoveUnreadProblem(now time.Time) []monitoringProblem {
+	m := &siteAutoMove
+	m.mu.Lock()
+	since, why := m.unreadSince, m.unreadWhy
+	m.mu.Unlock()
+	if since.IsZero() || now.Sub(since) < siteAutoMoveUnreadLine {
+		return nil
+	}
+	return []monitoringProblem{{
+		Key: "site_auto_move_unread", Kind: "site_auto_move_unread", Severity: "warning", Actor: "administrator",
+		Name: why, Reason: why, Since: metricsTime(since), ObservedAt: metricsTime(now),
+		Action: monitoringProblemAction{Kind: "open", To: "/monitoring"},
+	}}
 }

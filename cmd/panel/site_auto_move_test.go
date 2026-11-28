@@ -50,7 +50,7 @@ func newAutoMoveFake(t *testing.T) *autoMoveFake {
 		siteAutoMoveVersion, siteMovePressNow = oldVersion, oldPressNow
 		siteAutoMove = siteAutoMover{}
 		siteMoveMu.Lock()
-		siteMoveRunning = false
+		siteMoveRunning, siteMoveByWorker = false, false
 		siteMoveMu.Unlock()
 	})
 	siteAutoMove = siteAutoMover{}
@@ -233,38 +233,69 @@ func TestTheWorkerMovesEverySiteOnceInOrder(t *testing.T) {
 	}
 }
 
-// TestTheWorkerStartsOnlyAfterTheGate: while the panel's update is admitted
-// or running, or the server is busy with another change, or the Agent says
-// the update is in progress, nothing is sent and no site is marked; the run
-// comes back to the site by itself and moves it once the gate allows. This
-// is the proof that the worker never starts anything before the update is
-// complete and verified (the Agent's own claim refuses until then too).
+// TestTheWorkerStartsOnlyAfterTheGate (fix round G1): the real gate, not
+// stubs. The panel's own word is the real one (this process admitted no
+// update: false, as in the updated panel's first process), and the real
+// backgroundHostQuiet reads the Agent's readiness: while the Agent says the
+// server's change lock is held (the update's scripts hold it), nothing is
+// sent and no site is marked; the calm line says the run waits. Then the
+// Agent's own claim refuses with update_running (a marker of the update's
+// transaction still exists, the lock free between the finalizer's attempts):
+// nothing of the programs is sent, nothing is marked, and the site is tried
+// again later; once the Agent lets it, it is moved once.
 func TestTheWorkerStartsOnlyAfterTheGate(t *testing.T) {
+	realQuiet, realUpdate := backgroundHostQuiet, siteMoveUpdateInProgress
 	x := newAutoMoveFake(t)
+	backgroundHostQuiet, siteMoveUpdateInProgress = realQuiet, realUpdate
+	agent := newServiceOperationTestAgent()
+	attachServiceOperationTestAgent(t, x.f.panel, agent)
+	ready := func(r transport.HostMutationReadinessResponse) {
+		agent.mu.Lock()
+		agent.mutationReadiness = r
+		agent.mu.Unlock()
+	}
+	ready(transport.HostMutationReadinessResponse{Code: transport.HostMutationBusy, Reason: transport.HostMutationReasonHostLock})
+	locked, markerRefusals := true, 0
 	x.site(41, 9901, true)
-	x.updating = true
-	refused := 0
+	waits := 0
 	x.onSleep = func(d time.Duration) {
-		if (x.updating || x.busy) && (len(x.calls) != 0 || len(x.marks()) != 0) {
-			t.Fatalf("something was sent or marked behind the gate: %v %v", x.calls, x.marks())
+		if d == siteAutoMoveFirstWait {
+			return
 		}
-		switch {
-		case x.updating && len(x.sleeps) > 3:
-			x.updating, x.busy = false, true
-		case x.busy && len(x.sleeps) > 6:
-			x.busy = false
+		waits++
+		if locked {
+			if len(x.calls) != 0 || len(x.marks()) != 0 {
+				t.Fatalf("something was sent or marked while the update held the lock: %v %v", x.calls, x.marks())
+			}
+			if p := siteAutoMoveProgressNow(); p == nil || p.Waiting != "host" {
+				t.Fatalf("the calm line while the lock is held: %+v", p)
+			}
+			if waits == 3 {
+				locked = false
+				ready(transport.HostMutationReadinessResponse{Ready: true})
+			}
+			return
+		}
+		if markerRefusals > 0 && markerRefusals < 3 {
+			if strings.Contains(strings.Join(x.calls, ","), "programs") || len(x.marks()) != 0 {
+				t.Fatalf("the Agent refused, yet something was sent or marked: %v %v", x.calls, x.marks())
+			}
+			if p := siteAutoMoveProgressNow(); p == nil || p.Waiting != "update" {
+				t.Fatalf("the calm line while the update is not finished: %+v", p)
+			}
 		}
 	}
 	x.tasksAnswer = func(int) (transport.SiteTasksMoveResponse, error) {
-		if refused < 2 {
-			refused++
-			return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: "update_running", Error: "the panel's update is in progress"}, nil
+		if markerRefusals < 2 {
+			markerRefusals++
+			return transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: "update_running", Error: "the panel's update is in progress; nothing was moved"}, nil
 		}
+		markerRefusals = 3
 		return transport.SiteTasksMoveResponse{}, nil
 	}
 	x.run()
-	if got := strings.Join(x.calls, ","); got != "tasks:41,tasks:41,tasks:41,programs:41" || len(x.sleeps) < 8 {
-		t.Fatalf("calls %s after %d pauses", got, len(x.sleeps))
+	if got := strings.Join(x.calls, ","); got != "tasks:41,tasks:41,tasks:41,programs:41" || waits < 5 {
+		t.Fatalf("calls %s after %d waits", got, waits)
 	}
 	if m := x.marks()["41"]; m.State != siteAutoMoved {
 		t.Fatalf("mark %+v", m)
@@ -424,7 +455,7 @@ func TestARestartInTheMiddleNeverMovesTwice(t *testing.T) {
 		t.Fatalf("a site was moved again: %v", x.calls)
 	}
 	marks := x.marks()
-	if marks["41"].State != siteAutoMoved || marks["42"].State != siteAutoUnknown || marks["42"].Reason != "panel_restarted" {
+	if marks["41"].State != siteAutoMoved || marks["42"].State != siteAutoUnknown || marks["42"].Reason != "unsettled" {
 		t.Fatalf("marks %+v", marks)
 	}
 	if lines := x.lines(); len(lines) != 1 || lines[0].Subject != "customer.matrix.test" || lines[0].Name != siteAutoUnknown {
@@ -615,8 +646,8 @@ func TestClassifySiteMove(t *testing.T) {
 		{transport.MoveSiteSliceResponse{Done: true}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksPutBack, Refusal: transport.SiteTasksRefusalCrontab}, siteMovePressRan, siteAutoFailed, transport.SiteTasksRefusalCrontab},
 		{transport.MoveSiteSliceResponse{Done: true}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksCrontabBack}, siteMovePressRan, siteAutoMoved, ""},
 	} {
-		if state, reason := classifySiteMove(c.resp, c.tasks, c.outcome); state != c.state || reason != c.reason {
-			t.Errorf("%d: %s %s, want %s %s", i, state, reason, c.state, c.reason)
+		if m := classifySiteMove(c.resp, c.tasks, c.outcome); m.State != c.state || m.Reason != c.reason {
+			t.Errorf("%d: %s %s, want %s %s", i, m.State, m.Reason, c.state, c.reason)
 		}
 	}
 }

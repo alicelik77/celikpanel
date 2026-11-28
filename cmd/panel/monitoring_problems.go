@@ -89,6 +89,11 @@ type monitoringProblem struct {
 	// for its Try again (the site's own move, POST
 	// /api/v1/domains/{id}/site-limits/move).
 	DomainID int `json:"domain_id,omitempty"`
+	// Part and PutBack (alpha.150 fix round G5, site_auto_move_failed only):
+	// which part of the move ended it and whether that part put the site
+	// back as it was, so that the words say only what is known.
+	Part    string `json:"part,omitempty"`
+	PutBack bool   `json:"put_back,omitempty"`
 }
 
 type monitoringUnknown struct {
@@ -201,6 +206,9 @@ var problemKindOrder = map[string]int{
 	// S4 R2b second fix round: site accounts whose own service manager can
 	// still start at an SFTP login.
 	"site_user_manager_open": 58,
+	// alpha.150 fix round G2: the worker that moves sites into their limits
+	// has not been able to read the sites for an hour.
+	"site_auto_move_unread": 59,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one

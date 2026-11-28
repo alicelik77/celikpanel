@@ -48,7 +48,7 @@ export const enSiteLimitsLane = {
     'slim.why.kept_earlier': 'An earlier move could not be put back completely, so nothing new was moved. That site’s card names each program left and the next step.',
     'slim.why.unsupported': 'This server cannot hold a site’s limits; nothing was moved.',
     'slim.why.update_running': 'The panel’s update is in progress; nothing was moved. Press Try again after the update has finished.',
-    'slim.why.update_unreadable': 'It is not known whether the panel’s update is in progress: one of its records could not be read. Nothing was moved. This ends by itself at the latest 31 minutes after that record last changed; the agent’s journal names it (sudo journalctl -u celikpanel-agent).',
+    'slim.why.update_unreadable': 'It is not known whether the panel’s update is in progress: one of its records could not be read. Nothing was moved. The agent’s journal names it (sudo journalctl -u celikpanel-agent). An update request’s record that cannot be read ends by itself at the latest 31 minutes after it last changed; the update’s own folder, once it can be read.',
     'err.SERVICE_APP.site_limits_update_running': 'The panel’s update is in progress; nothing was moved. Press Try again after the update has finished.',
     'slim.why.other': 'The move did not run; nothing was moved. The agent’s journal says why (sudo journalctl -u celikpanel-agent).',
     'limits.preview.sitesStopped.one': 'The programs of 1 site use more now than a lowered limit. On saving, a program over the memory limit is stopped at once; at the process limit no new process starts and running ones go on:',
@@ -80,7 +80,7 @@ export const enSiteLimitsLane = {
     // alpha.150 (D-048): every site goes inside its limits by itself; words only next to a failure.
     'slim.auto.running': 'Sites are being moved into their limits ({done} / {total}) — you do not need to do anything.',
     'slim.auto.notMoved': 'The panel could not move this site into its limits by itself, so it still runs outside them, and it is not tried again by itself.',
-    'slim.auto.why.unknown': 'How its move ended is not known (the panel restarted during it, or the server did not answer). Nothing was moved a second time; press Try again.',
+    'slim.auto.why.unknown': 'How its move ended is not known to the panel (the panel or its agent may have stopped during it, or the server did not answer). Nothing was moved a second time; press Try again.',
     'slim.auto.why.kept': 'Its last move did not finish; it was settled since, and the site was left as it is now. Press Try again.',
     'slim.auto.why.stayed': 'Its programs are inside its limits, but its scheduled tasks stay in cron: a line keeps the whole crontab there, and the site’s Scheduled tasks screen names it. Once that line is changed, press Try again.',
     'slim.auto.why.failed': 'The move stopped and the site was put back as it was; nothing else was changed. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press Try again.',
@@ -90,6 +90,25 @@ export const enSiteLimitsLane = {
     'pnow.site_auto_move_failed.title': '{domain} is not inside its limits',
     'pnow.site_auto_move_failed.body': 'The panel could not move this site into its limits by itself; it is not tried again by itself. The administrator presses Try again once the reason below is dealt with.',
     'pnow.site_auto_move_failed.action': 'Try again',
+    // alpha.150 fix round (G2, G5): a site outside again, the run waiting, endings by what is known.
+    'slim.auto.outside': 'This site runs outside its limits, and the panel does not move it into them by itself again.',
+    'slim.auto.why.outside_again': 'It was inside its limits and runs outside them again; nothing was changed. Press Try again.',
+    'slim.auto.why.outside': 'No move of the panel is under way for it; nothing was changed. Press Try again.',
+    'slim.auto.why.notFinished': 'The move stopped before the site was inside its limits and did not report putting it back; the card shows where each program runs now. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press Try again.',
+    'slim.auto.why.programsBack': 'Its scheduled tasks moved into its limits, but its programs did not come up there and were put back where they ran. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press Try again.',
+    'slim.auto.why.tasksRefused': 'Its scheduled tasks were not moved and still run from cron, unchanged. The agent’s journal says why (sudo journalctl -u celikpanel-agent); then press Try again.',
+    'slim.auto.why.record': 'The panel’s own record of the move could not be read or written for hours, so the site was not moved; nothing was changed. The panel’s journal says why (sudo journalctl -u celikpanel-panel); then press Try again.',
+    'slim.auto.wait.update': 'Sites are waiting to be moved into their limits ({done} / {total}): the panel’s update is being installed. It continues by itself; you do not need to do anything.',
+    'slim.auto.wait.wanted': 'Sites are waiting to be moved into their limits ({done} / {total}): the panel holds them for the update you asked for, for up to 30 minutes from your request. Start the update again now.',
+    'slim.auto.wait.host': 'Sites are waiting to be moved into their limits ({done} / {total}): another change is running on the server. It continues by itself; you do not need to do anything.',
+    'slim.auto.wait.move': 'Sites are waiting to be moved into their limits ({done} / {total}): another site’s move into its limits is running. It continues by itself; you do not need to do anything.',
+    'slim.auto.wait.site': 'Sites are waiting to be moved into their limits ({done} / {total}): a site is being changed right now. It continues by itself; you do not need to do anything.',
+    'slim.auto.wait.record': 'Sites are waiting to be moved into their limits ({done} / {total}): the panel’s own record of the move could not be read or written. The panel tries again by itself; if this stays, its journal says why (sudo journalctl -u celikpanel-panel).',
+    'pnow.site_auto_move_failed.body_outside': 'This site runs outside its limits, and the panel does not move it into them by itself again. The administrator presses Try again.',
+    'pnow.site_auto_move_unread.title': 'Sites are not yet inside their limits: the panel cannot read them',
+    'pnow.site_auto_move_unread.body': 'For an hour the panel has not been able to read the sites, because CelikPanel’s Agent did not answer; the sites outside their limits are not moved into them yet. The administrator checks the Agent: sudo systemctl status celikpanel-agent, and its journal: sudo journalctl -u celikpanel-agent. The panel reads again every 10 minutes and goes on by itself once it can; this line then goes.',
+    'pnow.site_auto_move_unread.body_sites': 'For an hour the panel has not been able to read its own list of sites, so the sites outside their limits are not moved into them yet. The administrator reads the panel’s journal: sudo journalctl -u celikpanel-panel. The panel reads again every 10 minutes and goes on by itself once it can; this line then goes.',
+    'pnow.site_auto_move_unread.action': 'Open Monitoring',
 } as const;
 
 export type SiteLimitsLaneKey = keyof typeof enSiteLimitsLane;

@@ -13,7 +13,7 @@ import { Button } from './ui';
 import { isServiceActionOutcome, ServiceActionNotice } from './ServiceActionNotice';
 import { showToast } from './Toast';
 import { confirmAction, followOperation } from '../lib/confirmAction';
-import { autoMoveReasonKey, siteStoppedLines, sitesStoppedTitle, unappliedKey, unappliedVars, withSiteLimitsLane, type SiteStoppedItem } from '../i18n/siteLimitsLane';
+import { autoMoveLineKey, autoMoveReasonKey, siteStoppedLines, sitesStoppedTitle, unappliedKey, unappliedVars, withSiteLimitsLane, type SiteStoppedItem } from '../i18n/siteLimitsLane';
 import { useDbLimitsWords, type DbLimitsSay } from '../i18n/dbLimits';
 import type { DbLimitsWordKey } from '../i18n/dbLimitsWords/en';
 
@@ -85,6 +85,7 @@ export type ProblemKind =
     | 'site_move_kept'
     | 'database_limits_unapplied'
     | 'site_auto_move_failed'
+    | 'site_auto_move_unread'
     | 'cron_allow_lists_sites'
     | 'cron_not_closed'
     | 'cron_owner_removed'
@@ -140,6 +141,8 @@ const KINDS: readonly ProblemKind[] = [
     // alpha.150 (D-048): sites are moved into their limits by themselves; a
     // site whose move did not bring it inside, with Try again.
     'site_auto_move_failed',
+    // alpha.150 fix round G2: the panel could not read the sites for an hour.
+    'site_auto_move_unread',
     // S4 R2a: this server cannot enforce a site's limits at all.
     'site_limits_unsupported',
     // S4 R2a second fix round: a change of limits that did not reach every
@@ -245,6 +248,9 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     if (problem.kind === 'site_move_kept' && ['tasks_none', 'tasks_timers', 'tasks_cron'].includes(problem.reason ?? '')) return `pnow.site_move_kept.body_${problem.reason}` as TranslationKey;
     // alpha.149 (lab O3; fix round F9): each site by its own reason; "not known" never "earlier limits"; one site in the singular.
     if (problem.kind === 'site_limits_unapplied') return unappliedKey(problem, 'body') as TranslationKey;
+    // alpha.150 fix round G2: a site outside again; the sites that could not be read, by why.
+    if (problem.kind === 'site_auto_move_failed' && problem.name === 'outside') return 'pnow.site_auto_move_failed.body_outside' as TranslationKey;
+    if (problem.kind === 'site_auto_move_unread' && problem.reason === 'sites') return 'pnow.site_auto_move_unread.body_sites' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
@@ -282,6 +288,9 @@ export interface Problem {
     action: { kind: 'start_service' | 'open' | 'reclose' | 'apply_default' | 'apply_db_limits' | 'retry_move'; to?: string };
     /** alpha.150 (site_auto_move_failed): the site's domain, for its Try again. */
     domain_id?: number;
+    /** alpha.150 fix round G5 (site_auto_move_failed): which part ended the move, and whether it put the site back. */
+    part?: string;
+    put_back?: boolean;
     /** alpha.149 (database_limits_unapplied): the stored reason as a code. */
     reason?: string;
     /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
@@ -294,12 +303,13 @@ export interface ProblemsReport {
     problems: Problem[];
     unknown: { source: (typeof SOURCES)[number]; reason: (typeof REASONS)[number] }[];
     /** alpha.150 (D-048): the panel moving sites into their limits by itself (one calm line, nobody acts). */
-    site_move_progress?: { done: number; total: number };
+    site_move_progress?: { done: number; total: number; waiting?: string };
 }
 
 function decodeMoveProgress(raw: unknown): ProblemsReport['site_move_progress'] {
-    const p = raw as { done?: unknown; total?: unknown } | null;
-    return p && typeof p === 'object' && typeof p.done === 'number' && typeof p.total === 'number' && p.total > 0 ? { done: p.done, total: p.total } : undefined;
+    const p = raw as { done?: unknown; total?: unknown; waiting?: unknown } | null;
+    return p && typeof p === 'object' && typeof p.done === 'number' && typeof p.total === 'number' && p.total > 0
+        ? { done: p.done, total: p.total, waiting: typeof p.waiting === 'string' ? p.waiting : undefined } : undefined;
 }
 
 // A problem of a kind this screen has no words for is left out rather than
@@ -599,7 +609,7 @@ export function ProblemsNow({
     const progress = report.site_move_progress;
     const moving = progress && (
         <p className="mb-2 text-sm text-fg-muted" role="status" data-problems-now-moving="">
-            {t('slim.auto.running', { done: progress.done, total: progress.total })}
+            {t(autoMoveLineKey(progress.waiting) as TranslationKey, { done: progress.done, total: progress.total })}
         </p>
     );
     if (problems.length === 0 && unknown.length === 0 && !outcome) {
@@ -644,7 +654,7 @@ export function ProblemsNow({
                                         {dbLine?.why && <p className="mt-1 text-sm leading-6 text-fg" data-problem-db-limits-why="">{dbLine.why}</p>}
                                         {problem.kind === 'site_auto_move_failed' && (
                                             <p className="mt-1 text-sm leading-6 text-fg" data-problem-auto-move-why={problem.name ?? ''}>
-                                                {t(autoMoveReasonKey({ state: problem.name, reason: problem.reason }) as TranslationKey)}
+                                                {t(autoMoveReasonKey({ state: problem.name, reason: problem.reason, part: problem.part, put_back: problem.put_back }) as TranslationKey)}
                                             </p>
                                         )}
                                         {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 && (

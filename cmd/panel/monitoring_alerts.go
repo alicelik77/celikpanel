@@ -699,8 +699,12 @@ func alertLine(item pendingAlertMail) (string, string) {
 			fmt.Sprintf("%s sitenin programları sınırlarının dışında çalışıyordu (%s). Panel onları kendiliğinden sınırlarının içine alır; bir şey yapmanız gerekmiyor.", n, subject)
 	// alpha.150 (site_auto_move.go, D-048).
 	case "site_auto_move_failed":
-		return fmt.Sprintf("%s could not be moved into its limits by itself; it still runs outside them. Problems now says why and offers Try again.", subject),
-			fmt.Sprintf("%s kendiliğinden sınırlarının içine alınamadı; hâlâ sınırlarının dışında çalışıyor. Nedeni Şu anki sorunlar'da, \"Tekrar dene\" ile.", subject)
+		// Fix round G2: also a site that is outside its limits again.
+		return fmt.Sprintf("%s runs outside its limits and is not moved into them by itself again. Problems now says why and offers Try again.", subject),
+			fmt.Sprintf("%s sınırlarının dışında çalışıyor ve kendiliğinden yeniden içine alınmıyor. Nedeni Şu anki sorunlar'da, \"Tekrar dene\" ile.", subject)
+	case "site_auto_move_unread":
+		return "The sites could not be read for an hour, so the ones outside their limits are not moved into them yet. The administrator checks CelikPanel's Agent (sudo systemctl status celikpanel-agent); the panel keeps reading and goes on by itself.",
+			"Siteler bir saattir okunamadı; bu yüzden sınırlarının dışındakiler henüz içine alınmıyor. Yönetici CelikPanel Agent'ı denetler (sudo systemctl status celikpanel-agent); panel okumayı sürdürür ve kendiliğinden devam eder."
 	case "cron_allow_lists_sites":
 		return fmt.Sprintf("The server owner's %s lets the accounts of sites whose tasks run in their limits use cron again (%s). Monitoring says what to change.", name, subject),
 			fmt.Sprintf("Sunucu sahibinin %s dosyası, görevleri sınırları içinde çalışan sitelerin hesaplarına yeniden cron izni veriyor (%s). Neyin değişeceği İzleme'de.", name, subject)

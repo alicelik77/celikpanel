@@ -28,7 +28,7 @@ test('no move action in any healthy state: only Try again next to a failure and 
   // The box of alpha.148/149 that offered the move whenever something was outside is gone.
   assert.doesNotMatch(card, /\(view\.needs_move \?\? 0\) > 0 \|\| tasksToMove\) && view\.applies/);
   // The two places the move stays, each beside its reason.
-  assert.match(card, /offer === 'retry' && auto && \([\s\S]*?t\('slim\.auto\.notMoved'\)[\s\S]*?autoMoveReasonKey\(auto\)[\s\S]*?t\('pnow\.retry'\)/);
+  assert.match(card, /offer === 'retry' && auto && \([\s\S]*?t\(autoMoveLeadKey\(auto\) as SiteLimitsLaneKey\)[\s\S]*?autoMoveReasonKey\(auto\)[\s\S]*?t\('pnow\.retry'\)/);
   assert.match(card, /offer === 'move' && \([\s\S]*?t\('slim\.auto\.putBack'\)[\s\S]*?t\('slim\.move\.button'\)/);
   // The button's words appear nowhere else on the card.
   assert.equal(card.match(/t\('slim\.move\.button'\)/g)?.length, 1, 'the move button is only that of a site put back on purpose');
@@ -69,9 +69,9 @@ test('one calm line while the panel moves sites, the owner’s words, in both la
   assert.match(problems, /site_move_progress: decodeMoveProgress\(body\.site_move_progress\)/);
   assert.match(problems, /if \(moving\) return <div className="mb-4">\{moving\}<\/div>;/);
   assert.match(problems, /if \(problems\.length === 0 && quiet && !outcome\) return moving \?/);
-  assert.match(problems, /t\('slim\.auto\.running', \{ done: progress\.done, total: progress\.total \}\)/);
+  assert.match(problems, /t\(autoMoveLineKey\(progress\.waiting\) as TranslationKey, \{ done: progress\.done, total: progress\.total \}\)/);
   const card = read('../src/components/SiteLimitsCard.tsx');
-  assert.match(card, /\(auto\?\.total \?\? 0\) > 0 && \([\s\S]*?t\('slim\.auto\.running'/);
+  assert.match(card, /\(auto\?\.total \?\? 0\) > 0 && \([\s\S]*?t\(autoMoveLineKey\(auto\?\.waiting\)/);
   // Only the administrator's part of the card reads the worker (the server sends it to the administrator only).
   assert.match(card, /\{view\.admin && <AdminPart/);
   // The words are in the lazily loaded lane, never in the shell catalogue on the boot path.
@@ -92,11 +92,11 @@ test('why a site was not moved by itself is a code worded by the page, never the
     [{ state: 'left', reason: 'no_cron' }, 'slim.tasks.why.no_cron'],
     [{ state: 'failed', reason: 'processes_unread' }, 'slim.tasks.why.processes_unread'],
     [{ state: 'failed', reason: 'tasks_put_back' }, 'slim.tasks.why.put_back'],
-    [{ state: 'failed', reason: 'not_listening' }, 'slim.auto.why.failed'],
+    [{ state: 'failed', reason: 'not_listening', put_back: true }, 'slim.auto.why.failed'],
     [{ state: 'failed', reason: 'host_busy' }, 'slim.auto.why.waited'],
     [{ state: 'failed', reason: 'update_running' }, 'slim.auto.why.waited'],
     [{ state: 'failed', reason: 'limits_unread' }, 'slim.auto.why.limits_unread'],
-    [{ state: 'failed', reason: 'something new' }, 'slim.auto.why.failed'],
+    [{ state: 'failed', reason: 'something new', put_back: true }, 'slim.auto.why.failed'],
   ]) {
     assert.equal(autoMoveReasonKey(mark), key, JSON.stringify(mark));
     assert.ok(words[key] && trWords[key], `${key} has words in both languages`);
@@ -110,7 +110,7 @@ test('why a site was not moved by itself is a code worded by the page, never the
 
 test('the card reads the worker’s part through its decoder', () => {
   const view = decodeSiteLimits({ known: true, admin: true, limits: [], events: [], auto_move: { done: 3, total: 12, offer: 'retry', state: 'failed', reason: 'not_listening' } });
-  assert.deepEqual(view.auto_move, { done: 3, total: 12, offer: 'retry', state: 'failed', reason: 'not_listening' });
+  assert.deepEqual(view.auto_move, { done: 3, total: 12, offer: 'retry', state: 'failed', reason: 'not_listening', waiting: undefined, part: undefined, put_back: false });
   assert.equal(decodeSiteLimits({ known: true, admin: true, limits: [], events: [], auto_move: { offer: 'move all', done: -1 } }).auto_move?.offer, undefined, 'an offer it does not know is none');
   assert.equal(decodeSiteLimits({ known: true, admin: false, limits: [], events: [] }).auto_move, undefined);
 });
