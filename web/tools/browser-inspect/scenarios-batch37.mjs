@@ -26,9 +26,9 @@ const domain = (id, name, extra = {}) => ({
 });
 const DOMAINS = [
     domain(1, 'magaza.celikpanel.net', { disk_usage: 1843 * MB, bandwidth: 412 * MB }),
-    domain(2, 'odeme.magaza.celikpanel.net', { disk_usage: 5120 * MB, bandwidth: 2390 * MB }),
+    domain(2, 'odeme.celikpanel.net', { disk_usage: 5120 * MB, bandwidth: 2390 * MB }),
     domain(3, 'ajans.celikpanel.net', { project_type: 'node', php_version: '', disk_usage: 612 * MB, bandwidth: 845 * MB }),
-    domain(4, 'belge.ajans.celikpanel.net', { project_type: 'static', php_version: '', disk_usage: 94 * MB, bandwidth: 120 * MB }),
+    domain(4, 'belge.celikpanel.net', { project_type: 'static', php_version: '', disk_usage: 94 * MB, bandwidth: 120 * MB }),
     domain(5, 'studyo.celikpanel.net', { php_version: '8.3', disk_usage: 2310 * MB, bandwidth: 530 * MB }),
     domain(6, 'blog.celikpanel.net', { disk_usage: 760 * MB, bandwidth: 96 * MB }),
 ];
