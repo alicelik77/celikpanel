@@ -868,7 +868,9 @@ func siteMovePressTimeUp(units []string) transport.MoveSiteSliceResponse {
 // move and a site being changed).
 func siteMoveClaimRefusal(code string) bool {
 	switch code {
-	case transport.SiteMoveRefusalKept, "update_running", "update_unreadable", "update_finishing", "another_move", "site_busy":
+	// "build" (alpha.150 lab D6): an Agent of another build, which the
+	// programs' part refuses the same way.
+	case transport.SiteMoveRefusalKept, "update_running", "update_unreadable", "update_finishing", "another_move", "site_busy", "build":
 		return true
 	}
 	return false
@@ -1046,6 +1048,13 @@ func (p *Panel) handleDomainSiteLimitsMove(w http.ResponseWriter, r *http.Reques
 		"units": resp.Units, "error": resp.Error, "wait_seconds": resp.WaitSeconds, "recover": req.Recover, "kept": resp.Kept,
 		"recovery": resp.Recovery, "tasks": tasksOutcome, "tasks_error": tasksError, "tasks_blocking": tasksBlocking,
 	})
+	// alpha.150 lab D6: the Agent's empty list of programs arrives as no list
+	// (its transport keeps no empty list), and a page that reads no list reads
+	// no answer: "the result is not known" for a refusal that moved nothing.
+	// The answer always carries a list.
+	if resp.Units == nil {
+		resp.Units = []transport.SiteSliceMoved{}
+	}
 	siteMoveMu.Lock()
 	siteMoveAnswers[req.RequestID] = resp
 	siteMoveOrder = append(siteMoveOrder, req.RequestID)

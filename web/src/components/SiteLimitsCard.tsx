@@ -10,7 +10,7 @@ import { readRemote, useRemote } from '../lib/remote';
 import { startVisibleReads } from '../lib/visibleReads';
 import { unitText, whoText } from '../lib/settingLimits';
 import {
-    appliedOf, dbOwnerByOrigin, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, followsAutoMove, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveSteps, moveWhyKey,
+    appliedOf, dbOwnerByOrigin, decodeMoveAnswer, decodeSiteLimits, eventAtSiteLimit, eventKey, followsAutoMove, keptUnits, limitOf, lowerUnits, MOVE_WAIT_SECONDS, moveReasonWords, moveRefusedBeforeAnything, moveSteps, moveWhyKey,
     newMoveRequestID, notMovedReason, putBackSplit, type DbOwnerSetting, type MoveReason, type SiteLimitKey, type SiteLimitValue, type SiteLimitsView,
 } from '../lib/siteLimits';
 import {
@@ -271,7 +271,7 @@ function AdminPart({ domainId, view, memory, onDone }: { domainId: number; view:
                     // Second fix round (R8): a program Try again put back that runs but listens on no port is named.
                     const silent = answer.runs_no_port ?? [];
                     if (answer.done) return silent.length > 0 ? { state: 'done', message: t('slim.kept.runsNoPort', { list: silent.map((u) => labelOf(units, u)).join(', ') }) } : { state: 'done' };
-                    return { state: 'failed', reason: answer.kept ? t('slim.kept', { time: formatDateTime(view.move_interrupted?.at ?? '', locale) }) : t(moveWhyKey(answer.reason) as SiteLimitsLaneKey) };
+                    return { state: moveRefusedBeforeAnything(answer) && !answer.kept ? 'blocked' : 'failed', reason: answer.kept ? t('slim.kept', { time: formatDateTime(view.move_interrupted?.at ?? '', locale) }) : t(moveWhyKey(answer.reason) as SiteLimitsLaneKey) };
                 },
             });
         } finally {
@@ -514,7 +514,9 @@ export async function moveSiteIntoLimits(domainId: number, view: SiteLimitsView,
             if (tasksAnswer?.outcome === 'unknown') return { state: 'unknown', reason: tasksAnswer.error || t('slim.move.unknown') };
             if (!answer.done) {
                 const why = answer.kept ? t('slim.why.kept_earlier') : t(moveWhyKey(answer.reason) as SiteLimitsLaneKey);
-                return { state: 'failed', reason: [why, tasksResult(tasksAnswer)].filter(Boolean).join(' ') };
+                // alpha.150 lab D6: a refusal before anything changed is a stop with its own words, and
+                // a tasks part refused for the same reason does not say it twice.
+                return { state: moveRefusedBeforeAnything(answer) ? 'blocked' : 'failed', reason: [...new Set([why, tasksResult(tasksAnswer)])].filter(Boolean).join(' ') };
             }
             if (!tasksOK) return { state: tasksAnswer?.outcome === 'stayed' ? 'blocked' : 'failed', reason: tasksResult(tasksAnswer) };
             return { state: 'done', message: [units.length > 0 ? t('slim.move.done') : '', tasksResult(tasksAnswer), notMoved.length > 0 ? t('slim.move.notMoved', { list: notMoved.join('; ') }) : ''].filter(Boolean).join(' ') };

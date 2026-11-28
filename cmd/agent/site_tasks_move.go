@@ -353,7 +353,9 @@ func (a *Agent) MoveSiteTasksV1(req *transport.SiteTasksMoveRequest, resp *trans
 	defer logSiteTasksAnswer("move", req, resp)
 	if req != nil && !req.Preview {
 		if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "moving a site's tasks into its limits"); err != nil {
-			resp.Error = err.Error()
+			// alpha.150 lab D6: coded as the programs' move codes it, so the
+			// panel's worker waits for the update instead of marking a failure.
+			resp.Refusal, resp.Error = "build", err.Error()
 			return nil
 		}
 	}
@@ -1120,7 +1122,7 @@ func (a *Agent) UndoSiteTasksMoveV1(req *transport.SiteTasksMoveRequest, resp *t
 		return nil
 	}
 	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "putting a site's tasks back into cron"); err != nil {
-		resp.Error = err.Error()
+		resp.Refusal, resp.Error = "build", err.Error()
 		return nil
 	}
 	target, username, err := siteTasksTenantTarget(req)

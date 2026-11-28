@@ -1,0 +1,12 @@
+{
+  "build": {
+    "outcome": "refused",
+    "error": "panel/agent build mismatch (panel aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, agent unknown); finish the paired upgrade before moving a site's tasks into its limits",
+    "refusal": "build"
+  },
+  "update_finishing": {
+    "outcome": "refused",
+    "error": "the panel's update is installed, but its last step, turning automatic certificate renewal (Certbot) back on, has not finished; nothing was moved. The release recovery repeats that step by itself (sudo journalctl -u celikpanel-release-recovery.service); move the site once it has finished",
+    "refusal": "update_finishing"
+  }
+}

@@ -258,6 +258,17 @@ export function moveWhyKey(reason: MoveReason | undefined): string {
     return reason && WHYS.includes(reason.code) ? `slim.why.${reason.code}` : 'slim.why.other';
 }
 
+/**
+ * A move refused before anything changed, for a reason that is not a failure of the site (alpha.150
+ * lab D6): another move, the site being changed, a kept record, the panel's update, a record of it
+ * that cannot be read, an agent of another build, a server that cannot hold limits. The window says
+ * it as a stop with its own words ("nothing was moved"), never as a failure or an unknown result.
+ */
+export function moveRefusedBeforeAnything(answer: MoveAnswer): boolean {
+    return !answer.done && !answer.rolled_back && !answer.time_up && answer.units.length === 0
+        && !!answer.reason && WHYS.includes(answer.reason.code);
+}
+
 export interface MoveAnswer {
     done: boolean;
     rolled_back?: boolean;
@@ -273,12 +284,18 @@ export interface MoveAnswer {
     runs_no_port?: string[];
 }
 
+/**
+ * The move's answer. alpha.150 lab D6: an answer that moved no program carries "units": null (the
+ * Agent's empty list does not survive its transport), so a missing or null list is no program; any
+ * other shape is not an answer and its result stays unknown.
+ */
 export function decodeMoveAnswer(raw: unknown): MoveAnswer {
     const body = raw as Partial<MoveAnswer> | null;
-    if (!body || typeof body !== 'object' || typeof body.done !== 'boolean' || !Array.isArray(body.units)) throw new Error('shape');
+    const units = body?.units ?? [];
+    if (!body || typeof body !== 'object' || typeof body.done !== 'boolean' || !Array.isArray(units)) throw new Error('shape');
     return {
         done: body.done, rolled_back: body.rolled_back === true, time_up: body.time_up === true, kept: body.kept === true,
-        units: body.units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error,
+        units: units.filter((u) => !!u && typeof u.unit === 'string'), error: body.error,
         reason: body.reason && typeof body.reason.code === 'string' ? body.reason : undefined,
         runs_no_port: Array.isArray(body.runs_no_port) ? body.runs_no_port.filter((u): u is string => typeof u === 'string') : [],
     };
