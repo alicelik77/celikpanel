@@ -343,6 +343,14 @@ func TestSitesOutsideTheirLimitsAreNoToDo(t *testing.T) {
 	oldRead, oldStart, oldNeeds := readSiteSlicesCall, startSiteLimitRead, siteLimitReadNeedsAgent
 	t.Cleanup(func() { readSiteSlicesCall, startSiteLimitRead, siteLimitReadNeedsAgent = oldRead, oldStart, oldNeeds })
 	startSiteLimitRead, siteLimitReadNeedsAgent = func(run func()) { run() }, false
+	// The worker's run is scheduled (as after every panel start): it takes
+	// the site, so no line. A site outside while no run is scheduled, running
+	// or waiting has a line with Try again (fix round G2,
+	// TestNoSiteStaysOutsideWithoutALine).
+	siteAutoMove.mu.Lock()
+	siteAutoMove.scheduled = true
+	siteAutoMove.mu.Unlock()
+	t.Cleanup(func() { siteAutoMove = siteAutoMover{} })
 	unit := "celikapp-" + itoa(siteID) + ".service"
 	slice := "celiksite_" + itoa(siteID) + ".slice"
 	status := func(units ...transport.SiteSliceUnit) transport.SiteSlicesStatusResponse {

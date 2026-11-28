@@ -132,6 +132,12 @@ func useTaskTestHost(t *testing.T) *taskTestHost {
 		}
 	})
 	sitecron.SourceDir = filepath.Join(t.TempDir(), "celikpanel-cron")
+	// Never the test machine's own update transaction (fix round G1).
+	{
+		old := siteMoveReleaseTransactionRoot
+		keep(func() { siteMoveReleaseTransactionRoot = old })
+		siteMoveReleaseTransactionRoot = filepath.Join(t.TempDir(), "no-release-transaction")
+	}
 	private := t.TempDir()
 	oldToEnable, oldHeld := siteTimersToEnablePath, siteTimersHeldPath
 	keep(func() { siteTimersToEnablePath, siteTimersHeldPath = oldToEnable, oldHeld })
