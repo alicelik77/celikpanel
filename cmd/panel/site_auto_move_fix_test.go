@@ -269,8 +269,8 @@ func TestNoSiteStaysOutsideWithoutALine(t *testing.T) {
 		t.Fatalf("calls %v lines %+v", x.calls, x.lines())
 	}
 	ctx := context.Background()
-	// 41: the run marked it moved earlier; 42: no mark; 43: started, never settled.
-	_ = x.f.panel.setSiteAutoMark(ctx, 41, siteAutoMark{State: siteAutoMoved, At: "2026-11-28T09:00:00Z"})
+	// 41: the run moved it inside earlier; 42: no mark; 43: started, never settled.
+	_ = x.f.panel.setSiteAutoMark(ctx, 41, siteAutoMark{State: siteAutoMoved, Reason: siteAutoBroughtIn, At: "2026-11-28T09:00:00Z"})
 	_ = x.f.panel.setSiteAutoMark(ctx, 43, siteAutoMark{State: siteAutoStarted, At: "2026-11-28T09:00:00Z"})
 	x.inside[41], x.inside[42], x.inside[43] = false, false, false
 	if !x.f.panel.readAllSiteSlices(ctx) {

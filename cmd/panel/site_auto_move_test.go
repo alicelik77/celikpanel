@@ -631,7 +631,7 @@ func TestClassifySiteMove(t *testing.T) {
 		outcome       siteMovePressOutcome
 		state, reason string
 	}{
-		{transport.MoveSiteSliceResponse{Done: true}, moved, siteMovePressRan, siteAutoMoved, ""},
+		{transport.MoveSiteSliceResponse{Done: true}, moved, siteMovePressRan, siteAutoMoved, siteAutoBroughtIn},
 		{transport.MoveSiteSliceResponse{}, nil, siteMovePressUnreachable, siteAutoUnknown, "agent_unreachable"},
 		{transport.MoveSiteSliceResponse{}, nil, siteMovePressNoLimits, siteAutoFailed, "limits_unread"},
 		{transport.MoveSiteSliceResponse{Reason: &transport.SiteMoveReason{Code: "not_finished"}}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksUnknown}, siteMovePressRan, siteAutoUnknown, "tasks_unknown"},
@@ -644,7 +644,7 @@ func TestClassifySiteMove(t *testing.T) {
 		{transport.MoveSiteSliceResponse{Done: true}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: transport.SiteTasksRefusalLimits}, siteMovePressRan, siteAutoFailed, transport.SiteTasksRefusalLimits},
 		{transport.MoveSiteSliceResponse{Done: true}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksRefused, Refusal: transport.SiteTasksRefusalProcesses}, siteMovePressRan, siteAutoFailed, transport.SiteTasksRefusalProcesses},
 		{transport.MoveSiteSliceResponse{Done: true}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksPutBack, Refusal: transport.SiteTasksRefusalCrontab}, siteMovePressRan, siteAutoFailed, transport.SiteTasksRefusalCrontab},
-		{transport.MoveSiteSliceResponse{Done: true}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksCrontabBack}, siteMovePressRan, siteAutoMoved, ""},
+		{transport.MoveSiteSliceResponse{Done: true}, &transport.SiteTasksMoveResponse{Outcome: transport.SiteTasksCrontabBack}, siteMovePressRan, siteAutoMoved, siteAutoBroughtIn},
 	} {
 		if m := classifySiteMove(c.resp, c.tasks, c.outcome); m.State != c.state || m.Reason != c.reason {
 			t.Errorf("%d: %s %s, want %s %s", i, m.State, m.Reason, c.state, c.reason)

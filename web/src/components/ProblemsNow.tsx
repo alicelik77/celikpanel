@@ -251,6 +251,8 @@ export function problemBodyKey(problem: { kind: string; name?: string; subject?:
     // alpha.150 fix round G2: a site outside again; the sites that could not be read, by why.
     if (problem.kind === 'site_auto_move_failed' && problem.name === 'outside') return 'pnow.site_auto_move_failed.body_outside' as TranslationKey;
     if (problem.kind === 'site_auto_move_unread' && problem.reason === 'sites') return 'pnow.site_auto_move_unread.body_sites' as TranslationKey;
+    // Second review (N3): the panel's own record of the moves cannot be read.
+    if (problem.kind === 'site_auto_move_unread' && problem.reason === 'record') return 'pnow.site_auto_move_unread.body_record' as TranslationKey;
     return `pnow.${problem.kind}.body` as TranslationKey;
 }
 
@@ -261,6 +263,7 @@ export function problemTitleKey(problem: { kind: string; name?: string; subject?
     if (problem.kind === 'mail_signing' && problem.name === 'port25_variable_own') return 'pnow.mail_signing.port25_variable_own_title' as TranslationKey;
     // alpha.149 (lab O3; fix round F9).
     if (problem.kind === 'site_limits_unapplied') return unappliedKey(problem, 'title') as TranslationKey;
+    if (problem.kind === 'site_auto_move_unread' && problem.name === 'record') return 'pnow.site_auto_move_unread.title_record' as TranslationKey;
     // alpha.144 (alpha.143 lab): "1 PostgreSQL databases" was one database.
     if ((problem.kind === 'postgresql_databases_open' || problem.kind === 'postgresql_databases_unreadable') && problem.value === 1) {
         return `pnow.${problem.kind}.title_one` as TranslationKey;

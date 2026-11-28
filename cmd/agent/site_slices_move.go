@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1016,7 +1017,10 @@ const (
 //     answer is "update_running": the update has not reached its completion
 //     mark, whether or not its scripts hold the server's change lock right
 //     now (a restart of the server in that window frees it between the
-//     finalizer's attempts);
+//     finalizer's attempts); when the only marker is an update's
+//     scheduler-restore.pending (the update is complete except turning
+//     Certbot's renewal back on), the answer is "update_finishing" instead,
+//     with words of its own (second review, N1), refused the same way;
 //   - a transaction folder or marker that cannot be inspected answers
 //     "update_unreadable" (it does not end until it can be read);
 //   - otherwise the update's request records (systemUpdateRecordsState).
@@ -1030,10 +1034,49 @@ func siteMoveUpdateStateOf(transactionRoot, recordsRoot string, now time.Time) s
 		return "update_unreadable"
 	}
 	if present {
+		if releaseTransactionOnlySchedulerRestore(transactionRoot) {
+			return "update_finishing"
+		}
 		return "update_running"
 	}
 	return systemUpdateRecordsState(recordsRoot, now)
 }
+
+// releaseTransactionOnlySchedulerRestore (alpha.150 second review, N1) says
+// whether the only marker left is an update's scheduler-restore.pending: the
+// update is installed and complete, and only its last step (switching
+// Certbot's automatic renewal back on) has not finished; the recovery runner
+// (celikpanel-release-recovery.timer) repeats that step. It only chooses the
+// refusal's words ("update_finishing"); the move is refused either way. Any
+// other marker, a return's marker (operation=rollback), or anything that
+// cannot be read answers false: the words of an update in progress.
+func releaseTransactionOnlySchedulerRestore(root string) bool {
+	for _, marker := range agentReleaseTransactionMarkers {
+		_, err := os.Lstat(filepath.Join(root, marker))
+		if marker == "scheduler-restore.pending" {
+			if err != nil {
+				return false
+			}
+		} else if !os.IsNotExist(err) {
+			return false
+		}
+	}
+	path := filepath.Join(root, "scheduler-restore.pending")
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 512 {
+		return false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return slices.Contains(strings.Split(string(raw), "\n"), "operation=update")
+}
+
+// siteMoveUpdateFinishing is the English text of update_finishing (the
+// recovery's own words for that step: cmd/recovery, update_finishing_scheduler).
+const siteMoveUpdateFinishing = "the panel's update is installed, but its last step, turning automatic certificate renewal (Certbot) back on, has not finished; nothing was moved. " +
+	"The release recovery repeats that step by itself (sudo journalctl -u celikpanel-release-recovery.service); move the site once it has finished"
 
 // siteMoveRefusalText is the English text of a claim's refusal.
 func siteMoveRefusalText(refusal string) string {
@@ -1042,6 +1085,8 @@ func siteMoveRefusalText(refusal string) string {
 		return siteMoveUpdateRefusal
 	case "update_unreadable":
 		return siteMoveUpdateUnreadable
+	case "update_finishing":
+		return siteMoveUpdateFinishing
 	}
 	return "another move into a site's limits is running; nothing was changed"
 }

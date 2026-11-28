@@ -169,7 +169,8 @@ type SiteTasksMoveResponse struct {
 	// out for an undo; source_owner: the task file was changed by hand;
 	// limits: the site's limits file is not in place; and, as the programs'
 	// move answers them (alpha.150), kept_earlier: a move record is kept;
-	// another_move, update_running, update_unreadable, site_busy).
+	// another_move, update_running, update_unreadable, update_finishing,
+	// site_busy).
 	Refusal string `json:"refusal,omitempty"`
 	// Recovery (alpha.150): the move's one outcome record when this move or
 	// undo left its record kept (Outcome unknown): the site's card shows it

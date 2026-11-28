@@ -31,7 +31,7 @@ export type { SiteLimitsLaneKey };
 // auto_move, Problems now's site_auto_move_failed); never the agent's English (its journal holds it).
 // Here, beside the lane's words, so that Problems now loads nothing more for it.
 const AUTO_TASK_WHYS: readonly string[] = ['cron_allow_owner', 'crontab_changed', 'limits', 'processes_unread', 'no_cron'];
-const AUTO_WAITED: readonly string[] = ['site_busy', 'another_move', 'update_running', 'update_unreadable', 'build', 'host_busy'];
+const AUTO_WAITED: readonly string[] = ['site_busy', 'another_move', 'update_running', 'update_unreadable', 'host_busy'];
 // The panel's own record, never the server (fix round G5).
 const AUTO_RECORD: readonly string[] = ['marks_unreadable', 'mark_failed'];
 
@@ -51,6 +51,9 @@ export function autoMoveReasonKey(a: AutoMoveEnding): string {
     if (reason === 'stayed') return 'slim.auto.why.stayed';
     if (reason === 'limits_unread') return 'slim.auto.why.limits_unread';
     if (AUTO_RECORD.includes(reason)) return 'slim.auto.why.record';
+    // Second review (N1): the update's last step, and an agent of another build, have words of their own.
+    if (reason === 'update_finishing') return 'slim.auto.why.finishing';
+    if (reason === 'build') return 'slim.auto.why.build';
     // A reason that clears by itself and did not clear for hours (the worker then stopped waiting).
     if (AUTO_WAITED.includes(reason)) return 'slim.auto.why.waited';
     if (reason === 'kept_earlier' || reason === 'unsupported') return `slim.why.${reason}`;
@@ -70,7 +73,7 @@ export function autoMoveLeadKey(a: AutoMoveEnding): string {
 
 /** The calm line: moving, or waiting and why (fix round G5). */
 export function autoMoveLineKey(waiting?: string): string {
-    return waiting && ['update', 'wanted', 'host', 'move', 'site', 'record'].includes(waiting) ? `slim.auto.wait.${waiting}` : 'slim.auto.running';
+    return waiting && ['update', 'finishing', 'build', 'wanted', 'host', 'move', 'site', 'record'].includes(waiting) ? `slim.auto.wait.${waiting}` : 'slim.auto.running';
 }
 
 // The sites a lowered limit stops, in the page's own words (alpha.149, the

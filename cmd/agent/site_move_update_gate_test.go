@@ -147,3 +147,71 @@ func TestTheUpdateGateReadsOnly(t *testing.T) {
 		t.Fatalf("the gate changed the transaction folder: %v", entries)
 	}
 }
+
+// TestTheUpdatesLastStepHasItsOwnRefusal (second review, N1): when the only
+// marker left is an update's scheduler-restore.pending (the update is
+// installed; turning Certbot's renewal back on has not finished), every move
+// is still refused before anything changes, with update_finishing and its own
+// words; with any other marker beside it, or a return's scheduler marker, the
+// refusal stays update_running.
+func TestTheUpdatesLastStepHasItsOwnRefusal(t *testing.T) {
+	const update = "version=1\ntoken=t\noperation=update\nsnapshot=s\n"
+	const rollback = "version=1\ntoken=t\noperation=rollback\nsnapshot=s\n"
+	for _, c := range []struct {
+		name    string
+		markers map[string]string
+		want    string
+	}{
+		{"scheduler only", map[string]string{"scheduler-restore.pending": update}, "update_finishing"},
+		{"with completion", map[string]string{"scheduler-restore.pending": update, "completion.pending": update}, "update_running"},
+		{"a return's", map[string]string{"scheduler-restore.pending": rollback}, "update_running"},
+		{"no operation", map[string]string{"scheduler-restore.pending": "version=1\n"}, "update_running"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			host := useSliceTestHost(t)
+			root := useUpdateGateRoots(t)
+			unit := "celikrt-5.service"
+			before := sealedTestUnit(unit, sliceTestHome+"/app")
+			writeTestUnit(t, host, unit, before)
+			host.units[unit] = &sliceTestUnit{active: "active", cgroup: "/system.slice/" + unit}
+			for name, text := range c.markers {
+				if err := os.WriteFile(filepath.Join(root, name), []byte(text), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, req := range []*transport.MoveSiteSliceRequest{moveRequest(unit), {RequestID: "r-gate-rec", Recover: true}} {
+				var resp transport.MoveSiteSliceResponse
+				_ = (&Agent{}).MoveSiteSliceV1(req, &resp)
+				if resp.Done || resp.Reason == nil || resp.Reason.Code != c.want || resp.Error != siteMoveRefusalText(c.want) {
+					t.Fatalf("%+v", resp)
+				}
+			}
+			if unitText(t, filepath.Join(host.dir, unit)) != before || host.called("daemon-reload") {
+				t.Fatal("something was written before the update's last step finished")
+			}
+		})
+	}
+	if text := siteMoveRefusalText("update_finishing"); !strings.Contains(text, "nothing was moved") || !strings.Contains(text, "celikpanel-release-recovery.service") {
+		t.Fatalf("the words: %q", text)
+	}
+	t.Run("tasks", func(t *testing.T) {
+		host := useTaskTestHost(t)
+		host.startWith(t, moveTaskCrontab)
+		root := useUpdateGateRoots(t)
+		if err := os.WriteFile(filepath.Join(root, "scheduler-restore.pending"), []byte(update), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		move := moveTasks(t)
+		undo := undoTasks(t)
+		var rebuild transport.SiteTaskSourceResponse
+		_ = (&Agent{}).RebuildSiteTaskSourceV1(&transport.SiteTasksMoveRequest{CronTenant: transport.CronTenant{SiteID: taskTestSite}}, &rebuild)
+		for name, got := range map[string][2]string{"move": {move.Refusal, move.Error}, "undo": {undo.Refusal, undo.Error}, "rebuild": {rebuild.Refusal, rebuild.Error}} {
+			if got[0] != "update_finishing" || got[1] != siteMoveUpdateFinishing {
+				t.Fatalf("%s: %q %q", name, got[0], got[1])
+			}
+		}
+		if crontab, _ := host.crontab(taskTestAccount); crontab != moveTaskCrontab || len(host.unitFiles(t)) != 0 || len(host.systemdCalls()) != 0 {
+			t.Fatalf("something changed: %v", host.systemdCalls())
+		}
+	})
+}

@@ -251,7 +251,7 @@ export function moveReasonWords(reason: MoveReason | undefined): { key: string; 
     return { key: `slim.reason.${reason.code}`, values };
 }
 
-const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running', 'update_unreadable'];
+const WHYS: readonly string[] = ['another_move', 'site_busy', 'kept_earlier', 'unsupported', 'update_running', 'update_unreadable', 'update_finishing', 'build'];
 
 /** Why a whole move did not run, as a catalogue key (the general sentence for every other code). */
 export function moveWhyKey(reason: MoveReason | undefined): string {

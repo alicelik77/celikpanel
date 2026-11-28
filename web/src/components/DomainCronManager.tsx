@@ -76,7 +76,7 @@ const schedulePresets: { labelKey: TranslationKey; value: string }[] = [
 // Sunucunun kendisinin doğruladığı okunamayan-crontab nedenleri. Her biri
 // sunucu sahibinin koyduğu bir kuraldır, bozulan bir şey değil.
 // alpha.150: the rebuild takes the move's claim; these refusals wait for the update or the move.
-const REBUILD_BUSY: readonly string[] = ['update_running', 'update_unreadable', 'another_move'];
+const REBUILD_BUSY: readonly string[] = ['update_running', 'update_unreadable', 'update_finishing', 'another_move'];
 
 const unreadableCauses: Record<string, TranslationKey> = {
     cron_allow: 'cron.unknown.cron_allow',

@@ -139,7 +139,7 @@ export function decodeTasksAnswer(raw: unknown): TasksAnswer {
 }
 
 /** The claim's refusals a tasks move, undo or rebuild shares with the programs' move (main's codes). */
-const MOVE_WHYS: readonly string[] = ['kept_earlier', 'update_running', 'update_unreadable', 'another_move', 'site_busy'];
+const MOVE_WHYS: readonly string[] = ['kept_earlier', 'update_running', 'update_unreadable', 'update_finishing', 'another_move', 'site_busy'];
 /** The tasks' own refusal codes (transport.SiteTasksRefusal*). */
 const TASK_WHYS: readonly string[] = ['cron_allow_owner', 'source_owner', 'crontab_changed', 'limits', 'timers_unread', 'processes_unread'];
 

@@ -186,7 +186,8 @@ const (
 // (Seconds, Ports: a put-back that listens on none), still_starting
 // (Seconds), restart_failed, write_failed, record_failed, changed; of the
 // whole move: unsupported, another_move, update_running (the panel's update
-// is in progress), site_busy, kept_earlier, prepare_failed, limits_failed,
+// is in progress), update_finishing (only the update's last step, turning
+// Certbot's renewal back on, has not finished), site_busy, kept_earlier, prepare_failed, limits_failed,
 // bad_request, build, not_finished.
 type SiteMoveReason struct {
 	Code    string `json:"code"`

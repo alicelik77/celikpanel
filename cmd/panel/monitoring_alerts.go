@@ -703,6 +703,16 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("%s runs outside its limits and is not moved into them by itself again. Problems now says why and offers Try again.", subject),
 			fmt.Sprintf("%s sınırlarının dışında çalışıyor ve kendiliğinden yeniden içine alınmıyor. Nedeni Şu anki sorunlar'da, \"Tekrar dene\" ile.", subject)
 	case "site_auto_move_unread":
+		// Second review (N2, N3): the words follow the line's reason, as
+		// Problems now does (item.name: agent, sites or record).
+		switch item.name {
+		case "sites":
+			return "The panel could not read its own list of sites for an hour, so the sites outside their limits are not moved into them yet. The administrator reads the panel's journal (sudo journalctl -u celikpanel-panel); the panel keeps reading and goes on by itself.",
+				"Panel bir saattir kendi site listesini okuyamadı; bu yüzden sınırlarının dışındaki siteler henüz içine alınmıyor. Yönetici panelin günlüğünü okur (sudo journalctl -u celikpanel-panel); panel okumayı sürdürür ve kendiliğinden devam eder."
+		case "record":
+			return "The panel cannot read its own record of the sites' moves into their limits, so no site is moved into its limits by itself; nothing was changed. The administrator reads the panel's journal (sudo journalctl -u celikpanel-panel). Problems now says the rest.",
+				"Panel sitelerin sınırlarına taşınmasıyla ilgili kendi kaydını okuyamıyor; bu yüzden hiçbir site kendiliğinden sınırlarının içine alınmıyor, hiçbir şey değiştirilmedi. Yönetici panelin günlüğünü okur (sudo journalctl -u celikpanel-panel). Gerisi Şu anki sorunlar'da."
+		}
 		return "The sites could not be read for an hour, so the ones outside their limits are not moved into them yet. The administrator checks CelikPanel's Agent (sudo systemctl status celikpanel-agent); the panel keeps reading and goes on by itself.",
 			"Siteler bir saattir okunamadı; bu yüzden sınırlarının dışındakiler henüz içine alınmıyor. Yönetici CelikPanel Agent'ı denetler (sudo systemctl status celikpanel-agent); panel okumayı sürdürür ve kendiliğinden devam eder."
 	case "cron_allow_lists_sites":

@@ -103,7 +103,9 @@ const (
 	// siteAutoStarted: the move was sent; its end is not recorded yet.
 	siteAutoStarted = "started"
 	// siteAutoMoved: the site is inside its limits (or the move had nothing
-	// it could take).
+	// it could take). Reason siteAutoBroughtIn: this move really brought it
+	// inside (second review, N5); only then is a site outside again said to
+	// have been inside.
 	siteAutoMoved = "moved"
 	// siteAutoLeft: the programs went in where they could; the scheduled
 	// tasks stayed in cron for a reason the server owner or the administrator
@@ -120,6 +122,10 @@ const (
 	// complete).
 	siteAutoKept = "kept"
 )
+
+// siteAutoBroughtIn is the reason of a "moved" mark whose move really moved
+// something and left nothing of the site outside (N5).
+const siteAutoBroughtIn = "brought_in"
 
 // Outcomes the worker acts on that are not marks.
 const (
@@ -303,10 +309,35 @@ func (p *Panel) noteSitePutBack(ctx context.Context, siteID int, put bool) {
 // the panel's update finishes).
 func siteAutoClearsByItself(code string) bool {
 	switch code {
-	case "site_busy", "another_move", "update_running", "update_unreadable", "build":
+	case "site_busy", "another_move", "update_running", "update_unreadable", "update_finishing", "build":
 		return true
 	}
 	return false
+}
+
+// siteAutoBroughtInBy (second review, N5): the press moved something (the
+// tasks into timers, a program restarted or rewritten into the slice) and
+// left no program outside (every program moved, rewritten or already inside).
+func siteAutoBroughtInBy(resp transport.MoveSiteSliceResponse, tasks *transport.SiteTasksMoveResponse) bool {
+	moved := tasks != nil && (tasks.Outcome == transport.SiteTasksMoved || tasks.Outcome == transport.SiteTasksCrontabBack)
+	for _, u := range resp.Units {
+		switch u.Outcome {
+		case transport.SiteMoveMoved, transport.SiteMoveRewritten:
+			moved = true
+		case transport.SiteMoveAlready:
+		default:
+			return false
+		}
+	}
+	return moved
+}
+
+// siteAutoMovedMark is the "moved" mark of a press that ended done.
+func siteAutoMovedMark(resp transport.MoveSiteSliceResponse, tasks *transport.SiteTasksMoveResponse) siteAutoMark {
+	if siteAutoBroughtInBy(resp, tasks) {
+		return siteAutoMark{State: siteAutoMoved, Reason: siteAutoBroughtIn}
+	}
+	return siteAutoMark{State: siteAutoMoved}
 }
 
 // siteAutoTasksOwnerRefusal: a tasks move refused, nothing changed, for the
@@ -363,7 +394,7 @@ func classifySiteMove(resp transport.MoveSiteSliceResponse, tasks *transport.Sit
 		return siteAutoMark{State: siteAutoFailed, Reason: code, Part: part, PutBack: resp.RolledBack}
 	}
 	if tasks == nil {
-		return siteAutoMark{State: siteAutoMoved}
+		return siteAutoMovedMark(resp, tasks)
 	}
 	switch tasks.Outcome {
 	case transport.SiteTasksStayed:
@@ -385,7 +416,7 @@ func classifySiteMove(resp transport.MoveSiteSliceResponse, tasks *transport.Sit
 		}
 		return siteAutoMark{State: siteAutoFailed, Reason: "tasks_put_back", Part: "tasks", PutBack: true}
 	}
-	return siteAutoMark{State: siteAutoMoved}
+	return siteAutoMovedMark(resp, tasks)
 }
 
 // noteSiteMoveAttempt records the administrator's own move of a site (Try
@@ -499,7 +530,9 @@ type siteAutoMoveProgress struct {
 	Done  int `json:"done"`
 	Total int `json:"total"`
 	// Waiting (G5): the run waits instead of moving, and why (update: the
-	// panel's update; wanted: an update the administrator asked for; host:
+	// panel's update; finishing: the update's last step, turning Certbot's
+	// renewal back on; build: the Agent runs another build than the panel;
+	// wanted: an update the administrator asked for; host:
 	// another change on the server; move: another site's move; site: the
 	// site is being changed; record: the panel's own record of the move).
 	Waiting string `json:"waiting,omitempty"`
@@ -534,8 +567,14 @@ func (m *siteAutoMover) setWaiting(why string) {
 // by itself is waited for.
 func siteAutoWaitingOf(reason string) string {
 	switch reason {
-	case "update_running", "update_unreadable", "build":
+	case "update_running", "update_unreadable":
 		return "update"
+	case "update_finishing":
+		// N1: the update is installed; only its last step has not finished.
+		return "finishing"
+	case "build":
+		// N1: the Agent runs another build than the panel.
+		return "build"
 	case "host_busy":
 		return "host"
 	case "another_move":
@@ -975,11 +1014,20 @@ func (p *Panel) siteAutoMoveOne(ctx context.Context, site siteLimitSite) siteAut
 	if tasks != nil {
 		tasksOutcome, tasksError = tasks.Outcome, tasks.Error
 	}
-	p.recordAudit(auditRecord{Action: "site.limits_move", ResourceType: "domain", ResourceID: site.DomainID, Details: auditDetailsText(map[string]any{
-		"request_id": requestID, "site": site.Domain, "automatic": true, "done": resp.Done, "rolled_back": resp.RolledBack,
-		"kept": resp.Kept, "time_up": resp.TimeUp, "error": resp.Error, "units": len(resp.Units), "tasks": tasksOutcome, "tasks_error": tasksError,
-		"outcome": mark.State, "reason": mark.Reason,
-	})})
+	// Second review (N4): a refusal before anything changed (a wait whose
+	// tasks part moved nothing) is not a move and is not audited, however
+	// often the run tries the site; the calm line says why it waits and the
+	// Agent's journal has each refusal. Every attempt that may have changed
+	// something (a kept record's wait included: settling it can restart the
+	// site's programs) is audited as before.
+	tasksChanged := tasks != nil && (tasks.Outcome == transport.SiteTasksMoved || tasks.Outcome == transport.SiteTasksCrontabBack)
+	if mark.State != siteAutoWait || tasksChanged {
+		p.recordAudit(auditRecord{Action: "site.limits_move", ResourceType: "domain", ResourceID: site.DomainID, Details: auditDetailsText(map[string]any{
+			"request_id": requestID, "site": site.Domain, "automatic": true, "done": resp.Done, "rolled_back": resp.RolledBack,
+			"kept": resp.Kept, "time_up": resp.TimeUp, "error": resp.Error, "units": len(resp.Units), "tasks": tasksOutcome, "tasks_error": tasksError,
+			"outcome": mark.State, "reason": mark.Reason,
+		})})
+	}
 	switch mark.State {
 	case siteAutoWait, siteAutoWaitKept:
 		// Refused before anything changed (or, for the site's own kept
@@ -1031,8 +1079,9 @@ type siteAutoMoveView struct {
 // siteAutoOutsideLine says what a site outside its limits, with no kept
 // record and not put back on purpose, shows (fix round G2): the mark of a
 // move that did not bring it inside; and, while no run is scheduled, running
-// or waiting, a site the panel is not moving (marked moved: it was inside
-// and is outside again; no mark; a "started" mark nobody settled). line is
+// or waiting, a site the panel is not moving (marked moved by a move that
+// brought it inside: it is outside again; marked moved otherwise, or no mark:
+// outside, neutral words (N5); a "started" mark nobody settled). line is
 // false for a site the run will still take, or left for the owner's reason
 // (its card names that and offers Try again, no Problems now line).
 func siteAutoOutsideLine(mark siteAutoMark, marked, idle bool) (out siteAutoMark, line, card bool) {
@@ -1045,8 +1094,12 @@ func siteAutoOutsideLine(mark siteAutoMark, marked, idle bool) (out siteAutoMark
 		return siteAutoMark{}, false, false
 	case marked && mark.State == siteAutoStarted:
 		return siteAutoMark{State: siteAutoUnknown, Reason: "unsettled", At: mark.At}, true, true
-	case marked && mark.State == siteAutoMoved:
+	case marked && mark.State == siteAutoMoved && mark.Reason == siteAutoBroughtIn:
 		return siteAutoMark{State: "outside", Reason: "outside_again", At: mark.At}, true, true
+	case marked && mark.State == siteAutoMoved:
+		// Nothing was taken, or settled by reading after a restart: it is not
+		// known that the site was inside (N5).
+		return siteAutoMark{State: "outside", At: mark.At}, true, true
 	case !marked:
 		return siteAutoMark{State: "outside"}, true, true
 	}
@@ -1097,21 +1150,25 @@ func siteAutoMarkOffersRetry(state string) bool {
 // server owner's reason is named where it is today (its card, the owner's
 // lines), never as a to-do.
 func (p *Panel) siteAutoMoveProblems(ctx context.Context, names map[string]string) []monitoringProblem {
-	marks, err := p.readSiteAutoMarks(ctx)
-	if err != nil {
-		return nil
-	}
 	outside, _, unsupported := p.siteOutsideNow(ctx)
 	if unsupported || len(outside) == 0 {
 		return nil
 	}
+	marks, err := p.readSiteAutoMarks(ctx)
+	putBack, putErr := p.sitesPutBack(ctx)
+	if err != nil || putErr != nil {
+		// Second review (N3): the panel's own record of the moves (or of the
+		// sites put back on purpose) cannot be read: nothing is moved by
+		// itself and no site's own line can be chosen; ONE line says so.
+		return []monitoringProblem{{
+			Key: "site_auto_move_record", Kind: "site_auto_move_unread", Severity: "warning", Actor: "administrator",
+			Name: "record", Reason: "record", ObservedAt: metricsTime(time.Now()),
+			Action: monitoringProblemAction{Kind: "open", To: "/monitoring"},
+		}}
+	}
 	kept := map[string]string{}
 	if raw := p.setting(ctx, settingSiteMoveKept); raw != "" {
 		_ = json.Unmarshal([]byte(raw), &kept)
-	}
-	putBack, err := p.sitesPutBack(ctx)
-	if err != nil {
-		return nil
 	}
 	domains := map[string]int{}
 	if rows, err := p.db.GetDB().QueryContext(ctx, `SELECT s.id, d.id FROM sites s JOIN domains d ON d.id = s.domain_id`); err == nil {

@@ -93,7 +93,7 @@ test('a kept tasks record says how the tasks run now, when the agent knows it; o
 
 test('the rebuild of a task file words the update’s and the move’s refusal', () => {
   const screen = read('../src/components/DomainCronManager.tsx');
-  assert.match(screen, /REBUILD_BUSY: readonly string\[\] = \['update_running', 'update_unreadable', 'another_move'\]/);
+  assert.match(screen, /REBUILD_BUSY: readonly string\[\] = \['update_running', 'update_unreadable', 'update_finishing', 'another_move'\]/);
   assert.match(screen, /REBUILD_BUSY\.includes\(answer\.refusal \?\? ''\)\) return \{ state: 'blocked', reason: t\('stasks\.rebuild\.busy'\) \}/);
   for (const words of [enSiteTasksScreens, trSiteTasksScreens]) assert.ok(words['stasks.rebuild.busy']);
   // Fix round F7: refused while a move record of the site is kept.

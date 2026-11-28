@@ -868,7 +868,7 @@ func siteMovePressTimeUp(units []string) transport.MoveSiteSliceResponse {
 // move and a site being changed).
 func siteMoveClaimRefusal(code string) bool {
 	switch code {
-	case transport.SiteMoveRefusalKept, "update_running", "update_unreadable", "another_move", "site_busy":
+	case transport.SiteMoveRefusalKept, "update_running", "update_unreadable", "update_finishing", "another_move", "site_busy":
 		return true
 	}
 	return false
